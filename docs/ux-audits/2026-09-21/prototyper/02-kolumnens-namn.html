@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 02 — Kolumnens namn i Data (#384)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  .rum { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 336px; gap: var(--s5); padding: var(--gutter); overflow: auto; align-content: start; }
+  .rum > * { min-width: 0; }
+  h2 { margin: 0 0 var(--s3); font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+
+  /* ── Datatabellen, samma täthet och samma lek som 01 ──────────────────────────────────────── */
+  .tabell { border: 1px solid var(--line); border-radius: 12px; overflow: visible; background: var(--panel); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+  th { text-align: left; padding: 0; background: #1b1f2a; color: var(--quiet); border-bottom: 1px solid var(--line); position: relative; vertical-align: middle; }
+  th:first-child { border-top-left-radius: 12px; }
+  th:last-child { border-top-right-radius: 12px; }
+  td { padding: 6px 10px; border-bottom: 1px solid var(--line-soft); color: #e6ecfa; vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td.id { color: var(--quiet); font-variant-numeric: tabular-nums; }
+  td[data-tal='ja'] { font-variant-numeric: tabular-nums; }
+
+  /* Rubrikens egen knapp: namnet och sorteringen, precis som i dag. Hela cellen är knappen, så
+     träffytan är hela huvudet och inte bara texten. */
+  .sortknapp { display: flex; align-items: center; gap: 5px; width: 100%; min-height: 34px; border: 0; background: transparent; padding: 6px 10px; color: var(--quiet); font: inherit; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; text-align: left; cursor: pointer; }
+  .sortknapp:hover { color: #e6ecfa; }
+  .sortknapp:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  .sortknapp .namn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sortknapp .pil { margin-left: auto; color: #555d70; }
+
+  /* Prickens form (L43): prickad ring = höjden föreslog, ifylld bricka = designern valde. */
+  .prick { flex: none; width: 5px; height: 5px; border-radius: 50%; background: #3d6c93; }
+  .prick[data-prosa='nej'] { background: #3a4050; }
+  .prick[data-kalla='val'] { box-shadow: 0 0 0 2px #1b1f2a, 0 0 0 3px #8ad0ff; }
+
+  /* ── #362:s utfällning — på plats och levande i Nu, A, B och C ────────────────────────────── */
+  .utfall { display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; width: 300px; padding: 9px 11px; border: 1px solid var(--primary-mark); border-radius: 10px; background: #12151d; box-shadow: 0 10px 24px #0008; text-transform: none; letter-spacing: 0; }
+  .shell:not([data-variant='d']) th:hover > .utfall,
+  .shell:not([data-variant='d']) th:focus-within > .utfall,
+  .shell:not([data-variant='d']) th[data-fast] > .utfall { display: block; }
+  th[data-matning] > .utfall { display: block !important; }
+  .utfall b { display: block; color: #e6ecfa; font-size: 11.5px; font-weight: 700; margin-bottom: 2px; }
+  .utfall p { margin: 0 0 8px; color: var(--quiet-2); font-size: 11px; line-height: 1.5; font-weight: 400; }
+  .utfall .rad { display: flex; gap: 6px; }
+  .utfall button { min-height: var(--tap); border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; background: #0f1115; color: #e6ecfa; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+  .utfall button:hover { border-color: var(--primary-mark); }
+  .utfall button.stark { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .utfall .tips { margin: 8px 0 0; color: #6f778a; font-size: 10.5px; }
+  .utfall .tips kbd { font: inherit; border: 1px solid #3a4050; border-radius: 4px; padding: 0 4px; color: #9aa3b8; }
+
+  /* A: namnraden inne i samma utfällning. Den står överst — det är kolumnens namn utfällningen
+     handlar om, och prosavalet talar om det namnet. */
+  .namnrad { display: grid; gap: 5px; margin: 0 0 9px; padding: 0 0 9px; border-bottom: 1px solid #1f2430; }
+  .namnrad > .etikett { color: #6f778a; font-size: 10px; text-transform: uppercase; letter-spacing: 1.4px; font-weight: 700; }
+  .namnrad .falt { display: flex; gap: 6px; }
+  .shell:not([data-variant='a']) .namnrad { display: none; }
+
+  input[type='text'] { flex: 1 1 auto; min-width: 0; min-height: var(--tap); border: 1px solid var(--line); border-radius: 8px; background: #0b0d12; color: #e6ecfa; font: inherit; font-size: 12px; padding: 0 9px; }
+  input[type='text']:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 1px; border-color: var(--primary-mark); }
+  input[type='text'][aria-invalid='true'] { border-color: #e0685f; }
+  .fel { margin: 0; color: #ffb3ad; font-size: 11px; line-height: 1.45; font-weight: 400; }
+  .fel[hidden] { display: none; }
+
+  /* B: rubriken blir ett fält på dubbelklick eller F2. */
+  .rubrikfalt { display: flex; align-items: center; gap: 5px; padding: 4px 6px; }
+  .rubrikfalt input { min-height: 34px; }
+  .bfel { position: absolute; top: calc(100% + 4px); left: 0; z-index: 40; width: 260px; padding: 7px 9px; border: 1px solid #7a3b36; border-radius: 9px; background: #21131280; backdrop-filter: blur(2px); background: #241415; box-shadow: 0 8px 20px #0008; text-transform: none; letter-spacing: 0; }
+
+  /* ── C · Dörren som redan finns (#46) ─────────────────────────────────────────────────────── */
+  .dorrcell { width: 44px; }
+  .dorrcell > button { width: 100%; min-height: 34px; border: 0; background: transparent; color: var(--quiet-2); font: inherit; font-size: 16px; cursor: pointer; padding: 6px 0; }
+  .dorrcell > button:hover { color: #fff; }
+  .dorr { display: none; position: absolute; top: calc(100% + 6px); right: 0; z-index: 35; width: 340px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: #12151d; box-shadow: 0 14px 30px #0009; text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .dorr[data-open] { display: block; }
+  .dorr h3 { margin: 0 0 8px; font-size: 10px; text-transform: uppercase; letter-spacing: 1.6px; color: var(--quiet); }
+  .dorr ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; max-height: 232px; overflow: auto; scrollbar-width: thin; }
+  .dorr li { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+  .dorr .dnamn { flex: 1 1 auto; min-width: 0; min-height: var(--tap); border: 1px solid transparent; border-radius: 8px; background: transparent; color: #e6ecfa; font: inherit; font-size: 12px; text-align: left; padding: 0 8px; cursor: text; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dorr .dnamn:hover { border-color: var(--line); background: #0f1115; }
+  .dorr .dsys { flex: 1 1 auto; color: var(--quiet); font-size: 11.5px; padding: 0 8px; }
+  .dorr .dx { flex: none; min-width: var(--tap); min-height: var(--tap); border: 1px solid transparent; border-radius: 8px; background: transparent; color: #6f778a; font: inherit; font-size: 13px; cursor: pointer; }
+  .dorr .dx:hover { border-color: var(--line); color: #e6ecfa; }
+  .dorr .dlas { flex: none; width: 44px; text-align: center; color: #4c real; }
+  .dorr .dlas { color: #4c5364; }
+
+  /* ── D · Kolumnpanelen ────────────────────────────────────────────────────────────────────── */
+  .panel { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 12px; display: grid; gap: 10px; align-content: start; max-height: 420px; overflow: auto; scrollbar-width: thin; }
+  .panel h3 { margin: 0; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.6px; color: var(--quiet); }
+  .kolumnrad { border: 1px solid var(--line-soft); border-radius: 10px; padding: 9px 10px; background: #12141a; display: grid; gap: 7px; }
+  .kolumnrad .forslag { margin: 0; color: var(--quiet-2); font-size: 11px; line-height: 1.45; }
+  .kolumnrad .forslag u { text-decoration: none; color: #9ec4e8; }
+  .treval { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; background: var(--sunk); border-radius: 8px; padding: 3px; }
+  .treval button { min-height: var(--tap); border: 0; border-radius: 6px; padding: 0 4px; background: transparent; color: var(--quiet-2); font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .treval button:hover { color: #e6ecfa; }
+  .treval button[aria-pressed='true'] { background: var(--primary); color: #fff; }
+  .treval button[aria-pressed='true'][data-val='foljer'] { background: #2b3040; color: #cbd3e4; box-shadow: inset 0 0 0 1px #464d60; }
+
+  /* ── Den förklarande spalten ──────────────────────────────────────────────────────────────── */
+  .sido { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 12px; display: grid; gap: 9px; align-content: start; }
+  .sido h3 { margin: 0; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.6px; color: var(--quiet); }
+  .sido p { margin: 0; color: var(--quiet-2); font-size: 11.5px; line-height: 1.55; }
+  .sido p b { color: #e6ecfa; }
+  .sido ol { margin: 0; padding-left: 16px; color: var(--quiet-2); font-size: 11.5px; line-height: 1.6; }
+  .sido ol b { color: #e6ecfa; }
+  .sido kbd { font: inherit; border: 1px solid #3a4050; border-radius: 4px; padding: 0 4px; color: #9aa3b8; }
+  .hoger { display: grid; gap: var(--s4); align-content: start; }
+
+  .foljde { margin: var(--s4) 0 0; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 12px; }
+  .foljde h3 { margin: 0 0 8px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.6px; color: var(--quiet); }
+  .foljde dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: baseline; font-size: 11.5px; }
+  .foljde dt { color: #9ec4e8; font-weight: 700; white-space: nowrap; }
+  .foljde dd { margin: 0; color: var(--quiet-2); line-height: 1.5; font-variant-numeric: tabular-nums; }
+  .foljde dd u { text-decoration: none; color: #7dd3a0; }
+  .foljde dd s { text-decoration: none; color: #6f778a; }
+</style>
+</head>
+<body>
+<div class="shell" data-variant="nu" data-kolumner="fyra">
+<header>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs"><button type="button">Kort</button><button type="button">Mall</button><button type="button" aria-selected="true">Data</button><button type="button">Symboler</button><button type="button">Regler</button><button type="button">Bord</button></nav>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Var kolumnens namn byts">
+    <button type="button" data-variant="nu" aria-pressed="true">Nu · går inte</button>
+    <button type="button" data-variant="a" aria-pressed="false">A · I utfällningen</button>
+    <button type="button" data-variant="b" aria-pressed="false">B · Dubbelklick</button>
+    <button type="button" data-variant="c" aria-pressed="false">C · Dörren</button>
+    <button type="button" data-variant="d" aria-pressed="false">D · Kolumnpanelen</button>
+  </div>
+  <span class="who">P</span>
+</header>
+
+<div class="protorad">
+  <b>#384</b>
+  <p id="hjalptext"></p>
+  <button type="button" id="tioknapp">Tio kolumner</button>
+  <button type="button" id="angraknapp" disabled>Ångra namnbytet</button>
+  <div class="matt">
+    <span>tabbstopp/huvud <u id="m-tabb">–</u></span>
+    <span>tabbstopp × 10 kol <u id="m-tabb10">–</u></span>
+    <span>huvudets höjd <u id="m-huvud">–</u></span>
+    <span>minsta träffyta <u id="m-tap">–</u></span>
+    <span>ytans höjd <u id="m-yta">–</u></span>
+    <span>rullar <u id="m-rullar">–</u></span>
+  </div>
+  <p class="sagt" id="sagt">Skärmläsaren hör: <em>—</em></p>
+</div>
+
+<main>
+<div class="rum">
+  <div>
+    <h2>Data</h2>
+    <div class="tabell">
+      <table>
+        <thead><tr id="huvud"></tr></thead>
+        <tbody id="rader"></tbody>
+      </table>
+    </div>
+
+    <div class="foljde">
+      <h3>Vad som följde med namnbytet (<code>renameField</code>)</h3>
+      <dl id="foljde"></dl>
+    </div>
+  </div>
+
+  <div class="hoger">
+    <div class="panel" id="panel" hidden>
+      <h3>Kolumner</h3>
+      <div id="panelrader"></div>
+    </div>
+    <div class="sido">
+      <h3>Vad som prövas</h3>
+      <p><b>Verbet finns, ytan saknas.</b> <code>renameField</code> flyttar nyckeln överallt dokumentet skriver den. Frågan är var designern trycker.</p>
+      <p><b>Namnet <em>är</em> nyckeln.</b> <code>fieldLabel</code> ger tillbaka kolumnens nyckel oförändrad för allt utom <code>antal</code>. Det finns alltså ingen separat etikett att byta: det designern skriver in är nyckeln, och det är den som läses upp (A4). Prototypen visar därför <b>ett</b> fält och inget nyckelfält bredvid — och det är en fråga till beställaren, inte ett avgjort beslut.</p>
+      <h3>Vad huvudet redan bär</h3>
+      <ol>
+        <li><b>Namnet</b> och <b>sorteringen</b> — samma knapp.</li>
+        <li><b>Pricken</b> (L43) — form, ingen kontroll.</li>
+        <li><b>Utfällningen</b> (#362) — på pekare <em>eller</em> fokus, med två knappar.</li>
+      </ol>
+      <p><code>×</code> lämnade redan huvudet i #46: 44 och 44 går inte in i 64. En fjärde sak är inte gratis.</p>
+      <h3>Vägen in med tangentbordet</h3>
+      <ol id="vagen"></ol>
+      <h3>Tillstånden</h3>
+      <p>Skriv <code>namn</code> eller <code>id</code> för att se en <b>upptagen nyckel</b> avvisas, och töm fältet för ett <b>tomt namn</b>. Efter ett byte går <b>Ångra</b> att trycka på i prototypraden.</p>
+    </div>
+  </div>
+</div>
+</main>
+</div>
+
+<script>
+const PT_TO_MM = 25.4 / 72
+const BODY_LINES = 2
+
+// Samma lek som 01, så de två prototyperna går att lägga bredvid varandra. `val` är L43:s
+// uttryckliga val; null betyder att höjden får svara.
+const grund = [
+  { key: 'namn', etikett: 'Namn', bredd: '17%', pt: 11, lh: 1.2, h: 7.4, val: null, tal: false },
+  { key: 'regeltext', etikett: 'Regeltext', bredd: '30%', pt: 8, lh: 1.35, h: 30.0, val: null, tal: false },
+  { key: 'kostnad', etikett: 'Kostnad', bredd: '10%', pt: 14, lh: 1.1, h: 12.0, val: false, tal: true },
+  { key: 'smak', etikett: 'Smaknotis', bredd: '22%', pt: 7.5, lh: 1.3, h: 6.5, val: true, tal: false },
+]
+// De sex till som gör tabellen tio kolumner bred. Samma sorts lek, bara en som hunnit växa.
+const extra = [
+  { key: 'typ', etikett: 'Typ', bredd: '8%', pt: 9, lh: 1.2, h: 5.0, val: null, tal: false },
+  { key: 'sällsynthet', etikett: 'Sällsynthet', bredd: '8%', pt: 9, lh: 1.2, h: 5.0, val: null, tal: false },
+  { key: 'styrka', etikett: 'Styrka', bredd: '6%', pt: 14, lh: 1.1, h: 12.0, val: false, tal: true },
+  { key: 'tålighet', etikett: 'Tålighet', bredd: '6%', pt: 14, lh: 1.1, h: 12.0, val: null, tal: true },
+  { key: 'illustratör', etikett: 'Illustratör', bredd: '10%', pt: 7, lh: 1.2, h: 4.0, val: null, tal: false },
+  { key: 'upplaga', etikett: 'Upplaga', bredd: '6%', pt: 9, lh: 1.1, h: 4.0, val: null, tal: true },
+]
+
+const varden = {
+  namn: ['Gläntans väktare', 'Björnens hälsning', 'Rävens list', 'Grantopp'],
+  regeltext: ['Når inte hjortar. Dra ett kort.', 'Slå tärningen och lägg resultatet i ditt revir.', 'Byt ett kort i handen mot ett i högen.', ''],
+  kostnad: ['3', '5', '2', '1'],
+  smak: ['Den stod där före stigen.', 'Kort hälsning, långt minne.', 'Räven räknar, sedan väljer den.', ''],
+  typ: ['Varelse', 'Händelse', 'Varelse', 'Plats'],
+  'sällsynthet': ['Vanlig', 'Sällsynt', 'Vanlig', 'Vanlig'],
+  styrka: ['4', '1', '2', '0'],
+  'tålighet': ['5', '1', '2', '3'],
+  'illustratör': ['M. Ek', 'M. Ek', 'S. Lind', 'S. Lind'],
+  upplaga: ['1', '1', '2', '1'],
+}
+
+const shell = document.querySelector('.shell')
+let kolumner = grund.map((k) => ({ ...k }))
+let sortering = null
+// Namnbytet som pågår: kolumnens nyckel, utkastet, och felet ytan säger *innan* verbet kastar.
+let redigerar = null
+let utkast = ''
+let fel = null
+// Ångerstacken, ett steg djup — det räcker för att visa att namnbytet är ett steg som alla andra.
+let angra = null
+// Vad som följde med det senaste bytet: samma sju saker `renameField` rör.
+let foljde = null
+// Vilken kolumn dörren i C är öppen för.
+let dorrOppen = false
+
+const hjalptexter = {
+  nu: 'Nu · går inte. renameField finns i packages/server/src/edits.ts och är testat, men ingen yta anropar det. Rubriken bär redan namnet, sorteringen, pricken och #362:s utfällning — håll pekaren över ett huvud, eller tabba in i det.',
+  a: 'A · I utfällningen. Namnbytet flyttar in i den utfällning #362 redan gav rubriken: en yta i stället för två. Fältet nålar fast utfällningen så att pekaren får lämna huvudet utan att det som skrivs försvinner.',
+  b: 'B · Dubbelklick. Rubriken blir ett fält på dubbelklick, eller på F2 när den har fokus. Huvudet kostar inget i vila — men fältet är lika brett som kolumnen, och en kostnadskolumn är en siffra bred.',
+  c: 'C · Dörren. Namnet byts där kolumnen redan är en kolumn: bakom + i huvudets sista cell, listan #46 flyttade × till. Rubriken rörs inte alls, men namnet och prosavalet hamnar på var sitt ställe.',
+  d: 'D · Kolumnpanelen. Både namnet och prosavalet flyttar till en panel vid sidan, och #362:s utfällning tas bort. Rubriken går tillbaka till namn och sortering — priset är att panelen rullar, vilket var precis det som fällde #362:s variant B.',
+}
+
+const vagar = {
+  nu: ['Tabb till rubriken — utfällningen kommer fram.', 'Ingen väg vidare: det finns ingen kontroll som byter namn.'],
+  a: ['Tabb till rubriken — utfällningen kommer fram.', 'Tabb igen — <b>namnfältet</b> får fokus och nålar fast utfällningen.', 'Skriv, <kbd>Enter</kbd> byter namn. <kbd>Esc</kbd> ångrar utkastet.'],
+  b: ['Tabb till rubriken.', '<kbd>F2</kbd> gör rubriken till ett fält, markerat och klart.', '<kbd>Enter</kbd> byter namn, <kbd>Esc</kbd> lämnar det som det var.'],
+  c: ['Tabb till <b>+</b> sist i huvudet, <kbd>Enter</kbd> öppnar dörren.', 'Tabb till kolumnens namn i listan, <kbd>Enter</kbd> gör det till ett fält.', '<kbd>Enter</kbd> byter namn, <kbd>Esc</kbd> stänger dörren.'],
+  d: ['Tabb ut ur tabellen till panelen.', 'Tabb till kolumnens namnfält — det är redan ett fält.', '<kbd>Enter</kbd> byter namn. Prosavalet står tre knappar längre fram.'],
+}
+
+const radhojd = (k) => k.pt * PT_TO_MM * k.lh
+const forslag = (k) => k.h >= BODY_LINES * radhojd(k)
+const arProsa = (k) => (k.val === null ? forslag(k) : k.val)
+const kalla = (k) => (k.val === null ? 'hojd' : 'val')
+const ordProsa = (k) => (arProsa(k) ? 'prosa' : 'vanlig text')
+const komma = (n) => n.toFixed(1).replace('.', ',')
+
+// Varenda namn tabellen redan svarar på: kolumnerna, kortets eget `id` och motorns `antal` (L4).
+// Samma lista som `takenNames` frågar, och den frågas *innan* verbet kastar.
+const upptagna = (utom) => ['id', 'antal', ...kolumner.filter((k) => k.key !== utom).map((k) => k.key)]
+
+function sag(text) {
+  document.getElementById('sagt').replaceChildren(document.createTextNode('Skärmläsaren hör: '), Object.assign(document.createElement('em'), { textContent: text }))
+}
+
+// ── Namnbytet självt ────────────────────────────────────────────────────────────────────────
+// Prövningen är ytans, inte verbets: `renameField` kastar på ett upptaget namn, och ett kast är
+// inte ett besked. Så ytan ställer samma tre frågor som verbet och säger svaret i klartext.
+function provaNamn(fran, till) {
+  const namn = till.trim()
+  if (namn === '') return 'Kolumnen måste heta något.'
+  if (namn === fran) return null
+  if (upptagna(fran).includes(namn)) return `Det finns redan en kolumn som heter ${namn}.`
+  return null
+}
+
+function byt(fran, till) {
+  const namn = till.trim()
+  const trubbel = provaNamn(fran, namn)
+  if (trubbel) { fel = trubbel; rita(); return false }
+  if (namn === fran) { redigerar = null; fel = null; rita(); return true }
+  const k = kolumner.find((x) => x.key === fran)
+  const gammal = k.key
+  k.key = namn
+  k.etikett = namn
+  if (sortering && sortering.field === gammal) sortering = { ...sortering, field: namn }
+  angra = { fran: namn, till: gammal }
+  // Det `renameField` faktiskt rör. Siffrorna är prototypens lek räknad, inte påhitt.
+  foljde = {
+    namn: gammal + ' → ' + namn,
+    bindningar: kolumner.indexOf(k) < 4 ? 2 : 1,
+    villkor: gammal === 'kostnad' ? 1 : 0,
+    grupp: gammal === 'typ',
+    ordning: true,
+    beskarningar: gammal === 'illustratör' ? 0 : 1,
+    prosaval: k.val !== null,
+  }
+  redigerar = null
+  utkast = ''
+  fel = null
+  sag(`${gammal} heter nu ${namn}. Allt som pekade på ${gammal} pekar på ${namn}.`)
+  rita()
+  return true
+}
+
+function borja(nyckel) {
+  redigerar = nyckel
+  utkast = nyckel
+  fel = null
+  rita()
+  const falt = document.querySelector('[data-namnfalt]')
+  if (falt) { falt.focus(); falt.select() }
+}
+
+function sluta() { redigerar = null; utkast = ''; fel = null; rita() }
+
+// ── Huvudet ─────────────────────────────────────────────────────────────────────────────────
+function ritaHuvud() {
+  const huvud = document.getElementById('huvud')
+  huvud.replaceChildren()
+  const variant = shell.dataset.variant
+
+  const idth = document.createElement('th')
+  idth.style.width = '8%'
+  idth.append(sortknapp({ key: 'id', etikett: 'id' }, false))
+  huvud.append(idth)
+
+  for (const k of kolumner) {
+    const th = document.createElement('th')
+    th.style.width = k.bredd
+    th.dataset.col = k.key
+
+    if (variant === 'b' && redigerar === k.key) {
+      th.append(rubrikfalt(k))
+      if (fel) th.append(felruta(fel))
+    } else {
+      const knapp = sortknapp(k, true)
+      if (variant === 'b') {
+        knapp.addEventListener('dblclick', () => borja(k.key))
+        knapp.addEventListener('keydown', (e) => { if (e.key === 'F2') { e.preventDefault(); borja(k.key) } })
+        knapp.title = 'Dubbelklicka eller F2 för att byta namn'
+      }
+      th.append(knapp)
+    }
+    if (variant !== 'd') th.append(utfallningen(k))
+    if (redigerar === k.key && variant === 'a') th.dataset.fast = ''
+    huvud.append(th)
+  }
+
+  // Huvudets sista cell: dörren (#32, #46). Den finns i alla varianter — det är där en kolumn
+  // görs — men bara i C bär den namnbytet.
+  const dorrth = document.createElement('th')
+  dorrth.className = 'dorrcell'
+  const dorrknapp = document.createElement('button')
+  dorrknapp.type = 'button'
+  dorrknapp.textContent = '+'
+  dorrknapp.setAttribute('aria-label', 'Kolumner')
+  dorrknapp.setAttribute('aria-expanded', String(dorrOppen))
+  dorrknapp.addEventListener('click', () => { dorrOppen = !dorrOppen; redigerar = null; fel = null; rita() })
+  dorrth.append(dorrknapp)
+  if (dorrOppen) dorrth.append(dorren())
+  huvud.append(dorrth)
+}
+
+function sortknapp(k, medPrick) {
+  const knapp = document.createElement('button')
+  knapp.type = 'button'
+  knapp.className = 'sortknapp'
+  if (medPrick) {
+    const prick = document.createElement('span')
+    prick.className = 'prick'
+    prick.dataset.prosa = arProsa(k) ? 'ja' : 'nej'
+    prick.dataset.kalla = kalla(k)
+    prick.setAttribute('aria-hidden', 'true')
+    knapp.append(prick)
+  }
+  const namn = document.createElement('span')
+  namn.className = 'namn'
+  namn.textContent = k.etikett
+  const pil = document.createElement('span')
+  pil.className = 'pil'
+  pil.setAttribute('aria-hidden', 'true')
+  const aktiv = sortering && sortering.field === k.key ? sortering.dir : null
+  pil.textContent = aktiv === 'ascending' ? '↑' : aktiv === 'descending' ? '↓' : '↕'
+  knapp.append(namn, pil)
+  knapp.addEventListener('click', () => {
+    sortering = !sortering || sortering.field !== k.key ? { field: k.key, dir: 'ascending' } : sortering.dir === 'ascending' ? { field: k.key, dir: 'descending' } : null
+    rita()
+  })
+  return knapp
+}
+
+function rubrikfalt(k) {
+  const box = document.createElement('div')
+  box.className = 'rubrikfalt'
+  box.append(namnfalt(k))
+  return box
+}
+
+// Ett fält, samma fält, var det än står. Det som skiljer varianterna är var det hänger — inte
+// vad det gör, och inte vad som händer när namnet är upptaget eller tomt.
+function namnfalt(k) {
+  const falt = document.createElement('input')
+  falt.type = 'text'
+  falt.dataset.namnfalt = ''
+  falt.value = utkast
+  falt.setAttribute('aria-label', `Namn på kolumnen ${k.key}`)
+  if (fel) { falt.setAttribute('aria-invalid', 'true'); falt.setAttribute('aria-describedby', 'namnfel') }
+  falt.addEventListener('input', (e) => {
+    utkast = e.target.value
+    const nytt = provaNamn(k.key, utkast)
+    if (nytt !== fel) { fel = nytt; ritaFel(k) }
+  })
+  falt.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); byt(k.key, utkast) }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); sluta() }
+  })
+  return falt
+}
+
+// Felet ritas om för sig medan man skriver: att rita om hela huvudet vid varje tangenttryck
+// skulle ta fokus ur fältet, vilket är samma sak som att inte kunna skriva.
+function ritaFel(k) {
+  for (const gammal of document.querySelectorAll('[data-felruta]')) gammal.remove()
+  const falt = document.querySelector('[data-namnfalt]')
+  if (!falt) return
+  if (fel) { falt.setAttribute('aria-invalid', 'true'); falt.setAttribute('aria-describedby', 'namnfel') } else { falt.removeAttribute('aria-invalid'); falt.removeAttribute('aria-describedby') }
+  if (!fel) { mat(); return }
+  const ruta = felruta(fel)
+  if (shell.dataset.variant === 'b') falt.closest('th').append(ruta)
+  else falt.closest('.falt, li, .kolumnrad').after ? falt.closest('.falt').parentElement.append(ruta) : null
+  mat()
+}
+
+function felruta(text) {
+  const p = document.createElement('p')
+  p.className = 'fel'
+  p.id = 'namnfel'
+  p.dataset.felruta = ''
+  p.setAttribute('role', 'status')
+  p.textContent = text
+  if (shell.dataset.variant === 'b') p.classList.add('bfel')
+  return p
+}
+
+// #362:s utfällning, oförändrad — och i A med namnraden överst i samma ruta.
+function utfallningen(k) {
+  const box = document.createElement('div')
+  box.className = 'utfall'
+  box.setAttribute('role', 'group')
+  box.setAttribute('aria-label', `${k.etikett} skrivs som ${ordProsa(k)}, ${k.val === null ? 'höjden föreslog' : 'du valde'}`)
+
+  if (shell.dataset.variant === 'a') {
+    const rad = document.createElement('div')
+    rad.className = 'namnrad'
+    const etikett = document.createElement('span')
+    etikett.className = 'etikett'
+    etikett.textContent = 'Kolumnens namn'
+    const falt = document.createElement('div')
+    falt.className = 'falt'
+    const input = namnfalt(k)
+    if (redigerar !== k.key) input.value = k.key
+    input.addEventListener('focus', () => { if (redigerar !== k.key) { redigerar = k.key; utkast = k.key; fel = null } })
+    const spara = document.createElement('button')
+    spara.type = 'button'
+    spara.className = 'stark'
+    spara.textContent = 'Byt'
+    spara.addEventListener('click', () => byt(k.key, document.querySelector('[data-namnfalt]').value))
+    falt.append(input, spara)
+    rad.append(etikett, falt)
+    if (redigerar === k.key && fel) rad.append(felruta(fel))
+    box.append(rad)
+  }
+
+  const b = document.createElement('b')
+  b.textContent = `${k.etikett} skrivs som ${ordProsa(k)}`
+  const p = document.createElement('p')
+  p.textContent = k.val === null
+    ? `Höjden föreslog det: rutan är ${komma(k.h)} mm och en rad av dess grad är ${komma(radhojd(k))} mm.`
+    : `Du valde det. Rutan är ${komma(k.h)} mm, och höjden hade föreslagit ${forslag(k) ? 'prosa' : 'vanlig text'}.`
+  const rad = document.createElement('div')
+  rad.className = 'rad'
+  const vand = document.createElement('button')
+  vand.type = 'button'
+  vand.className = 'stark'
+  vand.textContent = arProsa(k) ? 'Gör vanlig text' : 'Gör prosa'
+  vand.addEventListener('click', () => { k.val = !arProsa(k); sag(`${k.etikett} skrivs som ${ordProsa(k)}, du valde`); rita() })
+  rad.append(vand)
+  if (k.val !== null) {
+    const ater = document.createElement('button')
+    ater.type = 'button'
+    ater.textContent = 'Följ höjden igen'
+    ater.addEventListener('click', () => { k.val = null; sag(`${k.etikett} följer höjden igen`); rita() })
+    rad.append(ater)
+  }
+  box.append(b, p, rad)
+
+  if (shell.dataset.variant === 'b') {
+    const tips = document.createElement('p')
+    tips.className = 'tips'
+    tips.append(document.createTextNode('Byt namn: dubbelklicka rubriken, eller '), Object.assign(document.createElement('kbd'), { textContent: 'F2' }), document.createTextNode('.'))
+    box.append(tips)
+  }
+  return box
+}
+
+// ── C · dörren ──────────────────────────────────────────────────────────────────────────────
+function dorren() {
+  const box = document.createElement('div')
+  box.className = 'dorr'
+  box.dataset.open = ''
+  box.setAttribute('role', 'group')
+  box.setAttribute('aria-label', 'Kolumner')
+  box.addEventListener('keydown', (e) => { if (e.key === 'Escape' && redigerar === null) { dorrOppen = false; rita() } })
+  const h = document.createElement('h3')
+  h.textContent = 'Kolumner'
+  const lista = document.createElement('ul')
+  for (const rad of [{ key: 'id', sys: 'kortets eget' }, ...kolumner, { key: 'antal', sys: 'lekens eget' }]) {
+    const li = document.createElement('li')
+    if (rad.sys) {
+      const namn = document.createElement('span')
+      namn.className = 'dsys'
+      namn.textContent = `${rad.key} — ${rad.sys}`
+      const las = document.createElement('span')
+      las.className = 'dlas'
+      las.textContent = '🔒'
+      las.setAttribute('aria-hidden', 'true')
+      li.append(namn, las)
+    } else if (shell.dataset.variant === 'c' && redigerar === rad.key) {
+      li.append(namnfalt(rad))
+      if (fel) li.append(felruta(fel))
+    } else {
+      const namn = document.createElement('button')
+      namn.type = 'button'
+      namn.className = 'dnamn'
+      namn.textContent = rad.key
+      if (shell.dataset.variant === 'c') {
+        namn.setAttribute('aria-label', `Byt namn på kolumnen ${rad.key}`)
+        namn.addEventListener('click', () => borja(rad.key))
+      } else {
+        namn.disabled = true
+        namn.style.cursor = 'default'
+      }
+      const x = document.createElement('button')
+      x.type = 'button'
+      x.className = 'dx'
+      x.textContent = '×'
+      x.setAttribute('aria-label', `Ta bort kolumnen ${rad.key}`)
+      li.append(namn, x)
+    }
+    lista.append(li)
+  }
+  box.append(h, lista)
+  return box
+}
+
+// ── D · panelen ─────────────────────────────────────────────────────────────────────────────
+function ritaPanel() {
+  const panel = document.getElementById('panel')
+  panel.hidden = shell.dataset.variant !== 'd'
+  const lista = document.getElementById('panelrader')
+  lista.replaceChildren()
+  if (panel.hidden) return
+  lista.style.display = 'grid'
+  lista.style.gap = '8px'
+  for (const k of kolumner) {
+    const box = document.createElement('div')
+    box.className = 'kolumnrad'
+    const falt = namnfalt(k)
+    if (redigerar !== k.key) falt.value = k.key
+    falt.addEventListener('focus', () => { if (redigerar !== k.key) { redigerar = k.key; utkast = k.key; fel = null } })
+    box.append(falt)
+    if (redigerar === k.key && fel) box.append(felruta(fel))
+
+    const f = document.createElement('p')
+    f.className = 'forslag'
+    const svar = document.createElement('u')
+    svar.textContent = forslag(k) ? 'prosa' : 'vanlig text'
+    f.append(document.createTextNode(`Rutan är ${komma(k.h)} mm. Höjden föreslår `), svar, document.createTextNode('.'))
+
+    const tre = document.createElement('div')
+    tre.className = 'treval'
+    tre.setAttribute('role', 'group')
+    tre.setAttribute('aria-label', `${k.key} skrivs som`)
+    for (const [val, ord] of [['foljer', 'Följer höjden'], ['prosa', 'Prosa'], ['vanlig', 'Vanlig text']]) {
+      const knapp = document.createElement('button')
+      knapp.type = 'button'
+      knapp.dataset.val = val
+      knapp.textContent = ord
+      const aktiv = val === 'foljer' ? k.val === null : val === 'prosa' ? k.val === true : k.val === false
+      knapp.setAttribute('aria-pressed', String(aktiv))
+      knapp.addEventListener('click', () => { k.val = val === 'foljer' ? null : val === 'prosa'; rita() })
+      tre.append(knapp)
+    }
+    box.append(f, tre)
+    lista.append(box)
+  }
+}
+
+// ── Raderna ─────────────────────────────────────────────────────────────────────────────────
+function ritaRader() {
+  const kropp = document.getElementById('rader')
+  kropp.replaceChildren()
+  for (let i = 0; i < 4; i++) {
+    const tr = document.createElement('tr')
+    const id = document.createElement('td')
+    id.className = 'id'
+    id.textContent = `k-0${i + 1}`
+    tr.append(id)
+    for (const k of kolumner) {
+      const td = document.createElement('td')
+      td.dataset.tal = k.tal ? 'ja' : 'nej'
+      td.textContent = varden[k.ursprung ?? k.key]?.[i] ?? ''
+      tr.append(td)
+    }
+    const sista = document.createElement('td')
+    tr.append(sista)
+    kropp.append(tr)
+  }
+}
+
+function ritaFoljde() {
+  const dl = document.getElementById('foljde')
+  dl.replaceChildren()
+  const rader = foljde
+    ? [
+        ['nyckeln', `${foljde.namn} i varje korts post`],
+        ['bindningarna', `${foljde.bindningar} element i mallen`],
+        ['villkoren', foljde.villkor ? `${foljde.villkor} variantvillkor` : 'inga'],
+        ['gruppkolumnen', foljde.grupp ? 'ja' : 'rör inte denna'],
+        ['ordningen', 'kolumnen står kvar där den stod'],
+        ['beskärningarna', foljde.beskarningar ? `${foljde.beskarningar} bildruta` : 'inga'],
+        ['prosavalet', foljde.prosaval ? 'följde med (L43)' : 'kolumnen hade inget eget val'],
+      ]
+    : [['—', 'Byt ett kolumnnamn så står det här vad renameField flyttade.']]
+  for (const [dt, dd] of rader) {
+    dl.append(Object.assign(document.createElement('dt'), { textContent: dt }))
+    const d = document.createElement('dd')
+    if (foljde) { const u = document.createElement('u'); u.textContent = dd; d.append(u) } else d.textContent = dd
+    dl.append(d)
+  }
+}
+
+// ── Mätningen ───────────────────────────────────────────────────────────────────────────────
+const synlig = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 }
+const stopp = (rot) => [...rot.querySelectorAll('button:not([disabled]), input, [tabindex="0"]')].filter(synlig).length
+
+// Tabbstoppen per kolumnhuvud, räknade två gånger: i vila — huvudet orört, vilket är det som
+// gäller för varje huvud utom det ena handen är på — och med utfällningen framme. Det är den
+// första siffran som betyder något: den multipliceras med antalet kolumner.
+function tabbstopp() {
+  const th = document.querySelector('thead th[data-col]')
+  if (!th) return { vila: 0, oppen: 0 }
+  const vila = stopp(th)
+  th.dataset.matning = ''
+  const oppen = stopp(th)
+  delete th.dataset.matning
+  return { vila, oppen }
+}
+
+function mat() {
+  const rum = document.querySelector('.rum')
+  const th = document.querySelector('thead th[data-col]')
+  const t = tabbstopp()
+  const alla = [...document.querySelectorAll('thead button, thead input, .panel button, .panel input')].filter(synlig)
+  let minsta = Infinity
+  for (const el of alla) { const r = el.getBoundingClientRect(); minsta = Math.min(minsta, Math.round(Math.min(r.width, r.height))) }
+  const vid10 = t.vila * 10
+  document.getElementById('m-tabb').textContent = `${t.vila} vila / ${t.oppen} öppen`
+  document.getElementById('m-tabb10').textContent = `${vid10}${shell.dataset.kolumner === 'tio' ? ' (visas)' : ''}`
+  document.getElementById('m-huvud').textContent = `${Math.round(th.getBoundingClientRect().height)} px`
+  document.getElementById('m-tap').textContent = Number.isFinite(minsta) ? `${minsta} px` : '–'
+  document.getElementById('m-yta').textContent = `${Math.round(rum.scrollHeight)} px`
+  const rullar = []
+  if (rum.scrollHeight > rum.clientHeight + 1) rullar.push('ytan')
+  const panel = document.getElementById('panel')
+  if (!panel.hidden && panel.scrollHeight > panel.clientHeight + 1) rullar.push('panelen')
+  const dorr = document.querySelector('.dorr ul')
+  if (dorr && dorr.scrollHeight > dorr.clientHeight + 1) rullar.push('dörren')
+  document.getElementById('m-rullar').textContent = rullar.length ? rullar.join(' + ') : 'nej'
+  window.bydMatt = {
+    variant: shell.dataset.variant,
+    kolumner: kolumner.length,
+    tabbstoppVila: t.vila,
+    tabbstoppOppen: t.oppen,
+    tabbstopp10: vid10,
+    huvud: Math.round(th.getBoundingClientRect().height),
+    tap: Number.isFinite(minsta) ? minsta : null,
+    ytahojd: Math.round(rum.scrollHeight),
+    rullar: rullar.length ? rullar.join('+') : 'nej',
+  }
+}
+
+function rita() {
+  document.getElementById('hjalptext').textContent = hjalptexter[shell.dataset.variant]
+  const vagen = document.getElementById('vagen')
+  vagen.replaceChildren()
+  for (const steg of vagar[shell.dataset.variant]) {
+    const li = document.createElement('li')
+    li.innerHTML = steg
+    vagen.append(li)
+  }
+  document.getElementById('angraknapp').disabled = angra === null
+  ritaHuvud()
+  ritaRader()
+  ritaPanel()
+  ritaFoljde()
+  mat()
+}
+
+for (const knapp of document.querySelectorAll('.switch button')) {
+  knapp.addEventListener('click', () => {
+    shell.dataset.variant = knapp.dataset.variant
+    for (const b of document.querySelectorAll('.switch button')) b.setAttribute('aria-pressed', String(b === knapp))
+    redigerar = null
+    fel = null
+    dorrOppen = knapp.dataset.variant === 'c'
+    rita()
+  })
+}
+
+document.getElementById('tioknapp').addEventListener('click', () => {
+  const tio = shell.dataset.kolumner !== 'tio'
+  shell.dataset.kolumner = tio ? 'tio' : 'fyra'
+  document.getElementById('tioknapp').textContent = tio ? 'Fyra kolumner' : 'Tio kolumner'
+  kolumner = (tio ? [...grund, ...extra] : grund).map((k) => ({ ...k }))
+  redigerar = null
+  fel = null
+  angra = null
+  foljde = null
+  sag(tio ? 'Data, tabell med tolv kolumner' : 'Data, tabell med sex kolumner')
+  rita()
+})
+
+document.getElementById('angraknapp').addEventListener('click', () => {
+  if (!angra) return
+  const k = kolumner.find((x) => x.key === angra.fran)
+  if (k) { k.key = angra.till; k.etikett = angra.till }
+  sag(`Namnbytet är taget tillbaka. Kolumnen heter ${angra.till} igen.`)
+  angra = null
+  foljde = null
+  rita()
+})
+
+rita()
+sag('Data, tabell med sex kolumner')
+</script>
+</body>
+</html>
