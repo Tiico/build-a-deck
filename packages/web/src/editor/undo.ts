@@ -21,9 +21,14 @@ export function whatOf(intent: EditIntent): Key {
     // template with it, so the step back says a field rather than "a change in the deck" (#32).
     // Where it stands is the same kind of change and the document's too (#46), so a step back
     // has to be able to put it back.
+    // Vad kolumnen skrivs som (L43, #362) hör hit och inte till mallen: rutan i mallen står kvar
+    // precis som den var, det är kolumnens svar på den som vändes. Och ett namnbyte är kolumnen
+    // själv, överallt dokumentet skriver den.
     case 'addField':
     case 'removeField':
     case 'moveField':
+    case 'setProse':
+    case 'renameField':
       return 'undo.what.field'
     case 'patchElement':
     case 'addElement':

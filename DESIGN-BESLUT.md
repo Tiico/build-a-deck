@@ -4243,6 +4243,64 @@ Byggt utan prototyprunda, som ett tillägg i wizardens redan beslutade form (L6,
 Posten skrevs som L14 och delade det numret med «Ett grepp är ett steg tillbaka» (#375).
 Den här posten är den som bytte, eftersom nästan varje referens till L14 menade ångra-beslutet; numren tätas inte, så L14 står kvar hos det och det här beslutet ligger sist.
 
+### L43. Höjden föreslår, designern avgör: vilken kolumn som skrivs som prosa står skrivet i Data (prototypat 2026-09-21, #362)
+
+L39 säger vad body-redigeraren *gör*, inte vem som *får* den.
+Att det inte stod någonstans var hela issuet: regeln bodde bara i `bodyFieldsOf` i `packages/web/src/editor/body.ts`, där varje textelement bundet till en kolumn vars ruta rymmer två rader av sin egen grad blev en skrivyta.
+
+Två saker fällde den regeln.
+**Den är osynlig.** Ingenting i Data säger varför en kolumn har redigerare och en annan inte.
+**Den slår fel åt andra hållet.** En generöst ritad kostnadsruta — 12 mm för en siffra i 14 pt — blir en riktextredigerare med verktygsrad och tvåradstak för en kolumn som bär `3`. Det är krom där L36 nyss bestämde att det ska vara mindre.
+
+**Rutans höjd får fortsätta sätta förvalet, men valet står skrivet per kolumn och går att vända.**
+Mallen läses, som E-besluten föredrar, och en designer som ritar en hög ruta har oftast sagt att det som står där är flera rader.
+Ett uttryckligt val väger över förslaget.
+En kolumn som aldrig fått ett val följer höjden, så varje lek som fanns före det här beslutet beter sig precis som den gjorde.
+Och följden som fällde dagens regel: **att ändra rutans höjd i mallen ändrar inte ett uttryckligt val.** När valet en gång är skrivet är det designerns, inte höjdens.
+
+**Ytan är ett märke per kolumn i tabellhuvudet, och den fälls ut vid beröring.**
+Prototypen (`docs/ux-audits/2026-09-21/prototyper/01-prosakolumnen.html`) mätte fyra lägen i Chromium, 1440 × 900, ytan i vila.
+
+| | valkontroller | huvudets höjd | ytans höjd | rullar | minsta träffyta |
+|---|---|---|---|---|---|
+| Nu · bara höjden | 0 | 25 px | 749 px | nej | – |
+| A · växeln i rubriken | 6 | **35 px** | 749 px | nej | **20 px** |
+| B · kolumnspalten | 12 | 25 px | **950 px** | **ja, 201 px** | 44 px |
+| **C · vid beröring** (vila) | **0** | **25 px** | **749 px** | **nej** | – |
+| C · vid beröring (utfälld) | 2 | 25 px | 749 px | nej | 44 px |
+
+Valet blev **C**.
+A är utesluten av träffytan: 20 px mot `--byd-tap`:s 44, och rubriken kapad till «KOST…» av sina egna två kontroller — samma räkning som #46 gjorde när × fick lämna rubriken.
+B är tydligast och den enda som kan visa förslag och val samtidigt i ord, men den rullar redan vid fyra kolumner och lägger valet en bit från kolumnen det gäller.
+C kostar ingenting i vila, når 44 px när den är öppen, och rullar inte.
+Priset är att den varaktiga signalen är en prick — och det är priset som betalas för att L36 nyss sade att ytan ska bära mindre.
+
+**Pricken är ingen kontroll, och rubriken är handtaget.**
+Det följer av mätningen och inte av bekvämlighet: C:s rad «minsta träffyta» är tom i vila, och en knapp där hade blivit sex till åtta pixlar i en kolumn som är en siffra bred — under `--byd-tap` överallt, vilket är exakt vad som fällde A.
+Så pricken är dekor utanför rubrikens flöde — `fitColumns` räknar en kolumns golv på flödet, och sex pixlar i det hade lyft `kostnad` från 88 px till 108 — och det som fälls ut och vänder valet är kontroller som når hela 44.
+
+**Skillnaden mellan förval och val bärs i form, och i utfällningens namn.**
+Prickad ring betyder att höjden föreslog, ifylld bricka att designern valde.
+En prickad ring finns inte för en skärmläsare och editorns a11y är inte mjukad (L12), så samma skillnad står i ord som utfällningens **namn**: «Kostnad skrivs som vanlig text, du valde» mot «…, höjden föreslog».
+Den läses upp i samma ögonblick som formen visar sig för ögat, och den kostar ingen höjd i ytan.
+Utfällningen säger därutöver orsaken i rutans egna mått — «Höjden föreslår prosa: rutan är 40,0 mm och en rad av dess grad är 4,0 mm» — och det är samma mening vare sig valet är gjort eller inte, vilket är just vad som gör att den inte bär skillnaden.
+Meningen «du valde det, och höjden hade föreslagit prosa» är den som valdes bort.
+
+**En utfällning vid hover är ett a11y-åtagande.**
+Den nås med pekaren *och* med tangentbordet, aldrig bara det ena — det är felet #184 rättade i en annan kontroll och #216 fick bygga om för att inte återinföra.
+Pekaren eller fokus någonstans i rubriken fäller ut; fokus vidare till utfällningens egna knappar räknas inte som att lämna, och Escape lägger ihop den utan att flytta handen.
+Priset är att en Tabb genom huvudet passerar de knapparna på vägen till nästa kolumn, och det är priset för att de över huvud taget går att nå utan pekare.
+
+**Följdkrav i koden.**
+Valet är dokumentdata: `prose` i `ProjectDoc`, en post per kolumnnyckel, valfri.
+Den ligger där `columns`, `palette` och `framing` ligger, och av samma skäl — den sparas, versioneras, diffas och följer med projektet.
+Den ligger *inte* på mallens element, fastän det är elementets höjd som föreslår: valet är kolumnens och inte en rutas — samma kolumn kan ritas på både fram- och baksida — och en kolumn mallen inte ritar alls måste ändå gå att välja åt.
+«Följer höjden» är **frånvaro av post** och inte ett tredje värde, vilket är vad som gör att en lek som aldrig valt och en som valt och ångrat sig är samma dokument.
+En kolumn som tas bort tar sitt val med sig, annars ärver nästa kolumn med samma namn ett val ingen gjort åt den.
+Och **valet följer med när kolumnen byter nyckel**: annars faller kolumnen tillbaka på höjden, alltså rakt in i den bugg det här beslutet handlar om, utan att någon rört prosafrågan.
+Namnbytet är därför en egen redigering, `renameField`, som flyttar nyckeln överallt dokumentet skriver den — kortens fält, mallens bindningar och villkor, gruppkolumnen, kolumnordningen, beskärningarna och prosavalet — i ett steg och inte sex.
+En kolumn som bara flyttade hälften av sig är värre än en som inte kunde flytta alls.
+
 ## I. Öppna frågor
 
 Ekonomi och juridik:

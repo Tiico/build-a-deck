@@ -79,6 +79,19 @@ export type EditIntent =
   // table with the element bound to the field it had before.
   | { v: 'addField'; field: string; bind?: { face: string; id: string; group?: string | null } }
   | { v: 'removeField'; field: string }
+  // Kolumnen under ett annat namn. Nyckeln är designerns (#27, #308): det är hon som skriver över
+  // det ord verktyget föreslår, och ett ord hon valde tidigt är ett ord hon kan vilja byta. Det
+  // är **ett** namn på ett ställe i dokumentets mening och på ett halvdussin i dess text — varje
+  // korts fält, mallens bindningar och villkor, gruppkolumnen, kolumnordningen, beskärningarna,
+  // och valet om prosa (L43) — så det är en redigering och inte sex, och ett steg tillbaka och
+  // inte sex. En kolumn som bara flyttade hälften av sig är värre än en som inte kunde flytta
+  // alls: det som lämnas kvar under det gamla namnet faller tillbaka på sitt förval, tyst.
+  | { v: 'renameField'; from: string; to: string }
+  // Vad kolumnen är: prosa eller vanlig text (L43, #362). Rutans höjd i mallen föreslår, och det
+  // här är designerns svar på förslaget — ett per kolumn, och `null` när hon lämnar tillbaka
+  // frågan till höjden. Att «följer höjden» är frånvaro och inte ett tredje värde är vad som gör
+  // att varje lek skriven före valet beter sig precis som den gjorde.
+  | { v: 'setProse'; field: string; prose: boolean | null }
   // Where a column stands in the table (#46). The order is the document's and not the reader's:
   // everyone with the project open sees it, the CSV export writes it, and a step back takes it
   // back — which a view in one browser could do none of. `before` is the column it comes to
@@ -230,12 +243,64 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       // nothing answers to any more. `columnsOf` would step over the name either way; what is
       // avoided is writing it down for ever.
       const order = doc.columns?.filter((f) => f !== intent.field)
+      // Och valet om prosa (L43, #362) går med den. En post som blev kvar under en nyckel
+      // ingenting svarar på ärvs av nästa kolumn som råkar få samma namn, och den kolumnen har
+      // aldrig fått ett val — vilket är precis den tysthet #362 handlar om, spegelvänd.
+      return withProse(
+        {
+          ...doc,
+          rows: doc.rows.map((r) => ({ ...r, fields: without(r.fields, intent.field) })),
+          template: { ...doc.template, faces },
+          ...(order ? { columns: order } : {}),
+        },
+        without(doc.prose ?? {}, intent.field),
+      )
+    }
+
+    case 'renameField': {
+      if (intent.from === ANTAL || intent.to === ANTAL) throw new Error(`field ${ANTAL} is the deck's own`)
+      if (intent.to === 'id') throw new Error('id is the card\u2019s own')
+      if (intent.from === intent.to) throw new Error(`field ${intent.from} already has that name`)
+      const columns = columnsOf(doc)
+      if (!columns.includes(intent.from)) throw new Error(`no field ${intent.from}`)
+      if (columns.includes(intent.to)) throw new Error(`field ${intent.to} already exists`)
+      const faces = Object.fromEntries(
+        Object.entries(doc.template.faces).map(([id, face]) => {
+          const next: FaceTemplate = {
+            base: renamedField(face.base, intent.from, intent.to),
+            variants: Object.fromEntries(
+              Object.entries(face.variants).map(([name, v]) => [name, { ...v, ...(v.override ? { override: renamedField(v.override, intent.from, intent.to) } : {}) }]),
+            ),
+            ...(face.variantBy ? { variantBy: face.variantBy === intent.from ? intent.to : face.variantBy } : {}),
+          }
+          return [id, next]
+        }),
+      )
+      const framing = doc.framing
+        ? Object.fromEntries(
+            Object.entries(doc.framing).map(([key, value]) => {
+              const at = key.indexOf('/')
+              return key.slice(at + 1) === intent.from ? [framingKey(key.slice(0, at), intent.to), value] : [key, value]
+            }),
+          )
+        : undefined
       return {
         ...doc,
-        rows: doc.rows.map((r) => ({ ...r, fields: without(r.fields, intent.field) })),
+        // Nyckelns plats i kortets egen post är dess ordning, och den behålls: ett kort vars
+        // kolumn hamnade sist av att byta namn är ett kort vars CSV-rad ser annorlunda ut.
+        rows: doc.rows.map((r) => ({ ...r, fields: renamedKey(r.fields, intent.from, intent.to) })),
         template: { ...doc.template, faces },
-        ...(order ? { columns: order } : {}),
+        ...(doc.columns ? { columns: doc.columns.map((f) => (f === intent.from ? intent.to : f)) } : {}),
+        ...(framing ? { framing } : {}),
+        ...(doc.prose ? { prose: renamedKey(doc.prose, intent.from, intent.to) } : {}),
       }
+    }
+
+    case 'setProse': {
+      if (intent.field === ANTAL) throw new Error(`field ${ANTAL} is the deck's own`)
+      if (!columnsOf(doc).includes(intent.field)) throw new Error(`no field ${intent.field}`)
+      if (intent.prose === null) return withProse(doc, without(doc.prose ?? {}, intent.field))
+      return withProse(doc, { ...(doc.prose ?? {}), [intent.field]: intent.prose })
     }
 
     // A column moved to another place in the table (#46). What is written down is the whole
@@ -677,6 +742,35 @@ export function drawnBy(doc: ProjectDoc, field: string): number {
     for (const v of Object.values(face.variants)) n += count(v.override ?? [])
   }
   return n
+}
+
+// Dokumentet med prosavalen som står kvar (L43, #362). En tom post skrivs inte: «följer höjden»
+// är frånvaro, och ett dokument vars sista val lämnats tillbaka ska vara det dokument det var
+// innan något valdes — annars skiljer sig en lek som aldrig valt från en som valt och ångrat sig
+// i en post som inte säger något.
+function withProse(doc: ProjectDoc, prose: Record<string, boolean>): ProjectDoc {
+  if (Object.keys(prose).length > 0) return { ...doc, prose }
+  const { prose: _none, ...rest } = doc
+  return rest
+}
+
+// En post med en nyckel omdöpt och ordningen kvar. `Object.fromEntries` av en avbildning
+// behåller platsen; en borttagning och ett tillägg hade lagt nyckeln sist.
+function renamedKey<T>(record: Record<string, T>, from: string, to: string): Record<string, T> {
+  return Object.fromEntries(Object.entries(record).map(([key, value]) => [key === from ? to : key, value]))
+}
+
+// Elementen när kolumnen de ritar byter namn: bindningen följer med, och villkoret som frågar om
+// kolumnen frågar om den under det nya namnet. Det är `withoutField`s spegelbild — samma ställen
+// i trädet, samma nedstigning i villkor och grupper — och de två hör ihop: en plats som bara den
+// ena kände till hade tagit bort en kolumn som inte gick att döpa om, eller tvärtom.
+function renamedField(els: readonly Element[], from: string, to: string): Element[] {
+  return els.map((el) => {
+    const bound = 'bind' in el && 'field' in el.bind && el.bind.field === from ? ({ ...el, bind: { ...el.bind, field: to } } as Element) : el
+    if (bound.kind === 'if') return { ...bound, ...(bound.when.field === from ? { when: { ...bound.when, field: to } } : {}), children: renamedField(bound.children, from, to) }
+    if (bound.kind === 'group') return { ...bound, children: renamedField(bound.children, from, to) }
+    return bound
+  })
 }
 
 // The elements left when a column goes: those that drew it are gone, and a condition on it goes

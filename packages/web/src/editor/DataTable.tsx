@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent, type FocusEvent, type KeyboardEvent } from 'react'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { deckKeepsFields, fieldsOf, fieldLabel, takenNames } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
@@ -6,7 +6,8 @@ import { ColumnDoor } from './ColumnDoor.js'
 import { Crown, CrownBox, CrownDrawer, CrownFoot, CrownRail } from './Crown.js'
 import { DragDoor } from './DragDoor.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
-import { bodyFieldsOf } from './body.js'
+import { boxesOf, proseChoiceOf, proseFieldsOf } from './body.js'
+import { ProseMark, type ProseMarkProps } from './ProseMark.js'
 import { BodyCell, type BodyCellProps } from './BodyCell.js'
 import { DropSays, dropSurface, oneFile } from './dropping.js'
 import { PictureLibraryDialog, type LibraryPicture } from './PictureLibrary.js'
@@ -59,6 +60,11 @@ export type DataTableProps = {
   // is last of all — the two ways a drag along the head can end. It is an edit like the other
   // two, because the order is the document's and not this table's view of it.
   onMoveField(field: string, before: string | null): void
+  // Vad en kolumn är: prosa eller vanlig text (L43, #362). Rutans höjd i mallen föreslår, och
+  // det här är designerns svar på förslaget — `null` när hon lämnar tillbaka frågan till höjden.
+  // Utan den står märket kvar och säger vad kolumnen är, men det går inte att vända: en tabell
+  // utan projekt bakom sig har ingenting att skriva valet i.
+  onProse?: ((field: string, prose: boolean | null) => void) | undefined
   // The project's images (E1): where they are served from, and how a chosen file becomes one.
   // Without both, image fields are edited as text.
   assetBase?: string | undefined
@@ -151,7 +157,7 @@ export function markCut(box: Element): void {
 
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
 // This is where the designer already lives; a change here reaches every copy of the card.
-export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, assetBase, onUpload, onSymbol, compareWith, onStopCompare }: DataTableProps) {
+export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, onProse, assetBase, onUpload, onSymbol, compareWith, onStopCompare }: DataTableProps) {
   const t = useT()
   // The one channel everything on a screen speaks in (#7): a column that moved under the focus
   // says so here rather than in a live region this table made for itself.
@@ -390,9 +396,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const goneRows: ProjectRow[] = compareWith && diff ? compareWith.doc.rows.filter((r) => diff.rows.some((c) => c.kind === 'removed' && c.cardRef === r.id)) : []
   const wasCell = (cardRef: string, field: string) => compareWith?.doc.rows.find((r) => r.id === cardRef)?.fields[field]
   const imageFields = assetBase && onUpload ? imageFieldsOf(doc) : []
-  // Kolumnerna vars ruta på kortet rymmer två rader, och som därför kan visa ett stycke eller en
-  // punkt (L39). De ritas som den form de bär i stället för som tecknen som bär den.
-  const bodyFields = bodyFieldsOf(doc)
+  // Kolumnerna som skrivs som prosa och därför kan visa ett stycke eller en punkt (L39). De
+  // ritas som den form de bär i stället för som tecknen som bär den. Vilka de är föreslås av
+  // rutans höjd i mallen och avgörs av designern (L43, #362).
+  const bodyFields = proseFieldsOf(doc)
+  // Och rutan varje kolumn mäts mot, som är vad märket i huvudet säger orsaken med.
+  const boxes = boxesOf(doc)
   const images = assetsInUse(doc)
   // The library window (#296, variant B): opened from a picture cell or from the marked cards,
   // and it is one window for both. What it is about is the one thing the table has to hold —
@@ -1213,7 +1222,22 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             </th>
             <SortableHeader field="id" label="id" sort={sort} onSort={setSort} />
             {fields.map((f) => (
-              <SortableHeader key={f} field={f} label={fieldLabel(f, t)} sort={sort} onSort={setSort} carry={pulling === null ? carryOf(f) : undefined} pull={pullOf(f)} />
+              <SortableHeader
+                key={f}
+                field={f}
+                label={fieldLabel(f, t)}
+                sort={sort}
+                onSort={setSort}
+                carry={pulling === null ? carryOf(f) : undefined}
+                pull={pullOf(f)}
+                // Räknekolumnen är motorns egen (L4) och skrivs aldrig som prosa, så den får
+                // inget märke: en kontroll som bara kan svara ett är ingen fråga.
+                prose={
+                  f === ANTAL
+                    ? undefined
+                    : { prose: bodyFields.includes(f), choice: proseChoiceOf(doc, f), box: boxes[f] ?? null, ...(onProse ? { onProse: (next: boolean | null) => onProse(f, next) } : {}) }
+                }
+              />
             ))}
             {grouping && <th data-col={GROUP_COL}>{t('table.group')}</th>}
             {/* The button that makes a column stands at the end of the head, where the column it
@@ -1632,11 +1656,43 @@ type Pull = {
   onStep(dir: -1 | 1): void
 }
 
-function SortableHeader({ field, label, sort, onSort, carry, pull }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; carry?: Carry | undefined; pull?: Pull | undefined }) {
+function SortableHeader({ field, label, sort, onSort, carry, pull, prose }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; carry?: Carry | undefined; pull?: Pull | undefined; prose?: Omit<ProseMarkProps, 'label' | 'open'> | undefined }) {
   const active = sort?.field === field ? sort.dir : null
+  // Prosamärkets utfällning (L43, #362) hänger ur **rubriken** och inte ur pricken: pricken är
+  // ingen kontroll — en 8 px knapp i en kolumn som är en siffra bred är precis det som fällde
+  // variant A — så handtaget är hela rubriken. Pekaren och fokus var för sig, och utfällningen
+  // framme så länge något av dem är kvar: aldrig bara det ena (#184, och #216 som inte får ta
+  // tillbaka det). `shut` är Escape, som lägger ihop den utan att flytta handen eller fokus.
+  const [near, setNear] = useState(false)
+  const [held, setHeld] = useState(false)
+  const [shut, setShut] = useState(false)
+  const open = prose !== undefined && !shut && (near || held)
   return (
     <th
       data-col={field}
+      // Utfällningen hänger ur rubriken och ska synas utanför den; ett huvud som klipper sitt
+      // eget innehåll klipper den (#46, samma sak som `.byd-data-remove` redan säger om dörren).
+      {...(prose ? { 'data-prose': open ? 'open' : '' } : {})}
+      {...(prose
+        ? {
+            onPointerEnter: () => setNear(true),
+            onPointerLeave: () => {
+              setNear(false)
+              setShut(false)
+            },
+            onFocus: () => setHeld(true),
+            onBlur: (event: FocusEvent<HTMLTableCellElement>) => {
+              if (event.currentTarget.contains(event.relatedTarget)) return
+              setHeld(false)
+              setShut(false)
+            },
+            onKeyDown: (event: KeyboardEvent<HTMLTableCellElement>) => {
+              if (event.key !== 'Escape' || !open) return
+              event.stopPropagation()
+              setShut(true)
+            },
+          }
+        : {})}
       aria-sort={active ?? 'none'}
       draggable={carry ? true : undefined}
       onDragStart={carry?.onPickUp}
@@ -1666,6 +1722,10 @@ function SortableHeader({ field, label, sort, onSort, carry, pull }: { field: st
       >
         {label} <span aria-hidden="true">{active === 'ascending' ? '↑' : active === 'descending' ? '↓' : '↕'}</span>
       </button>
+      {/* Kolumnens märke (L43, #362). Pricken står efter rubrikens egen knapp, och utfällningens
+          knappar efter den: en Tabb genom huvudet möter först vad kolumnen heter och sorteras på,
+          och därefter — medan rubriken har fokus — sättet att vända vad den skrivs som. */}
+      {prose && <ProseMark label={label} open={open} {...prose} />}
       {/* The edge the column is pulled by, and nothing a reader without a pointer has to step
           over: the keys do the same thing from the heading itself, and what a column was set to
           is read and given back in the head's own door. So it is out of the tab order and out of

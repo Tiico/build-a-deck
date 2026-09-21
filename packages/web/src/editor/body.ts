@@ -26,13 +26,21 @@ import type { ProjectDoc } from './types.js'
 // (E6) kan krympa texten tills fler rader ryms, men det är en nödutgång och inte vad rutan är
 // ritad för, så det är den skrivna graden som svarar.
 export const BODY_LINES = 2
-export function bodyFieldsOf(doc: ProjectDoc): string[] {
-  const out: string[] = []
+
+// Rutan en kolumn mäts mot: dess höjd i millimeter och höjden på en rad av dess egen grad. En
+// kolumn kan ritas av flera element — fram och bak, i ett villkor, i en grupp — och då är det
+// den generösaste rutan som svarar, eftersom det är den som kan visa ett stycke. En kolumn
+// mallen inte ritar alls har ingen ruta, vilket är något annat än en ruta som inte räcker.
+export type FieldBox = { h: number; line: number }
+
+export function boxesOf(doc: ProjectDoc): Record<string, FieldBox> {
+  const out: Record<string, FieldBox> = {}
   const walk = (els: ProjectDoc['template']['faces'][string]['base']) => {
     for (const el of els) {
-      if (el.kind === 'text' && 'field' in el.bind && !out.includes(el.bind.field)) {
+      if (el.kind === 'text' && 'field' in el.bind) {
         const line = el.font.sizePt * PT_TO_MM * (el.font.lineHeight ?? DEFAULT_LINE_HEIGHT)
-        if (el.h >= BODY_LINES * line) out.push(el.bind.field)
+        const had = out[el.bind.field]
+        if (!had || el.h / line > had.h / had.line) out[el.bind.field] = { h: el.h, line }
       }
       if (el.kind === 'if' || el.kind === 'group') walk(el.children)
     }
@@ -42,6 +50,31 @@ export function bodyFieldsOf(doc: ProjectDoc): string[] {
     for (const v of Object.values(face.variants)) walk(v.override ?? [])
   }
   return out
+}
+
+// Vad höjden **föreslår** (L43, #362). Det här är regeln som var hela sanningen fram till #362
+// och som fortfarande är förvalet: en ruta som rymmer två rader kan visa ett stycke eller en
+// punkt, och en som inte gör det kan det inte hur texten än märks upp.
+export function bodyFieldsOf(doc: ProjectDoc): string[] {
+  return Object.entries(boxesOf(doc))
+    .filter(([, box]) => box.h >= BODY_LINES * box.line)
+    .map(([field]) => field)
+}
+
+// Vad kolumnen **är** (L43, #362). Höjden föreslår, designern avgör: ett uttryckligt val i
+// dokumentet väger över förslaget, och en kolumn utan val följer höjden — vilket är varför varje
+// lek som fanns före #362 beter sig precis som den gjorde.
+export function proseFieldsOf(doc: ProjectDoc): string[] {
+  const suggested = bodyFieldsOf(doc)
+  const chosen = doc.prose ?? {}
+  const every = [...suggested, ...Object.keys(chosen).filter((f) => !suggested.includes(f))]
+  return every.filter((f) => chosen[f] ?? true)
+}
+
+// Vad designern själv har sagt om kolumnen, och `null` när hon inte har sagt något. Skillnaden
+// mellan förval och val bärs i form i ytan (L43), så den måste gå att ställa som en egen fråga.
+export function proseChoiceOf(doc: ProjectDoc, field: string): boolean | null {
+  return doc.prose?.[field] ?? null
 }
 
 // Klassen en symbol bärs av inuti redigeraren, och attributet som är dess namn. Namnet står i

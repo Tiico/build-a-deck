@@ -1979,6 +1979,61 @@
    one heading that is deliberately not clipped. */
 .byd-data thead .byd-data-remove { z-index: 4; overflow: visible; white-space: nowrap; }
 .byd-data thead .byd-data-remove > button { display: grid; place-items: center; width: var(--byd-tap); padding: 0; color: var(--byd-editor-count-ink); font-size: 18px; line-height: 1; }
+/* ── Kolumnens märke: prosa eller vanlig text (L43, #362, variant C) ─────────────────────────
+   «Höjden föreslår, designern avgör.» I vila kostar märket ingenting: en prick i huvudet, inga
+   kontroller, och rubriken exakt lika hög som den var — vilket är varför varianten valdes framför
+   en växel i rubriken, som mätte 20 px träffyta och kapade «Kostnad» till «KOST…».
+
+   Formen bär skillnaden mellan förval och val: prickad ring när höjden föreslog, ifylld bricka
+   när designern valde. Orden bär samma skillnad i märkets namn, eftersom en prickad ring inte
+   finns för en skärmläsare (L12).
+
+   Utfällningen hänger ur rubriken och måste därför kunna gå utanför den; rubriken den hänger i
+   säger det med `data-prose`, precis som dörrens cell redan säger det om dörren. */
+.byd-data th[data-prose] { overflow: visible; }
+.byd-data th[data-prose]:hover, .byd-data th[data-prose]:focus-within { z-index: 7; }
+/* Pricken står **utanför rubrikens flöde**, precis som × och dragkanten redan gör (#46). Det är
+   inte städning: `fitColumns` räknar en kolumns golv på det som står i rubrikens flöde, och sex
+   pixlar plus mellanrum per kolumn hade lyft `kostnad` från 88 px till 108 — alltså betalt
+   tätheten #46 handlar om för ett märke som enligt mätningen kostar noll i vila. Den ryms i
+   rubrikens egen vänsterindragning och rör därför inte heller ordet.
+
+   Klasserna nedan bärs av två klasser och inte av städlighet: `.byd-data th button` skalar av
+   rubrikens knappar ram och botten helt, och den regeln vinner över en enda klass — utan djupet
+   ritades utfällningens två knappar som naken text. Mätt i Chromium. */
+.byd-data .byd-prose-mark { position: absolute; left: 2px; top: 50%; transform: translateY(-50%); display: block; width: 6px; height: 6px; border-radius: 50%; }
+/* Höjden föreslog: en ring som inte är ifylld. */
+.byd-data .byd-prose-mark[data-from='height'] { border: 1px dotted #7d879c; }
+.byd-data .byd-prose-mark[data-from='height'][data-prose='true'] { border-color: #9ec4e8; }
+/* Designern valde: en ifylld bricka. */
+.byd-data .byd-prose-mark[data-from='choice'] { background: #7d879c; }
+.byd-data .byd-prose-mark[data-from='choice'][data-prose='true'] { background: #9ec4e8; }
+.byd-data .byd-prose-why {
+  position: absolute;
+  top: 16px;
+  left: 0;
+  z-index: 8;
+  width: 268px;
+  padding: 8px 12px;
+  border: 1px solid #3b4358;
+  border-radius: 10px;
+  background: var(--byd-editor-panel-bg);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 50%);
+  color: #dce3f2;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: normal;
+  text-align: left;
+}
+.byd-data .byd-prose-why > b { display: block; margin-bottom: 4px; color: #e6ecfa; font-size: 12px; }
+.byd-data .byd-prose-why > p { margin: 0 0 8px; color: var(--byd-editor-quiet); font-size: 11px; line-height: 1.5; }
+.byd-data .byd-prose-turn-row { display: flex; gap: 6px; }
+/* Och här, där valet faktiskt vänds, står hela träffytan (L12). */
+.byd-data .byd-prose-turn { min-height: var(--byd-tap); box-sizing: border-box; border: 1px solid #3b414e; border-radius: 8px; padding: 0 12px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.byd-data .byd-prose-turn:hover, .byd-data .byd-prose-turn:focus-visible { border-color: var(--byd-editor-primary-mark); }
+.byd-data .byd-prose-turn-strong { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); }
+
 /* The head's own door (#46 on #32): the list of the table's columns, and under it the form that
    makes one. It hangs out of the head's last cell, which is the one heading deliberately not
    clipped — and it is the same box the form alone used to hang from, so nothing about how the
