@@ -53,16 +53,31 @@ test.describe('joining a table from the television', () => {
     // it is what happens when a group joins at once. The loser has to be told, and told in the
     // picker rather than by an error page, because the thing to do next is choose another seat.
     const phone = await open(PHONE, `/join?code=${table.code}`)
-    await phone.page.locator('button[data-seat="C"]').click()
+    const seat = (id: string) => phone.page.locator(`button[data-seat="${id}"]`)
+    await seat('C').click()
     await phone.page.locator('form input').fill('Kim')
 
     // Somebody else takes C in the time it took to type a name.
     await player(table, { name: 'Robin', seat: 'C' })
 
-    await phone.page.locator('form button[type="submit"]').click()
+    // Waited for, rather than raced (#408). The seat being taken reaches this phone over a socket
+    // nobody prompted, and pressing before it lands measures the wrong half of the product: what
+    // is proved here is the phone that *knows* C is gone, and it can only be asked once it knows.
+    await expect(seat('C'), 'the table is redrawn on the phone before anything is pressed').toHaveAttribute('aria-disabled', 'true')
+
+    // Her choice stands where she put it, and the picker says what became of it.
+    await expect(seat('C'), 'a pick made by hand is not let go behind her back').toHaveAttribute('aria-pressed', 'true')
     await expect(phone.page.locator('form [role="alert"]'), 'the refusal is said at the control that was refused').toBeVisible()
+    await expect(phone.page.locator('form button[type="submit"]'), 'there is nowhere to press until she has chosen again').toBeDisabled()
     // And she is still in the picker, with the table redrawn, rather than on an error page.
     await expect(phone.page.locator('[data-page="join"]')).toBeVisible()
+
+    // Choosing again is the way on, and the seat she is given is the one the picker shows.
+    await seat('D').click()
+    await expect(phone.page.locator('form [role="alert"]')).toHaveCount(0)
+    await phone.page.locator('form button[type="submit"]').click()
+    await phone.page.waitForURL('**/play*')
+    expect(new URL(phone.page.url()).searchParams.get('seat')).toBe('D')
   })
 
   test('lets someone watch without taking a seat', async ({ table, open }) => {
