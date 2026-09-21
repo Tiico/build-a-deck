@@ -44,7 +44,7 @@ const scene = sceneOf(feltOf(4))
 const SIZE = { w: 1280, h: 720 }
 
 describe('kamerans hörn kommer klätt (#325)', () => {
-  it('ritar ingenting av klungan eller markeringen medan deras modul hämtas', async () => {
+  it('ritar ingenting av klungan medan dess modul hämtas', async () => {
     render(
       <Language lang="sv">
         <TableRenderer view={scene} mode="tv" camera="follow" size={SIZE} glideMs={0} onAct={() => undefined} />
@@ -52,14 +52,14 @@ describe('kamerans hörn kommer klätt (#325)', () => {
     )
     const frame = document.querySelector('.byd-table-frame')!
     // På första bildrutan är vyn automatisk, och då finns kameran inte i handen alls.
-    expect(document.querySelectorAll('.byd-camera-controls, .byd-camera-edge')).toHaveLength(0)
+    expect(document.querySelectorAll('.byd-camera-controls')).toHaveLength(0)
 
     // Hjulet tar över vyn. Modulen är efterfrågad men hålls kvar, och reserven är tom med flit:
     // en platshållare här vore precis den oklädda blink flytten inte får kosta.
     const { fireEvent } = await import('@testing-library/react')
     fireEvent.wheel(frame, { deltaY: -900, clientX: SIZE.w / 2, clientY: SIZE.h / 2 })
     await Promise.resolve()
-    expect(document.querySelectorAll('.byd-camera-controls, .byd-camera-edge')).toHaveLength(0)
+    expect(document.querySelectorAll('.byd-camera-controls')).toHaveLength(0)
     // Och provet är inte tomt: släpps modulen fram kommer klungan, klädd i sitt eget ark.
     gate.open()
     expect(await screen.findByRole('button', { name: 'Visa hela bordet' })).toBeTruthy()

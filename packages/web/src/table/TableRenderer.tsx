@@ -6,7 +6,7 @@ import { FAN, useStill, type Shuffle } from './shuffle.js'
 import { hue } from './hue.js'
 import { seatColor } from './seatColor.js'
 import { feltScale, fitScale, leaningSquare, woodLayout, TOUCH_PX, TV_AIR_PX } from './fit.js'
-import { CAMERA_STEP, activeBounds, cameraOf, centre, fitFloor, frameRect, overscanPx, pad, panBy, reachOf, same, shownRect, tween, zoomAround, type Rect, type Size } from './camera.js'
+import { CAMERA_MIN_MM, CAMERA_STEP, activeBounds, cameraOf, centre, fitFloor, frameRect, overscanPx, pad, panBy, reachOf, same, shownRect, tween, zoomAround, type Rect, type Size } from './camera.js'
 import { recallCamera, rememberCamera, type CameraMemory } from './cameraMemory.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, type Drag, type DragTarget } from './drop.js'
@@ -22,13 +22,13 @@ import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, 
 import { gapAbove, nameAt, type Grow, type Rim } from './labels.js'
 import { useT, type T } from '../i18n/index.js'
 
-// Kamerans hörn kommer när vyn blir egen (#325, #346:s väg). Klungan och kantmarkeringen finns
-// bara medan kameran är manuell, vilket den inte är när sidan målas — så deras stilmall,
-// `camera-hand.css`, reser i den här chunken i stället för i det ark den första bildrutan väntar
-// på. Reserven är tom med flit: bygget lägger chunkens ark bredvid dess kod, så `import()` blir
-// klar först när båda är framme, och klungan kan därför inte visas oklädd. En platshållare vore
-// precis den oklädda blink flytten inte får kosta.
-const CameraHand = lazy(() => import('./CameraControls.js').then((m) => ({ default: m.CameraHand })))
+// Kamerans hörn kommer när vyn blir egen (#325, #346:s väg). Klungan finns bara medan kameran är
+// manuell, vilket den inte är när sidan målas — så dess stilmall, `camera-hand.css`, reser i den
+// här chunken i stället för i det ark den första bildrutan väntar på. Reserven är tom med flit:
+// bygget lägger chunkens ark bredvid dess kod, så `import()` blir klar först när båda är framme,
+// och klungan kan därför inte visas oklädd. En platshållare vore precis den oklädda blink flytten
+// inte får kosta.
+const CameraControls = lazy(() => import('./CameraControls.js').then((m) => ({ default: m.CameraControls })))
 
 export type { TableMode } from './hand.js'
 // Without an explicit `scale`, the renderer fits the table to its own frame.
@@ -189,7 +189,6 @@ const TIGHT_FELT_PX = 460
 // standing in is the room the seat at the next rim has already been given.
 const NAME_RIM_PX = 1
 const CAMERA_PAD_MM = 60
-const CAMERA_MIN_MM = 520
 const GLIDE_MS = 700
 // Vad en piltangent flyttar kameran, i skärmens egna pixlar (#325): samma steg prototypen mättes
 // med, så tangentbordets väg och handens väg rör bilden lika långt.
@@ -1092,7 +1091,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       {/* Kamerans kontroller (#325), i hörnet ovanför hjälpens skiva och bara medan vyn är egen. */}
       {drivable && viewing && (
         <Suspense fallback={null}>
-          <CameraHand cam={viewing} view={view} level={level} folded={tucked} onFold={setTucked} onZoom={stepZoom} onWhole={() => zoomTo(null)} />
+          <CameraControls level={level} folded={tucked} onFold={setTucked} onZoom={stepZoom} onWhole={() => zoomTo(null)} />
         </Suspense>
       )}
       {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable)} />}

@@ -94,7 +94,6 @@ export const enPlay = {
   'camera.level': '{n} %',
   'camera.fold': 'Fold the camera controls away',
   'camera.unfold': 'Bring the camera controls back',
-  'camera.beyond': 'There is more of the table this way',
   'felt.press.wheel': 'Wheel',
   'felt.press.middleDrag': 'Middle + drag',
   'felt.press.spaceDrag': 'Space + drag',

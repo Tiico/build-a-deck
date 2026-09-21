@@ -1,46 +1,16 @@
-import type { Snapshot } from '@byd/protocol'
 import { useDoor } from '../doors.js'
 import { useT } from '../i18n/index.js'
-import { CAMERA_STEP, beyond, type Rect, type Sides } from './camera.js'
+import { CAMERA_STEP } from './camera.js'
 import './camera-hand.css'
 
-// Kamerans hörn och dess ark, båda hämtade först när vyn är egen (#325, #346:s väg).
+// Kamerans hörn, hämtat först när vyn är egen (#325, #346:s väg).
 //
 // Ingenting i den här modulen ritas på första bildrutan: kameran ramar in själv tills någon tar
-// över, så klungan och kantmarkeringen finns inte när sidan målas. `camera-hand.css` följer
-// därför med hit i stället för att ligga i det blockerande arket, och renderaren hämtar modulen
-// med `lazy()` inuti `Suspense`. Att det är en dynamisk import och inte ett senare `<link>` är
-// vad som gör flytten ofarlig: bygget lägger chunkens ark bredvid dess kod, så `import()` blir
-// klar först när båda är framme, och klungan kan aldrig visas oklädd.
-
-// Kantmarkeringen (#325). Vyn återgår aldrig av sig själv, inte heller när något flyttas utanför
-// bilden — då tänds den här i stället, på den sida innehållet ligger, och bara medan vyn är egen.
-//
-// **Den nedre börjar ovanför docken.** Docken visar varje plats längs filtens nederkant, och en
-// pil ritad över en plats är en markering som pekar på fel sak. Den nedre blir därmed kortare än
-// de tre andra, vilket är rätt pris för att inte skriva över något som redan står där; hur högt
-// den börjar står i `table.css` som `--byd-camera-dock`.
-const SIDES = ['left', 'right', 'top', 'bottom'] as const
-
-export function CameraEdges({ sides }: { sides: Sides }) {
-  const t = useT()
-  const lit = SIDES.filter((side) => sides[side])
-  if (lit.length === 0) return null
-  return (
-    <>
-      {lit.map((side) => (
-        <div key={side} className="byd-camera-edge" data-side={side} aria-hidden="true">
-          <b>‹</b>
-        </div>
-      ))}
-      {/* Pilen är en bild, och en bild är ingenting för den som inte ser den. Meningen är samma
-          sak sagd, en gång, där den hörs. */}
-      <p className="byd-camera-said" role="status">
-        {t('camera.beyond')}
-      </p>
-    </>
-  )
-}
+// över, så klungan finns inte när sidan målas. `camera-hand.css` följer därför med hit i stället
+// för att ligga i det blockerande arket, och renderaren hämtar modulen med `lazy()` inuti
+// `Suspense`. Att det är en dynamisk import och inte ett senare `<link>` är vad som gör flytten
+// ofarlig: bygget lägger chunkens ark bredvid dess kod, så `import()` blir klar först när båda är
+// framme, och klungan kan aldrig visas oklädd.
 
 // Kamerans kontroller på live-bordet (C5, #325).
 //
@@ -99,18 +69,5 @@ export function CameraControls({ level, folded, onFold, onZoom, onWhole }: Camer
         <span aria-hidden="true">{folded ? '‹' : '›'}</span>
       </button>
     </div>
-  )
-}
-
-// Allt kameran lägger på filten medan vyn är egen, i ett enda ställe: renderaren hämtar den här
-// och ingenting annat härifrån, så chunken — och dess ark — är precis det som bara finns då.
-export type CameraHandProps = CameraControlsProps & { cam: Rect; view: Snapshot }
-
-export function CameraHand({ cam, view, ...rest }: CameraHandProps) {
-  return (
-    <>
-      <CameraEdges sides={beyond(cam, view)} />
-      <CameraControls {...rest} />
-    </>
   )
 }
