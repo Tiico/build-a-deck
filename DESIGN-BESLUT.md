@@ -699,7 +699,7 @@ Space panorerar bara när inget kort har fokus (K17).
 Kameran kan fortfarande inte lämna `reach`.
 
 Vyn återgår **aldrig av sig själv**, inte heller när något flyttas utanför bilden.
-Då tänds i stället en kantmarkering på den sida innehållet ligger, och den finns bara medan vyn är manuell.
+~~Då tänds i stället en kantmarkering på den sida innehållet ligger, och den finns bara medan vyn är manuell.~~ — **upphävt 2026-09-21 (#392), se nedan.**
 «Visa hela bordet» — och `Escape` — återställer den automatiska inramningen.
 
 **Kontrollerna bor i filtens nedre högra hörn och finns bara medan kameran är manuell.**
@@ -714,9 +714,9 @@ Det är kravet som gör det ofarligt — en klunga som kunde stängas helt skull
 Tangentbordets `Escape` finns kvar oavsett, men en väg som bara finns på tangentbordet är ingen väg på en TV.
 Fällt läge lagras per skärm, som vyn själv.
 
-**Den nedre kantmarkeringen börjar ovanför docken.**
+~~**Den nedre kantmarkeringen börjar ovanför docken.**
 Docken visar varje plats längs filtens nederkant, och en pil ritad över en plats är en markering som pekar på fel sak.
-Den nedre markeringen blir därmed kortare än de tre andra, vilket är rätt pris för att inte skriva över något som redan står där.
+Den nedre markeringen blir därmed kortare än de tre andra, vilket är rätt pris för att inte skriva över något som redan står där.~~ — **upphävt 2026-09-21 (#392).** Talet `--byd-camera-dock` står kvar: klungan står på det.
 
 Läget lagras per skärm (localStorage) och aldrig i loggen: en vy är ingen händelse (L4).
 Tangentbordet når allt: `+` och `−` zoomar, piltangenterna panorerar, `Escape` återställer. De står i `ShortcutHelp`.
@@ -733,8 +733,20 @@ Space beväpnar greppet bara när ingenting på filten har fokus, och piltangent
 `+` och `−` är ingen annans och går även då.
 Klungan mäter 300 px framme och 152 px fälld i filtens egen skärning (`felt-camera.test.tsx`); beslutets 318 och 170 är samma form i maskinens `system-ui`, och skillnaden mellan lägena — 148 px — är densamma i båda.
 Den går att fälla undan men aldrig att stänga: fälld står «Visa hela bordet ‹» kvar, och provet mäter att vägen hem är lika bred fälld som framme.
-Den nedre kantmarkeringen börjar 74 px upp, ovanför docken och ovanför hjälpens skiva, och är den enda av de fyra som inte når sin egen bildkant.
-Kamerans eget ark ligger utanför den blockerande stilmallen: klungan och markeringen finns inte på första bildrutan, så `table/camera-hand.css` reser med `CameraControls.js` i stället för att vägas mot filtens typsnitt (#346:s väg, grindat i `felt-font.spec.ts`).
+~~Den nedre kantmarkeringen börjar 74 px upp, ovanför docken och ovanför hjälpens skiva, och är den enda av de fyra som inte når sin egen bildkant.~~ — **upphävt 2026-09-21 (#392).**
+Kamerans eget ark ligger utanför den blockerande stilmallen: klungan finns inte på första bildrutan, så `table/camera-hand.css` reser med `CameraControls.js` i stället för att vägas mot filtens typsnitt (#346:s väg, grindat i `felt-font.spec.ts`).
+
+Reviderat 2026-09-21 (#392): **kantmarkeringen tas bort, och gränsen för hur nära kameran får komma lösas upp.**
+
+De fyra pilarna satt i bildens kant, runda och gula, i samma form som klungans knappar — men under `pointer-events: none`, så ett tryck på dem gjorde ingenting.
+Och på den yta de var skrivna för finns ingen hand som kunnat följa dem ändå: panorering är drag, mittenknapp, Space och piltangenter, och en TV har inget av det.
+En markering som pekar åt ett håll man inte kan gå är sämre än ingen markering, eftersom den ser ut som vägen dit.
+Vyn står kvar som förut och återgår aldrig av sig själv; «Visa hela bordet» och `Escape` är vägen hem, och de syns så länge vyn är egen.
+Priset är erkänt: bilden säger inte längre att något ligger utanför den.
+
+`CAMERA_MIN_MM` går från 520 mm till 210 mm och flyttar hem till `camera.ts`, där `CAMERA_STEP` och `TV_OVERSCAN` redan bor.
+520 mm är åtta kortbredder, alltså ännu en översikt och ingen närbild: «+» tog stopp på 242 % i TV:ns eget krom, och knappen sade ingenting om varför.
+210 mm är tre kortbredder, så den närmaste vyn är ett kort och det som ligger bredvid det — nära nog att läsa ett kort, långt nog ifrån att bilden fortfarande är ett bord.
 
 Reviderat 2026-09-14 (#66): ramen tar inte emot.
 Träramen runt filten ritas i skärmpixlar utanför de millimeter ett släpp mäts i — 30 px vid varje fönsterstorlek — och är ingen yta ett kort kan ligga *på*.

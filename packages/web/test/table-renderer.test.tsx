@@ -278,9 +278,12 @@ describe('the camera (C5)', () => {
     expect(parseFloat((document.querySelector('[data-table]') as HTMLElement).style.width)).toBe(fitted)
   })
 
-  // Kantmarkeringen (#325): vyn står kvar även när något hamnar utanför den, och bilden säger
-  // åt vilket håll det ligger. Den finns bara medan vyn är egen.
-  it('tänder en kantmarkering där innehåll ligger utanför den egna vyn, och släcker den med vyn', async () => {
+  // Kantmarkeringen är borttagen (#392). De fyra pilarna i bildkanten var runda och gula och såg
+  // ut precis som klungans knappar, men låg under `pointer-events: none`: ett tryck på dem gjorde
+  // ingenting. Och på den yta de var skrivna för — TV:n — finns ingen hand som kunnat följa dem
+  // ändå, eftersom panorering bara finns som drag och tangenter. Vyn står kvar som förut, och
+  // vägen ut ur den är «Visa hela bordet» och `Escape`.
+  it('ritar ingen kantmarkering, inte ens när spelet ligger utanför den egna vyn', async () => {
     const { view } = buildScene()
     const size = { w: 1000, h: 500 }
     render(<TableRenderer view={view(null)} mode="tv" camera="follow" size={size} glideMs={0} />)
@@ -289,10 +292,10 @@ describe('the camera (C5)', () => {
 
     // Långt in, och i ett hörn: då ligger resten av spelet utanför bilden.
     fireEvent.wheel(frame, { deltaY: -1600, clientX: 900, clientY: 450 })
-    await waitFor(() => expect(document.querySelectorAll('.byd-camera-edge').length).toBeGreaterThan(0))
-
-    fireEvent.click(screen.getByRole('button', { name: 'Visa hela bordet' }))
-    await waitFor(() => expect(document.querySelectorAll('.byd-camera-edge')).toHaveLength(0))
+    // Vyn är egen nu — klungan står där — och det är i det läget markeringen tändes förut.
+    await screen.findByRole('button', { name: 'Visa hela bordet' })
+    expect(document.querySelectorAll('.byd-camera-edge')).toHaveLength(0)
+    expect(screen.queryByText('Mer av bordet ligger åt det här hållet')).toBeNull()
   })
 
   // Läget lagras per skärm och aldrig i loggen (#325, L4): en vy är ingen händelse. Den här

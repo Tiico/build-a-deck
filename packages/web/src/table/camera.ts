@@ -26,9 +26,9 @@ export function activeBounds(view: Snapshot): Rect | null {
   return union(playBoxes(view))
 }
 
-// Each of them on its own, which is what the edge marking asks about (#325): a union says how
-// far the play reaches, and never which side of a picture something fell off.
-export function playBoxes(view: Snapshot): Rect[] {
+// Each thing in play as its own rectangle; `activeBounds` is the union of them, and the only
+// thing that asks.
+function playBoxes(view: Snapshot): Rect[] {
   const zones = new Map(view.zones.map((z) => [z.id, z]))
   const boxes: Rect[] = []
   for (const c of view.components) {
@@ -42,22 +42,6 @@ export function playBoxes(view: Snapshot): Rect[] {
     if (z.kind === 'area') boxes.push(z.geometry)
   }
   return boxes
-}
-
-// Vilka sidor som har något i spel utanför bilden (#325). Vyn återgår aldrig av sig själv, inte
-// heller när något flyttas utanför den — då tänds i stället en markering på den sida innehållet
-// ligger, så att bilden säger vad den inte visar i stället för att tas ifrån den som tittar.
-export type Sides = { left: boolean; right: boolean; top: boolean; bottom: boolean }
-// En millimeter, så att en kant som råkar ligga exakt i bildkanten inte blinkar på flyttalsbrus.
-const EDGE_SLACK_MM = 1
-export function beyond(cam: Rect, view: Snapshot): Sides {
-  const boxes = playBoxes(view)
-  return {
-    left: boxes.some((b) => b.x < cam.x - EDGE_SLACK_MM),
-    right: boxes.some((b) => b.x + b.w > cam.x + cam.w + EDGE_SLACK_MM),
-    top: boxes.some((b) => b.y < cam.y - EDGE_SLACK_MM),
-    bottom: boxes.some((b) => b.y + b.h > cam.y + cam.h + EDGE_SLACK_MM),
-  }
 }
 
 export function union(boxes: readonly Rect[]): Rect | null {
@@ -116,6 +100,13 @@ export function frameRect(target: Rect, vp: Size, reach: Rect, minW: number, mar
 // finns innan klungan gör det: knapparna hämtas först när vyn är egen, och en tangentväg som
 // väntade på dem vore en väg som inte fanns förrän man redan tagit den.
 export const CAMERA_STEP = 1.25
+
+// Hur nära kameran får komma, som kamerans egen bredd i millimeter (#392). Gränsen finns för att
+// en bild av ingenting inte är en bild, men den satt på 520 mm — åtta kortbredder — och det är en
+// översikt till, inte en närbild. Den som zoomar in på en hög gör det för att läsa ett kort, så
+// den närmaste vyn är kortet och det som ligger bredvid det: tre kortbredder, med gapet mellan
+// dem inräknat. Talet bor här och inte hos renderaren, av samma skäl som steget ovan.
+export const CAMERA_MIN_MM = 210
 
 // The camera `factor` times as wide, centred on a point: a pinch, a scroll, a double tap. Zooming
 // out stops at `reach` — a zoom is a view, not content, so it never widens what the camera may see.

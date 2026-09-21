@@ -268,9 +268,9 @@ test.describe('the rulebook’s drawer waits for its own sheet (#346)', () => {
 // because it is drawn while Space is held — before the camera is manual, and before the cluster
 // exists. Everything that only exists once the view is manual travels with `CameraControls.js`.
 test.describe('the camera’s corner waits for its own sheet (#325)', () => {
-  test('keeps nothing of the cluster or the edge marking in the blocking sheet', () => {
+  test('keeps nothing of the cluster in the blocking sheet', () => {
     const blocking = blockingSheets(index).map((href) => readFileSync(join(OUT, href.replace(/^\//, '')), 'utf8'))
-    for (const inside of ['.byd-camera-controls', '.byd-camera-edge', '.byd-camera-said', '--byd-camera-dock']) {
+    for (const inside of ['.byd-camera-controls', '--byd-camera-dock']) {
       expect(blocking.filter((css) => css.includes(inside))).toEqual([])
     }
     // The reading is not vacuous: what the first frame does draw is still there. The grab the
@@ -285,11 +285,10 @@ test.describe('the camera’s corner waits for its own sheet (#325)', () => {
       .filter((path) => path.endsWith('.css'))
       .filter((path) => !blocking.some((href) => path.endsWith(href.replace(/^\//, ''))))
       .map((path) => readFileSync(path, 'utf8'))
-    // Somewhere that is not the blocking sheet, the corner is complete: the cluster, the marking,
-    // and the one number the two share — how far up the bottom marking starts, so as not to draw
-    // an arrow over a seat in the dock. A sheet carrying the marking without that number would
-    // dress the corner by halves.
-    expect(others.filter((css) => css.includes('.byd-camera-controls') && css.includes('.byd-camera-edge') && css.includes('--byd-camera-dock')).length).toBeGreaterThan(0)
+    // Somewhere that is not the blocking sheet, the corner is complete: the cluster and the number
+    // it stands on — how far up from the felt's bottom edge it sits, clear of the dock and of the
+    // help's plate. A sheet carrying the cluster without that number would dress it by halves.
+    expect(others.filter((css) => css.includes('.byd-camera-controls') && css.includes('--byd-camera-dock')).length).toBeGreaterThan(0)
   })
 })
 

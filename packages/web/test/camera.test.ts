@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { activeBounds, beyond, cameraOf, fitFloor, frameRect, overscanPx, panBy, reachOf, zoomAround } from '../src/table/camera.js'
+import { CAMERA_MIN_MM, activeBounds, cameraOf, centre, fitFloor, frameRect, overscanPx, panBy, reachOf, zoomAround } from '../src/table/camera.js'
+import { CARD_MM } from '../src/table/drop.js'
 import { buildScene } from './scene.js'
 
 // The camera (C5): a rectangle of the table, in millimetres, at the viewport's aspect.
@@ -93,22 +94,15 @@ describe('panning', () => {
   })
 })
 
-// Kantmarkeringen (#325): vyn står kvar även när något hamnar utanför den, och då säger bilden
-// åt vilket håll det ligger i stället för att tas ifrån den som tittar.
-describe('what lies beyond the picture', () => {
-  const { view } = buildScene()
-  const snapshot = view(null)
-  // Scenen: det som är i spel ligger i x −400…231 och y −250…68 (se ovan).
-  const whole = { x: -500, y: -300, w: 1000, h: 500 }
-
-  it('says nothing while everything in play is inside the picture', () => {
-    expect(beyond(whole, snapshot)).toEqual({ left: false, right: false, top: false, bottom: false })
-  })
-
-  it('names the side a thing fell off, and only that side', () => {
-    expect(beyond({ x: 0, y: -300, w: 1000, h: 500 }, snapshot)).toMatchObject({ left: true, right: false })
-    expect(beyond({ x: -500, y: -300, w: 400, h: 200 }, snapshot)).toMatchObject({ left: false, right: true, bottom: true })
-    expect(beyond({ x: -500, y: 0, w: 1000, h: 500 }, snapshot)).toMatchObject({ top: true, bottom: false })
+// Hur nära kameran får komma (#392). Gränsen finns för att en bild av ingenting inte är en bild,
+// men den satt på åtta kortbredder, och det är en översikt till. Den som zoomar in på en hög gör
+// det för att läsa ett kort, så den närmaste vyn är ett kort och det som ligger bredvid det.
+describe('hur nära kameran får komma', () => {
+  it('stannar vid ungefär tre kortbredder, så ett kort och dess grannar fyller bilden', () => {
+    const whole = fitFloor(floor, wide)
+    const closest = zoomAround(whole, centre(whole), 1 / 100, wide, floor, CAMERA_MIN_MM)
+    expect(closest.w / CARD_MM.w).toBeGreaterThan(3)
+    expect(closest.w / CARD_MM.w).toBeLessThan(3.5)
   })
 })
 

@@ -118,7 +118,6 @@ export const svPlay = {
   'camera.level': '{n} %',
   'camera.fold': 'Fäll undan kamerakontrollerna',
   'camera.unfold': 'Ta fram kamerakontrollerna',
-  'camera.beyond': 'Mer av bordet ligger åt det här hållet',
   'felt.press.wheel': 'Hjul',
   'felt.press.middleDrag': 'Mitten + drag',
   'felt.press.spaceDrag': 'Space + drag',

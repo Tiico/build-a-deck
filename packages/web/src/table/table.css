@@ -537,10 +537,10 @@
 .byd-camera-world > .byd-table-wood { width: 100%; height: 100%; }
 
 /* Kameran i handen (C5, #325) har sitt eget ark: `table/camera-hand.css`, som reser med
-   `CameraControls.js`. Klungan och kantmarkeringen finns bara medan vyn är egen, och den vyn
-   är automatisk när sidan målas — deras regler hör alltså inte hemma i det ark den första
-   bildrutan väntar på (#346:s väg, som är #186:s). Greppet nedan stannar däremot kvar: det
-   ritas medan Space hålls nere, alltså innan kameran är manuell och innan klungan finns. */
+   `CameraControls.js`. Klungan finns bara medan vyn är egen, och den vyn är automatisk när sidan
+   målas — dess regler hör alltså inte hemma i det ark den första bildrutan väntar på (#346:s väg,
+   som är #186:s). Greppet nedan stannar däremot kvar: det ritas medan Space hålls nere, alltså
+   innan kameran är manuell och innan klungan finns. */
 
 /* Direct manipulation (K1, K2, C): the frame is the anchor for pointer geometry. */
 .byd-table-frame { position: relative; }
