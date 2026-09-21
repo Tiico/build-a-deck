@@ -117,6 +117,19 @@ export const ProjectDoc = z.object({
   // A picture that has nothing to say is simply absent, so every document written before there
   // was a crop reads back as the document it always was.
   pictures: z.record(z.string().regex(/^[0-9a-f]{64}$/, 'a picture is named by the hash of its bytes'), Picture).optional(),
+  // Vilka kolumner som skrivs som prosa och vilka som skrivs som vanlig text (L43, #362),
+  // under kolumnens egen nyckel. Rutans höjd i mallen föreslår — det är `bodyFieldsOf`, och det
+  // är vad den här posten inte är — men vad kolumnen *är* står skrivet här när designern har
+  // sagt det. En kolumn som aldrig fått ett val står inte här alls, vilket är varför posten är
+  // valfri: varje dokument skrivet innan valet fanns läser tillbaka precis som det alltid gjort,
+  // och varje befintlig lek följer höjden som i dag.
+  //
+  // Den ligger här och inte på mallens element, fastän det är elementets höjd som föreslår, av
+  // två skäl: valet är kolumnens och inte en rutas — samma kolumn kan ritas på både fram- och
+  // baksida — och en kolumn som mallen inte ritar alls måste ändå gå att välja åt. Den är
+  // dokumentdata som `columns`, `palette` och `framing`: den sparas, versioneras och följer med
+  // projektet precis som de.
+  prose: z.record(z.string(), z.boolean()).optional(),
   rules: RuleDoc.optional(),
   fonts: z.record(z.string(), ProjectFont).optional(),
   setup: ProjectSetup,

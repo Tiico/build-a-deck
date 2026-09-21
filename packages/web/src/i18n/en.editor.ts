@@ -196,6 +196,22 @@ export const enEditor = {
   'table.body.italic': 'Italic',
   'table.body.list': 'Bullet list',
   'table.body.head': '{field} · {cardRef}',
+  // The column's mark in the table head (L43, #362, variant C). The height suggests, the
+  // designer decides. The difference between suggestion and choice is carried in form — dotted
+  // against filled — and a dotted underline does not exist for a screen reader, so the mark's
+  // name carries the same difference in words.
+  'table.prose.is.prose.height': '{field} is written as prose, the height suggested it',
+  'table.prose.is.prose.choice': '{field} is written as prose, you chose',
+  'table.prose.is.plain.height': '{field} is written as plain text, the height suggested it',
+  'table.prose.is.plain.choice': '{field} is written as plain text, you chose',
+  'table.prose.is.prose': '{field} is written as prose',
+  'table.prose.is.plain': '{field} is written as plain text',
+  'table.prose.why.prose': 'The height suggests prose: the box is {box} mm and one line of its size is {line} mm.',
+  'table.prose.why.plain': 'The height suggests plain text: the box is {box} mm and one line of its size is {line} mm.',
+  'table.prose.why.undrawn': 'The template draws no box for the column, so the height suggests plain text.',
+  'table.prose.make.prose': 'Make it prose',
+  'table.prose.make.plain': 'Make it plain text',
+  'table.prose.follow': 'Follow the height again',
   'table.icon.hint': 'Insert an icon — or type {',
   'table.import': 'Import CSV…',
   'table.export': 'Download CSV',

@@ -222,6 +222,31 @@ export const svEditor = {
   // Vad huvudet säger: fältet, och kortet det gäller. Fältets namn är designerns eget ord och
   // står som hon skrev det (A4).
   'table.body.head': '{field} · {cardRef}',
+  // Kolumnens märke i tabellhuvudet (L43, #362, variant C). «Höjden föreslår, designern avgör»:
+  // rutans höjd i mallen föreslår vilken kolumn som skrivs som prosa, och designern avgör.
+  //
+  // Skillnaden mellan förval och val bärs i form — prickad mot ifylld — och en prickad
+  // understrykning finns inte för en skärmläsare. Så märkets *namn* bär samma skillnad i ord.
+  // Det är fyra meningar och inte två halvor som sätts ihop: ett tillstånd och ett upphov hör
+  // ihop i en mening, och ett språk som fogar dem på annat håll ska kunna skriva om hela raden.
+  'table.prose.is.prose.height': '{field} skrivs som prosa, höjden föreslog',
+  'table.prose.is.prose.choice': '{field} skrivs som prosa, du valde',
+  'table.prose.is.plain.height': '{field} skrivs som vanlig text, höjden föreslog',
+  'table.prose.is.plain.choice': '{field} skrivs som vanlig text, du valde',
+  // Vad utfällningen säger överst: tillståndet, utan upphovet. Upphovet står i formen och i
+  // märkets namn, och en mening om det i ytan var det som valdes bort.
+  'table.prose.is.prose': '{field} skrivs som prosa',
+  'table.prose.is.plain': '{field} skrivs som vanlig text',
+  // Och orsaken: rutan mallen ritar, mot en rad av dess egen grad. Två rader är vad ett stycke
+  // eller en punkt behöver för att synas (L39).
+  'table.prose.why.prose': 'Höjden föreslår prosa: rutan är {box} mm och en rad av dess grad är {line} mm.',
+  'table.prose.why.plain': 'Höjden föreslår vanlig text: rutan är {box} mm och en rad av dess grad är {line} mm.',
+  'table.prose.why.undrawn': 'Mallen ritar ingen ruta för kolumnen, så höjden föreslår vanlig text.',
+  // De två knapparna. Den första vänder valet och gör det uttryckligt; den andra lämnar tillbaka
+  // frågan till höjden och står bara där det finns ett val att lämna.
+  'table.prose.make.prose': 'Gör prosa',
+  'table.prose.make.plain': 'Gör vanlig text',
+  'table.prose.follow': 'Följ höjden igen',
   'table.icon.hint': 'Sätt in en ikon — eller skriv {',
   // De två står bredvid varandra i samma ram, men den ena stannar och frågar efter en fil medan
   // den andra lämnar ifrån sig en direkt. Orden säger vilken som är vilken: tre punkter är den

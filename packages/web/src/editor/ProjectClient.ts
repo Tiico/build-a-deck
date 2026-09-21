@@ -451,6 +451,12 @@ export class ProjectClient {
     this.edit({ v: 'moveField', field, before })
   }
 
+  // Vad kolumnen skrivs som (L43, #362). `null` lämnar tillbaka frågan till rutans höjd, och är
+  // därmed inte ett tredje läge utan frånvaron av ett val.
+  setProse(field: string, prose: boolean | null): void {
+    this.edit({ v: 'setProse', field, prose })
+  }
+
   removeField(field: string): void {
     this.edit({ v: 'removeField', field })
   }
