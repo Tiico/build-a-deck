@@ -107,6 +107,36 @@ export function handAnchor(hand: ZoneView, floor: ZoneView, rot: number): Point 
   }
 }
 
+// The point a hand is drawn about, and measured about. A hand folded to its count (#77) has no
+// fan to be pushed toward the rim by, so it stands in the middle of its own zone; every other
+// hand stands where its fan is anchored. Asked once here, so that what is drawn and what a fit
+// keeps inside its picture can never be two different points.
+export function handAt(hand: ZoneView, floor: ZoneView, rot: number, folded = false): Point {
+  const g = hand.geometry
+  return folded ? { x: g.x + g.w / 2, y: g.y + g.h / 2 } : handAnchor(hand, floor, rot)
+}
+
+// The line a hand's count badge hangs from, in table millimetres (#413).
+//
+// The badge is a label in pixels, like a pile's name, so no measure in millimetres can own its
+// height — but the place it hangs from is the fan's own, and that is a millimetre of the felt like
+// any other. A fit that keeps this point inside the picture, with a pill's air past it
+// (`TV_AIR_PX`), keeps the whole badge inside; a fit that never asks lets the number be cut in
+// half at the top of a television, which is what the TV did at 1920 × 1080 (#413).
+//
+// It answers for a hand holding nothing too, because such a hand draws its nought like every
+// other hand draws its number. It hangs off the zone's own middle there, well inside the felt,
+// and a fit that asked only about hands with cards in them would be a fit that changes shape when
+// somebody plays their last card.
+export function handCountAt(hand: ZoneView, floor: ZoneView, rot: number, folded = false): Point {
+  const at = handAt(hand, floor, rot, folded)
+  const mm = countSide(hand, floor, rot) === 'above' ? -HAND_COUNT_ABOVE_MM : HAND_COUNT_MM
+  // The badge rides inside `.byd-hand`, which is what the rotation is written on, so its offset
+  // turns with the hand exactly as the fan does.
+  const hung = turn({ x: 0, y: mm, w: 0, h: 0 }, rot)
+  return { x: at.x + hung.x, y: at.y + hung.y }
+}
+
 // Where a hand's fan lies on the felt, in table millimetres, once it has been turned toward its
 // own edge and anchored in its zone. The count under it is a label in pixels, like a pile's
 // name, and rides in the air the frame already leaves around the table.

@@ -775,6 +775,26 @@ Priset är erkänt: bilden säger inte längre att något ligger utanför den.
 520 mm är åtta kortbredder, alltså ännu en översikt och ingen närbild: «+» tog stopp på 242 % i TV:ns eget krom, och knappen sade ingenting om varför.
 210 mm är tre kortbredder, så den närmaste vyn är ett kort och det som ligger bredvid det — nära nog att läsa ett kort, långt nog ifrån att bilden fortfarande är ett bord.
 
+Reviderat 2026-09-21 (#413): **bilden håller handens antalsbricka, inte bara det som är i spel.**
+
+Händerna räknas inte som innehåll — de ligger vid kanten och finns alltid, och med dem inräknade blev bilden nästan alltid hela bordet.
+Antalsbrickan är ändå inte en hand.
+Den är talet den som sitter mittemot läser för att veta vad hon spelar mot, och vid 1920 × 1080 låg norra platsens bricka nio pixlar ovanför fönstret: siffran var kluven mitt itu och gick inte att läsa, vilket är det enda den finns till för (#411:s speltest, #413).
+Det slår bara till där filten är höjdbunden, och 16:9 på en TV är alltid det.
+
+Bilden får därför ett andra villkor med egen luft.
+Brickan ritas i skärmens egna pixlar och inte i bordets millimeter, så den kan inte läggas till det som ramas in; det enda en inramning i millimeter kan få veta om den är **linjen den hänger från** (`handCountAt` i `hand.ts`), och förbi den linjen lämnar bilden en pillerbredd — `TV_AIR_PX`, samma tal och samma skäl som TV-lägets egen inpassning redan har.
+Överskanningen är spelets luft och rör inte brickan: bilden är den minsta som håller båda villkoren.
+Räckvidden rymmer linjerna också, annars vore den vy en hand kan zooma ut till smalare än den vy kameran ramar in åt sig själv, och första tryck på hjulet skulle rycka bilden inåt.
+
+Priset i kortstorlek, mätt i Chromium på det byggda bordet (`tv-hand-count.spec.ts`) och i TV:ns eget krom (`felt-names.test.tsx`): på fyraplatsbordet vid 1920 × 1080 går kortets kortsida från 82 till 78 px, och på åttaplatsbordet från 46 till 45 px.
+Grinden på fyraplatsbordet sänks från 80 till 76 och åttaplatsbordets pinne till 45; 1280 × 800 och 3840 × 2160 rör sig inte.
+Det är mer än vad brickans egen höjd hade kostat ensam — omkring 79 på fyraplatsbordet — och skillnaden är fläkten: en hand är 88 mm djup i en 60 mm remsa vid kanten (K18, #84), så den når omkring 25 mm förbi filten redan innan brickan hänger ut ur den, och att rama in det är större delen av priset.
+
+Två saker står som erkänt pris.
+Åttaplatsbordet står nu **på** K9:s golv på 45 px och inte längre en pixel över det: nästa sak som kostar filten höjd vid åtta platser bryter K9 i stället för att närma sig det.
+Och den andra vägen ut — att hänga brickan inåt, över fläktens egna hörn — är en ny form, och #413 är uttryckligen en mätbar inpassning utan ny form, så den är inte tagen här.
+
 Reviderat 2026-09-14 (#66): ramen tar inte emot.
 Träramen runt filten ritas i skärmpixlar utanför de millimeter ett släpp mäts i — 30 px vid varje fönsterstorlek — och är ingen yta ett kort kan ligga *på*.
 Ett släpp vars avgörande punkt, pekarens (K2, #74), ligger utanför filtens golv lägger kortet vid närmaste kant på filten: kortets vilorektangel skjuts den kortaste sträcka som får den att ligga hel innanför golvet, på alla fyra sidor och i alla fyra hörn, hur långt förbi träet släppet än sker.

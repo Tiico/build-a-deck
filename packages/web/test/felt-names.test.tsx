@@ -486,12 +486,22 @@ describe('the Bord tab gives the felt the room its names need (#43)', () => {
 //
 // Lowered 2026-09-20 from 33, 49 and 99 (#322): the TV keeps an overscan margin of 3 % of the
 // frame's shortest side clear on every side, since a TV may hide the picture's outer edge, and the
-// felt being height-bound that margin is paid in card. Six per cent of it, measured here, and the
-// smallest name is still 12 px. At 1920 × 1080 the card stands one pixel above K9's floor of 45.
+// felt being height-bound that margin is paid in card.
+//
+// Lowered again 2026-09-21 at 1920 × 1080, from 46 to 45 (#413): the picture now also holds the
+// hands' count badges, whose number was being cut in half at the top of the screen. The badge
+// hangs from a line on the felt some way past the rim, and the picture leaves a pill's air past
+// that line, so the felt gives up what that costs. The other two windows are unmoved — the felt is
+// not bound by its height at 1280 × 800, and at 3840 × 2160 a pixel of air is a smaller share of
+// the frame — and the smallest name is still 12 px.
+//
+// At 1920 × 1080 the eight-seat card now stands *at* K9's floor of 45 rather than a pixel above
+// it, which is as far as this can go: the next thing that costs the felt height at eight seats
+// breaks K9 rather than approaching it.
 describe('a name that moved changed no readability number (K9, K18)', () => {
   it.each([
     [1280, 800, 31],
-    [1920, 1080, 46],
+    [1920, 1080, 45],
     [3840, 2160, 93],
   ])('draws the card %i × %i px wide at eight seats', async (w, h, cardPx) => {
     const size = { w, h }
@@ -517,14 +527,28 @@ describe('a name that moved changed no readability number (K9, K18)', () => {
   // height and never by its width, so the column beside it is free and a row above or below it is
   // not. With both rows moved into the column the same card is 82 px.
   //
-  // Eighty is the gate. It is under what the layout gives, so a card that has lost its room says
-  // so, and it is well over anything the three-row chrome could have given. The reading is
-  // geometry and not type — a card's width is `63 mm x scale` — so it does not turn on which face
-  // the machine running it happens to have.
+  // Eighty was the gate: under what the layout gave (82), so a card that had lost its room said
+  // so, and well over anything the three-row chrome could have given (68). The reading is geometry
+  // and not type — a card's width is `63 mm x scale` — so it does not turn on which face the
+  // machine running it happens to have.
+  //
+  // Lowered to 76 on 2026-09-21 (#413), and the reason is worth stating plainly because it is a
+  // decision and not a measurement drifting. The hands' count badges were hanging outside the
+  // screen on a television — at 1920 × 1080 the top seat's number was cut in half, which is the
+  // one thing that number exists for — and the only way to bring them in is to pull the picture
+  // back, which the felt pays for in card. The four-seat card goes from 82 to 78 px. That is more
+  // than the badge's own height costs on its own (which would be about 79), because the line the
+  // badge hangs from already lay outside the picture: the fan is 88 mm deep in a 60 mm strip at
+  // the rim (K18, #84), so it reaches some 25 mm past the felt, and framing that is most of the
+  // price. The gate keeps the two pixels of headroom it had, at 76, and 78 is still well over the
+  // 68 the three-row chrome gave.
+  //
+  // The other way out is a form change — hanging the badge inward, over the fan's own corners —
+  // and #413 is explicitly a fit and no new form, so it is not taken here.
   it('gives a card on a four-seat table room to be told apart without anyone pointing at it', async () => {
     const size = { w: 1920, h: 1080 }
     const reading = await readNames(await tvFelt(sceneOf(feltOf(4)), size), size)
-    expect({ card: reading.cardPx >= 80, px: reading.cardPx }).toEqual({ card: true, px: reading.cardPx })
+    expect({ card: reading.cardPx >= 76, px: reading.cardPx }).toEqual({ card: true, px: reading.cardPx })
   }, 60_000)
 })
 

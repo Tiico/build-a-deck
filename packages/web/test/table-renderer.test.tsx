@@ -2,19 +2,27 @@
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createRef } from 'react'
-import type { Intent } from '@byd/protocol'
+import type { Intent, Snapshot } from '@byd/protocol'
 import { TableRenderer, type FeltKeyboard, type TableHandle } from '../src/table/TableRenderer.js'
 import { buildScene, tableOf } from './scene.js'
 import { twoSeatSetup } from './fixture.js'
-import { activeBounds, cameraOf, frameRect, overscanPx, pad } from '../src/table/camera.js'
+import { activeBounds, cameraOf, frameRect, overscanPx, pad, reachOf, union, type Rect } from '../src/table/camera.js'
 import { feltScale, fitScale, TV_AIR_PX } from '../src/table/fit.js'
-import { feltWithHands, handExtent, handRotation, type TableMode } from '../src/table/hand.js'
+import { feltWithHands, handCountAt, handExtent, handRotation, type TableMode } from '../src/table/hand.js'
 import { DEFAULT_TIMING } from '../src/status/connection.js'
 import { RING_MARGIN } from '../src/table/ring.js'
 import { CARD_MM } from '../src/table/drop.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
+
+// Linjerna handarnas antalsbrickor hänger från, som en ruta (#413). Kameran ramar in spelet, och
+// brickorna står utanför det vid kanten; det här är vad bilden måste hålla utöver spelet, och
+// renderaren räknar fram det på precis det här sättet.
+const countLines = (snapshot: Snapshot): Rect | null => {
+  const floorZone = snapshot.zones.find((z) => z.id === snapshot.floor)!
+  return union(snapshot.zones.filter((z) => z.kind === 'hand').map((z) => ({ ...handCountAt(z, floorZone, handRotation(z, floorZone, 'tv')), w: 0, h: 0 })))
+}
 
 describe('TableRenderer', () => {
   it('places a face-up card by name at its position, and a face-down one as a back without a name', () => {
@@ -104,10 +112,18 @@ describe('the camera (C5)', () => {
     const size = { w: 1000, h: 500 }
     render(<TableRenderer view={snapshot} mode="tv" camera="follow" size={size} glideMs={0} />)
 
-    const floor = snapshot.zones.find((z) => z.id === snapshot.floor)!.geometry
-    const cam = frameRect(pad(activeBounds(snapshot)!, 60), size, floor, 520, overscanPx(size))
+    const floorZone = snapshot.zones.find((z) => z.id === snapshot.floor)!
+    const floor = floorZone.geometry
+    // Vad bilden ska hålla: spelet med sin överskanning, och handbrickornas linjer med sin egen
+    // luft (#413). Räckvidden rymmer båda, så att den vy en hand kan zooma ut till aldrig är
+    // smalare än den vy kameran ramar in själv.
+    const cam = frameRect(pad(activeBounds(snapshot)!, 60), size, reachOf(floor, countLines(snapshot)), 520, overscanPx(size), { rect: countLines(snapshot)!, margin: TV_AIR_PX })
     const { scale, left, top } = cameraOf(cam, size, floor)
-    expect(scale).toBeGreaterThan(1)
+    // Inte tomt: bilden håller båda villkoren, och det är det som gör den till en bild av något.
+    // Spelet står sin överskanning innanför, och brickornas linjer sin egen luft (#322, #413).
+    const play = pad(activeBounds(snapshot)!, 60)
+    expect((play.y - cam.y) * scale).toBeGreaterThanOrEqual(overscanPx(size) - 0.005)
+    expect((countLines(snapshot)!.y - cam.y) * scale).toBeCloseTo(TV_AIR_PX)
     const frame = document.querySelector('.byd-table-frame')!
     expect(frame.getAttribute('data-camera')).toBe('follow')
     const world = document.querySelector('.byd-camera-world') as HTMLElement
@@ -150,7 +166,10 @@ describe('the camera (C5)', () => {
     const size = { w: 1000, h: 500 }
     render(<TableRenderer view={view(null)} mode="tv" camera="follow" size={size} glideMs={0} />)
     const frame = document.querySelector('.byd-table-frame')!
-    // En vy som redan rymmer hela räckvidden går inte att panorera i, så hjulet går in först.
+    // En vy som redan rymmer hela räckvidden går inte att panorera i, så hjulet går in först. Två
+    // steg, eftersom räckvidden numera rymmer handbrickornas linjer också (#413) och ett steg
+    // lämnar mindre att panorera i än de hundra pixlarna nedan ber om.
+    fireEvent.wheel(frame, { deltaY: -400, clientX: 500, clientY: 250 })
     fireEvent.wheel(frame, { deltaY: -400, clientX: 500, clientY: 250 })
     const world = document.querySelector('.byd-camera-world') as HTMLElement
     const before = parseFloat(world.style.left)
@@ -174,6 +193,7 @@ describe('the camera (C5)', () => {
     const activated: string[] = []
     render(<TableRenderer view={view(null)} mode="tv" camera="follow" size={size} glideMs={0} keyboard={oneStop(`card:${faceUp}`, activated)} />)
     const frame = document.querySelector('.byd-table-frame')!
+    fireEvent.wheel(frame, { deltaY: -400, clientX: 500, clientY: 250 })
     fireEvent.wheel(frame, { deltaY: -400, clientX: 500, clientY: 250 })
     const world = document.querySelector('.byd-camera-world') as HTMLElement
     const before = parseFloat(world.style.left)
@@ -375,8 +395,16 @@ describe('the camera (C5)', () => {
     const scale = parseFloat(table.style.width) / floor.w
     const framed = pad(activeBounds(snapshot)!, 60)
     const left = parseFloat(world.style.left) + (framed.x - floor.x) * scale
-    expect(left).toBeCloseTo(30)
-    expect(left + framed.w * scale).toBeCloseTo(1000 - 30)
+    // Minst marginalen, och numera mer än den: sedan #413 håller bilden också handbrickornas
+    // linjer med sin egen luft, och de ligger utanför spelet vid kanten, så bilden dras tillbaka
+    // förbi vad överskanningen ensam hade bett om. Marginalen är ett golv och inte ett mått.
+    expect(left).toBeGreaterThanOrEqual(30 - 0.005)
+    expect(left + framed.w * scale).toBeLessThanOrEqual(1000 - 30 + 0.005)
+    // Och det som drog tillbaka den är brickornas luft, inte något annat: den övre linjen står
+    // exakt sin pillerbredd innanför bildens kant (#413).
+    const lines = countLines(snapshot)!
+    const top = parseFloat(world.style.top) + (lines.y - floor.y) * scale
+    expect(top).toBeCloseTo(TV_AIR_PX)
     unmount()
 
     // The observer is the same `mode` without the camera (C8): the felt with its hands on is
