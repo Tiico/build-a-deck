@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 06 — Namnet som krävs: anslutningssidan (#416)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ────────────────────────────────────────────────────────────────────────────────
+     `/join?code=…` på 390 × 844 är den första skärmen en gäst möter efter att ha läst av rutan
+     vid bordet. Med tomt namnfält är alla tre vägarna in stängda — «Sätt dig», «Spela på den här
+     skärmen» och «Bara titta» — och ingenting säger varför. Fältet har `aria-label` men ingen
+     synlig etikett, bara platshållaren «Ditt namn», som ser ut som ett ifyllt värde.
+
+     Samma tre svar som i prototyp 05, mätta på den här ytan i stället:
+       A  vid fältet, från början
+       B  vid knappen, efter tryck
+       C  i huvudets tillståndsrad, där sidan redan säger «Plats C vald»
+
+     Färger och mått är hämtade ur packages/web/src/join/join.css och buttons.css. Ingenting här
+     importeras av appen. ─────────────────────────────────────────────────────────────────── */
+
+  body { background: #14161c; overflow: auto; }
+
+  .byd-join {
+    --byd-seat-ink: #0d0f14;
+    --byd-seat-h: 52px;
+    --byd-seat-w: 76px;
+    --byd-seat-corner: 4px;
+    --byd-seat-pitch-x: 132px;
+    --byd-seat-pitch-y: calc(var(--byd-seat-pitch-x) - (var(--byd-seat-w) - var(--byd-seat-h)));
+    --byd-seat-gap: 14px;
+    --byd-seat-hang-x: 30px;
+    --byd-seat-hang-y: 26px;
+    --byd-seat-unbounded: 9999px;
+    --byd-join-bg: #14161c;
+    --byd-primary-bg: #7dd3a0;
+    --byd-primary-ink: #0b2a18;
+    --byd-secondary-line: #6f7a90;
+    --byd-secondary-ink: #dce3f2;
+    min-height: 100vh; box-sizing: border-box; padding: 40px 20px 28px;
+    background: var(--byd-join-bg); color: #eee; font-family: system-ui, sans-serif;
+    display: grid; grid-template-rows: auto 1fr auto; gap: 20px;
+  }
+  .byd-join * { box-sizing: border-box; }
+  .byd-join > header { display: grid; gap: 4px; font-size: 13px; color: #9aa3b8; }
+  .byd-join > header strong { font-size: 22px; color: #fff; }
+  .byd-join-table {
+    --byd-felt-w: 220px; --byd-seat-spread-y: 0px;
+    position: relative; place-self: center; width: var(--byd-felt-w);
+    height: max(150px, calc(var(--byd-seat-spread-y) + 3 * var(--byd-seat-h) - 2 * var(--byd-seat-hang-y) + 2 * var(--byd-seat-corner)));
+    border-radius: 16px;
+    background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26);
+    box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.45), 0 0 0 10px #4a2f1c;
+    display: flex; flex-wrap: wrap; align-content: center; align-items: center; justify-content: center; gap: 6px;
+  }
+  .byd-join-table button {
+    display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 5px 14px; min-width: var(--byd-seat-w); min-height: var(--byd-seat-h); border-radius: 999px; white-space: nowrap;
+    border: 3px solid transparent; background: var(--seat); color: var(--byd-seat-ink); line-height: 1.05;
+    font: inherit; cursor: pointer; overflow: hidden;
+  }
+  .byd-join-table button > b { font-size: 14px; font-weight: 800; }
+  .byd-join-table button > span { font-size: 12px; font-weight: 600; opacity: 0.9; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .byd-join-table button[aria-disabled='true'] > span { opacity: 1; }
+  .byd-join-table button[aria-disabled='true'] { background: #2a2e3a; color: #9aa3b8; }
+  .byd-join-table button[aria-pressed='true'] { border-color: #fff; }
+  .byd-join-table button[data-edge] { position: absolute; --seat-at: 0; --seat-of: 1; --seat-step: calc((var(--seat-at) * 2 - var(--seat-of) + 1) / 2); }
+  .byd-join-table button[data-edge='N'] { top: calc(var(--byd-seat-hang-y) * -1); left: calc(50% + var(--seat-step) * var(--byd-seat-pitch-x)); transform: translateX(-50%); }
+  .byd-join-table button[data-edge='S'] { bottom: calc(var(--byd-seat-hang-y) * -1); left: calc(50% + var(--seat-step) * var(--byd-seat-pitch-x)); transform: translateX(-50%); }
+  .byd-join-table button[data-edge='E'] { right: calc(var(--byd-seat-hang-x) * -1); top: calc(50% + var(--seat-step) * var(--byd-seat-pitch-y)); transform: translateY(-50%); }
+  .byd-join-table button[data-edge='W'] { left: calc(var(--byd-seat-hang-x) * -1); top: calc(50% + var(--seat-step) * var(--byd-seat-pitch-y)); transform: translateY(-50%); }
+
+  .byd-join form { display: grid; gap: 10px; }
+  .byd-join input { padding: 16px; border-radius: 12px; border: 1px solid #2c3242; background: #1b1e27; color: #fff; font-size: 18px; font-family: inherit; }
+  .byd-join form button { padding: 18px; border-radius: 12px; border: 1px solid transparent; font-size: 18px; font-weight: 800; font-family: inherit; cursor: pointer; }
+  .byd-primary { border: 1px solid var(--byd-primary-bg); background: var(--byd-primary-bg); color: var(--byd-primary-ink); font-weight: 750; }
+  .byd-secondary { background: transparent; border: 1px solid var(--byd-secondary-line); color: var(--byd-secondary-ink); font-weight: 600; }
+  .byd-join .byd-primary:disabled { background: #242938; border-color: #242938; color: #5b6478; }
+  .byd-join .byd-join-online, .byd-join .byd-join-observe { font-size: 14px; }
+  .byd-join-online:disabled, .byd-join-observe:disabled { opacity: 0.35; }
+
+  /* ── Det prototypen föreslår ─────────────────────────────────────────────────────────────── */
+
+  /* Alla tre ger fältet en SYNLIG etikett och tar bort platshållaren «Ditt namn». Etiketten är
+     det som står skrivet och det som fältet heter — samma sak, vilket är hela WCAG 2.5.3 — och
+     ett tomt fält får se tomt ut. */
+  .namnfalt { display: grid; gap: 6px; }
+  .namnfalt > .etikett { color: #cdd4e4; font-size: 13px; font-weight: 700; }
+  [data-variant='nu'] .namnfalt > .etikett { display: none; }
+
+  /* A — villkoret står under fältet, från första målningen. */
+  .villkor-falt { margin: 0; display: none; color: #cdd4e4; font-size: 13px; }
+  [data-variant='a'] .villkor-falt { display: block; }
+  [data-variant='a'][data-namn='ja'] .villkor-falt { color: #9aa3b8; }
+
+  /* B — vägarna in står öppna och svarar när de trycks. */
+  .villkor-svar { display: none; margin: 0; color: #ffb3ad; font-size: 13px; font-weight: 700; }
+  [data-variant='b'][data-svar='ja'] .villkor-svar { display: block; }
+  [data-variant='b'][data-svar='ja'] .namnfalt input { border-color: #e05a4f; }
+
+  /* C — villkoret står i huvudet, på den rad som redan säger «Plats C vald». */
+  .villkor-huvud { display: none; margin: 6px 0 0; color: #ffd28a; font-size: 14px; font-weight: 700; }
+  [data-variant='c'][data-namn='nej'] .villkor-huvud { display: block; }
+  .kravmarke { display: none; color: #ffb3ad; }
+  [data-variant='c'] .kravmarke { display: inline; }
+
+  /* Den låsta knappens utseende. Nu: «Sätt dig» byter till en fyllning, #242938, som mätt mot
+     sidans egen botten #14161c står på 1,25:1 — pillret försvinner alltså nästan helt i sidan
+     samtidigt som de två under det bara tonas till 35 %. Tre låsta kontroller som är låsta olika
+     mycket. A och C ger alla tre ETT och samma låsta utseende: formen kvar, fyllningen borta,
+     linjen streckad i rummets egen sekundärlinje. B tar bort låsningen helt — då finns ingen
+     låst kontroll kvar på skärmen och frågan ställs aldrig. */
+  [data-variant='a'] .byd-join form button:disabled,
+  [data-variant='c'] .byd-join form button:disabled,
+  [data-variant='a'] form button:disabled,
+  [data-variant='c'] form button:disabled {
+    opacity: 1; background: transparent; border: 1px dashed #7d879c; color: #aab3c6; font-weight: 700;
+  }
+
+  .protorad { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; border-top: 1px solid #4a4230; border-bottom: 0; }
+  body[data-rad='dold'] .protorad { display: none; }
+  .protorad .matt { margin-left: 0; }
+</style>
+</head>
+<body data-variant="a">
+
+<div class="byd-join" data-page="join" data-namn="nej" data-svar="nej">
+  <header>
+    <span>Du är på väg in i</span>
+    <strong>Rum QHFM</strong>
+    <span>Plats C vald</span>
+    <p class="villkor-huvud" role="status">Skriv ditt namn för att komma vidare.</p>
+  </header>
+
+  <div class="byd-join-table">
+    <button type="button" data-edge="N" aria-pressed="false" aria-label="Plats A, Vera" aria-disabled="true" style="--seat:#e05a4f"><b aria-hidden="true">A</b><span aria-hidden="true">Vera</span></button>
+    <button type="button" data-edge="E" aria-pressed="false" aria-label="Plats B, ledig" style="--seat:#3c8ce7"><b aria-hidden="true">B</b><span aria-hidden="true">ledig</span></button>
+    <button type="button" data-edge="S" aria-pressed="true" aria-label="Plats C, ledig" style="--seat:#3aa76d"><b aria-hidden="true">C</b><span aria-hidden="true">ledig</span></button>
+    <button type="button" data-edge="W" aria-pressed="false" aria-label="Plats D, ledig" style="--seat:#d99a1f"><b aria-hidden="true">D</b><span aria-hidden="true">ledig</span></button>
+  </div>
+
+  <form onsubmit="return false">
+    <label class="namnfalt" for="namn">
+      <span class="etikett">Ditt namn<span class="kravmarke" aria-hidden="true"> *</span></span>
+      <input id="namn" aria-label="Ditt namn" autocomplete="nickname" aria-describedby="villkor-falt">
+    </label>
+    <p class="villkor-falt" id="villkor-falt">Namnet behövs för att gå vidare.</p>
+    <p class="villkor-svar" id="villkor-svar" role="alert">Skriv ditt namn först.</p>
+    <button type="submit" class="byd-primary vantar">Sätt dig</button>
+    <button type="button" class="byd-join-online byd-secondary vantar">Spela på den här skärmen (bordet och handen här)</button>
+    <button type="button" class="byd-join-observe byd-secondary vantar">Bara titta (ser allt, alla ser dig)</button>
+  </form>
+</div>
+
+<div class="protorad">
+  <b>Prototyp 06 — namnet som krävs, anslutningssidan (#416)</b>
+  <div class="switch" role="group" aria-label="Variant">
+    <button data-v="nu">Nu</button>
+    <button data-v="a" aria-pressed="true">A · vid fältet</button>
+    <button data-v="b">B · vid tryck</button>
+    <button data-v="c">C · i huvudet</button>
+  </div>
+  <button id="rensa">Töm namnet</button>
+  <p id="berattelse"></p>
+  <p class="sagt" id="matning"></p>
+</div>
+
+<script>
+const rot = document.querySelector('.byd-join')
+const namn = document.getElementById('namn')
+const vantar = [...document.querySelectorAll('.vantar')]
+
+const VARIANTER = {
+  nu: { platshallare: 'Ditt namn', last: true, beskriv: null,
+    ord: 'Som i dag: ingen synlig etikett, en platshållare som ser ut som ett ifyllt värde, och tre stängda vägar in utan ett ord om varför. «Sätt dig» tonas dessutom på ett sätt och de två under det på ett annat.' },
+  a: { platshallare: '', last: true, beskriv: 'villkor-falt',
+    ord: 'A — en rad under fältet från första målningen, och alla tre vägarna in pekar på den med aria-describedby. Etiketten «Ditt namn» står synlig över fältet i stället för inuti det.' },
+  b: { platshallare: '', last: false, beskriv: null,
+    ord: 'B — de tre vägarna in står öppna. Tryck en av dem med tomt namn: beskedet kommer vid fältet och fokus flyttas dit. Ingen låst kontroll finns kvar på skärmen.' },
+  c: { platshallare: '', last: true, beskriv: null,
+    ord: 'C — villkoret står i huvudet, på den rad som redan säger «Plats C vald», och fältet bär ett obligatoriskt märke.' },
+}
+
+// ── Mätningen ──────────────────────────────────────────────────────────────────────────────
+// Frågan «ser en låst knapp låst ut?» besvaras inte av ett `disabled`-attribut utan av vad som
+// målas. `opacity` räknas inte in i getComputedStyle-färgen, så den vägs in för hand här; och
+// Chromium svarar color(srgb …) på allt som räknats fram, så båda formerna läses (#372).
+function tal(text) {
+  const m = text.match(/color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)/)
+  if (m) return [+m[1] * 255, +m[2] * 255, +m[3] * 255]
+  const r = text.match(/-?[\d.]+/g)
+  return r ? [+r[0], +r[1], +r[2], r[3] === undefined ? 1 : +r[3]] : [0, 0, 0, 1]
+}
+const kanal = (v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4 }
+const ljus = ([r, g, b]) => 0.2126 * kanal(r) + 0.7152 * kanal(g) + 0.0722 * kanal(b)
+const kontrast = (a, b) => { const [x, y] = [ljus(a) + 0.05, ljus(b) + 0.05]; return (Math.max(x, y) / Math.min(x, y)) }
+const blanda = (fram, bak, a) => fram.map((v, i) => v * a + bak[i] * (1 - a))
+function genomskinlighet(el) { let a = 1, n = el; while (n && n !== document.body) { a *= +getComputedStyle(n).opacity; n = n.parentElement } return a }
+function mat() {
+  const sida = tal(getComputedStyle(rot).backgroundColor)
+  const rader = vantar.map((knapp) => {
+    const s = getComputedStyle(knapp)
+    const a = genomskinlighet(knapp)
+    let grund = tal(s.backgroundColor)
+    grund = grund[3] === 0 ? sida : blanda(grund, sida, grund[3] ?? 1)
+    const malad = blanda(grund, sida, a)
+    const linje = blanda(tal(s.borderTopColor), sida, a)
+    const blackFarg = blanda(tal(s.color), malad, a)
+    const kant = Math.max(kontrast(malad, sida), kontrast(linje, sida))
+    return `${knapp.textContent.slice(0, 9)}… kant/sida ${kant.toFixed(2)}:1 · bläck ${kontrast(blackFarg, malad).toFixed(2)}:1`
+  })
+  document.getElementById('matning').innerHTML = 'Målat, inte deklarerat: ' + rader.map((r) => `<em>${r}</em>`).join(' · ')
+}
+
+function rita() {
+  const v = document.body.dataset.variant
+  const k = VARIANTER[v]
+  const harNamn = namn.value.trim().length > 0
+  rot.dataset.namn = harNamn ? 'ja' : 'nej'
+  namn.placeholder = k.platshallare
+  namn.setAttribute('aria-required', v === 'nu' ? 'false' : 'true')
+  if (k.beskriv) namn.setAttribute('aria-describedby', k.beskriv)
+  else namn.removeAttribute('aria-describedby')
+  for (const knapp of vantar) {
+    knapp.disabled = k.last && !harNamn
+    if (k.beskriv) knapp.setAttribute('aria-describedby', k.beskriv)
+    else knapp.removeAttribute('aria-describedby')
+  }
+  if (harNamn || v !== 'b') rot.dataset.svar = 'nej'
+  namn.setAttribute('aria-invalid', rot.dataset.svar === 'ja' ? 'true' : 'false')
+  const synliga = [...document.querySelectorAll('.villkor-falt, .villkor-huvud, .villkor-svar')].filter((el) => el.offsetParent !== null).length
+  document.getElementById('berattelse').textContent = `${k.ord}  ·  villkoret står skrivet ${synliga} gång${synliga === 1 ? '' : 'er'} på skärmen.`
+  mat()
+}
+
+for (const knapp of document.querySelectorAll('.switch button')) {
+  knapp.addEventListener('click', () => {
+    document.body.dataset.variant = knapp.dataset.v
+    for (const annan of document.querySelectorAll('.switch button')) annan.setAttribute('aria-pressed', String(annan === knapp))
+    rita()
+  })
+}
+document.getElementById('rensa').addEventListener('click', () => { namn.value = ''; rita() })
+namn.addEventListener('input', rita)
+for (const knapp of vantar) {
+  knapp.addEventListener('click', () => {
+    if (document.body.dataset.variant !== 'b' || namn.value.trim()) return
+    rita()
+    rot.dataset.svar = 'ja'
+    namn.setAttribute('aria-invalid', 'true')
+    namn.focus()
+  })
+}
+
+const url = new URLSearchParams(location.search)
+if (url.get('v')) document.body.dataset.variant = url.get('v')
+if (url.get('namn')) namn.value = url.get('namn')
+if (url.get('rad') === 'dold') document.body.dataset.rad = 'dold'
+for (const annan of document.querySelectorAll('.switch button')) annan.setAttribute('aria-pressed', String(annan.dataset.v === document.body.dataset.variant))
+rita()
+</script>
+</body>
+</html>
