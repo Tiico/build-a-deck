@@ -3746,6 +3746,27 @@ Ett mått till, som inte stod i prototypen: en statisk familj hämtas som sin re
 Projektet bär en asset per familj, och att be om alla vikter vore bara att fråga vilken av dem som ska kastas — samma villkor en uppladdad fil redan lever under.
 Filen är dessutom det latinska snittet och inte hela teckenrepertoaren, vilket `css2` inte erbjuder något annat än.
 
+**Åldersgrinden (beslutat och byggt 2026-09-21, #370).**
+
+Att listan reser med bygget betyder att den åldras, och ingenting sa hur gammal den var.
+Svaret är **en åldersgrind i testsviten, gräns sex månader** — ingen schemaläggare.
+
+Skriptet stämplar den genererade filen med sitt genereringsdatum, `GOOGLE_FONTS_GENERATED`, så åldern går att läsa utan att köra något.
+`font-catalog.test.ts` går rött när stämpeln passerat sex månader och skriver ut vilket kommando som fixar det tillsammans med vad stämpeln säger — inte bara att något är gammalt.
+En stämpel som inte är ett `YYYY-MM-DD` som finns är ett fel och inte en tystnad: en grind som inte kan gå röd är ingen grind.
+
+Sex månader, därför att en katalog som är ett halvår gammal fortfarande är 1 800 användbara familjer.
+Gränsen ska larma om försummelse, inte om normal drift.
+Att den går röd av sig själv en dag utan kodändring är avsikten, och därför är felmeddelandet ett kommando att köra.
+
+En schemaläggare valdes bort: den hade varit ett jobb ingen tittar på, och felet hör hemma i samma grind som allt annat.
+Det håller också L27 intakt — inget utgående beroende, inget som kan gå sönder tyst mellan körningarna.
+
+**Skriptet skriver ut de familjer det uteslöt** vid varje körning — de sex vars licens inte gick att fastställa — namngivna en per rad och aldrig förkortade.
+De går på stderr, som överlever att någon rör stdout; vad som *skrevs* går på stdout.
+Det är inte ett fel och körningen avslutas med 0: sex familjer utan angivbar licens är det förväntade läget.
+Men ett tapp som växer ska synas av sig självt, och en lista kan inte krympa tyst när varje körning läser upp den.
+
 ### L28. Kortet på väggen är ett kort: en kant, en kontaktskugga, och den stora skuggan bara under pekaren (prototypat och beslutat 2026-09-20, #332)
 
 Beslutet, i en mening:

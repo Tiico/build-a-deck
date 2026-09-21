@@ -6,6 +6,12 @@
 //
 // Loaded only by the dynamic import in `FontCatalog.tsx`, so none of this weight is on the
 // editor's first paint and none of it is fetched from Google (#329, L27, DRIFT §12).
+//
+// The day this file was written, so the age of the list can be read without running anything.
+// `font-catalog.test.ts` goes red six months after it and names the command that fixes it
+// (#370, L27) — this list has no scheduler behind it and ages only when nobody looks.
+export const GOOGLE_FONTS_GENERATED = '2026-09-21'
+
 export const GOOGLE_FONTS = `ABeeZee|sans|OFL 1.1|Anja Meiners|400
 Abel|sans|OFL 1.1|MADType|400
 Abhaya Libre|serif|OFL 1.1|Mooniak|400;500;600;700;800
