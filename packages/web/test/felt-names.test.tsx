@@ -452,7 +452,25 @@ describe('the Bord tab gives the felt the room its names need (#43)', () => {
     // every seat's own zones, both shared piles, and the card that says whose hand is whose.
     const seatsHere = SEAT_IDS.slice(0, seats)
     const wanted = [...seatsHere.flatMap((s) => [`Framför ${s}`, `Räknare ${s}`, s]), 'Draghög', 'Kasthög', ...(market ? ['Marknad'] : [])]
-    expectClear(await readNames(await bordTabDrawn(seats, desk, market), desk), wanted, `the Bord tab at ${desk.w} × ${desk.h}, ${seats} seats, market ${market}`)
+    const where = `the Bord tab at ${desk.w} × ${desk.h}, ${seats} seats, market ${market}`
+    const reading = await readNames(await bordTabDrawn(seats, desk, market), desk)
+    // This is the one surface that has grips at all (#419), so it is here that the reading of them
+    // has to be shown not to be vacuous: a selector that matched nothing would report no name over
+    // a grip at every seat count and mean nothing by it. Every zone but the floor and the piles
+    // carries one, so there is one per area on the table.
+    expect({ where, grips: reading.gripCount > seats }).toEqual({ where, grips: true })
+    // The one grip a name still lies on, written down rather than swept up. It is not this issue's
+    // collision and no placement of a grip inside its own box can answer it: `Räknare A`'s name
+    // stands above its own top edge at the south rim and lands on the *market's* rectangle — a
+    // neighbour's, which K19 has always allowed a name to be drawn over — and the market's grip is
+    // inside that rectangle. It is there on `origin/main` with the grip hung outside the box too,
+    // so it is older than the fix; what it wants is a decision about what the editor draws on a
+    // zone nobody has taken hold of, which is a new form and needs a prototype (#424).
+    // It is a pin and not a licence: the market stands where the panel lays it, so it is only over
+    // A's counters while the table is small enough for them to reach it — two, three and four
+    // seats, and nowhere else. A count where it appears or disappears fells this too.
+    const known = market && seats <= 4 ? ['Räknare A × handtag'] : []
+    expectClear(reading, wanted, where, known)
   }, 60_000)
 })
 

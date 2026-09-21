@@ -2397,6 +2397,19 @@ Så namnet flyttar i sidled i stället för i höjdled, en gång och för den zo
 Grinden är samma läsning som resten av K19, körd vid ett fönster till: `felt-names.test.tsx` läser nu varje namns målade låda på 3840 × 2160 också, vid varje platsantal och med marknaden både där och borta.
 Utan regeln är den röd vid fem platser; med den är alla 117 scenerna gröna, också när varje namn ritas 15 % bredare.
 
+Reviderat 2026-09-21 (#419): editorns storlekshandtag ligger innanför sin egen zon, inte över dess hörn.
+
+Regeln lägger ett namn **utanför** sin zon, och editorns Bord-flik lägger sina egna grepp **på** samma filt.
+Greppet — `.byd-setup-corner`, tolv bärnstensfärgade pixlar — hängde sex pixlar utanför zonens nedre högra hörn, och vid västra kanten är det precis där namnet står: K19 ställer namnet bredvid sin zon på sidan bort från kanten, tre pixlar från dess egen kant.
+`Framför D` låg därför ovanpå greppet vid fyra, sex och åtta platser, och `Framför H` likaså vid åtta.
+Handtagen fanns inte när regeln skrevs, så filtens regel visste ingenting om dem.
+
+Det är greppet som flyttar, inte namnet. Filtens regel är produktens och greppet är editorns verktyg; dessutom säger förhandsvisningen då namnen på samma millimeter som det spelade bordet, vilket är vad fliken är till för (B5).
+Innanför sin egen låda kan ett grepp aldrig hamna under zonens eget namn, eftersom namnet per regel alltid ligger utanför zonen — svaret gäller alltså varje kant och varje platsantal, inte bara den som mättes.
+
+Grinden är samma läsning igen: `felt-names.test.tsx` läser numera också varje greppruta och säger vilka namn som ligger på en, med antalet grepp utskrivet så att ett tomt urval inte kan gå igenom.
+Kvar står ett känt fall som inte är detta: med en delad yta lagd där panelen lägger den hamnar `Räknare A`:s namn på **marknadens** ruta — en grannes, vilket K19 alltid tillåtit — och därmed på dess grepp. Det är pinnat i mätningen och ligger i #424.
+
 ---
 
 ### K20. Filten skriver i ett eget typsnitt: Roboto Condensed, skeppat med appen (prototypat och byggt 2026-09-13, #95, #94)
