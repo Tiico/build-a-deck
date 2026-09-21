@@ -10,6 +10,11 @@ export type Measure = (text: string, font: MeasureFont, widthMm: number) => numb
 export const PT_TO_MM = 25.4 / 72
 const STEP_PT = 0.5
 
+// Radavståndet ett element har när mallen inte säger något. Det står här, bredvid räkningen som
+// använder det, eftersom både kompilatorn och den som mäter en ruta måste svara likadant på hur
+// högt en rad är — annars mäter de två olika kort.
+export const DEFAULT_LINE_HEIGHT = 1.25
+
 // One run of text that has to find room on lines of its own, and what the layout puts around it,
 // in ems of the element's font (#308): the gap above it, and the indent taken off its width. A
 // paragraph has neither; a list item has both, and measured as part of the paragraph above it a

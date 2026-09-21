@@ -297,6 +297,28 @@ describe('a move as one step back', () => {
 // The same defect one surface over: the table writes a cell per keystroke, so a word typed into
 // one cell was a letter per press of Ctrl+Z — and the letters came back in a field the designer
 // had already left, which reads as the editor typing by itself.
+//
+// `body` is a writing area since L39 (#324), and a writing area is not something `userEvent` can
+// type into: jsdom has no editing engine behind `contenteditable`, so a press there changes
+// nothing and a test written that way would be green without meaning anything. What a browser
+// really does is change the nodes and say `input`, once per keystroke — so that is what is done
+// here, letter by letter, and the cell answers the way it answers a hand. What is asked of it is
+// what was asked before: a word typed without leaving is one step back, and the string is the
+// string (D3).
+const bodyCell = (cardRef: string) => screen.getByLabelText(`${cardRef} body`)
+const bodyText = (cardRef: string) => bodyCell(cardRef).textContent
+async function writeBody(cardRef: string, text: string) {
+  const cell = bodyCell(cardRef)
+  cell.focus()
+  for (let n = 0; n <= text.length; n++) {
+    // The browser writes into the paragraph the caret stands in, and the cell reads its own
+    // elements back out — `tillStrang` is the only way out of them, here as in the editor.
+    const p = cell.querySelector('p') ?? cell.appendChild(cell.ownerDocument.createElement('p'))
+    p.textContent = text.slice(0, n)
+    fireEvent.input(cell)
+  }
+}
+
 describe('a cell typed into as one step back', () => {
   it('takes the whole word back in one press, and the cell beside it is its own step', async () => {
     await openEditor()
@@ -304,13 +326,13 @@ describe('a cell typed into as one step back', () => {
     const title = (await screen.findByLabelText('dragon title')) as HTMLInputElement
     await userEvent.clear(title)
     await userEvent.type(title, 'Drakhona')
-    const body = (await screen.findByLabelText('dragon body')) as HTMLInputElement
-    await userEvent.clear(body)
-    await userEvent.type(body, 'Spyr eld.')
+    await screen.findByLabelText('dragon body')
+    await writeBody('dragon', 'Spyr eld.')
+    await waitFor(() => expect(bodyText('dragon')).toBe('Spyr eld.'))
     ;(document.activeElement as HTMLElement | null)?.blur()
 
     fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
-    await waitFor(() => expect((screen.getByLabelText('dragon body') as HTMLInputElement).value).toBe('Flygande.'))
+    await waitFor(() => expect(bodyText('dragon')).toBe('Flygande.'))
     // The title is untouched by that press: the two cells are two things she did.
     expect((screen.getByLabelText('dragon title') as HTMLInputElement).value).toBe('Drakhona')
 

@@ -207,6 +207,15 @@ export const svEditor = {
   'undo.what.version': 'en tillbakatagen version',
   // Genvägen som var en hemlighet (#33): { i en cell öppnar ikonväljaren, och nu syns det.
   'table.icon.insert': 'Sätt in en ikon',
+  // Verktygen i den öppna body-cellens huvud (L39, #324). De står alltid där cellen är öppen och
+  // rör sig aldrig, så orden är knapparnas namn och inte en instruktion.
+  'table.body.tools': 'Formatera',
+  'table.body.bold': 'Fet',
+  'table.body.italic': 'Kursiv',
+  'table.body.list': 'Punktlista',
+  // Vad huvudet säger: fältet, och kortet det gäller. Fältets namn är designerns eget ord och
+  // står som hon skrev det (A4).
+  'table.body.head': '{field} · {cardRef}',
   'table.icon.hint': 'Sätt in en ikon — eller skriv {',
   // De två står bredvid varandra i samma ram, men den ena stannar och frågar efter en fil medan
   // den andra lämnar ifrån sig en direkt. Orden säger vilken som är vilken: tre punkter är den

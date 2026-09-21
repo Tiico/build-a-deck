@@ -276,6 +276,11 @@ describe('an image on every marked card (#17, E1)', () => {
   })
 })
 
+// Driven from `title`, which is a field. `body` is a writing area since L39 (#324): a cell with
+// a paragraph in it, not a value on one line, and nothing here — `fireEvent.change`, a value, a
+// selection start — is a thing one of those has. The library itself is the same library reached
+// the same way from either, and what a brace does inside a writing area is asked where it can be
+// asked at all, in `data-table-body.test.tsx`.
 describe('the symbol picker at the brace (E4)', () => {
   const setup = () => {
     const doc = projectDoc()
@@ -284,7 +289,7 @@ describe('the symbol picker at the brace (E4)', () => {
     // what lands in the icon set and between the braces (E4, A4).
     const onSymbol = vi.fn(async (s: GameSymbol) => symbolName(s))
     render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} onSymbol={onSymbol} />)
-    const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon body') as HTMLInputElement
+    const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon title') as HTMLInputElement
     return { cell, onCell, onSymbol }
   }
   const type = (cell: HTMLInputElement, value: string) => {
@@ -301,7 +306,7 @@ describe('the symbol picker at the brace (E4)', () => {
     expect(within(list).getAllByRole('option').map((o) => o.textContent)).toEqual([expect.stringContaining('sköld')])
 
     fireEvent.click(within(list).getAllByRole('option')[0]!)
-    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'body', 'Flygande. {sköld}'))
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'title', 'Flygande. {sköld}'))
     expect(onSymbol).toHaveBeenCalledWith(expect.objectContaining({ id: 'skold' }))
     expect(screen.queryByRole('listbox')).toBeNull()
   })
@@ -314,7 +319,7 @@ describe('the symbol picker at the brace (E4)', () => {
     // The list belongs to the cell it was opened in. Left standing over a cell nobody is in, it is
     // a library about nothing — and it was standing, because what drew it asked only which cell it
     // had been opened in, never whether anyone was still there.
-    const elsewhere = within(screen.getAllByRole('row')[2]!).getByLabelText('knight body')
+    const elsewhere = within(screen.getAllByRole('row')[2]!).getByLabelText('knight title')
     fireEvent.blur(cell, { relatedTarget: elsewhere })
     fireEvent.focus(elsewhere)
     expect(screen.queryByRole('listbox')).toBeNull()
@@ -324,16 +329,16 @@ describe('the symbol picker at the brace (E4)', () => {
     const { cell, onCell } = setup()
     fireEvent.focus(cell)
     const brace = screen.getByRole('button', { name: 'Sätt in en ikon' })
-    // The cell already reads `Flygande.`, so the brace lands at the end of it.
+    // The cell already reads `Drake`, so the brace lands at the end of it.
     fireEvent.click(brace)
-    expect(onCell).toHaveBeenLastCalledWith('dragon', 'body', 'Flygande.{', expect.anything())
+    expect(onCell).toHaveBeenLastCalledWith('dragon', 'title', 'Drake{', expect.anything())
     expect(screen.getByRole('listbox', { name: 'Symboler' })).toBeTruthy()
 
     // A second press is the same press undone: the list goes, and so does the brace it wrote. A
     // brace standing alone with no finished symbol in it is not something anybody typed — it is a
     // step that was begun and taken back.
     fireEvent.click(brace)
-    expect(onCell).toHaveBeenLastCalledWith('dragon', 'body', 'Flygande.', expect.anything())
+    expect(onCell).toHaveBeenLastCalledWith('dragon', 'title', 'Drake', expect.anything())
     expect(screen.queryByRole('listbox')).toBeNull()
   })
 
@@ -348,10 +353,10 @@ describe('the symbol picker at the brace (E4)', () => {
     // A brace was written, not taken away: the value the cell is asked to hold is one character
     // longer than what it held and ends in the new brace. (The cell is controlled by the document,
     // and this test's `onCell` is a spy that does not write one, so the text it starts from is the
-    // row's own `Flygande.` rather than what was typed over it.)
+    // row's own `Drake` rather than what was typed over it.)
     const [, , written] = onCell.mock.calls.at(-1) as [string, string, string, unknown]
     expect(written.endsWith('{')).toBe(true)
-    expect(written.length).toBeGreaterThan('Flygande.'.length)
+    expect(written.length).toBeGreaterThan('Drake'.length)
     expect(screen.getByRole('listbox', { name: 'Symboler' })).toBeTruthy()
   })
 
@@ -383,7 +388,7 @@ describe('the symbol picker at the brace (E4)', () => {
     expect(within(list).getAllByRole('option')[0]!.getAttribute('aria-selected')).toBe('true')
 
     fireEvent.keyDown(cell, { key: 'Enter' })
-    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'body', `{${names[0]}}`))
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'title', `{${names[0]}}`))
 
     type(cell, '{s')
     expect(screen.getByRole('listbox')).toBeTruthy()
@@ -462,7 +467,7 @@ describe('the meaning picker after the bar (E4)', () => {
     const doc = { ...projectDoc(), palette }
     const onCell = vi.fn()
     render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} onSymbol={vi.fn(async (s: GameSymbol) => symbolName(s))} />)
-    const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon body') as HTMLInputElement
+    const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon title') as HTMLInputElement
     return { cell, onCell }
   }
   const type = (cell: HTMLInputElement, value: string) => {
@@ -486,7 +491,7 @@ describe('the meaning picker after the bar (E4)', () => {
     fireEvent.change(cell, { target: { value: 'Skada {sköld|f 2.', selectionStart: 14 } })
     fireEvent.keyDown(cell, { key: 'Enter' })
 
-    expect(onCell).toHaveBeenCalledWith('dragon', 'body', 'Skada {sköld|fara} 2.')
+    expect(onCell).toHaveBeenCalledWith('dragon', 'title', 'Skada {sköld|fara} 2.')
   })
 
   it('says nothing when the deck has named no meanings yet, rather than offering an empty list', () => {
@@ -501,12 +506,16 @@ describe('the meaning picker after the bar (E4)', () => {
 // bar and the meaning's id could not insert a coloured symbol at all: the picker wrote `{namn}`
 // and the rest was hers to type. Now the meanings are drawn as coloured copies of the very symbol
 // she chose, every one of them on the card's paper, and the box says the string it will write.
+//
+// The cell here is `title`, which is a field. `body` is a writing surface (L39, #324) and its
+// brace is driven by nodes rather than by a value setter, so the same box is measured there, in
+// `data-table-body.test.tsx` — and that it is the *same* box is what that test's last case says.
 describe('the meaning chosen in the same box as the symbol (L34)', () => {
   const setup = (palette: Record<string, string> = { fara: '#8f2d20', vinst: '#2f6136' }, icons: Record<string, string> = {}) => {
     const doc = { ...projectDoc(), palette, icons }
     const onCell = vi.fn()
     render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} onSymbol={vi.fn(async (s: GameSymbol) => symbolName(s))} />)
-    const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon body') as HTMLInputElement
+    const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon title') as HTMLInputElement
     return { cell, onCell, doc }
   }
   const type = (cell: HTMLInputElement, value: string) => {
@@ -522,7 +531,7 @@ describe('the meaning chosen in the same box as the symbol (L34)', () => {
     fireEvent.click(within(symbols).getAllByRole('option')[0]!)
 
     // Choosing the symbol writes nothing yet: the meaning is the next question, in the same box.
-    expect(onCell).not.toHaveBeenCalledWith('dragon', 'body', expect.stringContaining('sköld'))
+    expect(onCell).not.toHaveBeenCalledWith('dragon', 'title', expect.stringContaining('sköld'))
     const meanings = screen.getByRole('listbox', { name: 'Betydelser' })
     const options = within(meanings).getAllByRole('option')
     expect(options.map((o) => o.textContent)).toEqual(['Utan betydelse', 'fara', 'vinst'])
@@ -544,7 +553,7 @@ describe('the meaning chosen in the same box as the symbol (L34)', () => {
     expect(inkOf(within(symbols).getAllByRole('option')[0]!)).toContain('background:#8f2d20')
 
     fireEvent.click(options[2]!)
-    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'body', 'Skada {sköld|vinst}'))
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'title', 'Skada {sköld|vinst}'))
     expect(screen.queryByRole('listbox')).toBeNull()
   })
 
@@ -554,7 +563,7 @@ describe('the meaning chosen in the same box as the symbol (L34)', () => {
     fireEvent.click(within(screen.getByRole('listbox', { name: 'Symboler' })).getAllByRole('option')[0]!)
     fireEvent.click(within(screen.getByRole('listbox', { name: 'Betydelser' })).getAllByRole('option')[0]!)
 
-    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'body', 'Skada {sköld}'))
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'title', 'Skada {sköld}'))
   })
 
   it('has no meaning step when the game has named no meanings: one line says why, and the symbol goes in as ink', async () => {
@@ -566,7 +575,7 @@ describe('the meaning chosen in the same box as the symbol (L34)', () => {
     expect(screen.getByText('{sköld}')).toBeTruthy()
 
     fireEvent.click(within(screen.getByRole('listbox', { name: 'Symboler' })).getAllByRole('option')[0]!)
-    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'body', 'Skada {sköld}'))
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'title', 'Skada {sköld}'))
     // Nothing was asked in between: the step does not exist, rather than being skipped.
     expect(screen.queryByRole('listbox')).toBeNull()
   })
@@ -578,7 +587,7 @@ describe('the meaning chosen in the same box as the symbol (L34)', () => {
     expect(cell.getAttribute('aria-activedescendant')).toBe(within(symbols).getAllByRole('option')[0]!.id)
     fireEvent.keyDown(cell, { key: 'Enter' })
     // Enter chose the symbol and moved the keys onto «Utan betydelse»; nothing is written yet.
-    expect(onCell).not.toHaveBeenCalledWith('dragon', 'body', expect.stringContaining('sköld'))
+    expect(onCell).not.toHaveBeenCalledWith('dragon', 'title', expect.stringContaining('sköld'))
     const meanings = screen.getByRole('listbox', { name: 'Betydelser' })
     const options = within(meanings).getAllByRole('option')
     expect(options[0]!.getAttribute('aria-selected')).toBe('true')
@@ -587,7 +596,7 @@ describe('the meaning chosen in the same box as the symbol (L34)', () => {
     expect(cell.getAttribute('aria-activedescendant')).toBe(options[1]!.id)
     fireEvent.keyDown(cell, { key: 'Enter' })
 
-    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'body', 'Skada {sköld|fara}'))
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'title', 'Skada {sköld|fara}'))
   })
 
   it('keeps the typed road: the bar opens the meanings as before, and now as copies of the game’s own symbol', () => {
@@ -603,7 +612,7 @@ describe('the meaning chosen in the same box as the symbol (L34)', () => {
     // And Enter writes the same string it always wrote.
     fireEvent.change(cell, { target: { value: 'Skada {sköld|f', selectionStart: 14 } })
     fireEvent.keyDown(cell, { key: 'Enter' })
-    expect(onCell).toHaveBeenCalledWith('dragon', 'body', 'Skada {sköld|fara}')
+    expect(onCell).toHaveBeenCalledWith('dragon', 'title', 'Skada {sköld|fara}')
   })
 })
 

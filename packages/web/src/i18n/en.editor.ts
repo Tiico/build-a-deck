@@ -184,6 +184,12 @@ export const enEditor = {
   'undo.what.version': 'a version taken back',
   // The shortcut that was a secret (#33): { in a cell opens the icon picker, and now it shows.
   'table.icon.insert': 'Insert an icon',
+  // The tools in the open body cell's head (L39, #324).
+  'table.body.tools': 'Format',
+  'table.body.bold': 'Bold',
+  'table.body.italic': 'Italic',
+  'table.body.list': 'Bullet list',
+  'table.body.head': '{field} · {cardRef}',
   'table.icon.hint': 'Insert an icon — or type {',
   'table.import': 'Import CSV…',
   'table.export': 'Download CSV',

@@ -30,7 +30,10 @@ function pickerMarkup(): string {
     <DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} onSymbol={vi.fn(async (s: GameSymbol) => symbolName(s))} />,
   )
   try {
-    const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon body') as HTMLInputElement
+    // `title` and not `body`: a body column is a writing surface (L39, #324) and has no value
+    // setter. What is laid into Chromium is the picker's markup, which is the same box either
+    // way — `data-table-body.test.tsx` is where that sameness is asserted.
+    const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon title') as HTMLInputElement
     fireEvent.change(cell, { target: { value: 'Skada {sk', selectionStart: 9 } })
     fireEvent.click(within(screen.getByRole('listbox', { name: 'Symboler' })).getAllByRole('option')[0]!)
     return container.innerHTML

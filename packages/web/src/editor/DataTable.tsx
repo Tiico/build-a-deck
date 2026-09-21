@@ -6,6 +6,8 @@ import { ColumnDoor } from './ColumnDoor.js'
 import { Crown, CrownBox, CrownDrawer, CrownFoot, CrownRail } from './Crown.js'
 import { DragDoor } from './DragDoor.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
+import { bodyFieldsOf } from './body.js'
+import { BodyCell, type BodyCellProps } from './BodyCell.js'
 import { DropSays, dropSurface, oneFile } from './dropping.js'
 import { PictureLibraryDialog, type LibraryPicture } from './PictureLibrary.js'
 import { searchSymbols, symbolName, type GameSymbol } from './symbols.js'
@@ -185,6 +187,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // The card's ground, which every sample stands on (L34): the same reading the palette's own
   // contrast check judges a meaning's colour against.
   const paper = useMemo(() => groundOf(doc, 'front'), [doc])
+  // Projektets symboler som bilder: proven i rutan ritas av dem, och `{namn}` i en body-cell
+  // ritas som symbolen och inte som sitt namn. Samma upplösning som förhandsvisningen gör (E1).
   const gameIcons = useMemo(() => previewIcons(doc, assetBase), [doc, assetBase])
   // The meanings the deck has named, narrowed by what has been typed after the bar. A deck that
   // has named none offers nothing rather than an empty list — there is nothing to pick.
@@ -221,12 +225,21 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // still (#46). One boolean and not the cell itself: moving from one cell to the next is not a
   // moment to re-measure, it is the same edit going on.
   const editing = here !== null
-  const openBrace = (cardRef: string, field: string, el: HTMLInputElement, wrote = false) => {
+  // Var markören ska stå efter att verktyget skrivit åt designern — en symbol tagen ur listan i
+  // en body-cell — och vilken klammer knappen `{ }` själv skrev. Båda är ett meddelande till
+  // nästa rendering och inget tillstånd att rita av, så de bor i en ref.
+  const caretAfter = useRef<{ cardRef: string; field: string; at: number } | null>(null)
+  const braceByButton = useRef(false)
+  const openBrace = (cardRef: string, field: string, el: HTMLInputElement, wrote = false) =>
+    openBraceAt(cardRef, field, el.value, el.selectionStart ?? el.value.length, wrote)
+  const openBraceAt = (cardRef: string, field: string, value: string, caret: number, wrote = false) => {
     // Where the brace stands behind the caret and what has been written since it is the same
     // question the rulebook's `[[` asks, so it is asked in one place (L23, #215). A closed brace
     // is written text and stops the lookup; a bare number in braces is a pip (L2) and is this
     // surface's own exception, since only a cell has pips in it.
-    const found = triggerBehind(el.value, el.selectionStart ?? el.value.length, BRACE, BRACE_STOPS)
+    const byButton = braceByButton.current
+    braceByButton.current = false
+    const found = triggerBehind(value, caret, BRACE, BRACE_STOPS)
     if (!found || /^\d+$/.test(found.query)) return closeBrace()
     // The bar is the whole of the switch: before it the designer is naming a symbol, after it the
     // meaning to draw it in. Nothing has to be learned and no key is taken from moving around the
@@ -234,8 +247,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const bar = found.query.indexOf('|')
     setBrace(
       bar < 0
-        ? { cardRef, field, at: found.at, query: found.query, role: null, wrote }
-        : { cardRef, field, at: found.at, query: found.query.slice(0, bar), role: found.query.slice(bar + 1), wrote },
+        ? { cardRef, field, at: found.at, query: found.query, role: null, wrote: wrote || byButton }
+        : { cardRef, field, at: found.at, query: found.query.slice(0, bar), role: found.query.slice(bar + 1), wrote: wrote || byButton },
     )
     setPicked(null)
     setChoice(0)
@@ -257,6 +270,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       const before = current.slice(0, open.at)
       const after = current.slice(open.at + 1 + open.query.length)
       const written = bare ? `${before.replace(/\{$/, '')}${token(name, role, true)}${after}`.trim() : `${before}${token(name, role, false)}${after}`
+      caretAfter.current = { cardRef: open.cardRef, field: open.field, at: written.length - after.length }
       onCell(open.cardRef, open.field, written)
     })
   }
@@ -283,7 +297,90 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const before = current.slice(0, open.at)
     const after = current.slice(open.at + 1 + open.query.length + 1 + open.role.length)
     const written = bare ? `${before.replace(/\{$/, '')}${open.query}|${role}${after}`.trim() : `${before}{${open.query}|${role}}${after}`
+    caretAfter.current = { cardRef: open.cardRef, field: open.field, at: written.length - after.length }
     onCell(open.cardRef, open.field, written)
+  }
+
+  // Klammerns väljare, skriven en gång för varje sorts cell som har en. Ett vanligt fält och en
+  // body-cells skrivyta är två skrivytor i samma flik, och två väljare där vore just felet L34
+  // stängde: rutan är samma ruta, tangenterna är samma tangenter, och aria pekar på samma listor.
+  // Därför står de tre som funktioner här och inte som JSX i var sin gren.
+  //
+  // Vad rutan öppnar på beror bara på `stage`, och `stage` hör till den enda klammer som är öppen
+  // — bara en cell åt gången skrivs det i.
+  const cellPicking = (cardRef: string, field: string) => brace?.cardRef === cardRef && brace.field === field
+  // Tangenterna listan svarar på, hörda där markören står och inte i listan: fokus stannar i
+  // meningen som skrivs. Räknandet av hur många som går att stega mellan följer steget.
+  const onListKey = (cardRef: string, field: string, e: { key: string; preventDefault(): void }) => {
+    if (!cellPicking(cardRef, field)) return
+    const picking = stage === 'meaning' ? meanings.length : stage === 'typed' ? roleMatches.length : matches.length
+    const act = symbolListKey(e.key, picking, choice)
+    if (!act) return
+    e.preventDefault()
+    if (act === 'close') return closeBrace()
+    if (act === 'pick') {
+      if (stage === 'typed') return void (activeRole && takeRole(activeRole.role))
+      if (stage === 'meaning') return void (picked && takeSymbol(picked, activeMeaning?.role ?? null))
+      return void (active && chooseSymbol(active))
+    }
+    setChoice(act.active)
+  }
+  // Vilken lista skrivytan pekar på, och vilket alternativ i den som är det aktiva.
+  const listAria = (cardRef: string, field: string): Record<string, string> =>
+    !cellPicking(cardRef, field)
+      ? {}
+      : {
+          ...(stage === 'symbol' && active ? { 'aria-controls': CELL_SYMBOLS, 'aria-activedescendant': symbolOptionId(CELL_SYMBOLS, active) } : {}),
+          ...(stage === 'meaning' && activeMeaning ? { 'aria-controls': CELL_MEANINGS, 'aria-activedescendant': roleOptionId(CELL_MEANINGS, activeMeaning.role) } : {}),
+          ...(stage === 'typed' && activeRole ? { 'aria-controls': CELL_ROLES, 'aria-activedescendant': roleOptionId(CELL_ROLES, activeRole.role) } : {}),
+        }
+  // Själva rutan. Den hänger på cellen, som är det `position: relative` står på, så den svävar
+  // över tabellen i stället för att växa raden.
+  const cellPicker = (cardRef: string, field: string) => {
+    const open = brace
+    if (!open || !cellPicking(cardRef, field)) return null
+    return (
+      <>
+        {stage === 'typed' && roleMatches.length > 0 && (
+          // The deck's meanings, where the bar was just typed. When the name before the bar is
+          // one of the game's symbols, each meaning is a coloured copy of it on the card's paper
+          // (L34); a name the game lacks has nothing to copy and keeps the swatch.
+          <>
+            <SymbolSheet />
+            <RoleList
+              id={CELL_ROLES}
+              className="byd-data-symbols"
+              roles={roleMatches}
+              active={choice}
+              label={t('table.roles')}
+              sample={doc.icons[open.query] ? ({ role }) => <SymbolSample written={`{${open.query}|${role}}`} symbols={{ icons: gameIcons, palette: doc.palette }} paper={paper} /> : undefined}
+              onPick={(role) => role !== null && takeRole(role)}
+            />
+          </>
+        )}
+        {stage !== 'typed' && matches.length > 0 && (
+          // The library where the cursor stands (E4): the same set the Symboler tab fills and the
+          // rail's Ikon tool opens, reached without leaving the sentence being written — and the
+          // same list component, so it cannot come to differ. The meaning is chosen in the same
+          // box (L34).
+          <SymbolBox
+            symbolsId={CELL_SYMBOLS}
+            meaningsId={CELL_MEANINGS}
+            className="byd-data-symbols"
+            symbols={matches}
+            active={picked ? matches.indexOf(picked) : choice}
+            picked={picked}
+            meanings={meanings}
+            meaningActive={stage === 'meaning' ? choice : null}
+            paper={paper}
+            palette={doc.palette}
+            writes={writes}
+            onPickSymbol={chooseSymbol}
+            onPickMeaning={(role) => active && takeSymbol(active, role)}
+          />
+        )}
+      </>
+    )
   }
 
   // What moved since the version being compared with (B4), and the cards that are no longer
@@ -293,6 +390,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const goneRows: ProjectRow[] = compareWith && diff ? compareWith.doc.rows.filter((r) => diff.rows.some((c) => c.kind === 'removed' && c.cardRef === r.id)) : []
   const wasCell = (cardRef: string, field: string) => compareWith?.doc.rows.find((r) => r.id === cardRef)?.fields[field]
   const imageFields = assetBase && onUpload ? imageFieldsOf(doc) : []
+  // Kolumnerna vars ruta på kortet rymmer två rader, och som därför kan visa ett stycke eller en
+  // punkt (L39). De ritas som den form de bär i stället för som tecknen som bär den.
+  const bodyFields = bodyFieldsOf(doc)
   const images = assetsInUse(doc)
   // The library window (#296, variant B): opened from a picture cell or from the marked cards,
   // and it is one window for both. What it is about is the one thing the table has to hold —
@@ -1218,6 +1318,49 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       )}
                     </div>
                   </td>
+                ) : bodyFields.includes(f) ? (
+                  <BodyTd
+                    key={f}
+                    field={f}
+                    cardRef={cardRef}
+                    doc={doc}
+                    row={row}
+                    t={t}
+                    icons={gameIcons}
+                    was={moved(changeOf(cardRef), f) ? String(wasCell(cardRef, f) ?? '') : null}
+                    picking={brace?.cardRef === cardRef && brace.field === f}
+                    open={here?.cardRef === cardRef && here.field === f}
+                    caretAt={caretAfter.current?.cardRef === cardRef && caretAfter.current.field === f ? caretAfter.current.at : null}
+                    onWrite={(text, at) => {
+                      typing.current[`${cardRef}:${f}`] = text
+                      onCell(cardRef, f, text, cellGesture())
+                      if (onSymbol) openBraceAt(cardRef, f, text, at)
+                    }}
+                    onOpen={() => {
+                      visits.visit.onFocus()
+                      setHeld(shown.map((r) => r.id))
+                      setHere({ cardRef, field: f })
+                    }}
+                    onClose={() => {
+                      setHeld(null)
+                      setHere((at) => (at?.cardRef === cardRef && at.field === f ? null : at))
+                      if (brace?.cardRef === cardRef && brace.field === f) closeBrace()
+                    }}
+                    onSymbol={() => {
+                      // Ett andra tryck på `{ }` är listans eget: den stängs, och ingen ny
+                      // klammer skrivs (#236 i den form den kan ta i en skrivyta).
+                      if (!(brace?.cardRef === cardRef && brace.field === f && brace.wrote)) {
+                        braceByButton.current = true
+                        return false
+                      }
+                      closeBrace()
+                      return true
+                    }}
+                    onListKey={(e) => onListKey(cardRef, f, e)}
+                    aria={listAria(cardRef, f)}
+                  >
+                    {cellPicker(cardRef, f)}
+                  </BodyTd>
                 ) : (
                 <td
                   key={f}
@@ -1250,20 +1393,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     // (E4). They are heard here rather than in the list because the focus stays
                     // in the sentence being written — the rail hears them on the tool for the
                     // same reason, and both ask `symbolListKey` what the key meant.
-                    onKeyDown={(e) => {
-                      if (!brace || brace.cardRef !== cardRef || brace.field !== f) return
-                      const picking = stage === 'meaning' ? meanings.length : stage === 'typed' ? roleMatches.length : matches.length
-                      const act = symbolListKey(e.key, picking, choice)
-                      if (!act) return
-                      e.preventDefault()
-                      if (act === 'close') return closeBrace()
-                      if (act === 'pick') {
-                        if (stage === 'typed') return void (activeRole && takeRole(activeRole.role))
-                        if (stage === 'meaning') return void (picked && takeSymbol(picked, activeMeaning?.role ?? null))
-                        return void (active && chooseSymbol(active))
-                      }
-                      setChoice(act.active)
-                    }}
+                    onKeyDown={(e) => onListKey(cardRef, f, e)}
                     onFocus={() => {
                       visits.visit.onFocus()
                       setHeld(shown.map((r) => r.id))
@@ -1280,9 +1410,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       if (brace?.cardRef === cardRef && brace.field === f) closeBrace()
                     }}
                     aria-label={`${cardRef} ${f}`}
-                    {...(brace?.cardRef === cardRef && brace.field === f && stage === 'symbol' && active ? { 'aria-controls': CELL_SYMBOLS, 'aria-activedescendant': symbolOptionId(CELL_SYMBOLS, active) } : {})}
-                    {...(brace?.cardRef === cardRef && brace.field === f && stage === 'meaning' && activeMeaning ? { 'aria-controls': CELL_MEANINGS, 'aria-activedescendant': roleOptionId(CELL_MEANINGS, activeMeaning.role) } : {})}
-                    {...(brace?.cardRef === cardRef && brace.field === f && stage === 'typed' && activeRole ? { 'aria-controls': CELL_ROLES, 'aria-activedescendant': roleOptionId(CELL_ROLES, activeRole.role) } : {})}
+                    {...listAria(cardRef, f)}
                   />
                   {/* The brace, made visible in the cell the designer is standing in (#33). It
                       writes the brace and opens the same picker typing one does — one way in, seen
@@ -1331,45 +1459,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     </button>
                   )}
                   </div>
-                  {brace?.cardRef === cardRef && brace.field === f && stage === 'typed' && roleMatches.length > 0 && (
-                    // The deck's meanings, where the bar was just typed. When the name before the
-                    // bar is one of the game's symbols, each meaning is a coloured copy of it on
-                    // the card's paper (L34); a name the game lacks has nothing to copy and keeps
-                    // the swatch.
-                    <>
-                      <SymbolSheet />
-                      <RoleList
-                        id={CELL_ROLES}
-                        className="byd-data-symbols"
-                        roles={roleMatches}
-                        active={choice}
-                        label={t('table.roles')}
-                        sample={doc.icons[brace.query] ? ({ role }) => <SymbolSample written={`{${brace.query}|${role}}`} symbols={{ icons: gameIcons, palette: doc.palette }} paper={paper} /> : undefined}
-                        onPick={(role) => role !== null && takeRole(role)}
-                      />
-                    </>
-                  )}
-                  {brace?.cardRef === cardRef && brace.field === f && stage !== 'typed' && matches.length > 0 && (
-                    // The library where the cursor stands (E4): the same set the Symboler tab
-                    // fills and the rail's Ikon tool opens, reached without leaving the sentence
-                    // being written — and the same list component, so it cannot come to differ.
-                    // The meaning is chosen in the same box (L34).
-                    <SymbolBox
-                      symbolsId={CELL_SYMBOLS}
-                      meaningsId={CELL_MEANINGS}
-                      className="byd-data-symbols"
-                      symbols={matches}
-                      active={picked ? matches.indexOf(picked) : choice}
-                      picked={picked}
-                      meanings={meanings}
-                      meaningActive={stage === 'meaning' ? choice : null}
-                      paper={paper}
-                      palette={doc.palette}
-                      writes={writes}
-                      onPickSymbol={chooseSymbol}
-                      onPickMeaning={(role) => active && takeSymbol(active, role)}
-                    />
-                  )}
+                  {cellPicker(cardRef, f)}
                 </td>
                 ),
               )}
@@ -1455,6 +1545,44 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
         />
       )}
     </div>
+  )
+}
+
+// Body-cellen i tabellen (L39, #324). Cellen är bara ramen: taket, huvudet och skrivytan hör
+// till `BodyCell`, och står med flit *inuti* `<td>` — `max-height` på en tabellcell hedras inte,
+// en cell växer med sitt innehåll oavsett, vilket prototypen mätte som 101 px där 34 begärdes.
+function BodyTd({
+  field,
+  cardRef,
+  doc,
+  row,
+  t,
+  was,
+  picking,
+  children,
+  ...cell
+}: Omit<BodyCellProps, 'label' | 'head' | 'value'> & {
+  field: string
+  cardRef: string
+  doc: ProjectDoc
+  row: ProjectRow['fields']
+  t: T
+  was: string | null
+  picking: boolean
+}) {
+  const value = row[field]
+  return (
+    <td data-col={field} className={picking ? 'byd-data-picking' : undefined}>
+      {was !== null && <s className="byd-data-was">{was}</s>}
+      <BodyCell
+        {...cell}
+        label={`${cardRef} ${field}`}
+        head={t('table.body.head', { field: fieldLabel(field, t), cardRef })}
+        value={value === undefined || value === null ? '' : String(value)}
+      >
+        {children}
+      </BodyCell>
+    </td>
   )
 }
 

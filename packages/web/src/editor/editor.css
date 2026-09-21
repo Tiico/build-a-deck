@@ -1443,6 +1443,74 @@
 .byd-data tr[data-change='added'] td { background: rgba(125, 211, 160, 0.1); }
 .byd-data tr[data-change='removed'] td { background: rgba(224, 92, 92, 0.1); }
 .byd-data tr[data-change='removed'] input { color: #9aa3b8; text-decoration: line-through; }
+/* ── Body-cellen (L39, #324) ─────────────────────────────────────────────────────────────────
+   Samma cell stängd och öppen. Stängd visar den formen — fet som fet, stycken som stycken,
+   punkter som punkter — med ett tak på två rader och en uttoning under. Öppen får den ett huvud,
+   och i huvudet står verktygen.
+
+   Taket sitter på `.byd-data-body` och aldrig på cellen. `max-height` på ett `<td>` hedras inte:
+   en tabellcell växer med sitt innehåll oavsett vad som skrivs, och prototypens första mätning
+   gav 101 px där 34 var begärt. L39 kallar det lösningens bärande del, och det är därför taket
+   står på ett element *inuti* cellen.
+
+   Måttet är radens och aldrig en pixel: två rader av cellens egen text, vad än läsarens typsnitt
+   eller grad råkar vara. */
+.byd-data { --byd-data-body-line: 1.45; --byd-data-body-lines: 2; }
+.byd-data-bodycell { display: block; }
+.byd-data-body {
+  padding: 8px var(--byd-data-cell-pad);
+  color: #ddd;
+  font-size: 12px;
+  line-height: var(--byd-data-body-line);
+  max-height: calc(var(--byd-data-body-line) * var(--byd-data-body-lines) * 1em);
+  overflow: hidden;
+  position: relative;
+  outline: none;
+  overflow-wrap: anywhere;
+}
+/* Uttoningen säger att något är kvar under kanten utan att säga hur mycket — vilket är precis
+   vad den vet. Den ritas bara när det finns något att fasa ut: `markValues` sätter `data-more`
+   på skrivytan vars innehåll går under taket, på samma varv som den frågar de vanliga cellerna
+   om deras värde ryms (#46). Jämt ritad lägger gradienten sina understa pixlar över
+   underlängderna i en rad som redan är hel, och en signal som alltid står på säger ingenting. */
+.byd-data-body[data-more]::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 12px;
+  background: linear-gradient(rgb(27 29 35 / 0%), #1b1d23);
+  pointer-events: none;
+}
+.byd-data tr[aria-selected='true'] .byd-data-body[data-more]::after { background: linear-gradient(rgb(47 58 85 / 0%), #2f3a55); }
+.byd-data-body > :first-child { margin-top: 0; }
+.byd-data-body > :last-child { margin-bottom: 0; }
+.byd-data-body p { margin: 0 0 0.4em; }
+.byd-data-body ul { margin: 0 0 0.4em; padding-left: 1.15em; }
+.byd-data-body li { margin: 0; }
+.byd-data-body strong { color: #fff; }
+/* Symbolen som chip: det designern ser är bilden eller namnet, och det strängen får är `{namn}`
+   ur chipets eget attribut (`body.ts`). */
+.byd-body-symbol { display: inline-flex; align-items: center; gap: 2px; vertical-align: -2px; }
+.byd-body-symbol img { width: 1.1em; height: 1.1em; object-fit: contain; }
+/* Öppen: taket lyfts, uttoningen tas bort, och skrivytan får plats att skriva i. */
+.byd-data-bodycell[data-open] .byd-data-body { max-height: none; min-height: calc(var(--byd-data-body-line) * 3em); }
+.byd-data-bodycell[data-open] .byd-data-body[data-more]::after { content: none; }
+.byd-data-bodycell[data-open] { outline: 1px solid var(--byd-editor-primary-mark); border-radius: 8px; }
+/* Huvudet står alltid på samma plats i den öppna cellen och rör sig aldrig. Verktygen syns finnas
+   innan man börjar skriva — en rad som tonar fram vid fokus säger ingenting till den som ännu
+   inte klickat (L39). */
+.byd-data-bodyhead { display: flex; align-items: center; gap: 8px; padding: 0 4px 0 var(--byd-data-cell-pad); border-bottom: 1px solid #2f333d; }
+.byd-data-bodyhead > b { color: var(--byd-editor-quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; white-space: nowrap; }
+.byd-data-bodytools { display: flex; gap: 2px; margin-left: auto; }
+/* Knapparna är fulla träffytor som allt annat i editorn: tillgängligheten är inte avspänd för att
+   ytan är tät (L12). */
+.byd-data-bodytools button { min-width: var(--byd-tap); min-height: var(--byd-tap); border: 1px solid transparent; border-radius: 6px; padding: 0 var(--byd-s1); color: #c7cede; font-size: 12px; }
+.byd-data-bodytools button[data-tool='bold'] { font-weight: 800; }
+.byd-data-bodytools button[data-tool='italic'] { font-style: italic; }
+.byd-data-bodytools button[aria-pressed='true'] { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-mark); color: var(--byd-editor-primary-ink); }
+
 /* The symbol picker at the brace (E4): it opens under the cell being typed in. */
 .byd-data td { position: relative; }
 .byd-data-picking { z-index: 2; }

@@ -1,6 +1,6 @@
 import type { ComponentTypeDef } from '@byd/engine'
 import { parseBody, parseInline, type InlineNode } from './inline.js'
-import { BLOCK_GAP_EM, INDENT_EM, ITEM_GAP_EM, detectScript, estimateHeight, fitText, type Measure } from './fit.js'
+import { BLOCK_GAP_EM, DEFAULT_LINE_HEIGHT, INDENT_EM, ITEM_GAP_EM, detectScript, estimateHeight, fitText, type Measure } from './fit.js'
 import { paintOf, shadowCss, type Bind, type Condition, type Element, type FaceTemplate, type Pattern, type Row, type Template } from './model.js'
 import type { Motif } from './motif.js'
 import { frameWindow, type Frame, type Nudge } from './frame.js'
@@ -186,7 +186,7 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
     case 'text': {
       const value = resolve(el.bind, input.row)
       const f = el.font
-      const mfont = { family: f.family, sizePt: f.sizePt, weight: f.weight ?? 400, lineHeight: f.lineHeight ?? 1.25 }
+      const mfont = { family: f.family, sizePt: f.sizePt, weight: f.weight ?? 400, lineHeight: f.lineHeight ?? DEFAULT_LINE_HEIGHT }
       const minPt = input.type.print.minPtByScript[detectScript(value)] ?? input.type.print.minPtByScript['Latn'] ?? 6
       const measure = input.measure ?? estimateHeight
       const fit = (el.fit ?? 'shrink') === 'shrink'
@@ -201,7 +201,7 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
       }
       css.push(
         `[data-element="${attr(el.id)}"]{left:${el.x + dx}mm;top:${el.y + dy}mm;width:${el.w}mm;height:${el.h}mm;font-size:${fit.sizePt}pt;` +
-          `font-family:${familyOf(f.family, input.fonts)};font-weight:${f.weight ?? 400};text-align:${f.align ?? 'left'};line-height:${f.lineHeight ?? 1.25};color:${el.color};}`,
+          `font-family:${familyOf(f.family, input.fonts)};font-weight:${f.weight ?? 400};text-align:${f.align ?? 'left'};line-height:${f.lineHeight ?? DEFAULT_LINE_HEIGHT};color:${el.color};}`,
       )
       html.push(
         `<div data-element="${attr(el.id)}" data-fit="${el.fit ?? 'shrink'}" data-size-pt="${f.sizePt}" data-min-pt="${minPt}">` +

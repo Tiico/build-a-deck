@@ -235,6 +235,20 @@ export function markValues(box: Element): void {
   const table = box.querySelector('table.byd-data') as HTMLTableElement | null
   if (!table) return
   for (const cell of Array.from(table.querySelectorAll('tbody td[data-col]')) as HTMLTableCellElement[]) {
+    // En body-cell (L39, #324) svarar på den andra axeln. Den bryter raden i stället för att
+    // rulla i sidled, så den kan inte kapas åt höger; det som kan hamna utanför den är raderna
+    // under taket. Uttoningen under kanten är cellens sätt att säga just det, och den ritas
+    // därför bara här — jämt ritad lägger den sin gradient över underlängderna på en rad som
+    // redan är hel, vilket är en signal som ljuger genom att alltid stå på.
+    const body = cell.querySelector('.byd-data-body') as HTMLElement | null
+    if (body) {
+      cell.removeAttribute('data-cut')
+      // En pixels slack: en radhöjd är sällan ett helt tal, och en avrundning åt fel håll är
+      // inte en rad till under kanten.
+      if (body.scrollHeight > body.clientHeight + 1) body.setAttribute('data-more', 'true')
+      else body.removeAttribute('data-more')
+      continue
+    }
     const field = cell.querySelector('input:not([type=checkbox])') as HTMLInputElement | null
     const runs = field ? field.scrollWidth > field.clientWidth : cell.scrollWidth > cell.clientWidth
     if (runs) cell.setAttribute('data-cut', 'true')

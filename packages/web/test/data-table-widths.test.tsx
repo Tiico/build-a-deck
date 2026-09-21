@@ -45,9 +45,18 @@ const CARDS = [
 
 // The template binds the four fields the designer made, in the order the head shows them; `antal`
 // is the engine's and comes last on its own (L4).
+//
+// The boxes are the ones the deck describes, and since L39 (#324) that matters here: how tall a
+// box is against its own type size is what tells the table whether the column holds a paragraph
+// or a word, and a column that holds a paragraph is edited as one rather than in a field. This
+// template used to be four identical ten-millimetre boxes, written when nothing read it — which
+// made a cost of `3` a box deep enough for a rules text, and every column of the fixture a
+// writing area. The deck below has always said what each of these is; the card now says the same.
+const BOX: Record<string, number> = { art: 6, title: 6, body: 30, cost: 6 }
 function deckDoc(): ProjectDoc {
   const doc = projectDoc()
   const front = doc.template.faces.front!
+  let y = 5
   return {
     ...doc,
     template: {
@@ -56,17 +65,22 @@ function deckDoc(): ProjectDoc {
         ...doc.template.faces,
         front: {
           ...front,
-          base: ['art', 'title', 'body', 'cost'].map((field, i) => ({
-            kind: 'text' as const,
-            id: field,
-            x: 5,
-            y: 5 + i * 12,
-            w: 53,
-            h: 10,
-            bind: { field },
-            font: { family: 'sans-serif', sizePt: 9 },
-            color: '#111',
-          })),
+          base: ['art', 'title', 'body', 'cost'].map((field) => {
+            const h = BOX[field]!
+            const top = y
+            y += h + 2
+            return {
+              kind: 'text' as const,
+              id: field,
+              x: 5,
+              y: top,
+              w: 53,
+              h,
+              bind: { field },
+              font: { family: 'sans-serif', sizePt: 9 },
+              color: '#111',
+            }
+          }),
         },
       },
     },
@@ -326,7 +340,12 @@ describe('a column is as wide as what stands in it (#46)', () => {
     // The control, and the reason there is an issue at all: as the table stood, every column of
     // the deck came out the same width to the pixel — a number as wide as a rules text, because
     // the browser was reading `size="20"` in both and never the value.
-    const DECK = ['art', 'title', 'body', 'cost', 'antal']
+    //
+    // Asked of the columns that are still fields. `body` is a writing area since L39 (#324) and
+    // has no `size` for the old layout to read, so it cannot stand in a control about what
+    // `size="20"` did — but the pair the issue actually turns on is here whole: `cost` is a digit
+    // and `title` is a word, and the old table drew them the same to the pixel.
+    const DECK = ['art', 'title', 'cost', 'antal']
     const same = DECK.map((f) => before.width[f])
     expect(same.every((w) => typeof w === 'number' && w > 0)).toBe(true)
     expect(new Set(same).size).toBe(1)
@@ -777,13 +796,20 @@ describe('the measured total is the table (#46)', () => {
   }, 60_000)
 })
 
-// A deck with one sentence in it that no desk width could hold: whatever the slack, `body` ends
-// up on its own floor and the value runs past the edge of the cell.
+// A deck with one sentence in it that no desk width could hold: whatever the slack, the column it
+// stands in ends up on its own floor and the value runs past the edge of the cell.
+//
+// It stands in `title` and not in `body`. The cue below is about a value that runs off the side
+// of a cell, and that is what a field does: a writing area wraps instead, so nothing of it is
+// ever off to the right. What a writing area can hide is the lines under its cap, and it says
+// that with a fade of its own along the bottom — `data-table-body-height.test.tsx` holds it.
+// `title` is a field of the same deck, and the sentence is as long in it as it was in the other.
 const TOO_LONG =
   'När det här kortet spelas ur handen får varje motståndare välja mellan att kasta två kort ur sin egen hand eller att lägga tillbaka det översta kortet i draghögen underst, och den som väljer det senare drar ett kort ur marknaden innan turen går vidare till nästa spelare.'
+const CUT_COL = 'title'
 function cutDoc(): ProjectDoc {
   const doc = deckDoc()
-  return { ...doc, rows: doc.rows.map((row) => (row.id === 'k3' ? { ...row, fields: { ...row.fields, body: TOO_LONG } } : row)) }
+  return { ...doc, rows: doc.rows.map((row) => (row.id === 'k3' ? { ...row, fields: { ...row.fields, [CUT_COL]: TOO_LONG } } : row)) }
 }
 
 type Cue = {
@@ -807,21 +833,21 @@ type Cue = {
 // that. A value is cut where the designer has set the column narrower than what stands in it, and
 // that is now the only way to reach the cue at all — so the long card's column is pulled to 320
 // before the picture is taken.
-const cutMarkup = () => pulledMarkup(cutDoc(), 'body', 320)
+const cutMarkup = () => pulledMarkup(cutDoc(), CUT_COL, 320)
 
 async function cue(doc: ProjectDoc, extra = '', html = ''): Promise<Cue> {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
   try {
     await page.setContent(shellOf(html || markupOf(doc), extra), { waitUntil: 'load' })
     const facts = await page.evaluate(
-      ({ deck, decide, mark }) => {
+      ({ deck, decide, mark, col }) => {
         const box = document.querySelector('.byd-data-scroll') as HTMLElement
         // Both of the editor's own decisions, in the order it makes them: the widths, and then —
         // at those widths — which values did not fit.
         new Function('box', 'deck', `(${decide})(box, deck)`)(box, deck)
         new Function('box', `(${mark})(box)`)(box)
         const marked = [...box.querySelectorAll('tbody td[data-cut="true"]')]
-        const long = box.querySelector('tr[data-card-ref="k3"] td[data-col="body"]') as HTMLElement
+        const long = box.querySelector(`tr[data-card-ref="k3"] td[data-col="${col}"]`) as HTMLElement
         const seen = long.getBoundingClientRect()
         return {
           cut: marked.map((cell) => `${cell.closest('tr')?.getAttribute('data-card-ref') ?? '?'}/${cell.getAttribute('data-col')}`),
@@ -831,16 +857,16 @@ async function cue(doc: ProjectDoc, extra = '', html = ''): Promise<Cue> {
           ink: { x: seen.right - 48, y: seen.top, width: 24, height: seen.height },
         }
       },
-      { deck: deckValues(doc, sv), decide: String(fitColumns), mark: String(markValues) },
+      { deck: deckValues(doc, sv), decide: String(fitColumns), mark: String(markValues), col: CUT_COL },
     )
     const atRest = await page.screenshot({ clip: facts.clip })
     // The caret put in the very cell being read, and sent to the end of the value — which is where
     // an input scrolls to, and the moment `text-overflow` on an input has nothing left to say.
-    await page.evaluate(() => {
-      const field = document.querySelector('tr[data-card-ref="k3"] td[data-col="body"] input') as HTMLInputElement
+    await page.evaluate((col) => {
+      const field = document.querySelector(`tr[data-card-ref="k3"] td[data-col="${col}"] input`) as HTMLInputElement
       field.focus()
       field.setSelectionRange(field.value.length, field.value.length)
-    })
+    }, CUT_COL)
     const focused = await page.screenshot({ clip: facts.clip })
     // And one more character written at that caret, which is the moment the question is really
     // about: an input scrolls to the cursor, so what has just been typed is what stands nearest
@@ -876,7 +902,7 @@ describe('a value that does not fit says so (#46)', () => {
     // The one card whose rules text no desk width could hold is marked, in the column that holds
     // it. Two other columns are squeezed onto their floors to pay for it, and the cards whose
     // words are short are not marked at all.
-    expect(long.cut).toContain('k3/body')
+    expect(long.cut).toContain(`k3/${CUT_COL}`)
     expect(long.cut.filter((at) => at.endsWith('/cost') || at.endsWith('/antal'))).toEqual([])
 
     // And the case the measurement is actually for: with six cards and the same six columns,

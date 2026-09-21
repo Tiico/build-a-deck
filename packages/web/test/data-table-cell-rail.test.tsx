@@ -68,6 +68,12 @@ function saloonDoc(): ProjectDoc {
 // `antal` is a count and a brace in it is not a symbol, which is the table's own rule.
 const RAILED = ['typ', 'title', 'body', 'raritet'] as const
 
+// What the designer writes in, whichever shape the column gives it. `body` is a writing area
+// since L39 (#324) and the others are fields, and the question this file asks is the same of
+// both: the control may not lie over the place the caret goes. So the place the caret goes is
+// looked up by what it is for and not by what tag it happens to be.
+const FIELD = 'input, [role="textbox"]'
+
 function Table() {
   const [doc, setDoc] = useState(saloonDoc)
   return (
@@ -143,10 +149,10 @@ describe.each(DESKS)('a cell with the icon path, at %ipx', (width) => {
     const found: Record<string, string[]> = {}
     for (const field of RAILED) {
       found[field] = await measure(markup(field), width, (page) =>
-        page.evaluate((f) => {
+        page.evaluate(({ f, FIELD }) => {
           const td = document.querySelector<HTMLElement>(`.byd-data tbody tr td[data-col="${f}"]`)
           if (!td) return [`no cell for ${f}`]
-          const input = td.querySelector('input')
+          const input = td.querySelector<HTMLElement>(FIELD)
           if (!input) return [`no field in ${f}`]
           const controls = [...td.querySelectorAll('button')]
           // The control has to be there at all, or this reports a clean cell for a cell with
@@ -161,7 +167,7 @@ describe.each(DESKS)('a cell with the icon path, at %ipx', (width) => {
               return across > 0.5 && down > 0.5 ? `${control.className} covers ${Math.round(across)}×${Math.round(down)} px of the field` : null
             })
             .filter((said): said is string => said !== null)
-        }, field),
+        }, { f: field, FIELD }),
       )
     }
     expect(found).toEqual(Object.fromEntries(RAILED.map((f) => [f, []])))
@@ -171,17 +177,21 @@ describe.each(DESKS)('a cell with the icon path, at %ipx', (width) => {
     const found: Record<string, string> = {}
     for (const field of RAILED) {
       found[field] = await measure(markup(field), width, (page) =>
-        page.evaluate((f) => {
+        page.evaluate(({ f, FIELD }) => {
           const td = document.querySelector<HTMLElement>(`.byd-data tbody tr td[data-col="${f}"]`)!
-          const input = td.querySelector('input')!
+          const input = td.querySelector<HTMLElement>(FIELD)!
           const at = input.getBoundingClientRect()
           // The middle of the field's right-hand half, which is the press the issue names: where
           // the caret belongs after a short value, and the very press that wrote a `{` into the
           // card. Not the last pixel before the edge — the old control left a 5 px gap there, so
           // a probe aimed at the edge would have agreed with a cell it was covering.
           const hit = document.elementFromPoint(at.left + at.width * 0.75, at.top + at.height / 2)
-          return hit === input ? 'the field' : `${hit?.tagName.toLowerCase()}.${hit instanceof Element ? [...hit.classList].join('.') : '—'}`
-        }, field),
+          // A writing area has the sentence's own elements inside it, so the press lands on a
+          // paragraph rather than on the box around it — and that is the caret arriving where it
+          // belongs, which is what is being asked. A field has nothing inside it to land on, so
+          // for one of those this is the same question it always was.
+          return hit !== null && (hit === input || input.contains(hit)) ? 'the field' : `${hit?.tagName.toLowerCase()}.${hit instanceof Element ? [...hit.classList].join('.') : '—'}`
+        }, { f: field, FIELD }),
       )
     }
     expect(found).toEqual(Object.fromEntries(RAILED.map((f) => [f, 'the field'])))
@@ -191,16 +201,19 @@ describe.each(DESKS)('a cell with the icon path, at %ipx', (width) => {
     // The control is only ever drawn in the cell being worked in. If the lane came and went with
     // it, every field in the column would jump the moment the caret arrived — the same fault as
     // the overlap, arriving by movement instead of by paint.
-    const closed = await measure(markup(null), width, (page) =>
-      page.evaluate((fields) => Object.fromEntries(fields.map((f) => [f, Math.round(document.querySelector(`.byd-data tbody tr td[data-col="${f}"] input`)!.getBoundingClientRect().width)])), [
-        ...RAILED,
-      ]),
-    )
-    const open = await measure(markup('typ'), width, (page) =>
-      page.evaluate((fields) => Object.fromEntries(fields.map((f) => [f, Math.round(document.querySelector(`.byd-data tbody tr td[data-col="${f}"] input`)!.getBoundingClientRect().width)])), [
-        ...RAILED,
-      ]),
-    )
+    const widths = (page: import('playwright').Page) =>
+      page.evaluate(
+        ({ fields, FIELD }) =>
+          Object.fromEntries(
+            fields.map((f) => {
+              const td = document.querySelector(`.byd-data tbody tr td[data-col="${f}"]`)!
+              return [f, Math.round(td.querySelector(FIELD)!.getBoundingClientRect().width)]
+            }),
+          ),
+        { fields: [...RAILED], FIELD },
+      )
+    const closed = await measure(markup(null), width, widths)
+    const open = await measure(markup('typ'), width, widths)
     expect(open).toEqual(closed)
   }, 120_000)
 })
