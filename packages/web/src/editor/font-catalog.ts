@@ -73,3 +73,32 @@ export function fileInSheet(css: string): string {
   if (url === undefined) throw new Error('no font file in the sheet')
   return url
 }
+
+// How old the list may be before the gate goes red (#370, L27). Six months, because a
+// half-year-old catalog is still ~1 800 usable families: the limit alarms on neglect, not on
+// normal operation. There is no scheduler — the stamp travels in the generated file and the
+// suite reads it, so the age is a fact on disk and the failure lands in the same gate as
+// everything else.
+export const CATALOG_MAX_AGE_MONTHS = 6
+
+// The one thing that fixes a red gate, spelled out so whoever meets it does not have to guess.
+export const CATALOG_COMMAND = 'pnpm --filter @byd/web exec tsx scripts/google-fonts.ts'
+
+// `YYYY-MM-DD` and nothing else, read strictly and round-tripped: `new Date` would take a
+// half-written stamp, a month of 31 February or a sentence and answer with a date or with
+// `Invalid Date`, and both of those read as «not older than six months». A stamp that cannot be
+// read is a broken gate, so it is an error and not a silence.
+export function catalogStamp(stamp: string): Date {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(stamp)) throw new Error(`the catalog stamp is not a YYYY-MM-DD date: ${JSON.stringify(stamp)} — re-run \`${CATALOG_COMMAND}\``)
+  const date = new Date(`${stamp}T00:00:00Z`)
+  if (date.toISOString().slice(0, 10) !== stamp) throw new Error(`the catalog stamp is not a day that exists: ${stamp} — re-run \`${CATALOG_COMMAND}\``)
+  return date
+}
+
+export function staleCatalogMessage(stamp: string, now: Date): string | null {
+  const generated = catalogStamp(stamp)
+  const limit = new Date(generated)
+  limit.setUTCMonth(limit.getUTCMonth() + CATALOG_MAX_AGE_MONTHS)
+  if (now < limit) return null
+  return `The Google Fonts catalog in \`google-fonts.ts\` was generated ${stamp} and is older than ${CATALOG_MAX_AGE_MONTHS} months (today is ${now.toISOString().slice(0, 10)}). Re-run \`${CATALOG_COMMAND}\` and commit the result (#370, L27).`
+}

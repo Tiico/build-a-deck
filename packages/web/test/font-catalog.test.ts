@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fileInSheet, fileSheetHref, isVariable, parseCatalog, sampleSheetHref, searchCatalog } from '../src/editor/font-catalog.js'
+import { fileInSheet, fileSheetHref, isVariable, parseCatalog, sampleSheetHref, searchCatalog, staleCatalogMessage } from '../src/editor/font-catalog.js'
 
 // Google Fonts as the picker reads it (#329, L27). The list itself is data the build carries —
 // nothing is asked of Google until the designer opens the picker — so what is worth a test is
@@ -94,5 +94,39 @@ describe('the list the build carries', () => {
     // The one family the approved prototype set the card in, with the axis L27 is about.
     expect(all.find((f) => f.family === 'Cinzel')).toMatchObject({ category: 'serif', licence: 'OFL 1.1', by: 'Natanael Gama' })
     expect(isVariable(all.find((f) => f.family === 'Cinzel')!)).toBe(true)
+  })
+})
+
+// The age gate (#370, L27). The list travels with the build, so it ages, and nothing but this
+// says how old it is. Six months is the limit: a half-year-old catalog is still ~1 800 usable
+// families, so the gate is there to alarm on neglect and not on normal operation.
+describe('the age of the list (L27)', () => {
+  it('says nothing while the stamp is inside six months', () => {
+    expect(staleCatalogMessage('2026-04-01', new Date('2026-09-21T00:00:00Z'))).toBeNull()
+  })
+
+  it('names the command that fixes it, and what the stamp says, once six months have passed', () => {
+    const message = staleCatalogMessage('2026-01-01', new Date('2026-09-21T00:00:00Z'))
+    expect(message).toContain('2026-01-01')
+    expect(message).toContain('pnpm --filter @byd/web exec tsx scripts/google-fonts.ts')
+  })
+
+  // A stamp that cannot be read is not a fresh catalog, and a gate that cannot fail is not a
+  // gate: a botched regeneration that writes something other than a date must be as loud as an
+  // old one, rather than reading as «no message, so all is well».
+  it('refuses a stamp that is not a plain date rather than letting it pass', () => {
+    expect(() => staleCatalogMessage('', new Date('2026-09-21T00:00:00Z'))).toThrow()
+    expect(() => staleCatalogMessage('den 1 januari', new Date('2026-09-21T00:00:00Z'))).toThrow()
+    expect(() => staleCatalogMessage('2026-9-1', new Date('2026-09-21T00:00:00Z'))).toThrow()
+    expect(() => staleCatalogMessage('2026-02-31', new Date('2026-09-21T00:00:00Z'))).toThrow()
+  })
+
+  // The gate itself, and the only place in the suite that reads the wall clock: it is a time
+  // bomb on purpose — six months from the last regeneration it goes red with no code change,
+  // which is the whole of what it is for. Everything above fixes `now` so the rule stays
+  // deterministic; this one asks what day it actually is.
+  it('is not itself older than six months, as of whenever this run happens', async () => {
+    const { GOOGLE_FONTS_GENERATED } = await import('../src/editor/google-fonts.js')
+    expect(staleCatalogMessage(GOOGLE_FONTS_GENERATED, new Date())).toBeNull()
   })
 })
