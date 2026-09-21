@@ -48,6 +48,11 @@ export const svPlay = {
   'tv.inspect.empty': 'peka på ett kort',
   // "Senast" innan någon rört bordet (UX-16): rubriken säger vad listan fylls av.
   'tv.latest.empty': 'Inget hänt ännu. Det som spelas vid bordet hamnar här.',
+  // Fördjupningen bakom frågetecknet (L32:s tillägg, #305). Raden vid koden är fyra ord; vad
+  // telefonen blir när den ansluter står i lådan.
+  'tv.join.help.topic': 'att ansluta',
+  'tv.join.help.how': 'Spelarna öppnar adressen på sin telefon och skriver rumskoden, eller läser av rutan.',
+  'tv.join.help.phone': 'Telefonen blir handen: korten ligger där, och bordet står kvar här.',
   'tv.seats': 'Platser',
   'tv.seat.hand.one': '{n} kort på hand',
   'tv.seat.hand.other': '{n} kort på hand',
@@ -229,6 +234,15 @@ export const svPlay = {
   'rewind.approve': 'Godkänn',
   'rewind.decline': 'Neka',
 
+  // Fördjupningen bakom frågetecknet (L32:s tillägg, #305). Samma låda som i editorn, på en
+  // smalare skärm: den hänger över filtens övre del och täcker ingenting man spelar med, och
+  // stängs med ett tryck utanför — vilket på en telefon är nästan hela skärmen. Det som säger
+  // vad en handling får för följd flyttar aldrig hit; raden över handen står kvar där den står.
+  'play.help.hand.topic': 'handen',
+  'play.help.hand.pick': 'Tryck på ett kort för att välja det, håll ett kort för att välja flera.',
+  'play.help.hand.play': 'Dra ett valt kort uppåt för att spela det, eller använd knapparna under handen.',
+  'play.help.hand.hidden': 'De andra ser hur många kort du har, aldrig vilka.',
+
   // Telefonen: handen, det som ligger framför en, och räknarna.
   'player.hint': 'Välj → läs → spela · håll för att välja flera',
   'player.hint.selected.one': '{n} valda · dra upp för att spela',
@@ -320,6 +334,12 @@ export const svPlay = {
   'observer.name': 'observatör',
   'observer.banner': 'Du är observatör: du ser allas händer och alla högar. Alla vet att du är här.',
   'observer.watching': '{name} tittar på',
+  // Fördjupningen bakom frågetecknet (L32:s tillägg, #305). Att hon syns för alla står kvar på
+  // ytan i `observer.banner`: synlighetsupplysningar flyttar aldrig in i lådan.
+  'observer.help.topic': 'observatörsläget',
+  'observer.help.sees': 'Du ser allas händer och alla högar, också det som är dolt vid bordet.',
+  'observer.help.touch': 'Du kan flagga ett ögonblick, men aldrig röra ett kort.',
+  'observer.help.survey': 'När bordet avslutas får du samma enkät som spelarna, märkt som observatör.',
   'observer.more': 'Senast och platser',
 
   // Att sätta sig vid bordet (K12).

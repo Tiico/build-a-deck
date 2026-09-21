@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { projectActivity } from '@byd/engine'
 import { TvChrome } from '../src/table/TvChrome.js'
 import { seatColor } from '../src/table/seatColor.js'
@@ -32,6 +32,40 @@ describe('TvChrome (C as the TV surroundings)', () => {
     expect(lines).not.toContainEqual(expect.stringMatching(/satte sig/))
     expect(lines).toContainEqual(expect.stringMatching(/Bordet drog 2 från Draghög/))
     expect(lines).toContainEqual(expect.stringMatching(/Bordet vände ett kort/))
+  })
+})
+
+// The same box on the table screen (L32's addendum, #305): the line beside the code is four
+// words, and what a joined phone becomes is the rest of it.
+describe('the table screen’s own help (L32, #305)', () => {
+  it('keeps the code on the surface and what joining means behind a question mark', async () => {
+    const { view, log } = buildScene()
+    render(
+      <TvChrome view={view(null)} activity={log.map(projectActivity)} roomCode="KX7P">
+        <div />
+      </TvChrome>,
+    )
+    const ask = screen.getByRole('button', { name: 'Hjälp om att ansluta' })
+    expect(screen.queryByRole('dialog', { name: 'att ansluta' })).toBeNull()
+    fireEvent.pointerEnter(ask)
+    expect(screen.queryByRole('dialog', { name: 'att ansluta' })).toBeNull()
+
+    fireEvent.click(ask)
+    expect((await screen.findByRole('dialog', { name: 'att ansluta' })).textContent).toMatch(/rumskoden/i)
+    // The code itself is what the room reads from across it, and it stays where it stands.
+    expect(screen.getByText('KX7P')).toBeTruthy()
+  })
+
+  // The observer's screen is the same chrome without a code to join by, so it carries no help
+  // about joining: a question mark about something that is not on the screen is worse than none.
+  it('says nothing about joining on a screen that is not joined from', () => {
+    const { view, log } = buildScene()
+    render(
+      <TvChrome view={view(null)} activity={log.map(projectActivity)}>
+        <div />
+      </TvChrome>,
+    )
+    expect(screen.queryByRole('button', { name: 'Hjälp om att ansluta' })).toBeNull()
   })
 })
 

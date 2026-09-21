@@ -21,6 +21,7 @@ import { TableSummary } from '../src/player/TableSummary.js'
 import { SessionButtons, SessionOverlays } from '../src/player/SessionOverlays.js'
 import { EndSheet, ExitSheet, FlagSheet } from '../src/player/SessionSheets.js'
 import { RuleDrawer } from '../src/rules/RuleDrawer.js'
+import { Help } from '../src/editor/HelpDrawer.js'
 import { Survey } from '../src/player/Survey.js'
 import { ActionPanel } from '../src/table/ActionPanel.js'
 import { CardLook } from '../src/table/CardLook.js'
@@ -39,7 +40,7 @@ const shell = read('index.html')
 // that lays something over a card: without it the state that covered the verbs in #78 is not on
 // the page at all, and the measurement is of a screen the player never sees.
 const css = `${read('src/player/player.css')}\n${read('src/buttons.css')}\n${read('src/table/keyboard.css')}\n${read('src/rules/rules-open.css')}
-${read('src/rules/rules.css')}\n${read('src/table/texture.css')}`
+${read('src/rules/rules.css')}\n${read('src/table/texture.css')}\n${read('src/help.css')}`
 
 // A surface is a React tree, or the markup of one where a state the server render cannot reach
 // has been put in its place.
@@ -114,6 +115,11 @@ function surfaces(view: Snapshot) {
         <header>
           <strong>Ada</strong>
           <span>{view.components.length} kort</span>
+          {/* The help pattern's question mark stands in the chrome on this screen (L32, #305),
+              so the row it has to share is measured with it in place. */}
+          <Help topic="handen">
+            <p>Tryck på ett kort för att välja det.</p>
+          </Help>
           <SessionButtons client={idle} view={view} sheet={null} onSheet={noop} />
         </header>
         {/* The overview since #79: a pile that has a card is a control that draws it (K14). */}
