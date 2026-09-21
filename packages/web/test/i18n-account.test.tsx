@@ -19,7 +19,7 @@ beforeEach(() => {
 })
 
 describe('the login card (G1) in the reader\'s own language', () => {
-  it('says everything in English under an English page, and offers the switch', () => {
+  it('says everything in English under an English page, and offers the switch', async () => {
     render(
       <Language lang="en">
         <LoginCard http="http://server.local" next="/" onNavigate={() => undefined} />
@@ -30,7 +30,7 @@ describe('the login card (G1) in the reader\'s own language', () => {
     expect(screen.getByText(/Log in to get to your games/)).toBeTruthy()
     // The guest's way in is behind the question mark (L36), in the same language.
     fireEvent.click(screen.getByRole('button', { name: 'Help about logging in' }))
-    expect(screen.getByRole('dialog', { name: 'logging in' }).textContent).toMatch(/no account needed/)
+    expect((await screen.findByRole('dialog', { name: 'logging in' })).textContent).toMatch(/no account needed/)
     // The reader can put the page back into Swedish from where they are standing.
     expect(screen.getByRole('combobox', { name: /språk|language/i })).toBeTruthy()
     expect(screen.queryByText(/Skicka inloggningslänk/)).toBeNull()

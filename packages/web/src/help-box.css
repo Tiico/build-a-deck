@@ -1,0 +1,30 @@
+/* ── Hjälpen bakom ett frågetecken: lådan (L32, #303) ─────────────────────────────────────────
+   Lådans insida kommer när den efterfrågas (#304, #346:s väg). Det här arket reser med
+   `HelpBox.tsx`, som `HelpDrawer` hämtar först när någon trycker på ringen — ringens egna regler
+   står kvar i `help.css`, i det ark första målningen väntar på, eftersom ringen är målad innan
+   någon tryckt. Bygget lägger chunkens ark bredvid dess kod och `import()` blir klar först när
+   båda är framme, så lådan kan inte visas oklädd.
+
+   Lådan är fäst i fönstret och inte i sin egen omslutning: lagerkolumnen är 220 px bred och
+   klipper det som hänger utanför, och en låda som klipps av kolumnen den hjälper till med är
+   ingen hjälp. Var den hamnar — under, över, från vänster- eller högerkanten — läses av
+   `placement.ts` när den öppnas, aldrig av arket.
+
+   Lådan är det enda i mönstret som inte står i rummet den öppnades ur: den är samma mörka panel
+   vilken yta frågetecknet än sitter på. Ringen tillhör rummet och tar rummets bläck; allt inuti
+   lådan tillhör lådan.
+
+   Det räcker inte att säga det — det måste sägas starkare än rummet säger sitt. Ett rum klär bara
+   element: `.byd-wizard p` och `.byd-wizard button` är en klass och ett element, och mot lådans
+   egna regler på en klass vann de. Krysset ritades som en pappersknapp, vit botten och
+   papperskant, med lådans bleka bläck på — 1,35:1 — och lådans stycken i pappersgrått, 3,0:1.
+   Därför bär lådans inre regler två klasser: den ena är lådan, och det är hela skälet. */
+.byd-help-box { position: fixed; z-index: 30; box-sizing: border-box; width: 260px; max-width: calc(100vw - 24px); max-height: var(--byd-place-room, 60vh); overflow: auto; padding: var(--byd-s2, 8px) var(--byd-tap, 44px) var(--byd-s2, 8px) var(--byd-s3, 12px); border-radius: 10px; background: #12141a; border: 1px solid var(--byd-secondary-line); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6); color: #c7cede; font-size: 12px; font-weight: 400; line-height: 1.55; letter-spacing: 0; text-transform: none; text-align: left; white-space: normal; }
+.byd-help-box.byd-help-box p { margin: 0 0 var(--byd-s1, 4px); color: inherit; font-size: inherit; line-height: inherit; max-width: none; }
+.byd-help-box.byd-help-box p:last-child { margin-bottom: 0; }
+/* The topic is the sentence's word («Hjälp om lagerlistan»); as the box's heading it stands alone. */
+.byd-help-topic::first-letter { text-transform: uppercase; }
+.byd-help-box .byd-help-topic { display: block; margin: 0 0 4px; color: #e6ecfa; font-size: 12px; font-weight: 700; }
+/* Krysset tar lådans bläck och inte rummets: `--byd-secondary-ink` är rummets roll, och i guiden
+   är den pappersbläck — 1,2:1 mot lådans mörka botten. Det som står i lådan ärver lådan. */
+.byd-help-box .byd-help-close { position: absolute; top: 0; right: 0; width: var(--byd-tap, 44px); height: var(--byd-tap, 44px); min-width: var(--byd-tap, 44px); min-height: var(--byd-tap, 44px); border: 0; border-radius: 10px; padding: 0; background: transparent; color: inherit; font: inherit; font-size: 16px; cursor: pointer; }

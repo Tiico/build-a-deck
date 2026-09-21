@@ -25,21 +25,28 @@ const mount = () =>
   )
 const ask = () => screen.getByRole('button', { name: 'Hjälp om lagerlistan' })
 const box = () => screen.queryByRole('dialog', { name: 'lagerlistan' })
+// The box's code and its stylesheet travel when it is asked for (#304), so it arrives a tick
+// after the press rather than in the same one. Waiting for it is what a reader does too.
+const appears = () => screen.findByRole('dialog', { name: 'lagerlistan' })
+const open = async () => {
+  fireEvent.click(ask())
+  return appears()
+}
 
 describe('the question mark', () => {
-  it('is named by what it is about, and says whether its box is open', () => {
+  it('is named by what it is about, and says whether its box is open', async () => {
     mount()
     expect(ask().getAttribute('aria-expanded')).toBe('false')
     expect(box()).toBeNull()
-    fireEvent.click(ask())
+    await open()
     expect(ask().getAttribute('aria-expanded')).toBe('true')
     expect(box()).not.toBeNull()
     expect(ask().getAttribute('aria-controls')).toBe(box()!.id)
   })
 
-  it('moves the focus into the box when it opens', () => {
+  it('moves the focus into the box when it opens', async () => {
     mount()
-    fireEvent.click(ask())
+    await open()
     expect(box()!.contains(document.activeElement)).toBe(true)
   })
 
@@ -48,12 +55,12 @@ describe('the question mark', () => {
     mount()
     ask().focus()
     await user.keyboard('{Enter}')
-    expect(box()).not.toBeNull()
+    expect(await appears()).not.toBeNull()
     await user.keyboard('{Escape}')
     expect(box()).toBeNull()
     expect(document.activeElement).toBe(ask())
     await user.keyboard(' ')
-    expect(box()).not.toBeNull()
+    expect(await appears()).not.toBeNull()
   })
 
   it('does not open on hover', () => {
@@ -65,42 +72,42 @@ describe('the question mark', () => {
     expect(ask().getAttribute('aria-expanded')).toBe('false')
   })
 
-  it('holds the help text inside the box and nowhere else', () => {
+  it('holds the help text inside the box and nowhere else', async () => {
     mount()
     expect(screen.queryByText('Håll Alt och tryck pil upp eller ner.')).toBeNull()
-    fireEvent.click(ask())
+    await open()
     expect(box()!.textContent).toContain('Håll Alt och tryck pil upp eller ner.')
   })
 })
 
 describe('closing the box', () => {
-  it('closes on Escape and hands the focus back to the question mark', () => {
+  it('closes on Escape and hands the focus back to the question mark', async () => {
     mount()
-    fireEvent.click(ask())
+    await open()
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
     expect(box()).toBeNull()
     expect(document.activeElement).toBe(ask())
   })
 
-  it('closes on its own cross and hands the focus back', () => {
+  it('closes on its own cross and hands the focus back', async () => {
     mount()
-    fireEvent.click(ask())
+    await open()
     fireEvent.click(screen.getByRole('button', { name: 'Stäng hjälpen' }))
     expect(box()).toBeNull()
     expect(document.activeElement).toBe(ask())
   })
 
-  it('closes on a press outside it, and the focus goes back to the question mark when the press landed on nothing', () => {
+  it('closes on a press outside it, and the focus goes back to the question mark when the press landed on nothing', async () => {
     mount()
-    fireEvent.click(ask())
+    await open()
     fireEvent.pointerDown(document.body)
     expect(box()).toBeNull()
     expect(document.activeElement).toBe(ask())
   })
 
-  it('closes on a press on another control, and leaves the focus where the pointer put it', () => {
+  it('closes on a press on another control, and leaves the focus where the pointer put it', async () => {
     mount()
-    fireEvent.click(ask())
+    await open()
     const after = screen.getByRole('button', { name: 'Efter' })
     fireEvent.pointerDown(after)
     after.focus()
@@ -111,15 +118,15 @@ describe('closing the box', () => {
   it('closes when the focus tabs out of it, and the next stop is the one after the question mark', async () => {
     const user = userEvent.setup()
     mount()
-    fireEvent.click(ask())
+    await open()
     await user.tab()
     expect(box()).toBeNull()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Efter' }))
   })
 
-  it('toggles closed from the question mark itself', () => {
+  it('toggles closed from the question mark itself', async () => {
     mount()
-    fireEvent.click(ask())
+    await open()
     fireEvent.pointerDown(ask())
     fireEvent.click(ask())
     expect(box()).toBeNull()
@@ -133,12 +140,12 @@ describe('closing the box', () => {
 const rect = (x: number, y: number, w: number, h: number) => () => ({ x, y, top: y, left: x, right: x + w, bottom: y + h, width: w, height: h, toJSON: () => ({}) }) as DOMRect
 
 describe('where the box goes (#229, L32)', () => {
-  it('opens downward under a question mark near the top, hanging from its left edge', () => {
+  it('opens downward under a question mark near the top, hanging from its left edge', async () => {
     window.innerHeight = 800
     window.innerWidth = 1280
     mount()
     ask().getBoundingClientRect = rect(100, 60, 22, 22)
-    fireEvent.click(ask())
+    await open()
     const b = box()!
     expect(b.getAttribute('data-place-y')).toBe('down')
     expect(b.getAttribute('data-place-x')).toBe('start')
@@ -147,24 +154,24 @@ describe('where the box goes (#229, L32)', () => {
     expect(b.style.bottom).toBe('')
   })
 
-  it('flips upward when it stands at the foot of the window', () => {
+  it('flips upward when it stands at the foot of the window', async () => {
     window.innerHeight = 800
     window.innerWidth = 1280
     mount()
     ask().getBoundingClientRect = rect(100, 760, 22, 22)
-    fireEvent.click(ask())
+    await open()
     const b = box()!
     expect(b.getAttribute('data-place-y')).toBe('up')
     expect(b.style.bottom).toBe('46px')
     expect(b.style.top).toBe('')
   })
 
-  it('hangs from its right edge when its left would run off the window', () => {
+  it('hangs from its right edge when its left would run off the window', async () => {
     window.innerHeight = 800
     window.innerWidth = 1280
     mount()
     ask().getBoundingClientRect = rect(1200, 60, 22, 22)
-    fireEvent.click(ask())
+    await open()
     const b = box()!
     expect(b.getAttribute('data-place-x')).toBe('end')
     expect(b.style.right).toBe('58px')

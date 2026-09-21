@@ -5,14 +5,18 @@
 // transition for reduced motion to have to cut, and that the question mark is a target the size
 // every control has, however small the ring it draws.
 //
-// The rules are the pattern's own sheet since #304: the start, the account and the guided start
-// use the same question mark, and none of them loads the editor's sheet.
+// The rules are the pattern's own sheets since #304: the start, the account and the guided start
+// use the same question mark, and none of them loads the editor's sheet. They are two, because
+// the ring is painted on the first frame and the box is behind a press nobody has made — what is
+// asked of the *build* is `felt-font.spec.ts`'s; what is asked here is of the rules themselves,
+// and those questions are about the pattern whichever of its two sheets a rule stands in.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 // Without its comments: a comment that says «ingen :hover öppnar den» is not a rule that does.
-const css = readFileSync(join(import.meta.dirname, '..', 'src/help.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+const sheet = (name: string) => readFileSync(join(import.meta.dirname, '..', name), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+const css = `${sheet('src/help.css')}\n${sheet('src/help-box.css')}`
 // Every rule whose selector names the pattern, as `[selector, declarations]`.
 const rules = [...css.matchAll(/([^{}]*byd-help[^{}]*)\{([^}]*)\}/g)].map((m) => [m[1]!.trim(), m[2]!.trim()] as const)
 
@@ -51,7 +55,7 @@ describe('the help pattern in the stylesheet', () => {
   // miss each other, which they did while the felt kept `.byd-help-open` beside them. The felt
   // owns no name in this family at all, so the next rule either sheet grows cannot collide.
   it('leaves the whole `.byd-help` family to this pattern, and none of it to the felt', () => {
-    const felt = readFileSync(join(import.meta.dirname, '..', 'src/table/table.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    const felt = sheet('src/table/table.css')
     expect([...felt.matchAll(/\.(byd-help[a-z-]*)/g)].map((m) => m[1]!)).toEqual([])
   })
 

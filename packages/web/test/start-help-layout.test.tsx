@@ -23,7 +23,7 @@ import { atWidth } from './viewport.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
-const css = ['src/help.css', 'src/account/account.css', 'src/wizard/wizard.css', 'src/buttons.css', 'src/a11y.css'].map(read).join('\n')
+const css = ['src/help.css', 'src/help-box.css', 'src/account/account.css', 'src/wizard/wizard.css', 'src/buttons.css', 'src/a11y.css'].map(read).join('\n')
 const document_ = (html: string) =>
   shell
     .replace('<script type="module" src="/src/main.tsx"></script>', '')
@@ -43,7 +43,7 @@ afterAll(async () => {
 }, 60_000)
 
 // The surface as markup, closed and with its help open.
-function markup(surface: Surface): { closed: string; open: string } {
+async function markup(surface: Surface): Promise<{ closed: string; open: string }> {
   atWidth(surface.width)
   localStorage.clear()
   sessionStorage.clear()
@@ -51,7 +51,8 @@ function markup(surface: Surface): { closed: string; open: string } {
   try {
     const closed = document.querySelector(surface.root)!.outerHTML
     fireEvent.click(screen.getByRole('button', { name: `Hjälp om ${surface.topic}` }))
-    screen.getByRole('dialog', { name: surface.topic })
+    // The box's code and its stylesheet travel when it is asked for (#304).
+    await screen.findByRole('dialog', { name: surface.topic })
     return { closed, open: document.querySelector(surface.root)!.outerHTML }
   } finally {
     unmount()
@@ -61,7 +62,7 @@ function markup(surface: Surface): { closed: string; open: string } {
 const rectOf = `(el) => { const r = el.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height } }`
 
 async function measure(surface: Surface): Promise<{ closed: Reading; open: Reading }> {
-  const { closed, open } = markup(surface)
+  const { closed, open } = await markup(surface)
   const page = await browser.newPage({ viewport: { width: surface.width, height: surface.height } })
   const readSurface = (placed: HelpPlacement | null): Promise<Reading> =>
     page.evaluate(

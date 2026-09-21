@@ -95,7 +95,7 @@ describe('the first thing a new account sees (UX-16)', () => {
     // question mark beside the line (L36): the longest string in the catalogue was this one.
     expect(screen.queryByText(/kortlek med sin mall/)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Hjälp om spel' }))
-    const box = screen.getByRole('dialog', { name: 'spel' })
+    const box = await screen.findByRole('dialog', { name: 'spel' })
     expect(box.textContent).toMatch(/Ett spel är en kortlek med sin mall, sina regler och sitt bord/)
     expect(box.textContent).toMatch(/frågar efter namn och antal spelare/)
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' })

@@ -36,10 +36,11 @@ async function openEditor(tab?: string): Promise<void> {
 }
 
 // The box, opened from the question mark about a topic. The text is asserted absent from the
-// whole document before the press, and present inside the box — and only there — after it.
-const opened = (topic: string): HTMLElement => {
+// whole document before the press, and present inside the box — and only there — after it. The
+// box's code and its stylesheet travel when it is asked for (#304), so it is waited for.
+const opened = async (topic: string): Promise<HTMLElement> => {
   fireEvent.click(screen.getByRole('button', { name: `Hjälp om ${topic}` }))
-  return screen.getByRole('dialog', { name: topic })
+  return screen.findByRole('dialog', { name: topic })
 }
 // The counters' own button, by the catalogue's word for it.
 const ADD_COUNTER = translate('sv', 'setup.counter.add')
@@ -53,7 +54,7 @@ describe('Mall: the layer column (L32, the surface that measured the cost)', () 
     expect(hint.textContent).toContain('Dra för att ändra ordningen.')
     absent(/håll Alt/)
     absent(/F2 byter namn/)
-    const box = opened('lagerlistan')
+    const box = await opened('lagerlistan')
     expect(box.textContent).toMatch(/Håll Alt och tryck pil upp eller ner/)
     expect(box.textContent).toMatch(/F2 byter namn på lagret/)
     expect(box.textContent).toMatch(/Enter går in i flyttläge/)
@@ -68,7 +69,7 @@ describe('Regler', () => {
     expect(screen.getByText('Reglerna hör till spelet.')).toBeTruthy()
     absent(/versioneras med korten/)
     absent(/följer med när det byter namn/)
-    const box = opened('reglerna')
+    const box = await opened('reglerna')
     expect(box.textContent).toMatch(/versioneras med korten/)
     expect(box.textContent).toMatch(/telefonen, TV:n och observatören/)
     expect(box.textContent).toMatch(/följer med när det byter namn/)
@@ -82,7 +83,7 @@ describe('Bord: the list and the setup', () => {
     const lead = document.querySelector('.byd-tables > .byd-tables-lead')!
     expect(lead.textContent).toContain('rev 1')
     absent(/överlever att alla kopplar ner/)
-    const box = opened('borden')
+    const box = await opened('borden')
     expect(box.textContent).toMatch(/överlever att alla kopplar ner/)
     expect(box.textContent).toMatch(/efter ett dygn/)
   })
@@ -92,7 +93,7 @@ describe('Bord: the list and the setup', () => {
     await screen.findByText('Dra en zon på filten för att flytta den.')
     absent(/Listan är varje zon/)
     absent(/Delete tar bort den/)
-    const box = opened('zonerna')
+    const box = await opened('zonerna')
     expect(box.textContent).toMatch(/hörnet för att ändra storlek/)
     expect(box.textContent).toMatch(/Delete tar bort den/)
     expect(box.textContent).toMatch(/varje zon bordet har/)
@@ -103,9 +104,9 @@ describe('Bord: the list and the setup', () => {
     await screen.findByText('Dra en zon på filten för att flytta den.')
     absent(/En ny plats får en hand/)
     absent(/En tredje staplar/)
-    expect(opened('platserna').textContent).toMatch(/En plats som lämnar bordet tar sina zoner med sig/)
+    expect((await opened('platserna')).textContent).toMatch(/En plats som lämnar bordet tar sina zoner med sig/)
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
-    expect(opened('räknarna').textContent).toMatch(/En tredje staplar platsens brickor/)
+    expect((await opened('räknarna')).textContent).toMatch(/En tredje staplar platsens brickor/)
     // Kept: the status about chips with no zone is a consequence, and the sample deck has seats
     // without a counters zone once a counter is added.
     fireEvent.click(screen.getByRole('button', { name: ADD_COUNTER }))
@@ -119,9 +120,9 @@ describe('Symboler', () => {
     await screen.findByRole('heading', { name: 'Symbolbibliotek' })
     absent(/Fritt licensierade symboler/)
     absent(/En betydelse, en färg/)
-    expect(opened('biblioteket').textContent).toMatch(/Licensen följer med in i trycket/)
+    expect((await opened('biblioteket')).textContent).toMatch(/Licensen följer med in i trycket/)
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
-    expect(opened('betydelserna').textContent).toMatch(/målar om varje kort som säger den/)
+    expect((await opened('betydelserna')).textContent).toMatch(/målar om varje kort som säger den/)
     // Kept: an empty state that says what an unnamed meaning draws as.
     expect(screen.getByText(/En symbol utan betydelse ritas i bläck/)).toBeTruthy()
   })
@@ -134,7 +135,7 @@ describe('Historik and Delning', () => {
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
     expect(within(panel).getByText('Den du tar tillbaka blir nästa version.')).toBeTruthy()
     absent(/Varje sparning är en version/)
-    expect(opened('historiken').textContent).toMatch(/Varje sparning är en version/)
+    expect((await opened('historiken')).textContent).toMatch(/Varje sparning är en version/)
   })
 
   it('moves the sharing lead behind the question mark', async () => {
@@ -142,7 +143,7 @@ describe('Historik and Delning', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Vilka som har spelet' }))
     await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
     absent(/De som är inne nu står överst/)
-    expect(opened('delningen').textContent).toMatch(/Samma lista säger vem som får vara med/)
+    expect((await opened('delningen')).textContent).toMatch(/Samma lista säger vem som får vara med/)
   })
 })
 
@@ -156,11 +157,11 @@ const tooSmall = (): ProjectDoc => {
 }
 
 describe('Kortvägg: the checks', () => {
-  it('keeps the count of faults and what cannot be mended, and moves whose a fault usually is', () => {
+  it('keeps the count of faults and what cannot be mended, and moves whose a fault usually is', async () => {
     render(<DeckWall doc={tooSmall()} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} />)
     fireEvent.click(screen.getByRole('button', { name: /^Fysisk kontroll/ }))
     expect(document.querySelector('.byd-wall-checks .byd-wall-lead')!.textContent).toMatch(/slags fel|Bara varningar/)
     absent(/En anmärkning är oftast mallens/)
-    expect(opened('anmärkningarna').textContent).toMatch(/syns på varje kort som ärver elementet/)
+    expect((await opened('anmärkningarna')).textContent).toMatch(/syns på varje kort som ärver elementet/)
   })
 })

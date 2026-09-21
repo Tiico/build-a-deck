@@ -23,9 +23,10 @@ const GUEST = /Skanna QR-koden på bordet/
 
 const login = (lead?: string) => render(<LoginCard http="http://server.local" next="/" onNavigate={() => undefined} lead={lead} />)
 const ask = () => screen.getByRole('button', { name: 'Hjälp om inloggningen' })
-const opened = () => {
+// The box travels when it is asked for (#304), so it is waited for.
+const opened = async () => {
   fireEvent.click(ask())
-  return screen.getByRole('dialog', { name: 'inloggningen' })
+  return screen.findByRole('dialog', { name: 'inloggningen' })
 }
 
 beforeEach(() => {
@@ -36,12 +37,12 @@ afterEach(() => {
 })
 
 describe('the login card', () => {
-  it('keeps one line about what logging in is for, and moves the password and the guest behind the question mark', () => {
+  it('keeps one line about what logging in is for, and moves the password and the guest behind the question mark', async () => {
     login()
     expect(screen.getByText('Logga in för att komma till dina spel.')).toBeTruthy()
     expect(screen.queryByText(NO_PASSWORD)).toBeNull()
     expect(screen.queryByText(GUEST)).toBeNull()
-    const box = opened()
+    const box = await opened()
     expect(box.textContent).toMatch(NO_PASSWORD)
     expect(box.textContent).toMatch(GUEST)
     // Kept on the surface: the field and the button the card is for.
@@ -49,19 +50,19 @@ describe('the login card', () => {
     expect(screen.getByRole('button', { name: 'Skicka inloggningslänk' })).toBeTruthy()
   })
 
-  it('says what the product is the first time, with the question mark beside it', () => {
+  it('says what the product is the first time, with the question mark beside it', async () => {
     login()
     expect(screen.getByText(PITCH)).toBeTruthy()
     expect(ask()).toBeTruthy()
-    expect(opened().textContent).toMatch(PITCH)
+    expect((await opened()).textContent).toMatch(PITCH)
   })
 
-  it('drops the sales line for whoever comes back, and keeps it behind the question mark', () => {
+  it('drops the sales line for whoever comes back, and keeps it behind the question mark', async () => {
     login()
     cleanup()
     login()
     expect(screen.queryByText(PITCH)).toBeNull()
-    expect(opened().textContent).toMatch(PITCH)
+    expect((await opened()).textContent).toMatch(PITCH)
   })
 
   it('remembers the visit in the browser, per screen, never in an account', () => {
@@ -96,13 +97,13 @@ describe('the login card', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('takes the claim’s own lead in place of the sales line, and says in the box what the claim does', () => {
+  it('takes the claim’s own lead in place of the sales line, and says in the box what the claim does', async () => {
     login('Logga in för att spara bordet till ditt konto.')
     expect(screen.queryByText(PITCH)).toBeNull()
     expect(screen.getByText('Logga in för att spara bordet till ditt konto.')).toBeTruthy()
     // A visitor who came for one thing was not shown the pitch, so the visit is not the pitch's.
     expect(localStorage.getItem('byd.login.pitch-seen')).toBeNull()
-    const box = opened()
+    const box = await opened()
     expect(within(box).getByText(NO_PASSWORD)).toBeTruthy()
   })
 })
@@ -126,9 +127,9 @@ const wizard = (width: number) => {
   render(<NewProjectPage onNavigate={() => undefined} />)
 }
 const asks = () => screen.getAllByRole('button', { name: /^Hjälp om / })
-const askOn = (topic: string) => {
+const askOn = async (topic: string) => {
   fireEvent.click(screen.getByRole('button', { name: `Hjälp om ${topic}` }))
-  return screen.getByRole('dialog', { name: topic })
+  return screen.findByRole('dialog', { name: topic })
 }
 // The question mark stands in the heading's own row, and nowhere else on the step.
 const atHeading = (topic: string, heading: RegExp) => {
@@ -150,7 +151,7 @@ describe('the guided start on a desk, where the three steps stand together', () 
     atHeading('korten', /Gör några exempelkort/)
   })
 
-  it('moves the handoff and the blank game’s explanation behind the first step’s question mark', () => {
+  it('moves the handoff and the blank game’s explanation behind the first step’s question mark', async () => {
     wizard(1280)
     expect(screen.queryByText(HANDOFF)).toBeNull()
     expect(screen.queryByText(BLANK)).toBeNull()
@@ -158,23 +159,23 @@ describe('the guided start on a desk, where the three steps stand together', () 
     expect(screen.getByText('Utan guidad start')).toBeTruthy()
     expect(screen.getByText('Bygg hellre allt själv?')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' })).toBeTruthy()
-    const box = askOn('spelet')
+    const box = await askOn('spelet')
     expect(box.textContent).toMatch(HANDOFF)
     expect(box.textContent).toMatch(BLANK)
   })
 
-  it('keeps one short line under the fields and moves the rest', () => {
+  it('keeps one short line under the fields and moves the rest', async () => {
     wizard(1280)
     expect(screen.getByText('Fälten på varje kort.')).toBeTruthy()
     expect(screen.queryByText(FIELDS)).toBeNull()
-    expect(askOn('fälten').textContent).toMatch(FIELDS)
+    expect((await askOn('fälten')).textContent).toMatch(FIELDS)
   })
 
-  it('moves what the example cards are for and what comes after behind the third step’s question mark', () => {
+  it('moves what the example cards are for and what comes after behind the third step’s question mark', async () => {
     wizard(1280)
     expect(screen.queryByText(CARDS)).toBeNull()
     expect(screen.queryByText(FOOTER)).toBeNull()
-    const box = askOn('korten')
+    const box = await askOn('korten')
     expect(box.textContent).toMatch(CARDS)
     expect(box.textContent).toMatch(FOOTER)
     // Kept: the button that makes the game.
@@ -183,7 +184,7 @@ describe('the guided start on a desk, where the three steps stand together', () 
 })
 
 describe('the guided start on a phone, one step at a time', () => {
-  it('shows one question mark on the open step, and it belongs to that step', () => {
+  it('shows one question mark on the open step, and it belongs to that step', async () => {
     wizard(390)
     expect(asks()).toHaveLength(1)
     atHeading('spelet', /Spelet/)
@@ -192,6 +193,6 @@ describe('the guided start on a phone, one step at a time', () => {
     atHeading('fälten', /Fält/)
     fireEvent.click(screen.getByRole('tab', { name: '3 · Korten' }))
     expect(asks()).toHaveLength(1)
-    expect(askOn('korten').textContent).toMatch(FOOTER)
+    expect((await askOn('korten')).textContent).toMatch(FOOTER)
   })
 })

@@ -347,6 +347,6 @@ describe('the help text under the layer list (#144)', () => {
     // move is still said there, which is what #144 was about.
     expect(document.querySelector('.byd-canvas-hint')?.textContent).toContain('Dra för att ändra ordningen.')
     fireEvent.click(screen.getByRole('button', { name: 'Hjälp om lagerlistan' }))
-    expect(screen.getByRole('dialog', { name: 'lagerlistan' }).textContent).toContain('Elementet flyttas från duken: Enter går in i flyttläge, pilarna nudgar.')
+    expect((await screen.findByRole('dialog', { name: 'lagerlistan' })).textContent).toContain('Elementet flyttas från duken: Enter går in i flyttläge, pilarna nudgar.')
   })
 })
