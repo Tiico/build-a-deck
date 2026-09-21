@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 01 — Prosakolumnen i Data (#362)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  .rum { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 336px; gap: var(--s5); padding: var(--gutter); overflow: auto; align-content: start; }
+  .rum > * { min-width: 0; }
+  h2 { margin: 0 0 var(--s3); font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+
+  /* ── Datatabellen, tät som #46 kräver ─────────────────────────────────────────────────────── */
+  .tabell { border: 1px solid var(--line); border-radius: 12px; overflow: visible; background: var(--panel); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+  th { text-align: left; padding: 6px 10px; background: #1b1f2a; color: var(--quiet); font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; border-bottom: 1px solid var(--line); position: relative; vertical-align: middle; }
+  th:first-child { border-top-left-radius: 12px; }
+  th:last-child { border-top-right-radius: 12px; }
+  td { padding: 6px 10px; border-bottom: 1px solid var(--line-soft); color: #e6ecfa; vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td.id { color: var(--quiet); font-variant-numeric: tabular-nums; }
+  td.kostnad { font-variant-numeric: tabular-nums; }
+  .rubrikrad { display: flex; align-items: center; gap: 6px; }
+  .rubrikrad .namn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Cellens form: en prosakolumn ritas med L39:s tak på två rader, en vanlig kolumn på en rad. */
+  .inre { display: block; }
+  td[data-prosa='nej'] .inre { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  td[data-prosa='nej'] .inre p, td[data-prosa='nej'] .inre ul, td[data-prosa='nej'] .inre li { display: inline; margin: 0; padding: 0; list-style: none; }
+  td[data-prosa='nej'] .inre p + p::before { content: '¶'; color: #5d6577; padding: 0 5px; }
+  td[data-prosa='nej'] .inre li::before { content: '·'; color: #5d6577; padding: 0 4px 0 5px; }
+  td[data-prosa='ja'] .inre { position: relative; max-height: 36px; overflow: hidden; }
+  td[data-prosa='ja'] .inre::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 13px; background: linear-gradient(transparent, var(--panel)); }
+  td[data-prosa='ja'] .inre p { margin: 0 0 4px; line-height: 1.45; }
+  td[data-prosa='ja'] .inre p:last-child { margin: 0; }
+  td[data-prosa='ja'] .inre ul { margin: 0; padding-left: 15px; }
+  td[data-prosa='ja'] .inre li { margin: 0; line-height: 1.45; }
+
+  /* Den öppna cellen — bara för att visa vad valet faktiskt kostar eller ger. */
+  .cell { margin-top: var(--s4); border: 1px solid var(--primary-mark); border-radius: 10px; background: #0f1115; }
+  .cellhuvud { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid #1f2430; min-height: 38px; }
+  .cellhuvud b { color: #fff; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.4px; }
+  .verktyg { display: flex; gap: 3px; }
+  .verktyg button { min-width: 28px; height: 26px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #c7cede; font: inherit; font-size: 12px; cursor: pointer; padding: 0 6px; }
+  .verktyg button:hover { background: #1b2437; border-color: var(--line); }
+  .verktyg .f { font-weight: 800; } .verktyg .k { font-style: italic; }
+  .skriv { padding: 9px 12px; min-height: 58px; color: #e6ecfa; font-size: 12.5px; line-height: 1.55; }
+  .skriv p { margin: 0 0 8px; } .skriv p:last-child { margin: 0; }
+  .skriv ul { margin: 0 0 8px; padding-left: 17px; }
+  .cellfot { margin: 0; padding: 6px 12px 8px; border-top: 1px solid #1f2430; color: #5d6577; font-size: 10.5px; }
+  .cellfot u { text-decoration: none; color: #8ad0ff; }
+
+  /* ── A · Växeln i kolumnens egen rubrik ───────────────────────────────────────────────────── */
+  /* Glyfen bär både tillståndet och ursprunget: prickad understrykning = höjden föreslog,
+     ifylld bricka = någon har valt. Ett klick vänder valet och gör det uttryckligt; ↺ ger
+     kolumnen tillbaka till höjden och syns bara när det finns ett val att lämna. */
+  .vaxel { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #6f778a; font: inherit; font-size: 12px; line-height: 1; cursor: pointer; padding: 0; }
+  .vaxel:hover { border-color: var(--line); background: #1b2437; }
+  .vaxel:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 1px; }
+  .vaxel[data-prosa='ja'] { color: #8ad0ff; }
+  .vaxel[data-kalla='hojd'] { border-bottom: 2px dotted #4a5164; border-radius: 6px 6px 0 0; }
+  .vaxel[data-kalla='hojd'][data-prosa='ja'] { border-bottom-color: #3d6c93; }
+  .vaxel[data-kalla='val'] { background: #24507f; border-color: var(--primary-mark); color: #fff; }
+  .vaxel[data-kalla='val'][data-prosa='nej'] { background: #2b3040; border-color: #464d60; color: #aeb6c8; }
+  .ater { flex: none; display: inline-grid; place-items: center; width: 20px; height: 20px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #6f778a; font-size: 11px; cursor: pointer; padding: 0; }
+  .ater:hover { border-color: var(--line); background: #1b2437; color: #e6ecfa; }
+  .shell:not([data-variant='a']) .vaxel, .shell:not([data-variant='a']) .ater { display: none; }
+
+  /* ── C · Tillståndet syns när man rör kolumnen ────────────────────────────────────────────── */
+  /* Huvudet är tomt i vila. Pekaren eller tangentbordet på en kolumn fäller ut en remsa strax
+     under huvudet, förankrad i kolumnen, som säger vad kolumnen är och varför. */
+  .beroring { display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; min-width: 268px; padding: 9px 11px; border: 1px solid var(--primary-mark); border-radius: 10px; background: #12151d; box-shadow: 0 10px 24px #0008; text-transform: none; letter-spacing: 0; }
+  .shell[data-variant='c'] th:hover .beroring, .shell[data-variant='c'] th:focus-within .beroring { display: block; }
+  .beroring b { display: block; color: #e6ecfa; font-size: 11.5px; font-weight: 700; margin-bottom: 2px; }
+  .beroring p { margin: 0 0 8px; color: var(--quiet-2); font-size: 11px; line-height: 1.5; font-weight: 400; }
+  .beroring .rad { display: flex; gap: 6px; }
+  .beroring button { min-height: var(--tap); border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; background: #0f1115; color: #e6ecfa; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+  .beroring button:hover { border-color: var(--primary-mark); }
+  .beroring button.stark { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .shell[data-variant='c'] th { cursor: default; }
+  .prick { flex: none; width: 5px; height: 5px; border-radius: 50%; background: #3d6c93; }
+  .prick[data-prosa='nej'] { background: #3a4050; }
+  .prick[data-kalla='val'] { box-shadow: 0 0 0 2px #12151d, 0 0 0 3px #8ad0ff; }
+  .shell:not([data-variant='c']) .prick { display: none; }
+
+  /* ── B · Kolumnspalten vid sidan ──────────────────────────────────────────────────────────── */
+  .spalt { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 12px; display: grid; gap: 10px; align-content: start; }
+  .spalt h3 { margin: 0; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.6px; color: var(--quiet); }
+  .kolumnrad { border: 1px solid var(--line-soft); border-radius: 10px; padding: 9px 10px; background: #12141a; display: grid; gap: 7px; }
+  .kolumnrad > .topp { display: flex; align-items: baseline; gap: 8px; }
+  .kolumnrad .titel { color: #fff; font-size: 12px; font-weight: 700; }
+  .kolumnrad .matt2 { margin-left: auto; color: var(--quiet); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+  .kolumnrad .forslag { margin: 0; color: var(--quiet-2); font-size: 11px; line-height: 1.45; }
+  .kolumnrad .forslag u { text-decoration: none; color: #9ec4e8; }
+  .treval { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; background: var(--sunk); border-radius: 8px; padding: 3px; }
+  .treval button { min-height: var(--tap); border: 0; border-radius: 6px; padding: 0 4px; background: transparent; color: var(--quiet-2); font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .treval button:hover { color: #e6ecfa; }
+  .treval button[aria-pressed='true'] { background: var(--primary); color: #fff; }
+  .treval button[aria-pressed='true'][data-val='foljer'] { background: #2b3040; color: #cbd3e4; box-shadow: inset 0 0 0 1px #464d60; }
+
+  /* ── Den förklarande spalten ──────────────────────────────────────────────────────────────── */
+  .sido { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 12px; display: grid; gap: 9px; align-content: start; }
+  .sido h3 { margin: 0; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.6px; color: var(--quiet); }
+  .sido p { margin: 0; color: var(--quiet-2); font-size: 11.5px; line-height: 1.55; }
+  .sido p b { color: #e6ecfa; }
+  .sido dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; align-items: baseline; font-size: 11px; }
+  .sido dt { color: #9ec4e8; font-weight: 700; }
+  .sido dd { margin: 0; color: var(--quiet-2); line-height: 1.45; }
+  .hoger { display: grid; gap: var(--s4); align-content: start; }
+</style>
+</head>
+<body>
+<div class="shell" data-variant="nu" data-hojd="ritad">
+<header>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs"><button type="button">Kort</button><button type="button">Mall</button><button type="button" aria-selected="true">Data</button><button type="button">Symboler</button><button type="button">Regler</button><button type="button">Bord</button></nav>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Hur valet visas och vänds">
+    <button type="button" data-variant="nu" aria-pressed="true">Nu · bara höjden</button>
+    <button type="button" data-variant="a" aria-pressed="false">A · Växeln i rubriken</button>
+    <button type="button" data-variant="b" aria-pressed="false">B · Kolumnspalten</button>
+    <button type="button" data-variant="c" aria-pressed="false">C · Vid beröring</button>
+  </div>
+  <span class="who">P</span>
+</header>
+
+<div class="protorad">
+  <b>#362</b>
+  <p id="hjalptext"></p>
+  <button type="button" id="hojdknapp">Ändra rutans höjd i mallen</button>
+  <div class="matt">
+    <span>valkontroller <u id="m-kontroller">–</u></span>
+    <span>huvudets höjd <u id="m-huvud">–</u></span>
+    <span>minsta träffyta <u id="m-tap">–</u></span>
+    <span>rullar <u id="m-rullar">–</u></span>
+  </div>
+  <p class="sagt" id="sagt">Skärmläsaren hör: <em>—</em></p>
+</div>
+
+<main>
+<div class="rum">
+  <div>
+    <h2>Data</h2>
+    <div class="tabell">
+      <table>
+        <thead><tr id="huvud"></tr></thead>
+        <tbody id="rader"></tbody>
+      </table>
+    </div>
+
+    <div class="cell" id="cell">
+      <div class="cellhuvud">
+        <b id="cellnamn">Kostnad · Gläntans väktare</b>
+        <div class="verktyg" id="verktyg" role="toolbar" aria-label="Formatera">
+          <button type="button" class="f" aria-label="Fet">F</button>
+          <button type="button" class="k" aria-label="Kursiv">K</button>
+          <button type="button" aria-label="Punktlista">•—</button>
+          <button type="button" aria-label="Infoga symbol">✦</button>
+        </div>
+      </div>
+      <div class="skriv" id="skriv"></div>
+      <p class="cellfot" id="cellfot"></p>
+    </div>
+  </div>
+
+  <div class="hoger">
+    <div class="spalt" id="spalt" hidden>
+      <h3>Kolumner</h3>
+      <div id="kolumnrader"></div>
+    </div>
+    <div class="sido">
+      <h3>Vad som prövas</h3>
+      <p><b>«Höjden föreslår, designern avgör.»</b> Rutans höjd i mallen sätter <em>förvalet</em> för vilken kolumn som får L39:s riktextredigerare, men valet står skrivet per kolumn i Data och går att vända.</p>
+      <p>Leken spänner över fallet: <b>Regeltext</b> är prosa av höjd, <b>Namn</b> är det inte, och <b>Kostnad</b> — 12 mm för en siffra i 14 pt — är fallet som fällde dagens regel.</p>
+      <h3>Tillstånden</h3>
+      <dl>
+        <dt>¶ prickad</dt><dd>Förval: höjden föreslog prosa.</dd>
+        <dt>— prickad</dt><dd>Förval: höjden föreslog vanlig text.</dd>
+        <dt>¶ ifylld</dt><dd>Någon har valt prosa.</dd>
+        <dt>— ifylld</dt><dd>Någon har valt vanlig text.</dd>
+      </dl>
+      <h3>Höjdknappen</h3>
+      <p>«Ändra rutans höjd i mallen» ritar om alla fyra rutorna. Förvalen följer med. <b>Ett uttryckligt val rör sig inte</b> — det är följden som fällde dagens regel.</p>
+    </div>
+  </div>
+</div>
+</main>
+</div>
+
+<script>
+const PT_TO_MM = 25.4 / 72
+const BODY_LINES = 2
+
+// Kolumnerna, med rutan som mallen ritar dem i. `val` är det uttryckliga valet: null betyder att
+// ingen har sagt något och att höjden får svara.
+const kolumner = [
+  { key: 'namn', etikett: 'Namn', bredd: '17%', pt: 11, lh: 1.2, h: [7.4, 12.0], val: null },
+  { key: 'regeltext', etikett: 'Regeltext', bredd: '34%', pt: 8, lh: 1.35, h: [30.0, 7.0], val: null },
+  { key: 'kostnad', etikett: 'Kostnad', bredd: '11%', pt: 14, lh: 1.1, h: [12.0, 30.0], val: false },
+  { key: 'smak', etikett: 'Smaknotis', bredd: '24%', pt: 7.5, lh: 1.3, h: [6.5, 20.0], val: true },
+]
+
+const kort = [
+  { id: 'k-01', namn: 'Gläntans väktare', regeltext: 'Når **inte** hjortar.\n\n- Dra ett kort\n- Lägg ett löv', kostnad: '3', smak: 'Den stod där före stigen.' },
+  { id: 'k-02', namn: 'Björnens hälsning', regeltext: 'Slå {tärning} och lägg resultatet i *ditt eget* revir.', kostnad: '5', smak: 'Kort hälsning, långt minne.' },
+  { id: 'k-03', namn: 'Rävens list', regeltext: 'Byt ett kort i handen mot ett i högen.', kostnad: '2', smak: 'Räven räknar, sedan väljer den.' },
+  { id: 'k-04', namn: 'Grantopp', regeltext: '', kostnad: '1', smak: '' },
+]
+
+const shell = document.querySelector('.shell')
+let hojdlage = 0
+
+const hojdAv = (k) => k.h[hojdlage]
+const radhojd = (k) => k.pt * PT_TO_MM * k.lh
+const forslag = (k) => hojdAv(k) >= BODY_LINES * radhojd(k)
+// Dagens regel läser bara höjden. «Nu» visar den som den är: ett uttryckligt val finns inte att
+// ha, och kostnadskolumnen får sin verktygsrad vare sig designern vill eller ej.
+const arProsa = (k) => (shell.dataset.variant === 'nu' || k.val === null ? forslag(k) : k.val)
+const kalla = (k) => (shell.dataset.variant === 'nu' || k.val === null ? 'hojd' : 'val')
+
+const hjalptexter = {
+  nu: 'Nu · bara höjden. Ingenting i Data säger att en kolumn är prosa eller varför. Kostnad är 12 mm för en siffra i 14 pt och får en verktygsrad; ändras höjden i mallen byter Data-fliken utseende i smyg.',
+  a: 'A · Växeln i rubriken. Kolumnens eget huvud bär tillståndet: ¶ eller —. Prickad understrykning betyder att höjden föreslog, ifylld bricka att någon valt. ↺ ger kolumnen tillbaka till höjden och syns bara när det finns ett val att lämna.',
+  b: 'B · Kolumnspalten. Valet bor i en panel vid sidan, ett kort per kolumn, med rutans mått och vad höjden föreslår skrivet i klartext. Tre lägen: Följer höjden, Prosa, Vanlig text.',
+  c: 'C · Vid beröring. Huvudet är tomt i vila — en prick är allt som står där. Pekaren eller tangentbordet på en kolumnrubrik fäller ut vad kolumnen är, varför, och de knappar som vänder det.',
+}
+
+function ordProsa(k) { return arProsa(k) ? 'prosa' : 'vanlig text' }
+function ordKalla(k) { return k.val === null ? 'höjden föreslog' : 'du valde' }
+
+function ritaHuvud() {
+  const huvud = document.getElementById('huvud')
+  huvud.replaceChildren()
+  const idth = document.createElement('th')
+  idth.style.width = '9%'
+  idth.textContent = 'id'
+  huvud.append(idth)
+  for (const k of kolumner) {
+    const th = document.createElement('th')
+    th.style.width = k.bredd
+    th.tabIndex = 0
+    const rad = document.createElement('div')
+    rad.className = 'rubrikrad'
+
+    const prick = document.createElement('span')
+    prick.className = 'prick'
+    prick.dataset.prosa = arProsa(k) ? 'ja' : 'nej'
+    prick.dataset.kalla = kalla(k)
+    rad.append(prick)
+
+    const namn = document.createElement('span')
+    namn.className = 'namn'
+    namn.textContent = k.etikett
+    rad.append(namn)
+
+    const vaxel = document.createElement('button')
+    vaxel.type = 'button'
+    vaxel.className = 'vaxel'
+    vaxel.dataset.prosa = arProsa(k) ? 'ja' : 'nej'
+    vaxel.dataset.kalla = kalla(k)
+    vaxel.textContent = arProsa(k) ? '¶' : '—'
+    vaxel.setAttribute('aria-pressed', String(arProsa(k)))
+    vaxel.setAttribute('aria-label', `${k.etikett} skrivs som ${ordProsa(k)}, ${ordKalla(k)}`)
+    vaxel.addEventListener('click', () => { k.val = !arProsa(k); sag(`${k.etikett} skrivs som ${ordProsa(k)}, du valde`); rita() })
+    rad.append(vaxel)
+
+    if (k.val !== null) {
+      const ater = document.createElement('button')
+      ater.type = 'button'
+      ater.className = 'ater'
+      ater.textContent = '↺'
+      ater.setAttribute('aria-label', `Låt ${k.etikett} följa höjden igen`)
+      ater.addEventListener('click', () => { k.val = null; sag(`${k.etikett} följer höjden igen och skrivs som ${ordProsa(k)}`); rita() })
+      rad.append(ater)
+    }
+
+    th.append(rad, beroringen(k))
+    huvud.append(th)
+  }
+}
+
+function beroringen(k) {
+  const box = document.createElement('div')
+  box.className = 'beroring'
+  const b = document.createElement('b')
+  b.textContent = `${k.etikett} skrivs som ${ordProsa(k)}`
+  const p = document.createElement('p')
+  p.textContent = k.val === null
+    ? `Höjden föreslog det: rutan är ${hojdAv(k).toFixed(1).replace('.', ',')} mm och en rad av dess grad är ${radhojd(k).toFixed(1).replace('.', ',')} mm.`
+    : `Du valde det. Rutan är ${hojdAv(k).toFixed(1).replace('.', ',')} mm, och höjden hade föreslagit ${forslag(k) ? 'prosa' : 'vanlig text'}.`
+  const rad = document.createElement('div')
+  rad.className = 'rad'
+  const vand = document.createElement('button')
+  vand.type = 'button'
+  vand.className = 'stark'
+  vand.textContent = arProsa(k) ? 'Gör vanlig text' : 'Gör prosa'
+  vand.addEventListener('click', () => { k.val = !arProsa(k); sag(`${k.etikett} skrivs som ${ordProsa(k)}, du valde`); rita() })
+  rad.append(vand)
+  if (k.val !== null) {
+    const ater = document.createElement('button')
+    ater.type = 'button'
+    ater.textContent = 'Följ höjden igen'
+    ater.addEventListener('click', () => { k.val = null; sag(`${k.etikett} följer höjden igen`); rita() })
+    rad.append(ater)
+  }
+  box.append(b, p, rad)
+  return box
+}
+
+function ritaRader() {
+  const kropp = document.getElementById('rader')
+  kropp.replaceChildren()
+  for (const rad of kort) {
+    const tr = document.createElement('tr')
+    const id = document.createElement('td')
+    id.className = 'id'
+    id.textContent = rad.id
+    tr.append(id)
+    for (const k of kolumner) {
+      const td = document.createElement('td')
+      td.className = k.key
+      td.dataset.prosa = arProsa(k) ? 'ja' : 'nej'
+      const inre = document.createElement('div')
+      inre.className = 'inre'
+      fyll(inre, rad[k.key] ?? '')
+      td.append(inre)
+      tr.append(td)
+    }
+    kropp.append(tr)
+  }
+}
+
+// Delmängden så långt prototypen behöver den: stycken, punkter, fet, kursiv, {symbol}.
+function fyll(el, text) {
+  el.replaceChildren()
+  for (const block of text.split('\n\n')) {
+    const rader = block.split('\n')
+    if (rader.every((r) => r.startsWith('- '))) {
+      const ul = document.createElement('ul')
+      for (const r of rader) { const li = document.createElement('li'); inline(li, r.slice(2)); ul.append(li) }
+      el.append(ul)
+    } else {
+      const p = document.createElement('p')
+      inline(p, rader.join(' '))
+      el.append(p)
+    }
+  }
+}
+
+function inline(into, text) {
+  const delar = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|\{[^}]+\})/g)
+  for (const d of delar) {
+    if (!d) continue
+    if (d.startsWith('**')) { const b = document.createElement('b'); b.textContent = d.slice(2, -2); into.append(b) }
+    else if (d.startsWith('*')) { const i = document.createElement('i'); i.textContent = d.slice(1, -1); into.append(i) }
+    else if (d.startsWith('{')) { const s = document.createElement('span'); s.textContent = '✦'; s.title = d; into.append(s) }
+    else into.append(document.createTextNode(d))
+  }
+}
+
+function ritaSpalt() {
+  const spalt = document.getElementById('spalt')
+  spalt.hidden = shell.dataset.variant !== 'b'
+  const lista = document.getElementById('kolumnrader')
+  lista.replaceChildren()
+  if (spalt.hidden) return
+  lista.style.display = 'grid'
+  lista.style.gap = '8px'
+  for (const k of kolumner) {
+    const box = document.createElement('div')
+    box.className = 'kolumnrad'
+    const topp = document.createElement('div')
+    topp.className = 'topp'
+    const titel = document.createElement('span')
+    titel.className = 'titel'
+    titel.textContent = k.etikett
+    const matt = document.createElement('span')
+    matt.className = 'matt2'
+    matt.textContent = `${hojdAv(k).toFixed(1).replace('.', ',')} mm · ${String(k.pt).replace('.', ',')} pt`
+    topp.append(titel, matt)
+
+    const f = document.createElement('p')
+    f.className = 'forslag'
+    const svar = document.createElement('u')
+    svar.textContent = forslag(k) ? 'prosa' : 'vanlig text'
+    f.append(document.createTextNode('Rutan rymmer '), document.createTextNode(forslag(k) ? 'två rader' : 'en rad'), document.createTextNode('. Höjden föreslår '), svar, document.createTextNode('.'))
+
+    const tre = document.createElement('div')
+    tre.className = 'treval'
+    tre.setAttribute('role', 'group')
+    tre.setAttribute('aria-label', `${k.etikett} skrivs som`)
+    for (const [val, ord] of [['foljer', 'Följer höjden'], ['prosa', 'Prosa'], ['vanlig', 'Vanlig text']]) {
+      const knapp = document.createElement('button')
+      knapp.type = 'button'
+      knapp.dataset.val = val
+      knapp.textContent = ord
+      const aktiv = val === 'foljer' ? k.val === null : val === 'prosa' ? k.val === true : k.val === false
+      knapp.setAttribute('aria-pressed', String(aktiv))
+      knapp.addEventListener('click', () => {
+        k.val = val === 'foljer' ? null : val === 'prosa'
+        sag(`${k.etikett} skrivs som ${ordProsa(k)}, ${ordKalla(k)}`)
+        rita()
+      })
+      tre.append(knapp)
+    }
+    box.append(topp, f, tre)
+    lista.append(box)
+  }
+}
+
+// Den öppna cellen: kostnadskolumnen, eftersom det är den dagens regel klär i en verktygsrad.
+function ritaCell() {
+  const k = kolumner.find((x) => x.key === 'kostnad')
+  document.getElementById('cellnamn').textContent = `${k.etikett} · Gläntans väktare`
+  document.getElementById('verktyg').hidden = !arProsa(k)
+  const skriv = document.getElementById('skriv')
+  skriv.replaceChildren()
+  const p = document.createElement('p')
+  p.textContent = '3'
+  skriv.append(p)
+  const fot = document.getElementById('cellfot')
+  fot.replaceChildren()
+  const u = document.createElement('u')
+  u.textContent = arProsa(k) ? 'riktextredigerare med tvåradstak (L39)' : 'vanligt fält, en rad'
+  fot.append(document.createTextNode('öppen cell · '), u, document.createTextNode(shell.dataset.variant === 'nu' ? ' — höjden bestämmer, och ingenting säger det' : ` — ${ordKalla(k)}`))
+}
+
+function sag(text) {
+  document.getElementById('sagt').replaceChildren(document.createTextNode('Skärmläsaren hör: '), Object.assign(document.createElement('em'), { textContent: text }))
+}
+
+function mat() {
+  const rum = document.querySelector('.rum')
+  // Kontrollerna som bär *valet*, räknade för sig. Cellens verktygsrad räknas separat: den är
+  // inte ett sätt att välja utan det valet ger, och den finns eller finns inte i alla varianter.
+  const val = [...rum.querySelectorAll('.vaxel, .ater, .treval button, .beroring button')]
+  let synliga = 0
+  let minsta = Infinity
+  for (const el of val) {
+    const r = el.getBoundingClientRect()
+    if (r.width === 0 || r.height === 0) continue
+    synliga += 1
+    minsta = Math.min(minsta, Math.round(Math.min(r.width, r.height)))
+  }
+  const verktyg = document.getElementById('verktyg')
+  const toolbar = verktyg.hidden ? 0 : verktyg.querySelectorAll('button').length
+  const th = document.querySelector('thead th')
+  document.getElementById('m-kontroller').textContent = String(synliga)
+  document.getElementById('m-huvud').textContent = `${Math.round(th.getBoundingClientRect().height)} px`
+  document.getElementById('m-tap').textContent = Number.isFinite(minsta) ? `${minsta} px` : '–'
+  document.getElementById('m-rullar').textContent = rum.scrollHeight > rum.clientHeight + 1 ? 'ja' : 'nej'
+  window.bydMatt = {
+    variant: shell.dataset.variant,
+    hojdlage,
+    valkontroller: synliga,
+    celltoolbar: toolbar,
+    huvud: Math.round(th.getBoundingClientRect().height),
+    tap: Number.isFinite(minsta) ? minsta : null,
+    rullar: rum.scrollHeight > rum.clientHeight + 1,
+    ytahojd: Math.round(rum.scrollHeight),
+    prosa: Object.fromEntries(kolumner.map((k) => [k.key, `${arProsa(k) ? 'prosa' : 'vanlig'}/${kalla(k)}`])),
+  }
+}
+
+function rita() {
+  document.getElementById('hjalptext').textContent = hjalptexter[shell.dataset.variant]
+  ritaHuvud()
+  ritaRader()
+  ritaSpalt()
+  ritaCell()
+  mat()
+}
+
+for (const knapp of document.querySelectorAll('.switch button')) {
+  knapp.addEventListener('click', () => {
+    shell.dataset.variant = knapp.dataset.variant
+    for (const b of document.querySelectorAll('.switch button')) b.setAttribute('aria-pressed', String(b === knapp))
+    rita()
+  })
+}
+
+document.getElementById('hojdknapp').addEventListener('click', () => {
+  hojdlage = hojdlage === 0 ? 1 : 0
+  shell.dataset.hojd = hojdlage === 0 ? 'ritad' : 'omritad'
+  document.getElementById('hojdknapp').textContent = hojdlage === 0 ? 'Ändra rutans höjd i mallen' : 'Ångra höjdändringen'
+  sag(hojdlage === 0 ? 'Mallens rutor är tillbaka som de var' : 'Mallens rutor är omritade. Kolumner utan eget val följde med; Kostnad och Smaknotis står kvar.')
+  rita()
+})
+
+rita()
+sag('Data, tabell med fem kolumner')
+</script>
+</body>
+</html>
