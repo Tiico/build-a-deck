@@ -3724,6 +3724,24 @@ Katalogposten vet svaret och fyller i det, för tryckets skull.
 Katalogen nås aldrig utan handling från designern: ingen förhämtning vid sidladdning.
 Att katalogen inte svarar sägs i panelen, inte tyst.
 
+**Byggt 2026-09-21 (#329). Ett led i beslutet behövde en form det inte hade fått.**
+
+Beslutet säger *att* katalogen ska gå att söka i, inte *varifrån* namnen kommer, och där tog verkligheten ett val.
+De två adresser hos Google som kan svara på «vilka familjer finns» — `fonts.google.com/metadata/fonts` och `download/list` — skickar inget `Access-Control-Allow-Origin`, så en webbläsare kan inte läsa någon av dem.
+Det som är CORS-öppet är `fonts.googleapis.com/css2` och `fonts.gstatic.com`, som svarar om en familj man redan vet namnet på — vilket är precis paret prototypen använde.
+
+Listan reser därför med bygget: 1 818 familjer med latinskt snitt, var och en med licens, upphovsman och de vikter som går att be om, skriven av `packages/web/scripts/google-fonts.ts` och läst bakom en dynamisk import som bara öppnandet av väljaren kallar.
+Den ligger alltså inte på första målningen och hämtas inte från Google.
+Licensen står inte i Googles metadata alls — och det är fältet det här beslutet vänder på — så den läses ur katalogen i `google/fonts`, där licensen är den katalog familjen bor i.
+Sex familjer vars licens inte gick att fastställa lämnas utanför: en katalogpost som gissar svaret är sämre än ingen post.
+
+Det som följer av det är att listan blir gammal. Den uppdateras genom att skriptet körs om, och det är en ändring som syns i ett diff.
+Alternativet — att nå Google för listan — hade krävt en proxy på lådan, och det är just det utgående beroendet DRIFT §12 säger nej till.
+
+Ett mått till, som inte stod i prototypen: en statisk familj hämtas som sin regular.
+Projektet bär en asset per familj, och att be om alla vikter vore bara att fråga vilken av dem som ska kastas — samma villkor en uppladdad fil redan lever under.
+Filen är dessutom det latinska snittet och inte hela teckenrepertoaren, vilket `css2` inte erbjuder något annat än.
+
 ### L28. Kortet på väggen är ett kort: en kant, en kontaktskugga, och den stora skuggan bara under pekaren (prototypat och beslutat 2026-09-20, #332)
 
 Beslutet, i en mening:
