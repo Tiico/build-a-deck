@@ -4398,6 +4398,45 @@ Två saker fällan avsiktligt inte gör.
 Den svarar inte Escape: dörren har två lager av den sedan L44 — namnrutan svarar sitt eget utan att stänga dörren, panelen svarar dörrens — och en fälla som svalde trycket skulle svara för båda.
 Och den släpper taget medan en kolumn frågas om, eftersom den frågan står utanför dörren och måste kunna ta fokus; den tar det igen när frågan är besvarad.
 
+### L46. Ingen mätt kolumn är bredare än det rum som syns, och den öppna cellen är smalare än sin kolumn (prototypat och beslutat 2026-09-21, #397, #398, #401)
+
+`fitColumns` ger sedan #141 varje kolumn exakt det dess bredaste värde ber om, och för en riktig regeltext i en lek på 308 kort blev det 1 684 px i en låda på 1 408.
+Tre fel föll ut ur den enda siffran, och de har ett gemensamt svar.
+
+**Kolumnens egen dragkant hamnade 824 px utanför lådan.**
+Kanten man ska ta i *för att* kolumnen är för bred var onåbar *därför att* den var för bred, och kvar stod `Alt`+`Skift`+vänsterpil, 16 px per tryck: 79 tangenttryck, och ingenting i ytan som nämner genvägen.
+
+**Taket räknas mot det rum som syns och inte mot lådan.**
+Bocken och `id` står fastnålade ovanpå kolumnen (L-beslutet bakom #145) och äter 140 px, så en kolumn som är exakt lådans bredd har sin kant under dem.
+Ett tak satt mot `clientWidth` ensamt mäter alltså rätt sak på fel ställe; prototypen hade det felet i sitt första utkast och rapporterade kanten som nåbar när den inte var det.
+Vad som är fastnålat frågas arket om, som målet och lanen redan frågas om, så filen kan inte glida ifrån `editor.css`.
+
+**En bredd designern dragit själv rörs inte.**
+Taket är en åsikt om en mätning, och hennes bredd är ingen mätning (L4, #46).
+Hon kan se kanten hon drog, eftersom hon drog den.
+Följden är att kolumnen fortfarande kan bli bredare än lådan — vilket är precis det fall den öppna cellens eget tak finns för.
+
+**Den öppna body-cellen har ett tak på sin bredd, och verktygen står kvar i huvudet.**
+L39 lovar att formateringen syns finnas innan man börjar skriva; vid kolumnens bredd stod raden 1 353 px från sin egen etikett och inte på skärmen alls, så åtagandet var brutet av avstånd och inte av en tonande rad.
+Taket sitter på hela den öppna cellen och inte bara på skrivytan, så huvudet står kvar rakt ovanför det man skriver i.
+Resten av kolumnen till höger om cellen är cellens egen grund och fylls inte med något: kolumnen får vara bred, skrivytan ska inte vara det.
+
+**Priset är känt och taget.** Taket följer fönstret, så samma lek ritar `body` 1 170 px vid 1440 och 754 vid 1024.
+Det är vad L4 redan säger — bredden är en vy och inte projektet — men det betyder att tabellen ritas om när fönstret ändras.
+Ett fast tak i pixlar mättes som alternativ och avvisades: det kapar en lång regeltext redan på en bred skärm, och rummet finns.
+
+**Rubriken glider med, och kapet mot lådan tonar ut.**
+Att se vilket *kort* raden är löstes av de fastnålade cellerna; vilken *kolumn* texten står i sa ingenting, och rullad förbi stod svansarna kvar under en tom rubrikrad.
+Kolumnens namn är därför `sticky` mot samma lane som taket räknas mot — samma mönster som raden redan bär, applicerat på huvudet — och klipps av sin egen `th`, så det stannar av sig självt vid kolumnens högerkant.
+Det som lådan kapar bär #53:s gest en nivå upp, och av skälet som står skrivet där: vid kanten står vilken rad som helst med vilken som helst av sina fem grunder, och en slöja måste känna dem alla medan en mask inte känner någon.
+Uttoningen slutar där den fastnålade `×` börjar; den står där just för att den inte ska kunna rullas bort (#17).
+
+**Och tabbriktningen följer bilden, inte den andra cellen.**
+I en vanlig textcell står ikonen efter fältet (#140) och nås framåt; i body-cellen står verktygen i huvudet, alltså ovanför, och nås bakåt.
+Det är ordningen som är gemensam och inte tangenten: fokus går dit ögat går (WCAG 2.4.3).
+#397:s ursprungliga acceptanskriterium bad om samma tangent och är ändrat efter det här beslutet.
+
+
 ## I. Öppna frågor
 
 Ekonomi och juridik:

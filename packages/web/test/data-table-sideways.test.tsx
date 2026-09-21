@@ -24,7 +24,7 @@ import { useState } from 'react'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { fireEvent, render } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
-import { DataTable } from '../src/editor/DataTable.js'
+import { DataTable, markCut } from '../src/editor/DataTable.js'
 import { deckValues, fitColumns, markValues } from '../src/editor/columns.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { translate, type T } from '../src/i18n/index.js'
@@ -114,6 +114,9 @@ const shellOf = (html: string) =>
     .replace('<div id="root"></div>', `<div id="root"><div class="byd-editor" data-page="editor" data-mode="table"><main><div role="tabpanel">${html}</div></main></div></div>`)
 
 const FIT = `(box, deck) => { (${String(fitColumns)})(box, deck); (${String(markValues)})(box) }`
+// Vad rullningen ändrar, frågat efter rullningen — som på sidan, där den hänger på bildrutan och
+// inte på mätningen. Frågat före hade lådans kant svarat om ett läge tabellen inte stod i.
+const PIN = `(box) => (${String(markCut)})(box)`
 
 let browser: Browser
 beforeAll(async () => {
@@ -136,6 +139,7 @@ async function at<T_>(html: string, to: 'start' | 'end', read_: (page: import('p
       },
       { deck: deckValues(deckDoc(), sv), fit: FIT, to },
     )
+    await page.evaluate((pin) => new Function('box', `(${pin})(box)`)(document.querySelector('.byd-data-scroll')), PIN)
     return await read_(page)
   } finally {
     await page.close()
@@ -244,6 +248,152 @@ describe('a table that fits its box (#145)', () => {
     // fact about this deck and not about the harness.
     expect(burstOpen).toBeGreaterThan(0)
     expect(fits.over).toBe(0)
+  }, 90_000)
+})
+
+// Rubriken över den text man läser (#401).
+//
+// #145 löste vilket *kort* raden är; vilken *kolumn* texten står i löste den inte. Rullad till
+// slutet av en tabell där `body` är 1 400 px står svansarna kvar utan rubrik ovanför sig, och i
+// huvudet syns «id» och sedan ungefär tolvhundra pixlar tomt innan nästa namn.
+//
+// Beslutet (2026-09-21, prototyp 03) lånar #145:s eget mönster: kolumnens namn glider i sidled och
+// stannar vid lådans vänsterkant, precis innanför det som redan står stilla där, så länge någon
+// del av kolumnen är i bild.
+//
+// Var den kanten går pinnas inte här. Bredden på det fastnålade är mätt och inte skriven, och
+// fontens metrik är en annan på CI:s Linux än på en Mac (#325).
+const rubrikenOchLådan = (page: import('playwright').Page, col: string) =>
+  page.evaluate((col) => {
+    const box = document.querySelector('.byd-data-scroll') as HTMLElement
+    const th = box.querySelector(`thead th[data-col="${col}"]`) as HTMLElement
+    const namn = th.querySelector('button') as HTMLElement
+    const låda = box.getBoundingClientRect()
+    const r = namn.getBoundingClientRect()
+    // Det som står stilla ovanpå kolumnen, mätt på sidan i stället för skrivet här.
+    const fast = [...box.querySelectorAll('thead .byd-data-check, thead th[data-col="id"]')]
+      .reduce((sum, cell) => sum + cell.getBoundingClientRect().width, 0)
+    return {
+      vänster: Math.round(r.left - låda.left),
+      höger: Math.round(r.right - låda.left),
+      lådan: Math.round(låda.width),
+      fast: Math.round(fast),
+      text: (namn.textContent ?? '').trim(),
+      // Står kolumnen över huvud taget i bild? Annars säger ingenting om rubriken något.
+      kolumnenSyns: th.getBoundingClientRect().right > låda.left && th.getBoundingClientRect().left < låda.right,
+    }
+  }, col)
+
+describe('rubriken över den text man läser (#401)', () => {
+  it('står kvar innanför lådan, efter det fastnålade, när kolumnen rullats förbi', async () => {
+    const sedd = await at(burst(), 'end', (page) => rubrikenOchLådan(page, 'body'))
+
+    // Villkoret för att frågan ska betyda något: kolumnen är fortfarande i bild vid slutet.
+    expect(sedd.kolumnenSyns).toBe(true)
+    expect(sedd.text).toContain('body')
+    // Namnet ligger innanför lådan och inte under det som står stilla där.
+    expect(sedd.vänster).toBeGreaterThanOrEqual(sedd.fast)
+    expect(sedd.höger).toBeLessThanOrEqual(sedd.lådan)
+  }, 90_000)
+
+  // Att det verkligen är ett villkor: vid lådans början, där kolumnen börjar långt inne i bilden,
+  // står namnet kvar vid sin egen kolumn och inte klistrat vid kanten. Glidningen är alltså ett
+  // svar på rullningen och inte en rubrik som alltid står längst till vänster.
+  it('är ett verkligt villkor: orullad står namnet kvar vid sin egen kolumn', async () => {
+    const [orullad, rullad] = await Promise.all([
+      at(burst(), 'start', (page) => rubrikenOchLådan(page, 'body')),
+      at(burst(), 'end', (page) => rubrikenOchLådan(page, 'body')),
+    ])
+
+    expect(orullad.vänster).toBeGreaterThan(rullad.vänster)
+    expect(orullad.vänster).toBeGreaterThan(orullad.fast)
+  }, 90_000)
+})
+
+// Kapet mot lådan (#401, andra halvan).
+//
+// #46:s ellips och #53:s uttoning gäller när ett värde är kapat av *sin egen kolumn*. Det
+// betydligt vanligare fallet — att det är lådan som kapar — hade inget märke alls: vid 1 024 px
+// var fyra av sju kolumner osynliga och ingenting på skärmen antydde att de fanns.
+//
+// Gesten är #53:s egen, en nivå upp. Där skrevs att en slöja är fel för att raden har fyra grunder
+// och en slöja måste känna alla fyra, medan en mask inte känner någon. Lådans kant har samma
+// problem — vad som råkar stå där är vilken rad som helst — så det är masken och inte slöjan som
+// flyttas hit. Den ritas bara när något verkligen är kapat; en tabell som får plats ritas exakt
+// som i dag.
+const kantenAvLådan = (page: import('playwright').Page) =>
+  page.evaluate(() => {
+    const box = document.querySelector('.byd-data-scroll') as HTMLElement
+    const how = getComputedStyle(box)
+    return {
+      märkt: box.getAttribute('data-beyond'),
+      mask: how.maskImage === 'none' ? (how as unknown as { webkitMaskImage?: string }).webkitMaskImage ?? 'none' : how.maskImage,
+      kvar: box.scrollWidth - box.clientWidth - Math.round(box.scrollLeft),
+    }
+  })
+
+describe('kapet mot lådan bär samma gest som kapet mot kolumnen (#401)', () => {
+  it('tonar ut vid högerkanten så länge något ligger utanför den', async () => {
+    const sedd = await at(burst(), 'start', kantenAvLådan)
+
+    expect(sedd.kvar).toBeGreaterThan(0)
+    expect(sedd.märkt).toBe('true')
+    expect(sedd.mask).not.toBe('none')
+    // En uttoning och inte ett hårt stopp (#53): det som ritas är en övergång och inte en kant.
+    expect(sedd.mask).toContain('gradient')
+  }, 90_000)
+
+  it('ritas inte alls när tabellen får plats, och inte längre när man rullat till slutet', async () => {
+    const [ryms, slutet] = await Promise.all([at(markup(), 'start', kantenAvLådan), at(burst(), 'end', kantenAvLådan)])
+
+    expect(ryms.kvar).toBe(0)
+    expect(ryms.märkt).toBe(null)
+    expect(ryms.mask).toBe('none')
+
+    // Och vid slutet av rullningen finns ingenting mer åt höger att antyda. Ett märke där vore
+    // samma lögn som en kant under `id` på en tabell som står vid sin början (#145).
+    expect(slutet.kvar).toBe(0)
+    expect(slutet.märkt).toBe(null)
+  }, 90_000)
+})
+
+// Och vad uttoningen inte får äta (#401 mot #17, #53).
+//
+// Lådans högerkant är också där den fastnålade ×-kolumnen står, och den står där just för att den
+// inte ska kunna rullas bort: den är det som skulle gå förlorat först. En uttoning lagd på hela
+// lådan tar den med sig — masken vet ingenting om vad som råkar ligga under den, vilket är dess
+// styrka överallt utom precis här. Så uttoningen slutar där pinnen börjar.
+const pinnensGrund = (page: import('playwright').Page) =>
+  page.evaluate(() => {
+    const box = document.querySelector('.byd-data-scroll') as HTMLElement
+    const pin = box.querySelector('thead .byd-data-remove') as HTMLElement
+    const r = pin.getBoundingClientRect()
+    const låda = box.getBoundingClientRect()
+    return {
+      märkt: box.getAttribute('data-beyond'),
+      // Hur långt in från lådans högerkant pinnen börjar, och hur bred den är.
+      pinFrånKanten: Math.round(låda.right - r.right),
+      pinBredd: Math.round(r.width),
+      // Vad masken säger på just den punkten, läst ur arket i stället för gissat.
+      mask: getComputedStyle(box).maskImage,
+    }
+  })
+
+describe('uttoningen vid lådans kant lämnar den fastnålade × i fred (#401, #17)', () => {
+  it('slutar tona där pinnen börjar, så det som aldrig får rullas bort inte tonas bort', async () => {
+    const sedd = await at(burst(), 'start', pinnensGrund)
+
+    expect(sedd.märkt).toBe('true')
+    // Pinnen står i lådans högerkant — det är premissen som gör kollisionen möjlig.
+    expect(sedd.pinFrånKanten).toBeLessThanOrEqual(1)
+    expect(sedd.pinBredd).toBeGreaterThan(0)
+    // Och masken blir ogenomskinlig igen innan den når dit. Att den nämner pinnens egen bredd är
+    // vad som binder de två talen ihop: flyttas pinnen flyttas uttoningens slut med den.
+    expect(sedd.mask).toContain('gradient')
+    // Efter den genomskinliga punkten kommer en ogenomskinlig igen: det är pinnen, oberörd.
+    const genomskinlig = sedd.mask.lastIndexOf('rgba(0, 0, 0, 0)')
+    expect(genomskinlig, `masken har ingen genomskinlig punkt alls: ${sedd.mask}`).toBeGreaterThan(-1)
+    expect(sedd.mask.slice(genomskinlig + 1), `masken slutar inte ogenomskinlig: ${sedd.mask}`).toContain('rgb(0, 0, 0)')
   }, 90_000)
 })
 

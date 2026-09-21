@@ -1670,6 +1670,20 @@
 /* Huvudet står alltid på samma plats i den öppna cellen och rör sig aldrig. Verktygen syns finnas
    innan man börjar skriva — en rad som tonar fram vid fokus säger ingenting till den som ännu
    inte klickat (L39). */
+/* Skrivytans tak (#397). Verktygsraden står i cellens huvud och rör sig inte (L39) — det som
+   ändras är hur bred den öppna cellen får bli. En kolumn kan vara bredare än lådan, eftersom
+   designern får dra den dit (L4, #46), och vid den bredden hamnade huvudets högra ände över tusen
+   pixlar från sin egen etikett och utanför bild: åtagandet att verktygen syns finnas innan man
+   börjar skriva var brutet av avstånd.
+
+   Taket sitter på hela den öppna cellen och inte bara på skrivytan, så huvudet står kvar precis
+   ovanför det man skriver i i stället för att sväva någon annanstans. Den stängda cellen rörs
+   inte: den visar sitt värde över hela den kolumn designern gjorde bred, vilket är vad hon gjorde
+   den bred för.
+
+   Resten av kolumnen till höger om den öppna cellen är cellens egen grund och ska inte fyllas med
+   något (beslut 2026-09-21). */
+.byd-data-bodycell[data-open] { max-width: var(--byd-data-write); }
 .byd-data-bodyhead { display: flex; align-items: center; gap: 8px; padding: 0 4px 0 var(--byd-data-cell-pad); border-bottom: 1px solid #2f333d; }
 .byd-data-bodyhead > b { color: var(--byd-editor-quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; white-space: nowrap; }
 .byd-data-bodytools { display: flex; gap: 2px; margin-left: auto; }
@@ -1853,6 +1867,13 @@
 /* The head's own two, so the corner where the row that stands still upward crosses the columns
    that stand still sideways belongs to both. Above the body's, or a value would be drawn over the
    heading at the moment both are held. */
+/* Rubriken glider med (#401). #145 nålade fast bocken och `id` så att man ser vilket *kort* raden
+   är; vilken *kolumn* texten står i sa ingenting. Namnet glider därför i sidled och stannar just
+   innanför det fastnålade så länge någon del av kolumnen är i bild — samma mönster som raden
+   redan bär, applicerat på huvudet. `sticky` klipps av sin egen `th`, så namnet lämnar aldrig sin
+   kolumn: det stannar av sig självt när kolumnens högerkant kommer. Var lanen slutar vet bara
+   mätningen, som säger det i `--byd-data-lane`; före första mätningen räcker bocken. */
+.byd-data thead th[data-col] > button { position: sticky; left: var(--byd-data-lane, var(--byd-tap)); }
 .byd-data thead .byd-data-check { position: sticky; left: 0; z-index: 3; }
 .byd-data thead th[data-col='id'] { position: sticky; left: var(--byd-tap); z-index: 3; }
 /* The edge that says there is more to the left. It is a promise that something is there, so it is
@@ -1896,6 +1917,29 @@
    it always was. */
 .byd-data-scroll[data-cut='true'] .byd-data tbody .byd-data-remove::before { opacity: 1; }
 
+/* Och vad lådan själv kapar (#401). #46:s ellips och #53:s uttoning gäller när ett värde är kapat
+   av sin egen kolumn; att det är *lådan* som kapar är det vanligare fallet och hade inget märke
+   alls — vid 1 024 låg fyra kolumner utanför och ingenting sa att de fanns.
+
+   Gesten är #53:s egen, flyttad en nivå upp, och av exakt samma skäl som står skrivet där: vid
+   lådans kant står vilken rad som helst, med vilken som helst av sina grunder, och en slöja måste
+   känna dem alla medan en mask inte känner någon. Så det sista som ritas slutar helt enkelt
+   ritas, över vad som än råkar ligga där, och ingenting flyttar sig — den som bett om mindre
+   rörelse har inget att stänga av.
+
+   Bara när något verkligen ligger utanför: `data-beyond` sätts av samma bildruta som frågar om
+   pinnen, och en tabell som får plats ritas exakt som förut. */
+.byd-data-scroll[data-beyond='true'] {
+  /* Uttoningen slutar där den fastnålade × börjar. Masken vet ingenting om vad som ligger under
+     den — det är dess styrka överallt utom precis här, för i lådans högerkant står pinnen, och den
+     står där just för att den inte ska kunna rullas bort (#17): den är det som skulle gå förlorat
+     först. De två sista punkterna ligger på samma plats, vilket ger en kant tillbaka till
+     ogenomskinligt, och pinnen ritas som förut. Vad som tonar in under den är redan #53:s fråga
+     och har redan sitt svar där. */
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--byd-tap) - var(--byd-data-cut)), rgb(0 0 0 / 0%) calc(100% - var(--byd-tap)), #000 calc(100% - var(--byd-tap)), #000 100%);
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--byd-tap) - var(--byd-data-cut)), rgb(0 0 0 / 0%) calc(100% - var(--byd-tap)), #000 calc(100% - var(--byd-tap)), #000 100%);
+}
+
 /* What a value that does not fit in its own column says for itself (#46). Once the widths are
    measured this is the exception and not the rule — six cards over `id art title body cost antal`
    have nothing cut at 1280 or at 1024 — which turns the question round: the cue has to be honest,
@@ -1928,7 +1972,10 @@
    for any reason — and what says the value goes on is the mark standing in the strip, which is
    beside the writing and not over it. The mark is the one part of this that cannot scroll away,
    fade out, or be typed through, which is why it is what the focused cell is left with. */
-.byd-data { --byd-data-cut: 20px; --byd-data-cut-edge: calc(var(--byd-data-cell-pad) + var(--byd-data-cut)); --byd-data-rail: 26px; }
+.byd-data-scroll { --byd-data-cut: 20px; }
+/* Hur bred en öppen body-cell får bli (#397): en läsbar radlängd, inte kolumnens bredd. */
+.byd-data { --byd-data-write: 640px; }
+.byd-data { --byd-data-cut-edge: calc(var(--byd-data-cell-pad) + var(--byd-data-cut)); --byd-data-rail: 26px; }
 /* The icon control's own lane (#140, förslag A). The cell is a grid, the field ends where the lane
    begins, and the two therefore never share ground at any column width — which is the acceptance
    made true by construction rather than by a margin somebody has to keep choosing. The lane is

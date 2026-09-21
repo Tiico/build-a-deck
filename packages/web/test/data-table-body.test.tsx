@@ -6,6 +6,7 @@
 // `data-table-body-height.test.tsx`, som ställer frågan till en riktig motor.
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { userEvent } from '@testing-library/user-event'
 import { DataTable } from '../src/editor/DataTable.js'
 import { symbolName, type GameSymbol } from '../src/editor/symbols.js'
 import { projectDoc } from './project-doc.js'
@@ -111,6 +112,43 @@ describe('verktygen står i den öppna cellens huvud (L39)', () => {
 // Klammern i en body-cell (E4, L34). Det är samma bibliotek som i en vanlig cell och nås samma
 // väg — `{` och sedan namnet — men vägen dit går genom `tillStrang`: cellen räknar i tecken och
 // vet ingenting om noder, och det är den räkningen som säger var klammern står.
+describe('vägen till verktygen med tangentbordet (#397, L39)', () => {
+  // Granskningen läste det som en bugg: framåt-Tabb från skrivytan hoppar över alla fyra
+  // verktygen. Den gör den, och det är rätt. L39 ställer raden i cellens **huvud**, alltså
+  // ovanför skrivytan, och fokusordningen ska följa den ordning ögat läser i (WCAG 2.4.3) — samma
+  // regel som #395 och #396 nyss rättade den här tabellen efter. Så vägen dit är bakåt, därför att
+  // raden står före.
+  //
+  // I en vanlig textcell står ikonen efter fältet (#140) och nås framåt, av exakt samma skäl: den
+  // står efter. Det är ordningen som är gemensam, inte tangenten — en hand som lär sig «verktyget
+  // ligger dit det syns» har lärt sig båda. Beslut 2026-09-21; #397:s tredje kriterium är ändrat
+  // efter det.
+  it('når verktygsraden med Shift+Tabb från skrivytan, dit den syns stå', async () => {
+    const hand = userEvent.setup()
+    table(withBody('Flyger tyst.'))
+    const cell = screen.getByLabelText('dragon body')
+    fireEvent.focusIn(cell)
+    cell.focus()
+
+    await hand.tab({ shift: true })
+
+    const tools = screen.getByRole('toolbar', { name: 'Formatera' })
+    expect(tools.contains(document.activeElement)).toBe(true)
+  }, JSDOM_TEST_BUDGET)
+
+  it('har raden före skrivytan i dokumentet, så fokus går dit ögat går', () => {
+    table(withBody('Flyger tyst.'))
+    const cell = screen.getByLabelText('dragon body')
+    fireEvent.focusIn(cell)
+
+    const öppen = cell.closest('.byd-data-bodycell')!
+    const tools = screen.getByRole('toolbar', { name: 'Formatera' })
+    // Fyra i ordningen `compareDocumentPosition` är FOLLOWING: raden står före skrivytan.
+    expect(tools.compareDocumentPosition(cell) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(öppen.firstElementChild?.className).toBe('byd-data-bodyhead')
+  }, JSDOM_TEST_BUDGET)
+})
+
 describe('symbollistan i body-cellen (E4)', () => {
   it('öppnas vid klammern, smalnar av med namnet, och skriver symbolen in i texten', async () => {
     const onCell = vi.fn()
