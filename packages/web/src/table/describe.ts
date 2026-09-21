@@ -23,8 +23,15 @@ export function describeActivity(line: Activity, view: Snapshot, t: T): string {
       return t('activity.flip', { who })
     case 'stack':
       return t('activity.stack', { who })
+    // One protocol verb, two moves a player recognises (#421). `split` is both "Dra 1 till min
+    // hand" and the ring's "Dela på hälften", and the vocabulary is closed, so the line is told
+    // apart here, by the `to` the intent already carries: with a destination the top cards were
+    // drawn to it, without one they became a new pile beside. `at` is said and the cards are not,
+    // so a hidden pile stays hidden — `which` never reaches the line.
     case 'split':
-      return t('activity.split', { who, zone: zone(it.pile) })
+      return it.to
+        ? t('activity.split.to', { who, n: it.at, zone: zone(it.pile), to: zone(it.to) })
+        : t('activity.split.beside', { who, n: it.at, zone: zone(it.pile) })
     case 'shuffle':
       return t('activity.shuffle', { who, zone: zone(it.pile) })
     case 'draw':
