@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type Ref } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react'
 import { WHOLE_PICTURE, pictureNameOf, showsWholePicture, type AssetCrop } from '@byd/protocol'
 import { croppedMotif, type Motif } from '@byd/template'
 import { titleOfRow } from '@byd/server/doc'
@@ -11,6 +11,7 @@ import { previewFonts } from './fonts.js'
 import { CardPreview } from './CardPreview.js'
 import { FaceSwitch } from './TemplateCanvas.js'
 import { facesDrawing, faceOrder } from './media-faces.js'
+import { useFocusTrap } from './focusTrap.js'
 import type { Key } from '../i18n/index.js'
 import { useT } from '../i18n/index.js'
 
@@ -57,6 +58,10 @@ export type MediaPanelProps = {
   // A picture taken out of the game (#318): the project's reference to it, and every picture
   // cell that held it, in one step.
   onRemove?: ((hash: string) => void) | undefined
+  // The pictures whose crop is on its way to the actor and not yet echoed back (#297, L33). The
+  // status may not say the server has a window it has not confirmed, and this is the only
+  // truthful word on that: the client holds every edit until the echo lands.
+  saving?: readonly string[] | undefined
 }
 
 // How many cards the question names before it counts the rest: enough to recognise what is
@@ -67,7 +72,7 @@ export const NAMED_CARDS = 5
 type Named = { name: string; named: boolean }
 type Result = (Named & { hash: string }) | (Named & { why: string })
 
-export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove }: MediaPanelProps) {
+export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, saving = [] }: MediaPanelProps) {
   const t = useT()
   const said = useId()
   const media = mediaInGame(doc)
@@ -89,16 +94,17 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove }: 
     else setLeaving(hash)
   }
   const asked = leaving === null ? undefined : media.find((m) => m.hash === leaving)
-  // The picture in hand. A library opens on a picture rather than on nothing, so the first one is
-  // chosen until the designer says otherwise, and a picture that leaves the game takes the choice
-  // with it.
+  // The picture in hand: the one whose crop is open as a sheet over the library (#297, L33). A
+  // library opens on nothing — the sheet is opened from a tile, or by the picture that has just
+  // arrived — and a picture that leaves the game takes the sheet with it.
   const [picked, setPicked] = useState<string | null>(null)
   // Utom efter en batch (#291, flerfilsbeslutet). Då är biblioteksöversikten det som visas och
   // ingen bild är öppnad: fem filer har ingen bild som är *den* bilden, och att välja åt
   // formgivaren efter nätverkets färdigordning vore det mest godtyckliga valet av alla. Så länge
   // översikten står är ingenting i handen, och det första hon rör vid avslutar den.
   const [overview, setOverview] = useState(false)
-  const chosen = overview ? null : picked !== null && media.some((m) => m.hash === picked) ? picked : (media[0]?.hash ?? null)
+  const inHand = overview || picked === null ? undefined : media.find((m) => m.hash === picked)
+  const chosen = inHand?.hash ?? null
   // Vad den senaste batchen blev, fil för fil, och vilka bilder som är nyss tillagda. Båda är
   // tillfällig återkoppling om en handling och inget dokumentet bär: en märkning som överlevde
   // omladdningen vore en påstådd egenskap hos bilden, och «nyss» är ingen egenskap hos en bild.
@@ -109,11 +115,14 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove }: 
   // Handen läggs på översikten, av samma skäl som den läggs på beskärningsrutan efter en enda
   // bild: det som visas måste kunna nås av den som inte ser skärmen.
   const overviewRef = useRef<HTMLElement | null>(null)
+  // Raised before the batch is put into state and lowered by the first commit that has the
+  // overview on the page: a commit may land between the two (#297 found one), and a flag that
+  // was spent on it would leave the hand where it was.
   const landing = useRef(false)
   useEffect(() => {
-    if (!landing.current) return
+    if (!landing.current || !overviewRef.current) return
     landing.current = false
-    overviewRef.current?.focus()
+    overviewRef.current.focus()
   })
   // Att öppna en bild avslutar översikten och dess återkoppling: formgivaren har gått vidare, och
   // en märkning som står kvar efter det säger något om biblioteket i stället för om handlingen.
@@ -203,9 +212,9 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove }: 
       return
     }
     const arrived = landed.filter((one) => 'hash' in one)
+    landing.current = true
     setBatch(landed)
     setNote(t('media.add.batch', { ok: arrived.length, n: landed.length }))
-    landing.current = true
     // Ingen enda kom fram: då finns ingen översikt att visa, och den vy formgivaren stod i står
     // kvar med filfelen bredvid sig.
     if (arrived.length === 0) return
@@ -215,7 +224,10 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove }: 
   }
   return (
     <div className="byd-media" data-media-panel>
-      <section>
+      {/* The library, and nothing of it reachable while the sheet lies over it (L33): a Tab that
+          walked out of the sheet into a tile would be a Tab into a surface the sheet has
+          covered. */}
+      <section className="byd-media-library" inert={chosen !== null}>
         <div className="byd-media-head">
           <h2>{t('media.title')}</h2>
           {/* The way in (beslut 5). A label around an off-screen input, which is how every other
@@ -318,8 +330,8 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove }: 
                 <button
                   type="button"
                   className="byd-media-tile byd-choice"
-                  aria-pressed={chosen === hash}
-                  aria-describedby={`${said}-${hash}`}
+                  aria-haspopup="dialog"
+                  aria-describedby={`${said}-${hash}${cropped || saving.includes(hash) ? ` ${said}-${hash}-mark` : ''}`}
                   onClick={() => open(hash)}
                 >
                   {/* The library is the editor's densest surface: a game of real size brings
@@ -336,6 +348,15 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove }: 
                     )}
                   </span>
                 </button>
+                {/* The mark (L33): a cropped picture says so on the tile, in words and not only
+                    in the lit window, because the tile is all there is of the picture once the
+                    sheet is closed — and it says «sparas» rather than «beskuren» while the actor
+                    has not yet confirmed the window. */}
+                {(cropped || saving.includes(hash)) && (
+                  <small id={`${said}-${hash}-mark`} className="byd-media-mark" data-state={saving.includes(hash) ? 'saving' : 'saved'}>
+                    {saving.includes(hash) ? t('media.crop.mark.saving') : t('media.crop.mark')}
+                  </small>
+                )}
                 {/* Marked, never purged (L22, beslut 4): an older version of the deck may still
                     be drawn from these bytes, so the library says nobody uses it and leaves it
                     where it is. */}
@@ -364,28 +385,32 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove }: 
           })}
         </ul>
       </section>
-      {/* The picture in hand: the window being cut, the card it lands on, and the way from it to
-          the deck's rows — one column, in the order the approved prototype put them. */}
-      <div className="byd-media-side">
-        {chosen !== null && onCrop && (
-          <Cropping
-            doc={doc}
-            assetBase={assetBase}
-            motifs={motifs}
-            hash={chosen}
-            cards={media.find((m) => m.hash === chosen)?.cards ?? []}
-            template={media.find((m) => m.hash === chosen)?.template ?? false}
-            crop={window_}
-            stored={stored}
-            handle={handle}
-            onCut={cut}
-            onWhole={() => {
-              setDrafted(null)
-              onCrop(chosen, null)
-            }}
-          />
-        )}
-      </div>
+      {/* The picture in hand, as a sheet over the library (L33): the window being cut, the card
+          it lands on, and «Klart» back to the library. */}
+      {chosen !== null && inHand && onCrop && (
+        <Cropping
+          doc={doc}
+          assetBase={assetBase}
+          motifs={motifs}
+          hash={chosen}
+          name={nameOf(chosen, inHand.cards)}
+          cards={inHand.cards}
+          template={inHand.template}
+          crop={window_}
+          stored={stored}
+          saving={saving.includes(chosen)}
+          handle={handle}
+          onCut={cut}
+          onWhole={() => {
+            setDrafted(null)
+            onCrop(chosen, null)
+          }}
+          onDone={() => {
+            setPicked(null)
+            setDrafted(null)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -405,12 +430,20 @@ function namedCards(cards: readonly string[], t: ReturnType<typeof useT>): strin
   return cards.length > NAMED_CARDS ? t('media.remove.more', { cards: named, n: cards.length - NAMED_CARDS }) : named
 }
 
+// What each state of the crop is marked with, beside its words (L33).
+const STATUS_MARK = { whole: '▢', saving: '⟳', saved: '✓' } as const
+const sameCrop = (a: AssetCrop, b: AssetCrop): boolean => a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h
+
 // The sides in the words that fit beside one large card (#295): the same control the template's
 // crown uses, said short.
 const FACE_SHORT: Record<string, Key> = { front: 'media.face.front', back: 'media.face.back' }
 
-// The picture in hand, and what the deck sees of it. The window on the left is the whole file
-// with the crop lit over it; the card below is that crop arriving where it is going.
+// The picture in hand, and what the deck sees of it: a sheet over the library (#297, L33). The
+// window on the left is the whole file with the crop lit over it; the card beside it is that crop
+// arriving where it is going; «Klart» is the way back. The sheet is a window in the keyboard's
+// sense too — the focus goes in on open, is held there, and goes back to the opener on close — by
+// the one trap the editor has (#296), and Escape closes it as «Klart» does: the change was applied
+// when the handle was released, so there is nothing a close could discard.
 //
 // The card is a real compile and not a drawing of a card (E2): the same `compile` the table's
 // textures and the print PDF come out of, handed the very window the designer is dragging. A
@@ -420,29 +453,44 @@ function Cropping({
   assetBase,
   motifs,
   hash,
+  name,
   cards,
   template,
   crop,
   stored,
+  saving,
   handle,
   onCut,
   onWhole,
+  onDone,
 }: {
   doc: ProjectDoc
   assetBase: string
   motifs: Record<string, Motif> | undefined
   hash: string
+  name: string
   // The cards drawn from the picture, in deck order — the library's own count of them — and
   // whether the template carries the picture by itself (#320).
   cards: readonly string[]
   template: boolean
   crop: AssetCrop
   stored: AssetCrop | undefined
-  handle: Ref<HTMLDivElement>
+  // Whether the actor has yet to echo this picture's crop.
+  saving: boolean
+  handle: RefObject<HTMLDivElement | null>
   onCut(crop: AssetCrop, settled: boolean): void
   onWhole(): void
+  onDone(): void
 }) {
   const t = useT()
+  const id = useId()
+  const box = useRef<HTMLElement | null>(null)
+  // Where the crop stands (L33): the whole picture and nothing stored; changed — on its way
+  // under the pointer, or sent and not yet echoed; or stored and confirmed, with the share of the
+  // picture it shows. The middle one is the point: it must never look like the last.
+  const state: 'whole' | 'saving' | 'saved' = saving || !sameCrop(crop, stored ?? WHOLE_PICTURE) ? 'saving' : stored === undefined ? 'whole' : 'saved'
+  // The hand lands on the window itself: that is what the sheet was opened to move.
+  useFocusTrap(box, { onEscape: onDone, initial: () => handle.current })
   const url = assetUrl(assetBase, hash)
   // The type the game is pinned to (B3), so the card beside the window is set the way it prints.
   const fonts = useMemo(() => previewFonts(doc, assetBase), [doc, assetBase])
@@ -483,61 +531,84 @@ function Cropping({
   const shown = turned && turned.hash === hash && turned.card === on?.id ? turned.face : (drawnOn[0] ?? faces[0] ?? null)
   const face = shown === null || undrawn ? undefined : doc.template.faces[shown]
   return (
-    <section className="byd-media-crop" aria-label={t('media.crop')}>
-      <h2>{t('media.crop')}</h2>
+    <section ref={box} className="byd-media-crop byd-media-sheet" role="dialog" aria-modal="true" aria-labelledby={`${id}-title`}>
+      <header className="byd-media-sheet-head">
+        <h2 id={`${id}-title`}>{t('media.crop')}</h2>
+        <span className="byd-media-sheet-name">{name}</span>
+        <button type="button" className="byd-secondary byd-media-sheet-done" onClick={onDone}>
+          {t('media.crop.done')}
+        </button>
+      </header>
       {/* Beslut 2 said where the crop belongs; this is that decision said out loud, where the
           designer is about to act on it. Without it the window looks like something done to this
           one card, which is the very thing the library exists to stop being true. */}
       <p className="byd-media-crop-lead">{t('media.crop.lead')}</p>
-      <Crop url={url} ratio={file && file.h > 0 ? file.w / file.h : 3 / 2} crop={crop} onChange={onCut} handle={handle} />
-      <button type="button" className="byd-secondary" disabled={stored === undefined} onClick={onWhole}>
-        {t('media.crop.whole')}
-      </button>
-      {on === undefined && <p className="byd-media-crop-note">{t('media.crop.unused')}</p>}
-      {/* Which card, before which side (variant A): only where there is a choice to make; a lone
-          card is named and not chosen. */}
-      {titled.length === 1 && <p className="byd-media-crop-on">{titled[0]?.title}</p>}
-      {using.length > 1 && (
-        <div className="byd-media-cards" role="group" aria-label={t('media.crop.cards')}>
-          <input type="search" aria-label={t('media.crop.cards.search')} placeholder={t('media.crop.cards.search')} value={query} onChange={(event) => setQuery(event.target.value)} />
-          {found.length === 0 ? (
-            <p className="byd-media-cards-none">{t('media.crop.cards.none')}</p>
-          ) : (
-            <ul>
-              {found.map(({ row: r, title }) => (
-                <li key={r.id}>
-                  <button type="button" className="byd-choice" aria-pressed={r.id === on?.id} onClick={() => setPicked({ hash, card: r.id })}>
-                    {title}
-                    {ambiguous(r, title) && title !== r.id && <small>{r.id}</small>}
-                  </button>
-                </li>
-              ))}
-            </ul>
+      <div className="byd-media-sheet-work">
+        <Crop
+          url={url}
+          ratio={file && file.h > 0 ? file.w / file.h : 3 / 2}
+          crop={crop}
+          onChange={onCut}
+          handle={handle}
+          status={
+            <div className="byd-media-crop-row">
+              <p role="status" className="byd-crop-status" data-state={state}>
+                <i aria-hidden="true">{STATUS_MARK[state]}</i> {state === 'saved' ? t('media.crop.status.saved', { p: Math.round(crop.w * crop.h * 100) }) : t(state === 'saving' ? 'media.crop.status.saving' : 'media.crop.status.whole')}
+              </p>
+              <button type="button" className="byd-secondary" disabled={stored === undefined} onClick={onWhole}>
+                {t('media.crop.whole')}
+              </button>
+            </div>
+          }
+        />
+        <div className="byd-media-sheet-card">
+          {on === undefined && <p className="byd-media-crop-note">{t('media.crop.unused')}</p>}
+          {/* Which card, before which side (variant A): only where there is a choice to make; a lone
+              card is named and not chosen. */}
+          {titled.length === 1 && <p className="byd-media-crop-on">{titled[0]?.title}</p>}
+          {using.length > 1 && (
+            <div className="byd-media-cards" role="group" aria-label={t('media.crop.cards')}>
+              <input type="search" aria-label={t('media.crop.cards.search')} placeholder={t('media.crop.cards.search')} value={query} onChange={(event) => setQuery(event.target.value)} />
+              {found.length === 0 ? (
+                <p className="byd-media-cards-none">{t('media.crop.cards.none')}</p>
+              ) : (
+                <ul>
+                  {found.map(({ row: r, title }) => (
+                    <li key={r.id}>
+                      <button type="button" className="byd-choice" aria-pressed={r.id === on?.id} onClick={() => setPicked({ hash, card: r.id })}>
+                        {title}
+                        {ambiguous(r, title) && title !== r.id && <small>{r.id}</small>}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          {undrawn && <p className="byd-media-crop-note">{t('media.crop.notDrawn')}</p>}
+          {face && row && shown !== null && faces.length > 1 && <FaceSwitch faces={faces} face={shown} names={FACE_SHORT} onSelect={(f) => setTurned({ hash, card: on?.id, face: f })} />}
+          {face && row && (
+            <figure className="byd-media-crop-card">
+              <CardPreview
+                id="byd-crop-card"
+                fonts={fonts}
+                face={face}
+                row={row}
+                icons={previewIcons(doc, assetBase)}
+                assetBase={assetBase}
+                // A window that shows all of the picture is not a crop, here either: the card then
+                // gets the measurement untouched, air and all, exactly as it will when it is printed.
+                motifs={file && !showsWholePicture(crop) ? { ...motifs, [url]: croppedMotif(file, crop) } : motifs}
+                palette={doc.palette}
+                // One large card (variant A): the card column is 240–320 px and the card at its own
+                // size is 238, so the judgement is made on a card and not on a thumbnail of one.
+                scale={1}
+              />
+              <figcaption>{t('media.crop.card')}</figcaption>
+            </figure>
           )}
         </div>
-      )}
-      {undrawn && <p className="byd-media-crop-note">{t('media.crop.notDrawn')}</p>}
-      {face && row && shown !== null && faces.length > 1 && <FaceSwitch faces={faces} face={shown} names={FACE_SHORT} onSelect={(f) => setTurned({ hash, card: on?.id, face: f })} />}
-      {face && row && (
-        <figure className="byd-media-crop-card">
-          <CardPreview
-            id="byd-crop-card"
-            fonts={fonts}
-            face={face}
-            row={row}
-            icons={previewIcons(doc, assetBase)}
-            assetBase={assetBase}
-            // A window that shows all of the picture is not a crop, here either: the card then
-            // gets the measurement untouched, air and all, exactly as it will when it is printed.
-            motifs={file && !showsWholePicture(crop) ? { ...motifs, [url]: croppedMotif(file, crop) } : motifs}
-            palette={doc.palette}
-            // One large card (variant A): the side column is 320 px and the card at its own size is
-            // 238, so the judgement is made on a card and not on a thumbnail of one.
-            scale={1}
-          />
-          <figcaption>{t('media.crop.card')}</figcaption>
-        </figure>
-      )}
+      </div>
     </section>
   )
 }

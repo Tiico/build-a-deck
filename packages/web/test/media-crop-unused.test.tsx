@@ -5,7 +5,7 @@
 // låda av den vanligaste formen i stället för över filens egen, och kortet bredvid ritas obeskuret
 // medan rutan dras. Beskärningen syns alltså inte där beslutet lovar att den syns.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
@@ -52,10 +52,31 @@ describe('a picture no card uses is still measured (#222, beslut 4)', () => {
     // Måttet hämtas när fliken öppnas, så formen är den rutan landar på och inte den den råkar ha
     // i samma ögonblick som den ritas.
     await waitFor(() => {
-      const sheet = document.querySelector('.byd-crop-sheet') as HTMLElement
+      const picture = document.querySelector('.byd-crop-picture') as HTMLElement
       // 400 / 200 = 2. Utan måttet blir det 1,5 — den vanligaste formen, och inte filens.
-      const [wide = '0', high = '1'] = sheet.style.aspectRatio.split('/')
+      const [wide = '0', high = '1'] = picture.style.aspectRatio.split('/')
       expect(Number(wide) / Number(high)).toBe(2)
     })
+  })
+
+  // Statusen får inte påstå att servern sparat när så inte skett (#297, L33): i samma ögonblick
+  // som tangenten trycks håller klienten editen och statusen är bärnsten; grön blir den först när
+  // aktören ekat den tillbaka.
+  it('säger «sparas» tills aktören ekat beskärningen, och först då «beskuren»', async () => {
+    const user = userEvent.setup()
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    await user.click(screen.getByRole('tab', { name: 'Media' }))
+    await user.click(await screen.findByRole('button', { name: 'Bild som inget kort använder' }))
+    const sheet = screen.getByRole('dialog', { name: 'Beskärning' })
+    const status = within(sheet).getByRole('status')
+    expect(status.getAttribute('data-state')).toBe('whole')
+
+    fireEvent.keyDown(within(sheet).getByRole('button', { name: 'Nedre högra hörnet' }), { key: 'ArrowLeft', shiftKey: true })
+
+    expect(status.getAttribute('data-state')).toBe('saving')
+    await waitFor(() => expect(status.getAttribute('data-state')).toBe('saved'))
+    expect(status.textContent).toBe('✓ Beskuren · visar 90 %')
   })
 })

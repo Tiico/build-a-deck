@@ -88,9 +88,11 @@ describe('the media library no longer puts a picture on the marked cards (#296)'
     expect(screen.queryByRole('button', { name: /Lägg bilden på/ })).toBeNull()
     expect(screen.queryByRole('heading', { name: 'Lägg på kort' })).toBeNull()
     expect(screen.queryByLabelText('Kolumn')).toBeNull()
-    // The control: the library and the crop are still there.
+    // The control: the library and the crop are still there — the crop as the sheet a tile opens
+    // (#297, L33).
     expect(tiles()).toHaveLength(2)
-    expect(screen.getByRole('heading', { name: 'Beskärning' })).toBeTruthy()
+    fireEvent.click(within(tiles()[0]!).getByRole('button', { name: /Bild på/ }))
+    expect(screen.getByRole('dialog', { name: 'Beskärning' })).toBeTruthy()
   })
 })
 
