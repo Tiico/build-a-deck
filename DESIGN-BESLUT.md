@@ -4134,6 +4134,15 @@ Taket ger formen som den är för de två första raderna och fasar ut resten �
 `max-height` på ett `<td>` hedras inte — en tabellcell växer med sitt innehåll oavsett — och den första mätningen gav 101 px där 34 var begärt.
 Det är inte en detalj i den här lösningen utan dess bärande del.
 
+**Och under taket står raderna på ett rutnät (#399).**
+Ett tak som mäts i två rader kan bara visa två hela rader om rad två slutar där taket går.
+Två saker sköt rad två förbi den kanten.
+Cellens bottenutfyllnad låg *innanför* det som klipptes, så taket bad om två rader och fönstret blev 8,2 px av en tredje; utfyllnaden hör därför till cellen och inte till skrivytan.
+Och avståndet mellan två block — ett stycke lämnar 0,4 em efter sig — är inte en hel rad, så rad två hamnade 4,8 px under rutnätet och skivades i stället för rad tre.
+Luften mellan blocken hör alltså till den **öppna** cellen, där taket är lyft och ingenting klipps.
+Den stängda visar formen ändå, för formen är fetstilen, punkterna och radbrytningen och inte de 4,8 pixlarna: priset är att två stycken står lika tätt som två rader i ett, i den stängda cellen och bara där.
+Uttoningen står kvar där L39 sa att den står — *under* de två raderna, i cellens egen luft — och ritas fortfarande bara när något ligger under kanten.
+
 **Guidens body-fält får inte redigeraren.**
 Guiden ska kännas enkel (L36), och en verktygsrad i ett av dess steg är krom på en yta vars hela beslut nyss var att bära mindre.
 Den som vill formatera gör det i editorn, dit guiden redan pekar.

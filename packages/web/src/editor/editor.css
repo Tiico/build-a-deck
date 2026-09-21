@@ -1608,17 +1608,22 @@
    står på ett element *inuti* cellen.
 
    Måttet är radens och aldrig en pixel: två rader av cellens egen text, vad än läsarens typsnitt
-   eller grad råkar vara. */
+   eller grad råkar vara.
+
+   Luften under taket står därför på cellen och aldrig på skrivytan (#399). `max-height` står på
+   innehållsrutan medan `overflow: hidden` klipper på utfyllnadsrutan, så en bottenutfyllnad på
+   skrivytan är inte luft utan ett fönster: taket bad om två rader och de understa åtta pixlarna
+   blev 8,2 px av rad tre, tvärs genom bokstäverna. Flyttad till cellen är den luft igen — cellen
+   är lika hög som förut, och kanten går där rad två slutar. */
 .byd-data { --byd-data-body-line: 1.45; --byd-data-body-lines: 2; }
-.byd-data-bodycell { display: block; }
+.byd-data-bodycell { display: block; position: relative; padding-bottom: 8px; }
 .byd-data-body {
-  padding: 8px var(--byd-data-cell-pad);
+  padding: 8px var(--byd-data-cell-pad) 0;
   color: #ddd;
   font-size: 12px;
   line-height: var(--byd-data-body-line);
   max-height: calc(var(--byd-data-body-line) * var(--byd-data-body-lines) * 1em);
   overflow: hidden;
-  position: relative;
   outline: none;
   overflow-wrap: anywhere;
 }
@@ -1626,7 +1631,11 @@
    vad den vet. Den ritas bara när det finns något att fasa ut: `markValues` sätter `data-more`
    på skrivytan vars innehåll går under taket, på samma varv som den frågar de vanliga cellerna
    om deras värde ryms (#46). Jämt ritad lägger gradienten sina understa pixlar över
-   underlängderna i en rad som redan är hel, och en signal som alltid står på säger ingenting. */
+   underlängderna i en rad som redan är hel, och en signal som alltid står på säger ingenting.
+
+   Den hänger i cellen och inte i skrivytan, som är det som klipps: en uttoning *under* taket
+   (L39) måste få stå under kanten, och där är den cellens luft. Attributet sitter kvar på
+   skrivytan, som är den som vet om något ligger under kanten. */
 .byd-data-body[data-more]::after {
   content: '';
   position: absolute;
@@ -1643,6 +1652,12 @@
 .byd-data-body p { margin: 0 0 0.4em; }
 .byd-data-body ul { margin: 0 0 0.4em; padding-left: 1.15em; }
 .byd-data-body li { margin: 0; }
+/* Under taket står raderna på ett rutnät, eftersom taket är två rader och klippet går där rad två
+   slutar. Ett stycke som lämnar 0,4 em efter sig skjuter rad två 4,8 px nedanför rutnätet, och då
+   skivas rad två i stället för rad tre — samma fel som #399, en rad upp. Luften mellan blocken hör
+   alltså till den öppna cellen, där taket är lyft och ingenting klipps. Den stängda visar formen
+   ändå: fet är fet, punkter är punkter, och en radbrytning är en radbrytning. */
+.byd-data-bodycell:not([data-open]) .byd-data-body > * { margin-bottom: 0; }
 .byd-data-body strong { color: #fff; }
 /* Symbolen som chip: det designern ser är bilden eller namnet, och det strängen får är `{namn}`
    ur chipets eget attribut (`body.ts`). */
