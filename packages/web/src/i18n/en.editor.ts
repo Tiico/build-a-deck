@@ -537,6 +537,7 @@ export const enEditor = {
 
   'rules.title': 'The rulebook',
   'rules.view': 'Mode',
+  'rules.tools': 'Tools',
   'rules.view.edit': 'Editable',
   'rules.view.table': 'As at the table',
   'rules.view.said': '{mode}.',

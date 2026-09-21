@@ -2200,8 +2200,14 @@
 
 /* The rulebook (B7): the page itself is the editor, so it is paper, not a dark surface. */
 .byd-rules { display: flex; flex-direction: column; gap: var(--byd-s3); height: 100%; box-sizing: border-box; padding: var(--byd-gutter); }
-/* Two ways in, at the end of the bar the written book keeps for its booklet and its hint. */
+/* The ways in, at the end of the bar, and in the written book its tools (#298). */
 .byd-rules-ways { display: flex; gap: var(--byd-s2); margin-left: auto; }
+/* The written book's tools — import and booklet — stand behind a hairline with a rung of air
+   after it, one step longer than the air between the tools themselves: that is what makes the
+   line read as the edge of a group and not as a third pill's border. The hairline is the crown's
+   own (#128), and the booklet stood beside the switch before this, where a pill after two pills
+   read as a third mode of the book. The switch keeps its place (#227); only the booklet moved. */
+.byd-rules-tools { border-left: 1px solid #2f333d; padding-left: var(--byd-s3); }
 /* The book and the column it is found in, as one pair that moves together (#131): the column
    that carries the disposition of an empty tab is the column that carries a written book, so
    the two states are one surface.

@@ -352,3 +352,30 @@ describe('the book as at the table (#227)', () => {
     expect({ under: seen.underItsOwnDrawer, meets: seen.meets }).toEqual({ under: false, meets: 'byd-rules-open' })
   }, 120_000)
 })
+
+// The tools the written book keeps at the end of its header — import and booklet, behind a
+// divider (#298) — cost the book nothing. #227's prototype measured why that has to be said: the
+// book fell from 584 to 447 px in variant B, under its 68 characters, and at 1280 there was
+// exactly no margin. Before and after are read on the same page, in the same face, so what is
+// asked is the arrangement and never a pixel count of the machine's font: the booklet is put back
+// beside the switch, where it stood before, and the divider taken off, and the reading area must
+// not have moved by a pixel between the two.
+describe('the tools the written book keeps at the end of its header (#298)', () => {
+  it.each(SCREENS)('leave the reading area exactly where it stood without them, at $width × $height', async (screen_) => {
+    const both = await measure(screen_, 'written', (page) =>
+      page.evaluate(() => {
+        const box = () => {
+          const r = document.querySelector<HTMLElement>('.byd-rules-reading')!.getBoundingClientRect()
+          return { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }
+        }
+        const tools = document.querySelector<HTMLElement>('.byd-rules-tools')!
+        const booklet = tools.querySelector<HTMLElement>('.byd-rules-booklet')!
+        const after = box()
+        document.querySelector('.byd-rules-modes')!.after(booklet)
+        tools.classList.remove('byd-rules-tools')
+        return { before: box(), after }
+      }),
+    )
+    expect(both.after).toEqual(both.before)
+  }, 120_000)
+})
