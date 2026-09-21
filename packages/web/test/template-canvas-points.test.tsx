@@ -11,7 +11,9 @@ import { render } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
-import type { Element, ProjectDoc } from '../src/editor/types.js'
+// Aliased: the browser's own `Element` is what the measurement below talks about, and two
+// meanings of one word in one file is the kind of thing a reader has to hold in their head.
+import type { Element as Layer, ProjectDoc } from '../src/editor/types.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 
@@ -29,7 +31,7 @@ const POINTS = [
 function markup(): string {
   const doc: ProjectDoc = projectDoc()
   const front = doc.template.faces['front']!
-  doc.template.faces['front'] = { ...front, base: front.base.map((e) => (e.id === 'frame' ? ({ ...e, shape: 'rect', radiusMm: 0, points: POINTS } as Element) : e)) }
+  doc.template.faces['front'] = { ...front, base: front.base.map((e) => (e.id === 'frame' ? ({ ...e, shape: 'rect', radiusMm: 0, points: POINTS } as Layer) : e)) }
   const { container, unmount } = render(
     <TemplateCanvas doc={doc} face="front" row="dragon" selectedElement="frame" onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} onFontFile={async () => 'Typsnitt'} onFontLicence={vi.fn()} onRemoveFont={vi.fn()} />,
   )
