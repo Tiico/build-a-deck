@@ -201,6 +201,31 @@ säger nej till. Det webbläsaren hämtar är ansiktena: ett `css2`-ark när vä
 typsnittsfilen från `fonts.gstatic.com` när en familj väljs. Mätt på trafiken i
 `packages/e2e/test/surfaces/font-catalog.spec.ts`.
 
+## 13. Komprimering är lådans ansvar, kanten är ett tillägg
+
+Beslutat och byggt 2026-09-21 (#372, mätt i #366).
+
+`app` sätter själv `Content-Encoding` på det den serverar statiskt: brotli till den som tar det, gzip till övriga, oförändrade byte till den som inte ber om något.
+Komprimeringen reser därmed med bygget och gäller även utan Cloudflare — lokal drift, en direktexponerad port, en ändrad kantinställning.
+Kanten får gärna fortsätta komprimera ovanpå; poängen är att produkten inte längre vilar på att den gör det.
+
+Skälet är en mätning, inte en princip: det blockerande CSS-arket serverat okomprimerat kostar +2 692 ms på förstamålningen (Slow 4G, 4× CPU) mot 2 104 ms som det är — trettiofem gånger vad det skulle kosta att fördubbla hela CSS-budgeten, och den största enskilda posten i förstamålningens pris.
+Fram till nu satte ingenting i repot rubriken alls.
+
+Två avvägningar, båda om att lådan är en delad maskin med fyra kärnor och ett minnestak på 512 MB för `app` (§1):
+
+Varje fil komprimeras **en gång per deploy, inte en gång per förfrågan** — den byggda webben är oföränderlig under imagens livstid, så svaret sparas första gången någon ber om det och varje senare förfrågan är byte som redan ligger i handen.
+Löpande CPU är alltså noll, och det är enda skälet till att brotlis dyraste nivå är försvarbar här.
+Komprimeringen körs utanför händelseloopen, så den förfrågan som betalar för den håller inte upp ett bords patchar.
+
+**Dynamiska svar komprimeras inte.** De är kilobyte JSON, de skiljer sig åt mellan förfrågningar, och att komprimera dem vore precis den CPU per förfrågan som cachen ovan finns till för att slippa.
+Redan komprimerade byte — texturer, ikoner, en woff2 som någon gång hamnar bredvid appen — rörs inte heller, och filer under ett paket lämnas i fred eftersom rubriken kostar mer än vinsten.
+
+Följdkrav:
+Grinden läser `Content-Encoding` på det blockerande arket mot en riktigt serverad instans, aldrig mot en påhittad förfrågan: `packages/e2e/test/surfaces/blocking-sheet-encoding.spec.ts`, som också väger byten på tråden och avkodar dem tillbaka mot filen på disk.
+Bortfallet går rött, inte tyst grönt — varje väg till att inte mäta något (inget ark i dokumentet, ingen instans som svarar, ingen rubrik) är skriven som ett fel med en mening om vilken det var.
+En proxy framför lådan måste respektera `Vary: Accept-Encoding`, som svaren bär.
+
 ---
 
 ## Compose-stacken i ett stycke

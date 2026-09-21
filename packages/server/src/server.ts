@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { extname, join, normalize, resolve, sep } from 'node:path'
+import { compressible, encodedCopy } from './compress.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
 import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, sniffAsset, type ServerMessage } from '@byd/protocol'
@@ -376,7 +377,7 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       return json(res, 404, { error: 'unknown face' })
     }
     if (opts.staticDir && (req.method === 'GET' || req.method === 'HEAD')) {
-      if (await serveStatic(opts.staticDir, url.pathname, res)) return
+      if (await serveStatic(opts.staticDir, url.pathname, req.headers['accept-encoding'], res)) return
     }
     json(res, 404, { error: 'not found' })
   } catch (err) {
@@ -405,7 +406,7 @@ const MIME: Record<string, string> = {
 // (/table, /play, …) fall back to index.html so the client can pick the page. Never a byte
 // outside the directory.
 const API_PREFIXES = ['/sessions', '/projects', '/faces', '/health', '/rooms', '/guests', '/me', '/invites']
-async function serveStatic(dir: string, pathname: string, res: ServerResponse): Promise<boolean> {
+async function serveStatic(dir: string, pathname: string, accept: string | undefined, res: ServerResponse): Promise<boolean> {
   // The API never falls back to the app, whatever is or is not mounted.
   if (API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))) return false
   const root = resolve(dir)
@@ -416,7 +417,20 @@ async function serveStatic(dir: string, pathname: string, res: ServerResponse): 
   if (!file) return false
   const type = MIME[extname(file).toLowerCase()] ?? 'application/octet-stream'
   const hashed = file.includes(`${sep}assets${sep}`)
-  res.writeHead(200, { 'content-type': type, 'cache-control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache' })
+  const head: Record<string, string> = { 'content-type': type, 'cache-control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache' }
+  // The box compresses what it serves (DRIFT §13, #372): the blocking stylesheet uncompressed is
+  // the single largest item in the first painting's price. `Vary` goes on everything that *could*
+  // have been compressed rather than on what was, because a cache between here and the browser
+  // must not hand an identity answer to a client that would have taken brotli — or the other way
+  // about, which is worse.
+  if (compressible(type)) head['vary'] = 'accept-encoding'
+  const encoded = await encodedCopy(file, type, accept)
+  if (encoded) {
+    res.writeHead(200, { ...head, 'content-encoding': encoded.encoding, 'content-length': String(encoded.bytes.length) })
+    res.end(encoded.bytes)
+    return true
+  }
+  res.writeHead(200, head)
   await new Promise<void>((resolve, reject) => createReadStream(file).on('error', reject).on('end', () => resolve()).pipe(res))
   return true
 }
