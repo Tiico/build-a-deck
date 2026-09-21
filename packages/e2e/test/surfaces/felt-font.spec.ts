@@ -1,5 +1,5 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { dirname, join, relative, resolve } from 'node:path'
 import { expect, test } from '@playwright/test'
 
 // The felt's face has to be in the document before the first painting (#95).
@@ -86,7 +86,7 @@ test.describe('the felt’s face is in the document before the first painting (K
     expect(asking.map((f) => relative(OUT, f))).toEqual([])
   })
 
-  test('costs the sheet what the two subsets weigh and no more', () => {
+  test('costs the sheet what the two subsets weigh, and sounds an alarm where a second face would fit', () => {
     // What shipping the face costs, as one number, so a later swap for a heavier family has to
     // change this line and say why. Roboto Condensed is one variable file per subset covering all
     // four weights the felt draws — 85 kB of woff2, a third more as base64, which is the price of
@@ -95,48 +95,37 @@ test.describe('the felt’s face is in the document before the first painting (K
       .flatMap((href) => [...readFileSync(join(OUT, href.replace(/^\//, '')), 'utf8').matchAll(/src:url\(data:font\/woff2;base64,([^)]*)\)/g)])
       .reduce((sum, m) => sum + m[1]!.length, 0)
     expect({ kB: Math.round(inlined / 1000) }).toEqual({ kB: 114 })
-    // And nothing else in the build grew a face of its own: the felt's is the only one. The slack
-    // is everything in the blocking sheet that is not the two subsets, minified — and what the
-    // number has to be is small enough to fell a second face and no smaller.
+    // And nothing else in the build grew a face of its own: the felt's is the only one. What is
+    // left of the blocking sheet once the two subsets are taken out is the app's CSS, and the
+    // number below is an alarm rather than a budget.
     //
-    // It used to be neither. Between 2026-09-13 and 2026-09-17 this line moved seven times, 120 kB
-    // to 146 kB, and every raise was honest on its own terms: the editor's CSS rode in this same
-    // sheet, so a layer grid, a shape gallery, a crown or a sentence panel was weighed against the
-    // felt's typeface and the number had to give way. A limit that always gives way measures
-    // nothing, and twice it cost an agent a session's work on compressing CSS that was not what she
-    // had come to write. Since #186 the editor is a route of its own with a sheet of its own, and
-    // what is left here is the felt, the phone and the app's chrome — surfaces that grow by a rule
-    // at a time rather than by a panel.
+    // It used to be a budget, and that is what #366 took away. Between 2026-09-13 and 09-17 this
+    // line moved seven times, 120 kB to 146 kB, then down to 88 kB and to 83.5 kB — eight moves in
+    // eight days, each honest on its own terms, and a limit that always gives way measures
+    // nothing. The measurement behind #366 says two things that end the argument. Every one of the
+    // seven raises was a surface that is not drawn on the first frame but was imported as though
+    // it were, and a number can give way a kilobyte at a time where a rule about membership
+    // cannot. And the number was governing the wrong thing: the whole 83.4 kB is ~72 ms of a
+    // 2 104 ms first painting on a Lighthouse mobile profile — 3.4 % — while the face this gate
+    // exists to protect costs 448 ms, six times the budget it was weighed against.
     //
-    // So the number is the measurement plus a stated margin rather than the next round figure up.
-    // The blocking sheet was 76.3 kB of CSS beside the face; 84 kB left 7.7 kB, about a tenth, for
-    // the felt's own surfaces to go on growing without anybody having to come back here. And it
-    // still fells what it is for: the cheaper of the two subsets shipped is 45 kB as base64, so the
-    // smallest second face anyone could add is nearly six times the whole margin.
+    // So what governs the sheet's contents is the membership rule further down (#366, L40): only a
+    // surface the first frame draws may be imported statically, read off the route table in
+    // `App.tsx`. This line stops being that mechanism. It is not lowered and not raised; it is
+    // given one job.
     //
-    // Raised once, 2026-09-20 (#270): that margin was spent. It was spent a rule at a time by the
-    // surfaces it was left for — which is the growth it was there to allow — and the sheet stood at
-    // 83.3 kB, seven hundred bytes under, when the setup in the players' rulebook asked for 1.1 kB
-    // of its own. 88 kB is the measurement plus a margin of the same order as what is left of the
-    // old one, and deliberately not a round number with room for a panel in it: the next surface
-    // that outgrows this comes back here and writes its own line, as this one did.
+    // The job is a second typeface. The cheaper of the two subsets shipped is 45 kB as base64, so
+    // a second face — however it arrives, whatever it is called — cannot be smaller than that. The
+    // sheet's CSS is 83.4 kB today; 120 kB leaves 36.6 kB, which is not room for a face and is
+    // room for the felt's own surfaces to go on growing a rule at a time without anybody coming
+    // back here to edit a number. That is the whole of what this line now says. If it ever binds,
+    // the answer is not a ninth raise: it is to ask what in the sheet the first frame does not
+    // draw, which is the question the rule below asks continuously.
     //
-    // What the raise does not touch is the thing the gate is for. A second face is 45 kB at its
-    // cheapest, twelve times this whole margin, and it is felled exactly as before.
-    //
-    // The way out was taken, in #346: the rulebook's drawer went off the critical path the way
-    // #186 moved the editor's sheet, and the line comes down instead of up for the first time.
-    // The drawer's inside is 4.0 kB and it now travels when somebody presses the button; the
-    // button itself stayed, with its own rules — all of them, the phone's smaller form included —
-    // because it is drawn on the first frame.
-    //
-    // 88 kB → 83.5 kB. The sheet measures 81.1 kB beside the face, so the saving is banked rather
-    // than spent on headroom: the line comes down 4.5 kB against 4.0 kB lifted, and what is left
-    // over — 2.4 kB — is a little less than the 2.9 kB the line carried before and not more. A cut
-    // that handed the saving straight back as slack would have measured nothing, which is the
-    // mistake the seven raises above were made of.
+    // The price is stated where the rule is, not hidden here: nothing caps `table.css`, already
+    // about 30 % of the sheet, and that surface is on the first frame for real.
     const sheet = blockingSheets(index).reduce((sum, href) => sum + statSync(join(OUT, href.replace(/^\//, ''))).size, 0)
-    expect(sheet).toBeLessThan(inlined + 83_500)
+    expect(sheet).toBeLessThan(inlined + 120_000)
   })
 
   // And the same thing said by a browser rather than by a reader of files: the built app served
@@ -334,5 +323,192 @@ test.describe('the help box waits for its own sheet (#304)', () => {
     // And the ring does not travel with it. The seam can be put in the wrong place: a ring that
     // arrives dressed only after the first press is a question mark nobody could see to press.
     expect(others.filter((css) => /\.byd-help-ask\s*[,:>{[]/.test(css))).toEqual([])
+  })
+})
+
+// The membership rule (#366, L40). What may be in the sheet the first painting blocks on is no
+// longer a number of bytes but a question about each surface: is it drawn on the first frame?
+//
+// The number that used to stand here had been moved eight times in eight days, and the measurement
+// behind #366 says what each move was made of. Every one of the seven raises between 2026-09-13
+// and 09-17 was a surface that is not on the first frame — a layer grid, a shape gallery, a
+// rulebook page, a camera cluster, a help box — imported as though it were, and the line gave way
+// a kilobyte at a time because every single raise was honest on its own terms. A membership rule
+// cannot give way a kilobyte at a time: a surface is either drawn on the first frame or it is not.
+//
+// The same measurement also says the number was governing the wrong thing. The whole 83.4 kB
+// budget is ~72 ms of a 2 104 ms first painting on a Lighthouse mobile profile — 3.4 % — while the
+// face the gate exists to protect costs 448 ms, six times the budget it was weighed against. A
+// limit that governs a thirtieth of the cost and moves every time it binds is a log, not a budget.
+//
+// So the first frame is read off `App.tsx` rather than written down here. The route table is what
+// the app actually shows on a first painting, and a module reached from it by a plain `import` is
+// on that frame by definition; a module reached only through a dynamic `import()` is not, because
+// the browser has not asked for it yet. Adding a surface that genuinely belongs on the first frame
+// therefore needs no edit in this file — add the route, import it, done. Adding one that does not
+// belong is what fails here, by name.
+//
+// The price, stated rather than discovered later: this puts no ceiling on `table.css`, already
+// about 30 % of the sheet. That surface is on the first frame for real and grows a rule at a time.
+// If it becomes a problem it is a different problem from this one.
+const SRC = join(WEB, 'src')
+
+// A specifier as TypeScript asks for it — relative, and spelling the `.js` the build will emit —
+// resolved back to the file on disk it means.
+const resolveSpec = (from: string, spec: string): string | null => {
+  if (!spec.startsWith('.')) return null
+  const base = resolve(dirname(from), spec)
+  const tries = [base.replace(/\.js$/, '.tsx'), base.replace(/\.js$/, '.ts'), base, `${base}.tsx`, `${base}.ts`, join(base, 'index.tsx'), join(base, 'index.ts')]
+  return tries.find((p) => existsSync(p) && statSync(p).isFile()) ?? null
+}
+
+const sourceOf = (file: string): string => readFileSync(file, 'utf8')
+
+// The two kinds of edge, kept apart, because the whole rule is the difference between them. A
+// plain `import` puts the module in the entry the browser blocks on; `import()` gives it a chunk
+// and a sheet of its own that nobody fetches until something asks.
+const staticEdges = (file: string): string[] =>
+  file.endsWith('.css')
+    ? []
+    : [...sourceOf(file).replace(/\bimport\(\s*['"][^'"]+['"]\s*\)/g, '')
+        .matchAll(/(?:^|\n)\s*(?:import|export)\s+(?!type\b)(?:[^;'"]*?\bfrom\s*)?['"]([^'"]+)['"]/g)]
+        .map((m) => resolveSpec(file, m[1]!))
+        .filter((p): p is string => p !== null)
+
+const dynamicEdges = (file: string): string[] =>
+  file.endsWith('.css')
+    ? []
+    : [...sourceOf(file).matchAll(/\bimport\(\s*['"]([^'"]+)['"]\s*\)/g)]
+        .map((m) => resolveSpec(file, m[1]!))
+        .filter((p): p is string => p !== null)
+
+const modules = filesUnder(SRC).filter((f) => /\.(tsx?|css)$/.test(f))
+// Every module anywhere under `src` that something reaches with `import()`. These are the cuts:
+// what lies beyond one is not on the first frame, whoever else happens to point at it.
+const deferred = new Set(modules.flatMap(dynamicEdges))
+
+// What the first painting carries: the entry, and everything a plain `import` chain reaches from
+// it, stopping dead at every cut. Not the bundler's answer read back — the bundler would happily
+// walk straight through a cut that somebody had punctured with a second, static import, and that
+// puncture is exactly the regression this is here to name.
+const firstFrame = ((): Set<string> => {
+  const seen = new Set<string>()
+  const walk = (file: string): void => {
+    if (seen.has(file)) return
+    seen.add(file)
+    for (const next of staticEdges(file)) if (!deferred.has(next)) walk(next)
+  }
+  walk(join(SRC, 'main.tsx'))
+  return seen
+})()
+
+// The route table in `App.tsx`, as a pair of sets: the paths it answers, and the module each one
+// is drawn from. Read rather than described, so that emptying `App.tsx` empties this too instead
+// of quietly passing.
+const routeTable = (): { path: string; component: string; module: string | null; lazy: boolean }[] => {
+  const app = join(SRC, 'App.tsx')
+  const text = sourceOf(app)
+  const importedFrom = (name: string): { module: string | null; lazy: boolean } | null => {
+    const asLazy = new RegExp(`\\b${name}\\s*=[^\\n]*\\blazy\\(\\s*\\(\\)\\s*=>\\s*import\\(\\s*['"]([^'"]+)['"]`).exec(text)
+    if (asLazy) return { module: resolveSpec(app, asLazy[1]!), lazy: true }
+    const asStatic = new RegExp(`(?:^|\\n)\\s*import\\s*\\{[^}]*\\b${name}\\b[^}]*\\}\\s*from\\s*['"]([^'"]+)['"]`).exec(text)
+    if (asStatic) return { module: resolveSpec(app, asStatic[1]!), lazy: false }
+    // A route drawn by a wrapper declared in `App.tsx` itself — the editor's `Suspense` — answers
+    // for whatever that wrapper renders.
+    const wrapper = new RegExp(`function ${name}\\(\\)[\\s\\S]*?\\n\\}`).exec(text)
+    const inner = wrapper && /<([A-Z][A-Za-z0-9]*)\s*\/>/.exec(wrapper[0])
+    return inner ? importedFrom(inner[1]!) : null
+  }
+  return [...text.matchAll(/location\.pathname(?:\.startsWith\()?\s*===?\s*'([^']+)'\)?\)\s*return\s*<([A-Z][A-Za-z0-9]*)\s*\/>/g)].map((m) => ({
+    path: m[1]!,
+    component: m[2]!,
+    ...(importedFrom(m[2]!) ?? { module: null, lazy: false }),
+  }))
+}
+
+// The classes a stylesheet is the only one to declare, read off the sources so that a renamed
+// panel does not turn the reading into a no-op (`editorsOwnClasses`' trick, generalised).
+const allCss = modules.filter((f) => f.endsWith('.css'))
+const classesIn = (file: string): Set<string> => new Set([...sourceOf(file).matchAll(/\.(byd-[a-z0-9-]+)/g)].map((m) => m[1]!))
+const ownClasses = (file: string): string[] => {
+  const mine = classesIn(file)
+  for (const other of allCss) if (other !== file) for (const name of classesIn(other)) mine.delete(name)
+  return [...mine]
+}
+
+test.describe('only what the first frame draws rides in the sheet it blocks on (#366)', () => {
+  test('reads the first frame off the route table, and finds a real one', () => {
+    const table = routeTable()
+    // Not vacuous, in the one way that matters: if `App.tsx` stopped saying what it says, every
+    // reading below would be a reading of nothing, and this is where that is caught.
+    expect(table.length).toBeGreaterThanOrEqual(8)
+    expect(table.filter((r) => r.module === null)).toEqual([])
+    expect(table.filter((r) => r.lazy).map((r) => r.component)).toEqual(['EditorRoute'])
+    // And every route the app draws without fetching anything is in the set the entry carries.
+    expect(table.filter((r) => !r.lazy && !firstFrame.has(r.module!)).map((r) => r.component)).toEqual([])
+    // The cuts exist and the editor's is one of them.
+    expect(deferred.size).toBeGreaterThan(0)
+    expect([...deferred].some((f) => f.endsWith(join('editor', 'EditorPage.tsx')))).toBe(true)
+  })
+
+  test('names any surface in the blocking sheet that the first frame does not draw', () => {
+    const blocking = blockingSheets(index)
+      .map((href) => readFileSync(join(OUT, href.replace(/^\//, '')), 'utf8'))
+      .join('')
+    const rides = (file: string): string[] => ownClasses(file).filter((name) => new RegExp(`\\.${name}(?![a-z0-9-])`).test(blocking))
+    // The reading is not vacuous: the felt's own surfaces are in there, by the dozen, and a
+    // regexp that matched nothing would fail here before it could pass below.
+    const carried = allCss.filter((file) => rides(file).length > 0)
+    expect(carried.length).toBeGreaterThanOrEqual(6)
+    expect(carried.filter((f) => f.endsWith(join('table', 'table.css'))).length).toBe(1)
+    // The rule itself.
+    const trespassing = carried
+      .filter((file) => !firstFrame.has(file))
+      .map((file) => `${relative(WEB, file)} dresses ${rides(file).slice(0, 3).join(', ')} in the blocking sheet, but the first frame never draws it — put its component behind lazy(() => import(…)), as EditorPage is (#366, L40)`)
+    expect(trespassing).toEqual([])
+  })
+
+  test('keeps every deferred surface out of the blocking sheet and dressed in its own', () => {
+    const blocking = blockingSheets(index)
+    const blockingText = blocking.map((href) => readFileSync(join(OUT, href.replace(/^\//, '')), 'utf8')).join('')
+    const others = filesUnder(OUT)
+      .filter((path) => path.endsWith('.css'))
+      .filter((path) => !blocking.some((href) => path.endsWith(href.replace(/^\//, ''))))
+      .map((path) => readFileSync(path, 'utf8'))
+      .join('')
+    // Everything a cut puts out of reach of the first frame, and the classes only it declares.
+    const behindACut = allCss.filter((file) => !firstFrame.has(file) && ownClasses(file).length > 0)
+    // Not a list of file names — the cuts are read out of the code — but the reading has to have
+    // found some, and the editor's is the one the decision is named after.
+    expect(behindACut.length).toBeGreaterThanOrEqual(3)
+    expect(behindACut.filter((f) => f.endsWith(join('editor', 'editor.css'))).length).toBe(1)
+    const strays = behindACut.flatMap((file) =>
+      ownClasses(file)
+        .filter((name) => new RegExp(`\\.${name}(?![a-z0-9-])`).test(blockingText))
+        .map((name) => `${relative(WEB, file)}: .${name} is in the blocking sheet although the first frame never draws it`),
+    )
+    expect(strays).toEqual([])
+    // And they are dressed somewhere: a surface cut out of the entry and out of every other sheet
+    // would pass the line above by not existing at all.
+    const undressed = behindACut.filter((file) => !ownClasses(file).some((name) => new RegExp(`\\.${name}(?![a-z0-9-])`).test(others)))
+    expect(undressed.map((f) => relative(WEB, f))).toEqual([])
+  })
+
+  test('lets nothing be drawn inside a Suspense that is not behind a cut', () => {
+    // What keeps the rule from being undone in one line. Taking `lazy()` off a small surface — the
+    // help box is 1.1 kB — moves it into the blocking sheet without the cut existing any more, so
+    // no reading of cuts above would notice. What stays behind is the `Suspense` that was put
+    // there because the surface is drawn on a press and not on the first frame.
+    const waiting = modules.filter((f) => f.endsWith('.tsx') && sourceOf(f).includes('<Suspense'))
+    expect(waiting.length).toBeGreaterThanOrEqual(4)
+    const unwaited = waiting.filter((file) => {
+      const text = sourceOf(file)
+      const blocks = [...text.matchAll(/<Suspense\b[\s\S]*?<\/Suspense>/g)].map((m) => m[0])
+      return blocks.some((block) => {
+        const rendered = [...new Set([...block.matchAll(/<([A-Z][A-Za-z0-9]*)[\s/>]/g)].map((m) => m[1]!))]
+        return !rendered.some((name) => new RegExp(`\\b${name}\\s*=[^\\n]*\\blazy\\(`).test(text))
+      })
+    })
+    expect(unwaited.map((f) => `${relative(WEB, f)} waits on a component that is not behind a cut — bind it with lazy(() => import(…)) (#366, L40)`)).toEqual([])
   })
 })
