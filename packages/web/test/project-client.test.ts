@@ -1304,3 +1304,24 @@ describe('an upload that falls away after the designer has gone on (#344, L37, #
     expect(client.doc.icons['sköld']).toBeUndefined()
   })
 })
+
+// The crop's status may not say the actor has a window it has not confirmed (#297, L33). The
+// client already holds every edit until its echo lands; this is that fact, said per picture, and
+// said aloud when it changes — an echo of one's own used to be swallowed without a word, which
+// was right for the document and wrong for a status that waits on it.
+describe('a crop on its way to the actor (#297, L33)', () => {
+  it('stands in cropsInFlight until the actor echoes it, and the echo notifies', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    await vi.waitFor(() => expect(client.connected).toBe(true))
+    const hash = '1'.repeat(64)
+    const heard: string[][] = []
+    client.subscribe((c) => heard.push([...c.cropsInFlight]))
+
+    client.setCrop(hash, { x: 0.1, y: 0.1, w: 0.5, h: 0.5 })
+    expect(client.cropsInFlight).toEqual([hash])
+
+    await vi.waitFor(() => expect(client.cropsInFlight).toEqual([]))
+    expect(heard.at(-1)).toEqual([])
+  })
+})

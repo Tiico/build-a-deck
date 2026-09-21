@@ -246,9 +246,11 @@ export class ProjectClient {
         const mine = message.edits.filter((e) => e.from === this.me)
         if (mine.length > 0) this.pending = this.pending.slice(mine.length)
         const theirs = message.edits.filter((e) => e.from !== this.me)
-        if (theirs.length === 0) return
-        this.doc = theirs.reduce((d, e) => applyEdit(d, e.intent), this.doc)
-        this.notify()
+        if (theirs.length > 0) this.doc = theirs.reduce((d, e) => applyEdit(d, e.intent), this.doc)
+        // Said even when nothing in the document moved: an echo of one's own is the actor
+        // confirming it holds the edit, and a status that waits on that (#297, L33) has no other
+        // way to hear it.
+        if (mine.length > 0 || theirs.length > 0) this.notify()
         return
       }
       case 'here':
@@ -842,6 +844,12 @@ export class ProjectClient {
   // picture going back to whole.
   setCrop(hash: string, crop: AssetCrop | null): void {
     this.edit({ v: 'setCrop', hash, crop })
+  }
+  // The pictures whose crop the actor has not yet confirmed (#297, L33): sent, or waiting for the
+  // line, and not echoed back. The status under the window may say «sparad» only once a picture
+  // has left this list.
+  get cropsInFlight(): string[] {
+    return [...new Set(this.pending.flatMap((intent) => (intent.v === 'setCrop' ? [intent.hash] : [])))]
   }
   // A picture out of the game (#318): the record and every picture cell that held it, in one
   // intent — so the way back from it is one step and not a picture followed by its cards.
