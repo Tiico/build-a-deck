@@ -174,10 +174,10 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
   // So the table is now as wide as its columns add up to, which may be wider than the box or
   // narrower. Wider is the case the pinned × was drawn for (#53); narrower simply ends where the
   // last column ends.
-  type Track = { col: HTMLTableColElement; width: number }
+  type Track = { col: HTMLTableColElement; width: number; own: boolean }
   const tracks: Track[] = cols.map((col, i) => {
     const kind = col.getAttribute('data-kind') ?? 'text'
-    if (kind === 'tap') return { col, width: tap }
+    if (kind === 'tap') return { col, width: tap, own: false }
     const name = col.getAttribute('data-col')
     // A width the designer set herself, if she has (#46). It is read off the column, beside what
     // the column is worth sizing like, because that is where the table already says everything
@@ -185,12 +185,43 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
     // consulted at all, which is the whole of what setting a width means. A value that no longer
     // fits says so in the cell, the way a value that does not fit always has.
     const own = parseFloat(col.getAttribute('data-width') ?? '')
-    if (Number.isFinite(own) && own > 0) return { col, width: own }
+    if (Number.isFinite(own) && own > 0) return { col, width: own, own: true }
     let widest = kind === 'image' ? imageNeed(i) : 0
     for (const value of (name && deck[name]) || []) widest = Math.max(widest, need(value))
     // The heading has no lane under it, so only the value's side of the question pays for one.
-    return { col, width: Math.max(headNeed(i), widest + (hasLane(i) ? lane : 0)) }
+    return { col, width: Math.max(headNeed(i), widest + (hasLane(i) ? lane : 0)), own: false }
   })
+
+  // And no measured column is drawn wider than the room it can show its own right edge in (#398).
+  //
+  // A column asks for what stands in it, and for a real rules text that is 1 684 px. Its own drag
+  // edge then lands outside the box — the edge you take hold of *because* the column is too wide
+  // is out of reach *because* it is too wide — and the only way left to a narrower column is a
+  // keystroke nothing in the surface mentions, sixteen pixels at a time.
+  //
+  // The ceiling is measured against the room that is really visible, which is not the box: the
+  // tick and `id` stand pinned on top of the column (#145) and eat into it, so a column exactly
+  // the width of the box has its edge underneath them. What is pinned is asked of the stylesheet
+  // rather than named here, for the same reason the target and the lane are.
+  //
+  // A width the designer pulled to herself is not touched. The ceiling is an opinion about a
+  // measurement, and hers is not one (L4, #46): she can see the edge she dragged, because she
+  // dragged it.
+  const pinned = tracks.reduce((sum, track, i) => {
+    const th = heads[i]
+    if (!th) return sum
+    const how = getComputedStyle(th)
+    return how.position === 'sticky' && how.left !== 'auto' ? sum + track.width : sum
+  }, 0)
+  // A fingertip inside the box, so the edge is not under the scrollbar's thumb nor flush against
+  // the next column's first character.
+  const ceiling = room - pinned - tap
+  for (const [i, track] of tracks.entries()) {
+    if (track.own || track.width <= ceiling) continue
+    // Never under what the heading itself needs: a column squeezed below its own name is not a
+    // column anybody can read, and the floor is the same one every other answer here respects.
+    track.width = Math.max(ceiling, headNeed(i))
+  }
 
   // Said to the table, because saying it to the cells would be saying it to an `<input>` again.
   // A fixed layout is what makes a `<col>` width binding at all, and the table's own width is the
@@ -202,6 +233,11 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
   }
   table.style.tableLayout = 'fixed'
   table.style.width = `${total}px`
+  // Var det fastnålade slutar, sagt till stylesheetet (#401). Rubriken glider i sidled och stannar
+  // just innanför bocken och `id`, och hur brett det är vet bara den här mätningen: `id` är mätt
+  // mot sina värden som varje annan kolumn. Samma tal som taket ovan räknas mot, så de två kan
+  // inte glida isär.
+  table.style.setProperty('--byd-data-lane', `${pinned}px`)
   // And nothing else may have an opinion about it. The stylesheet's `min-width: 100%` was written
   // for the layout this replaced, where a table that could not see its own content had to be told
   // to fill the box; under a fixed layout it does not merely widen the table, it hands the

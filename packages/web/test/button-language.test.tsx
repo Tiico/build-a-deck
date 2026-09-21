@@ -1214,6 +1214,7 @@ describe('every suite that measures a surface', () => {
       'counter-zone.test.tsx',
       'data-images-air.test.tsx',
       'data-table-body-height.test.tsx',
+      'data-table-body-tools.test.tsx',
       'data-table-cell-rail.test.tsx',
       'data-table-csv-pair.test.tsx',
       'data-table-drag.test.tsx',

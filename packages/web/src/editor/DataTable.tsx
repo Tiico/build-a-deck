@@ -158,6 +158,17 @@ export function markCut(box: Element): void {
     if (seen.right > over.left + 0.5 && seen.left < over.right - 0.5) cut = true
   }
   box.setAttribute('data-cut', cut ? 'true' : 'false')
+  // Och vad lådan själv kapar (#401), som är samma slags fråga en nivå upp: pinnen täcker det
+  // sista stycket av en rad, lådans kant täcker allt bortom den. Den hör hemma här och inte i
+  // effekten som ropar på den, av samma skäl som står ovan — det är den här funktionen sidan kör,
+  // så det som mäts i ett test är det som skeppas.
+  //
+  // Ett tal och inte en rektangel, och bara när något verkligen ligger utanför: en tabell som får
+  // plats, och en som rullats hela vägen, bär inget märke. Att lova att det finns mer åt höger när
+  // det inte gör det är samma lögn som en kant under `id` vid tabellens början (#145).
+  const beyond = box.scrollWidth - box.clientWidth - Math.round(box.scrollLeft) > 0
+  if (beyond) box.setAttribute('data-beyond', 'true')
+  else box.removeAttribute('data-beyond')
 }
 
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).

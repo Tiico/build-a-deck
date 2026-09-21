@@ -469,6 +469,61 @@ describe('the table is measured against the room it really has (#46)', () => {
   }, 60_000)
 })
 
+// En kolumn bredare än lådan (#398).
+//
+// `fitColumns` ger varje kolumn exakt det dess bredaste värde ber om, och för en riktig regeltext
+// i en riktig lek blir det 1 684 px. Kolumnens egen dragkant hamnar då 824 px utanför scrollboxen:
+// kanten man ska ta i **för att** kolumnen är för bred är onåbar **därför att** den är för bred.
+// Kvar är ett odokumenterat tangentkommando på 16 px per tryck.
+//
+// Beslutet (2026-09-21, prototyp 03) är ett tak på vad mätningen får ge, och taket räknas mot det
+// rum som verkligen syns. Det är inte lådans bredd: bocken och `id` står fastnålade ovanpå
+// kolumnen (#145) och äter av den, så en kolumn som är exakt lådans bredd har sin kant under dem.
+//
+// Ingen siffra pinnas här. Vad `body` ber om beror på fontens metrik, och den är en annan på
+// CI:s Linux än på en Mac (#325); det som mäts är förhållandet mellan kolumnen och rummet.
+function wideDoc(): ProjectDoc {
+  const doc = deckDoc()
+  // En regeltext av det slag L39 finns för. Den är lång nog att ensam be om mer än någon låda
+  // nedan har att ge, på vilken font som helst.
+  const lång =
+    'När den här enheten kommer i spel får du dra ett kort, och om du redan har fler än tre ' +
+    'kopparmarker i förrådet kastar du en av dem och lägger i stället en duellmarker på en ' +
+    'motståndares zon, som står kvar till slutet av nästa tur.'
+  return { ...doc, rows: doc.rows.map((row, i) => (i === 0 ? { ...row, fields: { ...row.fields, body: lång } } : row)) }
+}
+
+// Det synliga rummet en kolumn kan ritas i och fortfarande visa sin egen högerkant: lådan minus
+// det som står stilla ovanpå den. Läses av mätningen i stället för att skrivas ner, så testet inte
+// upprepar stylesheetets tal.
+const roomOf = (at: Measured) => at.scroll - (at.width.check ?? 0) - (at.width.id ?? 0)
+
+describe('en kolumn ritas aldrig bredare än det rum som syns (#398)', () => {
+  it('håller `body` innanför lådan minus det fastnålade, vid 1440, 1280 och 1024', async () => {
+    const at = await Promise.all([1440, 1280, 1024].map((width) => measure(wideDoc(), { width })))
+
+    for (const [i, one] of at.entries()) {
+      const room = roomOf(one)
+      expect(room, `lådan vid ${[1440, 1280, 1024][i]} har inget rum alls`).toBeGreaterThan(0)
+      // Kanten ska ligga *innanför* rummet och inte i kant med det, annars står den under
+      // scrollbarens tumme och i kant med grannkolumnen.
+      expect(one.width.body!, `body vid ${[1440, 1280, 1024][i]}`).toBeLessThan(room)
+    }
+  }, 60_000)
+
+  // Att det verkligen är ett villkor, och inte en kolumn som råkar vara smal ändå: i en låda som
+  // räcker får samma värde hela den bredd det ber om, och den bredden är större än det rum de
+  // smalare lådorna har. Utan tak hade alltså kanten legat utanför dem — mätt på leken själv i
+  // stället för på en lucka i koden som bara testet använder.
+  it('är ett verkligt villkor: i en låda som räcker ber samma värde om mer än de smala rummen har', async () => {
+    const [rymlig, trång] = await Promise.all([measure(wideDoc(), { width: 2600 }), measure(wideDoc(), { width: 1024 })])
+
+    expect(rymlig.width.body!).toBeLessThan(roomOf(rymlig))
+    expect(rymlig.width.body!).toBeGreaterThan(roomOf(trång))
+    expect(trång.width.body!).toBeLessThan(rymlig.width.body!)
+  }, 60_000)
+})
+
 // What a heading holds, and what it costs the column it names (#46 on #32).
 //
 // A heading used to carry two things besides its word: the × that took the column away, and — on
