@@ -6,6 +6,7 @@ import type { ZoneAction } from '@byd/protocol'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { besidePile, CARD_MM } from '../src/table/drop.js'
 import { projectDoc } from './project-doc.js'
+import { edgeDoc } from './landing-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -112,24 +113,8 @@ describe('konturen syns medan väljaren hålls (L30, B · Vid fokus)', () => {
 })
 
 describe('utanför bordet är ett fel och inte en upplysning (L30)', () => {
-  // Krönikan på 838, 500 vid ett bord om 900 × 600: till höger och nedanför hamnar korten utanför.
-  const edge = (): ProjectDoc =>
-    withZones((z) =>
-      z.id === 'table'
-        ? { ...z, geometry: { x: 0, y: 0, w: 900, h: 600, rot: 0 } }
-        : z.id === 'discard'
-          ? { ...z, name: 'Krönikan', geometry: { x: 838, y: 500, w: 0, h: 0, rot: 0 }, beside: 'right' }
-          : z.id === 'draw'
-            ? { ...z, geometry: { x: 300, y: 300, w: 0, h: 0, rot: 0 } }
-            : z.id === 'hand:A'
-              ? { ...z, geometry: { x: 150, y: 620, w: 600, h: 100, rot: 0 } }
-              : z.id === 'hand:B'
-                ? { ...z, geometry: { x: 150, y: -120, w: 600, h: 100, rot: 0 } }
-                : z,
-    )
-
   it('står kvar i bärnsten med orden i sig så länge högen är vald, och panelen säger vad man gör', async () => {
-    await run.projects.create(run.projectId, edge())
+    await run.projects.create(run.projectId, edgeDoc())
     await openBord()
     expect(outlines()).toEqual([])
     openZone('discard', /Krönikan/)

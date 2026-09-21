@@ -15,6 +15,7 @@ import { CardPreview } from './CardPreview.js'
 import { ZoneActions } from './ZoneActions.js'
 import { nameOf, templateOf } from './zone-name.js'
 import { landingOf } from './landing.js'
+import { CARD_MM } from '../table/drop.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 
@@ -41,7 +42,6 @@ export type SetupEditorProps = {
   beside?: ReactNode
 }
 
-const PILE_MM = { w: 63, h: 88 }
 // What one CSS millimetre is worth in pixels. A compiled card is laid out in millimetres, the
 // felt in pixels, and this is the rate between them — so the zoom that makes the back the size of
 // the card it lies on is the felt's own millimetre divided by this one.
@@ -729,6 +729,10 @@ function Felt({
         ref={table}
         view={view}
         mode="tv"
+        // A card's width of dark around the table (L30): the outline that says a pile lays its
+        // cards off the table has to be drawn *off the table*, and was clipped by the felt's edge
+        // until the felt left room for it.
+        margin={CARD_MM.w}
         overlay={overlay}
         // The deck's own back on every face-down card (L17). It goes through `compile`, the
         // one renderer there is for card templates (K9) — the same code the canvas and the wall
@@ -760,7 +764,7 @@ function Felt({
 // A pile is a point; its handle is a card's outline around it.
 function boxOf(z: Zone): { x: number; y: number; w: number; h: number } {
   const g = z.geometry
-  return z.kind === 'pile' ? { x: g.x - PILE_MM.w / 2, y: g.y - PILE_MM.h / 2, w: PILE_MM.w, h: PILE_MM.h } : { x: g.x, y: g.y, w: g.w, h: g.h }
+  return z.kind === 'pile' ? { x: g.x - CARD_MM.w / 2, y: g.y - CARD_MM.h / 2, w: CARD_MM.w, h: CARD_MM.h } : { x: g.x, y: g.y, w: g.w, h: g.h }
 }
 const snap = (mm: number) => Math.round(mm / SNAP_MM) * SNAP_MM
 

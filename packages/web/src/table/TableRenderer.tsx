@@ -78,6 +78,12 @@ export type TableRendererProps = {
   onInspect?: ((c: VisibleComponentState | null) => void) | undefined
   size?: Size | undefined
   glideMs?: number | undefined
+  // Room kept clear around the table when it is fitted, in table millimetres (L30, #316). The
+  // editor's Bord tab draws where a pile's actions lay their cards, and off the table that
+  // outline is the one thing the felt has to say — so the felt leaves a card's width of dark
+  // around the table, or the warning is clipped in the case it exists for. Nothing else asks
+  // for any: the air the two fits leave is their own, in pixels, and is not this.
+  margin?: number | undefined
   // What the editor lays over the felt (B5): zone handles, drawn last with the felt's mapping.
   overlay?: ((fit: FeltFit) => ReactNode) | undefined
   // What a face-down card wears where nothing serves textures (L17, K9). A played table gets its
@@ -178,7 +184,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay, back, seatNames = false, me = null, foldHand = null, keyboard }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -215,11 +221,19 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // fit has to pass into the frame — otherwise a seat at a side edge gets a table cut off at the
   // top and bottom of its own screen.
   const drawn = rotate % 180 === 0 ? felted : { w: felted.h, h: felted.w }
+  // The margin asked for, around the *floor* and in its own millimetres, so it shrinks with it.
+  // A hand that already hangs that far past the rim has made the room by itself, and the air the
+  // fit leaves in pixels is not added to it either: both are dark between the table and the
+  // frame, so the felt stands the larger of the two from the frame and not their sum. Added up,
+  // at 1280 × 800, the felt lost an eighth and two names met (#43).
+  const floorDrawn = rotate % 180 === 0 ? { w: floorRect.w, h: floorRect.h } : { w: floorRect.h, h: floorRect.w }
+  const room = { w: Math.max(drawn.w, floorDrawn.w + 2 * margin), h: Math.max(drawn.h, floorDrawn.h + 2 * margin) }
+  const withMargin = (fitted: number): number => (margin > 0 && size ? Math.min(fitted, fitScale(room, size, 0)) : fitted)
   // How the felt meets its frame is one rule per mode, and each leaves the air its own furniture
   // needs (K9, K17): the felt table lies on wood that stands on the dark and holds back to its
   // share of it, the TV has no rim and leaves only what a hand's count hangs out into. They were
   // one number until #76 measured what that cost a phone.
-  const fitted = size === null ? null : size.w > 0 && size.h > 0 ? (mode === 'table' ? feltScale(drawn, size) : fitScale(drawn, size, TV_AIR_PX)) : 1
+  const fitted = size === null ? null : size.w > 0 && size.h > 0 ? withMargin(mode === 'table' ? feltScale(drawn, size) : fitScale(drawn, size, TV_AIR_PX)) : 1
 
   // Inspection (K8): "Titta" in the ring, private to this screen, until tapped away.
   const [held, setHeld] = useState<VisibleComponentState | null>(null)
