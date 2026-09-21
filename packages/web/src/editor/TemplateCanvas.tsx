@@ -639,6 +639,11 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
   const ownPointsOf = (box: BoxElement): Point[] => ('points' in box && box.points ? box.points : [])
   const shaping = useRef<{ id: string; box: BoxElement; from: Point[]; at: Point; mmPerPx: number; gesture: string; point: number | null; edge: number | null; base: Point } | null>(null)
   const shapes = useGesture('point')
+  // The browser fires a click of its own once a drag has begun and ended on the same button, and
+  // a mid-dot is a button. Its click is the way in for the hand that has no pointer (L24) and has
+  // to stay — so the drag says it already shaped the outline, and the click that comes after it
+  // steps aside rather than adding the point a second time.
+  const shaped = useRef(false)
   const [landing, setLanding] = useState<number | null>(null)
   useEffect(() => {
     if (landing === null) return
@@ -661,6 +666,7 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
     if (!rect?.width) return
     event.stopPropagation()
     onSelect(box.id)
+    shaped.current = false
     shaping.current = { id: box.id, box, from: ownPointsOf(box), at: { x: event.clientX, y: event.clientY }, mmPerPx: CARD_STANDARD_63x88.physical.widthMm / rect.width, gesture: shapes.begin(), ...what }
     setHolding(true)
     event.currentTarget.setPointerCapture?.(event.pointerId)
@@ -676,6 +682,7 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
     if (to.x === held.base.x && to.y === held.base.y) return
     const box = { w: held.box.w, h: held.box.h }
     const points = held.point === null ? grownPoint(held.from, held.edge ?? 0, to, box) : movedPoint(held.from, held.point, to, box)
+    shaped.current = true
     onPatch(held.id, { points } as Partial<Element>, held.gesture)
   }
 
@@ -907,7 +914,13 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
             onPointerCancel={callOff}
             // The way in for the hand that has no pointer. A way in that only exists under a
             // pointer is no way in at all (L24), and adding a point is the whole of this door.
-            onClick={() => onPatch(own.id, { points: grownPoint(own.points ?? [], edge, mid, own) } as Partial<Element>, shapes.begin())}
+            onClick={() => {
+              if (shaped.current) {
+                shaped.current = false
+                return
+              }
+              onPatch(own.id, { points: grownPoint(own.points ?? [], edge, mid, own) } as Partial<Element>, shapes.begin())
+            }}
           />
         ))}
       {own &&

@@ -113,6 +113,18 @@ describe('the hand on the points (L26)', () => {
     expect(tokens(onPatch).size).toBe(1)
   })
 
+  // The browser fires a click of its own after a drag that began and ended on the same button,
+  // and the mid-dot is a button — so a pulled-out mid-dot arrived as a drag *and* a click, and
+  // the outline got two new points where the designer made one. The click is the way in for the
+  // hand without a pointer (L24) and stays; what it must not do is fire on the tail of a drag.
+  it('grows one point and not two when the drag is followed by the browser own click', () => {
+    const { onPatch } = open()
+    drag(midMarks()[0]!, [30.5 * PX, 1 * PX], [30.5 * PX, 21 * PX])
+    fireEvent.click(midMarks()[0]!)
+    expect(lastPoints(onPatch)).toHaveLength(5)
+    expect(tokens(onPatch).size).toBe(1)
+  })
+
   // A mid-dot pressed and let go without being pulled anywhere added a point on top of the edge
   // it already lay on: a click is a grab that went nowhere, here as everywhere else on the canvas.
   it('adds nothing when a mid-dot is pressed and let go where it stood', () => {
