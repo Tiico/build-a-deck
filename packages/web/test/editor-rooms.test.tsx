@@ -41,7 +41,8 @@ describe('the editor on a phone (L10)', () => {
     expect(said.textContent).toMatch(/768/)
     expect(said.textContent).toMatch(/Duken, verktygen, lagren och egenskaperna/)
     // The two things the editor must never lose are in reach, not off the side of the screen.
-    expect(screen.getByRole('button', { name: 'Uppdatera bordet' })).toBeTruthy()
+    // Spelet har inget bord, så den fyllda knappen är den som startar ett (#417).
+    expect(screen.getByRole('button', { name: 'Starta bord' })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Spara/ })).toBeTruthy()
   })
 

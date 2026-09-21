@@ -2816,7 +2816,10 @@ Det är utdelningen ovan, nu ärligt ritad medan handen håller i den — ska de
 
 ### L5. Editor till bord: uttrycklig knapp, förrenderade texturer
 
-Editorn har en knapp, "Uppdatera bordet", som startar ett bord från projektet eller skickar `version.change` till det bord den startat.
+Editorn har en knapp som startar ett bord från projektet eller skickar `version.change` till det bord den startat.
+Knappen heter det jobb den står i begrepp att göra (#417, byggt 2026-09-21): utan bord heter den "Starta bord" ("Start a table"), och "Startar bordet…" medan starten är på väg; med ett bord heter den "Uppdatera bordet" som förut, och "Nytt bord" står då bredvid den.
+Den hette "Uppdatera bordet" i båda lägena, vilket gjorde att ett spel utan bord hade en blå knapp som lovade en uppdatering och i stället startade en session med rumskod; meningen i Bord-fliken förklarade skillnaden på en annan flik i stället för att knappen sade rätt ord.
+Meningen citerar numera det namn knappen bär.
 Bytet är atomiskt för spelarna: knappen köar först den nya revisionens texturer (`POST /sessions/:id/prepare`), visar "renderar kort n/m", och skickar bytet först när alla är renderade (byggt 2026-09-06).
 Ett nystartat bord får sin länk först när dess texturer är klara (`GET /sessions/:id/textures`).
 Telefonens hand och inspektion visar samma texturer som bordet; saknas en texturs hash visas namnet på färg.

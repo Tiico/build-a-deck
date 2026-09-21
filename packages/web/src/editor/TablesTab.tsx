@@ -88,8 +88,9 @@ export function TablesTab({ client, server }: TablesTabProps) {
       </div>
       {/* First in the column, over the list: it is what the tab is for, and everything under it is
           a table that already exists (L31). A second action, never the filled one — the fill
-          belongs to «Uppdatera bordet» (L13). The icon turns while the start is under way: a
-          button that only goes quiet reads as a button that did nothing (jfr #215). */}
+          belongs to the header's own action, whichever of its two names it wears (L13, #417). The
+          icon turns while the start is under way: a button that only goes quiet reads as a button
+          that did nothing (jfr #215). */}
       <button type="button" className="byd-tables-new byd-secondary" disabled={starting} aria-busy={starting} onClick={() => void startTable()}>
         <span className="byd-tables-new-icon">
           <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" focusable="false">
@@ -268,7 +269,7 @@ function TableRow({ table, server, rev, qrOpen, onQr }: { table: TableSummary; s
   const full = !ended && view !== null && free === null
 
   // The one way that stands ready — outlined, not filled. It is the row's first action and not
-  // the view's: "Uppdatera bordet" in the header is the view's, and L13 allows exactly one filled
+  // the view's: the filled action in the header is the view's, and L13 allows exactly one filled
   // thing in a view. Four live tables would otherwise be four more.
   //
   // Playing from here, because the designer is usually alone when she playtests and the TV is
