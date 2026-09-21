@@ -50,11 +50,17 @@ describe('the empty rules tab is the book’s disposition (#131)', () => {
     ).toEqual(SECTIONS)
   })
 
-  it('says what the rules are for in one line above the disposition, and not in a box', async () => {
+  it('says what the rules are for in one line above the disposition, and the rest behind its question mark', async () => {
     await openRules()
-    const line = screen.getByText(/Reglerna hör till spelet/)
-    expect(line.textContent).toMatch(/versioneras med korten/)
-    expect(line.textContent).toMatch(/telefonen, TV:n och observatören/)
+    // One short line and never a box of its own (#131); what the line used to go on to say —
+    // that the rules are versioned with the cards and where the players reach them — is the
+    // help behind the question mark beside it (L32, #303).
+    expect(screen.getByText('Reglerna hör till spelet.')).toBeTruthy()
+    expect(screen.queryByText(/versioneras med korten/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Hjälp om reglerna' }))
+    const help = screen.getByRole('dialog', { name: 'reglerna' })
+    expect(help.textContent).toMatch(/versioneras med korten/)
+    expect(help.textContent).toMatch(/telefonen, TV:n och observatören/)
   })
 })
 

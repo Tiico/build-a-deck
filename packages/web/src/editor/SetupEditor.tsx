@@ -9,6 +9,7 @@ import { MAX_PLAYERS, titleOfRow, type Counter, type Geometry, type Setup, type 
 import type { ProjectClient } from './ProjectClient.js'
 import type { ZonePatch } from '@byd/server/doc'
 import { useT, type Key, type T } from '../i18n/index.js'
+import { Help } from './HelpDrawer.js'
 import { recipeWords } from './fields.js'
 import { useGesture } from './gesture.js'
 import { CardPreview } from './CardPreview.js'
@@ -220,6 +221,11 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
             </span>
           )}
           <span>{t('setup.hint')}</span>
+          <Help topic={t('setup.help.topic')}>
+            <p>{t('setup.help.resize')}</p>
+            <p>{t('setup.help.keys')}</p>
+            <p>{t('setup.help.list')}</p>
+          </Help>
         </div>
         {view ? (
           <Felt
@@ -308,7 +314,12 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
   return (
     <aside className="byd-setup-recipe">
       <section>
-        <h2 id="byd-setup-players">{t('setup.players')}</h2>
+        <div className="byd-help-row">
+          <h2 id="byd-setup-players">{t('setup.players')}</h2>
+          <Help topic={t('setup.seats.help.topic')}>
+            <p>{t('setup.seats.help')}</p>
+          </Help>
+        </div>
         <div className="byd-setup-players" role="group" aria-labelledby="byd-setup-players">
           {/* Every seat count the table can actually hold. It stopped at six while `MAX_PLAYERS`
               was eight, so the two counts a designer most needed to look at — the ones where an
@@ -319,11 +330,22 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
             </button>
           ))}
         </div>
-        <p className="byd-setup-hint">{t('setup.seats.hint')}</p>
       </section>
       <section>
         <div className="byd-setup-counters">
-          <h2>{t('setup.counters')}</h2>
+          {/* A seat's counters change shape at the third one (C4, K18, #89): one or two lie side by
+              side along the seat's own rim, where a finger can reach each of them and the table can
+              read both at three metres; a third stacks them into one pile, because three targets of
+              44 px want more room along the rim than a seat has to give without taking it from its
+              neighbour. The designer cannot see that coming from the number, so it is said here,
+              where the number is chosen — behind the question mark, since it is an explanation
+              and not a cost (L32). */}
+          <div className="byd-help-row">
+            <h2>{t('setup.counters')}</h2>
+            <Help topic={t('setup.counters.help.topic')}>
+              <p>{t('setup.counters.help')}</p>
+            </Help>
+          </div>
           {recipe.counters.map((c, i) => (
             <div key={i} className="byd-setup-counter">
               <input aria-label={t('setup.counter.name', { n: i + 1 })} value={c.name} {...typing.visit} onChange={(e) => setCounter(i, { name: e.target.value })} />
@@ -338,13 +360,6 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
             {t('setup.counter.add')}
           </button>
           {homeless && <p className="byd-setup-note" role="status">{t('setup.counters.homeless')}</p>}
-          {/* A seat's counters change shape at the third one (C4, K18, #89): one or two lie side by
-              side along the seat's own rim, where a finger can reach each of them and the table can
-              read both at three metres; a third stacks them into one pile, because three targets of
-              44 px want more room along the rim than a seat has to give without taking it from its
-              neighbour. The designer cannot see that coming from the number, so it is said here,
-              where the number is chosen, and before the third counter has been added. */}
-          <p className="byd-setup-note">{t('setup.counter.stacks')}</p>
         </div>
       </section>
     </aside>

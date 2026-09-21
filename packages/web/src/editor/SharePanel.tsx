@@ -3,6 +3,7 @@ import { ROLES, roleWord, type Role } from '@byd/server/doc'
 import { inviteToProject, projectMembers, unshareProject, type Member } from '../account/api.js'
 import type { Presence } from '@byd/server'
 import { useLang, useT } from '../i18n/index.js'
+import { Help } from './HelpDrawer.js'
 
 // Who has the game (D3), from the prototype: the people in the editor's header are the door.
 // Who is here now and who may be here at all is one question, so one list answers it — the
@@ -58,11 +59,13 @@ export function SharePanel({ http, project, here, onClose }: SharePanelProps) {
     <div className="byd-share" role="dialog" aria-label={t('share.title')}>
       <header>
         <h2>{t('share.title')}</h2>
+        <Help topic={t('share.help.topic')}>
+          <p>{t('share.help')}</p>
+        </Help>
         <button type="button" aria-label={t('share.close')} onClick={onClose}>
           ×
         </button>
       </header>
-      <p>{t('share.lead')}</p>
       {error && <p role="alert">{error}</p>}
       {!members ? (
         <p>{t('share.reading')}</p>

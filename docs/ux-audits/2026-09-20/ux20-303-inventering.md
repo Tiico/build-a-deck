@@ -63,3 +63,61 @@
 **Media** — 1 strängar, 65 tecken
 
 - `library.none` (65 tecken) — Spelet har inga bilder ännu. Ladda upp en bild direkt i tabellen.
+
+## Utfört 2026-09-21
+
+Mönstret är L32:s låda (`packages/web/src/editor/HelpDrawer.tsx`).
+Varje rad nedan är en av de 29 strängarna ovan; de 19 som räknades bort innan — fel, väntestatus och följdupplysningar — rördes inte.
+Före-höjderna är mätta i Chromium vid 1280×800 med produktens egna ark, med den gamla strängen lagd i den nya ytan; efter-höjden är densamma med lådan öppen som stängd, för lådan ligger över arbetet och inte i flödet.
+
+| yta | före | efter |
+|---|---|---|
+| Lager, foten under listan (220 px) | 86 px, fem rader | 31 px, en rad |
+| Bord, inledningen över listan (320 px) | 72 px, fyra rader | 36 px, två rader — kortare, men bär fortfarande «rev {n}», som #299 satte dit |
+| Uppställningen, raden över filten | 30 px, en rad | 30 px, en rad — raden var redan en rad; vinsten där är ord, inte bildpunkter |
+
+Lager var den yta L32 mätte på: 179 tecken, sex rader i prototypens grader, fem i produktens. Där satt vinsten, och den är tagen.
+
+### Flyttat bakom frågetecknet, med en kort rad kvar
+
+| nyckel | kvar synligt | i lådan |
+|---|---|---|
+| `canvas.hint.base` | «Dra för att ändra ordningen.» | Alt + pil, F2, flyttläget från duken (`canvas.help.*`) |
+| `setup.hint` | «Dra en zon på filten för att flytta den.» | hörnet, piltangenterna och Delete, listan (`setup.help.*`) |
+| `tables.lead` | «Bord på det här spelet. Ett nytt startar från den sparade versionen, rev {n}.» | att ett bord överlever att alla kopplar ner och avslutas efter ett dygn (`tables.help.life`) |
+| `rules.hint` | «Klicka i sidan för att skriva.» | att en regel följer med när zonen eller kortet byter namn (`rules.help.names`) |
+| `rules.empty` | «Reglerna hör till spelet.» | att de versioneras med korten och nås från telefonen, TV:n och observatören (`rules.help.reach`) |
+| `history.lead` | «Den du tar tillbaka blir nästa version.» — följden av att ta tillbaka står kvar | att varje sparning är en version och ingen skrivs om (`history.help`) |
+
+### Flyttat i sin helhet
+
+Rubriken står kvar och säger vad ytan är; frågetecknet står bredvid den.
+
+| nyckel | nu | vid |
+|---|---|---|
+| `setup.seats.hint` | `setup.seats.help` | rubriken Spelare |
+| `setup.counter.stacks` | `setup.counters.help` | rubriken Räknare |
+| `symbols.lead` | `symbols.help` | rubriken Symbolbibliotek |
+| `symbols.colours.lead` | `symbols.colours.help` | rubriken Spelets färger |
+| `wall.checks.note` | `wall.checks.help` | raden med antalet fel, i kontrollens låda |
+| `wall.measure.lead` | `wall.measure.help` | rubriken Bildernas mått |
+| `share.lead` | `share.help` | rubriken i delningsdialogen |
+
+### Kvar synligt, oförändrat
+
+Tomma tillstånd säger varför ytan är tom och vart man går; följdupplysningar säger vad en handling får för följd. Ingen av dem är förklarande löptext i L32:s mening, även om inventeringen räknade tecknen.
+
+- `canvas.hint.group` — varför ordningen inte går att ändra i en grupp.
+- `canvas.props.empty`, `symbols.none`, `symbols.set.none`, `symbols.colours.none`, `symbols.deck.painted`, `symbols.deck.painted.some`, `media.empty`, `library.none`, `fonts.none`, `tables.none` — tomma tillstånd.
+- `setup.counters.homeless` — status: inga brickor läggs på bordet.
+- `wall.checks.fix.none` — varför ingen rättning erbjuds.
+- `wall.measure.source.lead`, `media.crop.lead`, `table.import.note` — vad handlingen gör med filen, med varje kort som använder bilden, med korten i tabellen.
+
+### Hoppat över
+
+Inget. Alla 29 nycklar fanns kvar efter #295–#302; ingen av dem hade bytt roll.
+
+### Mätningen i sviten
+
+`packages/web/test/help-layout.test.tsx` lägger de tre ytorna i Chromium vid 1280, 1024 och 768 och med texten fördubblad: raden är högst två rader hög och lika hög med lådan öppen, lådan står inuti fönstret, aldrig över raden den handlar om, och klipps inte av kolumnen.
+Ingen bildpunkt är fastnaglad i sviten; raden mäts mot sin egen radhöjd och lådan mot fönstret, så samma regel gäller där typsnittet är bredare.

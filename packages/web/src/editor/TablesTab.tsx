@@ -9,6 +9,7 @@ import { useRoving } from './roving.js'
 import type { ProjectClient, TableSummary } from './ProjectClient.js'
 import { Question } from './Question.js'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
+import { Help } from './HelpDrawer.js'
 import { lastMoveWords } from './when.js'
 
 // The Bord tab (#19): every table this game has, and the ways into it. A table is a session
@@ -79,7 +80,12 @@ export function TablesTab({ client, server }: TablesTabProps) {
     )
   return (
     <div className="byd-tables">
-      <p className="byd-tables-lead">{t('tables.lead', { n: client.rev })}</p>
+      <div className="byd-tables-lead byd-help-row">
+        <span>{t('tables.lead', { n: client.rev })}</span>
+        <Help topic={t('tables.help.topic')}>
+          <p>{t('tables.help.life')}</p>
+        </Help>
+      </div>
       {/* First in the column, over the list: it is what the tab is for, and everything under it is
           a table that already exists (L31). A second action, never the filled one — the fill
           belongs to «Uppdatera bordet» (L13). The icon turns while the start is under way: a

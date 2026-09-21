@@ -284,6 +284,9 @@ describe('the layers of the template by keyboard (UX-04)', () => {
     // field is controlled by the document, so a new value there is a patch that landed on frame.
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('checkbox', { name: /rutnät/i }))
+    // Then the question mark at the column's foot, where the keyboard's own help lives (L32).
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Hjälp om lagerlistan' }))
     // Then the stage itself, which is a stop because it is a box that scrolls (#146): once the
     // card is zoomed bigger than the room it is in, panning it is a thing a keyboard has to be
     // able to do.

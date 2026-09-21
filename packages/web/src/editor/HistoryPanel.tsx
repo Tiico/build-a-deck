@@ -4,6 +4,7 @@ import type { VersionSummary } from '@byd/server'
 import type { ProjectClient } from './ProjectClient.js'
 import { byDay, historyRow, type HistoryRow } from './historyRow.js'
 import { translate, useLang, useT, type T } from '../i18n/index.js'
+import { Help } from './HelpDrawer.js'
 
 // Without a catalogue of its own this module speaks Swedish, exactly as a surface mounted
 // without a language provider does: the panel hands over its own `t` (A4).
@@ -97,7 +98,12 @@ export function HistoryPanel({ client, onClose, onRestored, onCompare }: History
           twenty-odd versions over several days — the panel is more than twice its own height, and
           the way out of it must not be a screenful and a half above whatever is being read. */}
       <div className="byd-history-scroll">
-        <p className="byd-history-lead">{t('history.lead')}</p>
+        <div className="byd-history-lead byd-help-row">
+          <span>{t('history.lead')}</span>
+          <Help topic={t('history.help.topic')}>
+            <p>{t('history.help')}</p>
+          </Help>
+        </div>
         {!versions ? (
           <p>{t('history.loading')}</p>
         ) : (
