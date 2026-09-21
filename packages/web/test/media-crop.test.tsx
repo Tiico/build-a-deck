@@ -4,6 +4,7 @@
 // and fifty-four drags. What is asked here is the surface — that a crop can be cut without a
 // pointer, that it says what it is doing, and that the card beside it is the card the printer
 // will get, drawn by the one renderer and not by a second drawing of a card.
+import type { ReactElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
@@ -29,16 +30,22 @@ function deckWithArt(): ProjectDoc {
   return doc
 }
 
-const window_ = () => screen.getByRole('button', { name: /Beskärning/ })
+const window_ = () => screen.getByRole('button', { name: /Beskärning: visar/ })
+const corner = () => screen.getByRole('button', { name: 'Nedre högra hörnet' })
+// Since #297 (L33) the crop is a sheet over the library, opened from the picture's tile.
+const mount = (ui: ReactElement) => {
+  render(ui)
+  fireEvent.click(document.querySelector('.byd-media-tile')!)
+}
 
 describe('a picture is cropped in the library (#222)', () => {
   it('cuts the window with the keyboard alone, and says where the window now stands', () => {
     const onCrop = vi.fn()
-    render(<MediaPanel doc={deckWithArt()} assetBase={BASE} motifs={motifs} onCrop={onCrop} />)
+    mount(<MediaPanel doc={deckWithArt()} assetBase={BASE} motifs={motifs} onCrop={onCrop} />)
 
     // A picture nobody has cropped is the whole picture, so the first thing there is room for is
-    // to make the window narrower; then it can be moved into the picture.
-    fireEvent.keyDown(window_(), { key: 'ArrowLeft', shiftKey: true })
+    // to make the window narrower, from a corner; then it can be moved into the picture.
+    fireEvent.keyDown(corner(), { key: 'ArrowLeft' })
     fireEvent.keyDown(window_(), { key: 'ArrowRight' })
 
     expect(onCrop).toHaveBeenLastCalledWith(SKOG, { x: 0.02, y: 0, w: 0.98, h: 1 })
@@ -50,7 +57,7 @@ describe('a picture is cropped in the library (#222)', () => {
   it('names the picture and never a card, so every card drawn from it is reached at once', () => {
     const onCrop = vi.fn()
     const doc = deckWithArt()
-    render(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={onCrop} />)
+    mount(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={onCrop} />)
 
     fireEvent.keyDown(window_(), { key: 'ArrowDown', shiftKey: true })
 
@@ -62,7 +69,7 @@ describe('a picture is cropped in the library (#222)', () => {
     const onCrop = vi.fn()
     const doc = deckWithArt()
     doc.pictures = { [SKOG]: { crop: { x: 0.1, y: 0.1, w: 0.5, h: 0.5 } } }
-    render(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={onCrop} />)
+    mount(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={onCrop} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Hela bilden' }))
 
@@ -99,24 +106,24 @@ describe('the card beside the crop is the card the printer gets (#222, E2)', () 
   }
 
   it('draws the picture through the window being cut, and redraws it as the window moves', () => {
-    render(<MediaPanel doc={deckWithArt()} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
+    mount(<MediaPanel doc={deckWithArt()} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
 
     // A picture nobody has cropped is the whole picture, and the whole picture meets its frame
     // the way every uncropped picture always has.
     expect(artRule()).toBe('width:100%;height:100%;object-fit:cover;')
 
-    fireEvent.keyDown(window_(), { key: 'ArrowLeft', shiftKey: true })
+    fireEvent.keyDown(corner(), { key: 'ArrowLeft' })
     fireEvent.keyDown(window_(), { key: 'ArrowRight' })
 
     // Now the file is hung inside its frame, so that exactly the window fills it.
     expect(artRule()).toMatch(/^left:-?[\d.]+mm;top:-?[\d.]+mm;width:[\d.]+mm;height:[\d.]+mm;$/)
     const narrow = artRule()
-    fireEvent.keyDown(window_(), { key: 'ArrowLeft', shiftKey: true })
+    fireEvent.keyDown(corner(), { key: 'ArrowLeft' })
     expect(artRule()).not.toBe(narrow)
   })
 
   it('shows the very picture being cropped, from the place the deck’s pictures are served', () => {
-    render(<MediaPanel doc={deckWithArt()} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
+    mount(<MediaPanel doc={deckWithArt()} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
 
     const art = document.querySelector('.byd-media-crop .byd-preview img.byd-art')
     expect(art?.getAttribute('src')).toBe(`${BASE}/assets/${SKOG}`)

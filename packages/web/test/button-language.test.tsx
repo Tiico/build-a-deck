@@ -1227,6 +1227,7 @@ describe('every suite that measures a surface', () => {
       'felt-names.test.tsx',
       'history-layout.test.tsx',
       'join-layout.test.tsx',
+      'media-crop-layout.test.tsx',
       'observer-viewport.test.tsx',
       'online-column.test.tsx',
       'online-felt.test.tsx',

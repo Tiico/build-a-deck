@@ -3878,6 +3878,7 @@ Hela originalbilden ligger med marginal, fyra hörngrepp ändrar storlek med det
 Ingen zoom och ingen panorering av arbetsytan (avgränsningen 2026-09-20).
 Arket har ett tak: utan det växer bilden med kolumnen, och vid 1440 tryckte den ner statusen, «Hela bilden» och tangentraden under vikningen.
 **En beskärningsyta som kräver rullning för att nå «Hela bilden» är ingen arbetsyta.**
+Taket sattes till 440 px och inte prototypens 520 (2026-09-21, #297): mätt i Chromium med en stående fil hamnade tangentraden med 520 på 814 px i ett 800 px högt fönster vid 1280×800, medan 440 lämnar den på 734 px och arket utan rullning vid både 1280×800 och 1440×900; bredden är fortfarande högst 520 px, så en liggande bild rör inte taket.
 
 **Statusen står på båda ställena, och arket är skälet till att den måste göra det.**
 När arket ligger över biblioteket ser designern inget bibliotek alls medan hon beskär: statusen under utsnittet är det enda som finns under arbetet, och märket på bibliotekets bricka det enda som finns efteråt.

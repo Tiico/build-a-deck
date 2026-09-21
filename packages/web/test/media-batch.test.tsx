@@ -104,9 +104,11 @@ describe('vad biblioteket visar efter en batch (#291, flerfilsbeslutet)', () => 
   it('visar översikten med de lyckade märkta som nyss tillagda, och öppnar ingen av dem', async () => {
     const user = userEvent.setup()
     await openMedia(user)
-    // Innan släppet står en bild i beskärningsrutan, så att «ingen är öppnad» efteråt är en
-    // förändring och inte ett utgångsläge.
-    expect(screen.getByRole('button', { name: /Beskärning/ })).toBeTruthy()
+    // Innan släppet har en bild öppnats i beskärningsarket och stängts igen (#297, L33), så att
+    // «ingen är öppnad» efteråt är en förändring och inte ett utgångsläge.
+    await user.click(tiles()[0]!.querySelector('.byd-media-tile')!)
+    expect(screen.getByRole('dialog', { name: 'Beskärning' })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Klart' }))
 
     fireEvent.drop(library(), { dataTransfer: filesDropped([file(SKOGSBRYN, 'skogsbryn.png'), file(BORGEN, 'borgen.png')]) })
     // Vad batchen blev är vad batchen slutade med, och sedan #339 står en bild i biblioteket
@@ -117,7 +119,7 @@ describe('vad biblioteket visar efter en batch (#291, flerfilsbeslutet)', () => 
 
     // Ingen bild är vald eller öppnad för beskärning: nätverkets färdigordning får inte välja åt
     // formgivaren, och inte heller bibliotekets egen ordning.
-    expect(screen.queryByRole('button', { name: /Beskärning/ })).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
     // De nya är märkta som nyss tillagda, och den bild som redan fanns är det inte.
     expect(tiles().map((li) => [li.getAttribute('data-asset'), li.getAttribute('data-new')])).toEqual([
       [SKOG, null],
@@ -159,14 +161,15 @@ describe('vad biblioteket visar efter en batch (#291, flerfilsbeslutet)', () => 
   it('behåller föregående vy när ingen enda fil kom fram, och visar filfelen', async () => {
     const user = userEvent.setup()
     await openMedia(user)
-    const before = document.querySelector('.byd-media-crop img')?.getAttribute('src')
+    const before = tiles().map((li) => li.getAttribute('data-asset'))
 
     fireEvent.drop(library(), { dataTransfer: filesDropped([file(INTE_EN_BILD, 'ett.png'), file(INTE_EN_BILD, 'två.png')]) })
 
     const lines = await screen.findByRole('group', { name: 'Resultat per fil' })
     expect([...lines.querySelectorAll('li')].map((li) => li.getAttribute('data-result'))).toEqual(['failed', 'failed'])
-    // Vyn står kvar: samma bild i beskärningsrutan som innan, och inget bibliotek som bytt läge.
-    expect(document.querySelector('.byd-media-crop img')?.getAttribute('src')).toBe(before)
+    // Vyn står kvar: samma bibliotek som innan, inget ark öppnat och inget bibliotek som bytt läge.
+    expect(tiles().map((li) => li.getAttribute('data-asset'))).toEqual(before)
+    expect(screen.queryByRole('dialog')).toBeNull()
     expect(tiles().map((li) => li.getAttribute('data-new'))).toEqual([null])
   })
 

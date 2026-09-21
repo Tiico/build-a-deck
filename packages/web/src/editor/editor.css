@@ -2088,11 +2088,15 @@
 .byd-symbols-chips small { color: var(--byd-editor-quiet); font-variant-numeric: tabular-nums; }
 .byd-symbols-add { margin-top: 8px; }
 .byd-role-list > button { display: grid; grid-template-columns: 16px 1fr; align-items: center; gap: 10px; }
-/* Media i spelet (#222, L22). The library and the way from a picture to the marked cards. The
-   pictures are what the eye sweeps, so they take the room; the way to the cards stands beside them
-   on a desk and under them on anything narrower, because a 280 px column beside a grid is two
-   cramped columns on a phone. */
-.byd-media { height: 100%; box-sizing: border-box; padding: var(--byd-gutter); overflow: auto; display: grid; gap: var(--byd-s5); align-content: start; }
+/* Media i spelet (#222, L22). The library takes the whole room, and the crop opens as a sheet
+   over it (#297, L33): the panel is the box both stand in, the library is the thing that scrolls,
+   and the sheet is a layer laid over it that scrolls by itself — so the library keeps its place
+   under the sheet and gets it back when «Klart» takes the sheet away. */
+.byd-media { position: relative; height: 100%; min-height: 0; box-sizing: border-box; padding: var(--byd-gutter); }
+.byd-media-library { height: 100%; overflow: auto; display: grid; gap: var(--byd-s5); align-content: start; }
+/* Dimmed while the sheet lies over it, so the layer reads as a layer. Nothing in it can be reached
+   meanwhile: the section is inert, which is the markup's own word for it. */
+.byd-media-library[inert] { opacity: 0.35; }
 .byd-media h2 { margin: 0 0 var(--byd-s3); font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 /* Vägen in står vid rubriken för det den lägger till (#222, beslut 5), inte under rutnätet den
    fyller: en knapp under tre hundra bilder är en knapp ingen hittar. Etiketten bär knappens roll
@@ -2137,11 +2141,33 @@
 .byd-media-question button { min-height: 32px; padding: 4px 12px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: #ffe4ea; font: inherit; font-weight: 700; cursor: pointer; }
 .byd-media-question button[data-kind='danger'] { background: #7a3243; border-color: #7a3243; }
 .byd-media-tile u { position: absolute; box-sizing: border-box; border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 3px; box-shadow: 0 0 0 999px rgba(8, 10, 14, 0.45); }
-/* The picture in hand (#222, L22): the window being cut, and under it the card that window lands
-   on — which is a real compile and not a second drawing of a card. */
-.byd-media-side { display: grid; gap: var(--byd-s5); align-content: start; }
-.byd-media-crop { display: grid; justify-items: start; gap: var(--byd-s3); }
+/* The mark on the tile (L33): what has been done to a picture, in words, where the picture is
+   looked over — and «sparas» rather than «beskuren» while the actor has not yet confirmed it. The
+   two tones are the status pill's, so the tile and the sheet say the same thing in the same colour. */
+.byd-media-mark { position: absolute; top: 4px; right: 4px; z-index: 1; padding: 0 var(--byd-s2); border-radius: 999px; background: rgba(18, 20, 26, 0.93); color: #9ed39e; font-size: 10px; font-weight: 700; letter-spacing: 0.4px; line-height: 16px; }
+.byd-media-mark[data-state='saving'] { color: #ffd98a; }
+/* The sheet (#297, L33, C · Arket): the picture in hand, the window being cut, and the card that
+   window lands on — a real compile and not a second drawing of a card. It lies over the library,
+   as the one layer the panel has, in the same dress as the library window (#296). It scrolls by
+   itself if it must; the ceiling below is what makes sure it need not. */
+.byd-media-sheet { position: absolute; inset: var(--byd-gutter); z-index: 2; box-sizing: border-box; overflow: auto; padding: var(--byd-s4) var(--byd-s5); border-radius: 14px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); }
+.byd-media-crop { display: grid; justify-items: start; align-content: start; gap: var(--byd-s3); }
 .byd-media-crop h2 { margin: 0; }
+.byd-media-sheet-head { display: flex; align-items: center; gap: var(--byd-s3); width: 100%; }
+.byd-media-sheet-name { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; color: #e6ecfa; }
+.byd-media-sheet-done { margin-left: auto; }
+/* The window and the card side by side (prototype C): both are seen while the handle is held,
+   instead of one being scrolled to. The window's column is the picture's widest plus its air. */
+.byd-media-sheet-work { display: grid; grid-template-columns: minmax(0, 568px) minmax(240px, 320px); gap: var(--byd-s5); align-items: start; width: 100%; }
+.byd-media-sheet-card { display: grid; justify-items: start; gap: var(--byd-s3); min-width: 0; }
+/* The status and the way back to the whole picture, in one row under the window. */
+.byd-media-crop-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--byd-s2); }
+/* Three states and not two (L33): no colour for the whole picture, amber for a window the actor
+   has not confirmed, green for one it has. The middle one is the point. */
+.byd-crop-status { display: inline-flex; align-items: center; gap: var(--byd-s2); margin: 0; min-height: 26px; padding: 0 var(--byd-s3); border: 1px solid #3b414e; border-radius: 999px; font-size: 11.5px; letter-spacing: 0.3px; color: var(--byd-editor-quiet); }
+.byd-crop-status i { font-style: normal; }
+.byd-crop-status[data-state='saving'] { background: #2a2417; border-color: #4a4230; color: #ffd98a; font-weight: 700; }
+.byd-crop-status[data-state='saved'] { background: #16281f; border-color: #2c4a38; color: #9ed39e; font-weight: 700; }
 .byd-media-crop-lead { margin: 0; font-size: 12px; color: var(--byd-editor-quiet); }
 .byd-media-crop button { min-height: var(--byd-tap); border-radius: 8px; padding: 0 12px; cursor: pointer; }
 .byd-media-crop button:disabled { cursor: default; opacity: 0.55; }
@@ -2160,20 +2186,33 @@
 .byd-media-cards li button small { font-size: 11px; color: var(--byd-editor-quiet); }
 .byd-media-cards-none { margin: 0; font-size: 12px; color: var(--byd-editor-quiet); }
 .byd-media-crop-card figcaption { font-size: 11px; color: var(--byd-editor-quiet); }
-.byd-crop { display: grid; gap: var(--byd-s1); width: 100%; }
-.byd-crop-sheet { position: relative; border-radius: 10px; overflow: hidden; background: #14161c; }
-.byd-crop-sheet img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.byd-crop { display: grid; gap: var(--byd-s2); width: 100%; justify-items: start; }
+/* The sheet is the air around the picture (L33). The corners overhang the window by half their
+   width, and with the window on the whole picture that is the picture's edge: the one corner this
+   had before stood there inside `overflow: hidden` and lost its outer half. So the sheet clips
+   nothing, and lays a rung of air on every side for the corners to stand in. */
+.byd-crop-sheet { box-sizing: border-box; width: 100%; padding: var(--byd-s5); border-radius: 10px; background: #0d0f14; }
+/* The picture, at its own shape and no larger than the ceiling. 520 px is the widest the
+   prototype found worth giving it; the ceiling is what keeps a portrait file from growing with
+   the column until the status and «Hela bilden» are under the fold at 1280×800 — measured in
+   `media-crop-layout`. The width is worked out from the ceiling rather than the height clipped by
+   it, so the box keeps the file's shape whichever bound bites. */
+.byd-crop-picture { --byd-crop-ceiling: 440px; position: relative; width: min(100%, 520px, calc(var(--byd-crop-ceiling) * var(--byd-crop-ratio, 1.5))); }
+.byd-crop-picture img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 4px; background: #14161c; }
 /* What is kept is lit and what is cut is dimmed, so the window reads as the picture rather than
-   as a box drawn on top of one. */
-.byd-crop-window { position: absolute; box-sizing: border-box; border: 2px solid #fff; box-shadow: 0 0 0 9999px rgba(8, 10, 14, 0.6); cursor: move; touch-action: none; }
+   as a box drawn on top of one. The dimming is a box of its own, clipped to the picture, so that
+   the window and the corners can be clipped by nothing. */
+.byd-crop-shade { position: absolute; inset: 0; overflow: hidden; border-radius: 4px; pointer-events: none; }
+.byd-crop-shade i { position: absolute; box-shadow: 0 0 0 9999px rgba(8, 10, 14, 0.6); }
+.byd-crop-window { position: absolute; box-sizing: border-box; border: 2px solid #fff; cursor: move; touch-action: none; }
 .byd-crop-window:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 2px; }
-.byd-crop-corner { position: absolute; right: -6px; bottom: -6px; width: 12px; height: 12px; border-radius: 3px; background: #fff; cursor: nwse-resize; touch-action: none; }
+/* Four corners, each centred on its corner of the window and the window's sibling, not its
+   child. Twelve pixels to see and twenty-four to hit. */
+.byd-crop-corner { position: absolute; width: 12px; height: 12px; translate: -50% -50%; border-radius: 3px; background: #fff; cursor: nwse-resize; touch-action: none; }
+.byd-crop-corner::before { content: ''; position: absolute; inset: -6px; }
+.byd-crop-corner[data-corner='ne'], .byd-crop-corner[data-corner='sw'] { cursor: nesw-resize; }
+.byd-crop-corner:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 2px; }
 .byd-crop-keys { margin: 0; font-size: 11px; color: var(--byd-editor-quiet); }
-@media (min-width: 1024px) {
-  /* Wider than the tool's usual side column: this one carries the window being cut and, under
-     it, a whole card at 70 %. Two pictures of the same thing, and neither may be a thumbnail. */
-  .byd-media { grid-template-columns: minmax(0, 1fr) 320px; align-items: start; }
-}
 /* The deck's measure, beside the wall where the whole deck can be seen at once (E1). */
 .byd-wall-measure { grid-column: 2; align-self: start; width: 320px; padding: 12px; border-radius: 12px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
 .byd-wall-measure h2 { margin: 0 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }

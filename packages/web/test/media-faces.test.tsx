@@ -3,6 +3,7 @@
 // gissade första sidan i mallen, så en baksidesbild visades på en framsida som inte ritar den.
 // Sidan räknas ut ur vad kortet faktiskt ritar — mallen med den variant raden ber om — och inte
 // ur mallobjektens ordning; en bild som data pekar på men ingen sida ritar är ingen användning.
+import type { ReactElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import type { Motif } from '@byd/template'
@@ -71,6 +72,13 @@ const BASE = 'http://api.local'
 const FILE: Motif = { w: 400, h: 200, trim: { left: 0, top: 0, right: 0, bottom: 0 } }
 const motifs = { [`${BASE}/assets/${SKOG}`]: FILE, [`${BASE}/assets/${MOSSA}`]: FILE }
 
+// Since #297 (L33) the crop is a sheet over the library, opened from the picture's tile: the
+// first tile, which is the picture every test here is about unless it says otherwise.
+const mount = (ui: ReactElement) => {
+  render(ui)
+  fireEvent.click(document.querySelector('.byd-media-tile')!)
+}
+
 // Which side the one renderer drew beside the crop: the fixture's front carries the title, its
 // back the `bg` shape, and the compiled card names its elements.
 const drawn = (id: string) => document.querySelector(`.byd-media-crop .byd-preview [data-element="${id}"]`)
@@ -82,7 +90,7 @@ describe('the preview opens on the side that draws the picture (#295)', () => {
   it('opens a back-only picture on the back, and says so without colour', () => {
     const doc = deck()
     doc.template.faces['back']!.base.push(art())
-    render(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
+    mount(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
 
     expect(side()).toBe('back')
     expect(face('Bak').getAttribute('aria-checked')).toBe('true')
@@ -93,12 +101,12 @@ describe('the preview opens on the side that draws the picture (#295)', () => {
     const doc = deck()
     doc.template.faces['front']!.base.push(art())
     doc.template.faces['back']!.base.push(art())
-    render(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
+    mount(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
     expect(side()).toBe('front')
 
     fireEvent.click(face('Bak'))
     expect(side()).toBe('back')
-    fireEvent.keyDown(screen.getByRole('button', { name: /Beskärning/ }), { key: 'ArrowLeft', shiftKey: true })
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Nedre högra hörnet' }), { key: 'ArrowLeft' })
     expect(side()).toBe('back')
     expect(face('Bak').getAttribute('aria-checked')).toBe('true')
   })
@@ -117,7 +125,7 @@ describe('the card the picture is judged on is chosen among the cards that use i
     doc.template.faces['back']!.variantBy = 'sort'
     doc.template.faces['back']!.variants['ryggsida'] = { override: [art()] }
     doc.rows[1]!.fields['sort'] = 'ryggsida'
-    render(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
+    mount(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
 
     expect(within(picker()).getAllByRole('button').map((b) => [b.textContent, b.getAttribute('aria-pressed')])).toEqual([
       ['Drake', 'true'],
@@ -149,7 +157,7 @@ describe('the picker is searched, not scrolled (#295)', () => {
     doc.rows[2]!.fields['art'] = `asset:${SKOG}`
     doc.rows[2]!.fields['title'] = 'Drake'
     doc.template.faces['front']!.base.push(art())
-    render(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
+    mount(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
 
     expect(within(picker()).getAllByRole('button').map((b) => b.textContent)).toEqual(['Drakedragon', 'Riddare', 'Drakewizard'])
     fireEvent.change(within(picker()).getByRole('searchbox', { name: 'Sök kort' }), { target: { value: 'ridd' } })
@@ -164,7 +172,7 @@ describe('the picker is searched, not scrolled (#295)', () => {
     const doc = deck()
     delete doc.rows[1]!.fields['art']
     doc.template.faces['front']!.base.push(art())
-    render(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
+    mount(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
 
     expect(screen.queryByRole('group', { name: 'Kort som använder bilden' })).toBeNull()
     expect(document.querySelector('.byd-media-crop-on')?.textContent).toBe('Drake')
@@ -185,14 +193,14 @@ describe('what is not a use is said, and never drawn (#295)', () => {
     expect(document.querySelector('.byd-media-crop .byd-preview')).toBeNull()
     expect(screen.queryByRole('radiogroup', { name: 'Kortsida' })).toBeNull()
     expect(screen.queryByText('Kortets mall visar inte bilden.')).toBeNull()
-    fireEvent.keyDown(screen.getByRole('button', { name: /Beskärning/ }), { key: 'ArrowLeft', shiftKey: true })
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Nedre högra hörnet' }), { key: 'ArrowLeft' })
     expect(onCrop).toHaveBeenCalledWith(MOSSA, { x: 0, y: 0, w: 0.98, h: 1 })
   })
 
   it('says that the template does not draw a picture the data points at, instead of inventing a use', () => {
     const doc = deck()
     doc.template.faces['front']!.base.push(art('omslag', 'omslag'))
-    render(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
+    mount(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
 
     expect(screen.getByText('Kortets mall visar inte bilden.')).toBeTruthy()
     expect(screen.queryByText('Används inte på något kort')).toBeNull()
@@ -207,7 +215,7 @@ describe('what is not a use is said, and never drawn (#295)', () => {
     doc.template.faces['front']!.base.push(art())
     doc.template.faces['back']!.base.push(art())
     const before = JSON.stringify(doc)
-    render(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={onCrop} />)
+    mount(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={onCrop} />)
 
     fireEvent.click(card('Riddare'))
     fireEvent.click(face('Bak'))
