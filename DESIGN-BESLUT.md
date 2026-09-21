@@ -4154,9 +4154,11 @@ De fyra tidigare utflyttningarna (#186, #346, #325, #304) var var och en samma i
 
 En gräns som styr en trettiondel av kostnaden och flyttas var gång den binder är en logg och inte en budget.
 
-**Larmtaket står kvar vid 120 kB, med ett enda jobb: att fälla ett andra typsnitt.**
-Den billigare av de två delmängder som skeppas är 45 kB som base64, så ett andra ansikte kan inte vara mindre än så.
-Arkets CSS är 83,4 kB i dag; 120 kB lämnar 36,6 kB, vilket inte är plats för ett ansikte och är plats för filtens egna ytor att växa en regel i taget utan att någon behöver komma tillbaka och redigera ett tal.
+**Larmtaket står kvar vid 120 kB, och det är ett larm på arkets CSS — inte på ansiktet.**
+Det är värt att skriva rätt, för den naturliga formuleringen är fel: taket läser `ark − inbakat`, så ett andra ansikte som bakas in växer båda leden med samma 45 kB och går rakt igenom.
+Det som fäller ett ansikte står två rader ovanför och gjorde det redan: `kB: 114` är en exakt vikt och `toBe(2)` en exakt räkning av delmängder, och båda blir röda i samma stund en tredje `@font-face` bakas in eller familjen byts mot en tyngre.
+Ett ansikte som *inte* bakas in fälls av de två testerna om att bygget inte skeppar någon typsnittsfil och att sidan aldrig ber nätverket om en.
+Kvar för taket är alltså CSS:en: 83,4 kB i dag, och 120 kB lämnar 36,6 kB för filtens egna ytor att växa en regel i taget utan att någon behöver komma tillbaka och redigera ett tal.
 Binder taket ändå är svaret inte en nionde höjning utan frågan vad i arket första bilden inte ritar.
 
 **Priset erkänns.**

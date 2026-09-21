@@ -114,13 +114,20 @@ test.describe('the felt’s face is in the document before the first painting (K
     // `App.tsx`. This line stops being that mechanism. It is not lowered and not raised; it is
     // given one job.
     //
-    // The job is a second typeface. The cheaper of the two subsets shipped is 45 kB as base64, so
-    // a second face — however it arrives, whatever it is called — cannot be smaller than that. The
-    // sheet's CSS is 83.4 kB today; 120 kB leaves 36.6 kB, which is not room for a face and is
-    // room for the felt's own surfaces to go on growing a rule at a time without anybody coming
-    // back here to edit a number. That is the whole of what this line now says. If it ever binds,
-    // the answer is not a ninth raise: it is to ask what in the sheet the first frame does not
-    // draw, which is the question the rule below asks continuously.
+    // The job is the sheet's non-face CSS, and this line is honest about which job that is not.
+    // It reads `sheet - inlined`, so it cannot be the thing that fells a second face: a face that
+    // arrived inlined would grow both sides by the same 45 kB and walk straight through. What
+    // fells a face is two lines above — `kB: 114` is an exact weight and `toBe(2)` is an exact
+    // count of subsets, and either one goes red the moment a third `@font-face` is inlined or the
+    // family is swapped for a heavier one. A face that arrived *not* inlined is felled by the two
+    // tests above this describe block, which say the build ships no font file and the page asks
+    // the network for none.
+    //
+    // So what is left for this line is the CSS: 83.4 kB today, and 120 kB is 36.6 kB of room for
+    // the felt's own surfaces to go on growing a rule at a time without anybody coming back here
+    // to edit a number. If it ever binds, the answer is not a ninth raise: it is to ask what in
+    // the sheet the first frame does not draw, which is the question the rule below asks
+    // continuously.
     //
     // The price is stated where the rule is, not hidden here: nothing caps `table.css`, already
     // about 30 % of the sheet, and that surface is on the first frame for real.
