@@ -36,6 +36,10 @@ export const enPlay = {
   'tv.inspect.hidden': 'hidden card',
   'tv.inspect.empty': 'point at a card',
   'tv.latest.empty': 'Nothing has happened yet. What is played at the table turns up here.',
+  // The box behind the question mark (L32's addendum, #305).
+  'tv.join.help.topic': 'joining',
+  'tv.join.help.how': 'The players open the address on their phone and type the room code, or scan the square.',
+  'tv.join.help.phone': 'The phone becomes the hand: the cards are there, and the table stays here.',
   'tv.seats': 'Seats',
   'tv.seat.hand.one': '{n} card in hand',
   'tv.seat.hand.other': '{n} cards in hand',
@@ -188,6 +192,12 @@ export const enPlay = {
   'rewind.approve': 'Approve',
   'rewind.decline': 'Decline',
 
+  // The box behind the question mark (L32's addendum, #305).
+  'play.help.hand.topic': 'the hand',
+  'play.help.hand.pick': 'Tap a card to choose it, hold a card to choose several.',
+  'play.help.hand.play': 'Drag a chosen card upward to play it, or use the buttons under the hand.',
+  'play.help.hand.hidden': 'The others see how many cards you hold, never which.',
+
   'player.hint': 'Select → read → play · hold to select several',
   'player.hint.selected.one': '{n} selected · drag up to play',
   'player.hint.selected.other': '{n} selected · drag up to play',
@@ -266,6 +276,11 @@ export const enPlay = {
   'observer.name': 'spectator',
   'observer.banner': 'You are a spectator: you see everyone’s hands and every pile. Everyone knows you are here.',
   'observer.watching': '{name} is watching',
+  // The box behind the question mark (L32's addendum, #305).
+  'observer.help.topic': 'observing',
+  'observer.help.sees': 'You see every hand and every pile, including what is hidden at the table.',
+  'observer.help.touch': 'You can flag a moment, but never touch a card.',
+  'observer.help.survey': 'When the table ends you get the same survey as the players, marked as an observer.',
   'observer.more': 'Latest and seats',
 
   'join.code.missing': 'No room code given.',

@@ -728,10 +728,12 @@
   .byd-observer[data-drawer='shut'] [data-tv] > aside { display: none; }
   .byd-observer[data-drawer='open'] [data-tv] { grid-template-rows: minmax(0, 1.3fr) minmax(0, 1.7fr); }
 }
-/* On the narrowest screens the handle is two rows: who she is, and the two things she can do.
-   A right-aligned button alone on a second row reads as something that fell off the first. */
+/* On the narrowest screens the handle is two rows: who she is, and the things she can do.
+   A right-aligned button alone on a second row reads as something that fell off the first.
+   The question mark (L32, #305) is a third column and not a third row: a row more here is a row
+   less of felt, and at 320 px that is what laid two zone names on top of each other. */
 @media (max-width: 600px) {
-  .byd-observer-handle { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  .byd-observer-handle { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; }
   .byd-observer-mark { grid-column: 1 / -1; }
   .byd-observer-handle .byd-observer-flag { margin-left: 0; }
 }

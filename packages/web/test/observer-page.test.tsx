@@ -40,6 +40,31 @@ describe('ObserverPage (C8)', () => {
   })
 })
 
+// The same box on the distance view (L32's addendum, #305): what she may do, and what the others
+// are told, is more than the handle's one line carries. What she *sees* stays on the surface in
+// the note over the table — visibility information never moves behind a question mark.
+describe('the observer’s own help (L32, #305)', () => {
+  it('keeps the note on the surface and the rest behind a question mark that hover does not open', async () => {
+    const id = await createSession(run)
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
+    render(<ObserverPage />)
+    await screen.findByText(/Du är observatör/)
+
+    const ask = screen.getByRole('button', { name: 'Hjälp om observatörsläget' })
+    const box = () => screen.queryByRole('dialog', { name: 'observatörsläget' })
+    fireEvent.pointerEnter(ask)
+    expect(box()).toBeNull()
+
+    fireEvent.click(ask)
+    expect((await screen.findByRole('dialog', { name: 'observatörsläget' })).textContent).toMatch(/aldrig röra ett kort/i)
+    expect(screen.getByText(/Du är observatör/)).toBeTruthy()
+
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    await waitFor(() => expect(box()).toBeNull())
+    expect(document.activeElement).toBe(ask)
+  })
+})
+
 describe('the observer inspects too (C8, K8)', () => {
   it('fills the inspection panel from the card she points at', async () => {
     const id = await createSession(run)
@@ -118,7 +143,8 @@ describe('the observer has no seat to leave (#31)', () => {
     expect(await screen.findByText(/Du är observatör/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Ut…' })).toBeNull()
     expect(screen.queryByText(/Lämna bordet/)).toBeNull()
-    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual([expect.stringMatching(/Senast och platser/), expect.stringMatching(/Flagga/)])
+    // The question mark is one of them since #305: the help is a control she keeps, not a way out.
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['?', expect.stringMatching(/Senast och platser/), expect.stringMatching(/Flagga/)])
   })
 })
 
