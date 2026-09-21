@@ -245,43 +245,87 @@ describe('the file the import asks for', () => {
 })
 
 // The ＋ between the blocks, which must be one target per gap and not two lying over each other
-// (#216, on #184).
+// (#216, on #184 — and since the decision of 2026-09-21 there is one ＋ and not one per gap).
 //
 // #184 took the ＋ out of hover and made it something that is always there, which is right: a way
-// in that only exists under a pointer does not exist for a keyboard or a finger. What it did not
-// carry was the height. `.byd-rules-add` declares 24 × 24, but `.byd-editor button` sets
-// `min-height: var(--byd-tap)` at (0,1,1) against the rule's own (0,1,0) and wins — so the target
-// is really 44 tall, hung at the top of each block, and any block shorter than that has its ＋
-// standing over its neighbour's. A heading is shorter than that. So is a one-line paragraph.
+// in that only exists under a pointer does not exist for a keyboard or a finger. #246 then found
+// them lying over each other: `.byd-rules-add` declares 24 × 24, but `.byd-editor button` sets
+// `min-height: var(--byd-tap)` at (0,1,1) against the rule's own (0,1,0) and wins, so the target
+// is really 44 tall and a block shorter than that had its ＋ standing over its neighbour's.
 //
-// Measured rather than reasoned about: two 44 px squares are either overlapping on a real screen
-// or they are not, and the stylesheet is not where that is decided.
-describe('the ways in between the blocks (#216)', () => {
+// There is one ＋ now, so the pairwise reading that found those four pairs has nothing left to
+// compare — and nought pairs of nought is green whatever the stylesheet says. A guard that cannot
+// fail is worse than no guard, so it is replaced here by the reading the prototype proposed and
+// measured: the ＋'s own rectangle against the click area of the block it stands at. That is the
+// overlap a single ＋ still has, it is what told A and B apart, and it is the one the decision
+// wrote down — a sliver in the margin, and not a target lying across the paragraph.
+//
+// Every place the ＋ can stand is read, and not only the one the markup was captured in: which
+// block it belongs to is React's, but where it lands once it belongs to one is the stylesheet's,
+// and that is what is asked here. No pixel of any text is asserted; what is claimed is that the
+// target is whole, that the sliver stays a sliver, and that neither the ＋ nor the paragraph is
+// covered by the other.
+describe('the one way in between the blocks (#216)', () => {
+  // The ＋ carried to each of the book's blocks in turn, and read against that block's own click
+  // area. Moving the node is what the panel does on a pointer or a focus; the stylesheet answers
+  // the same either way, which is what makes this readable off captured markup.
   const plusses = (page: Page) =>
     page.evaluate(() => {
-      const boxes = [...document.querySelectorAll<HTMLElement>('.byd-rules-add')].map((el) => {
+      const all = [...document.querySelectorAll<HTMLElement>('.byd-rules-add')]
+      const plus = all[0]
+      // Not a reading of nothing: a book with no ＋ at all is the failure this is here to catch,
+      // and it says so rather than returning an empty list that every claim below would pass.
+      if (!plus) throw new Error('the written book draws no ＋ at all')
+      const rect = (el: Element) => {
         const r = el.getBoundingClientRect()
-        return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, label: el.getAttribute('aria-label') ?? '' }
-      })
-      const over: string[] = []
-      for (let i = 0; i < boxes.length; i++) {
-        for (let j = i + 1; j < boxes.length; j++) {
-          const a = boxes[i]!
-          const b = boxes[j]!
-          if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) over.push(`${a.label} lies over ${b.label}`)
+        return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height }
+      }
+      // Whether the point at the middle of a box reaches the thing that drew it, or something
+      // else is lying over it.
+      const reaches = (box: ReturnType<typeof rect>, el: Element) => el.contains(document.elementFromPoint((box.left + box.right) / 2, (box.top + box.bottom) / 2))
+      const read = (where: string, hit: Element | null) => {
+        const box = rect(plus)
+        const over = hit && rect(hit)
+        return {
+          where,
+          // The drawn square is 24; the target is the floor every button in the editor stands on.
+          target: Math.min(box.width, box.height),
+          // How far the target reaches into the block's own click area, which is the reading
+          // that survives there being one ＋: width first, because the margin is what it lives in.
+          into: over === null ? { w: 0, h: 0 } : { w: Math.min(box.right, over.right) - Math.max(box.left, over.left), h: Math.min(box.bottom, over.bottom) - Math.max(box.top, over.top) },
+          pressable: reaches(box, plus),
+          readable: over === null ? true : reaches(over, hit!),
         }
       }
-      // The smallest target among them, so a ＋ cannot be kept apart from its neighbour by being
-      // made too small to press.
-      const least = boxes.length === 0 ? 0 : Math.min(...boxes.map((b) => Math.min(b.bottom - b.top, b.right - b.left)))
-      return { count: boxes.length, over, least }
+      const stands = [read('at rest', document.querySelector('.byd-rules-block [role="button"]'))]
+      for (const block of document.querySelectorAll<HTMLElement>('.byd-rules-block')) {
+        block.appendChild(plus)
+        // A book is longer than a window, and a point below the fold is nobody's: brought into
+        // view first, so what is read of a block at the foot is the same as of one at the head.
+        block.scrollIntoView({ block: 'center' })
+        stands.push(read(block.dataset.block ?? '?', block.querySelector('[role="button"]')))
+      }
+      return { count: all.length, stands }
     })
 
-  it('gives every gap a ＋ of its own that no other ＋ lies over', async () => {
-    const { count, over, least } = await measure(SCREENS[1], 'written', plusses)
-    expect(count).toBeGreaterThan(1)
-    expect(over).toEqual([])
-    expect(least).toBeGreaterThanOrEqual(44)
+  it('draws one ＋ that stands in the margin of the block it belongs to, and never across it', async () => {
+    const { count, stands } = await measure(SCREENS[1], 'written', plusses)
+    // One in the whole book, and the book has blocks for it to stand at.
+    expect(count).toBe(1)
+    expect(stands.length).toBeGreaterThan(4)
+    for (const stand of stands) {
+      expect(stand.target, `${stand.where}: the target is ${stand.target} px`).toBeGreaterThanOrEqual(44)
+      // The sliver the prototype measured at 6 px, and today's ＋ at fourteen: 44 of target hung
+      // at `right: -34px` against a click area that reaches 4 px past the text. The number is the
+      // stylesheet's arithmetic and not a face's, so it is the same on a Linux runner as here —
+      // but it is a bound and not an equality, because what a block is is the book's business.
+      expect(stand.into.w, `${stand.where}: ${stand.into.w} px of the click area`).toBeLessThanOrEqual(16)
+      expect(stand.pressable, `${stand.where}: the ＋ cannot be pressed in the middle`).toBe(true)
+      expect(stand.readable, `${stand.where}: the ＋ lies over the paragraph`).toBe(true)
+    }
+    // And it does reach in, as it always has: a reading that found nothing to overlap anywhere
+    // would pass a ＋ that had quietly left the book.
+    expect(stands.filter((s) => s.into.w > 0).length).toBeGreaterThan(0)
   }, 120_000)
 })
 

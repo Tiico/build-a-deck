@@ -756,6 +756,7 @@ export const svEditor = {
   'rules.warnings.one': '{n} referens pekar på något spelet inte har',
   'rules.warnings.other': '{n} referenser pekar på något spelet inte har',
   'rules.addAfter': 'Lägg till efter {id}',
+  'rules.addFirst': 'Lägg till först',
   'rules.addSection': '＋ Eget avsnitt',
   'rules.newSection': 'Nytt avsnitt',
   'rules.ask.own': 'Vad ska stå i det här avsnittet?',

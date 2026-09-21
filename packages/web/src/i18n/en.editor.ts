@@ -683,6 +683,7 @@ export const enEditor = {
   'rules.warnings.one': '{n} reference points at something the game does not have',
   'rules.warnings.other': '{n} references point at something the game does not have',
   'rules.addAfter': 'Add after {id}',
+  'rules.addFirst': 'Add first',
   'rules.addSection': '＋ Own section',
   'rules.newSection': 'New section',
   'rules.ask.own': 'What belongs in this section?',
