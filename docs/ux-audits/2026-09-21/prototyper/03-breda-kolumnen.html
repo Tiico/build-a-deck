@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 03 — Den breda kolumnen (#397, #398, #401)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Prototypen svarar på tre beslut som redan är fattade, och frågar bara efter bilden:
+     #398 tak på vad fitColumns får ge, #397 tak på body-cellens skrivyta, #401 glidande
+     rubrik + uttoning vid lådans kant. Varianterna skiljer sig i var taket ligger. */
+
+  main { padding: var(--gutter); display: flex; flex-direction: column; min-height: 0; }
+
+  /* Lådan: scrollboxen, smalnad för att spela det fönster protoraden valt. */
+  .lada { position: relative; width: 100%; max-width: var(--lada, 1408px); margin: 0 auto; flex: 1 1 auto; min-height: 0;
+          border: 1px solid var(--line); border-radius: 12px; background: var(--panel); display: flex; flex-direction: column; overflow: hidden; }
+  .lada::after { content: attr(data-matt); position: absolute; top: -9px; right: 10px; z-index: 12; padding: 0 6px;
+                 background: var(--chrome); color: #6f778a; font-size: 10px; letter-spacing: 1px; }
+  .rulle { flex: 1 1 auto; min-height: 0; overflow: auto; scrollbar-width: thin; }
+
+  table { border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: 12px; }
+  th, td { padding: 0; margin: 0; }
+  thead th { position: sticky; top: 0; z-index: 6; height: 38px; background: #1b1f2a; border-bottom: 1px solid var(--line);
+             color: var(--quiet); text-align: left; vertical-align: middle; overflow: hidden; }
+  td { height: 34px; padding: 0 10px; border-bottom: 1px solid var(--line-soft); color: var(--ink); background: var(--sunk);
+       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  tbody tr:last-child td { border-bottom: 0; }
+
+  /* Det som står stilla i sidled (#145): bocken och id. */
+  thead th.bock, thead th.idk { z-index: 8; }
+  .bock { position: sticky; left: 0; width: 44px; background: #1b1f2a; }
+  tbody .bock { background: var(--sunk); }
+  .idk  { position: sticky; left: 44px; width: 96px; }
+  tbody .idk { background: var(--sunk); color: var(--quiet); font-family: ui-monospace, monospace; }
+  .rulle[data-under] .bock, .rulle[data-under] .idk { box-shadow: 8px 0 12px -8px rgb(0 0 0 / 80%); }
+  .bock input { margin: 0 0 0 14px; }
+  .kryss { width: 44px; text-align: center; color: #5b6377; }
+
+  /* Rubrikens innehåll. `.namn` är det som glider i variant a och b. */
+  .rubrik { display: flex; align-items: center; gap: 5px; height: 38px; padding: 0 10px; position: relative; }
+  .namn { font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; white-space: nowrap; }
+  .pil { color: #555d70; }
+  /* Dragkanten (#46). Amber i prototypen bara för att den är själva frågan i #398. */
+  .drag { position: absolute; top: 0; bottom: 0; right: 0; width: 10px; cursor: col-resize; }
+  .drag::after { content: ''; position: absolute; top: 20%; bottom: 20%; right: 4px; width: 2px; background: #ffd98a; opacity: .55; }
+  th:hover .drag::after { opacity: 1; }
+
+  /* ── #401 A · rubriken glider med ────────────────────────────────────────────────────────── */
+  /* Namnet skjuts i sidled så att det står kvar vid lådans vänsterkant så länge någon del av
+     kolumnen syns. Samma princip som #145:s fastnålade celler, applicerad på huvudet. */
+  .shell[data-variant='nu'] .namn { transform: none !important; }
+
+  /* ── #401 B · uttoningen vid lådans högerkant ────────────────────────────────────────────── */
+  /* Samma gest som #53: en uttoning till ingenting, aldrig ett hårt stopp. */
+  .kant { position: absolute; top: 0; right: 0; bottom: 0; width: 72px; pointer-events: none; z-index: 10; opacity: 0; transition: opacity .12s;
+          background: linear-gradient(to right, rgb(23 26 35 / 0%), var(--panel) 78%); }
+  .lada[data-kapar='ja'] .kant { opacity: 1; }
+  .shell[data-variant='nu'] .kant { display: none; }
+
+  /* ── #397 · den öppna body-cellen ────────────────────────────────────────────────────────── */
+  tr[data-oppen] td.bodycell { padding: 0; vertical-align: top; overflow: visible; background: #12151d; }
+  .cell { border: 1px solid var(--primary-mark); border-radius: 8px; margin: 3px; background: #0f1218;
+          /* Taket. I `nu` finns inget tak och cellen är kolumnens hela bredd. */
+          max-width: var(--skrivtak, none); }
+  .cellhuvud { display: flex; align-items: center; gap: 8px; padding: 0 4px 0 10px; border-bottom: 1px solid var(--line); }
+  .cellhuvud > b { color: var(--quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; white-space: nowrap; }
+  .verktyg { display: flex; gap: 2px; margin-left: auto; }
+  .verktyg button { min-width: 34px; min-height: 34px; border: 1px solid transparent; border-radius: 6px; background: transparent;
+                    color: #c7cede; font: inherit; font-size: 12px; cursor: pointer; }
+  .verktyg button:hover { border-color: var(--line); }
+  .verktyg button[data-tool='bold'] { font-weight: 800; }
+  .verktyg button[data-tool='italic'] { font-style: italic; }
+  .verktyg button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  .skrivyta { min-height: 74px; padding: 7px 10px; color: var(--ink); font-size: 12px; line-height: 1.55; white-space: normal; outline: 0; }
+  .skrivyta:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  /* Kolumnen är fortfarande bred; taket gäller skrivytan, inte kolumnen. */
+  .restluft { color: #39404f; font-size: 10.5px; padding: 8px 0 0 12px; letter-spacing: 1px; }
+  .shell[data-variant='nu'] .restluft { display: none; }
+
+  /* Hovringen finns med som grund men är inte den här prototypens fråga (#400). */
+  tbody tr:hover td { background: #1f222b; }
+  tbody tr:hover .bock, tbody tr:hover .idk { background: #1f222b; }
+
+  .kapad { color: #6f778a; }
+</style>
+</head>
+<body>
+<div class="shell" data-variant="a" style="--lada:1408px">
+  <header>
+    <a class="home" href="#">Byggarn</a>
+    <strong>Duellkoppar</strong>
+    <span class="saved">308 kort</span>
+    <div class="tabs">
+      <button>Kort</button><button aria-selected="true">Tabell</button><button>Regler</button><button>Bord</button>
+    </div>
+    <span class="spacer"></span>
+    <span class="who">N</span>
+  </header>
+
+  <div class="protorad">
+    <b>Prototyp 03 — den breda kolumnen</b>
+    <div class="switch" role="group" aria-label="Variant">
+      <button data-v="nu">Nu</button>
+      <button data-v="a" aria-pressed="true">A · tak = lådan − 96</button>
+      <button data-v="b">B · tak = 640 px</button>
+    </div>
+    <div class="switch" role="group" aria-label="Fönster">
+      <button data-l="1408" aria-pressed="true">1440</button>
+      <button data-l="1248">1280</button>
+      <button data-l="992">1024</button>
+    </div>
+    <button id="tillbody">Rulla till body</button>
+    <div class="matt">
+      <span>body <u id="m-body">—</u></span>
+      <span>tabell <u id="m-tabell">—</u></span>
+      <span>dragkant <u id="m-drag">—</u></span>
+      <span>tryck till 420 <u id="m-tryck">—</u></span>
+      <span>verktyg <u id="m-verktyg">—</u></span>
+    </div>
+    <p class="sagt" id="berattelse"></p>
+  </div>
+
+  <main>
+    <div class="lada" id="lada">
+      <div class="rulle" id="rulle">
+        <table id="tabell">
+          <colgroup>
+            <col style="width:44px"><col style="width:96px"><col style="width:244px"><col style="width:204px">
+            <col id="col-body"><col style="width:140px"><col style="width:96px"><col style="width:44px">
+          </colgroup>
+          <thead>
+            <tr>
+              <th class="bock"><div class="rubrik"><input type="checkbox" aria-label="Alla"></div></th>
+              <th class="idk"><div class="rubrik"><span class="namn">id</span><span class="pil">▾</span></div></th>
+              <th><div class="rubrik"><span class="namn">title</span><span class="pil">▾</span><span class="drag"></span></div></th>
+              <th><div class="rubrik"><span class="namn">typ</span><span class="pil">▾</span><span class="drag"></span></div></th>
+              <th id="th-body"><div class="rubrik"><span class="namn">body</span><span class="pil">▾</span><span class="drag" id="drag-body"></span></div></th>
+              <th><div class="rubrik"><span class="namn">raritet</span><span class="pil">▾</span><span class="drag"></span></div></th>
+              <th><div class="rubrik"><span class="namn">antal</span><span class="pil">▾</span><span class="drag"></span></div></th>
+              <th class="kryss"></th>
+            </tr>
+          </thead>
+          <tbody id="kropp"></tbody>
+        </table>
+      </div>
+      <div class="kant"></div>
+    </div>
+  </main>
+</div>
+
+<div class="note">
+  <b>Tre beslut, en bild.</b>
+  <span id="notetext"></span>
+</div>
+
+<script>
+const shell = document.querySelector('.shell')
+const rulle = document.getElementById('rulle')
+const lada  = document.getElementById('lada')
+const colBody = document.getElementById('col-body')
+const kropp = document.getElementById('kropp')
+
+// Samma delmängd som L39, och en body lång nog att vara den som gör kolumnen 1 684 px bred.
+const LANG = 'När den här enheten kommer i spel får du dra ett kort. Om du har fler än tre kopparmarker, kasta en av dem och lägg en duellmarker på en motståndares zon i stället.'
+const RADER = [
+  ['DUEL-001', 'Kopparvakten',        'Enhet',     'Vakta en zon så länge du har en kopparmarker kvar i förrådet.', 'Vanlig',    '3'],
+  ['DUEL-002', 'Duellkoppar',         'Händelse',  LANG, 'Sällsynt',  '1'],
+  ['DUEL-003', 'Smedjans lärling',    'Enhet',     'Betala en koppar: dra ett kort och kasta sedan ett kort ur handen.', 'Vanlig', '4'],
+  ['DUEL-004', 'Förrådets bokhållare','Enhet',     'När en motståndare drar ett kort får du en kopparmarker.', 'Ovanlig', '2'],
+  ['DUEL-005', 'Kopparns pris',       'Händelse',  'Alla spelare kastar hälften av sina kopparmarker, avrundat nedåt.', 'Sällsynt', '1'],
+  ['DUEL-006', 'Vägmästaren',         'Enhet',     'Rör dig två zoner i stället för en, en gång per tur.', 'Vanlig', '3'],
+  ['DUEL-007', 'Tornets skugga',      'Plats',     'Enheter i den här zonen kan inte utmanas den tur de kom hit.', 'Ovanlig', '2'],
+  ['DUEL-008', 'Kopparbaronen',       'Enhet',     'Din kopparinkomst är dubbel så länge du har färre kort än varje motståndare.', 'Legendarisk', '1'],
+]
+
+kropp.innerHTML = RADER.map(([id, title, typ, body, rar, antal], i) => {
+  const oppen = i === 1
+  const bodycell = oppen
+    ? `<td class="bodycell">
+         <div class="cell">
+           <div class="cellhuvud">
+             <b>body · ${id}</b>
+             <div class="verktyg">
+               <button data-tool="bold" title="Fet">F</button>
+               <button data-tool="italic" title="Kursiv">K</button>
+               <button data-tool="list" title="Lista">☰</button>
+               <button data-tool="symbol" title="Symbol">✦</button>
+             </div>
+           </div>
+           <div class="skrivyta" contenteditable="true">${body}</div>
+         </div>
+         <div class="restluft">kolumnen fortsätter — skrivytan gör det inte</div>
+       </td>`
+    : `<td>${body}</td>`
+  return `<tr${oppen ? ' data-oppen' : ''}>
+    <td class="bock"><input type="checkbox" aria-label="Markera ${id}"></td>
+    <td class="idk">${id}</td>
+    <td>${title}</td>
+    <td>${typ}</td>
+    ${bodycell}
+    <td>${rar}</td>
+    <td>${antal}</td>
+    <td class="kryss">×</td>
+  </tr>`
+}).join('')
+
+// Vad fitColumns skulle ge body om ingen sa emot: det uppmätta i granskningen.
+const ONSKAD = 1684
+const TAK = {
+  nu: () => ONSKAD,
+  a:  () => Math.min(ONSKAD, rulle.clientWidth - 96),
+  b:  () => Math.min(ONSKAD, 640),
+}
+
+function rita() {
+  const v = shell.dataset.variant
+  const bredd = TAK[v]()
+  colBody.style.width = bredd + 'px'
+  // #397: skrivytans eget tak. I `nu` finns inget; annars läsbar radlängd, aldrig bredare
+  // än kolumnen själv.
+  shell.style.setProperty('--skrivtak', v === 'nu' ? 'none' : Math.min(bredd - 6, 640) + 'px')
+  glid()
+  matt()
+}
+
+// #401 A: namnet glider så att det står kvar vid lådans vänsterkant så länge kolumnen syns.
+function glid() {
+  const x0 = rulle.scrollLeft
+  const fast = 44 + 96 // bocken och id står stilla ovanpå
+  for (const th of document.querySelectorAll('thead th')) {
+    const namn = th.querySelector('.namn')
+    if (!namn || th.classList.contains('bock') || th.classList.contains('idk')) continue
+    if (shell.dataset.variant === 'nu') { namn.style.transform = ''; continue }
+    const start = th.offsetLeft
+    const slut = start + th.offsetWidth
+    // Så långt namnet får skjutas: aldrig förbi kolumnens egen högerkant.
+    const vill = x0 + fast - start
+    const tak = Math.max(0, slut - start - namn.offsetWidth - 20)
+    namn.style.transform = 'translateX(' + Math.round(Math.min(Math.max(0, vill), tak)) + 'px)'
+  }
+}
+
+function matt() {
+  const r = rulle.getBoundingClientRect()
+  const d = document.getElementById('drag-body').getBoundingClientRect()
+  const tabell = document.getElementById('tabell').offsetWidth
+  const body = colBody.offsetWidth
+  const inne = d.left >= r.left && d.right <= r.right + 1
+  const verktyg = document.querySelector('.verktyg').getBoundingClientRect()
+  const synligt = verktyg.left >= r.left && verktyg.right <= r.right + 1
+
+  rulle.toggleAttribute('data-under', rulle.scrollLeft > 0)
+  lada.dataset.kapar = rulle.scrollWidth - rulle.clientWidth - rulle.scrollLeft > 1 ? 'ja' : 'nej'
+  lada.dataset.matt = 'låda ' + rulle.clientWidth + ' px'
+
+  document.getElementById('m-body').textContent = body + ' px'
+  document.getElementById('m-tabell').textContent = tabell + ' px'
+  document.getElementById('m-drag').textContent = Math.round(d.left - r.left + rulle.scrollLeft) + ' px · ' + (inne ? 'nåbar' : 'utanför')
+  document.getElementById('m-tryck').textContent = Math.max(0, Math.ceil((body - 420) / 16)) + ' st'
+  document.getElementById('m-verktyg').textContent = synligt ? 'på skärmen' : 'utanför'
+
+  const v = shell.dataset.variant
+  document.getElementById('berattelse').innerHTML = v === 'nu'
+    ? 'Så här är det i dag: <em>body</em> får 1 684 px av fitColumns, dragkanten hamnar utanför lådan, verktygsraden i den öppna cellen står utanför skärmen, och rullar man i sidled står body-textens svansar kvar utan rubrik ovanför sig.'
+    : 'Taket gör dragkanten nåbar utan att man först rullar dit (#398). Skrivytan har sitt eget tak, så huvudet och verktygen ryms alltid — kolumnen får vara bred ändå (#397). Rubriken glider med och lådans kap tonar ut i stället för att stanna tvärt (#401).'
+  document.getElementById('notetext').textContent = v === 'nu'
+    ? 'Nu-läget är referensen. Flippa till A och B och jämför dragkanten, verktygsraden och rubriken när du rullar i sidled.'
+    : 'Rulla i sidled: rubriken ska aldrig lämna sin text, och högerkanten ska tona ut så länge något är kapat. Testa även 1024.'
+}
+
+for (const b of document.querySelectorAll('[data-v]')) b.addEventListener('click', () => {
+  shell.dataset.variant = b.dataset.v
+  for (const o of document.querySelectorAll('[data-v]')) o.setAttribute('aria-pressed', String(o === b))
+  rita()
+})
+for (const b of document.querySelectorAll('[data-l]')) b.addEventListener('click', () => {
+  shell.style.setProperty('--lada', b.dataset.l + 'px')
+  for (const o of document.querySelectorAll('[data-l]')) o.setAttribute('aria-pressed', String(o === b))
+  rita()
+})
+document.getElementById('tillbody').addEventListener('click', () => {
+  rulle.scrollTo({ left: document.getElementById('th-body').offsetLeft - 140, behavior: 'smooth' })
+})
+rulle.addEventListener('scroll', () => { glid(); matt() })
+addEventListener('resize', rita)
+rita()
+</script>
+</body>
+</html>
