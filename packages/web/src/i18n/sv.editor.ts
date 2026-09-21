@@ -565,6 +565,7 @@ export const svEditor = {
   'symbols.colours': 'Spelets färger',
   'symbols.colours.lead': 'En betydelse, en färg. Korten skriver betydelsen och aldrig färgen, så en ändring här målar om varje kort som säger den.',
   'symbols.colours.none': 'Spelet har inga betydelser än. En symbol utan betydelse ritas i bläck.',
+  'symbols.colours.ink': 'utan betydelse',
   'symbols.colours.new': 'betydelse',
   'symbols.colours.add': 'Ny betydelse',
   'symbols.colours.unused': 'inga kort',

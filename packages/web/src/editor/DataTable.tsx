@@ -1359,7 +1359,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       meaningsId={CELL_MEANINGS}
                       className="byd-data-symbols"
                       symbols={matches}
-                      active={stage === 'meaning' ? matches.indexOf(picked!) : choice}
+                      active={picked ? matches.indexOf(picked) : choice}
                       picked={picked}
                       meanings={meanings}
                       meaningActive={stage === 'meaning' ? choice : null}

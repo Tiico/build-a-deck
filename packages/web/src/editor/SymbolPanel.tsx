@@ -7,6 +7,7 @@ import { iconFieldsOf, previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 import { CATEGORIES, INK, LIBRARY, searchSymbols, symbolName, symbolPreview, type GameSymbol } from './symbols.js'
 import { ROLE_MIN_CONTRAST, groundOf, iconsIn, iconsPainted, iconsUsed, paletteIssues, rolesUsed, type Painted } from './palette.js'
+import { SymbolSample, SymbolSheet } from './SymbolSample.js'
 import { contrastRatio } from '@byd/template'
 import type { ProjectClient } from './ProjectClient.js'
 import { useT, type Key } from '../i18n/index.js'
@@ -115,7 +116,7 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
         </aside>
         <div className="byd-symbols-main">
           <ProjectSet doc={doc} client={client} assetBase={assetBase} />
-          <GameColours doc={doc} client={client} />
+          <GameColours doc={doc} client={client} icons={icons} />
           {/* The chips, and under them the cards that say what is chosen. A game with no symbol at
               all draws neither: there is nothing to ask about, and the set above already says what
               to do instead. */}
@@ -256,7 +257,13 @@ export const INKS: readonly { hex: string; name: Key }[] = [
 // The game's own colours (E4): a meaning, what it is painted in, and how many cards say it. The
 // cards write the meaning and never the colour, so repainting a deck happens here and nowhere
 // else — and so does hearing that a colour cannot be read, or that two meanings have become one.
-function GameColours({ doc, client }: { doc: ProjectDoc; client: ProjectClient }) {
+//
+// The relation between the name and the colour is said by being shown (L34, #302): the same
+// symbol drawn once per meaning, on the card's paper, with the string that writes it beside it —
+// so the name-to-colour link is a concrete example and not prose. Ink is one of the rows and not
+// an exception. The symbol is the one the deck says most, or the first of the set; a game with no
+// symbol yet has nothing to show the meaning with and keeps the plain swatch.
+function GameColours({ doc, client, icons }: { doc: ProjectDoc; client: ProjectClient; icons: Record<string, string> }) {
   const t = useT()
   const [error, setError] = useState<string | null>(null)
   const palette = doc.palette ?? {}
@@ -264,6 +271,10 @@ function GameColours({ doc, client }: { doc: ProjectDoc; client: ProjectClient }
   const ground = groundOf(doc, 'front')
   const used = rolesUsed(doc.rows)
   const issues = paletteIssues(palette, ground)
+  const shown = mostSaid(doc)
+  const symbols = useMemo(() => ({ icons, palette: doc.palette }), [icons, doc.palette])
+  // The string that writes the example in a meaning, or in none; only asked while there is one.
+  const example = (role: string | null): string => `{${shown ?? ''}${role === null ? '' : `|${role}`}}`
   // A new meaning starts on an ink the deck is not already using, so naming one is one press.
   const add = () => {
     const free = INKS.find((ink) => !roles.some(([, hex]) => hex.toLowerCase() === ink.hex.toLowerCase())) ?? { hex: INK, name: 'symbols.ink.black' as const }
@@ -286,13 +297,22 @@ function GameColours({ doc, client }: { doc: ProjectDoc; client: ProjectClient }
       {roles.length === 0 ? (
         <p className="byd-symbols-empty">{t('symbols.colours.none')}</p>
       ) : (
+        <>
+          <SymbolSheet />
+          {shown !== null && (
+            <p className="byd-symbols-ink" data-ink>
+              <SymbolSample written={example(null)} symbols={symbols} paper={ground} />
+              <span>{t('symbols.colours.ink')}</span>
+              <code>{example(null)}</code>
+            </p>
+          )}
         <ul aria-label={t('symbols.colours')}>
           {roles.map(([role, hex]) => {
             const n = used[role] ?? 0
             const ratio = contrastRatio(hex, ground)
             return (
               <li key={role} data-role={role} data-faint={ratio < ROLE_MIN_CONTRAST}>
-                <span className="byd-symbols-swatch" style={{ background: hex }} />
+                {shown === null ? <span className="byd-symbols-swatch" style={{ background: hex }} /> : <SymbolSample written={example(role)} symbols={symbols} paper={ground} />}
                 <input
                   aria-label={t('symbols.colours.rename', { role })}
                   defaultValue={role}
@@ -323,6 +343,7 @@ function GameColours({ doc, client }: { doc: ProjectDoc; client: ProjectClient }
                 </div>
                 <small>{t(n === 1 ? 'wall.cards.one' : n === 0 ? 'symbols.colours.unused' : 'wall.cards.other', { n })}</small>
                 <small>{t('symbols.colours.ratio', { ratio: ratio.toFixed(1) })}</small>
+                {shown !== null && <code>{example(role)}</code>}
                 <button type="button" aria-label={t('symbols.colours.remove', { role })} onClick={() => say(() => client.removeRole(role))}>
                   ×
                 </button>
@@ -330,6 +351,7 @@ function GameColours({ doc, client }: { doc: ProjectDoc; client: ProjectClient }
             )
           })}
         </ul>
+        </>
       )}
       <button type="button" className="byd-symbols-add" onClick={add}>
         {t('symbols.colours.add')}
@@ -344,4 +366,13 @@ function GameColours({ doc, client }: { doc: ProjectDoc; client: ProjectClient }
       {error && <p role="alert">{error}</p>}
     </section>
   )
+}
+
+// The symbol the palette demonstrates with: the one the deck says most, and the first of the set
+// while nothing says any of them. Null when the game has no symbol at all.
+function mostSaid(doc: ProjectDoc): string | null {
+  const used = iconsUsed(doc.rows, iconFieldsOf(doc))
+  let best: string | null = null
+  for (const name of Object.keys(doc.icons)) if (best === null || (used[name] ?? 0) > (used[best] ?? 0)) best = name
+  return best
 }

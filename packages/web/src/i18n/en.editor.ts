@@ -506,6 +506,7 @@ export const enEditor = {
   'symbols.colours': 'The game’s colours',
   'symbols.colours.lead': 'One meaning, one colour. The cards write the meaning and never the colour, so a change here repaints every card that says it.',
   'symbols.colours.none': 'The game has named no meanings yet. A symbol without one is drawn in ink.',
+  'symbols.colours.ink': 'no meaning',
   'symbols.colours.new': 'meaning',
   'symbols.colours.add': 'New meaning',
   'symbols.colours.unused': 'no cards',
