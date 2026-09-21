@@ -105,14 +105,21 @@ export function isOpen(shape: ShapeName): boolean {
   return shape === 'line'
 }
 
-export type Point = { x: number; y: number }
+// A point of an own outline (L26), with the handles that bend the sides it meets (L38, #327).
+// The handles are offsets from the point rather than places on the card, so a point that is
+// moved takes its curve with it and mirroring is one negation instead of a reflection.
+export type Vec = { dx: number; dy: number }
+export type Point = { x: number; y: number; in?: Vec | undefined; out?: Vec | undefined }
 
 // A point list moved into the rect it is drawn in. The list is written in the element box's own
 // millimetres with its top-left corner as the origin; `box` is that box when the rect is not it.
 function placed(points: readonly Point[], rect: Rect, box: { w: number; h: number } | undefined): Point[] {
   const sx = box && box.w > 0 ? rect.w / box.w : 1
   const sy = box && box.h > 0 ? rect.h / box.h : 1
-  return points.map((p) => ({ x: rect.x + p.x * sx, y: rect.y + p.y * sy }))
+  // A handle stands still while its point moves would bend a different curve than the one that
+  // was drawn, so the offsets are scaled by the same two factors as the points themselves.
+  const arm = (v: Vec | undefined): Vec | undefined => (v === undefined ? undefined : { dx: v.dx * sx, dy: v.dy * sy })
+  return points.map((p) => ({ x: rect.x + p.x * sx, y: rect.y + p.y * sy, in: arm(p.in), out: arm(p.out) }))
 }
 
 // The corners of a regular figure on the unit circle, the first one straight up. A star is the
@@ -148,8 +155,33 @@ function fitted(points: Point[], rect: Rect): Point[] {
   return points.map((p) => ({ x: rect.x + (p.x - x0) * sx, y: rect.y + (p.y - y0) * sy }))
 }
 
+// The outline walked side by side (L38). A side whose two ends carry no handle is the straight
+// line it always was — written as an `L` and not as a curve whose controls happen to lie on its
+// ends — which is what makes a shape from before the handles existed draw byte for byte the same.
+// The closing side is a side like any other: straight, it is left to the `Z`, and curved it is
+// written out before it.
 function closed(points: Point[]): string {
-  return `${points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${n(p.x)} ${n(p.y)}`).join(' ')} Z`
+  const parts: string[] = []
+  points.forEach((p, i) => {
+    if (i === 0) parts.push(`M ${n(p.x)} ${n(p.y)}`)
+    const to = points[(i + 1) % points.length]
+    if (!to || (i === points.length - 1 && straight(p, to))) return
+    parts.push(side(p, to))
+  })
+  return `${parts.join(' ')} Z`
+}
+
+function straight(from: Point, to: Point): boolean {
+  return from.out === undefined && to.in === undefined
+}
+
+// One side of the outline: the out-handle of the point it leaves and the in-handle of the point
+// it arrives at are the two controls, and a missing one lies on its own point.
+function side(from: Point, to: Point): string {
+  if (straight(from, to)) return `L ${n(to.x)} ${n(to.y)}`
+  const c1 = { x: from.x + (from.out?.dx ?? 0), y: from.y + (from.out?.dy ?? 0) }
+  const c2 = { x: to.x + (to.in?.dx ?? 0), y: to.y + (to.in?.dy ?? 0) }
+  return `C ${n(c1.x)} ${n(c1.y)} ${n(c2.x)} ${n(c2.y)} ${n(to.x)} ${n(to.y)}`
 }
 
 // The four corners of the box, which is what a rectangle with no radius consists of.

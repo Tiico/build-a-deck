@@ -67,3 +67,47 @@ describe('writing a gallery shape out as the points it already consists of (L26)
     expect(pointsOf(shape, box, geom)).toBeNull()
   })
 })
+
+// A curve is drawn out of the edge (L38, #327): every point may carry an in- and an out-handle,
+// and a point with neither is a corner. The handles are offsets from the point itself, so a
+// point that is moved takes its curve with it.
+describe('a point may carry handles, and a point with none is a corner (L38)', () => {
+  const corners = [{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 20, y: 20 }]
+
+  it('takes an in- and an out-handle on a point, in millimetres from it', () => {
+    const parsed = ShapeElement.parse({ ...banner, points: [{ x: 0, y: 0, out: { dx: 8, dy: 4 } }, { x: 40, y: 0, in: { dx: -8, dy: 4 } }, { x: 20, y: 20 }] })
+    expect(parsed.points?.[0]?.out).toEqual({ dx: 8, dy: 4 })
+    expect(parsed.points?.[1]?.in).toEqual({ dx: -8, dy: 4 })
+    expect(parsed.points?.[2]?.out).toBeUndefined()
+  })
+
+  // The whole of what makes the addition backwards compatible: a template written before the
+  // handles existed draws byte for byte what it drew before, because a side with no handle at
+  // either end is the straight line it always was — and not a curve whose controls happen to
+  // lie on its ends.
+  it('draws a shape with no handles byte for byte as the polygon it was', () => {
+    expect(pathFor('banner', { x: 0, y: 0, w: 40, h: 20 }, { points: corners })).toBe('M 0 0 L 40 0 L 20 20 Z')
+  })
+
+  // The handle is what the side reads, and it reads the out of the point it leaves and the in
+  // of the point it arrives at. Only the side that has one is a curve; the others stay lines.
+  it('bends only the side whose ends carry a handle', () => {
+    const points = [{ x: 0, y: 0, out: { dx: 10, dy: -6 } }, { x: 40, y: 0, in: { dx: -10, dy: -6 } }, { x: 20, y: 20 }]
+    expect(pathFor('banner', { x: 0, y: 0, w: 40, h: 20 }, { points })).toBe('M 0 0 C 10 -6 30 -6 40 0 L 20 20 Z')
+  })
+
+  // The side that closes the outline is a side like any other, and a curve on it has to be
+  // written out before the Z rather than left to the straight line Z draws.
+  it('bends the closing side too', () => {
+    const points = [{ x: 0, y: 0, in: { dx: -4, dy: -2 } }, { x: 40, y: 0 }, { x: 20, y: 20, out: { dx: -6, dy: 2 } }]
+    expect(pathFor('banner', { x: 0, y: 0, w: 40, h: 20 }, { points })).toBe('M 0 0 L 40 0 L 20 20 C 14 22 -4 -2 0 0 Z')
+  })
+
+  // The stroke inset shrinks the rect the outline is drawn into, and a handle that stood still
+  // while its point moved would bend a different curve than the designer drew.
+  it('scales the handles into the rect along with the points they hang on', () => {
+    const points = [{ x: 0, y: 0, out: { dx: 20, dy: 0 } }, { x: 40, y: 0, in: { dx: -20, dy: 0 } }, { x: 20, y: 20 }]
+    const d = pathFor('banner', { x: 0, y: 0, w: 20, h: 10 }, { points, pointsBox: { w: 40, h: 20 } })
+    expect(d).toBe('M 0 0 C 10 0 10 0 20 0 L 10 10 Z')
+  })
+})

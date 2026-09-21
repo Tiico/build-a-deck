@@ -128,6 +128,9 @@ export const Pattern = z.object({
 })
 export type Pattern = z.infer<typeof Pattern>
 
+// One arm of a point's curve (L38): where the control lies, in millimetres from the point.
+const Handle = z.object({ dx: Mm, dy: Mm })
+
 export const ShapeElement = z.object({
   kind: z.literal('shape'),
   ...Box,
@@ -150,7 +153,11 @@ export const ShapeElement = z.object({
   //
   // Optional, because every template written before the field existed has none and must draw
   // byte for byte the same. Three is the floor: two points are a line and not a shape.
-  points: z.array(z.object({ x: Mm, y: Mm })).min(3).optional(),
+  // A point may carry an in- and an out-handle (L38, #327), in millimetres from the point
+  // itself: the two controls of the cubic the sides meeting there are drawn with. A point with
+  // neither is a corner, and a side with no handle at either end is a straight line — which is
+  // what keeps a shape written before the handles existed drawing byte for byte the same.
+  points: z.array(z.object({ x: Mm, y: Mm, in: Handle.optional(), out: Handle.optional() })).min(3).optional(),
   pattern: Pattern.optional(),
   shadow: Shadow.optional(),
   // How see-through the whole shape is (#317): one number for the layer, so the fill, the
