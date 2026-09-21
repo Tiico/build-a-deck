@@ -154,7 +154,10 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             </Help>
           </div>
         )}
-        <div className="byd-home-grid" data-projects>
+        {/* How tall the card on a tile is, written down once (#231): the stylesheet reserves the
+            place from the very number the drawing is scaled by, so the box and the card in it
+            cannot drift apart. */}
+        <div className="byd-home-grid" data-projects style={{ ['--byd-home-card-h' as string]: `${HOME_CARD_H}px` }}>
           {(projects ?? []).map((p) => (
             <div key={p.id} className="byd-home-game" data-project={p.id}>
               <a

@@ -101,3 +101,43 @@ test.describe('the card on a game in "Mina spel" (#231)', () => {
     expect(emptyBox.width).toBeCloseTo(box.width, 1)
   })
 })
+
+// The "Nytt spel" tile has no floor of its own any more: the row it sits in gives it one, so it
+// stands as tall as the games beside it whatever height a game's tile happens to be. The case that
+// proves it is the one where the row has nobody to stretch against — the games fill the columns
+// exactly, and the invitation lands alone on a row of its own. That is where a tile with no floor
+// collapses to its own line of text, and where the old invented 150 px was hiding.
+test.describe('the "Nytt spel" tile on a row of its own (#231)', () => {
+  test.use({ viewport: { width: 1024, height: 900 }, locale: LANG })
+
+  test('stands as tall as a game, with the games filling the columns exactly', async ({ page }) => {
+    await logIn(page.request)
+    for (const name of ['Skogens herrar', 'Vinterspelet', 'Kryptan']) await makeProject(page.request, { name, cards: 12 })
+    await page.goto('/')
+    await expect(page.getByRole('img', { name: 'Första kortet: Björn 1' }).first()).toBeVisible()
+
+    const games = page.locator('.byd-home-grid[data-projects] .byd-home-game:not([data-new])')
+    const invitation = page.locator('.byd-home-game[data-new]')
+    const game = (await games.first().boundingBox())!
+    const box = (await invitation.boundingBox())!
+    // Alone on its own row: every game is above it, so nothing on its row stretches it.
+    const bottoms = await games.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().bottom))
+    expect(Math.min(...bottoms)).toBeLessThanOrEqual(box.y + 1)
+    // And it is still a game's tile, not a line of text. The height is the game's own and not a
+    // number this test knows: whatever a game's tile measures, the invitation measures too.
+    expect(box.height).toBeCloseTo(game.height, 0)
+  })
+
+  test('keeps a floor of the card\'s own height on an account with no games to stand beside', async ({ page }) => {
+    await logIn(page.request)
+    await page.goto('/')
+    await expect(page.getByText('Inget spel ännu.')).toBeVisible()
+    // Nothing on the page is a game, so the row has nothing to give. The floor is then the card's
+    // own height — read off the page rather than written down here, because it is the very number
+    // the drawing is scaled by and this test has no business knowing a second one.
+    const cardH = await page.locator('.byd-home-grid[data-projects]').evaluate((el) => parseFloat(getComputedStyle(el).getPropertyValue('--byd-home-card-h')))
+    expect(cardH).toBeGreaterThan(0)
+    const box = (await page.locator('.byd-home-game[data-new]').boundingBox())!
+    expect(box.height).toBeGreaterThanOrEqual(cardH)
+  })
+})
