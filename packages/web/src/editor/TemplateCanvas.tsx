@@ -1518,6 +1518,9 @@ function Properties({
   valuesIn(field: string): string[]
   onPatch(patch: Partial<Element>, gesture?: string): void
   onAddField(field: string, bindTo: string): void
+  // Which point of an own shape the canvas is standing on (L38), for the one command that is
+  // about a point rather than about the whole shape.
+  point: number | null
 }) {
   const t = useT()
   // A picture of the template's own (#320): whether the window over the game's pictures is open

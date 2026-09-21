@@ -4042,6 +4042,15 @@ Spegling är förval: det motsatta handtaget följer med lika långt åt andra h
 Handtagen är tabbstopp med egna namn, och piltangenterna flyttar dem med L26:s steg — en halv millimeter, fem med Shift.
 «Räta ut punkten» tar bort dess handtag; «Räta ut alla» gör formen till en polygon igen.
 
+**Kanten är greppytan, och mittpricken är vägen till en ny punkt.**
+L26:s träffyta om 2,4 mm runt kanten finns kvar och betyder nu att sidan böjs, inte att en punkt växer där pekaren är: annars vore den ena hälften av kanten en böjyta och den andra en tilläggsyta, och gesten som ska läras ut vore beroende av var på sidan handen råkade landa.
+Att lägga till en punkt är mittprickens, med klicket och med tangentbordet — precis de två vägar L26 gav den.
+Vad pekaren bär i ett kantdrag är sidans mitt, så ett drag nära ena änden böjer sidan lika mycket som ett drag mitt på den.
+
+**Handtagen hålls innanför elementets box.**
+En kurva ligger i höljet sina fyra kontrollpunkter spänner upp, och renderaren klipper konturen mot boxen — ett handtag utanför den är en kurva som tyst kapas på kortet.
+Boxen vinner därför över handtaget precis som den vinner över punkten (L26), och i det sällsynta fallet att den vinner över speglingen blir det motsatta handtaget kortare än sitt syskon.
+
 En form utan handtag ritas **identiskt** med L26:s polygon, eftersom kontrollpunkterna då ligger på punkterna själva och kurvan är den raka linjen.
 Det är vad som gör tillägget bakåtkompatibelt i modellen: handtagen är valfria, och en form som saknar dem är oförändrad.
 
