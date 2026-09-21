@@ -451,6 +451,13 @@ export class ProjectClient {
     this.edit({ v: 'moveField', field, before })
   }
 
+  // Vad kolumnen heter (#384). Namnet är nyckeln, så det här flyttar den överallt dokumentet
+  // skriver den — värdena på korten, bindningarna och villkoren i mallen, gruppkolumnen,
+  // ordningen, beskärningarna och prosavalet — och CSV-rubriken byter namn med den.
+  renameField(from: string, to: string): void {
+    this.edit({ v: 'renameField', from, to })
+  }
+
   // Vad kolumnen skrivs som (L43, #362). `null` lämnar tillbaka frågan till rutans höjd, och är
   // därmed inte ett tredje läge utan frånvaron av ett val.
   setProse(field: string, prose: boolean | null): void {

@@ -121,6 +121,35 @@ describe('a step back in the editor (#35)', () => {
   })
 })
 
+// Att döpa om en kolumn är ett steg som alla andra (#384). `renameField` stod redan i `undo.ts`
+// när ytan byggdes, och det är just den sortens sak som ska prövas och inte antas: verbet når
+// ångerstacken först när något faktiskt anropar det.
+describe('ett namnbyte går att ångra (#384)', () => {
+  it('lägger kolumnens nya namn på stacken och ger tillbaka det gamla i ett tryck', async () => {
+    await openEditor({ live: true })
+    fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Kolumner' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Byt namn på kolumnen title' }))
+    const name = screen.getByLabelText('Namn på kolumnen title')
+    await userEvent.clear(name)
+    await userEvent.type(name, 'rubrik{Enter}')
+    await screen.findByLabelText('dragon rubrik')
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+
+    // Ett fält och inte «en ändring i kortleken»: ett namnbyte når varje kort på en gång, och
+    // mallen med dem, så steget säger vad det var.
+    expect(saidIn('polite')).toMatch(/Tog tillbaka: ett fält i kortleken/)
+    expect(await screen.findByLabelText('dragon title')).toBeTruthy()
+    expect(screen.queryByLabelText('dragon rubrik')).toBeNull()
+
+    // Och det går framåt igen, för ett steg tillbaka är också ett steg.
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true, shiftKey: true })
+    expect(await screen.findByLabelText('dragon rubrik')).toBeTruthy()
+  })
+})
+
 // A step back is not a fault, and it went into the slot faults go into: the amber one in the
 // header that says a save could not happen, spoken assertively and then left standing until the
 // next save or the next error, whichever came first.

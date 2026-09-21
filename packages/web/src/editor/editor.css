@@ -2071,6 +2071,19 @@
 .byd-columns-list { flex: 1 1 auto; min-height: 0; display: grid; align-content: start; gap: 2px; margin: 0 0 8px; padding: 0; overflow-y: auto; list-style: none; }
 .byd-columns-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; min-height: 36px; }
 .byd-columns-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+/* The name a designer owns is a control, because the name is the key (#384): reading a column's
+   name and changing it are the same place. It is a button, so it carries the whole 44 px the
+   editor gives every control (L12) without asking for them again — a row of a list has room for
+   two such targets, which is the reason the rename went here and not into a heading a number
+   wide. At rest it is the word it always was; under a pointer or a focus ring it is already drawn
+   as the box it becomes, so nothing about the row moves when it does become one. */
+button.byd-columns-name { padding: 0 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: inherit; font: inherit; font-size: 12px; text-align: left; cursor: text; }
+button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-color: #3b414e; background: #1b1d23; }
+.byd-columns-rename { flex: 1 1 auto; min-width: 0; border: 1px solid #3b414e; border-radius: 6px; padding: 0 8px; background: #1b1d23; color: #e6ecfa; font: inherit; font-size: 12px; }
+.byd-columns-rename[aria-invalid='true'] { border-color: #f0b64a; }
+/* And what is wrong with the name takes a line of its own, under the box it is about: a sentence
+   and a name on one row is a row where the sentence wins and the name is cut. */
+.byd-columns-refused { flex: 1 0 100%; margin: 0; padding: 0 0 4px; color: #f0b64a; font-size: 11px; line-height: 1.35; font-weight: 400; }
 /* The × keeps the 44 px it always had (L12). Here it can have them without taking them from
    anything: a row of a list is not a column of the table. */
 .byd-columns .byd-data-dropfield { flex: 0 0 auto; display: grid; place-items: center; width: var(--byd-tap); min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: var(--byd-editor-quiet); font-size: 13px; line-height: 1; cursor: pointer; }

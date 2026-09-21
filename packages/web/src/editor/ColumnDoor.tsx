@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NewField } from './NewField.js'
 import { fieldLabel } from './fields.js'
 import { placedProps, usePlacement } from './placement.js'
@@ -25,6 +25,10 @@ export type ColumnDoorProps = {
   // pointer, since the edge that gives it back is an edge.
   widths: Record<string, number>
   onWidth(field: string, px: number | null): void
+  // A column's name, changed where the column already is a column (#384). The name *is* the key —
+  // `fieldLabel` hands back the key unchanged for everything but `antal` — so there is one field
+  // and no key field beside it, and what the designer writes is what is read out (A4).
+  onRename?: ((from: string, to: string) => void) | undefined
   // What the form under the list needs, unchanged from when it stood here alone (#32).
   taken: readonly string[]
   keeps: boolean
@@ -54,9 +58,53 @@ export type ColumnDoorProps = {
 const DOOR_AIR = 24
 const DOOR_FLOOR = 240
 
-export function ColumnDoor({ columns, canRemove, onRemove, removeRef, asking, widths, onWidth, taken, keeps, onCreate, onCancel }: ColumnDoorProps) {
+// Only one name is ever being written in the door, so the sentence about it has one name of its
+// own — which is what the box being written in points at.
+const REFUSED = 'byd-column-refused'
+
+export function ColumnDoor({ columns, canRemove, onRemove, removeRef, asking, widths, onWidth, onRename, taken, keeps, onCreate, onCancel }: ColumnDoorProps) {
   const t = useT()
   const panel = useRef<HTMLDivElement>(null)
+  // Which column is being renamed, what stands in the box, and what the surface has to say about
+  // it. The draft is the door's own and never the document's: nothing reaches the actor until the
+  // designer says so, so a half-typed name is not a version and not a step to take back.
+  const [renaming, setRenaming] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+  // Where the focus goes when the box closes — to the name it came from, under whatever the column
+  // is called now. A control that unmounts under the designer's finger drops the focus to `<body>`
+  // (#8), and here the finger may well be a keyboard.
+  const [back, setBack] = useState<string | null>(null)
+  const names = useRef(new Map<string, HTMLButtonElement>())
+  useEffect(() => {
+    if (back === null) return
+    names.current.get(back)?.focus()
+    setBack(null)
+  }, [back])
+  // The three questions the verb asks, asked here first and while the designer types — a refusal
+  // that arrives at Enter is a throw in a better typeface, and a throw is no answer at all. The
+  // door's own list of names is the same one the form under it collides against, so a column
+  // cannot be renamed onto `id`, onto `antal`, or onto a column that already exists.
+  const trouble = (from: string, to: string): string | null => {
+    const name = to.trim()
+    if (name === '') return t('table.field.needsName')
+    if (name === from) return null
+    if (taken.includes(name)) return t('table.field.taken', { field: name })
+    return null
+  }
+  const refused = renaming === null ? null : trouble(renaming, draft)
+  const stop = (to: string) => {
+    setRenaming(null)
+    setDraft('')
+    setBack(to)
+  }
+  const rename = (from: string) => {
+    if (refused !== null) return
+    const to = draft.trim()
+    // An edit that changes nothing is still a version and still a step to take back, so the name
+    // it already had is answered by closing the box rather than by asking the actor.
+    if (to !== from) onRename?.(from, to)
+    stop(to)
+  }
   // The height the window really leaves the door (#46). The list was 232 px whatever room there
   // was — five rows, the fifth cut against the form's own line, with nothing to say the list went
   // on — and a taller list was not the answer either: the form under it is the way to make the
@@ -75,33 +123,91 @@ export function ColumnDoor({ columns, canRemove, onRemove, removeRef, asking, wi
     <div ref={panel} className="byd-columns" {...placedProps(place)} role="group" aria-label={t('table.columns')} onKeyDown={(event) => event.key === 'Escape' && onCancel()}>
       <ul className="byd-columns-list">
         {columns.map((field) => (
-          <li key={field} data-col={field}>
-            <span className="byd-columns-name">{fieldLabel(field, t)}</span>
-            {widths[field] !== undefined && (
-              <button type="button" className="byd-columns-width" aria-label={t('table.column.width.auto', { field })} onClick={() => onWidth(field, null)}>
-                {t('table.column.width.px', { px: widths[field] })}
-              </button>
-            )}
-            {canRemove(field) ? (
-              <button
-                type="button"
-                ref={(el) => removeRef(field, el)}
-                className="byd-data-dropfield"
-                aria-label={t('table.field.remove', { field })}
-                onClick={() => onRemove(field)}
-              >
-                ×
-              </button>
+          <li key={field} data-col={field} {...(renaming === field ? { 'data-renaming': '' } : {})}>
+            {renaming === field ? (
+              // The row is the box while the name is being written in it: the × and the measured
+              // width belong to a column that is standing still, and a second control beside a
+              // field being typed in is a second answer to one question.
+              <input
+                autoFocus
+                className="byd-columns-rename"
+                value={draft}
+                aria-label={t('table.column.name', { field })}
+                {...(refused === null ? {} : { 'aria-invalid': true, 'aria-describedby': REFUSED })}
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    rename(field)
+                  }
+                  if (event.key === 'Escape') {
+                    // The door stays open: Escape answers the box the designer is in, and the
+                    // panel's own Escape is what closes the door once she has left it.
+                    event.preventDefault()
+                    event.stopPropagation()
+                    stop(field)
+                  }
+                }}
+              />
             ) : (
-              // A hole explains nothing (L4): where a column cannot be taken away the reason
-              // stands in the ×'s place, and here it can be read rather than hovered for.
-              <span className="byd-columns-system">
-                <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
-                  <path d="M3.4 5V3.6a2.6 2.6 0 0 1 5.2 0V5" fill="none" stroke="currentColor" strokeWidth="1.2" />
-                  <rect x="2.2" y="5" width="7.6" height="5.6" rx="1.2" fill="currentColor" />
-                </svg>
-                {t('table.field.system', { field })}
-              </span>
+              <>
+                {/* A column the designer owns is named by a control and not by a word: the name is
+                    the key (#384), so reading it and changing it are the same place. The two the
+                    tool owns keep the word they had — they are exactly the two `renameField`
+                    refuses, for exactly the reason the padlock beside them gives. */}
+                {canRemove(field) && onRename ? (
+                  <button
+                    type="button"
+                    className="byd-columns-name"
+                    ref={(el) => {
+                      if (el) names.current.set(field, el)
+                      else names.current.delete(field)
+                    }}
+                    aria-label={t('table.column.rename', { field })}
+                    onClick={() => {
+                      setRenaming(field)
+                      setDraft(field)
+                    }}
+                  >
+                    {fieldLabel(field, t)}
+                  </button>
+                ) : (
+                  <span className="byd-columns-name">{fieldLabel(field, t)}</span>
+                )}
+                {widths[field] !== undefined && (
+                  <button type="button" className="byd-columns-width" aria-label={t('table.column.width.auto', { field })} onClick={() => onWidth(field, null)}>
+                    {t('table.column.width.px', { px: widths[field] })}
+                  </button>
+                )}
+                {canRemove(field) ? (
+                  <button
+                    type="button"
+                    ref={(el) => removeRef(field, el)}
+                    className="byd-data-dropfield"
+                    aria-label={t('table.field.remove', { field })}
+                    onClick={() => onRemove(field)}
+                  >
+                    ×
+                  </button>
+                ) : (
+                  // A hole explains nothing (L4): where a column cannot be taken away the reason
+                  // stands in the ×'s place, and here it can be read rather than hovered for.
+                  <span className="byd-columns-system">
+                    <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
+                      <path d="M3.4 5V3.6a2.6 2.6 0 0 1 5.2 0V5" fill="none" stroke="currentColor" strokeWidth="1.2" />
+                      <rect x="2.2" y="5" width="7.6" height="5.6" rx="1.2" fill="currentColor" />
+                    </svg>
+                    {t('table.field.system', { field })}
+                  </span>
+                )}
+              </>
+            )}
+            {renaming === field && refused !== null && (
+              // Said while the name is written, not when it is submitted, and said politely: a
+              // sentence shouted over every keystroke is a sentence nobody can type through.
+              <p className="byd-columns-refused" id={REFUSED} role="status">
+                {refused}
+              </p>
             )}
           </li>
         ))}

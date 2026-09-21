@@ -410,6 +410,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onAddField={(field) => client.addField(field)}
         onRemoveField={(field) => client.removeField(field)}
         onMoveField={(field, before) => client.moveField(field, before)}
+        onRenameField={(from, to) => client.renameField(from, to)}
         onProse={(field, prose) => client.setProse(field, prose)}
       />
     ),
