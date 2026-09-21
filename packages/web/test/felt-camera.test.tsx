@@ -115,8 +115,18 @@ describe('klungan i hörnet (#325)', () => {
     )
     // Framme mot fälld. Skillnaden är de två zoomstegen, nivån mellan dem och luften omkring
     // dem, och ingenting annat: 148 px, samma tal som prototypens 318 mot 170.
-    expect({ framme: out['klunga']!.w, fälld: folded['klunga']!.w }).toEqual({ framme: 300, fälld: 152 })
+    //
+    // Skillnaden och inte de två bredderna. Klungan bär knappar med text i, och en text är bred
+    // som det typsnitt maskinen råkar ha: `system-ui` är SF Pro här och DejaVu på en Linux-löpare,
+    // och klungan mäter 302 mot 154 där den mäter 300 mot 152 på en Mac. Talen var pinnade och
+    // main har ingen CI framför sig, så det syntes först på en pull request — på en gren som inte
+    // rört en enda rad kod. Det som faktiskt påstås överlever bytet: de två stegen som fälls undan
+    // är lika breda vad de än är satta i, och 302 − 154 är samma 148.
     expect(out['klunga']!.w - folded['klunga']!.w).toBe(318 - 170)
+    // Och båda är verkligen ritade: en klunga som inte fanns vore noll minus noll, alltså inte 148
+    // — men en som krympt till sina steg och ingenting annat vore det också.
+    expect(folded['klunga']!.w).toBeGreaterThan(0)
+    expect(out['klunga']!.w).toBeGreaterThan(folded['klunga']!.w)
     // Fälld är vägen hem kvar, lika bred som förut, och vägen tillbaka till knapparna med den.
     expect(folded['hem']!.w).toBe(out['hem']!.w)
     expect(folded['fall']).not.toBeNull()
