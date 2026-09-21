@@ -20,6 +20,13 @@ export type ShapeGeometry = {
   rotationDeg?: number | undefined
   // `rect` only. Larger than the box is a capsule, not a mistake.
   radiusMm?: number | undefined
+  // A shape of the designer's own (L26): the corners written out, which overrules every one of
+  // the properties above and the shape's own name with them. The list is the outline.
+  points?: readonly Point[] | undefined
+  // The box the points were written in, when it is not the rect they are being drawn into. A
+  // stroke straddles the path it lies on, so the compiler insets the rect by half the line —
+  // and the outline has to come with it rather than stand still while its box shrinks.
+  pointsBox?: { w: number; h: number } | undefined
 }
 
 const CORNERS = 6
@@ -28,6 +35,10 @@ const INNER = 0.45
 // A path in the box's own units. Millimetres in, millimetres out — the caller decides what the
 // coordinate system means.
 export function pathFor(shape: ShapeName, rect: Rect, geom: ShapeGeometry = {}): string {
+  // A point list is the outline and nothing else is consulted (L26). It comes first rather than
+  // as a case of its own, because it can stand under any entry of the gallery: the entry a list
+  // was written out of is kept so the designer can go back to it, not so it can argue.
+  if (geom.points) return closed(placed(geom.points, rect, geom.pointsBox))
   switch (shape) {
     case 'rect':
       return rectPath(rect, geom.radiusMm ?? 0)
@@ -44,15 +55,37 @@ export function pathFor(shape: ShapeName, rect: Rect, geom: ShapeGeometry = {}):
       return `M ${n(rect.x)} ${n(cy)} L ${n(rect.x + rect.w)} ${n(cy)}`
     }
     case 'polygon':
-      return closed(fitted(corners(geom.corners ?? CORNERS, geom.rotationDeg ?? 0), rect))
     case 'star':
-      return closed(fitted(corners(geom.corners ?? 5, geom.rotationDeg ?? 0, clamp(geom.innerRatio ?? INNER, 0.05, 0.95)), rect))
+    case 'banner':
+    case 'arrow':
+      return closed(pointsOf(shape, rect, geom) ?? [])
     case 'shield':
       return shieldPath(rect)
+  }
+}
+
+// The corners a shape already consists of (L26), or `null` for one that consists of something
+// else. It is the one-way door into a shape of the designer's own, and the door must change
+// nothing on the way through: an outline drawn with an arc or a curve — a circle, a rounded
+// rectangle, a shield — is not a point list, and a list that only looked like one would quietly
+// redraw the card the moment the designer asked to shape it. A line is left out for a second
+// reason: it has no inside, and a point list is a closed outline.
+export function pointsOf(shape: ShapeName, rect: Rect, geom: ShapeGeometry = {}): Point[] | null {
+  switch (shape) {
+    case 'rect':
+      return (geom.radiusMm ?? 0) > 0 ? null : boxCorners(rect)
+    case 'polygon':
+      return fitted(corners(geom.corners ?? CORNERS, geom.rotationDeg ?? 0), rect)
+    case 'star':
+      return fitted(corners(geom.corners ?? 5, geom.rotationDeg ?? 0, clamp(geom.innerRatio ?? INNER, 0.05, 0.95)), rect)
     case 'banner':
-      return bannerPath(rect)
+      return bannerCorners(rect)
     case 'arrow':
-      return arrowPath(rect)
+      return arrowCorners(rect)
+    case 'circle':
+    case 'line':
+    case 'shield':
+      return null
   }
 }
 
@@ -72,7 +105,15 @@ export function isOpen(shape: ShapeName): boolean {
   return shape === 'line'
 }
 
-type Point = { x: number; y: number }
+export type Point = { x: number; y: number }
+
+// A point list moved into the rect it is drawn in. The list is written in the element box's own
+// millimetres with its top-left corner as the origin; `box` is that box when the rect is not it.
+function placed(points: readonly Point[], rect: Rect, box: { w: number; h: number } | undefined): Point[] {
+  const sx = box && box.w > 0 ? rect.w / box.w : 1
+  const sy = box && box.h > 0 ? rect.h / box.h : 1
+  return points.map((p) => ({ x: rect.x + p.x * sx, y: rect.y + p.y * sy }))
+}
 
 // The corners of a regular figure on the unit circle, the first one straight up. A star is the
 // same walk with a shallower corner pushed in between each pair, which is why one function
@@ -111,9 +152,15 @@ function closed(points: Point[]): string {
   return `${points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${n(p.x)} ${n(p.y)}`).join(' ')} Z`
 }
 
+// The four corners of the box, which is what a rectangle with no radius consists of.
+function boxCorners(rect: Rect): Point[] {
+  const { x, y, w, h } = rect
+  return [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }]
+}
+
 function rectPath(rect: Rect, radiusMm: number): string {
   const { x, y, w, h } = rect
-  if (radiusMm <= 0) return closed([{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }])
+  if (radiusMm <= 0) return closed(boxCorners(rect))
   // Half the short side is as round as a rectangle gets; past that it is a capsule, which is
   // what the gallery's capsule asks for by naming a radius bigger than the box it is in.
   const r = Math.min(radiusMm, w / 2, h / 2)
@@ -148,23 +195,23 @@ function shieldPath(rect: Rect): string {
 }
 
 // A ribbon: a plate with a swallowtail cut up into its bottom edge.
-function bannerPath(rect: Rect): string {
+function bannerCorners(rect: Rect): Point[] {
   const { x, y, w, h } = rect
-  return closed([
+  return [
     { x, y },
     { x: x + w, y },
     { x: x + w, y: y + h },
     { x: x + w / 2, y: y + h * 0.68 },
     { x, y: y + h },
-  ])
+  ]
 }
 
 // An arrow to the right. A shaft half the box high and a head the last two fifths of it — the
 // proportions a reader recognises as an arrow rather than as a triangle on a stick.
-function arrowPath(rect: Rect): string {
+function arrowCorners(rect: Rect): Point[] {
   const { x, y, w, h } = rect
   const neck = x + w * 0.6
-  return closed([
+  return [
     { x, y: y + h * 0.25 },
     { x: neck, y: y + h * 0.25 },
     { x: neck, y },
@@ -172,7 +219,7 @@ function arrowPath(rect: Rect): string {
     { x: neck, y: y + h },
     { x: neck, y: y + h * 0.75 },
     { x, y: y + h * 0.75 },
-  ])
+  ]
 }
 
 function middle(rect: Rect): { cx: number; cy: number; rx: number; ry: number } {

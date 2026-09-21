@@ -498,6 +498,14 @@ export const svEditor = {
   'canvas.shape.shield': 'Sköld',
   'canvas.shape.banner': 'Banderoll',
   'canvas.shape.arrow': 'Pil',
+  // Dörren in till en egen form (L26): galleriform ut som de punkter den redan består av. Enkel
+  // riktning — vägen tillbaka är galleriet ovanför, som står kvar.
+  // Märkena på en egen form (L26). Punkten bär sitt nummer i konturen; mittpricken säger vad
+  // den gör, för den är ingen punkt utan en plats där en punkt kan bli till.
+  'canvas.point': 'Punkt {n} av {of}',
+  'canvas.point.mid': 'Lägg till en punkt på kant {n}',
+  'canvas.point.least': 'En form behöver minst tre punkter.',
+  'canvas.props.own': 'Anpassa punkterna',
   'canvas.props.corners': 'Hörn',
   'canvas.props.rotation': 'Vridning',
   'canvas.props.innerRatio': 'Uddjup',

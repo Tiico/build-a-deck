@@ -1,7 +1,7 @@
 // What the editor offers a shape (L17): a gallery of named outlines over a parametric core, the
 // four shadows, and the five tiles. Framework-free like `canvas` and `groups`, so the panel that
 // shows it stays a thin consumer — and so the choices can be checked without a DOM.
-import { relativeLuminance, SHAPES, shapeTakes, type Element, type Paint, type Pattern, type Shadow } from '@byd/template'
+import { pointsOf, relativeLuminance, SHAPES, shapeTakes, type Element, type Paint, type Pattern, type Point, type Shadow } from '@byd/template'
 import type { Key } from '../i18n/index.js'
 
 export type Shape = Extract<Element, { kind: 'shape' }>
@@ -50,7 +50,10 @@ const LINE_INK = '#111111'
 // was chosen from, not the entry plus whatever the last one left behind.
 export function shapeChoice(entry: GalleryEntry, el: Shape): Partial<Shape> {
   const { radiusMm, ...rest } = entry.geometry
-  const patch: Partial<Shape> = { ...rest }
+  // The gallery is also the way back out of a shape of the designer's own (L26): an entry is the
+  // whole outline, and a point list left behind under it would go on overruling the entry she
+  // just pressed. `undefined` is how a patch takes a property away.
+  const patch: Partial<Shape> = { ...rest, points: undefined }
   if (radiusMm !== undefined) patch.radiusMm = radiusMm === null ? Math.min(el.w, el.h) / 2 : radiusMm
   if (entry.geometry.shape === 'line' && !el.stroke) {
     patch.stroke = typeof el.fill === 'string' ? el.fill : LINE_INK
@@ -72,6 +75,9 @@ export function glyphGeometry(entry: GalleryEntry, box: { w: number; h: number }
 // radius: none is the plain one, half the short side or more is the capsule, anything between
 // is the rounded one.
 export function galleryIdOf(el: Shape): string | null {
+  // A shape of the designer's own is no entry of the gallery (L26). Every entry is a corner
+  // count and a turn; her outline is neither, and a button pressed under it would be a lie.
+  if (el.points) return null
   if (el.shape === 'rect') {
     const r = el.radiusMm ?? 0
     if (r <= 0) return 'rect'
@@ -86,6 +92,16 @@ export function galleryIdOf(el: Shape): string | null {
         (!takes.rotation || (e.geometry.rotationDeg ?? 0) === (el.rotationDeg ?? 0)),
     )?.id ?? null
   )
+}
+
+// The one-way door into a shape of the designer's own (L26): the gallery entry is written out
+// as the points it already consists of, in the element box's own millimetres, and nothing about
+// the card changes on the way through. `null` is an outline that does not consist of points — a
+// circle, a rounded rectangle, a shield, a line — where the door is not offered at all rather
+// than offered and then quietly redrawing the card.
+export function ownPoints(el: Shape): { points: Point[] } | null {
+  const points = pointsOf(el.shape, { x: 0, y: 0, w: el.w, h: el.h }, el)
+  return points ? { points } : null
 }
 
 // The four shadows (L17). `undefined` is one of them and not the absence of a choice: "no

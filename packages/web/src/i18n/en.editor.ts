@@ -441,6 +441,14 @@ export const enEditor = {
   'canvas.shape.shield': 'Shield',
   'canvas.shape.banner': 'Banner',
   'canvas.shape.arrow': 'Arrow',
+  // The door into a shape of the designer's own (L26): the gallery entry written out as the
+  // points it already consists of. One way — the way back is the gallery above, which stays.
+  // The marks on a shape of the designer's own (L26). A point carries its number in the
+  // outline; a mid-dot says what it does, because it is not a point but a place one can become.
+  'canvas.point': 'Point {n} of {of}',
+  'canvas.point.mid': 'Add a point on edge {n}',
+  'canvas.point.least': 'A shape needs at least three points.',
+  'canvas.props.own': 'Customise the points',
   'canvas.props.corners': 'Corners',
   'canvas.props.rotation': 'Turn',
   'canvas.props.innerRatio': 'Point depth',

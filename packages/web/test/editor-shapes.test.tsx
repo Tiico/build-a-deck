@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import type { Element, ProjectDoc } from '../src/editor/types.js'
@@ -344,5 +344,56 @@ describe('the tile a pattern starts as (L17)', () => {
     const { onPatch } = open({ shape: 'rect', fill: undefined })
     fireEvent.click(screen.getByLabelText(/mönster över/i))
     expect(patched(onPatch).pattern?.color).toBe('#000000')
+  })
+})
+
+// The one-way door into a shape of the designer's own (L26, #309). The gallery is parametric —
+// a corner count and a turn — and a banner she wants a longer tail on is neither, so the panel
+// offers to write the outline out as the points it already consists of.
+describe('«Anpassa punkterna» (L26)', () => {
+  const door = () => screen.queryByRole('button', { name: 'Anpassa punkterna' })
+
+  // Nothing about the card changes on the way through: the frame's own outline comes back as
+  // the four corners it already had, and the designer has nothing to undo before she can shape it.
+  it('writes the shape out as the points it already consists of', () => {
+    const { onPatch } = open({ shape: 'rect', radiusMm: 0 })
+    fireEvent.click(door()!)
+    expect(patched(onPatch).points).toEqual([{ x: 0, y: 0 }, { x: 61, y: 0 }, { x: 61, y: 86 }, { x: 0, y: 86 }])
+  })
+
+  // An outline drawn with an arc or a curve does not consist of points, so the door is not there
+  // at all rather than there and quietly redrawing the card.
+  it('is not offered on an outline that is not a point list', () => {
+    open({ shape: 'circle' })
+    expect(door()).toBeNull()
+  })
+
+  // And it is a one-way door: once the shape is her own, there is nothing left to walk through.
+  // The way back is the gallery, which stands where it always did.
+  it('is gone once the shape is already her own', () => {
+    open({ shape: 'rect', points: [{ x: 0, y: 0 }, { x: 61, y: 0 }, { x: 30, y: 86 }] })
+    expect(door()).toBeNull()
+  })
+})
+
+// The numbers below the gallery are the parametric core (L17): a corner count, a turn, a valley
+// depth. None of them describes an outline the designer drew herself, and a control that reads
+// a property nothing draws any more is a control that looks broken.
+describe('the parametric numbers step aside for a shape of the designer own (L26)', () => {
+  it('shows the corner count on a polygon and hides it once the points are hers', () => {
+    open({ shape: 'polygon', corners: 6 })
+    expect(screen.queryByLabelText('Hörn')).toBeTruthy()
+    cleanup()
+    open({ shape: 'polygon', corners: 6, points: [{ x: 0, y: 0 }, { x: 61, y: 0 }, { x: 30, y: 86 }] })
+    expect(screen.queryByLabelText('Hörn')).toBeNull()
+    expect(screen.queryByLabelText('Vridning')).toBeNull()
+  })
+
+  // The line, the transparency, the fill, the pattern and the shadow are about ink and not about
+  // the outline, so every one of them goes on meaning what it meant.
+  it('keeps everything that is about ink rather than about the outline', () => {
+    open({ shape: 'polygon', corners: 6, points: [{ x: 0, y: 0 }, { x: 61, y: 0 }, { x: 30, y: 86 }] })
+    expect(screen.queryByLabelText('Linjebredd (mm)')).toBeTruthy()
+    expect(screen.queryByLabelText(/mönster över/i)).toBeTruthy()
   })
 })
