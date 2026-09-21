@@ -3202,7 +3202,7 @@ Formvokabuläret var `rect`, `circle` och `line`, och av dem nådde bara fyllnin
 Nu ritas varje form som en path i en SVG inuti sitt element.
 En kodväg för rektangeln, sexhörningen och linjen, och konturen betyder samma sak i alla tre.
 
-Vokabuläret är en parametrisk kärna med ett galleri ovanpå, vilket är L14:s mönster igen — en dörr, inte en grind.
+Vokabuläret är en parametrisk kärna med ett galleri ovanpå, vilket är L42:s mönster igen — en dörr, inte en grind.
 Kärnan är `polygon` (hörnantal, vridning) och `star` (uddar, vridning, uddjup); tillsammans täcker de triangel, romb, kvadrat, femhörning, sexhörning i båda lägena, oktagon och varje stjärna.
 `shield`, `banner` och `arrow` är konturer ett hörnantal inte kan beskriva och står som egna namn.
 En kapsel är ingen egen form utan en rektangel med en radie större än rutan; galleriet skriver ut det i rutans egna mått, så dokumentet säger en siffra och inte ett magiskt ord.
@@ -3245,7 +3245,7 @@ Ryggen kompileras i webbläsaren av `compile` — samma renderare som duken och 
 Renderaren tar emot ryggen som en funktion av filtens skala, på samma sätt som den redan tar emot editorns zonhandtag, och ritar den på varje kort som ligger med baksidan upp; en yta som inte lämnar någon rygg behåller vävens platshållare.
 Det är basryggen och inte något korts egen: fliken har inga texturhashar, en blandad hög vet inte vad som ligger överst, och basen är den varje kort i leken ärver.
 På ett spelat bord är det däremot toppkortets rygg (reviderat 2026-09-20, #313): en nedvänd hög bär i projektionen hashen för sitt toppkorts baksida — aldrig framsidan eller `cardRef` — så att en hög med gruppryggar (#14) visar rätt rygg från första bildrutan och byter rygg när toppen byter.
-En rygg utan element ritas inte alls — ett tomt spel (L14) har en sådan, och ett blankt vitt kort på högen läses som ett fel och inte som "ingen rygg än".
+En rygg utan element ritas inte alls — ett tomt spel (L42) har en sådan, och ett blankt vitt kort på högen läses som ett fel och inte som "ingen rygg än".
 
 Följdkrav:
 Varje ny namngiven form är en modelländring och ett beslut här; den parametriska kärnan finns just för att listan inte ska växa för varje önskemål.
@@ -3353,25 +3353,6 @@ Alternativet, krönet, kostar en rad av kortets höjd på varje bredd och står 
 `packages/web/test/canvas-band.test.tsx` mäter det: att bandets låda inte skär kortets vid 1024, 1280, 1440 och 1920, varken vid inpassningen eller med kortet förstorat förbi varje kant, och att kortet vid de tre breda skrivborden fortfarande passas in på höjden.
 
 Byggt 2026-09-17.
-
-### L14. Ett spel utan den guidade starten (2026-09-13)
-
-Den guidade starten (E3, L6) är en dörr, inte en grind.
-Den som hellre bygger allt själv skapar spelet från steg 1 i wizarden med bara namnet och antalet spelare — de två saker varje spel har — och hamnar direkt i editorn med ett tomt spel: inga kort, inga fält, en tom fram- och baksida.
-Bordet är receptets, precis som för ett spel som går den guidade vägen (B5, K18, C4), eftersom ett spel har ett bord vilken dörr det än kom in genom; det vrids efteråt i fliken "Bord".
-
-Motivering:
-Wizarden är en kort grafisk start för den som vill se sina fält på exempelkort innan editorn (E3).
-Den som redan vet vad hen vill ha tvingades igenom tre steg och fick sedan städa bort exempelkort, startram och fyra föreslagna fält som inte var hens.
-Villkoret från E3 gäller oförändrat: samma dokument, samma väg (`POST /projects`), ingen parallell kodväg — editorn kan inte se vilken dörr ett spel kom in genom, och det första elementet och det första kortet görs där med samma redigeringar som varje annat spel får.
-
-Utseende: ett stillsamt block under namnet och spelarantalet i steg 1 — "Utan guidad start", en mening om vad som utelämnas, och knappen "Skapa ett tomt spel i editorn".
-Knappen är *andra handlingen* i vyn (L13): kantad, aldrig fylld, så att den guidade vägen förblir den första.
-Den är stängd utan namn, som den guidade vägen.
-Ett utkast som skickas förbi den guidade starten och möter en inloggning återupptas förbi den, inte genom den (G1).
-
-Startsidans "＋ Nytt spel" leder som förut till `/new`; det är där valet mellan de två dörrarna står, en skärm in.
-Byggt utan prototyprunda, som ett tillägg i wizardens redan beslutade form (L6, L10); en egen granskning ingår i nästa UX-kontroll.
 
 ### L20. Editorn hämtas när den öppnas, och ligger inte i filtens blockerande ark (byggt 2026-09-17, #186)
 
@@ -3683,7 +3664,7 @@ Den rullningen är priset och är accepterat.
 
 ### L26. En egen form är en punktlista, och punkten läggs till där kanten redan bär en (prototypat 2026-09-20, #309)
 
-Formgalleriet är parametriskt: en form är ett hörnantal och en vridning (L14, L17).
+Formgalleriet är parametriskt: en form är ett hörnantal och en vridning (L42, L17).
 En helt egen ram eller banderoll kräver en annan representation — en punktlista i kortets millimeter, relativ till elementets box — och en envägsdörr in i den: att välja «anpassa punkterna» på en galleriform skriver ut den som de punkter den redan består av, utan att ändra utseende, och galleriet står kvar som startpunkt.
 
 Tre sätt att lägga till en punkt prövades på duken: klick på kanten med ett spöke som följer pekaren (A), ett punktläge som byter lådhandtagen mot punkter (B), och en ihålig prick mitt på varje kant att dra ut (C).
@@ -4239,6 +4220,28 @@ Med plattan och den stängda luckan blir panelen 613 px och kolumnen 1024, och m
 De tre kontrollerna kostar alltså 192 px stängda.
 Det ändrar inte valet: B är fortfarande den billigaste av de fyra uppställningarna i höjd, och skillnaden mot A — rubrikerna — finns redan i kolumnen sedan L25 och är inte den här postens att ta bort.
 Rullningen är priset och är accepterat, som i L25.
+
+### L42. Ett spel utan den guidade starten (2026-09-13; omnumrerad från L14 2026-09-21, #375)
+
+Den guidade starten (E3, L6) är en dörr, inte en grind.
+Den som hellre bygger allt själv skapar spelet från steg 1 i wizarden med bara namnet och antalet spelare — de två saker varje spel har — och hamnar direkt i editorn med ett tomt spel: inga kort, inga fält, en tom fram- och baksida.
+Bordet är receptets, precis som för ett spel som går den guidade vägen (B5, K18, C4), eftersom ett spel har ett bord vilken dörr det än kom in genom; det vrids efteråt i fliken "Bord".
+
+Motivering:
+Wizarden är en kort grafisk start för den som vill se sina fält på exempelkort innan editorn (E3).
+Den som redan vet vad hen vill ha tvingades igenom tre steg och fick sedan städa bort exempelkort, startram och fyra föreslagna fält som inte var hens.
+Villkoret från E3 gäller oförändrat: samma dokument, samma väg (`POST /projects`), ingen parallell kodväg — editorn kan inte se vilken dörr ett spel kom in genom, och det första elementet och det första kortet görs där med samma redigeringar som varje annat spel får.
+
+Utseende: ett stillsamt block under namnet och spelarantalet i steg 1 — "Utan guidad start", en mening om vad som utelämnas, och knappen "Skapa ett tomt spel i editorn".
+Knappen är *andra handlingen* i vyn (L13): kantad, aldrig fylld, så att den guidade vägen förblir den första.
+Den är stängd utan namn, som den guidade vägen.
+Ett utkast som skickas förbi den guidade starten och möter en inloggning återupptas förbi den, inte genom den (G1).
+
+Startsidans "＋ Nytt spel" leder som förut till `/new`; det är där valet mellan de två dörrarna står, en skärm in.
+Byggt utan prototyprunda, som ett tillägg i wizardens redan beslutade form (L6, L10); en egen granskning ingår i nästa UX-kontroll.
+
+Posten skrevs som L14 och delade det numret med «Ett grepp är ett steg tillbaka» (#375).
+Den här posten är den som bytte, eftersom nästan varje referens till L14 menade ångra-beslutet; numren tätas inte, så L14 står kvar hos det och det här beslutet ligger sist.
 
 ## I. Öppna frågor
 

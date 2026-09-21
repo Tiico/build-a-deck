@@ -75,7 +75,7 @@ describe('buildProject', () => {
   })
 })
 
-// A game made without the guided start (L14): the name and the seats are all the designer has
+// A game made without the guided start (L42): the name and the seats are all the designer has
 // said, so that is all the document holds. The table is the same recipe the wizard lays, because
 // a game has a table whichever door it came in by; the cards, the fields and the faces are the
 // designer's to make in the editor, so there are none of them yet.

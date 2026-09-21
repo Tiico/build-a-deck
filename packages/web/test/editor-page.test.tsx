@@ -398,11 +398,11 @@ describe('the host\'s controls (DRIFT §9)', () => {
   })
 })
 
-// A game made without the guided start (L14) arrives here with nothing but its name and its
+// A game made without the guided start (L42) arrives here with nothing but its name and its
 // table: no cards, no fields, two empty faces. The editor has to be a place such a game can be
 // built in, or the door past the wizard leads nowhere — so the first element and the first card
 // are made here, the way every other change is, and saved like any other.
-describe('a game made without the guided start (L14)', () => {
+describe('a game made without the guided start (L42)', () => {
   it('opens empty, and the first element and the first card are made in the editor', async () => {
     const user = userEvent.setup()
     await run.projects.create(run.projectId, buildBlankProject({ name: 'Kråkkriget', players: 3 }))
