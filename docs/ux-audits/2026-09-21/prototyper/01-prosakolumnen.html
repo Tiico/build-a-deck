@@ -73,7 +73,7 @@
   .beroring b { display: block; color: #e6ecfa; font-size: 11.5px; font-weight: 700; margin-bottom: 2px; }
   .beroring p { margin: 0 0 8px; color: var(--quiet-2); font-size: 11px; line-height: 1.5; font-weight: 400; }
   .beroring .rad { display: flex; gap: 6px; }
-  .beroring button { min-height: 30px; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; background: #0f1115; color: #e6ecfa; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+  .beroring button { min-height: var(--tap); border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; background: #0f1115; color: #e6ecfa; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
   .beroring button:hover { border-color: var(--primary-mark); }
   .beroring button.stark { background: var(--primary); border-color: var(--primary); color: #fff; }
   .shell[data-variant='c'] th { cursor: default; }
@@ -92,7 +92,7 @@
   .kolumnrad .forslag { margin: 0; color: var(--quiet-2); font-size: 11px; line-height: 1.45; }
   .kolumnrad .forslag u { text-decoration: none; color: #9ec4e8; }
   .treval { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; background: var(--sunk); border-radius: 8px; padding: 3px; }
-  .treval button { min-height: 32px; border: 0; border-radius: 6px; padding: 0 4px; background: transparent; color: var(--quiet-2); font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .treval button { min-height: var(--tap); border: 0; border-radius: 6px; padding: 0 4px; background: transparent; color: var(--quiet-2); font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .treval button:hover { color: #e6ecfa; }
   .treval button[aria-pressed='true'] { background: var(--primary); color: #fff; }
   .treval button[aria-pressed='true'][data-val='foljer'] { background: #2b3040; color: #cbd3e4; box-shadow: inset 0 0 0 1px #464d60; }
@@ -128,9 +128,10 @@
   <p id="hjalptext"></p>
   <button type="button" id="hojdknapp">Ändra rutans höjd i mallen</button>
   <div class="matt">
-    <span>kontroller <u id="m-kontroller">–</u></span>
+    <span>valkontroller <u id="m-kontroller">–</u></span>
     <span>huvudets höjd <u id="m-huvud">–</u></span>
     <span>minsta träffyta <u id="m-tap">–</u></span>
+    <span>rullar <u id="m-rullar">–</u></span>
   </div>
   <p class="sagt" id="sagt">Skärmläsaren hör: <em>—</em></p>
 </div>
@@ -211,8 +212,10 @@ let hojdlage = 0
 const hojdAv = (k) => k.h[hojdlage]
 const radhojd = (k) => k.pt * PT_TO_MM * k.lh
 const forslag = (k) => hojdAv(k) >= BODY_LINES * radhojd(k)
-const arProsa = (k) => (k.val === null ? forslag(k) : k.val)
-const kalla = (k) => (k.val === null ? 'hojd' : 'val')
+// Dagens regel läser bara höjden. «Nu» visar den som den är: ett uttryckligt val finns inte att
+// ha, och kostnadskolumnen får sin verktygsrad vare sig designern vill eller ej.
+const arProsa = (k) => (shell.dataset.variant === 'nu' || k.val === null ? forslag(k) : k.val)
+const kalla = (k) => (shell.dataset.variant === 'nu' || k.val === null ? 'hojd' : 'val')
 
 const hjalptexter = {
   nu: 'Nu · bara höjden. Ingenting i Data säger att en kolumn är prosa eller varför. Kostnad är 12 mm för en siffra i 14 pt och får en verktygsrad; ändras höjden i mallen byter Data-fliken utseende i smyg.',
@@ -372,7 +375,7 @@ function ritaSpalt() {
     titel.textContent = k.etikett
     const matt = document.createElement('span')
     matt.className = 'matt2'
-    matt.textContent = `${hojdAv(k).toFixed(1).replace('.', ',')} mm · ${k.pt} pt`
+    matt.textContent = `${hojdAv(k).toFixed(1).replace('.', ',')} mm · ${String(k.pt).replace('.', ',')} pt`
     topp.append(titel, matt)
 
     const f = document.createElement('p')
@@ -427,25 +430,29 @@ function sag(text) {
 
 function mat() {
   const rum = document.querySelector('.rum')
-  const kontroller = rum.querySelectorAll('button:not([hidden]), input, select')
+  // Kontrollerna som bär *valet*, räknade för sig. Cellens verktygsrad räknas separat: den är
+  // inte ett sätt att välja utan det valet ger, och den finns eller finns inte i alla varianter.
+  const val = [...rum.querySelectorAll('.vaxel, .ater, .treval button, .beroring button')]
   let synliga = 0
   let minsta = Infinity
-  for (const el of kontroller) {
+  for (const el of val) {
     const r = el.getBoundingClientRect()
     if (r.width === 0 || r.height === 0) continue
-    if (el.closest('.beroring') && shell.dataset.variant !== 'c') continue
-    if (el.closest('.verktyg') && document.getElementById('verktyg').hidden) continue
     synliga += 1
     minsta = Math.min(minsta, Math.round(Math.min(r.width, r.height)))
   }
+  const verktyg = document.getElementById('verktyg')
+  const toolbar = verktyg.hidden ? 0 : verktyg.querySelectorAll('button').length
   const th = document.querySelector('thead th')
   document.getElementById('m-kontroller').textContent = String(synliga)
   document.getElementById('m-huvud').textContent = `${Math.round(th.getBoundingClientRect().height)} px`
   document.getElementById('m-tap').textContent = Number.isFinite(minsta) ? `${minsta} px` : '–'
+  document.getElementById('m-rullar').textContent = rum.scrollHeight > rum.clientHeight + 1 ? 'ja' : 'nej'
   window.bydMatt = {
     variant: shell.dataset.variant,
     hojdlage,
-    kontroller: synliga,
+    valkontroller: synliga,
+    celltoolbar: toolbar,
     huvud: Math.round(th.getBoundingClientRect().height),
     tap: Number.isFinite(minsta) ? minsta : null,
     rullar: rum.scrollHeight > rum.clientHeight + 1,
