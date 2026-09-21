@@ -33,6 +33,11 @@
   --byd-editor-primary-bg: #1f6fd0;
   --byd-editor-primary-ink: #ffffff;
   --byd-editor-primary-mark: #3c8ce7;
+  /* What the designer takes hold of on a drawing rather than in the chrome (L38): the felt's own
+     amber, which the table's handles already use for exactly that. A handle on a card is not the
+     canvas's blue, because three kinds of mark stand on one outline and colour is half of what
+     tells them apart. */
+  --byd-editor-grip-mark: #ffd98a;
   /* The deep ground every panel the editor floats stands on: the history, the share sheet, the
      checks beside the wall, a menu, the symbol library. It was the same hex written out seven
      times, which was harmless until the mark had to be measured against it (L11) — a ground
@@ -926,7 +931,8 @@
   margin: -1.3mm 0 0 -1.3mm;
   padding: 0;
   border: 0.4mm solid var(--byd-editor-primary-mark);
-  border-radius: 50%;
+  /* A point is a square, and it is the shape that says so (L38). */
+  border-radius: 0;
   background: var(--byd-editor-handle-bg);
   box-sizing: border-box;
   touch-action: none;
@@ -944,6 +950,12 @@
    the gallery's 30 px tiles. */
 .byd-editor .byd-point { min-width: 0; min-height: 0; }
 .byd-point[data-weak] { border-width: 0.25mm; background: transparent; opacity: 0.5; z-index: 9999; }
+/* A mid-dot is a dot: hollow and round, where a point is a filled square (L26, L38). */
+.byd-point-mid { border-radius: 50%; }
+/* A handle is a filled circle in the felt's amber, on a dashed arm out of its own point. Three
+   kinds of mark on one outline, and the form carries the difference as much as the colour. */
+.byd-point-handle { border-radius: 50%; border-color: var(--byd-editor-grip-mark); background: var(--byd-editor-grip-mark); z-index: 10001; }
+.byd-point-arm { position: absolute; height: 0; border-top: 0.25mm dashed var(--byd-editor-grip-mark); transform-origin: 0 0; pointer-events: none; z-index: 10000; }
 .byd-point:focus-visible { outline: 0.5mm solid var(--byd-editor-primary-mark); outline-offset: 0.4mm; }
 
 /* The line an element has lined up with, while it is being dragged. Magenta because nothing a

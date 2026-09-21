@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { render } from '@testing-library/react'
+import { act, render } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
@@ -25,7 +25,9 @@ const POINTS = [
   { x: 61, y: 0 },
   { x: 61, y: 86 },
   { x: 0, y: 86 },
-  { x: 12, y: 43 },
+  // The one point that is somewhere other than a corner of the box, and the one that carries a
+  // curve: standing on it is what brings its two handles out (L38).
+  { x: 12, y: 43, in: { dx: -6, dy: -4 }, out: { dx: 6, dy: 4 } },
 ]
 
 function markup(): string {
@@ -35,6 +37,9 @@ function markup(): string {
   const { container, unmount } = render(
     <TemplateCanvas doc={doc} face="front" row="dragon" selectedElement="frame" onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} onFontFile={async () => 'Typsnitt'} onFontLicence={vi.fn()} onRemoveFont={vi.fn()} />,
   )
+  // Standing on the curved point is what draws its handles, so the markup that is measured is
+  // the markup a designer shaping a curve actually has in front of her (L38).
+  act(() => (container.querySelector('[data-point="4"]') as HTMLElement).focus())
   const html = container.innerHTML
   unmount()
   return html
@@ -51,6 +56,13 @@ type Seen = {
   midOpacity: string
   midBorder: string
   pointBorder: string
+  // Three kinds of mark on one outline, and the form has to carry the difference (L38).
+  pointRadius: string
+  midRadius: string
+  handleRadius: string
+  handleInk: string
+  armStyle: string
+  onHandle: string | null
 }
 
 let browser: Browser
@@ -84,6 +96,8 @@ async function measure(): Promise<Seen> {
       // The point pulled off the left edge, which is the one that stands over the fill rather
       // than over a corner of the box — the press that has something to compete with.
       const point = document.querySelector('[data-point="4"]')!
+      const handle = document.querySelector('[data-arm="out"]')!
+      const arm = document.querySelector('.byd-point-arm')!
       // The mid-dot of the closing edge, which is the one that lies over the fill rather than
       // out on the box's own edge where the stage's own scroll can clip it.
       const mid = document.querySelector('[data-mid="4"]')!
@@ -95,6 +109,16 @@ async function measure(): Promise<Seen> {
         // Well inside the outline and away from every mark: the fill, which moves the element.
         onFill: names({ x: drag.x + drag.width * 0.6, y: drag.y + drag.height * 0.3 }),
         offBy: Math.max(Math.abs(mark.x - (drag.x + (drag.width * 12) / 61)), Math.abs(mark.y - (drag.y + (drag.height * 43) / 86))),
+        pointRadius: getComputedStyle(point).borderTopLeftRadius,
+        midRadius: getComputedStyle(mid).borderTopLeftRadius,
+        handleRadius: getComputedStyle(handle).borderTopLeftRadius,
+        handleInk: getComputedStyle(handle).backgroundColor,
+        armStyle: getComputedStyle(arm).borderTopStyle,
+        // A handle the point underneath it would swallow is a handle nobody can take hold of.
+        onHandle: (() => {
+          const hit = document.elementFromPoint(middle(handle).x, middle(handle).y)
+          return hit === null ? null : hit.getAttribute('data-arm')
+        })(),
         midOpacity: getComputedStyle(mid).opacity,
         midBorder: getComputedStyle(mid).borderTopWidth,
         pointBorder: getComputedStyle(point).borderTopWidth,
@@ -128,5 +152,23 @@ describe('the marks on a shape of the designer own, where they are actually draw
     const seen = await measure()
     expect(Number(seen.midOpacity)).toBeLessThanOrEqual(0.5)
     expect(Number.parseFloat(seen.midBorder)).toBeLessThan(Number.parseFloat(seen.pointBorder))
+  }, 60_000)
+
+  // The canvas now bears three kinds of mark on one outline, and the decision is that the form
+  // carries the difference rather than the colour alone: a point is a square, a mid-dot a hollow
+  // circle and a handle a filled circle on a dashed arm, in the felt's own amber (L38).
+  it('tells the three marks apart by their form and not by their colour alone', async () => {
+    const seen = await measure()
+    expect(Number.parseFloat(seen.pointRadius)).toBe(0)
+    expect(Number.parseFloat(seen.midRadius)).toBeGreaterThan(0)
+    expect(Number.parseFloat(seen.handleRadius)).toBeGreaterThan(0)
+    expect(seen.handleInk).toBe('rgb(255, 217, 138)')
+    expect(seen.armStyle).toBe('dashed')
+  }, 60_000)
+
+  // A handle lies above the point it hangs on: it is the smaller and the newer of the two, and
+  // a press that reached the point instead would move the whole point rather than bend the curve.
+  it('gives a press on a handle to the handle', async () => {
+    expect((await measure()).onHandle).toBe('out')
   }, 60_000)
 })

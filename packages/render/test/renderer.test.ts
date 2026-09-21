@@ -125,3 +125,41 @@ describe('a shape of the designer own points', () => {
     expect(pngPixel(png, mm(4), mm(6))).toMatchObject({ r: 255, g: 255, b: 255 })
   }, 60_000)
 })
+
+// A curve drawn out of a side (L38, #327), through the same single renderer (B3). The proof is
+// the ink again and not the path: a bulge that reached the card only in the editor's own preview
+// would be a second code path drawing shapes, and this is where it would show up as a card whose
+// right side is still straight.
+describe('a side of an own shape bent into a curve', () => {
+  const mm = (v: number) => Math.round((v * 96) / 25.4)
+  // The left half of the card, with its right side pulled 20 mm out. Both arms carry the same
+  // offset, so the middle of the side lands three quarters of the way out — 46,5 mm — while the
+  // side's two ends stay where they are at 31,5.
+  const face: FaceTemplate = {
+    base: [
+      { kind: 'shape', id: 'paper', x: 0, y: 0, w: 63, h: 88, shape: 'rect', fill: '#ffffff' },
+      {
+        kind: 'shape',
+        id: 'own',
+        x: 0,
+        y: 0,
+        w: 63,
+        h: 88,
+        shape: 'rect',
+        fill: '#000000',
+        points: [{ x: 0, y: 0 }, { x: 31.5, y: 0, out: { dx: 20, dy: 0 } }, { x: 31.5, y: 88, in: { dx: 20, dy: 0 } }, { x: 0, y: 88 }],
+      } as Element,
+    ],
+    variants: {},
+  }
+
+  it('presses the bulge to pixels, and leaves the paper the curve has not reached', async () => {
+    const png = await renderer.renderPng(compile({ type: CARD_STANDARD_63x88, face, row: {}, icons: {} }), { dpi: 96 })
+    // Halfway down, where the curve reaches 46,5 mm: ink at 44, which a straight side at 31,5
+    // would have left to the paper.
+    expect(pngPixel(png, mm(44), mm(44))).toMatchObject({ r: 0, g: 0, b: 0 })
+    // And near the top, where the side is still on its way out: paper at the same 44 mm, which
+    // is what says the side is a curve and not simply a wider rectangle.
+    expect(pngPixel(png, mm(44), mm(10))).toMatchObject({ r: 255, g: 255, b: 255 })
+  }, 60_000)
+})

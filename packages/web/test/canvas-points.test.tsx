@@ -5,7 +5,7 @@
 // punkten formar». The hit order is the part that is not negotiable: the point lies above the
 // edge and above the fill, and the edge answers to a press up to 2,4 mm away.
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { projectDoc } from './project-doc.js'
@@ -15,8 +15,9 @@ import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
+import type { Point } from '../src/editor/points.js'
+
 type Shape = Extract<Element, { kind: 'shape' }>
-type Point = { x: number; y: number }
 
 // The fixture's `frame` is a 61 × 86 rectangle at 1, 1. Written out as its own points it is the
 // four corners of its box, which is what the door «Anpassa punkterna» leaves behind.
@@ -104,24 +105,41 @@ describe('the hand on the points (L26)', () => {
     expect(tokens(onPatch).size).toBe(2)
   })
 
-  // The mid-dot dragged out is a real point in the same gesture, between the two points whose
-  // edge carried it — no mode to turn on, no hovering, and no guess about where the click landed.
-  it('grows a new point out of a mid-dot, in the one gesture', () => {
+  // Two gestures on one mark (L38): a drag from the mid-dot bends the side it lies on, and the
+  // dot is neither moved nor taken away. The middle of the side follows the pointer, so the arms
+  // are four thirds of how far it was pulled — and the outline still has the four points it had.
+  it('bends the side when the mid-dot is dragged, and adds no point', () => {
     const { onPatch } = open()
-    drag(midMarks()[0]!, [30.5 * PX, 1 * PX], [30.5 * PX, 21 * PX])
-    expect(lastPoints(onPatch)).toEqual([{ x: 0, y: 0 }, { x: 30.5, y: 20 }, { x: 61, y: 0 }, { x: 61, y: 86 }, { x: 0, y: 86 }])
+    drag(midMarks()[0]!, [30.5 * PX, 1 * PX], [30.5 * PX, 6 * PX])
+    const points = lastPoints(onPatch)
+    expect(points).toHaveLength(4)
+    expect(points?.[0]?.out).toEqual({ dx: 0, dy: 6.7 })
+    expect(points?.[1]?.in).toEqual({ dx: 0, dy: 6.7 })
     expect(tokens(onPatch).size).toBe(1)
   })
 
-  // The browser fires a click of its own after a drag that began and ended on the same button,
-  // and the mid-dot is a button — so a pulled-out mid-dot arrived as a drag *and* a click, and
-  // the outline got two new points where the designer made one. The click is the way in for the
-  // hand without a pointer (L24) and stays; what it must not do is fire on the tail of a drag.
-  it('grows one point and not two when the drag is followed by the browser own click', () => {
+  // Four device pixels, and nothing is decided until they are passed (L38): a hand resting on a
+  // trackpad always moves some pixel, and the shaky press is the click it was meant to be.
+  it('adds the point the click adds when the hand only shook three pixels', () => {
     const { onPatch } = open()
-    drag(midMarks()[0]!, [30.5 * PX, 1 * PX], [30.5 * PX, 21 * PX])
-    fireEvent.click(midMarks()[0]!)
+    const mid = midMarks()[0]!
+    fireEvent.pointerDown(mid, { pointerId: 1, button: 0, clientX: 30.5 * PX, clientY: 1 * PX })
+    fireEvent.pointerMove(mid, { pointerId: 1, clientX: 30.5 * PX + 3, clientY: 1 * PX })
+    fireEvent.pointerUp(mid, { pointerId: 1 })
+    fireEvent.click(mid)
+    expect(onPatch).toHaveBeenCalledTimes(1)
     expect(lastPoints(onPatch)).toHaveLength(5)
+  })
+
+  // The browser fires a click of its own after a drag that began and ended on the same button,
+  // and the mid-dot is a button — so a bend arrived as a drag *and* a click, and the outline got
+  // a point where the designer drew a curve. The click is the way in for the hand without a
+  // pointer (L24) and stays; what it must not do is fire on the tail of a drag.
+  it('bends once and adds nothing when the browser own click follows the drag', () => {
+    const { onPatch } = open()
+    drag(midMarks()[0]!, [30.5 * PX, 1 * PX], [30.5 * PX, 6 * PX])
+    fireEvent.click(midMarks()[0]!)
+    expect(lastPoints(onPatch)).toHaveLength(4)
     expect(tokens(onPatch).size).toBe(1)
   })
 
@@ -146,15 +164,20 @@ describe('the surface moves and the point shapes (L26)', () => {
 
   // The edge is a hit area wider than it looks: ±1,5 mm was measured in the prototype and a
   // click aimed at the middle of the edge missed it. A press within 2,4 mm of the edge is about
-  // the edge and grows a point there rather than moving the element.
-  it('grows a point from a press on the edge rather than moving the element', () => {
+  // the edge — and since L38 what a pull on it does is bend it: «det man tar i är det som
+  // ändras», and a curve is a property of the side and not of either point. The one way to add
+  // a point is the mid-dot the side already carries.
+  it('bends the edge from a press on it rather than moving the element', () => {
     const { onPatch } = open()
     // 2 mm inside the left edge, a third of the way down: within reach of the edge, and nowhere
     // near a point or a mid-dot.
     drag(target('frame')!, [(1 + 2) * PX, (1 + 30) * PX], [(1 + 8) * PX, (1 + 30) * PX])
     const points = lastPoints(onPatch)
-    expect(points).toHaveLength(5)
-    expect(points?.at(-1)).toEqual({ x: 8, y: 30 })
+    expect(points).toHaveLength(4)
+    // The closing side, from the last point back to the first: pulled 6 mm sideways, so its two
+    // arms are four thirds of that.
+    expect(points?.[3]?.out).toEqual({ dx: 8, dy: 0 })
+    expect(points?.[0]?.in).toEqual({ dx: 8, dy: 0 })
   })
 })
 
@@ -195,5 +218,63 @@ describe('the keyboard on the points (L26)', () => {
     fireEvent.keyDown(pointMarks()[1]!, { key: 'Delete' })
     expect(onPatch).not.toHaveBeenCalled()
     expect(screen.getByRole('alert').textContent).toMatch(/tre punkter/i)
+  })
+})
+
+// The handles a curve hangs on (L38, #327). They exist for one point at a time — the one the
+// designer is standing on — so the canvas carries two more marks and not two per point.
+const BENT: Point[] = [
+  { x: 0, y: 0 },
+  { x: 61, y: 0 },
+  { x: 61, y: 86 },
+  { x: 0, y: 86 },
+  { x: 12, y: 43, in: { dx: -6, dy: -4 }, out: { dx: 6, dy: 4 } },
+]
+// Standing on a point is what brings its handles out, under the keyboard as under the hand.
+const stand = (index: number) => act(() => pointMarks()[index]!.focus())
+const handleMarks = () => [...document.querySelectorAll('[data-arm]')] as HTMLElement[]
+const handleMark = (arm: 'in' | 'out') => document.querySelector(`[data-arm="${arm}"]`) as HTMLElement
+
+describe('the handles of the point the designer stands on (L38)', () => {
+  // A handle appears once the curve exists, and for one point at a time: a point that is still
+  // a corner shows nothing, so the canvas stays as quiet as L26 left it.
+  it('shows the two handles of the chosen point and none of any other', () => {
+    open(BENT)
+    expect(handleMarks()).toHaveLength(0)
+    stand(4)
+    expect(handleMarks().map((m) => m.getAttribute('aria-label'))).toEqual(['Inhandtag för punkt 5', 'Uthandtag för punkt 5'])
+    stand(0)
+    expect(handleMarks()).toHaveLength(0)
+  })
+
+  // The hand on the handle: mirroring is the default, so the opposite arm follows equally far
+  // the other way and the curve runs evenly through the point.
+  it('pulls the handle and carries the opposite one with it', () => {
+    const { onPatch } = open(BENT)
+    stand(4)
+    drag(handleMark('out'), [18 * PX, 47 * PX], [22 * PX, 47 * PX])
+    expect(lastPoints(onPatch)?.[4]).toMatchObject({ out: { dx: 10, dy: 4 }, in: { dx: -10, dy: -4 } })
+    expect(tokens(onPatch).size).toBe(1)
+  })
+
+  // Alt during the drag breaks the mirroring for that handle only.
+  it('leaves the opposite handle where it was when Alt is held', () => {
+    const { onPatch } = open(BENT)
+    stand(4)
+    const handle = handleMark('out')
+    fireEvent.pointerDown(handle, { pointerId: 1, button: 0, clientX: 18 * PX, clientY: 47 * PX })
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 22 * PX, clientY: 47 * PX, altKey: true })
+    fireEvent.pointerUp(handle, { pointerId: 1 })
+    expect(lastPoints(onPatch)?.[4]).toMatchObject({ out: { dx: 10, dy: 4 }, in: { dx: -6, dy: -4 } })
+  })
+
+  // The keyboard on a handle: L26's own two steps, and the mirroring holds there too.
+  it('nudges the handle half a millimetre, and five with shift', () => {
+    const { onPatch } = open(BENT)
+    stand(4)
+    fireEvent.keyDown(handleMark('out'), { key: 'ArrowRight' })
+    expect(lastPoints(onPatch)?.[4]).toMatchObject({ out: { dx: 6.5, dy: 4 }, in: { dx: -6.5, dy: -4 } })
+    fireEvent.keyDown(handleMark('out'), { key: 'ArrowDown', shiftKey: true })
+    expect(lastPoints(onPatch)?.[4]).toMatchObject({ out: { dx: 6, dy: 9 }, in: { dx: -6, dy: -9 } })
   })
 })
