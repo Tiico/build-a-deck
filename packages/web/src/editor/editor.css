@@ -615,7 +615,8 @@
 /* Off the table it is an error and not a hint: the felt's own amber, with the words in it, and it
    stands for as long as the pile is selected. */
 .byd-setup-landing[data-off='true'] { border-color: var(--byd-drop-mark); background: rgba(255, 217, 138, 0.14); }
-.byd-setup-landing > u { text-decoration: none; color: var(--byd-drop-mark); font: 700 9px/1.2 var(--byd-felt-font, system-ui, sans-serif); letter-spacing: 0.4px; white-space: nowrap; }
+/* The words wrap inside the card — three short lines at a desk’s scale — rather than run out past its edge. */
+.byd-setup-landing > u { text-decoration: none; color: var(--byd-drop-mark); font: 700 9px/1.2 var(--byd-felt-font, system-ui, sans-serif); letter-spacing: 0.4px; text-align: center; overflow-wrap: anywhere; }
 .byd-setup-landing-warn { margin: 0; color: var(--byd-drop-mark); font-size: 11px; line-height: 1.5; }
 /* What a zone is, opened inside its own row rather than floating over the felt: the panel used to
    cover the right third of the table, which is where a designer puts the zones they are working
