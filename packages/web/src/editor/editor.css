@@ -741,7 +741,16 @@
 /* The filters, which keep their place in the row. The fade says there is more without taking a
    target's worth of room to say it; the arrow is drawn only when the rail has somewhere to go. */
 .byd-crown-rail { position: relative; display: flex; align-items: center; gap: var(--byd-s1); flex: 1 1 auto; min-width: 0; }
-.byd-crown-rail-scroll { display: flex; align-items: center; gap: var(--byd-s1); flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: 4px; }
+/* Utfyllnaden uppåt och nedåt är fokusringens och ingen annans (#396): rälsen rullar och klipper
+   därför sitt innehåll, och ringen ritas utanför chipets ruta. Ett steg mot en ring som når fem
+   pixlar gav en 3 px ring ritad som 2 px upptill och nedtill — på varje chip, inte bara på det i
+   kanten. Steget tas tillbaka i marginalen åt alla håll, så kronan är exakt lika hög som den var
+   (#130) och chipsen står kvar där de stod.
+   I sidled behövs båda delarna. Mitt i rullningen räcker utfyllnad inte — `scrollIntoView` ställer
+   chipets egen kant mot rullningsrutans och bryr sig inte om vad som ligger innanför den, och
+   rummet ringen behöver där heter `scroll-padding`. I rullningens båda ändar finns ingen rullning
+   kvar att göra, och då är utfyllnaden allt rummet som finns. */
+.byd-crown-rail-scroll { display: flex; align-items: center; gap: var(--byd-s1); flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: var(--byd-s2); margin: -8px -4px; scroll-padding: var(--byd-s2); }
 .byd-crown-rail-scroll::-webkit-scrollbar { display: none; }
 .byd-crown-rail[data-more]::after { content: ''; position: absolute; right: 44px; top: 0; bottom: 0; width: 36px; pointer-events: none; background: linear-gradient(90deg, transparent, var(--byd-editor-chrome-bg)); }
 .byd-crown-more { flex: 0 0 auto; }
@@ -2010,7 +2019,12 @@
 .byd-data .byd-prose-mark[data-from='choice'][data-prose='true'] { background: #9ec4e8; }
 .byd-data .byd-prose-why {
   position: absolute;
-  top: 16px;
+  /* Ur rubriken och inte i den (#394). `16px` lade utfällningen tvärs över huvudets egen rad:
+     över ordet den handlar om, över grannkolumnens rubrik — som därmed inte gick att klicka —
+     och över den egna dragkanten och den egna fokusringen, som båda bor inne i rubriken. Hela
+     kostnaden L43 accepterade är raderna under; huvudet var aldrig med i räkningen. `100%` är
+     samma kant dörren redan hänger från, och den kanten är den enda som är fri. */
+  top: 100%;
   left: 0;
   z-index: 8;
   width: 268px;

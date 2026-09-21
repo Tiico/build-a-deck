@@ -253,3 +253,117 @@ describe('what a box in the crown says', () => {
     }
   }, 120_000)
 })
+
+// Rälsen är ett eget rullningsområde, och det är priset punkt 2 accepterar för att filterraden ska
+// hålla sig i raden. Priset får inte vara att tangentbordet tappar bort sig i den (#396): rälsen
+// rullade aldrig efter fokus, så ett Tabb-steg kunde landa på ett chip som stod 66 px utanför,
+// bakom «›»-knappen, med sex pixlar av fokusringen synliga. jsdom lägger ingenting ut och har
+// ingen `scrollIntoView` av sitt eget, så det som läses är att chipet fokus står på är det som
+// blir ombett att komma fram.
+describe('rälsen följer tangentbordet (#396)', () => {
+  it('ber det chip fokus står på att komma fram i rälsen', async () => {
+    const shown: Element[] = []
+    const had = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView')
+    Element.prototype.scrollIntoView = function (this: Element) {
+      shown.push(this)
+    }
+    atWidth(1280)
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    const { unmount } = render(<EditorPage />)
+    try {
+      await screen.findByText('Skogens herrar')
+      fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
+      const chips = [...document.querySelectorAll<HTMLElement>('.byd-crown-rail-scroll .byd-data-chip')]
+      // Provet är värt noll om rälsen inte har fler chip än den har plats för: tretton är antalet
+      // beslutet mättes mot, och det sista är det som ligger utanför.
+      expect(chips.length).toBeGreaterThan(1)
+      const last = chips.at(-1)!
+      last.focus()
+      fireEvent.focus(last)
+      expect(shown.at(-1)).toBe(last)
+    } finally {
+      unmount()
+      if (had) Object.defineProperty(Element.prototype, 'scrollIntoView', had)
+      else delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView
+    }
+  }, 120_000)
+})
+
+// Och rälsens klippning får inte äta ringen den rullar fram (#396). Rälsen är ett rullningsområde
+// och klipper därför sitt innehåll; fokusringen ritas utanför kontrollens ruta, så utrymmet för
+// den måste finnas inne i rälsen. Fyra pixlar utfyllnad mot en ring som når fem gav en 3 px ring
+// ritad som 2 px upptill och nedtill — på varje chip, inte bara på det i kanten.
+describe('rälsens egen klippning lämnar fokusringen hel (#396)', () => {
+  it('ger ringen plats inne i rälsen, på varje chip', async () => {
+    const seen = await measure(1280, 800, async (page) => {
+      const chips = (await page.evaluate(() => document.querySelectorAll('.byd-crown-rail-scroll .byd-data-chip').length)) as number
+      if (chips === 0) return null
+      // Riktiga Tabb-tryck: `:focus-visible` ritas inte av ett `focus()` i Chromium, så en ring
+      // mätt efter ett sådant hade varit en ring som inte finns.
+      for (let i = 0; i < 40; i++) {
+        await page.keyboard.press('Tab')
+        if (await page.evaluate(() => document.activeElement?.classList.contains('byd-data-chip') === true)) break
+      }
+      return (await page.evaluate(() => {
+        const el = document.activeElement
+        if (!(el instanceof HTMLElement) || !el.classList.contains('byd-data-chip')) return null
+        const cs = getComputedStyle(el)
+        const out = parseFloat(cs.outlineWidth) + parseFloat(cs.outlineOffset)
+        const rail = el.closest('.byd-crown-rail-scroll')!.getBoundingClientRect()
+        const r = el.getBoundingClientRect()
+        return {
+          ring: Math.round(out * 100) / 100,
+          // Hur många pixlar av ringen som ligger utanför rälsens egen ruta, uppåt och nedåt.
+          over: Math.round((rail.top - (r.top - out)) * 100) / 100,
+          under: Math.round((r.bottom + out - rail.bottom) * 100) / 100,
+        }
+      })) as { ring: number; over: number; under: number } | null
+    })
+    // Provet är värt noll om ingen yta alls bär chip att mäta på.
+    const measured = Object.entries(seen).filter(([, ring]) => ring !== null)
+    expect(measured.map(([surface]) => surface)).toContain('Tabell')
+    for (const [surface, ring] of measured) {
+      expect(ring!.ring, `${surface}: ingen ring ritas alls`).toBeGreaterThan(0)
+      expect(Math.max(ring!.over, 0), `${surface}: ringen klipptes upptill`).toBe(0)
+      expect(Math.max(ring!.under, 0), `${surface}: ringen klipptes nedtill`).toBe(0)
+    }
+  }, 120_000)
+
+  // Och i den riktning rälsen faktiskt rullar räcker inte utfyllnad: `scrollIntoView` ställer
+  // chipets egen kant mot rullningsrutans kant och bryr sig inte om vad som ligger innanför den.
+  // Rummet ringen behöver där heter `scroll-padding`, och utan det rullades chipet fram med fem
+  // pixlar av sin ring utanför kanten (#396).
+  it('lämnar ringen plats också i den riktning rälsen rullar', async () => {
+    const seen = await measure(1280, 800, async (page) => {
+      const chips = (await page.evaluate(() => document.querySelectorAll('.byd-crown-rail-scroll .byd-data-chip').length)) as number
+      if (chips === 0) return null
+      for (let i = 0; i < 40; i++) {
+        await page.keyboard.press('Tab')
+        if (await page.evaluate(() => document.activeElement?.classList.contains('byd-data-chip') === true)) break
+      }
+      return (await page.evaluate(() => {
+        const el = document.activeElement
+        if (!(el instanceof HTMLElement) || !el.classList.contains('byd-data-chip')) return null
+        const cs = getComputedStyle(el)
+        const s = getComputedStyle(el.closest('.byd-crown-rail-scroll')!)
+        return {
+          ring: parseFloat(cs.outlineWidth) + parseFloat(cs.outlineOffset),
+          start: parseFloat(s.scrollPaddingLeft),
+          end: parseFloat(s.scrollPaddingRight),
+          // Och i rullningens båda ändar finns ingen rullning kvar att göra: där är det rälsens
+          // egen utfyllnad som är allt rummet som finns.
+          padStart: parseFloat(s.paddingLeft),
+          padEnd: parseFloat(s.paddingRight),
+        }
+      })) as { ring: number; start: number; end: number; padStart: number; padEnd: number } | null
+    })
+    const measured = Object.entries(seen).filter(([, room]) => room !== null)
+    expect(measured.map(([surface]) => surface)).toContain('Tabell')
+    for (const [surface, room] of measured) {
+      expect(room!.start, `${surface}: ingen plats för ringen vid rälsens början`).toBeGreaterThanOrEqual(room!.ring)
+      expect(room!.end, `${surface}: ingen plats för ringen vid rälsens slut`).toBeGreaterThanOrEqual(room!.ring)
+      expect(room!.padStart, `${surface}: ingen plats för ringen på det första chipet`).toBeGreaterThanOrEqual(room!.ring)
+      expect(room!.padEnd, `${surface}: ingen plats för ringen på det sista chipet`).toBeGreaterThanOrEqual(room!.ring)
+    }
+  }, 120_000)
+})

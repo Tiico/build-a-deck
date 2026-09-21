@@ -114,7 +114,18 @@ export function CrownRail({ label, children }: { label: string; children: ReactN
   })
   return (
     <div className="byd-crown-rail" {...(more ? { 'data-more': 'true' } : {})}>
-      <div className="byd-crown-rail-scroll" ref={scroll} role="group" aria-label={label}>
+      <div
+        className="byd-crown-rail-scroll"
+        ref={scroll}
+        role="group"
+        aria-label={label}
+        // Rälsen följer tangentbordet (#396). Sidoskrollen är priset för att filterraden ska
+        // hålla sig i raden, och webbläsaren rullar inte hit av sig själv: en Tabb kunde landa på
+        // ett chip som stod utanför kanten, bakom «›», med några pixlar av fokusringen synliga.
+        // Ett mål som svarar utan att kunna ses svara har inte svarat (#235). `scrollIntoView` är
+        // webbläsarens och inte jsdoms.
+        onFocus={(event) => event.target.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })}
+      >
         {children}
       </div>
       {more && (
