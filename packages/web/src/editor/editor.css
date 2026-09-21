@@ -763,6 +763,8 @@
 .byd-help-ask:focus-visible { outline: none; }
 .byd-help-ask:focus-visible > span { outline: 3px solid #9cc6ff; outline-offset: 2px; }
 .byd-help-box { position: fixed; z-index: 30; box-sizing: border-box; width: 260px; max-width: calc(100vw - 24px); max-height: var(--byd-place-room, 60vh); overflow: auto; padding: var(--byd-s2) var(--byd-tap) var(--byd-s2) var(--byd-s3); border-radius: 10px; background: #12141a; border: 1px solid var(--byd-secondary-line); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6); color: #c7cede; font-size: 12px; font-weight: 400; line-height: 1.55; letter-spacing: 0; text-transform: none; text-align: left; white-space: normal; }
+/* The topic is the sentence's word («Hjälp om lagerlistan»); as the box's heading it stands alone. */
+.byd-help-topic::first-letter { text-transform: uppercase; }
 .byd-help-box p { margin: 0 0 var(--byd-s1); color: inherit; font-size: inherit; line-height: inherit; max-width: none; }
 .byd-help-box p:last-child { margin-bottom: 0; }
 .byd-help-topic { display: block; margin: 0 0 4px; color: #e6ecfa; font-size: 12px; font-weight: 700; }

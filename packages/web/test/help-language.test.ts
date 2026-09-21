@@ -19,6 +19,12 @@ describe('the help pattern in the stylesheet', () => {
     expect(rules.some(([selector]) => selector.includes('.byd-help-ask'))).toBe(true)
   })
 
+  // The topic is written for the sentence «Hjälp om lagerlistan», so it comes in lower case; as
+  // the box's own heading it stands alone, and a heading in lower case reads as a slip.
+  it('capitalises the topic where it stands as the box’s heading', () => {
+    expect(css).toMatch(/\.byd-help-topic::first-letter\s*\{[^}]*text-transform:\s*uppercase/)
+  })
+
   it('never opens or shows the box on hover', () => {
     const hovering = rules.filter(([selector]) => selector.includes(':hover'))
     expect(hovering.filter(([selector]) => selector.includes('byd-help-box'))).toEqual([])
