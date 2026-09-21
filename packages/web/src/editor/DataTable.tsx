@@ -60,6 +60,11 @@ export type DataTableProps = {
   // is last of all — the two ways a drag along the head can end. It is an edit like the other
   // two, because the order is the document's and not this table's view of it.
   onMoveField(field: string, before: string | null): void
+  // Vad kolumnen heter (#384). Namnet är nyckeln: `fieldLabel` ger tillbaka nyckeln oförändrad för
+  // allt utom `antal`, så det finns ingen etikett vid sidan av nyckeln att byta i stället — och
+  // priset är taget medvetet, CSV-rubriken byter namn med kolumnen. Utan den står namnen kvar i
+  // dörren som ord: en tabell utan projekt bakom sig har ingenstans att skriva bytet.
+  onRenameField?: ((from: string, to: string) => void) | undefined
   // Vad en kolumn är: prosa eller vanlig text (L43, #362). Rutans höjd i mallen föreslår, och
   // det här är designerns svar på förslaget — `null` när hon lämnar tillbaka frågan till höjden.
   // Utan den står märket kvar och säger vad kolumnen är, men det går inte att vända: en tabell
@@ -157,7 +162,7 @@ export function markCut(box: Element): void {
 
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
 // This is where the designer already lives; a change here reaches every copy of the card.
-export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, onProse, assetBase, onUpload, onSymbol, compareWith, onStopCompare }: DataTableProps) {
+export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, onRenameField, onProse, assetBase, onUpload, onSymbol, compareWith, onStopCompare }: DataTableProps) {
   const t = useT()
   // The one channel everything on a screen speaks in (#7): a column that moved under the focus
   // says so here rather than in a live region this table made for itself.
@@ -624,6 +629,13 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const rest = mine.filter((f) => f !== field)
     const at = before === null ? rest.length : rest.indexOf(before)
     say?.('polite', t('table.column.moved', { field, at: at + 1, of: mine.length }))
+  }
+  // Ett namnbyte, och huvudet säger vad kolumnen heter nu (#384). Rubriken byter ord under
+  // designerns ögon, men hon står i dörren och tittar på listan när det händer — och den som har
+  // leken öppen någon annanstans får bytet som vilket steg som helst, utan att något sägs där.
+  const renameColumn = (from: string, to: string) => {
+    onRenameField?.(from, to)
+    say?.('polite', t('table.column.renamed', { from, to }))
   }
   // What the editor declares a target to be, asked of the page rather than written down here —
   // and it is the floor a column can be pulled to. Narrower than a fingertip is not a width
@@ -1267,6 +1279,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                   asking={dropping !== null}
                   widths={widths}
                   onWidth={setWidth}
+                  {...(onRenameField ? { onRename: renameColumn } : {})}
                   taken={takenNames(doc)}
                   keeps={deckKeepsFields(doc)}
                   // Yes and no leave by the same door, so they hand the focus back to the same

@@ -42,7 +42,10 @@ type Box = { x: number; y: number; w: number; h: number }
 // `columns` is every cell of the head paired with the cell under it in the first card's row, in
 // document order — the head's own class on each, so a drift can be named rather than counted.
 type Column = { head: string; body: string | null; headBox: Box; bodyBox: Box | null }
-type Head = { row: Box; headings: { name: string; box: Box; ink: Box }[]; door: Box | null; scroll: Box; firstRow: Box; columns: Column[] }
+// `renames` is every control in the door that renames a column (#384), and `tap` is what the page
+// itself says a target has to be — read off the editor rather than written down here, so the
+// claim is a relation between the two and not a number pinned to the machine that wrote it.
+type Head = { row: Box; headings: { name: string; box: Box; ink: Box }[]; door: Box | null; scroll: Box; firstRow: Box; columns: Column[]; renames: { field: string; box: Box }[]; tap: number }
 
 const VIEW = { w: 1280, h: 800 }
 
@@ -60,6 +63,7 @@ function Table({ doc: initial = projectDoc() }: { doc?: ProjectDoc }) {
       onAddField={(field) => setDoc((current) => applyEdit(current, { v: 'addField', field }))}
       onRemoveField={(field) => setDoc((current) => applyEdit(current, { v: 'removeField', field }))}
       onMoveField={() => undefined}
+      onRenameField={(from, to) => setDoc((current) => applyEdit(current, { v: 'renameField', from, to }))}
     />
   )
 }
@@ -122,6 +126,8 @@ async function measure({ html, deck }: Table, extra = ''): Promise<Head> {
         door: box(document.querySelector('.byd-columns')),
         scroll: box(document.querySelector('.byd-data-scroll'))!,
         firstRow: box(document.querySelector('.byd-data tbody tr'))!,
+        renames: [...document.querySelectorAll('.byd-columns button.byd-columns-name')].map((el) => ({ field: el.closest('li')!.getAttribute('data-col')!, box: box(el)! })),
+        tap: parseFloat(getComputedStyle(document.querySelector('.byd-data-scroll')!).getPropertyValue('--byd-tap')),
         columns: heads.map((th, i) => ({
           head: named(th),
           body: bodies[i] ? named(bodies[i]!) : null,
@@ -163,6 +169,25 @@ describe("the head's own door for its columns (#32, #46)", () => {
     expect(Math.abs(open.door!.y - (cell.y + cell.h))).toBeLessThanOrEqual(2)
     expect(open.door!.y).toBeLessThan(open.firstRow.y + open.firstRow.h)
     expect(open.door!.x + open.door!.w).toBeLessThanOrEqual(open.scroll.x + open.scroll.w + 1)
+  }, 60_000)
+
+  // Where a column is renamed (#384). The whole reason the rename went behind the door and not
+  // onto the heading is that a row of a list has room for a target a finger can hit beside the ×,
+  // and a heading a number wide has not: 44 and 44 do not go into 64. So the room has to be there
+  // in fact, and it is asked of the page in the page's own terms — `--byd-tap` is what the editor
+  // declares a target to be, and a number written down here instead would be true on one machine.
+  it('gives every name in the door a target as big as the editor says a target is', async () => {
+    const open = await measure(await markup(true))
+
+    // Not a reading of an empty list: the designer's own columns are there, and the two the tool
+    // owns are not — they are the two `renameField` refuses.
+    expect(open.renames.map((r) => r.field)).toEqual(['title', 'body'])
+    for (const { field, box } of open.renames) {
+      expect({ field, tall: box.h >= open.tap }).toEqual({ field, tall: true })
+      expect({ field, wide: box.w >= open.tap }).toEqual({ field, wide: true })
+    }
+    // And the × beside it kept the 44 it always had: the name did not take its room.
+    expect(open.tap).toBeGreaterThan(0)
   }, 60_000)
 
   it('is a real condition and not a rule that cannot be broken: in the flow, the head does grow', async () => {

@@ -24,6 +24,13 @@ export function parseCsv(text: string): ParsedCsv {
 
 // CSV is an editor interchange format: the visible table order is preserved and id remains a
 // first-class column. All ordinary cells are strings on import; `antal` keeps its numeric meaning.
+//
+// The header row is the columns' own keys, and since #384 those keys are what the designer renames
+// (L44): a column renamed in Data is a column whose CSV header changes with it, so a deck exported
+// before the rename has a different header row from the same deck exported after. That follows
+// from the name *being* the key — there is no separate label to change instead — and it is the
+// price the decision names out loud: a spreadsheet or an import the designer keeps outside the
+// tool stops matching on the old header until she renames it there too.
 export function exportCardsCsv(doc: ProjectDoc): string {
   const fields = fieldsOf(doc)
   const records = [

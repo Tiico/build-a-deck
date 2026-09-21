@@ -366,6 +366,12 @@ export const svEditor = {
   'table.column.width.said.auto': '{field} följer innehållet igen',
   'table.column.width.auto': 'Låt {field} följa innehållet igen',
   'table.column.width.px': '{px} px',
+  // Att döpa om en kolumn (#384). Namnet är nyckeln — `fieldLabel` ger tillbaka nyckeln oförändrad
+  // för allt utom `antal` — så det designern skriver in är det som står i dokumentet och det som
+  // läses upp (A4). Det som suggereras är därför inget: fältet öppnar med kolumnens eget namn i.
+  'table.column.rename': 'Byt namn på kolumnen {field}',
+  'table.column.name': 'Namn på kolumnen {field}',
+  'table.column.renamed': '{from} heter nu {to}',
   // Vilka kolumner som står utanför lådan (#46). Sägs i raden som redan säger vad vyn håller, och
   // knappen hämtar hem dem: uttoningen vid nålen säger att ett värde är kapat, aldrig att en hel
   // kolumn ligger där borta.

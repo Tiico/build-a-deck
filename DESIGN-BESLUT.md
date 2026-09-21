@@ -4301,6 +4301,50 @@ Och **valet följer med när kolumnen byter nyckel**: annars faller kolumnen til
 Namnbytet är därför en egen redigering, `renameField`, som flyttar nyckeln överallt dokumentet skriver den — kortens fält, mallens bindningar och villkor, gruppkolumnen, kolumnordningen, beskärningarna och prosavalet — i ett steg och inte sex.
 En kolumn som bara flyttade hälften av sig är värre än en som inte kunde flytta alls.
 
+### L44. Namnet är nyckeln, och kolumnen döps om bakom huvudets egen dörr (prototypat och beslutat 2026-09-21, #384)
+
+`renameField` fanns sedan L43 och var testat och mutationsprövat, men ingen yta anropade det: en kolumn som fått fel namn i guiden eller i en import gick inte att döpa om någonstans i verktyget.
+
+**Namnet *är* nyckeln.**
+`fieldLabel` ger tillbaka kolumnens nyckel oförändrad för allt utom `antal`, som är motorns egen (L4).
+Det finns alltså ingen separat etikett att byta: det designern skriver in är det som står i dokumentet och det som läses upp (A4), och ett fält räcker.
+Alternativet — en etikett vid sidan av nyckeln — hade gjort namnbytet gratis för dokumentet, men till priset av ett nytt fält i `ProjectDoc`, en protokollmigrering, en omläsning av A4, och `renameField` kvar oanropat för det *riktiga* nyckelbytet, vilket är precis det här problemet olöst.
+
+**Priset är taget medvetet: CSV-rubrikerna byter namn med kolumnen.**
+En lek som exporterats tidigare får en annan rubrikrad, så ett kalkylark eller en import som designern håller utanför verktyget slutar matcha tills hon byter namnet där också.
+Det är följdriktigt — rubriken *är* kolumnens namn — men det står skrivet, här och vid `exportCardsCsv` i `packages/web/src/editor/csv.ts`, i stället för att upptäckas av någon som undrar varför importen slutade fungera.
+
+**Ytan är listan bakom `＋` sist i kolumnhuvudet** — den dörr #46 redan flyttade × till.
+Prototypen (`docs/ux-audits/2026-09-21/prototyper/02-kolumnens-namn.html`) mätte fyra vägar in mot dagens läge i Chromium, 1440 × 900, med en riktig tabbvandring genom huvudet: fokus *öppnar* L43:s utfällning, så en statisk räkning i vila mäter fel sak.
+
+| | tabbstopp/huvud (vila / med fokus) | 4 kol | **10 kol** | huvudets höjd | träffyta | ytans höjd | rullar |
+|---|---|---|---|---|---|---|---|
+| Nu · går inte | 1 / 2 | 11 | **24** | 35 px | – | 721 px | nej |
+| A · i utfällningen | 1 / 4 | 19 | **44** | 35 px | 44 px | 721 px | nej |
+| B · dubbelklick | 1 / 2 | 11 | **24** | 35 / 43 px | fältet **64 px** | 721 px | nej |
+| **C · dörren** | **1 / 2** | **11** | **24** | **35 px** | **44 px** | **721 px** | dörren (8→20) |
+| D · kolumnpanelen | 1 / 1 | 5 | **11** | 35 px | 44 px | 1025 px | ytan + panelen |
+
+Valet blev **C**.
+A faller på 44 tabbstopp mot 24 vid tio kolumner — knappt märkbart vid fyra, outhärdligt vid tio, och det är tio kolumner en riktig lek har.
+B:s fält är lika brett som kolumnen, 64 px vid tio, och `F2` är en väg in ingen ser.
+D gör huvudet billigast av alla (24 → 11) och är enda stället hela namnet syns vid tio kolumner, men panelen rullar redan vid tio — exakt det som fällde L43:s variant B — och den förutsätter att L43 rörs tre dagar efter att den prototypades.
+C kostar noll extra tabbstopp i huvudet, når `--byd-tap`, och lägger namnbytet där kolumnens andra verb redan bor.
+Priset är en klick längre bort från kolumnen, och att namnet och prosavalet hamnar på var sitt ställe.
+
+**Vägen in finns för tangentbordet, inte bara under en pekare** (#184, #216).
+Namnet i listan är en knapp och inte ett ord: den nås med Tabb, öppnas med Enter, och Enter i rutan byter namn medan Escape svarar rutan utan att stänga dörren.
+
+**Avslagen sägs i ytan, medan namnet skrivs.**
+Verbet kastar redan på ett tomt namn och på en upptagen nyckel, och ett kast är inget besked: det som når designern är samma mening som formen under listan säger när en ny kolumn kolliderar.
+Ingen redigering lämnar dörren förrän namnet duger, för en redigering som når aktören är en version och ett steg i ångerstacken även när den inte ändrar något.
+
+**Samtidighet: bytet går igenom.**
+Rubriken byts under handen hos den som har leken öppen; det hon skrev i cellen står kvar, för cellen är samma sträng.
+Det är ett steg i loggen som alla andra — `decide` → commit → `apply` → patchar — och inte något ytan avvisar.
+Ett dokument är delat tillstånd, och den som döper om en kolumn har rätt att göra det.
+Namnbytet är ett steg i ångerstacken som vilket annat (B4), och en lek som ingen döpt om beter sig precis som den gjorde.
+
 ## I. Öppna frågor
 
 Ekonomi och juridik:
