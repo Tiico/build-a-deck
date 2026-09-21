@@ -751,3 +751,69 @@ describe('renderInline — a string of card text as the markup a card draws it w
     expect(SYMBOL_CSS.some((rule) => rule.startsWith('.byd-ink{'))).toBe(true)
   })
 })
+
+// Where the text stands in its box, in both directions (#219). Sideways is `font.align`, which
+// the compiler has always written; up and down is `valign`, which is new. A text that says
+// nothing about either is compiled to exactly the bytes it was compiled to before the field
+// existed — an old template draws today's card.
+describe('where the text stands in its box (#219)', () => {
+  const placed = (valign?: 'top' | 'middle' | 'bottom'): FaceTemplate => ({
+    base: [{ ...text('body', 'body', 30, 9), ...(valign ? { valign } : {}) }],
+    variants: {},
+  })
+  const cssOf = (valign?: 'top' | 'middle' | 'bottom') =>
+    compile({ type: CARD_STANDARD_63x88, face: placed(valign), row: { body: 'Ord' }, icons }).css
+
+  it('lifts the text to the middle of its box', () => {
+    expect(cssOf('middle')).toContain('display:flex;flex-direction:column;justify-content:safe center;')
+  })
+
+  it('drops the text to the bottom of its box', () => {
+    expect(cssOf('bottom')).toContain('display:flex;flex-direction:column;justify-content:safe flex-end;')
+  })
+
+  it('writes nothing at all for a text that stands at the top, said or unsaid', () => {
+    expect(cssOf('top')).toBe(cssOf(undefined))
+    expect(cssOf(undefined)).not.toContain('display:flex')
+  })
+})
+
+// The two spacings behind «Finjustering» (#219). The line height was already the compiler's;
+// the letter spacing is new, and is written in ems so it follows the size the fitting lands on
+// rather than the size the template was drawn at.
+describe('the spacings of a text (#219)', () => {
+  const spaced = (letterSpacing?: number): FaceTemplate => ({
+    base: [{ ...text('body', 'body', 30, 9), font: { family: 'Inter', sizePt: 9, weight: 700 as const, align: 'left' as const, ...(letterSpacing === undefined ? {} : { letterSpacing }) } }],
+    variants: {},
+  })
+  const cssOf = (letterSpacing?: number) =>
+    compile({ type: CARD_STANDARD_63x88, face: spaced(letterSpacing), row: { body: 'Ord' }, icons }).css
+
+  it('spaces the letters out in ems of the element’s own font', () => {
+    expect(cssOf(0.08)).toContain('letter-spacing:0.08em;')
+  })
+
+  it('tightens them with a negative one, and writes nothing for a font that says nothing', () => {
+    expect(cssOf(-0.02)).toContain('letter-spacing:-0.02em;')
+    expect(cssOf(undefined)).not.toContain('letter-spacing')
+  })
+})
+
+// The estimate has to lay the text out the way the page does (E6). Letters spaced apart take
+// more room, and an estimate that does not know it thinks a heading fits that the page then
+// spills — which is exactly the warning E6 exists to raise.
+describe('the estimate measures the spacing it wrote (#219)', () => {
+  const line = 'Skogens herrar och deras vakter'
+  const heading = (letterSpacing: number): FaceTemplate => ({
+    base: [{ ...text('body', 'body', 30, 9), fit: 'shrink' as const, font: { family: 'Inter', sizePt: 9, weight: 700 as const, align: 'left' as const, letterSpacing } }],
+    variants: {},
+  })
+  const sizeOf = (letterSpacing: number) => {
+    const out = compile({ type: CARD_STANDARD_63x88, face: heading(letterSpacing), row: { body: line.repeat(3) }, icons })
+    return Number(/\[data-element="body"\]\{[^}]*font-size:([\d.]+)pt/.exec(out.css)?.[1])
+  }
+
+  it('shrinks a spaced-out text further than the same text set solid', () => {
+    expect(sizeOf(0.2)).toBeLessThan(sizeOf(0))
+  })
+})

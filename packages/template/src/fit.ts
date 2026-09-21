@@ -4,7 +4,10 @@ import { parseBody, type InlineNode } from './inline.js'
 // is a character-width estimate good enough for the editor; Chromium can be injected to measure
 // for real without the compiler changing.
 
-export type MeasureFont = { family: string; sizePt: number; weight: number; lineHeight: number }
+// `letterSpacing` is in ems, as the stylesheet writes it (#219): it widens every glyph by the
+// same fraction of the em, so the estimate can add it to the glyph rather than count characters
+// twice.
+export type MeasureFont = { family: string; sizePt: number; weight: number; lineHeight: number; letterSpacing?: number }
 export type Measure = (text: string, font: MeasureFont, widthMm: number) => number
 
 export const PT_TO_MM = 25.4 / 72
@@ -55,7 +58,7 @@ export function measurableText(text: string): string[] {
 // Average glyph width as a fraction of the em, by weight. A crude model; it errs wide on purpose.
 export const estimateHeight: Measure = (text, font, widthMm) => {
   const em = font.sizePt * PT_TO_MM
-  const glyph = (font.weight >= 600 ? 0.56 : 0.52) * em
+  const glyph = ((font.weight >= 600 ? 0.56 : 0.52) + (font.letterSpacing ?? 0)) * em
   return measurableLines(text).reduce((height, run) => {
     const room = Math.max(widthMm - run.indentEm * em, glyph)
     const lines = Math.max(1, Math.ceil((run.text.length * glyph) / room))

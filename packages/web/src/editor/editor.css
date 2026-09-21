@@ -2819,6 +2819,38 @@
   cursor: pointer;
 }
 .byd-props-chips button:hover { border-color: var(--byd-editor-primary-mark); }
+/* The nine-point pad (L41, #219): the text's placement in both directions, as one grip. Every
+   square draws its own answer — three lines of text, laid where they would land — because without
+   both directions in the picture the nine squares look alike and the pad says nothing. */
+.byd-props-pad { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; width: fit-content; justify-self: start; }
+.byd-props-pad button {
+  display: grid;
+  width: var(--byd-tap);
+  height: var(--byd-tap);
+  padding: 8px;
+  border: 1px solid #2a2d36;
+  border-radius: 6px;
+  background: #0f1115;
+  color: #7d879b;
+  cursor: pointer;
+}
+.byd-props-pad button::before {
+  content: '';
+  width: 14px;
+  height: 10px;
+  background: repeating-linear-gradient(to bottom, currentColor 0 2px, transparent 2px 4px);
+}
+.byd-props-pad button[data-x='left']::before { justify-self: start; }
+.byd-props-pad button[data-x='center']::before { justify-self: center; }
+.byd-props-pad button[data-x='right']::before { justify-self: end; }
+.byd-props-pad button[data-y='top']::before { align-self: start; }
+.byd-props-pad button[data-y='middle']::before { align-self: center; }
+.byd-props-pad button[data-y='bottom']::before { align-self: end; }
+.byd-props-pad button:hover { border-color: var(--byd-editor-primary-mark); }
+/* The chosen square is an edge, a ground and a brighter picture at once: the picture alone is
+   three strokes that already differ from square to square, so it cannot carry the state as well. */
+.byd-props-pad button[aria-checked='true'] { border-color: var(--byd-editor-primary-mark); background: #2f3a55; color: #ffffff; }
+
 .byd-props-disclose {
   grid-column: 1 / -1;
   justify-self: start;

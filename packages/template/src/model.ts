@@ -27,6 +27,10 @@ export const Font = z.object({
   weight: z.union([z.literal(400), z.literal(600), z.literal(700), z.literal(800)]).optional(),
   align: z.enum(['left', 'center', 'right']).optional(),
   lineHeight: z.number().positive().optional(),
+  // Spärrat eller knip (#219), in ems of this element's own font rather than in millimetres: the
+  // fitting steps the size down in the browser (E6), and a gap in millimetres would stay behind
+  // at the size the template was drawn at. Negative tightens.
+  letterSpacing: z.number().optional(),
 })
 export type Font = z.infer<typeof Font>
 
@@ -38,6 +42,12 @@ export const TextElement = z.object({
   color: z.string().min(1),
   // 'shrink' steps the size down to the type's minimum for the script before warning (E6).
   fit: z.enum(['fixed', 'shrink']).optional(),
+  // Where the text stands in its box from top to bottom (#219). Sideways is `font.align`, which
+  // is a property of the setting; this is a property of the box, like `fit`, and sits here for
+  // the same reason. A text that says nothing stands at the top, which is where every text has
+  // stood since there were text elements — so an old template compiles to the bytes it always
+  // compiled to.
+  valign: z.enum(['top', 'middle', 'bottom']).optional(),
 })
 export const ImageElement = z.object({
   kind: z.literal('image'),

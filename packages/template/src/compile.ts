@@ -181,12 +181,27 @@ function iconNode(written: string): InlineNode {
   return role ? { type: 'icon', name, role } : { type: 'icon', name }
 }
 
+// How a text stands in its box from top to bottom (#219). The top is what every text has always
+// done and is written as nothing at all, so a template that says nothing about the placement
+// compiles to exactly the bytes it did before the field existed.
+//
+// `safe` is the load-bearing word. Text that is taller than its box and centred in it spills out
+// of *both* ends, and the half above the box is clipped away with no way to reach it — and the
+// measuring in `dom-fit.ts` reads `scrollHeight`, which cannot see what hangs off the top. With
+// `safe` an overflowing box falls back to the start, so the text is whole, the fitting still
+// sees the overflow, and a browser too old for the keyword lands on the same behaviour by
+// dropping the declaration.
+function standing(valign: 'top' | 'middle' | 'bottom' | undefined): string {
+  if (valign === undefined || valign === 'top') return ''
+  return `display:flex;flex-direction:column;justify-content:safe ${valign === 'middle' ? 'center' : 'flex-end'};`
+}
+
 function render(el: Element, dx: number, dy: number, input: CompileInput, html: string[], css: Css, warnings: Warning[]): void {
   switch (el.kind) {
     case 'text': {
       const value = resolve(el.bind, input.row)
       const f = el.font
-      const mfont = { family: f.family, sizePt: f.sizePt, weight: f.weight ?? 400, lineHeight: f.lineHeight ?? DEFAULT_LINE_HEIGHT }
+      const mfont = { family: f.family, sizePt: f.sizePt, weight: f.weight ?? 400, lineHeight: f.lineHeight ?? DEFAULT_LINE_HEIGHT, ...(f.letterSpacing === undefined ? {} : { letterSpacing: f.letterSpacing }) }
       const minPt = input.type.print.minPtByScript[detectScript(value)] ?? input.type.print.minPtByScript['Latn'] ?? 6
       const measure = input.measure ?? estimateHeight
       const fit = (el.fit ?? 'shrink') === 'shrink'
@@ -201,7 +216,8 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
       }
       css.push(
         `[data-element="${attr(el.id)}"]{left:${el.x + dx}mm;top:${el.y + dy}mm;width:${el.w}mm;height:${el.h}mm;font-size:${fit.sizePt}pt;` +
-          `font-family:${familyOf(f.family, input.fonts)};font-weight:${f.weight ?? 400};text-align:${f.align ?? 'left'};line-height:${f.lineHeight ?? DEFAULT_LINE_HEIGHT};color:${el.color};}`,
+          `font-family:${familyOf(f.family, input.fonts)};font-weight:${f.weight ?? 400};text-align:${f.align ?? 'left'};line-height:${f.lineHeight ?? DEFAULT_LINE_HEIGHT};color:${el.color};` +
+          `${standing(el.valign)}${f.letterSpacing === undefined ? '' : `letter-spacing:${f.letterSpacing}em;`}}`,
       )
       html.push(
         `<div data-element="${attr(el.id)}" data-fit="${el.fit ?? 'shrink'}" data-size-pt="${f.sizePt}" data-min-pt="${minPt}">` +
