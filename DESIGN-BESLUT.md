@@ -4345,6 +4345,38 @@ Det är ett steg i loggen som alla andra — `decide` → commit → `apply` →
 Ett dokument är delat tillstånd, och den som döper om en kolumn har rätt att göra det.
 Namnbytet är ett steg i ångerstacken som vilket annat (B4), och en lek som ingen döpt om beter sig precis som den gjorde.
 
+### L45. Kolumndörrens lista är ett roving-tabbstopp, och dörren håller tangentbordet (mätt och beslutat 2026-09-21, #388)
+
+Dörren bakom `＋` sist i kolumnhuvudet är där kolumnernas verb bor sedan #46, L44 la namnbytet där, och vid tio kolumner hade den vuxit till 23 tabbstopp.
+Mätningen (`docs/ux-audits/2026-09-21/388-dorrens-fokus.md`) läste ordningen ur sidan med en riktig tabbvandring i Chromium, ett stopp i taget, och rättade två gissningar på vägen: det var 18 tryck till första kolumnens namn och inte «upp emot trettio», och `id` och `antal` är inga tabbstopp alls — de är span-namn med hänglås i `×`:ets ställe, så tio kolumner ger åtta rader i ringen.
+
+**Kostnaden satt aldrig i var handen släpps, utan i att listan var 18 stopp lång.**
+Att flytta autofokus till listans första kolumn kostar `+16` tryck på att skapa en kolumn — det vanligaste ärendet, och det acceptanskriteriet förbjöd rakt ut — och `+12` på sista kolumnens namn.
+Formuläret ligger sist i dörren, så varje placering som gör vägen till listan framåt gör vägen till formuläret precis lika lång bakåt; formuläret överst mättes som kontroll och blev bara en annan dyr ände.
+
+**Autofokus står därför kvar i formuläret, och listan blir ett enda tabbstopp.**
+Det är APG:s roving tabindex, samma `roving.ts` som lagerlistan, flikarna och filten använder — en tionde yta får inget tionde mönster.
+`↑`/`↓` och `Home`/`End` går mellan raderna, `←`/`→` mellan kontrollerna i en rad, och en rad man kommer till tar emot handen på sitt namn, eftersom raderna inte är lika långa och ett index som följde med skulle landa på `×`:et i den ena och på bredden i den andra.
+
+| Ärende (tio kolumner, två egna bredder) | Dagens dörr | Roving-listan |
+| --- | ---: | ---: |
+| Skapa en kolumn | **1** | **1** |
+| Första kolumnens namn | 20 | **3** |
+| Sista kolumnens namn | **4** | **4** |
+| En egen bredd mitt i listan | 9 | **7** |
+| Dörrens stopp i dokumentets ring | 23 | **6** |
+
+Ändringen rör inte en pixel: dörren ser likadan ut och `--byd-tap` står kvar.
+
+**Dörren fokusfälls, och blir därmed modal i praktiken.**
+Mätningen hittade att den inte var det: en Tabb från «Avbryt» gick rakt in i tabellcellerna *bakom* den öppna dörren, och en bakåt-Tabb förbi listans början gick ut på `＋` och sedan på rubrikernas sorteringsknappar, med dörren kvar öppen.
+Det är vad en icke-modal `role="group"` får göra enligt APG, men att fokus kan lämna en öppen dörr utan att den märker det är ett fel och inte en frihet.
+Fällan är den `useFocusTrap` biblioteket (L33) och fontarket (L27) redan har, och det den håller är huvudets sista cell: `＋` är dörrens eget handtag, säger `aria-expanded`, och är dit tabellen lämnar tillbaka fokus när en kolumn tagits bort — så ringen är `＋`, listan och formuläret.
+
+Två saker fällan avsiktligt inte gör.
+Den svarar inte Escape: dörren har två lager av den sedan L44 — namnrutan svarar sitt eget utan att stänga dörren, panelen svarar dörrens — och en fälla som svalde trycket skulle svara för båda.
+Och den släpper taget medan en kolumn frågas om, eftersom den frågan står utanför dörren och måste kunna ta fokus; den tar det igen när frågan är besvarad.
+
 ## I. Öppna frågor
 
 Ekonomi och juridik:

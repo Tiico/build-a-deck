@@ -483,6 +483,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // Whether the head's last cell is showing the form that makes a column, and which column has
   // been asked about taking away (#32).
   const [adding, setAdding] = useState(false)
+  // The head's last cell, which is the door and its handle together (#388).
+  const doorCell = useRef<HTMLTableCellElement>(null)
   // The import and the export are the one thing on this surface that is done once and is not a
   // state, so they are what falls into a box (#130). The filters stay in the row.
   const [importing, setImporting] = useState(false)
@@ -1263,12 +1265,16 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 the name it is heard by is the same word as before.
                 The cell is named for what its own column does, so a screen reader still hears
                 what the × under it is for rather than hearing the button above it twice. */}
-            <th className="byd-data-remove" aria-label={t('table.remove.column')}>
+            {/* The cell is what holds the keyboard while the door stands (#388): the ＋ and the
+                panel under it are one thing to a hand, and the focus the table hands back to the
+                ＋ when a column has gone is a focus that must not be pulled off it again. */}
+            <th ref={doorCell} className="byd-data-remove" aria-label={t('table.remove.column')}>
               <button type="button" ref={addRef} aria-label={t('table.columns')} aria-expanded={adding} onClick={() => setAdding(!adding)}>
                 +
               </button>
               {adding && (
                 <ColumnDoor
+                  cell={doorCell}
                   columns={['id', ...fields]}
                   canRemove={(field) => field !== 'id' && field !== ANTAL}
                   onRemove={(field) => setDropping(field)}
