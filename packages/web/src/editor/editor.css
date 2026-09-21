@@ -2096,7 +2096,7 @@
    box that is placed, up or down, and the grid inside it is a list like any other except that it
    stands still in the box and scrolls on its own; the meanings under it are coloured copies of
    the chosen symbol, and the foot says the string the box will write. */
-.byd-symbol-box { display: grid; gap: 6px; padding: 6px; width: 320px; max-height: var(--byd-place-room, 360px); box-sizing: border-box; overflow: auto; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); }
+.byd-symbol-box { position: absolute; z-index: 5; display: grid; gap: 6px; padding: 6px; width: 320px; max-height: var(--byd-place-room, 360px); box-sizing: border-box; overflow: auto; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); }
 .byd-symbol-box .byd-pick-list { position: static; width: auto; max-height: none; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
 .byd-symbol-box .byd-symbol-box-grid { max-height: 176px; overflow: auto; }
 .byd-symbol-box .byd-symbol-box-meanings { display: flex; flex-wrap: wrap; gap: 4px; padding-top: 6px; border-top: 1px solid #2f333d; }
