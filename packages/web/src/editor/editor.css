@@ -738,6 +738,33 @@
 .byd-crown-foot { flex: none; display: flex; align-items: center; gap: var(--byd-s3); padding: var(--byd-s2) 0 0; border-top: 1px solid #2f333d; color: var(--byd-editor-quiet); font-size: 12px; }
 .byd-crown-foot span { white-space: nowrap; }
 .byd-crown-foot p { margin: 0; }
+
+/* ── Hjälpen bakom ett frågetecken (L32, #303) ────────────────────────────────────────────────
+   Ett mönster för hela produkten: frågetecknet står bredvid rubriken eller raden det handlar om,
+   och lådan det öppnar läggs över arbetet — aldrig i flödet, så ytan är lika hög med hjälpen
+   öppen som stängd. Det var det enda av tre mönster där vinsten bestod.
+
+   Lådan är fäst i fönstret och inte i sin egen omslutning: lagerkolumnen är 220 px bred och
+   klipper det som hänger utanför, och en låda som klipps av kolumnen den hjälper till med är
+   ingen hjälp. Var den hamnar — under, över, från vänster- eller högerkanten — läses av
+   `placement.ts` när den öppnas, aldrig av arket.
+
+   Ingen `:hover` öppnar den, och inget i den rör sig: ett sätt in, ett sätt ut. */
+.byd-help { position: relative; display: inline-flex; align-items: center; flex: none; vertical-align: middle; }
+/* Ringen är 22 px; träffytan är den varje kontroll i editorn har. Den marginal som drar ihop
+   knappen till ringens fotavtryck är det som gör att en rad med ett frågetecken i inte blir en
+   44 px hög rad — det är ytan som tävlar med arbetskontrollerna, inte ringen. */
+.byd-help-ask { display: inline-grid; place-items: center; width: var(--byd-tap); height: var(--byd-tap); min-width: var(--byd-tap); min-height: var(--byd-tap); margin: calc((22px - var(--byd-tap)) / 2); border: 0; padding: 0; background: transparent; color: var(--byd-secondary-ink); font: inherit; cursor: pointer; }
+.byd-help-ask > span { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 1px solid var(--byd-secondary-line); border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1; letter-spacing: 0; text-transform: none; }
+.byd-help-ask:hover > span { border-color: var(--byd-secondary-ink); }
+.byd-help-ask[aria-expanded='true'] > span { border-color: var(--byd-editor-primary-mark); background: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); }
+.byd-help-ask:focus-visible { outline: none; }
+.byd-help-ask:focus-visible > span { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+.byd-help-box { position: fixed; z-index: 30; width: 260px; max-width: calc(100vw - 24px); max-height: var(--byd-place-room, 60vh); overflow: auto; padding: 10px 36px 10px 12px; border-radius: 10px; background: #12141a; border: 1px solid var(--byd-secondary-line); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6); color: #c7cede; font-size: 12px; font-weight: 400; line-height: 1.55; letter-spacing: 0; text-transform: none; text-align: left; white-space: normal; }
+.byd-help-box p { margin: 0 0 6px; color: inherit; font-size: inherit; line-height: inherit; max-width: none; }
+.byd-help-box p:last-child { margin-bottom: 0; }
+.byd-help-topic { display: block; margin: 0 0 4px; color: #e6ecfa; font-size: 12px; font-weight: 700; }
+.byd-help-close { position: absolute; top: 0; right: 0; width: var(--byd-tap); height: var(--byd-tap); min-width: var(--byd-tap); min-height: var(--byd-tap); border: 0; border-radius: 10px; padding: 0; background: transparent; color: var(--byd-secondary-ink); font: inherit; font-size: 16px; cursor: pointer; }
 .byd-crown-foot .byd-crown-end { color: var(--byd-editor-quiet); }
 
 /* Wall */

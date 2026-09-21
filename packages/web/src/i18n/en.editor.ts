@@ -114,6 +114,10 @@ export const enEditor = {
   'crown.box.state': '{name}: {state}',
   'crown.box.count': '{name} ({n})',
   'crown.rail.more': 'More filters',
+  // The help pattern (L32, #303): the question mark is named by what it is about, and the box it
+  // opens has a cross. The topic is written where the question mark stands, in its tab.
+  'help.about': 'Help about {topic}',
+  'help.close': 'Close the help',
   'wall.eyes': 'Eyes',
   'wall.eye.normal': 'As you see it',
   'wall.eye.deuteranopia': 'Deuteranopia',

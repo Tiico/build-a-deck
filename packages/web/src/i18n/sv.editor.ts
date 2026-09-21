@@ -135,6 +135,10 @@ export const svEditor = {
   'crown.box.state': '{name}: {state}',
   'crown.box.count': '{name} ({n})',
   'crown.rail.more': 'Fler filter',
+  // Hjälpmönstret (L32, #303): frågetecknet är namngivet efter vad det handlar om, och lådan
+  // det öppnar har ett kryss. Ämnet skrivs där frågetecknet står, i sin flik.
+  'help.about': 'Hjälp om {topic}',
+  'help.close': 'Stäng hjälpen',
   'wall.eyes': 'Ögon',
   'wall.eye.normal': 'Som du ser det',
   'wall.eye.deuteranopia': 'Deuteranopi',
