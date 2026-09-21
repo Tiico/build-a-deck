@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import type { Element, ProjectDoc } from '../src/editor/types.js'
@@ -373,6 +373,46 @@ describe('«Anpassa punkterna» (L26)', () => {
   it('is gone once the shape is already her own', () => {
     open({ shape: 'rect', points: [{ x: 0, y: 0 }, { x: 61, y: 0 }, { x: 30, y: 86 }] })
     expect(door()).toBeNull()
+  })
+})
+
+// The two ways back out of a curve (L38, #327). They are named commands and live where every
+// other named command about a shape lives — in the panel, beside the door the point list came
+// through — and «Räta ut punkten» is about the point the designer is standing on.
+describe('«Räta ut punkten» och «Räta ut alla» (L38)', () => {
+  const bent = [{ x: 0, y: 0 }, { x: 61, y: 0 }, { x: 30, y: 86, in: { dx: -6, dy: -4 }, out: { dx: 6, dy: 4 } }]
+  const one = () => screen.queryByRole('button', { name: 'Räta ut punkten' })
+  const all = () => screen.queryByRole('button', { name: 'Räta ut alla' })
+  const stand = (index: number) => act(() => (document.querySelector(`[data-point="${index}"]`) as HTMLElement).focus())
+
+  // A command that would change nothing reads as a control that is broken: an outline with no
+  // curve in it is offered neither.
+  it('is offered on a curved outline and on no other', () => {
+    open({ shape: 'rect', points: [{ x: 0, y: 0 }, { x: 61, y: 0 }, { x: 30, y: 86 }] })
+    expect(all()).toBeNull()
+    cleanup()
+    open({ shape: 'rect', points: bent })
+    expect(all()).toBeTruthy()
+  })
+
+  // The point is the one the keyboard or the hand is standing on, and a corner has nothing to
+  // straighten — so the command waits until the designer is on a point that does.
+  it('straightens the point the designer stands on, and waits for one that carries a curve', () => {
+    const { onPatch } = open({ shape: 'rect', points: bent })
+    expect(one()).toBeNull()
+    stand(0)
+    expect(one()).toBeNull()
+    stand(2)
+    fireEvent.click(one()!)
+    expect(patched(onPatch).points).toEqual([{ x: 0, y: 0 }, { x: 61, y: 0 }, { x: 30, y: 86 }])
+  })
+
+  // «Räta ut alla» gives the outline back as the polygon L26 wrote — which is exactly a point
+  // list with no handle left in it.
+  it('gives the whole shape back as a polygon', () => {
+    const { onPatch } = open({ shape: 'rect', points: bent })
+    fireEvent.click(all()!)
+    expect(patched(onPatch).points).toEqual([{ x: 0, y: 0 }, { x: 61, y: 0 }, { x: 30, y: 86 }])
   })
 })
 

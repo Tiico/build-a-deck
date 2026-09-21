@@ -3,6 +3,7 @@
 // and the canvas is a thin consumer, so what a gesture leaves behind can be checked without a
 // DOM and without a browser.
 import type { Point } from '@byd/template'
+import { round } from './canvas.js'
 
 export type { Point }
 
@@ -86,4 +87,82 @@ export function afterPruning(points: readonly Point[], index: number): number {
 
 function inside(at: Point, box: { w: number; h: number }): Point {
   return { x: Math.min(box.w, Math.max(0, at.x)), y: Math.min(box.h, Math.max(0, at.y)) }
+}
+
+// How far the pointer must travel before a press on a mid-dot is a drag and not a click (L38).
+// Four device pixels is a floor and not a taste: a hand resting on a trackpad always moves some
+// pixel, and a threshold below that would take «lägg till en punkt» away from the shaky hand.
+// Nothing about the gesture is decided until it is passed — released before, it was a click.
+export const BEND_PX = 4
+
+// Whether a press has become a drag. Device pixels and not millimetres: the threshold is about
+// the hand on the desk, and the zoom must not make a steady hand shaky or a shaky one steady.
+export function bendStarted(from: { x: number; y: number }, to: { x: number; y: number }, px: number = BEND_PX): boolean {
+  return Math.hypot(to.x - from.x, to.y - from.y) >= px
+}
+
+// The side bent to where the pointer is (L38). A cubic whose two controls carry the same offset
+// passes through its own middle at three quarters of that offset, so four thirds of how far the
+// pointer has left the chord is what puts the middle of the side under the hand — «det man tar i
+// är det som ändras». Only the two arms the side reads are written: the sides on either side of
+// it are the straight lines they were.
+export function bentEdge(points: readonly Point[], edge: number, to: Point, box: { w: number; h: number }): Point[] {
+  const from = points[edge]
+  const next = points[(edge + 1) % points.length]
+  if (!from || !next) return [...points]
+  const at = inside(to, box)
+  const mid = { x: (from.x + next.x) / 2, y: (from.y + next.y) / 2 }
+  const arm = { dx: (4 * (at.x - mid.x)) / 3, dy: (4 * (at.y - mid.y)) / 3 }
+  return points.map((p, i) => {
+    if (i === edge) return { ...p, out: held(p, arm, box) }
+    if (i === (edge + 1) % points.length) return { ...p, in: held(p, arm, box) }
+    return p
+  })
+}
+
+// Where a handle stands on the card, or nothing at all for an arm the point does not carry: a
+// handle appears once the curve exists (L38), and a point with no handle is a corner.
+export function handleAt(points: readonly Point[], index: number, arm: Arm): Point | null {
+  const p = points[index]
+  const v = p?.[arm]
+  return p && v ? { x: p.x + v.dx, y: p.y + v.dy } : null
+}
+
+// A handle pulled to where the pointer is. Mirroring is the default (L38): the opposite arm
+// follows equally far the other way, so the curve runs evenly through the point rather than
+// breaking at it — and `Alt` during the drag breaks it for that handle alone.
+export function movedHandle(points: readonly Point[], index: number, arm: Arm, to: Point, box: { w: number; h: number }, mirror: boolean): Point[] {
+  const at = points[index]
+  if (!at) return [...points]
+  const pulled = held(at, { dx: to.x - at.x, dy: to.y - at.y }, box)
+  const other = arm === 'in' ? 'out' : 'in'
+  return points.map((p, i) => (i === index ? { ...p, [arm]: pulled, ...(mirror ? { [other]: held(p, { dx: -pulled.dx, dy: -pulled.dy }, box) } : {}) } : p))
+}
+
+// «Räta ut punkten» (L38): the point gives its handles up and is a corner again.
+export function straightPoint(points: readonly Point[], index: number): Point[] {
+  return points.map((p, i) => (i === index ? { x: p.x, y: p.y } : p))
+}
+
+// «Räta ut alla»: the shape is the polygon L26 wrote, which is what a list with no handle left
+// in it already is.
+export function straightAll(points: readonly Point[]): Point[] {
+  return points.map((p) => ({ x: p.x, y: p.y }))
+}
+
+// Whether the outline has a curve in it at all, which is what the two straightening commands
+// are offered for.
+export function bentPoints(points: readonly Point[]): boolean {
+  return points.some((p) => p.in !== undefined || p.out !== undefined)
+}
+
+export type Arm = 'in' | 'out'
+
+// An arm kept inside the box, in the tenth of a millimetre every other number on the canvas is
+// written in. A cubic lies inside the hull its four controls span, and the renderer clips the
+// outline to the element's box — so a control outside it is a curve cut off on the card, and the
+// box wins over the arm exactly as it wins over the point (L26).
+function held(at: Point, arm: { dx: number; dy: number }, box: { w: number; h: number }): { dx: number; dy: number } {
+  const on = inside({ x: at.x + arm.dx, y: at.y + arm.dy }, box)
+  return { dx: round(on.x - at.x), dy: round(on.y - at.y) }
 }

@@ -513,8 +513,12 @@ export const svEditor = {
   // den gör, för den är ingen punkt utan en plats där en punkt kan bli till.
   'canvas.point': 'Punkt {n} av {of}',
   'canvas.point.mid': 'Lägg till en punkt på kant {n}',
+  'canvas.point.handle.in': 'Inhandtag för punkt {n}',
+  'canvas.point.handle.out': 'Uthandtag för punkt {n}',
   'canvas.point.least': 'En form behöver minst tre punkter.',
   'canvas.props.own': 'Anpassa punkterna',
+  'canvas.props.straight': 'Räta ut punkten',
+  'canvas.props.straightAll': 'Räta ut alla',
   'canvas.props.corners': 'Hörn',
   'canvas.props.rotation': 'Vridning',
   'canvas.props.innerRatio': 'Uddjup',

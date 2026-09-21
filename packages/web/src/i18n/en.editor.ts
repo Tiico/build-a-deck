@@ -453,8 +453,12 @@ export const enEditor = {
   // outline; a mid-dot says what it does, because it is not a point but a place one can become.
   'canvas.point': 'Point {n} of {of}',
   'canvas.point.mid': 'Add a point on edge {n}',
+  'canvas.point.handle.in': 'In-handle for point {n}',
+  'canvas.point.handle.out': 'Out-handle for point {n}',
   'canvas.point.least': 'A shape needs at least three points.',
   'canvas.props.own': 'Customise the points',
+  'canvas.props.straight': 'Straighten the point',
+  'canvas.props.straightAll': 'Straighten all',
   'canvas.props.corners': 'Corners',
   'canvas.props.rotation': 'Turn',
   'canvas.props.innerRatio': 'Point depth',
