@@ -30,7 +30,7 @@ describe('the help pattern in the stylesheet', () => {
   })
 
   it('gives the question mark the hit area the editor gives every control', () => {
-    const ask = rules.find(([selector]) => selector === '.byd-help-ask')
+    const ask = rules.find(([selector]) => selector === '.byd-editor .byd-help-ask')
     expect(ask).toBeDefined()
     expect(ask![1]).toMatch(/width: var\(--byd-tap\)/)
     expect(ask![1]).toMatch(/height: var\(--byd-tap\)/)

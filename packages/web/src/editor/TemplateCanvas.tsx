@@ -23,6 +23,7 @@ import { LIBRARY, type GameSymbol } from './symbols.js'
 import { SymbolList, symbolListKey, symbolOptionId } from './SymbolList.js'
 import type { ProjectCredit } from '@byd/server'
 import { useT, type Key, type T } from '../i18n/index.js'
+import { Help } from './HelpDrawer.js'
 import { useSay } from '../status/StatusLive.js'
 import { DragDoor } from './DragDoor.js'
 import { PictureLibraryDialog, type LibraryPicture } from './PictureLibrary.js'
@@ -274,9 +275,20 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
           </label>
           {column && <GroupRules doc={doc} column={column} groups={groups} />}
         </div>
-        <p className="byd-canvas-hint">
-          {t(group ? 'canvas.hint.group' : 'canvas.hint.base')}
-        </p>
+        {/* One line about dragging, and the keyboard behind the question mark (L32, #303). The
+            whole sentence was six lines in this 220 px column — a third of the list's height,
+            two layer rows that did not fit. In a group the order is the base's and there is
+            nothing to move, so the line says that and offers no help about moving. */}
+        <div className="byd-canvas-hint byd-help-row">
+          <span>{t(group ? 'canvas.hint.group' : 'canvas.hint.base')}</span>
+          {!group && (
+            <Help topic={t('canvas.help.topic')}>
+              <p>{t('canvas.help.order')}</p>
+              <p>{t('canvas.help.rename')}</p>
+              <p>{t('canvas.help.move')}</p>
+            </Help>
+          )}
+        </div>
       </aside>
       )}
       {shows('canvas') && (

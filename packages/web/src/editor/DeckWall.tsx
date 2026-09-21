@@ -19,6 +19,7 @@ import { framingOf, measuredSpots, objections } from './framing.js'
 import { frameWindow } from '@byd/template'
 import { assetUrl, isAssetRef } from './assets.js'
 import { useT, type Key } from '../i18n/index.js'
+import { Help } from './HelpDrawer.js'
 
 export type DeckWallProps = {
   doc: ProjectDoc
@@ -496,9 +497,12 @@ function Checks({
         <p className="byd-wall-ok">{t('wall.checks.ok')}</p>
       ) : (
         <>
-          <p className="byd-wall-lead">
-            {errors > 0 ? t(errors === 1 ? 'wall.checks.errors.one' : 'wall.checks.errors.other', { n: errors }) : t('wall.checks.warningsOnly')}
-          </p>
+          <div className="byd-wall-lead byd-help-row">
+            <span>{errors > 0 ? t(errors === 1 ? 'wall.checks.errors.one' : 'wall.checks.errors.other', { n: errors }) : t('wall.checks.warningsOnly')}</span>
+            <Help topic={t('wall.checks.help.topic')}>
+              <p>{t('wall.checks.help')}</p>
+            </Help>
+          </div>
           <ul aria-label={t('wall.checks.title')}>
             {groups.map((g) => (
               <li key={g.code} data-severity={g.severity} data-check={g.code}>
@@ -532,7 +536,6 @@ function Checks({
               </li>
             ))}
           </ul>
-          <p className="byd-wall-lead">{t('wall.checks.note')}</p>
         </>
       )}
     </div>
@@ -597,8 +600,12 @@ function Measure({
   if (measured.length === 0) return null
   return (
     <section className="byd-wall-measure" role="group" aria-label={t('wall.measure')}>
-      <h2>{t('wall.measure')}</h2>
-      <p className="byd-wall-lead">{t('wall.measure.lead', { fields: [...new Set(measured.map((s) => s.field))].join(', ') })}</p>
+      <div className="byd-help-row">
+        <h2>{t('wall.measure')}</h2>
+        <Help topic={t('wall.measure.help.topic')}>
+          <p>{t('wall.measure.help', { fields: [...new Set(measured.map((s) => s.field))].join(', ') })}</p>
+        </Help>
+      </div>
       {cannot.length === 0 ? (
         <p className="byd-wall-ok">{t('wall.measure.even', { n: even, of: doc.rows.length })}</p>
       ) : (

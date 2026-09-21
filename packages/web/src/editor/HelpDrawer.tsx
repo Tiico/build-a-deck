@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { useDoor } from '../doors.js'
 import { useT } from '../i18n/index.js'
-import { placeBox, type Placement } from './placement.js'
+import { placeBox, type Anchor, type Placement, type Viewport, type Wants } from './placement.js'
 
 // The one help pattern the product has (L32, #303): a question mark that opens a box under itself.
 //
@@ -120,29 +120,48 @@ function HelpBox({ id, topic, ask, onClose, children }: { id: string; topic: str
 // is `placeBox`'s; what differs from a slot's box is that this one is fixed to the window rather
 // than to its own wrapper, because the wrapper stands inside columns that clip their overflow —
 // the layer column is 220 px wide and the box is 260 — and a box clipped by the column it helps
-// with is no help.
-type Fixed = Pick<Placement, 'y' | 'x'> & { style: CSSProperties }
+// with is no help. Pure, so that a browser test can lay a box by it against a rectangle it has
+// really measured; the hook under it does nothing but hold a box against the reading.
+export type HelpPlacement = Pick<Placement, 'y' | 'x'> & { style: CSSProperties }
 const GAP = 6
 // The width the stylesheet gives the box, said again here for a reading taken before the box has
 // been laid out — a wish of nought fits anywhere, and that is exactly what the flip is asking.
-const WIDTH = 260
+export const HELP_WIDTH = 260
 
-function useFixedPlacement(ask: RefObject<HTMLButtonElement | null>, box: RefObject<HTMLElement | null>): Fixed | null {
-  const [place, setPlace] = useState<Fixed | null>(null)
+// What the box hangs from. Across, it is the question mark: the box's left edge is the ring's.
+// Down, it is the whole row the question mark stands in when there is one — the heading or the
+// line the help is about — so a box that flips upward over a line that wraps never lands on the
+// words it explains. A question mark standing alone in a wider bar hangs the box from itself.
+export const ROW = '.byd-help-row'
+export function helpAnchor(ask: Anchor, row: Anchor | null): Anchor {
+  if (!row) return ask
+  const top = Math.min(ask.y, row.y)
+  return { x: ask.x, y: top, w: ask.w, h: Math.max(ask.y + ask.h, row.y + row.h) - top }
+}
+
+export function helpPlacement(anchor: Anchor, wants: Wants, view: Viewport): HelpPlacement {
+  const at = placeBox(anchor, { w: wants.w || HELP_WIDTH, h: wants.h }, view, { gap: GAP })
+  const style: CSSProperties = { ['--byd-place-room' as string]: `${at.room}px` }
+  if (at.y === 'down') style.top = `${anchor.y + anchor.h + GAP}px`
+  else style.bottom = `${view.h - anchor.y + GAP}px`
+  if (at.x === 'start') style.left = `${anchor.x}px`
+  else style.right = `${view.w - (anchor.x + anchor.w)}px`
+  return { y: at.y, x: at.x, style }
+}
+
+function useFixedPlacement(ask: RefObject<HTMLButtonElement | null>, box: RefObject<HTMLElement | null>): HelpPlacement | null {
+  const [place, setPlace] = useState<HelpPlacement | null>(null)
   useLayoutEffect(() => {
     const measure = () => {
       const a = ask.current
       const b = box.current
       if (!a || !b) return
       const r = a.getBoundingClientRect()
-      const view = { w: window.innerWidth, h: window.innerHeight }
-      const at = placeBox({ x: r.left, y: r.top, w: r.width, h: r.height }, { w: b.offsetWidth || WIDTH, h: b.scrollHeight }, view, { gap: GAP })
-      const style: CSSProperties = { ['--byd-place-room' as string]: `${at.room}px` }
-      if (at.y === 'down') style.top = `${r.bottom + GAP}px`
-      else style.bottom = `${view.h - r.top + GAP}px`
-      if (at.x === 'start') style.left = `${r.left}px`
-      else style.right = `${view.w - r.right}px`
-      setPlace({ y: at.y, x: at.x, style })
+      const row = a.closest(ROW)?.getBoundingClientRect() ?? null
+      const anchor = helpAnchor({ x: r.left, y: r.top, w: r.width, h: r.height }, row && { x: row.left, y: row.top, w: row.width, h: row.height })
+      // `scrollHeight` and not the drawn height: the drawn one is whatever the last placement left
+      // it at, and measuring that would let the box ratchet itself smaller on every scroll.
+      setPlace(helpPlacement(anchor, { w: b.offsetWidth, h: b.scrollHeight }, { w: window.innerWidth, h: window.innerHeight }))
     }
     measure()
     window.addEventListener('resize', measure)

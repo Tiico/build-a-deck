@@ -11,6 +11,7 @@ import { SymbolSample, SymbolSheet } from './SymbolSample.js'
 import { contrastRatio } from '@byd/template'
 import type { ProjectClient } from './ProjectClient.js'
 import { useT, type Key } from '../i18n/index.js'
+import { Help } from './HelpDrawer.js'
 
 // The symbol library (E4), from the prototype: the library is a surface of its own, with search,
 // categories and the licence on every symbol. Taking one in names it in the project's icon set,
@@ -97,8 +98,12 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
       )}
       <div className="byd-symbols-work">
         <aside className="byd-symbols-library">
-          <h2>{t('symbols.library')}</h2>
-          <p>{t('symbols.lead')}</p>
+          <div className="byd-help-row">
+            <h2>{t('symbols.library')}</h2>
+            <Help topic={t('symbols.help.topic')}>
+              <p>{t('symbols.help')}</p>
+            </Help>
+          </div>
           {found.length === 0 ? (
             <p className="byd-symbols-empty">{t('symbols.none')}</p>
           ) : (
@@ -292,8 +297,12 @@ function GameColours({ doc, client, icons }: { doc: ProjectDoc; client: ProjectC
   }
   return (
     <section className="byd-symbols-colours">
-      <h2>{t('symbols.colours')}</h2>
-      <p className="byd-symbols-lead">{t('symbols.colours.lead')}</p>
+      <div className="byd-help-row">
+        <h2>{t('symbols.colours')}</h2>
+        <Help topic={t('symbols.colours.help.topic')}>
+          <p>{t('symbols.colours.help')}</p>
+        </Help>
+      </div>
       {roles.length === 0 ? (
         <p className="byd-symbols-empty">{t('symbols.colours.none')}</p>
       ) : (

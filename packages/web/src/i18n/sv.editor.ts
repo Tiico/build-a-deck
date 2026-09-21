@@ -157,7 +157,8 @@ export const svEditor = {
   'wall.foot.remarks.one': 'En anmärkning',
   'wall.foot.remarks.other': '{n} anmärkningar',
   'wall.measure': 'Bildernas mått',
-  'wall.measure.lead': 'Måttet självt står i mallens bildelement, för {fields}. Här står lekens svar på det: filerna som inte kan svara, och kortens egna undantag. Filerna rörs aldrig.',
+  'wall.measure.help': 'Måttet självt står i mallens bildelement, för {fields}. Här står lekens svar på det: filerna som inte kan svara, och kortens egna undantag. Filerna rörs aldrig.',
+  'wall.measure.help.topic': 'måttet',
   'wall.measure.even': 'Alla bilder ritar motivet lika stort: {n} av {of}.',
   'wall.measure.cannot': 'Bilder som inte kan svara',
   'wall.measure.cannot.one': 'En bild kan inte svara på måttet.',
@@ -179,7 +180,8 @@ export const svEditor = {
   'wall.checks.errors.one': 'Ett slags fel stoppar en order.',
   'wall.checks.errors.other': '{n} slags fel stoppar en order.',
   'wall.checks.warningsOnly': 'Bara varningar. Inget stoppar en order.',
-  'wall.checks.note': 'En anmärkning är oftast mallens, inte kortets: den syns på varje kort som ärver elementet.',
+  'wall.checks.help': 'En anmärkning är oftast mallens, inte kortets: den syns på varje kort som ärver elementet.',
+  'wall.checks.help.topic': 'anmärkningarna',
   'wall.checks.fix': 'Rätta i mallen',
   'wall.checks.fix.said': '{what} rättad i mallen.',
   'wall.checks.fix.none': 'Den här behöver ett formval och kan inte rättas åt dig.',
@@ -398,8 +400,11 @@ export const svEditor = {
   // Vad som går, och inte bara vad som gick (#144). Meningen var sann bara så länge elementet inte
   // gick att flytta från tangentbordet: den namngav ordningen och omdöpningen och teg om själva
   // flytten, vilket var precis den som saknades.
-  'canvas.hint.base':
-    'Dra ett lager för att ändra ordningen, eller håll Alt och tryck pil upp eller ner. F2 byter namn på lagret. Elementet flyttas från duken: Enter går in i flyttläge, pilarna nudgar.',
+  'canvas.hint.base': 'Dra för att ändra ordningen.',
+  'canvas.help.topic': 'lagerlistan',
+  'canvas.help.order': 'Håll Alt och tryck pil upp eller ner för att flytta lagret utan att dra.',
+  'canvas.help.rename': 'F2 byter namn på lagret.',
+  'canvas.help.move': 'Elementet flyttas från duken: Enter går in i flyttläge, pilarna nudgar.',
   'canvas.hint.group': 'Lagrens ordning är basens och ändras med basfliken vald.',
   'canvas.groupBy': 'Grupperas av kolumnen',
   'canvas.groupBy.none': '— ingen —',
@@ -588,7 +593,8 @@ export const svEditor = {
 
   // Symbolbiblioteket och spelets egen uppsättning.
   'symbols.colours': 'Spelets färger',
-  'symbols.colours.lead': 'En betydelse, en färg. Korten skriver betydelsen och aldrig färgen, så en ändring här målar om varje kort som säger den.',
+  'symbols.colours.help': 'En betydelse, en färg. Korten skriver betydelsen och aldrig färgen, så en ändring här målar om varje kort som säger den.',
+  'symbols.colours.help.topic': 'betydelserna',
   'symbols.colours.none': 'Spelet har inga betydelser än. En symbol utan betydelse ritas i bläck.',
   'symbols.colours.ink': 'utan betydelse',
   'symbols.colours.new': 'betydelse',
@@ -610,7 +616,8 @@ export const svEditor = {
   'symbols.ink.night': 'natt',
   'symbols.ink.plum': 'plommon',
   'symbols.library': 'Symbolbibliotek',
-  'symbols.lead': 'Fritt licensierade symboler, platshållarramar och färgblock. Licensen följer med in i trycket.',
+  'symbols.help': 'Fritt licensierade symboler, platshållarramar och färgblock. Licensen följer med in i trycket.',
+  'symbols.help.topic': 'biblioteket',
   'symbols.search': 'Sök symbol',
   'symbols.search.placeholder': 'Sök symbol…',
   'symbols.category': 'Kategori',
@@ -647,7 +654,7 @@ export const svEditor = {
   'rules.view.table': 'Som på bordet',
   'rules.view.said': '{mode}.',
   'rules.view.said.at': '{mode}. Samma avsnitt: {section}.',
-  'rules.empty': 'Reglerna hör till spelet: de versioneras med korten, och spelarna når dem från telefonen, TV:n och observatören.',
+  'rules.empty': 'Reglerna hör till spelet.',
   'rules.start': 'Börja skriva reglerna',
   'rules.toc': 'Innehåll',
   'rules.toc.under': 'Underrubriker i {section}',
@@ -733,7 +740,10 @@ export const svEditor = {
   // som redan är ledig att säga det på. Texten lovar bara det `[[` faktiskt gör: en symbol skrivs
   // med måsvinge och hör inte hit (L23).
   'rules.ask.refs': '[[ hämtar en zon eller ett kort.',
-  'rules.hint': 'Klicka i sidan för att skriva. En regel som nämner en zon eller ett kort följer med när det byter namn.',
+  'rules.hint': 'Klicka i sidan för att skriva.',
+  'rules.help.topic': 'reglerna',
+  'rules.help.reach': 'Reglerna versioneras med korten, och spelarna når dem från telefonen, TV:n och observatören.',
+  'rules.help.names': 'En regel som nämner en zon eller ett kort följer med när det byter namn.',
   'rules.warnings.one': '{n} referens pekar på något spelet inte har',
   'rules.warnings.other': '{n} referenser pekar på något spelet inte har',
   'rules.addAfter': 'Lägg till efter {id}',
@@ -776,7 +786,11 @@ export const svEditor = {
   // Uppställningen: receptets rattar, filten och telefonens blad.
   'setup.addArea': '＋ Yta',
   'setup.addPile': '＋ Hög',
-  'setup.hint': 'Listan är varje zon bordet har. Dra en zon på filten för att flytta den, hörnet för att ändra storlek; piltangenterna knuffar den valda och Delete tar bort den.',
+  'setup.hint': 'Dra en zon på filten för att flytta den.',
+  'setup.help.topic': 'zonerna',
+  'setup.help.resize': 'Dra hörnet för att ändra storlek.',
+  'setup.help.keys': 'Piltangenterna knuffar den valda zonen; Delete tar bort den.',
+  'setup.help.list': 'Listan är varje zon bordet har.',
   'setup.invalid': 'Bordet går inte att bygga av den här setupen: varje hand behöver en ägare och en hög att återlämna till, och varje ägare måste vara en plats.',
   'setup.players': 'Spelare',
   'setup.counters': 'Räknare',
@@ -785,7 +799,8 @@ export const svEditor = {
   'setup.counter.start': 'Startvärde för räknare {n}',
   'setup.counter.remove': 'Ta bort räknare {n}',
   'setup.counter.add': '＋ Räknare',
-  'setup.counter.stacks': 'En eller två räknare ligger bredvid varandra framför platsen. En tredje staplar platsens brickor i en hög, som bordet öppnar vid namn.',
+  'setup.counters.help': 'En eller två räknare ligger bredvid varandra framför platsen. En tredje staplar platsens brickor i en hög, som bordet öppnar vid namn.',
+  'setup.counters.help.topic': 'räknarna',
   'setup.addSeatArea': '＋ Yta per plats',
   'setup.addSeatCounters': '＋ Räknarzon per plats',
   'zone.copy': 'Kopia av {name}',
@@ -878,7 +893,8 @@ export const svEditor = {
   'setup.place.to.hands': 'till varje hand',
   'setup.place.to.mine': 'till min hand',
   'setup.place.to.zone': 'till {zone}',
-  'setup.seats.hint': 'En ny plats får en hand och det platserna redan har. En plats som lämnar bordet tar sina zoner med sig.',
+  'setup.seats.help': 'En ny plats får en hand och det platserna redan har. En plats som lämnar bordet tar sina zoner med sig.',
+  'setup.seats.help.topic': 'platserna',
   'setup.counters.homeless': 'Ingen plats har någon räknarzon, så inga brickor läggs på bordet. Ge platserna en med "Räknarzon per plats".',
   // En zonfamilj (#175): samma zon vid var sin plats, som en rad med hur många platser som har den.
   // Antalet är upplysningen — den dagen en plats saknar sin hand är det listan som ska visa det.
@@ -955,7 +971,9 @@ export const svEditor = {
   'tables.loading': 'Laddar bord…',
   // Versionen ett nytt bord låser står här och inte i knappen (L31): en etikett som ska säga
   // både vad som händer och på vilken version slutar med att säga versionen högst.
-  'tables.lead': 'Varje bord hör till det här spelet; ett nytt startar från den sparade versionen, rev {n}. Ett bord överlever att alla kopplar ner; det avslutas uttryckligen eller efter ett dygn.',
+  'tables.lead': 'Bord på det här spelet. Ett nytt startar från den sparade versionen, rev {n}.',
+  'tables.help.topic': 'borden',
+  'tables.help.life': 'Ett bord överlever att alla kopplar ner. Det avslutas uttryckligen, eller av sig självt efter ett dygn.',
   'tables.none': 'Inget bord ännu. "Uppdatera bordet" startar ett från den sparade versionen.',
   'tables.menu.none': 'Inget bord ännu. "Uppdatera bordet" startar ett.',
   'tables.starting': 'Startar bordet…',
@@ -999,7 +1017,9 @@ export const svEditor = {
   // Historiken: varje sparning som en version, och vad den ändrade.
   'history.title': 'Historik',
   'history.close': 'Stäng historiken',
-  'history.lead': 'Varje sparning är en version. Ingen av dem skrivs om; den du tar tillbaka blir nästa version.',
+  'history.lead': 'Den du tar tillbaka blir nästa version.',
+  'history.help.topic': 'historiken',
+  'history.help': 'Varje sparning är en version, och ingen av dem skrivs om.',
   'history.loading': 'Laddar historiken…',
   'history.version': 'Version {rev}',
   'history.current': 'öppen nu',
@@ -1083,7 +1103,8 @@ export const svEditor = {
   // Vilka som har spelet: de som är inne nu, och de som får vara med.
   'share.title': 'Vilka som har spelet',
   'share.close': 'Stäng',
-  'share.lead': 'De som är inne nu står överst. Samma lista säger vem som får vara med.',
+  'share.help': 'De som är inne nu står överst. Samma lista säger vem som får vara med.',
+  'share.help.topic': 'delningen',
   'share.reading': 'Läser…',
   'share.hereNow': 'inne nu',
   'share.remove': 'Ta bort',

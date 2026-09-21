@@ -22,6 +22,7 @@ import {
 } from '@byd/template'
 import type { ProjectClient } from './ProjectClient.js'
 import { useT, type T } from '../i18n/index.js'
+import { Help } from './HelpDrawer.js'
 import type { Key } from '../i18n/sv.js'
 import { useGesture } from './gesture.js'
 import { ASSET_PREFIX, RULE_IMAGE_MAX_BYTES, assetUrl, imageSizeOf, imageTypeOf } from './assets.js'
@@ -206,6 +207,10 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
         {writing && <Modes mode={mode} onMode={setMode} />}
         {/* What the rules are for, as a line above the disposition and never as a box (#131). */}
         <span>{t(rules ? 'rules.hint' : 'rules.empty')}</span>
+        <Help topic={t('rules.help.topic')}>
+          <p>{t('rules.help.reach')}</p>
+          <p>{t('rules.help.names')}</p>
+        </Help>
         {/* Which file the book came out of, and when (#131): text in the document, so it travels
             with the project rather than with the browser the file was picked in. */}
         {rules?.source && <span>{t('rules.source', { file: rules.source.file, when: when(rules.source.at, Date.now(), t) })}</span>}
