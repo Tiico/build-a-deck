@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { symbolName, symbolPreview, type GameSymbol } from './symbols.js'
 import { useT } from '../i18n/index.js'
 import { PickList, pickKey, pickOptionId, type PickAction } from './picking.js'
@@ -20,7 +21,7 @@ export const symbolListKey = pickKey
 // Which option the driver points at. Built from the list's own id, so two lists on a page — the
 // rail's and a cell's — never name the same element.
 export const symbolOptionId = (list: string, symbol: GameSymbol): string => pickOptionId(list, symbol.id)
-export const roleOptionId = (list: string, role: string): string => pickOptionId(list, role)
+export const roleOptionId = (list: string, role: string | null): string => pickOptionId(list, role ?? '')
 
 export type SymbolListProps = {
   // The id the list is known by, and what its options' ids are built from.
@@ -30,10 +31,13 @@ export type SymbolListProps = {
   label: string
   // Where this one is drawn: the shared look is the class every list wears, and this places it.
   className: string
+  // What a symbol looks like in its row, when it is not the library's own picture: the cell's
+  // picker draws each one as a sample on the card's paper, in the meaning the keys are on (L34).
+  sample?: ((symbol: GameSymbol) => ReactNode) | undefined
   onPick(symbol: GameSymbol): void
 }
 
-export function SymbolList({ id, symbols, active, label, className, onPick }: SymbolListProps) {
+export function SymbolList({ id, symbols, active, label, className, sample, onPick }: SymbolListProps) {
   const t = useT()
   return (
     <PickList
@@ -48,7 +52,7 @@ export function SymbolList({ id, symbols, active, label, className, onPick }: Sy
     >
       {(symbol) => (
         <>
-          <img src={symbolPreview(symbol)} alt="" />
+          {sample ? sample(symbol) : <img src={symbolPreview(symbol)} alt="" />}
           <span>{symbolName(symbol, t)}</span>
           <small>{t(symbol.category)}</small>
         </>
@@ -61,31 +65,41 @@ export function SymbolList({ id, symbols, active, label, className, onPick }: Sy
 // not the symbol list wearing a hat: the two hold different things and are chosen between by
 // something the designer typed. What they share is the list they are both drawn as, because the
 // focus is in the sentence being written in both cases.
+//
+// A meaning of `null` is «utan betydelse» (L34): the symbol as the card draws it in ink, first in
+// the list so that ink is one of the rows and not an exception to them. The cell's picker offers
+// it; the list opened by a typed bar does not, since the bar itself said a meaning was wanted.
+export type Meaning = { role: string | null; colour: string }
 export type RoleListProps = {
   id: string
-  roles: readonly { role: string; colour: string }[]
+  roles: readonly Meaning[]
   active: number
   label: string
   className: string
-  onPick(role: string): void
+  // What «utan betydelse» is called, for a list that offers it.
+  none?: string | undefined
+  // A coloured copy of the very symbol the designer chose, on the card's paper (L34) — instead of
+  // a name beside an abstract colour dot. Without it the row is the dot, as it was.
+  sample?: ((meaning: Meaning) => ReactNode) | undefined
+  onPick(role: string | null): void
 }
 
-export function RoleList({ id, roles, active, label, className, onPick }: RoleListProps) {
+export function RoleList({ id, roles, active, label, className, none, sample, onPick }: RoleListProps) {
   return (
     <PickList
       id={id}
       className={`byd-symbol-list byd-role-list ${className}`}
       label={label}
       options={roles}
-      keyOf={({ role }) => role}
-      attrs={({ role }) => ({ 'data-role': role })}
+      keyOf={({ role }) => role ?? ''}
+      attrs={({ role }) => ({ 'data-role': role ?? '' })}
       active={active}
       onPick={({ role }) => onPick(role)}
     >
-      {({ role, colour }) => (
+      {(meaning) => (
         <>
-          <span className="byd-role-swatch" style={{ background: colour }} />
-          <span>{role}</span>
+          {sample ? sample(meaning) : <span className="byd-role-swatch" style={{ background: meaning.colour }} />}
+          <span>{meaning.role ?? none}</span>
         </>
       )}
     </PickList>

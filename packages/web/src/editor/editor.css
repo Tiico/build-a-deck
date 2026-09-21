@@ -2079,6 +2079,10 @@
 .byd-symbols-inks button { min-width: 24px; min-height: 24px; padding: 0; display: grid; place-items: center; border-radius: 6px; }
 .byd-symbols-inks button[aria-pressed='true'] { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 1px; }
 .byd-symbols-inks span { width: 14px; height: 14px; border-radius: 3px; box-shadow: inset 0 0 0 1px #ffffff40; }
+/* Ink as one of the rows (L34): the example symbol as the card draws it with no meaning, and the
+   string that writes it, in the same shape as the meanings under it. */
+.byd-symbols-ink { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 4px 8px; color: var(--byd-editor-quiet); font-size: 12px; }
+.byd-symbols-colours code, .byd-symbols-ink code { color: #ffd98a; font-size: 12px; }
 .byd-symbols-issue { margin: 8px 0 0; padding: 4px 8px; border-radius: 8px; background: var(--byd-editor-lost-bg); color: #ffc9d6; font-size: 12px; }
 /* The cards that say the symbol in hand (#178), and the chips that choose which one. The tab used
    to draw the whole deck under the library whatever was asked — a deck of 308 was ten thousand
@@ -2088,6 +2092,23 @@
 .byd-symbols-chips small { color: var(--byd-editor-quiet); font-variant-numeric: tabular-nums; }
 .byd-symbols-add { margin-top: 8px; }
 .byd-role-list > button { display: grid; grid-template-columns: 16px 1fr; align-items: center; gap: 10px; }
+/* The box a symbol and its meaning are chosen in, at the brace in a cell (L34, #302). It is the
+   box that is placed, up or down, and the grid inside it is a list like any other except that it
+   stands still in the box and scrolls on its own; the meanings under it are coloured copies of
+   the chosen symbol, and the foot says the string the box will write. */
+.byd-symbol-box { position: absolute; z-index: 5; display: grid; gap: var(--byd-s2); padding: var(--byd-s2); width: 320px; max-height: var(--byd-place-room, 360px); box-sizing: border-box; overflow: auto; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); }
+.byd-symbol-box .byd-pick-list { position: static; width: auto; max-height: none; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
+.byd-symbol-box .byd-symbol-box-grid { max-height: 176px; overflow: auto; }
+.byd-symbol-box .byd-symbol-box-meanings { display: flex; flex-wrap: wrap; gap: var(--byd-s1); padding-top: var(--byd-s2); border-top: 1px solid #2f333d; }
+.byd-symbol-box .byd-symbol-box-meanings > button { display: inline-flex; gap: var(--byd-s2); padding: var(--byd-s1) var(--byd-s2) var(--byd-s1) var(--byd-s1); border-radius: 999px; border-color: #3b4358; }
+.byd-symbol-none, .byd-symbol-writes { margin: 0; padding-top: var(--byd-s2); border-top: 1px solid #2f333d; color: var(--byd-editor-quiet); font-size: 12px; line-height: 1.4; }
+.byd-symbol-writes { display: flex; align-items: center; gap: var(--byd-s2); }
+.byd-symbol-writes code { color: #ffd98a; font-size: 12px; }
+/* Every sample stands on the card's paper (L34). The paper is written on the element by the
+   surface that knows the card; this only gives the paper its shape and the symbol its size. The
+   symbol inside is the card renderer's own markup, drawn by the compiler's own rules. */
+.byd-symbol-sample { display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 5px; font-size: 16px; line-height: 1; color: #1c1c1c; }
+.byd-symbol-sample .byd-icon { vertical-align: 0; }
 /* Media i spelet (#222, L22). The library takes the whole room, and the crop opens as a sheet
    over it (#297, L33): the panel is the box both stand in, the library is the thing that scrolls,
    and the sheet is a layer laid over it that scrolls by itself — so the library keeps its place

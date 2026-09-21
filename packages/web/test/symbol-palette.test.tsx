@@ -4,6 +4,7 @@ import { render, screen, within, fireEvent } from '@testing-library/react'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 import { SymbolPanel } from '../src/editor/SymbolPanel.js'
 import { projectDoc } from './project-doc.js'
+import { groundOf } from '../src/editor/palette.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 import type { ProjectClient } from '../src/editor/ProjectClient.js'
@@ -89,5 +90,57 @@ describe('how often the game says a symbol', () => {
     })
 
     expect(screen.getByRole('list', { name: 'Symboler i spelet' }).textContent).toContain('2 kort')
+  })
+})
+
+// The relation between a meaning's name and its colour, said by being shown (L34, #302): the
+// same symbol drawn once per meaning, with the string that writes it beside it. «utan betydelse»
+// is one of the rows and not an exception, and every sample stands on the card's paper.
+describe('the relation shown in the palette (L34)', () => {
+  const sampleOf = (el: HTMLElement) => el.querySelector<HTMLElement>('.byd-symbol-sample')!
+  const inkOf = (el: HTMLElement) => sampleOf(el).querySelector<HTMLElement>('.byd-ink')?.getAttribute('style') ?? null
+  const withSymbols = (palette: Record<string, string>) => ({
+    ...projectDoc(),
+    palette,
+    icons: { svärd: 'svard.svg', mynt: 'mynt.svg' },
+    rows: [
+      { id: 'dragon', fields: { title: 'Drake', body: 'Skada {mynt} {mynt|fara}.', antal: 1 } },
+      { id: 'knight', fields: { title: 'Riddare', body: 'Skada {svärd} 1.', antal: 1 } },
+    ],
+  })
+
+  it('draws the game’s most written symbol once per meaning, on the card’s paper, with the string that writes it', () => {
+    const doc = withSymbols({ fara: '#8f2d20', vinst: '#2f6136' })
+    render(<SymbolPanel doc={doc} client={client()} assetBase="http://test.local" />)
+    const list = screen.getByRole('list', { name: 'Spelets färger' })
+    const rows = within(list).getAllByRole('listitem')
+    const paper = groundOf(doc, 'front')
+
+    // `mynt` is said twice and `svärd` once, so the example is drawn with `mynt`.
+    expect(rows.map((r) => r.querySelector('code')?.textContent)).toEqual(['{mynt|fara}', '{mynt|vinst}'])
+    expect(rows.map((r) => sampleOf(r).getAttribute('data-paper'))).toEqual([paper, paper])
+    expect(inkOf(rows[0]!)).toContain('background:#8f2d20')
+    expect(inkOf(rows[1]!)).toContain('background:#2f6136')
+    // Ink is one of the rows: the symbol as the card draws it without a meaning, and its string.
+    const ink = screen.getByText('utan betydelse').closest('[data-ink]') as HTMLElement
+    expect(ink.querySelector('code')?.textContent).toBe('{mynt}')
+    expect(sampleOf(ink).getAttribute('data-paper')).toBe(paper)
+    expect(sampleOf(ink).querySelector('img.byd-icon')?.getAttribute('src')).toContain('mynt.svg')
+  })
+
+  it('repaints the example when the meaning’s colour changes', () => {
+    const { rerender } = render(<SymbolPanel doc={withSymbols({ fara: '#8f2d20' })} client={client()} assetBase="http://test.local" />)
+    const row = () => within(screen.getByRole('list', { name: 'Spelets färger' })).getAllByRole('listitem')[0]!
+    expect(inkOf(row())).toContain('background:#8f2d20')
+    rerender(<SymbolPanel doc={withSymbols({ fara: '#2f6136' })} client={client()} assetBase="http://test.local" />)
+    expect(inkOf(row())).toContain('background:#2f6136')
+  })
+
+  it('keeps the plain swatch when the game has no symbol to show the meaning with', () => {
+    mount({ fara: '#8f2d20' })
+    const row = within(screen.getByRole('list', { name: 'Spelets färger' })).getAllByRole('listitem')[0]!
+    expect(row.querySelector('.byd-symbol-sample')).toBeNull()
+    expect(row.querySelector('.byd-symbols-swatch')).not.toBeNull()
+    expect(screen.queryByText('utan betydelse')).toBeNull()
   })
 })

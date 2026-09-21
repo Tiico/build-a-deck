@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
-import { compile, Element, type FaceTemplate } from '../src/index.js'
+import { SYMBOL_CSS, compile, renderInline, Element, type FaceTemplate } from '../src/index.js'
 
 const text = (id: string, field: string, y: number, sizePt: number) => ({
   kind: 'text' as const,
@@ -710,5 +710,27 @@ describe('a formatted body (L2, #308)', () => {
     const out = compile({ type: CARD_STANDARD_63x88, face, row: { title: 'Drake', body: '- ett' }, icons, scope: '#kort-7' })
 
     expect(out.css.split('\n').filter((rule) => /\[data-element\] (?:p|ul|li)/.test(rule) && !rule.startsWith('#kort-7 '))).toEqual([])
+  })
+})
+
+// A sample of a symbol in the editor is the string the picker will write, drawn by the one
+// renderer (E2, L34): `{svard|fara}` shown as a coloured copy is `{svard|fara}` compiled, and
+// nothing else may draw it. The rules the markup needs travel with it, so a surface that shows a
+// sample lays the same sheet under it that a card does.
+describe('renderInline — a string of card text as the markup a card draws it with (L34)', () => {
+  const set = { svard: 'svard.svg' }
+  const palette = { fara: '#8f2d20' }
+
+  it('draws `{namn|roll}` exactly as the card does, and `{namn}` as the picture it is', () => {
+    expect(renderInline('{svard|fara}', { icons: set, palette })).toBe(
+      '<span class="byd-icon byd-ink" role="img" aria-label="svard" style="background:#8f2d20;-webkit-mask-image:url(&quot;svard.svg&quot;);mask-image:url(&quot;svard.svg&quot;)"></span>',
+    )
+    expect(renderInline('{svard}', { icons: set, palette })).toBe('<img class="byd-icon" src="svard.svg" alt="svard">')
+  })
+
+  it('ships the rules the sample needs, and the compiler pushes the very same rules', () => {
+    const out = compile({ type: CARD_STANDARD_63x88, face: { base: [], variants: {} }, row: {}, icons: set, scope: '#k' })
+    for (const rule of SYMBOL_CSS) expect(out.css).toContain(`#k ${rule}`)
+    expect(SYMBOL_CSS.some((rule) => rule.startsWith('.byd-ink{'))).toBe(true)
   })
 })

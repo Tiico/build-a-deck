@@ -1,5 +1,5 @@
 import type { ComponentTypeDef } from '@byd/engine'
-import { parseBody, type InlineNode } from './inline.js'
+import { parseBody, parseInline, type InlineNode } from './inline.js'
 import { BLOCK_GAP_EM, INDENT_EM, ITEM_GAP_EM, detectScript, estimateHeight, fitText, type Measure } from './fit.js'
 import { paintOf, shadowCss, type Bind, type Condition, type Element, type FaceTemplate, type Pattern, type Row, type Template } from './model.js'
 import type { Motif } from './motif.js'
@@ -80,23 +80,42 @@ export function compile(input: CompileInput): Compiled {
     if (!usesFont(input.face, name)) continue
     rules.push(`@font-face{font-family:"${attr(name)}";src:url("${attr(font.src)}");font-display:block;}`)
   }
-  css.push(`.byd-icon{height:1em;width:auto;vertical-align:-0.15em;}`)
+  for (const rule of SYMBOL_CSS) css.push(rule)
   // A picture hangs inside its own frame rather than being it, so the element's box stays exactly
   // what the designer grabs whether the picture fills it, sits inside it or overflows it.
   css.push(`.byd-art{position:absolute;left:0;top:0;display:block;max-width:none;}`)
-  // A painted symbol is its own shape cut out of a block of colour (E4). The width is stated
-  // here rather than left auto because there is no picture to take a width from; an icon row
-  // still overrides both, being the more specific rule.
-  css.push(
-    `.byd-ink{display:inline-block;width:1em;background:currentColor;-webkit-mask-size:contain;mask-size:contain;` +
-      `-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;}`,
-  )
-  css.push(`.byd-icon-missing{color:#c00;background:#fee;font-weight:700;}`)
-  css.push(`.byd-pip{display:inline-block;min-width:1.15em;height:1.15em;line-height:1.15em;border-radius:50%;text-align:center;font-weight:700;font-size:0.85em;border:0.12em solid currentColor;vertical-align:-0.15em;padding:0 0.1em;box-sizing:border-box;}`)
 
   for (const el of elementsFor(input.face, input.row)) render(el, bleed, bleed, input, html, css, warnings)
 
   return { html: `<div data-card data-bleed="${bleed}">${html.join('')}</div>`, css: rules.join('\n'), warnings }
+}
+
+// What a symbol in text is drawn with, wherever it is drawn. The compiler pushes these under a
+// card's scope, and a surface that shows a symbol *sample* — the editor's picker, the palette in
+// the symbol tab (L34) — lays the same rules under `renderInline`'s markup. One list, so a sample
+// cannot come to be drawn by rules a card does not have.
+export const SYMBOL_CSS: readonly string[] = [
+  `.byd-icon{height:1em;width:auto;vertical-align:-0.15em;}`,
+  // A painted symbol is its own shape cut out of a block of colour (E4). The width is stated
+  // here rather than left auto because there is no picture to take a width from; an icon row
+  // still overrides both, being the more specific rule.
+  `.byd-ink{display:inline-block;width:1em;background:currentColor;-webkit-mask-size:contain;mask-size:contain;` +
+    `-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;}`,
+  `.byd-icon-missing{color:#c00;background:#fee;font-weight:700;}`,
+  `.byd-pip{display:inline-block;min-width:1.15em;height:1.15em;line-height:1.15em;border-radius:50%;text-align:center;font-weight:700;font-size:0.85em;border:0.12em solid currentColor;vertical-align:-0.15em;padding:0 0.1em;box-sizing:border-box;}`,
+]
+
+// One string of card text as the markup a card draws it with, and nothing around it (L34). It is
+// how the editor shows a sample of what `{namn|roll}` will look like: the very string the picker
+// is about to write, through the very code that will draw it on the card — the one renderer (E2)
+// reached for a span instead of a face. Warnings are the card's business and are not collected
+// here; a sample of a symbol the game lacks is drawn as the marker a card would draw.
+export function renderInline(text: string, symbols: Symbols): string {
+  const warnings: Warning[] = []
+  return parseInline(text)
+    .flatMap((p) => p.children)
+    .map((n) => renderNode(n, 'sample', symbols, warnings))
+    .join('')
 }
 
 type Css = { push(rule: string): void }
@@ -331,7 +350,7 @@ function resolve(bind: { field: string } | { literal: string }, row: Row): strin
 
 // What a symbol is looked up in: the names the project knows, and what its meanings are painted
 // in. The two travel together because every symbol asks both questions at once.
-type Symbols = { icons: Record<string, string>; palette?: Record<string, string> | undefined }
+export type Symbols = { icons: Record<string, string>; palette?: Record<string, string> | undefined }
 
 // The body's blocks as markup (#308). A paragraph is a paragraph and a run of `- ` lines is a
 // list; the marker is the browser's own, so it is drawn in the element's font at the element's
