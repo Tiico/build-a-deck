@@ -61,7 +61,7 @@ export function emptySetup(words: RecipeWords = SWEDISH_WORDS): Setup {
   }
 }
 
-// The table a new game starts with, whichever door it came in by (L6, L14): the seats around a
+// The table a new game starts with, whichever door it came in by (L6, L42): the seats around a
 // felt as large as that many people need (K18), each with a hand that returns to the draw pile, an
 // area in front of it and its counters, and the discard pile beside the deck. From the first save
 // it is the designer's: what they take away here stays away, and what they add is theirs.

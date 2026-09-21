@@ -22,7 +22,7 @@ export type NewProjectPageProps = { onNavigate?(url: string): void }
 const firstRow = (t: T): Record<string, string> => ({ title: t('wizard.card.n', { n: 1 }), cost: '1', body: '', art: '' })
 const emptyState = (t: T): WizardState => ({ name: '', players: 2, fields: defaultFields(t), frame: 'classic', rows: [firstRow(t)] })
 const PENDING_KEY = 'byd.pending-wizard'
-// `blank` is the door the draft was on its way through (L14), so a login asked for on the way
+// `blank` is the door the draft was on its way through (L42), so a login asked for on the way
 // past the guided start resumes past it, not through it.
 type PendingWizard = { state: WizardState; server: string | null; blank?: boolean }
 // The two doors out of the wizard: through its three steps, or past them with a blank game.
@@ -125,7 +125,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     try {
       let doc
       if (door === 'blank') {
-        // Past the guided start (L14) there is nothing to upload: the game has no images yet.
+        // Past the guided start (L42) there is nothing to upload: the game has no images yet.
         doc = buildBlankProject(s, t)
       } else {
         // The chosen images go up first (E1): the project's rows point at them by hash, not by
@@ -230,7 +230,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
           eight, so a game for seven or eight could not be started here at all — the same mismatch
           the editor's own panel had (K18, K19). */}
       <fieldset><legend>{t('wizard.players')}</legend><div className="byd-wizard-players">{Array.from({ length: MAX_PLAYERS }, (_, i) => i + 1).map((n) => <button key={n} type="button" className="byd-choice" aria-pressed={s.players === n} onClick={() => setS({ ...s, players: n })}>{n}</button>)}</div></fieldset>
-      {/* The guided start is a door, not a gate (L14): the name and the seats above are all a
+      {/* The guided start is a door, not a gate (L42): the name and the seats above are all a
           game needs in order to exist, and whoever would rather make the cards, the fields and
           the faces in the editor goes there now, with none of them. It is the second action in
           the view (L13): the guided way is the first, and this one stands beside it, bordered. */}

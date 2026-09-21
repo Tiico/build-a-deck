@@ -119,11 +119,11 @@ describe('the field is called what it says it is called', () => {
   })
 })
 
-// The guided start is a door, not a gate (L14): whoever would rather build everything in the
+// The guided start is a door, not a gate (L42): whoever would rather build everything in the
 // editor gives the game a name and its seats — the two things every game has — and goes
 // straight there with no cards, no fields and no frame. The same request makes the same kind of
 // document as the guided way, so the editor does not know which door it came in by (E3).
-describe('a game without the guided start (L14)', () => {
+describe('a game without the guided start (L42)', () => {
   it('creates the game from the name and the seats alone, and opens the editor', async () => {
     const gone: string[] = []
     open((url) => gone.push(url))

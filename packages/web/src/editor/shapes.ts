@@ -9,7 +9,7 @@ export type Geometry = Pick<Shape, 'shape' | 'corners' | 'innerRatio' | 'rotatio
 
 export { SHAPES, shapeTakes }
 
-// The gallery is the door and the parameters are the room behind it (L14's shape, applied to a
+// The gallery is the door and the parameters are the room behind it (L42's shape, applied to a
 // vocabulary): every entry here is a corner count and a turn the designer could have dialled in
 // by hand, except the three outlines a corner count cannot describe.
 //

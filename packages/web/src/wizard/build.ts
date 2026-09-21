@@ -35,7 +35,7 @@ export function buildProject(state: WizardState, t: T = swedish): ProjectDoc {
   }
 }
 
-// A game made without the guided start (L14): the name and the seats are the whole of what the
+// A game made without the guided start (L42): the name and the seats are the whole of what the
 // designer has said, so the document holds those and the table every game has, and nothing the
 // wizard's other steps would have suggested — two empty faces, no fields, no cards. All of that
 // is made in the editor, by the same edits any game gets; the editor cannot tell which door a

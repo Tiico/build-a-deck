@@ -67,7 +67,7 @@
 .byd-wizard-handoff p { color: #6c5530; }
 
 .byd-wizard-block { display: grid; gap: 10px; align-content: start; min-width: 0; }
-/* The way past the guided start (L14): a quiet block under the name and the seats, with the
+/* The way past the guided start (L42): a quiet block under the name and the seats, with the
    second action bordered rather than filled (L13), so the guided way stays the first. */
 .byd-wizard-blank { display: grid; gap: 8px; justify-items: start; margin-top: 6px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: #fafaf7; }
 .byd-wizard-blank strong { color: #454c44; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }

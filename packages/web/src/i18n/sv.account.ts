@@ -102,7 +102,7 @@ export const svAccount = {
   'wizard.name': 'Spelets namn',
   'wizard.name.placeholder': 'Skogens herrar',
   'wizard.players': 'Spelare',
-  // Vägen förbi den guidade starten (L14): namnet och platserna räcker, resten görs i editorn.
+  // Vägen förbi den guidade starten (L42): namnet och platserna räcker, resten görs i editorn.
   'wizard.blank.title': 'Utan guidad start',
   'wizard.blank.body': 'Bygg hellre allt själv?',
   'wizard.blank.help': 'Spelet skapas med namnet och platserna ovanför, utan kort, fält eller mall.',
