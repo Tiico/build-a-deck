@@ -52,3 +52,41 @@ describe('the log names a hand by whoever sits there (K19, #86)', () => {
     expect(describeActivity(shuffle, table(null), en)).toBe('Ada shuffled Draghög')
   })
 })
+
+// The two moves `split` carries (#421). The protocol's verb is physical and closed — the top `at`
+// components leave the pile — so the two things a player recognises, drawing a card and cutting a
+// pile, are told apart here, where the line is written, by the `to` the intent already carries.
+const splitTo = (to: string, at = 1): Activity =>
+  ({ seq: 9, by: 'A', at: '2026-09-21T00:00:00.000Z', intent: { v: 'split', pile: 'draw', at, to } } as Activity)
+const splitBeside = (at: number): Activity =>
+  ({ seq: 10, by: 'A', at: '2026-09-21T00:00:00.000Z', intent: { v: 'split', pile: 'draw', at, x: 40, y: 0 } } as Activity)
+
+describe('the log tells a drawn card from a cut pile (#421)', () => {
+  it('gives a card drawn to a hand the verb the button and the ring use', () => {
+    expect(describeActivity(splitTo('hand:A'), table(null), sv)).toBe('Ada drog 1 från Draghög till Adas hand')
+    expect(describeActivity(splitTo('hand:A'), table(null), en)).toBe('Ada drew 1 from Draghög to Ada’s hand')
+  })
+
+  it('says a pile cut in half became a new pile, not a drawn card', () => {
+    expect(describeActivity(splitBeside(3), table(null), sv)).toBe('Ada delade av 3 från Draghög till en ny hög')
+    expect(describeActivity(splitBeside(3), table(null), en)).toBe('Ada split 3 off Draghög into a new pile')
+  })
+
+  it('gives the two moves two lines, and neither says which card it was', () => {
+    // The same pile, the same count: only `to` separates them, and the reader must still be able to.
+    // The card the draw reached for rides along in `which`; the line must not pass it on.
+    const drawn = { ...splitTo('hand:A', 3), intent: { v: 'split', pile: 'draw', at: 3, to: 'hand:A', which: [{ field: 'Typ', is: ['Drake'] }] } } as unknown as Activity
+    const cut = splitBeside(3)
+    for (const t of [sv, en]) {
+      const lines = [describeActivity(drawn, table('A'), t), describeActivity(cut, table('A'), t)]
+      expect(lines[0]).not.toBe(lines[1])
+      for (const line of lines) {
+        expect(line).toContain('Ada')
+        expect(line).toContain('Draghög')
+        expect(line).not.toContain('Drake')
+        expect(line).not.toContain('Typ')
+      }
+    }
+    expect(describeActivity(drawn, table('A'), sv)).toBe('Ada drog 3 från Draghög till min hand')
+  })
+})
