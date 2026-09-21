@@ -1,3 +1,4 @@
+import type { Row } from '@byd/template'
 import type { ProjectDoc } from './types.js'
 import { ASSET_PREFIX, assetUrl, isAssetRef } from './assets.js'
 
@@ -32,4 +33,28 @@ export function previewFonts(doc: Pick<ProjectDoc, 'template' | 'fonts'>, assetB
     out[family] = assetBase && isAssetRef(font.asset) ? { stack: font.stack, src: assetUrl(assetBase, font.asset.slice(ASSET_PREFIX.length)) } : { stack: font.stack }
   }
   return out
+}
+
+// The two words a typeface is tried on (#329, L27): the card's own heading and its own rule
+// text, each in the point size the card sets it in.
+//
+// That is the whole of why room C was chosen over A and B. A family name set in nineteen points
+// looks well in nearly anything; the question a designer actually has is whether her rule text
+// survives at nine points on a 63 mm card, and she can only answer it by reading her own card.
+//
+// Which two: the largest text on the face and the smallest, which is what a heading and a body
+// are without anyone having to name them. A face with one text has only the one word to show; a
+// face with none — a plain back — has nothing to show and says so by returning nothing.
+export type CardWords = { heading: { text: string; sizePt: number }; body: { text: string; sizePt: number } }
+
+export function cardWords(elements: ProjectDoc['template']['faces'][string]['base'], row: Row): CardWords | null {
+  const texts = elements
+    .filter((el) => el.kind === 'text')
+    .map((el) => ({ text: 'field' in el.bind ? String(row[el.bind.field] ?? '') : el.bind.literal, sizePt: el.font.sizePt }))
+    .filter((word) => word.text !== '')
+  const sorted = [...texts].sort((a, b) => b.sizePt - a.sizePt)
+  const heading = sorted.at(0)
+  const body = sorted.at(-1)
+  if (heading === undefined || body === undefined) return null
+  return { heading, body }
 }

@@ -65,6 +65,7 @@ function canvas(doc: ProjectDoc) {
     onFontFile: async () => 'Typsnitt',
     onFontLicence: vi.fn(),
     onRemoveFont: vi.fn(),
+    onCatalogFont: vi.fn(async () => undefined),
   }
   render(<TemplateCanvas {...props} />)
   return props

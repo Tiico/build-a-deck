@@ -68,7 +68,12 @@ export { AssetCrop, Picture, PictureName } from '@byd/protocol'
 // A font the version is pinned to (B3). `stack` is what the CSS says; `asset` is the file the
 // project carries, so a locked version renders the same tomorrow as it did when it was tested.
 // A font without a file is whatever the machine has, which is a warning at print time (E5).
-export const ProjectFont = z.object({ stack: z.string().min(1), asset: z.string().optional(), licence: ProjectCredit.optional() })
+// `source` is how the family came into the game (#329, L27). Only the catalog says so, and it
+// says so because the list has to tell the two apart: a catalog entry wears the badge «Katalog»
+// and its licence fields stand filled in and struck through, while an uploaded file carries no
+// licence at all and has two empty boxes the designer is expected to be able to answer. Absent
+// is an uploaded file, which is every font written before there was a catalog.
+export const ProjectFont = z.object({ stack: z.string().min(1), asset: z.string().optional(), licence: ProjectCredit.optional(), source: z.literal('catalog').optional() })
 export type ProjectFont = z.infer<typeof ProjectFont>
 
 // What one card asks of the template's measure that the measure did not give it (E1): how much

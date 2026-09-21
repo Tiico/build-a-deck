@@ -42,6 +42,7 @@ function bare() {
     onFontFile: vi.fn(async () => 'Rubrikserif'),
     onFontLicence: vi.fn(),
     onRemoveFont: vi.fn(),
+    onCatalogFont: vi.fn(async () => undefined),
   }
 }
 

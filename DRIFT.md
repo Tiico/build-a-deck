@@ -195,6 +195,12 @@ Google Fonts-katalogen (#329, L27): **enbart designerns webbläsare når den**, 
 egen asset via `POST /assets`, och renderingen läser den därifrån som vilken uppladdad fil som helst.
 Lådan får alltså inget nytt utgående beroende, och ett projekt renderar med utgången blockerad.
 
+Byggt 2026-09-21: familjenamnen reser med webbygget och hämtas inte alls — Googles kataloglistor
+svarar utan CORS, och en proxy för dem hade varit exakt det utgående beroendet den här paragrafen
+säger nej till. Det webbläsaren hämtar är ansiktena: ett `css2`-ark när väljaren öppnas, och
+typsnittsfilen från `fonts.gstatic.com` när en familj väljs. Mätt på trafiken i
+`packages/e2e/test/surfaces/font-catalog.spec.ts`.
+
 ---
 
 ## Compose-stacken i ett stycke

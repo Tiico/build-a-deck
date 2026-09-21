@@ -43,6 +43,17 @@
      times, which was harmless until the mark had to be measured against it (L11) — a ground
      without a name is a ground no contrast test can ask about. */
   --byd-editor-panel-bg: #171a23;
+  /* The lines the editor's own boxes are drawn with. The same two hexes were written out a
+     dozen times; a border without a name is a border no stylesheet can be asked about. */
+  --byd-editor-line: #2f333d;
+  --byd-editor-line-soft: #262a33;
+  /* Where a typeface came from (#329, L27). Green because it is the one mark in this panel that
+     says «this is already answered» rather than «look at this», which is what the editor's amber
+     means everywhere else. Two tokens, because the word inside the badge is text and carries
+     4.5:1 while the ring round it is a graphic and carries 3:1 — measured in
+     `editor-contrast.test.ts`. */
+  --byd-editor-catalog-ink: #9ed39e;
+  --byd-editor-catalog-mark: #5f9e6a;
   /* What a card is lifted off the editor's ground with (#332, L28). Three, because a card
      standing on a table shows three different things and they are not the same colour: the dark
      hairline where the card's own edge is, the light that catches the top of its paper, and the
@@ -1014,7 +1025,9 @@
 .byd-canvas[data-stage] > .byd-canvas-props { border-left: 0; }
 /* The card and the question asked under it share a column: the stage takes what is left, and the
    question — which is not up most of the time — takes only the height its words need. */
-.byd-canvas-main { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
+/* `relative` for the typeface catalog's sheet (#329, L27), which is the canvas' own bottom
+   edge and nothing else's: 62 % of the canvas, and never over the layers or the properties. */
+.byd-canvas-main { position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
 /* The stage and the zoom band beside it (#146, L19). The band is the canvas' own corner and not
    the crown's, and it is outside the thing that scrolls: a control that pans away with the card is
    gone exactly when the card is big enough to need it. It is outside the stage altogether, which
@@ -1405,7 +1418,8 @@
 .byd-fonts { margin-top: 16px; border-top: 1px solid #2f333d; padding-top: 12px; }
 .byd-fonts ul { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 10px; }
 .byd-fonts li { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: baseline; }
-.byd-fonts-name { font-size: 14px; color: #dce3f2; overflow: hidden; text-overflow: ellipsis; }
+.byd-fonts-head { display: flex; align-items: baseline; gap: var(--byd-s2); min-width: 0; }
+.byd-fonts-name { font-size: 14px; color: #dce3f2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-fonts li small { grid-column: 1 / -1; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--byd-editor-hint-ink); }
 .byd-fonts-licence { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .byd-fonts-licence input { background: #0f1115; border: 1px solid #2a2d36; color: #fff; border-radius: 6px; padding: 4px 8px; font-size: 12px; width: 100%; box-sizing: border-box; }
@@ -1419,6 +1433,81 @@
 /* On its way is not gone wrong: the amber above is the editor's word for "look at this", and a
    file that is simply travelling is read in the quiet register every other passing word is. */
 .byd-fonts [role='status'] { color: var(--byd-editor-quiet); }
+
+/* The way into Google Fonts, over the upload because it is the answer for nearly everyone. */
+.byd-fonts-catalog { display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; padding: 8px 12px; font-size: 12px; margin-bottom: 4px; cursor: pointer; }
+/* Where the family came from (#329, L27). A green outline and not a fill: it is a mark beside a
+   name and not an action, and the register it reads in is the quiet one every other line in this
+   panel is read in. */
+.byd-fonts-badge {
+  font-size: 9.5px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  border: 1px solid var(--byd-editor-catalog-mark);
+  border-radius: 999px;
+  padding: 0 8px;
+  color: var(--byd-editor-catalog-ink);
+  white-space: nowrap;
+}
+/* A licence the catalog answered. Struck through rather than merely greyed, because «already
+   answered» and «not answerable here» are two different things and only one of them is a state
+   the designer could change (L27). */
+.byd-fonts-licence[data-settled='true'] input { border-style: dashed; color: var(--byd-editor-quiet); text-decoration: line-through; }
+
+/* ── The typeface catalog: «Provraden», variant C of #329 (L27) ──────────────────────────────
+   A sheet under the card, not a box over the panel and not the properties column. What settled
+   it is what a sample shows: this one sets the card's own heading and its own rule text, in the
+   card's own grade, which is where a typeface actually falls.
+
+   The price is stated in L27 and is not conjured away: the sheet is 62 % of the canvas, and the
+   card's lower third is hidden while the designer chooses. The card moves up when the sheet
+   opens — without that the sample row would be a sample of a card nobody can see, which is the
+   whole of its reason for existing. */
+.byd-canvas[data-catalog='open'] .byd-canvas-stage { align-items: start; padding-top: 8px; }
+.byd-font-catalog {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9;
+  max-height: 62%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--byd-editor-panel-bg);
+  border: 1px solid var(--byd-editor-line);
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -24px 60px var(--byd-editor-card-shadow);
+}
+.byd-font-catalog header { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: var(--byd-s2); border-bottom: 1px solid var(--byd-editor-line-soft); }
+.byd-font-catalog-search { min-width: 0; }
+.byd-font-catalog-search input { width: 100%; box-sizing: border-box; min-height: 32px; border: 1px solid #2a2d36; border-radius: 8px; background: #0f1115; color: #fff; font: inherit; padding: 0 var(--byd-s3); }
+.byd-font-catalog-close { min-height: 32px; border: 1px solid var(--byd-editor-line); border-radius: 8px; background: transparent; color: var(--byd-editor-home-ink); font: inherit; font-size: 12px; padding: 0 var(--byd-s3); cursor: pointer; }
+.byd-font-catalog-kinds { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
+.byd-font-catalog-kinds button { min-height: 26px; border: 1px solid var(--byd-editor-line); border-radius: 999px; padding: 0 var(--byd-s3); background: #0f1115; color: var(--byd-editor-home-ink); font: inherit; font-size: 11px; cursor: pointer; }
+.byd-font-catalog-kinds button[aria-pressed='true'] { border-color: var(--byd-editor-primary-mark); background: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); }
+.byd-font-catalog-hits { flex: 1 1 auto; min-height: 0; overflow: auto; list-style: none; margin: 0; padding: var(--byd-s2); display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; align-content: start; }
+.byd-font-catalog-hits li { display: grid; gap: 3px; align-items: start; border: 1px solid var(--byd-editor-line); border-radius: 10px; padding: var(--byd-s2) var(--byd-s3); background: var(--byd-editor-part-bg); min-width: 0; }
+.byd-font-catalog-heading { font-weight: 700; line-height: 1.2; color: #fff; overflow-wrap: anywhere; }
+/* The second sample, and the one the choice of room turned on: the card's rule text in the same
+   family, in the card's own grade. Two lines of it, because that is what a card gives it. */
+.byd-font-catalog-body {
+  line-height: 1.45;
+  color: var(--byd-editor-home-ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.byd-font-catalog-meta { font-size: 10.5px; color: var(--byd-editor-quiet); }
+.byd-font-catalog-hits li button { justify-self: start; margin-top: 4px; min-height: 28px; border: 1px solid var(--byd-editor-line); border-radius: 7px; padding: 0 var(--byd-s3); background: #0f1115; color: var(--byd-editor-home-ink); font: inherit; font-size: 11.5px; cursor: pointer; }
+.byd-font-catalog-hits li button:disabled { color: var(--byd-editor-catalog-ink); border-color: var(--byd-editor-catalog-mark); cursor: default; }
+.byd-font-catalog-said { margin: 0; padding: var(--byd-s4) var(--byd-s3); font-size: 12px; text-align: center; color: var(--byd-editor-quiet); }
+.byd-font-catalog-said[role='alert'] { color: var(--byd-editor-unsaved-ink); }
+.byd-font-catalog footer { flex: none; display: flex; gap: 10px; align-items: center; padding: var(--byd-s2) var(--byd-s3); border-top: 1px solid var(--byd-editor-line-soft); font-size: 11px; color: var(--byd-editor-quiet); }
+.byd-font-catalog-count { margin-left: auto; font-variant-numeric: tabular-nums; }
 
 /* Table */
 /* The tab is a column: the tools, the filter and what is marked stay put, and only the rows

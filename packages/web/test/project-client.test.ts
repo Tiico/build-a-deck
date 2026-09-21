@@ -591,6 +591,75 @@ describe('the type the game is set in (B3)', () => {
     expect(client.doc.fonts?.[family]?.asset).toMatch(/^asset:[0-9a-f]{64}$/)
   })
 
+  // A family taken out of Google Fonts (#329, L27). Two things make it different from an upload,
+  // and the second is the one that matters: the badge, and that the licence is already answered.
+  // `Licence` writes nothing until both the licence and the holder are given, and an uploaded
+  // file carries neither — the catalog entry knows.
+  //
+  // Google is reached here and nowhere else: what the traffic really is, is asserted rather than
+  // described, because «only the designer's browser reaches the catalog» (DRIFT §12) is a claim
+  // about addresses.
+  describe('a family out of the catalog (#329, L27)', () => {
+    const WOFF2 = new Uint8Array([119, 79, 70, 50, 0, 1, 0, 0])
+    const CINZEL = { family: 'Cinzel', category: 'serif', licence: 'OFL 1.1', by: 'Natanael Gama', weights: '400..900' }
+    const SHEET = `/* latin-ext */
+@font-face { font-family: 'Cinzel'; src: url(https://fonts.gstatic.com/s/cinzel/ext.woff2) format('woff2'); }
+/* latin */
+@font-face { font-family: 'Cinzel'; src: url(https://fonts.gstatic.com/s/cinzel/latin.woff2) format('woff2'); }
+`
+    // Google stubbed and everything else left alone, so the upload really goes to the server this
+    // suite stands up and the asset really lands there.
+    function watchGoogle(answer: (url: string) => Response | null = () => null) {
+      const asked: string[] = []
+      const real = globalThis.fetch
+      globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = input instanceof Request ? input.url : String(input)
+        if (!/^https:\/\/fonts\.(googleapis|gstatic)\.com\//.test(url)) return real(input as RequestInfo, init)
+        asked.push(url)
+        const given = answer(url)
+        if (given) return given
+        if (url.startsWith('https://fonts.googleapis.com/')) return new Response(SHEET, { headers: { 'content-type': 'text/css' } })
+        return new Response(WOFF2, { headers: { 'content-type': 'font/woff2' } })
+      }) as typeof fetch
+      return { asked, undo: () => (globalThis.fetch = real) }
+    }
+
+    it('copies the file in as the project’s own asset, with the licence and the badge the catalog knows', async () => {
+      const created = await run.projects.create(run.projectId, projectDoc())
+      const client = await openClient(created.id)
+      const google = watchGoogle()
+      try {
+        expect(await client.useCatalogFont(CINZEL)).toBe('Cinzel')
+      } finally {
+        google.undo()
+      }
+
+      // The whole variable file and not the weights the template happens to use (L27), and the
+      // latin cut of it.
+      expect(google.asked).toEqual(['https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&display=swap', 'https://fonts.gstatic.com/s/cinzel/latin.woff2'])
+      expect(client.doc.fonts?.['Cinzel']).toEqual({ stack: '"Cinzel", serif', asset: expect.stringMatching(/^asset:[0-9a-f]{64}$/), licence: { licence: 'OFL 1.1', by: 'Natanael Gama' }, source: 'catalog' })
+
+      // And it is the project's, not a promise about Google: the bytes are on the service.
+      expect(await client.save()).toEqual({ ok: true, rev: 2 })
+      const stored = await run.projects.load(run.projectId)
+      expect(stored?.fonts?.['Cinzel']?.source).toBe('catalog')
+      const hash = stored?.fonts?.['Cinzel']?.asset?.slice('asset:'.length)
+      expect(new Uint8Array(await (await fetch(`${run.http}/assets/${hash}`)).arrayBuffer())).toEqual(WOFF2)
+    })
+
+    it('says so when the catalog does not answer, and leaves the project as it was', async () => {
+      const created = await run.projects.create(run.projectId, projectDoc())
+      const client = await openClient(created.id)
+      const google = watchGoogle(() => new Response('', { status: 503 }))
+      try {
+        await expect(client.useCatalogFont(CINZEL)).rejects.toThrow()
+      } finally {
+        google.undo()
+      }
+      expect(client.doc.fonts?.['Cinzel']).toBeUndefined()
+    })
+  })
+
   // And the refusal that is left says what was wrong with the file rather than blaming its kind:
   // the declaration is the client's own now, so a 415 can only mean the bytes are not that kind.
   it('says which formats a typeface may be in when the bytes are not one', async () => {
