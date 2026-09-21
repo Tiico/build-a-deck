@@ -1237,6 +1237,7 @@ describe('every suite that measures a surface', () => {
       'rules-column.test.tsx',
       'rules-first-frame.test.tsx',
       'rules-layout.test.tsx',
+      'setup-landing-room.test.tsx',
       'setup-sheet-fold.test.tsx',
       'table-layout.test.tsx',
       'template-canvas-layout.test.tsx',

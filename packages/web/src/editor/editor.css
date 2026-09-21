@@ -607,6 +607,17 @@
    is how `Räknare B` came to lie under `Hand · B` (#43). The name is still on the handle for
    anyone reading by keyboard or screen reader: it is the `aria-label`. */
 .byd-setup-corner { position: absolute; right: -6px; bottom: -6px; width: 12px; height: 12px; border-radius: 3px; background: #ffd98a; cursor: nwse-resize; }
+/* Where the selected pile's actions lay their cards (L30, #316): a card's outline at the point
+   `besidePile` gives, drawn while the «Bredvid högen» picker is held. A hint, so it reads under
+   the handles — a cool, faint dash beside the amber the designer takes hold of — and it is on or
+   off with no fade, which is also what prefers-reduced-motion asks for. */
+.byd-setup-landing { position: absolute; box-sizing: border-box; border: 1.5px dashed rgba(207, 230, 255, 0.75); border-radius: 4px; background: rgba(140, 190, 255, 0.1); pointer-events: none; display: grid; place-items: center; }
+/* Off the table it is an error and not a hint: the felt's own amber, with the words in it, and it
+   stands for as long as the pile is selected. */
+.byd-setup-landing[data-off='true'] { border-color: var(--byd-drop-mark); background: rgba(255, 217, 138, 0.14); }
+/* The words wrap inside the card — three short lines at a desk’s scale — rather than run out past its edge. */
+.byd-setup-landing > u { text-decoration: none; color: var(--byd-drop-mark); font: 700 9px/1.2 var(--byd-felt-font, system-ui, sans-serif); letter-spacing: 0.4px; text-align: center; overflow-wrap: anywhere; }
+.byd-setup-landing-warn { margin: 0; color: var(--byd-drop-mark); font-size: 11px; line-height: 1.5; }
 /* What a zone is, opened inside its own row rather than floating over the felt: the panel used to
    cover the right third of the table, which is where a designer puts the zones they are working
    on. */

@@ -14,6 +14,8 @@ import { useGesture } from './gesture.js'
 import { CardPreview } from './CardPreview.js'
 import { ZoneActions } from './ZoneActions.js'
 import { nameOf, templateOf } from './zone-name.js'
+import { landingOf } from './landing.js'
+import { CARD_MM } from '../table/drop.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 
@@ -40,7 +42,6 @@ export type SetupEditorProps = {
   beside?: ReactNode
 }
 
-const PILE_MM = { w: 63, h: 88 }
 // What one CSS millimetre is worth in pixels. A compiled card is laid out in millimetres, the
 // felt in pixels, and this is the rate between them — so the zoom that makes the back the size of
 // the card it lies on is the felt's own millimetre divided by this one.
@@ -78,6 +79,12 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
   // What the last key press said, when it was not a removal: a copy taken, or a refusal with its
   // reason. It stands where the removal's own word stands, because it is the same kind of news.
   const [said, setSaid] = useState<string | null>(null)
+  // Which pile's «Bredvid högen» picker is being held — hovered or focused (L30, #316). The felt
+  // draws where that pile's actions lay their cards for as long as it is held, and no longer: a
+  // handle per zone is already on the felt, and an outline that always stood there would be one
+  // more thing to read past every time a pile is picked. Hover and focus both, so the keyboard
+  // gets the same as the mouse.
+  const [held, setHeld] = useState<string | null>(null)
   // The editor's own clipboard, and what the key handler needs to read without being rebuilt on
   // every keystroke the panel beside it takes.
   const clipboard = useRef<Zone | null>(null)
@@ -182,6 +189,7 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
           onRemove={remove}
           onPatch={(id, patch, gesture) => client.patchZone(id, patch, gesture)}
           onDeck={(id) => client.setDeck(id)}
+          onHold={setHeld}
         />
         <div className="byd-setup-tools">
           <button type="button" onClick={() => add('area')}>{t('setup.addArea')}</button>
@@ -221,6 +229,7 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
             motifs={motifs}
             setup={setup}
             selected={selected}
+            held={held}
             onSelect={(id) => {
               select(id)
               setUndoable(null)
@@ -416,6 +425,7 @@ function ZoneList({
   onRemove,
   onPatch,
   onDeck,
+  onHold,
 }: {
   setup: Setup
   rows: ProjectDoc['rows']
@@ -426,13 +436,14 @@ function ZoneList({
   onRemove(zone: Zone): void
   onPatch(id: string, patch: ZonePatch, gesture?: string): void
   onDeck(id: string): void
+  onHold(id: string | null): void
 }) {
   const t = useT()
   const groups: [string, Row[]][] = [
     [t('setup.group.table'), setup.zones.filter((z) => z.owner === undefined).map((zone) => ({ kind: 'zone', zone }))],
     [t('setup.group.seats'), rowsOf(setup.zones.filter((z) => z.owner !== undefined))],
   ]
-  const row = (zone: Zone) => <ZoneRow key={zone.id} zone={zone} setup={setup} rows={deck} selected={selected} onSelect={onSelect} onRemove={onRemove} onPatch={onPatch} onDeck={onDeck} />
+  const row = (zone: Zone) => <ZoneRow key={zone.id} zone={zone} setup={setup} rows={deck} selected={selected} onSelect={onSelect} onRemove={onRemove} onPatch={onPatch} onDeck={onDeck} onHold={onHold} />
   return (
     <div className="byd-setup-zones" data-zone-list>
       {groups.map(([title, rows]) =>
@@ -501,6 +512,7 @@ function ZoneRow({
   onRemove,
   onPatch,
   onDeck,
+  onHold,
 }: {
   zone: Zone
   setup: Setup
@@ -510,6 +522,7 @@ function ZoneRow({
   onRemove(zone: Zone): void
   onPatch(id: string, patch: ZonePatch, gesture?: string): void
   onDeck(id: string): void
+  onHold(id: string | null): void
 }) {
   const t = useT()
   const why = fixed(setup, zone, t)
@@ -534,7 +547,7 @@ function ZoneRow({
           </span>
         )}
       </div>
-      {open && <ZoneProps zone={zone} setup={setup} rows={rows} why={why} onPatch={(patch, gesture) => onPatch(zone.id, patch, gesture)} onDeck={() => onDeck(zone.id)} />}
+      {open && <ZoneProps zone={zone} setup={setup} rows={rows} why={why} onPatch={(patch, gesture) => onPatch(zone.id, patch, gesture)} onDeck={() => onDeck(zone.id)} onHold={onHold} />}
     </li>
   )
 }
@@ -553,6 +566,7 @@ function Felt({
   motifs,
   setup,
   selected,
+  held,
   onSelect,
   onGeometry,
   onRemove,
@@ -563,6 +577,7 @@ function Felt({
   motifs?: Record<string, Motif> | undefined
   setup: Setup
   selected: string | null
+  held: string | null
   onSelect(id: string | null): void
   onGeometry(id: string, geometry: Geometry, gesture?: string): void
   onRemove(zone: Zone): void
@@ -637,7 +652,39 @@ function Felt({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [t])
-  const overlay = (fit: FeltFit) =>
+  const floor = setup.zones.find((z) => z.id === setup.floor)
+  // Where the selected pile's actions lay their cards (L30, #316): a card's outline at the point
+  // `besidePile` gives, drawn while the pile's picker is held. Off the table it is an error and
+  // not a hint, and stands for as long as the pile is selected, in amber with the words in it —
+  // otherwise a pile could lay its cards past the felt's edge for anyone who never touched the
+  // picker, which is the case the side became choosable for (K21).
+  const landing = (fit: FeltFit) => {
+    const z = setup.zones.find((x) => x.id === selected)
+    if (!z || z.kind !== 'pile' || !floor) return null
+    const at = landingOf(z, floor.geometry)
+    if (held !== z.id && !at.off) return null
+    return (
+      <div
+        className="byd-setup-landing"
+        data-landing={z.id}
+        data-at={`${at.x},${at.y}`}
+        data-rot={at.rot}
+        data-cards={at.cards}
+        data-off={at.off ? 'true' : undefined}
+        aria-hidden="true"
+        style={{ left: fit.left(at.x), top: fit.top(at.y), width: fit.px(at.w), height: fit.px(at.h), transform: at.rot ? `rotate(${at.rot}deg)` : undefined }}
+      >
+        {at.off && <u>{t('setup.landing.off')}</u>}
+      </div>
+    )
+  }
+  const overlay = (fit: FeltFit) => (
+    <>
+      {handles(fit)}
+      {landing(fit)}
+    </>
+  )
+  const handles = (fit: FeltFit) =>
     setup.zones
       .filter((z) => z.id !== setup.floor)
       .map((z) => {
@@ -682,6 +729,10 @@ function Felt({
         ref={table}
         view={view}
         mode="tv"
+        // A card's width of dark around the table (L30): the outline that says a pile lays its
+        // cards off the table has to be drawn *off the table*, and was clipped by the felt's edge
+        // until the felt left room for it.
+        margin={CARD_MM.w}
         overlay={overlay}
         // The deck's own back on every face-down card (L17). It goes through `compile`, the
         // one renderer there is for card templates (K9) — the same code the canvas and the wall
@@ -713,14 +764,14 @@ function Felt({
 // A pile is a point; its handle is a card's outline around it.
 function boxOf(z: Zone): { x: number; y: number; w: number; h: number } {
   const g = z.geometry
-  return z.kind === 'pile' ? { x: g.x - PILE_MM.w / 2, y: g.y - PILE_MM.h / 2, w: PILE_MM.w, h: PILE_MM.h } : { x: g.x, y: g.y, w: g.w, h: g.h }
+  return z.kind === 'pile' ? { x: g.x - CARD_MM.w / 2, y: g.y - CARD_MM.h / 2, w: CARD_MM.w, h: CARD_MM.h } : { x: g.x, y: g.y, w: g.w, h: g.h }
 }
 const snap = (mm: number) => Math.round(mm / SNAP_MM) * SNAP_MM
 
 // What a zone is, opened inside its row. Everything about it is the designer's — its name, its
 // verb on the phone, whose it is and who sees into it — because the table is theirs; a hand is the
 // exception, and the seat that owns it is the reason.
-function ZoneProps({ zone, setup, rows, why, onPatch, onDeck }: { zone: Zone; setup: Setup; rows: ProjectDoc['rows']; why: string | null; onPatch(patch: ZonePatch, gesture?: string): void; onDeck(): void }) {
+function ZoneProps({ zone, setup, rows, why, onPatch, onDeck, onHold }: { zone: Zone; setup: Setup; rows: ProjectDoc['rows']; why: string | null; onPatch(patch: ZonePatch, gesture?: string): void; onDeck(): void; onHold(id: string | null): void }) {
   const t = useT()
   // The two fields that are written into a letter at a time. What is chosen rather than typed —
   // where a pile is entered, whose the zone is, who may see it — is written once and is its own
@@ -729,6 +780,10 @@ function ZoneProps({ zone, setup, rows, why, onPatch, onDeck }: { zone: Zone; se
   const floor = zone.id === setup.floor
   const hand = zone.kind === 'hand'
   const g = zone.geometry
+  // Whether this pile's chosen side lays its cards off the table (L30): the felt shows the
+  // outline in amber for as long as the pile is selected, and the panel says what to do about it.
+  const ground = setup.zones.find((z) => z.id === setup.floor)
+  const offTable = zone.kind === 'pile' && ground !== undefined && landingOf(zone, ground.geometry).off
   return (
     <div className="byd-setup-props" data-zone-props={zone.id}>
       {/* A hand has no name of its own to give. Whoever sits at it names it: the felt lays that
@@ -765,7 +820,17 @@ function ZoneProps({ zone, setup, rows, why, onPatch, onDeck }: { zone: Zone; se
               opens on rather than a blank. */}
           <label>
             {t('setup.beside')}
-            <select aria-label={t('setup.beside.of', { name: zone.name })} value={zone.beside ?? 'left'} onChange={(e) => onPatch({ beside: e.target.value === 'left' ? undefined : (e.target.value as ZoneBeside) })}>
+            <select
+              aria-label={t('setup.beside.of', { name: zone.name })}
+              value={zone.beside ?? 'left'}
+              onChange={(e) => onPatch({ beside: e.target.value === 'left' ? undefined : (e.target.value as ZoneBeside) })}
+              // While the picker is held the felt shows where the cards land (L30): hovered or
+              // focused, so the keyboard gets the same as the mouse.
+              onMouseEnter={() => onHold(zone.id)}
+              onMouseLeave={() => onHold(null)}
+              onFocus={() => onHold(zone.id)}
+              onBlur={() => onHold(null)}
+            >
               {(['left', 'right', 'above', 'below'] as const).map((side) => (
                 <option key={side} value={side}>
                   {t(`setup.beside.${side}` as Key)}
@@ -773,6 +838,11 @@ function ZoneProps({ zone, setup, rows, why, onPatch, onDeck }: { zone: Zone; se
               ))}
             </select>
           </label>
+          {offTable && (
+            <p className="byd-setup-landing-warn" data-landing-warn>
+              {t('setup.landing.warn', { name: zone.name })}
+            </p>
+          )}
           {/* The pile's bottom card (K23, variant A): one specific row of the deck, named here by
               the title the designer gave it, and the side it lies on. It lies last from the start,
               a shuffle leaves it there, and back in this pile it lies last again. A pile without one

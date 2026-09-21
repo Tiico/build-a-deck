@@ -3784,6 +3784,7 @@ Krönikan på 838, 500 vid ett bord om 900 × 600 lägger korten utanför på tv
 
 Filten måste lämna ett korts bredd i mörker runt bordet.
 Under prototypandet fyllde bordet nästan hela filten, och konturen klipptes bort av filtens kant — just i det fall den finns till för.
+Tillägg 2026-09-21: kortbredden räknas runt golvet och täcker den luft inpassningen redan lämnar i bildpunkter, i stället för att läggas ovanpå den — summerade kostade de filten en åttondel vid 1280 × 800, och «Framför C» mötte «Kasthög» (#43).
 
 **Konturen ritas för det åtgärden faktiskt lägger.**
 `besidePile` anger en hög i sin mitt och ett ensamt kort i sitt hörn, vilket skiljer 31 mm i sidled och 44 mm neråt — ett halvt kort.
