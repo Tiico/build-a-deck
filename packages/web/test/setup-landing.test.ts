@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { ZoneAction, ZoneBeside } from '@byd/protocol'
 import type { Zone } from '@byd/server/doc'
@@ -65,5 +67,17 @@ describe('konturen står där besidePile lägger korten (L30)', () => {
     const shifted = { x: -500, y: -300, w: 1000, h: 600, rot: 0 }
     expect(landingOf(pile(-390, 0, 0, { beside: 'left' }), shifted).off).toBe(false)
     expect(landingOf(pile(-470, 0, 0, { beside: 'left' }), shifted).off).toBe(true)
+  })
+})
+
+// Konturen är på eller av och tonar inte (L30): `prefers-reduced-motion` har inget att stänga
+// av, eftersom regeln inte skriver någon övergång alls. Läst ur stilmallen, så att en toning
+// som smyger in senare syns här och inte hos den som bett om stillhet.
+describe('konturen tonar inte (L30, prefers-reduced-motion)', () => {
+  it('skriver ingen transition för .byd-setup-landing', () => {
+    const css = readFileSync(join(import.meta.dirname, '..', 'src', 'editor', 'editor.css'), 'utf8')
+    const rules = [...css.matchAll(/\.byd-setup-landing[^{]*\{([^}]*)\}/g)].map((m) => m[1] ?? '')
+    expect(rules.length).toBeGreaterThan(0)
+    expect(rules.filter((r) => /transition|animation/.test(r))).toEqual([])
   })
 })

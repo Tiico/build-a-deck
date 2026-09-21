@@ -787,6 +787,10 @@ export const enEditor = {
   'setup.beside.right': 'its right',
   'setup.beside.above': 'above it',
   'setup.beside.below': 'below it',
+  // The outline beside the pile (L30, #316): the words in it when the cards land off the table,
+  // and the panel's sentence about what to do.
+  'setup.landing.off': 'Lands off the table',
+  'setup.landing.warn': 'The cards land off the table on this side. Choose another side, or move {name}.',
   // The pile's bottom card (K23): one card of the deck that lies last, and the side it lies on.
   'setup.bottom': 'Bottom card',
   'setup.bottom.of': 'Bottom card of {name}',

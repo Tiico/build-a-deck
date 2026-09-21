@@ -879,6 +879,10 @@ export const svEditor = {
   'setup.beside.right': 'till höger',
   'setup.beside.above': 'ovanför',
   'setup.beside.below': 'under',
+  // Konturen bredvid högen (L30, #316): orden i den när korten hamnar utanför bordet, och
+  // panelens mening om vad man gör åt det.
+  'setup.landing.off': 'Hamnar utanför bordet',
+  'setup.landing.warn': 'Korten hamnar utanför bordet på den här sidan. Välj en annan sida, eller flytta {name}.',
   // Högens bottenkort (K23): ett kort ur leken som alltid ligger sist, och sidan det ligger på.
   'setup.bottom': 'Bottenkort',
   'setup.bottom.of': 'Bottenkort för {name}',
