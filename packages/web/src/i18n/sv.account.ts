@@ -48,6 +48,7 @@ export const svAccount = {
   'home.card.line': 'rev {rev} · {played}',
   'home.card.never': 'aldrig spelat',
   'home.card.nocards': 'inga kort än',
+  'home.card.first': 'Första kortet: {title}',
   'home.card.nothing': 'inget spelat än',
   'home.card.last': 'senast {when}',
   'home.card.tables.one': '{n} bord · {at}',

@@ -6,7 +6,7 @@ import type { Applied } from '@byd/protocol'
 import { liftLine, type SetupDef } from '@byd/engine'
 import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionRecord, type SessionSummary, type PlayedRecord } from './store.js'
 import { liftDoc, stamp, type ProjectDoc, type ProjectRecord, type ProjectRow, type ProjectStore, type ProjectSummary, type VersionSummary } from './projects.js'
-import { peekCards } from './names.js'
+import { peekCard } from './names.js'
 import { PostgresAssetStore } from './assets.js'
 import type { AppliedEdit } from './project-actor.js'
 import type { EditIntent } from './edits.js'
@@ -299,20 +299,19 @@ export class PostgresProjectStore implements ProjectStore {
 
   // Every project the account can see (D3): its own, and the ones shared with it.
   async list(account: string): Promise<ProjectSummary[]> {
-    // The deck comes back as ids and titles only, in its own order: the list fans out four of
-    // them (G1), and a hundred whole rows per game would be a document each just to draw four
-    // cards. Which four is `peekCards`' answer, the same one the memory store gives.
-    const rows = await this.sql<{ id: string; rev: number; name: string; role: string; cards: ProjectRow[] | null }[]>`
+    // The deck's first row only, as an id and a title: the list names one card per game (G1,
+    // #231), and a hundred whole rows per game would be a document each just to name one. The
+    // order is the document's own, so the row that comes back is the row the table shows first.
+    const rows = await this.sql<{ id: string; rev: number; name: string; role: string; first: ProjectRow | null }[]>`
       select p.id, p.rev, p.doc->>'name' as name,
              case when p.owner = ${account} or p.owner is null then 'owner' else m.role end as role,
-             (select jsonb_agg(jsonb_build_object('id', r->>'id', 'fields', jsonb_build_object('title', r->'fields'->>'title')) order by i)
-                from jsonb_array_elements(p.doc->'rows') with ordinality as t(r, i)) as cards
+             jsonb_build_object('id', p.doc->'rows'->0->>'id', 'fields', jsonb_build_object('title', p.doc->'rows'->0->'fields'->>'title')) as first
       from projects p
       left join project_members m on m.project_id = p.id and m.account_id = ${account}
       where p.owner = ${account} or p.owner is null or m.role is not null
       order by p.updated_at desc
     `
-    return rows.map((r) => ({ id: r.id, name: r.name, rev: r.rev, role: r.role as Role, cards: peekCards(r.cards ?? []) }))
+    return rows.map((r) => ({ id: r.id, name: r.name, rev: r.rev, role: r.role as Role, card: peekCard(r.first?.id ? [r.first] : []) }))
   }
 
   async roleOf(id: string, account: string): Promise<Role | null> {

@@ -65,3 +65,39 @@ for (const width of WIDTHS) {
     })
   })
 }
+
+// The card on a game's tile (G1, #231, variant B). The measurements are relations and not pixels
+// off one machine: the box's proportion is the card's own 63 × 88, the drawing fills the box it
+// was given, and a game with no cards keeps exactly the same box — which is what "nothing jumps
+// and the grid stands even" means where it can actually be seen.
+test.describe('the card on a game in "Mina spel" (#231)', () => {
+  test.use({ viewport: { width: 1024, height: 900 }, locale: LANG })
+
+  test("draws the game's first card over its name, and keeps the place for a game that has none", async ({ page }) => {
+    await logIn(page.request)
+    await makeProject(page.request, { name: 'Skogens herrar', cards: 12 })
+    await makeProject(page.request, { name: 'Tomt utkast', cards: 0 })
+    await page.goto('/')
+    await expect(page.getByRole('img', { name: 'Första kortet: Björn 1' })).toBeVisible()
+
+    const drawn = page.locator('.byd-home-card[role="img"]').first()
+    const box = (await drawn.boundingBox())!
+    // The place is the card's own shape, so what lands in it is a card and not a letterbox.
+    expect(box.width / box.height).toBeCloseTo(63 / 88, 2)
+    // The drawing fills the place that was reserved for it: the compiled card, scaled, is the box.
+    const inner = (await drawn.locator('.byd-preview').boundingBox())!
+    expect(Math.abs(inner.width - box.width)).toBeLessThan(1.5)
+    expect(Math.abs(inner.height - box.height)).toBeLessThan(1.5)
+
+    // The card stands over the name, which is what variant B is.
+    const name = (await page.getByText('Skogens herrar').boundingBox())!
+    expect(box.y + box.height).toBeLessThanOrEqual(name.y + 1)
+
+    // A game with no cards says so in the very same box, so the row stands even.
+    const empty = page.locator('.byd-home-card[data-empty]')
+    await expect(empty).toHaveText('inga kort än')
+    const emptyBox = (await empty.boundingBox())!
+    expect(emptyBox.height).toBeCloseTo(box.height, 1)
+    expect(emptyBox.width).toBeCloseTo(box.width, 1)
+  })
+})

@@ -1,7 +1,7 @@
 // The creator's account (G1, DRIFT §11) from the browser's side: a magic link by mail, a cookie
 // the browser keeps, and the projects that belong to the account. `http` is the server origin;
 // in development it is another port, so credentials are sent explicitly.
-import type { Role } from '@byd/server/doc'
+import type { CardFace, CardPeek, Role } from '@byd/server/doc'
 import { translate, type T } from '../i18n/index.js'
 
 // What went wrong is said to the reader, in their language (A4). A caller that has no `t` — a
@@ -47,13 +47,24 @@ export async function logout(http: string): Promise<void> {
 }
 
 // A game as "Mina spel" lists it (G1): where its history stands, how many tables it has, when one
-// of them was last played at, and the few of its own cards the page fans out on it.
-export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null; cards?: { id: string; title: string }[] }
+// of them was last played at, and which of its own cards stands on it (#231) — `null` for a game
+// with no cards yet, which is the tile's deliberate empty state.
+export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null; card?: CardPeek | null }
 export async function myProjects(http: string): Promise<ProjectSummary[]> {
   const res = await fetch(`${http}/projects`, withCredentials())
   if (res.status === 401) throw new Unauthorized()
   if (!res.ok) throw new Error(`could not list projects: ${res.status}`)
   return (await res.json()) as ProjectSummary[]
+}
+
+// What it takes to draw those cards (G1, #231), by game. It is asked for apart from the list and
+// after it: the list is the first screen and draws on its own answer, and this one answer carries
+// every game's card so no game in the list costs a round trip of its own.
+export async function myCards(http: string): Promise<Record<string, CardFace | null>> {
+  const res = await fetch(`${http}/me/cards`, withCredentials())
+  if (res.status === 401) throw new Unauthorized()
+  if (!res.ok) throw new Error(`could not read the cards: ${res.status}`)
+  return (await res.json()) as Record<string, CardFace | null>
 }
 
 // Sharing a game (D3): who it is shared with, an invitation to an address, and taking it back.

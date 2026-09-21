@@ -81,26 +81,28 @@ describe.skipIf(!url)('PostgresProjectStore', () => {
     await store.close()
   })
 
-  it("lists a game with a few of its own cards, spread over the deck in its order (G1)", async () => {
+  it("lists a game with its first card, the deck in the table's own order (G1)", async () => {
     const store = PostgresLogStore.connect(url!, { schema })
     await store.migrate()
     const projects = store.projects()
     const id = `fan-${Date.now()}`
     const { zones, seats, floor } = twoSeatSetup()
-    // Nine cards, the last one untitled: the list picks four of them and the untitled one
-    // answers to its id, exactly as the memory store's listing does.
+    // Nine cards: the list names the first of them, exactly as the memory store's listing does.
     const rows = Array.from({ length: 9 }, (_, i) => ({ id: `r${i}`, fields: i === 8 ? {} : { title: `Kort ${i}` } }))
     // Accounts are numbered here (the API speaks of them as text), so the owner is a real
     // account's id and not a name: `list` joins it against a bigint column.
     const ada = await store.auth().ensureAccount(`ada-${Date.now()}@example.com`)
     await projects.create(id, { name: 'Stora leken', template, rows, icons: {}, setup: { zones, seats, floor, deckZone: 'draw' } }, ada.id)
     const listed = (await projects.list(ada.id)).find((p) => p.id === id)
-    expect(listed?.cards).toEqual([
-      { id: 'r0', title: 'Kort 0' },
-      { id: 'r3', title: 'Kort 3' },
-      { id: 'r5', title: 'Kort 5' },
-      { id: 'r8', title: 'r8' },
-    ])
+    expect(listed?.card).toEqual({ id: 'r0', title: 'Kort 0' })
+    // An untitled first card answers to its id, and a game with no rows at all has no card.
+    const untitled = `fan-untitled-${Date.now()}`
+    await projects.create(untitled, { name: 'Namnlösa', template, rows: [{ id: 'namnlöst', fields: {} }], icons: {}, setup: { zones, seats, floor, deckZone: 'draw' } }, ada.id)
+    const empty = `fan-empty-${Date.now()}`
+    await projects.create(empty, { name: 'Tomt', template, rows: [], icons: {}, setup: { zones, seats, floor, deckZone: 'draw' } }, ada.id)
+    const all = await projects.list(ada.id)
+    expect(all.find((p) => p.id === untitled)?.card).toEqual({ id: 'namnlöst', title: 'namnlöst' })
+    expect(all.find((p) => p.id === empty)?.card).toBeNull()
     await store.close()
   })
 })

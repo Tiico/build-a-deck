@@ -1,7 +1,7 @@
 // Imported by the editor as well as the server, so this module stays free of anything Node:
 // types only from the project document, and no imports that reach the database or the network.
-import type { ProjectDoc, ProjectRow } from './projects.js'
-import type { Names, SetupArrangement, SetupSeat, SetupZone } from '@byd/template'
+import type { ProjectDoc, ProjectFont, ProjectFraming, ProjectRow } from './projects.js'
+import type { FaceTemplate, Names, Row, SetupArrangement, SetupSeat, SetupZone } from '@byd/template'
 
 // What the rulebook's references stand for right now (B7): zones by the name the table shows,
 // cards by their title. A card without a title falls back to its id, so a reference is never
@@ -53,19 +53,61 @@ export function titleOfRow(row: ProjectRow): string {
   return String(row.fields['title'] ?? '').trim() || row.id
 }
 
-// The cards "Mina spel" fans out on a game's card (G1): a few of the game's own cards rather
-// than four rectangles that stand for nothing. They are spread evenly over the deck, first and
-// last included, so a deck of a hundred shows its breadth and not only what was written first;
-// the choice is the deck's order, so the same game looks the same every time it is listed.
+// The card "Mina spel" shows on a game's card (G1, #231): the game's own first card rather than a
+// rectangle that stands for nothing. It is the deck seen in the table's own order, so it is the
+// same card at every visit for as long as the designer leaves the table in the order they put it
+// in — and when they sort the table, it is they who moved the card and not the list that is
+// restless. Id and title are all the list itself needs; what it takes to *draw* the card is
+// `peekFace`, which the list deliberately does not carry.
 export type CardPeek = { id: string; title: string }
-export function peekCards(rows: readonly ProjectRow[], n = 4): CardPeek[] {
-  const take = Math.min(n, rows.length)
-  if (take === 0) return []
-  const step = take === 1 ? 0 : (rows.length - 1) / (take - 1)
-  const out: CardPeek[] = []
-  for (let i = 0; i < take; i++) {
-    const row = rows[Math.round(i * step)]
-    if (row) out.push({ id: row.id, title: titleOfRow(row) })
+export function peekCard(rows: readonly ProjectRow[]): CardPeek | null {
+  const row = rows[0]
+  return row ? { id: row.id, title: titleOfRow(row) } : null
+}
+
+// Everything it takes to draw that one card (G1, #231), and nothing more: the face, the row's own
+// fields, and the few things about the game the compiler reads — its icons, the type it is set in
+// (B3), what its meanings are painted in (E4) and what this card asks of the template's measure
+// (E1). It is the deck wall's own material, so `CardPreview` is still the single code path that
+// draws a card, in the list exactly as on the wall.
+//
+// It travels apart from the list and not inside it. The list is the first screen, and a template
+// per game in it would make the first screen wait for every game's template before it drew a
+// single name.
+export type CardFace = {
+  id: string
+  title: string
+  face: FaceTemplate
+  row: Row
+  icons: Record<string, string>
+  fonts?: Record<string, ProjectFont>
+  palette?: Record<string, string>
+  framing?: Record<string, ProjectFraming>
+}
+
+// The front is the face a card is recognised by, and the one the editor opens on. A template that
+// has no face at all has no card to draw, which is the same intentional empty state as a deck with
+// no rows — not something broken.
+export function peekFace(doc: ProjectDoc): CardFace | null {
+  const row = doc.rows[0]
+  if (!row) return null
+  const face = doc.template.faces['front'] ?? Object.values(doc.template.faces)[0]
+  if (!face) return null
+  // This card's departure from the measure only, keyed by the column the picture sits in — the
+  // deck's whole `framing` is one entry per card per picture, and none of the rest is this card's.
+  const framing: Record<string, ProjectFraming> = {}
+  for (const [key, nudge] of Object.entries(doc.framing ?? {})) {
+    const cut = key.indexOf('/')
+    if (key.slice(0, cut) === row.id) framing[key.slice(cut + 1)] = nudge
   }
-  return out
+  return {
+    id: row.id,
+    title: titleOfRow(row),
+    face,
+    row: row.fields,
+    icons: doc.icons,
+    ...(doc.fonts ? { fonts: doc.fonts } : {}),
+    ...(doc.palette ? { palette: doc.palette } : {}),
+    ...(Object.keys(framing).length > 0 ? { framing } : {}),
+  }
 }
