@@ -18,6 +18,7 @@ import { chromium, type Browser } from 'playwright'
 import { LoginCard } from '../src/account/LoginCard.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { ROW, helpAnchor, helpPlacement, type HelpPlacement } from '../src/editor/HelpDrawer.js'
+import { contrastRatio } from '../src/player/contrast.js'
 import { atWidth } from './viewport.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
@@ -146,5 +147,69 @@ describe.each([login(390, 844), login(1280, 800), wizard(1280, 800), wizard(390,
     expect(hangs).toBe(true)
     expect(closed.sideways).toBe(0)
     expect(open.sideways).toBe(0)
+  }, 90_000)
+})
+
+// What is written inside the box, read against the box's own ground.
+//
+// The box is the one thing in this pattern that does not stand in the room it was opened from: it
+// is a fixed dark panel, `#12141a`, whatever surface the question mark sits on. The ring belongs
+// to the room and takes the room's ink; anything inside the box belongs to the box. That is a
+// difference the first build missed — the cross took `--byd-secondary-ink`, which the wizard
+// binds to its own paper ink `#1e2620`, and a dark cross on a dark box is 1.2:1, a control nobody
+// can see. The ring itself was fine, because it stands on the wizard's paper.
+//
+// A room reaches in by out-specifying the box, and it does it on the ground as much as on the
+// ink: `.byd-wizard button` is a class and an element, the box's own `.byd-help-close` was a
+// class alone, so the cross was drawn as a paper button — white ground, paper border — with the
+// box's pale ink on it. So every ink here is measured against the ground actually painted behind
+// it and not against the box's, which is the only reading that would have caught that.
+//
+// Measured in a browser rather than read off tokens (`button-language-contrast.test.ts` does the
+// tokens): what matters is the value that wins after every sheet has spoken, in the room, and the
+// room is exactly what went wrong.
+const ROOMS = [
+  { what: 'the account', root: 'byd-account' },
+  { what: 'the wizard', root: 'byd-wizard' },
+  { what: 'the editor', root: 'byd-editor' },
+] as const
+
+// The box as the component draws it, in a room, with nothing else on the page.
+const BOX = `
+  <div class="byd-help-box" role="dialog">
+    <b class="byd-help-topic">inloggningen</b>
+    <button type="button" class="byd-help-close"><span>×</span></button>
+    <p>Inget lösenord.</p>
+  </div>`
+
+describe.each(ROOMS)('the help box in $what', ({ root }) => {
+  it('writes its cross and its words in its own ink, and draws its edge against its own ground', async () => {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+    try {
+      await page.setContent(document_(`<div class="${root}">${BOX}</div>`), { waitUntil: 'load' })
+      const seen = await page.evaluate(() => {
+        // The ground under a thing is the first one up the tree that is actually painted.
+        const groundUnder = (el: Element): string => {
+          for (let at: Element | null = el; at; at = at.parentElement) {
+            const bg = getComputedStyle(at).backgroundColor
+            if (bg && !/^rgba\(.*,\s*0\)$/.test(bg) && bg !== 'transparent') return bg
+          }
+          return 'rgb(255, 255, 255)'
+        }
+        const parts = { cross: '.byd-help-close', topic: '.byd-help-topic', words: '.byd-help-box p' }
+        const read = Object.entries(parts).map(([what, sel]) => {
+          const el = document.querySelector(sel)!
+          return [what, { ink: getComputedStyle(el).color, ground: groundUnder(el) }] as const
+        })
+        const box = getComputedStyle(document.querySelector('.byd-help-box')!)
+        return { parts: Object.fromEntries(read), edge: box.borderTopColor, ground: box.backgroundColor }
+      })
+      // A label is held to 4.5:1 and a graphic to 3:1 (L11), the way the button language holds them.
+      for (const [what, { ink, ground }] of Object.entries(seen.parts))
+        expect({ what, reads: contrastRatio(ink, ground) >= 4.5 }).toEqual({ what, reads: true })
+      expect(contrastRatio(seen.edge, seen.ground)).toBeGreaterThanOrEqual(3)
+    } finally {
+      await page.close()
+    }
   }, 90_000)
 })
