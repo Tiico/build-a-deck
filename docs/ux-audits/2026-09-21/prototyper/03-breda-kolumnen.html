@@ -14,8 +14,6 @@
   /* Lådan: scrollboxen, smalnad för att spela det fönster protoraden valt. */
   .lada { position: relative; width: 100%; max-width: var(--lada, 1408px); margin: 0 auto; flex: 1 1 auto; min-height: 0;
           border: 1px solid var(--line); border-radius: 12px; background: var(--panel); display: flex; flex-direction: column; overflow: hidden; }
-  .lada::after { content: attr(data-matt); position: absolute; top: -9px; right: 10px; z-index: 12; padding: 0 6px;
-                 background: var(--chrome); color: #6f778a; font-size: 10px; letter-spacing: 1px; }
   .rulle { flex: 1 1 auto; min-height: 0; overflow: auto; scrollbar-width: thin; }
 
   table { border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: 12px; }
@@ -53,12 +51,13 @@
   /* ── #401 B · uttoningen vid lådans högerkant ────────────────────────────────────────────── */
   /* Samma gest som #53: en uttoning till ingenting, aldrig ett hårt stopp. */
   .kant { position: absolute; top: 0; right: 0; bottom: 0; width: 72px; pointer-events: none; z-index: 10; opacity: 0; transition: opacity .12s;
-          background: linear-gradient(to right, rgb(23 26 35 / 0%), var(--panel) 78%); }
+          background: linear-gradient(to right, rgb(15 17 23 / 0%), rgb(15 17 23 / 92%) 72%, rgb(15 17 23) 100%); }
   .lada[data-kapar='ja'] .kant { opacity: 1; }
   .shell[data-variant='nu'] .kant { display: none; }
 
   /* ── #397 · den öppna body-cellen ────────────────────────────────────────────────────────── */
-  tr[data-oppen] td.bodycell { padding: 0; vertical-align: top; overflow: visible; background: #12151d; }
+  tr[data-oppen] td { height: auto; }
+  tr[data-oppen] td.bodycell { padding: 0 0 6px; vertical-align: top; background: #12151d; }
   .cell { border: 1px solid var(--primary-mark); border-radius: 8px; margin: 3px; background: #0f1218;
           /* Taket. I `nu` finns inget tak och cellen är kolumnens hela bredd. */
           max-width: var(--skrivtak, none); }
@@ -111,11 +110,12 @@
     </div>
     <button id="tillbody">Rulla till body</button>
     <div class="matt">
+      <span>låda <u id="m-lada">—</u></span>
       <span>body <u id="m-body">—</u></span>
       <span>tabell <u id="m-tabell">—</u></span>
       <span>dragkant <u id="m-drag">—</u></span>
       <span>tryck till 420 <u id="m-tryck">—</u></span>
-      <span>verktyg <u id="m-verktyg">—</u></span>
+      <span>etikett↔verktyg <u id="m-verktyg">—</u></span>
     </div>
     <p class="sagt" id="berattelse"></p>
   </div>
@@ -206,9 +206,11 @@ kropp.innerHTML = RADER.map(([id, title, typ, body, rar, antal], i) => {
 
 // Vad fitColumns skulle ge body om ingen sa emot: det uppmätta i granskningen.
 const ONSKAD = 1684
+const FAST = 44 + 96 // bocken och id står stilla ovanpå kolumnen (#145) och äter av rummet
+const rum = () => rulle.clientWidth - FAST
 const TAK = {
   nu: () => ONSKAD,
-  a:  () => Math.min(ONSKAD, rulle.clientWidth - 96),
+  a:  () => Math.min(ONSKAD, rum() - 96),
   b:  () => Math.min(ONSKAD, 640),
 }
 
@@ -216,6 +218,9 @@ function rita() {
   const v = shell.dataset.variant
   const bredd = TAK[v]()
   colBody.style.width = bredd + 'px'
+  // Som fitColumns: tabellens bredd är summan av kolumnerna, annars klämmer lådan ihop den.
+  const kolumner = [44, 96, 244, 204, bredd, 140, 96, 44]
+  document.getElementById('tabell').style.width = kolumner.reduce((a, b) => a + b, 0) + 'px'
   // #397: skrivytans eget tak. I `nu` finns inget; annars läsbar radlängd, aldrig bredare
   // än kolumnen själv.
   shell.style.setProperty('--skrivtak', v === 'nu' ? 'none' : Math.min(bredd - 6, 640) + 'px')
@@ -226,7 +231,6 @@ function rita() {
 // #401 A: namnet glider så att det står kvar vid lådans vänsterkant så länge kolumnen syns.
 function glid() {
   const x0 = rulle.scrollLeft
-  const fast = 44 + 96 // bocken och id står stilla ovanpå
   for (const th of document.querySelectorAll('thead th')) {
     const namn = th.querySelector('.namn')
     if (!namn || th.classList.contains('bock') || th.classList.contains('idk')) continue
@@ -234,7 +238,7 @@ function glid() {
     const start = th.offsetLeft
     const slut = start + th.offsetWidth
     // Så långt namnet får skjutas: aldrig förbi kolumnens egen högerkant.
-    const vill = x0 + fast - start
+    const vill = x0 + FAST - start
     const tak = Math.max(0, slut - start - namn.offsetWidth - 20)
     namn.style.transform = 'translateX(' + Math.round(Math.min(Math.max(0, vill), tak)) + 'px)'
   }
@@ -242,22 +246,22 @@ function glid() {
 
 function matt() {
   const r = rulle.getBoundingClientRect()
-  const d = document.getElementById('drag-body').getBoundingClientRect()
   const tabell = document.getElementById('tabell').offsetWidth
   const body = colBody.offsetWidth
-  const inne = d.left >= r.left && d.right <= r.right + 1
+  const inne = body <= rum()
   const verktyg = document.querySelector('.verktyg').getBoundingClientRect()
-  const synligt = verktyg.left >= r.left && verktyg.right <= r.right + 1
+  const etikett = document.querySelector('.cellhuvud > b').getBoundingClientRect()
+  const isar = Math.round(verktyg.left - etikett.left)
 
   rulle.toggleAttribute('data-under', rulle.scrollLeft > 0)
   lada.dataset.kapar = rulle.scrollWidth - rulle.clientWidth - rulle.scrollLeft > 1 ? 'ja' : 'nej'
-  lada.dataset.matt = 'låda ' + rulle.clientWidth + ' px'
+  document.getElementById('m-lada').textContent = rulle.clientWidth + ' px'
 
   document.getElementById('m-body').textContent = body + ' px'
   document.getElementById('m-tabell').textContent = tabell + ' px'
-  document.getElementById('m-drag').textContent = Math.round(d.left - r.left + rulle.scrollLeft) + ' px · ' + (inne ? 'nåbar' : 'utanför')
+  document.getElementById('m-drag').textContent = body + ' av ' + rum() + ' px · ' + (inne ? 'nåbar' : 'utanför')
   document.getElementById('m-tryck').textContent = Math.max(0, Math.ceil((body - 420) / 16)) + ' st'
-  document.getElementById('m-verktyg').textContent = synligt ? 'på skärmen' : 'utanför'
+  document.getElementById('m-verktyg').textContent = isar + ' px från etiketten'
 
   const v = shell.dataset.variant
   document.getElementById('berattelse').innerHTML = v === 'nu'
