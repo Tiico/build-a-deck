@@ -50,12 +50,15 @@ const column = (name: string) => screen.queryByRole('button', { name: new RegExp
 const door = () => within(screen.getByRole('group', { name: 'Kolumner' }))
 
 // Vägen in med tangentbordet, utan en enda pekare: fokus på ＋ sist i huvudet, Enter öppnar
-// dörren, och därifrån tillbaka genom listan tills kolumnens eget namn står under fokus.
+// dörren, en bakåt-Tabb går in i listan, och `↓` går mellan raderna tills kolumnens eget namn står
+// under fokus. Listan är ett enda tabbstopp sedan #388 — förut gick den här vägen med lika många
+// bakåt-Tabb som listan var lång.
 async function reachByKeyboard(user: ReturnType<typeof userEvent.setup>, field: string) {
   screen.getByRole('button', { name: 'Kolumner' }).focus()
   await user.keyboard('{Enter}')
   const wanted = door().getByRole('button', { name: `Byt namn på kolumnen ${field}` })
-  for (let step = 0; step < 20 && document.activeElement !== wanted; step++) await user.tab({ shift: true })
+  await user.tab({ shift: true })
+  for (let step = 0; step < 20 && document.activeElement !== wanted; step++) await user.keyboard('{ArrowDown}')
   expect(document.activeElement).toBe(wanted)
   await user.keyboard('{Enter}')
 }

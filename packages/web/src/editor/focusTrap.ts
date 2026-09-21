@@ -32,6 +32,13 @@ export type FocusTrapOptions = {
   onEscape?: (() => void) | undefined
   // Where the focus goes when the window opens, when it is not the first thing inside.
   initial?: (() => HTMLElement | null) | undefined
+  // Whether the window is holding the keyboard right now (#388). A window that asks a question of
+  // its own — and asks it outside itself, where the answer has to be able to take the focus — lets
+  // go for as long as that question stands, and takes hold again when it is answered. Read live
+  // rather than through the effect, because the question takes the focus in the same commit that
+  // says it is standing: a trap that let go one effect later would have pulled the focus back out
+  // of the question first.
+  active?: boolean | undefined
 }
 
 export function useFocusTrap(box: RefObject<HTMLElement | null>, options: FocusTrapOptions = {}): void {
@@ -47,10 +54,14 @@ export function useFocusTrap(box: RefObject<HTMLElement | null>, options: FocusT
     const enter = latest.current.initial?.() ?? first()
     enter?.focus()
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (latest.current.active === false) return
+      // Escape is the window's only where the window asked for it. A box that answers its own
+      // Escape without closing — the door's name box (#384, #388) — has two levels of it, and a
+      // trap that stopped the press here would answer for both of them.
+      if (event.key === 'Escape' && latest.current.onEscape) {
         event.stopPropagation()
         event.preventDefault()
-        latest.current.onEscape?.()
+        latest.current.onEscape()
         return
       }
       if (event.key !== 'Tab') return
@@ -68,6 +79,7 @@ export function useFocusTrap(box: RefObject<HTMLElement | null>, options: FocusT
       }
     }
     const onFocusIn = (event: FocusEvent) => {
+      if (latest.current.active === false) return
       if (event.target instanceof Node && el.contains(event.target)) return
       first()?.focus()
     }
