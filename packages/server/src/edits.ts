@@ -56,8 +56,10 @@ export type ZonePatch = {
 // The properties a patch may take away again (L15, L17). Each one means something by its own
 // absence, which a patch cannot otherwise say: `undefined` does not survive JSON, so "this layer
 // has no shadow any more" would arrive at the actor as a patch that changes nothing. Every other
-// property of an element either has a value or does not exist for that kind.
-export type Clearable = 'name' | 'locked' | 'shadow' | 'pattern'
+// property of an element either has a value or does not exist for that kind. `points` is the
+// shape the designer made her own (L26): choosing a gallery entry again is choosing that whole
+// outline, and a point list left behind under it would go on overruling the entry she pressed.
+export type Clearable = 'name' | 'locked' | 'shadow' | 'pattern' | 'points'
 
 export type EditIntent =
   | { v: 'rename'; name: string }

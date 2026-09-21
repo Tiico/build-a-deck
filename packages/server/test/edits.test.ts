@@ -438,3 +438,18 @@ describe('högens bottenkort', () => {
     expect(cleared.setup.zones.find((z) => z.id === 'draw')).not.toHaveProperty('bottom')
   })
 })
+
+// En egen form är en punktlista (L26, #309), och galleriet är vägen tillbaka: att välja en
+// entré ska lämna elementet som ett element som aldrig haft egna punkter. `undefined` överlever
+// inte JSON, så listan tas bort genom `clear` precis som skuggan och mönstret.
+describe('egna punkter på ett element', () => {
+  const shaped = (): ProjectDoc => applyEdit(base(), { v: 'addElement', face: 'front', element: { kind: 'shape', id: 'band', x: 0, y: 0, w: 40, h: 20, shape: 'banner', fill: '#fff' } })
+  const band = (doc: ProjectDoc): Element | undefined => doc.template.faces['front']?.base.find((e) => e.id === 'band')
+
+  it('skrivs ut på elementet och tas bort igen när en galleriform väljs', () => {
+    const own = applyEdit(shaped(), { v: 'patchElement', face: 'front', id: 'band', patch: { points: [{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 20, y: 20 }] } as Partial<Element> })
+    expect(band(own)).toMatchObject({ points: [{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 20, y: 20 }] })
+    const back = applyEdit(own, { v: 'patchElement', face: 'front', id: 'band', patch: { shape: 'polygon', corners: 6 } as Partial<Element>, clear: ['points'] })
+    expect(band(back)).not.toHaveProperty('points')
+  })
+})
