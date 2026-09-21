@@ -434,12 +434,16 @@ function FontShelf({ doc, onFontFile, onFontLicence, onRemoveFont, onOpenCatalog
         <ul aria-labelledby="byd-fonts-heading">
           {families.map(([family, font]) => (
             <li key={family} data-font={family}>
-              <span className="byd-fonts-name" style={{ fontFamily: font.stack }}>
-                {family}
+              {/* The name and, where there is one, where the family came from (#329, L27): one
+                  cell, so the way out of the game stays on the same line as the name it is
+                  about rather than being pushed under it. The badge is the lesser half of the
+                  difference a catalog entry makes; the greater one is under it, in the licence. */}
+              <span className="byd-fonts-head">
+                <span className="byd-fonts-name" style={{ fontFamily: font.stack }}>
+                  {family}
+                </span>
+                {font.source === 'catalog' && <span className="byd-fonts-badge">{t('fonts.catalog.badge')}</span>}
               </span>
-              {/* Where the family came from (#329, L27). The badge is the lesser half of the
-                  difference; the greater one is under it, in the licence. */}
-              {font.source === 'catalog' && <span className="byd-fonts-badge">{t('fonts.catalog.badge')}</span>}
               {!used.includes(family) && (
                 <button type="button" onClick={() => onRemoveFont(family)}>
                   {t('fonts.remove')}

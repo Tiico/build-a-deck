@@ -1418,7 +1418,8 @@
 .byd-fonts { margin-top: 16px; border-top: 1px solid #2f333d; padding-top: 12px; }
 .byd-fonts ul { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 10px; }
 .byd-fonts li { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: baseline; }
-.byd-fonts-name { font-size: 14px; color: #dce3f2; overflow: hidden; text-overflow: ellipsis; }
+.byd-fonts-head { display: flex; align-items: baseline; gap: var(--byd-s2); min-width: 0; }
+.byd-fonts-name { font-size: 14px; color: #dce3f2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-fonts li small { grid-column: 1 / -1; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--byd-editor-hint-ink); }
 .byd-fonts-licence { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .byd-fonts-licence input { background: #0f1115; border: 1px solid #2a2d36; color: #fff; border-radius: 6px; padding: 4px 8px; font-size: 12px; width: 100%; box-sizing: border-box; }
@@ -1434,12 +1435,11 @@
 .byd-fonts [role='status'] { color: var(--byd-editor-quiet); }
 
 /* The way into Google Fonts, over the upload because it is the answer for nearly everyone. */
-.byd-fonts-catalog { display: block; width: 100%; box-sizing: border-box; border-radius: 8px; padding: 8px 12px; font-size: 12px; margin-bottom: 4px; cursor: pointer; }
+.byd-fonts-catalog { display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; padding: 8px 12px; font-size: 12px; margin-bottom: 4px; cursor: pointer; }
 /* Where the family came from (#329, L27). A green outline and not a fill: it is a mark beside a
    name and not an action, and the register it reads in is the quiet one every other line in this
    panel is read in. */
 .byd-fonts-badge {
-  justify-self: end;
   font-size: 9.5px;
   letter-spacing: 0.6px;
   text-transform: uppercase;
