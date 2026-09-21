@@ -1434,7 +1434,7 @@
 .byd-fonts [role='status'] { color: var(--byd-editor-quiet); }
 
 /* The way into Google Fonts, over the upload because it is the answer for nearly everyone. */
-.byd-fonts-catalog { display: block; width: 100%; box-sizing: border-box; border-radius: 8px; padding: 8px 12px; font-size: 12px; margin-bottom: 6px; cursor: pointer; }
+.byd-fonts-catalog { display: block; width: 100%; box-sizing: border-box; border-radius: 8px; padding: 8px 12px; font-size: 12px; margin-bottom: 4px; cursor: pointer; }
 /* Where the family came from (#329, L27). A green outline and not a fill: it is a mark beside a
    name and not an action, and the register it reads in is the quiet one every other line in this
    panel is read in. */
@@ -1445,7 +1445,7 @@
   text-transform: uppercase;
   border: 1px solid var(--byd-editor-catalog-mark);
   border-radius: 999px;
-  padding: 1px 7px;
+  padding: 0 8px;
   color: var(--byd-editor-catalog-ink);
   white-space: nowrap;
 }
@@ -1463,7 +1463,7 @@
    card's lower third is hidden while the designer chooses. The card moves up when the sheet
    opens — without that the sample row would be a sample of a card nobody can see, which is the
    whole of its reason for existing. */
-.byd-canvas[data-catalog='open'] .byd-canvas-stage { align-items: start; padding-top: 10px; }
+.byd-canvas[data-catalog='open'] .byd-canvas-stage { align-items: start; padding-top: 8px; }
 .byd-font-catalog {
   position: absolute;
   left: 0;
@@ -1480,15 +1480,15 @@
   border-radius: 14px 14px 0 0;
   box-shadow: 0 -24px 60px var(--byd-editor-card-shadow);
 }
-.byd-font-catalog header { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: 10px; border-bottom: 1px solid var(--byd-editor-line-soft); }
+.byd-font-catalog header { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: var(--byd-s2); border-bottom: 1px solid var(--byd-editor-line-soft); }
 .byd-font-catalog-search { min-width: 0; }
-.byd-font-catalog-search input { width: 100%; box-sizing: border-box; min-height: 32px; border: 1px solid #2a2d36; border-radius: 8px; background: #0f1115; color: #fff; font: inherit; padding: 0 10px; }
-.byd-font-catalog-close { min-height: 32px; border: 1px solid var(--byd-editor-line); border-radius: 8px; background: transparent; color: var(--byd-editor-home-ink); font: inherit; font-size: 12px; padding: 0 10px; cursor: pointer; }
+.byd-font-catalog-search input { width: 100%; box-sizing: border-box; min-height: 32px; border: 1px solid #2a2d36; border-radius: 8px; background: #0f1115; color: #fff; font: inherit; padding: 0 var(--byd-s3); }
+.byd-font-catalog-close { min-height: 32px; border: 1px solid var(--byd-editor-line); border-radius: 8px; background: transparent; color: var(--byd-editor-home-ink); font: inherit; font-size: 12px; padding: 0 var(--byd-s3); cursor: pointer; }
 .byd-font-catalog-kinds { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
-.byd-font-catalog-kinds button { min-height: 26px; border: 1px solid var(--byd-editor-line); border-radius: 999px; padding: 0 10px; background: #0f1115; color: var(--byd-editor-home-ink); font: inherit; font-size: 11px; cursor: pointer; }
+.byd-font-catalog-kinds button { min-height: 26px; border: 1px solid var(--byd-editor-line); border-radius: 999px; padding: 0 var(--byd-s3); background: #0f1115; color: var(--byd-editor-home-ink); font: inherit; font-size: 11px; cursor: pointer; }
 .byd-font-catalog-kinds button[aria-pressed='true'] { border-color: var(--byd-editor-primary-mark); background: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); }
-.byd-font-catalog-hits { flex: 1 1 auto; min-height: 0; overflow: auto; list-style: none; margin: 0; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; align-content: start; }
-.byd-font-catalog-hits li { display: grid; gap: 3px; align-items: start; border: 1px solid var(--byd-editor-line); border-radius: 10px; padding: 10px 11px; background: var(--byd-editor-part-bg); min-width: 0; }
+.byd-font-catalog-hits { flex: 1 1 auto; min-height: 0; overflow: auto; list-style: none; margin: 0; padding: var(--byd-s2); display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; align-content: start; }
+.byd-font-catalog-hits li { display: grid; gap: 3px; align-items: start; border: 1px solid var(--byd-editor-line); border-radius: 10px; padding: var(--byd-s2) var(--byd-s3); background: var(--byd-editor-part-bg); min-width: 0; }
 .byd-font-catalog-heading { font-weight: 700; line-height: 1.2; color: #fff; overflow-wrap: anywhere; }
 /* The second sample, and the one the choice of room turned on: the card's rule text in the same
    family, in the card's own grade. Two lines of it, because that is what a card gives it. */
@@ -1502,11 +1502,11 @@
   overflow: hidden;
 }
 .byd-font-catalog-meta { font-size: 10.5px; color: var(--byd-editor-quiet); }
-.byd-font-catalog-hits li button { justify-self: start; margin-top: 4px; min-height: 28px; border: 1px solid var(--byd-editor-line); border-radius: 7px; padding: 0 10px; background: #0f1115; color: var(--byd-editor-home-ink); font: inherit; font-size: 11.5px; cursor: pointer; }
+.byd-font-catalog-hits li button { justify-self: start; margin-top: 4px; min-height: 28px; border: 1px solid var(--byd-editor-line); border-radius: 7px; padding: 0 var(--byd-s3); background: #0f1115; color: var(--byd-editor-home-ink); font: inherit; font-size: 11.5px; cursor: pointer; }
 .byd-font-catalog-hits li button:disabled { color: var(--byd-editor-catalog-ink); border-color: var(--byd-editor-catalog-mark); cursor: default; }
-.byd-font-catalog-said { margin: 0; padding: 18px 12px; font-size: 12px; text-align: center; color: var(--byd-editor-quiet); }
+.byd-font-catalog-said { margin: 0; padding: var(--byd-s4) var(--byd-s3); font-size: 12px; text-align: center; color: var(--byd-editor-quiet); }
 .byd-font-catalog-said[role='alert'] { color: var(--byd-editor-unsaved-ink); }
-.byd-font-catalog footer { flex: none; display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-top: 1px solid var(--byd-editor-line-soft); font-size: 11px; color: var(--byd-editor-quiet); }
+.byd-font-catalog footer { flex: none; display: flex; gap: 10px; align-items: center; padding: var(--byd-s2) var(--byd-s3); border-top: 1px solid var(--byd-editor-line-soft); font-size: 11px; color: var(--byd-editor-quiet); }
 .byd-font-catalog-count { margin-left: auto; font-variant-numeric: tabular-nums; }
 
 /* Table */

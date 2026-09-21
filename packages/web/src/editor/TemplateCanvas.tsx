@@ -453,8 +453,11 @@ function FontShelf({ doc, onFontFile, onFontLicence, onRemoveFont, onOpenCatalog
       )}
       {/* The way into Google Fonts (#329, L27). It stands above the upload because it is the
           answer for nearly everyone: the whole catalog is free, and a catalog entry arrives
-          knowing its licence, which is the one thing an uploaded file can never say. */}
-      <button type="button" className="byd-fonts-catalog byd-primary" onClick={onOpenCatalog}>
+          knowing its licence, which is the one thing an uploaded file can never say.
+
+          Second and not first, for all that: the primary fill belongs to the one action that
+          puts the work on the table, and a view with two of them has none (#44). */}
+      <button type="button" className="byd-fonts-catalog byd-secondary" onClick={onOpenCatalog}>
         {t('fonts.catalog.open')}
       </button>
       {/* The control is the receiver (#294, #291 variant B): a typeface is dropped on the button

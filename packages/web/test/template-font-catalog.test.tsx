@@ -121,14 +121,14 @@ describe('finding a family and taking it (L27)', () => {
     expect(onCatalogFont).toHaveBeenCalledWith({ family: 'Cinzel', category: 'serif', licence: 'OFL 1.1', by: 'Natanael Gama', weights: expect.stringContaining('..') })
   })
 
-  it('offers no second copy of a family the project already holds', async () => {
+  it('offers no second copy of a family the game already holds', async () => {
     const doc = projectDoc()
     doc.fonts = { ...doc.fonts, Cinzel: { stack: '"Cinzel", serif', asset: `asset:${'c'.repeat(64)}`, source: 'catalog' } }
     canvas({ doc })
     fireEvent.click(screen.getByRole('button', { name: /sök i google fonts/i }))
     await screen.findByRole('list', { name: /träffar/i })
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'cinzel' } })
-    const taken = await screen.findByRole('button', { name: /cinzel finns i projektet/i })
+    const taken = await screen.findByRole('button', { name: /cinzel finns i spelet/i })
     expect((taken as HTMLButtonElement).disabled).toBe(true)
   })
 })
