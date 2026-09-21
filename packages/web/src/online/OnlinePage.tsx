@@ -6,6 +6,7 @@ import './online.css'
 import { TableRenderer, type TableHandle } from '../table/TableRenderer.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { usePresence, useRecent } from '../table/usePresence.js'
+import { useShuffles } from '../table/shuffle.js'
 import { previewOf } from '../table/rewind.js'
 import { seatColor } from '../table/seatColor.js'
 import { playIntents } from '../player/play.js'
@@ -76,6 +77,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const room = useRoom()
   const presence = usePresence(client, view)
   const recent = useRecent(activity)
+  // The shuffle fanned on the phone's felt too (L35): every screen that sees the pile plays it.
+  const shuffles = useShuffles(activity, view !== null)
   const table = useRef<TableHandle>(null)
   const [sheet, setSheet] = useState<Sheet>(null)
   // The hand's second mode (#24): the fan at rest, the whole hand as a grid when it is asked for.
@@ -161,6 +164,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             peers={Object.values(presence.peers)}
             pulses={presence.pulses}
             recent={recent}
+            shuffles={shuffles}
             onPresence={(p) => client.sendPresence(p)}
           />
         </div>

@@ -7,6 +7,7 @@ import { turnToFit } from '../table/fit.js'
 import { useRoom } from '../table/useRoom.js'
 import { TvChrome } from '../table/TvChrome.js'
 import { useTableClient } from '../table/useTableClient.js'
+import { useShuffles } from '../table/shuffle.js'
 import { refusedText } from '../player/SessionOverlays.js'
 import { FlagSheet } from '../player/SessionSheets.js'
 import { Survey } from '../player/Survey.js'
@@ -41,6 +42,8 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   const live = useLiveStatus(conn, 'table', timing)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
   usePageTitle({ state: sessionId ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code') ?? sessionId })
+  // The shuffle, fanned for the observer as for the room (L35).
+  const shuffles = useShuffles(activity, view !== null)
   const [sheet, setSheet] = useState(false)
   // Whether the column beside the table is called in (#6, prototype B). The observer watches, so
   // the table is the whole screen and everything else is summoned; on a desk there is room for
@@ -91,7 +94,7 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
         observers={observers}
         note={<p className="byd-observer-note">{t('observer.banner')}</p>}
       >
-        <TableRenderer view={view} mode="tv" rotate={turn} faces={http} onInspect={setInspecting} />
+        <TableRenderer view={view} mode="tv" rotate={turn} faces={http} onInspect={setInspecting} shuffles={shuffles} />
       </TvChrome>
       {/* The handle (#6): a row of its own under the table, never a banner over it. What she is
           is always on it; the rest of the sentence, the feed and the seats are one press away and

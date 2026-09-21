@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type Keyb
 import { BackTexture, Texture } from './Texture.js'
 import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import type { Peer, Pulse, Recent } from './presence.js'
+import { FAN, useStill, type Shuffle } from './shuffle.js'
 import { hue } from './hue.js'
 import { seatColor } from './seatColor.js'
 import { feltScale, fitScale, leaningSquare, woodLayout, TOUCH_PX, TV_AIR_PX } from './fit.js'
@@ -68,6 +69,9 @@ export type TableRendererProps = {
   peers?: readonly Peer[] | undefined
   pulses?: readonly Pulse[] | undefined
   recent?: readonly Recent[] | undefined
+  // Which piles are being shuffled right now (L35): the fan is played on each, by the log line
+  // that says so and never by a difference between two snapshots. `useShuffles` derives it.
+  shuffles?: readonly Shuffle[] | undefined
   onPresence?: ((p: Presence) => void) | undefined
   camera?: boolean | undefined
   // What the pointer is over (C): the TV shows it large beside the table. Null when it leaves.
@@ -174,7 +178,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay, back, seatNames = false, me = null, foldHand = null, keyboard }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay, back, seatNames = false, me = null, foldHand = null, keyboard }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -348,6 +352,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const colourOf = (seat: string | null) => (seat === null ? TABLE_GREY : seatColor(seatIndex(seat)))
   const carried = new Map(peers.filter((p) => p.drag).map((p) => [p.drag?.component ?? '', p]))
   const movedBy = new Map(recent.map((r) => [r.component, r.seat]))
+  const shuffling = new Map(shuffles.map((s) => [s.pile, s.seq]))
+  // Whether the reader has asked for less motion (L35): asked once for the felt, not once per pile.
+  const still = useStill()
 
   // Pointer → table millimetres, fixed when a drag begins (the layout does not change under it).
   const mapper = (): ((cx: number, cy: number) => Point) | null => {
@@ -694,6 +701,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 top={top(z.geometry.y + (whole || settled ? dy : 0))}
                 px={px}
                 lifted={whole}
+                shuffle={shuffling.get(z.id)}
+                still={still}
                 topInspects={inspects(lifting ? topOf(z, 1) : topOf(z))}
                 bottomCard={bottomOf(z, byId)}
                 bottomInspects={inspects(bottomOf(z, byId) ?? bottomStandIn(z))}
@@ -1114,7 +1123,7 @@ function topIdOf(z: ZoneView, skip = 0): string | undefined {
 
 // A pile is a point; the stack is centred on it. A hidden pile has a count and nothing else,
 // unless its top lies face-up.
-function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, lifted, topHandlers, topInspects, bottomInspects, labelHandlers, topKeys, labelKeys, points }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; bottomCard?: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; bottomInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; topKeys?: FeltNodeProps | undefined; labelKeys?: FeltNodeProps | undefined; points?: Pointing | undefined }) {
+function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, lifted, shuffle, still = false, topHandlers, topInspects, bottomInspects, labelHandlers, topKeys, labelKeys, points }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; bottomCard?: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; shuffle?: number | undefined; still?: boolean | undefined; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; bottomInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; topKeys?: FeltNodeProps | undefined; labelKeys?: FeltNodeProps | undefined; points?: Pointing | undefined }) {
   const t = useT()
   // What a face-down pile wears. Its top card's own back first, which is the one thing about a
   // hidden pile that is public in the room (#313): a deck whose cards carry their own back (#14)
@@ -1148,6 +1157,18 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
   // bottom then, and it names none for an empty pile.
   const bottom = zone.bottom
   const bottomOwn = bottom !== undefined && !bottomCard?.cardRef ? (bottom.back ? <BackTexture faces={faces} hash={bottom.back} /> : back) : null
+  // The shuffle, fanned (L35, #326): four backs fanned out of the pile and gathered back, keyed by
+  // the log line so a second shuffle of the same pile starts the fan over. They wear what the
+  // pile itself wears face-down — the same back node as the top, from the same hash the zone
+  // already carries — and never a front, so nothing is drawn during the fan that was not on the
+  // screen before it; that is what keeps a test on raw frames blind to the animation. A pile being
+  // dragged is not fanned: the ghost of it is elsewhere, and the fan would play on an empty spot.
+  //
+  // Under `prefers-reduced-motion` (`still`) the motion is off and not damped: no fan is mounted
+  // at all, and the pile pulses amber instead — something happened, without anything moving.
+  const playing = shuffle !== undefined && !lifted && count > 0
+  const fanned = playing && !still
+  const fanBack = ownBack ? <BackTexture faces={faces} hash={ownBack} /> : back
   return (
     <div
       className="byd-pile"
@@ -1155,6 +1176,7 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
       data-count={count}
       data-dynamic={zone.dynamic ? 'true' : 'false'}
       data-dragging={lifted ? 'true' : undefined}
+      data-shuffling={playing ? (still ? 'pulse' : 'fan') : undefined}
       style={{ position: 'absolute', left: left - px(CARD_MM.w / 2), top: top - px(CARD_MM.h / 2), width: px(CARD_MM.w), height: px(CARD_MM.h), transform: `rotate(${zone.geometry.rot}deg)` }}
       {...points}
     >
@@ -1184,6 +1206,15 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
         <Texture faces={faces} c={topCard} />
         <span>{count > 0 ? topCard?.cardRef ?? '' : ''}</span>
       </div>
+      {fanned && (
+        <div className="byd-pile-fan" key={shuffle} aria-hidden="true">
+          {FAN.map(([out, turn], i) => (
+            <i key={i} className="byd-pile-fan-card" data-face="back" data-back={fanBack ? 'own' : undefined} style={{ ['--fan-out' as string]: `${out}%`, ['--fan-turn' as string]: `${turn}deg` }}>
+              {fanBack}
+            </i>
+          ))}
+        </div>
+      )}
       <span className="byd-pile-count" data-handle={labelHandlers ? 'true' : undefined} {...labelHandlers} {...labelKeys}>
         <span className="byd-pile-name">{zone.dynamic ? t('pile.dynamic') : zone.name}</span>
         <b className="byd-pile-n">{count}</b>
