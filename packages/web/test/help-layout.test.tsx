@@ -29,7 +29,7 @@ import { atWidth } from './viewport.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
-const css = ['src/editor/editor.css', 'src/buttons.css', 'src/a11y.css', 'src/rules/rules-open.css', 'src/rules/rules.css'].map(read).join('\n')
+const css = ['src/help.css', 'src/editor/editor.css', 'src/buttons.css', 'src/a11y.css', 'src/rules/rules-open.css', 'src/rules/rules.css'].map(read).join('\n')
 const document_ = (html: string, extra = '') =>
   shell
     .replace('<script type="module" src="/src/main.tsx"></script>', '')

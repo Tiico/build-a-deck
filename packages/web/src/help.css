@@ -1,0 +1,43 @@
+/* ── Hjälpen bakom ett frågetecken (L32, #303) ────────────────────────────────────────────────
+   Ett mönster för hela produkten: frågetecknet står bredvid rubriken eller raden det handlar om,
+   och lådan det öppnar läggs över arbetet — aldrig i flödet, så ytan är lika hög med hjälpen
+   öppen som stängd. Det var det enda av tre mönster där vinsten bestod.
+
+   Lådan är fäst i fönstret och inte i sin egen omslutning: lagerkolumnen är 220 px bred och
+   klipper det som hänger utanför, och en låda som klipps av kolumnen den hjälper till med är
+   ingen hjälp. Var den hamnar — under, över, från vänster- eller högerkanten — läses av
+   `placement.ts` när den öppnas, aldrig av arket.
+
+   Ingen `:hover` öppnar den, och inget i den rör sig: ett sätt in, ett sätt ut.
+
+   Ett eget ark sedan #304: starten, kontot och guiden bär samma frågetecken, och ingen av dem
+   laddar editorns ark. Måtten är editorns (`--byd-tap`, `--byd-s*`) där de finns och samma tal
+   som reserv där de inte finns; färgerna är knappspråkets roller (`buttons.css`), som varje yta
+   redan binder till sin egen accent. */
+.byd-help { position: relative; display: inline-flex; align-items: center; flex: none; vertical-align: middle; }
+/* Ringen är 22 px; träffytan är den varje kontroll har. Rummet och rollen tillsammans, så att en
+   ytas egen knappregel — symbolernas `.byd-symbols-work button`, kortets `.byd-login button` —
+   inte klär ringen i en fyrkant. Den marginal som drar ihop
+   knappen till ringens fotavtryck är det som gör att en rad med ett frågetecken i inte blir en
+   44 px hög rad — det är ytan som tävlar med arbetskontrollerna, inte ringen. */
+.byd-help .byd-help-ask { display: inline-grid; place-items: center; width: var(--byd-tap, 44px); height: var(--byd-tap, 44px); min-width: var(--byd-tap, 44px); min-height: var(--byd-tap, 44px); margin: calc((22px - var(--byd-tap, 44px)) / 2); /* undantag: ringens 22 px mot träffytans 44 är inget avstånd på stegen. */ border: 0; padding: 0; background: transparent; color: var(--byd-secondary-ink); font: inherit; cursor: pointer; }
+.byd-help-ask > span { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 1px solid var(--byd-secondary-line); border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1; letter-spacing: 0; text-transform: none; }
+.byd-help-ask:hover > span { border-color: var(--byd-secondary-ink); }
+.byd-help-ask[aria-expanded='true'] > span { border-color: var(--byd-chosen-bar); background: var(--byd-primary-bg); color: var(--byd-primary-ink); }
+.byd-help-ask:focus-visible { outline: none; }
+.byd-help-ask:focus-visible > span { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+.byd-help-box { position: fixed; z-index: 30; box-sizing: border-box; width: 260px; max-width: calc(100vw - 24px); max-height: var(--byd-place-room, 60vh); overflow: auto; padding: var(--byd-s2, 8px) var(--byd-tap, 44px) var(--byd-s2, 8px) var(--byd-s3, 12px); border-radius: 10px; background: #12141a; border: 1px solid var(--byd-secondary-line); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6); color: #c7cede; font-size: 12px; font-weight: 400; line-height: 1.55; letter-spacing: 0; text-transform: none; text-align: left; white-space: normal; }
+/* The topic is the sentence's word («Hjälp om lagerlistan»); as the box's heading it stands alone. */
+.byd-help-topic::first-letter { text-transform: uppercase; }
+.byd-help-box p { margin: 0 0 var(--byd-s1, 4px); color: inherit; font-size: inherit; line-height: inherit; max-width: none; }
+.byd-help-box p:last-child { margin-bottom: 0; }
+.byd-help-topic { display: block; margin: 0 0 4px; color: #e6ecfa; font-size: 12px; font-weight: 700; }
+/* Rubriken eller raden och dess frågetecken på en rad. Raden bär rubrikens marginal, så att
+   ringen står mitt för orden och inte mitt för orden plus deras luft. */
+.byd-help-row { display: flex; align-items: center; gap: 4px; }
+/* Frågetecknet står intill orden och aldrig vid radens bortre kant: det som står först växer
+   inte, det får bara krympa och radbrytas. */
+.byd-help-row > :first-child { flex: 0 1 auto; min-width: 0; }
+.byd-help-row > h2 { margin-top: 0; margin-bottom: 0; }
+.byd-help-row:has(> h2) { margin-bottom: var(--byd-s2, 8px); }
+.byd-help-close { position: absolute; top: 0; right: 0; width: var(--byd-tap, 44px); height: var(--byd-tap, 44px); min-width: var(--byd-tap, 44px); min-height: var(--byd-tap, 44px); border: 0; border-radius: 10px; padding: 0; background: transparent; color: var(--byd-secondary-ink); font: inherit; font-size: 16px; cursor: pointer; }

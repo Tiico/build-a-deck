@@ -3,13 +3,16 @@
 // Three things the decision holds that no rendered test can see: that no rule opens the box on
 // hover — the way in is click and focus, nothing else — that nothing in it moves, so there is no
 // transition for reduced motion to have to cut, and that the question mark is a target the size
-// the editor gives every control, however small the ring it draws.
+// every control has, however small the ring it draws.
+//
+// The rules are the pattern's own sheet since #304: the start, the account and the guided start
+// use the same question mark, and none of them loads the editor's sheet.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 // Without its comments: a comment that says «ingen :hover öppnar den» is not a rule that does.
-const css = readFileSync(join(import.meta.dirname, '..', 'src/editor/editor.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+const css = readFileSync(join(import.meta.dirname, '..', 'src/help.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
 // Every rule whose selector names the pattern, as `[selector, declarations]`.
 const rules = [...css.matchAll(/([^{}]*byd-help[^{}]*)\{([^}]*)\}/g)].map((m) => [m[1]!.trim(), m[2]!.trim()] as const)
 
@@ -35,11 +38,21 @@ describe('the help pattern in the stylesheet', () => {
     expect(rules.filter(([, body]) => /transition|animation/.test(body))).toEqual([])
   })
 
-  it('gives the question mark the hit area the editor gives every control', () => {
-    const ask = rules.find(([selector]) => selector === '.byd-editor .byd-help-ask')
+  it('gives the question mark the hit area every control has, on every surface it stands on', () => {
+    const ask = rules.find(([selector]) => selector === '.byd-help .byd-help-ask')
     expect(ask).toBeDefined()
-    expect(ask![1]).toMatch(/width: var\(--byd-tap\)/)
-    expect(ask![1]).toMatch(/height: var\(--byd-tap\)/)
+    expect(ask![1]).toMatch(/width: var\(--byd-tap, 44px\)/)
+    expect(ask![1]).toMatch(/height: var\(--byd-tap, 44px\)/)
+  })
+
+  // The felt's own «?» in the corner (#224) was `.byd-help` too, and both sheets block the first
+  // painting: the corner's rule would have pinned the account's question mark to the card's
+  // corner. Two things, two names.
+  it('shares no name with the felt’s shortcut help', () => {
+    const felt = readFileSync(join(import.meta.dirname, '..', 'src/table/table.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    const mine = new Set(rules.flatMap(([selector]) => [...selector.matchAll(/\.(byd-help[a-z-]*)/g)].map((m) => m[1]!)))
+    const theirs = [...felt.matchAll(/\.(byd-help[a-z-]*)/g)].map((m) => m[1]!)
+    expect(theirs.filter((name) => mine.has(name))).toEqual([])
   })
 
   it('lays the box over the work, fixed to the window and never inside a column that clips', () => {

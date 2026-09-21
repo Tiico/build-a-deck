@@ -816,7 +816,7 @@
    den öppnar. Den tar ingen plats från bordet och ligger aldrig över något som spelas. Färgerna
    är filtens egna (L13): den dämpade krita som en avstängd skiva i ringen redan bär, och full
    krita så fort den pekas på eller står öppen. */
-.byd-help { position: absolute; right: 16px; bottom: 16px; z-index: 30; }
+.byd-shortcut-help { position: absolute; right: 16px; bottom: 16px; z-index: 30; }
 /* Skivan är 34 px och träffytan 44 (C4, #25): den negativa marginalen låter knappen växa utåt
    runt skivan, så att `/online` — som hålls i en hand — har en fingertopp att sikta på utan att
    skivan flyttar sig från hörnet eller ritas större än beslutet säger. */

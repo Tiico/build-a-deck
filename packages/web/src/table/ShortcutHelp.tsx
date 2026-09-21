@@ -42,7 +42,7 @@ export function ShortcutHelp({ where, shortcuts }: { where: string; shortcuts: r
     return () => window.removeEventListener('keydown', onKey)
   }, [])
   return (
-    <div className="byd-help">
+    <div className="byd-shortcut-help">
       {open && <Panel name={name} where={where} shortcuts={shortcuts} opener={opener} onClose={() => setOpen(false)} />}
       {/* The disc is 34 px as the decision says; the button around it is 44, because `/online` is
           a surface held in a hand and C4 gives no target smaller than a fingertip. The two are not

@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties
 import { useDoor } from '../doors.js'
 import { useT } from '../i18n/index.js'
 import { placeBox, type Anchor, type Placement, type Viewport, type Wants } from './placement.js'
+import '../help.css'
 
 // The one help pattern the product has (L32, #303): a question mark that opens a box under itself.
 //
