@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 04 — Radens hovring (#400)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Beslutet är fattat: hovringen märks genom att radens egen grund lyfts svagt, hela vägen ut
+     till högerkanten. Inga linjer, ingen ändrad text. Kvar att se: hur mycket, och om lyftet
+     står sig mot var och en av radens fem grunder utan att ta över någon av dem. */
+
+  main { padding: var(--gutter) var(--gutter) 104px; display: grid; gap: var(--s5); grid-template-columns: minmax(0,1fr) 400px; align-items: start; overflow: auto; }
+  h2 { margin: 0 0 var(--s3); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+
+  /* ── Tabellen, med radens fem grunder tagna ur editor.css ─────────────────────────────────── */
+  .tabell { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); }
+  table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; table-layout: fixed; }
+  thead th { height: 36px; padding: 0 10px; background: #1b1f2a; border-bottom: 1px solid var(--line); color: var(--quiet);
+             text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; }
+  td { height: 34px; padding: 0 10px; border-bottom: 1px solid var(--line-soft); color: #ddd; overflow: hidden;
+       text-overflow: ellipsis; white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: 0; }
+  .kol-bock { width: 44px; } .kol-id { width: 104px; } .kol-antal { width: 70px; } .kol-x { width: 44px; }
+  .id { color: var(--quiet); font-family: ui-monospace, monospace; }
+  .x { color: #5b6377; text-align: center; }
+
+  /* Radens grund, ordagrant ur editor.css. Grunden ligger på raden; jämförelsens två toner
+     ligger på cellen och alltså OVANPÅ grunden — det är hela knuten i #400. */
+  tbody tr { background: #1b1d23; }                                   /* vanlig */
+  tbody tr[data-grund='markerad'] { background: #253044; }             /* bockad (#17) */
+  tbody tr[data-grund='pattitad'] { background: #2f3a55; }             /* kortet på förhandsvisningen */
+  tbody tr[data-grund='tillagd'] td { background: rgba(125, 211, 160, 0.1); }   /* B4 */
+  tbody tr[data-grund='borttagen'] td { background: rgba(224, 92, 92, 0.1); }   /* B4 */
+  tbody tr[data-grund='borttagen'] td:not(.x) { color: #9aa3b8; text-decoration: line-through; }
+  /* De fastnålade cellerna ärver radens grund, som i dag. */
+  .kol-bock, .kol-id { position: sticky; background: inherit; }
+  .kol-bock { left: 0; } .kol-id { left: 44px; }
+
+  /* ── Hovringen ───────────────────────────────────────────────────────────────────────────── */
+  /* En slöja och inte en färg: den lyfter vilken grund raden än har, med ett och samma steg, och
+     den ligger på cellen så att den når ovanför jämförelsens två toner. En färg per grund hade
+     varit fem regler att hålla i takt, och den femte hade glömts. */
+  .shell[data-variant] tbody tr:hover > * { background-image: linear-gradient(var(--slöja), var(--slöja)); }
+  .shell[data-variant='nu'] tbody tr:hover > * { background-image: none; }
+  .shell[data-tvinga] tbody tr:nth-child(even) > * { background-image: linear-gradient(var(--slöja), var(--slöja)); }
+  .shell[data-tvinga][data-variant='nu'] tbody tr:nth-child(even) > * { background-image: none; }
+  .shell[data-variant='l3'] { --slöja: rgb(255 255 255 / 3%); }
+  .shell[data-variant='l6'] { --slöja: rgb(255 255 255 / 6%); }
+  .shell[data-variant='l9'] { --slöja: rgb(255 255 255 / 9%); }
+
+  /* ── Mätpanelen ──────────────────────────────────────────────────────────────────────────── */
+  .panel { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: var(--s4); display: grid; gap: var(--s3); }
+  .panel table { table-layout: auto; font-size: 11px; }
+  .panel th, .panel td { height: auto; padding: 4px 6px; border: 0; border-bottom: 1px solid var(--line-soft); white-space: nowrap;
+                         background: transparent !important; text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .panel thead th { background: transparent; color: var(--quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; }
+  .panel td.tal { font-variant-numeric: tabular-nums; text-align: right; }
+  .flis { display: inline-block; width: 11px; height: 11px; border-radius: 3px; border: 1px solid #0006; vertical-align: -1px; margin-right: 5px; }
+  .dom { padding: 8px 10px; border-radius: 9px; font-size: 11.5px; line-height: 1.5; }
+  .dom[data-ok='ja'] { background: #16281d; border: 1px solid #2c5a3c; color: #a8e8c0; }
+  .dom[data-ok='nej'] { background: #2a1618; border: 1px solid #5f2f31; color: #ffb3ad; }
+  .panel p { margin: 0; color: var(--quiet-2); font-size: 11px; line-height: 1.55; }
+</style>
+</head>
+<body>
+<div class="shell" data-variant="l6">
+  <header>
+    <a class="home" href="#">Byggarn</a>
+    <strong>Duellkoppar</strong>
+    <span class="saved">jämförs med «Före balansen»</span>
+    <div class="tabs"><button>Kort</button><button aria-selected="true">Tabell</button><button>Regler</button><button>Bord</button></div>
+    <span class="spacer"></span><span class="who">N</span>
+  </header>
+
+  <div class="protorad">
+    <b>Prototyp 04 — radens hovring</b>
+    <div class="switch" role="group" aria-label="Variant">
+      <button data-v="nu">Nu</button>
+      <button data-v="l3">3 %</button>
+      <button data-v="l6" aria-pressed="true">6 %</button>
+      <button data-v="l9">9 %</button>
+    </div>
+    <button id="tvinga" aria-pressed="false">Lyft varannan rad</button>
+    <p>Hovra raderna, eller lyft varannan rad så syns alla fem grunder lyfta på en gång.
+       Mätpanelen räknar om vid varje byte: lyftets steg mot steget till nästa grund är själva frågan.</p>
+  </div>
+
+  <main>
+    <div>
+      <h2>Radens fem grunder, i en och samma tabell</h2>
+      <div class="tabell">
+        <table>
+          <colgroup><col class="kol-bock"><col class="kol-id"><col><col><col class="kol-antal"><col class="kol-x"></colgroup>
+          <thead><tr><th class="kol-bock"></th><th class="kol-id">id</th><th>title</th><th>body</th><th class="kol-antal">antal</th><th class="kol-x"></th></tr></thead>
+          <tbody id="kropp"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Mätning</h2>
+      <table>
+        <thead><tr><th>grund</th><th class="tal">vila L</th><th class="tal">hovrad L</th><th class="tal">steg</th><th class="tal">text</th></tr></thead>
+        <tbody id="matt"></tbody>
+      </table>
+      <div class="dom" id="dom"></div>
+      <p id="anm"></p>
+    </div>
+  </main>
+</div>
+
+<div class="note">
+  <b>Kontrasten mäts mot varje grund raden kan ha.</b>
+  En kopierad form bär inte med sig sitt underlag (#372): lyftet ska synas på alla fem och får inte
+  ta över någon av dem.
+</div>
+
+<script>
+const shell = document.querySelector('.shell')
+const GRUNDER = [
+  ['vanlig',    'vanlig'],
+  ['markerad',  'markerad · bockad (#17)'],
+  ['pattitad',  'påtittad · kortet i förhandsvisningen'],
+  ['tillagd',   'jämförelse · tillagd (B4)'],
+  ['borttagen', 'jämförelse · borttagen (B4)'],
+]
+const KORT = [
+  ['DUEL-001', 'Kopparvakten',         'Vakta en zon så länge du har en kopparmarker kvar.', '3'],
+  ['DUEL-002', 'Duellkoppar',          'Dra ett kort. Kasta en kopparmarker om du har fler än tre.', '1'],
+  ['DUEL-003', 'Smedjans lärling',     'Betala en koppar: dra ett kort och kasta sedan ett.', '4'],
+  ['DUEL-004', 'Förrådets bokhållare', 'När en motståndare drar ett kort får du en kopparmarker.', '2'],
+  ['DUEL-005', 'Kopparns pris',        'Alla spelare kastar hälften av sina kopparmarker.', '1'],
+]
+// Varje grund två gånger, så den hovrade alltid har sin egen vila att jämföras med.
+const RADER = GRUNDER.flatMap(([g], i) => [
+  { g, kort: KORT[i], bockad: g === 'markerad' },
+  { g, kort: KORT[(i + 1) % KORT.length], bockad: g === 'markerad' },
+])
+
+document.getElementById('kropp').innerHTML = RADER.map(({ g, kort, bockad }) => {
+  const [id, title, body, antal] = kort
+  return `<tr data-grund="${g}"${g === 'pattitad' ? ' aria-selected="true"' : ''}>
+    <td class="kol-bock"><input type="checkbox" aria-label="Markera ${id}"${bockad ? ' checked' : ''}></td>
+    <td class="kol-id id">${id}</td><td>${title}</td><td>${body}</td>
+    <td class="kol-antal">${antal}</td><td class="kol-x x">×</td></tr>`
+}).join('')
+
+// ── Färglära, tillräckligt för frågan ────────────────────────────────────────────────────────
+const kanal = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4) }
+const lum = ([r, g, b]) => 0.2126 * kanal(r) + 0.7152 * kanal(g) + 0.0722 * kanal(b)
+const kontrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) }
+const lagg = (under, over, a) => under.map((u, i) => u * (1 - a) + over[i] * a)
+const hex = (c) => '#' + c.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')
+
+// Grunderna som de står i editor.css, komponerade i samma ordning som webbläsaren gör det.
+const BAS = [27, 29, 35]
+const GRUND = {
+  vanlig:    BAS,
+  markerad:  [37, 48, 68],
+  pattitad:  [47, 58, 85],
+  tillagd:   lagg(BAS, [125, 211, 160], 0.1),
+  borttagen: lagg(BAS, [224, 92, 92], 0.1),
+}
+const TEXT = { borttagen: [154, 163, 184], _: [221, 221, 221] }
+const SLOJA = { nu: 0, l3: 0.03, l6: 0.06, l9: 0.09 }
+
+function rakna() {
+  const a = SLOJA[shell.dataset.variant]
+  const rader = GRUNDER.map(([g, namn]) => {
+    const vila = GRUND[g]
+    const hov = lagg(vila, [255, 255, 255], a)
+    return { g, namn, vila, hov, lv: lum(vila), lh: lum(hov), text: kontrast(hov, TEXT[g] ?? TEXT._) }
+  })
+
+  document.getElementById('matt').innerHTML = rader.map((r) =>
+    `<tr><td><span class="flis" style="background:${hex(r.vila)}"></span>${r.namn}</td>
+     <td class="tal">${r.lv.toFixed(4)}</td><td class="tal">${r.lh.toFixed(4)}</td>
+     <td class="tal">${((r.lh - r.lv) * 1000).toFixed(1)}</td>
+     <td class="tal">${r.text.toFixed(2)}</td></tr>`).join('')
+
+  // Tar lyftet över någon grund? Måttet: hovrad vanlig mot markerad i vila, och hovrad markerad
+  // mot påtittad i vila. Blir hovringens steg lika stort som steget till nästa grund är de två
+  // omöjliga att skilja åt, och tinten har tagit över en grund som betyder något annat.
+  const steg = (i) => rader[i + 1].lv - rader[i].lv
+  const lyft = rader[0].lh - rader[0].lv
+  const dom = document.getElementById('dom')
+  const minsta = Math.min(...rader.map((r) => r.text))
+  const konflikt = [0, 1].filter((i) => lyft >= steg(i) * 0.75)
+  const ok = a > 0 && lyft > 0.0015 && konflikt.length === 0 && minsta >= 4.5
+  dom.dataset.ok = ok ? 'ja' : 'nej'
+  dom.innerHTML = a === 0
+    ? '<b>Nu:</b> inget lyft alls. Radens grund är oförändrad med pekaren över sig — det är precis det #400 mätte.'
+    : `<b>Lyft ${(a * 100).toFixed(0)} %:</b> steget är ${(lyft * 1000).toFixed(1)} mot ${(steg(0) * 1000).toFixed(1)} till markerad
+       och ${(steg(1) * 1000).toFixed(1)} markerad→påtittad. Lägsta textkontrast på någon hovrad grund: ${minsta.toFixed(2)}:1.
+       ${konflikt.length ? '<b>Tar över en grund.</b>' : ok ? '<b>Syns, och tar inte över någon grund.</b>' : '<b>För svagt eller för lågt på text.</b>'}`
+
+  document.getElementById('anm').innerHTML = `Jämförelsens två toner ligger i dag på <code>td</code> och inte på <code>tr</code>
+    — en hovring lagd på raden hade hamnat <em>under</em> dem och aldrig synts på en jämförd rad. Slöjan ligger därför på cellen.
+    Borttagen rad mäts mot sin egen dämpade text (#9aa3b8), inte mot #ddd.`
+}
+
+for (const b of document.querySelectorAll('[data-v]')) b.addEventListener('click', () => {
+  shell.dataset.variant = b.dataset.v
+  for (const o of document.querySelectorAll('[data-v]')) o.setAttribute('aria-pressed', String(o === b))
+  rakna()
+})
+document.getElementById('tvinga').addEventListener('click', (e) => {
+  const på = !shell.hasAttribute('data-tvinga')
+  shell.toggleAttribute('data-tvinga', på)
+  e.currentTarget.setAttribute('aria-pressed', String(på))
+})
+rakna()
+</script>
+</body>
+</html>
