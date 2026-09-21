@@ -607,6 +607,21 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const [pinned, setPinned] = useState<string | null>(null)
   // The order held while a cell is being edited, as the ids that were on screen when it was entered.
   const [held, setHeld] = useState<string[] | null>(null)
+  // Att lämna cellen, och bara det (#395). Fokus som stannar kvar inne i samma `<td>` är ingen
+  // avfärd: `{ }` står i cellens egen lane och ritas bara medan cellen arbetas i, så en Tabb dit
+  // avmonterade knappen i samma ögonblick som den tog emot fokus — och fokus föll ur dokumentet,
+  // till `<body>`, varifrån nästa Tabb började om från sidans topp. Frågan ställs till cellen och
+  // inte till fältet, eftersom det är cellen som är «där designern står».
+  const leaveCell = (event: FocusEvent<HTMLElement>, cardRef: string, field: string) => {
+    if (event.currentTarget.closest('td')?.contains(event.relatedTarget)) return
+    setHeld(null)
+    setHere((at) => (at?.cardRef === cardRef && at.field === field ? null : at))
+    // The library belongs to the cell it was opened in (#236). What draws it asks only which cell
+    // that was, so a hand that went to another row left it standing over a cell nobody was in — a
+    // library about nothing. Picking from it is not a departure: an option refuses the focus on
+    // `mousedown`, exactly so that the sentence being written keeps it.
+    if (brace?.cardRef === cardRef && brace.field === field) closeBrace()
+  }
   const fields = fieldsOf(doc)
   // The columns whose place along the head is the designer's (#46). The card's id is not one of
   // them and never was — it is a column of the table without being a field of a card — and
@@ -1442,16 +1457,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       setHeld(shown.map((r) => r.id))
                       setHere({ cardRef, field: f })
                     }}
-                    onBlur={() => {
-                      setHeld(null)
-                      setHere((at) => (at?.cardRef === cardRef && at.field === f ? null : at))
-                      // The library belongs to the cell it was opened in (#236). What draws it asks
-                      // only which cell that was, so a hand that went to another row left it
-                      // standing over a cell nobody was in — a library about nothing. Picking from
-                      // it is not a departure: an option refuses the focus on `mousedown`, exactly
-                      // so that the sentence being written keeps it.
-                      if (brace?.cardRef === cardRef && brace.field === f) closeBrace()
-                    }}
+                    onBlur={(event) => leaveCell(event, cardRef, f)}
                     aria-label={`${cardRef} ${f}`}
                     {...listAria(cardRef, f)}
                   />
@@ -1470,6 +1476,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       aria-label={t('table.icon.insert')}
                       title={t('table.icon.hint')}
                       onMouseDown={(event) => event.preventDefault()}
+                      // Knappen är en del av cellen och inte något bredvid den (#395): när det är
+                      // den som fokus lämnar är det cellen som lämnas, och då ska knappen gå med.
+                      onBlur={(event) => leaveCell(event, cardRef, f)}
                       onClick={(event) => {
                         const input = event.currentTarget.closest('td')?.querySelector('input')
                         if (!input) return
