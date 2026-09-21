@@ -100,8 +100,12 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
   // room the felt has to make (#42). It is the same reading the pills use, asked of the whole
   // table rather than of one seat, so the two can never disagree.
   const shared = [...spread.values()].some((place) => place.of > 1)
-  // The next free seat is chosen until you choose another; a pick someone else just took is let go.
-  const chosen = pick && free.some((s) => s.id === pick) ? pick : (free[0]?.id ?? null)
+  // The next free seat is an offer to a picker nobody has touched yet — never a correction of a
+  // choice somebody already made with her hand (#408). Letting a hand-made pick go and quietly
+  // sliding to the next free seat sat a player down somewhere she never tapped, and told her
+  // nothing; so the pick stands until she moves it, and the picker says the seat was taken.
+  const chosen = pick ?? free[0]?.id ?? null
+  const lost = pick !== null && !free.some((s) => s.id === pick)
 
   // A code that names nothing — never issued, or lapsed — is the phone's 404. It is one of the
   // nine states like any other, said in the words the room it failed to reach would have used.
@@ -167,7 +171,12 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
               aria-disabled={taken ? 'true' : 'false'}
               aria-label={taken ? t('join.seat.label.taken', { seat: s.id, name: s.name ?? '' }) : t('join.seat.label.free', { seat: s.id })}
               aria-pressed={chosen === s.id ? 'true' : 'false'}
-              onClick={() => !taken && setPick(s.id)}
+              onClick={() => {
+                if (taken) return
+                setPick(s.id)
+                // A refusal belongs to the choice it was about: choosing again is what answers it.
+                setProblem(null)
+              }}
               style={{ ['--seat' as string]: seatColor(i), ...(place ? { ['--seat-at' as string]: String(place.at), ['--seat-of' as string]: String(place.of) } : {}) }}
             >
               {/* The seat's own letter over the word (#80, form C). Without it a free seat said
@@ -198,11 +207,18 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
         }}
       >
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('join.name')} aria-label={t('join.name')} autoComplete="nickname" />
-        {problem && <p role="alert">{problem}</p>}
-        <button type="submit" className="byd-primary" disabled={!chosen || !name.trim()}>
+        {/* The seat she chose being taken is said where the refusal from the server is said: one
+            paragraph at the control that is refused, in the picker rather than on a page of its
+            own, because the thing to do next is choose another seat. */}
+        {(lost || problem) && <p role="alert">{lost ? t('join.seat.taken') : problem}</p>}
+        {/* Both ways in ask for the chosen seat, so a seat that has just been taken closes both.
+            Disabled rather than removed: the control keeps its name and its place, so nothing
+            moves under a thumb already on its way down, and a reader is told it is unavailable
+            instead of finding it gone. Choosing again opens them. */}
+        <button type="submit" className="byd-primary" disabled={!chosen || !name.trim() || lost}>
           {t('join.sit')}
         </button>
-        <button type="button" className="byd-join-online byd-secondary" disabled={!chosen || !name.trim()} onClick={() => void go('/online', chosen)}>
+        <button type="button" className="byd-join-online byd-secondary" disabled={!chosen || !name.trim() || lost} onClick={() => void go('/online', chosen)}>
           {t('join.online')}
         </button>
         <button type="button" className="byd-join-observe byd-secondary" disabled={!name.trim()} onClick={() => void go('/observe', null)}>
