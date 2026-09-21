@@ -1614,11 +1614,13 @@ function Scrub({
         onKeyDown={(event) => keys(event, 'ArrowUp', 'ArrowDown')}
         onChange={(e) => onWrite(Number(e.target.value), gesture.token())}
       />
-      {unit !== undefined && (
-        <u className="byd-props-unit" aria-hidden="true">
-          {unit}
-        </u>
-      )}
+      {/* The unit is drawn and not said: the field's own name already ends in it, and a reader
+          hearing «Bredd (mm)» followed by «mm» hears it twice. It keeps its place even on a
+          number that has no unit — a corner count — so every field in the panel is the same
+          width and the column of them reads as a column. */}
+      <span className="byd-props-unit" aria-hidden="true">
+        {unit ?? ''}
+      </span>
     </div>
   )
 }

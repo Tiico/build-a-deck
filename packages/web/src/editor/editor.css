@@ -1385,7 +1385,7 @@
 .byd-props-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 8px; }
 /* A number and its grip (L25). The icon is the field's name and the thing to pull it by: three
    dots of a rule beside a glyph, so the drag is visible before anyone hovers over it. */
-.byd-props-f { display: grid; grid-template-columns: 27px minmax(0, 1fr) auto; align-items: center; gap: 3px; min-height: 28px; }
+.byd-props-f { display: grid; grid-template-columns: 27px minmax(0, 1fr) 20px; align-items: center; gap: 3px; min-height: 28px; }
 .byd-props-grip {
   display: grid;
   grid-template-columns: 3px auto;
