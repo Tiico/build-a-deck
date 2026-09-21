@@ -296,3 +296,43 @@ test.describe('the camera’s corner waits for its own sheet (#325)', () => {
     expect(others.filter((css) => css.includes('.byd-camera-controls') && css.includes('.byd-camera-edge') && css.includes('--byd-camera-dock')).length).toBeGreaterThan(0)
   })
 })
+
+// The help pattern's box waits for its own sheet (#304, #346's way).
+//
+// The pattern's rules lived in `editor.css` while only the editor used it, and the editor's sheet
+// is fetched when the route opens (#186) — so nothing of it was ever weighed here. #304 put the
+// same question mark on the login, the start page and the guided start, which are the first
+// screens anyone sees, and a sheet of its own for all of them landed the whole pattern in the
+// sheet the first painting blocks on. That was 813 bytes over this budget, which is exactly what
+// the budget is for.
+//
+// The split is the rulebook's, along what the first frame actually shows: the ring is drawn on
+// the first frame and keeps its rules here; the box is behind a press nobody has made and travels
+// when it is asked for.
+test.describe('the help box waits for its own sheet (#304)', () => {
+  test('keeps the question mark in the blocking sheet, and the box’s rules out of it', () => {
+    const blocking = blockingSheets(index).map((href) => readFileSync(join(OUT, href.replace(/^\//, '')), 'utf8'))
+    // The ring is painted before anyone presses it, so it is dressed by the sheet the first frame
+    // has — on the login card, which is the first screen of all.
+    expect(blocking.filter((css) => css.includes('.byd-help-ask')).length).toBeGreaterThan(0)
+    expect(blocking.filter((css) => css.includes('.byd-help-row')).length).toBeGreaterThan(0)
+    // And nothing of the box is: its ground, its heading, its cross.
+    for (const inside of ['.byd-help-topic', '.byd-help-close']) {
+      expect(blocking.filter((css) => css.includes(inside))).toEqual([])
+    }
+    expect(blocking.filter((css) => /\.byd-help-box\s*[.{]/.test(css))).toEqual([])
+  })
+
+  test('ships the box’s rules in a sheet of its own, and no part of the ring with it', () => {
+    const blocking = blockingSheets(index)
+    const others = filesUnder(OUT)
+      .filter((path) => path.endsWith('.css'))
+      .filter((path) => !blocking.some((href) => path.endsWith(href.replace(/^\//, ''))))
+      .map((path) => readFileSync(path, 'utf8'))
+    // Somewhere that is not the blocking sheet, the box is fully dressed.
+    expect(others.filter((css) => css.includes('.byd-help-box') && css.includes('.byd-help-close')).length).toBeGreaterThan(0)
+    // And the ring does not travel with it. The seam can be put in the wrong place: a ring that
+    // arrives dressed only after the first press is a question mark nobody could see to press.
+    expect(others.filter((css) => /\.byd-help-ask\s*[,:>{[]/.test(css))).toEqual([])
+  })
+})

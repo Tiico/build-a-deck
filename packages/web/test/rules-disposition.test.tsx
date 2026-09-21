@@ -58,7 +58,7 @@ describe('the empty rules tab is the book’s disposition (#131)', () => {
     expect(screen.getByText('Reglerna hör till spelet.')).toBeTruthy()
     expect(screen.queryByText(/versioneras med korten/)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Hjälp om reglerna' }))
-    const help = screen.getByRole('dialog', { name: 'reglerna' })
+    const help = await screen.findByRole('dialog', { name: 'reglerna' })
     expect(help.textContent).toMatch(/versioneras med korten/)
     expect(help.textContent).toMatch(/telefonen, TV:n och observatören/)
   })

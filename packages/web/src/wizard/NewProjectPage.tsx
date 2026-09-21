@@ -9,6 +9,7 @@ import { suggestFieldKey } from '../editor/fields.js'
 import { buildBlankProject, buildProject, type WizardState } from './build.js'
 import { defaultFields, DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
 import { useT, type Key, type T } from '../i18n/index.js'
+import { Help } from '../editor/HelpDrawer.js'
 import { MAX_PLAYERS } from '@byd/server/doc'
 import './wizard.css'
 
@@ -212,7 +213,15 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   // the wizard has said "3 enkla steg" all along, and now it is three (L10, #4).
   const spelet = (
     <section className="byd-wizard-block" aria-labelledby="byd-wizard-h1">
-      <h2 id="byd-wizard-h1"><span className="byd-wizard-step">1</span>{t('wizard.block.game')}</h2>
+      {/* One question mark per step, at the step's heading (L36): the box carries what the
+          handoff and the blank door used to say on the surface. */}
+      <div className="byd-help-row">
+        <h2 id="byd-wizard-h1"><span className="byd-wizard-step">1</span>{t('wizard.block.game')}</h2>
+        <Help topic={t('wizard.help.spelet')}>
+          <p>{t('wizard.handoff.body')}</p>
+          <p>{t('wizard.blank.help')}</p>
+        </Help>
+      </div>
       {/* The words over the field are its name. A second, shorter one in `aria-label` would win
           over them, and then what is written on the screen and what the field is called are two
           different things — which is the whole of WCAG 2.5.3. */}
@@ -235,7 +244,12 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   )
   const falten = (
     <section className="byd-wizard-block" aria-labelledby="byd-wizard-h2">
-      <h2 id="byd-wizard-h2"><span className="byd-wizard-step">2</span>{t('wizard.fields')}</h2>
+      <div className="byd-help-row">
+        <h2 id="byd-wizard-h2"><span className="byd-wizard-step">2</span>{t('wizard.fields')}</h2>
+        <Help topic={t('wizard.help.falten')}>
+          <p>{t('wizard.fields.help')}</p>
+        </Help>
+      </div>
       <p>{t('wizard.fields.body')}</p>
       <div className="byd-wizard-fields">
         <div className="byd-wizard-field-list">{s.fields.map((field) => <div className="byd-wizard-field" key={field.key}>
@@ -251,8 +265,16 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   )
   const korten = (
     <section className="byd-wizard-block" aria-labelledby="byd-wizard-h3">
-      <div className="byd-wizard-cards-head"><h2 id="byd-wizard-h3"><span className="byd-wizard-step">3</span>{t('wizard.cards.title')}</h2><span>{t(s.rows.length === 1 ? 'wizard.cards.count.one' : 'wizard.cards.count.other', { n: s.rows.length })}</span></div>
-      <p>{t('wizard.cards.body')}</p>
+      <div className="byd-wizard-cards-head">
+        <div className="byd-help-row">
+          <h2 id="byd-wizard-h3"><span className="byd-wizard-step">3</span>{t('wizard.cards.title')}</h2>
+          <Help topic={t('wizard.help.korten')}>
+            <p>{t('wizard.cards.body')}</p>
+            <p>{t('wizard.footer')}</p>
+          </Help>
+        </div>
+        <span>{t(s.rows.length === 1 ? 'wizard.cards.count.one' : 'wizard.cards.count.other', { n: s.rows.length })}</span>
+      </div>
       <div className="byd-wizard-card-workspace">
         <div className="byd-wizard-preview"><CardPreview id="wizard-live" face={front} row={row} icons={{}} /><span>{t('wizard.preview')}</span></div>
         <div className="byd-wizard-card-form">{s.fields.map((field) => field.kind === 'image' ? <div key={field.key} className="byd-wizard-image-field is-wide"><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span><div
@@ -268,10 +290,11 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         >{row[field.key] ? <img src={row[field.key]} alt={t('wizard.image.preview', { label: field.label })} /> : <i>{t('wizard.image.none')}</i>}{over === field.key && <DropSays />}<label className="byd-wizard-file-button byd-secondary">{t(row[field.key] ? 'wizard.image.change' : 'wizard.image.choose')}<input className="byd-offscreen" type="file" accept="image/*" aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} onChange={(event) => chooseImage(selectedRow, field.key, [...(event.target.files ?? [])])} /></label>{row[field.key] && <button type="button" onClick={() => updateRow(selectedRow, field.key, '')}>{t('wizard.image.remove')}</button>}</div>{refused?.field === field.key && <span role="alert">{refused.said}</span>}</div> : <label key={field.key} className={field.key === 'body' ? 'is-wide' : ''}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span>{field.key === 'body' ? <textarea rows={4} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} /> : <input type={field.kind === 'number' ? 'number' : 'text'} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} />}</label>)}</div>
       </div>
       <div className="byd-wizard-card-tabs">{s.rows.map((candidate, index) => <button type="button" key={index} className="byd-choice" aria-pressed={selectedRow === index} onClick={() => setSelectedRow(index)}><b>{index + 1}</b>{candidate['title'] || t('wizard.card.untitled')}</button>)}<button type="button" className="is-add" onClick={addRow}>{t('wizard.card.add')}</button><button type="button" disabled={s.rows.length === 1} onClick={() => removeRow(selectedRow)}>{t('wizard.card.remove')}</button></div>
-      <footer><p>{t('wizard.footer')}</p><button type="button" className="byd-wizard-primary byd-primary" disabled={!ready || busy} onClick={() => void toEditor()}>{t(busy && via === 'guided' ? 'wizard.creating' : 'wizard.create')}</button>{error && via === 'guided' && <span role="alert">{error}</span>}</footer>
+      <footer><button type="button" className="byd-wizard-primary byd-primary" disabled={!ready || busy} onClick={() => void toEditor()}>{t(busy && via === 'guided' ? 'wizard.creating' : 'wizard.create')}</button>{error && via === 'guided' && <span role="alert">{error}</span>}</footer>
     </section>
   )
-  const handoff = <div className="byd-wizard-handoff"><strong>{t('wizard.handoff.title')}</strong><p>{t('wizard.handoff.body')}</p></div>
+  // The handoff's body is said behind the first step's question mark (L36); the title stays.
+  const handoff = <div className="byd-wizard-handoff"><strong>{t('wizard.handoff.title')}</strong></div>
   const panels: Record<Step, ReactNode> = { spelet, falten: <>{falten}</>, korten }
 
   return (

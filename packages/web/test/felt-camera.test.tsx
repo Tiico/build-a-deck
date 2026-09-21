@@ -126,7 +126,7 @@ describe('klungan i hörnet (#325)', () => {
   it('står i filtens nedre högra hörn, ovanför det som redan står där', async () => {
     const main = await mainBox()
     const out = await onPage(await manualMarkup(main, false), (page) =>
-      boxes(page, { ram: '.byd-table-frame', klunga: '.byd-camera-controls', hjälp: '.byd-help' }),
+      boxes(page, { ram: '.byd-table-frame', klunga: '.byd-camera-controls', hjälp: '.byd-shortcut-help' }),
     )
     const frame = out['ram']!
     const cluster = out['klunga']!
@@ -160,7 +160,7 @@ describe('kantmarkeringen (#325)', () => {
         höger: '.byd-camera-edge[data-side="right"]',
         över: '.byd-camera-edge[data-side="top"]',
         under: '.byd-camera-edge[data-side="bottom"]',
-        hjälp: '.byd-help',
+        hjälp: '.byd-shortcut-help',
       })
     })
     const frame = out['ram']!

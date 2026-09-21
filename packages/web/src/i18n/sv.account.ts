@@ -5,7 +5,11 @@ export const svAccount = {
   'account.language': 'Språk',
 
   // Inloggningskortet (G1): ett fält, en knapp och en mening om gäster. Aldrig ett lösenord.
-  'login.lead': 'Skapa ditt kortspel, speltesta det på skärmen, beställ hem det. Logga in för att komma till dina spel.',
+  // Säljtexten står bara första gången (L36): den säger vad produkten är, inte hur verktyget
+  // fungerar, och den som redan har konto ska slippa läsa den varje gång.
+  'login.pitch': 'Skapa ditt kortspel, speltesta det på skärmen, beställ hem det.',
+  'login.lead': 'Logga in för att komma till dina spel.',
+  'login.help.topic': 'inloggningen',
   'login.sent.title': 'Kolla mejlen.',
   'login.sent.body': 'Vi skickade en länk till {email}. Den fungerar i 15 minuter och bara en gång. Inget lösenord att komma ihåg.',
   'login.email': 'E-post',
@@ -35,7 +39,10 @@ export const svAccount = {
   'home.menu.remove': 'Ta bort spelet',
   'home.new': '＋ Nytt spel',
   // Ett konto utan spel: vad ett spel är, och vad det enda som står på skärmen gör (UX-16).
-  'home.empty': 'Inget spel ännu. Ett spel är en kortlek med sin mall, sina regler och sitt bord. "+ Nytt spel" frågar efter namn och kortstorlek, och öppnar editorn.',
+  'home.empty': 'Inget spel ännu.',
+  'home.help.topic': 'spel',
+  'home.help.game': 'Ett spel är en kortlek med sin mall, sina regler och sitt bord.',
+  'home.help.new': '«+ Nytt spel» frågar efter namn och antal spelare och gör resten åt dig.',
 
   // Vad ett spel säger om sig självt innan det öppnas: revision, bord och senaste gången.
   'home.card.line': 'rev {rev} · {played}',
@@ -63,7 +70,8 @@ export const svAccount = {
   'claim.no-token': 'Ingen länk angiven.',
   'claim.loading': 'Laddar…',
   'claim.saving': 'Sparar…',
-  'claim.lead': 'Logga in för att spara bordet du spelade vid till ditt konto.',
+  'claim.lead': 'Logga in för att spara bordet till ditt konto.',
+  'claim.help': 'Bordet du spelade vid följer med till kontot du loggar in med.',
   'claim.error.other': 'Det här bordet är redan sparat till ett annat konto.',
   'claim.error.unknown': 'Länken gäller inte. Gå tillbaka till telefonen och tryck på "Spara till ditt konto" igen.',
 
@@ -80,6 +88,10 @@ export const svAccount = {
   'wizard.step.spelet': '1 · Spelet',
   'wizard.step.falten': '2 · Fälten',
   'wizard.step.korten': '3 · Korten',
+  // Ett frågetecken per steg, vid stegets rubrik (L36): lådan bär stegets förklaringar.
+  'wizard.help.spelet': 'spelet',
+  'wizard.help.falten': 'fälten',
+  'wizard.help.korten': 'korten',
   'wizard.steplist': 'Steg',
   'wizard.stepnav': 'Stegnavigering',
   'wizard.prev': '← Föregående',
@@ -91,12 +103,14 @@ export const svAccount = {
   'wizard.players': 'Spelare',
   // Vägen förbi den guidade starten (L14): namnet och platserna räcker, resten görs i editorn.
   'wizard.blank.title': 'Utan guidad start',
-  'wizard.blank.body': 'Vill du hellre bygga allt själv? Spelet skapas med namnet och platserna ovanför, utan kort, fält eller mall, och öppnas direkt i editorn.',
+  'wizard.blank.body': 'Bygg hellre allt själv?',
+  'wizard.blank.help': 'Spelet skapas med namnet och platserna ovanför, utan kort, fält eller mall.',
   'wizard.blank.create': 'Skapa ett tomt spel i editorn',
 
   // Fälten: vad varje kort har, och vad startramen redan visar.
   'wizard.fields': 'Fält',
-  'wizard.fields.body': 'Varje fält blir direkt en kontroll på varje exempelkort.',
+  'wizard.fields.body': 'Fälten på varje kort.',
+  'wizard.fields.help': 'Varje fält blir direkt en kontroll på varje exempelkort.',
   'wizard.kind.text': 'Text',
   'wizard.kind.number': 'Tal',
   'wizard.kind.image': 'Bild',
@@ -124,7 +138,7 @@ export const svAccount = {
 
   // Exempelkorten och den levande förhandsvisningen bredvid dem.
   'wizard.cards.title': 'Gör några exempelkort',
-  'wizard.cards.body': 'De hjälper editorn att visa hur fälten faktiskt används.',
+  'wizard.cards.body': 'Exempelkorten hjälper editorn att visa hur fälten faktiskt används.',
   'wizard.cards.count.one': '{n} kort',
   'wizard.cards.count.other': '{n} kort',
   'wizard.preview': 'Levande förhandsvisning',

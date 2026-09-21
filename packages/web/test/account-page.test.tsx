@@ -89,9 +89,16 @@ describe('the first thing a new account sees (UX-16)', () => {
     render(<HomePage onNavigate={() => undefined} />)
 
     expect(await screen.findByText('Mina spel')).toBeTruthy()
-    const empty = await screen.findByText(/Inget spel ännu/)
-    // What a game is, and what the one thing on the screen will do when it is pressed.
-    expect(empty.textContent).toBe('Inget spel ännu. Ett spel är en kortlek med sin mall, sina regler och sitt bord. "+ Nytt spel" frågar efter namn och kortstorlek, och öppnar editorn.')
+    const empty = await screen.findByText('Inget spel ännu.')
+    expect(empty).toBeTruthy()
+    // What a game is, and what the one thing on the screen will do when it is pressed, behind the
+    // question mark beside the line (L36): the longest string in the catalogue was this one.
+    expect(screen.queryByText(/kortlek med sin mall/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Hjälp om spel' }))
+    const box = await screen.findByRole('dialog', { name: 'spel' })
+    expect(box.textContent).toMatch(/Ett spel är en kortlek med sin mall, sina regler och sitt bord/)
+    expect(box.textContent).toMatch(/frågar efter namn och antal spelare/)
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
 
     // The moment there is a game, the sentence has nothing left to explain and goes.
     expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })).status).toBe(201)

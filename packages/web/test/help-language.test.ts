@@ -3,13 +3,20 @@
 // Three things the decision holds that no rendered test can see: that no rule opens the box on
 // hover — the way in is click and focus, nothing else — that nothing in it moves, so there is no
 // transition for reduced motion to have to cut, and that the question mark is a target the size
-// the editor gives every control, however small the ring it draws.
+// every control has, however small the ring it draws.
+//
+// The rules are the pattern's own sheets since #304: the start, the account and the guided start
+// use the same question mark, and none of them loads the editor's sheet. They are two, because
+// the ring is painted on the first frame and the box is behind a press nobody has made — what is
+// asked of the *build* is `felt-font.spec.ts`'s; what is asked here is of the rules themselves,
+// and those questions are about the pattern whichever of its two sheets a rule stands in.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 // Without its comments: a comment that says «ingen :hover öppnar den» is not a rule that does.
-const css = readFileSync(join(import.meta.dirname, '..', 'src/editor/editor.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+const sheet = (name: string) => readFileSync(join(import.meta.dirname, '..', name), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+const css = `${sheet('src/help.css')}\n${sheet('src/help-box.css')}`
 // Every rule whose selector names the pattern, as `[selector, declarations]`.
 const rules = [...css.matchAll(/([^{}]*byd-help[^{}]*)\{([^}]*)\}/g)].map((m) => [m[1]!.trim(), m[2]!.trim()] as const)
 
@@ -35,11 +42,21 @@ describe('the help pattern in the stylesheet', () => {
     expect(rules.filter(([, body]) => /transition|animation/.test(body))).toEqual([])
   })
 
-  it('gives the question mark the hit area the editor gives every control', () => {
-    const ask = rules.find(([selector]) => selector === '.byd-editor .byd-help-ask')
+  it('gives the question mark the hit area every control has, on every surface it stands on', () => {
+    const ask = rules.find(([selector]) => selector === '.byd-help .byd-help-ask')
     expect(ask).toBeDefined()
-    expect(ask![1]).toMatch(/width: var\(--byd-tap\)/)
-    expect(ask![1]).toMatch(/height: var\(--byd-tap\)/)
+    expect(ask![1]).toMatch(/width: var\(--byd-tap, 44px\)/)
+    expect(ask![1]).toMatch(/height: var\(--byd-tap, 44px\)/)
+  })
+
+  // The felt's own «?» in the corner (#224) was `.byd-help` too, and both sheets block the first
+  // painting: the corner's rule would have pinned the account's question mark to the card's
+  // corner. Two things, two names — and the question is not whether today's two sets happen to
+  // miss each other, which they did while the felt kept `.byd-help-open` beside them. The felt
+  // owns no name in this family at all, so the next rule either sheet grows cannot collide.
+  it('leaves the whole `.byd-help` family to this pattern, and none of it to the felt', () => {
+    const felt = sheet('src/table/table.css')
+    expect([...felt.matchAll(/\.(byd-help[a-z-]*)/g)].map((m) => m[1]!)).toEqual([])
   })
 
   it('lays the box over the work, fixed to the window and never inside a column that clips', () => {

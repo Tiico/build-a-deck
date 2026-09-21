@@ -41,7 +41,7 @@ export function ClaimPage({ onNavigate = (url) => location.assign(url) }: ClaimP
   if (email === null) {
     return (
       <div className="byd-account" data-page="claim">
-        <LoginCard http={http} next={location.pathname + location.search} onNavigate={onNavigate} lead={t('claim.lead')} />
+        <LoginCard http={http} next={location.pathname + location.search} onNavigate={onNavigate} lead={t('claim.lead')} help={t('claim.help')} />
       </div>
     )
   }

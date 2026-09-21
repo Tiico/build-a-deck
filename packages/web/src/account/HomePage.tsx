@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { LoginCard } from './LoginCard.js'
+import { Help } from '../editor/HelpDrawer.js'
 import { hue } from '../table/hue.js'
 import { logout, myPlayed, myProjects, removeProject, startTable, whoAmI, type Played, type ProjectSummary } from './api.js'
 import { seatColor } from '../table/seatColor.js'
@@ -127,10 +128,19 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             </button>
           </div>
         )}
-        {/* An account with nothing in it (UX-16): the page says what a game is and what the one
-            card on it does, rather than leaving a heading over an empty screen. It waits until
-            the games are actually known, so it never flashes past a slow answer. */}
-        {projects !== null && projects.length === 0 && <p className="byd-home-empty">{t('home.empty')}</p>}
+        {/* An account with nothing in it (UX-16): one line, and what a game is and what the one
+            card on it does behind the question mark beside it (L36) — it was the longest string
+            in the catalogue. It waits until the games are actually known, so it never flashes
+            past a slow answer. */}
+        {projects !== null && projects.length === 0 && (
+          <div className="byd-home-empty byd-help-row">
+            <span>{t('home.empty')}</span>
+            <Help topic={t('home.help.topic')}>
+              <p>{t('home.help.game')}</p>
+              <p>{t('home.help.new')}</p>
+            </Help>
+          </div>
+        )}
         <div className="byd-home-grid" data-projects>
           {(projects ?? []).map((p) => (
             <div key={p.id} className="byd-home-game" data-project={p.id}>
