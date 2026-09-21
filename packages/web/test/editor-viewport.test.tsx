@@ -589,8 +589,8 @@ describe.each(WIDTHS)('the Bord tab with a table, at %ipx', (width) => {
       tablesTab,
     )
     // The fold, the way standing ready, the button that opens the menu, the five ways in it, and
-    // the button that starts another table.
-    expect(measured).toEqual({ Bord: { controls: 9, small: [] } })
+    // the button that starts another table, and the question mark beside the lead (L32, #303).
+    expect(measured).toEqual({ Bord: { controls: 10, small: [] } })
   }, 90_000)
 
   it('never makes the page scroll sideways', async () => {
@@ -675,7 +675,8 @@ describe.each([1024, 1280] as const)('the Bord tab at %ipx', (width) => {
         }),
       bord,
     )
-    // Nothing has been removed and nothing copied, so the row holds the instruction and nothing else.
-    expect(measured).toEqual({ Bord: { words: 1, cut: [] } })
+    // Nothing has been removed and nothing copied, so the row holds the instruction and its
+    // question mark (L32, #303) and nothing else.
+    expect(measured).toEqual({ Bord: { words: 2, cut: [] } })
   }, 90_000)
 })

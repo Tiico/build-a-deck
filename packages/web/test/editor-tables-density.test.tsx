@@ -180,8 +180,9 @@ describe.each(SCREENS)('the five the audit measured, at $width × $height', (scr
     expect(measured.scrolls).toBe(false)
     expect(measured.sideways).toBe(0)
     // Ten controls where there were thirty: the way standing ready and the menu button on the one
-    // row, the fold over the other four, and the button that starts another table.
-    expect(measured.controls).toBe(4)
+    // row, the fold over the other four, the button that starts another table — and the question
+    // mark beside the lead, since #303 put how long a table lives behind it (L32).
+    expect(measured.controls).toBe(5)
   }, 120_000)
 })
 
@@ -202,8 +203,9 @@ describe.each(SCREENS)('twelve tables in the column at $width × $height', (scre
     // not a card creeping back.
     expect(measured.list - measured.tallestRow * 4, `the column spends ${measured.list - measured.tallestRow * 4} px on everything that is not a row`).toBeLessThan(290)
     expect(measured.sideways).toBe(0)
-    // One way standing ready and one menu button per row, the two folds, and the new-table button.
-    expect(measured.controls).toBe(11)
+    // One way standing ready and one menu button per row, the two folds, the new-table button,
+    // and the lead's question mark (L32, #303).
+    expect(measured.controls).toBe(12)
   }, 120_000)
 
   it('holds all twelve without spilling sideways once both folds are opened', async () => {
