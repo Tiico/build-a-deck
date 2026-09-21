@@ -956,7 +956,11 @@ describe('a typeface and a picture do not wait for the network either (#339)', (
 // and that edit never pushes a step. A correction is not something the designer did, and the
 // step it would push is one an undo would walk straight back into — the document with the asset
 // still in it, which is the very state the correction existed to leave.
-describe('an upload that falls away after the designer has gone on (#344, L37)', () => {
+//
+// L37 revised (#358): the same removal goes on every document the way back and the way forward
+// hold. They keep whole documents and not operations, so leaving them alone left that very state
+// one press behind where the correction stood.
+describe('an upload that falls away after the designer has gone on (#344, L37, #358)', () => {
   const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3])
   const WOFF2 = new Uint8Array([119, 79, 70, 50, 0, 1, 0, 0])
   const skold = LIBRARY.find((s) => s.id === 'skold')!
@@ -1048,6 +1052,111 @@ describe('an upload that falls away after the designer has gone on (#344, L37)',
     }
   })
 
+  // Inget antal Ctrl+Z når ett dokument som pekar på byte som aldrig kom fram (#358). The
+  // correction goes on every snapshot the stack holds, both the way back and the way forward, so
+  // the whole history is walked here — every press of the one and then every press of the other.
+  it.each(ways.map((way) => [way.what, way] as const))('leaves %s in no step of the history, however many presses are made', async (_what, way) => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    // A step of her own below the upload, so the way back has somewhere to go on to.
+    client.setCell('dragon', 'title', 'Drakhona')
+
+    const line = slowLine()
+    try {
+      const falling = way.take(client)
+      await vi.waitFor(() => expect(line.held.length).toBe(1))
+      await vi.waitFor(() => expect(way.holds(client)).toBe(true))
+      const landing = way.then(client)
+      await vi.waitFor(() => expect(line.held.length).toBe(2))
+      line.held[0]!(new Response('nope', { status: 500 }))
+      await expect(falling).rejects.toThrow()
+      line.held[1]!(null)
+      await landing
+    } finally {
+      line.hangUp()
+    }
+
+    expect(way.holds(client)).toBe(false)
+    let back = 0
+    while (client.canUndo) {
+      client.undo()
+      back += 1
+      expect(way.holds(client)).toBe(false)
+    }
+    // The cell, the upload that fell away, and the one that landed: three steps, and they are
+    // still there. What went is the asset inside them.
+    expect(back).toBe(3)
+    while (client.canRedo) {
+      client.redo()
+      expect(way.holds(client)).toBe(false)
+    }
+  })
+
+  // And the way forward that a gesture put aside is the same documents again (#142, #358): a
+  // gesture's first patch empties the way forward, and calling the gesture off hands it back
+  // whole — including, without this, a document holding what never arrived. So the correction
+  // goes on that one as well, and a drag taken back with Escape does not open the hole again.
+  it.each(ways.map((way) => [way.what, way] as const))('leaves %s in no step of the way forward a called-off gesture hands back', async (_what, way) => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+
+    const line = slowLine()
+    try {
+      const falling = way.take(client)
+      await vi.waitFor(() => expect(line.held.length).toBe(1))
+      // Taken back while the bytes are in the air: the document with the asset waits on the way
+      // forward. Then she lays a hand on something, which puts that way forward aside.
+      expect(client.undo()).not.toBeNull()
+      client.setCell('dragon', 'title', 'Drakhona', 'ett-drag')
+      expect(client.canRedo).toBe(false)
+      line.held[0]!(new Response('nope', { status: 500 }))
+      await expect(falling).rejects.toThrow()
+    } finally {
+      line.hangUp()
+    }
+
+    // Escape: the gesture is nothing that happened, and the way forward comes back as it was.
+    client.callOff('ett-drag')
+    expect(client.canRedo).toBe(true)
+    while (client.canRedo) {
+      client.redo()
+      expect(way.holds(client)).toBe(false)
+    }
+  })
+
+  // The way forward holds whole documents in exactly the same way (#358), and a press of Ctrl+Z
+  // taken while the bytes were still in the air puts one there: the document the designer stepped
+  // out of, with the asset in it. The correction goes on those as well, so Ctrl+Y does not bring
+  // back what never arrived either.
+  it.each(ways.map((way) => [way.what, way] as const))('leaves %s in no step of the way forward, taken back while the bytes were still in the air', async (_what, way) => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+
+    const line = slowLine()
+    try {
+      const falling = way.take(client)
+      await vi.waitFor(() => expect(line.held.length).toBe(1))
+      const landing = way.then(client)
+      await vi.waitFor(() => expect(line.held.length).toBe(2))
+      // Ctrl+Z while both uploads are still travelling: the document she steps out of is now
+      // waiting on the way forward, and it holds what is about to fall away.
+      expect(client.undo()).not.toBeNull()
+      expect(client.canRedo).toBe(true)
+      line.held[0]!(new Response('nope', { status: 500 }))
+      await expect(falling).rejects.toThrow()
+      line.held[1]!(null)
+      await landing
+    } finally {
+      line.hangUp()
+    }
+
+    expect(client.canRedo).toBe(true)
+    while (client.canRedo) {
+      client.redo()
+      expect(way.holds(client)).toBe(false)
+    }
+  })
+
   // Eftersom rättelsen är tyst i historiken måste den vara desto tydligare där handlingen
   // gjordes: dokumentet ändrades bakom formgivaren, och ett besked som inte säger vilket av det
   // hon gjort som togs tillbaka lämnar henne med en lek hon inte känner igen (L37). Namnet bärs
@@ -1100,12 +1209,77 @@ describe('an upload that falls away after the designer has gone on (#344, L37)',
     expect(before.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
   })
 
-  // What L37 chose away, stated as it stands rather than left to be discovered. `past` holds whole
-  // documents and not operations, so the snapshot taken when the next gesture opened still carries
-  // the asset that never arrived: one press of Ctrl+Z after a correction lands on it. Taking that
-  // away is the rebasing — an inverse applied to every snapshot above — and it was weighed and
-  // declined. The step below it is clean, so the way out is one more press.
-  it('can still be undone back into the snapshot that was taken while the symbol was in the document', async () => {
+  // The open gesture's case is unchanged by the rebasing (B4, L37): a placement taken back before
+  // the designer went on is nothing that happened. The gesture is called off, its step goes with
+  // it, and there is no snapshot of it anywhere to rebase in the first place.
+  it.each(ways.map((way) => [way.what, way] as const))('takes %s back as nothing that happened while its own gesture is still the open one', async (_what, way) => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    // One step of her own, so that a step wrongly left behind by the correction would show.
+    client.setCell('dragon', 'title', 'Drakhona')
+    const before = client.doc
+
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      if (new URL(String(input)).pathname === '/assets') return new Response('nope', { status: 500 })
+      return real(input, init)
+    }) as typeof fetch
+    try {
+      await expect(way.take(client)).rejects.toThrow(way.said)
+    } finally {
+      globalThis.fetch = real
+    }
+
+    expect(client.doc).toEqual(before)
+    expect(way.holds(client)).toBe(false)
+    const back: (string | null)[] = []
+    while (client.canUndo) {
+      back.push(client.undo())
+      expect(way.holds(client)).toBe(false)
+    }
+    expect(back).toEqual(['undo.what.deck'])
+  })
+
+  // A correction may not rewrite what the history says the designer did (#358). It lays the
+  // removal on every step's document and touches nothing else: the steps are hers, in her order,
+  // under the names of what she did, and the flags say what they would have said had the bytes
+  // arrived.
+  it('leaves the designer’s own steps standing, named as she made them, on both sides of the correction', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    client.setCell('dragon', 'title', 'Drakhona')
+
+    const line = slowLine()
+    try {
+      const placing = client.placeIcon(skold, 'front', null)
+      await vi.waitFor(() => expect(line.held.length).toBe(1))
+      const using = client.useFont(typeface())
+      await vi.waitFor(() => expect(line.held.length).toBe(2))
+      line.held[0]!(new Response('nope', { status: 500 }))
+      await expect(placing).rejects.toThrow()
+      line.held[1]!(null)
+      await using
+    } finally {
+      line.hangUp()
+    }
+
+    expect(client.canUndo).toBe(true)
+    expect(client.canRedo).toBe(false)
+    const back: (string | null)[] = []
+    while (client.canUndo) back.push(client.undo())
+    expect(back).toEqual(['undo.what.font', 'undo.what.template', 'undo.what.deck'])
+    expect(client.canRedo).toBe(true)
+    const forward: (string | null)[] = []
+    while (client.canRedo) forward.push(client.redo())
+    expect(forward).toEqual(['undo.what.deck', 'undo.what.template', 'undo.what.font'])
+    expect(client.canUndo).toBe(true)
+  })
+
+  // The rebasing L37 first chose away and now chooses (#358). `past` holds whole documents and not
+  // operations, so the snapshot taken when the next gesture opened used to carry the asset that
+  // never arrived, and one press of Ctrl+Z after a correction landed in it. The correction is laid
+  // on every snapshot as well, so the way back never passes through that document again.
+  it('cannot be undone back into the snapshot that was taken while the symbol was in the document', async () => {
     const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
 
@@ -1125,7 +1299,7 @@ describe('an upload that falls away after the designer has gone on (#344, L37)',
 
     expect(client.doc.icons['sköld']).toBeUndefined()
     expect(client.undo()).toBe('undo.what.font')
-    expect(client.doc.icons['sköld']).toMatch(/^asset:[0-9a-f]{64}$/)
+    expect(client.doc.icons['sköld']).toBeUndefined()
     expect(client.undo()).toBe('undo.what.template')
     expect(client.doc.icons['sköld']).toBeUndefined()
   })

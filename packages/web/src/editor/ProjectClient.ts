@@ -57,6 +57,9 @@ export class ProjectUnavailable extends Error {
 // `intents` is the inverse of the edit that put the asset into the document; `said` and `name`
 // are how the notice says which of the things the designer did went away again.
 type Undoing = { said: Key; name: string; intents: readonly EditIntent[] }
+// One step of the way back or the way forward: the document it was taken from, and the word for
+// what the designer did to leave it (#35).
+type Step = { doc: ProjectDoc; what: Key }
 
 export type SaveResult = { ok: true; rev: number } | { ok: false; reason: 'conflict' | 'missing' | string }
 export type Cell = string | number | boolean | null
@@ -96,8 +99,8 @@ export class ProjectClient {
   private pending: EditIntent[] = []
   // The steps the designer took in this tab, each kept as the document it was taken from, and the
   // ones taken back and waiting to come forward again (#35).
-  private past: { doc: ProjectDoc; what: Key }[] = []
-  private future: { doc: ProjectDoc; what: Key }[] = []
+  private past: Step[] = []
+  private future: Step[] = []
   // The gesture the stack's top step belongs to, or null when the top step is a whole change of
   // its own. A gesture is one thing the designer did that the pointer reports many times over —
   // a drag, a resize, a cell typed into — and the token is made where it begins, so a second
@@ -111,7 +114,7 @@ export class ProjectClient {
   // taken back, which is nothing that happened and may therefore not have taken the way forward
   // with it. Only the gesture still open can be called off, so only its own is worth keeping, and
   // one field is the whole of it.
-  private futureBeforeGesture: { doc: ProjectDoc; what: Key }[] = []
+  private futureBeforeGesture: Step[] = []
   private outbox: string[] = []
   // A save asked for over the socket, waiting for the actor to say what became of it.
   private saving: ((result: SaveResult) => void) | null = null
@@ -726,7 +729,7 @@ export class ProjectClient {
   // handled as one rather than papered over.
   private async storeAsset(file: Blob, kind: AssetKind, ref: string, gesture: string, undoing: Undoing, t: T): Promise<void> {
     const landed = await this.uploadAsset(file, kind, t).catch((err: unknown) => {
-      throw this.takeBack(gesture, undoing, err, t)
+      throw this.takeBack(gesture, ref, undoing, err, t)
     })
     if (assetRef(landed) === ref) {
       // Arrived, so there is nothing left to take back: the placement stops being callable off
@@ -736,7 +739,7 @@ export class ProjectClient {
       if (this.gesture === gesture) this.gesture = null
       return
     }
-    throw this.takeBack(gesture, undoing, new Error(t('upload.wrongName')), t)
+    throw this.takeBack(gesture, ref, undoing, new Error(t('upload.wrongName')), t)
   }
 
   // What never arrived, taken back out of the document (#344, L37).
@@ -756,14 +759,45 @@ export class ProjectClient {
   // undo would walk straight back into: the document as it was with the asset still in it, which
   // is precisely the state the correction existed to leave (L37).
   //
+  // And the same intents go on every document the stack holds (#358, L37 revised). The living
+  // document alone is not enough, because the stack holds whole documents and not operations:
+  // the snapshot taken when the next gesture opened carries the asset that never arrived, and a
+  // press of Ctrl+Z walks straight into it — the very state the correction existed to leave, one
+  // step behind where it was. The inverse is worked out for the living document anyway, so
+  // laying it on the stack as well is that edit applied a few more times, and no number of
+  // presses reaches bytes that never came. All three sides of the stack, because the way forward
+  // a gesture put aside (#142) is handed back whole when that gesture is called off.
+  //
   // What comes back is the notice, in the reader's own language and naming what went: the
   // document changed behind the designer, and a notice that does not say which of the things she
   // did was taken back leaves her with a game she does not recognise. Why it went stands after
   // the colon, because that is what tells her whether trying again is worth anything.
-  private takeBack(gesture: string, undoing: Undoing, why: unknown, t: T): Error {
+  private takeBack(gesture: string, ref: string, undoing: Undoing, why: unknown, t: T): Error {
     if (this.gesture === gesture) this.callOff(gesture)
-    else for (const intent of undoing.intents) this.send(intent)
+    else {
+      for (const intent of undoing.intents) this.send(intent)
+      const rebased = (steps: Step[]): Step[] => steps.map((step) => this.rebase(step, ref, undoing.intents))
+      this.past = rebased(this.past)
+      this.future = rebased(this.future)
+      this.futureBeforeGesture = rebased(this.futureBeforeGesture)
+    }
     return new Error(t('upload.undone', { what: t(undoing.said, { name: undoing.name }), why: why instanceof Error ? why.message : String(why) }))
+  }
+
+  // One step with the correction laid on it (#358). Only the document changes: what the step is
+  // called is what the designer did, and a correction may not rewrite the history's own account
+  // of that.
+  //
+  // A step that never held the bytes is left untouched, and the bytes have a name to ask for: the
+  // hash is their name wherever they are written down — as the reference a symbol or a typeface
+  // points at, and as the key a picture is filed under — so a document holds what fell away
+  // exactly when it says that hash somewhere. Asking is not thrift but care: a removal writes the
+  // shelf it removes from, so running one over a step from before the asset existed would leave
+  // an empty `credits` where there was nothing at all, and the editor reads that difference as
+  // the project having unsaved changes (#8).
+  private rebase(step: Step, ref: string, intents: readonly EditIntent[]): Step {
+    if (!JSON.stringify(step.doc).includes(ref.slice(ASSET_PREFIX.length))) return step
+    return { ...step, doc: intents.reduce(applyEdit, step.doc) }
   }
 
   // A token no other doing can carry, so a placement that has to be taken back takes back its

@@ -3962,7 +3962,7 @@ Ett privat fönster, en rensad webbläsare eller en blockerad lagring ska ge den
 Frågetecknet står kvar bredvid i båda fallen, så vägen till resten finns oavsett.
 
 
-### L37. En uppladdning som misslyckas för sent rättas i dokumentet, inte i historiken (2026-09-20, #344)
+### L37. En uppladdning som misslyckas för sent rättas i dokumentet och i historikens bilder, aldrig som ett eget steg (2026-09-20, #344; reviderat 2026-09-21, #358)
 
 `callOff` tar bara tillbaka den gest som fortfarande är öppen, och den vakten är riktig för sitt uttalade fall: en designer som gått vidare ska behålla det hon gjort sedan dess.
 Men sedan #310 och #339 läggs symbolen, typsnittet och bilden in i dokumentet **innan** bytena reser, och tas tillbaka med `callOff` om uppladdningen misslyckas.
@@ -3976,9 +3976,19 @@ Det som aldrig kom fram tas bort med en vanlig redigering genom `applyEdit`, men
 Skälet är att en rättelse inte är något designern gjorde, och att den post den annars skulle lägga där är farlig: att ångra den återställer ett dokument som pekar på byte som inte finns — precis det tillstånd rättelsen fanns till för att lämna.
 En historik man kan ångra sig in i ett trasigt läge genom är sämre än en historik som saknar en rad.
 
-Alternativet — att basera om ångerstacken — valdes bort, och kodläsningen gjorde priset tydligare än issuet antog.
+Alternativet — att basera om ångerstacken — valdes först bort, och kodläsningen gjorde priset tydligare än issuet antog.
 `past` håller **hela dokument och inte operationer**, så att ta bort ett steg räcker inte: varje ögonblicksbild ovanför bär fortfarande den tillgång som aldrig kom fram.
 Ombasering kräver att en invers räknas fram och appliceras på varje senare bild, för tre tillgångsslag, tyst, på historik designern redan kan ha rört.
+Den avvägningen var riktig för vad som då var känt: den gjordes på en uppskattning av vad inversen kostar, och en uppskattning är just vad ett bygge kan korrigera.
+
+Reviderat 2026-09-21 (#358, beställarens beslut): **ombaseringen byggs.**
+Samma intents läggs på varje ögonblicksbild i `past`, i `future` och i den väg framåt en öppen gest lagt undan (#142), så att ingen post i historiken bär en tillgång vars byte aldrig kom fram.
+Priset var för högt satt: inversen räknas fram ändå — den *är* rättelsen — och att lägga den på en bild till är samma redigering en gång till, inte en maskin.
+Det som köps för det är att hålet stängs: utan ombaseringen bär bilden som togs när nästa gest öppnades fortfarande tillgången, och **ett Ctrl+Z efter en rättelse landar i ett dokument som pekar på byte som aldrig kom fram**, ett steg bakom det läge rättelsen just lämnade.
+En bild som aldrig höll bytena lämnas orörd, för en borttagning skriver hyllan den tar ur: att köra den över en bild från innan tillgången fanns lämnar en tom `credits` där det inte fanns någon, och den skillnaden läser editorn som osparade ändringar (#8).
+
+Det som **inte** revideras är att rättelsen aldrig läggs som ett eget steg; skälet ovan står oförändrat.
+Designerns egna steg står kvar, i sin ordning och under sina egna namn — det som försvinner är tillgången inuti dem, aldrig raden.
 
 **Beskedet namnger vad som försvann.**
 «Typsnittet Cinzel kunde inte laddas upp och har tagits bort igen» och inte «uppladdningen misslyckades».
@@ -3990,9 +4000,19 @@ Den öppna gestens fall är oförändrat: hinner `callOff` medan gesten är öpp
 **Byggd 2026-09-21 (#344).**
 Rättelsen är `removeIcon`, `removeElement`, `removeFont` eller `removePicture`, skickad genom `applyEdit` utan att pusha ett steg.
 Inversen räknas fram där editen gjordes och läser ingenting ur dokumentet, så D3 håller.
-Priset för att ombaseringen valdes bort är mätbart: ögonblicksbilden som togs när nästa gest öppnades bär fortfarande tillgången, så ett Ctrl+Z efter en rättelse landar i den och nästa press lämnar den. Ett test pinnar det.
-Bygget visade också att inversen behövs ändå för det levande dokumentet, så att lägga den på varje senare ögonblicksbild är två rader och inte en maskin — ombaseringens pris är lägre än kodläsningen antog. Den är inte byggd; beslutet står.
+Priset för att ombaseringen valdes bort var mätbart: ögonblicksbilden som togs när nästa gest öppnades bar fortfarande tillgången, så ett Ctrl+Z efter en rättelse landade i den och nästa press lämnade den.
+Ett test pinnade det.
+Bygget visade också att inversen behövs ändå för det levande dokumentet, så att lägga den på varje senare ögonblicksbild är två rader och inte en maskin — ombaseringens pris är lägre än kodläsningen antog.
+Det fyndet är vad beslutet reviderades på dagen därpå.
 Beskedet bär varför efter kolonet: «Typsnittet Cinzel kunde inte laddas upp och har tagits bort igen: filen är för stor (max 8 MB)», eftersom ett namn utan skäl inte säger om det är lönt att försöka igen.
+
+**Byggd 2026-09-21 (#358).**
+Ombaseringen är samma intents lagda genom `applyEdit` på varje bild i `past`, i `future` och i `futureBeforeGesture`, i `takeBack` och ingen annanstans.
+Den tredje visade sig vid bygget: vägen framåt som en gest lagt undan lämnas tillbaka hel när gesten ångras med Escape, så utan den kunde en hel dokumentbild med tillgången komma fram igen den vägen.
+Bara de bilder som nämner bytenas hash rörs; en bild som aldrig höll dem är redan den historik ombaseringen vill åstadkomma.
+Etiketterna lämnas som de är: vad ett steg heter är vad designern gjorde, och en rättelse får inte skriva om historiens ord om det.
+Den öppna gestens fall är oförändrat — `callOff` gör som förr, och då finns det heller ingen bild att basera om.
+Testet som pinnade hålet pinnar nu att det är stängt, och alla fyra vägarna in — `useSymbol`, `placeIcon`, `useFont`, `addPicture` — går hela historiken igenom, fram och tillbaka, utan att någon press når tillgången.
 
 ### L38. En kurva dras fram ur kanten, och mittpricken skiljer klick från drag (prototypat 2026-09-20, #327)
 
