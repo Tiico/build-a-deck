@@ -34,6 +34,26 @@ describe('the palette a blocked table update is drawn in', () => {
 // to the same bar as every other sentence the editor says — and to a second bar besides, that no
 // two of them are the same colour, because four pills that a reader cannot tell apart are four
 // pills that say nothing the words do not already say.
+// Where a typeface came from (#329, L27). The badge is read in passing beside a family name in
+// the properties column, so it carries what every other sentence there carries; the ring round
+// it is a graphic and carries the 3:1 a graphic does.
+describe('the palette a catalog family is marked in', () => {
+  it('gives the word «Katalog» AA contrast on the column it is read in', () => {
+    expect(contrastRatio(token('--byd-editor-catalog-ink'), token('--byd-editor-canvas-bg'))).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('gives the ring round it the 3:1 a mark carries', () => {
+    expect(contrastRatio(token('--byd-editor-catalog-mark'), token('--byd-editor-canvas-bg'))).toBeGreaterThanOrEqual(3)
+  })
+
+  // And it is not the green that already means «open now» a few pixels away, nor the amber that
+  // means «look at this»: a hue means one thing in a panel or it means nothing.
+  it('paints it neither the table’s green nor the editor’s amber', () => {
+    expect([token('--byd-editor-catalog-ink'), token('--byd-editor-catalog-mark')]).not.toContain('#7dd3a0')
+    expect([token('--byd-editor-catalog-ink'), token('--byd-editor-catalog-mark')]).not.toContain(token('--byd-editor-unsaved-ink'))
+  })
+})
+
 describe('the palette the parts of the game are chipped in', () => {
   it.each([
     { what: 'the template', ink: '--byd-editor-part-template' },

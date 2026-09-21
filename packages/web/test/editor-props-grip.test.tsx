@@ -40,7 +40,7 @@ function open(over: Partial<Element> = {}, id = 'frame') {
       onReset={vi.fn()}
       onFontFile={async () => 'Typsnitt'}
       onFontLicence={vi.fn()}
-      onRemoveFont={vi.fn()}
+      onRemoveFont={vi.fn()} onCatalogFont={vi.fn(async () => undefined)}
     />,
   )
   return { onPatch }

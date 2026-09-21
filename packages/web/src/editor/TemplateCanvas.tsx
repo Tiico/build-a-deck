@@ -19,7 +19,9 @@ import { foldedProps, rememberFoldedProps } from './panes.js'
 import { Question } from './Question.js'
 import type { CanvasStage } from './EditorStages.js'
 import { useRoving } from './roving.js'
-import { familiesInUse, previewFonts } from './fonts.js'
+import { cardWords, familiesInUse, previewFonts } from './fonts.js'
+import { FontCatalog } from './FontCatalog.js'
+import type { CatalogFamily } from './font-catalog.js'
 import { LIBRARY, type GameSymbol } from './symbols.js'
 import { SymbolList, symbolListKey, symbolOptionId } from './SymbolList.js'
 import type { ProjectCredit } from '@byd/server'
@@ -90,6 +92,10 @@ export type TemplateCanvasProps = {
   // called. What a typeface is licensed under is not in the file: only the designer knows it.
   onFontFile(file: File): Promise<string>
   onFontLicence(family: string, licence: ProjectCredit | null): void
+  // A family taken out of Google Fonts (#329, L27): the file is copied in as the project's own
+  // asset, and the licence comes with it because the catalog knows the answer an uploaded file
+  // cannot give.
+  onCatalogFont(family: CatalogFamily): Promise<void>
   onRemoveFont(family: string): void
   // A picture brought in from the designer's own disk for the template's own picture (#320), by
   // the very path Media takes: it lands in the library, and the element is then bound to it.
@@ -101,7 +107,7 @@ export type TemplateCanvasProps = {
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont, onAddPicture }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont, onCatalogFont, onAddPicture }: TemplateCanvasProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
@@ -180,6 +186,10 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // is asked for, and it never rounds an element to itself — the guides and the arrow keys are
   // what place things, and a 1 mm grid would take the half millimetre away.
   const [grid, setGrid] = useState(false)
+  // Whether the typeface catalog's sheet stands under the card (#329, L27). Here and not in the
+  // shelf, because the sheet is drawn in the canvas and the button that opens it is in the
+  // properties: it is the canvas that the sheet takes 62 % of.
+  const [catalog, setCatalog] = useState(false)
   // Whether the properties are folded away (#129). By hand and only by hand: a column that folds
   // itself when nothing is selected changes the card's width every time the designer clicks beside
   // an element, and the card moves under the pointer that is working on it. It is a view of this
@@ -208,7 +218,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // twice and nothing a tab does not point at is left in the tab order.
   const shows = (which: CanvasStage) => stage === null || stage === which
   return (
-    <div className="byd-canvas" {...(stage ? { 'data-stage': stage } : folded ? { 'data-folded': 'props' } : {})}>
+    <div className="byd-canvas" {...(catalog ? { 'data-catalog': 'open' } : {})} {...(stage ? { 'data-stage': stage } : folded ? { 'data-folded': 'props' } : {})}>
       {/* The crown over the whole desk and not over the card alone (#129): which column makes the
           groups, which group is open, whether the properties are folded away, and which face is
           being edited. It spans the four columns because that is the only place its four controls
@@ -336,6 +346,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             was pressed — which is the one answer that must cost nothing. It is otherwise the same
             strip the table asks its own two questions in, in the colours a deletion is asked in
             there, and in the column where the card it draws on is. */}
+        {catalog && <FontCatalog words={cardWords(shown, rowData)} inGame={Object.keys(doc.fonts ?? {})} onChoose={onCatalogFont} onClose={() => setCatalog(false)} />}
         {goes && (
           <Question
             className="byd-canvas-question"
@@ -385,7 +396,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             {t('canvas.reset')}
           </button>
         )}
-        <FontShelf doc={doc} onFontFile={onFontFile} onFontLicence={onFontLicence} onRemoveFont={onRemoveFont} />
+        <FontShelf doc={doc} onFontFile={onFontFile} onFontLicence={onFontLicence} onRemoveFont={onRemoveFont} onOpenCatalog={() => setCatalog(true)} />
       </aside>
       )}
     </div>
@@ -397,7 +408,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
 // borrowed — a typeface is borrowed exactly as a symbol is (E4), and the print order carries
 // both. A family no element is set in can go; one in use has no button, so a card is never
 // left pointing at a family the game no longer has.
-function FontShelf({ doc, onFontFile, onFontLicence, onRemoveFont }: Pick<TemplateCanvasProps, 'doc' | 'onFontFile' | 'onFontLicence' | 'onRemoveFont'>) {
+function FontShelf({ doc, onFontFile, onFontLicence, onRemoveFont, onOpenCatalog }: Pick<TemplateCanvasProps, 'doc' | 'onFontFile' | 'onFontLicence' | 'onRemoveFont'> & { onOpenCatalog(): void }) {
   const t = useT()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -426,17 +437,26 @@ function FontShelf({ doc, onFontFile, onFontLicence, onRemoveFont }: Pick<Templa
               <span className="byd-fonts-name" style={{ fontFamily: font.stack }}>
                 {family}
               </span>
+              {/* Where the family came from (#329, L27). The badge is the lesser half of the
+                  difference; the greater one is under it, in the licence. */}
+              {font.source === 'catalog' && <span className="byd-fonts-badge">{t('fonts.catalog.badge')}</span>}
               {!used.includes(family) && (
                 <button type="button" onClick={() => onRemoveFont(family)}>
                   {t('fonts.remove')}
                 </button>
               )}
               <small>{t(font.asset ? 'fonts.travels' : 'fonts.staysBehind')}</small>
-              <Licence family={family} licence={font.licence} onFontLicence={onFontLicence} />
+              <Licence family={family} licence={font.licence} settled={font.source === 'catalog'} onFontLicence={onFontLicence} />
             </li>
           ))}
         </ul>
       )}
+      {/* The way into Google Fonts (#329, L27). It stands above the upload because it is the
+          answer for nearly everyone: the whole catalog is free, and a catalog entry arrives
+          knowing its licence, which is the one thing an uploaded file can never say. */}
+      <button type="button" className="byd-fonts-catalog byd-primary" onClick={onOpenCatalog}>
+        {t('fonts.catalog.open')}
+      </button>
       {/* The control is the receiver (#294, #291 variant B): a typeface is dropped on the button
           that takes one, not on a second box beside it and not on the whole canvas. Both halves
           of the drag are cancelled, because a file let go anywhere the page does not catch it is
@@ -482,7 +502,13 @@ function FontShelf({ doc, onFontFile, onFontLicence, onRemoveFont }: Pick<Templa
 // What a typeface is borrowed under. Both halves are needed before anything is written: a
 // licence with no holder credits no one, and a holder with no licence says nothing about what
 // may be printed. Emptying either takes the credit away again.
-function Licence({ family, licence, onFontLicence }: { family: string; licence: ProjectCredit | undefined; onFontLicence: TemplateCanvasProps['onFontLicence'] }) {
+//
+// A family out of the catalog is `settled`: it arrived knowing both halves, so the boxes state
+// the answer and are not open to being answered again (L27). Two boxes a designer is expected to
+// be able to fill in about a typeface she did not make is the friction the catalog exists to
+// take away, and leaving them editable here would put it back — the answer is the catalog's and
+// changing it would only make the print order wrong.
+function Licence({ family, licence, settled, onFontLicence }: { family: string; licence: ProjectCredit | undefined; settled?: boolean; onFontLicence: TemplateCanvasProps['onFontLicence'] }) {
   const t = useT()
   const [what, setWhat] = useState(licence?.licence ?? '')
   const [by, setBy] = useState(licence?.by ?? '')
@@ -495,6 +521,13 @@ function Licence({ family, licence, onFontLicence }: { family: string; licence: 
     }
     if (licence) onFontLicence(family, null)
   }
+  if (settled)
+    return (
+      <span className="byd-fonts-licence" data-settled="true">
+        <input aria-label={t('fonts.licence.of', { family })} value={licence?.licence ?? ''} readOnly />
+        <input aria-label={t('fonts.by.of', { family })} value={licence?.by ?? ''} readOnly />
+      </span>
+    )
   return (
     <span className="byd-fonts-licence">
       <input aria-label={t('fonts.licence.of', { family })} placeholder={t('fonts.licence')} value={what} onChange={(e) => setWhat(e.target.value)} onBlur={() => write(what, by)} />

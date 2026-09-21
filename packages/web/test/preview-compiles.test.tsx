@@ -123,7 +123,7 @@ describe('the card on the canvas is not compiled again for nothing', () => {
         onReset={() => undefined}
         onFontFile={async () => 'Typsnitt'}
         onFontLicence={() => undefined}
-        onRemoveFont={() => undefined}
+        onRemoveFont={() => undefined} onCatalogFont={async () => undefined}
       />,
     )
     // The control: the spy is real, and the canvas did compile its one card to draw it.

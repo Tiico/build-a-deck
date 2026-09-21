@@ -1,5 +1,6 @@
 import { assetFormatsNamed, assetTypeDeclaring, pictureNameOf, type AssetCrop, type AssetKind } from '@byd/protocol'
 import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectFraming, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
+import { type CatalogFamily, fileInSheet, fileSheetHref } from './font-catalog.js'
 import type { DocDiff, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
@@ -22,6 +23,11 @@ import { DEFAULT_TIMING } from '../status/connection.js'
 // `t` (A4). Only what a designer is meant to act on is a message; the rest of what can go
 // wrong here is a diagnostic, and stays in the language the code is written in.
 const swedish: T = (key, params) => translate('sv', key, params)
+
+// The generic a catalog family falls back to when its own file has not arrived yet, so the
+// sample and the card are set in something of the right shape rather than in the browser's
+// default while the bytes travel.
+const GENERIC: Record<string, string> = { serif: 'serif', sans: 'sans-serif', display: 'serif', handskrift: 'cursive', mono: 'monospace' }
 
 
 // The editor's socket, kept small on purpose: the same shape the table's client speaks, so a
@@ -874,6 +880,37 @@ export class ProjectClient {
     this.edit({ v: 'setFont', family, font: { stack: `"${family}", sans-serif`, asset: ref } }, taking)
     await this.storeAsset(file, 'font', ref, taking, { said: 'upload.undone.font', name: family, intents: [{ v: 'removeFont', family }] }, t)
     return family
+  }
+
+  // A family taken out of Google Fonts (#329, L27).
+  //
+  // Only this method ever reaches Google, and only from the designer's browser: the server and
+  // the render worker never do (DRIFT §12). What comes back is copied in as the project's own
+  // asset down the very path an uploaded file takes, so a version prints from a file the project
+  // holds and an archived project needs nothing from Google at all.
+  //
+  // The whole variable file when the family has one, which is what `fileSheetHref` asks for. The
+  // alternative — only the weights the template happens to use — buys bytes with a dependency the
+  // project may not have: choosing a new weight a year from now would need Google again.
+  async useCatalogFont(family: CatalogFamily, t: T = swedish): Promise<string> {
+    const sheet = await fetch(fileSheetHref(family)).catch(() => null)
+    if (!sheet?.ok) throw new Error(t('fonts.catalog.silent'))
+    const file = await fetch(fileInSheet(await sheet.text())).catch(() => null)
+    if (!file?.ok) throw new Error(t('fonts.catalog.silent'))
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    const blob = new File([bytes], `${family.family}.woff2`, { type: 'font/woff2' })
+    // Read after every wait and never before one (D3).
+    const ref = await assetRefOfFile(blob)
+    const already = Object.entries(this.doc.fonts ?? {}).find(([, f]) => f.asset === ref)
+    if (already) return already[0]
+    const name = freeFamily(family.family, this.doc.fonts ?? {})
+    const taking = this.newGesture('font')
+    // The licence is written in the same edit as the family, because it is the same fact: the
+    // catalog knows the answer, and a family that arrived knowing it must never stand in the
+    // list with two empty boxes (L27).
+    this.edit({ v: 'setFont', family: name, font: { stack: `"${name}", ${GENERIC[family.category] ?? 'serif'}`, asset: ref, licence: { licence: family.licence, by: family.by }, source: 'catalog' } }, taking)
+    await this.storeAsset(blob, 'font', ref, taking, { said: 'upload.undone.font', name, intents: [{ v: 'removeFont', family: name }] }, t)
+    return name
   }
 
   setFontLicence(family: string, licence: ProjectCredit | null): void {

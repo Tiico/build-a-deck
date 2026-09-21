@@ -41,7 +41,7 @@ function open(over: Partial<Shape> = {}, opts: { face?: string } = {}) {
       onReset={vi.fn()}
       onFontFile={async () => 'Typsnitt'}
       onFontLicence={vi.fn()}
-      onRemoveFont={vi.fn()}
+      onRemoveFont={vi.fn()} onCatalogFont={vi.fn(async () => undefined)}
     />,
   )
   return { onPatch, onReplaceFace }
@@ -318,7 +318,7 @@ describe('what the ready-made backs are called (A4, L17)', () => {
         onReset={vi.fn()}
         onFontFile={async () => 'Typsnitt'}
         onFontLicence={vi.fn()}
-        onRemoveFont={vi.fn()}
+        onRemoveFont={vi.fn()} onCatalogFont={vi.fn(async () => undefined)}
       />,
     )
     expect(screen.getByText('Botten')).toBeTruthy()

@@ -55,7 +55,7 @@ function open(points: Point[] = CORNERS) {
       onReset={vi.fn()}
       onFontFile={async () => 'Typsnitt'}
       onFontLicence={vi.fn()}
-      onRemoveFont={vi.fn()}
+      onRemoveFont={vi.fn()} onCatalogFont={vi.fn(async () => undefined)}
     />
     </StatusLive>,
   )

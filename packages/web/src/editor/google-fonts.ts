@@ -18,8 +18,8 @@ Actor|sans|OFL 1.1|Thomas Junold|400
 Adamina|serif|OFL 1.1|Cyreal|400
 ADLaM Display|display|OFL 1.1|Mark Jamra, Neil Patel, Andrew Footit|400
 Advent Pro|sans|OFL 1.1|VivaRado|100..900
-Afacad Flux|sans|OFL 1.1|Kristian Möller, Dicotype|100..1000
 Afacad|sans|OFL 1.1|Kristian Möller, Dicotype|400..700
+Afacad Flux|sans|OFL 1.1|Kristian Möller, Dicotype|100..1000
 Agbalumo|display|OFL 1.1|Raphael Alẹ́gbẹ́lẹ́yẹ̀, Sorkin Type, Eben Sorkin|400
 Agdasima|sans|OFL 1.1|The DocRepair Project, Patric King|400;700
 Agu Display|display|OFL 1.1|Seun Badejo|400
@@ -37,34 +37,34 @@ Alatsi|sans|OFL 1.1|Spyros Zevelakis, Eben Sorkin|400
 Albert Sans|sans|OFL 1.1|Andreas Rasmussen|100..900
 Aldrich|sans|OFL 1.1|MADType|400
 Alef|sans|OFL 1.1|Hagilda, Mushon Zer-Aviv|400;700
-Alegreya Sans SC|sans|OFL 1.1|Juan Pablo del Peral, HT Fonts|100;300;400;500;700;800;900
-Alegreya Sans|sans|OFL 1.1|Juan Pablo del Peral, HT Fonts|100;300;400;500;700;800;900
-Alegreya SC|serif|OFL 1.1|Juan Pablo del Peral, HT Fonts|400;500;700;800;900
 Alegreya|serif|OFL 1.1|Juan Pablo del Peral, HT Fonts|400..900
+Alegreya Sans|sans|OFL 1.1|Juan Pablo del Peral, HT Fonts|100;300;400;500;700;800;900
+Alegreya Sans SC|sans|OFL 1.1|Juan Pablo del Peral, HT Fonts|100;300;400;500;700;800;900
+Alegreya SC|serif|OFL 1.1|Juan Pablo del Peral, HT Fonts|400;500;700;800;900
 Aleo|serif|OFL 1.1|Alessio Laiso|100..900
 Alex Brush|handskrift|OFL 1.1|Robert Leuschke|400
 Alexandria|sans|OFL 1.1|Mohamed Gaber, Julieta Ulanovsky|100..900
 Alfa Slab One|display|OFL 1.1|JM Solé|400
 Alice|serif|OFL 1.1|Ksenya Erulevich, Cyreal|400
 Alien Block|display|OFL 1.1|Kensuke Uchida|400
-Alike Angular|serif|OFL 1.1|Sveta Sebyakina, Cyreal|400
 Alike|serif|OFL 1.1|Sveta Sebyakina, Cyreal|400
+Alike Angular|serif|OFL 1.1|Sveta Sebyakina, Cyreal|400
 Alkalami|serif|OFL 1.1|SIL International|400
 Alkatra|display|OFL 1.1|Suman Bhandary|400..700
 Allan|display|OFL 1.1|Anton Koovit|400;700
-Allerta Stencil|sans|OFL 1.1|Matt McInerney|400
 Allerta|sans|OFL 1.1|Matt McInerney|400
+Allerta Stencil|sans|OFL 1.1|Matt McInerney|400
 Allison|handskrift|OFL 1.1|Robert Leuschke|400
 Allura|handskrift|OFL 1.1|Robert Leuschke|400
 Almarai|sans|OFL 1.1|Boutros Fonts, Mourad Boutros|300;400;700;800
+Almendra|serif|OFL 1.1|Ana Sanfelippo|400;700
 Almendra Display|display|OFL 1.1|Ana Sanfelippo|400
 Almendra SC|serif|OFL 1.1|Ana Sanfelippo|400
-Almendra|serif|OFL 1.1|Ana Sanfelippo|400;700
+Alumni Sans|sans|OFL 1.1|Robert Leuschke|100..900
 Alumni Sans Collegiate One|sans|OFL 1.1|Robert Leuschke|400
 Alumni Sans Inline One|display|OFL 1.1|Robert Leuschke|400
 Alumni Sans Pinstripe|sans|OFL 1.1|Robert Leuschke|400
 Alumni Sans SC|sans|OFL 1.1|Robert Leuschke|100..900
-Alumni Sans|sans|OFL 1.1|Robert Leuschke|100..900
 Alyamama|serif|OFL 1.1|Yazeed Omar|300..900
 Amarante|display|OFL 1.1|Karolina Lach|400
 Amaranth|sans|OFL 1.1|Gesine Todt|400;700
@@ -72,8 +72,8 @@ Amarna|sans|OFL 1.1|Ishtār van Looy|100..700
 Amatic SC|handskrift|OFL 1.1|Vernon Adams, Ben Nathan, Thomas Jockin|400;700
 Amethysta|serif|OFL 1.1|Cyreal|400
 Amiko|sans|OFL 1.1|Impallari Type|400;600;700
-Amiri Quran|serif|OFL 1.1|Khaled Hosny, Sebastian Kosch|400
 Amiri|serif|OFL 1.1|Khaled Hosny, Sebastian Kosch|400;700
+Amiri Quran|serif|OFL 1.1|Khaled Hosny, Sebastian Kosch|400
 Amita|handskrift|OFL 1.1|Eduardo Tunni, Brian Bonislawsky|400;700
 Anaheim|sans|OFL 1.1|Vernon Adams|400..800
 Ancizar Sans|sans|OFL 1.1|Universidad Nacional de Colombia (UNAL), César Puertas, Viviana Monsalve, Julián Moncada|100..1000
@@ -95,38 +95,38 @@ Annapurna SIL|serif|OFL 1.1|SIL International|400;700
 Annie Use Your Telescope|handskrift|OFL 1.1|Kimberly Geswein|400
 Anonymous Pro|mono|OFL 1.1|Mark Simonson|400;700
 Anta|sans|OFL 1.1|Sergej Lebedev|400
+Antic|sans|OFL 1.1|Santiago Orozco|400
 Antic Didone|serif|OFL 1.1|Santiago Orozco|400
 Antic Slab|serif|OFL 1.1|Santiago Orozco|400
-Antic|sans|OFL 1.1|Santiago Orozco|400
-Anton SC|sans|OFL 1.1|Vernon Adams|400
 Anton|sans|OFL 1.1|Vernon Adams|400
+Anton SC|sans|OFL 1.1|Vernon Adams|400
 Antonio|sans|OFL 1.1|Vernon Adams|100..700
 Anuphan|sans|OFL 1.1|Cadson Demak|100..700
 Anybody|display|OFL 1.1|Tyler Finck|100..900
 Aoboshi One|serif|OFL 1.1|Natsumi Matsuba|400
 AR One Sans|sans|OFL 1.1|Niteesh Yadav|400..700
 Arapey|serif|OFL 1.1|Eduardo Tunni|400
-Arbutus Slab|serif|OFL 1.1|Karolina Lach|400
 Arbutus|serif|OFL 1.1|Karolina Lach|400
+Arbutus Slab|serif|OFL 1.1|Karolina Lach|400
 Architects Daughter|handskrift|OFL 1.1|Kimberly Geswein|400
+Archivo|sans|OFL 1.1|Omnibus-Type|100..900
 Archivo Black|sans|OFL 1.1|Omnibus-Type|400
 Archivo Narrow|sans|OFL 1.1|Omnibus-Type|400..700
-Archivo|sans|OFL 1.1|Omnibus-Type|100..900
 Are You Serious|handskrift|OFL 1.1|Robert Leuschke|400
-Aref Ruqaa Ink|serif|OFL 1.1|Abdullah Aref, Khaled Hosny, Hermann Zapf|400;700
 Aref Ruqaa|serif|OFL 1.1|Abdullah Aref, Khaled Hosny, Hermann Zapf|400;700
+Aref Ruqaa Ink|serif|OFL 1.1|Abdullah Aref, Khaled Hosny, Hermann Zapf|400;700
 Arima|display|OFL 1.1|Natanael Gama, Joana Correia, Rosalie Wagner|100..700
 Arimo|sans|OFL 1.1|Steve Matteson|400..700
 Arizonia|handskrift|OFL 1.1|Robert Leuschke|400
 Armata|sans|OFL 1.1|Viktoriya Grabowska|400
-Arsenal SC|sans|OFL 1.1|Andrij Shevchenko|400;700
 Arsenal|sans|OFL 1.1|Andrij Shevchenko|400;700
+Arsenal SC|sans|OFL 1.1|Andrij Shevchenko|400;700
 Artifika|serif|OFL 1.1|Cyreal|400
 Arvo|serif|OFL 1.1|Anton Koovit|400;700
 Arya|sans|OFL 1.1|Eduardo Tunni|400;700
+Asap|sans|OFL 1.1|Omnibus-Type|100..900
 Asap Condensed|sans|OFL 1.1|Omnibus-Type|200;300;400;500;600;700;800;900
 Asap Sharp|sans|OFL 1.1|Omnibus-Type|100..900
-Asap|sans|OFL 1.1|Omnibus-Type|100..900
 Asar|serif|OFL 1.1|Sorkin Type|400
 Asimovian|sans|OFL 1.1|Carolina Short|400
 Asset|display|OFL 1.1|Riccardo De Franceschi, Eben Sorkin|400
@@ -135,23 +135,23 @@ Asta Sans|sans|OFL 1.1|42dot|300..800
 Astloch|display|OFL 1.1|Dan Rhatigan|400;700
 Asul|serif|OFL 1.1|Mariela Monsalve|400;700
 Athiti|sans|OFL 1.1|Cadson Demak|200;300;400;500;600;700
+Atkinson Hyperlegible|sans|OFL 1.1|Braille Institute, Applied Design Works, Elliott Scott, Megan Eiswerth, Linus Boman, Theodore Petrosky|400;700
 Atkinson Hyperlegible Mono|sans|OFL 1.1|Braille Institute, Applied Design Works, Elliott Scott, Megan Eiswerth, Letters From Sweden|200..800
 Atkinson Hyperlegible Next|sans|OFL 1.1|Braille Institute, Applied Design Works, Elliott Scott, Megan Eiswerth, Letters From Sweden|200..800
-Atkinson Hyperlegible|sans|OFL 1.1|Braille Institute, Applied Design Works, Elliott Scott, Megan Eiswerth, Linus Boman, Theodore Petrosky|400;700
 Atma|display|OFL 1.1|Black Foundry|300;400;500;600;700
 Atomic Age|display|OFL 1.1|James Grieshaber|400
 Aubrey|display|OFL 1.1|Cyreal|400
 Audiowide|display|OFL 1.1|Astigmatic|400
 Autour One|display|OFL 1.1|Sorkin Type|400
-Average Sans|sans|OFL 1.1|Eduardo Tunni|400
 Average|serif|OFL 1.1|Eduardo Tunni|400
+Average Sans|sans|OFL 1.1|Eduardo Tunni|400
 Averia Gruesa Libre|display|OFL 1.1|Dan Sayers|400
 Averia Libre|display|OFL 1.1|Dan Sayers|300;400;700
 Averia Sans Libre|display|OFL 1.1|Dan Sayers|300;400;700
 Averia Serif Libre|display|OFL 1.1|Dan Sayers|300;400;700
 Azeret Mono|mono|OFL 1.1|Displaay, Martin Vácha|100..900
-B612 Mono|mono|OFL 1.1|Nicolas Chauveau, Thomas Paillot, Jonathan Favre-Lamarine, Jean-Luc Vinot|400;700
 B612|sans|OFL 1.1|PolarSys, Nicolas Chauveau, Thomas Paillot, Jonathan Favre-Lamarine, Jean-Luc Vinot|400;700
+B612 Mono|mono|OFL 1.1|Nicolas Chauveau, Thomas Paillot, Jonathan Favre-Lamarine, Jean-Luc Vinot|400;700
 Babylonica|handskrift|OFL 1.1|Robert Leuschke|400
 Bacasime Antique|serif|OFL 1.1|The DocRepair Project, Claus Eggers Sørensen|400
 Bad Script|handskrift|OFL 1.1|Gaslight|400
@@ -175,14 +175,14 @@ Baloo Thambi 2|display|OFL 1.1|Ek Type|400..800
 Balsamiq Sans|display|OFL 1.1|Michael Angeles|400;700
 Balthazar|serif|OFL 1.1|Dario Manuel Muhafara|400
 Bangers|display|OFL 1.1|Vernon Adams|400
+Barlow|sans|OFL 1.1|Jeremy Tribby|100;200;300;400;500;600;700;800;900
 Barlow Condensed|sans|OFL 1.1|Jeremy Tribby|100;200;300;400;500;600;700;800;900
 Barlow Semi Condensed|sans|OFL 1.1|Jeremy Tribby|100;200;300;400;500;600;700;800;900
-Barlow|sans|OFL 1.1|Jeremy Tribby|100;200;300;400;500;600;700;800;900
 Barriecito|display|OFL 1.1|Omnibus-Type|400
 Barrio|display|OFL 1.1|Omnibus-Type|400
 Basic|sans|OFL 1.1|Magnus Gaarde|400
-Baskervville SC|serif|OFL 1.1|ANRT|400..700
 Baskervville|serif|OFL 1.1|ANRT|400..700
+Baskervville SC|serif|OFL 1.1|ANRT|400..700
 Battambang|display|OFL 1.1|Danh Hong|100;300;400;700;900
 Baumans|display|OFL 1.1|Cyreal|400
 Bayon|sans|OFL 1.1|Danh Hong|400
@@ -197,44 +197,44 @@ Belanosima|sans|OFL 1.1|The DocRepair Project, Santiago Orozco|400;600;700
 Belgrano|serif|OFL 1.1|LatinoType|400
 Bellefair|serif|OFL 1.1|Nick Shinn, Liron Lavi Turkenic|400
 Belleza|sans|OFL 1.1|Eduardo Tunni|400
-Bellota Text|display|OFL 1.1|Kemie Guaida|300;400;700
 Bellota|display|OFL 1.1|Kemie Guaida|300;400;700
+Bellota Text|display|OFL 1.1|Kemie Guaida|300;400;700
 BenchNine|sans|OFL 1.1|Vernon Adams|300;400;700
 Benne|serif|OFL 1.1|John Harrington|400
 Bentham|serif|OFL 1.1|Ben Weiner|400
 Berkshire Swash|handskrift|OFL 1.1|Astigmatic|400
 Besley|serif|OFL 1.1|Owen Earl|400..900
-Betania Patmos GDL|handskrift|OFL 1.1|Carolina Giovagnoli|400
-Betania Patmos In GDL|handskrift|OFL 1.1|Carolina Giovagnoli|400
-Betania Patmos In|handskrift|OFL 1.1|Carolina Giovagnoli|400
 Betania Patmos|handskrift|OFL 1.1|Carolina Giovagnoli|400
+Betania Patmos GDL|handskrift|OFL 1.1|Carolina Giovagnoli|400
+Betania Patmos In|handskrift|OFL 1.1|Carolina Giovagnoli|400
+Betania Patmos In GDL|handskrift|OFL 1.1|Carolina Giovagnoli|400
 Beth Ellen|handskrift|OFL 1.1|Rob Jelinski, Alyson Fraser Diaz|400
 Bevan|serif|OFL 1.1|Vernon Adams|400
 BhuTuka Expanded One|serif|OFL 1.1|Erin McLaughlin|400
+Big Shoulders|display|OFL 1.1|Patric King|100..900
 Big Shoulders Inline|display|OFL 1.1|Patric King|100..900
 Big Shoulders Stencil|display|OFL 1.1|Patric King|100..900
-Big Shoulders|display|OFL 1.1|Patric King|100..900
 Bigelow Rules|display|OFL 1.1|Astigmatic|400
 Bigshot One|display|OFL 1.1|Gesine Todt|400
-Bilbo Swash Caps|handskrift|OFL 1.1|TypeSETit|400
 Bilbo|handskrift|OFL 1.1|Robert Leuschke|400
-BioRhyme Expanded|serif|OFL 1.1|Aoife Mooney|200;300;400;700;800
+Bilbo Swash Caps|handskrift|OFL 1.1|TypeSETit|400
 BioRhyme|serif|OFL 1.1|Aoife Mooney|200..800
-Birthstone Bounce|handskrift|OFL 1.1|Robert Leuschke|400;500
+BioRhyme Expanded|serif|OFL 1.1|Aoife Mooney|200;300;400;700;800
 Birthstone|handskrift|OFL 1.1|Robert Leuschke|400
+Birthstone Bounce|handskrift|OFL 1.1|Robert Leuschke|400;500
 Biryani|sans|OFL 1.1|Dan Reynolds, Mathieu Réguer|200;300;400;600;700;800;900
-Bitcount Grid Double Ink|display|OFL 1.1|Petr van Blokland|100..900
-Bitcount Grid Double|display|OFL 1.1|Petr van Blokland|100..900
-Bitcount Grid Single Ink|display|OFL 1.1|Petr van Blokland|100..900
-Bitcount Grid Single|display|OFL 1.1|Petr van Blokland|100..900
-Bitcount Ink|display|OFL 1.1|Petr van Blokland|100..900
-Bitcount Prop Double Ink|display|OFL 1.1|Petr van Blokland|100..900
-Bitcount Prop Double|display|OFL 1.1|Petr van Blokland|100..900
-Bitcount Prop Single Ink|display|OFL 1.1|Petr van Blokland|100..900
-Bitcount Prop Single|display|OFL 1.1|Petr van Blokland|100..900
-Bitcount Single Ink|display|OFL 1.1|Petr van Blokland|100..900
-Bitcount Single|display|OFL 1.1|Petr van Blokland|100..900
 Bitcount|display|OFL 1.1|Petr van Blokland|100..900
+Bitcount Grid Double|display|OFL 1.1|Petr van Blokland|100..900
+Bitcount Grid Double Ink|display|OFL 1.1|Petr van Blokland|100..900
+Bitcount Grid Single|display|OFL 1.1|Petr van Blokland|100..900
+Bitcount Grid Single Ink|display|OFL 1.1|Petr van Blokland|100..900
+Bitcount Ink|display|OFL 1.1|Petr van Blokland|100..900
+Bitcount Prop Double|display|OFL 1.1|Petr van Blokland|100..900
+Bitcount Prop Double Ink|display|OFL 1.1|Petr van Blokland|100..900
+Bitcount Prop Single|display|OFL 1.1|Petr van Blokland|100..900
+Bitcount Prop Single Ink|display|OFL 1.1|Petr van Blokland|100..900
+Bitcount Single|display|OFL 1.1|Petr van Blokland|100..900
+Bitcount Single Ink|display|OFL 1.1|Petr van Blokland|100..900
 Bitter|serif|OFL 1.1|Sol Matas|100..900
 BIZ UDGothic|sans|OFL 1.1|Type Bank Co., Morisawa Inc.|400;700
 BIZ UDMincho|serif|OFL 1.1|Type Bank Co., Morisawa Inc.|400;700
@@ -244,22 +244,22 @@ BJCree|serif|OFL 1.1|SIL International|400;500;600;700
 Black And White Picture|display|OFL 1.1|AsiaSoft Inc.|400
 Black Han Sans|sans|OFL 1.1|Zess Type|400
 Black Ops One|display|OFL 1.1|James Grieshaber, Eben Sorkin|400
+Blaka|display|OFL 1.1|Mohamed Gaber|400
 Blaka Hollow|display|OFL 1.1|Mohamed Gaber|400
 Blaka Ink|display|OFL 1.1|Mohamed Gaber|400
-Blaka|display|OFL 1.1|Mohamed Gaber|400
 Blinker|sans|OFL 1.1|Juergen Huber|100;200;300;400;600;700;800;900
-Bodoni Moda SC|serif|OFL 1.1|Owen Earl|400..900
 Bodoni Moda|serif|OFL 1.1|Owen Earl|400..900
+Bodoni Moda SC|serif|OFL 1.1|Owen Earl|400..900
 Bokor|display|OFL 1.1|Danh Hong|400
 Boldonse|display|OFL 1.1|Universitype|400
-Bona Nova SC|serif|OFL 1.1|Capitalics, Mateusz Machalski, Andrzej Heidrich|400;700
 Bona Nova|serif|OFL 1.1|Capitalics, Mateusz Machalski, Andrzej Heidrich|400;700
+Bona Nova SC|serif|OFL 1.1|Capitalics, Mateusz Machalski, Andrzej Heidrich|400;700
 Bonbon|handskrift|OFL 1.1|Cyreal|400
 Bonheur Royale|handskrift|OFL 1.1|Robert Leuschke|400
 Boogaloo|display|OFL 1.1|John Vargas Beltrán|400
 Borel|handskrift|OFL 1.1|Rosalie Wagner|400
-Bowlby One SC|display|OFL 1.1|Vernon Adams|400
 Bowlby One|display|OFL 1.1|Vernon Adams|400
+Bowlby One SC|display|OFL 1.1|Vernon Adams|400
 Bpmf Huninn|sans|OFL 1.1|But Ko, justfont|400
 Bpmf Iansui|handskrift|OFL 1.1|But Ko|400
 Bpmf Zihi Kai Std|sans|OFL 1.1|But Ko|400
@@ -267,32 +267,32 @@ Braah One|sans|OFL 1.1|Ashish Kumar|400
 Brawler|serif|OFL 1.1|Cyreal|400;700
 Bree Serif|serif|OFL 1.1|TypeTogether|400
 Bricolage Grotesque|sans|OFL 1.1|Mathieu Triay|200..800
-Bruno Ace SC|display|OFL 1.1|Astigmatic|400
 Bruno Ace|display|OFL 1.1|Astigmatic|400
+Bruno Ace SC|display|OFL 1.1|Astigmatic|400
 Brygada 1918|serif|OFL 1.1|Capitalics, Mateusz Machalski, Borys Kosmynka, Ania Wieluńska, Przemysław Hoffer|400..700
 Bubblegum Sans|display|OFL 1.1|Sudtipos|400
 Bubbler One|sans|OFL 1.1|Brenda Gallo|400
 Buda|display|OFL 1.1|Adèle Antignac|300
 Buenard|serif|OFL 1.1|Gustavo Ibarra|400..700
+Bungee|display|OFL 1.1|David Jonathan Ross|400
 Bungee Hairline|display|OFL 1.1|David Jonathan Ross|400
 Bungee Inline|display|OFL 1.1|David Jonathan Ross|400
 Bungee Outline|display|OFL 1.1|David Jonathan Ross|400
 Bungee Shade|display|OFL 1.1|David Jonathan Ross|400
 Bungee Spice|display|OFL 1.1|David Jonathan Ross|400
 Bungee Tint|display|OFL 1.1|David Jonathan Ross|400
-Bungee|display|OFL 1.1|David Jonathan Ross|400
 Butcherman|display|OFL 1.1|Typomondo|400
 Butterfly Kids|handskrift|OFL 1.1|Tart Workshop|400
 Bytesized|sans|OFL 1.1|Baltdev|400
 Caacupe One|display|OFL 1.1|Magdalena Alonso Rebollo|400
+Cabin|sans|OFL 1.1|Impallari Type, Rodrigo Fuenzalida|400..700
 Cabin Condensed|sans|OFL 1.1|Impallari Type|400;500;600;700
 Cabin Sketch|display|OFL 1.1|Impallari Type|400;700
-Cabin|sans|OFL 1.1|Impallari Type, Rodrigo Fuenzalida|400..700
 Cactus Classical Serif|serif|OFL 1.1|Henry Chan, Tian Haidong, Moonlit Owen|400
 Caesar Dressing|display|OFL 1.1|Open Window|400
 Cagliostro|sans|OFL 1.1|MADType|400
-Cairo Play|sans|OFL 1.1|Mohamed Gaber, Accademia di Belle Arti di Urbino|200..1000
 Cairo|sans|OFL 1.1|Mohamed Gaber, Accademia di Belle Arti di Urbino|200..1000
+Cairo Play|sans|OFL 1.1|Mohamed Gaber, Accademia di Belle Arti di Urbino|200..1000
 Cal Sans|sans|OFL 1.1|Mark Davis, Cal.com Inc.|400
 Caladea|serif|OFL 1.1|HT Fonts, Carolina Giovagnoli, Andrés Torresi|400;700
 Calistoga|display|OFL 1.1|Yvonne Schüttler, Sorkin Type, Eben Sorkin|400
@@ -310,23 +310,23 @@ Carattere|handskrift|OFL 1.1|Robert Leuschke|400
 Cardo|serif|OFL 1.1|David Perry|400;700
 Carlito|sans|OFL 1.1|Łukasz Dziedzic|400;700
 Carme|sans|OFL 1.1|Rubén Prol|400
-Carrois Gothic SC|sans|OFL 1.1|Carrois Apostrophe|400
 Carrois Gothic|sans|OFL 1.1|Carrois Apostrophe|400
+Carrois Gothic SC|sans|OFL 1.1|Carrois Apostrophe|400
 Carter One|display|OFL 1.1|Vernon Adams|400
 Cascadia Code|sans|OFL 1.1|Aaron Bell, Mohamad Dakak, Viktoriya Grabowska, Liron Lavi Turkenich|200..700
 Cascadia Mono|sans|OFL 1.1|Aaron Bell, Mohamad Dakak, Viktoriya Grabowska, Liron Lavi Turkenich|200..700
-Castoro Titling|display|OFL 1.1|Tiro Typeworks, John Hudson|400
 Castoro|serif|OFL 1.1|Tiro Typeworks, John Hudson, Paul Hanslow, Kaja Słojewska|400
+Castoro Titling|display|OFL 1.1|Tiro Typeworks, John Hudson|400
 Catamaran|sans|OFL 1.1|Pria Ravichandran|100..900
 Caudex|serif|OFL 1.1|Nidud|400;700
 Cause|handskrift|OFL 1.1|Saurabh Sharma|100..900
-Caveat Brush|handskrift|OFL 1.1|Impallari Type|400
 Caveat|handskrift|OFL 1.1|Impallari Type|400..700
+Caveat Brush|handskrift|OFL 1.1|Impallari Type|400
 Cedarville Cursive|handskrift|OFL 1.1|Kimberly Geswein|400
 Ceviche One|display|OFL 1.1|Miguel Hernandez|400
 Chakra Petch|sans|OFL 1.1|Cadson Demak|300;400;500;600;700
-Changa One|display|OFL 1.1|Eduardo Tunni|400
 Changa|sans|OFL 1.1|Eduardo Tunni|200..800
+Changa One|display|OFL 1.1|Eduardo Tunni|400
 Chango|display|OFL 1.1|Fontstage|400
 Charis SIL|serif|OFL 1.1|SIL International|400;700
 Charm|handskrift|OFL 1.1|Cadson Demak|400;700
@@ -345,13 +345,13 @@ Chilanka|handskrift|OFL 1.1|SMC, Santhosh Thottingal|400
 Chiron GoRound TC|sans|OFL 1.1|Tamcy|200..900
 Chiron Hei HK|sans|OFL 1.1|Tamcy|200..900
 Chiron Sung HK|serif|OFL 1.1|Tamcy|200..900
-Chivo Mono|mono|OFL 1.1|Omnibus-Type|100..900
 Chivo|sans|OFL 1.1|Omnibus-Type|100..900
+Chivo Mono|mono|OFL 1.1|Omnibus-Type|100..900
 Chocolate Classical Sans|sans|OFL 1.1|Moonlit Owen|400
 Chokokutai|display|OFL 1.1|Font Zone 108|400
 Chonburi|display|OFL 1.1|Cadson Demak|400
-Cinzel Decorative|display|OFL 1.1|Natanael Gama|400;700;900
 Cinzel|serif|OFL 1.1|Natanael Gama|400..900
+Cinzel Decorative|display|OFL 1.1|Natanael Gama|400;700;900
 Clicker Script|handskrift|OFL 1.1|Astigmatic|400
 Climate Crisis|display|OFL 1.1|Daniel Coull, Eino Korkala|400
 Coda|display|OFL 1.1|Vernon Adams|400;800
@@ -359,8 +359,8 @@ Codystar|display|OFL 1.1|Neapolitan|300;400
 Coiny|display|OFL 1.1|Marcelo Magalhães|400
 Combo|display|OFL 1.1|Eduardo Tunni|400
 Comfortaa|display|OFL 1.1|Johan Aakerlund|300..700
-Comforter Brush|handskrift|OFL 1.1|Robert Leuschke|400
 Comforter|handskrift|OFL 1.1|Robert Leuschke|400
+Comforter Brush|handskrift|OFL 1.1|Robert Leuschke|400
 Comic Neue|handskrift|OFL 1.1|Craig Rozynski, Hrant Papazian|300;400;700
 Comic Relief|display|OFL 1.1|Jeff Davis|400;700
 Coming Soon|handskrift|Apache 2.0|Open Window|400
@@ -375,12 +375,12 @@ Copse|serif|OFL 1.1|Dan Rhatigan|400
 Coral Pixels|display|OFL 1.1|Tanukizamurai|400
 Corben|display|OFL 1.1|Vernon Adams|400;700
 Corinthia|handskrift|OFL 1.1|Robert Leuschke|400;700
+Cormorant|serif|OFL 1.1|Christian Thalmann|300..700
 Cormorant Garamond|serif|OFL 1.1|Christian Thalmann|300..700
 Cormorant Infant|serif|OFL 1.1|Christian Thalmann|300..700
 Cormorant SC|serif|OFL 1.1|Christian Thalmann|300;400;500;600;700
 Cormorant Unicase|serif|OFL 1.1|Christian Thalmann|300;400;500;600;700
 Cormorant Upright|serif|OFL 1.1|Christian Thalmann|300;400;500;600;700
-Cormorant|serif|OFL 1.1|Christian Thalmann|300..700
 Cossette Texte|sans|OFL 1.1|Cossette|400;700
 Cossette Titre|sans|OFL 1.1|Cossette|400;700
 Courgette|handskrift|OFL 1.1|Karolina Lach|400
@@ -397,8 +397,8 @@ Croissant One|display|OFL 1.1|Eduardo Tunni|400
 Crushed|display|Apache 2.0|Astigmatic|400
 Cuprum|sans|OFL 1.1|Jovanny Lemonad|400..700
 Cute Font|display|OFL 1.1|TypoDesign Lab. Inc|400
-Cutive Mono|mono|OFL 1.1|Vernon Adams|400
 Cutive|serif|OFL 1.1|Vernon Adams|400
+Cutive Mono|mono|OFL 1.1|Vernon Adams|400
 Dai Banna SIL|serif|OFL 1.1|SIL International|300;400;500;600;700
 Damion|handskrift|OFL 1.1|Vernon Adams|400
 Dancing Script|handskrift|OFL 1.1|Impallari Type|400..700
@@ -413,17 +413,17 @@ Days One|sans|OFL 1.1|Jovanny Lemonad|400
 Dekko|handskrift|OFL 1.1|Sorkin Type|400
 Dela Gothic One|display|OFL 1.1|artakana|400
 Delicious Handrawn|handskrift|OFL 1.1|Agung Rohmat|400
+Delius|handskrift|OFL 1.1|Natalia Raices|400
 Delius Swash Caps|handskrift|OFL 1.1|Natalia Raices|400
 Delius Unicase|handskrift|OFL 1.1|Natalia Raices|400;700
-Delius|handskrift|OFL 1.1|Natalia Raices|400
 Della Respira|serif|OFL 1.1|Nathan Willis|400
 Denk One|sans|OFL 1.1|Sorkin Type|400
 Devonshire|handskrift|OFL 1.1|Astigmatic|400
 Dhurjati|sans|OFL 1.1|Purushoth Kumar Guttula|400
 Didact Gothic|sans|OFL 1.1|Daniel Johnson, Cyreal|400
 Diphylleia|serif|OFL 1.1|Minha Hyung, JAMO|400
-Diplomata SC|display|OFL 1.1|Eduardo Tunni|400
 Diplomata|display|OFL 1.1|Eduardo Tunni|400
+Diplomata SC|display|OFL 1.1|Eduardo Tunni|400
 DM Mono|mono|OFL 1.1|Colophon Foundry|300;400;500
 DM Sans|sans|OFL 1.1|Colophon Foundry|100..1000
 DM Serif Display|serif|OFL 1.1|Colophon Foundry|400
@@ -461,16 +461,16 @@ Edu VIC WA NT Beginner|handskrift|OFL 1.1|Tina Anderson, Corey Anderson|400..700
 El Messiri|sans|OFL 1.1|Mohamed Gaber, Jovanny Lemonad|400..700
 Electrolize|sans|OFL 1.1|Gaslight|400
 Elms Sans|sans|OFL 1.1|Amarachi Nwauwa, Gida Type Studio|100..900
-Elsie Swash Caps|display|OFL 1.1|Alejandro Inler|400;900
 Elsie|display|OFL 1.1|Alejandro Inler|400;900
+Elsie Swash Caps|display|OFL 1.1|Alejandro Inler|400;900
 Emblema One|display|OFL 1.1|Riccardo De Franceschi|400
 Emilys Candy|display|OFL 1.1|Neapolitan|400
+Encode Sans|sans|OFL 1.1|Impallari Type, Andres Torresi, Jacques Le Bailly|100..900
 Encode Sans Condensed|sans|OFL 1.1|Impallari Type, Andres Torresi, Jacques Le Bailly|100;200;300;400;500;600;700;800;900
 Encode Sans Expanded|sans|OFL 1.1|Impallari Type, Andres Torresi, Jacques Le Bailly|100;200;300;400;500;600;700;800;900
 Encode Sans SC|sans|OFL 1.1|Impallari Type, Andres Torresi, Jacques Le Bailly|100..900
 Encode Sans Semi Condensed|sans|OFL 1.1|Impallari Type, Andres Torresi, Jacques Le Bailly|100;200;300;400;500;600;700;800;900
 Encode Sans Semi Expanded|sans|OFL 1.1|Impallari Type, Andres Torresi, Jacques Le Bailly|100;200;300;400;500;600;700;800;900
-Encode Sans|sans|OFL 1.1|Impallari Type, Andres Torresi, Jacques Le Bailly|100..900
 Engagement|handskrift|OFL 1.1|Astigmatic|400
 Englebert|sans|OFL 1.1|Astigmatic|400
 Enriqueta|serif|OFL 1.1|FontFuror|400;500;600;700
@@ -485,8 +485,8 @@ Estonia|handskrift|OFL 1.1|Robert Leuschke|400
 Euphoria Script|handskrift|OFL 1.1|Sabrina Mariela Lopez|400
 Ewert|display|OFL 1.1|Johan Kallas, Mihkel Virkus|400
 Exile|display|OFL 1.1|Bartłomiej Rózga|400
-Exo 2|sans|OFL 1.1|Natanael Gama|100..900
 Exo|sans|OFL 1.1|Natanael Gama, Robin Mientjes|100..900
+Exo 2|sans|OFL 1.1|Natanael Gama|100..900
 Expletus Sans|display|OFL 1.1|Designtown|400..700
 Explora|handskrift|OFL 1.1|Robert Leuschke|400
 Faculty Glyphic|sans|OFL 1.1|Koto Studio|400
@@ -495,8 +495,8 @@ Familjen Grotesk|sans|OFL 1.1|Familjen STHLM AB|400..700
 Fanwood Text|serif|OFL 1.1|Barry Schwartz|400
 Farro|sans|OFL 1.1|Grayscale|300;400;500;700
 Farsan|display|OFL 1.1|Pooja Saxena|400
-Fascinate Inline|display|OFL 1.1|Astigmatic|400
 Fascinate|display|OFL 1.1|Astigmatic|400
+Fascinate Inline|display|OFL 1.1|Astigmatic|400
 Faster One|display|OFL 1.1|Eduardo Tunni|400
 Fasthand|display|OFL 1.1|Danh Hong, Neapolitan|400
 Fauna One|serif|OFL 1.1|Eduardo Tunni|400
@@ -512,9 +512,9 @@ Finlandica Headline|sans|OFL 1.1|Helsinki Type Studio, Niklas Ekholm, Juho Hiili
 Finlandica Text|sans|OFL 1.1|Helsinki Type Studio, Niklas Ekholm, Juho Hiilivirta, Jaakko Suomalainen|100..900
 Fira Code|mono|OFL 1.1|The Mozilla Foundation, Telefonica S.A., Nikita Prokopov|300..700
 Fira Mono|mono|OFL 1.1|Carrois Apostrophe|400;500;700
+Fira Sans|sans|OFL 1.1|Carrois Apostrophe|100;200;300;400;500;600;700;800;900
 Fira Sans Condensed|sans|OFL 1.1|Carrois Apostrophe|100;200;300;400;500;600;700;800;900
 Fira Sans Extra Condensed|sans|OFL 1.1|Carrois Apostrophe|100;200;300;400;500;600;700;800;900
-Fira Sans|sans|OFL 1.1|Carrois Apostrophe|100;200;300;400;500;600;700;800;900
 Fjalla One|sans|OFL 1.1|Sorkin Type, Irina Smirnova|400
 Fjord One|serif|OFL 1.1|Viktoriya Grabowska|400
 Flamenco|display|OFL 1.1|LatinoType|300;400
@@ -558,9 +558,9 @@ Gamja Flower|handskrift|OFL 1.1|YoonDesign Inc|400
 Gantari|sans|OFL 1.1|Lafontype|100..900
 Gasoek One|sans|OFL 1.1|Jiashuo Zhang, JAMO|400
 Gayathri|sans|OFL 1.1|SMC, Binoy Dominic|100;400;700
+Geist|sans|OFL 1.1|Andrés Briganti, Mateo Zaragoza, Guillermo Rauch, Evil Rabbit, José Rago, Facundo Santana|100..900
 Geist Mono|mono|OFL 1.1|Andrés Briganti, Mateo Zaragoza, Guillermo Rauch, Evil Rabbit, José Rago, Facundo Santana|100..900
 Geist Pixel|display|OFL 1.1|Andrés Briganti, Evil Rabbit, Guillermo Rauch|400
-Geist|sans|OFL 1.1|Andrés Briganti, Mateo Zaragoza, Guillermo Rauch, Evil Rabbit, José Rago, Facundo Santana|100..900
 Gelasio|serif|OFL 1.1|Eben Sorkin|400..700
 Gemunu Libre|sans|OFL 1.1|Mooniak|200..800
 Genos|sans|OFL 1.1|Robert Leuschke|100..900
@@ -571,8 +571,8 @@ Geologica|sans|OFL 1.1|Monokrom, Sindre Bremnes, Frode Helland|100..900
 Geom|sans|OFL 1.1|Thanos Poulakidas|300..900
 Geomini|sans|OFL 1.1|FontBob|200..800
 Georama|sans|OFL 1.1|Production Type|100..900
-Geostar Fill|display|OFL 1.1|Joe Prince|400
 Geostar|display|OFL 1.1|Joe Prince|400
+Geostar Fill|display|OFL 1.1|Joe Prince|400
 Germania One|display|OFL 1.1|John Vargas Beltrán|400
 GFS Didot|serif|OFL 1.1|Greek Font Society|400
 GFS Neohellenic|sans|OFL 1.1|Greek Font Society|400;700
@@ -592,9 +592,9 @@ Goblin One|display|OFL 1.1|Riccardo De Franceschi|400
 Gochi Hand|handskrift|OFL 1.1|HT Fonts|400
 Goldman|display|OFL 1.1|Jaikishan Patel|400;700
 Golos Text|sans|OFL 1.1|Alexandra Korolkova, Vitaly Kuzmin|400..900
+Google Sans|sans|OFL 1.1|Google|400..700
 Google Sans Code|mono|OFL 1.1|Google, Universal Thirst|300..800
 Google Sans Flex|sans|OFL 1.1|Google|1..1000
-Google Sans|sans|OFL 1.1|Google|400..700
 Gorditas|display|OFL 1.1|Gustavo Dipre|400;700
 Gothic A1|sans|OFL 1.1|HanYang I&C Co|100;200;300;400;500;600;700;800;900
 Gotu|sans|OFL 1.1|Ek Type|400
@@ -609,8 +609,8 @@ Grape Nuts|handskrift|OFL 1.1|Robert Leuschke|400
 Gravitas One|display|OFL 1.1|Riccardo De Franceschi|400
 Great Vibes|handskrift|OFL 1.1|Robert Leuschke|400
 Grechen Fuemen|handskrift|OFL 1.1|Robert Leuschke|400
-Grenze Gotisch|display|OFL 1.1|Omnibus-Type|100..900
 Grenze|serif|OFL 1.1|Omnibus-Type|100..900
+Grenze Gotisch|display|OFL 1.1|Omnibus-Type|100..900
 Grey Qo|handskrift|OFL 1.1|Robert Leuschke|400
 Griffy|display|OFL 1.1|Neapolitan|400
 Gruppo|sans|OFL 1.1|Vernon Adams|400
@@ -626,8 +626,8 @@ Hachi Maru Pop|handskrift|OFL 1.1|Nonty|400
 Hahmlet|serif|OFL 1.1|Hypertype|100..900
 Halant|serif|OFL 1.1|Indian Type Foundry|300;400;500;600;700
 Hammersmith One|sans|OFL 1.1|Nicole Fally|400
-Hanalei Fill|display|OFL 1.1|Astigmatic|400
 Hanalei|display|OFL 1.1|Astigmatic|400
+Hanalei Fill|display|OFL 1.1|Astigmatic|400
 Handjet|display|OFL 1.1|Rosetta, David Březina|100..900
 Handlee|handskrift|OFL 1.1|Joe Prince|400
 Hanken Grotesk|sans|OFL 1.1|Alfredo Marco Pradil, Hanken Design Co.|100..900
@@ -644,12 +644,12 @@ Herr Von Muellerhoff|handskrift|OFL 1.1|Sudtipos|400
 Hi Melody|handskrift|OFL 1.1|YoonDesign Inc|400
 Hibur Mono|mono|OFL 1.1|TypeHabesha, Behailu Berento|400
 Hina Mincho|serif|OFL 1.1|Satsuyako|400
+Hind|sans|OFL 1.1|Indian Type Foundry|300;400;500;600;700
 Hind Guntur|sans|OFL 1.1|Indian Type Foundry|300;400;500;600;700
 Hind Madurai|sans|OFL 1.1|Indian Type Foundry|300;400;500;600;700
 Hind Mysuru|sans|OFL 1.1|Indian Type Foundry|300;400;500;600;700
 Hind Siliguri|sans|OFL 1.1|Indian Type Foundry|300;400;500;600;700
 Hind Vadodara|sans|OFL 1.1|Indian Type Foundry|300;400;500;600;700
-Hind|sans|OFL 1.1|Indian Type Foundry|300;400;500;600;700
 Holtwood One SC|serif|OFL 1.1|Vernon Adams|400
 Homemade Apple|handskrift|Apache 2.0|Font Diner|400
 Homenaje|sans|OFL 1.1|Constanza Artigas Preller, Agustina Mingote|400
@@ -662,29 +662,29 @@ Hurricane|handskrift|OFL 1.1|Robert Leuschke|400
 Iansui|handskrift|OFL 1.1|But Ko|400
 Ibarra Real Nova|serif|OFL 1.1|José María Ribagorda, Octavio Pardo|400..700
 IBM Plex Mono|mono|OFL 1.1|Mike Abbink, Bold Monday|100;200;300;400;500;600;700
+IBM Plex Sans|sans|OFL 1.1|Mike Abbink, Bold Monday|100..700
 IBM Plex Sans Arabic|sans|OFL 1.1|Mike Abbink, Bold Monday, Khajag Apelian, Wael Morcos|100;200;300;400;500;600;700
 IBM Plex Sans Condensed|sans|OFL 1.1|Mike Abbink, Bold Monday|100;200;300;400;500;600;700
 IBM Plex Sans Devanagari|sans|OFL 1.1|Mike Abbink, Bold Monday|100;200;300;400;500;600;700
 IBM Plex Sans Hebrew|sans|OFL 1.1|Mike Abbink, Bold Monday|100;200;300;400;500;600;700
 IBM Plex Sans JP|sans|OFL 1.1|Mike Abbink, Bold Monday|100;200;300;400;500;600;700
 IBM Plex Sans KR|sans|OFL 1.1|Mike Abbink, Bold Monday|100;200;300;400;500;600;700
-IBM Plex Sans Thai Looped|sans|OFL 1.1|Mike Abbink, Bold Monday|100;200;300;400;500;600;700
 IBM Plex Sans Thai|sans|OFL 1.1|Mike Abbink, Bold Monday|100;200;300;400;500;600;700
-IBM Plex Sans|sans|OFL 1.1|Mike Abbink, Bold Monday|100..700
+IBM Plex Sans Thai Looped|sans|OFL 1.1|Mike Abbink, Bold Monday|100;200;300;400;500;600;700
 IBM Plex Serif|serif|OFL 1.1|Mike Abbink, Bold Monday|100;200;300;400;500;600;700
 Iceberg|display|OFL 1.1|Cyreal|400
 Iceland|display|OFL 1.1|Cyreal|400
 Idiqlat|serif|OFL 1.1|SIL International|200;300;400
-IM Fell Double Pica SC|serif|OFL 1.1|Igino Marini|400
 IM Fell Double Pica|serif|OFL 1.1|Igino Marini|400
-IM Fell DW Pica SC|serif|OFL 1.1|Igino Marini|400
+IM Fell Double Pica SC|serif|OFL 1.1|Igino Marini|400
 IM Fell DW Pica|serif|OFL 1.1|Igino Marini|400
-IM Fell English SC|serif|OFL 1.1|Igino Marini|400
+IM Fell DW Pica SC|serif|OFL 1.1|Igino Marini|400
 IM Fell English|serif|OFL 1.1|Igino Marini|400
-IM Fell French Canon SC|serif|OFL 1.1|Igino Marini|400
+IM Fell English SC|serif|OFL 1.1|Igino Marini|400
 IM Fell French Canon|serif|OFL 1.1|Igino Marini|400
-IM Fell Great Primer SC|serif|OFL 1.1|Igino Marini|400
+IM Fell French Canon SC|serif|OFL 1.1|Igino Marini|400
 IM Fell Great Primer|serif|OFL 1.1|Igino Marini|400
+IM Fell Great Primer SC|serif|OFL 1.1|Igino Marini|400
 Imbue|serif|OFL 1.1|Tyler Finck, ETC|100..900
 Imperial Script|handskrift|OFL 1.1|Robert Leuschke|400
 Imprima|sans|OFL 1.1|Eduardo Tunni|400
@@ -701,36 +701,36 @@ Inspiration|handskrift|OFL 1.1|Robert Leuschke|400
 Instrument Sans|sans|OFL 1.1|Rodrigo Fuenzalida, Jordan Egstad|400..700
 Instrument Serif|serif|OFL 1.1|Rodrigo Fuenzalida, Jordan Egstad|400
 Intel One Mono|mono|OFL 1.1|Intel Corporation, Frere-Jones Type|300..700
-Inter Tight|sans|OFL 1.1|Rasmus Andersson|100..900
 Inter|sans|OFL 1.1|Rasmus Andersson|100..900
-Iosevka Charon Mono|mono|OFL 1.1|Juliette Pluto|300;400;500;700
+Inter Tight|sans|OFL 1.1|Rasmus Andersson|100..900
 Iosevka Charon|mono|OFL 1.1|Juliette Pluto|300;400;500;700
+Iosevka Charon Mono|mono|OFL 1.1|Juliette Pluto|300;400;500;700
 Irish Grover|display|Apache 2.0|Sideshow|400
 Island Moments|handskrift|OFL 1.1|Robert Leuschke|400
 Istok Web|sans|OFL 1.1|Andrey V. Panov|400;700
 Italiana|sans|OFL 1.1|Santiago Orozco|400
 Italianno|handskrift|OFL 1.1|Robert Leuschke|400
 Itim|handskrift|OFL 1.1|Cadson Demak|400
-Jacquard 12 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
 Jacquard 12|display|OFL 1.1|Sarah Cadigan-Fried|400
-Jacquard 24 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
+Jacquard 12 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
 Jacquard 24|display|OFL 1.1|Sarah Cadigan-Fried|400
-Jacquarda Bastarda 9 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
+Jacquard 24 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
 Jacquarda Bastarda 9|display|OFL 1.1|Sarah Cadigan-Fried|400
-Jacques Francois Shadow|display|OFL 1.1|Cyreal|400
+Jacquarda Bastarda 9 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
 Jacques Francois|serif|OFL 1.1|Cyreal|400
-Jaini Purva|display|OFL 1.1|Ek Type|400
+Jacques Francois Shadow|display|OFL 1.1|Cyreal|400
 Jaini|display|OFL 1.1|Ek Type|400
+Jaini Purva|display|OFL 1.1|Ek Type|400
 Jaldi|sans|OFL 1.1|Omnibus-Type|400;700
 Jaro|sans|OFL 1.1|Agyei Archer, Céline Hurka, Mirko Velimirović|400
-Jersey 10 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
 Jersey 10|display|OFL 1.1|Sarah Cadigan-Fried|400
-Jersey 15 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
+Jersey 10 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
 Jersey 15|display|OFL 1.1|Sarah Cadigan-Fried|400
-Jersey 20 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
+Jersey 15 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
 Jersey 20|display|OFL 1.1|Sarah Cadigan-Fried|400
-Jersey 25 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
+Jersey 20 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
 Jersey 25|display|OFL 1.1|Sarah Cadigan-Fried|400
+Jersey 25 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
 JetBrains Mono|mono|OFL 1.1|JetBrains, Philipp Nurullin, Konstantin Bulenkov|100..800
 Jim Nightshade|handskrift|OFL 1.1|Astigmatic|400
 Joan|serif|OFL 1.1|Paolo Biagini|400
@@ -758,8 +758,8 @@ Kaisei HarunoUmi|serif|OFL 1.1|Font-Kai|400;500;700
 Kaisei Opti|serif|OFL 1.1|Font-Kai|400;500;700
 Kaisei Tokumin|serif|OFL 1.1|Font-Kai|400;500;700;800
 Kalam|handskrift|OFL 1.1|Indian Type Foundry|300;400;700
-Kalnia Glaze|display|OFL 1.1|Frida Medrano|100..700
 Kalnia|serif|OFL 1.1|Frida Medrano|100..700
+Kalnia Glaze|display|OFL 1.1|Frida Medrano|100..700
 Kameron|serif|OFL 1.1|Vernon Adams|400..700
 Kanchenjunga|sans|OFL 1.1|Becca Hirsbrunner Spalinger|400;500;600;700
 Kanit|sans|OFL 1.1|Cadson Demak|100;200;300;400;500;600;700;800;900
@@ -792,8 +792,8 @@ Koh Santepheap|serif|OFL 1.1|Danh Hong|100;300;400;700;900
 KoHo|sans|OFL 1.1|Cadson Demak|200;300;400;500;600;700
 Kolker Brush|handskrift|OFL 1.1|Robert Leuschke|400
 Konkhmer Sleokchher|display|OFL 1.1|Suon May Sophanith|400
-Kosugi Maru|sans|Apache 2.0|MOTOYA|400
 Kosugi|sans|Apache 2.0|MOTOYA|400
+Kosugi Maru|sans|Apache 2.0|MOTOYA|400
 Kotta One|serif|OFL 1.1|Ania Kruk|400
 Koulen|display|OFL 1.1|Danh Hong|400
 Kranky|display|Apache 2.0|Sideshow|400
@@ -803,8 +803,8 @@ Krona One|sans|OFL 1.1|Yvonne Schüttler|400
 Krub|sans|OFL 1.1|Cadson Demak|200;300;400;500;600;700
 Kufam|sans|OFL 1.1|Original Type, Wael Morcos, Artur Schmal|400..900
 Kulim Park|sans|OFL 1.1|Dale Sattler|200;300;400;600;700
-Kumar One Outline|display|OFL 1.1|Indian Type Foundry|400
 Kumar One|display|OFL 1.1|Indian Type Foundry|400
+Kumar One Outline|display|OFL 1.1|Indian Type Foundry|400
 Kumbh Sans|sans|OFL 1.1|Saurabh Sharma|100..900
 Kurale|serif|OFL 1.1|Eduardo Tunni|400
 La Belle Aurore|handskrift|OFL 1.1|Kimberly Geswein|400
@@ -826,6 +826,7 @@ Ledger|serif|OFL 1.1|Denis Masharov|400
 Lekton|mono|OFL 1.1|ISIA Urbino|400;700
 Lemon|display|OFL 1.1|Eduardo Tunni|400
 Lemonada|display|OFL 1.1|Mohamed Gaber, Eduardo Tunni|300..700
+Lexend|sans|OFL 1.1|Bonnie Shaver-Troup, Thomas Jockin, Santiago Orozco, Héctor Gómez, Superunion|100..900
 Lexend Deca|sans|OFL 1.1|Bonnie Shaver-Troup, Thomas Jockin, Santiago Orozco, Héctor Gómez, Superunion|100..900
 Lexend Exa|sans|OFL 1.1|Bonnie Shaver-Troup, Thomas Jockin, Santiago Orozco, Héctor Gómez, Superunion|100..900
 Lexend Giga|sans|OFL 1.1|Bonnie Shaver-Troup, Thomas Jockin, Santiago Orozco, Héctor Gómez, Superunion|100..900
@@ -833,18 +834,17 @@ Lexend Mega|sans|OFL 1.1|Bonnie Shaver-Troup, Thomas Jockin, Santiago Orozco, H�
 Lexend Peta|sans|OFL 1.1|Bonnie Shaver-Troup, Thomas Jockin, Santiago Orozco, Héctor Gómez, Superunion|100..900
 Lexend Tera|sans|OFL 1.1|Bonnie Shaver-Troup, Thomas Jockin, Santiago Orozco, Héctor Gómez, Superunion|100..900
 Lexend Zetta|sans|OFL 1.1|Bonnie Shaver-Troup, Thomas Jockin, Santiago Orozco, Héctor Gómez, Superunion|100..900
-Lexend|sans|OFL 1.1|Bonnie Shaver-Troup, Thomas Jockin, Santiago Orozco, Héctor Gómez, Superunion|100..900
 Libertinus Keyboard|display|OFL 1.1|Philipp H. Poll|400
 Libertinus Mono|mono|OFL 1.1|Philipp H. Poll|400
 Libertinus Sans|sans|OFL 1.1|Philipp H. Poll|400;700
-Libertinus Serif Display|display|OFL 1.1|Philipp H. Poll|400
 Libertinus Serif|serif|OFL 1.1|Philipp H. Poll|400;600;700
-Libre Barcode 128 Text|display|OFL 1.1|Lasse Fister|400
+Libertinus Serif Display|display|OFL 1.1|Philipp H. Poll|400
 Libre Barcode 128|display|OFL 1.1|Lasse Fister|400
-Libre Barcode 39 Extended Text|display|OFL 1.1|Lasse Fister|400
-Libre Barcode 39 Extended|display|OFL 1.1|Lasse Fister|400
-Libre Barcode 39 Text|display|OFL 1.1|Lasse Fister|400
+Libre Barcode 128 Text|display|OFL 1.1|Lasse Fister|400
 Libre Barcode 39|display|OFL 1.1|Lasse Fister|400
+Libre Barcode 39 Extended|display|OFL 1.1|Lasse Fister|400
+Libre Barcode 39 Extended Text|display|OFL 1.1|Lasse Fister|400
+Libre Barcode 39 Text|display|OFL 1.1|Lasse Fister|400
 Libre Barcode EAN13 Text|display|OFL 1.1|Lasse Fister|400
 Libre Baskerville|serif|OFL 1.1|Impallari Type|400..700
 Libre Bodoni|serif|OFL 1.1|Pablo Impallari, Rodrigo Fuenzalida|400..700
@@ -864,8 +864,8 @@ Liter|sans|OFL 1.1|Anton Skugarov, Alexandr Ivanin|400
 Literata|serif|OFL 1.1|TypeTogether|200..900
 Liu Jian Mao Cao|handskrift|OFL 1.1|Liu Zhengjiang, Kimberly Geswein, ZhongQi|400
 Livvic|sans|OFL 1.1|LV=, Jacques Le Bailly|100;200;300;400;500;600;700;900
-Lobster Two|display|OFL 1.1|Impallari Type|400;700
 Lobster|display|OFL 1.1|Impallari Type|400
+Lobster Two|display|OFL 1.1|Impallari Type|400;700
 Londrina Outline|display|OFL 1.1|Marcelo Magalhães|400
 Londrina Shadow|display|OFL 1.1|Marcelo Magalhães|400
 Londrina Sketch|display|OFL 1.1|Marcelo Magalhães|400
@@ -887,16 +887,16 @@ Luxurious Script|handskrift|OFL 1.1|Robert Leuschke|400
 LXGW Marker Gothic|sans|OFL 1.1|LXGW|400
 LXGW WenKai Mono TC|mono|OFL 1.1|LXGW|300;400;700
 LXGW WenKai TC|handskrift|OFL 1.1|LXGW|300;400;700
-M PLUS 1 Code|mono|OFL 1.1|Coji Morishita|100..700
 M PLUS 1|sans|OFL 1.1|Coji Morishita|100..900
+M PLUS 1 Code|mono|OFL 1.1|Coji Morishita|100..700
 M PLUS 1p|sans|OFL 1.1|Coji Morishita, M+ Fonts Project|100;300;400;500;700;800;900
 M PLUS 2|sans|OFL 1.1|Coji Morishita|100..900
 M PLUS Code Latin|sans|OFL 1.1|Coji Morishita|100..700
 M PLUS Rounded 1c|sans|OFL 1.1|Coji Morishita, M+ Fonts Project|100;300;400;500;700;800;900
 M PLUS U|sans|OFL 1.1|Coji Morishita|100..900
 Ma Shan Zheng|handskrift|OFL 1.1|Ma ShanZheng|400
-Macondo Swash Caps|display|OFL 1.1|John Vargas Beltrán|400
 Macondo|display|OFL 1.1|John Vargas Beltrán|400
+Macondo Swash Caps|display|OFL 1.1|John Vargas Beltrán|400
 Mada|sans|OFL 1.1|Khaled Hosny, Paul D. Hunt|200..900
 Madimi One|sans|OFL 1.1|Taurai Valerie Mtake, Mirko Velimirović|400
 Magra|sans|OFL 1.1|FontFuror|400;700
@@ -913,21 +913,21 @@ Manrope|sans|OFL 1.1|Mikhail Sharanda|200..800
 Mansalva|handskrift|OFL 1.1|Carolina Short|400
 Manuale|serif|OFL 1.1|Omnibus-Type|300..800
 Manufacturing Consent|display|OFL 1.1|Fredrick Brennan|400
-Marcellus SC|serif|OFL 1.1|Astigmatic|400
 Marcellus|serif|OFL 1.1|Astigmatic|400
+Marcellus SC|serif|OFL 1.1|Astigmatic|400
 Marck Script|handskrift|OFL 1.1|Denis Masharov|400
 Margarine|display|OFL 1.1|Astigmatic|400
 Marhey|display|OFL 1.1|Nur Syamsi, Bustanul Arifin|300..700
 Markazi Text|serif|OFL 1.1|Borna Izadpanah, Florian Runge, Fiona Ross|400..700
 Marko One|serif|OFL 1.1|Cyreal|400
 Marmelad|sans|OFL 1.1|Cyreal, Manvel Shmavonyan|400
-Martel Sans|sans|OFL 1.1|Dan Reynolds, Mathieu Réguer|200;300;400;600;700;800;900
 Martel|serif|OFL 1.1|Dan Reynolds|200;300;400;600;700;800;900
+Martel Sans|sans|OFL 1.1|Dan Reynolds, Mathieu Réguer|200;300;400;600;700;800;900
 Martian Mono|mono|OFL 1.1|Roman Shamin, Evil Martians|100..800
 Marvel|sans|OFL 1.1|Carolina Trebol|400;700
 Matangi|sans|OFL 1.1|The Graphic Ant|300..900
-Mate SC|serif|OFL 1.1|Eduardo Tunni|400
 Mate|serif|OFL 1.1|Eduardo Tunni|400
+Mate SC|serif|OFL 1.1|Eduardo Tunni|400
 Matemasie|sans|OFL 1.1|Adam Yeo|400
 Maven Pro|sans|OFL 1.1|Joe Prince|400..900
 McLaren|display|OFL 1.1|Astigmatic|400
@@ -941,18 +941,18 @@ Meie Script|handskrift|OFL 1.1|Johan Kallas, Mihkel Virkus|400
 Menbere|sans|OFL 1.1|Aleme Tadesse, Sorkin Type, Eben Sorkin|100..700
 Meow Script|handskrift|OFL 1.1|Robert Leuschke|400
 Merienda|handskrift|OFL 1.1|Eduardo Tunni|300..900
-Merriweather Sans|sans|OFL 1.1|Sorkin Type|300..800
 Merriweather|serif|OFL 1.1|Sorkin Type|300..900
-Metal Mania|display|OFL 1.1|Open Window|400
+Merriweather Sans|sans|OFL 1.1|Sorkin Type|300..800
 Metal|display|OFL 1.1|Danh Hong|400
+Metal Mania|display|OFL 1.1|Open Window|400
 Metamorphous|display|OFL 1.1|James Grieshaber|400
 Metrophobic|sans|OFL 1.1|Vernon Adams|400
 Michroma|sans|OFL 1.1|Vernon Adams|400
-Micro 5 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
 Micro 5|display|OFL 1.1|Sarah Cadigan-Fried|400
+Micro 5 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
 Milonga|display|OFL 1.1|Impallari Type|400
-Miltonian Tattoo|display|OFL 1.1|Impallari Type|400
 Miltonian|display|OFL 1.1|Impallari Type|400
+Miltonian Tattoo|display|OFL 1.1|Impallari Type|400
 Mina|sans|OFL 1.1|Suman Bhandary, Natanael Gama, Mooniak|400;700
 Mingzat|sans|OFL 1.1|SIL International|400
 Miniver|display|OFL 1.1|Open Window|400
@@ -985,9 +985,9 @@ Montagu Slab|serif|OFL 1.1|Florian Karsten|100..700
 MonteCarlo|handskrift|OFL 1.1|Robert Leuschke|400
 Montenegrin Gothic One|serif|OFL 1.1|Žarko Banović|400
 Montez|handskrift|Apache 2.0|Astigmatic|400
+Montserrat|sans|OFL 1.1|Julieta Ulanovsky, Sol Matas, Juan Pablo del Peral, Jacques Le Bailly|100..900
 Montserrat Alternates|sans|OFL 1.1|Julieta Ulanovsky, Sol Matas, Juan Pablo del Peral, Jacques Le Bailly|100;200;300;400;500;600;700;800;900
 Montserrat Underline|sans|OFL 1.1|Julieta Ulanovsky, Sol Matas, Juan Pablo del Peral, Jacques Le Bailly|100..900
-Montserrat|sans|OFL 1.1|Julieta Ulanovsky, Sol Matas, Juan Pablo del Peral, Jacques Le Bailly|100..900
 Moo Lah Lah|display|OFL 1.1|Robert Leuschke|400
 Mooli|sans|OFL 1.1|Vernon Adams|400
 Moon Dance|handskrift|OFL 1.1|Robert Leuschke|400
@@ -1003,10 +1003,10 @@ Mr De Haviland|handskrift|OFL 1.1|Sudtipos|400
 Mrs Saint Delafield|handskrift|OFL 1.1|Sudtipos|400
 Mrs Sheppards|handskrift|OFL 1.1|Sudtipos|400
 Ms Madi|handskrift|OFL 1.1|Robert Leuschke|400
+Mukta|sans|OFL 1.1|Ek Type|200;300;400;500;600;700;800
 Mukta Mahee|sans|OFL 1.1|Ek Type|200;300;400;500;600;700;800
 Mukta Malar|sans|OFL 1.1|Ek Type|200;300;400;500;600;700;800
 Mukta Vaani|sans|OFL 1.1|Ek Type|200;300;400;500;600;700;800
-Mukta|sans|OFL 1.1|Ek Type|200;300;400;500;600;700;800
 Mulish|sans|OFL 1.1|Vernon Adams, Cyreal, Jacques Le Bailly|200..1000
 Murecho|sans|OFL 1.1|Neil Summerour|100..900
 MuseoModerno|display|OFL 1.1|Omnibus-Type|100..900
@@ -1016,8 +1016,8 @@ Mystery Quest|display|OFL 1.1|Sideshow|400
 Nabla|display|OFL 1.1|Arthur Reinders Folmer, Just van Rossum|400
 Namdhinggo|serif|OFL 1.1|SIL International|400;500;600;700;800
 Nanum Brush Script|handskrift|OFL 1.1|Sandoll Communication|400
-Nanum Gothic Coding|handskrift|OFL 1.1|Sandoll Communication|400;700
 Nanum Gothic|sans|OFL 1.1|Sandoll Communication|400;700;800
+Nanum Gothic Coding|handskrift|OFL 1.1|Sandoll Communication|400;700
 Nanum Myeongjo|serif|OFL 1.1|Sandoll Communication|400;700;800
 Nanum Pen Script|handskrift|OFL 1.1|Sandoll Communication|400
 Narnoor|sans|OFL 1.1|SIL International|400;500;600;700;800
@@ -1047,8 +1047,9 @@ Noto Music|sans|OFL 1.1|Google|400
 Noto Naskh Arabic|serif|OFL 1.1|Google|400..700
 Noto Nastaliq Urdu|serif|OFL 1.1|Google|400..700
 Noto Rashi Hebrew|serif|OFL 1.1|Google|100..900
-Noto Sans Adlam Unjoined|sans|OFL 1.1|Google|400..700
+Noto Sans|sans|OFL 1.1|Google|100..900
 Noto Sans Adlam|sans|OFL 1.1|Google|400..700
+Noto Sans Adlam Unjoined|sans|OFL 1.1|Google|400..700
 Noto Sans Anatolian Hieroglyphs|sans|OFL 1.1|Google|400
 Noto Sans Arabic|sans|OFL 1.1|Google|100..900
 Noto Sans Armenian|sans|OFL 1.1|Google|100..900
@@ -1108,8 +1109,8 @@ Noto Sans Khmer|sans|OFL 1.1|Google|100..900
 Noto Sans Khojki|sans|OFL 1.1|Google|400
 Noto Sans Khudawadi|sans|OFL 1.1|Google|400
 Noto Sans KR|sans|OFL 1.1|Google|100..900
-Noto Sans Lao Looped|sans|OFL 1.1|Google|100..900
 Noto Sans Lao|sans|OFL 1.1|Google|100..900
+Noto Sans Lao Looped|sans|OFL 1.1|Google|100..900
 Noto Sans Lepcha|sans|OFL 1.1|Google|400
 Noto Sans Limbu|sans|OFL 1.1|Google|400
 Noto Sans Linear A|sans|OFL 1.1|Google|400
@@ -1139,8 +1140,8 @@ Noto Sans Nag Mundari|sans|OFL 1.1|Google|400..700
 Noto Sans Nandinagari|sans|OFL 1.1|Google|400
 Noto Sans New Tai Lue|sans|OFL 1.1|Google|400..700
 Noto Sans Newa|sans|OFL 1.1|Google|400
-Noto Sans NKo Unjoined|sans|OFL 1.1|Google|400..700
 Noto Sans NKo|sans|OFL 1.1|Google|400
+Noto Sans NKo Unjoined|sans|OFL 1.1|Google|400..700
 Noto Sans Nushu|sans|OFL 1.1|Google|400
 Noto Sans Ogham|sans|OFL 1.1|Google|400
 Noto Sans Ol Chiki|sans|OFL 1.1|Google|400..700
@@ -1177,25 +1178,25 @@ Noto Sans Soyombo|sans|OFL 1.1|Google|400
 Noto Sans Sundanese|sans|OFL 1.1|Google|400..700
 Noto Sans Sunuwar|sans|OFL 1.1|Google|400
 Noto Sans Syloti Nagri|sans|OFL 1.1|Google|400
-Noto Sans Symbols 2|sans|OFL 1.1|Google|400
 Noto Sans Symbols|sans|OFL 1.1|Google|100..900
+Noto Sans Symbols 2|sans|OFL 1.1|Google|400
+Noto Sans Syriac|sans|OFL 1.1|Google|100..900
 Noto Sans Syriac Eastern|sans|OFL 1.1|Google|100..900
 Noto Sans Syriac Western|sans|OFL 1.1|Google|100..900
-Noto Sans Syriac|sans|OFL 1.1|Google|100..900
 Noto Sans Tagalog|sans|OFL 1.1|Google|400
 Noto Sans Tagbanwa|sans|OFL 1.1|Google|400
 Noto Sans Tai Le|sans|OFL 1.1|Google|400
 Noto Sans Tai Tham|sans|OFL 1.1|Google|400..700
 Noto Sans Tai Viet|sans|OFL 1.1|Google|400
 Noto Sans Takri|sans|OFL 1.1|Google|400
-Noto Sans Tamil Supplement|sans|OFL 1.1|Google|400
 Noto Sans Tamil|sans|OFL 1.1|Google|100..900
+Noto Sans Tamil Supplement|sans|OFL 1.1|Google|400
 Noto Sans Tangsa|sans|OFL 1.1|Google|400..700
 Noto Sans TC|sans|OFL 1.1|Google|100..900
 Noto Sans Telugu|sans|OFL 1.1|Google|100..900
 Noto Sans Thaana|sans|OFL 1.1|Google|100..900
-Noto Sans Thai Looped|sans|OFL 1.1|Google|100..900
 Noto Sans Thai|sans|OFL 1.1|Google|100..900
+Noto Sans Thai Looped|sans|OFL 1.1|Google|100..900
 Noto Sans Tifinagh|sans|OFL 1.1|Google|400
 Noto Sans Tirhuta|sans|OFL 1.1|Google|400
 Noto Sans Ugaritic|sans|OFL 1.1|Google|400
@@ -1205,7 +1206,7 @@ Noto Sans Wancho|sans|OFL 1.1|Google|400
 Noto Sans Warang Citi|sans|OFL 1.1|Google|400
 Noto Sans Yi|sans|OFL 1.1|Google|400
 Noto Sans Zanabazar Square|sans|OFL 1.1|Google|400
-Noto Sans|sans|OFL 1.1|Google|100..900
+Noto Serif|serif|OFL 1.1|Google|100..900
 Noto Serif Ahom|serif|OFL 1.1|Google|400
 Noto Serif Armenian|serif|OFL 1.1|Google|100..900
 Noto Serif Balinese|serif|OFL 1.1|Google|400
@@ -1247,7 +1248,6 @@ Noto Serif Todhri|serif|OFL 1.1|Google|400
 Noto Serif Toto|serif|OFL 1.1|Google|400..700
 Noto Serif Vithkuqi|serif|OFL 1.1|Google|400..700
 Noto Serif Yezidi|serif|OFL 1.1|Google|400..700
-Noto Serif|serif|OFL 1.1|Google|100..900
 Noto Traditional Nushu|sans|OFL 1.1|Google|300..700
 Noto Znamenny Musical Notation|sans|OFL 1.1|Google|400
 Nova Cut|display|OFL 1.1|Wojciech Kalinowski|400
@@ -1260,8 +1260,8 @@ Nova Slim|display|OFL 1.1|Wojciech Kalinowski|400
 Nova Square|display|OFL 1.1|Wojciech Kalinowski|400
 NTR|sans|OFL 1.1|Purushoth Kumar Guttula|400
 Numans|sans|OFL 1.1|Jovanny Lemonad|400
-Nunito Sans|sans|OFL 1.1|Vernon Adams, Jacques Le Bailly, Manvel Shmavonyan, Alexei Vanyashin|200..1000
 Nunito|sans|OFL 1.1|Vernon Adams, Cyreal, Jacques Le Bailly|200..1000
+Nunito Sans|sans|OFL 1.1|Vernon Adams, Jacques Le Bailly, Manvel Shmavonyan, Alexei Vanyashin|200..1000
 Nuosu SIL|sans|OFL 1.1|SIL International|400
 Odibee Sans|display|OFL 1.1|James Barnard|400
 Odor Mean Chey|serif|OFL 1.1|Danh Hong|400
@@ -1271,8 +1271,8 @@ Ojuju|sans|OFL 1.1|Ụdị Foundry, Chisaokwu Joboson, Mirko Velimirović|200..8
 Old Standard TT|serif|OFL 1.1|Alexey Kryukov|400;700
 Oldenburg|display|OFL 1.1|Nicole Fally|400
 Ole|handskrift|OFL 1.1|Robert Leuschke|400
-Oleo Script Swash Caps|display|OFL 1.1|soytutype fonts|400;700
 Oleo Script|display|OFL 1.1|soytutype fonts|400;700
+Oleo Script Swash Caps|display|OFL 1.1|soytutype fonts|400;700
 Onest|sans|OFL 1.1|Dmitri Voloshin, Andrey Kudryavtsev|100..900
 Oooh Baby|handskrift|OFL 1.1|Robert Leuschke|400
 Open Sans|sans|OFL 1.1|Steve Matteson|300..800
@@ -1286,19 +1286,19 @@ Original Surfer|display|OFL 1.1|Astigmatic|400
 Oswald|sans|OFL 1.1|Vernon Adams, Kalapi Gajjar, Cyreal|200..700
 Outfit|sans|OFL 1.1|Smartsheet Inc, Rodrigo Fuenzalida|100..900
 Over the Rainbow|handskrift|OFL 1.1|Kimberly Geswein|400
-Overlock SC|display|OFL 1.1|Dario Manuel Muhafara|400
 Overlock|display|OFL 1.1|Dario Manuel Muhafara|400;700;900
-Overpass Mono|mono|OFL 1.1|Delve Withrington, Dave Bailey, Thomas Jockin|300..700
+Overlock SC|display|OFL 1.1|Dario Manuel Muhafara|400
 Overpass|sans|OFL 1.1|Delve Withrington, Dave Bailey, Thomas Jockin|100..900
+Overpass Mono|mono|OFL 1.1|Delve Withrington, Dave Bailey, Thomas Jockin|300..700
 Ovo|serif|OFL 1.1|Nicole Fally|400
 Oxanium|display|OFL 1.1|Severin Meyer|200..800
-Oxygen Mono|mono|OFL 1.1|Vernon Adams|400
 Oxygen|sans|OFL 1.1|Vernon Adams|300;400;700
+Oxygen Mono|mono|OFL 1.1|Vernon Adams|400
 Pacifico|handskrift|OFL 1.1|Vernon Adams, Jacques Le Bailly, Botjo Nikoltchev, Ani Petrova|400
 Padauk|sans|OFL 1.1|SIL International|400;700
 Padyakke Expanded One|serif|OFL 1.1|James Puckett|400
-Palanquin Dark|sans|OFL 1.1|Pria Ravichandran|400;500;600;700
 Palanquin|sans|OFL 1.1|Pria Ravichandran|100;200;300;400;500;600;700
+Palanquin Dark|sans|OFL 1.1|Pria Ravichandran|400;500;600;700
 Palette Mosaic|display|OFL 1.1|Shibuya Font|400
 Pangolin|handskrift|OFL 1.1|Kevin Burke|400
 Paprika|display|OFL 1.1|Eduardo Tunni|400
@@ -1310,8 +1310,8 @@ Passion One|display|OFL 1.1|Fontstage|400;700;900
 Passions Conflict|handskrift|OFL 1.1|Robert Leuschke|400
 Pathway Extreme|sans|OFL 1.1|Eduardo Tunni|100..900
 Pathway Gothic One|sans|OFL 1.1|Eduardo Tunni|400
-Patrick Hand SC|handskrift|OFL 1.1|Patrick Wagesreiter|400
 Patrick Hand|handskrift|OFL 1.1|Patrick Wagesreiter|400
+Patrick Hand SC|handskrift|OFL 1.1|Patrick Wagesreiter|400
 Pattaya|sans|OFL 1.1|Cadson Demak|400
 Patua One|display|OFL 1.1|LatinoType|400
 Pavanam|sans|OFL 1.1|Tharique Azeez|400
@@ -1333,14 +1333,14 @@ Plaster|display|OFL 1.1|Sorkin Type|400
 Platypi|serif|OFL 1.1|David Sargent|300..800
 Play|sans|OFL 1.1|Jonas Hecksher|400;700
 Playball|display|OFL 1.1|Robert Leuschke|400
-Playfair Display SC|serif|OFL 1.1|Claus Eggers Sørensen|400;700;900
-Playfair Display|serif|OFL 1.1|Claus Eggers Sørensen|400..900
 Playfair|serif|OFL 1.1|Claus Eggers Sørensen|300..900
+Playfair Display|serif|OFL 1.1|Claus Eggers Sørensen|400..900
+Playfair Display SC|serif|OFL 1.1|Claus Eggers Sørensen|400;700;900
+Playpen Sans|handskrift|OFL 1.1|TypeTogether, Laura Meseguer, Veronika Burian, José Scaglione, Kostas Bartsokas, Vera Evstafieva, Tom Grace, Yorlmar Campos|100..800
 Playpen Sans Arabic|handskrift|OFL 1.1|TypeTogether, Azza Alameddine, Laura Meseguer, Veronika Burian, José Scaglione|100..800
 Playpen Sans Deva|handskrift|OFL 1.1|TypeTogether, Pooja Saxena, Gunjan Panchal, Laura Meseguer, Veronika Burian, José Scaglione|100..800
 Playpen Sans Hebrew|handskrift|OFL 1.1|TypeTogether, Tom Grace, Laura Meseguer, Veronika Burian, José Scaglione|100..800
 Playpen Sans Thai|handskrift|OFL 1.1|TypeTogether, Sirin Gunkloy, Laura Meseguer, Veronika Burian, José Scaglione|100..800
-Playpen Sans|handskrift|OFL 1.1|TypeTogether, Laura Meseguer, Veronika Burian, José Scaglione, Kostas Bartsokas, Vera Evstafieva, Tom Grace, Yorlmar Campos|100..800
 Pliant|sans|OFL 1.1|Non Foundry, Jona Saucedo|100..900
 Plus Jakarta Sans|sans|OFL 1.1|Tokotype|200..800
 Pochaevsk|display|OFL 1.1|Aleksandr Andreev|400
@@ -1375,11 +1375,11 @@ Protest Riot|display|OFL 1.1|Octavio Pardo|400
 Protest Strike|display|OFL 1.1|Octavio Pardo|400
 Proza Libre|sans|OFL 1.1|Jasper de Waard|400;500;600;700;800
 PT Mono|mono|OFL 1.1|ParaType|400
+PT Sans|sans|OFL 1.1|ParaType|400;700
 PT Sans Caption|sans|OFL 1.1|ParaType|400;700
 PT Sans Narrow|sans|OFL 1.1|ParaType|400;700
-PT Sans|sans|OFL 1.1|ParaType|400;700
-PT Serif Caption|serif|OFL 1.1|ParaType|400
 PT Serif|serif|OFL 1.1|ParaType|400;700
+PT Serif Caption|serif|OFL 1.1|ParaType|400
 Public Sans|sans|OFL 1.1|USWDS, Dan Williams, Pablo Impallari, Rodrigo Fuenzalida|100..900
 Puppies Play|handskrift|OFL 1.1|Robert Leuschke|400
 Puritan|sans|OFL 1.1|Ben Weiner|400;700
@@ -1387,21 +1387,21 @@ Purple Purse|display|OFL 1.1|Astigmatic|400
 Qahiri|sans|OFL 1.1|Khaled Hosny|400
 Quando|serif|OFL 1.1|Joana Correia|400
 Quantico|sans|OFL 1.1|MADType|400;700
-Quattrocento Sans|sans|OFL 1.1|Impallari Type|400;700
 Quattrocento|serif|OFL 1.1|Impallari Type|400;700
+Quattrocento Sans|sans|OFL 1.1|Impallari Type|400;700
 Questrial|sans|OFL 1.1|Joe Prince, Laura Meseguer|400
 Quicksand|sans|OFL 1.1|Andrew Paglinawan|300..700
 Quintessential|handskrift|OFL 1.1|Astigmatic|400
 Qwigley|handskrift|OFL 1.1|Robert Leuschke|400
 Qwitcher Grypen|handskrift|OFL 1.1|Robert Leuschke|400;700
 Racing Sans One|display|OFL 1.1|Impallari Type|400
-Radio Canada Big|sans|OFL 1.1|Étienne Aubert Bonn|400..700
 Radio Canada|sans|OFL 1.1|Charles Daoud, Coppers and Brasses, Alexandre Saumier Demers, Jacques Le Bailly|300..700
+Radio Canada Big|sans|OFL 1.1|Étienne Aubert Bonn|400..700
 Radley|serif|OFL 1.1|Vernon Adams|400
 Rajdhani|sans|OFL 1.1|Indian Type Foundry|300;400;500;600;700
 Rakkas|display|OFL 1.1|Zeynep Akay|400
-Raleway Dots|display|OFL 1.1|Matt McInerney, Pablo Impallari, Rodrigo Fuenzalida, Brenda Gallo|400
 Raleway|sans|OFL 1.1|Matt McInerney, Pablo Impallari, Rodrigo Fuenzalida|100..900
+Raleway Dots|display|OFL 1.1|Matt McInerney, Pablo Impallari, Rodrigo Fuenzalida, Brenda Gallo|400
 Ramabhadra|sans|OFL 1.1|Purushoth Kumar Guttula|400
 Ramaraja|serif|OFL 1.1|Appaji Ambarisha Darbha|400
 Rambla|sans|OFL 1.1|Martin Sommaruga|400;700
@@ -1420,32 +1420,32 @@ Red Hat Display|sans|OFL 1.1|MCKL|300..900
 Red Hat Mono|mono|OFL 1.1|MCKL|300..700
 Red Hat Text|sans|OFL 1.1|MCKL|300..700
 Red Rose|display|OFL 1.1|Jaikishan Patel|300..700
-Redacted Script|display|OFL 1.1|Christian Naths|300;400;700
 Redacted|display|OFL 1.1|Christian Naths|400
+Redacted Script|display|OFL 1.1|Christian Naths|300;400;700
 Reddit Mono|mono|OFL 1.1|Stephen Hutchings, OrangeRed|200..900
-Reddit Sans Condensed|sans|OFL 1.1|Stephen Hutchings, OrangeRed|200..900
 Reddit Sans|sans|OFL 1.1|Stephen Hutchings, OrangeRed|200..900
+Reddit Sans Condensed|sans|OFL 1.1|Stephen Hutchings, OrangeRed|200..900
 Redressed|handskrift|Apache 2.0|Astigmatic|400
+Reem Kufi|sans|OFL 1.1|Khaled Hosny, Santiago Orozco|400..700
 Reem Kufi Fun|sans|OFL 1.1|Khaled Hosny, Santiago Orozco|400..700
 Reem Kufi Ink|sans|OFL 1.1|Khaled Hosny, Santiago Orozco|400
-Reem Kufi|sans|OFL 1.1|Khaled Hosny, Santiago Orozco|400..700
 Reenie Beanie|handskrift|OFL 1.1|James Grieshaber|400
 Reggae One|display|OFL 1.1|Fontworks Inc.|400
 REM|sans|OFL 1.1|Octavio Pardo|100..900
 Rethink Sans|sans|OFL 1.1|Hans Thiessen|400..800
 Revalia|display|OFL 1.1|Johan Kallas, Mihkel Virkus|400
 Rhodium Libre|serif|OFL 1.1|James Puckett|400
-Ribeye Marrow|display|OFL 1.1|Astigmatic|400
 Ribeye|display|OFL 1.1|Astigmatic|400
+Ribeye Marrow|display|OFL 1.1|Astigmatic|400
 Righteous|display|OFL 1.1|Astigmatic|400
 Risque|display|OFL 1.1|Astigmatic|400
 Road Rage|display|OFL 1.1|Robert Leuschke|400
+Roboto|sans|OFL 1.1|Christian Robertson, ParaType, Font Bureau|100..900
 Roboto Condensed|sans|OFL 1.1|Christian Robertson|100..900
 Roboto Flex|sans|OFL 1.1|Font Bureau, David Berlow, Santiago Orozco, Irene Vlachou, Ilya Ruderman, Yury Ostromentsky, Mikhail Strukov|100..1000
 Roboto Mono|mono|OFL 1.1|Christian Robertson|100..700
 Roboto Serif|serif|OFL 1.1|Commercial Type, Greg Gazdowicz|100..900
 Roboto Slab|serif|Apache 2.0|Christian Robertson|100..900
-Roboto|sans|OFL 1.1|Christian Robertson, ParaType, Font Bureau|100..900
 Rochester|handskrift|Apache 2.0|Sideshow|400
 Rock 3D|display|OFL 1.1|Shibuya Font|400
 Rock Salt|handskrift|Apache 2.0|Sideshow|400
@@ -1458,6 +1458,7 @@ Rosarivo|serif|OFL 1.1|Pablo Ugerman|400
 Rouge Script|handskrift|OFL 1.1|Sabrina Mariela Lopez|400
 Rowdies|display|OFL 1.1|Jaikishan Patel|300;400;700
 Rozha One|serif|OFL 1.1|Indian Type Foundry|400
+Rubik|sans|OFL 1.1|Hubert and Fischer, Meir Sadan, Cyreal, Daniel Grumer, Omaima Dajani|300..900
 Rubik 80s Fade|display|OFL 1.1|NaN, Luke Prowse|400
 Rubik Beastly|display|OFL 1.1|NaN, Luke Prowse|400
 Rubik Broken Fax|display|OFL 1.1|NaN, Luke Prowse|400
@@ -1468,8 +1469,8 @@ Rubik Distressed|display|OFL 1.1|NaN, Luke Prowse|400
 Rubik Doodle Shadow|display|OFL 1.1|NaN, Luke Prowse|400
 Rubik Doodle Triangles|display|OFL 1.1|NaN, Luke Prowse|400
 Rubik Gemstones|display|OFL 1.1|NaN, Luke Prowse|400
-Rubik Glitch Pop|display|OFL 1.1|NaN, Luke Prowse|400
 Rubik Glitch|display|OFL 1.1|NaN, Luke Prowse|400
+Rubik Glitch Pop|display|OFL 1.1|NaN, Luke Prowse|400
 Rubik Iso|display|OFL 1.1|NaN, Luke Prowse|400
 Rubik Lines|display|OFL 1.1|NaN, Luke Prowse|400
 Rubik Maps|display|OFL 1.1|NaN, Luke Prowse|400
@@ -1485,7 +1486,6 @@ Rubik Spray Paint|display|OFL 1.1|NaN, Luke Prowse|400
 Rubik Storm|display|OFL 1.1|NaN, Luke Prowse|400
 Rubik Vinyl|display|OFL 1.1|NaN, Luke Prowse|400
 Rubik Wet Paint|display|OFL 1.1|NaN, Luke Prowse|400
-Rubik|sans|OFL 1.1|Hubert and Fischer, Meir Sadan, Cyreal, Daniel Grumer, Omaima Dajani|300..900
 Ruda|sans|OFL 1.1|Mariela Monsalve, Angelina Sanchez|400..900
 Rufina|serif|OFL 1.1|Martin Sommaruga|400;700
 Ruge Boogie|handskrift|OFL 1.1|Robert Leuschke|400
@@ -1499,18 +1499,18 @@ Rye|display|OFL 1.1|Nicole Fally|400
 Sacramento|handskrift|OFL 1.1|Astigmatic|400
 Sahitya|serif|OFL 1.1|Juan Pablo del Peral|400;700
 Sail|display|OFL 1.1|Miguel Hernandez|400
+Saira|sans|OFL 1.1|Omnibus-Type|100..900
 Saira Condensed|sans|OFL 1.1|Omnibus-Type|100;200;300;400;500;600;700;800;900
 Saira Extra Condensed|sans|OFL 1.1|Omnibus-Type|100;200;300;400;500;600;700;800;900
 Saira Semi Condensed|sans|OFL 1.1|Omnibus-Type|100;200;300;400;500;600;700;800;900
 Saira Stencil|display|OFL 1.1|Hector Gatti, Omnibus-Type|100..900
-Saira|sans|OFL 1.1|Omnibus-Type|100..900
 Salsa|display|OFL 1.1|John Vargas Beltrán|400
 Sanchez|serif|OFL 1.1|Daniel Hernandez|400
 Sancreek|display|OFL 1.1|Vernon Adams|400
 Sankofa Display|sans|OFL 1.1|Batsirai Madzonga|400
 Sansation|sans|OFL 1.1|Bernd Montag|300;400;700
-Sansita Swashed|display|OFL 1.1|Omnibus-Type|300..900
 Sansita|sans|OFL 1.1|Omnibus-Type|400;700;800;900
+Sansita Swashed|display|OFL 1.1|Omnibus-Type|300..900
 Sarabun|sans|OFL 1.1|Suppakit Chalermlarp|100;200;300;400;500;600;700;800
 Sarala|sans|OFL 1.1|HT Fonts, Andres Torresi|400;700
 Sarina|display|OFL 1.1|James Grieshaber|400
@@ -1529,36 +1529,36 @@ Scope One|serif|OFL 1.1|Dalton Maag|400
 Scoutie Sans|sans|OFL 1.1|Tyler Finck|200..800
 Seaweed Script|display|OFL 1.1|Neapolitan|400
 Secular One|sans|OFL 1.1|Michal Sahar|400
-Sedan SC|serif|OFL 1.1|Sebastián Salazar|400
 Sedan|serif|OFL 1.1|Sebastián Salazar|400
-Sedgwick Ave Display|handskrift|OFL 1.1|Pedro Vergani, Kevin Burke|400
+Sedan SC|serif|OFL 1.1|Sebastián Salazar|400
 Sedgwick Ave|handskrift|OFL 1.1|Pedro Vergani, Kevin Burke|400
+Sedgwick Ave Display|handskrift|OFL 1.1|Pedro Vergani, Kevin Burke|400
 Sekuya|display|OFL 1.1|SEKUYA|400
 Sen|sans|OFL 1.1|Kosal Sen|400..800
 Send Flowers|handskrift|OFL 1.1|Robert Leuschke|400
 Sevillana|display|OFL 1.1|Brownfox|400
 Seymour One|sans|OFL 1.1|Vernon Adams|400
-Shadows Into Light Two|handskrift|OFL 1.1|Kimberly Geswein|400
 Shadows Into Light|handskrift|OFL 1.1|Kimberly Geswein|400
+Shadows Into Light Two|handskrift|OFL 1.1|Kimberly Geswein|400
 Shafarik|display|OFL 1.1|Aleksandr Andreev|400
 Shalimar|handskrift|OFL 1.1|Robert Leuschke|400
 Shantell Sans|display|OFL 1.1|Shantell Martin, Arrow Type, Anya Danilova|300..800
 Shanti|sans|OFL 1.1|Vernon Adams|400
-Share Tech Mono|mono|OFL 1.1|Carrois Apostrophe|400
-Share Tech|sans|OFL 1.1|Carrois Apostrophe|400
 Share|sans|OFL 1.1|Carrois Apostrophe|400;700
-Shippori Antique B1|sans|OFL 1.1|FONTDASU|400
+Share Tech|sans|OFL 1.1|Carrois Apostrophe|400
+Share Tech Mono|mono|OFL 1.1|Carrois Apostrophe|400
 Shippori Antique|sans|OFL 1.1|FONTDASU|400
-Shippori Mincho B1|serif|OFL 1.1|FONTDASU|400;500;600;700;800
+Shippori Antique B1|sans|OFL 1.1|FONTDASU|400
 Shippori Mincho|serif|OFL 1.1|FONTDASU|400;500;600;700;800
+Shippori Mincho B1|serif|OFL 1.1|FONTDASU|400;500;600;700;800
 Shizuru|display|OFL 1.1|Shibuya Font|400
 Shojumaru|display|OFL 1.1|Astigmatic|400
 Short Stack|handskrift|OFL 1.1|James Grieshaber|400
 Shrikhand|display|OFL 1.1|Jonny Pinhorn|400
-Sigmar One|display|OFL 1.1|Vernon Adams|400
 Sigmar|display|OFL 1.1|Vernon Adams|400
-Signika Negative|sans|OFL 1.1|Anna Giedryś|300..700
+Sigmar One|display|OFL 1.1|Vernon Adams|400
 Signika|sans|OFL 1.1|Anna Giedryś|300..700
+Signika Negative|sans|OFL 1.1|Anna Giedryś|300..700
 Silkscreen|display|OFL 1.1|Jason Kottke|400;700
 Simonetta|display|OFL 1.1|Brownfox|400;900
 Single Day|display|OFL 1.1|DXKorea Inc|400
@@ -1566,27 +1566,27 @@ Sintony|sans|OFL 1.1|Eduardo Rodriguez Tunni|400;700
 Sirin Stencil|display|OFL 1.1|Cyreal|400
 Sirivennela|sans|OFL 1.1|Appaji Ambarisha Darbha|400
 Six Caps|sans|OFL 1.1|Vernon Adams|400
-Sixtyfour Convergence|mono|OFL 1.1|Simon Cozens, Jens Kutílek|400
 Sixtyfour|mono|OFL 1.1|Jens Kutílek|400
+Sixtyfour Convergence|mono|OFL 1.1|Simon Cozens, Jens Kutílek|400
 Skranji|display|OFL 1.1|Neapolitan|400;700
 Slabo 13px|serif|OFL 1.1|John Hudson|400
 Slabo 27px|serif|OFL 1.1|John Hudson|400
 Slackey|display|Apache 2.0|Sideshow|400
 Slackside One|handskrift|OFL 1.1|Maniackers Design|400
 Smokum|display|Apache 2.0|Astigmatic|400
-Smooch Sans|sans|OFL 1.1|Robert Leuschke|100..900
 Smooch|handskrift|OFL 1.1|Robert Leuschke|400
+Smooch Sans|sans|OFL 1.1|Robert Leuschke|100..900
 Smythe|display|OFL 1.1|Vernon Adams|400
 SN Pro|sans|OFL 1.1|Tobias Whetton, Supernotes|200..900
 Sniglet|display|OFL 1.1|Haley Fiege|400;800
 Snippet|sans|OFL 1.1|Gesine Todt|400
 Snowburst One|display|OFL 1.1|Annet Stirling|400
 Sofadi One|display|OFL 1.1|Botjo Nikoltchev|400
+Sofia|handskrift|OFL 1.1|LatinoType|400
+Sofia Sans|sans|OFL 1.1|Lettersoup, Botio Nikoltchev, Ani Petrova|1..1000
 Sofia Sans Condensed|sans|OFL 1.1|Lettersoup, Botio Nikoltchev, Ani Petrova|1..1000
 Sofia Sans Extra Condensed|sans|OFL 1.1|Lettersoup, Botio Nikoltchev, Ani Petrova|1..1000
 Sofia Sans Semi Condensed|sans|OFL 1.1|Lettersoup, Botio Nikoltchev, Ani Petrova|1..1000
-Sofia Sans|sans|OFL 1.1|Lettersoup, Botio Nikoltchev, Ani Petrova|1..1000
-Sofia|handskrift|OFL 1.1|LatinoType|400
 Solitreo|handskrift|OFL 1.1|Nathan Gross, Bryan Kirschen|400
 Solway|serif|OFL 1.1|Mariya Lish, The Northern Block|300;400;500;700;800
 Sometype Mono|mono|OFL 1.1|Ryoichi Tsunekawa|400..700
@@ -1602,17 +1602,17 @@ Source Serif 4|serif|OFL 1.1|Frank Grießhammer|200..900
 Space Grotesk|sans|OFL 1.1|Florian Karsten|300..700
 Space Mono|mono|OFL 1.1|Colophon Foundry|400;700
 Special Elite|display|Apache 2.0|Astigmatic|400
+Special Gothic|sans|OFL 1.1|Alistair McCready|400..700
 Special Gothic Condensed One|sans|OFL 1.1|Alistair McCready|400
 Special Gothic Expanded One|sans|OFL 1.1|Alistair McCready|400
-Special Gothic|sans|OFL 1.1|Alistair McCready|400..700
-Spectral SC|serif|OFL 1.1|Production Type|200;300;400;500;600;700;800
 Spectral|serif|OFL 1.1|Production Type|200;300;400;500;600;700;800
+Spectral SC|serif|OFL 1.1|Production Type|200;300;400;500;600;700;800
 Spicy Rice|display|OFL 1.1|Astigmatic|400
 Spinnaker|sans|OFL 1.1|Elena Albertoni|400
 Spirax|display|OFL 1.1|Brenda Gallo|400
 Splash|handskrift|OFL 1.1|Robert Leuschke|400
-Spline Sans Mono|mono|OFL 1.1|Eben Sorkin, Mirko Velimirović|300..700
 Spline Sans|sans|OFL 1.1|Eben Sorkin, Mirko Velimirović|300..700
+Spline Sans Mono|mono|OFL 1.1|Eben Sorkin, Mirko Velimirović|300..700
 Squada One|display|OFL 1.1|Joe Prince|400
 Square Peg|handskrift|OFL 1.1|Robert Leuschke|400
 Sree Krushnadevaraya|serif|OFL 1.1|Purushoth Kumar Guttula|400
@@ -1625,8 +1625,8 @@ Stack Sans Text|sans|OFL 1.1|Koto|200..700
 Stalemate|handskrift|OFL 1.1|Astigmatic|400
 Stalinist One|display|OFL 1.1|Alexey Maslov, Jovanny Lemonad|400
 Stardos Stencil|display|OFL 1.1|Vernon Adams|400;700
-Stick No Bills|sans|OFL 1.1|Mooniak|200..800
 Stick|sans|OFL 1.1|Fontworks Inc.|400
+Stick No Bills|sans|OFL 1.1|Mooniak|200..800
 Stint Ultra Condensed|serif|OFL 1.1|Astigmatic|400
 Stint Ultra Expanded|serif|OFL 1.1|Astigmatic|400
 STIX Two Text|serif|OFL 1.1|Tiro Typeworks, Ross Mills, John Hudson, Paul Hanslow|400..700
@@ -1646,14 +1646,14 @@ Supermercado One|display|OFL 1.1|James Grieshaber|400
 Sura|serif|OFL 1.1|Carolina Giovagnoli|400;700
 Suranna|serif|OFL 1.1|Purushoth Kumar Guttula|400
 Suravaram|serif|OFL 1.1|Purushoth Kumar Guttula|400
-SUSE Mono|sans|OFL 1.1|René Bieder|100..800
 SUSE|sans|OFL 1.1|René Bieder|100..900
+SUSE Mono|sans|OFL 1.1|René Bieder|100..800
 Suwannaphum|serif|OFL 1.1|Danh Hong|100;300;400;700;900
 Swanky and Moo Moo|handskrift|OFL 1.1|Kimberly Geswein|400
 Syncopate|sans|Apache 2.0|Astigmatic|400;700
+Syne|sans|OFL 1.1|Bonjour Monde, Lucas Descroix, George Triantafyllakos|400..800
 Syne Mono|mono|OFL 1.1|Bonjour Monde, Lucas Descroix|400
 Syne Tactile|display|OFL 1.1|Bonjour Monde, Lucas Descroix|400
-Syne|sans|OFL 1.1|Bonjour Monde, Lucas Descroix, George Triantafyllakos|400..800
 Tac One|sans|OFL 1.1|Afrotype, Seyi Olusanya, Eyiyemi Adegbite, David Udoh, Mirko Velimirović|400
 Tagesschrift|display|OFL 1.1|Yanone|400
 Tai Heritage Pro|serif|OFL 1.1|SIL International|400;700
@@ -1712,11 +1712,11 @@ Tuffy|sans|OFL 1.1|Thatcher Ulrich|400;700
 Tulpen One|display|OFL 1.1|Naima Ben Ayed|400
 Turret Road|display|OFL 1.1|Dale Sattler|200;300;400;500;700;800
 Twinkle Star|handskrift|OFL 1.1|Robert Leuschke|400
+Ubuntu|sans|UFL 1.0|Dalton Maag|300;400;500;700
 Ubuntu Condensed|sans|UFL 1.0|Dalton Maag|400
 Ubuntu Mono|mono|UFL 1.0|Dalton Maag|400;700
-Ubuntu Sans Mono|mono|UFL 1.0|Dalton Maag|400..700
 Ubuntu Sans|sans|UFL 1.0|Dalton Maag|100..800
-Ubuntu|sans|UFL 1.0|Dalton Maag|300;400;500;700
+Ubuntu Sans Mono|mono|UFL 1.0|Dalton Maag|400..700
 Uchen|serif|OFL 1.1|Christopher J. Fynn|400
 Ultra|serif|Apache 2.0|Astigmatic|400
 Unbounded|sans|OFL 1.1|NaN|200..900
@@ -1733,8 +1733,8 @@ Updock|handskrift|OFL 1.1|Robert Leuschke|400
 Urbanist|sans|OFL 1.1|Corey Hu|100..900
 Valley Sans|sans|OFL 1.1|Niklas Ekholm, Lari Mörö|100..900
 Vampiro One|display|OFL 1.1|Riccardo De Franceschi|400
-Varela Round|sans|OFL 1.1|Joe Prince|400
 Varela|sans|OFL 1.1|Joe Prince|400
+Varela Round|sans|OFL 1.1|Joe Prince|400
 Varta|sans|OFL 1.1|Joana Correia, Viktoriya Grabowska, Eben Sorkin|300..700
 Vast Shadow|serif|OFL 1.1|Nicole Fally|400
 Vazirmatn|sans|OFL 1.1|Saber Rastikerdar|100..900
@@ -1749,8 +1749,8 @@ Viga|sans|OFL 1.1|Fontstage|400
 Vina Sans|display|OFL 1.1|Nguyen Type|400
 Voces|sans|OFL 1.1|Ana Paula Megda, Pablo Ugerman|400
 Volkhov|serif|OFL 1.1|Cyreal|400;700
-Vollkorn SC|serif|OFL 1.1|Friedrich Althausen|400;600;700;900
 Vollkorn|serif|OFL 1.1|Friedrich Althausen|400..900
+Vollkorn SC|serif|OFL 1.1|Friedrich Althausen|400;600;700;900
 Voltaire|sans|OFL 1.1|Yvonne Schüttler|400
 VT323|mono|OFL 1.1|Peter Hull|400
 Vujahday Script|handskrift|OFL 1.1|Robert Leuschke|400
@@ -1779,10 +1779,10 @@ Xanh Mono|mono|OFL 1.1|Yellow Type, Lâm Bảo, Duy Dao|400
 Yaldevi|sans|OFL 1.1|Mooniak|200..700
 Yanone Kaffeesatz|sans|OFL 1.1|Yanone, Cyreal|200..700
 Yantramanav|sans|OFL 1.1|Erin McLaughlin|100;300;400;500;700;900
-Yarndings 12 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
 Yarndings 12|display|OFL 1.1|Sarah Cadigan-Fried|400
-Yarndings 20 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
+Yarndings 12 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
 Yarndings 20|display|OFL 1.1|Sarah Cadigan-Fried|400
+Yarndings 20 Charted|display|OFL 1.1|Sarah Cadigan-Fried|400
 Yatra One|display|OFL 1.1|Catherine Leigh Schmidt|400
 Yellowtail|handskrift|Apache 2.0|Astigmatic|400
 Yeon Sung|display|OFL 1.1|Woowahan brothers|400
@@ -1791,27 +1791,27 @@ Yesteryear|handskrift|OFL 1.1|Astigmatic|400
 Yomogi|handskrift|OFL 1.1|Satsuyako|400
 Young Serif|serif|OFL 1.1|Bastien Sozeau|400
 Yrsa|serif|OFL 1.1|Rosetta, Anna Giedryś, David Březina|300..700
+Ysabeau|sans|OFL 1.1|Christian Thalmann|1..1000
 Ysabeau Infant|sans|OFL 1.1|Christian Thalmann|1..1000
 Ysabeau Office|sans|OFL 1.1|Christian Thalmann|1..1000
 Ysabeau SC|sans|OFL 1.1|Christian Thalmann|1..1000
-Ysabeau|sans|OFL 1.1|Christian Thalmann|1..1000
 Yuji Boku|serif|OFL 1.1|Kinuta Font Factory|400
 Yuji Hentaigana Akari|handskrift|OFL 1.1|Kinuta Font Factory|400
 Yuji Hentaigana Akebono|handskrift|OFL 1.1|Kinuta Font Factory|400
 Yuji Mai|serif|OFL 1.1|Kinuta Font Factory|400
 Yuji Syuku|serif|OFL 1.1|Kinuta Font Factory|400
 Yusei Magic|sans|OFL 1.1|Tanukizamurai|400
-Yuyu Short|handskrift|OFL 1.1|Julia García López|400
 Yuyu|handskrift|OFL 1.1|Julia García López|400
+Yuyu Short|handskrift|OFL 1.1|Julia García López|400
 Zain|sans|OFL 1.1|Boutros Fonts|200;300;400;700;800;900
+Zalando Sans|sans|OFL 1.1|Jakob Ekelund, KH Type, Zalando|200..900
 Zalando Sans Expanded|sans|OFL 1.1|Jakob Ekelund, KH Type, Zalando|200..900
 Zalando Sans SemiExpanded|sans|OFL 1.1|Jakob Ekelund, KH Type, Zalando|200..900
-Zalando Sans|sans|OFL 1.1|Jakob Ekelund, KH Type, Zalando|200..900
 ZCOOL KuaiLe|sans|OFL 1.1|Liu Bingke, Yang Kang, Wu Shaojie|400
 ZCOOL QingKe HuangYou|sans|OFL 1.1|Zheng Qingke|400
 ZCOOL XiaoWei|sans|OFL 1.1|Li Dawei|400
-Zen Antique Soft|serif|OFL 1.1|Yoshimichi Ohira|400
 Zen Antique|serif|OFL 1.1|Yoshimichi Ohira|400
+Zen Antique Soft|serif|OFL 1.1|Yoshimichi Ohira|400
 Zen Dots|display|OFL 1.1|Yoshimichi Ohira|400
 Zen Kaku Gothic Antique|sans|OFL 1.1|Yoshimichi Ohira|300;400;500;700;900
 Zen Kaku Gothic New|sans|OFL 1.1|Yoshimichi Ohira|300;400;500;700;900
@@ -1822,5 +1822,5 @@ Zen Old Mincho|serif|OFL 1.1|Yoshimichi Ohira|400;500;600;700;900
 Zen Tokyo Zoo|display|OFL 1.1|Yoshimichi Ohira|400
 Zeyada|handskrift|OFL 1.1|Kimberly Geswein|400
 Zhi Mang Xing|handskrift|OFL 1.1|Wei Zhimang|400
-Zilla Slab Highlight|serif|OFL 1.1|Typotheque|400;700
-Zilla Slab|serif|OFL 1.1|Typotheque|300;400;500;600;700`
+Zilla Slab|serif|OFL 1.1|Typotheque|300;400;500;600;700
+Zilla Slab Highlight|serif|OFL 1.1|Typotheque|400;700`
