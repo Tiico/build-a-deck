@@ -4171,6 +4171,54 @@ Att behålla 83,5 kB och bara ändra vad ett överskridande *betyder* lämnar li
 Att dela ut designerytorna (guide, konto, hjälpring — 14 073 B rått men bara 2 750 B gzip) kostar en riktig Suspense-yta för `/` och `/login` och ger 2,7 kB luft åt nästa yta; sju åttondelar av de −96 ms experimentet gav var dessutom JavaScript och inte CSS.
 Att budgetera brotli i stället för råa byte avvisas som *ersättning* — det säger ingenting om vems CSS det är — men frågan om det som faktiskt reser lever vidare i #372, tillsammans med att ingenting i repot konfigurerar komprimering och att arket okomprimerat kostar +2 692 ms.
 
+### L41. Textens placering är en niopunktsplatta, och avstånden ligger bakom «Finjustering» (prototypat 2026-09-18, beslutat 2026-09-21, #219)
+
+Mallsidans egenskapskolumn kunde inte centrera en text i sitt block.
+Beslutet 2026-09-18 gav kolumnen fyra kontroller till — placering i båda led, radavstånd, teckenavstånd och automatisk förminskning — och krävde en prototyp först, eftersom kolumnen redan är tät och fyra till utan en plan blir en lista ingen läser.
+
+Prototypen (`docs/ux-audits/2026-09-18/prototyper/07-mallens-textkontroller.html`) mätte fyra uppställningar i kolumnens riktiga 280 px.
+
+| | kontroller | kolumnens innehåll |
+|---|---|---|
+| Nu + 3, utan plan | 14 | 749 px, ryms — men är listan invändningen handlade om |
+| A · grupperad, fem namngivna avsnitt | 13 | 844 px, **rullar 95 px** |
+| **B · platta och lucka** | **11** | **749 px, ryms** |
+| C · plattan på kortet | 12 + 1 | delar kontrollerna på två ytor |
+
+Valet blev **B**.
+A är läsbarast, men rubrikerna som gör den läsbar är just det som får kolumnen att rulla — och en kolumn som rullar gömmer en kontroll lika effektivt som en lucka, bara utan att säga att den gör det.
+C sätter plattan löst under kortet i stället för fäst vid elementets ram, och lämnar frågan «var i rutan» bara till den som ser kortet.
+
+**Plattan är ett grepp, inte två remsor.**
+Niopunktsplattan svarar på båda leden i ett tryck och är ett tabbstopp med piltangenter inuti; två remsor säger leden var för sig, som beslutet formulerar dem, och blir sex tabbstopp.
+Varje ruta ritar sitt eget svar — tre textrader lagda där de skulle hamna — eftersom nio rutor utan båda leden i bilden ser likadana ut och plattan då inte säger någonting.
+Piltangenterna går i rutnätet: ett steg som skulle lämna plattan, eller ett i sidled som skulle landa i nästa rad, är inget steg alls.
+
+**Radavstånd och teckenavstånd får ligga bakom luckan.**
+Placeringen är det som efterfrågades och står framme; de två andra är finjustering och heter så.
+Båda erbjuds som namngivna steg och inte som en siffra att dra: de är val om hur texten läser sig, och «spärrat» är något en formgivare vill där 0,04 em är något hon måste pröva.
+En mall som bär något annat tal behåller det, och listan säger det hellre än att i tysthet snäppa värdet till närmaste steg.
+
+**Prototypens fynd ändrade beslutets räkning från fyra kontroller till tre.**
+`fit: shrink` var redan byggd — fältet i `packages/template` och kontrollen «Anpassning» i `TemplateCanvas.tsx` sedan `46ea15e` — så byggordningen «punkt 4 först, billigast av allihop» var prissatt mot en kontroll som redan fanns.
+`font.align` och `font.lineHeight` stod likaså redan i schemat och ritades redan av `compile.ts`; det som saknades var kontrollerna.
+Verkligt nya schemafält behövdes bara för **lodrät placering** (`TextElement.valign`) och för **teckenavstånd** (`Font.letterSpacing`).
+
+**Följdkrav i koden.**
+Båda fälten är valfria, och ett textelement som inget säger om dem kompileras till exakt de byte det kompilerades till innan fälten fanns — en gammal mall ritar dagens kort.
+Den lodräta placeringen skrivs som `justify-content: safe center` respektive `safe flex-end`: en text som är högre än sin ruta och centrerad i den spiller ut åt *båda* håll, och halvan ovanför rutan klipps bort utan väg tillbaka.
+Med `safe` faller en rinnande ruta tillbaka till toppen, så texten är hel, mätningen i `dom-fit.ts` ser fortfarande spillet, och en webbläsare som inte kan nyckelordet hamnar på samma beteende genom att strunta i deklarationen.
+Teckenavståndet skrivs i em och inte i millimeter, eftersom anpassningen trappar ned storleken i webbläsaren (E6) — ett glapp i millimeter skulle stanna kvar vid den storlek mallen ritades i.
+Uppskattningen i `fit.ts` räknar med avståndet den själv skrev; en uppskattning som lägger ut texten på andra mått än sidan är sämre än ingen uppskattning alls.
+
+**Kolumnen rullar ändå, och prototypens «749 px» beskrev aldrig produkten (mätt 2026-09-21 vid implementationen).**
+Prototypen var en fristående mock utan L25:s namngivna avsnitt och utan panelens övriga innehåll, precis som L25:s egen mock var det.
+Mätt i den riktiga kolumnen om 279 px vid 1280 × 800, med brödtexten markerad: panelen var 421 px och kolumnens innehåll 832 px i en synlig höjd av 682 — den rullade alltså 150 px **innan** något av det här byggdes.
+Med plattan och den stängda luckan blir panelen 613 px och kolumnen 1024, och med luckan öppen 744 respektive 1155.
+De tre kontrollerna kostar alltså 192 px stängda.
+Det ändrar inte valet: B är fortfarande den billigaste av de fyra uppställningarna i höjd, och skillnaden mot A — rubrikerna — finns redan i kolumnen sedan L25 och är inte den här postens att ta bort.
+Rullningen är priset och är accepterat, som i L25.
+
 ## I. Öppna frågor
 
 Ekonomi och juridik:

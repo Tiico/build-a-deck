@@ -6,7 +6,7 @@ import { arrowMove, fitScale, gridStep, HANDLES, round, iconSized, movedTo, newE
 import { useGesture, type Gesture } from './gesture.js'
 import { scrubbed, SCRUB_PX } from './scrub.js'
 import { afterPruning, bendStarted, bentEdge, bentPoints, edgeAt, grownPoint, handleAt, midpoints, movedHandle, movedPoint, prunedPoint, straightAll, straightPoint, type Arm, type Point } from './points.js'
-import { DEFAULT_FILL, elementsFor, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
+import { DEFAULT_FILL, DEFAULT_LINE_HEIGHT, elementsFor, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
 import { galleryIdOf, glyphGeometry, newPattern, ownPoints, PATTERNS, shadowIdOf, shapeChoice, SHADOWS, SHAPE_GALLERY, type Geometry, type Shape } from './shapes.js'
 import { BACKS } from './backs.js'
 import { assetRef, assetUrl, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
@@ -1926,6 +1926,7 @@ function Properties({
             {t('canvas.props.color')}
             <input type="color" value={el.color} {...typing.visit} onChange={(e) => onPatch({ color: e.target.value }, typing.token())} />
           </label>
+          <PlacePad el={el} onPatch={onPatch} />
           <label>
             {t('canvas.props.fit')}
             <select value={el.fit ?? 'shrink'} onChange={(e) => onPatch({ fit: e.target.value as 'shrink' | 'fixed' })}>
@@ -1933,6 +1934,7 @@ function Properties({
               <option value="fixed">{t('canvas.fit.fixed')}</option>
             </select>
           </label>
+          <TuningDoor el={el} onPatch={onPatch} />
         </Section>
       )}
       {/* A picture fills its frame, so the frame is exactly what is seen and the handles, the
@@ -2120,6 +2122,141 @@ function PatternProps({ pattern, fill, onPatch }: { pattern: Pattern | undefined
         </div>
       )}
     </>
+  )
+}
+
+// Where a text stands in its box, in both directions at once (L41, #219). Sideways is
+// `font.align` and up and down is `valign`, and the designer is never asked them one at a time:
+// nine squares, each of which draws the answer it gives — three lines of text, laid where they
+// would land — because without both directions in the picture the nine squares look alike and
+// the pad says nothing.
+//
+// It is one tab stop with the arrows inside it, and not six stops in two strips. That is the
+// decision of 2026-09-21 and the reason the pad won: the strips say the two directions out loud
+// in the words the decision used, and cost a designer who never touches the pointer five more
+// presses to reach the same square.
+type TextEl = Extract<Element, { kind: 'text' }>
+const ACROSS = ['left', 'center', 'right'] as const
+const DOWN = ['top', 'middle', 'bottom'] as const
+const CELLS = DOWN.flatMap((y) => ACROSS.map((x) => ({ x, y })))
+
+function PlacePad({ el, onPatch }: { el: TextEl; onPatch(patch: Partial<Element>, gesture?: string): void }) {
+  const t = useT()
+  const across = el.font.align ?? 'left'
+  const down = el.valign ?? 'top'
+  const at = CELLS.findIndex((cell) => cell.x === across && cell.y === down)
+  const place = (i: number) => {
+    const cell = CELLS[i]
+    if (!cell) return
+    onPatch({ font: { ...el.font, align: cell.x }, valign: cell.y })
+  }
+  // The arrows walk the grid and take the choice with them, as a radio group's arrows do. A step
+  // that would leave the pad is no step at all, and neither is one sideways that would land on
+  // the next row: the pad is three by three and the hand has to be able to feel that it is.
+  const keys = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 3, ArrowUp: -3 }[event.key]
+    if (step === undefined || event.altKey || event.ctrlKey || event.metaKey) return
+    const next = at + step
+    if (next < 0 || next >= CELLS.length) return
+    if (Math.abs(step) === 1 && Math.floor(next / 3) !== Math.floor(at / 3)) return
+    event.preventDefault()
+    place(next)
+    event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next]?.focus()
+  }
+  return (
+    <div className="byd-props-pad" role="radiogroup" aria-label={t('canvas.props.place')} onKeyDown={keys}>
+      {CELLS.map((cell, i) => (
+        <button
+          key={`${cell.x}-${cell.y}`}
+          type="button"
+          role="radio"
+          aria-checked={i === at}
+          tabIndex={i === at ? 0 : -1}
+          data-x={cell.x}
+          data-y={cell.y}
+          aria-label={t('canvas.place.at', { x: t(`canvas.place.${cell.x}`), y: t(`canvas.place.${cell.y}`) })}
+          // A button clicked on macOS is not given the hand by the browser, and the arrow pressed
+          // after such a click would then go nowhere. A radio has the hand after a click; it takes
+          // it here.
+          onClick={(event) => {
+            event.currentTarget.focus()
+            place(i)
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+// The two spacings behind a door that says whether it is open (L41, #219). The placement is what
+// was asked for and stands in the open; these two are finishing work and are named as such, which
+// is what keeps the column off the scrollbar — a column that scrolls hides a control just as well
+// as a door does, without saying that it has.
+//
+// Both are offered as named steps rather than as a number to drag: they are choices about how the
+// text reads, and «spärrat» is a thing a designer wants where 0.04 em is a thing she has to try.
+// A template that carries some other number keeps it, and the list says so rather than snapping
+// her value to the nearest step behind her back.
+const LINE_HEIGHTS = [
+  { value: 1, name: 'canvas.lineHeight.tight' },
+  { value: 1.15, name: 'canvas.lineHeight.snug' },
+  { value: DEFAULT_LINE_HEIGHT, name: 'canvas.lineHeight.normal' },
+  { value: 1.5, name: 'canvas.lineHeight.airy' },
+] as const
+const LETTER_SPACINGS = [
+  { value: -0.02, name: 'canvas.letterSpacing.tight' },
+  { value: 0, name: 'canvas.letterSpacing.normal' },
+  { value: 0.04, name: 'canvas.letterSpacing.wide' },
+  { value: 0.1, name: 'canvas.letterSpacing.caps' },
+] as const
+
+function TuningDoor({ el, onPatch }: { el: TextEl; onPatch(patch: Partial<Element>, gesture?: string): void }) {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const font = el.font
+  const own = (value: number) => t('canvas.value.own', { value: String(value) })
+  return (
+    <>
+      <button type="button" className="byd-props-disclose" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span aria-hidden="true">{open ? '▾' : '▸'}</span> {t('canvas.props.tune')}
+      </button>
+      {open && (
+        <div className="byd-props-paint">
+          <Steps
+            name={t('canvas.props.lineHeight')}
+            steps={LINE_HEIGHTS.map((step) => ({ value: step.value, label: t(step.name) }))}
+            value={font.lineHeight ?? DEFAULT_LINE_HEIGHT}
+            own={own}
+            onWrite={(lineHeight) => onPatch({ font: { ...font, lineHeight } })}
+          />
+          <Steps
+            name={t('canvas.props.letterSpacing')}
+            steps={LETTER_SPACINGS.map((step) => ({ value: step.value, label: t(step.name) }))}
+            value={font.letterSpacing ?? 0}
+            own={own}
+            onWrite={(letterSpacing) => onPatch({ font: { ...font, letterSpacing } })}
+          />
+        </div>
+      )}
+    </>
+  )
+}
+
+// A number chosen from named steps, with whatever the template already carries kept as a step of
+// its own: a list that cannot show the value it is set to is a list that lies about it.
+function Steps({ name, steps, value, own, onWrite }: { name: string; steps: { value: number; label: string }[]; value: number; own(value: number): string; onWrite(value: number): void }) {
+  const all = steps.some((step) => step.value === value) ? steps : [...steps, { value, label: own(value) }]
+  return (
+    <label>
+      {name}
+      <select value={value} onChange={(e) => onWrite(Number(e.target.value))}>
+        {all.map((step) => (
+          <option key={step.value} value={step.value}>
+            {step.label}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
 
