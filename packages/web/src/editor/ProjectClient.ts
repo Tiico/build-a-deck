@@ -1059,7 +1059,7 @@ export class ProjectClient {
     return (await res.json()) as TableSummary[]
   }
 
-  // "Uppdatera bordet" (L5): a table from the saved project, with the room code guests join by
+  // "Starta bord" (L5, #417): a table from the saved project, with the room code guests join by
   // and the host key that opens its screen (DRIFT §9). Unsaved edits are saved first.
   async startTable(): Promise<{ id: string; version: string; code: string; hostKey: string }> {
     if (this.dirty) {

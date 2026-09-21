@@ -93,7 +93,12 @@ describe('the Bord tab (#19)', () => {
   it('says so when the game has no table at all', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openTables()
-    expect(await screen.findByText(/Inget bord ännu/)).toBeTruthy()
+    const said = await screen.findByText(/Inget bord ännu/)
+    // Meningen citerar knappen i huvudet, och den knappen heter «Starta bord» så länge spelet
+    // saknar bord (#417). Meningen förklarade förut att «Uppdatera bordet» startade ett — en
+    // förklaring på fel flik av ett namn som var fel från början.
+    expect(said.textContent).toContain('"Starta bord"')
+    expect(said.textContent).not.toContain('Uppdatera bordet')
     // Utan bord finns ingen lista alls, bara meningen om att det inte finns något.
     expect(document.querySelector('.byd-table-row, .byd-tables-fold')).toBeNull()
   })
@@ -463,8 +468,9 @@ describe('«Uppdatera bordet» answers the press before the table does (#315)', 
     render(<EditorPage timing={timing} />)
     await screen.findByText('Skogens herrar')
 
-    // A table to update. The first press starts one; the update is the press after it.
-    await user.click(screen.getByRole('button', { name: 'Uppdatera bordet' }))
+    // A table to update. The first press starts one — and says so (#417); the update is the press
+    // after it.
+    await user.click(screen.getByRole('button', { name: 'Starta bord' }))
     await screen.findByText(/renderar kort 0\/4/)
     await screen.findByRole('button', { name: 'Uppdatera bordet' })
 
@@ -514,7 +520,7 @@ describe('a rendering that stands still says so (#88, UX-43, L5)', () => {
     history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage timing={timing} />)
     await screen.findByText('Skogens herrar')
-    await user.click(screen.getByRole('button', { name: 'Uppdatera bordet' }))
+    await user.click(screen.getByRole('button', { name: 'Starta bord' }))
     return (await screen.findByText(/renderar kort 0\/4/)).closest('[role="status"]') as HTMLElement
   }
 

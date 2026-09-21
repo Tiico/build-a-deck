@@ -953,7 +953,9 @@ describe('the editor', () => {
     )
     const [outlined, filled] = measured['Mall']!
     expect(outlined).toMatch(/^Spara: /)
-    expect(filled).toMatch(/^Uppdatera /)
+    // Spelet i provet har inget bord, så den fyllda är «Starta bord» (#417) — samma knapp i samma
+    // roll, med det namn jobbet har just nu.
+    expect(filled).toMatch(/^Starta bor/)
     expect(outlined?.replace(/^[^:]+/, '')).toBe(filled?.replace(/^[^:]+/, ''))
   }, 120_000)
 
@@ -968,7 +970,7 @@ describe('the editor', () => {
     const measured = await inChromium(read('src/editor/editor.css'), 1280, views, wearingThePrimary('.byd-editor'))
     // The caret is not a second action: it is the same button's other half, and a split control
     // drawn in two colours would read as two things to press rather than one with a menu.
-    expect(measured).toEqual(Object.fromEntries(EDITOR_VIEWS.map((name) => [name, ['Uppdatera bordet', 'Fler vägar till bordet']])))
+    expect(measured).toEqual(Object.fromEntries(EDITOR_VIEWS.map((name) => [name, ['Starta bord', 'Fler vägar till bordet']])))
   }, 120_000)
 })
 

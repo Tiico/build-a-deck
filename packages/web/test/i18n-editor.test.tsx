@@ -38,7 +38,8 @@ describe('the editor in the reader\'s own language (A4)', () => {
     await openEditor()
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Card wall', 'Template', 'Data', 'Symbols', 'Media', 'Rules', 'Tables'])
     expect(screen.getByRole('button', { name: 'Save' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Update the table' })).toBeTruthy()
+    // The game has no table yet, so the filled action is the one that starts one (#417).
+    expect(screen.getByRole('button', { name: 'Start a table' })).toBeTruthy()
 
     // The wall's crown (#128): a box says its name and what is chosen inside it, in the reader's
     // language, and what it opens is in that language too.
@@ -169,6 +170,19 @@ describe('the editor in the reader\'s own language (A4)', () => {
     expect(screen.getByText('Loading tables…')).toBeTruthy()
     // The zones are the designer's words, in either language.
     expect(screen.getByRole('button', { name: 'Zone Kasthög' })).toBeTruthy()
+  })
+
+  // The filled action does two jobs (L5) and carries the name of the one it is about to do
+  // (#417). Both names are the reader's, and the second of them is only reachable once the game
+  // has a table, so the test starts one.
+  it('names the filled action for the job it will do, in English', async () => {
+    await openEditor()
+    fireEvent.click(screen.getByRole('button', { name: 'Start a table' }))
+    await screen.findByText(/New table started/)
+    await run.completeRenders()
+    expect(await screen.findByRole('button', { name: 'Update the table' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'New table' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Start a table' })).toBeNull()
   })
 
   it('says a zone\'s own properties in English when one is chosen', async () => {

@@ -89,6 +89,11 @@ export const svEditor = {
   'editor.saving': 'Sparar…',
   'editor.cancel': 'Avbryt',
   'editor.newTable': 'Nytt bord',
+  // Den fyllda knappen gör två jobb (L5), och den heter det jobb den står i begrepp att göra
+  // (#417): utan bord startar den ett, med ett bord uppdaterar den det. Ordet är hemmets
+  // («Starta bord»), så samma handling heter samma sak var den än står.
+  'editor.startTable': 'Starta bord',
+  'editor.startingTable': 'Startar bordet…',
   'editor.updateTable': 'Uppdatera bordet',
   'editor.updatingTable': 'Uppdaterar bordet…',
   'editor.table.started': 'Nytt bord startat på {version} —',
@@ -1063,8 +1068,11 @@ export const svEditor = {
   'tables.lead': 'Bord på det här spelet. Ett nytt startar från den sparade versionen, rev {n}.',
   'tables.help.topic': 'borden',
   'tables.help.life': 'Ett bord överlever att alla kopplar ner. Det avslutas uttryckligen, eller av sig självt efter ett dygn.',
-  'tables.none': 'Inget bord ännu. "Uppdatera bordet" startar ett från den sparade versionen.',
-  'tables.menu.none': 'Inget bord ännu. "Uppdatera bordet" startar ett.',
+  // Meningen citerar knappen i huvudet som den står just nu (#417). Den hette förut "Uppdatera
+  // bordet" här, vilket var en förklaring på en annan flik av att knappen hade fel namn; knappen
+  // heter numera det den gör, och meningen säger samma ord.
+  'tables.none': 'Inget bord ännu. "Starta bord" startar ett från den sparade versionen.',
+  'tables.menu.none': 'Inget bord ännu. "Starta bord" startar ett.',
   'tables.starting': 'Startar bordet…',
   'tables.new': 'Starta nytt bord',
   'tables.failed': 'Bordet kunde inte startas: {reason}. Spelet och dess bord är orörda.',

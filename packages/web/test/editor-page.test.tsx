@@ -52,7 +52,7 @@ describe('EditorPage', () => {
     // Back on the wall, the deck shows the edit; starting a table yields a link.
     fireEvent.click(screen.getByRole('tab', { name: /kortvägg/i }))
     expect(await screen.findByText('Drakhona')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
+    fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
     await screen.findByText(/renderar kort/i)
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
@@ -122,13 +122,73 @@ describe('EditorPage', () => {
   })
 })
 
+// The header's filled action is one button doing two jobs (L5), and until #417 it wore the name of
+// the second of them on a game that had never had a table: «Uppdatera bordet» stood there, enabled,
+// and started a session with a room code guests could join. A control is named for what it does, so
+// the name follows the job it is about to do.
+describe('the header says which of its two jobs the filled button will do (#417)', () => {
+  it('names it «Starta bord» on a game that has no table', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    expect(screen.getByRole('button', { name: 'Starta bord' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Uppdatera bordet' })).toBeNull()
+  })
+
+  it('names it «Uppdatera bordet» once the game has a table', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('button', { name: 'Starta bord' }))
+    await screen.findByText(/nytt bord startat/i)
+    await run.completeRenders()
+    expect(await screen.findByRole('button', { name: 'Uppdatera bordet' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Starta bord' })).toBeNull()
+    // And the table one already has is not the only one a game may have: the second way, «Nytt
+    // bord», is what starts another from here on.
+    expect(screen.getByRole('button', { name: 'Nytt bord' })).toBeTruthy()
+  })
+
+  // The press is answered before the table is (#315), and that answer is a name too: while the
+  // first table is being started the button must not say it is updating one.
+  it('says «Startar bordet…» while the start is on the wire', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+
+    // The start held still for as long as the test needs it: what the button says in between is
+    // the whole question.
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    const real = globalThis.fetch
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      if (init?.method === 'POST' && url.endsWith('/sessions')) await held
+      return real(input, init)
+    })
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Starta bord' }))
+      const busy = await screen.findByRole('button', { name: 'Startar bordet…' })
+      expect(busy.getAttribute('aria-busy')).toBe('true')
+      expect((busy as HTMLButtonElement).disabled).toBe(true)
+      release()
+      expect(await screen.findByRole('button', { name: 'Uppdatera bordet' })).toBeTruthy()
+    } finally {
+      spy.mockRestore()
+    }
+  })
+})
+
 describe('the table follows the editor (C7, L5)', () => {
   it('after a table is started, "Uppdatera bordet" refreshes it instead of starting another; "Nytt bord" starts one', async () => {
     await run.projects.create(run.projectId, projectDoc())
     history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
-    fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
+    fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
     await screen.findByText(/renderar kort/i)
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
@@ -154,7 +214,7 @@ describe('a table opens only once its cards can be seen (L5)', () => {
     history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
-    fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
+    fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
     expect(await screen.findByText(/renderar kort 0\/4/i)).toBeTruthy()
     expect(screen.queryByRole('link', { name: /öppna bordet/i })).toBeNull()
     expect(await run.completeRenders()).toBe(4)
@@ -169,7 +229,7 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
     history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
-    fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
+    fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
     await screen.findByText(/renderar kort/i)
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
@@ -194,7 +254,7 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
     history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
-    fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
+    fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
     await screen.findByText(/renderar kort/i)
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
@@ -378,7 +438,7 @@ describe('the host\'s controls (DRIFT §9)', () => {
     history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
-    fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
+    fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
     const code = await screen.findByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' })
     const first = code.textContent ?? ''
     await run.completeRenders()

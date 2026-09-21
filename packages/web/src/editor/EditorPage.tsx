@@ -50,7 +50,8 @@ type Watched = { table: string; done: number; asked: number }
 
 // /editor?project=…&server=http://…
 // The editor (L, prototype answer): the deck wall as home, the template canvas for the template,
-// the table as a tab. One project, one preview path, and "Uppdatera bordet" starts a table.
+// the table as a tab. One project, one preview path, and the header's filled action puts the work
+// on a table: "Starta bord" while the game has none, "Uppdatera bordet" once it has one (#417).
 export type EditorPageProps = { onNavigate?(url: string): void; timing?: EditorTiming }
 
 export function EditorPage({ onNavigate = (url) => location.assign(url), timing = DEFAULT_EDITOR_TIMING }: EditorPageProps = {}) {
@@ -443,9 +444,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       {t(saving ? 'editor.saving' : 'editor.save')}
     </button>
   )
+  // One button doing two jobs (L5), named for the job it is about to do (#417). On a game that has
+  // no table it starts one — and said «Uppdatera bordet» while doing it, so a designer who pressed
+  // it believing she was changing something started a session with a room code guests could join.
+  // The name follows the state, in both what it does and what it is doing.
+  const tableAction = table ? (updating ? 'editor.updatingTable' : 'editor.updateTable') : updating ? 'editor.startingTable' : 'editor.startTable'
   const updateButton = (
     <button type="button" className="byd-editor-primary byd-primary" disabled={updating} aria-busy={updating} onClick={() => void updateTable()}>
-      {t(updating ? 'editor.updatingTable' : 'editor.updateTable')}
+      {t(tableAction)}
     </button>
   )
 
