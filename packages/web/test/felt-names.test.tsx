@@ -230,7 +230,7 @@ async function tvFelt(scene: Snapshot, size: { w: number; h: number }): Promise<
       return { w: Math.round(r.width), h: Math.round(r.height) }
     }),
   )
-  return markupOf(tv(<TableRenderer view={scene} mode="tv" camera size={main} glideMs={0} />))
+  return markupOf(tv(<TableRenderer view={scene} mode="tv" camera="follow" size={main} glideMs={0} />))
 }
 
 const counted = seatCounts.flatMap((seats) => [false, true].map((market) => [seats, market] as const))

@@ -82,6 +82,23 @@ export const enPlay = {
   'felt.key.escape': 'Close the wheel · cancel the drag',
   'felt.key.help': 'Show this list',
 
+  // The camera on the live table (C5, #325).
+  'camera.controls': 'The camera',
+  'camera.zoom.in': 'Zoom in',
+  'camera.zoom.out': 'Zoom out',
+  'camera.whole': 'Show the whole table',
+  'camera.level': '{n} %',
+  'camera.fold': 'Fold the camera controls away',
+  'camera.unfold': 'Bring the camera controls back',
+  'camera.beyond': 'There is more of the table this way',
+  'felt.press.wheel': 'Wheel',
+  'felt.press.middleDrag': 'Middle + drag',
+  'felt.press.spaceDrag': 'Space + drag',
+  'felt.press.arrows': 'Shift + arrow key',
+  'felt.key.zoom': 'Zoom in and out around the pointer; the view stays',
+  'felt.key.pan': 'Pan the view',
+  'felt.key.escape.camera': 'Close the wheel · cancel the drag · show the whole table',
+
   'kbd.hidden': 'Hidden card',
   'kbd.card': '{name}, card in {zone}',
   'kbd.card.rotated': '{name}, card in {zone}, turned',

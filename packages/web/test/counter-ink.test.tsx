@@ -102,7 +102,7 @@ async function feltMarkup(scene: Snapshot, mode: 'tv' | 'table', frame: { w: num
       return { w: Math.round(r.width), h: Math.round(r.height) }
     }),
   )
-  return markupOf(tv(scene, <TableRenderer view={scene} mode="tv" camera size={main} glideMs={0} onAct={act} />))
+  return markupOf(tv(scene, <TableRenderer view={scene} mode="tv" camera="follow" size={main} glideMs={0} onAct={act} />))
 }
 
 // A pixel of slack, which is what two rounded placements can promise each other; anything past

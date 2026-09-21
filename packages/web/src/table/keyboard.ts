@@ -386,7 +386,7 @@ export function shortcutIntents(view: Snapshot, key: string, at: DragTarget | nu
 // stands in it although it was already there (#142, #152), because a list of commands that leaves
 // out the one a reader already knows is not the whole truth about the surface, and the whole
 // truth is the only thing worth opening.
-export function feltShortcuts(t: T = swedish, platform: string = thisPlatform()): Shortcut[] {
+export function feltShortcuts(t: T = swedish, platform: string = thisPlatform(), camera = false): Shortcut[] {
   return [
     // Turning a card over has three grips and is one action: the modifier click, the double click
     // for a hand that cannot hold two keys down, and the bare `F` (#258). They share a row,
@@ -395,7 +395,16 @@ export function feltShortcuts(t: T = swedish, platform: string = thisPlatform())
     { press: [t('felt.press.modClick', { mod: isMac(platform) ? 'Cmd' : 'Ctrl' }), t('felt.press.doubleClick'), 'F'], what: t('felt.key.flip') },
     { press: ['D'], what: t('felt.key.draw') },
     { press: ['S'], what: t('felt.key.shuffle') },
-    { press: ['Esc'], what: t('felt.key.escape') },
+    // Kameran (#325), och bara där det finns en att köra: `/online` har ingen, och en lista som
+    // lovade den där skulle lova något ytan inte har. Varje rad bär alla sina grepp, eftersom
+    // hjulet, plus och minus är samma handling bedd om på tre sätt — och panoreringen likaså.
+    ...(camera
+      ? [
+          { press: [t('felt.press.wheel'), '+', '−'], what: t('felt.key.zoom') },
+          { press: [t('felt.press.middleDrag'), t('felt.press.spaceDrag'), t('felt.press.arrows')], what: t('felt.key.pan') },
+        ]
+      : []),
+    { press: ['Esc'], what: t(camera ? 'felt.key.escape.camera' : 'felt.key.escape') },
     { press: ['?'], what: t('felt.key.help') },
   ]
 }

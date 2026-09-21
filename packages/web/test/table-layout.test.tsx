@@ -258,7 +258,7 @@ describe('a card drawn off a pile lands clear of the pile\'s own label (K14, K15
         const drawn = after.components.find((c) => c.zone === after.floor && !before.has(c.id))
         if (!drawn) throw new Error('the split left no card on the floor')
         const size = mode === 'tv' ? TV_ROOM : SCREEN
-        const html = markupOf(<TableRenderer view={after} mode={mode} size={size} camera={mode === 'tv'} glideMs={0} onAct={() => undefined} />)
+        const html = markupOf(<TableRenderer view={after} mode={mode} size={size} camera={mode === 'tv' ? 'follow' : undefined} glideMs={0} onAct={() => undefined} />)
         // On the TV the label is two halves, a name under the pile and a count on its corner; on
         // the felt it is one pill under the pile, and that pill is the handle the pile is moved
         // by (K14, #63), so it is the pill that must stay uncovered there.
@@ -360,7 +360,7 @@ function strayScene(): Snapshot {
 describe('the camera frames what is in play (C5, #20)', () => {
   it('cuts no card in half at the frame edge, not even one that lies beyond the rim', async () => {
     const size = { w: 1260, h: 786 }
-    const html = markupOf(<TableRenderer view={strayScene()} mode="tv" camera size={size} glideMs={0} />)
+    const html = markupOf(<TableRenderer view={strayScene()} mode="tv" camera="follow" size={size} glideMs={0} />)
     const boxes = await measureAll(html, size, '.byd-table-frame, .byd-card, .byd-pile')
     const frame = boxes[0]?.box
     if (!frame) throw new Error('no frame')

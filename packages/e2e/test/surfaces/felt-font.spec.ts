@@ -260,3 +260,39 @@ test.describe('the rulebook’s drawer waits for its own sheet (#346)', () => {
     expect(others.filter((css) => css.includes('.byd-rules-open'))).toEqual([])
   })
 })
+
+// The camera's own sheet, off the critical path (#325, the same way as #346 and #186). The
+// cluster in the felt's bottom-right corner and the edge marking both exist only while the view
+// is somebody's own, and the view is automatic when the page is painted — so on the first frame
+// neither is drawn. Their rules were four and a half kilobytes of the sheet that first painting
+// waits for, against a margin of 2.4 kB, and the way out is the one already taken next door
+// rather than a ceiling raised an eighth time.
+//
+// The split is along what the first frame actually shows. The grab cursor stays in `table.css`,
+// because it is drawn while Space is held — before the camera is manual, and before the cluster
+// exists. Everything that only exists once the view is manual travels with `CameraControls.js`.
+test.describe('the camera’s corner waits for its own sheet (#325)', () => {
+  test('keeps nothing of the cluster or the edge marking in the blocking sheet', () => {
+    const blocking = blockingSheets(index).map((href) => readFileSync(join(OUT, href.replace(/^\//, '')), 'utf8'))
+    for (const inside of ['.byd-camera-controls', '.byd-camera-edge', '.byd-camera-said', '--byd-camera-dock']) {
+      expect(blocking.filter((css) => css.includes(inside))).toEqual([])
+    }
+    // The reading is not vacuous: what the first frame does draw is still there. The grab the
+    // frame takes while Space is held is a cursor on the felt itself, and it has to be dressed
+    // before anybody has touched the camera.
+    expect(blocking.filter((css) => css.includes('[data-pan]')).length).toBeGreaterThan(0)
+  })
+
+  test('ships them in a sheet of its own, fully dressed', () => {
+    const blocking = blockingSheets(index)
+    const others = filesUnder(OUT)
+      .filter((path) => path.endsWith('.css'))
+      .filter((path) => !blocking.some((href) => path.endsWith(href.replace(/^\//, ''))))
+      .map((path) => readFileSync(path, 'utf8'))
+    // Somewhere that is not the blocking sheet, the corner is complete: the cluster, the marking,
+    // and the one number the two share — how far up the bottom marking starts, so as not to draw
+    // an arrow over a seat in the dock. A sheet carrying the marking without that number would
+    // dress the corner by halves.
+    expect(others.filter((css) => css.includes('.byd-camera-controls') && css.includes('.byd-camera-edge') && css.includes('--byd-camera-dock')).length).toBeGreaterThan(0)
+  })
+})

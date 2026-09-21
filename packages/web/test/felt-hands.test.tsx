@@ -111,7 +111,7 @@ async function feltMarkup(scene: Snapshot, mode: 'tv' | 'table'): Promise<string
       return { w: Math.round(r.width), h: Math.round(r.height) }
     }),
   )
-  return markupOf(tv(<TableRenderer view={scene} mode="tv" camera size={main} glideMs={0} />))
+  return markupOf(tv(<TableRenderer view={scene} mode="tv" camera="follow" size={main} glideMs={0} />))
 }
 
 // Every rectangle a fan draws — each card's box as the browser lays the turned card out, and the

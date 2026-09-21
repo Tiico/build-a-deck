@@ -63,7 +63,7 @@ async function fanning(size: { w: number; h: number }): Promise<string> {
       return { w: Math.round(r.width), h: Math.round(r.height) }
     }),
   )
-  return markupOf(tv(<TableRenderer view={sceneOf(feltOf(2))} mode="tv" camera size={main} glideMs={0} shuffles={[{ pile: 'draw', seq: 7 }]} />))
+  return markupOf(tv(<TableRenderer view={sceneOf(feltOf(2))} mode="tv" camera="follow" size={main} glideMs={0} shuffles={[{ pile: 'draw', seq: 7 }]} />))
 }
 
 type Spread = { card: number; reach: number; turned: number; frames: number }

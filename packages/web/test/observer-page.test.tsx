@@ -165,3 +165,26 @@ describe('the ended table goes quiet behind the survey (C9, D5, G3, #83)', () =>
     table.close()
   })
 })
+
+// Observatören får samma hjul som TV:n (#325). Hon ramar ingenting in åt sig själv — hennes filt
+// passas i ramen som förut — men vyn är hennes att ta över, och det är vad ytan säger om sig
+// själv. Att den faktiskt zoomar mäts där en filt har en storlek att zooma i
+// (`table-renderer.test.tsx`); jsdom ger varje ram noll pixlar.
+describe('observatörens kamera (#325)', () => {
+  it('säger att vyn är hennes att köra, utan att rama in åt henne', async () => {
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
+    render(<ObserverPage />)
+    await screen.findByText(/Du är observatör/)
+    const frame = await waitFor(() => {
+      const el = document.querySelector('.byd-table-frame')
+      if (!el) throw new Error('ingen filt ännu')
+      return el
+    })
+    expect(frame.getAttribute('data-drive')).toBe('hand')
+    expect(frame.getAttribute('data-camera')).toBeNull()
+    table.close()
+  })
+})

@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent } from 'react'
+import { Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent } from 'react'
 import { BackTexture, Texture } from './Texture.js'
 import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import type { Peer, Pulse, Recent } from './presence.js'
@@ -6,7 +6,8 @@ import { FAN, useStill, type Shuffle } from './shuffle.js'
 import { hue } from './hue.js'
 import { seatColor } from './seatColor.js'
 import { feltScale, fitScale, leaningSquare, woodLayout, TOUCH_PX, TV_AIR_PX } from './fit.js'
-import { activeBounds, cameraOf, fitFloor, frameRect, overscanPx, pad, reachOf, same, tween, zoomAround, type Rect, type Size } from './camera.js'
+import { CAMERA_STEP, activeBounds, cameraOf, centre, fitFloor, frameRect, overscanPx, pad, panBy, reachOf, same, shownRect, tween, zoomAround, type Rect, type Size } from './camera.js'
+import { recallCamera, rememberCamera, type CameraMemory } from './cameraMemory.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, type Drag, type DragTarget } from './drop.js'
 import { isCounter, standIn } from '../components.js'
@@ -20,6 +21,14 @@ import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAnchor, handExtent, handRotation, type TableMode } from './hand.js'
 import { gapAbove, nameAt, type Grow, type Rim } from './labels.js'
 import { useT, type T } from '../i18n/index.js'
+
+// Kamerans hörn kommer när vyn blir egen (#325, #346:s väg). Klungan och kantmarkeringen finns
+// bara medan kameran är manuell, vilket den inte är när sidan målas — så deras stilmall,
+// `camera-hand.css`, reser i den här chunken i stället för i det ark den första bildrutan väntar
+// på. Reserven är tom med flit: bygget lägger chunkens ark bredvid dess kod, så `import()` blir
+// klar först när båda är framme, och klungan kan därför inte visas oklädd. En platshållare vore
+// precis den oklädda blink flytten inte får kosta.
+const CameraHand = lazy(() => import('./CameraControls.js').then((m) => ({ default: m.CameraHand })))
 
 export type { TableMode } from './hand.js'
 // Without an explicit `scale`, the renderer fits the table to its own frame.
@@ -45,6 +54,9 @@ export type FeltItemProps = {
   onKeyDown(event: RKeyboardEvent): void
   onFocus(): void
 }
+// Vem som kör kameran på en yta (C5, #325).
+export type CameraDrive = 'follow' | 'hand'
+
 export type FeltKeyboard = {
   // Every node the keyboard may stand on, keyed `card:<id>`, `top:<zone>` or `pile:<zone>`,
   // with the sentence that names it. Nodes this map does not mention stay pictures.
@@ -73,7 +85,15 @@ export type TableRendererProps = {
   // that says so and never by a difference between two snapshots. `useShuffles` derives it.
   shuffles?: readonly Shuffle[] | undefined
   onPresence?: ((p: Presence) => void) | undefined
-  camera?: boolean | undefined
+  // Vem som får köra kameran på den här ytan (C5, #325). `follow` är TV:n: den ramar in det som
+  // är i spel av sig själv, och vem som helst kan ta över vyn. `hand` är observatören: ingen
+  // automatisk inramning, men samma hjul, samma grepp och samma väg hem. Editorns Bord-flik ger
+  // ingendera, och telefonen har ingen kamera alls.
+  camera?: CameraDrive | undefined
+  // Under vilket namn den här skärmen minns sin egen vy (#325). Bordets id, eftersom en bild i
+  // bordets millimeter bara betyder något på det bord den mättes på. Utan namn minns skärmen
+  // ingenting, vilket är vad editorns miniatyrer och telefonen vill.
+  remember?: string | undefined
   // What the pointer is over (C): the TV shows it large beside the table. Null when it leaves.
   onInspect?: ((c: VisibleComponentState | null) => void) | undefined
   size?: Size | undefined
@@ -170,8 +190,16 @@ const TIGHT_FELT_PX = 460
 const NAME_RIM_PX = 1
 const CAMERA_PAD_MM = 60
 const CAMERA_MIN_MM = 520
-const CAMERA_RETURN_MS = 6000
 const GLIDE_MS = 700
+// Vad en piltangent flyttar kameran, i skärmens egna pixlar (#325): samma steg prototypen mättes
+// med, så tangentbordets väg och handens väg rör bilden lika långt.
+const CAMERA_KEY_PX = 40
+const ARROW_WAY: Record<string, readonly [number, number] | undefined> = {
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  ArrowUp: [0, -1],
+  ArrowDown: [0, 1],
+}
 
 type Live = Drag & { started: boolean }
 // A card that has been put down but that the table has not moved yet (K1). The drop and the patch
@@ -184,7 +212,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -243,31 +271,41 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // "Sätt värde…" (#67): the chip whose value is being said outright, on this screen's own keys.
   const [entry, setEntry] = useState<VisibleComponentState | null>(null)
 
-  // The camera (C5): what is in play, or where someone zoomed for a moment. It holds still while
-  // something is dragged, since the pointer's mapping was fixed when the drag began.
-  const following = camera && mode === 'tv' && size !== null && size.w > 0 && size.h > 0
-  const [manual, setManual] = useState<Rect | null>(null)
-  const manualTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const zoomTo = (rect: Rect | null) => {
-    if (manualTimer.current) clearTimeout(manualTimer.current)
-    manualTimer.current = rect ? setTimeout(() => setManual(null), CAMERA_RETURN_MS) : null
-    setManual(rect)
-  }
-  useEffect(() => () => {
-    if (manualTimer.current) clearTimeout(manualTimer.current)
-  }, [])
-  const inPlay = following ? activeBounds(view) ?? floorRect : null
+  // The camera (C5): what is in play, or the view somebody took over. A manual view **stands**
+  // until it is put back (#325): one who zooms in on a pile does it to see something, and a
+  // camera that takes the picture back while she is looking is a camera working against her.
+  // It holds still while something is dragged, since the pointer's mapping was fixed when the
+  // drag began.
+  //
+  // Två roller, och skillnaden mellan dem är inramningen och ingenting annat: `driving` är vem
+  // som får ta över vyn — TV:n och observatören — och `following` är vem kameran ramar in åt.
+  // Ett kvartsvridet bord är undantaget: kamerans värld placeras i oroterade pixlar, så ett varv
+  // och en kamera ritar inte samma bild. Det gäller bara observatören i ett stående fönster,
+  // alltså en telefon, och telefonen har ingen kamera ändå (C5).
+  const drivable = camera !== undefined && mode === 'tv' && size !== null && size.w > 0 && size.h > 0 && rotate === 0
+  const following = drivable && camera === 'follow'
+  // Vad den här skärmen minns om sin egen kamera, och inget annat: en vy är ingen händelse (L4).
+  const recalled = useRef<CameraMemory | null>(null)
+  if (recalled.current === null) recalled.current = remember === undefined ? { cam: null, folded: false } : recallCamera(remember)
+  const [manual, setManual] = useState<Rect | null>(recalled.current.cam)
+  const zoomTo = (rect: Rect | null) => setManual(rect)
+  const inPlay = drivable ? activeBounds(view) ?? floorRect : null
   // How far the camera may reach: the table, plus anything in play that lies past its rim (#20).
   // The padding around what is in play is room to breathe, not content, so it may be cropped.
   const reach = reachOf(floorRect, inPlay)
   // The camera follows only on the TV (`following`), and a TV may hide the picture's outer edge,
   // so what it frames by itself stands the overscan margin inside the frame (#322). The observer
   // shares the mode but not the camera, and is fitted below with the air of its own.
-  const auto = inPlay && size ? frameRect(pad(inPlay, CAMERA_PAD_MM), size, reach, CAMERA_MIN_MM, overscanPx(size)) : null
+  const auto = following && inPlay && size ? frameRect(pad(inPlay, CAMERA_PAD_MM), size, reach, CAMERA_MIN_MM, overscanPx(size)) : null
+  // Bilden som faktiskt ritas. En bild som hämtats ur minnet mättes i ett fönster som kan ha
+  // haft en annan form sedan dess, så den passas in i den ram som finns nu — för allt som just
+  // ställts in av en hand är det samma rektangel tillbaka, eftersom både `zoomAround` och
+  // `panBy` redan lämnar ifrån sig en som ligger innanför exakt de här gränserna.
+  const viewing = manual && size ? frameRect(manual, size, reach, CAMERA_MIN_MM) : null
   const heldCamera = useRef<Rect | null>(null)
-  if (!drag) heldCamera.current = manual ?? auto
-  const cam = useGlide(following ? heldCamera.current : null, glideMs)
-  const placed = following && cam ? cameraOf(cam, size, floorRect) : null
+  if (!drag) heldCamera.current = viewing ?? auto
+  const cam = useGlide(drivable ? heldCamera.current : null, glideMs)
+  const placed = drivable && cam ? cameraOf(cam, size, floorRect) : null
   const scale = fixedScale ?? placed?.scale ?? fitted ?? 1
   const measured = fixedScale !== undefined || (size !== null && (!following || placed !== null))
   const live = useRef<Live | null>(null)
@@ -392,6 +430,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
 
   const down = (e: RPointerEvent, target: DragTarget) => {
     if (!onAct) return
+    // En panorering är kamerans och inte kortets, hur den än råkar börja ovanpå ett (#325). Den
+    // lämnas därför i fred hela vägen upp till ramen, som är den som håller i greppet.
+    if (isPan(e)) return
     e.stopPropagation()
     // «Vänd det jag pekar på» (#224). The modifier press is the whole gesture: it never becomes a
     // drag and it never opens the ring, so the card is turned and nothing else happens on the way.
@@ -539,19 +580,152 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     }
   }
 
-  // A zoom for a moment (C5): scroll or pinch around the pointer, double tap to go close and
-  // again to come back. The camera returns by itself. A zoom by hand may go into the overscan
-  // margin (#322): it bounds what the camera frames by itself, not what a person asks to see.
+  // Att ta över vyn (C5, #325): hjulet eller nypet kring pekaren, dubbeltryck nära och tillbaka,
+  // mittenknappen eller Space och drag, och ± och piltangenterna för den som inte pekar. Vad som
+  // bes om står kvar tills det lämnas tillbaka. En zoomning för hand får gå in i
+  // overscanmarginalen (#322): den binder vad kameran ramar in av sig själv, inte vad någon ber
+  // att få se.
+  //
+  // Vyn en hand utgår från. TV:n har alltid en kamera att räkna från; observatören har ingen
+  // förrän hon ber om en, och då är det den bild hon redan tittar på som är utgångsläget.
+  const standing = (): Rect | null => (drivable && size ? (viewing ?? cam ?? shownRect(floorRect, size, fitted ?? 1)) : null)
+  // De två stegen, sagda en gång: ett steg närmare eller längre bort kring bildens mitt, och ett
+  // steg åt sidan. Knapparna i hörnet och tangentbordet ber om exakt samma sak.
+  const stepZoom = (factor: number) => {
+    const from = standing()
+    if (from && size) setManual(zoomAround(from, centre(from), factor, size, reach, CAMERA_MIN_MM))
+  }
+  const stepPan = (dx: number, dy: number) => {
+    const from = standing()
+    if (!from || !size) return
+    const per = size.w / from.w
+    setManual(panBy(from, (dx * CAMERA_KEY_PX) / per, (dy * CAMERA_KEY_PX) / per, size, reach))
+  }
   const wheel = (e: RWheelEvent) => {
     const map = mapper()
-    if (!following || !cam || !map) return
-    zoomTo(zoomAround(manual ?? cam, map(e.clientX, e.clientY), Math.exp(e.deltaY * 0.002), size, reach, CAMERA_MIN_MM))
+    const from = standing()
+    if (!from || !size || !map) return
+    zoomTo(zoomAround(from, map(e.clientX, e.clientY), Math.exp(e.deltaY * 0.002), size, reach, CAMERA_MIN_MM))
   }
   const doubleTap = (e: RMouseEvent) => {
     const map = mapper()
-    if (!following || !map) return
-    zoomTo(manual ? null : zoomAround(fitFloor(reach, size, overscanPx(size)), map(e.clientX, e.clientY), 1 / 2.6, size, reach, CAMERA_MIN_MM))
+    if (!drivable || !size || !map) return
+    zoomTo(viewing ? null : zoomAround(fitFloor(reach, size, overscanPx(size)), map(e.clientX, e.clientY), 1 / 2.6, size, reach, CAMERA_MIN_MM))
   }
+
+  // Panorering (#325): mittenknappen och drag, som i Figma och Miro. Bordet följer handen, och
+  // markören visar grepp medan det pågår. Greppet tas på ramen och inte på filten, eftersom det
+  // som flyttar sig är kameran och inte något som ligger på bordet.
+  const panning = useRef<{ x: number; y: number; from: Rect } | null>(null)
+  const [grabbing, setGrabbing] = useState(false)
+  // Space + drag är det andra greppet, för den som saknar hjul. Tangenten är inte filtens egen:
+  // ett fokuserat kort aktiveras med Space (K17), och det vinner. Två saker säger det — noden
+  // har redan sagt nej till pressen genom att ta den (`defaultPrevented`), och den bär `data-kbd`
+  // — och båda läses, eftersom den första bara gäller de noder tangentbordsspåret har namngett.
+  const [armed, setArmed] = useState(false)
+  const spaced = useRef(false)
+  // Stegen som de är vid pressen, och inte som de var när lyssnaren hängdes upp: lyssnaren
+  // sitter på fönstret och lever längre än ett omritande.
+  const stepNow = useRef({ stepZoom, stepPan })
+  stepNow.current = { stepZoom, stepPan }
+  useEffect(() => {
+    if (!drivable) return
+    // En tangent som skrivs i ett fält är fältets, och en som trycks medan en panel står öppen
+    // är panelens.
+    const typing = (target: EventTarget | null): boolean =>
+      target instanceof HTMLElement &&
+      (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.closest('[role="dialog"]') !== null)
+    // Och en tangent som trycks på ett fokuserat kort är kortets (K17). Space aktiverar det, och
+    // piltangenterna går genom roverlistan; ingen av dem är kamerans så länge något står där.
+    const theirs = (target: EventTarget | null): boolean =>
+      typing(target) || (target instanceof HTMLElement && target.closest('[data-kbd]') !== null)
+    const hold = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return
+      if (event.code === 'Space') {
+        if (event.repeat || theirs(event.target)) return
+        // Utan detta rullar sidan under filten i stället, vilket är vad Space gör som standard.
+        event.preventDefault()
+        spaced.current = true
+        setArmed(true)
+        return
+      }
+      // Vägen in för den som inte har mus. Plus och minus är ingen annans på filten, så de går
+      // även med ett kort i fokus — annars fanns ingen väg alls dit klungans knappar står.
+      if (typing(event.target)) return
+      if (event.key === '+' || event.key === '=') {
+        event.preventDefault()
+        stepNow.current.stepZoom(1 / CAMERA_STEP)
+        return
+      }
+      if (event.key === '-' || event.key === '_') {
+        event.preventDefault()
+        stepNow.current.stepZoom(CAMERA_STEP)
+        return
+      }
+      const way = ARROW_WAY[event.key]
+      if (!way || !event.shiftKey || theirs(event.target)) return
+      event.preventDefault()
+      stepNow.current.stepPan(way[0], way[1])
+    }
+    const release = (event: KeyboardEvent) => {
+      if (event.code !== 'Space') return
+      spaced.current = false
+      setArmed(false)
+    }
+    // Ett fönster som tappar fokus med tangenten nere får aldrig sitt `keyup`, och en filt som
+    // står kvar i grepp efteråt är en filt som inte går att spela på.
+    const drop = () => {
+      spaced.current = false
+      setArmed(false)
+    }
+    window.addEventListener('keydown', hold)
+    window.addEventListener('keyup', release)
+    window.addEventListener('blur', drop)
+    return () => {
+      window.removeEventListener('keydown', hold)
+      window.removeEventListener('keyup', release)
+      window.removeEventListener('blur', drop)
+      drop()
+    }
+  }, [drivable])
+  // Vem som helst som håller mitten inne panorerar; ett kort som råkar ligga under handen är
+  // inte det som greppas, så kortets eget drag lämnar gesten i fred.
+  const isPan = (e: { button: number }) => e.button === 1 || spaced.current
+  const panDown = (e: RPointerEvent) => {
+    const from = standing()
+    if (!from || !isPan(e)) return
+    e.preventDefault()
+    panning.current = { x: e.clientX, y: e.clientY, from }
+    setGrabbing(true)
+    const el = e.currentTarget as HTMLElement
+    if (typeof el.setPointerCapture === 'function') el.setPointerCapture(e.pointerId)
+  }
+  const panMove = (e: RPointerEvent) => {
+    const held = panning.current
+    if (!held || !size) return
+    const per = size.w / held.from.w
+    setManual(panBy(held.from, -(e.clientX - held.x) / per, -(e.clientY - held.y) / per, size, reach))
+  }
+  const panUp = () => {
+    if (!panning.current) return
+    panning.current = null
+    setGrabbing(false)
+  }
+
+  // Klungan i hörnet (#325). Den finns bara medan vyn är egen, och hundra procent är vad kameran
+  // hade visat av sig själv: den automatiska inramningen på TV:n, och hela räckvidden hos
+  // observatören, som inte har någon.
+  const [tucked, setTucked] = useState(recalled.current.folded)
+  const asFramed = auto ?? (drivable && size ? fitFloor(reach, size) : null)
+  const level = viewing && asFramed ? Math.round((asFramed.w / viewing.w) * 100) : 100
+  // Och det skärmen ska minnas till nästa gång. Bilden nyckelas på sitt eget värde: samma
+  // rektangel räknad om till ett nytt objekt är ingen ny bild att skriva ned.
+  const lastAsked = useRef(manual)
+  lastAsked.current = manual
+  const remembering = manual ? `${manual.x},${manual.y},${manual.w},${manual.h}` : ''
+  useEffect(() => {
+    if (remember !== undefined) rememberCamera(remember, { cam: lastAsked.current, folded: tucked })
+  }, [remember, remembering, tucked])
   // A double press turns over what was pressed (#224): the way in for a hand that cannot hold a
   // modifier down. It is read on the frame and not on the card, because by the time the second
   // press lands the ring the first one opened is covering the card — so the browser dispatches
@@ -584,6 +758,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     onPresence({ kind: 'cursor', ...map(e.clientX, e.clientY) })
   }
   const feltDown = (e: RPointerEvent) => {
+    if (isPan(e)) return
     if (e.target !== e.currentTarget && !(e.target as HTMLElement).classList.contains('byd-zone')) return
     const map = mapper()
     if (!map || !onPresence) return
@@ -870,11 +1045,17 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       data-mode={mode}
       data-tight={tight ? 'true' : undefined}
       data-camera={placed ? 'follow' : undefined}
+      data-drive={camera}
       data-playable={onAct ? 'true' : undefined}
+      data-pan={grabbing ? 'panning' : armed ? 'ready' : undefined}
       ref={frame}
       style={measured ? undefined : { visibility: 'hidden' }}
-      onWheel={following ? wheel : undefined}
-      onDoubleClick={onAct || following ? doubled : undefined}
+      onWheel={drivable ? wheel : undefined}
+      onDoubleClick={onAct || drivable ? doubled : undefined}
+      onPointerDown={drivable ? panDown : undefined}
+      onPointerMove={drivable ? panMove : undefined}
+      onPointerUp={drivable ? panUp : undefined}
+      onPointerCancel={drivable ? panUp : undefined}
     >
       {placed ? (
         <div className="byd-camera-world" style={{ left: placed.left, top: placed.top, width: px(floorRect.w), height: px(floorRect.h) }}>
@@ -908,7 +1089,13 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       {/* Den diskreta hjälpen (#224), i filtens nedre högra hörn. Den står på en filt som går att
           spela på och ingen annanstans: en yta som bara visar ett bord har inga kommandon att
           lova. Listan är filtens egen; samma knapp på en annan yta skulle hålla den ytans. */}
-      {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t)} />}
+      {/* Kamerans kontroller (#325), i hörnet ovanför hjälpens skiva och bara medan vyn är egen. */}
+      {drivable && viewing && (
+        <Suspense fallback={null}>
+          <CameraHand cam={viewing} view={view} level={level} folded={tucked} onFold={setTucked} onZoom={stepZoom} onWhole={() => zoomTo(null)} />
+        </Suspense>
+      )}
+      {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable)} />}
       {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => onAct([{ v: 'setCounter', component: entry.id, value }])} onClose={() => setEntry(null)} />}
       {held && (
         <div className="byd-inspect" onClick={() => setHeld(null)}>
@@ -930,7 +1117,13 @@ function useGlide(target: Rect | null, ms: number): Rect | null {
   const raf = useRef(0)
   const key = target ? `${target.x},${target.y},${target.w},${target.h}` : ''
   useEffect(() => {
-    if (!target) return
+    // Ingen kamera alls är ett läge och inte ett uteblivet svar (#325): observatören som lämnar
+    // tillbaka vyn ska passas in i sin ram igen, inte stå kvar i den sista bilden hon bad om.
+    if (!target) {
+      curRef.current = null
+      setCur(null)
+      return
+    }
     const from = curRef.current
     if (ms <= 0 || !from || same(from, target) || typeof requestAnimationFrame === 'undefined') {
       curRef.current = target

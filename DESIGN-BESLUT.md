@@ -720,12 +720,21 @@ Den nedre markeringen blir därmed kortare än de tre andra, vilket är rätt pr
 
 Läget lagras per skärm (localStorage) och aldrig i loggen: en vy är ingen händelse (L4).
 Tangentbordet når allt: `+` och `−` zoomar, piltangenterna panorerar, `Escape` återställer. De står i `ShortcutHelp`.
+
 En TV kan dölja bildens ytterkant, så marginalen är en säkerhetsmarginal på action-safe-nivå och ingen ritad ram.
 Den begränsar bara den automatiska inramningen och `fitFloor`; en manuell zoom får gå in i den.
 Observatören delar läget men inte kameran, och varken hennes vy eller telefonens påverkas.
 Talet bor på ett ställe, `TV_OVERSCAN` i `camera.ts`, och räknas om från pixlar till millimeter där viewporten är känd, aldrig i renderaren.
 Priset i kortstorlek, mätt i Chromium på åttaplatsbordet inne i TV:ns eget krom (`felt-names.test.tsx`): kortets kortsida går från 49 till 46 px vid 1920 × 1080 och från 99 till 93 px vid 3840 × 2160, sex procent, och från 33 till 31 vid 1280 × 800.
 Vid 1920 × 1080 står åttaplatsbordets kort därmed en pixel över K9:s golv på 45 px; testets pinnar är sänkta till de nya talen, och det minsta namnet är fortfarande 12 px.
+
+Byggt 2026-09-21 (#325).
+Space beväpnar greppet bara när ingenting på filten har fokus, och piltangenterna bärs av `Skift`: bara piltangenter är redan filtens roverlista (K17, #2), och en tangent som ett fokuserat kort har tagit är kortets.
+`+` och `−` är ingen annans och går även då.
+Klungan mäter 300 px framme och 152 px fälld i filtens egen skärning (`felt-camera.test.tsx`); beslutets 318 och 170 är samma form i maskinens `system-ui`, och skillnaden mellan lägena — 148 px — är densamma i båda.
+Den går att fälla undan men aldrig att stänga: fälld står «Visa hela bordet ‹» kvar, och provet mäter att vägen hem är lika bred fälld som framme.
+Den nedre kantmarkeringen börjar 74 px upp, ovanför docken och ovanför hjälpens skiva, och är den enda av de fyra som inte når sin egen bildkant.
+Kamerans eget ark ligger utanför den blockerande stilmallen: klungan och markeringen finns inte på första bildrutan, så `table/camera-hand.css` reser med `CameraControls.js` i stället för att vägas mot filtens typsnitt (#346:s väg, grindat i `felt-font.spec.ts`).
 
 Reviderat 2026-09-14 (#66): ramen tar inte emot.
 Träramen runt filten ritas i skärmpixlar utanför de millimeter ett släpp mäts i — 30 px vid varje fönsterstorlek — och är ingen yta ett kort kan ligga *på*.

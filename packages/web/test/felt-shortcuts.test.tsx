@@ -270,6 +270,41 @@ describe('the discreet help (#224)', () => {
     expect(opener.getAttribute('aria-expanded')).toBe('true')
   })
 
+  // Kameran står i listan där den går att köra (#325). Tangentbordet når allt den gör, och en
+  // väg som inte står någonstans är ingen väg.
+  it('lägger kamerans rader i listan på en filt som har en kamera, och lovar dem ingen annanstans', () => {
+    on('MacIntel')
+    const { view } = buildScene()
+    const { unmount } = render(<TableRenderer view={view(null)} mode="tv" camera="follow" size={{ w: 1000, h: 500 }} glideMs={0} onAct={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Snabbkommandon på bordet' }))
+    const help = screen.getByRole('dialog', { name: 'Snabbkommandon på bordet' })
+    expect([...help.querySelectorAll('kbd')].map((k) => k.textContent)).toEqual([
+      'Cmd + klick',
+      'Dubbelklick',
+      'F',
+      'D',
+      'S',
+      'Hjul',
+      '+',
+      '−',
+      'Mitten + drag',
+      'Space + drag',
+      'Skift + piltangent',
+      'Esc',
+      '?',
+    ])
+    expect(help.textContent).toContain('Zooma in och ut kring pekaren; vyn står kvar')
+    expect(help.textContent).toContain('Panorera vyn')
+    // Och Escape säger vad den numera också gör.
+    expect(help.textContent).toContain('visa hela bordet')
+    unmount()
+
+    // Filten på `/online` har ingen kamera, och lovar därför ingen.
+    render(<TableRenderer view={view(null)} mode="table" scale={1} onAct={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Snabbkommandon på bordet' }))
+    expect(screen.getByRole('dialog').textContent).not.toContain('Panorera vyn')
+  })
+
   it('says Ctrl where the command is Ctrl', () => {
     on('Win32')
     const { view } = buildScene()

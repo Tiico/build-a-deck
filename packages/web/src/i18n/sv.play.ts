@@ -103,6 +103,25 @@ export const svPlay = {
   'felt.key.escape': 'Stäng hjulet · avbryt draget',
   'felt.key.help': 'Visa den här listan',
 
+  // Kameran på live-bordet (C5, #325). Vyn står kvar tills den återställs, så varje väg tillbaka
+  // måste stå någonstans: knapparna i hörnet för den som pekar, och de här raderna för den som
+  // inte gör det.
+  'camera.controls': 'Kameran',
+  'camera.zoom.in': 'Zooma in',
+  'camera.zoom.out': 'Zooma ut',
+  'camera.whole': 'Visa hela bordet',
+  'camera.level': '{n} %',
+  'camera.fold': 'Fäll undan kamerakontrollerna',
+  'camera.unfold': 'Ta fram kamerakontrollerna',
+  'camera.beyond': 'Mer av bordet ligger åt det här hållet',
+  'felt.press.wheel': 'Hjul',
+  'felt.press.middleDrag': 'Mitten + drag',
+  'felt.press.spaceDrag': 'Space + drag',
+  'felt.press.arrows': 'Skift + piltangent',
+  'felt.key.zoom': 'Zooma in och ut kring pekaren; vyn står kvar',
+  'felt.key.pan': 'Panorera vyn',
+  'felt.key.escape.camera': 'Stäng hjulet · avbryt draget · visa hela bordet',
+
   // Tangentbordet på filten (#1, #2, variant C "adressen"). Zonnamn och kortnamn kommer från
   // spelet och står i meningarna som designern skrev dem; allt runt dem är verktygets.
   //

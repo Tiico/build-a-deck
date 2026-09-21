@@ -23,6 +23,12 @@ export const overscanPx = (vp: Size): number => TV_OVERSCAN * Math.min(vp.w, vp.
 // not), and piles made during play while they last. Hands are not content — they sit at the rim
 // and always exist, so framing them means framing the rim.
 export function activeBounds(view: Snapshot): Rect | null {
+  return union(playBoxes(view))
+}
+
+// Each of them on its own, which is what the edge marking asks about (#325): a union says how
+// far the play reaches, and never which side of a picture something fell off.
+export function playBoxes(view: Snapshot): Rect[] {
   const zones = new Map(view.zones.map((z) => [z.id, z]))
   const boxes: Rect[] = []
   for (const c of view.components) {
@@ -35,7 +41,23 @@ export function activeBounds(view: Snapshot): Rect | null {
     if (z.kind === 'pile') boxes.push({ x: z.geometry.x - CARD_MM.w / 2, y: z.geometry.y - CARD_MM.h / 2, w: CARD_MM.w, h: CARD_MM.h + LABEL_MM })
     if (z.kind === 'area') boxes.push(z.geometry)
   }
-  return union(boxes)
+  return boxes
+}
+
+// Vilka sidor som har något i spel utanför bilden (#325). Vyn återgår aldrig av sig själv, inte
+// heller när något flyttas utanför den — då tänds i stället en markering på den sida innehållet
+// ligger, så att bilden säger vad den inte visar i stället för att tas ifrån den som tittar.
+export type Sides = { left: boolean; right: boolean; top: boolean; bottom: boolean }
+// En millimeter, så att en kant som råkar ligga exakt i bildkanten inte blinkar på flyttalsbrus.
+const EDGE_SLACK_MM = 1
+export function beyond(cam: Rect, view: Snapshot): Sides {
+  const boxes = playBoxes(view)
+  return {
+    left: boxes.some((b) => b.x < cam.x - EDGE_SLACK_MM),
+    right: boxes.some((b) => b.x + b.w > cam.x + cam.w + EDGE_SLACK_MM),
+    top: boxes.some((b) => b.y < cam.y - EDGE_SLACK_MM),
+    bottom: boxes.some((b) => b.y + b.h > cam.y + cam.h + EDGE_SLACK_MM),
+  }
 }
 
 export function union(boxes: readonly Rect[]): Rect | null {
@@ -89,12 +111,39 @@ export function frameRect(target: Rect, vp: Size, reach: Rect, minW: number, mar
   return { x, y, w: r.w, h: r.h }
 }
 
+// Vad ett tryck på `+` eller `−` är värt, sagt som den faktor kamerans bredd ändras med (#325).
+// Samma steg som prototypen mättes med. Talet bor här och inte hos klungan, eftersom tangenterna
+// finns innan klungan gör det: knapparna hämtas först när vyn är egen, och en tangentväg som
+// väntade på dem vore en väg som inte fanns förrän man redan tagit den.
+export const CAMERA_STEP = 1.25
+
 // The camera `factor` times as wide, centred on a point: a pinch, a scroll, a double tap. Zooming
 // out stops at `reach` — a zoom is a view, not content, so it never widens what the camera may see.
 export function zoomAround(cam: Rect, p: Point, factor: number, vp: Size, reach: Rect, minW: number): Rect {
   const w = cam.w * factor
   const h = (w * vp.h) / vp.w
   return frameRect({ x: p.x - w / 2, y: p.y - h / 2, w, h }, vp, reach, minW)
+}
+
+// What a surface with no camera of its own is showing, said as a camera (#325). The observer's
+// felt is fitted into her frame and nothing follows the play for her, so this is where her own
+// view starts the moment she takes it over — from what she was already looking at, rather than
+// from a rectangle she never asked for. The felt is drawn centred on the floor, so the floor's
+// centre is the picture's centre; what the fit added for her hands lies outside `reach` and is
+// pulled back in by the first `frameRect`, which is a step of a few per cent and not a jump.
+export function shownRect(floor: Rect, vp: Size, scale: number): Rect {
+  const c = centre(floor)
+  return { x: c.x - vp.w / (2 * scale), y: c.y - vp.h / (2 * scale), w: vp.w / scale, h: vp.h / scale }
+}
+
+// The camera moved by a hand (#325), and kept inside `reach` as fitted: a pan never drifts out
+// into the void, for the same reason a zoom out stops at the table. A camera that already holds
+// the whole reach has nowhere to go, and says so by staying where it is.
+export function panBy(cam: Rect, dx: number, dy: number, vp: Size, reach: Rect): Rect {
+  const whole = fitFloor(reach, vp)
+  if (cam.w >= whole.w) return whole
+  const put = (v: number, lo: number, span: number): number => Math.min(Math.max(v, lo), lo + span)
+  return { ...cam, x: put(cam.x + dx, whole.x, whole.w - cam.w), y: put(cam.y + dy, whole.y, whole.h - cam.h) }
 }
 
 // How the table is laid out under a camera: the scale, and where the floor's corner goes.

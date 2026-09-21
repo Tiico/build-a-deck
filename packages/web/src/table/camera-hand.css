@@ -1,0 +1,65 @@
+/* Kameran i handen (C5, #325), i ett ark för sig.
+
+   Vyn står kvar tills den återställs, så varje väg tillbaka måste synas. Kontrollerna bor i
+   filtens nedre högra hörn och finns bara medan kameran är manuell: filten är höjdbunden, så en
+   rad under den kostar varje kort 5 px i bredd (6,3 %) medan hörnet kostar noll under det mesta
+   av ett spel.
+
+   Att det är ett eget ark är samma sak som #346 gjorde med regelbokens lucka, och av samma skäl.
+   Ingenting härinne ritas på första bildrutan: kameran är automatisk när sidan målas, och både
+   klungan och markeringen finns först när någon tagit över vyn. Arket reser därför i klungans
+   egen chunk — `CameraControls.js` är den enda modul som hämtar det — och bygget lägger arket
+   bredvid koden, så `import()` blir klar först när båda är framme. Klungan kan alltså inte visas
+   oklädd. Det som ritas *innan* någon rört kameran ligger kvar i `table.css`, greppets markör
+   inräknad.
+
+   Vad som redan står längs nederkanten, och som markeringen och klungan båda viker för: docken
+   med varje plats (C5) och hjälpens skiva i hörnet, som är 44 px hög och står 16 px in. Den här
+   raden är avståndet upp till ovansidan av det. */
+.byd-table-frame { --byd-camera-dock: 74px; }
+.byd-camera-controls {
+  position: absolute; right: 16px; bottom: var(--byd-camera-dock); z-index: 25;
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px; border-radius: 12px;
+  border: 1px solid var(--byd-felt-chalk-off); background: var(--byd-felt-plate);
+  font: 700 15px/1 var(--byd-felt-font, system-ui, sans-serif);
+}
+/* Fälld tar den bort sina zoomsteg men aldrig vägen hem, och kryper ihop med en pixel på varje
+   sida: 300 px framme mot 152 px fälld i filtens egen skärning, mätt i `felt-camera.test.tsx`.
+   Prototypens 318 mot 170 är samma form i maskinens `system-ui`, och skillnaden — 148 px — är
+   densamma i båda. */
+.byd-camera-controls[data-folded] { padding: 4px; }
+.byd-camera-controls button {
+  min-width: 40px; min-height: 40px; box-sizing: border-box; padding: 0 10px;
+  display: grid; place-items: center;
+  border: 1px solid var(--byd-felt-chalk-off); border-radius: 10px; background: transparent;
+  color: var(--byd-felt-chalk); font: inherit; cursor: pointer;
+}
+.byd-camera-controls button:hover, .byd-camera-controls button:focus-visible { border-color: var(--byd-felt-accent); color: var(--byd-felt-accent); }
+.byd-camera-controls .byd-camera-level {
+  min-width: 42px; text-align: center; color: var(--byd-felt-chalk-off);
+  font: 400 11px/1 var(--byd-felt-font, system-ui, sans-serif); font-variant-numeric: tabular-nums;
+}
+.byd-camera-controls .byd-camera-whole { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.byd-camera-controls .byd-camera-fold { min-width: 34px; padding: 0; font-size: 13px; color: var(--byd-felt-chalk-off); }
+
+/* Kantmarkeringen: innehåll ligger utanför den egna vyn åt det hållet. Den nedre börjar ovanför
+   docken — en pil ritad över en plats pekar på fel sak — och är därmed den enda av de fyra som
+   inte når sin egen bildkant. */
+.byd-camera-edge { position: absolute; z-index: 20; pointer-events: none; }
+.byd-camera-edge[data-side='left'] { left: 0; top: 0; bottom: 0; width: 64px; background: linear-gradient(to right, rgba(240, 182, 74, 0.2), transparent); }
+.byd-camera-edge[data-side='right'] { right: 0; top: 0; bottom: 0; width: 64px; background: linear-gradient(to left, rgba(240, 182, 74, 0.2), transparent); }
+.byd-camera-edge[data-side='top'] { left: 0; right: 0; top: 0; height: 64px; background: linear-gradient(to bottom, rgba(240, 182, 74, 0.2), transparent); }
+.byd-camera-edge[data-side='bottom'] { left: 0; right: 0; bottom: var(--byd-camera-dock); height: 64px; background: linear-gradient(to top, rgba(240, 182, 74, 0.2), transparent); }
+.byd-camera-edge > b {
+  position: absolute; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--byd-felt-accent); color: var(--byd-felt-on-accent);
+  font: 700 15px/1 var(--byd-felt-font, system-ui, sans-serif);
+}
+.byd-camera-edge[data-side='left'] > b { left: 12px; top: 50%; transform: translateY(-50%); }
+.byd-camera-edge[data-side='right'] > b { right: 12px; top: 50%; transform: translateY(-50%) rotate(180deg); }
+.byd-camera-edge[data-side='top'] > b { top: 12px; left: 50%; transform: translateX(-50%) rotate(90deg); }
+.byd-camera-edge[data-side='bottom'] > b { bottom: 12px; left: 50%; transform: translateX(-50%) rotate(-90deg); }
+/* Pilen är en bild; meningen är samma sak sagd där den hörs. */
+.byd-camera-said { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+

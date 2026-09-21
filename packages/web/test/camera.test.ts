@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activeBounds, cameraOf, fitFloor, frameRect, overscanPx, reachOf, zoomAround } from '../src/table/camera.js'
+import { activeBounds, beyond, cameraOf, fitFloor, frameRect, overscanPx, panBy, reachOf, zoomAround } from '../src/table/camera.js'
 import { buildScene } from './scene.js'
 
 // The camera (C5): a rectangle of the table, in millimetres, at the viewport's aspect.
@@ -66,6 +66,49 @@ describe('framing', () => {
     expect(cameraOf(z, wide, floor)).toEqual({ scale: 1000 / 600, left: -(z.x - floor.x) * (1000 / 600), top: -(z.y - floor.y) * (1000 / 600) })
     // Zooming out past the floor lands on the whole floor.
     expect(zoomAround(z, { x: 100, y: 50 }, 4, wide, floor, 200)).toEqual(whole)
+  })
+})
+
+// Panorering (#325): kameran flyttas av en hand, och kan inte lämna räckvidden.
+describe('panning', () => {
+  // `fitFloor(floor, wide)` är { x: -600, y: -300, w: 1200, h: 600 }: allt kameran får se.
+  const cam = { x: 0, y: 0, w: 400, h: 200 }
+
+  it('moves the camera by what the hand asked for', () => {
+    expect(panBy(cam, 50, 20, wide, floor)).toEqual({ x: 50, y: 20, w: 400, h: 200 })
+    expect(panBy(cam, -50, -20, wide, floor)).toEqual({ x: -50, y: -20, w: 400, h: 200 })
+  })
+
+  it('never lets the camera leave the reach, however far the hand goes', () => {
+    expect(panBy(cam, 5000, 5000, wide, floor)).toEqual({ x: 200, y: 100, w: 400, h: 200 })
+    expect(panBy(cam, -5000, -5000, wide, floor)).toEqual({ x: -600, y: -300, w: 400, h: 200 })
+    // Och räckvidden är bordet plus det som är i spel utanför det (#20), inte bordet ensamt.
+    const stray = { x: 1000, y: 0, w: 200, h: 100 }
+    expect(panBy(cam, 5000, 0, wide, reachOf(floor, stray)).x).toBeGreaterThan(200)
+  })
+
+  it('has nowhere to go while the whole reach is already in the picture', () => {
+    const whole = fitFloor(floor, wide)
+    expect(panBy(whole, 500, 500, wide, floor)).toEqual(whole)
+  })
+})
+
+// Kantmarkeringen (#325): vyn står kvar även när något hamnar utanför den, och då säger bilden
+// åt vilket håll det ligger i stället för att tas ifrån den som tittar.
+describe('what lies beyond the picture', () => {
+  const { view } = buildScene()
+  const snapshot = view(null)
+  // Scenen: det som är i spel ligger i x −400…231 och y −250…68 (se ovan).
+  const whole = { x: -500, y: -300, w: 1000, h: 500 }
+
+  it('says nothing while everything in play is inside the picture', () => {
+    expect(beyond(whole, snapshot)).toEqual({ left: false, right: false, top: false, bottom: false })
+  })
+
+  it('names the side a thing fell off, and only that side', () => {
+    expect(beyond({ x: 0, y: -300, w: 1000, h: 500 }, snapshot)).toMatchObject({ left: true, right: false })
+    expect(beyond({ x: -500, y: -300, w: 400, h: 200 }, snapshot)).toMatchObject({ left: false, right: true, bottom: true })
+    expect(beyond({ x: -500, y: 0, w: 1000, h: 500 }, snapshot)).toMatchObject({ top: true, bottom: false })
   })
 })
 

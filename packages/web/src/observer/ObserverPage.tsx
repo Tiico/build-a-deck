@@ -94,7 +94,7 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
         observers={observers}
         note={<p className="byd-observer-note">{t('observer.banner')}</p>}
       >
-        <TableRenderer view={view} mode="tv" rotate={turn} faces={http} onInspect={setInspecting} shuffles={shuffles} />
+        <TableRenderer view={view} mode="tv" camera="hand" {...(sessionId ? { remember: `observe:${sessionId}` } : {})} rotate={turn} faces={http} onInspect={setInspecting} shuffles={shuffles} />
       </TvChrome>
       {/* The handle (#6): a row of its own under the table, never a banner over it. What she is
           is always on it; the rest of the sentence, the feed and the seats are one press away and

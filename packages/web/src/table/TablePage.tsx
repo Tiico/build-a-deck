@@ -103,7 +103,8 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       recent={recent}
       shuffles={shuffles}
       onPresence={client ? (p) => client.sendPresence(p) : undefined}
-      camera={mode === 'tv'}
+      camera={mode === 'tv' ? 'follow' : undefined}
+      {...(sessionId ? { remember: `table:${sessionId}` } : {})}
       onInspect={mode === 'tv' ? setInspecting : undefined}
     />
   )

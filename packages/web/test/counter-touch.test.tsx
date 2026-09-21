@@ -119,7 +119,7 @@ async function feltMarkup(scene: Snapshot, mode: 'tv' | 'table', frame: { w: num
       return { w: Math.round(r.width), h: Math.round(r.height) }
     }),
   )
-  return markupOf(tv(scene, <TableRenderer view={scene} mode="tv" camera size={main} glideMs={0} onAct={act} />))
+  return markupOf(tv(scene, <TableRenderer view={scene} mode="tv" camera="follow" size={main} glideMs={0} onAct={act} />))
 }
 
 // Every target on the felt: its projected box, how far its centre stands from its chip's, and

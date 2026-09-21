@@ -27,6 +27,22 @@ async function openZone(id: string): Promise<void> {
 
 const panel = () => document.querySelector('[data-zone-actions]') as HTMLElement
 
+// «Spara» när den går att trycka på, och inte bara när den finns.
+//
+// Knappen står alltid i huvudet och är avstängd medan dokumentet är sparat: `disabled={!unsaved
+// || saving}`. Att den ändrats till osparat är en tur genom klienten, så en `findByRole` svarar
+// med den avstängda knappen direkt, klicket rinner av, och provet faller på revisionen i stället
+// för på knappen — en gång av många och bara under full svit. Villkoret är alltså att den är
+// tryckbar, och det är vad som väntas in.
+async function save(): Promise<void> {
+  const button = await waitFor(() => {
+    const b = screen.getByRole('button', { name: 'Spara' }) as HTMLButtonElement
+    expect(b.disabled).toBe(false)
+    return b
+  })
+  fireEvent.click(button)
+}
+
 // En ny åtgärd med sitt enda steg, som är den mening rattarna sitter i.
 function newStep(): HTMLElement {
   fireEvent.click(within(panel()).getByRole('button', { name: '＋ Åtgärd' }))
@@ -95,17 +111,14 @@ describe('vilken sida av högen som är bredvid den', () => {
     fireEvent.change(side, { target: { value: 'right' } })
     expect(panel().textContent).toMatch(/till höger om högen/)
 
-    // Väntat fram och inte läst rakt av: knappen finns först när dokumentet är osparat, och det
-    // blir det en tur genom klienten efter ändringen. Under full svit tappade den kapplöpningen
-    // och provet sa «hittar ingen knapp Spara» — en tidsfråga och inte ett fel i det som mäts.
-    fireEvent.click(await screen.findByRole('button', { name: 'Spara' }))
+    await save()
     await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
     expect((await run.projects.load(run.projectId))?.setup.zones.find((z) => z.id === 'draw')?.beside).toBe('right')
 
     // Och tillbaka till vänster är «ingen egenskap alls» — också hos servern, som får valet över
     // tråden där `undefined` inte överlever (#331).
     fireEvent.change(screen.getByLabelText('Bredvid högen för Draghög'), { target: { value: 'left' } })
-    fireEvent.click(await screen.findByRole('button', { name: 'Spara' }))
+    await save()
     await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(3))
     expect((await run.projects.load(run.projectId))?.setup.zones.find((z) => z.id === 'draw')).not.toHaveProperty('beside')
   })
@@ -123,7 +136,7 @@ describe('vad en zon frågar efter, skrivet som en mening', () => {
     fireEvent.click(within(panel()).getByRole('button', { name: 'Drake' }))
     expect(panel().textContent).toMatch(/korten där title är Drake/)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await save()
     await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
     expect((await run.projects.load(run.projectId))?.setup.zones.find((z) => z.id === 'draw')?.fill).toEqual([{ field: 'title', is: ['Drake'] }])
   })
@@ -146,7 +159,7 @@ describe('en egen åtgärd på en hög, skriven som meningar', () => {
     fireEvent.click(within(step).getByRole('button', { name: 'ett per spelare' }))
     expect(panel().textContent).toMatch(/Ta ett per spelare från högen/)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await save()
     await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
     const zone = (await run.projects.load(run.projectId))?.setup.zones.find((z) => z.id === 'draw')
     expect(zone?.actions).toEqual([

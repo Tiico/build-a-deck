@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createRef } from 'react'
 import type { Intent } from '@byd/protocol'
-import { TableRenderer, type TableHandle } from '../src/table/TableRenderer.js'
+import { TableRenderer, type FeltKeyboard, type TableHandle } from '../src/table/TableRenderer.js'
 import { buildScene, tableOf } from './scene.js'
 import { twoSeatSetup } from './fixture.js'
 import { activeBounds, cameraOf, frameRect, overscanPx, pad } from '../src/table/camera.js'
@@ -84,7 +84,7 @@ describe('the camera (C5)', () => {
     const { view } = buildScene()
     const snapshot = view(null)
     const size = { w: 1000, h: 500 }
-    render(<TableRenderer view={snapshot} mode="tv" camera size={size} glideMs={0} />)
+    render(<TableRenderer view={snapshot} mode="tv" camera="follow" size={size} glideMs={0} />)
 
     const floor = snapshot.zones.find((z) => z.id === snapshot.floor)!.geometry
     const cam = frameRect(pad(activeBounds(snapshot)!, 60), size, floor, 520, overscanPx(size))
@@ -99,11 +99,13 @@ describe('the camera (C5)', () => {
     expect(table.style.width).toBe(`${floor.w * scale}px`)
   })
 
-  it('a scroll zooms around the pointer for a moment, a double tap goes close and back, and the camera returns by itself', () => {
+  // Vyn stannar (#325). Prototypen väntade sju sekunder och stod kvar; C5:s gamla sex sekunder
+  // är upphävda, så en kamera som återgår av sig själv är numera felet och inte regeln.
+  it('a scroll zooms around the pointer and the view stays: the camera never returns by itself', () => {
     vi.useFakeTimers()
     const { view } = buildScene()
     const size = { w: 1000, h: 500 }
-    render(<TableRenderer view={view(null)} mode="tv" camera size={size} glideMs={0} />)
+    render(<TableRenderer view={view(null)} mode="tv" camera="follow" size={size} glideMs={0} />)
     const frame = document.querySelector('.byd-table-frame')!
     const table = document.querySelector('[data-table]') as HTMLElement
     const following = table.style.width
@@ -111,16 +113,231 @@ describe('the camera (C5)', () => {
     fireEvent.wheel(frame, { deltaY: -400, clientX: 500, clientY: 250 })
     const zoomed = parseFloat(table.style.width)
     expect(zoomed).toBeGreaterThan(parseFloat(following))
-    act(() => vi.advanceTimersByTime(5900))
+    act(() => vi.advanceTimersByTime(7000))
     expect(table.style.width).toBe(`${zoomed}px`)
-    act(() => vi.advanceTimersByTime(200))
-    expect(table.style.width).toBe(following)
 
+    // Dubbeltrycket är kvar som det var: det går nära och tillbaka. Med en egen vy stående är
+    // «tillbaka» det första det gör, eftersom vyn står kvar tills någon lämnar tillbaka den.
+    fireEvent.doubleClick(frame, { clientX: 500, clientY: 250 })
+    expect(table.style.width).toBe(following)
     fireEvent.doubleClick(frame, { clientX: 500, clientY: 250 })
     expect(parseFloat(table.style.width)).toBeGreaterThan(parseFloat(following))
-    fireEvent.doubleClick(frame, { clientX: 500, clientY: 250 })
-    expect(table.style.width).toBe(following)
     vi.useRealTimers()
+  })
+
+  // Panorering som i Figma och Miro (#325): mittenknappen och drag. Markören visar grepp medan
+  // det pågår, och ingenting markeras som text.
+  it('panorerar med mittenknapp och drag, och visar grepp medan handen håller i', () => {
+    const { view } = buildScene()
+    const size = { w: 1000, h: 500 }
+    render(<TableRenderer view={view(null)} mode="tv" camera="follow" size={size} glideMs={0} />)
+    const frame = document.querySelector('.byd-table-frame')!
+    // En vy som redan rymmer hela räckvidden går inte att panorera i, så hjulet går in först.
+    fireEvent.wheel(frame, { deltaY: -400, clientX: 500, clientY: 250 })
+    const world = document.querySelector('.byd-camera-world') as HTMLElement
+    const before = parseFloat(world.style.left)
+
+    fireEvent.pointerDown(frame, { button: 1, buttons: 4, clientX: 500, clientY: 250, pointerId: 3, isPrimary: true })
+    expect(frame.getAttribute('data-pan')).toBe('panning')
+    fireEvent.pointerMove(frame, { clientX: 400, clientY: 250, pointerId: 3 })
+    // Bordet följer handen: hundra pixlar åt vänster flyttar världen hundra pixlar åt vänster.
+    expect(parseFloat(world.style.left)).toBeCloseTo(before - 100, 6)
+    fireEvent.pointerUp(frame, { clientX: 400, clientY: 250, pointerId: 3 })
+    expect(frame.getAttribute('data-pan')).toBeNull()
+    // Och vyn står kvar där den släpptes.
+    expect(parseFloat(world.style.left)).toBeCloseTo(before - 100, 6)
+  })
+
+  // Space + drag är det andra greppet (#325), för den som saknar hjul. Det får inte ta Space
+  // ifrån ett fokuserat kort, som äger tangenten som aktivering (K17).
+  it('panorerar med Space + drag, men bara när inget kort har fokus (K17)', () => {
+    const { view, faceUp } = buildScene()
+    const size = { w: 1000, h: 500 }
+    const activated: string[] = []
+    render(<TableRenderer view={view(null)} mode="tv" camera="follow" size={size} glideMs={0} keyboard={oneStop(`card:${faceUp}`, activated)} />)
+    const frame = document.querySelector('.byd-table-frame')!
+    fireEvent.wheel(frame, { deltaY: -400, clientX: 500, clientY: 250 })
+    const world = document.querySelector('.byd-camera-world') as HTMLElement
+    const before = parseFloat(world.style.left)
+
+    // Kortet har fokus: Space öppnar det, och ingenting beväpnas.
+    const card = document.querySelector(`[data-kbd="card:${faceUp}"]`) as HTMLElement
+    card.focus()
+    fireEvent.keyDown(card, { key: ' ', code: 'Space' })
+    expect(activated).toEqual([`card:${faceUp}`])
+    expect(frame.getAttribute('data-pan')).toBeNull()
+    fireEvent.pointerDown(frame, { button: 0, buttons: 1, clientX: 500, clientY: 250, pointerId: 5, isPrimary: true })
+    fireEvent.pointerMove(frame, { clientX: 400, clientY: 250, pointerId: 5 })
+    expect(parseFloat(world.style.left)).toBe(before)
+    fireEvent.pointerUp(frame, { clientX: 400, clientY: 250, pointerId: 5 })
+    fireEvent.keyUp(card, { key: ' ', code: 'Space' })
+
+    // Inget kort har fokus: Space är greppet, och markören säger det innan handen går ned.
+    card.blur()
+    fireEvent.keyDown(document.body, { key: ' ', code: 'Space' })
+    expect(frame.getAttribute('data-pan')).toBe('ready')
+    fireEvent.pointerDown(frame, { button: 0, buttons: 1, clientX: 500, clientY: 250, pointerId: 6, isPrimary: true })
+    expect(frame.getAttribute('data-pan')).toBe('panning')
+    fireEvent.pointerMove(frame, { clientX: 400, clientY: 250, pointerId: 6 })
+    expect(parseFloat(world.style.left)).toBeCloseTo(before - 100, 6)
+    fireEvent.pointerUp(frame, { clientX: 400, clientY: 250, pointerId: 6 })
+    fireEvent.keyUp(document.body, { key: ' ', code: 'Space' })
+    expect(frame.getAttribute('data-pan')).toBeNull()
+    expect(activated).toEqual([`card:${faceUp}`])
+  })
+
+  // Klungan i filtens nedre högra hörn (#325, A · Hörnet). Den finns bara medan kameran är
+  // manuell, så den kostar noll yta under det mesta av ett spel.
+  it('lägger kamerakontrollerna i hörnet bara medan vyn är egen, och «Visa hela bordet» lämnar tillbaka den', async () => {
+    const { view } = buildScene()
+    const size = { w: 1000, h: 500 }
+    render(<TableRenderer view={view(null)} mode="tv" camera="follow" size={size} glideMs={0} />)
+    const frame = document.querySelector('.byd-table-frame')!
+    const table = document.querySelector('[data-table]') as HTMLElement
+    const following = table.style.width
+    expect(screen.queryByRole('button', { name: 'Visa hela bordet' })).toBeNull()
+
+    fireEvent.wheel(frame, { deltaY: -400, clientX: 500, clientY: 250 })
+    const home = await screen.findByRole('button', { name: 'Visa hela bordet' })
+    // Knapparna finns, och nivån står mellan dem.
+    expect(screen.getByRole('button', { name: 'Zooma in' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Zooma ut' })).toBeTruthy()
+
+    fireEvent.click(home)
+    expect(table.style.width).toBe(following)
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Visa hela bordet' })).toBeNull())
+  })
+
+  // Fälld undan, aldrig stängd (#325): vägen hem och vägen tillbaka till knapparna står kvar.
+  it('fäller undan klungan utan att någonsin kunna stänga den', async () => {
+    const { view } = buildScene()
+    const size = { w: 1000, h: 500 }
+    render(<TableRenderer view={view(null)} mode="tv" camera="follow" size={size} glideMs={0} />)
+    const frame = document.querySelector('.byd-table-frame')!
+    fireEvent.wheel(frame, { deltaY: -400, clientX: 500, clientY: 250 })
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Fäll undan kamerakontrollerna' }))
+    const back = await screen.findByRole('button', { name: 'Ta fram kamerakontrollerna' })
+    expect(back.getAttribute('aria-expanded')).toBe('false')
+    // Fälld bär den fortfarande vägen hem, och inget annat är borta.
+    expect(screen.getByRole('button', { name: 'Visa hela bordet' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Zooma in' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Zooma ut' })).toBeNull()
+
+    fireEvent.click(back)
+    const fold = await screen.findByRole('button', { name: 'Fäll undan kamerakontrollerna' })
+    expect(fold.getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Zooma in' })).toBeTruthy()
+  })
+
+  // Tangentbordet når allt (#325): den som inte har mus ska kunna ta över vyn och lämna
+  // tillbaka den. Piltangenterna bärs av Skift, eftersom de bara är filtens roverlista.
+  it('når kameran utan mus: ± zoomar, Skift + piltangent panorerar, Escape lämnar tillbaka vyn', async () => {
+    const { view } = buildScene()
+    const size = { w: 1000, h: 500 }
+    render(<TableRenderer view={view(null)} mode="tv" camera="follow" size={size} glideMs={0} />)
+    const table = document.querySelector('[data-table]') as HTMLElement
+    const following = table.style.width
+
+    fireEvent.keyDown(document.body, { key: '+' })
+    const zoomed = parseFloat(table.style.width)
+    expect(zoomed).toBeGreaterThan(parseFloat(following))
+
+    const world = document.querySelector('.byd-camera-world') as HTMLElement
+    const before = parseFloat(world.style.left)
+    fireEvent.keyDown(document.body, { key: 'ArrowRight', shiftKey: true })
+    expect(parseFloat(world.style.left)).toBeLessThan(before)
+    // En bar piltangent är roverlistans och rör inte kameran (K17, #2).
+    const panned = parseFloat(world.style.left)
+    fireEvent.keyDown(document.body, { key: 'ArrowRight' })
+    expect(parseFloat(world.style.left)).toBe(panned)
+
+    fireEvent.keyDown(document.body, { key: '-' })
+    expect(parseFloat(table.style.width)).toBeLessThan(zoomed)
+
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    await waitFor(() => expect(table.style.width).toBe(following))
+  })
+
+  // Observatören delar hjulet men inte inramningen (#325, C5): hon får ta över vyn precis som
+  // TV:n, men ingen kamera följer spelet åt henne — hennes filt är passad som förut tills hon
+  // själv ber om något annat.
+  it('ger observatören samma hjul som TV:n, utan att rama in åt henne', async () => {
+    const { view } = buildScene()
+    const size = { w: 1000, h: 500 }
+    render(<TableRenderer view={view(null)} mode="tv" camera="hand" size={size} glideMs={0} />)
+    expect(document.querySelector('.byd-camera-world')).toBeNull()
+    const fitted = parseFloat((document.querySelector('[data-table]') as HTMLElement).style.width)
+
+    const frame = document.querySelector('.byd-table-frame')!
+    fireEvent.wheel(frame, { deltaY: -400, clientX: 500, clientY: 250 })
+    expect(parseFloat((document.querySelector('[data-table]') as HTMLElement).style.width)).toBeGreaterThan(fitted)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Visa hela bordet' }))
+    await waitFor(() => expect(document.querySelector('.byd-camera-world')).toBeNull())
+    expect(parseFloat((document.querySelector('[data-table]') as HTMLElement).style.width)).toBe(fitted)
+  })
+
+  // Kantmarkeringen (#325): vyn står kvar även när något hamnar utanför den, och bilden säger
+  // åt vilket håll det ligger. Den finns bara medan vyn är egen.
+  it('tänder en kantmarkering där innehåll ligger utanför den egna vyn, och släcker den med vyn', async () => {
+    const { view } = buildScene()
+    const size = { w: 1000, h: 500 }
+    render(<TableRenderer view={view(null)} mode="tv" camera="follow" size={size} glideMs={0} />)
+    const frame = document.querySelector('.byd-table-frame')!
+    expect(document.querySelectorAll('.byd-camera-edge')).toHaveLength(0)
+
+    // Långt in, och i ett hörn: då ligger resten av spelet utanför bilden.
+    fireEvent.wheel(frame, { deltaY: -1600, clientX: 900, clientY: 450 })
+    await waitFor(() => expect(document.querySelectorAll('.byd-camera-edge').length).toBeGreaterThan(0))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Visa hela bordet' }))
+    await waitFor(() => expect(document.querySelectorAll('.byd-camera-edge')).toHaveLength(0))
+  })
+
+  // Läget lagras per skärm och aldrig i loggen (#325, L4): en vy är ingen händelse. Den här
+  // skärmen minns sin egen bild över en omladdning; ingen annan skärm vid bordet vet om den.
+  it('minns vyn och det fällda läget per skärm, och säger ingenting till bordet om det', async () => {
+    const { view } = buildScene()
+    const size = { w: 1000, h: 500 }
+    const onAct = vi.fn()
+    const first = render(<TableRenderer view={view(null)} mode="tv" camera="follow" size={size} glideMs={0} onAct={onAct} remember="s1" />)
+    const frame = document.querySelector('.byd-table-frame')!
+    const following = (document.querySelector('[data-table]') as HTMLElement).style.width
+    fireEvent.wheel(frame, { deltaY: -400, clientX: 500, clientY: 250 })
+    const zoomed = (document.querySelector('[data-table]') as HTMLElement).style.width
+    expect(zoomed).not.toBe(following)
+    fireEvent.click(await screen.findByRole('button', { name: 'Fäll undan kamerakontrollerna' }))
+    await screen.findByRole('button', { name: 'Ta fram kamerakontrollerna' })
+    first.unmount()
+
+    // Samma skärm igen: bilden och den undanfällda klungan står som de lämnades.
+    render(<TableRenderer view={view(null)} mode="tv" camera="follow" size={size} glideMs={0} onAct={onAct} remember="s1" />)
+    expect((document.querySelector('[data-table]') as HTMLElement).style.width).toBe(zoomed)
+    expect(await screen.findByRole('button', { name: 'Ta fram kamerakontrollerna' })).toBeTruthy()
+    // Och ingenting av det har gått till bordet: en vy är ingen händelse.
+    expect(onAct).not.toHaveBeenCalled()
+  })
+
+  it('ritar rätt även på en skärm där lagringen vägrar svara', () => {
+    const { view } = buildScene()
+    const size = { w: 1000, h: 500 }
+    const had = Object.getOwnPropertyDescriptor(window, 'localStorage')
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get() {
+        throw new Error('privat läge')
+      },
+    })
+    try {
+      render(<TableRenderer view={view(null)} mode="tv" camera="follow" size={size} glideMs={0} remember="s2" />)
+      const frame = document.querySelector('.byd-table-frame')!
+      const following = (document.querySelector('[data-table]') as HTMLElement).style.width
+      fireEvent.wheel(frame, { deltaY: -400, clientX: 500, clientY: 250 })
+      expect((document.querySelector('[data-table]') as HTMLElement).style.width).not.toBe(following)
+    } finally {
+      if (had) Object.defineProperty(window, 'localStorage', had)
+    }
   })
 
   it('on the TV leaves the overscan margin around what it frames; the observer and the phone are fitted as before (#322)', () => {
@@ -131,7 +348,7 @@ describe('the camera (C5)', () => {
     const size = { w: 1000, h: 1000 }
     const floorZone = snapshot.zones.find((z) => z.id === snapshot.floor)!
     const floor = floorZone.geometry
-    const { unmount } = render(<TableRenderer view={snapshot} mode="tv" camera size={size} glideMs={0} />)
+    const { unmount } = render(<TableRenderer view={snapshot} mode="tv" camera="follow" size={size} glideMs={0} />)
     const world = document.querySelector('.byd-camera-world') as HTMLElement
     const table = document.querySelector('[data-table]') as HTMLElement
     const scale = parseFloat(table.style.width) / floor.w
@@ -188,6 +405,16 @@ describe('dynamic piles', () => {
     expect(draw.getAttribute('data-dynamic')).toBe('false')
     expect(draw.textContent).toContain('Draghög')
   })
+})
+
+// Tangentbordsspåret med en enda hållplats på det: så lite av `useFeltKeyboard` som krävs för
+// att filten ska rita en nod med `data-kbd` som går att ge fokus, vilket är det K17:s regel om
+// Space handlar om.
+const oneStop = (key: string, activated: string[]): FeltKeyboard => ({
+  labels: new Map([[key, 'Ett kort']]),
+  open: null,
+  itemProps: () => ({ tabIndex: 0, ref: () => undefined, onFocus: () => undefined, onKeyDown: () => undefined }),
+  onActivate: (which) => activated.push(which),
 })
 
 // In tv mode at scale 1 with jsdom's zero-sized boxes, client pixels are table millimetres
