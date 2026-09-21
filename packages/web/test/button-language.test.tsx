@@ -1217,6 +1217,7 @@ describe('every suite that measures a surface', () => {
       'data-table-cell-rail.test.tsx',
       'data-table-csv-pair.test.tsx',
       'data-table-drag.test.tsx',
+      'data-table-hover.test.tsx',
       'data-table-layout.test.tsx',
       'data-table-prose-place.test.tsx',
       'data-table-sideways.test.tsx',

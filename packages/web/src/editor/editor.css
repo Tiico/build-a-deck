@@ -2164,6 +2164,34 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-data tr[aria-selected='false']:has(.byd-data-check input:checked) { background: var(--byd-editor-marked-bg); }
 .byd-data tr:has(.byd-data-check input:checked) .byd-data-check { box-shadow: inset 3px 0 0 var(--byd-editor-primary-mark); }
 .byd-data tr:has(.byd-data-check input:checked) .byd-data-id { color: var(--byd-editor-marked-ink); }
+/* Raden under pekaren (#400). Tabellen är bredare än sin låda och det är sextiotvå pixlar mellan
+   radernas mitt, så det som binder ihop en rad tvärs över rullningen är att radens egen grund
+   lyfts svagt — en genomskinlig vit slöja, hela vägen ut till högerkanten. Inga extra linjer, och
+   ingen ändrad text: en tint plus ljusare text rör två egenskaper samtidigt och läses som
+   «markerad» i stället för «under pekaren».
+
+   Slöjan ligger på cellen och inte på raden, och det är hela knuten. Jämförelsens två toner (B4)
+   sätts på `td`; en tint lagd på `tr` hamnar under dem och syns inte alls på en jämförd rad —
+   just den grund där man mest behöver följa raden tvärs över bordet. Som `background-image`
+   ligger den dessutom ovanpå cellens egen `background-color` vilken den än är, så det här är en
+   regel som lyfter alla fem grunder i stället för fem färger som ska hållas i takt och där den
+   femte glöms.
+
+   `td` och inte `> *`, för rangens skull: jämförelsens tint står på (0,2,2) och slöjan skulle
+   ligga jämsides med den och vinna bara på att komma senare i arket. Med cellen utskriven står
+   den på (0,2,3) och vinner på vad den är. Samma regel tar de fastnålade cellerna (#145, #53) med
+   sig, så hela raden lyfts lika långt ut som den når.
+
+   3 % och inte mer. Stegen mellan grunderna är 16,9 (vanlig→markerad) och 13,6 (markerad→
+   påtittad), i relativ luminans ×1000. Vid 6 % lyfter en hovrad markerad rad 16,0 och blir
+   omöjlig att skilja från kortet i förhandsvisningen; vid 9 % är det värre. Vid 3 % är lyftet 5,2
+   med marginal till nästa grund, och lägsta textkontrast är 5,46:1 — på borttagen rad, mätt mot
+   dess egen dämpade text och inte mot fältets vanliga. `data-table-hover` mäter alltihop på
+   målade bildpunkter.
+
+   Skriven `rgba(…)` med flit: Chromium svarar `color(srgb …)` på procentalfa, och den formen tar
+   ingen av kontrastmätningarna i det här repot (#376). */
+.byd-data tbody tr:hover td { background-image: linear-gradient(rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03)); }
 
 /* Bord (#19, prototype variant A): the tables of this game, as a list of live games. The row is
    the same wherever it is shown — in the tab, and in the header's shortcut from the other tabs
