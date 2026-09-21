@@ -76,7 +76,7 @@ describe('the keyboard when it is not about the card (#18)', () => {
     const user = userEvent.setup()
     const { onPatch } = canvas()
 
-    await user.click(screen.getByLabelText(/^x/i))
+    await user.click(screen.getByRole('spinbutton', { name: /^x/i }))
     await user.keyboard('{ArrowRight}{ArrowLeft}')
     expect(onPatch).not.toHaveBeenCalled()
 
@@ -101,7 +101,7 @@ describe('the keyboard when it is not about the card (#18)', () => {
     expect(onRemove).toHaveBeenCalledWith('title')
     expect(screen.queryByRole('alertdialog')).toBeNull()
 
-    await user.click(screen.getByLabelText(/^x/i))
+    await user.click(screen.getByRole('spinbutton', { name: /^x/i }))
     await user.keyboard('{Backspace}{Delete}')
     expect(screen.queryByRole('alertdialog')).toBeNull()
     expect(onRemove).toHaveBeenCalledTimes(1)

@@ -33,7 +33,7 @@ describe('EditorPage', () => {
     fireEvent.click(document.querySelector('[data-card-ref="knight"] [data-element="title"]')!)
     expect(document.querySelector('[data-mode]')!.getAttribute('data-mode')).toBe('template')
     expect(document.querySelector('[data-layer="title"]')!.getAttribute('aria-selected')).toBe('true')
-    fireEvent.change(screen.getByLabelText(/storlek/i), { target: { value: '18' } })
+    fireEvent.change(screen.getByRole('spinbutton', { name: /storlek/i }), { target: { value: '18' } })
 
     // The table tab edits data; the save button reflects unsaved work.
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
@@ -304,9 +304,14 @@ describe('the layers of the template by keyboard (UX-04)', () => {
       await user.tab()
       expect(document.activeElement).toBe(screen.getByRole(name === 'Förstoring i procent' ? 'slider' : 'button', { name }))
     }
+    // And then the properties, where the first stop is the grip beside the first number and the
+    // second is the number itself (L25): the icon is the field's name and the thing it is pulled
+    // by, and a reader who never reaches the field still has to reach the grip.
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'X (mm), dra för att ändra' }))
     await user.tab()
     await user.keyboard('9')
-    expect((screen.getByLabelText(/^x/i) as HTMLInputElement).value).toBe('9')
+    expect((screen.getByRole('spinbutton', { name: /^x/i }) as HTMLInputElement).value).toBe('9')
   })
 })
 

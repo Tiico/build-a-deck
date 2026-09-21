@@ -3662,6 +3662,12 @@ Vid 30 px står fem på en rad i stället för tre och galleriet tar ~170 px.
 Det bryter mot tumregeln om tappytan, och får göra det just här: det är en desktop-först yta som pekas på med mus (L12), och brickorna ligger i ett rutnät där grannen är samma sorts sak — en miss är ett annat formval och inte en förlorad handling.
 Undantaget gäller galleriets brickor och ingenting annat i panelen.
 
+**Tappgolvet står kvar under sifferraderna (beslutat 2026-09-21 vid implementationen).**
+Prototypen var en fristående mock utan editorns golv om 44 px, vilket är varför dess «Nu = 658 px» aldrig beskrev produkten, och varför C:s täthet inte går att nå med golvet kvar.
+Golvet vann: undantaget ovan gäller brickorna och ingenting annat, och tillgängligheten är inte det editorn får tumma på (L12).
+Mätt i den riktiga kolumnen om 280 px vid 1280 × 800: galleriet går från 290 till 84 px, en vanlig form blir 724 px och ryms, och den tätaste formen — stjärna med hörn, vridning och uddjup, plus mönster och skugga — blir 822 px i en kolumn om 782 och rullar alltså en aning.
+Den rullningen är priset och är accepterat.
+
 ### L26. En egen form är en punktlista, och punkten läggs till där kanten redan bär en (prototypat 2026-09-20, #309)
 
 Formgalleriet är parametriskt: en form är ett hörnantal och en vridning (L14, L17).

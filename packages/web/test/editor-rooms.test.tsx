@@ -75,7 +75,7 @@ describe('the editor on a tablet (L10)', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Lager' }))
     await userEvent.click(layerPick('title'))
     await userEvent.click(screen.getByRole('tab', { name: 'Egenskaper' }))
-    expect(screen.getByLabelText(/X \(mm\)/)).toBeTruthy()
+    expect(screen.getByRole('spinbutton', { name: /X \(mm\)/ })).toBeTruthy()
   })
 
   it('is one tab stop with the arrows inside it, and opens the stage that is chosen', async () => {

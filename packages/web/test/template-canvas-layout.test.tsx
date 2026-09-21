@@ -151,7 +151,9 @@ describe('the form the binding opens (#32)', () => {
           props: box(props),
           form: box(document.querySelector('.byd-newfield')),
           // Every other property of the element, which the form must not lie across.
-          others: [...document.querySelectorAll('.byd-props > label:not(.byd-props-field)')].map((el) => ({ name: el.textContent?.split('\n')[0]?.trim() ?? '', box: box(el) })),
+          // Every other property of the element: the rows of the panel's sections (L25) and the
+          // labelled controls that are not the picker the form hangs from.
+          others: [...document.querySelectorAll('.byd-props-rows > .byd-props-f, .byd-props-rows > label:not(.byd-props-field)')].map((el) => ({ name: el.textContent?.split('\n')[0]?.trim() ?? '', box: box(el) })),
           sideways: props.scrollWidth - props.clientWidth,
         }
       })

@@ -305,17 +305,22 @@ describe('what the move mode leaves exactly as it was (#144)', () => {
     // elements would be twenty tab stops for a number the properties already take exactly.
     expect(document.querySelectorAll('[data-handle]')).toHaveLength(4)
     expect([...document.querySelectorAll('[data-handle]')].every((h) => h.getAttribute('aria-hidden') === 'true')).toBe(true)
-    expect(screen.getByLabelText(/^bredd/i)).toBeTruthy()
+    expect(screen.getByRole('spinbutton', { name: /^bredd/i })).toBeTruthy()
   })
 
   it('leaves the arrows to a property field that has the cursor', async () => {
     const user = await openTheTemplate()
     // The properties are about a layer, so one has to be open before there is a field to stand in.
     await tabTo(user, 'title')
-    await user.click(screen.getByLabelText(/^x/i))
-    await user.keyboard('{ArrowRight}{ArrowUp}')
-
+    await user.click(screen.getByRole('spinbutton', { name: /^x/i }))
+    await user.keyboard('{ArrowRight}')
     expect([target('title')?.style.left, target('title')?.style.top]).toEqual(['5mm', '5mm'])
+
+    // Up and down are the field's own since L25: they write the number, by the same half
+    // millimetre the grip beside it is pulled by. The card moves because the number moved it,
+    // which is the opposite of the canvas having taken the key.
+    await user.keyboard('{ArrowUp}')
+    expect([target('title')?.style.left, target('title')?.style.top]).toEqual(['5.5mm', '5mm'])
   })
 
   // One holding is one step back (L14). The pointer's drag already works this way, and a move made

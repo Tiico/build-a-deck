@@ -1364,7 +1364,50 @@
    the work must not slide away under a hand that is still on the card. */
 .byd-canvas-stage { display: grid; place-items: center; overflow: auto; overscroll-behavior: contain; }
 .byd-canvas-props { border-left: 1px solid #2f333d; padding: var(--byd-s3); overflow: auto; }
-.byd-props { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+/* The panel L25 rebuilt: sections stacked under each other, each one open, and inside each a
+   two-column grid of rows. The row is 28 px — a little air for the grip's sake, which is the
+   whole point of the form that was chosen: an affordance nobody finds is not one. */
+.byd-props { display: grid; gap: var(--byd-s3); }
+.byd-props-sec { display: grid; gap: 5px; }
+.byd-props-sec-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--byd-editor-hint-ink);
+}
+/* The rule beside the name is what makes a section a section without a box around it: a hairline
+   costs a pixel where a border and its padding cost eight on every side. */
+.byd-props-sec-head::after { content: ''; flex: 1 1 auto; height: 1px; background: #2a2d36; }
+.byd-props-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 8px; }
+/* A number and its grip (L25). The icon is the field's name and the thing to pull it by: three
+   dots of a rule beside a glyph, so the drag is visible before anyone hovers over it. */
+.byd-props-f { display: grid; grid-template-columns: 27px minmax(0, 1fr) 20px; align-items: center; gap: 3px; min-height: 28px; }
+.byd-props-grip {
+  display: grid;
+  grid-template-columns: 3px auto;
+  align-items: center;
+  justify-items: center;
+  gap: 3px;
+  height: 24px;
+  color: var(--byd-editor-quiet);
+  font-size: 10px;
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
+}
+.byd-props-grip::before {
+  content: '';
+  width: 3px;
+  height: 11px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(to bottom, #4a5162 0 2px, transparent 2px 4px);
+}
+.byd-props-grip:hover, .byd-props-grip:focus-visible { color: #cfe0ff; }
+.byd-props-unit { font-style: normal; font-size: 10px; color: var(--byd-editor-quiet); }
 .byd-props label { display: grid; gap: 3px; font-size: 11px; color: #9aa3b8; }
 .byd-props input, .byd-props select { background: #0f1115; border: 1px solid #2a2d36; color: #fff; border-radius: 6px; padding: 4px 8px; font-size: 13px; width: 100%; box-sizing: border-box; }
 /* The binding is the second door into a new field (#32). Here the form stands in the flow under
@@ -2666,25 +2709,23 @@
 /* What a shape is (L17). The gallery, the tiles and the shadow's presets are three grids of
    buttons in a 280 px panel, so they are sized by what fits rather than by a fixed count: the
    panel is the narrowest thing in the editor and the one that has to hold the most. */
-.byd-props-heading {
-  grid-column: 1 / -1;
-  margin: 8px 0 0;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: var(--byd-editor-hint-ink);
-}
-/* A control that is a single measure across the panel rather than one of a pair: a slider reads
-   from end to end, and half a panel is not enough of it to aim with. */
-.byd-props-wide { grid-column: 1 / -1; }
-.byd-props-gallery { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; }
+/* Thirty pixels and not forty-four (L25). Seventeen tiles at 44 took forty-four per cent of the
+   panel; at 30 five stand on a row. The exception from the tap rule is these tiles and nothing
+   else in the panel: they are pointed at with a mouse on a desktop-first surface (L12), and they
+   lie in a grid where the neighbour is the same kind of thing — a miss is another shape and not a
+   lost action. */
+.byd-props-gallery { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(30px, 1fr)); gap: 3px; }
 .byd-props-gallery button {
   display: grid;
   place-items: center;
-  min-height: var(--byd-tap);
-  padding: 4px;
+  min-height: 26px;
+  /* The editor's floor under every button is 44 (docs/UX-KONTROLLER.md), and this is the one
+     place L25 lifts it. Said here in both directions, because a tile that is 30 tall and 44 wide
+     is three to a row again — which is the whole of what the decision was about. */
+  min-width: 30px;
+  padding: 2px; /* undantag: brickan är 30 px och bilden i den 20 × 15 (L25) */
   border: 1px solid #2a2d36;
-  border-radius: 6px;
+  border-radius: 5px;
   background: #0f1115;
   color: #cdd5e6;
   cursor: pointer;

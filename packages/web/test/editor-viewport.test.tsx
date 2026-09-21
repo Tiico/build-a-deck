@@ -260,6 +260,8 @@ describe.each(WIDTHS)('the editor at %ipx', (width) => {
       page.$$eval(TARGETS, (els) =>
         els
           .filter((el) => el.checkVisibility({ opacityProperty: true }))
+          // The gallery's tiles are 30 px by decision (L25); see the shape panel below.
+          .filter((el) => el.closest('.byd-props-gallery') === null)
           .map((el) => {
             const target = el.closest('label') ?? el
             const box = target.getBoundingClientRect()
@@ -373,7 +375,7 @@ describe.each(WIDTHS)('the editor at %ipx', (width) => {
 // The property panel with a shape in it (L17), held to the same two rules the tabs are: nothing
 // in it is smaller than a target, and nothing in it pushes the page sideways. It is the densest
 // thing the editor's narrowest column ever holds — seventeen outlines, five tiles, four chips and
-// five sliders — so it is the first place a panel would burst.
+// a dozen numbers — so it is the first place a panel would burst.
 //
 // Only where there is a canvas: below 768 px the editor has none at all (L10), so there is no
 // property panel to measure and nothing this would be saying anything about.
@@ -385,6 +387,13 @@ describe.each([1024, 1280] as const)('the shape panel at %ipx', (width) => {
         page.$$eval(TARGETS, (els) =>
           els
             .filter((el) => el.checkVisibility({ opacityProperty: true }))
+            // The one exception in the whole editor (L25): a gallery tile is 30 px and not 44.
+            // Seventeen outlines at 44 took forty-four per cent of a 280 px panel. They are
+            // pointed at with a mouse on a desktop-first surface (L12) and they lie in a grid
+            // where the neighbour is the same kind of thing, so a miss is another shape and not a
+            // lost action. It holds for the tiles and for nothing else here, which is why this
+            // sweep still runs over every other control in the panel.
+            .filter((el) => el.closest('.byd-props-gallery') === null)
             .map((el) => {
               const target = el.closest('label') ?? el
               const box = target.getBoundingClientRect()

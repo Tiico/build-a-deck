@@ -119,7 +119,7 @@ describe('taking a template element away with the keyboard (#143, L9)', () => {
   it('leaves a field with the caret in it alone: Backspace takes a character and no layer', async () => {
     await openTheTemplate()
     await userEvent.click(layerPick('title'))
-    const x = screen.getByLabelText(/^x/i) as HTMLInputElement
+    const x = screen.getByRole('spinbutton', { name: /^x/i }) as HTMLInputElement
 
     await userEvent.click(x)
     await userEvent.keyboard('{Backspace}{Delete}')

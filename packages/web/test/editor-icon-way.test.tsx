@@ -188,7 +188,7 @@ describe('the icon as a tool on the canvas (#33)', () => {
     // Selected the moment it lands, so the next thing the designer does is about it (#18).
     await screen.findByRole('heading', { name: /icon-1/ })
     // The card is 63 × 88 mm, so a centred 8 mm square starts at 27,5.
-    const x = screen.getByLabelText(/^x/i) as HTMLInputElement
+    const x = screen.getByRole('spinbutton', { name: /^x/i }) as HTMLInputElement
     expect(x.value).toBe('27.5')
 
     // The panel says which icon this is, and it does not claim a column it does not show: the
@@ -204,7 +204,7 @@ describe('the icon as a tool on the canvas (#33)', () => {
     box.focus()
     fireEvent.keyDown(box, { key: 'Enter' })
     fireEvent.keyDown(box, { key: 'ArrowRight' })
-    await waitFor(() => expect((screen.getByLabelText(/^x/i) as HTMLInputElement).value).toBe('28'))
+    await waitFor(() => expect((screen.getByRole('spinbutton', { name: /^x/i }) as HTMLInputElement).value).toBe('28'))
     fireEvent.keyDown(box, { key: 'Enter' })
     await press({ key: 'Delete' })
     // An element is not taken on the key alone, whichever tool placed it (#143, L9): the key

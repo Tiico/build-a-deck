@@ -18,6 +18,12 @@ afterEach(async () => {
 
 async function openBord(): Promise<void> {
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+  // Ask the fixture whether it is answering before standing the editor up (#149). The editor
+  // opens a project with a single `fetch` and keeps no second attempt, so a surface that loses
+  // that one request stands on the disconnected screen for the rest of the test — and then the
+  // word waited for below never comes. Seen once under a full gate run: «Spara» was not there,
+  // and neither was anything else the editor draws. The word stays, saying only what it can say.
+  await run.answering()
   render(<EditorPage />)
   await screen.findByText('Skogens herrar')
   fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))

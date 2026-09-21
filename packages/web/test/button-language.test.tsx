@@ -1221,6 +1221,7 @@ describe('every suite that measures a surface', () => {
       'data-table-sideways.test.tsx',
       'data-table-widths.test.tsx',
       'editor-crown.test.tsx',
+      'editor-props-density.test.tsx',
       'editor-spacing.test.tsx',
       'editor-tables-density.test.tsx',
       'editor-viewport.test.tsx',
