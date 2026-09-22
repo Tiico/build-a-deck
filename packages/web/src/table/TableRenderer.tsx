@@ -1396,16 +1396,24 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
   const bottomOwn = bottom !== undefined && !bottomCard?.cardRef ? (bottom.back ? <BackTexture faces={faces} hash={bottom.back} /> : back) : null
   // The shuffle, fanned (L35, #326): four backs fanned out of the pile and gathered back, keyed by
   // the log line so a second shuffle of the same pile starts the fan over. They wear what the
-  // pile itself wears face-down — the same back node as the top, from the same hash the zone
-  // already carries — and never a front, so nothing is drawn during the fan that was not on the
-  // screen before it; that is what keeps a test on raw frames blind to the animation. A pile being
+  // pile itself wears face-down — the same back, from the same hash the pile's own top is drawn
+  // from — and never a front, so nothing is drawn during the fan that was not on the screen
+  // before it; that is what keeps a test on raw frames blind to the animation. A pile being
   // dragged is not fanned: the ghost of it is elsewhere, and the fan would play on an empty spot.
+  //
+  // Where that hash comes from is the zone's mode and not the fan's business. A hidden pile hands
+  // out no component, so the back travels on the zone (#313) and `ownBack` is it. A pile whose
+  // order everyone may see hands out its cards instead, and says nothing of its own — so the back
+  // is read off the top card, the same way `Texture` reads it when it draws that very card. Asking
+  // only the zone, as this did, gave every public pile the stand-in weave that belongs to no game
+  // (L17): the draw pile fanned the deck's back and every other pile fanned stripes.
   //
   // Under `prefers-reduced-motion` (`still`) the motion is off and not damped: no fan is mounted
   // at all, and the pile pulses amber instead — something happened, without anything moving.
   const playing = shuffle !== undefined && !lifted && count > 0
   const fanned = playing && !still
-  const fanBack = ownBack ? <BackTexture faces={faces} hash={ownBack} /> : back
+  const fanHash = ownBack ?? topCard?.faces?.['back']
+  const fanBack = fanHash ? <BackTexture faces={faces} hash={fanHash} /> : back
   return (
     <div
       className="byd-pile"
