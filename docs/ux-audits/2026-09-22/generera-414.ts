@@ -246,13 +246,18 @@ vakt(
 vakt('telefonen lägger alla tre korten på samma millimeter', NINAS_KORT.every((c) => c.x === 0 && c.y === 0), 'x = 0 och y = 0 för alla tre')
 
 // ── Filten ──────────────────────────────────────────────────────────────────────────────────
-// Sändningsläget i halv skala: 960 × 540 står för 1920 × 1080. Skalan är `fit.ts`:s egen räkning
-// för TV-läget — ingen ram kring träet, `TV_AIR_PX` luft — fast med halva rutan, så varje
-// millimeter på sidan är exakt halva millimetern på en riktig TV.
-const TV = { w: 960, h: 540 }
+// Sändningsläget i halv skala: 960 × 540 står för 1920 × 1080.
+//
+// Skalan räknas på den riktiga TV:n först och halveras sedan, och inte tvärtom. `fit.ts`
+// passar in filten i fönstret med `TV_AIR_PX` luft och ingen ram kring träet, och den luften är
+// pixlar och inte millimetrar — räknar man i stället inpassningen direkt i en 960 × 540-ruta
+// blir kortet ett par procent fel, och sidan hade sagt ett mått den inte ritade.
+const RIKTIG_TV = { w: 1920, h: 1080 }
 const TV_AIR_PX = 20
 const FELT = feltFor(PLATSER)
-const SKALA = Math.min((TV.w - 2 * TV_AIR_PX) / FELT.w, (TV.h - 2 * TV_AIR_PX) / FELT.h)
+const SKALA_PÅ_TV = Math.min((RIKTIG_TV.w - 2 * TV_AIR_PX) / FELT.w, (RIKTIG_TV.h - 2 * TV_AIR_PX) / FELT.h)
+const TV = { w: RIKTIG_TV.w / 2, h: RIKTIG_TV.h / 2 }
+const SKALA = SKALA_PÅ_TV / 2
 const px = (mm: number): number => mm * SKALA
 const vänster = (mm: number): number => px(mm + FELT.w / 2)
 const övre = (mm: number): number => px(mm + FELT.h / 2)
@@ -264,7 +269,7 @@ const KORT_MM = { w: CARD_STANDARD_63x88.physical.widthMm, h: CARD_STANDARD_63x8
 // Handkortets mått på filten, som `hand.ts` ritar det: något mindre än kortet självt.
 const HAND_MM = { w: 54, h: 75 }
 const KORT_PÅ_FILTEN_PX = px(KORT_MM.w)
-const KORT_PÅ_TV_PX = KORT_PÅ_FILTEN_PX * 2
+const KORT_PÅ_TV_PX = KORT_MM.w * SKALA_PÅ_TV
 
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
@@ -629,7 +634,7 @@ pre code { background: none; border: 0; padding: 0; color: #cfd8ea; font: 11px/1
 <p>Bordet nedan är wizardens eget startbord, fyra platser och en poängräknare, lagt ut av <code>openingSetup</code>. Nina sitter på plats A och har tryckt <b>Framför mig</b> tre gånger. Varje ruta på sidan byter läge med växeln uppe.</p>
 <div class="matt-lista">
   <span>filten <u>${FELT.w} × ${FELT.h} mm</u></span>
-  <span>skala <u>${SKALA.toFixed(4)} px/mm</u></span>
+  <span>skala på en riktig TV <u>${SKALA_PÅ_TV.toFixed(4)} px/mm</u>, här halva <u>${SKALA.toFixed(4)}</u></span>
   <span>ett kort på den halva filten <u>${KORT_PÅ_FILTEN_PX.toFixed(1)} px</u></span>
   <span>samma kort på en riktig 1920 × 1080 <u>${KORT_PÅ_TV_PX.toFixed(1)} px</u></span>
   <span>uppmätt på filten i det här läget <u id="matt-kort">—</u></span>
