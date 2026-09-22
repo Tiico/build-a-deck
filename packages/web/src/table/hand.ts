@@ -56,12 +56,52 @@ export const HAND_CARD_BOX: Rect = { x: -HAND_CARD_MM.w / 2, y: -HAND_CARD_MM.h 
 export const HAND_COUNT_MM = HAND_CARD_BOX.y + HAND_CARD_BOX.h
 export const HAND_COUNT_ABOVE_MM = -HAND_CARD_BOX.y
 
-// Which side of the fan its count hangs off. Below it, as prototype B drew it, unless the rim is
-// above the fan as it is drawn — the TV's north seat, whose fan faces the viewer (C5) while its
-// rim is at the top. Hung below there, the count lay in the zone in front of the seat (#84);
-// hung toward the rim it is in the air past it, where every other seat's already is.
-export function countSide(hand: ZoneView, floor: ZoneView, rot: number): 'below' | 'above' {
-  return (((edgeRotation(hand, floor) - rot) % 360) + 360) % 360 === 180 ? 'above' : 'below'
+// Which way the zone's inner line lies from the fan, as this hand is drawn (#413, decision A of
+// 2026-09-22, revising K9's «på kantens sida av fläkten» from #84).
+//
+// The count used to hang off the fan, outward, in the air past the rim — and past the window with
+// it: at 1920 × 1080 the north seat's number stood sixteen pixels above the top edge and could not
+// be read at all. It now lies *on* the fan's own cards, against the line where the hand's strip
+// ends and the area in front of the seat begins ten millimetres later (K18). Inside the strip it
+// crosses no neighbour, which is what #84 actually rejected: not «inward» as a direction, but a
+// fan and its count lying in the next zone along.
+//
+// Four answers and not two. On the television no fan is turned — every one of them faces the
+// viewer (C5) — so the same inner line lies in a different direction for each of the four edges.
+// In table mode the fan is turned to its own edge and the answer is always `above`, which is the
+// same sentence and not a special case.
+export function countSide(hand: ZoneView, floor: ZoneView, rot: number): 'below' | 'above' | 'left' | 'right' {
+  switch ((((edgeRotation(hand, floor) - rot) % 360) + 360) % 360) {
+    case 180:
+      return 'below'
+    case 90:
+      return 'right'
+    case 270:
+      return 'left'
+    default:
+      return 'above'
+  }
+}
+
+// How far the zone's inner line lies from the point the fan is drawn about, in millimetres.
+//
+// Asked of the *zone* and not of the fan, and that is the whole of why the badge holds still: the
+// anchor is pushed toward the rim as the hand grows (`handAnchor`), and this distance shrinks by
+// exactly as much, so the line — and the number on it — stays where the eye left it while the
+// cards come and go under it. A count that walked about with the fan is what the old one did.
+export function handInner(hand: ZoneView, floor: ZoneView, rot: number): number {
+  const g = hand.geometry
+  const at = handAnchor(hand, floor, rot)
+  switch (edgeRotation(hand, floor)) {
+    case 0:
+      return at.y - g.y
+    case 180:
+      return g.y + g.h - at.y
+    case -90:
+      return at.x - g.x
+    default:
+      return g.x + g.w - at.x
+  }
 }
 
 // Where card `i` of a fan of `count` sits: how far it steps sideways, in millimetres, and how far
