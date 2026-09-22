@@ -18,6 +18,7 @@ import { MAX_PLAYERS, SEAT_IDS } from '@byd/server/doc'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { TvChrome } from '../src/table/TvChrome.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
+import { stepAside } from '../src/editor/grips.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
@@ -68,6 +69,16 @@ async function onPage<T>(html: string, size: { w: number; h: number }, look: (pa
 }
 
 const readNames = (html: string, size: { w: number; h: number }): Promise<Reading> => onPage(html, size, (page) => page.evaluate(READ) as Promise<Reading>)
+
+// Samma läsning, men med `stepAside` körd först — det editorn gör när ett grepp ritas. Den körs
+// som en sträng i sidan och inte via React, eftersom markup lagd på en sida aldrig kör en effekt:
+// en regel som bara bodde i en effekt vore omätbar här, och det är hela skälet till att den är en
+// exporterad funktion.
+const readHeld = (html: string, size: { w: number; h: number }): Promise<Reading & { sent: Record<string, number> }> =>
+  onPage(html, size, async (page) => {
+    const sent = (await page.evaluate(`(${String(stepAside)})(document)`)) as Record<string, number>
+    return { ...((await page.evaluate(READ)) as Reading), sent }
+  })
 
 // Which real face drew the glyphs, asked of the browser rather than of the cascade. A computed
 // `font-family` only says what was *asked for*; a face that failed to arrive leaves the rule
@@ -288,7 +299,7 @@ const handleFor = (id: string): Promise<HTMLElement> =>
     return el as HTMLElement
   })
 
-async function bordTab(seats: number, felt: { w: number; h: number } | null, desk: { w: number; h: number }, market: boolean, picked = 'mine:B'): Promise<string> {
+async function bordTab(seats: number, felt: { w: number; h: number } | null, desk: { w: number; h: number }, market: boolean, picked: string | null = 'mine:B'): Promise<string> {
   // jsdom has no layout, so the renderer's own measurement of the box it was given comes back
   // zero and the whole felt collapses. The box comes from the real stylesheet at a real window
   // (the pass before this one) and is handed to the frame here, which is the one thing jsdom
@@ -345,7 +356,9 @@ async function bordTab(seats: number, felt: { w: number; h: number } | null, des
     }
     // One zone picked up, because picking one up is when the editor has always drawn a second
     // name on it: the handle says what it is while the felt underneath is already saying so.
-    fireEvent.click(await handleFor(picked))
+    // `null` leaves whatever `＋ Yta` selected — the market itself — held, which is the state
+    // #424 is about: the designer has taken hold of the shared area, and its grip is drawn.
+    if (picked !== null) fireEvent.click(await handleFor(picked))
     await handleFor(`counters:${SEAT_IDS[seats - 1]}`)
     return document.querySelector('.byd-setup')!.outerHTML
   } finally {
@@ -378,7 +391,7 @@ async function feltBox(desk: { w: number; h: number }): Promise<{ w: number; h: 
   return box
 }
 
-async function bordTabDrawn(seats: number, desk: { w: number; h: number } = DESK, market = false, picked = 'mine:B'): Promise<string> {
+async function bordTabDrawn(seats: number, desk: { w: number; h: number } = DESK, market = false, picked: string | null = 'mine:B'): Promise<string> {
   return bordTab(seats, await feltBox(desk), desk, market, picked)
 }
 
@@ -456,9 +469,12 @@ describe('the Bord tab gives the felt the room its names need (#43)', () => {
     const reading = await readNames(await bordTabDrawn(seats, desk, market), desk)
     // This is the one surface that has grips at all (#419), so it is here that the reading of them
     // has to be shown not to be vacuous: a selector that matched nothing would report no name over
-    // a grip at every seat count and mean nothing by it. Every zone but the floor and the piles
-    // carries one, so there is one per area on the table.
-    expect({ where, grips: reading.gripCount > seats }).toEqual({ where, grips: true })
+    // a grip at every seat count and mean nothing by it.
+    //
+    // Exactly one since #424: a grip is drawn on the zone the designer has hold of and on no
+    // other, and this harness holds one. It used to be one per area, which is what put a name on
+    // a neighbour's grip in the resting picture at all.
+    expect({ where, grips: reading.gripCount }).toEqual({ where, grips: 1 })
     // The one grip a name still lies on, written down rather than swept up. It is not this issue's
     // collision and no placement of a grip inside its own box can answer it: `Räknare A`'s name
     // stands above its own top edge at the south rim and lands on the *market's* rectangle — a
@@ -469,8 +485,32 @@ describe('the Bord tab gives the felt the room its names need (#43)', () => {
     // It is a pin and not a licence: the market stands where the panel lays it, so it is only over
     // A's counters while the table is small enough for them to reach it — two, three and four
     // seats, and nowhere else. A count where it appears or disappears fells this too.
-    const known = market && seats <= 4 ? ['Räknare A × handtag'] : []
-    expectClear(reading, wanted, where, known)
+    expectClear(reading, wanted, where)
+  }, 60_000)
+
+  // Det som #424 faktiskt handlar om, och som vilobilden inte kan svara på. Med förslag D ritas
+  // inget grepp i vila, så en mätning tagen där är grön av konstruktion och betyder ingenting.
+  // Här hålls den delade ytan — precis som berättelsen säger: «greppa en delad ytas
+  // storlekshandtag utan att en grannplats zonnamn ligger över det» — och då finns greppet.
+  //
+  // Två, tre och fyra platser, eftersom marknaden står där panelen lägger den och bara når A:s
+  // räknarzon medan bordet är litet nog. Femman är med som motprov: där möts de inte, och ett
+  // platsantal där krocken dyker upp eller försvinner fäller det här lika säkert.
+  it.each([2, 3, 4, 5])('keeps every name clear of the grip on the zone being held, at %i seats', async (seats) => {
+    const where = `the Bord tab holding the market at ${seats} seats`
+    const reading = await readHeld(await bordTabDrawn(seats, DESK, true, null), DESK)
+    // Icke-vakuitet, och den avgörande: ett grepp ritas verkligen, och det är den hållna ytans.
+    // Utan det här skulle ett förslag som slutade rita grepp över huvud taget läsa grönt.
+    expect({ where, grips: reading.gripCount }).toEqual({ where, grips: 1 })
+    expect({ where, names: reading.names.includes('Marknad') }).toEqual({ where, names: true })
+    expect({ where, over: reading.grips }).toEqual({ where, over: [] })
+    expect({ where, over: reading.wider.grips }).toEqual({ where, over: [] })
+    // Och att det rena svaret ovan är förtjänat och inte gratis. Vid två, tre och fyra platser
+    // ligger `Räknare A` på marknadens grepp och måste vika undan; vid fem har bordet krympt
+    // undan och ingen behöver röra sig. Utan de här två raderna skulle ett undanvikande som inte
+    // gjorde någonting alls läsa grönt vid varje platsantal.
+    expect({ where, sent: Object.keys(reading.sent).sort() }).toEqual({ where, sent: seats <= 4 ? ['Räknare A'] : [] })
+    if (seats <= 4) expect({ where, far: reading.sent['Räknare A']! > 0 }).toEqual({ where, far: true })
   }, 60_000)
 })
 
