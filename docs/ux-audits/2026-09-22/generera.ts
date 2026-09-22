@@ -99,18 +99,18 @@ const KANDIDATER: Kandidat[] = [
     id: 'b',
     namn: 'B',
     rubrik: 'Ett ansikte per ram',
-    mening: 'En familj per ram, hela kortet i den: Klassisk är en antikva, Minimal en neutral grotesk, Mörk den kondenserade som redan finns ombord. Ett typsnitt per projekt.',
+    mening: 'En familj per ram, hela kortet satt i den: Klassisk en antikva, Minimal en neutral grotesk, Mörk en tätare och mer industriell. Ett typsnitt, en fil, per projekt. (Mörk skulle också kunna bära den ombordvarande kondenserade — det är kolumn A:s mörka kort.)',
     val: {
       classic: { title: 'EB Garamond', body: 'EB Garamond', cost: 'EB Garamond' },
       minimal: { title: 'Inter', body: 'Inter', cost: 'Inter' },
-      dark: { title: 'Roboto Condensed', body: 'Roboto Condensed', cost: 'Roboto Condensed' },
+      dark: { title: 'Archivo', body: 'Archivo', cost: 'Archivo' },
     },
   },
   {
     id: 'c',
     namn: 'C',
     rubrik: 'Rubrik och brödtext skilda',
-    mening: 'Rubriken får ett eget ansikte och brödtexten ett läsbart. Mest utpräglade ramar — och två filer i varje projekt i stället för en.',
+    mening: 'Rubriken får ett eget ansikte och brödtexten ett som är byggt för att läsas smått. Mest utpräglade ramar — och två filer i varje projekt i stället för en.',
     val: {
       classic: { title: 'Cinzel', body: 'Crimson Pro', cost: 'Crimson Pro' },
       minimal: { title: 'Archivo', body: 'Inter', cost: 'Inter' },
@@ -216,11 +216,10 @@ function anmärkning(issues: Issue[]): string {
   )
 }
 
-const stilar = [
-  ...Object.entries(FILER).map(([familj, s]) => `@font-face{font-family:"${familj}";src:url("${s.fil}") format("woff2");font-weight:1 1000;font-display:block;}`),
-  ...Object.values(rutor).map((r) => r.css),
-  ...Object.values(andra).map((r) => r.css),
-].join('\n')
+// Sidan skriver inga egna `@font-face`. Varje ansikte kommer ur `compile`s egen regel — samma
+// rad som renderaren och editorns förhandsvisning får (B3) — så det som ritas här är det
+// produkten skulle rita, och inte en efterhärmning bredvid.
+const stilar = [...Object.values(rutor).map((r) => r.css), ...Object.values(andra).map((r) => r.css)].join('\n')
 
 function rutaHtml(nyckel: string, ruta: Ruta, kandidat: Kandidat, ram: string): string {
   const val = kandidat.val?.[ram]
@@ -228,6 +227,7 @@ function rutaHtml(nyckel: string, ruta: Ruta, kandidat: Kandidat, ram: string): 
   return `<div class="ruta">
   <div class="rutrubrik"><span class="märke ${kandidat.id === 'idag' ? 'bas' : ''}">${esc(kandidat.namn)}</span> <span>${esc(familjer.join(' + '))}</span></div>
   <div class="kortyta" id="c-${nyckel}">${ruta.html}</div>
+  <p class="fit" data-for="c-${nyckel}"></p>
   ${anmärkning(ruta.anmärkningar)}
 </div>`
 }
@@ -259,12 +259,29 @@ const kandidatHtml = KANDIDATER.map(
 </div>`,
 ).join('\n')
 
+// Håller de tre ramarna isär? Rubrikordet ur varje ram, i den grad ramen sätter det och i det
+// ansikte kandidaten ger den. Tre rader som är tre olika röster är tre ramar; tre rader som är
+// samma röst är en ram tre gånger.
+const rösterHtml = KANDIDATER.map((k) => {
+  const rader = FRAMES.map((ram) => {
+    const el = ram.front(FÄLT).base.find((e) => e.kind === 'text' && e.id === 'title')
+    const grad = el && el.kind === 'text' ? el.font.sizePt : 13
+    const vikt = el && el.kind === 'text' ? (el.font.weight ?? 400) : 700
+    const familj = k.val?.[ram.id]?.['title']
+    // Enkla citattecken: stacken hamnar i ett `style`-attribut, och ett dubbelt citattecken där
+    // stänger attributet — vilket tyst tar med sig både graden och vikten.
+    const stack = familj ? `'${familj}', ${FILER[familj]!.generisk}` : ram.id === 'classic' ? 'Georgia, serif' : 'system-ui'
+    return `<div class="röst"><span class="etikett">${esc(RAMNAMN[ram.id] ?? ram.id)}</span><span class="ord" style="font-family:${stack};font-size:${grad * 2}pt;font-weight:${vikt}">Skogsvakten</span></div>`
+  }).join('')
+  return `<div class="rostblock"><div class="rutrubrik"><span class="märke ${k.id === 'idag' ? 'bas' : ''}">${esc(k.namn)}</span></div>${rader}</div>`
+}).join('')
+
 const summaHtml = `<table class="summa">
 <thead><tr><th>Ram</th>${KANDIDATER.map((k) => `<th>${esc(k.namn)}</th>`).join('')}</tr></thead>
 <tbody>${FRAMES.map((ram) => {
   const celler = KANDIDATER.map((k) => {
     const rad = sammanställning.find((s) => s.ram === ram.id && s.kandidat === k.id)!
-    return `<td class="${rad.antal === 0 ? 'ok' : 'warn'}">${rad.antal === 0 ? '0' : `${rad.antal} · ${esc(rad.koder.map((c) => KODORD[c] ?? c).join(', '))}`}</td>`
+    return `<td class="${rad.antal === 0 ? 'ok' : 'warn'}">${rad.antal === 0 ? 'noll anmärkningar' : `${rad.antal} · ${esc(rad.koder.map((c) => KODORD[c] ?? c).join(', '))}`}</td>`
   }).join('')
   return `<tr><th>${esc(RAMNAMN[ram.id] ?? ram.id)}</th>${celler}</tr>`
 }).join('')}</tbody>
@@ -288,7 +305,11 @@ body { padding: 0 0 80px; }
 h1 { font-size: 22px; color: #fff; margin: var(--s5) 0 var(--s2); }
 h2 { font-size: 15px; color: #fff; margin: 0 0 var(--s3); letter-spacing: 0.5px; }
 h3 { font-size: 13px; color: #fff; margin: 0 0 var(--s2); }
-p { margin: 0 0 var(--s2); max-width: 74ch; line-height: 1.6; color: #c3cbdd; }
+/* Aldrig en naken elementväljare på den här sidan. Ett kort är riktig kompilerad kortmarkup —
+   dess ord ligger i <p> — så ett \`p { color: … }\` i arkets egen stil skulle måla om kortets
+   text, byta dess radavstånd och lägga arkets marginaler mellan styckena. Det gjorde den här
+   sidan i sin första version, och då var jämförelsen mellan typsnitten inte längre sann. */
+.ark > p, section.ram > p, .kandidat p, .vag2 p { margin: 0 0 var(--s2); max-width: 74ch; line-height: 1.6; color: #c3cbdd; }
 code { background: var(--sunk); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: #ffd98a; font-size: 12px; }
 .led { color: var(--quiet); }
 
@@ -309,6 +330,9 @@ code { background: var(--sunk); border: 1px solid var(--line); border-radius: 4p
 .check.ok { color: var(--good); }
 .check.warn { color: var(--warn); }
 .check-mer { margin: 2px 0 0; font-size: 10px; color: var(--quiet); line-height: 1.4; }
+.fit { margin: var(--s3) 0 0; font-size: 11px; color: var(--quiet-2); font-variant-numeric: tabular-nums; }
+.fit b { color: #dfe6f5; font-weight: 700; }
+.fit .krympt { color: var(--warn); }
 
 .kandidater { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s4); margin: var(--s4) 0 0; }
 .kandidat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: var(--s3); }
@@ -316,6 +340,13 @@ code { background: var(--sunk); border: 1px solid var(--line); border-radius: 4p
 .kandidat p { font-size: 12px; margin-bottom: var(--s2); }
 .kandidat ul { margin: 0; padding-left: 16px; font-size: 11px; color: var(--quiet-2); line-height: 1.6; }
 .kandidat li b { color: #dfe6f5; }
+
+.roster { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s4); }
+.rostblock { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: var(--s3); }
+.röst { display: flex; align-items: baseline; gap: var(--s3); padding: var(--s2) 0; border-top: 1px solid var(--line-soft); }
+.röst:first-of-type { border-top: 0; }
+.röst .etikett { flex: none; width: 58px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--quiet); }
+.röst .ord { color: #f2f5fb; line-height: 1.15; white-space: nowrap; }
 
 .summa { border-collapse: collapse; width: 100%; margin: var(--s3) 0 0; font-size: 12px; }
 .summa th, .summa td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; }
@@ -332,11 +363,12 @@ code { background: var(--sunk); border: 1px solid var(--line); border-radius: 4p
 .vagg .rad2 { display: flex; align-items: center; gap: var(--s2); font-size: 12px; }
 .vagg .prick { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); flex: none; }
 .vagg .tyst { color: var(--good); }
+.vagg .prick.god { background: var(--good); }
 .vagg .detalj { margin: 6px 0 0 18px; font-size: 11px; color: var(--quiet-2); }
 
 .fotnot { margin-top: var(--s5); padding-top: var(--s4); border-top: 1px solid var(--line); font-size: 11px; color: var(--quiet); }
 .fotnot ul { padding-left: 16px; line-height: 1.7; }
-@media (max-width: 1100px) { .rad, .kandidater { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 1100px) { .rad, .kandidater { grid-template-columns: repeat(2, 1fr); } .roster { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -360,6 +392,12 @@ ${ramarHtml}
   <div class="rad">${andraHtml}</div>
 </section>
 
+<section class="ram" id="roster">
+  <h2>Håller de tre ramarna isär?</h2>
+  <p>Samma ord ur varje ram, i den grad ramen sätter rubriken i, förstorat två gånger. Tre röster är tre ramar; en röst tre gånger är en ram.</p>
+  <div class="roster">${rösterHtml}</div>
+</section>
+
 <section class="ram">
   <h2>Väg 1: går den fysiska kontrollen till noll?</h2>
   <p>Räknat på båda korten, alla anmärkningar och inte bara typsnittets.</p>
@@ -372,11 +410,11 @@ ${ramarHtml}
     <h3>Vad det betyder i kortväggen</h3>
     <p>Ramarna står kvar i <code>Georgia</code> och <code>system-ui</code>, och kontrollen tiger om typsnittet tills formgivaren gjort något — bytt en familj, laddat upp en fil, rört mallen.</p>
     <div class="vagg">
-      <div class="titel">Fysisk kontroll</div>
-      <div class="rad2"><span class="prick"></span> <span><b>Väg 1:</b> noll anmärkningar</span></div>
-      <p class="detalj">Kortet är tryckbart som det står. Filen följer med projektet.</p>
-      <div class="rad2 tyst"><span class="prick" style="background:var(--good)"></span> <span><b>Väg 2:</b> tyst — men <code>system-ui</code> är fortfarande ett annat ansikte hos tryckeriet</span></div>
-      <p class="detalj">Varningen är sann från första sekunden. Att tysta den är att göra kontrollen mindre sann: felet finns kvar, och formgivaren får veta om det först när hon rört något annat — eller vid tryck.</p>
+      <div class="titel">Fysisk kontroll, formgivarens första skärm</div>
+      <div class="rad2 tyst"><span class="prick god"></span> <span><b>Väg 1:</b> noll anmärkningar — och kortet <i>är</i> tryckbart</span></div>
+      <p class="detalj">Ramen bär ett ansikte versionen håller. Filen följer med projektet, och trycket blir det formgivaren såg.</p>
+      <div class="rad2"><span class="prick"></span> <span><b>Väg 2:</b> noll anmärkningar — men kortet är inte tryckbart</span></div>
+      <p class="detalj">Väggen är lika tyst som i väg 1, och felet finns kvar: <code>system-ui</code> är ett ansikte på formgivarens Mac, ett annat i renderarens Chromium och ett tredje hos tryckeriet. Varningen är sann från första sekunden — att skjuta upp den är att låta kontrollen säga något annat än vad som gäller, och formgivaren får veta först när hon rört något annat eller står med trycket i handen.</p>
     </div>
   </div>
 </section>
@@ -385,12 +423,52 @@ ${ramarHtml}
   <b>Vad som är mätt och vad som är påstått</b>
   <ul>
     <li><b>Mätt:</b> kortens geometri och sättning (<code>compile</code>), och antalet anmärkningar (<code>validateCard</code>) på båda korten i varje ruta.</li>
-    <li><b>Mätt:</b> att varje familj laddas ur sin egen fil — sidan har ett <code>@font-face</code> per familj och inget systemtypsnitt bakom.</li>
-    <li><b>Påstått:</b> ingenting om vikt eller läsbarhet som inte syns i bilden. <code>Oswald</code> bär 200–700 och ramen Mörk ber om 800; webbläsaren klämmer till 700, och det syns i kandidat C.</li>
+    <li><b>Mätt:</b> sättningen efter <code>fitInDocument</code> — samma slinga editorn kör — och graden varje textruta landade på står under kortet. Ett typsnitt som inte får plats syns som en lägre grad, inte som ett tyst överflöd.</li>
+    <li><b>Mätt:</b> att varje familj laddas ur sin egen fil. Sidan skriver inga egna <code>@font-face</code>: varje ansikte kommer ur <code>compile</code>s egen regel, exakt den renderaren får.</li>
+    <li><b>Påstått:</b> ingenting om vikt eller läsbarhet som inte syns i bilden. <code>Oswald</code> bär 200–700 och ramen Mörk ber om 800; vad webbläsaren gör med den skillnaden står i bilden och ingen annanstans.</li>
     <li><b>Utanför prototypen:</b> hur filen hamnar i projektet. Två vägar finns: skeppa bytesen med bygget som K20 redan gör, eller låta wizarden hämta familjen genom katalogens väg (#329) när spelet skapas. Det är ett beslut om drift, inte om form.</li>
   </ul>
 </div>
 </div>
+
+<script type="module">
+// fitInDocument ur packages/template/src/dom-fit.ts, ord för ord. Utan den läser man en
+// sättning editorn aldrig visar: en textruta med data-fit="shrink" kliver ner en halv punkt i
+// taget tills orden får plats, och hur långt den måste kliva beror på just typsnittet.
+function fitInDocument(root) {
+  const out = []
+  for (const el of root.querySelectorAll('[data-element][data-fit]')) {
+    const start = Number(el.dataset['sizePt'])
+    const min = Number(el.dataset['minPt'])
+    const shrink = el.dataset['fit'] === 'shrink'
+    let size = start
+    el.style.fontSize = size + 'pt'
+    const overflows = () => el.scrollHeight > el.clientHeight + 0.5 || el.scrollWidth > el.clientWidth + 0.5
+    if (shrink) {
+      while (overflows() && size - 0.5 >= min - 1e-9) {
+        size -= 0.5
+        el.style.fontSize = size + 'pt'
+      }
+    }
+    out.push({ element: el.dataset['element'] ?? '', sizePt: size, start, overflow: overflows() })
+  }
+  return out
+}
+
+await document.fonts.ready
+for (const kortyta of document.querySelectorAll('.kortyta')) fitInDocument(kortyta)
+
+for (const rad of document.querySelectorAll('.fit')) {
+  const kortyta = document.getElementById(rad.dataset['for'])
+  const mätt = fitInDocument(kortyta)
+  rad.innerHTML = mätt
+    .map((m) => {
+      const krympt = m.sizePt < m.start
+      return '<span class="' + (krympt ? 'krympt' : '') + '">' + m.element + ' <b>' + m.sizePt + ' pt</b>' + (krympt ? ' (av ' + m.start + ')' : '') + '</span>'
+    })
+    .join(' · ')
+}
+</script>
 </body>
 </html>
 `

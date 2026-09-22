@@ -6,13 +6,6 @@
 <title>Startramarnas typsnitt (#420)</title>
 <link rel="stylesheet" href="../../2026-09-21/prototyper/proto.css">
 <style>
-@font-face{font-family:"Roboto Condensed";src:url("../../../../packages/web/src/fonts/roboto-condensed-latin-wght-normal.woff2") format("woff2");font-weight:1 1000;font-display:block;}
-@font-face{font-family:"EB Garamond";src:url("../typsnitt/eb-garamond.woff2") format("woff2");font-weight:1 1000;font-display:block;}
-@font-face{font-family:"Inter";src:url("../typsnitt/inter.woff2") format("woff2");font-weight:1 1000;font-display:block;}
-@font-face{font-family:"Cinzel";src:url("../typsnitt/cinzel.woff2") format("woff2");font-weight:1 1000;font-display:block;}
-@font-face{font-family:"Crimson Pro";src:url("../typsnitt/crimson-pro.woff2") format("woff2");font-weight:1 1000;font-display:block;}
-@font-face{font-family:"Archivo";src:url("../typsnitt/archivo.woff2") format("woff2");font-weight:1 1000;font-display:block;}
-@font-face{font-family:"Oswald";src:url("../typsnitt/oswald.woff2") format("woff2");font-weight:1 1000;font-display:block;}
 #c-classic-idag [data-card]{position:relative;width:63mm;height:88mm;overflow:hidden;}
 #c-classic-idag [data-element]{position:absolute;box-sizing:border-box;margin:0;overflow:hidden;}
 #c-classic-idag [data-element] p{margin:0;}
@@ -252,7 +245,7 @@
 #c-dark-b [data-element] ul+ul{margin-top:0.5em;}
 #c-dark-b [data-element] li+li{margin-top:0.2em;}
 #c-dark-b [data-element]>svg{display:block;width:100%;height:100%;}
-@font-face{font-family:"Roboto Condensed";src:url("../../../../packages/web/src/fonts/roboto-condensed-latin-wght-normal.woff2");font-display:block;}
+@font-face{font-family:"Archivo";src:url("../typsnitt/archivo.woff2");font-display:block;}
 #c-dark-b .byd-icon{height:1em;width:auto;vertical-align:-0.15em;}
 #c-dark-b .byd-ink{display:inline-block;width:1em;background:currentColor;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;}
 #c-dark-b .byd-icon-missing{color:#c00;background:#fee;font-weight:700;}
@@ -262,9 +255,9 @@
 #c-dark-b [data-element="art"]{left:3mm;top:3mm;width:57mm;height:48mm;}
 #c-dark-b [data-element="art"] .byd-art{width:100%;height:100%;object-fit:cover;}
 #c-dark-b [data-element="plate"]{left:3mm;top:53mm;width:57mm;height:32mm;}
-#c-dark-b [data-element="title"]{left:5mm;top:55mm;width:53mm;height:8mm;font-size:12pt;font-family:"Roboto Condensed", sans-serif;font-weight:800;text-align:left;line-height:1.25;color:#fff;}
-#c-dark-b [data-element="body"]{left:5mm;top:64mm;width:53mm;height:20mm;font-size:8.5pt;font-family:"Roboto Condensed", sans-serif;font-weight:400;text-align:left;line-height:1.25;color:#cfd3dc;}
-#c-dark-b [data-element="cost"]{left:48mm;top:4mm;width:11mm;height:8mm;font-size:14pt;font-family:"Roboto Condensed", sans-serif;font-weight:800;text-align:center;line-height:1.25;color:#fff;}
+#c-dark-b [data-element="title"]{left:5mm;top:55mm;width:53mm;height:8mm;font-size:12pt;font-family:"Archivo", sans-serif;font-weight:800;text-align:left;line-height:1.25;color:#fff;}
+#c-dark-b [data-element="body"]{left:5mm;top:64mm;width:53mm;height:20mm;font-size:8.5pt;font-family:"Archivo", sans-serif;font-weight:400;text-align:left;line-height:1.25;color:#cfd3dc;}
+#c-dark-b [data-element="cost"]{left:48mm;top:4mm;width:11mm;height:8mm;font-size:14pt;font-family:"Archivo", sans-serif;font-weight:800;text-align:center;line-height:1.25;color:#fff;}
 #c-dark-c [data-card]{position:relative;width:63mm;height:88mm;overflow:hidden;}
 #c-dark-c [data-element]{position:absolute;box-sizing:border-box;margin:0;overflow:hidden;}
 #c-dark-c [data-element] p{margin:0;}
@@ -394,7 +387,11 @@ body { padding: 0 0 80px; }
 h1 { font-size: 22px; color: #fff; margin: var(--s5) 0 var(--s2); }
 h2 { font-size: 15px; color: #fff; margin: 0 0 var(--s3); letter-spacing: 0.5px; }
 h3 { font-size: 13px; color: #fff; margin: 0 0 var(--s2); }
-p { margin: 0 0 var(--s2); max-width: 74ch; line-height: 1.6; color: #c3cbdd; }
+/* Aldrig en naken elementväljare på den här sidan. Ett kort är riktig kompilerad kortmarkup —
+   dess ord ligger i <p> — så ett `p { color: … }` i arkets egen stil skulle måla om kortets
+   text, byta dess radavstånd och lägga arkets marginaler mellan styckena. Det gjorde den här
+   sidan i sin första version, och då var jämförelsen mellan typsnitten inte längre sann. */
+.ark > p, section.ram > p, .kandidat p, .vag2 p { margin: 0 0 var(--s2); max-width: 74ch; line-height: 1.6; color: #c3cbdd; }
 code { background: var(--sunk); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: #ffd98a; font-size: 12px; }
 .led { color: var(--quiet); }
 
@@ -415,6 +412,9 @@ code { background: var(--sunk); border: 1px solid var(--line); border-radius: 4p
 .check.ok { color: var(--good); }
 .check.warn { color: var(--warn); }
 .check-mer { margin: 2px 0 0; font-size: 10px; color: var(--quiet); line-height: 1.4; }
+.fit { margin: var(--s3) 0 0; font-size: 11px; color: var(--quiet-2); font-variant-numeric: tabular-nums; }
+.fit b { color: #dfe6f5; font-weight: 700; }
+.fit .krympt { color: var(--warn); }
 
 .kandidater { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s4); margin: var(--s4) 0 0; }
 .kandidat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: var(--s3); }
@@ -422,6 +422,13 @@ code { background: var(--sunk); border: 1px solid var(--line); border-radius: 4p
 .kandidat p { font-size: 12px; margin-bottom: var(--s2); }
 .kandidat ul { margin: 0; padding-left: 16px; font-size: 11px; color: var(--quiet-2); line-height: 1.6; }
 .kandidat li b { color: #dfe6f5; }
+
+.roster { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s4); }
+.rostblock { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: var(--s3); }
+.röst { display: flex; align-items: baseline; gap: var(--s3); padding: var(--s2) 0; border-top: 1px solid var(--line-soft); }
+.röst:first-of-type { border-top: 0; }
+.röst .etikett { flex: none; width: 58px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--quiet); }
+.röst .ord { color: #f2f5fb; line-height: 1.15; white-space: nowrap; }
 
 .summa { border-collapse: collapse; width: 100%; margin: var(--s3) 0 0; font-size: 12px; }
 .summa th, .summa td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; }
@@ -438,11 +445,12 @@ code { background: var(--sunk); border: 1px solid var(--line); border-radius: 4p
 .vagg .rad2 { display: flex; align-items: center; gap: var(--s2); font-size: 12px; }
 .vagg .prick { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); flex: none; }
 .vagg .tyst { color: var(--good); }
+.vagg .prick.god { background: var(--good); }
 .vagg .detalj { margin: 6px 0 0 18px; font-size: 11px; color: var(--quiet-2); }
 
 .fotnot { margin-top: var(--s5); padding-top: var(--s4); border-top: 1px solid var(--line); font-size: 11px; color: var(--quiet); }
 .fotnot ul { padding-left: 16px; line-height: 1.7; }
-@media (max-width: 1100px) { .rad, .kandidater { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 1100px) { .rad, .kandidater { grid-template-columns: repeat(2, 1fr); } .roster { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -469,12 +477,12 @@ code { background: var(--sunk); border: 1px solid var(--line); border-radius: 4p
 </div>
 <div class="kandidat" id="k-b">
   <h3><span class="märke ">B</span> Ett ansikte per ram</h3>
-  <p>En familj per ram, hela kortet i den: Klassisk är en antikva, Minimal en neutral grotesk, Mörk den kondenserade som redan finns ombord. Ett typsnitt per projekt.</p>
-  <ul><li><b>EB Garamond</b> — katalogen (#329) · OFL 1.1 · Georg Duffner, Octavio Pardo</li><li><b>Inter</b> — katalogen (#329) · OFL 1.1 · Rasmus Andersson</li><li><b>Roboto Condensed</b> — redan i bygget (K20, #95) — filten skriver i den</li></ul>
+  <p>En familj per ram, hela kortet satt i den: Klassisk en antikva, Minimal en neutral grotesk, Mörk en tätare och mer industriell. Ett typsnitt, en fil, per projekt. (Mörk skulle också kunna bära den ombordvarande kondenserade — det är kolumn A:s mörka kort.)</p>
+  <ul><li><b>EB Garamond</b> — katalogen (#329) · OFL 1.1 · Georg Duffner, Octavio Pardo</li><li><b>Inter</b> — katalogen (#329) · OFL 1.1 · Rasmus Andersson</li><li><b>Archivo</b> — katalogen (#329) · OFL 1.1 · Omnibus-Type</li></ul>
 </div>
 <div class="kandidat" id="k-c">
   <h3><span class="märke ">C</span> Rubrik och brödtext skilda</h3>
-  <p>Rubriken får ett eget ansikte och brödtexten ett läsbart. Mest utpräglade ramar — och två filer i varje projekt i stället för en.</p>
+  <p>Rubriken får ett eget ansikte och brödtexten ett som är byggt för att läsas smått. Mest utpräglade ramar — och två filer i varje projekt i stället för en.</p>
   <ul><li><b>Cinzel</b> — katalogen (#329) · OFL 1.1 · Natanael Gama</li><li><b>Crimson Pro</b> — katalogen (#329) · OFL 1.1 · Jacques Le Bailly</li><li><b>Archivo</b> — katalogen (#329) · OFL 1.1 · Omnibus-Type</li><li><b>Inter</b> — katalogen (#329) · OFL 1.1 · Rasmus Andersson</li><li><b>Oswald</b> — katalogen (#329) · OFL 1.1 · Vernon Adams m.fl.</li><li><b>Roboto Condensed</b> — redan i bygget (K20, #95) — filten skriver i den</li></ul>
 </div></div>
 
@@ -483,21 +491,25 @@ code { background: var(--sunk); border: 1px solid var(--line); border-radius: 4p
   <div class="rad"><div class="ruta">
   <div class="rutrubrik"><span class="märke bas">I dag</span> <span>Georgia, serif + system-ui</span></div>
   <div class="kortyta" id="c-classic-idag"><div data-card data-bleed="0"><div data-element="paper"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 69 94" preserveAspectRatio="none"><path d="M 0 0 L 69 0 L 69 94 L 0 94 Z" fill="#f4ead8"/></svg></div><div data-element="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57 82" preserveAspectRatio="none"><path d="M 3.3 0.3 L 53.7 0.3 A 3 3 0 0 1 56.7 3.3 L 56.7 78.7 A 3 3 0 0 1 53.7 81.7 L 3.3 81.7 A 3 3 0 0 1 0.3 78.7 L 0.3 3.3 A 3 3 0 0 1 3.3 0.3 Z" fill="none" stroke="#3a2a1a" stroke-width="0.6" stroke-linejoin="round"/></svg></div><div data-element="art"><img class="byd-art" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMjAgMTQ0Ij48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMyZDVhM2QiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMxYjM1MjciLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjIwIiBoZWlnaHQ9IjE0NCIgZmlsbD0idXJsKCNnKSIvPjxjaXJjbGUgY3g9IjE2OCIgY3k9IjM2IiByPSIxNyIgZmlsbD0iIzdmYTg2YiIgb3BhY2l0eT0iMC44NSIvPjxwYXRoIGQ9Ik0wIDEyMCBMMzYgNzQgTDcyIDEyMCBaIiBmaWxsPSIjMWIzNTI3IiBvcGFjaXR5PSIwLjkiLz48cGF0aCBkPSJNNTIgMTI0IEw5NiA2MiBMMTQwIDEyNCBaIiBmaWxsPSIjMWIzNTI3Ii8+PHBhdGggZD0iTTEyNCAxMjIgTDE2NCA3OCBMMjA0IDEyMiBaIiBmaWxsPSIjMWIzNTI3IiBvcGFjaXR5PSIwLjgiLz48cmVjdCB5PSIxMTgiIHdpZHRoPSIyMjAiIGhlaWdodD0iMjYiIGZpbGw9IiMxYjM1MjciLz48L3N2Zz4=" alt=""></div><div data-element="title" data-fit="shrink" data-size-pt="13" data-min-pt="6"><p>Skogsvakten</p></div><div data-element="body" data-fit="shrink" data-size-pt="8.5" data-min-pt="6"><p>När Skogsvakten kommer i spel: dra ett kort.</p><p>Så länge den står kvar får dina djur +1 i styrka.</p></div><div data-element="costbg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 9" preserveAspectRatio="none"><path d="M 0 4.5 A 4.5 4.5 0 1 0 9 4.5 A 4.5 4.5 0 1 0 0 4.5 Z" fill="#8b2e2e"/></svg></div><div data-element="cost" data-fit="fixed" data-size-pt="14" data-min-pt="6"><p>3</p></div></div></div>
+  <p class="fit" data-for="c-classic-idag"></p>
   <p class="check warn">Fysisk kontroll: <b>2</b> — typsnitt som inte följer med</p><p class="check-mer">Georgia, serif, system-ui följer inte med spelet</p>
 </div>
 <div class="ruta">
   <div class="rutrubrik"><span class="märke ">A</span> <span>Roboto Condensed</span></div>
   <div class="kortyta" id="c-classic-a"><div data-card data-bleed="0"><div data-element="paper"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 69 94" preserveAspectRatio="none"><path d="M 0 0 L 69 0 L 69 94 L 0 94 Z" fill="#f4ead8"/></svg></div><div data-element="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57 82" preserveAspectRatio="none"><path d="M 3.3 0.3 L 53.7 0.3 A 3 3 0 0 1 56.7 3.3 L 56.7 78.7 A 3 3 0 0 1 53.7 81.7 L 3.3 81.7 A 3 3 0 0 1 0.3 78.7 L 0.3 3.3 A 3 3 0 0 1 3.3 0.3 Z" fill="none" stroke="#3a2a1a" stroke-width="0.6" stroke-linejoin="round"/></svg></div><div data-element="art"><img class="byd-art" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMjAgMTQ0Ij48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMyZDVhM2QiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMxYjM1MjciLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjIwIiBoZWlnaHQ9IjE0NCIgZmlsbD0idXJsKCNnKSIvPjxjaXJjbGUgY3g9IjE2OCIgY3k9IjM2IiByPSIxNyIgZmlsbD0iIzdmYTg2YiIgb3BhY2l0eT0iMC44NSIvPjxwYXRoIGQ9Ik0wIDEyMCBMMzYgNzQgTDcyIDEyMCBaIiBmaWxsPSIjMWIzNTI3IiBvcGFjaXR5PSIwLjkiLz48cGF0aCBkPSJNNTIgMTI0IEw5NiA2MiBMMTQwIDEyNCBaIiBmaWxsPSIjMWIzNTI3Ii8+PHBhdGggZD0iTTEyNCAxMjIgTDE2NCA3OCBMMjA0IDEyMiBaIiBmaWxsPSIjMWIzNTI3IiBvcGFjaXR5PSIwLjgiLz48cmVjdCB5PSIxMTgiIHdpZHRoPSIyMjAiIGhlaWdodD0iMjYiIGZpbGw9IiMxYjM1MjciLz48L3N2Zz4=" alt=""></div><div data-element="title" data-fit="shrink" data-size-pt="13" data-min-pt="6"><p>Skogsvakten</p></div><div data-element="body" data-fit="shrink" data-size-pt="8.5" data-min-pt="6"><p>När Skogsvakten kommer i spel: dra ett kort.</p><p>Så länge den står kvar får dina djur +1 i styrka.</p></div><div data-element="costbg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 9" preserveAspectRatio="none"><path d="M 0 4.5 A 4.5 4.5 0 1 0 9 4.5 A 4.5 4.5 0 1 0 0 4.5 Z" fill="#8b2e2e"/></svg></div><div data-element="cost" data-fit="fixed" data-size-pt="14" data-min-pt="6"><p>3</p></div></div></div>
+  <p class="fit" data-for="c-classic-a"></p>
   <p class="check ok">Fysisk kontroll: <b>noll anmärkningar</b></p>
 </div>
 <div class="ruta">
   <div class="rutrubrik"><span class="märke ">B</span> <span>EB Garamond</span></div>
   <div class="kortyta" id="c-classic-b"><div data-card data-bleed="0"><div data-element="paper"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 69 94" preserveAspectRatio="none"><path d="M 0 0 L 69 0 L 69 94 L 0 94 Z" fill="#f4ead8"/></svg></div><div data-element="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57 82" preserveAspectRatio="none"><path d="M 3.3 0.3 L 53.7 0.3 A 3 3 0 0 1 56.7 3.3 L 56.7 78.7 A 3 3 0 0 1 53.7 81.7 L 3.3 81.7 A 3 3 0 0 1 0.3 78.7 L 0.3 3.3 A 3 3 0 0 1 3.3 0.3 Z" fill="none" stroke="#3a2a1a" stroke-width="0.6" stroke-linejoin="round"/></svg></div><div data-element="art"><img class="byd-art" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMjAgMTQ0Ij48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMyZDVhM2QiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMxYjM1MjciLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjIwIiBoZWlnaHQ9IjE0NCIgZmlsbD0idXJsKCNnKSIvPjxjaXJjbGUgY3g9IjE2OCIgY3k9IjM2IiByPSIxNyIgZmlsbD0iIzdmYTg2YiIgb3BhY2l0eT0iMC44NSIvPjxwYXRoIGQ9Ik0wIDEyMCBMMzYgNzQgTDcyIDEyMCBaIiBmaWxsPSIjMWIzNTI3IiBvcGFjaXR5PSIwLjkiLz48cGF0aCBkPSJNNTIgMTI0IEw5NiA2MiBMMTQwIDEyNCBaIiBmaWxsPSIjMWIzNTI3Ii8+PHBhdGggZD0iTTEyNCAxMjIgTDE2NCA3OCBMMjA0IDEyMiBaIiBmaWxsPSIjMWIzNTI3IiBvcGFjaXR5PSIwLjgiLz48cmVjdCB5PSIxMTgiIHdpZHRoPSIyMjAiIGhlaWdodD0iMjYiIGZpbGw9IiMxYjM1MjciLz48L3N2Zz4=" alt=""></div><div data-element="title" data-fit="shrink" data-size-pt="13" data-min-pt="6"><p>Skogsvakten</p></div><div data-element="body" data-fit="shrink" data-size-pt="8.5" data-min-pt="6"><p>När Skogsvakten kommer i spel: dra ett kort.</p><p>Så länge den står kvar får dina djur +1 i styrka.</p></div><div data-element="costbg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 9" preserveAspectRatio="none"><path d="M 0 4.5 A 4.5 4.5 0 1 0 9 4.5 A 4.5 4.5 0 1 0 0 4.5 Z" fill="#8b2e2e"/></svg></div><div data-element="cost" data-fit="fixed" data-size-pt="14" data-min-pt="6"><p>3</p></div></div></div>
+  <p class="fit" data-for="c-classic-b"></p>
   <p class="check ok">Fysisk kontroll: <b>noll anmärkningar</b></p>
 </div>
 <div class="ruta">
   <div class="rutrubrik"><span class="märke ">C</span> <span>Cinzel + Crimson Pro</span></div>
   <div class="kortyta" id="c-classic-c"><div data-card data-bleed="0"><div data-element="paper"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 69 94" preserveAspectRatio="none"><path d="M 0 0 L 69 0 L 69 94 L 0 94 Z" fill="#f4ead8"/></svg></div><div data-element="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57 82" preserveAspectRatio="none"><path d="M 3.3 0.3 L 53.7 0.3 A 3 3 0 0 1 56.7 3.3 L 56.7 78.7 A 3 3 0 0 1 53.7 81.7 L 3.3 81.7 A 3 3 0 0 1 0.3 78.7 L 0.3 3.3 A 3 3 0 0 1 3.3 0.3 Z" fill="none" stroke="#3a2a1a" stroke-width="0.6" stroke-linejoin="round"/></svg></div><div data-element="art"><img class="byd-art" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMjAgMTQ0Ij48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMyZDVhM2QiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMxYjM1MjciLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjIwIiBoZWlnaHQ9IjE0NCIgZmlsbD0idXJsKCNnKSIvPjxjaXJjbGUgY3g9IjE2OCIgY3k9IjM2IiByPSIxNyIgZmlsbD0iIzdmYTg2YiIgb3BhY2l0eT0iMC44NSIvPjxwYXRoIGQ9Ik0wIDEyMCBMMzYgNzQgTDcyIDEyMCBaIiBmaWxsPSIjMWIzNTI3IiBvcGFjaXR5PSIwLjkiLz48cGF0aCBkPSJNNTIgMTI0IEw5NiA2MiBMMTQwIDEyNCBaIiBmaWxsPSIjMWIzNTI3Ii8+PHBhdGggZD0iTTEyNCAxMjIgTDE2NCA3OCBMMjA0IDEyMiBaIiBmaWxsPSIjMWIzNTI3IiBvcGFjaXR5PSIwLjgiLz48cmVjdCB5PSIxMTgiIHdpZHRoPSIyMjAiIGhlaWdodD0iMjYiIGZpbGw9IiMxYjM1MjciLz48L3N2Zz4=" alt=""></div><div data-element="title" data-fit="shrink" data-size-pt="13" data-min-pt="6"><p>Skogsvakten</p></div><div data-element="body" data-fit="shrink" data-size-pt="8.5" data-min-pt="6"><p>När Skogsvakten kommer i spel: dra ett kort.</p><p>Så länge den står kvar får dina djur +1 i styrka.</p></div><div data-element="costbg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 9" preserveAspectRatio="none"><path d="M 0 4.5 A 4.5 4.5 0 1 0 9 4.5 A 4.5 4.5 0 1 0 0 4.5 Z" fill="#8b2e2e"/></svg></div><div data-element="cost" data-fit="fixed" data-size-pt="14" data-min-pt="6"><p>3</p></div></div></div>
+  <p class="fit" data-for="c-classic-c"></p>
   <p class="check ok">Fysisk kontroll: <b>noll anmärkningar</b></p>
 </div></div>
 </section>
@@ -506,21 +518,25 @@ code { background: var(--sunk); border: 1px solid var(--line); border-radius: 4p
   <div class="rad"><div class="ruta">
   <div class="rutrubrik"><span class="märke bas">I dag</span> <span>Georgia, serif + system-ui</span></div>
   <div class="kortyta" id="c-minimal-idag"><div data-card data-bleed="0"><div data-element="paper"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 69 94" preserveAspectRatio="none"><path d="M 0 0 L 69 0 L 69 94 L 0 94 Z" fill="#ffffff"/></svg></div><div data-element="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57 82" preserveAspectRatio="none"><path d="M 2.2 0.2 L 54.8 0.2 A 2 2 0 0 1 56.8 2.2 L 56.8 79.8 A 2 2 0 0 1 54.8 81.8 L 2.2 81.8 A 2 2 0 0 1 0.2 79.8 L 0.2 2.2 A 2 2 0 0 1 2.2 0.2 Z" fill="none" stroke="#111" stroke-width="0.4" stroke-linejoin="round"/></svg></div><div data-element="title" data-fit="shrink" data-size-pt="15" data-min-pt="6"><p>Skogsvakten</p></div><div data-element="cost" data-fit="fixed" data-size-pt="15" data-min-pt="6"><p>3</p></div><div data-element="rule"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 53 0.5" preserveAspectRatio="none"><path d="M 0 0 L 53 0 L 53 0.5 L 0 0.5 Z" fill="#111"/></svg></div><div data-element="body" data-fit="shrink" data-size-pt="10" data-min-pt="6"><p>När Skogsvakten kommer i spel: dra ett kort.</p><p>Så länge den står kvar får dina djur +1 i styrka.</p></div></div></div>
+  <p class="fit" data-for="c-minimal-idag"></p>
   <p class="check warn">Fysisk kontroll: <b>2</b> — typsnitt som inte följer med</p><p class="check-mer">system-ui följer inte med spelet</p>
 </div>
 <div class="ruta">
   <div class="rutrubrik"><span class="märke ">A</span> <span>Roboto Condensed</span></div>
   <div class="kortyta" id="c-minimal-a"><div data-card data-bleed="0"><div data-element="paper"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 69 94" preserveAspectRatio="none"><path d="M 0 0 L 69 0 L 69 94 L 0 94 Z" fill="#ffffff"/></svg></div><div data-element="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57 82" preserveAspectRatio="none"><path d="M 2.2 0.2 L 54.8 0.2 A 2 2 0 0 1 56.8 2.2 L 56.8 79.8 A 2 2 0 0 1 54.8 81.8 L 2.2 81.8 A 2 2 0 0 1 0.2 79.8 L 0.2 2.2 A 2 2 0 0 1 2.2 0.2 Z" fill="none" stroke="#111" stroke-width="0.4" stroke-linejoin="round"/></svg></div><div data-element="title" data-fit="shrink" data-size-pt="15" data-min-pt="6"><p>Skogsvakten</p></div><div data-element="cost" data-fit="fixed" data-size-pt="15" data-min-pt="6"><p>3</p></div><div data-element="rule"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 53 0.5" preserveAspectRatio="none"><path d="M 0 0 L 53 0 L 53 0.5 L 0 0.5 Z" fill="#111"/></svg></div><div data-element="body" data-fit="shrink" data-size-pt="10" data-min-pt="6"><p>När Skogsvakten kommer i spel: dra ett kort.</p><p>Så länge den står kvar får dina djur +1 i styrka.</p></div></div></div>
+  <p class="fit" data-for="c-minimal-a"></p>
   <p class="check ok">Fysisk kontroll: <b>noll anmärkningar</b></p>
 </div>
 <div class="ruta">
   <div class="rutrubrik"><span class="märke ">B</span> <span>Inter</span></div>
   <div class="kortyta" id="c-minimal-b"><div data-card data-bleed="0"><div data-element="paper"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 69 94" preserveAspectRatio="none"><path d="M 0 0 L 69 0 L 69 94 L 0 94 Z" fill="#ffffff"/></svg></div><div data-element="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57 82" preserveAspectRatio="none"><path d="M 2.2 0.2 L 54.8 0.2 A 2 2 0 0 1 56.8 2.2 L 56.8 79.8 A 2 2 0 0 1 54.8 81.8 L 2.2 81.8 A 2 2 0 0 1 0.2 79.8 L 0.2 2.2 A 2 2 0 0 1 2.2 0.2 Z" fill="none" stroke="#111" stroke-width="0.4" stroke-linejoin="round"/></svg></div><div data-element="title" data-fit="shrink" data-size-pt="15" data-min-pt="6"><p>Skogsvakten</p></div><div data-element="cost" data-fit="fixed" data-size-pt="15" data-min-pt="6"><p>3</p></div><div data-element="rule"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 53 0.5" preserveAspectRatio="none"><path d="M 0 0 L 53 0 L 53 0.5 L 0 0.5 Z" fill="#111"/></svg></div><div data-element="body" data-fit="shrink" data-size-pt="10" data-min-pt="6"><p>När Skogsvakten kommer i spel: dra ett kort.</p><p>Så länge den står kvar får dina djur +1 i styrka.</p></div></div></div>
+  <p class="fit" data-for="c-minimal-b"></p>
   <p class="check ok">Fysisk kontroll: <b>noll anmärkningar</b></p>
 </div>
 <div class="ruta">
   <div class="rutrubrik"><span class="märke ">C</span> <span>Archivo + Inter</span></div>
   <div class="kortyta" id="c-minimal-c"><div data-card data-bleed="0"><div data-element="paper"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 69 94" preserveAspectRatio="none"><path d="M 0 0 L 69 0 L 69 94 L 0 94 Z" fill="#ffffff"/></svg></div><div data-element="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57 82" preserveAspectRatio="none"><path d="M 2.2 0.2 L 54.8 0.2 A 2 2 0 0 1 56.8 2.2 L 56.8 79.8 A 2 2 0 0 1 54.8 81.8 L 2.2 81.8 A 2 2 0 0 1 0.2 79.8 L 0.2 2.2 A 2 2 0 0 1 2.2 0.2 Z" fill="none" stroke="#111" stroke-width="0.4" stroke-linejoin="round"/></svg></div><div data-element="title" data-fit="shrink" data-size-pt="15" data-min-pt="6"><p>Skogsvakten</p></div><div data-element="cost" data-fit="fixed" data-size-pt="15" data-min-pt="6"><p>3</p></div><div data-element="rule"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 53 0.5" preserveAspectRatio="none"><path d="M 0 0 L 53 0 L 53 0.5 L 0 0.5 Z" fill="#111"/></svg></div><div data-element="body" data-fit="shrink" data-size-pt="10" data-min-pt="6"><p>När Skogsvakten kommer i spel: dra ett kort.</p><p>Så länge den står kvar får dina djur +1 i styrka.</p></div></div></div>
+  <p class="fit" data-for="c-minimal-c"></p>
   <p class="check ok">Fysisk kontroll: <b>noll anmärkningar</b></p>
 </div></div>
 </section>
@@ -529,21 +545,25 @@ code { background: var(--sunk); border: 1px solid var(--line); border-radius: 4p
   <div class="rad"><div class="ruta">
   <div class="rutrubrik"><span class="märke bas">I dag</span> <span>Georgia, serif + system-ui</span></div>
   <div class="kortyta" id="c-dark-idag"><div data-card data-bleed="0"><div data-element="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 69 94" preserveAspectRatio="none"><path d="M 0 0 L 69 0 L 69 94 L 0 94 Z" fill="#1b1d23"/></svg></div><div data-element="art"><img class="byd-art" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMjAgMTQ0Ij48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMyZDVhM2QiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMxYjM1MjciLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjIwIiBoZWlnaHQ9IjE0NCIgZmlsbD0idXJsKCNnKSIvPjxjaXJjbGUgY3g9IjE2OCIgY3k9IjM2IiByPSIxNyIgZmlsbD0iIzdmYTg2YiIgb3BhY2l0eT0iMC44NSIvPjxwYXRoIGQ9Ik0wIDEyMCBMMzYgNzQgTDcyIDEyMCBaIiBmaWxsPSIjMWIzNTI3IiBvcGFjaXR5PSIwLjkiLz48cGF0aCBkPSJNNTIgMTI0IEw5NiA2MiBMMTQwIDEyNCBaIiBmaWxsPSIjMWIzNTI3Ii8+PHBhdGggZD0iTTEyNCAxMjIgTDE2NCA3OCBMMjA0IDEyMiBaIiBmaWxsPSIjMWIzNTI3IiBvcGFjaXR5PSIwLjgiLz48cmVjdCB5PSIxMTgiIHdpZHRoPSIyMjAiIGhlaWdodD0iMjYiIGZpbGw9IiMxYjM1MjciLz48L3N2Zz4=" alt=""></div><div data-element="plate"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57 32" preserveAspectRatio="none"><path d="M 2 0 L 55 0 A 2 2 0 0 1 57 2 L 57 30 A 2 2 0 0 1 55 32 L 2 32 A 2 2 0 0 1 0 30 L 0 2 A 2 2 0 0 1 2 0 Z" fill="#2a2d36"/></svg></div><div data-element="title" data-fit="shrink" data-size-pt="12" data-min-pt="6"><p>Skogsvakten</p></div><div data-element="body" data-fit="shrink" data-size-pt="8.5" data-min-pt="6"><p>När Skogsvakten kommer i spel: dra ett kort.</p><p>Så länge den står kvar får dina djur +1 i styrka.</p></div><div data-element="cost" data-fit="fixed" data-size-pt="14" data-min-pt="6"><p>3</p></div></div></div>
+  <p class="fit" data-for="c-dark-idag"></p>
   <p class="check warn">Fysisk kontroll: <b>2</b> — typsnitt som inte följer med</p><p class="check-mer">system-ui följer inte med spelet</p>
 </div>
 <div class="ruta">
   <div class="rutrubrik"><span class="märke ">A</span> <span>Roboto Condensed</span></div>
   <div class="kortyta" id="c-dark-a"><div data-card data-bleed="0"><div data-element="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 69 94" preserveAspectRatio="none"><path d="M 0 0 L 69 0 L 69 94 L 0 94 Z" fill="#1b1d23"/></svg></div><div data-element="art"><img class="byd-art" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMjAgMTQ0Ij48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMyZDVhM2QiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMxYjM1MjciLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjIwIiBoZWlnaHQ9IjE0NCIgZmlsbD0idXJsKCNnKSIvPjxjaXJjbGUgY3g9IjE2OCIgY3k9IjM2IiByPSIxNyIgZmlsbD0iIzdmYTg2YiIgb3BhY2l0eT0iMC44NSIvPjxwYXRoIGQ9Ik0wIDEyMCBMMzYgNzQgTDcyIDEyMCBaIiBmaWxsPSIjMWIzNTI3IiBvcGFjaXR5PSIwLjkiLz48cGF0aCBkPSJNNTIgMTI0IEw5NiA2MiBMMTQwIDEyNCBaIiBmaWxsPSIjMWIzNTI3Ii8+PHBhdGggZD0iTTEyNCAxMjIgTDE2NCA3OCBMMjA0IDEyMiBaIiBmaWxsPSIjMWIzNTI3IiBvcGFjaXR5PSIwLjgiLz48cmVjdCB5PSIxMTgiIHdpZHRoPSIyMjAiIGhlaWdodD0iMjYiIGZpbGw9IiMxYjM1MjciLz48L3N2Zz4=" alt=""></div><div data-element="plate"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57 32" preserveAspectRatio="none"><path d="M 2 0 L 55 0 A 2 2 0 0 1 57 2 L 57 30 A 2 2 0 0 1 55 32 L 2 32 A 2 2 0 0 1 0 30 L 0 2 A 2 2 0 0 1 2 0 Z" fill="#2a2d36"/></svg></div><div data-element="title" data-fit="shrink" data-size-pt="12" data-min-pt="6"><p>Skogsvakten</p></div><div data-element="body" data-fit="shrink" data-size-pt="8.5" data-min-pt="6"><p>När Skogsvakten kommer i spel: dra ett kort.</p><p>Så länge den står kvar får dina djur +1 i styrka.</p></div><div data-element="cost" data-fit="fixed" data-size-pt="14" data-min-pt="6"><p>3</p></div></div></div>
+  <p class="fit" data-for="c-dark-a"></p>
   <p class="check ok">Fysisk kontroll: <b>noll anmärkningar</b></p>
 </div>
 <div class="ruta">
-  <div class="rutrubrik"><span class="märke ">B</span> <span>Roboto Condensed</span></div>
+  <div class="rutrubrik"><span class="märke ">B</span> <span>Archivo</span></div>
   <div class="kortyta" id="c-dark-b"><div data-card data-bleed="0"><div data-element="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 69 94" preserveAspectRatio="none"><path d="M 0 0 L 69 0 L 69 94 L 0 94 Z" fill="#1b1d23"/></svg></div><div data-element="art"><img class="byd-art" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMjAgMTQ0Ij48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMyZDVhM2QiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMxYjM1MjciLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjIwIiBoZWlnaHQ9IjE0NCIgZmlsbD0idXJsKCNnKSIvPjxjaXJjbGUgY3g9IjE2OCIgY3k9IjM2IiByPSIxNyIgZmlsbD0iIzdmYTg2YiIgb3BhY2l0eT0iMC44NSIvPjxwYXRoIGQ9Ik0wIDEyMCBMMzYgNzQgTDcyIDEyMCBaIiBmaWxsPSIjMWIzNTI3IiBvcGFjaXR5PSIwLjkiLz48cGF0aCBkPSJNNTIgMTI0IEw5NiA2MiBMMTQwIDEyNCBaIiBmaWxsPSIjMWIzNTI3Ii8+PHBhdGggZD0iTTEyNCAxMjIgTDE2NCA3OCBMMjA0IDEyMiBaIiBmaWxsPSIjMWIzNTI3IiBvcGFjaXR5PSIwLjgiLz48cmVjdCB5PSIxMTgiIHdpZHRoPSIyMjAiIGhlaWdodD0iMjYiIGZpbGw9IiMxYjM1MjciLz48L3N2Zz4=" alt=""></div><div data-element="plate"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57 32" preserveAspectRatio="none"><path d="M 2 0 L 55 0 A 2 2 0 0 1 57 2 L 57 30 A 2 2 0 0 1 55 32 L 2 32 A 2 2 0 0 1 0 30 L 0 2 A 2 2 0 0 1 2 0 Z" fill="#2a2d36"/></svg></div><div data-element="title" data-fit="shrink" data-size-pt="12" data-min-pt="6"><p>Skogsvakten</p></div><div data-element="body" data-fit="shrink" data-size-pt="8.5" data-min-pt="6"><p>När Skogsvakten kommer i spel: dra ett kort.</p><p>Så länge den står kvar får dina djur +1 i styrka.</p></div><div data-element="cost" data-fit="fixed" data-size-pt="14" data-min-pt="6"><p>3</p></div></div></div>
+  <p class="fit" data-for="c-dark-b"></p>
   <p class="check ok">Fysisk kontroll: <b>noll anmärkningar</b></p>
 </div>
 <div class="ruta">
   <div class="rutrubrik"><span class="märke ">C</span> <span>Oswald + Roboto Condensed</span></div>
   <div class="kortyta" id="c-dark-c"><div data-card data-bleed="0"><div data-element="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 69 94" preserveAspectRatio="none"><path d="M 0 0 L 69 0 L 69 94 L 0 94 Z" fill="#1b1d23"/></svg></div><div data-element="art"><img class="byd-art" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMjAgMTQ0Ij48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMyZDVhM2QiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMxYjM1MjciLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMjIwIiBoZWlnaHQ9IjE0NCIgZmlsbD0idXJsKCNnKSIvPjxjaXJjbGUgY3g9IjE2OCIgY3k9IjM2IiByPSIxNyIgZmlsbD0iIzdmYTg2YiIgb3BhY2l0eT0iMC44NSIvPjxwYXRoIGQ9Ik0wIDEyMCBMMzYgNzQgTDcyIDEyMCBaIiBmaWxsPSIjMWIzNTI3IiBvcGFjaXR5PSIwLjkiLz48cGF0aCBkPSJNNTIgMTI0IEw5NiA2MiBMMTQwIDEyNCBaIiBmaWxsPSIjMWIzNTI3Ii8+PHBhdGggZD0iTTEyNCAxMjIgTDE2NCA3OCBMMjA0IDEyMiBaIiBmaWxsPSIjMWIzNTI3IiBvcGFjaXR5PSIwLjgiLz48cmVjdCB5PSIxMTgiIHdpZHRoPSIyMjAiIGhlaWdodD0iMjYiIGZpbGw9IiMxYjM1MjciLz48L3N2Zz4=" alt=""></div><div data-element="plate"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57 32" preserveAspectRatio="none"><path d="M 2 0 L 55 0 A 2 2 0 0 1 57 2 L 57 30 A 2 2 0 0 1 55 32 L 2 32 A 2 2 0 0 1 0 30 L 0 2 A 2 2 0 0 1 2 0 Z" fill="#2a2d36"/></svg></div><div data-element="title" data-fit="shrink" data-size-pt="12" data-min-pt="6"><p>Skogsvakten</p></div><div data-element="body" data-fit="shrink" data-size-pt="8.5" data-min-pt="6"><p>När Skogsvakten kommer i spel: dra ett kort.</p><p>Så länge den står kvar får dina djur +1 i styrka.</p></div><div data-element="cost" data-fit="fixed" data-size-pt="14" data-min-pt="6"><p>3</p></div></div></div>
+  <p class="fit" data-for="c-dark-c"></p>
   <p class="check ok">Fysisk kontroll: <b>noll anmärkningar</b></p>
 </div></div>
 </section>
@@ -568,12 +588,18 @@ code { background: var(--sunk); border: 1px solid var(--line); border-radius: 4p
 </div></div>
 </section>
 
+<section class="ram" id="roster">
+  <h2>Håller de tre ramarna isär?</h2>
+  <p>Samma ord ur varje ram, i den grad ramen sätter rubriken i, förstorat två gånger. Tre röster är tre ramar; en röst tre gånger är en ram.</p>
+  <div class="roster"><div class="rostblock"><div class="rutrubrik"><span class="märke bas">I dag</span></div><div class="röst"><span class="etikett">Klassisk</span><span class="ord" style="font-family:Georgia, serif;font-size:26pt;font-weight:800">Skogsvakten</span></div><div class="röst"><span class="etikett">Minimal</span><span class="ord" style="font-family:system-ui;font-size:30pt;font-weight:800">Skogsvakten</span></div><div class="röst"><span class="etikett">Mörk</span><span class="ord" style="font-family:system-ui;font-size:24pt;font-weight:800">Skogsvakten</span></div></div><div class="rostblock"><div class="rutrubrik"><span class="märke ">A</span></div><div class="röst"><span class="etikett">Klassisk</span><span class="ord" style="font-family:'Roboto Condensed', sans-serif;font-size:26pt;font-weight:800">Skogsvakten</span></div><div class="röst"><span class="etikett">Minimal</span><span class="ord" style="font-family:'Roboto Condensed', sans-serif;font-size:30pt;font-weight:800">Skogsvakten</span></div><div class="röst"><span class="etikett">Mörk</span><span class="ord" style="font-family:'Roboto Condensed', sans-serif;font-size:24pt;font-weight:800">Skogsvakten</span></div></div><div class="rostblock"><div class="rutrubrik"><span class="märke ">B</span></div><div class="röst"><span class="etikett">Klassisk</span><span class="ord" style="font-family:'EB Garamond', serif;font-size:26pt;font-weight:800">Skogsvakten</span></div><div class="röst"><span class="etikett">Minimal</span><span class="ord" style="font-family:'Inter', sans-serif;font-size:30pt;font-weight:800">Skogsvakten</span></div><div class="röst"><span class="etikett">Mörk</span><span class="ord" style="font-family:'Archivo', sans-serif;font-size:24pt;font-weight:800">Skogsvakten</span></div></div><div class="rostblock"><div class="rutrubrik"><span class="märke ">C</span></div><div class="röst"><span class="etikett">Klassisk</span><span class="ord" style="font-family:'Cinzel', serif;font-size:26pt;font-weight:800">Skogsvakten</span></div><div class="röst"><span class="etikett">Minimal</span><span class="ord" style="font-family:'Archivo', sans-serif;font-size:30pt;font-weight:800">Skogsvakten</span></div><div class="röst"><span class="etikett">Mörk</span><span class="ord" style="font-family:'Oswald', sans-serif;font-size:24pt;font-weight:800">Skogsvakten</span></div></div></div>
+</section>
+
 <section class="ram">
   <h2>Väg 1: går den fysiska kontrollen till noll?</h2>
   <p>Räknat på båda korten, alla anmärkningar och inte bara typsnittets.</p>
   <table class="summa">
 <thead><tr><th>Ram</th><th>I dag</th><th>A</th><th>B</th><th>C</th></tr></thead>
-<tbody><tr><th>Klassisk</th><td class="warn">2 · typsnitt som inte följer med</td><td class="ok">0</td><td class="ok">0</td><td class="ok">0</td></tr><tr><th>Minimal</th><td class="warn">2 · typsnitt som inte följer med</td><td class="ok">0</td><td class="ok">0</td><td class="ok">0</td></tr><tr><th>Mörk</th><td class="warn">2 · typsnitt som inte följer med</td><td class="ok">0</td><td class="ok">0</td><td class="ok">0</td></tr></tbody>
+<tbody><tr><th>Klassisk</th><td class="warn">2 · typsnitt som inte följer med</td><td class="ok">noll anmärkningar</td><td class="ok">noll anmärkningar</td><td class="ok">noll anmärkningar</td></tr><tr><th>Minimal</th><td class="warn">2 · typsnitt som inte följer med</td><td class="ok">noll anmärkningar</td><td class="ok">noll anmärkningar</td><td class="ok">noll anmärkningar</td></tr><tr><th>Mörk</th><td class="warn">2 · typsnitt som inte följer med</td><td class="ok">noll anmärkningar</td><td class="ok">noll anmärkningar</td><td class="ok">noll anmärkningar</td></tr></tbody>
 </table>
 </section>
 
@@ -583,11 +609,11 @@ code { background: var(--sunk); border: 1px solid var(--line); border-radius: 4p
     <h3>Vad det betyder i kortväggen</h3>
     <p>Ramarna står kvar i <code>Georgia</code> och <code>system-ui</code>, och kontrollen tiger om typsnittet tills formgivaren gjort något — bytt en familj, laddat upp en fil, rört mallen.</p>
     <div class="vagg">
-      <div class="titel">Fysisk kontroll</div>
-      <div class="rad2"><span class="prick"></span> <span><b>Väg 1:</b> noll anmärkningar</span></div>
-      <p class="detalj">Kortet är tryckbart som det står. Filen följer med projektet.</p>
-      <div class="rad2 tyst"><span class="prick" style="background:var(--good)"></span> <span><b>Väg 2:</b> tyst — men <code>system-ui</code> är fortfarande ett annat ansikte hos tryckeriet</span></div>
-      <p class="detalj">Varningen är sann från första sekunden. Att tysta den är att göra kontrollen mindre sann: felet finns kvar, och formgivaren får veta om det först när hon rört något annat — eller vid tryck.</p>
+      <div class="titel">Fysisk kontroll, formgivarens första skärm</div>
+      <div class="rad2 tyst"><span class="prick god"></span> <span><b>Väg 1:</b> noll anmärkningar — och kortet <i>är</i> tryckbart</span></div>
+      <p class="detalj">Ramen bär ett ansikte versionen håller. Filen följer med projektet, och trycket blir det formgivaren såg.</p>
+      <div class="rad2"><span class="prick"></span> <span><b>Väg 2:</b> noll anmärkningar — men kortet är inte tryckbart</span></div>
+      <p class="detalj">Väggen är lika tyst som i väg 1, och felet finns kvar: <code>system-ui</code> är ett ansikte på formgivarens Mac, ett annat i renderarens Chromium och ett tredje hos tryckeriet. Varningen är sann från första sekunden — att skjuta upp den är att låta kontrollen säga något annat än vad som gäller, och formgivaren får veta först när hon rört något annat eller står med trycket i handen.</p>
     </div>
   </div>
 </section>
@@ -596,11 +622,51 @@ code { background: var(--sunk); border: 1px solid var(--line); border-radius: 4p
   <b>Vad som är mätt och vad som är påstått</b>
   <ul>
     <li><b>Mätt:</b> kortens geometri och sättning (<code>compile</code>), och antalet anmärkningar (<code>validateCard</code>) på båda korten i varje ruta.</li>
-    <li><b>Mätt:</b> att varje familj laddas ur sin egen fil — sidan har ett <code>@font-face</code> per familj och inget systemtypsnitt bakom.</li>
-    <li><b>Påstått:</b> ingenting om vikt eller läsbarhet som inte syns i bilden. <code>Oswald</code> bär 200–700 och ramen Mörk ber om 800; webbläsaren klämmer till 700, och det syns i kandidat C.</li>
+    <li><b>Mätt:</b> sättningen efter <code>fitInDocument</code> — samma slinga editorn kör — och graden varje textruta landade på står under kortet. Ett typsnitt som inte får plats syns som en lägre grad, inte som ett tyst överflöd.</li>
+    <li><b>Mätt:</b> att varje familj laddas ur sin egen fil. Sidan skriver inga egna <code>@font-face</code>: varje ansikte kommer ur <code>compile</code>s egen regel, exakt den renderaren får.</li>
+    <li><b>Påstått:</b> ingenting om vikt eller läsbarhet som inte syns i bilden. <code>Oswald</code> bär 200–700 och ramen Mörk ber om 800; vad webbläsaren gör med den skillnaden står i bilden och ingen annanstans.</li>
     <li><b>Utanför prototypen:</b> hur filen hamnar i projektet. Två vägar finns: skeppa bytesen med bygget som K20 redan gör, eller låta wizarden hämta familjen genom katalogens väg (#329) när spelet skapas. Det är ett beslut om drift, inte om form.</li>
   </ul>
 </div>
 </div>
+
+<script type="module">
+// fitInDocument ur packages/template/src/dom-fit.ts, ord för ord. Utan den läser man en
+// sättning editorn aldrig visar: en textruta med data-fit="shrink" kliver ner en halv punkt i
+// taget tills orden får plats, och hur långt den måste kliva beror på just typsnittet.
+function fitInDocument(root) {
+  const out = []
+  for (const el of root.querySelectorAll('[data-element][data-fit]')) {
+    const start = Number(el.dataset['sizePt'])
+    const min = Number(el.dataset['minPt'])
+    const shrink = el.dataset['fit'] === 'shrink'
+    let size = start
+    el.style.fontSize = size + 'pt'
+    const overflows = () => el.scrollHeight > el.clientHeight + 0.5 || el.scrollWidth > el.clientWidth + 0.5
+    if (shrink) {
+      while (overflows() && size - 0.5 >= min - 1e-9) {
+        size -= 0.5
+        el.style.fontSize = size + 'pt'
+      }
+    }
+    out.push({ element: el.dataset['element'] ?? '', sizePt: size, start, overflow: overflows() })
+  }
+  return out
+}
+
+await document.fonts.ready
+for (const kortyta of document.querySelectorAll('.kortyta')) fitInDocument(kortyta)
+
+for (const rad of document.querySelectorAll('.fit')) {
+  const kortyta = document.getElementById(rad.dataset['for'])
+  const mätt = fitInDocument(kortyta)
+  rad.innerHTML = mätt
+    .map((m) => {
+      const krympt = m.sizePt < m.start
+      return '<span class="' + (krympt ? 'krympt' : '') + '">' + m.element + ' <b>' + m.sizePt + ' pt</b>' + (krympt ? ' (av ' + m.start + ')' : '') + '</span>'
+    })
+    .join(' · ')
+}
+</script>
 </body>
 </html>
