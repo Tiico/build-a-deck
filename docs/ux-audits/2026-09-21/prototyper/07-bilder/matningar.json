@@ -1,0 +1,8045 @@
+{
+ "s4h5/1920x1080/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 770,
+    "top": 1073.2,
+    "right": 792,
+    "bottom": 1091.5,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 11.5
+    },
+    "onCardsPct": 68,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 770,
+    "top": -15.7,
+    "right": 792,
+    "bottom": 2.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 15.7,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 22,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1527.9,
+    "top": 604.3,
+    "right": 1549.9,
+    "bottom": 622.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 68,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 12.1,
+    "top": 604.3,
+    "right": 34.1,
+    "bottom": 622.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 68,
+    "hidesCardPct": 3
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h5/1920x1080/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 770,
+    "top": 971.8,
+    "right": 792,
+    "bottom": 990.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 87,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 770,
+    "top": 91.8,
+    "right": 792,
+    "bottom": 110.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1465.2,
+    "top": 531.8,
+    "right": 1487.3,
+    "bottom": 550.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 74.7,
+    "top": 531.8,
+    "right": 96.7,
+    "bottom": 550.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h5/1920x1080/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 707.3,
+    "top": 971.8,
+    "right": 729.4,
+    "bottom": 990.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 87,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 707.3,
+    "top": 91.8,
+    "right": 729.4,
+    "bottom": 110.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1465.2,
+    "top": 505.3,
+    "right": 1487.3,
+    "bottom": 523.7,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 74.7,
+    "top": 505.3,
+    "right": 96.7,
+    "bottom": 523.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h5/1920x1080/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h5/1920x1080/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 770,
+    "top": 955.7,
+    "right": 792,
+    "bottom": 974.1,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 770,
+    "top": 110.2,
+    "right": 792,
+    "bottom": 128.5,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1443.2,
+    "top": 531.8,
+    "right": 1465.2,
+    "bottom": 550.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 96.8,
+    "top": 531.8,
+    "right": 118.8,
+    "bottom": 550.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [
+   "hand:A bricka × mine:A",
+   "hand:B bricka × mine:B",
+   "hand:C bricka × mine:C",
+   "hand:D bricka × mine:D"
+  ],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h5/1280x720/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 450,
+    "top": 673,
+    "right": 472,
+    "bottom": 691.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 40,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 450,
+    "top": 26.9,
+    "right": 472,
+    "bottom": 45.3,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 13,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 894.4,
+    "top": 398.1,
+    "right": 916.4,
+    "bottom": 416.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 40,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 5.5,
+    "top": 398.1,
+    "right": 27.6,
+    "bottom": 416.5,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 40,
+    "hidesCardPct": 4
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h5/1280x720/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 450,
+    "top": 613.6,
+    "right": 472,
+    "bottom": 632,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 92,
+    "hidesCardPct": 10
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 450,
+    "top": 89.9,
+    "right": 472,
+    "bottom": 108.3,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 862.2,
+    "top": 351.8,
+    "right": 884.3,
+    "bottom": 370.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 37.7,
+    "top": 351.8,
+    "right": 59.7,
+    "bottom": 370.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h5/1280x720/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 417.8,
+    "top": 613.6,
+    "right": 439.9,
+    "bottom": 632,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 92,
+    "hidesCardPct": 10
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 417.8,
+    "top": 89.9,
+    "right": 439.9,
+    "bottom": 108.3,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 862.2,
+    "top": 340,
+    "right": 884.3,
+    "bottom": 358.4,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 37.7,
+    "top": 340,
+    "right": 59.7,
+    "bottom": 358.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h5/1280x720/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h5/1280x720/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 450,
+    "top": 596.6,
+    "right": 472,
+    "bottom": 615,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 450,
+    "top": 108.3,
+    "right": 472,
+    "bottom": 126.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 840.2,
+    "top": 351.8,
+    "right": 862.3,
+    "bottom": 370.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 59.7,
+    "top": 351.8,
+    "right": 81.8,
+    "bottom": 370.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [
+   "hand:A bricka × mine:A",
+   "hand:B bricka × mine:B",
+   "hand:C bricka × mine:C",
+   "hand:D bricka × mine:D"
+  ],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h5/2560x1440/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 1090,
+    "top": 1449.8,
+    "right": 1112,
+    "bottom": 1468.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 28.200000000000045
+    },
+    "onCardsPct": 93,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 1090,
+    "top": -34.6,
+    "right": 1112,
+    "bottom": -16.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 34.6,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 30,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 2127.9,
+    "top": 807.8,
+    "right": 2150,
+    "bottom": 826.1,
+    "w": 22.1,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 93,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 52,
+    "top": 807.8,
+    "right": 74,
+    "bottom": 826.1,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 93,
+    "hidesCardPct": 2
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h5/2560x1440/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 1090,
+    "top": 1311,
+    "right": 1112,
+    "bottom": 1329.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 83,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 1090,
+    "top": 112.6,
+    "right": 1112,
+    "bottom": 131,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 99,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 2038.1,
+    "top": 711.8,
+    "right": 2060.1,
+    "bottom": 730.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 141.8,
+    "top": 711.8,
+    "right": 163.9,
+    "bottom": 730.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 2
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h5/2560x1440/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 1000.1,
+    "top": 1311,
+    "right": 1022.2,
+    "bottom": 1329.4,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 83,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 1000.1,
+    "top": 112.6,
+    "right": 1022.2,
+    "bottom": 131,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 99,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 2038.1,
+    "top": 672.1,
+    "right": 2060.1,
+    "bottom": 690.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 141.8,
+    "top": 672.1,
+    "right": 163.9,
+    "bottom": 690.5,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 2
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h5/2560x1440/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h5/2560x1440/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 1090,
+    "top": 1295.8,
+    "right": 1112,
+    "bottom": 1314.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 1,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 1090,
+    "top": 130.9,
+    "right": 1112,
+    "bottom": 149.3,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 2016.1,
+    "top": 711.8,
+    "right": 2038.1,
+    "bottom": 730.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 163.9,
+    "top": 711.8,
+    "right": 185.9,
+    "bottom": 730.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [
+   "hand:C bricka × mine:C",
+   "hand:D bricka × mine:D"
+  ],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s2h5/1920x1080/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 770,
+    "top": 1087.6,
+    "right": 792,
+    "bottom": 1106,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 26
+    },
+    "onCardsPct": 70,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 770,
+    "top": -30.3,
+    "right": 792,
+    "bottom": -11.9,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 30.3,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 23,
+    "hidesCardPct": 1
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 82,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s2h5/1920x1080/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 770,
+    "top": 983.5,
+    "right": 792,
+    "bottom": 1001.9,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 88,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 770,
+    "top": 80.1,
+    "right": 792,
+    "bottom": 98.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 82,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s2h5/1920x1080/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 705.4,
+    "top": 983.5,
+    "right": 727.4,
+    "bottom": 1001.9,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 88,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 705.4,
+    "top": 80.1,
+    "right": 727.4,
+    "bottom": 98.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 82,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s2h5/1920x1080/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 82,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s2h5/1920x1080/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 770,
+    "top": 967.5,
+    "right": 792,
+    "bottom": 985.9,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 1,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 770,
+    "top": 98.5,
+    "right": 792,
+    "bottom": 116.8,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [
+   "hand:A bricka × mine:A",
+   "hand:B bricka × mine:B"
+  ],
+  "cardPx": 82,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s2h5/1280x720/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 450,
+    "top": 725.4,
+    "right": 472,
+    "bottom": 743.8,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 23.799999999999955
+    },
+    "onCardsPct": 46,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 450,
+    "top": -26,
+    "right": 472,
+    "bottom": -7.6,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 26,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 15,
+    "hidesCardPct": 1
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 54.7,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s2h5/1280x720/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 450,
+    "top": 656,
+    "right": 472,
+    "bottom": 674.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 91,
+    "hidesCardPct": 7
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 450,
+    "top": 47.6,
+    "right": 472,
+    "bottom": 66,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 8
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 54.7,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s2h5/1280x720/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 410.6,
+    "top": 656,
+    "right": 432.6,
+    "bottom": 674.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 91,
+    "hidesCardPct": 7
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 410.6,
+    "top": 47.6,
+    "right": 432.6,
+    "bottom": 66,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 8
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 54.7,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s2h5/1280x720/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 54.7,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s2h5/1280x720/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 450,
+    "top": 639.2,
+    "right": 472,
+    "bottom": 657.6,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 450,
+    "top": 66,
+    "right": 472,
+    "bottom": 84.3,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [
+   "hand:A bricka × mine:A",
+   "hand:B bricka × mine:B"
+  ],
+  "cardPx": 54.7,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s2h5/2560x1440/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 1090,
+    "top": 1449.8,
+    "right": 1112,
+    "bottom": 1468.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 28.200000000000045
+    },
+    "onCardsPct": 93,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 1090,
+    "top": -34.6,
+    "right": 1112,
+    "bottom": -16.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 34.6,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 30,
+    "hidesCardPct": 1
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s2h5/2560x1440/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 1090,
+    "top": 1311,
+    "right": 1112,
+    "bottom": 1329.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 83,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 1090,
+    "top": 112.6,
+    "right": 1112,
+    "bottom": 131,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 99,
+    "hidesCardPct": 2
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s2h5/2560x1440/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 1000.1,
+    "top": 1311,
+    "right": 1022.2,
+    "bottom": 1329.4,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 83,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 1000.1,
+    "top": 112.6,
+    "right": 1022.2,
+    "bottom": 131,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 99,
+    "hidesCardPct": 2
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s2h5/2560x1440/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s2h5/2560x1440/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 1090,
+    "top": 1295.8,
+    "right": 1112,
+    "bottom": 1314.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 1,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 1090,
+    "top": 130.9,
+    "right": 1112,
+    "bottom": 149.3,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s6h5/1920x1080/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 518,
+    "top": 893.8,
+    "right": 540,
+    "bottom": 912.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 45,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 518,
+    "top": 165.8,
+    "right": 540,
+    "bottom": 184.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 15,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1524.4,
+    "top": 583,
+    "right": 1546.4,
+    "bottom": 601.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 45,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 15.5,
+    "top": 583,
+    "right": 37.6,
+    "bottom": 601.4,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 45,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 1022,
+    "top": 893.8,
+    "right": 1044,
+    "bottom": 912.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 45,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 1022,
+    "top": 165.8,
+    "right": 1044,
+    "bottom": 184.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 15,
+    "hidesCardPct": 1
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 52.9,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s6h5/1920x1080/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 518,
+    "top": 826.6,
+    "right": 540,
+    "bottom": 845,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 92,
+    "hidesCardPct": 8
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 518,
+    "top": 237,
+    "right": 540,
+    "bottom": 255.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 9
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1486.6,
+    "top": 531.8,
+    "right": 1508.6,
+    "bottom": 550.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 9
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 53.3,
+    "top": 531.8,
+    "right": 75.4,
+    "bottom": 550.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 9
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 1022,
+    "top": 826.6,
+    "right": 1044,
+    "bottom": 845,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 92,
+    "hidesCardPct": 8
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 1022,
+    "top": 237,
+    "right": 1044,
+    "bottom": 255.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 9
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 52.9,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s6h5/1920x1080/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 480.2,
+    "top": 826.6,
+    "right": 502.2,
+    "bottom": 845,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 92,
+    "hidesCardPct": 8
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 480.2,
+    "top": 237,
+    "right": 502.2,
+    "bottom": 255.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 9
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1486.6,
+    "top": 517.3,
+    "right": 1508.6,
+    "bottom": 535.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 9
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 53.3,
+    "top": 517.3,
+    "right": 75.4,
+    "bottom": 535.7,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 9
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 984.2,
+    "top": 826.6,
+    "right": 1006.2,
+    "bottom": 845,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 92,
+    "hidesCardPct": 8
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 984.2,
+    "top": 237,
+    "right": 1006.2,
+    "bottom": 255.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 9
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 52.9,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s6h5/1920x1080/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 52.9,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s6h5/1920x1080/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 518,
+    "top": 809.7,
+    "right": 540,
+    "bottom": 828.1,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 518,
+    "top": 255.4,
+    "right": 540,
+    "bottom": 273.8,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1464.6,
+    "top": 531.8,
+    "right": 1486.6,
+    "bottom": 550.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 75.4,
+    "top": 531.8,
+    "right": 97.4,
+    "bottom": 550.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 1022,
+    "top": 809.7,
+    "right": 1044,
+    "bottom": 828.1,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 1022,
+    "top": 255.4,
+    "right": 1044,
+    "bottom": 273.8,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [
+   "hand:A bricka × mine:A",
+   "hand:B bricka × mine:B",
+   "hand:C bricka × mine:C",
+   "hand:D bricka × mine:D",
+   "hand:E bricka × mine:E",
+   "hand:F bricka × mine:F"
+  ],
+  "cardPx": 52.9,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s6h5/1280x720/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 302.2,
+    "top": 567.9,
+    "right": 324.2,
+    "bottom": 586.3,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 23,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 302.2,
+    "top": 133.3,
+    "right": 324.2,
+    "bottom": 151.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 8,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 892.4,
+    "top": 385.6,
+    "right": 914.4,
+    "bottom": 404,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 23,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 7.6,
+    "top": 385.6,
+    "right": 29.6,
+    "bottom": 404,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 23,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 597.7,
+    "top": 567.9,
+    "right": 619.8,
+    "bottom": 586.3,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 23,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 597.7,
+    "top": 133.3,
+    "right": 619.8,
+    "bottom": 151.7,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 8,
+    "hidesCardPct": 2
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 31,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s6h5/1280x720/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 302.2,
+    "top": 528.5,
+    "right": 324.3,
+    "bottom": 546.8,
+    "w": 22.1,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 94,
+    "hidesCardPct": 24
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 302.2,
+    "top": 175.1,
+    "right": 324.3,
+    "bottom": 193.5,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 87,
+    "hidesCardPct": 22
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 874.8,
+    "top": 351.8,
+    "right": 896.8,
+    "bottom": 370.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 25
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 25.2,
+    "top": 351.8,
+    "right": 47.2,
+    "bottom": 370.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 25
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 597.8,
+    "top": 528.5,
+    "right": 619.8,
+    "bottom": 546.8,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 94,
+    "hidesCardPct": 24
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 597.8,
+    "top": 175.1,
+    "right": 619.8,
+    "bottom": 193.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 87,
+    "hidesCardPct": 22
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 31,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s6h5/1280x720/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 284.6,
+    "top": 528.5,
+    "right": 306.6,
+    "bottom": 546.8,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 96,
+    "hidesCardPct": 24
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 284.6,
+    "top": 175.1,
+    "right": 306.6,
+    "bottom": 193.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 25
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 874.8,
+    "top": 347.1,
+    "right": 896.8,
+    "bottom": 365.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 25
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 25.2,
+    "top": 347.1,
+    "right": 47.2,
+    "bottom": 365.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 25
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 580.1,
+    "top": 528.5,
+    "right": 602.2,
+    "bottom": 546.8,
+    "w": 22.1,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 96,
+    "hidesCardPct": 24
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 580.1,
+    "top": 175.1,
+    "right": 602.2,
+    "bottom": 193.5,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 26
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 31,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s6h5/1280x720/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 31,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s6h5/1280x720/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 302.2,
+    "top": 511,
+    "right": 324.3,
+    "bottom": 529.4,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 302.2,
+    "top": 193.5,
+    "right": 324.3,
+    "bottom": 211.9,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 852.7,
+    "top": 351.8,
+    "right": 874.8,
+    "bottom": 370.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 47.2,
+    "top": 351.8,
+    "right": 69.3,
+    "bottom": 370.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 597.8,
+    "top": 511,
+    "right": 619.8,
+    "bottom": 529.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 597.8,
+    "top": 193.5,
+    "right": 619.8,
+    "bottom": 211.9,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [
+   "hand:A bricka × mine:A",
+   "hand:B bricka × mine:B",
+   "hand:C bricka × mine:C",
+   "hand:D bricka × mine:D",
+   "hand:E bricka × mine:E",
+   "hand:F bricka × mine:F"
+  ],
+  "cardPx": 31,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s6h5/2560x1440/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 733.7,
+    "top": 1219.7,
+    "right": 755.8,
+    "bottom": 1238.1,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 64,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 733.7,
+    "top": 198.2,
+    "right": 755.8,
+    "bottom": 216.6,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 21,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 2156.4,
+    "top": 780.3,
+    "right": 2178.4,
+    "bottom": 798.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 64,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 23.5,
+    "top": 780.3,
+    "right": 45.6,
+    "bottom": 798.7,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 64,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 1446.2,
+    "top": 1219.7,
+    "right": 1468.2,
+    "bottom": 1238.1,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 64,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 1446.2,
+    "top": 198.2,
+    "right": 1468.2,
+    "bottom": 216.6,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 21,
+    "hidesCardPct": 1
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 74.8,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s6h5/2560x1440/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 733.7,
+    "top": 1124.7,
+    "right": 755.8,
+    "bottom": 1143.1,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 88,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 733.7,
+    "top": 298.9,
+    "right": 755.8,
+    "bottom": 317.3,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 2098.4,
+    "top": 711.8,
+    "right": 2120.5,
+    "bottom": 730.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 81.5,
+    "top": 711.8,
+    "right": 103.5,
+    "bottom": 730.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 1446.2,
+    "top": 1124.7,
+    "right": 1468.2,
+    "bottom": 1143.1,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 88,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 1446.2,
+    "top": 298.9,
+    "right": 1468.2,
+    "bottom": 317.3,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 74.8,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s6h5/2560x1440/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 675.8,
+    "top": 1124.7,
+    "right": 697.8,
+    "bottom": 1143.1,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 88,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 675.8,
+    "top": 298.9,
+    "right": 697.8,
+    "bottom": 317.3,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 2098.4,
+    "top": 687.5,
+    "right": 2120.5,
+    "bottom": 705.9,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 81.5,
+    "top": 687.5,
+    "right": 103.5,
+    "bottom": 705.9,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 1388.2,
+    "top": 1124.7,
+    "right": 1410.3,
+    "bottom": 1143.1,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 88,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 1388.2,
+    "top": 298.9,
+    "right": 1410.3,
+    "bottom": 317.3,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 74.8,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s6h5/2560x1440/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 74.8,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s6h5/2560x1440/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 733.7,
+    "top": 1108.5,
+    "right": 755.8,
+    "bottom": 1126.9,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 733.7,
+    "top": 317.3,
+    "right": 755.8,
+    "bottom": 335.7,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 2076.4,
+    "top": 711.8,
+    "right": 2098.4,
+    "bottom": 730.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 103.5,
+    "top": 711.8,
+    "right": 125.6,
+    "bottom": 730.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 1446.2,
+    "top": 1108.5,
+    "right": 1468.2,
+    "bottom": 1126.9,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 1446.2,
+    "top": 317.3,
+    "right": 1468.2,
+    "bottom": 335.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [
+   "hand:A bricka × mine:A",
+   "hand:B bricka × mine:B",
+   "hand:C bricka × mine:C",
+   "hand:D bricka × mine:D",
+   "hand:E bricka × mine:E",
+   "hand:F bricka × mine:F"
+  ],
+  "cardPx": 74.8,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s8h5/1920x1080/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 549.3,
+    "top": 1070.6,
+    "right": 571.3,
+    "bottom": 1089,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 9
+    },
+    "onCardsPct": 40,
+    "hidesCardPct": 5
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 549.3,
+    "top": -10.6,
+    "right": 571.3,
+    "bottom": 7.8,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 10.6,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 13,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1430.7,
+    "top": 357.1,
+    "right": 1452.7,
+    "bottom": 375.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 39,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 109.3,
+    "top": 357.1,
+    "right": 131.3,
+    "bottom": 375.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 39,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 990.7,
+    "top": 1070.6,
+    "right": 1012.7,
+    "bottom": 1089,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 9
+    },
+    "onCardsPct": 40,
+    "hidesCardPct": 5
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 990.7,
+    "top": -10.6,
+    "right": 1012.7,
+    "bottom": 7.8,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 10.6,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 13,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:G",
+    "count": "5",
+    "left": 1430.7,
+    "top": 798.5,
+    "right": 1452.7,
+    "bottom": 816.8,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 39,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:H",
+    "count": "5",
+    "left": 109.3,
+    "top": 798.5,
+    "right": 131.3,
+    "bottom": 816.8,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 39,
+    "hidesCardPct": 4
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 46.3,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s8h5/1920x1080/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 549.3,
+    "top": 1011.8,
+    "right": 571.3,
+    "bottom": 1030.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 93,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 549.3,
+    "top": 51.8,
+    "right": 571.3,
+    "bottom": 70.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1398.9,
+    "top": 311.1,
+    "right": 1421,
+    "bottom": 329.5,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 141,
+    "top": 311.1,
+    "right": 163,
+    "bottom": 329.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 990.7,
+    "top": 1011.8,
+    "right": 1012.7,
+    "bottom": 1030.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 93,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 990.7,
+    "top": 51.8,
+    "right": 1012.7,
+    "bottom": 70.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:G",
+    "count": "5",
+    "left": 1398.9,
+    "top": 752.5,
+    "right": 1421,
+    "bottom": 770.9,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:H",
+    "count": "5",
+    "left": 141,
+    "top": 752.5,
+    "right": 163,
+    "bottom": 770.9,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 46.3,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s8h5/1920x1080/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 517.5,
+    "top": 1011.8,
+    "right": 539.6,
+    "bottom": 1030.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 93,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 517.5,
+    "top": 51.8,
+    "right": 539.6,
+    "bottom": 70.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1398.9,
+    "top": 299.5,
+    "right": 1421,
+    "bottom": 317.9,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 141,
+    "top": 299.5,
+    "right": 163,
+    "bottom": 317.9,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 958.9,
+    "top": 1011.8,
+    "right": 981,
+    "bottom": 1030.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 93,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 958.9,
+    "top": 51.8,
+    "right": 981,
+    "bottom": 70.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:G",
+    "count": "5",
+    "left": 1398.9,
+    "top": 740.9,
+    "right": 1421,
+    "bottom": 759.3,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:H",
+    "count": "5",
+    "left": 141,
+    "top": 740.9,
+    "right": 163,
+    "bottom": 759.3,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 46.3,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s8h5/1920x1080/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 46.3,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s8h5/1920x1080/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 549.3,
+    "top": 994.7,
+    "right": 571.3,
+    "bottom": 1013.1,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 549.3,
+    "top": 70.1,
+    "right": 571.3,
+    "bottom": 88.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 1,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1376.9,
+    "top": 311.1,
+    "right": 1398.9,
+    "bottom": 329.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 163,
+    "top": 311.1,
+    "right": 185.1,
+    "bottom": 329.5,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 990.7,
+    "top": 994.7,
+    "right": 1012.7,
+    "bottom": 1013.1,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 990.7,
+    "top": 70.1,
+    "right": 1012.7,
+    "bottom": 88.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 1,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:G",
+    "count": "5",
+    "left": 1376.9,
+    "top": 752.5,
+    "right": 1398.9,
+    "bottom": 770.9,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:H",
+    "count": "5",
+    "left": 163,
+    "top": 752.5,
+    "right": 185.1,
+    "bottom": 770.9,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [
+   "hand:A bricka × mine:A",
+   "hand:B bricka × mine:B",
+   "hand:C bricka × mine:C",
+   "hand:D bricka × mine:D",
+   "hand:E bricka × mine:E",
+   "hand:F bricka × mine:F",
+   "hand:G bricka × mine:G",
+   "hand:H bricka × mine:H"
+  ],
+  "cardPx": 46.3,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s8h5/1280x720/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 302.8,
+    "top": 714.1,
+    "right": 324.9,
+    "bottom": 732.5,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 12.5
+    },
+    "onCardsPct": 23,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 302.8,
+    "top": -12.9,
+    "right": 324.9,
+    "bottom": 5.5,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 12.9,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 8,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 890.4,
+    "top": 238.4,
+    "right": 912.5,
+    "bottom": 256.8,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 23,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 9.5,
+    "top": 238.4,
+    "right": 31.5,
+    "bottom": 256.8,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 23,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 597.1,
+    "top": 714.1,
+    "right": 619.1,
+    "bottom": 732.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 12.5
+    },
+    "onCardsPct": 23,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 597.1,
+    "top": -12.9,
+    "right": 619.1,
+    "bottom": 5.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 12.9,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 8,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:G",
+    "count": "5",
+    "left": 890.4,
+    "top": 532.6,
+    "right": 912.5,
+    "bottom": 551,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 23,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:H",
+    "count": "5",
+    "left": 9.5,
+    "top": 532.6,
+    "right": 31.5,
+    "bottom": 551,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 23,
+    "hidesCardPct": 6
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 30.9,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s8h5/1280x720/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 302.8,
+    "top": 674.9,
+    "right": 324.9,
+    "bottom": 693.3,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 93,
+    "hidesCardPct": 24
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 302.8,
+    "top": 28.7,
+    "right": 324.9,
+    "bottom": 47.1,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 86,
+    "hidesCardPct": 22
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 872.9,
+    "top": 204.7,
+    "right": 895,
+    "bottom": 223.1,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 26
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 27,
+    "top": 204.7,
+    "right": 49,
+    "bottom": 223.1,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 26
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 597.1,
+    "top": 674.9,
+    "right": 619.1,
+    "bottom": 693.3,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 94,
+    "hidesCardPct": 24
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 597.1,
+    "top": 28.7,
+    "right": 619.1,
+    "bottom": 47.1,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 86,
+    "hidesCardPct": 22
+   },
+   {
+    "zone": "hand:G",
+    "count": "5",
+    "left": 872.9,
+    "top": 498.9,
+    "right": 895,
+    "bottom": 517.3,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 26
+   },
+   {
+    "zone": "hand:H",
+    "count": "5",
+    "left": 27,
+    "top": 498.9,
+    "right": 49,
+    "bottom": 517.3,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 26
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 30.9,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s8h5/1280x720/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 285.4,
+    "top": 674.9,
+    "right": 307.4,
+    "bottom": 693.3,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 95,
+    "hidesCardPct": 24
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 285.4,
+    "top": 28.7,
+    "right": 307.4,
+    "bottom": 47.1,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 26
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 872.9,
+    "top": 200,
+    "right": 895,
+    "bottom": 218.4,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 26
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 27,
+    "top": 200,
+    "right": 49,
+    "bottom": 218.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 26
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 579.6,
+    "top": 674.9,
+    "right": 601.7,
+    "bottom": 693.3,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 95,
+    "hidesCardPct": 25
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 579.6,
+    "top": 28.7,
+    "right": 601.7,
+    "bottom": 47.1,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 26
+   },
+   {
+    "zone": "hand:G",
+    "count": "5",
+    "left": 872.9,
+    "top": 494.3,
+    "right": 895,
+    "bottom": 512.7,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 26
+   },
+   {
+    "zone": "hand:H",
+    "count": "5",
+    "left": 27,
+    "top": 494.3,
+    "right": 49,
+    "bottom": 512.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 26
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 30.9,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s8h5/1280x720/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 30.9,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s8h5/1280x720/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 302.8,
+    "top": 657.4,
+    "right": 324.9,
+    "bottom": 675.8,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 302.8,
+    "top": 47.1,
+    "right": 324.9,
+    "bottom": 65.5,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 850.9,
+    "top": 204.7,
+    "right": 873,
+    "bottom": 223.1,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 49,
+    "top": 204.7,
+    "right": 71,
+    "bottom": 223.1,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 597.1,
+    "top": 657.4,
+    "right": 619.1,
+    "bottom": 675.8,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 597.1,
+    "top": 47.1,
+    "right": 619.1,
+    "bottom": 65.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:G",
+    "count": "5",
+    "left": 850.9,
+    "top": 498.9,
+    "right": 873,
+    "bottom": 517.3,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:H",
+    "count": "5",
+    "left": 49,
+    "top": 498.9,
+    "right": 71,
+    "bottom": 517.3,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [
+   "hand:A bricka × mine:A",
+   "hand:B bricka × mine:B",
+   "hand:C bricka × mine:C",
+   "hand:D bricka × mine:D",
+   "hand:E bricka × mine:E",
+   "hand:F bricka × mine:F",
+   "hand:G bricka × mine:G",
+   "hand:H bricka × mine:H"
+  ],
+  "cardPx": 30.9,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s8h5/2560x1440/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 795.7,
+    "top": 1427.2,
+    "right": 817.7,
+    "bottom": 1445.6,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 5.599999999999909
+    },
+    "onCardsPct": 52,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 795.7,
+    "top": -8.3,
+    "right": 817.7,
+    "bottom": 10,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 8.3,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 17,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1970.9,
+    "top": 475.8,
+    "right": 1992.9,
+    "bottom": 494.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 52,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 209,
+    "top": 475.8,
+    "right": 231.1,
+    "bottom": 494.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 52,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 1384.2,
+    "top": 1427.2,
+    "right": 1406.3,
+    "bottom": 1445.6,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 5.599999999999909
+    },
+    "onCardsPct": 52,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 1384.2,
+    "top": -8.3,
+    "right": 1406.3,
+    "bottom": 10,
+    "w": 22.1,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 8.3,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 17,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:G",
+    "count": "5",
+    "left": 1970.9,
+    "top": 1064.3,
+    "right": 1992.9,
+    "bottom": 1082.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 52,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:H",
+    "count": "5",
+    "left": 209,
+    "top": 1064.3,
+    "right": 231.1,
+    "bottom": 1082.7,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 52,
+    "hidesCardPct": 3
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 61.8,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s8h5/2560x1440/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 795.7,
+    "top": 1348.8,
+    "right": 817.8,
+    "bottom": 1367.1,
+    "w": 22.1,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 91,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 795.7,
+    "top": 74.8,
+    "right": 817.8,
+    "bottom": 93.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1924.9,
+    "top": 417.5,
+    "right": 1947,
+    "bottom": 435.9,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 255,
+    "top": 417.5,
+    "right": 277,
+    "bottom": 435.9,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 1384.2,
+    "top": 1348.8,
+    "right": 1406.3,
+    "bottom": 1367.1,
+    "w": 22.1,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 91,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 1384.2,
+    "top": 74.8,
+    "right": 1406.3,
+    "bottom": 93.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:G",
+    "count": "5",
+    "left": 1924.9,
+    "top": 1006.1,
+    "right": 1947,
+    "bottom": 1024.5,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:H",
+    "count": "5",
+    "left": 255,
+    "top": 1006.1,
+    "right": 277,
+    "bottom": 1024.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 6
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 61.8,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s8h5/2560x1440/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 749.7,
+    "top": 1348.8,
+    "right": 771.8,
+    "bottom": 1367.1,
+    "w": 22.1,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 91,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 749.7,
+    "top": 74.8,
+    "right": 771.8,
+    "bottom": 93.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1924.9,
+    "top": 399.1,
+    "right": 1947,
+    "bottom": 417.5,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 255,
+    "top": 399.1,
+    "right": 277,
+    "bottom": 417.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 1338.3,
+    "top": 1348.8,
+    "right": 1360.3,
+    "bottom": 1367.1,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 91,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 1338.3,
+    "top": 74.8,
+    "right": 1360.3,
+    "bottom": 93.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:G",
+    "count": "5",
+    "left": 1924.9,
+    "top": 987.6,
+    "right": 1947,
+    "bottom": 1006,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:H",
+    "count": "5",
+    "left": 255,
+    "top": 987.6,
+    "right": 277,
+    "bottom": 1006,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 6
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 61.8,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s8h5/2560x1440/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 61.8,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s8h5/2560x1440/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 795.7,
+    "top": 1332.1,
+    "right": 817.8,
+    "bottom": 1350.5,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 795.7,
+    "top": 93.2,
+    "right": 817.8,
+    "bottom": 111.6,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1902.9,
+    "top": 417.5,
+    "right": 1924.9,
+    "bottom": 435.9,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 277,
+    "top": 417.5,
+    "right": 299.1,
+    "bottom": 435.9,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 1384.2,
+    "top": 1332.1,
+    "right": 1406.3,
+    "bottom": 1350.5,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 1384.2,
+    "top": 93.2,
+    "right": 1406.3,
+    "bottom": 111.6,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:G",
+    "count": "5",
+    "left": 1902.9,
+    "top": 1006.1,
+    "right": 1924.9,
+    "bottom": 1024.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:H",
+    "count": "5",
+    "left": 277,
+    "top": 1006.1,
+    "right": 299.1,
+    "bottom": 1024.5,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [
+   "hand:A bricka × mine:A",
+   "hand:B bricka × mine:B",
+   "hand:C bricka × mine:C",
+   "hand:D bricka × mine:D",
+   "hand:E bricka × mine:E",
+   "hand:F bricka × mine:F",
+   "hand:G bricka × mine:G",
+   "hand:H bricka × mine:H"
+  ],
+  "cardPx": 61.8,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h12/1920x1080/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "12",
+    "left": 766.9,
+    "top": 1073.2,
+    "right": 795,
+    "bottom": 1091.5,
+    "w": 28.1,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 11.5
+    },
+    "onCardsPct": 87,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:B",
+    "count": "12",
+    "left": 766.9,
+    "top": -42.6,
+    "right": 795,
+    "bottom": -24.2,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 42.6,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 23,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "12",
+    "left": 1574.6,
+    "top": 604.3,
+    "right": 1602.6,
+    "bottom": 622.7,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 87,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:D",
+    "count": "12",
+    "left": -40.7,
+    "top": 604.3,
+    "right": -12.6,
+    "bottom": 622.7,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 40.7,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 87,
+    "hidesCardPct": 3
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h12/1920x1080/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "12",
+    "left": 767,
+    "top": 971.8,
+    "right": 795,
+    "bottom": 990.2,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 89,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:B",
+    "count": "12",
+    "left": 767,
+    "top": 91.8,
+    "right": 795,
+    "bottom": 110.2,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 31,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "12",
+    "left": 1465.2,
+    "top": 531.8,
+    "right": 1493.3,
+    "bottom": 550.2,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:D",
+    "count": "12",
+    "left": 68.7,
+    "top": 531.8,
+    "right": 96.7,
+    "bottom": 550.2,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h12/1920x1080/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "12",
+    "left": 657.6,
+    "top": 971.8,
+    "right": 685.7,
+    "bottom": 990.2,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 8,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "12",
+    "left": 657.6,
+    "top": 91.8,
+    "right": 685.7,
+    "bottom": 110.2,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:C",
+    "count": "12",
+    "left": 1465.2,
+    "top": 505,
+    "right": 1493.3,
+    "bottom": 523.4,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 15,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:D",
+    "count": "12",
+    "left": 68.7,
+    "top": 505,
+    "right": 96.7,
+    "bottom": 523.4,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 15,
+    "hidesCardPct": 1
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h12/1920x1080/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h12/1920x1080/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "12",
+    "left": 767,
+    "top": 955.5,
+    "right": 795,
+    "bottom": 973.8,
+    "w": 28,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "12",
+    "left": 767,
+    "top": 110.2,
+    "right": 795,
+    "bottom": 128.6,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "12",
+    "left": 1437.2,
+    "top": 531.8,
+    "right": 1465.2,
+    "bottom": 550.2,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "12",
+    "left": 96.8,
+    "top": 531.8,
+    "right": 124.8,
+    "bottom": 550.2,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [
+   "hand:A bricka × mine:A",
+   "hand:B bricka × mine:B",
+   "hand:C bricka × mine:C",
+   "hand:D bricka × mine:D"
+  ],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h12/1280x720/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "12",
+    "left": 446.9,
+    "top": 673,
+    "right": 475,
+    "bottom": 691.4,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 53,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:B",
+    "count": "12",
+    "left": 446.9,
+    "top": 11.2,
+    "right": 475,
+    "bottom": 29.6,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 14,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:C",
+    "count": "12",
+    "left": 920.5,
+    "top": 398.1,
+    "right": 948.6,
+    "bottom": 416.5,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 53,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:D",
+    "count": "12",
+    "left": -26.6,
+    "top": 398.1,
+    "right": 1.4,
+    "bottom": 416.5,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 26.6,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 53,
+    "hidesCardPct": 6
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h12/1280x720/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "12",
+    "left": 447,
+    "top": 613.6,
+    "right": 475,
+    "bottom": 632,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 93,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:B",
+    "count": "12",
+    "left": 447,
+    "top": 89.9,
+    "right": 475,
+    "bottom": 108.3,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 40,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:C",
+    "count": "12",
+    "left": 862.2,
+    "top": 351.8,
+    "right": 890.3,
+    "bottom": 370.2,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 85,
+    "hidesCardPct": 10
+   },
+   {
+    "zone": "hand:D",
+    "count": "12",
+    "left": 31.6,
+    "top": 351.8,
+    "right": 59.7,
+    "bottom": 370.2,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 85,
+    "hidesCardPct": 10
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h12/1280x720/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "12",
+    "left": 388.7,
+    "top": 613.6,
+    "right": 416.7,
+    "bottom": 632,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 38,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:B",
+    "count": "12",
+    "left": 388.7,
+    "top": 89.9,
+    "right": 416.7,
+    "bottom": 108.3,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:C",
+    "count": "12",
+    "left": 862.2,
+    "top": 339.9,
+    "right": 890.3,
+    "bottom": 358.3,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 43,
+    "hidesCardPct": 5
+   },
+   {
+    "zone": "hand:D",
+    "count": "12",
+    "left": 31.6,
+    "top": 339.9,
+    "right": 59.7,
+    "bottom": 358.3,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 43,
+    "hidesCardPct": 5
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h12/1280x720/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h12/1280x720/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "12",
+    "left": 447,
+    "top": 596.4,
+    "right": 475,
+    "bottom": 614.8,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "12",
+    "left": 447,
+    "top": 108.4,
+    "right": 475,
+    "bottom": 126.8,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "12",
+    "left": 834.2,
+    "top": 351.8,
+    "right": 862.3,
+    "bottom": 370.2,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "12",
+    "left": 59.7,
+    "top": 351.8,
+    "right": 87.8,
+    "bottom": 370.2,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [
+   "hand:A bricka × mine:A",
+   "hand:B bricka × mine:B",
+   "hand:C bricka × mine:C",
+   "hand:D bricka × mine:D"
+  ],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h12/2560x1440/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "12",
+    "left": 1086.9,
+    "top": 1449.8,
+    "right": 1115,
+    "bottom": 1468.2,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 28.200000000000045
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:B",
+    "count": "12",
+    "left": 1086.9,
+    "top": -71.4,
+    "right": 1115,
+    "bottom": -53,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 71.4,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 33,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "12",
+    "left": 2193,
+    "top": 807.8,
+    "right": 2221.1,
+    "bottom": 826.1,
+    "w": 28.1,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:D",
+    "count": "12",
+    "left": -19.1,
+    "top": 807.8,
+    "right": 8.9,
+    "bottom": 826.1,
+    "w": 28,
+    "h": 18.3,
+    "outside": {
+     "left": 19.1,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 2
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h12/2560x1440/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "12",
+    "left": 1087,
+    "top": 1311,
+    "right": 1115,
+    "bottom": 1329.4,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 85,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:B",
+    "count": "12",
+    "left": 1087,
+    "top": 112.6,
+    "right": 1115,
+    "bottom": 131,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 23,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "12",
+    "left": 2038.1,
+    "top": 711.8,
+    "right": 2066.2,
+    "bottom": 730.2,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:D",
+    "count": "12",
+    "left": 135.8,
+    "top": 711.8,
+    "right": 163.9,
+    "bottom": 730.2,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 2
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h12/2560x1440/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "12",
+    "left": 932,
+    "top": 1311,
+    "right": 960.1,
+    "bottom": 1329.4,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "12",
+    "left": 932,
+    "top": 112.6,
+    "right": 960.1,
+    "bottom": 131,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:C",
+    "count": "12",
+    "left": 2038.1,
+    "top": 671.7,
+    "right": 2066.2,
+    "bottom": 690.1,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "12",
+    "left": 135.8,
+    "top": 671.7,
+    "right": 163.9,
+    "bottom": 690.1,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h12/2560x1440/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h12/2560x1440/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "12",
+    "left": 1087,
+    "top": 1295.4,
+    "right": 1115,
+    "bottom": 1313.8,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "12",
+    "left": 1087,
+    "top": 131,
+    "right": 1115,
+    "bottom": 149.3,
+    "w": 28,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "12",
+    "left": 2010,
+    "top": 711.8,
+    "right": 2038.1,
+    "bottom": 730.2,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "12",
+    "left": 163.9,
+    "top": 711.8,
+    "right": 192,
+    "bottom": 730.2,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [
+   "hand:C bricka × mine:C",
+   "hand:D bricka × mine:D"
+  ],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h1/1920x1080/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "1",
+    "left": 770,
+    "top": 1073.2,
+    "right": 792,
+    "bottom": 1091.5,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 11.5
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "1",
+    "left": 770,
+    "top": -3.3,
+    "right": 792,
+    "bottom": 15.1,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 3.3,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "1",
+    "left": 1492.2,
+    "top": 604.3,
+    "right": 1514.3,
+    "bottom": 622.7,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "1",
+    "left": 47.7,
+    "top": 604.3,
+    "right": 69.7,
+    "bottom": 622.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h1/1920x1080/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "1",
+    "left": 770,
+    "top": 971.8,
+    "right": 792,
+    "bottom": 990.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 66,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:B",
+    "count": "1",
+    "left": 770,
+    "top": 91.8,
+    "right": 792,
+    "bottom": 110.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:C",
+    "count": "1",
+    "left": 1465.2,
+    "top": 531.8,
+    "right": 1487.3,
+    "bottom": 550.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 83,
+    "hidesCardPct": 5
+   },
+   {
+    "zone": "hand:D",
+    "count": "1",
+    "left": 74.7,
+    "top": 531.8,
+    "right": 96.7,
+    "bottom": 550.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 83,
+    "hidesCardPct": 5
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h1/1920x1080/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "1",
+    "left": 746.8,
+    "top": 971.8,
+    "right": 768.8,
+    "bottom": 990.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 66,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:B",
+    "count": "1",
+    "left": 746.8,
+    "top": 91.8,
+    "right": 768.8,
+    "bottom": 110.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:C",
+    "count": "1",
+    "left": 1465.2,
+    "top": 509.3,
+    "right": 1487.3,
+    "bottom": 527.7,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 83,
+    "hidesCardPct": 5
+   },
+   {
+    "zone": "hand:D",
+    "count": "1",
+    "left": 74.7,
+    "top": 509.3,
+    "right": 96.7,
+    "bottom": 527.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 83,
+    "hidesCardPct": 5
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h1/1920x1080/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h1/1920x1080/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "1",
+    "left": 770,
+    "top": 959.8,
+    "right": 792,
+    "bottom": 978.1,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "1",
+    "left": 770,
+    "top": 110.2,
+    "right": 792,
+    "bottom": 128.5,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "1",
+    "left": 1447,
+    "top": 531.8,
+    "right": 1469,
+    "bottom": 550.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "1",
+    "left": 92.9,
+    "top": 531.8,
+    "right": 115,
+    "bottom": 550.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [
+   "hand:B bricka × mine:B",
+   "hand:C bricka × mine:C",
+   "hand:D bricka × mine:D"
+  ],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h1/1280x720/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "1",
+    "left": 450,
+    "top": 673,
+    "right": 472,
+    "bottom": 691.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 1,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "1",
+    "left": 450,
+    "top": 34.2,
+    "right": 472,
+    "bottom": 52.6,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "1",
+    "left": 873.5,
+    "top": 398.1,
+    "right": 895.5,
+    "bottom": 416.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "1",
+    "left": 26.4,
+    "top": 398.1,
+    "right": 48.5,
+    "bottom": 416.5,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h1/1280x720/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "1",
+    "left": 450,
+    "top": 613.6,
+    "right": 472,
+    "bottom": 632,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 80,
+    "hidesCardPct": 14
+   },
+   {
+    "zone": "hand:B",
+    "count": "1",
+    "left": 450,
+    "top": 89.9,
+    "right": 472,
+    "bottom": 108.3,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 18
+   },
+   {
+    "zone": "hand:C",
+    "count": "1",
+    "left": 862.2,
+    "top": 351.8,
+    "right": 884.3,
+    "bottom": 370.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 90,
+    "hidesCardPct": 16
+   },
+   {
+    "zone": "hand:D",
+    "count": "1",
+    "left": 37.7,
+    "top": 351.8,
+    "right": 59.7,
+    "bottom": 370.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 90,
+    "hidesCardPct": 16
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h1/1280x720/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "1",
+    "left": 440.9,
+    "top": 613.6,
+    "right": 463,
+    "bottom": 632,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 80,
+    "hidesCardPct": 15
+   },
+   {
+    "zone": "hand:B",
+    "count": "1",
+    "left": 440.9,
+    "top": 89.9,
+    "right": 463,
+    "bottom": 108.3,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 18
+   },
+   {
+    "zone": "hand:C",
+    "count": "1",
+    "left": 862.2,
+    "top": 342.4,
+    "right": 884.3,
+    "bottom": 360.8,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 90,
+    "hidesCardPct": 16
+   },
+   {
+    "zone": "hand:D",
+    "count": "1",
+    "left": 37.7,
+    "top": 342.4,
+    "right": 59.7,
+    "bottom": 360.8,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 90,
+    "hidesCardPct": 16
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h1/1280x720/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h1/1280x720/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "1",
+    "left": 450,
+    "top": 599,
+    "right": 472,
+    "bottom": 617.3,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "1",
+    "left": 450,
+    "top": 108.3,
+    "right": 472,
+    "bottom": 126.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "1",
+    "left": 842.4,
+    "top": 351.8,
+    "right": 864.5,
+    "bottom": 370.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "1",
+    "left": 57.5,
+    "top": 351.8,
+    "right": 79.5,
+    "bottom": 370.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [
+   "hand:A bricka × mine:A",
+   "hand:B bricka × mine:B",
+   "hand:C bricka × mine:C",
+   "hand:D bricka × mine:D"
+  ],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h1/2560x1440/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "1",
+    "left": 1090,
+    "top": 1449.8,
+    "right": 1112,
+    "bottom": 1468.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 28.200000000000045
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "1",
+    "left": 1090,
+    "top": -17.6,
+    "right": 1112,
+    "bottom": 0.8,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 17.6,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "1",
+    "left": 2079.1,
+    "top": 807.8,
+    "right": 2101.2,
+    "bottom": 826.1,
+    "w": 22.1,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "1",
+    "left": 100.8,
+    "top": 807.8,
+    "right": 122.8,
+    "bottom": 826.1,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h1/2560x1440/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "1",
+    "left": 1090,
+    "top": 1311,
+    "right": 1112,
+    "bottom": 1329.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 53,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:B",
+    "count": "1",
+    "left": 1090,
+    "top": 112.6,
+    "right": 1112,
+    "bottom": 131,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:C",
+    "count": "1",
+    "left": 2038.1,
+    "top": 711.8,
+    "right": 2060.1,
+    "bottom": 730.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 76,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:D",
+    "count": "1",
+    "left": 141.8,
+    "top": 711.8,
+    "right": 163.9,
+    "bottom": 730.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 76,
+    "hidesCardPct": 3
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h1/2560x1440/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "1",
+    "left": 1054.1,
+    "top": 1311,
+    "right": 1076.2,
+    "bottom": 1329.4,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 53,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:B",
+    "count": "1",
+    "left": 1054.1,
+    "top": 112.6,
+    "right": 1076.2,
+    "bottom": 131,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:C",
+    "count": "1",
+    "left": 2038.1,
+    "top": 677.6,
+    "right": 2060.1,
+    "bottom": 696,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 76,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:D",
+    "count": "1",
+    "left": 141.8,
+    "top": 677.6,
+    "right": 163.9,
+    "bottom": 696,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 76,
+    "hidesCardPct": 3
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h1/2560x1440/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h1/2560x1440/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "1",
+    "left": 1090,
+    "top": 1301.3,
+    "right": 1112,
+    "bottom": 1319.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "1",
+    "left": 1090,
+    "top": 131,
+    "right": 1112,
+    "bottom": 149.3,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "1",
+    "left": 2021.3,
+    "top": 711.8,
+    "right": 2043.3,
+    "bottom": 730.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "1",
+    "left": 158.7,
+    "top": 711.8,
+    "right": 180.7,
+    "bottom": 730.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h5nc/1920x1080/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 770,
+    "top": 1073.2,
+    "right": 792,
+    "bottom": 1091.5,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 11.5
+    },
+    "onCardsPct": 68,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 770,
+    "top": -15.7,
+    "right": 792,
+    "bottom": 2.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 15.7,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 22,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1527.9,
+    "top": 604.3,
+    "right": 1549.9,
+    "bottom": 622.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 68,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 12.1,
+    "top": 604.3,
+    "right": 34.1,
+    "bottom": 622.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 68,
+    "hidesCardPct": 3
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h5nc/1920x1080/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 770,
+    "top": 971.8,
+    "right": 792,
+    "bottom": 990.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 87,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 770,
+    "top": 91.8,
+    "right": 792,
+    "bottom": 110.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1465.2,
+    "top": 531.8,
+    "right": 1487.3,
+    "bottom": 550.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 74.7,
+    "top": 531.8,
+    "right": 96.7,
+    "bottom": 550.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h5nc/1920x1080/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 707.3,
+    "top": 971.8,
+    "right": 729.4,
+    "bottom": 990.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 87,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 707.3,
+    "top": 91.8,
+    "right": 729.4,
+    "bottom": 110.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1465.2,
+    "top": 505.3,
+    "right": 1487.3,
+    "bottom": 523.7,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 74.7,
+    "top": 505.3,
+    "right": 96.7,
+    "bottom": 523.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 4
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h5nc/1920x1080/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h5nc/1920x1080/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 770,
+    "top": 955.7,
+    "right": 792,
+    "bottom": 974.1,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 770,
+    "top": 110.2,
+    "right": 792,
+    "bottom": 128.5,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1443.2,
+    "top": 531.8,
+    "right": 1465.2,
+    "bottom": 550.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 96.8,
+    "top": 531.8,
+    "right": 118.8,
+    "bottom": 550.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [
+   "hand:A bricka × mine:A",
+   "hand:B bricka × mine:B",
+   "hand:C bricka × mine:C",
+   "hand:D bricka × mine:D"
+  ],
+  "cardPx": 79.8,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h5nc/1280x720/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 450,
+    "top": 673,
+    "right": 472,
+    "bottom": 691.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 40,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 450,
+    "top": 26.9,
+    "right": 472,
+    "bottom": 45.3,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 13,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 894.4,
+    "top": 398.1,
+    "right": 916.4,
+    "bottom": 416.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 40,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 5.5,
+    "top": 398.1,
+    "right": 27.6,
+    "bottom": 416.5,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 40,
+    "hidesCardPct": 4
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h5nc/1280x720/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 450,
+    "top": 613.6,
+    "right": 472,
+    "bottom": 632,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 92,
+    "hidesCardPct": 10
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 450,
+    "top": 89.9,
+    "right": 472,
+    "bottom": 108.3,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 862.2,
+    "top": 351.8,
+    "right": 884.3,
+    "bottom": 370.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 37.7,
+    "top": 351.8,
+    "right": 59.7,
+    "bottom": 370.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h5nc/1280x720/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 417.8,
+    "top": 613.6,
+    "right": 439.9,
+    "bottom": 632,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 92,
+    "hidesCardPct": 10
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 417.8,
+    "top": 89.9,
+    "right": 439.9,
+    "bottom": 108.3,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 862.2,
+    "top": 340,
+    "right": 884.3,
+    "bottom": 358.4,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 37.7,
+    "top": 340,
+    "right": 59.7,
+    "bottom": 358.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 11
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h5nc/1280x720/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h5nc/1280x720/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 450,
+    "top": 596.6,
+    "right": 472,
+    "bottom": 615,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 450,
+    "top": 108.3,
+    "right": 472,
+    "bottom": 126.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 840.2,
+    "top": 351.8,
+    "right": 862.3,
+    "bottom": 370.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 59.7,
+    "top": 351.8,
+    "right": 81.8,
+    "bottom": 370.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [
+   "hand:A bricka × mine:A",
+   "hand:B bricka × mine:B",
+   "hand:C bricka × mine:C",
+   "hand:D bricka × mine:D"
+  ],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h5nc/2560x1440/nu": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 1090,
+    "top": 1449.8,
+    "right": 1112,
+    "bottom": 1468.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 28.200000000000045
+    },
+    "onCardsPct": 93,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 1090,
+    "top": -34.6,
+    "right": 1112,
+    "bottom": -16.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 34.6,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 30,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 2127.9,
+    "top": 807.8,
+    "right": 2150,
+    "bottom": 826.1,
+    "w": 22.1,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 93,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 52,
+    "top": 807.8,
+    "right": 74,
+    "bottom": 826.1,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 93,
+    "hidesCardPct": 2
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h5nc/2560x1440/a": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 1090,
+    "top": 1311,
+    "right": 1112,
+    "bottom": 1329.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 83,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 1090,
+    "top": 112.6,
+    "right": 1112,
+    "bottom": 131,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 99,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 2038.1,
+    "top": 711.8,
+    "right": 2060.1,
+    "bottom": 730.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 141.8,
+    "top": 711.8,
+    "right": 163.9,
+    "bottom": 730.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 2
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h5nc/2560x1440/b": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 1000.1,
+    "top": 1311,
+    "right": 1022.2,
+    "bottom": 1329.4,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 83,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 1000.1,
+    "top": 112.6,
+    "right": 1022.2,
+    "bottom": 131,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 99,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 2038.1,
+    "top": 672.1,
+    "right": 2060.1,
+    "bottom": 690.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 141.8,
+    "top": 672.1,
+    "right": 163.9,
+    "bottom": 690.5,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 2
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h5nc/2560x1440/c": {
+  "badges": [],
+  "overlaps": [],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h5nc/2560x1440/d": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 1090,
+    "top": 1295.8,
+    "right": 1112,
+    "bottom": 1314.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 1,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 1090,
+    "top": 130.9,
+    "right": 1112,
+    "bottom": 149.3,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 2016.1,
+    "top": 711.8,
+    "right": 2038.1,
+    "bottom": 730.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 163.9,
+    "top": 711.8,
+    "right": 185.9,
+    "bottom": 730.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [
+   "hand:C bricka × mine:C",
+   "hand:D bricka × mine:D"
+  ],
+  "cardPx": 109.3,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ }
+}
