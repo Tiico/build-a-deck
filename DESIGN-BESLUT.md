@@ -1653,7 +1653,16 @@ Regeln är den minsta: fläkten skjuts mot kanten exakt så långt att dess räc
 En fläkt som redan ryms — varje vriden hand i bordsläge, sydplatsen i båda lägena — ligger kvar där den alltid legat, och det som hänger utanför kanten håller bordet som förut (#23).
 Vilket håll kanten ligger åt är zonens fråga och inte ritningens: varje fläkt på TV:n vänder sig mot betraktaren och sitter ändå vid sin egen kant.
 Räckvidden tvärs zonen är kortens vridning, inte en läst fläkts steg, som löper längs zonen.
-Brickan är fortfarande en etikett i pixlar som hänger utanför kanten i luften ramen lämnar, men på kantens sida av fläkten: under den som förut, utom när kanten ligger ovanför fläkten som den ritas — TV-lägets nordplats — där den hänger över fläkten i stället.
+Brickan var en etikett i pixlar som hängde utanför kanten i luften ramen lämnar, på kantens sida av fläkten: under den som förut, utom när kanten låg ovanför fläkten som den ritas — TV-lägets nordplats — där den hängde över fläkten i stället.
+
+Reviderat 2026-09-22 (#413, prototypens förslag A): brickan ligger på fläktens egna kort, mot handzonens inre linje — den linje där `Framför` börjar tio millimeter senare (K18).
+Den hängde tidigare utåt i luften, och utanför fönstret med den: vid 1920 × 1080 stod nordplatsens siffra sexton pixlar ovanför överkanten och sydplatsens tolv under underkanten, och talet gick inte att läsa.
+Innanför remsan korsar den ingen grannzon, vilket är vad #84 faktiskt avvisade — inte «inåt» som riktning, utan att fläkten och dess bricka låg i nästa zon.
+Korten den täcker är baksidor och bär ingenting att dölja: fyra procent av ett kort vid fyra platser, elva vid åtta.
+`countSide` svarar därmed för fyra kanter i stället för två: på TV:n vänds ingen fläkt — varje fläkt vänder sig mot betraktaren (C5) — så samma inre linje ligger åt olika håll för var och en av de fyra kanterna.
+I bordsläget är fläkten vriden mot sin egen kant och svaret alltid `above`, vilket är samma mening och inget undantag.
+Linjen är zonens och inte fläktens, och det är hela skälet till att brickan står stilla: ankaret skjuts mot kanten när handen växer, och avståndet till linjen krymper med exakt lika mycket.
+Det förkastade alternativet var att dra ut kameran (#427); det löste samma fel men kostade 2,9 % av kortets kortsida på en filt som är höjdbunden, och förslag A kostar filten noll.
 Kortets kant i fläkten ritas innanför sin ruta: en baksida växte fyra pixlar utanför de millimeter fläkten mäts i, och på TV:ns skala var det elva millimeter.
 Det förkastade alternativet, att wizarden lägger handzonen med det djup fläkten behöver, hade flyttat varje sparat bord och rört K18:s mått för en ritningsfråga.
 Det som står kvar är observatörens TV (C8): en läst fläkt vid en sidoplats sprids tvärs sin zon och ligger kvar som förut, för att skjuta ut den med hela sin bredd hade hängt den en tredjedels meter utanför kanten och krympt hela bordet; hur en sådan fläkt ska ligga är en egen fråga.

@@ -18,7 +18,7 @@ import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ActionSheet } from './ActionSheet.js'
 import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
-import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAnchor, handExtent, handRotation, type TableMode } from './hand.js'
+import { FAN_MAX, HAND_CARD_BOX, countSide, handInner, edgeRotation, fanPlace, feltWithHands, handAnchor, handExtent, handRotation, type TableMode } from './hand.js'
 import { gapAbove, nameAt, type Grow, type Rim } from './labels.js'
 import { useT, type T } from '../i18n/index.js'
 
@@ -928,6 +928,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 color={seatColor(seatIndex(z.owner))}
                 rot={handRot(z)}
                 countAt={countSide(z, floor, handRot(z))}
+                innerMm={fold ? 0 : handInner(z, floor, handRot(z))}
                 folded={fold}
                 left={left(at.x)}
                 top={top(at.y)}
@@ -1466,7 +1467,7 @@ function SeatName({ zone, floor, name, color, mine, left, top }: { zone: ZoneVie
 // Other seats' hands are a fan of backs and a count; the owner reads theirs on the phone. A hand
 // whose order this view may see (the observer, C8) fans the cards themselves. Every measure in
 // the fan is a millimetre on the felt, so it shrinks with the table rather than swamping it (#23).
-function Hand({ zone, color, rot, countAt, folded = false, left, top, px, cards, faces }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; folded?: boolean; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
+function Hand({ zone, color, rot, countAt, innerMm, folded = false, left, top, px, cards, faces }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above' | 'left' | 'right'; innerMm: number; folded?: boolean; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
   const count = zone.mode === 'count' ? zone.count : zone.order.length
   const fan = folded ? 0 : Math.min(count, FAN_MAX)
   const shown = cards ? Math.min(cards.length, FAN_MAX) : fan
@@ -1483,7 +1484,7 @@ function Hand({ zone, color, rot, countAt, folded = false, left, top, px, cards,
       data-rot={rot}
       data-count-side={countAt}
       data-folded={folded ? 'true' : undefined}
-      style={{ left, top, transform: `rotate(${rot}deg)`, ['--seat' as string]: color, ['--hand-unrot' as string]: `${-rot}deg`, ['--hand-drop' as string]: `${px(HAND_COUNT_MM)}px`, ['--hand-lift' as string]: `${px(HAND_COUNT_ABOVE_MM)}px` }}
+      style={{ left, top, transform: `rotate(${rot}deg)`, ['--seat' as string]: color, ['--hand-unrot' as string]: `${-rot}deg`, ['--hand-inner' as string]: `${px(innerMm)}px` }}
     >
       <div className="byd-hand-fan">
         {folded ? null : cards ? (
