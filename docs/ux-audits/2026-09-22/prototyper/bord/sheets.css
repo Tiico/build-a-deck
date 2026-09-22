@@ -1390,6 +1390,50 @@
   opacity: 0.5;
 }
 
+/* Kameran i handen (C5, #325), i ett ark för sig.
+
+   Vyn står kvar tills den återställs, så varje väg tillbaka måste synas. Kontrollerna bor i
+   filtens nedre högra hörn och finns bara medan kameran är manuell: filten är höjdbunden, så en
+   rad under den kostar varje kort 5 px i bredd (6,3 %) medan hörnet kostar noll under det mesta
+   av ett spel.
+
+   Att det är ett eget ark är samma sak som #346 gjorde med regelbokens lucka, och av samma skäl.
+   Ingenting härinne ritas på första bildrutan: kameran är automatisk när sidan målas, och klungan
+   finns först när någon tagit över vyn. Arket reser därför i klungans egen chunk —
+   `CameraControls.js` är den enda modul som hämtar det — och bygget lägger arket bredvid koden, så
+   `import()` blir klar först när båda är framme. Klungan kan alltså inte visas oklädd. Det som
+   ritas *innan* någon rört kameran ligger kvar i `table.css`, greppets markör inräknad.
+
+   Vad som redan står längs nederkanten, och som klungan viker för: docken med varje plats (C5) och
+   hjälpens skiva i hörnet, som är 44 px hög och står 16 px in. Den här raden är avståndet upp till
+   ovansidan av det. */
+.byd-table-frame { --byd-camera-dock: 74px; }
+.byd-camera-controls {
+  position: absolute; right: 16px; bottom: var(--byd-camera-dock); z-index: 25;
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px; border-radius: 12px;
+  border: 1px solid var(--byd-felt-chalk-off); background: var(--byd-felt-plate);
+  font: 700 15px/1 var(--byd-felt-font, system-ui, sans-serif);
+}
+/* Fälld tar den bort sina zoomsteg men aldrig vägen hem, och kryper ihop med en pixel på varje
+   sida: 300 px framme mot 152 px fälld i filtens egen skärning, mätt i `felt-camera.test.tsx`.
+   Prototypens 318 mot 170 är samma form i maskinens `system-ui`, och skillnaden — 148 px — är
+   densamma i båda. */
+.byd-camera-controls[data-folded] { padding: 4px; }
+.byd-camera-controls button {
+  min-width: 40px; min-height: 40px; box-sizing: border-box; padding: 0 10px;
+  display: grid; place-items: center;
+  border: 1px solid var(--byd-felt-chalk-off); border-radius: 10px; background: transparent;
+  color: var(--byd-felt-chalk); font: inherit; cursor: pointer;
+}
+.byd-camera-controls button:hover, .byd-camera-controls button:focus-visible { border-color: var(--byd-felt-accent); color: var(--byd-felt-accent); }
+.byd-camera-controls .byd-camera-level {
+  min-width: 42px; text-align: center; color: var(--byd-felt-chalk-off);
+  font: 400 11px/1 var(--byd-felt-font, system-ui, sans-serif); font-variant-numeric: tabular-nums;
+}
+.byd-camera-controls .byd-camera-whole { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.byd-camera-controls .byd-camera-fold { min-width: 34px; padding: 0; font-size: 13px; color: var(--byd-felt-chalk-off); }
+
 /* Editor — the wall as home, the canvas for the template, the table as a tab. */
 .byd-editor {
   /* The history panel (B4) hangs from the revision it opened from, inside this box. */
@@ -4936,3 +4980,434 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
    #346). Bindningen pekar på bokens fyra färger, och de reser med luckans eget ark sedan det
    lyftes av den kritiska vägen — en bindning utan sina färger är ingen bindning, så de två hör
    ihop i samma fil. `scrollbar-contrast.test.ts` läser rummets ark och hittar dem där. */
+
+/* Dragmarkeringen, för varje yta som tar emot en uppladdning (#291, L22).
+
+   Beslutstexten säger «den blå dragmarkeringen», men det som är i drift sedan E1:s bildceller är
+   bärnsten, och Datas levererade rutor målas inte om i förbifarten. Så färgen blir en token med
+   bärnstenen som förval: samma ton på varje yta, gammal som ny, och en framtida övergång till
+   blått är den här raden och inte sju ytor.
+
+   Regeln står här och inte i `editor.css`, av det enda skäl en regel byter hus för: den gäller i
+   två rum. Editorn är en egen rutt med en egen stilmall sedan #186, guiden ligger i den mall den
+   första målningen blockerar på, och en markering som ska vara *en* markering kan inte skrivas
+   två gånger — då är den två, och den andra hinner glida. `drop-mark.test.ts` är grinden.
+
+   Färgen är allas; formen är kontrollens egen. Bildytorna bär `byd-drop` och får en kant härifrån;
+   regelbokens import (#293) och typsnittsknappen (#294) ritar var sin kontur i sin egen regel i
+   `editor.css` och hämtar bara tonen här. Det som ingen av dem får är en färg av sitt eget, och
+   tokenen deklareras bara i den här filen. */
+:root {
+  --byd-drop-mark: #ffd98a;
+  --byd-drop-wash: rgba(255, 217, 138, 0.1);
+}
+/* Ett rum binder tokenen till den accent det redan äger, precis som rollerna i `buttons.css`
+   binds (#44, variant B: «en form, lokal färg»). Bärnstenen är editorns mörka panel mätt mot
+   sig själv; på guidens papper vore den 1,2:1 och alltså ingen markering alls, och en markering
+   är en grafik som ska bära 3:1 mot sin egen grund (L11). Formen skrivs ändå en gång, nedan. */
+.byd-wizard {
+  --byd-drop-mark: var(--accent);
+  --byd-drop-wash: color-mix(in srgb, var(--accent), transparent 92%);
+}
+.byd-drop[data-over='true'] {
+  border-color: var(--byd-drop-mark);
+  background: var(--byd-drop-wash);
+}
+/* Vad ytan tar emot, i ord bredvid ramen som lyser. Den syns bara medan draget står över ytan och
+   är därför aldrig med i vilans layout; uppladdning, klart och fel är urskiljbara utan färg, och
+   det här är den delen av det som hör draget till. */
+.byd-drop-says {
+  color: var(--byd-drop-mark);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ── Hjälpen bakom ett frågetecken: ringen (L32, #303) ────────────────────────────────────────
+   Ett mönster för hela produkten: frågetecknet står bredvid rubriken eller raden det handlar om,
+   och lådan det öppnar läggs över arbetet — aldrig i flödet, så ytan är lika hög med hjälpen
+   öppen som stängd. Det var det enda av tre mönster där vinsten bestod.
+
+   Ingen `:hover` öppnar den, och inget i den rör sig: ett sätt in, ett sätt ut.
+
+   Det här arket är ringen och raden den står i — det som är målat innan någon tryckt. Lådans
+   regler bor i `help-box.css` och reser med lådans kod när den efterfrågas (#304, #346:s väg):
+   mönstret stod i editorns ark medan bara editorn bar det, och editorns ark hämtas när rutten
+   öppnas (#186), så ingenting av det vägdes någonsin mot filtens ansikte. Samma frågetecken på
+   inloggningen, starten och guiden — de första skärmarna någon ser — la hela mönstret i det ark
+   första målningen väntar på, och 813 byte över budgeten är precis vad den budgeten är till för.
+
+   Måtten är editorns (`--byd-tap`, `--byd-s*`) där de finns och samma tal som reserv där de inte
+   finns; färgerna är knappspråkets roller (`buttons.css`), som varje yta redan binder till sin
+   egen accent. */
+.byd-help { position: relative; display: inline-flex; align-items: center; flex: none; vertical-align: middle; }
+/* Ringen är 22 px; träffytan är den varje kontroll har. Rummet och rollen tillsammans, så att en
+   ytas egen knappregel — symbolernas `.byd-symbols-work button`, kortets `.byd-login button` —
+   inte klär ringen i en fyrkant. Den marginal som drar ihop
+   knappen till ringens fotavtryck är det som gör att en rad med ett frågetecken i inte blir en
+   44 px hög rad — det är ytan som tävlar med arbetskontrollerna, inte ringen. */
+.byd-help .byd-help-ask { display: inline-grid; place-items: center; width: var(--byd-tap, 44px); height: var(--byd-tap, 44px); min-width: var(--byd-tap, 44px); min-height: var(--byd-tap, 44px); margin: calc((22px - var(--byd-tap, 44px)) / 2); /* undantag: ringens 22 px mot träffytans 44 är inget avstånd på stegen. */ border: 0; padding: 0; background: transparent; color: var(--byd-secondary-ink); font: inherit; cursor: pointer; }
+.byd-help-ask > span { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 1px solid var(--byd-secondary-line); border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1; letter-spacing: 0; text-transform: none; }
+.byd-help-ask:hover > span { border-color: var(--byd-secondary-ink); }
+.byd-help-ask[aria-expanded='true'] > span { border-color: var(--byd-chosen-bar); background: var(--byd-primary-bg); color: var(--byd-primary-ink); }
+.byd-help-ask:focus-visible { outline: none; }
+.byd-help-ask:focus-visible > span { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+/* Rubriken eller raden och dess frågetecken på en rad. Raden bär rubrikens marginal, så att
+   ringen står mitt för orden och inte mitt för orden plus deras luft. */
+.byd-help-row { display: flex; align-items: center; gap: 4px; }
+/* Frågetecknet står intill orden och aldrig vid radens bortre kant: det som står först växer
+   inte, det får bara krympa och radbrytas. */
+.byd-help-row > :first-child { flex: 0 1 auto; min-width: 0; }
+.byd-help-row > h2 { margin-top: 0; margin-bottom: 0; }
+.byd-help-row:has(> h2) { margin-bottom: var(--byd-s2, 8px); }
+
+/* ── Hjälpen bakom ett frågetecken: lådan (L32, #303) ─────────────────────────────────────────
+   Lådans insida kommer när den efterfrågas (#304, #346:s väg). Det här arket reser med
+   `HelpBox.tsx`, som `HelpDrawer` hämtar först när någon trycker på ringen — ringens egna regler
+   står kvar i `help.css`, i det ark första målningen väntar på, eftersom ringen är målad innan
+   någon tryckt. Bygget lägger chunkens ark bredvid dess kod och `import()` blir klar först när
+   båda är framme, så lådan kan inte visas oklädd.
+
+   Lådan är fäst i fönstret och inte i sin egen omslutning: lagerkolumnen är 220 px bred och
+   klipper det som hänger utanför, och en låda som klipps av kolumnen den hjälper till med är
+   ingen hjälp. Var den hamnar — under, över, från vänster- eller högerkanten — läses av
+   `placement.ts` när den öppnas, aldrig av arket.
+
+   Lådan är det enda i mönstret som inte står i rummet den öppnades ur: den är samma mörka panel
+   vilken yta frågetecknet än sitter på. Ringen tillhör rummet och tar rummets bläck; allt inuti
+   lådan tillhör lådan.
+
+   Det räcker inte att säga det — det måste sägas starkare än rummet säger sitt. Ett rum klär bara
+   element: `.byd-wizard p` och `.byd-wizard button` är en klass och ett element, och mot lådans
+   egna regler på en klass vann de. Krysset ritades som en pappersknapp, vit botten och
+   papperskant, med lådans bleka bläck på — 1,35:1 — och lådans stycken i pappersgrått, 3,0:1.
+   Därför bär lådans inre regler två klasser: den ena är lådan, och det är hela skälet. */
+.byd-help-box { position: fixed; z-index: 30; box-sizing: border-box; width: 260px; max-width: calc(100vw - 24px); max-height: var(--byd-place-room, 60vh); overflow: auto; padding: var(--byd-s2, 8px) var(--byd-tap, 44px) var(--byd-s2, 8px) var(--byd-s3, 12px); border-radius: 10px; background: #12141a; border: 1px solid var(--byd-secondary-line); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6); color: #c7cede; font-size: 12px; font-weight: 400; line-height: 1.55; letter-spacing: 0; text-transform: none; text-align: left; white-space: normal; }
+.byd-help-box.byd-help-box p { margin: 0 0 var(--byd-s1, 4px); color: inherit; font-size: inherit; line-height: inherit; max-width: none; }
+.byd-help-box.byd-help-box p:last-child { margin-bottom: 0; }
+/* The topic is the sentence's word («Hjälp om lagerlistan»); as the box's heading it stands alone. */
+.byd-help-topic::first-letter { text-transform: uppercase; }
+.byd-help-box .byd-help-topic { display: block; margin: 0 0 4px; color: #e6ecfa; font-size: 12px; font-weight: 700; }
+/* Krysset tar lådans bläck och inte rummets: `--byd-secondary-ink` är rummets roll, och i guiden
+   är den pappersbläck — 1,2:1 mot lådans mörka botten. Det som står i lådan ärver lådan. */
+.byd-help-box .byd-help-close { position: absolute; top: 0; right: 0; width: var(--byd-tap, 44px); height: var(--byd-tap, 44px); min-width: var(--byd-tap, 44px); min-height: var(--byd-tap, 44px); border: 0; border-radius: 10px; padding: 0; background: transparent; color: inherit; font: inherit; font-size: 16px; cursor: pointer; }
+
+/* The family of error, empty and connection states (#12, #7), variant C: one model, one tone per
+   state, and a form chosen by the route — a whole page when there is nothing behind to protect,
+   a card mid-felt the room reads across a table, a sheet under the thumb on the phone, a bar in
+   the editor chrome where the save status already lives.
+
+   The palette is the app's own: player.css for the ground and the ink, editor.css's warn and
+   lost pairs for the two kinds of trouble. Every ink/ground pair is held to 4.5:1 and every
+   edge to 3:1 by `status-contrast.test.ts`, and every control is at least 44 x 44 px
+   (UX-KONTROLLER). */
+:root {
+  --byd-status-page-bg: #14161c;
+  --byd-status-page-ink: #eef1f8;
+
+  /* Waiting: nothing is wrong yet. */
+  --byd-status-wait-bg: #1f2637;
+  --byd-status-wait-ink: #dfe7f7;
+  --byd-status-wait-edge: #7f93c4;
+
+  /* Gone: the thing you asked for is not there. Grey, because nothing is broken. */
+  --byd-status-gone-bg: #232733;
+  --byd-status-gone-ink: #e3e8f4;
+  --byd-status-gone-edge: #8b97b3;
+
+  /* Shut: it exists, it is not yours. Amber, a lock, not a fault. */
+  --byd-status-shut-bg: #3b3222;
+  --byd-status-shut-ink: #ffeccc;
+  --byd-status-shut-edge: #f0b64a;
+
+  /* Broken: the line to the service is down, or the service said no. */
+  --byd-status-broken-bg: #3d2632;
+  --byd-status-broken-ink: #ffe4ea;
+  --byd-status-broken-edge: #d98aa0;
+
+  /* Good again. */
+  --byd-status-ok-bg: #1e3327;
+  --byd-status-ok-ink: #d8f5e5;
+  --byd-status-ok-edge: #7dd3a0;
+
+  --byd-status-button-bg: #242938;
+  --byd-status-button-ink: #eef1f8;
+  --byd-status-button-edge: #7d879f;
+  --byd-status-primary-bg: #7dd3a0;
+  --byd-status-primary-ink: #0b2a18;
+}
+
+/* The live regions themselves are never seen; they exist so that what is on the screen is also
+   said. Not `display: none`, which is not read either.
+
+   Pinned to the corner, for the reason #126 is about. An absolutely positioned box with no `top`
+   or `left` keeps its *static* position — wherever the flow would have put it — and these two sit
+   at the very end of the app, under every route. So their 1 px stood one pixel past the bottom of
+   a full-height page and the window could be scrolled by exactly that much: the header moved, on
+   every tab of the editor, at 1024 × 768. Same mechanism as the `.byd-offscreen` boxes that issue
+   fixed, one layer further out, which is why the editor's own gate could not see it — it measures
+   `.byd-editor`, and these live above it in `App`. */
+.byd-status-live {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.byd-status {
+  display: grid;
+  gap: 10px;
+  box-sizing: border-box;
+  font: 14px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+.byd-status * {
+  box-sizing: border-box;
+}
+.byd-status h1,
+.byd-status h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.25;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.byd-status p {
+  margin: 0;
+  max-width: 46ch;
+}
+.byd-status h1:focus-visible,
+.byd-status h2:focus-visible {
+  outline: 3px solid currentcolor;
+  outline-offset: 4px;
+}
+.byd-status-mark {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+}
+.byd-status-as-of {
+  font-weight: 700;
+}
+.byd-status-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 2px;
+}
+.byd-status-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid var(--byd-status-button-edge);
+  background: var(--byd-status-button-bg);
+  color: var(--byd-status-button-ink);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.byd-status-act[data-primary] {
+  background: var(--byd-status-primary-bg);
+  color: var(--byd-status-primary-ink);
+  border-color: var(--byd-status-primary-bg);
+}
+.byd-status-act:focus-visible {
+  outline: 3px solid var(--byd-status-primary-bg);
+  outline-offset: 2px;
+}
+
+/* One tone per state, whichever form it lands in. */
+.byd-status[data-tone='wait'] {
+  background: var(--byd-status-wait-bg);
+  color: var(--byd-status-wait-ink);
+  border-color: var(--byd-status-wait-edge);
+}
+.byd-status[data-tone='gone'] {
+  background: var(--byd-status-gone-bg);
+  color: var(--byd-status-gone-ink);
+  border-color: var(--byd-status-gone-edge);
+}
+.byd-status[data-tone='shut'] {
+  background: var(--byd-status-shut-bg);
+  color: var(--byd-status-shut-ink);
+  border-color: var(--byd-status-shut-edge);
+}
+.byd-status[data-tone='broken'] {
+  background: var(--byd-status-broken-bg);
+  color: var(--byd-status-broken-ink);
+  border-color: var(--byd-status-broken-edge);
+}
+.byd-status[data-tone='ok'] {
+  background: var(--byd-status-ok-bg);
+  color: var(--byd-status-ok-ink);
+  border-color: var(--byd-status-ok-edge);
+}
+
+/* page — nothing behind worth protecting, so the message is the page. */
+.byd-status[data-surface='page'] {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  place-content: center;
+  justify-items: start;
+  gap: 14px;
+  padding: 28px;
+  border: 0;
+}
+.byd-status[data-surface='page'] h1 {
+  font-size: 26px;
+}
+
+/* card — mid-felt, so that a room three metres from the TV can read it while still seeing the
+   table it is about. */
+.byd-status[data-surface='card'] {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, calc(100% - 32px));
+  padding: 24px;
+  border-radius: 16px;
+  border: 2px solid;
+  box-shadow: 0 18px 50px rgb(0 0 0 / 55%);
+  z-index: 40;
+}
+.byd-status[data-surface='card'] h2 {
+  font-size: 28px;
+}
+.byd-status[data-surface='card'] p {
+  font-size: 17px;
+  max-width: none;
+}
+
+/* sheet — under the thumb, where the phone's own sheets already are. */
+.byd-status[data-surface='sheet'] {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+  border-radius: 18px 18px 0 0;
+  border: 2px solid;
+  border-bottom: 0;
+  box-shadow: 0 -14px 40px rgb(0 0 0 / 55%);
+  z-index: 40;
+}
+
+/* bar — the editor's chrome, in the row where saved and unsaved already live. */
+.byd-status[data-surface='bar'] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 2px solid;
+}
+.byd-status[data-surface='bar'] h2 {
+  font-size: 14px;
+}
+.byd-status[data-surface='bar'] p {
+  font-size: 13px;
+}
+.byd-status[data-surface='bar'] .byd-status-acts {
+  margin-left: auto;
+}
+.byd-status[data-surface='bar'] .byd-status-mark {
+  display: none;
+}
+
+/* A refusal stands at the control that was refused, not at the top of the document. */
+.byd-status-refusal {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--byd-status-broken-edge);
+  background: var(--byd-status-broken-bg);
+  color: var(--byd-status-broken-ink);
+  font: 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-weight: 600;
+}
+.byd-status-refused-control {
+  box-shadow: 0 0 0 2px var(--byd-status-broken-edge);
+}
+
+/* Data that cannot be trusted must not read as current. Half the contrast and most of the
+   colour says "this is a photograph, not a window" without hiding what someone was in the
+   middle of, and `inert` takes it out of the tab order so nothing can be pressed into a
+   connection that is not there. */
+.byd-status-stale {
+  opacity: 0.4;
+  filter: grayscale(0.85);
+}
+
+/* Waiting, without motion carrying the meaning. */
+.byd-status-spin {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 3px solid currentcolor;
+  border-top-color: transparent;
+  animation: byd-status-turn 900ms linear infinite;
+}
+@keyframes byd-status-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.byd-status-countdown {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* a11y.css stills every animation on `reduce`, which would leave the ring standing there
+   pretending to spin. So the ring becomes an honestly static dashed one, and the wait is
+   carried by the words and by the counter, which changes value instead of moving. */
+@media (prefers-reduced-motion: reduce) {
+  .byd-status-spin {
+    border-style: dashed;
+    border-top-color: currentcolor;
+    opacity: 0.75;
+  }
+}
+
+@media (max-width: 700px) {
+  .byd-status[data-surface='page'] {
+    padding: 20px;
+  }
+  .byd-status[data-surface='page'] h1 {
+    font-size: 22px;
+  }
+  .byd-status[data-surface='card'] h2 {
+    font-size: 22px;
+  }
+  .byd-status[data-surface='card'] p {
+    font-size: 15px;
+  }
+  .byd-status[data-surface='bar'] .byd-status-acts {
+    margin-left: 0;
+  }
+}
+
+/* The 404 is the only route that is nothing but a message, so it brings its own ground. */
+.byd-status-page {
+  position: fixed;
+  inset: 0;
+  background: var(--byd-status-page-bg);
+  color: var(--byd-status-page-ink);
+}

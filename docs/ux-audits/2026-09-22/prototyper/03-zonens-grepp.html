@@ -43,16 +43,20 @@
 
   /* Bara prototypens egen markering av var krocken står. Ritas aldrig i produkten. */
   .pek { position: absolute; border: 2px solid #ff5f56; border-radius: 4px; pointer-events: none; z-index: 60; box-shadow: 0 0 0 1px rgba(0,0,0,.6); }
-  .pek::after { content: attr(data-t); position: absolute; left: 0; top: -17px; white-space: nowrap; background: #ff5f56; color: #1a0b0a; font: 700 9px/1.6 system-ui; padding: 0 5px; border-radius: 3px; }
+  .pek[data-t]::after { content: attr(data-t); position: absolute; right: 100%; top: 50%; translate: -6px -50%; white-space: nowrap; background: #ff5f56; color: #1a0b0a; font: 700 9px/1.7 system-ui; letter-spacing: .3px; padding: 0 5px; border-radius: 3px; }
   .tabbox:not([data-pek='ja']) .pek { display: none; }
 
   /* ——— A: greppet ritas bara på den zon som är vald eller under pekaren ——————— */
   /* Produktens regel är `.byd-setup-corner { position:absolute; right:0; bottom:0 }` och inget
      mer: greppet finns alltid. Det här är hela förslaget, en rad. */
-  [data-variant='A'] .byd-setup-corner { display: none; }
+  [data-variant='A'] .byd-setup-corner,
+  [data-variant='D'] .byd-setup-corner { display: none; }
   [data-variant='A'] .byd-setup-handle[aria-pressed='true'] > .byd-setup-corner,
   [data-variant='A'] .byd-setup-handle[data-hover='ja'] > .byd-setup-corner,
-  [data-variant='A'] .byd-setup-handle:focus-visible > .byd-setup-corner { display: block; }
+  [data-variant='A'] .byd-setup-handle:focus-visible > .byd-setup-corner,
+  [data-variant='D'] .byd-setup-handle[aria-pressed='true'] > .byd-setup-corner,
+  [data-variant='D'] .byd-setup-handle[data-hover='ja'] > .byd-setup-corner,
+  [data-variant='D'] .byd-setup-handle:focus-visible > .byd-setup-corner { display: block; }
 
   /* ——— C: namnet får en grund, greppet en ring ——————————————————————————— */
   [data-variant='C'] .byd-setup-felt .byd-zone > span {
@@ -80,8 +84,13 @@
       och därmed på marknadens grepp.
     </p>
     <p>
-      Fliken nedan är produktens egen markup och produktens egna ark. <b>Hovra och klicka på
-      zonerna i bilden</b> — det är hela frågan i förslag A.
+      Fliken till vänster är produktens egen markup och produktens egna ark, hämtade ur
+      <code>packages/web/src</code>. <b>Hovra och klicka på zonerna i bilden</b> — det är hela
+      frågan i förslag A och D.
+    </p>
+    <p>
+      Högerspalten står kvar på «Laddar bord…»: den visar en levande spelarvy och prototypen
+      har ingen server bakom sig. Den är inte frågan här.
     </p>
 
     <div class="grupp">
@@ -101,6 +110,7 @@
         <button type="button" data-variant="A" aria-pressed="false"><b>A · Bara den man håller på med</b>Greppet ritas på vald zon och på zonen under pekaren. Ingen annan.</button>
         <button type="button" data-variant="B" aria-pressed="false"><b>B · Namnet viker undan</b>Greppen står kvar; namnet som skulle landa på ett flyttar sig.</button>
         <button type="button" data-variant="C" aria-pressed="false"><b>C · Grund under namnet</b>Greppen står kvar; namnet får en grund och greppet en ring.</button>
+        <button type="button" data-variant="D" aria-pressed="false"><b>D · A, och namnet viker undan så länge greppet ritas</b>Greppet bara på den zon man håller på med — och det enda namn som korsar just det greppet stiger undan medan det ritas.</button>
       </div>
     </div>
 
@@ -118,6 +128,7 @@
       <div class="f"><u>grepp ritade</u><span id="m-grepp">–</span></div>
       <div class="f"><u>namn × grepp</u><span id="m-namngrepp">–</span></div>
       <div class="f"><u>namn × namn</u><span id="m-par">–</span></div>
+      <div class="f"><u>namn × egen ruta</u><span id="m-ram">–</span></div>
       <div class="f"><u>kapade namn</u><span id="m-kap">–</span></div>
       <div class="f"><u>utanför filten</u><span id="m-utanfor">–</span></div>
       <div class="f"><u>+15 % bredare</u><span id="m-bred">–</span></div>
@@ -163,23 +174,18 @@ function readAt() {
   const gripBoxes = [...document.querySelectorAll('.byd-setup-corner')].map((el) => seen(el)).filter(Boolean)
   const grips = []
   for (const l of labels) for (const g of gripBoxes) if (hits(l.r, g)) grips.push(l.text + ' × handtag')
-  // Zonens egen ram är inte en etikett och fångas inte av `pairs`. #43 stängde också namnet
-  // ovanpå en zonram, så den läses här: ett namn får ligga över en grannes ruta (K19), men inte
-  // över den två pixlar breda linje som *ritar* rutan.
+  // Zonens egen ram är inte en etikett och fångas inte av `pairs`. K19:s regel är att ett namn
+  // alltid ligger UTANFÖR sin egen zon — det är den regeln som gör #419:s svar fullständigt, att
+  // ett grepp innanför sin egen låda aldrig kan hamna under zonens eget namn. Ett namn över en
+  // GRANNES ruta är däremot tillåtet sedan #43 och är hela förutsättningen för #424, så bara den
+  // egna zonen läses här. Faller den här raden är #419 öppnat igen.
   const frames = []
   for (const zone of document.querySelectorAll('.byd-setup-felt .byd-zone')) {
     const b = seen(zone)
-    if (!b) continue
-    const bw = parseFloat(getComputedStyle(zone).borderTopWidth) || 0
-    const inner = { left: b.left + bw, right: b.right - bw, top: b.top + bw, bottom: b.bottom - bw }
-    for (const l of labels) {
-      if (!l.el.matches('.byd-zone > span')) continue
-      if (!hits(l.r, b)) continue
-      // Helt innanför den inre kanten = över rutan men inte över linjen, vilket K19 tillåter.
-      const inside = l.r.left >= inner.left && l.r.right <= inner.right && l.r.top >= inner.top && l.r.bottom <= inner.bottom
-      const outsideAll = l.r.right <= inner.left || l.r.left >= inner.right || l.r.bottom <= inner.top || l.r.top >= inner.bottom
-      if (!inside && !outsideAll) frames.push(l.text + ' × ' + (zone.getAttribute('data-area') || 'zonram'))
-    }
+    const own = zone.querySelector(':scope > span')
+    if (!b || !own) continue
+    const r = seen(own)
+    if (r && hits(r, b)) frames.push((own.textContent || '').trim() + ' × egen ruta ' + (zone.getAttribute('data-area') || '?'))
   }
   const felt = document.querySelector('[data-table]')?.getBoundingClientRect() ?? null
   const outside = []
@@ -264,7 +270,9 @@ function mark(reading) {
   const at = (r, t) => {
     const d = document.createElement('div')
     d.className = 'pek'
-    d.dataset.t = t
+    // Bara en text per krock, och den står till vänster om rutorna: två etiketter ovanför två
+    // rutor som redan ligger på varandra är en ny krock, ritad av prototypen själv.
+    if (t) d.dataset.t = t
     d.style.left = r.left - base.left - 2 + 'px'
     d.style.top = r.top - base.top - 2 + 'px'
     d.style.width = r.width + 4 + 'px'
@@ -274,14 +282,14 @@ function mark(reading) {
   const hit = []
   const gripEls = [...document.querySelectorAll('.byd-setup-corner')].filter(seen)
   for (const l of reading.labels) for (const ge of gripEls) { const gr = seen(ge); if (gr && hits(l.r, gr)) hit.push([l, ge, gr]) }
-  for (const [l, , gr] of hit) { at(l.r, l.text); at(gr, 'grepp') }
+  for (const [l, , gr] of hit) { at(l.r, l.text + ' × grepp'); at(gr, '') }
   return hit.length
 }
 
 function apply() {
   box.dataset.variant = variant
   undisplace()
-  if (variant === 'B') displace()
+  if (variant === 'B' || variant === 'D') displace()
   const reading = readAt()
   const wide = readWide()
   const feltBox = document.querySelector('.byd-setup-felt')?.getBoundingClientRect()
@@ -294,13 +302,14 @@ function apply() {
   set('m-grepp', String(reading.gripCount), reading.gripCount > 0)
   set('m-namngrepp', reading.grips.length ? reading.grips.join(', ') : 'inga', reading.grips.length === 0)
   set('m-par', reading.pairs.length ? reading.pairs.join(', ') : 'inga', reading.pairs.length === 0)
+  set('m-ram', reading.frames.length ? reading.frames.join(', ') : 'inga', reading.frames.length === 0)
   set('m-kap', reading.clipped.length ? reading.clipped.join(', ') : 'inga', reading.clipped.length === 0)
   set('m-utanfor', reading.outside.length ? reading.outside.join(', ') : 'inga', reading.outside.length === 0)
   const wideBad = [...wide.grips, ...wide.pairs, ...wide.clipped, ...wide.outside]
   set('m-bred', wideBad.length ? wideBad.join(', ') : 'rent', wideBad.length === 0)
   const flytt = moved.map((el) => `${el.textContent.trim()} ${el.getAttribute('data-flyttad')} px`)
-  document.getElementById('f-flytt').hidden = variant !== 'B'
-  if (variant === 'B') set('m-flytt', flytt.length ? flytt.join(', ') : 'inget', flytt.length === 0)
+  document.getElementById('f-flytt').hidden = variant !== 'B' && variant !== 'D'
+  set('m-flytt', flytt.length ? flytt.join(', ') : 'inget', undefined)
   mark(reading)
   const picked = box.querySelector('.byd-setup-handle[aria-pressed="true"]')
   document.getElementById('valj-bort').setAttribute('aria-pressed', picked ? 'false' : 'true')
@@ -309,7 +318,8 @@ function apply() {
     nu: 'Så här ser fliken ut idag. Varje zon bär sitt grepp, så varje zons hörn är en måltavla för varje grannes namn.',
     A: 'Greppet finns bara på den zon formgivaren håller på med. Inget namn kan landa på ett grepp som inte ritas — hela klassen försvinner, inte bara det här fallet. Priset: att en zon går att dra i syns först när man rör vid den.',
     B: 'Greppen står kvar och namnet flyttar sig. Fliken finns för att säga namnen på de millimetrar den spelade filten säger dem (B5) — ett namn som flyttar sig här säger dem någon annanstans.',
-    C: 'Greppen står kvar, namnet får en grund. Båda går att läsa, men greppet ligger fortfarande under bokstäverna där de möts, och filten har fått ett andra visuellt system.',
+    C: 'Greppen står kvar, namnet får en grund. Båda går att läsa, men greppet ligger fortfarande under bokstäverna där de möts, och filten har fått ett andra visuellt system. Grunden är dessutom bredare än bokstäverna: mät om vid 4 och 5 platser.',
+    D: 'A och B lagda ovanpå varandra. I vila står namnen på exakt de millimetrar den spelade filten säger dem, eftersom inget grepp ritas och inget namn har flyttat sig. I det ögonblick formgivaren tar i en zon ritas ett enda grepp, och det enda namn som korsar just det stiger undan medan hon håller det.',
   }
   document.getElementById('saga').textContent = says[variant]
 }
