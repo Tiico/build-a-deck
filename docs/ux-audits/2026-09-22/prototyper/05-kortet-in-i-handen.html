@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 4 — Kortet på väg in i en hand</title>
+<link rel="stylesheet" href="proto.css">
+<link rel="stylesheet" href="felt.css">
+<style>
+  /* Filtens typsnitt (K20, #95), lånat ur grannprototypens dump så att brickorna och namnen
+     sätts i Roboto Condensed och inte i maskinens system-ui. */
+  @font-face {
+    font-family: 'Roboto Condensed'; font-style: normal; font-weight: 100 900; font-display: block;
+    src: url('bord/roboto-condensed-latin-wght-normal.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'Roboto Condensed'; font-style: normal; font-weight: 100 900; font-display: block;
+    src: url('bord/roboto-condensed-latin-ext-wght-normal.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+  [data-table] { font-family: 'Roboto Condensed', system-ui, sans-serif; }
+
+  /* ——— Kopierat ordagrant ur packages/web/src/table/table.css ——————————————————————
+     Det lösa kortet och dess lyft. `felt.css` hade bara baksidor, och frågan här är vad ett
+     kort med ett ansikte gör medan det bärs. */
+  .byd-card {
+    position: absolute; box-sizing: border-box; padding: 7px; border-radius: 6px;
+    border: 1px solid rgba(0, 0, 0, 0.35); background: hsl(var(--hue, 0) 40% 86%);
+    cursor: grab; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45);
+    color: #1c1c1c; font: 600 11px/1.2 'Roboto Condensed', system-ui, sans-serif;
+    overflow: hidden; z-index: 40; touch-action: none;
+  }
+  .byd-card[data-dragging] { box-shadow: 0 18px 30px rgba(0, 0, 0, 0.6); cursor: grabbing; }
+  .byd-card[data-face='back'] {
+    border: 2px solid #1f2b4a; color: transparent;
+    background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px);
+  }
+  /* `felt.css` lägger fläktens kort direkt i `.byd-hand`; produkten lägger dem i en
+     `.byd-hand-fan` inuti den. Prototypen ritar produktens markup, så de tre raderna som hör
+     till den kommer hit — ordagrant ur table.css. */
+  .byd-hand-fan { position: absolute; left: 0; top: 0; }
+  .byd-hand-fan > i {
+    position: absolute; box-sizing: border-box;
+    border-radius: 6px; transform-origin: 50% 140%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  }
+  .byd-back {
+    border: 2px solid #1f2b4a;
+    background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px);
+  }
+  .byd-hand-count {
+    position: absolute; left: 50%; top: var(--hand-drop, 50px); transform: translateX(-50%);
+    padding: 2px 8px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #f3e9d6;
+    font: 600 12px/1.25 'Roboto Condensed', system-ui, sans-serif; white-space: nowrap;
+  }
+  .byd-hand[data-count-side='above'] .byd-hand-count { top: auto; bottom: var(--hand-lift, 25px); }
+
+  /* ——— Prototypens eget skal ——————————————————————————————————————————————— */
+  .duk { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; overflow: hidden; }
+  .duk > div { position: relative; }
+  .val { display: flex; gap: 4px; background: var(--sunk); border-radius: 8px; padding: 3px; }
+  .val button { min-height: 34px; border: 0; border-radius: 6px; padding: 0 12px; background: transparent; color: var(--quiet-2); font: inherit; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .val button[aria-pressed='true'] { background: var(--primary); color: #fff; }
+  .val button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  header .etikett { color: var(--quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1.6px; }
+
+  /* ——— Förslag A: handen lyser ———————————————————————————————————————————
+     En ram runt fläktens utsträckning i platsens egen färg, plus en svag tvätt inuti. Ritas
+     bara medan ett kort hålls över den. */
+  .tar-emot {
+    position: absolute; box-sizing: border-box; pointer-events: none; z-index: 30;
+    border: 2px solid var(--seat, #fff); border-radius: 10px;
+    background: color-mix(in srgb, var(--seat, #fff), transparent 90%);
+    box-shadow: 0 0 22px color-mix(in srgb, var(--seat, #fff), transparent 45%);
+  }
+  .byd-hand[data-tar-emot] .byd-hand-count {
+    background: var(--seat, #666); color: var(--byd-seat-ink);
+  }
+
+  /* ——— Förslag C: platsen tänds ————————————————————————————————————————
+     Platsens egna 500 mm av kanten (samma band som #418:s variant C prövade) plus namnet.
+     Bandet ligger vid kanten och hamnar därför aldrig under kortet man bär — vilket är hela
+     skälet till att det finns. */
+  .seat-band[data-tar-emot] {
+    opacity: 1;
+    box-shadow: 0 0 18px 2px color-mix(in srgb, var(--seat, #fff), transparent 35%);
+  }
+  .byd-seat-name[data-tar-emot] {
+    box-shadow: 0 0 0 2px var(--byd-seat-ink), 0 0 20px 3px color-mix(in srgb, var(--seat, #fff), transparent 40%);
+  }
+
+  /* Prototypens egen anvisning, aldrig en del av något förslag. */
+  .protorad .matt span u { width: auto; }
+  .protorad .sagt { color: #c8b98d; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="index.html">← Prototyper</a>
+    <strong>Kortet på väg in i en hand</strong>
+    <span class="spacer"></span>
+    <span class="etikett">Yta</span>
+    <div class="val" id="ytor">
+      <button type="button" data-yta="tv" aria-pressed="true">Sändningsläge</button>
+      <button type="button" data-yta="bord" aria-pressed="false">Bordsläge</button>
+      <button type="button" data-yta="distans" aria-pressed="false">Distansvyn — egen hand fälld</button>
+    </div>
+    <span class="etikett">Förslag</span>
+    <div class="val" id="forslag">
+      <button type="button" data-v="nu" aria-pressed="true">Nu</button>
+      <button type="button" data-v="a" aria-pressed="false">A · Handen lyser</button>
+      <button type="button" data-v="b" aria-pressed="false">B · Kortet vänder ryggen</button>
+      <button type="button" data-v="c" aria-pressed="false">C · Platsen tänds</button>
+      <button type="button" data-v="bc" aria-pressed="false">B + C</button>
+    </div>
+  </header>
+
+  <div class="protorad">
+    <p id="text"></p>
+    <div class="matt">
+      <span><u id="mal">—</u></span>
+      <button type="button" id="aterstall">Lägg tillbaka kortet</button>
+    </div>
+    <p class="sagt" id="sagt"></p>
+  </div>
+
+  <main class="duk"><div id="duk"></div></main>
+</div>
+
+<script type="module">
+import { seatColor, SEAT_IDS, SEAT_NAMES, edgeOf, feltFor, handGeometry, inFront } from './felt.js'
+import { CARD_MM, HAND_CARD_MM, HAND_CARD_BOX, HAND_COUNT_MM, HAND_COUNT_ABOVE_MM, FAN_MAX, BACK_TILT, fanPlace, handRotation, handAnchor, handExtent, countSide, inside } from './hand-drop.js'
+
+const SEATS = 4
+const FELT = feltFor(SEATS)
+const FLOOR = { x: -FELT.w / 2, y: -FELT.h / 2, w: FELT.w, h: FELT.h }
+const WOOD_RIM_PX = 30
+const WOOD_AIR_PX = 12
+const TV_AIR_PX = 20
+
+// Vad varje hand håller innan något dras. Nina (platsen längst ner) är den vars hand kortet
+// är på väg in i; de andra ligger där för att svaret ska gå att se *bland* händer och inte
+// ensamt på en tom filt.
+const HELD = [5, 4, 6, 3]
+
+const state = { yta: 'tv', variant: 'nu', over: null, lagt: null, drar: false }
+
+const el = (tag, cls, style) => {
+  const n = document.createElement(tag)
+  if (cls) n.className = cls
+  if (style) Object.assign(n.style, style)
+  return n
+}
+
+// ── Vad varje yta är ────────────────────────────────────────────────────────────────────────
+// `mode` är TableRenderers eget läge, `rot` filtens vridning (distansvyn vrider den så att den
+// egna kanten ligger nederst, `seatTurn`), `me` platsen som tittar och `fold` den hand som är
+// fälld till sitt antal på filten (`foldHand`, #77).
+const YTOR = {
+  tv: { mode: 'tv', rot: 0, me: null, fold: null },
+  bord: { mode: 'table', rot: 0, me: null, fold: null },
+  distans: { mode: 'table', rot: 180, me: 1, fold: 1 },
+}
+// Filten är höjdbunden (K9): den får hela den ruta som blir över under raderna, som på en TV.
+const rutan = () => {
+  const r = document.getElementById('duk').parentElement.getBoundingClientRect()
+  return { w: Math.max(480, r.width - 24), h: Math.max(320, r.height - 24) }
+}
+
+const TEXT = {
+  nu: 'I dag säger filten ingenting om vart ett buret kort är på väg. Fläkten är dessutom djupare än sin remsa och hänger ut förbi filtkanten (K2, #65), så den tar emot på en yta som är större än den ser ut — och när kortet väl släpps är det borta ur allas syn utom ägarens.',
+  a: 'A · Handen lyser: en ram i platsens färg runt hela den yta som faktiskt tar emot, och antalsbrickan räknar upp. Säger exakt var — men ligger till stor del under det kort man bär, och är liten på en TV.',
+  b: 'B · Kortet vänder ryggen: det burna kortet vänds ner redan medan det bärs, i sitt eget mått och med sitt eget lyft. Det som visas är det som ska hända: ansiktet lämnar bordet. Följer blicken, men säger inte vilken hand — och ett kort som redan låg nedvänt ändrar ingenting.',
+  c: 'C · Platsen tänds: platsens egna 500 mm av kanten och dess namnbricka lyser, och antalet räknar upp. Ligger vid kanten och hamnar därför aldrig under kortet; läsbart tvärs över ett rum. Säger vems hand, inte exakt var i den.',
+  bc: 'B + C: kortet vänder ryggen *och* platsen tänds. Ett svar på båda frågorna — vad som händer med kortet och vem som får det — till priset av två rörelser i stället för en.',
+}
+
+const duk = document.getElementById('duk')
+const utMal = document.getElementById('mal')
+const utText = document.getElementById('text')
+const utSagt = document.getElementById('sagt')
+
+// Det lösa kortet lever mellan omritningarna: det är det som pekaren håller i.
+const card = el('div', 'byd-card')
+card.dataset.hue = '0'
+card.style.setProperty('--hue', '18')
+card.innerHTML = '<span>Skogsvakten</span>'
+
+let geo = null // { scale, left, top, table, hands }
+
+function handsOf() {
+  const y = YTOR[state.yta]
+  return Array.from({ length: SEATS }, (_, i) => {
+    const g = handGeometry(i, SEATS)
+    const count = HELD[i] + (state.lagt === i ? 1 : 0)
+    const rot = handRotation(g, FLOOR, y.mode)
+    return { i, g, count, rot, folded: y.fold === i, id: SEAT_IDS[i], name: SEAT_NAMES[SEAT_IDS[i]], colour: seatColor(i) }
+  })
+}
+
+function rita() {
+  const y = YTOR[state.yta]
+  const hands = handsOf()
+  const rim = y.mode === 'table' ? WOOD_RIM_PX : 0
+  const air = y.mode === 'table' ? WOOD_AIR_PX : TV_AIR_PX
+  const pad = rim + air
+  // `feltWithHands`: filten plus det fläktarna hänger ut med, jämnt på varje sida, eller en filt
+  // som passas in kant i kant kapar sina egna händer (#23).
+  const utanfor = hands.reduce((o, h) => {
+    const r = h.count > 0 && !h.folded ? handExtent(h.g, FLOOR, h.rot, h.count, false) : null
+    if (!r) return o
+    return {
+      w: Math.max(o.w, FLOOR.x - r.x, r.x + r.w - (FLOOR.x + FLOOR.w)),
+      h: Math.max(o.h, FLOOR.y - r.y, r.y + r.h - (FLOOR.y + FLOOR.h)),
+    }
+  }, { w: 0, h: 0 })
+  const ritad = { w: FELT.w + 2 * Math.max(0, utanfor.w), h: FELT.h + 2 * Math.max(0, utanfor.h) }
+  const box = rutan()
+  const scale = Math.min((box.w - 2 * pad) / ritad.w, (box.h - 2 * pad) / ritad.h)
+  const px = (mm) => mm * scale
+  const left = (mm) => px(mm + FELT.w / 2)
+  const top = (mm) => px(mm + FELT.h / 2)
+
+  duk.textContent = ''
+  const frame = el('div', 'byd-table-frame')
+  frame.dataset.mode = y.mode
+  Object.assign(frame.style, { width: `${Math.round(px(ritad.w)) + 2 * pad}px`, height: `${Math.round(px(ritad.h)) + 2 * pad}px` })
+  const wood = el('div', 'byd-table-wood')
+  const table = el('div', 'byd-table')
+  table.dataset.table = 'true'
+  Object.assign(table.style, { width: `${px(FELT.w)}px`, height: `${px(FELT.h)}px`, transform: y.rot ? `rotate(${y.rot}deg)` : '' })
+  table.style.setProperty('--unrotate', `${-y.rot}deg`)
+  wood.append(table)
+  frame.append(wood)
+  duk.append(frame)
+
+  // Zonerna framför varje plats, så att fläkten ses bredvid det den inte är.
+  for (const h of hands) {
+    const g = inFront(h.i, SEATS, 0)
+    const z = el('div', 'byd-zone', { left: `${left(g.x)}px`, top: `${top(g.y)}px`, width: `${px(g.w)}px`, height: `${px(g.h)}px` })
+    const span = el('span')
+    span.textContent = `Framför ${h.id}`
+    Object.assign(span.style, { left: '50%', top: '50%', transform: `translate(-50%, -50%) rotate(${-y.rot}deg)` })
+    z.append(span)
+    table.append(z)
+  }
+
+  // Två högar, så att filten inte är tom bredvid händerna.
+  for (const [x, label, n] of [[-CARD_MM.w - 120, 'Draghög', 38], [120, 'Kasthög', 6]]) {
+    const p = el('div', 'byd-pile', { left: `${left(x)}px`, top: `${top(-CARD_MM.h / 2)}px`, width: `${px(CARD_MM.w)}px`, height: `${px(CARD_MM.h)}px` })
+    const c = el('span', 'byd-pile-count')
+    c.style.transform = `translate(-50%, 6px) rotate(${-y.rot}deg)`
+    const nm = el('span', 'byd-pile-name')
+    nm.textContent = label
+    const b = el('b', 'byd-pile-n')
+    b.textContent = String(n)
+    c.append(nm, b)
+    p.append(c)
+    table.append(p)
+  }
+
+  const boxes = new Map()
+  for (const h of hands) {
+    const spread = false // ingen skärm i prototypen får läsa någon annans hand (B6)
+    const extent = h.count > 0 ? handExtent(h.g, FLOOR, h.rot, h.count, spread) : null
+    boxes.set(h.i, extent)
+    const at = h.count > 0 && !h.folded ? handAnchor(h.g, FLOOR, h.rot, h.count, spread) : { x: h.g.x + h.g.w / 2, y: h.g.y + h.g.h / 2 }
+    const side = countSide(h.g, FLOOR, h.rot)
+
+    const tarEmot = state.over === h.i
+    const lyser = tarEmot && state.variant === 'a'
+    const tands = tarEmot && (state.variant === 'c' || state.variant === 'bc')
+    const platser = Math.min(h.count, FAN_MAX)
+
+    const fan = el('div', 'byd-hand', { left: `${left(at.x)}px`, top: `${top(at.y)}px`, transform: `rotate(${h.rot}deg)` })
+    fan.dataset.countSide = side
+    fan.style.setProperty('--seat', h.colour)
+    fan.style.setProperty('--hand-drop', `${px(HAND_COUNT_MM)}px`)
+    fan.style.setProperty('--hand-lift', `${px(HAND_COUNT_ABOVE_MM)}px`)
+    if (lyser || tands) fan.dataset.tarEmot = 'true'
+
+    const inre = el('div', 'byd-hand-fan')
+    if (!h.folded) {
+      for (let k = 0; k < platser; k++) {
+        const { tilt } = fanPlace(k, platser, false)
+        const i = el('i', 'byd-back', {
+          left: `${px(HAND_CARD_BOX.x)}px`, top: `${px(HAND_CARD_BOX.y)}px`,
+          width: `${px(HAND_CARD_BOX.w)}px`, height: `${px(HAND_CARD_BOX.h)}px`,
+          transform: `rotate(${tilt}deg)`,
+        })
+        inre.append(i)
+      }
+    }
+    fan.append(inre)
+
+    const b = el('b', 'byd-hand-count')
+    const raknasUpp = lyser || tands
+    b.textContent = raknasUpp ? `${h.count} → ${h.count + 1}` : String(h.count)
+    b.style.transform = `translateX(-50%) rotate(${-(y.rot + h.rot)}deg)`
+    fan.append(b)
+    table.append(fan)
+
+    // Förslag A: ramen runt hela den yta som faktiskt tar emot.
+    if (lyser && extent) {
+      const m = el('div', 'tar-emot', {
+        left: `${left(extent.x)}px`, top: `${top(extent.y)}px`,
+        width: `${px(extent.w)}px`, height: `${px(extent.h)}px`,
+      })
+      m.style.setProperty('--seat', h.colour)
+      table.append(m)
+    }
+
+    // Platsnamnet längs sin egen kant.
+    const tag = el('div', 'byd-seat-name')
+    tag.style.setProperty('--seat', h.colour)
+    if (tands) tag.dataset.tarEmot = 'true'
+    tag.textContent = y.me === h.i ? `${h.name} (du)` : h.name
+    if (y.me === h.i) tag.dataset.me = 'true'
+    const edge = edgeOf(h.i, SEATS)
+    const ax = left(h.g.x + h.g.w / 2)
+    const ay = top(h.g.y + h.g.h / 2)
+    if (edge === 'S') Object.assign(tag.style, { left: `${ax}px`, bottom: '6px' })
+    else if (edge === 'N') Object.assign(tag.style, { left: `${ax}px`, top: '6px' })
+    else if (edge === 'W') Object.assign(tag.style, { top: `${ay}px`, left: '6px' })
+    else Object.assign(tag.style, { top: `${ay}px`, right: '6px' })
+    const skift = edge === 'S' || edge === 'N' ? 'translateX(-50%)' : 'translateY(-50%)'
+    tag.style.transform = `${skift} rotate(${-y.rot}deg)`
+    table.append(tag)
+
+    // Förslag C: platsens egna 500 mm av kanten, målade i platsens färg. Bandet ligger under
+    // allt annat på filten och ritas bara för den hand som tar emot.
+    if (tands) {
+      const t = 16 // mm; ett band, inte en list
+      const g = h.g
+      const b2 =
+        edge === 'S' ? { x: g.x, y: FELT.h / 2 - t, w: g.w, h: t }
+        : edge === 'N' ? { x: g.x, y: -FELT.h / 2, w: g.w, h: t }
+        : edge === 'E' ? { x: FELT.w / 2 - t, y: g.y, w: t, h: g.h }
+        : { x: -FELT.w / 2, y: g.y, w: t, h: g.h }
+      const band = el('div', 'seat-band', { left: `${left(b2.x)}px`, top: `${top(b2.y)}px`, width: `${px(b2.w)}px`, height: `${px(b2.h)}px` })
+      band.style.setProperty('--seat', h.colour)
+      band.dataset.tarEmot = 'true'
+      table.prepend(band)
+    }
+  }
+
+  table.append(card)
+  geo = { scale, px, left, top, table, boxes, hands, rot: y.rot }
+  placeraKortet()
+  skriv()
+}
+
+// Var kortet ligger, i filtens millimeter (hörnet).
+let kortAt = { x: -CARD_MM.w / 2, y: -FELT.h / 2 + 300 }
+
+function placeraKortet() {
+  const { px, left, top } = geo
+  const h = state.over !== null ? geo.hands.find((x) => x.i === state.over) : null
+  const vander = h !== null && (state.variant === 'b' || state.variant === 'bc')
+  Object.assign(card.style, {
+    left: `${left(kortAt.x)}px`,
+    top: `${top(kortAt.y)}px`,
+    width: `${px(CARD_MM.w)}px`,
+    height: `${px(CARD_MM.h)}px`,
+  })
+  // Kortet behåller sitt mått och sitt lyft: det är fortfarande det man bär. Det enda som
+  // ändras är att ansiktet är borta — vilket är precis det som händer när det släpps.
+  if (vander) card.dataset.face = 'back'
+  else delete card.dataset.face
+  card.style.transform = state.drar ? 'scale(1.06)' : ''
+}
+
+function skriv() {
+  utText.textContent = TEXT[state.variant]
+  const h = state.over !== null ? geo.hands.find((x) => x.i === state.over) : null
+  utMal.textContent = h ? `Släpp här → ${h.name}s hand${h.folded ? ' (fälld)' : ''}` : 'Släpp här → löst på filten'
+  const svag =
+    state.variant === 'a' && h && h.folded ? 'En fälld hand ritar ingen fläkt, så A:s ram lyser runt tom filt: ytan som tar emot finns, men den syns aldrig annars.'
+    : state.variant === 'a' && h ? 'Ramen ligger till stor del under kortet man bär — den ses bäst i ögonvrån, inte där blicken är.'
+    : (state.variant === 'b' || state.variant === 'bc') && h ? 'Över en fläkt av baksidor är ett nedvänt kort svårt att skilja från dem som redan ligger där — och ett kort som redan låg nedvänt på filten ändrar sig inte alls.'
+    : ''
+  utSagt.textContent = svag
+}
+
+// ── Draget ──────────────────────────────────────────────────────────────────────────────────
+// Pekaren → filtens millimeter. Bara hel- och halvvarv förekommer på de tre ytorna.
+function tillFilt(cx, cy) {
+  const r = geo.table.getBoundingClientRect()
+  const lx = geo.rot === 180 ? r.right - cx : cx - r.left
+  const ly = geo.rot === 180 ? r.bottom - cy : cy - r.top
+  return { x: lx / geo.scale - FELT.w / 2, y: ly / geo.scale - FELT.h / 2 }
+}
+
+let grab = null
+// Lyssnarna ligger på fönstret och inte på kortet: varje omritning tar bort kortet ur
+// dokumentet och lägger tillbaka det, vilket släpper en pekarfångst. Prototypen behöver alltså
+// den väg produkten redan har — TableRenderer följer draget på filten och inte på kortet.
+function pekarflytt(e) {
+  if (!grab) return
+  const p = tillFilt(e.clientX, e.clientY)
+  kortAt = { x: p.x - grab.dx, y: p.y - grab.dy }
+  // `dropAt`: pekarens punkt, prövad mot varje hands fläkt (K2, #74, #65).
+  let over = null
+  for (const h of geo.hands) {
+    const box = geo.boxes.get(h.i)
+    if (box && inside(box, p)) { over = h.i; break }
+  }
+  if (over !== state.over) { state.over = over; rita() } else placeraKortet()
+  skriv()
+}
+function slapp() {
+  if (!grab) return
+  grab = null
+  state.drar = false
+  delete card.dataset.dragging
+  window.removeEventListener('pointermove', pekarflytt)
+  window.removeEventListener('pointerup', slapp)
+  window.removeEventListener('pointercancel', slapp)
+  if (state.over !== null) { state.lagt = state.over; state.over = null }
+  rita()
+}
+card.addEventListener('pointerdown', (e) => {
+  e.preventDefault()
+  const p = tillFilt(e.clientX, e.clientY)
+  grab = { dx: p.x - kortAt.x, dy: p.y - kortAt.y }
+  state.drar = true
+  card.dataset.dragging = 'true'
+  window.addEventListener('pointermove', pekarflytt)
+  window.addEventListener('pointerup', slapp)
+  window.addEventListener('pointercancel', slapp)
+  placeraKortet()
+})
+
+document.getElementById('aterstall').addEventListener('click', () => {
+  state.lagt = null
+  state.over = null
+  kortAt = { x: -CARD_MM.w / 2, y: -FELT.h / 2 + 300 }
+  rita()
+})
+
+for (const [id, key, fall] of [['ytor', 'yta', 'yta'], ['forslag', 'variant', 'v']]) {
+  const box = document.getElementById(id)
+  box.addEventListener('click', (e) => {
+    const b = e.target.closest('button')
+    if (!b) return
+    state[key] = b.dataset[fall]
+    for (const other of box.querySelectorAll('button')) other.setAttribute('aria-pressed', other === b ? 'true' : 'false')
+    state.over = null
+    state.lagt = null
+    kortAt = { x: -CARD_MM.w / 2, y: -FELT.h / 2 + 300 }
+    rita()
+  })
+}
+
+rita()
+window.addEventListener('resize', () => rita())
+</script>
+</body></html>
