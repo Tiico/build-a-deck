@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 3 — Vad editorn ritar på en zon ingen tagit tag i (#424)</title>
+<link rel="stylesheet" href="proto.css">
+<!-- Produktens egna ark, hämtade ur `packages/web/src` av dumpskriptet: filtens typsnitt,
+     table.css, texture.css, keyboard.css, editor.css, buttons.css, a11y.css. Ingenting i dem
+     är skrivet för prototypen. Frågan är millimetrar, så allt under den här raden måste vara
+     produktens. -->
+<link rel="stylesheet" href="bord/sheets.css">
+<style>
+  /* ——— prototypens eget skal ———————————————————————————————————————————— */
+  body { overflow: auto; }
+  .rum { display: flex; align-items: flex-start; gap: var(--s4); padding: var(--s4); min-width: 1620px; }
+
+  /* Fliken ritas i exakt det fönster felet mättes i. Markupen bär inbakade pixlar som
+     TableRenderer räknade fram ur en filtlåda på 660 × 762 — den låda `.byd-setup` ger sin
+     mittspalt när den själv är 1280 × 800 — så lådan får inte vara något annat. */
+  .tabbox { flex: none; width: 1280px; height: 800px; position: relative; background: #101219; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+  .tabbox > .byd-setup { width: 1280px; height: 800px; }
+
+  .sido { flex: none; width: 300px; display: grid; gap: var(--s3); }
+  .sido h1 { margin: 0; color: #fff; font-size: 15px; }
+  .sido p { margin: 0; color: var(--quiet-2); font-size: 11.5px; line-height: 1.55; }
+  .sido .grupp { display: grid; gap: 6px; }
+  .sido .grupp > b { color: var(--quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1.6px; }
+  .val { display: grid; gap: 4px; }
+  .val button { text-align: left; min-height: 34px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; background: var(--sunk); color: var(--quiet-2); font: inherit; font-size: 12px; cursor: pointer; }
+  .val button b { display: block; color: #e6ecfa; font-size: 12.5px; }
+  .val button[aria-pressed='true'] { background: #24507f; border-color: var(--primary-mark); color: #dbe7f8; }
+  .val button[aria-pressed='true'] b { color: #fff; }
+  .rad { display: flex; gap: 4px; }
+  .rad button { flex: 1; text-align: center; }
+
+  .matt { border: 1px solid #4a4230; border-radius: 10px; background: #2a2417; color: #ffd98a; font-size: 11px; line-height: 1.5; padding: 10px 12px; display: grid; gap: 5px; }
+  .matt b { color: #ffe9b8; }
+  .matt .f { display: flex; gap: 8px; align-items: baseline; }
+  .matt .f u { text-decoration: none; flex: none; width: 96px; color: #c8b98d; }
+  .matt .f span { font-variant-numeric: tabular-nums; }
+  .ok { color: #7dd3a0; }
+  .nej { color: #ff9a9a; }
+
+  /* Bara prototypens egen markering av var krocken står. Ritas aldrig i produkten. */
+  .pek { position: absolute; border: 2px solid #ff5f56; border-radius: 4px; pointer-events: none; z-index: 60; box-shadow: 0 0 0 1px rgba(0,0,0,.6); }
+  .pek::after { content: attr(data-t); position: absolute; left: 0; top: -17px; white-space: nowrap; background: #ff5f56; color: #1a0b0a; font: 700 9px/1.6 system-ui; padding: 0 5px; border-radius: 3px; }
+  .tabbox:not([data-pek='ja']) .pek { display: none; }
+
+  /* ——— A: greppet ritas bara på den zon som är vald eller under pekaren ——————— */
+  /* Produktens regel är `.byd-setup-corner { position:absolute; right:0; bottom:0 }` och inget
+     mer: greppet finns alltid. Det här är hela förslaget, en rad. */
+  [data-variant='A'] .byd-setup-corner { display: none; }
+  [data-variant='A'] .byd-setup-handle[aria-pressed='true'] > .byd-setup-corner,
+  [data-variant='A'] .byd-setup-handle[data-hover='ja'] > .byd-setup-corner,
+  [data-variant='A'] .byd-setup-handle:focus-visible > .byd-setup-corner { display: block; }
+
+  /* ——— C: namnet får en grund, greppet en ring ——————————————————————————— */
+  [data-variant='C'] .byd-setup-felt .byd-zone > span {
+    background: rgba(9, 11, 16, 0.82);
+    padding: 1px 4px;
+    margin: -1px -4px;
+    border-radius: 4px;
+  }
+  /* Greppet ligger kvar överst, annars går det inte att ta tag i det som syns. Ringen skiljer
+     dess gula ruta från namnets gula bokstäver där de möts. */
+  [data-variant='C'] .byd-setup-corner { box-shadow: 0 0 0 1.5px #0b0d12; }
+</style>
+</head>
+<body>
+<div class="rum">
+
+  <div class="tabbox" id="tabbox" data-pek="ja" data-variant="nu"></div>
+
+  <div class="sido">
+    <h1>Zonens grepp</h1>
+    <p>
+      <b>#424.</b> Bord-fliken, 1280 × 800, en delad yta lagd med <b>＋ Yta</b> och döpt
+      <b>Marknad</b> — den hamnar där panelen lägger den, över A:s räknarzon.
+      <b>Räknare A</b> står efter K19 ovanför sin egen överkant och landar på marknadens ruta,
+      och därmed på marknadens grepp.
+    </p>
+    <p>
+      Fliken nedan är produktens egen markup och produktens egna ark. <b>Hovra och klicka på
+      zonerna i bilden</b> — det är hela frågan i förslag A.
+    </p>
+
+    <div class="grupp">
+      <b>Platser</b>
+      <div class="val rad" id="platser" role="group" aria-label="Antal platser">
+        <button type="button" data-seats="2" aria-pressed="false">2</button>
+        <button type="button" data-seats="3" aria-pressed="false">3</button>
+        <button type="button" data-seats="4" aria-pressed="true">4</button>
+        <button type="button" data-seats="5" aria-pressed="false">5</button>
+      </div>
+    </div>
+
+    <div class="grupp">
+      <b>Vad editorn ritar</b>
+      <div class="val" id="varianter" role="group" aria-label="Förslag">
+        <button type="button" data-variant="nu" aria-pressed="true"><b>Nu</b>Varje zon bär sitt grepp hela tiden.</button>
+        <button type="button" data-variant="A" aria-pressed="false"><b>A · Bara den man håller på med</b>Greppet ritas på vald zon och på zonen under pekaren. Ingen annan.</button>
+        <button type="button" data-variant="B" aria-pressed="false"><b>B · Namnet viker undan</b>Greppen står kvar; namnet som skulle landa på ett flyttar sig.</button>
+        <button type="button" data-variant="C" aria-pressed="false"><b>C · Grund under namnet</b>Greppen står kvar; namnet får en grund och greppet en ring.</button>
+      </div>
+    </div>
+
+    <div class="grupp">
+      <b>Prototypens egna knappar</b>
+      <div class="val rad">
+        <button type="button" id="valj-bort" aria-pressed="true">Ingen zon vald</button>
+        <button type="button" id="pek" aria-pressed="true">Visa krocken</button>
+      </div>
+    </div>
+
+    <div class="matt" id="matt">
+      <b>Mätt i sidan, just nu</b>
+      <div class="f"><u>filtens låda</u><span id="m-box">–</span></div>
+      <div class="f"><u>grepp ritade</u><span id="m-grepp">–</span></div>
+      <div class="f"><u>namn × grepp</u><span id="m-namngrepp">–</span></div>
+      <div class="f"><u>namn × namn</u><span id="m-par">–</span></div>
+      <div class="f"><u>kapade namn</u><span id="m-kap">–</span></div>
+      <div class="f"><u>utanför filten</u><span id="m-utanfor">–</span></div>
+      <div class="f"><u>+15 % bredare</u><span id="m-bred">–</span></div>
+      <div class="f" id="f-flytt" hidden><u>namn flyttat</u><span id="m-flytt">–</span></div>
+    </div>
+
+    <p id="saga"></p>
+  </div>
+</div>
+
+<script>
+// Måttet är produktens eget: READ ur `packages/web/test/felt-labels.js`, samma urval, samma
+// `hits`, samma marginal på 15 %. Prototypen får inte mäta snällare än grinden gör.
+const MARGIN = 1.15
+const SEL = ['.byd-zone > span', '.byd-seat-name', '.byd-setup-handle > span', '.byd-pile-name', '.byd-pile-n', '.byd-hand-count'].join(', ')
+const hits = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
+const seen = (el) => {
+  const s = getComputedStyle(el)
+  if (s.display === 'none' || s.visibility === 'hidden' || Number(s.opacity) === 0) return null
+  const r = el.getBoundingClientRect()
+  return r.width > 0 && r.height > 0 ? r : null
+}
+const textWidth = (el) => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect().width }
+
+function readAt() {
+  const labels = []
+  const clipped = []
+  const wrapped = []
+  for (const el of document.querySelectorAll(SEL)) {
+    const r = seen(el)
+    if (!r) continue
+    const text = (el.textContent || '').trim()
+    labels.push({ el, text, r, pill: el.closest('.byd-pile-count') })
+    if (el.matches('.byd-zone > span') && !/nowrap|pre(?!-)/.test(getComputedStyle(el).whiteSpace)) wrapped.push(text)
+    if (el.scrollWidth > el.clientWidth + 1) clipped.push(text)
+  }
+  const pairs = []
+  for (let i = 0; i < labels.length; i++)
+    for (let j = i + 1; j < labels.length; j++) {
+      if (labels[i].pill && labels[i].pill === labels[j].pill) continue
+      if (hits(labels[i].r, labels[j].r)) pairs.push(labels[i].text + ' × ' + labels[j].text)
+    }
+  const gripBoxes = [...document.querySelectorAll('.byd-setup-corner')].map((el) => seen(el)).filter(Boolean)
+  const grips = []
+  for (const l of labels) for (const g of gripBoxes) if (hits(l.r, g)) grips.push(l.text + ' × handtag')
+  // Zonens egen ram är inte en etikett och fångas inte av `pairs`. #43 stängde också namnet
+  // ovanpå en zonram, så den läses här: ett namn får ligga över en grannes ruta (K19), men inte
+  // över den två pixlar breda linje som *ritar* rutan.
+  const frames = []
+  for (const zone of document.querySelectorAll('.byd-setup-felt .byd-zone')) {
+    const b = seen(zone)
+    if (!b) continue
+    const bw = parseFloat(getComputedStyle(zone).borderTopWidth) || 0
+    const inner = { left: b.left + bw, right: b.right - bw, top: b.top + bw, bottom: b.bottom - bw }
+    for (const l of labels) {
+      if (!l.el.matches('.byd-zone > span')) continue
+      if (!hits(l.r, b)) continue
+      // Helt innanför den inre kanten = över rutan men inte över linjen, vilket K19 tillåter.
+      const inside = l.r.left >= inner.left && l.r.right <= inner.right && l.r.top >= inner.top && l.r.bottom <= inner.bottom
+      const outsideAll = l.r.right <= inner.left || l.r.left >= inner.right || l.r.bottom <= inner.top || l.r.top >= inner.bottom
+      if (!inside && !outsideAll) frames.push(l.text + ' × ' + (zone.getAttribute('data-area') || 'zonram'))
+    }
+  }
+  const felt = document.querySelector('[data-table]')?.getBoundingClientRect() ?? null
+  const outside = []
+  if (felt)
+    for (const el of document.querySelectorAll('.byd-zone > span, .byd-seat-name')) {
+      const r = seen(el)
+      if (!r) continue
+      if (r.left < felt.left - 1 || r.top < felt.top - 1 || r.right > felt.right + 1 || r.bottom > felt.bottom + 1) outside.push((el.textContent || '').trim())
+    }
+  return { labels, pairs, clipped, wrapped, outside, grips, frames, gripCount: gripBoxes.length }
+}
+
+// Samma läsning en gång till med varje namn ritat 15 % bredare, vilket är vad READ gör för att
+// svaret ska höra till formen och inte till den maskin den lästes på (#95).
+function readWide() {
+  const base = [...document.querySelectorAll(SEL)].filter(seen).map((el) => {
+    const ls = getComputedStyle(el).letterSpacing
+    return { el, ls: ls === 'normal' ? 0 : parseFloat(ls) || 0, w: textWidth(el), n: Math.max(1, (el.textContent || '').trim().length) }
+  })
+  for (const b of base) b.el.style.letterSpacing = b.ls + ((MARGIN - 1) * b.w) / b.n + 'px'
+  const wide = readAt()
+  for (const b of base) b.el.style.letterSpacing = ''
+  return wide
+}
+
+const box = document.getElementById('tabbox')
+let seats = 4
+let variant = 'nu'
+let moved = []
+
+async function load() {
+  const html = await (await fetch(`bord/bord-${seats}.html`)).text()
+  box.innerHTML = html
+  wire()
+  apply()
+}
+
+function wire() {
+  for (const h of box.querySelectorAll('.byd-setup-handle')) {
+    h.addEventListener('pointerenter', () => { h.dataset.hover = 'ja'; apply() })
+    h.addEventListener('pointerleave', () => { delete h.dataset.hover; apply() })
+    h.addEventListener('click', () => {
+      const was = h.getAttribute('aria-pressed') === 'true'
+      for (const o of box.querySelectorAll('.byd-setup-handle')) o.setAttribute('aria-pressed', 'false')
+      h.setAttribute('aria-pressed', was ? 'false' : 'true')
+      apply()
+    })
+    h.addEventListener('focus', () => { for (const o of box.querySelectorAll('.byd-setup-handle')) o.setAttribute('aria-pressed', o === h ? 'true' : 'false'); apply() })
+  }
+  // Panelens knappar är inte prototypens fråga, men en död knapp läses som en trasig knapp.
+  for (const b of box.querySelectorAll('button')) b.addEventListener('click', (e) => e.preventDefault())
+  for (const b of box.querySelectorAll('[data-seats]')) b.removeAttribute('data-seats')
+}
+
+function undisplace() {
+  for (const el of moved) { el.style.translate = ''; el.removeAttribute('data-flyttad') }
+  moved = []
+}
+
+// B: namnet viker undan. Det skjuts uppåt — bort från sin egen zon, vilket är den riktning K19
+// redan sänder det — en pixel i taget tills det inte längre korsar något ritat grepp.
+function displace() {
+  undisplace()
+  const grips = () => [...document.querySelectorAll('.byd-setup-corner')].map(seen).filter(Boolean)
+  const g = grips()
+  if (!g.length) return
+  for (const el of box.querySelectorAll('.byd-zone > span')) {
+    let dy = 0
+    while (dy < 60) {
+      const r = el.getBoundingClientRect()
+      if (!g.some((x) => hits(r, x))) break
+      dy += 1
+      el.style.translate = `0 ${-dy}px`
+    }
+    if (dy > 0) { moved.push(el); el.setAttribute('data-flyttad', String(dy)) }
+  }
+}
+
+function mark(reading) {
+  for (const p of box.querySelectorAll('.pek')) p.remove()
+  const base = box.getBoundingClientRect()
+  const at = (r, t) => {
+    const d = document.createElement('div')
+    d.className = 'pek'
+    d.dataset.t = t
+    d.style.left = r.left - base.left - 2 + 'px'
+    d.style.top = r.top - base.top - 2 + 'px'
+    d.style.width = r.width + 4 + 'px'
+    d.style.height = r.height + 4 + 'px'
+    box.appendChild(d)
+  }
+  const hit = []
+  const gripEls = [...document.querySelectorAll('.byd-setup-corner')].filter(seen)
+  for (const l of reading.labels) for (const ge of gripEls) { const gr = seen(ge); if (gr && hits(l.r, gr)) hit.push([l, ge, gr]) }
+  for (const [l, , gr] of hit) { at(l.r, l.text); at(gr, 'grepp') }
+  return hit.length
+}
+
+function apply() {
+  box.dataset.variant = variant
+  undisplace()
+  if (variant === 'B') displace()
+  const reading = readAt()
+  const wide = readWide()
+  const feltBox = document.querySelector('.byd-setup-felt')?.getBoundingClientRect()
+  const set = (id, text, good) => {
+    const el = document.getElementById(id)
+    el.textContent = text
+    el.className = good === undefined ? '' : good ? 'ok' : 'nej'
+  }
+  set('m-box', feltBox ? `${Math.round(feltBox.width)} × ${Math.round(feltBox.height)} px` : '–', feltBox && Math.round(feltBox.width) === 660 && Math.round(feltBox.height) === 762)
+  set('m-grepp', String(reading.gripCount), reading.gripCount > 0)
+  set('m-namngrepp', reading.grips.length ? reading.grips.join(', ') : 'inga', reading.grips.length === 0)
+  set('m-par', reading.pairs.length ? reading.pairs.join(', ') : 'inga', reading.pairs.length === 0)
+  set('m-kap', reading.clipped.length ? reading.clipped.join(', ') : 'inga', reading.clipped.length === 0)
+  set('m-utanfor', reading.outside.length ? reading.outside.join(', ') : 'inga', reading.outside.length === 0)
+  const wideBad = [...wide.grips, ...wide.pairs, ...wide.clipped, ...wide.outside]
+  set('m-bred', wideBad.length ? wideBad.join(', ') : 'rent', wideBad.length === 0)
+  const flytt = moved.map((el) => `${el.textContent.trim()} ${el.getAttribute('data-flyttad')} px`)
+  document.getElementById('f-flytt').hidden = variant !== 'B'
+  if (variant === 'B') set('m-flytt', flytt.length ? flytt.join(', ') : 'inget', flytt.length === 0)
+  mark(reading)
+  const picked = box.querySelector('.byd-setup-handle[aria-pressed="true"]')
+  document.getElementById('valj-bort').setAttribute('aria-pressed', picked ? 'false' : 'true')
+  document.getElementById('valj-bort').textContent = picked ? 'Släpp zonen' : 'Ingen zon vald'
+  const says = {
+    nu: 'Så här ser fliken ut idag. Varje zon bär sitt grepp, så varje zons hörn är en måltavla för varje grannes namn.',
+    A: 'Greppet finns bara på den zon formgivaren håller på med. Inget namn kan landa på ett grepp som inte ritas — hela klassen försvinner, inte bara det här fallet. Priset: att en zon går att dra i syns först när man rör vid den.',
+    B: 'Greppen står kvar och namnet flyttar sig. Fliken finns för att säga namnen på de millimetrar den spelade filten säger dem (B5) — ett namn som flyttar sig här säger dem någon annanstans.',
+    C: 'Greppen står kvar, namnet får en grund. Båda går att läsa, men greppet ligger fortfarande under bokstäverna där de möts, och filten har fått ett andra visuellt system.',
+  }
+  document.getElementById('saga').textContent = says[variant]
+}
+
+document.getElementById('platser').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-seats]')
+  if (!b) return
+  for (const o of document.querySelectorAll('#platser button')) o.setAttribute('aria-pressed', String(o === b))
+  seats = Number(b.dataset.seats)
+  load()
+})
+document.getElementById('varianter').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-variant]')
+  if (!b) return
+  for (const o of document.querySelectorAll('#varianter button')) o.setAttribute('aria-pressed', String(o === b))
+  variant = b.dataset.variant
+  apply()
+})
+document.getElementById('valj-bort').addEventListener('click', () => {
+  for (const o of box.querySelectorAll('.byd-setup-handle')) o.setAttribute('aria-pressed', 'false')
+  apply()
+})
+document.getElementById('pek').addEventListener('click', (e) => {
+  const on = box.dataset.pek !== 'ja'
+  box.dataset.pek = on ? 'ja' : 'nej'
+  e.currentTarget.setAttribute('aria-pressed', String(on))
+  e.currentTarget.textContent = on ? 'Visa krocken' : 'Dölj krocken'
+})
+
+document.fonts.ready.then(load)
+</script>
+</body></html>
