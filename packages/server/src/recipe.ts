@@ -317,13 +317,19 @@ export function freeSpot(setup: Setup, want: { w: number; h: number }, wish: { x
   // Ett bord utan filt är inget bord; då finns ingen golvyta att söka i och önskeplatsen är allt
   // som finns att säga.
   if (!floor) return rect(wish.x, wish.y, want.w, want.h)
-  const room = { x: floor.x + floor.w - want.w, y: floor.y + floor.h - want.h }
-  if (room.x < floor.x || room.y < floor.y) return null
+  // Hela millimetrar, som allt annat bordet får veta. Varje kant rundas **bort** från den zon den
+  // kommer ur — en kant att lägga sig efter uppåt, en att lägga sig före nedåt — så avrundningen
+  // aldrig kan äta av mellanrummet den räknade fram. En hög är det enda som ger halva millimetrar
+  // alls: dess kortrygg är 63 × 88 kring en punkt.
+  const along = (lo: number, hi: number, at: number, after: number[], before: number[]): number[] => {
+    const [first, last] = [Math.ceil(lo), Math.floor(hi)]
+    const edges = [Math.min(Math.max(at, first), last), first, last, ...after.map((v) => Math.ceil(v)), ...before.map((v) => Math.floor(v))]
+    return [...new Set(edges)].filter((v) => v >= first && v <= last).sort((a, b) => a - b)
+  }
   const taken = setup.zones.filter((z) => z.id !== setup.floor).map(boxOf)
-  const along = (lo: number, hi: number, at: number, edges: number[]): number[] =>
-    [...new Set([Math.min(Math.max(at, lo), hi), lo, hi, ...edges])].filter((v) => v >= lo && v <= hi).sort((a, b) => a - b)
-  const xs = along(floor.x, room.x, wish.x, taken.flatMap((t) => [t.x + t.w, t.x - want.w]))
-  const ys = along(floor.y, room.y, wish.y, taken.flatMap((t) => [t.y + t.h, t.y - want.h]))
+  const xs = along(floor.x, floor.x + floor.w - want.w, wish.x, taken.map((t) => t.x + t.w), taken.map((t) => t.x - want.w))
+  const ys = along(floor.y, floor.y + floor.h - want.h, wish.y, taken.map((t) => t.y + t.h), taken.map((t) => t.y - want.h))
+  if (xs.length === 0 || ys.length === 0) return null
   let best: Geometry | null = null
   let nearest = Infinity
   for (const y of ys)

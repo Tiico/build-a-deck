@@ -786,6 +786,7 @@ export const enEditor = {
 
   'setup.addArea': '＋ Area',
   'setup.addPile': '＋ Pile',
+  'setup.noRoom': 'No free felt for a new area. Move or remove a zone first.',
   'setup.hint': 'Drag a zone on the felt to move it.',
   'setup.help.topic': 'the zones',
   'setup.help.resize': 'Drag the corner to resize it.',

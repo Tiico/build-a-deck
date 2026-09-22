@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ProjectDoc } from '@byd/server'
 import { MAX_PLAYERS } from '@byd/server/doc'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
@@ -61,11 +62,13 @@ const handleFor = (id: string): Promise<HTMLElement> =>
 let projects = 0
 
 /**
- * Fliken **Bord** uppställd som issuet beskriver den: ett riktigt projekt, `seats` platser, en
- * räknare, och varje plats med både sin egen yta och sin räknarzon — det bord som faktiskt står
- * under den delade ytan när formgivaren trycker ＋ Yta.
+ * Fliken **Bord** ur ett riktigt projekt på en riktig server, monterad som den skeppas.
+ *
+ * `seats` ställer upp bordet som issuet beskriver det — så många platser, en räknare, och varje
+ * plats med både sin egen yta och sin räknarzon. `null` lämnar uppställningen som dokumentet
+ * bär den.
  */
-async function bordTab(seats: number): Promise<() => void> {
+async function bordTab(seats: number | null, doc: ProjectDoc = projectDoc()): Promise<() => void> {
   const clientBox = (side: 'Width' | 'Height') =>
     Object.getOwnPropertyDescriptor(HTMLElement.prototype, `client${side}`) ?? ({ get: () => 0, configurable: true } as PropertyDescriptor)
   const before = { Width: clientBox('Width'), Height: clientBox('Height') }
@@ -88,17 +91,19 @@ async function bordTab(seats: number): Promise<() => void> {
   ;(globalThis as { ResizeObserver?: unknown }).ResizeObserver = Stub
 
   const project = `p${++projects}`
-  await run.projects.create(project, projectDoc())
+  await run.projects.create(project, doc)
   atWidth(DESK.w)
   history.replaceState(null, '', `/editor?project=${project}&server=${encodeURIComponent(run.http)}`)
   const { unmount } = render(<EditorPage />)
   await screen.findByText('Skogens herrar')
   fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
-  fireEvent.click(screen.getByRole('button', { name: String(seats) }))
-  fireEvent.click(screen.getByRole('button', { name: /Räknare$/ }))
-  fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
-  fireEvent.click(screen.getByRole('button', { name: '＋ Räknarzon per plats' }))
-  await handleFor('counters:A')
+  if (seats !== null) {
+    fireEvent.click(screen.getByRole('button', { name: String(seats) }))
+    fireEvent.click(screen.getByRole('button', { name: /Räknare$/ }))
+    fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
+    fireEvent.click(screen.getByRole('button', { name: '＋ Räknarzon per plats' }))
+    await handleFor('counters:A')
+  }
   return () => {
     unmount()
     Object.defineProperty(HTMLElement.prototype, 'clientWidth', before.Width)
@@ -137,6 +142,31 @@ describe('en ny delad yta föds på ledig filt (#440)', () => {
         const over = boxes.filter((b) => b.id !== made && b.id !== 'table' && shares(b.box, mine.box)).map((b) => b.id)
         expect({ where, zone: made, over }).toEqual({ where, zone: made, over: [] })
       }
+    } finally {
+      close()
+    }
+  })
+})
+
+// Regelns enda väg ut, och den som gör att ＋ Yta aldrig lägger en ruta ovanpå en annan: när
+// filten är full säger uppställningen det, där den säger allt annat den vägrar — på samma rad som
+// «Zonen togs bort» och «kopierad» står, och med samma röst (`role="status"`).
+describe('en filt utan ledig plats säger det (#440)', () => {
+  const covered = (): ProjectDoc => {
+    const doc = projectDoc()
+    const floor = doc.setup.zones.find((z) => z.id === doc.setup.floor)!.geometry
+    return { ...doc, setup: { ...doc.setup, zones: [...doc.setup.zones, { id: 'duk', kind: 'area', name: 'Duk', visibility: 'all', geometry: floor }] } }
+  }
+
+  it('säger att filten är full i stället för att stapla tyst', async () => {
+    const close = await bordTab(null, covered())
+    try {
+      const before = drawn().length
+      fireEvent.click(screen.getByRole('button', { name: '＋ Yta' }))
+      const said = screen.getByText(/Ingen ledig filt/)
+      expect(said.getAttribute('role')).toBe('status')
+      // Och inget lades: en yta som inte fick plats får inte ha hamnat någonstans ändå.
+      expect(drawn().length).toBe(before)
     } finally {
       close()
     }

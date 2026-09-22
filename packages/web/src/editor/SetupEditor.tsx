@@ -6,7 +6,7 @@ import { targetsOf } from '../player/PlaySheet.js'
 import { stepAside } from './grips.js'
 import { TableRenderer, type FeltFit, type TableHandle } from '../table/TableRenderer.js'
 import { previewOf } from '../setup/preview.js'
-import { MAX_PLAYERS, titleOfRow, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
+import { MAX_PLAYERS, newAreaSpot, titleOfRow, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
 import type { ZonePatch } from '@byd/server/doc'
 import { useT, type Key, type T } from '../i18n/index.js'
@@ -125,9 +125,18 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
   }
   const keys = useRef({ selected, setup, client, remove, t })
   keys.current = { selected, setup, client, remove, t }
+  // En ny delad yta föds på ledig filt (#440). Uppställningen äger regeln och kan säga nej till
+  // den; panelen frågar med samma funktion som lägger zonen, så att ett nej blir ord på raden där
+  // allt annat den vägrar står — och aldrig ett kast ur `applyEdit` som fäller fliken.
   const add = (kind: 'area' | 'pile') => {
+    if (kind === 'area' && newAreaSpot(setup) === null) {
+      setSaid(t('setup.noRoom'))
+      setUndoable(null)
+      return
+    }
     setSelected(client.addZone(kind, t))
     setUndoable(null)
+    setSaid(null)
   }
   // Cut, copy and paste, bound to the window for the reason Delete already is: a handle on the
   // felt never has the focus, because the pointer that selects it is the pointer that starts a
