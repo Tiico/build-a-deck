@@ -340,6 +340,13 @@
   border-radius: 6px; transform-origin: 50% 140%;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
+/* An area only its owner may look into still says how much lies in it (#414, B6): the same pill
+   a pile carries, in the middle of a box that is drawn empty to everyone who sees this. */
+.byd-area-count {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  padding: 2px 8px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #f3e9d6;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+}
 .byd-hand-count {
   position: absolute; left: 50%; top: var(--hand-drop, 50px); transform: translateX(-50%);
   padding: 2px 8px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #f3e9d6;
@@ -754,7 +761,7 @@
 .byd-hand-fan > i.byd-hand-card > img ~ span:not([data-texture]) { visibility: hidden; }
 
 /* On a turned table (C5) the cards turn with it, but labels are interface and stay readable. */
-[data-table] .byd-pile-count, [data-table] .byd-zone > span, [data-table] .byd-peer-cursor span, [data-table] .byd-peer-tag, [data-table] .byd-peer-pulse span { rotate: var(--unrotate, 0deg); }
+[data-table] .byd-pile-count, [data-table] .byd-area-count, [data-table] .byd-zone > span, [data-table] .byd-peer-cursor span, [data-table] .byd-peer-tag, [data-table] .byd-peer-pulse span { rotate: var(--unrotate, 0deg); }
 /* A seat's own name and its hand count are not interface but furniture: they lie on the table
    turned toward that seat (B), so they turn with it rather than against it. */
 

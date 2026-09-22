@@ -868,6 +868,18 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 style={{ left: left(z.geometry.x), top: top(z.geometry.y), width: px(z.geometry.w), height: px(z.geometry.h), ['--name-x' as string]: `${anchor.x}%`, ['--name-y' as string]: `${anchor.y}%` }}
               >
                 <span style={overRim(z, rim, grow)}>{z.name}</span>
+                {/* How much lies in an area this screen may not look into (#414, decision B of
+                    2026-09-22). `count` is already on the wire and was being thrown away, so a
+                    seat with three cards in front of it drew the same empty box as a seat with
+                    none. It says how much and never what: the identities stay behind `project`,
+                    and the frames are what proves it. In the middle rather than at the corner —
+                    the area is drawn empty to whoever sees this badge at all, and a zone's
+                    corners are where names and handles already crowd each other (#424). */}
+                {z.mode === 'count' && z.count > 0 && (
+                  <b className="byd-area-count" data-area-count={z.id}>
+                    {z.count}
+                  </b>
+                )}
               </div>
             )
           })}
