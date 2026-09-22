@@ -695,6 +695,13 @@ Distansvyn använder det för att lägga den egna platsen nederst.
 Reviderat 2026-09-07 (#20): platsens namn är undantaget och vrids inte tillbaka.
 Det ligger längs sin egen kant vänt mot den som sitter där, som ett namnkort på ett riktigt bord, vilket är vad prototyp B visade och vad distansvyn gör rätt av sig själv: den egna platsen ligger nederst och är därmed den enda som står upprätt.
 
+Reviderat 2026-09-22 (#418, prototypens förslag B): undantaget gäller den filt som inte vet vem som tittar.
+Villkoret är `mode === 'table' && me === null` — flera personer runt en liggande skärm, där namnet är ett namnkort och skälet ovan fortfarande håller.
+Vet filten vem som tittar, eller sitter ingen alls vid dess kanter, står namnet upprätt i läsriktningen som zonnamnen bredvid det.
+Meningen ovan om att distansvyn gör rätt av sig själv var fel: den egna platsens namn bär sin kantvridning även där, och filtens vridning läggs ovanpå, så exakt ett namn av fyra gick att läsa — och på en sidoplats, som inte vrids alls (#77), inte ens det egna.
+Platsbrickorna `A`–`D` är samma element och följer med.
+Räknarbrickan står upprätt på varje yta: en bricka är ett tal och inte ett namn, riktningen bär inget ägarskap, den är ett dragmål (C4, #67) och alltså gränssnitt snarare än möbel, och vid ett halvvarv lästes en sexa som en nia.
+
 Kameran (prototypad och byggd 2026-09-07):
 Tre varianter prövades: en kamera som följer innehållet, en regissör som klipper mellan fasta bilder, och hela bordet med en lupp. Valet blev den följande kameran: den är C5:s ordalydelse och behöver inget av protokollet.
 I TV-läge ramar bilden in det som är i spel med marginal och glider när det ändras; den går aldrig närmare än att drygt åtta kort ryms i bredd, aldrig utanför bordet och det som ligger på det.
