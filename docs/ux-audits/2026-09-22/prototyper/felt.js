@@ -24,7 +24,8 @@ const CARD_MM = { w: 63, h: 88 }
 const HAND_CARD_MM = { w: 54, h: 75 }
 const BACK_TILT = 9
 const WOOD_RIM_PX = 30
-const TILT_DEG = 13
+const WOOD_AIR_PX = 12
+const TV_AIR_PX = 20
 
 // seatColor.ts, ordagrant.
 const PALETTE = ['#e05a4f', '#3c8ce7', '#3aa76d', '#d99a1f', '#8e6bd9', '#2bb5b5', '#d9699f', '#9bb63c']
@@ -135,14 +136,27 @@ export function renderFelt(host, o) {
   const rot = mode === 'table' && me !== null ? seatTurn(edgeOf(me, count), count, room) : 0
   const swapped = rot % 180 !== 0
   const rim = mode === 'table' ? WOOD_RIM_PX : 0
+  // Luften runt träet, `fit.ts`: 12 px i bordsläge, 20 på en TV. Den är vad en hand som hänger
+  // förbi kanten ligger i, så utan den kapas solfjädern vid ramens kant.
+  const air = mode === 'table' ? WOOD_AIR_PX : TV_AIR_PX
+  const pad = rim + air
   const shown = swapped ? { w: felt.h, h: felt.w } : felt
-  const scale = Math.min((box.w - 2 * rim) / shown.w, (box.h - 2 * rim) / shown.h)
+  const scale = Math.min((box.w - 2 * pad) / shown.w, (box.h - 2 * pad) / shown.h)
   const px = (mm) => mm * scale
 
   host.textContent = ''
   const frame = el('div', 'byd-table-frame')
   frame.dataset.mode = mode
-  Object.assign(frame.style, { width: `${box.w}px`, height: `${box.h}px` })
+  // `table.css`: under 460 px filt ryms inte zonernas och högarnas namn bredvid det de namnger,
+  // och bordsläget slutar rita dem (K19, #76). Prototypen lyder samma regel, annars visar den en
+  // krock produkten inte har.
+  if (mode === 'table' && px(felt.w) <= 460) frame.dataset.gomda = 'true'
+  // Och `data-tight`: på en smal filt sätts namnen i 12 px utan spärr, eftersom spärren ensam är
+  // en sjättedel av vad ett namn tar.
+  if (px(felt.w) < 700) frame.dataset.tight = 'true'
+  // Ramen sluter om träet i stället för att fylla rutan: den mörka grunden är bordets rum och
+  // inte fönstret, och ett fält av den utan bord i skulle påstå ett fönster som inte är mätt.
+  Object.assign(frame.style, { width: `${Math.round(px(felt.w)) + 2 * pad}px`, height: `${Math.round(px(felt.h)) + 2 * pad}px` })
   const wood = el('div', 'byd-table-wood')
   const table = el('div', 'byd-table')
   table.dataset.table = 'true'
@@ -183,7 +197,13 @@ export function renderFelt(host, o) {
   const pile = (x, y, label, n) => {
     const p = el('div', 'byd-pile', { left: `${left(x)}px`, top: `${top(y)}px`, width: `${px(CARD_MM.w)}px`, height: `${px(CARD_MM.h)}px` })
     const count = el('span', 'byd-pile-count')
-    count.style.transform = `translateX(-50%) rotate(${-rot}deg)`
+    // Etiketten ska hamna under sin hög på skärmen, inte under den i filtens riktning: på en
+    // halvvarvad filt är «nedanför» i filtens koordinater ovanför i läsarens.
+    if (rot === 180) {
+      Object.assign(count.style, { top: '0', transform: 'translate(-50%, calc(-100% - 6px)) rotate(180deg)' })
+    } else {
+      count.style.transform = `translate(-50%, 6px) rotate(${-rot}deg)`
+    }
     const nm = el('span', 'byd-pile-name')
     nm.textContent = label
     const b = el('b', 'byd-pile-n')
@@ -192,8 +212,8 @@ export function renderFelt(host, o) {
     p.append(count)
     table.append(p)
   }
-  pile(-CARD_MM.w - 20, -CARD_MM.h / 2, 'Draghög', 40)
-  pile(20, -CARD_MM.h / 2, 'Kasthög', 7)
+  pile(-CARD_MM.w - 180, -CARD_MM.h / 2, 'Draghög', 40)
+  pile(180, -CARD_MM.h / 2, 'Kasthög', 7)
 
   for (let i = 0; i < count; i++) {
     const edge = edgeOf(i, count)
@@ -264,10 +284,15 @@ export function renderFelt(host, o) {
     else if (edge === 'W') Object.assign(tag.style, { top: `${alongY}px`, left: '6px' })
     else Object.assign(tag.style, { top: `${alongY}px`, right: '6px' })
 
-    // Samma centreringar som `table.css` skriver, men med vridningen given av varianten.
+    // Samma centreringar som `table.css` skriver, men med vridningen given av varianten. Vid en
+    // sidokant kompenserar `table.css` för att en vriden låda sticker ut längs den andra axeln
+    // med halva namnets längd; ett upprätt namn vrids inte och ska därför inte kompenseras, annars
+    // skjuts det ut över kanten och vidare ut på träet.
     const half = '10.5px'
+    const sideways = placeCard && (edge === 'E' || edge === 'W')
     const shift =
       edge === 'S' || edge === 'N' ? 'translateX(-50%)'
+      : !sideways ? 'translateY(-50%)'
       : edge === 'E' ? `translateX(calc(50% - ${half})) translateY(-50%)`
       : `translateX(calc(${half} - 50%)) translateY(-50%)`
     tag.style.transform = `${shift} rotate(${own}deg)`

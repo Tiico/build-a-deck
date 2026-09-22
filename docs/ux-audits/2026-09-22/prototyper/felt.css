@@ -46,14 +46,14 @@
 /* Zoner utanför golvet får en kontur och ett namn. */
 .byd-zone { position: absolute; box-sizing: border-box; border: 2px solid rgba(255, 255, 255, 0.18); border-radius: 10px; }
 .byd-zone > span {
-  position: absolute; white-space: nowrap;
+  position: absolute; white-space: nowrap; padding: 0 4px;
   font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: rgba(255, 255, 255, 0.45);
 }
 .byd-table-frame[data-mode='tv'] .byd-zone > span { font-size: 13px; letter-spacing: 1.5px; color: #7d8597; }
 
 /* Högar. */
 .byd-pile { position: absolute; box-sizing: border-box; border-radius: 6px; background: #33405a; border: 1px solid #1f2b4a; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45); }
-.byd-pile-count { position: absolute; left: 50%; top: calc(100% + 6px); white-space: nowrap; color: var(--byd-felt-chalk); font-size: 11px; letter-spacing: 0.5px; }
+.byd-pile-count { position: absolute; left: 50%; top: 100%; white-space: nowrap; color: var(--byd-felt-chalk); font-size: 11px; letter-spacing: 0.5px; }
 .byd-pile-name::after { content: ' · '; }
 .byd-pile-n { font-weight: 600; }
 
@@ -74,6 +74,13 @@
   z-index: 4;
 }
 .byd-seat-name[data-me] { box-shadow: 0 0 0 2px var(--byd-seat-ink); }
+
+/* Under 460 px filt slutar bordsläget rita zonernas och högarnas namn (K19, #76): de ryms inte
+   bredvid det de namnger. Platsnamnen ritas fortfarande, vilket är hela poängen med #418. */
+.byd-table-frame[data-gomda] .byd-zone > span,
+.byd-table-frame[data-gomda] .byd-pile-name { display: none; }
+/* Och på en smal filt sätts de kvarvarande namnen i 12 px utan spärr, som `data-tight` gör. */
+.byd-table-frame[data-tight] .byd-zone > span { font-size: 12px; letter-spacing: 0; }
 
 /* Variant C: platsens egna 500 mm av kanten, målade i platsens färg. */
 .seat-band { position: absolute; background: var(--seat, #666); opacity: 0.85; border-radius: 3px; z-index: 0; }
