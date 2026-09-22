@@ -1460,8 +1460,14 @@ function SeatName({ zone, floor, name, color, mine, read, left, top }: { zone: Z
   const edge = EDGES[edgeRotation(zone, floor)] ?? 'S'
   const alongX = left(zone.geometry.x + zone.geometry.w / 2)
   const alongY = top(zone.geometry.y + zone.geometry.h / 2)
+  // The name lies on the wood, off the felt (#413, decision of 2026-09-22). It used to sit at the
+  // felt's own edge — which is *inside* the hand's strip, on top of the cards — and once the count
+  // moved to that strip's inner line the two had 41 px of strip to share and needed 43. The rim is
+  // where a table keeps its furniture, and a name card at the table's edge is what C5 says this
+  // is. Anchored on the felt's edge here and pushed out by its own size in the sheet, so the rim
+  // holds it at every scale rather than at the one it was drawn at.
   const place =
-    edge === 'S' ? { left: alongX, bottom: 6 } : edge === 'N' ? { left: alongX, top: 6 } : edge === 'W' ? { top: alongY, left: 6 } : { top: alongY, right: 6 }
+    edge === 'S' ? { left: alongX, bottom: 0 } : edge === 'N' ? { left: alongX, top: 0 } : edge === 'W' ? { top: alongY, left: 0 } : { top: alongY, right: 0 }
   return (
     <div className="byd-seat-name" data-seat-name={zone.owner} data-edge={edge} {...(read ? { 'data-read': '' } : {})} {...(mine ? { 'data-me': 'true' } : {})} style={{ ...place, ['--seat' as string]: color }}>
       {name}

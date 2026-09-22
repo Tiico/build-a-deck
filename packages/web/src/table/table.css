@@ -383,19 +383,27 @@
    above keeps C5's exception where its reason still holds — a screen lying on a table with
    people round it, where the name is a place card — and everywhere else the name is upright,
    like the zone names beside it. The turn of the felt itself is undone in the `--unrotate` row
-   above; these take away the name's own turn along its edge. */
-.byd-seat-name[data-read][data-edge='N'] { transform: translateX(-50%); }
-.byd-seat-name[data-read][data-edge='E'], .byd-seat-name[data-read][data-edge='W'] { transform: translateY(-50%); }
-.byd-seat-name[data-edge='S'] { transform: translateX(-50%); }
-.byd-seat-name[data-edge='N'] { transform: translateX(-50%) rotate(180deg); }
+   above; these take away the name's own turn along its edge.
+   Out onto the wood with both forms (#413): the name is anchored on the felt's edge and pushed
+   off it by its own height, a percentage being its own box, so the rim holds it at every scale
+   and not only at the one it was drawn at. Turned a quarter it takes its own *height* across the
+   rim, so there it is placed by its centre instead. */
+.byd-seat-name[data-read][data-edge='S'] { transform: translate(-50%, calc(100% + 2px)); }
+.byd-seat-name[data-read][data-edge='N'] { transform: translate(-50%, calc(-100% - 2px)); }
+.byd-seat-name[data-read][data-edge='E'] { transform: translate(-100%, -50%); }
+.byd-seat-name[data-read][data-edge='W'] { transform: translateY(-50%); }
+.byd-seat-name[data-edge='S'] { transform: translate(-50%, calc(100% + 2px)); }
+.byd-seat-name[data-edge='N'] { transform: translate(-50%, calc(-100% - 2px)) rotate(180deg); }
 /* A place card at a side edge is turned onto its side, and a box turned about its own middle
    sticks out along the other axis by however long the name is: `right: 6px` put an eight-letter
    name forty pixels in from the rim and a longer one further still, so the card crept toward the
    middle of the table as the name grew while the near edges' cards stayed on their 6 px. It is
    pushed back out by exactly what the turn takes, so every seat's card lies the same 6 px from
    its own edge (K9) whatever it says. */
-.byd-seat-name[data-edge='E'] { transform: translateX(calc(50% - var(--card-half))) translateY(-50%) rotate(-90deg); }
-.byd-seat-name[data-edge='W'] { transform: translateX(calc(var(--card-half) - 50%)) translateY(-50%) rotate(90deg); }
+/* Turned a quarter, a name takes its own *height* across the rim, so it is placed by its centre:
+   half its width out to clear the felt, and then the rim's own offset. */
+.byd-seat-name[data-edge='E'] { transform: translateX(calc(50% + 5px)) translateY(-50%) rotate(-90deg); }
+.byd-seat-name[data-edge='W'] { transform: translateX(calc(-50% - 5px)) translateY(-50%) rotate(90deg); }
 
 /* The felt has no chrome (B): the game, its version and the room code, quietly along the top. */
 .byd-table-plate {

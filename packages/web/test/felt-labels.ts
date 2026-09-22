@@ -106,15 +106,29 @@ export const READ = `((margin) => {
     const gripBoxes = [...document.querySelectorAll('.byd-setup-corner')].map((el) => seen(el)).filter((r) => r)
     const grips = []
     for (const l of labels) for (const g of gripBoxes) if (hits(l.r, g)) grips.push(l.text + ' × handtag')
-    // Off the felt. A hand's count is left out on purpose: it hangs a fixed distance below its own
-    // hand by \`HAND_COUNT_MM\`, which is K9's own rule for the played felt and not a stray name.
+    // Off the table. A zone's name belongs on the felt; a *seat's* name belongs on the wood the
+    // felt rests on, off the felt itself, since #413 moved it there — the hand's strip it used to
+    // sit in is the count's now, and the rim is where a table keeps its furniture (C5's name card
+    // at the table's edge). So the two are measured against different boxes, and neither is
+    // excused: a seat name past the wood's outer edge is as lost as a zone name past the felt's.
+    //
+    // A hand's count is left out of both on purpose: it hangs from its own zone's inner line by
+    // K9's rule for the played felt, and is not a stray name.
     const felt = document.querySelector('[data-table]')?.getBoundingClientRect() ?? null
+    // The box a seat's name has to stay inside. On the played felt that is the wood the felt rests
+    // on. A surface that draws the felt without wood still reserves room around it — the Bord
+    // tab leaves a card's width of dark so that what lies off the table can be drawn there at all
+    // (L30) — and there the frame is that room. Whichever it is, the name must be inside it: a
+    // name past it is as lost as a zone name past the felt.
+    const woodBox = document.querySelector('.byd-table-wood')?.getBoundingClientRect() ?? null
+    const wood = woodBox && felt && (woodBox.width > felt.width + 2 || woodBox.height > felt.height + 2) ? woodBox : (document.querySelector('.byd-table-frame')?.getBoundingClientRect() ?? felt)
     const outside = []
-    if (felt)
+    if (felt && wood)
       for (const el of document.querySelectorAll('.byd-zone > span, .byd-seat-name')) {
         const r = seen(el)
         if (!r) continue
-        if (r.left < felt.left - 1 || r.top < felt.top - 1 || r.right > felt.right + 1 || r.bottom > felt.bottom + 1) outside.push((el.textContent || '').trim())
+        const box = el.classList.contains('byd-seat-name') ? wood : felt
+        if (r.left < box.left - 1 || r.top < box.top - 1 || r.right > box.right + 1 || r.bottom > box.bottom + 1) outside.push((el.textContent || '').trim())
       }
     const card = document.querySelector('.byd-pile-top')
     return {
