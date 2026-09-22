@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 4 — brickan mot platsnamnet i bordsläget (#413)</title>
+<link rel="stylesheet" href="../proto.css">
+<style>
+  body { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  figure { margin: 0 0 28px; }
+  figure img { width: 100%; border-radius: 8px; display: block; }
+  figcaption { padding: 8px 0 0; font-size: 14px; }
+  .ok { color: #9ed39e; } .bad { color: #ff9d9d; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0 28px; font-size: 14px; }
+  th, td { border: 1px solid #3a3a3a; padding: 6px 10px; text-align: left; }
+</style>
+</head>
+<body>
+<h1>Brickan mot platsnamnet i bordsläget (#413)</h1>
+
+<p><strong>Frågan.</strong> Förslag A lägger handens antalsbricka mot handzonens inre linje, mitt för platsen. Platsnamnet ligger i samma remsas andra ände, också mitt för platsen. Remsan är 60–75 mm djup (K18) — ungefär 41 px på skärmen — och namnet är 23 px, brickan 20. De får inte plats. Vilken väg ut går fri?</p>
+
+<p><strong>Hur det är mätt.</strong> Med repots egen läsning: <code>READ</code> och <code>NAME_MARGIN</code> ur <code>packages/web/test/felt-labels.ts</code>, samma 15 %-marginal som <code>felt-names.test.tsx</code> fäller på, på produktens egen <code>TableRenderer</code> med de ark som skeppas — och genom samma renderingsväg som grinden använder. Vid 2–8 platser och alla fyra vridningar: 28 scener per väg. Harnesset ligger i <code>packages/web/test/proto-413.test.tsx</code> på den här grenen.</p>
+
+<table>
+<tr><th>Väg</th><th>Krockar (av 28)</th><th>Vad som krockar</th></tr>
+<tr><td><strong>A · som beslutat</strong></td><td class="bad">22</td><td>brickan × platsnamnet, vid varje plats</td></tr>
+<tr><td><strong>A + namnet ut ur remsan</strong></td><td class="ok">inga</td><td>—</td></tr>
+<tr><td><strong>A + brickan längs kanten</strong></td><td class="ok">inga</td><td>—</td></tr>
+<tr><td><strong>i dag / #427 · brickan utåt</strong></td><td class="ok">inga</td><td>—</td></tr>
+</table>
+
+<p><strong>Kortets storlek står utanför den här mätningen.</strong> Harnesset ritar filten i en given ruta utan kamera, så alla fyra ger 51,0 px. Vad #427 kostar — 2,9 % av kortsidan — mättes i den prototyp som ledde fram till beslutet och gäller fortfarande.</p>
+
+<h2>A · som beslutat</h2>
+<figure>
+  <img src="a-som-beslutat-4.png" alt="Bordsläget, fyra platser: brickan 4 och namnet Spelare 1 ligger på varandra i handremsan">
+  <figcaption class="bad">Brickan sitter på fläktens inre kant och namnet direkt under den, på samma kort. 22 av 28 scener faller.</figcaption>
+</figure>
+
+<h2>A + namnet ut ur remsan</h2>
+<figure>
+  <img src="a-namnet-ut-ur-remsan-4.png" alt="Bordsläget: namnet Spelare 1 ligger på träramen utanför filten, brickan kvar mitt för platsen">
+  <figcaption class="ok">Namnet flyttas ut på träramen. Brickan står kvar mitt för platsen, precis som A säger. Det är namnet som låg på handens kort, och på ramen läser det som ett namnkort vid bordskanten.</figcaption>
+</figure>
+
+<h2>A + brickan längs kanten</h2>
+<figure>
+  <img src="a-brickan-l-ngs-kanten-4.png" alt="Bordsläget: brickan 4 har flyttats åt sidan och ligger fritt på filten">
+  <figcaption>Mäter rent, och brickan hänger kvar på zonens linje så den står stilla. Men den tappar sin fläkt: den ligger ensam på filten och säger inte längre vems hand den räknar.</figcaption>
+</figure>
+
+<h2>i dag / #427 · brickan utåt</h2>
+<figure>
+  <img src="i-dag-427-brickan-ut-t-4.png" alt="Bordsläget: brickan hänger nedanför fläkten, halvt på träramen">
+  <figcaption>Dagens form. Ingen krock — men det är den här formen som klipps av fönstret på TV:n, vilket är hela #413.</figcaption>
+</figure>
+
+<h2>Rekommendation</h2>
+<p><strong>A + namnet ut ur remsan.</strong> Den behåller förslag A oförändrat — brickan mitt för platsen på den inre linjen, stillastående när handen växer, noll kostnad för filten — och tar bort krocken vid dess verkliga orsak: det är platsnamnet som ligger inne i handens remsa, ovanpå korten.</p>
+<p>Den andra rena vägen, brickan längs kanten, betalar med att brickan inte längre hör ihop med någon fläkt, och den börjar likna den avvisade varianten B.</p>
+<p><strong>Men det är ett beslut och inte ett bygge:</strong> att flytta platsnamnet ut på träramen rör C5:s namnkortsgeometri, som just reviderats i #418 vad gäller namnets riktning. Väntar på beställaren.</p>
+</body>
+</html>
