@@ -3,6 +3,7 @@ import { useT } from '../i18n/index.js'
 import type { VisibleComponentState } from '@byd/protocol'
 import { Texture } from '../table/Texture.js'
 import { hue } from '../table/hue.js'
+import { cardWord } from '../table/keyboard.js'
 
 // A card held up large after a tap on the strip (K4). It is put down on the next touch, not on
 // click: a tap is a pointerup and then a click, and the click lands on what the pointerup just
@@ -20,10 +21,10 @@ export function HeldCard({ card, faces, onClose, actions }: { card: VisibleCompo
   const [opener] = useState(() => typeof document === 'undefined' ? null : document.activeElement)
   useEffect(() => () => { if (opener instanceof HTMLElement && opener.isConnected) opener.focus() }, [opener])
   return (
-    <div className="byd-inspect" role="dialog" aria-modal="false" aria-label={card.cardRef ?? t('player.hand.read')} onPointerDown={onClose} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); onClose() } }}>
+    <div className="byd-inspect" role="dialog" aria-modal="false" aria-label={cardWord(card) ?? t('player.hand.read')} onPointerDown={onClose} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); onClose() } }}>
       <div data-inspect={card.id} data-face="front" style={{ ['--hue' as string]: hue(card.cardRef ?? '') }}>
         <Texture faces={faces} c={card} retry />
-        <span>{card.cardRef}</span>
+        <span>{cardWord(card)}</span>
       </div>
       {actions}
       <button className="byd-inspect-close" type="button" autoFocus onPointerDown={event => event.stopPropagation()} onClick={onClose}>{t('kbd.panel.close')}</button>

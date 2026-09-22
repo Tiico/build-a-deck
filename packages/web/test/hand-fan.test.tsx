@@ -11,6 +11,22 @@ const base = { id: 'c1', type: { id: 'card.standard.63x88', version: 1 }, zone: 
 const mine: VisibleComponentState = { ...base, face: 'front', cardRef: 'dragon', faces: { front: 'a'.repeat(64) } }
 const opaque: VisibleComponentState = { ...base, id: 'c2', face: 'back', cardRef: null, faces: { back: 'b'.repeat(64) } }
 
+// The fan is the same hand on a bigger screen (/online), so it says the same word as the strip:
+// the row's title, with the id behind it for a row that has none (#412).
+describe('the online fan calls a card by its title (#412)', () => {
+  it('writes the title beside the picture and speaks it in the card’s name', () => {
+    const { container } = render(<HandFan cards={[{ ...mine, cardRef: 'bjornen', title: 'Björnen', faces: undefined }]} onPlay={() => undefined} onOpen={() => undefined} />)
+    const card = container.querySelector('[data-hand-card="c1"]')!
+    expect(card.querySelector('span[aria-hidden]')!.textContent).toBe('Björnen')
+    expect(card.getAttribute('aria-label')).toContain('Björnen')
+  })
+
+  it('writes the id for a row that carries no title', () => {
+    const { container } = render(<HandFan cards={[{ ...mine, cardRef: 'bjornen', faces: undefined }]} onPlay={() => undefined} onOpen={() => undefined} />)
+    expect(container.querySelector('[data-hand-card="c1"] span[aria-hidden]')!.textContent).toBe('bjornen')
+  })
+})
+
 describe('a texture the online fan is still waiting for (#10)', () => {
   it('names the card the seat holds, and says nothing about one it may not see', () => {
     render(<HandFan cards={[mine, opaque]} faces="http://faces.test" onPlay={() => undefined} onOpen={() => undefined} />)

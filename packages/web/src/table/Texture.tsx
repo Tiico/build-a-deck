@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { useTextureFailure } from './TextureFailures.js'
 import { useT } from '../i18n/index.js'
+import { cardWord } from './keyboard.js'
 import './texture.css'
 
 // A texture may not exist yet: the server answers 202 while the render job is queued, the browser
@@ -18,9 +19,10 @@ type Phase = 'pending' | 'ready' | 'failed'
 // there is one place to change them.
 //
 // The whole component state is the input rather than a URL, and that is the point: what the
-// waiting card may say about itself is decided by `cardRef`, the same field that decides which
-// face is fetched at all. It is null exactly when this seat may not know the card's identity, so
-// a fallback cannot name a card the wire did not name (B6, TUNN-SKIVA §5).
+// waiting card may say about itself is decided by the projection's own word for it — the row's
+// title, or its id behind it (#412) — which is the same filter that decides which face is fetched
+// at all. There is no word exactly when this seat may not know the card's identity, so a fallback
+// cannot name a card the wire did not name (B6, TUNN-SKIVA §5).
 //
 // A lost face offers a way back only where `retry` says so: a view that holds the card up large.
 // The face is quiet everywhere else, because most cards are controls — the hand card, a felt card
@@ -33,7 +35,7 @@ export function Texture({ faces, c, retry = false }: TextureProps) {
   if (!src || !c) return null
   // Keyed on the face: a card whose texture changes gets a fresh <img> rather than a new `src`
   // on the old one, so the browser has no decoded bitmap left to show for a frame.
-  return <TextureFace key={src} src={src} name={c.cardRef ?? null} retry={retry} />
+  return <TextureFace key={src} src={src} name={cardWord(c)} retry={retry} />
 }
 
 // The back a face-down pile wears (#313). It has no component to be read off — a hidden pile hands

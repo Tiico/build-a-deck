@@ -8,7 +8,7 @@ import { useT } from '../i18n/index.js'
 import { ActionPanel } from './ActionPanel.js'
 import { CardLook } from './CardLook.js'
 import { CounterEntry } from './CounterEntry.js'
-import { feltLabels, intentsForPlace, landedKeyFor, shortcutIntents, thingsOn, type Thing } from './keyboard.js'
+import { cardName, feltLabels, intentsForPlace, landedKeyFor, shortcutIntents, thingsOn, type Thing } from './keyboard.js'
 import type { DragTarget } from './drop.js'
 import type { FeltKeyboard } from './TableRenderer.js'
 
@@ -193,7 +193,7 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
     openHand: (card, marked) => {
       remember()
       setOpen({
-        thing: { key: `card:${card.id}`, kind: 'card', id: card.id, name: card.cardRef ?? 'Dolt kort', zone: card.zone },
+        thing: { key: `card:${card.id}`, kind: 'card', id: card.id, name: cardName(card, t), zone: card.zone },
         cards: marked.includes(card.id) ? [...marked] : [card.id],
       })
     },

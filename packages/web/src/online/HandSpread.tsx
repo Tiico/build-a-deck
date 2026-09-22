@@ -3,7 +3,7 @@ import type { VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
 import { useRoving } from '../editor/roving.js'
-import { handLabel } from '../table/keyboard.js'
+import { cardWord, handLabel } from '../table/keyboard.js'
 import { useT } from '../i18n/index.js'
 import { fanStyle } from './fan.js'
 
@@ -87,7 +87,7 @@ export function HandSpread({ cards, faces, onOpen, onClose }: HandSpreadProps) {
                 }}
               >
                 <Texture faces={faces} c={c} />
-                <span aria-hidden="true">{c.cardRef}</span>
+                <span aria-hidden="true">{cardWord(c)}</span>
               </button>
             )
           })}
