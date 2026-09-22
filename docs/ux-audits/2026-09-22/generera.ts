@@ -14,6 +14,12 @@ import { FRAMES, type Field } from '../../../packages/web/src/wizard/frames.js'
 
 const HÄR = new URL('.', import.meta.url).pathname
 
+// Ett uppslag som saknas är ett fel i den här filen och inte något att rita runt.
+function måste<T>(värde: T | undefined, vad: string): T {
+  if (värde === undefined) throw new Error(`saknas: ${vad}`)
+  return värde
+}
+
 // ── Vad korten säger ─────────────────────────────────────────────────────────────────────────
 // Två kort, som i felrapporten. Riktig svensk text, för att frågan är om brödtext i 8,5 punkter
 // överlever på ett 63 mm-kort — inte om ett familjenamn ser bra ut i nitton punkter (L27).
@@ -171,7 +177,7 @@ for (const ram of FRAMES) {
     const kompilerad = compile({
       type: CARD_STANDARD_63x88,
       face,
-      row: KORT[0]!.row,
+      row: måste(KORT[0], 'kort 1').row,
       icons: {},
       scope,
       ...(pinnade ? { fonts: pinnade } : {}),
@@ -184,12 +190,12 @@ for (const ram of FRAMES) {
 // Det andra kortet, bara för Klassisk: samma fyra kandidater, längre rubrik och kortare text.
 const andra: Record<string, Ruta> = {}
 for (const kandidat of KANDIDATER) {
-  const ram = FRAMES[0]!
+  const ram = måste(FRAMES[0], 'ram 1')
   const val = kandidat.val?.[ram.id]
   const face = satt(ram.front(FÄLT), val)
   const pinnade = fonts(val)
   const scope = `#a-${kandidat.id}`
-  const kompilerad = compile({ type: CARD_STANDARD_63x88, face, row: KORT[1]!.row, icons: {}, scope, ...(pinnade ? { fonts: pinnade } : {}) })
+  const kompilerad = compile({ type: CARD_STANDARD_63x88, face, row: måste(KORT[1], 'kort 2').row, icons: {}, scope, ...(pinnade ? { fonts: pinnade } : {}) })
   andra[kandidat.id] = { html: kompilerad.html, css: kompilerad.css, anmärkningar: [] }
 }
 
@@ -233,7 +239,7 @@ function rutaHtml(nyckel: string, ruta: Ruta, kandidat: Kandidat, ram: string): 
 }
 
 const ramarHtml = FRAMES.map((ram) => {
-  const rutorHtml = KANDIDATER.map((k) => rutaHtml(`${ram.id}-${k.id}`, rutor[`${ram.id}-${k.id}`]!, k, ram.id)).join('\n')
+  const rutorHtml = KANDIDATER.map((k) => rutaHtml(`${ram.id}-${k.id}`, måste(rutor[`${ram.id}-${k.id}`], `${ram.id}-${k.id}`), k, ram.id)).join('\n')
   return `<section class="ram" id="ram-${ram.id}">
   <h2>${esc(RAMNAMN[ram.id] ?? ram.id)}</h2>
   <div class="rad">${rutorHtml}</div>
@@ -243,7 +249,7 @@ const ramarHtml = FRAMES.map((ram) => {
 const andraHtml = KANDIDATER.map(
   (k) => `<div class="ruta">
   <div class="rutrubrik"><span class="märke ${k.id === 'idag' ? 'bas' : ''}">${esc(k.namn)}</span> <span>Gläntans ljus</span></div>
-  <div class="kortyta" id="a-${k.id}">${andra[k.id]!.html}</div>
+  <div class="kortyta" id="a-${k.id}">${måste(andra[k.id], k.id).html}</div>
 </div>`,
 ).join('\n')
 
@@ -253,7 +259,7 @@ const kandidatHtml = KANDIDATER.map(
   <p>${esc(k.mening)}</p>
   <ul>${
     k.val
-      ? [...new Set(Object.values(k.val).flatMap((v) => Object.values(v)))].map((f) => `<li><b>${esc(f)}</b> — ${esc(FILER[f]!.varifrån)}</li>`).join('')
+      ? [...new Set(Object.values(k.val).flatMap((v) => Object.values(v)))].map((f) => `<li><b>${esc(f)}</b> — ${esc(måste(FILER[f], f).varifrån)}</li>`).join('')
       : '<li><b>Georgia, serif</b> — ingen fil; Georgia finns på Mac och Windows, inte på Linux</li><li><b>system-ui</b> — ingen fil; namnet på vad maskinen råkar ha</li>'
   }</ul>
 </div>`,
@@ -270,7 +276,7 @@ const rösterHtml = KANDIDATER.map((k) => {
     const familj = k.val?.[ram.id]?.['title']
     // Enkla citattecken: stacken hamnar i ett `style`-attribut, och ett dubbelt citattecken där
     // stänger attributet — vilket tyst tar med sig både graden och vikten.
-    const stack = familj ? `'${familj}', ${FILER[familj]!.generisk}` : ram.id === 'classic' ? 'Georgia, serif' : 'system-ui'
+    const stack = familj ? `'${familj}', ${måste(FILER[familj], familj).generisk}` : ram.id === 'classic' ? 'Georgia, serif' : 'system-ui'
     return `<div class="röst"><span class="etikett">${esc(RAMNAMN[ram.id] ?? ram.id)}</span><span class="ord" style="font-family:${stack};font-size:${grad * 2}pt;font-weight:${vikt}">Skogsvakten</span></div>`
   }).join('')
   return `<div class="rostblock"><div class="rutrubrik"><span class="märke ${k.id === 'idag' ? 'bas' : ''}">${esc(k.namn)}</span></div>${rader}</div>`
@@ -280,7 +286,10 @@ const summaHtml = `<table class="summa">
 <thead><tr><th>Ram</th>${KANDIDATER.map((k) => `<th>${esc(k.namn)}</th>`).join('')}</tr></thead>
 <tbody>${FRAMES.map((ram) => {
   const celler = KANDIDATER.map((k) => {
-    const rad = sammanställning.find((s) => s.ram === ram.id && s.kandidat === k.id)!
+    const rad = måste(
+      sammanställning.find((s) => s.ram === ram.id && s.kandidat === k.id),
+      `${ram.id}-${k.id}`,
+    )
     return `<td class="${rad.antal === 0 ? 'ok' : 'warn'}">${rad.antal === 0 ? 'noll anmärkningar' : `${rad.antal} · ${esc(rad.koder.map((c) => KODORD[c] ?? c).join(', '))}`}</td>`
   }).join('')
   return `<tr><th>${esc(RAMNAMN[ram.id] ?? ram.id)}</th>${celler}</tr>`
