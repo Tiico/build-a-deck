@@ -99,12 +99,17 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     expect(screen.queryByRole('button', { name: /öppna bordet/i })).toBeNull()
   })
 
-  it('cannot proceed without a name', () => {
-    open(() => undefined)
+  // Vägen framåt är inte låst utan öppen, och svarar när den trycks (#416, variant B): namnet
+  // krävs fortfarande, men villkoret sägs i stället för att vara en grå knapp utan förklaring.
+  // Hela svaret — beskedet, fokusflytten och att ingenting skapas — mäts i `name-required`.
+  it('does not proceed without a name, and says so instead of standing locked', () => {
+    const gone: string[] = []
+    open((url) => gone.push(url))
     const next = screen.getByRole('button', { name: /fortsätt i editorn/i }) as HTMLButtonElement
-    expect(next.disabled).toBe(true)
-    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'X' } })
     expect(next.disabled).toBe(false)
+    fireEvent.click(next)
+    expect(gone).toEqual([])
+    expect(screen.getByRole('alert').textContent).toMatch(/Spelet behöver ett namn först/)
   })
 })
 
@@ -143,12 +148,14 @@ describe('a game without the guided start (L42)', () => {
     expect(stored?.template.faces['back']?.base).toEqual([])
   })
 
-  it('is closed without a name, like the guided way', () => {
-    open(() => undefined)
+  it('asks for the name the same way the guided door does, instead of standing locked', () => {
+    const gone: string[] = []
+    open((url) => gone.push(url))
     const blank = screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' }) as HTMLButtonElement
-    expect(blank.disabled).toBe(true)
-    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'X' } })
     expect(blank.disabled).toBe(false)
+    fireEvent.click(blank)
+    expect(gone).toEqual([])
+    expect(screen.getByRole('alert').textContent).toMatch(/Spelet behöver ett namn först/)
   })
 
   it('says what it leaves out, and is the second action beside the guided way (L13)', async () => {

@@ -62,7 +62,11 @@ describe('sitting down', () => {
     fireEvent.click(document.querySelector('[data-seat="A"]')!)
     expect(document.querySelector('[data-seat="B"]')!.getAttribute('aria-pressed')).toBe('true')
 
-    expect((screen.getByRole('button', { name: /Sätt dig/ }) as HTMLButtonElement).disabled).toBe(true)
+    // Vägen in står öppen utan namn och svarar när den trycks (#416, variant B): beskedet kommer
+    // vid fältet och ingen skickas någonstans. `name-required.test.tsx` mäter hela det svaret.
+    expect((screen.getByRole('button', { name: /Sätt dig/ }) as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: /Sätt dig/ }))
+    expect(gone).toEqual([])
     fireEvent.change(screen.getByLabelText('Ditt namn'), { target: { value: ' Bo ' } })
     fireEvent.click(screen.getByRole('button', { name: /Sätt dig/ }))
     // The code buys a token for the seat first (DRIFT §9); the link carries it.

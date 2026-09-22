@@ -1808,6 +1808,16 @@ Nord och syd är obundna tvärs över, eftersom platsen mittemot dem ligger en h
 Gränsen frågar inte om kanten mittemot är tom — ett treplatsbord har ingen västplats, och östplatsen hålls ändå till sin halva — därför att ett piller som räcker förbi filtens mitt slutar säga vilken sida dess ägare sitter på, och därför att en gräns som beror på vilka platser som råkar finnas är just den andra mekanismen som inte ska finnas.
 Filtens bredd skrivs nu en enda gång, som `--byd-felt-w` på själva bordet, och överhänget som `--byd-seat-hang-x`; både filtens mått, platsernas lägen och gränsen läser dem.
 En krympt filt drar därmed åt gränsen i stället för att låta pillren mötas på mitten, och garantin hänger inte längre på att filten råkar vara bred nog.
+
+**Reviderat 2026-09-21 (#416): namnet krävs fortfarande, men vägen in står öppen och säger det vid tryck.**
+Anslutningssidan är det första en gäst ser efter att ha läst av rutan vid bordet, och med tomt namnfält var alla tre vägarna in låsta utan ett ord om varför.
+Beställaren valde variant B ur prototypen (`docs/ux-audits/2026-09-21/prototyper/06-namnet-anslutningen.html`, `?v=b`), samma val som i wizarden (L42).
+«Sätt dig», «Spela på den här skärmen» och «Bara titta» står öppna utan namn; trycks någon av dem går den ingenstans och beskedet «Skriv ditt namn först.» ställer sig vid fältet som en `role="alert"`, fältet märks `aria-invalid` och pekar på det, och markören flyttas dit.
+Fältet får den synliga etikett det saknade — det skrivna är det fältet heter (WCAG 2.5.3) — och platshållaren «Ditt namn», som lästes som ett ifyllt värde, försvinner.
+Det som fortfarande *är* låst är vägen till en plats som någon annan hunnit ta (#408), och den bär nu ett låst utseende som går att läsa.
+`join.css` målade om den låsta «Sätt dig» till `#242938`, vilket mot sidans egen botten `#14161c` är 1,25:1, medan de två under den tonades till 35 % (kant 1,56:1, bläck 2,77:1) — tre kontroller låsta tre olika mycket.
+Nu är det ett låst utseende för hela ytan: fyllningen faller, linjen står kvar i ytans egen sekundärlinje, och ingenting tonas bort.
+Mätt efter rättelsen: kant 4,19:1 för båda, bläck 4,71:1 respektive 5,87:1.
 Kapningen sker i css:en också här, så namnet en skärmläsare säger är fortfarande hela namnet.
 
 `join-layout.test.tsx` mäter varje plats på fem-, sex-, sju- och åttaplatsbord i Chromium och träffprovar mitten av var och en: ingen ruta överlappar en annan, och varje plats svarar för sig själv.
@@ -4279,6 +4289,26 @@ Byggt utan prototyprunda, som ett tillägg i wizardens redan beslutade form (L6,
 
 Posten skrevs som L14 och delade det numret med «Ett grepp är ett steg tillbaka» (#375).
 Den här posten är den som bytte, eftersom nästan varje referens till L14 menade ångra-beslutet; numren tätas inte, så L14 står kvar hos det och det här beslutet ligger sist.
+
+**Reviderat 2026-09-21 (#416): dörren står öppen, och villkoret sägs vid tryck.**
+Meningen ovan — «Den är stängd utan namn, som den guidade vägen» — gäller inte längre.
+Beställaren valde variant B ur prototypen (`docs/ux-audits/2026-09-21/prototyper/05-namnet-wizarden.html`, `?v=b`): ingen av wizardens två utgångar är låst av ett tomt namnfält.
+Trycks en av dem utan namn går den ingenstans, och skärmen svarar: «Spelet behöver ett namn först.» ställer sig vid namnfältet, fältet märks `aria-invalid` och pekar på beskedet, och markören flyttas dit.
+Under skrivbordsbredd öppnas först det steg där fältet bor, eftersom utgången då står i ett annat steg än fältet (L10).
+Villkoret sägs **en gång per skärm** och inte en gång per knapp, vilket är varför det bor vid fältet: wizardens två utgångar ligger i var sin spalt, och ett villkor skrivet vid knappen hade behövt skrivas två gånger.
+
+Skälet till B framför A (villkoret framme från början) är att en grå knapp utan förklaring var hela felet, och att en instruktion som står framme även när den inte gäller är ett annat slags krom.
+Med B är skärmen levande från första sekunden, och då är den enda grå knappen i wizarden exakt den som verkligen är låst — precis den sammanblandning issuet öppnades för.
+Priset erkänns: före trycket säger skärmen ingenting, så beskedet måste nå en skärmläsare när det *kommer*.
+Därför är det en `role="alert"` med `aria-live="assertive"` och inte en rad som råkar synas, och fältet pekar på det med `aria-describedby` i samma stund det finns.
+
+Platshållaren «Skogens herrar» lämnar fältet och blir ett exempel under det.
+En platshållare som läses som ett ifyllt värde är halva felet: fältet ser besvarat ut, och då blir en väg framåt som inte svarar obegriplig.
+
+**Och en låst kontroll ser låst ut, mätt på det målade.**
+`opacity: .4` gav «Ta bort valt kort» kant 1,16:1 och bläck 2,38:1 — den försvann i stället för att låsas — och den tonade dessutom lika hårt på en knapp som väntade på ett namn som på en som verkligen var låst.
+Det som står kvar låst bär nu guidens låsta form: fyllningen tas bort, för fyllningen är affordansen, och rummets egen sekundärlinje står kvar så att kontrollen fortfarande är ett piller.
+Mätt efter rättelsen: kant 3,78:1 mot papperet och bläck 5,52:1.
 
 ### L43. Höjden föreslår, designern avgör: vilken kolumn som skrivs som prosa står skrivet i Data (prototypat 2026-09-21, #362)
 

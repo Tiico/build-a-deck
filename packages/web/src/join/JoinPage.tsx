@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { SeatView } from '@byd/protocol'
 import { useTableClient } from '../table/useTableClient.js'
 import { seatColor } from '../table/seatColor.js'
@@ -90,6 +90,13 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
   const [pick, setPick] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
+  // Namnet krävs, och villkoret sägs vid tryck (#416, variant B). Vägarna in står öppna; den som
+  // trycker med tomt fält får beskedet vid fältet, fältet märkt ogiltigt och markören flyttad dit.
+  // Beskedet finns inte på skärmen förrän någon tryckt, så det måste nå den som lyssnar när det
+  // kommer: det ritas som en `alert`, vilket är den region som läses upp av att den kommer.
+  const [says, setSays] = useState<string | null>(null)
+  const field = useRef<HTMLInputElement>(null)
+  const saysId = 'byd-join-name-says'
   // The room is the tab's name here (#12): a phone with three tabs open has to be able to tell
   // which room each of them is waiting to get into.
   usePageTitle({ state: !code ? 'missing' : lookup === 'gone' ? 'missing' : lookup ?? live.state, room: code })
@@ -132,7 +139,14 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
     return ((await res.json()) as { token: string }).token
   }
   const go = async (page: '/play' | '/online' | '/observe', seat: string | null) => {
-    if (!name.trim() || (page !== '/observe' && !seat)) return
+    // Den utgång som trycks utan namn går ingenstans — den säger vad som saknas och lämnar
+    // markören där det rättas.
+    if (!name.trim()) {
+      setSays(t('join.name.says'))
+      field.current?.focus()
+      return
+    }
+    if (page !== '/observe' && !seat) return
     const token = await admit(seat)
     if (!token) return
     // The code travels with them: it is the only way back to this picker (#12, DRIFT §9).
@@ -206,7 +220,33 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
           void go('/play', chosen)
         }}
       >
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('join.name')} aria-label={t('join.name')} autoComplete="nickname" />
+        {/* Etiketten står över fältet i stället för inuti det. En platshållare som lyder «Ditt
+            namn» läses som ett ifyllt värde, och ett fält vars enda namn är ett `aria-label` har
+            inget skrivet att peka på (WCAG 2.5.3, #416). */}
+        <label className="byd-join-name">
+          <span>{t('join.name')}</span>
+          <input
+            ref={field}
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value)
+              // Villkoret gäller inte längre så snart något står i fältet.
+              if (e.target.value.trim()) setSays(null)
+            }}
+            autoComplete="nickname"
+            aria-required="true"
+            aria-invalid={says ? 'true' : 'false'}
+            {...(says ? { 'aria-describedby': saysId } : {})}
+          />
+        </label>
+        {/* Villkoret, sagt en gång per skärm och vid fältet — inte en gång per knapp. Det föds
+            efter trycket, så det föds som en levande region: en `alert` som kommer till
+            dokumentet läses upp när den kommer, och fältet pekar på den. */}
+        {says && (
+          <p className="byd-join-says" id={saysId} role="alert" aria-live="assertive">
+            {says}
+          </p>
+        )}
         {/* The seat she chose being taken is said where the refusal from the server is said: one
             paragraph at the control that is refused, in the picker rather than on a page of its
             own, because the thing to do next is choose another seat. */}
@@ -215,13 +255,13 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
             Disabled rather than removed: the control keeps its name and its place, so nothing
             moves under a thumb already on its way down, and a reader is told it is unavailable
             instead of finding it gone. Choosing again opens them. */}
-        <button type="submit" className="byd-primary" disabled={!chosen || !name.trim() || lost}>
+        <button type="submit" className="byd-primary" disabled={!chosen || lost}>
           {t('join.sit')}
         </button>
-        <button type="button" className="byd-join-online byd-secondary" disabled={!chosen || !name.trim() || lost} onClick={() => void go('/online', chosen)}>
+        <button type="button" className="byd-join-online byd-secondary" disabled={!chosen || lost} onClick={() => void go('/online', chosen)}>
           {t('join.online')}
         </button>
-        <button type="button" className="byd-join-observe byd-secondary" disabled={!name.trim()} onClick={() => void go('/observe', null)}>
+        <button type="button" className="byd-join-observe byd-secondary" onClick={() => void go('/observe', null)}>
           {t('join.observe')}
         </button>
       </form>

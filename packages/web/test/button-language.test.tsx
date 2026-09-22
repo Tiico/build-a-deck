@@ -138,13 +138,20 @@ async function joinViews(): Promise<Record<string, string>> {
   const { container, unmount } = render(<JoinPage />)
   await screen.findByRole('button', { name: /Sätt dig/ })
   // How the page opens. The next free seat is chosen for you (`chosen` falls back to `free[0]`),
-  // but no name has been typed, so all three ways on are still refused — and this is the state
-  // anybody arriving at a table sees first. Nothing measured it: the walk below picked a seat and
-  // typed a name before it looked at anything.
+  // and since #416 no name is needed to press anything: every way on stands open and answers when
+  // it is pressed. This is the state anybody arriving at a table sees first, and it is measured
+  // because it used to be the refused one — the walk below picked a seat and typed a name before
+  // it looked at anything.
   const out: Record<string, string> = { 'innan namnet är skrivet': container.innerHTML }
   fireEvent.click(screen.getByRole('button', { name: /Plats A/ }))
   fireEvent.change(screen.getByLabelText('Ditt namn'), { target: { value: 'Bo' } })
   out['sätt dig vid bordet'] = container.innerHTML
+  // And the state that is still refused, which is the one a language has to be measured in: the
+  // seat she picked was taken while she looked at it, so both ways to a seat are shut (#408).
+  for (const [seat, name] of [['A', 'Ada'], ['B', 'Bo']]) await table.send({ v: 'seat.claim', seat: seat!, name: name! })
+  await screen.findByText('Ada')
+  await waitFor(() => expect((screen.getByRole('button', { name: /Sätt dig/ }) as HTMLButtonElement).disabled).toBe(true))
+  out['platsen är tagen'] = container.innerHTML
   unmount()
   table.close()
   return out
@@ -153,14 +160,23 @@ async function joinViews(): Promise<Record<string, string>> {
 describe('the seat picker', () => {
   it('wears the primary fill on nothing but the action that seats you', async () => {
     const measured = await inChromium(read('src/join/join.css'), 390, await joinViews(), wearingThePrimary('.byd-join'))
-    expect(measured).toEqual({ 'innan namnet är skrivet': [], 'sätt dig vid bordet': ['Sätt dig'] })
+    // Öppen bär den sin fyllning, vare sig namnet är skrivet eller inte (#416); refuserad tappar
+    // den den, för fyllningen är affordansen och en nedtonad grön vore fortfarande det gröna
+    // pillret man trycker på.
+    expect(measured).toEqual({ 'innan namnet är skrivet': ['Sätt dig'], 'sätt dig vid bordet': ['Sätt dig'], 'platsen är tagen': [] })
   }, 90_000)
 
-  // Refused is a state of a role, not a role of its own, and the page opens in it. `.byd-join form
-  // button:disabled` is (0,2,2) and beats the role at (0,2,0) on fill and ink but not on the line,
-  // so the first action came out a grey pill inside a green ring — half of one shape and half of
-  // another — and the two outlined ways on came out *filled* while refused and outlined once
-  // allowed, which is the wrong way round in the only state a reader can compare them in.
+  // Refused is a state of a role, not a role of its own. `.byd-join form button:disabled` is
+  // (0,2,2) and beats the role at (0,2,0) on fill and ink but not on the line, so the first action
+  // came out a grey pill inside a *green* ring — half of one shape and half of another — and the
+  // two outlined ways on came out filled while refused and outlined once allowed, which is the
+  // wrong way round in the only state a reader can compare them in.
+  //
+  // What the ring may not be is the role's own colour, and that is what is read here. Since #416
+  // the refused first action keeps a line, in the surface's own «not yet» colour rather than in
+  // its green: without one it measured 1,25:1 against the page and disappeared instead of locking.
+  // The page no longer opens refused either, so the state is read where it still exists — the seat
+  // somebody else took.
   it('says "not yet" without half-changing the shape it says it in', async () => {
     const measured = await inChromium(read('src/join/join.css'), 390, await joinViews(), (page) =>
       page.evaluate(() => {
@@ -176,20 +192,26 @@ describe('the seat picker', () => {
         const refused = [...surface.querySelectorAll<HTMLButtonElement>('form button')].filter((el) => el.disabled)
         const first = surface.querySelector('.byd-primary')!
         const both = getComputedStyle(first)
+        const probeFill = surface.appendChild(document.createElement('span'))
+        probeFill.style.cssText = 'color: var(--byd-primary-bg)'
+        const accent = getComputedStyle(probeFill).color
+        probeFill.remove()
         return {
           refused: refused.length,
-          // One colour, whatever colour the surface says "not yet" in: a line of its own round a
-          // fill of another is the state applied to one half of the button.
-          oneShape: both.backgroundColor === both.borderTopColor,
+          // Aldrig rollens egen färg runt en annan fyllning: det är tillståndet lagt på halva
+          // knappen. Linjen den bär i stället är ytans «inte än»-linje, densamma som de andra två.
+          noAccentRing: both.borderTopColor !== accent,
+          lockedLine: both.borderTopColor === line,
           ways: [...surface.querySelectorAll('.byd-secondary')].map(drawn),
           outlined: `rgba(0, 0, 0, 0) inside 1px of ${line}`,
         }
       }),
     )
-    const opening = measured['innan namnet är skrivet']!
-    expect(opening.refused).toBe(3)
-    expect(opening.oneShape).toBe(true)
-    expect(opening.ways).toEqual([opening.outlined, opening.outlined])
+    const refused = measured['platsen är tagen']!
+    expect(refused.refused).toBe(2)
+    expect(refused.noAccentRing).toBe(true)
+    expect(refused.lockedLine).toBe(true)
+    expect(refused.ways).toEqual([refused.outlined, refused.outlined])
   }, 90_000)
 
   // There are two ways on from this page that are not the first one — playing on this screen, and
@@ -1030,7 +1052,7 @@ ${read('src/rules/rules.css')}`, 390, '.byd-player', await playerViews()],
     // agreeing.
     expect(walkedThrough).toEqual({
       'inloggningskortet, mina spel': ['inloggningskortet', 'mina spel'],
-      'sätt dig vid bordet': ['innan namnet är skrivet', 'sätt dig vid bordet'],
+      'sätt dig vid bordet': ['innan namnet är skrivet', 'platsen är tagen', 'sätt dig vid bordet'],
       'guidad start': ['hela sidan'],
       'editorn': [...EDITOR_VIEWS],
       'telefonen': ['enkäten', 'vägen ut'],
@@ -1039,7 +1061,10 @@ ${read('src/rules/rules.css')}`, 390, '.byd-player', await playerViews()],
     })
     expect(filled).toEqual({
       'inloggningskortet, mina spel': [],
-      'sätt dig vid bordet': ['innan namnet är skrivet: Plats A, ledig', 'sätt dig vid bordet: Plats A, ledig'],
+      // Platsen hon valde är fortfarande hennes val när någon annan hinner före (#408), så den
+      // står kvar som vald — i den grå en tagen plats bär, men fortfarande en fyllning, och
+      // fortfarande platsernas egen palett och inte en roll.
+      'sätt dig vid bordet': ['innan namnet är skrivet: Plats A, ledig', 'sätt dig vid bordet: Plats A, ledig', 'platsen är tagen: Plats A, Ada'],
       'guidad start': [],
       'editorn': [],
       'telefonen': [],
@@ -1236,6 +1261,7 @@ describe('every suite that measures a surface', () => {
       'help-layout.test.tsx',
       'history-layout.test.tsx',
       'join-layout.test.tsx',
+      'locked-look.test.tsx',
       'media-crop-layout.test.tsx',
       'observer-viewport.test.tsx',
       'online-column.test.tsx',
