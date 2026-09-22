@@ -453,3 +453,38 @@ describe('egna punkter på ett element', () => {
     expect(band(back)).not.toHaveProperty('points')
   })
 })
+
+// Var en ny hög föds (#443, K2, B5). `addZone` la varje hög på konstanten `point(0, 150)`, så ett
+// andra tryck på ＋ Hög la den nya högen på millimetern ovanpå den förra. Placeringen är nu ett
+// svar ur uppställningen, och regeln — önskeplatsen om den är ledig, annars den lediga ruta som
+// ligger närmast den — är samma som den delade ytans sedan #440.
+//
+// Mätt på kortryggen, för det är den en hög upptar på filten: i dokumentet är den en punkt utan
+// area, och två punkter som inte är samma punkt säger ingenting om att korten inte täcker
+// varandra.
+describe('en ny hög föds på ledig filt (#443, K2)', () => {
+  const CARD = { w: 63, h: 88 }
+  const cardBack = (g: { x: number; y: number }) => ({ x: g.x - CARD.w / 2, y: g.y - CARD.h / 2, ...CARD })
+  const shares = (a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }): boolean =>
+    Math.min(a.x + a.w, b.x + b.w) > Math.max(a.x, b.x) && Math.min(a.y + a.h, b.y + b.h) > Math.max(a.y, b.y)
+  const table = (): ProjectDoc => ({ ...base(), setup: openingSetup({ players: 2, counters: [{ name: 'Poäng', start: 0 }] }) })
+  const pile = (doc: ProjectDoc, id: string) => doc.setup.zones.find((z) => z.id === id)!.geometry
+
+  it('lägger den första där den alltid har legat, och den andra på sin egen kortrygg', () => {
+    const two = after(table(), { v: 'addZone', id: 'hog-1', kind: 'pile', name: 'Hög 1' }, { v: 'addZone', id: 'hog-2', kind: 'pile', name: 'Hög 2' })
+    // Den första högen krockar med ingenting, så inget recepbord ritas om.
+    expect(pile(two, 'hog-1')).toEqual({ x: 0, y: 150, w: 0, h: 0, rot: 0 })
+    expect(shares(cardBack(pile(two, 'hog-1')), cardBack(pile(two, 'hog-2')))).toBe(false)
+    // Och punkten är hela millimetrar, som allt annat bordet bär: kortryggen är 63 bred kring en
+    // mittpunkt, så en ruta ur en sökning i hela millimetrar skulle annars ge en halv.
+    const g = pile(two, 'hog-2')
+    expect([Number.isInteger(g.x), Number.isInteger(g.y)]).toEqual([true, true])
+  })
+
+  it('säger nej när filten inte har någon ledig kortrygg, i stället för att stapla tyst', () => {
+    const doc = table()
+    const floor = doc.setup.zones.find((z) => z.id === doc.setup.floor)!.geometry
+    const covered: ProjectDoc = { ...doc, setup: { ...doc.setup, zones: [...doc.setup.zones, { id: 'duk', kind: 'area', name: 'Duk', visibility: 'all', geometry: floor }] } }
+    expect(() => applyEdit(covered, { v: 'addZone', id: 'hog-1', kind: 'pile', name: 'Hög 1' })).toThrow(/no free felt for a new pile/)
+  })
+})
