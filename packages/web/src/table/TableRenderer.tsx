@@ -1006,7 +1006,12 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           {(mode === 'table' || seatNames) &&
             hands.map((z) => (
               // After the cards: a name card lies on the table, on top of what is dealt near it.
-              <SeatName key={`name-${z.id}`} zone={z} floor={floor} name={seatName(z.owner)} color={seatColor(seatIndex(z.owner))} mine={me !== null && z.owner === me} left={left} top={top} />
+              // Which way the name faces (#418, decision B of 2026-09-22). A place card only
+              // where the felt does not know who is looking — several people around one screen
+              // lying on a table, which is what C5's exception was about. Where it knows, or
+              // where nobody sits at the edges at all, the name is read like the zone names
+              // beside it. The seat tiles `A`–`D` are this same element and follow.
+              <SeatName key={`name-${z.id}`} zone={z} floor={floor} name={seatName(z.owner)} color={seatColor(seatIndex(z.owner))} mine={me !== null && z.owner === me} read={!(mode === 'table' && me === null)} left={left} top={top} />
             ))}
           {peers.map((p) => {
             if (!p.drag) return null
@@ -1449,7 +1454,7 @@ const EDGES: Record<number, 'N' | 'E' | 'S' | 'W'> = { 0: 'S', 180: 'N', [-90]: 
 
 // Who sits at this edge (B): the name lies along the table's own border, turned toward the seat
 // that reads it — as a name card would on a real table. The count stays on the hand.
-function SeatName({ zone, floor, name, color, mine, left, top }: { zone: ZoneView; floor: ZoneView; name: string; color: string; mine?: boolean | undefined; left: (mm: number) => number; top: (mm: number) => number }) {
+function SeatName({ zone, floor, name, color, mine, read, left, top }: { zone: ZoneView; floor: ZoneView; name: string; color: string; mine?: boolean | undefined; read: boolean; left: (mm: number) => number; top: (mm: number) => number }) {
   if (name === '') return null
   const edge = EDGES[edgeRotation(zone, floor)] ?? 'S'
   const alongX = left(zone.geometry.x + zone.geometry.w / 2)
@@ -1457,7 +1462,7 @@ function SeatName({ zone, floor, name, color, mine, left, top }: { zone: ZoneVie
   const place =
     edge === 'S' ? { left: alongX, bottom: 6 } : edge === 'N' ? { left: alongX, top: 6 } : edge === 'W' ? { top: alongY, left: 6 } : { top: alongY, right: 6 }
   return (
-    <div className="byd-seat-name" data-seat-name={zone.owner} data-edge={edge} {...(mine ? { 'data-me': 'true' } : {})} style={{ ...place, ['--seat' as string]: color }}>
+    <div className="byd-seat-name" data-seat-name={zone.owner} data-edge={edge} {...(read ? { 'data-read': '' } : {})} {...(mine ? { 'data-me': 'true' } : {})} style={{ ...place, ['--seat' as string]: color }}>
       {name}
     </div>
   )

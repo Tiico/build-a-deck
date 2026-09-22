@@ -369,6 +369,13 @@
    felt is not turned to put their edge at the bottom can still see, on the table itself, which
    border is theirs. */
 .byd-seat-name[data-me] { box-shadow: 0 0 0 2px var(--byd-seat-ink); }
+/* The felt that knows who is looking reads for them (#418, decision B of 2026-09-22). The turn
+   above keeps C5's exception where its reason still holds — a screen lying on a table with
+   people round it, where the name is a place card — and everywhere else the name is upright,
+   like the zone names beside it. The turn of the felt itself is undone in the `--unrotate` row
+   above; these take away the name's own turn along its edge. */
+.byd-seat-name[data-read][data-edge='N'] { transform: translateX(-50%); }
+.byd-seat-name[data-read][data-edge='E'], .byd-seat-name[data-read][data-edge='W'] { transform: translateY(-50%); }
 .byd-seat-name[data-edge='S'] { transform: translateX(-50%); }
 .byd-seat-name[data-edge='N'] { transform: translateX(-50%) rotate(180deg); }
 /* A place card at a side edge is turned onto its side, and a box turned about its own middle
@@ -761,7 +768,7 @@
 .byd-hand-fan > i.byd-hand-card > img ~ span:not([data-texture]) { visibility: hidden; }
 
 /* On a turned table (C5) the cards turn with it, but labels are interface and stay readable. */
-[data-table] .byd-pile-count, [data-table] .byd-area-count, [data-table] .byd-zone > span, [data-table] .byd-peer-cursor span, [data-table] .byd-peer-tag, [data-table] .byd-peer-pulse span { rotate: var(--unrotate, 0deg); }
+[data-table] .byd-pile-count, [data-table] .byd-area-count, [data-table] .byd-seat-name[data-read], [data-table] .byd-token, [data-table] .byd-zone > span, [data-table] .byd-peer-cursor span, [data-table] .byd-peer-tag, [data-table] .byd-peer-pulse span { rotate: var(--unrotate, 0deg); }
 /* A seat's own name and its hand count are not interface but furniture: they lie on the table
    turned toward that seat (B), so they turn with it rather than against it. */
 
