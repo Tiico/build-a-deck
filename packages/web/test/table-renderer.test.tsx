@@ -35,6 +35,24 @@ describe('TableRenderer', () => {
   })
 })
 
+// The felt writes the card's name beside its picture, so it writes the word the card is called
+// by — the row's title — and not the row id (#412). The word is the same one the keyboard speaks,
+// because both read it off the projection through the same place.
+describe('the felt writes the card’s title (#412)', () => {
+  const feltWith = (extra: { title?: string }) => {
+    const { view, faceUp } = buildScene()
+    const snapshot = view(null)
+    const named = { ...snapshot, components: snapshot.components.map((c) => (c.id === faceUp ? { ...c, cardRef: 'bjornen', ...extra } : c)) }
+    const { container } = render(<TableRenderer view={named} mode="table" scale={2} />)
+    return container.querySelector(`[data-component="${faceUp}"] span`)!.textContent
+  }
+
+  it('writes «Björnen» for the row `bjornen`, and the id for a row with no title', () => {
+    expect(feltWith({ title: 'Björnen' })).toBe('Björnen')
+    expect(feltWith({})).toBe('bjornen')
+  })
+})
+
 describe('piles', () => {
   it('draws each pile with its count, and the top card of a public pile by name', () => {
     const { view } = buildScene()

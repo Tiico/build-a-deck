@@ -15,18 +15,18 @@ describe('face hashes in the projection (TUNN-SKIVA §5)', () => {
     h.do('A', { v: 'draw', from: 'draw', to: 'table', count: 1 })
     const onTable = h.top('table')
 
-    const a = project(h.state, registry, 'A', faces)
+    const a = project(h.state, registry, 'A', { faces })
     const inHand = a.components.find((c) => c.zone === 'hand:A')!
     expect(inHand.faces).toEqual({ front: 'f-dragon', back: 'b-std' })
     expect(a.components.find((c) => c.id === onTable)!.faces).toEqual({ back: 'b-std' })
 
-    const b = project(h.state, registry, 'B', faces)
+    const b = project(h.state, registry, 'B', { faces })
     expect(b.components.find((c) => c.id === onTable)!.faces).toEqual({ back: 'b-std' })
     expect(JSON.stringify(b)).not.toContain('f-dragon')
     expect(JSON.stringify(b)).not.toContain('f-knight')
 
     h.do(null, { v: 'flip', component: onTable, face: 'front' })
-    expect(project(h.state, registry, 'B', faces).components.find((c) => c.id === onTable)!.faces).toEqual({ front: 'f-knight', back: 'b-std' })
+    expect(project(h.state, registry, 'B', { faces }).components.find((c) => c.id === onTable)!.faces).toEqual({ front: 'f-knight', back: 'b-std' })
   })
 
   // A face-down pile (#313). Physically its back is the one thing about it everybody can see, and
@@ -39,7 +39,7 @@ describe('face hashes in the projection (TUNN-SKIVA §5)', () => {
     // Every card a back of its own, so that reading the right one cannot be a coincidence: the
     // deck's own default would be a single shared value and would pass a weaker test.
     const own: FaceHashes = Object.fromEntries(CARDS.map((card) => [card, { front: `f-${card}`, back: `b-${card}` }]))
-    const pile = zoneView(project(h.state, registry, 'A', own), 'draw')
+    const pile = zoneView(project(h.state, registry, 'A', { faces: own }), 'draw')
     expect(pile.mode).toBe('count')
     const top = componentOf(h.state, h.state.zones['draw']!.order[0]!)
 
@@ -61,7 +61,7 @@ describe('face hashes in the projection (TUNN-SKIVA §5)', () => {
     h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
     const after = componentOf(h.state, h.state.zones['draw']!.order[0]!)
     expect(after.cardRef).not.toBe(before.cardRef)
-    const pile = zoneView(project(h.state, registry, 'A', own), 'draw')
+    const pile = zoneView(project(h.state, registry, 'A', { faces: own }), 'draw')
     expect(pile.mode === 'count' && pile.back).toBe(`b-${after.cardRef}`)
   })
 

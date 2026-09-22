@@ -50,6 +50,25 @@ describe('a lost card held up on the phone (#82)', () => {
   })
 })
 
+// The card held up large is the phone's «Läs valt kort» (K8): its heading is what a screen reader
+// says the moment it opens, so it says what the card is called and not what the row is keyed on
+// (#412).
+describe('the card held up says its title (#412)', () => {
+  const bjornen: VisibleComponentState = { ...card, cardRef: 'bjornen', title: 'Björnen' }
+
+  it('names the heading and the word beside the picture with the title', () => {
+    render(<HeldCard card={bjornen} onClose={() => undefined} />)
+    const dialog = screen.getByRole('dialog')
+    expect(dialog.getAttribute('aria-label')).toBe('Björnen')
+    expect(document.querySelector('[data-inspect="c1"] span')!.textContent).toBe('Björnen')
+  })
+
+  it('falls back to the id for a row with no title', () => {
+    render(<HeldCard card={{ ...card, cardRef: 'bjornen' }} onClose={() => undefined} />)
+    expect(screen.getByRole('dialog').getAttribute('aria-label')).toBe('bjornen')
+  })
+})
+
 it('offers a keyboard way back from reading and returns focus to its opener', () => {
   const opener = document.createElement('button')
   document.body.append(opener)

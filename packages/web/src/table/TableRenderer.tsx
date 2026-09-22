@@ -11,7 +11,7 @@ import { recallCamera, rememberCamera, type CameraMemory } from './cameraMemory.
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, type Drag, type DragTarget } from './drop.js'
 import { isCounter, standIn } from '../components.js'
-import { counterActs, drawOne, feltShortcuts, flipUnder, modifierHeld, ownerOf, type Act } from './keyboard.js'
+import { cardWord, counterActs, drawOne, feltShortcuts, flipUnder, modifierHeld, ownerOf, type Act } from './keyboard.js'
 import { ShortcutHelp } from './ShortcutHelp.js'
 import { CounterEntry } from './CounterEntry.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
@@ -1011,7 +1011,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               >
                 {!c?.cardRef && backAt(`peer-${p.id}`)}
                 <Texture faces={faces} c={c} />
-                <span>{c?.cardRef ?? ''}</span>
+                <span>{cardWord(c) ?? ''}</span>
                 <b className="byd-peer-tag">{p.name}</b>
               </div>
             )
@@ -1100,7 +1100,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
         <div className="byd-inspect" onClick={() => setHeld(null)}>
           <div data-inspect={held.id} data-face={held.cardRef === null ? 'back' : 'front'} style={held.cardRef === null ? undefined : { ['--hue' as string]: hue(held.cardRef) }}>
             <Texture faces={faces} c={held} retry />
-            <span>{held.cardRef ?? ''}</span>
+            <span>{cardWord(held) ?? ''}</span>
           </div>
         </div>
       )}
@@ -1275,7 +1275,7 @@ function Card({ c, left, top, px, dragging, carried, by, faces, back, handlers, 
     >
       {own}
       <Texture faces={faces} c={c} />
-      <span>{c.cardRef ?? ''}</span>
+      <span>{cardWord(c) ?? ''}</span>
     </div>
   )
 }
@@ -1289,7 +1289,7 @@ function Ghost({ card, zoneBack, faces, back, left, top, px }: { card: VisibleCo
     <div className="byd-card" data-ghost data-dragging="true" data-face={card?.cardRef ? 'front' : 'back'} data-back={own ? 'own' : undefined} style={{ position: 'absolute', left, top, width: px(CARD_MM.w), height: px(CARD_MM.h), pointerEvents: 'none', ...(card?.cardRef ? { ['--hue' as string]: hue(card.cardRef) } : {}) }}>
       {own}
       <Texture faces={faces} c={card} />
-      <span>{card?.cardRef ?? ''}</span>
+      <span>{cardWord(card) ?? ''}</span>
     </div>
   )
 }
@@ -1396,7 +1396,7 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
         >
           {bottomOwn}
           <Texture faces={faces} c={bottomCard} />
-          <span>{bottomCard?.cardRef ?? ''}</span>
+          <span>{cardWord(bottomCard) ?? ''}</span>
         </div>
       )}
       <div
@@ -1484,7 +1484,7 @@ function Hand({ zone, color, rot, countAt, folded = false, left, top, px, cards,
                 style={{ ...box, transform: place(i, true), ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }) }}
               >
                 <Texture faces={faces} c={c} />
-                <span>{c.cardRef ?? ''}</span>
+                <span>{cardWord(c) ?? ''}</span>
               </i>
           ))
         ) : (

@@ -13,7 +13,7 @@ import {
   type DecideDeps,
   type Decision,
   type Sources,
-  type FaceHashes,
+  type DeckFacts,
   type SetupDef,
   type TableState,
   type TypeRegistry,
@@ -50,8 +50,9 @@ export class TableActor {
     private readonly registry: TypeRegistry,
     private readonly store: LogStore,
     sources: Sources,
-    // Texture hashes per card and face; undefined for a session without a deck.
-    private faces: FaceHashes | undefined,
+    // What the compiled deck knows about each card — the texture hashes per face and the title
+    // the card is called by (#412); undefined for a session without a deck.
+    private cards: DeckFacts | undefined,
     private readonly renders: RenderStore | undefined,
   ) {
     this.deps = {
@@ -69,21 +70,21 @@ export class TableActor {
     const initial = initialState(record.version, record.setup, registry)
     const log = await store.read(id)
     const state = replay(initial, registry, log)
-    let faces: FaceHashes | undefined
+    let cards: DeckFacts | undefined
     if (record.deck) {
       // Enqueue is idempotent by hash, so loading a table twice costs nothing the second time.
       const compiled = facesOf(record.deck, record.setup, registry, TEXTURE_DPI, Date.now())
-      faces = compiled.faces
+      cards = { faces: compiled.faces, titles: compiled.titles }
       if (renders) for (const job of compiled.jobs) await renders.enqueue(job)
     }
-    return new TableActor(id, initial, state, log, registry, store, sources ?? defaultSources(), faces, renders)
+    return new TableActor(id, initial, state, log, registry, store, sources ?? defaultSources(), cards, renders)
   }
 
   // A newer deck (C7): recompute texture hashes and queue what is not rendered yet. Views
   // pick the new hashes up with the next projection.
   async refreshDeck(deck: Deck, setup: SetupDef): Promise<void> {
     const compiled = facesOf(deck, setup, this.registry, TEXTURE_DPI, Date.now())
-    this.faces = compiled.faces
+    this.cards = { faces: compiled.faces, titles: compiled.titles }
     if (this.renders) for (const job of compiled.jobs) await this.renders.enqueue(job)
   }
 
@@ -94,7 +95,7 @@ export class TableActor {
   // Every distinct texture this table needs (L5): the editor waits for them before opening it.
   textureHashes(): string[] {
     const all = new Set<string>()
-    for (const perFace of Object.values(this.faces ?? {})) for (const hash of Object.values(perFace)) all.add(hash)
+    for (const perFace of Object.values(this.cards?.faces ?? {})) for (const hash of Object.values(perFace)) all.add(hash)
     return [...all]
   }
 
@@ -113,7 +114,7 @@ export class TableActor {
   // A tokenless lobby exists only to choose a seat. Keep the snapshot envelope so the regular
   // client can follow seat patches, but strip the table, cards, rewind state and activity.
   private viewFor(sub: Subscriber): Snapshot {
-    const snapshot = project(this.state, this.registry, sub.seat, this.faces, this.deps.history, sub.observer !== undefined)
+    const snapshot = project(this.state, this.registry, sub.seat, this.cards, this.deps.history, sub.observer !== undefined)
     if (!sub.lobby) return snapshot
     return { ...snapshot, floor: 'lobby', zones: [], components: [], rewind: null, undo: null, ended: false }
   }

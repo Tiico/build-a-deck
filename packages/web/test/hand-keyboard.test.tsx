@@ -18,9 +18,10 @@ afterEach(async () => {
   await run.stop()
 })
 
-// Ada's phone, with three cards in her hand.
-async function phone() {
-  const id = await createSession(run)
+// Ada's phone, with three cards in her hand. With a deck, the rows carry the titles the cards are
+// called by, exactly as a deck built through the guided start does (#412).
+async function phone(deck?: unknown) {
+  const id = await createSession(run, 's1', deck)
   const table = TableClient.connect(await asTable(run, id))
   await table.ready()
   await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 3 })
@@ -39,6 +40,38 @@ async function phone() {
 }
 
 const handStops = () => [...document.querySelectorAll('[data-hand-card]')].map((el) => el.getAttribute('tabindex'))
+
+// A deck whose rows are titled the way a designer titles them: Swedish words with capitals and
+// diacritics, and ids the wizard slugged out of them (#412).
+const TITLED = {
+  template: { faces: { front: { base: [], variants: {} }, back: { base: [], variants: {} } } },
+  rows: { dragon: { title: 'Björnen' }, knight: { title: 'Räven' }, wizard: { title: 'Älgen' } },
+  icons: {},
+}
+
+// Every word the phone says about a card, over a real wire: the strip, the spoken name, the line
+// under the strip and the panel behind Enter (#412). The row id `dragon` is nowhere in them.
+describe('the phone calls a card by its title (#412, A4)', () => {
+  it('says «Björnen» in the strip, in the spoken name, under the strip and in the panel', async () => {
+    const { table } = await phone(TITLED)
+    const user = userEvent.setup()
+    const card = await screen.findByRole('button', { name: /^Björnen, i min hand/ })
+    expect(card.textContent).toContain('Björnen')
+    expect(screen.queryByRole('button', { name: /dragon/ })).toBeNull()
+
+    card.focus()
+    await user.keyboard('{Enter}')
+    expect(await screen.findByRole('dialog', { name: 'Handlingar för Björnen' })).toBeTruthy()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    // Tapping the card chooses it, and the line under the strip is the same word again.
+    await user.click(screen.getByRole('button', { name: /^Björnen, i min hand/ }))
+    await waitFor(() => expect(screen.getByText(/^Valt:/).textContent).toContain('Björnen'))
+    expect(document.body.textContent).not.toContain('dragon')
+    table.close()
+  })
+})
 
 describe('the hand is playable without a gesture (#1)', () => {
   it('names every card, holds one tab stop, and walks the hand with the arrows', async () => {

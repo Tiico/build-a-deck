@@ -1,6 +1,7 @@
 import type { VisibleComponentState } from '@byd/protocol'
 import { Texture } from './Texture.js'
 import { hue } from './hue.js'
+import { cardWord } from './keyboard.js'
 
 // "Titta" (K8): one card large, on this screen and nobody else's. The pointer gets here by
 // holding a card down; the keyboard gets here from the address panel, and needs a way out that
@@ -13,7 +14,7 @@ export function CardLook({ card, faces, onClose }: { card: VisibleComponentState
       className="byd-inspect byd-kbd-look"
       role="dialog"
       aria-modal="false"
-      aria-label={card.cardRef ?? 'Dolt kort'}
+      aria-label={cardWord(card) ?? 'Dolt kort'}
       onClick={onClose}
       onKeyDown={(e) => {
         if (e.key !== 'Escape') return
@@ -23,7 +24,7 @@ export function CardLook({ card, faces, onClose }: { card: VisibleComponentState
     >
       <div data-inspect={card.id} data-face={face} style={card.cardRef === null ? undefined : { ['--hue' as string]: hue(card.cardRef) }}>
         <Texture faces={faces} c={card} retry />
-        <span>{card.cardRef ?? ''}</span>
+        <span>{cardWord(card) ?? ''}</span>
       </div>
       <button type="button" autoFocus onClick={onClose}>
         Stäng

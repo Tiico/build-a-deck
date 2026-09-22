@@ -17,6 +17,36 @@ describe('HandStrip', () => {
   })
 })
 
+// What the card is called is the row's own title, with its capitals and its diacritics (#412).
+// The id is the row's address and was never a word for a reader: a wizard-built deck slugs the
+// title into it, and an imported one numbers it `c-001`.
+describe('a card is called by its title (#412, A4)', () => {
+  const named = (title?: string) => {
+    const { view } = buildScene()
+    const snapshot = view('A')
+    return {
+      ...snapshot,
+      components: snapshot.components.map((c) => (c.zone === 'hand:A' ? { ...c, cardRef: 'bjornen', ...(title === undefined ? {} : { title }) } : c)),
+    }
+  }
+
+  it('writes and speaks «Björnen» where the row id is `bjornen`', () => {
+    render(<HandStrip view={named('Björnen')} selected={new Set()} onTap={() => undefined} onHold={() => undefined} onLift={() => undefined} onOpen={() => undefined} />)
+    const card = document.querySelector('[data-hand-card]')!
+    expect(card.textContent).toContain('Björnen')
+    expect(card.getAttribute('aria-label')).toContain('Björnen')
+    expect(card.textContent).not.toContain('bjornen')
+    expect(card.getAttribute('aria-label')).not.toContain('bjornen')
+  })
+
+  it('falls back to the id for a deck whose rows carry no title, as it always did', () => {
+    render(<HandStrip view={named()} selected={new Set()} onTap={() => undefined} onHold={() => undefined} onLift={() => undefined} onOpen={() => undefined} />)
+    const card = document.querySelector('[data-hand-card]')!
+    expect(card.textContent).toContain('bjornen')
+    expect(card.getAttribute('aria-label')).toContain('bjornen')
+  })
+})
+
 describe('gestures (K4)', () => {
   it('tap inspects, dragging up lifts, holding selects', () => {
     vi.useFakeTimers()

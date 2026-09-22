@@ -305,6 +305,26 @@ Följdkrav:
 Undantag måste städas när komponenten byter zon, annars läcker gamla rättigheter.
 Detta är den mest sannolika källan till informationsläckor och behöver testas hårt.
 
+Reviderad 2026-09-22 (#412): kortets namn är dold information och färdas i projektionen.
+
+Namnet var tidigare ingen egen sak på tråden.
+Varje yta som skrev eller läste upp ett korts namn sa `cardRef`, alltså radens id, så *Björnen* hette `bjornen` på telefonen och en CSV-importerad lek kallade sitt kort `c-001`.
+Radens id är en adress och har aldrig varit ett ord för en läsare; bilden var hela tiden rätt, eftersom texturen renderas ur mallen, så felet fanns bara i orden bredvid bilden — och en skärmläsare hör bara orden.
+
+Beslutet är att lägga titeln bredvid `cardRef` i `VisibleComponentState`.
+Det är en protokollmigrering i `packages/protocol`, som är slutet och fysiskt, och därför står den här: schemat får ett fält, `title`, valfritt och alltid en sträng.
+Fältet finns när platsen får se ansiktet och saknas annars, härlett ur exakt samma `canSeeFace` som avgör `cardRef` och texturhashen — en enda härledning i `project`, så namnet inte kan glida isär från bilden.
+En rad utan titelfält skickar ingenting, och läsaren faller tillbaka på id:t som förut; fallbacken är skriven på ett ställe i webben (`cardWord`) och läses av varje yta som skriver eller säger ett kortnamn.
+
+Den avvisade vägen var en rad→titel-karta bredvid texturerna, hämtad en gång per klient.
+Den är enklare, men kartan gäller hela leken och läcker titlarna på kort som ligger dolda — och att laga ett namnfel genom att läcka namn är inte en lagning.
+Att bara laga `slug()` avvisades också: det lagar wizardens lekar men inte importen, och det gör radens id till en presentationssak som det inte är.
+
+Följdkrav:
+Titeln är dold information och bevisas på råa frames, aldrig på skärmen (D4).
+`packages/server/test/wire.test.ts` visar att titeln når platsen som håller kortet och ingen annan.
+Ingen ny väg från tillstånd till tråd: titeln kommer in i `project` med texturhashen, som `DeckFacts`, och serveras aldrig som en egen lekbred slutpunkt.
+
 ### B7. Regelboken är ett förstklassigt versionerat dokument (fråga 27)
 
 Reglerna bor i projektet, versioneras i samma oföränderliga historik som korten, och kan referera komponenter och zoner så att namnändringar följer med.

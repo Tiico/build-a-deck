@@ -2,7 +2,7 @@ import type { VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
 import { useRoving } from '../editor/roving.js'
-import { handLabel } from '../table/keyboard.js'
+import { cardWord, handLabel } from '../table/keyboard.js'
 import { useT } from '../i18n/index.js'
 import { COLUMN_STYLE } from './fan.js'
 import { HandGhost, useHandDrag, type HandPlay } from './handDrag.js'
@@ -75,7 +75,7 @@ export function HandColumn({ cards, faces, onPlay, onOpen }: HandColumnProps) {
               {...handlers(c)}
             >
               <Texture faces={faces} c={c} />
-              <span aria-hidden="true">{c.cardRef}</span>
+              <span aria-hidden="true">{cardWord(c)}</span>
             </button>
           </div>
         )

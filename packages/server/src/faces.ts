@@ -1,7 +1,8 @@
 import type { SetupDef, TypeRegistry } from '@byd/engine'
-import type { FaceHashes } from '@byd/engine'
+import type { CardTitles, FaceHashes } from '@byd/engine'
 import { compileCard, type Motif, type Nudge, type Row, type Template } from '@byd/template'
 import { contentHash, type RenderRequest } from '@byd/render/queue'
+import { titleOfFields } from './names.js'
 
 // `fonts` is what the version is pinned to (B3), already resolved to something a page can load.
 // "motifs" is what is drawn inside each picture (E1), keyed by the URL the rows carry: an image
@@ -31,13 +32,22 @@ export type PrintExport = { cards: PrintCard[]; jobs: RenderRequest[] }
 // Compiles every card in the setup once per face and keys the textures by content hash
 // (DRIFT §6): the same face on three copies is one rendering, and a card that did not change
 // between versions is not rendered again.
-export function facesOf(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi: number, now: number): { faces: FaceHashes; jobs: RenderRequest[] } {
+//
+// The same pass reads out what each card is called (#412). It is the one place the deck is read
+// per table, so the word and the picture are taken from the same row of the same compiled deck
+// and cannot drift apart; `project` then filters both against the seat (B6).
+export function facesOf(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi: number, now: number): { faces: FaceHashes; titles: CardTitles; jobs: RenderRequest[] } {
   const faces: FaceHashes = {}
+  const titles: CardTitles = {}
   const jobs = new Map<string, RenderRequest>()
   for (const spec of setup.components) {
     if (faces[spec.cardRef]) continue
     const row = deck.rows[spec.cardRef]
     if (!row) continue
+    // The designer's title with its capitals and its diacritics (#412). A row that has none says
+    // nothing here, and the card keeps being named by its id at the reader, as it always was.
+    const title = titleOfFields(row)
+    if (title !== '') titles[spec.cardRef] = title
     const compiled = compileCard({ template: deck.template, type: registry.get(spec.type), row, icons: deck.icons, ...forCard(deck, spec.cardRef), ...(deck.fonts ? { fonts: deck.fonts } : {}), ...(deck.motifs ? { motifs: deck.motifs } : {}) })
     const perFace: Record<string, string> = {}
     for (const [face, out] of Object.entries(compiled)) {
@@ -47,7 +57,7 @@ export function facesOf(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi
     }
     faces[spec.cardRef] = perFace
   }
-  return { faces, jobs: [...jobs.values()] }
+  return { faces, titles, jobs: [...jobs.values()] }
 }
 
 // The print hand-off is deliberately card-shaped, not two unrelated lists of faces. Each entry

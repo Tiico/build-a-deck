@@ -34,9 +34,17 @@ export type Thing =
 export const isLoose = (thing: Thing): thing is Extract<Thing, { kind: 'card' | 'counter' }> =>
   thing.kind === 'card' || thing.kind === 'counter'
 
+// The word a card is called by, or null when this view has none: the row's own title, and the
+// row's id behind it for a deck that has given the row no title yet (#412). Written once and read
+// everywhere a card's name is written or spoken, so that no surface can spell it differently.
+//
+// The title comes out of `project` like the face and under the same rule (B6): a card this view
+// may not see carries neither, so there is nothing here to hide and nothing to leak.
+export const cardWord = (c: VisibleComponentState | undefined): string | null => c?.title ?? c?.cardRef ?? null
+
 // A card's own name is the designer's and is never translated (B5); the words for a card this
 // view may not see are the tool's.
-export const cardName = (c: VisibleComponentState | undefined, t: T = swedish): string => c?.cardRef ?? t('kbd.hidden')
+export const cardName = (c: VisibleComponentState | undefined, t: T = swedish): string => cardWord(c) ?? t('kbd.hidden')
 export const zoneName = (view: Snapshot, id: string): string => view.zones.find((z) => z.id === id)?.name ?? id
 export const countOf = (z: ZoneView): number => (z.mode === 'count' ? z.count : z.order.length)
 const topIdOf = (z: ZoneView): string | undefined => (z.mode === 'order' ? z.order[0] : z.top)

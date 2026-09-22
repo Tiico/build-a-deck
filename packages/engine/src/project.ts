@@ -19,15 +19,24 @@ export function projectActivity(line: Applied): Activity {
 // without textures projects without faces.
 export type FaceHashes = Record<string, Record<string, string>>
 
+// What each row of the deck is called, keyed by `cardRef` (#412). A row without a title is not in
+// here at all, and the card is then named by its id at the reader, as it always was.
+export type CardTitles = Record<string, string>
+
+// Everything the compiled deck knows about a card, in one place because it is filtered in one
+// place: both the face a seat may fetch and the word a seat may hear are hidden information and
+// follow the zone's visibility together (B6).
+export type DeckFacts = { faces?: FaceHashes; titles?: CardTitles }
+
 // With a `history` the view also learns what undo means for its seat, and — while a rewind is
 // proposed — how the table looked at the target, projected for this same view (B, C).
 // `observer` (C8) sees every hand and every hidden pile; the view is still seatless.
-export function project(state: TableState, registry: TypeRegistry, seat: SeatId | null, faces?: FaceHashes, history?: History, observer = false): Snapshot {
-  const { zones, components } = projectTable(state, registry, seat, faces, observer)
+export function project(state: TableState, registry: TypeRegistry, seat: SeatId | null, deck?: DeckFacts, history?: History, observer = false): Snapshot {
+  const { zones, components } = projectTable(state, registry, seat, deck, observer)
   const seats = state.setup.seats.map((id) => ({ id, name: state.seats[id]?.name ?? null, edge: seatEdge(state, id) }))
   let rewind: RewindProposal | null = state.rewind
   if (rewind && history) {
-    const preview: TablePreview = projectTable(history.stateAt(rewind.toSeq), registry, seat, faces, observer)
+    const preview: TablePreview = projectTable(history.stateAt(rewind.toSeq), registry, seat, deck, observer)
     rewind = { ...rewind, preview }
   }
   const undo = seat !== null && history ? undoTarget(history.lines(), seat) : null
@@ -53,7 +62,7 @@ function seatEdge(state: TableState, seat: SeatId): SeatEdge | null {
   return dy > 0 ? 'S' : 'N'
 }
 
-function projectTable(state: TableState, registry: TypeRegistry, seat: SeatId | null, faces?: FaceHashes, observer = false): TablePreview {
+function projectTable(state: TableState, registry: TypeRegistry, seat: SeatId | null, deck?: DeckFacts, observer = false): TablePreview {
   const zones: ZoneView[] = []
   const components: VisibleComponentState[] = []
 
@@ -64,7 +73,7 @@ function projectTable(state: TableState, registry: TypeRegistry, seat: SeatId | 
     const bottom = bottomId === undefined ? undefined : componentOf(state, bottomId)
     if (canSeeZoneOrder(z, seat, observer)) {
       zones.push({ mode: 'order', ...zoneBase(z), order: [...z.order], ...(bottom ? { bottom: { id: bottom.id } } : {}) })
-      for (const id of z.order) components.push(view(state, registry, componentOf(state, id), seat, faces, observer))
+      for (const id of z.order) components.push(view(state, registry, componentOf(state, id), seat, deck, observer))
     } else {
       const top = z.order[0] === undefined ? undefined : componentOf(state, z.order[0])
       const shownTop = top !== undefined && faceUpOnTop(state, registry, top)
@@ -72,7 +81,7 @@ function projectTable(state: TableState, registry: TypeRegistry, seat: SeatId | 
       // top (K15) and named; face-down the zone says only that it is there and what back it
       // wears, and the component itself stays out with the rest of the pile.
       const shownBottom = bottom !== undefined && faceUpAtBottom(state, registry, bottom)
-      const bottomView = bottom === undefined ? {} : { bottom: shownBottom ? { id: bottom.id } : backOf(registry, bottom, faces) }
+      const bottomView = bottom === undefined ? {} : { bottom: shownBottom ? { id: bottom.id } : backOf(registry, bottom, deck?.faces) }
       // What the pile wears on the side everybody can see (#313). A deck whose cards carry their
       // own back (#14) has to show it from the first frame rather than the deck's default until
       // somebody has drawn — and saying it here is what keeps `project` the only way from state to
@@ -81,13 +90,13 @@ function projectTable(state: TableState, registry: TypeRegistry, seat: SeatId | 
       // The back is the face that is not the one the card's content is on, read the same way
       // `view` decides what it may hand out, so a type with some other pair of faces is answered
       // by its own definition rather than by the word "back".
-      zones.push({ mode: 'count', ...zoneBase(z), count: z.order.length, ...(shownTop ? { top: top.id } : {}), ...(top !== undefined ? backOf(registry, top, faces) : {}), ...bottomView })
+      zones.push({ mode: 'count', ...zoneBase(z), count: z.order.length, ...(shownTop ? { top: top.id } : {}), ...(top !== undefined ? backOf(registry, top, deck?.faces) : {}), ...bottomView })
       // A component the seat was explicitly granted knowledge of still appears, even though its
       // position inside the zone does not; so does the face-up top of a pile (K15), whose position
       // the zone view names.
       for (const id of z.order) {
         const c = componentOf(state, id)
-        if (grantedTo(c, seat) || (shownTop && c === top) || (shownBottom && c === bottom)) components.push(view(state, registry, c, seat, faces, observer))
+        if (grantedTo(c, seat) || (shownTop && c === top) || (shownBottom && c === bottom)) components.push(view(state, registry, c, seat, deck, observer))
       }
     }
   }
@@ -122,7 +131,7 @@ function grantedTo(c: ComponentInstance, seat: SeatId | null): boolean {
   return seat !== null && (c.shownTo.includes(seat) || c.peekedBy.includes(seat))
 }
 
-function view(state: TableState, registry: TypeRegistry, c: ComponentInstance, seat: SeatId | null, faces?: FaceHashes, observer = false): VisibleComponentState {
+function view(state: TableState, registry: TypeRegistry, c: ComponentInstance, seat: SeatId | null, deck?: DeckFacts, observer = false): VisibleComponentState {
   const visible = canSeeFace(state, registry, c, seat, observer)
   const v: VisibleComponentState = {
     id: c.id,
@@ -134,8 +143,13 @@ function view(state: TableState, registry: TypeRegistry, c: ComponentInstance, s
     rot: c.rot,
     cardRef: visible ? c.cardRef : null,
   }
+  // The word the card is called by (#412) is read off the same `visible` the face is: one
+  // derivation, so the name cannot come apart from the picture. A row with no title says
+  // nothing here, and the reader falls back to the id as it always did.
+  const title = visible ? deck?.titles?.[c.cardRef] : undefined
+  if (title !== undefined) v.title = title
   if (c.counter !== undefined) v.counter = c.counter
-  const hashes = faces?.[c.cardRef]
+  const hashes = deck?.faces?.[c.cardRef]
   if (hashes) {
     const def = registry.get(c.type)
     const out: Record<string, string> = {}

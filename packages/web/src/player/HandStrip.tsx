@@ -3,7 +3,7 @@ import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
 import { useRoving } from '../editor/roving.js'
-import { handLabel } from '../table/keyboard.js'
+import { cardWord, handLabel } from '../table/keyboard.js'
 import { useT } from '../i18n/index.js'
 import { HOLD_MS, begin, end, move, timeout, type Tracking } from './gesture.js'
 
@@ -96,7 +96,7 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
             onPointerCancel={up}
           >
             <Texture faces={faces} c={c} />
-            <strong aria-hidden="true">{c.cardRef}</strong>
+            <strong aria-hidden="true">{cardWord(c)}</strong>
           </button>
         )
       })}

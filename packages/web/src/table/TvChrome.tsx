@@ -5,6 +5,7 @@ import { seatColor } from './seatColor.js'
 import { QrCode } from './QrCode.js'
 import { Texture } from './Texture.js'
 import { hue } from './hue.js'
+import { cardWord } from './keyboard.js'
 import { componentOf } from './presence.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { useT } from '../i18n/index.js'
@@ -105,7 +106,7 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
               style={shown.cardRef === null ? undefined : { ['--hue' as string]: hue(shown.cardRef) }}
             >
               <Texture faces={faces} c={shown} />
-              <span>{shown.cardRef ?? t('tv.inspect.hidden')}</span>
+              <span>{cardWord(shown) ?? t('tv.inspect.hidden')}</span>
             </div>
           ) : (
             <div data-empty>

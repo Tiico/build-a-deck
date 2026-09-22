@@ -16,6 +16,12 @@ export const VisibleComponentState = z.object({
   rot: z.number(),
   counter: z.number().int().optional(),
   cardRef: z.string().nullable(),
+  // What the card is called out loud (#412, B6): the row's own title, in the designer's
+  // spelling. It is the word every surface that writes or speaks the card's name uses, and it
+  // is hidden information like the face — present only when the seat may see the face, absent
+  // whenever it may not, and absent as well for a deck whose row carries no title, which falls
+  // back to `cardRef` at the reader.
+  title: z.string().optional(),
   // Texture hashes the seat may fetch from /faces/:hash: the back for any visible component,
   // the front only when the face itself is visible. The hash is the capability.
   faces: z.record(FaceId, z.string()).optional(),

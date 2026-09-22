@@ -262,6 +262,27 @@ describe('the seat dock (C)', () => {
   })
 })
 
+// The box the room reads the pointed-at card from writes its name, so it writes the title and not
+// the row id (#412). The word beside the picture is the same word every other surface says.
+describe('the inspect box names the card by its title (#412)', () => {
+  const shownWith = (card: { cardRef: string; title?: string }) => {
+    const { view, log } = buildScene()
+    const table = view(null)
+    const faceUpCard = table.components.find((c) => c.cardRef !== null)!
+    const { container } = render(
+      <TvChrome view={table} activity={log.map(projectActivity)} roomCode="KX7P" inspecting={{ ...faceUpCard, ...card }}>
+        <div />
+      </TvChrome>,
+    )
+    return container.querySelector('.byd-tv-inspect [data-inspect] span')!.textContent
+  }
+
+  it('writes «Björnen» for the row `bjornen`, and the id for a row with no title', () => {
+    expect(shownWith({ cardRef: 'bjornen', title: 'Björnen' })).toBe('Björnen')
+    expect(shownWith({ cardRef: 'bjornen' })).toBe('bjornen')
+  })
+})
+
 describe('seat colours follow the approved prototypes (K9, #20)', () => {
   it('paints the first four seats red, blue, green and yellow, in that order', () => {
     // Prototypes B and C agree on the dock: Ada red, Bo blue, Cy green, Di yellow. The colour is

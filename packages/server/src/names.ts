@@ -48,9 +48,16 @@ export function arrangementOf(doc: ProjectDoc): SetupArrangement {
   return { common, seats }
 }
 
+// What a row says its card is called, or nothing at all when the designer has not said (#412).
+// One reading of «what is the title», so the rulebook, the editor's lists and the word the table
+// speaks cannot come to different answers about the same row.
+export function titleOfFields(fields: Row): string {
+  return String(fields['title'] ?? '').trim()
+}
+
 // What a card is called, with its id behind it when nobody has given it a title yet.
 export function titleOfRow(row: ProjectRow): string {
-  return String(row.fields['title'] ?? '').trim() || row.id
+  return titleOfFields(row.fields) || row.id
 }
 
 // The card "Mina spel" shows on a game's card (G1, #231): the game's own first card rather than a

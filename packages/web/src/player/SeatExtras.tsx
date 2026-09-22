@@ -2,7 +2,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
-import { cardName } from '../table/keyboard.js'
+import { cardName, cardWord } from '../table/keyboard.js'
 import { targetsOf, type Placement } from './PlaySheet.js'
 import { isCounter } from '../components.js'
 import type { RefusalHandle } from '../status/Refusal.js'
@@ -90,7 +90,7 @@ export function MineStrip({ view, faces, onOpen, onTake, onPlay, pending, headin
                 onClick={() => onOpen(c)}
               >
                 <i className="byd-mine-face"><Texture faces={faces} c={c} /></i>
-                <strong aria-hidden="true">{c.cardRef ?? ''}</strong>
+                <strong aria-hidden="true">{cardWord(c) ?? ''}</strong>
               </button>
               {onTake && (
                 <button

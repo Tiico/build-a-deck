@@ -605,3 +605,41 @@ describe('the bottom card of a pile on the wire (K23)', () => {
     expect(shown[0]!.faces?.['front']).toMatch(/^[0-9a-f]{64}$/)
   }, 60_000)
 })
+
+// What a card is called out loud is the row's title and not its id (#412). The title rides beside
+// `cardRef` in the projection, which makes it hidden information that follows the zone's
+// visibility exactly as the face does (B6). The proof is the frames themselves and never the
+// screen (D4): a title that never crossed the wire cannot be read aloud anywhere.
+describe('a card is called by its title, and the title is hidden information (#412, B6)', () => {
+  const titles: Record<string, string> = { dragon: 'Björnen', knight: 'Räven', wizard: 'Älgen' }
+  const titled = { ...deck, rows: Object.fromEntries(Object.entries(deck.rows).map(([id, row]) => [id, { ...row, ...(titles[id] === undefined ? {} : { title: titles[id] })  }])) }
+  const NOT_THEIRS = /Björnen|Räven|Älgen/
+
+  it('sends the title to the seat holding the card and to nobody else — verified on raw frames', async () => {
+    const res = await fetch(`${run.http}/sessions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: 'titles', version: 'v1', setup: twoSeatSetup(), deck: titled }),
+    })
+    expect(res.status).toBe(201)
+    registerRoom('titles', (await res.json()) as { code: string; hostKey: string })
+    const a = await connect('titles', 'A')
+    const b = await connect('titles', 'B')
+    const table = await connect('titles', null)
+
+    await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await a.synced(1)
+    await b.synced(1)
+    await table.synced(1)
+
+    // Ada holds Björnen and is told so: the card she may see carries its title beside its id.
+    expect(a.view!.components.find((c) => c.zone === 'hand:A')).toMatchObject({ cardRef: 'dragon', title: 'Björnen' })
+    expect(a.frames.join('\n')).toContain('Björnen')
+
+    // And nobody else was told anything: not the other seat, not the table.
+    for (const other of [b, table]) {
+      expect(other.frames.join('\n')).not.toMatch(NOT_THEIRS)
+      expect(componentsOnWire(other).filter((c) => c.title !== undefined)).toHaveLength(0)
+    }
+  }, 60_000)
+})
