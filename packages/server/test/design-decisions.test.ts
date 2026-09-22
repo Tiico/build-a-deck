@@ -35,11 +35,13 @@ function entries(): Entry[] {
 // number after it, which no honest reference regex can tell apart from a decision.
 const READS = /\.(md|ts|tsx|css)$/
 const SKIPS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.claude', '.vite', 'test-results', 'playwright-report'])
+const FROZEN = join(ROOT, 'docs', 'ux-audits')
 
 function sources(dir = ROOT, seen: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (SKIPS.has(entry.name)) continue
     const path = join(dir, entry.name)
+    if (path === FROZEN) continue
     if (entry.isDirectory()) sources(path, seen)
     else if (READS.test(entry.name)) seen.push(path)
   }
@@ -79,6 +81,21 @@ describe('the L-numbers in DESIGN-BESLUT.md (#375)', () => {
       .filter((r) => !known.has(r.number))
       .map((r) => `L${r.number} at ${r.where} is not an entry in DESIGN-BESLUT.md`)
     expect([...new Set(dangling)]).toEqual([])
+  })
+
+  it('leaves the frozen prototypes out, where an «L» is a line-to and not a decision (#430)', () => {
+    // The exclusion below was written in this file's comment long before it was written in its
+    // code, and nothing caught the difference until a prototype generator brought the first `.ts`
+    // under `docs/ux-audits`. Its SVG path drew a mountain, each line-to an «L» and a coordinate,
+    // and five of them landed on `main` as dangling references to decisions nobody had made.
+    // A rule that lives only in prose is not a rule, so here it is as a test.
+    //
+    // This comment names no number on purpose: writing the offending ones out would make the
+    // check above fail on the very file that explains it.
+    expect(references().filter((r) => r.where.startsWith('docs/ux-audits/'))).toEqual([])
+    // And it is the frozen prototypes that step aside, not `docs` wholesale: a reference written
+    // in a document that is still maintained is still checked.
+    expect(references().some((r) => r.where.startsWith('docs/') && !r.where.startsWith('docs/ux-audits/'))).toBe(true)
   })
 
   it('is reading the document and the repo at all, so neither check can pass on emptiness', () => {
