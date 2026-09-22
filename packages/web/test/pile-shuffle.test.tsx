@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
-import { projectActivity } from '@byd/engine'
+import { componentOf, projectActivity } from '@byd/engine'
 import type { Activity } from '@byd/protocol'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { SHUFFLE_MS, SHUFFLE_PULSE_MS, STILL, useShuffles } from '../src/table/shuffle.js'
@@ -14,8 +14,8 @@ import { TableClient } from '../src/client.js'
 import { TablePage } from '../src/table/TablePage.js'
 import { OnlinePage } from '../src/online/OnlinePage.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
-import { buildScene } from './scene.js'
-import { admit, asTable, createSession, roomOf, startServer, type Running } from './fixture.js'
+import { buildScene, renderedDeck, tableOf } from './scene.js'
+import { admit, asTable, createSession, roomOf, startServer, twoSeatSetup, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -32,6 +32,24 @@ function shuffled(): { before: Activity[]; after: Activity[]; again: Activity[] 
   const again = log.map(projectActivity)
   return { before, after, again }
 }
+
+// A table behind a compiled deck, read through `project` the way every screen reads it: the draw
+// pile hidden (`visibility: 'none'`, projected as `count`) and the discard public (`'all'`,
+// projected as `order`), with three cards moved from one to the other. `up` turns the discard's
+// cards face-up, which is the only difference between the two cases below.
+//
+// The hashes come from the deck rather than from a hand-written snapshot: what is asked here is
+// what the felt makes of what `project` said, and a pasted hash would ask nothing about that.
+function twoPiles(up: boolean) {
+  const setup = twoSeatSetup()
+  const table = tableOf(setup, renderedDeck(setup))
+  table.run(null, { v: 'draw', from: 'draw', to: 'discard', count: 3 })
+  if (up) for (const id of [...table.state().zones['discard']!.order]) table.run(null, { v: 'flip', component: id, face: 'front' })
+  const cardOn = (pile: string) => componentOf(table.state(), table.state().zones[pile]!.order[0]!).cardRef
+  return { view: table.view(null), discard: cardOn('discard'), draw: cardOn('draw') }
+}
+
+const faceUrl = (hash: string) => `http://faces.test/faces/${hash}`
 
 // The reader has asked for less motion: the window answers the one query the felt asks.
 function askedForStillness(still: boolean): void {
@@ -158,6 +176,73 @@ describe('the fan on the felt (L35)', () => {
     // Nothing on the felt learned a face it did not know: every texture the fan shows was
     // already on the screen before the shuffle, and none of the fan's cards is a front.
     expect(document.querySelectorAll('[data-zone="draw"] [data-face="front"]')).toHaveLength(0)
+  })
+
+  // What `data-back='own'` is worth, read off the sheet rather than assumed: the weave is what a
+  // fanned card wears unless that attribute is on it. The two cases below are about which of the
+  // two a public pile gets, so the attribute has to mean something first (#445).
+  it("wears the built-in weave wherever a fanned card does not say it carries a deck's own back", () => {
+    const weave = /\.byd-card\[data-face='back'\][^{]*\{[^}]*\}/.exec(tableCss)?.[0]
+    expect(weave, 'the striped weave is declared in table.css').toBeDefined()
+    expect(weave).toContain('.byd-pile .byd-pile-fan-card')
+    expect(weave).toMatch(/background:\s*repeating-linear-gradient/)
+    const own = /\.byd-card\[data-back='own'\][^{]*\{[^}]*\}/.exec(tableCss)?.[0]
+    expect(own, "the rule that takes the weave off a card wearing its deck's own back").toBeDefined()
+    expect(own).toContain(".byd-pile .byd-pile-fan-card[data-back='own']")
+    expect(own).toMatch(/background:\s*none/)
+  })
+
+  // A public pile — the discard, and every pile ＋ Hög makes — hands its cards out as components
+  // and says nothing on the zone about what it wears (K15). The fan used to read the zone alone,
+  // found nothing there, and fell back on the weave that belongs to no deck (#445). The card is
+  // on the wire the whole time; the fan reads it.
+  it('a public pile fans the back its own top card wears, and not the built-in weave (#445)', () => {
+    const { view, discard, draw } = twoPiles(false)
+    const zone = view.zones.find((z) => z.id === 'discard')!
+    // The case is a case only while the pile is public: `order` is the whole difference between
+    // this pile and the draw pile, which was drawing its fan right all along.
+    expect(zone.mode).toBe('order')
+    expect(view.zones.find((z) => z.id === 'draw')!.mode).toBe('count')
+    render(<TableRenderer view={view} mode="tv" scale={1} faces="http://faces.test" shuffles={[{ pile: 'discard', seq: 12 }, { pile: 'draw', seq: 13 }]} />)
+
+    const top = document.querySelector('[data-zone="discard"] .byd-pile-top')!
+    expect(top.getAttribute('data-face')).toBe('back')
+    expect(top.querySelector('img')?.getAttribute('src') ?? null).toBe(faceUrl(`b-${discard}`))
+    expect(fanOf('discard')).toHaveLength(4)
+    for (const card of fanOf('discard')) {
+      expect(card.getAttribute('data-face')).toBe('back')
+      expect(card.getAttribute('data-back')).toBe('own')
+      expect(card.querySelector('img')?.getAttribute('src') ?? null).toBe(faceUrl(`b-${discard}`))
+    }
+
+    // Each pile's fan wears its own pile's back, and the two are different cards': one back for
+    // both piles would let a fan that read the wrong pile pass. The draw pile is untouched by
+    // this — it reads the hash the zone carries, as it always did.
+    expect(draw).not.toBe(discard)
+    for (const card of fanOf('draw')) expect(card.querySelector('img')?.getAttribute('src') ?? null).toBe(faceUrl(`b-${draw}`))
+  })
+
+  // A pile whose top lies face-up is still a stack of cards seen from above while it is fanned:
+  // what flies out of it is four backs. The component the fan reads has a front on it here — the
+  // seat may see it — and the fan must go on wearing the other face (#445).
+  it('fans backs over a public pile whose top lies face-up, and no front anywhere (#445)', () => {
+    const { view, discard } = twoPiles(true)
+    render(<TableRenderer view={view} mode="tv" scale={1} faces="http://faces.test" shuffles={[{ pile: 'discard', seq: 12 }]} />)
+
+    const top = document.querySelector('[data-zone="discard"] .byd-pile-top')!
+    expect(top.getAttribute('data-face')).toBe('front')
+    expect(top.querySelector('img')?.getAttribute('src') ?? null).toBe(faceUrl(`f-${discard}`))
+    expect(fanOf('discard')).toHaveLength(4)
+    for (const card of fanOf('discard')) {
+      expect(card.getAttribute('data-face')).toBe('back')
+      expect(card.getAttribute('data-back')).toBe('own')
+      expect(card.querySelector('img')?.getAttribute('src') ?? null).toBe(faceUrl(`b-${discard}`))
+    }
+    // And no front reached the fan at all, neither as a mark nor as a texture: the front hash of
+    // every card the deck has is absent from what the fan drew.
+    const fan = document.querySelector('[data-zone="discard"] .byd-pile-fan')!
+    expect(fan.querySelectorAll('[data-face="front"]')).toHaveLength(0)
+    for (const c of view.components) if (c.faces?.['front']) expect(fan.innerHTML).not.toContain(c.faces['front'])
   })
 
   it('does not fan a pile that is being dragged', () => {

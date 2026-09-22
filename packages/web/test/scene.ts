@@ -1,12 +1,26 @@
-import { TypeRegistry, apply, counterIds, decide, initialState, project, replay, seededRng, type DecideDeps, type SetupDef, STANDARD_TYPES } from '@byd/engine'
+import { TypeRegistry, apply, counterIds, decide, initialState, project, replay, seededRng, type DeckFacts, type DecideDeps, type FaceHashes, type SetupDef, STANDARD_TYPES } from '@byd/engine'
 import type { Applied, Intent, Snapshot } from '@byd/protocol'
 import { twoSeatSetup } from './fixture.js'
 
 export const registry = new TypeRegistry(STANDARD_TYPES)
 
+// The deck as the render farm left it: a pair of texture hashes per card, which is what the actor
+// hands `project` once the deck has been compiled. A view test that wants to read what a card
+// wears takes it from here instead of pasting a hash onto a snapshot — the hash belongs to the
+// deck, and what such a test is about is the way from the deck to the screen.
+//
+// Every card gets a back of its own and never one shared default: a deck whose cards carry their
+// own back (#14) is the case that tells a right reading from a lucky one.
+export function renderedDeck(setup: SetupDef): DeckFacts {
+  const faces: FaceHashes = {}
+  for (const c of setup.components) faces[c.cardRef] = { front: `f-${c.cardRef}`, back: `b-${c.cardRef}` }
+  return { faces }
+}
+
 // Any setup as a table the real engine runs: what a view test sends is decided, committed and
 // applied the way the actor does it, and read back through `project` like every other view.
-export function tableOf(setup: SetupDef) {
+// Given a `deck`, the projection carries its texture hashes too, exactly as the actor's does.
+export function tableOf(setup: SetupDef, deck?: DeckFacts) {
   const initial = initialState('v1', setup, registry)
   let state = initial
   const log: Applied[] = []
@@ -25,7 +39,7 @@ export function tableOf(setup: SetupDef) {
       log.push(line)
     }
   }
-  const view = (seat: string | null): Snapshot => project(state, registry, seat)
+  const view = (seat: string | null): Snapshot => project(state, registry, seat, deck)
   // The same table after whatever the table's own screen sent, verbatim: the intents a ring or
   // a drop hands to `onAct`, so that a view test reads the felt the engine actually produces
   // from them and not a hand-made likeness of it.
