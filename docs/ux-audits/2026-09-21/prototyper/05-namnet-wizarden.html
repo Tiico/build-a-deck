@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 05 — Namnet som krävs: wizarden (#416)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ────────────────────────────────────────────────────────────────────────────────
+     `/new` öppnar med tomt namnfält. Då är båda utgångarna stängda — «Skapa spelet och fortsätt
+     i editorn →» och «Skapa ett tomt spel i editorn» — och ingenting på sidan säger varför. En
+     tredje knapp, «Ta bort valt kort», är verkligen låst och tonas exakt likadant, så första
+     gången någon öppnar den guidade starten ser den primära vägen, flyktvägen förbi den och en
+     knapp som aldrig hade något med namnet att göra alla tre ut som samma sorts död.
+
+     Tre svar prototypas mot varandra. De skiljer sig i VAR villkoret står och NÄR det sägs:
+       A  vid fältet, från början      — en rad under namnfältet, båda utgångarna pekar på den
+       B  vid knappen, efter tryck     — utgångarna står öppna och svarar när de trycks
+       C  i huvudets tillståndsrad     — en rad där sidan redan talar om sitt tillstånd
+
+     Färger, mått och klassnamn är hämtade ur packages/web/src/wizard/wizard.css och
+     packages/web/src/buttons.css. Ingenting här importeras av appen. ─────────────────────── */
+
+  /* Guiden står på papper och inte på editorns mörka krom, så proto.css:s botten vänds här. */
+  body { background: #f5f3eb; overflow: hidden; }
+
+  .byd-wizard {
+    --ink: #1e2620;
+    --muted: #5c6459;
+    --paper: #f5f3eb;
+    --byd-wizard-panel-bg: #eeece4;
+    --byd-wizard-field-bg: #ffffff;
+    --line: #d9d8cc;
+    --accent: #b8461f;
+    --tap: 44px;
+    --byd-primary-bg: var(--ink);
+    --byd-primary-ink: #ffffff;
+    --byd-secondary-line: #797d75;
+    --byd-secondary-ink: var(--ink);
+    --byd-chosen-bar: var(--accent);
+    --byd-chosen-ink: var(--ink);
+    height: 100vh; background: var(--paper); color: var(--ink);
+    font: 14px/1.45 Inter, ui-sans-serif, system-ui, sans-serif;
+  }
+  .byd-wizard * { box-sizing: border-box; }
+  .byd-wizard button, .byd-wizard input, .byd-wizard textarea { font: inherit; }
+  .byd-wizard button { min-height: var(--tap); min-width: var(--tap); border: 1px solid #cbcabe; border-radius: 9px; padding: 0 12px; background: var(--byd-wizard-field-bg); color: inherit; cursor: pointer; }
+  .byd-wizard button:hover { border-color: #8d918a; }
+  .byd-wizard button:disabled { opacity: .4; cursor: default; }
+  .byd-wizard input, .byd-wizard textarea { min-height: var(--tap); width: 100%; min-width: 0; border: 1px solid #c9c9bd; border-radius: 9px; padding: 9px 11px; background: var(--byd-wizard-field-bg); color: var(--ink); }
+  .byd-wizard input:focus, .byd-wizard textarea:focus { border-color: var(--accent); outline: 3px solid #f0d5cb; }
+  .byd-wizard h1 { margin: 2px 0 0; font: 700 28px/1.15 Georgia, serif; }
+  .byd-wizard h2 { margin: 0; display: flex; align-items: center; gap: 9px; font-size: 16px; }
+  .byd-wizard p { margin: 3px 0; color: var(--muted); }
+  .byd-wizard > header { padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; border-bottom: 1px solid var(--line); background: rgb(255 255 255 / 60%); }
+  .byd-wizard > header > div > span { color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+  .byd-wizard > header > span { color: var(--muted); font-weight: 650; }
+
+  .byd-wizard .byd-primary { border: 1px solid var(--byd-primary-bg); background: var(--byd-primary-bg); color: var(--byd-primary-ink); font-weight: 750; }
+  .byd-wizard .byd-secondary { background: transparent; border: 1px solid var(--byd-secondary-line); color: var(--byd-secondary-ink); font-weight: 600; }
+  .byd-wizard .byd-primary:hover { border-color: var(--byd-primary-bg); }
+  .byd-wizard .byd-secondary:hover { border-color: var(--byd-secondary-line); }
+  .byd-wizard .byd-choice { background: transparent; border: 1px solid var(--byd-secondary-line); border-radius: 6px; color: var(--byd-secondary-ink); font: inherit; font-weight: 600; cursor: pointer; }
+  .byd-wizard .byd-choice[aria-pressed='true'] { background: transparent; border-color: transparent; border-radius: 6px 6px 0 0; box-shadow: inset 0 -3px 0 var(--byd-chosen-bar); color: var(--byd-chosen-ink); font-weight: 700; }
+
+  .byd-wizard-grid { display: grid; grid-template-columns: minmax(300px, .8fr) minmax(562px, 1.2fr); height: calc(100vh - 78px); }
+  .byd-wizard-grid > aside { padding: 26px 30px 100px 36px; border-right: 1px solid var(--line); display: grid; align-content: start; gap: 24px; background: var(--byd-wizard-panel-bg); overflow: auto; }
+  .byd-wizard-grid > main { min-width: 0; padding: 28px 36px 100px; display: grid; align-content: start; gap: 22px; overflow: auto; }
+  .byd-wizard-handoff { padding: 15px 17px; border: 1px solid #ecd9a8; border-radius: 12px; background: #fff3d5; }
+  .byd-wizard-handoff strong { color: #7f5111; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+  .byd-wizard-block { display: grid; gap: 10px; align-content: start; min-width: 0; }
+  .byd-wizard-blank { display: grid; gap: 8px; justify-items: start; margin-top: 6px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: #fafaf7; }
+  .byd-wizard-blank strong { color: #454c44; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+  .byd-wizard-blank p { margin: 0; font-size: 12px; }
+  .byd-wizard-step { width: 24px; height: 24px; flex: 0 0 auto; display: inline-grid; place-items: center; border-radius: 999px; background: var(--ink); color: #fff; font-size: 12px; font-weight: 800; }
+  .byd-wizard-label { display: grid; gap: 5px; color: #454c44; font-size: 12px; font-weight: 700; }
+  .byd-wizard fieldset { margin: 4px 0 0; padding: 0; border: 0; }
+  .byd-wizard legend { margin-bottom: 6px; color: #454c44; font-size: 12px; font-weight: 700; }
+  .byd-wizard-players { display: flex; gap: 6px; flex-wrap: wrap; }
+  .byd-wizard-players button { padding: 0; width: var(--tap); }
+  .byd-wizard-fields { display: grid; gap: 10px; }
+  .byd-wizard-field-list { display: grid; gap: 8px; }
+  .byd-wizard-field { display: grid; grid-template-columns: 54px minmax(90px, 1fr) minmax(98px, auto) var(--tap); gap: 6px 8px; align-items: center; }
+  .byd-wizard-field > span { border-radius: 999px; padding: 5px 7px; background: #e2e8e2; color: #3f4b3f; text-align: center; font-size: 10px; font-weight: 800; }
+  .byd-wizard-field small { grid-column: 3; grid-row: 1; text-align: right; color: var(--muted); font-size: 11px; }
+  .byd-wizard-field > button { grid-row: 1; grid-column: 4; padding: 0; width: var(--tap); }
+  .byd-wizard-add-fields, .byd-wizard-frames { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .byd-wizard-add-fields button { border-style: dashed; font-size: 12px; }
+  .byd-wizard-frames { margin-top: 4px; }
+  .byd-wizard-frames button { font-size: 12px; }
+  .byd-wizard-cards-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .byd-wizard-cards-head > span { color: var(--muted); }
+  .byd-wizard-card-workspace { display: grid; grid-template-columns: minmax(266px, .9fr) minmax(200px, 1.1fr); gap: 20px; align-items: start; }
+  .byd-wizard-preview { padding: 12px; display: grid; place-items: center; gap: 8px; border-radius: 18px; background: #dfe6dc; }
+  .byd-wizard-preview > span { color: #4f5a4d; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+  .byd-wizard-card-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-content: start; }
+  .byd-wizard-card-form > label { display: grid; align-content: start; gap: 5px; }
+  .byd-wizard-card-form label > span { display: flex; justify-content: space-between; gap: 8px; color: #454c44; font-size: 12px; font-weight: 700; }
+  .byd-wizard-card-form em { border-radius: 999px; padding: 2px 6px; background: #ecebe5; color: #6a6a62; font-size: 9px; font-style: normal; font-weight: 650; }
+  .byd-wizard-card-form .is-wide { grid-column: 1 / -1; }
+  .byd-wizard-card-tabs { padding-top: 14px; display: flex; gap: 7px; flex-wrap: wrap; border-top: 1px solid var(--line); }
+  .byd-wizard-card-tabs button { display: flex; align-items: center; gap: 7px; }
+  .byd-wizard-card-tabs b { width: 20px; height: 20px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 5px; background: #eeece5; font-size: 10px; }
+  .byd-wizard-card-tabs .is-add { border-style: dashed; }
+  .byd-wizard-block > footer { padding-top: 18px; display: grid; gap: 14px; border-top: 1px solid var(--line); justify-content: end; grid-auto-flow: column; align-items: center; }
+  .byd-wizard-primary { padding: 0 18px; }
+  .byd-help-row { display: flex; align-items: center; gap: 8px; }
+  .byd-help-ring { width: 22px; height: 22px; min-width: 22px; min-height: 22px; padding: 0; border-radius: 999px; border: 1px solid var(--byd-secondary-line); background: transparent; color: #454c44; font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+
+  /* Kortet i förhandsvisningen — bara en pappersrektangel i 63 × 88 mm proportion. */
+  .kort { width: 238px; height: 333px; border-radius: 12px; background: #fffdf6; border: 1px solid #ddd8c6; box-shadow: 0 2px 8px rgb(0 0 0 / 8%); display: grid; grid-template-rows: auto 1fr auto; padding: 14px; gap: 10px; }
+  .kort > b { font: 700 15px/1.2 Georgia, serif; }
+  .kort > i { border-radius: 8px; background: #ece9dc; }
+  .kort > u { text-decoration: none; color: #6a6a62; font-size: 11px; }
+
+  /* ── Det prototypen föreslår ───────────────────────────────────────────────────────────────
+     Tre lägen, ett attribut. `data-variant` står på roten och ingenting annat skiljer dem åt. */
+
+  /* Alla tre tar bort platshållaren «Skogens herrar». En platshållare som ser ut som ett ifyllt
+     värde är halva felet: fältet läses som besvarat, och då blir den grå knappen obegriplig.
+     Bara A har någonstans att ta vägen med exemplet — det står i dess egen rad. */
+  [data-variant] #namn { }
+
+  /* A — villkoret står vid fältet, från första målningen. */
+  .byd-wizard .villkor-falt { margin: 0; display: none; align-items: baseline; gap: 6px; font-size: 12px; color: #454c44; font-weight: 400; }
+  .byd-wizard .villkor-falt b { font-weight: 700; }
+  .byd-wizard .villkor-falt em { font-style: normal; color: var(--muted); }
+  .byd-wizard[data-variant='a'] .villkor-falt { display: flex; }
+  /* Villkoret slutar gälla när namnet finns, men raden får inte försvinna och rycka undan
+     fältet under pekaren — den byter ord och ton i stället. */
+  [data-variant='a'][data-namn='ja'] .villkor-falt b { display: none; }
+  [data-variant='a'][data-namn='ja'] .villkor-falt::before { content: '✓'; color: #3f6b46; font-weight: 700; }
+
+  /* B — utgångarna står öppna och svarar när de trycks. */
+  .byd-wizard .villkor-svar { display: none; margin: 0; color: #8d3823; font-size: 12px; font-weight: 700; }
+  .byd-wizard[data-variant='b'][data-svar='ja'] .villkor-svar { display: block; }
+  .byd-wizard[data-variant='b'][data-svar='ja'] #namn { border: 2px solid #8d3823; }
+
+  /* C — villkoret står i huvudets tillståndsrad, där sidan redan säger var man är. */
+  .byd-wizard .villkor-huvud { display: none; margin: 0; padding: 7px 12px; border-radius: 999px; background: #fdeee6; border: 1px solid #e8c4b2; color: #8d3823; font-size: 12px; font-weight: 700; }
+  .byd-wizard[data-variant='c'][data-namn='nej'] .villkor-huvud { display: block; }
+  /* Fältets obligatoriska märke och dess förklaring. */
+  .kravmarke { display: none; color: #8d3823; }
+  [data-variant='c'] .kravmarke { display: inline; }
+
+  /* ── Det låsta utseendet, gemensamt för alla tre förslagen ────────────────────────────────
+     Det här är INTE en av de tre valen: det är en rättelse som gäller oavsett vilket av dem som
+     väljs, och den är därför likadan i A, B och C. En låst knapp ska se låst ut och ändå gå att
+     läsa. `opacity: .4` gör båda sakerna dåligt: mätt på papperet blir kanten 1,61:1 och bläcket
+     2,38:1 — knappen försvinner snarare än låses.
+
+     Fyllningen är affordansen, så det är den som tas bort: den låsta knappen ritas som rummets
+     kantade form, med guidens egen sekundärlinje (3,78:1 mot papperet, alltså över de 3:1 en
+     grafisk linje hålls till) och dess tysta register som bläck (5,52:1). Ingen ny form —
+     guiden har redan en kantad knapp — och ingen streckad linje, för streckat betyder redan
+     «lägg till» i den här vyn («+ Textfält», «+ Nytt kort»).
+
+     Samma regel gäller «Ta bort valt kort», som är låst av sitt eget skäl. Den som väntar på ett
+     namn och den som verkligen är låst SKA se likadana ut; det som skiljer dem åt är att sidan
+     nu säger varför de två utgångarna är låsta. Det är hela issuet. */
+  .byd-wizard:not([data-variant='nu']) button:disabled {
+    opacity: 1; background: transparent; border: 1px solid var(--byd-secondary-line);
+    color: var(--muted); font-weight: 600;
+  }
+
+  /* Prototypens egen rad ligger fast längst ned och överlappar ytan, så sidan alltid ritas i
+     hela den viewport den mäts i. `?rad=dold` tar bort den inför skärmbilderna. */
+  .protorad { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; border-top: 1px solid #4a4230; border-bottom: 0; }
+  body[data-rad='dold'] .protorad { display: none; }
+</style>
+</head>
+<body>
+
+<div class="byd-wizard" data-page="new" data-room="desk" data-variant="a" data-namn="nej" data-svar="nej">
+  <header>
+    <div><span>Guidad start</span><h1>Ge spelet en flygande start</h1></div>
+    <div style="display:flex;align-items:center;gap:14px">
+      <p class="villkor-huvud" id="villkor-c" role="status">Skriv spelets namn för att komma vidare.</p>
+      <span>3 enkla steg · cirka 3 min</span>
+    </div>
+  </header>
+
+  <div class="byd-wizard-grid">
+    <aside>
+      <div class="byd-wizard-handoff"><strong>Wizarden är startpunkten</strong></div>
+
+      <section class="byd-wizard-block" aria-labelledby="byd-wizard-h1">
+        <div class="byd-help-row">
+          <h2 id="byd-wizard-h1"><span class="byd-wizard-step">1</span>Spelet</h2>
+          <button class="byd-help-ring" type="button" aria-label="Hjälp om spelet">?</button>
+        </div>
+
+        <label class="byd-wizard-label" for="namn"><span>Spelets namn<span class="kravmarke" aria-hidden="true"> *</span></span>
+          <input id="namn" aria-describedby="villkor-falt" autocomplete="off">
+        </label>
+        <p class="villkor-falt" id="villkor-falt"><b>Namnet behövs för att gå vidare.</b><em>Till exempel «Skogens herrar».</em></p>
+        <p class="villkor-svar" id="villkor-svar-1" role="alert">Spelet behöver ett namn först.</p>
+
+        <fieldset><legend>Spelare</legend><div class="byd-wizard-players">
+          <button type="button" class="byd-choice">1</button>
+          <button type="button" class="byd-choice" aria-pressed="true">2</button>
+          <button type="button" class="byd-choice">3</button>
+          <button type="button" class="byd-choice">4</button>
+          <button type="button" class="byd-choice">5</button>
+          <button type="button" class="byd-choice">6</button>
+          <button type="button" class="byd-choice">7</button>
+          <button type="button" class="byd-choice">8</button>
+        </div></fieldset>
+
+        <div class="byd-wizard-blank">
+          <strong>Utan guidad start</strong>
+          <p>Bygg hellre allt själv?</p>
+          <button type="button" class="byd-secondary vantar" id="tom" data-krav="namn" disabled aria-describedby="villkor-falt">Skapa ett tomt spel i editorn</button>
+        </div>
+      </section>
+
+      <section class="byd-wizard-block" aria-labelledby="byd-wizard-h2">
+        <div class="byd-help-row">
+          <h2 id="byd-wizard-h2"><span class="byd-wizard-step">2</span>Fält</h2>
+          <button class="byd-help-ring" type="button" aria-label="Hjälp om fälten">?</button>
+        </div>
+        <p>Fälten på varje kort.</p>
+        <div class="byd-wizard-fields">
+          <div class="byd-wizard-field-list">
+            <div class="byd-wizard-field"><span>Text</span><input value="Titel" aria-label="Titel namn"><small>Visas i startramen</small><button type="button" aria-label="Ta bort Titel">×</button></div>
+            <div class="byd-wizard-field"><span>Tal</span><input value="Kostnad" aria-label="Kostnad namn"><small>Visas i startramen</small><button type="button" aria-label="Ta bort Kostnad">×</button></div>
+            <div class="byd-wizard-field"><span>Text</span><input value="Text" aria-label="Text namn"><small>Visas i startramen</small><button type="button" aria-label="Ta bort Text">×</button></div>
+            <div class="byd-wizard-field"><span>Bild</span><input value="Illustration" aria-label="Illustration namn"><small>Visas i startramen</small><button type="button" aria-label="Ta bort Illustration">×</button></div>
+          </div>
+          <div class="byd-wizard-add-fields"><button type="button">+ Textfält</button><button type="button">+ Talfält</button><button type="button">+ Bildfält</button></div>
+        </div>
+        <fieldset class="byd-wizard-frames"><legend>Startram</legend>
+          <button type="button" class="byd-choice" aria-pressed="true">Klassisk</button>
+          <button type="button" class="byd-choice">Minimal</button>
+          <button type="button" class="byd-choice">Mörk</button>
+        </fieldset>
+      </section>
+    </aside>
+
+    <main>
+      <section class="byd-wizard-block" aria-labelledby="byd-wizard-h3">
+        <div class="byd-wizard-cards-head">
+          <div class="byd-help-row">
+            <h2 id="byd-wizard-h3"><span class="byd-wizard-step">3</span>Gör några exempelkort</h2>
+            <button class="byd-help-ring" type="button" aria-label="Hjälp om korten">?</button>
+          </div>
+          <span>1 kort</span>
+        </div>
+        <div class="byd-wizard-card-workspace">
+          <div class="byd-wizard-preview">
+            <div class="kort"><b>Kort 1</b><i></i><u>Kostnad 1</u></div>
+            <span>Levande förhandsvisning</span>
+          </div>
+          <div class="byd-wizard-card-form">
+            <label><span>Titel</span><input value="Kort 1"></label>
+            <label><span>Kostnad</span><input type="number" value="1"></label>
+            <label class="is-wide"><span>Text</span><textarea rows="4"></textarea></label>
+            <label class="is-wide"><span>Illustration<em>placera i editorn</em></span><input value=""></label>
+          </div>
+        </div>
+        <div class="byd-wizard-card-tabs">
+          <button type="button" class="byd-choice" aria-pressed="true"><b>1</b>Kort 1</button>
+          <button type="button" class="is-add">+ Nytt kort</button>
+          <button type="button" id="taBort" disabled>Ta bort valt kort</button>
+        </div>
+        <footer>
+          <button type="button" class="byd-wizard-primary byd-primary vantar" id="skapa" data-krav="namn" disabled aria-describedby="villkor-falt">Skapa spelet och fortsätt i editorn →</button>
+        </footer>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="protorad">
+  <b>Prototyp 05 — namnet som krävs, wizarden (#416)</b>
+  <div class="switch" role="group" aria-label="Variant">
+    <button data-v="nu">Nu</button>
+    <button data-v="a" aria-pressed="true">A · vid fältet</button>
+    <button data-v="b">B · vid tryck</button>
+    <button data-v="c">C · i huvudet</button>
+  </div>
+  <button id="rensa">Töm namnet</button>
+  <p id="berattelse"></p>
+  <p class="sagt" id="matning"></p>
+</div>
+
+<script>
+const rot = document.querySelector('.byd-wizard')
+const namn = document.getElementById('namn')
+const vantar = [...document.querySelectorAll('.vantar')]
+
+// Vad varje variant gör med platshållaren och med låsningen. Allt annat är css.
+const VARIANTER = {
+  nu: {
+    platshallare: 'Skogens herrar',
+    last: true,
+    beskriv: null,
+    ord: 'Som i dag: platshållaren ser ut som ett ifyllt värde, båda utgångarna är låsta med opacity .4, och «Ta bort valt kort» — som verkligen är låst — tonas exakt likadant. Ingenting säger varför.',
+  },
+  a: {
+    platshallare: '',
+    last: true,
+    beskriv: 'villkor-falt',
+    ord: 'A — en rad under namnfältet från första målningen, och båda utgångarna pekar på den med aria-describedby. Villkoret står en gång på skärmen trots att utgångarna ligger i var sin spalt. Exemplet «Skogens herrar» flyttar in i raden i stället för in i fältet.',
+  },
+  b: {
+    platshallare: '',
+    last: false,
+    beskriv: null,
+    ord: 'B — utgångarna står öppna. Tryck en av dem med tomt namn: sidan svarar vid knappen, flyttar fokus till fältet och märker det ogiltigt. Den enda grå knappen på skärmen är då den som verkligen är låst.',
+  },
+  c: {
+    platshallare: '',
+    last: true,
+    beskriv: 'villkor-c',
+    ord: 'C — villkoret står i huvudets tillståndsrad, där sidan redan talar om sig själv, och fältet bär ett obligatoriskt märke. Raden försvinner när namnet finns.',
+  },
+}
+
+// ── Mätningen ──────────────────────────────────────────────────────────────────────────────
+// «Ser en låst knapp låst ut?» avgörs av vad som målas, inte av ett attribut. `opacity` ingår
+// inte i getComputedStyle-färgen och vägs därför in för hand; Chromium svarar color(srgb …) på
+// allt framräknat, så båda formerna läses (#372).
+function tal(text) {
+  const m = text.match(/color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)/)
+  if (m) return [+m[1] * 255, +m[2] * 255, +m[3] * 255, 1]
+  const r = text.match(/-?[\d.]+/g)
+  return r ? [+r[0], +r[1], +r[2], r[3] === undefined ? 1 : +r[3]] : [0, 0, 0, 1]
+}
+const kanal = (v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4 }
+const ljus = ([r, g, b]) => 0.2126 * kanal(r) + 0.7152 * kanal(g) + 0.0722 * kanal(b)
+const kontrast = (a, b) => { const [x, y] = [ljus(a) + 0.05, ljus(b) + 0.05]; return Math.max(x, y) / Math.min(x, y) }
+const blanda = (fram, bak, a) => [0, 1, 2].map((i) => fram[i] * a + bak[i] * (1 - a))
+function genomskinlighet(el) { let a = 1, n = el; while (n && n !== document.body) { a *= +getComputedStyle(n).opacity; n = n.parentElement } return a }
+function mat() {
+  const rader = [...document.querySelectorAll('#tom, #skapa, #taBort')].map((knapp) => {
+    // Den grund knappen faktiskt målas mot: närmaste förfader som har en egen botten.
+    let bak = knapp.parentElement, sida = [245, 243, 235, 1]
+    while (bak) { const f = tal(getComputedStyle(bak).backgroundColor); if (f[3] > 0) { sida = f; break } bak = bak.parentElement }
+    const grund = tal(getComputedStyle(knapp).backgroundColor)
+    const a = genomskinlighet(knapp)
+    const malad = blanda(grund[3] === 0 ? sida : blanda(grund, sida, grund[3]), sida, a)
+    const linje = blanda(tal(getComputedStyle(knapp).borderTopColor), sida, a)
+    const black = blanda(tal(getComputedStyle(knapp).color), malad, a)
+    const kant = Math.max(kontrast(malad, sida), kontrast(linje, sida))
+    return `${knapp.textContent.slice(0, 11)}… kant/papper ${kant.toFixed(2)}:1 · bläck ${kontrast(black, malad).toFixed(2)}:1${knapp.disabled ? '' : ' (öppen)'}`
+  })
+  document.getElementById('matning').innerHTML = 'Målat, inte deklarerat: ' + rader.map((r) => `<em>${r}</em>`).join(' · ')
+}
+
+function rita() {
+  const v = rot.dataset.variant
+  const k = VARIANTER[v]
+  const harNamn = namn.value.trim().length > 0
+  rot.dataset.namn = harNamn ? 'ja' : 'nej'
+  namn.placeholder = k.platshallare
+  namn.setAttribute('aria-required', v === 'nu' ? 'false' : 'true')
+  if (k.beskriv) namn.setAttribute('aria-describedby', k.beskriv)
+  else namn.removeAttribute('aria-describedby')
+  for (const knapp of vantar) {
+    knapp.disabled = k.last && !harNamn
+    if (k.beskriv) knapp.setAttribute('aria-describedby', k.beskriv)
+    else knapp.removeAttribute('aria-describedby')
+  }
+  if (harNamn || v !== 'b') rot.dataset.svar = 'nej'
+  namn.setAttribute('aria-invalid', rot.dataset.svar === 'ja' ? 'true' : 'false')
+  document.getElementById('berattelse').textContent = k.ord
+  // Villkoret ska stå EN gång per skärm: räkna vad som faktiskt står skrivet.
+  const synliga = [...document.querySelectorAll('.villkor-falt, .villkor-huvud, .villkor-svar')]
+    .filter((el) => el.offsetParent !== null).length
+  document.getElementById('berattelse').textContent += `  ·  villkoret står skrivet ${synliga} gång${synliga === 1 ? '' : 'er'} på skärmen.`
+  mat()
+}
+
+for (const knapp of document.querySelectorAll('.switch button')) {
+  knapp.addEventListener('click', () => {
+    for (const annan of document.querySelectorAll('.switch button')) annan.setAttribute('aria-pressed', String(annan === knapp))
+    rot.dataset.variant = knapp.dataset.v
+    rita()
+  })
+}
+document.getElementById('rensa').addEventListener('click', () => { namn.value = ''; rita() })
+namn.addEventListener('input', rita)
+for (const knapp of vantar) {
+  knapp.addEventListener('click', () => {
+    if (rot.dataset.variant !== 'b') return
+    if (namn.value.trim()) return
+    // Beskedet står vid fältet och bara där — en gång per skärm, precis som i A och C — och
+    // fokus flyttas dit, så den som tryckte i footern hamnar där felet ska rättas.
+    rita()
+    rot.dataset.svar = 'ja'
+    namn.setAttribute('aria-invalid', 'true')
+    namn.focus()
+  })
+}
+
+const url = new URLSearchParams(location.search)
+if (url.get('v')) rot.dataset.variant = url.get('v')
+if (url.get('namn')) namn.value = url.get('namn')
+if (url.get('rad') === 'dold') document.body.dataset.rad = 'dold'
+for (const annan of document.querySelectorAll('.switch button')) annan.setAttribute('aria-pressed', String(annan.dataset.v === rot.dataset.variant))
+rita()
+</script>
+</body>
+</html>
