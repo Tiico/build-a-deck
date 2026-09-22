@@ -528,7 +528,7 @@ body[data-lage='privat'] .lage[data-lage='privat'] { display: block; }
 .lagetext b { color: #ffe9b8; }
 
 /* Sändningsläget i halv skala: 960 × 540 står för 1920 × 1080. */
-.tv { position: relative; width: 960px; height: 540px; border-radius: 10px; background: #05070b; border: 1px solid #1b1f2a; display: grid; place-items: center; overflow: hidden; }
+.tv { position: relative; width: ${TV.w}px; height: ${TV.h}px; border-radius: 10px; background: #05070b; border: 1px solid #1b1f2a; display: grid; place-items: center; overflow: hidden; }
 .filt { position: relative; background: var(--tv-felt); border: 1px solid var(--tv-felt-line); border-radius: 4px; }
 .byd-zone { position: absolute; box-sizing: border-box; border: 1.5px solid var(--tv-zone-line); border-radius: 6px; }
 .byd-zone > span { position: absolute; color: var(--tv-zone-name); font: 600 8px/1 'Roboto Condensed', system-ui; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
@@ -550,7 +550,7 @@ body[data-lage='privat'] .lage[data-lage='privat'] { display: block; }
 .filtkort { transform-origin: 0 0; }
 .filtkort [data-card] { border-radius: 3mm; overflow: hidden; box-shadow: 0 1px 0 rgba(0,0,0,.6), 0 6px 14px rgba(0,0,0,.5); }
 
-.rad2 { display: grid; grid-template-columns: 960px minmax(0,1fr); gap: var(--s5); align-items: start; }
+.rad2 { display: grid; grid-template-columns: ${TV.w}px minmax(0,1fr); gap: var(--s5); align-items: start; }
 .telefonpar { display: flex; gap: var(--s4); align-items: flex-start; flex-wrap: wrap; }
 .telefon { border-radius: 16px; background: var(--phone-bg); border: 1px solid #2a3038; padding: var(--s3); color: #c7cede; font-size: 12px; }
 .tfhuvud { display: flex; align-items: baseline; gap: var(--s2); padding-bottom: var(--s2); border-bottom: 1px solid var(--phone-line); }
