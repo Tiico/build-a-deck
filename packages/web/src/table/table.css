@@ -350,21 +350,22 @@
 /* The count lies on the fan's own cards, against the line where the hand's strip ends (#413,
    decision A of 2026-09-22). It used to hang outward into the air past the rim, and past the
    window with it. The cards it covers are backs, which carry nothing to hide.
-   `--hand-inner` is the distance from the point the fan is drawn about to that line, and the badge
-   is centred on it. Four directions, because on the television no fan is turned and each edge's
-   inner line lies a different way.
-   Centred, and not hung wholly inside the line: the hand's strip is 60–75 mm deep (K18) and the
-   seat's own name already lies at the far end of it, so a badge that took its whole height from
-   the strip left two pixels between the two. Half of it lies over the fan's backs and half over
-   the ten millimetres before `Framför` begins, which is nobody's. */
+   `--hand-inner` is the distance from the point the fan is drawn about to that line, and the
+   badge's own outer edge rests on it, so the whole of it lies inside the strip and over the fan.
+   Wholly inside, and not centred on the line: the ten millimetres past that line are where
+   `Framför` begins (K18), and a badge that hung half over them would lie in the neighbour's zone
+   — which is what #84 rejected and what `felt-hands.test.tsx` fells. The strip has room for it
+   because #413 moved the seat's own name off the felt and onto the wood.
+   Four directions, because on the television no fan is turned and each edge's inner line lies a
+   different way. */
 .byd-hand-count {
-  position: absolute; top: calc(-1 * var(--hand-inner, 0px)); left: 0; transform: translate(-50%, -50%);
+  position: absolute; top: calc(-1 * var(--hand-inner, 0px)); left: 0; transform: translateX(-50%);
   padding: 2px 8px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #f3e9d6;
   font-size: 12px; font-weight: 600; white-space: nowrap;
 }
-.byd-hand[data-count-side='below'] .byd-hand-count { top: auto; bottom: calc(-1 * var(--hand-inner, 0px)); transform: translate(-50%, 50%); }
-.byd-hand[data-count-side='left'] .byd-hand-count { top: 0; left: calc(-1 * var(--hand-inner, 0px)); transform: translate(-50%, -50%); }
-.byd-hand[data-count-side='right'] .byd-hand-count { top: 0; left: auto; right: calc(-1 * var(--hand-inner, 0px)); transform: translate(50%, -50%); }
+.byd-hand[data-count-side='below'] .byd-hand-count { top: auto; bottom: calc(-1 * var(--hand-inner, 0px)); }
+.byd-hand[data-count-side='left'] .byd-hand-count { top: 0; left: calc(-1 * var(--hand-inner, 0px)); transform: translateY(-50%); }
+.byd-hand[data-count-side='right'] .byd-hand-count { top: 0; left: auto; right: calc(-1 * var(--hand-inner, 0px)); transform: translateY(-50%); }
 
 /* The seat's name lies along its own edge of the table, turned toward whoever sits there (B). */
 .byd-seat-name {

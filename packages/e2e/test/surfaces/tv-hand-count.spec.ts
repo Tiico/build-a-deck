@@ -183,6 +183,18 @@ test.describe('TV:ns handbricka ligger innanför fönstret (#413)', () => {
     // Icke-vakuitet: filten svarade verkligen med fyra håll, ett per kant, och inte fyra gånger
     // samma. Utan det vore jämförelsen nedan blind för att alla brickor låg på samma sida.
     expect([...new Set(ten.badges.map((b) => b.side))].sort()).toEqual(['above', 'below', 'left', 'right'])
-    expect(place(ten)).toEqual(place(five))
+
+    // Inom en hundradels kortbredd, och inte på pricken. Linjen brickan hänger på står stilla i
+    // *millimeter*; skärmen ritar den två gånger i två olika filtskalor, eftersom en växande hand
+    // ändrar inpassningen, och de två avrundningarna till enhetspixlar behöver inte hamna på
+    // samma hundradel. Marginalen är fem hundradels kortbredd — drygt två pixlar på den här
+    // filten — och en bricka som verkligen vandrade med fläkten skulle röra sig kortbredder.
+    const five_ = place(five)
+    for (const now of place(ten)) {
+      const then = five_.find((p) => p.zone === now.zone)!
+      expect({ zone: now.zone, side: now.side }).toEqual({ zone: then.zone, side: then.side })
+      expect(Math.abs(now.line - then.line), `${now.zone}: linjen flyttade sig ${Math.abs(now.line - then.line)} hundradels kortbredd`).toBeLessThanOrEqual(5)
+      expect(Math.abs(now.along - then.along), `${now.zone}: brickan flyttade sig ${Math.abs(now.along - then.along)} hundradels kortbredd längs kanten`).toBeLessThanOrEqual(5)
+    }
   })
 })
