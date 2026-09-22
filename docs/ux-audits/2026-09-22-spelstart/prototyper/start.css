@@ -1,0 +1,83 @@
+/* Vad prototypen till spelstarten lägger ovanpå `felt.css`: de uppvända korten en startåtgärd
+   lägger ut, och de tre formerna för «Starta spelet». Inget här importeras av appen.
+   Färger, radier och vikter är tagna ur `packages/web/src/table/table.css`. */
+
+/* Ett uppvänt kort på filten, som ett kort ur en marknadslek ligger. */
+.byd-up {
+  position: absolute; box-sizing: border-box; border-radius: 6px;
+  background: var(--card-paper); color: var(--card-ink);
+  border: 1px solid rgba(0, 0, 0, 0.35); box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45);
+  display: grid; place-items: center; font: 700 1em/1.1 system-ui, sans-serif;
+}
+
+/* --- A · Brickan på filten ------------------------------------------------ */
+/* Den ligger i filtens egna millimeter och skalar med den, som en hög gör. Den står upprätt mot
+   läsaren — den är en kontroll och inte ett kort, så den bär filtens motvridning som zonnamnen. */
+.start-bricka {
+  position: absolute; box-sizing: border-box; display: flex; align-items: center; gap: 0.6em;
+  justify-content: center; padding: 0 1em; border: 0; cursor: pointer;
+  border-radius: 999px; background: #1f6fd0; color: #fff;
+  font: 700 1em/1.1 system-ui, sans-serif; letter-spacing: 0.5px; white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  z-index: 5;
+}
+.start-bricka:hover { background: #3c8ce7; }
+.start-bricka:focus-visible { outline: 3px solid #f3e9d6; outline-offset: 3px; }
+.start-bricka i { font-style: normal; }
+
+/* --- B · I spalten och i plattan ------------------------------------------ */
+.start-knapp {
+  display: inline-flex; align-items: center; gap: 8px; border: 0; cursor: pointer;
+  min-height: 44px; padding: 0 16px; border-radius: 10px;
+  background: #1f6fd0; color: #fff; font: 700 15px system-ui, sans-serif;
+}
+.start-knapp:hover { background: #3c8ce7; }
+.start-knapp[data-plate] { min-height: 32px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
+
+/* --- C · Arket över filten ------------------------------------------------ */
+.start-ark {
+  position: absolute; inset: 0; z-index: 9; display: grid; place-items: center;
+  background: rgba(8, 10, 14, 0.72);
+}
+.start-ark > div {
+  width: min(520px, 76%); padding: 28px; border-radius: 18px;
+  background: #171a23; border: 1px solid #2f333d; color: #e6ecfa;
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6);
+}
+.start-ark h2 { margin: 0 0 4px; font: 700 20px system-ui, sans-serif; }
+.start-ark p { margin: 0 0 16px; color: #9aa3b8; font-size: 13px; line-height: 1.5; }
+.start-ark ol { margin: 0 0 20px; padding: 0 0 0 20px; display: grid; gap: 8px; font-size: 14px; line-height: 1.45; }
+.start-ark ol b { font-weight: 700; color: #fff; }
+.start-ark .start-knapp { width: 100%; justify-content: center; }
+
+/* --- skärmen prototypen ritar i ------------------------------------------ */
+/* En riktig skärmstorlek, nedskalad för att få plats i fönstret: måtten i mätraden är den
+   riktiga skärmens och inte den nedskalade bildens. */
+.skarmruta { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; overflow: hidden; }
+.skarm { position: relative; transform-origin: 50% 50%; background: #0d0f14; overflow: hidden; }
+.skarm[data-yta='table'] { background: #17120f; }
+
+/* Bordsläget: filten är hela skärmen, med den tysta raden i hörnet (B). */
+.plate {
+  position: absolute; top: 14px; left: 18px; z-index: 6; margin: 0;
+  display: flex; align-items: center; gap: 12px;
+  font: 400 13px system-ui, sans-serif; color: #f3e9d6; opacity: 0.7;
+}
+.plate[data-med-knapp] { opacity: 1; }
+.plate[data-med-knapp] span { opacity: 0.7; }
+.feltruta { position: absolute; inset: 0; display: grid; place-items: center; }
+
+/* Sändningsläget: två kolumner och en rad, som `[data-tv]` skriver det (K9). */
+.tv { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 360px; grid-template-rows: minmax(0, 1fr); background: #0d0f14; color: #e8eaf0; }
+.tv > .feltruta { position: relative; inset: auto; }
+.tv-spalt { min-width: 0; display: flex; flex-direction: column; gap: 16px; padding: 20px; border-left: 1px solid #262b3a; }
+.tv-spalt h1 { margin: 0; font: 700 22px system-ui, sans-serif; letter-spacing: 0.5px; }
+.tv-spalt h1 em { color: #7d8597; font-weight: 400; font-style: normal; }
+.tv-kod { display: flex; align-items: center; gap: 14px; }
+.tv-kod strong { font: 700 28px/1 ui-monospace, monospace; letter-spacing: 4px; color: #fff; }
+.tv-kod .qr { width: 56px; height: 56px; border-radius: 6px; background: repeating-conic-gradient(#fff 0 25%, #0d0f14 0 50%) 0 0 / 8px 8px; }
+.tv-platser { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.tv-platser li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: #151924; font-size: 15px; }
+.tv-platser li i { width: 26px; height: 26px; border-radius: 50%; background: var(--seat, #666); color: #0d0f14; display: grid; place-items: center; font: 800 12px system-ui; font-style: normal; }
+.tv-flode { margin-top: auto; color: #7d8597; font-size: 14px; line-height: 1.6; }
+.tv-flode b { color: #e8eaf0; font-weight: 600; }
