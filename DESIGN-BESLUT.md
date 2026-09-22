@@ -1509,6 +1509,17 @@ Det som avgör är alltså vad som ritas där man släpper: filt eller fläkt ta
 
 Grinden är `drop.test.ts`: fläktens hörn, kanter, mitt och utsprång på alla fyra kanter, i båda lägena, för ett löst kort och för en högs topp; remsan bredvid fläkten som filt; en punkt strax utanför fläktens yttre kant som inte hand; den tomma handens remsa; och distansvyns `playedAt`.
 
+Reviderat 2026-09-22 (#440): en ny delad yta föds på ledig filt.
+Att zoner *får* överlappa är formgivarens frihet och inte verktygets förval.
+＋ Yta la varje ny yta på en konstant, så en andra delad yta föddes på millimetern ovanpå den första — och vald direkt, vilket gör att det första formgivaren ser är en markerad ruta ovanpå en annan som hon måste dra undan innan hon ser vad hon gjort.
+Ingen har lagt den där, så det är verktygets fel och inte en placering att respektera.
+Regeln: önskeplatsen — de 300 × 120 mm strax nedanför filtens mitt som panelen alltid har lagt — om den rutan är ledig, annars den lediga ruta som ligger närmast den.
+«Ledig» är hel innanför filtens golv och utan en delad millimeter med någon zon som redan står där, och en hög räknas som den kortrygg den ritas som, så ingen yta föds över leken.
+Sökningen är uttömmande och inte en gissning: varje ledig placering kan skjutas mot önskeplatsen tills den stannar mot en kant — filtens egen eller en grannes — så den bästa lediga rutan finns bland de kanterna om någon finns alls.
+Har filten ingen sådan ruta säger uppställningen det, där den säger allt annat den vägrar, i stället för att stapla tyst.
+Vad formgivaren sedan gör med zonen är hennes: hon får lägga den var hon vill, K2:s överlapp inbegripet.
+Grinden är `recipe-geometry.test.ts` för regeln och `setup-new-area.test.tsx`, som läser zonernas rutor ur den byggda fliken vid varje platsantal 2–`MAX_PLAYERS`.
+
 ### K3. Flera kort på en gång: atomisk batch i kuvertet
 
 `Envelope` bär `intents: Intent[]`.
