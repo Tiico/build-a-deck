@@ -20,7 +20,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { SCHEMA_VERSION, type Applied, type Intent, type ServerMessage, type Snapshot, type ZoneView } from '../../../packages/protocol/src/index.js'
 import { CARD_STANDARD_63x88, TOKEN_COUNTER, TypeRegistry, apply, diff, initialState, project, type SetupDef, type TableState } from '../../../packages/engine/src/index.js'
-import { COUNTER_PITCH_MM, counterSpots, edgeOf, feltFor, handGeometry, inFront, countersAt, openingSetup, CHIP_MM, type Setup } from '../../../packages/server/src/recipe.js'
+import { counterSpots, edgeOf, feltFor, handGeometry, inFront, countersAt, openingSetup, CHIP_MM, type Setup } from '../../../packages/server/src/recipe.js'
 import { setupFromProject } from '../../../packages/server/src/setup.js'
 import { facesOf, type Deck } from '../../../packages/server/src/faces.js'
 import { DEFAULT_FRAME, type Field } from '../../../packages/web/src/wizard/frames.js'
@@ -206,9 +206,13 @@ for (const läge of Object.keys(KÖRNINGAR) as Läge[]) {
     const zon = måste(efter.zones.find((z) => z.id === 'mine:A'), `mine:A i ${vy.id}`)
     const komponenter = efter.components.filter((c) => c.zone === 'mine:A')
     // Samma två funktioner som `private-area.spec.ts` dömer på, körda på de här ramarna.
+    //
+    // Titelsökningen gäller Ninas tre kort och inte hela leken: Olle har egna kort på hand och
+    // får deras titlar med rätta, och en sökning över alla sexton hade räknat dem som läckage.
     const alla = [snapshot, patch]
     const korten = cardsIn(alla, 'mine:A')
-    const namngivna = Object.values(k.titles).filter((titel) => mentions(alla, titel).length > 0)
+    const hennes = k.spelade.map((id) => måste(k.efter.components[id], id).cardRef)
+    const namngivna = hennes.map((ref) => måste(k.titles[ref], ref)).filter((titel) => mentions(alla, titel).length > 0)
     trafik[läge][vy.id] = { snapshot, patch, zon, komponenter, korten, namngivna }
   }
 }
@@ -230,13 +234,13 @@ vakt(
   måste(trafik.ryggar['nina'], 'ryggar').korten.length === 0,
   "`canSeeFace` kräver framsidan i en `all`-zon, och ägarskapet ger henne ingenting där",
 )
-vakt('i dag får varken TV:n eller Olle veta något av dem', trafik.idag['tv']!.korten.length === 0 && trafik.idag['olle']!.korten.length === 0, 'noll identiteter i deras ramar')
-vakt('med D får både TV:n och Olle alla tre', trafik.d['tv']!.korten.length === 3 && trafik.d['olle']!.korten.length === 3, 'tre identiteter i deras ramar')
-vakt('med D reser också titlarna', trafik.d['tv']!.namngivna.length === 3, 'tre titlar i TV:ns ramar')
-vakt('mellanläget lägger ut korten utan att namnge dem', trafik.ryggar['tv']!.komponenter.length === 3 && trafik.ryggar['tv']!.korten.length === 0, 'tre komponenter, noll identiteter')
+vakt('i dag får varken TV:n eller Olle veta något av dem', måste(trafik.idag['tv'], 'tv').korten.length === 0 && måste(trafik.idag['olle'], 'olle').korten.length === 0, 'noll identiteter i deras ramar')
+vakt('med D får både TV:n och Olle alla tre', måste(trafik.d['tv'], 'tv').korten.length === 3 && måste(trafik.d['olle'], 'olle').korten.length === 3, 'tre identiteter i deras ramar')
+vakt('med D reser också titlarna', måste(trafik.d['tv'], 'tv').namngivna.length === 3, 'tre titlar i TV:ns ramar')
+vakt('mellanläget lägger ut korten utan att namnge dem', måste(trafik.ryggar['tv'], 'tv').komponenter.length === 3 && måste(trafik.ryggar['tv'], 'tv').korten.length === 0, 'tre komponenter, noll identiteter')
 vakt(
   'en yta formgivaren gjort privat säger exakt vad den sade före D',
-  JSON.stringify(trafik.privat['tv']!.zon) === JSON.stringify(trafik.idag['tv']!.zon) && trafik.privat['tv']!.korten.length === 0,
+  JSON.stringify(måste(trafik.privat['tv'], 'tv').zon) === JSON.stringify(måste(trafik.idag['tv'], 'tv').zon) && måste(trafik.privat['tv'], 'tv').korten.length === 0,
   'zonvyn är identisk, tecken för tecken',
 )
 vakt('telefonen lägger alla tre korten på samma millimeter', NINAS_KORT.every((c) => c.x === 0 && c.y === 0), 'x = 0 och y = 0 för alla tre')
@@ -257,24 +261,30 @@ const övre = (mm: number): number => px(mm + FELT.h / 2)
 const CSS_MM = 96 / 25.4
 const KORTSKALA = SKALA / CSS_MM
 const KORT_MM = { w: CARD_STANDARD_63x88.physical.widthMm, h: CARD_STANDARD_63x88.physical.heightMm }
+// Handkortets mått på filten, som `hand.ts` ritar det: något mindre än kortet självt.
+const HAND_MM = { w: 54, h: 75 }
 const KORT_PÅ_FILTEN_PX = px(KORT_MM.w)
 const KORT_PÅ_TV_PX = KORT_PÅ_FILTEN_PX * 2
 
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 // Korten, kompilerade en gång var. Samma `compile` som renderaren och editorn kallar.
+//
+// Räckvidden är en klass och inte ett id, eftersom samma kort står på två ställen på sidan: på
+// filten och i Ninas remsa. Ett id hade gett det ena av dem markup utan mått.
 const kompilerade = new Map<string, Compiled>()
 for (const kort of NINAS_KORT) {
-  const scope = `#k-${kort.cardRef}`
-  kompilerade.set(kort.cardRef, compile({ type: CARD_STANDARD_63x88, face: template.faces.front, row: måste(deckRows[kort.cardRef], kort.cardRef), icons: {}, scope, fonts: FONTS }))
+  kompilerade.set(kort.cardRef, compile({ type: CARD_STANDARD_63x88, face: template.faces.front, row: måste(deckRows[kort.cardRef], kort.cardRef), icons: {}, scope: `.k-${kort.cardRef}`, fonts: FONTS }))
 }
-const ryggScope = '#k-rygg'
-const kompileradRygg = compile({ type: CARD_STANDARD_63x88, face: template.faces.back, row: måste(deckRows['kort-1'], 'kort-1'), icons: {}, scope: ryggScope, fonts: FONTS })
+const kompileradRygg = compile({ type: CARD_STANDARD_63x88, face: template.faces.back, row: måste(deckRows['kort-1'], 'kort-1'), icons: {}, scope: '.k-rygg', fonts: FONTS })
 vakt('varje kort är kompilerat och bär sin titel', NINAS_KORT.every((k) => måste(kompilerade.get(k.cardRef), k.cardRef).html.includes(k.titel)), 'titeln står i den kompilerade markupen')
+vakt('ryggen är kompilerad ur samma mall', kompileradRygg.html.includes('data-card'), 'baksidan är produktens och inte en ritad ruta')
 
-const kortHtml = (cardRef: string, extra = ''): string =>
-  `<div class="filtkort" id="k-${esc(cardRef)}" style="${extra}transform:scale(${KORTSKALA.toFixed(5)})">${måste(kompilerade.get(cardRef), cardRef).html}</div>`
-const ryggHtml = (): string => `<div class="filtkort" id="k-rygg" style="transform:scale(${KORTSKALA.toFixed(5)})">${kompileradRygg.html}</div>`
+// Varje kort på sidan — på filten, i högarna, i solfjädrarna och i telefonerna — är den här
+// markupen skalad. Ingen ritad ruta föreställer ett kort någonstans.
+const kortHtml = (cardRef: string, skala: number): string =>
+  `<div class="filtkort k-${esc(cardRef)}" style="transform:scale(${skala.toFixed(5)})">${måste(kompilerade.get(cardRef), cardRef).html}</div>`
+const ryggHtml = (skala: number): string => `<div class="filtkort k-rygg" style="transform:scale(${skala.toFixed(5)})">${kompileradRygg.html}</div>`
 
 function filtHtml(läge: Läge): string {
   const bitar: string[] = []
@@ -288,17 +298,18 @@ function filtHtml(läge: Läge): string {
       `<div class="byd-zone" data-area="${esc(id)}" style="left:${vänster(g.x).toFixed(1)}px;top:${övre(g.y).toFixed(1)}px;width:${px(g.w).toFixed(1)}px;height:${px(g.h).toFixed(1)}px"><span style="${utanför}">${esc(namn)}</span>${inuti}</div>`,
     )
   }
-  // De två högarna på filten, ritade som kortryggar kring sin punkt, som `drop.ts` gör.
-  const hög = (x: number, y: number, namn: string, n: number, tom: boolean): void => {
+  // De två högarna på filten: kortets kontur kring zonens punkt, som `drop.ts` räknar den, med
+  // den kompilerade ryggen i sig när högen har något i sig.
+  const hög = (x: number, y: number, namn: string, n: number): void => {
     bitar.push(
-      `<div class="byd-pile${tom ? ' tom' : ''}" style="left:${vänster(x - KORT_MM.w / 2).toFixed(1)}px;top:${övre(y - KORT_MM.h / 2).toFixed(1)}px;width:${KORT_PÅ_FILTEN_PX.toFixed(1)}px;height:${px(KORT_MM.h).toFixed(1)}px"><b class="byd-pile-count">${n}</b><em>${esc(namn)}</em></div>`,
+      `<div class="byd-pile${n === 0 ? ' tom' : ''}" style="left:${vänster(x - KORT_MM.w / 2).toFixed(1)}px;top:${övre(y - KORT_MM.h / 2).toFixed(1)}px;width:${KORT_PÅ_FILTEN_PX.toFixed(1)}px;height:${px(KORT_MM.h).toFixed(1)}px">${n > 0 ? ryggHtml(KORTSKALA) : ''}<b class="byd-pile-count">${n}</b><em>${esc(namn)}</em></div>`,
     )
   }
   const k = KÖRNINGAR[läge]
   const tv = måste(trafik[läge]['tv'], läge)
   const drag = måste(k.efter.zones['draw'], 'draw').order.length
-  hög(-140, 0, 'Draghög', drag, false)
-  hög(140, 0, 'Kasthög', 0, true)
+  hög(-140, 0, 'Draghög', drag)
+  hög(140, 0, 'Kasthög', 0)
 
   for (let i = 0; i < PLATSER; i++) {
     const seat = måste(['A', 'B', 'C', 'D'][i], 'plats')
@@ -320,7 +331,7 @@ function filtHtml(läge: Läge): string {
           .map((c) => {
             const l = px(c.x)
             const t = px(c.y)
-            const kropp = c.cardRef ? kortHtml(c.cardRef) : ryggHtml()
+            const kropp = c.cardRef ? kortHtml(c.cardRef, KORTSKALA) : ryggHtml(KORTSKALA)
             return `<div class="filtplats" style="left:${l.toFixed(1)}px;top:${t.toFixed(1)}px;width:${KORT_PÅ_FILTEN_PX.toFixed(1)}px;height:${px(KORT_MM.h).toFixed(1)}px">${kropp}</div>`
           })
           .join('')
@@ -333,15 +344,28 @@ function filtHtml(läge: Läge): string {
         `<div class="byd-token" style="left:${vänster(chips.x + spot.x).toFixed(1)}px;top:${övre(chips.y + spot.y).toFixed(1)}px;width:${px(CHIP_MM).toFixed(1)}px;height:${px(CHIP_MM).toFixed(1)}px"><b>0</b></div>`,
       )
     }
-    // Handen: en solfjäder av ryggar vriden mot sin egen kant.
+    // Handen: en solfjäder av kompilerade ryggar i handkortets mått (54 × 75 mm, som `hand.ts`
+    // ritar dem) vriden mot sin egen kant, och en antalsbricka som på filten.
     const antal = måste(k.efter.zones[`hand:${seat}`], `hand:${seat}`).order.length
     const vrid = kant === 'S' ? 0 : kant === 'N' ? 180 : kant === 'E' ? -90 : 90
-    const solfjäder = Array.from({ length: antal }, (_, j) => `<i style="transform:rotate(${((j - (antal - 1) / 2) * 9).toFixed(1)}deg);width:${px(54).toFixed(1)}px;height:${px(75).toFixed(1)}px;margin-left:${px(-27).toFixed(1)}px;margin-top:${px(-25).toFixed(1)}px"></i>`).join('')
+    const handSkala = KORTSKALA * (HAND_MM.w / KORT_MM.w)
+    const solfjäder = Array.from(
+      { length: antal },
+      (_, j) =>
+        `<i style="transform:rotate(${((j - (antal - 1) / 2) * 9).toFixed(1)}deg);width:${px(HAND_MM.w).toFixed(1)}px;height:${px(HAND_MM.h).toFixed(1)}px;margin-left:${px(-HAND_MM.w / 2).toFixed(1)}px;margin-top:${px(-(HAND_MM.h - 28)).toFixed(1)}px">${ryggHtml(handSkala)}</i>`,
+    ).join('')
     bitar.push(
       `<div class="byd-hand" style="left:${vänster(hand.x + hand.w / 2).toFixed(1)}px;top:${övre(hand.y + hand.h / 2).toFixed(1)}px;transform:rotate(${vrid}deg)">${solfjäder}${antal > 0 ? `<b class="byd-hand-count">${antal}</b>` : ''}</div>`,
     )
+    // Platsnamnet ligger innanför filtens egen kant, vänt mot sin plats — möbel och inte
+    // gränssnitt, som `table.css` säger om det.
+    const namnPlats =
+      kant === 'S' ? `left:${vänster(hand.x + hand.w / 2).toFixed(1)}px;top:${(px(FELT.h) - 11).toFixed(1)}px`
+      : kant === 'N' ? `left:${vänster(hand.x + hand.w / 2).toFixed(1)}px;top:11px`
+      : kant === 'E' ? `left:${(px(FELT.w) - 14).toFixed(1)}px;top:${övre(hand.y + hand.h / 2).toFixed(1)}px`
+      : `left:14px;top:${övre(hand.y + hand.h / 2).toFixed(1)}px`
     bitar.push(
-      `<div class="byd-seat-name" data-edge="${kant}" style="--seat:var(--seat-${seat.toLowerCase()});left:${vänster(hand.x + hand.w / 2).toFixed(1)}px;top:${övre(hand.y + hand.h / 2).toFixed(1)}px;transform:translate(-50%,-50%) rotate(${vrid}deg)">${esc(måste(NAMN[seat], seat))}</div>`,
+      `<div class="byd-seat-name" style="--seat:var(--seat-${seat.toLowerCase()});${namnPlats};transform:translate(-50%,-50%) rotate(${vrid}deg)">${esc(måste(NAMN[seat], seat))}</div>`,
     )
   }
   return `<div class="tv"><div class="filt" style="width:${px(FELT.w).toFixed(1)}px;height:${px(FELT.h).toFixed(1)}px">${bitar.join('')}</div></div>`
@@ -353,6 +377,9 @@ function filtHtml(läge: Läge): string {
 const TELEFON_BREDD = 390
 const TELEFONKORT = 62 // px bred i remsan; `player.css` ritar den privata remsans kort ungefär så
 const TELEFONSKALA = TELEFONKORT / (KORT_MM.w * CSS_MM)
+const HANDKORT_PX = 54 // px bred i handremsan
+const HANDSKALA = HANDKORT_PX / (KORT_MM.w * CSS_MM)
+const handRygg = (n: number): string => Array.from({ length: n }, () => `<i class="tfrygg">${ryggHtml(HANDSKALA)}</i>`).join('')
 
 function olleHtml(läge: Läge): string {
   const t = måste(trafik[läge]['olle'], läge)
@@ -367,7 +394,7 @@ function olleHtml(läge: Läge): string {
   ]
   return `<div class="telefon" style="width:${TELEFON_BREDD}px">
   <div class="tfhuvud"><b>Olle</b><span>plats B</span></div>
-  <div class="tfsektion"><h4>Din hand · 3 kort</h4><div class="tfremsa">${'<i class="tfrygg"></i>'.repeat(3)}</div></div>
+  <div class="tfsektion"><h4>Din hand · 3 kort</h4><div class="tfremsa">${handRygg(3)}</div></div>
   <div class="tfsektion"><h4>Framför dig · 0</h4><p class="tftom">Inget framför dig. Spela ett kort hit från handen.</p></div>
   <div class="tfsektion"><h4>Bordet</h4><div class="tfbrickor">${rader.map(([n, v]) => `<div class="tfbricka"><b>${esc(måste(n, 'n'))}</b><u>${esc(måste(v, 'v'))} kort</u></div>`).join('')}</div>
     <p class="tfsaknas">Framför A står inte här — <code>targetsOf</code> sållar på <b>ägare</b> och inte på synlighet.</p></div>
@@ -381,11 +408,11 @@ function ninaHtml(läge: Läge): string {
   const vänd = läge === 'ryggar'
   const kort = NINAS_KORT.map(
     (k) =>
-      `<div class="tfkort">${vänd ? `<div class="tfbild"><div class="filtkort" style="transform:scale(${TELEFONSKALA.toFixed(5)})">${kompileradRygg.html}</div></div>` : `<div class="tfbild"><div class="filtkort" style="transform:scale(${TELEFONSKALA.toFixed(5)})">${måste(kompilerade.get(k.cardRef), k.cardRef).html}</div></div>`}<div class="tfverb"><button type="button">Ta upp</button><button type="button">Kasta</button></div></div>`,
+      `<div class="tfkort"><div class="tfbild">${vänd ? ryggHtml(TELEFONSKALA) : kortHtml(k.cardRef, TELEFONSKALA)}</div><div class="tfverb"><button type="button">Ta upp</button><button type="button">Kasta</button></div></div>`,
   ).join('')
   return `<div class="telefon" style="width:${TELEFON_BREDD}px">
   <div class="tfhuvud"><b>Nina</b><span>plats A</span></div>
-  <div class="tfsektion"><h4>Din hand · 2 kort</h4><div class="tfremsa">${'<i class="tfrygg"></i>'.repeat(2)}</div>
+  <div class="tfsektion"><h4>Din hand · 2 kort</h4><div class="tfremsa">${handRygg(2)}</div>
     <div class="tfknappar"><button type="button" class="primar">Framför mig</button><button type="button">Kasta</button><button type="button">Spela…</button></div></div>
   <div class="tfsektion"><h4>Framför dig · 3</h4><div class="tfprivat">${kort}</div>${vänd ? '<p class="tftom">Ninas egen ram säger <code>cardRef: null</code> för alla tre. Hennes telefon kan inte rita dem och kan inte namnge dem.</p>' : ''}</div>
   <div class="tfsektion"><h4>Senast</h4><p class="tfrad">Nina lade ett kort i Framför A</p></div>
@@ -501,18 +528,16 @@ body[data-lage='privat'] .lage[data-lage='privat'] { display: block; }
 .byd-zone { position: absolute; box-sizing: border-box; border: 1.5px solid var(--tv-zone-line); border-radius: 6px; }
 .byd-zone > span { position: absolute; color: var(--tv-zone-name); font: 600 8px/1 'Roboto Condensed', system-ui; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
 .byd-area-count { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); padding: 2px 8px; border-radius: 999px; background: rgba(0,0,0,.55); color: var(--hand-count-ink); font: 600 12px system-ui; }
-.byd-pile { position: absolute; border-radius: 3px; border: 1.5px solid var(--back-line); background: repeating-linear-gradient(45deg, var(--back-a), var(--back-a) 3px, var(--back-b) 3px, var(--back-b) 6px); }
-.byd-pile.tom { background: none; border-style: dashed; border-color: var(--tv-zone-line); }
+.byd-pile { position: absolute; }
+.byd-pile.tom { border: 1.5px dashed var(--tv-zone-line); border-radius: 3px; }
 .byd-pile-count { position: absolute; left: 50%; top: 100%; transform: translate(-50%, 4px); padding: 1px 6px; border-radius: 999px; background: rgba(0,0,0,.55); color: var(--hand-count-ink); font: 600 10px system-ui; }
 .byd-pile > em { position: absolute; left: 50%; top: 100%; margin-top: 20px; transform: translateX(-50%); font-style: normal; color: var(--tv-zone-name); font: 600 8px/1 'Roboto Condensed', system-ui; letter-spacing: 1px; text-transform: uppercase; }
 .byd-token { position: absolute; border-radius: 50%; background: #f0b64a; color: #1c1c1c; display: grid; place-items: center; }
 .byd-token b { font: 700 8px/1 system-ui; }
 .byd-hand { position: absolute; }
-.byd-hand i { position: absolute; display: block; border-radius: 2px; border: 1px solid var(--back-line); background: repeating-linear-gradient(45deg, var(--back-a), var(--back-a) 3px, var(--back-b) 3px, var(--back-b) 6px); transform-origin: 50% 140%; }
+.byd-hand i { position: absolute; display: block; transform-origin: 50% 140%; overflow: hidden; border-radius: 2px; }
 .byd-hand-count { position: absolute; left: 50%; top: 34px; transform: translateX(-50%); padding: 1px 6px; border-radius: 999px; background: var(--hand-count-bg); color: var(--hand-count-ink); font: 600 10px system-ui; }
 .byd-seat-name { position: absolute; padding: 1px 7px; border-radius: 999px; background: var(--seat); color: #10131a; font: 800 9px/14px system-ui; letter-spacing: .6px; white-space: nowrap; }
-.byd-seat-name[data-edge='S'] { margin-top: 18px; }
-.byd-seat-name[data-edge='N'] { margin-top: -18px; }
 
 /* Ett kort på filten: kompilerad markup i sin verkliga millimeterstorlek, skalad till filtens
    pixlar. Ingen ritad ruta någonstans. */
@@ -529,7 +554,7 @@ body[data-lage='privat'] .lage[data-lage='privat'] { display: block; }
 .tfsektion { padding: var(--s3) 0; border-bottom: 1px solid var(--phone-line); }
 .tfsektion h4 { margin: 0 0 var(--s2); font: 700 11px system-ui; text-transform: uppercase; letter-spacing: 1.4px; color: var(--quiet); }
 .tfremsa { display: flex; gap: 5px; }
-.tfrygg { display: block; width: 54px; height: 75px; border-radius: 3px; border: 1px solid var(--back-line); background: repeating-linear-gradient(45deg, var(--back-a), var(--back-a) 4px, var(--back-b) 4px, var(--back-b) 8px); }
+.tfrygg { display: block; width: 54px; height: 75px; border-radius: 3px; overflow: hidden; }
 .tfknappar { display: flex; gap: 6px; margin-top: var(--s3); }
 .tfknappar button { flex: 1; min-height: 44px; border-radius: 10px; border: 1px solid var(--phone-line); background: #141b20; color: #dfe6f5; font: 700 12px system-ui; }
 .tfknappar button.primar { background: #1f7a4d; border-color: #2aa468; color: #fff; }
@@ -607,7 +632,8 @@ pre code { background: none; border: 0; padding: 0; color: #cfd8ea; font: 11px/1
   <span>skala <u>${SKALA.toFixed(4)} px/mm</u></span>
   <span>ett kort på den halva filten <u>${KORT_PÅ_FILTEN_PX.toFixed(1)} px</u></span>
   <span>samma kort på en riktig 1920 × 1080 <u>${KORT_PÅ_TV_PX.toFixed(1)} px</u></span>
-  <span>uppmätt i sidan <u id="matt-kort">—</u></span>
+  <span>uppmätt på filten i det här läget <u id="matt-kort">—</u></span>
+  <span>uppmätt i Ninas remsa <u id="matt-telefon">—</u></span>
 </div>
 
 <section>
@@ -715,21 +741,40 @@ pre code { background: none; border: 0; padding: 0; color: #cfd8ea; font: 11px/1
 </div>
 </div>
 
-<script>
+<script type="module">
 // Växeln, och en vakt mot tomhet: sidan påstår ett kortmått i pixlar, så den mäter också att
 // kortet verkligen ritades och hur brett det blev.
+// Lägen där sidan påstår att det ligger kompilerade kort på filten. Mäter den noll bredd i ett
+// av dem har något slutat ritas, och sidan säger det i stället för att visa ett tomt fält.
+const MED_KORT = new Set(['d', 'ryggar'])
+
+const bredd = (väljare) => {
+  const el = document.querySelector(väljare)
+  const r = el?.getBoundingClientRect()
+  return r && r.width > 0 ? r.width : 0
+}
+
+function mät() {
+  const läge = document.body.dataset.lage
+  const påFilten = bredd('.lage[data-lage="' + läge + '"] .filt [data-card]')
+  const iRemsan = bredd('.lage[data-lage="' + läge + '"] .tfbild [data-card]')
+  const ut = document.getElementById('matt-kort')
+  ut.textContent = påFilten > 0 ? påFilten.toFixed(1) + ' px' : MED_KORT.has(läge) ? 'INGET KORT RITADES' : 'inget kort på filten i det här läget'
+  ut.style.color = påFilten === 0 && MED_KORT.has(läge) ? '#ff9d9d' : ''
+  const ut2 = document.getElementById('matt-telefon')
+  ut2.textContent = iRemsan > 0 ? iRemsan.toFixed(1) + ' px' : 'INGET KORT RITADES'
+  ut2.style.color = iRemsan === 0 ? '#ff9d9d' : ''
+}
+
 document.addEventListener('click', (e) => {
   const b = e.target.closest('button[data-valj]')
   if (!b) return
   document.body.dataset.lage = b.dataset.valj
   document.querySelectorAll('button[data-valj]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)))
+  mät()
 })
 await document.fonts.ready
-const synligt = document.querySelector('.lage[data-lage="d"] [data-card]') ?? document.querySelector('[data-card]')
-const ruta = synligt?.getBoundingClientRect()
-const mätt = document.getElementById('matt-kort')
-if (ruta && ruta.width > 0) mätt.textContent = ruta.width.toFixed(1) + ' px'
-else mätt.textContent = 'inget kort ritades'
+mät()
 </script>
 </body>
 </html>
