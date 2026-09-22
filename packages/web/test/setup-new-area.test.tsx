@@ -35,10 +35,10 @@ afterEach(async () => {
 })
 
 const DESK = { w: 1280, h: 800 }
-// Filtens låda i fliken vid 1280 × 800, mätt i Chromium av `felt-names.test.tsx`. jsdom lägger
-// ingenting ut, så renderaren får noll tillbaka när den frågar lådan hur stor den är och hela
-// filten faller ihop. Talet här är bara en låda att rita i: vilken som helst duger, eftersom det
-// som läses är om rutor möts och inte var de ligger.
+// En låda åt filten att rita i. jsdom lägger ingenting ut, så renderaren får noll tillbaka när den
+// frågar lådan hur stor den är och hela filten faller ihop. Talen är av samma storleksordning som
+// den låda `felt-names.test.tsx` mäter upp i Chromium, men vilka som helst hade dugt: det som läses
+// är om två rutor möts, och det svaret är detsamma i varje skala.
 const FELT_BOX = { w: 660, h: 500 }
 
 type Box = { x: number; y: number; w: number; h: number }
