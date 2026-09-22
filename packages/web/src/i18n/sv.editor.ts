@@ -880,9 +880,13 @@ export const svEditor = {
   // Uppställningen: receptets rattar, filten och telefonens blad.
   'setup.addArea': '＋ Yta',
   'setup.addPile': '＋ Hög',
-  // När filten inte har en ledig ruta att föda ytan i (#440). Den säger vad som saknas och vad
-  // som gör den ledig igen, eftersom en vägran utan väg vidare är en knapp som ser trasig ut.
+  // När filten inte har en ledig ruta att föda zonen i (#440, #443). Den säger vad som saknas och
+  // vad som gör den ledig igen, eftersom en vägran utan väg vidare är en knapp som ser trasig ut.
+  // Högen har egna ord och inte ytans: en ruta på 300 × 120 mm och en kortrygg på 63 × 88 mm
+  // slutar få plats vid olika tillfällen, så «ingen ledig filt» är sant för den ena medan det är
+  // falskt för den andra — och en mening som nämner fel zon är en mening formgivaren får leta i.
   'setup.noRoom': 'Ingen ledig filt för en ny yta. Flytta eller ta bort en zon först.',
+  'setup.noRoomPile': 'Ingen ledig filt för en ny hög. Flytta eller ta bort en zon först.',
   'setup.hint': 'Dra en zon på filten för att flytta den.',
   'setup.help.topic': 'zonerna',
   'setup.help.resize': 'Dra hörnet för att ändra storlek.',

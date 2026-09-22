@@ -6,7 +6,7 @@ import { targetsOf } from '../player/PlaySheet.js'
 import { stepAside } from './grips.js'
 import { TableRenderer, type FeltFit, type TableHandle } from '../table/TableRenderer.js'
 import { previewOf } from '../setup/preview.js'
-import { MAX_PLAYERS, newAreaSpot, titleOfRow, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
+import { MAX_PLAYERS, newAreaSpot, newPileSpot, titleOfRow, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
 import type { ZonePatch } from '@byd/server/doc'
 import { useT, type Key, type T } from '../i18n/index.js'
@@ -125,12 +125,14 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
   }
   const keys = useRef({ selected, setup, client, remove, t })
   keys.current = { selected, setup, client, remove, t }
-  // En ny delad yta föds på ledig filt (#440). Uppställningen äger regeln och kan säga nej till
-  // den; panelen frågar med samma funktion som lägger zonen, så att ett nej blir ord på raden där
-  // allt annat den vägrar står — och aldrig ett kast ur `applyEdit` som fäller fliken.
+  // En ny zon föds på ledig filt (#440 för ytan, #443 för högen). Uppställningen äger regeln och
+  // kan säga nej till den; panelen frågar med samma funktion som lägger zonen, så att ett nej blir
+  // ord på raden där allt annat den vägrar står — och aldrig ett kast ur `applyEdit` som fäller
+  // fliken. De två zonerna får var sitt nej: en ruta på 300 × 120 mm och en kortrygg på 63 × 88 mm
+  // slutar få plats vid olika tillfällen, så «ingen ledig filt» är två olika påståenden.
   const add = (kind: 'area' | 'pile') => {
-    if (kind === 'area' && newAreaSpot(setup) === null) {
-      setSaid(t('setup.noRoom'))
+    if ((kind === 'pile' ? newPileSpot(setup) : newAreaSpot(setup)) === null) {
+      setSaid(t(kind === 'pile' ? 'setup.noRoomPile' : 'setup.noRoom'))
       setUndoable(null)
       return
     }
