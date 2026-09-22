@@ -1,0 +1,44 @@
+[
+  {
+    "family": "EB Garamond",
+    "weights": "400..800",
+    "slug": "eb-garamond",
+    "url": "https://fonts.gstatic.com/s/ebgaramond/v33/SlGUmQSNjdsmc35JDF1K5GR1SDk_YAPI.woff2",
+    "bytes": 44172
+  },
+  {
+    "family": "Inter",
+    "weights": "100..900",
+    "slug": "inter",
+    "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+    "bytes": 48432
+  },
+  {
+    "family": "Cinzel",
+    "weights": "400..900",
+    "slug": "cinzel",
+    "url": "https://fonts.gstatic.com/s/cinzel/v26/8vIJ7ww63mVu7gt79mT7PkRXMw.woff2",
+    "bytes": 25888
+  },
+  {
+    "family": "Crimson Pro",
+    "weights": "200..900",
+    "slug": "crimson-pro",
+    "url": "https://fonts.gstatic.com/s/crimsonpro/v28/q5uDsoa5M_tv7IihmnkabARboYF6CsKj.woff2",
+    "bytes": 48152
+  },
+  {
+    "family": "Archivo",
+    "weights": "100..900",
+    "slug": "archivo",
+    "url": "https://fonts.gstatic.com/s/archivo/v25/k3kPo8UDI-1M0wlSV9XAw6lQkqWY8Q82sLydOxKsv4Rn.woff2",
+    "bytes": 34940
+  },
+  {
+    "family": "Oswald",
+    "weights": "200..700",
+    "slug": "oswald",
+    "url": "https://fonts.gstatic.com/s/oswald/v57/TK3iWkUHHAIjg752GT8Gl-1PKw.woff2",
+    "bytes": 28456
+  }
+]
