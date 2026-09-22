@@ -1,3 +1,4 @@
+import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { ProjectDoc } from './projects.js'
 
 // Imported by the editor as well as the server, so this module stays free of anything Node.
@@ -280,6 +281,69 @@ export function countersAt(i: number, count: number, counters: number): Geometry
       return rect(hand.x + from, hand.y - 110, long, 100)
   }
 }
+
+// Var en ny delad yta föds (#440, K2, B5).
+//
+// Hur stor den är och var den helst ligger är oförändrat sedan panelen fick sin knapp: 300 × 120
+// millimeter strax nedanför filtens mitt. Vad som är nytt är att platsen är ett svar och inte en
+// konstant — en zon som läggs rakt ovanpå en annan är ingen placering formgivaren har gjort, och
+// hon måste dra undan den innan hon ser vad hon gjort. Med två delade ytor var det garanterat:
+// den andra föddes på millimetern där den första låg.
+//
+// Regeln är därför: önskeplatsen om den är ledig, annars den lediga ruta som ligger närmast den.
+// «Ledig» är filtens egen fråga och inget formval — rutan ska rymmas hel på filten och inte dela
+// en millimeter med någon zon som redan står där. K2 låter formgivaren lägga zoner över varandra
+// när hon vill; det här är bara vad verktyget gör innan hon har sagt något alls.
+export const NEW_AREA = { w: 300, h: 120 }
+const NEW_AREA_WISH = { x: -150, y: 100 }
+
+// En högs ruta på filten är kortets kontur kring dess punkt: i dokumentet är en hög en punkt utan
+// area, på skärmen är den en kortrygg, och det är kortryggen en ny yta inte får födas ovanpå.
+const CARD = { w: CARD_STANDARD_63x88.physical.widthMm, h: CARD_STANDARD_63x88.physical.heightMm }
+const boxOf = (zone: Zone): Geometry => (zone.kind === 'pile' ? rect(zone.geometry.x - CARD.w / 2, zone.geometry.y - CARD.h / 2, CARD.w, CARD.h) : zone.geometry)
+const shares = (a: Geometry, b: Geometry): boolean => Math.min(a.x + a.w, b.x + b.w) > Math.max(a.x, b.x) && Math.min(a.y + a.h, b.y + b.h) > Math.max(a.y, b.y)
+
+/**
+ * Den ledigaste rutan av den storleken på filten, närmast önskeplatsen — eller `null` när filten
+ * inte har någon sådan ruta alls.
+ *
+ * Sökningen är uttömmande och inte en gissning. Ta vilken ledig placering som helst och skjut den
+ * mot önskeplatsen, först i x och sedan i y: varje skjutning minskar avståndet, och den stannar
+ * antingen på önskekoordinaten eller mot en kant — filtens egen eller en grannes. Kandidaterna
+ * nedan är precis de koordinaterna, så den bästa lediga rutan finns bland dem om någon finns.
+ */
+export function freeSpot(setup: Setup, want: { w: number; h: number }, wish: { x: number; y: number }): Geometry | null {
+  const floor = setup.zones.find((z) => z.id === setup.floor)?.geometry
+  // Ett bord utan filt är inget bord; då finns ingen golvyta att söka i och önskeplatsen är allt
+  // som finns att säga.
+  if (!floor) return rect(wish.x, wish.y, want.w, want.h)
+  const room = { x: floor.x + floor.w - want.w, y: floor.y + floor.h - want.h }
+  if (room.x < floor.x || room.y < floor.y) return null
+  const taken = setup.zones.filter((z) => z.id !== setup.floor).map(boxOf)
+  const along = (lo: number, hi: number, at: number, edges: number[]): number[] =>
+    [...new Set([Math.min(Math.max(at, lo), hi), lo, hi, ...edges])].filter((v) => v >= lo && v <= hi).sort((a, b) => a - b)
+  const xs = along(floor.x, room.x, wish.x, taken.flatMap((t) => [t.x + t.w, t.x - want.w]))
+  const ys = along(floor.y, room.y, wish.y, taken.flatMap((t) => [t.y + t.h, t.y - want.h]))
+  let best: Geometry | null = null
+  let nearest = Infinity
+  for (const y of ys)
+    for (const x of xs) {
+      const spot = rect(x, y, want.w, want.h)
+      if (taken.some((t) => shares(t, spot))) continue
+      // Avståndet mäts från önskeplatsen och inte från filtens mitt: önskeplatsen är den ruta
+      // fliken alltid har lagt, och en ny yta ska flytta så lite som krävs för att bli sin egen.
+      // Vid lika avstånd vinner den som står först i y och sedan i x, så att två tryck i rad
+      // lägger samma bord två gånger.
+      const far = (x - wish.x) ** 2 + (y - wish.y) ** 2
+      if (far >= nearest) continue
+      nearest = far
+      best = spot
+    }
+  return best
+}
+
+/** Rutan en ny delad yta föds i, eller `null` när filten inte har någon ledig. */
+export const newAreaSpot = (setup: Setup): Geometry | null => freeSpot(setup, NEW_AREA, NEW_AREA_WISH)
 
 // Where a seat's chips lie inside their own zone, in the zone's own millimetres (C4, #89).
 //

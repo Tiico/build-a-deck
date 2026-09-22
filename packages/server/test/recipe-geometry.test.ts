@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyRecipe, MAX_PLAYERS, openingSetup, type Geometry, type Setup } from '../src/recipe.js'
+import { applyRecipe, MAX_PLAYERS, NEW_AREA, newAreaSpot, openingSetup, type Geometry, type Setup } from '../src/recipe.js'
 
 // The recipe's own zones, measured against each other at every seat count the table admits (K18).
 // K2 lets a designer overlap zones deliberately; nothing the recipe lays out is deliberate in that
@@ -173,5 +173,71 @@ describe('the felt a recipe lays out (K18, B5)', () => {
     const again = applyRecipe(roomier, { players: 4, counters: [{ name: 'Poäng', start: 0 }] })
     expect(again.zones.find((z) => z.id === 'table')?.geometry).toEqual({ x: -800, y: -500, w: 1600, h: 1000, rot: 0 })
     expect(again.zones.find((z) => z.id === 'hand:A')?.geometry).toEqual({ x: -250, y: 340, w: 500, h: 60, rot: 0 })
+  })
+})
+
+// Var en ny delad yta föds (#440). Panelens ＋ Yta la den på en konstant, så två ytor lades på
+// millimetern på varandra: zonen är dessutom vald direkt, så det första formgivaren ser är en
+// markerad ruta ovanpå en annan som hon måste dra undan innan hon ser vad hon gjort.
+//
+// Placeringen är en regel ur uppställningen och inget formval, och den är ren geometri: en
+// önskeplats, filtens golv, och zonerna som redan står där. Vad fliken ritar av svaret mäts i
+// `packages/web/test/setup-new-area.test.tsx`.
+describe('en ny delad yta föds på ledig filt (#440, K2)', () => {
+  const holdsAndClears = (setup: Setup, spot: Geometry) => ({
+    inside: holds(setup.zones.find((z) => z.id === setup.floor)!.geometry, spot),
+    over: setup.zones.filter((z) => z.id !== setup.floor && sharesArea(z.geometry, spot)).map((z) => z.id),
+  })
+
+  it('lägger den där panelen alltid har lagt den, så länge den rutan är ledig', () => {
+    const setup = fullTable(2)
+    // Marknaden ur `fullTable` står någon annanstans, så önskeplatsen är fri: svaret är den.
+    expect(newAreaSpot(setup)).toEqual({ x: -150, y: 100, w: NEW_AREA.w, h: NEW_AREA.h, rot: 0 })
+  })
+
+  it('håller den fri från varje zon och hel på filten, vid varje platsantal bordet rymmer', () => {
+    for (let players = 2; players <= MAX_PLAYERS; players++) {
+      const setup = fullTable(players)
+      const spot = newAreaSpot(setup)
+      // Icke-vakuitet: det finns ett svar att pröva. `null` här vore «ingen ledig filt», och den
+      // raden nedan skulle då bli grön av att ingenting mättes.
+      expect({ players, found: spot !== null }).toEqual({ players, found: true })
+      expect({ players, ...holdsAndClears(setup, spot!) }).toEqual({ players, inside: true, over: [] })
+    }
+  })
+
+  it('viker undan när önskeplatsen redan är någons, och lägger nästa yta bredvid den förra', () => {
+    const setup = fullTable(2)
+    const first = newAreaSpot(setup)!
+    const withFirst: Setup = { ...setup, zones: [...setup.zones, { id: 'yta-1', kind: 'area', name: 'Yta 1', visibility: 'all', geometry: first }] }
+    const second = newAreaSpot(withFirst)!
+    expect(second).not.toEqual(first)
+    expect(holdsAndClears(withFirst, second)).toEqual({ inside: true, over: [] })
+    // Och en tredje står fri från båda: regeln är «ledig filt» och inte «bredvid den senaste».
+    const withBoth: Setup = { ...withFirst, zones: [...withFirst.zones, { id: 'yta-2', kind: 'area', name: 'Yta 2', visibility: 'all', geometry: second }] }
+    const third = newAreaSpot(withBoth)!
+    expect(holdsAndClears(withBoth, third)).toEqual({ inside: true, over: [] })
+  })
+
+  // En hög är en punkt i dokumentet och en kortrygg på skärmen. Mätt på punkten är varje hög fri
+  // att lägga en yta över, vilket är att lägga ytan över leken.
+  it('räknar en hög som den kortrygg den ritas som, så ingen yta föds över leken', () => {
+    const setup = fullTable(2)
+    const onWish: Setup = { ...setup, zones: setup.zones.map((z) => (z.id === 'draw' ? { ...z, geometry: { x: 0, y: 160, w: 0, h: 0, rot: 0 } } : z)) }
+    const spot = newAreaSpot(onWish)!
+    expect(sharesArea(spot, { x: -31.5, y: 116, w: 63, h: 88, rot: 0 })).toBe(false)
+    expect(holdsAndClears(onWish, spot)).toEqual({ inside: true, over: [] })
+  })
+
+  // Och när filten är full säger uppställningen det i stället för att stapla tyst. Det är den enda
+  // vägen ut ur regeln, och den som gör att ＋ Yta aldrig lägger en ruta ovanpå en annan.
+  it('säger nej när filten inte har någon ledig ruta så stor', () => {
+    const setup = fullTable(2)
+    const floor = setup.zones.find((z) => z.id === setup.floor)!.geometry
+    const covered: Setup = { ...setup, zones: [...setup.zones, { id: 'duk', kind: 'area', name: 'Duk', visibility: 'all', geometry: floor }] }
+    expect(newAreaSpot(covered)).toBeNull()
+    // En filt som är mindre än ytan säger samma sak, av samma skäl.
+    const tiny: Setup = { ...setup, zones: setup.zones.map((z) => (z.id === setup.floor ? { ...z, geometry: { x: -100, y: -50, w: 200, h: 100, rot: 0 } } : z)) }
+    expect(newAreaSpot(tiny)).toBeNull()
   })
 })
