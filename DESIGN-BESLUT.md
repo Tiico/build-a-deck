@@ -2461,6 +2461,18 @@ Greppet — `.byd-setup-corner`, tolv bärnstensfärgade pixlar — hängde sex 
 `Framför D` låg därför ovanpå greppet vid fyra, sex och åtta platser, och `Framför H` likaså vid åtta.
 Handtagen fanns inte när regeln skrevs, så filtens regel visste ingenting om dem.
 
+Reviderat 2026-09-22 (#424, prototypens förslag D): editorn ritar ett grepp bara på den zon formgivaren tagit i, och det enda namn som korsar just det greppet viker undan så länge det ritas.
+
+#419 svarade på namnet över **sin egen** zons grepp, och det svaret är fullständigt.
+Det här är namnet över en **grannes** grepp — `Räknare A` på marknadens — och ingen placering av greppet inuti grannens låda kan svara på det, eftersom namnet ligger på grannens ruta och det är K19:s avsiktliga tillstånd sedan #43.
+I vila ritas därför inget grepp alls, och då kan inget namn landa på ett: vilobilden säger namnen på exakt de millimetrar den spelade filten säger dem, och B5 är orörd.
+Tar formgivaren i en zon — genom att välja den eller föra pekaren över den — ritas ett enda grepp, och det namn som korsar det stiger undan uppåt, bort från sin egen zon, vilket är den riktning regeln redan sänder det.
+Flytten är transient och kan aldrig synas i vilobilden.
+Det förkastade alternativet var att låta namnet vika undan permanent: ett namn som står femton pixlar fel i förhandsvisningen gör vilobilden osann, och vilobilden är det enda formgivaren kontrollerar namnen i.
+Även en grund under namnet förkastades: den växer namnets ruta åtta pixlar, och då landar `Framför D` på sitt eget grepp igen — precis det #419 stängde.
+Priset är upptäckbarhet: att en zon går att dra i syns först när man rör vid den.
+Hur långt ett namn viker undan är en fråga om just den uppställningen och inget tal som går att skriva ner i förväg, så `stepAside` mäter i stället — och den är en exporterad funktion och ingen effekt, eftersom filtens namn mäts genom att lägga flikens markup på en sida, där ingen effekt körs.
+
 Det är greppet som flyttar, inte namnet. Filtens regel är produktens och greppet är editorns verktyg; dessutom säger förhandsvisningen då namnen på samma millimeter som det spelade bordet, vilket är vad fliken är till för (B5).
 Innanför sin egen låda kan ett grepp aldrig hamna under zonens eget namn, eftersom namnet per regel alltid ligger utanför zonen — svaret gäller alltså varje kant och varje platsantal, inte bara den som mättes.
 

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import type { Motif } from '@byd/template'
 import type { ZoneBeside } from '@byd/protocol'
 import { targetsOf } from '../player/PlaySheet.js'
+import { stepAside } from './grips.js'
 import { TableRenderer, type FeltFit, type TableHandle } from '../table/TableRenderer.js'
 import { previewOf } from '../setup/preview.js'
 import { MAX_PLAYERS, titleOfRow, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
@@ -618,6 +619,21 @@ function Felt({
   const row = useMemo(() => doc.rows[0]?.fields ?? {}, [doc.rows])
   const table = useRef<TableHandle | null>(null)
   const drag = useRef<Drag | null>(null)
+  // Which zone the pointer is over (#424, decision D of 2026-09-22). A grip is drawn on the zone
+  // the designer has taken hold of and on no other: at rest the felt carries none, so no name can
+  // land on one, and the resting picture says the names on exactly the millimetres the played
+  // felt says them (B5). Hovering counts as taking hold — a grip nobody can see until they have
+  // already clicked is a grip nobody finds.
+  const [under, setUnder] = useState<string | null>(null)
+  const feltBox = useRef<HTMLDivElement | null>(null)
+  // The one name in a drawn grip's way steps aside for as long as the grip is drawn (#424, D).
+  // After layout and not during it: which name crosses which grip is a question about the boxes
+  // the browser actually laid out, and nothing short of measuring them can answer it. It runs
+  // again whenever the drawn grip changes or the felt is laid out afresh, and `stepAside` puts
+  // back anything that no longer needs to move, so nothing is left displaced behind it.
+  useLayoutEffect(() => {
+    if (feltBox.current) stepAside(feltBox.current)
+  })
   const grabs = useGesture('zone')
   const toMm = (e: RPointerEvent) => table.current?.toTable(e.clientX, e.clientY) ?? { x: 0, y: 0 }
   const down = (e: RPointerEvent, z: Zone, mode: Drag['mode']) => {
@@ -728,13 +744,15 @@ function Felt({
             onClick={() => onSelect(z.id)}
             onKeyDown={(e) => nudge(e, z)}
             onFocus={() => onSelect(z.id)}
+            onPointerEnter={() => setUnder(z.id)}
+            onPointerLeave={() => setUnder((now) => (now === z.id ? null : now))}
           >
-            {z.kind !== 'pile' && <i className="byd-setup-corner" data-resize={z.id} onPointerDown={(e) => down(e, z, 'resize')} onPointerMove={move} onPointerUp={up} onPointerCancel={up} />}
+            {z.kind !== 'pile' && (selected === z.id || under === z.id) && <i className="byd-setup-corner" data-resize={z.id} onPointerDown={(e) => down(e, z, 'resize')} onPointerMove={move} onPointerUp={up} onPointerCancel={up} />}
           </div>
         )
       })
   return (
-    <div className="byd-setup-felt">
+    <div className="byd-setup-felt" ref={feltBox}>
       {/* The handles carry no names of their own (K19): the felt underneath already names every
           area and every pile, and `seatNames` asks it for the one name this surface would
           otherwise be missing — whose hand is whose, which the played TV gets from its dock. The
