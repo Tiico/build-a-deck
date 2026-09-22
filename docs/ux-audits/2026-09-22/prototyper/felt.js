@@ -1,3 +1,4 @@
+/* global document */
 /* Filten, ritad för prototypen till #418.
  *
  * Geometrin är produktens egen, tagen ur `packages/server/src/recipe.ts` (SEAT_ALONG 500,
