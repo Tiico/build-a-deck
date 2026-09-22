@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 2 — Vad den privata ytan får säga (#414)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  body { overflow: auto; }
+  .rum { flex: 1 1 auto; min-height: 0; display: grid; gap: var(--s5); padding: var(--gutter); overflow: auto; grid-template-columns: minmax(0,1fr) 300px; align-items: start; }
+  .lod { display: grid; gap: 8px; justify-items: start; }
+  .lod > b { color: var(--quiet); font-size: 11px; text-transform: uppercase; letter-spacing: 1.6px; }
+
+  /* Sändningsläget i halv skala: 960 × 540 står för 1920 × 1080, och allt som ritas på filten
+     är skalat med den. En privat yta bedömd i närbild är inte bedömd — hela frågan är vad man
+     ser av den tvärs över ett rum. */
+  .tv { position: relative; width: 960px; height: 540px; border-radius: 10px; background: #0b0d12; border: 1px solid #1b1f2a; overflow: hidden; display: flex; }
+  .filt { position: relative; flex: 1 1 auto; margin: 12px; border-radius: 8px; background: var(--tv-felt); border: 1px solid var(--tv-felt-line); }
+  .zon { position: absolute; box-sizing: border-box; border: 2px solid var(--tv-zone-line); border-radius: 10px; }
+  .zon > span { position: absolute; left: 8px; top: -17px; color: var(--tv-zone-name); font: 600 9px/1 system-ui; letter-spacing: 1.2px; text-transform: uppercase; white-space: nowrap; }
+  .zon[data-under] > span { top: auto; bottom: -17px; }
+
+  /* Ytan framför plats A, som är den enda som har kort i sig här. */
+  #framfor-a { left: 22%; bottom: 13%; width: 33%; height: 13%; }
+  #framfor-b { left: 22%; top: 13%; width: 33%; height: 13%; }
+  #raknare-a { left: 57%; bottom: 13%; width: 12%; height: 13%; }
+  #raknare-b { left: 57%; top: 13%; width: 12%; height: 13%; }
+  #framfor-c { right: 5%; top: 30%; width: 8%; height: 40%; }
+  #framfor-d { left: 5%; top: 30%; width: 8%; height: 40%; }
+
+  .bricka { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 20px; height: 20px; border-radius: 999px; background: #f0b64a; color: #1c1c1c; display: grid; place-items: center; font: 700 9px/1 system-ui; }
+
+  .hog { position: absolute; top: 50%; transform: translateY(-50%); width: 42px; aspect-ratio: 63/88; border-radius: 4px; }
+  .hog[data-tom] { border: 2px dashed var(--tv-zone-line); }
+  .hog:not([data-tom]) { border: 2px solid var(--back-line); background: repeating-linear-gradient(45deg, var(--back-a), var(--back-a) 4px, var(--back-b) 4px, var(--back-b) 8px); }
+  #draghog { left: 38%; } #kasthog { left: 56%; }
+  .hog + em { position: absolute; top: calc(50% + 34px); font-style: normal; color: var(--tv-zone-name); font: 600 9px/1 system-ui; letter-spacing: 1.2px; text-transform: uppercase; }
+  #draghog + em { left: 36.5%; } #kasthog + em { left: 55%; }
+  .hog .n { position: absolute; left: 50%; top: -9px; transform: translateX(-50%); width: 19px; height: 19px; border-radius: 999px; background: #eef1f7; color: #1c1c1c; display: grid; place-items: center; font: 700 10px/1 system-ui; }
+
+  .platsnamn { position: absolute; padding: 2px 8px; border-radius: 999px; font: 700 9px/13px system-ui; letter-spacing: .8px; color: #1c1c1c; }
+  #namn-a { left: 50%; bottom: 3%; transform: translateX(-50%); background: var(--seat-a); }
+  #namn-b { left: 50%; top: 3%; transform: translateX(-50%); background: var(--seat-b); }
+
+  /* ── Det som varianterna faktiskt byter: vad som står i «Framför A». ─────────────────── */
+  .innehall { position: absolute; inset: 0; display: grid; place-items: center; }
+  .innehall > * { display: none; }
+
+  /* A · Som i dag: ingenting alls. */
+  /* B · Antalet: samma bricka en hög bär, på ytans egen kant. */
+  .shell[data-form='antal'] .innehall .antal { display: grid; position: absolute; right: -9px; top: -9px; width: 19px; height: 19px; border-radius: 999px; background: #eef1f7; color: #1c1c1c; place-items: center; font: 700 10px/1 system-ui; }
+  /* C · Ryggarna: korten ligger där, med ryggen upp, som de gör på ett riktigt bord. */
+  .shell[data-form='ryggar'] .innehall .ryggar { display: flex; gap: 5px; }
+  .shell[data-form='oppen'] .innehall .framsidor { display: flex; gap: 5px; }
+  .rygg { width: 34px; aspect-ratio: 63/88; border-radius: 3px; border: 1px solid var(--back-line); background: repeating-linear-gradient(45deg, var(--back-a), var(--back-a) 3px, var(--back-b) 3px, var(--back-b) 6px); }
+  .framsida { width: 34px; aspect-ratio: 63/88; border-radius: 3px; background: var(--card-paper); color: var(--card-ink); position: relative; box-shadow: 0 2px 4px rgba(0,0,0,.5); }
+  .framsida b { position: absolute; left: 3px; top: 44%; font: 700 5.5px/1.1 Georgia, serif; }
+  .framsida i { position: absolute; inset: 2px; border: .5px solid #8a7a5e; border-radius: 2px; }
+
+  /* Vad de andras telefoner säger om samma sak, bredvid. */
+  .telefonrad { display: flex; gap: 10px; align-items: flex-start; }
+  .minitelefon { width: 176px; border-radius: 14px; background: var(--phone-bg); border: 1px solid #2a3038; padding: 9px 10px 11px; color: #c7cede; font-size: 11px; }
+  .minitelefon b { display: block; color: #fff; font-size: 12px; margin-bottom: 5px; }
+  .minitelefon .rad { display: flex; justify-content: space-between; padding: 5px 0; border-top: 1px solid var(--phone-line); }
+  .minitelefon .rad u { text-decoration: none; color: #9aa3b8; }
+  .minitelefon .rad u[data-ny] { color: #ffd98a; font-weight: 700; }
+
+  .matt2 { display: grid; gap: 3px; color: var(--quiet-2); font-size: 11px; line-height: 1.55; }
+  .matt2 u { text-decoration: none; color: #ffd98a; font-weight: 700; }
+  .matt2 p { margin: 0 0 9px; }
+  .matt2 .lack { border-left: 2px solid #d9534f; padding-left: 9px; color: #ffb9b9; }
+  .matt2 .ok { border-left: 2px solid #7dd3a0; padding-left: 9px; color: #b9e8cd; }
+</style>
+</head>
+<body>
+<div class="shell" data-form="idag">
+<header>
+  <strong>Skogens herrar · sändningsläget</strong>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Vad ytan framför en plats får säga">
+    <button type="button" data-form="idag" aria-pressed="true">A · Som i dag</button>
+    <button type="button" data-form="antal" aria-pressed="false">B · Antalet</button>
+    <button type="button" data-form="ryggar" aria-pressed="false">C · Ryggarna</button>
+    <button type="button" data-form="oppen" aria-pressed="false">D · Ytan är publik</button>
+  </div>
+  <button type="button" id="lagg" style="min-height:30px;border:1px solid var(--line);border-radius:8px;background:#1b1d23;color:#c7cede;font:inherit;font-size:11.5px;padding:0 10px;cursor:pointer">Lägg ett kort till</button>
+  <span class="who">P</span>
+</header>
+
+<div class="protorad">
+  <b>#414</b>
+  <p>960 × 540 står för 1920 × 1080. Nina har spelat <b id="n">3</b> kort med telefonens gröna <b>Framför mig</b>. Det här är vad alla andra ser.</p>
+  <div class="matt">
+    <span>i Framför A <u id="m-antal">3</u></span>
+    <span>syns på TV:n <u id="m-syns">–</u></span>
+    <span>läcker <u id="m-lacker">–</u></span>
+  </div>
+</div>
+
+<main>
+<div class="rum">
+  <div class="lod">
+    <b>Televisionen</b>
+    <div class="tv">
+      <div class="filt">
+        <div class="zon" id="framfor-b"><span>Framför B</span></div>
+        <div class="zon" id="raknare-b"><span>Räknare B</span><i class="bricka">0</i></div>
+        <div class="zon" id="framfor-d"><span>Framför D</span></div>
+        <div class="zon" id="framfor-c"><span>Framför C</span></div>
+
+        <div class="hog" id="draghog"><span class="n">3</span></div><em>Draghög</em>
+        <div class="hog" id="kasthog" data-tom><span class="n">0</span></div><em>Kasthög</em>
+
+        <div class="zon" id="framfor-a" data-under><span>Framför A</span>
+          <div class="innehall">
+            <span class="antal" id="antal">3</span>
+            <div class="ryggar" id="ryggar"></div>
+            <div class="framsidor" id="framsidor"></div>
+          </div>
+        </div>
+        <div class="zon" id="raknare-a" data-under><span>Räknare A</span><i class="bricka">0</i></div>
+
+        <span class="platsnamn" id="namn-a">Nina</span>
+        <span class="platsnamn" id="namn-b">Olle</span>
+      </div>
+    </div>
+
+    <b style="margin-top:10px">Vad de andra har att gå på</b>
+    <div class="telefonrad">
+      <div class="minitelefon">
+        <b>Olles telefon</b>
+        <div class="rad"><span>Framför dig</span><u>0</u></div>
+        <div class="rad"><span>Framför Nina</span><u id="olle-nina" data-ny>—</u></div>
+        <div class="rad"><span>Senast</span><u>Nina vände ett kort</u></div>
+      </div>
+      <div class="minitelefon">
+        <b>Ninas egen telefon</b>
+        <div class="rad"><span>Framför dig</span><u data-ny id="nina-egen">3</u></div>
+        <div class="rad"><span>På hand</span><u>0</u></div>
+        <div class="rad"><span>Loggen sa</span><u>vände ett kort</u></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="matt2" id="forklaring"></div>
+</div>
+</main>
+</div>
+
+<div class="note">
+  <b>Prototyp 2 — #414</b>
+  Snapshotten bär redan <code>n: 3</code> för «Framför A»; filten kastar bort den. En hand med tre kort ritar en fläkt och en bricka — en yta med tre kort ritar en tom ruta. Frågan är vilken av de två count-zonerna som har fel.
+</div>
+
+<script>
+const shell = document.querySelector('.shell')
+let n = 3
+const NAMN = ['Björnen', 'Vargen', 'Räven', 'Lodjuret', 'Älgen', 'Korpen']
+
+function rita() {
+  document.getElementById('n').textContent = String(n)
+  document.getElementById('m-antal').textContent = String(n)
+  document.getElementById('antal').textContent = String(n)
+  document.getElementById('nina-egen').textContent = String(n)
+  document.getElementById('draghog').querySelector('.n').textContent = String(6 - n)
+
+  const ryggar = document.getElementById('ryggar')
+  const framsidor = document.getElementById('framsidor')
+  ryggar.innerHTML = ''
+  framsidor.innerHTML = ''
+  for (let i = 0; i < n; i++) {
+    const r = document.createElement('i'); r.className = 'rygg'; ryggar.appendChild(r)
+    const f = document.createElement('i'); f.className = 'framsida'; f.innerHTML = '<i></i><b>' + NAMN[i] + '</b>'; framsidor.appendChild(f)
+  }
+
+  const form = shell.dataset.form
+  const syns = { idag: 'ingenting', antal: 'antalet', ryggar: 'antalet', oppen: 'allt' }[form]
+  const lacker = { idag: 'ingenting', antal: 'ingenting', ryggar: 'ingenting', oppen: 'identiteten' }[form]
+  document.getElementById('m-syns').textContent = syns
+  document.getElementById('m-syns').style.color = form === 'idag' ? '#ff9d9d' : '#9ed39e'
+  document.getElementById('m-lacker').textContent = lacker
+  document.getElementById('m-lacker').style.color = form === 'oppen' ? '#ffd98a' : '#9ed39e'
+  document.getElementById('olle-nina').textContent = form === 'idag' ? '—' : form === 'oppen' ? NAMN.slice(0, n).join(', ') : String(n)
+  document.getElementById('lagg').disabled = n >= 6
+}
+
+const FORKLARING = {
+  idag: '<p><u>A · Som i dag.</u> Ytan ritar sitt namn och ingenting mer. Tre kort ser ut som noll, och «Framför A» går inte att skilja från «Framför B», «C» och «D» som verkligen är tomma.</p><p class="lack">Ingen annan än ägaren och observatören vet ens att något har hänt — fast loggen just sagt att det har.</p><p>Det är det enda alternativ som inte kräver något beslut, eftersom det är det som gäller.</p>',
+  antal: '<p><u>B · Antalet.</u> Samma vita bricka en hög redan bär, på ytans kant. Talet ligger redan i snapshotten (<code>mode: count</code>, <code>n: 3</code>) och skickas i dag till varje klient — det som byts är att filten ritar det i stället för att kasta det.</p><p class="ok">Ingen identitet lämnar servern som inte redan gör det. Ett test på råa frames ändrar inte svar.</p><p>Billigast av de tre som ändrar något, och det som gör minst anspråk: det säger hur mycket, aldrig vad.</p>',
+  ryggar: '<p><u>C · Ryggarna.</u> Korten ligger där, med zonens egen rygg upp, som på ett riktigt bord. Antalet läses ur högen i stället för ur en siffra.</p><p class="ok">Läcker lika lite som B — en rygg är en rygg. Men den ritar leken fysiskt: man ser en yta fyllas, och en spelare som lagt fem kort ser mäktig ut på TV:n.</p><p>Priset är plats. Vid åtta platser är ytan framför en plats 220 × 90 mm på filten; fler än fyra ryggar måste överlappa, och då är antalet inte längre läsbart utan en siffra ändå.</p>',
+  oppen: '<p><u>D · Ytan är publik.</u> Receptet ger «Framför {plats}» <code>visibility: \'all\'</code> i stället för <code>\'owner\'</code>. Kortet spelaren spelar ligger öppet på filten, och «Nina vände ett kort» betyder verkligen att alla ser vad hon vände.</p><p>Det här är svaret på den andra halvan av #414: telefonens mest framträdande knapp heter <b>Framför mig</b>, och den rimliga förväntan efter «spela ett kort» runt en TV är att kortet syns.</p><p class="lack">Priset är att den privata ytan försvinner ur startbordet. Ett spel som behöver en dold yta framför varje plats får göra den själv i editorn — och DESIGN-BESLUT rad 603 säger i dag motsatsen.</p><p>Det är därför det är ett beslut och inte en fix.</p>',
+}
+
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('button[data-form]')
+  if (v) {
+    shell.dataset.form = v.dataset.form
+    document.querySelectorAll('button[data-form]').forEach((b) => b.setAttribute('aria-pressed', String(b === v)))
+    document.getElementById('forklaring').innerHTML = FORKLARING[v.dataset.form]
+    rita()
+    return
+  }
+  if (e.target.id === 'lagg') { if (n < 6) n++; rita(); return }
+})
+document.getElementById('forklaring').innerHTML = FORKLARING.idag
+rita()
+</script></body></html>
