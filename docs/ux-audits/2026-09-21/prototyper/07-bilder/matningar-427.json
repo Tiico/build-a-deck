@@ -1,0 +1,1940 @@
+{
+ "s4h5/1920x1080/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 770,
+    "top": 1061,
+    "right": 792,
+    "bottom": 1079.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 66,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 770,
+    "top": 2.6,
+    "right": 792,
+    "bottom": 21,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 22,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1506.3,
+    "top": 605.5,
+    "right": 1528.3,
+    "bottom": 623.9,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 66,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 33.6,
+    "top": 605.5,
+    "right": 55.7,
+    "bottom": 623.9,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 66,
+    "hidesCardPct": 3
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 77.5,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h5/1280x720/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 450,
+    "top": 671.7,
+    "right": 472,
+    "bottom": 690.1,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 39,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 450,
+    "top": 31.9,
+    "right": 472,
+    "bottom": 50.3,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 13,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 890,
+    "top": 399.5,
+    "right": 912,
+    "bottom": 417.9,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 40,
+    "hidesCardPct": 5
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 10,
+    "top": 399.5,
+    "right": 32,
+    "bottom": 417.9,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 40,
+    "hidesCardPct": 5
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 46.3,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h5/2560x1440/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 1090,
+    "top": 1421,
+    "right": 1112,
+    "bottom": 1439.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 88,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 1090,
+    "top": 2.6,
+    "right": 1112,
+    "bottom": 21,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 29,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 2081.2,
+    "top": 807.8,
+    "right": 2103.2,
+    "bottom": 826.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 89,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 98.8,
+    "top": 807.8,
+    "right": 120.8,
+    "bottom": 826.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 89,
+    "hidesCardPct": 2
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 104.4,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s2h5/1920x1080/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 770,
+    "top": 1061,
+    "right": 792,
+    "bottom": 1079.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 66,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 770,
+    "top": 2.6,
+    "right": 792,
+    "bottom": 21,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 22,
+    "hidesCardPct": 1
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 77.5,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s2h5/1280x720/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 450,
+    "top": 701,
+    "right": 472,
+    "bottom": 719.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 43,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 450,
+    "top": 2.6,
+    "right": 472,
+    "bottom": 21,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 14,
+    "hidesCardPct": 1
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 50.7,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s2h5/2560x1440/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 1090,
+    "top": 1421,
+    "right": 1112,
+    "bottom": 1439.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 88,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 1090,
+    "top": 2.6,
+    "right": 1112,
+    "bottom": 21,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 29,
+    "hidesCardPct": 1
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 104.4,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s6h5/1920x1080/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 518,
+    "top": 895.8,
+    "right": 540,
+    "bottom": 914.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 45,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 518,
+    "top": 167.8,
+    "right": 540,
+    "bottom": 186.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 15,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1524.4,
+    "top": 585,
+    "right": 1546.4,
+    "bottom": 603.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 45,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 15.5,
+    "top": 585,
+    "right": 37.6,
+    "bottom": 603.4,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 45,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 1022,
+    "top": 895.8,
+    "right": 1044,
+    "bottom": 914.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 45,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 1022,
+    "top": 167.8,
+    "right": 1044,
+    "bottom": 186.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 15,
+    "hidesCardPct": 1
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 52.9,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s6h5/1280x720/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 303,
+    "top": 567.9,
+    "right": 325,
+    "bottom": 586.3,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 23,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 303,
+    "top": 135.7,
+    "right": 325,
+    "bottom": 154,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 8,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 890,
+    "top": 386.6,
+    "right": 912,
+    "bottom": 405,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 23,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 10,
+    "top": 386.6,
+    "right": 32,
+    "bottom": 405,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 23,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 596.9,
+    "top": 567.9,
+    "right": 619,
+    "bottom": 586.3,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 23,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 596.9,
+    "top": 135.7,
+    "right": 619,
+    "bottom": 154,
+    "w": 22.1,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 8,
+    "hidesCardPct": 2
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 30.9,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s6h5/2560x1440/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 733.7,
+    "top": 1222.5,
+    "right": 755.8,
+    "bottom": 1240.9,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 64,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 733.7,
+    "top": 201,
+    "right": 755.8,
+    "bottom": 219.4,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 21,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 2156.4,
+    "top": 783.2,
+    "right": 2178.4,
+    "bottom": 801.6,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 64,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 23.5,
+    "top": 783.2,
+    "right": 45.6,
+    "bottom": 801.6,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 64,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 1446.2,
+    "top": 1222.5,
+    "right": 1468.2,
+    "bottom": 1240.9,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 64,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 1446.2,
+    "top": 201,
+    "right": 1468.2,
+    "bottom": 219.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 21,
+    "hidesCardPct": 1
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 74.8,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s8h5/1920x1080/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 554,
+    "top": 1061,
+    "right": 576.1,
+    "bottom": 1079.4,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 39,
+    "hidesCardPct": 5
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 554,
+    "top": 2.6,
+    "right": 576.1,
+    "bottom": 21,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 13,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1416.4,
+    "top": 362.8,
+    "right": 1438.5,
+    "bottom": 381.2,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 38,
+    "hidesCardPct": 5
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 123.5,
+    "top": 362.8,
+    "right": 145.5,
+    "bottom": 381.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 38,
+    "hidesCardPct": 5
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 985.9,
+    "top": 1061,
+    "right": 1007.9,
+    "bottom": 1079.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 39,
+    "hidesCardPct": 5
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 985.9,
+    "top": 2.6,
+    "right": 1007.9,
+    "bottom": 21,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 13,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:G",
+    "count": "5",
+    "left": 1416.4,
+    "top": 794.7,
+    "right": 1438.5,
+    "bottom": 813,
+    "w": 22.1,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 38,
+    "hidesCardPct": 5
+   },
+   {
+    "zone": "hand:H",
+    "count": "5",
+    "left": 123.5,
+    "top": 794.7,
+    "right": 145.5,
+    "bottom": 813,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 38,
+    "hidesCardPct": 5
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 45.3,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s8h5/1280x720/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 308.8,
+    "top": 701,
+    "right": 330.8,
+    "bottom": 719.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 21,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 308.8,
+    "top": 2.6,
+    "right": 330.8,
+    "bottom": 21,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 7,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 872.7,
+    "top": 244.5,
+    "right": 894.7,
+    "bottom": 262.8,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 21,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 27.3,
+    "top": 244.5,
+    "right": 49.3,
+    "bottom": 262.8,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 21,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 591.1,
+    "top": 701,
+    "right": 613.2,
+    "bottom": 719.4,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 21,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 591.1,
+    "top": 2.6,
+    "right": 613.2,
+    "bottom": 21,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 7,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:G",
+    "count": "5",
+    "left": 872.7,
+    "top": 526.8,
+    "right": 894.7,
+    "bottom": 545.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 22,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:H",
+    "count": "5",
+    "left": 27.3,
+    "top": 526.8,
+    "right": 49.3,
+    "bottom": 545.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 22,
+    "hidesCardPct": 6
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 29.6,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s8h5/2560x1440/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 799.3,
+    "top": 1421,
+    "right": 821.3,
+    "bottom": 1439.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 52,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 799.3,
+    "top": 2.6,
+    "right": 821.3,
+    "bottom": 21,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 17,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1960.2,
+    "top": 481.1,
+    "right": 1982.3,
+    "bottom": 499.5,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 52,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 219.7,
+    "top": 481.1,
+    "right": 241.7,
+    "bottom": 499.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 52,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:E",
+    "count": "5",
+    "left": 1380.7,
+    "top": 1421,
+    "right": 1402.7,
+    "bottom": 1439.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 52,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:F",
+    "count": "5",
+    "left": 1380.7,
+    "top": 2.6,
+    "right": 1402.7,
+    "bottom": 21,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 17,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:G",
+    "count": "5",
+    "left": 1960.2,
+    "top": 1062.5,
+    "right": 1982.3,
+    "bottom": 1080.8,
+    "w": 22.1,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 52,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:H",
+    "count": "5",
+    "left": 219.7,
+    "top": 1062.5,
+    "right": 241.7,
+    "bottom": 1080.8,
+    "w": 22,
+    "h": 18.3,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 52,
+    "hidesCardPct": 3
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 61,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h12/1920x1080/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "12",
+    "left": 766.9,
+    "top": 1057.3,
+    "right": 795,
+    "bottom": 1075.7,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 82,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:B",
+    "count": "12",
+    "left": 766.9,
+    "top": 6.3,
+    "right": 795,
+    "bottom": 24.7,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 22,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "12",
+    "left": 1526.9,
+    "top": 616.1,
+    "right": 1555,
+    "bottom": 634.5,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 82,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:D",
+    "count": "12",
+    "left": 7,
+    "top": 616.1,
+    "right": 35,
+    "bottom": 634.5,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 82,
+    "hidesCardPct": 4
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 75.1,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h12/1280x720/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "12",
+    "left": 446.9,
+    "top": 659.9,
+    "right": 475,
+    "bottom": 678.3,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 49,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:B",
+    "count": "12",
+    "left": 446.9,
+    "top": 43.7,
+    "right": 475,
+    "bottom": 62.1,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 13,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:C",
+    "count": "12",
+    "left": 886.9,
+    "top": 404.5,
+    "right": 915,
+    "bottom": 422.9,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 49,
+    "hidesCardPct": 6
+   },
+   {
+    "zone": "hand:D",
+    "count": "12",
+    "left": 7,
+    "top": 404.5,
+    "right": 35,
+    "bottom": 422.9,
+    "w": 28,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 49,
+    "hidesCardPct": 6
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 43.5,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h12/2560x1440/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "12",
+    "left": 1086.9,
+    "top": 1421,
+    "right": 1115,
+    "bottom": 1439.4,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:B",
+    "count": "12",
+    "left": 1086.9,
+    "top": 2.6,
+    "right": 1115,
+    "bottom": 21,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 30,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "12",
+    "left": 2117.3,
+    "top": 822.9,
+    "right": 2145.4,
+    "bottom": 841.3,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:D",
+    "count": "12",
+    "left": 56.6,
+    "top": 822.9,
+    "right": 84.7,
+    "bottom": 841.3,
+    "w": 28.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 100,
+    "hidesCardPct": 2
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 101.8,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h1/1920x1080/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "1",
+    "left": 770,
+    "top": 1061,
+    "right": 792,
+    "bottom": 1079.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "1",
+    "left": 770,
+    "top": 2.6,
+    "right": 792,
+    "bottom": 21,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "1",
+    "left": 1479.9,
+    "top": 600.1,
+    "right": 1501.9,
+    "bottom": 618.5,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 1,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "1",
+    "left": 60,
+    "top": 600.1,
+    "right": 82.1,
+    "bottom": 618.5,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 1,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 78.5,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h1/1280x720/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "1",
+    "left": 450,
+    "top": 671.2,
+    "right": 472,
+    "bottom": 689.6,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "1",
+    "left": 450,
+    "top": 32.4,
+    "right": 472,
+    "bottom": 50.8,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "1",
+    "left": 873.5,
+    "top": 396.3,
+    "right": 895.5,
+    "bottom": 414.7,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "1",
+    "left": 26.4,
+    "top": 396.3,
+    "right": 48.5,
+    "bottom": 414.7,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 46.8,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h1/2560x1440/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "1",
+    "left": 1090,
+    "top": 1421,
+    "right": 1112,
+    "bottom": 1439.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:B",
+    "count": "1",
+    "left": 1090,
+    "top": 2.6,
+    "right": 1112,
+    "bottom": 21,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:C",
+    "count": "1",
+    "left": 2045.6,
+    "top": 800.6,
+    "right": 2067.7,
+    "bottom": 819,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   },
+   {
+    "zone": "hand:D",
+    "count": "1",
+    "left": 134.3,
+    "top": 800.6,
+    "right": 156.3,
+    "bottom": 819,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 0,
+    "hidesCardPct": 0
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 105.6,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ },
+ "s4h5nc/1920x1080/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 770,
+    "top": 1061,
+    "right": 792,
+    "bottom": 1079.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 66,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 770,
+    "top": 2.6,
+    "right": 792,
+    "bottom": 21,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 22,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 1506.3,
+    "top": 605.5,
+    "right": 1528.3,
+    "bottom": 623.9,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 66,
+    "hidesCardPct": 3
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 33.6,
+    "top": 605.5,
+    "right": 55.7,
+    "bottom": 623.9,
+    "w": 22.1,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 66,
+    "hidesCardPct": 3
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 77.5,
+  "window": {
+   "w": 1920,
+   "h": 1080
+  }
+ },
+ "s4h5nc/1280x720/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 450,
+    "top": 671.7,
+    "right": 472,
+    "bottom": 690.1,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 39,
+    "hidesCardPct": 4
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 450,
+    "top": 31.9,
+    "right": 472,
+    "bottom": 50.3,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 13,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 890,
+    "top": 399.5,
+    "right": 912,
+    "bottom": 417.9,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 40,
+    "hidesCardPct": 5
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 10,
+    "top": 399.5,
+    "right": 32,
+    "bottom": 417.9,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 40,
+    "hidesCardPct": 5
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 46.3,
+  "window": {
+   "w": 1280,
+   "h": 720
+  }
+ },
+ "s4h5nc/2560x1440/427": {
+  "badges": [
+   {
+    "zone": "hand:A",
+    "count": "5",
+    "left": 1090,
+    "top": 1421,
+    "right": 1112,
+    "bottom": 1439.4,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 88,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:B",
+    "count": "5",
+    "left": 1090,
+    "top": 2.6,
+    "right": 1112,
+    "bottom": 21,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 29,
+    "hidesCardPct": 1
+   },
+   {
+    "zone": "hand:C",
+    "count": "5",
+    "left": 2081.2,
+    "top": 807.8,
+    "right": 2103.2,
+    "bottom": 826.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 89,
+    "hidesCardPct": 2
+   },
+   {
+    "zone": "hand:D",
+    "count": "5",
+    "left": 98.8,
+    "top": 807.8,
+    "right": 120.8,
+    "bottom": 826.2,
+    "w": 22,
+    "h": 18.4,
+    "outside": {
+     "left": 0,
+     "top": 0,
+     "right": 0,
+     "bottom": 0
+    },
+    "onCardsPct": 89,
+    "hidesCardPct": 2
+   }
+  ],
+  "overlaps": [],
+  "cardPx": 104.4,
+  "window": {
+   "w": 2560,
+   "h": 1440
+  }
+ }
+}
