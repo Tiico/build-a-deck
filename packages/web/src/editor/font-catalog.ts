@@ -52,6 +52,14 @@ export function sampleSheetHref(families: CatalogFamily[]): string | null {
   return `${GOOGLE_CSS}?${asked}&display=swap`
 }
 
+// What a catalog family's category stands for behind its own name, and the stack it is written
+// as. It lives here rather than beside one of its callers because two doors now take a family out
+// of the catalog — the editor's picker and the guided start's frames (#420) — and a family named
+// differently by the two would be a font the physical check cannot find: the document's key, the
+// element's family and this stack's first name are one string or they are nothing (B3).
+const GENERIC: Record<string, string> = { serif: 'serif', sans: 'sans-serif', display: 'serif', handskrift: 'cursive', mono: 'monospace' }
+export const catalogStack = (name: string, category: string): string => `"${name}", ${GENERIC[category] ?? 'serif'}`
+
 export const isVariable = (family: CatalogFamily): boolean => family.weights.includes('..')
 
 // What the chosen family's own sheet is asked for. A variable family is asked for its whole

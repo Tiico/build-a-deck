@@ -7,6 +7,7 @@ import { assetRef, bytesOfDataUrl } from '../editor/assets.js'
 import { DropSays, dropSurface, oneFile } from '../editor/dropping.js'
 import { suggestFieldKey } from '../editor/fields.js'
 import { buildBlankProject, buildProject, type WizardState } from './build.js'
+import { uploadFrameFont } from './fonts.js'
 import { defaultFields, DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
 import { useT, type Key, type T } from '../i18n/index.js'
 import { Help } from '../editor/HelpDrawer.js'
@@ -155,7 +156,11 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         // carrying the bytes.
         const uploaded = await uploadImages(t, http, s)
         if (uploaded === 'login') throw login()
-        doc = buildProject(uploaded, t)
+        // And the frame's own face with them (#420): the game is set in a typeface it carries,
+        // so the first screen in the editor is a card that can be printed as it stands.
+        const fonts = await uploadFrameFont(t, http, frame)
+        if (fonts === 'login') throw login()
+        doc = buildProject(uploaded, t, fonts)
       }
       const res = await fetch(`${http}/projects`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(doc) }))
       if (res.status === 401) throw login()

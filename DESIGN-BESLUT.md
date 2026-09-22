@@ -2900,6 +2900,28 @@ Utseende (prototypat och reviderat 2026-09-06): allt på en sida. Ramgalleriet i
 Tre ramar i galleriet binder fälten automatiskt och utelämnar rutor för fält spelet saknar.
 Slutar med "Öppna bordet" och "Till editorn".
 
+**Vad de tre ramarna är satta i (prototypat och beslutat 2026-09-22, #420).**
+
+Ramarna band text till `Georgia, serif` och `system-ui`, och wizardens dokument satte inga `fonts`.
+Den fysiska kontrollen (E5) flaggar varje familj versionen inte bär (B3), så produktens egen guidade start gav en lek som föll på produktens egen kontroll, på kort ett, innan formgivaren gjort någonting.
+`system-ui` var dessutom precis det felet handlar om: ett ansikte på formgivarens Mac, ett annat i renderarens Chromium och ett tredje hos tryckeriet.
+
+Beslutet är **en familj per ram**: Klassisk i **EB Garamond**, Minimal i **Inter**, Mörk i **Roboto Condensed**.
+
+Två kandidater valdes bort, och skälen är ramgalleriets egna.
+Att sätta alla tre i samma familj hade kostat noll nya byte och tagit bort det galleriet finns för: tre utseenden hade blivit en typografi i tre färgsättningar.
+Att ge rubrik och brödtext skilda familjer hade gett de skarpaste ramarna och lagt två typsnittsval i varje nytt projekt innan formgivaren bett om något — ett formbeslut åt henne i dubbel dos, och två filer per projekt i stället för en.
+
+Ramarna skeppar sina ansikten som **projektets egna assets**, inte som filer i produkten.
+Familjen hämtas ur katalogen (#329, L27) när «Skapa spelet» trycks och laddas upp dit varje annan asset går, precis som när formgivaren själv väljer en familj i editorn; dokumentet bär därefter familjens stack, dess asset och dess licens, och versionen pinnar filen (B3).
+Priset är erkänt och är L27:s eget: katalogen nås från formgivarens webbläsare, så «Skapa spelet» behöver nät, och att den inte svarar sägs i stället för att tigas ihjäl.
+Också Mörks Roboto Condensed går den vägen, trots att appen redan bär den familjen för filtens skull: K20 drar själv gränsen mot B3 — den inbakade filen är appens eget ansikte för sitt eget gränssnitt — och den ligger som `data:` i det renderblockerande arket just för att ingenting ska behöva hämtas.
+Att låta wizarden hämta den ur bygget hade krävt antingen en lös woff2 där, vilket `felt-font.spec.ts` fäller, eller en andra kopia av samma bytes i wizardens kod.
+
+Ett mått som följde med: Mörks brödtext står kvar på 8,5 punkter.
+Med `system-ui` steg den ner till 8,0 på den maskin prototypen kördes på, och vad den gjorde någon annanstans visste ingen — vilket är hela felet i miniatyr.
+Det gamla läget pinnas därför inte i något prov; det nya mäts i ansiktet spelet bär, som är samma bytes på varje maskin.
+
 ### L7. Baksidan är en egen mall per sida
 
 Typregistryts `faces` ger en mall per sida.
