@@ -40,6 +40,11 @@ async function phone(deck?: unknown) {
 }
 
 const handStops = () => [...document.querySelectorAll('[data-hand-card]')].map((el) => el.getAttribute('tabindex'))
+// The cards as the strip lays them out, so that a test about walking the hand asks about the
+// walk and not about which card the engine happened to put where. Which end the hand grows from
+// is #415's question and was answered there; it must not be answered a second time here.
+const handCards = () => [...document.querySelectorAll<HTMLElement>('[data-hand-card]')]
+const labelOf = (el: HTMLElement) => el.getAttribute('aria-label') ?? ''
 
 // A deck whose rows are titled the way a designer titles them: Swedish words with capitals and
 // diacritics, and ids the wizard slugged out of them (#412).
@@ -80,10 +85,10 @@ describe('the hand is playable without a gesture (#1)', () => {
     expect(screen.getByRole('button', { name: 'dragon, i min hand, markerat. Enter öppnar handlingar.' })).toBeTruthy()
     expect(handStops()).toEqual(['0', '-1', '-1'])
 
-    const first = screen.getByRole('button', { name: /^dragon, i min hand/ })
-    first.focus()
+    const [first, second] = handCards()
+    first!.focus()
     await user.keyboard('{ArrowRight}')
-    await waitFor(() => expect((document.activeElement as HTMLElement).getAttribute('aria-label')).toMatch(/^knight/))
+    await waitFor(() => expect(labelOf(document.activeElement as HTMLElement)).toBe(labelOf(second!)))
     expect(handStops()).toEqual(['-1', '0', '-1'])
     table.close()
   })
@@ -104,17 +109,19 @@ describe('the hand is playable without a gesture (#1)', () => {
   it('plays two marked cards to a named place in one envelope, from the same panel the felt uses (K3)', async () => {
     const { id, table } = await phone()
     const user = userEvent.setup()
-    screen.getByRole('button', { name: /^dragon, i min hand/ }).focus()
+    const [first, second] = handCards()
+    // The two the space bar is about to mark, named by the strip rather than guessed at: the
+    // envelope below is checked against these two and not against a pair of ids read off a
+    // particular hand order.
+    const marked = [first!.dataset['handCard'], second!.dataset['handCard']]
+    first!.focus()
     await user.keyboard(' {ArrowRight} {Enter}')
 
     const panel = await screen.findByRole('dialog', { name: 'Handlingar för 2 kort' })
     await user.click(within(panel).getByRole('button', { name: /^Kasthög/ }))
     await waitFor(async () => {
       const log = await run.store.read(id)
-      expect(log.slice(-2).map((l) => l.intent)).toEqual([
-        { v: 'move', component: 'c0', to: 'discard' },
-        { v: 'move', component: 'c1', to: 'discard' },
-      ])
+      expect(log.slice(-2).map((l) => l.intent)).toEqual(marked.map((component) => ({ v: 'move', component, to: 'discard' })))
       expect(new Set(log.slice(-2).map((l) => l.batch)).size).toBe(1)
     })
     table.close()

@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
@@ -6,6 +6,7 @@ import { useRoving } from '../editor/roving.js'
 import { cardWord, handLabel } from '../table/keyboard.js'
 import { useT } from '../i18n/index.js'
 import { HOLD_MS, begin, end, move, timeout, type Tracking } from './gesture.js'
+import { keepInView } from './strip.js'
 
 export type HandStripProps = {
   view: Snapshot
@@ -28,9 +29,27 @@ export type HandStripProps = {
 // K4 retains drag to play and hold to mark; the chosen phone A uses tap to select.
 export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces }: HandStripProps) {
   const t = useT()
-  const hand = view.components.filter((c) => c.zone === `hand:${view.seat}`)
+  // The hand read from the bottom up (#415, decision B of 2026-09-22). A drawn card lands on
+  // top of the zone, which is index 0 of the projection's order, so reading the order
+  // backwards is what makes the hand grow towards the reading direction: the card that just
+  // arrived is last, and the cards already held keep the places the eye left them in.
+  const hand = view.components.filter((c) => c.zone === `hand:${view.seat}`).reverse()
   const roving = useRoving({ ids: hand.map((c) => c.id), selected: null, orientation: 'horizontal' })
   const tracking = useRef<{ card: VisibleComponentState; t: Tracking; timer: ReturnType<typeof setTimeout> } | null>(null)
+
+  // The marked card is the one the buttons under the strip act on, so it is the one that has to
+  // be in view (#415). Which card that is, and how many cards are held, are the two things that
+  // can put it out of sight: a draw does both at once.
+  const strip = useRef<HTMLDivElement>(null)
+  // The marked card nearest the growing end: with one card chosen that is the chosen card, and
+  // with several held it is the newest of them.
+  const markedId = hand.reduce<string | null>((last, c) => (selected.has(c.id) ? c.id : last), null)
+  useEffect(() => {
+    const el = strip.current
+    if (!el || markedId === null) return
+    const card = el.querySelector<HTMLElement>(`[data-hand-card="${CSS.escape(markedId)}"]`)
+    if (card) keepInView(el, card)
+  }, [markedId, hand.length])
 
   const fire = (g: 'tap' | 'hold' | 'lift' | null, card: VisibleComponentState) => {
     if (g === 'tap') onTap(card)
@@ -60,7 +79,7 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
   }
 
   return (
-    <div className="byd-strip" data-hand>
+    <div className="byd-strip" data-hand ref={strip}>
       {hand.map((c) => {
         const item = roving.itemProps(c.id)
         return (

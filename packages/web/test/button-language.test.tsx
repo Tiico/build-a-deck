@@ -1258,6 +1258,7 @@ describe('every suite that measures a surface', () => {
       'felt-camera.test.tsx',
       'felt-hands.test.tsx',
       'felt-names.test.tsx',
+      'hand-strip-scroll.test.tsx',
       'help-layout.test.tsx',
       'history-layout.test.tsx',
       'join-layout.test.tsx',

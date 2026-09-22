@@ -8,11 +8,12 @@ import { JSDOM_TEST_BUDGET } from './budget.js'
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 describe('HandStrip', () => {
-  it("shows the seat's own cards by name in hand order, and nothing from anywhere else", () => {
+  it("shows the seat's own cards by name oldest first, and nothing from anywhere else", () => {
     const { view } = buildScene()
     render(<HandStrip view={view('A')} selected={new Set()} onTap={() => undefined} onHold={() => undefined} onLift={() => undefined} onOpen={() => undefined} />)
     const cards = [...document.querySelectorAll('[data-hand-card]')]
-    expect(cards.map((c) => c.textContent)).toEqual([expect.stringContaining('dragon'), expect.stringContaining('knight')])
+    // The scene draws the dragon last of the two, so it is the one nearest the growing end (#415).
+    expect(cards.map((c) => c.textContent)).toEqual([expect.stringContaining('knight'), expect.stringContaining('dragon')])
     expect(screen.queryByText('wizard')).toBeNull()
   })
 })
@@ -55,7 +56,9 @@ describe('gestures (K4)', () => {
     const onHold = vi.fn()
     const onLift = vi.fn()
     render(<HandStrip view={view('A')} selected={new Set()} onTap={onTap} onHold={onHold} onLift={onLift} onOpen={() => undefined} />)
-    const card = document.querySelector('[data-hand-card]')!
+    // The card this presses is named rather than counted: which place in the strip it holds is
+    // the subject of #415 and no business of a test about what a finger does to it.
+    const card = [...document.querySelectorAll('[data-hand-card]')].find((c) => c.textContent?.includes('dragon'))!
 
     fireEvent.pointerDown(card, { clientX: 100, clientY: 500 })
     fireEvent.pointerUp(card, { clientX: 102, clientY: 498 })
@@ -165,5 +168,29 @@ describe('a hand with nothing in it (UX-16)', () => {
     rerender(<HandStrip view={dealt} {...props} />)
     expect(screen.queryByText(/Tom hand/)).toBeNull()
     expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(2)
+  })
+})
+
+// The hand grows towards the reading direction (#415, decision B of 2026-09-22). A drawn card
+// lands on top of the hand zone, which is index 0 of the projection's order — so the strip is
+// the hand read from the bottom up, and the card that just arrived is the last one shown. The
+// cards that were already there do not move, which is the whole of why this was chosen over
+// scrolling the marking into a hand that reindexes under the finger.
+describe('new cards lie last in the strip (#415, K4)', () => {
+  const namesIn = (el: ParentNode) => [...el.querySelectorAll('[data-hand-card]')].map((c) => c.getAttribute('data-hand-card'))
+
+  it('shows the hand oldest first, so a drawn card is last and the others keep their places', () => {
+    const scene = buildScene()
+    const before = scene.view('A')
+    const { rerender } = render(<HandStrip view={before} selected={new Set()} onTap={() => undefined} onHold={() => undefined} onLift={() => undefined} onOpen={() => undefined} />)
+    const held = namesIn(document)
+
+    scene.viewAfter({ v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    const after = scene.view('A')
+    rerender(<HandStrip view={after} selected={new Set()} onTap={() => undefined} onHold={() => undefined} onLift={() => undefined} onOpen={() => undefined} />)
+
+    const shown = namesIn(document)
+    expect(shown).toHaveLength(held.length + 1)
+    expect(shown.slice(0, held.length)).toEqual(held)
   })
 })

@@ -519,11 +519,13 @@ describe('counters and the area in front of you (C4)', () => {
     await me.ready()
     await me.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(2))
-    const cards = document.querySelectorAll('[data-hand-card]')
-    const idOfCard = cards[1]!.getAttribute('data-hand-card')!
-    fireEvent.pointerDown(cards[1]!, { clientX: 100, clientY: 300 })
-    fireEvent.pointerUp(cards[1]!, { clientX: 100, clientY: 300 })
-    expect(cards[1]!.getAttribute('aria-pressed')).toBe('true')
+    // The card is picked by its name, not by its place in the strip: which end the hand grows
+    // from is #415's question and is settled there.
+    const card = [...document.querySelectorAll('[data-hand-card]')].find((c) => c.textContent?.includes('knight'))!
+    const idOfCard = card.getAttribute('data-hand-card')!
+    fireEvent.pointerDown(card, { clientX: 100, clientY: 300 })
+    fireEvent.pointerUp(card, { clientX: 100, clientY: 300 })
+    expect(card.getAttribute('aria-pressed')).toBe('true')
     expect(document.querySelector('.byd-inspect')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Läs valt kort' }))
     expect(document.querySelector('[data-inspect]')?.textContent).toContain('knight')
