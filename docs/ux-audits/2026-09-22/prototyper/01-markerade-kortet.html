@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 1 — Det markerade kortet i handremsan (#415)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  body { overflow: auto; }
+  .rum { flex: 1 1 auto; min-height: 0; display: flex; gap: var(--s5); padding: var(--gutter); overflow: auto; align-items: flex-start; }
+  .lod { flex: none; display: grid; gap: 8px; justify-items: center; }
+  .lod > b { color: var(--quiet); font-size: 11px; text-transform: uppercase; letter-spacing: 1.6px; }
+
+  /* Telefonen i sina riktiga mått. En remsa bedömd i en bredare vy är inte bedömd: hela
+     frågan är att remsan är smalare än handen. */
+  .telefon { position: relative; width: 390px; height: 844px; border-radius: 30px; overflow: hidden; background: var(--phone-bg); border: 1px solid #2a3038; display: flex; flex-direction: column; }
+  .krom { flex: none; display: flex; align-items: baseline; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--phone-line); color: #c7cede; font-size: 12px; }
+  .krom strong { color: #fff; font-size: 15px; }
+  .krom .n { color: var(--quiet); }
+  .krom .ut { margin-left: auto; color: var(--quiet); font-size: 11px; }
+
+  .hogar { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 14px 4px; }
+  .hogar div { border-radius: 10px; background: #161d22; border: 1px solid var(--phone-line); padding: 10px 12px; }
+  .hogar b { display: block; color: #e6ecfa; font-size: 13px; }
+  .hogar span { display: block; color: var(--quiet); font-size: 12px; }
+  .hogar button { margin-top: 6px; min-height: 30px; border: 0; background: transparent; padding: 0; color: #e6ecfa; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+
+  /* Remsan: precis den vågräta rullningslådan produkten har. `scroll-behavior` är smooth så
+     att man ser åt vilket håll den rör sig — det är halva svaret. */
+  .remsa { flex: none; display: flex; gap: 12px; padding: 10px 14px; overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; scrollbar-width: none; }
+  .remsa::-webkit-scrollbar { display: none; }
+  .kort { flex: none; width: 154px; aspect-ratio: 63/88; border-radius: 8px; background: var(--card-paper); color: var(--card-ink); border: 0; padding: 0; position: relative; cursor: pointer; font: inherit; text-align: left; box-shadow: 0 3px 6px rgba(0,0,0,.45); }
+  .kort i { position: absolute; inset: 7px; border: 1px solid #8a7a5e; border-radius: 4px; }
+  .kort b { position: absolute; left: 16px; top: 46%; font: 700 13px/1.2 Georgia, serif; }
+  .kort small { position: absolute; left: 16px; right: 16px; top: 58%; font: 9px/1.3 system-ui; color: #3f3324; }
+  .kort .kostnad { position: absolute; right: 12px; top: 12px; width: 22px; height: 22px; border-radius: 999px; background: #8f2f2f; color: #fff; display: grid; place-items: center; font: 700 11px/1 system-ui; }
+  .kort[aria-pressed='true'] { outline: 4px solid var(--mark); outline-offset: 2px; }
+  /* C märker det nyaste kortet utan att välja det. */
+  .kort[data-ny='ja']::after { content: 'ny'; position: absolute; left: 10px; top: 10px; padding: 2px 7px; border-radius: 999px; background: #24507f; color: #fff; font: 700 9px/1.4 system-ui; letter-spacing: .6px; }
+  .shell:not([data-form='tyst']) .kort[data-ny='ja']::after { display: none; }
+
+  .under { flex: none; padding: 2px 14px 0; color: var(--quiet); font-size: 12px; }
+  .vald { flex: none; padding: 8px 14px 0; color: #c7cede; font-size: 13px; }
+  .vald em { font-style: normal; color: var(--quiet); }
+
+  .handlingar { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px 14px 14px; }
+  .handlingar button { min-height: 44px; border: 1px solid #2a3038; border-radius: 10px; background: #161d22; color: #e6ecfa; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .handlingar button.bred { grid-column: 1 / -1; font-weight: 400; }
+  .handlingar button.primar { background: var(--mark); border-color: var(--mark); color: #0b2a18; }
+  .handlingar button:disabled { opacity: .4; cursor: default; }
+
+  .resten { flex: 1 1 auto; min-height: 0; border-top: 1px solid var(--phone-line); margin-top: 6px; padding: 12px 14px; color: var(--quiet); font-size: 13px; }
+  .resten p { margin: 0 0 10px; }
+
+  /* Den röda skuggan visar exakt det fyndet mätte: hur mycket av det markerade kortet som
+     ligger utanför remsans synliga bredd. Den ritas aldrig i produkten. */
+  .utanfor { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(217,83,79,.22); border-right: 2px solid #d9534f; pointer-events: none; z-index: 5; }
+  /* Ingen rand när ingenting är utanför: en tvåpixelslinje vid noll läses som ett fynd. */
+  .utanfor[hidden] { display: none; }
+  .shell:not([data-visa='ja']) .utanfor { display: none; }
+
+  .matt2 { display: grid; gap: 3px; color: var(--quiet-2); font-size: 11px; line-height: 1.5; max-width: 390px; }
+  .matt2 u { text-decoration: none; color: #ffd98a; font-weight: 700; }
+  .matt2 p { margin: 0 0 8px; }
+</style>
+</head>
+<body>
+<div class="shell" data-form="folj" data-visa="ja">
+<header>
+  <strong>Skogens herrar · telefonens hand</strong>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Vad en dragning gör med markeringen">
+    <button type="button" data-form="folj" aria-pressed="true">A · Remsan följer</button>
+    <button type="button" data-form="sist" aria-pressed="false">B · Nya kort sist</button>
+    <button type="button" data-form="tyst" aria-pressed="false">C · Dragningen markerar inget</button>
+  </div>
+  <button type="button" id="skugga" style="min-height:30px;border:1px solid var(--line);border-radius:8px;background:#1b1d23;color:#c7cede;font:inherit;font-size:11.5px;padding:0 10px;cursor:pointer">Dölj det som är utanför</button>
+  <span class="who">P</span>
+</header>
+
+<div class="protorad">
+  <b>#415</b>
+  <p>390 × 844. Tryck <b>Dra 1 till min hand</b> flera gånger och läs siffrorna. Det röda fältet är den del av remsan som ligger utanför skärmen.</p>
+  <div class="matt">
+    <span>markerat <u id="m-vald">–</u></span>
+    <span>utanför <u id="m-utanfor">–</u></span>
+    <span>på hand <u id="m-antal">0</u></span>
+  </div>
+  <p class="sagt" id="sagt">Skärmläsaren hör: <em>—</em></p>
+</div>
+
+<main>
+<div class="rum">
+  <div class="lod">
+    <b>Spelarvyn</b>
+    <div class="telefon" id="telefon">
+      <div class="krom"><strong>Nina</strong><span class="n" id="krom-antal">0 kort</span><span class="ut">↶ Ångra · ⚑ Flagga · Ut…</span></div>
+
+      <div class="hogar">
+        <div><b>Kasthög</b><span id="kast">0 kort</span></div>
+        <div><b>Draghög</b><span id="drag">6 kort</span><button type="button" id="dra">Dra 1 till min hand</button></div>
+      </div>
+
+      <div class="remsa" id="remsa"><div class="utanfor" id="utanfor"></div></div>
+      <p class="under">Välj → läs → spela · håll för att välja flera</p>
+      <p class="vald" id="vald"><em>Inget kort valt</em></p>
+
+      <div class="handlingar">
+        <button type="button" class="bred" disabled>Läs valt kort</button>
+        <button type="button" class="primar" id="spela" disabled>Framför mig</button>
+        <button type="button" disabled>Kasta</button>
+        <button type="button" disabled>Lägg underst</button>
+        <button type="button" disabled>Spela…</button>
+      </div>
+
+      <div class="resten"><p>▸ Framför dig · <span id="framfor">0</span></p><p>▸ Senast</p></div>
+    </div>
+  </div>
+
+  <div class="matt2" id="forklaring"></div>
+</div>
+</main>
+</div>
+
+<div class="note">
+  <b>Prototyp 1 — #415</b>
+  Fyndet: från tredje dragningen ligger det kort som «Valt: …» namnger utanför skärmen, och de fem knapparna verkar på det. Frågan är inte hur remsan rullar utan vad en dragning får göra med markeringen.
+</div>
+
+<script>
+const shell = document.querySelector('.shell')
+const remsa = document.getElementById('remsa')
+const utanfor = document.getElementById('utanfor')
+const sag = (t) => { document.getElementById('sagt').innerHTML = 'Skärmläsaren hör: <em>' + t + '</em>' }
+
+// Leken ur speltestet, i den ordning draghögen låg.
+const LEK = [
+  ['Björnen', 'Björnen tar två marker från valfri spelare.', 1],
+  ['Vargen', 'Vargen jagar: dra ett kort.', 2],
+  ['Räven', 'Byt ett kort på handen mot ett i högen.', 3],
+  ['Lodjuret', 'Smyg: spela ett kort utan att visa det.', 1],
+  ['Älgen', 'Älgen blockerar nästa attack mot dig.', 2],
+  ['Korpen', 'Titta på en motståndares hand.', 3],
+]
+
+let hand = []      // { namn, text, kostnad, ny }
+let vald = null    // index i `hand`
+let kvar = LEK.length
+let framfor = 0
+
+function rita() {
+  remsa.querySelectorAll('.kort').forEach((k) => k.remove())
+  hand.forEach((k, i) => {
+    const el = document.createElement('button')
+    el.type = 'button'
+    el.className = 'kort'
+    el.dataset.i = String(i)
+    if (k.ny) el.dataset.ny = 'ja'
+    el.setAttribute('aria-pressed', String(i === vald))
+    el.setAttribute('aria-label', k.namn + ', i min hand' + (i === vald ? ', markerat' : '') + '. Enter öppnar handlingar.')
+    el.innerHTML = '<i></i><span class="kostnad">' + k.kostnad + '</span><b>' + k.namn + '</b><small>' + k.text + '</small>'
+    remsa.appendChild(el)
+  })
+  document.getElementById('krom-antal').textContent = hand.length + ' kort'
+  document.getElementById('drag').textContent = kvar + ' kort'
+  document.getElementById('framfor').textContent = String(framfor)
+  document.getElementById('dra').disabled = kvar === 0
+  const k = vald === null ? null : hand[vald]
+  document.getElementById('vald').innerHTML = k ? 'Valt: ' + k.namn : '<em>Inget kort valt</em>'
+  document.querySelectorAll('.handlingar button').forEach((b) => { b.disabled = k === null })
+  document.getElementById('m-antal').textContent = String(hand.length)
+  requestAnimationFrame(mat)
+}
+
+// Hur mycket av det markerade kortet som ligger utanför remsans synliga bredd — måttet ur
+// fyndet, räknat på riktigt och inte antaget.
+function mat() {
+  const r = remsa.getBoundingClientRect()
+  const dolt = Math.max(0, Math.min(remsa.scrollLeft, r.width))
+  utanfor.hidden = dolt === 0
+  utanfor.style.width = dolt + 'px'
+  const el = remsa.querySelector('.kort[aria-pressed="true"]')
+  if (!el) { document.getElementById('m-vald').textContent = 'inget'; document.getElementById('m-utanfor').textContent = '–'; return }
+  const k = el.getBoundingClientRect()
+  const ute = Math.round(Math.max(0, r.left - k.left) + Math.max(0, k.right - r.right))
+  document.getElementById('m-vald').textContent = hand[Number(el.dataset.i)].namn
+  document.getElementById('m-utanfor').textContent = ute === 0 ? '0 px' : ute + ' px'
+  document.getElementById('m-utanfor').style.color = ute === 0 ? '#9ed39e' : '#ff9d9d'
+}
+
+function dra() {
+  if (kvar === 0) return
+  const [namn, text, kostnad] = LEK[LEK.length - kvar]
+  kvar--
+  hand.forEach((k) => { k.ny = false })
+  const kort = { namn, text, kostnad, ny: true }
+  const form = shell.dataset.form
+  if (form === 'sist') {
+    hand.push(kort)
+    vald = hand.length - 1
+  } else {
+    // A och C lägger nya kort först, som produkten gör i dag.
+    hand.unshift(kort)
+    if (vald !== null) vald++
+    if (form === 'folj') vald = 0
+  }
+  rita()
+  // A rullar dit markeringen är; B rullar till slutet, dit handen växer; C rör inte remsan.
+  requestAnimationFrame(() => {
+    if (form === 'folj') remsa.querySelector('.kort[aria-pressed="true"]')?.scrollIntoView({ inline: 'nearest', block: 'nearest' })
+    else if (form === 'sist') remsa.scrollTo({ left: remsa.scrollWidth })
+    sag(namn + ' kom till din hand' + (form === 'tyst' ? '' : ', markerat'))
+  })
+}
+
+function spela() {
+  if (vald === null) return
+  const k = hand[vald]
+  hand.splice(vald, 1)
+  framfor++
+  vald = null
+  rita()
+  sag(k.namn + ' ligger framför dig')
+}
+
+const FORKLARING = {
+  folj: '<p><u>A · Remsan följer markeringen.</u> Kortet läggs först, blir markerat, och remsan rullar dit. Minst ingrepp: allt annat står kvar.</p><p>Priset är att handen rör sig under fingret vid varje dragning. Den som höll på att välja bland sina gamla kort får dem bortrullade.</p>',
+  sist: '<p><u>B · Nya kort sist.</u> Handen växer åt det håll man redan läser, och remsan rullar till slutet. Det nya kortet hamnar där blicken är, och de gamla ligger kvar i samma ordning på sin egen plats.</p><p>Priset: ordningen blir motsatt dagens, och en hand som växt förbi remsan kräver ändå en rullning tillbaka för att se de äldsta.</p>',
+  tyst: '<p><u>C · Dragningen markerar inget.</u> Kortet landar med en <b>ny</b>-bricka och remsan står still. De fem knapparna är tysta tills spelaren själv pekar på ett kort.</p><p>Det tar bort hela klassen av fel — man kan inte spela ett kort man inte har valt. Priset är ett tryck till för den som drar och spelar direkt, vilket är det vanligaste draget.</p>',
+}
+
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('button[data-form]')
+  if (v) {
+    shell.dataset.form = v.dataset.form
+    document.querySelectorAll('button[data-form]').forEach((b) => b.setAttribute('aria-pressed', String(b === v)))
+    document.getElementById('forklaring').innerHTML = FORKLARING[v.dataset.form]
+    // Formen ändrar vad en dragning gör, så handen börjar om: annars läses ett resultat som
+    // en annan variant har byggt.
+    hand = []; vald = null; kvar = LEK.length; framfor = 0
+    remsa.scrollLeft = 0
+    rita()
+    return
+  }
+  if (e.target.id === 'skugga') {
+    const pa = shell.dataset.visa !== 'ja'
+    shell.dataset.visa = pa ? 'ja' : 'nej'
+    e.target.textContent = pa ? 'Dölj det som är utanför' : 'Visa det som är utanför'
+    return
+  }
+  if (e.target.id === 'dra') { dra(); return }
+  if (e.target.id === 'spela') { spela(); return }
+  const kort = e.target.closest('.kort')
+  if (kort) { const i = Number(kort.dataset.i); vald = vald === i ? null : i; rita(); sag(hand[i].namn + (vald === i ? ' markerat' : ' avmarkerat')); return }
+})
+remsa.addEventListener('scroll', mat)
+window.addEventListener('resize', mat)
+document.getElementById('forklaring').innerHTML = FORKLARING.folj
+rita()
+</script></body></html>

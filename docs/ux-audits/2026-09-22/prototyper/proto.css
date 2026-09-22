@@ -1,0 +1,140 @@
+/* Throwaway prototypes for the playtest of 2026-09-21 (#414, #415). Copied verbatim from
+   `docs/ux-audits/2026-09-20/prototyper/proto.css`, with the felt's own tokens added at the
+   bottom: these two questions are about the play surfaces and not about the editor, so the
+   phone and the television have to be read in the colours `packages/web/src/table/table.css`
+   and `player.css` actually ship. Nothing here is imported by the app. */
+:root {
+  --chrome: #23262e;
+  --panel: #171a23;
+  --sunk: #1b1d23;
+  --card: #1b1f2a;
+  --line: #2f333d;
+  --line-soft: #262b38;
+  --ink: #e6ecfa;
+  --quiet: #868ea3;
+  --quiet-2: #9aa3b8;
+  --primary: #1f6fd0;
+  --primary-mark: #3c8ce7;
+  --good: #7dd3a0;
+  --warn: #f0b64a;
+  --tap: 44px;
+
+  /* The spacing scale the audit proposes: one ladder, four steps, used everywhere.
+     Today the same "outer edge of a panel" is 12, 16, 20 and 24 px depending on tab. */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --gutter: var(--s4);
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--chrome);
+  color: #ddd;
+  font: 13px system-ui, sans-serif;
+  /* The whole point of the proposals: the window never scrolls. */
+  overflow: hidden;
+}
+
+/* --- the shell every prototype shares --------------------------------- */
+.shell { height: 100vh; display: flex; flex-direction: column; background: var(--chrome); }
+.shell > header {
+  flex: none; min-height: 56px; display: flex; align-items: center; gap: var(--s3);
+  padding: 0 var(--gutter); border-bottom: 1px solid var(--line);
+}
+.shell > header strong { color: #fff; font-size: 15px; white-space: nowrap; }
+.shell > header .home { color: #c3cbdd; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.shell > header .rev, .shell > header .saved, .shell > header .btn { white-space: nowrap; }
+.shell > header .rev { border: 0; background: transparent; color: var(--quiet); font: inherit; min-height: var(--tap); padding: 4px 6px; border-radius: 6px; }
+.shell > header .saved { color: #9aa3b8; }
+.spacer { flex: 1; }
+.tabs { display: flex; background: var(--sunk); border-radius: 8px; padding: 3px; margin-left: var(--s3); }
+.tabs button { min-height: var(--tap); border: 0; border-radius: 6px; padding: 0 14px; background: transparent; color: var(--quiet-2); font: inherit; font-weight: 600; cursor: pointer; }
+.tabs button[aria-selected='true'] { color: #fff; box-shadow: inset 0 -3px 0 0 var(--primary-mark); }
+.btn { min-height: var(--tap); border: 1px solid var(--line); border-radius: 8px; padding: 0 14px; background: var(--sunk); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.btn.primary { background: var(--primary); border-color: var(--primary); }
+.btn.quiet { background: transparent; color: var(--quiet-2); font-weight: 400; }
+.who { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #e0a458; color: #10131a; font: 800 11px system-ui; }
+
+/* The work area: one box, exactly the height that is left, never taller. */
+.shell > main { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+
+/* --- the parts a panel is built from ---------------------------------- */
+/* A panel's own chrome: it does not move when the work below it scrolls. */
+.chrome-row {
+  flex: none; display: flex; align-items: center; gap: var(--s3);
+  padding: var(--s2) var(--gutter); border-bottom: 1px solid var(--line);
+}
+.chrome-row .lead { color: var(--quiet-2); }
+.chrome-row > * { white-space: nowrap; }
+/* The one scroll region of a surface. */
+.scroll { flex: 1 1 auto; min-height: 0; overflow: auto; scrollbar-width: thin; }
+.h { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+.card { border-radius: 14px; background: var(--panel); border: 1px solid var(--line); padding: var(--s4); }
+
+/* --- the caption every prototype carries ------------------------------ */
+.note {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: 10px; z-index: 50; max-width: 620px;
+  padding: 10px 12px; border-radius: 10px; background: #2a2417; color: #ffd98a;
+  border: 1px solid #4a4230; font-size: 11px; line-height: 1.5;
+}
+.note b { display: block; color: #ffe9b8; }
+
+/* --- prototypens egen rad --------------------------------------------- */
+/* Never part of a proposal: it carries the measurements, the spoken line and whatever the
+   prototype needs to pretend, and it is amber for the same reason `.note` is. It was written
+   for the fourth prototype and moved here when the fifth, sixth and seventh all wanted it. */
+.protorad { flex: none; display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; padding: var(--s2) var(--s4); background: #2a2417; border-bottom: 1px solid #4a4230; color: #ffd98a; font-size: 11px; line-height: 1.5; }
+.protorad b { color: #ffe9b8; }
+.protorad p { margin: 0; max-width: 62ch; }
+.protorad .matt { display: flex; gap: var(--s3); margin-left: auto; font-variant-numeric: tabular-nums; }
+.protorad .matt span u { text-decoration: none; color: #ffe9b8; font-weight: 700; }
+.protorad button { min-height: 28px; border: 1px solid #4a4230; border-radius: 7px; padding: 0 10px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; }
+.protorad button:hover { border-color: #ffd98a; }
+.protorad button:focus-visible { outline: 2px solid #ffd98a; outline-offset: 2px; }
+/* Egen rad: `.protorad p`s 62ch skulle annars klämma in den upplästa meningen bredvid
+   mätningarna, eftersom en maxbredd också kapar det flexraden räknar med. */
+.protorad .sagt { flex: 1 1 100%; width: 100%; max-width: none; color: #c8b98d; }
+.protorad .sagt em { font-style: normal; color: #ffe9b8; }
+
+/* What only a screen reader is meant to get. */
+.offscreen { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Nu / Förslag toggle */
+.switch { display: flex; gap: 4px; background: var(--sunk); border-radius: 8px; padding: 3px; }
+.switch button { min-height: 34px; border: 0; border-radius: 6px; padding: 0 12px; background: transparent; color: var(--quiet-2); font: inherit; font-weight: 700; cursor: pointer; }
+.switch button[aria-pressed='true'] { background: var(--primary); color: #fff; }
+.measure { color: var(--quiet); font-variant-numeric: tabular-nums; }
+
+
+/* --- the play surfaces' own tokens, copied from table.css and player.css ---------------- */
+:root {
+  /* Sändningsläget: the television's felt is flat and dark, not the green of the table (the
+     rule is `.byd-table-frame[data-mode='tv'] [data-table]`). */
+  --tv-felt: #151924;
+  --tv-felt-line: #262b3a;
+  --tv-zone-line: rgba(255, 255, 255, 0.18);
+  --tv-zone-name: #7d8597;
+  --hand-count-bg: rgba(0, 0, 0, 0.55);
+  --hand-count-ink: #f3e9d6;
+  /* A card's back, as `.byd-hand-fan > i[data-face='back']` draws it. */
+  --back-a: #3a4d7a;
+  --back-b: #2f4068;
+  --back-line: #1f2b4a;
+  /* The phone: `player.css`'s room, and the green a marked card is ringed in. */
+  --phone-bg: #0d1114;
+  --phone-line: #1c242b;
+  --mark: #7dd3a0;
+  --card-paper: #f4ead8;
+  --card-ink: #241a0c;
+  /* The seats' colours, as `seatColor.ts` hands them out. */
+  --seat-a: #d9534f;
+  --seat-b: #3b8ee8;
+  --seat-c: #35b57e;
+  --seat-d: #e8b33b;
+}
