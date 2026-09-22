@@ -1,6 +1,6 @@
 import { assetFormatsNamed, assetTypeDeclaring, pictureNameOf, type AssetCrop, type AssetKind } from '@byd/protocol'
 import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectFraming, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
-import { type CatalogFamily, fileInSheet, fileSheetHref } from './font-catalog.js'
+import { catalogStack, type CatalogFamily, fileInSheet, fileSheetHref } from './font-catalog.js'
 import type { DocDiff, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
@@ -23,12 +23,6 @@ import { DEFAULT_TIMING } from '../status/connection.js'
 // `t` (A4). Only what a designer is meant to act on is a message; the rest of what can go
 // wrong here is a diagnostic, and stays in the language the code is written in.
 const swedish: T = (key, params) => translate('sv', key, params)
-
-// The generic a catalog family falls back to when its own file has not arrived yet, so the
-// sample and the card are set in something of the right shape rather than in the browser's
-// default while the bytes travel.
-const GENERIC: Record<string, string> = { serif: 'serif', sans: 'sans-serif', display: 'serif', handskrift: 'cursive', mono: 'monospace' }
-
 
 // The editor's socket, kept small on purpose: the same shape the table's client speaks, so a
 // test can hand it Node's WebSocket the way it hands one to the table.
@@ -929,7 +923,7 @@ export class ProjectClient {
     // The licence is written in the same edit as the family, because it is the same fact: the
     // catalog knows the answer, and a family that arrived knowing it must never stand in the
     // list with two empty boxes (L27).
-    this.edit({ v: 'setFont', family: name, font: { stack: `"${name}", ${GENERIC[family.category] ?? 'serif'}`, asset: ref, licence: { licence: family.licence, by: family.by }, source: 'catalog' } }, taking)
+    this.edit({ v: 'setFont', family: name, font: { stack: catalogStack(name, family.category), asset: ref, licence: { licence: family.licence, by: family.by }, source: 'catalog' } }, taking)
     await this.storeAsset(blob, 'font', ref, taking, { said: 'upload.undone.font', name, intents: [{ v: 'removeFont', family: name }] }, t)
     return name
   }

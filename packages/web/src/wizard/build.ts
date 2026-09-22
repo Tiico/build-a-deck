@@ -16,7 +16,10 @@ const swedish: T = (key, params) => translate('sv', key, params)
 // The table is the recipe's (B5): seats around a felt as large as that many people need (K18),
 // each with a hand that returns to the draw pile, an area in front of it and its counters; the
 // editor turns the same knobs afterwards.
-export function buildProject(state: WizardState, t: T = swedish): ProjectDoc {
+// `fonts` är ramens eget ansikte med sin fil (#420, B3): familjen mallen sätter text i, stacken
+// den skrivs som, och den asset versionen pinnar. Utan dem vore ramens familj bara ett namn, och
+// ett namn är olika ansikten på olika maskiner — vilket är det den fysiska kontrollen fäller.
+export function buildProject(state: WizardState, t: T = swedish, fonts?: ProjectDoc['fonts']): ProjectDoc {
   const frame = FRAMES.find((f) => f.id === state.frame) ?? DEFAULT_FRAME
   const ids = new Set<string>()
   const rows = state.rows.map((row, i) => {
@@ -31,6 +34,7 @@ export function buildProject(state: WizardState, t: T = swedish): ProjectDoc {
     template: { faces: { front: frame.front(state.fields), back: frame.back } },
     rows,
     icons: {},
+    ...(fonts ? { fonts } : {}),
     setup: tableOf(state, t),
   }
 }

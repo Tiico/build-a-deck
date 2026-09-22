@@ -5,6 +5,7 @@ import { MAX_PLAYERS } from '@byd/server/doc'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
+import { watchFontNet, type FontNet } from './font-net.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
@@ -13,10 +14,16 @@ vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3])
 
 let run: Running
+// Den guidade starten hämtar startramens ansikte när spelet skapas (#420), och den trafiken går
+// inte ut på riktigt här: `watchFontNet` svarar på katalogens två adresser och på filen bygget
+// bär, och lämnar allt annat — bland annat den här sviten egen server — i fred.
+let net: FontNet
 beforeEach(async () => {
   run = await startServer()
+  net = watchFontNet()
 })
 afterEach(async () => {
+  net.undo()
   await run.stop()
 })
 
