@@ -123,6 +123,15 @@ function TextureFace({ src, name: named, retry }: { src: string; name: string | 
 // `faces` is the HTTP origin that serves /faces/:hash; without it there is no texture.
 function textureUrl(faces: string | undefined, c: VisibleComponentState): string | undefined {
   if (!faces || !c.faces) return undefined
-  const hash = c.cardRef !== null ? c.faces['front'] : c.faces['back']
+  const hash = c.cardRef !== null ? c.faces['front'] : backHash(c)
   return hash ? `${faces}/faces/${hash}` : undefined
+}
+
+// The hash of the side a card shows when it is not showing its content: its back. The projection
+// hands that one out for any visible component, front or back (TUNN-SKIVA §5), so it is the one
+// texture a view may draw for a card whichever way it is lying — which is what the fan over a
+// shuffled pile needs (#445). Written here, beside the only other reader of it, so that the name
+// of the face is said once: two places naming it are two answers to what a card's back is.
+export function backHash(c: VisibleComponentState | undefined): string | undefined {
+  return c?.faces?.['back']
 }

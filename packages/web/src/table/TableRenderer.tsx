@@ -1,5 +1,5 @@
 import { Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent } from 'react'
-import { BackTexture, Texture } from './Texture.js'
+import { BackTexture, Texture, backHash } from './Texture.js'
 import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import type { Peer, Pulse, Recent } from './presence.js'
 import { FAN, useStill, type Shuffle } from './shuffle.js'
@@ -1396,16 +1396,25 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
   const bottomOwn = bottom !== undefined && !bottomCard?.cardRef ? (bottom.back ? <BackTexture faces={faces} hash={bottom.back} /> : back) : null
   // The shuffle, fanned (L35, #326): four backs fanned out of the pile and gathered back, keyed by
   // the log line so a second shuffle of the same pile starts the fan over. They wear what the
-  // pile itself wears face-down — the same back node as the top, from the same hash the zone
-  // already carries — and never a front, so nothing is drawn during the fan that was not on the
-  // screen before it; that is what keeps a test on raw frames blind to the animation. A pile being
-  // dragged is not fanned: the ghost of it is elsewhere, and the fan would play on an empty spot.
+  // pile itself wears face-down — the same back node as the top, from the same hash — and never a
+  // front, so nothing is drawn during the fan that was not on the screen before it; that is what
+  // keeps a test on raw frames blind to the animation. A pile being dragged is not fanned: the
+  // ghost of it is elsewhere, and the fan would play on an empty spot.
+  //
+  // The hash is asked of the zone first and of the top card after it, because that is the order in
+  // which the projection is willing to say it (#445). A hidden pile hands out no component at all
+  // (K15), so its back travels on the zone (#313); a public pile hands the card out and says it
+  // there, on the component, and says nothing of its own on the zone. Reading only the zone left
+  // every pile but the draw pile fanning the striped weave `table.css` draws under a card that
+  // carries no back of its own — a back that belongs to no deck. One fact, read wherever `project`
+  // put it for this seat, and drawn through the one back node either way.
   //
   // Under `prefers-reduced-motion` (`still`) the motion is off and not damped: no fan is mounted
   // at all, and the pile pulses amber instead — something happened, without anything moving.
   const playing = shuffle !== undefined && !lifted && count > 0
   const fanned = playing && !still
-  const fanBack = ownBack ? <BackTexture faces={faces} hash={ownBack} /> : back
+  const fanHash = ownBack ?? backHash(topCard)
+  const fanBack = fanHash ? <BackTexture faces={faces} hash={fanHash} /> : back
   return (
     <div
       className="byd-pile"
