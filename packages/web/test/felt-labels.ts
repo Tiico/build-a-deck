@@ -19,8 +19,8 @@ export const sheet = (rel: string): string =>
 // The face the felt is written in (K20), first in every cascade the readings are taken against.
 export const FELT_FONT = 'src/fonts/felt-font.css'
 
-export type Crowding = { pairs: string[]; clipped: string[]; outside: string[] }
-export type Reading = Crowding & { names: string[]; wrapped: string[]; smallest: number; cardPx: number; wider: Crowding }
+export type Crowding = { pairs: string[]; clipped: string[]; outside: string[]; grips: string[] }
+export type Reading = Crowding & { names: string[]; wrapped: string[]; smallest: number; cardPx: number; gripCount: number; wider: Crowding }
 
 // How much wider than the shipped face every name has to survive being drawn (#95). "No overlap"
 // is not a machine-independent claim: Linux fontconfig snaps each glyph's advance to a whole
@@ -97,6 +97,15 @@ export const READ = `((margin) => {
         if (labels[i].pill && labels[i].pill === labels[j].pill) continue
         if (hits(labels[i].r, labels[j].r)) pairs.push(labels[i].text + ' × ' + labels[j].text)
       }
+    // The editor lays its own things on the same felt, and a name that clears every other name can
+    // still land on one of them (#419). The resize grip is the one that is drawn rather than
+    // merely bounded: \`.byd-setup-corner\`, twelve amber pixels hung off its zone's lower right.
+    // A designer has to see what she is taking hold of, so a name over a grip is a collision like
+    // any other. The grips are the editor's alone, so on the played felt and on the TV this finds
+    // nothing and says nothing — which is why \`gripCount\` is reported beside it.
+    const gripBoxes = [...document.querySelectorAll('.byd-setup-corner')].map((el) => seen(el)).filter((r) => r)
+    const grips = []
+    for (const l of labels) for (const g of gripBoxes) if (hits(l.r, g)) grips.push(l.text + ' × handtag')
     // Off the felt. A hand's count is left out on purpose: it hangs a fixed distance below its own
     // hand by \`HAND_COUNT_MM\`, which is K9's own rule for the played felt and not a stray name.
     const felt = document.querySelector('[data-table]')?.getBoundingClientRect() ?? null
@@ -113,7 +122,9 @@ export const READ = `((margin) => {
       pairs,
       clipped,
       outside,
+      grips,
       wrapped,
+      gripCount: gripBoxes.length,
       smallest: Number.isFinite(smallest) ? Math.round(smallest * 10) / 10 : 0,
       cardPx: card ? Math.round(card.getBoundingClientRect().width) : 0,
     }
@@ -122,24 +133,29 @@ export const READ = `((margin) => {
   widen(margin)
   const wide = readAt()
   widen(1)
-  return { ...at, wider: { pairs: wide.pairs, clipped: wide.clipped, outside: wide.outside } }
+  return { ...at, wider: { pairs: wide.pairs, clipped: wide.clipped, outside: wide.outside, grips: wide.grips } }
 })(${NAME_MARGIN})`
 
 // Everything the two issues ask of one reading, said once: the names are all there, none of them
 // lies on another, none was cut short, and none was drawn off the felt — and the same is still
 // true when every name is drawn `NAME_MARGIN` wider, which is what makes the answer belong to the
 // design rather than to the machine it was read on (#95).
-export function expectClear(reading: Reading, wanted: string[], where: string): void {
+// `known` is the grip collisions that are already understood and are not the reading's business —
+// there is exactly one, and it is written down at its call site rather than here, so that any
+// other name over any other grip still fells this.
+export function expectClear(reading: Reading, wanted: string[], where: string, known: string[] = []): void {
   expect({ where, names: reading.names.length > 0 }).toEqual({ where, names: true })
   expect({ where, missing: wanted.filter((n) => !reading.names.includes(n)) }).toEqual({ where, missing: [] })
   expect({ where, pairs: reading.pairs }).toEqual({ where, pairs: [] })
   expect({ where, clipped: reading.clipped }).toEqual({ where, clipped: [] })
   expect({ where, outside: reading.outside }).toEqual({ where, outside: [] })
   expect({ where, wrapped: reading.wrapped }).toEqual({ where, wrapped: [] })
+  expect({ where, grips: reading.grips }).toEqual({ where, grips: known })
   const wide = `${where}, every name drawn ${Math.round((NAME_MARGIN - 1) * 100)} % wider`
   expect({ where: wide, pairs: reading.wider.pairs }).toEqual({ where: wide, pairs: [] })
   expect({ where: wide, clipped: reading.wider.clipped }).toEqual({ where: wide, clipped: [] })
   expect({ where: wide, outside: reading.wider.outside }).toEqual({ where: wide, outside: [] })
+  expect({ where: wide, grips: reading.wider.grips }).toEqual({ where: wide, grips: known })
 }
 
 const registry = new TypeRegistry(STANDARD_TYPES)

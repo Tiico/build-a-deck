@@ -622,7 +622,13 @@
    every hand, so a label here was a second system writing on the same square millimetres — which
    is how `Räknare B` came to lie under `Hand · B` (#43). The name is still on the handle for
    anyone reading by keyboard or screen reader: it is the `aria-label`. */
-.byd-setup-corner { position: absolute; right: -6px; bottom: -6px; width: 12px; height: 12px; border-radius: 3px; background: #ffd98a; cursor: nwse-resize; }
+/* The grip lies inside its own handle and not across its corner (#419). Hung six pixels out it
+   reached into the felt, and at the west rim that is where the name is: K19 stands a name beside
+   its zone on the side away from the rim, three pixels off its own edge, so `Framför D` was drawn
+   on top of the grip at four, six and eight seats. The felt's rule is the product's and the grip
+   is the editor's tool, so it is the grip that moves — the preview then says the names in the
+   same millimetres as the played table, which is what the tab is for (B5). */
+.byd-setup-corner { position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; border-radius: 3px; background: #ffd98a; cursor: nwse-resize; }
 /* Where the selected pile's actions lay their cards (L30, #316): a card's outline at the point
    `besidePile` gives, drawn while the «Bredvid högen» picker is held. A hint, so it reads under
    the handles — a cool, faint dash beside the amber the designer takes hold of — and it is on or
