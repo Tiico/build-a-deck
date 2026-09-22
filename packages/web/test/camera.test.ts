@@ -140,3 +140,42 @@ describe('the overscan margin (#322)', () => {
     expect(zoomAround(fitFloor(floor, vp, margin), { x: 0, y: 0 }, 8, vp, floor, 0)).toEqual(fitFloor(floor, vp))
   })
 })
+
+// Det andra villkoret på bilden, med egen luft (#413).
+//
+// Vad kameran pekas på är spelet, och luften omkring det är TV:ns överskanning. Men handens
+// antalsbricka hänger vid kanten, utanför spelet, och den ritas i skärmens egna pixlar: det är
+// ingen millimeter av bordet och kan inte läggas till det som ramas in. Den har alltså ett villkor
+// av sitt eget — en linje som ska vara med i bilden, och en pillerbredd luft förbi den — och
+// bilden är den minsta som håller båda.
+describe('bilden som håller två villkor, vart och ett med sin egen luft (#413)', () => {
+  const vp = { w: 1000, h: 500 }
+  // Spelet, mitt på filten, och linjerna där handbrickorna hänger: förbi filtens övre och nedre
+  // kant, dit fläktarna når. Femtio pixlar är luften brickan tar förbi sin egen linje.
+  const play = { x: -400, y: -200, w: 800, h: 400 }
+  const rim = { rect: { x: -450, y: -350, w: 900, h: 700 }, margin: 50 }
+
+  it('drar tillbaka bilden tills linjen ligger sin egen luft innanför fönstret', () => {
+    const framed = frameRect(play, vp, reachOf(floor, play), 0, 0, rim)
+    expect(framed).toEqual({ x: -875, y: -437.5, w: 1750, h: 875 })
+    // Räknat i pixlar, vilket är det brickan är ritad i: linjens överkant ligger femtio pixlar in.
+    const scale = vp.w / framed.w
+    expect((rim.rect.y - framed.y) * scale).toBeCloseTo(rim.margin)
+    expect((framed.y + framed.h - (rim.rect.y + rim.rect.h)) * scale).toBeCloseTo(rim.margin)
+  })
+
+  it('kostar ingenting när linjen redan ligger innanför, så en hand vid kanten inte betalas för två gånger', () => {
+    const inside = { rect: { x: -100, y: -50, w: 200, h: 100 }, margin: 50 }
+    expect(frameRect(play, vp, floor, 0, 0, inside)).toEqual(frameRect(play, vp, floor, 0, 0))
+    expect(frameRect(play, vp, floor, 0, 0)).toEqual({ x: -400, y: -200, w: 800, h: 400 })
+  })
+
+  it('låter räckvidden växa med linjen, så filtens egen kant inte hindrar bilden från att hålla den', () => {
+    // Utan det här skulle bilden klippas till filten som fitted — och filten är just det linjen
+    // ligger utanför, så villkoret vore omöjligt att uppfylla och brickan klippt igen.
+    const framed = frameRect(play, vp, floor, 0, 0, rim)
+    expect(framed.w).toBeGreaterThan(fitFloor(floor, vp).w)
+    expect(framed.y).toBeLessThan(rim.rect.y)
+    expect(framed.y + framed.h).toBeGreaterThan(rim.rect.y + rim.rect.h)
+  })
+})

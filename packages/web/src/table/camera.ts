@@ -79,20 +79,60 @@ export function reachOf(floor: Rect, content: Rect | null): Rect {
   return content ? (union([floor, content]) ?? floor) : floor
 }
 
+// A second thing the picture has to hold, with air of its own (#413).
+//
+// The camera is pointed at what is in play, and the air around that is the overscan. A hand's
+// count badge is neither: it hangs at the rim, outside everything the camera frames, and it is
+// drawn in the frame's own pixels rather than in the table's millimetres — so it cannot simply be
+// added to the target, and the air it needs is not the target's. What it is, is a line on the
+// felt (`handCountAt`) plus a pill's worth of pixels past it, and that is a second condition on
+// the same picture. Without it the number at the television's top seat was cut in half (#413).
+export type Keep = { rect: Rect; margin: number }
+
 // `target` grown to the viewport's aspect about its centre, never narrower than `minW` (so the
 // camera never comes absurdly close), never wider than `reach` fits, and kept inside `reach` as
 // fitted, so the camera never shows the void beyond what there is to see.
 // A `reach` that contains the target yields a frame that contains it too: what the camera is
 // pointed at is never cut in half by the frame's edge. `reachOf` is how callers get one.
 // `margin` is how many pixels of the viewport are kept clear around the target on every side.
-export function frameRect(target: Rect, vp: Size, reach: Rect, minW: number, margin = 0): Rect {
-  const whole = fitFloor(reach, vp, margin)
-  let r = withAspect(target, vp, margin)
+// `keep` is a second condition with air of its own, and the picture is the smallest holding both.
+export function frameRect(target: Rect, vp: Size, reach: Rect, minW: number, margin = 0, keep?: Keep): Rect {
+  const both = (r: Rect): Keep[] => (keep ? [{ rect: r, margin }, keep] : [{ rect: r, margin }])
+  // The reach is asked the same two questions, or the widest the camera may pull back to would be
+  // the felt alone — and the felt is exactly what the count's line lies outside of, so the second
+  // condition would be impossible to meet and the badge clipped again.
+  const whole = holding(both(reach), vp)
+  let r = holding(both(target), vp)
   if (r.w < minW) r = withAspect({ x: centre(r).x - minW / 2, y: centre(r).y, w: minW, h: 0 }, vp)
   if (r.w >= whole.w) return whole
   const x = Math.min(Math.max(r.x, whole.x), whole.x + whole.w - r.w)
   const y = Math.min(Math.max(r.y, whole.y), whole.y + whole.h - r.h)
   return { x, y, w: r.w, h: r.h }
+}
+
+// The smallest picture, at the viewport's aspect, that holds every one of these rectangles with
+// its own air in the viewport's pixels.
+//
+// One rectangle is `withAspect` and nothing more, which is what keeps every caller that asks for
+// one answering exactly as it did. Two are not simply the wider of the two answers: each one's
+// air is pixels, so what it comes to in millimetres depends on the scale, and the scale is what
+// is being looked for. So the width each condition asks for on its own is the floor, and the
+// picture grows from there until the millimetres they then take lie inside it — a handful of
+// steps, since a wider picture turns the same pixels into fewer millimetres and never more.
+function holding(wants: readonly Keep[], vp: Size): Rect {
+  let w = 0
+  for (const want of wants) w = Math.max(w, withAspect(want.rect, vp, want.margin).w)
+  let content = union(wants.map((want) => want.rect)) ?? { x: 0, y: 0, w: 0, h: 0 }
+  for (let i = 0; i < 12; i++) {
+    const scale = vp.w / w
+    content = union(wants.map((want) => pad(want.rect, want.margin / scale))) ?? content
+    const need = Math.max(content.w, (content.h * vp.w) / vp.h)
+    if (need <= w) break
+    w = need
+  }
+  const c = centre(content)
+  const h = (w * vp.h) / vp.w
+  return { x: c.x - w / 2, y: c.y - h / 2, w, h }
 }
 
 // Vad ett tryck på `+` eller `−` är värt, sagt som den faktor kamerans bredd ändras med (#325).

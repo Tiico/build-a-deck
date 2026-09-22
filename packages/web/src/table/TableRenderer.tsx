@@ -6,7 +6,7 @@ import { FAN, useStill, type Shuffle } from './shuffle.js'
 import { hue } from './hue.js'
 import { seatColor } from './seatColor.js'
 import { feltScale, fitScale, leaningSquare, woodLayout, TOUCH_PX, TV_AIR_PX } from './fit.js'
-import { CAMERA_MIN_MM, CAMERA_STEP, activeBounds, cameraOf, centre, fitFloor, frameRect, overscanPx, pad, panBy, reachOf, same, shownRect, tween, zoomAround, type Rect, type Size } from './camera.js'
+import { CAMERA_MIN_MM, CAMERA_STEP, activeBounds, cameraOf, centre, fitFloor, frameRect, overscanPx, pad, panBy, reachOf, same, shownRect, tween, union, zoomAround, type Rect, type Size } from './camera.js'
 import { recallCamera, rememberCamera, type CameraMemory } from './cameraMemory.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, type Drag, type DragTarget } from './drop.js'
@@ -18,7 +18,7 @@ import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ActionSheet } from './ActionSheet.js'
 import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
-import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAnchor, handExtent, handRotation, type TableMode } from './hand.js'
+import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAt, handCountAt, handExtent, handRotation, type TableMode } from './hand.js'
 import { gapAbove, nameAt, type Grow, type Rim } from './labels.js'
 import { useT, type T } from '../i18n/index.js'
 
@@ -289,13 +289,27 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const [manual, setManual] = useState<Rect | null>(recalled.current.cam)
   const zoomTo = (rect: Rect | null) => setManual(rect)
   const inPlay = drivable ? activeBounds(view) ?? floorRect : null
-  // How far the camera may reach: the table, plus anything in play that lies past its rim (#20).
-  // The padding around what is in play is room to breathe, not content, so it may be cropped.
-  const reach = reachOf(floorRect, inPlay)
+  // What the picture owes the hands' counts (#413). The camera frames what is in play, and a hand
+  // is not that — it sits at the rim, always, so framing hands would mean framing the rim. But the
+  // count badge is not a hand either: it is the number a person across the room reads to know what
+  // they are playing against, and at 1920 × 1080 the top seat's was cut in half by the edge of the
+  // screen. So the picture is told the one thing about it a picture in millimetres can be told —
+  // the line it hangs from (`handCountAt`) — and leaves a pill's air past that line, which is what
+  // `TV_AIR_PX` is for and the whole of what it is for. What the badge takes past the line is
+  // pixels, and no measure of the felt can own them.
+  const counts = union(hands.map((z) => ({ ...handCountAt(z, floor, handRot(z), folded(z)), w: 0, h: 0 })))
+  const keepCounts = counts ? { rect: counts, margin: TV_AIR_PX } : undefined
+  // How far the camera may reach: the table, anything in play that lies past its rim (#20), and
+  // the counts at the rim, which are as much a part of the table as the felt is. The counts belong
+  // here as well as in the framing above, or the two would disagree: a view that is pulled back to
+  // hold them would be wider than the widest a hand may zoom out to, and the first touch of the
+  // wheel would jump the picture inward. The padding around what is in play is room to breathe,
+  // not content, so it may be cropped.
+  const reach = union([reachOf(floorRect, inPlay), ...(counts ? [counts] : [])]) ?? floorRect
   // The camera follows only on the TV (`following`), and a TV may hide the picture's outer edge,
   // so what it frames by itself stands the overscan margin inside the frame (#322). The observer
   // shares the mode but not the camera, and is fitted below with the air of its own.
-  const auto = following && inPlay && size ? frameRect(pad(inPlay, CAMERA_PAD_MM), size, reach, CAMERA_MIN_MM, overscanPx(size)) : null
+  const auto = following && inPlay && size ? frameRect(pad(inPlay, CAMERA_PAD_MM), size, reach, CAMERA_MIN_MM, overscanPx(size), keepCounts) : null
   // Bilden som faktiskt ritas. En bild som hämtats ur minnet mättes i ett fönster som kan ha
   // haft en annan form sedan dess, så den passas in i den ram som finns nu — för allt som just
   // ställts in av en hand är det samma rektangel tillbaka, eftersom både `zoomAround` och
@@ -920,7 +934,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
             // hand has no fan to anchor, so it stands in the middle of its own zone and the count
             // hangs off that, in the same air past the rim every other seat's count hangs in.
             const fold = folded(z)
-            const at = fold ? { x: z.geometry.x + z.geometry.w / 2, y: z.geometry.y + z.geometry.h / 2 } : handAnchor(z, floor, handRot(z))
+            const at = handAt(z, floor, handRot(z), fold)
             return (
               <Hand
                 key={z.id}
