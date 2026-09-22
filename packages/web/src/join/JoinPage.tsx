@@ -92,8 +92,8 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
   const [problem, setProblem] = useState<string | null>(null)
   // Namnet krävs, och villkoret sägs vid tryck (#416, variant B). Vägarna in står öppna; den som
   // trycker med tomt fält får beskedet vid fältet, fältet märkt ogiltigt och markören flyttad dit.
-  // Beskedet kommer efter trycket, så regionen står i dokumentet från början och fylls — en rad
-  // som föds i samma stund som texten når inte alltid den som lyssnar.
+  // Beskedet finns inte på skärmen förrän någon tryckt, så det måste nå den som lyssnar när det
+  // kommer: det ritas som en `alert`, vilket är den region som läses upp av att den kommer.
   const [says, setSays] = useState<string | null>(null)
   const field = useRef<HTMLInputElement>(null)
   const saysId = 'byd-join-name-says'
