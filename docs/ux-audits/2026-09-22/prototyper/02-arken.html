@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 02 — Arken: varje variant på varje kant (#418)</title>
+<link rel="stylesheet" href="proto.css">
+<link rel="stylesheet" href="felt.css">
+<style>
+  .shell > main { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 16px 16px; }
+  .cell { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+  .cell > .kant { flex: none; display: flex; align-items: baseline; gap: 8px; font-size: 11px; color: var(--quiet-2); }
+  .cell > .kant b { color: #e6ecfa; font-size: 11.5px; }
+  .cell > .kant u { text-decoration: none; margin-left: auto; color: var(--quiet); font-variant-numeric: tabular-nums; }
+  .cell > .ruta { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; }
+  .cell > .ruta > .byd-table-frame { border-radius: 12px; overflow: hidden; }
+  .protorad .ark { display: flex; gap: 4px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="01-namnens-riktning.html">Prototyp #418</a>
+    <strong>Arken</strong>
+    <span class="saved">platsnamnens riktning på en vriden filt</span>
+    <span class="spacer"></span>
+    <div class="switch" id="variant">
+      <button type="button" data-v="nu" aria-pressed="true">Nu</button>
+      <button type="button" data-v="a">A · Läsriktning</button>
+      <button type="button" data-v="b">B · Per yta</button>
+      <button type="button" data-v="c">C · Kantband</button>
+    </div>
+  </header>
+  <div class="protorad">
+    <p id="text"></p>
+    <p class="sagt" id="vtext"></p>
+    <div class="ark matt" id="ark">
+      <button type="button" data-ark="1">1 · Bordet 2+4</button>
+      <button type="button" data-ark="2">2 · Bordet 6+8</button>
+      <button type="button" data-ark="3">3 · Distans, när-kant</button>
+      <button type="button" data-ark="4">4 · Distans, sidokant</button>
+      <button type="button" data-ark="5">5 · Distans 6+8</button>
+      <button type="button" data-ark="6">6 · Distans 2 + editorn</button>
+    </div>
+  </div>
+  <main id="rutnat"></main>
+</div>
+
+<script type="module">
+import { renderFelt, edgeOf, seatTurn, feltFor, SEAT_IDS } from './felt.js'
+
+const ARK = {
+  1: {
+    rubrik: 'Bordsläget: en skärm som ligger på bordet och som flera sitter runt. Filten vrids inte alls — det är den enda ytan där flera läsare vetter åt olika håll.',
+    celler: [
+      { count: 2, mode: 'table', me: null, namn: 'Bordsläge · 2 platser' },
+      { count: 4, mode: 'table', me: null, namn: 'Bordsläge · 4 platser' },
+    ],
+  },
+  2: {
+    rubrik: 'Bordsläget vid sex och åtta platser, där en kant bär två namn (K18). Filten växer en kuvertlängd per extra plats vid ett kantpar.',
+    celler: [
+      { count: 6, mode: 'table', me: null, namn: 'Bordsläge · 6 platser' },
+      { count: 8, mode: 'table', me: null, namn: 'Bordsläge · 8 platser' },
+    ],
+  },
+  3: {
+    rubrik: 'Distansvyn vid 1280 × 800, fyra platser, läsaren vid en när-kant: filten vrids så att den egna kanten hamnar nederst (C5). Nina sitter i syd och får ingen vridning alls; Bo sitter i norr och får ett halvvarv.',
+    celler: [
+      { count: 4, mode: 'table', me: 0, namn: 'Distans · Nina läser · syd' },
+      { count: 4, mode: 'table', me: 1, namn: 'Distans · Bo läser · norr' },
+    ],
+  },
+  4: {
+    rubrik: 'Distansvyn, fyra platser, läsaren vid en sidokant. Filten står kvar orörd, eftersom en sidoplats inte vänds i ett fönster som redan ligger rätt (#77). Läsarens eget namn är ringat i filtens ink.',
+    celler: [
+      { count: 4, mode: 'table', me: 2, namn: 'Distans · Cissi läser · öst' },
+      { count: 4, mode: 'table', me: 3, namn: 'Distans · Olle läser · väst' },
+    ],
+  },
+  5: {
+    rubrik: 'Distansvyn vid fler platser, där en kant bär två namn: Elsa sitter som andra plats i syd, Gustav som andra plats i öst.',
+    celler: [
+      { count: 6, mode: 'table', me: 4, namn: 'Distans · 6 platser · Elsa läser · syd' },
+      { count: 8, mode: 'table', me: 6, namn: 'Distans · 8 platser · Gustav läser · öst' },
+    ],
+  },
+  6: {
+    rubrik: 'Två platser i distansvyn, och editorns förhandsvisning på Bord-fliken — där ingen alls sitter vid skärmens kanter och brickan bär platsens bokstav i stället för ett namn.',
+    celler: [
+      { count: 2, mode: 'table', me: 1, namn: 'Distans · 2 platser · Bo läser · norr' },
+      { count: 8, mode: 'tv', me: null, namn: 'Editorns förhandsvisning · 8 platser' },
+    ],
+  },
+}
+
+const VARIANT = {
+  nu: 'Nu · Platsnamnet bär sin egen kantvridning på varje yta, och distansvyns vridning av filten läggs ovanpå. Räknarbrickan bär filtens vridning men ingen egen — därför står en sexa som en nia vid ett halvvarv.',
+  a: 'A · Läsriktning överallt. Kantvridningen tas bort på varje yta; platsnamnet står upprätt mot den som tittar, som zonnamnen redan gör. Räknarbrickan vänds tillbaka. Bordsläget förlorar sitt bordskort.',
+  b: 'B · Bordskort där någon sitter, läsriktning där ingen gör det. Kantvridningen behålls bara i bordsläget. Distansvyn och editorns förhandsvisning har en betraktare, och där står varje namn och varje bricka upprätt.',
+  c: 'C · Namnet upprätt, ägarskapet i kanten. Namnet står alltid upprätt, men platsens egna 500 mm av filtens kant målas i platsens färg. Ägarskapet läses av var bandet ligger i stället för åt vilket håll texten pekar.',
+}
+
+const q = new URLSearchParams(location.search)
+let variant = q.get('v') ?? 'nu'
+let ark = Number(q.get('ark') ?? 1)
+
+function rita() {
+  document.querySelectorAll('#variant button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === variant)))
+  document.querySelectorAll('#ark button').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.ark) === ark)))
+  document.getElementById('text').textContent = ARK[ark].rubrik
+  document.getElementById('vtext').textContent = VARIANT[variant]
+  const rutnat = document.getElementById('rutnat')
+  rutnat.textContent = ''
+  const rutor = []
+  for (const c of ARK[ark].celler) {
+    const cell = document.createElement('div')
+    cell.className = 'cell'
+    const kant = document.createElement('div')
+    kant.className = 'kant'
+    const b = document.createElement('b')
+    b.textContent = c.namn
+    const rot = c.mode === 'table' && c.me !== null ? seatTurn(edgeOf(c.me, c.count), c.count, { w: 1280, h: 800 }) : 0
+    const u = document.createElement('u')
+    u.textContent = `filten ${rot}° · ${feltFor(c.count).w} × ${feltFor(c.count).h} mm`
+    kant.append(b, u)
+    const ruta = document.createElement('div')
+    ruta.className = 'ruta'
+    cell.append(kant, ruta)
+    rutnat.append(cell)
+    rutor.push([ruta, c])
+  }
+  // Först alla celler i rutnätet, sedan mätningen: en cell som mäts medan raden fortfarande
+  // fylls får en höjd den inte kommer att ha.
+  for (const [ruta, c] of rutor) {
+    const box = ruta.getBoundingClientRect()
+    renderFelt(ruta, { count: c.count, mode: c.mode, me: c.me, variant, box: { w: Math.round(box.width), h: Math.round(box.height) } })
+  }
+}
+
+document.getElementById('variant').addEventListener('click', (e) => {
+  const b = e.target.closest('button')
+  if (!b) return
+  variant = b.dataset.v
+  rita()
+})
+document.getElementById('ark').addEventListener('click', (e) => {
+  const b = e.target.closest('button')
+  if (!b) return
+  ark = Number(b.dataset.ark)
+  rita()
+})
+addEventListener('resize', rita)
+rita()
+</script>
+</body>
+</html>
