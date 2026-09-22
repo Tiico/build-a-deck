@@ -25,7 +25,14 @@
 .byd-wizard button, .byd-wizard input, .byd-wizard textarea, .byd-wizard select { font: inherit; }
 .byd-wizard button { min-height: var(--tap); min-width: var(--tap); border: 1px solid #cbcabe; border-radius: 9px; padding: 0 12px; background: var(--byd-wizard-field-bg); color: inherit; cursor: pointer; }
 .byd-wizard button:hover { border-color: #8d918a; }
-.byd-wizard button:disabled { opacity: .4; cursor: default; }
+/* Låst, och ändå läsbart (#416). `opacity: .4` gjorde båda sakerna dåligt: kanten föll till
+   1,16:1 och bläcket till 2,38:1, alltså en knapp som försvinner i stället för att låsas — och
+   den tonade lika hårt på «Ta bort valt kort», som verkligen är låst, som på de två utgångarna,
+   som bara väntade på ett namn. Utgångarna väntar inte längre (variant B), och det som står kvar
+   låst bär guidens låsta form: fyllningen tas bort, för fyllningen är affordansen, och rummets
+   egen sekundärlinje står kvar så att kontrollen fortfarande är ett piller. Ingen streckad linje
+   — streckat betyder redan «lägg till» i den här vyn. */
+.byd-wizard button:disabled { opacity: 1; background: transparent; border: 1px solid var(--byd-secondary-line); color: var(--muted); font-weight: 600; cursor: default; }
 .byd-wizard input:not([type='file']), .byd-wizard textarea { min-height: var(--tap); width: 100%; min-width: 0; border: 1px solid #c9c9bd; border-radius: 9px; padding: 9px 11px; background: var(--byd-wizard-field-bg); color: var(--ink); }
 .byd-wizard input:focus, .byd-wizard textarea:focus { border-color: var(--accent); outline: 3px solid color-mix(in srgb, var(--accent), transparent 82%); }
 .byd-wizard h1 { margin: 2px 0 0; font: 700 28px/1.15 Georgia, serif; }
@@ -133,6 +140,9 @@
 .byd-wizard-block > footer { padding-top: 18px; display: grid; gap: 14px; border-top: 1px solid var(--line); }
 .byd-wizard-primary { padding: 0 18px; }
 .byd-wizard [role='alert'] { color: #8d3823; }
+/* Och fältet ett besked handlar om pekas ut där ögat är, och inte bara i trädet (#416). Samma
+   färg som beskedet självt, så att raden och rutan hör ihop. */
+.byd-wizard input[aria-invalid='true'] { border-color: #8d3823; }
 
 /* From the desk up the card and its fields stand side by side, and the preview column is wide
    enough for a whole 63 mm card — a preview that clips is a preview that lies. */

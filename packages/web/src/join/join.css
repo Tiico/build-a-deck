@@ -206,16 +206,35 @@
 .byd-join-table button[data-edge='W'] { left: calc(var(--byd-seat-hang-x) * -1); top: calc(50% + var(--seat-step) * var(--byd-seat-pitch-y)); transform: translateY(-50%); }
 .byd-join form { display: grid; gap: 10px; }
 .byd-join input { padding: 16px; border-radius: 12px; border: 1px solid #2c3242; background: #1b1e27; color: #fff; font-size: 18px; }
+/* The name is written over the field instead of inside it (#416). A placeholder reading "Ditt
+   namn" is read as a filled-in value, and a field whose only name is an `aria-label` has nothing
+   written for somebody saying the words on the screen out loud to reach (WCAG 2.5.3). */
+.byd-join-name { display: grid; gap: 6px; }
+.byd-join-name > span { color: #cdd4e4; font-size: 13px; font-weight: 700; }
+/* What the page answers with, said at the field and in a tone of its own: a refusal written in the
+   ink the prose around it uses is a caption, and the eye sorts it away. The wizard already says
+   this of every `[role='alert']` on paper; this is the same sentence in the phone's own colour. */
+.byd-join [role='alert'] { margin: 0; color: #ffb3ad; font-size: 13px; font-weight: 700; }
+.byd-join input[aria-invalid='true'] { border-color: #e05a4f; }
 .byd-join form button { padding: 18px; border-radius: 12px; border: 1px solid transparent; font-size: 18px; font-weight: 800; }
-/* Refused is a state of a role and not a role of its own, and this page opens in it: nothing is
-   chosen and nothing is typed, so all three ways on are shut. Said of `form button` it was
-   (0,2,2) and took the fill and the ink off the role but not the line, which left the first
-   action a grey pill inside a green ring — and it re-filled the two outlined ways on, so they
-   read filled while refused and outlined once allowed, backwards. So the first action goes grey
-   whole, line and all; a dimmed green would still be the green pill to press. The other two only
-   fade, because a line at a third of its strength has already said "not yet" without turning
-   into a fill. */
-.byd-join .byd-primary:disabled { background: #242938; border-color: #242938; color: #5b6478; }
+/* Refused is a state of a role and not a role of its own. The page no longer opens in it — a way
+   on that waits for a name stands open and answers when it is pressed (#416, variant B) — but a
+   seat somebody else took shuts the two ways into one, and that is a control that has to *look*
+   shut and still be readable.
+
+   Measured on the painted pixels it was neither. The first action went grey whole, line and all,
+   at `#242938` on the page's own `#14161c`: 1,25:1, which is not a locked pill but a pill that
+   disappears. The two below it faded to 35 %, which put their line at 1,56:1 and their ink at
+   2,77:1 — so the three refused controls on one screen were refused three different amounts and
+   none of them could be read.
+
+   One locked look for the whole surface, from the prototype: the fill goes, because the fill is
+   the affordance and a dimmed green would still be the green pill to press, but the line stays,
+   so a locked control is still a pill. The line is the room's own secondary line and the ink is
+   the quiet register that reads on it. Nothing fades: `opacity` is what made three controls
+   differ, and it takes the line down with the label. */
+.byd-join form button:disabled { opacity: 1; color: #8a93a8; }
+.byd-join .byd-primary:disabled { background: #242938; border-color: #6f7a90; color: #8a93a8; }
 
 /* The two ways on that are not the first one. Both are sentences rather than words — "play on
    this screen (the table and the hand here)" — so they are read at the size a sentence is read at
@@ -227,4 +246,3 @@
    line and one ink for the whole tool. */
 .byd-join .byd-join-online,
 .byd-join .byd-join-observe { font-size: 14px; }
-.byd-join-online:disabled, .byd-join-observe:disabled { opacity: 0.35; }

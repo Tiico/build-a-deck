@@ -361,6 +361,10 @@ export const svPlay = {
   'join.seat.label.free': 'Plats {seat}, ledig',
   'join.seat.label.taken': 'Plats {seat}, {name}',
   'join.name': 'Ditt namn',
+  // Villkoret sägs en gång per skärm och först när någon trycker (#416, variant B): vägarna in
+  // står öppna, och den som trycker med tomt fält får beskedet vid fältet i stället för en död
+  // knapp utan förklaring.
+  'join.name.says': 'Skriv ditt namn först.',
   'join.sit': 'Sätt dig',
   'join.online': 'Spela på den här skärmen (bordet och handen här)',
   'join.observe': 'Bara titta (ser allt, alla ser dig)',

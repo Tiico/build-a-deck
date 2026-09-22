@@ -67,6 +67,10 @@ function forgetWizard(): void {
 
 const mappedByStarterFrame = (key: string) => ['title', 'cost', 'body', 'art'].includes(key)
 
+// Vad fältet pekar på: exemplet alltid, beskedet när det finns (#416).
+const NAME_EXAMPLE = 'byd-wizard-name-example'
+const NAME_SAYS = 'byd-wizard-name-says'
+
 // The three steps the header has promised all along. Below the desk they are three screens with
 // one job each; on a desk they are the two columns the wizard has always had (L10, #4).
 type Step = 'spelet' | 'falten' | 'korten'
@@ -100,10 +104,20 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   // Vilket fält draget står över just nu. Ett fält i taget, så att markeringen aldrig påstår att
   // två mottagare väntar på samma släpp.
   const [over, setOver] = useState<string | null>(null)
+  // Namnet krävs, och villkoret sägs vid tryck (#416, variant B). Båda utgångarna står öppna; den
+  // som trycker med tomt fält får beskedet vid fältet i stället för en grå knapp utan förklaring.
+  // `asked` räknar tryckningarna och inte om något sagts, så ett andra tryck flyttar markören en
+  // andra gång — och flytten görs efter målningen, eftersom fältet under skrivbordsbredd bor i ett
+  // steg som kan behöva öppnas först.
+  const [says, setSays] = useState<string | null>(null)
+  const [asked, setAsked] = useState(0)
+  const nameField = useRef<HTMLInputElement>(null)
   const resumed = useRef(false)
   const frame = FRAMES.find((candidate) => candidate.id === s.frame) ?? DEFAULT_FRAME
   const named = s.name.trim().length > 0
-  const ready = named && s.rows.length > 0 && s.fields.length > 0
+  // Det namnet stänger är inte längre knappen utan bara vägen igenom den (#416). Vad som faktiskt
+  // låser den guidade utgången är ett spel utan kort eller fält, vilket den inte kan göra något av.
+  const hasCards = s.rows.length > 0 && s.fields.length > 0
   const front = useMemo(() => frame.front(s.fields), [frame, s.fields])
   const row = s.rows[selectedRow] ?? s.rows[0] ?? firstRow(t)
 
@@ -112,6 +126,15 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     return q.toString()
   }
   const toEditor = async (door: Via = 'guided') => {
+    // Den utgång som trycks utan namn går ingenstans — den säger vad som saknas, vid fältet, och
+    // lämnar markören där det rättas.
+    if (!named) {
+      setSays(t('wizard.name.says'))
+      setStep('spelet')
+      setAsked((n) => n + 1)
+      return
+    }
+    setSays(null)
     setBusy(true)
     setVia(door)
     setError(null)
@@ -145,6 +168,10 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       setBusy(false)
     }
   }
+  useEffect(() => {
+    if (asked === 0) return
+    nameField.current?.focus()
+  }, [asked])
   useEffect(() => {
     if (!pending || resumed.current) return
     resumed.current = true
@@ -225,7 +252,29 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       {/* The words over the field are its name. A second, shorter one in `aria-label` would win
           over them, and then what is written on the screen and what the field is called are two
           different things — which is the whole of WCAG 2.5.3. */}
-      <label className="byd-wizard-label">{t('wizard.name')}<input value={s.name} onChange={(event) => setS({ ...s, name: event.target.value })} placeholder={t('wizard.name.placeholder')} /></label>
+      {/* Exemplet står under fältet i stället för inuti det: en platshållare som lyder «Skogens
+          herrar» ser ut som ett ifyllt värde, och då är det fältet som ljuger och inte knappen
+          som tiger (#416). */}
+      <label className="byd-wizard-label">{t('wizard.name')}<input
+        ref={nameField}
+        value={s.name}
+        onChange={(event) => {
+          setS({ ...s, name: event.target.value })
+          // Villkoret gäller inte längre så snart något står i fältet.
+          if (event.target.value.trim()) setSays(null)
+        }}
+        aria-required="true"
+        aria-invalid={says ? 'true' : 'false'}
+        aria-describedby={says ? `${NAME_EXAMPLE} ${NAME_SAYS}` : NAME_EXAMPLE}
+      /></label>
+      <p className="byd-wizard-hint" id={NAME_EXAMPLE}>{t('wizard.name.example')}</p>
+      {/* Villkoret, sagt en gång per skärm och vid fältet — inte en gång per utgång, fastän de två
+          ligger i var sin spalt. Det föds efter trycket och föds därför som en levande region. */}
+      {says && (
+        <p className="byd-wizard-says" id={NAME_SAYS} role="alert" aria-live="assertive">
+          {says}
+        </p>
+      )}
       {/* Every seat count the table can hold, and not six of them written out: `MAX_PLAYERS` is
           eight, so a game for seven or eight could not be started here at all — the same mismatch
           the editor's own panel had (K18, K19). */}
@@ -237,7 +286,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       <div className="byd-wizard-blank">
         <strong>{t('wizard.blank.title')}</strong>
         <p>{t('wizard.blank.body')}</p>
-        <button type="button" className="byd-secondary" disabled={!named || busy} onClick={() => void toEditor('blank')}>{t(busy && via === 'blank' ? 'wizard.creating' : 'wizard.blank.create')}</button>
+        <button type="button" className="byd-secondary" disabled={busy} onClick={() => void toEditor('blank')}>{t(busy && via === 'blank' ? 'wizard.creating' : 'wizard.blank.create')}</button>
         {error && via === 'blank' && <span role="alert">{error}</span>}
       </div>
     </section>
@@ -290,7 +339,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         >{row[field.key] ? <img src={row[field.key]} alt={t('wizard.image.preview', { label: field.label })} /> : <i>{t('wizard.image.none')}</i>}{over === field.key && <DropSays />}<label className="byd-wizard-file-button byd-secondary">{t(row[field.key] ? 'wizard.image.change' : 'wizard.image.choose')}<input className="byd-offscreen" type="file" accept="image/*" aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} onChange={(event) => chooseImage(selectedRow, field.key, [...(event.target.files ?? [])])} /></label>{row[field.key] && <button type="button" onClick={() => updateRow(selectedRow, field.key, '')}>{t('wizard.image.remove')}</button>}</div>{refused?.field === field.key && <span role="alert">{refused.said}</span>}</div> : <label key={field.key} className={field.key === 'body' ? 'is-wide' : ''}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span>{field.key === 'body' ? <textarea rows={4} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} /> : <input type={field.kind === 'number' ? 'number' : 'text'} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} />}</label>)}</div>
       </div>
       <div className="byd-wizard-card-tabs">{s.rows.map((candidate, index) => <button type="button" key={index} className="byd-choice" aria-pressed={selectedRow === index} onClick={() => setSelectedRow(index)}><b>{index + 1}</b>{candidate['title'] || t('wizard.card.untitled')}</button>)}<button type="button" className="is-add" onClick={addRow}>{t('wizard.card.add')}</button><button type="button" disabled={s.rows.length === 1} onClick={() => removeRow(selectedRow)}>{t('wizard.card.remove')}</button></div>
-      <footer><button type="button" className="byd-wizard-primary byd-primary" disabled={!ready || busy} onClick={() => void toEditor()}>{t(busy && via === 'guided' ? 'wizard.creating' : 'wizard.create')}</button>{error && via === 'guided' && <span role="alert">{error}</span>}</footer>
+      <footer><button type="button" className="byd-wizard-primary byd-primary" disabled={!hasCards || busy} onClick={() => void toEditor()}>{t(busy && via === 'guided' ? 'wizard.creating' : 'wizard.create')}</button>{error && via === 'guided' && <span role="alert">{error}</span>}</footer>
     </section>
   )
   // The handoff's body is said behind the first step's question mark (L36); the title stays.

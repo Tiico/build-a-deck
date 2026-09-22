@@ -100,7 +100,11 @@ export const svAccount = {
   'wizard.handoff.title': 'Wizarden är startpunkten',
   'wizard.handoff.body': 'Skapa några exempelkort här. Layout, hela leken och CSV-verktyg väntar i editorn.',
   'wizard.name': 'Spelets namn',
-  'wizard.name.placeholder': 'Skogens herrar',
+  // Exemplet står som exempel och inte i fältet (#416). En platshållare som lyder «Skogens
+  // herrar» läses som ett ifyllt värde, och då blir en väg framåt som inte svarar obegriplig.
+  'wizard.name.example': 'Till exempel «Skogens herrar».',
+  // Villkoret sägs en gång per skärm, vid fältet, och först när någon trycker (variant B).
+  'wizard.name.says': 'Spelet behöver ett namn först.',
   'wizard.players': 'Spelare',
   // Vägen förbi den guidade starten (L42): namnet och platserna räcker, resten görs i editorn.
   'wizard.blank.title': 'Utan guidad start',
