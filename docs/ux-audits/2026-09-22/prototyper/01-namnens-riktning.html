@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 01 — Vilken väg vänder platsnamnet? (#418)</title>
+<link rel="stylesheet" href="proto.css">
+<link rel="stylesheet" href="felt.css">
+<style>
+  main { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; padding: 12px 16px 16px; }
+  .ruta { min-width: 0; min-height: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+  .ruta > .byd-table-frame { width: 100%; height: 100%; }
+  .panel { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: var(--s4); display: grid; gap: var(--s3); align-content: start; overflow: auto; }
+  .panel h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .panel p { margin: 0; color: var(--quiet-2); font-size: 11.5px; line-height: 1.55; }
+  .rad { display: flex; flex-wrap: wrap; gap: 4px; }
+  .rad button { min-height: 30px; border: 1px solid var(--line); border-radius: 7px; padding: 0 10px; background: var(--sunk); color: var(--quiet-2); font: inherit; font-weight: 600; cursor: pointer; }
+  .rad button[aria-pressed='true'] { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .rad button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .dom { padding: 8px 10px; border-radius: 9px; font-size: 11.5px; line-height: 1.5; }
+  .dom[data-ok='ja'] { background: #16281d; border: 1px solid #2c5a3c; color: #a8e8c0; }
+  .dom[data-ok='nej'] { background: #2a1618; border: 1px solid #5f2f31; color: #ffb3ad; }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 11px; }
+  dt { color: var(--quiet); } dd { margin: 0; color: #e6ecfa; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="02-arken.html">Arken →</a>
+    <strong>Vilken väg vänder platsnamnet?</strong>
+    <span class="saved">#418 · beslutet är beställarens</span>
+    <span class="spacer"></span>
+    <div class="switch" id="variant">
+      <button type="button" data-v="nu" aria-pressed="true">Nu</button>
+      <button type="button" data-v="a">A · Läsriktning</button>
+      <button type="button" data-v="b">B · Per yta</button>
+      <button type="button" data-v="c">C · Kantband</button>
+    </div>
+  </header>
+  <div class="protorad">
+    <p id="text"></p>
+  </div>
+  <main>
+    <div class="ruta" id="ruta"></div>
+    <div class="panel">
+      <h2>Yta</h2>
+      <div class="rad" id="yta">
+        <button type="button" data-yta="bord">Bordsläge</button>
+        <button type="button" data-yta="distans" aria-pressed="true">Distans</button>
+        <button type="button" data-yta="editor">Editorns förhandsvisning</button>
+      </div>
+      <h2>Platser</h2>
+      <div class="rad" id="antal">
+        <button type="button" data-n="2">2</button>
+        <button type="button" data-n="4" aria-pressed="true">4</button>
+        <button type="button" data-n="6">6</button>
+        <button type="button" data-n="8">8</button>
+      </div>
+      <h2>Vem läser</h2>
+      <div class="rad" id="jag"></div>
+      <h2>Vad som mäts</h2>
+      <dl id="matt"></dl>
+      <div class="dom" id="dom"></div>
+      <p id="forklaring"></p>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+import { renderFelt, edgeOf, seatTurn, feltFor, rimRotation, SEAT_IDS, SEAT_NAMES } from './felt.js'
+
+const TEXT = {
+  nu: 'I dag. Platsnamnet bär sin egen kantvridning — den som vänder det mot sin ägare när filten ligger platt — och distansvyns vridning av filten läggs ovanpå. De två multipliceras i stället för att ta ut varandra.',
+  a: 'A · Läsriktning överallt. Kantvridningen tas bort helt, på varje yta. Platsnamnet står upprätt mot den som tittar, precis som zonnamnen redan gör. Bordsläget förlorar sitt bordskort.',
+  b: 'B · Bordskort där någon sitter, läsriktning där ingen gör det. Kantvridningen behålls bara i bordsläget, där flera sitter runt en liggande skärm. Distansvyn och editorns förhandsvisning har en betraktare, och där står varje namn upprätt.',
+  c: 'C · Namnet upprätt, ägarskapet i kanten. Namnet står alltid upprätt, på varje yta, men platsens egna 500 mm av filtens kant målas i platsens färg. Ägarskapet läses av var bandet ligger i stället för åt vilket håll texten pekar.',
+}
+
+const FORKLARING = {
+  nu: 'Ett av fyra namn går att läsa i distansvyn, och det är ens eget — utom på en sidoplats, där filten inte vrids alls (#77) och det upprätta namnet är den plats man inte sitter på.',
+  a: 'Billigast att bygga och enklast att förklara: en regel för all text på filten. Priset betalas i bordsläget, där fyra personer runt en liggande skärm får tre namn upp och ner eller på högkant — motsatsen till dagens fel.',
+  b: 'Ingen yta blir sämre. Priset är att `SeatName` måste veta vilken yta den ritas på, alltså en till förgrening i renderaren, och att samma bord ser olika ut beroende på vem som tittar.',
+  c: 'Löser också det bordsläget tappar i A: runt en liggande skärm säger bandet vems kant det är utan att någon text behöver ligga på högkant. Priset är en ny möbel på filten och mer färg på en yta som redan bär åtta platsfärger.',
+}
+
+const q = new URLSearchParams(location.search)
+let variant = q.get('v') ?? 'nu'
+let yta = q.get('yta') ?? 'distans'
+let antal = Number(q.get('n') ?? 4)
+let jag = Number(q.get('me') ?? 1)
+
+function rita() {
+  if (jag >= antal) jag = antal - 1
+  const mode = yta === 'editor' ? 'tv' : 'table'
+  const me = yta === 'distans' ? jag : null
+
+  document.querySelectorAll('#variant button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === variant)))
+  document.querySelectorAll('#yta button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.yta === yta)))
+  document.querySelectorAll('#antal button').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.n) === antal)))
+
+  const val = document.getElementById('jag')
+  val.textContent = ''
+  for (let i = 0; i < antal; i++) {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.dataset.me = String(i)
+    b.textContent = `${SEAT_IDS[i]} · ${SEAT_NAMES[SEAT_IDS[i]]}`
+    b.setAttribute('aria-pressed', String(me === i))
+    b.disabled = yta !== 'distans'
+    b.style.opacity = yta === 'distans' ? '1' : '0.4'
+    val.append(b)
+  }
+
+  document.getElementById('text').textContent = TEXT[variant]
+  document.getElementById('forklaring').textContent = FORKLARING[variant]
+
+  const ruta = document.getElementById('ruta')
+  const box = ruta.getBoundingClientRect()
+  const { rot } = renderFelt(ruta, { count: antal, mode, me, variant, box: { w: Math.round(box.width), h: Math.round(box.height) } })
+
+  // Vad som faktiskt står upprätt på skärmen: kantvridningen plus filtens, modulo 360.
+  const placeCard = variant === 'nu' ? true : variant === 'b' ? mode === 'table' && me === null : false
+  const skarm = (i) => {
+    const eget = placeCard ? rimRotation(edgeOf(i, antal)) : -rot
+    return (((eget + rot) % 360) + 360) % 360
+  }
+  const upp = Array.from({ length: antal }, (_, i) => skarm(i)).filter((d) => d === 0).length
+  const matt = document.getElementById('matt')
+  matt.textContent = ''
+  const rad = (k, v) => { const dt = document.createElement('dt'); dt.textContent = k; const dd = document.createElement('dd'); dd.textContent = v; matt.append(dt, dd) }
+  rad('Filten', `${feltFor(antal).w} × ${feltFor(antal).h} mm, vriden ${rot}°`)
+  rad('Namn upprätt', `${upp} av ${antal}`)
+  for (let i = 0; i < antal; i++) rad(`${SEAT_IDS[i]} · ${edgeOf(i, antal)}`, `${skarm(i)}°`)
+
+  const dom = document.getElementById('dom')
+  dom.dataset.ok = upp === antal ? 'ja' : 'nej'
+  dom.textContent = upp === antal
+    ? `Alla ${antal} namn står upprätt på skärmen.`
+    : `${antal - upp} av ${antal} namn står på högkant eller upp och ner på skärmen.`
+}
+
+for (const [id, satt] of [['variant', (b) => (variant = b.dataset.v)], ['yta', (b) => (yta = b.dataset.yta)], ['antal', (b) => (antal = Number(b.dataset.n))], ['jag', (b) => (jag = Number(b.dataset.me))]]) {
+  document.getElementById(id).addEventListener('click', (e) => {
+    const b = e.target.closest('button')
+    if (!b || b.disabled) return
+    satt(b)
+    rita()
+  })
+}
+addEventListener('resize', rita)
+rita()
+</script>
+</body>
+</html>

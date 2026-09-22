@@ -1,0 +1,80 @@
+/* Filtens utseende, kopierat ur packages/web/src/table/table.css så att prototypen läses i
+   produktens egna färger, radier och typsnittsvikter och inte i ett nytt tema.
+   Inget här importeras av appen. Bara det filten till #418 behöver är med. */
+
+.byd-table-frame { display: grid; place-items: center; position: relative; }
+.byd-table-frame, .byd-table, [data-table] { --byd-seat-ink: #0d0f14; --byd-felt-chalk: #f3e9d6; }
+
+.byd-table-frame[data-mode='table'] {
+  background: radial-gradient(ellipse at center, #2b2420 0%, #17120f 100%);
+  perspective: 1600px;
+  perspective-origin: 50% 30%;
+}
+.byd-table-frame[data-mode='table'] .byd-table-wood {
+  padding: 30px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #5a3b22, #3a2414);
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6), inset 0 2px 0 rgba(255, 255, 255, 0.08);
+  transform: rotateX(13deg);
+  transform-style: flat;
+}
+.byd-table-frame[data-mode='tv'] { background: #0f1218; }
+.byd-table-frame[data-mode='tv'] .byd-table-wood { padding: 0; }
+
+[data-table] {
+  position: relative;
+  border-radius: 16px;
+  background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26);
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.45);
+  color: #1c1c1c;
+  font: 600 11px/1.2 system-ui, sans-serif;
+  user-select: none;
+}
+.byd-table-frame[data-mode='tv'] [data-table] {
+  background: #151924;
+  border: 1px solid #262b3a;
+  box-shadow: none;
+}
+
+/* En räknarbricka (C4). */
+.byd-token {
+  position: absolute; border-radius: 50%; background: #f0b64a; color: #1c1c1c;
+  display: grid; place-items: center; align-content: center; line-height: 1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); font: 700 11px system-ui, sans-serif;
+}
+
+/* Zoner utanför golvet får en kontur och ett namn. */
+.byd-zone { position: absolute; box-sizing: border-box; border: 2px solid rgba(255, 255, 255, 0.18); border-radius: 10px; }
+.byd-zone > span {
+  position: absolute; white-space: nowrap;
+  font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: rgba(255, 255, 255, 0.45);
+}
+.byd-table-frame[data-mode='tv'] .byd-zone > span { font-size: 13px; letter-spacing: 1.5px; color: #7d8597; }
+
+/* Högar. */
+.byd-pile { position: absolute; box-sizing: border-box; border-radius: 6px; background: #33405a; border: 1px solid #1f2b4a; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45); }
+.byd-pile-count { position: absolute; left: 50%; top: calc(100% + 6px); white-space: nowrap; color: var(--byd-felt-chalk); font-size: 11px; letter-spacing: 0.5px; }
+.byd-pile-name::after { content: ' · '; }
+.byd-pile-n { font-weight: 600; }
+
+/* Händer: en solfjäder av baksidor vriden mot platsens kant. */
+.byd-hand { position: absolute; width: 0; height: 0; }
+.byd-hand > i {
+  position: absolute; box-sizing: border-box; border-radius: 6px; transform-origin: 50% 140%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  border: 2px solid #1f2b4a;
+  background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px);
+}
+
+/* Platsens namn. Vridningen skrivs av renderaren, eftersom det är den varianterna skiljer sig i. */
+.byd-seat-name {
+  position: absolute; padding: 3px 10px; border-radius: 999px;
+  background: var(--seat, #666); color: var(--byd-seat-ink);
+  font: 700 12px/15px system-ui, sans-serif; letter-spacing: 1px; white-space: nowrap;
+  z-index: 4;
+}
+.byd-seat-name[data-me] { box-shadow: 0 0 0 2px var(--byd-seat-ink); }
+
+/* Variant C: platsens egna 500 mm av kanten, målade i platsens färg. */
+.seat-band { position: absolute; background: var(--seat, #666); opacity: 0.85; border-radius: 3px; z-index: 0; }
+.seat-band[data-me] { opacity: 1; box-shadow: 0 0 0 2px var(--byd-seat-ink); }
