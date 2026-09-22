@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
-import { projectActivity } from '@byd/engine'
+import { project, projectActivity } from '@byd/engine'
 import type { Activity } from '@byd/protocol'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { SHUFFLE_MS, SHUFFLE_PULSE_MS, STILL, useShuffles } from '../src/table/shuffle.js'
@@ -14,13 +14,28 @@ import { TableClient } from '../src/client.js'
 import { TablePage } from '../src/table/TablePage.js'
 import { OnlinePage } from '../src/online/OnlinePage.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
-import { buildScene } from './scene.js'
-import { admit, asTable, createSession, roomOf, startServer, type Running } from './fixture.js'
+import { buildScene, registry, tableOf } from './scene.js'
+import { admit, asTable, createSession, roomOf, startServer, twoSeatSetup, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const tableCss = readFileSync(join(import.meta.dirname, '..', 'src/table/table.css'), 'utf8')
+
+const FACES = 'http://faces.test'
+
+// A deck that has been through the render farm: both faces of every card have a texture, and
+// `project` hands each seat the hashes it may have — a face-down card's back among them (#313).
+// The two tests about what the fan wears build their view this way rather than patching a hash
+// onto a snapshot, because what failed was the step from the projection to the felt, and a
+// snapshot made by hand is made in the shape of whatever the felt was already doing.
+const hashOf = (cardRef: string, face: string): string => `${face}${cardRef}`.repeat(64).slice(0, 64)
+const renderedDeck = () => ({
+  faces: Object.fromEntries(twoSeatSetup().components.map((c) => [c.cardRef, { front: hashOf(c.cardRef, 'front'), back: hashOf(c.cardRef, 'back') }])),
+})
+const srcsFor = (face: string): string[] => twoSeatSetup().components.map((c) => `${FACES}/faces/${hashOf(c.cardRef, face)}`)
+const backs = () => srcsFor('back')
+const fronts = () => srcsFor('front')
 
 // The scene's own log, and the same log with the draw pile shuffled once more by the table.
 function shuffled(): { before: Activity[]; after: Activity[]; again: Activity[] } {
@@ -158,6 +173,48 @@ describe('the fan on the felt (L35)', () => {
     // Nothing on the felt learned a face it did not know: every texture the fan shows was
     // already on the screen before the shuffle, and none of the fan's cards is a front.
     expect(document.querySelectorAll('[data-zone="draw"] [data-face="front"]')).toHaveLength(0)
+  })
+
+  it('the fan on a public pile wears the back its own cards wear, and never the stand-in weave (#326)', () => {
+    // A pile whose order everybody may see is projected as `order`, and such a zone carries no
+    // back of its own: there is nothing for it to say about a stack whose cards are handed out
+    // one by one, and a face-down one wears the back its own faces name (#14). Reading the fan's
+    // back off the zone alone, as this did, left the hidden draw pile fanning the deck's back and
+    // every other pile fanning the weave that belongs to no game (L17).
+    const table = tableOf(twoSeatSetup())
+    table.run(null, { v: 'draw', from: 'draw', to: 'discard', count: 3 })
+    const view = project(table.state(), registry, null, renderedDeck())
+    render(<TableRenderer view={view} mode="tv" scale={1} faces={FACES} shuffles={[{ pile: 'discard', seq: 12 }]} />)
+
+    const top = document.querySelector('[data-zone="discard"] .byd-pile-top')!
+    expect(top.getAttribute('data-face')).toBe('back')
+    const topSrc = top.querySelector('img')?.getAttribute('src') ?? null
+    expect(backs(), 'the deck has backs to be worn at all').not.toHaveLength(0)
+    expect(backs(), 'the pile draws one of the deck’s own backs before it is shuffled').toContain(topSrc)
+    expect(fanOf('discard')).toHaveLength(4)
+    for (const card of fanOf('discard')) expect(card.querySelector('img')?.getAttribute('src') ?? null).toBe(topSrc)
+    expect(document.querySelectorAll('[data-zone="discard"] [data-face="front"]')).toHaveLength(0)
+  })
+
+  it('fans the deck’s own back over a public pile whose cards lie face-up, and no front (#326)', () => {
+    // A discard everyone reads: its cards lie face-up and their fronts are on the screen. The fan
+    // is still four backs — that is what a stack being shuffled shows — so it wears the back the
+    // deck gives those very cards, which is public whichever way a card lies (#313), and no front
+    // is drawn during the fan that the shuffle would be telling anybody about.
+    const table = tableOf(twoSeatSetup())
+    table.run(null, { v: 'draw', from: 'draw', to: 'discard', count: 3 })
+    for (const id of [...table.state().zones['discard']!.order]) table.run(null, { v: 'flip', component: id, face: 'front' })
+    const view = project(table.state(), registry, null, renderedDeck())
+    render(<TableRenderer view={view} mode="tv" scale={1} faces={FACES} shuffles={[{ pile: 'discard', seq: 12 }]} />)
+
+    const top = document.querySelector('[data-zone="discard"] .byd-pile-top')!
+    expect(top.getAttribute('data-face')).toBe('front')
+    expect(fronts(), 'the pile shows one of the deck’s own fronts').toContain(top.querySelector('img')?.getAttribute('src') ?? null)
+    expect(fanOf('discard')).toHaveLength(4)
+    for (const card of fanOf('discard')) {
+      expect(card.getAttribute('data-face')).toBe('back')
+      expect(backs()).toContain(card.querySelector('img')?.getAttribute('src') ?? null)
+    }
   })
 
   it('does not fan a pile that is being dragged', () => {
