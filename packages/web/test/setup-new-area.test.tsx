@@ -1,13 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
 import { MAX_PLAYERS } from '@byd/server/doc'
-import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { atWidth } from './viewport.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
+import { addZone, bordTab, drawn, shares } from './bord-tab.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
@@ -19,12 +18,9 @@ vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 // monteras som den skeppas, ur ett riktigt projekt på en riktig server, ＋ Yta trycks som
 // formgivaren trycker den, och rutorna läses av de lådor editorn faktiskt ritar — ett
 // `[data-zone-handle]` per zon, en högs ruta dess kortkontur. Det är den enda läsning som svarar
-// på frågan issuet ställer; uppställningens egna tal säger bara vad koden tänkte.
-//
-// Rutorna läses i bildpunkter, men ingen bildpunkt pinnas: filten ritar varje zon genom samma
-// linjära avbildning från millimeter till bildpunkter, så två rutor delar bildpunkter precis när
-// de delar millimetrar. Måtten är därmed oberoende av vilken låda filten fick och av vilken
-// maskin provet körs på — det enda som avläses är om två rutor möts.
+// på frågan issuet ställer; uppställningens egna tal säger bara vad koden tänkte. Hur fliken
+// monteras och hur rutorna läses står i `bord-tab.tsx`, som `setup-new-pile.test.tsx` mäter med
+// också.
 
 let run: Running
 beforeEach(async () => {
@@ -34,98 +30,14 @@ afterEach(async () => {
   await run.stop()
 })
 
-const DESK = { w: 1280, h: 800 }
-// En låda åt filten att rita i. jsdom lägger ingenting ut, så renderaren får noll tillbaka när den
-// frågar lådan hur stor den är och hela filten faller ihop. Talen är av samma storleksordning som
-// den låda `felt-names.test.tsx` mäter upp i Chromium, men vilka som helst hade dugt: det som läses
-// är om två rutor möts, och det svaret är detsamma i varje skala.
-const FELT_BOX = { w: 660, h: 500 }
-
-type Box = { x: number; y: number; w: number; h: number }
-const shares = (a: Box, b: Box): boolean => Math.min(a.x + a.w, b.x + b.w) > Math.max(a.x, b.x) && Math.min(a.y + a.h, b.y + b.h) > Math.max(a.y, b.y)
-
-/** Varje zons ruta som fliken ritar den, i den ordning fliken ritar dem. */
-function drawn(): { id: string; box: Box }[] {
-  return [...document.querySelectorAll('[data-zone-handle]')].map((el) => {
-    const s = (el as HTMLElement).style
-    return { id: el.getAttribute('data-zone-handle')!, box: { x: parseFloat(s.left), y: parseFloat(s.top), w: parseFloat(s.width), h: parseFloat(s.height) } }
-  })
-}
-
-const handleFor = (id: string): Promise<HTMLElement> =>
-  waitFor(() => {
-    const el = document.querySelector(`[data-zone-handle="${id}"]`)
-    if (!el) throw new Error(`no handle for ${id} yet`)
-    return el as HTMLElement
-  })
-
-let projects = 0
-
-/**
- * Fliken **Bord** ur ett riktigt projekt på en riktig server, monterad som den skeppas.
- *
- * `seats` ställer upp bordet som issuet beskriver det — så många platser, en räknare, och varje
- * plats med både sin egen yta och sin räknarzon. `null` lämnar uppställningen som dokumentet
- * bär den.
- */
-async function bordTab(seats: number | null, doc: ProjectDoc = projectDoc()): Promise<() => void> {
-  const clientBox = (side: 'Width' | 'Height') =>
-    Object.getOwnPropertyDescriptor(HTMLElement.prototype, `client${side}`) ?? ({ get: () => 0, configurable: true } as PropertyDescriptor)
-  const before = { Width: clientBox('Width'), Height: clientBox('Height') }
-  const hadObserver = (globalThis as { ResizeObserver?: unknown }).ResizeObserver
-  for (const [side, size] of [['Width', FELT_BOX.w] as const, ['Height', FELT_BOX.h] as const])
-    Object.defineProperty(HTMLElement.prototype, `client${side}`, {
-      configurable: true,
-      get(this: HTMLElement) {
-        return this.classList.contains('byd-table-frame') ? size : 0
-      },
-    })
-  class Stub {
-    observe() {
-      return undefined
-    }
-    disconnect() {
-      return undefined
-    }
-  }
-  ;(globalThis as { ResizeObserver?: unknown }).ResizeObserver = Stub
-
-  const project = `p${++projects}`
-  await run.projects.create(project, doc)
-  atWidth(DESK.w)
-  history.replaceState(null, '', `/editor?project=${project}&server=${encodeURIComponent(run.http)}`)
-  const { unmount } = render(<EditorPage />)
-  await screen.findByText('Skogens herrar')
-  fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
-  if (seats !== null) {
-    fireEvent.click(screen.getByRole('button', { name: String(seats) }))
-    fireEvent.click(screen.getByRole('button', { name: /Räknare$/ }))
-    fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
-    fireEvent.click(screen.getByRole('button', { name: '＋ Räknarzon per plats' }))
-    await handleFor('counters:A')
-  }
-  return () => {
-    unmount()
-    Object.defineProperty(HTMLElement.prototype, 'clientWidth', before.Width)
-    Object.defineProperty(HTMLElement.prototype, 'clientHeight', before.Height)
-    if (hadObserver) (globalThis as { ResizeObserver?: unknown }).ResizeObserver = hadObserver
-    else delete (globalThis as { ResizeObserver?: unknown }).ResizeObserver
-  }
-}
-
 /** Trycker ＋ Yta och svarar med den nya zonens id — den fliken just valde. */
-async function addArea(n: number): Promise<string> {
-  fireEvent.click(screen.getByRole('button', { name: '＋ Yta' }))
-  const id = `yta-${n}`
-  await handleFor(id)
-  return id
-}
+const addArea = (n: number): Promise<string> => addZone('area', n)
 
 describe('en ny delad yta föds på ledig filt (#440)', () => {
   const seatCounts = Array.from({ length: MAX_PLAYERS - 1 }, (_, i) => i + 2)
 
   it.each(seatCounts)('lägger två ytor på var sin filt vid %i platser', async (seats) => {
-    const close = await bordTab(seats)
+    const close = await bordTab(run, seats)
     try {
       const first = await addArea(1)
       const second = await addArea(2)
@@ -159,11 +71,11 @@ describe('en filt utan ledig plats säger det (#440)', () => {
   }
 
   it('säger att filten är full i stället för att stapla tyst', async () => {
-    const close = await bordTab(null, covered())
+    const close = await bordTab(run, null, covered())
     try {
       const before = drawn().length
       fireEvent.click(screen.getByRole('button', { name: '＋ Yta' }))
-      const said = screen.getByText(/Ingen ledig filt/)
+      const said = screen.getByText(/Ingen ledig filt för en ny yta/)
       expect(said.getAttribute('role')).toBe('status')
       // Och inget lades: en yta som inte fick plats får inte ha hamnat någonstans ändå.
       expect(drawn().length).toBe(before)

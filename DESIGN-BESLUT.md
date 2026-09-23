@@ -1520,6 +1520,16 @@ Har filten ingen sådan ruta säger uppställningen det, där den säger allt an
 Vad formgivaren sedan gör med zonen är hennes: hon får lägga den var hon vill, K2:s överlapp inbegripet.
 Grinden är `recipe-geometry.test.ts` för regeln och `setup-new-area.test.tsx`, som läser zonernas rutor ur den byggda fliken vid varje platsantal 2–`MAX_PLAYERS`.
 
+Utvidgat 2026-09-22 (#443): en ny hög föds på ledig filt av samma regel.
+＋ Hög la varje hög på konstanten `point(0, 150)`, så ett andra tryck la den nya högen på millimetern ovanpå den förra.
+Felet var aldrig var den *första* högen hamnar — den krockar med ingenting vid något platsantal — utan att platsen var en konstant.
+Regeln är därför ytans, ord för ord, med kortryggen som storlek och den punkten som önskeplats: så ligger den första högen på ett färskt bord kvar där den alltid har legat, och inget recepbord ritas om.
+Två saker följer av att en hög är en punkt utan area i dokumentet och en kortrygg på filten.
+Det är kortryggen som ska ha plats, så svaret omvandlas tillbaka till den punkt dokumentet bär.
+Och kortryggen är 63 millimeter bred — ett udda tal kring en mittpunkt — så dess kanter faller på halva millimetrar så fort punkten är hel: högen söks därför i ett fönster som är kortryggen vuxen till jämna mått, 64 × 88 mm, och ställs i fönstrets mitt, så att punkten blir hel utan att någon avrundning skjuter kortryggen ut ur den ruta regeln just friade.
+Att filten är full är dessutom två olika påståenden för de två zonerna, eftersom en ruta på 300 × 120 mm och en kortrygg på 63 × 88 mm slutar få plats vid olika tillfällen, så högen säger det med egna ord på samma rad.
+Grinden är `recipe-geometry.test.ts` och `edits.test.ts` för regeln, och `setup-new-pile.test.tsx`, som läser zonernas rutor ur den byggda fliken vid varje platsantal 2–`MAX_PLAYERS`.
+
 ### K3. Flera kort på en gång: atomisk batch i kuvertet
 
 `Envelope` bär `intents: Intent[]`.

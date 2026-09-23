@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyRecipe, MAX_PLAYERS, NEW_AREA, newAreaSpot, openingSetup, type Geometry, type Setup } from '../src/recipe.js'
+import { applyRecipe, MAX_PLAYERS, NEW_AREA, newAreaSpot, newPileSpot, openingSetup, type Geometry, type Setup } from '../src/recipe.js'
 
 // The recipe's own zones, measured against each other at every seat count the table admits (K18).
 // K2 lets a designer overlap zones deliberately; nothing the recipe lays out is deliberate in that
@@ -239,5 +239,69 @@ describe('en ny delad yta föds på ledig filt (#440, K2)', () => {
     // En filt som är mindre än ytan säger samma sak, av samma skäl.
     const tiny: Setup = { ...setup, zones: setup.zones.map((z) => (z.id === setup.floor ? { ...z, geometry: { x: -100, y: -50, w: 200, h: 100, rot: 0 } } : z)) }
     expect(newAreaSpot(tiny)).toBeNull()
+  })
+})
+
+// Var en ny hög föds (#443). Panelens ＋ Hög la den på konstanten `point(0, 150)`, så ett andra
+// tryck la `hog-2` på millimetern ovanpå `hog-1`. Felet är inte var den första högen hamnar — den
+// krockar med ingenting vid något platsantal — utan att platsen är en konstant.
+//
+// Regeln är ytans, och samma funktion bakom den. Det som skiljer är att en hög är en punkt utan
+// area i dokumentet och en kortrygg på filten, så svaret måste omvandlas tillbaka till punkten.
+describe('en ny hög föds på ledig filt (#443, K2)', () => {
+  // Kortryggen kring en högs punkt: det den upptar på filten, och därmed det enda måttet «täcker
+  // de varandra» går att ställa på. Två punkter som inte är samma punkt säger ingenting.
+  const CARD = { w: 63, h: 88 }
+  const cardBack = (g: Geometry): Geometry => ({ x: g.x - CARD.w / 2, y: g.y - CARD.h / 2, ...CARD, rot: 0 })
+  const boxOf = (z: Setup['zones'][number]): Geometry => (z.kind === 'pile' ? cardBack(z.geometry) : z.geometry)
+  const holdsAndClears = (setup: Setup, at: Geometry) => ({
+    inside: holds(setup.zones.find((z) => z.id === setup.floor)!.geometry, cardBack(at)),
+    over: setup.zones.filter((z) => z.id !== setup.floor && sharesArea(boxOf(z), cardBack(at))).map((z) => z.id),
+  })
+  const withPile = (setup: Setup, id: string, at: Geometry): Setup => ({ ...setup, zones: [...setup.zones, { id, kind: 'pile', name: id, visibility: 'all', geometry: at }] })
+
+  it('lägger den där panelen alltid har lagt den, så länge den kortryggen är ledig', () => {
+    expect(newPileSpot(fullTable(2))).toEqual({ x: 0, y: 150, w: 0, h: 0, rot: 0 })
+  })
+
+  it('lägger den första på sin gamla punkt och den andra fri från den, vid varje platsantal bordet rymmer', () => {
+    for (let players = 2; players <= MAX_PLAYERS; players++) {
+      const setup = fullTable(players)
+      const first = newPileSpot(setup)
+      // Den första högen krockar med ingenting vid något platsantal, så inget recepbord ritas om.
+      expect({ players, at: first }).toEqual({ players, at: { x: 0, y: 150, w: 0, h: 0, rot: 0 } })
+      const second = newPileSpot(withPile(setup, 'hog-1', first!))
+      // Icke-vakuitet: det finns ett svar att pröva. `null` här vore «ingen ledig filt», och
+      // raderna nedan skulle då bli gröna av att ingenting mättes.
+      expect({ players, found: second !== null }).toEqual({ players, found: true })
+      expect({ players, ...holdsAndClears(withPile(setup, 'hog-1', first!), second!) }).toEqual({ players, inside: true, over: [] })
+      // Och punkten är hela millimetrar, som allt annat bordet bär. Kortryggen är 63 bred kring
+      // en mittpunkt, så en ruta ur en sökning i hela millimetrar skulle ge en halv — och att
+      // avrunda den hade skjutit kortryggen ut ur den ruta regeln just friade.
+      expect({ players, whole: [Number.isInteger(second!.x), Number.isInteger(second!.y)] }).toEqual({ players, whole: [true, true] })
+    }
+  })
+
+  // Önskeplatsen är precis där ＋ Yta lägger sin ruta, så en delad yta som redan står där är det
+  // första regeln måste vika undan för. En regel som bara såg andra högar hade lagt kortryggen
+  // mitt i ytan.
+  it('viker undan för en delad yta på önskeplatsen, och för leken', () => {
+    const setup = fullTable(2)
+    const under: Setup = { ...setup, zones: [...setup.zones, { id: 'yta-1', kind: 'area', name: 'Yta 1', visibility: 'all', geometry: newAreaSpot(setup)! }] }
+    const spot = newPileSpot(under)!
+    expect(holdsAndClears(under, spot)).toEqual({ inside: true, over: [] })
+    // Och en hög som redan står på önskeplatsen räknas som den kortrygg den ritas som.
+    const taken = withPile(setup, 'hog-0', { x: 0, y: 150, w: 0, h: 0, rot: 0 })
+    expect(holdsAndClears(taken, newPileSpot(taken)!)).toEqual({ inside: true, over: [] })
+  })
+
+  it('säger nej när filten inte har någon ledig kortrygg', () => {
+    const setup = fullTable(2)
+    const floor = setup.zones.find((z) => z.id === setup.floor)!.geometry
+    const covered: Setup = { ...setup, zones: [...setup.zones, { id: 'duk', kind: 'area', name: 'Duk', visibility: 'all', geometry: floor }] }
+    expect(newPileSpot(covered)).toBeNull()
+    // En filt som är mindre än ett kort säger samma sak, av samma skäl.
+    const tiny: Setup = { ...setup, zones: setup.zones.map((z) => (z.id === setup.floor ? { ...z, geometry: { x: -20, y: -20, w: 40, h: 40, rot: 0 } } : z)) }
+    expect(newPileSpot(tiny)).toBeNull()
   })
 })

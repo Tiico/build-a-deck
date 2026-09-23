@@ -3,7 +3,7 @@ import type { Element, FaceTemplate, Variant } from '@byd/template'
 import { showsWholePicture } from '@byd/protocol'
 import { AssetCrop, PictureName, ProjectFraming } from './projects.js'
 import type { Cell, Picture, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc } from './projects.js'
-import { applyRecipe, newAreaSpot, point, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Shortcut, type Zone } from './recipe.js'
+import { applyRecipe, newAreaSpot, newPileSpot, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Shortcut, type Zone } from './recipe.js'
 
 // An edit is a thing that happened to a project (D3). A project is structurally the same as a
 // table — shared state several people change at once, which belongs in the history — so it gets
@@ -408,12 +408,17 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       return { ...doc, setup: applyRecipe(doc.setup, intent.recipe, intent.words) }
     case 'addZone': {
       if (doc.setup.zones.some((z) => z.id === intent.id)) throw new Error(`zone ${intent.id} already exists`)
-      // En ny delad yta föds på ledig filt (#440). Var det är är uppställningens svar och inte en
-      // konstant här: `newAreaSpot` äger regeln, och att den kan säga nej är en del av den — en
-      // filt utan plats ska säga det i stället för att stapla tyst. Panelen frågar med samma
-      // funktion innan den trycker, så formgivaren får orden och aldrig det här kastet.
+      // En ny zon föds på ledig filt (#440 för ytan, #443 för högen). Var det är är
+      // uppställningens svar och inte en konstant här: `newAreaSpot` och `newPileSpot` äger
+      // regeln, och att den kan säga nej är en del av den — en filt utan plats ska säga det i
+      // stället för att stapla tyst. Panelen frågar med samma funktion innan den trycker, så
+      // formgivaren får orden och aldrig det här kastet.
       const made = (): Zone => {
-        if (intent.kind === 'pile') return { id: intent.id, kind: 'pile', name: intent.name, visibility: 'all', geometry: point(0, 150) }
+        if (intent.kind === 'pile') {
+          const spot = newPileSpot(doc.setup)
+          if (spot === null) throw new Error('no free felt for a new pile; move or remove a zone first')
+          return { id: intent.id, kind: 'pile', name: intent.name, visibility: 'all', geometry: spot }
+        }
         const spot = newAreaSpot(doc.setup)
         if (spot === null) throw new Error('no free felt for a new area; move or remove a zone first')
         return { id: intent.id, kind: 'area', name: intent.name, visibility: 'all', geometry: spot }

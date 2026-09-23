@@ -351,6 +351,40 @@ export function freeSpot(setup: Setup, want: { w: number; h: number }, wish: { x
 /** Rutan en ny delad yta föds i, eller `null` när filten inte har någon ledig. */
 export const newAreaSpot = (setup: Setup): Geometry | null => freeSpot(setup, NEW_AREA, NEW_AREA_WISH)
 
+// Var en ny hög föds (#443, K2, B5).
+//
+// Samma regel som ytans, och samma funktion bakom den: önskeplatsen om den är ledig, annars den
+// lediga ruta som ligger närmast den. Önskeplatsen är punkten ＋ Hög alltid har lagt högen på, så
+// den första högen på ett färskt bord hamnar där den alltid har hamnat — den krockar med
+// ingenting, vid varje platsantal bordet rymmer. Felet var aldrig var den första högen hamnar,
+// utan att platsen var en konstant och att varje hög därefter föddes ovanpå den förra.
+//
+// Två saker skiljer högen från ytan. Den ena är att en hög i dokumentet är en punkt utan area och
+// på filten är en kortrygg: det är kortryggen som ska ha plats, så svaret måste omvandlas tillbaka
+// till punkten dokumentet bär.
+//
+// Den andra är att kortryggen är 63 millimeter bred — ett udda tal kring en mittpunkt — så dess
+// kanter faller på halva millimetrar så fort punkten är hel. `freeSpot` söker i hela millimetrar,
+// och en ruta därifrån skulle därmed ge en punkt på en halv millimeter; att avrunda den punkten
+// skulle skjuta kortryggen en halv millimeter åt sidan, ut ur den ruta regeln just har friat, och
+// den halva millimetern är precis vad kriteriet «inte en delad millimeter» handlar om. Högen söks
+// därför i ett fönster som är kortryggen vuxen till jämna mått, och ställs i fönstrets mitt: en
+// jämn ruta med ett helt hörn har en hel mittpunkt, och kortryggen står med en halv millimeter
+// till godo på var sida inne i en ruta som redan är ledig. Ingen avrundning behövs, och ingenting
+// flyttar sig. Priset är den millimetern: en glipa på exakt 63 millimeter räknas inte som ledig,
+// fastän kortryggen hade rymts i den på nollmarginalen. Det är rätt pris — en glipa så trång är
+// ingen plats någon hade valt åt en ny hög, och hela millimetrar är vad bordet bär i övrigt.
+const NEW_PILE_WISH = { x: 0, y: 150 }
+const evenMm = (mm: number): number => 2 * Math.ceil(mm / 2)
+const PILE_WINDOW = { w: evenMm(CARD.w), h: evenMm(CARD.h) }
+
+/** Punkten en ny hög föds på, eller `null` när filten inte har någon ledig kortrygg. */
+export function newPileSpot(setup: Setup): Geometry | null {
+  const half = { x: PILE_WINDOW.w / 2, y: PILE_WINDOW.h / 2 }
+  const spot = freeSpot(setup, PILE_WINDOW, { x: NEW_PILE_WISH.x - half.x, y: NEW_PILE_WISH.y - half.y })
+  return spot === null ? null : point(spot.x + half.x, spot.y + half.y)
+}
+
 // Where a seat's chips lie inside their own zone, in the zone's own millimetres (C4, #89).
 //
 // Each chip stands in the middle of its slot and in the middle of the zone's depth, and that
