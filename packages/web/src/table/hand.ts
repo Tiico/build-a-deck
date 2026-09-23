@@ -33,6 +33,38 @@ export function edgeRotation(hand: ZoneView, floor: ZoneView): number {
   return dy > 0 ? 0 : 180
 }
 
+// How thick the band along a seat's own edge of the felt is drawn, in table millimetres (#444).
+// A band and not a list: it has to be read across a room on a television whose felt is height
+// bound (K9), and it has to leave the fan's own cards the room they already have.
+export const SEAT_BAND_MM = 16
+
+// The band that lights while a card is on its way into this hand (#444). It lies on the rim side
+// of the hand's own strip, along the whole of it — the seat's own 500 mm of the edge (K18).
+//
+// The strip and not the floor's edge, for the same reason `edgeRotation` asks about the zone and
+// not about the seat: where a hand lies is the zone's to say, and a band measured off the floor
+// would jump to the rim the day a recipe puts a hand anywhere else. Where a hand does hug the rim,
+// which is every table the wizard lays out, the two are the same millimetres.
+//
+// It is never deeper than the strip it belongs to. A hand is 60 mm deep (K18) and the band is 16,
+// so this only ever binds on a strip somebody has drawn shallower than the band — and a band that
+// reached past its own strip would be a mark on the neighbour's felt.
+export function handBand(hand: ZoneView, floor: ZoneView): Rect {
+  const g = hand.geometry
+  const across = Math.min(SEAT_BAND_MM, g.h)
+  const along = Math.min(SEAT_BAND_MM, g.w)
+  switch (edgeRotation(hand, floor)) {
+    case 0:
+      return { x: g.x, y: g.y + g.h - across, w: g.w, h: across }
+    case 180:
+      return { x: g.x, y: g.y, w: g.w, h: across }
+    case -90:
+      return { x: g.x + g.w - along, y: g.y, w: along, h: g.h }
+    default:
+      return { x: g.x, y: g.y, w: along, h: g.h }
+  }
+}
+
 // How far a hand's fan is turned: toward its own edge in table mode, not at all on a TV, where
 // every fan faces the viewer (C5). The fan is drawn by this, measured by it (`handExtent`) and
 // hit-tested by it (`dropAt`), so it is asked once, here.

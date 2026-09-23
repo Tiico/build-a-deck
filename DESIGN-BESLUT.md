@@ -2692,6 +2692,54 @@ Ett uppvänt bottenkort är publikt som ett uppvänt toppkort (K15): zonvyn namn
 
 Grindarna: `packages/engine/test/bottom-card.test.ts` (blandningen, uppspelningen, återföringen, sista draget och projektionen), `packages/server/test/setup-fill.test.ts` (bottenkortet sist i högen med sin sida), `packages/server/test/wire.test.ts` (råa frames), `packages/web/test/table-renderer.test.tsx` (kanten, det ensamma kortet, den tomma högen och inspektionen) och `packages/web/test/setup-editor.test.tsx` (valet och att det bevaras).
 
+### K24. Filten säger när ett kort är på väg in i en hand, och bara då (prototypat 2026-09-22, byggt 2026-09-23, #444)
+
+Ett släpp i en hand är det enda släppet på filten som tar bort information ur allas syn.
+En area eller en hög lägger kortet där alla ser det, och en felplacering rättas genom att dra igen; ett kort som hamnar i en hand är borta för alla utom ägaren, och det enda som säger att det hänt är att ett kort försvann.
+Samtidigt är handen det svåraste målet att sikta på: det som tar emot är den ritade fläkten (K2, reviderat #65), som är 75 mm djup på en 60 mm remsa och hänger ut förbi filtkanten över träet.
+Filten sa ingenting om något av det.
+
+Medan ett kort bärs över en hands fläkt säger filten två saker, och inget mer.
+
+**Kortet vänder ryggen till.**
+Det burna kortet ritas som det kort det är på väg att bli: nedvänt, i sitt eget mått och med sitt eget lyft.
+Ingenting läggs till på filten — det som visas är det som ska hända, att ansiktet lämnar bordet.
+Det ritas genom att kortet lämnas vidare med `cardRef: null` och inte genom ett utseende av sitt eget, så lekens egen baksida, ersättaren under den och ordet på kortet följer med utan en andra kodväg.
+En bricka har inget ansikte att vända och vänder inget (C4); en högs topp gör det, eftersom den är det vanligaste draget på en filt.
+
+**Platsen tänds.**
+Platsens egna 500 mm av kanten (K18) ritas som ett 16 mm band i platsens färg, dess namnbricka får en ring, och antalsbrickan räknar upp: `5 → 6`.
+Kanten och inte fläkten, och det är mätt och inte tyckt: fläkten ligger under det kort man bär just vid den kant man siktar mot, så en ram runt fläkten syns i ögonvrån och inte där blicken är.
+Kanten är den enda ytan kring en hand som kortet aldrig täcker.
+
+Att det blev två och inte en avgjordes av prototypen.
+Ensamt försvinner ett nedvänt kort in i fläkten av baksidor det ligger över, och ett kort som redan låg nedvänt ändrar sig inte alls; ensamt säger bandet vems handen är men inte att kortet blir dolt.
+De svarar på var sin fråga — vad som händer med kortet, och vem som får det — och priset, två rörelser i stället för en, är uttryckligen accepterat.
+
+Ett förkastat förslag: en ram i platsens färg runt hela `handExtent`.
+Det är det enda förslag som visar den träffyta som i dag är större än den ser ut, och det är skälet att det prövades — men det ligger till stor del under kortet man bär, det är litet på en TV, och vid en fälld hand lyser det runt tom filt.
+Ett andra: att låta fläkten öppna en lucka där kortet hamnar. Det säger exakt var, men det syns inte på håll och en fälld hand har ingen fläkt att öppna.
+
+**Den fällda handen får samma besked.**
+I distansvyns spaltläge är den egna handen fälld till sitt antal och ritar ingen fläkt (#77), medan `dropAt` inte fälls: där tog en osynlig fläkt emot, vilket är precis vad K2:s «bilden är sanningen» förbjuder.
+Bandet vid kanten och det uppräknade antalet gör ytan synlig i det ögonblick den används.
+Alternativet — att en fälld hand slutar ta emot — avvisades: det hade tagit bort det enda sättet att lägga ett kort i sin egen hand från filten i spaltläget.
+
+**Bandet är två band.**
+Platsfärgerna är gjorda för mörka grunder (L11) och läser 4,4:1 till 7,7:1 mot TV:ns filt, men bordslägets filt är grön: vid kanten mitt för en plats står gradienten i `#1f4a30`, och där faller den lila platsen till 2,53:1.
+Bandet bär därför en hårfin linje i filtens egen krita, som läser på varje grön ton, medan färgen läser på det mörka — minst en av de två bär 3:1 var bandet än hamnar, precis som tangentbordets fokusring (#1, #2).
+Antalsbrickan behåller sin mörka platta och sin krita och byter bara siffra: en bricka i platsens färg hade haft samma problem som bandet och löst det en andra gång.
+
+Frågan ställs till `dropIntents` självt och inte till punkten en gång till (`handBound` i `drop.ts`).
+En hands fläkt har tre regler lagrade över sig — den ritade fläkten tar emot, ett löst kort under pekaren staplar först, en hel hög kommer aldrig in i en hand — och en andra läsning som härledde dem på nytt är en andra läsning som kan glida.
+Det filten lovar medan kortet bärs och det loggen får när det släpps är därmed samma mening.
+
+Markeringen finns bara medan något bärs: den försvinner när pekaren lämnar fläkten, när kortet släpps och när pekaren avbryts, och en skärm som bara visar bordet ritar den aldrig.
+Ingenting av den står kvar i vilans layout.
+Detta är ingen markering i K14:s mening — det som K14 säger att filten inte har är en *markering av utvalda saker*, som är någons och ingens på ett delat bord. Det här är ett besked om en gest som pågår, och det upphör när gesten gör det.
+
+Grindarna: `packages/web/test/into-hand.test.ts` (vilken hand ett drag landar i, för löst kort, flera kort, högens topp och hel hög; bandets rektangel vid varje kant och på en remsa grundare än bandet), `packages/web/test/felt-into-hand.test.tsx` (det riktiga draget på den riktiga renderaren: ryggen, bandet, uppräkningen, den fällda handen, och att allt tas tillbaka vid utgång, släpp och avbrott) och `packages/web/test/seat-contrast.test.ts` (bandets två band mot varje filt bordet ritas i, med en icke-vakuitetsprövning som säger att färgen ensam inte räckte).
+
 ---
 
 ## L. Editorn (grillad 2026-09-06)

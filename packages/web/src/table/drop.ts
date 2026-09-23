@@ -164,6 +164,28 @@ export function dropIntents(view: Snapshot, d: Drag, mode: TableMode): Intent[] 
   return rest.map((r): Intent => ({ v: 'move', component: r.id, to: dest.zone, x: r.x + s.x, y: r.y + s.y }))
 }
 
+// Which hand a live drag would land in, and how many cards it would put there — or nothing, where
+// it would land anywhere else (#444).
+//
+// Asked of `dropIntents` and not of the point a second time. A hand's fan is a target with three
+// rules layered over it — the drawn fan receives (K2, #65), a loose card under the pointer stacks
+// first (K1), a whole pile never enters a hand — and a second reading that re-derived them would
+// be a second reading that can drift. What the felt promises while the card is carried and what
+// the log gets when it is let go are then the same sentence, or they are nothing.
+export type Bound = { zone: string; cards: number }
+export function handBound(view: Snapshot, d: Drag, mode: TableMode): Bound | null {
+  const hands = new Set(view.zones.filter((z) => z.kind === 'hand').map((z) => z.id))
+  let zone: string | null = null
+  let cards = 0
+  for (const i of dropIntents(view, d, mode)) {
+    const to = i.v === 'move' || i.v === 'split' ? i.to : undefined
+    if (to === undefined || !hands.has(to)) continue
+    zone = to
+    cards += 1
+  }
+  return zone === null ? null : { zone, cards }
+}
+
 // The shift that keeps a box on the felt once it has landed on the floor, and none anywhere else
 // (#66). The box is in the zone's own coordinates, which is how a `move` names a place; a zone
 // that is not the floor keeps what it is given, since the felt is the floor's edge and no other's.
