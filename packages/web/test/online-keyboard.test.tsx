@@ -54,7 +54,9 @@ async function online(held = 2, room: Size = LANDSCAPE) {
 }
 
 describe('the distance view is played with the same model as the felt and the phone (#2)', () => {
-  it('makes the fan real controls and plays a card to a named place with a coordinate of its own', async () => {
+  // The point is the floor's own answer (L47, #449): one card already lies there, so this one is
+  // fanned one step along and centred across the 600 mm deep felt, on top of what is there.
+  it('makes the fan real controls and plays a card to a named place with the point that place gives it', async () => {
     const { id, table } = await online()
     const user = userEvent.setup()
     expect(screen.getByRole('button', { name: 'dragon, i min hand. Enter öppnar handlingar.' })).toBeTruthy()
@@ -66,7 +68,7 @@ describe('the distance view is played with the same model as the felt and the ph
     await user.click(within(panel).getByRole('button', { name: /^Bordet/ }))
     await waitFor(async () =>
       expect((await run.store.read(id)).slice(-2).map((l) => l.intent)).toEqual([
-        { v: 'move', component: 'c0', to: 'table', x: 91, y: 14 },
+        { v: 'move', component: 'c0', to: 'table', x: 26, y: 256, index: 1 },
         { v: 'flip', component: 'c0', face: 'front' },
       ]),
     )

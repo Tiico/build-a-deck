@@ -1,7 +1,8 @@
 import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import { translate, type Key, type T } from '../i18n/index.js'
 import { isCounter, standIn } from '../components.js'
-import { CARD_MM, besidePile, type DragTarget } from './drop.js'
+import { besidePile, type DragTarget } from './drop.js'
+import { laidIn } from './lay.js'
 import { handName } from './handName.js'
 import { compileAction } from './actions.js'
 import type { Shortcut } from './ShortcutHelp.js'
@@ -268,19 +269,15 @@ export function placesFor(view: Snapshot, moving: ReadonlySet<string>, sourceZon
 }
 
 // ================================================================================================
-// Where a keyboard's card actually lands. The protocol wants a point, and a keyboard has none,
-// so the client works one out: the next free slot in a row inside the zone, relative to it (K2).
-// Two cards played from a keyboard therefore never land on the same millimetre and cover each
-// other. This is the prototype's guess, not a product decision — see the open question in I.
-export function slotIn(view: Snapshot, zone: string): { x: number; y: number } {
-  const z = view.zones.find((x) => x.id === zone)
-  const held = view.components.filter((c) => c.zone === zone)
-  const perRow = z ? Math.max(1, Math.floor(z.geometry.w / (CARD_MM.w + SLOT_GAP))) : 6
-  const i = held.length
-  return { x: SLOT_GAP + (i % perRow) * (CARD_MM.w + SLOT_GAP), y: SLOT_GAP + Math.floor(i / perRow) * (CARD_MM.h + SLOT_GAP) }
-}
-
-const SLOT_GAP = 14
+// Where a keyboard's card actually lands. The protocol wants a point, and a keyboard has none, so
+// the area is asked for one (L47) — the same question the phone asks it, answered once in
+// `lay.ts`, so that two ways into one area cannot give two answers.
+//
+// What stood here was `slotIn`: the next free slot in a row, worked out from the zone's width, and
+// it said of itself that it was the prototype's guess and not a product decision. It was measured
+// broken in #449: the first card lay on `y = 14` in a 100 mm deep area with an 88 mm tall card —
+// two millimetres outside with a single card — and of ten cards, six lay off the felt altogether
+// and four on a hand. Nothing drew them back; `keptOnFelt` only holds what is dropped on the floor.
 
 // The envelope one row of "Flytta till" sends. Never a new verb: a card goes with `move`, onto
 // another card with `stack`, the top of a pile with `split` or `stack`, a whole pile with
@@ -307,8 +304,8 @@ export function intentsForPlace(view: Snapshot, place: Place, thing: Thing, movi
   // `flippable: false`, and the flip sent with the move had the whole envelope refused.
   const isPublic = z?.kind === 'area' && z.mode === 'order' && thing.kind !== 'counter'
   return moving.flatMap((id, i): Intent[] => {
-    const slot = z?.kind === 'area' ? slotIn(view, place.zone) : null
-    const to: Intent = { v: 'move', component: id, to: place.zone, ...(slot ? { x: slot.x + i * (CARD_MM.w + SLOT_GAP), y: slot.y } : {}) }
+    const laid = laidIn(view, place.zone, i)
+    const to: Intent = { v: 'move', component: id, to: place.zone, ...(laid ? { x: laid.x, y: laid.y, index: laid.index } : {}) }
     return isPublic ? [to, { v: 'flip', component: id, face: 'front' }] : [to]
   })
 }

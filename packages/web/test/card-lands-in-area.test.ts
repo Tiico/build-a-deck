@@ -6,6 +6,7 @@ import type { Rect } from '../src/table/camera.js'
 import { CARD_MM, absoluteOf } from '../src/table/drop.js'
 import { FAN_MAX, HAND_STEP_MM } from '../src/table/hand.js'
 import { playIntents } from '../src/player/play.js'
+import { intentsForPlace, placesFor, type Thing } from '../src/table/keyboard.js'
 import { tableOf } from './scene.js'
 
 // Var ett kort hamnar i en yta när den som spelar inte har pekat (L47, #449).
@@ -101,5 +102,46 @@ describe('ett kort som spelas till en yta utan att någon pekar (L47, #449)', ()
     // Det tredje kortet Nina spelade är `kort-3`, och det ska stå sist i zonens ordning.
     const newest = view.components.find((c) => c.id === order[order.length - 1])
     expect(newest?.cardRef).toBe('kort-3')
+  })
+})
+
+// Två vägar in i samma yta får inte ge två svar (L47, #449).
+//
+// Tangentbordets väg hade ett eget svar — `slotIn`, en rad uträknad ur zonens bredd, som bar
+// raden «this is the prototype's guess, not a product decision» — och det var mätt trasigt: första
+// kortet låg på `y = 14` i en 100 mm djup yta med ett 88 mm högt kort, alltså 2 mm utanför redan
+// med ett enda kort. Ingenting drog tillbaka det: `keptOnFelt` håller bara kvar det som släpps på
+// golvet.
+describe('samma yta nådd med tangentbordet (L47, #449)', () => {
+  // Ett bord där Ninas enda kort ligger löst på filten, redo att adresseras till ytan framför
+  // henne från tangentbordet.
+  const onTheFelt = () => {
+    const table = tableOf(felt(4, 1))
+    table.run(null, { v: 'seat.claim', seat: 'A', name: 'Nina' })
+    const first = table.view('A').components.find((c) => c.zone === 'hand:A')
+    if (!first) throw new Error('inget kort på Ninas hand')
+    table.run('A', { v: 'move', component: first.id, to: 'table', x: -100, y: -100 })
+    const view = table.view('A')
+    const card = view.components.find((c) => c.id === first.id)
+    if (!card) throw new Error('kortet försvann från filten')
+    const thing: Thing = { key: `card:${card.id}`, kind: 'card', id: card.id, name: 'kort-1', zone: card.zone }
+    const place = placesFor(view, new Set([card.id]), card.zone).find((p) => p.zone === 'mine:A' && p.kind === 'area')
+    if (!place) throw new Error('ytan framför Nina går inte att adressera')
+    return { table, view, card, thing, place }
+  }
+
+  it('säger samma sak som telefonen om samma kort i samma yta', () => {
+    const { view, card, thing, place } = onTheFelt()
+    expect(intentsForPlace(view, place, thing, [card.id])).toEqual(playIntents(view, [card], 'mine:A'))
+  })
+
+  it('lägger första kortet helt innanför ytan, vilket raden aldrig gjorde', () => {
+    const { table, view, card, thing, place } = onTheFelt()
+    table.run('A', ...intentsForPlace(view, place, thing, [card.id]))
+    const after = table.view('A')
+    const zone = zoneOf(after, 'mine:A')
+    const laid = boxes(after, 'mine:A')
+    expect(laid).toHaveLength(1)
+    expect(laid.filter((box) => !inside(box, zone.geometry))).toEqual([])
   })
 })
