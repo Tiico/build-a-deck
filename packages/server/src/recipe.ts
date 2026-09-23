@@ -104,6 +104,9 @@ export function seatZones(setup: Setup, role: SeatRole, name: string, shortcut?:
   return setup.seats.flatMap((seat, i) => (setup.zones.some((z) => z.id === `${role}:${seat}`) ? [] : [seatZone(role, seat, i, setup.seats.length, counters, name, shortcut)]))
 }
 
+// Genvägens `at` är en högs fråga och bara en högs (L47): en yta lägger själv ut kortet den fått
+// utan punkt, och lägger det nyaste överst, så vad som än står här om ordningen gäller inte en
+// yta. Arket har aldrig visat talet för något annat än en hög heller — en yta säger «var du vill».
 const inFrontZone = (seat: string, i: number, count: number, counters: number, words: RecipeWords): Zone => seatZone('mine', seat, i, count, counters, words.mine, { label: words.mineShortcut, at: 'top' })
 const countersZone = (seat: string, i: number, count: number, counters: number, words: RecipeWords): Zone => seatZone('counters', seat, i, count, counters, words.counters)
 
