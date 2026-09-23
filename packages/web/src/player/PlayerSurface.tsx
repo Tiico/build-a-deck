@@ -173,7 +173,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
       <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
       <main className="byd-phone-main">
         <h1>{t('player.hand.title')}</h1>
-        <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} pilesOnly />
+        <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} zones="piles" history={false} />
         <HandStrip view={view} selected={new Set(chosenCards.map(c => c.id))} faces={faces} onTap={card => { setChosenId(card.id); marks.clear() }} onHold={toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} />
         {hand.length > 0 && <p className="byd-hint">{marks.selected.size > 0 ? t(marks.selected.size === 1 ? 'player.hint.selected.one' : 'player.hint.selected.other', { n: marks.selected.size }) : t('player.hint')}</p>}
         <HandActions refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} view={view} cards={chosenCards} pending={quickPending} onRead={setInspect} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} />
@@ -183,6 +183,17 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           <MineStrip refusal={quick} refusedCard={quickSource} refusedZone={quickTarget} onTake={card => void playDirect([card], `hand:${seat}`, 'top')} heading={false} view={view} faces={faces} onOpen={setInspect} pending={quickPending} onPlay={(card, zone, at) => void playDirect([card], zone, at)} />
           {quickSource !== 'hand' && <Refusal handle={quick} />}
         </details>
+        {/* The full table, folded out when it is asked for (C4). The row above the hand is the
+            piles, because the hand comes first (#156) and the piles are what a hand acts on; a
+            row that grew by a tile per seat would push the hand towards the fold at eight seats.
+            The whole table lives down here instead, beside the two folds that were already here,
+            and it costs one closed row of height whatever the table's size.
+            It is here, and not only on the felt, because the area in front of a seat is public
+            since #414: the cards in front of the others are in this phone's own frames, and a
+            screen that hid what its socket had been sent is the state the repo's rule about
+            hidden information exists to keep out. It reads and never acts — the draw stays in the
+            row above, where a thumb already knows to find it. */}
+        <details className="byd-phone-table" data-phone-table><summary>{t('player.table.title')}</summary><TableSummary view={view} activity={activity} history={false} /></details>
         <details className="byd-phone-history"><summary>{t('play.latest')}</summary><RecentActivity view={view} activity={activity} /></details>
       </main>
       {/* The card held up. A card that lies in front of you carries its verbs here, and a verb

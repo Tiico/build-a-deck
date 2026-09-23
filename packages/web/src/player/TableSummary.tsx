@@ -1,12 +1,18 @@
 import type { Activity, Snapshot } from '@byd/protocol'
 import { describeActivity } from '../table/describe.js'
-import { targetsOf } from './PlaySheet.js'
+import { overviewOf } from './PlaySheet.js'
 import { Refusal, type RefusalHandle } from '../status/Refusal.js'
 import { useT, type T } from '../i18n/index.js'
 
 export type TableSummaryProps = {
   view: Snapshot
-  pilesOnly?: boolean
+  // Which zones are tiled. `piles` is the row the phone puts above the hand — the hand comes
+  // first (#156, #200), and the piles are what a hand acts on. `all` is the full table, every
+  // zone this reader may look into, which is what C4 means by folding the whole table out.
+  zones?: 'piles' | 'all'
+  // Whether the summary carries the recent lines itself. The phone keeps them in a fold of their
+  // own, so the two were never meant to be the same question as which zones are shown.
+  history?: boolean
   activity: readonly Activity[]
   // Draw the top card of that pile into this seat's hand (#79). Absent where nobody can: the
   // overview is a picture of the table as much as it is a way to act on it.
@@ -16,7 +22,7 @@ export type TableSummaryProps = {
   refusedZone?: string | null
 }
 
-type ZoneTile = ReturnType<typeof targetsOf>[number]
+type ZoneTile = ReturnType<typeof overviewOf>[number]
 
 // Whether this reader can take the top card of that tile into a hand. The same terms the felt's
 // ring keeps for the same verb (K14): a pile with a card in it, and a seat to draw into. The
@@ -24,14 +30,16 @@ type ZoneTile = ReturnType<typeof targetsOf>[number]
 // leaves the server — so the verb is offered per pile, exactly as the ring offers it.
 const drawable = (view: Snapshot, tile: ZoneTile) => tile.kind === 'pile' && tile.count > 0 && view.seat !== null
 
-// The table folded up small (C4): every public zone with its count, and what just happened.
-export function TableSummary({ view, activity, onDraw, refusal, refusedZone = null, pilesOnly = false }: TableSummaryProps) {
+// The table folded up small (C4): every zone this reader may look into, with its count, and what
+// just happened. `overviewOf` and not `targetsOf` since #414 — an area in front of another seat
+// is public and is read here, and it is still not somewhere a card of this reader's may go.
+export function TableSummary({ view, activity, onDraw, refusal, refusedZone = null, zones = 'all', history = true }: TableSummaryProps) {
   const t = useT()
   return (
     <div className="byd-summary">
       <div className="byd-summary-zones">
-        {targetsOf(view, t)
-          .filter((zone) => zone.id !== view.floor && (!pilesOnly || zone.kind === 'pile'))
+        {overviewOf(view)
+          .filter((zone) => zones === 'all' || zone.kind === 'pile')
           .map((zone) =>
             onDraw && drawable(view, zone) ? (
               // The tile is the control, not a control inside it (UX-37, #82): the verb is read
@@ -56,7 +64,7 @@ export function TableSummary({ view, activity, onDraw, refusal, refusedZone = nu
           )}
       </div>
       {refusal && <Refusal handle={refusal} />}
-      {!pilesOnly && <><h2>{t('play.latest')}</h2><RecentActivity view={view} activity={activity} /></>}
+      {history && <><h2>{t('play.latest')}</h2><RecentActivity view={view} activity={activity} /></>}
     </div>
   )
 }

@@ -25,6 +25,17 @@ function wizardTable() {
   return table
 }
 
+// The same table with the area in front of B taken back by the designer, which is the one way an
+// area is private again (#414, decision B of 2026-09-22).
+function hiddenAreaTable() {
+  const setup = seatSetup()
+  const table = tableOf({ ...setup, zones: setup.zones.map((z) => (z.id === 'mine:B' ? { ...z, visibility: 'owner' as const } : z)) })
+  table.run(null, { v: 'seat.claim', seat: 'A', name: 'Ada' })
+  table.run(null, { v: 'seat.claim', seat: 'B', name: 'Bo' })
+  table.run(null, { v: 'draw', from: 'draw', to: 'mine:B', count: 2 })
+  return table
+}
+
 // The same table with one pile emptied out onto the floor, which is where a pile that has been
 // played all the way out ends up anyway.
 function emptied(v: Snapshot, pile: string): Snapshot {
@@ -38,7 +49,7 @@ describe('the overview offers the draw per pile (C4, K14, #79)', () => {
     render(<TableSummary view={table.view('A')} activity={[]} onDraw={noop} />)
     // The wizard's table: the draw pile and the discard, which is precisely what someone
     // standing at the felt can already do with the ring on either of them.
-    expect(tiles()).toEqual(['discard', 'draw', 'mine:A'])
+    expect(tiles()).toEqual(['discard', 'draw', 'mine:A', 'mine:B'])
     expect(drawable()).toEqual(['discard', 'draw'])
     // The area in front of the seat is a tile and not a verb, and the floor is not a tile at all.
     expect(document.querySelector('[data-zone-summary="mine:A"]')?.tagName).toBe('DIV')
@@ -56,7 +67,40 @@ describe('the overview offers the draw per pile (C4, K14, #79)', () => {
   it('offers it to nobody without a seat to draw into', () => {
     const table = wizardTable()
     render(<TableSummary view={table.view(null)} activity={[]} onDraw={noop} />)
-    expect(tiles()).toEqual(['discard', 'draw'])
+    expect(tiles()).toEqual(['discard', 'draw', 'mine:A', 'mine:B'])
     expect(drawable()).toEqual([])
+  })
+})
+
+// What the overview is, said as the difference it has to the sheet (C4, #414).
+//
+// The two used to be one list, because they used to have one answer: a zone another seat owned
+// was a zone this reader could neither see into nor play to. An area that is public and somebody
+// else's separates them. The sheet answers «where may this card go», and Ada's card has no
+// business in front of Bo. The overview answers «what is on the table», and the cards in front of
+// Bo are on the table — Bo's area is drawn on the felt, and the identities are in this reader's
+// own browser already. A phone that hid what its own socket had been sent would be the one state
+// the repo's rule about hidden information exists to keep out.
+describe('what the overview says of another seat (C4, #414)', () => {
+  it('lists an area that seat lets the table look into, by its name and how much lies in it', () => {
+    const table = wizardTable()
+    table.run(null, { v: 'seat.claim', seat: 'B', name: 'Bo' })
+    table.run(null, { v: 'draw', from: 'draw', to: 'mine:B', count: 2 })
+    render(<TableSummary view={table.view('A')} activity={[]} onDraw={noop} />)
+    expect(tiles()).toEqual(['discard', 'draw', 'mine:A', 'mine:B'])
+    const tile = document.querySelector('[data-zone-summary="mine:B"]')
+    expect(tile?.textContent).toBe('Framför B2 kort')
+    // A tile and not a verb: the area is read, never drawn from and never played into.
+    expect(tile?.tagName).toBe('DIV')
+    expect(drawable()).toEqual(['discard', 'draw'])
+  })
+
+  it('leaves out an area that seat keeps to itself, and every zone that only holds counters', () => {
+    const table = hiddenAreaTable()
+    render(<TableSummary view={table.view('A')} activity={[]} onDraw={noop} />)
+    // `mine:B` is in Ada's snapshot as a count and nothing else, and a count of somebody else's
+    // hidden area is not hers to read. The counters zones are both public and both left out, for
+    // the older reason: a zone that only holds counters is not a place for cards (C4).
+    expect(tiles()).toEqual(['discard', 'draw', 'mine:A'])
   })
 })

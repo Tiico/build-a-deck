@@ -28,22 +28,48 @@ export function shortcutsOf<Z extends ZoneLike>(zones: readonly Z[], floor: stri
   return zones.filter((z) => z.kind !== 'hand' && z.id !== floor).map((z) => ({ ...z, label: z.shortcut?.label ?? z.name, at: z.shortcut?.at ?? 'top' }))
 }
 
-// Where a lifted card can go (C4): every named zone that is not a hand, in the setup's order,
-// and the floor last as the table itself. Zone names and shortcuts are the designer's — they are
-// the UX here (B5) and are never translated.
-export function targetsOf(view: Snapshot, t: T = swedish) {
-  // Another seat's own area is not a place to play to, and a zone that only holds counters
-  // (C4) is not a place for cards at all.
+// The zones the phone makes tiles of, in the setup's order: never a hand, never the floor, and
+// never a zone that only holds counters (C4) — a counter is not a card and its strip is not a
+// place for one. `keep` is the question the caller is actually asking, and it is the only thing
+// that differs between the sheet and the overview. Zone names and shortcuts are the designer's —
+// they are the UX here (B5) and are never translated.
+function tilesOf(view: Snapshot, keep: (z: Snapshot['zones'][number]) => boolean) {
   const byZone = new Map<string, Snapshot['components']>()
   for (const c of view.components) byZone.set(c.zone, [...(byZone.get(c.zone) ?? []), c])
-  const playable = view.zones.filter((z) => {
-    if (z.owner !== undefined && z.owner !== view.seat) return false
+  const kept = view.zones.filter((z) => {
+    if (!keep(z)) return false
     const inside = byZone.get(z.id) ?? []
     return !(inside.length > 0 && inside.every(isCounter))
   })
-  const named = shortcutsOf(playable, view.floor).map((z) => ({ id: z.id, name: z.name, label: z.label, at: z.at, kind: z.kind, count: z.mode === 'count' ? z.count : z.order.length }))
+  return shortcutsOf(kept, view.floor).map((z) => ({ id: z.id, name: z.name, label: z.label, at: z.at, kind: z.kind, count: z.mode === 'count' ? z.count : z.order.length }))
+}
+
+// Where a lifted card can go (C4): every named zone that is not somebody else's, and the floor
+// last as the table itself.
+//
+// The rule is ownership and not visibility, and since #414 those are two different rules. The
+// area in front of a seat is public — the whole table looks into it — but it is still that
+// seat's, and a card of mine has no business in front of somebody else. Handing another seat's
+// area to the sheet would also give the phone four buttons reading «Framför mig», because the
+// shortcut is written from its owner's point of view; giving cards away is a verb this tool does
+// not have, and adding one is a decision and not a filter.
+export function targetsOf(view: Snapshot, t: T = swedish) {
+  const mine = (z: Snapshot['zones'][number]) => z.owner === undefined || z.owner === view.seat
   const table = t('play.table')
-  return [...named, { id: view.floor, name: table, label: table, at: 'top' as Placement, kind: 'area' as const, count: 0 }]
+  return [...tilesOf(view, mine), { id: view.floor, name: table, label: table, at: 'top' as Placement, kind: 'area' as const, count: 0 }]
+}
+
+// What the overview lists (C4): every zone this reader may look into, another seat's included.
+//
+// `mode` is the projection's own answer to «may this reader look in here» — `order` when they
+// may, `count` when they may not — so this asks the snapshot rather than working the visibility
+// out a second time. A public area belonging to somebody else is therefore a tile, which is the
+// half of #414 that is not about the felt: the identities in front of that seat are already in
+// this reader's browser, and a phone that hid what its own socket had been sent would be exactly
+// the state the repo's rule about hidden information exists to keep out. A hidden pile everybody
+// shares — the deck — is a tile as it always was: it is nobody's, and what it says is a number.
+export function overviewOf(view: Snapshot) {
+  return tilesOf(view, (z) => z.owner === undefined || z.owner === view.seat || z.mode === 'order')
 }
 
 export function PlaySheet({ view, count, label, onPlay, onClose, refusal, refusedZone = null }: PlaySheetProps) {

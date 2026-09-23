@@ -55,6 +55,30 @@ test.describe('the area in front of a seat, on the opening table', () => {
     expect(named.length, 'the television is told the titles of the cards lying in the area').toBeGreaterThanOrEqual(3)
   })
 
+  test('stands in another seat’s overview, and is still not somewhere that seat may play', async ({ tableOf, player }) => {
+    const table = await tableOf({ players: 4, cards: 16 })
+    const ada = await player(table, { name: 'Ada', seat: 'A', device: PHONE })
+    const bo = await player(table, { name: 'Bo', seat: 'B', device: PHONE })
+
+    await ada.page.locator('[data-zone-draw="draw"]').click()
+    await expect(ada.page.locator('[data-hand-card]')).toHaveCount(1)
+    await ada.page.getByRole('button', { name: 'Framför mig' }).click()
+    await expect(ada.page.locator('[data-hand-card]')).toHaveCount(0)
+
+    // Bo's browser has been sent the card, so Bo's screen says so. An area that is public on one
+    // screen and absent from another is the state this half of #414 was reopened about. It is in
+    // the fold that carries the whole table (C4), reached the way a person reaches it — and by
+    // the fold's own marker rather than its heading, which is a translation (A4).
+    await bo.page.locator('[data-phone-table] > summary').click()
+    // The zone's name is the designer's and is never translated; the count beside it is the
+    // reader's language, so it is read as the number it is and not as the sentence around it.
+    const tile = bo.page.locator('[data-phone-table] [data-zone-summary="mine:A"]')
+    await expect(tile.locator('strong')).toHaveText('Framför A')
+    await expect(tile.locator('span')).toHaveText(/^1\b/)
+    // Reading it is not playing into it: the sheet offers Bo's own area and never Ada's (C4).
+    await expect(bo.page.locator('[data-zone="mine:A"]')).toHaveCount(0)
+    await expect(bo.page.locator('[data-zone="mine:B"]')).toHaveCount(1)
+  })
 })
 
 test.describe('an area the designer keeps private', () => {
@@ -93,7 +117,10 @@ test.describe('an area the designer keeps private', () => {
       expect(mentions(tv.wire.received(), card), `the big screen was sent ${card}, which lies in Ada’s private area`).toHaveLength(0)
       expect(mentions(bo.wire.received(), card), `Bo was sent ${card}, which lies in Ada’s private area`).toHaveLength(0)
     }
-    // Bo's overview leaves it out too: an area Bo may not look into is not a tile on Bo's phone.
+    // Bo's overview leaves it out too: an area Bo may not look into is not a tile on Bo's phone,
+    // not even in the fold that carries the whole table.
+    await bo.page.locator('[data-phone-table] > summary').click()
+    await expect(bo.page.locator('[data-phone-table] [data-zone-summary="mine:B"]')).toHaveCount(1)
     await expect(bo.page.locator('[data-zone-summary="mine:A"]')).toHaveCount(0)
   })
 })
