@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 01 — Var «Starta spelet» står vid bordet</title>
+<link rel="stylesheet" href="proto.css">
+<link rel="stylesheet" href="felt.css">
+<link rel="stylesheet" href="start.css">
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="index.html">Spelstart</a>
+    <strong>Starta spelet</strong>
+    <span class="saved">var kommandot står, och vad filten visar före och efter</span>
+    <span class="spacer"></span>
+    <div class="switch" id="variant">
+      <button type="button" data-v="nu" aria-pressed="true">Nu</button>
+      <button type="button" data-v="a">A · Brickan</button>
+      <button type="button" data-v="b">B · Spalten</button>
+      <button type="button" data-v="c">C · Arket</button>
+    </div>
+  </header>
+  <div class="protorad">
+    <p id="text"></p>
+    <p class="sagt" id="vtext"></p>
+    <div class="ark matt" id="yta">
+      <button type="button" data-yta="table" aria-pressed="true">Bordsläge 1280 × 800</button>
+      <button type="button" data-yta="tv">Sändning 1920 × 1080</button>
+      <button type="button" data-lage="fore" aria-pressed="true">Före start</button>
+      <button type="button" data-lage="efter">Efter start</button>
+    </div>
+    <div class="matt" id="matt"></div>
+  </div>
+  <main class="skarmruta" id="ruta"></main>
+</div>
+
+<script type="module">
+import { renderFelt, seatColor, SEAT_IDS, SEAT_NAMES } from './felt.js'
+
+// Startsekvensen i det här exemplet, skriven med produktens egna meningar ur `sv.editor.ts`.
+// Två högar bär den: draghögen blandar och delar ut, marknaden vänder upp fyra kort.
+// Meningarna är skrivna relativt («högen»), så varje yta som listar dem måste själv säga vilken
+// hög det är — det är en av sakerna prototypen är till för att visa.
+const START = [
+  { hog: 'Draghög', mening: 'Blanda högen' },
+  { hog: 'Draghög', mening: 'Dela ut 5 till varje hand, nedvända' },
+  { hog: 'Draghög', mening: 'Ta 4 från högen och lägg dem uppvända till höger om högen' },
+]
+
+const VARIANT = {
+  nu: 'Nu · Det finns ingen spelstart. Bordet föds med leken i dokumentets ordning — oblandad — och den som vill ha den blandad håller på draghögen, väljer Blanda ur ringen, och gör sedan om det för varje hög och varje bord. Att dela ut starthänder är fyra till åtta drag till.',
+  a: 'A · Brickan på filten. Starten ligger på bordet som en fysisk giv-bricka: i filtens egna millimeter, skalad med filten, upprätt mot läsaren som zonnamnen. Den syns från andra sidan rummet och är samma sak på varje yta — bordsläget, sändningen, distansvyn och telefonen ser en bricka på samma plats. Priset är filtens yta: 260 × 72 mm är fyra kortbredder, och den ligger på golvet designern annars hade kunnat lägga en zon på.',
+  b: 'B · I spalten och i plattan. Sändningsläget har redan en fri spalt på 360 px (K9) — en kontroll där kostar inte en bildpunkt av kortet. Bordsläget har ingen spalt, så där hamnar den i den tysta raden uppe i hörnet. Priset är att starten bor på två ställen: den som lärt sig var den står på TV:n hittar den inte på filtens egen skärm, och B:s regel om att filten inte har någon krom får ett undantag.',
+  c: 'C · Arket över filten. Före start ligger ett ark över bordet som säger vad som kommer att hända, mening för mening, och bär en enda knapp. Det är den enda formen som svarar på «vad är det som startar» innan någon trycker. Priset är två: arket ligger över filten just när folk samlas kring den, och efter start finns ingen väg tillbaka till samma lista — en ny giv får sökas i varje högs egen ring.',
+}
+
+const TEXT = {
+  fore: 'Fyra platser, ingen har fått kort. Draghögen ligger i lekens ordning: översta kortet är den första raden i tabellen, på varje bord, varje gång.',
+  efter: 'Samma bord efter att starten körts som ett kuvert i loggen: draghögen blandad och tömd på 24 kort, fem nedvända i varje hand, fyra uppvända till höger om högen.',
+}
+
+const q = new URLSearchParams(location.search)
+let variant = q.get('v') ?? 'nu'
+let yta = q.get('yta') ?? 'table'
+let lage = q.get('lage') ?? 'fore'
+
+const SEATS = 4
+const el = (tag, cls, style) => {
+  const n = document.createElement(tag)
+  if (cls) n.className = cls
+  if (style) Object.assign(n.style, style)
+  return n
+}
+
+function startKnapp(plate) {
+  const b = el('button', 'start-knapp')
+  if (plate) b.dataset.plate = 'true'
+  b.type = 'button'
+  b.append(Object.assign(document.createElement('i'), { textContent: '▶', style: 'font-style:normal' }), document.createTextNode('Starta spelet'))
+  b.addEventListener('click', () => { lage = lage === 'fore' ? 'efter' : 'fore'; rita() })
+  return b
+}
+
+function rita() {
+  for (const b of document.querySelectorAll('#variant button')) b.setAttribute('aria-pressed', String(b.dataset.v === variant))
+  for (const b of document.querySelectorAll('#yta button[data-yta]')) b.setAttribute('aria-pressed', String(b.dataset.yta === yta))
+  for (const b of document.querySelectorAll('#yta button[data-lage]')) b.setAttribute('aria-pressed', String(b.dataset.lage === lage))
+  document.getElementById('text').textContent = TEXT[lage]
+  document.getElementById('vtext').textContent = VARIANT[variant]
+
+  const W = yta === 'tv' ? 1920 : 1280
+  const H = yta === 'tv' ? 1080 : 800
+  const ruta = document.getElementById('ruta')
+  ruta.textContent = ''
+  const box = ruta.getBoundingClientRect()
+  const k = Math.min(1, (box.width - 8) / W, (box.height - 8) / H)
+  const hallare = el('div', null, { width: `${Math.round(W * k)}px`, height: `${Math.round(H * k)}px`, position: 'relative' })
+  const skarm = el('div', 'skarm', { width: `${W}px`, height: `${H}px`, transformOrigin: '0 0', transform: `scale(${k})`, position: 'absolute', left: '0', top: '0' })
+  skarm.dataset.yta = yta
+  hallare.append(skarm)
+  ruta.append(hallare)
+
+  // Filtens ruta: hela skärmen i bordsläget, skärmen minus spalten i sändningsläget.
+  const feltruta = el('div', 'feltruta')
+  let feltBox
+  if (yta === 'tv') {
+    const tv = el('div', 'tv')
+    tv.append(feltruta, tvSpalt())
+    skarm.append(tv)
+    feltBox = { w: W - 360, h: H }
+  } else {
+    skarm.append(feltruta)
+    const plate = el('p', 'plate')
+    const namn = el('span')
+    namn.textContent = 'Kolonin · rev 12 · 4QK7'
+    plate.append(namn)
+    if (variant === 'b') { plate.dataset.medKnapp = 'true'; plate.append(startKnapp(true)) }
+    skarm.append(plate)
+    feltBox = { w: W, h: H }
+  }
+
+  const efter = lage === 'efter'
+  const felt = renderFelt(feltruta, {
+    count: SEATS,
+    mode: yta === 'tv' ? 'tv' : 'table',
+    me: null,
+    variant: 'nu',
+    box: feltBox,
+    hand: efter ? 5 : 0,
+    draw: efter ? 40 - SEATS * 5 - 4 : 40,
+    discard: 0,
+    up: efter ? 4 : 0,
+  })
+
+  // A · Brickan ligger i filtens millimeter, som en hög gör, och står upprätt mot läsaren.
+  if (variant === 'a') {
+    const mm = { w: 260, h: 72 }
+    const b = startKnapp(false)
+    b.className = 'start-bricka'
+    Object.assign(b.style, {
+      left: `${felt.left(-mm.w / 2)}px`,
+      top: `${felt.top(-mm.h / 2)}px`,
+      width: `${felt.px(mm.w)}px`,
+      height: `${felt.px(mm.h)}px`,
+      fontSize: `${Math.max(9, felt.px(mm.h) * 0.36)}px`,
+      transform: `rotate(${-felt.rot}deg)`,
+    })
+    felt.table.append(b)
+  }
+
+  // C · Arket står över filten och säger vad starten kommer att göra, innan den görs.
+  if (variant === 'c' && !efter) {
+    const ark = el('div', 'start-ark')
+    const box2 = el('div')
+    const h = el('h2'); h.textContent = 'Starta spelet'
+    const p = el('p'); p.textContent = 'Det här händer när du trycker. Sedan är bordet ditt.'
+    const ol = el('ol')
+    for (const s of START) {
+      const li = el('li')
+      const b = el('b'); b.textContent = `${s.hog}: `
+      li.append(b, document.createTextNode(s.mening))
+      ol.append(li)
+    }
+    const knapp = startKnapp(false)
+    box2.append(h, p, ol, knapp)
+    ark.append(box2)
+    skarm.append(ark)
+  }
+
+  const kortsida = Math.round(felt.px(63))
+  const matt = document.getElementById('matt')
+  matt.textContent = ''
+  const rad = (namn, v) => {
+    const s = el('span')
+    s.append(document.createTextNode(`${namn} `), Object.assign(document.createElement('u'), { textContent: v }))
+    matt.append(s)
+  }
+  rad('kortets kortsida', `${kortsida} px`)
+  rad('filten', `${felt.felt.w} × ${felt.felt.h} mm`)
+  if (variant === 'a') rad('brickan', `260 × 72 mm · ${Math.round(felt.px(260))} × ${Math.round(felt.px(72))} px`)
+  if (variant === 'b') rad(yta === 'tv' ? 'spalten' : 'plattan', yta === 'tv' ? '360 px, redan där' : 'krom på en filt utan krom')
+  if (variant === 'c') rad('arket täcker', `${Math.round((Math.min(520, feltBox.w * 0.76) / feltBox.w) * 100)} % av filtens bredd`)
+}
+
+function tvSpalt() {
+  const s = el('div', 'tv-spalt')
+  const h = el('h1')
+  h.append(document.createTextNode('Kolonin '), Object.assign(document.createElement('em'), { textContent: 'rev 12' }))
+  const kod = el('div', 'tv-kod')
+  kod.append(el('div', 'qr'), Object.assign(document.createElement('strong'), { textContent: '4QK7' }))
+  s.append(h, kod)
+  if (variant === 'b') s.append(startKnapp(false))
+  const ul = el('ul', 'tv-platser')
+  for (let i = 0; i < SEATS; i++) {
+    const li = el('li')
+    const i0 = el('i'); i0.textContent = SEAT_IDS[i]; i0.style.setProperty('--seat', seatColor(i))
+    li.append(i0, document.createTextNode(SEAT_NAMES[SEAT_IDS[i]]))
+    ul.append(li)
+  }
+  const flode = el('div', 'tv-flode')
+  flode.innerHTML = lage === 'efter'
+    ? '<b>Bordet</b> blandade Draghög<br><b>Bordet</b> delade ut 5 till varje hand<br><b>Bordet</b> la ut 4 kort'
+    : 'Ingenting har hänt än.'
+  s.append(ul, flode)
+  return s
+}
+
+document.getElementById('variant').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  variant = b.dataset.v; rita()
+})
+document.getElementById('yta').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.yta) yta = b.dataset.yta
+  if (b.dataset.lage) lage = b.dataset.lage
+  rita()
+})
+addEventListener('resize', rita)
+rita()
+</script>
+</body>
+</html>

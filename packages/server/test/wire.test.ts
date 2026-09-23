@@ -135,6 +135,27 @@ describe('hidden information on the wire', () => {
     // Seeing the card go onto the pile is fine (B could watch that); after the shuffle its id is gone.
     expect(b.frames.slice(beforeShuffle).join('\n')).not.toContain(JSON.stringify(known))
   })
+
+  // Har något hänt vid bordet (#452): uppgiften startbrickan frågar sin bekräftelse på. Den är
+  // publik — att någon rört ett kort är lika öppet som att en hög blandades — och den säger
+  // ingenting mer än det. Läst på råa frames, som allt annat om vad tråden bär (B6).
+  it('säger på tråden att något hänt vid bordet, och inte vad, när ett kort rörts', async () => {
+    const id = await createSession(run.http)
+    const a = await connect(id, 'A')
+    const b = await connect(id, 'B')
+    // Två anslutna spelare och inget rört kort: bordet står som uppställningen lade det.
+    expect(a.view!.played).toBe(false)
+    expect(b.view!.played).toBe(false)
+    const beforeDraw = b.frames.length
+
+    await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await b.synced(1)
+    expect(b.view!.played).toBe(true)
+    // B ser att något hänt utan att se vad: kortet som drogs till A:s hand når aldrig B.
+    const frames = b.frames.slice(beforeDraw).join('\n')
+    expect(frames).toContain('"played":true')
+    expect(frames).not.toContain(JSON.stringify(a.view!.components[0]!.id))
+  })
 })
 
 describe('envelopes', () => {

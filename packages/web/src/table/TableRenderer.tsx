@@ -17,10 +17,31 @@ import { CounterEntry } from './CounterEntry.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ActionSheet } from './ActionSheet.js'
+import { compileStart, startsAt } from './actions.js'
+import { Question } from '../editor/Question.js'
 import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAt, handBand, handCountAt, handExtent, handRotation, type TableMode } from './hand.js'
 import { gapAbove, nameAt, type Grow, type Rim } from './labels.js'
-import { useT, type T } from '../i18n/index.js'
+import { useT, type Key, type T } from '../i18n/index.js'
+
+// Startbrickans mått och plats i filtens egna millimeter (#451). Den skalar med filten som en
+// hög gör, så den är lika stor i förhållande till korten på varje skärm.
+//
+// `below` är hur långt under filtens mitt dess överkant ligger, och talet är mätt och inte valt.
+// Prototypen la brickan i bandet *mellan* högarna; på ett riktigt bord finns inte det bandet.
+// Receptet ställer draghögen och kasthögen på (±140, 0), och ett kort är 63 mm brett, så mellan
+// dem är det 217 mm — mindre än brickan — och den låg ovanpå båda, sett i den byggda produkten.
+//
+// Bandet under högarna är fritt vid varje platsantal receptet lägger: kortens underkant är 44 mm
+// från mitten, och närmaste zon någon plats äger — ytan framför den — börjar 230 mm ut. Brickan
+// ligger mitt i det bandet, alltså 101 mm ned, och tar 72 mm av de 186 som finns.
+const START_MM = { w: 260, h: 72, below: 101 }
+
+// Varför starten inte går att köra, i ringens egna ord: det är samma maskin som svarar, så det
+// ska vara samma mening. Ett steg som frågar efter ett tal har ingen att fråga i det ögonblick
+// spelet ska börja, och säger det i stället för att gissa ett tal.
+const whyKey = (made: { ok: false; why: string } | { ok: false; asks: string } | { ok: true }): Key =>
+  ('why' in made ? `ring.action.why.${made.why}` : 'ring.action.why.asks') as Key
 
 // Kamerans hörn kommer när vyn blir egen (#325, #346:s väg). Klungan finns bara medan kameran är
 // manuell, vilket den inte är när sidan målas — så dess stilmall, `camera-hand.css`, reser i den
@@ -382,6 +403,19 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const tight = mode === 'tv' && measured && feltWidePx > 0 && feltWidePx < TIGHT_FELT_PX
   const left = (mmX: number) => px(mmX - floor.geometry.x)
   const top = (mmY: number) => px(mmY - floor.geometry.y)
+  // Spelstarten (#451, prototypen 2026-09-22, förslag A). Den ligger på filten som en fysisk
+  // giv-bricka och inte i en krom: filten är höjdbunden (K9), så en rad över eller under den
+  // hade kostat kortstorlek på varje yta, och en kontroll i sändningens spalt hade inte funnits
+  // på filtens egen skärm. Brickan är samma sak på varje yta, och syns från andra sidan rummet.
+  //
+  // En filt där ingen hög bär en startåtgärd ritar ingen bricka alls — samma regel som K14 ger
+  // ringen: en ring utan verb öppnas inte, och ett kommando utan något att göra är samma fel.
+  const start = onAct && startsAt(view).length > 0 ? compileStart(view) : null
+  // Ett andra tryck mitt i spelet är hur en ny giv ges, och det ska gå (K23) — men inte av
+  // misstag, eftersom det drar tillbaka varje hand och blandar om leken. Frågan ställs bara när
+  // något faktiskt hänt vid bordet; `view.played` är den uppgiften, och den räknar inte den som
+  // bara satt sig (#452).
+  const [askingStart, setAskingStart] = useState(false)
   // The box a back is drawn in: the card's own, so the supplier only has to draw a card. A
   // surface that supplies none keeps the stand-in weave `table.css` draws.
   const backAt = (at: string): ReactNode => back && <span className="byd-card-back">{back({ px, left, top, scale }, at)}</span>
@@ -1091,6 +1125,23 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           {offTop && (
             <Ghost card={topOf(zoneById.get(offTop.pile) ?? floor)} zoneBack={backOf(zoneById.get(offTop.pile))} faces={faces} back={backAt('ghost')} hiding={hidingTop} left={left(offTop.at.x)} top={top(offTop.at.y)} px={px} />
           )}
+          {start && (
+            <button
+              type="button"
+              className="byd-table-start"
+              data-table-start={start.ok ? 'ready' : 'why'}
+              disabled={!start.ok}
+              title={start.ok ? undefined : t('start.blocked', { why: t(whyKey(start)) })}
+              style={{ left: left(floor.geometry.x + floor.geometry.w / 2 - START_MM.w / 2), top: top(floor.geometry.y + floor.geometry.h / 2 + START_MM.below), width: px(START_MM.w), height: px(START_MM.h), fontSize: `${Math.max(9, px(START_MM.h) * 0.36)}px` }}
+              onClick={() => {
+                if (!start.ok) return
+                if (view.played) setAskingStart(true)
+                else onAct?.(start.intents)
+              }}
+            >
+              {t('start.tile')}
+            </button>
+          )}
           {overlay?.({ px, left, top, scale })}
         </div>
       </div>
@@ -1150,6 +1201,20 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
         <Suspense fallback={null}>
           <CameraControls level={level} folded={tucked} onFold={setTucked} onZoom={stepZoom} onWhole={() => zoomTo(null)} />
         </Suspense>
+      )}
+      {askingStart && start?.ok && (
+        <Question
+          className="byd-table-start-ask"
+          label={t('start.again.label')}
+          confirm={t('start.again.yes')}
+          onConfirm={() => {
+            setAskingStart(false)
+            onAct?.(start.intents)
+          }}
+          onCancel={() => setAskingStart(false)}
+        >
+          {t('start.again.text')}
+        </Question>
       )}
       {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable)} />}
       {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => onAct([{ v: 'setCounter', component: entry.id, value }])} onClose={() => setEntry(null)} />}

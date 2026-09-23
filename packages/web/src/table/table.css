@@ -412,6 +412,51 @@
    middle of the table as the name grew while the near edges' cards stayed on their 6 px. It is
    pushed back out by exactly what the turn takes, so every seat's card lies the same 6 px from
    its own edge (K9) whatever it says. */
+/* Startbrickan (#451, prototypen 2026-09-22 förslag A). Den ligger på filten i filtens egna
+   millimeter — storleken sätts av renderaren, som allt annat som skalar med bordet — och står
+   upprätt mot läsaren med `--unrotate`, som zonnamnen gör. Ingen egen font-size här: den räknas
+   ur brickans höjd, så ordet är lika stort i förhållande till korten på varje skärm.
+   Fallbacken är samma som `[data-table]`:s, av samma skäl (K19, #95). */
+.byd-table-start {
+  position: absolute; box-sizing: border-box; z-index: 5;
+  display: flex; align-items: center; justify-content: center; gap: 0.5em;
+  padding: 0 1em; border: 0; border-radius: 999px; cursor: pointer;
+  background: #1f6fd0; color: #fff; white-space: nowrap;
+  font: 700 1em/1.1 var(--byd-felt-font, system-ui, sans-serif); letter-spacing: 0.5px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transform: rotate(var(--unrotate, 0deg));
+}
+.byd-table-start:hover { background: #3c8ce7; }
+/* Den avstängda raden säger varför i ord (K21) och inte bara genom att vara grå; `title` bär
+   meningen, och brickan ser avstängd ut utan att försvinna — en start som inte går att köra är
+   något designern ska kunna se skälet till, inte något som ska gömma sig. */
+.byd-table-start:disabled { background: #46506b; color: #d3d8e6; cursor: not-allowed; box-shadow: none; }
+
+/* Frågan före ett omtryck (#452). Den står utanför filten och inte på den: en vriden filt får
+   inte vrida en mening. Formen är produktens enda fråga — `Question` — på bordets egen yta, med
+   samma röda svar som editorns; den tar fokus, öppnar på svaret som ingenting kostar, och
+   svarar Escape. Måtten är spacing-stegen, inte egna tal. */
+.byd-table-start-ask {
+  position: absolute; z-index: 11; left: 50%; top: 50%;
+  /* Ovanför filtens mitt, med underkanten 12 px över den. Brickan ligger alltid *under* mitten
+     (`START_MM.below`), så frågan kan aldrig täcka knappen den handlar om — vilken skala filten
+     än ritas i. Den låg först 56 px under mitten och gjorde precis det, sett i den byggda
+     produkten: «Ja, starta om» stod ovanpå «Starta spelet». */
+  transform: translate(-50%, calc(-100% - 12px));
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;
+  max-width: min(420px, 90%); padding: 12px 16px; border-radius: 12px;
+  background: #3d2632; color: #ffe4ea; border: 1px solid #7a3243;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.55);
+  font: 400 14px/1.45 system-ui, sans-serif;
+}
+.byd-table-start-ask p { margin: 0; flex: 1 0 100%; text-align: center; }
+.byd-table-start-ask button {
+  min-height: 44px; padding: 0 16px; border-radius: 10px; cursor: pointer;
+  border: 1px solid #7a3243; background: transparent; color: #ffe4ea; font: inherit; font-weight: 700;
+}
+.byd-table-start-ask button[data-kind='danger'] { background: #7a3243; }
+.byd-table-start-ask button:hover { border-color: #ffe4ea; }
+
 .byd-seat-name[data-edge='E'] { transform: translateX(calc(50% - var(--card-half))) translateY(-50%) rotate(-90deg); }
 .byd-seat-name[data-edge='W'] { transform: translateX(calc(var(--card-half) - 50%)) translateY(-50%) rotate(90deg); }
 

@@ -54,6 +54,7 @@ function scene(): Snapshot {
     rewind: null,
     undo: null,
     ended: false,
+    played: false,
   }
 }
 

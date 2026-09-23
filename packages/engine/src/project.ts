@@ -40,7 +40,7 @@ export function project(state: TableState, registry: TypeRegistry, seat: SeatId 
     rewind = { ...rewind, preview }
   }
   const undo = seat !== null && history ? undoTarget(history.lines(), seat) : null
-  return { seq: state.seq, seat, floor: state.setup.floor, seats, zones, components, rewind, undo, ended: state.ended }
+  return { seq: state.seq, seat, floor: state.setup.floor, seats, zones, components, rewind, undo, ended: state.ended, played: state.played }
 }
 
 // Which edge of the table a seat sits at (K12), from where its hand lies relative to the middle

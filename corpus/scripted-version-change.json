@@ -455,7 +455,8 @@
         "toSeq": 3,
         "contested": false
       },
-      "ended": false
+      "ended": false,
+      "played": true
     },
     "B": {
       "seq": 5,
@@ -571,7 +572,8 @@
       ],
       "rewind": null,
       "undo": null,
-      "ended": false
+      "ended": false,
+      "played": true
     },
     "table": {
       "seq": 5,
@@ -687,7 +689,8 @@
       ],
       "rewind": null,
       "undo": null,
-      "ended": false
+      "ended": false,
+      "played": true
     },
     "observer": {
       "seq": 5,
@@ -931,7 +934,8 @@
       ],
       "rewind": null,
       "undo": null,
-      "ended": false
+      "ended": false,
+      "played": true
     }
   }
 }

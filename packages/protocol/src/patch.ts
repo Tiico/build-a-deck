@@ -131,6 +131,13 @@ export const Snapshot = z.object({
   undo: UndoMeaning,
   // The log is locked (C9): nothing more happens at this table.
   ended: z.boolean(),
+  // Whether a physical line has been committed at this table (#452): has anybody touched a card
+  // here, or is the table still exactly as the setup laid it? The start tile asks before running
+  // a second time, and this is what «already started» means — `seq` counts `seat.claim` too, so a
+  // table four people have sat down at without touching anything would read as begun.
+  //
+  // It leaks nothing (B6): that somebody moved a card is as public as that a pile was shuffled.
+  played: z.boolean(),
 })
 export type Snapshot = z.infer<typeof Snapshot>
 
@@ -143,6 +150,7 @@ export const Op = z.discriminatedUnion('op', [
   z.object({ op: z.literal('rewind'), proposal: RewindProposal.nullable() }),
   z.object({ op: z.literal('undo'), undo: UndoMeaning }),
   z.object({ op: z.literal('ended'), ended: z.boolean() }),
+  z.object({ op: z.literal('played'), played: z.boolean() }),
 ])
 export type Op = z.infer<typeof Op>
 

@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createRef } from 'react'
 import type { Intent, Snapshot } from '@byd/protocol'
 import { TableRenderer, type FeltKeyboard, type TableHandle } from '../src/table/TableRenderer.js'
 import { buildScene, tableOf } from './scene.js'
-import { twoSeatSetup } from './fixture.js'
+import { recipeSetup, twoSeatSetup } from './fixture.js'
 import { activeBounds, cameraOf, frameRect, overscanPx, pad, reachOf, union, type Rect } from '../src/table/camera.js'
 import { feltScale, fitScale, TV_AIR_PX } from '../src/table/fit.js'
 import { feltWithHands, handCountAt, handExtent, handRotation, type TableMode } from '../src/table/hand.js'
@@ -1227,5 +1227,143 @@ describe('the bottom card of a pile (K23)', () => {
     render(<TableRenderer view={down.view(null)} mode="tv" scale={1} onInspect={onInspect} />)
     fireEvent.pointerEnter(edge()!)
     expect(onInspect).toHaveBeenLastCalledWith(expect.objectContaining({ zone: 'draw', cardRef: null, face: 'back' }))
+  })
+})
+
+// Spelstarten som en bricka på filten (#451, prototypen 2026-09-22, förslag A).
+//
+// Den ligger på bordet som en fysisk giv-bricka: i filtens egna millimeter, skalad med filten,
+// upprätt mot läsaren som zonnamnen. Tre former prövades — brickan, en kontroll i sändningens
+// spalt och ett ark över filten — och brickan valdes för att den är samma sak på varje yta och
+// inte kostar en bildpunkt av kortet någonstans.
+describe('startbrickan på filten (#451)', () => {
+  const withStart = (when: 'request' | 'start' | 'both') => {
+    const setup = twoSeatSetup()
+    return tableOf({
+      ...setup,
+      zones: setup.zones.map((z) => (z.id === 'draw' ? { ...z, actions: [{ id: 'b', label: 'Blanda', when, steps: [{ v: 'shuffle' as const }] }] } : z)),
+    })
+  }
+  const tile = () => document.querySelector('[data-table-start]') as HTMLElement | null
+
+  it('ritas bara där någon hög har en åtgärd som hör till starten', () => {
+    const { unmount } = render(<TableRenderer view={withStart('request').view(null)} mode="table" scale={2} onAct={() => undefined} />)
+    expect(tile()).toBeNull()
+    unmount()
+
+    render(<TableRenderer view={withStart('both').view(null)} mode="table" scale={2} onAct={() => undefined} />)
+    expect(tile()).not.toBeNull()
+    expect(tile()!.textContent).toMatch(/Starta spelet/)
+  })
+
+  it('skickar hela starten som ett enda kuvert när den trycks', () => {
+    const sent: Intent[][] = []
+    render(<TableRenderer view={withStart('start').view(null)} mode="table" scale={2} onAct={(intents) => sent.push(intents)} />)
+    fireEvent.click(tile()!)
+    expect(sent).toEqual([[{ v: 'shuffle', pile: 'draw' }]])
+  })
+
+  it('går att nå med tangentbordet: den är en knapp med sitt namn, och inte en ruta med en klickhanterare', () => {
+    render(<TableRenderer view={withStart('start').view(null)} mode="table" scale={2} onAct={() => undefined} />)
+    const b = screen.getByRole('button', { name: 'Starta spelet' })
+    expect(b).toBe(tile())
+    // Ingen roving tabindex: brickan är bordets kommando och inte en av filtens saker, så den
+    // står i tabbordningen som sig själv (K16).
+    expect(b.getAttribute('tabindex')).toBeNull()
+    b.focus()
+    expect(document.activeElement).toBe(b)
+  })
+
+  // Ett andra tryck mitt i spelet drar tillbaka varje hand och blandar om leken (#452). Det ska
+  // gå — det är så en ny giv ges, och K23 säger att verktyget inte säger nej — men inte av
+  // misstag. Frågan ställs bara när något faktiskt hänt vid bordet.
+  it('frågar innan den kör om ett bord där någon redan rört ett kort, och kör direkt annars', () => {
+    const table = withStart('start')
+    const sent: Intent[][] = []
+    const draw = () => render(<TableRenderer view={table.view(null)} mode="table" scale={2} onAct={(intents) => sent.push(intents)} />)
+
+    // Inget har hänt: trycket går rakt igenom, utan fråga.
+    const first = draw()
+    expect(table.view(null).played).toBe(false)
+    fireEvent.click(tile()!)
+    expect(sent).toHaveLength(1)
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    first.unmount()
+
+    // Nu ligger kort ute. Trycket skickar ingenting förrän frågan är besvarad.
+    table.run(null, { v: 'draw', from: 'draw', to: 'discard', count: 2 })
+    expect(table.view(null).played).toBe(true)
+    draw()
+    fireEvent.click(tile()!)
+    expect(sent).toHaveLength(1)
+    const fraga = screen.getByRole('alertdialog')
+    expect(fraga.textContent).toMatch(/Korten som ligger ute går tillbaka/)
+
+    // Och svaret som ingenting kostar är det frågan öppnar på.
+    expect(document.activeElement?.textContent).toBe('Avbryt')
+    fireEvent.click(within(fraga).getByRole('button', { name: 'Avbryt' }))
+    expect(sent).toHaveLength(1)
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+
+    fireEvent.click(tile()!)
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Ja, starta om' }))
+    expect(sent).toHaveLength(2)
+    expect(sent[1]).toEqual([{ v: 'shuffle', pile: 'draw' }])
+  })
+
+  // Prototypen ritade högarna längre isär än receptet gör, och brickan lades i bandet mellan
+  // dem. På ett riktigt bord är det bandet 217 mm brett — draghögen och kasthögen står på
+  // (±140, 0) och är 63 mm breda — så en bricka på 260 mm låg ovanpå båda. Sett i den byggda
+  // produkten innan den här raden fanns; nu är det den här grinden som säger det.
+  it('ligger inte på någon zon receptet lägger, vid något platsantal', () => {
+    for (const players of [2, 4, 6, 8]) {
+      const table = tableOf({
+        ...recipeSetup(players),
+        zones: recipeSetup(players).zones.map((z) =>
+          z.id === 'draw' ? { ...z, actions: [{ id: 'b', label: 'Blanda', when: 'start' as const, steps: [{ v: 'shuffle' as const }] }] } : z,
+        ),
+      })
+      const view = table.view(null)
+      const { unmount } = render(<TableRenderer view={view} mode="tv" scale={1} onAct={() => undefined} />)
+      const b = tile() as HTMLElement
+      // Filtens egna koordinater: renderaren ritar i px från golvets övre vänstra hörn, med
+      // scale 1 är en px en mm, så rutan går att jämföra med zonernas geometri rakt av.
+      const floor = view.zones.find((z) => z.id === view.floor)!.geometry
+      const box = {
+        x: parseFloat(b.style.left) + floor.x,
+        y: parseFloat(b.style.top) + floor.y,
+        w: parseFloat(b.style.width),
+        h: parseFloat(b.style.height),
+      }
+      // Helt innanför filten.
+      expect(box.x, `${players} platser: brickans vänsterkant`).toBeGreaterThanOrEqual(floor.x)
+      expect(box.x + box.w, `${players} platser: brickans högerkant`).toBeLessThanOrEqual(floor.x + floor.w)
+      expect(box.y + box.h, `${players} platser: brickans nederkant`).toBeLessThanOrEqual(floor.y + floor.h)
+
+      for (const z of view.zones) {
+        if (z.id === view.floor) continue
+        // En hög är en punkt i dokumentet och ett kort på filten: den upptar kortets ruta.
+        const g = z.kind === 'pile' ? { x: z.geometry.x - CARD_MM.w / 2, y: z.geometry.y - CARD_MM.h / 2, w: CARD_MM.w, h: CARD_MM.h } : z.geometry
+        const apart = box.x + box.w <= g.x || g.x + g.w <= box.x || box.y + box.h <= g.y || g.y + g.h <= box.y
+        expect(apart, `${players} platser: brickan ligger på ${z.id}`).toBe(true)
+      }
+      unmount()
+    }
+  })
+
+  it('är avstängd med skälet i ord när starten inte går att köra', () => {
+    const setup = twoSeatSetup()
+    const table = tableOf({
+      ...setup,
+      zones: setup.zones.map((z) =>
+        z.id === 'draw'
+          ? { ...z, actions: [{ id: 'h', label: 'Starthand', when: 'start' as const, steps: [{ v: 'deal' as const, each: { of: 'seats' as const }, to: { at: 'hands' as const }, face: 'keep' as const }] }] }
+          : z,
+      ),
+    })
+    render(<TableRenderer view={table.view(null)} mode="table" scale={2} onAct={() => undefined} />)
+    const b = tile() as HTMLButtonElement
+    expect(b.disabled).toBe(true)
+    expect(b.title).toBe('Går inte att starta just nu: ingen sitter vid bordet än')
   })
 })

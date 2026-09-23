@@ -2740,6 +2740,67 @@ Detta är ingen markering i K14:s mening — det som K14 säger att filten inte 
 
 Grindarna: `packages/web/test/into-hand.test.ts` (vilken hand ett drag landar i, för löst kort, flera kort, högens topp och hel hög; bandets rektangel vid varje kant och på en remsa grundare än bandet), `packages/web/test/felt-into-hand.test.tsx` (det riktiga draget på den riktiga renderaren: ryggen, bandet, uppräkningen, den fällda handen, och att allt tas tillbaka vid utgång, släpp och avbrott) och `packages/web/test/seat-contrast.test.ts` (bandets två band mot varje filt bordet ritas i, med en icke-vakuitetsprövning som säger att färgen ensam inte räckte).
 
+### K25. Spelet startas av ett kommando vid bordet, och en åtgärd säger själv om den hör till starten (prototypat och byggt 2026-09-22, #451)
+
+En lek låg i dokumentets ordning på varje nytt bord.
+Översta kortet i draghögen var tabellens första rad, varje gång, och den som ville ha en blandad lek höll på högen, valde Blanda ur ringen, och gjorde om det per hög och per bord.
+K21 gav redan en hög egna åtgärder — ett namn och en ordnad lista av steg — men en åtgärd kunde bara köras av en människa som klickade på högen.
+Det som saknades var inte en ny sorts åtgärd utan ett andra sätt att trycka på den maskin som redan fanns.
+
+**Starten är ett kommando vid bordet och inte något som sker när bordet föds.**
+Det avgjordes av platserna och inte av smak: `ActionAmount.of: 'seats'` räknar de tagna platserna, och «dela ut fem till varje hand» går inte att säga alls vid ett bord ingen satt sig vid.
+Ett bord som startade sig självt vid födseln hade alltså gjort halva vokabuläret osägbart, och den halvan är den designern oftast vill ha.
+Priset är erkänt: leken ligger oblandad på filten från det att bordet skapas till dess att någon trycker.
+
+**Inget nytt verb.**
+En start är ett vanligt kuvert med vanliga verb, kompilerat av samma `compileAction` som ringen använder, och slumpen hamnar i loggen som resultat precis som när någon trycker Blanda för hand (D4).
+Vokabuläret i `packages/protocol/src/intents.ts` är orört; det som tillkom är ett fält på `ZoneAction`, som är författandets typ och inte trådens.
+
+**Tre lägen och inte en kryssruta.**
+`when` är `request`, `start` eller `both`, och det som inte sägs är `request` — så varje sparat spel ligger kvar som det låg.
+Tre värden behövs för att blanda vill vara båda: leken blandas när spelet börjar, *och* ringen behåller sin Blanda för mitten av en giv.
+En kryssruta hade kunnat säga två av de tre, och hade dessutom gjort panelens rubrik osann — «När någon klickar på högen kan de välja» gäller inte den som bara körs vid start.
+
+**I editorn: ratten i meningen.**
+Tre former prototypades i zonpanelens egna 320 px. **A, kryssrutan** — en rad till per åtgärd, 78 px på tre åtgärder. **B, två rubriker** — «Vid spelstart» över den befintliga, och åtgärden flyttas mellan dem, 117 px. **C, ratten i meningen** — varje åtgärd bär meningen «Körs {när}», 157 px.
+
+**Valet blev C.**
+A kan bara säga två av tre lägen, och B kan säga alla tre men bara ett i taget: en åtgärd står under en rubrik, så «blanda vid start och när någon ber om det» hade fått skrivas två gånger.
+C är dessutom det enda som ställs in där allt annat i den panelen ställs in — K21 bestämde att rattarna sitter inne i texten, och en tidpunkt är inte ett undantag från den regeln.
+Meningen är en katalogsträng med ett namngivet hål, så ett annat språk lägger hålet där det vill (A4).
+Priset är höjd: 157 px på tre åtgärder, och panelen svämmar över kolumnens höjd vid tre åtgärder — kroppen rullar redan, så det som kostar är läsbarheten och inte något som går sönder.
+
+**Vid bordet: brickan på filten.**
+Tre former prototypades. **A, brickan** — en giv-bricka på filten, 260 × 72 mm i filtens egna millimeter. **B, spalten och plattan** — en kontroll i sändningens fria 360 px-spalt, och i bordslägets tysta rad. **C, arket** — ett ark över filten före start som listar meningarna.
+
+**Valet blev A.**
+Ingen av de tre kostar en bildpunkt av kortet — filten är höjdbunden (K9), och ingen av formerna lägger en rad över eller under den — så valet stod på något annat.
+B bor på två ställen: sändningen har en spalt och filtens egen skärm har ingen, så den som lärt sig var kommandot står på TV:n hittar det inte på bordet, och B:s regel om att filten inte har någon krom hade fått ett undantag.
+C är den enda som svarar på «vad är det som startar» innan någon trycker, men den ligger över filten just när folk samlas kring den, och efter start finns ingen väg tillbaka till samma lista.
+A är samma sak på varje yta — bordsläget, sändningen och distansvyn ser en bricka på samma plats — och syns från andra sidan rummet, vilket är vad ett bord i ett rum handlar om.
+Priset är filtens yta: 260 × 72 mm är fyra kortbredder, och den ligger i bandet mellan draghögen och kasthögen, som är tomt på receptets bord men inte nödvändigtvis på designerns.
+
+**Brickan ligger under högarna och inte mellan dem, och det talet är mätt.**
+Prototypen la den i bandet mellan draghögen och kasthögen; det bandet finns inte på ett riktigt bord.
+Prototypens filt ritade högarna längre isär än receptet gör — receptet ställer dem på (±140, 0), och ett kort är 63 mm brett, så mellan dem är det 217 mm och inte 360.
+En bricka på 260 mm låg alltså ovanpå båda högarna, vilket syntes först i den byggda produkten och inte i prototypen.
+Bandet *under* högarna är fritt vid varje platsantal receptet lägger: kortens underkant ligger 44 mm från mitten och närmaste zon en plats äger — ytan framför den — börjar 230 mm ut.
+Brickan ligger mitt i det bandet, 101 mm ned, och tar 72 av de 186 mm som finns.
+Grinden mäter det vid 2, 4, 6 och 8 platser mot varje zon receptet lägger, i stället för att lita på ett öga.
+Frågan före ett omtryck står av samma skäl *ovanför* filtens mitt: brickan ligger alltid under den, så frågan kan aldrig täcka knappen den handlar om.
+
+Brickan står upprätt mot läsaren med `--unrotate`, som zonnamnen gör, och skalar med filten som en hög gör.
+En filt där ingen hög bär en startåtgärd ritar ingen bricka alls: K14 säger redan att en ring utan verb inte öppnas, och ett kommando utan något att göra är samma fel i en annan form.
+Den avstängda brickan säger **varför** i ord, i ringens egna meningar, av samma skäl som K21 ger.
+
+**Ordningen mellan högar är zon-id:ns och inte dokumentets.**
+`project` sorterar zonerna på id, och filten ser ingen annan ordning än den — den ordning som committas måste vara den som spelas upp, och zon-id är det enda båda sidor delar.
+Inom en åtgärd är ordningen designerns, som förut.
+En start där ordningen *mellan* två högar spelar roll — en hög som tar kort ur en annan som just fyllts — går alltså inte att uttrycka i dag, och `SetupEditor` har ingen omordning av zoner att lösa det med.
+Det står här som en känd gräns och inte som ett förbiseende.
+
+Grindarna: `packages/web/test/game-start.test.ts` (kompilatorn, ordningen, det som inte hör till starten och skälet när den inte går att köra), `packages/web/test/table-renderer.test.tsx` (brickan, dess plats mot varje zon receptet lägger, kuvertet, tangentbordet, frågan och den avstängda raden), `packages/web/test/setup-actions.test.tsx` (meningen, de tre lägena och att «bara på begäran» är ingen egenskap alls), `packages/engine/test/played.test.ts` och `packages/server/test/wire.test.ts` (uppgiften om att något hänt, och vad den bär på tråden) samt `packages/e2e/test/game-start.spec.ts` (hela vägen i den byggda produkten: blandningen, utdelningen och frågan).
+
 ---
 
 ## L. Editorn (grillad 2026-09-06)

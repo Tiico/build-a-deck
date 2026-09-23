@@ -78,6 +78,12 @@ export const svPlay = {
   'ring.action.why.none': 'det blir inga kort just nu',
   'ring.action.why.nothing': 'åtgärden har inga steg',
   'ring.action.why.gone': 'högen är inte kvar',
+  'ring.action.why.asks': 'ett steg frågar efter ett tal',
+  'start.tile': 'Starta spelet',
+  'start.blocked': 'Går inte att starta just nu: {why}',
+  'start.again.label': 'Starta om spelet?',
+  'start.again.text': 'Korten som ligger ute går tillbaka, och lekarna blandas om.',
+  'start.again.yes': 'Ja, starta om',
   'kbd.hint.action.asks': 'kräver ett tal; skriv det i listan vid högen',
   'ring.action.list': 'Vad {zone} kan',
   // En räknares verb (C4, #67): ett steg åt vardera hållet och ett tal sagt rakt ut. Ringen och

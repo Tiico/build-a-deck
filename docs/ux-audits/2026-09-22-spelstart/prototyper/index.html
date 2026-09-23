@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyper — spelstart</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  body { overflow: auto; }
+  .sida { max-width: 760px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { color: #fff; font-size: 20px; margin: 0 0 6px; }
+  .under { color: var(--quiet-2); font-size: 13px; line-height: 1.6; margin: 0 0 24px; }
+  ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  a.rad { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; gap: 14px; align-items: center; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: #e6ecfa; text-decoration: none; }
+  a.rad:hover { border-color: var(--primary-mark); background: #1b2030; }
+  a.rad b { display: block; font-size: 14px; margin-bottom: 2px; }
+  a.rad small { color: var(--quiet-2); font-size: 12px; line-height: 1.45; }
+  a.rad .nr { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 999px; background: #24507f; color: #fff; font-weight: 700; font-size: 13px; }
+  a.rad em { font-style: normal; color: var(--quiet); font-size: 11px; white-space: nowrap; }
+  .beslut { margin: 26px 0 0; padding: 14px 16px; border: 1px solid #4a4230; border-radius: 12px; background: #2a2417; color: #ffd98a; font-size: 12px; line-height: 1.6; }
+  .beslut b { display: block; color: #ffe9b8; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="sida">
+  <h1>Spelstart: vad som händer med lekarna när spelet börjar</h1>
+  <p class="under">
+    En lek ligger i dag i dokumentets ordning på varje nytt bord, och den som vill ha den blandad
+    trycker Blanda för hand, en gång per hög och bord. K21 gav redan en hög egna åtgärder — ett
+    namn och en ordnad lista av steg — men en åtgärd kan bara köras av en människa som klickar.
+    De två prototyperna prövar var det andra sättet att köra dem står: kommandot vid bordet, och
+    ordet i editorn som säger att en åtgärd hör till starten.
+    Kastas när implementationen är inne. Växla mellan förslagen med knapparna i varje prototyp.
+  </p>
+  <ol>
+    <li><a class="rad" href="01-starta-spelet.html"><span class="nr">1</span><span><b>Var «Starta spelet» står vid bordet</b><small>Bordsläget i 1280 × 800 och sändningen i 1920 × 1080, i produktens egen geometri. Växla mellan Före start och Efter start, och tryck på kommandot i varje förslag.</small></span><em>väntar på beslut</em></a></li>
+    <li><a class="rad" href="02-startkrysset.html"><span class="nr">2</span><span><b>Hur designern säger att en åtgärd körs vid start</b><small>Zonpanelen i fliken Bord, i kolumnens egna 320 px, med produktens egna meningar. Kryss, rattar och flyttknappar går att använda; mätraden läser om panelens höjd vid varje klick.</small></span><em>väntar på beslut</em></a></li>
+  </ol>
+  <p class="beslut">
+    <b>Det som redan är bestämt och inte prövas här</b>
+    Spelstarten är ett uttryckligt kommando vid bordet och inte något som sker när bordet föds —
+    annars går platsberoende steg som «dela ut fem till varje hand» inte att säga alls, för ingen
+    sitter ännu. Starten körs som ett vanligt kuvert av vanliga verb, så loggen spelar upp den
+    identiskt och inget nytt verb behövs. Och receptets öppningsbord skriver «Blanda» på draghögen
+    åt varje nytt spel, som det redan lägger ut själva draghögen; designern tar bort det som allt
+    annat receptet föreslår.
+  </p>
+</div>
+</body></html>

@@ -504,7 +504,8 @@
         "toSeq": 3,
         "contested": true
       },
-      "ended": false
+      "ended": false,
+      "played": true
     },
     "B": {
       "seq": 8,
@@ -663,7 +664,8 @@
       ],
       "rewind": null,
       "undo": null,
-      "ended": false
+      "ended": false,
+      "played": true
     },
     "table": {
       "seq": 8,
@@ -822,7 +824,8 @@
       ],
       "rewind": null,
       "undo": null,
-      "ended": false
+      "ended": false,
+      "played": true
     },
     "observer": {
       "seq": 8,
@@ -1081,7 +1084,8 @@
       ],
       "rewind": null,
       "undo": null,
-      "ended": false
+      "ended": false,
+      "played": true
     }
   }
 }

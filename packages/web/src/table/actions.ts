@@ -63,6 +63,33 @@ export function compileAction(view: Snapshot, pile: string, action: ZoneAction, 
   return intents.length > 0 ? { ok: true, intents } : { ok: false, why: 'nothing' }
 }
 
+// The start (#451): every action the designer marked for it, on every pile, in the order the
+// document lists the zones — compiled into one envelope, so the start is as atomic as any other
+// batch (K3) and the log replays it identically.
+//
+// It is the ring's own machine and not a second one: each action goes through `compileAction`,
+// so a start says the same things a ring says — a number nobody has entered, a target that is
+// not at this table — in the same words.
+export function startsAt(view: Snapshot): { zone: string; action: ZoneAction }[] {
+  // Only piles. K21 offers the panel on piles alone — an area and a hand have no ring to hang an
+  // action in — so an action anywhere else is a document that should not exist. It is read out
+  // here rather than discovered at the table, because the start is one envelope: a step the
+  // engine refuses brings the whole of it down, shuffle and deal and all.
+  return view.zones
+    .filter((z) => z.kind === 'pile')
+    .flatMap((z) => (z.actions ?? []).filter((a) => a.when === 'start' || a.when === 'both').map((action) => ({ zone: z.id, action })))
+}
+
+export function compileStart(view: Snapshot, asked: Asked = {}): Compiled {
+  const intents: Intent[] = []
+  for (const { zone, action } of startsAt(view)) {
+    const made = compileAction(view, zone, action, asked)
+    if (!made.ok) return made
+    intents.push(...made.intents)
+  }
+  return intents.length > 0 ? { ok: true, intents } : { ok: false, why: 'nothing' }
+}
+
 type Made = { intents: Intent[] } | { asks: string } | { why: string }
 
 // `beside` is the pile's own side and not the step's (K21): a pile that lies at the felt's left

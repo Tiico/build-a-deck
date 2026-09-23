@@ -490,3 +490,42 @@ describe('krysset som stänger högens panel (#300)', () => {
     expect((await run.projects.load(run.projectId))?.rev).toBe(1)
   })
 })
+
+// När en åtgärd körs (#451). Ratten sitter inne i texten som varje annan ratt i panelen gör,
+// eftersom det är vad K21 bestämde om den här ytan: meningen är specifikationen, och dess ord
+// är dess rattar. Tre lägen och inte en kryssruta, för «blanda» vill vara båda — leken blandas
+// när spelet börjar, och ringen behåller sin Blanda för mitten av en giv.
+describe('när en åtgärd körs', () => {
+  it('står som en mening med tre lägen, och «bara på begäran» är ingen egenskap alls', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+
+    fireEvent.click(within(panel()).getByRole('button', { name: '＋ Åtgärd' }))
+    expect(panel().textContent).toMatch(/Körs bara när någon ber om det/)
+
+    const ratt = () => [...panel().querySelectorAll('.byd-slot')].find((b) => /ber om det|spelstart/.test(b.textContent ?? '')) as HTMLElement
+    fireEvent.click(ratt())
+    const box = panel().querySelector('.byd-slot-pop') as HTMLElement
+    expect([...box.querySelectorAll('button')].map((b) => b.textContent)).toEqual([
+      'bara när någon ber om det',
+      'vid spelstart och när någon ber om det',
+      'bara vid spelstart',
+    ])
+
+    fireEvent.click([...box.querySelectorAll('button')].find((b) => b.textContent === 'vid spelstart och när någon ber om det') as HTMLElement)
+    expect(panel().textContent).toMatch(/Körs vid spelstart och när någon ber om det/)
+
+    await save()
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
+    expect((await run.projects.load(run.projectId))?.setup.zones.find((z) => z.id === 'draw')?.actions?.[0]?.when).toBe('both')
+
+    // Och tillbaka: det som inte sägs betyder «bara när någon ber om det», så fältet försvinner
+    // — samma regel som högens sida följer, och av samma skäl (#331).
+    fireEvent.click(ratt())
+    const igen = panel().querySelector('.byd-slot-pop') as HTMLElement
+    fireEvent.click([...igen.querySelectorAll('button')].find((b) => b.textContent === 'bara när någon ber om det') as HTMLElement)
+    await save()
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(3))
+    expect((await run.projects.load(run.projectId))?.setup.zones.find((z) => z.id === 'draw')?.actions?.[0]).not.toHaveProperty('when')
+  })
+})
