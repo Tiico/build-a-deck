@@ -7,6 +7,7 @@ import { CARD_MM, absoluteOf } from '../src/table/drop.js'
 import { FAN_MAX, HAND_STEP_MM } from '../src/table/hand.js'
 import { playIntents } from '../src/player/play.js'
 import { intentsForPlace, placesFor, type Thing } from '../src/table/keyboard.js'
+import { fanIn } from '../src/table/lay.js'
 import { tableOf } from './scene.js'
 
 // Var ett kort hamnar i en yta när den som spelar inte har pekat (L47, #449).
@@ -102,6 +103,49 @@ describe('ett kort som spelas till en yta utan att någon pekar (L47, #449)', ()
     // Det tredje kortet Nina spelade är `kort-3`, och det ska stå sist i zonens ordning.
     const newest = view.components.find((c) => c.id === order[order.length - 1])
     expect(newest?.cardRef).toBe('kort-3')
+  })
+})
+
+// Var fjädern slutar växa, och vad som händer efter det (L47, #449).
+describe('fjäderns tak (L47, #449)', () => {
+  it.each(SEATS)('är handens eget FAN_MAX i receptets egen yta vid %i platser', (players) => {
+    // Mätt och inte arrangerat: 63 + 11 × 26 = 349 mm i en yta som är 365 lång. Faller den här
+    // faller argumentet beslutet vilar på, och inte bara ett tal i en funktion.
+    const zone = zoneOf(played(players, 1), 'mine:A')
+    expect(zone.geometry.w >= zone.geometry.h ? zone.geometry.w : zone.geometry.h).toBe(365)
+    expect(fanIn(zone.geometry)).toBe(FAN_MAX)
+    expect(CARD_MM.w + (FAN_MAX - 1) * HAND_STEP_MM).toBeLessThanOrEqual(365)
+  })
+
+  it('är handens och inte rummets i en yta som hade rymt fler steg', () => {
+    // Filten själv är 1200 mm lång vid fyra platser och hade rymt fyrtiofem steg. Fjädern slutar
+    // ändå vid tolv: det är handens tak, och en yta som fjädrar som en hand slutar där handen gör.
+    const floor = zoneOf(played(4, 1), 'table')
+    expect(floor.geometry.w).toBeGreaterThan(CARD_MM.w + FAN_MAX * HAND_STEP_MM)
+    expect(fanIn(floor.geometry)).toBe(FAN_MAX)
+  })
+
+  it('lägger kort nummer tretton på tolvans millimeter, och stannar där', () => {
+    const view = played(4, FAN_MAX + 3)
+    const zone = zoneOf(view, 'mine:A')
+    const laid = boxes(view, 'mine:A')
+    expect(laid).toHaveLength(FAN_MAX + 3)
+    // De fyra sista ligger på samma punkt: fjädern har slutat växa.
+    const last = laid.slice(FAN_MAX - 1)
+    expect(new Set(last.map((b) => `${b.x},${b.y}`)).size).toBe(1)
+    expect(laid.filter((box) => !inside(box, zone.geometry))).toEqual([])
+  })
+
+  it('är ytans eget rum när ytan är kortare än tolv steg, så att ingenting lämnar den ändå', () => {
+    // Två räknare bredvid sig gör ytan 240 mm lång i stället för 365, och då är taket ytans.
+    const two: Recipe['counters'] = [{ name: 'Liv', start: 20 }, { name: 'Guld', start: 3 }]
+    const view = played(4, FAN_MAX, two)
+    const zone = zoneOf(view, 'mine:A')
+    expect(zone.geometry.w).toBe(240)
+    expect(fanIn(zone.geometry)).toBe(7)
+    const laid = boxes(view, 'mine:A')
+    expect(laid).toHaveLength(FAN_MAX)
+    expect(laid.filter((box) => !inside(box, zone.geometry))).toEqual([])
   })
 })
 
