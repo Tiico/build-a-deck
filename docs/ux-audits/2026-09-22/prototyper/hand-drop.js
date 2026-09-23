@@ -1,4 +1,3 @@
-/* global document */
 /* Solfjäderns geometri, porterad ordagrant ur `packages/web/src/table/hand.ts` och
  * `packages/web/src/table/drop.ts`, för prototypen till «kortet på väg in i en hand».
  *
