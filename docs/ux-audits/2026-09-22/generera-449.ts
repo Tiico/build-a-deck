@@ -519,7 +519,7 @@ vakt(
 vakt(
   'K2-provet har ett kort som verkligen drogs dit för hand',
   k2.every((x) => x.släpptes.x > 0 && x.släpptes.y >= 0),
-  'släpppunkten ligger inne i zonen och inte på dess hörn',
+  'släppunkten ligger inne i zonen och inte på dess hörn',
 )
 vakt(
   'de fyra klientreglerna låter det dragna kortet ligga kvar',
