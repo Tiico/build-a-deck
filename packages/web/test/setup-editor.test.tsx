@@ -195,7 +195,7 @@ describe('the setup editor (B5, K2): the seats knob, and giving the seats a zone
     const stored = await run.projects.load(run.projectId)
     expect(stored?.setup.zones.map((z) => z.id)).toEqual(expect.arrayContaining(['counters:C', 'mine:C', 'hand:C']))
     expect(stored?.setup.zones.some((z) => z.id === 'discard')).toBe(false)
-    expect(stored?.setup.zones.find((z) => z.id === 'mine:B')).toMatchObject({ owner: 'B', visibility: 'owner' })
+    expect(stored?.setup.zones.find((z) => z.id === 'mine:B')).toMatchObject({ owner: 'B', visibility: 'all' })
   })
 })
 

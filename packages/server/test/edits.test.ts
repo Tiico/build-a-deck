@@ -119,8 +119,8 @@ describe('an edit is a thing that happened to the project (D3)', () => {
     const stripped = after(doc, { v: 'removeZone', id: 'mine:A' }, { v: 'removeZone', id: 'mine:B' })
     const back = applyEdit(stripped, { v: 'addSeatZone', role: 'mine', name: 'Inför {seat}', shortcut: { label: 'Framför mig', at: 'top' } })
     expect(back.setup.zones.filter((z) => z.id.startsWith('mine:')).map((z) => [z.id, z.name, z.owner, z.visibility])).toEqual([
-      ['mine:A', 'Inför A', 'A', 'owner'],
-      ['mine:B', 'Inför B', 'B', 'owner'],
+      ['mine:A', 'Inför A', 'A', 'all'],
+      ['mine:B', 'Inför B', 'B', 'all'],
     ])
     expect(back.setup.zones.find((z) => z.id === 'mine:A')?.geometry).toEqual(back.setup.zones.find((z) => z.id === 'mine:A')?.geometry)
     // En plats som redan har sin behåller den, namn och allt.

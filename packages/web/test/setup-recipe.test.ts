@@ -11,7 +11,7 @@ describe('the opening table (B5): what the wizard lays out before the designer t
     expect(setup.deckZone).toBe('draw')
     expect(setup.zones.map((z) => z.id)).toEqual(['table', 'draw', 'discard', 'mine:A', 'mine:B', 'mine:C', 'counters:A', 'counters:B', 'counters:C', 'hand:A', 'hand:B', 'hand:C'])
     expect(setup.zones.find((z) => z.id === 'hand:C')).toMatchObject({ kind: 'hand', owner: 'C', visibility: 'owner', returnTo: 'draw', geometry: { x: 540, y: -250, w: 60, h: 500 } })
-    expect(setup.zones.find((z) => z.id === 'mine:A')).toMatchObject({ kind: 'area', owner: 'A', visibility: 'owner', shortcut: { label: 'Framför mig', at: 'top' } })
+    expect(setup.zones.find((z) => z.id === 'mine:A')).toMatchObject({ kind: 'area', owner: 'A', visibility: 'all', shortcut: { label: 'Framför mig', at: 'top' } })
     expect(setup.zones.find((z) => z.id === 'counters:B')).toMatchObject({ kind: 'area', owner: 'B', visibility: 'all' })
     expect(setup.zones.find((z) => z.id === 'discard')?.shortcut).toEqual({ label: 'Kasta', at: 'top' })
     expect(setup.counters).toEqual([{ name: 'Poäng', start: 0 }])
