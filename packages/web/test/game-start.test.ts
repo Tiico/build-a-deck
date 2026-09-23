@@ -144,3 +144,28 @@ describe('leken ett nytt spel föds med', () => {
     expect(replay(initialState('v1', setup, registry), registry, table.log)).toEqual(table.state())
   })
 })
+
+// Ett dokument som redan bär kombinationen (#454). En import kan bära en, och den som trycker på
+// brickan har inte skrivit spelet: att öppna en trave frågor i det ögonblicket vore att be en
+// främling om tal hon inte kan svara på. Kompilatorn gissar därför inget tal utan säger att ett
+// steg frågar efter ett — samma mening ringen säger, och den brickan står avstängd med.
+describe('en startåtgärd som frågar efter ett tal', () => {
+  it('gissar inget tal, utan säger att ett steg frågar efter ett', () => {
+    const table = tableOf(
+      withActions({
+        draw: [action('dela', 'start', [{ v: 'deal', each: { of: 'ask' }, to: { at: 'hands' }, face: 'keep' }])],
+      }),
+    )
+    table.run(null, { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    expect(compileStart(table.view(null))).toEqual({ ok: false, asks: 'ask:0' })
+  })
+
+  it('säger det också när ett steg före det gick att kompilera', () => {
+    const table = tableOf(
+      withActions({
+        draw: [action('blanda', 'start', [{ v: 'shuffle' }]), action('dela', 'start', [{ v: 'split', count: { of: 'ask' }, to: { at: 'beside' }, face: 'keep' }])],
+      }),
+    )
+    expect(compileStart(table.view(null))).toEqual({ ok: false, asks: 'ask:0' })
+  })
+})

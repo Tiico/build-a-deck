@@ -844,6 +844,8 @@ export const enEditor = {
   'setup.when.request': 'only when somebody asks',
   'setup.when.both': 'at game start and when somebody asks',
   'setup.when.start': 'only at game start',
+  'setup.when.why.asks': 'Not at game start: a step asks for a number.',
+  'setup.when.why.start': 'No step can ask for a number: the action runs at game start.',
   'setup.verb.split': 'Take off the pile',
   'setup.verb.deal': 'Deal',
   'setup.verb.take': 'Search out',

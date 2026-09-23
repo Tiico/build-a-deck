@@ -244,3 +244,61 @@ describe('matrisen täcker katalogen', () => {
       for (const key of keysUnder('setup.step.')) expect(translate(lang, key as Key), key).not.toContain('{place}')
   })
 })
+
+// ── Raden under ratten (#454) ─────────────────────────────────────────────────────────────────
+
+// «Så många jag säger» och spelstarten går inte ihop, och panelen säger varför i ord i stället för
+// i en tooltip (beställarens beslut 2026-09-23). Raden läses här ur panelen och i båda språken, av
+// samma skäl som meningarna ovan: det som ska stämma är det som står på skärmen, och en rad som
+// bara finns på svenska är en avstängd kontroll utan skäl för halva läsekretsen (A4).
+function whyLine(lang: Lang, action: ZoneAction): string | null {
+  const doc = projectDoc()
+  const draw = doc.setup.zones.find((z) => z.id === 'draw')!
+  const view = render(
+    <Language lang={lang}>
+      <ZoneActions doc={doc} zone={{ ...draw, actions: [action] }} onPatch={() => undefined} onClose={() => undefined} />
+    </Language>,
+  )
+  const line = view.container.querySelector('.byd-zone-action-why')?.textContent ?? null
+  view.unmount()
+  return line
+}
+
+const asking = (when?: ZoneAction['when']): ZoneAction => ({ id: 'a1', label: 'Åtgärd', steps: [{ v: 'deal', each: { of: 'ask' }, to: { at: 'hands' }, face: 'keep' }], when })
+const plain = (when?: ZoneAction['when']): ZoneAction => ({ id: 'a1', label: 'Åtgärd', steps: [{ v: 'shuffle' }], when })
+
+describe('raden under ratten när «så många jag säger» och starten möts', () => {
+  it.each([
+    ['sv', asking(), 'Inte vid spelstart: ett steg frågar efter ett tal.'],
+    ['en', asking(), 'Not at game start: a step asks for a number.'],
+    ['sv', plain('start'), 'Inget steg kan fråga efter ett tal: åtgärden körs vid spelstart.'],
+    ['en', plain('start'), 'No step can ask for a number: the action runs at game start.'],
+    ['sv', plain('both'), 'Inget steg kan fråga efter ett tal: åtgärden körs vid spelstart.'],
+    ['en', plain('both'), 'No step can ask for a number: the action runs at game start.'],
+  ] as const)('säger på %s vad som hindrar valet', (lang, action, said) => {
+    expect(whyLine(lang, action)).toBe(said)
+  })
+
+  // Ett dokument som redan bär kombinationen — en import kan bära en — får meningen om steget, för
+  // det är den som säger varför ratten inte erbjuder det läge åtgärden faktiskt står i.
+  it.each([
+    ['sv', 'Inte vid spelstart: ett steg frågar efter ett tal.'],
+    ['en', 'Not at game start: a step asks for a number.'],
+  ] as const)('säger på %s vilket av hållen som gäller när dokumentet bär båda', (lang, said) => {
+    expect(whyLine(lang, asking('start'))).toBe(said)
+  })
+
+  // Ett `ask`-steg säger sitt också i en åtgärd som bara körs på begäran, för det är där raden
+  // hör hemma: den är skälet att de två lägena i ratten står avstängda, och ratten står där.
+  it.each([
+    ['sv', 'Inte vid spelstart: ett steg frågar efter ett tal.'],
+    ['en', 'Not at game start: a step asks for a number.'],
+  ] as const)('säger på %s samma sak om en åtgärd som bara körs på begäran', (lang, said) => {
+    expect(whyLine(lang, asking('request'))).toBe(said)
+  })
+
+  it.each(['sv', 'en'] as const)('lägger ingen rad alls på %s när de två inte möts', (lang) => {
+    expect(whyLine(lang, plain())).toBeNull()
+    expect(whyLine(lang, plain('request'))).toBeNull()
+  })
+})

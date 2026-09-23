@@ -124,3 +124,40 @@ describe('ramen runt efterledet (#287)', () => {
     expect(contrastRatio(line, ground)).toBeLessThan(contrastRatio(word, ground))
   })
 })
+
+// ── Det avstängda i panelen (#454) ────────────────────────────────────────────────────────────
+
+// «Så många jag säger» och spelstarten går inte ihop, så en rad i rutan står kvar men går inte att
+// välja, och en rad text under ratten säger varför. Båda är ord, och båda är ord som *bär* hela
+// beskedet: en avstängd rad ingen kan läsa säger inte «går inte just nu», den säger ingenting.
+//
+// Den avstängda raden mäts på båda bottnarna, och det är hela poängen med att mäta den. En
+// avstängd knapp matchar fortfarande `:hover` i webbläsaren, så en rad som inte tar tillbaka
+// rutans egen botten står på den blå — där det tysta registret ligger på 2,54:1.
+const OFF = declared('.byd-slot-pop button:disabled', 'color')
+const OFF_BG = declared('.byd-slot-pop button:disabled', 'background')
+// Panelens egen botten, som raden under ratten står på.
+const PANEL = declared('.byd-zone-actions', 'background')
+const WHY = declared('.byd-zone-action-why', 'color')
+// Det tysta registret, läst ur editorns rot: båda reglerna pekar på tokenet och ingen skriver en
+// färg av sitt eget, vilket är vad `editor-contrast.test.ts` håller arket till.
+const QUIET = declared('.byd-editor', '--byd-editor-quiet')
+const resolve = (value: string) => (value === 'var(--byd-editor-quiet)' ? QUIET : value)
+
+describe('det som står kvar men inte går att välja (#454)', () => {
+  it('tar tillbaka rutans egen botten, så den inte mäts mot den blå raden under pekaren', () => {
+    expect(OFF_BG).toBe('transparent')
+  })
+
+  it('är läsbart på den bottnen', () => {
+    expect(contrastRatio(resolve(OFF), RESTING)).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('är fortfarande tystare än en rad som går att välja', () => {
+    expect(contrastRatio(resolve(OFF), RESTING)).toBeLessThan(contrastRatio(ROW, RESTING))
+  })
+
+  it('säger skälet i ord under ratten, läsbart på panelens egen botten', () => {
+    expect(contrastRatio(resolve(WHY), PANEL)).toBeGreaterThanOrEqual(4.5)
+  })
+})

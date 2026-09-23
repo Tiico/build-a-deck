@@ -529,3 +529,91 @@ describe('när en åtgärd körs', () => {
     expect((await run.projects.load(run.projectId))?.setup.zones.find((z) => z.id === 'draw')?.actions?.[0]).not.toHaveProperty('when')
   })
 })
+
+// «Så många jag säger» och spelstarten (#454). `ask` frågar läsaren vid bordet, vilket är rätt för
+// en åtgärd någon valt ur ringen och fel vid start: varje startåtgärd på varje hög blir ett enda
+// kuvert, så flera `ask`-steg blir en trave frågor i det ögonblick någon trycker på brickan.
+// Bordet säger redan nej med skäl (se `game-start.test.ts`); det här är editorns halva.
+//
+// Formen är beställarens beslut av 2026-09-23: ratten behåller sina tre lägen och skälet står som
+// en rad text under den. En `title` avvisades — en tooltip kräver hover, och ett pekdon har ingen.
+describe('ett steg som frågar efter ett tal, och spelstarten', () => {
+  const step = () => panel().querySelector('ol li') as HTMLElement
+  const whenSlot = () => [...panel().querySelectorAll('.byd-slot')].find((b) => /ber om det|spelstart/.test(b.textContent ?? '')) as HTMLElement
+  // Rutan när-ratten fällde ut. Dess rader är rutans egna barn och inte en sökbar lista, så de
+  // läses som de står.
+  const whenBox = () => [...panel().querySelectorAll('.byd-slot-pop')].map((b) => [...b.querySelectorAll('button')].map((x) => [x.textContent, x.disabled])).at(0)
+  const why = () => (panel().querySelector('.byd-zone-action-why') as HTMLElement | null)?.textContent ?? null
+
+  it('erbjuder inte starten på en åtgärd vars steg frågar efter ett tal, och säger varför under ratten', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    fireEvent.click(within(panel()).getByRole('button', { name: '＋ Åtgärd' }))
+
+    // Ett nytt steg tar ett tal, och ingenting står under ratten: de tre lägena är alla möjliga.
+    expect(why()).toBeNull()
+    fireEvent.click(whenSlot())
+    expect(whenBox()).toEqual([
+      ['bara när någon ber om det', false],
+      ['vid spelstart och när någon ber om det', false],
+      ['bara vid spelstart', false],
+    ])
+    fireEvent.keyDown(panel(), { key: 'Escape' })
+
+    fireEvent.click(rowNamed(open(step(), '1'), 'så många jag säger'))
+    expect(step().textContent).toMatch(/Ta så många jag säger från högen/)
+
+    expect(why()).toBe('Inte vid spelstart: ett steg frågar efter ett tal.')
+    fireEvent.click(whenSlot())
+    expect(whenBox()).toEqual([
+      ['bara när någon ber om det', false],
+      ['vid spelstart och när någon ber om det', true],
+      ['bara vid spelstart', true],
+    ])
+  })
+
+  it('går inte att lägga ett frågande steg i en åtgärd som redan är märkt för start, och säger vad som hindrar det', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    fireEvent.click(within(panel()).getByRole('button', { name: '＋ Åtgärd' }))
+
+    fireEvent.click(whenSlot())
+    fireEvent.click([...panel().querySelectorAll('.byd-slot-pop button')].find((b) => b.textContent === 'bara vid spelstart') as HTMLElement)
+    expect(why()).toBe('Inget steg kan fråga efter ett tal: åtgärden körs vid spelstart.')
+
+    // Raden står kvar i rutan och är avstängd: en rad som försvinner säger att valet aldrig
+    // funnits, och det som ska sägas är att det inte går just nu.
+    const amounts = open(step(), '1')
+    expect((rowNamed(amounts, 'så många jag säger') as HTMLButtonElement).disabled).toBe(true)
+    expect((rowNamed(amounts, 'ett per spelare') as HTMLButtonElement).disabled).toBe(false)
+    // Ett klick på den gör ingenting: rutan står kvar öppen och ratten visar fortfarande talet.
+    fireEvent.click(rowNamed(amounts, 'så många jag säger'))
+    expect(slotShowing(step(), '1')).toBeDefined()
+
+    // Och ratten står orörd åt det hållet: den som märkt en åtgärd för start måste kunna ta
+    // tillbaka det, och då går det frågande steget att lägga igen.
+    fireEvent.keyDown(panel(), { key: 'Escape' })
+    fireEvent.click(whenSlot())
+    expect(whenBox()).toEqual([
+      ['bara när någon ber om det', false],
+      ['vid spelstart och när någon ber om det', false],
+      ['bara vid spelstart', false],
+    ])
+    fireEvent.click([...panel().querySelectorAll('.byd-slot-pop button')].find((b) => b.textContent === 'bara när någon ber om det') as HTMLElement)
+    expect(why()).toBeNull()
+    expect((rowNamed(open(step(), '1'), 'så många jag säger') as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  // Ratten pekar på raden, för den som tabbar till ratten hoppar över texten ovanför den.
+  it('låter ratten peka på raden, så skälet följer med till den som tabbar dit', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    fireEvent.click(within(panel()).getByRole('button', { name: '＋ Åtgärd' }))
+    expect(whenSlot().getAttribute('aria-describedby')).toBeNull()
+
+    fireEvent.click(rowNamed(open(step(), '1'), 'så många jag säger'))
+    const said = whenSlot().getAttribute('aria-describedby')
+    expect(said).not.toBeNull()
+    expect(document.getElementById(said!)?.textContent).toBe(why())
+  })
+})

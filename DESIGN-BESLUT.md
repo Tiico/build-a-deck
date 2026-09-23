@@ -2801,6 +2801,31 @@ Det står här som en känd gräns och inte som ett förbiseende.
 
 Grindarna: `packages/web/test/game-start.test.ts` (kompilatorn, ordningen, det som inte hör till starten och skälet när den inte går att köra), `packages/web/test/table-renderer.test.tsx` (brickan, dess plats mot varje zon receptet lägger, kuvertet, tangentbordet, frågan och den avstängda raden), `packages/web/test/setup-actions.test.tsx` (meningen, de tre lägena och att «bara på begäran» är ingen egenskap alls), `packages/engine/test/played.test.ts` och `packages/server/test/wire.test.ts` (uppgiften om att något hänt, och vad den bär på tråden) samt `packages/e2e/test/game-start.spec.ts` (hela vägen i den byggda produkten: blandningen, utdelningen och frågan).
 
+**Tillägg 2026-09-23 (#454): «så många jag säger» och starten går inte ihop, och panelen säger det i ord.**
+`ActionAmount.of: 'ask'` betyder att steget frågar läsaren vid bordet, och det är rätt för en åtgärd någon valt ur ringen: hon har just pekat på högen och vet vad hon bad om.
+Vid start är det fel.
+En start kompilerar varje startåtgärd på varje hög till ett enda kuvert, så flera `ask`-steg blir en trave frågor i det ögonblick någon trycker på brickan — innan spelet börjat, av någon som kanske inte skrivit spelet.
+Bordet svarade redan rätt: `compileStart` gissar inget tal utan svarar `{ ok: false, asks }`, och brickan står avstängd med ringens egen mening.
+Det som saknades var editorn, som lät kombinationen skrivas.
+
+Panelen stänger nu av den ena så länge den andra står, åt båda hållen: rattens två lägen för start går inte att välja åt en åtgärd vars steg frågar efter ett tal, och «så många jag säger» går inte att välja åt en åtgärd som är märkt för start.
+Den avstängda raden står kvar i rutan i stället för att tas bort — en rad som försvinner säger att valet aldrig funnits, och det som ska sägas är att det inte går just nu.
+
+**Skälet står som en rad text under ratten.**
+Frågan var nödvändig eftersom K21 kräver att en avstängd rad säger varför i ord, och den ytan inte fanns i panelen: en ratt tar sina ord och ett valfritt namn för örat, och raderna i rutan är nakna knappar.
+Tre former låg på beställarens bord.
+**A, en `title` på ratten** — billigast, och ordagrant vad brickan vid bordet bär.
+**B, att låta meningen skriva om sig själv** — «körs när någon ber om det, eftersom ett steg frågar efter ett tal», vilket inte kostar någon höjd alls.
+**C, en rad text under ratten.**
+
+**Valet blev C, av beställaren 2026-09-23.**
+A avvisades för att en tooltip kräver hover: på ett pekdon finns den inte, och en avstängd kontroll vars skäl bara finns i en tooltip är i praktiken en kontroll utan skäl för de flesta som möter den.
+B avvisades för att skälet då försvinner i samma ögonblick som designern tar bort `ask`-steget — det syns alltså aldrig bredvid det val det handlar om — och för att meningen måste hålla i båda språken utan att bli klumpig.
+Priset är en rad höjd per åtgärd som bär kombinationen, och det är uttryckligen accepterat; mätt i Chromium är det en rad i båda språken åt det vanliga hållet och två åt det andra.
+Raden bär brickans egen form — vad som inte går, kolon, och skälet — och efterledet är ordagrant ringens `ring.action.why.asks`, för det är samma fakta sagt på verktygets andra yta.
+Ratten pekar på raden med `aria-describedby`, eftersom den som tabbar till ratten hoppar över texten ovanför den.
+
+Grindarna för tillägget: `packages/web/test/setup-actions.test.tsx` (rattens lägen, rutans rad och att ratten pekar på texten), `packages/web/test/setup-sentence-matrix.test.tsx` (raden ordagrant i båda språken, och att den uteblir när de två inte möts), `packages/web/test/slot-badge-contrast.test.ts` (att både den avstängda raden och raden under ratten går att läsa på sin egen botten) samt `packages/web/test/game-start.test.ts` och `packages/web/test/table-renderer.test.tsx` för bordshalvan.
 ---
 
 ## L. Editorn (grillad 2026-09-06)
