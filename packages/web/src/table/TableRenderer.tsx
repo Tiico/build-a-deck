@@ -18,6 +18,7 @@ import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ActionSheet } from './ActionSheet.js'
 import { compileStart, startsAt } from './actions.js'
+import { Question } from '../editor/Question.js'
 import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAt, handBand, handCountAt, handExtent, handRotation, type TableMode } from './hand.js'
 import { gapAbove, nameAt, type Grow, type Rim } from './labels.js'
@@ -402,6 +403,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // En filt där ingen hög bär en startåtgärd ritar ingen bricka alls — samma regel som K14 ger
   // ringen: en ring utan verb öppnas inte, och ett kommando utan något att göra är samma fel.
   const start = onAct && startsAt(view).length > 0 ? compileStart(view) : null
+  // Ett andra tryck mitt i spelet är hur en ny giv ges, och det ska gå (K23) — men inte av
+  // misstag, eftersom det drar tillbaka varje hand och blandar om leken. Frågan ställs bara när
+  // något faktiskt hänt vid bordet; `view.played` är den uppgiften, och den räknar inte den som
+  // bara satt sig (#452).
+  const [askingStart, setAskingStart] = useState(false)
   // The box a back is drawn in: the card's own, so the supplier only has to draw a card. A
   // surface that supplies none keeps the stand-in weave `table.css` draws.
   const backAt = (at: string): ReactNode => back && <span className="byd-card-back">{back({ px, left, top, scale }, at)}</span>
@@ -1119,7 +1125,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               disabled={!start.ok}
               title={start.ok ? undefined : t('start.blocked', { why: t(whyKey(start)) })}
               style={{ left: left(floor.geometry.x + floor.geometry.w / 2 - START_MM.w / 2), top: top(floor.geometry.y + floor.geometry.h / 2 - START_MM.h / 2), width: px(START_MM.w), height: px(START_MM.h), fontSize: `${Math.max(9, px(START_MM.h) * 0.36)}px` }}
-              onClick={() => start.ok && onAct?.(start.intents)}
+              onClick={() => {
+                if (!start.ok) return
+                if (view.played) setAskingStart(true)
+                else onAct?.(start.intents)
+              }}
             >
               {t('start.tile')}
             </button>
@@ -1183,6 +1193,20 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
         <Suspense fallback={null}>
           <CameraControls level={level} folded={tucked} onFold={setTucked} onZoom={stepZoom} onWhole={() => zoomTo(null)} />
         </Suspense>
+      )}
+      {askingStart && start?.ok && (
+        <Question
+          className="byd-table-start-ask"
+          label={t('start.again.label')}
+          confirm={t('start.again.yes')}
+          onConfirm={() => {
+            setAskingStart(false)
+            onAct?.(start.intents)
+          }}
+          onCancel={() => setAskingStart(false)}
+        >
+          {t('start.again.text')}
+        </Question>
       )}
       {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable)} />}
       {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => onAct([{ v: 'setCounter', component: entry.id, value }])} onClose={() => setEntry(null)} />}

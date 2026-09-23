@@ -1,4 +1,4 @@
-import type { Applied, ComponentId, ComponentSpec, Outcome, SeatId, ZoneId } from '@byd/protocol'
+import { SessionIntent, type Applied, type ComponentId, type ComponentSpec, type Outcome, type SeatId, type ZoneId } from '@byd/protocol'
 import type { CardQuery } from '@byd/protocol'
 import { reach } from './reach.js'
 import { restoredTable } from './restore.js'
@@ -21,11 +21,19 @@ import { clearOverrides } from './visibility.js'
 // it yields the same state. All randomness has already been fixed in `applied.outcome`.
 // Dynamic pile ids derive from `seq`, so they need no outcome to replay.
 
+// Which verbs are the session's and not the hand's. Read off the schema rather than written out
+// again, so the two cannot drift: a verb added to `SessionIntent` is a session verb here the same
+// day, and one added to the physical set counts as play without anybody remembering to say so.
+const SESSION_VERBS: ReadonlySet<string> = new Set(SessionIntent.options.map((o) => o.shape.v.value))
+
 export function apply(prev: TableState, _registry: TypeRegistry, applied: Applied): TableState {
   if (applied.seq !== prev.seq + 1) throw new Error(`seq gap: expected ${prev.seq + 1}, got ${applied.seq}`)
   const state = cloneState(prev)
   state.seq = applied.seq
   const it = applied.intent
+  // Somebody touched a card here (#452). Sitting down is not playing: a seat is the session's
+  // and not the game's, which is the whole reason `seq` could not answer this.
+  if (!SESSION_VERBS.has(it.v)) state.played = true
 
   switch (it.v) {
     case 'move': {
@@ -146,6 +154,10 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
       state.zones = m.zones
       state.components = m.components
       state.nextId = m.nextId
+      // Bordet står som uppställningen lade det, så ingenting ligger ute att lägga tillbaka
+      // (#452). Att fråga «korten som ligger ute går tillbaka» vid ett bord där inga kort ligger
+      // ute är att fråga om ingenting.
+      state.played = false
       break
     }
     case 'session.end':

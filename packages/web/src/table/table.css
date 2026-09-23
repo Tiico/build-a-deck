@@ -432,6 +432,27 @@
    något designern ska kunna se skälet till, inte något som ska gömma sig. */
 .byd-table-start:disabled { background: #46506b; color: #d3d8e6; cursor: not-allowed; box-shadow: none; }
 
+/* Frågan före ett omtryck (#452). Den står utanför filten och inte på den: en vriden filt får
+   inte vrida en mening. Formen är produktens enda fråga — `Question` — på bordets egen yta, med
+   samma röda svar som editorns; den tar fokus, öppnar på svaret som ingenting kostar, och
+   svarar Escape. Måtten är spacing-stegen, inte egna tal. */
+.byd-table-start-ask {
+  position: absolute; z-index: 11; left: 50%; top: 50%;
+  transform: translate(-50%, 56px);
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;
+  max-width: min(420px, 90%); padding: 12px 16px; border-radius: 12px;
+  background: #3d2632; color: #ffe4ea; border: 1px solid #7a3243;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.55);
+  font: 400 14px/1.45 system-ui, sans-serif;
+}
+.byd-table-start-ask p { margin: 0; flex: 1 0 100%; text-align: center; }
+.byd-table-start-ask button {
+  min-height: 44px; padding: 0 16px; border-radius: 10px; cursor: pointer;
+  border: 1px solid #7a3243; background: transparent; color: #ffe4ea; font: inherit; font-weight: 700;
+}
+.byd-table-start-ask button[data-kind='danger'] { background: #7a3243; }
+.byd-table-start-ask button:hover { border-color: #ffe4ea; }
+
 .byd-seat-name[data-edge='E'] { transform: translateX(calc(50% - var(--card-half))) translateY(-50%) rotate(-90deg); }
 .byd-seat-name[data-edge='W'] { transform: translateX(calc(var(--card-half) - 50%)) translateY(-50%) rotate(90deg); }
 

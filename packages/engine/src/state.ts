@@ -97,6 +97,10 @@ export type TableState = {
   // Opaque sequential ids for setup. They leak only what an unshuffled physical deck leaks.
   nextId: number
   ended: boolean
+  // Whether a physical line has been committed here (#452). Set where the line is applied, so a
+  // replay of the same log reaches the same answer — it is a fact about the log and not a flag
+  // somebody sets.
+  played: boolean
   // A rewind proposed and not yet confirmed (B).
   rewind: RewindProposal | null
 }

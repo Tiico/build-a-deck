@@ -1250,7 +1250,8 @@
         "toSeq": 5,
         "contested": true
       },
-      "ended": true
+      "ended": true,
+      "played": true
     },
     "B": {
       "seq": 26,
@@ -1350,7 +1351,8 @@
       "components": [],
       "rewind": null,
       "undo": null,
-      "ended": true
+      "ended": true,
+      "played": true
     },
     "table": {
       "seq": 26,
@@ -1450,7 +1452,8 @@
       "components": [],
       "rewind": null,
       "undo": null,
-      "ended": true
+      "ended": true,
+      "played": true
     },
     "observer": {
       "seq": 26,
@@ -1692,7 +1695,8 @@
       ],
       "rewind": null,
       "undo": null,
-      "ended": true
+      "ended": true,
+      "played": true
     }
   }
 }

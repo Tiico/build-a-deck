@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createRef } from 'react'
 import type { Intent, Snapshot } from '@byd/protocol'
 import { TableRenderer, type FeltKeyboard, type TableHandle } from '../src/table/TableRenderer.js'
@@ -1272,6 +1272,43 @@ describe('startbrickan på filten (#451)', () => {
     expect(b.getAttribute('tabindex')).toBeNull()
     b.focus()
     expect(document.activeElement).toBe(b)
+  })
+
+  // Ett andra tryck mitt i spelet drar tillbaka varje hand och blandar om leken (#452). Det ska
+  // gå — det är så en ny giv ges, och K23 säger att verktyget inte säger nej — men inte av
+  // misstag. Frågan ställs bara när något faktiskt hänt vid bordet.
+  it('frågar innan den kör om ett bord där någon redan rört ett kort, och kör direkt annars', () => {
+    const table = withStart('start')
+    const sent: Intent[][] = []
+    const draw = () => render(<TableRenderer view={table.view(null)} mode="table" scale={2} onAct={(intents) => sent.push(intents)} />)
+
+    // Inget har hänt: trycket går rakt igenom, utan fråga.
+    const first = draw()
+    expect(table.view(null).played).toBe(false)
+    fireEvent.click(tile()!)
+    expect(sent).toHaveLength(1)
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    first.unmount()
+
+    // Nu ligger kort ute. Trycket skickar ingenting förrän frågan är besvarad.
+    table.run(null, { v: 'draw', from: 'draw', to: 'discard', count: 2 })
+    expect(table.view(null).played).toBe(true)
+    draw()
+    fireEvent.click(tile()!)
+    expect(sent).toHaveLength(1)
+    const fraga = screen.getByRole('alertdialog')
+    expect(fraga.textContent).toMatch(/Korten som ligger ute går tillbaka/)
+
+    // Och svaret som ingenting kostar är det frågan öppnar på.
+    expect(document.activeElement?.textContent).toBe('Avbryt')
+    fireEvent.click(within(fraga).getByRole('button', { name: 'Avbryt' }))
+    expect(sent).toHaveLength(1)
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+
+    fireEvent.click(tile()!)
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Ja, starta om' }))
+    expect(sent).toHaveLength(2)
+    expect(sent[1]).toEqual([{ v: 'shuffle', pile: 'draw' }])
   })
 
   it('är avstängd med skälet i ord när starten inte går att köra', () => {
