@@ -29,6 +29,7 @@ export type RecipeWords = {
   floor: string
   draw: string
   drawShortcut: string
+  drawShuffle: string
   discard: string
   discardShortcut: string
   mine: string
@@ -40,6 +41,7 @@ export const SWEDISH_WORDS: RecipeWords = {
   floor: 'Spelyta',
   draw: 'Draghög',
   drawShortcut: 'Lägg underst',
+  drawShuffle: 'Blanda',
   discard: 'Kasthög',
   discardShortcut: 'Kasta',
   mine: 'Framför {seat}',
@@ -49,6 +51,34 @@ export const SWEDISH_WORDS: RecipeWords = {
 }
 const forSeat = (word: string, seat: string): string => word.replace('{seat}', seat)
 
+// The draw pile, laid the one place, so the two doors into a new game cannot come out with
+// different decks. Written once here rather than twice below because the pile is one answer:
+// where it stands, what it is called, what the phone offers over it — and, since #453, that it is
+// shuffled before anybody is dealt from it.
+//
+// The shuffle is the recipe suggesting an action, not the tool knowing one: K21 stands, and the
+// table still ships no actions and recognises none. Without it a new game began with the deck in
+// the document's order — the top of the draw pile was the table's first row, at every table,
+// every time — and the designer only found out during the playtest.
+//
+// `both` and not `start` is the whole reason the dial has three settings and not two: the deck is
+// shuffled when the game begins *and* the ring keeps its Blanda for the middle of a hand. The id
+// is a plain word like every other id the recipe writes (`draw`, `discard`, `mine:A`), and it
+// cannot collide with one the editor makes — those are `a` and a timestamp.
+//
+// It is the designer's from the first save, like every zone here: taken away it stays away, and
+// nothing puts it back.
+export const DRAW_SHUFFLE_ID = 'shuffle'
+const drawZone = (words: RecipeWords, id: string): Zone => ({
+  id,
+  kind: 'pile',
+  name: words.draw,
+  visibility: 'none',
+  geometry: point(-140, 0),
+  shortcut: { label: words.drawShortcut, at: 'bottom' },
+  actions: [{ id: DRAW_SHUFFLE_ID, label: words.drawShuffle, steps: [{ v: 'shuffle' }], when: 'both' }],
+})
+
 // A table with nothing but a floor and a draw pile: what every setup grows from.
 export function emptySetup(words: RecipeWords = SWEDISH_WORDS): Setup {
   return {
@@ -57,7 +87,7 @@ export function emptySetup(words: RecipeWords = SWEDISH_WORDS): Setup {
     deckZone: 'draw',
     zones: [
       { id: 'table', kind: 'area', name: words.floor, visibility: 'all', geometry: floorGeometry(0) },
-      { id: 'draw', kind: 'pile', name: words.draw, visibility: 'none', geometry: point(-140, 0), shortcut: { label: words.drawShortcut, at: 'bottom' } },
+      drawZone(words, 'draw'),
     ],
   }
 }
@@ -73,7 +103,7 @@ export function openingSetup(recipe: Recipe, words: RecipeWords = SWEDISH_WORDS)
   const counters = recipe.counters.length
   const zones: Zone[] = [
     { id: setup.floor, kind: 'area', name: words.floor, visibility: 'all', geometry: felt },
-    { id: setup.deckZone, kind: 'pile', name: words.draw, visibility: 'none', geometry: point(-140, 0), shortcut: { label: words.drawShortcut, at: 'bottom' } },
+    drawZone(words, setup.deckZone),
     { id: 'discard', kind: 'pile', name: words.discard, visibility: 'all', geometry: point(140, 0), shortcut: { label: words.discardShortcut, at: 'top' } },
     ...seats.map((seat, i) => inFrontZone(seat, i, seats.length, counters, words)),
     ...(counters > 0 ? seats.map((seat, i) => countersZone(seat, i, seats.length, counters, words)) : []),
