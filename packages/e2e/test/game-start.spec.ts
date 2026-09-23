@@ -95,3 +95,29 @@ test.describe('spelstarten vid ett riktigt bord', () => {
     expect(await count('hand:A')).toBe('4')
   })
 })
+
+// Receptets egen blandning (#453). Provet ovanför skriver sin egen åtgärd på draghögen; det här
+// är bordet som ett nytt spel verkligen föds med, orört — receptets dokument rakt igenom.
+//
+// Före #453 fanns här ingen bricka alls: ingen hög bar en startåtgärd, så filten ritade ingen.
+test.describe('bordet ett nytt spel föds med', () => {
+  test('bär receptets blandning på brickan, och blandar leken när den trycks', async ({ request, open, player }) => {
+    // Orört: ingen zon har rörts efter att receptet lade bordet.
+    const doc = gameDoc({ players: 2, counters: [], cards: 8 })
+    const table = await tableFromSetup(request, setupFromProject(doc), deckFromProject(doc))
+    await player(table, { name: 'Ada', seat: 'A' })
+
+    const screen = await open(TV, `${table.tvUrl}&lang=sv`)
+    const tile = screen.page.locator('[data-table-start]')
+    await expect(tile).toBeVisible()
+
+    await tile.click()
+
+    // Att ordningen faktiskt ändras är motorns grind. Det här är att blandningen kom hela vägen
+    // fram: bordets egen händelselista säger att draghögen blandades, med designerns eget namn
+    // på högen (A4), och inga kort har lämnat den.
+    const feed = screen.page.locator('ol[aria-labelledby="tv-feed"] li')
+    await expect(feed.first()).toHaveText(/blandade Draghög/)
+    expect(await screen.page.locator(`[data-zone="${doc.setup.deckZone}"]`).first().getAttribute('data-count')).toBe('8')
+  })
+})

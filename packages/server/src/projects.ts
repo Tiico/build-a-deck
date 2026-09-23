@@ -27,7 +27,9 @@ const ZoneDef = z.object({
   // Which cards start here, as a question about the deck's own columns. A zone without one takes
   // no cards, and what no zone asks for lies in the deck's pile as it always has.
   fill: CardQuery.optional(),
-  // What a player may ask this zone for when they click it (K14). The tool ships none.
+  // What a player may ask this zone for when they click it (K14). The tool ships none and knows
+  // none; the recipe suggests one — a shuffle on the draw pile (#453) — the way it suggests the
+  // pile itself, and the designer takes it away like anything else it laid.
   actions: z.array(ZoneAction).optional(),
   // The one row of the deck that lies last in this pile, and on which side (K23): a shuffle
   // leaves it there, and back in this pile it lies last again. Piles only.

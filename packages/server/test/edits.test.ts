@@ -78,7 +78,7 @@ describe('an edit is a thing that happened to the project (D3)', () => {
     // A seat that arrives brings zones, and they are named in the language the designer is
     // building the game in (A4): the words come with the edit, so the actor writes exactly what
     // the editor showed.
-    const english = { floor: 'Table', draw: 'Draw pile', drawShortcut: 'Put underneath', discard: 'Discard pile', discardShortcut: 'Discard', mine: 'In front of {seat}', mineShortcut: 'In front of me', counters: 'Counters {seat}', hand: 'Hand' }
+    const english = { floor: 'Table', draw: 'Draw pile', drawShortcut: 'Put underneath', drawShuffle: 'Shuffle', discard: 'Discard pile', discardShortcut: 'Discard', mine: 'In front of {seat}', mineShortcut: 'In front of me', counters: 'Counters {seat}', hand: 'Hand' }
     const counters = [{ name: 'Score', start: 0 }]
     const opened = { ...base(), setup: openingSetup({ players: 2, counters }, english) }
     const third = applyEdit(opened, { v: 'setRecipe', recipe: { players: 3, counters }, words: english })

@@ -1293,6 +1293,7 @@ export const svEditor = {
   'zone.floor': 'Spelyta',
   'zone.draw': 'Draghög',
   'zone.draw.shortcut': 'Lägg underst',
+  'zone.draw.shuffle': 'Blanda',
   'zone.discard': 'Kasthög',
   'zone.discard.shortcut': 'Kasta',
   'zone.mine': 'Framför {seat}',

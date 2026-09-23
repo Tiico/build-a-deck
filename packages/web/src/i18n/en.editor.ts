@@ -1142,6 +1142,7 @@ export const enEditor = {
   'zone.floor': 'Table',
   'zone.draw': 'Draw pile',
   'zone.draw.shortcut': 'Put underneath',
+  'zone.draw.shuffle': 'Shuffle',
   'zone.discard': 'Discard pile',
   'zone.discard.shortcut': 'Discard',
   'zone.mine': 'In front of {seat}',

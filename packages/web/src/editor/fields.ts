@@ -56,6 +56,7 @@ export const recipeWords = (t: T): RecipeWords => ({
   floor: t('zone.floor'),
   draw: t('zone.draw'),
   drawShortcut: t('zone.draw.shortcut'),
+  drawShuffle: t('zone.draw.shuffle'),
   discard: t('zone.discard'),
   discardShortcut: t('zone.discard.shortcut'),
   mine: t('zone.mine'),
