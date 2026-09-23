@@ -1366,4 +1366,25 @@ describe('startbrickan på filten (#451)', () => {
     expect(b.disabled).toBe(true)
     expect(b.title).toBe('Går inte att starta just nu: ingen sitter vid bordet än')
   })
+
+  // Och när skälet är ett steg som frågar efter ett tal (#454). «Så många jag säger» frågar den
+  // som valt åtgärden ur ringen; vid start finns ingen att fråga — starten är ett enda kuvert av
+  // varje startåtgärd på varje hög, och den som trycker på brickan har kanske inte skrivit
+  // spelet. Brickan står därför avstängd med meningen i stället för att öppna en trave frågor.
+  it('är avstängd med samma mening när ett steg i starten frågar efter ett tal', () => {
+    const setup = twoSeatSetup()
+    const table = tableOf({
+      ...setup,
+      zones: setup.zones.map((z) =>
+        z.id === 'draw'
+          ? { ...z, actions: [{ id: 'h', label: 'Starthand', when: 'start' as const, steps: [{ v: 'deal' as const, each: { of: 'ask' as const }, to: { at: 'hands' as const }, face: 'keep' as const }] }] }
+          : z,
+      ),
+    })
+    table.run(null, { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    render(<TableRenderer view={table.view(null)} mode="table" scale={2} onAct={() => undefined} />)
+    const b = tile() as HTMLButtonElement
+    expect(b.disabled).toBe(true)
+    expect(b.title).toBe('Går inte att starta just nu: ett steg frågar efter ett tal')
+  })
 })
