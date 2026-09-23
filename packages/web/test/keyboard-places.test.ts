@@ -33,6 +33,7 @@ function table(seat: string | null): Snapshot {
     rewind: null,
     undo: null,
     ended: false,
+    played: false,
   }
 }
 

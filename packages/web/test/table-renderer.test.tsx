@@ -5,7 +5,7 @@ import { createRef } from 'react'
 import type { Intent, Snapshot } from '@byd/protocol'
 import { TableRenderer, type FeltKeyboard, type TableHandle } from '../src/table/TableRenderer.js'
 import { buildScene, tableOf } from './scene.js'
-import { twoSeatSetup } from './fixture.js'
+import { recipeSetup, twoSeatSetup } from './fixture.js'
 import { activeBounds, cameraOf, frameRect, overscanPx, pad, reachOf, union, type Rect } from '../src/table/camera.js'
 import { feltScale, fitScale, TV_AIR_PX } from '../src/table/fit.js'
 import { feltWithHands, handCountAt, handExtent, handRotation, type TableMode } from '../src/table/hand.js'
@@ -1309,6 +1309,46 @@ describe('startbrickan på filten (#451)', () => {
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Ja, starta om' }))
     expect(sent).toHaveLength(2)
     expect(sent[1]).toEqual([{ v: 'shuffle', pile: 'draw' }])
+  })
+
+  // Prototypen ritade högarna längre isär än receptet gör, och brickan lades i bandet mellan
+  // dem. På ett riktigt bord är det bandet 217 mm brett — draghögen och kasthögen står på
+  // (±140, 0) och är 63 mm breda — så en bricka på 260 mm låg ovanpå båda. Sett i den byggda
+  // produkten innan den här raden fanns; nu är det den här grinden som säger det.
+  it('ligger inte på någon zon receptet lägger, vid något platsantal', () => {
+    for (const players of [2, 4, 6, 8]) {
+      const table = tableOf({
+        ...recipeSetup(players),
+        zones: recipeSetup(players).zones.map((z) =>
+          z.id === 'draw' ? { ...z, actions: [{ id: 'b', label: 'Blanda', when: 'start' as const, steps: [{ v: 'shuffle' as const }] }] } : z,
+        ),
+      })
+      const view = table.view(null)
+      const { unmount } = render(<TableRenderer view={view} mode="tv" scale={1} onAct={() => undefined} />)
+      const b = tile() as HTMLElement
+      // Filtens egna koordinater: renderaren ritar i px från golvets övre vänstra hörn, med
+      // scale 1 är en px en mm, så rutan går att jämföra med zonernas geometri rakt av.
+      const floor = view.zones.find((z) => z.id === view.floor)!.geometry
+      const box = {
+        x: parseFloat(b.style.left) + floor.x,
+        y: parseFloat(b.style.top) + floor.y,
+        w: parseFloat(b.style.width),
+        h: parseFloat(b.style.height),
+      }
+      // Helt innanför filten.
+      expect(box.x, `${players} platser: brickans vänsterkant`).toBeGreaterThanOrEqual(floor.x)
+      expect(box.x + box.w, `${players} platser: brickans högerkant`).toBeLessThanOrEqual(floor.x + floor.w)
+      expect(box.y + box.h, `${players} platser: brickans nederkant`).toBeLessThanOrEqual(floor.y + floor.h)
+
+      for (const z of view.zones) {
+        if (z.id === view.floor) continue
+        // En hög är en punkt i dokumentet och ett kort på filten: den upptar kortets ruta.
+        const g = z.kind === 'pile' ? { x: z.geometry.x - CARD_MM.w / 2, y: z.geometry.y - CARD_MM.h / 2, w: CARD_MM.w, h: CARD_MM.h } : z.geometry
+        const apart = box.x + box.w <= g.x || g.x + g.w <= box.x || box.y + box.h <= g.y || g.y + g.h <= box.y
+        expect(apart, `${players} platser: brickan ligger på ${z.id}`).toBe(true)
+      }
+      unmount()
+    }
   })
 
   it('är avstängd med skälet i ord när starten inte går att köra', () => {

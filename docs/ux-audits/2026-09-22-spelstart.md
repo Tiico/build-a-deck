@@ -42,7 +42,12 @@ Växeln **Före start / Efter start** visar samma bord före och efter att exemp
 
 **A · Brickan på filten.** Starten ligger på bordet som en fysisk giv-bricka, i filtens egna millimeter, skalad med filten och upprätt mot läsaren som zonnamnen.
 Samma sak på varje yta: bordsläget, sändningen, distansvyn och telefonen ser en bricka på samma plats.
-Kostar 260 × 72 mm av filten — fyra kortbredder — och ligger i bandet mellan draghögen och kasthögen, som är tomt på receptets bord men inte nödvändigtvis på designerns.
+Kostar 260 × 72 mm av filten — fyra kortbredder — på golv som är tomt på receptets bord men inte nödvändigtvis på designerns.
+
+> **Rättat under bygget 2026-09-22.** Prototypens filt ritade draghögen och kasthögen längre isär än receptet gör.
+> Receptet ställer dem på (±140, 0) och ett kort är 63 mm brett, så bandet mellan dem är 217 mm — smalare än brickan, som därmed låg ovanpå båda högarna i den byggda produkten.
+> Brickan ligger i stället 101 mm under filtens mitt, i bandet mellan kortens underkant (44 mm) och närmaste zon en plats äger (230 mm).
+> Det är samma form och samma storlek; det är platsen som var fel, och den var fel för att prototypen mätte på en filt den ritat själv.
 
 ![A, före start](2026-09-22-spelstart/bilder/start-a-fore.png)
 ![A, efter start](2026-09-22-spelstart/bilder/start-a-efter.png)

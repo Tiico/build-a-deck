@@ -438,7 +438,11 @@
    svarar Escape. Måtten är spacing-stegen, inte egna tal. */
 .byd-table-start-ask {
   position: absolute; z-index: 11; left: 50%; top: 50%;
-  transform: translate(-50%, 56px);
+  /* Ovanför filtens mitt, med underkanten 12 px över den. Brickan ligger alltid *under* mitten
+     (`START_MM.below`), så frågan kan aldrig täcka knappen den handlar om — vilken skala filten
+     än ritas i. Den låg först 56 px under mitten och gjorde precis det, sett i den byggda
+     produkten: «Ja, starta om» stod ovanpå «Starta spelet». */
+  transform: translate(-50%, calc(-100% - 12px));
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;
   max-width: min(420px, 90%); padding: 12px 16px; border-radius: 12px;
   background: #3d2632; color: #ffe4ea; border: 1px solid #7a3243;

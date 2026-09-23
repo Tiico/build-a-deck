@@ -24,10 +24,18 @@ import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, 
 import { gapAbove, nameAt, type Grow, type Rim } from './labels.js'
 import { useT, type Key, type T } from '../i18n/index.js'
 
-// Startbrickans mått i filtens egna millimeter (#451). 260 × 72 mm är fyra kortbredder och
-// ligger i bandet mellan draghögen och kasthögen på receptets bord; den skalar med filten som
-// en hög gör, så den är lika stor i förhållande till korten på varje skärm.
-const START_MM = { w: 260, h: 72 }
+// Startbrickans mått och plats i filtens egna millimeter (#451). Den skalar med filten som en
+// hög gör, så den är lika stor i förhållande till korten på varje skärm.
+//
+// `below` är hur långt under filtens mitt dess överkant ligger, och talet är mätt och inte valt.
+// Prototypen la brickan i bandet *mellan* högarna; på ett riktigt bord finns inte det bandet.
+// Receptet ställer draghögen och kasthögen på (±140, 0), och ett kort är 63 mm brett, så mellan
+// dem är det 217 mm — mindre än brickan — och den låg ovanpå båda, sett i den byggda produkten.
+//
+// Bandet under högarna är fritt vid varje platsantal receptet lägger: kortens underkant är 44 mm
+// från mitten, och närmaste zon någon plats äger — ytan framför den — börjar 230 mm ut. Brickan
+// ligger mitt i det bandet, alltså 101 mm ned, och tar 72 mm av de 186 som finns.
+const START_MM = { w: 260, h: 72, below: 101 }
 
 // Varför starten inte går att köra, i ringens egna ord: det är samma maskin som svarar, så det
 // ska vara samma mening. Ett steg som frågar efter ett tal har ingen att fråga i det ögonblick
@@ -1124,7 +1132,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               data-table-start={start.ok ? 'ready' : 'why'}
               disabled={!start.ok}
               title={start.ok ? undefined : t('start.blocked', { why: t(whyKey(start)) })}
-              style={{ left: left(floor.geometry.x + floor.geometry.w / 2 - START_MM.w / 2), top: top(floor.geometry.y + floor.geometry.h / 2 - START_MM.h / 2), width: px(START_MM.w), height: px(START_MM.h), fontSize: `${Math.max(9, px(START_MM.h) * 0.36)}px` }}
+              style={{ left: left(floor.geometry.x + floor.geometry.w / 2 - START_MM.w / 2), top: top(floor.geometry.y + floor.geometry.h / 2 + START_MM.below), width: px(START_MM.w), height: px(START_MM.h), fontSize: `${Math.max(9, px(START_MM.h) * 0.36)}px` }}
               onClick={() => {
                 if (!start.ok) return
                 if (view.played) setAskingStart(true)

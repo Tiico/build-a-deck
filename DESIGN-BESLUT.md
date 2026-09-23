@@ -2780,6 +2780,15 @@ C är den enda som svarar på «vad är det som startar» innan någon trycker, 
 A är samma sak på varje yta — bordsläget, sändningen och distansvyn ser en bricka på samma plats — och syns från andra sidan rummet, vilket är vad ett bord i ett rum handlar om.
 Priset är filtens yta: 260 × 72 mm är fyra kortbredder, och den ligger i bandet mellan draghögen och kasthögen, som är tomt på receptets bord men inte nödvändigtvis på designerns.
 
+**Brickan ligger under högarna och inte mellan dem, och det talet är mätt.**
+Prototypen la den i bandet mellan draghögen och kasthögen; det bandet finns inte på ett riktigt bord.
+Prototypens filt ritade högarna längre isär än receptet gör — receptet ställer dem på (±140, 0), och ett kort är 63 mm brett, så mellan dem är det 217 mm och inte 360.
+En bricka på 260 mm låg alltså ovanpå båda högarna, vilket syntes först i den byggda produkten och inte i prototypen.
+Bandet *under* högarna är fritt vid varje platsantal receptet lägger: kortens underkant ligger 44 mm från mitten och närmaste zon en plats äger — ytan framför den — börjar 230 mm ut.
+Brickan ligger mitt i det bandet, 101 mm ned, och tar 72 av de 186 mm som finns.
+Grinden mäter det vid 2, 4, 6 och 8 platser mot varje zon receptet lägger, i stället för att lita på ett öga.
+Frågan före ett omtryck står av samma skäl *ovanför* filtens mitt: brickan ligger alltid under den, så frågan kan aldrig täcka knappen den handlar om.
+
 Brickan står upprätt mot läsaren med `--unrotate`, som zonnamnen gör, och skalar med filten som en hög gör.
 En filt där ingen hög bär en startåtgärd ritar ingen bricka alls: K14 säger redan att en ring utan verb inte öppnas, och ett kommando utan något att göra är samma fel i en annan form.
 Den avstängda brickan säger **varför** i ord, i ringens egna meningar, av samma skäl som K21 ger.
@@ -2790,7 +2799,7 @@ Inom en åtgärd är ordningen designerns, som förut.
 En start där ordningen *mellan* två högar spelar roll — en hög som tar kort ur en annan som just fyllts — går alltså inte att uttrycka i dag, och `SetupEditor` har ingen omordning av zoner att lösa det med.
 Det står här som en känd gräns och inte som ett förbiseende.
 
-Grindarna: `packages/web/test/game-start.test.ts` (kompilatorn, ordningen, det som inte hör till starten och skälet när den inte går att köra), `packages/web/test/table-renderer.test.tsx` (brickan, kuvertet, tangentbordet och den avstängda raden) och `packages/web/test/setup-actions.test.tsx` (meningen, de tre lägena och att «bara på begäran» är ingen egenskap alls).
+Grindarna: `packages/web/test/game-start.test.ts` (kompilatorn, ordningen, det som inte hör till starten och skälet när den inte går att köra), `packages/web/test/table-renderer.test.tsx` (brickan, dess plats mot varje zon receptet lägger, kuvertet, tangentbordet, frågan och den avstängda raden), `packages/web/test/setup-actions.test.tsx` (meningen, de tre lägena och att «bara på begäran» är ingen egenskap alls), `packages/engine/test/played.test.ts` och `packages/server/test/wire.test.ts` (uppgiften om att något hänt, och vad den bär på tråden) samt `packages/e2e/test/game-start.spec.ts` (hela vägen i den byggda produkten: blandningen, utdelningen och frågan).
 
 ---
 
