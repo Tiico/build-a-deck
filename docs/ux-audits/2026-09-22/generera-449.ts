@@ -1121,8 +1121,8 @@ mät()
 `
 
 
-writeFileSync(`${HÄR}prototyper/05-kortets-plats.html`, sida)
-console.log('skrev prototyper/05-kortets-plats.html')
+writeFileSync(`${HÄR}prototyper/06-kortets-plats.html`, sida)
+console.log('skrev prototyper/06-kortets-plats.html')
 console.table(
   KANDIDATER.flatMap((k) =>
     PLATSANTAL.map((p) => {

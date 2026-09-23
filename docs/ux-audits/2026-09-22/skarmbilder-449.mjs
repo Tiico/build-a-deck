@@ -17,7 +17,7 @@ const playwright = await import(pathToFileURL(krav.resolve('playwright')).href)
 const chromium = playwright.chromium ?? playwright.default.chromium
 
 const UT = new URL('./bilder/', import.meta.url).pathname
-const ADRESS = 'http://localhost:8797/prototyper/05-kortets-plats.html'
+const ADRESS = 'http://localhost:8797/prototyper/06-kortets-plats.html'
 const REGLER = { nu: 'nulaget', rad: 'radvis', fjader: 'fjadrat', stapel: 'staplat', packa: 'packar' }
 
 const webbläsare = await chromium.launch()
