@@ -7,10 +7,24 @@
  * `packages/web/src/table/hand.ts` (`edgeRotation`, `handRotation`).
  * Färger, typsnittsvikter och radier är tagna ur `packages/web/src/table/table.css`.
  *
- * Två saker är medvetet förenklade och påverkar inte frågan som ska avgöras:
- * inpassningen räknar inte om skalan lutningsmedvetet som `feltScale` gör, och ett zonnamn
+ * Tre saker är medvetet förenklade och påverkade inte frågan den här filen byggdes för:
+ * inpassningen räknar inte om skalan lutningsmedvetet som `feltScale` gör, ett zonnamn
  * placeras centrerat vid sin egen kant i stället för att skjutas ut från ett hörn enligt K19:s
- * hela regel. Vridningarna — som är vad issuet handlar om — är produktens, exakt.
+ * hela regel, och **de två högarna är dekor**. Vridningarna — som är vad #418 handlade om —
+ * är produktens, exakt.
+ *
+ * Om högarna, tillagt 2026-09-23 (#451): `pile()`-anropen nedan ställer draghögen och kasthögen
+ * på runda tal, inte på receptets. Receptet ställer dem på `point(-140, 0)` och `point(140, 0)`,
+ * så bandet mellan dem är i verkligheten 217 mm — här är det 360. Det var utan betydelse för
+ * #418 och #424, där högarna bara var något att läsa ett zonnamn bredvid, och det kostade en
+ * verklig bugg i #451, där en bricka mättes *mot* dem och hamnade ovanpå båda i den byggda
+ * produkten.
+ *
+ * Talen står kvar med flit: tre mergade prototyper är frysta bilder ritade av just den här
+ * filen, och att flytta högarna nu hade ritat om deras bevis i efterhand. Det som var fel var
+ * inte talen utan det här stycket, som sa att all geometri kom ur `recipe.ts`.
+ *
+ * **Mäter du något mot en hög: läs receptet, inte den här filen.**
  */
 
 // ── Produktens mått ─────────────────────────────────────────────────────────────────────────
