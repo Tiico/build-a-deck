@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import type { SetupDef } from '@byd/engine'
+import { initialState, replay, type SetupDef } from '@byd/engine'
 import type { ZoneAction } from '@byd/protocol'
-import { compileStart } from '../src/table/actions.js'
-import { tableOf } from './scene.js'
+import { openingSetup, setupFromProject } from '@byd/server/doc'
+import { compileStart, startsAt } from '../src/table/actions.js'
+import { registry, tableOf } from './scene.js'
 import { twoSeatSetup } from './fixture.js'
 
 // Spelstarten (#451). En åtgärd har hittills bara kunnat köras av en människa som klickar på
@@ -95,5 +96,51 @@ describe('vad som händer med lekarna vid spelstart', () => {
       }),
     )
     expect(compileStart(table.view(null))).toEqual({ ok: true, intents: [{ v: 'shuffle', pile: 'draw' }] })
+  })
+})
+
+// Receptets egen blandning (#453). Ovanför står maskinen; det här är att det bord ett nytt spel
+// verkligen föds med trycker på den. Att skriva ett fält ingen läser är precis det fel ett
+// påstående om uppställningen inte fångar, så vägen mäts hela: receptets dokument, genom
+// `setupFromProject` som bordet byggs av, till `startsAt` som starten frågar.
+const newGame = (players: number): SetupDef =>
+  setupFromProject({
+    rows: ['drake', 'riddare', 'trollkarl', 'tjuv', 'präst', 'bågskytt'].map((id) => ({ id, fields: { antal: 1 } })),
+    setup: openingSetup({ players, counters: [] }),
+  })
+
+describe('leken ett nytt spel föds med', () => {
+  it('blandas av starten, och av ingenting annat på bordet', () => {
+    const setup = newGame(2)
+    const table = tableOf(setup)
+    const view = table.view(null)
+    expect(startsAt(view)).toEqual([{ zone: 'draw', action: { id: 'shuffle', label: 'Blanda', steps: [{ v: 'shuffle' }], when: 'both' } }])
+    expect(compileStart(view)).toEqual({ ok: true, intents: [{ v: 'shuffle', pile: 'draw' }] })
+  })
+
+  it('ligger i dokumentets ordning tills starten trycks, och i en annan efter', () => {
+    const table = tableOf(newGame(2))
+    const before = table.state().zones['draw']!.order.map((id) => table.state().components[id]!.cardRef)
+    expect(before).toEqual(['drake', 'riddare', 'trollkarl', 'tjuv', 'präst', 'bågskytt'])
+    const started = compileStart(table.view(null))
+    expect(started.ok).toBe(true)
+    table.run(null, ...(started.ok ? started.intents : []))
+    const after = table.state().zones['draw']!.order.map((id) => table.state().components[id]!.cardRef)
+    expect([...after].sort()).toEqual([...before].sort())
+    expect(after).not.toEqual(before)
+  })
+
+  // D4: all slump ligger i loggen som resultat och aldrig som frö, så en start med en blandning
+  // är lika uppspelbar som vilken annan rad som helst. Mätt och inte påstått — loggen viks om
+  // från ett nyfött tillstånd och ska ge exakt det bordet som står.
+  it('spelas upp identiskt ur loggen, blandningen inräknad', () => {
+    const setup = newGame(4)
+    const table = tableOf(setup)
+    const started = compileStart(table.view(null))
+    table.run(null, ...(started.ok ? started.intents : []))
+    expect(table.log.map((line) => line.intent.v)).toEqual(['shuffle'])
+    // Resultatet ligger i raden; fröet finns inte att spela upp med.
+    expect(table.log[0]!.outcome).toMatchObject({ kind: 'shuffle' })
+    expect(replay(initialState('v1', setup, registry), registry, table.log)).toEqual(table.state())
   })
 })

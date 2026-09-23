@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { setupFromProject } from '../src/setup.js'
+import { openingSetup } from '../src/recipe.js'
 import type { ProjectDoc } from '../src/projects.js'
 
 // Frågestyrt startinnehåll. Vilka kort som börjar var är designerns fråga över sin egen tabell
@@ -75,5 +76,20 @@ describe('högens bottenkort', () => {
     const order = state.zones['draw']!.order.map((id) => state.components[id]!)
     expect(order.map((c) => c.cardRef)).toEqual(['riddare', 'fälla', 'fälla', 'drake'])
     expect(order.at(-1)?.face).toBe('front')
+  })
+})
+
+// Receptets blandning, hela vägen fram (#453). Åtgärden står i dokumentet; det här är att den
+// också *kommer fram* — ett fält ingen bär vidare är ett fält ingen läser.
+describe('draghögens blandning på väg till bordet', () => {
+  it('följer med uppställningen ut ur receptet, och bara högar bär den', () => {
+    const setup = setupFromProject({ rows: [], setup: openingSetup({ players: 2, counters: [] }) })
+    expect(setup.zones.find((z) => z.id === 'draw')?.actions).toEqual([{ id: 'shuffle', label: 'Blanda', steps: [{ v: 'shuffle' }], when: 'both' }])
+    expect(setup.zones.filter((z) => z.actions !== undefined).map((z) => z.id)).toEqual(['draw'])
+  })
+
+  it('bär ingen åtgärd alls från en zon som inte har någon, i stället för en tom lista', () => {
+    const setup = setupFromProject(doc(base))
+    expect(setup.zones.find((z) => z.id === 'draw')).not.toHaveProperty('actions')
   })
 })
