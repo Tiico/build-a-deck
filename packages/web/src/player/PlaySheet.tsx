@@ -59,7 +59,8 @@ export function targetsOf(view: Snapshot, t: T = swedish) {
   return [...tilesOf(view, mine), { id: view.floor, name: table, label: table, at: 'top' as Placement, kind: 'area' as const, count: 0 }]
 }
 
-// What the overview lists (C4): every zone this reader may look into, another seat's included.
+// What the overview lists (C4, L48): every zone this reader may look into, another seat's
+// included.
 //
 // `mode` is the projection's own answer to «may this reader look in here» — `order` when they
 // may, `count` when they may not — so this asks the snapshot rather than working the visibility

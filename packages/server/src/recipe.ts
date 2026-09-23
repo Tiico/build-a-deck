@@ -120,7 +120,7 @@ const handZone = (seat: string, i: number, count: number, deck: string, words: R
 // which everyone reads (C4, B6). `{seat}` in the name is the seat's letter, so one name covers the
 // table.
 //
-// The area is public (#414). The phone's primary green button is «Framför mig», and a card played
+// The area is public (L48, #414). The phone's primary green button is «Framför mig», and a card played
 // around a television is expected to be seen; an opening table that answers with an empty box is a
 // table on the screen that is not the table in the room. The identity therefore leaves the server
 // to every client, which is a real change in what the wire carries and is proved on the frames in

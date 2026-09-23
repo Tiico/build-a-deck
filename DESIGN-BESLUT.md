@@ -620,9 +620,15 @@ Zonnamn måste vara begripliga utan att man ser bordet.
 
 Räknare och privata zoner (prototypat och byggt 2026-09-07):
 En räknare är en komponent av en egen typ, `token.counter` (B1, B2), med ett värde och en yta; `setCounter` är dess verb och protokollet är orört.
-Wizarden ger varje plats en yta "Framför mig" som bara ägaren ser och en räknarzon som alla ser, med räknarna ur en lista (en poängräknare som standard).
+Wizarden ger varje plats en yta "Framför {plats}" som hela bordet ser in i och en räknarzon som alla ser, med räknarna ur en lista (en poängräknare som standard).
+Ytan är publik därför att telefonens mest framträdande knapp heter "Framför mig" och den rimliga förväntan efter att ha spelat ett kort runt en TV är att kortet syns; ett startbord som svarar med en tom ruta är ett bord på skärmen som inte är bordet i rummet (L48).
+Kortet landar med framsidan upp, vilket `playIntents` redan gör av sig självt i varje publik målzon, och identiteten lämnar därmed servern till varje klient — vilket är en verklig ändring av vad `mode` skickar och inte en ritning.
+Det som inte ändras: dold information är fortfarande zonens fråga och inte kortets.
+En yta formgivaren sätter till `owner` är privat igen, och filten säger då hur mycket och aldrig vad (#414, val B, #437) — byte för byte samma zonvy som före det beslutet.
+En lek som behöver en dold yta framför varje plats gör den i editorn; en publik yta med kortet nervänt går att få genom att vända ner det efteråt, men då vet ingen vad det är, inte heller den som lade det, eftersom `canSeeFace` kräver framsidan i en `all`-zon.
 Tre varianter prövades för telefonen; valet blev staplat: räknarna som piller under huvudet, bordsöversikten som förut, korten framför dig som en mindre remsa ovanför handen med vänd, ta upp och spela. Bordet ritar en räknare som en bricka med värdet.
-Arket och översikten erbjuder aldrig en annan plats privata yta, och aldrig en zon som bara håller räknare.
+Arket erbjuder aldrig en annan plats yta — inte heller när den är publik, eftersom att lägga ett kort framför någon annan är ett verb verktyget inte har — och aldrig en zon som bara håller räknare.
+Översikten frågar i stället synlighet: den visar varje zon läsaren får titta in i, en annan plats publika yta inräknad, med dess namn och antal (L48).
 
 Reviderat 2026-09-14 (#78, UX-33, prototypat och godkänt av produktägaren): verben ligger inte kvar i remsan utan i uppslaget.
 Remsan står kvar där C4 satte den, men kortet är en enda kontroll: ett tryck håller upp det, precis som ett tryck på ett handkort, och Vänd, Ta upp och Spela läses i uppslaget i full bredd och minst 48 px höjd.
@@ -4781,6 +4787,49 @@ Den var produktens svar för den vägen, bar själv raden «this is the prototyp
 Ingenting drog tillbaka dem — `keptOnFelt` håller bara kvar det som släpps på golvet, och filten har ingen `overflow: hidden`.
 Två vägar in i samma yta får inte ge två svar, så telefonens och tangentbordets kuvert jämförs rakt av i `packages/web/test/card-lands-in-area.test.ts`, som också mäter kortens rutor ur den byggda filten vid 2–`MAX_PLAYERS`.
 Att taket i receptets yta är exakt `FAN_MAX` är en vakt i den sviten och inte ett påstående: faller den, faller argumentet beslutet vilar på.
+
+### L48. Ytan framför en plats är publik, och översikten frågar synlighet där arket frågar ägarskap (prototypat och beslutat 2026-09-22, #414)
+
+Telefonens mest framträdande knapp heter «Framför mig».
+Den rimliga förväntan efter att ha spelat ett kort runt en TV är att kortet syns, och startbordet svarade med en tom ruta — sedan #437 med en siffra.
+Ett bord på skärmen som inte är bordet i rummet är hela felet; frågan är alltså inte vad filten ritar utan vad startbordet *är*.
+
+**Receptets yta framför varje plats är `all` och inte `owner`.**
+Det är en bokstav i `seatZone` i `packages/server/src/recipe.ts` och ingenting annat: `playIntents` hade redan grenen `target?.mode === 'order'` och skickar då `move` **plus** `flip` till framsidan, så kortet vänds upp av sig självt och inget nytt verb behövdes (prototyp `docs/ux-audits/2026-09-22/prototyper/04-framfor-mig-publik.html`, generator `generera-414.ts`).
+
+**Det ändrar vad som lämnar servern, och det är mätt på trafiken och inte på skärmen.**
+Med `owner` fick TV:n och den andra spelaren noll av de tre kortens identiteter och noll av deras titlar; med `all` får de alla tre, och titlarna med dem.
+Prototypen mätte snapshotten till TV:n på ett bord med sexton kort, fyra platser och fyra räknare: 3 761 byte med `owner`, 4 625 byte med `all`.
+Domen körs av `cardsIn` och `mentions` ur `packages/e2e/support/frames.ts` i `packages/e2e/test/private-area.spec.ts`, i båda riktningarna — ett läckagetest som inte kan hitta en identitet när den finns säger ingenting när det inte hittar någon.
+
+**B:s väg är orörd, och det är en vakt och inte ett påstående.**
+En yta formgivaren sätter tillbaka till `owner` ger en främmande plats exakt den zonvy en privat yta alltid gett: `mode: count`, antalet, och inget `top`, `back` eller `bottom`.
+Objektet står pinnat, byte för byte, i `packages/server/test/recipe-visibility.test.ts`, och samma svit säger att ägaren själv får veta vad hon lade i båda lägena.
+Filten säger då hur mycket och aldrig vad (#414, val B, #437).
+
+**Mellanläget är avvisat och var inte färdigt ändå.**
+En publik zon med kortet kvar nedvänt hade gett tre riktiga kort på filten och noll identiteter ur servern, men `canSeeFace` kräver framsidan i en `all`-zon: inte heller den som lade kortet hade fått veta vad det var.
+Vägen hade krävt ett `showTo` till ägaren eller en fjärde synlighet, alltså en protokollmigrering och ett eget beslut.
+
+**Arket frågar ägarskap, översikten frågar synlighet.**
+De två var en lista så länge de hade ett svar: en zon någon annan ägde kunde läsaren varken se in i eller spela till.
+En publik yta som är någon annans skiljer dem åt, så `targetsOf` och `overviewOf` i `packages/web/src/player/PlaySheet.tsx` är nu två funktioner över en gemensam sållning.
+`targetsOf` svarar på var ett kort får läggas och sållar på ägare: ett kort av mitt har inget framför någon annan, genvägen heter «Framför mig» ur ägarens synvinkel — vid fyra platser hade arket fått fyra likalydande knappar — och att ge bort ett kort är ett verb verktyget inte har.
+Kommer det som ett önskemål är det ett eget beslut med ett eget namn på knappen.
+`overviewOf` svarar på vad som ligger på bordet och frågar `mode`, alltså projektionens eget svar på om läsaren får titta in.
+En zon som bara håller räknare står utanför båda, som förut (C4).
+
+**Hela bordet fälls ut under handen, och raden över handen förblir högarnas.**
+Telefonens rad ritades `pilesOnly`, så ingen yta alls syntes där — varken någon annans eller ens den egna — och det, och inte bara sållningen, var skälet till att «Framför A» inte stod någonstans på en telefon som redan fått alla tre identiteterna.
+Raden står kvar som högarnas, eftersom handen kommer först (#156) och en rad som växte med en bricka per plats hade tryckt undan handen vid åtta platser.
+Hela bordet — varje zon läsaren ser in i, med namn och antal — ligger i stället i en flik under handen, bredvid «Framför dig» och «Senast», vilket är det «fullt bord går att fälla ut vid behov» C4 alltid begärt och som inte fanns byggt.
+Den läser och handlar aldrig: draget ligger kvar i raden ovanför, där en tumme redan hittar det.
+Priset, uttryckligen: ett tryck till för att se vad som ligger framför de andra, i utbyte mot att handen ligger kvar där #156 satte den.
+
+**Följdkrav.**
+Ytan är fortfarande *någons* — ägarskapet är orört, och det är det som placerar den framför rätt plats och lägger dess kort i den platsens egen remsa på telefonen.
+Dold information är därmed fortfarande zonens fråga och inte kortets.
+En lek som behöver en dold yta framför varje plats gör den i editorn, och då gäller B:s väg ograverad.
 
 
 ## I. Öppna frågor

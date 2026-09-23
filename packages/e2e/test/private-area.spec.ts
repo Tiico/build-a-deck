@@ -9,8 +9,8 @@ import { expect, test } from '../support/test.js'
 
 // What the area in front of a seat says about itself, and to whom (#414).
 //
-// Two decisions meet here, and they are not the same decision. The opening table's area is public:
-// the phone's primary green button is «Framför mig», and the reasonable expectation after
+// Two decisions meet here, and they are not the same decision. The opening table's area is public
+// (L48): the phone's primary green button is «Framför mig», and the reasonable expectation after
 // playing a card around a television is that the card is seen — so the identity leaves the server
 // to every client, which is a real change in what the wire carries and not a drawing. An area the
 // designer sets back to `owner` is private as it always was (decision B, #437): the felt draws how
