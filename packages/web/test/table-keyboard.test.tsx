@@ -146,7 +146,12 @@ describe('the panel says the verbs the pointer already says, and no new one', ()
 })
 
 describe('a card moved by keyboard gets a coordinate the client works out (#2)', () => {
-  it('lands in the next free slot of the zone rather than on top of the card already there, and the focus follows it', async () => {
+  // The area works the point out, not this path (L47, #449): the card is fanned a hand's own
+  // step along the zone's long axis, centred across its short one, and laid on top of what is
+  // already there. Marknad is 660 × 140, so the first card lies at the zone's own start and 26 mm
+  // down, and the second one step along. Before that the point came from `slotIn`, a row with a
+  // 14 mm gap, which laid the first card 2 mm outside an area of the depth the recipe makes.
+  it('lays the card out where the area says, rather than on top of the card already there, and the focus follows it', async () => {
     const { id, other } = await tableWithTwoCards(withMarket())
     const user = userEvent.setup()
     const play = async (name: RegExp) => {
@@ -159,7 +164,7 @@ describe('a card moved by keyboard gets a coordinate the client works out (#2)',
 
     await play(/^dragon, kort i Spelyta/)
     await waitFor(async () => expect(await lastIntents(id, 2)).toEqual([
-      { v: 'move', component: 'c0', to: 'market', x: 14, y: 14 },
+      { v: 'move', component: 'c0', to: 'market', x: 0, y: 26, index: 0 },
       { v: 'flip', component: 'c0', face: 'front' },
     ]))
     // The focus goes after the card, which is now in Marknad and says so.
@@ -167,7 +172,7 @@ describe('a card moved by keyboard gets a coordinate the client works out (#2)',
 
     await play(/^knight, kort i Spelyta/)
     await waitFor(async () => expect(await lastIntents(id, 2)).toEqual([
-      { v: 'move', component: 'c1', to: 'market', x: 91, y: 14 },
+      { v: 'move', component: 'c1', to: 'market', x: 26, y: 26, index: 1 },
       { v: 'flip', component: 'c1', face: 'front' },
     ]))
     other.close()

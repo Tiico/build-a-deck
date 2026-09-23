@@ -4693,6 +4693,70 @@ I en vanlig textcell står ikonen efter fältet (#140) och nås framåt; i body-
 Det är ordningen som är gemensam och inte tangenten: fokus går dit ögat går (WCAG 2.4.3).
 #397:s ursprungliga acceptanskriterium bad om samma tangent och är ändrat efter det här beslutet.
 
+### L47. En yta lägger själv ut kortet den fått utan punkt: fjädrat, med det nyaste överst (prototypat och beslutat 2026-09-22, #449)
+
+Telefonen skickar ingen position.
+Ett kort som spelas till en yta med «Framför mig» fick därför `x: 0, y: 0`, alla kort hamnade på zonens hörn, och eftersom genvägen skickade `at: "top"` — alltså inget `index`, alltså `index 0`, alltså målat först — låg det nyaste underst.
+Tre kort i ytan såg ut som ett, och det man såg var det *första* hon spelade.
+Utan en placeringsregel är en publik yta därmed sämre än dagens antal: i dag säger filten «tre», med en publik yta säger den «ett» och ljuger (#414).
+
+**Regeln: fjädrad utläggning längs ytans långa axel, med handens eget steg, centrerat över den korta, och det nyaste kortet överst.**
+Steget är `HAND_STEP_MM` och inget nytt tal — samma 26 mm som en läst hand fjädrar med.
+Det är hela skälet till att just fjädrat valdes framför tre mätta alternativ: handen fjädrar redan så, och en yta som fjädrar likadant säger «det här är kort som ligger framför någon» utan att någon behöver lära sig något nytt.
+
+Talen är mätta med produktens egna funktioner importerade, inte avskrivna (prototyp `docs/ux-audits/2026-09-22/prototyper/06-kortets-plats.html`, generator `generera-449.ts`).
+`inFront` ger 365 × 100 mm vid varje platsantal, så de gäller vid två platser som vid åtta.
+
+| Regel | Ryms hela i ytan | Går att räkna | Alla titlar fria | Av 10: utanför filten / på grannzon | K2 |
+| --- | --- | --- | --- | --- | --- |
+| Nuläget | 16+ | **1** | 1 | 0 / 0 | håller |
+| Radvis (`slotIn`) | **0** | 16+ | 16+ | **6 / 4 · Hand** | håller |
+| **Fjädrat (26 mm)** | **12** | 16+ | 1 | **0 / 0** | **håller** |
+| Staplat (10 mm) | 1 | 16+ | 1 | 2 / 8 · Hand | håller |
+| Zonen packar | 16+ | 16+ | 6 | 0 / 0 | **bryter, 151,1 mm** |
+
+**Taket är det lägsta av handens `FAN_MAX` och ytans eget rum.**
+I receptets yta är de två samma tal, mätt och inte arrangerat: 63 + 11 × 26 = 349 mm i en yta som är 365 lång, alltså tolv kort, alltså exakt `FAN_MAX`.
+Ytans rum är den andra halvan och står där för att regeln gäller varje yta och inte bara receptets: en yta med två räknare bredvid sig är 240 mm lång och fjädrar sju kort, och en yta formgivaren gjort kortare än tolv steg får inte kasta ut kort ur sig.
+Det senare är hela felet i den regel det här ersätter.
+
+**Kort nummer tretton, och varje kort efter det, läggs på tolvans millimeter.**
+Det är handens eget svar buret vidare — `fanned` slutar vid `FAN_MAX` och antalet säger resten — men en yta kan inte låta bli att rita sina kort som handen kan, eftersom de är riktiga komponenter med riktiga punkter.
+Så fjädern slutar växa och det som kommer efter lägger sig på det sista steget.
+Följden, uttryckligen: från och med det trettonde kortet går antalet inte längre att räkna på filten.
+Det nyaste kortet är fortfarande helt synligt, och ingenting lämnar ytan, någonsin.
+De två alternativen mättes och är avvisade: att låta fjädern fortsätta lägger kort utanför filten, och att lägga om alla kort flyttar kort som någon annan lagt.
+
+**Priset, uttryckligen: bara ett kort i taget går att namnge från soffan.**
+Startramens titel ligger mitt på kortet — 53 × 9 mm vid y = 42 av 88 — så så snart kort överlappar är det bara det översta som går att läsa.
+Antalet går alltid att räkna, upp till taket.
+Det är det medvetna bytet: räkna alltid, läsa det nyaste.
+Är det viktigare att kunna *läsa* alla kort i en yta än att kunna räkna dem, är fjädrat fel och packningen rätt — och då måste K2 vika med en egen rad.
+
+**Packning är avvisad, och K2 står orörd.**
+En zon som lägger om sina kort varje gång är den enda kandidaten som läser sex kort och alltid ryms, men den flyttar kort *någon annan lagt*.
+Den hade dessutom tvingat fram ett val mellan två dåliga: packa i renderaren ger två svar på var kortet ligger (`x: 302` på tråden medan skärmen ritar 151), eller packa i loggen som ett kuvert (K3) — ett svar, ångerbart, men grannens kort flyttas då med spelarens eget namn på.
+
+**Ordningen är en del av samma svar och inte en egen inställning.**
+En punkt utan en ordning lägger det nyaste kortet underst, och en ordning utan en punkt lägger alla kort på samma millimeter, så båda ges av samma funktion (`laidIn` i `packages/web/src/table/lay.ts`).
+Med ordningen vänd är det nyaste kortet 100 % synligt i varje kandidat, mot 41 % fjädrat och 25 % staplat, och slivern av de äldre byter ände från slutet till början av titeln.
+Genvägens `at` är därmed en högs fråga och bara en högs; arket har aldrig visat talet för något annat än en hög heller, eftersom en yta säger «var du vill».
+
+**Regeln gäller varje publik yta, och därmed behöver ingenting uppfinnas i protokollet.**
+Prototypen påpekade att «zon med egen layout» inte finns som begrepp, och med det här svaret behöver det inte finnas.
+Priset, sagt rakt ut: formgivaren kan inte välja bort beteendet för en egen yta.
+Kommer det tillbaka som ett önskemål är det en protokollmigrering med eget beslut.
+
+**Ett kort som dras dit för hand hamnar där det släpps.**
+Regeln är vad verktyget gör när ingen har pekat, och inget annat (K2).
+
+**Följdkrav.**
+Tangentbordsvägens `slotIn` är borta och ersatt av samma regel.
+Den var produktens svar för den vägen, bar själv raden «this is the prototype's guess, not a product decision», och var mätt trasig: första kortet låg på `y = 14` i en 100 mm djup yta med ett 88 mm högt kort, alltså 2 mm utanför redan med ett enda kort, och vid tio kort låg sex utanför filten och fyra på en hand.
+Ingenting drog tillbaka dem — `keptOnFelt` håller bara kvar det som släpps på golvet, och filten har ingen `overflow: hidden`.
+Två vägar in i samma yta får inte ge två svar, så telefonens och tangentbordets kuvert jämförs rakt av i `packages/web/test/card-lands-in-area.test.ts`, som också mäter kortens rutor ur den byggda filten vid 2–`MAX_PLAYERS`.
+Att taket i receptets yta är exakt `FAN_MAX` är en vakt i den sviten och inte ett påstående: faller den, faller argumentet beslutet vilar på.
+
 
 ## I. Öppna frågor
 
@@ -4708,8 +4772,8 @@ Behörighetsroller i detalj: löst 2026-09-08 som en modell i D3 — ägare, med
 Tillgänglighet i verktyget självt, till skillnad från i de spel som skapas i det.
 
 Tangentbordet på bordet, kvar efter K16 (2026-09-08).
-Implementationen följer prototypens egna val på alla fem; de står här för att de är produktbeslut och inte kodval, och för att de annars försvinner.
-Utläggningsregeln för ett kort som flyttas till en yta: klienten lägger det på nästa lediga plats i en rad, uträknat ur zonens bredd. Det är prototypens gissning. K2 säger fri placering utan rutnät och säger ingenting om vad ”i zonen” betyder när ingen pekar, och ett riktigt svar ändrar hur filten ser ut också för pekaranvändare.
+Implementationen följde prototypens egna val på alla fem; de står här för att de är produktbeslut och inte kodval, och för att de annars försvinner. En av dem är sedan dess besvarad.
+Utläggningsregeln för ett kort som flyttas till en yta: **löst 2026-09-22 (#449), ytan lägger själv ut kortet.** Prototypens gissning — nästa lediga plats i en rad, uträknad ur zonens bredd — var mätt trasig och är borta; regeln, dess tak och vad den kostar står under L47, och den gäller pekarens väg och tangentbordets lika.
 `movePile` och `split` utan `to` kräver x och y i protokollet, och ett tangentbord har inga: klienten hittar på zonens eget hörn. Alternativen är en zonrelativ form av de två verben, vilket är en protokollmigrering och ett eget beslut, eller att hela högar förblir pekaruteslutande.
 Vem tangentbordet är på `/table`: bordsskärmen har ingen plats och agerar som ”Bordet”, så fokus är en enda markör på en skärm ett helt rum tittar på. Till skillnad från två pekare syns det inte att det är en kö. Kanske är svaret att tangentbordsvägen där bara är till för den som sitter vid skärmen.
 Om vi namnger mer än pekaren visar: ”Marknad: Skugga, Gruva, Spion” gör korträkning lättare än att läsa filten på tre meters håll. Det är samma information, och det är behandlat som tillåtet, men det är ett produktbeslut om playtestets naturlighet (C8 resonerar likadant om observatören).
