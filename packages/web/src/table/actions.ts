@@ -71,9 +71,13 @@ export function compileAction(view: Snapshot, pile: string, action: ZoneAction, 
 // so a start says the same things a ring says — a number nobody has entered, a target that is
 // not at this table — in the same words.
 export function startsAt(view: Snapshot): { zone: string; action: ZoneAction }[] {
-  return view.zones.flatMap((z) =>
-    (z.actions ?? []).filter((a) => a.when === 'start' || a.when === 'both').map((action) => ({ zone: z.id, action })),
-  )
+  // Only piles. K21 offers the panel on piles alone — an area and a hand have no ring to hang an
+  // action in — so an action anywhere else is a document that should not exist. It is read out
+  // here rather than discovered at the table, because the start is one envelope: a step the
+  // engine refuses brings the whole of it down, shuffle and deal and all.
+  return view.zones
+    .filter((z) => z.kind === 'pile')
+    .flatMap((z) => (z.actions ?? []).filter((a) => a.when === 'start' || a.when === 'both').map((action) => ({ zone: z.id, action })))
 }
 
 export function compileStart(view: Snapshot, asked: Asked = {}): Compiled {

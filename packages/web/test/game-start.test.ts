@@ -83,4 +83,17 @@ describe('vad som händer med lekarna vid spelstart', () => {
       ],
     })
   })
+
+  it('läser bara högars åtgärder: en yta har ingen ring att hänga en åtgärd i', () => {
+    // K21 erbjuder panelen bara på högar, så det här är ett dokument som inte borde finnas. Men
+    // starten är ett enda kuvert: ett steg som motorn avvisar fäller hela den, alltså också
+    // blandningen på draghögen. Att läsa bara högar är billigare än att upptäcka det vid bordet.
+    const table = tableOf(
+      withActions({
+        table: [action('yta', 'start', [{ v: 'shuffle' }])],
+        draw: [action('blanda', 'start', [{ v: 'shuffle' }])],
+      }),
+    )
+    expect(compileStart(table.view(null))).toEqual({ ok: true, intents: [{ v: 'shuffle', pile: 'draw' }] })
+  })
 })
