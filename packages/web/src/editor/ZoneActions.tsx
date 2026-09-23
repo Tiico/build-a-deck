@@ -39,6 +39,27 @@ const VERBS: ActionStep['v'][] = ['split', 'deal', 'take', 'shuffle', 'flipTop',
 // När åtgärden körs (#451). Ordningen är den lästa och inte protokollets: det en hög gör i dag
 // står först, och de två som rör starten under det.
 const WHENS: ActionWhen[] = ['request', 'both', 'start']
+
+// «Så många jag säger» och spelstarten går inte ihop (#454, K25).
+//
+// `ask` betyder att steget frågar läsaren vid bordet, och det är rätt för en åtgärd någon valt ur
+// ringen: hon har just pekat på högen och vet vad hon bad om. En start är något annat — varje
+// startåtgärd på varje hög kompileras till ett enda kuvert, så flera `ask`-steg blir en trave
+// frågor i det ögonblick någon trycker på brickan, innan spelet börjat och av någon som kanske
+// inte skrivit spelet. Bordet svarar redan så: `compileStart` gissar inget tal utan säger att ett
+// steg frågar efter ett, och brickan står avstängd med den meningen.
+//
+// Panelen stänger därför av den ena så länge den andra står, åt båda hållen. Formen är
+// beställarens beslut av 2026-09-23: ratten behåller sina tre lägen — den som redan valt starten
+// ska se vad hon valt — och skälet står som en rad text under den. En `title` hade varit billigare
+// och är vad brickan bär, men en tooltip kräver hover, och ett pekdon har ingen: en avstängd
+// kontroll vars skäl bara finns i en tooltip är i praktiken en kontroll utan skäl.
+const asksForANumber = (step: ActionStep): boolean => (step.v === 'split' ? step.count.of === 'ask' : step.v === 'deal' ? step.each.of === 'ask' : false)
+const atStart = (a: ZoneAction): boolean => a.when === 'start' || a.when === 'both'
+// Vilket av de två hållen som gäller, och därmed vilken rad som står under ratten. Ett dokument
+// som bär kombinationen redan — en import kan göra det — får `asks`, för det är den meningen som
+// säger varför ratten inte erbjuder det läge åtgärden faktiskt står i, och därmed vägen ur det.
+const clash = (a: ZoneAction): 'asks' | 'start' | undefined => (a.steps.some(asksForANumber) ? 'asks' : atStart(a) ? 'start' : undefined)
 // Var korten ligger, och vart de går. Prepositionen sitter i platsen och aldrig i steget (#285),
 // så en mening säger vilken form den vill ha genom att namnge hålet `{at}` eller `{to}` — och
 // vilken form ett verb styr är därmed språkets sak och inte den här filens (A4).
@@ -95,6 +116,9 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
   // peka med musen i listan, och att rycka fokus ur listan då vore att ta tillbaka en hand.
   const box = useRef<HTMLDivElement>(null)
   useEffect(() => box.current?.focus({ preventScroll: true }), [])
+  // Panelens eget prefix för raden under en ratt (#454). Den måste ha ett id för att ratten ska
+  // kunna peka på den, och en åtgärd har redan ett id som är unikt i sin zon.
+  const panel = useId()
 
   return (
     <Chosen.Provider value={remembered}>
@@ -133,7 +157,10 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
           </p>
 
           <h3>{t('setup.actions.heading')}</h3>
-          {actions.map((a) => (
+          {actions.map((a) => {
+            const why = clash(a)
+            const whyId = `${panel}why${a.id}`
+            return (
             <div key={a.id} className="byd-zone-action">
               <input
                 value={a.label}
@@ -147,12 +174,16 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
               <p className="byd-sentence">
                 {parts(t('setup.actions.when'), {
                   when: (
-                    <Slot key="w" label={t(`setup.when.${a.when ?? 'request'}` as Key)}>
+                    <Slot key="w" label={t(`setup.when.${a.when ?? 'request'}` as Key)} describedBy={why === undefined ? undefined : whyId}>
                       {(close) =>
                         WHENS.map((w) => (
                           <button
                             key={w}
                             type="button"
+                            // Ett läge som hör till starten går inte att välja åt en åtgärd vars
+                            // steg frågar efter ett tal. Åt andra hållet står ratten orörd: den
+                            // som märkt en åtgärd för start måste kunna ta tillbaka det.
+                            disabled={why === 'asks' && w !== 'request'}
                             onClick={() => {
                               const { when: _was, ...bare } = a
                               setAction(a.id, w === 'request' ? bare : { ...bare, when: w })
@@ -167,11 +198,20 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
                   ),
                 })}
               </p>
+              {/* Raden som säger varför, i ord och inte i en tooltip. Den står under ratten och
+                  inte inne i meningen: att låta meningen skriva om sig själv var det eleganta
+                  alternativet, men då försvinner skälet i samma ögonblick som `ask`-steget tas
+                  bort och syns alltså aldrig bredvid valet det handlar om. */}
+              {why !== undefined && (
+                <p className="byd-zone-action-why" id={whyId}>
+                  {t(`setup.when.why.${why}` as Key)}
+                </p>
+              )}
               <ol>
                 {a.steps.map((step, i) => (
                   <li key={i}>
                     <span className="byd-sentence">
-                      <Step step={step} columns={columns} zones={others} beside={zone.beside ?? 'left'} t={t} onChange={(next) => setAction(a.id, { ...a, steps: a.steps.map((s, j) => (j === i ? next : s)) })} />
+                      <Step step={step} columns={columns} zones={others} beside={zone.beside ?? 'left'} noAsk={atStart(a)} t={t} onChange={(next) => setAction(a.id, { ...a, steps: a.steps.map((s, j) => (j === i ? next : s)) })} />
                     </span>
                     <button
                       type="button"
@@ -205,7 +245,8 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
                 </select>
               </label>
             </div>
-          ))}
+            )
+          })}
           <button type="button" className="byd-zone-action-new" onClick={() => onPatch({ actions: [...actions, { id: `a${Date.now().toString(36)}`, label: t('setup.actions.newName'), steps: [blank('split')] }] })}>
             {t('setup.actions.new')}
           </button>
@@ -217,8 +258,10 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
 
 // ── The sentence for one step ─────────────────────────────────────────────────────────────────
 
-function Step({ step, columns, zones, beside, t, onChange }: { step: ActionStep; columns: ReturnType<typeof queryColumns>; zones: readonly Zone[]; beside: ZoneBeside; t: T; onChange(next: ActionStep): void }) {
-  const amount = (a: ActionAmount, set: (next: ActionAmount) => void) => <AmountSlot key="n" amount={a} zones={zones} t={t} onChange={set} />
+// `noAsk` är åtgärdens och inte stegets: det som hindrar «så många jag säger» är att *åtgärden* är
+// märkt för start (#454), och ett steg vet ingenting om sin åtgärd.
+function Step({ step, columns, zones, beside, noAsk, t, onChange }: { step: ActionStep; columns: ReturnType<typeof queryColumns>; zones: readonly Zone[]; beside: ZoneBeside; noAsk: boolean; t: T; onChange(next: ActionStep): void }) {
+  const amount = (a: ActionAmount, set: (next: ActionAmount) => void) => <AmountSlot key="n" amount={a} zones={zones} noAsk={noAsk} t={t} onChange={set} />
   // Båda formerna räcks fram och meningen tar den den namngett; den andra renderas aldrig.
   const place = (to: ActionTarget, set: (next: ActionTarget) => void): Record<PlaceForm, ReactNode> => ({
     at: <TargetSlot key="at" form="at" target={to} zones={zones} beside={beside} t={t} onChange={set} />,
@@ -281,13 +324,17 @@ function Step({ step, columns, zones, beside, t, onChange }: { step: ActionStep;
 // `said` är namnet örat får, och det sätts bara där knappen har mer att säga än den visar (#269):
 // en bricka säger med sin ram vad bokstaven är, och en uppläsning hör ingen ram. En etikett som
 // upprepar knappens egen text vore ingen upplysning utan en andra kopia av den.
-function Slot({ label, said, children }: { label: ReactNode; said?: string | undefined; children(close: () => void): ReactNode }) {
+//
+// `describedBy` är raden under ratten, där det finns en (#454). Raden står i dokumentet och läses
+// därför av den som läser panelen uppifrån — men den som tabbar hit hoppar över den, och ett läge
+// som inte går att välja utan att man vet varför är ett läge utan skäl. Ratten pekar alltså på den.
+function Slot({ label, said, describedBy, children }: { label: ReactNode; said?: string | undefined; describedBy?: string | undefined; children(close: () => void): ReactNode }) {
   const [open, setOpen] = useState(false)
   const id = useId()
   const knob = useRef<HTMLButtonElement>(null)
   return (
     <span className="byd-slot-wrap">
-      <button ref={knob} type="button" className="byd-slot" aria-label={said} aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
+      <button ref={knob} type="button" className="byd-slot" aria-label={said} aria-describedby={describedBy} aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
         {label}
       </button>
       {open && (
@@ -352,7 +399,10 @@ type Words = { words: string; said?: string | undefined; label?: ReactNode | und
 // A choice in a box: the words it is read and searched by, the block it belongs to, and what
 // picking it does. A choice that is not a plain button — the number, which is typed rather than
 // picked — brings its own node and is searched by the same words all the same.
-type Choice = Words & { key: string; group: string; node?: ReactNode; pick?(): void }
+// `off` är en rad som står kvar och inte går att välja. Den tas inte bort ur rutan: en rad som
+// försvinner säger att valet aldrig funnits, och det som ska sägas är att det inte går just nu —
+// vilket panelen säger i ord på raden under ratten (#454).
+type Choice = Words & { key: string; group: string; node?: ReactNode; off?: boolean | undefined; pick?(): void }
 
 // A box of choices, searched rather than scrolled (#230). In a game of twenty zones it holds
 // forty-seven of them in four blocks nobody can see, and the last is six scrolls away. The
@@ -406,6 +456,7 @@ function Choices({ choices, close, t }: { choices: readonly Choice[]; close(): v
       <button
         key={c.key}
         type="button"
+        disabled={c.off}
         // Bara där raden har mer att säga än den visar. En etikett som upprepar radens egen text
         // är inte en upplysning utan en andra kopia av den.
         aria-label={c.said}
@@ -423,7 +474,9 @@ function Choices({ choices, close, t }: { choices: readonly Choice[]; close(): v
   // rather than kept in a second list of its own, because what the arrows walk is exactly what the
   // search left standing.
   const walk = (from: EventTarget, by: number) => {
-    const options = [...(list.current?.querySelectorAll('button') ?? [])]
+    // En avstängd rad står kvar i rutan men är ingen anhalt: `focus()` på den gör ingenting, så
+    // pilen hade stannat på den och rutan hade känts låst i stället för att säga nej (#454).
+    const options = [...(list.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [])]
     const at = from === field.current ? -1 : options.indexOf(from as HTMLButtonElement)
     // Something in the box that is neither the field nor a choice is the number, which is typed
     // and not picked. There the arrows are the field's own — they step the value — so the box
@@ -440,7 +493,7 @@ function Choices({ choices, close, t }: { choices: readonly Choice[]; close(): v
     // Open, type, Enter — the whole of the keyboard's way through the box. What is left standing
     // at the top is what Enter takes, which is the choice the search was narrowed down to.
     if (e.key === 'Enter' && e.target === field.current && term !== '') {
-      list.current?.querySelector('button')?.click()
+      list.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.click()
       e.preventDefault()
     }
   }
@@ -471,7 +524,7 @@ function Choices({ choices, close, t }: { choices: readonly Choice[]; close(): v
   )
 }
 
-function AmountSlot({ amount, zones, t, onChange }: { amount: ActionAmount; zones: readonly Zone[]; t: T; onChange(next: ActionAmount): void }) {
+function AmountSlot({ amount, zones, noAsk, t, onChange }: { amount: ActionAmount; zones: readonly Zone[]; noAsk: boolean; t: T; onChange(next: ActionAmount): void }) {
   const choices: Choice[] = [
     {
       key: 'amount:number',
@@ -497,6 +550,8 @@ function AmountSlot({ amount, zones, t, onChange }: { amount: ActionAmount; zone
       key: `amount:${of}`,
       words: t(`setup.amount.${of}` as Key),
       group: t('setup.slot.group.amount'),
+      // «Så många jag säger» frågar den som valt åtgärden, och en start frågar ingen (#454).
+      off: of === 'ask' && noAsk,
       pick: () => onChange(of === 'seats' ? { of: 'seats' } : { of: 'ask' }),
     })),
     // Den sammansatta zonen går in som ett hål i antalets egen mening, så samma nyckel bär båda

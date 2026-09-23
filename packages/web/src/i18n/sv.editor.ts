@@ -951,6 +951,11 @@ export const svEditor = {
   'setup.when.request': 'bara när någon ber om det',
   'setup.when.both': 'vid spelstart och när någon ber om det',
   'setup.when.start': 'bara vid spelstart',
+  // Varför ett av de tre lägena inte går att välja, som en rad under ratten (#454). Formen är
+  // brickans: vad som inte går, kolon, och skälet. Efterledet i den första är ordagrant ringens
+  // eget `ring.action.why.asks`, för det är samma fakta sagt på verktygets andra yta.
+  'setup.when.why.asks': 'Inte vid spelstart: ett steg frågar efter ett tal.',
+  'setup.when.why.start': 'Inget steg kan fråga efter ett tal: åtgärden körs vid spelstart.',
   'setup.verb.split': 'Ta av högen',
   'setup.verb.deal': 'Dela ut',
   'setup.verb.take': 'Leta fram',

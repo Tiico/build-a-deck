@@ -3118,6 +3118,13 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-zone-action > input { min-width: 0; width: 100%; max-width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; }
 .byd-zone-action ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; justify-items: start; width: 100%; }
 .byd-zone-action li { display: flex; gap: 8px; align-items: baseline; }
+/* Varför ett av rattens lägen inte går att välja, i ord under ratten (#454, K25). Samma sätt som
+   filtens bricka säger det med `start.blocked`, och av samma skäl som K21 ger: en avstängd
+   kontroll som inte säger varför är en kontroll utan skäl. En `title` hade varit billigare och är
+   vad brickan bär, men en tooltip kräver hover och ett pekdon har ingen.
+   Det tysta registret, som varje annan upplysning editorn ger om sitt eget arbete — och det når
+   4,5:1 på panelens #171a23, vilket `slot-badge-contrast.test.ts` mäter. */
+.byd-zone-action-why { margin: 0; color: var(--byd-editor-quiet); font-size: 12px; line-height: 1.5; }
 .byd-zone-action-x { border: 0; background: transparent; color: #9aa3b8; font-size: 15px; line-height: 1; cursor: pointer; padding: 4px; }
 .byd-zone-action-x:hover { color: #ff9a9a; }
 .byd-zone-step-add { display: flex; gap: 6px; align-items: center; }
@@ -3193,6 +3200,10 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-slot-block:first-child > i { padding-top: 0; }
 .byd-slot-pop button { display: block; width: 100%; text-align: left; border: 0; border-radius: 8px; padding: 4px 8px; background: transparent; color: #e6ecfa; font: inherit; cursor: pointer; }
 .byd-slot-pop button:hover, .byd-slot-chips button:hover { background: #24507f; }
+/* En rad som står kvar men inte går att välja (#454). Den ligger efter hover-regeln och inte före:
+   en avstängd knapp matchar fortfarande `:hover` i webbläsaren, och det tysta registret mäter
+   2,54:1 på den blå raden mot 5,62:1 på rutans egen botten. Raden tar alltså tillbaka bottnen. */
+.byd-slot-pop button:disabled { background: transparent; color: var(--byd-editor-quiet); cursor: default; }
 /* Vems zonen är, som bricka efter namnet (#255). Ordagrant zonlistans egen form ovan
    (`.byd-setup-name em`), för det är samma upplysning tre klick bort: ramen säger att bokstaven är
    verktygets ord och inte något designern döpt zonen till (A4). `Hand A` får inte bli typografiskt
