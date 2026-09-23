@@ -1229,3 +1229,64 @@ describe('the bottom card of a pile (K23)', () => {
     expect(onInspect).toHaveBeenLastCalledWith(expect.objectContaining({ zone: 'draw', cardRef: null, face: 'back' }))
   })
 })
+
+// Spelstarten som en bricka på filten (#451, prototypen 2026-09-22, förslag A).
+//
+// Den ligger på bordet som en fysisk giv-bricka: i filtens egna millimeter, skalad med filten,
+// upprätt mot läsaren som zonnamnen. Tre former prövades — brickan, en kontroll i sändningens
+// spalt och ett ark över filten — och brickan valdes för att den är samma sak på varje yta och
+// inte kostar en bildpunkt av kortet någonstans.
+describe('startbrickan på filten (#451)', () => {
+  const withStart = (when: 'request' | 'start' | 'both') => {
+    const setup = twoSeatSetup()
+    return tableOf({
+      ...setup,
+      zones: setup.zones.map((z) => (z.id === 'draw' ? { ...z, actions: [{ id: 'b', label: 'Blanda', when, steps: [{ v: 'shuffle' as const }] }] } : z)),
+    })
+  }
+  const tile = () => document.querySelector('[data-table-start]') as HTMLElement | null
+
+  it('ritas bara där någon hög har en åtgärd som hör till starten', () => {
+    const { unmount } = render(<TableRenderer view={withStart('request').view(null)} mode="table" scale={2} onAct={() => undefined} />)
+    expect(tile()).toBeNull()
+    unmount()
+
+    render(<TableRenderer view={withStart('both').view(null)} mode="table" scale={2} onAct={() => undefined} />)
+    expect(tile()).not.toBeNull()
+    expect(tile()!.textContent).toMatch(/Starta spelet/)
+  })
+
+  it('skickar hela starten som ett enda kuvert när den trycks', () => {
+    const sent: Intent[][] = []
+    render(<TableRenderer view={withStart('start').view(null)} mode="table" scale={2} onAct={(intents) => sent.push(intents)} />)
+    fireEvent.click(tile()!)
+    expect(sent).toEqual([[{ v: 'shuffle', pile: 'draw' }]])
+  })
+
+  it('går att nå med tangentbordet: den är en knapp med sitt namn, och inte en ruta med en klickhanterare', () => {
+    render(<TableRenderer view={withStart('start').view(null)} mode="table" scale={2} onAct={() => undefined} />)
+    const b = screen.getByRole('button', { name: 'Starta spelet' })
+    expect(b).toBe(tile())
+    // Ingen roving tabindex: brickan är bordets kommando och inte en av filtens saker, så den
+    // står i tabbordningen som sig själv (K16).
+    expect(b.getAttribute('tabindex')).toBeNull()
+    b.focus()
+    expect(document.activeElement).toBe(b)
+  })
+
+  it('är avstängd med skälet i ord när starten inte går att köra', () => {
+    const setup = twoSeatSetup()
+    const table = tableOf({
+      ...setup,
+      zones: setup.zones.map((z) =>
+        z.id === 'draw'
+          ? { ...z, actions: [{ id: 'h', label: 'Starthand', when: 'start' as const, steps: [{ v: 'deal' as const, each: { of: 'seats' as const }, to: { at: 'hands' as const }, face: 'keep' as const }] }] }
+          : z,
+      ),
+    })
+    render(<TableRenderer view={table.view(null)} mode="table" scale={2} onAct={() => undefined} />)
+    const b = tile() as HTMLButtonElement
+    expect(b.disabled).toBe(true)
+    expect(b.title).toBe('Går inte att starta just nu: ingen sitter vid bordet än')
+  })
+})

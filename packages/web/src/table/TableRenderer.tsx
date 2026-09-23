@@ -17,10 +17,22 @@ import { CounterEntry } from './CounterEntry.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ActionSheet } from './ActionSheet.js'
+import { compileStart, startsAt } from './actions.js'
 import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAt, handBand, handCountAt, handExtent, handRotation, type TableMode } from './hand.js'
 import { gapAbove, nameAt, type Grow, type Rim } from './labels.js'
-import { useT, type T } from '../i18n/index.js'
+import { useT, type Key, type T } from '../i18n/index.js'
+
+// Startbrickans mått i filtens egna millimeter (#451). 260 × 72 mm är fyra kortbredder och
+// ligger i bandet mellan draghögen och kasthögen på receptets bord; den skalar med filten som
+// en hög gör, så den är lika stor i förhållande till korten på varje skärm.
+const START_MM = { w: 260, h: 72 }
+
+// Varför starten inte går att köra, i ringens egna ord: det är samma maskin som svarar, så det
+// ska vara samma mening. Ett steg som frågar efter ett tal har ingen att fråga i det ögonblick
+// spelet ska börja, och säger det i stället för att gissa ett tal.
+const whyKey = (made: { ok: false; why: string } | { ok: false; asks: string } | { ok: true }): Key =>
+  ('why' in made ? `ring.action.why.${made.why}` : 'ring.action.why.asks') as Key
 
 // Kamerans hörn kommer när vyn blir egen (#325, #346:s väg). Klungan finns bara medan kameran är
 // manuell, vilket den inte är när sidan målas — så dess stilmall, `camera-hand.css`, reser i den
@@ -382,6 +394,14 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const tight = mode === 'tv' && measured && feltWidePx > 0 && feltWidePx < TIGHT_FELT_PX
   const left = (mmX: number) => px(mmX - floor.geometry.x)
   const top = (mmY: number) => px(mmY - floor.geometry.y)
+  // Spelstarten (#451, prototypen 2026-09-22, förslag A). Den ligger på filten som en fysisk
+  // giv-bricka och inte i en krom: filten är höjdbunden (K9), så en rad över eller under den
+  // hade kostat kortstorlek på varje yta, och en kontroll i sändningens spalt hade inte funnits
+  // på filtens egen skärm. Brickan är samma sak på varje yta, och syns från andra sidan rummet.
+  //
+  // En filt där ingen hög bär en startåtgärd ritar ingen bricka alls — samma regel som K14 ger
+  // ringen: en ring utan verb öppnas inte, och ett kommando utan något att göra är samma fel.
+  const start = onAct && startsAt(view).length > 0 ? compileStart(view) : null
   // The box a back is drawn in: the card's own, so the supplier only has to draw a card. A
   // surface that supplies none keeps the stand-in weave `table.css` draws.
   const backAt = (at: string): ReactNode => back && <span className="byd-card-back">{back({ px, left, top, scale }, at)}</span>
@@ -1090,6 +1110,19 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           ))}
           {offTop && (
             <Ghost card={topOf(zoneById.get(offTop.pile) ?? floor)} zoneBack={backOf(zoneById.get(offTop.pile))} faces={faces} back={backAt('ghost')} hiding={hidingTop} left={left(offTop.at.x)} top={top(offTop.at.y)} px={px} />
+          )}
+          {start && (
+            <button
+              type="button"
+              className="byd-table-start"
+              data-table-start={start.ok ? 'ready' : 'why'}
+              disabled={!start.ok}
+              title={start.ok ? undefined : t('start.blocked', { why: t(whyKey(start)) })}
+              style={{ left: left(floor.geometry.x + floor.geometry.w / 2 - START_MM.w / 2), top: top(floor.geometry.y + floor.geometry.h / 2 - START_MM.h / 2), width: px(START_MM.w), height: px(START_MM.h), fontSize: `${Math.max(9, px(START_MM.h) * 0.36)}px` }}
+              onClick={() => start.ok && onAct?.(start.intents)}
+            >
+              {t('start.tile')}
+            </button>
           )}
           {overlay?.({ px, left, top, scale })}
         </div>

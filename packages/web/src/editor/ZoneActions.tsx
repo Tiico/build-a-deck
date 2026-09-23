@@ -1,5 +1,5 @@
 import { createContext, Fragment, useContext, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
-import type { ActionAmount, ActionStep, ActionTarget, CardQuery, ZoneAction, ZoneBeside } from '@byd/protocol'
+import type { ActionAmount, ActionStep, ActionTarget, ActionWhen, CardQuery, ZoneAction, ZoneBeside } from '@byd/protocol'
 import type { ProjectDoc } from '@byd/server'
 import type { Zone } from '@byd/server/doc'
 import { placedProps, usePlacement } from './placement.js'
@@ -36,6 +36,9 @@ const AMOUNTS: ActionAmount['of'][] = ['number', 'seats', 'zone', 'ask']
 const LANDS = ['keep', 'front', 'back'] as const
 const TURNS = ['toggle', 'front', 'back'] as const
 const VERBS: ActionStep['v'][] = ['split', 'deal', 'take', 'shuffle', 'flipTop', 'movePile']
+// När åtgärden körs (#451). Ordningen är den lästa och inte protokollets: det en hög gör i dag
+// står först, och de två som rör starten under det.
+const WHENS: ActionWhen[] = ['request', 'both', 'start']
 // Var korten ligger, och vart de går. Prepositionen sitter i platsen och aldrig i steget (#285),
 // så en mening säger vilken form den vill ha genom att namnge hålet `{at}` eller `{to}` — och
 // vilken form ett verb styr är därmed språkets sak och inte den här filens (A4).
@@ -137,6 +140,33 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
                 aria-label={t('setup.actions.name', { name: a.label })}
                 onChange={(e) => setAction(a.id, { ...a, label: e.target.value }, `action:${zone.id}:${a.id}`)}
               />
+              {/* När den körs, som en mening med en ratt i (K21): tidpunkten ställs in där allt
+                  annat i den här panelen ställs in, inne i texten. «Bara när någon ber om det» är
+                  vad en åtgärd utan fältet betyder, och skrivs därför som ingen egenskap alls —
+                  samma regel som högens sida följer, och av samma skäl (#331). */}
+              <p className="byd-sentence">
+                {parts(t('setup.actions.when'), {
+                  when: (
+                    <Slot key="w" label={t(`setup.when.${a.when ?? 'request'}` as Key)}>
+                      {(close) =>
+                        WHENS.map((w) => (
+                          <button
+                            key={w}
+                            type="button"
+                            onClick={() => {
+                              const { when: _was, ...bare } = a
+                              setAction(a.id, w === 'request' ? bare : { ...bare, when: w })
+                              close()
+                            }}
+                          >
+                            {t(`setup.when.${w}` as Key)}
+                          </button>
+                        ))
+                      }
+                    </Slot>
+                  ),
+                })}
+              </p>
               <ol>
                 {a.steps.map((step, i) => (
                   <li key={i}>

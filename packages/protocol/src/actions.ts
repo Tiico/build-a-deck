@@ -51,10 +51,24 @@ export const ActionStep = z.discriminatedUnion('v', [
 ])
 export type ActionStep = z.infer<typeof ActionStep>
 
+// When an action runs. A pile's actions used to have one answer — when somebody clicks the pile
+// — and a game whose every deck starts shuffled had no way to say so: a human pressed Blanda per
+// pile and per table, every time. `start` is the second way to press the same machine.
+//
+// Three values and not a flag, because `both` is what shuffling actually wants: the deck is
+// shuffled when the game begins *and* the ring keeps its Blanda for the middle of a hand.
+// Nothing here is a rule and nothing runs by itself: the start is a command somebody gives at
+// the table, and it compiles to the same verbs the ring compiles to.
+export const ActionWhen = z.enum(['request', 'start', 'both'])
+export type ActionWhen = z.infer<typeof ActionWhen>
+
 export const ZoneAction = z.object({
   id: z.string().min(1),
   // The designer's own word for it, which is what the table shows and never translates (B5, A4).
   label: z.string().min(1).max(40),
   steps: z.array(ActionStep).min(1),
+  // Left unsaid it is `request`, which is what every action written before the start existed
+  // means — so no saved table changes because this field arrived.
+  when: ActionWhen.optional(),
 })
 export type ZoneAction = z.infer<typeof ZoneAction>

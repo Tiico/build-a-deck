@@ -107,9 +107,11 @@ Men etiketten står kvar på «Starta spelet» medan spelet pågår, vilket syns
 En start som innehåller flera sådana blir en trave frågor i samma ögonblick som någon trycker.
 Antingen vägrar editorn `ask` i en startåtgärd och säger varför, eller så frågar trycket en fråga i taget.
 
-**4. Ordningen mellan högar är dokumentets, och går inte att ändra.**
-Inom en åtgärd är ordningen designerns, men mellan två högar är det zonlistans ordning — och `SetupEditor` har ingen omordning alls.
-För en start som bara blandar spelar det ingen roll; för en som tar kort ur en hög en annan just fyllt gör det det.
+**4. Ordningen mellan högar är zon-id:ns, och går inte att ändra.**
+Rättat under bygget 2026-09-22: det är inte dokumentets ordning, vilket prototypen antog.
+`project` sorterar zonerna på id (`a.id.localeCompare(b.id)`), och filten ser ingen annan ordning än den — så en start körs i bokstavsordning på zonernas id, vilket varken designern har skrivit eller kan ändra.
+Inom en åtgärd är ordningen designerns, som förut.
+För en start som bara blandar spelar det ingen roll; för en som tar kort ur en hög en annan just fyllt gör det det, och då går det inte att uttrycka.
 
 ## Rekommendation
 
