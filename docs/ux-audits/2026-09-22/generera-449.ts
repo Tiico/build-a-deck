@@ -35,7 +35,7 @@ import { compile, type Compiled } from '../../../packages/template/src/index.js'
 import { playIntents } from '../../../packages/web/src/player/play.js'
 import { slotIn } from '../../../packages/web/src/table/keyboard.js'
 import { HAND_CARD_MM, HAND_STEP_MM, FAN_MAX, feltWithHands, handExtent, handRotation } from '../../../packages/web/src/table/hand.js'
-import { CARD_MM, absoluteOf, keptOnFelt } from '../../../packages/web/src/table/drop.js'
+import { CARD_MM, absoluteOf, ontoFelt } from '../../../packages/web/src/table/drop.js'
 import { TV_AIR_PX, fitScale, turnToFit } from '../../../packages/web/src/table/fit.js'
 
 const HÄR = new URL('.', import.meta.url).pathname
@@ -97,7 +97,7 @@ vakt(
 const DROP = KÄLLA('packages/web/src/table/drop.ts')
 vakt(
   'en dragning skickar `move` med en punkt',
-  DROP.includes("{ v: 'move', component: c.id, to: target.zone, x:") ,
+  DROP.includes("({ v: 'move', component: id, to: dest.zone, x: dest.x + s.x, y: dest.y + s.y })"),
   'raden står kvar i drop.ts — det är vad «dra dit för hand» betyder på tråden',
 )
 
@@ -305,31 +305,58 @@ type KortMått = {
   helInomZon: boolean
   utanförMm: number
 }
+// Två ritordningar. «I dag» är produktens: `Framför mig` har genvägen `at: 'top'`, `playIntents`
+// utelämnar då `index`, `apply` läser det som `index 0`, och zonordningen målas i sin ordning —
+// så det senast spelade kortet målas först och hamnar underst. «Omvänd» är vad genvägens andra
+// värde, `place: 'bottom'`, redan skulle ge: `index: count`, alltså sist i ordningen och överst
+// på filten. Ingen av dem kräver något nytt i protokollet.
+type Ordning = 'idag' | 'omvand'
+
 type Mått = {
   kandidat: Kandidat
+  ordning: Ordning
   platser: number
   antal: number
   zon: Ruta
   kort: KortMått[]
-  // Kortet Nina spelade sist, alltså det översta i zonordningen.
+  // Kortet Nina spelade sist, alltså det första i zonordningen — och därmed det som målas först.
   nyast: KortMått
   synligaKort: number
   helaTitlar: number
   utanförZon: number
   utanförFilten: number
   påGrannzon: number
+  grannarnasNamn: string[]
 }
 
-function mät(k: Körning, antal: number): Mått {
+// Var ett kort i ytan faktiskt *ritas*.
+//
+// För de fyra klientreglerna är det där tråden säger att det ligger: `absoluteOf` på zonens hörn
+// plus komponentens egna x och y. En utläggning i renderaren läser inte de talen alls — den
+// räknar om varje kort ur zonens rektangel och antalet i den — så där är den ritade punkten en
+// annan sak än den lagrade, och sidan håller isär dem i stället för att låtsas att de är samma.
+function ritadPunkt(k: Körning, vy: Snapshot, c: VisibleComponentState, index: number, antal: number): Punkt {
+  if (k.kandidat !== 'packa') return absoluteOf(vy, c)
+  const z = måste(vy.zones.find((x) => x.id === c.zone), c.zone)
+  const p = packat(z.geometry, index, antal)
+  return { x: z.geometry.x + p.x, y: z.geometry.y + p.y }
+}
+
+function mät(k: Körning, antal: number, ordning: Ordning = 'idag'): Mått {
   const zonVy = måste(k.vy.zones.find((z) => z.id === 'mine:A'), 'mine:A')
   const zon: Ruta = { x: zonVy.geometry.x, y: zonVy.geometry.y, w: zonVy.geometry.w, h: zonVy.geometry.h }
-  const i_zonen = k.vy.components.filter((c) => c.zone === 'mine:A')
   // Ritordningen är zonordningen: `project` skriver komponenterna i `z.order` och renderaren
   // målar dem i den ordningen utan z-ordning. Det som står först målas först och hamnar underst.
+  const zonordning = k.vy.components.filter((c) => c.zone === 'mine:A')
+  const nyastId = måste(zonordning[0], 'det senast spelade kortet').id
+  // Platsen i zonen är kortets adress — där regeln la det — och den följer inte med när bara
+  // ritordningen vänds. Rutorna räknas därför ur zonordningen, och bara målningen kastas om.
+  const plats = new Map(zonordning.map((c, i) => [c.id, i]))
+  const i_zonen = ordning === 'idag' ? zonordning : [...zonordning].reverse()
   const golv = måste(k.vy.zones.find((z) => z.id === k.vy.floor), 'golvet')
-  const grannar = k.vy.zones.filter((z) => z.id !== 'mine:A' && z.id !== k.vy.floor && z.kind === 'area')
+  const grannar = k.vy.zones.filter((z) => z.id !== 'mine:A' && z.id !== k.vy.floor && (z.kind === 'area' || z.kind === 'hand'))
   const rutaAv = (c: VisibleComponentState): Ruta => {
-    const p = absoluteOf(k.vy, c)
+    const p = ritadPunkt(k, k.vy, c, måste(plats.get(c.id), c.id), zonordning.length)
     return { x: p.x, y: p.y, w: CARD_MM.w, h: CARD_MM.h }
   }
   const kort: KortMått[] = i_zonen.map((c, i) => {
@@ -348,10 +375,11 @@ function mät(k: Körning, antal: number): Mått {
       utanförMm: Math.max(0, ruta.x + ruta.w - (zon.x + zon.w), zon.x - ruta.x, ruta.y + ruta.h - (zon.y + zon.h), zon.y - ruta.y),
     }
   })
-  // Det senast spelade kortet är det som `move` la på `index 0`, alltså det första i ordningen.
-  const nyast = måste(kort[0], 'det senast spelade kortet')
+  // Det senast spelade kortet är det som `move` la på `index 0`, alltså det första i zonordningen.
+  const nyast = måste(kort.find((c) => c.id === nyastId), 'det senast spelade kortet')
   return {
     kandidat: k.kandidat,
+    ordning,
     platser: k.platser,
     antal,
     zon,
@@ -360,11 +388,18 @@ function mät(k: Körning, antal: number): Mått {
     synligaKort: kort.filter((c) => c.synlig > 0.0001).length,
     helaTitlar: kort.filter((c) => c.titelSynlig >= 0.999).length,
     utanförZon: kort.filter((c) => !c.helInomZon).length,
+    // Hur många kort som inte ligger hela på filtens golv. Måttet är `ontoFelt` ur `drop.ts` —
+    // samma funktion som drar tillbaka ett släpp som hamnat förbi kanten — körd på kortets ruta i
+    // golvets egna koordinater. Att den ger ett svar här betyder inte att produkten tillämpar
+    // det: `keptOnFelt` säger uttryckligen att bara *golvet* håller kvar det som släpps, och ett
+    // kort som flyttas till en annan zon «keeps what it is given». En uträknad punkt som hamnar
+    // utanför filten stannar alltså utanför filten.
     utanförFilten: kort.filter((c) => {
-      const kvar = keptOnFelt({ x: c.ruta.x, y: c.ruta.y }, golv.geometry)
-      return Math.abs(kvar.x - c.ruta.x) > 1e-6 || Math.abs(kvar.y - c.ruta.y) > 1e-6
+      const skjut = ontoFelt(golv, { x: c.ruta.x - golv.geometry.x, y: c.ruta.y - golv.geometry.y, w: c.ruta.w, h: c.ruta.h })
+      return Math.abs(skjut.x) > 1e-6 || Math.abs(skjut.y) > 1e-6
     }).length,
     påGrannzon: kort.filter((c) => grannar.some((g) => skär(c.ruta, g.geometry) > 0)).length,
+    grannarnasNamn: [...new Set(kort.flatMap((c) => grannar.filter((g) => skär(c.ruta, g.geometry) > 0).map((g) => g.name)))],
   }
 }
 
@@ -384,11 +419,33 @@ const MATRIS = new Map<string, Mått>()
 for (const kand of KANDIDATER) {
   for (const platser of PLATSANTAL) {
     for (const antal of ANTAL) {
-      MATRIS.set(`${kand.id}|${platser}|${antal}`, mät(kör(kand.id, platser, antal), antal))
+      const k = kör(kand.id, platser, antal)
+      for (const ordning of ['idag', 'omvand'] as Ordning[]) MATRIS.set(`${kand.id}|${platser}|${antal}|${ordning}`, mät(k, antal, ordning))
     }
   }
 }
-const M = (k: Kandidat, p: number, n: number): Mått => måste(MATRIS.get(`${k}|${p}|${n}`), `${k}|${p}|${n}`)
+const M = (k: Kandidat, p: number, n: number, o: Ordning = 'idag'): Mått => måste(MATRIS.get(`${k}|${p}|${n}|${o}`), `${k}|${p}|${n}|${o}`)
+
+// ── Var varje regel tar slut ────────────────────────────────────────────────────────────────
+// Tre tak, mätta genom att spela ett kort i taget och se när påståendet slutar hålla. Det är den
+// gräns issuet frågar efter — «var går gränsen där regeln slutar fungera, och vad gör den då?» —
+// och den är inte samma tal för de tre sakerna en yta kan behöva kunna.
+const TAK_SÖK = 16
+type Tak = { inom: number; räknebar: number; läsbar: number }
+function tak(kandidat: Kandidat, platser: number, ordning: Ordning): Tak {
+  const t: Tak = { inom: 0, räknebar: 0, läsbar: 0 }
+  for (let n = 1; n <= TAK_SÖK; n++) {
+    const m = mät(kör(kandidat, platser, n), n, ordning)
+    if (m.utanförZon === 0 && t.inom === n - 1) t.inom = n
+    if (m.synligaKort === n && t.räknebar === n - 1) t.räknebar = n
+    if (m.helaTitlar === n && t.läsbar === n - 1) t.läsbar = n
+  }
+  return t
+}
+const TAK = new Map<string, Tak>()
+for (const kand of KANDIDATER) for (const p of PLATSANTAL) for (const o of ['idag', 'omvand'] as Ordning[]) TAK.set(`${kand.id}|${p}|${o}`, tak(kand.id, p, o))
+const T = (k: Kandidat, p: number, o: Ordning = 'idag'): Tak => måste(TAK.get(`${k}|${p}|${o}`), `${k}|${p}|${o}`)
+const takOrd = (v: number): string => (v >= TAK_SÖK ? `${TAK_SÖK}+` : String(v))
 
 // ── K2-provet: kortet någon drar dit för hand ───────────────────────────────────────────────
 // Nina spelar tre från telefonen, drar ett fjärde dit med fingret, och spelar tre till. Frågan
@@ -404,7 +461,8 @@ const k2: K2[] = KANDIDATER.map((kand) => {
   const plats = i_zonen.findIndex((x) => x.id === draget.id)
   // Var kortet *ritas*. För de fyra klientreglerna är det där det ligger; för en utläggning i
   // renderaren är det där utläggningen säger, oavsett vad tråden bär.
-  const ritat = kand.var === 'renderaren' ? packat(zon.geometry, plats, i_zonen.length) : lagrat
+  const p = ritadPunkt(k, k.vy, c, plats, i_zonen.length)
+  const ritat = { x: p.x - zon.geometry.x, y: p.y - zon.geometry.y }
   const flyttat = Math.hypot(ritat.x - draget.släpptes.x, ritat.y - draget.släpptes.y)
   return { kandidat: kand.id, släpptes: draget.släpptes, lagrat, ritat, flyttat, bryter: flyttat > 0.5 }
 })
@@ -563,8 +621,9 @@ function filtHtml(k: Körning, halv = true): string {
 
   // Korten i Ninas yta, där projektionen säger att de ligger — `absoluteOf`, i zonordning, och
   // alltså i den ordning renderaren målar dem.
-  for (const c of k.vy.components.filter((c) => c.zone === 'mine:A')) {
-    const p = absoluteOf(k.vy, c)
+  const iYtan = k.vy.components.filter((c) => c.zone === 'mine:A')
+  for (const [i, c] of iYtan.entries()) {
+    const p = ritadPunkt(k, k.vy, c, i, iYtan.length)
     const kropp = c.cardRef ? kortHtml(c.cardRef, kortskala) : ryggHtml(kortskala)
     const märke = k.draget && c.id === k.draget.id ? '<u class="draget"></u>' : ''
     bitar.push(`<div class="filtplats" style="left:${vänster(p.x).toFixed(1)}px;top:${övre(p.y).toFixed(1)}px;width:${px(CARD_MM.w).toFixed(1)}px;height:${px(CARD_MM.h).toFixed(1)}px">${kropp}${märke}</div>`)
@@ -596,8 +655,9 @@ function utsnittHtml(k: Körning, antal: number): string {
       `<div class="byd-zone${egen ? ' egen' : ''}" style="left:${vänster(z.geometry.x).toFixed(1)}px;top:${övre(z.geometry.y).toFixed(1)}px;width:${px(z.geometry.w).toFixed(1)}px;height:${px(z.geometry.h).toFixed(1)}px"><span style="left:2px;top:-12px">${esc(z.name)}</span></div>`,
     )
   }
-  for (const c of k.vy.components.filter((c) => c.zone === 'mine:A')) {
-    const p = absoluteOf(k.vy, c)
+  const iYtan = k.vy.components.filter((c) => c.zone === 'mine:A')
+  for (const [i, c] of iYtan.entries()) {
+    const p = ritadPunkt(k, k.vy, c, i, iYtan.length)
     const kropp = c.cardRef ? kortHtml(c.cardRef, kortskala) : ryggHtml(kortskala)
     bitar.push(`<div class="filtplats" style="left:${vänster(p.x).toFixed(1)}px;top:${övre(p.y).toFixed(1)}px;width:${px(CARD_MM.w).toFixed(1)}px;height:${px(CARD_MM.h).toFixed(1)}px">${kropp}</div>`)
   }
@@ -608,3 +668,417 @@ function utsnittHtml(k: Körning, antal: number): string {
   <figcaption><b>${antal} kort</b> · ${m.synligaKort} syns · ${m.helaTitlar} hela titlar · <span class="${larm ? 'warn' : 'ok'}">${m.utanförZon} utanför ytan</span></figcaption>
 </figure>`
 }
+
+// ── Sidan ───────────────────────────────────────────────────────────────────────────────────
+const pct = (v: number): string => `${(v * 100).toFixed(0)} %`
+const stilar = [...[...kompilerade.values()].map((c) => c.css), kompileradRygg.css].join('\n')
+
+// En växel per fråga: vilken kandidat, och hur många som sitter vid bordet.
+const väljare = (namn: string, grupp: string, val: { id: string; text: string }[], förvalt: string): string =>
+  `<div class="switch" role="group" aria-label="${esc(namn)}">${val
+    .map((v) => `<button type="button" data-grupp="${grupp}" data-valj="${esc(v.id)}" aria-pressed="${v.id === förvalt ? 'true' : 'false'}">${esc(v.text)}</button>`)
+    .join('')}</div>`
+
+const lägeAttr = (k: Kandidat, p: number): string => `data-kand="${k}" data-platser="${p}"`
+
+const filtar = KANDIDATER.flatMap((kand) =>
+  PLATSANTAL.map((p) => `<div class="lage" ${lägeAttr(kand.id, p)}>${filtHtml(kör(kand.id, p, 3))}</div>`),
+).join('')
+
+const utsnitten = KANDIDATER.flatMap((kand) =>
+  PLATSANTAL.map((p) => `<div class="lage" ${lägeAttr(kand.id, p)}><div class="utsnittsrad">${ANTAL.map((n) => utsnittHtml(kör(kand.id, p, n), n)).join('')}</div></div>`),
+).join('')
+
+const beskrivningar = KANDIDATER.flatMap((kand) =>
+  PLATSANTAL.map((p) => {
+    const m = M(kand.id, p, 3)
+    return `<div class="lage" ${lägeAttr(kand.id, p)}><p class="lagetext"><b>${esc(kand.namn)}</b> — ${kand.rubrik}. ${kand.mening} <span class="led">Räknas ${kand.var === 'klienten' ? 'på klienten och skickas med <code>move</code>' : 'i renderaren, varje gång zonen ändras'}. Ytan är ${m.zon.w} × ${m.zon.h} mm vid ${p} platser.</span></p></div>`
+  }),
+).join('')
+
+// Ordningsrutan: vad man faktiskt ser av det senast spelade kortet.
+const ordningen = KANDIDATER.flatMap((kand) =>
+  PLATSANTAL.map((p) => {
+    const rader = ANTAL.map((n) => {
+      const m = M(kand.id, p, n)
+      const o = M(kand.id, p, n, 'omvand')
+      return `<tr><th>${n} kort</th><td>${esc(m.nyast.titel)}</td><td class="${m.nyast.synlig > 0.001 ? 'ok' : 'warn'}">${pct(m.nyast.synlig)}</td><td class="${m.nyast.titelSynlig >= 0.999 ? 'ok' : 'warn'}">${pct(m.nyast.titelSynlig)}</td><td class="${o.nyast.synlig > 0.001 ? 'ok' : 'warn'}">${pct(o.nyast.synlig)}</td><td class="${o.nyast.titelSynlig >= 0.999 ? 'ok' : 'warn'}">${pct(o.nyast.titelSynlig)}</td><td class="${o.synligaKort === n ? 'ok' : 'warn'}">${o.synligaKort} av ${n}</td></tr>`
+    }).join('')
+    return `<div class="lage" ${lägeAttr(kand.id, p)}><table class="summa"><thead><tr><th rowspan="2">Läge</th><th rowspan="2">Nyast är</th><th colspan="2">I dag · <code>at: 'top'</code></th><th colspan="3">Omvänd · <code>place: 'bottom'</code></th></tr><tr><th>synlig</th><th>titeln synlig</th><th>synlig</th><th>titeln synlig</th><th>kort som syns</th></tr></thead><tbody>${rader}</tbody></table></div>`
+  }),
+).join('')
+
+// Taken: var varje regel tar slut, mätt genom att spela ett kort i taget.
+const takHtml = PLATSANTAL.map((p) =>
+  `<div class="lage-platser" data-platser="${p}"><table class="summa"><thead><tr><th>Regel</th><th>Ryms hela i ytan upp till</th><th>Går att räkna upp till</th><th>Alla titlar fria upp till</th><th>Kort av ${SPELAT_MAX} utanför filten</th><th>…på en grannzon</th><th>K2</th></tr></thead><tbody>${KANDIDATER.map((kand) => {
+    const t = T(kand.id, p)
+    const m = M(kand.id, p, SPELAT_MAX)
+    const x = K2_AV(kand.id)
+    return `<tr class="${x.bryter ? 'bryter' : ''}"><th>${esc(kand.namn)}</th><td class="${t.inom >= 6 ? 'ok' : 'warn'}">${takOrd(t.inom)} kort</td><td class="${t.räknebar >= 6 ? 'ok' : 'warn'}">${takOrd(t.räknebar)} kort</td><td class="${t.läsbar >= 6 ? 'ok' : 'warn'}">${takOrd(t.läsbar)} kort</td><td class="${m.utanförFilten > 0 ? 'warn' : 'ok'}">${m.utanförFilten}</td><td class="${m.påGrannzon > 0 ? 'warn' : 'ok'}">${m.påGrannzon}${m.grannarnasNamn.length ? ` · ${esc(m.grannarnasNamn.join(', '))}` : ''}</td><td class="${x.bryter ? 'warn' : 'ok'}">${x.bryter ? 'bryter' : 'håller'}</td></tr>`
+  }).join('')}</tbody></table></div>`,
+).join('')
+
+// K2-rutan.
+const k2Html = KANDIDATER.map((kand) => {
+  const x = K2_AV(kand.id)
+  return `<tr class="${x.bryter ? 'bryter' : ''}"><th>${esc(kand.namn)}</th><td>${x.släpptes.x.toFixed(1)}, ${x.släpptes.y.toFixed(1)}</td><td>${x.lagrat.x.toFixed(1)}, ${x.lagrat.y.toFixed(1)}</td><td>${x.ritat.x.toFixed(1)}, ${x.ritat.y.toFixed(1)}</td><td class="${x.bryter ? 'warn' : 'ok'}">${x.flyttat.toFixed(1)} mm</td><td class="${x.bryter ? 'warn' : 'ok'}">${x.bryter ? 'bryter mot K2' : 'ligger kvar'}</td></tr>`
+}).join('')
+
+const k2Filtar = KANDIDATER.map((kand) => `<div class="lage" data-kand="${kand.id}" data-platser="4">${filtHtml(kör(kand.id, 4, 6, true))}</div>`).join('')
+
+// Hela matrisen, som en tabell.
+const matrisHtml = `<table class="summa matris">
+<thead><tr><th>Kandidat</th><th>Platser</th>${ANTAL.map((n) => `<th colspan="3">${n} kort</th>`).join('')}</tr>
+<tr><th></th><th></th>${ANTAL.map(() => '<th>syns</th><th>hela titlar</th><th>utanför ytan</th>').join('')}</tr></thead>
+<tbody>${KANDIDATER.flatMap((kand) =>
+  PLATSANTAL.map((p) => {
+    const celler = ANTAL.map((n) => {
+      const m = M(kand.id, p, n)
+      return `<td class="${m.synligaKort === n ? 'ok' : 'warn'}">${m.synligaKort}/${n}</td><td class="${m.helaTitlar === n ? 'ok' : m.helaTitlar === 0 ? 'warn' : ''}">${m.helaTitlar}</td><td class="${m.utanförZon > 0 ? 'warn' : 'ok'}">${m.utanförZon}${m.påGrannzon > 0 ? ` (${m.påGrannzon} på grannen)` : ''}</td>`
+    }).join('')
+    return `<tr><th>${esc(kand.namn)}</th><td>${p}</td>${celler}</tr>`
+  }),
+).join('')}</tbody>
+</table>`
+
+const vaktHtml = vakter.map((v) => `<li><b>${esc(v.vad)}</b> — ${esc(v.svar)}</li>`).join('')
+
+// Måttlistan uppe: varje tal ur koden.
+const mått4 = M('nu', 4, 3)
+
+// Var `slotIn` lägger det allra första kortet i seatytan, anropad på en tom sådan zon. Det är
+// talet som visar att regeln aldrig har prövats mot den här rektangeln: ett kort är ${CARD_MM.h}
+// mm högt och ytan ${mått4.zon.h} mm djup, så luften regeln lägger till räcker för att skjuta ut
+// redan kort ett.
+const TOM_ZON: Snapshot = { seq: 0, seat: null, floor: 'table', seats: [], zones: [{ id: 'mine:A', kind: 'area', name: 'Framför A', geometry: { ...mått4.zon, rot: 0 }, dynamic: false, mode: 'order', order: [] }], components: [], rewind: null, undo: null, ended: false }
+const SLOT_FÖRSTA = slotIn(TOM_ZON, 'mine:A')
+vakt(
+  '`slotIn` skjuter ut redan det första kortet ur seatytan',
+  SLOT_FÖRSTA.y + CARD_MM.h > mått4.zon.h,
+  `den lägger kortet på y = ${SLOT_FÖRSTA.y} mm i en yta som är ${mått4.zon.h} mm djup, och kortet är ${CARD_MM.h} mm högt`,
+)
+
+const sida = `<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Var kortet hamnar i en publik yta (#449)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+${stilar}
+
+html, body { height: auto; overflow: auto; }
+body { padding: 0 0 120px; }
+:root { --seat-e: #b06fe0; --seat-f: #e08a3b; --seat-g: #4fc4c4; --seat-h: #e05f93; }
+.ark { max-width: 1520px; margin: 0 auto; padding: 0 var(--s5); }
+h1 { font-size: 22px; color: #fff; margin: var(--s5) 0 var(--s2); }
+h2 { font-size: 15px; color: #fff; margin: 0 0 var(--s3); letter-spacing: .5px; }
+h3 { font-size: 13px; color: #fff; margin: 0 0 var(--s2); }
+.ark > p, section > p, .kolumn > p { margin: 0 0 var(--s2); max-width: 84ch; line-height: 1.6; color: #c3cbdd; }
+code { background: var(--sunk); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: #ffd98a; font-size: 12px; }
+section { margin: var(--s5) 0; padding: var(--s4) 0 0; border-top: 1px solid var(--line); }
+.led { color: var(--quiet); }
+
+/* Växlarna: kandidat och platsantal, och sidan byter alla sina rutor på en gång. */
+.lage, .lage-platser { display: none; }
+${PLATSANTAL.map((p) => `body[data-platser='${p}'] .lage-platser[data-platser='${p}']`).join(',\n')} { display: block; }
+${KANDIDATER.flatMap((k) => PLATSANTAL.map((p) => `body[data-kand='${k.id}'][data-platser='${p}'] .lage[data-kand='${k.id}'][data-platser='${p}']`)).join(',\n')} { display: block; }
+.vaxel { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; padding: var(--s2) var(--s5); background: #2a2417; border-bottom: 1px solid #4a4230; color: #ffd98a; font-size: 11px; line-height: 1.5; }
+.vaxel .switch { background: #1f1b12; }
+.vaxel .switch button { color: #c8b98d; }
+.vaxel .switch button[aria-pressed='true'] { background: #ffd98a; color: #241a0c; }
+.vaxel .etikettord { font-weight: 700; letter-spacing: .5px; text-transform: uppercase; font-size: 10px; color: #c8b98d; }
+.lagetext { margin: 0; max-width: 92ch; }
+.lagetext b { color: #ffe9b8; }
+
+/* Sändningsläget i halv skala: 960 × 540 står för 1920 × 1080. */
+.tv { position: relative; border-radius: 10px; background: #05070b; border: 1px solid #1b1f2a; display: grid; place-items: center; overflow: hidden; }
+.filt { position: relative; background: var(--tv-felt); border: 1px solid var(--tv-felt-line); border-radius: 4px; }
+.byd-zone { position: absolute; box-sizing: border-box; border: 1.5px solid var(--tv-zone-line); border-radius: 6px; }
+.byd-zone.egen { border-color: #ffd98a; }
+.byd-zone > span { position: absolute; color: var(--tv-zone-name); font: 600 8px/1 'Roboto Condensed', system-ui; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
+.byd-pile { position: absolute; }
+.byd-pile.tom { border: 1.5px dashed var(--tv-zone-line); border-radius: 3px; }
+.byd-pile-count { position: absolute; left: 50%; top: 100%; transform: translate(-50%, 4px); padding: 1px 6px; border-radius: 999px; background: rgba(0,0,0,.55); color: var(--hand-count-ink); font: 600 10px system-ui; }
+.byd-pile > em { position: absolute; left: 50%; top: 100%; margin-top: 20px; transform: translateX(-50%); font-style: normal; color: var(--tv-zone-name); font: 600 8px/1 'Roboto Condensed', system-ui; letter-spacing: 1px; text-transform: uppercase; }
+.byd-token { position: absolute; border-radius: 50%; background: #f0b64a; color: #1c1c1c; display: grid; place-items: center; }
+.byd-token b { font: 700 8px/1 system-ui; }
+.byd-hand { position: absolute; }
+.byd-hand i { position: absolute; display: block; transform-origin: 50% 140%; overflow: hidden; border-radius: 2px; }
+.byd-hand-count { position: absolute; left: 50%; top: 34px; transform: translateX(-50%); padding: 1px 6px; border-radius: 999px; background: var(--hand-count-bg); color: var(--hand-count-ink); font: 600 10px system-ui; }
+.byd-seat-name { position: absolute; padding: 1px 7px; border-radius: 999px; background: var(--seat); color: #10131a; font: 800 9px/14px system-ui; letter-spacing: .6px; white-space: nowrap; }
+
+/* Ett kort på filten: kompilerad markup i sin verkliga millimeterstorlek, skalad till filtens
+   pixlar. Ingen ritad ruta någonstans. */
+.filtplats { position: absolute; }
+.filtkort { transform-origin: 0 0; }
+.filtkort [data-card] { border-radius: 3mm; overflow: hidden; box-shadow: 0 1px 0 rgba(0,0,0,.6), 0 6px 14px rgba(0,0,0,.5); }
+.filtplats u.draget { position: absolute; inset: -3px; border: 2px solid #ffd98a; border-radius: 5px; }
+
+/* Utsnittet: filten kring Ninas yta i TV:ns egna pixlar, inte uppförstorad. */
+.utsnittsrad { display: flex; gap: var(--s5); flex-wrap: wrap; align-items: flex-start; }
+.utsnitt { margin: 0; }
+.utsnitt-duk { position: relative; background: var(--tv-felt); border-radius: 4px; overflow: hidden; }
+.utsnitt-golv { position: absolute; border: 1px solid var(--tv-felt-line); border-radius: 4px; box-sizing: border-box; }
+.utsnitt figcaption { margin-top: 6px; font-size: 11px; color: var(--quiet-2); font-variant-numeric: tabular-nums; }
+.utsnitt figcaption b { color: #dfe6f5; }
+.utsnitt figcaption .ok { color: var(--good); }
+.utsnitt figcaption .warn { color: #ff9d9d; font-weight: 700; }
+
+.summa { border-collapse: collapse; width: 100%; margin: var(--s3) 0 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+.summa th, .summa td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; }
+.summa thead th { background: var(--sunk); color: #fff; font-size: 11px; }
+.summa tbody th { background: var(--sunk); color: #dfe6f5; white-space: nowrap; }
+.summa td.ok { color: var(--good); font-weight: 700; }
+.summa td.warn { color: #ff9d9d; font-weight: 700; }
+.summa tr.bryter th { color: #ffb9b9; }
+.matris { font-size: 11px; }
+
+.kolumner { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: var(--s4); }
+.kolumn { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: var(--s4); }
+.kolumn h3 { font-size: 13px; }
+.kolumn ul { margin: 0; padding-left: 17px; color: #c3cbdd; line-height: 1.65; font-size: 12px; }
+.kolumn ul b { color: #fff; }
+.beslut { background: #101820; border: 1px solid #24384a; border-radius: 12px; padding: var(--s4); }
+.beslut pre { margin: 0; background: #0b1117; border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; }
+.beslut pre code { background: none; border: 0; padding: 0; color: #dfe6f5; font: 11px/1.6 ui-monospace, Menlo, monospace; white-space: pre-wrap; }
+.rad2 { display: grid; grid-template-columns: ${HALVA_TV.w}px minmax(0,1fr); gap: var(--s5); align-items: start; }
+
+.fotnot { margin-top: var(--s5); padding-top: var(--s4); border-top: 1px solid var(--line); font-size: 11px; color: var(--quiet); }
+.fotnot ul { padding-left: 17px; line-height: 1.75; }
+.fotnot b { color: #dfe6f5; }
+.matt-lista { display: flex; gap: var(--s4); flex-wrap: wrap; margin: var(--s3) 0 0; font-size: 11px; color: var(--quiet-2); font-variant-numeric: tabular-nums; }
+.matt-lista u { text-decoration: none; color: #ffd98a; font-weight: 700; }
+@media (max-width: 1560px) { .rad2 { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .kolumner { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body data-kand="nu" data-platser="4">
+
+<div class="vaxel">
+  <b>#449 · var kortet hamnar</b>
+  <span class="etikettord">Regel</span>
+  ${väljare('Vilken placeringsregel', 'kand', KANDIDATER.map((k) => ({ id: k.id, text: k.namn })), 'nu')}
+  <span class="etikettord">Platser</span>
+  ${väljare('Hur många som sitter vid bordet', 'platser', PLATSANTAL.map((p) => ({ id: String(p), text: String(p) })), '4')}
+  ${beskrivningar}
+</div>
+
+<div class="ark">
+<h1>Var kortet hamnar i en publik yta</h1>
+<p>Nina trycker <b>Framför mig</b> tre gånger. Telefonen skickar ingen position, <code>move</code> låter kortet behålla de koordinater det hade, och ett handkort har 0,0 — så alla tre korten får zonens hörn och ritas ovanpå varandra. Den här sidan prövar fyra regler för var de i stället ska hamna, mot nuläget, på wizardens eget startbord med ytorna framför platserna gjorda publika: beslutet i <a href="https://github.com/Tiico/build-a-deck/issues/414">#414</a>, som det här blockerar.</p>
+<p>Frågan är inte ny. Den står redan som öppen fråga i <b>DESIGN-BESLUT.md</b>, avsnitt I, rad ${RAD_ÖPPEN + 1}, sedan tangentbordet fick sin väg (K16), och koden som gissar svaret säger det själv: <code>slotIn</code> i <code>keyboard.ts</code> bär raden «this is the prototype's guess, not a product decision». Det #449 avgör är alltså om den gissningen blir produktens svar, eller ersätts — och svaret gäller båda vägarna in, eftersom två vägar som räknar olika är två bord.</p>
+<div class="matt-lista">
+  <span>ytan framför en plats <u>${mått4.zon.w} × ${mått4.zon.h} mm</u> vid varje platsantal</span>
+  <span>kortet <u>${CARD_MM.w} × ${CARD_MM.h} mm</u></span>
+  <span>titelrutan i startramen <u>${TITELRUTA.w} × ${TITELRUTA.h} mm</u> vid y ${TITELRUTA.y}</span>
+  <span>filten vid 4 platser <u>${feltFor(4).w} × ${feltFor(4).h} mm</u> → <u>${måste(SKALA_PÅ_TV[4], '4').toFixed(4)} px/mm</u></span>
+  <span>vid ${MAX_PLAYERS} platser <u>${feltFor(MAX_PLAYERS).w} × ${feltFor(MAX_PLAYERS).h} mm</u> → <u>${måste(SKALA_PÅ_TV[MAX_PLAYERS], 'max').toFixed(4)} px/mm</u></span>
+  <span>ett kort på en riktig 1920 × 1080 <u id="matt-tv">${(CARD_MM.w * måste(SKALA_PÅ_TV[4], '4')).toFixed(1)} px</u> / <u>${(CARD_MM.w * måste(SKALA_PÅ_TV[MAX_PLAYERS], 'max')).toFixed(1)} px</u></span>
+  <span>uppmätt på filten här <u id="matt-kort">—</u></span>
+</div>
+
+<section>
+  <h2>1 · Tre kort, på TV:n</h2>
+  <p>Sändningsläget i halv skala: 960 × 540 står för 1920 × 1080. Skalan är <code>fitScale</code>, <code>TV_AIR_PX</code> och <code>feltWithHands</code> ur produkten, ställda som <code>TableRenderer</code> ställer dem i tv-läge — och inte en egen uträkning som liknar dem. Nina sitter på plats A, längst ned.</p>
+  <div class="rad2">
+    <div>${filtar}</div>
+    <div>
+      <h3>Vad man ser av det hon spelade sist</h3>
+      <p class="led">Det senast spelade kortet är det <code>move</code> la på <code>index 0</code>. <code>project</code> skriver komponenterna i zonens ordning, och renderaren målar dem i den ordningen utan någon z-ordning — så det som står först målas först och hamnar underst. Siffrorna nedan är den synliga arean, räknad på rutorna, och den synliga delen av just titelrutan: det som avgör om ett kort går att <i>namnge</i> och inte bara räkna.</p>
+      ${ordningen}
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>2 · När ytan fylls</h2>
+  <p>Samma yta i TV:ns egna pixlar, inte uppförstorad, med grannzonernas kanter kvar så att spill syns. Tre lägen: den berättelse issuet börjar i, en yta med ${ANTAL[1]} kort, och en yta med ${SPELAT_MAX}. Bildtexten under varje utsnitt är mätt på samma rutor som tabellen.</p>
+  ${utsnitten}
+</section>
+
+<section>
+  <h2>3 · Kortet någon drar dit för hand (K2)</h2>
+  <p>K2 är formgivarens och spelarens frihet: ett kort som dras dit ska hamna där det släpps. Provet är sex kort i ytan, där det fjärde kom dit med fingret i stället för från telefonen — på tråden samma <code>move</code> med en punkt som <code>drop.ts</code> skickar — och tre spelades efter det. Frågan är var det ligger efteråt.</p>
+  <div class="rad2">
+    <div>${k2Filtar}<p class="led" style="margin-top:var(--s2)">Det gula märket är kortet Nina drog dit. Gäller fyra platser.</p></div>
+    <div>
+      <table class="summa"><thead><tr><th>Kandidat</th><th>Släpptes på</th><th>Ligger på tråden</th><th>Ritas på</th><th>Flyttat</th><th>Dom</th></tr></thead><tbody>${k2Html}</tbody></table>
+      <p class="led" style="margin-top:var(--s3)">De fyra första räknar ut en punkt <b>på klienten</b> och skickar den med <code>move</code>, precis som en dragning gör. Ett kort som redan ligger någonstans rörs därför aldrig: <code>apply</code> skriver bara den komponent intenten namnger. <b>Zonen packar själv</b> är något annat — en utläggning i renderaren som räknas om varje gång zonen ändras — och den läser inte kortets <code>x</code> och <code>y</code> alls. Det är inte ett fel i regeln utan vad regeln <i>är</i>, och därför en egen rad i beslutet.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>4 · Var varje regel tar slut</h2>
+  <p>Issuet frågar var gränsen går. Det är tre olika gränser, och ingen regel har samma tal på alla tre. Talen är mätta genom att spela ett kort i taget, upp till ${TAK_SÖK}, och se när påståendet slutar hålla. Tabellen följer platsväxeln uppe; siffrorna är desamma vid båda platsantalen, eftersom <code>inFront</code> ger samma ${M('nu', 4, 3).zon.w} × ${M('nu', 4, 3).zon.h} mm vid varje.</p>
+  ${takHtml}
+  <p class="led" style="margin-top:var(--s3)"><b>Ingen kandidat är bra på alla tre.</b> Radvis kan läsas hur många kort som helst men ligger <i>aldrig</i> innanför ytan — inte ens med ett enda kort. Fjädrat ryms exakt ${T('fjader', 4).inom} kort, vilket är samma <code>FAN_MAX</code> som handen har, men bara ett kort i taget går att namnge. Staplat ryms ett. Zonen som packar sig själv ryms alltid och läser ${T('packa', 4).läsbar} — och är den enda som flyttar ett kort någon lagt själv.</p>
+  <h3 style="margin-top:var(--s5)">Hela matrisen</h3>
+  <p class="led">Fem regler, två platsantal, tre fyllnadsgrader, med dagens ritordning.</p>
+  ${matrisHtml}
+</section>
+
+<section>
+  <h2>5 · Vad prototypen hittade</h2>
+  <div class="kolumner">
+    <div class="kolumn">
+      <h3>Regeln finns redan — på en av två vägar</h3>
+      <ul>
+        <li><b><code>slotIn</code> är produktens svar i dag — för tangentbordet.</b> Den räknar ut nästa lediga plats i en rad och skickar den med <code>move</code>, så två kort landar aldrig på samma millimeter. Telefonen anropar den aldrig: <code>PlayerSurface</code> skickar <code>undefined</code> där punkten ska stå, på båda sina vägar.</li>
+        <li><b>Ingen ändring i protokollet behövs för någon av de fyra första.</b> <code>playIntents</code> tar redan emot en punkt — parametern heter <code>at</code> och står oanvänd — och <code>move</code> bär <code>x</code> och <code>y</code>. En regel är ett argument, inte ett verb.</li>
+        <li><b>Men <code>slotIn</code> som den står ryms inte i seatytan — inte med ett enda kort.</b> Den lägger första kortet på y = ${SLOT_FÖRSTA.y} mm i en yta som är ${mått4.zon.h} mm djup, och kortet är ${CARD_MM.h} mm högt: ${(SLOT_FÖRSTA.y + CARD_MM.h - mått4.zon.h).toFixed(0)} mm utanför direkt. Vid ${SPELAT_MAX} kort ligger <b>${M('rad', 4, SPELAT_MAX).utanförFilten} av ${SPELAT_MAX}</b> helt utanför filten och ${M('rad', 4, SPELAT_MAX).påGrannzon} på ${esc(M('rad', 4, SPELAT_MAX).grannarnasNamn.join(', '))}. Regeln är skriven för filtens stora ytor och aldrig prövad mot den yta receptet ger varje plats.</li>
+        <li><b>Och ingenting drar tillbaka dem.</b> <code>keptOnFelt</code> i <code>drop.ts</code> håller bara kvar det som släpps på <i>golvet</i>; «a zone that is not the floor keeps what it is given». En uträknad punkt som hamnar förbi filtkanten stannar där, och filten har ingen <code>overflow: hidden</code> — kortet ritas på mörkret utanför.</li>
+        <li><b>Svaret gäller båda vägarna in.</b> Väljer beställaren något annat än radvis måste <code>slotIn</code> bytas i samma andetag, annars lägger tangentbordet och telefonen korten på två olika sätt i samma yta.</li>
+      </ul>
+    </div>
+    <div class="kolumn">
+      <h3>Ordningen är omvänd, och det är genvägens ord som gör det</h3>
+      <ul>
+        <li><b>Genvägen säger <code>at: 'top'</code>.</b> Receptet ger <code>mine:{plats}</code> genvägen «Framför mig» med <code>at: 'top'</code>, och <code>playIntents</code> översätter <code>top</code> till <i>ingen</i> <code>index</code>, vilket <code>apply</code> läser som <code>index 0</code>.</li>
+        <li><b>I en hög är <code>index 0</code> toppen. I en yta är det ritordningens början</b> — alltså botten av det man ser. Samma ord betyder motsatta saker i de två zonslagen, och det är hela felet: kortet Nina just tryckte på hamnar underst.</li>
+        <li><b>Rättelsen kräver inget nytt heller.</b> <code>playIntents</code> har redan <code>place: 'bottom'</code>, som skickar <code>index: count</code> och lägger kortet sist i ordningen — alltså överst på filten. Det är genvägens <code>at</code> som ska säga det, eller så ska ytan läsa det tvärtom mot högen.</li>
+        <li><b>Med ordningen vänd blir det nyaste kortet helt synligt i varje kandidat</b> — ${pct(M('fjader', 4, 3, 'omvand').nyast.synlig)} mot ${pct(M('fjader', 4, 3).nyast.synlig)} för fjädrat vid tre kort, och ${pct(M('stapel', 4, 3, 'omvand').nyast.synlig)} mot ${pct(M('stapel', 4, 3).nyast.synlig)} för staplat. Det är mätt på samma rutor, med bara målningen kastad om.</li>
+        <li><b>Och slivern som blir kvar av de äldre korten byter ände.</b> Med dagens ordning ser man varje korts <i>högra</i> kant, alltså slutet av titeln; med ordningen vänd ser man dess <i>vänstra</i>, alltså början. Det är skillnaden mellan «…rnen» och «Björ…».</li>
+        <li><b>Men ordningen räddar inte nuläget.</b> Vänd eller ovänd syns <b>${M('nu', 4, 3, 'omvand').synligaKort}</b> kort av tre när alla tre ligger på samma millimeter — bara ett annat av dem. Ordningsfrågan är en följdfråga till placeringen och inte ett alternativ till den.</li>
+      </ul>
+    </div>
+    <div class="kolumn">
+      <h3>Titeln står mitt på kortet, inte längs kanten</h3>
+      <ul>
+        <li><b>Startramens titel är ${TITELRUTA.w} × ${TITELRUTA.h} mm och börjar ${TITELRUTA.y} mm ned</b> på ett ${CARD_MM.h} mm högt kort — mätt i <code>DEFAULT_FRAME</code> och inte gissat. Konsten ligger ovanför den, kostnaden uppe till höger.</li>
+        <li><b>Det avgör vad «fjädrat» är värt.</b> En hand fungerar överlappande därför att man håller den och kan sprida den; en yta på en TV kan man inte röra. Med handens eget steg på ${HAND_STEP_MM} mm visar varje kort utom det sista sina ${HAND_STEP_MM} vänstra millimeter, och titelrutan börjar ${TITELRUTA.x} mm in och är ${TITELRUTA.w} mm bred — så ${pct(Math.min(1, Math.max(0, (HAND_STEP_MM - TITELRUTA.x) / TITELRUTA.w)))} av titeln syns. Vid ${SPELAT_MAX} kort ger fjädringen <b>${M('fjader', 4, SPELAT_MAX).helaTitlar}</b> hela titlar.</li>
+        <li><b>En regel kan svara på «hur många» utan att svara på «vilka».</b> Fjädrat och staplat låter en räkna korten; bara radvis och packningen låter en läsa dem. Vilket av de två ytan ska kunna är beställarens fråga, och den är inte samma fråga som placeringen.</li>
+        <li><b>Om svaret är «läsa» är ytan för liten för mer än ${Math.floor(mått4.zon.w / CARD_MM.w)} kort.</b> ${mått4.zon.w} mm rymmer ${Math.floor(mått4.zon.w / CARD_MM.w)} kort kant i kant och ${mått4.zon.h} mm rymmer bara ett i djup. Packningen läser ${T('packa', 4).läsbar} innan titlarna börjar täckas, och det är taket för <i>varje</i> regel som inte låter korten lämna ytan. Bortom det måste antingen ytan växa — vilket rör K18:s kuvert och alltså filtens storlek — eller korten överlappa.</li>
+        <li><b>Fjädringens tak är handens.</b> Med ${HAND_STEP_MM} mm steg ryms ${T('fjader', 4).inom} kort hela i ytan, vilket är exakt <code>FAN_MAX</code> — talet produkten redan har bestämt att en fjäder slutar växa vid. Det är ingen konstruktion från prototypens sida: ${CARD_MM.w} + ${T('fjader', 4).inom - 1} × ${HAND_STEP_MM} = ${CARD_MM.w + (T('fjader', 4).inom - 1) * HAND_STEP_MM} mm i en yta på ${mått4.zon.w}. Vad som händer bortom taket har handen redan ett svar på: antalet säger resten.</li>
+      </ul>
+    </div>
+    <div class="kolumn">
+      <h3>Åtta platser: ytan är lika stor, men skärmen är mindre</h3>
+      <ul>
+        <li><b>Ytan krymper inte.</b> <code>inFront</code> räknar ${mått4.zon.w} × ${mått4.zon.h} mm ur platsens ${'500'} mm längs kanten, och det talet är detsamma vid två platser som vid ${MAX_PLAYERS}. Det som ändras är filten: ${feltFor(4).w} × ${feltFor(4).h} mm vid fyra, ${feltFor(MAX_PLAYERS).w} × ${feltFor(MAX_PLAYERS).h} vid ${MAX_PLAYERS}.</li>
+        <li><b>Så det är pixlarna som tar slut, inte millimetrarna.</b> ${måste(SKALA_PÅ_TV[4], '4').toFixed(3)} px/mm vid fyra platser mot ${måste(SKALA_PÅ_TV[MAX_PLAYERS], 'max').toFixed(3)} vid ${MAX_PLAYERS}: ett kort går från ${(CARD_MM.w * måste(SKALA_PÅ_TV[4], '4')).toFixed(0)} px brett till ${(CARD_MM.w * måste(SKALA_PÅ_TV[MAX_PLAYERS], 'max')).toFixed(0)}. Varje regel lägger korten på samma millimeter vid båda platsantalen; skillnaden är att det som var ett kort blir en frimärksstor bild.</li>
+        <li><b>Det gör överlappande regler sämre vid åtta och inte bättre.</b> Fjädringens ${HAND_STEP_MM} mm är ${(HAND_STEP_MM * måste(SKALA_PÅ_TV[MAX_PLAYERS], 'max')).toFixed(0)} px vid ${MAX_PLAYERS} platser, och staplingens ${STAPEL_MM} mm är ${(STAPEL_MM * måste(SKALA_PÅ_TV[MAX_PLAYERS], 'max')).toFixed(0)} px. En förskjutning på ${(STAPEL_MM * måste(SKALA_PÅ_TV[MAX_PLAYERS], 'max')).toFixed(0)} px syns på tre meters håll som en tjockare kant och inte som flera kort.</li>
+        <li><b>Ytan är dessutom inte liggande vid varje plats.</b> Platserna vid öster och väster får en <i>stående</i> yta, ${mått4.zon.h} × ${mått4.zon.w} mm, eftersom <code>inFront</code> vänder rektangeln mot kanten. En regel som läser <code>geometry.w</code> — som <code>slotIn</code> gör — får därför fyra kort i bredd vid södra kanten och ett vid den östra. Regeln måste läsa zonens <i>långa</i> axel och inte dess bredd.</li>
+      </ul>
+    </div>
+    <div class="kolumn">
+      <h3>Att packa är att ha två svar på var kortet ligger</h3>
+      <ul>
+        <li><b>De fyra första räknar på klienten och skriver ned svaret.</b> Punkten reser i <code>move</code>, <code>apply</code> skriver den i tillståndet, <code>project</code> skickar den, och filten ritar den. Ett svar, en väg.</li>
+        <li><b>En utläggning i renderaren läser inte de talen alls.</b> Komponenten bär fortfarande <code>x: ${K2_AV('packa').lagrat.x.toFixed(0)}, y: ${K2_AV('packa').lagrat.y.toFixed(0)}</code> på tråden medan skärmen ritar den på ${K2_AV('packa').ritat.x.toFixed(0)}, ${K2_AV('packa').ritat.y.toFixed(0)}. Det är inte bara K2-brottet — det är att var ett kort ligger blir två påståenden som kan gå isär, i ett repo vars regel är att <code>project</code> är enda vägen från tillstånd till tråd.</li>
+        <li><b>Det finns en tredje form som ingen har föreslagit: packa i loggen.</b> Klienten skickar ett kuvert (K3) med ett <code>move</code> per kort i ytan i stället för ett. Då finns bara ett svar igen, packningen går att ångra, och återspelningen är identisk. Priset är ${SPELAT_MAX + 1} intents i stället för 2 för det tionde kortet, och att <i>flytten av grannens kort står i loggen med Ninas namn på</i>.</li>
+        <li><b>Den formen bryter fortfarande mot K2</b> — det dragna kortet flyttas ändå — men den bryter mot den <i>synligt</i>, och det är skillnaden mellan ett beslut och en avvikelse.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>6 · Vad prototypen rekommenderar</h2>
+  <div class="kolumner">
+    <div class="kolumn" style="border-color:#3c6a4a">
+      <h3>Fjädrat, med ordningen vänd</h3>
+      <p style="margin:0 0 var(--s2);font-size:12px;line-height:1.65">Det är den enda kandidaten som klarar alla tre villkoren issuet ställer utan att något annat beslut behöver rivas upp:</p>
+      <ul>
+        <li><b>Den lämnar aldrig ytan</b> upp till ${T('fjader', 4).inom} kort, och det taket är produktens eget (<code>FAN_MAX</code>) och inte ett valt tal.</li>
+        <li><b>Antalet går att räkna</b> vid varje fyllnadsgrad och vid varje platsantal — ${M('fjader', MAX_PLAYERS, SPELAT_MAX).synligaKort} av ${SPELAT_MAX} syns även vid ${MAX_PLAYERS} platser.</li>
+        <li><b>K2 är orörd.</b> Punkten räknas på klienten och skrivs i loggen; ett kort som dras dit ligger kvar där det släpptes, mätt till ${K2_AV('fjader').flyttat.toFixed(1)} mm.</li>
+        <li><b>Med <code>place: 'bottom'</code> är det nyaste kortet helt läsbart</b> (${pct(M('fjader', 4, 3, 'omvand').nyast.synlig)}), och de äldre visar sina vänstra ${HAND_STEP_MM} mm, alltså början av sina titlar.</li>
+        <li><b>Den är redan känd för ögat.</b> Handen fjädrar med samma steg, så en yta som fjädrar säger «det här är kort som ligger framför någon» utan att någon behöver lära sig något nytt.</li>
+      </ul>
+      <p style="margin:var(--s3) 0 0;font-size:12px;line-height:1.65"><b>Priset, uttryckligen:</b> bara ett kort i taget går att namnge från soffan. Är det viktigare att kunna <i>läsa</i> alla kort i ytan än att kunna räkna dem, är fjädrat fel och packningen rätt — och då måste K2 vika med en egen rad.</p>
+    </div>
+    <div class="kolumn">
+      <h3>Vad beställaren måste avgöra</h3>
+      <ul>
+        <li><b>Ska ytan kunna läsas eller räknas?</b> Ingen regel gör båda bortom ${T('packa', 4).läsbar} kort, och ytan är ${mått4.zon.w} × ${mått4.zon.h} mm vid varje platsantal. Det är den enda frågan som verkligen delar kandidaterna.</li>
+        <li><b>Får ordningen bytas?</b> Att <code>Framför mig</code> lägger kortet underst är ett fel i genvägens <code>at</code> och inte i placeringen. Det kan rättas oavsett vilken regel som väljs, och prototypen mäter att det är gratis.</li>
+        <li><b>Om packningen väljs: viker K2 för receptets egna ytor?</b> Det är en egen rad i DESIGN-BESLUT.md, och den måste också säga om packningen sker i renderaren (två svar) eller i loggen (ett svar, ${SPELAT_MAX + 1} intents).</li>
+        <li><b>Gäller regeln alla publika ytor eller bara receptets?</b> Prototypen kan inte svara: protokollet har ingen idé om en zon «med egen layout» — en zon är en rektangel och ingenting mer. Antingen gäller regeln varje <code>area</code>, eller så måste ett nytt begrepp införas, och det är ett eget beslut.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>7 · Vad den öppna frågan säger, ordagrant</h2>
+  <p>Raden står i avsnitt I, rad ${RAD_ÖPPEN + 1}, och generatorn letar upp den på text — den faller om raden skrivs om:</p>
+  <div class="beslut"><pre><code>${esc(ÖPPEN_FRÅGA)}</code></pre></div>
+  <p style="margin-top:var(--s3)">Prototypen föreslår inget <code>### L</code>-nummer. De delas ut när någon implementerar, och ett reserverat nummer blir taget. Men beslutet behöver <b>två</b> rader och inte en: vilken regel som gäller, och — om valet blir «zonen packar själv» — att K2:s frihet uttryckligen viker för den i receptets egna ytor.</p>
+</section>
+
+<div class="fotnot">
+  <b>Vad som är mätt och vad som är konstruerat</b>
+  <ul>
+    <li><b>Mätt:</b> varje tal i tabellerna och i bildtexterna. Bordet är <code>openingSetup</code>, tillståndet är <code>initialState</code> plus riktiga intents genom <code>apply</code>, handlingarna är <code>playIntents</code> <i>importerad</i> ur <code>packages/web/src/player/play.ts</code>, och var ett kort ligger är <code>absoluteOf</code> på snapshotten ur <code>project</code>.</li>
+    <li><b>Mätt:</b> kandidaten «radvis». Den är <code>slotIn</code> ur <code>packages/web/src/table/keyboard.ts</code>, importerad och anropad som <code>intentsForPlace</code> anropar den. Det är inte en rekonstruktion av regeln utan regeln.</li>
+    <li><b>Mätt:</b> skalan. <code>fitScale</code>, <code>TV_AIR_PX</code>, <code>turnToFit</code>, <code>feltWithHands</code> och <code>handExtent</code> ur produkten, i den ordning <code>TableRenderer</code> ställer dem i tv-läge, med <code>rotate = 0</code> och <code>margin = 0</code> som <code>/table</code> lämnar dem.</li>
+    <li><b>Mätt:</b> synlig area och synlig titelruta. Rutorna är kortets och titelelementets egna millimetrar, och täckningen räknas exakt på komprimerade koordinater — inte uppskattad ur en bild.</li>
+    <li><b>Mätt:</b> korten. <code>compile</code> i <code>packages/template</code> — den enda renderaren (E2) — i 63 × 88 mm, satt i startramen <code>DEFAULT_FRAME</code> med EB Garamond pinnad ur en riktig woff2 i den här katalogen. Ingen ritad ruta liknar ett kort någonstans på sidan.</li>
+    <li><b>Konstruerat:</b> staplingens förskjutning på ${STAPEL_MM} mm och packningens luft på ${PACK_LUFT} mm. Produkten har inga sådana mått, och issuet säger bara «en aning förskjutet». Talen är valda och sidan säger det.</li>
+    <li><b>Konstruerat:</b> fjädringens form. Steget är produktens eget (<code>HAND_STEP_MM</code>), men att en yta ska fjädra <i>längs sin långa axel från ena änden</i> är prototypens val; handen fjädrar kring sin mitt och lutar korten, vilket en yta inte gör.</li>
+    <li><b>Konstruerat:</b> filtens möbler runt ytan — högarnas och handens utseende, zonnamnens exakta utskjutning (K19 har en noggrannare regel), och att filten inte lutar. Geometrin, zonernas rektanglar och skalan är produktens.</li>
+    <li><b>Konstruerat:</b> leken. ${RADER.length} djur och en poängräknare; inget spel i katalogen ser ut så.</li>
+    <li><b>Utanför prototypen:</b> vad som händer när ytan har en egen layout formgivaren satt. Protokollet har ingen sådan idé i dag — en zon är en rektangel och ingenting mer — så frågan «gäller regeln bara ytor utan egen layout?» har inget «utan egen layout» att peka på. Att införa ett sådant begrepp är ett eget beslut och en egen fråga.</li>
+    <li><b>Utanför prototypen:</b> vad telefonen ritar av en annan plats publika yta. <code>targetsOf</code> sållar på ägare och inte på synlighet, vilket prototypen till #414 mätte och som följer med i D:s implementation.</li>
+  </ul>
+  <b style="margin-top:var(--s3);display:block">Vakter som kördes innan sidan skrevs (${vakter.length})</b>
+  <ul>${vaktHtml}</ul>
+</div>
+</div>
+
+<script type="module">
+// Växlarna, och en vakt mot tomhet: sidan påstår ett kortmått i pixlar, så den mäter också att
+// kortet verkligen ritades och hur brett det blev. Ritades inget kort säger den det, i stället
+// för att visa ett tomt fält.
+function mät() {
+  const k = document.body.dataset.kand
+  const p = document.body.dataset.platser
+  const el = document.querySelector('.lage[data-kand="' + k + '"][data-platser="' + p + '"] .filt [data-card]')
+  const r = el?.getBoundingClientRect()
+  const ut = document.getElementById('matt-kort')
+  const bredd = r && r.width > 0 ? r.width : 0
+  // Filten ritas i halv skala, så ett kort på en riktig TV är dubbelt så brett som här.
+  ut.textContent = bredd > 0 ? bredd.toFixed(1) + ' px i halv skala, ' + (bredd * 2).toFixed(1) + ' px på en riktig TV' : 'INGET KORT RITADES'
+  ut.style.color = bredd === 0 ? '#ff9d9d' : ''
+}
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-valj]')
+  if (!b) return
+  const grupp = b.dataset.grupp
+  document.body.dataset[grupp === 'kand' ? 'kand' : 'platser'] = b.dataset.valj
+  document.querySelectorAll('button[data-grupp="' + grupp + '"]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)))
+  mät()
+})
+await document.fonts.ready
+mät()
+</script>
+</body>
+</html>
+`
+
+
+writeFileSync(`${HÄR}prototyper/05-kortets-plats.html`, sida)
+console.log('skrev prototyper/05-kortets-plats.html')
+console.table(
+  KANDIDATER.flatMap((k) =>
+    PLATSANTAL.map((p) => {
+      const tre = M(k.id, p, 3)
+      const full = M(k.id, p, SPELAT_MAX)
+      return {
+        kandidat: k.namn,
+        platser: p,
+        'syns vid 3': `${tre.synligaKort}/3`,
+        'syns vid 10': `${full.synligaKort}/${SPELAT_MAX}`,
+        'hela titlar vid 10': full.helaTitlar,
+        'utanför ytan vid 10': full.utanförZon,
+        'nyast synlig': pct(tre.nyast.synlig),
+        K2: K2_AV(k.id).bryter ? `bryter (${K2_AV(k.id).flyttat.toFixed(1)} mm)` : 'ok',
+      }
+    }),
+  ),
+)
+console.log(`${vakter.length} vakter gröna`)
