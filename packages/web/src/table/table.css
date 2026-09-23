@@ -356,6 +356,29 @@
    fan instead, past the cards' near edge, in the air past the rim like every other seat's (#84). */
 .byd-hand[data-count-side='above'] .byd-hand-count { top: auto; bottom: var(--hand-lift, 25px); }
 
+/* Platsen tänds medan ett kort är på väg in i dess hand (#444, K24).
+   Bandet ligger längs platsens egna millimeter av kanten (`handBand`), i platsens färg, och
+   ritas bara medan något bärs över handens fläkt. Kanten och inte fläkten, av ett mätt skäl:
+   fläkten ligger under det kort man bär just vid den kant man siktar mot, så en ram runt den
+   syns i ögonvrån och inte där blicken är. Vid en hand som är fälld till sitt antal (#77) finns
+   därtill ingen fläkt alls att rita kring, och bandet är då det enda som säger var handen tar
+   emot.
+
+   Två band mot varandra, som fokusringen (#1, #2), och av samma skäl. Platsfärgerna är gjorda
+   för mörka grunder (L11) och mäter 4,4:1 till 7,7:1 mot TV:ns filt — men bordslägets filt är
+   grön, och där faller den lila platsen till 2,53:1 mot `#1f4a30`, som är vad gradienten står i
+   vid kanten mitt för en plats. Så bandet bär en hårfin linje i filtens egen krita, som läser
+   på varje grön ton, medan färgen läser på det mörka; minst en av de två bär 3:1 var bandet än
+   hamnar. `seat-contrast.test.ts` håller paret mot varje grund filten ritas i.
+
+   Skenet är skenets och bär ingenting: det tas bort av en läsare som stängt av rörelse och färg
+   utan att markeringen slutar finnas. */
+.byd-seat-band {
+  position: absolute; box-sizing: border-box; pointer-events: none; z-index: 1;
+  border-radius: 3px;
+  background: var(--seat, #666);
+  box-shadow: 0 0 0 1px var(--byd-felt-chalk), 0 0 14px var(--seat, #666);
+}
 /* The seat's name lies along its own edge of the table, turned toward whoever sits there (B). */
 .byd-seat-name {
   position: absolute; padding: 3px 10px; border-radius: 999px;
@@ -369,6 +392,11 @@
    felt is not turned to put their edge at the bottom can still see, on the table itself, which
    border is theirs. */
 .byd-seat-name[data-me] { box-shadow: 0 0 0 2px var(--byd-seat-ink); }
+/* Och namnbrickan, som redan står vid samma kant i samma färg: den tänds med samma krita, så att
+   det är en markering och inte två. Den står efter `[data-me]` och inte före, eftersom de två är
+   lika starka och den senare vinner — och det den säger just nu, att den här handen tar emot, är
+   det färskare av de två. */
+.byd-seat-name[data-taking] { box-shadow: 0 0 0 2px var(--byd-felt-chalk), 0 0 14px var(--seat, #666); }
 /* The felt that knows who is looking reads for them (#418, decision B of 2026-09-22). The turn
    above keeps C5's exception where its reason still holds — a screen lying on a table with
    people round it, where the name is a place card — and everywhere else the name is upright,

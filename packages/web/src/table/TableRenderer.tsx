@@ -9,7 +9,7 @@ import { feltScale, fitScale, leaningSquare, woodLayout, TOUCH_PX, TV_AIR_PX } f
 import { CAMERA_MIN_MM, CAMERA_STEP, activeBounds, cameraOf, centre, fitFloor, frameRect, overscanPx, pad, panBy, reachOf, same, shownRect, tween, union, zoomAround, type Rect, type Size } from './camera.js'
 import { recallCamera, rememberCamera, type CameraMemory } from './cameraMemory.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
-import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, type Drag, type DragTarget } from './drop.js'
+import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, handBound, type Drag, type DragTarget } from './drop.js'
 import { isCounter, standIn } from '../components.js'
 import { cardWord, counterActs, drawOne, feltShortcuts, flipUnder, modifierHeld, ownerOf, type Act } from './keyboard.js'
 import { ShortcutHelp } from './ShortcutHelp.js'
@@ -18,7 +18,7 @@ import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ActionSheet } from './ActionSheet.js'
 import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
-import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAt, handCountAt, handExtent, handRotation, type TableMode } from './hand.js'
+import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAt, handBand, handCountAt, handExtent, handRotation, type TableMode } from './hand.js'
 import { gapAbove, nameAt, type Grow, type Rim } from './labels.js'
 import { useT, type T } from '../i18n/index.js'
 
@@ -823,6 +823,17 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const dy = drag?.started ? drag.at.y - drag.grab.y : (settling?.dy ?? 0)
   // Held in the hand, and therefore drawn lifted. A card that has been put down is not.
   const lifted = new Set(drag?.started ? drag.ids : [])
+  // Vart det burna är på väg, när det är på väg in i en hand (#444, K24). Frågan ställs till
+  // `dropIntents` självt, så det filten lovar medan kortet bärs och det loggen får när det
+  // släpps är samma mening. Den ställs bara där filten är spelbar: en skärm som bara visar
+  // bordet bär ingenting och har inget att lova.
+  const bound = drag?.started && onAct ? handBound(view, drag, mode) : null
+  // Korten som just nu är på väg att bli dolda: greppets egna, och inget annat. En bricka är
+  // inget kort (C4) och har inget ansikte att vända — den reser i ett grepp av sitt eget slag,
+  // och bandet vid kanten säger det som ändå är sant om den, att platsen tar emot.
+  const hiding = new Set(bound && drag?.target.kind === 'card' ? drag.ids : [])
+  // Och högens topp, som reser som en egen ritning och inte som en komponent i `view` (K15).
+  const hidingTop = bound !== null && drag?.target.kind === 'pileTop'
   // Drawn away from where the table says it is: while carried, and while the drop waits for its
   // patch (#29).
   const shifted = new Set(drag?.started ? drag.ids : (settling?.ids ?? []))
@@ -897,6 +908,19 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               </div>
             )
           })}
+          {/* Platsen tänds medan ett kort är på väg in i dess hand (#444, K24): platsens egna
+              millimeter av kanten, i platsens färg. Den ligger vid kanten och inte kring
+              fläkten, eftersom kanten är den enda ytan kring en hand som kortet man bär aldrig
+              täcker — och den är därtill det enda som finns att se vid en hand som är fälld
+              till sitt antal och ritar ingen fläkt alls (#77). Ritad före högarna och korten,
+              så att den ligger under allt som spelas på den. */}
+          {bound &&
+            hands
+              .filter((z) => z.id === bound.zone)
+              .map((z) => {
+                const b = handBand(z, floor)
+                return <i key={`band-${z.id}`} className="byd-seat-band" data-seat={z.owner ?? ''} style={{ left: left(b.x), top: top(b.y), width: px(b.w), height: px(b.h), ['--seat' as string]: seatColor(seatIndex(z.owner)) }} />
+              })}
           {piles.map((z) => {
             const whole = liftedPile === z.id && liftedKind === 'pile'
             // Put down, and still drawn where it was put: the patch has not come back yet (#29).
@@ -938,6 +962,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
             return (
               <Hand
                 key={z.id}
+                taking={bound?.zone === z.id ? bound.cards : 0}
                 zone={z}
                 color={seatColor(seatIndex(z.owner))}
                 rot={handRot(z)}
@@ -1007,6 +1032,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 top={top(a.y + (m ? dy : 0))}
                 px={px}
                 dragging={lifted.has(c.id)}
+                hiding={hiding.has(c.id)}
                 carried={carried.has(c.id)}
                 by={movedBy.has(c.id) ? { seat: movedBy.get(c.id) ?? null, colour: colourOf(movedBy.get(c.id) ?? null) } : undefined}
                 faces={faces}
@@ -1025,7 +1051,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               // lying on a table, which is what C5's exception was about. Where it knows, or
               // where nobody sits at the edges at all, the name is read like the zone names
               // beside it. The seat tiles `A`–`D` are this same element and follow.
-              <SeatName key={`name-${z.id}`} zone={z} floor={floor} name={seatName(z.owner)} color={seatColor(seatIndex(z.owner))} mine={me !== null && z.owner === me} read={!(mode === 'table' && me === null)} left={left} top={top} />
+              <SeatName key={`name-${z.id}`} zone={z} floor={floor} name={seatName(z.owner)} color={seatColor(seatIndex(z.owner))} mine={me !== null && z.owner === me} taking={bound?.zone === z.id} read={!(mode === 'table' && me === null)} left={left} top={top} />
             ))}
           {peers.map((p) => {
             if (!p.drag) return null
@@ -1063,7 +1089,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
             </div>
           ))}
           {offTop && (
-            <Ghost card={topOf(zoneById.get(offTop.pile) ?? floor)} zoneBack={backOf(zoneById.get(offTop.pile))} faces={faces} back={backAt('ghost')} left={left(offTop.at.x)} top={top(offTop.at.y)} px={px} />
+            <Ghost card={topOf(zoneById.get(offTop.pile) ?? floor)} zoneBack={backOf(zoneById.get(offTop.pile))} faces={faces} back={backAt('ghost')} hiding={hidingTop} left={left(offTop.at.x)} top={top(offTop.at.y)} px={px} />
           )}
           {overlay?.({ px, left, top, scale })}
         </div>
@@ -1276,11 +1302,16 @@ type FeltNodeProps = {
 }
 type Pointing = { onPointerEnter(): void; onPointerLeave(): void }
 
-function Card({ c, left, top, px, dragging, carried, by, faces, back, handlers, points, keys }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; carried?: boolean; by?: { seat: string | null; colour: string } | undefined; faces?: string | undefined; back?: ReactNode | undefined; handlers?: Handlers | undefined; points?: Pointing | undefined; keys?: FeltNodeProps | undefined }) {
-  const face = c.cardRef === null ? 'back' : 'front'
+function Card({ c, left, top, px, dragging, hiding = false, carried, by, faces, back, handlers, points, keys }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; hiding?: boolean; carried?: boolean; by?: { seat: string | null; colour: string } | undefined; faces?: string | undefined; back?: ReactNode | undefined; handlers?: Handlers | undefined; points?: Pointing | undefined; keys?: FeltNodeProps | undefined }) {
+  // A card on its way into a hand is drawn as the card it is about to be (#444, K24): face down,
+  // in its own size and with its own lift. It is the same card the table already knows how to
+  // draw with its face away, so it is drawn by handing that card on rather than by a look of its
+  // own — the deck's back, the stand-in under it and the word on it all follow by themselves.
+  const shown = hiding ? { ...c, cardRef: null } : c
+  const face = shown.cardRef === null ? 'back' : 'front'
   // The deck's own back, when this card lies face down and a back was handed in. It is both what
   // is drawn and what tells the stylesheet to draw no stand-in under it.
-  const own = c.cardRef === null ? back : null
+  const own = shown.cardRef === null ? back : null
   return (
     <div
       className="byd-card"
@@ -1288,6 +1319,7 @@ function Card({ c, left, top, px, dragging, carried, by, faces, back, handlers, 
       data-face={face}
       data-back={own ? 'own' : undefined}
       data-dragging={dragging ? 'true' : undefined}
+      data-hiding={hiding ? '' : undefined}
       data-carried={carried ? 'true' : undefined}
       data-by={by ? by.seat ?? 'table' : undefined}
       {...points}
@@ -1300,13 +1332,13 @@ function Card({ c, left, top, px, dragging, carried, by, faces, back, handlers, 
         width: px(CARD_MM.w),
         height: px(CARD_MM.h),
         transform: `rotate(${c.rot}deg)`,
-        ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }),
+        ...(shown.cardRef === null ? {} : { ['--hue' as string]: hue(shown.cardRef) }),
         ...(by ? { ['--peer' as string]: by.colour } : {}),
       }}
     >
       {own}
-      <Texture faces={faces} c={c} />
-      <span>{cardWord(c) ?? ''}</span>
+      <Texture faces={faces} c={shown} />
+      <span>{cardWord(shown) ?? ''}</span>
     </div>
   )
 }
@@ -1314,13 +1346,17 @@ function Card({ c, left, top, px, dragging, carried, by, faces, back, handlers, 
 // The top card of a pile while it is being dragged off. A hidden pile's top is no component, so
 // the ghost wears the back the zone named for the pile (#313): the card that came off is the one
 // that showed, and it must not change back as it lifts.
-function Ghost({ card, zoneBack, faces, back, left, top, px }: { card: VisibleComponentState | undefined; zoneBack?: string | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number }) {
-  const own = card?.cardRef ? null : zoneBack ? <BackTexture faces={faces} hash={zoneBack} /> : back
+function Ghost({ card, zoneBack, faces, back, hiding = false, left, top, px }: { card: VisibleComponentState | undefined; zoneBack?: string | undefined; faces: string | undefined; back?: ReactNode | undefined; hiding?: boolean; left: number; top: number; px: (mm: number) => number }) {
+  // On its way into a hand it turns its back like any other carried card (#444, K24), and the
+  // back it turns is the one it would have worn face down all along — the zone's, where the pile
+  // named one.
+  const shown = hiding && card ? { ...card, cardRef: null } : card
+  const own = shown?.cardRef ? null : zoneBack ? <BackTexture faces={faces} hash={zoneBack} /> : back
   return (
-    <div className="byd-card" data-ghost data-dragging="true" data-face={card?.cardRef ? 'front' : 'back'} data-back={own ? 'own' : undefined} style={{ position: 'absolute', left, top, width: px(CARD_MM.w), height: px(CARD_MM.h), pointerEvents: 'none', ...(card?.cardRef ? { ['--hue' as string]: hue(card.cardRef) } : {}) }}>
+    <div className="byd-card" data-ghost data-dragging="true" data-hiding={hiding ? '' : undefined} data-face={shown?.cardRef ? 'front' : 'back'} data-back={own ? 'own' : undefined} style={{ position: 'absolute', left, top, width: px(CARD_MM.w), height: px(CARD_MM.h), pointerEvents: 'none', ...(shown?.cardRef ? { ['--hue' as string]: hue(shown.cardRef) } : {}) }}>
       {own}
-      <Texture faces={faces} c={card} />
-      <span>{cardWord(card) ?? ''}</span>
+      <Texture faces={faces} c={shown} />
+      <span>{cardWord(shown) ?? ''}</span>
     </div>
   )
 }
@@ -1476,7 +1512,7 @@ const EDGES: Record<number, 'N' | 'E' | 'S' | 'W'> = { 0: 'S', 180: 'N', [-90]: 
 
 // Who sits at this edge (B): the name lies along the table's own border, turned toward the seat
 // that reads it — as a name card would on a real table. The count stays on the hand.
-function SeatName({ zone, floor, name, color, mine, read, left, top }: { zone: ZoneView; floor: ZoneView; name: string; color: string; mine?: boolean | undefined; read: boolean; left: (mm: number) => number; top: (mm: number) => number }) {
+function SeatName({ zone, floor, name, color, mine, taking, read, left, top }: { zone: ZoneView; floor: ZoneView; name: string; color: string; mine?: boolean | undefined; taking?: boolean | undefined; read: boolean; left: (mm: number) => number; top: (mm: number) => number }) {
   if (name === '') return null
   const edge = EDGES[edgeRotation(zone, floor)] ?? 'S'
   const alongX = left(zone.geometry.x + zone.geometry.w / 2)
@@ -1484,7 +1520,7 @@ function SeatName({ zone, floor, name, color, mine, read, left, top }: { zone: Z
   const place =
     edge === 'S' ? { left: alongX, bottom: 6 } : edge === 'N' ? { left: alongX, top: 6 } : edge === 'W' ? { top: alongY, left: 6 } : { top: alongY, right: 6 }
   return (
-    <div className="byd-seat-name" data-seat-name={zone.owner} data-edge={edge} {...(read ? { 'data-read': '' } : {})} {...(mine ? { 'data-me': 'true' } : {})} style={{ ...place, ['--seat' as string]: color }}>
+    <div className="byd-seat-name" data-seat-name={zone.owner} data-edge={edge} {...(read ? { 'data-read': '' } : {})} {...(mine ? { 'data-me': 'true' } : {})} {...(taking ? { 'data-taking': '' } : {})} style={{ ...place, ['--seat' as string]: color }}>
       {name}
     </div>
   )
@@ -1493,7 +1529,7 @@ function SeatName({ zone, floor, name, color, mine, read, left, top }: { zone: Z
 // Other seats' hands are a fan of backs and a count; the owner reads theirs on the phone. A hand
 // whose order this view may see (the observer, C8) fans the cards themselves. Every measure in
 // the fan is a millimetre on the felt, so it shrinks with the table rather than swamping it (#23).
-function Hand({ zone, color, rot, countAt, folded = false, left, top, px, cards, faces }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; folded?: boolean; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
+function Hand({ zone, color, rot, countAt, folded = false, taking = 0, left, top, px, cards, faces }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; folded?: boolean; taking?: number; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
   const count = zone.mode === 'count' ? zone.count : zone.order.length
   const fan = folded ? 0 : Math.min(count, FAN_MAX)
   const shown = cards ? Math.min(cards.length, FAN_MAX) : fan
@@ -1510,6 +1546,7 @@ function Hand({ zone, color, rot, countAt, folded = false, left, top, px, cards,
       data-rot={rot}
       data-count-side={countAt}
       data-folded={folded ? 'true' : undefined}
+      data-taking={taking > 0 ? String(taking) : undefined}
       style={{ left, top, transform: `rotate(${rot}deg)`, ['--seat' as string]: color, ['--hand-unrot' as string]: `${-rot}deg`, ['--hand-drop' as string]: `${px(HAND_COUNT_MM)}px`, ['--hand-lift' as string]: `${px(HAND_COUNT_ABOVE_MM)}px` }}
     >
       <div className="byd-hand-fan">
@@ -1530,7 +1567,10 @@ function Hand({ zone, color, rot, countAt, folded = false, left, top, px, cards,
           Array.from({ length: fan }, (_, i) => <i key={i} className="byd-back" style={{ ...box, transform: place(i, false) }} />)
         )}
       </div>
-      <b className="byd-hand-count">{count}</b>
+      {/* How much the hand holds, and — while a card is on its way into it — how much it is
+          about to hold (#444, K24). Figures and an arrow rather than a word: the badge is the
+          same one at every table, whatever language its people brought (A4). */}
+      <b className="byd-hand-count">{taking > 0 ? `${count} → ${count + taking}` : count}</b>
     </div>
   )
 }
