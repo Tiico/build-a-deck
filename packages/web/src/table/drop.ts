@@ -3,6 +3,7 @@ import { CHIP_MM } from '@byd/server/doc'
 import { zoneAt, type Drop } from '../zones.js'
 import { union, type Rect } from './camera.js'
 import { handExtent, handRotation, type TableMode } from './hand.js'
+import { laidIn } from './lay.js'
 
 // Card size in table millimetres. The type registry knows the real size; until the renderer
 // reads it from there, the standard card is the only type that exists.
@@ -161,7 +162,18 @@ export function dropIntents(view: Snapshot, d: Drag, mode: TableMode): Intent[] 
   // the cards keep their places among themselves.
   const box = union(rest.map((r) => ({ x: r.x, y: r.y, ...CARD_MM })))
   const s = box ? keptOnFelt(view, dest.zone, box) : { x: 0, y: 0 }
-  return rest.map((r): Intent => ({ v: 'move', component: r.id, to: dest.zone, x: r.x + s.x, y: r.y + s.y }))
+  // Och överst i ytan det landar i (#461). Punkten är pekarens — den är vad K2 ger spelaren, och
+  // ingenting här rör den — men ordningen är ytans, och den frågas av `laidIn` så att de tre
+  // vägarna in i en yta inte kan svara olika. Ett `move` utan `index` landar på `index 0` och
+  // målas först, alltså underst; det var inte ett val utan vad tystnad råkade betyda, och det
+  // märktes inte förrän #449 gav telefonen och tangentbordet det motsatta svaret.
+  //
+  // `laidIn` svarar bara om målet är en yta, vilket är precis avgränsningen: en hög och en hand
+  // har sina egna regler (`split`, `stack`) och rörs inte.
+  return rest.map((r, i): Intent => {
+    const laid = laidIn(view, dest.zone, i)
+    return { v: 'move', component: r.id, to: dest.zone, x: r.x + s.x, y: r.y + s.y, ...(laid ? { index: laid.index } : {}) }
+  })
 }
 
 // Which hand a live drag would land in, and how many cards it would put there — or nothing, where

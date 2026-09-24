@@ -4724,7 +4724,7 @@ I en vanlig textcell står ikonen efter fältet (#140) och nås framåt; i body-
 Det är ordningen som är gemensam och inte tangenten: fokus går dit ögat går (WCAG 2.4.3).
 #397:s ursprungliga acceptanskriterium bad om samma tangent och är ändrat efter det här beslutet.
 
-### L47. En yta lägger själv ut kortet den fått utan punkt: fjädrat, med det nyaste överst (prototypat och beslutat 2026-09-22, #449)
+### L47. En yta lägger själv ut kortet den fått utan punkt: fjädrat, med det nyaste överst (prototypat och beslutat 2026-09-22, #449; ordningen utvidgad till dragvägen 2026-09-24, #461)
 
 Telefonen skickar ingen position.
 Ett kort som spelas till en yta med «Framför mig» fick därför `x: 0, y: 0`, alla kort hamnade på zonens hörn, och eftersom genvägen skickade `at: "top"` — alltså inget `index`, alltså `index 0`, alltså målat först — låg det nyaste underst.
@@ -4787,6 +4787,29 @@ Den var produktens svar för den vägen, bar själv raden «this is the prototyp
 Ingenting drog tillbaka dem — `keptOnFelt` håller bara kvar det som släpps på golvet, och filten har ingen `overflow: hidden`.
 Två vägar in i samma yta får inte ge två svar, så telefonens och tangentbordets kuvert jämförs rakt av i `packages/web/test/card-lands-in-area.test.ts`, som också mäter kortens rutor ur den byggda filten vid 2–`MAX_PLAYERS`.
 Att taket i receptets yta är exakt `FAN_MAX` är en vakt i den sviten och inte ett påstående: faller den, faller argumentet beslutet vilar på.
+
+Reviderat 2026-09-24 (#461): **ordningen gäller ytan, och därmed också det kort som dras dit för hand.**
+Raden ovan — «ett kort som dras dit för hand hamnar där det släpps» — står kvar precis som den är skriven, och den handlar om **punkten**.
+Ordningen är inte punkten.
+`dropIntents` skickade ett `move` utan `index`, och ett `move` utan `index` landar på `index 0` och målas först, alltså underst.
+Det var inte ett val utan vad tystnad råkade betyda, och det märktes inte så länge alla tre vägarna in i en yta gjorde likadant.
+Det här beslutet lagade två av dem, och gjorde därmed den tredje synlig: samma yta fick två z-ordningar beroende på vilken skärm man rörde kortet från.
+
+Regeln är alltså: **det nyaste kortet ligger överst i en yta, oavsett väg in.** Punkten är fortfarande pekarens där någon pekat (K2); det är bara ordningen som är ytans.
+Ordningen frågas av `laidIn` också på dragvägen, så att de tre vägarna inte kan svara olika igen — och att `laidIn` svarar `null` för allt som inte är en yta är precis avgränsningen: en hög och en hand har sina egna regler (`split`, `stack`) och är orörda.
+
+Golvet är en yta som alla andra (`kind: 'area'`) och får därför samma ordning.
+Det är inte en utvidgning utan samma rad läst rakt: tangentbordsvägen la redan sitt kort överst på golvet, så att lämna dragvägen utanför hade varit att bevara exakt det fel beslutet handlar om, en zon längre bort.
+Följden på filten: ett kort man drar så att det delvis täcker ett annat ligger nu ovanpå det, i stället för under det som förut.
+
+Uttryckligen inte ändrat: brickor.
+En bricka är inget kort (C4), och beslutet som fattades gäller kort; en bricka som dras till en yta landar fortfarande underst.
+Blir det ett problem är det ett eget issue med en egen rad.
+
+Att ingen förlorar något är mätt och inte antaget: dragvägen satte aldrig `index`, så att kortet hamnade underst var en slump och inte en möjlighet.
+Vill man kunna skjuta in ett kort *under* en trave är det ett eget beslut om vad som ska styra djupet, och det finns inte i dag.
+
+Grinden är `card-lands-in-area.test.ts`, som nu mäter alla tre vägarna: telefonens, tangentbordets och pekarens, med kortens ordning läst ur `project`, och med en mätning av att pekarens punkt är orörd.
 
 ### L48. Ytan framför en plats är publik, och översikten frågar synlighet där arket frågar ägarskap (prototypat och beslutat 2026-09-22, #414)
 
