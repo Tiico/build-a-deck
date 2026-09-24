@@ -2643,7 +2643,12 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
    `media-crop-layout`. The width is worked out from the ceiling rather than the height clipped by
    it, so the box keeps the file's shape whichever bound bites. */
 .byd-crop-picture { --byd-crop-ceiling: 440px; position: relative; width: min(100%, 520px, calc(var(--byd-crop-ceiling) * var(--byd-crop-ratio, 1.5))); }
-.byd-crop-picture img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 4px; background: #14161c; }
+/* `contain` och aldrig `cover` (#468): lådan bär filens egen form, så de två ritar samma bild —
+   men bara den ena kan klippa, och den här ytan finns för att *visa* hela filen. Innan bilden
+   avkodats bär lådan ännu en gissning, och under just de bildrutorna är skillnaden hela felet:
+   `cover` gömde en tredjedel av en kvadratisk fil bakom en 3:2-låda, och fönstrets koordinater
+   är andelar av lådan, så det som gömdes gick inte att nå ens genom att dra fönstret. */
+.byd-crop-picture img { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: 4px; background: #14161c; }
 /* What is kept is lit and what is cut is dimmed, so the window reads as the picture rather than
    as a box drawn on top of one. The dimming is a box of its own, clipped to the picture, so that
    the window and the corners can be clipped by nothing. */
