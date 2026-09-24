@@ -193,7 +193,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
             screen that hid what its socket had been sent is the state the repo's rule about
             hidden information exists to keep out. It reads and never acts — the draw stays in the
             row above, where a thumb already knows to find it. */}
-        <details className="byd-phone-table" data-phone-table><summary>{t('player.table.title')}</summary><TableSummary view={view} activity={activity} history={false} /></details>
+        <details className="byd-phone-table" data-phone-table><summary>{t('player.table.title')}</summary><TableSummary view={view} activity={activity} zones="areas" history={false} /></details>
         <details className="byd-phone-history"><summary>{t('play.latest')}</summary><RecentActivity view={view} activity={activity} /></details>
       </main>
       {/* The card held up. A card that lies in front of you carries its verbs here, and a verb

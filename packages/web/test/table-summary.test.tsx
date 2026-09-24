@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import type { Snapshot } from '@byd/protocol'
 import { TableSummary } from '../src/player/TableSummary.js'
+import { overviewOf } from '../src/player/PlaySheet.js'
 import { seatSetup } from './fixture.js'
 import { tableOf } from './scene.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
@@ -102,5 +103,30 @@ describe('what the overview says of another seat (C4, #414)', () => {
     // hidden area is not hers to read. The counters zones are both public and both left out, for
     // the older reason: a zone that only holds counters is not a place for cards (C4).
     expect(tiles()).toEqual(['discard', 'draw', 'mine:A'])
+  })
+})
+
+// De två halvorna av bordet (#465). Telefonen ritar listan två gånger — en gång som rad ovanför
+// handen och en gång som flik under den — och innan det här höll båda högarna. Halvorna är
+// komplementära: varje bricka står i exakt en av dem, och tillsammans är de hela `overviewOf`.
+describe('bordet delat i två halvor (#465)', () => {
+  const zonesShown = () => [...document.querySelectorAll('[data-zone-summary]')].map((el) => el.getAttribute('data-zone-summary'))
+
+  it('ger fliken ytorna och raden högarna, utan att en enda bricka står på båda ställena', () => {
+    const table = tableOf(seatSetup())
+    table.run(null, { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    const view = table.view('A')
+
+    const { unmount } = render(<TableSummary view={view} activity={[]} zones="areas" />)
+    const areas = zonesShown()
+    unmount()
+    render(<TableSummary view={view} activity={[]} zones="piles" onDraw={noop} />)
+    const piles = zonesShown()
+
+    expect(areas).toEqual(['mine:A', 'mine:B'])
+    expect(piles).toEqual(['discard', 'draw'])
+    // Ingen bricka på båda, och tillsammans är de hela listan.
+    expect(areas.filter((id) => piles.includes(id))).toEqual([])
+    expect([...areas, ...piles].sort()).toEqual([...overviewOf(view).map((z) => z.id)].sort())
   })
 })

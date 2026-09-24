@@ -263,7 +263,7 @@ export const svPlay = {
   'player.mine.empty': 'Inget framför dig. Spela ett kort hit från handen.',
   // Hela bordet, utfällt när det efterfrågas (C4). Raden över handen är högarna; det här är
   // varje zon läsaren ser in i, andra platsers ytor inräknade sedan #414.
-  'player.table.title': 'Bordet',
+  'player.table.title': 'Ytorna',
   // Tom hand (UX-16): samma form som raden ovanför, så telefonens två tomlägen läses som ett par.
   'player.hand.title': 'Dina kort',
   'player.hand.actions': 'Spela valda kort',

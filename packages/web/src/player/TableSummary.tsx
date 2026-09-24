@@ -6,10 +6,19 @@ import { useT, type T } from '../i18n/index.js'
 
 export type TableSummaryProps = {
   view: Snapshot
-  // Which zones are tiled. `piles` is the row the phone puts above the hand — the hand comes
-  // first (#156, #200), and the piles are what a hand acts on. `all` is the full table, every
-  // zone this reader may look into, which is what C4 means by folding the whole table out.
-  zones?: 'piles' | 'all'
+  // Which zones are tiled, and the phone asks for two complementary halves of one list (#465).
+  // `piles` is the row above the hand — the hand comes first (#156, #200), and the piles are what
+  // a hand acts on. `areas` is the fold under it: every other zone this reader may look into,
+  // which is what C4 means by folding the whole table out.
+  //
+  // Halves, and not a list plus a copy of it. While the fold held the piles too, the phone drew
+  // `Draghög · 10 kort` twice on one screen — once as a control and once as a mirror — and the
+  // only thing telling them apart was a line of text on one of them. Every tile now stands in
+  // exactly one of the two, and the two together are the whole of `overviewOf`.
+  //
+  // `all` is that whole list, which is what the halves are cut from. Nothing on the phone asks
+  // for it; it is what the overview *is*, and what its own suite measures.
+  zones?: 'piles' | 'areas' | 'all'
   // Whether the summary carries the recent lines itself. The phone keeps them in a fold of their
   // own, so the two were never meant to be the same question as which zones are shown.
   history?: boolean
@@ -39,7 +48,7 @@ export function TableSummary({ view, activity, onDraw, refusal, refusedZone = nu
     <div className="byd-summary">
       <div className="byd-summary-zones">
         {overviewOf(view)
-          .filter((zone) => zones === 'all' || zone.kind === 'pile')
+          .filter((zone) => (zones === 'all' ? true : zones === 'piles' ? zone.kind === 'pile' : zone.kind !== 'pile'))
           .map((zone) =>
             onDraw && drawable(view, zone) ? (
               // The tile is the control, not a control inside it (UX-37, #82): the verb is read

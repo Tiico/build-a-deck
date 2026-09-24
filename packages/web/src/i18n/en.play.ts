@@ -215,7 +215,7 @@ export const enPlay = {
   'player.mine.take': 'Pick up',
   'player.mine.play': 'Play…',
   'player.mine.empty': 'Nothing in front of you. Play a card here from your hand.',
-  'player.table.title': 'The table',
+  'player.table.title': 'The areas',
   'player.hand.title': 'Your cards',
   'player.hand.actions': 'Play selected cards',
   'player.hand.read': 'Read selected card',
