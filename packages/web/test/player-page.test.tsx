@@ -538,6 +538,16 @@ describe('counters and the area in front of you (C4)', () => {
     expect(row.querySelector('[data-zone-draw="draw"]')).toBeTruthy()
     expect(row.querySelector('[data-zone-summary="mine:B"]')).toBeNull()
     expect(row.querySelector('[data-zone-summary="mine:A"]')).toBeNull()
+
+    // Och högarna står bara på ett ställe (#465). De två listorna är komplementära halvor av
+    // samma bord: raden ovanför handen är den som handlar och håller högarna, fliken är den som
+    // läses och håller ytorna. En bricka som såg likadan ut på båda ställena gav ingen ledtråd
+    // om vilken av dem som gjorde något.
+    const fold2 = document.querySelector('[data-phone-table]')!
+    expect(fold2.querySelector('[data-zone-summary="draw"]')).toBeNull()
+    expect(fold2.querySelector('[data-zone-summary="discard"]')).toBeNull()
+    // Och fliken heter det den visar. «Bordet» var sant innan högarna gick ur den.
+    expect(fold2.querySelector('summary')?.textContent).toBe('Ytorna')
     table.close()
   })
 

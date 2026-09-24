@@ -4811,7 +4811,7 @@ Vill man kunna skjuta in ett kort *under* en trave är det ett eget beslut om va
 
 Grinden är `card-lands-in-area.test.ts`, som nu mäter alla tre vägarna: telefonens, tangentbordets och pekarens, med kortens ordning läst ur `project`, och med en mätning av att pekarens punkt är orörd.
 
-### L48. Ytan framför en plats är publik, och översikten frågar synlighet där arket frågar ägarskap (prototypat och beslutat 2026-09-22, #414)
+### L48. Ytan framför en plats är publik, och översikten frågar synlighet där arket frågar ägarskap (prototypat och beslutat 2026-09-22, #414; fliken delad från raden 2026-09-24, #465)
 
 Telefonens mest framträdande knapp heter «Framför mig».
 Den rimliga förväntan efter att ha spelat ett kort runt en TV är att kortet syns, och startbordet svarade med en tom ruta — sedan #437 med en siffra.
@@ -4853,6 +4853,20 @@ Priset, uttryckligen: ett tryck till för att se vad som ligger framför de andr
 Ytan är fortfarande *någons* — ägarskapet är orört, och det är det som placerar den framför rätt plats och lägger dess kort i den platsens egen remsa på telefonen.
 Dold information är därmed fortfarande zonens fråga och inte kortets.
 En lek som behöver en dold yta framför varje plats gör den i editorn, och då gäller B:s väg ograverad.
+
+Reviderat 2026-09-24 (#465): **fliken håller ytorna, raden håller högarna, och fliken heter «Ytorna».**
+Fliken ritades med hela `overviewOf`, alltså med högarna i, medan raden ovanför handen redan höll dem: telefonen skrev `Draghög · 10 kort` två gånger på samma skärm, och vid fyra platser var flikens hela första rad ett duplikat.
+De två gör inte samma sak — raden är en plats att trycka på och bär zonens genväg, fliken är en avläsning — men de såg likadana ut, och det enda som skilde dem var en extra rad text på den ena.
+
+De är nu två **komplementära halvor** av samma lista: varje bricka står i exakt en av dem, och tillsammans är de hela `overviewOf`.
+Det är en vakt i `table-summary.test.tsx` och inte ett påstående: halvorna jämförs mot varandra och mot helheten.
+
+Namnet följer med, eftersom det annars blivit osant: en flik som heter «Bordet» och utelämnar draghögen är inte en översikt av bordet.
+«Ytorna» är vad den listar — platsernas egna ytor, och varje annan yta läsaren får titta in i.
+Beställarens egen formulering «Framför de andra» prövades och förkastades av samma skäl som «Bordet»: listan håller också läsarens *egen* yta, och varje delad yta formgivaren gjort (#440), av vilka ingen ligger framför någon annan.
+
+De två avvisade alternativen: att låta det vara lämnar en läsare utan ledtråd om vilken av två identiska brickor som gör något, och att skilja dem åt visuellt rör formen på en yta som nyss godkänts och hade därför krävt en prototyp först.
+Vinsten är mätt i telefonens knappaste resurs: vid fyra platser försvinner en hel rad ur fliken, vid åtta en av fem.
 
 
 ## I. Öppna frågor
