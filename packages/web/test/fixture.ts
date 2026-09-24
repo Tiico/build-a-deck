@@ -44,7 +44,9 @@ export function recipeSetup(players: number, counters: Recipe['counters'] = []):
 }
 
 // A setup where every seat owns an area in front of it and a counters zone with two counters
-// (C4), as the wizard makes them.
+// (C4), as the wizard makes them. The area is owned but public (#414): it is in front of that
+// seat and in that seat's own strip, and the whole table looks into it. A fixture that said
+// `owner` here would be a fixture of a table the wizard no longer lays out.
 export function seatSetup(): SetupDef {
   const base = twoSeatSetup()
   const token = () => ({ id: TOKEN_COUNTER.id, version: 1 })
@@ -52,8 +54,8 @@ export function seatSetup(): SetupDef {
     ...base,
     zones: [
       ...base.zones,
-      { id: 'mine:A', kind: 'area', name: 'Framför A', visibility: 'owner', owner: 'A', geometry: rect(-300, 220, 380, 90), shortcut: { label: 'Framför mig', at: 'top' } },
-      { id: 'mine:B', kind: 'area', name: 'Framför B', visibility: 'owner', owner: 'B', geometry: rect(-300, -310, 380, 90), shortcut: { label: 'Framför mig', at: 'top' } },
+      { id: 'mine:A', kind: 'area', name: 'Framför A', visibility: 'all', owner: 'A', geometry: rect(-300, 220, 380, 90), shortcut: { label: 'Framför mig', at: 'top' } },
+      { id: 'mine:B', kind: 'area', name: 'Framför B', visibility: 'all', owner: 'B', geometry: rect(-300, -310, 380, 90), shortcut: { label: 'Framför mig', at: 'top' } },
       { id: 'counters:A', kind: 'area', name: 'Räknare A', visibility: 'all', owner: 'A', geometry: rect(100, 220, 110, 90) },
       { id: 'counters:B', kind: 'area', name: 'Räknare B', visibility: 'all', owner: 'B', geometry: rect(100, -310, 110, 90) },
     ],

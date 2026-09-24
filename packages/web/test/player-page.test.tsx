@@ -512,6 +512,35 @@ describe('counters and the area in front of you (C4)', () => {
     expect(document.querySelector('[data-zone-summary="counters:B"]')).toBeNull()
   })
 
+  // The other half of #414. The area in front of a seat is public, so the cards in front of Bo
+  // are in Ada's own frames — and a screen that hid what its socket had been sent is the state
+  // the repo's rule about hidden information exists to keep out. Where it is drawn is the other
+  // decision: the row above the hand stays the piles, because the hand comes first (#156) and a
+  // row that grew by a tile per seat would push it towards the fold at eight seats.
+  it('folds the whole table out with another seat’s public area in it, and keeps the row above the hand to the piles', async () => {
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    await open(id, 'A', 'Ada')
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await table.send({ v: 'draw', from: 'draw', to: 'mine:B', count: 1 })
+
+    const fold = await waitFor(() => {
+      const tile = document.querySelector('[data-phone-table] [data-zone-summary="mine:B"]')
+      if (!tile) throw new Error('the table fold has no tile for Framför B')
+      return tile
+    })
+    expect(fold.textContent).toBe('Framför B1 kort')
+    // Read and never acted on: the draw stays in the row above, where a thumb already finds it.
+    expect(fold.tagName).toBe('DIV')
+    expect(document.querySelector('[data-phone-table] [data-zone-draw]')).toBeNull()
+
+    const row = document.querySelector('.byd-phone-main > .byd-summary')!
+    expect(row.querySelector('[data-zone-draw="draw"]')).toBeTruthy()
+    expect(row.querySelector('[data-zone-summary="mine:B"]')).toBeNull()
+    expect(row.querySelector('[data-zone-summary="mine:A"]')).toBeNull()
+    table.close()
+  })
+
   it('selects, reads and plays from the hand first, then opens the private area', async () => {
     const id = await createSession(run, 's1', undefined, seatSetup())
     const token = await open(id, 'A', 'Ada')

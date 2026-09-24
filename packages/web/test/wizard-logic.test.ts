@@ -48,8 +48,10 @@ describe('buildProject', () => {
     expect(doc.setup.zones.find((z) => z.id === 'discard')?.shortcut).toEqual({ label: 'Kasta', at: 'top' })
     expect(doc.setup.zones.find((z) => z.id === 'draw')?.shortcut).toEqual({ label: 'Lägg underst', at: 'bottom' })
     // Every seat owns an area in front of it (C4), reachable from the sheet as "Framför mig",
-    // and a counters zone everyone may see; the counters themselves are the wizard's list.
-    expect(doc.setup.zones.find((z) => z.id === 'mine:A')).toMatchObject({ kind: 'area', owner: 'A', visibility: 'owner', shortcut: { label: 'Framför mig', at: 'top' } })
+    // and a counters zone everyone may see; the counters themselves are the wizard's list. The
+    // area is owned but not hidden (#414): «Framför mig» around a television means the card is
+    // seen, so the whole table looks into it and only the designer can take it back.
+    expect(doc.setup.zones.find((z) => z.id === 'mine:A')).toMatchObject({ kind: 'area', owner: 'A', visibility: 'all', shortcut: { label: 'Framför mig', at: 'top' } })
     expect(doc.setup.zones.find((z) => z.id === 'counters:C')).toMatchObject({ kind: 'area', owner: 'C', visibility: 'all' })
     expect(doc.setup.counters).toEqual([{ name: 'Poäng', start: 0 }])
     // The counter the wizard suggests is a word the designer will read and rename, so it is
@@ -87,7 +89,7 @@ describe('buildBlankProject', () => {
     expect(doc.name).toBe('Kråkkriget')
     expect(doc.setup.seats).toEqual(['A', 'B', 'C', 'D'])
     expect(doc.setup.deckZone).toBe('draw')
-    expect(doc.setup.zones.find((z) => z.id === 'mine:D')).toMatchObject({ kind: 'area', owner: 'D', visibility: 'owner' })
+    expect(doc.setup.zones.find((z) => z.id === 'mine:D')).toMatchObject({ kind: 'area', owner: 'D', visibility: 'all' })
     expect(doc.setup.counters).toEqual([{ name: 'Poäng', start: 0 }])
     expect(doc.rows).toEqual([])
     expect(doc.icons).toEqual({})

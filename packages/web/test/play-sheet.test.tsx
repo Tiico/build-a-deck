@@ -58,8 +58,12 @@ describe('where the sheet leaves the keyboard', () => {
   })
 })
 
-describe('what is not a target (C4)', () => {
-  it('leaves out another seat\'s private area and any zone that holds only counters, and keeps one\'s own area', () => {
+// The sheet answers one question — where may this card go — and it is not the overview's
+// question. Both zones below are `mode: 'order'`, which is to say this reader may look into both;
+// since #414 the area in front of a seat is public and that is exactly the case. Looking into it
+// is not being allowed to put a card in it: `mine:B` is Bo's, and the sheet's rule is ownership.
+describe('what is not a target (C4, #414)', () => {
+  it('leaves out another seat\'s area even when it is public, and any zone that holds only counters, and keeps one\'s own area', () => {
     const { view } = buildScene()
     const v = view('A')
     const zone = (id: string, owner: string) => ({ mode: 'order' as const, id, kind: 'area' as const, name: id, geometry: { x: 0, y: 0, w: 10, h: 10, rot: 0 }, dynamic: false, owner, order: [] as string[] })

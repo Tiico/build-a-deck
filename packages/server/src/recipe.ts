@@ -116,13 +116,25 @@ const seatsFor = (players: number): string[] => SEAT_IDS.slice(0, Math.max(1, Ma
 const handZone = (seat: string, i: number, count: number, deck: string, words: RecipeWords): Zone => ({ id: `hand:${seat}`, kind: 'hand', name: words.hand, visibility: 'owner', owner: seat, returnTo: deck, geometry: handGeometry(i, count) })
 
 // The two zones a seat can have besides its hand, and the one place that knows what they are: the
-// area in front of the player, which only they see into, and the strip its counters lie on, which
-// everyone reads (C4, B6). `{seat}` in the name is the seat's letter, so one name covers the table.
+// area in front of the player, which the whole table sees into, and the strip its counters lie on,
+// which everyone reads (C4, B6). `{seat}` in the name is the seat's letter, so one name covers the
+// table.
+//
+// The area is public (L48, #414). The phone's primary green button is «Framför mig», and a card played
+// around a television is expected to be seen; an opening table that answers with an empty box is a
+// table on the screen that is not the table in the room. The identity therefore leaves the server
+// to every client, which is a real change in what the wire carries and is proved on the frames in
+// `packages/e2e/test/private-area.spec.ts`. Ownership is untouched: an area is still *somebody's*,
+// which is what puts it in front of that seat and in that seat's own strip on the phone.
+//
+// A designer who wants the area hidden again sets it back to `owner` in the editor, and the felt
+// then says how many and never which (#414, decision B, #437). That path is the same spec's other
+// half, byte for byte the zone view it was before this decision.
 export type SeatRole = 'mine' | 'counters'
 export type Shortcut = { label: string; at: 'top' | 'bottom' }
 export function seatZone(role: SeatRole, seat: string, i: number, count: number, counters: number, name: string, shortcut?: Shortcut): Zone {
   return role === 'mine'
-    ? { id: `mine:${seat}`, kind: 'area', name: forSeat(name, seat), visibility: 'owner', owner: seat, geometry: inFront(i, count, counters), ...(shortcut ? { shortcut } : {}) }
+    ? { id: `mine:${seat}`, kind: 'area', name: forSeat(name, seat), visibility: 'all', owner: seat, geometry: inFront(i, count, counters), ...(shortcut ? { shortcut } : {}) }
     : { id: `counters:${seat}`, kind: 'area', name: forSeat(name, seat), visibility: 'all', owner: seat, geometry: countersAt(i, count, counters) }
 }
 

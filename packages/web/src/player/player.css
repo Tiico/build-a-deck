@@ -225,7 +225,9 @@
 /* Phone A, approved 2026-09-16: the hand and its visible actions lead the page. */
 .byd-phone-main { min-width: 0; padding: 18px 16px 24px; }
 .byd-phone-main h1 { margin: 0 0 12px; font-size: 22px; }
-.byd-phone-main > .byd-summary { padding: 0; overflow: visible; }
+/* Every summary on this screen — the row over the hand and the table folded out under it — sits
+   in the phone's own gutter and not in a second one of its own. */
+.byd-phone-main .byd-summary { padding: 0; overflow: visible; }
 .byd-phone-main .byd-summary-zones { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 12px; }
 .byd-summary-zones > * { min-width: 0; overflow-wrap: anywhere; }
 .byd-player .byd-strip { min-width: 0; padding: 8px 6px 16px; gap: 12px; }
@@ -242,8 +244,8 @@
 .byd-hand-targets button:first-child:not(:disabled) { background: var(--byd-accent); color: var(--byd-on-accent); }
 .byd-hand-actions button:disabled, .byd-mine-quick:disabled { opacity: .5; }
 .byd-player .byd-hint { margin: 0 0 12px; text-align: left; }
-.byd-personal, .byd-phone-history { border-top: 1px solid var(--byd-line); margin-top: 8px; }
-.byd-personal > summary, .byd-phone-history > summary { padding: 14px 0; min-height: 48px; box-sizing: border-box; cursor: pointer; font-size: 15px; font-weight: 600; }
+.byd-personal, .byd-phone-table, .byd-phone-history { border-top: 1px solid var(--byd-line); margin-top: 8px; }
+.byd-personal > summary, .byd-phone-table > summary, .byd-phone-history > summary { padding: 14px 0; min-height: 48px; box-sizing: border-box; cursor: pointer; font-size: 15px; font-weight: 600; }
 .byd-personal .byd-mine { padding: 0 0 12px; }
 .byd-mine-item { flex: 0 0 84px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .byd-mine-item:has(.byd-mine-quick) { flex-basis: 144px; }
