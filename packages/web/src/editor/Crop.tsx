@@ -1,4 +1,4 @@
-import { useId, useRef, type PointerEvent as ReactPointerEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from 'react'
+import { useId, useRef, useState, type PointerEvent as ReactPointerEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from 'react'
 import type { AssetCrop } from '@byd/protocol'
 import type { Key } from '../i18n/index.js'
 import { useT } from '../i18n/index.js'
@@ -38,6 +38,12 @@ const CORNER_NAME: Record<Corner, Key> = { nw: 'media.crop.corner.nw', ne: 'medi
 export type CropProps = {
   // Where the picture is served from, and how tall it is against its width, so the window is laid
   // over the picture as it really is and not over a box of some other shape.
+  //
+  // `ratio` is what somebody else measured, and it is a *hint*: the picture itself answers the
+  // same question the moment the browser decodes it, and that answer wins (#468). A measurement
+  // can be missing — in production it always is, since it is a canvas read of a `crossOrigin`
+  // image and the asset is served by a redirect whose final response carries no CORS header — and
+  // a box built on a guess crops the file with no way to reach what it cut.
   url: string
   ratio: number
   crop: AssetCrop
@@ -56,6 +62,18 @@ export type CropProps = {
 export function Crop({ url, ratio, crop, onChange, handle, status }: CropProps) {
   const t = useT()
   const said = useId()
+  // The file's own shape, straight from the picture the browser has already decoded in order to
+  // show it. Kept with the url it was read from, so that the previous picture's shape is not worn
+  // by the next one for the frame before it loads.
+  const [seen, setSeen] = useState<{ url: string; ratio: number } | null>(null)
+  const shapeOf = (img: HTMLImageElement | null) => {
+    if (!img || img.naturalWidth <= 0 || img.naturalHeight <= 0) return
+    const own = img.naturalWidth / img.naturalHeight
+    setSeen((had) => (had?.url === url && had.ratio === own ? had : { url, ratio: own }))
+  }
+  // The shape the window is laid out over: the picture's own where it is known, the hint until
+  // then. Never a guess once there is something better to ask.
+  const shape = seen?.url === url ? seen.ratio : ratio
   const held = useRef<{ corner: Corner | null; x: number; y: number; from: AssetCrop; box: DOMRect } | null>(null)
   const picture = useRef<HTMLDivElement | null>(null)
 
@@ -99,8 +117,10 @@ export function Crop({ url, ratio, crop, onChange, handle, status }: CropProps) 
       {/* The sheet is the air, and the picture stands inside it: the corners overhang the window
           by half their width, and this is the room they overhang into. */}
       <div className="byd-crop-sheet">
-        <div className="byd-crop-picture" ref={picture} style={{ aspectRatio: `${ratio}`, ['--byd-crop-ratio' as string]: `${ratio}` }}>
-          <img src={url} alt="" />
+        <div className="byd-crop-picture" ref={picture} style={{ aspectRatio: `${shape}`, ['--byd-crop-ratio' as string]: `${shape}` }}>
+          {/* The ref catches a picture the browser had in hand already — a cached file is complete
+              before React ever attaches a listener — and `onLoad` catches every other one. */}
+          <img src={url} alt="" ref={shapeOf} onLoad={(event) => shapeOf(event.currentTarget)} />
           {/* What is cut is dimmed. The dimming is a box of its own, clipped to the picture, so
               that the window and the corners can be clipped by nothing. */}
           <div className="byd-crop-shade" aria-hidden="true">

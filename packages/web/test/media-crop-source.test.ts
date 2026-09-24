@@ -33,3 +33,12 @@ describe('the crop sheet’s stylesheet (#297, L33)', () => {
     for (const selector of ['.byd-media-sheet', '.byd-media-library[inert]']) expect(rule(selector)).not.toMatch(/transition|animation/)
   })
 })
+
+// Vad som gör ytan till en som visar och inte en som klipper (#468).
+describe('beskärningens bild klipper aldrig (#468)', () => {
+  it('ritas med `contain`, så att ingen bildruta någonsin gömmer en del av filen', () => {
+    const img = rule('.byd-crop-picture img')
+    expect(img).toMatch(/object-fit:\s*contain/)
+    expect(img).not.toMatch(/object-fit:\s*cover/)
+  })
+})

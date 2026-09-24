@@ -129,3 +129,50 @@ describe('the card beside the crop is the card the printer gets (#222, E2)', () 
     expect(art?.getAttribute('src')).toBe(`${BASE}/assets/${SKOG}`)
   })
 })
+
+// Ett omätt kort är inte ett undantag, det är normalfallet (#468).
+//
+// Mätningen som ger fönstret bildens form är en canvas-läsning av en `crossOrigin`-bild, och i
+// drift svarar `/assets/<hash>` med en 302 till R2 vars slutliga svar saknar CORS-huvud. Bilden
+// laddas då aldrig i mätaren, `measureAsset` svarar `null`, och hashen märks som mätt så den
+// aldrig frågas igen. Varje bild i drift är därför omätt.
+//
+// Utan en mätning föll lådan tillbaka på 3:2 och `object-fit: cover`, så en kvadratisk fil fick
+// en tredjedel av sin höjd bortklippt — och eftersom fönstrets koordinater är andelar av *lådan*
+// gick den delen inte att nå ens genom att dra fönstret. Sanningen om formen ligger i bilden
+// själv: webbläsaren vet den så snart den avkodat, utan att fråga någon.
+describe('en bild som ingen har mätt visas hel (#468)', () => {
+  const picture = () => document.querySelector('.byd-crop-picture') as HTMLElement
+  // Bilden som webbläsaren har den när den avkodats: en kvadratisk fil, som den i felrapporten.
+  const decoded = (w: number, h: number) => {
+    const img = document.querySelector('.byd-crop-picture img') as HTMLImageElement
+    Object.defineProperty(img, 'naturalWidth', { value: w, configurable: true })
+    Object.defineProperty(img, 'naturalHeight', { value: h, configurable: true })
+    fireEvent.load(img)
+  }
+
+  it('tar lådans form ur bilden själv, så att en kvadratisk fil får en kvadratisk låda', () => {
+    mount(<MediaPanel doc={deckWithArt()} assetBase={BASE} onCrop={() => undefined} />)
+    decoded(1254, 1254)
+    expect(picture().style.aspectRatio).toBe('1 / 1')
+    expect(picture().style.getPropertyValue('--byd-crop-ratio')).toBe('1')
+  })
+
+  it('låter bilden vinna över en mätning som säger något annat, eftersom filen är sanningen', () => {
+    // En mätning som påstår 2:1 om en fil som är 1:1 — och bilden rättar den.
+    mount(<MediaPanel doc={deckWithArt()} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
+    expect(picture().style.aspectRatio).toBe('2 / 1')
+    decoded(1254, 1254)
+    expect(picture().style.aspectRatio).toBe('1 / 1')
+  })
+
+  it('håller fönstret på hela bilden, så att «Hela bilden» är hela filen', () => {
+    const onCrop = vi.fn()
+    mount(<MediaPanel doc={deckWithArt()} assetBase={BASE} onCrop={onCrop} />)
+    decoded(1254, 1254)
+    // Fönstret ligger på 0–100 % i båda led, och lådan är filens egen form: det som syns innanför
+    // fönstret är alltså hela filen och ingenting är bortklippt.
+    expect(window_().getAttribute('aria-label')).toBe('Beskärning: visar 0–100 % i sidled och 0–100 % i höjdled')
+    expect(picture().style.aspectRatio).toBe('1 / 1')
+  })
+})
