@@ -3,7 +3,7 @@ import { CARD_STANDARD_63x88, type SetupDef } from '@byd/engine'
 import { MAX_PLAYERS, openingSetup, type Recipe } from '@byd/server/doc'
 import type { Snapshot } from '@byd/protocol'
 import type { Rect } from '../src/table/camera.js'
-import { CARD_MM, absoluteOf } from '../src/table/drop.js'
+import { CARD_MM, absoluteOf, dropIntents, type Drag } from '../src/table/drop.js'
 import { FAN_MAX, HAND_STEP_MM } from '../src/table/hand.js'
 import { playIntents } from '../src/player/play.js'
 import { intentsForPlace, placesFor, type Thing } from '../src/table/keyboard.js'
@@ -187,5 +187,106 @@ describe('samma yta nådd med tangentbordet (L47, #449)', () => {
     const laid = boxes(after, 'mine:A')
     expect(laid).toHaveLength(1)
     expect(laid.filter((box) => !inside(box, zone.geometry))).toEqual([])
+  })
+})
+
+// Den tredje vägen in i samma yta: pekaren (#461).
+//
+// Det här är inte L47:s fall — någon *har* pekat, och var kortet hamnar är därför pekarens och
+// inte fjäderns (K2). Men ordningen är inte placeringen: `dropIntents` skickade ett `move` utan
+// `index`, och ett `move` utan `index` landar på `index 0` och målas först. Samma yta fick alltså
+// två z-ordningar beroende på vilken skärm man rörde kortet från.
+//
+// Att det inte märktes förut är för att alla tre vägarna la kortet underst; #449 lagade två av
+// dem och gjorde därmed den tredje synlig.
+describe('samma yta nådd med pekaren (#461)', () => {
+  // Var korten släpps. En hand som lägger tre kort bredvid varandra i en yta lägger dem isär —
+  // ett kort är 63 mm brett, och två släpp närmare än så är ett släpp *på* det förra kortet,
+  // vilket är en stapling och inte en placering (K1). Så punkterna står ett kort plus lite isär,
+  // vilket också är vad som gör mätningen till en mätning av ordning och inte av stapling.
+  const APART_MM = 70
+
+  // Ett bord där `cards` kort dragits in i ytan framför Nina, ett i taget, var och en till sin
+  // egen punkt. Kortet bärs i sin egen mitt, som en hand som siktar på en ledig fläck.
+  function draggedIn(players: number, cards: number): Snapshot {
+    const table = tableOf(felt(players, cards))
+    table.run(null, { v: 'seat.claim', seat: 'A', name: 'Nina' })
+    for (let i = 0; i < cards; i++) {
+      const before = table.view('A')
+      const card = before.components.find((c) => c.zone === 'hand:A')
+      if (!card) throw new Error('inget kort kvar på Ninas hand')
+      // Uppvänt på filten, som ett kort man kan se: ytan framför en plats är publik (L48), och
+      // ett nedvänt kort i en publik yta har ingen identitet för någon — inte ens för ägaren.
+      // Ett drag som mäts i kortnamn måste alltså dra ett kort som har ett namn att visa.
+      table.run('A', { v: 'move', component: card.id, to: before.floor, x: 40, y: 40 }, { v: 'flip', component: card.id, face: 'front' })
+      const view = table.view('A')
+      const loose = view.components.find((c) => c.id === card.id)
+      if (!loose) throw new Error('kortet kom aldrig ut på filten')
+      const from = absoluteOf(view, loose)
+      const grab = { x: from.x + CARD_MM.w / 2, y: from.y + CARD_MM.h / 2 }
+      const g = zoneOf(view, 'mine:A').geometry
+      const along = g.w >= g.h
+      const step = CARD_MM.w / 2 + i * APART_MM
+      const at = along ? { x: g.x + step, y: g.y + g.h / 2 } : { x: g.x + g.w / 2, y: g.y + step }
+      const drag: Drag = { target: { kind: 'card', id: loose.id }, ids: [loose.id], origin: { [loose.id]: from }, grab, at }
+      const intents = dropIntents(view, drag, 'table')
+      // Mätningen får inte gå igenom på ett drag som staplade i stället för att placera, eller
+      // som missade ytan: då hade den mätt något annat än den påstår.
+      expect(intents.map((it) => `${it.v}:${it.v === 'move' ? it.to : ''}`)).toEqual(['move:mine:A'])
+      table.run('A', ...intents)
+    }
+    return table.view('A')
+  }
+
+  const orderIn = (view: Snapshot, zone: string): (string | null)[] => {
+    const z = zoneOf(view, zone)
+    const order = z.mode === 'order' ? z.order : []
+    return order.map((id) => view.components.find((c) => c.id === id)?.cardRef ?? null)
+  }
+
+  it('målar det nyaste kortet sist, så att det ligger överst', () => {
+    expect(orderIn(draggedIn(4, 3), 'mine:A')).toEqual(['kort-1', 'kort-2', 'kort-3'])
+  })
+
+  it('lämnar punkten i fred: kortet ligger där det släpptes och inte där fjädern hade lagt det', () => {
+    const view = draggedIn(4, 1)
+    const g = zoneOf(view, 'mine:A').geometry
+    const laid = boxes(view, 'mine:A')
+    expect(laid).toHaveLength(1)
+    // Släppet var en halv kortbredd in i ytan, och kortet bars i sin egen mitt: hörnet ligger
+    // därför på ytans egen kant. `laidIn` hade svarat med sitt eget steg och sin egen mittlinje.
+    const along = g.w >= g.h
+    expect(laid[0]).toEqual({ x: along ? g.x : g.x + g.w / 2 - CARD_MM.w / 2, y: along ? g.y + g.h / 2 - CARD_MM.h / 2 : g.y + CARD_MM.w / 2 - CARD_MM.h / 2, ...CARD_MM })
+  })
+
+  // Det som gör de tre vägarna till en yta och inte till tre. Telefonen lägger två kort, pekaren
+  // drar in ett tredje, och det tredje ska ligga överst — vilket det inte gjorde.
+  it('lägger sig ovanpå det telefonen redan lagt, så att de tre vägarna inte kan glida isär igen', () => {
+    const table = tableOf(felt(4, 3))
+    table.run(null, { v: 'seat.claim', seat: 'A', name: 'Nina' })
+    for (let i = 0; i < 2; i++) {
+      const view = table.view('A')
+      const card = view.components.find((c) => c.zone === 'hand:A')
+      if (!card) throw new Error('inget kort kvar på Ninas hand')
+      table.run('A', ...playIntents(view, [card], 'mine:A'))
+    }
+    // Det tredje kortet dras dit för hand, till en ledig fläck bortom de två fjädrade.
+    const before = table.view('A')
+    const third = before.components.find((c) => c.zone === 'hand:A')
+    if (!third) throw new Error('inget tredje kort')
+    table.run('A', { v: 'move', component: third.id, to: before.floor, x: 40, y: 40 }, { v: 'flip', component: third.id, face: 'front' })
+    const view = table.view('A')
+    const loose = view.components.find((c) => c.id === third.id)
+    if (!loose) throw new Error('kortet kom aldrig ut på filten')
+    const from = absoluteOf(view, loose)
+    const g = zoneOf(view, 'mine:A').geometry
+    const along = g.w >= g.h
+    const free = g.w >= g.h ? g.w : g.h
+    const at = along ? { x: g.x + free - CARD_MM.w / 2, y: g.y + g.h / 2 } : { x: g.x + g.w / 2, y: g.y + free - CARD_MM.h / 2 }
+    const drag: Drag = { target: { kind: 'card', id: loose.id }, ids: [loose.id], origin: { [loose.id]: from }, grab: { x: from.x + CARD_MM.w / 2, y: from.y + CARD_MM.h / 2 }, at }
+    const intents = dropIntents(view, drag, 'table')
+    expect(intents.map((it) => `${it.v}:${it.v === 'move' ? it.to : ''}`)).toEqual(['move:mine:A'])
+    table.run('A', ...intents)
+    expect(orderIn(table.view('A'), 'mine:A')).toEqual(['kort-1', 'kort-2', 'kort-3'])
   })
 })

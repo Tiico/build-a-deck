@@ -484,7 +484,9 @@ describe('direct manipulation (K1, K2, C)', () => {
     fireEvent.pointerDown(card, client(-390, -240))
     fireEvent.pointerMove(card, client(-340, -140))
     fireEvent.pointerUp(card, client(-340, -140))
-    expect(onAct).toHaveBeenLastCalledWith([{ v: 'move', component: faceUp, to: 'table', x: 150, y: 150 }])
+    // `index` är ordningen ytan ger det dragna kortet: överst, ovanpå de två som redan ligger
+    // på golvet (#461). Var det hamnar är pekarens och orört; det här är bara vem som täcker vem.
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'move', component: faceUp, to: 'table', x: 150, y: 150, index: 2 }])
   })
 
   it('a card follows the pointer while it is dragged, lifted above the rest', () => {
@@ -936,7 +938,7 @@ describe('a rotated table (C5): my seat at the bottom', () => {
     fireEvent.pointerDown(card, { clientX: 500, clientY: 300, pointerId: 1, isPrimary: true, button: 0 })
     fireEvent.pointerMove(card, { clientX: 450, clientY: 250, pointerId: 1 })
     fireEvent.pointerUp(card, { clientX: 450, clientY: 250, pointerId: 1 })
-    expect(onAct).toHaveBeenLastCalledWith([{ v: 'move', component: faceUp, to: 'table', x: 150, y: 100 }])
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'move', component: faceUp, to: 'table', x: 150, y: 100, index: 2 }])
   })
 
   it('answers where a client point is on the table, for things dragged in from outside', () => {

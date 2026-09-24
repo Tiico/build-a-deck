@@ -28,8 +28,10 @@ describe('what a drop means (K1, K2)', () => {
     expect(dropIntents(v, cardDrag(v, faceUp, abs(v, faceDown)), 'table')).toEqual([{ v: 'stack', component: faceUp, onto: faceDown }])
     expect(dropIntents(v, cardDrag(v, faceUp, { x: 200 - CARD_MM.w / 2, y: -CARD_MM.h / 2 }), 'table')).toEqual([{ v: 'move', component: faceUp, to: 'discard' }])
     // Into a hand: on the fan it draws (#65), which is about the middle of its strip, (0, 370).
+    // A hand and a pile keep their own rules and are given no order (#461); an area is given one,
+    // and the floor is an area like any other — `index` here is the two cards already lying on it.
     expect(dropIntents(v, cardDrag(v, faceUp, { x: -10, y: 370 }), 'table')).toEqual([{ v: 'move', component: faceUp, to: 'hand:A', x: 290, y: 50 }])
-    expect(dropIntents(v, cardDrag(v, faceUp, { x: -450, y: -250 }), 'table')).toEqual([{ v: 'move', component: faceUp, to: 'table', x: 50, y: 50 }])
+    expect(dropIntents(v, cardDrag(v, faceUp, { x: -450, y: -250 }), 'table')).toEqual([{ v: 'move', component: faceUp, to: 'table', x: 50, y: 50, index: 2 }])
   })
 
   it('several cards dragged together each move by the same offset, in one envelope', () => {
@@ -37,8 +39,8 @@ describe('what a drop means (K1, K2)', () => {
     const v = view(null)
     const d: Drag = { target: { kind: 'card', id: faceUp }, ids: [faceUp, faceDown], grab: { x: 0, y: 0 }, at: { x: 20, y: -30 }, origin: { [faceUp]: abs(v, faceUp), [faceDown]: abs(v, faceDown) } }
     expect(dropIntents(v, d, 'table')).toEqual([
-      { v: 'move', component: faceUp, to: 'table', x: 120, y: 20 },
-      { v: 'move', component: faceDown, to: 'table', x: 320, y: 170 },
+      { v: 'move', component: faceUp, to: 'table', x: 120, y: 20, index: 2 },
+      { v: 'move', component: faceDown, to: 'table', x: 320, y: 170, index: 3 },
     ])
   })
 
@@ -327,9 +329,14 @@ describe.each<TableMode>(['table', 'tv'])('the frame is not a place for a card, 
   const edge = { left: 0, right: felt.w - CARD_MM.w, top: 0, bottom: felt.h - CARD_MM.h }
   const centred = { x: felt.w / 2 - CARD_MM.w / 2, y: felt.h / 2 - CARD_MM.h / 2 }
   const looseAt = (at: Point) => dropIntents(v, grabbedAtItsMiddle(v, loose, at), mode)
+  // Var i ytan kortet hamnar är den här sviten fråga; att det hamnar överst är #461:s, och står
+  // mätt i `card-lands-in-area.test.ts`. Här står det bara med, en gång, så att det inte kan
+  // försvinna ur svaret utan att någon märker det. Räknat och inte skrivet: ordningen är hur
+  // många kort golvet redan håller, och en scen som får ett kort till ska inte fälla mätningen.
+  const ON_TOP = v.components.filter((c) => c.zone === v.floor).length
 
   it('a loose card let go over the left frame lies on the felt, against its left edge', () => {
-    expect(looseAt({ x: felt.x - OUT_MM, y: middle.y })).toEqual([{ v: 'move', component: loose, to: v.floor, x: edge.left, y: centred.y }])
+    expect(looseAt({ x: felt.x - OUT_MM, y: middle.y })).toEqual([{ v: 'move', component: loose, to: v.floor, x: edge.left, y: centred.y, index: ON_TOP }])
   })
 
   it.each([
@@ -345,12 +352,12 @@ describe.each<TableMode>(['table', 'tv'])('the frame is not a place for a card, 
     for (const d of [OUT_MM, FAR_MM]) {
       const p = out(d)
       expect(zoneAt(v.zones, v.floor, p.x, p.y).zone).toBe(v.floor)
-      expect(looseAt(p)).toEqual([{ v: 'move', component: loose, to: v.floor, x: rests.x, y: rests.y }])
+      expect(looseAt(p)).toEqual([{ v: 'move', component: loose, to: v.floor, x: rests.x, y: rests.y, index: ON_TOP }])
     }
   })
 
   it('let go on the felt, the card lies where it was let go', () => {
-    expect(looseAt(middle)).toEqual([{ v: 'move', component: loose, to: v.floor, x: centred.x, y: centred.y }])
+    expect(looseAt(middle)).toEqual([{ v: 'move', component: loose, to: v.floor, x: centred.x, y: centred.y, index: ON_TOP }])
   })
 
   // The same for everything else a drop can lay loose on the floor: the top of a pile, which
