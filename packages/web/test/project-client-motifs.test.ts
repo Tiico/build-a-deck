@@ -45,7 +45,10 @@ describe('the motifs of a deck (E1)', () => {
     const first = measures(MOTIF)
 
     expect(await client.motifs([hash], first.measure)).toEqual({ [hash]: MOTIF })
-    expect(first.asked).toEqual([`${run.http}/assets/${hash}`])
+    // Bytesen och inte bilden (#469): det som ska mätas ska *läsas*, och en läsning av pixlar
+    // kräver samma ursprung hela vägen. Bilden som visas omdirigeras till objektbutiken, och en
+    // canvas-läsning genom den omdirigeringen är precis vad som aldrig gick i drift.
+    expect(first.asked).toEqual([`${run.http}/assets/${hash}/bytes`])
     // Told back, so the render worker and the print draw the card the same way the editor does.
     expect(await (await fetch(`${run.http}/assets/motifs?of=${hash}`)).json()).toEqual({ [hash]: MOTIF })
 

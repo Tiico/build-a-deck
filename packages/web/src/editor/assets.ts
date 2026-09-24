@@ -11,6 +11,13 @@ export const ASSET_DRAG_TYPE = 'text/x-byd-asset'
 export const isAssetRef = (value: unknown): value is string => typeof value === 'string' && value.startsWith(ASSET_PREFIX) && /^[0-9a-f]{64}$/.test(value.slice(ASSET_PREFIX.length))
 export const assetRef = (hash: string): string => `${ASSET_PREFIX}${hash}`
 export const assetUrl = (base: string, hash: string): string => `${base}/assets/${hash}`
+// The same picture, but the bytes through the server rather than a link to wherever they live
+// (#469). A picture that is *shown* is redirected to the object store, which is what keeps the
+// files off the box (DRIFT §4); a picture that is *read* — measured, pixel by pixel, on a canvas —
+// needs one origin all the way, because a CORS check applies to every response in a redirect
+// chain and the object store's last one carries no header. Reading is rare: once per content
+// hash in the whole life of the service, since the measurement is stored and never taken again.
+export const assetBytesUrl = (base: string, hash: string): string => `${assetUrl(base, hash)}/bytes`
 
 // The reference bytes will have once the service holds them, worked out here (#310).
 //

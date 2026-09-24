@@ -783,6 +783,31 @@ async function routeAssets(opts: ServerOptions, assets: AssetStore, req: Incomin
     json(res, 200, await assets.motifs(asked.slice(0, MOTIFS_AT_ONCE)))
     return true
   }
+  // The bytes themselves, through the server, for whoever has to *read* them rather than show
+  // them (#469).
+  //
+  // `/assets/<hash>` answers with a redirect to the object store as soon as there is one, which is
+  // the whole point of DRIFT §4: the pictures are not to go through the box. But a measurement is
+  // a canvas read, a canvas read needs CORS along the entire redirect chain, and R2's final
+  // response carries no `access-control-allow-origin`. So the measurement could never be taken in
+  // production — and because none could be taken, every card was drawn by its file instead of by
+  // its motif (#222). It fails only there: without an object store the route above already serves
+  // the bytes, which is why every test and every development machine is green.
+  //
+  // This is not a second way to look at a picture. It is the one way to read one, and what it
+  // costs is a read per content hash in the whole life of the service, since a measurement is
+  // stored and never taken again — not a read per viewing, which is what §4 exists to avoid.
+  const bytes = /^\/assets\/([0-9a-f]{64})\/bytes$/.exec(url.pathname)
+  if (bytes && req.method === 'GET') {
+    const got = await assets.get(bytes[1] ?? '')
+    if (!got) {
+      json(res, 404, { error: 'unknown asset' })
+      return true
+    }
+    res.writeHead(200, { 'content-type': got.contentType, 'cache-control': 'public, max-age=31536000, immutable' })
+    res.end(Buffer.from(got.bytes))
+    return true
+  }
   const one = /^\/assets\/([0-9a-f]{64})$/.exec(url.pathname)
   if (one && req.method === 'GET') {
     const hash = one[1] ?? ''

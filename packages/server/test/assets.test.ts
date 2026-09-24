@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { MemoryObjectStore } from '@byd/render'
+import { MemoryObjectStore, type ObjectStore } from '@byd/render'
 import { MemoryAssetStore, assetHash, resolveAssets, resolveFonts, resolveIcons, resolveTemplate } from '../src/assets.js'
 import { croppedMotif } from '@byd/template'
 import { start, twoSeatSetup, type Running } from './fixture.js'
@@ -374,5 +374,67 @@ describe('the motif over HTTP (E1)', () => {
     // the file around it 51.43 × 41.14, hung 4.36 mm in and 2.57 mm above the frame's own corner.
     // Without the measurement the picture would simply have been the file.
     expect(queued.join('\n')).toContain('[data-element="art"] .byd-art{left:4.3571mm;top:-2.5714mm;width:51.4286mm;height:41.1429mm;}')
+  })
+})
+
+// Bytesen genom servern, för den som ska mäta dem (#469).
+//
+// `/assets/<hash>` svarar med en 302 till objektbutiken så snart det finns en, vilket är hela
+// poängen med DRIFT §4: bilderna ska inte gå genom lådan. Men en *mätning* är en canvas-läsning,
+// och en canvas-läsning kräver CORS hela vägen genom omdirigeringskedjan — och R2:s slutliga svar
+// bär inget `access-control-allow-origin`. Mätningen kunde därför aldrig göras i drift, och
+// eftersom ingen mätning kunde göras ritades varje kort av sin fil i stället för av sitt motiv.
+//
+// Det som saknades var inte en ny förmåga utan en väg till den som redan fanns: butiken kan hämta
+// bytesen ur objektbutiken själv. Kostnaden är en läsning per innehållshash i hela tjänstens
+// livstid, eftersom mätningen lagras och aldrig görs om — inte en läsning per visning, vilket är
+// vad §4 finns för att undvika.
+describe('bytesen genom servern, för den som ska mäta dem (#469)', () => {
+  // En objektbutik som delar ut länkar, som R2 gör. Det är den enda form felet har: utan länkar
+  // serverar servern redan bytesen, vilket är varför varje test och varje utvecklingsmaskin är
+  // grön medan drift inte är det.
+  const linking = (objects: MemoryObjectStore): ObjectStore => ({
+    put: (key, bytes, contentType) => objects.put(key, bytes, contentType),
+    get: (key) => objects.get(key),
+    check: () => objects.check(),
+    link: async (key) => `https://objects.example/${key}?signed`,
+  })
+
+  let run: Running
+  // En inloggad skapare, som varje annan uppladdning i den här sviten.
+  const loggedIn = async (): Promise<string> => {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    const link = /\/auth\/verify\?token=\S+/.exec(run.mail.sent.at(-1)?.text ?? '')?.[0] ?? ''
+    const res = await fetch(`${run.http}${link}`, { redirect: 'manual' })
+    return (res.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
+  }
+  afterEach(async () => {
+    await run?.stop()
+  })
+
+  it('serverar bytesen på samma ursprung medan bilden själv fortsatt omdirigeras', async () => {
+    const objects = new MemoryObjectStore()
+    run = await start({ objects: linking(objects) })
+    const cookie = await loggedIn()
+    const put = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: PNG })
+    expect(put.status).toBe(201)
+    const { hash } = (await put.json()) as { hash: string }
+
+    // Bilden som visas går till objektbutiken, som förut: det är inte den som ändras.
+    const shown = await fetch(`${run.http}/assets/${hash}`, { redirect: 'manual' })
+    expect(shown.status).toBe(302)
+    expect(shown.headers.get('location')).toContain('objects.example')
+
+    // Bytesen kommer däremot från servern själv, med sitt eget ursprung och sina egna huvuden.
+    const measured = await fetch(`${run.http}/assets/${hash}/bytes`, { headers: { origin: 'http://test.local' }, redirect: 'manual' })
+    expect(measured.status).toBe(200)
+    expect(measured.headers.get('content-type')).toBe('image/png')
+    expect(measured.headers.get('access-control-allow-origin')).toBe('http://test.local')
+    expect(new Uint8Array(await measured.arrayBuffer())).toEqual(PNG)
+  })
+
+  it('svarar 404 på en hash som inte finns, som varje annan väg till en asset', async () => {
+    run = await start({ objects: linking(new MemoryObjectStore()) })
+    expect((await fetch(`${run.http}/assets/${'0'.repeat(64)}/bytes`)).status).toBe(404)
   })
 })

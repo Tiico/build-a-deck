@@ -5,7 +5,7 @@ import type { DocDiff, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
 import { applyEdit, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
-import { ASSET_PREFIX, assetRef, assetRefOf, assetUrl } from './assets.js'
+import { ASSET_PREFIX, assetBytesUrl, assetRef, assetRefOf } from './assets.js'
 import { measureAsset } from './motifs.js'
 import type { Motif } from '@byd/template'
 import { iconElement } from './canvas.js'
@@ -1007,7 +1007,7 @@ export class ProjectClient {
     const known = res.ok ? ((await res.json()) as Record<string, Motif>) : {}
     for (const hash of hashes) {
       if (known[hash]) continue
-      const motif = await measure(assetUrl(this.http, hash))
+      const motif = await measure(assetBytesUrl(this.http, hash))
       if (!motif) continue
       known[hash] = motif
       await fetch(`${this.http}/assets/${hash}/motif`, withCredentials({ method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(motif) }))
