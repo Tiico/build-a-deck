@@ -8,6 +8,12 @@ import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
+// A number is typed and the field is left, which is when it is written (#478).
+const typeIn = (el: HTMLElement, value: string) => {
+  fireEvent.change(el, { target: { value } })
+  fireEvent.blur(el)
+}
+
 type Shape = Extract<Element, { kind: 'shape' }>
 
 // The fixture's front carries `frame`, a 61 × 86 rounded rectangle. Every test here selects it
@@ -106,14 +112,14 @@ describe('the numbers a shape reads (L17)', () => {
     expect((screen.getByLabelText(/^hörn$/i) as HTMLInputElement).value).toBe('6')
     expect(screen.queryByLabelText(/hörnradie/i)).toBeNull()
     expect(screen.queryByLabelText(/uddjup/i)).toBeNull()
-    fireEvent.change(screen.getByLabelText(/^hörn$/i), { target: { value: '8' } })
+    typeIn(screen.getByLabelText(/^hörn$/i), '8')
     expect(patched(onPatch)).toEqual({ corners: 8 })
   })
 
   it('offers a star how deep its valleys cut', () => {
     const { onPatch } = open({ shape: 'star', corners: 5, innerRatio: 0.45 })
     const depth = screen.getByRole('spinbutton', { name: /uddjup/i }) as HTMLInputElement
-    fireEvent.change(depth, { target: { value: '30' } })
+    typeIn(depth, '30')
     expect(patched(onPatch)).toEqual({ innerRatio: 0.3 })
   })
 
@@ -134,7 +140,7 @@ describe('how see-through a shape is (L17, #317)', () => {
   it('stands at whole on a shape that says nothing about it, and writes a share of one', () => {
     const { onPatch } = open({ shape: 'rect' })
     expect(opacity().value).toBe('100')
-    fireEvent.change(opacity(), { target: { value: '50' } })
+    typeIn(opacity(), '50')
     expect(patched(onPatch)).toEqual({ opacity: 0.5 })
   })
 
@@ -154,19 +160,20 @@ describe('how see-through a shape is (L17, #317)', () => {
     expect(screen.getByRole('button', { name: 'Opacitet (%), dra för att ändra' })).toBeTruthy()
   })
 
-  // A drag is one undo and not forty (L14). The gesture opens when the control is entered and
-  // every step of that drag is pushed under the same token, so the history holds one entry.
-  it('is one entry in the history per gesture, however many steps the drag has', () => {
+  // A visit to the field is one entry in the history (L14): what was typed there is written
+  // once, when the field is left (#478), under the visit's own token — and a second visit is a
+  // second entry, or it would fold into the one before it.
+  it('is one entry in the history per visit to the field', () => {
     const { onPatch } = open({ shape: 'rect' })
     fireEvent.focus(opacity())
+    fireEvent.change(opacity(), { target: { value: '8' } })
     fireEvent.change(opacity(), { target: { value: '80' } })
-    fireEvent.change(opacity(), { target: { value: '60' } })
-    const [first, second] = onPatch.mock.calls.slice(-2).map((call) => call[2] as string)
+    fireEvent.blur(opacity())
+    expect(onPatch.mock.calls).toHaveLength(1)
+    const first = onPatch.mock.calls[0]?.[2] as string
     expect(first).toBeTruthy()
-    expect(second).toBe(first)
-    // And a second visit is a second entry, or the whole drag would fold into the one before it.
     fireEvent.focus(opacity())
-    fireEvent.change(opacity(), { target: { value: '40' } })
+    typeIn(opacity(), '40')
     expect(onPatch.mock.calls.at(-1)?.[2]).not.toBe(first)
   })
 
@@ -191,9 +198,9 @@ describe('a pattern over the fill (L17)', () => {
     const { onPatch } = open({ shape: 'rect', fill: '#2f4068', pattern: { kind: 'diamonds', color: '#3a4d7a', scaleMm: 7 } })
     fireEvent.click(screen.getByRole('button', { name: 'Ränder' }))
     expect(patched(onPatch).pattern).toMatchObject({ kind: 'stripes', color: '#3a4d7a', scaleMm: 7 })
-    fireEvent.change(screen.getByRole('spinbutton', { name: /mönstrets storlek/i }), { target: { value: '4' } })
+    typeIn(screen.getByRole('spinbutton', { name: /mönstrets storlek/i }), '4')
     expect(patched(onPatch).pattern).toMatchObject({ kind: 'diamonds', scaleMm: 4 })
-    fireEvent.change(screen.getByRole('spinbutton', { name: /mönstrets vinkel/i }), { target: { value: '45' } })
+    typeIn(screen.getByRole('spinbutton', { name: /mönstrets vinkel/i }), '45')
     expect(patched(onPatch).pattern).toMatchObject({ angleDeg: 45 })
   })
 
@@ -224,9 +231,9 @@ describe('a shadow under a shape (L17)', () => {
   it('opens the five numbers behind Anpassa, and each one writes its own', () => {
     const { onPatch } = open({ shape: 'rect', shadow: { dxMm: 0, dyMm: 0.6, blurMm: 1.2, color: '#000000', opacity: 0.35 } })
     fireEvent.click(screen.getByRole('button', { name: /anpassa/i }))
-    fireEvent.change(screen.getByRole('spinbutton', { name: /mjukhet/i }), { target: { value: '3' } })
+    typeIn(screen.getByRole('spinbutton', { name: /mjukhet/i }), '3')
     expect(patched(onPatch).shadow).toMatchObject({ blurMm: 3, dyMm: 0.6 })
-    fireEvent.change(screen.getByRole('spinbutton', { name: /genomskinlighet/i }), { target: { value: '80' } })
+    typeIn(screen.getByRole('spinbutton', { name: /genomskinlighet/i }), '80')
     expect(patched(onPatch).shadow).toMatchObject({ opacity: 0.8 })
   })
 

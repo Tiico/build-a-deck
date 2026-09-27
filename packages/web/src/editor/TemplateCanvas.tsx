@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react'
+import { useNumberDraft } from './number-draft.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
@@ -1623,8 +1624,12 @@ function Scrub({
     const steps = event.key === up ? 1 : event.key === down ? -1 : 0
     if (steps === 0 || event.altKey || event.ctrlKey || event.metaKey) return
     event.preventDefault()
+    typed.drop()
     nudge(steps, event.shiftKey)
   }
+  // What is typed is a draft until the field is left or Enter is pressed (#478): one number, held
+  // to this field's floor and ceiling, and nothing at all for an empty field.
+  const typed = useNumberDraft({ value, min, max, onCommit: (next) => onWrite(next, gesture.token()) })
   return (
     <div className="byd-props-f">
       <span
@@ -1647,12 +1652,15 @@ function Scrub({
         step={step}
         {...(min !== undefined ? { min } : {})}
         {...(max !== undefined ? { max } : {})}
-        value={value}
+        value={typed.value}
         readOnly={readOnly === true}
         {...(describedBy ? { 'aria-describedby': describedBy } : {})}
         {...gesture.visit}
-        onKeyDown={(event) => keys(event, 'ArrowUp', 'ArrowDown')}
-        onChange={(e) => onWrite(Number(e.target.value), gesture.token())}
+        onKeyDown={(event) => {
+          if (!typed.onKey(event)) keys(event, 'ArrowUp', 'ArrowDown')
+        }}
+        onChange={typed.onChange}
+        onBlur={typed.onBlur}
       />
       {/* The unit is drawn and not said: the field's own name already ends in it, and a reader
           hearing «Bredd (mm)» followed by «mm» hears it twice. It keeps its place even on a
@@ -1762,6 +1770,9 @@ function Properties({
         icon={icon}
         unit="mm"
         step={0.5}
+        // A box is never typed or pulled down to nothing (#478): an emptied Bredd used to be 0 mm
+        // and the heading it held vanished. Where it stands has no floor; how big it is does.
+        {...(key === 'w' || key === 'h' ? { min: 0.5 } : {})}
         value={(el as Record<string, unknown>)[key] as number}
         readOnly={el.locked === true}
         {...(el.locked ? { describedBy: LOCKED_NOTE } : {})}

@@ -34,6 +34,8 @@ describe('EditorPage', () => {
     expect(document.querySelector('[data-mode]')!.getAttribute('data-mode')).toBe('template')
     expect(document.querySelector('[data-layer="title"]')!.getAttribute('aria-selected')).toBe('true')
     fireEvent.change(screen.getByRole('spinbutton', { name: /storlek/i }), { target: { value: '18' } })
+    // A typed number is written when the field is left (#478).
+    fireEvent.blur(screen.getByRole('spinbutton', { name: /storlek/i }))
 
     // The table tab edits data; the save button reflects unsaved work.
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
