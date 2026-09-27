@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useId, useState, type FormEvent } from 'react'
 import { requestLink } from './api.js'
 import { markPitchSeen, pitchSeen } from './pitch.js'
 import { Help } from '../editor/HelpDrawer.js'
@@ -18,6 +18,11 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
   }, [pitch])
   const [email, setEmail] = useState('')
   const [state, setState] = useState<'open' | 'busy' | 'sent' | 'too-many' | 'invalid' | 'failed'>('open')
+  // The sentence under the field is tied to it, and the field says it is the one at fault when it
+  // is (#475). Both go the moment the address is edited: a sentence about the old address standing
+  // under a new one is a sentence about nothing.
+  const errorId = useId()
+  const error = state === 'too-many' ? 'login.error.too-many' : state === 'invalid' ? 'login.error.invalid' : state === 'failed' ? 'login.error.failed' : null
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setState('busy')
@@ -52,13 +57,29 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
         </div>
       ) : (
         <form onSubmit={(e) => void submit(e)}>
-          <input type="email" placeholder={t('login.email.placeholder')} aria-label={t('login.email')} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" autoFocus required />
+          <input
+            type="email"
+            placeholder={t('login.email.placeholder')}
+            aria-label={t('login.email')}
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              if (error) setState('open')
+            }}
+            autoComplete="email"
+            autoFocus
+            required
+            {...(state === 'invalid' ? { 'aria-invalid': true } : {})}
+            {...(error ? { 'aria-describedby': errorId } : {})}
+          />
           <button type="submit" className="byd-primary" disabled={state === 'busy' || !email.includes('@')}>
             {t('login.submit')}
           </button>
-          {state === 'too-many' && <p className="byd-login-error" role="alert">{t('login.error.too-many')}</p>}
-          {state === 'invalid' && <p className="byd-login-error" role="alert">{t('login.error.invalid')}</p>}
-          {state === 'failed' && <p className="byd-login-error" role="alert">{t('login.error.failed')}</p>}
+          {error && (
+            <p id={errorId} className="byd-login-error" role="alert">
+              {t(error)}
+            </p>
+          )}
         </form>
       )}
       {/* The reader who cannot read this card is the one who most needs the switch on it. */}
