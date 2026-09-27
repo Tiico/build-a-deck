@@ -303,6 +303,49 @@ describe('undo and rewind on the phone (B, C)', () => {
     other.close()
   })
 
+  // The question stands over the whole phone and has to be answered, so it is a dialog that takes
+  // the focus, and nothing behind it is a Tab stop (#483, fynd 7; K13, D5).
+  it('asks the other phone in a dialog that holds the focus', async () => {
+    const id = await createSession(run)
+    const token = await open(id, 'B', 'Bo')
+    const ada = TableClient.connect(await asSeat(run, id, 'A'))
+    await ada.ready()
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    const bo = TableClient.connect({ url: run.url, sessionId: id, seat: 'B', token })
+    await bo.ready()
+    await bo.send({ v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
+    await ada.send({ v: 'rewind.propose', toSeq: 2 })
+
+    const ask = await screen.findByRole('alertdialog', { name: 'Ada vill spola tillbaka' })
+    await waitFor(() => expect(ask.contains(document.activeElement)).toBe(true))
+    // Everything else on the phone is out of reach while it stands.
+    expect(document.querySelector('.byd-flag')?.closest('[inert]')).not.toBeNull()
+    ada.close()
+    bo.close()
+  })
+
+  // The proposer is told when the answer is no (#483, fynd 7): the strip under her just went away,
+  // which read the same as a proposal that was still being thought about.
+  it('tells the proposer, in words, when the other phone says no', async () => {
+    const id = await createSession(run)
+    const token = await open(id, 'A', 'Ada')
+    const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', token })
+    const other = TableClient.connect(await asSeat(run, id, 'B'))
+    await Promise.all([me.ready(), other.ready()])
+    await me.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await other.send({ v: 'seat.claim', seat: 'B', name: 'Bo' }, { v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
+    fireEvent.click(await screen.findByRole('button', { name: /Ångra/ }))
+    expect(await screen.findByText(/Du föreslår att spola tillbaka/)).toBeTruthy()
+
+    await waitFor(() => expect(other.view?.rewind).not.toBeNull())
+    await other.send({ v: 'rewind.reject', proposal: other.view!.rewind!.id })
+    expect(await screen.findByText('Bo sa nej till att spola tillbaka.')).toBeTruthy()
+    me.close()
+    other.close()
+  })
+
   it('the other phone is asked and can approve, which restores the table', async () => {
     const id = await createSession(run)
     const token = await open(id, 'B', 'Bo')

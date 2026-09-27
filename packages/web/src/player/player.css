@@ -154,6 +154,9 @@
 .byd-mine-actions { display: grid; gap: 8px; width: 100%; max-width: 420px; }
 .byd-mine-actions button { min-height: 48px; border: 0; border-radius: 12px; padding: 0 14px; background: var(--byd-control); color: var(--byd-ink-strong); font-size: 15px; font-weight: 700; }
 
+/* A wrapper that only carries `inert` while a rewind is asked (#483); it lays nothing out. */
+.byd-behind { display: contents; }
+
 /* Undo and rewind (B, C). */
 .byd-rewind-mine {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;

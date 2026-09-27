@@ -197,6 +197,7 @@ export const enPlay = {
   'rewind.ask.body': 'The table shows how it looked. The draw pile is shuffled again.',
   'rewind.approve': 'Approve',
   'rewind.decline': 'Decline',
+  'rewind.declined': '{who} said no to rewinding.',
 
   // The box behind the question mark (L32's addendum, #305).
   'play.help.hand.topic': 'the hand',

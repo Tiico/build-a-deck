@@ -239,6 +239,7 @@ export const svPlay = {
   'rewind.ask.body': 'Bordet visar hur det såg ut. Draghögen blandas om.',
   'rewind.approve': 'Godkänn',
   'rewind.decline': 'Neka',
+  'rewind.declined': '{who} sa nej till att spola tillbaka.',
 
   // Fördjupningen bakom frågetecknet (L32:s tillägg, #305). Samma låda som i editorn, på en
   // smalare skärm: den hänger över filtens övre del och täcker ingenting man spelar med, och

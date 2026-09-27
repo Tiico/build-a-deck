@@ -6,6 +6,7 @@ import { HandActions } from './HandActions.js'
 import { HandStrip } from './HandStrip.js'
 import { CountersRow, MineActions, MineStrip, inFrontOf } from './SeatExtras.js'
 import { PlaySheet } from './PlaySheet.js'
+import { standingRewind } from '../table/rewind.js'
 import { cardName } from '../table/keyboard.js'
 import { TableSummary, RecentActivity } from './TableSummary.js'
 import { SessionButtons, SessionOverlays, useToast, type Sheet } from './SessionOverlays.js'
@@ -71,6 +72,10 @@ export type PlayerSurfaceProps = {
 
 export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, openHand, onLeft }: PlayerSurfaceProps) {
   const t = useT()
+  // Out of reach while another seat's rewind is asked of this one (#483): the question covers the
+  // phone and has to be answered, so nothing behind it is a Tab stop or a press.
+  const asking = standingRewind(view)
+  const behind = asking && asking.by !== seat ? { inert: true } : {}
   const personal = useRef<HTMLDetailsElement>(null)
   const [chosenId, setChosenId] = useState<string | null>(null)
   const [quickTarget, setQuickTarget] = useState<string | null>(null)
@@ -151,7 +156,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
 
   return (
     <>
-      <header>
+      <header {...behind}>
         <strong>{name}</strong>
         <span>{t(hand.length === 1 ? 'play.cards.one' : 'play.cards.other', { n: hand.length })}</span>
         {/* The one help pattern (L32), on a narrower screen (#305). It stands in the chrome and
@@ -174,8 +179,10 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
             stand over is inert, so presses went to a survey nobody could see. */}
         {!view.ended && !view.rewind && <RuleDrawer http={faces} sessionId={sessionId} placement="phone" live={view} />}
       </header>
-      <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
-      <main className="byd-phone-main">
+      <div className="byd-behind" {...behind}>
+        <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
+      </div>
+      <main className="byd-phone-main" {...behind}>
         <h1>{t('player.hand.title')}</h1>
         <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} zones="piles" history={false} />
         <HandStrip view={view} selected={new Set(chosenCards.map(c => c.id))} faces={faces} onTap={card => { setChosenId(card.id); marks.clear() }} onHold={toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} />
