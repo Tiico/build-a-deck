@@ -27,6 +27,8 @@ export type LayerListProps = {
   removed?: ReadonlySet<string>
   // What a picture the template carries by itself is called (#320), by the hash of its bytes.
   pictureName?(hash: string): string
+  // What a condition layer says on its row (#478): its condition and on how many cards it holds.
+  conditionOf?(el: Element): string | null
 }
 
 // What the designer calls a layer: the name she gave it, or else its id — which is the word the
@@ -63,7 +65,7 @@ type Col = (typeof COLS)[number]
 // card, so there is nothing to defer to a second keystroke. The order is changed by dragging a
 // layer onto another (#18, from variant C) and, because a list that can only be dragged is a list
 // a keyboard has lost, by Alt and an arrow.
-export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRename, labelledBy, markOf, removed, pictureName }: LayerListProps) {
+export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRename, labelledBy, markOf, removed, pictureName, conditionOf }: LayerListProps) {
   const t = useT()
   const ids = layers.map((l) => l.id)
   const dragged = useRef<string | null>(null)
@@ -71,6 +73,9 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
   // Which layer is being renamed. One at a time: a rename is something the designer is in the
   // middle of, not a state a row can be left in.
   const [renaming, setRenaming] = useState<string | null>(null)
+  // The condition layers opened like folders (#478, variant A). A chosen one stands open by itself,
+  // so the keyboard, which chooses by walking, sees what is in it without a stop of its own.
+  const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(new Set())
   const { cellProps, focus } = useCells(ids, selected)
   // A field that took the focus gives it back (#8), and it has to wait for the row to be a row
   // again: the layer cell does not exist while its own name is being typed into, so focusing it
@@ -108,8 +113,12 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
   return (
     <div role="grid" aria-labelledby={labelledBy} className="byd-layers">
       {layers.map((el, at) => {
-        const name = layerName(el)
-        const shows = layerShows(el, pictureName)
+        // A condition layer nobody has named is called by its condition (#478): «if-guld» says
+        // nothing the condition does not say better.
+        const name = el.kind === 'if' && !el.name ? (conditionOf?.(el) ?? layerName(el)) : layerName(el)
+        const shows = el.kind === 'if' ? (el.name ? (conditionOf?.(el) ?? null) : null) : layerShows(el, pictureName)
+        const folder = el.kind === 'if' ? el : null
+        const unfold = folder !== null && (unfolded.has(el.id) || selected === el.id)
         const mark = markOf?.(el.id) ?? null
         const locked = el.locked === true
         return (
@@ -158,7 +167,7 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
                 <input
                   className="byd-layer-rename"
                   aria-label={t('canvas.layer.rename', { name })}
-                  defaultValue={name}
+                  defaultValue={layerName(el)}
                   autoFocus
                   // The old name is marked (#478), so what is typed replaces it rather than being
                   // written after it.
@@ -190,10 +199,30 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
                   }}
                 >
                   <KindGlyph kind={el.kind} />
-                  <span className="byd-layer-name">{name}</span>
+                  <span className="byd-layer-name" title={name}>{name}</span>
                   {shows && <i className="byd-layer-shows">{shows}</i>}
                   {mark && <span className="byd-layer-source">· {mark}</span>}
                 </button>
+              )}
+              {folder && (
+                <button
+                  type="button"
+                  className="byd-layer-fold"
+                  tabIndex={-1}
+                  aria-label={t('canvas.if.open', { name: layerName(el) })}
+                  aria-expanded={unfold}
+                  onClick={() => setUnfolded((was) => (was.has(el.id) ? new Set([...was].filter((id) => id !== el.id)) : new Set([...was, el.id])))}
+                />
+              )}
+              {folder && unfold && (
+                <ul className="byd-layer-inside" aria-label={t('canvas.if.inside', { name: layerName(el) })}>
+                  {folder.children.map((child) => (
+                    <li key={child.id}>
+                      <KindGlyph kind={child.kind} />
+                      {layerName(child)}
+                    </li>
+                  ))}
+                </ul>
               )}
             </span>
             {onReorder && (

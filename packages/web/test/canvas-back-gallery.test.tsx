@@ -1,13 +1,17 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import type { Element, ProjectDoc } from '../src/editor/types.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
+import { openAllSections } from './sections.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
+
+// The panel folds (#478); this file is about the controls in it, so every section stands open.
+beforeEach(openAllSections)
 
 // A ready-made back laid over a back that has layers (#478, L9, #143): it replaced every layer
 // without a word, where removing one layer asks. It now asks the same question, in the same strip,

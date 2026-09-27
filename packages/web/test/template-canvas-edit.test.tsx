@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { userEvent, type UserEvent } from '@testing-library/user-event'
 import { TemplateCanvas, type TemplateCanvasProps } from '../src/editor/TemplateCanvas.js'
@@ -7,8 +7,12 @@ import { projectDoc } from './project-doc.js'
 import { drag, laidOut, target } from './drag.js'
 import { layerPick } from './layers.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
+import { openAllSections } from './sections.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
+
+// The panel folds (#478); this file is about the controls in it, so every section stands open.
+beforeEach(openAllSections)
 
 // The canvas as the editor mounts it, with every edit it can make reported back.
 function canvas(over: Partial<TemplateCanvasProps> = {}) {

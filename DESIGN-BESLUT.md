@@ -2934,6 +2934,10 @@ Kolumnen höll sina 280 px vare sig något var markerat eller inte, så duken fi
 För hand och inte av sig själv: den prövade automatiska fällningen byter dukens bredd varje gång formgivaren klickar bredvid ett element, så kortet flyttar sig under pekaren som arbetar på det. Läget minns i webbläsaren (L4) och skrivs aldrig i dokumentet.
 Lagerkolumnen är krona, lista och fot: rubriken, antalet kort panelen gäller och raden om att dra skrollade förut bort med listan, 690 px vid 1024 — det som behövs mest i slutet av en lång lista var precis det som hade försvunnit dit.
 
+**Tillägg 2026-09-27 (#478, beslut av beställaren efter prototyp 05): ett villkor visas som en mapp.**
+Ett villkorat element heter sitt villkor i lagerlistan («om typ = Guld · 18 kort») tills det getts ett namn, och fälls ut till vad som ingår; på kortet ritas en streckad ram runt innehållet med villkoret på en flik, tonad där villkoret inte gäller för kortet som visas; panelen redigerar villkoret, säger på hur många kort det syns och visar ett av dem; och frågan före en borttagning räknar de kort elementet faktiskt ritas på.
+Innehållet listas men redigeras ännu inte i mappen, eftersom `patchElement` bara når toppnivån.
+
 ### L4. Datatabellen: kolumntyper från registryt, systemkolumn `antal`
 
 Kolumntyper följer typregistryts `editorSchema`: text, tal, bild, boolean.
@@ -3950,6 +3954,13 @@ Prototypen var en fristående mock utan editorns golv om 44 px, vilket är varf�
 Golvet vann: undantaget ovan gäller brickorna och ingenting annat, och tillgängligheten är inte det editorn får tumma på (L12).
 Mätt i den riktiga kolumnen om 280 px vid 1280 × 800: galleriet går från 290 till 84 px, en vanlig form blir 724 px och ryms, och den tätaste formen — stjärna med hörn, vridning och uddjup, plus mönster och skugga — blir 822 px i en kolumn om 782 och rullar alltså en aning.
 Den rullningen är priset och är accepterat.
+
+**Reviderat 2026-09-27 (#478, beslut av beställaren efter prototyp 06): sektionerna fälls.**
+Sedan L25 kom opacitet, Linje och två växlar, och en vanlig rektangels panel var 907 px i en spalt på 683 med hela Effekter under vikningen — rullningen L25 accepterade bara för den tätaste formen hade blivit vardag.
+Varje sektions huvud är nu en knapp som fäller sektionen och, när den är stängd, bär sektionens värde («Linje 0,5 mm», «Effekter 100 % · ingen skugga»), så inget döljs utan att sägas.
+Layout, Innehåll, Text, Bild och Form står öppna från början; vad som är öppet gäller hela editorn, inte ett element, och minns i webbläsaren som andra vyer (L4).
+Priset L25 ville slippa — ett läge att minnas — är taget medvetet: ett läge per editor, inte ett per element, och ett stängt huvud som säger vad som står bakom det.
+Spelets typsnitt står i panelen bara när inget lager är valt, eftersom de är spelets och inte lagrets.
 
 ### L26. En egen form är en punktlista, och punkten läggs till där kanten redan bär en (prototypat 2026-09-20, #309)
 

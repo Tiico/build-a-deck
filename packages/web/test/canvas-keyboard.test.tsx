@@ -8,7 +8,7 @@
 // the way back out of a move lives: Escape puts the element back through the same gesture a
 // pointer drag is taken back with (#142), which only the real client can do.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { StatusLive } from '../src/status/StatusLive.js'
@@ -16,8 +16,12 @@ import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { laidOut, target } from './drag.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
+import { openAllSections } from './sections.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
+
+// The panel folds (#478); this file is about the controls in it, so every section stands open.
+beforeEach(openAllSections)
 
 let run: Running
 beforeEach(async () => {
@@ -212,7 +216,8 @@ describe('the move mode on the card (#144)', () => {
 
     // And from a control that has nothing to do with the card, which is where the arrows used to
     // be answered from and where no press was ever meant for the template.
-    screen.getByRole('button', { name: 'Text' }).focus()
+    // The rail's own «Text», and not the panel's section of the same name.
+    within(document.querySelector('.byd-canvas-tools') as HTMLElement).getByRole('button', { name: 'Text' }).focus()
     await user.keyboard('{ArrowRight}{ArrowDown}')
     expect([target('title')?.style.left, target('title')?.style.top]).toEqual(['5mm', '5mm'])
   })

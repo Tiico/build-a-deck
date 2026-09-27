@@ -1,12 +1,16 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import type { Element, ProjectDoc } from '../src/editor/types.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
+import { openAllSections } from './sections.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
+
+// The panel folds (#478); this file is about the controls in it, so every section stands open.
+beforeEach(openAllSections)
 
 // The property panel as L25 rebuilt it: every number is marked with an icon and carries a grip
 // of its own, so the drag that changes it is visible without anyone having to find it by hovering.
@@ -138,13 +142,14 @@ describe('the sections of the panel (L25)', () => {
 
   // A section head that can be pressed is a section that can be shut, and a shut section is a
   // state the panel would have to remember — or forget in front of the designer.
-  it('gives no section a head to fold it by', () => {
+  // L25 gave the sections no head to fold them by; #478 revised that (beslut 2026-09-27): every
+  // head is a button that says whether its section is open, and is the section's name.
+  it('gives every section a head that folds it and says whether it is open', () => {
     open({ kind: 'shape', shape: 'rect' } as Partial<Element>)
     for (const name of ['Layout', 'Form', 'Fyllning', 'Linje', 'Effekter']) {
       const section = within(panel()).getByRole('region', { name })
-      // The head is a heading and nothing else: there is nothing to press, so there is no state.
-      expect(within(section).getByRole('heading', { name })).toBeTruthy()
-      expect(within(section).queryByRole('button', { name })).toBeNull()
+      const head = within(section).getByRole('heading')
+      expect(within(head).getByRole('button').getAttribute('aria-expanded')).toBe('true')
     }
   })
 

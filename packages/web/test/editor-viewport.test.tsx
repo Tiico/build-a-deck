@@ -17,6 +17,7 @@ import { startServer, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
 import { layerPick } from './layers.js'
 import { filePickerFaults } from './file-pickers.js'
+import { openAllSections } from './sections.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
@@ -690,3 +691,6 @@ describe.each([1024, 1280] as const)('the Bord tab at %ipx', (width) => {
     expect(measured).toEqual({ Bord: { words: 2, cut: [] } })
   }, 90_000)
 })
+
+// The panel folds (#478); this file is about the controls in it, so every section stands open.
+beforeEach(openAllSections)

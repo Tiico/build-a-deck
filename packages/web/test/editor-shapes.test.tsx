@@ -1,12 +1,16 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import type { Element, ProjectDoc } from '../src/editor/types.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
+import { openAllSections } from './sections.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
+
+// The panel folds (#478); this file is about the controls in it, so every section stands open.
+beforeEach(openAllSections)
 
 // A number is typed and the field is left, which is when it is written (#478).
 const typeIn = (el: HTMLElement, value: string) => {
