@@ -256,6 +256,7 @@ export const svPlay = {
   'player.hint.selected.other': '{n} valda · dra upp för att spela',
   'player.counter.minus': '{name} minus',
   'player.counter.plus': '{name} plus',
+  'player.counter.set': '{name}: {value}. Sätt värde',
   'player.mine.title': 'Framför dig · {n}',
   'player.mine.flip.down': 'Vänd ner',
   'player.mine.flip.up': 'Vänd upp',

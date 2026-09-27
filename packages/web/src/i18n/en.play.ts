@@ -210,6 +210,7 @@ export const enPlay = {
   'player.hint.selected.other': '{n} selected · drag up to play',
   'player.counter.minus': '{name} minus',
   'player.counter.plus': '{name} plus',
+  'player.counter.set': '{name}: {value}. Set value',
   'player.mine.title': 'In front of you · {n}',
   'player.mine.flip.down': 'Turn down',
   'player.mine.flip.up': 'Turn up',

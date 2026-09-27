@@ -65,9 +65,11 @@
 /* Counters (C4): a row of pills under the head; tap the sides to count, the number to type. */
 .byd-counters { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; padding: 10px 16px 0; }
 /* The sides are a thumb's 44 px (UX-36, #81); at 320 px two pills leave the value 52 px, which a three-digit count fits. */
-.byd-counter { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; background: var(--byd-surface); border-radius: 14px; overflow: hidden; }
+.byd-counter { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; background: var(--byd-surface); border-radius: 14px; overflow: hidden; }
 .byd-counter button { min-height: 44px; border: 0; padding: 0; background: var(--byd-control); color: var(--byd-ink-strong); font-size: 18px; font-weight: 800; }
-.byd-counter > div { display: grid; text-align: center; padding: 4px 6px; }
+.byd-counter .byd-counter-value { display: grid; min-width: 0; text-align: center; padding: 4px 6px; background: transparent; }
+/* The name shrinks before the pill leaves its column (#483): «POÄNG» pushed it 4 px out at 320. */
+.byd-counter .byd-counter-value span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-counter b { font-size: 18px; color: var(--byd-ink-strong); line-height: 1; }
 .byd-counter span { font-size: 11px; color: var(--byd-ink-muted); text-transform: uppercase; letter-spacing: 1px; }
 

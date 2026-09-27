@@ -572,6 +572,24 @@ describe('counters and the area in front of you (C4)', () => {
     expect(document.querySelector('[data-zone-summary="counters:B"]')).toBeNull()
   })
 
+  // The number is a control of its own (#483, fynd 6; #67): a button with a name that opens the
+  // tool's own number keys, where it used to be a `div` behind `prompt()` that no Tab reached and that
+  // dropped «abc» without a word. No bounds (beslut A): a counter may go below zero.
+  it('sets a counter through the tool’s own keys, from a button with a name, and hands the focus back', async () => {
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    await open(id, 'A', 'Ada')
+    const number = await screen.findByRole('button', { name: 'Liv: 20. Sätt värde' })
+    number.focus()
+    fireEvent.click(number)
+    const entry = await screen.findByRole('dialog', { name: 'Sätt värde för Liv' })
+    fireEvent.click(within(entry).getByRole('button', { name: '7' }))
+    fireEvent.click(within(entry).getByRole('button', { name: 'Byt tecken' }))
+    fireEvent.click(within(entry).getByRole('button', { name: 'Sätt värdet' }))
+    await waitFor(() => expect(screen.getByText('-7', { selector: '[data-counter="Liv"] b' })).toBeTruthy())
+    expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'setCounter', value: -7 } })
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Liv: -7. Sätt värde' })))
+  })
+
   // The other half of #414. The area in front of a seat is public, so the cards in front of Bo
   // are in Ada's own frames — and a screen that hid what its socket had been sent is the state
   // the repo's rule about hidden information exists to keep out. Where it is drawn is the other
