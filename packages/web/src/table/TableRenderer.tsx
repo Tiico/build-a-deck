@@ -14,6 +14,7 @@ import { isCounter, standIn } from '../components.js'
 import { cardWord, counterActs, drawOne, feltShortcuts, flipUnder, modifierHeld, ownerOf, type Act } from './keyboard.js'
 import { ShortcutHelp } from './ShortcutHelp.js'
 import { CounterEntry } from './CounterEntry.js'
+import { useSay } from '../status/StatusLive.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ActionSheet } from './ActionSheet.js'
@@ -388,9 +389,16 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // hold its placement for ever. It is held exactly as long as the tool still considers the
   // connection fine; after that the table is the truth again and the reader sees where the card
   // really is (#29).
+  //
+  // And it is said (#482): a card that went back without a word read as a drop refused, and then
+  // happened after all when a quiet line came back.
+  const say = useSay()
   useEffect(() => {
     if (!settling) return
-    const timer = setTimeout(() => setSettling(null), DEFAULT_TIMING.slowAfterMs)
+    const timer = setTimeout(() => {
+      setSettling(null)
+      say?.('polite', t('drop.unanswered'))
+    }, DEFAULT_TIMING.slowAfterMs)
     return () => clearTimeout(timer)
   }, [settling])
   const px = (mm: number) => mm * scale

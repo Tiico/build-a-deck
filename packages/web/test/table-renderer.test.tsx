@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createRef } from 'react'
 import type { Intent, Snapshot } from '@byd/protocol'
+import { StatusLive } from '../src/status/StatusLive.js'
 import { TableRenderer, type FeltKeyboard, type TableHandle } from '../src/table/TableRenderer.js'
 import { buildScene, tableOf } from './scene.js'
 import { recipeSetup, twoSeatSetup } from './fixture.js'
@@ -1076,6 +1077,25 @@ describe('the gap between the drop and the patch (K1)', () => {
     act(() => vi.advanceTimersByTime(DEFAULT_TIMING.slowAfterMs))
     expect(placed().style.left).toBe('100px')
     expect(placed().style.top).toBe('50px')
+    vi.useRealTimers()
+  })
+
+  // The card goes back without a word was the other half of #482 fynd 4: a drop that bounced after
+  // four seconds read as refused, and then happened after all when the line came back. It is said.
+  it('says the table has not answered when it gives the card back', () => {
+    vi.useFakeTimers()
+    const { view, faceUp } = buildScene()
+    render(
+      <StatusLive>
+        <TableRenderer view={view(null)} mode="tv" scale={1} onAct={() => undefined} />
+      </StatusLive>,
+    )
+    const placed = () => document.querySelector(`[data-component="${faceUp}"]`) as HTMLElement
+    fireEvent.pointerDown(placed(), client(100, 50))
+    fireEvent.pointerMove(placed(), client(300, 150))
+    fireEvent.pointerUp(placed(), client(300, 150))
+    act(() => vi.advanceTimersByTime(DEFAULT_TIMING.slowAfterMs))
+    expect(document.querySelector('[data-status-live="polite"]')!.textContent).toBe('Bordet har inte svarat på draget än.')
     vi.useRealTimers()
   })
 

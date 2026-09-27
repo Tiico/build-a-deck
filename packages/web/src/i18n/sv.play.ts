@@ -82,6 +82,7 @@ export const svPlay = {
   'start.tile': 'Starta spelet',
   'start.blocked': 'Går inte att starta just nu: {why}',
   'start.again.label': 'Starta om spelet?',
+  'drop.unanswered': 'Bordet har inte svarat på draget än.',
   'start.again.text': '{actions} körs igen. Korten som ligger ute ligger kvar där de är.',
   'start.again.action': '«{action}» på {pile}',
   'start.again.and': ' och ',

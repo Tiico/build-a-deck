@@ -16,6 +16,8 @@ export type TableConnection = {
   // Why the client has stopped trying, and when it will try next (#7). A status alone cannot
   // tell a view whether anything is still going to happen.
   trouble: ClientTrouble | null
+  // When the oldest envelope this screen sent went out without an answer yet (#482), or null.
+  unansweredSince: number | null
   schedule: RetrySchedule
   retry(): void
 }
@@ -33,6 +35,7 @@ export function useTableClient(opts: ConnectOptions | null): TableConnection {
   const [refused, setRefused] = useState<string | null>(null)
   const [trouble, setTrouble] = useState<ClientTrouble | null>(null)
   const [schedule, setSchedule] = useState<RetrySchedule>(NO_RETRY)
+  const [unansweredSince, setUnansweredSince] = useState<number | null>(null)
   // Reconnect only when the address changes, not when the caller re-creates an equal options object.
   const key = opts ? `${opts.url}|${opts.sessionId}|${opts.seat ?? ''}|${opts.observer ?? ''}|${opts.token ?? ''}|${opts.host ?? ''}|${opts.lobby ? 'lobby' : ''}|${opts.owner ? 'owner' : ''}` : ''
   const latest = useRef(opts)
@@ -49,6 +52,7 @@ export function useTableClient(opts: ConnectOptions | null): TableConnection {
       setRoom(c.room)
       setRefused(c.refused)
       setTrouble(c.trouble)
+      setUnansweredSince(c.unansweredSince)
       // A fresh object each time on purpose: the schedule changes without the status changing,
       // and a view that shows a countdown has to hear about it.
       setSchedule({ nextRetryAt: c.nextRetryAt, made: c.attempts.made, of: c.attempts.of })
@@ -71,5 +75,5 @@ export function useTableClient(opts: ConnectOptions | null): TableConnection {
   }, [key])
 
   const retry = useCallback(() => client?.retry(), [client])
-  return { client, view, status, activity, observers, room, refused, trouble, schedule, retry }
+  return { client, view, status, activity, observers, room, refused, trouble, unansweredSince, schedule, retry }
 }

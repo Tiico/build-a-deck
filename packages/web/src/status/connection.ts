@@ -21,6 +21,8 @@ export type ConnectionFacts = {
   dropAfterMs: number
   // The connection has just come back, and the reader has not been told yet.
   resumed: boolean
+  // How long the oldest envelope this client sent has gone unanswered (#482); 0 when none waits.
+  unansweredMs?: number
 }
 
 // The five live routes read the same client, so which of the nine states they are in is one
@@ -33,7 +35,10 @@ export function connectionState(f: ConnectionFacts): StatusKey | null {
   // The first connection was called off. With nothing on the screen that is a network error;
   // with a table already up it is the same broken line as any other drop.
   if (f.trouble !== null) return f.hasView ? 'dropped' : 'offline'
-  if (f.status === 'open' && f.hasView) return f.resumed ? 'resumed' : null
+  // An open line that does not answer is as slow as one that has not opened (#482): the transport
+  // says nothing when a network goes quiet under an open socket, and eighteen seconds of that
+  // said nothing at all.
+  if (f.status === 'open' && f.hasView) return f.resumed ? 'resumed' : (f.unansweredMs ?? 0) > f.slowAfterMs ? 'slow' : null
   // Only a view that is already on the screen can go stale; before that there is nothing to
   // protect and the reader is simply still waiting. And a line the transport picks up again on
   // its first attempt is not news either: the ladder starts at half a second, so saying it at
