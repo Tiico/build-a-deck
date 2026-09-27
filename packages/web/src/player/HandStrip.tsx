@@ -5,7 +5,7 @@ import { Texture } from '../table/Texture.js'
 import { useRoving } from '../editor/roving.js'
 import { cardWord, handLabel } from '../table/keyboard.js'
 import { useT } from '../i18n/index.js'
-import { HOLD_MS, begin, end, move, timeout, type Tracking } from './gesture.js'
+import { HOLD_MS, begin, cancel, end, move, timeout, type Tracking } from './gesture.js'
 import { keepInView } from './strip.js'
 
 export type HandStripProps = {
@@ -65,10 +65,10 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
     const cur = tracking.current
     if (!cur) return
     const g = move(cur.t, x, y)
-    if (g) {
-      clearTimeout(cur.timer)
-      fire(g, cur.card)
-    }
+    // Decided either way — a lift, or a pan that is nothing (#483) — the hold timer has nothing left
+    // to decide.
+    if (cur.t.decided) clearTimeout(cur.timer)
+    if (g) fire(g, cur.card)
   }
   const up = () => {
     const cur = tracking.current
@@ -112,7 +112,14 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
             onPointerDown={(e) => down(c, e.clientX, e.clientY)}
             onPointerMove={(e) => moved(e.clientX, e.clientY)}
             onPointerUp={up}
-            onPointerCancel={up}
+            // The browser took the gesture over for its own scrolling: that is a pan, never a tap.
+            onPointerCancel={() => {
+              const cur = tracking.current
+              if (!cur) return
+              clearTimeout(cur.timer)
+              cancel(cur.t)
+              tracking.current = null
+            }}
           >
             <Texture faces={faces} c={c} />
             <strong aria-hidden="true">{cardWord(c)}</strong>

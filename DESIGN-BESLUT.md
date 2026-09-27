@@ -1560,6 +1560,7 @@ Korten i en scrollbar remsa. Sedan telefon A valdes 2026-09-16 är korten kompak
 Tryck väljer ett kort; Läs valt kort öppnar full upplösning (C4, reviderat 2026-09-17).
 Dra uppåt lyfter kortet till ett ark med zongenvägarna från C4.
 Långtryck startar flerval; dra i sidled inom remsan sorterar om handen.
+*Tillagt 2026-09-27 (#483 fynd 1):* ett tryck, ett långtryck och ett lyft avgörs av fingret som ligger still; en tumme som går mer än 10 px i sidled rullar remsan och väljer ingenting, inte heller när den vilat först, och en gest webbläsaren tar över (`pointercancel`) är en rullning. Långtrycket avgörs därför när fingret lyfts efter 450 ms och inte när tiden gått.
 Översikten är samma remsa nedzoomad.
 
 ### K5. Inga objekt utanför spelets setup
