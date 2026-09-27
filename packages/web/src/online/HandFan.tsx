@@ -35,7 +35,7 @@ export function HandFan({ cards, faces, onPlay, locked = false, onOpen }: HandFa
   const scroller = useRef<HTMLDivElement>(null)
   const n = cards.length
   const roving = useRoving({ ids: cards.map((c) => c.id), selected: null, orientation: 'horizontal' })
-  const { drag, handlers, cancel } = useHandDrag('up', onPlay, locked)
+  const { drag, handlers, cancel } = useHandDrag('up', onPlay, locked, onOpen)
   const lifted = drag ? cards.find((c) => c.id === drag.id) : undefined
   return (
     <div className="byd-hand-band" data-hand-fan style={fanStyle(n)}>

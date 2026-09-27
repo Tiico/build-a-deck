@@ -44,7 +44,7 @@ export function HandColumn({ cards, faces, onPlay, locked = false, onOpen }: Han
   const t = useT()
   const n = cards.length
   const roving = useRoving({ ids: cards.map((c) => c.id), selected: null, orientation: 'vertical' })
-  const { drag, handlers, cancel } = useHandDrag('across', onPlay, locked)
+  const { drag, handlers, cancel } = useHandDrag('across', onPlay, locked, onOpen)
   const lifted = drag ? cards.find((c) => c.id === drag.id) : undefined
   return (
     <div className="byd-hand-col" data-hand-fan data-hand-column role="group" aria-label={`Min hand, ${n} kort`} style={COLUMN_STYLE}>

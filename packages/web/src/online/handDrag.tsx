@@ -25,11 +25,13 @@ export type HandPlay = (card: VisibleComponentState, clientX: number, clientY: n
 // the felt and a card comes *across* out of it. K17's axis split is traded, not broken.
 //
 // A tap plays nothing, in either shape. The hand is never over the table, so the point a tap
-// releases at is not a place on the table to put a card (section I).
+// releases at is not a place on the table to put a card (section I). It opens the card instead
+// (#484 fynd 10, beslut A): the address panel, as a tap in «Visa alla» already did, so a finger can
+// read and play a card without raising the whole hand first.
 //
-// A locked hand lifts nothing (#484 fynd 13): the press still scrolls, but no card rises out of a
-// hand that cannot play it, and no release is swallowed without a word.
-export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay, locked = false) {
+// A locked hand lifts nothing (#484 fynd 13): the press still scrolls and a tap still opens the
+// card, but no card rises out of a hand that cannot play it.
+export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay, locked = false, onTap?: (card: VisibleComponentState) => void) {
   const [drag, setDrag] = useState<Held | null>(null)
   // Where the press started and whether it may still become a play; a press that turned out to be
   // a scroll is forgotten here and nothing downstream can revive it.
@@ -40,7 +42,7 @@ export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay, locked = f
   }
   const handlers = (c: VisibleComponentState) => ({
     onPointerDown: (e: RPointerEvent) => {
-      aim.current = locked ? null : { id: c.id, x: e.clientX, y: e.clientY }
+      aim.current = { id: c.id, x: e.clientX, y: e.clientY }
     },
     onPointerMove: (e: RPointerEvent) => {
       if (drag?.id === c.id) {
@@ -56,12 +58,18 @@ export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay, locked = f
         aim.current = null
         return
       }
+      // Toward the felt on a locked table: not a play, and no longer a tap either.
+      if (locked) {
+        aim.current = null
+        return
+      }
       const el = e.currentTarget as HTMLElement
       if (typeof el.setPointerCapture === 'function') el.setPointerCapture(e.pointerId)
       setDrag({ id: c.id, x: e.clientX, y: e.clientY })
     },
     onPointerUp: (e: RPointerEvent) => {
       if (drag?.id === c.id) onPlay(c, e.clientX, e.clientY)
+      else if (aim.current?.id === c.id) onTap?.(c)
       stop()
     },
     onPointerCancel: () => stop(),

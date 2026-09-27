@@ -31,4 +31,20 @@ test.describe('a finger on the distance view (#484)', () => {
     await page.touchscreen.tap(8, box.y + box.height / 2)
     await expect(page.locator('[data-radial]')).toHaveCount(0)
   })
+
+  // A tap on a card in the hand opens it (#484 fynd 10, beslut A): the address panel, as a tap in
+  // «Visa alla» does. Before, tap and hold did nothing, and a finger could not read its own hand.
+  test('opens a card in the hand with a tap', async ({ tableOf, open, host, request }) => {
+    const table = await tableOf({ players: 2, counters: [], cards: 4, copies: 1 })
+    const dealer = await host(table)
+    await dealer.send([{ v: 'draw', from: 'draw', to: 'hand:A', count: 2 }])
+    const seat = await join(request, table, { name: 'Ada', seat: 'A' })
+    const { page } = await open(TABLET, `${seat.onlineUrl}&lang=sv`)
+    const card = page.locator('[data-hand-card]').first()
+    await expect(card).toBeVisible()
+    const box = (await card.boundingBox())!
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
+    await expect(page.getByRole('dialog', { name: /^Handlingar för/ })).toBeVisible()
+  })
 })
+

@@ -126,3 +126,36 @@ describe('the fan while the table is locked (#484)', () => {
     expect(onPlay).not.toHaveBeenCalled()
   })
 })
+
+// A tap opens the card (#484 fynd 10, beslut A): the same address panel a tap opens in «Visa alla»,
+// so a finger can read and play a card without raising the whole hand first. A drag still plays and
+// a sideways press still scrolls, and neither of them opens anything on the way.
+describe('a tap on a card in the fan (#484)', () => {
+  const tap = (el: Element, moves: [number, number][] = []) => {
+    act(() => void fireEvent.pointerDown(el, { clientX: 200, clientY: 700, pointerId: 1, isPrimary: true, button: 0 }))
+    for (const [x, y] of moves) act(() => void fireEvent.pointerMove(el, { clientX: x, clientY: y, pointerId: 1 }))
+    const [x, y] = moves.at(-1) ?? [202, 701]
+    act(() => void fireEvent.pointerUp(el, { clientX: x, clientY: y, pointerId: 1 }))
+  }
+  it('opens the card, and a drag or a scroll opens nothing', () => {
+    const onOpen = vi.fn()
+    const onPlay = vi.fn()
+    render(<HandFan cards={[mine]} faces="http://faces.test" onPlay={onPlay} onOpen={onOpen} />)
+    const el = document.querySelector('[data-hand-card="c1"]')!
+    tap(el)
+    expect(onOpen).toHaveBeenCalledWith(mine)
+    onOpen.mockClear()
+    tap(el, [[204, 660], [210, 400]])
+    expect(onPlay).toHaveBeenCalledTimes(1)
+    tap(el, [[160, 698], [90, 690]])
+    expect(onOpen).not.toHaveBeenCalled()
+  })
+
+  it('opens the card on a locked table too: reading is not playing', () => {
+    const onOpen = vi.fn()
+    render(<HandFan cards={[mine]} faces="http://faces.test" locked onPlay={() => undefined} onOpen={onOpen} />)
+    tap(document.querySelector('[data-hand-card="c1"]')!)
+    expect(onOpen).toHaveBeenCalledWith(mine)
+  })
+})
+
