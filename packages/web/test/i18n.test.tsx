@@ -241,6 +241,8 @@ describe('the tool in the reader\'s own language (A4)', () => {
       document.documentElement.lang = 'en'
       const client = Object.create(ProjectClient.prototype) as ProjectClient
       Object.assign(client, { http: 'http://server.test', id: 'p1' })
+      // A book with nothing unsaved in it, so the order goes straight to the queue (#481).
+      Object.defineProperty(client, 'dirty', { value: false })
       await client.orderBooklet()
       expect(seen.at(-1)).toContain('lang=en')
     } finally {

@@ -49,6 +49,37 @@ describe('the game’s colours', () => {
     expect(c.removeRole).toHaveBeenCalledWith('fara')
   })
 
+  // A meaning is written between braces on the cards, so a name with a space in it is one no card
+  // can say, and every card that said the old one would start printing letters (#481, fynd 2).
+  it('refuses a name a card could not write, says why, and keeps the old one', () => {
+    const c = mount({ fara: '#8f2d20' })
+
+    const name = screen.getByLabelText('Namn på fara') as HTMLInputElement
+    fireEvent.change(name, { target: { value: 'mitt hot' } })
+    fireEvent.blur(name)
+
+    expect(c.renameRole).not.toHaveBeenCalled()
+    expect(name.value).toBe('fara')
+    expect(screen.getByRole('alert').textContent).toBe('«mitt hot» går inte att skriva på ett kort: ett namn har bara bokstäver, siffror, _ och -.')
+  })
+
+  // A meaning the cards write is asked about before it goes, the way Media asks about a picture
+  // (#481, fynd 11; L22, #318); one nothing writes goes at once.
+  it('asks before taking away a meaning the cards write, and names the cards', () => {
+    const c = mount({ fara: '#8f2d20', vinst: '#2f6136' }, {
+      rows: [{ id: 'dragon', fields: { title: 'Drake', body: 'Skada {svard|fara} 2.', antal: 1 } }],
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort fara' }))
+    expect(c.removeRole).not.toHaveBeenCalled()
+    const question = screen.getByRole('alertdialog')
+    expect(question.textContent).toContain('Ta bort fara? Kortet dragon skriver den.')
+    fireEvent.click(within(question).getByRole('button', { name: 'Ja, ta bort' }))
+    expect(c.removeRole).toHaveBeenCalledWith('fara')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort vinst' }))
+    expect(c.removeRole).toHaveBeenCalledWith('vinst')
+  })
+
   it('names a new meaning without asking the designer to invent a colour first', () => {
     const c = mount({ fara: '#8f2d20' })
 
@@ -57,6 +88,19 @@ describe('the game’s colours', () => {
     // The name is the designer's to change at once; the colour is one the palette does not use.
     expect(c.setRole).toHaveBeenCalledWith(expect.any(String), expect.stringMatching(/^#[0-9a-f]{6}$/))
     expect(c.setRole.mock.calls[0]![1]).not.toBe('#8f2d20')
+  })
+
+  // And the hand is put in that name, rather than left on the page (#481, fynd 12).
+  it('puts the focus in the name of the meaning it has just made', () => {
+    const c = client()
+    const doc = { ...projectDoc(), palette: { fara: '#8f2d20' } as Record<string, string> }
+    const { rerender } = render(<SymbolPanel doc={doc} client={c} assetBase="http://test.local" />)
+    c.setRole.mockImplementation((role: string, hex: string) => {
+      rerender(<SymbolPanel doc={{ ...doc, palette: { ...doc.palette, [role]: hex } }} client={c} assetBase="http://test.local" />)
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ny betydelse' }))
+    const made = c.setRole.mock.calls[0]![0] as string
+    expect(document.activeElement).toBe(screen.getByLabelText(`Namn på ${made}`))
   })
 
   it('says when a meaning will not be read on the card it sits on', () => {

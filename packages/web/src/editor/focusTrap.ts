@@ -83,10 +83,20 @@ export function useFocusTrap(box: RefObject<HTMLElement | null>, options: FocusT
       if (event.target instanceof Node && el.contains(event.target)) return
       first()?.focus()
     }
+    // A focus that fell out of the window without landing anywhere — a button refused under the
+    // hand lets go of it, and the browser puts it on the page itself — is not a focus outside: no
+    // `focusin` says it moved, and the window's keys would go unheard (#481). A key pressed on the
+    // page while the window stands is the window's.
+    const onStray = (event: KeyboardEvent) => {
+      if (event.target !== document.body && event.target !== document.documentElement) return
+      onKeyDown(event)
+    }
     el.addEventListener('keydown', onKeyDown)
+    document.addEventListener('keydown', onStray)
     document.addEventListener('focusin', onFocusIn)
     return () => {
       el.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('keydown', onStray)
       document.removeEventListener('focusin', onFocusIn)
       // Back to the opener, when it is still on the page to go back to. A window whose opener
       // went with it — a row taken away — leaves the focus where the browser puts it, which is

@@ -115,11 +115,23 @@ describe('the report, which is the last thing read before the book (#131)', () =
     ])
   })
 
+  // A file whose top rank is `##` (#481, fynd 8, beslut A): its `##` are the book's sections, so the
+  // column has them to list and the report says in one line why they stand a step up.
+  it('makes the sections of a file that writes no `#`, lists them in the column, and says so', async () => {
+    await openRules()
+    const report = await pick('## Översikt\n\nText.\n\n## Så spelar ni\n\n### Dra\n\nDra ett kort.', 'regler.md', [])
+    expect(within(report).getAllByRole('listitem').map((li) => li.textContent)).toContain('Filen har inga #-rubriker, så ## blev avsnitt och ### underrubriker')
+    const column = screen.getByRole('navigation', { name: 'Innehåll' })
+    expect(within(column).getAllByRole('link').map((a) => a.textContent)).toEqual(['Översikt', 'Så spelar ni', 'Underrubrik: Dra'])
+  })
+
   it('counts what became a block, and what changed shape on the way', async () => {
     await openRules()
     const report = await pick()
     expect(within(report).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      '2 rubriker blir avsnitt',
+      // Each heading is said as what it became: the section and its subheading (#481).
+      '1 rubrik blir ett avsnitt',
+      '1 rubrik blir en underrubrik',
       '3 stycken blir text',
       '1 lista blir en lista',
       '1 referens känns igen, som i en bok du skrivit själv',
@@ -419,7 +431,9 @@ describe('dropping the book and its pictures on the import (#293)', () => {
     const report = await screen.findByRole('region', { name: 'Vad importen gör med filen' })
     // The same list the picker's own test asserts, line for line — one reading and not two.
     expect(within(report).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      '2 rubriker blir avsnitt',
+      // Each heading is said as what it became: the section and its subheading (#481).
+      '1 rubrik blir ett avsnitt',
+      '1 rubrik blir en underrubrik',
       '3 stycken blir text',
       '1 lista blir en lista',
       '1 referens känns igen, som i en bok du skrivit själv',

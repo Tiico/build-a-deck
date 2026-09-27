@@ -110,6 +110,21 @@ describe('a picture is uploaded in the library (#222, beslut 5)', () => {
     expect(screen.queryByLabelText('Add a picture')).toBeNull()
   })
 
+  // A file the library already has says so and names the picture it already is, rather than
+  // «är tillagd» over a picture that quietly took the new file's name (#481, fynd 6).
+  it('says a picture is already in the library, under the name it has there', async () => {
+    const user = userEvent.setup()
+    await openMedia(user)
+    choose(SKOGSBRYN, 'skogsbryn.png')
+    await screen.findByText('Bilden skogsbryn.png är tillagd.')
+    await user.click(screen.getByRole('button', { name: 'Klart' }))
+
+    choose(SKOGSBRYN, 'skogsbryn-igen.png')
+    expect(await screen.findByText('skogsbryn-igen.png finns redan i biblioteket som skogsbryn.png.')).toBeTruthy()
+    expect(screen.getByRole('img', { name: 'skogsbryn.png' })).toBeTruthy()
+    expect(screen.queryByRole('img', { name: 'skogsbryn-igen.png' })).toBeNull()
+  })
+
   // What an upload leaves behind has to be readable without seeing the screen: the arrival is
   // said, and the picture that arrived is the one under the hand.
   it('opens the picture that has just arrived in the crop window, and says that it arrived', async () => {
@@ -132,9 +147,10 @@ describe('a picture is uploaded in the library (#222, beslut 5)', () => {
     await openMedia(user)
 
     choose(SKOGSBRYN, 'skogsbryn.png')
-    await screen.findByRole('img', { name: 'skogsbryn.png' })
+    await screen.findByText('Bilden skogsbryn.png är tillagd.')
     choose(SKOGSBRYN, 'skogsbryn-kopia.png')
-    await screen.findByRole('img', { name: 'skogsbryn-kopia.png' })
+    // The picture keeps the name it had (#481): the copy is said to be it, never renamed into it.
+    await screen.findByText('skogsbryn-kopia.png finns redan i biblioteket som skogsbryn.png.')
 
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
 

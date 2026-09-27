@@ -398,6 +398,23 @@ describe('the palette and the framing', () => {
     expect(doc.rows[0]?.fields['body']).toBe('Skada {svard|hot} 2 och {mynt|hot}.')
   })
 
+  // A symbol and a meaning are written on the cards between braces, and a name with a space or a
+  // brace in it is one the card text cannot say: `{mitt svärd}` is read as text, so every card
+  // that said the old name would start writing letters (#481, fynd 2).
+  it('refuses a symbol or a meaning a card could not write, and says what a name may hold', () => {
+    const doc = after(
+      { ...base(), rows: [{ id: 'dragon', fields: { title: 'Drake', body: 'Skada {svard|fara} 2.', antal: 1 } }] },
+      { v: 'setIcon', name: 'svard', url: 'asset:abc' },
+      { v: 'setRole', role: 'fara', colour: '#8f2d20' },
+    )
+    for (const bad of ['mitt svärd', 'a{b', 'x|y', '']) {
+      expect(() => applyEdit(doc, { v: 'renameIcon', from: 'svard', to: bad })).toThrow(/letters, digits/)
+      expect(() => applyEdit(doc, { v: 'renameRole', from: 'fara', to: bad })).toThrow(/letters, digits/)
+      expect(() => applyEdit(doc, { v: 'setRole', role: bad, colour: '#111111' })).toThrow(/letters, digits|name/)
+    }
+    expect(applyEdit(doc, { v: 'renameIcon', from: 'svard', to: 'mitt_svärd-2' }).icons).toHaveProperty('mitt_svärd-2')
+  })
+
   it('keeps one card’s departure from the measure under the card and column it belongs to', () => {
     const doc = after(withArt(), { v: 'setFraming', cardRef: 'dragon', field: 'art', framing: { zoom: 1.5 } })
 

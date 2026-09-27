@@ -61,7 +61,9 @@ describe('a picture is taken out of the game (#318)', () => {
 
     await waitFor(() => expect(tile(KARTA)).toBeNull())
     expect(screen.queryByRole('alertdialog')).toBeNull()
-    expect(tile(SKOG)).not.toBeNull()
+    expect(tile(SKOG)).not.toBeNull()    // The control went with its picture, so the hand is on the nearest one still standing and not
+    // on the page (#481, fynd 12).
+    await waitFor(() => expect(document.activeElement).toBe(within(tile(SKOG)!).getByRole('button', { name: 'Ta bort skogsbryn.jpg' })))
   })
 
   it('asks before taking a picture cards use, names the cards up to a cap, and keeps everything on Avbryt', async () => {

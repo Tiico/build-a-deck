@@ -439,7 +439,12 @@ Sväljs den inledande `#` så flyttas hela filens rubrikträd upp ett steg: `##`
 Skälet är att den vanligaste filformen skriver titeln som `#` och avsnitten som `##`, och att bara svälja titeln lämnade boken utan avsnitt på första nivån alls — och därmed utan innehållsförteckning, eftersom spalten är just bokens första nivå.
 Höjd får boken samma disposition som filen hade, och spalten bredvid har material igen.
 En `#` längre ner i filen står kvar på nivå 1: ett steg upp från toppen är toppen. En fil som skriver några avsnitt med `#` och några med `##` får dem alla som avsnitt, vilket är den enda punkt där bokens två nivåer inte rymmer vad sex kunde — och det är samma vikning som gällt sedan #131.
-Höjningen rör bara filer där titeln faktiskt sväljdes. En fil som börjar med prosa, med en bild (#173) eller med `##` är orörd, och en bok som skrivits för hand rör den inte alls.
+Höjningen rör bara filer där titeln faktiskt sväljdes. En fil som börjar med prosa eller med en bild (#173) är orörd, och en bok som skrivits för hand rör den inte alls.
+*Rättat 2026-09-27 (#481 fynd 8, beställarens beslut A efter prototyp 18):* har filen ingen `#` utöver en svald titel står trädet också ett steg upp — `##` blir avsnitt och `###` underrubriker — av samma skäl som ovan: en fil vars översta rang är `##` gav annars en bok utan avsnitt, utan innehållsförteckning och med «＋ Eget avsnitt» borta med spalten.
+En `#` inuti ett kodblock räknas inte, och en fil med en `#` längre ner beter sig som förut.
+Den höjningen säger rapporten i en egen rad («Filen har inga #-rubriker, så ## blev avsnitt och ### underrubriker»), eftersom ingen titelrad förklarar den, och där räknas bara det som är djupare än `###` som hopvikt.
+Rapporten räknar sedan rubrikerna efter vad de blev: «n rubriker blir avsnitt» och «n rubriker blir underrubriker», i stället för att kalla varje rubrik ett avsnitt.
+Alternativen var att låta nivåerna stå som skrivna med en platt lista i spalten (B), vilket viker `##` och `###` till samma nivå och ger spelarna en bok utan avsnitt, och att låta rapporten fråga (C), vilket kräver att svaret sparas för återimport och bär B:s kostnader när det andra svaret väljs.
 Rapporten säger ingenting nytt om höjningen, eftersom dispositionen blir den filen hade och inte en annan; att titeln blev ingenting säger den redan (#191).
 `###` och djupare räknas som hopvikta på de `#` filen skrev och inte på den nivå blocket hamnar på, så rapporten säger det som förut.
 
@@ -3433,6 +3438,7 @@ Byggt 2026-09-14 (ingen prototyp: ingenting nytt ritas, ett tryck gör det den s
 Escape återställer cellen till värdet den hade när den fick fokus, och Ctrl+Z tar tillbaka ett ord i taget så länge cellen har något att ta tillbaka.
 När cellen är tillbaka där den började går nästa Ctrl+Z vidare till editorns stack, så samma tangent aldrig är död och aldrig hoppar över det designern nyss skrev.
 Stacken är oförändrad: orden är cellens egen minnesbild under ett och samma grepp, och greppet är fortfarande ett steg när cellen lämnas.
+Samma sak gäller regelbokens fält sedan #481 (fynd 7): rubrik, stycke, punkt, bildtext och alt-text går ordvis tillbaka och sedan vidare till editorn, med samma kod (`packages/web/src/editor/word-steps.ts`); Escape stänger där blocket i stället för att återställa fältet.
 
 ### L15. Lagerpanelen säger vad ett lager är, och ett lager går att låsa (prototypat 2026-09-14)
 
@@ -3797,6 +3803,7 @@ Alternativet — uppladdningen kvar i massredigeraren och beskärningen i biblio
 En bild är sina byte och har aldrig haft ett namn; hashen är entydig och oläslig, och allt leken hittills sagt om en bild har den sagt om en *användning* av den.
 Namnet är det första en designer känner igen en bild på, så det sparas när filen kommer in — i samma post `pictures[hash]` som bär beskärningen, vilket är precis vad den posten byggdes för att kunna ta emot.
 Bilder som redan finns har inget namn och faller tillbaka på korten som använder dem: en post utan `name` läses tillbaka som det dokument den alltid var, så ingen migrering behövs för den här halvan.
+*Tillagt 2026-09-27 (#481):* samma byte valda igen under ett annat filnamn är bilden biblioteket redan har, och den behåller sitt namn; biblioteket säger «{fil} finns redan i biblioteket som {namn}» i stället för «är tillagd», och ingenting skrivs i dokumentet.
 
 **«Hela bilden» räcker; prototypens «Kortets ruta» och «Fritt» byggs inte.**
 En lek kan ha flera bildkolumner med olika ramar, så «kortets ruta» har inget entydigt svar — den skulle först behöva fråga *vilken* ruta, och det är en fråga beskärningen inte kan ställa, eftersom beskärningen hör till bilden och inte till användningen.

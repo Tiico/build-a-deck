@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 18 — Bara underrubriker (#481 fynd 8)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     En Markdown-fil vars rubriker alla är `##` (och några `###`) importeras i Regler. Kartan
+     (`packages/template/src/markdown.ts`, `levelOf`) lägger `#` på nivå 1 och allt djupare på
+     nivå 2; höjningen från #202 sker bara när en inledande `#` svaldes som titel. Filen här har
+     ingen `#`, så alla nio rubrikerna hamnar på nivå 2 — `##` och `###` på samma nivå — och
+     `Toc` (`RulesPanel.tsx`) ritar ingenting, eftersom spalten bygger avsnitt av nivå 1 och en
+     underrubrik före första avsnittet inte listas. Med spalten försvinner «＋ Eget avsnitt».
+     Rapporten säger ändå «9 rubriker blir avsnitt».
+
+       Nu  som i dag
+       A   importen höjer: filens högsta rubrikrang blir avsnitt, nästa underrubrik
+       B   nivåerna som skrivna; spalten listar underrubrikerna före första avsnittet för sig
+       C   rapporten frågar, med A förvalt
+
+     Skärmen är 1280 × 800, skalad ner om fönstret är mindre. «Rapporten» är läget före «Gör
+     boken»; «Boken gjord» är fliken efteråt, där «＋ Eget avsnitt» bor. ─────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .protorad .lage button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .protorad .anteckning { min-height: 0; }
+
+  .yta { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; }
+  .yta .m-scen { padding-top: 28px; }
+  .sida { min-height: 0; overflow: auto; padding: var(--s4); border-left: 1px solid var(--line); background: var(--panel); color: #c3cbdd; font-size: 12px; line-height: 1.55; }
+  .sida h2 { margin: 0 0 var(--s2); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--quiet-2); }
+  .sida h2 + p { margin-top: 0; }
+  .sida p { margin: 0 0 var(--s2); }
+  .sida dl { display: grid; gap: var(--s2); margin: 0 0 var(--s4); }
+  .sida dt { color: #fff; font-weight: 700; }
+  .sida dd { margin: 0; }
+  .sida .plus { color: #b7dca0; }
+  .sida .minus { color: #f0a58a; }
+  .sida .rek { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: #1f3350; border: 1px solid var(--primary-mark); color: #cfe0ff; font-size: 10px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; vertical-align: 1px; }
+  .sida details { margin: 0 0 var(--s4); border: 1px solid var(--line); border-radius: 10px; background: var(--sunk); }
+  .sida summary { min-height: var(--tap); display: flex; align-items: center; padding: 0 var(--s3); cursor: pointer; color: #fff; font-weight: 700; }
+  .sida details > div { padding: 0 var(--s3) var(--s3); }
+  .sida pre { margin: 0; padding: var(--s2); border-radius: 6px; background: #0f1115; color: #dce3f2; font: 11px/1.5 ui-monospace, monospace; white-space: pre-wrap; }
+  .sida code { color: #fff; }
+  .sida hr { border: 0; border-top: 1px solid var(--line); margin: var(--s4) 0; }
+
+  /* ── Regler, ur packages/web/src/editor/editor.css ───────────────────────────────────── */
+  .r-flik { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: var(--s3); padding: var(--gutter); }
+  .r-bar { flex: none; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .r-bar h2, .r-toc > b, .r-rapport > b { margin: 0; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .r-bar > span, .r-rapport > span { color: #9aa3b8; font-size: 12px; }
+  .r-hjalp { display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid #6f7a90; border-radius: 999px; color: #dce3f2; font-size: 12px; font-weight: 700; }
+  .r-lagen { display: flex; gap: var(--s1); }
+  .r-pill, .r-rapport button { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+  .r-pill.val, .r-rapport button.val { background: transparent; border-color: #6f7a90; border-radius: 6px; font-weight: 600; }
+  .r-pill.val[aria-pressed='true'], .r-rapport button.val[aria-pressed='true'] { border-color: transparent; border-radius: 6px 6px 0 0; box-shadow: inset 0 -3px 0 var(--primary-mark); color: #fff; font-weight: 700; }
+  .r-verktyg { display: flex; gap: var(--s2); margin-left: auto; border-left: 1px solid #2f333d; padding-left: var(--s3); }
+  .r-rapport { flex: none; display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; padding: var(--s3); border: 1px solid #3b414e; border-radius: 10px; background: #1b1d23; }
+  .r-rapport ul { flex: 1 1 100%; margin: 0; padding-left: var(--s4); color: #9aa3b8; font-size: 12px; line-height: 1.8; }
+  .r-rapport li[data-kind='changed'] { color: #f0b64a; }
+  .r-rapport li[data-sant='nej'] { text-decoration: underline wavy #e05c5c; text-underline-offset: 3px; }
+  .r-rapport .primar { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 750; }
+  .r-rapport .sekundar { background: transparent; border-color: #6f7a90; font-weight: 600; }
+  .r-rapport .valet { flex: 1 1 100%; display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; margin: 0; padding: var(--s2) 0 0; border: 0; border-top: 1px solid #2f333d; }
+  .r-rapport .valet legend { float: left; margin-right: var(--s2); padding: 0; color: #dce3f2; font-size: 12px; font-weight: 700; }
+  .r-rapport .valet small { flex: 1 1 100%; color: #9aa3b8; font-size: 11px; }
+
+  .r-uppslag { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; align-items: stretch; justify-content: center; gap: var(--s5); }
+  .r-toc { flex: 0 0 200px; min-height: 0; overflow-y: auto; }
+  .r-toc > b { display: block; padding: 0 var(--s3); position: sticky; top: 0; background: var(--chrome); }
+  .r-toc ul { list-style: none; margin: 0; padding: 0; }
+  .r-toc a { display: flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 var(--s3); color: #9aa3b8; font-size: 12px; text-decoration: none; }
+  .r-toc a[data-level='2'] { padding-left: calc(var(--s3) + var(--s4)); color: var(--quiet); }
+  .r-toc a[data-level='2']::before { content: ''; flex: none; width: 6px; height: 1px; margin-left: -12px; background: #3b414e; }
+  /* B: underrubriker utan avsnitt ovanför. Listan heter vad den är; indraget står kvar som nivåns tecken. */
+  .r-toc .fore { display: block; margin: var(--s2) 0 0; padding: 0 var(--s3); color: var(--quiet); font-size: 11px; font-style: italic; }
+  .r-toc .egen { margin-top: var(--s2); }
+  .r-las { min-width: 0; min-height: 0; overflow: auto; }
+
+  .r-bok { min-width: 0; width: calc(68ch + 80px); max-width: 100%; box-sizing: border-box; background: #f7f3ea; color: #23201a; border-radius: 14px; padding: 32px 40px; font: 14px/1.7 Georgia, serif; }
+  .r-bok h1 { margin: 0 0 18px; font-size: 26px; }
+  .r-bok h2 { margin: 22px 0 8px; font-size: 19px; }
+  .r-bok h3 { margin: 18px 0 6px; font-size: 15px; color: #4a4438; }
+  .r-bok p { margin: 0 0 10px; }
+  .r-bok ol, .r-bok ul { margin: 0 0 12px; padding-left: 22px; }
+  .r-bok li { margin-bottom: 4px; }
+  .r-bok .ref { font-style: normal; color: #7a4d1d; border-bottom: 1px dotted #b08a5a; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#481 fynd 8 · Bara underrubriker.</b> <code>skogens-vasen-regler.md</code> har sex <code>##</code> och tre <code>###</code>, men ingen <code>#</code>. Vad ska boken bli av en fil vars högsta rubrik är <code>##</code>?</p>
+    <p>Växla mellan rapporten före «Gör boken» och fliken efteråt. Pilarna ← → byter variant.</p>
+  </div>
+  <div class="lage vaxlare" role="group" aria-label="Läge">
+    <button type="button" data-l="rapport">Rapporten</button>
+    <button type="button" data-l="gjord">Boken gjord</button>
+  </div>
+  <div class="matt" id="matt"></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+
+<div class="yta">
+  <div class="m-scen" id="mscen">
+    <div class="m-ram" id="ram"><span class="etikett" id="etikett"></span>
+      <div class="m-skarm byd-editor" id="skarm">
+        <div class="ed-huvud">
+          <span class="hem">Mina spel</span><strong>Skogens väsen</strong><span class="rev">rev 4</span><span class="sparat">Sparat</span>
+          <div class="ed-flikar" role="tablist" aria-label="Lägen"><button role="tab" tabindex="-1">Kortvägg</button><button role="tab" tabindex="-1">Mall</button><button role="tab" tabindex="-1">Tabell</button><button role="tab" tabindex="-1">Symboler</button><button role="tab" tabindex="-1">Media</button><button role="tab" aria-selected="true">Regler</button><button role="tab" tabindex="-1">Bord</button></div>
+          <span class="spacer"></span><span class="who">A</span>
+          <button type="button" class="ed-knapp kantad" tabindex="-1">Spara</button><button type="button" class="ed-knapp primar" tabindex="-1">Starta bord ▾</button>
+        </div>
+        <div class="r-flik" id="flik"></div>
+      </div>
+    </div>
+  </div>
+  <aside class="sida" id="sida" aria-label="Avvägningar"></aside>
+</div>
+
+<script>
+// ── Filen ────────────────────────────────────────────────────────────────────────────────
+// Sex avsnitt i #131:s disposition, skrivna som `##`, med tre `###` under två av dem. Så ser en
+// regelfil ut som skrivits i ett verktyg där `#` är dokumentets titel och titeln hoppats över.
+const FIL = [
+  ['h', 2, 'Översikt'],
+  ['p', 'Ni är skogens väktare. Varje väsen ni väcker ger poäng, men skogen tål bara ett visst antal på en gång. Den som har flest poäng när draghögen är slut vinner.'],
+  ['h', 2, 'Innehåll'],
+  ['ul', ['60 väsenkort i fyra färger', '12 platskort', '4 hjälpkort, ett per spelare']],
+  ['h', 2, 'Uppställning'],
+  ['p', 'Blanda väsenkorten och lägg dem som [[zon:draghog]] mitt på bordet. Lägg ut fyra platskort i en rad bredvid.'],
+  ['p', 'Varje spelare drar fem kort till handen. Den som senast var i en skog börjar.'],
+  ['h', 2, 'En tur'],
+  ['p', 'En tur har två steg, alltid i den här ordningen.'],
+  ['h', 3, 'Dra ett kort'],
+  ['p', 'Dra det översta kortet från [[zon:draghog]]. Är den tom går du direkt till nästa steg.'],
+  ['h', 3, 'Spela ett väsen'],
+  ['p', 'Lägg ett väsen från handen på en plats. Platsen får inte redan ha ett väsen av samma färg.'],
+  ['p', 'Kan du inte spela något väsen slänger du ett kort i [[zon:kasthog]].'],
+  ['h', 2, 'Handlingar'],
+  ['p', 'Utöver din tur får du göra en sak när som helst, också när det är någon annans tur.'],
+  ['h', 3, 'Byta med grannen'],
+  ['p', 'En gång per varv får du byta ett kort med spelaren till vänster, om båda vill.'],
+  ['h', 2, 'Spelet tar slut'],
+  ['ol', ['När draghögen är tom spelar alla en sista tur.', 'Räkna poängen på varje plats du har ett väsen på.', 'Flest poäng vinner. Vid lika vinner den som har flest färger.']],
+  ['p', 'Spelet kan ta slut utan att någon vinner: har ingen ett väsen kvar i skogen har skogen vunnit.'],
+]
+const ZON = { draghog: 'Draghögen', kasthog: 'Kasthögen' }
+const FILNAMN = 'skogens-vasen-regler.md'
+const markdown = () => FIL.map(([k, a, b]) => k === 'h' ? `${'#'.repeat(a)} ${b}` : k === 'p' ? a : a.map((x, i) => (k === 'ol' ? `${i + 1}. ` : '- ') + x).join('\n')).join('\n\n')
+
+// Kartan. `lyft` är A:s regel: har filen ingen `#` står trädet ett steg upp, som #202 redan gör
+// när titeln sväljs. Utan lyft är den dagens: `#` nivå 1, allt djupare nivå 2.
+const niva = (hashes, lyft) => (hashes <= (lyft ? 2 : 1) ? 1 : 2)
+const bok = (lyft) => FIL.map(([k, a, b], i) => (k === 'h' ? { k, id: 'h' + i, level: niva(a, lyft), text: b, hashes: a } : { k, v: a }))
+const antal = (k) => FIL.filter((b) => b[0] === k).length
+const TEXT = antal('p'), LISTOR = antal('ul') + antal('ol'), RUB = antal('h'), DJUPA = FIL.filter((b) => b[0] === 'h' && b[1] > 2).length
+
+const s = { v: 'a', l: 'rapport', c: 'a' }
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const inl = (t) => esc(t).replace(/\[\[zon:(\w+)\]\]/g, (_, z) => `<em class="ref">${ZON[z]}</em>`)
+const $ = (q) => document.querySelector(q)
+
+// Vilken regel som gäller i den variant och det val som visas.
+const lyfter = () => s.v === 'a' || (s.v === 'c' && s.c === 'a')
+const foraldralosa = () => s.v === 'b' || (s.v === 'c' && s.c === 'b')
+
+// ── Rapporten ────────────────────────────────────────────────────────────────────────────
+function rader() {
+  const bas = [
+    { kind: 'kept', t: `${TEXT} stycken blir text` },
+    { kind: 'kept', t: `${LISTOR} listor blir listor` },
+    { kind: 'kept', t: '3 referenser känns igen, som i en bok du skrivit själv' },
+  ]
+  if (s.v === 'nu') return [
+    { kind: 'kept', t: `${RUB} rubriker blir avsnitt`, falskt: true },
+    ...bas,
+    { kind: 'changed', t: `${DJUPA} rubriknivåer djupare än två viks upp till underrubriker` },
+  ]
+  if (lyfter()) return [
+    { kind: 'kept', t: `${RUB - DJUPA} rubriker blir avsnitt och ${DJUPA} blir underrubriker` },
+    ...bas,
+    { kind: 'changed', t: 'Filen har ingen #-rubrik, så dess ##-rubriker blir avsnitt och ### underrubriker — samma disposition som filen, ett steg upp' },
+  ]
+  return [
+    { kind: 'kept', t: `${RUB} rubriker blir underrubriker: filen har ingen #-rubrik, så boken har inga avsnitt förrän du lägger till ett` },
+    ...bas,
+    { kind: 'changed', t: `${DJUPA} ###-rubriker viks upp till underrubriker och står på samma nivå som ##` },
+  ]
+}
+function rapport() {
+  const val = s.v === 'c'
+    ? `<fieldset class="valet"><legend>Filen har ingen #-rubrik. Vad blir ##-rubrikerna?</legend>
+        <button type="button" class="val" data-c="a" aria-pressed="${s.c === 'a'}">Gör ##-rubrikerna till avsnitt</button>
+        <button type="button" class="val" data-c="b" aria-pressed="${s.c === 'b'}">Behåll dem som underrubriker</button>
+        <small>Boken under visar svaret. Valet minns till «Importera samma fil igen».</small></fieldset>`
+    : ''
+  return `<section class="r-rapport" role="region" aria-label="Vad importen gör med filen">
+    <b>Vad importen gör med filen</b><span>Filen heter ${FILNAMN}.</span>
+    ${val}
+    <ul>${rader().map((r) => `<li data-kind="${r.kind}"${r.falskt ? ' data-sant="nej" title="Stämmer inte: ingen av dem blir ett avsnitt"' : ''}>${esc(r.t)}</li>`).join('')}</ul>
+    <button type="button" class="primar" tabindex="-1">Gör boken</button><button type="button" class="sekundar" tabindex="-1">Avbryt</button>
+  </section>`
+}
+
+// ── Spalten ──────────────────────────────────────────────────────────────────────────────
+// Som `Toc`: avsnitt av nivå 1 med sina underrubriker. I dag listas en underrubrik före första
+// avsnittet ingenstans, och utan avsnitt ritas ingen spalt alls — och inte heller «＋ Eget avsnitt».
+function spalt(block) {
+  const avsnitt = [], fore = []
+  for (const b of block) {
+    if (b.k !== 'h') continue
+    if (b.level === 1) avsnitt.push({ h: b, under: [] })
+    else if (avsnitt.length) avsnitt[avsnitt.length - 1].under.push(b)
+    else fore.push(b)
+  }
+  const visaFore = foraldralosa() && fore.length > 0
+  if (!avsnitt.length && !visaFore) return ''
+  const rad = (h, n) => `<a href="#${h.id}" data-level="${n}">${n === 2 ? '<span class="offscreen">Underrubrik: </span>' : ''}${esc(h.text)}</a>`
+  let html = '<nav class="r-toc" aria-label="Innehåll"><b aria-hidden="true">Innehåll</b>'
+  if (visaFore) html += `<span class="fore" aria-hidden="true">Före första avsnittet</span><ul aria-label="Underrubriker före första avsnittet">${fore.map((h) => `<li>${rad(h, 2)}</li>`).join('')}</ul>`
+  if (avsnitt.length) html += `<ul>${avsnitt.map((a) => `<li>${rad(a.h, 1)}${a.under.length ? `<ul aria-label="Underrubriker i ${esc(a.h.text)}">${a.under.map((u) => `<li>${rad(u, 2)}</li>`).join('')}</ul>` : ''}</li>`).join('')}</ul>`
+  if (s.l === 'gjord') html += '<button type="button" class="r-pill egen" tabindex="-1">＋ Eget avsnitt</button>'
+  return html + '</nav>'
+}
+
+// ── Boken ────────────────────────────────────────────────────────────────────────────────
+function sidan(block) {
+  return `<div class="r-las"><article class="r-bok"><h1>Skogens väsen</h1>${block.map((b) => {
+    if (b.k === 'h') return b.level === 1 ? `<h2 id="${b.id}">${esc(b.text)}</h2>` : `<h3 id="${b.id}">${esc(b.text)}</h3>`
+    if (b.k === 'p') return `<p>${inl(b.v)}</p>`
+    return `<${b.k}>${b.v.map((x) => `<li>${inl(x)}</li>`).join('')}</${b.k}>`
+  }).join('')}</article></div>`
+}
+
+function bar() {
+  if (s.l === 'rapport') return '<div class="r-bar"><h2>Regelboken</h2><span>Reglerna hör till spelet.</span><span class="r-hjalp" aria-hidden="true">?</span></div>'
+  return `<div class="r-bar"><h2>Regelboken</h2><div class="r-lagen"><button type="button" class="r-pill val" aria-pressed="true" tabindex="-1">Redigerbar</button><button type="button" class="r-pill val" aria-pressed="false" tabindex="-1">Som på bordet</button></div>
+    <span>Klicka i sidan för att skriva.</span><span class="r-hjalp" aria-hidden="true">?</span><span>Boken kom ur ${FILNAMN}, nyss.</span>
+    <div class="r-verktyg"><button type="button" class="r-pill" tabindex="-1">Importera samma fil igen</button><button type="button" class="r-pill" tabindex="-1">Häfte för tryck</button></div></div>`
+}
+
+// ── Avvägningarna ────────────────────────────────────────────────────────────────────────
+const NOT = {
+  nu: '<b>Nu.</b> Alla nio rubrikerna hamnar på nivå 2, <code>##</code> och <code>###</code> på samma nivå. Spalten ritas inte, och i fliken efteråt saknas «＋ Eget avsnitt». Rapporten säger «9 rubriker blir avsnitt», och det stämmer inte. <span class="minus">− Fyndet.</span>',
+  a: '<b>A · Importen höjer.</b> Har filen ingen <code>#</code>, blir <code>##</code> avsnitt och <code>###</code> underrubriker, som i #202 när titeln sväljs. Rapporten säger det i en egen rad. <span class="plus">+ Boken får filens disposition och spalten får sina rader.</span> <span class="minus">− #202:s mening «en fil som börjar med ## är orörd» skrivs om.</span>',
+  b: '<b>B · Nivåerna som skrivna.</b> <code>##</code> blir underrubrik, som kartan säger. Spalten listar underrubrikerna före första avsnittet för sig, och rapporten säger «blir underrubriker». <span class="plus">+ Rapporten är sann och importkartan orörd.</span> <span class="minus">− <code>###</code> viks också till nivå 2, så nio rubriker på en nivå: boken läser <i>inte</i> som filen.</span>',
+  c: '<b>C · Rapporten frågar.</b> Ett val i bandet med A förvalt. Boken under visar svaret direkt. <span class="plus">+ Den som menade underrubriker kan säga det.</span> <span class="minus">− En fråga till före «Gör boken», och valet måste minnas i dokumentet till «Importera samma fil igen».</span>',
+}
+const SIDA = `
+  <h2>Regeln i dag</h2>
+  <p><b>#131, kartan:</b> <code>#</code> blir nivå 1 (avsnitt), <code>##</code> nivå 2, och <code>###</code> och djupare viks upp till nivå 2, eftersom boken har två nivåer.</p>
+  <p><b>#191:</b> en <code>#</code> på filens första rad är filens titel och blir ingenting; boken heter vad spelet heter.</p>
+  <p><b>#202:</b> sväljs titeln flyttas hela trädet upp ett steg, så <code>##</code> blir avsnitt. Skälet står uttryckligen: annars får boken inga avsnitt och därmed ingen innehållsförteckning. Men höjningen rör <i>bara</i> filer där titeln svaldes: «en fil som börjar med prosa, med en bild eller med <code>##</code> är orörd». Att låta spalten lista den djupaste nivån som finns avvisades, eftersom en nivå då inte längre betyder något bestämt.</p>
+  <p><b>#207:</b> spalten listar avsnitt och, indraget under dem, deras underrubriker. Nivån sägs i ord («Underrubriker i …», «Underrubrik:»), aldrig bara med indrag. «En underrubrik som står före bokens första avsnitt listas inte.»</p>
+  <p><b>Fyndet</b> faller mellan #202 och #207: filen har ingen titel att svälja, så ingenting höjs. Spalten får då ingenting att lista.</p>
+  <details><summary>Filen som importeras</summary><div><pre>${esc(markdown())}</pre></div></details>
+  <hr>
+  <h2>Avvägningarna</h2>
+  <dl>
+    <dt>A · Importen höjer <span class="rek">Rekommenderas</span></dt>
+    <dd><span class="plus">Läsning:</span> filens disposition står kvar, sex avsnitt med tre underrubriker under sig. Skillnaden mellan <code>##</code> och <code>###</code> bevaras.</dd>
+    <dd><span class="plus">Designern:</span> boken ser ut som filen gjorde i hennes egen Markdown-förhandsvisning, där <code>##</code> var störst. Samma regel som #202 redan tillämpar på den vanligaste filformen.</dd>
+    <dd><span class="plus">Spelarna:</span> luckan ritar avsnitten som avsnitt (h3 16 px, inte h4 13 px), häftet får sin disposition och spalten får sina rader.</dd>
+    <dd><span class="minus">Priset:</span> en regel till i kartan, och en rad i rapporten, eftersom ingen titelrad förklarar höjningen. Den som faktiskt menade <code>##</code> som underrubriker får avsnitt, men utan något avsnitt ovanför har de ingenting att vara underrubriker till.</dd>
+    <dt>B · Nivåerna som skrivna</dt>
+    <dd><span class="minus">Läsning:</span> <code>##</code> och <code>###</code> blir samma nivå, eftersom boken har två nivåer och <code>#</code> saknas. Filens skillnad går förlorad, så «boken läser som filen» stämmer inte.</dd>
+    <dd><span class="minus">Designern:</span> rapporten är sann men boken är platt. «＋ Eget avsnitt» lägger ett avsnitt sist, efter nio föräldralösa rubriker.</dd>
+    <dd><span class="minus">Spelarna:</span> luckan ritar varje rubrik som h4, 13 px, knappt större än texten. Det finns inga avsnitt att bläddra mellan.</dd>
+    <dd><span class="plus">Priset:</span> minst ny importlogik. Spaltens lista «Före första avsnittet» kan behövas ändå för handskrivna böcker och blandade filer (AFK-delen av fyndet). Men som enda svar är den nära den väg #202 avvisade.</dd>
+    <dt>C · Rapporten frågar</dt>
+    <dd><span class="plus">Läsning och spelarna:</span> som A för nästan alla, eftersom A är förvalt.</dd>
+    <dd><span class="minus">Designern:</span> frågan förutsätter att hon vet att boken har två nivåer, och den andra knappen ger henne B med allt B kostar.</dd>
+    <dd><span class="minus">Priset:</span> ett val till i ett band som redan ska läsas noga. Svaret måste minnas i dokumentet, bredvid filnamnet, annars frågar «Importera samma fil igen» varje gång eller byter tyst. Det blir två kodvägar att underhålla för ett fall där den ena nästan alltid är rätt.</dd>
+  </dl>
+  <hr>
+  <h2>Rekommendation</h2>
+  <p><b>A.</b> B7/#202 talar för A snarare än emot: #202:s eget skäl för att höja, att en bok utan nivå 1 saknar innehållsförteckning, gäller ord för ord för en fil som saknar <code>#</code>. Undantaget «börjar med <code>##</code> är orörd» motiverades aldrig med mer än att höjningen var knuten till titeln. B gör <code>##</code> och <code>###</code> till en nivå och ligger nära den spalt som ritas ur olika nivåer, som #202 avvisade. C kostar ett minne i dokumentet för ett svar som nästan alltid är A.</p>
+  <p>Regeln att skriva in i DESIGN-BESLUT: <i>«Har filen ingen <code>#</code> utöver en svald titel, står trädet ett steg upp.»</i> En fil med <code>#</code> längre ner beter sig som i dag. <code>##</code> som står före dess första <code>#</code> är AFK-delens sak, liksom att «＋ Eget avsnitt» aldrig försvinner med spalten.</p>`
+
+// ── Fönstret ─────────────────────────────────────────────────────────────────────────────
+const skarm = $('#skarm')
+function skala() {
+  const W = 1280, H = 800, scen = $('#mscen')
+  const f = Math.min(1, (scen.clientWidth - 24) / W, (scen.clientHeight - 36) / H)
+  skarm.style.width = W + 'px'; skarm.style.height = H + 'px'; skarm.style.transform = `scale(${f})`
+  $('#ram').style.width = W * f + 'px'; $('#ram').style.height = H * f + 'px'
+  $('#etikett').textContent = `${W} × ${H}` + (f < 1 ? ` · visas i ${Math.round(f * 100)} %` : '')
+}
+function rita() {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  for (const b of document.querySelectorAll('[data-l]')) b.setAttribute('aria-pressed', String(b.dataset.l === s.l))
+  $('#anteckning').innerHTML = NOT[s.v]
+  const block = bok(lyfter())
+  const t = spalt(block)
+  $('#flik').innerHTML = bar() + (s.l === 'rapport' ? rapport() : '') + `<div class="r-uppslag">${t}${sidan(block)}</div>`
+  const n1 = block.filter((b) => b.k === 'h' && b.level === 1).length
+  $('#matt').innerHTML = `<span>Avsnitt: <u>${n1}</u></span><span>Underrubriker: <u>${RUB - n1}</u></span><span>Rader i spalten: <u>${document.querySelectorAll('.r-toc a').length}</u></span><span>«＋ Eget avsnitt»: <u>${document.querySelector('.r-toc .egen') ? 'finns' : s.l === 'gjord' ? 'saknas' : '—'}</u></span>`
+  skala()
+}
+const satt = (k, v) => { const u = new URL(location.href); u.searchParams.set(k, v); history.replaceState(null, '', u) }
+document.body.addEventListener('click', (e) => {
+  const b = e.target.closest('button, a[href^="#h"]'); if (!b) return
+  if (b.matches('a')) { e.preventDefault(); document.getElementById(b.getAttribute('href').slice(1))?.scrollIntoView({ block: 'start' }); return }
+  if (b.dataset.v) { s.v = b.dataset.v; s.c = 'a'; satt('v', s.v); rita() }
+  else if (b.dataset.l) { s.l = b.dataset.l; satt('l', s.l); rita() }
+  else if (b.dataset.c) { s.c = b.dataset.c; rita(); document.querySelector(`[data-c="${s.c}"]`)?.focus() }
+})
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, select')) return
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  s.v = alla[(alla.indexOf(s.v) + (e.key === 'ArrowRight' ? 1 : 3)) % 4]; s.c = 'a'; satt('v', s.v); rita()
+})
+new ResizeObserver(skala).observe($('#mscen'))
+$('#sida').innerHTML = SIDA
+const q = new URLSearchParams(location.search)
+if (['nu', 'a', 'b', 'c'].includes(q.get('v'))) s.v = q.get('v')
+if (['rapport', 'gjord'].includes(q.get('l'))) s.l = q.get('l')
+if (['a', 'b'].includes(q.get('c'))) s.c = q.get('c')
+rita()
+</script>
+</body>
+</html>
