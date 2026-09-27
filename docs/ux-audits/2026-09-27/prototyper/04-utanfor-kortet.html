@@ -398,6 +398,7 @@ addEventListener('keydown', (ev) => {
   if (box && steg) {
     ev.preventDefault()
     const e = s.el.find((x) => x.id === box.dataset.id), n = ev.shiftKey ? 5 : 0.5
+    s.vald = e.id
     flytta(e, e.x + steg[0] * n, e.y + steg[1] * n)
     s.drag = null
     const lapp = s.lapp
