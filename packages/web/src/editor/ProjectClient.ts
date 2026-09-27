@@ -1127,6 +1127,12 @@ export class ProjectClient {
   async orderBooklet(t: T = swedish): Promise<string> {
     // The booklet is the designer's own words with one heading of the tool's, and that heading
     // is set in the language the order was placed in (A4, B7).
+    // The server prints the saved book, so a book written since the last save is saved first — the
+    // way every table path does — rather than printed as the book it used to be (#481).
+    if (this.dirty) {
+      const saved = await this.save()
+      if (!saved.ok) throw new Error(t('rules.booklet.notSaved'))
+    }
     const lang = typeof document === 'undefined' ? '' : document.documentElement.lang
     const where = `${this.http}/projects/${encodeURIComponent(this.id)}/rulebook${lang ? `?lang=${encodeURIComponent(lang)}` : ''}`
     const res = await fetch(where, withCredentials({ method: 'POST' }))

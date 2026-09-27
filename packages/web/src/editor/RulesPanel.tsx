@@ -894,9 +894,16 @@ function Booklet({ client }: { client: ProjectClient }) {
       setState({ error: err instanceof Error ? err.message : String(err) })
     }
   }
+  // The button the designer pressed turns into the link she came for, so the focus goes with it
+  // rather than falling to <body> with the button (#481).
+  const ready = useRef<HTMLAnchorElement>(null)
+  const done = typeof state === 'object' && 'hash' in state
+  useEffect(() => {
+    if (done) ready.current?.focus()
+  }, [done])
   if (typeof state === 'object' && 'hash' in state) {
     return (
-      <a className="byd-rules-booklet" href={client.bookletUrl(state.hash)} target="_blank" rel="noreferrer">
+      <a ref={ready} className="byd-rules-booklet" href={client.bookletUrl(state.hash)} target="_blank" rel="noreferrer">
         {t('rules.booklet.open')}
       </a>
     )
