@@ -108,7 +108,7 @@ export function useLiveStatus(conn: TableConnection, voice: Voice, timing: Statu
 
   return {
     state,
-    notice: state ? noticeFor(state, voice, t) : null,
+    notice: state ? noticeFor(state, voice, t, { spent: trouble === 'exhausted' }) : null,
     countdown: state === 'dropped' ? countdownFrom(schedule, now) : null,
     stale: isStale(state),
     asOf: stamp.current,

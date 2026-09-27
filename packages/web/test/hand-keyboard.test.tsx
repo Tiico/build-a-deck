@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { TableClient } from '../src/client.js'
 import { PlayerPage } from '../src/player/PlayerPage.js'
@@ -78,6 +78,36 @@ describe('the phone calls a card by its title (#412, A4)', () => {
   })
 })
 
+// The keyboard offers a hand card what a thumb is offered, and nothing else (#483, fynd 12;
+// beställarens beslut A efter prototyp 33). The panel used to read the felt's verbs and places —
+// Vänd, Vrid, Avslöja, another seat's hand, «På {kort}» — which the touch sheet leaves out on
+// purpose (C4, L48), and put the deck's shortcut at the top where the sheet puts it underneath.
+describe('the panel behind Enter on the phone is the play sheet', () => {
+  it('offers the same places the sheet does, in the same words, plus looking', async () => {
+    const { table } = await phone()
+    const user = userEvent.setup()
+    const card = handCards()[0]!
+    const words = (dialog: HTMLElement) => within(dialog).getAllByRole('button').map((b) => (b.textContent ?? '').replace(/\s+/g, ' ').trim())
+
+    fireEvent.pointerDown(card, { clientX: 100, clientY: 500 })
+    fireEvent.pointerMove(card, { clientX: 100, clientY: 430 })
+    fireEvent.pointerUp(card, { clientX: 100, clientY: 430 })
+    const sheet = await screen.findByRole('dialog', { name: 'Spela till' })
+    const offered = words(sheet)
+    fireEvent.keyDown(sheet, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    card.focus()
+    await user.keyboard('{Enter}')
+    const panel = await screen.findByRole('dialog', { name: /^Handlingar för/ })
+    const inPanel = words(panel).filter((w) => !/^(Titta|Stäng)/.test(w))
+    expect(inPanel).toEqual(offered.filter((w) => !/^(Stäng|Avbryt)/.test(w)))
+    expect(within(panel).queryByRole('button', { name: /^(Vänd|Vrid|Avslöja)/ })).toBeNull()
+    expect(within(panel).getByRole('button', { name: /^Titta/ })).toBeTruthy()
+    table.close()
+  })
+})
+
 describe('the hand is playable without a gesture (#1)', () => {
   it('names every card, holds one tab stop, and walks the hand with the arrows', async () => {
     const { table } = await phone()
@@ -106,7 +136,7 @@ describe('the hand is playable without a gesture (#1)', () => {
     table.close()
   })
 
-  it('plays two marked cards to a named place in one envelope, from the same panel the felt uses (K3)', async () => {
+  it('plays two marked cards to a named place in one envelope, as the play sheet does (K3, #483)', async () => {
     const { id, table } = await phone()
     const user = userEvent.setup()
     const [first, second] = handCards()
@@ -118,11 +148,15 @@ describe('the hand is playable without a gesture (#1)', () => {
     await user.keyboard(' {ArrowRight} {Enter}')
 
     const panel = await screen.findByRole('dialog', { name: 'Handlingar för 2 kort' })
-    await user.click(within(panel).getByRole('button', { name: /^Kasthög/ }))
+    await user.click(within(panel).getByRole('button', { name: /^Kasta/ }))
+    // The same envelope the play sheet sends (#483): each card moved, and turned face up because
+    // the discard is an open pile — one batch.
     await waitFor(async () => {
       const log = await run.store.read(id)
-      expect(log.slice(-2).map((l) => l.intent)).toEqual(marked.map((component) => ({ v: 'move', component, to: 'discard' })))
-      expect(new Set(log.slice(-2).map((l) => l.batch)).size).toBe(1)
+      const moves = log.filter((l) => l.intent.v === 'move').slice(-2)
+      expect(moves.map((l) => l.intent)).toEqual(marked.map((component) => expect.objectContaining({ v: 'move', component, to: 'discard' })))
+      expect(log.slice(-4).map((l) => l.intent.v).sort()).toEqual(['flip', 'flip', 'move', 'move'])
+      expect(new Set(log.slice(-4).map((l) => l.batch)).size).toBe(1)
     })
     table.close()
   })

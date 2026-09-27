@@ -92,6 +92,19 @@ describe('each route says the same state in its own words', () => {
     expect(noticeFor('dropped', 'editor').text).toMatch(/osparat|sparat/i)
     expect(noticeFor('dropped', 'phone').text).toMatch(/frånkopplad|kommer fram|handen/i)
   })
+
+  // A plan that is spent is not a plan that goes on (#483, fynd 3): the phone said «Vi försöker
+  // igen» while nothing was being tried, and only a press on «Försök nu» would try again.
+  it('stops promising another attempt once the plan is spent, on every voice', () => {
+    for (const voice of ['app', 'table', 'phone', 'editor'] as const) {
+      const going = noticeFor('dropped', voice)
+      const spent = noticeFor('dropped', voice, undefined, { spent: true })
+      expect(spent.text).not.toMatch(/försöker igen/i)
+      expect(spent.text).toMatch(/Försök nu/)
+      expect(spent.heading).toBe(going.heading)
+    }
+    expect(noticeFor('dropped', 'phone').text).toMatch(/försöker igen/i)
+  })
 })
 
 // The server answers a refused envelope with a developer's sentence in English. It is a fact

@@ -93,6 +93,9 @@ export class TableClient {
   // Whether a snapshot has ever arrived. The first connection is the one with a deadline; after
   // that the retry plan is what limits the trying.
   private everOpen = false
+  // Sockets already counted as lost, so the close that follows giving up on one is not counted as a
+  // second loss (#483).
+  private readonly lost = new WeakSet<WebSocketLike>()
 
   private constructor(private readonly opts: ConnectOptions) {
     this.readyPromise = new Promise((resolve) => (this.resolveReady = resolve))
@@ -193,10 +196,10 @@ export class TableClient {
     this.trouble = null
     this.nextRetryAt = null
     this.made = 0
-    if (!this.everOpen) this.armConnectTimeout()
     this.setStatus(this.view ? 'reconnecting' : 'connecting')
     this.ws.close()
     this.ws = this.open()
+    this.armConnectTimeout()
     this.notify()
   }
 
@@ -207,11 +210,20 @@ export class TableClient {
     this.connectTimer = null
   }
 
+  // Every attempt has a deadline, and not only the first (#483): a reconnect that is neither refused
+  // nor answered used to stand at «försök 1 av 4» for ever. The first connection that runs out gives
+  // up, as it always has; a later one is counted as lost, and the plan goes on to its next step.
   private armConnectTimeout(): void {
     const ms = this.opts.connectTimeoutMs ?? CONNECT_TIMEOUT_MS
+    const attempt = this.ws as WebSocketLike | undefined
     this.connectTimer = setTimeout(() => {
       this.connectTimer = null
-      if (!this.everOpen && this.status !== 'closed') this.giveUp('timeout')
+      if (this.status === 'closed' || this.trouble !== null) return
+      if (!this.everOpen) return this.giveUp('timeout')
+      if (attempt === undefined || attempt !== this.ws || this.status === 'open') return
+      this.dropped(attempt)
+      this.lost.add(attempt)
+      attempt.close()
     }, ms)
   }
 
@@ -246,7 +258,7 @@ export class TableClient {
   // The connection went away without us asking. Whatever was in flight is unknown to us:
   // the view after resync is the truth, so pending envelopes are told so and let go.
   private dropped(ws: WebSocketLike): void {
-    if (ws !== this.ws || this.status === 'closed' || this.trouble !== null || this.refused !== null) return
+    if (ws !== this.ws || this.lost.has(ws) || this.status === 'closed' || this.trouble !== null || this.refused !== null) return
     for (const resolve of this.pending.values()) resolve({ ok: false, reason: 'connection lost' })
     this.pending.clear()
     this.setStatus('reconnecting')
@@ -261,7 +273,10 @@ export class TableClient {
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null
       this.nextRetryAt = null
-      if (this.status !== 'closed' && this.trouble === null) this.ws = this.open()
+      if (this.status !== 'closed' && this.trouble === null) {
+        this.ws = this.open()
+        this.armConnectTimeout()
+      }
     }, delay)
     this.notify()
   }

@@ -123,8 +123,14 @@ const PER_VOICE: Record<Voice, Partial<Record<StatusKey, Voiced>>> = {
   },
 }
 
-export function noticeFor(state: StatusKey, voice: Voice, t: T = swedish): Notice {
-  return { ...base(state, t), ...(PER_VOICE[voice][state]?.(t) ?? {}) }
+// `spent`: the reconnect plan has run out and nothing is being tried until a person asks (#483).
+// The line is still down, so the state is the same; what changes is that no sentence may promise
+// another attempt, and the one way on is said.
+export function noticeFor(state: StatusKey, voice: Voice, t: T = swedish, { spent = false }: { spent?: boolean } = {}): Notice {
+  const said = { ...base(state, t), ...(PER_VOICE[voice][state]?.(t) ?? {}) }
+  if (!spent || state !== 'dropped') return said
+  const text = voice === 'phone' ? t('status.dropped.phone.text.spent') : said.text
+  return { ...said, text: `${text} ${t('status.dropped.spent')}` }
 }
 
 // The way home from a page read by someone who is not signed in (#475). `/` is the login card for

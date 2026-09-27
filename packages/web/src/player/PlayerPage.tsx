@@ -1,3 +1,5 @@
+import { sheetPlaces } from './PlaySheet.js'
+import { playIntents } from './play.js'
 import { lazy, Suspense, useMemo } from 'react'
 import { useTableClient } from '../table/useTableClient.js'
 import { PlayerSurface, useHandMarks } from './PlayerSurface.js'
@@ -36,7 +38,8 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const { client, view, status, activity, refused } = conn
   const live = useLiveStatus(conn, 'phone', timing)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
-  usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code') ?? sessionId })
+  // An ended table is not «Din hand» any more: the phone is showing the survey (#483).
+  usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code') ?? sessionId, part: view?.ended ? t('title.play.ended') : null })
   const faces = url.replace(/^ws/, 'http')
 
   const marks = useHandMarks()
@@ -46,6 +49,21 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
     act: (intents) => (client ? client.send(...intents) : Promise.resolve({ ok: false as const, reason: 'not connected' })),
     onPlayed: marks.clear,
     faces,
+    // Enter on a hand card offers what the play sheet offers, and nothing else (#483).
+    handSheet: (now) => {
+      const places = sheetPlaces(now, t)
+      return {
+        places,
+        intentsFor: (zone, moving) =>
+          playIntents(
+            now,
+            moving.flatMap((id) => now.components.filter((c) => c.id === id)),
+            zone,
+            undefined,
+            places.find((p) => p.zone === zone)?.at,
+          ),
+      }
+    },
   })
   useActivityLive(activity, view, seat)
 

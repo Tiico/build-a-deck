@@ -53,7 +53,11 @@
   box-sizing: border-box; border-bottom: 1px solid var(--byd-rule); font-size: 13px; color: var(--byd-ink-muted);
 }
 .byd-player > header strong { color: var(--byd-ink-strong); font-size: 15px; }
-.byd-player > header > span { margin-right: auto; }
+/* The name gives way before the row does (#483): it shrinks behind an ellipsis, down to a few
+   letters, rather than push the controls onto a second row. */
+.byd-player-who { flex: 1 1 0; min-width: 4em; display: grid; line-height: 1.2; }
+.byd-player-who > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-player-who > span { font-size: 12px; }
 /* Every control in the head is one thumb target (44 × 44) inside the same pill. */
 .byd-player > header button {
   min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 12px;
@@ -65,9 +69,11 @@
 /* Counters (C4): a row of pills under the head; tap the sides to count, the number to type. */
 .byd-counters { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; padding: 10px 16px 0; }
 /* The sides are a thumb's 44 px (UX-36, #81); at 320 px two pills leave the value 52 px, which a three-digit count fits. */
-.byd-counter { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; background: var(--byd-surface); border-radius: 14px; overflow: hidden; }
+.byd-counter { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; background: var(--byd-surface); border-radius: 14px; overflow: hidden; }
 .byd-counter button { min-height: 44px; border: 0; padding: 0; background: var(--byd-control); color: var(--byd-ink-strong); font-size: 18px; font-weight: 800; }
-.byd-counter > div { display: grid; text-align: center; padding: 4px 6px; }
+.byd-counter .byd-counter-value { display: grid; min-width: 0; text-align: center; padding: 4px 6px; background: transparent; }
+/* The name shrinks before the pill leaves its column (#483): «POÄNG» pushed it 4 px out at 320. */
+.byd-counter .byd-counter-value span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-counter b { font-size: 18px; color: var(--byd-ink-strong); line-height: 1; }
 .byd-counter span { font-size: 11px; color: var(--byd-ink-muted); text-transform: uppercase; letter-spacing: 1px; }
 
@@ -86,6 +92,10 @@
   background: hsl(var(--hue, 0) var(--byd-card-face-s) var(--byd-card-face-l)); color: var(--byd-card-ink);
 }
 .byd-mine-card[data-face='back'] .byd-mine-face { background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px); color: #fff; }
+/* The owner's own card, lying face down (#483): its face, in a frame of the back's stripes, and the
+   words that say only she sees it — so «face down» is seen without being read, and read anyway. */
+.byd-mine-card[data-face='known'] .byd-mine-face { border: 7px solid transparent; border-image: repeating-linear-gradient(45deg, #3a4d7a 0 4px, #2f4068 4px 8px) 7; }
+.byd-mine-down { position: absolute; z-index: 2; font-style: normal; left: 4px; right: 4px; bottom: 4px; padding: 2px 4px; border-radius: 999px; background: #1b1e27; color: #cfd6e4; font-size: 10px; font-weight: 600; text-align: center; }
 .byd-mine-card strong { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .byd-mine-empty { color: var(--byd-ink-quiet); font-size: 12px; margin: 4px 0; }
 
@@ -115,9 +125,18 @@
   flex: 0 0 62vw; aspect-ratio: 63 / 88; scroll-snap-align: center;
   border-radius: 14px; padding: 16px; box-sizing: border-box;
   background: hsl(var(--hue, 0) var(--byd-card-face-s) var(--byd-card-face-l)); color: var(--byd-card-ink);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); touch-action: pan-x; user-select: none;
+  /* Sideways pans the strip, and a finger moving down scrolls the page from a card (#483): the page
+     used to be unscrollable anywhere a card lay, which at 62vw is most of the screen. Upward stays
+     the card's own, because that is the lift (K4). */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); touch-action: pan-x pan-up; user-select: none;
 }
 .byd-strip-card[data-selected='true'] { outline: 4px solid var(--byd-accent); }
+/* A card a resting thumb has lifted, and one it is carrying along the strip (K4, #483): raised off
+   the strip so the thumb can see it has hold of it, and drawn over its neighbours while it moves. */
+.byd-strip-card[data-lifting='true'], .byd-strip-card[data-carried='true'] { scale: 1.04; box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65); position: relative; z-index: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .byd-strip-card { transition: scale 120ms ease-out; }
+}
 .byd-strip-card strong { font-size: 20px; font-weight: 800; }
 .byd-hint { text-align: center; font-size: 12px; color: var(--byd-ink-quiet); margin: 6px 0 20px; }
 
@@ -154,9 +173,17 @@
 .byd-mine-actions { display: grid; gap: 8px; width: 100%; max-width: 420px; }
 .byd-mine-actions button { min-height: 48px; border: 0; border-radius: 12px; padding: 0 14px; background: var(--byd-control); color: var(--byd-ink-strong); font-size: 15px; font-weight: 700; }
 
+/* A wrapper that only carries `inert` while a rewind is asked (#483); it lays nothing out. */
+.byd-behind { display: contents; }
+
 /* Undo and rewind (B, C). */
+/* The proposer's strip stands at the foot and takes its own room there (#483): fixed, it lay over
+   «Spela…» and the sections under the hand with nothing left to scroll them out from under it.
+   The page is a column while it stands, so on a page shorter than the screen the strip is pushed
+   to the bottom of the screen and not left under the last section, where the toast can reach it. */
+.byd-player:has(> .byd-rewind-mine) { display: flex; flex-direction: column; }
 .byd-rewind-mine {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  position: sticky; bottom: 0; z-index: 30; margin-top: auto;
   display: grid; gap: 10px; padding: 14px 18px 22px; font-size: 14px;
   background: var(--byd-warn-bg); color: var(--byd-warn);
 }
@@ -199,7 +226,11 @@
    off the spacing and not worked out from the order. */
 .byd-exit-choice p { margin: 6px 2px 0; font-size: 13px; color: var(--byd-ink-muted); }
 .byd-exit-sheet .byd-sheet-actions { margin-top: 20px; }
-.byd-survey { position: fixed; inset: 0; z-index: 35; background: var(--byd-bg); color: var(--byd-ink); display: grid; grid-template-rows: auto 1fr auto; padding: 22px 20px; box-sizing: border-box; }
+/* The survey takes the focus as a whole when it appears (#483); the box is not a control, so it
+   draws no ring, and its buttons draw their own. */
+.byd-survey:focus { outline: none; }
+/* Over everything else on the phone, the rulebook's layer (40) included (#483). */
+.byd-survey { position: fixed; inset: 0; z-index: 45; background: var(--byd-bg); color: var(--byd-ink); display: grid; grid-template-rows: auto 1fr auto; padding: 22px 20px; box-sizing: border-box; }
 .byd-survey h1 { margin: 0; font-size: 22px; }
 .byd-survey-sub { color: var(--byd-ink-muted); font-size: 13px; margin-top: 4px; }
 /* A 44 px row rather than a line of text (UX-36, #81); the old 12 px above it is now the box's own upper half. */
@@ -253,3 +284,10 @@
 .byd-phone-history ol { padding: 0; list-style: none; font-size: 13px; color: var(--byd-ink-muted); }
 .byd-phone-history li { padding: 8px 0; border-bottom: 1px solid var(--byd-rule-soft); }
 .byd-inspect-close { flex: 0 0 auto; min-width: 120px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--byd-line); border-radius: 12px; background: var(--byd-control); color: var(--byd-ink-strong); font: 600 15px system-ui; }
+
+/* «Regler» at the foot, by the hand (#483, beslut C efter prototyp 32): held at the bottom of the
+   screen where the thumb is, and the page ends a bar's height earlier so nothing lies under it. */
+.byd-player:has(.byd-phone-foot:not(:empty)) { padding-bottom: 64px; }
+.byd-phone-foot { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; box-sizing: border-box; min-height: 64px; display: flex; padding: 8px 16px 12px; background: var(--byd-bg); border-top: 1px solid var(--byd-rule); }
+.byd-phone-foot:empty { display: none; }
+.byd-phone-foot .byd-rules-open { flex: 1; min-height: 44px; border-radius: 12px; font-size: 14px; }

@@ -1560,6 +1560,10 @@ Korten i en scrollbar remsa. Sedan telefon A valdes 2026-09-16 är korten kompak
 Tryck väljer ett kort; Läs valt kort öppnar full upplösning (C4, reviderat 2026-09-17).
 Dra uppåt lyfter kortet till ett ark med zongenvägarna från C4.
 Långtryck startar flerval; dra i sidled inom remsan sorterar om handen.
+*Tillagt 2026-09-27 (#483 fynd 1 och 12, beställarens beslut A efter prototyp 33):* ett tryck, ett långtryck och ett lyft avgörs av fingret som ligger still; en tumme som går mer än 10 px i sidled innan kortet lyft sig rullar remsan och väljer ingenting, och en gest webbläsaren tar över (`pointercancel`) är en rullning.
+Efter 450 ms lyfter kortet sig — det ritas upphöjt, men ingenting är valt än — och långtrycket avgörs när fingret lyfts där det låg.
+Går tummen i stället i sidled efter att kortet lyft sig bär den kortet längs remsan, och handen sorteras om när den släpper; det är `move` med `index` i samma hand och inget nytt verb, och ingenting väljs av det.
+Med tangentbordet flyttar Alt och en pil kortet ett steg, som Alt och en pil flyttar ett lager eller en kolumn överallt annars i verktyget.
 Översikten är samma remsa nedzoomad.
 
 ### K5. Inga objekt utanför spelets setup
@@ -4916,6 +4920,11 @@ Beställarens egen formulering «Framför de andra» prövades och förkastades 
 
 De två avvisade alternativen: att låta det vara lämnar en läsare utan ledtråd om vilken av två identiska brickor som gör något, och att skilja dem åt visuellt rör formen på en yta som nyss godkänts och hade därför krävt en prototyp först.
 Vinsten är mätt i telefonens knappaste resurs: vid fyra platser försvinner en hel rad ur fliken, vid åtta en av fem.
+
+*Tillagt 2026-09-27 (#483 fynd 8, beställarens beslut A efter prototyp 31):* ett eget kort som vänds ner på ytan framför en själv är fortfarande ägarens att känna till.
+«Vänd ner» skickar `flip` och `peek` i samma kuvert, så projektionen berättar för ägaren vilket kort det är och för resten av rummet det den berättade förut — att ett kort ligger där; det bevisas på tråden i `packages/e2e/test/own-face-down.spec.ts`.
+Telefonen ritar kortet med framsidan i en ram av ryggens ränder och orden «nervänt · bara du».
+Luckan är erkänd: ett kort som bordsskärmen vänder ner framför någon har ingen som tittar åt ägaren, och bara en projektionsregel skulle täcka det — en fjärde synlighet, som inte är beslutad.
 
 
 ## I. Öppna frågor

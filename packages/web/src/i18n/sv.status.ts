@@ -24,6 +24,7 @@ export const svStatus = {
   'title.join': 'Gå med i rum {code}',
   'title.join.any': 'Gå med i ett rum',
   'title.play': 'Din hand',
+  'title.play.ended': 'Bordet är avslutat',
   'title.online': 'Spela',
   'title.observe': 'Tittar på rum {code}',
   'title.observe.any': 'Tittar på',
@@ -112,6 +113,8 @@ export const svStatus = {
   'status.dropped.table.text': 'Ingen kan spela förrän kontakten är tillbaka.',
   'status.dropped.phone.heading': 'Du är frånkopplad',
   'status.dropped.phone.text': 'Handen du ser är gammal och ingenting du gör nu kommer fram. Vi försöker igen.',
+  'status.dropped.phone.text.spent': 'Handen du ser är gammal och ingenting du gör nu kommer fram.',
+  'status.dropped.spent': 'Vi har slutat försöka av oss själva. Tryck på Försök nu när nätet är tillbaka.',
   'status.dropped.editor.heading': 'Ingen kontakt med servern',
   'status.dropped.editor.text': 'Osparat arbete ligger kvar här tills kontakten är tillbaka.',
 
