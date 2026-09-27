@@ -78,6 +78,12 @@ Renderworkern skriver sina utdata till R2 under `renders/<hash>` med rätt conte
 S3-protokollet talas utan SDK: fyra anrop med Signature Version 4, verifierade mot AWS dokumenterade exempel och mot MinIO.
 Utan R2-variabler stannar bytesen i Postgres och går genom `app`, som förut; `/health` frågar R2 med en tom listning (§2).
 
+Två undantag, båda för bytes som webbläsaren måste *läsa* och inte bara visa:
+R2:s svar bär inget `access-control-allow-origin`, och en CORS-kontroll gäller varje svar i omdirigeringskedjan, så sådana bytes går genom `GET /assets/:hash/bytes` på lådans eget ursprung.
+Mätningen av en bild (#469) läser varje hash en gång under tjänstens livstid, eftersom mätningen lagras.
+Ett projekts typsnitt i editorn (#472) laddas med `@font-face`, som alltid hämtar i CORS-läge; det kostar ~50 kB per typsnitt och webbläsare, en gång, eftersom svaret är `immutable`.
+Beslutat av beställaren 2026-09-27 framför en CORS-regel på bucketen, som ligger utanför repot och måste gälla varje framtida bucket.
+
 Uppladdade bilder (E1) byggt 2026-09-07:
 `POST /assets` tar en bild (png, jpeg, webp, gif, svg; högst 8 MB) från en inloggad skapare och svarar med dess sha256-hash; samma bytes ger samma hash och kostar inget andra gången.
 Bytesen ligger under `assets/<hash>` i R2 och tabellen `assets` håller hash, typ och storlek; utan R2 ligger bytesen i tabellen.

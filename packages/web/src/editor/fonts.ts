@@ -1,6 +1,6 @@
 import type { Row } from '@byd/template'
 import type { ProjectDoc } from './types.js'
-import { ASSET_PREFIX, assetUrl, isAssetRef } from './assets.js'
+import { ASSET_PREFIX, assetBytesUrl, isAssetRef } from './assets.js'
 
 // The type a game is set in (B3). A family the project names carries the file it is drawn from,
 // so what a printer sets a year from now is what the designer saw; a family that is only a CSS
@@ -25,12 +25,18 @@ export function familiesInUse(doc: Pick<ProjectDoc, 'template'>): string[] {
 }
 
 // The project's fonts as the compiler wants them, for a preview in the browser: the file is the
-// asset the project holds, served from where every other asset is. The server does the same for
-// a render, only inlining the bytes, because the render worker has no session to fetch with.
+// asset the project holds. The server does the same for a render, only inlining the bytes,
+// because the render worker has no session to fetch with.
+//
+// Through the server's own `/bytes` and not the address a picture is shown from (#472). A web
+// font is always fetched in CORS mode, and `/assets/<hash>` redirects to the object store, whose
+// answer carries no CORS header — so in production no face ever loaded, and `font-display: block`
+// held every card's text invisible until the browser gave up and set it in the fallback. The
+// bytes are immutable, so a browser fetches each face once (DRIFT §4).
 export function previewFonts(doc: Pick<ProjectDoc, 'template' | 'fonts'>, assetBase: string | undefined): Record<string, { stack: string; src?: string }> {
   const out: Record<string, { stack: string; src?: string }> = {}
   for (const [family, font] of Object.entries(doc.fonts ?? {})) {
-    out[family] = assetBase && isAssetRef(font.asset) ? { stack: font.stack, src: assetUrl(assetBase, font.asset.slice(ASSET_PREFIX.length)) } : { stack: font.stack }
+    out[family] = assetBase && isAssetRef(font.asset) ? { stack: font.stack, src: assetBytesUrl(assetBase, font.asset.slice(ASSET_PREFIX.length)) } : { stack: font.stack }
   }
   return out
 }
