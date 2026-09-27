@@ -13,7 +13,7 @@ for (const [width, height] of [
   test(`shows a tapped card large and keeps the table its size with the drawer open, at ${width}`, async ({ tableOf, host, request, browser, baseURL }) => {
     const table = await tableOf({ players: 2, cards: 12 })
     const hosting = await host(table)
-    const seen = await hosting.view()
+    const seen = (await hosting.view()) as unknown as { floor: string }
     await hosting.send([{ v: 'split', pile: 'draw', at: 1, to: seen.floor, x: 0, y: 0 } as never])
     const eva = await join(request, table, { name: 'Eva' })
     const context = await browser.newContext({ viewport: { width, height }, hasTouch: true, isMobile: true, ...(baseURL ? { baseURL } : {}) })

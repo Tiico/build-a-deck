@@ -20,7 +20,8 @@ const STRIPS = [
   { cls: 'byd-editor-narrow', html: '<p class="byd-editor-narrow">Kortmallen läggs ut på en bredare skärm.</p>' },
   { cls: 'byd-editor-leave', html: '<div class="byd-editor-leave" role="alertdialog"><p>Osparade ändringar.</p><button>Spara och lämna</button></div>' },
   { cls: 'byd-editor-table-link', html: '<div class="byd-editor-table-link" role="status">Bordet är startat i version 3.</div>' },
-  { cls: 'byd-editor-offline', html: '<p class="byd-editor-offline" role="status">Ingen förbindelse med spelet.</p>' },
+  // D5's own bar since #485, in the wrapper the editor draws it in.
+  { cls: 'byd-editor-offline', html: '<div class="byd-editor-offline" data-offline><section class="byd-status" data-status-notice="dropped" data-surface="bar" data-tone="broken"><span class="byd-status-mark">Frånkopplad</span><h2 tabindex="-1">Ingen kontakt med servern</h2><p>Osparat arbete ligger kvar här.</p><div class="byd-status-acts"><button type="button" class="byd-status-act" data-primary>Försök nu</button></div></section></div>' },
   { cls: 'byd-editor-readonly', html: '<p class="byd-editor-readonly" role="status">Du kan läsa spelet men inte ändra det.</p>' },
 ] as const
 
