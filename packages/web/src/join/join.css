@@ -87,6 +87,11 @@
      is well clear of the first of those, and stays, because what that number is for is how a
      table looks and not whether its corners hold. */
   --byd-seat-spread-y: 0px;
+  /* The pills hang off the north and south edges and the wood rim is drawn round the felt, and
+     neither is part of the box the page lays out: at 320 × 568 the north seat stood over the line
+     above and the south one over «Ditt namn» (#483). The margin is what they reach out by, so the
+     row the felt stands in makes room for all of it. */
+  margin-block: calc(var(--byd-seat-hang-y) + 10px);
   position: relative; place-self: center; width: var(--byd-felt-w);
   height: max(150px, calc(var(--byd-seat-spread-y) + 3 * var(--byd-seat-h) - 2 * var(--byd-seat-hang-y) + 2 * var(--byd-seat-corner)));
   border-radius: 16px;
