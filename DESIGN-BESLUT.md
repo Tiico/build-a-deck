@@ -3438,6 +3438,7 @@ Byggt 2026-09-14 (ingen prototyp: ingenting nytt ritas, ett tryck gör det den s
 Escape återställer cellen till värdet den hade när den fick fokus, och Ctrl+Z tar tillbaka ett ord i taget så länge cellen har något att ta tillbaka.
 När cellen är tillbaka där den började går nästa Ctrl+Z vidare till editorns stack, så samma tangent aldrig är död och aldrig hoppar över det designern nyss skrev.
 Stacken är oförändrad: orden är cellens egen minnesbild under ett och samma grepp, och greppet är fortfarande ett steg när cellen lämnas.
+Samma sak gäller regelbokens fält sedan #481 (fynd 7): rubrik, stycke, punkt, bildtext och alt-text går ordvis tillbaka och sedan vidare till editorn, med samma kod (`packages/web/src/editor/word-steps.ts`); Escape stänger där blocket i stället för att återställa fältet.
 
 ### L15. Lagerpanelen säger vad ett lager är, och ett lager går att låsa (prototypat 2026-09-14)
 

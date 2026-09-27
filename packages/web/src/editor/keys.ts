@@ -1,8 +1,10 @@
 // The keyboard's own rules in the editor, in one place so no surface can answer a key twice.
 
-// Every key belongs to the field being typed in: Ctrl+Z there is the field's own step back, which
-// the browser already does well, and the project's would throw the typing away. A tick box owns
-// none of them — it answers only the space bar — so the surfaces around it still hear the keyboard.
+// Every key belongs to the field being typed in: Ctrl+Z there is the field's own step back — a word
+// at a time, kept by the field itself (`word-steps.ts`), since a field the editor controls gets no
+// useful one from the browser — and the project's would throw the typing away. A field with nothing
+// of its own left hands the press on (`passToEditor`). A tick box owns none of them — it answers
+// only the space bar — so the surfaces around it still hear the keyboard.
 const TICKED = ['checkbox', 'radio', 'button', 'submit', 'reset']
 
 export function isTyping(target: EventTarget | null): boolean {

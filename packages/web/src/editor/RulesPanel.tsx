@@ -25,6 +25,7 @@ import { useT, type T } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
 import type { Key } from '../i18n/sv.js'
 import { useGesture } from './gesture.js'
+import { useWordSteps } from './word-steps.js'
 import { ASSET_PREFIX, RULE_IMAGE_MAX_BYTES, assetUrl, imageSizeOf, imageTypeOf } from './assets.js'
 import { when } from './HistoryPanel.js'
 import { RuleShelf } from '../rules/RuleDrawer.js'
@@ -715,11 +716,13 @@ function balance(plan: RulePlan): { of: 'loses' | 'rewrites' | 'fresh'; kind: st
 // picture comes in as a block of its own, nothing in the report is merely waiting.
 const WEIGHT: Record<RuleImportKind, 'kept' | 'changed'> = {
   heading: 'kept',
+  subheading: 'kept',
   text: 'kept',
   list: 'kept',
   ref: 'kept',
   image: 'kept',
   title: 'changed',
+  raised: 'changed',
   folded: 'changed',
   quote: 'changed',
   table: 'changed',
@@ -940,6 +943,9 @@ function Editing({
   // Prose is written a letter at a time and the whole book is rewritten for each of them, so a
   // sentence is one step back and the paragraph before it is another (L14).
   const typing = useGesture('rule-field')
+  // And inside a field a step back is a word, then the editor's (#481, L14): the field is
+  // controlled, so the browser's own took one character at a time.
+  const steps = useWordSteps()
   // Where `[[` stands behind the caret, in which of the block's fields, and what has been typed
   // since it (#215, L23). One field of one block is ever being written in, so this is one lookup
   // and not one per field — and which field it is has to be part of it, because a list block is
@@ -1046,7 +1052,19 @@ function Editing({
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget)) leave(false)
       }}
+      // Heard on the block and not on each field, since every field already answers the reference
+      // list on its own keys: a field is known by its name, which is unique in the block.
+      onFocus={(e) => {
+        const field = fieldOf(e.target)
+        if (field) steps.enter(field.getAttribute('aria-label') ?? '', field.value)
+      }}
+      onChange={(e) => {
+        const field = fieldOf(e.target)
+        if (field) steps.typed(field.getAttribute('aria-label') ?? '', field.value)
+      }}
       onKeyDown={(e) => {
+        const field = fieldOf(e.target)
+        if (field && !e.defaultPrevented && steps.undo(field.getAttribute('aria-label') ?? '', e)) return
         // Escape belongs to the reference list while it is open, and it says so by taking it.
         if (e.key !== 'Escape' || e.defaultPrevented) return
         e.preventDefault()
@@ -1388,4 +1406,9 @@ function templateRules(name: string, t: T): RuleDoc {
       { kind: 'text', id: 'b11', text: '', ask: t('rules.ask.end') },
     ],
   }
+}
+
+// The written field a key or a focus in an open block belongs to, if it was one.
+function fieldOf(target: EventTarget): HTMLInputElement | HTMLTextAreaElement | null {
+  return target instanceof HTMLTextAreaElement || (target instanceof HTMLInputElement && target.type !== 'checkbox') ? target : null
 }
