@@ -311,7 +311,19 @@ function GameColours({ doc, client, icons }: { doc: ProjectDoc; client: ProjectC
     let name = t('symbols.colours.new')
     for (let n = 2; palette[name] !== undefined; n++) name = `${t('symbols.colours.new')}-${n}`
     say(() => client.setRole(name, free.hex))
+    setNaming(name)
   }
+  // The name of the meaning just made takes the hand once its row is drawn: it is a placeholder,
+  // and the next thing the designer does is write the real one (#481).
+  const [naming, setNaming] = useState<string | null>(null)
+  useEffect(() => {
+    if (naming === null) return
+    const field = document.querySelector<HTMLInputElement>(`[aria-label="${CSS.escape(t('symbols.colours.rename', { role: naming }))}"]`)
+    if (!field) return
+    field.focus()
+    field.select()
+    setNaming(null)
+  })
   const say = (change: () => void) => {
     try {
       change()

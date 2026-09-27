@@ -90,8 +90,12 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
   // The template is a user too (#320): a picture it carries by itself is asked about as one on
   // cards is, and the question names the template among what loses it.
   const remove = (hash: string, cards: readonly string[], template: boolean) => {
-    if (cards.length === 0 && !template) onRemove?.(hash)
-    else setLeaving(hash)
+    if (cards.length === 0 && !template) {
+      onRemove?.(hash)
+      // The control goes with the picture, so the hand goes to the nearest one still standing
+      // rather than to the page (#481), as it does after the question.
+      setRefocus(media.find((m) => m.hash !== hash)?.hash ?? null)
+    } else setLeaving(hash)
   }
   const asked = leaving === null ? undefined : media.find((m) => m.hash === leaving)
   // The picture in hand: the one whose crop is open as a sheet over the library (#297, L33). A

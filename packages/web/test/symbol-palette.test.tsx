@@ -90,6 +90,19 @@ describe('the game’s colours', () => {
     expect(c.setRole.mock.calls[0]![1]).not.toBe('#8f2d20')
   })
 
+  // And the hand is put in that name, rather than left on the page (#481, fynd 12).
+  it('puts the focus in the name of the meaning it has just made', () => {
+    const c = client()
+    const doc = { ...projectDoc(), palette: { fara: '#8f2d20' } as Record<string, string> }
+    const { rerender } = render(<SymbolPanel doc={doc} client={c} assetBase="http://test.local" />)
+    c.setRole.mockImplementation((role: string, hex: string) => {
+      rerender(<SymbolPanel doc={{ ...doc, palette: { ...doc.palette, [role]: hex } }} client={c} assetBase="http://test.local" />)
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ny betydelse' }))
+    const made = c.setRole.mock.calls[0]![0] as string
+    expect(document.activeElement).toBe(screen.getByLabelText(`Namn på ${made}`))
+  })
+
   it('says when a meaning will not be read on the card it sits on', () => {
     mount({ ljus: '#e8d9a0' })
 

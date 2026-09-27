@@ -1,4 +1,4 @@
-import { Suspense, createContext, lazy, useContext, useEffect, useState, type Ref } from 'react'
+import { Suspense, createContext, lazy, useContext, useEffect, useRef, useState, type Ref } from 'react'
 import { ruleEm, type RenderedBlock, type RenderedNode, type RenderedRules } from '@byd/template'
 import { zoneTally, type ZoneTally } from '@byd/engine'
 import type { ZoneView } from '@byd/protocol'
@@ -81,10 +81,13 @@ export function RuleShelf({ rules, assets, placement, startOpen, body, live }: R
   const t = useT()
   const [open, setOpen] = useState(startOpen ?? false)
   const [query, setQuery] = useState('')
+  // Kvar när luckan stängs inifrån: panelens × försvinner med panelen, så handen går tillbaka till
+  // knoppen som öppnade den i stället för till sidan (#481).
+  const knob = useRef<HTMLButtonElement>(null)
   return (
     <LiveTableContext.Provider value={live ?? null}>
       <div className="byd-rules-drawer" data-placement={placement}>
-        <button type="button" className="byd-rules-open" onClick={() => setOpen((o) => !o)}>
+        <button type="button" ref={knob} className="byd-rules-open" onClick={() => setOpen((o) => !o)}>
           {open ? t('rules.drawer.close') : t('rules.drawer.open')}
         </button>
         {open && (
@@ -92,7 +95,12 @@ export function RuleShelf({ rules, assets, placement, startOpen, body, live }: R
           // kommer när den är klädd. En reserv som ritade en tom ruta hade varit just den
           // oklädda blink flytten inte får kosta.
           <Suspense fallback={null}>
-            <RulePanel rules={rules} assets={assets} query={query} onQuery={setQuery} onClose={() => setOpen(false)} body={body} />
+            <RulePanel rules={rules} assets={assets} query={query} onQuery={setQuery} onClose={() => {
+                setOpen(false)
+                knob.current?.focus()
+              }}
+              body={body}
+            />
           </Suspense>
         )}
       </div>

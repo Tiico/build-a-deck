@@ -186,6 +186,20 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
   // it (#481): back to the block it was writing, or — when the block is gone — to the one now
   // standing in its place. Left alone it fell to <body> with the field it had been in.
   const back = useRef<string | null>(null)
+  // Where the hand goes once a press has taken its own control away (#481, fynd 12): the book, when
+  // one has just been made, or the import, when its report was left. Taken once the tab has drawn
+  // what the press made, since a book arrives through the client and not in the same render.
+  const [land, setLand] = useState<'book' | 'import' | null>(null)
+  useEffect(() => {
+    if (land === null) return
+    const to =
+      land === 'book'
+        ? document.querySelector<HTMLElement>("[data-rulebook] [data-block] :is([role='button'], textarea, input, .byd-rules-caption-edit)")
+        : document.querySelector<HTMLElement>('.byd-rules-ways input[type=file]')
+    if (!to) return
+    to.focus()
+    setLand(null)
+  })
   const close = (id: string, refocus: boolean) => {
     if (refocus) back.current = id
     setEditing(null)
@@ -305,10 +319,24 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
           <div className="byd-rules-ways">
             {/* Three ways in, and each of them does what it says: a control that does nothing yet
                 would be a promise nobody kept. */}
-            <button type="button" className="byd-secondary" onClick={() => client.setRules(startingRules(doc.name, t))}>
+            <button
+              type="button"
+              className="byd-secondary"
+              onClick={() => {
+                client.setRules(startingRules(doc.name, t))
+                setLand('book')
+              }}
+            >
               {t('rules.start')}
             </button>
-            <button type="button" className="byd-secondary" onClick={() => client.setRules(templateRules(doc.name, t))}>
+            <button
+              type="button"
+              className="byd-secondary"
+              onClick={() => {
+                client.setRules(templateRules(doc.name, t))
+                setLand('book')
+              }}
+            >
               {t('rules.template')}
             </button>
             <PickFile label={t('rules.import')} onPick={pick} />
@@ -340,15 +368,23 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
         <Report
           of={proposal}
           plan={plan}
-          onCancel={() => setProposal(null)}
+          onCancel={() => {
+            setProposal(null)
+            setLand('import')
+          }}
           onMake={() => {
             const made = plan?.doc ?? proposal.doc
             setProposal(null)
+            setLand('book')
             setFailed(null)
             // An import lays a named version rather than writing over anything (#131, B4). It is
             // where the protection matters most: what is being replaced may be a whole book
             // somebody wrote by hand, and fifty steps of undo live in one tab.
-            void client.importRules(made, proposal.file, t).catch((err: unknown) => setFailed(whyNotSaved(err, t)))
+            void client.importRules(made, proposal.file, t).catch((err: unknown) => {
+              // No book came, so there is nothing to land on; the failure says so where it stands.
+              setLand(null)
+              setFailed(whyNotSaved(err, t))
+            })
           }}
         />
       )}
