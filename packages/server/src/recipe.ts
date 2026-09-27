@@ -425,9 +425,29 @@ const PILE_WINDOW = { w: evenMm(CARD.w), h: evenMm(CARD.h) }
 
 /** Punkten en ny hög föds på, eller `null` när filten inte har någon ledig kortrygg. */
 export function newPileSpot(setup: Setup): Geometry | null {
+  return pileSpotNear(setup, NEW_PILE_WISH)
+}
+
+function pileSpotNear(setup: Setup, wish: { x: number; y: number }): Geometry | null {
   const half = { x: PILE_WINDOW.w / 2, y: PILE_WINDOW.h / 2 }
-  const spot = freeSpot(setup, PILE_WINDOW, { x: NEW_PILE_WISH.x - half.x, y: NEW_PILE_WISH.y - half.y })
+  const spot = freeSpot(setup, PILE_WINDOW, { x: wish.x - half.x, y: wish.y - half.y })
   return spot === null ? null : point(spot.x + half.x, spot.y + half.y)
+}
+
+// Hur långt bredvid originalet en kopia önskar sig, i bordets millimetrar (K22).
+const PASTE_BESIDE_MM = 10
+
+/**
+ * Var en inklistrad zon landar (#480, K22): bredvid originalet på dess högra sida om där är ledigt,
+ * annars på den lediga filt som ligger närmast — samma regel som en ny zon föds med (#440, #443).
+ * `null` när filten inte har plats för den. `at` är önskeplatsen när den inte är bredvid, som för
+ * ett urklipp, vars plats blev ledig när det klipptes.
+ */
+export function pasteSpot(setup: Setup, zone: Zone, at?: { x: number; y: number }): Geometry | null {
+  const g = zone.geometry
+  if (zone.kind === 'pile') return pileSpotNear(setup, at ?? { x: g.x + PILE_WINDOW.w + PASTE_BESIDE_MM, y: g.y })
+  const spot = freeSpot(setup, { w: g.w, h: g.h }, at ?? { x: g.x + g.w + PASTE_BESIDE_MM, y: g.y })
+  return spot === null ? null : { ...spot, rot: g.rot }
 }
 
 // Where a seat's chips lie inside their own zone, in the zone's own millimetres (C4, #89).

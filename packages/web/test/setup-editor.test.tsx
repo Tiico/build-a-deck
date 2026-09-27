@@ -398,3 +398,39 @@ describe('the felt under a keyboard (#480)', () => {
     expect(handles[1]!.getAttribute('aria-pressed')).toBe('false')
   })
 })
+
+// Klistra in som K22 säger (#480 fynd 9): på ledig filt bredvid originalet, två kopior på två
+// platser, och ett urklipp som klistras tillbaka är samma zon på samma plats med samma namn.
+describe('klistra in på filten (#480)', () => {
+  it('lägger två kopior på två olika lediga platser', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    fireEvent.click(document.querySelector('[data-zone-row="discard"] .byd-setup-name')!)
+    fireEvent.keyDown(window, { key: 'c', ctrlKey: true })
+    fireEvent.keyDown(window, { key: 'v', ctrlKey: true })
+    fireEvent.keyDown(window, { key: 'v', ctrlKey: true })
+    await waitFor(() => expect(document.querySelectorAll('[data-zone-handle]').length).toBeGreaterThanOrEqual(3))
+    const spots = [...document.querySelectorAll<HTMLElement>('[data-zone-handle]')]
+      .filter((h) => /^kasthog|^discard|kopia/i.test(h.getAttribute('data-zone-handle') ?? '') || h.getAttribute('aria-label')?.includes('Kasthög'))
+      .map((h) => `${h.style.left},${h.style.top}`)
+    expect(spots.length).toBe(3)
+    expect(new Set(spots).size).toBe(3)
+  })
+
+  it('klistrar tillbaka ett urklipp med sitt eget namn på sin egen plats', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    const before = handle('discard').style.cssText
+    fireEvent.click(document.querySelector('[data-zone-row="discard"] .byd-setup-name')!)
+    fireEvent.keyDown(window, { key: 'x', ctrlKey: true })
+    await waitFor(() => expect(handle('discard')).toBeNull())
+    fireEvent.keyDown(window, { key: 'v', ctrlKey: true })
+    const back = await waitFor(() => {
+      const h = [...document.querySelectorAll<HTMLElement>('[data-zone-handle]')].find((el) => el.getAttribute('aria-label')?.includes('Kasthög'))
+      expect(h).toBeTruthy()
+      return h!
+    })
+    expect(back.getAttribute('aria-label')).not.toMatch(/Kopia/)
+    expect(back.style.cssText).toBe(before)
+  })
+})

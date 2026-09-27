@@ -6,7 +6,7 @@ import { targetsOf } from '../player/PlaySheet.js'
 import { stepAside } from './grips.js'
 import { TableRenderer, type FeltFit, type TableHandle } from '../table/TableRenderer.js'
 import { previewOf } from '../setup/preview.js'
-import { MAX_PLAYERS, newAreaSpot, newPileSpot, titleOfRow, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
+import { MAX_PLAYERS, newAreaSpot, newPileSpot, pasteSpot, titleOfRow, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
 import type { ZonePatch } from '@byd/server/doc'
 import { useT, type Key, type T } from '../i18n/index.js'
@@ -49,10 +49,6 @@ export type SetupEditorProps = {
 // the card it lies on is the felt's own millimetre divided by this one.
 const CSS_MM_PX = 96 / 25.4
 const SNAP_MM = 5
-// How far a pasted copy lands from the zone it was copied from, in table millimetres. A copy that
-// lay exactly on the original could not be pointed at, and the list would show two rows that
-// looked the same for two things in the same place.
-const BESIDE_MM = 10
 
 // Whether a key press belongs to something being written in rather than to the table. Read off
 // the event as well as off the focus: the focus is what a browser moves when a field is typed
@@ -89,7 +85,9 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
   const [held, setHeld] = useState<string | null>(null)
   // The editor's own clipboard, and what the key handler needs to read without being rebuilt on
   // every keystroke the panel beside it takes.
-  const clipboard = useRef<Zone | null>(null)
+  // A cut zone is the same zone on its way somewhere: pasted back it keeps its name and wishes for
+  // the spot it was cut from (#480). A copy is a second zone, named as one and laid beside.
+  const clipboard = useRef<{ zone: Zone; cut: boolean } | null>(null)
   // Whether the phone's sheet stands open beside the setup (#301). It is the editor's own
   // remembering and nobody else's: not the document's, not the table's, not the browser's — so
   // the tab opens with the sheet folded every time, and the room is the setup's until asked for.
@@ -159,8 +157,17 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
         const held = clipboard.current
         if (!held) return
         e.preventDefault()
-        const geometry = { ...held.geometry, x: held.geometry.x + held.geometry.w + BESIDE_MM }
-        setSelected(now.client.insertZone({ ...held, name: now.t('zone.copy', { name: held.name }), geometry }))
+        // On free felt, by the rule new zones are born with (#440, #443, K22): two pastes were two
+        // copies on one point, and a wide copy was born off the table.
+        const geometry = pasteSpot(now.setup, held.zone, held.cut ? held.zone.geometry : undefined)
+        if (geometry === null) {
+          setSaid(now.t(held.zone.kind === 'pile' ? 'setup.noRoomPile' : 'setup.noRoom'))
+          setUndoable(null)
+          return
+        }
+        setSelected(now.client.insertZone({ ...held.zone, name: held.cut ? held.zone.name : now.t('zone.copy', { name: held.zone.name }), geometry }))
+        // Pasted once, a cut is placed; the next paste is a copy of it.
+        if (held.cut) clipboard.current = { zone: held.zone, cut: false }
         setSaid(null)
         return
       }
@@ -178,11 +185,11 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
           setSaid(why)
           return
         }
-        clipboard.current = zone
+        clipboard.current = { zone, cut: true }
         now.remove(zone)
         return
       }
-      clipboard.current = zone
+      clipboard.current = { zone, cut: false }
       setSaid(now.t('setup.copied', { name: zone.name }))
     }
     window.addEventListener('keydown', onKey)
