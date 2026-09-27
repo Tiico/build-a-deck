@@ -983,7 +983,8 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
       const dy = speed(hand.y - r.top) > 0 ? -speed(hand.y - r.top) : speed(r.bottom - hand.y)
       if (dx === 0 && dy === 0) return
       const before = { x: stage.scrollLeft, y: stage.scrollTop }
-      stage.scrollBy(dx, dy)
+      stage.scrollLeft += dx
+      stage.scrollTop += dy
       if (stage.scrollLeft === before.x && stage.scrollTop === before.y) return
       place(held, hand)
       panning.current = requestAnimationFrame(step)
