@@ -302,6 +302,16 @@ export class ProjectClient {
     }, wait)
   }
 
+  // «Försök nu» (#485): the wait is skipped and the line asked for at once, from the start of the
+  // plan, as a person pressing a button means.
+  reconnectNow(): void {
+    if (this.left || this.connected) return
+    if (this.retry) clearTimeout(this.retry)
+    this.retry = null
+    this.attempt = 0
+    this.connect(this.name)
+  }
+
   private finishSave(result: SaveResult): void {
     const waiting = this.saving
     this.saving = null

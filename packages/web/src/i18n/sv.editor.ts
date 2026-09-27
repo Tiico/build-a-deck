@@ -112,7 +112,6 @@ export const svEditor = {
   'editor.table.failed': '{n} kort kunde inte renderas',
   'editor.table.roomCode': 'rumskod',
   'editor.table.newCode': 'Ny kod',
-  'editor.offline': 'Ingen förbindelse med spelet. Det du skriver stannar här tills linjen är tillbaka.',
   'editor.role.tester': 'Du är testledare här: du kan starta bord och läsa spelet, men inte ändra det.',
   'editor.role.viewer': 'Du är betraktare här: du kan läsa spelet, men inte ändra det.',
   'editor.seats.at': 'vid bordet:',

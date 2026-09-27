@@ -296,10 +296,18 @@ describe('the editor when the line is gone (D3)', () => {
   })
 
   it('says so once the line has been gone longer than a mending takes, and stops saying it when it is back', async () => {
-    const { screen } = await import('@testing-library/react')
     await editor(60)
     await run.restart()
     await eventually(() => expect(document.querySelector('[data-offline]')).toBeTruthy())
-    await eventually(() => expect(screen.queryByText(/Ingen förbindelse/)).toBeNull())
+    // D5's own state and not a strip of the editor's (#485, fynd 8): the model's heading, how old
+    // the picture is, and a way to try now, on the bar surface.
+    const bar = document.querySelector('[data-offline] [data-status-notice="dropped"]') as HTMLElement
+    expect(bar.getAttribute('data-surface')).toBe('bar')
+    expect(bar.textContent).toMatch(/Ingen kontakt med servern/)
+    expect(bar.textContent).toMatch(/från \d\d:\d\d/)
+    expect(bar.querySelector('button')?.textContent).toBe('Försök nu')
+    // And when it is back it says so, once, in the model's words.
+    await eventually(() => expect(document.querySelector('[data-status-notice="resumed"]')?.textContent).toMatch(/Sparat och uppkopplat igen/))
+    await eventually(() => expect(document.querySelector('[data-status-notice]')).toBeNull())
   })
 })

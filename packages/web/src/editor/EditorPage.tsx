@@ -24,7 +24,7 @@ import type { ProjectClient, Textures } from './ProjectClient.js'
 import { loginUrl } from '../account/api.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
-import { noticeFor, refusalText, loggedOutNotice } from '../status/notice.js'
+import { noticeFor, refusalText, loggedOutNotice, asOf } from '../status/notice.js'
 import { chordOf, isTyping, passedToEditor } from './keys.js'
 import { mediaInGame } from './assets.js'
 import { previewMotifs } from './motifs.js'
@@ -267,6 +267,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const cropped = client?.doc.pictures
   const deckMotifs = useMemo(() => previewMotifs(motifs, http, cropped), [motifs, http, cropped])
 
+  const line = useLineState(client?.lineDown ?? false)
   if (!projectId) return <StatusNotice notice={noticeFor('missing', 'editor', t)} surface="page" links={links} />
   if (fault === 'unauthorized') {
     // Not logged in (G1): to the login card and back here after.
@@ -636,10 +637,18 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={setNotice} />
         </div>
       )}
-      {client.lineDown && (
-        <p className="byd-editor-offline" role="status" data-offline>
-          {t('editor.offline')}
-        </p>
+      {/* The line to the project, in D5's own states (#485, fynd 8): gone, with how old the
+          picture is and a way to try now, and back, said once — on the bar surface, over the work. */}
+      {(client.lineDown || line.resumed) && (
+        <div className="byd-editor-offline" data-offline={client.lineDown ? '' : undefined}>
+          <StatusNotice
+            notice={noticeFor(client.lineDown ? 'dropped' : 'resumed', 'editor', t)}
+            surface="bar"
+            links={links}
+            onRetry={() => client.reconnectNow()}
+            asOf={client.lineDown ? line.since : null}
+          />
+        </div>
       )}
       {!client.mayEdit && (
         <p className="byd-editor-readonly" role="status" data-role-note>
@@ -819,4 +828,28 @@ function HostSeats({ client, sessionId, hostKey, ws, onNotice }: { client: Proje
       ))}
     </span>
   )
+}
+
+// When the line to the project went down, as the clock on this screen read it, and whether it has
+// just come back (#485): the two things D5's bar says about a line beyond that it is down.
+const RESUMED_MS = 2500
+function useLineState(down: boolean): { since: string | null; resumed: boolean } {
+  // Stamped when the break is first drawn and kept while it lasts, the way `useLiveStatus` stamps
+  // a route's picture: the age of the data, never the age of the message.
+  const stamp = useRef<string | null>(null)
+  if (!down) stamp.current = null
+  else stamp.current ??= asOf(new Date())
+  const [resumed, setResumed] = useState(false)
+  const was = useRef(down)
+  useEffect(() => {
+    if (down) setResumed(false)
+    else if (was.current) setResumed(true)
+    was.current = down
+  }, [down])
+  useEffect(() => {
+    if (!resumed) return
+    const timer = setTimeout(() => setResumed(false), RESUMED_MS)
+    return () => clearTimeout(timer)
+  }, [resumed])
+  return { since: stamp.current, resumed }
 }
