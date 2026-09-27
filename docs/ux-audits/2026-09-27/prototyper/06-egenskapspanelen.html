@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 06 — Egenskapspanelen (#478 fynd 9)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     L25 valde en panel där alla sektioner står öppna, och accepterade rullning bara för den
+     tätaste formen (822 px i 782). Sedan dess kom opacitet, Linje och två växlar: en vanlig
+     rektangel är nu 914 px i en kolumn om 682 vid 1280 × 800, och hela «Effekter» ligger under
+     vikningen. Vid 1024 × 768 är kolumnen 651. Hur ska panelen rymmas?
+
+       Nu  som i dag: allt öppet, kolumnen rullar
+       A   fällbara sektioner med värdet i det stängda huvudet
+       B   Layout fast överst, resten i tre flikar: Form · Stil · Effekter
+       C   bara det som är satt står framme; resten är en rad med «+» (som Figma)
+
+     Två spalter prövades på papper och valdes bort: panelen skulle behöva 440 px, och vid 1024
+     krymper scenen då från 456 till 296 px. «Typsnitt i spelet» står i dag sist i varje panel
+     fast det inte handlar om elementet — växeln i bärnstensraden flyttar det, i alla varianter. ── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .yta { position: relative; }
+  .protorad select { min-height: 32px; border: 1px solid #4a4230; border-radius: 7px; padding: 0 8px; background: #1f1b12; color: #ffd98a; font: inherit; }
+  .protorad .matt { flex: 0 0 250px; flex-wrap: wrap; gap: 2px var(--s3); }
+  .protorad .fraga { flex-basis: 300px; }
+  .protorad .matt u.ute { color: #f0b64a; }
+  /* Vikningen: en linje där kolumnen slutar, så att man ser vad som ligger under. */
+  .m-props { position: relative; }
+  .galleri { display: grid; grid-template-columns: repeat(auto-fill, 30px); gap: 4px 6px; }
+  .galleri button { width: 30px; height: 24px; min-height: 0; display: grid; place-items: center; padding: 0; border: 1px solid var(--field-line); border-radius: 5px; background: #1b1d23; color: #cfd6e4; cursor: pointer; }
+  .galleri button[aria-pressed='true'] { border-color: var(--primary-mark); background: #22324d; }
+  .galleri svg { width: 18px; height: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button { min-height: 44px; padding: 0 12px; border: 1px solid var(--field-line); border-radius: 999px; background: transparent; color: #dce3f2; font: inherit; font-size: 12px; cursor: pointer; }
+  .chips button[aria-pressed='true'] { border-color: var(--primary-mark); background: #22324d; }
+  .lank { justify-self: start; min-height: 32px; border: 0; padding: 0; background: none; color: #9cc4f5; font: inherit; font-size: 12px; cursor: pointer; }
+  .paint { display: grid; gap: 2px; grid-column: 1 / -1; }
+  .paint div { display: grid; grid-template-columns: minmax(0, 1fr) 44px 44px; align-items: center; min-height: 44px; font-size: 12px; color: #dce3f2; }
+  .paint i { width: 36px; height: 24px; border-radius: 4px; border: 1px solid #555; }
+  .paint b { font-weight: 400; color: var(--quiet); text-align: center; }
+  .rad-helt { grid-column: 1 / -1; }
+  /* A: sektionshuvudet är en knapp, och det stängda huvudet bär värdet. */
+  .a-huvud { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0; border: 0; background: none; color: var(--hint-ink); font: inherit; cursor: pointer; text-align: left; }
+  .a-huvud h3 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
+  .a-huvud .v { margin-left: auto; display: flex; align-items: center; gap: 6px; color: #dce3f2; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .a-huvud .v i { width: 14px; height: 14px; border-radius: 3px; border: 1px solid #555; flex: none; }
+  .a-huvud svg { width: 10px; height: 10px; flex: none; transition: transform .12s; }
+  .a-huvud[aria-expanded='true'] svg { transform: rotate(90deg); }
+  .a-sek { border-top: 1px solid #2a2d36; }
+  .a-sek > .inne { display: grid; gap: 5px; padding-bottom: var(--s3); }
+  /* B: flikarna under Layout. */
+  .b-flikar { display: flex; gap: 2px; margin: 0 0 var(--s3); padding: 3px; border-radius: 8px; background: #1b1d23; }
+  .b-flikar button { flex: 1; min-width: 0; padding: 0 4px; font-size: 12px !important; min-height: 44px; border: 0; border-radius: 6px; background: transparent; color: var(--hint-ink); font: inherit; font-weight: 600; cursor: pointer; }
+  .b-flikar button[aria-selected='true'] { color: #fff; box-shadow: inset 0 -3px 0 var(--primary-mark); border-radius: 6px 6px 0 0; }
+  .b-flikar button small { color: var(--quiet); font-weight: 400; }
+  /* C: en rad per egenskap som inte är satt. */
+  .c-rad { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+  .c-rad h3 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--hint-ink); }
+  .c-rad .tom { color: var(--quiet); font-size: 12px; }
+  .c-rad button.plus, .c-rad button.minus { margin-left: auto; width: 44px; height: 44px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #dce3f2; font-size: 18px; cursor: pointer; }
+  .c-rad button.plus:hover, .c-rad button.minus:hover { border-color: var(--field-line); }
+  .c-sek { border-top: 1px solid #2a2d36; padding-bottom: var(--s1); }
+  .c-sek > .inne { display: grid; gap: 5px; padding-bottom: var(--s2); }
+  .c-form { display: flex; align-items: center; gap: 8px; min-height: 44px; width: 100%; padding: 0 10px; border: 1px solid var(--field-line); border-radius: 6px; background: var(--field-bg); color: #fff; font: inherit; font-size: 13px; cursor: pointer; text-align: left; }
+  .c-form svg { width: 18px; height: 14px; color: #cfd6e4; }
+  .c-form span { margin-left: auto; color: var(--quiet); }
+  .c-meny { display: flex; gap: 6px; flex-wrap: wrap; }
+  .c-meny button { min-height: 36px; padding: 0 10px; border: 1px solid var(--field-line); border-radius: 6px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 12px; cursor: pointer; }
+  .brunnrad { display: flex; align-items: center; gap: 10px; }
+  .dekor { opacity: .55; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>Fynd 9 · Egenskapspanelen (L25).</b> Rulla panelen, öppna och stäng, slå på mönster, skugga och «Anpassa». Mätningen till höger läses om vid varje ändring.</p>
+    <p>Tappgolvet om 44 px står kvar (L25, L12); formgalleriets 30 px-brickor är undantaget.</p>
+  </div>
+  <div class="matt"><span>Panelen: <u id="m-inne">–</u> i <u id="m-kol">–</u> px</span><span>Effekter: <u id="m-eff">–</u></span></div>
+  <label>Element <select id="elval"><option value="band">band (rektangel)</option><option value="stjarna">stjärna (tätast)</option></select></label>
+  <label>Typsnitt i spelet <select id="tsval"><option value="kvar">sist i panelen</option><option value="flytt">bara utan val</option></select></label>
+  <div class="storlek vaxlare" role="group" aria-label="Fönstrets storlek">
+    <button type="button" data-s="1280x800">1280 × 800</button>
+    <button type="button" data-s="1024x768">1024 × 768</button>
+  </div>
+  <button type="button" id="aterstall">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+
+<div class="m-scen" id="mscen">
+  <div class="m-ram" id="ram"><span class="etikett" id="etikett"></span>
+    <div class="m-skarm byd-editor" id="skarm">
+      <div class="ed-huvud">
+        <span class="hem">Mina spel</span><strong>Sal's Saloon</strong><span class="rev">rev 1</span><span class="sparat">Sparat</span>
+        <div class="ed-flikar" role="tablist" aria-label="Lägen"><button role="tab" tabindex="-1">Kortvägg</button><button role="tab" aria-selected="true" tabindex="-1">Mall</button><button role="tab" tabindex="-1">Tabell</button><button role="tab" tabindex="-1">Symboler</button><button role="tab" tabindex="-1">Media</button><button role="tab" tabindex="-1">Regler</button><button role="tab" tabindex="-1">Bord</button></div>
+        <span class="spacer"></span><span class="who">A</span>
+        <button type="button" class="ed-knapp kantad" tabindex="-1">Spara</button><button type="button" class="ed-knapp primar" tabindex="-1">Starta bord ▾</button>
+      </div>
+      <div class="m-krona">
+        <label>Grupperas av kolumnen <select tabindex="-1"><option>typ</option></select></label>
+        <button type="button" class="meny" tabindex="-1">Bas (alla) · 77 kort ▾</button>
+        <span class="spacer"></span>
+        <button type="button" class="m-knapp" tabindex="-1">Fäll ihop egenskaperna</button>
+        <div class="sidor"><button type="button" aria-pressed="true" tabindex="-1">Framsida</button><button type="button" tabindex="-1">Baksida</button></div>
+      </div>
+      <div class="m-duk">
+        <nav class="m-verktyg" aria-label="Verktyg">
+          <button type="button" tabindex="-1"><b>T</b>Text</button><button type="button" tabindex="-1"><b>▣</b>Bild</button><button type="button" tabindex="-1"><b>●</b>Ikon</button><button type="button" tabindex="-1"><b>●●</b>Ikonrad</button><button type="button" tabindex="-1"><b>□</b>Form</button>
+        </nav>
+        <aside class="m-lager">
+          <div class="krona"><h2>Lager · Framsida</h2><p>Alla 77 kort</p></div>
+          <div class="m-lista" id="lista" role="grid" aria-label="Lager"></div>
+          <div class="fot">Dra för att ändra ordningen. <b>?</b></div>
+        </aside>
+        <div class="m-rum" id="rum">
+          <main class="m-sceneyta" id="scenen" tabindex="0" aria-label="Kortet"><div class="yta" id="yta"></div></main>
+          <div class="m-zoom"><span>198 %</span><button type="button" tabindex="-1">−</button><input type="range" value="30" tabindex="-1" aria-label="Förstoring"><button type="button" tabindex="-1">+</button><button type="button" aria-pressed="true" tabindex="-1">Passa in</button><button type="button" tabindex="-1">100 %</button></div>
+        </div>
+        <aside class="m-props" id="props" aria-label="Egenskaper"></aside>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const NOT = {
+  nu: '<b>Nu.</b> Allt öppet, i L25:s ordning: Layout, Form, Fyllning, Linje, Effekter och sist Typsnitt i spelet. En vanlig rektangel är ~910 px i en kolumn om 683 (651 vid 1024): Effekter står i vikningen och skuggan går inte att nå utan att rulla, och Typsnitt i spelet ligger helt under. Den tätaste formen är dubbelt så lång som kolumnen.',
+  a: '<b>A · Fällbara sektioner.</b> Varje huvud är en knapp och bär sitt värde när sektionen är stängd («Linje · ingen», «Effekter · 100 % · ingen skugga»). Layout och Form står öppna från början; vad som är öppet minns för hela editorn, inte per element. <span class="plus">+ Allt syns som en rad, även det som är stängt: inget är dolt utan att sägas. Minst ändring från i dag.</span> <span class="minus">− Går emot L25, som valde bort just fällning (B där) för att panelen inte skulle ha ett läge att minnas. Ett klick till för det som är stängt, och skrubben i en stängd sektion syns inte.</span>',
+  b: '<b>B · Flikar.</b> Layout står fast överst. Resten delas i tre flikar: Form, Stil (fyllning och linje) och Effekter. Fliken minns för hela editorn. <span class="plus">+ Kortast: ingen flik når vikningen, inte ens den tätaste formen. Flikarna säger vad som finns.</span> <span class="minus">− Döljer två tredjedelar av panelen utan att säga vad som står där: en skugga syns inte i fliken Form. Flikar i en 280 px kolumn är trånga, och ett tredje flikspråk i editorn (efter lägena och Fram/Bak).</span>',
+  c: '<b>C · Det som är satt står framme.</b> En egenskap utan värde är en rad med «+»: «Linje +», «Effekter +». Formgalleriet blir en väljare med formens namn som öppnar galleriet. Tas en egenskap bort med «−» blir den en rad igen. <span class="plus">+ Panelen växer med det elementet faktiskt bär: en ren rektangel ryms med luft, och det man ser är det som påverkar kortet. Samma mönster som Figma och Penpot.</span> <span class="minus">− Att hitta en egenskap som inte är satt kräver att man vet att «+» finns. Galleriet ett klick bort (L25 tog fram det för att det används mest när en form är ny). Två former av samma panel att lära sig.</span>',
+}
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const $ = (q) => document.querySelector(q)
+const W_MM = 63, H_MM = 88, PAD = 24
+
+// ── Formgalleriet: sjutton former, L17 och L42 ─────────────────────────────────────────
+const poly = (n, r0 = 1, rot = -90, inner = null) => { const p = []; const k = inner ? n * 2 : n; for (let i = 0; i < k; i++) { const a = (rot + (360 / k) * i) * Math.PI / 180, r = inner && i % 2 ? inner : r0; p.push(`${(9 + Math.cos(a) * 8 * r).toFixed(1)},${(7 + Math.sin(a) * 6.5 * r).toFixed(1)}`) } return `<polygon points="${p.join(' ')}"/>` }
+const FORMER = [
+  ['rekt', 'Rektangel', '<rect x="1.5" y="2" width="15" height="10"/>'], ['rundad', 'Rundad rektangel', '<rect x="1.5" y="2" width="15" height="10" rx="3"/>'],
+  ['piller', 'Piller', '<rect x="1.5" y="2.5" width="15" height="9" rx="4.5"/>'], ['ellips', 'Ellips', '<ellipse cx="9" cy="7" rx="7.5" ry="5.5"/>'],
+  ['linje', 'Linje', '<path d="M1.5 7h15" stroke-width="2"/>'], ['tre', 'Triangel', poly(3)], ['romb', 'Romb', '<polygon points="9,1 17,7 9,13 1,7"/>'],
+  ['kvad', 'Kvadrat', '<rect x="3.5" y="1.5" width="11" height="11"/>'], ['fem', 'Femhörning', poly(5)], ['sex', 'Sexhörning', poly(6, 1, 0)], ['sju', 'Sjuhörning', poly(7)],
+  ['atta', 'Åttahörning', poly(8, 1, 22.5)], ['stjarna', 'Stjärna', poly(5, 1, -90, 0.45)], ['stj6', 'Sexuddig stjärna', poly(6, 1, -90, 0.55)],
+  ['skold', 'Sköld', '<path d="M2 2h14v5c0 3-3.5 5-7 6-3.5-1-7-3-7-6z"/>'], ['baner', 'Banderoll', '<path d="M2 2h14v10l-7-3-7 3z"/>'], ['pil', 'Pil', '<path d="M1.5 5h9V2l6 5-6 5V9h-9z"/>'],
+]
+const glyf = (id) => `<svg viewBox="0 0 18 14" fill="currentColor" stroke="currentColor" stroke-width="0">${FORMER.find((f) => f[0] === id)[2]}</svg>`
+const MONSTER = ['Prickar', 'Ränder', 'Rutor', 'Vågor', 'Korsprickar']
+const SKUGGOR = ['Ingen', 'Mjuk', 'Hård', 'Upphöjd']
+
+const START = {
+  band: { id: 'band', form: 'rundad', radie: 2.5, x: 3, y: 3, w: 57, h: 13, fill: '#6b4a2b', efterFalt: false, monster: false, linje: 0, linjefarg: '#111111', opacitet: 100, skugga: 'Ingen', anpassa: false },
+  stjarna: { id: 'stjarna', form: 'stjarna', hörn: 5, vridning: 0, uddjup: 45, x: 44, y: 66, w: 14, h: 14, fill: '#c9a25a', efterFalt: false, monster: true, linje: 0.4, linjefarg: '#3b2a1a', opacitet: 90, skugga: 'Mjuk', anpassa: true },
+}
+const s = { v: 'nu', storlek: '1280x800', el: 'band', ts: 'kvar', e: structuredClone(START), oppna: new Set(['layout', 'form']), flik: 'form', meny: null, galleri: false }
+const E = () => s.e[s.el]
+
+// ── Fönstret ────────────────────────────────────────────────────────────────────────────
+const skarm = $('#skarm')
+function skala() {
+  const [W, H] = s.storlek.split('x').map(Number)
+  const scen = $('#mscen')
+  const f = Math.min(1, (scen.clientWidth - 24) / W, (scen.clientHeight - 36) / H)
+  skarm.style.width = W + 'px'; skarm.style.height = H + 'px'
+  skarm.style.transform = `scale(${f})`
+  $('#ram').style.width = W * f + 'px'; $('#ram').style.height = H * f + 'px'
+  $('#etikett').textContent = `${W} × ${H}` + (f < 1 ? ` · visas i ${Math.round(f * 100)} %` : '')
+  $('#rum').toggleAttribute('data-rad', W < 1200)
+}
+
+// ── Kortet och listan (bakgrund; frågan är panelen) ─────────────────────────────────────
+const scenen = $('#scenen'), yta = $('#yta')
+function ritaScen() {
+  const S = Math.min((scenen.clientWidth - 2 * PAD) / W_MM, (scenen.clientHeight - 2 * PAD) / H_MM)
+  const W = scenen.clientWidth, H = scenen.clientHeight, ox = (W - W_MM * S) / 2, oy = (H - H_MM * S) / 2
+  yta.style.width = W + 'px'; yta.style.height = H + 'px'; yta.style.setProperty('--mm', S + 'px')
+  const b = s.e.band, st = s.e.stjarna
+  const t = (x, y, w, h, text, pt, wt, color, serif) => `<p class="el txt" style="--x:${x};--y:${y};--w:${w};--h:${h};color:${color};font:${wt} calc(${pt * 0.3528} * var(--mm)) / 1.2 ${serif ? 'Georgia, serif' : 'system-ui, sans-serif'}">${esc(text)}</p>`
+  const skugga = (e) => ({ Ingen: 'none', Mjuk: 'drop-shadow(0 calc(.6 * var(--mm)) calc(1.2 * var(--mm)) rgb(0 0 0 / 45%))', Hård: 'drop-shadow(calc(.6 * var(--mm)) calc(.6 * var(--mm)) 0 rgb(0 0 0 / 70%))', Upphöjd: 'drop-shadow(0 calc(1.4 * var(--mm)) calc(2 * var(--mm)) rgb(0 0 0 / 40%))' }[e.skugga])
+  const valt = s.el === 'band' ? b : st
+  yta.innerHTML = `<div class="m-kort" style="left:${ox}px;top:${oy}px">
+    <div class="el" style="--x:${b.x};--y:${b.y};--w:${b.w};--h:${b.h};background:${b.fill};border-radius:calc(${b.radie} * var(--mm));opacity:${b.opacitet / 100};${b.linje ? `outline:calc(${b.linje} * var(--mm)) solid ${b.linjefarg};outline-offset:calc(-${b.linje} * var(--mm));` : ''}filter:${skugga(b)}"></div>
+    <div class="el" style="--x:3;--y:3;--w:57;--h:82;border:calc(.5 * var(--mm)) solid #3b2a1a;border-radius:calc(3 * var(--mm))"></div>
+    ${t(5, 4.5, 53, 7, "Juice em' up!", 12, 800, '#fff8e7', true)}${t(5, 11.5, 40, 4, 'Playcard', 8.5, 700, '#fff8e7')}${t(5, 19, 53, 55, 'Välj två andra spelare. De blandar en shot till varann', 8.5, 400, '#2b2118')}
+    <svg class="el" viewBox="0 0 18 14" preserveAspectRatio="none" style="--x:${st.x};--y:${st.y};--w:${st.w};--h:${st.h};overflow:visible;opacity:${st.opacitet / 100};filter:${skugga(st)}"><g fill="${st.fill}" stroke="${st.linjefarg}" stroke-width="${st.linje ? 0.5 : 0}">${FORMER.find((f) => f[0] === 'stjarna')[2]}</g></svg>
+    <div class="el" style="--x:5;--y:77;--w:26;--h:6;background:#6D9EEB;border-radius:calc(3 * var(--mm))"></div>${t(5, 77.3, 26, 5.4, 'Diamant', 8.5, 700, '#000000').replace('style="', 'style="text-align:center;')}
+  </div><div class="m-lagret" style="left:${ox}px;top:${oy}px;width:${W_MM * S}px;height:${H_MM * S}px"><div class="m-box" data-vald style="--x:${valt.x};--y:${valt.y};--w:${valt.w};--h:${valt.h}"><i class="h nw"></i><i class="h ne"></i><i class="h sw"></i><i class="h se"></i></div></div>`
+  const LAS = '<svg viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>'
+  const G = { t: '<svg viewBox="0 0 16 16"><path d="M3 3h10v2.2M8 3v10M5.6 13h4.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>', f: '<svg viewBox="0 0 16 16"><rect x="2.6" y="3.6" width="10.8" height="8.8" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>' }
+  $('#lista').innerHTML = [['raritet', 't'], ['stjarna', 'f'], ['body', 't'], ['typ', 't'], ['title', 't'], ['frame', 'f'], ['band', 'f'], ['paper', 'f']].map(([id, g]) => `<div class="m-rad" role="row" data-el="${id}" aria-selected="${id === s.el}"><span class="las">${LAS}</span><span class="namn">${G[g]}<span>${id}</span></span><span class="grepp">⠿</span></div>`).join('')
+}
+
+// ── Panelens delar, samma i alla varianter ──────────────────────────────────────────────
+const tal = (n) => String(n).replace('.', ',')
+const scrub = (g, v, enhet, namn) => `<div class="m-f"><span class="g" aria-hidden="true">${g}</span><input value="${tal(v)}" aria-label="${namn}"><em>${enhet}</em></div>`
+const brunn = (farg, namn) => `<label>${namn}<span class="brunn"><i style="background:${farg}"></i></span></label>`
+const DELAR = {
+  layout: (e) => `<div class="m-rader">${scrub('X', e.x, 'mm', 'X')}${scrub('Y', e.y, 'mm', 'Y')}${scrub('B', e.w, 'mm', 'Bredd')}${scrub('H', e.h, 'mm', 'Höjd')}</div>`,
+  galleri: (e) => `<div class="galleri" role="group" aria-label="Form">${FORMER.map(([id, namn]) => `<button type="button" data-form="${id}" aria-pressed="${e.form === id}" title="${namn}" aria-label="${namn}">${glyf(id)}</button>`).join('')}</div>`,
+  formtal: (e) => e.form === 'stjarna'
+    ? `<div class="m-rader">${scrub('⬡', e.hörn, '', 'Hörn')}${scrub('∠', e.vridning, '°', 'Vridning')}${scrub('✧', e.uddjup, '%', 'Uddjup')}</div><button type="button" class="lank">Anpassa punkterna</button>`
+    : `<div class="m-rader">${scrub('◜', e.radie, 'mm', 'Hörnradie')}</div>`,
+  fyllning: (e) => `<label class="vaxel"><input type="checkbox" data-vaxel="efterFalt" ${e.efterFalt ? 'checked' : ''}> Färg efter fält</label>
+    ${e.efterFalt ? `<label>Fyll efter kolumnen<select><option>typ</option></select></label><div class="paint">${[['Playcard', '#6b4a2b'], ['Location', '#2f5d3a'], ['Effect', '#8b2e2e'], ['Event', '#3a4d7a'], ['Trap+', '#4f6d2a'], ['Trap-', '#5a2a4a'], ['Character', '#7a2a6b'], ['Shopcard', '#8a5514'], ['Övriga', e.fill]].map(([v, f]) => `<div><span>${v}</span><i style="background:${f}"></i><b>${v === 'Övriga' ? '' : '×'}</b></div>`).join('')}</div>` : brunn(e.fill, 'Fyllning')}`,
+  monster: (e) => `<label class="vaxel"><input type="checkbox" data-vaxel="monster" ${e.monster ? 'checked' : ''}> Mönster över fyllningen</label>
+    ${e.monster ? `<div class="galleri" role="group" aria-label="Mönstrets sort">${MONSTER.map((m, i) => `<button type="button" aria-pressed="${i === 0}" title="${m}" aria-label="${m}"><svg viewBox="0 0 18 14"><circle cx="5" cy="5" r="1.4" fill="currentColor"/><circle cx="13" cy="5" r="1.4" fill="currentColor"/><circle cx="9" cy="10" r="1.4" fill="currentColor"/></svg></button>`).join('')}</div>
+      <div class="m-rader">${brunn('#3b2a1a', 'Mönstrets färg')}${scrub('▦', 2, 'mm', 'Mönstrets storlek')}${scrub('∠', 45, '°', 'Mönstrets vinkel')}</div>` : ''}`,
+  linje: (e) => `<div class="m-rader">${brunn(e.linjefarg, 'Linjefärg')}<label>&nbsp;${scrub('▬', e.linje, 'mm', 'Linjebredd')}</label></div>`,
+  opacitet: (e) => `<div class="m-rader">${scrub('◐', e.opacitet, '%', 'Opacitet')}</div>`,
+  skugga: (e) => `<div class="chips" role="group" aria-label="Skugga">${SKUGGOR.map((k) => `<button type="button" data-skugga="${k}" aria-pressed="${e.skugga === k}">${k}</button>`).join('')}</div>
+    ${e.skugga !== 'Ingen' ? `<button type="button" class="lank" data-vaxel="anpassa" aria-expanded="${e.anpassa}">${e.anpassa ? '▾' : '▸'} Anpassa</button>` : ''}
+    ${e.skugga !== 'Ingen' && e.anpassa ? `<div class="m-rader">${scrub('↔', 0, 'mm', 'Höger/vänster')}${scrub('↕', 0.6, 'mm', 'Upp/ned')}${scrub('◌', 1.2, 'mm', 'Mjukhet')}${brunn('#000000', 'Skuggans färg')}${scrub('◐', 45, '%', 'Genomskinlighet')}</div>` : ''}`,
+  typsnitt: () => `<p class="hint">Inget eget typsnitt ännu. Utan en fil sätts korten i vad tryckeriets dator råkar ha.</p><div class="chips"><button type="button" tabindex="-1">Sök i Google Fonts …</button><button type="button" tabindex="-1">Ladda upp typsnitt</button></div>`,
+}
+const formnamn = (e) => FORMER.find((f) => f[0] === e.form)[1]
+const SUMMA = {
+  layout: (e) => `${tal(e.x)}, ${tal(e.y)} · ${tal(e.w)} × ${tal(e.h)}`,
+  form: (e) => `${glyf(e.form).replace('<svg', '<svg style="width:14px;height:11px"')} ${formnamn(e)}`,
+  fyllning: (e) => e.efterFalt ? 'efter typ' : `<i style="background:${e.fill}"></i>${e.fill}${e.monster ? ' · mönster' : ''}`,
+  linje: (e) => e.linje ? `${tal(e.linje)} mm` : 'ingen',
+  effekter: (e) => `${e.opacitet} % · ${e.skugga === 'Ingen' ? 'ingen skugga' : e.skugga.toLowerCase() + ' skugga'}`,
+  typsnitt: () => 'inget eget',
+}
+const typsnittMed = () => s.ts === 'kvar'
+const sek = (key, titel, inne) => `<section class="m-sek" data-sek="${key}"><h3>${titel}</h3>${inne}</section>`
+
+// ── Panelen per variant ─────────────────────────────────────────────────────────────────
+function panel() {
+  const e = E(), D = DELAR, huvud = `<h2>Egenskaper · ${e.id}</h2>`
+  const ts = typsnittMed() ? sek('typsnitt', 'Typsnitt i spelet', D.typsnitt()) : ''
+  if (s.v === 'nu') return huvud + sek('layout', 'Layout', D.layout(e)) + sek('form', 'Form', D.galleri(e) + D.formtal(e)) + sek('fyllning', 'Fyllning', D.fyllning(e) + D.monster(e)) + sek('linje', 'Linje', D.linje(e)) + sek('effekter', 'Effekter', D.opacitet(e) + D.skugga(e)) + ts
+  if (s.v === 'a') {
+    const del = (key, titel, inne) => { const open = s.oppna.has(key); return `<section class="a-sek" data-sek="${key}"><button type="button" class="a-huvud" data-fall="${key}" aria-expanded="${open}"><svg viewBox="0 0 10 10"><path d="M3 1.5 7 5l-4 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><h3>${titel}</h3>${open ? '' : `<span class="v">${SUMMA[key](e)}</span>`}</button>${open ? `<div class="inne">${inne}</div>` : ''}</section>` }
+    return huvud + del('layout', 'Layout', D.layout(e)) + del('form', 'Form', D.galleri(e) + D.formtal(e)) + del('fyllning', 'Fyllning', D.fyllning(e) + D.monster(e)) + del('linje', 'Linje', D.linje(e)) + del('effekter', 'Effekter', D.opacitet(e) + D.skugga(e)) + (typsnittMed() ? del('typsnitt', 'Typsnitt i spelet', D.typsnitt()) : '')
+  }
+  if (s.v === 'b') {
+    const flikar = [['form', 'Form'], ['stil', 'Stil'], ['effekter', 'Effekter']].concat(typsnittMed() ? [['typsnitt', 'Typsnitt']] : [])
+    if (!flikar.some((f) => f[0] === s.flik)) s.flik = 'form'
+    const inne = { form: sek('form', 'Form', D.galleri(e) + D.formtal(e)), stil: sek('fyllning', 'Fyllning', D.fyllning(e) + D.monster(e)) + sek('linje', 'Linje', D.linje(e)), effekter: sek('effekter', 'Effekter', D.opacitet(e) + D.skugga(e)), typsnitt: sek('typsnitt', 'Typsnitt i spelet', D.typsnitt()) }[s.flik]
+    return huvud + sek('layout', 'Layout', D.layout(e)) + `<div class="b-flikar" role="tablist" aria-label="Egenskaper">${flikar.map(([k, n]) => `<button type="button" role="tab" data-flik="${k}" aria-selected="${s.flik === k}">${n}</button>`).join('')}</div>` + `<div role="tabpanel">${inne}</div>` + (s.flik === 'effekter' ? '' : `<span data-sek="effekter" hidden></span>`)
+  }
+  // C
+  const rad = (key, titel, tom, plus = true) => `<section class="c-sek" data-sek="${key}"><div class="c-rad"><h3>${titel}</h3>${tom ? `<span class="tom">${tom}</span>` : ''}${plus ? `<button type="button" class="plus" data-lagg="${key}" aria-label="Lägg till ${titel.toLowerCase()}">+</button>` : ''}</div>${s.meny === key ? `<div class="c-meny">${key === 'effekter' ? `<button type="button" data-lagg-till="opacitet">Opacitet</button><button type="button" data-lagg-till="skugga">Skugga</button>` : ''}</div>` : ''}</section>`
+  const full = (key, titel, inne, minus) => minus
+    ? `<section class="c-sek" data-sek="${key}"><div class="c-rad"><h3>${titel}</h3><button type="button" class="minus" data-ta="${key}" aria-label="Ta bort ${titel.toLowerCase()}">−</button></div><div class="inne">${inne}</div></section>`
+    : sek(key, titel, inne)
+  const form = `<button type="button" class="c-form" data-galleri aria-expanded="${s.galleri}">${glyf(e.form)} ${formnamn(e)}<span>▾</span></button>${s.galleri ? D.galleri(e) : ''}${D.formtal(e)}`
+  const fyll = D.fyllning(e) + (e.monster ? D.monster(e) : `<button type="button" class="lank" data-vaxel="monster">+ Mönster över fyllningen</button>`)
+  let eff = ''
+  const harOp = e.opacitet !== 100, harSk = e.skugga !== 'Ingen'
+  if (!harOp && !harSk) eff = rad('effekter', 'Effekter', 'ingen', true)
+  else eff = full('effekter', 'Effekter', (harOp ? D.opacitet(e) : '') + (harSk ? D.skugga(e) : '') + (!harOp || !harSk ? `<button type="button" class="lank" data-lagg-till="${harOp ? 'skugga' : 'opacitet'}">+ ${harOp ? 'Skugga' : 'Opacitet'}</button>` : ''), true)
+  return huvud + full('layout', 'Layout', D.layout(e)) + full('form', 'Form', form) + full('fyllning', 'Fyllning', fyll) + (e.linje ? full('linje', 'Linje', D.linje(e), true) : rad('linje', 'Linje', 'ingen')) + eff + (typsnittMed() ? full('typsnitt', 'Typsnitt i spelet', D.typsnitt()) : '')
+}
+function ritaProps() {
+  const p = $('#props'), top = p.scrollTop
+  p.innerHTML = panel()
+  p.scrollTop = top
+  mat()
+}
+// Mätningen: panelens innehåll mot kolumnen, och om Effekter börjar ovanför vikningen.
+function mat() {
+  const p = $('#props'), f = skarm.getBoundingClientRect().width / skarm.offsetWidth
+  $('#m-inne').textContent = p.scrollHeight
+  $('#m-kol').textContent = p.clientHeight
+  const eff = p.querySelector('[data-sek="effekter"]'), u = $('#m-eff')
+  if (!eff) { u.textContent = '–'; return }
+  if (eff.hidden) { u.textContent = 'i en egen flik'; u.className = ''; return }
+  // Hur mycket av sektionen som står ovanför vikningen när panelen är rullad till toppen.
+  const y = (eff.getBoundingClientRect().top - p.getBoundingClientRect().top) / f + p.scrollTop, h = eff.getBoundingClientRect().height / f
+  const syns = Math.max(0, Math.min(1, (p.clientHeight - y) / h))
+  u.textContent = `${Math.round(syns * 100)} % syns utan rullning`
+  u.className = syns < 0.99 ? 'ute' : ''
+}
+
+function rita() {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  for (const b of document.querySelectorAll('[data-s]')) b.setAttribute('aria-pressed', String(b.dataset.s === s.storlek))
+  $('#anteckning').innerHTML = NOT[s.v]
+  $('#elval').value = s.el; $('#tsval').value = s.ts
+  skala(); ritaScen(); ritaProps()
+}
+const satt = (k, v) => { const u = new URL(location.href); u.searchParams.set(k, v); history.replaceState(null, '', u) }
+document.body.addEventListener('click', (ev) => {
+  const b = ev.target.closest('button, .m-rad'); if (!b) return
+  const e = E()
+  if (b.dataset.v) { s.v = b.dataset.v; satt('v', s.v); $('#props').scrollTop = 0; rita() }
+  else if (b.dataset.s) { s.storlek = b.dataset.s; satt('s', s.storlek); rita() }
+  else if (b.id === 'aterstall') { Object.assign(s, { e: structuredClone(START), oppna: new Set(['layout', 'form']), flik: 'form', meny: null, galleri: false }); $('#props').scrollTop = 0; rita() }
+  else if (b.dataset.el) { if (START[b.dataset.el]) { s.el = b.dataset.el; rita() } }
+  else if (b.dataset.fall) { s.oppna.has(b.dataset.fall) ? s.oppna.delete(b.dataset.fall) : s.oppna.add(b.dataset.fall); ritaProps(); $(`[data-fall="${b.dataset.fall}"]`).focus() }
+  else if (b.dataset.flik) { s.flik = b.dataset.flik; ritaProps(); $(`[data-flik="${s.flik}"]`).focus() }
+  else if (b.dataset.form) { e.form = b.dataset.form; s.galleri = false; ritaScen(); ritaProps() }
+  else if (b.dataset.skugga) { e.skugga = b.dataset.skugga; ritaScen(); ritaProps() }
+  else if (b.dataset.galleri !== undefined) { s.galleri = !s.galleri; ritaProps() }
+  else if (b.dataset.vaxel) { e[b.dataset.vaxel] = !e[b.dataset.vaxel]; ritaScen(); ritaProps() }
+  else if (b.dataset.lagg) {
+    if (b.dataset.lagg === 'linje') { e.linje = 0.5; ritaScen(); ritaProps() }
+    else { s.meny = s.meny === b.dataset.lagg ? null : b.dataset.lagg; ritaProps() }
+  }
+  else if (b.dataset.laggTill) { if (b.dataset.laggTill === 'opacitet') e.opacitet = 90; else e.skugga = 'Mjuk'; s.meny = null; ritaScen(); ritaProps() }
+  else if (b.dataset.ta) { if (b.dataset.ta === 'linje') e.linje = 0; if (b.dataset.ta === 'effekter') { e.opacitet = 100; e.skugga = 'Ingen' } ritaScen(); ritaProps() }
+})
+document.body.addEventListener('change', (ev) => {
+  if (ev.target.id === 'elval') { s.el = ev.target.value; $('#props').scrollTop = 0; rita() }
+  else if (ev.target.id === 'tsval') { s.ts = ev.target.value; rita() }
+  else if (ev.target.dataset.vaxel) { const e = E(); e[ev.target.dataset.vaxel] = ev.target.checked; ritaScen(); ritaProps() }
+})
+$('#props').addEventListener('scroll', mat)
+addEventListener('keydown', (ev) => {
+  if (ev.target.closest('input, textarea, select, [contenteditable], [role="tablist"]')) return
+  if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  s.v = alla[(alla.indexOf(s.v) + (ev.key === 'ArrowRight' ? 1 : 3)) % 4]
+  satt('v', s.v); $('#props').scrollTop = 0; rita()
+})
+new ResizeObserver(() => { skala(); ritaScen(); mat() }).observe($('#mscen'))
+
+const q = new URLSearchParams(location.search)
+if (['nu', 'a', 'b', 'c'].includes(q.get('v'))) s.v = q.get('v')
+if (['1024x768', '1280x800'].includes(q.get('s'))) s.storlek = q.get('s')
+if (START[q.get('el')]) s.el = q.get('el')
+rita()
+</script>
+</body>
+</html>
