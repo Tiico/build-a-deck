@@ -7,7 +7,7 @@ import { assetRef, bytesOfDataUrl, imageTypeOf } from '../editor/assets.js'
 import { ASSET_MAX_BYTES } from '@byd/protocol'
 import { DropSays, dropSurface, oneFile } from '../editor/dropping.js'
 import { suggestFieldKey } from '../editor/fields.js'
-import { buildBlankProject, buildProject, type WizardState } from './build.js'
+import { buildBlankProject, buildProject, typedFields, type WizardState } from './build.js'
 import { frameFontSource, uploadFrameFont } from './fonts.js'
 import { NotMade } from './not-made.js'
 import { columnOf, defaultFields, DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
@@ -159,6 +159,8 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const face = faces[frame.id]
   const previewFonts = useMemo(() => (face ? { [frame.font.family]: face } : undefined), [face, frame.font.family])
   const row = s.rows[selectedRow] ?? s.rows[0] ?? firstRow(t)
+  // The card as the game will hold it, under the columns the fields were named (#476).
+  const card = useMemo(() => typedFields(row, s.fields), [row, s.fields])
 
   const suffix = (q: URLSearchParams) => {
     if (server) q.set('server', server)
@@ -476,7 +478,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         <span>{t(s.rows.length === 1 ? 'wizard.cards.count.one' : 'wizard.cards.count.other', { n: s.rows.length })}</span>
       </div>
       <div className="byd-wizard-card-workspace">
-        <div className="byd-wizard-preview"><CardPreview id="wizard-live" face={front} row={row} icons={{}} fonts={previewFonts} /><span>{t('wizard.preview')}</span>{!face && <span className="byd-wizard-preview-font">{t('wizard.preview.font')}</span>}</div>
+        <div className="byd-wizard-preview"><CardPreview id="wizard-live" face={front} row={card} icons={{}} fonts={previewFonts} /><span>{t('wizard.preview')}</span>{!face && <span className="byd-wizard-preview-font">{t('wizard.preview.font')}</span>}</div>
         <div className="byd-wizard-card-form">{s.fields.map((field) => field.kind === 'image' ? <div key={field.key} className="byd-wizard-image-field is-wide" data-image-field={field.key}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span><div
           role="group"
           aria-label={t('wizard.image.field', { label: field.label })}

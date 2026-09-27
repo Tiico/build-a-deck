@@ -297,3 +297,18 @@ describe('a file that is not a picture the game can hold (#476)', () => {
     expect(screen.queryByRole('img', { name: 'Förhandsvisning av Illustration' })).toBeNull()
   })
 })
+
+// The live card reads the same columns the game will have (#476): with the fields named as they
+// were written, the preview must be handed the card under those names too, or every field but the
+// title stands empty on it.
+describe('the live card after the fields are named (#476)', () => {
+  it('shows what is written in every field, under whatever name the field was given', async () => {
+    open(() => undefined)
+    fireEvent.change(screen.getByLabelText('Kostnad namn'), { target: { value: 'Pris' } })
+    fireEvent.change(screen.getByLabelText('kort 1 Pris'), { target: { value: '7' } })
+    fireEvent.change(screen.getByLabelText('kort 1 Text'), { target: { value: 'Flygande drake.' } })
+    const preview = document.querySelector('.byd-wizard-preview [data-card]') as HTMLElement
+    await waitFor(() => expect(preview.textContent).toContain('Flygande drake.'))
+    expect(preview.textContent).toContain('7')
+  })
+})

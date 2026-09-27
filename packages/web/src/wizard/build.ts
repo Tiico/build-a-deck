@@ -63,8 +63,9 @@ function tableOf(state: Pick<WizardState, 'players' | 'counters'>, t: T): Projec
   return openingSetup({ players: state.players, counters: state.counters ?? defaultCounters(t) }, words)
 }
 
-// Numbers become numbers, antal defaults to 1, everything else stays text.
-function typedFields(row: Record<string, string>, fields: Field[]): Record<string, string | number> {
+// Numbers become numbers, antal defaults to 1, everything else stays text — each under the column
+// its field was named (#476). The live card is handed the same, so it reads what the game will.
+export function typedFields(row: Record<string, string>, fields: Field[]): Record<string, string | number> {
   const out: Record<string, string | number> = {}
   // Each field is written under the column it was named (#476), and nothing else of the wizard's
   // own bookkeeping — the key a field was held by in the form — reaches the document.
