@@ -434,3 +434,19 @@ describe('klistra in på filten (#480)', () => {
     expect(back.style.cssText).toBe(before)
   })
 })
+
+// «＋ Yta per plats» när varje plats redan har en (#480 fynd 11): trycket gjorde ingenting och sade
+// ingenting.
+describe('per plats när alla platser redan har en (#480)', () => {
+  it('säger varför ingenting lades till', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    const zones = () => document.querySelectorAll('[data-zone-handle]').length
+    fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
+    await waitFor(() => expect(zones()).toBeGreaterThan(0))
+    const had = zones()
+    fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
+    expect(await screen.findByText('Varje plats har redan «Framför».')).toBeTruthy()
+    expect(zones()).toBe(had)
+  })
+})
