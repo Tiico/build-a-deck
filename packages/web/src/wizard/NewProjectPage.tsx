@@ -401,6 +401,11 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   return (
     <div className="byd-wizard" data-page="new" data-room={desk ? 'desk' : 'steps'}>
       <header>
+        {/* The way back, where the editor has its own (#476): the draft stays in the tab, and the
+            browser asks first if something is written. */}
+        <a className="byd-wizard-home" href={server ? `/?${new URLSearchParams({ server }).toString()}` : '/'}>
+          {t('editor.home')}
+        </a>
         <div><span>{t('wizard.eyebrow')}</span><h1>{t('wizard.title')}</h1></div>
         <span>{t('wizard.steps')}</span>
       </header>

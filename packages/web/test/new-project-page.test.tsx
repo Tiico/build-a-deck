@@ -229,3 +229,12 @@ describe('the game s name in the wizard (#476)', () => {
     expect(field.getAttribute('aria-describedby')).toContain(said.id)
   })
 })
+
+// `/new` had no way back at all (#476); the editor's is «Mina spel» at the top left, and so is this.
+describe('the way back from the wizard (#476)', () => {
+  it('leads to the games from the head of the page', () => {
+    open(() => undefined)
+    const home = within(document.querySelector('.byd-wizard > header') as HTMLElement).getByRole('link', { name: 'Mina spel' })
+    expect(home.getAttribute('href')).toBe(`/?server=${encodeURIComponent(run.http)}`)
+  })
+})
