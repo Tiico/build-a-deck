@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 05 — Huvudet med ett bord (#477 fynd 4)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Med ett bord igång bär huvudet som mest: namnet, sju flikar, Spara, «Nytt bord», «Uppdatera
+     bordet» och pilen. Vid 1024 klipptes primären till «Uppdatera bo» och namnet till «Sal's …».
+     L5 (#417) säger att «Nytt bord» står bredvid primären. Något måste ge plats, och det som
+     står på spel är den ordningen.
+
+       Nu  som på main före #477: primären klipps
+       A   «Nytt bord» flyttar in i pilens meny mellan 1024 och 1279 (byggt som kandidat)
+       B   «Nytt bord» står i pilens meny vid alla bredder
+       C   «Nytt bord» blir en ikonknapp «+» med namn och tooltip, bredvid primären
+
+     Huvudet ritas i verklig bredd (skalat om skärmen är smalare). Mätningen läser om det som
+     klipps. Linux-typsnitt är ~13 % bredare än SF Pro, så det som får plats här med 10 px över
+     klipps där. ──────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .scen { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 24px 16px; display: grid; gap: 28px; align-content: start; background: #15171c; }
+  .fonster { position: relative; }
+  .fonster:has(.meny) { z-index: 5; }
+  .fonster > .etikett { color: var(--quiet-2); font-size: 11px; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+  .skala { position: absolute; left: 0; top: 18px; transform-origin: 0 0; }
+  .huvud { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 16px; background: var(--chrome); border: 1px solid #3a3f4b; white-space: nowrap; }
+  .huvud[data-w='1024'] { gap: 6px; padding: 0 12px; }
+  .huvud[data-w='1024'] .ed-flikar button { padding: 0 4px; }
+  .huvud .hem { color: #c3cbdd; font-weight: 600; flex: none; }
+  .huvud strong { color: #fff; font-size: 15px; min-width: 3ch; overflow: hidden; text-overflow: ellipsis; }
+  .huvud .rev { flex: none; border: 0; border-radius: 6px; padding: 4px; color: var(--quiet); }
+  .huvud .sparat { flex: none; color: var(--quiet-2); }
+  .huvud .ed-flikar { flex: 0 1 auto; min-width: 0; }
+  .huvud .ed-knapp { flex: 0 1 auto; min-width: 44px; overflow: hidden; text-overflow: ellipsis; }
+  .huvud .ed-knapp.fast { flex: none; }
+  .split { display: inline-flex; flex: none; position: relative; }
+  .split .ed-knapp.primar { border-radius: 8px 0 0 8px; }
+  .split .pil { border-radius: 0 8px 8px 0; margin-left: 1px; padding: 0 12px; flex: none; }
+  .meny { position: absolute; right: 0; top: 50px; z-index: 3; width: 300px; display: grid; gap: 8px; padding: 8px; border: 1px solid #3a4050; border-radius: 10px; background: var(--panel); box-shadow: 0 18px 40px rgb(0 0 0 / 50%); white-space: normal; }
+  .meny .rad { padding: 8px 10px; border-radius: 8px; background: var(--card); color: #dce3f2; font-size: 12px; }
+  .meny button { justify-self: start; min-height: 40px; border: 1px solid #3b414e; border-radius: 8px; padding: 0 12px; background: transparent; color: #dce3f2; font: inherit; font-weight: 700; cursor: pointer; }
+  .ikon { width: 44px; padding: 0; font-size: 20px; line-height: 1; }
+  .klippt { outline: 2px dashed #f0a58a; outline-offset: -2px; }
+  .utanfor { position: fixed; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#477 fynd 4 · Var «Nytt bord» står när ett bord kör.</b> Två huvuden: 1024 och 1280. Öppna pilen ▾ för att se menyn. Streckat rött = klippt.</p>
+    <p>Byt spelnamn för att pröva längre namn: <button type="button" data-namn="Sal's Saloon">Sal's Saloon</button> <button type="button" data-namn="Skogens herrar och damer">Skogens herrar och damer</button></p>
+  </div>
+  <div class="matt" id="matt"></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="scen" id="scen"></div>
+<script>
+const s = { v: 'a', namn: "Sal's Saloon", meny: null }
+const NOT = {
+  nu: '<b>Nu.</b> Fem knappar efter flikarna, och flex krymper den sista: primären. <span class="minus">− «Uppdatera bo» vid 1024; namnet klipps.</span>',
+  a: '<b>A · Menyn under 1280.</b> «Nytt bord» står i huvudet från 1280 och i pilens meny under. <span class="plus">+ L5:s ordning står kvar där det finns plats. Byggt och mätt (editor-header-fit.spec.ts).</span> <span class="minus">− Två platser för samma knapp beroende på fönstret. Vid 1280 på engelska återstår 11 px — Linux klipper där.</span>',
+  b: '<b>B · Alltid i menyn.</b> Huvudet har Spara, primären och pilen; «Nytt bord» står i pilens meny vid varje bredd, ovanför «Alla bord». <span class="plus">+ En plats. ~90 px över vid alla bredder och i båda språken. Ett andra bord är det sällsynta valet; det ligger nu ett tryck bort, som «Alla bord».</span> <span class="minus">− Ändrar L5: «Nytt bord står bredvid» skrivs om.</span>',
+  c: '<b>C · Ikonknapp.</b> «Nytt bord» blir «+» (44 px) med namnet «Nytt bord» för skärmläsare och som tooltip. <span class="plus">+ Syns alltid, bredvid primären som L5 säger.</span> <span class="minus">− En ensam ikon i ett huvud där allt annat är ord (L13). «+» läses som «nytt kort» lika gärna som «nytt bord».</span>',
+}
+const FLIKAR = ['Kortvägg', 'Mall', 'Tabell', 'Symboler', 'Media', 'Regler', 'Bord']
+function huvud(w) {
+  const smal = w < 1280
+  const nyIHuvud = s.v === 'nu' || (s.v === 'a' && !smal)
+  const nyIMeny = (s.v === 'a' && smal) || s.v === 'b'
+  const ny = nyIHuvud ? '<button type="button" class="ed-knapp">Nytt bord</button>' : s.v === 'c' ? '<button type="button" class="ed-knapp ikon fast" aria-label="Nytt bord" title="Nytt bord">+</button>' : ''
+  const fast = s.v === 'nu' ? '' : ' fast'
+  const meny = s.meny === w ? `<div class="meny"><div class="rad">Bord 3f2a91c0 · rev 4 · 2 vid bordet · Öppna TV:n</div>${nyIMeny ? '<button type="button">Nytt bord</button>' : ''}<button type="button">Alla bord</button></div>` : ''
+  return `<div class="fonster"><div class="etikett">${w} px</div><div class="skala" data-skala="${w}"><div class="huvud" data-w="${smal ? 1024 : 1280}" style="width:${w}px">
+    <span class="hem">Mina spel</span><strong data-matt="namn">${s.namn.replace(/</g, '&lt;')}</strong><span class="rev">rev 4</span><span class="sparat">Sparat</span>
+    <div class="ed-flikar" role="tablist">${FLIKAR.map((f, i) => `<button role="tab" aria-selected="${i === 0}">${f}</button>`).join('')}</div>
+    <span class="who" style="flex:none">A</span><span class="spacer"></span>
+    <button type="button" class="ed-knapp kantad${fast}">Spara</button>${ny}
+    <span class="split"><button type="button" class="ed-knapp primar${fast}" data-matt="primär">Uppdatera bordet</button><button type="button" class="ed-knapp primar pil" data-pil="${w}" aria-expanded="${s.meny === w}">▾</button>${meny}</span>
+  </div></div></div>`
+}
+function rita() {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  document.getElementById('anteckning').innerHTML = NOT[s.v]
+  const scen = document.getElementById('scen')
+  scen.innerHTML = huvud(1024) + huvud(1280)
+  const ut = []
+  for (const sk of scen.querySelectorAll('[data-skala]')) {
+    const w = Number(sk.dataset.skala), f = Math.min(1, (scen.clientWidth - 32) / w)
+    sk.style.transform = `scale(${f})`; sk.parentElement.style.height = `${56 * f + 18}px`; sk.parentElement.style.width = `${w * f}px`
+    const h = sk.querySelector('.huvud')
+    for (const el of h.querySelectorAll('strong, .ed-knapp')) {
+      const k = el.scrollWidth > el.clientWidth + 1
+      el.classList.toggle('klippt', k)
+      if (k) ut.push(`${w}: ${el.dataset.matt ?? el.textContent.trim()} ${el.clientWidth}/${el.scrollWidth}`)
+    }
+    const spacer = h.querySelector('.spacer').getBoundingClientRect().width / f
+    ut.push(`${w}: luft <u>${Math.round(spacer)} px</u>`)
+  }
+  document.getElementById('matt').innerHTML = ut.map((x) => `<span>${x}</span>`).join('')
+}
+document.body.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.v) { s.v = b.dataset.v; s.meny = null; const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita() }
+  else if (b.dataset.namn) { s.namn = b.dataset.namn; rita() }
+  else if (b.dataset.pil) { const w = Number(b.dataset.pil); s.meny = s.meny === w ? null : w; rita(); document.querySelector(`[data-pil="${w}"]`)?.focus() }
+})
+addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && s.meny) { const w = s.meny; s.meny = null; rita(); document.querySelector(`[data-pil="${w}"]`)?.focus(); return }
+  if (e.target.closest('input, [role="tablist"]')) return
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  s.v = alla[(alla.indexOf(s.v) + (e.key === 'ArrowRight' ? 1 : 3)) % 4]; s.meny = null
+  const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita()
+})
+addEventListener('resize', rita)
+const q = new URLSearchParams(location.search).get('v')
+if (['nu', 'a', 'b', 'c'].includes(q)) s.v = q
+rita()
+</script>
+</body>
+</html>
