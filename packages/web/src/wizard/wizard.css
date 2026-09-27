@@ -112,6 +112,8 @@
 .byd-wizard-card-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-items: start; }
 .byd-wizard-preview { padding: 12px; display: grid; place-items: center; gap: 8px; border-radius: 18px; background: #dfe6dc; }
 .byd-wizard-preview > span { color: #4f5a4d; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+/* Why the card is not yet in its frame's face (#476): a sentence, not a caption. */
+.byd-wizard-preview > .byd-wizard-preview-font { max-width: 26ch; font-size: 12px; letter-spacing: 0; text-transform: none; text-align: center; }
 .byd-wizard-card-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; }
 .byd-wizard-card-form > label, .byd-wizard-image-field { display: grid; align-content: start; gap: 5px; }
 .byd-wizard-card-form label > span, .byd-wizard-image-field > span { display: flex; justify-content: space-between; gap: 8px; color: #454c44; font-size: 12px; font-weight: 700; }

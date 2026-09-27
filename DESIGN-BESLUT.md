@@ -3115,6 +3115,8 @@ Att ge rubrik och brödtext skilda familjer hade gett de skarpaste ramarna och l
 Ramarna skeppar sina ansikten som **projektets egna assets**, inte som filer i produkten.
 Familjen hämtas ur katalogen (#329, L27) när «Skapa spelet» trycks och laddas upp dit varje annan asset går, precis som när formgivaren själv väljer en familj i editorn; dokumentet bär därefter familjens stack, dess asset och dess licens, och versionen pinnar filen (B3).
 Priset är erkänt och är L27:s eget: katalogen nås från formgivarens webbläsare, så «Skapa spelet» behöver nät, och att den inte svarar sägs i stället för att tigas ihjäl.
+Förhandsvisningen ritas i ramens familj från det att en ram trycks (beslut 2026-09-27, #476): ett tryck på en ram är formgivarens handling i L27:s mening och hämtar den ramens fil ur katalogen, och «Skapa spelet» använder sedan samma fil i stället för att fråga igen.
+Innan någon ram tryckts nås katalogen inte alls, och förhandsvisningen säger «Ramens typsnitt hämtas när du väljer ram.» i stället för att visa kortet i ett reservtypsnitt som om det vore spelets (E2).
 Också Mörks Roboto Condensed går den vägen, trots att appen redan bär den familjen för filtens skull: K20 drar själv gränsen mot B3 — den inbakade filen är appens eget ansikte för sitt eget gränssnitt — och den ligger som `data:` i det renderblockerande arket just för att ingenting ska behöva hämtas.
 Att låta wizarden hämta den ur bygget hade krävt antingen en lös woff2 där, vilket `felt-font.spec.ts` fäller, eller en andra kopia av samma bytes i wizardens kod.
 

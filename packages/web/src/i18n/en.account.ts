@@ -134,6 +134,7 @@ export const enAccount = {
   'wizard.cards.body': 'The example cards help the editor show how the fields are really used.',
   'wizard.cards.count.one': '{n} card',
   'wizard.cards.count.other': '{n} cards',
+  'wizard.preview.font': 'The frame s typeface is fetched when you choose a frame.',
   'wizard.preview': 'Live preview',
   'wizard.image.field': 'Image for {label}',
   'wizard.image.preview': 'Preview of {label}',

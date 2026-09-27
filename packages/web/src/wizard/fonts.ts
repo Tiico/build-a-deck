@@ -25,11 +25,17 @@ import type { Frame } from './frames.js'
 // Filens bytes, ur katalogens par av adresser (L27): arket som svarar var filen ligger, och sedan
 // filen. Hela variabelfilen när familjen har en, så att en vikt vald ett år senare inte kräver
 // Google igen.
-async function bytesOf(catalog: CatalogFamily, t: T): Promise<Uint8Array<ArrayBuffer>> {
+// A file address the preview has already read out of the sheet (#476) is used as it is, so the
+// sheet is not asked for twice.
+async function bytesOf(catalog: CatalogFamily, t: T, known?: string): Promise<Uint8Array<ArrayBuffer>> {
   const said = () => new Error(t('fonts.catalog.silent'))
-  const sheet = await fetch(fileSheetHref(catalog)).catch(() => null)
-  if (!sheet?.ok) throw said()
-  const file = await fetch(fileInSheet(await sheet.text())).catch(() => null)
+  let src = known
+  if (!src) {
+    const sheet = await fetch(fileSheetHref(catalog)).catch(() => null)
+    if (!sheet?.ok) throw said()
+    src = fileInSheet(await sheet.text())
+  }
+  const file = await fetch(src).catch(() => null)
   if (!file?.ok) throw said()
   return new Uint8Array(await file.arrayBuffer())
 }
@@ -40,9 +46,9 @@ async function bytesOf(catalog: CatalogFamily, t: T): Promise<Uint8Array<ArrayBu
  * `'login'` när tjänsten vill ha ett konto först, precis som bilduppladdningen svarar — den
  * guidade starten har en dörr tillbaka hit och ska inte tappa utkastet på vägen.
  */
-export async function uploadFrameFont(t: T, http: string, frame: Frame): Promise<Record<string, ProjectFont> | 'login'> {
+export async function uploadFrameFont(t: T, http: string, frame: Frame, known?: string): Promise<Record<string, ProjectFont> | 'login'> {
   const catalog = frame.font
-  const bytes = await bytesOf(catalog, t)
+  const bytes = await bytesOf(catalog, t, known)
   const res = await fetch(`${http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': 'font/woff2' }, body: bytes }))
   if (res.status === 401) return 'login'
   if (!res.ok) throw new NotMade('wizard.error.upload')
@@ -56,4 +62,21 @@ export async function uploadFrameFont(t: T, http: string, frame: Frame): Promise
   // i editorn ska säga om posten: en familj som kom vetande svaret får inte stå med två tomma
   // rutor formgivaren förväntas fylla i (L27).
   return { [catalog.family]: { stack: catalogStack(catalog.family, catalog.category), asset: ref, licence: { licence: catalog.licence, by: catalog.by }, source: 'catalog' } }
+}
+
+/**
+ * Where the frame's face can be drawn from before the game exists (#476): the file's own address
+ * in the catalogue, read out of the same sheet `bytesOf` reads. Asked for when a frame is pressed
+ * and not before (L27, beslut 2026-09-27), so the preview stands in the face the game will carry
+ * instead of a fallback that lies about it (E2). `null` when the catalogue does not answer; the
+ * preview then keeps saying the face is on its way rather than pretending.
+ */
+export async function frameFontSource(catalog: CatalogFamily): Promise<{ stack: string; src: string } | null> {
+  const sheet = await fetch(fileSheetHref(catalog)).catch(() => null)
+  if (!sheet?.ok) return null
+  try {
+    return { stack: catalogStack(catalog.family, catalog.category), src: fileInSheet(await sheet.text()) }
+  } catch {
+    return null
+  }
 }

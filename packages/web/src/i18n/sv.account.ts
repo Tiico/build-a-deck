@@ -155,6 +155,7 @@ export const svAccount = {
   'wizard.cards.body': 'Exempelkorten hjälper editorn att visa hur fälten faktiskt används.',
   'wizard.cards.count.one': '{n} kort',
   'wizard.cards.count.other': '{n} kort',
+  'wizard.preview.font': 'Ramens typsnitt hämtas när du väljer ram.',
   'wizard.preview': 'Levande förhandsvisning',
   'wizard.image.field': 'Bild för {label}',
   'wizard.image.preview': 'Förhandsvisning av {label}',

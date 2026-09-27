@@ -8,7 +8,7 @@ import { ASSET_MAX_BYTES } from '@byd/protocol'
 import { DropSays, dropSurface, oneFile } from '../editor/dropping.js'
 import { suggestFieldKey } from '../editor/fields.js'
 import { buildBlankProject, buildProject, type WizardState } from './build.js'
-import { uploadFrameFont } from './fonts.js'
+import { frameFontSource, uploadFrameFont } from './fonts.js'
 import { NotMade } from './not-made.js'
 import { defaultFields, DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
 import { useT, type Key, type T } from '../i18n/index.js'
@@ -135,6 +135,25 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   // låser den guidade utgången är ett spel utan kort eller fält, vilket den inte kan göra något av.
   const hasCards = s.rows.length > 0 && s.fields.length > 0
   const front = useMemo(() => frame.front(s.fields), [frame, s.fields])
+  // Each frame's face, once a press on that frame has fetched it (#476, L27): the preview is drawn
+  // in it from then on, and until then it says the face comes with the choice.
+  // The asking itself is kept too, so «Skapa» pressed before it has answered waits for the same
+  // answer instead of asking the catalogue a second time.
+  const [faces, setFaces] = useState<Record<string, { stack: string; src: string }>>({})
+  const asking = useRef(new Map<string, Promise<{ stack: string; src: string } | null>>())
+  const pickFrame = (id: string) => {
+    setS((current) => ({ ...current, frame: id }))
+    const chosen = FRAMES.find((candidate) => candidate.id === id)
+    if (!chosen || asking.current.has(id)) return
+    const asked = frameFontSource(chosen.font)
+    asking.current.set(id, asked)
+    void asked.then((face) => {
+      if (face) setFaces((known) => ({ ...known, [id]: face }))
+      else asking.current.delete(id)
+    })
+  }
+  const face = faces[frame.id]
+  const previewFonts = useMemo(() => (face ? { [frame.font.family]: face } : undefined), [face, frame.font.family])
   const row = s.rows[selectedRow] ?? s.rows[0] ?? firstRow(t)
 
   const suffix = (q: URLSearchParams) => {
@@ -178,7 +197,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         if (uploaded === 'login') throw login()
         // And the frame's own face with them (#420): the game is set in a typeface it carries,
         // so the first screen in the editor is a card that can be printed as it stands.
-        const fonts = await uploadFrameFont(t, http, frame)
+        const fonts = await uploadFrameFont(t, http, frame, (await asking.current.get(frame.id))?.src)
         if (fonts === 'login') throw login()
         doc = buildProject(uploaded, t, fonts)
       }
@@ -418,7 +437,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         </div>)}</div>
         <div className="byd-wizard-add-fields"><button type="button" onClick={() => addField('text')}>{t('wizard.add.text')}</button><button type="button" onClick={() => addField('number')}>{t('wizard.add.number')}</button><button type="button" onClick={() => addField('image')}>{t('wizard.add.image')}</button></div>
       </div>
-      <fieldset className="byd-wizard-frames"><legend>{t('wizard.frame')}</legend>{FRAMES.map((candidate) => <button key={candidate.id} type="button" className="byd-choice" aria-pressed={s.frame === candidate.id} onClick={() => setS({ ...s, frame: candidate.id })}>{t(candidate.name)}</button>)}</fieldset>
+      <fieldset className="byd-wizard-frames"><legend>{t('wizard.frame')}</legend>{FRAMES.map((candidate) => <button key={candidate.id} type="button" className="byd-choice" aria-pressed={s.frame === candidate.id} onClick={() => pickFrame(candidate.id)}>{t(candidate.name)}</button>)}</fieldset>
     </section>
   )
   const korten = (
@@ -434,7 +453,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         <span>{t(s.rows.length === 1 ? 'wizard.cards.count.one' : 'wizard.cards.count.other', { n: s.rows.length })}</span>
       </div>
       <div className="byd-wizard-card-workspace">
-        <div className="byd-wizard-preview"><CardPreview id="wizard-live" face={front} row={row} icons={{}} /><span>{t('wizard.preview')}</span></div>
+        <div className="byd-wizard-preview"><CardPreview id="wizard-live" face={front} row={row} icons={{}} fonts={previewFonts} /><span>{t('wizard.preview')}</span>{!face && <span className="byd-wizard-preview-font">{t('wizard.preview.font')}</span>}</div>
         <div className="byd-wizard-card-form">{s.fields.map((field) => field.kind === 'image' ? <div key={field.key} className="byd-wizard-image-field is-wide" data-image-field={field.key}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span><div
           role="group"
           aria-label={t('wizard.image.field', { label: field.label })}
