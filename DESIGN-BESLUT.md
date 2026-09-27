@@ -940,6 +940,11 @@ Vridningen och luften lyfter observatören över den tröskeln på båda telefon
 Vid 320 är marginalen två pixlar, och det som bär den är skalan och inte regeln — så en filt som krymper igen möter kortens golv innan namnen möter sitt.
 De två deklarationerna i `table.css` står numera som en och säger det om sig själva; att laga det är en annan skivas sak.
 
+*Reviderat 2026-09-27 (#485 fynd 9, beställarens beslut A efter prototyp 34):* under skrivbordsbredd håller ett tryck på ett kort upp det i ett ark över filten, med «Stäng», som spelarens telefon gör — en pekare som vilar på ett kort finns inte där, så ett tryck är hur ögat säger vilket.
+Lådan «Senast och platser» öppnas där som ett ark över en nedtonad filt i stället för att ta sin plats från den, så filten behåller den storlek #76 mätte också med lådan öppen; ett tryck på filten, Escape eller «Mer» stänger den.
+Det vänder #6:s «under, aldrig över» under skrivbordsbredd: vid 390 krympte en öppen låda filten från 735 till 319 px och korten till 16 px, vilket inte är att se bordet.
+På skrivbordet är kolumnen oförändrad.
+
 ### C9. Livscykel: persistenta bord med uttrycklig avslutning (fråga 25)
 
 Tillståndet överlever att alla kopplar ner, så gruppen kan återuppta med samma ställning och samma platser.

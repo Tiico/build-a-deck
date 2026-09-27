@@ -141,3 +141,23 @@ describe('a door that will not answer', () => {
     expect(said.join('\n')).toContain('"A"')
   })
 })
+
+// A table that has ended is locked (C9), and its door is shut with it (#485, fynd 3): the room code
+// still names it, but the picker is told it is over and the door hands out no token, so nobody new
+// lands in a finished game with a survey about a game they never played.
+describe('the door of a table that has ended', () => {
+  it('says the table is over and admits nobody, to a seat or to watch', async () => {
+    const { id, code, hostKey } = await createRoom(run.http)
+    const table = keep(await run.connectTable(id, hostKey))
+    expect(await table.send(null, { v: 'session.end' })).toMatchObject({ t: 'ack' })
+
+    const looked = await fetch(`${run.http}/rooms/${code}`)
+    expect(looked.status).toBe(410)
+    expect(await looked.json()).toEqual({ error: 'session ended', session: id })
+    expect((await post(`/rooms/${code}/join`, { name: 'Ada', seat: 'A' })).status).toBe(410)
+    const watching = await post(`/rooms/${code}/join`, { name: 'Tittare' })
+    expect(watching.status).toBe(410)
+    expect(JSON.stringify(await watching.json())).not.toContain('token')
+  })
+})
+

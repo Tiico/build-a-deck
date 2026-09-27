@@ -55,8 +55,15 @@ describe('the way out of a state', () => {
     }
   })
 
-  it.each(VOICES)('offers a login and a way on when the thing exists but is not yours (%s)', (voice) => {
+  // A login where there may be an account to log in with; a guest has a room code and no account,
+  // and her way on is the seat picker, the one primary answer (#485).
+  it.each(VOICES.filter((v) => v !== 'phone'))('offers a login and a way on when the thing exists but is not yours (%s)', (voice) => {
     expect(noticeFor('forbidden', voice).actions.map((a) => a.kind)).toContain('login')
+  })
+  it('offers a guest the seat picker, once and as the one primary, and no login', () => {
+    const actions = noticeFor('forbidden', 'phone').actions
+    expect(actions.map((a) => a.kind)).toEqual(['rescan', 'home'])
+    expect(actions.filter((a) => a.primary).map((a) => a.kind)).toEqual(['rescan'])
   })
 
   it.each(VOICES)('always leaves a way out of a state a person has to decide about (%s)', (voice) => {

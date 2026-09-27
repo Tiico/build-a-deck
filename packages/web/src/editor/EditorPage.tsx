@@ -24,7 +24,7 @@ import type { ProjectClient, Textures } from './ProjectClient.js'
 import { loginUrl } from '../account/api.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
-import { noticeFor } from '../status/notice.js'
+import { noticeFor, refusalText, loggedOutNotice, asOf } from '../status/notice.js'
 import { chordOf, isTyping, passedToEditor } from './keys.js'
 import { mediaInGame } from './assets.js'
 import { previewMotifs } from './motifs.js'
@@ -109,7 +109,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // The tab says which game is open, and what is wrong with it while something is (#12).
   // Which tab is open is part of where the designer is (#477), so the browser's tab says it too.
   const part = MODES.find(([m]) => m === mode)?.[1]
-  usePageTitle({ state: projectId ? (fault === 'unauthorized' ? null : fault ?? (client ? null : 'loading')) : 'missing', game: client?.doc.name ?? null, part: part ? t(part) : null })
+  usePageTitle({ state: projectId ? (fault === 'unauthorized' ? null : fault === 'loggedOut' ? 'forbidden' : fault ?? (client ? null : 'loading')) : 'missing', game: client?.doc.name ?? null, part: part ? t(part) : null })
   // What the header has standing over the work: the history (B4), which opens from the revision
   // where the version is already named, or who has the game (D3), which opens from the faces. One
   // state rather than two, because two panels over each other cover the work and each other — on
@@ -267,6 +267,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const cropped = client?.doc.pictures
   const deckMotifs = useMemo(() => previewMotifs(motifs, http, cropped), [motifs, http, cropped])
 
+  const line = useLineState(client?.lineDown ?? false)
   if (!projectId) return <StatusNotice notice={noticeFor('missing', 'editor', t)} surface="page" links={links} />
   if (fault === 'unauthorized') {
     // Not logged in (G1): to the login card and back here after.
@@ -275,7 +276,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   }
   // A project that is missing, shut or out of reach says so in the editor's own words, with a
   // way back and — where waiting can help — a way to ask again (#12, UX-07).
-  if (fault) return <StatusNotice notice={noticeFor(fault, 'editor', t)} surface="page" links={links} onRetry={retry} />
+  if (fault && fault !== 'loggedOut' && !client) return <StatusNotice notice={noticeFor(fault, 'editor', t)} surface="page" links={links} onRetry={retry} />
   if (!client) return <StatusNotice notice={noticeFor('loading', 'editor', t)} surface="page" links={links} />
   const doc = client.doc
   if (PlaytestPrototype && params.has('variant')) return <Suspense fallback={<p>Laddar prototyp…</p>}><PlaytestPrototype doc={doc} revision={client.rev} http={http} /></Suspense>
@@ -288,7 +289,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     setSaving(true)
     const result = await client.save()
     setSaving(false)
-    setNotice(result.ok ? null : result.reason === 'conflict' ? t('editor.conflict') : result.reason)
+    // Never the server's own words (#485): a reason is translated, or said as the one it is not.
+    setNotice(result.ok ? null : result.reason === 'conflict' ? t('editor.conflict') : refusalText(result.reason, t))
     return result.ok
   }
   // Out of the editor and back to the games. Work that differs from the saved project is asked
@@ -517,7 +519,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   )
 
   return (
-    <div className="byd-editor" data-page="editor" data-mode={mode} data-room={room}>
+    <>
+    <div className="byd-editor" data-page="editor" data-mode={mode} data-room={room} {...(fault ? { inert: true } : {})}>
       <header>
         <a
           ref={leaveRef}
@@ -634,10 +637,18 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={setNotice} />
         </div>
       )}
-      {client.lineDown && (
-        <p className="byd-editor-offline" role="status" data-offline>
-          {t('editor.offline')}
-        </p>
+      {/* The line to the project, in D5's own states (#485, fynd 8): gone, with how old the
+          picture is and a way to try now, and back, said once — on the bar surface, over the work. */}
+      {(client.lineDown || line.resumed) && (
+        <div className="byd-editor-offline" data-offline={client.lineDown ? '' : undefined}>
+          <StatusNotice
+            notice={noticeFor(client.lineDown ? 'dropped' : 'resumed', 'editor', t)}
+            surface="bar"
+            links={links}
+            onRetry={() => client.reconnectNow()}
+            asOf={client.lineDown ? line.since : null}
+          />
+        </div>
       )}
       {!client.mayEdit && (
         <p className="byd-editor-readonly" role="status" data-role-note>
@@ -689,6 +700,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         </EditorStages>
       )}
     </div>
+    {/* A game deleted while it was open (#485): said over the work, which stays on the page and
+        out of reach, rather than in place of it. */}
+    {fault && <StatusNotice notice={fault === 'loggedOut' ? loggedOutNotice(t) : noticeFor(fault, 'editor', t)} surface="card" links={links} onRetry={retry} />}
+    </>
   )
 }
 
@@ -813,4 +828,28 @@ function HostSeats({ client, sessionId, hostKey, ws, onNotice }: { client: Proje
       ))}
     </span>
   )
+}
+
+// When the line to the project went down, as the clock on this screen read it, and whether it has
+// just come back (#485): the two things D5's bar says about a line beyond that it is down.
+const RESUMED_MS = 2500
+function useLineState(down: boolean): { since: string | null; resumed: boolean } {
+  // Stamped when the break is first drawn and kept while it lasts, the way `useLiveStatus` stamps
+  // a route's picture: the age of the data, never the age of the message.
+  const stamp = useRef<string | null>(null)
+  if (!down) stamp.current = null
+  else stamp.current ??= asOf(new Date())
+  const [resumed, setResumed] = useState(false)
+  const was = useRef(down)
+  useEffect(() => {
+    if (down) setResumed(false)
+    else if (was.current) setResumed(true)
+    was.current = down
+  }, [down])
+  useEffect(() => {
+    if (!resumed) return
+    const timer = setTimeout(() => setResumed(false), RESUMED_MS)
+    return () => clearTimeout(timer)
+  }, [resumed])
+  return { since: stamp.current, resumed }
 }

@@ -94,7 +94,6 @@ export const enEditor = {
   'editor.table.failed': '{n} cards could not be rendered',
   'editor.table.roomCode': 'room code',
   'editor.table.newCode': 'New code',
-  'editor.offline': 'No connection to the game. What you write stays here until the line is back.',
   'editor.role.tester': 'You are a test lead here: you can start tables and read the game, but not change it.',
   'editor.role.viewer': 'You are a viewer here: you can read the game, but not change it.',
   'editor.seats.at': 'at the table:',

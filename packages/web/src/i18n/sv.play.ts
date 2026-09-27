@@ -356,7 +356,7 @@ export const svPlay = {
   // Åskådaren (C8).
   'observer.name': 'observatör',
   'observer.banner': 'Du är observatör: du ser allas händer och alla högar. Alla vet att du är här.',
-  'observer.watching': '{name} tittar på',
+  'observer.watching': '{name} tittar på · ser allt',
   // Fördjupningen bakom frågetecknet (L32:s tillägg, #305). Att hon syns för alla står kvar på
   // ytan i `observer.banner`: synlighetsupplysningar flyttar aldrig in i lådan.
   'observer.help.topic': 'observatörsläget',
@@ -368,6 +368,7 @@ export const svPlay = {
   // Att sätta sig vid bordet (K12).
   'join.code.missing': 'Ingen rumskod angiven.',
   'join.code.gone': 'Rumskoden {code} gäller inte längre. Be värden om en ny.',
+  'join.ended': 'Det här bordet är avslutat. Be värden starta ett nytt.',
   'join.code.expired': 'Rumskoden gäller inte längre. Be värden om en ny.',
   'join.seat.taken': 'Platsen togs precis av någon annan. Välj en annan.',
   // Kvitteringen för den som just lämnat: hon kommer tillbaka hit, och får veta vad som hände

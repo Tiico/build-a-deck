@@ -27,7 +27,7 @@ import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { statusLinks, wayBack } from '../status/links.js'
-import { noticeFor } from '../status/notice.js'
+import { guestNotice } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT } from '../i18n/index.js'
 
@@ -102,10 +102,10 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   // Distance mode has a seat like any other screen with one, and sits down the same way.
   useSitDown(client, view, seat, name)
 
-  if (!sessionId || !seat) return <StatusNotice notice={noticeFor('missing', 'table', t)} surface="page" links={links} />
+  if (!sessionId || !seat) return <StatusNotice notice={guestNotice('missing', t)} surface="page" links={links} />
   // Not admitted, or kicked (DRIFT §9): a shut door rather than a broken line.
-  if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'table', t), text: refusedText(refused, t) }} surface="page" links={links} />
-  if (!view || !client) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
+  if (refused) return <StatusNotice notice={{ ...guestNotice('forbidden', t), text: refusedText(refused, t) }} surface="page" links={links} />
+  if (!view || !client) return <RouteStatus status={live.state === 'missing' ? { ...live, notice: guestNotice('missing', t) } : live} over="card" links={links} onRetry={conn.retry} />
 
   const me = view.seats.find((s) => s.id === seat)
   // Which shape the hand takes (K17's revision of 2026-09-14, #77). In a landscape window it is a
@@ -217,7 +217,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
         </div>
       )}
       <SeatSurvey view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
-      <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
+      <RouteStatus status={live.state === 'missing' ? { ...live, notice: guestNotice('missing', t) } : live} over="card" links={links} onRetry={conn.retry} />
     </>
   )
 }

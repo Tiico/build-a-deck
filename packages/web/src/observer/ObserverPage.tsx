@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
 import '../table/table.css'
 import '../player/player.css'
@@ -6,10 +6,14 @@ import { TableRenderer } from '../table/TableRenderer.js'
 import { turnToFit } from '../table/fit.js'
 import { useRoom } from '../table/useRoom.js'
 import { TvChrome } from '../table/TvChrome.js'
+import { RewindFrame } from '../table/RewindFrame.js'
+import { previewOf } from '../table/rewind.js'
+import { useActivityLive } from '../table/useActivityLive.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { useShuffles } from '../table/shuffle.js'
 import { refusedText } from '../player/SessionOverlays.js'
 import { FlagSheet } from '../player/SessionSheets.js'
+import { HeldCard } from '../player/HeldCard.js'
 import { Survey } from '../player/Survey.js'
 import { submitSurvey } from '../player/surveyApi.js'
 import { claimUrl } from '../account/api.js'
@@ -18,7 +22,7 @@ import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { statusLinks } from '../status/links.js'
-import { noticeFor } from '../status/notice.js'
+import { guestNotice } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useRefusal } from '../status/Refusal.js'
 import { Help } from '../editor/HelpDrawer.js'
@@ -41,6 +45,9 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   const conn = useTableClient(sessionId ? { url, sessionId, seat: null, observer: name, ...(token ? { token } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
   const { client, view, status, activity, observers, refused } = conn
   const live = useLiveStatus(conn, 'table', timing)
+  // What happens at the table, said in the room's live regions as the table screen says it (#485):
+  // hers were silent the whole session. She sits at no seat, so nothing is said as «du».
+  useActivityLive(conn.activity, conn.view, null)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
   usePageTitle({ state: sessionId ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code') ?? sessionId })
   // The shuffle, fanned for the observer as for the room (L35).
@@ -52,6 +59,33 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   const [drawer, setDrawer] = useState(false)
   const flagged = useRefusal('table')
   const [inspecting, setInspecting] = useState<VisibleComponentState | null>(null)
+  // Below the desk (#485, beslut A efter prototyp 34) a tap holds the card up in a sheet over the
+  // table, as the player's phone does, and the column is a sheet over the table too: the table
+  // keeps its size either way. There is no pointer to rest on a card there, so a tap is how the
+  // eye says which one.
+  const narrow = useNarrow()
+  const [held, setHeld] = useState<VisibleComponentState | null>(null)
+  const handle = useRef<HTMLDivElement>(null)
+  const [handleH, setHandleH] = useState(0)
+  useEffect(() => {
+    const el = handle.current
+    if (!el) return
+    const measure = () => setHandleH(el.getBoundingClientRect().height)
+    measure()
+    // A browser without it (a test's jsdom) measures once, which is all it lays out anyway.
+    if (typeof ResizeObserver === 'undefined') return
+    const watch = new ResizeObserver(measure)
+    watch.observe(el)
+    return () => watch.disconnect()
+  })
+  useEffect(() => {
+    if (!drawer || !narrow) return
+    const shut = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDrawer(false)
+    }
+    document.addEventListener('keydown', shut)
+    return () => document.removeEventListener('keydown', shut)
+  }, [drawer, narrow])
   const [toast, setToast] = useState<string | null>(null)
   // The window she is holding, watched rather than read once (K9, #75): `useRoom`.
   const room = useRoom()
@@ -69,10 +103,10 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
       .catch(() => setVersion('?'))
   }, [sessionId, view?.ended, version, http])
 
-  if (!sessionId) return <StatusNotice notice={noticeFor('missing', 'table', t)} surface="page" links={links} />
+  if (!sessionId) return <StatusNotice notice={guestNotice('missing', t)} surface="page" links={links} />
   // Not admitted, or kicked (DRIFT §9): a shut door rather than a broken line.
-  if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'table', t), text: refusedText(refused, t) }} surface="page" links={links} />
-  if (!view || !client) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
+  if (refused) return <StatusNotice notice={{ ...guestNotice('forbidden', t), text: refusedText(refused, t) }} surface="page" links={links} />
+  if (!view || !client) return <RouteStatus status={live.state === 'missing' ? { ...live, notice: guestNotice('missing', t) } : live} over="card" links={links} onRetry={conn.retry} />
 
   // A landscape table in a portrait window is turned a quarter so that its long side runs down
   // the screen and the felt fills the width (C5, C8, #76). The observer sits at no seat, so
@@ -86,21 +120,27 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
     <>
       {/* An ended table is one more state of D5's kind: the picture behind the survey is not to be
           acted on, so it is out of reach the same way a stale one is (UX-38, #83). */}
-      <div data-page="observe" data-drawer={drawer ? 'open' : 'shut'} data-status={status} className={`byd-fit byd-observer${live.stale ? ' byd-status-stale' : ''}`} {...(live.stale || view.ended ? { inert: true } : {})}>
+      <div data-page="observe" data-drawer={drawer ? 'open' : 'shut'} data-status={status} className={`byd-fit byd-observer${live.stale ? ' byd-status-stale' : ''}`} style={{ ['--byd-observer-handle-h' as string]: `${handleH}px` }} {...(live.stale || view.ended ? { inert: true } : {})}>
       <TvChrome
-        view={view}
+        view={previewOf(view)}
         activity={activity}
         inspecting={inspecting}
         faces={http}
         observers={observers}
         note={<p className="byd-observer-note">{t('observer.banner')}</p>}
       >
-        <TableRenderer view={view} mode="tv" camera="hand" {...(sessionId ? { remember: `observe:${sessionId}` } : {})} rotate={turn} faces={http} onInspect={setInspecting} shuffles={shuffles} />
+        {/* A proposed rewind as the table screen shows it (#485, K13): the table it would bring back,
+            in the same frame and with the same words. */}
+        <RewindFrame view={view} activity={activity}>
+          <TableRenderer view={previewOf(view)} mode="tv" camera="hand" {...(sessionId ? { remember: `observe:${sessionId}` } : {})} rotate={turn} faces={http} onInspect={setInspecting} {...(narrow ? { onPick: setHeld } : {})} shuffles={shuffles} />
+        </RewindFrame>
       </TvChrome>
       {/* The handle (#6): a row of its own under the table, never a banner over it. What she is
           is always on it; the rest of the sentence, the feed and the seats are one press away and
           open under the table rather than across it. */}
-      <div className="byd-observer-handle">
+      {/* The drawer as a sheet (#485): the table behind it is dimmed and a tap on it closes it. */}
+      {drawer && narrow && <div className="byd-observer-scrim" aria-hidden="true" onClick={() => setDrawer(false)} />}
+      <div className="byd-observer-handle" ref={handle}>
         <span className="byd-observer-mark">
           <i aria-hidden="true" />
           {t('observer.watching', { name })}
@@ -120,7 +160,12 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
           {t('session.flag')}
         </button>
       </div>
-      {toast && <div className="byd-toast">{toast}</div>}
+      {held && <HeldCard card={held} faces={http} onClose={() => setHeld(null)} />}
+      {toast && (
+        <div className="byd-toast" role="status">
+          {toast}
+        </div>
+      )}
       {sheet && (
         <FlagSheet
           refusal={flagged}
@@ -139,7 +184,21 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
       )}
       </div>
       {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} who={name} version={version ?? '…'} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat: null, observer: true, answers })} />}
-      <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
+      <RouteStatus status={live.state === 'missing' ? { ...live, notice: guestNotice('missing', t) } : live} over="card" links={links} onRetry={conn.retry} />
     </>
   )
+}
+
+// Below the desk, where the column is a drawer (the same line `table.css` draws at 1023 px).
+const NARROW = '(max-width: 1023px)'
+function useNarrow(): boolean {
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(NARROW).matches)
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const query = window.matchMedia(NARROW)
+    const change = () => setNarrow(query.matches)
+    query.addEventListener('change', change)
+    return () => query.removeEventListener('change', change)
+  }, [])
+  return narrow
 }

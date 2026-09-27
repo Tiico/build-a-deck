@@ -50,7 +50,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
   // And the two ways it can fail are two different states — a code the server will not honour is
   // a room that is gone, a line that answers nothing is the service being unreachable.
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const [lookup, setLookup] = useState<'gone' | 'offline' | null>(null)
+  const [lookup, setLookup] = useState<'gone' | 'ended' | 'offline' | null>(null)
   const [attempt, setAttempt] = useState(0)
   useEffect(() => {
     if (!code) return
@@ -65,7 +65,8 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
         if (r.ok) setSessionId(((await r.json()) as { session: string }).session)
         // A code the server has heard of and will not honour is a room that is gone; anything
         // else it answers, or does not answer, is the service.
-        else setLookup(r.status === 404 || r.status === 410 ? 'gone' : 'offline')
+        // A table that has ended is locked (C9, #485): its code still names it, but it is over.
+        else setLookup(r.status === 410 ? 'ended' : r.status === 404 ? 'gone' : 'offline')
       })
       .catch(() => {
         if (!alive) return
@@ -101,7 +102,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
   const saysId = 'byd-join-name-says'
   // The room is the tab's name here (#12): a phone with three tabs open has to be able to tell
   // which room each of them is waiting to get into.
-  usePageTitle({ state: !code ? 'missing' : lookup === 'gone' ? 'missing' : lookup ?? live.state, room: code?.toUpperCase() ?? null })
+  usePageTitle({ state: !code ? 'missing' : lookup === 'gone' || lookup === 'ended' ? 'missing' : lookup ?? live.state, room: code?.toUpperCase() ?? null })
 
   const free = view?.seats.filter((s) => s.name === null) ?? []
   const spread = along(view?.seats ?? [])
@@ -121,6 +122,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
   // No code at all is not a table that ended: it is an address without the one thing it needs.
   if (!code) return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), text: t('join.code.missing') }} surface="page" links={links} />
   if (lookup === 'gone') return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), text: t('join.code.gone', { code: code.toUpperCase() }) }} surface="page" links={links} />
+  if (lookup === 'ended') return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), heading: t('status.missing.table.heading'), text: t('join.ended') }} surface="page" links={links} />
   if (lookup === 'offline') return <StatusNotice notice={noticeFor('offline', 'phone', t)} surface="page" links={links} onRetry={retry} />
   if (!view || !sessionId) return <RouteStatus status={live} over="sheet" links={links} onRetry={retry} />
 

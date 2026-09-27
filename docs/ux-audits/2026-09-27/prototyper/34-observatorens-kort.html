@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 34 — Observatörens kort (#485 fynd 9)</title>
+<link rel="stylesheet" href="proto.css">
+<link rel="stylesheet" href="telefon.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Observatören på en telefon (/observe): ett tryck på ett kort sätter inspektionen i en aside
+     som är `display: none` när lådan är stängd, och när lådan öppnas tar den 1,7 av 3 delar av
+     höjden från filten. Beslutet är hur hon tittar på ett kort, och vad den öppna lådan gör med
+     filten.
+
+       Nu  som i dag: inget syns vid tryck; lådan under filten, filten krymper
+       A   ark över filten: trycket håller upp kortet (.byd-inspect); lådan är ett ark över filten
+       B   lådan som ark: kortet, platserna och Senast i ett ark; trycket öppnar arket på kortet
+       C   som i dag, men lådan lägger sig över filten och trycket öppnar den vid Inspektion
+
+     Mätningen i raden är filtens rad och filtens egen storlek i telefonens pixlar. ──────── */
+  .tel-scen { gap: var(--s5); }
+  .tel-vy { overflow: hidden; }
+
+  /* --- observatörens sida, ur table.css (.byd-observer, [data-tv], TV-filten) ----------------- */
+  .obs { position: absolute; inset: 0; display: flex; flex-direction: column; background: #0d0f14; color: #e8eaf0; font: 16px system-ui, sans-serif; }
+  .obs-tv { position: relative; flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+  .obs[data-lada='under'] .obs-tv { grid-template-rows: minmax(0, 1.3fr) minmax(0, 1.7fr); }
+  .obs-main { position: relative; min-height: 0; overflow: hidden; }
+
+  /* Handtaget: två rader under 600 px — vem hon är, och det hon kan göra. */
+  .obs-handle { flex: 0 0 auto; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; padding: 6px 14px; background: #1a1710; border-top: 1px solid #3a3220; position: relative; z-index: 6; }
+  .obs-mark { grid-column: 1 / -1; display: inline-flex; align-items: center; gap: 9px; min-height: 44px; color: #ffd98a; font-weight: 700; }
+  .obs-mark i, .obs-pill i { width: 10px; height: 10px; border-radius: 50%; background: #ffd98a; box-shadow: 0 0 0 4px rgb(255 217 138 / 28%); }
+  .obs-handle button { min-height: 44px; min-width: 44px; padding: 0 16px; border: 1px solid #5a4a22; border-radius: 999px; background: #2a2417; color: #ffd98a; font: inherit; font-weight: 800; cursor: pointer; }
+  .obs-handle .obs-flag { background: #ffd98a; border-color: #ffd98a; color: #2a2417; }
+  .obs-handle .obs-more::after { content: ' ▲'; }
+  .obs-handle .obs-more[aria-expanded='true']::after { content: ' ▼'; }
+  .obs-handle .obs-help { display: inline-grid; place-items: center; width: 44px; padding: 0; margin: 0 -8px; border: 0; background: transparent; }
+  .obs-handle .obs-help span { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 1px solid #9aa3b8; border-radius: 999px; font-size: 12px; font-weight: 700; color: #eee; }
+
+  /* Filten i TV-läge: mörk, kvartsvarvad (C8, #76). */
+  .filt { position: absolute; background: #151924; border: 1px solid #262b3a; border-radius: 14px; font: 600 11px/1.2 system-ui, sans-serif; }
+  .zon { position: absolute; border: 1px solid #2f3547; border-radius: 10px; }
+  .z-namn { position: absolute; left: 8px; bottom: calc(100% + 4px); font-size: 12px; letter-spacing: 0; text-transform: uppercase; color: #7d8597; white-space: nowrap; pointer-events: none; }
+  .zon.v .z-namn { left: 0; }
+  .chip { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; background: #f0b64a; color: #1c1c1c; display: grid; place-items: center; font: 700 10px system-ui; box-shadow: 0 2px 4px rgb(0 0 0 / 50%); }
+  .kort { position: absolute; padding: 0; border: 1px solid rgb(0 0 0 / 35%); border-radius: 4px; background: hsl(var(--hue, 0) 40% 86%); color: #1c1c1c; font: 600 8px/1.1 system-ui, sans-serif; text-align: left; overflow: hidden; cursor: pointer; box-shadow: 0 1px 3px rgb(0 0 0 / 50%); }
+  .kort span { display: block; padding: 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .kort[data-vald='true'] { outline: 2px solid #ffd98a; outline-offset: 1px; z-index: 3; }
+  .hog-n { position: absolute; transform: translate(-50%, -50%); min-width: 30px; height: 30px; padding: 0 6px; border-radius: 999px; background: #e8eaf0; color: #0d0f14; display: grid; place-items: center; font: 800 15px system-ui; pointer-events: none; z-index: 2; }
+  .hog-namn { position: absolute; transform: translateX(-50%); font-size: 12px; letter-spacing: 0; text-transform: uppercase; color: #7d8597; white-space: nowrap; pointer-events: none; }
+  .hand-n { position: absolute; transform: translate(-50%, -50%); width: 22px; height: 22px; border-radius: 50%; background: #0d0f14; color: #e8eaf0; display: grid; place-items: center; font: 800 11px system-ui; }
+  .platsnamn { position: absolute; transform: translate(-50%, -50%); padding: 1px 6px; border-radius: 999px; background: var(--seat); color: #0d0f14; font: 800 10px system-ui; white-space: nowrap; pointer-events: none; }
+
+  /* Asiden, ur [data-tv] > aside och mediafrågan under 1024 px. */
+  .obs-aside { min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 12px 14px; background: #0d0f14; border-top: 1px solid #232733; scrollbar-width: none; }
+  .obs-aside > * { flex: 0 0 auto; }
+  .obs-note { margin: 0; padding: 12px 16px; border-radius: 12px; background: #2a2417; color: #ffd98a; font-weight: 650; line-height: 1.4; border: 1px solid #3a3220; font-size: 15px; }
+  .obs-aside h1 { margin: 0; font-size: 17px; font-weight: 700; }
+  .obs-aside h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; margin: 0 0 10px; }
+  .obs-seats ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .obs-seats li { display: grid; grid-template-columns: 30px 1fr; gap: 8px; align-items: center; min-width: 0; background: #151924; border-radius: 12px; padding: 6px 8px; border-left: 6px solid var(--seat); }
+  .obs-seats li i { width: 30px; height: 30px; border-radius: 50%; background: var(--seat); display: grid; place-items: center; font: 800 15px/1 system-ui; font-style: normal; color: #0d0f14; }
+  .obs-seats li span { display: block; font-size: 15px; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .obs-seats li span + span { color: #9aa3b8; font-size: 12px; font-weight: 400; }
+  .obs-pill { display: inline-flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px 14px; border-radius: 999px; background: #2a2417; color: #ffd98a; font-size: 15px; font-weight: 700; }
+  .obs-feed ol { list-style: none; margin: 0; padding: 0; }
+  .obs-feed li { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #1a1e29; font-size: 14px; }
+  .obs-feed li b { flex: 0 0 24px; font-family: ui-monospace, monospace; font-weight: 400; color: #4c5468; }
+  .obs-feed li span { color: var(--seat, #9aa3b8); }
+  .kortbild { position: relative; width: 120px; height: 168px; padding: 10px; border-radius: 12px; box-sizing: border-box; font-size: 15px; font-weight: 700; color: #1c1c1c; background: hsl(var(--hue, 0) 40% 86%); }
+  .kortbild[data-tom] { display: grid; align-content: start; text-align: center; background: #1a1e29; border: 1px dashed #2c3242; color: #7d8597; font-size: 13px; font-weight: 400; }
+  .obs-inspect .var { margin: 6px 0 0; color: #9aa3b8; font-size: 13px; }
+  .obs-inspect .dolt { color: #ffd98a; }
+  .obs-inspect.blink .kortbild { animation: blink 0.9s ease-out; }
+  @keyframes blink { from { box-shadow: 0 0 0 6px #ffd98a; } to { box-shadow: 0 0 0 0 transparent; } }
+
+  /* Kortets text, samma i alla storlekar. */
+  .kortbild strong, [data-inspect] strong { display: block; line-height: 1.15; }
+  .kortbild small, [data-inspect] small { display: block; margin-top: 4px; font-size: 0.6em; font-weight: 600; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px; }
+  .kortbild p, [data-inspect] p { margin: 0.6em 0 0; font-size: 0.55em; font-weight: 500; line-height: 1.35; }
+
+  /* A: det uppburna kortet säger var det ligger. */
+  .byd-inspect .var { margin: 0; color: #c3cbdd; font-size: 14px; text-align: center; line-height: 1.4; }
+  .byd-inspect .var b { color: #fff; }
+  .byd-inspect .dolt { color: #ffd98a; }
+
+  /* Ark nerifrån i .obs-tv: A:s och B:s låda, och C:s låda över filten. */
+  .obs-bak { position: absolute; inset: 0; z-index: 4; background: rgb(0 0 0 / 55%); }
+  .obs-ark { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; display: flex; flex-direction: column; background: #0d0f14; border: 1px solid #232733; border-bottom: 0; border-radius: 18px 18px 0 0; box-shadow: 0 -12px 32px rgb(0 0 0 / 55%); }
+  .obs-ark .ark-huvud { flex: none; position: relative; height: 40px; display: grid; place-items: center; }
+  .obs-ark .grepp { width: 40px; height: 5px; border-radius: 999px; background: #3a4052; }
+  .obs-ark .obs-aside { flex: 1 1 auto; border-top: 0; padding-top: 0; }
+  .obs-ark .stang { position: absolute; right: 4px; top: 0; width: 44px; height: 44px; border: 0; background: transparent; color: #9aa3b8; font: 400 22px system-ui; cursor: pointer; }
+  /* C: lådan är densamma som i dag men lagd över filten, med en kant i stället för ett grepp. */
+  .obs-ark.c { border-radius: 0; border-left: 0; border-right: 0; }
+  /* B: kortet står först, med sin plats bredvid. */
+  .b-kort { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; }
+  .b-kort .kortbild { width: 132px; height: 184px; font-size: 16px; }
+  .b-kort .kortbild[data-tom] { font-size: 13px; }
+  .b-kort .var { margin: 0; color: #c3cbdd; font-size: 14px; line-height: 1.4; }
+  .b-kort .var b { color: #fff; display: block; font-size: 16px; margin-bottom: 4px; }
+  .b-kort .dolt { color: #ffd98a; }
+  .b-kort.blink .kortbild { animation: blink 0.9s ease-out; }
+
+  /* Prototypens egen röst i telefonen: aldrig en del av förslaget. */
+  .tel-lapp { position: absolute; z-index: 30; left: 50%; top: 10px; transform: translateX(-50%); max-width: calc(100% - 24px); padding: 6px 10px; border-radius: 10px; background: #2a2417; border: 1px dashed #f0b64a; color: #ffd98a; font: 600 12px/1.35 system-ui; text-align: center; pointer-events: none; }
+  .tel-sida .avv { margin: 0; padding-left: 0; list-style: none; }
+  .tel-sida .avv li { padding: 4px 0; border-bottom: 1px solid #22263a; }
+  .tel-sida .avv li b { color: #e6ecfa; }
+  .tel-sida .plus { color: #b7dca0; }
+  .tel-sida .minus { color: #f0a58a; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a" data-rek>A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#485 fynd 9 · Hur tittar observatören på ett kort på en telefon, och vad gör den öppna lådan med filten?</b></p>
+    <p>Tryck på ett kort på filten (en hand vid kanten, högarna, Spelytan) i båda telefonerna. Öppna sedan «Senast och platser» och läs filtens mått i raden.</p>
+  </div>
+  <div class="matt" id="matt"></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="tel-scen">
+  <div class="tel-telefoner" id="telefoner"></div>
+  <aside class="tel-sida">
+    <section class="tel-ruta">
+      <h2>Regeln i dag</h2>
+      <ul>
+        <li><code>ObserverPage.tsx</code>: TV-vyn (<code>TvChrome</code>) med filten och en aside — rollnoten, «Bordet», Inspektion, Platser, Senast — och under den ett handtag: «Eva tittar på», <code>?</code>, «Senast och platser», «⚑ Flagga».</li>
+        <li>Inspektionen sätts av <code>onInspect</code> på <code>pointerenter</code>: en pekare som vilar på ett kort. Ett tryck på en telefon sätter den också — men i asiden.</li>
+        <li><code>table.css</code> under 1024 px: asiden är en låda <i>under</i> filten, «under, never over». Stängd är den <code>display: none</code> (rad 815), så trycket syns ingenstans. Öppen delar den höjden 1,3 : 1,7 med filten, och Inspektion står sist (<code>order: 3</code>), 120 × 168 px.</li>
+        <li>C8 med #76 (kvartsvarvet): filten 331 × 496 och kortsidan 27 px vid 390, 239 × 358 och 20 px vid 320, noll namnpar på varandra — mätt <b>bara med lådan stängd</b>. Öppen blir filtens rad 735 → 319 px vid 390 och 459 → 199 px vid 320, kortet 16 px och zonnamnen i varandra.</li>
+        <li>K8: håll för att förstora, ovanpå bordet, bara för den som håller. På spelarens telefon är det det uppburna kortet, <code>.byd-inspect</code>, med «Stäng» under (K10, #78). Observatören får inte röra något (C8), så trycket har inget annat att betyda.</li>
+        <li>L12: observatören är en spelaryta och ska hålla vid 390 och 320.</li>
+      </ul>
+    </section>
+    <section class="tel-ruta" id="avvagning"></section>
+    <section class="tel-ruta rek">
+      <h2>Rekommendation · A</h2>
+      <p><b>Håll upp kortet över filten, och lägg lådan som ett ark över den.</b> Hennes hela uppgift är att läsa korten, och ett kort på filten är 20–27 px: bara ett uppburet kort går att läsa. A ger det största kortet (86 % av skärmens bredd), på ett tryck, med samma utseende och samma «Stäng» som spelarens telefon — en främling som provat båda lär sig en sak.</p>
+      <p>Filten behåller #76:s mått i båda lägena, så C8:s mätning gäller också med lådan öppen, och lådan slutar vara platsen där inspektionen gömmer sig.</p>
+      <p>Priset: ett tryck till för att jämföra två kort (stäng, tryck på nästa), där B byter kort med arket öppet. Och #6:s «under, never over» vänds för telefonen — det skrivs in under C8. B är näst bäst: ett ställe för allt, men kortet blir en tredjedel så stort och halva filten ligger under arket.</p>
+    </section>
+  </aside>
+</div>
+<script src="telefon.js"></script>
+<script>
+const { hue, ram, skala, vaxlare } = Telefon
+const SEAT = { A: '#e05a4f', B: '#3c8ce7', C: '#3aa76d', D: '#d99a1f' }
+const NAMN = { A: 'Ada', B: 'Bo', C: 'Cy', D: 'Di' }
+const genitiv = (n) => (n.endsWith('s') ? n : `${n}s`)
+
+// Korten. `dold` är sant för det som är dolt vid bordet: handen och kortleken. Observatören ser
+// allt (C8), men kortet säger vem mer som gör det.
+const TEXT = {
+  'Quickdraw': ['Handling', 'Dra två kort och kasta ett.'],
+  "Sheriff's Check": ['Handling', 'Titta på en spelares hand.'],
+  'Whiskey Run': ['Plats', 'Ger 1 poäng i början av din tur.'],
+  'Tumbleweed': ['Händelse', 'Alla skickar ett kort åt vänster.'],
+  'Dead Man’s Hand': ['Handling', 'Förlora 2 poäng. Dra tre kort.'],
+  'Stagecoach': ['Plats', 'Du får hålla sju kort.'],
+  'Gold Rush': ['Händelse', 'Alla drar ett kort ur Kortleken.'],
+  'Bounty': ['Handling', 'Ta 1 poäng från en spelare.'],
+  'Saloon Brawl': ['Händelse', 'Kasta alla kort i Spelytan.'],
+  'Lasso': ['Handling', 'Ta ett kort framför en annan spelare.'],
+  'Showdown': ['Handling', 'Två spelare jämför högsta kort.'],
+  'Deputy': ['Person', 'Skyddar ett kort framför dig.'],
+  'Outlaw': ['Person', 'Räknas dubbelt i slutet av rundan.'],
+  'Sunset Ride': ['Händelse', 'Rundan slutar efter nästa tur.'],
+  'Coyote': ['Person', 'Byt plats på två kort i Spelytan.'],
+  'High Noon': ['Händelse', 'Den med flest poäng kastar ett kort.'],
+  'Tin Star': ['Person', 'Ger 2 poäng i slutet av rundan.'],
+  'Rattlesnake': ['Handling', 'Nästa spelare hoppar över sin tur.'],
+  'Prospector': ['Person', 'Dra ett kort varje gång du kastar.'],
+  'Horseshoe': ['Plats', 'Titta på Kortlekens översta kort.'],
+  'Wanted Poster': ['Handling', 'Välj en spelare. Hen visar sin hand.'],
+}
+// Filtens koordinater är procent av filtens bredd (x) och höjd (y); filten är 2 : 3, vriden.
+const CW = 8.2 // kortets bredd i procent av filtens bredd: 27 px på #76:s 331 px
+const KORT = []
+const k = (namn, x, y, var_, dold = false) => KORT.push({ id: `k${KORT.length}`, namn, x, y, var_, dold })
+// Händerna vid kanten, tre kort var, halvt utanför filten.
+const hand = (seat, cx, cy, horisontell, kort) => kort.forEach((n, j) => k(n, horisontell ? cx + (j - 1) * 5.2 : cx, horisontell ? cy : cy + (j - 1) * 3.6, `i ${genitiv(NAMN[seat])} hand`, true))
+hand('D', 44, -4.2, true, ['Showdown', 'Deputy', 'Rattlesnake'])
+hand('C', 56, 104.2, true, ['Bounty', 'Tin Star', 'Coyote'])
+hand('A', -4.2, 46, false, ['Gold Rush', 'Lasso', 'Outlaw'])
+hand('B', 104.2, 54, false, ['Horseshoe', 'Prospector', 'Wanted Poster'])
+// Framför varje plats.
+k('Whiskey Run', 42, 9.5, 'framför Di'); k('Stagecoach', 54, 9.5, 'framför Di')
+k('Sunset Ride', 44, 90.5, 'framför Cy')
+k('Deputy', 11, 45, 'framför Ada')
+k('Tin Star', 89.5, 56, 'framför Bo')
+// Högarna i mitten och Spelytan.
+k('High Noon', 36, 40, 'överst i Kortleken · 38 kort', true)
+k('Tumbleweed', 36, 58, 'överst i Kasthögen · 6 kort')
+k('Quickdraw', 62, 38, 'i Spelytan'); k("Sheriff's Check", 62, 50, 'i Spelytan'); k('Dead Man’s Hand', 62, 62, 'i Spelytan')
+
+// `e` är en zon vid östra kanten: namnet växer inåt från zonens högra kant, som på filten (K19).
+const ZONER = [
+  { namn: 'Framför D', x: 30, y: 6, w: 40, h: 8 },
+  { namn: 'Framför C', x: 22, y: 86, w: 40, h: 8 },
+  { namn: 'Framför A', x: 5, y: 30, w: 12, h: 30, v: true },
+  { namn: 'Framför B', x: 84, y: 40, w: 11, h: 32, v: true, e: true },
+  { namn: 'Spelyta', x: 56, y: 30, w: 12, h: 40, v: true },
+]
+// Räknarens namn står bredvid brickan, på den sida som vetter mot filtens mitt.
+const CHIPS = [
+  { namn: 'Räknare D', v: 4, x: 12, y: 20 }, { namn: 'Räknare C', v: 2, x: 88, y: 80 },
+  { namn: 'Räknare A', v: 5, x: 11, y: 76 }, { namn: 'Räknare B', v: 3, x: 90, y: 22 },
+]
+const HOGAR = [{ namn: 'Kortlek', n: 38, x: 36, y: 40 }, { namn: 'Kasthög', n: 6, x: 36, y: 58 }]
+const HANDER = [{ s: 'D', x: 62, y: -3 }, { s: 'C', x: 38, y: 103 }, { s: 'A', x: -3, y: 62 }, { s: 'B', x: 103, y: 38 }]
+const SENAST = [
+  [31, 'A', 'Ada spelade Quickdraw till Spelyta'], [30, 'B', 'Bo drog ett kort ur Kortlek'], [29, 'C', 'Cy kastade Tumbleweed'],
+  [28, 'D', 'Di la Stagecoach framför sig'], [27, 'A', 'Ada drog ett kort ur Kortlek'], [26, 'B', 'Bo la Tin Star framför sig'],
+]
+
+const NOT = {
+  nu: '<b>Nu.</b> Ett tryck sätter inspektionen i en aside som är <code>display: none</code>. <span class="minus">− Inget syns: hon kan inte läsa ett kort utan att först öppna lådan och rulla förbi Platser och Senast. Öppnas lådan tar den 1,7 av 3 delar av höjden, och filten blir tre femtedelar så bred vid 390 och hälften vid 320, med kort på 16 och 10 px och zonnamnen i varandra.</span>',
+  a: '<b>A · Ark över filten.</b> Trycket håller upp kortet, <code>.byd-inspect</code> som på spelarens telefon, med var det ligger och «Stäng». Lådan är ett ark över filten. <span class="plus">+ Ett tryck, största kortet, samma som spelarens telefon; filten behåller #76:s mått i båda lägena.</span> <span class="minus">− Två tryck per kort för att jämföra; #6:s «under, aldrig över» vänds på telefonen.</span>',
+  b: '<b>B · Lådan som ark.</b> Ett ark nerifrån med kortet först, sedan rollnoten, Platser och Senast. Trycket öppnar arket på kortet; filten ovanför går att trycka på medan arket är öppet. <span class="plus">+ Ett ställe för allt; byt kort med arket öppet; filten krymper aldrig.</span> <span class="minus">− Arket täcker halva filten, och kortet är 132 px brett i stället för 290–335; spelarens telefon gör på ett annat sätt.</span>',
+  c: '<b>C · Lådan över filten.</b> Minsta ändringen: samma låda, samma innehåll och ordning, men lagd över filtens nedre del i stället för att ta rad från den. Trycket öppnar lådan och rullar till Inspektion. <span class="plus">+ Filten behåller sin storlek; bara CSS och en rad i trycket.</span> <span class="minus">− Kortet är fortfarande 120 × 168 längst ner i en låda som rullats; ingen likhet med spelarens telefon; lådan täcker 57 % av filten utan grepp eller Stäng.</span>',
+}
+const AVV = {
+  nu: [
+    ['Upptäckbarhet', 'minus', 'Trycket ger ingenting. Inget säger att kortet står längst ner i lådan.'],
+    ['Filtens storlek', 'minus', 'Stängd: #76:s mått. Öppen: raden 735 → 319 / 459 → 199 px.'],
+    ['Tryck', 'minus', 'Öppna lådan, tryck på kortet, rulla ner: 2 tryck och en rullning.'],
+    ['Samstämmighet', 'minus', 'Inte med spelarens telefon; #76 mätte bara stängt läge.'],
+  ],
+  a: [
+    ['Upptäckbarhet', 'plus', 'Trycket svarar på stället med kortet i hela skärmens bredd.'],
+    ['Filtens storlek', 'plus', 'Alltid #76:s mått; lådan dämpar filten men krymper den inte.'],
+    ['Tryck', 'plus', '1 tryck att läsa, 1 att stänga; 2 per kort vid jämförelse.'],
+    ['Samstämmighet', 'plus', 'Samma uppburna kort och «Stäng» som spelarens telefon (K8, K10); C8/#76 gäller i båda lägena. Vänder #6:s «under, aldrig över».'],
+  ],
+  b: [
+    ['Upptäckbarhet', 'plus', 'Trycket öppnar arket med kortet överst.'],
+    ['Filtens storlek', 'plus', 'Filten krymper aldrig, men arket täcker halva.'],
+    ['Tryck', 'plus', '1 tryck att läsa; nästa kort 1 tryck med arket öppet, om det inte ligger under arket.'],
+    ['Samstämmighet', 'minus', 'En egen form, inte spelarens uppburna kort; kortet 132 px brett. Vänder #6 som A.'],
+  ],
+  c: [
+    ['Upptäckbarhet', 'minus', 'Lådan öppnas, men kortet står sist, litet, efter Platser och Senast.'],
+    ['Filtens storlek', 'plus', 'Filten behåller sin storlek; lådan täcker den nedre delen.'],
+    ['Tryck', 'plus', '1 tryck att läsa; nästa kort bara om det inte ligger under lådan.'],
+    ['Samstämmighet', 'minus', 'Skrivbordets kolumn, lagd över filten; ingen likhet med spelarens telefon.'],
+  ],
+}
+
+const ramar = [ram(document.getElementById('telefoner'), 390, 844), ram(document.getElementById('telefoner'), 320, 568)]
+const s = ramar.map(() => ({ lada: false, kort: null, upp: false, lapp: null }))
+let lage
+
+const kortbild = (c, extra = '') => `<div class="kortbild${extra}" style="--hue:${hue(c.namn)}"><strong>${c.namn}</strong><small>${TEXT[c.namn][0]}</small><p>${TEXT[c.namn][1]}</p></div>`
+const varText = (c) => `${c.var_}${c.dold ? ' · <span class="dolt">dolt vid bordet</span>' : ''}`
+
+function filt() {
+  const zoner = ZONER.map((z) => `<div class="zon${z.v ? ' v' : ''}" style="left:${z.x}%;top:${z.y}%;width:${z.w}%;height:${z.h}%"><span class="z-namn"${z.e ? ' style="left:auto;right:0"' : ''}>${z.namn}</span></div>`).join('')
+  const chips = CHIPS.map((c) => `<div class="chip" data-chip style="left:${c.x}%;top:${c.y}%">${c.v}</div><span class="z-namn chip-namn" style="left:${c.x}%;top:${c.y}%;bottom:auto;transform:translate(${c.x < 50 ? '14px' : 'calc(-100% - 14px)'}, -50%)">${c.namn}</span>`).join('')
+  const hogar = HOGAR.map((h) => `<span class="hog-namn" data-hog style="left:${h.x}%;top:${h.y}%">${h.namn}</span><div class="hog-n" data-hogn style="left:${h.x}%;top:${h.y}%">${h.n}</div>`).join('')
+  const hander = HANDER.map((h) => `<div class="hand-n" style="left:${h.x}%;top:${h.y}%">3</div><span class="platsnamn" style="--seat:${SEAT[h.s]};left:${h.x}%;top:${h.y + (h.s === 'D' ? -4 : h.s === 'C' ? 4 : 0)}%;${h.s === 'A' || h.s === 'B' ? 'display:none' : ''}">${NAMN[h.s]}</span>`).join('')
+  const kort = KORT.map((c) => `<button type="button" class="kort" data-kort="${c.id}" aria-label="${c.namn}, ${c.var_}" style="--hue:${hue(c.namn)}"><span>${c.namn}</span></button>`).join('')
+  return `<div class="filt">${zoner}${chips}${kort}${hogar}${hander}</div>`
+}
+
+function aside(i, v) {
+  // Ingen har tryckt: kortet den senaste raden handlade om (K8, reviderat 2026-09-15).
+  const c = KORT.find((x) => x.id === s[i].kort) ?? KORT.find((x) => x.namn === 'Quickdraw')
+  const inspekt = `<section class="obs-inspect" style="order:3"><h2>Inspektion</h2>${c ? kortbild(c) + `<p class="var">${varText(c)}</p>` : '<div class="kortbild" data-tom><span>peka på ett kort</span></div>'}</section>`
+  const bKort = `<section class="b-kort">${c ? kortbild(c) + `<p class="var"><b>${c.namn}</b>${varText(c)}</p>` : `<div class="kortbild" data-tom><span>tryck på ett kort</span></div><p class="var">Tryck på ett kort på filten så står det här, med var det ligger.</p>`}</section>`
+  return `<div class="obs-aside">
+    ${v === 'b' ? bKort : ''}
+    <p class="obs-note">Du är observatör: du ser allas händer och alla högar. Alla vet att du är här.</p>
+    <h1>Bordet</h1>
+    ${v === 'nu' || v === 'c' ? inspekt : ''}
+    <section class="obs-seats"><h2>Platser</h2><ul>${Object.keys(NAMN).map((p) => `<li style="--seat:${SEAT[p]}"><i>${p}</i><div><span>${NAMN[p]}</span><span>3 kort på hand</span></div></li>`).join('')}</ul>
+      <span class="obs-pill"><i></i>Eva tittar på · ser allt</span></section>
+    <section class="obs-feed" style="order:2"><h2>Senast</h2><ol>${SENAST.map(([n, p, t]) => `<li><b>${n}</b><span style="--seat:${SEAT[p]}">${t}</span></li>`).join('')}</ol></section>
+  </div>`
+}
+
+function sida(i, v) {
+  const st = s[i]
+  const under = v === 'nu' && st.lada
+  let lada = ''
+  const huvud = '<div class="ark-huvud"><i class="grepp"></i><button type="button" class="stang" data-stang aria-label="Stäng">×</button></div>'
+  if (st.lada && v === 'a') lada = `<div class="obs-bak" data-bak></div><div class="obs-ark" style="height:66%" role="dialog" aria-label="Senast och platser">${huvud}${aside(i, v)}</div>`
+  if (st.lada && v === 'b') lada = `<div class="obs-ark" style="height:58%" role="dialog" aria-label="Kort, senast och platser">${huvud}${aside(i, v)}</div>`
+  if (st.lada && v === 'c') lada = `<div class="obs-ark c" style="height:57%">${aside(i, v)}</div>`
+  return `<div class="obs" data-lada="${under ? 'under' : 'ingen'}">
+    <div class="obs-tv"><div class="obs-main">${filt()}</div>${under ? aside(i, v) : ''}${lada}</div>
+    <div class="obs-handle">
+      <span class="obs-mark"><i></i>Eva tittar på</span>
+      <button type="button" class="obs-help" aria-label="Hjälp om observatörsläget"><span>?</span></button>
+      <button type="button" class="obs-more" data-oppna aria-expanded="${st.lada}">Senast och platser</button>
+      <button type="button" class="obs-flag">⚑ Flagga</button>
+    </div>
+  </div>`
+}
+
+// Filten passas in i sin rad som #76 gör: bredden binder på en telefon, 2 : 3.
+function passa(f) {
+  const main = f.vy.querySelector('.obs-main'), el = main.querySelector('.filt')
+  const w = main.clientWidth, h = main.clientHeight
+  const fw = Math.max(40, Math.min(w - 60, (h - Math.min(100, h * 0.09)) * 2 / 3)), fh = fw * 1.5
+  Object.assign(el.style, { width: `${fw}px`, height: `${fh}px`, left: `${(w - fw) / 2}px`, top: `${(h - fh) / 2}px` })
+  const cw = fw * CW / 100, ch = cw * 88 / 63
+  for (const b of el.querySelectorAll('.kort')) {
+    const c = KORT.find((x) => x.id === b.dataset.kort)
+    Object.assign(b.style, { width: `${cw}px`, height: `${ch}px`, left: `${c.x / 100 * fw - cw / 2}px`, top: `${c.y / 100 * fh - ch / 2}px`, fontSize: `${Math.max(5, cw / 3.4)}px` })
+    b.dataset.vald = String(b.dataset.kort === s[ramar.indexOf(f)].kort && (lage.v === 'b' || lage.v === 'c') && s[ramar.indexOf(f)].lada)
+  }
+  for (const c of el.querySelectorAll('[data-chip]')) Object.assign(c.style, { width: `${cw * 0.9}px`, height: `${cw * 0.9}px` })
+  for (const n of el.querySelectorAll('[data-hog]')) n.style.transform = `translate(-50%, ${ch / 2 + 6}px)`
+  return { rad: h, fw, fh, cw }
+}
+
+// Hur många zonnamn som ligger på ett annat namn eller en bricka: #76:s «namnpar på varandra».
+function krockar(f) {
+  const r = [...f.vy.querySelectorAll('.z-namn, .hog-namn, .hog-n, .chip')].filter((e) => getComputedStyle(e).display !== 'none').map((e) => ({ e, b: e.getBoundingClientRect() }))
+  let n = 0
+  for (let a = 0; a < r.length; a++) for (let b = a + 1; b < r.length; b++) {
+    const x = r[a].b, y = r[b].b
+    if (!r[a].e.matches('.z-namn, .hog-namn') && !r[b].e.matches('.z-namn, .hog-namn')) continue
+    if (x.left < y.right - 1 && y.left < x.right - 1 && x.top < y.bottom - 1 && y.top < x.bottom - 1) n++
+  }
+  return n
+}
+
+function uppburet(f, i) {
+  for (const o of f.skarm.querySelectorAll('.byd-inspect')) o.remove()
+  const c = KORT.find((x) => x.id === s[i].kort)
+  if (!(lage.v === 'a' && s[i].upp && c)) return
+  f.skarm.insertAdjacentHTML('beforeend', `<div class="byd-inspect" data-bak-upp role="dialog" aria-label="${c.namn}">
+    <div data-inspect style="--hue:${hue(c.namn)}"><strong>${c.namn}</strong><small>${TEXT[c.namn][0]}</small><p>${TEXT[c.namn][1]}</p></div>
+    <p class="var"><b>${c.namn}</b> · ${varText(c)}</p>
+    <button type="button" class="byd-inspect-close" data-stang-upp>Stäng</button></div>`)
+}
+
+function lapp(f, i) {
+  for (const o of f.skarm.querySelectorAll('.tel-lapp')) o.remove()
+  if (s[i].lapp) f.skarm.insertAdjacentHTML('beforeend', `<div class="tel-lapp">${s[i].lapp}</div>`)
+}
+
+// Ritar om en telefon, eller båda när `bara` saknas: ett tryck i den ena lämnar den andras
+// rullning och öppna ark i fred.
+const matt = []
+function rita(l, bara) {
+  lage = l ?? lage
+  const v = lage.v
+  document.getElementById('anteckning').innerHTML = NOT[v]
+  document.getElementById('avvagning').innerHTML = `<h2>Avvägningar · ${v === 'nu' ? 'Nu' : v.toUpperCase()}</h2><ul class="avv">${AVV[v].map(([r, t, x]) => `<li><b>${r}.</b> <span class="${t}">${x}</span></li>`).join('')}</ul>`
+  for (const [i, f] of ramar.entries()) {
+    if (bara !== undefined && bara !== i) continue
+    f.vy.innerHTML = sida(i, v)
+    const m = passa(f)
+    uppburet(f, i); lapp(f, i)
+    const n = krockar(f)
+    matt[i] = `<span>Vid ${f.w}: filtens rad <u>${Math.round(m.rad)} px</u> · filten <u>${Math.round(m.fw)} × ${Math.round(m.fh)}</u> · kortsidan <u>${Math.round(m.cw)} px</u> · namn på varandra <u>${n}</u></span>`
+  }
+  matt[ramar.length] = `<span>Till ett läsbart kort: <u>${v === 'nu' ? '2 tryck + rullning' : '1 tryck'}</u></span>`
+  document.getElementById('matt').innerHTML = matt.join('')
+  skala()
+}
+
+const lappTimer = ramar.map(() => 0)
+document.body.addEventListener('click', (e) => {
+  const t = e.target.closest('button, [data-bak], [data-bak-upp]'); if (!t) return
+  const i = ramar.findIndex((f) => f.skarm.contains(t)); if (i < 0) return
+  const st = s[i], v = lage.v, f = ramar[i]
+  if (t.dataset.kort) {
+    st.kort = t.dataset.kort
+    const c = KORT.find((x) => x.id === st.kort)
+    if (v === 'nu') {
+      if (!st.lada) {
+        st.lapp = `Tryckt: ${c.namn}. Inspektionen sattes — i en låda som är <code>display: none</code>. Inget syns.`
+        clearTimeout(lappTimer[i]); lappTimer[i] = setTimeout(() => { st.lapp = null; lapp(f, i) }, 2600)
+      }
+      rita(undefined, i)
+      if (st.lada) f.vy.querySelector('.obs-inspect')?.classList.add('blink')
+    } else if (v === 'a') { st.upp = true; rita(undefined, i); f.skarm.querySelector('[data-stang-upp]')?.focus() }
+    else if (v === 'b') { st.lada = true; rita(undefined, i); const b = f.vy.querySelector('.b-kort'); b?.classList.add('blink'); b?.closest('.obs-aside')?.scrollTo(0, 0) }
+    else if (v === 'c') {
+      st.lada = true; rita(undefined, i)
+      const n = f.vy.querySelector('.obs-inspect'); n?.classList.add('blink')
+      const a = n?.closest('.obs-aside'); if (a) a.scrollTop += (n.getBoundingClientRect().top - a.getBoundingClientRect().top) / (f.skarm.getBoundingClientRect().width / f.w) - 8
+    }
+    return
+  }
+  if (t.hasAttribute('data-oppna')) { st.lada = !st.lada; st.lapp = null; rita(undefined, i); return }
+  if (t.hasAttribute('data-stang') || (t.hasAttribute('data-bak') && e.target === t)) { st.lada = false; rita(undefined, i); f.vy.querySelector('[data-oppna]')?.focus(); return }
+  if (t.hasAttribute('data-stang-upp') || (t.hasAttribute('data-bak-upp') && e.target === t)) { st.upp = false; rita(undefined, i); return }
+})
+addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return
+  for (const st of s) { st.upp = false; if (lage.v !== 'nu') st.lada = false }
+  rita()
+})
+
+vaxlare({ v: ['nu', 'a', 'b', 'c'] }, (l) => { for (const st of s) Object.assign(st, { lada: false, upp: false, lapp: null }); rita(l) })
+addEventListener('resize', () => rita())
+</script>
+</body>
+</html>

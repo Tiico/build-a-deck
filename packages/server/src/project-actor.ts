@@ -14,7 +14,8 @@ import type { Role } from './roles.js'
 // else's edit and not apply what it already applied.
 export type AppliedEdit = { seq: number; at: string; by?: string; from?: string; intent: EditIntent }
 // `account` is whose editor it is, so taking the game back from someone can end what they have open.
-export type Editor = { id: string; name: string; role?: Role; account?: string; send(message: EditorMessage): void; close?(): void }
+// `gone`: the project itself is no more (#485) — closed the way an unknown project is refused.
+export type Editor = { id: string; name: string; role?: Role; account?: string; send(message: EditorMessage): void; close?(): void; gone?(): void }
 export type EditorMessage =
   | { v: 'project'; doc: ProjectDoc; rev: number; seq: number; here: Presence[]; you: Presence }
   | { v: 'edits'; edits: AppliedEdit[] }
@@ -96,6 +97,12 @@ export class ProjectActor {
   // than left showing the whole deck until the page is reloaded.
   dismiss(account: string): void {
     for (const editor of [...this.editors]) if (editor.account === account) editor.close?.()
+  }
+
+  // The game has been deleted (#485): everyone who has it open is told it is not there, in the
+  // moment it stops being there, rather than on their next save.
+  shutDown(): void {
+    for (const editor of [...this.editors]) editor.gone?.()
   }
 
   // One edit, in the only order there is: it must apply, then it is committed, then it is applied

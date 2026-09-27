@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { useFocusTrap } from '../editor/focusTrap.js'
 import { Refusal, type RefusalHandle } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
 
 // Flagging a moment (G3, prototype A): a sheet with an optional note. Sends at once.
 export function FlagSheet({ onFlag, onClose, refusal }: { onFlag(note: string | undefined): void; onClose(): void; refusal?: RefusalHandle }) {
   const t = useT()
+  const box = useSheet(onClose)
   const [note, setNote] = useState('')
   return (
     <div className="byd-sheet-backdrop" onClick={onClose}>
@@ -14,13 +16,11 @@ export function FlagSheet({ onFlag, onClose, refusal }: { onFlag(note: string | 
         aria-modal="true"
         aria-labelledby="flag-sheet-title"
         onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') onClose()
-        }}
+        ref={box}
       >
         <p className="byd-sheet-title" id="flag-sheet-title">{t('flag.sheet.title')}</p>
         <p>{t('flag.sheet.body')}</p>
-        <textarea placeholder={t('flag.sheet.note')} value={note} onChange={(e) => setNote(e.target.value)} maxLength={280} autoFocus />
+        <textarea placeholder={t('flag.sheet.note')} value={note} onChange={(e) => setNote(e.target.value)} maxLength={280} data-first />
         <div className="byd-sheet-actions">
           <button type="button" data-kind="flag" onClick={() => onFlag(note.trim() || undefined)} className={refusal?.notice ? 'byd-status-refused-control' : undefined} {...(refusal?.control ?? {})}>
             {t('flag.sheet.flag')}
@@ -42,6 +42,7 @@ export function FlagSheet({ onFlag, onClose, refusal }: { onFlag(note: string | 
 // further away than it was rather than one nearer.
 export function ExitSheet({ onLeave, onEnd, onClose, refusal }: { onLeave(): void; onEnd(): void; onClose(): void; refusal?: RefusalHandle }) {
   const t = useT()
+  const box = useSheet(onClose)
   return (
     <div className="byd-sheet-backdrop" onClick={onClose}>
       <div
@@ -50,9 +51,7 @@ export function ExitSheet({ onLeave, onEnd, onClose, refusal }: { onLeave(): voi
         aria-modal="true"
         aria-labelledby="exit-sheet-title"
         onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') onClose()
-        }}
+        ref={box}
       >
         <p className="byd-sheet-title" id="exit-sheet-title">{t('exit.sheet.title')}</p>
         <div className="byd-exit-choice">
@@ -68,7 +67,7 @@ export function ExitSheet({ onLeave, onEnd, onClose, refusal }: { onLeave(): voi
           <p>{t('exit.sheet.end.body')}</p>
         </div>
         <div className="byd-sheet-actions">
-          <button type="button" data-kind="quiet" onClick={onClose} autoFocus>
+          <button type="button" data-kind="quiet" onClick={onClose} data-first>
             {t('exit.sheet.stay')}
           </button>
         </div>
@@ -81,6 +80,7 @@ export function ExitSheet({ onLeave, onEnd, onClose, refusal }: { onLeave(): voi
 // Ending the session (C9): says what it means, then does it for everyone.
 export function EndSheet({ version, onEnd, onClose, refusal }: { version: string; onEnd(): void; onClose(): void; refusal?: RefusalHandle }) {
   const t = useT()
+  const box = useSheet(onClose)
   return (
     <div className="byd-sheet-backdrop" onClick={onClose}>
       <div
@@ -89,9 +89,7 @@ export function EndSheet({ version, onEnd, onClose, refusal }: { version: string
         aria-modal="true"
         aria-labelledby="end-sheet-title"
         onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') onClose()
-        }}
+        ref={box}
       >
         <p className="byd-sheet-title" id="end-sheet-title">{t('end.sheet.title')}</p>
         <p>{t('end.sheet.body', { version })}</p>
@@ -99,7 +97,7 @@ export function EndSheet({ version, onEnd, onClose, refusal }: { version: string
           <button type="button" data-kind="no" onClick={onEnd} className={refusal?.notice ? 'byd-status-refused-control' : undefined} {...(refusal?.control ?? {})}>
             {t('end.sheet.end')}
           </button>
-          <button type="button" data-kind="quiet" onClick={onClose} autoFocus>
+          <button type="button" data-kind="quiet" onClick={onClose} data-first>
             {t('end.sheet.not')}
           </button>
         </div>
@@ -107,4 +105,13 @@ export function EndSheet({ version, onEnd, onClose, refusal }: { version: string
       </div>
     </div>
   )
+}
+
+// A session sheet is a modal window (#485, fynd 6): the focus goes in — on the control marked
+// `data-first`, the one a person most likely wants — Tab stays in, Escape answers from wherever
+// the focus is, and the focus goes back to what opened the sheet when it closes.
+function useSheet(onClose: () => void) {
+  const box = useRef<HTMLDivElement>(null)
+  useFocusTrap(box, { onEscape: onClose, initial: () => box.current?.querySelector<HTMLElement>('[data-first]') ?? null })
+  return box
 }
