@@ -103,6 +103,10 @@ async function readSurface(page: Page, surface: Surface, placed: HelpPlacement |
       const rect = new Function('el', `return (${rectOf})(el)`) as (el: Element) => Rect
       const lineEl = document.querySelector(line)!
       const ask = document.querySelector(`${line} .byd-help-ask`) ?? document.querySelector(`${column} .byd-help-ask`)
+      // Where the reader has scrolled to reach it: at 768 the Bord stage is one column that scrolls,
+      // and the line with the question mark stands under the zone list since that list has a height
+      // of its own (#480). `nearest` does nothing to a question mark already in view.
+      ask?.scrollIntoView({ block: 'nearest' })
       const box = document.querySelector('.byd-help-box') as HTMLElement | null
       if (box && placed) {
         box.setAttribute('data-place-y', placed.y)
