@@ -124,7 +124,10 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
   const drop = (a: ZoneAction) => {
     setDropped({ action: a, at: actions.findIndex((x) => x.id === a.id) })
     onPatch({ actions: actions.filter((x) => x.id !== a.id) })
+    // The button pressed went with the action; the way back takes the focus (#480).
+    requestAnimationFrame(() => undoRef.current?.focus())
   }
+  const undoRef = useRef<HTMLButtonElement>(null)
 
   return (
     <Chosen.Provider value={remembered}>
@@ -177,7 +180,7 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
             const why = clash(a)
             const whyId = `${panel}why${a.id}`
             return (
-            <div key={a.id} className="byd-zone-action">
+            <div key={a.id} className="byd-zone-action" data-action={a.id}>
               <input
                 value={a.label}
                 aria-label={t('setup.actions.name', { name: a.label })}
@@ -271,12 +274,16 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
             <p className="byd-zone-action-undo" role="status">
               {t('setup.actions.removed', { name: dropped.action.label })}{' '}
               <button
+                ref={undoRef}
                 type="button"
                 onClick={() => {
                   const back = [...actions]
                   back.splice(Math.min(dropped.at, back.length), 0, dropped.action)
                   onPatch({ actions: back })
                   setDropped(null)
+                  // And back on the action's own name once it stands again.
+                  const id = dropped.action.id
+                  requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-action="${CSS.escape(id)}"] > input`)?.focus())
                 }}
               >
                 {t('setup.undo')}
@@ -381,7 +388,12 @@ function Slot({ label, said, describedBy, children }: { label: ReactNode; said?:
             knob.current?.focus()
           }}
         >
-          {children(() => setOpen(false))}
+          {/* A choice taken closes the box, and the choice goes with it: the focus goes back to the
+              knob rather than to <body> (#480), for the pointer as for Enter in the search. */}
+          {children(() => {
+            setOpen(false)
+            requestAnimationFrame(() => knob.current?.focus())
+          })}
         </SlotPop>
       )}
     </span>

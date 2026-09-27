@@ -74,6 +74,14 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
   // What the last step back would take back, said where the removal happened rather than only in
   // the header: a zone that went by mistake is one press from standing again.
   const [undoable, setUndoable] = useState<string | null>(null)
+  // Which zone the way back would restore, and whether the way back should take the focus: the ×
+  // or the handle that had it is gone with the zone (#480).
+  const [removedId, setRemovedId] = useState<string | null>(null)
+  const undoButton = useRef<HTMLButtonElement>(null)
+  const [focusUndo, setFocusUndo] = useState(0)
+  useEffect(() => {
+    if (focusUndo > 0) undoButton.current?.focus()
+  }, [focusUndo])
   // What the last key press said, when it was not a removal: a copy taken, or a refusal with its
   // reason. It stands where the removal's own word stands, because it is the same kind of news.
   const [said, setSaid] = useState<string | null>(null)
@@ -118,6 +126,8 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
   const remove = (zone: Zone) => {
     client.removeZone(zone.id)
     setUndoable(zone.name)
+    setRemovedId(zone.id)
+    setFocusUndo((n) => n + 1)
     setSaid(null)
     if (selected === zone.id) setSelected(null)
   }
@@ -236,10 +246,14 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
             <span className="byd-setup-undo" role="status">
               {t('setup.removed', { name: undoable })}
               <button
+                ref={undoButton}
                 type="button"
                 onClick={() => {
                   client.undo()
                   setUndoable(null)
+                  // The zone stands again; so does its row, which takes the focus.
+                  const id = removedId
+                  if (id) requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-zone-row="${CSS.escape(id)}"] .byd-setup-name`)?.focus())
                 }}
               >
                 {t('setup.undo')}

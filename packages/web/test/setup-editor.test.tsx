@@ -464,3 +464,30 @@ describe('bottenkortets lista när titlar upprepas (#480)', () => {
     expect(options).toEqual(['inget', 'Drake · rad 1', 'Riddare', 'Trollkarl', 'Drake · rad 4'])
   })
 })
+
+// Fokus faller aldrig till <body> när det som hade det försvinner (#480 fynd 6): den som tar bort en
+// zon står på vägen tillbaka, och den som tar tillbaka den står på zonens rad.
+describe('fokus när en zon tas bort och tas tillbaka (#480)', () => {
+  it('går till Ångra efter ×, och till zonens rad efter Ångra', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    const x = within(row('discard')).getByRole('button', { name: 'Ta bort Kasthög' })
+    x.focus()
+    fireEvent.click(x)
+    await waitFor(() => expect(row('discard')).toBeNull())
+    const undo = screen.getByRole('button', { name: 'Ångra' })
+    await waitFor(() => expect(document.activeElement).toBe(undo))
+    fireEvent.click(undo)
+    await waitFor(() => expect(row('discard')).not.toBeNull())
+    await waitFor(() => expect(document.activeElement).toBe(row('discard').querySelector('.byd-setup-name')))
+  })
+
+  it('går till Ångra efter Delete på filten', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    fireEvent.keyDown(handle('discard'), { key: 'Enter' })
+    fireEvent.keyDown(window, { key: 'Delete' })
+    await waitFor(() => expect(handle('discard')).toBeNull())
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ångra' })))
+  })
+})
