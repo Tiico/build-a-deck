@@ -1020,6 +1020,7 @@ export const enEditor = {
   'history.compare.of': 'Compare version {rev} in the table',
   'history.restore': 'Bring this version back',
   'history.restore.of': 'Restore version {rev}',
+  'history.restored': 'Version {rev} is back. Undo takes it away again.',
   'history.diff.none': 'Nothing changed.',
   'history.diff.other': 'Something else changed.',
   'history.diff.added': '{n} new cards',

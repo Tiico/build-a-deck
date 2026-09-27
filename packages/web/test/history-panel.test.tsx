@@ -109,6 +109,45 @@ describe('the project\'s history in the editor (B4)', () => {
   })
 })
 
+// The panel as a place the keyboard is taken to and brought back from (#477).
+describe('the history and the keyboard (#477)', () => {
+  it('takes the focus when it opens, so the next Tab is inside it and not in the header', async () => {
+    await withHistory()
+    await openEditor()
+    const rev = screen.getByRole('button', { name: /rev 3/ })
+    rev.focus()
+    fireEvent.click(rev)
+    const panel = await screen.findByRole('dialog', { name: 'Historik' })
+    await waitFor(() => expect(panel.contains(document.activeElement)).toBe(true))
+  })
+
+  it('saves a version\'s name on Enter, not only when the field is left', async () => {
+    await withHistory()
+    await openEditor()
+    fireEvent.click(screen.getByRole('button', { name: /rev 3/ }))
+    const panel = await screen.findByRole('dialog', { name: 'Historik' })
+    fireEvent.click(await within(panel).findByRole('button', { name: /Version 2/ }))
+    const field = await within(panel).findByLabelText('Namn på version 2')
+    fireEvent.change(field, { target: { value: 'Andra blindtestet' } })
+    fireEvent.keyDown(field, { key: 'Enter' })
+    await waitFor(async () => expect((await run.projects.versions(run.projectId)).find((v) => v.rev === 2)?.label).toBe('Andra blindtestet'))
+  })
+
+  it('says in words that a version came back, and hands the focus back to the revision', async () => {
+    await withHistory()
+    await openEditor()
+    fireEvent.click(screen.getByRole('button', { name: /rev 3/ }))
+    const panel = await screen.findByRole('dialog', { name: 'Historik' })
+    fireEvent.click(await within(panel).findByRole('button', { name: /Version 1/ }))
+    const restore = await within(panel).findByRole('button', { name: 'Återställ version 1' })
+    restore.focus()
+    fireEvent.click(restore)
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Historik' })).toBeNull())
+    expect(await screen.findByText(/Version 1 är tillbaka/)).toBeTruthy()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /rev 3/ }))
+  })
+})
+
 // A designer scanning her own history (#177). Fifteen rows that all said `Version N · i dag` were
 // a list of timestamps and not a record of work: the only way to find the save where the duel
 // cards changed was to open all fifteen. So the row says it without being opened.

@@ -622,7 +622,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         <HistoryPanel
           client={client}
           onClose={() => setOver(null)}
-          onRestored={() => setOver(null)}
+          // Everything under the panel changed at once, and «Osparat» was the only sign of it
+          // (#477). It is said in words, with the way back, and the keyboard goes back to the
+          // revision it came from rather than to a button that is no longer there.
+          onRestored={(rev) => {
+            setOver(null)
+            confirmation.confirm(t('history.restored', { rev }))
+            revRef.current?.focus()
+          }}
           onCompare={(rev, label) => {
             void client.at(rev).then((old) => {
               if (!old) return

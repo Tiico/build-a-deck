@@ -1152,6 +1152,7 @@ export const svEditor = {
   'history.compare.of': 'Jämför version {rev} i tabellen',
   'history.restore': 'Ta tillbaka den här versionen',
   'history.restore.of': 'Återställ version {rev}',
+  'history.restored': 'Version {rev} är tillbaka. Ångra tar bort den igen.',
   'history.diff.none': 'Inget ändrat.',
   'history.diff.other': 'Annat ändrat.',
   'history.diff.added': '{n} nya kort',
