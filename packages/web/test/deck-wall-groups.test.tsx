@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { configure, fireEvent, render } from '@testing-library/react'
+import { configure, fireEvent, render, screen } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
 import { DeckWall } from '../src/editor/DeckWall.js'
 import { projectDoc } from './project-doc.js'
@@ -396,5 +396,20 @@ describe('the mark follows the deck as it rolls past (#179)', () => {
       fireEvent.click(document.querySelector('.byd-crown-fold')!)
       expect(document.querySelector('[data-tile][aria-current="true"]')!.getAttribute('data-tile')).toBe('Trap-')
     })
+  })
+})
+
+// A search that finds nothing says so, and the crown stays as it stood (#477): the wall went
+// blank without a word, and the fold button left the crown so everything after it jumped.
+describe('a search that finds nothing (#477)', () => {
+  it('says what was looked for, offers the way back, and keeps the crown still', () => {
+    wall(bigDeck())
+    expect(document.querySelector('.byd-crown-fold')).not.toBeNull()
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Sök i alla fält' }), { target: { value: 'zzzzqx' } })
+    expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(0)
+    expect(screen.getByText('Inga kort matchar «zzzzqx».')).toBeTruthy()
+    expect(document.querySelector('.byd-crown-fold')).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Rensa sökningen' }))
+    expect(document.querySelectorAll('[data-card-ref]').length).toBeGreaterThan(0)
   })
 })

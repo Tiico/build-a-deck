@@ -130,6 +130,8 @@ export const svEditor = {
   'wall.group.without': 'Utan {column}',
   // Innehållsförteckningen över leken (#179): hoppspalten utfälld, remsan hopfälld.
   'wall.deck': 'Leken',
+  'wall.search.none': 'Inga kort matchar «{query}».',
+  'wall.search.clear': 'Rensa sökningen',
   'wall.groups': 'Grupper i leken',
   'wall.groups.folded': 'Grupper i leken, hopfälld',
   'wall.fold.in': 'Fäll ihop hoppspalten',

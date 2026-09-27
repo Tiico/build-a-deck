@@ -146,6 +146,19 @@ describe('the physical checks on the wall (E5)', () => {
     expect(document.querySelectorAll('[data-card-ref][data-marked]')).toHaveLength(0)
   })
 
+  // The marks belong to the report that made them (#477): with the box shut, 77 cards stood
+  // framed in yellow and nothing on the screen said why.
+  it('lets the marked cards go when the report is closed', () => {
+    wall()
+    openBox(/^Fysisk kontroll/)
+    const report = screen.getByRole('list', { name: 'Fysisk kontroll' })
+    fireEvent.click(within(within(report).getAllByRole('listitem')[0]!).getByRole('button', { name: /för liten text/ }))
+    expect(document.querySelectorAll('[data-card-ref][data-marked]')).toHaveLength(3)
+    openBox(/^Fysisk kontroll/)
+    expect(screen.queryByRole('list', { name: 'Fysisk kontroll' })).toBeNull()
+    expect(document.querySelectorAll('[data-card-ref][data-marked]')).toHaveLength(0)
+  })
+
   it('says so plainly when nothing is wrong', () => {
     const clean = faulty()
     clean.template.faces['front']!.base = [paper, body]

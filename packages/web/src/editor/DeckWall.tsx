@@ -121,8 +121,16 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const open = groups.find((g) => g.code === openGroup)
   const marked = new Set(open?.cards ?? [])
   const words = issueWords(t)
-  const toggle = (which: Box) => setBox((now) => (now === which ? null : which))
-  const close = () => setBox(null)
+  // The cards a remark marks are marked for as long as the report stands open (#477): closed,
+  // the frames were yellow on a whole deck with nothing on the screen saying why.
+  const toggle = (which: Box) => {
+    if (box === 'checks') setOpenGroup(null)
+    setBox((now) => (now === which ? null : which))
+  }
+  const close = () => {
+    if (box === 'checks') setOpenGroup(null)
+    setBox(null)
+  }
   const denser = (by: number) =>
     setStep((now) => {
       const next = Math.min(DENSITY.length - 1, Math.max(0, now + by))
@@ -290,7 +298,9 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             under a pointer: a reader who has never folded anything has no way of guessing that the
             column to the left is foldable, and a hover-only door is the very thing #184 is taking
             out of the editor elsewhere. */}
-        {bands.length > 0 && (
+        {/* Read off the deck and not off what a search left standing (#477): a search that finds
+            nothing took the button with it, and every box after it moved. */}
+        {column !== null && doc.rows.length > 0 && (
           <button
             type="button"
             className="byd-crown-fold"
@@ -472,7 +482,16 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
               </button>
             </div>
           )}
-          {bands.length === 0 ? (
+          {/* A search that finds nothing says what was looked for and the way back (#477), rather
+              than leaving a wall with nothing on it. */}
+          {shown.length === 0 && isFiltering(filter) ? (
+            <div className="byd-wall-nomatch" role="status">
+              <p>{t('wall.search.none', { query: filter.query })}</p>
+              <button type="button" className="byd-secondary" onClick={() => setFilter(noFilter)}>
+                {t('wall.search.clear')}
+              </button>
+            </div>
+          ) : bands.length === 0 ? (
             <div className="byd-wall" role="listbox" aria-label={t('wall.deck')}>
               {shown.map((row) => card(row))}
             </div>

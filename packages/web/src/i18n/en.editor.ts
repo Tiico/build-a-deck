@@ -106,6 +106,8 @@ export const enEditor = {
   'wall.cards.other': '{n} cards',
   'wall.group.without': 'Without {column}',
   'wall.deck': 'The deck',
+  'wall.search.none': 'No card matches “{query}”.',
+  'wall.search.clear': 'Clear the search',
   'wall.groups': 'Groups in the deck',
   'wall.groups.folded': 'Groups in the deck, folded',
   'wall.fold.in': 'Fold the jump column',

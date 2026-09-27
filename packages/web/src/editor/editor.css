@@ -795,6 +795,10 @@
    no picture to measure. */
 .byd-wall-deck { min-width: 0; min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 var(--byd-s5); align-items: start; align-content: start; }
 /* Another eye over the real cards (E5), and the trim the knife will follow. */
+/* A search that found nothing (#477): the words where the cards would have been, and the way back. */
+.byd-wall-nomatch { grid-column: 1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--byd-s3); padding: var(--byd-s5) var(--byd-s3); color: #c8cfdc; }
+.byd-wall-nomatch p { margin: 0; font-size: 14px; line-height: 1.45; }
+.byd-wall-nomatch button { min-height: var(--byd-tap); padding: 0 var(--byd-s4); border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; }
 .byd-wall-deck[data-eye='deuteranopia'] { filter: url(#byd-eye-deuteranopia); }
 .byd-wall-deck[data-eye='protanopia'] { filter: url(#byd-eye-protanopia); }
 .byd-wall-deck[data-eye='tritanopia'] { filter: url(#byd-eye-tritanopia); }
