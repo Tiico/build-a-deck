@@ -2465,7 +2465,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
   .byd-editor-ways > .byd-editor-ways-new { display: block; }
   /* The header's gap is 6 px in this band, so the caret takes back 6 and not 12: taking 12 laid
      it over the last letters of the primary. */
-  .byd-editor-split { margin-left: -6px; }
+  .byd-editor-split { margin-left: -6px; } /* undantag: tar tillbaka huvudets eget mellanrum i det här bandet, som är 6 px */
 }
 .byd-editor-ways {
   position: absolute;

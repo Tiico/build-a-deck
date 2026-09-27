@@ -258,8 +258,9 @@ describe('the tables a project has (#19)', () => {
     const older = await client.startTable()
     const newer = await client.startTable()
     expect(await client.tables()).toEqual([
-      { id: newer.id, version: 'rev-1', ended: false, lastAt: null },
-      { id: older.id, version: 'rev-1', ended: false, lastAt: null },
+      // The code comes along for whoever may start tables (#477), so the header can pick a table up.
+      { id: newer.id, version: 'rev-1', ended: false, lastAt: null, code: newer.code },
+      { id: older.id, version: 'rev-1', ended: false, lastAt: null, code: older.code },
     ])
   })
 })

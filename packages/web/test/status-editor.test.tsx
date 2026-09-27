@@ -113,7 +113,8 @@ describe('a project on its way in', () => {
     await run.projects.create(run.projectId, projectDoc())
     open(`project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     await screen.findByText('Skogens herrar')
-    await waitFor(() => expect(document.title).toBe('Skogens herrar · Editor · build-your-deck'))
+    // The wall is where the editor opens, and the tab says so (#477).
+    await waitFor(() => expect(document.title).toBe('Skogens herrar · Kortvägg · build-your-deck'))
   })
 })
 
