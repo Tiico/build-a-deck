@@ -403,7 +403,11 @@ describe('the mark follows the deck as it rolls past (#179)', () => {
 // blank without a word, and the fold button left the crown so everything after it jumped.
 describe('a search that finds nothing (#477)', () => {
   it('says what was looked for, offers the way back, and keeps the crown still', () => {
-    wall(bigDeck())
+    // Grouped, which is what puts the fold in the crown; small, because the wall is drawn three
+    // times here and 308 compiled cards three times over outran CI's budget.
+    const doc = bigDeck()
+    doc.rows = doc.rows.filter((_, i) => i % 26 === 0)
+    wall(doc)
     expect(document.querySelector('.byd-crown-fold')).not.toBeNull()
     fireEvent.change(screen.getByRole('searchbox', { name: 'Sök i alla fält' }), { target: { value: 'zzzzqx' } })
     expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(0)
