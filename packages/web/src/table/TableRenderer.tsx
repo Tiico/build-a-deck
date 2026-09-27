@@ -779,15 +779,19 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // its `dblclick` on the frame the two presses have in common, and the card is not in it. What
   // was pressed is therefore remembered, and the frame asks what it was.
   const doubled = (e: RMouseEvent) => {
+    if (turnAgain()) return
+    doubleTap(e)
+  }
+  // The second press of a double press, read where it lands (#482): on the backdrop of the ring the
+  // first press opened. Answers whether it turned something, so the ring knows to take the press.
+  const turnAgain = (): boolean => {
     const was = clicked.current
     clicked.current = null
     const turn = was && onAct && Date.now() - was.at < DOUBLE_MS ? flipUnder(view, was.target) : null
-    if (turn) {
-      setRing(null)
-      onAct?.(turn)
-      return
-    }
-    doubleTap(e)
+    if (!turn) return false
+    setRing(null)
+    onAct?.(turn)
+    return true
   }
 
   // The felt itself: where this pointer is, and a hold that points (K6).
@@ -1179,6 +1183,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           items={ringVerbs}
           hub={ringChip ? <CounterHub view={view} c={ringChip} t={t} /> : ringPile ? <PileHub view={view} chips={ringPile} t={t} /> : undefined}
           onClose={shut(ring)}
+          onPressAgain={turnAgain}
         />
       )}
       {ring && onAct && ringZone && ringActions.length > 0 && (
