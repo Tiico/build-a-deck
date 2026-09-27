@@ -59,6 +59,17 @@ export type ZonePatch = {
 // property of an element either has a value or does not exist for that kind. `points` is the
 // shape the designer made her own (L26): choosing a gallery entry again is choosing that whole
 // outline, and a point list left behind under it would go on overruling the entry she pressed.
+// How long a game's name may be (#476): a line on a tile and a tab, as a player's name at the
+// table is (`JoinBody`). Held at every door a name comes in by — the one that makes a game, the one
+// that replaces it, and the edit that renames it — rather than on the stored document, so a game
+// that was named longer before there was a limit still opens.
+export const PROJECT_NAME_MAX = 64
+export function checkedName(name: string): string {
+  if (name.trim() === '') throw new Error('a game needs a name')
+  if (name.length > PROJECT_NAME_MAX) throw new Error(`a game's name is at most ${PROJECT_NAME_MAX} characters`)
+  return name
+}
+
 export type Clearable = 'name' | 'locked' | 'shadow' | 'pattern' | 'points'
 
 export type EditIntent =
@@ -180,7 +191,7 @@ export type EditIntent =
 export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
   switch (intent.v) {
     case 'rename':
-      return { ...doc, name: intent.name }
+      return { ...doc, name: checkedName(intent.name) }
 
     case 'setCell': {
       if (!doc.rows.some((r) => r.id === intent.cardRef)) throw new Error(`no row ${intent.cardRef}`)

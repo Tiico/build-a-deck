@@ -17,7 +17,7 @@ import { ProjectDoc, deckFromProject, liftDoc, type ProjectCredit, type ProjectR
 import { setupFromProject } from './setup.js'
 import { changeOf, diffProjects, type DocDiff, type VersionChange } from './diff.js'
 import { ProjectHost, type EditorMessage } from './project-actor.js'
-import type { EditIntent } from './edits.js'
+import { checkedName, type EditIntent } from './edits.js'
 import { arrangementOf, namesOfProject, peekFace, type CardFace } from './names.js'
 import { SurveyAnswer, type SurveyStore } from './surveys.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, langOf, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
@@ -898,6 +898,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     }
     const body = z.object({ id: z.string().min(1).optional() }).and(ProjectDoc).parse(liftDoc(JSON.parse(await readBody(req))))
     const { id: wanted, ...doc } = body
+    checkedName(doc.name)
     validateSetup(setupFromProject(doc), opts.registry)
     const rec = await projects.create(wanted ?? randomUUID(), doc, account?.id)
     json(res, 201, { id: rec.id, rev: rec.rev })
@@ -917,6 +918,9 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const body = z.object({ rev: z.number().int() }).and(ProjectDoc).parse(liftDoc(JSON.parse(await readBody(req))))
+    // Only a name that is being changed is held to the limit, so a game named before it existed
+    // can still be saved as it is.
+    if (body.name !== gate.rec.name) checkedName(body.name)
     const { rev, ...doc } = body
     validateSetup(setupFromProject(doc), opts.registry)
     const result = await projects.replace(decodeURIComponent(one[1] ?? ''), rev, doc)

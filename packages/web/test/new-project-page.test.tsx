@@ -215,3 +215,17 @@ describe('the draft in the wizard (#476)', () => {
     expect(gone).toEqual([])
   })
 })
+
+// A game's name is 64 characters at most (#476), and the field says so where it is written rather
+// than the tile on the start page growing to sixteen lines.
+describe('the game s name in the wizard (#476)', () => {
+  it('stops at 64 characters and says why at the field', () => {
+    open(() => undefined)
+    const field = screen.getByLabelText('Spelets namn') as HTMLInputElement
+    expect(field.maxLength).toBe(64)
+    expect(screen.queryByText('Namnet får vara högst 64 tecken.')).toBeNull()
+    fireEvent.change(field, { target: { value: 'x'.repeat(64) } })
+    const said = screen.getByText('Namnet får vara högst 64 tecken.')
+    expect(field.getAttribute('aria-describedby')).toContain(said.id)
+  })
+})

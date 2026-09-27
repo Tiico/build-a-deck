@@ -90,6 +90,7 @@ export const svAccount = {
   'invite.spent': 'Den här inbjudan är använd eller har gått ut. Be den som bjöd in dig om en ny.',
 
   // Guidad start (L6): tre steg som gör dokumentet editorn sedan redigerar.
+  'wizard.name.max': 'Namnet får vara högst {n} tecken.',
   'wizard.eyebrow': 'Guidad start',
   'wizard.title': 'Ge spelet en flygande start',
   'wizard.steps': '3 enkla steg · cirka 3 min',
@@ -165,7 +166,7 @@ export const svAccount = {
   'wizard.card.untitled': 'Namnlöst kort',
   'wizard.card.add': '+ Nytt kort',
   'wizard.card.remove': 'Ta bort valt kort',
-  'wizard.footer': 'Du kan lägga till resten av leken, importera CSV och finjustera mallen efter nästa steg.',
+  'wizard.footer': 'Resten av leken, CSV-import och finjusteringen av mallen gör du i editorn när spelet är skapat.',
   'wizard.creating': 'Skapar…',
   'wizard.create': 'Skapa spelet och fortsätt i editorn →',
   'wizard.error.login': 'logga in först',

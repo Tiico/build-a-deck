@@ -77,6 +77,7 @@ export const enAccount = {
   'invite.spent.heading': 'The invitation no longer works',
   'invite.spent': 'This invitation has been used, or it has run out. Ask whoever invited you for a new one.',
 
+  'wizard.name.max': 'The name can be at most {n} characters.',
   'wizard.eyebrow': 'Guided start',
   'wizard.title': 'Give your game a flying start',
   'wizard.steps': '3 easy steps · about 3 min',
@@ -144,7 +145,7 @@ export const enAccount = {
   'wizard.card.untitled': 'Card with no name',
   'wizard.card.add': '+ New card',
   'wizard.card.remove': 'Remove the chosen card',
-  'wizard.footer': 'You can add the rest of the deck, import CSV and fine-tune the template after the next step.',
+  'wizard.footer': 'The rest of the deck, CSV import and fine-tuning the template happen in the editor once the game is made.',
   'wizard.creating': 'Creating…',
   'wizard.create': 'Create the game and continue in the editor →',
   'wizard.error.login': 'log in first',

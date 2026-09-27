@@ -11,7 +11,7 @@ import { uploadFrameFont } from './fonts.js'
 import { defaultFields, DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
 import { useT, type Key, type T } from '../i18n/index.js'
 import { Help } from '../editor/HelpDrawer.js'
-import { MAX_PLAYERS } from '@byd/server/doc'
+import { MAX_PLAYERS, PROJECT_NAME_MAX } from '@byd/server/doc'
 import './wizard.css'
 
 export type NewProjectPageProps = { onNavigate?(url: string): void }
@@ -75,6 +75,7 @@ const mappedByStarterFrame = (key: string) => ['title', 'cost', 'body', 'art'].i
 // Vad fältet pekar på: exemplet alltid, beskedet när det finns (#416).
 const NAME_EXAMPLE = 'byd-wizard-name-example'
 const NAME_SAYS = 'byd-wizard-name-says'
+const NAME_LIMIT = 'byd-wizard-name-limit'
 
 // The three steps the header has promised all along. Below the desk they are three screens with
 // one job each; on a desk they are the two columns the wizard has always had (L10, #4).
@@ -127,6 +128,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const resumed = useRef(false)
   const frame = FRAMES.find((candidate) => candidate.id === s.frame) ?? DEFAULT_FRAME
   const named = s.name.trim().length > 0
+  const atLimit = s.name.length >= PROJECT_NAME_MAX
   // Det namnet stänger är inte längre knappen utan bara vägen igenom den (#416). Vad som faktiskt
   // låser den guidade utgången är ett spel utan kort eller fält, vilket den inte kan göra något av.
   const hasCards = s.rows.length > 0 && s.fields.length > 0
@@ -307,11 +309,19 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         }}
         aria-required="true"
         aria-invalid={says ? 'true' : 'false'}
-        aria-describedby={says ? `${NAME_EXAMPLE} ${NAME_SAYS}` : NAME_EXAMPLE}
+        maxLength={PROJECT_NAME_MAX}
+        aria-describedby={[NAME_EXAMPLE, says ? NAME_SAYS : null, atLimit ? NAME_LIMIT : null].filter(Boolean).join(' ')}
       /></label>
       <p className="byd-wizard-hint" id={NAME_EXAMPLE}>{t('wizard.name.example')}</p>
       {/* Villkoret, sagt en gång per skärm och vid fältet — inte en gång per utgång, fastän de två
           ligger i var sin spalt. Det föds efter trycket och föds därför som en levande region. */}
+      {/* The limit is said once it is reached (#476): a name that stops growing without a word
+          looks like a keyboard that stopped working. */}
+      {atLimit && (
+        <p className="byd-wizard-hint" id={NAME_LIMIT}>
+          {t('wizard.name.max', { n: PROJECT_NAME_MAX })}
+        </p>
+      )}
       {says && (
         <p className="byd-wizard-says" id={NAME_SAYS} role="alert" aria-live="assertive">
           {says}

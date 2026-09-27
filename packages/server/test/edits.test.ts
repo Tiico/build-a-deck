@@ -30,6 +30,14 @@ describe('an edit is a thing that happened to the project (D3)', () => {
     expect(next.rows).toBe(before.rows)
   })
 
+  // A game's name is a line on a tile and a tab, not a paragraph (#476): 64 characters, as a
+  // player's name at the table has (`JoinBody`).
+  it('refuses a name longer than a game s name may be, or none at all', () => {
+    expect(() => applyEdit(base(), { v: 'rename', name: 'x'.repeat(65) })).toThrow()
+    expect(() => applyEdit(base(), { v: 'rename', name: '  ' })).toThrow()
+    expect(applyEdit(base(), { v: 'rename', name: 'x'.repeat(64) }).name).toHaveLength(64)
+  })
+
   it('writes the deck: a cell, a card added, a card taken away, the whole table at once', () => {
     const doc = after(
       base(),

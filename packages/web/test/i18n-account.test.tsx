@@ -78,3 +78,13 @@ describe('the guided start (L6) in the reader\'s own language', () => {
     expect(screen.getByRole('button', { name: '+ Textfält' })).toBeTruthy()
   })
 })
+
+// Step 3 is the last one (#476), so its help cannot send the reader on to "the next step".
+describe('the help in the wizard s last step (#476)', () => {
+  it('says where the rest is done without pointing at a step that does not come', () => {
+    expect(translate('sv', 'wizard.footer')).not.toMatch(/nästa steg/)
+    expect(translate('en', 'wizard.footer')).not.toMatch(/next step/)
+    expect(translate('sv', 'wizard.footer')).toMatch(/editorn/)
+    expect(translate('en', 'wizard.footer')).toMatch(/editor/)
+  })
+})
