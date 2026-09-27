@@ -50,6 +50,26 @@ describe('the crop opens as a sheet over the library (#297, L33)', () => {
     expect(document.activeElement).toBe(tile())
   })
 
+  // «Hela bilden» is refused the moment it has done its work, and a refused button lets go of the
+  // focus: it fell to <body>, where the sheet's own Escape could no longer hear it (#481, fynd 9).
+  it('hands the focus to the window when «Hela bilden» is pressed, and hears Escape from wherever it fell', () => {
+    const doc = deckWithArt()
+    doc.pictures = { [SKOG]: { name: 'skog.png', crop: { x: 0.1, y: 0.1, w: 0.5, h: 0.5 } } }
+    render(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
+    tile().focus()
+    fireEvent.click(tile())
+    const whole = within(sheet()).getByRole('button', { name: 'Hela bilden' })
+    whole.focus()
+    fireEvent.click(whole)
+    expect(document.activeElement).toBe(within(sheet()).getByRole('button', { name: /Beskärning: visar/ }))
+
+    // And a focus that fell out anyway — to the page itself — still closes the sheet on Escape.
+    ;(document.activeElement as HTMLElement).blur()
+    expect(document.activeElement).toBe(document.body)
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
   // The change is applied when the handle is released, so a close never discards anything, and
   // Escape may close the sheet exactly as «Klart» does.
   it('closes on Escape and puts the hand back on the tile', () => {

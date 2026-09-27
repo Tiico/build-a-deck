@@ -590,7 +590,17 @@ function Cropping({
               <p role="status" className="byd-crop-status" data-state={state}>
                 <i aria-hidden="true">{STATUS_MARK[state]}</i> {state === 'saved' ? t('media.crop.status.saved', { p: Math.round(crop.w * crop.h * 100) }) : t(state === 'saving' ? 'media.crop.status.saving' : 'media.crop.status.whole')}
               </p>
-              <button type="button" className="byd-secondary" disabled={stored === undefined} onClick={onWhole}>
+              <button
+                type="button"
+                className="byd-secondary"
+                disabled={stored === undefined}
+                onClick={() => {
+                  onWhole()
+                  // The button is refused the moment it has done its work, and a refused button lets
+                  // go of the focus; the window it just widened is where the hand goes (#481).
+                  handle.current?.focus()
+                }}
+              >
                 {t('media.crop.whole')}
               </button>
             </div>
