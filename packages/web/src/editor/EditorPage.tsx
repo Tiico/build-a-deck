@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { nextCardRef } from './fields.js'
 import { DeckWall } from './DeckWall.js'
 import { EditorTabs, MODES, panelId, tabId, type Mode } from './EditorTabs.js'
 import { EditorStages, isCanvasStage, modeOf, STAGES, type Stage } from './EditorStages.js'
@@ -347,6 +348,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           const gesture = `fix-check-${Date.now()}`
           for (const fix of fixes) client?.patchElement(fix.face, fix.element, fix.patch, undefined, gesture)
         }}
+        // The empty game's two doors (#476): the first card is made here and chosen, and the front
+        // is drawn in Mall.
+        onAddCard={() => {
+          const cardRef = nextCardRef(doc)
+          client.addRow(cardRef, { title: '', antal: 1 })
+          setRow(cardRef)
+        }}
+        onOpenTemplate={() => setStage('canvas')}
       />
     ),
     template: () => (

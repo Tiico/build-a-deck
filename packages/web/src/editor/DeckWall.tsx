@@ -37,6 +37,10 @@ export type DeckWallProps = {
   // One edit that mends a whole check (#233). The wall works out what to change; applying it is
   // the project's, like every other change the wall judges.
   onFixChecks?(fixes: readonly Fix[]): void
+  // The two doors an empty game needs (#476, variant A): the first card, made here, and the front
+  // that draws it, which is drawn in Mall.
+  onAddCard?(): void
+  onOpenTemplate?(): void
 }
 
 // The eyes a card is read with (E5). The simulations are the transforms the check uses, applied
@@ -64,7 +68,7 @@ type Box = 'eyes' | 'guides' | 'grouping' | 'checks'
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
 // the physical checks (E5), gathered by kind, and the eyes to read the deck with.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFraming, onFixChecks }: DeckWallProps) {
+export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFraming, onFixChecks, onAddCard, onOpenTemplate }: DeckWallProps) {
   const t = useT()
   // What was mended is said out loud: an edit that changes the template under a deck of forty
   // cards and says nothing is the silence #32 forbids.
@@ -132,6 +136,9 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const columns = ['id', ...fieldsOf(doc)]
   const column = grouped ? (byColumn ?? groupColumn(doc)) : null
   const shown = isFiltering(filter) ? filterRows(doc.rows, columns, filter) : doc.rows
+  // How much of the front there is, which is what the empty wall says is still to be done (#476).
+  const frontElements = doc.template.faces['front']?.base.length ?? 0
+  const frontless = frontElements === 0
   const bands = bandsOf(doc, shown, column, t('wall.group.without', { column: column ?? '' }))
   // Read off the whole deck and not off what a search left standing: the strip is the deck's own
   // colours, and a band does not change colour because a term narrowed it.
@@ -419,6 +426,36 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
           {...(trim ? { 'data-trim': 'true' } : {})}
           {...(arm ? { 'data-arm': 'true' } : {})}
         >
+          {/* What an empty game is missing, and the doors to it (#476, beslut 2026-09-27, variant A).
+              A deck with no cards says so and offers the first card here and the front in Mall;
+              a deck whose front is still empty says that over the cards it has. Both doors are
+              bordered: the filled button in the view is the header's (L13). */}
+          {doc.rows.length === 0 && !isFiltering(filter) && (
+            <div className="byd-wall-empty">
+              <h2>{t(frontless ? 'wall.empty.title' : 'wall.empty.drawn.title')}</h2>
+              <p>{frontless ? t('wall.empty.body') : t('wall.empty.drawn.body', { n: frontElements })}</p>
+              <div className="byd-wall-empty-doors">
+                {onAddCard && (
+                  <button type="button" className="byd-secondary" onClick={onAddCard}>
+                    {t('table.addCard')}
+                  </button>
+                )}
+                {frontless && onOpenTemplate && (
+                  <button type="button" className="byd-secondary" onClick={onOpenTemplate}>
+                    {t('wall.empty.template')}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+          {doc.rows.length > 0 && frontless && onOpenTemplate && (
+            <div className="byd-wall-nofront">
+              <span>{t('wall.nofront')}</span>
+              <button type="button" className="byd-secondary" onClick={onOpenTemplate}>
+                {t('wall.empty.template')}
+              </button>
+            </div>
+          )}
           {bands.length === 0 ? (
             <div className="byd-wall" role="list">
               {shown.map((row) => card(row))}
@@ -459,8 +496,12 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             ? t('wall.foot.found', { shown: shown.length, total: doc.rows.length, px })
             : t('wall.foot.cards', { n: doc.rows.length, px })}
         </span>
+        {/* An empty deck is not a checked one (#476): «Inga anmärkningar» over nothing reads as
+            an approval. */}
         <span>
-          {groups.length === 0
+          {doc.rows.length === 0
+            ? null
+            : groups.length === 0
             ? t('wall.foot.checked')
             : t(groups.length === 1 ? 'wall.foot.remarks.one' : 'wall.foot.remarks.other', { n: groups.length })}
         </span>

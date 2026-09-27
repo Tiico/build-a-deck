@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent, type FocusEvent, type KeyboardEvent } from 'react'
 import type { ProjectDoc, ProjectRow } from './types.js'
-import { deckKeepsFields, fieldsOf, fieldLabel, takenNames } from './fields.js'
+import { deckKeepsFields, fieldsOf, fieldLabel, takenNames, nextCardRef } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
 import { ColumnDoor } from './ColumnDoor.js'
 import { Crown, CrownBox, CrownDrawer, CrownFoot, CrownRail } from './Crown.js'
@@ -926,11 +926,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     // go of, and stays let go of when the question is taken back.
     setSelected(keepRows(selected, filterRows(doc.rows, columns, next).map((row) => row.id)))
   }
-  const nextRef = () => {
-    let n = doc.rows.length + 1
-    while (doc.rows.some((r) => r.id === `kort-${n}`)) n++
-    return `kort-${n}`
-  }
+  const nextRef = () => nextCardRef(doc)
   const importFile = (file: File | undefined) => {
     if (!file) return
     const reader = new FileReader()

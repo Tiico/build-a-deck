@@ -67,3 +67,11 @@ export const recipeWords = (t: T): RecipeWords => ({
   counters: t('zone.counters'),
   hand: t('zone.hand'),
 })
+
+// The id a new card is given wherever it is made (#476): the table's button and the empty wall's
+// door ask the same question of the same deck, so the two cannot come to different answers.
+export function nextCardRef(doc: Pick<ProjectDoc, 'rows'>): string {
+  let n = doc.rows.length + 1
+  while (doc.rows.some((r) => r.id === `kort-${n}`)) n++
+  return `kort-${n}`
+}

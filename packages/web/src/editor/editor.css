@@ -868,6 +868,17 @@
 
 /* The width a card is drawn at is the density the crown steps through; the wall fills the row with
    as many of them as fit. The padding is only what the selection outline needs to show. */
+/* An empty game on the wall (#476, variant A): what it is missing and the two doors to it, in the
+   middle of the wall where the cards would be. */
+.byd-wall-empty { grid-column: 1; justify-self: center; display: grid; justify-items: center; gap: var(--byd-s3); max-width: 56ch; margin-top: var(--byd-s5); padding: var(--byd-s5); text-align: center; color: #9aa3b8; }
+.byd-wall-empty h2 { margin: 0; color: #e6ecfa; font-size: 18px; }
+.byd-wall-empty p { margin: 0; line-height: 1.5; }
+.byd-wall-empty-doors { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--byd-s2); }
+/* A deck whose front is still empty says so over its cards, with the way to it (#476). */
+.byd-wall-nofront { grid-column: 1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--byd-s3); margin: var(--byd-s1); padding: var(--byd-s2) var(--byd-s3); border: 1px solid #3b4358; border-radius: 10px; color: #c7cede; }
+.byd-wall-nofront span { flex: 1 1 auto; }
+/* The two doors are shaped as the header's own buttons are; their role gives them the line. */
+:is(.byd-wall-empty, .byd-wall-nofront) button { border-radius: 8px; padding: 0 var(--byd-s3); font-weight: 700; cursor: pointer; }
 .byd-wall { grid-column: 1; padding: var(--byd-s1); display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--byd-wall-card, 150px), 1fr)); gap: var(--byd-s3); align-content: start; }
 /* The tile is the card and nothing more (#332). A grid column stretches to fill the row, and the
    card inside it does not — it is 63 mm at whatever the density draws a millimetre as — so the
