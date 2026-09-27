@@ -132,10 +132,12 @@ const COUNTS = [3, 13, 21] as const
 // the band is: at a phone's size `/online` draws no felt and no fan at all — it draws the player's
 // own surface, where the hand is K10's strip — so there is nothing here left to measure. What it
 // draws instead is `online-phone.test.tsx`'s business. The readings below are about the band, and
-// the band now begins at the smallest window that still carries a board.
+// the band now begins at the smallest window that still carries a board. Since #484 fynd 9 that is
+// 960 wide: an upright tablet of 768 or 820 draws a felt card under K9's 45 and gets the player's
+// own surface instead, so the two windows here are the smallest upright one and a large tablet.
 const SIZES: readonly Size[] = [
-  { w: 768, h: 1024 },
-  { w: 820, h: 1180 },
+  { w: 960, h: 1280 },
+  { w: 1024, h: 1366 },
 ]
 
 let run: Running

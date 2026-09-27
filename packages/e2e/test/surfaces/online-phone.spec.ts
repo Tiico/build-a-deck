@@ -99,3 +99,27 @@ test.describe(`a player at ${DESK.width} × ${DESK.height}`, () => {
     expect(await made(page)).toEqual({ felts: 1, fans: 0, columns: 1, strips: 0, cards: 0, sideways: 0 })
   })
 })
+
+// An upright window gets the board only where its card can be played (#484 fynd 9, beslut A). The
+// felt in a portrait window is bound by its width: measured on the painted card's short side, it is
+// 36 px at 768 × 1024 and 27 at 600 × 900, and K9's 45 first at 960 wide. Below that the window gets
+// the player's own surface, as a phone does (C2); a landscape window is left as it was.
+for (const [what, viewport, board] of [
+  ['an upright tablet at 768 × 1024', { width: 768, height: 1024 }, false],
+  ['an upright window at 600 × 900', { width: 600, height: 900 }, false],
+  ['an upright window at 960 × 1280', { width: 960, height: 1280 }, true],
+] as const) {
+  test.describe(`a player in ${what}`, () => {
+    test.use({ viewport })
+    test(board ? 'gets the board, with a card K9 can play' : 'is given the player surface and not a felt too small to play', async ({ page, request, baseURL }) => {
+      await seated(page, request, baseURL!)
+      if (board) {
+        await expect.poll(async () => (await made(page)).felts, { message: 'the felt is drawn' }).toBe(1)
+        expect(await made(page)).toMatchObject({ felts: 1, strips: 0 })
+      } else {
+        await expect.poll(async () => (await made(page)).cards, { message: 'the five cards reach the strip' }).toBe(5)
+        expect(await made(page)).toEqual({ felts: 0, fans: 0, columns: 0, strips: 1, cards: 5, sideways: 0 })
+      }
+    })
+  })
+}

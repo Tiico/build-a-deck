@@ -163,10 +163,10 @@ afterEach(async () => {
 
 const DESK: Size = { w: 1280, h: 800 }
 const WIDE: Size = { w: 1920, h: 1080 }
-// A phone, kept because the felt it used to draw there is what #99 is about — and an upright
-// tablet, which is the smallest portrait window that still draws one.
+// A phone, kept because the felt it used to draw there is what #99 is about — and the smallest
+// upright window that still draws one, which is 960 wide since #484 fynd 9.
 const PHONE: Size = { w: 390, h: 844 }
-const UPRIGHT: Size = { w: 768, h: 1024 }
+const UPRIGHT: Size = { w: 960, h: 1280 }
 
 // K9's own gate, asked of the seat's window: a card on the felt is a control — it is dragged,
 // pressed and read — and the smallest thing a control may be is forty-five pixels across its

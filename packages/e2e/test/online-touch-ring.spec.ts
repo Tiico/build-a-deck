@@ -2,8 +2,9 @@ import { join } from '../support/api.js'
 import type { Device } from '../support/devices.js'
 import { expect, test } from '../support/test.js'
 
-// A tablet held upright, with a finger: the distance view in its band shape (#484).
-const TABLET: Device = { name: 'tablet', viewport: { width: 768, height: 1024 }, hasTouch: true, isMobile: true }
+// A large tablet held upright, with a finger: the distance view in its band shape (#484). A smaller
+// one gets the player's surface since fynd 9, where a felt card would be under K9's 45 px.
+const TABLET: Device = { name: 'tablet', viewport: { width: 1024, height: 1366 }, hasTouch: true, isMobile: true }
 
 // A tap on a card on the felt opens the ring, and the ring stays (#484 fynd 3, same root as #482
 // fynd 1). The ring opens on the tap's release; the browser then makes a `click` of the touch and
@@ -24,9 +25,12 @@ test.describe('a finger on the distance view (#484)', () => {
     const box = (await card.boundingBox())!
     await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
     await expect(page.locator('[data-radial]')).toHaveCount(1)
+    // The card lies in the felt's corner, so the ring is drawn in from the edge and a verb stands
+    // under the finger: the tap's click ran it, until a verb's click counted only from a press on it.
     // Long past the synthesised click, which arrives within a frame or two of the touch ending.
     await page.waitForTimeout(400)
     await expect(page.locator('[data-radial]')).toHaveCount(1)
+    await expect(page.locator('.byd-online-felt .byd-card[data-component]')).toHaveAttribute('data-face', 'back')
     // And a tap on the backdrop is still the way out.
     await page.touchscreen.tap(8, box.y + box.height / 2)
     await expect(page.locator('[data-radial]')).toHaveCount(0)
@@ -44,7 +48,11 @@ test.describe('a finger on the distance view (#484)', () => {
     await expect(card).toBeVisible()
     const box = (await card.boundingBox())!
     await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2)
-    await expect(page.getByRole('dialog', { name: /^Handlingar för/ })).toBeVisible()
+    const panel = page.getByRole('dialog', { name: /^Handlingar för/ })
+    await expect(panel).toBeVisible()
+    // And it stays: the click the browser makes of the touch lands on the panel's backdrop.
+    await page.waitForTimeout(400)
+    await expect(panel).toBeVisible()
   })
 })
 

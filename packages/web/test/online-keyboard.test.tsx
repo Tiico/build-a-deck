@@ -27,7 +27,8 @@ const LANDSCAPE: Size = { w: 1280, h: 800 }
 // An upright tablet and not a phone: since C2's revision of 2026-09-16 (#99) a phone's `/online`
 // draws no felt and no band, so the band's own keyboard has nowhere to be measured there. The
 // hand a phone does get is the strip, and the strip's keyboard is `hand-keyboard.test.tsx`'s.
-const PORTRAIT: Size = { w: 768, h: 1024 }
+// 960 wide: the smallest upright window that still draws a board (#484 fynd 9).
+const PORTRAIT: Size = { w: 960, h: 1280 }
 
 // Ada, playing entirely online: cards in her hand and one lying face-up on the felt.
 async function online(held = 2, room: Size = LANDSCAPE) {

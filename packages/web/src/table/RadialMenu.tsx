@@ -23,6 +23,11 @@ export type RadialItem = { key?: string; label: string; run: (() => void) | null
 // the touch, hit-tested where the finger was — on this backdrop, which had arrived there in between.
 // The ring stood for eight milliseconds. A release still closes it, whatever pressed: a press held
 // until the ring opens and let go beside it is the never-mind the ring has always had.
+//
+// A verb answers the same way. Near the felt's edge the ring is drawn in from the edge, and the
+// click made of a tap then lands on whichever verb was drawn under the finger — and ran it. A verb's
+// click counts when its press began in the ring, or when it is the keyboard's (`detail` 0); a verb
+// reached by sliding a held press onto it answers on the release, as it always has.
 export function RadialMenu({ id, x, y, items, hub, onClose, onPressAgain }: { id: string; x: number; y: number; items: RadialItem[]; hub?: ReactNode; onClose(): void; onPressAgain?: () => boolean }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -67,7 +72,10 @@ export function RadialMenu({ id, x, y, items, hub, onClose, onPressAgain }: { id
               disabled={item.run === null}
               style={{ left: Math.cos(ang) * radius, top: Math.sin(ang) * radius }}
               onPointerUp={(e) => choose(e, item)}
-              onClick={(e) => choose(e, item)}
+              onClick={(e) => {
+                if (pressed.current || e.detail === 0) choose(e, item)
+                else e.stopPropagation()
+              }}
             >
               {item.label}
             </button>

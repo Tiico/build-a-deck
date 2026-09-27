@@ -57,6 +57,13 @@ export type OnlinePageProps = { timing?: StatusTiming; onLeave?(url: string): vo
 // where it stands rather than settled in passing.
 const BOARD_FLOOR = 600
 
+// The narrowest upright window that gets a board (#484 fynd 9, beslut A). An upright felt is bound
+// by the window's width, and its card reaches K9's 45 px only here: measured on the painted card's
+// short side in Chromium, 27 px at 600 × 900, 36 at 768 × 1024, 45 at 960 × 1280. A felt whose card
+// cannot be played is the 16 px of #99 at a larger size, so the window below it gets the player's own
+// surface, as a phone does (C2). Landscape windows keep `BOARD_FLOOR` alone.
+const UPRIGHT_BOARD_FLOOR = 960
+
 export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => location.assign(url) }: OnlinePageProps = {}) {
   const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
@@ -91,7 +98,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const version = useSessionVersion(http, sessionId, view?.ended === true)
   // Whether this window gets a board at all (#99). Off a browser there is no window to ask, and a
   // missing answer must never take the board away — the same reading `column` below makes.
-  const board = !(room.w > 0 && room.h > 0) || Math.min(room.w, room.h) >= BOARD_FLOOR
+  const board = !(room.w > 0 && room.h > 0) || (Math.min(room.w, room.h) >= BOARD_FLOOR && (room.w > room.h || room.w >= UPRIGHT_BOARD_FLOOR))
   // The felt and the fan, both as controls, both opening the same address panel (#1, #2). Where
   // there is no felt the keyboard is the hand and the panel alone, exactly as on `/play`.
   const kbd = useFeltKeyboard(view, board && view !== null && !view.rewind && !view.ended && client !== null, {
