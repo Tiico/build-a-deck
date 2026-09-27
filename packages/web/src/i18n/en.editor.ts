@@ -485,6 +485,7 @@ export const enEditor = {
   'canvas.props.trim': 'Fit the motif',
   'canvas.props.evenMotifs': 'All drawings the same size in their frame',
   'canvas.props.fill': 'Fill',
+  'canvas.props.fill.on': 'Fill the shape',
   'canvas.props.fill.byField': 'Colour by field',
   'canvas.props.fill.field': 'Fill by the column',
   'canvas.props.fill.rest': 'Everything else',

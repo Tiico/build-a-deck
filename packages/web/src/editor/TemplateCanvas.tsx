@@ -1548,9 +1548,16 @@ function Fill({ fill, fields, valuesIn, onPatch }: { fill: Paint | undefined; fi
   // left to show it on is still a colour the designer must be able to find and take away (L3).
   const painted = rule ? [...new Set([...values, ...Object.keys(rule.map)])] : []
   const write = (map: Record<string, string>, gesture?: string) => rule && onPatch({ fill: { ...rule, map } }, gesture)
+  // Whether the shape is filled at all (#478): a shape with none showed a black well, and none
+  // could not be chosen again once a colour had been. A switch, as the pattern over it has.
+  const filled = fill !== undefined
   return (
     <>
-      {fields.length > 0 && (
+      <label className="byd-props-switch">
+        <input type="checkbox" checked={filled} onChange={(e) => onPatch({ fill: e.target.checked ? plain : undefined })} />
+        {t('canvas.props.fill.on')}
+      </label>
+      {filled && fields.length > 0 && (
         <label className="byd-props-switch">
           <input
             type="checkbox"
@@ -1560,7 +1567,7 @@ function Fill({ fill, fields, valuesIn, onPatch }: { fill: Paint | undefined; fi
           {t('canvas.props.fill.byField')}
         </label>
       )}
-      {!rule && (
+      {filled && !rule && (
         <label>
           {t('canvas.props.fill')}
           <input type="color" value={plain} {...picking.visit} onChange={(e) => onPatch({ fill: e.target.value }, picking.token())} />

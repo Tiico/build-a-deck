@@ -564,6 +564,7 @@ export const svEditor = {
   'canvas.props.trim': 'Passa in motivet',
   'canvas.props.evenMotifs': 'Alla motiv lika stora i sin ruta',
   'canvas.props.fill': 'Fyllning',
+  'canvas.props.fill.on': 'Fyll formen',
   // Fyllning ur ett fältvärde (L16): växeln, kolumnen, och färgen för det som inte har en egen.
   'canvas.props.fill.byField': 'Färg efter fält',
   'canvas.props.fill.field': 'Fyll efter kolumnen',

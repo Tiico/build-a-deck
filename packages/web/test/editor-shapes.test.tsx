@@ -449,3 +449,27 @@ describe('the parametric numbers step aside for a shape of the designer own (L26
     expect(screen.queryByLabelText(/mönster över/i)).toBeTruthy()
   })
 })
+
+// A shape with no fill (#478): the panel showed a black colour well for it, and «no fill» could
+// not be chosen at all once a colour had been. The fill is a switch, as the pattern over it is.
+describe('a shape with no fill (#478)', () => {
+  const fillSwitch = () => screen.getByRole('checkbox', { name: 'Fyll formen' })
+
+  it('says it has none, and shows no colour for it', () => {
+    open({ fill: undefined })
+    expect((fillSwitch() as HTMLInputElement).checked).toBe(false)
+    // The section is still called «Fyllning»; there is no colour well of that name in it.
+    expect(screen.queryAllByLabelText('Fyllning').filter((el) => el instanceof HTMLInputElement)).toEqual([])
+  })
+
+  it('takes its fill away with the switch, and gives one back', () => {
+    const { onPatch } = open({ fill: '#f4ead8' })
+    expect((fillSwitch() as HTMLInputElement).checked).toBe(true)
+    fireEvent.click(fillSwitch())
+    expect(onPatch.mock.calls.at(-1)?.[1]).toEqual({ fill: undefined })
+    cleanup()
+    const again = open({ fill: undefined })
+    fireEvent.click(fillSwitch())
+    expect(typeof (again.onPatch.mock.calls.at(-1)?.[1] as { fill?: unknown }).fill).toBe('string')
+  })
+})
