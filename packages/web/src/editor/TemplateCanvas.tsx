@@ -1016,7 +1016,10 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
             onPointerCancel={callOff}
             // The way in for the hand that has no pointer. A way in that only exists under a
             // pointer is no way in at all (L24), and adding a point is the whole of this door.
-            onClick={() => {
+            onClick={(event) => {
+              // A click on the shape's own furniture is not a click on the empty stage (#478):
+              // the stage answers that by choosing nothing, which took the shape and its points away.
+              event.stopPropagation()
               if (shaped.current) {
                 shaped.current = false
                 return
@@ -1042,6 +1045,7 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
             // keyboard exactly as they do under the hand (L38).
             onFocus={() => onPoint(index)}
             onKeyDown={(event) => pointKeys(event, own, index)}
+            onClick={(event) => event.stopPropagation()}
           />
         ))}
       {/* The handles of the one point that is chosen (L38), drawn above the points themselves.
@@ -1073,6 +1077,7 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
                 onPointerUp={up}
                 onPointerCancel={callOff}
                 onKeyDown={(event) => handleKeys(event, own, chosen, arm)}
+                onClick={(event) => event.stopPropagation()}
               />
             </Fragment>
           )
