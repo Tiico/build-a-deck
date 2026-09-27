@@ -7,7 +7,7 @@ const swedish: T = (key, params) => translate('sv', key, params)
 // a place too, and a tab that says nothing is a tab nobody can find their way back to.
 export const APP = 'build-your-deck'
 
-export const ROUTES = ['home', 'login', 'new', 'claim', 'editor', 'table', 'join', 'play', 'online', 'observe', 'prototype', 'unknown'] as const
+export const ROUTES = ['home', 'login', 'new', 'claim', 'invite', 'editor', 'table', 'join', 'play', 'online', 'observe', 'prototype', 'unknown'] as const
 export type Route = (typeof ROUTES)[number]
 
 const PATHS: Record<string, Route> = {
@@ -29,6 +29,7 @@ const PATHS: Record<string, Route> = {
 // product page either (CLAUDE.md).
 export function routeOf(pathname: string): Route {
   if (pathname.startsWith('/prototype/')) return 'prototype'
+  if (/^\/invites\/[^/]+$/.test(pathname)) return 'invite'
   return PATHS[pathname] ?? 'unknown'
 }
 
@@ -52,6 +53,8 @@ function nameOf(route: Route, ctx: TitleContext, t: T): string[] {
       return [t('title.new')]
     case 'claim':
       return [t('title.claim')]
+    case 'invite':
+      return [t('title.invite')]
     case 'editor':
       // The game's own name is the designer's and is never translated (A4); only the word beside
       // it is the tool's.

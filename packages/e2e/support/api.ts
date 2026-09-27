@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import type { APIRequestContext } from '@playwright/test'
 import { deckFromProject } from '@byd/server'
 import { setupFromProject } from '@byd/server/doc'
@@ -138,4 +139,31 @@ export async function makeProjectOf(request: APIRequestContext, doc: unknown): P
   if (res.status() !== 201) throw new Error(`the project was not created: ${res.status()} ${await res.text()}`)
   const { id } = (await res.json()) as { id: string }
   return { id, editorUrl: `/editor?project=${encodeURIComponent(id)}` }
+}
+
+/**
+ * The last mail the server sent to an address, read out of its log the way `ConsoleMailer`
+ * writes it (`support/stack.ts`). Waits for it, because the answer to the request that sent it
+ * can arrive before the line has been flushed to the file.
+ */
+export async function mailTo(to: string): Promise<{ subject: string; text: string }> {
+  const log = process.env['BYD_E2E_SERVER_LOG']
+  if (!log) throw new Error('the stack did not say where the server writes its log')
+  const deadline = Date.now() + 10_000
+  for (;;) {
+    const found = readFileSync(log, 'utf8')
+      .split('\n')
+      .flatMap((line) => {
+        try {
+          const entry = JSON.parse(line) as { msg?: string; to?: string; subject?: string; text?: string }
+          return entry.msg === 'mail' && entry.to === to ? [{ subject: entry.subject ?? '', text: entry.text ?? '' }] : []
+        } catch {
+          return []
+        }
+      })
+      .at(-1)
+    if (found) return found
+    if (Date.now() > deadline) throw new Error(`no mail to ${to} in the server's log`)
+    await new Promise((r) => setTimeout(r, 100))
+  }
 }
