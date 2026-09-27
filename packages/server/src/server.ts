@@ -549,7 +549,7 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
     ws.close(4004, 'unknown project')
     return
   }
-  const editor = { id: randomUUID(), name, role, ...(account ? { account: account.id } : {}), send, close: () => ws.close(4003, 'gone') }
+  const editor = { id: randomUUID(), name, role, ...(account ? { account: account.id } : {}), send, close: () => ws.close(4003, 'gone'), gone: () => ws.close(4004, 'unknown project') }
   const leave = actor.subscribe(editor)
   ws.on('close', leave)
   ws.on('message', (data) => {
@@ -1192,7 +1192,12 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, gate.status, { error: gate.error })
       return true
     }
-    json(res, 200, { ok: await projects.remove(gate.rec.id) })
+    const removed = await projects.remove(gate.rec.id)
+    // Everyone who has the game open is told it is gone, and the actor goes with it (#485).
+    const host = editors(opts, projects)
+    ;(await host.running(gate.rec.id))?.shutDown()
+    host.forget(gate.rec.id)
+    json(res, 200, { ok: removed })
     return true
   }
   const print = /^\/projects\/([^/]+)\/print$/.exec(url.pathname)

@@ -167,6 +167,8 @@ const REFUSALS: { match: RegExp; say: Key }[] = [
   { match: /is not a pile|is not an area|into itself|needs x and y/, say: 'refusal.place' },
   { match: /cannot peek/, say: 'refusal.peek' },
   { match: /^unknown (component|zone|seat)/, say: 'refusal.unknown' },
+  // A save refused because the game is gone (#485): the editor put the server's words in its head.
+  { match: /^(unknown project|missing)$/, say: 'refusal.projectGone' },
 ]
 
 export function refusalText(reason: string, t: T = swedish): string {

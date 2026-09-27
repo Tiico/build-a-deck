@@ -150,6 +150,7 @@ export const svStatus = {
   'refusal.place': 'Det går inte att lägga korten där.',
   'refusal.peek': 'Den här skärmen har ingen hand att titta i.',
   'refusal.unknown': 'Kortet eller zonen finns inte längre på bordet.',
+  'refusal.projectGone': 'Spelet finns inte längre. Det du har ändrat ligger kvar här.',
   // Ett skäl den här klienten aldrig hört talas om får en mening av sin egen i stället för att
   // utvecklarens engelska ord skrivs ut på skärmen.
   'refusal.other': 'Bordet tog inte emot draget. Försök igen om en stund.',

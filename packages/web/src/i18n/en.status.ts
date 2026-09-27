@@ -137,5 +137,6 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'refusal.place': 'The cards cannot go there.',
   'refusal.peek': 'This screen has no hand to look in.',
   'refusal.unknown': 'The card or the zone is no longer on the table.',
+  'refusal.projectGone': 'The game is no longer there. What you changed is still here.',
   'refusal.other': 'The table did not take the move. Try again in a moment.',
 }

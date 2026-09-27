@@ -24,7 +24,7 @@ import type { ProjectClient, Textures } from './ProjectClient.js'
 import { loginUrl } from '../account/api.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
-import { noticeFor } from '../status/notice.js'
+import { noticeFor, refusalText } from '../status/notice.js'
 import { chordOf, isTyping, passedToEditor } from './keys.js'
 import { mediaInGame } from './assets.js'
 import { previewMotifs } from './motifs.js'
@@ -275,7 +275,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   }
   // A project that is missing, shut or out of reach says so in the editor's own words, with a
   // way back and — where waiting can help — a way to ask again (#12, UX-07).
-  if (fault) return <StatusNotice notice={noticeFor(fault, 'editor', t)} surface="page" links={links} onRetry={retry} />
+  if (fault && !client) return <StatusNotice notice={noticeFor(fault, 'editor', t)} surface="page" links={links} onRetry={retry} />
   if (!client) return <StatusNotice notice={noticeFor('loading', 'editor', t)} surface="page" links={links} />
   const doc = client.doc
   if (PlaytestPrototype && params.has('variant')) return <Suspense fallback={<p>Laddar prototyp…</p>}><PlaytestPrototype doc={doc} revision={client.rev} http={http} /></Suspense>
@@ -288,7 +288,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     setSaving(true)
     const result = await client.save()
     setSaving(false)
-    setNotice(result.ok ? null : result.reason === 'conflict' ? t('editor.conflict') : result.reason)
+    // Never the server's own words (#485): a reason is translated, or said as the one it is not.
+    setNotice(result.ok ? null : result.reason === 'conflict' ? t('editor.conflict') : refusalText(result.reason, t))
     return result.ok
   }
   // Out of the editor and back to the games. Work that differs from the saved project is asked
@@ -517,7 +518,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   )
 
   return (
-    <div className="byd-editor" data-page="editor" data-mode={mode} data-room={room}>
+    <>
+    <div className="byd-editor" data-page="editor" data-mode={mode} data-room={room} {...(fault ? { inert: true } : {})}>
       <header>
         <a
           ref={leaveRef}
@@ -689,6 +691,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         </EditorStages>
       )}
     </div>
+    {/* A game deleted while it was open (#485): said over the work, which stays on the page and
+        out of reach, rather than in place of it. */}
+    {fault && <StatusNotice notice={noticeFor(fault, 'editor', t)} surface="card" links={links} onRetry={retry} />}
+    </>
   )
 }
 

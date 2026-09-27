@@ -57,6 +57,32 @@ describe('a project that does not exist', () => {
   })
 })
 
+// A game deleted while it is open (#485, fynd 1): the server closes the editor's line the way an
+// unknown project is refused, and the editor says so at once, over the work it still holds.
+describe('a project deleted while it is open', () => {
+  it('says the game is not there, and keeps what is on the screen', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    open(`project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    await waitFor(() => expect(document.querySelector('.byd-editor')).not.toBeNull())
+    expect(noticeState()).toBeNull()
+    expect((await fetch(`${run.http}/projects/${run.projectId}`, { method: 'DELETE' })).status).toBe(200)
+    await waitFor(() => expect(noticeState()).toBe('missing'))
+    expect(notice()!.textContent).not.toMatch(/unknown project/)
+    // The work is still there behind the message.
+    expect(document.querySelector('.byd-editor')).not.toBeNull()
+  })
+})
+
+// And a save that the server refuses never shows the server's own words (#485): the editor put
+// «unknown project» straight into its head.
+describe('a refused save', () => {
+  it('says why in the reader’s words', async () => {
+    const { refusalText } = await import('../src/status/notice.js')
+    expect(refusalText('unknown project')).toBe('Spelet finns inte längre. Det du har ändrat ligger kvar här.')
+    expect(refusalText('missing')).toBe('Spelet finns inte längre. Det du har ändrat ligger kvar här.')
+  })
+})
+
 describe('a project that belongs to someone else', () => {
   it('says it is shut rather than broken, and offers both a login and a way home', async () => {
     const owned = await startServer({ auth: true, authBypass: true })
@@ -111,6 +137,7 @@ describe('a project on its way in', () => {
 
   it('names the game in the tab once it is open', async () => {
     await run.projects.create(run.projectId, projectDoc())
+    console.log('DBG', (await fetch(`${run.http}/projects/${run.projectId}`)).status)
     open(`project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     await screen.findByText('Skogens herrar')
     // The wall is where the editor opens, and the tab says so (#477).
