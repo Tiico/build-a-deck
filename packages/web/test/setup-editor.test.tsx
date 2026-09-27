@@ -514,3 +514,22 @@ describe('valet på filten i listan och i talen (#480)', () => {
     }
   })
 })
+
+// En zon dras aldrig bort från bordet (beslut 2026-09-27, #480 fynd 2 A, samma regel som #478:s
+// element på kortet): mitten hålls på bordet, och en etikett säger varför den stannade.
+describe('en zon vid bordets kant (#480)', () => {
+  it('håller zonens mitt på bordet och säger det', async () => {
+    const doc = projectDoc()
+    await run.projects.create(run.projectId, doc)
+    await openBord()
+    const floor = doc.setup.zones.find((z) => z.id === doc.setup.floor)!.geometry
+    const h = handle('discard')
+    fireEvent.keyDown(h, { key: 'Enter' })
+    for (let i = 0; i < 40; i++) fireEvent.keyDown(handle('discard'), { key: 'ArrowRight', shiftKey: true })
+    const coords = document.querySelector('[data-setup-coords]')!.textContent!
+    const x = Number(/· (-?\d+),/.exec(coords)![1])
+    expect(x).toBeLessThanOrEqual(floor.x + floor.w)
+    expect(x).toBeGreaterThan(floor.x + floor.w - 60)
+    expect(await screen.findByText('Halva zonen stannar på bordet')).toBeTruthy()
+  })
+})

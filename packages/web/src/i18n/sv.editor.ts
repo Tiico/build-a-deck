@@ -996,6 +996,7 @@ export const svEditor = {
   'setup.actions.remove.of': 'Ta bort åtgärden {name}',
   'setup.actions.removed': '«{name}» är borttagen.',
   'setup.seatZone.all': 'Varje plats har redan «{name}».',
+  'setup.kept': 'Halva zonen stannar på bordet',
   'setup.actions.when': 'Körs {when}',
   'setup.when.request': 'bara när någon ber om det',
   'setup.when.both': 'vid spelstart och när någon ber om det',

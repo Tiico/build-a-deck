@@ -889,6 +889,7 @@ export const enEditor = {
   'setup.actions.remove.of': 'Remove the action {name}',
   'setup.actions.removed': '“{name}” is removed.',
   'setup.seatZone.all': 'Every seat already has “{name}”.',
+  'setup.kept': 'Half the zone stays on the table',
   'setup.actions.when': 'Runs {when}',
   'setup.when.request': 'only when somebody asks',
   'setup.when.both': 'at game start and when somebody asks',

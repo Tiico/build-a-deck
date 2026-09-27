@@ -599,6 +599,8 @@
    row that gives its words away to the felt under it. */
 .byd-setup-said { flex: none; display: flex; gap: 12px; align-items: center; min-height: 30px; color: #9aa3b8; font-size: 12px; }
 .byd-setup-said > span:last-child { flex: 1; min-width: 0; }
+/* The word a zone held at the table's edge says (#480, the form #478 gave the card's edge). */
+.byd-setup-kept { position: absolute; left: 50%; top: 100%; transform: translate(-50%, var(--byd-s1)); padding: var(--byd-s1) var(--byd-s2); border-radius: 6px; background: #1b1d23; border: 1px solid #f0b64a; color: #f0b64a; font: 600 12px system-ui; white-space: nowrap; pointer-events: none; z-index: 5; }
 .byd-setup-coords { font: 12px ui-monospace, monospace; color: #c8cfdc; }
 .byd-setup-undo { display: flex; gap: 8px; align-items: center; color: #ffd98a; }
 .byd-setup-undo button { border: 1px solid #5c4a1f; border-radius: 8px; padding: 4px 8px; background: #241f13; color: #ffd98a; font-weight: 700; cursor: pointer; }

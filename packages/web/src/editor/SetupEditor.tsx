@@ -690,6 +690,21 @@ function Felt({
     if (feltBox.current) stepAside(feltBox.current)
   })
   const grabs = useGesture('zone')
+  // The zone that the last move held at the table's edge (beslut 2026-09-27, #480 fynd 2 A — the
+  // rule #478 gave elements on a card): its middle stays on the table, and a word beside it says so
+  // for as long as the hand keeps pushing. Past the edge a zone was clipped by the felt and could
+  // not be taken hold of again, and at the table it did not show at all.
+  const [kept, setKept] = useState<string | null>(null)
+  const floorBox = setup.zones.find((z) => z.id === setup.floor)?.geometry
+  const onTable = (z: Zone, g: Geometry): Geometry => {
+    if (!floorBox) return g
+    const half = z.kind === 'pile' ? { w: 0, h: 0 } : { w: g.w / 2, h: g.h / 2 }
+    const x = Math.min(floorBox.x + floorBox.w, Math.max(floorBox.x, g.x + half.w)) - half.w
+    const y = Math.min(floorBox.y + floorBox.h, Math.max(floorBox.y, g.y + half.h)) - half.h
+    const held = x !== g.x || y !== g.y
+    setKept(held ? z.id : null)
+    return held ? { ...g, x: Math.round(x), y: Math.round(y) } : g
+  }
   const toMm = (e: RPointerEvent) => table.current?.toTable(e.clientX, e.clientY) ?? { x: 0, y: 0 }
   const down = (e: RPointerEvent, z: Zone, mode: Drag['mode']) => {
     if (e.button !== 0) return
@@ -707,10 +722,13 @@ function Felt({
     const dx = snap(p.x - d.start.x)
     const dy = snap(p.y - d.start.y)
     const g = d.geometry
-    onGeometry(d.id, d.mode === 'move' ? { ...g, x: g.x + dx, y: g.y + dy } : { ...g, w: Math.max(MIN_MM, g.w + dx), h: Math.max(MIN_MM, g.h + dy) }, d.gesture)
+    const zone = setup.zones.find((z) => z.id === d.id)
+    if (d.mode === 'move' && zone) return onGeometry(d.id, onTable(zone, { ...g, x: g.x + dx, y: g.y + dy }), d.gesture)
+    onGeometry(d.id, { ...g, w: Math.max(MIN_MM, g.w + dx), h: Math.max(MIN_MM, g.h + dy) }, d.gesture)
   }
   const up = () => {
     drag.current = null
+    setKept(null)
   }
   const nudge = (e: RKeyboardEvent, z: Zone) => {
     // Enter and Space choose (#480): the focus alone does not, or Tab onto the felt would choose
@@ -724,7 +742,7 @@ function Felt({
     const d = e.key === 'ArrowLeft' ? { x: -step, y: 0 } : e.key === 'ArrowRight' ? { x: step, y: 0 } : e.key === 'ArrowUp' ? { x: 0, y: -step } : e.key === 'ArrowDown' ? { x: 0, y: step } : null
     if (!d) return
     e.preventDefault()
-    onGeometry(z.id, { ...z.geometry, x: z.geometry.x + d.x, y: z.geometry.y + d.y })
+    onGeometry(z.id, onTable(z, { ...z.geometry, x: z.geometry.x + d.x, y: z.geometry.y + d.y }))
   }
   // Delete is bound to the window and not to the handle, because a handle never has the focus: the
   // pointer that selects it is the pointer that starts a drag, and the drag takes the default
@@ -808,6 +826,11 @@ function Felt({
             onPointerEnter={() => setUnder(z.id)}
             onPointerLeave={() => setUnder((now) => (now === z.id ? null : now))}
           >
+            {kept === z.id && (
+              <span className="byd-setup-kept" role="status">
+                {t('setup.kept')}
+              </span>
+            )}
             {z.kind !== 'pile' && (selected === z.id || under === z.id) && <i className="byd-setup-corner" data-resize={z.id} onPointerDown={(e) => down(e, z, 'resize')} onPointerMove={move} onPointerUp={up} onPointerCancel={up} />}
           </div>
         )
