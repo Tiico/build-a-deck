@@ -3624,6 +3624,13 @@ L4:s mönster står kvar oförändrat för allt annat det gäller; det som skriv
 L18:s flyttläge rörs inte: en nudge är 0,5 mm i kortets mått vid varje förstoring, så det som ändras av ett reglage är hur många pixlar en halv millimeter är och aldrig vad som skrivs in i dokumentet.
 Draglagret mäter fortfarande millimetrar ur kortets egen ruta och aldrig ur skalan, så ett drag är sant vid varje förstoring (#18).
 
+**Tillägg 2026-09-27 (#478, beslut av beställaren efter prototyperna 04 och 07).**
+Förstoringen växer kring något: Ctrl och hjulet kring det som står under pekaren, bandets egna kontroller kring det valda elementet eller scenens mitt när inget är valt; så länge kortet är mindre än scenen finns inget att rulla och kortet växer från mitten som förut.
+Handtag och punkter behåller sina millimetrar men går aldrig under 10 px på skärmen.
+Ett elements mitt stannar på kortet vid drag, piltangenter och skrivet X/Y — det kan hänga halvt över en kant, aldrig mer — och en etikett säger varför det stannade.
+Vid förstoring panorerar scenen när en hand som drar hålls nära dess kant, och elementet följer med.
+Under kortet står en rad som säger vilket kort mallen visas på, med ‹ och ›, en sökbar lista (som Media, L22) och de värden på kortet som styr hur det ritas; den kostar en rad av kortets höjd, som bandet redan gjorde vid 1024.
+
 Motivering:
 Ett kort ritas i millimeter och trycks i millimeter, men bedöms på en skärm vars enda mått är hur högt fönstret råkar vara.
 Så länge fönstret var det enda som bestämde skalan var varje detaljmått en fråga om möbleringen av skrivbordet: ett lågt fönster gjorde en halv millimeter osynlig, och det enda botemedlet låg utanför verktyget.
