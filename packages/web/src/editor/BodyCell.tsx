@@ -157,6 +157,15 @@ export function BodyCell({ label, head, value, open, icons, onWrite, onOpen, onC
           if (el) openBullet(el)
           said()
         }}
+        // A paste is taken as its text (#479): the string only ever kept the subset the card can
+        // draw, but the browser left the pasted markup — a table, a picture — standing in the cell.
+        onPaste={(event) => {
+          const el = write.current
+          if (!el) return
+          event.preventDefault()
+          insertPlain(el, event.clipboardData.getData('text/plain'))
+          said()
+        }}
         onKeyDown={(event) => {
           if ((event.metaKey || event.ctrlKey) && (event.key === 'b' || event.key === 'i')) {
             event.preventDefault()
@@ -201,4 +210,25 @@ function BodyTools({ marks, onCommand }: { marks: BodyMarks; onCommand(tool: Bod
       })}
     </div>
   )
+}
+
+// Text put in where the caret stands, as the browser's own insertion would put it, and by hand
+// where there is no such command to ask (a test's document has none).
+function insertPlain(el: HTMLElement, text: string): void {
+  const doc = el.ownerDocument
+  if (typeof doc.execCommand === 'function' && doc.execCommand('insertText', false, text)) return
+  const selection = doc.getSelection()
+  const range = selection && selection.rangeCount > 0 && el.contains(selection.anchorNode) ? selection.getRangeAt(0) : null
+  const node = doc.createTextNode(text)
+  if (range) {
+    range.deleteContents()
+    range.insertNode(node)
+    range.setStartAfter(node)
+    range.collapse(true)
+    selection?.removeAllRanges()
+    selection?.addRange(range)
+  } else {
+    const last = el.lastElementChild ?? el
+    last.appendChild(node)
+  }
 }

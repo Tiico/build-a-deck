@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 11 — Kalkylarkets tangenter (#479 fynd 11)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     L4 valde kalkylarket, men Enter och pil ned gör ingenting i en cell, och två rader TSV
+     klistras in i en enda cell (`DataTable.tsx` har ingen `onPaste`). Hur ska tabellen flytta
+     och klistra?
+
+       Nu  som i dag: Tab och Skift+Tab går i raden (L46), inget annat flyttar
+       A   kalkylarket i fältet: Enter och pil upp/ned flyttar i kolumnen, flera celler fyller ett block
+       B   två lägen som Sheets och Excel: markera en cell och flytta fritt, skriv eller Enter för
+           att redigera, Escape för att ångra redigeringen; klistra fyller ett block
+       C   det minsta: Enter flyttar ned, pilarna lämnas åt markören, och en inklistring med flera
+           celler frågar vad den ska bli
+
+     body-kolumnen är prosa (L39): där är Enter ett nytt stycke i alla varianter. ─────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .protorad .matt { flex: 0 1 330px; flex-wrap: wrap; gap: 2px var(--s3); }
+  .protorad .klipp { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .protorad select { min-height: 32px; border: 1px solid #4a4230; border-radius: 7px; padding: 0 8px; background: #1f1b12; color: #ffd98a; font: inherit; }
+  .ed-huvud .sparat[data-osparat] { color: #f0b64a; }
+  kbd { font: inherit; padding: 0 4px; border: 1px solid #4a4230; border-radius: 4px; }
+  /* Prosacellen: två rader och ett tak i vila, öppen när markören står i den. */
+  .prosa { min-height: 44px; padding: 12px 10px; white-space: pre-wrap; line-height: 1.45; color: #ddd; outline: none; cursor: text; }
+  /* Taket klipper på utfyllnadsrutan, så luften står utanför det som klipps (L39, #399). */
+  .prosa:not(:focus) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-height: 20px; margin: 12px 0; padding: 0 10px; }
+  .prosa:focus { box-shadow: inset 0 0 0 2px var(--focus); background: #0f1115; }
+  .prosa:focus-visible, .ark .t-data td[data-cell]:focus-visible { outline: none; }
+  /* B: markerad cell (flytta) och redigerad cell (skriva) ser olika ut. */
+  .t-data td[data-cell] { outline: none; }
+  .ark .t-data td[data-cell] input, .ark .t-data td[data-cell] .prosa { pointer-events: none; }
+  .ark .t-data td[data-cell][data-skriver] input, .ark .t-data td[data-cell][data-skriver] .prosa { pointer-events: auto; }
+  .ark .t-data td[data-cell]:focus { box-shadow: inset 0 0 0 2px var(--focus); background: #26324a; }
+  .ark .t-data td[data-skriver] input:focus { background: #0f1115; }
+  .t-vy > .t-fraga { margin: var(--s2) 0; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>Fynd 11 · Kalkylarkets tangenter.</b> Stå i en cell och tryck <kbd>Enter</kbd>, <kbd>↓</kbd> och <kbd>↑</kbd>. Kopiera exemplet, stå i <i>typ</i> på första raden och klistra in med <kbd>Ctrl/Cmd+V</kbd>. Pröva också i <i>body</i>.</p>
+    <p>Utan urklipp: «Klistra in» lägger exemplet i den cell du senast stod i.</p>
+  </div>
+  <div class="klipp"><select id="exempel" aria-label="Exempel att klistra in">
+      <option value="0">2 rader × 2 kolumner (typ, title)</option>
+      <option value="1">1 kolumn × 3 rader (raritet)</option>
+      <option value="2">ett stycke med radbrytning (prosa)</option>
+    </select><button type="button" id="kopiera">Kopiera</button><button type="button" id="klistra">Klistra in</button></div>
+  <div class="matt"><span>Fokus: <u id="m-fokus">–</u></span><span>Senaste tangenten: <u id="m-tangent">–</u></span></div>
+  <div class="storlek vaxlare" role="group" aria-label="Fönstrets storlek">
+    <button type="button" data-s="1280x800">1280 × 800</button>
+    <button type="button" data-s="1024x768">1024 × 768</button>
+  </div>
+  <button type="button" id="aterstall">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+
+<div class="m-scen" id="mscen">
+  <div class="m-ram" id="ram"><span class="etikett" id="etikett"></span>
+    <div class="m-skarm byd-editor" id="skarm">
+      <div class="ed-huvud">
+        <span class="hem">Mina spel</span><strong>Sal's Saloon</strong><span class="rev">rev 1</span><span class="sparat" id="sparat">Sparat</span>
+        <div class="ed-flikar" role="tablist" aria-label="Lägen"><button role="tab" tabindex="-1">Kortvägg</button><button role="tab" tabindex="-1">Mall</button><button role="tab" aria-selected="true">Tabell</button><button role="tab" tabindex="-1">Symboler</button><button role="tab" tabindex="-1">Media</button><button role="tab" tabindex="-1">Regler</button><button role="tab" tabindex="-1">Bord</button></div>
+        <span class="spacer"></span><span class="who">A</span><span class="t-status" role="status" id="status"></span>
+        <button type="button" class="ed-knapp kantad" tabindex="-1">Spara</button><button type="button" class="ed-knapp primar" tabindex="-1">Starta bord ▾</button>
+      </div>
+      <div class="t-krona">
+        <input class="t-sok" placeholder="Sök i alla fält…" aria-label="Sök i alla fält" tabindex="-1">
+        <div class="t-chips" id="chips"></div>
+        <button type="button" class="t-rund" tabindex="-1" aria-label="Fler">›</button>
+        <button type="button" class="t-box" tabindex="-1" aria-expanded="false">Importera ▾</button>
+      </div>
+      <div class="t-vy" id="vy"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Demolekens 77 kortrader: id, titel, typ, raritet, text, antal (spelkort.csv genom rowsOfSheet).
+const RADER = [["juice-em-up", "Juice em' up!", "Playcard", "Diamant", "Välj två andra spelare. De blandar en shot till varann", 1], ["sals-saloon", "Sal's Saloon", "Location", "Guld", "Saloonen öppnar! Lägg upp ett shopkort per spelare som går in. I turordning från dig: slå tärningen – slaget plus ditt guld är din budget. Köp ett eller flera kort eller avstå", 2], ["dustydice-casino", "DustyDice Casino", "Location", "Guld", "Välkommen till kasinot! Alla annonserar sin insats (1–10 klunkar) och slår sedan en tärning samtidigt. 5–6: dela ut dubbla insatsen. 1–4: drick din insats. 🏴‍☠️ - Här går det att sälja dina stöldgods", 2], ["free-for-all", "Free for all", "Effect", "Special", "Era stöldgods är i fara! Så länge effekten ligger får ni sno varandras stöldgodskort. Blir du påkommen (någon säger till medan du snor) dricker du kortets värde i klunkar", 1], ["duel-koppar", "Duel", "Playcard", "Koppar", "Utmana en spelare på duell. Förloraren dricker 3", 4], ["duel-silver", "Duel", "Playcard", "Silver", "Utmana en spelare på duell. Förloraren dricker 5", 4], ["duel-guld", "Duel", "Playcard", "Guld", "Utmana en spelare på duell. Förloraren dricker 7", 2], ["duel-diamant", "Duel", "Playcard", "Diamant", "Utmana en spelare på duell. Vinnaren blandar en shot till förloraren", 1], ["saddle-pals", "Saddle Pals", "Playcard", "Diamant", "Välj en annan spelare. Ni är allierade resten av spelet. När en av er får klunkar dricker BÅDA fullt. Båda delar ut +2 klunkar", 1], ["standoff", "Standoff", "Event", "Diamant", "Dela upp er i två lag efter hur ni sitter. Öppna en ny enhet och duellera lag mot lag – laget som druckit upp sist förlorar. Vinnarna går raka vägen till Sal's Saloon", 1], ["zorros-here", "Zorro's here!", "Event", "Guld", "Zorro är här för att stoppa er. Slå en tärning var. Slår MINST HÄLFTEN 4 eller mer kommer ni undan. Annars beslagtar Zorro allt stöldgods och alla dricker 5", 2], ["the-heist", "The Heist", "Event", "Silver", "Ni ska försöka råna ett bankvalv. Råna valvet: 3 guld + allt i The Bank. Ta upp till 2 kompanjoner och dela vinsten. Slå en tärning var per omgång. 4+ av någon = omgången lyckas. Tre i rad = valvet är ert. Miss: alla dricker 5", 3], ["stolen-goods-koppar", "Stolen Goods", "Playcard", "Koppar", "1 värdesak! Värde 1. Säljs för 1 guld. Böter 1 klunk. Dessa går att säljas på två sätt. 1. Besök en plats där det står att man kan sälja dem 2. Bränn din runda och slå 5 eller 6, misslyckas du måste du slänga 1 stöldgods av ditt val Var försiktig för det är enkelt att bli av med dessa", 4], ["stolen-goods-silver", "Stolen Goods", "Playcard", "Silver", "2 värdesaker! Värde 2. Säljs för 2 guld. Böter 2 klunkar. Dessa går att säljas på två sätt. 1. Besök en plats där det står att man kan sälja dem 2. Bränn din runda och slå 5 eller 6, misslyckas du måste du slänga 1 stöldgods av ditt val Var försiktig för det är enkelt att bli av med dessa", 4], ["stolen-goods-guld", "Stolen Goods", "Playcard", "Guld", "3 värdesaker! Värde 3. Säljs för 3 guld. Böter 3 klunkar. Dessa går att säljas på två sätt. 1. Besök en plats där det står att man kan sälja dem 2. Bränn din runda och slå 5 eller 6, misslyckas du måste du slänga 1 stöldgods av ditt val Var försiktig för det är enkelt att bli av med dessa", 2], ["the-alley", "The Alley", "Location", "Silver", "I gränden kan man stöta på mycket skumma typer, slå en tärning. 1-2: Ajdå! Du stöter på en skum typ och blir skjuten, drick 5 3-4: Lokala alkisen bjussar på en jäkel, dela ut 5 5-6: Du träffar Hasse som visar dig bakvägen in till Sal's Saloon", 4], ["sheriffs-check", "Sheriff's Check", "Playcard", "Koppar", "Har du stöldgods: annonsera två siffror och slå. Slår du en av siffrorna du sa så tar sheriffen allt ditt stöldgods. Har du inget: tjalla på någon som har. Den annonserar två egna siffror och slår i stället", 4], ["deflect", "Deflect", "Trap+", "Guld", "Klunkarna riktade mot dig går istället till dina grannar, båda dricker full mängd", 2], ["reflection", "Reflection", "Trap+", "Silver", "Tillbakakaka gubbjävel, ge tillbaka klunkarna till den som delade ut dem", 4], ["double-down", "Double Down", "Trap+", "Diamant", "Den som delar ut klunkar till dig får tillbaka dem och tar dessutom en shot som en annan spelare väljer", 1], ["final-shootout", "Final Shootout", "Playcard", "Special", "Sista kortet i leken, gå varvet runt och spela en stor duell mot varann, vinnaren donerar en del av sin dryck till Sal's Concucktion™ och slinker undan. Repetera tills det bara finns en spelare kvar, denna spelare måste ta sig an Sal's Concucktion™. Karaktärer och shopkort från Sal's Saloon gäller här – inget annat", 1], ["the-bank", "The Bank", "Location", "Guld", "Du kan sätta in ditt guld i banken. Bankat guld räknas med när du handlar i saloonen, men kan gå förlorat i The Heist", 2], ["cactus-hugger", "Cactus Hugger", "Playcard", "Koppar", "Dålig idé att krama en kaktus, Drick 2", 2], ["snake-in-the-boot", "Snake in the boot", "Playcard", "Silver", "Orm i stöveln! Drick 4", 4], ["buckaroos-backfire", "Buckaroo's Backfire", "Playcard", "Guld", "Hästen sparkar skiten ur dig! Drick 6", 2], ["shoot-from-the-hip", "Shoot from the hip", "Playcard", "Koppar", "Lyckoträff från höften. Dela ut 2", 2], ["quickdraw", "Quickdraw", "Playcard", "Silver", "Ingen drar snabbare än dig. Dela ut 4", 4], ["bullseye", "Bullseye", "Playcard", "Guld", "Rakt mellan ögonen. Dela ut 6", 2], ["drunken-gambler", "Drunken Gambler", "Character", "Karaktär", "Du dricker alltid 1 klunk mer än kortet säger. När du delar ut SHOTS delar du ut dubbelt så många", 1], ["lucky-luuk", "Lucky Luuk", "Character", "Karaktär", "Du har +1 i dueller", 1], ["sore-loser-lou", "Sore Loser Lou", "Character", "Karaktär", "I dueller räknas både 1 och 6 som att du slår 6", 1], ["big-busta", "Big Busta", "Character", "Karaktär", "Du delar ut och dricker 2 extra klunkar", 1], ["lightweight-lenny", "Lightweight Lenny", "Character", "Karaktär", "Du delar ut och dricker 1 klunk mindre", 1], ["goldrush-gus", "Goldrush Gus", "Character", "Karaktär", "Varje gång du säljer stöldgods får du 1 guld extra", 1], ["lightweight-lisa", "Lightweight Lisa", "Character", "Karaktär", "Du delar ut och dricker 1 klunk mindre", 1], ["beermageddon", "Beermageddon", "Shopcard", "Diamant", "Alla andra spelare dricker lika många klunkar varje gång du dricker, resten av spelet", 1], ["silver-bullet", "Silver bullet", "Shopcard", "Koppar", "\"+1\" i en duel", 2], ["to-the-brim", "To the brim!", "Shopcard", "Koppar", "Nästa gång du delar ut klunkar delar du ut 2 extra", 2], ["faster-than-your-own-shadow", "Faster Than Your Own Shadow", "Shopcard", "Guld", "Vinn en duell automatiskt", 2], ["lazy-lloyd", "Lazy Lloyd", "Character", "Karaktär", "Du kan när som helst be valfri spelare hämta ny dryck åt dig – vägrar den dricker den 2. En gång per spel kan du låta en annan spelare ta dina klunkar.", 1], ["poisoned", "Poisoned", "Playcard", "Silver", "Lägg kortet framför en annan spelare. Den har -1 i dueller under SIN NÄSTA TUR. Sedan slängs kortet", 2], ["jagerbomb", "Jägerbomb", "Shopcard", "Silver", "Blanda in kortet i spelleken upp och ner. Den som drar det dricker 6.", 2], ["cholera", "Cholera", "Shopcard", "Diamant", "Välj en spelare. Den har ett varv på sig att avsluta sin dryck. Misslyckas den tar den också en shot", 1], ["tumbleweed-town", "Tumbleweed Town", "Effect", "Special", "Stan är tyst. Ingen får prata under sin egen tur – den som gör det dricker 2.", 1], ["rolling-stone", "Rolling Stone", "Playcard", "Diamant", "Stoppa bumlingen och få en belöning! Detta är ett \"växande\" kort, Dela ut 1 klunk och passa kortet medsols. Nästa delar ut 2, sedan 3, upp till 8. Kedjan kan inte brytas. Den som dricker de sista 8 får 1 guld.", 1], ["hit-by-tumbleweed", "Hit by Tumbleweed", "Playcard", "Koppar", "Se upp för fan! Drick 2", 2], ["russian-roulette", "Russian Roulette", "Shopcard", "Guld", "Annonsera lågt (1–3) eller högt (4–6) och slå en tärning. Rätt: dela ut 12. Fel: drick 6.", 2], ["shots-fired", "Shots Fired", "Shopcard", "Diamant", "Annonsera lågt (1–3) eller högt (4–6) och slå en tärning. Rätt: dela ut 2 shots till en spelare. Fel: ta 1 shot", 1], ["lucky-draw", "Lucky Draw", "Playcard", "Koppar", "Plötsligt händer det. Dela ut 2", 2], ["master-of-the-jukebox", "Master of the Jukebox", "Shopcard", "Koppar", "Du bestämmer musiken resten av spelet. En gång per varv kan du peka på en spelare som måste ge namnet på artisten – annars dricker den 3.", 2], ["luck-of-the-draw", "Luck of the Draw", "Playcard", "Guld", "Du får ett gratis shopkort. Slå en tärning för att bestämma vilket. 1-2: Koppar 3-4: Silver 5: Guld 6: Diamant", 2], ["high-noon", "High Noon", "Shopcard", "Guld", "Lägg detta kort och säg \"High Noon\", sist av medspelarna att dra fram sina fingerguns dricker 6", 2], ["shots-shots-shots", "SHOTS SHOTS SHOTS", "Shopcard", "Diamant", "Alla tar en shot. Du väljer en spelare som tar en dubbel", 1], ["the-giver", "The Giver", "Shopcard", "Guld", "Alla andra dricker 5", 2], ["fact-or-fable", "Fact or Fable", "Playcard", "Guld", "Säg ett påstående om dig själv, folk gissar sant eller falskt, förlorarna dricker 6", 2], ["howdy-neighbour", "Howdy Neighbour", "Shopcard", "Guld", "Välj en spelare. Den slår en tärning – den och båda dess grannar dricker så många klunkar.", 2], ["reverse", "Reverse", "Effect", "Special", "Spelriktningen byts – ni spelar motsols. Och allt byter håll: ska du DRICKA delar du i stället UT, ska du DELA UT dricker du själv. Trap och Debuff påverkas inte.", 1], ["hammer-time", "Hammer Time!", "Effect", "Special", "Alla klunkar är +1", 1], ["double-up", "Double Up!", "Effect", "Special", "Spelarna får dra två kort per runda", 1], ["wild-west", "Wild West", "Effect", "Special", "Fritt fram att satsa 1–5 klunkar och utmana vem du vill på duell, när du vill", 1], ["four-sure-fred", "Four-Sure Fred", "Character", "Karaktär", "I DUELLER: 1–3 räknas som 1 och du dricker 3 klunkar 4–6 räknas som 6 Övriga tärningsslag slår du som vanligt", 1], ["trapster-trevor", "Trapster Trevor", "Character", "Karaktär", "När en av dina Traps utlöses kan du slå en tärning. Slår du 1–3 behöver du inte slänga kortet – det kan användas en gång till.", 1], ["devastating-defeat", "Devastating Defeat", "Trap-", "Silver", "Förlorar du en duell dricker du +4", 4], ["misfire", "Misfire", "Trap-", "Guld", "Du har -2 i din nästa duell", 2], ["minefield", "Minefield", "Trap-", "Diamant", "När någon delar ut klunkar till dig, slå två tärningar. Två lika: du klarar dig och dricker som vanligt. Annars adderas tärningarna till antalet", 1], ["mexican-standoff", "Mexican Standoff", "Shopcard", "Silver", "Välj tre spelare som duellerar mot varandra. Alla slår, de två lägsta förlorar. Vinnaren delar ut 5 till en av förlorarna", 2], ["selective-drawing", "Selective Drawing", "Shopcard", "Silver", "På din tur: titta på de tre översta korten, välj ett och lägg tillbaka de andra i valfri ordning på toppen. Detta förbrukar din tur", 2], ["saloon-brawl", "Saloon Brawl", "Event", "Koppar", "Slagsmål bryter ut! Alla duellerar samtidigt mot sin vänstra granne. Förlorarna dricker 4", 4], ["cattle-stampede", "Cattle Stampede", "Event", "Silver", "Boskapen skenar genom stan! Alla slår en tärning. Alla som slår 1–3 trampas ner och dricker 4. Den som slår högst delar ut 4", 3], ["wanted-poster", "Wanted Poster", "Event", "Silver", "Sheriffen spikar upp en efterlysning. Spelaren med mest stöldgods är efterlyst – alla andra med stöldgods delar ut 2 klunkar var till den efterlysta. Har ingen stöldgods är det du", 3], ["last-train-out-of-town", "Last Train Out of Town", "Event", "Guld", "Tåget går! Slå en tärning i turordning från dig. Första spelaren som slår 6 hinner ombord och slipper undan. Slår ingen 6 på ett varv dricker alla 5", 2], ["dust-storm", "Dust Storm", "Event", "Diamant", "Sandstormen sveper in. Lägg alla Traps på bordet, blanda dem och dela ut dem slumpmässigt igen. Alla dricker 2 medan ni gör det", 1], ["sundown", "Sundown", "Effect", "Special", "Solen går ner. Alla klunkar är -1, men aldrig mindre än 1", 1], ["bounty-season", "Bounty Season", "Effect", "Special", "Alla stöldgods är dubbelt värda vid försäljning", 1], ["quickdraw-hour", "Quickdraw Hour", "Effect", "Special", "Alla dueller avgörs med två tärningar per spelare. Summan gäller.", 1], ["gold-fever", "Gold Fever", "Effect", "Special", "Varje gång en spelare delar ut 5 klunkar eller mer får den 1 guld.", 1], ["steady-hand", "Steady Hand", "Shopcard", "Koppar", "Slå om en tärning – din egen eller någon annans.", 2]]
+const NOT = {
+  nu: '<b>Nu.</b> Tab och Skift+Tab går genom raden (L46). Enter gör ingenting, ↑ och ↓ flyttar bara markören i texten. Två rader från ett kalkylark hamnar i en enda cell, med tabbarna kvar och radbrytningen som ett mellanslag. <span class="minus">− L4 valde kalkylarket, men det enda kalkylarket gör här är att se ut som ett. Att fylla en kolumn är en cell i taget med musen.</span>',
+  a: '<b>A · Kalkylarket i fältet.</b> Enter och ↓ går till samma kolumn på raden under, Skift+Enter och ↑ till raden över. ← och → är markörens. Klistrar man in flera celler (tabbar eller flera rader) fylls ett block från cellen man står i, åt höger och nedåt i den ordning tabellen visar, som ett steg. I body är Enter ett stycke (L39) och Ctrl/Cmd+Enter går ned. <span class="plus">+ Det man förväntar sig av ett kalkylark, utan ett nytt läge. Ett block från Sheets eller Excel landar som det såg ut där.</span> <span class="minus">− Blocket skriver över det som stod där utan att fråga (men är ett steg att ta tillbaka). ↑/↓ kan inte längre flytta markören i en lång cell. Sortering och filter avgör vilka rader som fylls — det man ser, inte lekens ordning.</span>',
+  b: '<b>B · Två lägen.</b> En cell är markerad eller redigeras. Markerad: pilarna flyttar åt alla håll, Enter eller F2 börjar redigera, att skriva ersätter värdet, Ctrl/Cmd+V fyller ett block. Redigeras: pilarna flyttar markören, Enter sparar och går ned, Escape ångrar redigeringen. Klick markerar, dubbelklick redigerar. <span class="plus">+ Exakt Sheets och Excel; ←/→ får också flytta mellan celler. Escape blir fynd 9:s «återställ».</span> <span class="minus">− Störst omskrivning: tabellen blir ett APG-grid med roving fokus, cellerna slutar vara fält man klickar rakt in i, och L46:s tabbväg och ikonknappen i cellen måste göras om. Ett läge man måste se för att förstå.</span>',
+  c: '<b>C · Det minsta.</b> Enter går ned och Skift+Enter upp i kolumnen; pilarna lämnas åt markören. En inklistring med flera celler frågar i en remsa: fyll blocket, eller lägg allt i den här cellen. Fokus står på «Fyll». <span class="plus">+ Ingen tangent ändrar betydelse utom Enter, som i dag inte gör något. Ingen inklistring skriver över grannar utan att säga det.</span> <span class="minus">− En fråga varje gång man klistrar in flera celler, också när svaret är självklart. ↑/↓ går fortfarande inte mellan rader, vilket är det första en kalkylarkshand prövar.</span>',
+}
+const EXEMPEL = ['Event\tKort A\nEffect\tKort B', 'Koppar\nSilver\nGuld', 'Första stycket.\nAndra stycket.']
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const $ = (q) => document.querySelector(q)
+const KOL = ['typ', 'title', 'body', 'raritet', 'antal']
+const BREDD = { typ: 96, title: 170, raritet: 88, antal: 80 }
+const CHIPS = ['Character', 'Effect', 'Event', 'Location', 'Playcard', 'Shopcard', 'Trap-', 'Trap+', 'Diamant', 'Guld', 'Karaktär']
+const START = RADER.map(([id, title, typ, raritet, body, antal]) => ({ id, typ, title, body, raritet, antal: String(antal) }))
+const s = { v: 'nu', storlek: '1280x800' }
+const tom = () => ({ rader: START.map((r) => ({ ...r })), senast: null, tangent: '–', status: '', fraga: null, historik: [], skriver: null, forre: null, osparat: false })
+Object.assign(s, tom())
+const ark = () => s.v === 'b'
+
+// ── Fönstret ────────────────────────────────────────────────────────────────────────────
+const skarm = $('#skarm')
+function skala() {
+  const [W, H] = s.storlek.split('x').map(Number)
+  const scen = $('#mscen')
+  const f = Math.min(1, (scen.clientWidth - 24) / W, (scen.clientHeight - 36) / H)
+  skarm.style.width = W + 'px'; skarm.style.height = H + 'px'
+  skarm.style.transform = `scale(${f})`
+  $('#ram').style.width = W * f + 'px'; $('#ram').style.height = H * f + 'px'
+  $('#etikett').textContent = `${W} × ${H}` + (f < 1 ? ` · visas i ${Math.round(f * 100)} %` : '')
+  skarm.toggleAttribute('data-smal', W < 1200)
+}
+
+// ── Rita ────────────────────────────────────────────────────────────────────────────────
+function falt(r, f) {
+  const d = `data-id="${esc(r.id)}" data-f="${f}" aria-label="${esc(r.id)} ${f}"`
+  const tab = ark() ? ' tabindex="-1"' : ''
+  if (f === 'body') return `<div class="prosa" contenteditable="plaintext-only" spellcheck="false" ${d}${tab}>${esc(r.body)}</div>`
+  return `<input value="${esc(r[f])}" ${d}${f === 'antal' ? ' data-tal' : ''} autocomplete="off" spellcheck="false"${tab}>`
+}
+function rita() {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  for (const b of document.querySelectorAll('[data-s]')) b.setAttribute('aria-pressed', String(b.dataset.s === s.storlek))
+  $('#anteckning').innerHTML = NOT[s.v]
+  $('#chips').innerHTML = CHIPS.map((c) => `<button type="button" class="t-chip" tabindex="-1">${c}</button>`).join('')
+  const top = $('.t-rulla')?.scrollTop ?? 0
+  const forsta = s.senast ?? { id: s.rader[0].id, f: 'typ' }
+  const body = s.rader.map((r) => `<tr><td class="bock"><input type="checkbox" aria-label="Markera ${esc(r.id)}" tabindex="-1"></td><td class="id">${esc(r.id)}</td>${KOL.map((f) => `<td${ark() ? ` data-cell role="gridcell" tabindex="${forsta.id === r.id && forsta.f === f ? 0 : -1}" data-rid="${esc(r.id)}" data-rf="${f}"` : ''}>${falt(r, f)}</td>`).join('')}<td class="spar"><button type="button" tabindex="-1" aria-label="Ta bort ${esc(r.id)}">×</button></td></tr>`).join('')
+  const fraga = s.fraga ? `<div class="t-fraga" data-ton="neutral" role="alertdialog" aria-labelledby="fraga-t"><p id="fraga-t">Du klistrar in ${s.fraga.rader.length} ${s.fraga.rader.length === 1 ? 'rad' : 'rader'} × ${s.fraga.bredd} ${s.fraga.bredd === 1 ? 'kolumn' : 'kolumner'} i ${s.fraga.f} på ${esc(s.fraga.id)}.<small>«Fyll» skriver över ${s.fraga.rader.length * s.fraga.bredd} celler härifrån och nedåt. Ctrl/Cmd+Z tar tillbaka.</small></p><button type="button" data-kind="primary" id="f-fyll">Fyll ${s.fraga.rader.length} × ${s.fraga.bredd} celler</button><button type="button" id="f-en">Allt i den här cellen</button><button type="button" id="f-avbryt">Avbryt</button></div>` : ''
+  $('#vy').innerHTML = `${fraga}<div class="t-rulla${ark() ? ' ark' : ''}"><table class="t-data"${ark() ? ' role="grid"' : ''}><colgroup><col style="width:44px"><col style="width:150px">${KOL.map((f) => `<col${BREDD[f] ? ` style="width:${BREDD[f]}px"` : ''}>`).join('')}<col style="width:44px"></colgroup><thead><tr><th class="bock"><input type="checkbox" aria-label="Markera alla" tabindex="-1"></th><th class="id"><button type="button" class="sort" tabindex="-1"><span>id</span></button></th>${KOL.map((f) => `<th><button type="button" class="sort" tabindex="-1">${f !== 'antal' ? '<span class="ring"></span>' : ''}<span>${f}</span></button></th>`).join('')}<th class="spar"><button type="button" tabindex="-1" aria-label="Nytt fält">+</button></th></tr></thead><tbody>${body}</tbody></table></div><button type="button" class="t-ny" tabindex="-1">+ Nytt kort</button><p class="t-fot">${s.rader.length} av ${s.rader.length} kort<span>Osorterad: kortens ordning i spelet.</span></p>`
+  $('.t-rulla').scrollTop = top
+  skala(); matt()
+}
+function matt() {
+  const a = document.activeElement
+  const id = a?.dataset?.id ?? a?.dataset?.rid, f = a?.dataset?.f ?? a?.dataset?.rf
+  $('#m-fokus').textContent = id ? `${f} på ${id}${ark() ? (a.dataset.rid ? ' · markerad' : ' · redigeras') : ''}` : '–'
+  $('#m-tangent').textContent = s.tangent
+  $('#status').textContent = s.status
+  $('#sparat').textContent = s.osparat ? 'Osparat' : 'Sparat'
+  $('#sparat').toggleAttribute('data-osparat', s.osparat)
+}
+const faltEl = (id, f) => document.querySelector(`[data-id="${CSS.escape(id)}"][data-f="${f}"]`)
+const cellEl = (id, f) => document.querySelector(`td[data-rid="${CSS.escape(id)}"][data-rf="${f}"]`)
+const varde = (el) => (el.tagName === 'INPUT' ? el.value : el.textContent)
+function sattVarde(el, v) { if (el.tagName === 'INPUT') el.value = v; else el.textContent = v; s.rader.find((r) => r.id === el.dataset.id)[el.dataset.f] = v }
+function blinka(el) { const td = el.closest('td'); td.classList.remove('blink'); void td.offsetWidth; td.classList.add('blink') }
+function slutet(el) {
+  if (el.tagName === 'INPUT') { el.setSelectionRange(el.value.length, el.value.length); return }
+  const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r)
+}
+
+// ── Flytta ──────────────────────────────────────────────────────────────────────────────
+function granne(id, f, dr, dk) {
+  const ri = s.rader.findIndex((r) => r.id === id) + dr
+  const ki = KOL.indexOf(f) + dk
+  if (ri < 0 || ri >= s.rader.length || ki < 0 || ki >= KOL.length) return null
+  return { id: s.rader[ri].id, f: KOL[ki] }
+}
+function ga(till, sattFokus = true) {
+  if (!till) return
+  if (ark()) {
+    for (const td of document.querySelectorAll('td[data-cell][tabindex="0"]')) td.tabIndex = -1
+    const td = cellEl(till.id, till.f); td.tabIndex = 0; td.removeAttribute('data-skriver')
+    if (sattFokus) { td.focus({ preventScroll: true }); td.scrollIntoView({ block: 'nearest', inline: 'nearest' }) }
+  } else {
+    const el = faltEl(till.id, till.f)
+    el.focus({ preventScroll: true }); el.scrollIntoView({ block: 'nearest', inline: 'nearest' }); slutet(el)
+  }
+  matt()
+}
+
+// B: redigera och sluta redigera.
+function borjaSkriva(td, ersatt) {
+  const el = td.querySelector('[data-f]')
+  s.forre = varde(el)
+  td.setAttribute('data-skriver', '')
+  el.focus({ preventScroll: true })
+  if (ersatt !== undefined) sattVarde(el, ersatt)
+  slutet(el)
+  matt()
+}
+function slutaSkriva(el, angra) {
+  const td = el.closest('td')
+  if (angra && s.forre !== null) { sattVarde(el, s.forre); blinka(el) }
+  s.forre = null
+  td.removeAttribute('data-skriver')
+  td.focus({ preventScroll: true })
+  matt()
+}
+
+// ── Klistra ─────────────────────────────────────────────────────────────────────────────
+function tsv(text) {
+  const rader = text.replace(/\r\n?/g, '\n').replace(/\n$/, '').split('\n').map((r) => r.split('\t'))
+  return { rader, bredd: Math.max(...rader.map((r) => r.length)) }
+}
+function fyll(id, f, rader) {
+  const fore = s.rader.map((r) => ({ ...r }))
+  let fyllda = 0, utanfor = 0
+  const ri0 = s.rader.findIndex((r) => r.id === id), ki0 = KOL.indexOf(f)
+  const blinkas = []
+  rader.forEach((rad, dr) => rad.forEach((v, dk) => {
+    const r = s.rader[ri0 + dr], k = KOL[ki0 + dk]
+    if (!r || !k) { utanfor++; return }
+    r[k] = k === 'antal' ? String(parseInt(v, 10) || 0) : v; fyllda++; blinkas.push([r.id, k])
+  }))
+  s.historik.push(fore)
+  s.osparat = true
+  s.status = `Klistrade in ${fyllda} celler från ${f} på ${id}.` + (utanfor ? ` ${utanfor} fick inte plats.` : '')
+  rita()
+  for (const [i, k] of blinkas) blinka(faltEl(i, k))
+  ga({ id, f })
+}
+function ettFalt(el, text) {
+  // Det fältet gör i dag: radbrytningen blir ett mellanslag i en textcell, ett stycke i prosa.
+  const t = el.tagName === 'INPUT' ? text.replace(/\r?\n/g, ' ') : text
+  if (el.tagName === 'INPUT') { const a = el.selectionStart ?? el.value.length, b = el.selectionEnd ?? a; el.setRangeText(t, a, b, 'end') }
+  else { el.focus(); document.execCommand('insertText', false, t) }
+  s.rader.find((r) => r.id === el.dataset.id)[el.dataset.f] = varde(el)
+  s.osparat = true
+}
+function klistra(el, text) {
+  const { rader, bredd } = tsv(text)
+  const flera = text.includes('\t') || (rader.length > 1 && el.dataset.f !== 'body')
+  if (!flera || s.v === 'nu' || (ark() && el.closest('td[data-skriver]'))) { ettFalt(el, text); matt(); return }
+  if (s.v === 'c') { s.fraga = { id: el.dataset.id, f: el.dataset.f, rader, bredd, text }; rita(); $('#f-fyll').focus(); return }
+  fyll(el.dataset.id, el.dataset.f, rader)
+}
+document.addEventListener('paste', (ev) => {
+  const el = ev.target.closest?.('[data-f]') ?? ev.target.closest?.('td[data-cell]')?.querySelector('[data-f]')
+  if (!el) return
+  ev.preventDefault()
+  s.tangent = 'Ctrl/Cmd+V'
+  klistra(el, ev.clipboardData.getData('text/plain'))
+})
+
+// ── Tangenterna ─────────────────────────────────────────────────────────────────────────
+document.addEventListener('focusin', (ev) => {
+  const t = ev.target
+  const id = t.dataset?.id ?? t.dataset?.rid
+  if (id) s.senast = { id, f: t.dataset.f ?? t.dataset.rf }
+  matt()
+})
+document.addEventListener('input', (ev) => {
+  const el = ev.target.closest?.('[data-f]')
+  if (!el) return
+  s.rader.find((r) => r.id === el.dataset.id)[el.dataset.f] = varde(el)
+  if (!s.osparat) { s.osparat = true; matt() }
+})
+addEventListener('keydown', (ev) => {
+  const t = ev.target
+  const el = t.closest?.('[data-f]')
+  const td = t.matches?.('td[data-cell]') ? t : null
+  const mod = ev.ctrlKey || ev.metaKey
+  const namn = (mod ? 'Ctrl/Cmd+' : '') + (ev.shiftKey ? 'Skift+' : '') + ({ ArrowDown: '↓', ArrowUp: '↑', ArrowLeft: '←', ArrowRight: '→', Enter: 'Enter', Escape: 'Escape', Tab: 'Tab', F2: 'F2' }[ev.key] ?? '')
+  if ((el || td) && namn && !namn.endsWith('+')) s.tangent = namn + ' i ' + (el ?? td.querySelector('[data-f]')).dataset.f
+
+  // Ångra en fyllning (utanför ett fält, eller i B på en markerad cell).
+  if (mod && !ev.shiftKey && ev.key.toLowerCase() === 'z' && !el && s.historik.length) {
+    ev.preventDefault(); s.rader = s.historik.pop(); s.status = 'Tog tillbaka: en ändring i kortleken'; rita(); if (s.senast) ga(s.senast); return
+  }
+  if (s.fraga && ev.key === 'Escape') { const f = s.fraga; s.fraga = null; rita(); ga(f); return }
+
+  if (el && !ark()) {
+    const prosa = el.dataset.f === 'body'
+    const pos = { id: el.dataset.id, f: el.dataset.f }
+    if (s.v === 'a' || s.v === 'c') {
+      if (ev.key === 'Enter' && (!prosa || mod)) { ev.preventDefault(); ga(granne(pos.id, pos.f, ev.shiftKey ? -1 : 1, 0)); return }
+    }
+    if (s.v === 'a' && !prosa && (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') && !mod) { ev.preventDefault(); ga(granne(pos.id, pos.f, ev.key === 'ArrowDown' ? 1 : -1, 0)); return }
+    matt(); return
+  }
+  if (ark() && td) {
+    const pos = { id: td.dataset.rid, f: td.dataset.rf }
+    const steg = { ArrowDown: [1, 0], ArrowUp: [-1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[ev.key]
+    if (steg) { ev.preventDefault(); ga(granne(pos.id, pos.f, ...steg)); return }
+    if (ev.key === 'Tab') { const g = granne(pos.id, pos.f, 0, ev.shiftKey ? -1 : 1); if (g) { ev.preventDefault(); ga(g) } return }
+    if (ev.key === 'Enter' || ev.key === 'F2') { ev.preventDefault(); borjaSkriva(td); return }
+    if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); sattVarde(td.querySelector('[data-f]'), ''); s.osparat = true; matt(); return }
+    if (ev.key.length === 1 && !mod) { ev.preventDefault(); borjaSkriva(td, ev.key); return }
+    matt(); return
+  }
+  if (ark() && el) {
+    const td2 = el.closest('td')
+    const pos = { id: el.dataset.id, f: el.dataset.f }
+    const prosa = pos.f === 'body'
+    if (ev.key === 'Escape') { ev.preventDefault(); slutaSkriva(el, true); return }
+    if (ev.key === 'Enter' && (!prosa || mod)) { ev.preventDefault(); slutaSkriva(el, false); ga(granne(pos.id, pos.f, ev.shiftKey ? -1 : 1, 0) ?? pos); return }
+    if (ev.key === 'Tab') { ev.preventDefault(); slutaSkriva(el, false); ga(granne(pos.id, pos.f, 0, ev.shiftKey ? -1 : 1) ?? pos); return }
+    matt(); return
+  }
+  if (!t.closest('.protorad') && t !== document.body) return
+  if (t.closest('input, select, textarea')) return
+  if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  byt(alla[(alla.indexOf(s.v) + (ev.key === 'ArrowRight' ? 1 : 3)) % 4])
+})
+// B: klick markerar, dubbelklick redigerar.
+document.addEventListener('mousedown', (ev) => {
+  if (!ark()) return
+  const td = ev.target.closest('td[data-cell]')
+  if (!td || td.hasAttribute('data-skriver')) return
+  ev.preventDefault(); ga({ id: td.dataset.rid, f: td.dataset.rf })
+})
+document.addEventListener('dblclick', (ev) => { const td = ark() && ev.target.closest('td[data-cell]'); if (td) borjaSkriva(td) })
+document.addEventListener('focusout', (ev) => {
+  // B: den som lämnar en redigerad cell med musen lämnar redigeringen.
+  const td = ev.target.closest?.('td[data-skriver]')
+  if (td && !td.contains(ev.relatedTarget)) { td.removeAttribute('data-skriver'); s.forre = null }
+})
+
+const sattUrl = (k, v) => { const u = new URL(location.href); u.searchParams.set(k, v); history.replaceState(null, '', u) }
+function byt(v) { s.v = v; sattUrl('v', v); Object.assign(s, tom()); rita() }
+document.body.addEventListener('click', async (ev) => {
+  const b = ev.target.closest('button')
+  if (!b) return
+  if (b.dataset.v) byt(b.dataset.v)
+  else if (b.dataset.s) { s.storlek = b.dataset.s; sattUrl('s', s.storlek); rita() }
+  else if (b.id === 'aterstall') byt(s.v)
+  else if (b.id === 'kopiera') {
+    try { await navigator.clipboard.writeText(EXEMPEL[$('#exempel').value]); b.textContent = 'Kopierat' } catch { b.textContent = 'Urklippet nekades' }
+    setTimeout(() => { b.textContent = 'Kopiera' }, 1500)
+  }
+  else if (b.id === 'klistra') {
+    const pos = s.senast ?? { id: s.rader[0].id, f: 'typ' }
+    const el = faltEl(pos.id, pos.f)
+    s.tangent = 'Klistra in (knappen)'
+    if (ark()) { const td = cellEl(pos.id, pos.f); if (!td.hasAttribute('data-skriver')) td.focus() } else { el.focus({ preventScroll: true }); slutet(el) }
+    klistra(el, EXEMPEL[$('#exempel').value])
+  }
+  else if (b.id === 'f-fyll') { const f = s.fraga; s.fraga = null; fyll(f.id, f.f, f.rader) }
+  else if (b.id === 'f-en') { const f = s.fraga; s.fraga = null; rita(); const el = faltEl(f.id, f.f); el.focus({ preventScroll: true }); slutet(el); ettFalt(el, f.text); matt() }
+  else if (b.id === 'f-avbryt') { const f = s.fraga; s.fraga = null; rita(); ga(f) }
+})
+new ResizeObserver(skala).observe($('#mscen'))
+
+const q = new URLSearchParams(location.search)
+if (['nu', 'a', 'b', 'c'].includes(q.get('v'))) s.v = q.get('v')
+if (['1024x768', '1280x800'].includes(q.get('s'))) s.storlek = q.get('s')
+rita()
+</script>
+</body>
+</html>

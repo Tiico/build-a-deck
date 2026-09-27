@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent, type FocusEvent, type KeyboardEvent } from 'react'
 import type { ProjectDoc, ProjectRow } from './types.js'
-import { deckKeepsFields, fieldsOf, fieldLabel, takenNames, nextCardRef } from './fields.js'
+import { copiesOf, deckKeepsFields, fieldsOf, fieldLabel, takenNames, nextCardRef } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
 import { ColumnDoor } from './ColumnDoor.js'
 import { Crown, CrownBox, CrownDrawer, CrownFoot, CrownRail } from './Crown.js'
@@ -465,6 +465,17 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       setUploadError(err instanceof Error ? err.message : String(err))
     }
   }
+  // What is being typed in an `antal` cell that is not (yet) a count (#479), by card.
+  const [antalDraft, setAntalDraft] = useState<Record<string, string>>({})
+  // A comparison opened from the history lands the focus on the line that says what is compared
+  // (#479), rather than on <body> once the history's own button has gone with the history.
+  const compareRef = useRef<HTMLParagraphElement>(null)
+  const comparing = compareWith?.rev
+  useEffect(() => {
+    if (comparing !== undefined) compareRef.current?.focus()
+  }, [comparing])
+  // What the last import did, said where it was asked for (#479).
+  const [imported, setImported] = useState<string | null>(null)
   const [sort, setSort] = useState<SortState | null>(null)
   const [filter, setFilter] = useState<FilterState>(noFilter)
   // The marking is the deck's and not this panel's (#222): it is made here and acted on here and
@@ -616,6 +627,27 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   }, [refocus])
   // The card created by "Nytt kort" while a filter is on, kept on screen until the filter moves.
   const [pinned, setPinned] = useState<string | null>(null)
+  // The card «+ Nytt kort» just asked for (#479): once it is in the table it is scrolled in and
+  // the caret stands in its first cell to write in, rather than the row arriving 3 000 px below a
+  // table that stays at its top.
+  const [arriving, setArriving] = useState<string | null>(null)
+  // The table opens with the chosen card in view (#479): coming back from the wall, it stood at
+  // its top whichever card had been chosen there. Once, when the table is drawn; after that the
+  // scroll is the designer's.
+  useEffect(() => {
+    if (!selectedRow) return
+    document.querySelector<HTMLElement>(`tr[data-card-ref="${CSS.escape(selectedRow)}"]`)?.scrollIntoView?.({ block: 'center' })
+    // Only on opening.
+  }, [])
+  useEffect(() => {
+    if (!arriving) return
+    const row = document.querySelector<HTMLElement>(`tr[data-card-ref="${CSS.escape(arriving)}"]`)
+    if (!row) return
+    setArriving(null)
+    const cell = row.querySelector<HTMLElement>('.byd-data-lane input, [contenteditable="true"]')
+    cell?.scrollIntoView?.({ block: 'nearest' })
+    cell?.focus()
+  }, [arriving, doc.rows])
   // The order held while a cell is being edited, as the ids that were on screen when it was entered.
   const [held, setHeld] = useState<string[] | null>(null)
   // Att lämna cellen, och bara det (#395). Fokus som stannar kvar inne i samma `<td>` är ingen
@@ -663,6 +695,17 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // leken öppen någon annanstans får bytet som vilket steg som helst, utan att något sägs där.
   const renameColumn = (from: string, to: string) => {
     onRenameField?.(from, to)
+    // The view is keyed on the name, so it takes the new one with the column (#479, L44): the
+    // same rows, in the same order, with the same values chosen and at the same width.
+    setSort((was) => (was?.field === from ? { ...was, field: to } : was))
+    setFilter((was) => {
+      const { [from]: chosen, ...rest } = was.values
+      return chosen === undefined ? was : { ...was, values: { ...rest, [to]: chosen } }
+    })
+    if (widths[from] !== undefined) {
+      const { [from]: px, ...rest } = widths
+      hold({ ...rest, [to]: px as number })
+    }
     say?.('polite', t('table.column.renamed', { from, to }))
   }
   // What the editor declares a target to be, asked of the page rather than written down here —
@@ -885,6 +928,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const shown = held
     ? keepOrder(doc.rows.filter((row) => held.includes(row.id)), held)
     : filterRows(sortRows(doc.rows, sort), columns, filter, pinned)
+  // The cards gone since the version compared with, asked the same filter as every card (#479).
+  const goneShown = isFiltering(filter) ? filterRows(goneRows, columns, filter) : goneRows
   // What an action is about is never more than what is on screen: a checkbox is a fact about a
   // row the designer can see, so the selection is read through `shown` (#17 on #16).
   const chosen = shown.filter((row) => selected.has(row.id))
@@ -898,6 +943,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // reading of what it is about to do. `null` is the empty hand — a change nobody chose is not
   // worth pressing by mistake.
   const bulkIsImage = imageFields.includes(field)
+  const bulkCountWrong = field === ANTAL && bulkValue.trim() !== '' && copiesOf(bulkValue) === null
   const bulkWrites: Cell | null = bulkIsImage
     ? bulkImage === null
       ? null
@@ -905,7 +951,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     : bulkValue === ''
       ? null
       : field === ANTAL
-        ? Number(bulkValue)
+        ? copiesOf(bulkValue)
         : bulkValue
   // A question about cards that are no longer marked is not a question any more: unmarking them,
   // or filtering them away, takes it back. The same holds for the question one row asks (#8): a
@@ -932,8 +978,10 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const reader = new FileReader()
     reader.onload = () => {
       try {
-        onReplaceRows(importCardsCsv(String(reader.result ?? ''), t))
+        const rows = importCardsCsv(String(reader.result ?? ''), t)
+        onReplaceRows(rows)
         setImportError(null)
+        setImported(importSummary(doc, rows, t))
       } catch (err) {
         setImportError(err instanceof Error ? err.message : String(err))
       }
@@ -1044,6 +1092,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 which is what #130 measured 189 px of. */}
             <span id={noteId}>{t('table.import.note')}</span>
             {importError && <span role="alert">{importError}</span>}
+            {imported && <span role="status">{imported}</span>}
             <a href={csvHref} download={filename}>{t('table.export')}</a>
           </div>
         </CrownDrawer>
@@ -1071,7 +1120,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
         </div>
       )}
       {compareWith && diff && (
-        <p className="byd-data-compare" role="status">
+        <p ref={compareRef} className="byd-data-compare" role="status" tabIndex={-1}>
           {t('table.compare', { rev: compareWith.rev })}
           {compareWith.label ? ` · ${compareWith.label}` : ''}: <Summary diff={diff} />{' '}
           {onStopCompare && (
@@ -1147,7 +1196,14 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 aria-label={t('table.value')}
                 value={bulkValue}
                 onChange={(event) => setBulkValue(event.target.value)}
+                // The same rule the cell holds a count to (#479), said the same way.
+                {...(bulkCountWrong ? { 'aria-invalid': true, 'aria-describedby': 'byd-bulk-antal-says' } : {})}
               />
+            )}
+            {bulkCountWrong && (
+              <small className="byd-data-says" id="byd-bulk-antal-says">
+                {t('table.antal.invalid')}
+              </small>
             )}
             <button
               type="button"
@@ -1329,7 +1385,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           </tr>
         </thead>
         <tbody>
-          {[...shown, ...goneRows].map(({ id: cardRef, fields: row }) => (
+          {shown.map(({ id: cardRef, fields: row }) => (
             <tr key={cardRef} data-card-ref={cardRef} data-change={changeOf(cardRef)?.kind} aria-selected={selectedRow === cardRef ? 'true' : 'false'} onClick={() => onSelectRow(cardRef)}>
               {/* Two different meanings of "selected" meet in a row: the tick says the next bulk
                   change is about this card, the row itself says the card is the one being looked
@@ -1448,12 +1504,24 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                   <input
                     type={f === 'antal' ? 'number' : 'text'}
                     min={f === 'antal' ? 0 : undefined}
-                    value={row[f] === undefined || row[f] === null ? (f === 'antal' ? '1' : '') : String(row[f])}
+                    step={f === 'antal' ? 1 : undefined}
+                    value={f === 'antal' && antalDraft[cardRef] !== undefined ? antalDraft[cardRef] : row[f] === undefined || row[f] === null ? (f === 'antal' ? '1' : '') : String(row[f])}
                     onChange={(e) => {
                       typing.current[`${cardRef}:${f}`] = e.target.value
-                      onCell(cardRef, f, f === 'antal' ? Number(e.target.value) : e.target.value, cellGesture())
-                      if (onSymbol && f !== 'antal') openBrace(cardRef, f, e.target)
+                      if (f === 'antal') {
+                        // A count is a whole number from nought (#479). Anything else stands in the
+                        // cell, marked and said, and is not written; the cell shows what it had
+                        // again when it is left.
+                        const copies = copiesOf(e.target.value)
+                        setAntalDraft((was) => ({ ...was, [cardRef]: e.target.value }))
+                        if (copies === null) return
+                        onCell(cardRef, f, copies, cellGesture())
+                        return
+                      }
+                      onCell(cardRef, f, e.target.value, cellGesture())
+                      if (onSymbol) openBrace(cardRef, f, e.target)
                     }}
+                    {...(f === 'antal' && antalDraft[cardRef] !== undefined && copiesOf(antalDraft[cardRef]) === null ? { 'aria-invalid': true, 'aria-describedby': `byd-antal-says-${cardRef}` } : {})}
                     // The same keys the rail's library answers, because it is the same library
                     // (E4). They are heard here rather than in the list because the focus stays
                     // in the sentence being written — the rail hears them on the tool for the
@@ -1463,11 +1531,23 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       visits.visit.onFocus()
                       setHeld(shown.map((r) => r.id))
                       setHere({ cardRef, field: f })
+                      // A cell the keyboard walks into chooses its card, as a click on the row
+                      // does (#479): the canvas and the wall follow the card being written in.
+                      if (selectedRow !== cardRef) onSelectRow(cardRef)
                     }}
-                    onBlur={(event) => leaveCell(event, cardRef, f)}
+                    onBlur={(event) => {
+                      if (f === 'antal') setAntalDraft(({ [cardRef]: _gone, ...rest }) => rest)
+                      leaveCell(event, cardRef, f)
+                    }}
                     aria-label={`${cardRef} ${f}`}
                     {...listAria(cardRef, f)}
                   />
+                  {f === 'antal' && antalDraft[cardRef] !== undefined && copiesOf(antalDraft[cardRef]) === null && (
+                    <small className="byd-data-says" id={`byd-antal-says-${cardRef}`}>
+                      {t('table.antal.invalid')}
+                    </small>
+                  )}
+                  {f === 'antal' && antalDraft[cardRef] === undefined && Number(row[f] ?? 1) === 0 && <small className="byd-data-out">{t('table.antal.out')}</small>}
                   {/* The brace, made visible in the cell the designer is standing in (#33). It
                       writes the brace and opens the same picker typing one does — one way in, seen
                       rather than known. Only in the cell being worked in: one handle per cell is a
@@ -1547,6 +1627,23 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
               </td>
             </tr>
           ))}
+                  {/* A card gone since the version compared with is a record of what it was (#479, B4):
+              its values as text and struck through, with nothing on it to write in, tick or press
+              — it is not in the deck, and a write to it has nowhere to land. A filter asks it the
+              same question it asks every card, and the foot counts it. */}
+          {goneShown.map(({ id: cardRef, fields: row }) => (
+            <tr key={cardRef} data-card-ref={cardRef} data-change="removed">
+              <td className="byd-data-check" />
+              <td className="byd-data-id" data-col="id">{cardRef}</td>
+              {fields.map((f) => (
+                <td key={f} data-col={f} className="byd-data-gone">
+                  <s>{String(row[f] ?? '')}</s>
+                </td>
+              ))}
+              {grouping && <td />}
+              <td className="byd-data-remove" />
+            </tr>
+          ))}
         </tbody>
       </table>
       </div>
@@ -1556,13 +1653,17 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           const cardRef = nextRef()
           onAddRow(cardRef)
           setPinned(isFiltering(filter) ? cardRef : null)
+          setArriving(cardRef)
         }}>
         {t('table.addCard')}
       </button>
       {/* What the table adds up to, under it rather than over it (#130). */}
       <CrownFoot>
         <p className="byd-data-count" aria-live="polite">
-          <span>{countLabel(shown.length, doc.rows.length, t)}</span>
+          <span>
+            {countLabel(shown.length, doc.rows.length, t)}
+            {goneShown.length > 0 && ` · ${t(goneShown.length === 1 ? 'table.gone.one' : 'table.gone.other', { n: goneShown.length })}`}
+          </span>
           {chosen.length > 0 && (
             <>
               <span aria-hidden="true"> · </span>
@@ -1691,6 +1792,10 @@ type Pull = {
   onStep(dir: -1 | 1): void
 }
 
+// How long a pointer rests on a head before its prose fold-out opens (#479): long enough that a
+// hand passing over the head on its way down the table opens nothing, short enough to feel at once.
+export const PROSE_HOVER_MS = 300
+
 function SortableHeader({ field, label, sort, onSort, carry, pull, prose }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; carry?: Carry | undefined; pull?: Pull | undefined; prose?: Omit<ProseMarkProps, 'label' | 'open'> | undefined }) {
   const active = sort?.field === field ? sort.dir : null
   // Prosamärkets utfällning (L43, #362) hänger ur **rubriken** och inte ur pricken: pricken är
@@ -1699,6 +1804,10 @@ function SortableHeader({ field, label, sort, onSort, carry, pull, prose }: { fi
   // framme så länge något av dem är kvar: aldrig bara det ena (#184, och #216 som inte får ta
   // tillbaka det). `shut` är Escape, som lägger ihop den utan att flytta handen eller fokus.
   const [near, setNear] = useState(false)
+  const resting = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (resting.current !== null) clearTimeout(resting.current)
+  }, [])
   const [held, setHeld] = useState(false)
   const [shut, setShut] = useState(false)
   const open = prose !== undefined && !shut && (near || held)
@@ -1710,8 +1819,14 @@ function SortableHeader({ field, label, sort, onSort, carry, pull, prose }: { fi
       {...(prose ? { 'data-prose': open ? 'open' : '' } : {})}
       {...(prose
         ? {
-            onPointerEnter: () => setNear(true),
+            // A hand that rests, not one passing over on its way down the table (#479).
+            onPointerEnter: () => {
+              if (resting.current !== null) clearTimeout(resting.current)
+              resting.current = setTimeout(() => setNear(true), PROSE_HOVER_MS)
+            },
             onPointerLeave: () => {
+              if (resting.current !== null) clearTimeout(resting.current)
+              resting.current = null
               setNear(false)
               setShut(false)
             },
@@ -1812,3 +1927,16 @@ function sortLabel(sort: SortState | null, t: T): string {
 
 // A field that moved between the two versions being held against each other (B4).
 const moved = (change: RowChange | undefined, field: string): boolean => change?.kind === 'changed' && change.fields.some((f) => f.field === field)
+
+// What an import did to the deck (#479): it replaces the table, so it says how many cards it read,
+// how many of them are new, how many of the old went, and which columns it brought.
+function importSummary(doc: ProjectDoc, rows: readonly ProjectDoc['rows'][number][], t: T): string {
+  const had = new Set(doc.rows.map((r) => r.id))
+  const now = new Set(rows.map((r) => r.id))
+  const fresh = rows.filter((r) => !had.has(r.id)).length
+  const gone = doc.rows.filter((r) => !now.has(r.id)).length
+  const known = new Set(['id', ...fieldsOf(doc)])
+  const columns = [...new Set(rows.flatMap((r) => Object.keys(r.fields)))].filter((f) => !known.has(f))
+  const read = `${t('table.import.read', { n: rows.length })} ${t(fresh === 1 ? 'table.import.fresh.one' : 'table.import.fresh.other', { n: fresh })}, ${t('table.import.gone', { n: gone })}.`
+  return columns.length === 0 ? read : `${read} ${t(columns.length === 1 ? 'table.import.column.one' : 'table.import.column.other', { names: columns.join(', ') })}`
+}

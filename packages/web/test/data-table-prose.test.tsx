@@ -5,7 +5,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
-import { DataTable } from '../src/editor/DataTable.js'
+import { DataTable, PROSE_HOVER_MS } from '../src/editor/DataTable.js'
 import { projectDoc } from './project-doc.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -105,7 +105,36 @@ describe('att ändra rutans höjd i mallen ändrar inte ett uttryckligt val (L43
 // en skärmläsare. Så utfällningens *namn* bär samma skillnad i ord (L12, L43).
 const head = (field: string) => document.querySelector(`thead th[data-col="${field}"]`) as HTMLElement
 const dot = (field: string) => head(field).querySelector('.byd-prose-mark') as HTMLElement
-const reach = (field: string) => fireEvent.pointerEnter(head(field))
+// A hand that rests on the head, and not one passing over it (#479): the pointer is let stay for
+// as long as the table waits before it opens anything.
+const reach = (field: string) => {
+  vi.useFakeTimers()
+  fireEvent.pointerEnter(head(field))
+  act(() => vi.advanceTimersByTime(PROSE_HOVER_MS))
+  vi.useRealTimers()
+}
+
+// The fold-out opened 8 ms after the pointer crossed the head and covered three rows of data on
+// the way to somewhere else (#479). It waits for a hand that means it.
+describe('utfällningen väntar på en hand som stannar (#479)', () => {
+  it('öppnar inte för en pekare som passerar, och öppnar för en som stannar', () => {
+    table()
+    vi.useFakeTimers()
+    try {
+      fireEvent.pointerEnter(head('body'))
+      act(() => vi.advanceTimersByTime(100))
+      expect(head('body').getAttribute('data-prose')).toBe('')
+      fireEvent.pointerLeave(head('body'))
+      act(() => vi.advanceTimersByTime(PROSE_HOVER_MS))
+      expect(head('body').getAttribute('data-prose')).toBe('')
+      fireEvent.pointerEnter(head('body'))
+      act(() => vi.advanceTimersByTime(PROSE_HOVER_MS))
+      expect(head('body').getAttribute('data-prose')).toBe('open')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
 
 describe('märket säger vad kolumnen är och vem som sade det (L43)', () => {
   it('säger «höjden föreslog» om en kolumn som aldrig fått ett val', () => {

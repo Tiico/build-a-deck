@@ -225,7 +225,9 @@ async function measure(): Promise<Readings> {
       (rows) =>
         Object.fromEntries(
           Object.entries(rows).map(([ground, cardRef]) => {
-            const field = document.querySelector(`.byd-data tbody tr[data-card-ref="${cardRef}"] td[data-col="title"] input`)
+            // Ett kort som tagits bort sedan jämförelsens version är text och inget fält (#479), så
+            // dess bläck läses ur det genomstrukna värdet.
+            const field = document.querySelector(`.byd-data tbody tr[data-card-ref="${cardRef}"] td[data-col="title"] :is(input, s)`)
             if (!field) throw new Error(`raden ${cardRef} har inget fält att läsa texten ur`)
             return [ground, getComputedStyle(field).color]
           }),
