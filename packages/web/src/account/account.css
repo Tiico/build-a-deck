@@ -21,7 +21,9 @@
 .byd-login-sent { padding: 18px; border-radius: 14px; background: #1b2a22; color: #d8ffe8; display: grid; gap: 6px; font-size: 14px; line-height: 1.5; }
 .byd-login-error { color: #ff9a9a; font-size: 13px; margin: 0; }
 .byd-home { width: min(920px, 100%); display: grid; gap: 18px; }
-.byd-home header { display: flex; align-items: baseline; justify-content: space-between; }
+/* The account line goes under the heading when both will not fit on one line, rather than squeezing
+   "Mina spel" onto two (#475). */
+.byd-home header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 16px; }
 .byd-home h1 { margin: 0; font-size: 28px; }
 .byd-who { color: #9aa3b8; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 /* The way out is a word in a sentence, and a word in a sentence is 16 px tall. It keeps the look

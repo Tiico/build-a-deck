@@ -166,3 +166,31 @@ test.describe('taking a game away on a phone (#475)', () => {
     expect(await sideways(page)).toBe(0)
   })
 })
+
+// The rest of "Mina spel" on a phone (#475): the heading on one line with the account beneath it
+// rather than squeezed beside it, and the help beside «Inget spel ännu.» inside the window — it
+// used to open at x = −90, hanging from the far edge of a question mark that had no room on
+// either side.
+test.describe('"Mina spel" on a phone (#475)', () => {
+  test.use({ viewport: { width: 390, height: 844 }, locale: LANG, hasTouch: true, isMobile: true })
+
+  test('keeps the heading on one line and the help for an empty account inside the window', async ({ page }) => {
+    await logIn(page.request)
+    await page.goto('/')
+    const heading = page.getByRole('heading', { name: 'Mina spel' })
+    await expect(heading).toBeVisible()
+    // Lines as the text itself was laid out: one rectangle per line box the words landed in.
+    const lines = await heading.evaluate((el) => {
+      const range = document.createRange()
+      range.selectNodeContents(el)
+      return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size
+    })
+    expect(lines, 'the heading is one line').toBeLessThanOrEqual(1)
+
+    await page.getByRole('button', { name: 'Hjälp om spel' }).tap()
+    const box = (await page.locator('.byd-help-box').boundingBox())!
+    expect(box.x).toBeGreaterThanOrEqual(0)
+    expect(box.x + box.width).toBeLessThanOrEqual(390)
+    expect(await sideways(page)).toBe(0)
+  })
+})
