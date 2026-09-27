@@ -350,6 +350,7 @@ export const enEditor = {
   'canvas.layer.lock': 'Lock {name}',
   'canvas.layer.unlock': 'Unlock {name}',
   'canvas.layer.rename': 'Name of the layer {name}',
+  'canvas.drag.kept': 'Half the element stays on the card',
   'canvas.layer.isLocked': '{name} is locked. Unlock the layer to move it.',
   'canvas.layer.remove.one': 'Remove {name} from the {face}? It draws on {n} card.',
   'canvas.layer.remove.other': 'Remove {name} from the {face}? It draws on {n} cards.',

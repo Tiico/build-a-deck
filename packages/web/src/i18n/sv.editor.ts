@@ -415,6 +415,7 @@ export const svEditor = {
   'canvas.layer.lock': 'Lås {name}',
   'canvas.layer.unlock': 'Lås upp {name}',
   'canvas.layer.rename': 'Namn på lagret {name}',
+  'canvas.drag.kept': 'Halva elementet stannar på kortet',
   'canvas.layer.isLocked': '{name} är låst. Lås upp lagret för att flytta det.',
   // Frågan innan ett lager tas bort (#143, L9). Den säger de tre sakerna som gör elementet till
   // den största av editorns borttagningar: vad designern kallar det, vilken sida det ritas på

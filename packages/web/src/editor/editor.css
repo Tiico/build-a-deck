@@ -945,6 +945,10 @@
   clip-path: polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, var(--byd-rim) var(--byd-rim), var(--byd-rim) calc(100% - var(--byd-rim)), calc(100% - var(--byd-rim)) calc(100% - var(--byd-rim)), calc(100% - var(--byd-rim)) var(--byd-rim), var(--byd-rim) var(--byd-rim));
 }
 .byd-drag-box[data-hollow] > .byd-drag-handle { pointer-events: auto; }
+/* Why the element stopped at the card's edge (#478): a word by it, in the screen's own size
+   whatever the zoom, while the hand keeps pushing. */
+.byd-drag-kept { position: absolute; left: 50%; top: 100%; transform: translateY(calc(4px / var(--byd-canvas-scale, 1))) scale(calc(1 / var(--byd-canvas-scale, 1))); transform-origin: top left; padding: 4px 8px; border-radius: 6px; background: #1b1d23; border: 1px solid #f0b64a; color: #f0b64a; font: 600 12px system-ui; white-space: nowrap; pointer-events: none; z-index: 10002; }
+.byd-drag-kept[data-toward='left'] { left: auto; right: 50%; transform-origin: top right; }
 /* The element as a keyboard stop, and the move mode it can be put into (#144). The card under the
    ring is the designer's and may be any colour she likes, so the ring is two: a dark one at the
    box's own edge and a bright one outside it. Whatever the card is painted, one of them is legible

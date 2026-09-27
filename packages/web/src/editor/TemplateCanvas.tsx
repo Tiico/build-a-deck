@@ -3,7 +3,7 @@ import { useNumberDraft } from './number-draft.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
-import { arrowMove, fitScale, gridStep, HANDLES, round, iconSized, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, ZOOM_MAX, ZOOM_MIN, ZOOM_NOTCH, ZOOM_STEP, zoomPercent, zoomTo, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
+import { arrowMove, fitScale, gridStep, HANDLES, round, iconSized, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, ZOOM_MAX, ZOOM_MIN, ZOOM_NOTCH, ZOOM_STEP, zoomPercent, zoomTo, type Box, type ElementKind, type Grab, type Guides, type Handle, keptOnCard } from './canvas.js'
 import { useGesture, type Gesture } from './gesture.js'
 import { scrubbed, SCRUB_PX } from './scrub.js'
 import { afterPruning, bendStarted, bentEdge, bentPoints, edgeAt, grownPoint, handleAt, midpoints, movedHandle, movedPoint, prunedPoint, straightAll, straightPoint, type Arm, type Point } from './points.js'
@@ -758,11 +758,15 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
   const t = useT()
   const say = useSay()
   const layer = useRef<HTMLDivElement | null>(null)
-  const grab = useRef<(Grab & { id: string; handle: Handle | null; gesture: string; moved: boolean }) | null>(null)
+  const grab = useRef<(Grab & { id: string; handle: Handle | null; gesture: string; moved: boolean; scroll: { x: number; y: number } }) | null>(null)
   // What makes one grab tell itself apart from the next one on the same element (L14). Two drags
   // of the same title are two things the designer did, and two steps back.
   const grabs = useGesture('grab')
   const [guides, setGuides] = useState<Guides>({ x: null, y: null })
+  // The element that was held at the card's edge by the last move (#478), which is said in a word
+  // beside it for as long as the hand keeps pushing.
+  // It grows from the element's middle in over the card, so it is never cut by the stage's edge.
+  const [kept, setKept] = useState<{ id: string; toward: 'left' | 'right' } | null>(null)
   // Whether a grab is running at all, which is the one thing about it that has to be drawn: the
   // way out of the drag is a door in the tree, and a door can only stand there while there is a
   // drag to leave. Everything else about the grab stays in the ref above, where it is read inside
@@ -906,7 +910,8 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
       // it the hand happened to land.
       if (edge) return takeHold(event, box, { point: null, edge: edge.edge, base: midpoints(points)[edge.edge] ?? edge.at })
     }
-    grab.current = { id: box.id, box, handle, gesture: grabs.begin(), moved: false, at: { x: event.clientX, y: event.clientY }, mmPerPx: CARD_STANDARD_63x88.physical.widthMm / rect.width }
+    const stage = stageOf(layer.current)
+    grab.current = { id: box.id, box, handle, gesture: grabs.begin(), moved: false, at: { x: event.clientX, y: event.clientY }, mmPerPx: CARD_STANDARD_63x88.physical.widthMm / rect.width, scroll: { x: stage?.scrollLeft ?? 0, y: stage?.scrollTop ?? 0 } }
     setHolding(true)
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }
@@ -915,20 +920,65 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
     if (shaping.current) return shapeMove(event)
     const held = grab.current
     if (!held) return
-    const to = { x: event.clientX, y: event.clientY }
+    pointer.current = { x: event.clientX, y: event.clientY }
+    place(held, pointer.current)
+    pan()
+  }
+  // Where the hand is, in the card's own frame: the stage may have scrolled under a hand that has
+  // not moved (#478), and the card moved with it.
+  const handAt = (held: NonNullable<typeof grab.current>, client: { x: number; y: number }) => {
+    const stage = stageOf(layer.current)
+    return { x: client.x + (stage?.scrollLeft ?? 0) - held.scroll.x, y: client.y + (stage?.scrollTop ?? 0) - held.scroll.y }
+  }
+  const place = (held: NonNullable<typeof grab.current>, client: { x: number; y: number }) => {
+    const to = handAt(held, client)
     if (held.handle) {
       held.moved = true
       return onPatch(held.id, resizedTo(held, to, held.handle), held.gesture)
     }
     const others = boxes.filter((b) => b.id !== held.id)
     const placed = snapped(held.box, movedTo(held, to), others, CARD_STANDARD_63x88.physical)
+    // The element's middle stays on the card (#478): past that the hand goes on and the element
+    // stays, and says why.
+    const onCard = keptOnCard(held.box, placed.at, CARD_STANDARD_63x88.physical)
+    setKept(onCard.held ? { id: held.id, toward: onCard.at.x + held.box.w / 2 < CARD_STANDARD_63x88.physical.widthMm / 2 ? 'right' : 'left' } : null)
     setGuides(placed.guides)
     // A click is a grab that went nowhere: it selects, and leaves the template alone.
-    if (placed.at.x === held.box.x && placed.at.y === held.box.y) return
+    if (onCard.at.x === held.box.x && onCard.at.y === held.box.y && !held.moved) return
     held.moved = true
-    onPatch(held.id, placed.at, held.gesture)
+    onPatch(held.id, onCard.at, held.gesture)
+  }
+  // The stage pans under a hand held near its edge (#478): at a zoom the card is bigger than the
+  // stage, and an element could not be dragged to a part of the card that was scrolled away. The
+  // nearer the edge, the faster; the element goes on following the hand while the stage moves.
+  const pointer = useRef<{ x: number; y: number } | null>(null)
+  const panning = useRef<number | null>(null)
+  const pan = () => {
+    if (panning.current !== null) return
+    const step = () => {
+      panning.current = null
+      const held = grab.current
+      const stage = stageOf(layer.current)
+      const hand = pointer.current
+      if (!held || !stage || !hand) return
+      const r = stage.getBoundingClientRect()
+      const speed = (d: number) => (d < PAN_EDGE_PX ? Math.ceil(((PAN_EDGE_PX - d) / PAN_EDGE_PX) * PAN_MAX_PX) : 0)
+      const dx = speed(hand.x - r.left) > 0 ? -speed(hand.x - r.left) : speed(r.right - hand.x)
+      const dy = speed(hand.y - r.top) > 0 ? -speed(hand.y - r.top) : speed(r.bottom - hand.y)
+      if (dx === 0 && dy === 0) return
+      const before = { x: stage.scrollLeft, y: stage.scrollTop }
+      stage.scrollBy(dx, dy)
+      if (stage.scrollLeft === before.x && stage.scrollTop === before.y) return
+      place(held, hand)
+      panning.current = requestAnimationFrame(step)
+    }
+    panning.current = requestAnimationFrame(step)
   }
   const up = () => {
+    if (panning.current !== null) cancelAnimationFrame(panning.current)
+    panning.current = null
+    pointer.current = null
+    setKept(null)
     grab.current = null
     shaping.current = null
     setHolding(false)
@@ -989,9 +1039,12 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
     // and five with shift. Every nudge of one holding carries its token, so the whole of it is
     // one step back and Escape can give the element back to where the holding began.
     if (moving?.id !== box.id) return
-    const nudged = arrowMove(box, event.key, event.shiftKey)
-    if (!nudged) return
+    const arrowed = arrowMove(box, event.key, event.shiftKey)
+    if (!arrowed) return
     event.preventDefault()
+    // The arrows are held to the card as the hand is (#478).
+    const onCard = keptOnCard(box, { x: 'x' in arrowed ? arrowed.x : box.x, y: 'y' in arrowed ? arrowed.y : box.y }, CARD_STANDARD_63x88.physical).at
+    const nudged = 'x' in arrowed ? { x: onCard.x } : { y: onCard.y }
     onPatch(box.id, nudged, moving.gesture)
     // Where it now lies, said out loud. Half a millimetre is exactly the distance a screen cannot
     // show, so a nudge that is only drawn is a nudge nobody can check.
@@ -1049,6 +1102,11 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
           onPointerCancel={callOff}
           onClick={(event) => event.stopPropagation()}
         >
+          {kept?.id === box.id && (
+            <span className="byd-drag-kept" data-toward={kept.toward} role="status">
+              {t('canvas.drag.kept')}
+            </span>
+          )}
           {box.id === selected &&
             !box.locked &&
             HANDLES.map((corner) => (
@@ -1652,6 +1710,11 @@ function Section({ name, children }: { name: string; children: ReactNode }) {
 // the pointer reports it (L14): the token is made at `pointerdown` and every step of the pull
 // wears it. What the pointer has travelled but not yet spent is kept on the hold, so a step that
 // took three reports of one pixel still arrives.
+// How near the stage's edge a held hand pans it, and how fast at the very edge (#478).
+const PAN_EDGE_PX = 32
+const PAN_MAX_PX = 18
+const stageOf = (el: HTMLElement | null): HTMLElement | null => el?.closest<HTMLElement>('.byd-canvas-stage') ?? null
+
 // A shape with no fill is its outline and nothing else (#478, L26): its inside lets the pointer
 // through to whatever is drawn there, and the outline is hit within half its line plus the 2.4 mm
 // L26 gives a point. The ring is drawn by the stylesheet from the width said here.
@@ -1873,6 +1936,9 @@ function Properties({
         // A box is never typed or pulled down to nothing (#478): an emptied Bredd used to be 0 mm
         // and the heading it held vanished. Where it stands has no floor; how big it is does.
         {...(key === 'w' || key === 'h' ? { min: 0.5 } : {})}
+        // A typed place is held to the card as a dragged one is (#478): the middle stays on it.
+        {...(key === 'x' && 'w' in el ? { min: -el.w / 2, max: CARD_STANDARD_63x88.physical.widthMm - el.w / 2 } : {})}
+        {...(key === 'y' && 'h' in el ? { min: -el.h / 2, max: CARD_STANDARD_63x88.physical.heightMm - el.h / 2 } : {})}
         value={(el as Record<string, unknown>)[key] as number}
         readOnly={el.locked === true}
         {...(el.locked ? { describedBy: LOCKED_NOTE } : {})}
