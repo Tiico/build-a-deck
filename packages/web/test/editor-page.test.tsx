@@ -515,3 +515,42 @@ describe('the wall of a game with nothing in it (#476)', () => {
     expect(screen.getByRole('tab', { name: /mall/i }).getAttribute('aria-selected')).toBe('true')
   })
 })
+
+// The wall is a place the designer comes back to (#477): a tab switch threw away the search, the
+// eye the deck was read with and where the wall stood, and a card chosen elsewhere stood far down
+// the wall without being brought into view.
+describe('the wall remembers where it was left (#477)', () => {
+  it('keeps the search, the eye and the scroll across a tab switch, and brings the chosen card into view', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    const into = vi.fn()
+    const had = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = into
+    try {
+      render(<EditorPage />)
+      await screen.findByText('Skogens herrar')
+      fireEvent.change(screen.getByRole('searchbox', { name: 'Sök i alla fält' }), { target: { value: 'Drake' } })
+      fireEvent.click(screen.getByRole('button', { name: /^Ögon/ }))
+      fireEvent.click(screen.getByRole('button', { name: 'Gråskala' }))
+      const deck = document.querySelector('[data-wall]') as HTMLElement
+      deck.scrollTop = 240
+      fireEvent.scroll(deck)
+
+      fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
+      await waitFor(() => expect(document.querySelector('tr[data-card-ref="knight"]')).not.toBeNull())
+      fireEvent.click(document.querySelector('tr[data-card-ref="knight"]')!)
+      fireEvent.click(screen.getByRole('tab', { name: /kortvägg/i }))
+
+      expect((screen.getByRole('searchbox', { name: 'Sök i alla fält' }) as HTMLInputElement).value).toBe('Drake')
+      expect(document.querySelector('[data-wall]')!.getAttribute('data-eye')).toBe('gray')
+      expect((document.querySelector('[data-wall]') as HTMLElement).scrollTop).toBe(240)
+      // The search found only the dragon, so the knight chosen in Tabell is not on the wall to show.
+      fireEvent.change(screen.getByRole('searchbox', { name: 'Sök i alla fält' }), { target: { value: '' } })
+      fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
+      fireEvent.click(screen.getByRole('tab', { name: /kortvägg/i }))
+      await waitFor(() => expect(into.mock.contexts.some((el) => (el as Element).getAttribute('data-card-ref') === 'knight')).toBe(true))
+    } finally {
+      Element.prototype.scrollIntoView = had
+    }
+  })
+})

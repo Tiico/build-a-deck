@@ -1,4 +1,4 @@
-import { useCallback, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import type { Frame, Motif, Nudge, Warning } from '@byd/template'
 import { CardPreview } from './CardPreview.js'
@@ -41,7 +41,13 @@ export type DeckWallProps = {
   // that draws it, which is drawn in Mall.
   onAddCard?(): void
   onOpenTemplate?(): void
+  // Where the wall was left (#477): the search, the eye and how far down it stood. The editor
+  // holds it for as long as the project is open, so a tab switch does not throw it away.
+  view?: WallView | undefined
+  onView?(view: WallView): void
 }
+
+export type WallView = { filter: FilterState; eye: string; scrollTop: number }
 
 // The eyes a card is read with (E5). The simulations are the transforms the check uses, applied
 // to the real cards: colour blindness is not something a sentence can convey.
@@ -68,7 +74,7 @@ type Box = 'eyes' | 'guides' | 'grouping' | 'checks'
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
 // the physical checks (E5), gathered by kind, and the eyes to read the deck with.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFraming, onFixChecks, onAddCard, onOpenTemplate }: DeckWallProps) {
+export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFraming, onFixChecks, onAddCard, onOpenTemplate, view, onView }: DeckWallProps) {
   const t = useT()
   // What was mended is said out loud: an edit that changes the template under a deck of forty
   // cards and says nothing is the silence #32 forbids.
@@ -82,7 +88,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   // every call, and a fresh object is a fresh compile of the whole wall (E1).
   const icons = useMemo(() => previewIcons(doc, assetBase), [doc, assetBase])
   const [warnings, setWarnings] = useState<Record<string, number>>({})
-  const [eye, setEye] = useState<string>('normal')
+  const [eye, setEye] = useState<string>(view?.eye ?? 'normal')
   const [trim, setTrim] = useState(false)
   const [arm, setArm] = useState(false)
   // How close the deck is packed is this browser's and not this project's (#128), so it is read
@@ -94,7 +100,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const [atTop, setAtTop] = useState<string | null>(null)
   // The same question the data tab asks of the same fields (#130): one search, reused, so a term
   // that finds a card there finds it here. It is a view of the deck and never touches `doc.rows`.
-  const [filter, setFilter] = useState<FilterState>(noFilter)
+  const [filter, setFilter] = useState<FilterState>(view?.filter ?? noFilter)
   // Whether the wall stands in bands is this browser's, and which column it stands in is this
   // deck's: the template has already said what its groups are, and a column chosen over that
   // answer belongs to the deck it was chosen in (see `grouping.ts`).
@@ -105,6 +111,24 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const [jumpOpen, setJumpOpen] = useState(heldJumpOpen)
   const jumpId = useId()
   const deckRef = useRef<HTMLDivElement>(null)
+  // What the wall tells the editor about where it stands. The scroll goes by a ref, because a
+  // re-render per scrolled pixel is the price of nothing.
+  const scrolled = useRef(view?.scrollTop ?? 0)
+  const told = useRef(onView)
+  told.current = onView
+  useEffect(() => {
+    told.current?.({ filter, eye, scrollTop: scrolled.current })
+  }, [filter, eye])
+  // Back where it was left, and then the chosen card brought into view if it is not in it: a
+  // card chosen in Tabell could stand 2 800 px down the wall with nothing on the screen.
+  useLayoutEffect(() => {
+    const deck = deckRef.current
+    if (deck && scrolled.current > 0) deck.scrollTop = scrolled.current
+  }, [])
+  useLayoutEffect(() => {
+    if (!selectedRow) return
+    deckRef.current?.querySelector(`[data-card-ref="${CSS.escape(selectedRow)}"]`)?.scrollIntoView?.({ block: 'nearest' })
+  }, [selectedRow])
   const sections = useRef(new Map<string, HTMLElement>())
   // A drawer hands the focus back to the box it came from when it closes (#133), so each box has
   // to be findable from the drawer it opened.
@@ -178,6 +202,8 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const onDeckScroll = () => {
     const deck = deckRef.current
     if (!deck) return
+    scrolled.current = deck.scrollTop
+    told.current?.({ filter, eye, scrollTop: deck.scrollTop })
     // The room left is part of the question: the last bands' tops lie beyond everything the wall
     // can scroll, so without it the mark could never reach them (#179).
     setAtTop(bandAtTop([...sections.current].map(([key, el]) => ({ key, top: el.offsetTop - deck.offsetTop })), deck.scrollTop, deck.scrollHeight - deck.clientHeight, atTop))

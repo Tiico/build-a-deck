@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { nextCardRef } from './fields.js'
-import { DeckWall } from './DeckWall.js'
+import { DeckWall, type WallView } from './DeckWall.js'
 import { EditorTabs, MODES, panelId, tabId, type Mode } from './EditorTabs.js'
 import { EditorStages, isCanvasStage, modeOf, STAGES, type Stage } from './EditorStages.js'
 import { useRoom } from '../room.js'
@@ -116,6 +116,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // the template tab the history lands over the layer list and the group strip — so opening one
   // closes the other.
   const [over, setOver] = useState<'history' | 'share' | null>(null)
+  // Where the wall was left (#477), for as long as the project is open. A ref and not state: the
+  // wall reads it when it is drawn again, and nothing else is drawn from it.
+  const wallView = useRef<WallView | undefined>(undefined)
   // An address half written in the share panel outlives the panel (#477).
   const [shareDraft, setShareDraft] = useState('')
   const historyOpen = over === 'history'
@@ -369,6 +372,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         face="front"
         selectedRow={row}
         onSelectRow={setRow}
+        view={wallView.current}
+        onView={(v) => (wallView.current = v)}
         onSelectElement={(id) => {
           setElement(id)
           // A phone has no canvas to open, so an element on the wall is only chosen there; every
