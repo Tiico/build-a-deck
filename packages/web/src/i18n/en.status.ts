@@ -18,6 +18,7 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'title.join': 'Join room {code}',
   'title.join.any': 'Join a room',
   'title.play': 'Your hand',
+  'title.play.ended': 'The table has ended',
   'title.online': 'Play',
   'title.observe': 'Watching room {code}',
   'title.observe.any': 'Watching',

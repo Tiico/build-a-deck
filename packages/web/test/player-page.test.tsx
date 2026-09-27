@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { WebSocket as WsClient } from 'ws'
 import { TableClient, useWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
 import { PlayerPage, type PlayerPageProps } from '../src/player/PlayerPage.js'
@@ -420,6 +420,9 @@ describe('ending the session and the survey after it (C9, G3)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Avsluta för alla/ }))
     expect(await screen.findByText(/Bordet är avslutat/)).toBeTruthy()
     expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'session.end' } })
+    // The survey takes the focus when it appears (#483, fynd 10): the button that ended the table
+    // went with the play view behind it.
+    await waitFor(() => expect(document.activeElement?.closest('.byd-survey')).not.toBeNull())
 
     const next = () => fireEvent.click(screen.getByRole('button', { name: 'Nästa' }))
     expect((screen.getByRole('button', { name: 'Nästa' }) as HTMLButtonElement).disabled).toBe(true)
@@ -434,6 +437,11 @@ describe('ending the session and the survey after it (C9, G3)', () => {
     expect(await screen.findByText(/Tack, Ada/)).toBeTruthy()
     const listed = (await (await fetch(`${run.http}/sessions/${id}/surveys`)).json()) as unknown[]
     expect(listed).toEqual([expect.objectContaining({ who: 'Ada', seat: 'A', version: 'v1', answers: { fun: 4, clarity: 3, balance: 2, change: 'Draken är för stark' } })])
+    // A reload remembers that the survey was sent, rather than asking it all over again (#483).
+    cleanup()
+    render(<PlayerPage />)
+    expect(await screen.findByText(/Tack, Ada/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Nästa' })).toBeNull()
   })
 })
 

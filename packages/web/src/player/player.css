@@ -202,6 +202,9 @@
    off the spacing and not worked out from the order. */
 .byd-exit-choice p { margin: 6px 2px 0; font-size: 13px; color: var(--byd-ink-muted); }
 .byd-exit-sheet .byd-sheet-actions { margin-top: 20px; }
+/* The survey takes the focus as a whole when it appears (#483); the box is not a control, so it
+   draws no ring, and its buttons draw their own. */
+.byd-survey:focus { outline: none; }
 /* Over everything else on the phone, the rulebook's layer (40) included (#483). */
 .byd-survey { position: fixed; inset: 0; z-index: 45; background: var(--byd-bg); color: var(--byd-ink); display: grid; grid-template-rows: auto 1fr auto; padding: 22px 20px; box-sizing: border-box; }
 .byd-survey h1 { margin: 0; font-size: 22px; }

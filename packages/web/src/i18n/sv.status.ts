@@ -24,6 +24,7 @@ export const svStatus = {
   'title.join': 'Gå med i rum {code}',
   'title.join.any': 'Gå med i ett rum',
   'title.play': 'Din hand',
+  'title.play.ended': 'Bordet är avslutat',
   'title.online': 'Spela',
   'title.observe': 'Tittar på rum {code}',
   'title.observe.any': 'Tittar på',

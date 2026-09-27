@@ -36,7 +36,8 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const { client, view, status, activity, refused } = conn
   const live = useLiveStatus(conn, 'phone', timing)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
-  usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code') ?? sessionId })
+  // An ended table is not «Din hand» any more: the phone is showing the survey (#483).
+  usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code') ?? sessionId, part: view?.ended ? t('title.play.ended') : null })
   const faces = url.replace(/^ws/, 'http')
 
   const marks = useHandMarks()

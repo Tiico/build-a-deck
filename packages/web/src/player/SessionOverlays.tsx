@@ -166,7 +166,7 @@ export type SeatSurveyProps = {
 
 export function SeatSurvey({ view, seat, name, http, sessionId, version, saveUrl }: SeatSurveyProps) {
   if (!view.ended) return null
-  return <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat, answers })} />
+  return <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} remember={`${sessionId}:${seat}`} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat, answers })} />
 }
 
 // The three buttons every seat has, and three is the number (#31): the row is full at 375 px,
