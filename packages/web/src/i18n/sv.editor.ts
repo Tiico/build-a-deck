@@ -14,6 +14,10 @@ export const svEditor = {
   // — en uppladdning tar den tid nätet tar, och den som inte ser rutnätet har inget annat besked.
   'media.add': 'Ladda upp media',
   'media.add.done': 'Bilden {name} är tillagd.',
+  'media.add.busy': 'Laddar upp {name}…',
+  'media.add.busy.batch': 'Laddar upp {name} ({at} av {n})…',
+  'media.tile.uploading': 'Laddas upp…',
+  'media.missing': 'Bilden gick inte att hämta.',
   'media.add.done.unnamed': 'Bilden är tillagd.',
   // Flera filer i ett släpp eller ett filval (#291). Sammanfattningen sägs i samma levande fält
   // som en enda bilds besked, och raden per fil står i översikten under den.

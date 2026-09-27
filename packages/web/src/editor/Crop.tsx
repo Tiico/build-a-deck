@@ -74,6 +74,9 @@ export function Crop({ url, ratio, crop, onChange, handle, status }: CropProps) 
   // The shape the window is laid out over: the picture's own where it is known, the hint until
   // then. Never a guess once there is something better to ask.
   const shape = seen?.url === url ? seen.ratio : ratio
+  // A picture the server does not answer for (#481). Kept with its url, like the shape, so the next
+  // picture opened is not said to be missing before it has been asked for.
+  const [lost, setLost] = useState<string | null>(null)
   const held = useRef<{ corner: Corner | null; x: number; y: number; from: AssetCrop; box: DOMRect } | null>(null)
   const picture = useRef<HTMLDivElement | null>(null)
 
@@ -120,7 +123,13 @@ export function Crop({ url, ratio, crop, onChange, handle, status }: CropProps) 
         <div className="byd-crop-picture" ref={picture} style={{ aspectRatio: `${shape}`, ['--byd-crop-ratio' as string]: `${shape}` }}>
           {/* The ref catches a picture the browser had in hand already — a cached file is complete
               before React ever attaches a listener — and `onLoad` catches every other one. */}
-          <img src={url} alt="" ref={shapeOf} onLoad={(event) => shapeOf(event.currentTarget)} />
+          <img src={url} alt="" ref={shapeOf} onLoad={(event) => shapeOf(event.currentTarget)} onError={() => setLost(url)} />
+          {/* Said over the empty picture rather than leaving a black box to be read as one. */}
+          {lost === url && (
+            <p className="byd-crop-missing" role="alert">
+              {t('media.missing')}
+            </p>
+          )}
           {/* What is cut is dimmed. The dimming is a box of its own, clipped to the picture, so
               that the window and the corners can be clipped by nothing. */}
           <div className="byd-crop-shade" aria-hidden="true">
