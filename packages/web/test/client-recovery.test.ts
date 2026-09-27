@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TableClient } from '../src/client.js'
-import { asSeat, asTable, createSession, deafServer, startServer, type Running } from './fixture.js'
+import { asSeat, asTable, createSession, deafServer, goingDeafProxy, startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -102,6 +102,26 @@ describe('reconnecting on its own', () => {
     expect(await settles(() => c.status === 'open')).toBe(true)
     expect(c.view!.seq).toBeGreaterThanOrEqual(before)
     c.close()
+  })
+
+  // An attempt that is neither refused nor answered (#483, fynd 3). The first connection had a
+  // deadline and the reconnects had none, so one silent attempt stood at «försök 1 av 4» for ever
+  // and «Försök nu» hung the same way. Each attempt now has the same deadline, and the plan goes on.
+  it('gives each reconnect the deadline the first connection has, and spends the plan', async () => {
+    const id = await createSession(run)
+    const line = await goingDeafProxy(run.url)
+    const c = TableClient.connect({ ...(await asTable(run, id)), url: line.url, connectTimeoutMs: 150, retryPlanMs: [20, 20] })
+    await c.ready()
+    line.deafen()
+    expect(await settles(() => c.trouble === 'exhausted', 3000)).toBe(true)
+    // Not vacuous: the attempts really reached a line that said nothing.
+    expect(line.held()).toBeGreaterThanOrEqual(2)
+    // And a person's «Försök nu» is held to the same deadline.
+    c.retry()
+    expect(c.trouble).toBeNull()
+    expect(await settles(() => c.trouble === 'exhausted', 3000)).toBe(true)
+    c.close()
+    await line.stop()
   })
 
   it('counts down to the next attempt so the wait is visible rather than a page that blinks', async () => {

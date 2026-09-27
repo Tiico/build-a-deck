@@ -1,5 +1,5 @@
 import type { Server } from 'node:http'
-import { createServer as createSocketServer, type Server as SocketServer, type Socket } from 'node:net'
+import { connect as connectSocket, createServer as createSocketServer, type Server as SocketServer, type Socket } from 'node:net'
 import { CARD_STANDARD_63x88, TOKEN_COUNTER, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
 import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer, MemoryAssetStore } from '@byd/server'
 import { openingSetup, type Recipe } from '@byd/server/doc'
@@ -449,4 +449,42 @@ export async function createNamedSession(run: Running, name: string, id = 's1'):
   const made = (await res.json()) as { id: string; code: string; hostKey: string }
   rooms.set(made.id, { code: made.code, hostKey: made.hostKey })
   return made.id
+}
+
+// A line to the table that works and can then stop answering (#483): every connection is passed
+// through to `target` until `deafen()`, which drops the live ones and from then on accepts new
+// connections and says nothing on them — an attempt that is neither refused nor answered, which is
+// what left a reconnect standing at «försök 1 av 4» for ever.
+export type GoingDeaf = { url: string; deafen(): void; held(): number; stop(): Promise<void> }
+export async function goingDeafProxy(target: string): Promise<GoingDeaf> {
+  const { hostname, port: to } = new URL(target.replace(/^ws/, 'http'))
+  const piped: Socket[] = []
+  const hanging: Socket[] = []
+  let deaf = false
+  const server = createSocketServer((s) => {
+    s.on('error', () => undefined)
+    if (deaf) {
+      hanging.push(s)
+      return
+    }
+    const up = connectSocket(Number(to), hostname)
+    up.on('error', () => s.destroy())
+    s.pipe(up)
+    up.pipe(s)
+    piped.push(s, up)
+  })
+  const port = await claim(server)
+  return {
+    url: `ws://127.0.0.1:${port}`,
+    deafen: () => {
+      deaf = true
+      for (const s of piped.splice(0)) s.destroy()
+    },
+    held: () => hanging.length,
+    stop: () =>
+      new Promise<void>((resolve) => {
+        for (const s of [...piped, ...hanging]) s.destroy()
+        server.close(() => resolve())
+      }),
+  }
 }

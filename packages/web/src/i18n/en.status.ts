@@ -102,6 +102,8 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'status.dropped.table.text': 'Nobody can play until contact is back.',
   'status.dropped.phone.heading': 'You are disconnected',
   'status.dropped.phone.text': 'The hand you see is old and nothing you do now gets through. We are trying again.',
+  'status.dropped.phone.text.spent': 'The hand you see is old and nothing you do now gets through.',
+  'status.dropped.spent': 'We have stopped trying on our own. Press Try now when the network is back.',
   'status.dropped.editor.heading': 'No contact with the server',
   'status.dropped.editor.text': 'Unsaved work stays here until contact is back.',
 
