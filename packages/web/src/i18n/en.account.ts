@@ -10,6 +10,8 @@ export const enAccount = {
   'login.email.placeholder': 'you@example.com',
   'login.submit': 'Send sign-in link',
   'login.error.too-many': 'We have already sent several links to that address. Check your mail, or wait a little.',
+  'login.error.empty': 'Type your email address first.',
+  'login.error.at': 'The address needs an @.',
   'login.error.invalid': 'That does not look like an email address.',
   'login.error.failed': 'The link could not be sent. Try again.',
   'login.no-password': 'No password. The link in the mail logs you in; the first time, it creates your account.',

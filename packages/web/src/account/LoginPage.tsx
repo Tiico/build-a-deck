@@ -21,12 +21,16 @@ export function LoginPage({ onNavigate = (url) => location.replace(url) }: Login
   const next = safeNext(params.get('next'))
   const [known, setKnown] = useState(false)
   useEffect(() => {
+    let live = true
     void whoAmI(http).then(
-      (email) => (email ? onNavigate(next) : setKnown(true)),
+      (email) => live && (email ? onNavigate(next) : setKnown(true)),
       // A service that cannot say who is here can still be asked for a link; the card says so if
       // that fails too.
-      () => setKnown(true),
+      () => live && setKnown(true),
     )
+    return () => {
+      live = false
+    }
   }, [http, next, onNavigate])
   if (!known) return <StatusNotice notice={noticeFor('loading', 'app', t)} surface="page" />
   return (

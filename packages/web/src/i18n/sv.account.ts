@@ -16,6 +16,8 @@ export const svAccount = {
   'login.email.placeholder': 'din@epost.se',
   'login.submit': 'Skicka inloggningslänk',
   'login.error.too-many': 'Vi har redan skickat flera länkar till den adressen. Kolla mejlen, eller vänta en stund.',
+  'login.error.empty': 'Skriv in din e-postadress först.',
+  'login.error.at': 'Adressen behöver ett @.',
   'login.error.invalid': 'Det där ser inte ut som en e-postadress.',
   'login.error.failed': 'Det gick inte att skicka. Försök igen.',
   'login.no-password': 'Inget lösenord. Länken i mejlet loggar in dig; första gången skapar den ditt konto.',

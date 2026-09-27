@@ -23,9 +23,10 @@ describe('a path nothing serves', () => {
     expect(screen.queryByRole('heading', { name: 'Mina spel' })).toBeNull()
   })
 
+  // To the start page, which is what `/` is for whoever is not known to be signed in (#475).
   it('offers a way home without reloading anything', async () => {
     open('/spel/4KJ2')
-    const home = await screen.findByRole('link', { name: /mina spel/i })
+    const home = await screen.findByRole('link', { name: /till startsidan/i })
     expect(home.getAttribute('href')).toBe('/')
   })
 

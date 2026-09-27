@@ -15,10 +15,14 @@ export function NotFoundPage() {
   const server = new URLSearchParams(location.search).get('server')
   const [signedIn, setSignedIn] = useState(false)
   useEffect(() => {
+    let live = true
     void whoAmI(server ?? location.origin).then(
-      (email) => setSignedIn(email !== null),
+      (email) => live && setSignedIn(email !== null),
       () => undefined,
     )
+    return () => {
+      live = false
+    }
   }, [server])
   const notice = noticeFor('missing', 'app', t)
   const said = signedIn ? notice : signedOut(notice, t)

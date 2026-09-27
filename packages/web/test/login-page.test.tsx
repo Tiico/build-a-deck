@@ -20,10 +20,11 @@ afterEach(async () => {
 describe('the login page (#475)', () => {
   it('sends whoever is already signed in straight on to where they were going', async () => {
     await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com' }) })
-    history.replaceState(null, '', `/login?next=${encodeURIComponent('/editor?project=p1')}&server=${encodeURIComponent(run.http)}`)
+    const next = `/editor?project=${run.projectId}`
+    history.replaceState(null, '', `/login?next=${encodeURIComponent(next)}&server=${encodeURIComponent(run.http)}`)
     const gone: string[] = []
     render(<LoginPage onNavigate={(u) => gone.push(u)} />)
-    await waitFor(() => expect(gone).toEqual(['/editor?project=p1']))
+    await waitFor(() => expect(gone).toEqual([next]))
     expect(screen.queryByLabelText('E-post')).toBeNull()
   })
 
@@ -57,5 +58,31 @@ describe('an address the server would not take (#475)', () => {
     expect(screen.queryByRole('alert')).toBeNull()
     expect(field.getAttribute('aria-invalid')).not.toBe('true')
     expect(field.hasAttribute('aria-describedby')).toBe(false)
+  })
+})
+
+// An address with no «@» (#475, beslut 2026-09-27): the button used to be toned and Enter did
+// nothing at all, so the reader was never told what was missing. The button is always there to
+// press, and pressing it says what the address needs — as the wizard says «Spelet behöver ett namn
+// först» — without asking the server anything.
+describe('an address that is not one yet (#475)', () => {
+  it('says what is missing when the button is pressed, and asks the server nothing', async () => {
+    history.replaceState(null, '', `/login?server=${encodeURIComponent(run.http)}`)
+    render(<LoginPage onNavigate={() => undefined} />)
+    const field = await screen.findByLabelText('E-post')
+    const button = screen.getByRole('button', { name: /Skicka inloggningslänk/ })
+    expect(button.hasAttribute('disabled')).toBe(false)
+
+    fireEvent.click(button)
+    expect((await screen.findByRole('alert')).textContent).toBe('Skriv in din e-postadress först.')
+    expect(document.activeElement).toBe(field)
+
+    fireEvent.change(field, { target: { value: 'ada' } })
+    fireEvent.submit(field.closest('form')!)
+    const said = await screen.findByRole('alert')
+    expect(said.textContent).toBe('Adressen behöver ett @.')
+    expect(field.getAttribute('aria-invalid')).toBe('true')
+    expect(field.getAttribute('aria-describedby')).toBe(said.id)
+    expect(run.mail.sent).toHaveLength(0)
   })
 })

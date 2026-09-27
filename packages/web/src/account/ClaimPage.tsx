@@ -23,12 +23,21 @@ export function ClaimPage({ onNavigate = (url) => location.assign(url) }: ClaimP
   const [problem, setProblem] = useState<'unknown' | 'other' | 'offline' | null>(null)
   const [attempt, setAttempt] = useState(0)
   useEffect(() => {
+    let live = true
     setProblem(null)
-    void whoAmI(http).then(setEmail).catch(() => setProblem('offline'))
+    void whoAmI(http).then(
+      (e) => live && setEmail(e),
+      () => live && setProblem('offline'),
+    )
+    return () => {
+      live = false
+    }
   }, [http, attempt])
   useEffect(() => {
     if (!email || !token) return
+    let live = true
     void claimGuest(http, token).then((r) => {
+      if (!live) return
       if (r.ok) {
         const q = new URLSearchParams({ claimed: r.session })
         if (server) q.set('server', server)
@@ -37,6 +46,9 @@ export function ClaimPage({ onNavigate = (url) => location.assign(url) }: ClaimP
       else if (r.reason === 'unknown') setProblem('unknown')
       else setEmail(null)
     })
+    return () => {
+      live = false
+    }
     // The claim itself must not be made again only because the page changed language, so the
     // language the messages are read in is deliberately not one of the reasons to run again.
   }, [email, token, http, server, onNavigate])
