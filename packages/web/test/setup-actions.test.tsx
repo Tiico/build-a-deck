@@ -37,7 +37,8 @@ const panel = () => document.querySelector('[data-zone-actions]') as HTMLElement
 async function save(): Promise<void> {
   const button = await waitFor(() => {
     const b = screen.getByRole('button', { name: 'Spara' }) as HTMLButtonElement
-    expect(b.disabled).toBe(false)
+    // `aria-disabled` since #477, so that the button keeps the focus while it has nothing to do.
+    expect(b.getAttribute('aria-disabled')).toBe('false')
     return b
   })
   fireEvent.click(button)
@@ -132,13 +133,25 @@ describe('vad en zon frågar efter, skrivet som en mening', () => {
     await openZone('draw')
 
     expect(panel().textContent).toMatch(/börjar/)
-    fireEvent.click(within(panel()).getByRole('button', { name: /inga kort/ }))
+    fireEvent.click(within(panel()).getByRole('button', { name: /alla kort som ingen annan hög/ }))
     fireEvent.click(within(panel()).getByRole('button', { name: 'Drake' }))
     expect(panel().textContent).toMatch(/korten där title är Drake/)
 
     await save()
     await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
     expect((await run.projects.load(run.projectId))?.setup.zones.find((z) => z.id === 'draw')?.fill).toEqual([{ field: 'title', is: ['Drake'] }])
+  })
+})
+
+// Leken börjar med varje kort som ingen annan hög tar (#480 fynd 8): panelen sade «I Draghög börjar
+// inga kort.» medan filten visade hela leken i den.
+describe('vad leken börjar med', () => {
+  it('säger att leken tar resten, och att en annan hög börjar med inga kort', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    expect(panel().querySelector('.byd-sentence')!.textContent).toBe('I Draghög börjar alla kort som ingen annan hög börjar med.')
+    fireEvent.click(document.querySelector('[data-zone-row="discard"] .byd-setup-name')!)
+    await waitFor(() => expect(panel().querySelector('.byd-sentence')!.textContent).toBe('I Kasthög börjar inga kort.'))
   })
 })
 

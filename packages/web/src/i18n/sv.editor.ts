@@ -954,6 +954,8 @@ export const svEditor = {
   'setup.fill.sentence': 'I {zone} börjar {what}.',
   'setup.fill.none': 'inga kort',
   'setup.fill.some': 'korten där {what}',
+  'setup.fill.rest': 'alla kort som ingen annan hög börjar med',
+  'setup.fill.someAndRest': 'korten där {what}, och alla som ingen annan hög börjar med',
   'setup.query.clause': '{field} är {values}',
   'setup.query.or': ' eller ',
   'setup.query.and': ' och ',

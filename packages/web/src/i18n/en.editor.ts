@@ -855,6 +855,8 @@ export const enEditor = {
   'setup.fill.sentence': '{zone} starts with {what}.',
   'setup.fill.none': 'no cards',
   'setup.fill.some': 'the cards where {what}',
+  'setup.fill.rest': 'every card no other pile starts with',
+  'setup.fill.someAndRest': 'the cards where {what}, and every card no other pile starts with',
   'setup.query.clause': '{field} is {values}',
   'setup.query.or': ' or ',
   'setup.query.and': ' and ',
