@@ -568,11 +568,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         {room === 'desk' && (
           <>
             {saveButton}
-            {table && (
-              <button type="button" className="byd-editor-new-table" onClick={() => void startTable()}>
-                {t('editor.newTable')}
-              </button>
-            )}
+            {/* «Nytt bord» is in the caret's menu (beslut 2026-09-27, #477): the header holds the
+                errand the primary names, and a second table is the rarer, deliberate choice. */}
             {updateButton}
             <TableMenu client={client} server={params.get('server')} onShowTables={() => setStage('tables')} onNewTable={table ? () => void startTable() : undefined} />
           </>

@@ -2456,15 +2456,9 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-editor-split { position: relative; display: inline-flex; margin-left: -12px; }
 .byd-editor > header > .byd-editor-primary:has(+ .byd-editor-split) { border-radius: 8px 0 0 8px; }
 .byd-editor-split > .byd-editor-caret { border-radius: 0 8px 8px 0; margin-left: 0; padding: 8px 12px; font: inherit; cursor: pointer; }
-/* «Nytt bord» stands in the header where the row has room for it, and in the caret's menu where it
-   has not (#477). At 1024 a running table put five buttons after the tabs, and the one that gave
-   way was the primary: «Uppdatera bo». */
-.byd-editor-ways > .byd-editor-ways-new { display: none; }
 @media (min-width: 1024px) and (max-width: 1279px) {
-  .byd-editor > header > .byd-editor-new-table { display: none; }
-  .byd-editor-ways > .byd-editor-ways-new { display: block; }
   /* The header's gap is 6 px in this band, so the caret takes back 6 and not 12: taking 12 laid
-     it over the last letters of the primary. */
+     it over the last letters of the primary (#477). */
   .byd-editor-split { margin-left: -6px; } /* undantag: tar tillbaka huvudets eget mellanrum i det här bandet, som är 6 px */
 }
 .byd-editor-ways {

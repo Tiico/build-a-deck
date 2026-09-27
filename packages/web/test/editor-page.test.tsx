@@ -147,8 +147,10 @@ describe('the header says which of its two jobs the filled button will do (#417)
     expect(await screen.findByRole('button', { name: 'Uppdatera bordet' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Starta bord' })).toBeNull()
     // And the table one already has is not the only one a game may have: the second way, «Nytt
-    // bord», is what starts another from here on.
-    expect(screen.getByRole('button', { name: 'Nytt bord' })).toBeTruthy()
+    // bord», is what starts another from here on — in the caret's menu (beslut 2026-09-27, #477).
+    expect(screen.queryByRole('button', { name: 'Nytt bord' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Fler vägar till bordet' }))
+    expect(await screen.findByRole('button', { name: 'Nytt bord' })).toBeTruthy()
   })
 
   // The press is answered before the table is (#315), and that answer is a name too: while the
@@ -201,7 +203,9 @@ describe('the table follows the editor (C7, L5)', () => {
     expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual(['version.change'])
     expect(screen.getAllByRole('link', { name: /öppna bordet/i })).toHaveLength(1)
 
-    fireEvent.click(screen.getByRole('button', { name: /nytt bord/i }))
+    // «Nytt bord» is in the caret's menu (beslut 2026-09-27, #477 fynd 4).
+    fireEvent.click(screen.getByRole('button', { name: 'Fler vägar till bordet' }))
+    fireEvent.click(await screen.findByRole('button', { name: /nytt bord/i }))
     await screen.findByText(/nytt bord startat/i)
     const second = ((await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement).href
     expect(new URL(second).searchParams.get('session')).not.toBe(sessionId)

@@ -162,9 +162,9 @@ function TableGroupView({ group, server, rev, qrFor, onQr }: { group: TableGroup
 // designer is standing (#19). It is the same row as in the Bord tab — not a second telling of
 // the same table — and the way on to all of them.
 //
-// `onNewTable` is «Nytt bord» once a table runs. The header holds it where there is room; where
-// there is not (1024–1279) it stands here instead, so the primary is never cut to make room for it
-// (#477). Which of the two is shown is the stylesheet's, because it is a question of width.
+// `onNewTable` is «Nytt bord» once a table runs. It stands here and not beside the primary
+// (beslut 2026-09-27, #477 fynd 4): at 1024 the header had no room for it, and the button that
+// gave way was «Uppdatera bordet».
 export function TableMenu({ client, server, onShowTables, onNewTable }: { client: ProjectClient; server: string | null; onShowTables(): void; onNewTable?: (() => void) | undefined }) {
   const t = useT()
   const [open, setOpen] = useState(false)

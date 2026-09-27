@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { logIn, makeProject, startTable } from '../../support/api.js'
 
 // With a table running, the header carries the most it ever carries: the game's name, the tabs,
-// «Spara», «Nytt bord», «Uppdatera bordet» and the caret (#417). At the desk's two widths the
+// «Spara», «Uppdatera bordet» and the caret (#417); «Nytt bord» is in the caret's menu. At the desk's two widths the
 // primary was cut to «Uppdatera bo» and a game called «Sal's Saloon» to «Sal's …» (#477, fynd 4).
 // A button whose name is clipped is a button whose errand is guessed, and the name is the one
 // thing on the page that says whose game this is. Both must be read whole.
@@ -39,16 +39,11 @@ for (const locale of ['sv-SE', 'en-GB']) {
         })
         expect(clipped).toEqual({})
 
-        // «Nytt bord» is reachable at every width: in the header where it fits, and one press away
-        // in the caret's menu where it does not.
-        const inHeader = page.locator('.byd-editor > header > .byd-editor-new-table')
-        if (width < 1280) {
-          await expect(inHeader).toBeHidden()
-          await page.locator('.byd-editor-caret').click()
-          await expect(page.locator('.byd-editor-ways-new')).toBeVisible()
-        } else {
-          await expect(inHeader).toBeVisible()
-        }
+        // «Nytt bord» stands in the caret's menu at every width (beslut 2026-09-27, #477 fynd 4 B):
+        // one place, one press away, above «Alla bord».
+        await expect(page.locator('.byd-editor > header > .byd-editor-new-table')).toHaveCount(0)
+        await page.locator('.byd-editor-caret').click()
+        await expect(page.locator('.byd-editor-ways-new')).toBeVisible()
       })
     })
   }
