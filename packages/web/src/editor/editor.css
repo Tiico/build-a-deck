@@ -1664,6 +1664,9 @@
    tab stops still fall in the order the eye meets them. */
 .byd-data-tools > span { order: 1; color: var(--byd-editor-quiet); }
 .byd-data-tools > [role='alert'] { color: #f0b64a; }
+/* The question an import asks before it removes cards (#479) is a sentence too, and takes a line
+   of its own after the pair rather than standing between them at its own height. */
+.byd-data-tools > [role='alertdialog'] { order: 1; flex-basis: 100%; }
 /* `separate` rather than `collapse`, because a collapsed border is drawn by the table and a
    sticky cell then leaves its own edges behind as it scrolls. */
 .byd-data { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; background: #1b1d23;
