@@ -1722,14 +1722,6 @@ function Section({ name, children }: { name: string; children: ReactNode }) {
   )
 }
 
-// A number in the panel, marked with an icon and dragged rather than typed (L25). The icon is the
-// field's name and its grip at once: it carries its own name out loud — «Bredd (mm), dra för att
-// ändra» — beside the field's, so the word is not gone from the panel, it is only not drawn.
-//
-// The grip is where the drag lives, and the drag is one entry in the history however many times
-// the pointer reports it (L14): the token is made at `pointerdown` and every step of the pull
-// wears it. What the pointer has travelled but not yet spent is kept on the hold, so a step that
-// took three reports of one pixel still arrives.
 // How near the stage's edge a held hand pans it, and how fast at the very edge (#478).
 const PAN_EDGE_PX = 32
 const PAN_MAX_PX = 18
@@ -1744,6 +1736,14 @@ const hollowProps = (box: BoxElement): { 'data-hollow'?: '' } => (isHollow(box) 
 const hollowStyle = (box: BoxElement): CSSProperties =>
   isHollow(box) ? { ['--byd-rim' as string]: `${(('strokeMm' in box ? box.strokeMm ?? 0 : 0) / 2) + RIM_MM}mm` } : {}
 
+// A number in the panel, marked with an icon and dragged rather than typed (L25). The icon is the
+// field's name and its grip at once: it carries its own name out loud — «Bredd (mm), dra för att
+// ändra» — beside the field's, so the word is not gone from the panel, it is only not drawn.
+//
+// The grip is where the drag lives, and the drag is one entry in the history however many times
+// the pointer reports it (L14): the token is made at `pointerdown` and every step of the pull
+// wears it. What the pointer has travelled but not yet spent is kept on the hold, so a step that
+// took three reports of one pixel still arrives.
 function Scrub({
   name,
   icon,
