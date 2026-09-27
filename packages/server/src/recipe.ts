@@ -345,7 +345,14 @@ const NEW_AREA_WISH = { x: -150, y: 100 }
 // En högs ruta på filten är kortets kontur kring dess punkt: i dokumentet är en hög en punkt utan
 // area, på skärmen är den en kortrygg, och det är kortryggen en ny yta inte får födas ovanpå.
 const CARD = { w: CARD_STANDARD_63x88.physical.widthMm, h: CARD_STANDARD_63x88.physical.heightMm }
-const boxOf = (zone: Zone): Geometry => (zone.kind === 'pile' ? rect(zone.geometry.x - CARD.w / 2, zone.geometry.y - CARD.h / 2, CARD.w, CARD.h) : zone.geometry)
+// A pile takes its card back and the band its name is drawn in (#480, K19): the name stands in caps
+// under the card and is wider than it, so two backs that only just clear each other still write
+// their names into one another — «HÖGHÖG 1». The band is in table millimetres and sized for the
+// felt as the setup draws it at the desk's narrow end, where a millimetre is fewest pixels.
+const NAME_SIDE_MM = 50
+const NAME_BELOW_MM = 30
+const pileRoom = (x: number, y: number): Geometry => rect(x - CARD.w / 2 - NAME_SIDE_MM, y - CARD.h / 2, CARD.w + 2 * NAME_SIDE_MM, CARD.h + NAME_BELOW_MM)
+const boxOf = (zone: Zone): Geometry => (zone.kind === 'pile' ? pileRoom(zone.geometry.x, zone.geometry.y) : zone.geometry)
 const shares = (a: Geometry, b: Geometry): boolean => Math.min(a.x + a.w, b.x + b.w) > Math.max(a.x, b.x) && Math.min(a.y + a.h, b.y + b.h) > Math.max(a.y, b.y)
 
 /**
@@ -425,9 +432,33 @@ const PILE_WINDOW = { w: evenMm(CARD.w), h: evenMm(CARD.h) }
 
 /** Punkten en ny hög föds på, eller `null` när filten inte har någon ledig kortrygg. */
 export function newPileSpot(setup: Setup): Geometry | null {
-  const half = { x: PILE_WINDOW.w / 2, y: PILE_WINDOW.h / 2 }
-  const spot = freeSpot(setup, PILE_WINDOW, { x: NEW_PILE_WISH.x - half.x, y: NEW_PILE_WISH.y - half.y })
-  return spot === null ? null : point(spot.x + half.x, spot.y + half.y)
+  return pileSpotNear(setup, NEW_PILE_WISH)
+}
+
+// The window a new pile is looked for in: its card back and its name's band, the same room an
+// existing pile takes (`pileRoom`), so two new piles leave each other's names whole (#480).
+const PILE_ROOM_WINDOW = { w: PILE_WINDOW.w + 2 * NAME_SIDE_MM, h: PILE_WINDOW.h + NAME_BELOW_MM }
+function pileSpotNear(setup: Setup, wish: { x: number; y: number }): Geometry | null {
+  // The card sits at the top of the window, centred across it; the name's band is under it.
+  const at = { x: PILE_ROOM_WINDOW.w / 2, y: PILE_WINDOW.h / 2 }
+  const spot = freeSpot(setup, PILE_ROOM_WINDOW, { x: wish.x - at.x, y: wish.y - at.y })
+  return spot === null ? null : point(spot.x + at.x, spot.y + at.y)
+}
+
+// Hur långt bredvid originalet en kopia önskar sig, i bordets millimetrar (K22).
+const PASTE_BESIDE_MM = 10
+
+/**
+ * Var en inklistrad zon landar (#480, K22): bredvid originalet på dess högra sida om där är ledigt,
+ * annars på den lediga filt som ligger närmast — samma regel som en ny zon föds med (#440, #443).
+ * `null` när filten inte har plats för den. `at` är önskeplatsen när den inte är bredvid, som för
+ * ett urklipp, vars plats blev ledig när det klipptes.
+ */
+export function pasteSpot(setup: Setup, zone: Zone, at?: { x: number; y: number }): Geometry | null {
+  const g = zone.geometry
+  if (zone.kind === 'pile') return pileSpotNear(setup, at ?? { x: g.x + PILE_WINDOW.w + PASTE_BESIDE_MM, y: g.y })
+  const spot = freeSpot(setup, { w: g.w, h: g.h }, at ?? { x: g.x + g.w + PASTE_BESIDE_MM, y: g.y })
+  return spot === null ? null : { ...spot, rot: g.rot }
 }
 
 // Where a seat's chips lie inside their own zone, in the zone's own millimetres (C4, #89).

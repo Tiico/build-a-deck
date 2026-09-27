@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 17 — Frågerutan (#480 fynd 4)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     «I Draghög börjar [inga kort]» — ratten fäller ut en ruta med varje kolumn och varje värde
+     den har. På demoleken är det 166 chippar i en ruta på 228 × 338 px, 10 551 px hög: ~70 hela
+     regeltexter ur `body` och lika många titlar står före `raritet` och `antal`, som är de
+     kolumner en hög nästan alltid frågar efter. Inget sökfält (`ZoneActions.tsx`, `queries.ts`).
+
+       Nu  alla kolumner, alla värden, i tabellens ordning
+       A   ett sökfält överst som filtrerar värdena i alla kolumner
+       B   varje kolumn är en rad som fälls ut; raden säger hur många värden den har
+       C   korta kolumner först och utfällda; fritext (värden som är långa eller alla olika)
+           sist och hopfällda, med sökning i dem
+
+     Rutan är 228 px bred som i appen. Välj värden: meningen ovanför svarar. ─────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .scen { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 320px 1fr; gap: 24px; padding: 24px; background: var(--chrome); overflow: hidden; }
+  .panel { position: relative; background: var(--panel); border: 1px solid #3b4358; border-radius: 14px; padding: 16px; color: #dce3f2; font: 13px system-ui; }
+  .mening { margin: 0 0 8px; line-height: 1.6; }
+  .ratt { border: 1px dashed #6f7a90; border-radius: 6px; background: #1b2338; color: #cfe0ff; padding: 2px 6px; font: inherit; cursor: pointer; }
+  .ruta { position: absolute; left: 16px; top: 60px; width: 228px; max-height: 338px; overflow: auto; box-sizing: border-box; padding: 8px; border: 1px solid #3b4358; border-radius: 10px; background: #1b1f2a; box-shadow: 0 18px 40px rgb(0 0 0 / 50%); display: grid; gap: 8px; align-content: start; }
+  .ruta input { width: 100%; box-sizing: border-box; min-height: 36px; padding: 6px 8px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: 12px system-ui; }
+  .kol > i, .kol > button.fall { font-style: normal; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--quiet-2); }
+  .kol > button.fall { display: flex; width: 100%; justify-content: space-between; align-items: center; min-height: 36px; border: 1px solid #2f333d; border-radius: 8px; background: transparent; padding: 0 8px; cursor: pointer; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .chips button { border: 1px solid #2f333d; border-radius: 999px; padding: 4px 8px; background: #14161c; color: #dce3f2; font: 11px system-ui; cursor: pointer; max-width: 100%; text-align: left; }
+  .chips button[aria-pressed='true'] { border-color: var(--primary-mark); background: #1f3350; color: #fff; }
+  .fri { color: var(--quiet); font-size: 11px; line-height: 1.45; }
+  .info { color: var(--quiet-2); font: 12px/1.6 system-ui; }
+  .info b { color: #fff; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#480 fynd 4 · Frågerutan.</b> Öppna ratten i meningen och försök välja «raritet är Sällsynt». Mätningen säger hur långt ned den står.</p>
+  </div>
+  <div class="matt" id="matt"></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="scen">
+  <div class="panel" id="panel"></div>
+  <div class="info" id="info"></div>
+</div>
+<script>
+const NAMN = ['Revolverman', 'Sheriff', 'Bartender', 'Pokerspelare', 'Bandit', 'Doktor', 'Präst', 'Guldgrävare', 'Indianscout', 'Kavallerist', 'Tågrånare', 'Postkusk', 'Smed', 'Kortspelare', 'Dansös', 'Barägare', 'Hästtjuv', 'Prisjägare', 'Domare', 'Bankir']
+const RADER = Array.from({ length: 70 }, (_, i) => ({
+  title: `${NAMN[i % NAMN.length]}${i >= NAMN.length ? ' ' + (Math.floor(i / NAMN.length) + 1) : ''}`,
+  body: `När ${NAMN[(i + 3) % NAMN.length].toLowerCase()} spelas: dra ${1 + (i % 3)} kort och ge ett till spelaren till vänster. Om du har ${i % 5 + 1} guld, ta ett till.`,
+  typ: ['Person', 'Vapen', 'Häst', 'Händelse', 'Plats', 'Duell'][i % 6],
+  raritet: ['Vanlig', 'Ovanlig', 'Sällsynt', 'Legendarisk'][i % 4],
+  antal: String(1 + (i % 3)),
+}))
+const KOLUMNER = ['title', 'body', 'typ', 'raritet', 'antal'].map((field) => ({ field, values: [...new Set(RADER.map((r) => r[field]))].sort((a, b) => a.localeCompare(b, 'sv')) }))
+const fritext = (k) => k.values.length > 20 || k.values.some((v) => v.length > 40)
+const s = { v: 'c', open: false, val: {}, sok: '', fallda: {} }
+const NOT = {
+  nu: '<b>Nu.</b> Alla fem kolumner, alla värden, i tabellens ordning. <span class="minus">− 166 chippar; raritet och antal står efter 140 titlar och regeltexter.</span>',
+  a: '<b>A · Sökfält.</b> Ett fält överst som filtrerar värdena i alla kolumner, och rubrikerna står kvar för det som finns kvar. <span class="plus">+ Samma form som rattarna i stegen (#230): den som vet vad hon söker skriver två bokstäver.</span> <span class="minus">− Utan sökning är rutan lika lång som nu; den som bläddrar får ingen hjälp.</span>',
+  b: '<b>B · Hopfällda kolumner.</b> Varje kolumn är en rad med antalet värden; en rad fälls ut i taget. <span class="plus">+ Rutan är fem rader hög från början; kolumnerna syns alla.</span> <span class="minus">− Ett tryck till för varje fråga, även för raritet med fyra värden.</span>',
+  c: '<b>C · Korta först, fritext sist.</b> Kolumner med få, korta värden står öppna först; fritextkolumner (långa eller alla olika värden) står sist, hopfällda, med ett sökfält. <span class="plus">+ Det en hög nästan alltid frågar efter syns direkt; titlar och regeltexter finns kvar och nås med sökning.</span> <span class="minus">− Ordningen är inte tabellens, och regeln «fritext» är en gissning som kan slå fel på en kolumn.</span>',
+}
+const esc = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+const valt = (f, v) => (s.val[f] ?? []).includes(v)
+const chips = (k, values) => `<span class="chips">${values.map((v) => `<button type="button" data-f="${k.field}" data-val="${esc(v)}" aria-pressed="${valt(k.field, v)}">${esc(v)}</button>`).join('')}</span>`
+function ruta() {
+  let html = ''
+  const term = s.sok.toLowerCase()
+  const hit = (v) => v.toLowerCase().includes(term)
+  if (s.v === 'a' || s.v === 'c') html += `<input id="sok" placeholder="Sök bland värdena" aria-label="Sök bland värdena" value="${esc(s.sok)}">`
+  let order = KOLUMNER
+  if (s.v === 'c') order = [...KOLUMNER.filter((k) => !fritext(k)), ...KOLUMNER.filter(fritext)]
+  for (const k of order) {
+    const values = (s.v === 'a' || (s.v === 'c' && term)) ? k.values.filter(hit) : k.values
+    if ((s.v === 'a' || s.v === 'c') && term && values.length === 0) continue
+    if (s.v === 'b' || (s.v === 'c' && fritext(k))) {
+      const oppen = s.fallda[k.field] ?? (s.v === 'c' && term !== '')
+      html += `<div class="kol"><button type="button" class="fall" data-fall="${k.field}" aria-expanded="${oppen}"><span>${k.field}</span><span>${values.length} ${oppen ? '▾' : '▸'}</span></button>${oppen ? chips(k, values) : ''}${s.v === 'c' && fritext(k) && !oppen ? '' : ''}</div>`
+    } else {
+      html += `<div class="kol"><i>${k.field}</i>${chips(k, values)}</div>`
+    }
+  }
+  if (s.v === 'c' && !term) html += `<p class="fri">Titlar och regeltexter står hopfällda: sök för att välja bland dem.</p>`
+  return `<div class="ruta" id="ruta">${html}</div>`
+}
+function mening() {
+  const delar = Object.entries(s.val).filter(([, v]) => v.length).map(([f, v]) => `${f} är ${v.join(' eller ')}`)
+  return delar.length ? `korten där ${delar.join(' och ')}` : 'inga kort'
+}
+function rita(fokus) {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  document.getElementById('anteckning').innerHTML = NOT[s.v]
+  document.getElementById('panel').innerHTML = `<p class="mening">I <b>Draghög</b> börjar <button type="button" class="ratt" id="ratt" aria-expanded="${s.open}">${esc(mening())}</button>.</p>${s.open ? ruta() : ''}`
+  const r = document.getElementById('ruta')
+  let m = ''
+  if (r) {
+    const sallsynt = r.querySelector('[data-f="raritet"][data-val="Sällsynt"]')
+    m = `<span>Rutans innehåll: <u>${r.scrollHeight} px</u></span><span>«Sällsynt» står <u>${sallsynt ? Math.max(0, Math.round(sallsynt.offsetTop - r.clientHeight)) + ' px' : '—'}</u> under rutans nederkant</span><span>Chippar: <u>${r.querySelectorAll('.chips button').length}</u></span>`
+  }
+  document.getElementById('matt').innerHTML = m
+  document.getElementById('info').innerHTML = `<p>Demoleken i prototypen: <b>70 kort</b>, kolumnerna <b>title</b> (70 olika), <b>body</b> (70 regeltexter), <b>typ</b> (6), <b>raritet</b> (4), <b>antal</b> (3).</p><p>Fritext räknas som mer än 20 olika värden eller något värde över 40 tecken (variant C).</p>`
+  if (fokus) document.querySelector(fokus)?.focus()
+}
+document.body.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.v) { s.v = b.dataset.v; s.open = false; s.val = {}; s.sok = ''; s.fallda = {}; const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita() }
+  else if (b.id === 'ratt') { s.open = !s.open; rita(s.open ? '#sok, #ruta button' : '#ratt') }
+  else if (b.dataset.fall) { const f = b.dataset.fall; const now = s.fallda[f] ?? (s.v === 'c' && s.sok !== ''); s.fallda = s.v === 'b' ? { [f]: !now } : { ...s.fallda, [f]: !now }; rita(`[data-fall="${f}"]`) }
+  else if (b.dataset.f) { const f = b.dataset.f, v = b.dataset.val; const had = s.val[f] ?? []; s.val = { ...s.val, [f]: had.includes(v) ? had.filter((x) => x !== v) : [...had, v] }; rita(`[data-f="${f}"][data-val="${CSS.escape(v)}"]`) }
+})
+document.body.addEventListener('input', (e) => { if (e.target.id === 'sok') { s.sok = e.target.value; const at = e.target.selectionStart; rita('#sok'); document.getElementById('sok')?.setSelectionRange(at, at) } })
+addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && s.open) { s.open = false; rita('#ratt'); return }
+  if (e.target.closest('input')) return
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  s.v = alla[(alla.indexOf(s.v) + (e.key === 'ArrowRight' ? 1 : 3)) % 4]; s.open = false; s.val = {}; s.sok = ''; s.fallda = {}
+  const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita()
+})
+const q = new URLSearchParams(location.search).get('v')
+if (['nu', 'a', 'b', 'c'].includes(q)) s.v = q
+rita()
+</script>
+</body>
+</html>

@@ -29,13 +29,11 @@ test.describe('from the editor to a table', () => {
     await page.locator('#byd-editor-tab-tables').click()
     await page.locator('.byd-tables-new').click()
 
-    // A table just started has not been played at, so it is not in the group that stands open —
-    // it is behind the fold for tables that were started and never touched (#176). A folded group
-    // draws nothing at all, deliberately: a row that is not drawn opens no socket and renders no
-    // thumbnail. So the designer opens it, as she would.
-    const folded = page.locator('.byd-tables-group:not([data-group="played"]) .byd-tables-fold').first()
-    await expect(folded, 'the new table is behind a fold that says how many are there').toBeVisible()
-    await folded.click()
+    // A table just started has not been played at, so it is filed under the fold for tables that
+    // were started and never touched (#176) — and that fold opens by itself for the table this
+    // column just started, which the status line names (#480). No click: a click would fold it.
+    await expect(page.locator('.byd-tables-started')).toContainText(/started|startat/)
+    await expect(page.locator('.byd-tables-group:not([data-group="played"]) .byd-tables-fold').first()).toHaveAttribute('aria-expanded', 'true')
 
     // A row for the table that now exists, carrying its id.
     const row = page.locator('.byd-table-row').first()

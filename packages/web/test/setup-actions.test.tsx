@@ -37,7 +37,8 @@ const panel = () => document.querySelector('[data-zone-actions]') as HTMLElement
 async function save(): Promise<void> {
   const button = await waitFor(() => {
     const b = screen.getByRole('button', { name: 'Spara' }) as HTMLButtonElement
-    expect(b.disabled).toBe(false)
+    // `aria-disabled` since #477, so that the button keeps the focus while it has nothing to do.
+    expect(b.getAttribute('aria-disabled')).toBe('false')
     return b
   })
   fireEvent.click(button)
@@ -132,13 +133,25 @@ describe('vad en zon frågar efter, skrivet som en mening', () => {
     await openZone('draw')
 
     expect(panel().textContent).toMatch(/börjar/)
-    fireEvent.click(within(panel()).getByRole('button', { name: /inga kort/ }))
+    fireEvent.click(within(panel()).getByRole('button', { name: /alla kort som ingen annan hög/ }))
     fireEvent.click(within(panel()).getByRole('button', { name: 'Drake' }))
     expect(panel().textContent).toMatch(/korten där title är Drake/)
 
     await save()
     await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
     expect((await run.projects.load(run.projectId))?.setup.zones.find((z) => z.id === 'draw')?.fill).toEqual([{ field: 'title', is: ['Drake'] }])
+  })
+})
+
+// Leken börjar med varje kort som ingen annan hög tar (#480 fynd 8): panelen sade «I Draghög börjar
+// inga kort.» medan filten visade hela leken i den.
+describe('vad leken börjar med', () => {
+  it('säger att leken tar resten, och att en annan hög börjar med inga kort', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    expect(panel().querySelector('.byd-sentence')!.textContent).toBe('I Draghög börjar alla kort som ingen annan hög börjar med.')
+    fireEvent.click(document.querySelector('[data-zone-row="discard"] .byd-setup-name')!)
+    await waitFor(() => expect(panel().querySelector('.byd-sentence')!.textContent).toBe('I Kasthög börjar inga kort.'))
   })
 })
 
@@ -615,5 +628,140 @@ describe('ett steg som frågar efter ett tal, och spelstarten', () => {
     const said = whenSlot().getAttribute('aria-describedby')
     expect(said).not.toBeNull()
     expect(document.getElementById(said!)?.textContent).toBe(why())
+  })
+})
+
+// En åtgärd går att ta bort som en åtgärd, och borttagningen går att ångra (#480 fynd 10): sista
+// stegets × tog förut hela åtgärden, tyst och utan väg tillbaka.
+describe('att ta bort en åtgärd (#480)', () => {
+  it('har en egen knapp, säger vad som togs, och Ångra lägger den tillbaka', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    fireEvent.click(within(panel()).getByRole('button', { name: '＋ Åtgärd' }))
+    const named = () => [...panel().querySelectorAll<HTMLInputElement>('.byd-zone-action > input')].map((i) => i.value)
+    await waitFor(() => expect(named()).toHaveLength(1))
+    const name = named()[0]!
+    fireEvent.click(within(panel()).getByRole('button', { name: `Ta bort åtgärden ${name}` }))
+    await waitFor(() => expect(named()).toHaveLength(0))
+    expect(within(panel()).getByRole('status').textContent).toContain(`«${name}» är borttagen`)
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Ångra' }))
+    await waitFor(() => expect(named()).toEqual([name]))
+  })
+
+  it('säger det också när sista stegets × tar åtgärden med sig', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    fireEvent.click(within(panel()).getByRole('button', { name: '＋ Åtgärd' }))
+    await waitFor(() => expect(panel().querySelectorAll('.byd-zone-action')).toHaveLength(1))
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Ta bort steg 1' }))
+    await waitFor(() => expect(panel().querySelectorAll('.byd-zone-action')).toHaveLength(0))
+    expect(within(panel()).getByRole('status').textContent).toMatch(/är borttagen/)
+  })
+})
+
+// Fokus i panelen när det som hade det försvinner (#480 fynd 6).
+describe('fokus i högens panel (#480)', () => {
+  it('går till Ångra när sista steget tar åtgärden med sig', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    fireEvent.click(within(panel()).getByRole('button', { name: '＋ Åtgärd' }))
+    const x = await within(panel()).findByRole('button', { name: 'Ta bort steg 1' })
+    x.focus()
+    fireEvent.click(x)
+    await waitFor(() => expect(document.activeElement).toBe(within(panel()).getByRole('button', { name: 'Ångra' })))
+  })
+
+  it('lämnar tillbaka fokus till ratten när ett val tas med Enter i sökningen', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+    const box = open(step, 'till vänster om högen')
+    const find = within(box).getByLabelText('Sök bland valen')
+    fireEvent.change(find, { target: { value: 'kasthög' } })
+    fireEvent.keyDown(find, { key: 'Enter' })
+    await waitFor(() => expect(document.activeElement?.classList.contains('byd-slot')).toBe(true))
+    expect(document.activeElement?.getAttribute('aria-expanded')).toBe('false')
+  })
+})
+
+// Raden om varför en åtgärd vid start inte kan fråga efter ett tal hör till en åtgärd som har ett
+// tal att fråga efter (#480 fynd 14). Under en åtgärd som bara blandar sade den något om ingenting.
+describe('raden under ratten när åtgärden bara blandar (#480)', () => {
+  it('står inte under en åtgärd utan tal', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+    const action = step.closest('.byd-zone-action') as HTMLElement
+    fireEvent.change(within(action).getByRole('combobox'), { target: { value: 'shuffle' } })
+    fireEvent.click(within(action).getByRole('button', { name: 'Ta bort steg 1' }))
+    await waitFor(() => expect(action.querySelectorAll('ol li')).toHaveLength(1))
+    fireEvent.click(within(action).getByRole('button', { name: 'bara när någon ber om det' }))
+    fireEvent.click(await within(action).findByRole('button', { name: 'bara vid spelstart' }))
+    await waitFor(() => expect(within(action).queryByRole('button', { name: 'bara när någon ber om det' })).toBeNull())
+    expect(action.querySelector('.byd-zone-action-why')).toBeNull()
+  })
+})
+
+// Talet i en ratt skrivs som ett tal skrivs (#480 fynd 14, #478:s regel i `number-draft.ts`): 0 och
+// 2,5 nekades förut tyst, och fältet stod kvar med det som aldrig skrevs.
+describe('talet i antalsratten (#480)', () => {
+  it('skriver ett helt tal från 1 när fältet lämnas, och fältet visar det', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+    const field = within(open(step, '1')).getByRole('spinbutton') as HTMLInputElement
+    fireEvent.change(field, { target: { value: '0' } })
+    fireEvent.blur(field)
+    // 0 is no amount: the floor is 1, written and shown, not a draft left standing unsaid.
+    await waitFor(() => expect(field.value).toBe('1'))
+    const knob = () => step.querySelector('.byd-slot')!.textContent
+    expect(knob()).toBe('1')
+    // «2,5» as a Swedish Chromium hands it to the page; jsdom has no locale input of its own.
+    fireEvent.change(field, { target: { value: '2.5' } })
+    fireEvent.keyDown(field, { key: 'Enter' })
+    await waitFor(() => expect(knob()).toBe('3'))
+    expect(field.value).toBe('3')
+  })
+})
+
+// Frågerutan på en lek med många olika titlar (beslut 2026-09-27, #480 fynd 4 C): korta kolumner
+// först och öppna, fritextkolumner sist och hopfällda, med sökning. Förut stod raritet efter
+// hundrafyrtio titlar och regeltexter.
+describe('frågerutan på en stor lek (#480)', () => {
+  const stor = (): ProjectDoc => {
+    const doc = projectDoc()
+    doc.rows = Array.from({ length: 30 }, (_, i) => ({ id: `k${i}`, fields: { title: `Kort ${i + 1}`, body: `Regeltext nummer ${i + 1} som är ganska lång och säger vad kortet gör.`, raritet: i % 2 ? 'Vanlig' : 'Sällsynt', antal: 1 } }))
+    return doc
+  }
+
+  it('öppnar på de korta kolumnerna och fäller ihop fritexten, som nås med sökning', async () => {
+    await run.projects.create(run.projectId, stor())
+    await openZone('draw')
+    fireEvent.click(within(panel()).getByRole('button', { name: /alla kort som ingen annan hög/ }))
+    const box = panel().querySelector('.byd-slot-pop') as HTMLElement
+    const heads = [...box.querySelectorAll<HTMLElement>('[data-query-column]')].map((c) => c.getAttribute('data-query-column'))
+    expect(heads.slice(0, 1)).toEqual(['raritet'])
+    expect(within(box).getByRole('button', { name: 'Sällsynt' })).toBeTruthy()
+    // Fritexten står sist och hopfälld: titlarna syns inte förrän de söks fram eller fälls ut.
+    const titles = within(box).getByRole('button', { name: /^title/ })
+    expect(titles.getAttribute('aria-expanded')).toBe('false')
+    expect(within(box).queryByRole('button', { name: 'Kort 12' })).toBeNull()
+    fireEvent.change(within(box).getByLabelText('Sök bland värdena'), { target: { value: 'kort 12' } })
+    expect(within(box).getByRole('button', { name: 'Kort 12' })).toBeTruthy()
+    expect(within(box).queryByRole('button', { name: 'Kort 13' })).toBeNull()
+  })
+})
+
+// Ett nytt «Flytta hela högen» förvalts till den första andra högen (beslut 2026-09-27, #480
+// fynd 14): förut stod det «till vänster om högen», alltså högen bredvid sig själv.
+describe('förvalet för att flytta hela högen (#480)', () => {
+  it('är den första andra högen', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+    const action = step.closest('.byd-zone-action') as HTMLElement
+    fireEvent.change(within(action).getByRole('combobox'), { target: { value: 'movePile' } })
+    await waitFor(() => expect(action.querySelectorAll('ol li')).toHaveLength(2))
+    expect(action.querySelectorAll('ol li')[1]!.textContent).toContain('Flytta hela högen till Kasthög')
   })
 })

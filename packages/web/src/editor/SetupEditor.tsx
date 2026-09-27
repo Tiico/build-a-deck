@@ -6,7 +6,7 @@ import { targetsOf } from '../player/PlaySheet.js'
 import { stepAside } from './grips.js'
 import { TableRenderer, type FeltFit, type TableHandle } from '../table/TableRenderer.js'
 import { previewOf } from '../setup/preview.js'
-import { MAX_PLAYERS, newAreaSpot, newPileSpot, titleOfRow, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
+import { MAX_PLAYERS, newAreaSpot, newPileSpot, pasteSpot, titleOfRow, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
 import type { ZonePatch } from '@byd/server/doc'
 import { useT, type Key, type T } from '../i18n/index.js'
@@ -49,10 +49,6 @@ export type SetupEditorProps = {
 // the card it lies on is the felt's own millimetre divided by this one.
 const CSS_MM_PX = 96 / 25.4
 const SNAP_MM = 5
-// How far a pasted copy lands from the zone it was copied from, in table millimetres. A copy that
-// lay exactly on the original could not be pointed at, and the list would show two rows that
-// looked the same for two things in the same place.
-const BESIDE_MM = 10
 
 // Whether a key press belongs to something being written in rather than to the table. Read off
 // the event as well as off the focus: the focus is what a browser moves when a field is typed
@@ -78,6 +74,14 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
   // What the last step back would take back, said where the removal happened rather than only in
   // the header: a zone that went by mistake is one press from standing again.
   const [undoable, setUndoable] = useState<string | null>(null)
+  // Which zone the way back would restore, and whether the way back should take the focus: the ×
+  // or the handle that had it is gone with the zone (#480).
+  const [removedId, setRemovedId] = useState<string | null>(null)
+  const undoButton = useRef<HTMLButtonElement>(null)
+  const [focusUndo, setFocusUndo] = useState(0)
+  useEffect(() => {
+    if (focusUndo > 0) undoButton.current?.focus()
+  }, [focusUndo])
   // What the last key press said, when it was not a removal: a copy taken, or a refusal with its
   // reason. It stands where the removal's own word stands, because it is the same kind of news.
   const [said, setSaid] = useState<string | null>(null)
@@ -89,7 +93,9 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
   const [held, setHeld] = useState<string | null>(null)
   // The editor's own clipboard, and what the key handler needs to read without being rebuilt on
   // every keystroke the panel beside it takes.
-  const clipboard = useRef<Zone | null>(null)
+  // A cut zone is the same zone on its way somewhere: pasted back it keeps its name and wishes for
+  // the spot it was cut from (#480). A copy is a second zone, named as one and laid beside.
+  const clipboard = useRef<{ zone: Zone; cut: boolean } | null>(null)
   // Whether the phone's sheet stands open beside the setup (#301). It is the editor's own
   // remembering and nobody else's: not the document's, not the table's, not the browser's — so
   // the tab opens with the sheet folded every time, and the room is the setup's until asked for.
@@ -109,8 +115,8 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
   // som står i dokumentet just då. Zonen och allt som redan skrivits i den rörs inte; ingenting
   // av det här når dokumentet, och därmed inte heller något bord eller någon session.
   //
-  // Fokus går till raden i listan och aldrig till handtaget på filten: handtaget väljer zonen
-  // redan när det får fokus, så vägen ut hade lett rakt in igen. Raden finns kvar att peka ut —
+  // Fokus går till raden i listan och inte till handtaget på filten: raden är det som öppnade
+  // panelen från listan, och den står där vare sig zonen är markerad eller inte. Raden finns kvar att peka ut —
   // den ritas vare sig zonen är markerad eller inte, och `select` har redan fällt ut familjen den
   // ligger i — så den läses ur DOM:en på samma sätt som regelpanelen läser sin (#152).
   const close = (zone: Zone) => {
@@ -120,6 +126,8 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
   const remove = (zone: Zone) => {
     client.removeZone(zone.id)
     setUndoable(zone.name)
+    setRemovedId(zone.id)
+    setFocusUndo((n) => n + 1)
     setSaid(null)
     if (selected === zone.id) setSelected(null)
   }
@@ -138,6 +146,18 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
     }
     setSelected(client.addZone(kind, t))
     setUndoable(null)
+    setSaid(null)
+  }
+  // A zone at every seat, unless every seat has one already — then the press says so rather than
+  // doing nothing without a word (#480).
+  const addSeat = (role: 'mine' | 'counters') => {
+    if (setup.seats.every((s) => setup.zones.some((z) => z.id === `${role}:${s}`))) {
+      // The family's name, which is the seat's zone name without the seat (`zone-name.ts`).
+      setSaid(t('setup.seatZone.all', { name: t(role === 'mine' ? 'zone.mine' : 'zone.counters', { seat: '' }).trim() }))
+      setUndoable(null)
+      return
+    }
+    client.addSeatZone(role, t)
     setSaid(null)
   }
   // Cut, copy and paste, bound to the window for the reason Delete already is: a handle on the
@@ -159,8 +179,17 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
         const held = clipboard.current
         if (!held) return
         e.preventDefault()
-        const geometry = { ...held.geometry, x: held.geometry.x + held.geometry.w + BESIDE_MM }
-        setSelected(now.client.insertZone({ ...held, name: now.t('zone.copy', { name: held.name }), geometry }))
+        // On free felt, by the rule new zones are born with (#440, #443, K22): two pastes were two
+        // copies on one point, and a wide copy was born off the table.
+        const geometry = pasteSpot(now.setup, held.zone, held.cut ? held.zone.geometry : undefined)
+        if (geometry === null) {
+          setSaid(now.t(held.zone.kind === 'pile' ? 'setup.noRoomPile' : 'setup.noRoom'))
+          setUndoable(null)
+          return
+        }
+        setSelected(now.client.insertZone({ ...held.zone, name: held.cut ? held.zone.name : now.t('zone.copy', { name: held.zone.name }), geometry }))
+        // Pasted once, a cut is placed; the next paste is a copy of it.
+        if (held.cut) clipboard.current = { zone: held.zone, cut: false }
         setSaid(null)
         return
       }
@@ -178,11 +207,11 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
           setSaid(why)
           return
         }
-        clipboard.current = zone
+        clipboard.current = { zone, cut: true }
         now.remove(zone)
         return
       }
-      clipboard.current = zone
+      clipboard.current = { zone, cut: false }
       setSaid(now.t('setup.copied', { name: zone.name }))
     }
     window.addEventListener('keydown', onKey)
@@ -207,8 +236,8 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
         <div className="byd-setup-tools">
           <button type="button" onClick={() => add('area')}>{t('setup.addArea')}</button>
           <button type="button" onClick={() => add('pile')}>{t('setup.addPile')}</button>
-          <button type="button" onClick={() => client.addSeatZone('mine', t)}>{t('setup.addSeatArea')}</button>
-          <button type="button" onClick={() => client.addSeatZone('counters', t)}>{t('setup.addSeatCounters')}</button>
+          <button type="button" onClick={() => addSeat('mine')}>{t('setup.addSeatArea')}</button>
+          <button type="button" onClick={() => addSeat('counters')}>{t('setup.addSeatCounters')}</button>
         </div>
       </div>
       <div className="byd-setup-canvas">
@@ -217,10 +246,14 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
             <span className="byd-setup-undo" role="status">
               {t('setup.removed', { name: undoable })}
               <button
+                ref={undoButton}
                 type="button"
                 onClick={() => {
                   client.undo()
                   setUndoable(null)
+                  // The zone stands again; so does its row, which takes the focus.
+                  const id = removedId
+                  if (id) requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-zone-row="${CSS.escape(id)}"] .byd-setup-name`)?.focus())
                 }}
               >
                 {t('setup.undo')}
@@ -230,6 +263,14 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
           {said && (
             <span className="byd-setup-said-word" role="status">
               {said}
+            </span>
+          )}
+          {/* Where the chosen zone stands, over the felt where the eye already is while it is
+              dragged (#480, B5): the same numbers stood under the list's foot, out of sight. */}
+          {selectedZone && selectedZone.id !== setup.floor && (
+            <span className="byd-setup-coords" data-setup-coords>
+              {selectedZone.name} · {Math.round(selectedZone.geometry.x)}, {Math.round(selectedZone.geometry.y)}
+              {selectedZone.kind !== 'pile' ? ` · ${Math.round(selectedZone.geometry.w)} × ${Math.round(selectedZone.geometry.h)} mm` : ' mm'}
             </span>
           )}
           <span>{t('setup.hint')}</span>
@@ -251,6 +292,9 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
             onSelect={(id) => {
               select(id)
               setUndoable(null)
+              // The row is the other half of the choice (#480): brought into view in the list,
+              // after the render that has opened its family.
+              if (id) requestAnimationFrame(() => document.querySelector(`[data-zone-row="${CSS.escape(id)}"]`)?.scrollIntoView?.({ block: 'nearest' }))
             }}
             onGeometry={(id, geometry, gesture) => client.patchZone(id, { geometry }, gesture)}
             onRemove={remove}
@@ -646,6 +690,21 @@ function Felt({
     if (feltBox.current) stepAside(feltBox.current)
   })
   const grabs = useGesture('zone')
+  // The zone that the last move held at the table's edge (beslut 2026-09-27, #480 fynd 2 A — the
+  // rule #478 gave elements on a card): its middle stays on the table, and a word beside it says so
+  // for as long as the hand keeps pushing. Past the edge a zone was clipped by the felt and could
+  // not be taken hold of again, and at the table it did not show at all.
+  const [kept, setKept] = useState<string | null>(null)
+  const floorBox = setup.zones.find((z) => z.id === setup.floor)?.geometry
+  const onTable = (z: Zone, g: Geometry): Geometry => {
+    if (!floorBox) return g
+    const half = z.kind === 'pile' ? { w: 0, h: 0 } : { w: g.w / 2, h: g.h / 2 }
+    const x = Math.min(floorBox.x + floorBox.w, Math.max(floorBox.x, g.x + half.w)) - half.w
+    const y = Math.min(floorBox.y + floorBox.h, Math.max(floorBox.y, g.y + half.h)) - half.h
+    const held = x !== g.x || y !== g.y
+    setKept(held ? z.id : null)
+    return held ? { ...g, x: Math.round(x), y: Math.round(y) } : g
+  }
   const toMm = (e: RPointerEvent) => table.current?.toTable(e.clientX, e.clientY) ?? { x: 0, y: 0 }
   const down = (e: RPointerEvent, z: Zone, mode: Drag['mode']) => {
     if (e.button !== 0) return
@@ -663,17 +722,27 @@ function Felt({
     const dx = snap(p.x - d.start.x)
     const dy = snap(p.y - d.start.y)
     const g = d.geometry
-    onGeometry(d.id, d.mode === 'move' ? { ...g, x: g.x + dx, y: g.y + dy } : { ...g, w: Math.max(MIN_MM, g.w + dx), h: Math.max(MIN_MM, g.h + dy) }, d.gesture)
+    const zone = setup.zones.find((z) => z.id === d.id)
+    if (d.mode === 'move' && zone) return onGeometry(d.id, onTable(zone, { ...g, x: g.x + dx, y: g.y + dy }), d.gesture)
+    onGeometry(d.id, { ...g, w: Math.max(MIN_MM, g.w + dx), h: Math.max(MIN_MM, g.h + dy) }, d.gesture)
   }
   const up = () => {
     drag.current = null
+    setKept(null)
   }
   const nudge = (e: RKeyboardEvent, z: Zone) => {
+    // Enter and Space choose (#480): the focus alone does not, or Tab onto the felt would choose
+    // the first pile and its panel would carry the keyboard off before the rest were reached.
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onSelect(z.id)
+      return
+    }
     const step = e.shiftKey ? NUDGE_MM * 5 : NUDGE_MM
     const d = e.key === 'ArrowLeft' ? { x: -step, y: 0 } : e.key === 'ArrowRight' ? { x: step, y: 0 } : e.key === 'ArrowUp' ? { x: 0, y: -step } : e.key === 'ArrowDown' ? { x: 0, y: step } : null
     if (!d) return
     e.preventDefault()
-    onGeometry(z.id, { ...z.geometry, x: z.geometry.x + d.x, y: z.geometry.y + d.y })
+    onGeometry(z.id, onTable(z, { ...z.geometry, x: z.geometry.x + d.x, y: z.geometry.y + d.y }))
   }
   // Delete is bound to the window and not to the handle, because a handle never has the focus: the
   // pointer that selects it is the pointer that starts a drag, and the drag takes the default
@@ -754,10 +823,14 @@ function Felt({
             onPointerCancel={up}
             onClick={() => onSelect(z.id)}
             onKeyDown={(e) => nudge(e, z)}
-            onFocus={() => onSelect(z.id)}
             onPointerEnter={() => setUnder(z.id)}
             onPointerLeave={() => setUnder((now) => (now === z.id ? null : now))}
           >
+            {kept === z.id && (
+              <span className="byd-setup-kept" role="status">
+                {t('setup.kept')}
+              </span>
+            )}
             {z.kind !== 'pile' && (selected === z.id || under === z.id) && <i className="byd-setup-corner" data-resize={z.id} onPointerDown={(e) => down(e, z, 'resize')} onPointerMove={move} onPointerUp={up} onPointerCancel={up} />}
           </div>
         )
@@ -895,11 +968,17 @@ function ZoneProps({ zone, setup, rows, why, onPatch, onDeck, onHold }: { zone: 
             {t('setup.bottom')}
             <select aria-label={t('setup.bottom.of', { name: zone.name })} value={zone.bottom?.cardRef ?? ''} onChange={(e) => onPatch({ bottom: e.target.value ? { cardRef: e.target.value, face: zone.bottom?.face ?? 'back' } : undefined })}>
               <option value="">{t('setup.bottom.none')}</option>
-              {rows.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {titleOfRow(r)}
-                </option>
-              ))}
+              {/* A title that repeats says which row of Tabell it is (#480, K23): four «Duel» in
+                  the list could not be told apart, and the bottom card is one specific row. */}
+              {rows.map((r, i) => {
+                const title = titleOfRow(r)
+                const twin = rows.some((o) => o.id !== r.id && titleOfRow(o) === title)
+                return (
+                  <option key={r.id} value={r.id}>
+                    {twin ? t('setup.bottom.row', { title, n: i + 1 }) : title}
+                  </option>
+                )
+              })}
             </select>
           </label>
           {zone.bottom !== undefined && (

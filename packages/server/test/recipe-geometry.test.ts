@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyRecipe, MAX_PLAYERS, NEW_AREA, newAreaSpot, newPileSpot, openingSetup, type Geometry, type Setup } from '../src/recipe.js'
+import { applyRecipe, MAX_PLAYERS, NEW_AREA, newAreaSpot, newPileSpot, openingSetup, pasteSpot, type Geometry, type Setup } from '../src/recipe.js'
 
 // The recipe's own zones, measured against each other at every seat count the table admits (K18).
 // K2 lets a designer overlap zones deliberately; nothing the recipe lays out is deliberate in that
@@ -303,5 +303,45 @@ describe('en ny hög föds på ledig filt (#443, K2)', () => {
     // En filt som är mindre än ett kort säger samma sak, av samma skäl.
     const tiny: Setup = { ...setup, zones: setup.zones.map((z) => (z.id === setup.floor ? { ...z, geometry: { x: -20, y: -20, w: 40, h: 40, rot: 0 } } : z)) }
     expect(newPileSpot(tiny)).toBeNull()
+  })
+})
+
+// Var en inklistrad zon landar (#480 fynd 9, K22): bredvid originalet om där är ledigt, annars på
+// den lediga filt som ligger närmast, med regeln nya zoner redan föds med (#440, #443). Två
+// inklistringar lade förut kopiorna på samma punkt, och en bred kopia föddes utanför bordet.
+describe('en inklistrad zon landar på ledig filt (#480, K22)', () => {
+  const add = (setup: Setup, zone: Setup['zones'][number]): Setup => ({ ...setup, zones: [...setup.zones, zone] })
+  const inside = (setup: Setup, g: Geometry) => {
+    const f = setup.zones.find((z) => z.id === setup.floor)!.geometry
+    return g.x >= f.x && g.y >= f.y && g.x + g.w <= f.x + f.w && g.y + g.h <= f.y + f.h
+  }
+
+  it('lägger två kopior av samma yta på var sin ledig plats, båda på bordet', () => {
+    const setup = fullTable(2)
+    const area = { id: 'yta-1', kind: 'area' as const, name: 'Yta 1', visibility: 'all' as const, geometry: newAreaSpot(setup)! }
+    const one = add(setup, area)
+    const first = pasteSpot(one, area)!
+    expect(inside(one, first)).toBe(true)
+    const two = add(one, { ...area, id: 'yta-2', geometry: first })
+    const second = pasteSpot(two, area)!
+    expect(inside(two, second)).toBe(true)
+    expect(second).not.toEqual(first)
+    expect(second).not.toEqual(area.geometry)
+  })
+
+  it('lägger kopior av en hög på var sin punkt', () => {
+    const setup = fullTable(2)
+    const draw = setup.zones.find((z) => z.id === 'draw')!
+    const first = pasteSpot(setup, draw)!
+    const second = pasteSpot(add(setup, { ...draw, id: 'kopia-1', geometry: first }), draw)!
+    expect([first.w, first.h]).toEqual([0, 0])
+    expect(second).not.toEqual(first)
+    expect(first).not.toEqual(draw.geometry)
+  })
+
+  it('säger nej när filten inte har plats', () => {
+    const setup = fullTable(2)
+    const huge = { id: 'jatte', kind: 'area' as const, name: 'Jätte', visibility: 'all' as const, geometry: { x: 0, y: 0, w: 5000, h: 5000, rot: 0 } }
+    expect(pasteSpot(setup, huge)).toBeNull()
   })
 })

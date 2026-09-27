@@ -3,10 +3,11 @@ import type { ActionAmount, ActionStep, ActionTarget, ActionWhen, CardQuery, Zon
 import type { ProjectDoc } from '@byd/server'
 import type { Zone } from '@byd/server/doc'
 import { placedProps, usePlacement } from './placement.js'
-import { queryColumns } from './queries.js'
+import { queryColumns, type QueryColumn } from './queries.js'
 import { fieldsOf } from './fields.js'
 import { ownerOf } from './zone-name.js'
 import { useDoor } from '../doors.js'
+import { useNumberDraft } from './number-draft.js'
 import { useT, type Key, type T } from '../i18n/index.js'
 
 // Authoring what a pile starts with and what it can be asked for, as sentences (prototyped
@@ -59,19 +60,24 @@ const atStart = (a: ZoneAction): boolean => a.when === 'start' || a.when === 'bo
 // Vilket av de två hållen som gäller, och därmed vilken rad som står under ratten. Ett dokument
 // som bär kombinationen redan — en import kan göra det — får `asks`, för det är den meningen som
 // säger varför ratten inte erbjuder det läge åtgärden faktiskt står i, och därmed vägen ur det.
-const clash = (a: ZoneAction): 'asks' | 'start' | undefined => (a.steps.some(asksForANumber) ? 'asks' : atStart(a) ? 'start' : undefined)
+// `start` bara där det finns ett tal att fråga efter (#480): under en åtgärd som bara blandar sade
+// raden något om ett steg som inte fanns.
+const hasAmount = (step: ActionStep): boolean => step.v === 'split' || step.v === 'deal'
+const clash = (a: ZoneAction): 'asks' | 'start' | undefined => (a.steps.some(asksForANumber) ? 'asks' : atStart(a) && a.steps.some(hasAmount) ? 'start' : undefined)
 // Var korten ligger, och vart de går. Prepositionen sitter i platsen och aldrig i steget (#285),
 // så en mening säger vilken form den vill ha genom att namnge hålet `{at}` eller `{to}` — och
 // vilken form ett verb styr är därmed språkets sak och inte den här filens (A4).
 type PlaceForm = 'at' | 'to'
 
-const blank = (v: ActionStep['v']): ActionStep =>
+// `pile` is the first other pile, where a new «Flytta hela högen» goes (beslut 2026-09-27, #480
+// fynd 14): beside itself was the pile moved next to itself. With no other pile, beside it is.
+const blank = (v: ActionStep['v'], pile?: string): ActionStep =>
   v === 'shuffle'
     ? { v }
     : v === 'flipTop'
       ? { v, face: 'toggle' }
       : v === 'movePile'
-        ? { v, to: { at: 'beside' } }
+        ? { v, to: pile ? { at: 'zone', zone: pile } : { at: 'beside' } }
         : v === 'deal'
           ? { v, each: { of: 'number', n: 1 }, to: { at: 'hands' }, face: 'keep' }
           : v === 'take'
@@ -119,6 +125,15 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
   // Panelens eget prefix för raden under en ratt (#454). Den måste ha ett id för att ratten ska
   // kunna peka på den, och en åtgärd har redan ett id som är unikt i sin zon.
   const panel = useId()
+  // The action last taken away and where it stood, for the way back (#480).
+  const [dropped, setDropped] = useState<{ action: ZoneAction; at: number } | null>(null)
+  const drop = (a: ZoneAction) => {
+    setDropped({ action: a, at: actions.findIndex((x) => x.id === a.id) })
+    onPatch({ actions: actions.filter((x) => x.id !== a.id) })
+    // The button pressed went with the action; the way back takes the focus (#480).
+    requestAnimationFrame(() => undoRef.current?.focus())
+  }
+  const undoRef = useRef<HTMLButtonElement>(null)
 
   return (
     <Chosen.Provider value={remembered}>
@@ -148,7 +163,17 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
                   key="w"
                   query={zone.fill ?? []}
                   columns={columns}
-                  label={zone.fill && zone.fill.length > 0 ? t('setup.fill.some', { what: queryWords(zone.fill, t) }) : t('setup.fill.none')}
+                  // The deck starts with every card no other pile claims (the server's `setup.ts`), so
+                  // it never starts with nothing (#480): it said «inga kort» over a pile of 146.
+                  label={
+                    doc.setup.deckZone === zone.id
+                      ? zone.fill && zone.fill.length > 0
+                        ? t('setup.fill.someAndRest', { what: queryWords(zone.fill, t) })
+                        : t('setup.fill.rest')
+                      : zone.fill && zone.fill.length > 0
+                        ? t('setup.fill.some', { what: queryWords(zone.fill, t) })
+                        : t('setup.fill.none')
+                  }
                   onChange={(fill) => onPatch({ fill: fill.length > 0 ? fill : undefined }, `fill:${zone.id}`)}
                   t={t}
                 />
@@ -161,7 +186,7 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
             const why = clash(a)
             const whyId = `${panel}why${a.id}`
             return (
-            <div key={a.id} className="byd-zone-action">
+            <div key={a.id} className="byd-zone-action" data-action={a.id}>
               <input
                 value={a.label}
                 aria-label={t('setup.actions.name', { name: a.label })}
@@ -222,7 +247,7 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
                         // An action with no steps is not an action: the last step going takes it with
                         // it, which is also the only way to be rid of one.
                         if (steps.length > 0) setAction(a.id, { ...a, steps })
-                        else onPatch({ actions: actions.filter((x) => x.id !== a.id) })
+                        else drop(a)
                       }}
                     >
                       ×
@@ -230,11 +255,14 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
                   </li>
                 ))}
               </ol>
+              <button type="button" className="byd-zone-action-drop" aria-label={t('setup.actions.remove.of', { name: a.label })} onClick={() => drop(a)}>
+                {t('setup.actions.remove')}
+              </button>
               <label className="byd-zone-step-add">
                 <span>{t('setup.actions.andThen', { name: a.label })}</span>
                 <select
                   value=""
-                  onChange={(e) => e.target.value !== '' && setAction(a.id, { ...a, steps: [...a.steps, blank(e.target.value as ActionStep['v'])] })}
+                  onChange={(e) => e.target.value !== '' && setAction(a.id, { ...a, steps: [...a.steps, blank(e.target.value as ActionStep['v'], others.find((z) => z.kind === 'pile')?.id)] })}
                 >
                   <option value="">{t('setup.actions.andThen.pick')}</option>
                   {VERBS.map((v) => (
@@ -247,6 +275,27 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
             </div>
             )
           })}
+          {/* What was taken, and the way back (#480): an action went silently with its last step. */}
+          {dropped && (
+            <p className="byd-zone-action-undo" role="status">
+              {t('setup.actions.removed', { name: dropped.action.label })}{' '}
+              <button
+                ref={undoRef}
+                type="button"
+                onClick={() => {
+                  const back = [...actions]
+                  back.splice(Math.min(dropped.at, back.length), 0, dropped.action)
+                  onPatch({ actions: back })
+                  setDropped(null)
+                  // And back on the action's own name once it stands again.
+                  const id = dropped.action.id
+                  requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-action="${CSS.escape(id)}"] > input`)?.focus())
+                }}
+              >
+                {t('setup.undo')}
+              </button>
+            </p>
+          )}
           <button type="button" className="byd-zone-action-new" onClick={() => onPatch({ actions: [...actions, { id: `a${Date.now().toString(36)}`, label: t('setup.actions.newName'), steps: [blank('split')] }] })}>
             {t('setup.actions.new')}
           </button>
@@ -286,7 +335,8 @@ function Step({ step, columns, zones, beside, noAsk, t, onChange }: { step: Acti
       <>
         {parts(t('setup.step.take'), {
           which: (
-            <QuerySlot key="w" query={step.which} columns={columns} label={step.which.length > 0 ? queryWords(step.which, t) : t('setup.query.any')} onChange={(which) => onChange({ ...step, which })} t={t} />
+            // «varje kort» with nothing asked, rather than «varje kort där vilket kort som helst» (#480).
+            <QuerySlot key="w" query={step.which} columns={columns} label={step.which.length > 0 ? t('setup.take.where', { what: queryWords(step.which, t) }) : t('setup.take.every')} onChange={(which) => onChange({ ...step, which })} t={t} />
           ),
           face: side(step.face, LANDS, (face) => onChange({ ...step, face: face as typeof step.face })),
           ...place(step.to, (to) => onChange({ ...step, to })),
@@ -345,7 +395,12 @@ function Slot({ label, said, describedBy, children }: { label: ReactNode; said?:
             knob.current?.focus()
           }}
         >
-          {children(() => setOpen(false))}
+          {/* A choice taken closes the box, and the choice goes with it: the focus goes back to the
+              knob rather than to <body> (#480), for the pointer as for Enter in the search. */}
+          {children(() => {
+            setOpen(false)
+            requestAnimationFrame(() => knob.current?.focus())
+          })}
         </SlotPop>
       )}
     </span>
@@ -524,6 +579,15 @@ function Choices({ choices, close, t }: { choices: readonly Choice[]; close(): v
   )
 }
 
+// The number in an amount knob, written the way a number is written (#478's `number-draft.ts`,
+// #480): the digits are a draft until the field is left or Enter is pressed, then one whole number
+// from 1 up is written and shown. 0 and 2,5 were refused without a word, and the field kept
+// showing what had never been written.
+function AmountField({ n, onCommit }: { n: number; onCommit(n: number): void }) {
+  const draft = useNumberDraft({ value: n, min: 1, onCommit: (next) => onCommit(Math.max(1, Math.round(next))) })
+  return <input type="number" min="1" step="1" value={draft.value} onChange={draft.onChange} onBlur={draft.onBlur} onKeyDown={(e) => void draft.onKey(e)} />
+}
+
 function AmountSlot({ amount, zones, noAsk, t, onChange }: { amount: ActionAmount; zones: readonly Zone[]; noAsk: boolean; t: T; onChange(next: ActionAmount): void }) {
   const choices: Choice[] = [
     {
@@ -533,16 +597,7 @@ function AmountSlot({ amount, zones, noAsk, t, onChange }: { amount: ActionAmoun
       node: (
         <label key="amount:number">
           {t('setup.amount.number')}
-          <input
-            type="number"
-            min="1"
-            step="1"
-            defaultValue={amount.of === 'number' ? amount.n : 1}
-            onChange={(e) => {
-              const n = Number(e.target.value)
-              if (Number.isInteger(n) && n > 0) onChange({ of: 'number', n })
-            }}
-          />
+          <AmountField n={amount.of === 'number' ? amount.n : 1} onCommit={(n) => onChange({ of: 'number', n })} />
         </label>
       ),
     },
@@ -618,24 +673,68 @@ function QuerySlot({ query, columns, label, onChange, t }: { query: CardQuery; c
     const is = clause ? (clause.is.includes(value) ? clause.is.filter((v) => v !== value) : [...clause.is, value]) : [value]
     onChange([...query.filter((c) => c.field !== field), ...(is.length > 0 ? [{ field, is }] : [])])
   }
+  return <Slot label={label}>{() => <QueryChoices query={query} columns={columns} toggle={toggle} t={t} />}</Slot>
+}
+
+// A column of free text — many different values, or long ones — is not something a pile is asked
+// about by browsing (beslut 2026-09-27, #480 fynd 4 C). On the demo deck the titles and the rule
+// texts were 140 chips standing before `raritet`, which is what a pile nearly always asks about.
+const FREE_VALUES = 20
+const FREE_LENGTH = 40
+const isFree = (col: QueryColumn): boolean => col.values.length > FREE_VALUES || col.values.some((v) => v.length > FREE_LENGTH)
+
+// The box's inside: the short columns open and first, the free-text ones last and folded, and one
+// search across all of them that also opens what it finds.
+function QueryChoices({ query, columns, toggle, t }: { query: CardQuery; columns: readonly QueryColumn[]; toggle(field: string, value: string): void; t: T }) {
+  const [find, setFind] = useState('')
+  const [opened, setOpened] = useState<readonly string[]>([])
+  const field = useRef<HTMLInputElement>(null)
+  useEffect(() => field.current?.focus({ preventScroll: true }), [])
+  const term = find.toLocaleLowerCase('sv').trim()
+  const short = columns.filter((c) => !isFree(c))
+  const free = columns.filter(isFree)
+  const chip = (col: QueryColumn, v: string) => (
+    <button key={v} type="button" data-on={query.find((c) => c.field === col.field)?.is.includes(v) ? 'true' : 'false'} onClick={() => toggle(col.field, v)}>
+      {v}
+    </button>
+  )
+  const matching = (col: QueryColumn) => (term === '' ? col.values : col.values.filter((v) => v.toLocaleLowerCase('sv').includes(term)))
   return (
-    <Slot label={label}>
-      {() => (
-        <span className="byd-slot-chips">
-          {columns.length === 0 && <i>{t('setup.query.noColumns')}</i>}
-          {columns.map((col) => (
-            <span key={col.field}>
-              <i>{col.field}</i>
-              {col.values.map((v) => (
-                <button key={v} type="button" data-on={query.find((c) => c.field === col.field)?.is.includes(v) ? 'true' : 'false'} onClick={() => toggle(col.field, v)}>
-                  {v}
-                </button>
-              ))}
-            </span>
-          ))}
-        </span>
+    <span className="byd-slot-chips">
+      {columns.length === 0 && <i>{t('setup.query.noColumns')}</i>}
+      {columns.length > 0 && (
+        <input ref={field} className="byd-slot-find" type="text" aria-label={t('setup.query.find')} placeholder={t('setup.query.find')} value={find} onChange={(e) => setFind(e.target.value)} />
       )}
-    </Slot>
+      {short.map((col) => {
+        const values = matching(col)
+        if (values.length === 0) return null
+        return (
+          <span key={col.field} data-query-column={col.field}>
+            <i>{col.field}</i>
+            {values.map((v) => chip(col, v))}
+          </span>
+        )
+      })}
+      {free.map((col) => {
+        const values = matching(col)
+        if (term !== '' && values.length === 0) return null
+        const open = term !== '' || opened.includes(col.field)
+        return (
+          <span key={col.field} data-query-column={col.field} data-free="true">
+            <button
+              type="button"
+              className="byd-slot-fold"
+              aria-expanded={open}
+              onClick={() => setOpened((now) => (now.includes(col.field) ? now.filter((f) => f !== col.field) : [...now, col.field]))}
+            >
+              {col.field} · {values.length}
+            </button>
+            {open && values.map((v) => chip(col, v))}
+          </span>
+        )
+      })}
+      {free.length > 0 && term === '' && <i className="byd-slot-free">{t('setup.query.freeHint')}</i>}
+    </span>
   )
 }
 

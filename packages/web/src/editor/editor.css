@@ -555,21 +555,26 @@
    than the track it stands in and takes the tab sideways with it. Every column here may be
    narrower and shorter than what it holds; what does not fit is what its own scrolling is for. */
 .byd-setup > * { min-width: 0; min-height: 0; }
-.byd-setup-side { display: grid; gap: 16px; align-content: start; overflow: auto; padding-right: 4px; }
+.byd-setup-side { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-content: start; overflow: auto; padding-right: 4px; }
 .byd-setup h2 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
-.byd-setup-recipe { display: grid; gap: 18px; }
+.byd-setup-recipe { display: grid; gap: 18px; min-width: 0; }
 .byd-setup-recipe label { display: flex; gap: 8px; align-items: center; margin: 4px 0; color: #e6ecfa; }
 /* Eight of them, which is one more than the 300 mm column fits in a line. */
 .byd-setup-players { display: flex; flex-wrap: wrap; gap: 6px; }
 .byd-setup-players button, .byd-setup-tools button, .byd-setup-counters > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 .byd-setup-counters { display: grid; gap: 6px; justify-items: start; }
-.byd-setup-counter { display: flex; gap: 6px; align-items: center; color: #9aa3b8; }
+/* A counter is a name, «från», a number and ×. The row wraps rather than setting the column's
+   width (#480): at 1024 it was 296 px of content in a 260 px track, and the whole column scrolled
+   sideways with × and «FAST» cut at its edge. */
+.byd-setup-counter { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; color: #9aa3b8; }
 /* What the panel says about a knob rather than asking with it (#89): the same quiet grey the
    counters themselves are written in, at the width the column has. */
 .byd-setup-note { margin: 0; max-width: 260px; color: #9aa3b8; font-size: 11px; line-height: 1.45; }
 .byd-setup-counter button { border: 0; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
-.byd-setup input:not([type='checkbox']), .byd-setup select { padding: 8px; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; min-width: 0; }
-.byd-setup-counter input:not([type='number']) { width: 110px; }
+/* Border-box (#480): the editor's 44 px floor is the whole field's height, and with the padding
+   counted on top of it every field on this tab stood 62 px tall. */
+.byd-setup input:not([type='checkbox']), .byd-setup select { box-sizing: border-box; padding: 8px; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; min-width: 0; }
+.byd-setup-counter input:not([type='number']) { flex: 1 1 60px; width: auto; max-width: 140px; }
 .byd-setup input[type='number'] { width: 64px; }
 .byd-setup-hint { margin: 0; color: var(--byd-editor-quiet); font-size: 12px; line-height: 1.5; }
 /* The middle column: the line that says what a drag does, and under it the felt, which takes
@@ -594,6 +599,9 @@
    row that gives its words away to the felt under it. */
 .byd-setup-said { flex: none; display: flex; gap: 12px; align-items: center; min-height: 30px; color: #9aa3b8; font-size: 12px; }
 .byd-setup-said > span:last-child { flex: 1; min-width: 0; }
+/* The word a zone held at the table's edge says (#480, the form #478 gave the card's edge). */
+.byd-setup-kept { position: absolute; left: 50%; top: 100%; transform: translate(-50%, var(--byd-s1)); padding: var(--byd-s1) var(--byd-s2); border-radius: 6px; background: #1b1d23; border: 1px solid #f0b64a; color: #f0b64a; font: 600 12px system-ui; white-space: nowrap; pointer-events: none; z-index: 5; }
+.byd-setup-coords { font: 12px ui-monospace, monospace; color: #c8cfdc; }
 .byd-setup-undo { display: flex; gap: 8px; align-items: center; color: #ffd98a; }
 .byd-setup-undo button { border: 1px solid #5c4a1f; border-radius: 8px; padding: 4px 8px; background: #241f13; color: #ffd98a; font-weight: 700; cursor: pointer; }
 /* The list of zones: every one the table has, in two groups, and the row is the way into it —
@@ -690,7 +698,10 @@
    columns beside each other. They become one column, in reading order, and the tab is what
    scrolls — one scrolling box again, and the header above it still does not move. */
 @media (max-width: 1023px) {
-  .byd-setup { grid-template-columns: minmax(0, 1fr); overflow: auto; }
+  /* Rows as tall as what they hold (#480): the desk's one `minmax(0, 1fr)` row stayed behind here,
+     and it gave the zone list, first in the column, a height of nothing — the list lay over the
+     felt under it. */
+  .byd-setup { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-rows: max-content; overflow: auto; }
   .byd-setup-side, .byd-setup-canvas, .byd-setup-beside { overflow: visible; }
   .byd-setup-felt { flex: none; height: min(64vh, 620px); }
   .byd-setup-beside { grid-template-rows: auto auto; }
@@ -2541,6 +2552,8 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 @media (prefers-reduced-motion: reduce) {
   .byd-tables-new[aria-busy='true'] > .byd-tables-new-icon { animation: none; }
 }
+/* What a start just did (#480): the new table's name, in the green the table strip says good news in. */
+.byd-tables-started { margin: 0; color: #7dd3a0; font-size: 12px; line-height: 1.5; }
 .byd-tables-failed { margin: 0; display: flex; flex-wrap: wrap; gap: var(--byd-s1) var(--byd-s2); align-items: center; max-width: 62ch; font-size: 12px; line-height: 1.5; }
 .byd-tables-failed > .byd-secondary { min-height: var(--byd-tap); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; cursor: pointer; }
 /* The shortcut in the header (variant B): "Uppdatera bordet" keeps its job, and the caret beside
@@ -3250,6 +3263,11 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-zone-action-why { margin: 0; color: var(--byd-editor-quiet); font-size: 12px; line-height: 1.5; }
 .byd-zone-action-x { border: 0; background: transparent; color: #9aa3b8; font-size: 15px; line-height: 1; cursor: pointer; padding: 4px; }
 .byd-zone-action-x:hover { color: #ff9a9a; }
+/* Att ta bort en hel åtgärd (#480): tyst som stegets ×, i ord eftersom det är mer än ett steg. */
+.byd-zone-action-drop { justify-self: start; border: 0; padding: 0 var(--byd-s1); background: transparent; color: #9aa3b8; font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
+.byd-zone-action-drop:hover { color: #ff9a9a; }
+.byd-zone-action-undo { display: flex; flex-wrap: wrap; gap: var(--byd-s2); align-items: center; margin: 0; color: #ffd98a; font-size: 12px; }
+.byd-zone-action-undo button { border: 1px solid #5c4a1f; border-radius: 8px; padding: 0 var(--byd-s2); background: #241f13; color: #ffd98a; font: inherit; font-weight: 700; cursor: pointer; }
 .byd-zone-step-add { display: flex; gap: 6px; align-items: center; }
 .byd-zone-step-add > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 /* En andrahandsknapp och inte sidans huvudhandling (L13): den ljusa fyllningen hör till
@@ -3354,6 +3372,10 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-slot-chips button { display: inline; width: auto; text-align: left; border: 1px solid #2f333d; border-radius: 8px; padding: 8px; background: #1b1d23; }
 .byd-slot-chips { display: grid; gap: 8px; }
 .byd-slot-chips > span { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+/* A free-text column folded to its name and count (#480 fynd 4 C), and the line that says why. */
+.byd-slot-chips > span > .byd-slot-fold { width: 100%; display: flex; justify-content: space-between; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #9aa3b8; background: transparent; }
+.byd-slot-chips > span > .byd-slot-fold[aria-expanded='true'] { border-color: var(--byd-editor-primary-mark); }
+.byd-slot-chips .byd-slot-free { color: var(--byd-editor-quiet); font-size: 11px; font-style: normal; line-height: 1.45; text-transform: none; letter-spacing: 0; }
 .byd-slot-chips i { flex-basis: 100%; font-style: normal; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #9aa3b8; }
 .byd-slot-chips button[data-on='true'] { background: #1d3a5c; border-color: #3f7fbf; color: #cfe6ff; }
 /* Vad en tangent sa, när den inte tog bort något: en kopia tagen, eller ett nej med sitt skäl.

@@ -28,6 +28,10 @@ export function TablesTab({ client, server }: TablesTabProps) {
   // Which table's QR is up, for the whole column: the code is meant to be held up to a camera,
   // and two of them at once is two tables a phone could land at by mistake.
   const [qrFor, setQrFor] = useState<string | null>(null)
+  // The table this column just started or ended (#480): its group opens so its row is there to be
+  // seen, the start is said in the status line, and an ended table's row takes the focus again
+  // once the list has filed it under its new group — the row it had was taken down with the move.
+  const [revealed, setRevealed] = useState<{ id: string; why: 'started' | 'ended' } | null>(null)
   useEffect(() => {
     let live = true
     client.tables().then(
@@ -38,6 +42,13 @@ export function TablesTab({ client, server }: TablesTabProps) {
       live = false
     }
   }, [client, asked])
+  // After the list has come back and the group has opened — a frame later, because the group opens
+  // in an effect of its own — the ended table's row takes the focus again.
+  useEffect(() => {
+    if (revealed?.why !== 'ended' || !tables) return
+    const frame = requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-table="${CSS.escape(revealed.id)}"] .byd-tables-more`)?.focus())
+    return () => cancelAnimationFrame(frame)
+  }, [tables, revealed])
 
   // A start that failed, said beside the button with a way to try again (L31). Its own state,
   // apart from `notice`: the list not arriving and the table not starting are two different
@@ -56,8 +67,9 @@ export function TablesTab({ client, server }: TablesTabProps) {
     inFlight.current = true
     setStarting(true)
     try {
-      await client.startTable()
+      const made = await client.startTable()
       setFailed(null)
+      setRevealed({ id: made.id, why: 'started' })
       setAsked((n) => n + 1)
     } catch (err) {
       setFailed(err instanceof Error ? err.message : String(err))
@@ -91,7 +103,9 @@ export function TablesTab({ client, server }: TablesTabProps) {
           belongs to the header's own action, whichever of its two names it wears (L13, #417). The
           icon turns while the start is under way: a button that only goes quiet reads as a button
           that did nothing (jfr #215). */}
-      <button type="button" className="byd-tables-new byd-secondary" disabled={starting} aria-busy={starting} onClick={() => void startTable()}>
+      {/* `aria-disabled` and not `disabled` (#480): the button keeps the focus while it starts the
+          table, and the handler refuses a second start itself. */}
+      <button type="button" className="byd-tables-new byd-secondary" aria-disabled={starting} aria-busy={starting} onClick={() => void startTable()}>
         <span className="byd-tables-new-icon">
           <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" focusable="false">
             <path d="M3 1.5 12 7l-9 5.5z" fill="currentColor" />
@@ -99,6 +113,11 @@ export function TablesTab({ client, server }: TablesTabProps) {
         </span>
         {starting ? t('tables.starting') : t('tables.new')}
       </button>
+      {revealed?.why === 'started' && failed === null && (
+        <p className="byd-tables-started" role="status">
+          {t('tables.started', { table: tableName(revealed.id) })}
+        </p>
+      )}
       {failed !== null && (
         <p className="byd-tables-failed" role="alert">
           {t('tables.failed', { reason: failed })}{' '}
@@ -110,7 +129,21 @@ export function TablesTab({ client, server }: TablesTabProps) {
       {tables.length === 0 ? (
         <p className="byd-tables-empty">{t('tables.none')}</p>
       ) : (
-        tableGroups(tables, t).map((group) => <TableGroupView key={group.id} group={group} server={server} rev={client.rev} qrFor={qrFor} onQr={setQrFor} />)
+        tableGroups(tables, t).map((group) => (
+          <TableGroupView
+            key={group.id}
+            group={group}
+            server={server}
+            rev={client.rev}
+            qrFor={qrFor}
+            onQr={setQrFor}
+            revealed={revealed?.id ?? null}
+            onEnded={(id) => {
+              setRevealed({ id, why: 'ended' })
+              setAsked((n) => n + 1)
+            }}
+          />
+        ))
       )}
       {notice && <p role="alert">{notice}</p>}
     </div>
@@ -125,14 +158,25 @@ export function TablesTab({ client, server }: TablesTabProps) {
 // A folded group draws nothing at all, which is the whole point: a row that is not drawn opens no
 // WebSocket and renders no thumbnail, so what the list costs follows what is on the screen rather
 // than what the game has ever started.
-function TableGroupView({ group, server, rev, qrFor, onQr }: { group: TableGroup; server: string | null; rev: number; qrFor: string | null; onQr(id: string | null): void }) {
-  const [open, setOpen] = useState(group.id === 'played')
+function TableGroupView({ group, server, rev, qrFor, onQr, revealed, onEnded }: { group: TableGroup; server: string | null; rev: number; qrFor: string | null; onQr(id: string | null): void; revealed: string | null; onEnded(id: string): void }) {
+  const [chosen, setChosen] = useState(group.id === 'played')
+  // A table this column just started or ended opens the group it is filed under (#480) — in the
+  // same render that first draws it, so there is no folded frame for a click to land in, and a
+  // designer who folds it again has folded it until the next table is revealed.
+  const holds = revealed !== null && group.tables.some((table) => table.id === revealed)
+  const [foldedFor, setFoldedFor] = useState<string | null>(null)
+  const open = chosen || (holds && foldedFor !== revealed)
+  const setOpen = (next: (was: boolean) => boolean) => {
+    const now = next(open)
+    setChosen(now)
+    if (!now && holds) setFoldedFor(revealed)
+  }
   const headingId = `byd-tables-group-${group.id}`
   const listId = `byd-tables-list-${group.id}`
   const rows = (
     <ul id={listId} className="byd-tables-list" aria-labelledby={headingId}>
       {group.tables.map((table) => (
-        <TableRow key={table.id} table={table} server={server} rev={rev} qrOpen={qrFor === table.id} onQr={(open) => onQr(open ? table.id : null)} />
+        <TableRow key={table.id} table={table} server={server} rev={rev} qrOpen={qrFor === table.id} onQr={(open) => onQr(open ? table.id : null)} onEnded={() => onEnded(table.id)} />
       ))}
     </ul>
   )
@@ -250,7 +294,7 @@ const THUMBNAIL = { w: 640, h: 384 }
 // Live, as before: the same connection the TV makes (seatless, sees only what is public), so what
 // the row says about the table is what the table itself says. A row that is not drawn — a folded
 // group — makes no connection at all, which is what keeps the cost with what is on the screen.
-function TableRow({ table, server, rev, qrOpen, onQr }: { table: TableSummary; server: string | null; rev: number; qrOpen: boolean; onQr(open: boolean): void }) {
+function TableRow({ table, server, rev, qrOpen, onQr, onEnded }: { table: TableSummary; server: string | null; rev: number; qrOpen: boolean; onQr(open: boolean): void; onEnded?: () => void }) {
   const t = useT()
   // The day and the clock a last move is said in are the reader's, not `sv-SE`'s (#228).
   const { lang } = useLang()
@@ -359,7 +403,9 @@ function TableRow({ table, server, rev, qrOpen, onQr }: { table: TableSummary; s
           onConfirm={() => {
             // The same connection the row is already listening on, as the table itself: this is
             // the path every other end goes through (C9), not a second one.
-            void client?.send({ v: 'session.end' })
+            // Once the log is locked the list is asked again, so the row moves to its group now and
+            // not whenever the tab is next opened (#480).
+            void client?.send({ v: 'session.end' }).then(() => onEnded?.())
             setAsking(false)
             setRefocus(true)
           }}

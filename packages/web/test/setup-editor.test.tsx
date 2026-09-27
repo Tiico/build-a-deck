@@ -373,3 +373,163 @@ describe('högens bottenkort', () => {
     expect(screen.queryByLabelText('Bottenkort för Spelyta')).toBeNull()
   })
 })
+
+// Tab through the felt without being caught (#480 fynd 1). A handle chose its zone the moment it
+// had the focus, and a chosen pile's panel takes the focus when it opens — so the first Tab onto
+// the felt landed on the deck and was carried off into its panel, and the fourteen handles after
+// it were never reached. Focus is where the keyboard stands; Enter or Space chooses (L24, L29).
+describe('the felt under a keyboard (#480)', () => {
+  it('lets Tab stand on a handle without choosing it, and chooses on Enter or Space', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    const handles = [...document.querySelectorAll<HTMLElement>('[data-zone-handle]')]
+    expect(handles.length).toBeGreaterThan(2)
+    handles[0]!.focus()
+    expect(handles[0]!.getAttribute('aria-pressed')).toBe('false')
+    expect(document.querySelector('[data-zone-actions]')).toBeNull()
+    expect(document.activeElement).toBe(handles[0])
+    handles[1]!.focus()
+    expect(document.activeElement).toBe(handles[1])
+
+    fireEvent.keyDown(handles[1]!, { key: 'Enter' })
+    expect(handles[1]!.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.keyDown(handles[0]!, { key: ' ' })
+    expect(handles[0]!.getAttribute('aria-pressed')).toBe('true')
+    expect(handles[1]!.getAttribute('aria-pressed')).toBe('false')
+  })
+})
+
+// Klistra in som K22 säger (#480 fynd 9): på ledig filt bredvid originalet, två kopior på två
+// platser, och ett urklipp som klistras tillbaka är samma zon på samma plats med samma namn.
+describe('klistra in på filten (#480)', () => {
+  it('lägger två kopior på två olika lediga platser', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    fireEvent.click(document.querySelector('[data-zone-row="discard"] .byd-setup-name')!)
+    fireEvent.keyDown(window, { key: 'c', ctrlKey: true })
+    fireEvent.keyDown(window, { key: 'v', ctrlKey: true })
+    fireEvent.keyDown(window, { key: 'v', ctrlKey: true })
+    await waitFor(() => expect(document.querySelectorAll('[data-zone-handle]').length).toBeGreaterThanOrEqual(3))
+    const spots = [...document.querySelectorAll<HTMLElement>('[data-zone-handle]')]
+      .filter((h) => /^kasthog|^discard|kopia/i.test(h.getAttribute('data-zone-handle') ?? '') || h.getAttribute('aria-label')?.includes('Kasthög'))
+      .map((h) => `${h.style.left},${h.style.top}`)
+    expect(spots.length).toBe(3)
+    expect(new Set(spots).size).toBe(3)
+  })
+
+  it('klistrar tillbaka ett urklipp med sitt eget namn på sin egen plats', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    const before = handle('discard').style.cssText
+    fireEvent.click(document.querySelector('[data-zone-row="discard"] .byd-setup-name')!)
+    fireEvent.keyDown(window, { key: 'x', ctrlKey: true })
+    await waitFor(() => expect(handle('discard')).toBeNull())
+    fireEvent.keyDown(window, { key: 'v', ctrlKey: true })
+    const back = await waitFor(() => {
+      const h = [...document.querySelectorAll<HTMLElement>('[data-zone-handle]')].find((el) => el.getAttribute('aria-label')?.includes('Kasthög'))
+      expect(h).toBeTruthy()
+      return h!
+    })
+    expect(back.getAttribute('aria-label')).not.toMatch(/Kopia/)
+    expect(back.style.cssText).toBe(before)
+  })
+})
+
+// «＋ Yta per plats» när varje plats redan har en (#480 fynd 11): trycket gjorde ingenting och sade
+// ingenting.
+describe('per plats när alla platser redan har en (#480)', () => {
+  it('säger varför ingenting lades till', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    const zones = () => document.querySelectorAll('[data-zone-handle]').length
+    fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
+    await waitFor(() => expect(zones()).toBeGreaterThan(0))
+    const had = zones()
+    fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
+    expect(await screen.findByText('Varje plats har redan «Framför».')).toBeTruthy()
+    expect(zones()).toBe(had)
+  })
+})
+
+// Bottenkortet väljs bland kort som kan heta likadant (#480 fynd 13, K23): fyra «Duel» i listan
+// gick inte att skilja åt. Där titeln upprepas säger valet vilken rad i Tabell det är.
+describe('bottenkortets lista när titlar upprepas (#480)', () => {
+  it('skiljer korten åt med sin rad', async () => {
+    const doc = projectDoc()
+    doc.rows.push({ id: 'dragon-2', fields: { title: 'Drake', antal: 1 } })
+    await run.projects.create(run.projectId, doc)
+    await openBord()
+    fireEvent.click(document.querySelector('[data-zone-row="discard"] .byd-setup-name')!)
+    const options = [...(screen.getByLabelText('Bottenkort för Kasthög') as HTMLSelectElement).options].map((o) => o.textContent)
+    expect(options).toEqual(['inget', 'Drake · rad 1', 'Riddare', 'Trollkarl', 'Drake · rad 4'])
+  })
+})
+
+// Fokus faller aldrig till <body> när det som hade det försvinner (#480 fynd 6): den som tar bort en
+// zon står på vägen tillbaka, och den som tar tillbaka den står på zonens rad.
+describe('fokus när en zon tas bort och tas tillbaka (#480)', () => {
+  it('går till Ångra efter ×, och till zonens rad efter Ångra', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    const x = within(row('discard')).getByRole('button', { name: 'Ta bort Kasthög' })
+    x.focus()
+    fireEvent.click(x)
+    await waitFor(() => expect(row('discard')).toBeNull())
+    const undo = screen.getByRole('button', { name: 'Ångra' })
+    await waitFor(() => expect(document.activeElement).toBe(undo))
+    fireEvent.click(undo)
+    await waitFor(() => expect(row('discard')).not.toBeNull())
+    await waitFor(() => expect(document.activeElement).toBe(row('discard').querySelector('.byd-setup-name')))
+  })
+
+  it('går till Ångra efter Delete på filten', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    fireEvent.keyDown(handle('discard'), { key: 'Enter' })
+    fireEvent.keyDown(window, { key: 'Delete' })
+    await waitFor(() => expect(handle('discard')).toBeNull())
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ångra' })))
+  })
+})
+
+// Ett val på filten syns i listan och i talen (#480 fynd 5): raden rullades inte fram, och
+// koordinaterna stod under kolumnens nederkant, så inga tal syntes medan en zon drogs.
+describe('valet på filten i listan och i talen (#480)', () => {
+  it('rullar fram raden och säger var zonen står i raden över filten', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    const into = vi.fn()
+    const had = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = into
+    try {
+      fireEvent.keyDown(handle('discard'), { key: 'Enter' })
+      await waitFor(() => expect(into.mock.contexts.some((el) => (el as Element).closest?.('[data-zone-row="discard"]'))).toBe(true))
+      const said = document.querySelector('[data-setup-said] [data-setup-coords]')!
+      const g = (await run.projects.load(run.projectId))!.setup.zones.find((z) => z.id === 'discard')!.geometry
+      expect(said.textContent).toContain(`Kasthög · ${Math.round(g.x)}, ${Math.round(g.y)}`)
+      fireEvent.keyDown(handle('discard'), { key: 'ArrowRight' })
+      await waitFor(() => expect(said.textContent).toContain(`${Math.round(g.x) + 10}, ${Math.round(g.y)}`))
+    } finally {
+      Element.prototype.scrollIntoView = had
+    }
+  })
+})
+
+// En zon dras aldrig bort från bordet (beslut 2026-09-27, #480 fynd 2 A, samma regel som #478:s
+// element på kortet): mitten hålls på bordet, och en etikett säger varför den stannade.
+describe('en zon vid bordets kant (#480)', () => {
+  it('håller zonens mitt på bordet och säger det', async () => {
+    const doc = projectDoc()
+    await run.projects.create(run.projectId, doc)
+    await openBord()
+    const floor = doc.setup.zones.find((z) => z.id === doc.setup.floor)!.geometry
+    const h = handle('discard')
+    fireEvent.keyDown(h, { key: 'Enter' })
+    for (let i = 0; i < 40; i++) fireEvent.keyDown(handle('discard'), { key: 'ArrowRight', shiftKey: true })
+    const coords = document.querySelector('[data-setup-coords]')!.textContent!
+    const x = Number(/· (-?\d+),/.exec(coords)![1])
+    expect(x).toBeLessThanOrEqual(floor.x + floor.w)
+    expect(x).toBeGreaterThan(floor.x + floor.w - 60)
+    expect(await screen.findByText('Halva zonen stannar på bordet')).toBeTruthy()
+  })
+})

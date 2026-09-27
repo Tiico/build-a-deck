@@ -25,7 +25,11 @@ export const DESK = { w: 1280, h: 800 }
 export const FELT_BOX = { w: 660, h: 500 }
 
 export type Box = { x: number; y: number; w: number; h: number }
-export const shares = (a: Box, b: Box): boolean => Math.min(a.x + a.w, b.x + b.w) > Math.max(a.x, b.x) && Math.min(a.y + a.h, b.y + b.h) > Math.max(a.y, b.y)
+// Two boxes that only touch share no pixel, even when floating point puts one edge a hair past the
+// other: 100 + 120 mm and 220 mm are one edge on the table, and the felt's linear map can land them
+// 1e-13 px apart (#480, where two new areas first came to stand edge to edge).
+const HAIR = 1e-6
+export const shares = (a: Box, b: Box): boolean => Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) > HAIR && Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) > HAIR
 
 /** Varje zons ruta som fliken ritar den, i den ordning fliken ritar dem. */
 export function drawn(): { id: string; box: Box }[] {
