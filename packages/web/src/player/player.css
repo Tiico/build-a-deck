@@ -88,6 +88,10 @@
   background: hsl(var(--hue, 0) var(--byd-card-face-s) var(--byd-card-face-l)); color: var(--byd-card-ink);
 }
 .byd-mine-card[data-face='back'] .byd-mine-face { background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px); color: #fff; }
+/* The owner's own card, lying face down (#483): its face, in a frame of the back's stripes, and the
+   words that say only she sees it — so «face down» is seen without being read, and read anyway. */
+.byd-mine-card[data-face='known'] .byd-mine-face { border: 7px solid transparent; border-image: repeating-linear-gradient(45deg, #3a4d7a 0 4px, #2f4068 4px 8px) 7; }
+.byd-mine-down { position: absolute; z-index: 2; font-style: normal; left: 4px; right: 4px; bottom: 4px; padding: 2px 4px; border-radius: 999px; background: #1b1e27; color: #cfd6e4; font-size: 10px; font-weight: 600; text-align: center; }
 .byd-mine-card strong { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .byd-mine-empty { color: var(--byd-ink-quiet); font-size: 12px; margin: 4px 0; }
 

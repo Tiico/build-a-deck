@@ -4918,6 +4918,11 @@ Beställarens egen formulering «Framför de andra» prövades och förkastades 
 De två avvisade alternativen: att låta det vara lämnar en läsare utan ledtråd om vilken av två identiska brickor som gör något, och att skilja dem åt visuellt rör formen på en yta som nyss godkänts och hade därför krävt en prototyp först.
 Vinsten är mätt i telefonens knappaste resurs: vid fyra platser försvinner en hel rad ur fliken, vid åtta en av fem.
 
+*Tillagt 2026-09-27 (#483 fynd 8, beställarens beslut A efter prototyp 31):* ett eget kort som vänds ner på ytan framför en själv är fortfarande ägarens att känna till.
+«Vänd ner» skickar `flip` och `peek` i samma kuvert, så projektionen berättar för ägaren vilket kort det är och för resten av rummet det den berättade förut — att ett kort ligger där; det bevisas på tråden i `packages/e2e/test/own-face-down.spec.ts`.
+Telefonen ritar kortet med framsidan i en ram av ryggens ränder och orden «nervänt · bara du».
+Luckan är erkänd: ett kort som bordsskärmen vänder ner framför någon har ingen som tittar åt ägaren, och bara en projektionsregel skulle täcka det — en fjärde synlighet, som inte är beslutad.
+
 
 ## I. Öppna frågor
 

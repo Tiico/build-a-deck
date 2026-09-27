@@ -213,6 +213,8 @@ export const enPlay = {
   'player.counter.set': '{name}: {value}. Set value',
   'player.mine.title': 'In front of you · {n}',
   'player.mine.flip.down': 'Turn down',
+  'player.mine.down': 'face down · only you',
+  'player.mine.down.label': '{name}, face down – only you see it',
   'player.mine.flip.up': 'Turn up',
   'player.mine.take': 'Pick up',
   'player.mine.play': 'Play…',

@@ -102,19 +102,27 @@ export function MineStrip({ view, faces, onOpen, onTake, onPlay, pending, headin
       {heading && <h2>{t('player.mine.title', { n: mine.length })}</h2>}
       <div className="byd-mine-strip">
         {mine.map((c) => {
-          const up = c.cardRef !== null
+          // Known and face up, known and face down — the owner's own card she turned down (#483,
+          // beslut A efter prototyp 31) — or not known at all. The middle one shows its face in a
+          // frame of the back's stripes and says in words that only she sees it.
+          const known = c.cardRef !== null
+          const face = !known ? 'back' : c.face === 'front' ? 'front' : 'known'
           return (
             <div className="byd-mine-item" key={c.id}>
               <button
                 type="button"
                 className="byd-mine-card"
                 data-mine-card={c.id}
-                data-face={up ? 'front' : 'back'}
-                aria-label={cardName(c, t)}
-                style={up ? { ['--hue' as string]: hue(c.cardRef ?? '') } : undefined}
+                data-face={face}
+                aria-label={face === 'known' ? t('player.mine.down.label', { name: cardName(c, t) }) : cardName(c, t)}
+                style={known ? { ['--hue' as string]: hue(c.cardRef ?? '') } : undefined}
                 onClick={() => onOpen(c)}
               >
-                <i className="byd-mine-face"><Texture faces={faces} c={c} /></i>
+                <i className="byd-mine-face">
+                  {/* Before the texture: the texture's own fallback hides every name that follows it. */}
+                  {face === 'known' && <span className="byd-mine-down" aria-hidden="true">{t('player.mine.down')}</span>}
+                  <Texture faces={faces} c={c} />
+                </i>
                 <strong aria-hidden="true">{cardWord(c) ?? ''}</strong>
               </button>
               {onTake && (

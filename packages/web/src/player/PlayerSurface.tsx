@@ -220,7 +220,13 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
               card={inspect}
               onFlip={(c) => {
                 setInspect(null)
-                void client.send({ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' })
+                // A card of your own turned face down in front of you is still yours to know (#483,
+                // beslut A efter prototyp 31): the flip peeks as it turns, in the same envelope, so
+                // the owner is told which card it is and the rest of the room is told what it was
+                // told before — that a card lies there.
+                void (c.face === 'front'
+                  ? client.send({ v: 'flip', component: c.id, face: 'back' }, { v: 'peek', components: [c.id] })
+                  : client.send({ v: 'flip', component: c.id, face: 'front' }))
               }}
               onTake={(c) => {
                 setInspect(null)

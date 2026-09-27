@@ -259,6 +259,8 @@ export const svPlay = {
   'player.counter.set': '{name}: {value}. Sätt värde',
   'player.mine.title': 'Framför dig · {n}',
   'player.mine.flip.down': 'Vänd ner',
+  'player.mine.down': 'nervänt · bara du',
+  'player.mine.down.label': '{name}, nervänt – bara du ser det',
   'player.mine.flip.up': 'Vänd upp',
   'player.mine.take': 'Ta upp',
   'player.mine.play': 'Spela…',
