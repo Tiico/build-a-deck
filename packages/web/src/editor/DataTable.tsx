@@ -1781,6 +1781,10 @@ type Pull = {
   onStep(dir: -1 | 1): void
 }
 
+// How long a pointer rests on a head before its prose fold-out opens (#479): long enough that a
+// hand passing over the head on its way down the table opens nothing, short enough to feel at once.
+export const PROSE_HOVER_MS = 300
+
 function SortableHeader({ field, label, sort, onSort, carry, pull, prose }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; carry?: Carry | undefined; pull?: Pull | undefined; prose?: Omit<ProseMarkProps, 'label' | 'open'> | undefined }) {
   const active = sort?.field === field ? sort.dir : null
   // Prosamärkets utfällning (L43, #362) hänger ur **rubriken** och inte ur pricken: pricken är
@@ -1789,6 +1793,10 @@ function SortableHeader({ field, label, sort, onSort, carry, pull, prose }: { fi
   // framme så länge något av dem är kvar: aldrig bara det ena (#184, och #216 som inte får ta
   // tillbaka det). `shut` är Escape, som lägger ihop den utan att flytta handen eller fokus.
   const [near, setNear] = useState(false)
+  const resting = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (resting.current !== null) clearTimeout(resting.current)
+  }, [])
   const [held, setHeld] = useState(false)
   const [shut, setShut] = useState(false)
   const open = prose !== undefined && !shut && (near || held)
@@ -1800,8 +1808,14 @@ function SortableHeader({ field, label, sort, onSort, carry, pull, prose }: { fi
       {...(prose ? { 'data-prose': open ? 'open' : '' } : {})}
       {...(prose
         ? {
-            onPointerEnter: () => setNear(true),
+            // A hand that rests, not one passing over on its way down the table (#479).
+            onPointerEnter: () => {
+              if (resting.current !== null) clearTimeout(resting.current)
+              resting.current = setTimeout(() => setNear(true), PROSE_HOVER_MS)
+            },
             onPointerLeave: () => {
+              if (resting.current !== null) clearTimeout(resting.current)
+              resting.current = null
               setNear(false)
               setShut(false)
             },

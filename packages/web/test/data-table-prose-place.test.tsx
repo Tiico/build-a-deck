@@ -9,10 +9,10 @@
 // motor med den riktiga stilmallen, precis som fliktens övriga geometri (#32, #46).
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { fireEvent, render } from '@testing-library/react'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
-import { DataTable } from '../src/editor/DataTable.js'
+import { DataTable, PROSE_HOVER_MS } from '../src/editor/DataTable.js'
 import { deckValues, fitColumns, markValues } from '../src/editor/columns.js'
 import { translate, type T } from '../src/i18n/index.js'
 import { projectDoc } from './project-doc.js'
@@ -42,7 +42,10 @@ function markup(field: string): { html: string; deck: Record<string, string[]> }
     />,
   )
   const th = container.querySelector(`.byd-data thead th[data-col="${field}"]`)!
+  vi.useFakeTimers()
   fireEvent.pointerEnter(th)
+  act(() => vi.advanceTimersByTime(PROSE_HOVER_MS))
+  vi.useRealTimers()
   const html = container.innerHTML
   unmount()
   return { html, deck: deckValues(projectDoc(), sv) }
