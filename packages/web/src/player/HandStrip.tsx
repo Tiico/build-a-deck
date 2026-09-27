@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
@@ -18,6 +18,10 @@ export type HandStripProps = {
   onOpen(card: VisibleComponentState): void
   // The HTTP origin that serves /faces/:hash; without it cards show their names on colour.
   faces?: string | undefined
+  // A card carried to another place along the strip (K4; #483, beslut A efter prototyp 33), by a
+  // thumb that rested until the card lifted and then went sideways, or by Alt and an arrow.
+  // `position` is where it should stand in the strip as it is drawn, first card first.
+  onReorder?: ((card: VisibleComponentState, position: number) => void) | undefined
 }
 
 // The seat's own hand as a horizontal strip of big, readable cards (K4).
@@ -27,7 +31,7 @@ export type HandStripProps = {
 // is marked, and it is one tab stop with the arrows inside — the editor's roving tabindex, not a
 // second one written here. Space marks and unmarks, Enter opens the address panel. The gestures
 // K4 retains drag to play and hold to mark; the chosen phone A uses tap to select.
-export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces }: HandStripProps) {
+export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces, onReorder }: HandStripProps) {
   const t = useT()
   // The hand read from the bottom up (#415, decision B of 2026-09-22). A drawn card lands on
   // top of the zone, which is index 0 of the projection's order, so reading the order
@@ -51,32 +55,79 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
     if (card) keepInView(el, card)
   }, [markedId, hand.length])
 
-  const fire = (g: 'tap' | 'hold' | 'lift' | null, card: VisibleComponentState) => {
+  // The card a resting thumb has lifted, and the one being carried along the strip: where it
+  // started, where it would land now, and how far the thumb has gone (K4, #483).
+  const [lifting, setLifting] = useState<string | null>(null)
+  const [carrying, setCarrying] = useState<{ id: string; from: number; to: number; dx: number } | null>(null)
+  const fire = (g: 'tap' | 'hold' | 'lift' | 'sort' | null, card: VisibleComponentState) => {
     if (g === 'tap') onTap(card)
     if (g === 'hold') onHold(card)
     if (g === 'lift') onLift(card)
   }
   const down = (card: VisibleComponentState, x: number, y: number) => {
     const t = begin(x, y)
-    const timer = setTimeout(() => fire(timeout(t), card), HOLD_MS)
+    // The timer decides nothing (#483); it lifts the card, so the thumb can see it is holding one.
+    const timer = setTimeout(() => {
+      timeout(t)
+      if (t.held) setLifting(card.id)
+    }, HOLD_MS)
     tracking.current = { card, t, timer }
+  }
+  // Where along the strip a thumb at `x` would put the carried card: after every other card whose
+  // middle it has passed.
+  const landingAt = (x: number, from: number): number => {
+    const others = [...(strip.current?.querySelectorAll<HTMLElement>('[data-hand-card]') ?? [])].filter((_, i) => i !== from)
+    return others.filter((el) => {
+      const box = el.getBoundingClientRect()
+      return x > box.left + box.width / 2
+    }).length
   }
   const moved = (x: number, y: number) => {
     const cur = tracking.current
     if (!cur) return
     const g = move(cur.t, x, y)
-    // Decided either way — a lift, or a pan that is nothing (#483) — the hold timer has nothing left
-    // to decide.
+    // Decided either way — a lift, a pan that is nothing, a carry (#483) — the hold timer has
+    // nothing left to decide.
     if (cur.t.decided) clearTimeout(cur.timer)
+    if (g === 'sort' || cur.t.decided === 'sort') {
+      const from = hand.findIndex((c) => c.id === cur.card.id)
+      setCarrying({ id: cur.card.id, from, to: landingAt(x, from), dx: x - cur.t.x })
+      // A carried card near the strip's edge brings the rest of the hand to it.
+      const box = strip.current?.getBoundingClientRect()
+      if (strip.current && box) {
+        if (x < box.left + 40) strip.current.scrollLeft -= 12
+        else if (x > box.right - 40) strip.current.scrollLeft += 12
+      }
+      return
+    }
     if (g) fire(g, cur.card)
   }
   const up = () => {
     const cur = tracking.current
     if (!cur) return
     clearTimeout(cur.timer)
+    setLifting(null)
+    if (cur.t.decided === 'sort') {
+      if (carrying && carrying.to !== carrying.from) onReorder?.(cur.card, carrying.to)
+      setCarrying(null)
+      tracking.current = null
+      return
+    }
     fire(end(cur.t), cur.card)
     tracking.current = null
   }
+  // Once a card has lifted, the thumb is holding it and not the strip: the browser is kept from
+  // turning the next move into a pan of its own, which is what would take the card out of the
+  // thumb (`pointercancel`). Before that, a move is the browser's to pan with, as it always was.
+  useEffect(() => {
+    const el = strip.current
+    if (!el) return
+    const hold = (e: TouchEvent) => {
+      if (tracking.current?.t.held && e.cancelable) e.preventDefault()
+    }
+    el.addEventListener('touchmove', hold, { passive: false })
+    return () => el.removeEventListener('touchmove', hold)
+  }, [])
 
   return (
     <div className="byd-strip" data-hand ref={strip}>
@@ -89,13 +140,24 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
             className="byd-strip-card"
             data-hand-card={c.id}
             data-selected={selected.has(c.id) ? 'true' : 'false'}
+            {...(lifting === c.id ? { 'data-lifting': 'true' } : {})}
+            {...(carrying?.id === c.id ? { 'data-carried': 'true' } : {})}
             aria-label={handLabel(c, selected.has(c.id), t)}
             aria-pressed={selected.has(c.id)}
-            style={{ ['--hue' as string]: hue(c.cardRef ?? '') }}
+            style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ...(carrying?.id === c.id ? { translate: `${carrying.dx}px 0` } : {}) }}
             tabIndex={item.tabIndex}
             ref={item.ref}
             onFocus={item.onFocus}
             onKeyDown={(e) => {
+              // Alt and an arrow carry the card one place along the strip (K4, #483), as Alt and an
+              // arrow move a layer or a column everywhere else in this tool.
+              if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                e.preventDefault()
+                const at = hand.findIndex((x) => x.id === c.id)
+                const to = at + (e.key === 'ArrowRight' ? 1 : -1)
+                if (to >= 0 && to < hand.length) onReorder?.(c, to)
+                return
+              }
               if (e.key === ' ') {
                 e.preventDefault()
                 onHold(c)
@@ -118,6 +180,8 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
               if (!cur) return
               clearTimeout(cur.timer)
               cancel(cur.t)
+              setLifting(null)
+              setCarrying(null)
               tracking.current = null
             }}
           >

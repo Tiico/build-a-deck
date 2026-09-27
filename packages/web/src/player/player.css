@@ -131,6 +131,12 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); touch-action: pan-x pan-up; user-select: none;
 }
 .byd-strip-card[data-selected='true'] { outline: 4px solid var(--byd-accent); }
+/* A card a resting thumb has lifted, and one it is carrying along the strip (K4, #483): raised off
+   the strip so the thumb can see it has hold of it, and drawn over its neighbours while it moves. */
+.byd-strip-card[data-lifting='true'], .byd-strip-card[data-carried='true'] { scale: 1.04; box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65); position: relative; z-index: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .byd-strip-card { transition: scale 120ms ease-out; }
+}
 .byd-strip-card strong { font-size: 20px; font-weight: 800; }
 .byd-hint { text-align: center; font-size: 12px; color: var(--byd-ink-quiet); margin: 6px 0 20px; }
 

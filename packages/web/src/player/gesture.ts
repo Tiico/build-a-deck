@@ -6,7 +6,8 @@
 // timer, the lift of the finger — is read as a choice. The same goes for a gesture the browser
 // took over for its own scrolling (`pointercancel`), and for a drag upward that stopped short.
 
-export type Gesture = 'tap' | 'hold' | 'lift'
+// `sort`: the card is being carried along the strip to a new place in the hand (K4, #483).
+export type Gesture = 'tap' | 'hold' | 'lift' | 'sort'
 export const LIFT_PX = 40
 export const HOLD_MS = 450
 // How far a finger may wander before it is no longer resting on a card.
@@ -28,8 +29,10 @@ export function move(t: Tracking, x: number, y: number): Gesture | null {
     return 'lift'
   }
   if (dx >= SCROLL_PX && dx >= Math.abs(y - t.y)) {
-    t.decided = 'none'
-    return null
+    // Sideways after the card has lifted carries it (K4, beslut A efter prototyp 33); sideways
+    // before that is a pan of the strip, and nothing.
+    t.decided = t.held ? 'sort' : 'none'
+    return t.held ? 'sort' : null
   }
   if (dx >= SCROLL_PX || Math.abs(y - t.y) >= SCROLL_PX) t.strayed = true
   return null

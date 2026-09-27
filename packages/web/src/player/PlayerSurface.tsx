@@ -104,6 +104,13 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
 
   // A play the table refuses leaves the sheet open with the answer beside the button that was
   // pressed: the cards stay in the hand and nothing is quietly lost.
+  // A card carried to another place in the hand (K4; #483, beslut A efter prototyp 33). The strip
+  // draws the hand bottom-up (#415), so a place in the strip is counted from the other end of the
+  // zone's order. It is `move` with `index` inside the same hand: no new verb.
+  const reorder = (card: VisibleComponentState, position: number) => {
+    const n = view.components.filter((c) => c.zone === `hand:${seat}`).length
+    void client.send({ v: 'move', component: card.id, to: `hand:${seat}`, index: n - 1 - position })
+  }
   const play = (zone: string, at: 'top' | 'bottom') => {
     setRefusedZone(zone)
     void refusal.watch(client.send(...playIntents(view, toPlay, zone, undefined, at))).then((result) => {
@@ -182,7 +189,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
       <main className="byd-phone-main" {...behind}>
         <h1>{t('player.hand.title')}</h1>
         <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} zones="piles" history={false} />
-        <HandStrip view={view} selected={new Set(chosenCards.map(c => c.id))} faces={faces} onTap={card => { setChosenId(card.id); marks.clear() }} onHold={toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} />
+        <HandStrip view={view} selected={new Set(chosenCards.map(c => c.id))} faces={faces} onTap={card => { setChosenId(card.id); marks.clear() }} onHold={toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} />
         {hand.length > 0 && <p className="byd-hint">{marks.selected.size > 0 ? t(marks.selected.size === 1 ? 'player.hint.selected.one' : 'player.hint.selected.other', { n: marks.selected.size }) : t('player.hint')}</p>}
         <HandActions refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} view={view} cards={chosenCards} pending={quickPending} onRead={setInspect} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} />
         {quickSource === 'hand' && <Refusal handle={quick} />}

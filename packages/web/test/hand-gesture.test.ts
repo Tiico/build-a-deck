@@ -41,11 +41,24 @@ describe('what a thumb on the hand strip did', () => {
     expect(end(held)).toBe('hold')
   })
 
-  it('is a scroll and not a hold when the thumb rested first and then panned', () => {
+  // Re-sorting the hand (K4; #483 fynd 12, beslut A efter prototyp 33): a thumb that rested until
+  // the card lifted and then goes sideways is carrying the card along the strip, not scrolling it.
+  // Nothing is chosen by it — it is neither a tap nor a hold.
+  it('carries the card once it rested until it lifted and then went sideways', () => {
     const t = begin(100, 500)
     timeout(t)
-    expect(move(t, 100 - 3 * SCROLL_PX, 501)).toBe(null)
+    expect(t.held).toBe(true)
+    expect(move(t, 100 - 3 * SCROLL_PX, 501)).toBe('sort')
+    expect(move(t, 100 - 6 * SCROLL_PX, 501)).toBe(null)
     expect(end(t)).toBe(null)
+  })
+
+  it('is still a scroll when the thumb went sideways before the card lifted', () => {
+    const t = begin(100, 500)
+    expect(move(t, 100 - 3 * SCROLL_PX, 501)).toBe(null)
+    timeout(t)
+    expect(end(t)).toBe(null)
+    expect(t.decided).toBe('none')
   })
 
   it('forgives a finger that wobbles less than the threshold', () => {

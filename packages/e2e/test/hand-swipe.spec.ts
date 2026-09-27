@@ -34,7 +34,7 @@ test.describe('a swipe through the hand on a phone', () => {
     const before = await chosen()
     expect(before).toHaveLength(1)
 
-    for (const restMs of [0, 600]) {
+    for (const restMs of [0]) {
       // Start on a card that is not the chosen one, so a tap on it would show.
       const start = await ada.page.evaluate(() => {
         const strip = document.querySelector('.byd-strip[data-hand]') as HTMLElement
@@ -54,4 +54,32 @@ test.describe('a swipe through the hand on a phone', () => {
       expect(scrolled, `the swipe that rested ${restMs} ms scrolled the strip`).not.toBe(start.scrolled)
     }
   })
+
+  // A thumb that rests until the card lifts and then goes sideways carries the card to a new place
+  // in the hand (K4; #483 fynd 12, beslut A efter prototyp 33) — and still chooses nothing.
+  test('re-sorts the hand when the thumb rests until the card lifts, and leaves the choice as it was', async ({ tableOf, player }) => {
+    const table = await tableOf({ players: 4, cards: 16 })
+    const ada = await player(table, { name: 'Ada', seat: 'A', device: PHONE })
+    const draw = ada.page.locator('[data-zone-draw="draw"]')
+    await expect(draw).toBeVisible()
+    for (let held = 1; held <= 3; held++) {
+      await draw.click()
+      await expect(ada.page.locator('[data-hand-card]')).toHaveCount(held)
+    }
+    const order = () => ada.page.$$eval('[data-hand-card]', (els) => els.map((el) => el.getAttribute('data-hand-card')))
+    const chosen = () => ada.page.$$eval('[data-hand-card][data-selected="true"]', (els) => els.map((el) => el.getAttribute('data-hand-card')))
+    const before = { order: await order(), chosen: await chosen() }
+    // The first card in the strip, carried past the second — with the strip at its start, since it
+    // keeps the newest card in view and the first one lies off the screen until it is scrolled to.
+    await ada.page.locator('.byd-strip[data-hand]').evaluate((el) => (el.scrollLeft = 0))
+    const start = await ada.page.locator('[data-hand-card]').first().evaluate((el) => {
+      const b = el.getBoundingClientRect()
+      return { x: b.left + b.width / 2, y: b.top + b.height / 2 }
+    })
+    const step = await ada.page.locator('[data-hand-card]').nth(1).evaluate((el) => el.getBoundingClientRect().width)
+    await swipe(ada.page, start, Math.round(step * 1.2), 600)
+    await expect.poll(order).toEqual([before.order[1], before.order[0], before.order[2]])
+    expect(await chosen()).toEqual(before.chosen)
+  })
 })
+
