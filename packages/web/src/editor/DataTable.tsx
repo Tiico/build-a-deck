@@ -678,6 +678,17 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // leken öppen någon annanstans får bytet som vilket steg som helst, utan att något sägs där.
   const renameColumn = (from: string, to: string) => {
     onRenameField?.(from, to)
+    // The view is keyed on the name, so it takes the new one with the column (#479, L44): the
+    // same rows, in the same order, with the same values chosen and at the same width.
+    setSort((was) => (was?.field === from ? { ...was, field: to } : was))
+    setFilter((was) => {
+      const { [from]: chosen, ...rest } = was.values
+      return chosen === undefined ? was : { ...was, values: { ...rest, [to]: chosen } }
+    })
+    if (widths[from] !== undefined) {
+      const { [from]: px, ...rest } = widths
+      hold({ ...rest, [to]: px as number })
+    }
     say?.('polite', t('table.column.renamed', { from, to }))
   }
   // What the editor declares a target to be, asked of the page rather than written down here —

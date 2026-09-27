@@ -352,3 +352,18 @@ describe('det som läses upp är namnet (#384, A4)', () => {
     expect(door().getAllByRole('button', { name: /^Byt namn på kolumnen/ }).map((b) => b.textContent)).toEqual(['body'])
   })
 })
+
+// Vyn följer med namnet (#479, L44): efter `typ` → `sort` stod tabellen på «0 av 77 kort», inget
+// chip var nedtryckt och «Sorterad på typ» gällde en kolumn som inte fanns. Sorteringen, filtret
+// och bredden är nycklade på namnet, så de byter namn med kolumnen.
+describe('vyn följer med namnet (#479)', () => {
+  it('behåller sorteringen under det nya namnet', async () => {
+    const user = userEvent.setup()
+    render(<Editing />)
+    await user.click(column('body')!)
+    expect(column('body')!.closest('th')?.getAttribute('aria-sort')).toBe('ascending')
+    await renameInDoor(user, 'body', 'rubrik')
+    await user.keyboard('{Escape}')
+    expect(column('rubrik')!.closest('th')?.getAttribute('aria-sort')).toBe('ascending')
+  })
+})
