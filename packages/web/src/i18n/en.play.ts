@@ -43,6 +43,9 @@ export const enPlay = {
   'tv.seats': 'Seats',
   'tv.seat.hand.one': '{n} card in hand',
   'tv.seat.hand.other': '{n} cards in hand',
+  // A seat on one line, at a full table (#482 fynd 6): the name takes the rest of the line.
+  'tv.seat.hand.short.one': '{n} card',
+  'tv.seat.hand.short.other': '{n} cards',
   'tv.seat.none': 'Nothing yet',
   'tv.observers.one': '{names} is watching · sees everything',
   'tv.observers.other': '{names} are watching · see everything',

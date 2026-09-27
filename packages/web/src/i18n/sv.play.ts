@@ -56,6 +56,9 @@ export const svPlay = {
   'tv.seats': 'Platser',
   'tv.seat.hand.one': '{n} kort på hand',
   'tv.seat.hand.other': '{n} kort på hand',
+  // En plats på en rad, vid fulla bord (#482 fynd 6): namnet tar resten av raden.
+  'tv.seat.hand.short.one': '{n} kort',
+  'tv.seat.hand.short.other': '{n} kort',
   // Platsens tredje rad innan platsen gjort något (UX-41): ett ord, inte ett streck.
   'tv.seat.none': 'Inget ännu',
   'tv.observers.one': '{names} tittar på · ser allt',

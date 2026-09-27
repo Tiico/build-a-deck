@@ -26,12 +26,12 @@ describe('TvChrome (C as the TV surroundings)', () => {
 
     const feed = screen.getByRole('list', { name: /senast/i })
     const lines = within(feed).getAllByRole('listitem').map((l) => l.textContent)
-    // Most recent first, at most nine lines: the first claim has scrolled off.
+    // Most recent first, and three lines (#482 fynd 6, beslut B): the rest of the history is on
+    // every phone. The draws and the claim before them have gone off the television.
     expect(lines[0]).toMatch(/Bordet vände ett kort/)
-    expect(lines.length).toBeLessThanOrEqual(9)
+    expect(lines).toHaveLength(3)
     expect(lines).not.toContainEqual(expect.stringMatching(/satte sig/))
-    expect(lines).toContainEqual(expect.stringMatching(/Bordet drog 2 från Draghög/))
-    expect(lines).toContainEqual(expect.stringMatching(/Bordet vände ett kort/))
+    expect(lines).not.toContainEqual(expect.stringMatching(/Bordet drog 2 från Draghög/))
   })
 })
 
@@ -225,7 +225,8 @@ describe('the feed is numbered and coloured (C)', () => {
     const { view, log } = buildScene()
     const snapshot = view(null)
     // The same log, with one line made by the seat that sits at A.
-    const lines = log.map(projectActivity).map((l) => (l.seq === 2 ? { ...l, by: 'A' } : l))
+    // The first three, which is all the television keeps (#482 fynd 6).
+    const lines = log.map(projectActivity).slice(0, 3).map((l) => (l.seq === 2 ? { ...l, by: 'A' } : l))
     render(
       <TvChrome view={snapshot} activity={lines} roomCode="KX7P">
         <div />
