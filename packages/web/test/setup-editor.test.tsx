@@ -491,3 +491,26 @@ describe('fokus när en zon tas bort och tas tillbaka (#480)', () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ångra' })))
   })
 })
+
+// Ett val på filten syns i listan och i talen (#480 fynd 5): raden rullades inte fram, och
+// koordinaterna stod under kolumnens nederkant, så inga tal syntes medan en zon drogs.
+describe('valet på filten i listan och i talen (#480)', () => {
+  it('rullar fram raden och säger var zonen står i raden över filten', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    const into = vi.fn()
+    const had = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = into
+    try {
+      fireEvent.keyDown(handle('discard'), { key: 'Enter' })
+      await waitFor(() => expect(into.mock.contexts.some((el) => (el as Element).closest?.('[data-zone-row="discard"]'))).toBe(true))
+      const said = document.querySelector('[data-setup-said] [data-setup-coords]')!
+      const g = (await run.projects.load(run.projectId))!.setup.zones.find((z) => z.id === 'discard')!.geometry
+      expect(said.textContent).toContain(`Kasthög · ${Math.round(g.x)}, ${Math.round(g.y)}`)
+      fireEvent.keyDown(handle('discard'), { key: 'ArrowRight' })
+      await waitFor(() => expect(said.textContent).toContain(`${Math.round(g.x) + 10}, ${Math.round(g.y)}`))
+    } finally {
+      Element.prototype.scrollIntoView = had
+    }
+  })
+})
