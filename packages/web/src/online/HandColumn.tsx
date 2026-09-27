@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
@@ -46,6 +47,13 @@ export function HandColumn({ cards, faces, onPlay, locked = false, onOpen }: Han
   const roving = useRoving({ ids: cards.map((c) => c.id), selected: null, orientation: 'vertical' })
   const { drag, handlers, cancel } = useHandDrag('across', onPlay, locked, onOpen)
   const lifted = drag ? cards.find((c) => c.id === drag.id) : undefined
+  // The card lifted out to be read (#484 fynd 15, beslut B): by the mouse over it, or by the
+  // keyboard's focus on it. A press is not a look — a finger opens the card (fynd 10), and a focus a
+  // press gave is the press's — so a focus that came with a pointer draws nothing.
+  const [peek, setPeek] = useState<{ id: string; at: DOMRect } | null>(null)
+  const pressed = useRef<string | null>(null)
+  const look = (c: VisibleComponentState, el: Element) => setPeek({ id: c.id, at: el.getBoundingClientRect() })
+  const peeked = peek && !drag ? cards.find((c) => c.id === peek.id) : undefined
   return (
     <div className="byd-hand-col" data-hand-fan data-hand-column role="group" aria-label={`Min hand, ${n} kort`} style={COLUMN_STYLE}>
       {cards.map((c) => {
@@ -63,6 +71,7 @@ export function HandColumn({ cards, faces, onPlay, locked = false, onOpen }: Han
               ref={item.ref}
               onFocus={(e) => {
                 item.onFocus()
+                if (pressed.current !== c.id) look(c, e.currentTarget)
                 // A card the arrows reach must be a card the eye reaches: L10's rule for a strip
                 // that scrolls, applied to the column that now does.
                 e.currentTarget.scrollIntoView?.({ block: 'nearest' })
@@ -76,6 +85,18 @@ export function HandColumn({ cards, faces, onPlay, locked = false, onOpen }: Han
                 item.onKeyDown(e)
               }}
               {...handlers(c)}
+              onPointerDown={(e) => {
+                pressed.current = c.id
+                handlers(c).onPointerDown(e)
+              }}
+              onPointerEnter={(e) => {
+                if (e.pointerType === 'mouse') look(c, e.currentTarget)
+              }}
+              onPointerLeave={() => setPeek((p) => (p?.id === c.id ? null : p))}
+              onBlur={() => {
+                pressed.current = null
+                setPeek((p) => (p?.id === c.id ? null : p))
+              }}
             >
               <Texture faces={faces} c={c} />
               <span aria-hidden="true">{cardWord(c)}</span>
@@ -84,7 +105,29 @@ export function HandColumn({ cards, faces, onPlay, locked = false, onOpen }: Han
         )
       })}
       {drag && lifted && <HandGhost at={drag} card={lifted} faces={faces} />}
+      {peek && peeked && <ColumnPeek at={peek.at} card={peeked} faces={faces} />}
       {drag && <DragDoor onCancel={cancel} />}
     </div>
   )
 }
+
+// The column's card drawn again, larger and whole, out over the felt's edge beside it (#484 fynd
+// 15). Fixed to the window rather than inside the column, which scrolls and so clips anything that
+// reaches past it. Beside the card it lifts, kept on the screen; a picture only, never a control.
+function ColumnPeek({ at, card, faces }: { at: DOMRect; card: VisibleComponentState; faces?: string | undefined }) {
+  const room = typeof window === 'undefined' ? 0 : window.innerHeight
+  const top = Math.max(8, Math.min(at.top, room - PEEK_PX * (88 / 63) - 48))
+  return (
+    <div className="byd-col-peek" aria-hidden="true" style={{ top, right: `calc(100vw - ${at.left - 12}px)`, ['--hue' as string]: hue(card.cardRef ?? ''), ['--fan-card' as string]: `${PEEK_PX}px` }}>
+      <div className="byd-hand-face">
+        <Texture faces={faces} c={card} />
+        <span>{cardWord(card)}</span>
+      </div>
+      <b>{cardWord(card)}</b>
+    </div>
+  )
+}
+// How wide the lifted card is drawn: a rendered face's own title reads at about 13 px there, where
+// the column's 112 px card draws it at 8 (prototyp 27).
+const PEEK_PX = 180
+

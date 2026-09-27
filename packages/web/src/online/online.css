@@ -60,6 +60,16 @@
    shape the name lives at the top of the card, in the strip the next card leaves. */
 .byd-col-card { position: absolute; inset: 0 auto auto 0; display: flex; align-items: flex-start; justify-content: center; touch-action: pan-y; }
 .byd-col-card .byd-texture-state { justify-content: flex-start; }
+/* A name as long as a real one is read whole (#484 fynd 15, beslut A, prototyp 27): two lines of the
+   strip the next card leaves, at a size the strip holds at its 44 px floor. The waiting line is said
+   on the card drawn whole and nowhere else, so it never takes the name's second line. */
+.byd-col-card .byd-texture-state > b { font-size: 13px; line-height: 1.25; white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.byd-col-slot:not(:last-child) .byd-col-card .byd-texture-state > i { display: none; }
+/* The column's card lifted out to be read (#484 fynd 15, beslut B): over the felt's edge, whole,
+   with its name under it. A picture — the pointer goes through it to the card it is of. */
+.byd-col-peek { position: fixed; z-index: 60; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 8px; width: var(--fan-card); }
+.byd-col-peek > .byd-hand-face { position: relative; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6); cursor: default; }
+.byd-col-peek > b { max-width: 100%; padding: 4px 10px; border-radius: 8px; background: rgba(16, 13, 11, 0.92); color: #f3e9d6; font-size: 14px; line-height: 1.3; text-align: center; overflow-wrap: anywhere; }
 .byd-col-card:hover, .byd-col-card:focus-visible, .byd-col-card[data-lifted] { z-index: 2; }
 .byd-hand-band { position: relative; }
 /* Safe centring: the fan sits in the middle of the band while it fits, and starts at its own

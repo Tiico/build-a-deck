@@ -175,6 +175,39 @@ describe('every card in the column says its own name (K17, #77)', () => {
         }, 90_000)
 })
 
+// Names as long as real ones (#484 fynd 15, beslut A, prototyp 27): at a 44 px step ten of fifteen
+// were cut off — «Stolen Go…» twice. The name has two lines of the strip the next card leaves, and
+// the waiting line «Kortet renderas…» stands only on the last card, the one drawn whole.
+const TITLES = ['Stolen Goods', 'Stolen Gold', 'Buckaroo’s Revenge', 'Faster Than Lightning', 'Goldrush Gus', 'Saloon Brawl', 'Tumbleweed', 'Snake in the Grass', 'Jägerbomb', 'Poisoned Whiskey', 'The Alley', 'Fact or Fable', 'Sore Loser', 'Bullseye', 'Duel at Dawn']
+describe('a long name in the column is read whole (#484)', () => {
+  for (const size of [DESK, SHORT])
+    it(`cuts no name of fifteen long ones at ${size.w} × ${size.h}`, async () => {
+      const seen = await onColumn(15, size, (page) =>
+        page.evaluate(({ waiting, titles }) => {
+          const box = document.querySelector<HTMLElement>('[data-hand-column]')!
+          const cards = [...box.querySelectorAll<HTMLElement>('[data-hand-card]')]
+          for (const [i, card] of cards.entries()) {
+            card.innerHTML = waiting
+            card.querySelector('[data-texture] > b')!.textContent = titles[i]!
+          }
+          const cut: string[] = []
+          for (const [i, card] of cards.entries()) {
+            card.scrollIntoView({ block: 'nearest' })
+            const name = card.querySelector<HTMLElement>('[data-texture] > b')!
+            const wait = card.querySelector<HTMLElement>('[data-texture] > i')!
+            const r = name.getBoundingClientRect()
+            const next = cards[i + 1]?.getBoundingClientRect()
+            if (name.scrollWidth > name.clientWidth + 1 || name.scrollHeight > name.clientHeight + 1) cut.push(`${titles[i]}: cut`)
+            if (next && r.bottom > next.top + 1) cut.push(`${titles[i]}: under the next card`)
+            if (next && getComputedStyle(wait).display !== 'none') cut.push(`${titles[i]}: waiting line in the strip`)
+          }
+          return cut
+        }, { waiting: WAITING, titles: TITLES }),
+      )
+      expect(seen).toEqual([])
+    }, 90_000)
+})
+
 describe('a card in the column is still something a finger can land on (#6, K17, #77)', () => {
   for (const size of SIZES)
     for (const held of COUNTS)
