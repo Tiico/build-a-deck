@@ -333,6 +333,36 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const cellPicking = (cardRef: string, field: string) => brace?.cardRef === cardRef && brace.field === field
   // Tangenterna listan svarar på, hörda där markören står och inte i listan: fokus stannar i
   // meningen som skrivs. Räknandet av hur många som går att stega mellan följer steget.
+  // The cell in the same column one row down or up, in the order the table shows (#479).
+  const moveInColumn = (cardRef: string, field: string, by: number) => {
+    const at = shownRef.current.findIndex((r) => r.id === cardRef)
+    const next = shownRef.current[at + by]
+    if (!next) return
+    document.querySelector<HTMLElement>(`[aria-label="${CSS.escape(`${next.id} ${field}`)}"]`)?.focus()
+  }
+  // A block of cells from a paste (#479): rows by line, columns by tab, laid from this cell right
+  // and down over the cards as the table shows them and the columns as it draws them. A count is
+  // held to the count's rule; what does not fit the table is left off rather than made room for.
+  const fillBlock = (cardRef: string, field: string, text: string) => {
+    const lines = text.replace(/\r?\n$/, '').split(/\r?\n/).map((line) => line.split('\t'))
+    const rowAt = shownRef.current.findIndex((r) => r.id === cardRef)
+    const colAt = fields.indexOf(field)
+    if (rowAt < 0 || colAt < 0) return
+    const writes = new Map<string, Record<string, string | number>>()
+    lines.forEach((cells, dy) => {
+      const row = shownRef.current[rowAt + dy]
+      if (!row) return
+      cells.forEach((value, dx) => {
+        const f = fields[colAt + dx]
+        if (!f) return
+        const typed = f === ANTAL ? copiesOf(value) : value
+        if (typed === null) return
+        writes.set(row.id, { ...(writes.get(row.id) ?? {}), [f]: typed })
+      })
+    })
+    if (writes.size === 0) return
+    onReplaceRows(doc.rows.map((r) => (writes.has(r.id) ? { ...r, fields: { ...r.fields, ...writes.get(r.id) } } : r)))
+  }
   const onListKey = (cardRef: string, field: string, e: { key: string; preventDefault(): void }) => {
     if (!cellPicking(cardRef, field)) return
     const picking = stage === 'meaning' ? meanings.length : stage === 'typed' ? roleMatches.length : matches.length
@@ -927,10 +957,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // order nor the filter may move or take away the row under the cursor before it is left.
   const columns = ['id', ...fields]
   const discrete = discreteColumns(doc.rows, columns)
+  const shownRef = useRef<ProjectDoc['rows']>([])
   const shown = held
     ? keepOrder(doc.rows.filter((row) => held.includes(row.id)), held)
     : filterRows(sortRows(doc.rows, sort), columns, filter, pinned)
   // The cards gone since the version compared with, asked the same filter as every card (#479).
+  shownRef.current = shown
   const goneShown = isFiltering(filter) ? filterRows(goneRows, columns, filter) : goneRows
   // What an action is about is never more than what is on screen: a checkbox is a fact about a
   // row the designer can see, so the selection is read through `shown` (#17 on #16).
@@ -1502,7 +1534,16 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       closeBrace()
                       return true
                     }}
-                    onListKey={(e) => onListKey(cardRef, f, e)}
+                    onListKey={(e) => {
+                      onListKey(cardRef, f, e)
+                      if (e.defaultPrevented) return
+                      // Enter is a new paragraph in prose (L39); Ctrl/Cmd+Enter goes down the
+                      // column and Shift with it up, as Enter does in every other cell (#479).
+                      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                        e.preventDefault()
+                        moveInColumn(cardRef, f, e.shiftKey ? -1 : 1)
+                      }
+                    }}
                     aria={listAria(cardRef, f)}
                   >
                     {cellPicker(cardRef, f)}
@@ -1551,7 +1592,24 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     // (E4). They are heard here rather than in the list because the focus stays
                     // in the sentence being written — the rail hears them on the tool for the
                     // same reason, and both ask `symbolListKey` what the key meant.
-                    onKeyDown={(e) => onListKey(cardRef, f, e)}
+                    onKeyDown={(e) => {
+                      onListKey(cardRef, f, e)
+                      if (e.defaultPrevented) return
+                      // The spreadsheet's keys (#479, beslut 2026-09-27, variant A): Enter and ↓
+                      // down the column, Shift+Enter and ↑ up it.
+                      const by = e.key === 'Enter' ? (e.shiftKey ? -1 : 1) : e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0
+                      if (by === 0 || e.altKey || e.ctrlKey || e.metaKey || e.nativeEvent.isComposing) return
+                      e.preventDefault()
+                      moveInColumn(cardRef, f, by)
+                    }}
+                    // Several cells pasted — a tab between them, a line between rows — fill a
+                    // block from this one, in the order the table shows, as one change (#479).
+                    onPaste={(e) => {
+                      const text = e.clipboardData.getData('text/plain')
+                      if (!/[\t\n]/.test(text.replace(/\r?\n$/, ''))) return
+                      e.preventDefault()
+                      fillBlock(cardRef, f, text)
+                    }}
                     onFocus={() => {
                       visits.visit.onFocus()
                       setHeld(shown.map((r) => r.id))
