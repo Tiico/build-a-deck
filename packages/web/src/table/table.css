@@ -135,7 +135,9 @@
   left: var(--name-x, 0%); top: var(--name-y, 0%);
   transform-origin: 0 0;
   transform: translate(var(--name-in), calc(-100% - var(--name-off) - var(--name-row)));
-  font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: rgba(255, 255, 255, 0.45);
+  /* White at 80 %, the least that reads at 4.5:1 where the felt is lightest (#482); at 45 % it
+     was 3.05:1. `seat-contrast.test.ts` lays it over each of the felt's stops. */
+  font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: rgba(255, 255, 255, 0.8);
   /* One line, always. A name is laid out in a box as wide as its zone, so beside a narrow zone it
      would break in two and fold back over the zone it names; away from a rim it has nothing to
      break against at all. */

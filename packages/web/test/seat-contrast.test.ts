@@ -102,3 +102,22 @@ describe('a seat colour read against the dark it sits on', () => {
     expect(contrastRatio(seat, '#151924')).toBeGreaterThanOrEqual(3)
   })
 })
+
+// A zone's name on the table's felt (#482 fynd 10): 11 px capitals in white at 45 %, which measured
+// 3.05:1 and 2.97:1 where the felt is lightest — text, and so 4.5:1. The television's names were
+// 4.74:1 already. The colour is read out of `.byd-zone > span` in `table.css` and laid over each
+// ground the table's felt is drawn in, the way a translucent colour is actually seen.
+describe('a zone’s name on the table’s felt (#482)', () => {
+  const css = withoutProse(read('src/table/table.css'))
+  const rule = /\.byd-zone > span \{[^}]*?color:\s*rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/.exec(css)
+  const over = (ground: string): string => {
+    if (!rule) throw new Error('table.css draws no zone name in an rgba colour to read')
+    const [r, g, b, a] = [Number(rule[1]), Number(rule[2]), Number(rule[3]), Number(rule[4])]
+    const bg = [1, 3, 5].map((i) => parseInt(ground.slice(i, i + 2), 16))
+    const mix = [r, g, b].map((c, i) => Math.round(c * a + bg[i]! * (1 - a)))
+    return `#${mix.map((c) => c.toString(16).padStart(2, '0')).join('')}`
+  }
+  it.each(Object.entries(FELT_GROUNDS).filter(([where]) => where !== 'tv felt'))('reads at AA on the %s', (_where, ground) => {
+    expect(contrastRatio(over(ground), ground)).toBeGreaterThanOrEqual(4.5)
+  })
+})
