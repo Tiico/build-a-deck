@@ -139,5 +139,11 @@ function parseSpan(s: string, options: InlineOptions = {}): InlineNode[] {
 // What a symbol and a role may be called: the letters a name is made of, and nothing else.
 const NAME = /^[\p{L}\p{N}_-]+$/u
 
+// The same rule for whoever names one (#481): a name this parser would not read as a symbol is a
+// name every card that says it would print as letters.
+export function isSymbolName(name: string): boolean {
+  return NAME.test(name)
+}
+
 // A reference names one of two kinds of thing, by the id it has in the project.
 const REF = /^(zon|kort):([\p{L}\p{N}_:-]+)$/u

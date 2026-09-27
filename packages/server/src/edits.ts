@@ -1,5 +1,5 @@
 import type { AssetCrop as Crop, CardQuery, FaceId, ZoneAction, ZoneBeside } from '@byd/protocol'
-import type { Element, FaceTemplate, Variant } from '@byd/template'
+import { isSymbolName, type Element, type FaceTemplate, type Variant } from '@byd/template'
 import { showsWholePicture } from '@byd/protocol'
 import { AssetCrop, PictureName, ProjectFraming } from './projects.js'
 import type { Cell, Picture, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc } from './projects.js'
@@ -527,6 +527,7 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     case 'renameIcon': {
       const url = doc.icons[intent.from]
       if (url === undefined) throw new Error(`no icon ${intent.from}`)
+      if (!isSymbolName(intent.to)) throw new Error(unwritable(intent.to))
       if (doc.icons[intent.to] !== undefined) throw new Error(`icon ${intent.to} already exists`)
       const credit = doc.credits?.[intent.from]
       return {
@@ -541,6 +542,7 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       return { ...doc, rules: intent.rules }
     case 'setRole': {
       if (!intent.role.trim() || !intent.colour.trim()) throw new Error('a meaning needs a name and a colour')
+      if (!isSymbolName(intent.role)) throw new Error(unwritable(intent.role))
       return { ...doc, palette: { ...(doc.palette ?? {}), [intent.role]: intent.colour } }
     }
     // Renaming a meaning rewrites every card that says it, for the same reason renaming a symbol
@@ -548,6 +550,7 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     case 'renameRole': {
       const colour = doc.palette?.[intent.from]
       if (colour === undefined) throw new Error(`no role ${intent.from}`)
+      if (!isSymbolName(intent.to)) throw new Error(unwritable(intent.to))
       if (doc.palette?.[intent.to] !== undefined) throw new Error(`role ${intent.to} already exists`)
       return {
         ...doc,
@@ -817,4 +820,9 @@ function withoutField(els: readonly Element[], field: string): Element[] {
     out.push(el)
   }
   return out
+}
+
+// Why a name was refused, in the words the rule is made of (#481).
+function unwritable(name: string): string {
+  return `"${name}" cannot be written on a card: a symbol or a meaning is named with letters, digits, _ and - only`
 }

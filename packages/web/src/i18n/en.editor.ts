@@ -702,6 +702,7 @@ export const enEditor = {
   'symbols.deck.painted': 'No card says this one. The template paints it on every card it draws, so it shows without any row naming it.',
   'symbols.deck.painted.some': 'No card says this one. The template paints it on some cards — a variant or a condition decides which — so it shows without any row naming it.',
   'symbols.rename': 'Name for {name}',
+  'symbols.name.unwritable': '“{name}” cannot be written on a card: a name holds only letters, digits, _ and -.',
   'symbols.own': 'your own',
   'symbols.remove': 'Remove {name}',
 

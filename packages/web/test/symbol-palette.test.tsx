@@ -49,6 +49,20 @@ describe('the game’s colours', () => {
     expect(c.removeRole).toHaveBeenCalledWith('fara')
   })
 
+  // A meaning is written between braces on the cards, so a name with a space in it is one no card
+  // can say, and every card that said the old one would start printing letters (#481, fynd 2).
+  it('refuses a name a card could not write, says why, and keeps the old one', () => {
+    const c = mount({ fara: '#8f2d20' })
+
+    const name = screen.getByLabelText('Namn på fara') as HTMLInputElement
+    fireEvent.change(name, { target: { value: 'mitt hot' } })
+    fireEvent.blur(name)
+
+    expect(c.renameRole).not.toHaveBeenCalled()
+    expect(name.value).toBe('fara')
+    expect(screen.getByRole('alert').textContent).toBe('«mitt hot» går inte att skriva på ett kort: ett namn har bara bokstäver, siffror, _ och -.')
+  })
+
   it('names a new meaning without asking the designer to invent a colour first', () => {
     const c = mount({ fara: '#8f2d20' })
 

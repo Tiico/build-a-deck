@@ -8,7 +8,7 @@ import { previewFonts } from './fonts.js'
 import { CATEGORIES, INK, LIBRARY, searchSymbols, symbolName, symbolPreview, type GameSymbol } from './symbols.js'
 import { ROLE_MIN_CONTRAST, groundOf, iconsIn, iconsPainted, iconsUsed, paletteIssues, rolesUsed, type Painted } from './palette.js'
 import { SymbolSample, SymbolSheet } from './SymbolSample.js'
-import { contrastRatio } from '@byd/template'
+import { contrastRatio, isSymbolName } from '@byd/template'
 import type { ProjectClient } from './ProjectClient.js'
 import { useT, type Key } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
@@ -194,6 +194,12 @@ function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
                 onBlur={(e) => {
                   const next = e.target.value.trim()
                   if (!next || next === name) return
+                  // A name the card text would not read as a symbol is refused here with the rule it
+                  // broke, before the cards that say the old one are rewritten into letters (#481).
+                  if (!isSymbolName(next)) {
+                    e.target.value = name
+                    return setError(t('symbols.name.unwritable', { name: next }))
+                  }
                   try {
                     client.renameIcon(name, next)
                     setError(null)
@@ -328,6 +334,10 @@ function GameColours({ doc, client, icons }: { doc: ProjectDoc; client: ProjectC
                   onBlur={(e) => {
                     const next = e.target.value.trim()
                     if (!next || next === role) return
+                    if (!isSymbolName(next)) {
+                      e.target.value = role
+                      return setError(t('symbols.name.unwritable', { name: next }))
+                    }
                     try {
                       client.renameRole(role, next)
                       setError(null)

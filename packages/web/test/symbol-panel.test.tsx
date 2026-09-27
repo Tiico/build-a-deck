@@ -72,6 +72,24 @@ describe('the symbol library in the editor (E4)', () => {
     await waitFor(() => expect(screen.getByText(/Inga symboler ännu/)).toBeTruthy())
   })
 
+  // `{mitt svärd}` is not a symbol to the card text, so a rename to it turned every card that
+  // said the symbol into letters (#481, fynd 2).
+  it('refuses a symbol name a card could not write, says why, and keeps the old one', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openSymbols()
+    fireEvent.click(tile('sköld'))
+    const set = await screen.findByRole('list', { name: 'Symboler i spelet' })
+    await waitFor(() => expect(within(set).getByText('{sköld}')).toBeTruthy())
+
+    const rename = within(set).getByLabelText('Namn för sköld') as HTMLInputElement
+    fireEvent.change(rename, { target: { value: 'mitt svärd' } })
+    fireEvent.blur(rename)
+
+    expect(await screen.findByText('«mitt svärd» går inte att skriva på ett kort: ett namn har bara bokstäver, siffror, _ och -.')).toBeTruthy()
+    expect(rename.value).toBe('sköld')
+    expect(within(set).getByText('{sköld}')).toBeTruthy()
+  })
+
   it('draws a symbol on the cards it is written into, and says which cards use it', async () => {
     const doc = projectDoc()
     doc.rows[0]!.fields['body'] = 'Flygande. {sköld}'

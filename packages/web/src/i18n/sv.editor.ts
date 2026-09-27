@@ -787,6 +787,7 @@ export const svEditor = {
   'symbols.deck.painted': 'Inget kort säger den här. Mallen målar den på varje kort den ritar, så den syns utan att någon rad nämner den.',
   'symbols.deck.painted.some': 'Inget kort säger den här. Mallen målar den på vissa kort — en variant eller ett villkor avgör vilka — så den syns utan att någon rad nämner den.',
   'symbols.rename': 'Namn för {name}',
+  'symbols.name.unwritable': '«{name}» går inte att skriva på ett kort: ett namn har bara bokstäver, siffror, _ och -.',
   'symbols.own': 'egen',
   'symbols.remove': 'Ta bort {name}',
 
