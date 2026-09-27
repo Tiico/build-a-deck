@@ -3951,6 +3951,13 @@ Golvet vann: undantaget ovan gäller brickorna och ingenting annat, och tillgän
 Mätt i den riktiga kolumnen om 280 px vid 1280 × 800: galleriet går från 290 till 84 px, en vanlig form blir 724 px och ryms, och den tätaste formen — stjärna med hörn, vridning och uddjup, plus mönster och skugga — blir 822 px i en kolumn om 782 och rullar alltså en aning.
 Den rullningen är priset och är accepterat.
 
+**Reviderat 2026-09-27 (#478, beslut av beställaren efter prototyp 06): sektionerna fälls.**
+Sedan L25 kom opacitet, Linje och två växlar, och en vanlig rektangels panel var 907 px i en spalt på 683 med hela Effekter under vikningen — rullningen L25 accepterade bara för den tätaste formen hade blivit vardag.
+Varje sektions huvud är nu en knapp som fäller sektionen och, när den är stängd, bär sektionens värde («Linje 0,5 mm», «Effekter 100 % · ingen skugga»), så inget döljs utan att sägas.
+Layout, Innehåll, Text, Bild och Form står öppna från början; vad som är öppet gäller hela editorn, inte ett element, och minns i webbläsaren som andra vyer (L4).
+Priset L25 ville slippa — ett läge att minnas — är taget medvetet: ett läge per editor, inte ett per element, och ett stängt huvud som säger vad som står bakom det.
+Spelets typsnitt står i panelen bara när inget lager är valt, eftersom de är spelets och inte lagrets.
+
 ### L26. En egen form är en punktlista, och punkten läggs till där kanten redan bär en (prototypat 2026-09-20, #309)
 
 Formgalleriet är parametriskt: en form är ett hörnantal och en vridning (L42, L17).
