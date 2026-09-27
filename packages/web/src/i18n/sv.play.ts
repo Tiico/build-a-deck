@@ -88,6 +88,7 @@ export const svPlay = {
   'start.again.and': ' och ',
   'start.again.yes': 'Ja, starta om',
   'kbd.hint.action.asks': 'kräver ett tal; skriv det i listan vid högen',
+  'kbd.hint.action.own': 'spelets egen åtgärd',
   'ring.action.list': 'Vad {zone} kan',
   // En räknares verb (C4, #67): ett steg åt vardera hållet och ett tal sagt rakt ut. Ringen och
   // tangentbordets panel läser samma lista; varje handling går ut som `setCounter`.
@@ -173,6 +174,7 @@ export const svPlay = {
   'kbd.place.floor': 'Bordet',
   'kbd.place.floor.hint': 'fri yta',
   'kbd.place.onCard': 'På {name}',
+  'kbd.place.nth': '{label} {n}',
   'kbd.place.onCard.hint': 'bildar en hög i {zone}',
   'kbd.place.pile.one': '{n} kort · överst',
   'kbd.place.pile.other': '{n} kort · överst',

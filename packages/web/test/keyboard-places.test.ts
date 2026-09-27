@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
-import { intentsForPlace, isLoose, placesFor, thingsOn, type Thing } from '../src/table/keyboard.js'
+import { intentsForPlace, isLoose, placesFor, thingsOn, verbsFor, type Thing } from '../src/table/keyboard.js'
 
 // Where the address panel lets a card go (K16). A wizard table (C4) has, per seat, a private
 // area and a zone that holds nothing but its counter; the counter is a component of its own type
@@ -98,5 +98,29 @@ describe('what a row of "Flytta till" sends a counter (C4, #73)', () => {
     // travelling is named rather than drawn from the felt — so that the line above is a rule
     // about chips and not about the row.
     expect(sent(card, 'På Torn', ['another'])).toEqual(['stack'])
+  })
+})
+
+// Rader som går att skilja åt (#482 fynd 8): tre dolda kort på filten var tre «På Dolt kort» med
+// samma ledtråd, och spelets egen «Blanda» stod bredvid verktygets utan att något skilde dem.
+describe('rows the address panel can tell apart (#482)', () => {
+  it('numbers places whose words would otherwise be the same', () => {
+    const view = table(null)
+    const hidden = (id: string, x: number): VisibleComponentState => ({ id, type: CARD, zone: 'table', face: 'back', x, y: 100, rot: 0, cardRef: null } as unknown as VisibleComponentState)
+    view.components = [...view.components, hidden('h1', 10), hidden('h2', 90), hidden('h3', 170)]
+    const onHidden = placesFor(view, new Set(), null).filter((p) => p.kind === 'card' && p.key !== 'c:loose')
+    expect(onHidden).toHaveLength(3)
+    expect(new Set(onHidden.map((p) => `${p.label} ${p.hint}`)).size).toBe(3)
+    expect(onHidden.map((p) => p.label)).toEqual(['På Dolt kort 1', 'På Dolt kort 2', 'På Dolt kort 3'])
+  })
+
+  it('says which «Blanda» is the game’s own', () => {
+    const view = table(null)
+    const draw = view.zones.find((z) => z.id === 'draw')!
+    ;(draw as { actions?: unknown }).actions = [{ id: 'b', label: 'Blanda', steps: [{ v: 'shuffle' }] }]
+    const acts = verbsFor(view, { key: 'p:draw', kind: 'pile', pile: 'draw', name: 'Draghög', count: 5 })
+    const shuffles = acts.filter((a) => a.label === 'Blanda')
+    expect(shuffles).toHaveLength(2)
+    expect(new Set(shuffles.map((a) => a.hint ?? '')).size).toBe(2)
   })
 })
