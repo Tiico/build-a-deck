@@ -75,6 +75,22 @@ describe('the distance view is played with the same model as the felt and the ph
     table.close()
   })
 
+  // Focus follows the card (#484 fynd 5, K16). The panel closes on the press, and the card is not on
+  // the felt until the table has answered; the focus used to give up on the first render in between
+  // and land on the first card the felt had, which was somebody else's.
+  it('puts the focus on the card it played, once the table has put it there', async () => {
+    const { table, loose } = await online()
+    const user = userEvent.setup()
+    screen.getByRole('button', { name: /^dragon, i min hand/ }).focus()
+    await user.keyboard('{Enter}')
+    const panel = await screen.findByRole('dialog', { name: 'Handlingar för dragon' })
+    await user.click(within(panel).getByRole('button', { name: /^Bordet/ }))
+    await waitFor(() => expect(document.querySelector('.byd-online-felt [data-component="c0"]')).not.toBeNull())
+    await waitFor(() => expect((document.activeElement as HTMLElement | null)?.getAttribute('data-kbd')).toBe('card:c0'))
+    expect(loose).not.toBe('c0')
+    table.close()
+  })
+
   it('gives the felt behind the fan the same names and the same tab stop it has on the table screen', async () => {
     const { table } = await online()
     const user = userEvent.setup()
@@ -151,6 +167,48 @@ describe('the whole hand stays one tab stop with the arrows inside it, however b
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog', { name: /Hela handen/ })).toBeNull())
     expect(document.activeElement).toBe(show)
+    table.close()
+  })
+
+  // «Visa alla» is a door like every other raised surface (#484 fynd 6, K17, #152): Escape is heard
+  // wherever the focus has gone, a press on the dark around it closes it, and a card played out of it
+  // closes it too — the grid was raised to choose a card, and it used to stand on, dark over the
+  // table, with the focus somewhere under it.
+  it('closes the grid on Escape wherever the focus is, and on a press beside it', async () => {
+    const { table } = await online(HELD)
+    const user = userEvent.setup()
+    await waitFor(() => expect(handCards()).toHaveLength(HELD))
+    const show = screen.getByRole('button', { name: /Visa alla/ })
+
+    await user.click(show)
+    await screen.findByRole('dialog', { name: /Hela handen/ })
+    ;(document.activeElement as HTMLElement).blur()
+    expect(document.activeElement).toBe(document.body)
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /Hela handen/ })).toBeNull())
+    expect(document.activeElement).toBe(show)
+
+    await user.click(show)
+    await screen.findByRole('dialog', { name: /Hela handen/ })
+    await user.click(document.querySelector('.byd-hand-spread')!)
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /Hela handen/ })).toBeNull())
+    expect(document.activeElement).toBe(show)
+    table.close()
+  })
+
+  it('closes the grid when a card is played out of it, and the focus follows the card', async () => {
+    const { table } = await online(HELD)
+    const user = userEvent.setup()
+    await waitFor(() => expect(handCards()).toHaveLength(HELD))
+    await user.click(screen.getByRole('button', { name: /Visa alla/ }))
+    const spread = await screen.findByRole('dialog', { name: /Hela handen/ })
+    await waitFor(() => expect(document.activeElement?.getAttribute('data-spread-card')).toBe('c0'))
+    await user.keyboard('{Enter}')
+    const panel = await screen.findByRole('dialog', { name: /^Handlingar för/ })
+    await user.click(within(panel).getByRole('button', { name: /^Bordet/ }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /Hela handen/ })).toBeNull())
+    expect(spread.isConnected).toBe(false)
+    await waitFor(() => expect((document.activeElement as HTMLElement | null)?.getAttribute('data-kbd')).toBe('card:c0'))
     table.close()
   })
 })

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
+import { useRef, useState, type PointerEvent as RPointerEvent } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
@@ -38,21 +38,6 @@ export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay, locked = f
     aim.current = null
     setDrag(null)
   }
-  // Escape puts a lifted card back (#484 fynd 2, K14): the release that follows finds nothing held
-  // and plays nothing. Listened for on the window while a card is carried, because the press has
-  // the pointer and focus is wherever it was.
-  const carrying = drag !== null
-  useEffect(() => {
-    if (!carrying) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      e.preventDefault()
-      e.stopPropagation()
-      stop()
-    }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [carrying])
   const handlers = (c: VisibleComponentState) => ({
     onPointerDown: (e: RPointerEvent) => {
       aim.current = locked ? null : { id: c.id, x: e.clientX, y: e.clientY }
@@ -81,7 +66,9 @@ export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay, locked = f
     },
     onPointerCancel: () => stop(),
   })
-  return { drag, handlers }
+  // Escape puts a lifted card back (#484 fynd 2, K14): the shape renders a `held` door while a card
+  // is carried, and the release that follows finds nothing held and plays nothing.
+  return { drag, handlers, cancel: stop }
 }
 
 // The card while it is carried: drawn at the pointer, over everything, and out of the hand's own

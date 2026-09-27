@@ -94,7 +94,12 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   // there is no felt the keyboard is the hand and the panel alone, exactly as on `/play`.
   const kbd = useFeltKeyboard(view, board && view !== null && !view.rewind && !view.ended && client !== null, {
     act: (intents) => (client ? client.send(...intents) : Promise.resolve({ ok: false as const, reason: 'not connected' })),
-    onPlayed: marks.clear,
+    // A card played out of «Visa alla» closes it (#484 fynd 6): the grid was raised to choose a
+    // card, and the focus is on its way to where the card now lies.
+    onPlayed: () => {
+      marks.clear()
+      setSpread(false)
+    },
     faces: http,
   })
   useActivityLive(activity, view, seat)
@@ -103,8 +108,10 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   useSitDown(client, view, seat, name)
 
   if (!sessionId || !seat) return <StatusNotice notice={noticeFor('missing', 'table', t)} surface="page" links={links} />
-  // Not admitted, or kicked (DRIFT §9): a shut door rather than a broken line.
-  if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'table', t), text: refusedText(refused, t) }} surface="page" links={links} />
+  // Not admitted, or kicked (DRIFT §9): a shut door rather than a broken line. Told in the phone's
+  // words and not the table screen's (#484 fynd 8): this is a seat like `/play`, and its way back
+  // is the room's seat picker, which the code in the address still opens.
+  if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'phone', t), text: refusedText(refused, t) }} surface="page" links={links} />
   if (!view || !client) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
 
   const me = view.seats.find((s) => s.id === seat)

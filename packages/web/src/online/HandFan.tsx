@@ -7,6 +7,7 @@ import { cardWord, handLabel } from '../table/keyboard.js'
 import { useT } from '../i18n/index.js'
 import { fanPlace, fanStyle } from './fan.js'
 import { HandGhost, useHandDrag, type HandPlay } from './handDrag.js'
+import { DragDoor } from '../editor/DragDoor.js'
 
 export type HandFanProps = {
   cards: readonly VisibleComponentState[]
@@ -34,7 +35,7 @@ export function HandFan({ cards, faces, onPlay, locked = false, onOpen }: HandFa
   const scroller = useRef<HTMLDivElement>(null)
   const n = cards.length
   const roving = useRoving({ ids: cards.map((c) => c.id), selected: null, orientation: 'horizontal' })
-  const { drag, handlers } = useHandDrag('up', onPlay, locked)
+  const { drag, handlers, cancel } = useHandDrag('up', onPlay, locked)
   const lifted = drag ? cards.find((c) => c.id === drag.id) : undefined
   return (
     <div className="byd-hand-band" data-hand-fan style={fanStyle(n)}>
@@ -83,6 +84,7 @@ export function HandFan({ cards, faces, onPlay, locked = false, onOpen }: HandFa
         </div>
       </div>
       {drag && lifted && <HandGhost at={drag} card={lifted} faces={faces} />}
+      {drag && <DragDoor onCancel={cancel} />}
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useDoor } from '../doors.js'
 import type { VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
@@ -23,7 +24,9 @@ export type HandSpreadProps = {
 //
 // It is `Question.tsx`'s manners applied to a surface, the same way K16's address panel is: it
 // takes the focus so it is read where it stands, it answers Escape, and it hands the focus back
-// to the control that raised it. It traps nothing — tabbing past it leaves it standing. Focus
+// to the control that raised it. Escape is a door (`doors.ts`, #152) and so heard wherever the
+// focus has gone, and a press on the dark around the sheet is the other way out (#484 fynd 6).
+// It traps nothing — tabbing past it leaves it standing. Focus
 // lands on the first card and not on Stäng, because the grid was raised to be read and the
 // reader should already be standing in the hand.
 //
@@ -43,15 +46,14 @@ export function HandSpread({ cards, faces, onOpen, onClose }: HandSpreadProps) {
     raised.current = true
     roving.focus(first)
   }, [first])
+  // The grid is what Escape is about while it stands; whatever it was raised over stays.
+  useDoor('standing', onClose)
   return (
     <div
       className="byd-hand-spread"
       style={fanStyle(n)}
-      onKeyDown={(e) => {
-        if (e.key !== 'Escape') return
-        // The grid is what Escape is about while it stands; whatever it was raised over stays.
-        e.stopPropagation()
-        onClose()
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
       }}
     >
       <div className="byd-hand-sheet" role="dialog" aria-label={`Hela handen, ${n} kort`}>
