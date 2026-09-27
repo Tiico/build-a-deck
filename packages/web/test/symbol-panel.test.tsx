@@ -72,6 +72,59 @@ describe('the symbol library in the editor (E4)', () => {
     await waitFor(() => expect(screen.getByText(/Inga symboler ännu/)).toBeTruthy())
   })
 
+  // `{mitt svärd}` is not a symbol to the card text, so a rename to it turned every card that
+  // said the symbol into letters (#481, fynd 2).
+  it('refuses a symbol name a card could not write, says why, and keeps the old one', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openSymbols()
+    fireEvent.click(tile('sköld'))
+    const set = await screen.findByRole('list', { name: 'Symboler i spelet' })
+    await waitFor(() => expect(within(set).getByText('{sköld}')).toBeTruthy())
+
+    const rename = within(set).getByLabelText('Namn för sköld') as HTMLInputElement
+    fireEvent.change(rename, { target: { value: 'mitt svärd' } })
+    fireEvent.blur(rename)
+
+    expect(await screen.findByText('«mitt svärd» går inte att skriva på ett kort: ett namn har bara bokstäver, siffror, _ och -.')).toBeTruthy()
+    expect(rename.value).toBe('sköld')
+    expect(within(set).getByText('{sköld}')).toBeTruthy()
+  })
+
+  // The library says which of its symbols the game already has, and a second press says so rather
+  // than doing nothing without a word (#481, fynd 15).
+  it('marks a symbol the game already has, and says so when it is taken again', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openSymbols()
+    fireEvent.click(tile('sköld'))
+    const set = await screen.findByRole('list', { name: 'Symboler i spelet' })
+    await waitFor(() => expect(within(set).getByText('{sköld}')).toBeTruthy())
+    expect(within(tile('sköld')).getByText('I spelet')).toBeTruthy()
+    expect(tile('sköld').getAttribute('aria-describedby')).toBeTruthy()
+
+    fireEvent.click(tile('sköld'))
+    expect(await screen.findByText('sköld finns redan i spelet som {sköld}.')).toBeTruthy()
+    expect(within(set).getAllByRole('listitem')).toHaveLength(1)
+  })
+
+  // A symbol the cards write is asked about before it goes, as Media asks about a picture (#481).
+  it('asks before taking away a symbol a card writes, and hands the focus back when it goes', async () => {
+    const doc = projectDoc()
+    doc.rows[0]!.fields['body'] = 'Flygande. {sköld}'
+    await run.projects.create(run.projectId, doc)
+    await openSymbols()
+    fireEvent.click(tile('sköld'))
+    const set = await screen.findByRole('list', { name: 'Symboler i spelet' })
+    await waitFor(() => expect(within(set).getByText('{sköld}')).toBeTruthy())
+
+    fireEvent.click(within(set).getByRole('button', { name: 'Ta bort sköld' }))
+    const question = await screen.findByRole('alertdialog')
+    expect(question.textContent).toContain(`Kortet ${doc.rows[0]!.id} skriver den.`)
+    fireEvent.click(within(question).getByRole('button', { name: 'Ja, ta bort' }))
+    await waitFor(() => expect(screen.getByText(/Inga symboler ännu/)).toBeTruthy())
+    // The last symbol took its heading with it, so the hand is on the library's search.
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Sök symbol')))
+  })
+
   it('draws a symbol on the cards it is written into, and says which cards use it', async () => {
     const doc = projectDoc()
     doc.rows[0]!.fields['body'] = 'Flygande. {sköld}'

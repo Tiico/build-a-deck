@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent, type FocusEvent, type KeyboardEvent } from 'react'
-import { passToEditor } from './keys.js'
+import { useWordSteps } from './word-steps.js'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { copiesOf, deckKeepsFields, fieldsOf, fieldLabel, takenNames, nextCardRef } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
@@ -338,39 +338,20 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // entered and every word finished since, per cell and per visit: Ctrl+Z comes back through them a
   // word at a time, Escape goes straight to the first, and once there is nothing of the cell's own
   // left the press is handed on to the editor's history.
-  const words = useRef(new Map<string, string[]>())
-  const wordsOf = (cardRef: string, field: string, value: unknown): string[] => {
-    const key = `${cardRef}\u0000${field}`
-    let kept = words.current.get(key)
-    if (!kept) {
-      kept = [value === undefined || value === null ? '' : String(value)]
-      words.current.set(key, kept)
-    }
-    return kept
-  }
+  const words = useWordSteps()
+  const cellKey = (cardRef: string, field: string) => `${cardRef}\u0000${field}`
   const cellUndo = (cardRef: string, field: string, e: KeyboardEvent<HTMLInputElement>): boolean => {
-    const input = e.currentTarget
-    const kept = words.current.get(`${cardRef}\u0000${field}`)
+    const key = cellKey(cardRef, field)
     if (e.key === 'Escape') {
-      const first = kept?.[0]
-      if (first === undefined || first === input.value) return false
+      const first = words.first(key)
+      if (first === undefined || first === e.currentTarget.value) return false
       e.preventDefault()
       e.stopPropagation()
-      kept?.splice(1)
+      words.reset(key)
       onCell(cardRef, field, first, cellGesture())
       return true
     }
-    if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'z') return false
-    while (kept && kept.length > 0 && kept[kept.length - 1] === input.value) kept.pop()
-    const back = kept?.[kept.length - 1]
-    if (back === undefined) {
-      // Nothing of the cell's own left: the step back is the editor's.
-      passToEditor(e.nativeEvent)
-      return true
-    }
-    e.preventDefault()
-    onCell(cardRef, field, back, cellGesture())
-    return true
+    return words.undo(key, e, (back) => onCell(cardRef, field, back, cellGesture()))
   }
   // The cell in the same column one row down or up, in the order the table shows (#479).
   const moveInColumn = (cardRef: string, field: string, by: number) => {
@@ -1624,8 +1605,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                         return
                       }
                       // A word just finished is a place Ctrl+Z comes back to (#479).
-                      const was = wordsOf(cardRef, f, row[f])
-                      if (/\s$/.test(e.target.value) && !/\s$/.test(String(row[f] ?? ''))) was.push(e.target.value)
+                      words.typed(cellKey(cardRef, f), e.target.value)
                       onCell(cardRef, f, e.target.value, cellGesture())
                       if (onSymbol) openBrace(cardRef, f, e.target)
                     }}
@@ -1653,14 +1633,14 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       e.preventDefault()
                       fillBlock(cardRef, f, text)
                     }}
-                    onFocus={() => {
+                    onFocus={(e) => {
                       visits.visit.onFocus()
                       setHeld(shown.map((r) => r.id))
                       setHere({ cardRef, field: f })
                       // A cell the keyboard walks into chooses its card, as a click on the row
                       // does (#479): the canvas and the wall follow the card being written in.
                       if (selectedRow !== cardRef) onSelectRow(cardRef)
-                      words.current.delete(`${cardRef}\u0000${f}`)
+                      words.enter(cellKey(cardRef, f), e.currentTarget.value)
                     }}
                     onBlur={(event) => {
                       if (f === 'antal') setAntalDraft(({ [cardRef]: _gone, ...rest }) => rest)

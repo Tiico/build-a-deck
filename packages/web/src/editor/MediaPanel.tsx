@@ -90,8 +90,12 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
   // The template is a user too (#320): a picture it carries by itself is asked about as one on
   // cards is, and the question names the template among what loses it.
   const remove = (hash: string, cards: readonly string[], template: boolean) => {
-    if (cards.length === 0 && !template) onRemove?.(hash)
-    else setLeaving(hash)
+    if (cards.length === 0 && !template) {
+      onRemove?.(hash)
+      // The control goes with the picture, so the hand goes to the nearest one still standing
+      // rather than to the page (#481), as it does after the question.
+      setRefocus(media.find((m) => m.hash !== hash)?.hash ?? null)
+    } else setLeaving(hash)
   }
   const asked = leaving === null ? undefined : media.find((m) => m.hash === leaving)
   // The picture in hand: the one whose crop is open as a sheet over the library (#297, L33). A
@@ -153,6 +157,21 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
   // live region because an upload takes as long as a network takes: a designer who cannot see the
   // grid has nothing else to tell her that the picture arrived — or that it did not.
   const [note, setNote] = useState<string | null>(null)
+  // Pictures whose bytes the browser could not fetch, and how many times each has been asked for
+  // (#481). A picture is in the document before its bytes travel (#339), so while a file is on
+  // its way its tile is not broken but early: `uploading` tells the two apart, and a picture that
+  // has just arrived is asked for again rather than left standing as a failure.
+  const [missing, setMissing] = useState<ReadonlySet<string>>(new Set())
+  const [tries, setTries] = useState<Readonly<Record<string, number>>>({})
+  const [uploading, setUploading] = useState(false)
+  const lost = useRef(missing)
+  lost.current = missing
+  const came = (hash: string) => {
+    // Only a tile that failed is asked again; one that loaded keeps the picture it has.
+    if (!lost.current.has(hash)) return
+    setMissing((had) => new Set([...had].filter((h) => h !== hash)))
+    setTries((had) => ({ ...had, [hash]: (had[hash] ?? 0) + 1 }))
+  }
   // The window the arriving picture opens in. A hand is put on it rather than merely a highlight,
   // because "opens in the crop window" has to be true for a keyboard too; the picture chosen is
   // not yet drawn when the upload answers, so the focus is taken on the render after it.
@@ -182,13 +201,18 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
     // som annars kunde se en bild vars byte ännu inte rest och rapporteras som tillagd fast
     // tjänsten sade nej.
     const landed: Result[] = []
-    for (const file of files) {
+    setUploading(true)
+    for (const [at, file] of files.entries()) {
       // Vad filen heter, med bibliotekets egen regel om vad ett filnamn är (beslut 6) — och
       // filens råa namn kvar, för en fil vars namn inte blev något är ändå en rad i listan.
       const name = pictureNameOf(file.name)
       const said = { name: name ?? file.name, named: name !== undefined }
+      // What is on its way, said while it is (#481): an upload takes as long as a network does.
+      setNote(files.length === 1 ? t('media.add.busy', { name: said.name }) : t('media.add.busy.batch', { name: said.name, at: at + 1, n: files.length }))
       try {
-        landed.push({ ...said, hash: await onAdd(file) })
+        const hash = await onAdd(file)
+        came(hash)
+        landed.push({ ...said, hash })
       } catch (err) {
         // A picture that did not arrive is said in the same place the arrival is, and it is
         // said rather than thrown: an upload can fail on a dropped line or a file the gate
@@ -197,6 +221,7 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
         landed.push({ ...said, why: err instanceof Error ? err.message : String(err) })
       }
     }
+    setUploading(false)
     // En enda fil behåller sitt beteende: den öppnas i beskärningsrutan, för det är den bilden
     // formgivaren just bad om. Det avgörs av hur många filer hon lämnade och inte av hur många
     // uppladdningar som råkade lyckas.
@@ -207,7 +232,11 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
         setOverview(false)
             setDrafted(null)
         opening.current = true
-        setNote(only.named ? t('media.add.done', { name: only.name }) : t('media.add.done.unnamed'))
+        // `doc` is the library as it stood when the file was chosen, so a picture in it then was
+        // already there — and is said to be, under the name it has (#481).
+        const had = doc.pictures?.[only.hash]
+        if (had) setNote(t('media.add.already', { file: only.name, name: nameOf(only.hash, []) }))
+        else setNote(only.named ? t('media.add.done', { name: only.name }) : t('media.add.done.unnamed'))
       } else setNote(only.why)
       return
     }
@@ -339,7 +368,17 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
                       opens is three hundred requests in one breath. The ones below the fold
                       wait until they are to be seen. */}
                   <span className="byd-media-tile-shot">
-                    <img loading="lazy" src={assetUrl(assetBase, hash)} alt={nameOf(hash, cards)} />
+                    <img
+                      key={tries[hash] ?? 0}
+                      loading="lazy"
+                      src={assetUrl(assetBase, hash)}
+                      alt={nameOf(hash, cards)}
+                      {...(missing.has(hash) ? { 'data-missing': 'true' } : {})}
+                      onError={() => setMissing((had) => (had.has(hash) ? had : new Set(had).add(hash)))}
+                    />
+                    {/* In words and never only as the browser's broken-picture glyph (L13): early
+                        while a file is still on its way, gone once none is. */}
+                    {missing.has(hash) && <span className="byd-media-tile-missing">{t(uploading ? 'media.tile.uploading' : 'media.missing')}</span>}
                     {/* A cropped picture says so where it is looked over, rather than only where
                         it is opened: what has been done to a picture is half of what a library
                         is for. An uncropped one wears nothing, so the mark means something. */}
@@ -555,7 +594,17 @@ function Cropping({
               <p role="status" className="byd-crop-status" data-state={state}>
                 <i aria-hidden="true">{STATUS_MARK[state]}</i> {state === 'saved' ? t('media.crop.status.saved', { p: Math.round(crop.w * crop.h * 100) }) : t(state === 'saving' ? 'media.crop.status.saving' : 'media.crop.status.whole')}
               </p>
-              <button type="button" className="byd-secondary" disabled={stored === undefined} onClick={onWhole}>
+              <button
+                type="button"
+                className="byd-secondary"
+                disabled={stored === undefined}
+                onClick={() => {
+                  onWhole()
+                  // The button is refused the moment it has done its work, and a refused button lets
+                  // go of the focus; the window it just widened is where the hand goes (#481).
+                  handle.current?.focus()
+                }}
+              >
                 {t('media.crop.whole')}
               </button>
             </div>

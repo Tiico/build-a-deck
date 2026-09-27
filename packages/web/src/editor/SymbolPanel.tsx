@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { CARD_PX, cornerPx } from './corner.js'
@@ -8,10 +8,11 @@ import { previewFonts } from './fonts.js'
 import { CATEGORIES, INK, LIBRARY, searchSymbols, symbolName, symbolPreview, type GameSymbol } from './symbols.js'
 import { ROLE_MIN_CONTRAST, groundOf, iconsIn, iconsPainted, iconsUsed, paletteIssues, rolesUsed, type Painted } from './palette.js'
 import { SymbolSample, SymbolSheet } from './SymbolSample.js'
-import { contrastRatio } from '@byd/template'
+import { contrastRatio, isSymbolName } from '@byd/template'
 import type { ProjectClient } from './ProjectClient.js'
 import { useT, type Key } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
+import { Question } from './Question.js'
 
 // The symbol library (E4), from the prototype: the library is a surface of its own, with search,
 // categories and the licence on every symbol. Taking one in names it in the project's icon set,
@@ -57,7 +58,16 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
   // never on the whole deck. A set that loses the symbol being shown falls back the same way.
   const chosen = showing !== null && (showing === ALL || names.includes(showing)) ? showing : (names[0] ?? null)
   const shown = chosen === null ? [] : chosen === ALL ? said : said.filter((c) => c.icons.has(chosen))
+  // The library's symbols the game already has, by the source its credit names (#481): the name
+  // in the game is the designer's and may be anything, the source is the library's own id.
+  const had = new Map(Object.entries(doc.credits ?? {}).flatMap(([name, credit]) => (doc.icons[name] !== undefined && credit.source ? [[credit.source, name] as const] : [])))
+  const tileId = useId()
+  const [hadSaid, setHadSaid] = useState<string | null>(null)
   const take = (symbol: GameSymbol) => {
+    // A second press on a symbol the game has says so, rather than doing nothing without a word.
+    const kept = had.get(symbol.id)
+    if (kept !== undefined) return setHadSaid(t('symbols.take.had', { name: symbolName(symbol, t), as: `{${kept}}` }))
+    setHadSaid(null)
     void client.useSymbol(symbol, undefined, t).catch((err: unknown) => setNotice(err instanceof Error ? err.message : String(err)))
   }
   return (
@@ -109,15 +119,26 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
           ) : (
             <div className="byd-symbols-grid">
               {found.map((s) => (
-                <button key={s.id} type="button" className="byd-symbols-tile" aria-label={t('symbols.take', { name: symbolName(s, t) })} onClick={() => take(s)}>
+                <button
+                  key={s.id}
+                  type="button"
+                  className="byd-symbols-tile"
+                  aria-label={t('symbols.take', { name: symbolName(s, t) })}
+                  {...(had.has(s.id) ? { 'data-had': 'true', 'aria-describedby': `${tileId}-${s.id}` } : {})}
+                  onClick={() => take(s)}
+                >
                   <img src={symbolPreview(s)} alt="" />
                   <span>{symbolName(s, t)}</span>
-                  <small>{s.licence}</small>
+                  {/* In words and not only as a mark (L13): the game already has this one. */}
+                  {had.has(s.id) ? <small id={`${tileId}-${s.id}`} className="byd-symbols-had">{t('symbols.had')}</small> : <small>{s.licence}</small>}
                 </button>
               ))}
             </div>
           )}
           {notice && <p role="alert">{notice}</p>}
+          <p className="byd-symbols-note" role="status">
+            {hadSaid ?? ''}
+          </p>
         </aside>
         <div className="byd-symbols-main">
           <ProjectSet doc={doc} client={client} assetBase={assetBase} />
@@ -174,12 +195,30 @@ function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
   // Counted by the same walk the palette uses, so a symbol written in a meaning still counts. The
   // old check looked for `{namn}` exactly and told a deck that had painted every one of its
   // symbols that it used none of them.
-  const used = iconsUsed(doc.rows, iconFieldsOf(doc))
+  const bare = iconFieldsOf(doc)
+  const used = iconsUsed(doc.rows, bare)
   const painted = iconsPainted(doc)
+  // Asked about first when a card says it, as Media asks about a picture (#481; L22, #318). The
+  // row goes with it, so the hand lands on the set's own heading rather than on the page.
+  const heading = useRef<HTMLHeadingElement>(null)
+  // Taken once the set has drawn itself without the symbol: the last one takes the heading with
+  // it, and the library's search is then the nearest thing standing.
+  const [landing, setLanding] = useState(0)
+  useEffect(() => {
+    if (landing === 0) return
+    ;(heading.current ?? (document.querySelector(`[aria-label="${CSS.escape(t('symbols.search'))}"]`) as HTMLElement | null))?.focus()
+  }, [landing, t])
+  const [ask, removing] = useRemoval((name) => {
+    client.removeIcon(name)
+    setLanding((n) => n + 1)
+  }, (name) => `[aria-label="${CSS.escape(t('symbols.remove', { name }))}"]`)
   if (names.length === 0) return <p className="byd-symbols-empty">{t('symbols.set.none')}</p>
   return (
     <section className="byd-symbols-set">
-      <h2>{t('symbols.inGame')}</h2>
+      <h2 ref={heading} tabIndex={-1}>
+        {t('symbols.inGame')}
+      </h2>
+      {removing}
       <ul aria-label={t('symbols.inGame')}>
         {names.map((name) => {
           const credit = doc.credits?.[name]
@@ -194,6 +233,12 @@ function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
                 onBlur={(e) => {
                   const next = e.target.value.trim()
                   if (!next || next === name) return
+                  // A name the card text would not read as a symbol is refused here with the rule it
+                  // broke, before the cards that say the old one are rewritten into letters (#481).
+                  if (!isSymbolName(next)) {
+                    e.target.value = name
+                    return setError(t('symbols.name.unwritable', { name: next }))
+                  }
                   try {
                     client.renameIcon(name, next)
                     setError(null)
@@ -205,7 +250,7 @@ function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
               />
               <small>{credit ? `${credit.licence} · ${credit.by}` : t('symbols.own')}</small>
               <small>{n === 0 && painted[name] ? t(paintedSaid(painted[name])) : t(n === 1 ? 'wall.cards.one' : 'wall.cards.other', { n })}</small>
-              <button type="button" aria-label={t('symbols.remove', { name })} onClick={() => client.removeIcon(name)}>
+              <button type="button" aria-label={t('symbols.remove', { name })} onClick={() => ask(name, doc.rows.filter((r) => iconsIn(r.fields, bare).has(name)).map((r) => r.id))}>
                 ×
               </button>
             </li>
@@ -286,7 +331,19 @@ function GameColours({ doc, client, icons }: { doc: ProjectDoc; client: ProjectC
     let name = t('symbols.colours.new')
     for (let n = 2; palette[name] !== undefined; n++) name = `${t('symbols.colours.new')}-${n}`
     say(() => client.setRole(name, free.hex))
+    setNaming(name)
   }
+  // The name of the meaning just made takes the hand once its row is drawn: it is a placeholder,
+  // and the next thing the designer does is write the real one (#481).
+  const [naming, setNaming] = useState<string | null>(null)
+  useEffect(() => {
+    if (naming === null) return
+    const field = document.querySelector<HTMLInputElement>(`[aria-label="${CSS.escape(t('symbols.colours.rename', { role: naming }))}"]`)
+    if (!field) return
+    field.focus()
+    field.select()
+    setNaming(null)
+  })
   const say = (change: () => void) => {
     try {
       change()
@@ -295,6 +352,13 @@ function GameColours({ doc, client, icons }: { doc: ProjectDoc; client: ProjectC
       setError(err instanceof Error ? err.message : String(err))
     }
   }
+  // Taken away at once when nothing writes it, and asked about first when a card does (#481). The
+  // row goes with it, so the hand lands on «Ny betydelse», which always stands.
+  const adder = useRef<HTMLButtonElement>(null)
+  const [ask, removing] = useRemoval((role) => {
+    say(() => client.removeRole(role))
+    adder.current?.focus()
+  }, (role) => `[aria-label="${CSS.escape(t('symbols.colours.remove', { role }))}"]`)
   return (
     <section className="byd-symbols-colours">
       <div className="byd-help-row">
@@ -328,6 +392,10 @@ function GameColours({ doc, client, icons }: { doc: ProjectDoc; client: ProjectC
                   onBlur={(e) => {
                     const next = e.target.value.trim()
                     if (!next || next === role) return
+                    if (!isSymbolName(next)) {
+                      e.target.value = role
+                      return setError(t('symbols.name.unwritable', { name: next }))
+                    }
                     try {
                       client.renameRole(role, next)
                       setError(null)
@@ -350,10 +418,14 @@ function GameColours({ doc, client, icons }: { doc: ProjectDoc; client: ProjectC
                     </button>
                   ))}
                 </div>
-                <small>{t(n === 1 ? 'wall.cards.one' : n === 0 ? 'symbols.colours.unused' : 'wall.cards.other', { n })}</small>
-                <small>{t('symbols.colours.ratio', { ratio: ratio.toFixed(1) })}</small>
-                {shown !== null && <code>{example(role)}</code>}
-                <button type="button" aria-label={t('symbols.colours.remove', { role })} onClick={() => say(() => client.removeRole(role))}>
+                {/* What the row says about the meaning, on a line of its own under the name (#481):
+                    left to wrap on their own they pushed the × onto a line of its own at 1024. */}
+                <span className="byd-symbols-said">
+                  <small>{t(n === 1 ? 'wall.cards.one' : n === 0 ? 'symbols.colours.unused' : 'wall.cards.other', { n })}</small>
+                  <small>{t('symbols.colours.ratio', { ratio: ratio.toFixed(1) })}</small>
+                  {shown !== null && <code>{example(role)}</code>}
+                </span>
+                <button type="button" aria-label={t('symbols.colours.remove', { role })} onClick={() => ask(role, doc.rows.filter((r) => (rolesUsed([r])[role] ?? 0) > 0).map((r) => r.id))}>
                   ×
                 </button>
               </li>
@@ -362,7 +434,8 @@ function GameColours({ doc, client, icons }: { doc: ProjectDoc; client: ProjectC
         </ul>
         </>
       )}
-      <button type="button" className="byd-symbols-add" onClick={add}>
+      {removing}
+      <button type="button" className="byd-symbols-add" ref={adder} onClick={add}>
         {t('symbols.colours.add')}
       </button>
       {issues.map((issue) => (
@@ -384,4 +457,38 @@ function mostSaid(doc: ProjectDoc): string | null {
   let best: string | null = null
   for (const name of Object.keys(doc.icons)) if (best === null || (used[name] ?? 0) > (used[best] ?? 0)) best = name
   return best
+}
+
+// How many cards a question names before it counts the rest, the number Media's own uses.
+const NAMED = 5
+
+// The question before a symbol or a meaning goes (#481, fynd 11). What goes with it is words on
+// cards, so the question names the cards that write it: the first five by id and the rest counted,
+// as Media's does for a picture. Nothing that writes it, nothing to ask.
+function useRemoval(remove: (name: string) => void, opener: (name: string) => string): [(name: string, cards: readonly string[]) => void, ReactNode] {
+  const t = useT()
+  const [asked, setAsked] = useState<{ name: string; cards: readonly string[] } | null>(null)
+  const ask = (name: string, cards: readonly string[]) => (cards.length === 0 ? remove(name) : setAsked({ name, cards }))
+  const named = asked ? (asked.cards.length > NAMED ? t('media.remove.more', { cards: asked.cards.slice(0, NAMED).join(', '), n: asked.cards.length - NAMED }) : asked.cards.join(', ')) : ''
+  const sentence = asked ? t(asked.cards.length === 1 ? 'symbols.remove.question.one' : 'symbols.remove.question', { name: asked.name, n: asked.cards.length, cards: named }) : ''
+  const question = asked && (
+    <Question
+      className="byd-symbols-question"
+      label={sentence}
+      confirm={t('media.remove.yes')}
+      cancel={t('editor.cancel')}
+      onConfirm={() => {
+        setAsked(null)
+        remove(asked.name)
+      }}
+      onCancel={() => {
+        setAsked(null)
+        // Back to the × that asked, which is still there.
+        ;(document.querySelector(opener(asked.name)) as HTMLElement | null)?.focus()
+      }}
+    >
+      {sentence}
+    </Question>
+  )
+  return [ask, question]
 }

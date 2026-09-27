@@ -876,6 +876,20 @@ describe('a typeface and a picture do not wait for the network either (#339)', (
     expect(client.doc.pictures).toEqual(before.pictures)
   })
 
+  // The same bytes chosen again under another file name are the picture the library already has,
+  // and it keeps the name it has: the second file renamed the first without a word (#481, fynd 6).
+  it('keeps the name a picture has when the same bytes are chosen again under another', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const first = await client.addPicture(new File([PNG], 'drake.png', { type: 'image/png' }))
+    const before = client.doc
+    const again = await watching(() => client.addPicture(new File([PNG], 'drake-kopia.png', { type: 'image/png' })))
+    expect(again.out).toBe(first)
+    expect(again.calls).toEqual([])
+    expect(client.doc).toBe(before)
+    expect(client.doc.pictures?.[first]).toEqual({ name: 'drake.png' })
+  })
+
   // An upload that has not answered yet, and never will until it is let go.
   const holding = (): { land: () => void; landed: Promise<void> } => {
     let land: () => void = () => undefined

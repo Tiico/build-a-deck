@@ -15,6 +15,9 @@ export type RuleImportKind =
   // What became a block. A picture is one of them since #173: it comes in as the book's fifth kind
   // of block rather than standing in the report as "not yet".
   | 'heading'
+  // A heading that became a subheading, counted apart from the sections so the report says what
+  // each became rather than calling every heading a section (#481).
+  | 'subheading'
   | 'text'
   | 'list'
   | 'ref'
@@ -22,6 +25,9 @@ export type RuleImportKind =
   // What changed shape on the way in, `title` being the file's own title, which the book already
   // has one of (#191).
   | 'title'
+  // The tree stood a step up because the file has no `#` of its own (#481, fynd 8): said once, since
+  // it is one thing done to the whole file.
+  | 'raised'
   | 'folded'
   | 'quote'
   | 'table'
@@ -52,7 +58,7 @@ export type RuleImport = { doc: RuleDoc; notes: RuleImportNote[]; problems: Rule
 // shape on the way, and what came in saying less about itself than it could have. The file's own
 // title heads the middle group, because it is the first line of the file and the first thing the
 // import did.
-const ORDER: readonly RuleImportKind[] = ['heading', 'text', 'list', 'ref', 'image', 'title', 'folded', 'quote', 'table', 'code', 'link', 'break', 'decorative']
+const ORDER: readonly RuleImportKind[] = ['heading', 'subheading', 'text', 'list', 'ref', 'image', 'title', 'raised', 'folded', 'quote', 'table', 'code', 'link', 'break', 'decorative']
 
 const HEADING = /^[ \t]*(#{1,6})[ \t]+(.*)$/
 // A list item: a bullet, or a number the file counted with. Which of the two it is decides the
@@ -166,6 +172,12 @@ export function importRules(markdown: string, title: string, images: RuleImages 
   // list. Raised, the book has the disposition the file had, which is why the report says nothing
   // new about it: it is not a different disposition, it is the file's own.
   let raised = false
+  // And a file with no `#` of its own beyond such a title stands a step up for the same reason
+  // (#481, beställarens beslut A efter prototyp 18): its top rank is `##`, so its `##` are its
+  // sections. Read before anything is taken, and never inside a fence, where a `#` is code.
+  const titled = HEADING.exec(lines[opening] ?? '')?.[1] === '#'
+  const lifted = !titled && topRankOf(lines, opening) >= 2
+  if (lifted) count('raised')
   while (i < lines.length) {
     const line = peek(i)
     if (line.trim().length === 0 || BREAK.test(line)) {
@@ -193,9 +205,12 @@ export function importRules(markdown: string, title: string, images: RuleImages 
       // rather than done quietly, which is the whole of the rule behind the map. It is counted off
       // the hashes the file wrote and not off the level the block lands on, so a raised tree says
       // in the report exactly what it said before (#202).
-      if (hashes > 2) count('folded')
-      count('heading')
-      blocks.push({ kind: 'heading', id: id(), level: levelOf(hashes, raised), text: (heading[2] ?? '').trim() })
+      // Under a lift the `###` land on the second level as the file's own second rank, so only what
+      // is deeper than that is folded; a swallowed title keeps #202's count.
+      if (hashes > (lifted ? 3 : 2)) count('folded')
+      const level = levelOf(hashes, raised || lifted)
+      count(level === 1 ? 'heading' : 'subheading')
+      blocks.push({ kind: 'heading', id: id(), level, text: (heading[2] ?? '').trim() })
       i++
       continue
     }
@@ -270,6 +285,30 @@ const addressOf = (raw: string): string =>
 // its `#` on the title, so its `##` are its sections and they are the book's. A `#` further down
 // is already as high as a heading goes and stays where it is.
 const levelOf = (hashes: number, raised: boolean): 1 | 2 => (hashes <= (raised ? 2 : 1) ? 1 : 2)
+
+// The highest rank any heading of the file is written at, leaving out a `#` on its opening line
+// (the title, which is swallowed) and anything inside a fence. `Infinity` for a file with none.
+function topRankOf(lines: readonly string[], opening: number): number {
+  let top = Infinity
+  let fence: string | null = null
+  for (const [at, line] of lines.entries()) {
+    const opened = FENCE.exec(line)
+    if (fence !== null) {
+      if (line.trimStart().startsWith(fence)) fence = null
+      continue
+    }
+    if (opened) {
+      fence = opened[1] ?? '```'
+      continue
+    }
+    const heading = HEADING.exec(line)
+    if (!heading) continue
+    const hashes = (heading[1] ?? '#').length
+    if (at === opening && hashes === 1) continue
+    top = Math.min(top, hashes)
+  }
+  return top
+}
 
 const numbered = (marker: string | undefined): boolean => /\d/.test(marker ?? '')
 const cellsOf = (row: string): string[] =>

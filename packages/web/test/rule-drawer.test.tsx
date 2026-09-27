@@ -40,6 +40,19 @@ const open = async (id: string) => {
   return screen.findByRole('dialog', { name: 'Regler' })
 }
 
+// The drawer's own × takes the panel away with the focus in it (#481, fynd 12). The knob that opens
+// the drawer is still standing, so that is where the hand goes.
+describe('closing the drawer from inside it', () => {
+  it('hands the focus back to the knob that opened it', async () => {
+    const panel = await open(await table())
+    const close = within(panel).getByRole('button', { name: 'Stäng reglerna' })
+    close.focus()
+    fireEvent.click(close)
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Regler' })).toBeNull())
+    expect(document.activeElement?.classList.contains('byd-rules-open')).toBe(true)
+  })
+})
+
 // The picture in the book, where the book is read (#173, decided 2026-09-17). A5 sets the frame
 // and the table and the phone draw the same picture inside it; what it says about itself is the
 // alt text the Markdown carried, and a picture that carried none is decorative — `alt=""` — and is

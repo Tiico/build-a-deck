@@ -273,6 +273,22 @@ describe('the rulebook as a booklet (B7)', () => {
     expect(link.getAttribute('href')).toMatch(/\/faces\/[0-9a-f]{64}$/)
   })
 
+  // A book written since the last save was not the one the server printed from: it read the saved
+  // project, found no rules and said so in a lowercase fragment, with the focus left on <body>
+  // (#481, fynd 4). The tables' own ways save first, and so does this one.
+  it('saves a book that has not been saved yet, and hands the focus to the booklet when it is ready', async () => {
+    await openRules(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Börja från en mall' }))
+    const order = await screen.findByRole('button', { name: 'Häfte för tryck' })
+    order.focus()
+    fireEvent.click(order)
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.rules?.blocks.length).toBeGreaterThan(0))
+    await run.completeRenders()
+    const link = await screen.findByRole('link', { name: 'Öppna häftet' }, { timeout: 3000 })
+    await waitFor(() => expect(document.activeElement).toBe(link))
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
   it('is not offered at all before there are any rules', async () => {
     await openRules(false)
     expect(screen.queryByRole('button', { name: 'Häfte för tryck' })).toBeNull()
