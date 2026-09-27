@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'

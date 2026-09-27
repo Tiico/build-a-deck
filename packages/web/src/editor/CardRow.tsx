@@ -56,18 +56,22 @@ export function CardRow({ cards, current, face, onPick }: { cards: readonly Card
       close(true)
     }
   }
+  const step = (by: number) => {
+    const next = cards[at + by]
+    if (next) onPick(next.id)
+  }
   const title = current ? titleOfRow(current) : ''
   const values = current ? lookOf(face, current) : []
   return (
     <div className="byd-card-row" role="group" aria-label={t('canvas.card.row')} ref={box}>
-      <button type="button" aria-label={t('canvas.card.prev')} disabled={at <= 0} onClick={() => cards[at - 1] && onPick(cards[at - 1]!.id)}>
+      <button type="button" aria-label={t('canvas.card.prev')} disabled={at <= 0} onClick={() => step(-1)}>
         ‹
       </button>
       <button ref={name} type="button" className="byd-card-row-name" aria-haspopup="listbox" aria-expanded={open} onClick={() => (open ? close(true) : setOpen(true))}>
         <span>{title}</span>
         <small>{t('canvas.card.of', { n: at + 1, of: cards.length })} ▾</small>
       </button>
-      <button type="button" aria-label={t('canvas.card.next')} disabled={at < 0 || at >= cards.length - 1} onClick={() => cards[at + 1] && onPick(cards[at + 1]!.id)}>
+      <button type="button" aria-label={t('canvas.card.next')} disabled={at < 0 || at >= cards.length - 1} onClick={() => step(1)}>
         ›
       </button>
       {values.length > 0 && (

@@ -124,7 +124,8 @@ describe('grouping the deck by a column (#13)', () => {
     const user = await openTemplate()
     await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
     await chooseGroup(user, 2)
-    expect(screen.getByText('Fallgrop')).toBeTruthy()
+    // On the card, and in the row under it that names it (#478).
+    expect(within(document.querySelector('.byd-canvas-stage') as HTMLElement).getByText('Fallgrop')).toBeTruthy()
 
     await user.click(pick(1))
     await nudge(user, '{ArrowRight}')

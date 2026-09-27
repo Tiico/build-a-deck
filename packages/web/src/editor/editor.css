@@ -1364,7 +1364,7 @@
 /* Which card the template is drawn on (#478, variant B), in a row under the card. */
 .byd-card-row { position: relative; display: flex; align-items: center; gap: var(--byd-s2); padding: var(--byd-s1) var(--byd-s3); border-top: 1px solid #2f333d; background: #14161c; }
 .byd-card-row > button { border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; cursor: pointer; }
-.byd-card-row > button:disabled { color: #5d6474; cursor: default; }
+.byd-card-row > button:disabled { color: var(--byd-editor-quiet); cursor: default; }
 .byd-card-row-name { display: inline-flex; align-items: baseline; gap: var(--byd-s2); min-width: 0; max-width: 40%; padding: 0 var(--byd-s3); }
 .byd-card-row-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
 .byd-card-row-name small { flex: 0 0 auto; color: #9aa3b8; }
