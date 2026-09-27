@@ -199,7 +199,8 @@
    off the spacing and not worked out from the order. */
 .byd-exit-choice p { margin: 6px 2px 0; font-size: 13px; color: var(--byd-ink-muted); }
 .byd-exit-sheet .byd-sheet-actions { margin-top: 20px; }
-.byd-survey { position: fixed; inset: 0; z-index: 35; background: var(--byd-bg); color: var(--byd-ink); display: grid; grid-template-rows: auto 1fr auto; padding: 22px 20px; box-sizing: border-box; }
+/* Over everything else on the phone, the rulebook's layer (40) included (#483). */
+.byd-survey { position: fixed; inset: 0; z-index: 45; background: var(--byd-bg); color: var(--byd-ink); display: grid; grid-template-rows: auto 1fr auto; padding: 22px 20px; box-sizing: border-box; }
 .byd-survey h1 { margin: 0; font-size: 22px; }
 .byd-survey-sub { color: var(--byd-ink-muted); font-size: 13px; margin-top: 4px; }
 /* A 44 px row rather than a line of text (UX-36, #81); the old 12 px above it is now the box's own upper half. */

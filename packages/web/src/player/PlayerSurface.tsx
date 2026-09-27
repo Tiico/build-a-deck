@@ -168,7 +168,10 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         {/* The rules this table plays by (B7), one press away beside the session's own buttons.
             The living number (#226) reads this seat's own view: her own hand is a reading, the
             deck and the others' hands are counts. */}
-        <RuleDrawer http={faces} sessionId={sessionId} placement="phone" live={view} />
+        {/* And out of the way when the table asks something of everyone (#483): an ended table's
+            survey and a rewind's question are drawn under the book's layer, and the view they
+            stand over is inert, so presses went to a survey nobody could see. */}
+        {!view.ended && !view.rewind && <RuleDrawer http={faces} sessionId={sessionId} placement="phone" live={view} />}
       </header>
       <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
       <main className="byd-phone-main">
