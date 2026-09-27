@@ -11,6 +11,7 @@ export const enEditor = {
   'media.empty': 'No pictures yet. Drop image files here, or choose Upload media.',
   'media.add': 'Upload media',
   'media.add.done': 'The picture {name} has been added.',
+  'media.add.already': '{file} is already in the library as {name}.',
   'media.add.busy': 'Uploading {name}…',
   'media.add.busy.batch': 'Uploading {name} ({at} of {n})…',
   'media.tile.uploading': 'Uploading…',

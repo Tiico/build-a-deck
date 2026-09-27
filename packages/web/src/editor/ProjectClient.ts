@@ -975,13 +975,14 @@ export class ProjectClient {
     // Read after every wait and never before one, for the reason `placeIcon` reads its face
     // after: the document moves while anything is awaited. Nothing is awaited from here to the
     // edit.
-    const already = this.doc.pictures?.[hash] !== undefined
+    // A picture the game already has is bytes the service already holds, under the name the library
+    // already calls it: nothing is edited and the wire is never touched. The second file's name
+    // used to be written over the first without a word (#481, L22 beslut 6).
+    if (this.doc.pictures?.[hash] !== undefined) return hash
     const name = pictureNameOf(file.name)
     const adding = this.newGesture('picture')
     this.edit({ v: 'addPicture', hash, ...(name === undefined ? {} : { name }) }, adding)
-    // A picture the game already has is bytes the service already holds: the edit above is all
-    // there was to do, and the wire is never touched.
-    if (!already) await this.storeAsset(file, 'image', ref, adding, { said: 'upload.undone.picture', name: name ?? file.name, intents: [{ v: 'removePicture', hash }] }, t)
+    await this.storeAsset(file, 'image', ref, adding, { said: 'upload.undone.picture', name: name ?? file.name, intents: [{ v: 'removePicture', hash }] }, t)
     return hash
   }
 

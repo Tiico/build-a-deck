@@ -14,6 +14,7 @@ export const svEditor = {
   // — en uppladdning tar den tid nätet tar, och den som inte ser rutnätet har inget annat besked.
   'media.add': 'Ladda upp media',
   'media.add.done': 'Bilden {name} är tillagd.',
+  'media.add.already': '{file} finns redan i biblioteket som {name}.',
   'media.add.busy': 'Laddar upp {name}…',
   'media.add.busy.batch': 'Laddar upp {name} ({at} av {n})…',
   'media.tile.uploading': 'Laddas upp…',

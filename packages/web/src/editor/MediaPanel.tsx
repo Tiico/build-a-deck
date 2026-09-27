@@ -228,7 +228,11 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
         setOverview(false)
             setDrafted(null)
         opening.current = true
-        setNote(only.named ? t('media.add.done', { name: only.name }) : t('media.add.done.unnamed'))
+        // `doc` is the library as it stood when the file was chosen, so a picture in it then was
+        // already there — and is said to be, under the name it has (#481).
+        const had = doc.pictures?.[only.hash]
+        if (had) setNote(t('media.add.already', { file: only.name, name: nameOf(only.hash, []) }))
+        else setNote(only.named ? t('media.add.done', { name: only.name }) : t('media.add.done.unnamed'))
       } else setNote(only.why)
       return
     }

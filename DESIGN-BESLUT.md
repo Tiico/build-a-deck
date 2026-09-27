@@ -3797,6 +3797,7 @@ Alternativet — uppladdningen kvar i massredigeraren och beskärningen i biblio
 En bild är sina byte och har aldrig haft ett namn; hashen är entydig och oläslig, och allt leken hittills sagt om en bild har den sagt om en *användning* av den.
 Namnet är det första en designer känner igen en bild på, så det sparas när filen kommer in — i samma post `pictures[hash]` som bär beskärningen, vilket är precis vad den posten byggdes för att kunna ta emot.
 Bilder som redan finns har inget namn och faller tillbaka på korten som använder dem: en post utan `name` läses tillbaka som det dokument den alltid var, så ingen migrering behövs för den här halvan.
+*Tillagt 2026-09-27 (#481):* samma byte valda igen under ett annat filnamn är bilden biblioteket redan har, och den behåller sitt namn; biblioteket säger «{fil} finns redan i biblioteket som {namn}» i stället för «är tillagd», och ingenting skrivs i dokumentet.
 
 **«Hela bilden» räcker; prototypens «Kortets ruta» och «Fritt» byggs inte.**
 En lek kan ha flera bildkolumner med olika ramar, så «kortets ruta» har inget entydigt svar — den skulle först behöva fråga *vilken* ruta, och det är en fråga beskärningen inte kan ställa, eftersom beskärningen hör till bilden och inte till användningen.
