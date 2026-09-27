@@ -153,6 +153,35 @@ describe('the share panel says what happened (#477)', () => {
     expect(screen.queryByText('Skogens herrar')).toBeNull()
   })
 
+  // What is waiting (beslut 2026-09-27, #477 fynd 10, variant C): a line by the form says how many
+  // invitations nobody has followed yet, and opens them; each can be taken back.
+  it('says what is waiting by the form, opens it, and takes an invitation back', async () => {
+    await signIn('ada@example.com')
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    await fetch(`${run.http}/projects/${run.projectId}/invites`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com', role: 'tester' }) })
+    await fetch(`${run.http}/projects/${run.projectId}/invites`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'cee@example.com', role: 'viewer' }) })
+    await openEditor()
+    fireEvent.click(await screen.findByRole('button', { name: 'Vilka som har spelet' }))
+    const panel = await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
+
+    const waiting = await within(panel).findByRole('button', { name: /2 inbjudningar väntar/ })
+    expect(waiting.getAttribute('aria-expanded')).toBe('false')
+    // The members' list is still only the members.
+    expect(within(panel).queryByText('bo@example.com')).toBeNull()
+    fireEvent.click(waiting)
+    expect(waiting.getAttribute('aria-expanded')).toBe('true')
+    expect(within(panel).getByText('bo@example.com')).toBeTruthy()
+    expect(within(panel).getByText(/inbjuden som testledare/)).toBeTruthy()
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'Dra tillbaka inbjudan till bo@example.com' }))
+    expect(await within(panel).findByRole('button', { name: /1 inbjudan väntar/ })).toBeTruthy()
+    await waitFor(() => expect(panel.contains(document.activeElement)).toBe(true))
+
+    fireEvent.change(within(panel).getByLabelText('Adress att bjuda in'), { target: { value: 'dan@example.com' } })
+    fireEvent.click(within(panel).getByRole('button', { name: 'Bjud in' }))
+    expect(await within(panel).findByRole('button', { name: /2 inbjudningar väntar/ })).toBeTruthy()
+  })
+
   it('keeps an address that was being written when Escape closes the panel', async () => {
     const panel = await owning()
     const field = within(panel).getByLabelText('Adress att bjuda in')

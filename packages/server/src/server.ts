@@ -1086,6 +1086,28 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     json(res, 201, { ok: true })
     return true
   }
+  // What is waiting (beslut 2026-09-27, #477 fynd 10): the invitations nobody has followed yet, to
+  // whoever may share, and a way to take one back.
+  if (inviting && req.method === 'GET') {
+    const gate = await allowed(decodeURIComponent(inviting[1] ?? ''), canShare)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    json(res, 200, await projects.openInvites(gate.rec.id, clock(opts).toISOString()))
+    return true
+  }
+  const withdrawing = /^\/projects\/([^/]+)\/invites\/([^/]+)$/.exec(url.pathname)
+  if (withdrawing && req.method === 'DELETE') {
+    const gate = await allowed(decodeURIComponent(withdrawing[1] ?? ''), canShare)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    const gone = await projects.withdrawInvites(gate.rec.id, decodeURIComponent(withdrawing[2] ?? ''))
+    json(res, gone > 0 ? 200 : 404, gone > 0 ? { ok: true } : { error: 'no invitation waiting' })
+    return true
+  }
   const members = /^\/projects\/([^/]+)\/members$/.exec(url.pathname)
   if (members && req.method === 'GET') {
     const gate = await allowed(decodeURIComponent(members[1] ?? ''), canRead)

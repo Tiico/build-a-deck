@@ -94,6 +94,11 @@ describe.skipIf(!url)('PostgresProjectStore', () => {
     await projects.invite({ tokenHash: `${id}-c`, project: id, email: 'dee@example.com', role: 'viewer', expiresAt: '2000-01-01T00:00:00.000Z' })
     await projects.acceptInvite(`${id}-b`, new Date().toISOString())
     expect(await projects.openInvites(id, new Date().toISOString())).toEqual([{ email: 'bo@example.com', role: 'editor', expiresAt: later }])
+    // Withdrawn, whatever case the address is written in, and only what was still waiting.
+    expect(await projects.withdrawInvites(id, 'BO@example.com')).toBe(1)
+    expect(await projects.withdrawInvites(id, 'cee@example.com')).toBe(0)
+    expect(await projects.openInvites(id, new Date().toISOString())).toEqual([])
+    expect(await projects.acceptInvite(`${id}-a`, new Date().toISOString())).toBeNull()
     await store.close()
   })
 

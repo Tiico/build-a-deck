@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ROLES, roleWord, type Role } from '@byd/server/doc'
-import { inviteToProject, projectMembers, unshareProject, type Member } from '../account/api.js'
+import { inviteToProject, projectMembers, unshareProject, waitingInvites, withdrawInvite, type Member, type WaitingInvite } from '../account/api.js'
 import type { Presence } from '@byd/server'
 import { useLang, useT } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
@@ -38,6 +38,21 @@ export function SharePanel({ http, project, here, onClose, draft = '', onDraft }
   }, [])
   const [role, setRole] = useState<Role>('editor')
   const [asked, setAsked] = useState(0)
+  // What is waiting (beslut 2026-09-27, #477 fynd 10, variant C): a line by the form, folded.
+  const [waiting, setWaiting] = useState<WaitingInvite[]>([])
+  const [showWaiting, setShowWaiting] = useState(false)
+  const [waited, setWaited] = useState(0)
+  const waitingRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    let live = true
+    waitingInvites(http, project, t).then(
+      (w) => live && setWaiting(w),
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [http, project, waited])
   useEffect(() => {
     let live = true
     projectMembers(http, project, t).then(
@@ -64,8 +79,21 @@ export function SharePanel({ http, project, here, onClose, draft = '', onDraft }
       setSent(email.trim())
       setEmail('')
       setError(null)
+      setWaited((n) => n + 1)
     } catch (err) {
       setSent(null)
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+  const withdraw = async (who: string) => {
+    try {
+      await withdrawInvite(http, project, who, t)
+      setWaiting((w) => w.filter((x) => x.email !== who))
+      setError(null)
+      setWaited((n) => n + 1)
+      // The row and its button are gone; the keyboard goes back to the line it was opened from.
+      ;(waitingRef.current ?? field.current)?.focus()
+    } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
   }
@@ -148,6 +176,29 @@ export function SharePanel({ http, project, here, onClose, draft = '', onDraft }
           </p>
         )}
       </form>
+      {waiting.length > 0 && (
+        <div className="byd-share-waiting">
+          <button ref={waitingRef} type="button" aria-expanded={showWaiting} onClick={() => setShowWaiting((on) => !on)}>
+            {t(waiting.length === 1 ? 'share.waiting.one' : 'share.waiting.other', { n: waiting.length })}
+            <span aria-hidden="true">{showWaiting ? '▾' : '▸'}</span>
+          </button>
+          {showWaiting && (
+            <ul>
+              {waiting.map((w) => (
+                <li key={w.email} data-waiting={w.email}>
+                  <span>
+                    <b>{w.email}</b>
+                    <small>{t('share.waiting.as', { role: roleWord(w.role, lang), days: Math.max(1, Math.ceil((Date.parse(w.expiresAt) - Date.now()) / 86_400_000)) })}</small>
+                  </span>
+                  <button type="button" aria-label={t('share.withdraw.of', { email: w.email })} onClick={() => void withdraw(w.email)}>
+                    {t('share.withdraw')}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   )
 }

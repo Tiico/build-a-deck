@@ -169,6 +169,8 @@ export const enAccount = {
   'error.invite.member': '{email} already has the game.',
   'error.invite.pending': '{email} already has an invitation waiting.',
   'error.unshare.failed': 'they could not be removed: {status}',
+  'error.invites.failed': 'the waiting invitations could not be read: {status}',
+  'error.withdraw.failed': 'The invitation to {email} could not be withdrawn.',
   'error.join.failed': 'you could not be let in: {status}',
   'error.startTable.failed': 'a table could not be started: {status}',
   'error.removeGame.failed': 'the game could not be deleted: {status}',

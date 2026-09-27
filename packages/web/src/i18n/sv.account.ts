@@ -192,6 +192,8 @@ export const svAccount = {
   'error.invite.member': '{email} har redan spelet.',
   'error.invite.pending': '{email} har redan en inbjudan som väntar.',
   'error.unshare.failed': 'kunde inte ta bort: {status}',
+  'error.invites.failed': 'kunde inte läsa inbjudningarna som väntar: {status}',
+  'error.withdraw.failed': 'Inbjudan till {email} kunde inte dras tillbaka.',
   'error.join.failed': 'kunde inte gå med: {status}',
   'error.startTable.failed': 'kunde inte starta ett bord: {status}',
   'error.removeGame.failed': 'kunde inte ta bort spelet: {status}',

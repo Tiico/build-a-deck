@@ -176,6 +176,30 @@ describe('an invitation to a project (D3)', () => {
     expect(await member.json()).toMatchObject({ why: 'member' })
   })
 
+  // What is waiting, and taking it back (beslut 2026-09-27, #477 fynd 10 C): the owner sees the
+  // invitations nobody has followed yet and can withdraw one, after which its link opens nothing.
+  it('lists the invitations still waiting to whoever may share, and withdraws one', async () => {
+    const ada = await login('ada@example.com')
+    await send('POST', '/projects', ada, { id: 'p1', ...doc() })
+    await send('POST', '/projects/p1/invites', ada, { email: 'bo@example.com', role: 'tester' })
+    const link = /\/invites\/([A-Za-z0-9_-]+)/.exec(run.mail.sent.at(-1)?.text ?? '')?.[1] ?? ''
+    await send('POST', '/projects/p1/invites', ada, { email: 'cee@example.com', role: 'viewer' })
+
+    const waiting = (await (await send('GET', '/projects/p1/invites', ada)).json()) as { email: string; role: string; expiresAt: string }[]
+    expect(waiting.map((w) => [w.email, w.role])).toEqual([
+      ['bo@example.com', 'tester'],
+      ['cee@example.com', 'viewer'],
+    ])
+    expect(Date.parse(waiting[0]!.expiresAt)).toBeGreaterThan(Date.now())
+
+    expect((await send('DELETE', '/projects/p1/invites/bo@example.com', ada)).status).toBe(200)
+    expect(((await (await send('GET', '/projects/p1/invites', ada)).json()) as { email: string }[]).map((w) => w.email)).toEqual(['cee@example.com'])
+    const bo = await login('bo@example.com')
+    expect((await send('POST', `/invites/${link}`, bo)).status).toBe(404)
+    // Nobody who may not share sees what is waiting.
+    expect((await send('GET', '/projects/p1/invites', bo)).status).toBe(403)
+  })
+
   // Taking the game back from someone ends what they have open of it (#477): the removed editor
   // sat on with the whole deck in view until she reloaded.
   it('closes the editor of someone the game is taken back from', async () => {

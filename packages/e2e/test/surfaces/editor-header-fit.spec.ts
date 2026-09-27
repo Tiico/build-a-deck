@@ -48,3 +48,25 @@ for (const locale of ['sv-SE', 'en-GB']) {
     })
   }
 }
+
+// The strip under the header says good news in green, and its buttons wore the pink of a card that
+// could not be rendered — «Ny kod» looked like a fault. The error colours are the lost and stalled
+// states' own; the rest are the quiet outlined button, and every one is a full target (#477).
+test.describe('the table strip under the header', () => {
+  test.use({ viewport: { width: 1280, height: 800 }, locale: 'sv-SE' })
+
+  test('draws its buttons as quiet targets, and keeps the error colours for errors', async ({ page }) => {
+    await logIn(page.request)
+    const project = await makeProject(page.request, { name: 'Remsan', players: 2, cards: 3 })
+    await startTable(page.request, project.id)
+    await page.goto(project.editorUrl)
+    const code = page.locator('.byd-editor-table-link .byd-editor-room button')
+    await expect(code).toBeVisible()
+    const drawn = await code.evaluate((b) => {
+      const s = getComputedStyle(b)
+      return { height: Math.round(b.getBoundingClientRect().height), background: s.backgroundColor }
+    })
+    expect(drawn.height).toBeGreaterThanOrEqual(44)
+    expect(drawn.background).toBe('rgba(0, 0, 0, 0)')
+  })
+})

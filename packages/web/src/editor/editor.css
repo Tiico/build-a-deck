@@ -281,6 +281,16 @@
 .byd-share form { display: grid; grid-template-columns: 1fr auto auto; gap: 6px; }
 .byd-share form input, .byd-share form select { padding: 8px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: 12px system-ui; min-width: 0; }
 .byd-share form button { border: 1px solid var(--byd-editor-primary-bg); border-radius: 8px; padding: 8px 12px; background: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); font: 700 12px system-ui; cursor: pointer; }
+/* What is waiting (#477 fynd 10, variant C): a line under the form that opens the invitations
+   nobody has followed yet. Dashed, as the prototype had it, because they are not members. */
+.byd-share-waiting { margin-top: var(--byd-s2); }
+.byd-share-waiting > button { display: flex; align-items: center; gap: var(--byd-s2); width: 100%; min-height: var(--byd-tap); padding: 0 var(--byd-s3); border: 1px solid #2f333d; border-radius: 8px; background: transparent; color: #c8cfdc; font: 12px system-ui; text-align: left; cursor: pointer; }
+.byd-share-waiting > button > span { margin-left: auto; }
+.byd-share-waiting > button[aria-expanded='true'] { border-color: var(--byd-editor-primary-mark); }
+.byd-share-waiting ul { margin: var(--byd-s2) 0 0; }
+.byd-share-waiting li { background: transparent; border: 1px dashed #3b4358; }
+.byd-share-waiting li b { color: #c8cfdc; font-weight: 600; }
+.byd-share-waiting li button { min-height: var(--byd-tap); }
 .byd-share-question { display: flex; align-items: center; gap: var(--byd-s2); flex-wrap: wrap; margin: 0 0 var(--byd-s3); padding: var(--byd-s2) var(--byd-s3); border: 1px solid #7a3243; border-radius: 8px; background: #3d2632; color: #ffe4ea; }
 .byd-share-question p { margin: 0; font-weight: 700; line-height: 1.45; }
 .byd-share-question button { min-height: var(--byd-tap); padding: 0 var(--byd-s3); border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: #ffe4ea; font: inherit; font-weight: 700; cursor: pointer; }
@@ -329,16 +339,25 @@
 /* A blocked update is not the good news this row otherwise carries, and must not be green. */
 .byd-editor-table-link[data-lost] { background: var(--byd-editor-lost-bg); color: var(--byd-editor-lost-quiet); }
 .byd-editor-warning { color: var(--byd-editor-lost-ink); font-weight: 600; }
+/* The strip's buttons are the quiet outlined button of the button language (L13), and full
+   targets. The pink below is a card that could not be rendered (texture.css) and belongs to the
+   strips that say so — lost and stalled — not to «Ny kod» on a table that is running well (#477). */
 .byd-editor-table-link button {
-  min-height: 32px;
-  padding: 4px 12px;
-  border: 1px solid var(--byd-editor-lost-button-line);
-  border-radius: 999px;
-  background: var(--byd-editor-lost-button-bg);
-  color: var(--byd-editor-lost-ink);
+  min-height: var(--byd-tap);
+  padding: 0 var(--byd-s3);
+  border: 1px solid #5f7f69;
+  border-radius: 8px;
+  background: transparent;
+  color: #e3f3e8;
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+}
+.byd-editor-table-link button:hover { border-color: #7dd3a0; }
+.byd-editor-table-link:is([data-lost], [data-stalled]) button {
+  border-color: var(--byd-editor-lost-button-line);
+  background: var(--byd-editor-lost-button-bg);
+  color: var(--byd-editor-lost-ink);
 }
 /* The strips above are usually absent; the open mode is the one thing that gives way, so the
    canvas reaches the bottom of the window however many of them are there.
