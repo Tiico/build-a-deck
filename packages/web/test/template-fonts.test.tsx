@@ -22,7 +22,8 @@ function bare() {
     doc: projectDoc(),
     face: 'front',
     row: 'dragon',
-    selectedElement: 'title',
+    // The game's typefaces stand in the panel while no layer is chosen (#478).
+    selectedElement: null,
     onSelectElement: vi.fn(),
     onPatch: vi.fn(),
     onCallOff: vi.fn(),
@@ -49,7 +50,7 @@ function bare() {
 describe('choosing the type an element is set in (B3)', () => {
   it('offers the fonts the project has, and writes the chosen family onto the element', () => {
     const doc: ProjectDoc = { ...projectDoc(), fonts: { 'sans-serif': { stack: 'sans-serif' }, Rubrikserif: { stack: '"Rubrikserif", sans-serif', asset: `asset:${'a'.repeat(64)}` } } }
-    const { onPatch } = canvas({ doc })
+    const { onPatch } = canvas({ doc, selectedElement: 'title' })
 
     const pick = screen.getByLabelText(/^typsnitt$/i) as HTMLSelectElement
     expect([...pick.options].map((o) => o.value)).toEqual(['sans-serif', 'Rubrikserif'])
@@ -61,7 +62,7 @@ describe('choosing the type an element is set in (B3)', () => {
   it('keeps a family the project no longer names, rather than silently moving the element to another one', () => {
     const doc = projectDoc()
     doc.fonts = { Rubrikserif: { stack: '"Rubrikserif", sans-serif' } }
-    canvas({ doc })
+    canvas({ doc, selectedElement: 'title' })
     const pick = screen.getByLabelText(/^typsnitt$/i) as HTMLSelectElement
     expect([...pick.options].map((o) => o.value)).toContain('sans-serif')
     expect(pick.value).toBe('sans-serif')
@@ -233,8 +234,13 @@ describe('dropping a typeface on the upload (#294)', () => {
   it('leaves the dropped typeface in the picker, with its licence beside it', async () => {
     function Shelf() {
       const [doc, setDoc] = useState<ProjectDoc>(projectDoc())
+      // The typeface is dropped on the game's shelf, which stands while no layer is chosen, and
+      // the picker is read once a layer is (#478).
+      const [selected, setSelected] = useState<string | null>(null)
       const props = {
         doc,
+        selectedElement: selected,
+        onSelectElement: setSelected,
         onFontFile: async (file: File) => {
           const family = file.name.replace(/\.[^.]+$/, '')
           const bytes = new Uint8Array(await file.arrayBuffer())
@@ -250,17 +256,19 @@ describe('dropping a typeface on the upload (#294)', () => {
     render(<Shelf />)
 
     fireEvent.drop(upload(), files([new File([WOFF2], 'Rubrikserif.woff2', { type: 'font/woff2' })]))
-
-    // In the picker an element is set from, beside the families the project already had.
-    const pick = await screen.findByLabelText(/^typsnitt$/i)
-    await waitFor(() => expect([...(pick as HTMLSelectElement).options].map((o) => o.value)).toContain('Rubrikserif'))
-    // And on the shelf, saying it travels to the printer, with the two lines the file cannot say.
-    const row = within(screen.getByRole('list', { name: /typsnitt i spelet/i })).getByText('Rubrikserif').closest('li')!
+    // On the shelf, saying it travels to the printer, with the two lines the file cannot say.
+    const row = (await within(screen.getByRole('list', { name: /typsnitt i spelet/i })).findByText('Rubrikserif')).closest('li')!
     expect(row.textContent).toMatch(/följer med/i)
     fireEvent.change(within(row).getByLabelText(/licens för rubrikserif/i), { target: { value: 'OFL-1.1' } })
     fireEvent.change(within(row).getByLabelText(/upphovsperson för rubrikserif/i), { target: { value: 'Typverket' } })
     fireEvent.blur(within(row).getByLabelText(/upphovsperson för rubrikserif/i))
     expect(onFontLicence).toHaveBeenCalledWith('Rubrikserif', { licence: 'OFL-1.1', by: 'Typverket' })
+
+    // And in the picker an element is set from, once a layer is chosen, beside the families the
+    // project already had (#478: the shelf is the game's, the picker the layer's).
+    fireEvent.click(document.querySelector('[data-layer="title"] .byd-layer-pick') as HTMLElement)
+    const pick = await screen.findByLabelText(/^typsnitt$/i)
+    await waitFor(() => expect([...(pick as HTMLSelectElement).options].map((o) => o.value)).toContain('Rubrikserif'))
   })
 
   // The picker closes while a file is going up (`disabled`), and the drop has to close with it:

@@ -1423,6 +1423,15 @@
 /* The rule beside the name is what makes a section a section without a box around it: a hairline
    costs a pixel where a border and its padding cost eight on every side. */
 .byd-props-sec-head::after { content: ''; flex: 1 1 auto; height: 1px; background: #2a2d36; }
+/* The head is the button that folds the section (#478, revising L25): the name as it was, a
+   chevron that says which way it stands, and, while it is closed, the section's value — so a
+   closed section still says what is in it. */
+.byd-props-sec-head button { display: inline-flex; align-items: center; gap: var(--byd-s2); min-width: 0; max-width: 100%; min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+.byd-props-sec-head button::before { content: ''; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 120ms; }
+.byd-props-sec-head button[aria-expanded='true']::before { transform: rotate(45deg); }
+.byd-props-sec-swatch { display: inline-block; width: 10px; height: 10px; margin-right: var(--byd-s2); border-radius: 2px; box-shadow: 0 0 0 1px #3b4358; vertical-align: -1px; }
+.byd-props-sec-sum { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #c7cede; font-size: 12px; letter-spacing: 0; text-transform: none; }
+@media (prefers-reduced-motion: reduce) { .byd-props-sec-head button::before { transition: none; } }
 .byd-props-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 8px; }
 /* A number and its grip (L25). The icon is the field's name and the thing to pull it by: three
    dots of a rule beside a glyph, so the drag is visible before anyone hovers over it. */

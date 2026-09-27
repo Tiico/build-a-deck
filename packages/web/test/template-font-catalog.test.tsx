@@ -14,7 +14,8 @@ function canvas(over: Partial<React.ComponentProps<typeof TemplateCanvas>> = {})
     doc: projectDoc(),
     face: 'front',
     row: 'dragon',
-    selectedElement: 'title',
+    // The game's typefaces stand in the panel while no layer is chosen (#478).
+    selectedElement: null,
     onSelectElement: vi.fn(),
     onPatch: vi.fn(),
     onCallOff: vi.fn(),

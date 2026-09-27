@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react'
+import { createContext, Fragment, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react'
 import { CardRow } from './CardRow.js'
 import { useNumberDraft } from './number-draft.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
@@ -27,7 +27,7 @@ import type { CatalogFamily } from './font-catalog.js'
 import { LIBRARY, type GameSymbol } from './symbols.js'
 import { SymbolList, symbolListKey, symbolOptionId } from './SymbolList.js'
 import type { ProjectCredit } from '@byd/server'
-import { useT, type Key, type T } from '../i18n/index.js'
+import { useT, type Key, type T, useLang } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
 import { useSay } from '../status/StatusLive.js'
 import { DragDoor } from './DragDoor.js'
@@ -118,6 +118,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // The card the canvas shows: with a group open it must be a card of that group, or the group
   // could not be seen. A group whose cards have all gone is shown on the rule itself.
   const rowData = previewRow(doc, column, group, row)
+  const sections = useSectionsOpen()
   // The cards the preview can be stepped through, and the one it is on (#478): the open group's,
   // or the whole deck's.
   const shownCards = column && group ? cardsInGroup(doc, group) : doc.rows
@@ -422,6 +423,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       </div>
       )}
       {shows('props') && !(stage === null && folded) && (
+      <SectionsOpen.Provider value={sections}>
       <aside className="byd-canvas-props" id={PROPS_COLUMN}>
         <h2>{layer ? t('canvas.props.of', { id: layer.element.id }) : t('canvas.props')}</h2>
         {layer?.source === 'removed' && <p className="byd-canvas-affects">{t('canvas.removedIn', { rule: ruleLabel(column ?? '', group ?? '') })}</p>}
@@ -451,8 +453,11 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             {t('canvas.reset')}
           </button>
         )}
-        <FontShelf doc={doc} onFontFile={onFontFile} onFontLicence={onFontLicence} onRemoveFont={onRemoveFont} onOpenCatalog={() => setCatalog(true)} />
+        {/* The game's typefaces are the game's and not a layer's (#478): they stand here while no
+            layer is chosen, and give the chosen layer's properties the whole column. */}
+        {!layer && <FontShelf doc={doc} onFontFile={onFontFile} onFontLicence={onFontLicence} onRemoveFont={onRemoveFont} onOpenCatalog={() => setCatalog(true)} />}
       </aside>
+      </SectionsOpen.Provider>
       )}
     </div>
   )
@@ -1713,13 +1718,69 @@ const LOCKED_NOTE = 'byd-props-locked-note'
 // and not a button on purpose: a section that can be shut is a state the panel would have to
 // remember between two selections — and a designer who changes what she has selected is owed the
 // same panel every time, not the one she left folded behind the last element.
-function Section({ name, children }: { name: string; children: ReactNode }) {
+// The panel folds (#478, beslut 2026-09-27, variant A, revising L25). Every section's head is a
+// button, and a closed one carries the section's value — «Linje · 0,5 mm», «Effekter · 100 % ·
+// ingen skugga» — so nothing is hidden without being said. What is open belongs to the editor and
+// not to one element: choosing another layer keeps the same sections open, and so does the next
+// visit, in this browser (L4's pattern for a view).
+type SectionId = 'layout' | 'content' | 'text' | 'picture' | 'shape' | 'fill' | 'line' | 'effects'
+const OPEN_FROM_START: readonly SectionId[] = ['layout', 'content', 'text', 'picture', 'shape']
+const OPEN_KEY = 'byd.props-open'
+const SectionsOpen = createContext<{ open: ReadonlySet<string>; toggle(id: SectionId): void }>({ open: new Set(OPEN_FROM_START), toggle: () => undefined })
+function useSectionsOpen(): { open: ReadonlySet<string>; toggle(id: SectionId): void } {
+  const [open, setOpen] = useState<ReadonlySet<string>>(() => {
+    try {
+      const kept = JSON.parse(localStorage.getItem(OPEN_KEY) ?? 'null') as unknown
+      if (Array.isArray(kept)) return new Set(kept.filter((id): id is string => typeof id === 'string'))
+    } catch {
+      // A browser that keeps nothing starts where every editor starts.
+    }
+    return new Set(OPEN_FROM_START)
+  })
+  const toggle = useCallback((id: SectionId) => {
+    setOpen((was) => {
+      const next = new Set(was)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      try {
+        localStorage.setItem(OPEN_KEY, JSON.stringify([...next]))
+      } catch {
+        // Kept for this visit only.
+      }
+      return next
+    })
+  }, [])
+  return useMemo(() => ({ open, toggle }), [open, toggle])
+}
+
+function Section({ id, name, summary, children }: { id: SectionId; name: string; summary?: ReactNode; children: ReactNode }) {
+  const { open, toggle } = useContext(SectionsOpen)
+  const rows = useId()
+  const shown = open.has(id)
   return (
-    <section className="byd-props-sec" aria-label={name}>
-      <h3 className="byd-props-sec-head">{name}</h3>
-      <div className="byd-props-rows">{children}</div>
+    <section className="byd-props-sec" aria-label={name} data-section={id}>
+      <h3 className="byd-props-sec-head">
+        <button type="button" aria-expanded={shown} aria-controls={rows} onClick={() => toggle(id)}>
+          <span className="byd-props-sec-name">{name}</span>
+          {!shown && summary !== undefined && <span className="byd-props-sec-sum">{summary}</span>}
+        </button>
+      </h3>
+      {shown && (
+        <div className="byd-props-rows" id={rows}>
+          {children}
+        </div>
+      )}
     </section>
   )
+}
+
+// A measure as the reader writes it: «0,5» in Swedish, «0.5» in English.
+function useMeasure(): (n: number) => string {
+  const { lang } = useLang()
+  return useMemo(() => {
+    const format = new Intl.NumberFormat(lang === 'sv' ? 'sv-SE' : 'en-GB', { maximumFractionDigits: 2 })
+    return (n: number) => format.format(n)
+  }, [lang])
 }
 
 // How near the stage's edge a held hand pans it, and how fast at the very edge (#478).
@@ -1946,6 +2007,7 @@ function Properties({
   // about where the element sits and how big it is, and these four numbers are exactly that. What
   // it is set in, what colour it is and which column it draws stay open — locking a layer is not
   // freezing its design.
+  const measure = useMeasure()
   const num = (label: Key, key: 'x' | 'y' | 'w' | 'h', icon: string) =>
     key in el ? (
       <Scrub
@@ -1973,7 +2035,7 @@ function Properties({
           {t('canvas.props.locked')}
         </p>
       )}
-      <Section name={t('canvas.props.sec.layout')}>
+      <Section id="layout" name={t('canvas.props.sec.layout')} summary={'w' in el ? `${measure(el.x)}, ${measure(el.y)} · ${measure(el.w)} × ${measure(el.h)} mm` : undefined}>
         {num('canvas.props.x', 'x', 'X')}
         {num('canvas.props.y', 'y', 'Y')}
         {num('canvas.props.w', 'w', 'B')}
@@ -1982,7 +2044,7 @@ function Properties({
       {/* What the element shows (#32, #320, #33): the column it draws, or the one picture or
           icon it carries itself. Every element that shows data says which column it shows. */}
       {content && (
-        <Section name={t('canvas.props.sec.content')}>
+        <Section id="content" name={t('canvas.props.sec.content')}>
           {/* Which icon a single one shows (#33). It is bound to a name rather than to a column
               because this icon is the card's and not the row's — a suit mark is the same on every
               card — so the set is what it is chosen from, and the field picker below is the way to
@@ -2094,7 +2156,7 @@ function Properties({
         />
       )}
       {el.kind === 'text' && (
-        <Section name={t('canvas.props.sec.text')}>
+        <Section id="text" name={t('canvas.props.sec.text')}>
           <label>
             {/* The families the project names, and the one this element is already set in even
                 when the project has forgotten it — an element is never moved to another type
@@ -2141,7 +2203,7 @@ function Properties({
           A picture fitted whole inside its frame keeps its proportions too, so it reads as on;
           turning it off and on again lands on filling, which is the frame the switch is about. */}
       {el.kind === 'image' && (
-        <Section name={t('canvas.props.sec.picture')}>
+        <Section id="picture" name={t('canvas.props.sec.picture')}>
           <label className="byd-props-switch">
             <input type="checkbox" checked={(el.fit ?? 'cover') !== 'fill'} onChange={(e) => onPatch({ fit: e.target.checked ? 'cover' : 'fill' })} />
             {t('canvas.props.keepRatio')}
@@ -2216,9 +2278,23 @@ function ShapeProps({ el, point, fields, valuesIn, onPatch }: { el: Shape; point
   const bent = at !== undefined && (at.in !== undefined || at.out !== undefined)
   // A line has no inside (L17), so it is offered no fill and no pattern — only the line itself.
   const solid = el.shape !== 'line'
+  const measure = useMeasure()
+  // What the closed Fyllning says (#478): the colour, the column the colour follows, or none.
+  const fillSummary: ReactNode =
+    el.fill === undefined ? (
+      t('canvas.props.sum.none')
+    ) : typeof el.fill === 'string' ? (
+      <>
+        <i className="byd-props-sec-swatch" style={{ background: el.fill }} aria-hidden="true" />
+        {el.fill}
+        {el.pattern ? ` · ${t('canvas.props.sum.pattern')}` : ''}
+      </>
+    ) : (
+      t('canvas.props.sum.byField', { field: el.fill.field })
+    )
   return (
     <>
-      <Section name={t('canvas.props.shape')}>
+      <Section id="shape" name={t('canvas.props.shape')}>
         <div className="byd-props-gallery" role="group" aria-label={t('canvas.props.shape')}>
           {SHAPE_GALLERY.map((entry) => (
             <button key={entry.id} type="button" aria-label={t(entry.name)} title={t(entry.name)} aria-pressed={chosen === entry.id} onClick={() => onPatch(shapeChoice(entry, el))}>
@@ -2262,12 +2338,12 @@ function ShapeProps({ el, point, fields, valuesIn, onPatch }: { el: Shape; point
       </Section>
       {/* What fills the outline, and over it the pattern that is a layer and not a fill (L17). */}
       {solid && (
-        <Section name={t('canvas.props.sec.fill')}>
+        <Section id="fill" name={t('canvas.props.sec.fill')} summary={fillSummary}>
           <Fill fill={el.fill} fields={fields} valuesIn={valuesIn} onPatch={onPatch} />
           <PatternProps pattern={el.pattern} fill={el.fill} onPatch={onPatch} />
         </Section>
       )}
-      <Section name={t('canvas.props.sec.line')}>
+      <Section id="line" name={t('canvas.props.sec.line')} summary={(el.strokeMm ?? 0) > 0 ? `${measure(el.strokeMm ?? 0)} mm` : t('canvas.props.sum.none')}>
         <label>
           {t('canvas.props.stroke')}
           <input type="color" value={el.stroke ?? '#111111'} {...pushing.visit} onChange={(e) => onPatch({ stroke: e.target.value, ...((el.strokeMm ?? 0) > 0 ? {} : { strokeMm: 0.5 }) }, pushing.token())} />
@@ -2280,7 +2356,7 @@ function ShapeProps({ el, point, fields, valuesIn, onPatch }: { el: Shape; point
           one number control like every other (L25): the same arrow keys, the same grip, and the
           same one entry in the history per drag. Offered on a line as well, which has no inside
           to fill but is ink all the same. */}
-      <Section name={t('canvas.props.sec.effects')}>
+      <Section id="effects" name={t('canvas.props.sec.effects')} summary={`${Math.round((el.opacity ?? 1) * 100)} % · ${t(el.shadow ? 'canvas.props.sum.shadow' : 'canvas.props.sum.noShadow')}`}>
         <Scrub name={t('canvas.props.opacity')} icon="◐" unit="%" step={1} min={0} max={100} value={Math.round((el.opacity ?? 1) * 100)} gesture={pushing} onWrite={(share, gesture) => onPatch({ opacity: share / 100 }, gesture)} />
         <ShadowProps shadow={el.shadow} onPatch={onPatch} />
       </Section>

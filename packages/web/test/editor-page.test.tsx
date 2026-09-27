@@ -9,8 +9,12 @@ import { buildBlankProject } from '../src/wizard/build.js'
 import { asSeat, registerRoom, startServer, type Running } from './fixture.js'
 import { layerNames, layerPick, layerRow, layerRows } from './layers.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
+import { openAllSections } from './sections.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
+
+// The panel folds (#478); this file is about the controls in it, so every section stands open.
+beforeEach(openAllSections)
 
 let run: Running
 beforeEach(async () => {
@@ -376,6 +380,9 @@ describe('the layers of the template by keyboard (UX-04)', () => {
     // And then the properties, where the first stop is the grip beside the first number and the
     // second is the number itself (L25): the icon is the field's name and the thing it is pulled
     // by, and a reader who never reaches the field still has to reach the grip.
+    // The panel's first section head comes first, since the panel folds (#478).
+    await user.tab()
+    expect(document.activeElement?.closest('.byd-props-sec-head')).toBeTruthy()
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'X (mm), dra för att ändra' }))
     await user.tab()
