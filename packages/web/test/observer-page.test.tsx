@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { TableClient } from '../src/client.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
+import { StatusLive } from '../src/status/StatusLive.js'
 import { admit, asSeat, asTable, createSession, startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 import { tabFrom, tabStops } from './tabs.js'
@@ -214,5 +215,43 @@ describe('observatörens kamera (#325)', () => {
     expect(frame.getAttribute('data-drive')).toBe('hand')
     expect(frame.getAttribute('data-camera')).toBeNull()
     table.close()
+  })
+})
+
+// What the table screen shows and says, the observer sees and hears (#485, fynd 4 och 5; K13, C8).
+describe('the observer is shown and told what the table is', () => {
+  it('sees a proposed rewind with the table’s own frame and label, and hears what happens at the table', async () => {
+    const id = await createSession(run)
+    const token = await admit(run, id, null, 'Eva')
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${token}&server=${encodeURIComponent(run.url)}`)
+    render(
+      <StatusLive>
+        <ObserverPage />
+      </StatusLive>,
+    )
+    const ada = TableClient.connect(await asSeat(run, id, 'A'))
+    const bo = TableClient.connect(await asSeat(run, id, 'B'))
+    await Promise.all([ada.ready(), bo.ready()])
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await bo.send({ v: 'seat.claim', seat: 'B', name: 'Bo' }, { v: 'draw', from: 'draw', to: 'discard', count: 3 })
+    // The table's own live region speaks for the room, and hers says the same.
+    await waitFor(() => expect(document.querySelector('[data-status-live="polite"]')!.textContent).toMatch(/Bo/))
+
+    await ada.send({ v: 'rewind.propose', toSeq: 2 })
+    await waitFor(() => expect(document.querySelector('[data-rewind-preview]')).toBeTruthy())
+    expect(screen.getByText(/så här såg bordet ut/)).toBeTruthy()
+    expect(screen.getByText(/väntar på Bo/)).toBeTruthy()
+    ada.close()
+    bo.close()
+  })
+
+  it('says the flag was raised in a status region, not in a box nobody hears', async () => {
+    const id = await createSession(run)
+    const token = await admit(run, id, null, 'Eva')
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${token}&server=${encodeURIComponent(run.url)}`)
+    render(<ObserverPage />)
+    fireEvent.click(await screen.findByRole('button', { name: /Flagga/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Flagga' }))
+    expect((await screen.findByText('Ögonblicket är flaggat')).closest('[role="status"]')).not.toBeNull()
   })
 })

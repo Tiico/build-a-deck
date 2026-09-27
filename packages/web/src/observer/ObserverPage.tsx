@@ -6,6 +6,9 @@ import { TableRenderer } from '../table/TableRenderer.js'
 import { turnToFit } from '../table/fit.js'
 import { useRoom } from '../table/useRoom.js'
 import { TvChrome } from '../table/TvChrome.js'
+import { RewindFrame } from '../table/RewindFrame.js'
+import { previewOf } from '../table/rewind.js'
+import { useActivityLive } from '../table/useActivityLive.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { useShuffles } from '../table/shuffle.js'
 import { refusedText } from '../player/SessionOverlays.js'
@@ -41,6 +44,9 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   const conn = useTableClient(sessionId ? { url, sessionId, seat: null, observer: name, ...(token ? { token } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
   const { client, view, status, activity, observers, refused } = conn
   const live = useLiveStatus(conn, 'table', timing)
+  // What happens at the table, said in the room's live regions as the table screen says it (#485):
+  // hers were silent the whole session. She sits at no seat, so nothing is said as «du».
+  useActivityLive(conn.activity, conn.view, null)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
   usePageTitle({ state: sessionId ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code') ?? sessionId })
   // The shuffle, fanned for the observer as for the room (L35).
@@ -88,14 +94,18 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
           acted on, so it is out of reach the same way a stale one is (UX-38, #83). */}
       <div data-page="observe" data-drawer={drawer ? 'open' : 'shut'} data-status={status} className={`byd-fit byd-observer${live.stale ? ' byd-status-stale' : ''}`} {...(live.stale || view.ended ? { inert: true } : {})}>
       <TvChrome
-        view={view}
+        view={previewOf(view)}
         activity={activity}
         inspecting={inspecting}
         faces={http}
         observers={observers}
         note={<p className="byd-observer-note">{t('observer.banner')}</p>}
       >
-        <TableRenderer view={view} mode="tv" camera="hand" {...(sessionId ? { remember: `observe:${sessionId}` } : {})} rotate={turn} faces={http} onInspect={setInspecting} shuffles={shuffles} />
+        {/* A proposed rewind as the table screen shows it (#485, K13): the table it would bring back,
+            in the same frame and with the same words. */}
+        <RewindFrame view={view} activity={activity}>
+          <TableRenderer view={previewOf(view)} mode="tv" camera="hand" {...(sessionId ? { remember: `observe:${sessionId}` } : {})} rotate={turn} faces={http} onInspect={setInspecting} shuffles={shuffles} />
+        </RewindFrame>
       </TvChrome>
       {/* The handle (#6): a row of its own under the table, never a banner over it. What she is
           is always on it; the rest of the sentence, the feed and the seats are one press away and
@@ -120,7 +130,11 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
           {t('session.flag')}
         </button>
       </div>
-      {toast && <div className="byd-toast">{toast}</div>}
+      {toast && (
+        <div className="byd-toast" role="status">
+          {toast}
+        </div>
+      )}
       {sheet && (
         <FlagSheet
           refusal={flagged}
