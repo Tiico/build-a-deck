@@ -137,10 +137,20 @@
    tabs' padding give way before anything gives up its place — measured in Chromium in
    `editor-viewport.test.ts`. */
 @media (min-width: 1024px) and (max-width: 1279px) {
-  .byd-editor > header { gap: 6px; padding: 0 12px; }
-  .byd-editor > header [role='tablist'] { margin-left: 0; }
-  .byd-editor > header [role='tab'] { padding: 0 4px; }
+  /* 4 px and 8 px since #477: with a table running, a machine whose system-ui is DejaVu (CI's
+     Linux) still cut a game called «Sal's Saloon» by 8–11 px at 6 and 12. */
+  .byd-editor > header { gap: var(--byd-s1); padding: 0 var(--byd-s2); }
+  .byd-editor > header [role='tablist'] { margin-left: 0; padding: 2px; } /* undantag: halva steget, mätt med DejaVu (#477) */
+  .byd-editor > header > .byd-editor-saved { font-size: 12px; }
+  .byd-editor > header > .byd-editor-rev { padding: 4px 2px; } /* undantag: halva steget, mätt med DejaVu (#477) */
+  /* And the tabs speak at the crown's 12 px here: seven of them were over 400 px of the row. */
+  .byd-editor > header [role='tab'] { padding: 0 4px; font-size: 12px; }
   .byd-editor > header > button { padding: 0 8px; }
+}
+/* The same air, given more gently, where the desk is wide but not wide: at 1280 in English the row
+   had 4 px left with DejaVu (#477). */
+@media (min-width: 1280px) and (max-width: 1439px) {
+  .byd-editor > header [role='tab'] { padding: 0 var(--byd-s2); }
 }
 /* What a phone does not get, said where the tools would have been (L10). */
 .byd-editor-narrow {
@@ -2479,9 +2489,9 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-editor > header > .byd-editor-primary:has(+ .byd-editor-split) { border-radius: 8px 0 0 8px; }
 .byd-editor-split > .byd-editor-caret { border-radius: 0 8px 8px 0; margin-left: 0; padding: 8px 12px; font: inherit; cursor: pointer; }
 @media (min-width: 1024px) and (max-width: 1279px) {
-  /* The header's gap is 6 px in this band, so the caret takes back 6 and not 12: taking 12 laid
+  /* The header's gap is 4 px in this band, so the caret takes back 4 and not 12: taking 12 laid
      it over the last letters of the primary (#477). */
-  .byd-editor-split { margin-left: -6px; } /* undantag: tar tillbaka huvudets eget mellanrum i det här bandet, som är 6 px */
+  .byd-editor-split { margin-left: calc(-1 * var(--byd-s1)); }
 }
 .byd-editor-ways {
   position: absolute;
