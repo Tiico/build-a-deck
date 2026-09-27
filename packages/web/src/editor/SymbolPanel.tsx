@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { CARD_PX, cornerPx } from './corner.js'
@@ -58,7 +58,16 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
   // never on the whole deck. A set that loses the symbol being shown falls back the same way.
   const chosen = showing !== null && (showing === ALL || names.includes(showing)) ? showing : (names[0] ?? null)
   const shown = chosen === null ? [] : chosen === ALL ? said : said.filter((c) => c.icons.has(chosen))
+  // The library's symbols the game already has, by the source its credit names (#481): the name
+  // in the game is the designer's and may be anything, the source is the library's own id.
+  const had = new Map(Object.entries(doc.credits ?? {}).flatMap(([name, credit]) => (doc.icons[name] !== undefined && credit.source ? [[credit.source, name] as const] : [])))
+  const tileId = useId()
+  const [hadSaid, setHadSaid] = useState<string | null>(null)
   const take = (symbol: GameSymbol) => {
+    // A second press on a symbol the game has says so, rather than doing nothing without a word.
+    const kept = had.get(symbol.id)
+    if (kept !== undefined) return setHadSaid(t('symbols.take.had', { name: symbolName(symbol, t), as: `{${kept}}` }))
+    setHadSaid(null)
     void client.useSymbol(symbol, undefined, t).catch((err: unknown) => setNotice(err instanceof Error ? err.message : String(err)))
   }
   return (
@@ -110,15 +119,26 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
           ) : (
             <div className="byd-symbols-grid">
               {found.map((s) => (
-                <button key={s.id} type="button" className="byd-symbols-tile" aria-label={t('symbols.take', { name: symbolName(s, t) })} onClick={() => take(s)}>
+                <button
+                  key={s.id}
+                  type="button"
+                  className="byd-symbols-tile"
+                  aria-label={t('symbols.take', { name: symbolName(s, t) })}
+                  {...(had.has(s.id) ? { 'data-had': 'true', 'aria-describedby': `${tileId}-${s.id}` } : {})}
+                  onClick={() => take(s)}
+                >
                   <img src={symbolPreview(s)} alt="" />
                   <span>{symbolName(s, t)}</span>
-                  <small>{s.licence}</small>
+                  {/* In words and not only as a mark (L13): the game already has this one. */}
+                  {had.has(s.id) ? <small id={`${tileId}-${s.id}`} className="byd-symbols-had">{t('symbols.had')}</small> : <small>{s.licence}</small>}
                 </button>
               ))}
             </div>
           )}
           {notice && <p role="alert">{notice}</p>}
+          <p className="byd-symbols-note" role="status">
+            {hadSaid ?? ''}
+          </p>
         </aside>
         <div className="byd-symbols-main">
           <ProjectSet doc={doc} client={client} assetBase={assetBase} />

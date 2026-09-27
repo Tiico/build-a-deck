@@ -90,6 +90,22 @@ describe('the symbol library in the editor (E4)', () => {
     expect(within(set).getByText('{sköld}')).toBeTruthy()
   })
 
+  // The library says which of its symbols the game already has, and a second press says so rather
+  // than doing nothing without a word (#481, fynd 15).
+  it('marks a symbol the game already has, and says so when it is taken again', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openSymbols()
+    fireEvent.click(tile('sköld'))
+    const set = await screen.findByRole('list', { name: 'Symboler i spelet' })
+    await waitFor(() => expect(within(set).getByText('{sköld}')).toBeTruthy())
+    expect(within(tile('sköld')).getByText('I spelet')).toBeTruthy()
+    expect(tile('sköld').getAttribute('aria-describedby')).toBeTruthy()
+
+    fireEvent.click(tile('sköld'))
+    expect(await screen.findByText('sköld finns redan i spelet som {sköld}.')).toBeTruthy()
+    expect(within(set).getAllByRole('listitem')).toHaveLength(1)
+  })
+
   // A symbol the cards write is asked about before it goes, as Media asks about a picture (#481).
   it('asks before taking away a symbol a card writes, and hands the focus back when it goes', async () => {
     const doc = projectDoc()

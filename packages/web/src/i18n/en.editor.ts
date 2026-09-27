@@ -695,6 +695,8 @@ export const enEditor = {
   'symbols.all': 'All',
   'symbols.none': 'Nothing by that name. Search for what the symbol is for, such as "försvar" or "skörd".',
   'symbols.take': 'Take in {name}',
+  'symbols.take.had': '{name} is already in the game as {as}.',
+  'symbols.had': 'In the game',
   'symbols.inGame': 'Symbols in the game',
   'symbols.set.none': 'No symbols yet. Take one from the library and write {name} in the card text.',
   'symbols.deck': 'Cards that say the symbol',

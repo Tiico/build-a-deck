@@ -776,6 +776,8 @@ export const svEditor = {
   'symbols.all': 'Alla',
   'symbols.none': 'Inget med det namnet. Sök på vad symbolen är till för, som "försvar" eller "skörd".',
   'symbols.take': 'Ta in {name}',
+  'symbols.take.had': '{name} finns redan i spelet som {as}.',
+  'symbols.had': 'I spelet',
   'symbols.inGame': 'Symboler i spelet',
   'symbols.set.none': 'Inga symboler ännu. Ta in en ur biblioteket och skriv {namn} i korttexten.',
   'symbols.deck': 'Kort som säger symbolen',
