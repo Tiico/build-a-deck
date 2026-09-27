@@ -197,7 +197,13 @@ test.describe('the editor is not weighed against the felt’s face (#186)', () =
     })
     {
       await page.goto('/editor', { waitUntil: 'load' })
-      await page.waitForFunction(() => document.querySelectorAll('link[rel=stylesheet]').length > 1, undefined, { timeout: 20_000 })
+      // A second link that has *arrived*, not only been written into the head: `sheet` is null until
+      // the file is in, and a probe read before that measures the race and not the rule (#482, where
+      // the race began to be lost every time).
+      await page.waitForFunction(() => {
+        const links = [...document.querySelectorAll<HTMLLinkElement>('link[rel=stylesheet]')]
+        return links.length > 1 && links.every((l) => l.sheet !== null)
+      }, undefined, { timeout: 20_000 })
       // Two sheets on the wire: the one the first painting blocked on, and the editor's, asked for
       // only once the route said it wanted it.
       expect(css.length).toBe(2)
