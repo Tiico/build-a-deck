@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { configure, fireEvent, render, screen } from '@testing-library/react'
+import { configure, fireEvent, render } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
 import { DeckWall } from '../src/editor/DeckWall.js'
 import { projectDoc } from './project-doc.js'
@@ -409,11 +409,16 @@ describe('a search that finds nothing (#477)', () => {
     doc.rows = doc.rows.filter((_, i) => i % 26 === 0)
     wall(doc)
     expect(document.querySelector('.byd-crown-fold')).not.toBeNull()
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Sök i alla fält' }), { target: { value: 'zzzzqx' } })
+    // Found by selector, as everything in this file is: a role query computes every accessible name
+    // in the document, and on CI that alone outran the budget.
+    fireEvent.change(document.querySelector('.byd-crown-search')!, { target: { value: 'zzzzqx' } })
     expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(0)
-    expect(screen.getByText('Inga kort matchar «zzzzqx».')).toBeTruthy()
+    const empty = document.querySelector('.byd-wall-empty[role="status"]')!
+    expect(empty.querySelector('h2')!.textContent).toBe('Inga kort matchar «zzzzqx».')
     expect(document.querySelector('.byd-crown-fold')).not.toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Rensa sökningen' }))
+    const clear = empty.querySelector('button')!
+    expect(clear.textContent).toBe('Rensa sökningen')
+    fireEvent.click(clear)
     expect(document.querySelectorAll('[data-card-ref]').length).toBeGreaterThan(0)
   })
 })
