@@ -861,6 +861,8 @@ export const enEditor = {
   'setup.query.or': ' or ',
   'setup.query.and': ' and ',
   'setup.query.any': 'any card at all',
+  'setup.query.find': 'Search the values',
+  'setup.query.freeHint': 'Long and one-off values are folded away: search to choose among them.',
   'setup.query.noColumns': 'The deck has no columns to ask about yet.',
   // The box a word in the sentence opens (#230). In a game of twenty zones it holds forty-seven
   // choices, so it is searched rather than scrolled.

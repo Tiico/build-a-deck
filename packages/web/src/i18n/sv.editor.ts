@@ -960,6 +960,8 @@ export const svEditor = {
   'setup.query.or': ' eller ',
   'setup.query.and': ' och ',
   'setup.query.any': 'vilket kort som helst',
+  'setup.query.find': 'Sök bland värdena',
+  'setup.query.freeHint': 'Långa och unika värden står hopfällda: sök för att välja bland dem.',
   'setup.query.noColumns': 'Leken har inga kolumner att fråga om ännu.',
   // Rutan ett ord i meningen öppnar (#230). I ett spel med tjugo zoner står det fyrtiosju val i
   // den, så den söks igenom i stället för att rullas igenom.

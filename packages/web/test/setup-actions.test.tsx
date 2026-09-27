@@ -723,3 +723,31 @@ describe('talet i antalsratten (#480)', () => {
     expect(field.value).toBe('3')
   })
 })
+
+// Frågerutan på en lek med många olika titlar (beslut 2026-09-27, #480 fynd 4 C): korta kolumner
+// först och öppna, fritextkolumner sist och hopfällda, med sökning. Förut stod raritet efter
+// hundrafyrtio titlar och regeltexter.
+describe('frågerutan på en stor lek (#480)', () => {
+  const stor = (): ProjectDoc => {
+    const doc = projectDoc()
+    doc.rows = Array.from({ length: 30 }, (_, i) => ({ id: `k${i}`, fields: { title: `Kort ${i + 1}`, body: `Regeltext nummer ${i + 1} som är ganska lång och säger vad kortet gör.`, raritet: i % 2 ? 'Vanlig' : 'Sällsynt', antal: 1 } }))
+    return doc
+  }
+
+  it('öppnar på de korta kolumnerna och fäller ihop fritexten, som nås med sökning', async () => {
+    await run.projects.create(run.projectId, stor())
+    await openZone('draw')
+    fireEvent.click(within(panel()).getByRole('button', { name: /alla kort som ingen annan hög/ }))
+    const box = panel().querySelector('.byd-slot-pop') as HTMLElement
+    const heads = [...box.querySelectorAll<HTMLElement>('[data-query-column]')].map((c) => c.getAttribute('data-query-column'))
+    expect(heads.slice(0, 1)).toEqual(['raritet'])
+    expect(within(box).getByRole('button', { name: 'Sällsynt' })).toBeTruthy()
+    // Fritexten står sist och hopfälld: titlarna syns inte förrän de söks fram eller fälls ut.
+    const titles = within(box).getByRole('button', { name: /^title/ })
+    expect(titles.getAttribute('aria-expanded')).toBe('false')
+    expect(within(box).queryByRole('button', { name: 'Kort 12' })).toBeNull()
+    fireEvent.change(within(box).getByLabelText('Sök bland värdena'), { target: { value: 'kort 12' } })
+    expect(within(box).getByRole('button', { name: 'Kort 12' })).toBeTruthy()
+    expect(within(box).queryByRole('button', { name: 'Kort 13' })).toBeNull()
+  })
+})

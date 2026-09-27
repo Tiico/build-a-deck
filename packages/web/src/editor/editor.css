@@ -3369,6 +3369,10 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-slot-chips button { display: inline; width: auto; text-align: left; border: 1px solid #2f333d; border-radius: 8px; padding: 8px; background: #1b1d23; }
 .byd-slot-chips { display: grid; gap: 8px; }
 .byd-slot-chips > span { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+/* A free-text column folded to its name and count (#480 fynd 4 C), and the line that says why. */
+.byd-slot-chips > span > .byd-slot-fold { width: 100%; display: flex; justify-content: space-between; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #9aa3b8; background: transparent; }
+.byd-slot-chips > span > .byd-slot-fold[aria-expanded='true'] { border-color: var(--byd-editor-primary-mark); }
+.byd-slot-chips .byd-slot-free { color: var(--byd-editor-quiet); font-size: 11px; font-style: normal; line-height: 1.45; text-transform: none; letter-spacing: 0; }
 .byd-slot-chips i { flex-basis: 100%; font-style: normal; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #9aa3b8; }
 .byd-slot-chips button[data-on='true'] { background: #1d3a5c; border-color: #3f7fbf; color: #cfe6ff; }
 /* Vad en tangent sa, när den inte tog bort något: en kopia tagen, eller ett nej med sitt skäl.

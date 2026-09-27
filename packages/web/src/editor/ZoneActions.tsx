@@ -3,7 +3,7 @@ import type { ActionAmount, ActionStep, ActionTarget, ActionWhen, CardQuery, Zon
 import type { ProjectDoc } from '@byd/server'
 import type { Zone } from '@byd/server/doc'
 import { placedProps, usePlacement } from './placement.js'
-import { queryColumns } from './queries.js'
+import { queryColumns, type QueryColumn } from './queries.js'
 import { fieldsOf } from './fields.js'
 import { ownerOf } from './zone-name.js'
 import { useDoor } from '../doors.js'
@@ -671,24 +671,68 @@ function QuerySlot({ query, columns, label, onChange, t }: { query: CardQuery; c
     const is = clause ? (clause.is.includes(value) ? clause.is.filter((v) => v !== value) : [...clause.is, value]) : [value]
     onChange([...query.filter((c) => c.field !== field), ...(is.length > 0 ? [{ field, is }] : [])])
   }
+  return <Slot label={label}>{() => <QueryChoices query={query} columns={columns} toggle={toggle} t={t} />}</Slot>
+}
+
+// A column of free text — many different values, or long ones — is not something a pile is asked
+// about by browsing (beslut 2026-09-27, #480 fynd 4 C). On the demo deck the titles and the rule
+// texts were 140 chips standing before `raritet`, which is what a pile nearly always asks about.
+const FREE_VALUES = 20
+const FREE_LENGTH = 40
+const isFree = (col: QueryColumn): boolean => col.values.length > FREE_VALUES || col.values.some((v) => v.length > FREE_LENGTH)
+
+// The box's inside: the short columns open and first, the free-text ones last and folded, and one
+// search across all of them that also opens what it finds.
+function QueryChoices({ query, columns, toggle, t }: { query: CardQuery; columns: readonly QueryColumn[]; toggle(field: string, value: string): void; t: T }) {
+  const [find, setFind] = useState('')
+  const [opened, setOpened] = useState<readonly string[]>([])
+  const field = useRef<HTMLInputElement>(null)
+  useEffect(() => field.current?.focus({ preventScroll: true }), [])
+  const term = find.toLocaleLowerCase('sv').trim()
+  const short = columns.filter((c) => !isFree(c))
+  const free = columns.filter(isFree)
+  const chip = (col: QueryColumn, v: string) => (
+    <button key={v} type="button" data-on={query.find((c) => c.field === col.field)?.is.includes(v) ? 'true' : 'false'} onClick={() => toggle(col.field, v)}>
+      {v}
+    </button>
+  )
+  const matching = (col: QueryColumn) => (term === '' ? col.values : col.values.filter((v) => v.toLocaleLowerCase('sv').includes(term)))
   return (
-    <Slot label={label}>
-      {() => (
-        <span className="byd-slot-chips">
-          {columns.length === 0 && <i>{t('setup.query.noColumns')}</i>}
-          {columns.map((col) => (
-            <span key={col.field}>
-              <i>{col.field}</i>
-              {col.values.map((v) => (
-                <button key={v} type="button" data-on={query.find((c) => c.field === col.field)?.is.includes(v) ? 'true' : 'false'} onClick={() => toggle(col.field, v)}>
-                  {v}
-                </button>
-              ))}
-            </span>
-          ))}
-        </span>
+    <span className="byd-slot-chips">
+      {columns.length === 0 && <i>{t('setup.query.noColumns')}</i>}
+      {columns.length > 0 && (
+        <input ref={field} className="byd-slot-find" type="text" aria-label={t('setup.query.find')} placeholder={t('setup.query.find')} value={find} onChange={(e) => setFind(e.target.value)} />
       )}
-    </Slot>
+      {short.map((col) => {
+        const values = matching(col)
+        if (values.length === 0) return null
+        return (
+          <span key={col.field} data-query-column={col.field}>
+            <i>{col.field}</i>
+            {values.map((v) => chip(col, v))}
+          </span>
+        )
+      })}
+      {free.map((col) => {
+        const values = matching(col)
+        if (term !== '' && values.length === 0) return null
+        const open = term !== '' || opened.includes(col.field)
+        return (
+          <span key={col.field} data-query-column={col.field} data-free="true">
+            <button
+              type="button"
+              className="byd-slot-fold"
+              aria-expanded={open}
+              onClick={() => setOpened((now) => (now.includes(col.field) ? now.filter((f) => f !== col.field) : [...now, col.field]))}
+            >
+              {col.field} · {values.length}
+            </button>
+            {open && values.map((v) => chip(col, v))}
+          </span>
+        )
+      })}
+      {free.length > 0 && term === '' && <i className="byd-slot-free">{t('setup.query.freeHint')}</i>}
+    </span>
   )
 }
 
