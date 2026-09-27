@@ -70,4 +70,34 @@ test.describe('a card lifted out of the hand on /online (#484)', () => {
     await expect(page.locator('[data-hand-card]')).toHaveCount(3)
     await expect(onFelt(page)).toHaveCount(0)
   })
+
+  // While it is carried the felt says where it will land (#484 fynd 4, beslut C, prototyp 23): over
+  // the table the ghost is the card it will become, at the felt's own size; the zone under it is
+  // marked, another seat's hand lights its rim as K24 does for a drag on the felt, and outside the
+  // table the hand says the card goes back to it.
+  test('says where it will land before it is let go', async ({ tableOf, open, host, request }) => {
+    const page = await setUp({ tableOf, open, host, request })
+    await lift(page)
+    const ghost = page.locator('.byd-fan-ghost')
+    const bigGhost = (await ghost.boundingBox())!.width
+    // Over the area in front of seat A: the ghost is a felt card, and the area is marked.
+    const front = (await page.locator('.byd-zone[data-area="mine:A"]').boundingBox())!
+    await page.mouse.move(front.x + front.width / 2, front.y + front.height / 2, { steps: 6 })
+    await expect(page.locator('.byd-zone[data-area="mine:A"]')).toHaveAttribute('data-aimed', '')
+    const small = (await ghost.boundingBox())!.width
+    expect(small, 'the ghost is a felt card over the table').toBeLessThan(bigGhost * 0.6)
+    // Over Bo's hand: the rim of his seat lights.
+    const bo = (await page.locator('[data-zone="hand:B"]').boundingBox())!
+    await page.mouse.move(bo.x + bo.width / 2, bo.y + bo.height / 2, { steps: 6 })
+    await expect(page.locator('.byd-seat-band[data-seat="B"]')).toBeVisible()
+    await expect(page.locator('[data-aimed]')).toHaveCount(0)
+    // In the dark beside the table: back into the hand, said, and the ghost is the hand's card again.
+    await page.mouse.move(12, WINDOW.height / 2, { steps: 6 })
+    await expect(page.getByText('Tillbaka i handen')).toBeVisible()
+    await expect(page.locator('.byd-seat-band')).toHaveCount(0)
+    expect(Math.round((await ghost.boundingBox())!.width)).toBe(Math.round(bigGhost))
+    await page.keyboard.press('Escape')
+    await page.mouse.up()
+  })
 })
+

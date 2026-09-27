@@ -31,7 +31,15 @@ export type HandPlay = (card: VisibleComponentState, clientX: number, clientY: n
 //
 // A locked hand lifts nothing (#484 fynd 13): the press still scrolls and a tap still opens the
 // card, but no card rises out of a hand that cannot play it.
-export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay, locked = false, onTap?: (card: VisibleComponentState) => void) {
+//
+// `onCarry` hears where a carried card is, and `null` when it is no longer carried (#484 fynd 4):
+// the page that owns the table answers what lies under it, which the hand cannot know.
+export type HandDragOptions = {
+  locked?: boolean | undefined
+  onTap?: ((card: VisibleComponentState) => void) | undefined
+  onCarry?: ((carried: { card: VisibleComponentState; x: number; y: number } | null) => void) | undefined
+}
+export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay, { locked = false, onTap, onCarry }: HandDragOptions = {}) {
   const [drag, setDrag] = useState<Held | null>(null)
   // Where the press started and whether it may still become a play; a press that turned out to be
   // a scroll is forgotten here and nothing downstream can revive it.
@@ -39,6 +47,11 @@ export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay, locked = f
   const stop = () => {
     aim.current = null
     setDrag(null)
+    onCarry?.(null)
+  }
+  const carry = (c: VisibleComponentState, x: number, y: number) => {
+    setDrag({ id: c.id, x, y })
+    onCarry?.({ card: c, x, y })
   }
   const handlers = (c: VisibleComponentState) => ({
     onPointerDown: (e: RPointerEvent) => {
@@ -46,7 +59,7 @@ export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay, locked = f
     },
     onPointerMove: (e: RPointerEvent) => {
       if (drag?.id === c.id) {
-        setDrag({ id: c.id, x: e.clientX, y: e.clientY })
+        carry(c, e.clientX, e.clientY)
         return
       }
       const from = aim.current
@@ -65,7 +78,7 @@ export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay, locked = f
       }
       const el = e.currentTarget as HTMLElement
       if (typeof el.setPointerCapture === 'function') el.setPointerCapture(e.pointerId)
-      setDrag({ id: c.id, x: e.clientX, y: e.clientY })
+      carry(c, e.clientX, e.clientY)
     },
     onPointerUp: (e: RPointerEvent) => {
       if (drag?.id === c.id) onPlay(c, e.clientX, e.clientY)
@@ -81,9 +94,12 @@ export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay, locked = f
 
 // The card while it is carried: drawn at the pointer, over everything, and out of the hand's own
 // scroller so that neither shape can clip what is being played.
-export function HandGhost({ at, card, faces }: { at: Held; card: VisibleComponentState; faces?: string | undefined }) {
+//
+// Over the table it is the card it will become (#484 fynd 4, beslut C): `size` is a card on the felt,
+// in pixels, and the ghost takes it, so what is seen before the release is what lies there after.
+export function HandGhost({ at, card, faces, size }: { at: Held; card: VisibleComponentState; faces?: string | undefined; size?: { w: number } | null | undefined }) {
   return (
-    <div className="byd-fan-ghost" style={{ left: at.x, top: at.y, ['--hue' as string]: hue(card.cardRef ?? '') }}>
+    <div className="byd-fan-ghost" data-on-felt={size ? '' : undefined} style={{ left: at.x, top: at.y, ['--hue' as string]: hue(card.cardRef ?? ''), ...(size ? { ['--fan-card' as string]: `${size.w}px` } : {}) }}>
       <Texture faces={faces} c={card} />
       <span>{card.cardRef}</span>
     </div>

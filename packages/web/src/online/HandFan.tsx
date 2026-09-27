@@ -6,7 +6,7 @@ import { useRoving } from '../editor/roving.js'
 import { cardWord, handLabel } from '../table/keyboard.js'
 import { useT } from '../i18n/index.js'
 import { fanPlace, fanStyle } from './fan.js'
-import { HandGhost, useHandDrag, type HandPlay } from './handDrag.js'
+import { HandGhost, useHandDrag, type HandDragOptions, type HandPlay } from './handDrag.js'
 import { DragDoor } from '../editor/DragDoor.js'
 
 export type HandFanProps = {
@@ -16,6 +16,10 @@ export type HandFanProps = {
   onPlay: HandPlay
   // Nothing can be played — an undo is proposed, or the table has ended — so nothing is lifted (#484).
   locked?: boolean | undefined
+  // Where a carried card is, for the page to say where it would land; and what it answered: the
+  // felt's own card size while it is over the table (#484).
+  onCarry?: HandDragOptions['onCarry']
+  aim?: { size: { w: number } | null } | undefined
   // Enter on a card: the address panel, the same one the felt opens (#2, variant C).
   onOpen(card: VisibleComponentState): void
 }
@@ -30,12 +34,12 @@ export type HandFanProps = {
 //
 // In a landscape window this is not the shape the hand takes: there the band cost the felt the one
 // axis it was bound by, and the hand stands beside it as `HandColumn` instead (#77).
-export function HandFan({ cards, faces, onPlay, locked = false, onOpen }: HandFanProps) {
+export function HandFan({ cards, faces, onPlay, locked = false, onCarry, aim, onOpen }: HandFanProps) {
   const t = useT()
   const scroller = useRef<HTMLDivElement>(null)
   const n = cards.length
   const roving = useRoving({ ids: cards.map((c) => c.id), selected: null, orientation: 'horizontal' })
-  const { drag, handlers, cancel } = useHandDrag('up', onPlay, locked, onOpen)
+  const { drag, handlers, cancel } = useHandDrag('up', onPlay, { locked, onTap: onOpen, onCarry })
   const lifted = drag ? cards.find((c) => c.id === drag.id) : undefined
   return (
     <div className="byd-hand-band" data-hand-fan style={fanStyle(n)}>
@@ -83,7 +87,7 @@ export function HandFan({ cards, faces, onPlay, locked = false, onOpen }: HandFa
           </div>
         </div>
       </div>
-      {drag && lifted && <HandGhost at={drag} card={lifted} faces={faces} />}
+      {drag && lifted && <HandGhost at={drag} card={lifted} faces={faces} size={aim?.size} />}
       {drag && <DragDoor onCancel={cancel} />}
     </div>
   )

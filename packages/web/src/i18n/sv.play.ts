@@ -278,6 +278,7 @@ export const svPlay = {
   // Hela bordet, utfällt när det efterfrågas (C4). Raden över handen är högarna; det här är
   // varje zon läsaren ser in i, andra platsers ytor inräknade sedan #414.
   'player.table.title': 'Ytorna',
+  'online.hand.back': 'Tillbaka i handen',
   'online.last': 'Senast:',
   'online.last.now': 'nyss',
   'online.last.s': 'för {n} s sedan',

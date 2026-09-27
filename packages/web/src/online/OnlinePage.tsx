@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import type { Intent } from '@byd/protocol'
+import type { Intent, VisibleComponentState } from '@byd/protocol'
 import '../table/table.css'
 import '../player/player.css'
 import './online.css'
@@ -93,6 +93,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const [sheet, setSheet] = useState<Sheet>(null)
   // The hand's second mode (#24): the fan at rest, the whole hand as a grid when it is asked for.
   const [spread, setSpread] = useState(false)
+  // A card carried out of the hand, and where (#484 fynd 4): the felt is asked what lies under it.
+  const [carried, setCarried] = useState<{ card: VisibleComponentState; x: number; y: number } | null>(null)
   const showAll = useRef<HTMLButtonElement>(null)
   const [toast, setToast] = useToast()
   const marks = useHandMarks()
@@ -139,14 +141,26 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   // shows there (K2, K11, #65). Let go anywhere but over the table's picture — back over the hand,
   // over the top bar, in the dark around the table — it was not played at all, and goes back into
   // the hand (#484 fynd 1). The wooden frame is the table's, and there it lies on the felt (#66).
-  const play = (card: (typeof hand)[number], clientX: number, clientY: number) => {
-    if (!table.current?.onTable(clientX, clientY)) return
+  // Where a card let go at this point would land: the one reading both the release and the felt's
+  // answer while it is carried make (#484 fynd 4), so what is promised is what happens.
+  const landing = (clientX: number, clientY: number) => {
+    if (!table.current?.onTable(clientX, clientY)) return null
     const p = table.current.toTable(clientX, clientY)
-    if (!p || !playable) return
-    const dest = playedAt(shown, seat, p)
+    return p ? playedAt(shown, seat, p) : null
+  }
+  const play = (card: (typeof hand)[number], clientX: number, clientY: number) => {
+    if (!playable) return
+    const dest = landing(clientX, clientY)
     if (!dest) return
     void client.send(...playIntents(view, [card], dest.zone, { x: dest.x, y: dest.y }))
   }
+  // While it is carried the felt says where it will land (beslut C, prototyp 23): the zone or hand
+  // under it is marked, the ghost is the card it will become, and off the table the hand says the
+  // card goes back to it.
+  const over = carried ? table.current?.onTable(carried.x, carried.y) === true : false
+  const dest = carried && over ? landing(carried.x, carried.y) : null
+  const aimed = dest ? { zone: dest.zone, cards: 1 } : null
+  const aim = carried ? { size: over ? { w: table.current?.cardPx() ?? 0 } : null, back: !over } : undefined
 
   return (
     <>
@@ -182,6 +196,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             faces={http}
             onAct={playable ? onAct : undefined}
             keyboard={kbd.keyboard}
+            aimed={aimed}
             peers={Object.values(presence.peers)}
             pulses={presence.pulses}
             recent={recent}
@@ -194,10 +209,16 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             the page behind any raised surface is. Two live copies of the same twenty-one
             controls would be two of every card to a screen reader (L10). */}
         <div className="byd-hand-under" {...(up ? { inert: true, 'aria-hidden': true } : {})}>
+          {/* Off the table a carried card goes back into the hand, and the hand says so (#484). */}
+          {aim?.back && (
+            <p className="byd-hand-back" aria-hidden="true">
+              {t('online.hand.back')}
+            </p>
+          )}
           {column ? (
-            <HandColumn cards={hand} faces={http} locked={!playable} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
+            <HandColumn cards={hand} faces={http} locked={!playable} onCarry={setCarried} aim={aim} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
           ) : (
-            <HandFan cards={hand} faces={http} locked={!playable} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
+            <HandFan cards={hand} faces={http} locked={!playable} onCarry={setCarried} aim={aim} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
           )}
         </div>
         {up && (

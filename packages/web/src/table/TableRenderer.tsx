@@ -66,7 +66,8 @@ export type { TableMode } from './hand.js'
 // `size` is the frame's size when the renderer should not measure it; `glideMs` the glide.
 // `onTable` says whether a point on the screen lies on the table's own picture — the felt and the
 // wooden frame it lies in — as opposed to the dark around it and whatever stands beside it (#484).
-export type TableHandle = { toTable(clientX: number, clientY: number): Point | null; onTable(clientX: number, clientY: number): boolean }
+// `cardPx` is a card on the felt as it is drawn now, in pixels across (#484 fynd 4).
+export type TableHandle = { toTable(clientX: number, clientY: number): Point | null; onTable(clientX: number, clientY: number): boolean; cardPx(): number }
 // The keyboard's layer over the felt (#1, #2, variant C). It draws nothing: it puts a role, a
 // name, one tab stop and a focus ring on the nodes this renderer already draws, which is what
 // keeps K9 — one renderer, one way to draw a card. A table that is only shown passes none of
@@ -160,6 +161,10 @@ export type TableRendererProps = {
   // seats' fans are untouched: theirs are the only picture of their hands there is.
   foldHand?: string | null | undefined
   keyboard?: FeltKeyboard | undefined
+  // Where a card carried from outside the felt would land, as the page that carries it answered
+  // (#484 fynd 4): `/online`'s own hand is drawn beside the felt, so its drag is never the felt's.
+  // A hand is lit the way the felt's own drags light one (K24); an area or a pile is marked.
+  aimed?: { zone: string; cards: number } | null | undefined
 }
 
 const HOLD_MS = 350
@@ -235,7 +240,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -505,7 +510,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     const u = tiltedToTable({ frame: { w: fr.width, h: fr.height }, wood: { left: w.offsetLeft, top: w.offsetTop, w: w.offsetWidth, h: w.offsetHeight } }, cx - fr.left, cy - fr.top)
     return Math.abs(u.x) <= w.offsetWidth / 2 && Math.abs(u.y) <= w.offsetHeight / 2
   }
-  useImperativeHandle(ref, () => ({ toTable: (cx, cy) => mapper()?.(cx, cy) ?? null, onTable }))
+  useImperativeHandle(ref, () => ({ toTable: (cx, cy) => mapper()?.(cx, cy) ?? null, onTable, cardPx: () => px(CARD_MM.w) }))
 
   const down = (e: RPointerEvent, target: DragTarget) => {
     if (!onAct) return
@@ -904,7 +909,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // `dropIntents` självt, så det filten lovar medan kortet bärs och det loggen får när det
   // släpps är samma mening. Den ställs bara där filten är spelbar: en skärm som bara visar
   // bordet bär ingenting och har inget att lova.
-  const bound = drag?.started && onAct ? handBound(view, drag, mode) : null
+  const own = drag?.started && onAct ? handBound(view, drag, mode) : null
+  const aimedHand = aimed && view.zones.some((z) => z.id === aimed.zone && z.kind === 'hand') ? aimed : null
+  const bound = own ?? aimedHand
+  const aimedAt = aimed && !aimedHand && aimed.zone !== view.floor ? aimed.zone : null
   // Korten som just nu är på väg att bli dolda: greppets egna, och inget annat. En bricka är
   // inget kort (C4) och har inget ansikte att vända — den reser i ett grepp av sitt eget slag,
   // och bandet vid kanten säger det som ändå är sant om den, att platsen tar emot.
@@ -964,6 +972,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 key={z.id}
                 className="byd-zone"
                 data-area={z.id}
+                {...(aimedAt === z.id ? { 'data-aimed': '' } : {})}
                 data-rim={rim}
                 data-grow={grow}
                 {...(crowded ? { 'data-mid': '' } : {})}
@@ -1008,6 +1017,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               <Pile
                 key={z.id}
                 zone={z}
+                aimed={aimedAt === z.id}
                 count={lifting ? count - 1 : count}
                 topCard={lifting ? topOf(z, 1) : topOf(z)}
                 faces={faces}
@@ -1534,7 +1544,7 @@ function topIdOf(z: ZoneView, skip = 0): string | undefined {
 
 // A pile is a point; the stack is centred on it. A hidden pile has a count and nothing else,
 // unless its top lies face-up.
-function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, lifted, shuffle, still = false, topHandlers, topInspects, bottomInspects, labelHandlers, topKeys, labelKeys, points }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; bottomCard?: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; shuffle?: number | undefined; still?: boolean | undefined; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; bottomInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; topKeys?: FeltNodeProps | undefined; labelKeys?: FeltNodeProps | undefined; points?: Pointing | undefined }) {
+function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, lifted, aimed = false, shuffle, still = false, topHandlers, topInspects, bottomInspects, labelHandlers, topKeys, labelKeys, points }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; bottomCard?: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; aimed?: boolean | undefined; shuffle?: number | undefined; still?: boolean | undefined; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; bottomInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; topKeys?: FeltNodeProps | undefined; labelKeys?: FeltNodeProps | undefined; points?: Pointing | undefined }) {
   const t = useT()
   // What a face-down pile wears. Its top card's own back first, which is the one thing about a
   // hidden pile that is public in the room (#313): a deck whose cards carry their own back (#14)
@@ -1593,6 +1603,7 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
       className="byd-pile"
       data-zone={zone.id}
       data-count={count}
+      {...(aimed ? { 'data-aimed': '' } : {})}
       data-dynamic={zone.dynamic ? 'true' : 'false'}
       data-dragging={lifted ? 'true' : undefined}
       data-shuffling={playing ? (still ? 'pulse' : 'fan') : undefined}

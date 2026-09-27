@@ -6,7 +6,7 @@ import { useRoving } from '../editor/roving.js'
 import { cardWord, handLabel } from '../table/keyboard.js'
 import { useT } from '../i18n/index.js'
 import { COLUMN_STYLE } from './fan.js'
-import { HandGhost, useHandDrag, type HandPlay } from './handDrag.js'
+import { HandGhost, useHandDrag, type HandDragOptions, type HandPlay } from './handDrag.js'
 import { DragDoor } from '../editor/DragDoor.js'
 
 export type HandColumnProps = {
@@ -16,6 +16,10 @@ export type HandColumnProps = {
   onPlay: HandPlay
   // Nothing can be played — an undo is proposed, or the table has ended — so nothing is lifted (#484).
   locked?: boolean | undefined
+  // Where a carried card is, for the page to say where it would land; and what it answered: the
+  // felt's own card size while it is over the table (#484).
+  onCarry?: HandDragOptions['onCarry']
+  aim?: { size: { w: number } | null } | undefined
   // Enter on a card: the address panel, the same one the felt opens (#2, #24).
   onOpen(card: VisibleComponentState): void
 }
@@ -41,11 +45,11 @@ export type HandColumnProps = {
 // know: every card but the last sits in a box one step tall that may shrink, and none of them
 // below `FAN_MIN_PX`. A hand that no longer fits at that scrolls in its own box, and the page
 // never does (L10).
-export function HandColumn({ cards, faces, onPlay, locked = false, onOpen }: HandColumnProps) {
+export function HandColumn({ cards, faces, onPlay, locked = false, onCarry, aim, onOpen }: HandColumnProps) {
   const t = useT()
   const n = cards.length
   const roving = useRoving({ ids: cards.map((c) => c.id), selected: null, orientation: 'vertical' })
-  const { drag, handlers, cancel } = useHandDrag('across', onPlay, locked, onOpen)
+  const { drag, handlers, cancel } = useHandDrag('across', onPlay, { locked, onTap: onOpen, onCarry })
   const lifted = drag ? cards.find((c) => c.id === drag.id) : undefined
   // The card lifted out to be read (#484 fynd 15, beslut B): by the mouse over it, or by the
   // keyboard's focus on it. A press is not a look — a finger opens the card (fynd 10), and a focus a
@@ -104,7 +108,7 @@ export function HandColumn({ cards, faces, onPlay, locked = false, onOpen }: Han
           </div>
         )
       })}
-      {drag && lifted && <HandGhost at={drag} card={lifted} faces={faces} />}
+      {drag && lifted && <HandGhost at={drag} card={lifted} faces={faces} size={aim?.size} />}
       {peek && peeked && <ColumnPeek at={peek.at} card={peeked} faces={faces} />}
       {drag && <DragDoor onCancel={cancel} />}
     </div>

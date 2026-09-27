@@ -230,6 +230,7 @@ export const enPlay = {
   'player.mine.play': 'Play…',
   'player.mine.empty': 'Nothing in front of you. Play a card here from your hand.',
   'player.table.title': 'The areas',
+  'online.hand.back': 'Back into the hand',
   'online.last': 'Last:',
   'online.last.now': 'just now',
   'online.last.s': '{n} s ago',

@@ -29,7 +29,7 @@
    turned cards paint — is written out by `fan.ts`, which is also what works out the room they
    need. The fallbacks are prototype B's own numbers, so the sheet still draws a fan on its own. */
 .byd-online-play { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.byd-hand-under { flex: 0 0 auto; }
+.byd-hand-under { position: relative; flex: 0 0 auto; }
 
 /* K17 as a column, in a landscape window (#77). The band cost the felt the one axis its fit was
    bound by — 218 px of an 800 px window — while the felt's own row had six hundred pixels of
@@ -70,7 +70,10 @@
 .byd-col-peek { position: fixed; z-index: 60; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 8px; width: var(--fan-card); }
 .byd-col-peek > .byd-hand-face { position: relative; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6); cursor: default; }
 .byd-col-peek > b { max-width: 100%; padding: 4px 10px; border-radius: 8px; background: rgba(16, 13, 11, 0.92); color: #f3e9d6; font-size: 14px; line-height: 1.3; text-align: center; overflow-wrap: anywhere; }
-.byd-col-card:hover, .byd-col-card:focus-visible, .byd-col-card[data-lifted] { z-index: 2; }
+.byd-col-card:hover, .byd-col-card:focus-visible { z-index: 2; }
+/* The card being carried stays where it lay, faint, under its neighbours, as it does in the band:
+   raised over them it covered the next card's name for as long as it was carried (#484). */
+.byd-col-card[data-lifted] { opacity: 0.3; z-index: auto; }
 .byd-hand-band { position: relative; }
 /* Safe centring: the fan sits in the middle of the band while it fits, and starts at its own
    first card when it does not — plain centring would push a hand wider than the band half out
@@ -130,3 +133,15 @@
 }
 /* The texture is absolute; its containing block must be this card, not the whole spread. */
 .byd-spread-card { position: relative; cursor: pointer; }
+
+/* Where a card carried out of the hand will land (#484 fynd 4, beslut C, prototyp 23). The area or
+   pile under it is marked in this seat's colour; another seat's hand lights its rim as K24 does on
+   the felt (`.byd-seat-band`); off the table the hand says the card goes back to it. */
+.byd-online .byd-zone[data-aimed] { border-color: var(--seat); box-shadow: 0 0 0 1px var(--seat), 0 0 16px var(--seat); }
+.byd-online .byd-zone[data-aimed] > span { color: #fff; }
+.byd-online .byd-pile[data-aimed] { box-shadow: 0 0 0 3px var(--seat), 0 0 16px var(--seat); border-radius: 6px; }
+.byd-hand-back {
+  position: absolute; z-index: 5; left: 50%; top: 12px; transform: translateX(-50%); margin: 0; pointer-events: none;
+  padding: 6px 12px; border-radius: 999px; border: 1px solid var(--seat); background: rgba(16, 13, 11, 0.92);
+  color: #f3e9d6; font-size: 13px; font-weight: 700; white-space: nowrap;
+}
