@@ -404,10 +404,7 @@ export const svEditor = {
   // kolumn ligger där borta.
   'table.field.new': 'Nytt fält',
   'table.field.name': 'Namn',
-  'table.field.kind': 'Typ',
-  'table.field.kind.text': 'Text',
-  'table.field.kind.number': 'Tal',
-  'table.field.kind.image': 'Bild',
+  'table.field.kindHint': 'En kolumn blir en bildkolumn där mallen ritar den som bild.',
   'table.field.create': 'Lägg till',
   'table.field.needsName': 'Ett fält behöver ett namn.',
   'table.field.needsCards': 'Ett fält är en kolumn på korten. Lägg till ett kort först.',

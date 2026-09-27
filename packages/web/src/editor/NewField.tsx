@@ -1,13 +1,7 @@
-import { useId, useRef, useState } from 'react'
-import { FIELD_KINDS, suggestFieldKey, type FieldKind } from './fields.js'
+import { useRef, useState } from 'react'
+import { suggestFieldKey, type FieldKind } from './fields.js'
 import { placedProps, usePlacement } from './placement.js'
-import { useT, type Key } from '../i18n/index.js'
-
-const KIND_WORD: Record<FieldKind, Key> = {
-  text: 'table.field.kind.text',
-  number: 'table.field.kind.number',
-  image: 'table.field.kind.image',
-}
+import { useT } from '../i18n/index.js'
 
 export type NewFieldProps = {
   // Every name the table already answers to: the fields, `antal`, and the card's own `id`. A
@@ -18,6 +12,11 @@ export type NewFieldProps = {
   // canvas's door binds an element to the column as it makes it, which is a place of its own, so
   // it never has to ask. A door that says nothing is a door that can keep what it makes.
   keeps?: boolean
+  // What the new column is for, where the door knows it — the canvas's picture element asks for a
+  // picture column — which is only what the suggested name is made from. The table's own door does
+  // not ask (#479, beslut 2026-09-27, variant B): a column is a picture column where the template
+  // draws it as one, and the door says so in a line instead of offering a choice that did nothing.
+  kind?: FieldKind
   onCreate(field: string): void
   onCancel(): void
 }
@@ -26,19 +25,10 @@ export type NewFieldProps = {
 // template's binding opens it where the designer noticed the field was missing. It is the same
 // component either way, so the designer never has to leave what she is doing to make a field
 // possible.
-export function NewField({ taken, keeps = true, onCreate, onCancel }: NewFieldProps) {
+export function NewField({ taken, keeps = true, kind, onCreate, onCancel }: NewFieldProps) {
   const t = useT()
-  const group = useId()
-  const [kind, setKind] = useState<FieldKind>('text')
-  // What the tool suggests follows the kind until the designer writes her own word over it;
-  // after that the box is hers and changing the kind no longer touches it.
-  const [name, setName] = useState(() => suggestFieldKey('text', taken))
-  const [own, setOwn] = useState(false)
+  const [name, setName] = useState(() => suggestFieldKey(kind ?? 'text', taken))
   const [refused, setRefused] = useState<string | null>(null)
-  const pick = (next: FieldKind) => {
-    setKind(next)
-    if (!own) setName(suggestFieldKey(next, taken))
-  }
   const submit = () => {
     const field = name.trim()
     // Asked before anything about the name, because when the deck keeps nothing the name is not
@@ -74,20 +64,11 @@ export function NewField({ taken, keeps = true, onCreate, onCancel }: NewFieldPr
           value={name}
           onChange={(event) => {
             setName(event.target.value)
-            setOwn(true)
             setRefused(null)
           }}
         />
       </label>
-      <fieldset>
-        <legend>{t('table.field.kind')}</legend>
-        {FIELD_KINDS.map((k) => (
-          <label key={k}>
-            <input type="radio" name={group} checked={kind === k} onChange={() => pick(k)} />
-            {t(KIND_WORD[k])}
-          </label>
-        ))}
-      </fieldset>
+      {kind === undefined && <p className="byd-newfield-hint">{t('table.field.kindHint')}</p>}
       {refused !== null && <p role="alert">{refused}</p>}
       <div className="byd-newfield-do">
         <button type="submit" className="byd-secondary">{t('table.field.create')}</button>

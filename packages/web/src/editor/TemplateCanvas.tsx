@@ -2202,6 +2202,7 @@ function Properties({
           {el.kind === 'image' && isFixed && making && (
             <NewField
               taken={taken}
+              kind="image"
               onCreate={(field) => {
                 onAddField(field, el.id)
                 closeForm()
@@ -2235,6 +2236,7 @@ function Properties({
               {making && (
                 <NewField
                   taken={taken}
+                  kind={el.kind === 'image' ? 'image' : 'text'}
                   onCreate={(field) => {
                     // One call, because it is one thing: the column and this element's binding to it
                     // arrive together or the first Ctrl+Z leaves the column standing with the element

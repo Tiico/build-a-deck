@@ -2941,6 +2941,8 @@ Innehållet listas men redigeras ännu inte i mappen, eftersom `patchElement` ba
 ### L4. Datatabellen: kolumntyper från registryt, systemkolumn `antal`
 
 Kolumntyper följer typregistryts `editorSchema`: text, tal, bild, boolean.
+*Rättat 2026-09-27 (#479, beställarens beslut efter prototyp 12):* en kolumn bär ingen typ i dokumentet — namnet är nyckeln (L44) och inget mer.
+En kolumn blir bildkolumn där mallen ritar den som bild, tal sorteras som tal när cellerna är tal, och tabellens «Nytt fält» frågar därför inte efter en typ utan säger det i en rad.
 En bildcell är en referens till en innehållsadresserad asset; vid import löses URL eller filnamn upp mot uppladdade filer.
 Varje rad har en systemkolumn `antal` med standard 1.
 Setup skapar så många instanser med samma `cardRef`; tryckmanifestet summerar.
