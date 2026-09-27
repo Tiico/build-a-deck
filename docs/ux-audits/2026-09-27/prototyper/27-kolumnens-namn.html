@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 27 — Kolumnens namn (#484 fynd 15)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     I liggande fönster står handen som en kolumn (K17, #77), korten överlappar nedåt och namnet
+     står överst på kortet, i den remsa nästa kort lämnar. Vid femton kort är remsan 44 px (steget
+     bottnar på en fingertopp), kortet 112 px brett, och väntetillståndets namn 15,7 px fet på en
+     rad: «Stolen Go…» två gånger, «Buckaroo'…», «Faster Tha…». Hovring lyfter kortet framåt men
+     namnet står kvar kapat. Med en renderad textur (E2) står titeln i bilden i stället — i
+     kortmallens egen storlek, omkring 8 px vid 112 px bredd.
+
+       Nu  en rad, «…»; hovring lägger kortet överst
+       A   namnet på två rader i remsan när steget tillåter (13 px), «…» först efter två
+       B   hovring och fokus lyfter kortet ut över filtens kant, förstorat, med hela namnet
+           (med finger: hållet ur prototyp 25 C)
+       C   kolumnen breddas tills det längsta namnet ryms på en rad; priset räknas i filtens kort
+
+     Fönstret är 1280 × 800 i verklig storlek, skalat. Håll musen över kolumnen, eller Tab in i
+     den och gå med pilarna. ────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .scen { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; background: #0a0c10; overflow: hidden; }
+  .fonster { position: relative; width: 1280px; height: 800px; background: #17120f; transform-origin: 0 0; overflow: hidden; font-family: system-ui, sans-serif; display: flex; flex-direction: column; }
+  .topp { flex: none; height: 61px; display: flex; align-items: center; gap: 8px; padding: 8px 16px; box-sizing: border-box; background: #100d0b; border-bottom: 1px solid #2a221c; }
+  .jag { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px; border-radius: 999px; background: rgb(20 22 28 / 90%); color: #9aa3b8; font-size: 13px; border-left: 4px solid #e05d5d; }
+  .jag strong { color: #fff; font-size: 15px; }
+  .topp button { min-height: 44px; padding: 0 14px; border: 1px solid #3a2f26; border-radius: 10px; background: #1d1815; color: #e8e2d8; font: 700 13px system-ui; }
+  .topp .verktyg { margin-left: auto; display: flex; gap: 6px; }
+  .topp .verktyg button { border: 0; background: rgb(36 41 56 / 92%); color: #fff; }
+  .spel { flex: 1 1 auto; min-height: 0; display: flex; }
+  .filtrad { position: relative; flex: 1 1 auto; min-width: 0; }
+  .tra { position: absolute; border-radius: 26px; background: linear-gradient(#5a3a22, #3e2716); }
+  .filt { position: absolute; border-radius: 12px; background: radial-gradient(at 50% 40%, #2e6b46, #1f4a30 70%, #173a26); }
+  .fkort { position: absolute; border-radius: 3px; background: #232a3a; box-shadow: 0 1px 3px rgb(0 0 0 / 50%); }
+  .kol { flex: none; position: relative; display: flex; flex-direction: column; justify-content: safe center; padding: 11px; box-sizing: border-box; overflow: hidden auto; scrollbar-gutter: stable; }
+  .slot { position: relative; flex: 0 1 var(--steg); min-height: 44px; width: var(--kort); }
+  .slot:last-child { flex: 0 0 calc(var(--kort) * 88 / 63); }
+  .hk { position: absolute; left: 0; top: 0; width: var(--kort); aspect-ratio: 63 / 88; box-sizing: border-box; border: 0; border-radius: 10px; padding: 0; background: #232a3a; color: #eef2fb; text-align: center; box-shadow: 0 6px 16px rgb(0 0 0 / 50%); font: inherit; cursor: grab; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-start; }
+  .hk:hover, .hk:focus-visible { z-index: 2; }
+  .hk:focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  /* Väntetillståndet (`texture.css`): namnet överst i kolumnen, en rad, 14cqw. */
+  .hk .vanta { display: block; padding: 6px 8px 0; }
+  .hk .vanta b { display: block; font-size: var(--namn, 15.7px); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hk .vanta i { display: block; margin-top: 2px; font: 600 10px system-ui; font-style: normal; color: #a7b0c4; }
+  .tva .hk .vanta b { font-size: 13px; line-height: 1.15; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: break-word; hyphens: auto; }
+  .tva .hk .vanta { padding: 5px 6px 0; }
+  .tva .slot:not(:last-child) .hk .vanta i { display: none; }
+  /* En renderad textur: kortmallens egen titelrad, i kortets skala. */
+  .hk .bild { position: absolute; inset: 0; border-radius: inherit; background: #f4ead8; color: #2a2118; padding: calc(var(--kort) * .06); box-sizing: border-box; text-align: left; }
+  .hk .bild b { display: block; font: 700 calc(var(--kort) * .075) / 1.15 Georgia, serif; border-bottom: 1px solid #b89c6c; padding-bottom: 2px; }
+  .hk .bild span { display: block; margin-top: calc(var(--kort) * .04); height: 45%; border-radius: 4px; background: linear-gradient(135deg, #c9a878, #8f6b44); }
+  .hk .bild i { display: block; margin-top: 4px; font: italic calc(var(--kort) * .06) Georgia, serif; }
+  .titt { position: absolute; z-index: 30; width: 180px; aspect-ratio: 63 / 88; border-radius: 16px; background: #232a3a; color: #eef2fb; box-shadow: 0 30px 60px rgb(0 0 0 / 70%); pointer-events: none; overflow: hidden; }
+  .titt .vanta { display: block; padding: 14px 14px 0; text-align: center; }
+  .titt .vanta b { display: block; font-size: 24px; line-height: 1.15; }
+  .titt .vanta i { display: block; margin-top: 8px; font: 600 13px system-ui; font-style: normal; color: #a7b0c4; }
+  .titt .bild { position: absolute; inset: 0; background: #f4ead8; color: #2a2118; padding: 11px; }
+  .titt .bild b { display: block; font: 700 14px/1.15 Georgia, serif; border-bottom: 1px solid #b89c6c; padding-bottom: 3px; }
+  .titt .bild span { display: block; margin-top: 8px; height: 45%; border-radius: 6px; background: linear-gradient(135deg, #c9a878, #8f6b44); }
+  .titt .bild i { display: block; margin-top: 6px; font: italic 11px Georgia, serif; }
+  .protorad .del { display: flex; align-items: center; gap: 6px; }
+  .protorad .del > span { color: #c8b98d; }
+  .matt .fel { color: #f0a58a; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="del"><span>Kortets yta:</span>
+    <div class="vaxlare" role="group" aria-label="Kortets yta"><button type="button" data-y="vanta">väntar på textur</button><button type="button" data-y="bild">renderad</button></div></div>
+  <div class="fraga">
+    <p><b>#484 fynd 15 · Namnen i kolumnen.</b> Femton kort i handen vid 1280 × 800. Läs namnen i kolumnen, och håll musen över ett.</p>
+  </div>
+  <div class="matt" id="matt"></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="scen" id="scen"><div class="fonster" id="fonster"></div></div>
+<script>
+const W = 1280, H = 800, TOPP = 61
+const NAMN = ['Double Up!', 'Buckaroo’s Revenge', 'Steady Hands', 'Master of Disguise', 'Stolen Goods', 'Duel', 'Beermageddon', 'Howdy Neighbour', 'Big Busta', 'Faster Than Lightning', 'Snake in the Grass', 'Hit by Tumbleweed', 'Stolen Gold Bars', 'Standoff', 'Poisoned']
+const s = { v: 'a', y: 'vanta', titt: null }
+const NOT = {
+  nu: '<b>Nu.</b> Namnet på en rad i 15,7 px och «…» efter 112 px. <span class="minus">− Över hälften kapas (raden ovan räknar); «Stolen Go…» två gånger går inte att skilja; hovring lägger kortet överst men namnet är lika kapat.</span>',
+  a: '<b>A · Två rader i remsan.</b> Namnet i 13 px på upp till två rader när steget är minst 44 px; «Kortet renderas…» bara på det sista, hela kortet. <span class="plus">+ Ingen ny rörelse, ingen bredd, inget pris i filt; allt i kolumnens egen remsa.</span> <span class="minus">− Mindre text; ett namn på tre rader («Faster Than Lightning» vid smalare kort) kapas ändå; hjälper inte en renderad textur, vars titel är bildens.</span>',
+  b: '<b>B · Kortet lyfts ut och förstoras.</b> Hovring eller fokus lyfter kortet ut över filtens kant, 180 px brett, med hela namnet; med finger är det hållet ur prototyp 25 C. <span class="plus">+ Fungerar lika för väntande och renderade kort — det enda som gör en 8 px titel läsbar; en form för mus, tangentbord och finger.</span> <span class="minus">− Täcker filtens högra kant medan det visas; att läsa kolumnen uppifrån och ned blir ett kort i taget.</span>',
+  c: '<b>C · Kolumnen breddas.</b> Kortet blir så brett att det längsta namnet ryms på en rad. <span class="plus">+ Alla namn hela, utan rörelse.</span> <span class="minus">− Kortet växer också på höjden (det sista, hela kortet 257 px) och kolumnen närmar sig K17:s tak på en fjärdedel av fönstret; vid 1280 × 800 är filten höjdbunden och betalar inget, men vid 1024 × 768 går varje pixel ur filten (modell som i prototyp 24). Nästa långa namn flyttar gränsen igen.</span>',
+}
+const matare = document.createElement('canvas').getContext('2d')
+const bredd = (text, font) => { matare.font = font; return matare.measureText(text).width }
+function kortbredd() {
+  if (s.v !== 'c') return 112
+  const langst = Math.max(...NAMN.map((n) => bredd(n, '700 15.7px system-ui')))
+  return Math.ceil(langst + 16 + 2)
+}
+// Filtens kort ur modellen i prototyp 24: bredden binder under (W − kolumn − 75) / 21,
+// höjden under (filtrad + 66) / 17,5.
+const filtKort = (w, h, kol) => Math.round(Math.min((w - kol - 75) / 21, (h - TOPP + 66) / 17.5))
+
+function yta(n, stor) {
+  return s.y === 'bild'
+    ? `<span class="bild"><b>${n}</b><span></span><i>Action — Duel</i></span>`
+    : `<span class="vanta"><b lang="en">${n}</b><i>Kortet renderas…</i></span>`
+}
+function rita() {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  for (const b of document.querySelectorAll('[data-y]')) b.setAttribute('aria-pressed', String(b.dataset.y === s.y))
+  document.getElementById('anteckning').innerHTML = NOT[s.v]
+  const kort = kortbredd()
+  const kol = kort + 24
+  const fk = filtKort(W, H, kol)
+  const mm = fk / 63
+  const radW = W - kol, radH = H - TOPP
+  const fw = 1200 * mm, fh = 800 * mm, fx = (radW - fw) / 2, fy = (radH - fh) / 2
+  const felt = [[400, 130], [520, 130], [640, 130], [470, 356], [680, 356], [400, 590]].map(([x, y]) => `<div class="fkort" style="left:${fx + x * mm}px;top:${fy + y * mm}px;width:${63 * mm}px;height:${88 * mm}px"></div>`).join('')
+  const f = document.getElementById('fonster')
+  const rullat = document.getElementById('kol')?.scrollTop ?? 0
+  f.innerHTML = `<div class="topp"><span class="jag"><strong>Ada</strong><span>15 kort</span></span><button type="button">Visa alla</button><span class="verktyg"><button>↶ Ångra</button><button>⚑ Flagga</button><button>Ut…</button></span></div>
+    <div class="spel"><div class="filtrad"><div class="tra" style="left:${fx - 30}px;top:${fy - 30}px;width:${fw + 60}px;height:${fh + 60}px"></div><div class="filt" style="left:${fx}px;top:${fy}px;width:${fw}px;height:${fh}px"></div>${felt}</div>
+    <div class="kol${s.v === 'a' ? ' tva' : ''}" id="kol" role="group" aria-label="Min hand, 15 kort" style="width:${kol}px;--kort:${kort}px;--steg:${Math.round(0.6071 * kort)}px">${NAMN.map((n, i) => `<div class="slot"><button type="button" class="hk" data-i="${i}" tabindex="${i === 0 ? 0 : -1}" aria-label="${n}">${yta(n)}</button></div>`).join('')}</div></div>`
+  document.getElementById('kol').scrollTop = rullat
+  if (s.titt !== null && s.v === 'b') {
+    const knapp = f.querySelector(`[data-i="${s.titt}"]`)
+    const r = knapp.getBoundingClientRect(), fr = f.getBoundingClientRect(), k = fr.width / W
+    const top = Math.max(TOPP + 8, Math.min(H - 260, (r.top - fr.top) / k - 20))
+    f.insertAdjacentHTML('beforeend', `<div class="titt" style="left:${W - kol - 180 - 16}px;top:${top}px">${s.y === 'bild' ? `<span class="bild"><b>${NAMN[s.titt]}</b><span></span><i>Action — Duel</i></span>` : `<span class="vanta"><b>${NAMN[s.titt]}</b><i>Kortet renderas…</i></span>`}</div>`)
+  }
+  skala()
+  // Mät det som ritas: namn som kapas, remsans höjd, och hur många kort som syns utan rullning.
+  const kolEl = document.getElementById('kol')
+  const namnEl = [...kolEl.querySelectorAll(s.y === 'bild' ? '.bild b' : '.vanta b')]
+  const kapade = s.y === 'bild' ? 0 : namnEl.filter((b) => b.scrollWidth > b.clientWidth + 1 || b.scrollHeight > b.clientHeight + 1).length
+  const slots = [...kolEl.querySelectorAll('.slot')]
+  const steg = Math.round(slots[0].getBoundingClientRect().height / (fonster.getBoundingClientRect().width / W))
+  const synliga = slots.filter((sl) => sl.offsetTop + Math.min(sl.offsetHeight, 30) <= kolEl.clientHeight).length
+  const titel = s.y === 'bild' ? `<span>Titeln i bilden: <u class="${kort * 0.075 < 10 ? 'fel' : ''}">${(kort * 0.075).toFixed(1).replace('.', ',')} px</u></span>` : `<span>Namn som kapas: <u class="${kapade ? 'fel' : ''}">${kapade} av 15</u></span>`
+  document.getElementById('matt').innerHTML = `${titel}<span>Steg: <u>${steg} px</u></span><span>Kolumn: <u>${kol} px</u></span><span>Namn i sikte utan rullning: <u>${synliga} av 15</u></span><span>Filtens kort: <u>${fk} px</u> (vid 1024 × 768: ${filtKort(1024, 768, kol)} px)</span>`
+}
+const fonster = document.getElementById('fonster')
+function skala() {
+  const scen = document.getElementById('scen')
+  const k = Math.min((scen.clientWidth - 20) / W, (scen.clientHeight - 20) / H)
+  fonster.style.transform = `scale(${k})`
+  fonster.style.marginRight = `${W * k - W}px`; fonster.style.marginBottom = `${H * k - H}px`
+}
+fonster.addEventListener('pointerover', (e) => {
+  const b = e.target.closest('.hk'); if (!b || s.v !== 'b') return
+  if (s.titt !== Number(b.dataset.i)) { s.titt = Number(b.dataset.i); rita() }
+})
+fonster.addEventListener('pointerleave', () => { if (s.titt !== null) { s.titt = null; rita() } })
+fonster.addEventListener('pointerout', (e) => { if (s.v === 'b' && !e.relatedTarget?.closest?.('.hk') && s.titt !== null) { s.titt = null; rita() } })
+// Kolumnen är ett tabbstopp med pilarna inuti (K16, `roving.ts`); fokus lyfter kortet i B.
+fonster.addEventListener('keydown', (e) => {
+  const b = e.target.closest('.hk'); if (!b) return
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+  e.preventDefault(); e.stopPropagation()
+  const i = Math.max(0, Math.min(14, Number(b.dataset.i) + (e.key === 'ArrowDown' ? 1 : -1)))
+  if (s.v === 'b') s.titt = i
+  rita()
+  const ny = fonster.querySelector(`[data-i="${i}"]`)
+  for (const x of fonster.querySelectorAll('.hk')) x.tabIndex = -1
+  ny.tabIndex = 0; ny.focus(); ny.scrollIntoView({ block: 'nearest' })
+  if (s.v === 'b') rita(), fonster.querySelector(`[data-i="${i}"]`).focus()
+})
+fonster.addEventListener('focusin', (e) => {
+  const b = e.target.closest('.hk'); if (!b || s.v !== 'b' || s.titt === Number(b.dataset.i)) return
+  s.titt = Number(b.dataset.i); rita(); fonster.querySelector(`[data-i="${b.dataset.i}"]`).focus()
+})
+document.body.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.v) s.v = b.dataset.v
+  else if (b.dataset.y) s.y = b.dataset.y
+  else return
+  s.titt = null
+  const u = new URL(location.href); u.searchParams.set('v', s.v); u.searchParams.set('y', s.y); history.replaceState(null, '', u); rita()
+})
+addEventListener('keydown', (e) => {
+  if (e.target.closest?.('.hk')) return
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  s.v = alla[(alla.indexOf(s.v) + (e.key === 'ArrowRight' ? 1 : 3)) % 4]
+  s.titt = null
+  const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita()
+})
+addEventListener('resize', rita)
+const q = new URLSearchParams(location.search)
+if (['nu', 'a', 'b', 'c'].includes(q.get('v'))) s.v = q.get('v')
+if (['vanta', 'bild'].includes(q.get('y'))) s.y = q.get('y')
+rita()
+</script>
+</body>
+</html>
