@@ -1,3 +1,5 @@
+import { sheetPlaces } from './PlaySheet.js'
+import { playIntents } from './play.js'
 import { lazy, Suspense, useMemo } from 'react'
 import { useTableClient } from '../table/useTableClient.js'
 import { PlayerSurface, useHandMarks } from './PlayerSurface.js'
@@ -47,6 +49,21 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
     act: (intents) => (client ? client.send(...intents) : Promise.resolve({ ok: false as const, reason: 'not connected' })),
     onPlayed: marks.clear,
     faces,
+    // Enter on a hand card offers what the play sheet offers, and nothing else (#483).
+    handSheet: (now) => {
+      const places = sheetPlaces(now, t)
+      return {
+        places,
+        intentsFor: (zone, moving) =>
+          playIntents(
+            now,
+            moving.flatMap((id) => now.components.filter((c) => c.id === id)),
+            zone,
+            undefined,
+            places.find((p) => p.zone === zone)?.at,
+          ),
+      }
+    },
   })
   useActivityLive(activity, view, seat)
 
