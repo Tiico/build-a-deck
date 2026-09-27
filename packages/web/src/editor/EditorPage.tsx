@@ -480,7 +480,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // The name follows the state, in both what it does and what it is doing.
   const tableAction = table ? (updating ? 'editor.updatingTable' : 'editor.updateTable') : updating ? 'editor.startingTable' : 'editor.startTable'
   const updateButton = (
-    <button type="button" className="byd-editor-primary byd-primary" disabled={updating} aria-busy={updating} onClick={() => void updateTable()}>
+    <button type="button" className="byd-editor-primary byd-primary" data-table-kind={table ? table.kind : 'none'} disabled={updating} aria-busy={updating} onClick={() => void updateTable()}>
       {t(tableAction)}
     </button>
   )
@@ -539,12 +539,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           <>
             {saveButton}
             {table && (
-              <button type="button" onClick={() => void startTable()}>
+              <button type="button" className="byd-editor-new-table" onClick={() => void startTable()}>
                 {t('editor.newTable')}
               </button>
             )}
             {updateButton}
-            <TableMenu client={client} server={params.get('server')} onShowTables={() => setStage('tables')} />
+            <TableMenu client={client} server={params.get('server')} onShowTables={() => setStage('tables')} onNewTable={table ? () => void startTable() : undefined} />
           </>
         )}
       </header>
