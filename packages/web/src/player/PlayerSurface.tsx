@@ -66,9 +66,12 @@ export type PlayerSurfaceProps = {
   openHand(card: VisibleComponentState, marked: readonly string[]): void
   // Where the way out (#31) leads once the seat has been given up.
   onLeft(): void
+  // Played from afar with no felt in the window (`/online` on a phone, C2): the table fold says
+  // where the whole table is, which a phone beside the television never needs told.
+  away?: boolean | undefined
 }
 
-export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, openHand, onLeft }: PlayerSurfaceProps) {
+export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, openHand, onLeft, away = false }: PlayerSurfaceProps) {
   const t = useT()
   const personal = useRef<HTMLDetailsElement>(null)
   const [chosenId, setChosenId] = useState<string | null>(null)
@@ -193,7 +196,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
             screen that hid what its socket had been sent is the state the repo's rule about
             hidden information exists to keep out. It reads and never acts — the draw stays in the
             row above, where a thumb already knows to find it. */}
-        <details className="byd-phone-table" data-phone-table><summary>{t('player.table.title')}</summary><TableSummary view={view} activity={activity} zones="areas" history={false} /></details>
+        <details className="byd-phone-table" data-phone-table><summary>{t('player.table.title')}</summary>{away && <p className="byd-phone-table-where">{t('online.table.where')}</p>}<TableSummary view={view} activity={activity} zones="areas" history={false} /></details>
         <details className="byd-phone-history"><summary>{t('play.latest')}</summary><RecentActivity view={view} activity={activity} /></details>
       </main>
       {/* The card held up. A card that lies in front of you carries its verbs here, and a verb

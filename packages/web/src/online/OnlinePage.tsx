@@ -222,6 +222,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             marks={marks}
             openHand={kbd.openHand}
             onLeft={() => onLeave(wayBack(links))}
+            away
           />
           {kbd.panel}
         </div>

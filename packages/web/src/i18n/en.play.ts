@@ -226,6 +226,7 @@ export const enPlay = {
   'player.mine.play': 'Play…',
   'player.mine.empty': 'Nothing in front of you. Play a card here from your hand.',
   'player.table.title': 'The areas',
+  'online.table.where': 'The whole table is on the TV, or on a screen big enough for it.',
   'player.hand.title': 'Your cards',
   'player.hand.actions': 'Play selected cards',
   'player.hand.read': 'Read selected card',
