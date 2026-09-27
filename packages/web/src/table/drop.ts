@@ -91,6 +91,29 @@ export function ontoFelt(floor: ZoneView, box: Rect): Point {
 // hand's fan or inside a zone rectangle → move there; anywhere else → free placement on the
 // floor. The top card of a pile goes the same way, as a split; a whole pile moves as one unit.
 export function dropIntents(view: Snapshot, d: Drag, mode: TableMode): Intent[] {
+  const intents = aimedAt(view, d, mode)
+  return handedToNobody(view, intents) === null ? intents : []
+}
+
+// The hand a drop would put something into although nobody sits at it, or null (#482 fynd 7,
+// beslut 2026-09-27). Such a drop is no drop — the pointer keeps the keyboard's rule, which has
+// never offered that hand (`placesFor`): a card in it would be handed to no one and hidden from
+// every screen. The renderer asks this to say why the card went back.
+export function nobodysHand(view: Snapshot, d: Drag, mode: TableMode): string | null {
+  return handedToNobody(view, aimedAt(view, d, mode))
+}
+
+function handedToNobody(view: Snapshot, intents: readonly Intent[]): string | null {
+  const seated = new Set(view.seats.filter((s) => s.name !== null).map((s) => s.id))
+  for (const i of intents) {
+    const to = 'to' in i ? i.to : undefined
+    const z = to === undefined ? undefined : view.zones.find((x) => x.id === to)
+    if (z?.kind === 'hand' && !(z.owner !== undefined && seated.has(z.owner))) return z.id
+  }
+  return null
+}
+
+function aimedAt(view: Snapshot, d: Drag, mode: TableMode): Intent[] {
   const zones = new Map(view.zones.map((z) => [z.id, z]))
   const at = (p: Point): Drop => dropAt(view, mode, p)
   const dx = d.at.x - d.grab.x

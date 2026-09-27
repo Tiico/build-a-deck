@@ -9,7 +9,7 @@ import { feltScale, fitScale, leaningSquare, woodLayout, TOUCH_PX, TV_AIR_PX } f
 import { CAMERA_MIN_MM, CAMERA_STEP, activeBounds, cameraOf, centre, fitFloor, frameRect, overscanPx, pad, panBy, reachOf, same, shownRect, tween, union, zoomAround, type Rect, type Size } from './camera.js'
 import { recallCamera, rememberCamera, type CameraMemory } from './cameraMemory.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
-import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, handBound, type Drag, type DragTarget } from './drop.js'
+import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, handBound, nobodysHand, type Drag, type DragTarget } from './drop.js'
 import { isCounter, standIn } from '../components.js'
 import { cardWord, counterActs, drawOne, feltShortcuts, flipUnder, modifierHeld, ownerOf, type Act } from './keyboard.js'
 import { ShortcutHelp } from './ShortcutHelp.js'
@@ -563,7 +563,14 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       return
     }
     const intents = dropIntents(view, d, mode)
-    if (intents.length === 0) return
+    if (intents.length === 0) {
+      // A hand nobody sits at takes no card (#482 fynd 7): the card is already back where it was,
+      // and it is said why, or the felt would seem not to have heard the drop.
+      const empty = nobodysHand(view, d, mode)
+      const seat = empty === null ? undefined : view.zones.find((z) => z.id === empty)?.owner
+      if (seat !== undefined) say?.('polite', t('drop.nobody', { seat: view.seats.find((s) => s.id === seat)?.name ?? seat }))
+      return
+    }
     onAct(intents)
     // The card stays where it was put until the table has moved it. Between here and the patch the
     // view still says where the card came from, and drawing it there is the flinch (#29).

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CARD_STANDARD_63x88, TOKEN_COUNTER, initialState, project } from '@byd/engine'
 import type { Intent, Snapshot } from '@byd/protocol'
-import { BESIDE_MM, CARD_MM, TOKEN_MM, besidePile, dropIntents, type Drag, type Point } from '../src/table/drop.js'
+import { BESIDE_MM, CARD_MM, TOKEN_MM, besidePile, dropAt, dropIntents, nobodysHand, type Drag, type Point } from '../src/table/drop.js'
 import { handExtent, handRotation, type TableMode } from '../src/table/hand.js'
 import { zoneAt } from '../src/zones.js'
 import { playedAt } from '../src/online/seat.js'
@@ -77,11 +77,14 @@ describe('what a drop means (K1, K2)', () => {
 // Everything here is in the renderer's own table millimetres — the felt is 1200 × 800 mm whatever
 // the window is — so no number below is pinned to a screen size.
 const RIM_MM = 10
+// Somebody sits at every seat: a hand nobody sits at is no place for a card (#482 fynd 7), and the
+// hands below are the ones a card can be put into.
+const everySeatTaken = (view: Snapshot): Snapshot => ({ ...view, seats: view.seats.map((s) => ({ ...s, name: s.name ?? s.id })) })
 const fourSeatScene = (): Snapshot => {
   const base = recipeSetup(4)
   const loose = { type: { id: CARD_STANDARD_63x88.id, version: 1 }, cardRef: 'dragon', zone: base.floor, face: 'front' as const, x: 500, y: 300 }
   const chip = { type: { id: TOKEN_COUNTER.id, version: 1 }, cardRef: 'Liv', zone: base.floor, face: 'front' as const, counter: 3, x: 100, y: 100 }
-  return project(initialState('rims', { ...base, components: [loose, chip, ...base.components] }, registry), registry, null)
+  return everySeatTaken(project(initialState('rims', { ...base, components: [loose, chip, ...base.components] }, registry), registry, null))
 }
 const geometryOf = (view: Snapshot, id: string) => view.zones.find((z) => z.id === id)!.geometry
 const grabbedAtItsMiddle = (view: Snapshot, id: string, at: Point): Drag => {
@@ -184,7 +187,7 @@ const handWith = (held: number): Snapshot => {
   const base = recipeSetup(4)
   const card = (cardRef: string, zone: string, x = 0, y = 0) => ({ type: { id: CARD_STANDARD_63x88.id, version: 1 }, cardRef, zone, face: 'back' as const, x, y })
   const inHands = base.seats.flatMap((s) => Array.from({ length: held }, (_, i) => card(`${s}${i}`, `hand:${s}`)))
-  return project(initialState('fans', { ...base, components: [card('dragon', base.floor, 500, 300), ...inHands, ...base.components] }, registry), registry, null)
+  return everySeatTaken(project(initialState('fans', { ...base, components: [card('dragon', base.floor, 500, 300), ...inHands, ...base.components] }, registry), registry, null))
 }
 const middleOf = (r: { x: number; y: number; w: number; h: number }): Point => ({ x: r.x + r.w / 2, y: r.y + r.h / 2 })
 
@@ -464,5 +467,30 @@ describe('a card keeps the point it was picked up by (#223, K14)', () => {
     // what makes the two readings comparable at all.
     const floor = v.zones.find((z) => z.id === v.floor)!.geometry
     expect({ x: s.x, y: s.y }).toEqual({ x: floor.x + m.x!, y: floor.y + m.y! })
+  })
+})
+
+// A hand nobody sits at (#482 fynd 7, beslut 2026-09-27): the pointer does what the keyboard has
+// always done and does not put a card there. It would be handed to no one — a card in an empty
+// seat's hand is hidden from every screen — so the drop is no drop, and the card goes back.
+describe('a hand nobody sits at is no place for a card (#482)', () => {
+  const { view } = buildScene()
+  const v = view(null)
+  const hand = geometryOf(v, 'hand:B')
+  const inIt = { x: hand.x + hand.w / 2, y: hand.y + hand.h / 2 }
+
+  it('is where the point lies, so it is the rule and not the aim that says no', () => {
+    expect(v.seats.find((s) => s.id === 'B')?.name).toBeNull()
+    expect(dropAt(v, 'table', inIt).zone).toBe('hand:B')
+  })
+
+  it('takes neither a loose card nor the top of a pile, and says which hand it was', () => {
+    const loose = v.components.find((c) => c.zone === v.floor)!.id
+    const card = grabbedAtItsMiddle(v, loose, inIt)
+    const top: Drag = { target: { kind: 'pileTop', pile: 'draw' }, ids: [], grab: { x: -200, y: 0 }, at: inIt, origin: {} }
+    expect({ card: dropIntents(v, card, 'table'), top: dropIntents(v, top, 'table') }).toEqual({ card: [], top: [] })
+    expect({ card: nobodysHand(v, card, 'table'), top: nobodysHand(v, top, 'table') }).toEqual({ card: 'hand:B', top: 'hand:B' })
+    // And the hand at which somebody sits is still one, from the same pile.
+    expect(nobodysHand(v, { ...top, at: { x: 0, y: 370 } }, 'table')).toBeNull()
   })
 })

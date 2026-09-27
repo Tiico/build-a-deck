@@ -87,6 +87,7 @@ export const svPlay = {
   'start.again.label': 'Starta om spelet?',
   'start.again.tile': 'Starta om',
   'drop.unanswered': 'Bordet har inte svarat på draget än.',
+  'drop.nobody': 'Ingen sitter vid {seat} än, så kortet går tillbaka.',
   'start.again.text': '{actions} körs igen. Korten som ligger ute ligger kvar där de är.',
   'start.again.action': '«{action}» på {pile}',
   'start.again.and': ' och ',

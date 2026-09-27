@@ -1099,6 +1099,29 @@ describe('the gap between the drop and the patch (K1)', () => {
     vi.useRealTimers()
   })
 
+  // A hand nobody sits at is no place for a card (#482 fynd 7, beslut 2026-09-27): the pointer keeps
+  // the keyboard's rule. Nothing is sent, the card is where it was, and it is said why — a drop that
+  // went back without a word would read as a felt that did not work.
+  it('gives a card let go in an empty seat\'s hand straight back, and says nobody sits there', () => {
+    const { view, faceUp } = buildScene()
+    const v = view(null)
+    const onAct = vi.fn()
+    render(
+      <StatusLive>
+        <TableRenderer view={v} mode="tv" scale={1} onAct={onAct} />
+      </StatusLive>,
+    )
+    const hand = v.zones.find((z) => z.id === 'hand:B')!.geometry
+    const at = client(hand.x + hand.w / 2, hand.y + hand.h / 2)
+    const placed = () => document.querySelector(`[data-component="${faceUp}"]`) as HTMLElement
+    fireEvent.pointerDown(placed(), client(100, 50))
+    fireEvent.pointerMove(placed(), at)
+    fireEvent.pointerUp(placed(), at)
+    expect(onAct.mock.calls).toEqual([])
+    expect({ left: placed().style.left, top: placed().style.top }).toEqual({ left: '100px', top: '50px' })
+    expect(document.querySelector('[data-status-live="polite"]')!.textContent).toBe('Ingen sitter vid B än, så kortet går tillbaka.')
+  })
+
   // Drawing the top card off a pile is the same gap, and the one place it was never closed: the
   // drag has no component id to hold — a hidden pile gives none — so the drop fell through the
   // guard that holds a loose card and a whole pile, and the card was drawn back into the stack

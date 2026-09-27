@@ -72,6 +72,7 @@ export const enPlay = {
   'start.again.label': 'Start the game over?',
   'start.again.tile': 'Start again',
   'drop.unanswered': 'The table has not answered the move yet.',
+  'drop.nobody': 'Nobody sits at {seat} yet, so the card goes back.',
   'start.again.text': '{actions} run again. The cards already out stay where they are.',
   'start.again.action': '“{action}” on {pile}',
   'start.again.and': ' and ',
