@@ -3406,3 +3406,8 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-layer-inside li { display: flex; align-items: center; gap: var(--byd-s2); }
 .byd-layers [role='gridcell']:has(> .byd-layer-inside) { flex-wrap: wrap; }
 .byd-layers [role='gridcell'] > .byd-layer-inside { flex: 1 0 100%; }
+/* A count that is not one, said under the cell it is typed in, in the amber the editor says what
+   wants looking at in (#479); and a card that is in the table but not in the deck, said quietly. */
+.byd-data-lane input[aria-invalid='true'], .byd-data-bulk input[aria-invalid='true'] { border-color: #f0b64a; }
+.byd-data-says { grid-column: 1 / -1; color: #f0b64a; font-size: 11px; white-space: nowrap; }
+.byd-data-out { grid-column: 1 / -1; color: var(--byd-editor-quiet); font-size: 11px; white-space: nowrap; }

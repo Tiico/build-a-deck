@@ -300,6 +300,8 @@ export const svEditor = {
   'table.sort.none': 'Osorterad: kortens ordning i spelet.',
   'table.sort.ascending': 'Sorterad på {field}, stigande.',
   'table.sort.descending': 'Sorterad på {field}, fallande.',
+  'table.antal.invalid': 'antal är ett heltal från 0',
+  'table.antal.out': 'ingår inte i leken',
   'table.bulk': 'Markerade kort',
   'table.bulk.field': 'Sätt',
   'table.column': 'Kolumn',

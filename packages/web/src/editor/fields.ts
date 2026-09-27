@@ -75,3 +75,12 @@ export function nextCardRef(doc: Pick<ProjectDoc, 'rows'>): string {
   while (doc.rows.some((r) => r.id === `kort-${n}`)) n++
   return `kort-${n}`
 }
+
+// How many copies of a card the deck holds, read from what was typed, pasted or imported (L4,
+// #479): a whole number from nought, or nothing at all. The cell, the bulk row and the import ask
+// this one question, so the three cannot come to different documents; nought is a card that is in
+// the table and not in the deck, which the row says in words.
+export function copiesOf(text: string): number | null {
+  const trimmed = text.trim()
+  return /^\d+$/.test(trimmed) ? Number(trimmed) : null
+}

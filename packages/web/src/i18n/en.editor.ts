@@ -255,6 +255,8 @@ export const enEditor = {
   'table.sort.none': 'Unsorted: the cards’ order in the game.',
   'table.sort.ascending': 'Sorted on {field}, ascending.',
   'table.sort.descending': 'Sorted on {field}, descending.',
+  'table.antal.invalid': 'copies is a whole number from 0',
+  'table.antal.out': 'not in the deck',
   'table.bulk': 'Marked cards',
   'table.bulk.field': 'Set',
   'table.column': 'Column',

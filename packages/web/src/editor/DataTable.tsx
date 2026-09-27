@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent, type FocusEvent, type KeyboardEvent } from 'react'
 import type { ProjectDoc, ProjectRow } from './types.js'
-import { deckKeepsFields, fieldsOf, fieldLabel, takenNames, nextCardRef } from './fields.js'
+import { copiesOf, deckKeepsFields, fieldsOf, fieldLabel, takenNames, nextCardRef } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
 import { ColumnDoor } from './ColumnDoor.js'
 import { Crown, CrownBox, CrownDrawer, CrownFoot, CrownRail } from './Crown.js'
@@ -465,6 +465,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       setUploadError(err instanceof Error ? err.message : String(err))
     }
   }
+  // What is being typed in an `antal` cell that is not (yet) a count (#479), by card.
+  const [antalDraft, setAntalDraft] = useState<Record<string, string>>({})
   const [sort, setSort] = useState<SortState | null>(null)
   const [filter, setFilter] = useState<FilterState>(noFilter)
   // The marking is the deck's and not this panel's (#222): it is made here and acted on here and
@@ -898,6 +900,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // reading of what it is about to do. `null` is the empty hand — a change nobody chose is not
   // worth pressing by mistake.
   const bulkIsImage = imageFields.includes(field)
+  const bulkCountWrong = field === ANTAL && bulkValue.trim() !== '' && copiesOf(bulkValue) === null
   const bulkWrites: Cell | null = bulkIsImage
     ? bulkImage === null
       ? null
@@ -905,7 +908,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     : bulkValue === ''
       ? null
       : field === ANTAL
-        ? Number(bulkValue)
+        ? copiesOf(bulkValue)
         : bulkValue
   // A question about cards that are no longer marked is not a question any more: unmarking them,
   // or filtering them away, takes it back. The same holds for the question one row asks (#8): a
@@ -1147,7 +1150,14 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 aria-label={t('table.value')}
                 value={bulkValue}
                 onChange={(event) => setBulkValue(event.target.value)}
+                // The same rule the cell holds a count to (#479), said the same way.
+                {...(bulkCountWrong ? { 'aria-invalid': true, 'aria-describedby': 'byd-bulk-antal-says' } : {})}
               />
+            )}
+            {bulkCountWrong && (
+              <small className="byd-data-says" id="byd-bulk-antal-says">
+                {t('table.antal.invalid')}
+              </small>
             )}
             <button
               type="button"
@@ -1448,12 +1458,24 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                   <input
                     type={f === 'antal' ? 'number' : 'text'}
                     min={f === 'antal' ? 0 : undefined}
-                    value={row[f] === undefined || row[f] === null ? (f === 'antal' ? '1' : '') : String(row[f])}
+                    step={f === 'antal' ? 1 : undefined}
+                    value={f === 'antal' && antalDraft[cardRef] !== undefined ? antalDraft[cardRef] : row[f] === undefined || row[f] === null ? (f === 'antal' ? '1' : '') : String(row[f])}
                     onChange={(e) => {
                       typing.current[`${cardRef}:${f}`] = e.target.value
-                      onCell(cardRef, f, f === 'antal' ? Number(e.target.value) : e.target.value, cellGesture())
-                      if (onSymbol && f !== 'antal') openBrace(cardRef, f, e.target)
+                      if (f === 'antal') {
+                        // A count is a whole number from nought (#479). Anything else stands in the
+                        // cell, marked and said, and is not written; the cell shows what it had
+                        // again when it is left.
+                        const copies = copiesOf(e.target.value)
+                        setAntalDraft((was) => ({ ...was, [cardRef]: e.target.value }))
+                        if (copies === null) return
+                        onCell(cardRef, f, copies, cellGesture())
+                        return
+                      }
+                      onCell(cardRef, f, e.target.value, cellGesture())
+                      if (onSymbol) openBrace(cardRef, f, e.target)
                     }}
+                    {...(f === 'antal' && antalDraft[cardRef] !== undefined && copiesOf(antalDraft[cardRef]) === null ? { 'aria-invalid': true, 'aria-describedby': `byd-antal-says-${cardRef}` } : {})}
                     // The same keys the rail's library answers, because it is the same library
                     // (E4). They are heard here rather than in the list because the focus stays
                     // in the sentence being written — the rail hears them on the tool for the
@@ -1464,10 +1486,19 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       setHeld(shown.map((r) => r.id))
                       setHere({ cardRef, field: f })
                     }}
-                    onBlur={(event) => leaveCell(event, cardRef, f)}
+                    onBlur={(event) => {
+                      if (f === 'antal') setAntalDraft(({ [cardRef]: _gone, ...rest }) => rest)
+                      leaveCell(event, cardRef, f)
+                    }}
                     aria-label={`${cardRef} ${f}`}
                     {...listAria(cardRef, f)}
                   />
+                  {f === 'antal' && antalDraft[cardRef] !== undefined && copiesOf(antalDraft[cardRef]) === null && (
+                    <small className="byd-data-says" id={`byd-antal-says-${cardRef}`}>
+                      {t('table.antal.invalid')}
+                    </small>
+                  )}
+                  {f === 'antal' && antalDraft[cardRef] === undefined && Number(row[f] ?? 1) === 0 && <small className="byd-data-out">{t('table.antal.out')}</small>}
                   {/* The brace, made visible in the cell the designer is standing in (#33). It
                       writes the brace and opens the same picker typing one does — one way in, seen
                       rather than known. Only in the cell being worked in: one handle per cell is a

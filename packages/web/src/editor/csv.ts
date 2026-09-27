@@ -1,5 +1,5 @@
 import type { ProjectDoc, ProjectRow } from '@byd/server'
-import { fieldsOf } from './fields.js'
+import { copiesOf, fieldsOf } from './fields.js'
 import { translate, type T } from '../i18n/index.js'
 
 // Without a catalogue of its own this module speaks Swedish, exactly as a surface mounted
@@ -62,9 +62,10 @@ function csvCell(value: unknown): string {
   return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
 }
 
+// A card with no count, or a count that is not one, is one copy: the import cannot ask, and one is
+// what a card with no `antal` is everywhere else. The rule for what is one is the cell's (#479).
 function count(value: string | undefined): number {
-  const number = Number(value ?? '')
-  return Number.isFinite(number) && number >= 0 ? number : 1
+  return copiesOf(value ?? '') ?? 1
 }
 
 function splitCsv(text: string, separator: string): string[][] {
