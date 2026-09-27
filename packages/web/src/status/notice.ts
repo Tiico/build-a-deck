@@ -133,6 +133,17 @@ export function noticeFor(state: StatusKey, voice: Voice, t: T = swedish, { spen
   return { ...said, text: `${text} ${t('status.dropped.spent')}` }
 }
 
+// A seat's way back once its line is gone (#484 fynd 14): where a notice offers the way home, the
+// room's seat picker is offered before it. «Till mina spel» is no way back for a guest, who has no
+// games, while the code the seat came in by still opens the picker. Only for a route that has the
+// code to open it with — the route asks, and says so by calling this.
+export function towardSeat(notice: Notice, t: T = swedish): Notice {
+  const at = notice.actions.findIndex((a) => a.kind === 'home')
+  if (at < 0 || notice.actions.some((a) => a.kind === 'rescan')) return notice
+  const actions = [...notice.actions.slice(0, at), { kind: 'rescan' as const, label: t('status.act.rescan') }, ...notice.actions.slice(at)]
+  return { ...notice, actions }
+}
+
 // The way home from a page read by someone who is not signed in (#475). `/` is the login card for
 // them, and "Till mina spel" over it is a promise the page does not keep; "Till startsidan" is true
 // of both shapes the start page has.

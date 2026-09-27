@@ -27,7 +27,7 @@ import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { statusLinks, wayBack } from '../status/links.js'
-import { noticeFor } from '../status/notice.js'
+import { noticeFor, towardSeat } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT } from '../i18n/index.js'
 
@@ -72,6 +72,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   // A whole table on a whole screen: the message stands on the felt, like the TV's.
   const live = useLiveStatus(conn, 'table', timing)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
+  // A seat whose line is gone is offered the room's seat picker before the way home (#484 fynd 14).
+  const said = links.rescan && live.notice ? { ...live, notice: towardSeat(live.notice, t) } : live
   usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code') ?? sessionId })
   // The window this seat is playing in: it is half of which way round the felt is drawn (#77).
   const room = useRoom()
@@ -112,7 +114,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   // words and not the table screen's (#484 fynd 8): this is a seat like `/play`, and its way back
   // is the room's seat picker, which the code in the address still opens.
   if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'phone', t), text: refusedText(refused, t) }} surface="page" links={links} />
-  if (!view || !client) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
+  if (!view || !client) return <RouteStatus status={said} over="card" links={links} onRetry={conn.retry} />
 
   const me = view.seats.find((s) => s.id === seat)
   // Which shape the hand takes (K17's revision of 2026-09-14, #77). In a landscape window it is a
@@ -228,7 +230,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
         </div>
       )}
       <SeatSurvey view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
-      <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
+      <RouteStatus status={said} over="card" links={links} onRetry={conn.retry} />
     </>
   )
 }
