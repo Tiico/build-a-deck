@@ -119,6 +119,12 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
   // Panelens eget prefix för raden under en ratt (#454). Den måste ha ett id för att ratten ska
   // kunna peka på den, och en åtgärd har redan ett id som är unikt i sin zon.
   const panel = useId()
+  // The action last taken away and where it stood, for the way back (#480).
+  const [dropped, setDropped] = useState<{ action: ZoneAction; at: number } | null>(null)
+  const drop = (a: ZoneAction) => {
+    setDropped({ action: a, at: actions.findIndex((x) => x.id === a.id) })
+    onPatch({ actions: actions.filter((x) => x.id !== a.id) })
+  }
 
   return (
     <Chosen.Provider value={remembered}>
@@ -232,7 +238,7 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
                         // An action with no steps is not an action: the last step going takes it with
                         // it, which is also the only way to be rid of one.
                         if (steps.length > 0) setAction(a.id, { ...a, steps })
-                        else onPatch({ actions: actions.filter((x) => x.id !== a.id) })
+                        else drop(a)
                       }}
                     >
                       ×
@@ -240,6 +246,9 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
                   </li>
                 ))}
               </ol>
+              <button type="button" className="byd-zone-action-drop" aria-label={t('setup.actions.remove.of', { name: a.label })} onClick={() => drop(a)}>
+                {t('setup.actions.remove')}
+              </button>
               <label className="byd-zone-step-add">
                 <span>{t('setup.actions.andThen', { name: a.label })}</span>
                 <select
@@ -257,6 +266,23 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
             </div>
             )
           })}
+          {/* What was taken, and the way back (#480): an action went silently with its last step. */}
+          {dropped && (
+            <p className="byd-zone-action-undo" role="status">
+              {t('setup.actions.removed', { name: dropped.action.label })}{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  const back = [...actions]
+                  back.splice(Math.min(dropped.at, back.length), 0, dropped.action)
+                  onPatch({ actions: back })
+                  setDropped(null)
+                }}
+              >
+                {t('setup.undo')}
+              </button>
+            </p>
+          )}
           <button type="button" className="byd-zone-action-new" onClick={() => onPatch({ actions: [...actions, { id: `a${Date.now().toString(36)}`, label: t('setup.actions.newName'), steps: [blank('split')] }] })}>
             {t('setup.actions.new')}
           </button>

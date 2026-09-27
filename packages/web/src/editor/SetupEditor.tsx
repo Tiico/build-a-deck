@@ -138,6 +138,18 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
     setUndoable(null)
     setSaid(null)
   }
+  // A zone at every seat, unless every seat has one already — then the press says so rather than
+  // doing nothing without a word (#480).
+  const addSeat = (role: 'mine' | 'counters') => {
+    if (setup.seats.every((s) => setup.zones.some((z) => z.id === `${role}:${s}`))) {
+      // The family's name, which is the seat's zone name without the seat (`zone-name.ts`).
+      setSaid(t('setup.seatZone.all', { name: t(role === 'mine' ? 'zone.mine' : 'zone.counters', { seat: '' }).trim() }))
+      setUndoable(null)
+      return
+    }
+    client.addSeatZone(role, t)
+    setSaid(null)
+  }
   // Cut, copy and paste, bound to the window for the reason Delete already is: a handle on the
   // felt never has the focus, because the pointer that selects it is the pointer that starts a
   // drag. The clipboard is the editor's own and not the machine's — what is copied is a zone with
@@ -214,8 +226,8 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
         <div className="byd-setup-tools">
           <button type="button" onClick={() => add('area')}>{t('setup.addArea')}</button>
           <button type="button" onClick={() => add('pile')}>{t('setup.addPile')}</button>
-          <button type="button" onClick={() => client.addSeatZone('mine', t)}>{t('setup.addSeatArea')}</button>
-          <button type="button" onClick={() => client.addSeatZone('counters', t)}>{t('setup.addSeatCounters')}</button>
+          <button type="button" onClick={() => addSeat('mine')}>{t('setup.addSeatArea')}</button>
+          <button type="button" onClick={() => addSeat('counters')}>{t('setup.addSeatCounters')}</button>
         </div>
       </div>
       <div className="byd-setup-canvas">

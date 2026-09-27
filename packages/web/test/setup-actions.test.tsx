@@ -630,3 +630,31 @@ describe('ett steg som frågar efter ett tal, och spelstarten', () => {
     expect(document.getElementById(said!)?.textContent).toBe(why())
   })
 })
+
+// En åtgärd går att ta bort som en åtgärd, och borttagningen går att ångra (#480 fynd 10): sista
+// stegets × tog förut hela åtgärden, tyst och utan väg tillbaka.
+describe('att ta bort en åtgärd (#480)', () => {
+  it('har en egen knapp, säger vad som togs, och Ångra lägger den tillbaka', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    fireEvent.click(within(panel()).getByRole('button', { name: '＋ Åtgärd' }))
+    const named = () => [...panel().querySelectorAll<HTMLInputElement>('.byd-zone-action > input')].map((i) => i.value)
+    await waitFor(() => expect(named()).toHaveLength(1))
+    const name = named()[0]!
+    fireEvent.click(within(panel()).getByRole('button', { name: `Ta bort åtgärden ${name}` }))
+    await waitFor(() => expect(named()).toHaveLength(0))
+    expect(within(panel()).getByRole('status').textContent).toContain(`«${name}» är borttagen`)
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Ångra' }))
+    await waitFor(() => expect(named()).toEqual([name]))
+  })
+
+  it('säger det också när sista stegets × tar åtgärden med sig', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    fireEvent.click(within(panel()).getByRole('button', { name: '＋ Åtgärd' }))
+    await waitFor(() => expect(panel().querySelectorAll('.byd-zone-action')).toHaveLength(1))
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Ta bort steg 1' }))
+    await waitFor(() => expect(panel().querySelectorAll('.byd-zone-action')).toHaveLength(0))
+    expect(within(panel()).getByRole('status').textContent).toMatch(/är borttagen/)
+  })
+})
