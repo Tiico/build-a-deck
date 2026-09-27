@@ -227,6 +227,8 @@ describe('the icon as a tool on the canvas (#33)', () => {
     expect(drawnMm('icon-1')).toBe(8)
 
     fireEvent.change(screen.getByLabelText('Bredd (mm)'), { target: { value: '20' } })
+    // A typed number is written when the field is left (#478).
+    fireEvent.blur(screen.getByLabelText('Bredd (mm)'))
 
     // Measured on what the one renderer emits (E2), not on what the panel says.
     await waitFor(() => expect(drawnMm('icon-1')).toBe(20))

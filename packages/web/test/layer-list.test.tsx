@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { LayerList } from '../src/editor/LayerList.js'
 import { template } from './project-doc.js'
@@ -102,5 +102,53 @@ describe('moving a layer in the list itself', () => {
     await user.keyboard('{ArrowDown}')
     expect(named()).toEqual(['title', 'body', 'frame'])
     expect(document.activeElement).toBe(pick('body'))
+  })
+})
+
+// Renaming a layer (#478): the field opened with the caret after the old name, so typing a new
+// one wrote «titleRubrik». The old name is marked, as every rename field marks it, so typing
+// replaces it.
+describe('renaming a layer (#478)', () => {
+  it('opens with the old name marked, so what is typed replaces it', async () => {
+    const user = userEvent.setup()
+    const onRename = vi.fn()
+    render(
+      <>
+        <h2 id="test-layers-heading">Lager</h2>
+        <LayerList layers={layersOf(['body', 'title'])} selected="title" onSelect={vi.fn()} onReorder={vi.fn()} onRename={onRename} labelledBy="test-layers-heading" />
+      </>,
+    )
+    pick('title').focus()
+    await user.keyboard('{F2}')
+    const field = document.querySelector('.byd-layer-rename') as HTMLInputElement
+    expect(field.selectionStart).toBe(0)
+    expect(field.selectionEnd).toBe(field.value.length)
+    await user.keyboard('Rubrik{Enter}')
+    expect(onRename.mock.calls.at(-1)?.[1]).toBe('Rubrik')
+  })
+})
+
+// The drop line (#478): it was always drawn over the row dropped on, and a layer dragged downward
+// landed under that row — the line said one place and the layer went to another. The line is now
+// drawn on the side the layer lands: over the row dragged up, under it dragged down.
+describe('the drop line says where the layer lands (#478)', () => {
+  const row = (id: string) => document.querySelector(`[data-layer="${id}"]`) as HTMLElement
+
+  it('is under the row, and the layer lands under it, when dragged down', () => {
+    render(<MovableLayers ids={['body', 'title', 'frame']} />)
+    fireEvent.dragStart(row('body'))
+    fireEvent.dragOver(row('title'))
+    expect(row('title').getAttribute('data-over')).toBe('below')
+    fireEvent.drop(row('title'))
+    expect(named()).toEqual(['title', 'body', 'frame'])
+  })
+
+  it('is over the row, and the layer lands over it, when dragged up', () => {
+    render(<MovableLayers ids={['body', 'title', 'frame']} />)
+    fireEvent.dragStart(row('frame'))
+    fireEvent.dragOver(row('title'))
+    expect(row('title').getAttribute('data-over')).toBe('above')
+    fireEvent.drop(row('title'))
+    expect(named()).toEqual(['body', 'frame', 'title'])
   })
 })

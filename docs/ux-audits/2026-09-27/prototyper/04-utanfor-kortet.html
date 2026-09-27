@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 04 — Utanför kortet (#478 fynd 7)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Ett element kan dras helt utanför kortet (granskningen: typ på x −48,5 mm), och scenen rullar
+     bara över kortet, så elementet går inte att nå med pekaren igen. Vilken regel ska draget ha?
+
+       Nu  fritt, och scenen panorerar inte vid kanten
+       A   halva boxen stannar på kortet (mitten klampas till kortets kant)
+       B   boxen stannar inom utfallet, 3 mm utanför skärkanten
+       C   fritt, men ett element helt utanför får en bärnstensmarkör på kortets kant med
+           «Hämta tillbaka» (L30:s prejudikat), och scenen växer så att det går att rulla dit
+
+     Gemensamt för A–C: scenen autopanorerar när pekaren drar nära dess kant vid förstoring.
+     Kortet är demolekens «Juice em' up!» (63 × 88 mm) med demolekens lager ur spelkort.ts.
+     paper och frame är låsta här så att de inte tar klicken (det är fynd 2, som byggs AFK). ───── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .yta { position: relative; }
+  .kant { position: absolute; pointer-events: none; }
+  /* B: utfallet ritas som ett streckat band runt skärkanten medan något dras. */
+  .utfall { position: absolute; pointer-events: none; box-sizing: border-box; border: calc(3 * var(--mm)) solid rgb(255 217 138 / 22%); outline: 1px dashed #ffd98a; }
+  .skarkant { position: absolute; pointer-events: none; outline: 1px dashed rgb(60 140 231 / 80%); }
+  /* A: elementets mitt, som är det regeln håller på kortet. */
+  .mitt { position: absolute; width: 9px; height: 9px; margin: -5px 0 0 -5px; border-radius: 50%; background: #fff; border: 2px solid var(--primary-mark); pointer-events: none; }
+  .lapp { position: absolute; z-index: 5; padding: 4px 8px; border-radius: 6px; font-size: 11px; line-height: 1.35; white-space: nowrap; pointer-events: none; }
+  .lapp.bla { background: #1b2a44; border: 1px solid var(--primary-mark); color: #cfe0ff; }
+  .lapp.guld { background: #2a2419; border: 1px solid #f0b64a; color: #ffd98a; }
+  /* C: markören på kortets kant, i bärnsten som L30:s kontur utanför bordet. */
+  .ute-box { position: absolute; pointer-events: none; outline: 2px dashed #f0b64a; outline-offset: 0; }
+  .markor { position: absolute; z-index: 6; display: flex; align-items: center; gap: 6px; padding: 3px 3px 3px 8px; border-radius: 8px; background: #2a2419; border: 1px solid #f0b64a; color: #ffd98a; font-size: 12px; white-space: nowrap; transform: translate(var(--tx, 0), -50%); }
+  .markor b { font-weight: 700; color: #ffe9b8; }
+  .markor button { min-height: 32px; border: 1px solid #f0b64a; border-radius: 6px; padding: 0 8px; background: #f0b64a; color: #2a2419; font: inherit; font-weight: 700; cursor: pointer; }
+  .markor button:focus-visible { outline: 2px solid #ffd98a; outline-offset: 2px; }
+  .m-rad .namn i.ute { color: #f0b64a; font-weight: 700; }
+  .props-ute { grid-column: 1 / -1; display: grid; gap: 6px; padding: 8px 10px; border: 1px solid #6b5a2c; border-radius: 8px; background: #2a2419; color: var(--locked-ink); font-size: 12px; line-height: 1.4; }
+  .props-ute .m-knapp { border-color: #f0b64a; color: #ffd98a; justify-self: start; }
+  .props-regel { grid-column: 1 / -1; margin: 0; color: var(--hint-ink); font-size: 11px; line-height: 1.45; }
+  .dekor { opacity: .55; pointer-events: none; }
+  /* Mätraden får en fast bredd, så att raden inte bryts om — och fönstret skalas om — när talen ändras. */
+  .protorad .matt { flex: 0 0 300px; flex-wrap: wrap; gap: 2px var(--s3); }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>Fynd 7 · Utanför kortet.</b> Dra ett element förbi kortets kant — med musen, med piltangenterna (Shift = 5 mm) eller genom att skriva i X. Förstora och dra mot scenens kant för att känna autopanoreringen (A–C).</p>
+    <p>Samordnas med 6/11 fynd 2 och 10/11 fynd 1 (L30: utanför bordet är ett fel, inte en upplysning).</p>
+  </div>
+  <div class="matt"><span>Valt: <u id="m-namn">–</u></span><span>x <u id="m-x">–</u> · y <u id="m-y">–</u> mm</span><span>På kortet: <u id="m-pa">–</u></span><span>Nåbart: <u id="m-nar">–</u></span></div>
+  <div class="storlek vaxlare" role="group" aria-label="Fönstrets storlek">
+    <button type="button" data-s="1280x800">1280 × 800</button>
+    <button type="button" data-s="1024x768">1024 × 768</button>
+  </div>
+  <button type="button" id="ut">Dra typ till x −48,5</button>
+  <button type="button" id="z300">Förstora 300 %</button>
+  <button type="button" id="aterstall">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+
+<div class="m-scen" id="mscen">
+  <div class="m-ram" id="ram"><span class="etikett" id="etikett"></span>
+    <div class="m-skarm byd-editor" id="skarm">
+      <div class="ed-huvud">
+        <span class="hem">Mina spel</span><strong>Sal's Saloon</strong><span class="rev">rev 1</span><span class="sparat">Sparat</span>
+        <div class="ed-flikar" role="tablist" aria-label="Lägen"><button role="tab" tabindex="-1">Kortvägg</button><button role="tab" aria-selected="true" tabindex="-1">Mall</button><button role="tab" tabindex="-1">Tabell</button><button role="tab" tabindex="-1">Symboler</button><button role="tab" tabindex="-1">Media</button><button role="tab" tabindex="-1">Regler</button><button role="tab" tabindex="-1">Bord</button></div>
+        <span class="spacer"></span><span class="who">A</span>
+        <button type="button" class="ed-knapp kantad" tabindex="-1">Spara</button><button type="button" class="ed-knapp primar" tabindex="-1">Starta bord ▾</button>
+      </div>
+      <div class="m-krona">
+        <label>Grupperas av kolumnen <select tabindex="-1"><option>typ</option></select></label>
+        <button type="button" class="meny" tabindex="-1">Bas (alla) · 77 kort ▾</button>
+        <span class="spacer"></span>
+        <button type="button" class="m-knapp" tabindex="-1">Fäll ihop egenskaperna</button>
+        <div class="sidor"><button type="button" aria-pressed="true" tabindex="-1">Framsida</button><button type="button" tabindex="-1">Baksida</button></div>
+      </div>
+      <div class="m-duk">
+        <nav class="m-verktyg" aria-label="Verktyg">
+          <button type="button" tabindex="-1"><b>T</b>Text</button><button type="button" tabindex="-1"><b>▣</b>Bild</button><button type="button" tabindex="-1"><b>●</b>Ikon</button><button type="button" tabindex="-1"><b>●●</b>Ikonrad</button><button type="button" tabindex="-1"><b>□</b>Form</button>
+        </nav>
+        <aside class="m-lager">
+          <div class="krona"><h2>Lager · Framsida</h2><p>Alla 77 kort</p></div>
+          <div class="m-lista" id="lista" role="grid" aria-label="Lager"></div>
+          <div class="fot">Dra för att ändra ordningen. <b>?</b></div>
+        </aside>
+        <div class="m-rum" id="rum">
+          <main class="m-sceneyta" id="scenen" tabindex="0" aria-label="Kortet">
+            <div class="yta" id="yta"></div>
+          </main>
+          <div class="m-zoom" id="zoom"></div>
+        </div>
+        <aside class="m-props" id="props"></aside>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const NOT = {
+  nu: '<b>Nu.</b> Inget stopp. Dra typ förbi vänsterkanten: elementet försvinner ur kortet, boxen hänger kvar i scenen tills scenen slutar, och sedan finns det bara kvar i lagerlistan och i X-fältet. Scenen rullar bara över kortet, och den panorerar inte när pekaren når kanten.',
+  a: '<b>A · Halva boxen stannar på kortet.</b> Elementets mitt klampas till skärkanten: ett element kan hänga ut över kanten till hälften, aldrig mer. En lapp vid kanten säger varför det tog stopp. <span class="plus">+ En regel att säga i en mening. Ett element kan aldrig bli oåtkomligt, vid någon förstoring. Ingen ny yta.</span> <span class="minus">− Tillåter det som aldrig trycks: halva boxen kan ligga långt bortom utfallet. En stor dekorform som ska sticka ut mer än hälften går inte att göra. Skrivet X klampas också — ett tal man skrev blir ett annat.</span>',
+  b: '<b>B · Inom utfallet.</b> Hela boxen stannar inom utfallet, 3 mm utanför skärkanten, som är det tryckeriet faktiskt trycker. Utfallet ritas som ett streckat band medan något dras. En box större än utfallet (bakgrunden) får inte lämna något av det otäckt. <span class="plus">+ Regeln är tryckets egen: allt som går att placera kan också synas på ett tryckt kort. Utfallet blir synligt precis när det spelar roll. Gör E5:s varning om bakgrund som inte når utfallet lättare att förstå.</span> <span class="minus">− Strängast: en cirkel som ska skäras av kortets hörn måste krympas i stället för att skjutas ut. Storleksändring behöver samma regel. Skrivna tal klampas.</span>',
+  c: '<b>C · Fritt, men aldrig borta.</b> Draget stoppas inte. Ett element som hamnar helt utanför kortet får en bärnstenskontur och en markör på kortets kant med «Hämta tillbaka», lagret märks «utanför kortet» och panelen säger att det inte ritas. Scenen växer så att elementet går att rulla fram till. <span class="plus">+ Tar inte ifrån designern något (parkera ett element utanför medan man provar). Samma språk som L30 på filten. Skrivna tal gäller som de skrevs.</span> <span class="minus">− Mest ny yta: markör, märkning, panelrad. En parkerad sak ritas inte men följer med i mallen, och scenen blir större än kortet. Flera element på samma kant ger flera markörer.</span>',
+}
+
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const $ = (q) => document.querySelector(q)
+const W_MM = 63, H_MM = 88, BLEED = 3, PX100 = 96 / 25.4, PAD = 24
+const fmt = (n) => (Math.round(n * 10) / 10).toLocaleString('sv-SE', { minimumFractionDigits: 0, maximumFractionDigits: 1 }).replace('-', '−')
+
+// Demolekens framsida (spelkort.ts), uppifrån och ned i lagerordning.
+const START = () => [
+  { id: 'raritet', kind: 'text', x: 5, y: 77.3, w: 26, h: 5.4, text: 'Diamant', pt: 8.5, wt: 700, align: 'center', color: '#000000' },
+  { id: 'body', kind: 'text', x: 5, y: 19, w: 53, h: 55, text: 'Välj två andra spelare. De blandar en shot till varann', pt: 8.5, color: '#2b2118', shows: 'body' },
+  { id: 'typ', kind: 'text', x: 5, y: 11.5, w: 40, h: 4, text: 'Playcard', pt: 8.5, wt: 700, color: '#fff8e7' },
+  { id: 'title', kind: 'text', x: 5, y: 4.5, w: 53, h: 7, text: "Juice em' up!", pt: 12, wt: 800, color: '#fff8e7', serif: true },
+  { id: 'frame', kind: 'shape', x: 3, y: 3, w: 57, h: 82, stroke: '#3b2a1a', sw: 0.5, r: 3, last: true },
+  { id: 'band', kind: 'shape', x: 3, y: 3, w: 57, h: 13, fill: '#6b4a2b', r: 2.5 },
+  { id: 'paper', kind: 'shape', x: -3, y: -3, w: 69, h: 94, fill: '#f6efe0', last: true },
+]
+const s = { v: 'nu', storlek: '1280x800', el: START(), vald: 'typ', S: 1, fit: true, drag: null, lapp: null, bounds: null }
+
+// ── Regeln per variant ──────────────────────────────────────────────────────────────────
+function regel(el, x, y) {
+  const within = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
+  let nx = x, ny = y
+  if (s.v === 'a') {
+    nx = within(x, -el.w / 2, W_MM - el.w / 2); ny = within(y, -el.h / 2, H_MM - el.h / 2)
+  } else if (s.v === 'b') {
+    const ax = (v, size, total) => size <= total + 2 * BLEED ? within(v, -BLEED, total + BLEED - size) : within(v, total + BLEED - size, -BLEED)
+    nx = ax(x, el.w, W_MM); ny = ax(y, el.h, H_MM)
+  } else {
+    nx = within(x, -400, 400); ny = within(y, -400, 400)
+  }
+  const r = (v) => Math.round(v * 10) / 10
+  return { x: r(nx), y: r(ny), stopp: Math.abs(nx - x) > 0.05 || Math.abs(ny - y) > 0.05 }
+}
+const helaUtanfor = (e) => e.x + e.w <= 0 || e.x >= W_MM || e.y + e.h <= 0 || e.y >= H_MM
+const andelPa = (e) => { const w = Math.max(0, Math.min(e.x + e.w, W_MM) - Math.max(e.x, 0)), h = Math.max(0, Math.min(e.y + e.h, H_MM) - Math.max(e.y, 0)); return (w * h) / (e.w * e.h) }
+
+// ── Fönstret ────────────────────────────────────────────────────────────────────────────
+const skarm = $('#skarm')
+function skala() {
+  const [W, H] = s.storlek.split('x').map(Number)
+  const scen = $('#mscen')
+  const f = Math.min(1, (scen.clientWidth - 24) / W, (scen.clientHeight - 36) / H)
+  skarm.style.width = W + 'px'; skarm.style.height = H + 'px'
+  skarm.style.transform = `scale(${f})`
+  $('#ram').style.width = W * f + 'px'; $('#ram').style.height = H * f + 'px'
+  $('#etikett').textContent = `${W} × ${H}` + (f < 1 ? ` · visas i ${Math.round(f * 100)} %` : '')
+  // Vid 1024 lämnar inpassningen ingen bredd åt bandet, som då lägger sig under scenen (L19).
+  $('#rum').toggleAttribute('data-rad', W < 1200)
+}
+
+// ── Scenen ──────────────────────────────────────────────────────────────────────────────
+const scenen = $('#scenen'), yta = $('#yta')
+function passaIn() { return Math.min((scenen.clientWidth - 2 * PAD) / W_MM, (scenen.clientHeight - 2 * PAD) / H_MM) }
+// Vad scenen rullar över, i kortets millimeter. Nu, A och B: bara kortet. C: även det som ligger utanför.
+function omfang() {
+  let x0 = 0, y0 = 0, x1 = W_MM, y1 = H_MM
+  if (s.v === 'c') for (const e of s.el) if (e.id !== 'paper') { x0 = Math.min(x0, e.x - 4); y0 = Math.min(y0, e.y - 4); x1 = Math.max(x1, e.x + e.w + 4); y1 = Math.max(y1, e.y + e.h + 4) }
+  return { x0, y0, x1, y1 }
+}
+let origo = { x: 0, y: 0 }
+function ritaScen() {
+  if (s.fit) s.S = passaIn()
+  const S = s.S
+  const b = s.drag ? s.bounds : (s.bounds = omfang())
+  const Wc = (b.x1 - b.x0) * S + 2 * PAD, Hc = (b.y1 - b.y0) * S + 2 * PAD
+  const W = Math.max(scenen.clientWidth, Wc), H = Math.max(scenen.clientHeight, Hc)
+  const nytt = { x: (W - (b.x1 - b.x0) * S) / 2 - b.x0 * S, y: (H - (b.y1 - b.y0) * S) / 2 - b.y0 * S }
+  const dx = nytt.x - origo.x, dy = nytt.y - origo.y
+  origo = nytt
+  yta.style.width = W + 'px'; yta.style.height = H + 'px'
+  yta.style.setProperty('--mm', S + 'px')
+  const kort = s.el.slice().reverse().map((e) => elHtml(e)).join('')
+  const boxar = s.el.filter((e) => !e.last).reverse().map((e) => `<div class="m-box" data-id="${e.id}" tabindex="0" role="button" aria-label="${e.id}" style="--x:${e.x};--y:${e.y};--w:${e.w};--h:${e.h}" ${e.id === s.vald ? 'data-vald' : ''}>${e.id === s.vald ? '<i class="h nw"></i><i class="h ne"></i><i class="h sw"></i><i class="h se"></i>' : ''}</div>`).join('')
+  yta.innerHTML = `<div class="m-kort" style="left:${origo.x}px;top:${origo.y}px">${kort}</div>
+    <div class="m-lagret" id="lagret" style="left:${origo.x}px;top:${origo.y}px;width:${W_MM * S}px;height:${H_MM * S}px">${extra()}${boxar}</div>`
+  // Håll utsikten stilla när scenens omfång ändras (C).
+  if (dx || dy) { scenen.scrollLeft += dx; scenen.scrollTop += dy }
+  ritaZoom(); ritaLista(); ritaProps(); mat()
+}
+function elHtml(e) {
+  const st = `--x:${e.x};--y:${e.y};--w:${e.w};--h:${e.h}`
+  if (e.kind === 'shape') return `<div class="el" style="${st};background:${e.fill ?? 'transparent'};border-radius:calc(${e.r ?? 0} * var(--mm));${e.stroke ? `border:calc(${e.sw} * var(--mm)) solid ${e.stroke};` : ''}"></div>`
+  const pill = e.id === 'raritet' ? `<div class="el" style="--x:${e.x};--y:${e.y - 0.3};--w:26;--h:6;background:#6D9EEB;border-radius:calc(3 * var(--mm))"></div>` : ''
+  return `${pill}<p class="el txt" style="${st};color:${e.color};font:${e.wt ?? 400} calc(${e.pt * 0.3528} * var(--mm)) / 1.2 ${e.serif ? 'Georgia, serif' : 'system-ui, sans-serif'};text-align:${e.align ?? 'left'}">${esc(e.text)}</p>`
+}
+// Det varianten ritar utöver kortet: utfallet, mitten, lappen, markörerna.
+function extra() {
+  const S = s.S, px = (mm) => mm * S + 'px'
+  let h = ''
+  const d = s.drag && s.el.find((e) => e.id === s.drag.id)
+  if (d && s.v !== 'nu') h += `<div class="skarkant" style="left:0;top:0;width:${px(W_MM)};height:${px(H_MM)}"></div>`
+  if (d && s.v === 'b') h += `<div class="utfall" style="left:${px(-BLEED)};top:${px(-BLEED)};width:${px(W_MM + 2 * BLEED)};height:${px(H_MM + 2 * BLEED)}"></div>`
+  if (d && s.v === 'a') h += `<i class="mitt" style="left:${px(d.x + d.w / 2)};top:${px(d.y + d.h / 2)}"></i>`
+  if (s.lapp) h += `<div class="lapp ${s.v === 'b' ? 'guld' : 'bla'}" style="left:${px(s.lapp.x)};top:${px(s.lapp.y)};transform:translate(${s.lapp.tx}, ${s.lapp.ty})">${s.lapp.text}</div>`
+  if (s.v === 'c') {
+    const ute = s.el.filter((e) => !e.last && helaUtanfor(e))
+    ute.forEach((e, i) => {
+      h += `<div class="ute-box" style="left:${px(e.x)};top:${px(e.y)};width:${px(e.w)};height:${px(e.h)}"></div>`
+      const cx = Math.min(W_MM - 1, Math.max(1, e.x + e.w / 2)), cy = Math.min(H_MM - 4, Math.max(4, e.y + e.h / 2)) + i * (40 / S)
+      const pil = e.x + e.w <= 0 ? '←' : e.x >= W_MM ? '→' : e.y + e.h <= 0 ? '↑' : '↓'
+      const tx = e.x >= W_MM ? '-100%' : e.x + e.w <= 0 ? '0' : '-50%'
+      h += `<div class="markor" style="left:${px(cx)};top:${px(cy)};--tx:${tx}"><span>${pil} <b>${esc(e.id)}</b> är utanför kortet</span><button type="button" data-hamta="${e.id}">Hämta tillbaka</button></div>`
+    })
+  }
+  return h
+}
+
+// ── Förstoringsbandet (L19) ─────────────────────────────────────────────────────────────
+function ritaZoom() {
+  const pct = Math.round((s.S / PX100) * 100)
+  $('#zoom').innerHTML = `<span>${pct} %</span><button type="button" data-z="ut" aria-label="Förminska">−</button><input type="range" min="50" max="600" value="${pct}" aria-label="Förstoring" id="reglage"><button type="button" data-z="in" aria-label="Förstora">+</button><button type="button" data-z="fit" aria-pressed="${s.fit}">Passa in</button><button type="button" data-z="100">100 %</button>`
+}
+// Förstora kring det valda elementet (fynd 4), annars kring kortets mitt.
+function zooma(nyS, fit = false) {
+  const v = s.el.find((e) => e.id === s.vald)
+  const mm = v ? { x: v.x + v.w / 2, y: v.y + v.h / 2 } : { x: W_MM / 2, y: H_MM / 2 }
+  const fore = { x: origo.x + mm.x * s.S - scenen.scrollLeft, y: origo.y + mm.y * s.S - scenen.scrollTop }
+  s.fit = fit
+  s.S = fit ? passaIn() : Math.min(6, Math.max(0.5, nyS / PX100)) * PX100
+  ritaScen()
+  scenen.scrollLeft = origo.x + mm.x * s.S - fore.x
+  scenen.scrollTop = origo.y + mm.y * s.S - fore.y
+  ritaScen()
+}
+
+// ── Lagerlistan och panelen ─────────────────────────────────────────────────────────────
+const GLYF = {
+  text: '<svg viewBox="0 0 16 16"><path d="M3 3h10v2.2M8 3v10M5.6 13h4.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  shape: '<svg viewBox="0 0 16 16"><rect x="2.6" y="3.6" width="10.8" height="8.8" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+}
+const LAS = (last) => `<svg viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0${last ? 'v2' : ''}" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`
+function ritaLista() {
+  $('#lista').innerHTML = s.el.map((e) => {
+    const ute = s.v === 'c' && !e.last && helaUtanfor(e)
+    return `<div class="m-rad" role="row" data-rad="${e.id}" aria-selected="${e.id === s.vald}"><span class="las" ${e.last ? 'data-last' : ''}>${LAS(e.last)}</span><span class="namn">${GLYF[e.kind]}<span>${e.id}</span>${ute ? '<i class="ute">utanför kortet</i>' : ''}</span><span class="grepp">⠿</span></div>`
+  }).join('')
+}
+function ritaProps() {
+  const e = s.el.find((x) => x.id === s.vald)
+  if (!e) { $('#props').innerHTML = '<h2>Egenskaper</h2><p class="hint">Välj ett lager i lagerlistan, eller ett element på kortet.</p>'; return }
+  const f = (k, g) => `<div class="m-f"><span class="g">${g}</span><input data-mått="${k}" value="${fmt(e[k]).replace('−', '-')}" ${e.last ? 'readonly' : ''} aria-label="${g} (mm)"><em>mm</em></div>`
+  const ute = s.v === 'c' && !e.last && helaUtanfor(e)
+  const regeltext = { a: 'Mitten stannar på kortet: X går från −½ B till 63 − ½ B.', b: 'Boxen stannar inom utfallet: X går från −3 till 66 − B.', c: '', nu: '' }[s.v]
+  $('#props').innerHTML = `<h2>Egenskaper · ${e.id}</h2>
+    <section class="m-sek"><h3>Layout</h3><div class="m-rader">${f('x', 'X')}${f('y', 'Y')}${f('w', 'B')}${f('h', 'H')}
+      ${regeltext ? `<p class="props-regel">${regeltext}</p>` : ''}
+      ${ute ? `<div class="props-ute"><span>Helt utanför kortet. Lagret ritas inte på något kort.</span><button type="button" class="m-knapp" data-hamta="${e.id}">Hämta tillbaka</button></div>` : ''}
+    </div></section>
+    <div class="dekor">
+    ${e.kind === 'text' ? `<section class="m-sek"><h3>Innehåll</h3><label>Fält<select><option>${e.id === 'raritet' ? 'raritet' : e.id === 'body' ? 'body' : e.id}</option></select></label></section>
+    <section class="m-sek"><h3>Text</h3><div class="m-rader"><label>Typsnitt<select><option>system-ui, sans</option></select></label><div class="m-f"><span class="g">A</span><input value="${fmt(e.pt)}"><em>pt</em></div><label>Vikt<select><option>${e.wt ?? 400}</option></select></label><label>Färg<span class="brunn"><i style="background:${e.color}"></i></span></label></div></section>`
+    : `<section class="m-sek"><h3>Form</h3><p class="hint">(Resten av panelen hör till prototyp 06.)</p></section>`}
+    </div>`
+}
+function mat() {
+  const e = s.el.find((x) => x.id === s.vald)
+  $('#m-namn').textContent = e ? e.id : '–'
+  $('#m-x').textContent = e ? fmt(e.x) : '–'
+  $('#m-y').textContent = e ? fmt(e.y) : '–'
+  $('#m-pa').textContent = e ? Math.round(andelPa(e) * 100) + ' %' : '–'
+  // Nåbart: ligger någon del av boxen inom det scenen går att rulla över?
+  if (e) {
+    const b = { x0: -origo.x / s.S, y0: -origo.y / s.S, x1: (yta.offsetWidth - origo.x) / s.S, y1: (yta.offsetHeight - origo.y) / s.S }
+    // Så mycket av boxen som ligger där scenen går att rulla, i skärmpixlar: under 8 px är den i praktiken borta.
+    const w = Math.max(0, Math.min(e.x + e.w, b.x1) - Math.max(e.x, b.x0)) * s.S, h = Math.max(0, Math.min(e.y + e.h, b.y1) - Math.max(e.y, b.y0)) * s.S
+    $('#m-nar').textContent = `${Math.min(w, h) >= 8 ? 'ja' : 'nej'}, ${Math.round(Math.min(w, h))} px i scenen`
+  } else $('#m-nar').textContent = '–'
+}
+
+// ── Draget, med autopanorering vid scenens kant (A–C) ───────────────────────────────────
+function flytta(e, x, y) {
+  const r = regel(e, x, y)
+  e.x = r.x; e.y = r.y
+  s.lapp = null
+  if (r.stopp && s.v === 'a') s.lapp = lappVid(e, 'Halva elementet stannar på kortet')
+  if (r.stopp && s.v === 'b') s.lapp = lappVid(e, 'Utfallet slutar här, 3 mm utanför kanten')
+}
+function lappVid(e, text) {
+  const cx = Math.min(W_MM, Math.max(0, e.x + e.w / 2)), cy = Math.min(H_MM, Math.max(0, e.y + e.h / 2))
+  const vid = e.x + e.w / 2 <= 0.1 || (s.v === 'b' && e.x <= -BLEED + 0.05) ? 'v' : e.x + e.w / 2 >= W_MM - 0.1 || (s.v === 'b' && e.x + e.w >= W_MM + BLEED - 0.05) ? 'h' : e.y + e.h / 2 <= 0.1 || (s.v === 'b' && e.y <= -BLEED + 0.05) ? 'u' : 'n'
+  const pos = { v: { x: 2, y: cy, tx: '0', ty: '-50%' }, h: { x: W_MM - 2, y: cy, tx: '-100%', ty: '-50%' }, u: { x: cx, y: 2, tx: '-50%', ty: '0' }, n: { x: cx, y: H_MM - 2, tx: '-50%', ty: '-100%' } }[vid]
+  return { ...pos, text }
+}
+let panorering = 0
+function autopan() {
+  const d = s.drag; if (!d) return
+  if (s.v !== 'nu') {
+    const r = scenen.getBoundingClientRect(), K = 40
+    const fart = (a) => (a < K ? -(K - a) / K * 18 : 0)
+    const vx = fart(d.px - r.left) - fart(r.right - d.px), vy = fart(d.py - r.top) - fart(r.bottom - d.py)
+    if (vx || vy) {
+      const fore = { x: scenen.scrollLeft, y: scenen.scrollTop }
+      scenen.scrollLeft += vx; scenen.scrollTop += vy
+      if (scenen.scrollLeft !== fore.x || scenen.scrollTop !== fore.y) folj()
+    }
+  }
+  panorering = requestAnimationFrame(autopan)
+}
+function folj() {
+  const d = s.drag, e = s.el.find((x) => x.id === d.id)
+  const f = skarm.getBoundingClientRect().width / skarm.offsetWidth
+  const mmx = (d.px - d.sx + (scenen.scrollLeft - d.sl) * f) / (s.S * f), mmy = (d.py - d.sy + (scenen.scrollTop - d.st) * f) / (s.S * f)
+  flytta(e, d.bx + mmx, d.by + mmy)
+  ritaScen()
+}
+yta.addEventListener('pointerdown', (ev) => {
+  const box = ev.target.closest('.m-box'); if (!box || ev.button !== 0) return
+  ev.preventDefault(); ev.stopPropagation()
+  const e = s.el.find((x) => x.id === box.dataset.id)
+  s.vald = e.id
+  s.drag = { id: e.id, sx: ev.clientX, sy: ev.clientY, px: ev.clientX, py: ev.clientY, bx: e.x, by: e.y, sl: scenen.scrollLeft, st: scenen.scrollTop }
+  ritaScen()
+  panorering = requestAnimationFrame(autopan)
+})
+addEventListener('pointermove', (ev) => { if (!s.drag) return; s.drag.px = ev.clientX; s.drag.py = ev.clientY; folj() })
+addEventListener('pointerup', () => {
+  if (!s.drag) return
+  cancelAnimationFrame(panorering)
+  const id = s.drag.id
+  s.drag = null; s.lapp = null
+  ritaScen()
+  yta.querySelector(`.m-box[data-id="${id}"]`)?.focus({ preventScroll: true })
+})
+yta.addEventListener('click', (ev) => {
+  if (ev.target.closest('[data-hamta]')) return
+  if (!ev.target.closest('.m-box')) { s.vald = null; ritaScen() }
+})
+
+// Hämta tillbaka: till närmaste läge helt på kortet.
+function hamta(id) {
+  const e = s.el.find((x) => x.id === id)
+  e.x = Math.round(Math.min(W_MM - e.w, Math.max(0, e.x)) * 10) / 10
+  e.y = Math.round(Math.min(H_MM - e.h, Math.max(0, e.y)) * 10) / 10
+  s.vald = id
+  ritaScen()
+  const r = yta.querySelector(`.m-box[data-id="${id}"]`)
+  r?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); r?.focus({ preventScroll: true })
+}
+
+// ── Rita allt ───────────────────────────────────────────────────────────────────────────
+function rita() {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  for (const b of document.querySelectorAll('[data-s]')) b.setAttribute('aria-pressed', String(b.dataset.s === s.storlek))
+  $('#anteckning').innerHTML = NOT[s.v]
+  skala()
+  // En variant med en strängare regel tar över ett element som redan ligger där regeln förbjuder.
+  for (const e of s.el) if (!e.last) { const r = regel(e, e.x, e.y); e.x = r.x; e.y = r.y }
+  ritaScen()
+}
+const satt = (k, v) => { const u = new URL(location.href); u.searchParams.set(k, v); history.replaceState(null, '', u) }
+
+document.body.addEventListener('click', (ev) => {
+  const b = ev.target.closest('button, .m-rad'); if (!b) return
+  if (b.dataset.v) { s.v = b.dataset.v; satt('v', s.v); rita() }
+  else if (b.dataset.s) { s.storlek = b.dataset.s; satt('s', s.storlek); rita(); if (s.fit) zooma(0, true) }
+  else if (b.id === 'aterstall') { Object.assign(s, { el: START(), vald: 'typ', fit: true, lapp: null }); rita() }
+  else if (b.id === 'ut') {
+    const e = s.el.find((x) => x.id === 'typ'); s.vald = 'typ'
+    flytta(e, -48.5, e.y); s.lapp = null; ritaScen()
+  }
+  else if (b.id === 'z300') zooma(300 * PX100 / 100)
+  else if (b.dataset.hamta) hamta(b.dataset.hamta)
+  else if (b.dataset.rad) { s.vald = b.dataset.rad; ritaScen() }
+  else if (b.dataset.z === 'fit') zooma(0, true)
+  else if (b.dataset.z === '100') zooma(PX100)
+  else if (b.dataset.z === 'in') zooma(s.S * 1.25)
+  else if (b.dataset.z === 'ut') zooma(s.S / 1.25)
+})
+document.body.addEventListener('input', (ev) => { if (ev.target.id === 'reglage') zooma(Number(ev.target.value) / 100 * PX100) })
+// Ett skrivet mått gäller när fältet lämnas eller Enter trycks — aldrig per tangent (fynd 3).
+document.body.addEventListener('change', (ev) => {
+  const k = ev.target.dataset?.mått; if (!k) return
+  const e = s.el.find((x) => x.id === s.vald); const n = Number(String(ev.target.value).replace(',', '.').replace('−', '-'))
+  if (!Number.isFinite(n)) { ritaProps(); return }
+  if (k === 'x' || k === 'y') flytta(e, k === 'x' ? n : e.x, k === 'y' ? n : e.y)
+  else { e[k] = Math.max(2, n); const r = regel(e, e.x, e.y); e.x = r.x; e.y = r.y }
+  s.lapp = null
+  ritaScen()
+})
+addEventListener('keydown', (ev) => {
+  if (ev.target.closest('input, textarea, select, [contenteditable]')) return
+  const box = ev.target.closest('.m-box')
+  const steg = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[ev.key]
+  if (box && steg) {
+    ev.preventDefault()
+    const e = s.el.find((x) => x.id === box.dataset.id), n = ev.shiftKey ? 5 : 0.5
+    s.vald = e.id
+    flytta(e, e.x + steg[0] * n, e.y + steg[1] * n)
+    s.drag = null
+    const lapp = s.lapp
+    ritaScen(); s.lapp = null
+    yta.querySelector(`.m-box[data-id="${e.id}"]`)?.focus({ preventScroll: true })
+    if (lapp) setTimeout(() => { if (!s.drag) ritaScen(), yta.querySelector(`.m-box[data-id="${e.id}"]`)?.focus({ preventScroll: true }) }, 1400)
+    return
+  }
+  if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  s.v = alla[(alla.indexOf(s.v) + (ev.key === 'ArrowRight' ? 1 : 3)) % 4]
+  satt('v', s.v); rita()
+})
+// Ctrl + hjul förstorar kring pekaren (L19, fynd 4).
+scenen.addEventListener('wheel', (ev) => {
+  if (!ev.ctrlKey) return
+  ev.preventDefault()
+  const f = skarm.getBoundingClientRect().width / skarm.offsetWidth, r = scenen.getBoundingClientRect()
+  const p = { x: (ev.clientX - r.left) / f, y: (ev.clientY - r.top) / f }
+  const mm = { x: (scenen.scrollLeft + p.x - origo.x) / s.S, y: (scenen.scrollTop + p.y - origo.y) / s.S }
+  s.fit = false; s.S = Math.min(6 * PX100, Math.max(0.5 * PX100, s.S * (ev.deltaY < 0 ? 1.1 : 1 / 1.1)))
+  ritaScen()
+  scenen.scrollLeft = origo.x + mm.x * s.S - p.x; scenen.scrollTop = origo.y + mm.y * s.S - p.y
+  ritaScen()
+}, { passive: false })
+new ResizeObserver(() => { skala(); if (!s.drag) ritaScen() }).observe($('#mscen'))
+
+const q = new URLSearchParams(location.search)
+if (['nu', 'a', 'b', 'c'].includes(q.get('v'))) s.v = q.get('v')
+if (['1024x768', '1280x800'].includes(q.get('s'))) s.storlek = q.get('s')
+rita()
+</script>
+</body>
+</html>

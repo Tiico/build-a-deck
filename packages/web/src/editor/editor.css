@@ -972,6 +972,23 @@
    makes a trackpad and a touch screen drag the element instead of scrolling the stage. */
 .byd-drag-layer { position: absolute; inset: 0; touch-action: none; }
 .byd-drag-box { position: absolute; touch-action: none; cursor: move; }
+/* A shape with no fill takes the pointer on its outline only (#478, L26): the box lets it through,
+   and a ring as wide as `--byd-rim` inside the box's edge takes it back. The ring is the box's own
+   pseudo-element, so what it catches is the box's and every handler still answers; the handles
+   hang on the box and take the pointer as they always did. */
+.byd-drag-box[data-hollow] { pointer-events: none; }
+.byd-drag-box[data-hollow]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  clip-path: polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, var(--byd-rim) var(--byd-rim), var(--byd-rim) calc(100% - var(--byd-rim)), calc(100% - var(--byd-rim)) calc(100% - var(--byd-rim)), calc(100% - var(--byd-rim)) var(--byd-rim), var(--byd-rim) var(--byd-rim));
+}
+.byd-drag-box[data-hollow] > .byd-drag-handle { pointer-events: auto; }
+/* Why the element stopped at the card's edge (#478): a word by it, in the screen's own size
+   whatever the zoom, while the hand keeps pushing. */
+.byd-drag-kept { position: absolute; left: 50%; top: 100%; transform: translateY(calc(4px / var(--byd-canvas-scale, 1))) scale(calc(1 / var(--byd-canvas-scale, 1))); transform-origin: top left; padding: 4px 8px; border-radius: 6px; background: #1b1d23; border: 1px solid #f0b64a; color: #f0b64a; font: 600 12px system-ui; white-space: nowrap; pointer-events: none; z-index: 10002; }
+.byd-drag-kept[data-toward='left'] { left: auto; right: 50%; transform-origin: top right; }
 /* The element as a keyboard stop, and the move mode it can be put into (#144). The card under the
    ring is the designer's and may be any colour she likes, so the ring is two: a dark one at the
    box's own edge and a bright one outside it. Whatever the card is painted, one of them is legible
@@ -991,11 +1008,16 @@
     repeating-linear-gradient(to right, var(--byd-editor-grid-mm) 0 0.06mm, transparent 0.06mm var(--byd-grid-step, 1mm)),
     repeating-linear-gradient(to bottom, var(--byd-editor-grid-mm) 0 0.06mm, transparent 0.06mm var(--byd-grid-step, 1mm));
 }
-.byd-drag-handle { position: absolute; width: 2.4mm; height: 2.4mm; background: var(--byd-editor-handle-bg); border: 0.4mm solid var(--byd-editor-primary-mark); box-sizing: border-box; touch-action: none; }
-.byd-drag-handle[data-handle='nw'] { left: -1.2mm; top: -1.2mm; cursor: nwse-resize; }
-.byd-drag-handle[data-handle='ne'] { right: -1.2mm; top: -1.2mm; cursor: nesw-resize; }
-.byd-drag-handle[data-handle='sw'] { left: -1.2mm; bottom: -1.2mm; cursor: nesw-resize; }
-.byd-drag-handle[data-handle='se'] { right: -1.2mm; bottom: -1.2mm; cursor: nwse-resize; }
+/* The marks on the card are millimetres of card, and the card is drawn at the zoom (#478): at 50 %
+   a 2.4 mm handle was 5 px, which no hand hits. They keep their millimetres while that is enough
+   screen and never go under 10 px — the card is under CSS `zoom`, so 10 px divided by the zoom is
+   10 px on the screen. */
+.byd-drag-layer { --byd-mark: max(2.4mm, calc(10px / var(--byd-canvas-scale, 1))); --byd-point-mark: max(2.6mm, calc(10px / var(--byd-canvas-scale, 1))); }
+.byd-drag-handle { position: absolute; width: var(--byd-mark); height: var(--byd-mark); background: var(--byd-editor-handle-bg); border: 0.4mm solid var(--byd-editor-primary-mark); box-sizing: border-box; touch-action: none; }
+.byd-drag-handle[data-handle='nw'] { left: calc(var(--byd-mark) / -2); top: calc(var(--byd-mark) / -2); cursor: nwse-resize; }
+.byd-drag-handle[data-handle='ne'] { right: calc(var(--byd-mark) / -2); top: calc(var(--byd-mark) / -2); cursor: nesw-resize; }
+.byd-drag-handle[data-handle='sw'] { left: calc(var(--byd-mark) / -2); bottom: calc(var(--byd-mark) / -2); cursor: nesw-resize; }
+.byd-drag-handle[data-handle='se'] { right: calc(var(--byd-mark) / -2); bottom: calc(var(--byd-mark) / -2); cursor: nwse-resize; }
 /* The marks on a shape of the designer's own (L26). The point is round where the corner handle
    is square — one says «this corner of the box», the other «this corner of the outline» — and it
    lies above the box and its handles both, because the point is always above the edge and above
@@ -1004,9 +1026,9 @@
    rather than hung from its top-left corner, so the dot really is where the point is. */
 .byd-point {
   position: absolute;
-  width: 2.6mm;
-  height: 2.6mm;
-  margin: -1.3mm 0 0 -1.3mm;
+  width: var(--byd-point-mark, 2.6mm);
+  height: var(--byd-point-mark, 2.6mm);
+  margin: calc(var(--byd-point-mark, 2.6mm) / -2) 0 0 calc(var(--byd-point-mark, 2.6mm) / -2);
   padding: 0;
   border: 0.4mm solid var(--byd-editor-primary-mark);
   /* A point is a square, and it is the shape that says so (L38). */
@@ -1320,6 +1342,8 @@
   border-radius: 2px;
   background: var(--byd-editor-primary-mark);
 }
+/* Dragged down, the layer lands under the row it is dropped on, and the line says so (#478). */
+.byd-layers [role='row'][data-over='below']::before { inset: auto 0 -1px 0; }
 .byd-layer-lock, .byd-layer-pick {
   display: flex;
   align-items: center;
@@ -1377,11 +1401,27 @@
   cursor: pointer;
 }
 .byd-canvas-question button[data-kind='danger'] { background: var(--byd-editor-ask-danger-bg); }
+/* Which card the template is drawn on (#478, variant B), in a row under the card. */
+.byd-card-row { position: relative; display: flex; align-items: center; gap: var(--byd-s2); padding: var(--byd-s1) var(--byd-s3); border-top: 1px solid #2f333d; background: #14161c; }
+.byd-card-row > button { border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; cursor: pointer; }
+.byd-card-row > button:disabled { color: var(--byd-editor-quiet); cursor: default; }
+.byd-card-row-name { display: inline-flex; align-items: baseline; gap: var(--byd-s2); min-width: 0; max-width: 40%; padding: 0 var(--byd-s3); }
+.byd-card-row-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.byd-card-row-name small { flex: 0 0 auto; color: #9aa3b8; }
+.byd-card-row-values { flex: 1 1 auto; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #9aa3b8; font-size: 12px; }
+.byd-card-row-values b { color: #c7cede; font-weight: 600; }
+.byd-card-row-list { position: absolute; left: var(--byd-s3); bottom: calc(100% + 4px); z-index: 20; display: grid; gap: var(--byd-s1); width: min(320px, calc(100% - 24px)); max-height: 50vh; padding: var(--byd-s2); border: 1px solid #3b4358; border-radius: 10px; background: #1b1f2a; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5); }
+.byd-card-row-list input { min-height: var(--byd-tap); padding: 0 var(--byd-s2); border: 1px solid #2f333d; border-radius: 8px; background: #0f1115; color: #fff; font: inherit; }
+.byd-card-row-list ul { margin: 0; padding: 0; list-style: none; overflow: auto; }
+.byd-card-row-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--byd-s2); min-height: var(--byd-tap); padding: 0 var(--byd-s2); border-radius: 6px; color: #e6ecfa; cursor: pointer; }
+.byd-card-row-list li[data-active], .byd-card-row-list li:hover { background: #262a35; }
+.byd-card-row-list li[aria-selected='true'] { font-weight: 700; }
+.byd-card-row-list li small { color: #9aa3b8; font-family: ui-monospace, monospace; }
+.byd-card-row-none { color: #9aa3b8; cursor: default; }
 .byd-canvas-locked {
-  margin: 8px 0 0;
+  margin: 0;
   padding: 8px 12px;
-  border: 1px solid #6b5a2c;
-  border-radius: 8px;
+  border-top: 1px solid #6b5a2c;
   background: #2a2419;
   color: var(--byd-editor-locked-ink);
   font-size: 12px;

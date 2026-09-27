@@ -3061,7 +3061,7 @@ Det är utdelningen ovan, nu ärligt ritad medan handen håller i den — ska de
 
 Editorn har en knapp som startar ett bord från projektet eller skickar `version.change` till det bord den startat.
 Knappen heter det jobb den står i begrepp att göra (#417, byggt 2026-09-21): utan bord heter den "Starta bord" ("Start a table"), och "Startar bordet…" medan starten är på väg; med ett bord heter den "Uppdatera bordet" som förut.
-"Nytt bord" står i pilens meny bredvid knappen, ovanför "Alla bord", vid alla bredder (beslut 2026-09-27, #477 fynd 4, prototyp 05 variant B).
+"Nytt bord" står i pilens meny bredvid knappen, ovanför "Alla bord", vid alla bredder (beslut 2026-09-27, #477 fynd 4, prototyp 09 variant B).
 Den stod förut bredvid knappen i huvudet, och vid 1024 px var det "Uppdatera bordet" som fick ge plats: den klipptes till "Uppdatera bo".
 Ett andra bord är det sällsynta och medvetna valet, så det ligger ett tryck bort, och det frågas inte om (samma beslut).
 Efter en omladdning plockar editorn upp det nyaste bordet som fortfarande kör, så att knappen uppdaterar det i stället för att starta ett andra (#477 fynd 1).
@@ -3627,6 +3627,13 @@ Det är ett uttryckligt avsteg och inte ett förbiseende: en bredd som minns vis
 L4:s mönster står kvar oförändrat för allt annat det gäller; det som skrivs ned här är att duken är undantaget och varför.
 L18:s flyttläge rörs inte: en nudge är 0,5 mm i kortets mått vid varje förstoring, så det som ändras av ett reglage är hur många pixlar en halv millimeter är och aldrig vad som skrivs in i dokumentet.
 Draglagret mäter fortfarande millimetrar ur kortets egen ruta och aldrig ur skalan, så ett drag är sant vid varje förstoring (#18).
+
+**Tillägg 2026-09-27 (#478, beslut av beställaren efter prototyperna 04 och 07).**
+Förstoringen växer kring något: Ctrl och hjulet kring det som står under pekaren, bandets egna kontroller kring det valda elementet eller scenens mitt när inget är valt; så länge kortet är mindre än scenen finns inget att rulla och kortet växer från mitten som förut.
+Handtag och punkter behåller sina millimetrar men går aldrig under 10 px på skärmen.
+Ett elements mitt stannar på kortet vid drag, piltangenter och skrivet X/Y — det kan hänga halvt över en kant, aldrig mer — och en etikett säger varför det stannade.
+Vid förstoring panorerar scenen när en hand som drar hålls nära dess kant, och elementet följer med.
+Under kortet står en rad som säger vilket kort mallen visas på, med ‹ och ›, en sökbar lista (som Media, L22) och de värden på kortet som styr hur det ritas; den kostar en rad av kortets höjd, som bandet redan gjorde vid 1024.
 
 Motivering:
 Ett kort ritas i millimeter och trycks i millimeter, men bedöms på en skärm vars enda mått är hur högt fönstret råkar vara.

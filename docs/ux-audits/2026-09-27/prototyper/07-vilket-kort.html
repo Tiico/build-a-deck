@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 07 — Vilket kort (#478 fynd 14)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Mallen ritar ett kort ur leken, men säger inte vilket. Att byta kort kräver en rundtur:
+     Kortvägg, klicka ett kort, tillbaka till Mall. Var ska mallen säga vilket kort den visar,
+     och hur byter man?
+
+       Nu  som i dag: inget namn, bytet går via Kortvägg
+       A   namn och pilar i krönet, namnet öppnar en sökbar lista
+       B   en rad under kortet: namn, pilar, lista — och de värden som styr utseendet
+       C   en remsa med leken under kortet, och genvägar till de svåraste korten
+
+     Leken är demolekens 77 kortrader (spelkort.csv). Gruppmenyn i krönet fungerar: med en
+     grupp öppen visar mallen bara kort ur gruppen (previewRow), och pilarna stegar inom den.
+     Prejudikat: L22 (reviderad 2026-09-20) — Medias kortväljare söks på namn och visar id där
+     namnet är delat. ──────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .yta { position: relative; }
+  .protorad .matt { flex: 0 0 auto; }
+  .ed-flikar button { cursor: pointer; }
+  .m-rum { grid-template-rows: minmax(0, 1fr) auto; }
+  .m-rum:not([data-rad]) > .m-zoom { grid-row: 1; grid-column: 2; }
+  .m-rum[data-rad] { grid-template-rows: minmax(0, 1fr) auto auto; }
+  .m-rum > .under { grid-column: 1 / -1; }
+  .m-krona select.meny { width: 172px; }
+  .m-krona { position: relative; }
+  /* Väljaren: pilar och ett namn som öppnar en sökbar lista. Samma i A och B. */
+  .valjare { position: relative; display: flex; align-items: center; gap: 4px; min-width: 0; }
+  .valjare > button { min-height: 44px; min-width: 44px; border: 1px solid var(--line); border-radius: 8px; background: #15171c; color: #fff; font: inherit; cursor: pointer; }
+  .valjare > button:disabled { color: #545d70; cursor: default; }
+  .valjare > .namnknapp { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 260px; padding: 0 12px; font-weight: 700; text-align: left; }
+  .valjare > .namnknapp span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .valjare > .namnknapp small { flex: none; color: var(--quiet-2); font-weight: 400; font-variant-numeric: tabular-nums; }
+  .valjare > button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .lista { position: absolute; z-index: 20; left: 48px; top: calc(100% + 4px); width: 320px; display: grid; grid-template-rows: auto minmax(0, 1fr); max-height: 380px; border: 1px solid var(--line); border-radius: 10px; background: #1b1d23; box-shadow: 0 12px 30px rgb(0 0 0 / 45%); }
+  .lista.upp { top: auto; bottom: calc(100% + 4px); }
+  .lista input { margin: 8px; min-height: 44px; border: 1px solid var(--field-line); border-radius: 6px; padding: 0 10px; background: var(--field-bg); color: #fff; font: inherit; }
+  .lista ul { list-style: none; margin: 0; padding: 0 4px 6px; overflow: auto; }
+  .lista li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 44px; padding: 0 8px; border-radius: 6px; color: #dce3f2; cursor: pointer; }
+  .lista li[aria-selected='true'] { background: #2f3a55; }
+  .lista li.aktiv { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  .lista li i { width: 10px; height: 10px; border-radius: 50%; }
+  .lista li span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .lista li small { color: var(--quiet-2); font-size: 11px; }
+  .lista .inga { padding: 12px; color: var(--quiet-2); }
+  /* B: raden under kortet. */
+  .kortrad { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; padding: var(--s2) var(--s3); border-top: 1px solid var(--line); background: #1b1d23; }
+  .kortrad { flex-wrap: nowrap; }
+  .kortrad .varden { flex: 1 1 0; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #dce3f2; font-size: 12px; }
+  .kortrad .varden b { font-weight: 400; color: var(--quiet-2); }
+  /* C: remsan. */
+  .remsa { display: grid; gap: 6px; padding: var(--s2) var(--s3) var(--s2); border-top: 1px solid var(--line); background: #1b1d23; min-width: 0; }
+  .remsa .rubrik { display: flex; align-items: center; gap: 6px; color: var(--hint-ink); font-size: 12px; white-space: nowrap; }
+  .remsa .rubrik .vem { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .remsa .rubrik b { color: #fff; }
+  .remsa .rubrik button { min-height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: #dce3f2; font: inherit; font-size: 12px; cursor: pointer; }
+  .remsa .rubrik button[aria-pressed='true'] { border-color: var(--primary-mark); background: #22324d; }
+  .remsa .spar { display: flex; gap: 6px; overflow-x: auto; padding: 3px 3px 6px; scrollbar-width: thin; }
+  .tum { flex: none; position: relative; width: 44px; height: 62px; padding: 0; border: 0; border-radius: 3px; background: #f6efe0; overflow: hidden; cursor: pointer; box-shadow: 0 0 0 1px rgb(0 0 0 / 55%); }
+  .tum::before { content: ''; position: absolute; left: 3px; right: 3px; top: 3px; height: 10px; border-radius: 2px; background: var(--band); }
+  .tum::after { content: ''; position: absolute; left: 4px; bottom: 5px; width: 18px; height: 4px; border-radius: 2px; background: var(--pill); }
+  .tum span { position: absolute; left: 4px; right: 4px; top: 16px; color: #2b2118; font: 700 6px/1.15 system-ui, sans-serif; text-align: left; overflow: hidden; max-height: 28px; }
+  .tum[aria-current='true'] { outline: 3px solid var(--primary-mark); outline-offset: 1px; }
+  .tum:focus-visible { outline: 3px solid #fff; outline-offset: 1px; }
+  /* Kortväggen, bara så mycket att rundturen går att göra. */
+  .vagg { flex: 1 1 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+  .vagg .verktyg { display: flex; align-items: center; gap: 8px; padding: 12px var(--s4); border-bottom: 1px solid var(--line); color: var(--quiet-2); }
+  .vagg .verktyg .sok { flex: 0 1 260px; min-height: 44px; display: flex; align-items: center; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: #15171c; color: var(--quiet); }
+  .vagg .rutnat { overflow: auto; padding: var(--s4); display: grid; grid-template-columns: repeat(auto-fill, 96px); gap: 14px; align-content: start; }
+  .vagg .kortv { position: relative; width: 96px; height: 134px; padding: 0; border: 0; border-radius: 4px; background: #f6efe0; cursor: pointer; box-shadow: 0 0 0 1px rgb(0 0 0 / 55%), 0 1px 3px rgb(0 0 0 / 50%); overflow: hidden; text-align: left; }
+  .vagg .kortv i { position: absolute; left: 5px; right: 5px; top: 5px; height: 20px; border-radius: 3px; }
+  .vagg .kortv b { position: absolute; left: 8px; right: 8px; top: 8px; color: #fff8e7; font: 800 9px/1.1 Georgia, serif; }
+  .vagg .kortv em { position: absolute; left: 7px; bottom: 7px; width: 42px; height: 9px; border-radius: 5px; }
+  .vagg .kortv[aria-pressed='true'] { outline: 3px solid #f0b64a; outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>Fynd 14 · Vilket kort.</b> Byt förhandsvisat kort till «Faster Than Your Own Shadow» (det med längst titel), och sedan till nästa kort i gruppen. Öppna en grupp i krönet och se att bytet håller sig inom den.</p>
+    <p>Kortväggen i huvudet fungerar, så rundturen i <i>Nu</i> går att göra på riktigt.</p>
+  </div>
+  <div class="matt"><span>Visas: <u id="m-kort">–</u></span><span>Senaste bytet: <u id="m-klick">–</u></span></div>
+  <div class="storlek vaxlare" role="group" aria-label="Fönstrets storlek">
+    <button type="button" data-s="1280x800">1280 × 800</button>
+    <button type="button" data-s="1024x768">1024 × 768</button>
+  </div>
+  <button type="button" id="aterstall">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+
+<div class="m-scen" id="mscen">
+  <div class="m-ram" id="ram"><span class="etikett" id="etikett"></span>
+    <div class="m-skarm byd-editor" id="skarm">
+      <div class="ed-huvud">
+        <span class="hem">Mina spel</span><strong>Sal's Saloon</strong><span class="rev">rev 1</span><span class="sparat">Sparat</span>
+        <div class="ed-flikar" role="tablist" aria-label="Lägen" id="lagen"></div>
+        <span class="spacer"></span><span class="who">A</span>
+        <button type="button" class="ed-knapp kantad" tabindex="-1">Spara</button><button type="button" class="ed-knapp primar" tabindex="-1">Starta bord ▾</button>
+      </div>
+      <div id="innehall" style="flex:1 1 0;min-height:0;display:flex;flex-direction:column"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Demolekens 77 kortrader: id, titel, typ, raritet, text, antal (spelkort.csv genom rowsOfSheet).
+const RADER = [["juice-em-up", "Juice em' up!", "Playcard", "Diamant", "Välj två andra spelare. De blandar en shot till varann", 1], ["sals-saloon", "Sal's Saloon", "Location", "Guld", "Saloonen öppnar! Lägg upp ett shopkort per spelare som går in. I turordning från dig: slå tärningen – slaget plus ditt guld är din budget. Köp ett eller flera kort eller avstå", 2], ["dustydice-casino", "DustyDice Casino", "Location", "Guld", "Välkommen till kasinot! Alla annonserar sin insats (1–10 klunkar) och slår sedan en tärning samtidigt. 5–6: dela ut dubbla insatsen. 1–4: drick din insats. 🏴‍☠️ - Här går det att sälja dina stöldgods", 2], ["free-for-all", "Free for all", "Effect", "Special", "Era stöldgods är i fara! Så länge effekten ligger får ni sno varandras stöldgodskort. Blir du påkommen (någon säger till medan du snor) dricker du kortets värde i klunkar", 1], ["duel-koppar", "Duel", "Playcard", "Koppar", "Utmana en spelare på duell. Förloraren dricker 3", 4], ["duel-silver", "Duel", "Playcard", "Silver", "Utmana en spelare på duell. Förloraren dricker 5", 4], ["duel-guld", "Duel", "Playcard", "Guld", "Utmana en spelare på duell. Förloraren dricker 7", 2], ["duel-diamant", "Duel", "Playcard", "Diamant", "Utmana en spelare på duell. Vinnaren blandar en shot till förloraren", 1], ["saddle-pals", "Saddle Pals", "Playcard", "Diamant", "Välj en annan spelare. Ni är allierade resten av spelet. När en av er får klunkar dricker BÅDA fullt. Båda delar ut +2 klunkar", 1], ["standoff", "Standoff", "Event", "Diamant", "Dela upp er i två lag efter hur ni sitter. Öppna en ny enhet och duellera lag mot lag – laget som druckit upp sist förlorar. Vinnarna går raka vägen till Sal's Saloon", 1], ["zorros-here", "Zorro's here!", "Event", "Guld", "Zorro är här för att stoppa er. Slå en tärning var. Slår MINST HÄLFTEN 4 eller mer kommer ni undan. Annars beslagtar Zorro allt stöldgods och alla dricker 5", 2], ["the-heist", "The Heist", "Event", "Silver", "Ni ska försöka råna ett bankvalv. Råna valvet: 3 guld + allt i The Bank. Ta upp till 2 kompanjoner och dela vinsten. Slå en tärning var per omgång. 4+ av någon = omgången lyckas. Tre i rad = valvet är ert. Miss: alla dricker 5", 3], ["stolen-goods-koppar", "Stolen Goods", "Playcard", "Koppar", "1 värdesak! Värde 1. Säljs för 1 guld. Böter 1 klunk. Dessa går att säljas på två sätt. 1. Besök en plats där det står att man kan sälja dem 2. Bränn din runda och slå 5 eller 6, misslyckas du måste du slänga 1 stöldgods av ditt val Var försiktig för det är enkelt att bli av med dessa", 4], ["stolen-goods-silver", "Stolen Goods", "Playcard", "Silver", "2 värdesaker! Värde 2. Säljs för 2 guld. Böter 2 klunkar. Dessa går att säljas på två sätt. 1. Besök en plats där det står att man kan sälja dem 2. Bränn din runda och slå 5 eller 6, misslyckas du måste du slänga 1 stöldgods av ditt val Var försiktig för det är enkelt att bli av med dessa", 4], ["stolen-goods-guld", "Stolen Goods", "Playcard", "Guld", "3 värdesaker! Värde 3. Säljs för 3 guld. Böter 3 klunkar. Dessa går att säljas på två sätt. 1. Besök en plats där det står att man kan sälja dem 2. Bränn din runda och slå 5 eller 6, misslyckas du måste du slänga 1 stöldgods av ditt val Var försiktig för det är enkelt att bli av med dessa", 2], ["the-alley", "The Alley", "Location", "Silver", "I gränden kan man stöta på mycket skumma typer, slå en tärning. 1-2: Ajdå! Du stöter på en skum typ och blir skjuten, drick 5 3-4: Lokala alkisen bjussar på en jäkel, dela ut 5 5-6: Du träffar Hasse som visar dig bakvägen in till Sal's Saloon", 4], ["sheriffs-check", "Sheriff's Check", "Playcard", "Koppar", "Har du stöldgods: annonsera två siffror och slå. Slår du en av siffrorna du sa så tar sheriffen allt ditt stöldgods. Har du inget: tjalla på någon som har. Den annonserar två egna siffror och slår i stället", 4], ["deflect", "Deflect", "Trap+", "Guld", "Klunkarna riktade mot dig går istället till dina grannar, båda dricker full mängd", 2], ["reflection", "Reflection", "Trap+", "Silver", "Tillbakakaka gubbjävel, ge tillbaka klunkarna till den som delade ut dem", 4], ["double-down", "Double Down", "Trap+", "Diamant", "Den som delar ut klunkar till dig får tillbaka dem och tar dessutom en shot som en annan spelare väljer", 1], ["final-shootout", "Final Shootout", "Playcard", "Special", "Sista kortet i leken, gå varvet runt och spela en stor duell mot varann, vinnaren donerar en del av sin dryck till Sal's Concucktion™ och slinker undan. Repetera tills det bara finns en spelare kvar, denna spelare måste ta sig an Sal's Concucktion™. Karaktärer och shopkort från Sal's Saloon gäller här – inget annat", 1], ["the-bank", "The Bank", "Location", "Guld", "Du kan sätta in ditt guld i banken. Bankat guld räknas med när du handlar i saloonen, men kan gå förlorat i The Heist", 2], ["cactus-hugger", "Cactus Hugger", "Playcard", "Koppar", "Dålig idé att krama en kaktus, Drick 2", 2], ["snake-in-the-boot", "Snake in the boot", "Playcard", "Silver", "Orm i stöveln! Drick 4", 4], ["buckaroos-backfire", "Buckaroo's Backfire", "Playcard", "Guld", "Hästen sparkar skiten ur dig! Drick 6", 2], ["shoot-from-the-hip", "Shoot from the hip", "Playcard", "Koppar", "Lyckoträff från höften. Dela ut 2", 2], ["quickdraw", "Quickdraw", "Playcard", "Silver", "Ingen drar snabbare än dig. Dela ut 4", 4], ["bullseye", "Bullseye", "Playcard", "Guld", "Rakt mellan ögonen. Dela ut 6", 2], ["drunken-gambler", "Drunken Gambler", "Character", "Karaktär", "Du dricker alltid 1 klunk mer än kortet säger. När du delar ut SHOTS delar du ut dubbelt så många", 1], ["lucky-luuk", "Lucky Luuk", "Character", "Karaktär", "Du har +1 i dueller", 1], ["sore-loser-lou", "Sore Loser Lou", "Character", "Karaktär", "I dueller räknas både 1 och 6 som att du slår 6", 1], ["big-busta", "Big Busta", "Character", "Karaktär", "Du delar ut och dricker 2 extra klunkar", 1], ["lightweight-lenny", "Lightweight Lenny", "Character", "Karaktär", "Du delar ut och dricker 1 klunk mindre", 1], ["goldrush-gus", "Goldrush Gus", "Character", "Karaktär", "Varje gång du säljer stöldgods får du 1 guld extra", 1], ["lightweight-lisa", "Lightweight Lisa", "Character", "Karaktär", "Du delar ut och dricker 1 klunk mindre", 1], ["beermageddon", "Beermageddon", "Shopcard", "Diamant", "Alla andra spelare dricker lika många klunkar varje gång du dricker, resten av spelet", 1], ["silver-bullet", "Silver bullet", "Shopcard", "Koppar", "\"+1\" i en duel", 2], ["to-the-brim", "To the brim!", "Shopcard", "Koppar", "Nästa gång du delar ut klunkar delar du ut 2 extra", 2], ["faster-than-your-own-shadow", "Faster Than Your Own Shadow", "Shopcard", "Guld", "Vinn en duell automatiskt", 2], ["lazy-lloyd", "Lazy Lloyd", "Character", "Karaktär", "Du kan när som helst be valfri spelare hämta ny dryck åt dig – vägrar den dricker den 2. En gång per spel kan du låta en annan spelare ta dina klunkar.", 1], ["poisoned", "Poisoned", "Playcard", "Silver", "Lägg kortet framför en annan spelare. Den har -1 i dueller under SIN NÄSTA TUR. Sedan slängs kortet", 2], ["jagerbomb", "Jägerbomb", "Shopcard", "Silver", "Blanda in kortet i spelleken upp och ner. Den som drar det dricker 6.", 2], ["cholera", "Cholera", "Shopcard", "Diamant", "Välj en spelare. Den har ett varv på sig att avsluta sin dryck. Misslyckas den tar den också en shot", 1], ["tumbleweed-town", "Tumbleweed Town", "Effect", "Special", "Stan är tyst. Ingen får prata under sin egen tur – den som gör det dricker 2.", 1], ["rolling-stone", "Rolling Stone", "Playcard", "Diamant", "Stoppa bumlingen och få en belöning! Detta är ett \"växande\" kort, Dela ut 1 klunk och passa kortet medsols. Nästa delar ut 2, sedan 3, upp till 8. Kedjan kan inte brytas. Den som dricker de sista 8 får 1 guld.", 1], ["hit-by-tumbleweed", "Hit by Tumbleweed", "Playcard", "Koppar", "Se upp för fan! Drick 2", 2], ["russian-roulette", "Russian Roulette", "Shopcard", "Guld", "Annonsera lågt (1–3) eller högt (4–6) och slå en tärning. Rätt: dela ut 12. Fel: drick 6.", 2], ["shots-fired", "Shots Fired", "Shopcard", "Diamant", "Annonsera lågt (1–3) eller högt (4–6) och slå en tärning. Rätt: dela ut 2 shots till en spelare. Fel: ta 1 shot", 1], ["lucky-draw", "Lucky Draw", "Playcard", "Koppar", "Plötsligt händer det. Dela ut 2", 2], ["master-of-the-jukebox", "Master of the Jukebox", "Shopcard", "Koppar", "Du bestämmer musiken resten av spelet. En gång per varv kan du peka på en spelare som måste ge namnet på artisten – annars dricker den 3.", 2], ["luck-of-the-draw", "Luck of the Draw", "Playcard", "Guld", "Du får ett gratis shopkort. Slå en tärning för att bestämma vilket. 1-2: Koppar 3-4: Silver 5: Guld 6: Diamant", 2], ["high-noon", "High Noon", "Shopcard", "Guld", "Lägg detta kort och säg \"High Noon\", sist av medspelarna att dra fram sina fingerguns dricker 6", 2], ["shots-shots-shots", "SHOTS SHOTS SHOTS", "Shopcard", "Diamant", "Alla tar en shot. Du väljer en spelare som tar en dubbel", 1], ["the-giver", "The Giver", "Shopcard", "Guld", "Alla andra dricker 5", 2], ["fact-or-fable", "Fact or Fable", "Playcard", "Guld", "Säg ett påstående om dig själv, folk gissar sant eller falskt, förlorarna dricker 6", 2], ["howdy-neighbour", "Howdy Neighbour", "Shopcard", "Guld", "Välj en spelare. Den slår en tärning – den och båda dess grannar dricker så många klunkar.", 2], ["reverse", "Reverse", "Effect", "Special", "Spelriktningen byts – ni spelar motsols. Och allt byter håll: ska du DRICKA delar du i stället UT, ska du DELA UT dricker du själv. Trap och Debuff påverkas inte.", 1], ["hammer-time", "Hammer Time!", "Effect", "Special", "Alla klunkar är +1", 1], ["double-up", "Double Up!", "Effect", "Special", "Spelarna får dra två kort per runda", 1], ["wild-west", "Wild West", "Effect", "Special", "Fritt fram att satsa 1–5 klunkar och utmana vem du vill på duell, när du vill", 1], ["four-sure-fred", "Four-Sure Fred", "Character", "Karaktär", "I DUELLER: 1–3 räknas som 1 och du dricker 3 klunkar 4–6 räknas som 6 Övriga tärningsslag slår du som vanligt", 1], ["trapster-trevor", "Trapster Trevor", "Character", "Karaktär", "När en av dina Traps utlöses kan du slå en tärning. Slår du 1–3 behöver du inte slänga kortet – det kan användas en gång till.", 1], ["devastating-defeat", "Devastating Defeat", "Trap-", "Silver", "Förlorar du en duell dricker du +4", 4], ["misfire", "Misfire", "Trap-", "Guld", "Du har -2 i din nästa duell", 2], ["minefield", "Minefield", "Trap-", "Diamant", "När någon delar ut klunkar till dig, slå två tärningar. Två lika: du klarar dig och dricker som vanligt. Annars adderas tärningarna till antalet", 1], ["mexican-standoff", "Mexican Standoff", "Shopcard", "Silver", "Välj tre spelare som duellerar mot varandra. Alla slår, de två lägsta förlorar. Vinnaren delar ut 5 till en av förlorarna", 2], ["selective-drawing", "Selective Drawing", "Shopcard", "Silver", "På din tur: titta på de tre översta korten, välj ett och lägg tillbaka de andra i valfri ordning på toppen. Detta förbrukar din tur", 2], ["saloon-brawl", "Saloon Brawl", "Event", "Koppar", "Slagsmål bryter ut! Alla duellerar samtidigt mot sin vänstra granne. Förlorarna dricker 4", 4], ["cattle-stampede", "Cattle Stampede", "Event", "Silver", "Boskapen skenar genom stan! Alla slår en tärning. Alla som slår 1–3 trampas ner och dricker 4. Den som slår högst delar ut 4", 3], ["wanted-poster", "Wanted Poster", "Event", "Silver", "Sheriffen spikar upp en efterlysning. Spelaren med mest stöldgods är efterlyst – alla andra med stöldgods delar ut 2 klunkar var till den efterlysta. Har ingen stöldgods är det du", 3], ["last-train-out-of-town", "Last Train Out of Town", "Event", "Guld", "Tåget går! Slå en tärning i turordning från dig. Första spelaren som slår 6 hinner ombord och slipper undan. Slår ingen 6 på ett varv dricker alla 5", 2], ["dust-storm", "Dust Storm", "Event", "Diamant", "Sandstormen sveper in. Lägg alla Traps på bordet, blanda dem och dela ut dem slumpmässigt igen. Alla dricker 2 medan ni gör det", 1], ["sundown", "Sundown", "Effect", "Special", "Solen går ner. Alla klunkar är -1, men aldrig mindre än 1", 1], ["bounty-season", "Bounty Season", "Effect", "Special", "Alla stöldgods är dubbelt värda vid försäljning", 1], ["quickdraw-hour", "Quickdraw Hour", "Effect", "Special", "Alla dueller avgörs med två tärningar per spelare. Summan gäller.", 1], ["gold-fever", "Gold Fever", "Effect", "Special", "Varje gång en spelare delar ut 5 klunkar eller mer får den 1 guld.", 1], ["steady-hand", "Steady Hand", "Shopcard", "Koppar", "Slå om en tärning – din egen eller någon annans.", 2]]
+const NOT = {
+  nu: '<b>Nu.</b> Mallen visar ett kort men säger inte vilket. Välj Kortvägg i huvudet, klicka ett kort och gå tillbaka till Mall: tre klick och två flikbyten per kort. Tillbaka i Mall står namnet ingenstans, så det enda beviset på bytet är kortet självt.',
+  a: '<b>A · Namn och pilar i krönet.</b> Krönet får «‹ Kortets namn · 1 av 77 ›». Pilarna stegar i lekens ordning inom den öppna gruppen; namnet öppnar en sökbar lista (L22:s form: namn, och id där namnet är delat). <span class="plus">+ Står där gruppen redan väljs, så grupp och kort läses som ett par. Kostar ingen korthöjd (L19, #129).</span> <span class="minus">− Krönet är redan fullt vid 1024: namnet får ~130 px och klipps. Långt från kortet det handlar om.</span>',
+  b: '<b>B · En rad under kortet.</b> Under scenen: pilar, namnet med listan, och de värden på raden som styr utseendet — gruppens kolumn och det villkoren läser. <span class="plus">+ Namnet står vid kortet det namnger. Värdena förklarar varför kortet ser ut som det gör (grupp, villkor), vilket hjälper fynd 8. Plats för hela namnet vid båda storlekarna.</span> <span class="minus">− Kostar en rad av kortets höjd (~52 px, ~7 % av kortet vid 1280). Vid 1024 står den under förstoringsbandet, två rader under scenen.</span>',
+  c: '<b>C · Remsan.</b> Under kortet står leken som en remsa av miniatyrer, i gruppens ordning, med det visade kortet markerat. Genvägar sorterar remsan efter det som brukar gå sönder: längsta titeln, längsta texten, en per raritet. <span class="plus">+ Snabbast att svepa igenom leken och se mallen på många kort. Gör stresstestet till en knapp. Väggens ord (miniatyren) igen.</span> <span class="minus">− Dyrast: ~110 px av kortets höjd. Ingen sökning: 77 miniatyrer är en rullning, och 308 blir en lång. Vid 1024 är remsan sju miniatyrer bred.</span>',
+}
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const $ = (q) => document.querySelector(q)
+const W_MM = 63, H_MM = 88, PAD = 24
+const TYP = { Playcard: '#6b4a2b', Location: '#2f5d3a', Effect: '#8b2e2e', Event: '#3a4d7a', 'Trap+': '#4f6d2a', 'Trap-': '#5a2a4a', Character: '#7a2a6b', Shopcard: '#8a5514' }
+const RAR = { Diamant: '#6D9EEB', Guld: '#FFD700', Special: '#FF0000', Koppar: '#FF9902', Silver: '#CCCCCC', 'Karaktär': '#FF00FF' }
+const KORT = RADER.map(([id, title, typ, raritet, body, antal]) => ({ id, title, typ, raritet, body, antal }))
+const delat = (k) => KORT.filter((x) => x.title === k.title).length > 1
+const s = { v: 'nu', storlek: '1280x800', flik: 'Mall', grupp: null, kort: 0, lista: false, sok: '', aktiv: 0, sortering: 'lek', klick: 0, senast: null }
+const iGrupp = () => KORT.filter((k) => !s.grupp || k.typ === s.grupp)
+const nu = () => KORT[s.kort]
+
+// ── Fönstret ────────────────────────────────────────────────────────────────────────────
+const skarm = $('#skarm')
+function skala() {
+  const [W, H] = s.storlek.split('x').map(Number)
+  const scen = $('#mscen')
+  const f = Math.min(1, (scen.clientWidth - 24) / W, (scen.clientHeight - 36) / H)
+  skarm.style.width = W + 'px'; skarm.style.height = H + 'px'
+  skarm.style.transform = `scale(${f})`
+  $('#ram').style.width = W * f + 'px'; $('#ram').style.height = H * f + 'px'
+  $('#etikett').textContent = `${W} × ${H}` + (f < 1 ? ` · visas i ${Math.round(f * 100)} %` : '')
+  $('#rum')?.toggleAttribute('data-rad', W < 1200)
+}
+
+// ── Väljaren (A och B) ──────────────────────────────────────────────────────────────────
+function valjare(upp) {
+  const g = iGrupp(), i = g.indexOf(nu())
+  const k = nu()
+  const traff = g.filter((x) => (x.title + ' ' + x.id).toLowerCase().includes(s.sok.toLowerCase()))
+  s.aktiv = Math.min(s.aktiv, Math.max(0, traff.length - 1))
+  return `<div class="valjare"><button type="button" data-steg="-1" aria-label="Föregående kort" ${i <= 0 ? 'disabled' : ''}>‹</button>
+    <button type="button" class="namnknapp" data-lista aria-haspopup="listbox" aria-expanded="${s.lista}" title="${esc(k.title)}"><span>${esc(k.title)}</span><small>${i + 1} av ${g.length} ▾</small></button>
+    <button type="button" data-steg="1" aria-label="Nästa kort" ${i >= g.length - 1 ? 'disabled' : ''}>›</button>
+    ${s.lista ? `<div class="lista ${upp ? 'upp' : ''}"><input id="sok" type="search" placeholder="Sök bland ${g.length} kort …" value="${esc(s.sok)}" aria-label="Sök kort" role="combobox" aria-expanded="true" aria-controls="kortlista"><ul id="kortlista" role="listbox" aria-label="Kort">${traff.length ? traff.map((x, n) => `<li role="option" data-kort="${KORT.indexOf(x)}" aria-selected="${x === k}" class="${n === s.aktiv ? 'aktiv' : ''}"><i style="background:${RAR[x.raritet]}"></i><span>${esc(x.title)}</span><small>${delat(x) ? esc(x.id) : esc(x.raritet)}</small></li>`).join('') : '<li class="inga">Inget kort heter så.</li>'}</ul></div>` : ''}
+  </div>`
+}
+
+// ── Mall ────────────────────────────────────────────────────────────────────────────────
+function mall() {
+  const typer = Object.keys(TYP).map((t) => [t, KORT.filter((k) => k.typ === t).length]).filter(([, n]) => n)
+  const grupp = `<select class="meny" id="grupp" aria-label="Grupp"><option value="">Bas (alla) · 77 kort</option>${typer.map(([t, n]) => `<option value="${t}" ${s.grupp === t ? 'selected' : ''}>typ = ${t} · ${n} kort</option>`).join('')}</select>`
+  const under = s.v === 'b' ? `<div class="under kortrad">${valjare(true)}<div class="varden" title="Värdena på raden som styr kortets utseende"><b>typ</b> ${esc(nu().typ)} · <b>raritet</b> ${esc(nu().raritet)} · <b>antal</b> ${nu().antal}</div></div>`
+    : s.v === 'c' ? remsa() : ''
+  return `<div class="m-krona">
+      <label>Grupperas av kolumnen <select tabindex="-1"><option>typ</option></select></label>
+      ${grupp}${s.v === 'a' ? valjare(false) : ''}
+      <span class="spacer"></span>
+      <button type="button" class="m-knapp" tabindex="-1">Fäll ihop egenskaperna</button>
+      <div class="sidor"><button type="button" aria-pressed="true" tabindex="-1">Framsida</button><button type="button" tabindex="-1">Baksida</button></div>
+    </div>
+    <div class="m-duk">
+      <nav class="m-verktyg" aria-label="Verktyg"><button type="button" tabindex="-1"><b>T</b>Text</button><button type="button" tabindex="-1"><b>▣</b>Bild</button><button type="button" tabindex="-1"><b>●</b>Ikon</button><button type="button" tabindex="-1"><b>●●</b>Ikonrad</button><button type="button" tabindex="-1"><b>□</b>Form</button></nav>
+      <aside class="m-lager"><div class="krona"><h2>Lager · Framsida</h2><p>${s.grupp ? `typ = ${s.grupp} · ${iGrupp().length} kort` : 'Alla 77 kort'}</p></div>
+        <div class="m-lista">${['raritet', 'body', 'typ', 'title', 'frame', 'band', 'paper'].map((id) => `<div class="m-rad" role="row"><span class="las"><svg viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></span><span class="namn"><svg viewBox="0 0 16 16">${['raritet', 'body', 'typ', 'title'].includes(id) ? '<path d="M3 3h10v2.2M8 3v10M5.6 13h4.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' : '<rect x="2.6" y="3.6" width="10.8" height="8.8" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/>'}</svg><span>${id}</span></span><span class="grepp">⠿</span></div>`).join('')}</div>
+        <div class="fot">Dra för att ändra ordningen. <b>?</b></div></aside>
+      <div class="m-rum" id="rum">
+        <main class="m-sceneyta" id="scenen" tabindex="0" aria-label="Kortet"><div class="yta" id="yta"></div></main>
+        <div class="m-zoom"><span>198 %</span><button type="button" tabindex="-1">−</button><input type="range" value="30" tabindex="-1" aria-label="Förstoring"><button type="button" tabindex="-1">+</button><button type="button" aria-pressed="true" tabindex="-1">Passa in</button><button type="button" tabindex="-1">100 %</button></div>
+        ${under}
+      </div>
+      <aside class="m-props"><h2>Egenskaper</h2><p class="hint">Välj ett lager i lagerlistan, eller ett element på kortet.</p></aside>
+    </div>`
+}
+function ordning() {
+  const g = iGrupp().slice()
+  if (s.sortering === 'titel') g.sort((a, b) => b.title.length - a.title.length)
+  if (s.sortering === 'text') g.sort((a, b) => b.body.length - a.body.length)
+  if (s.sortering === 'raritet') return Object.keys(RAR).map((r) => g.find((k) => k.raritet === r)).filter(Boolean)
+  return g
+}
+function remsa() {
+  const val = [['lek', 'Leken'], ['titel', 'Längst titel'], ['text', 'Längst text'], ['raritet', 'En per raritet']]
+  return `<div class="under remsa"><div class="rubrik"><span class="vem"><b>${esc(nu().title)}</b> · ${iGrupp().indexOf(nu()) + 1} av ${iGrupp().length}</span>${val.map(([k, n]) => `<button type="button" data-sortera="${k}" aria-pressed="${s.sortering === k}">${n}</button>`).join('')}</div>
+    <div class="spar" id="spar" role="listbox" aria-label="Kort i leken">${ordning().map((k) => `<button type="button" class="tum" role="option" data-kort="${KORT.indexOf(k)}" aria-current="${k === nu()}" aria-selected="${k === nu()}" title="${esc(k.title)} · ${esc(k.raritet)}" style="--band:${TYP[k.typ]};--pill:${RAR[k.raritet]}"><span>${esc(k.title)}</span></button>`).join('')}</div></div>`
+}
+function ritaKort() {
+  const scenen = $('#scenen'), yta = $('#yta'); if (!scenen) return
+  const S = Math.min((scenen.clientWidth - 2 * PAD) / W_MM, (scenen.clientHeight - 2 * PAD) / H_MM)
+  const W = scenen.clientWidth, H = scenen.clientHeight, ox = (W - W_MM * S) / 2, oy = (H - H_MM * S) / 2
+  yta.style.width = W + 'px'; yta.style.height = H + 'px'; yta.style.setProperty('--mm', S + 'px')
+  const k = nu()
+  const t = (x, y, w, h, text, pt, wt, color, extra = '') => `<p class="el txt" data-pt="${pt}" ${extra.includes('fit') ? 'data-fit' : ''} style="--x:${x};--y:${y};--w:${w};--h:${h};color:${color};font:${wt} calc(${pt * 0.3528} * var(--mm)) / 1.2 ${extra.includes('serif') ? 'Georgia, serif' : 'system-ui, sans-serif'};${extra.includes('center') ? 'text-align:center;' : ''}">${esc(text)}</p>`
+  yta.innerHTML = `<div class="m-kort" style="left:${ox}px;top:${oy}px">
+    <div class="el" style="--x:3;--y:3;--w:57;--h:13;background:${TYP[k.typ]};border-radius:calc(2.5 * var(--mm))"></div>
+    <div class="el" style="--x:3;--y:3;--w:57;--h:82;border:calc(.5 * var(--mm)) solid #3b2a1a;border-radius:calc(3 * var(--mm))"></div>
+    ${t(5, 4.5, 53, 7, k.title, 12, 800, '#fff8e7', 'serif fit')}${t(5, 11.5, 40, 4, k.typ, 8.5, 700, '#fff8e7')}${t(5, 19, 53, 55, k.body, 8.5, 400, '#2b2118', 'fit')}
+    <div class="el" style="--x:5;--y:77;--w:26;--h:6;background:${RAR[k.raritet]};border-radius:calc(3 * var(--mm))"></div>${t(5, 77.3, 26, 5.4, k.raritet, 8.5, 700, '#000000', 'center')}
+  </div>`
+  // Krymp till gränsen (E6): titeln och brödtexten ned tills de ryms.
+  for (const p of yta.querySelectorAll('[data-fit]')) {
+    let pt = Number(p.dataset.pt)
+    while (p.scrollHeight > p.clientHeight + 1 && pt > 5) { pt -= 0.25; p.style.fontSize = `calc(${pt * 0.3528} * var(--mm))` }
+  }
+}
+
+// ── Kortväggen ──────────────────────────────────────────────────────────────────────────
+function vagg() {
+  return `<div class="vagg"><div class="verktyg"><span class="sok">Sök i alla fält…</span><span>${KORT.length} kort · 96 px breda</span></div>
+    <div class="rutnat">${KORT.map((k, i) => `<button type="button" class="kortv" data-vagg="${i}" aria-pressed="${i === s.kort}" aria-label="${esc(k.title)}" title="${esc(k.title)}"><i style="background:${TYP[k.typ]}"></i><b>${esc(k.title)}</b><em style="background:${RAR[k.raritet]}"></em></button>`).join('')}</div></div>`
+}
+
+// ── Rita allt ───────────────────────────────────────────────────────────────────────────
+function rita(fokus) {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  for (const b of document.querySelectorAll('[data-s]')) b.setAttribute('aria-pressed', String(b.dataset.s === s.storlek))
+  $('#anteckning').innerHTML = NOT[s.v]
+  $('#lagen').innerHTML = ['Kortvägg', 'Mall', 'Tabell', 'Symboler', 'Media', 'Regler', 'Bord'].map((f) => `<button role="tab" data-flik="${f}" aria-selected="${f === s.flik}">${f}</button>`).join('')
+  $('#innehall').innerHTML = s.flik === 'Kortvägg' ? vagg() : mall()
+  skala(); ritaKort()
+  $('#m-kort').textContent = nu().title + (delat(nu()) ? ` (${nu().raritet})` : '')
+  $('#m-klick').textContent = s.senast === null ? '–' : `${s.senast} klick`
+  if (fokus) document.querySelector(fokus)?.focus({ preventScroll: true })
+  document.querySelector('.tum[aria-current="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  document.querySelector('.lista li.aktiv')?.scrollIntoView({ block: 'nearest' })
+}
+function byt(i, fokus) { s.kort = i; rita(fokus) }
+const satt = (k, v) => { const u = new URL(location.href); u.searchParams.set(k, v); history.replaceState(null, '', u) }
+
+document.body.addEventListener('click', (ev) => {
+  if (ev.target.closest('#skarm button, #skarm li, #skarm select')) s.klick++
+  const b = ev.target.closest('button, li[data-kort]')
+  if (!b) { if (s.lista && !ev.target.closest('.lista')) { s.lista = false; rita() } return }
+  if (b.dataset.v) { s.v = b.dataset.v; satt('v', s.v); s.lista = false; s.flik = 'Mall'; rita() }
+  else if (b.dataset.s) { s.storlek = b.dataset.s; satt('s', s.storlek); rita() }
+  else if (b.id === 'aterstall') { Object.assign(s, { flik: 'Mall', grupp: null, kort: 0, lista: false, sok: '', sortering: 'lek', klick: 0, senast: null }); visatIMall = 0; rita() }
+  else if (b.dataset.flik) { s.flik = b.dataset.flik; s.lista = false; rita(`[data-flik="${s.flik}"]`) }
+  else if (b.dataset.vagg) { s.kort = Number(b.dataset.vagg); rita(`[data-vagg="${s.kort}"]`) }
+  else if (b.dataset.steg) { const g = iGrupp(); const i = g.indexOf(nu()) + Number(b.dataset.steg); if (g[i]) byt(KORT.indexOf(g[i]), `[data-steg="${b.dataset.steg}"]`) }
+  else if (b.dataset.lista !== undefined) { s.lista = !s.lista; s.sok = ''; s.aktiv = Math.max(0, iGrupp().indexOf(nu())); rita(s.lista ? '#sok' : '[data-lista]') }
+  else if (b.dataset.kort) { s.lista = false; byt(Number(b.dataset.kort), b.classList.contains('tum') ? `.tum[data-kort="${b.dataset.kort}"]` : '[data-lista]') }
+  else if (b.dataset.sortera) { s.sortering = b.dataset.sortera; rita(`[data-sortera="${s.sortering}"]`) }
+})
+// Rundturen i Nu: bytet räknas när kortet står i Mall igen.
+let visatIMall = 0
+const orgRita = rita
+rita = function (f) { orgRita(f); if (s.flik === 'Mall' && visatIMall !== s.kort) { s.senast = s.klick; s.klick = 0; visatIMall = s.kort; $('#m-klick').textContent = `${s.senast} klick` } else if (s.flik === 'Mall' && s.senast === null) s.klick = 0 }
+document.body.addEventListener('change', (ev) => {
+  if (ev.target.id === 'grupp') {
+    s.grupp = ev.target.value || null
+    if (!iGrupp().includes(nu())) s.kort = KORT.indexOf(iGrupp()[0])
+    rita('#grupp')
+  }
+})
+document.body.addEventListener('input', (ev) => { if (ev.target.id === 'sok') { s.sok = ev.target.value; s.aktiv = 0; const pos = ev.target.selectionStart; rita('#sok'); $('#sok').setSelectionRange(pos, pos) } })
+addEventListener('keydown', (ev) => {
+  if (ev.target.id === 'sok') {
+    const traff = [...document.querySelectorAll('.lista li[data-kort]')]
+    if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); s.aktiv = Math.max(0, Math.min(traff.length - 1, s.aktiv + (ev.key === 'ArrowDown' ? 1 : -1))); const pos = ev.target.selectionStart; rita('#sok'); $('#sok').setSelectionRange(pos, pos) }
+    else if (ev.key === 'Enter' && traff[s.aktiv]) { s.klick++; s.lista = false; byt(Number(traff[s.aktiv].dataset.kort), '[data-lista]') }
+    else if (ev.key === 'Escape') { s.lista = false; rita('[data-lista]') }
+    return
+  }
+  if (ev.target.closest('input, textarea, select, [contenteditable]')) return
+  if (ev.key === 'Escape' && s.lista) { s.lista = false; rita('[data-lista]'); return }
+  if (ev.target.closest('.spar') && (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight')) {
+    ev.preventDefault(); const o = ordning(); const i = o.indexOf(nu()) + (ev.key === 'ArrowRight' ? 1 : -1)
+    if (o[i]) { s.klick++; byt(KORT.indexOf(o[i]), `.tum[data-kort="${KORT.indexOf(o[i])}"]`) }
+    return
+  }
+  if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  s.v = alla[(alla.indexOf(s.v) + (ev.key === 'ArrowRight' ? 1 : 3)) % 4]
+  satt('v', s.v); s.lista = false; s.flik = 'Mall'; rita()
+})
+new ResizeObserver(() => { skala(); ritaKort() }).observe($('#mscen'))
+
+const q = new URLSearchParams(location.search)
+if (['nu', 'a', 'b', 'c'].includes(q.get('v'))) s.v = q.get('v')
+if (['1024x768', '1280x800'].includes(q.get('s'))) s.storlek = q.get('s')
+rita()
+</script>
+</body>
+</html>
