@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { useFocusTrap } from '../editor/focusTrap.js'
 import type { Snapshot } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { standingRewind, whoDecides } from '../table/rewind.js'
@@ -70,6 +71,21 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
   const settle = (v: 'rewind.confirm' | 'rewind.reject') => {
     if (proposal) void client.send({ v, proposal: proposal.id })
   }
+  // The answer to this seat's own proposal, when it is no (#483): the strip under the proposer just
+  // went away, which read the same as a proposal still being thought about. Read off the log line
+  // that settled it, so a proposal the proposer withdrew herself is not reported back to her.
+  const mine = useRef<string | null>(null)
+  useEffect(() => {
+    if (proposal && proposal.by === seat) {
+      mine.current = proposal.id
+      return
+    }
+    const was = mine.current
+    if (was === null || proposal?.id === was) return
+    mine.current = null
+    const said = [...client.activity].reverse().find((l) => l.intent.v === 'rewind.reject' && 'proposal' in l.intent && l.intent.proposal === was)
+    if (said && said.by !== seat) onToast(t('rewind.declined', { who: view.seats.find((s) => s.id === said.by)?.name ?? t('rewind.someone') }))
+  })
   return (
     <>
       {toast && <div className="byd-toast" role="status">{toast}</div>}
@@ -129,16 +145,7 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
         </div>
       )}
       {proposal && proposal.by !== seat && (
-        <div className="byd-rewind-ask" data-rewind-ask>
-          <h1>{t('rewind.ask.title', { who: view.seats.find((s) => s.id === proposal.by)?.name ?? t('play.table') })}</h1>
-          <p>{t('rewind.ask.body')}</p>
-          <button data-kind="ok" className="byd-primary" onClick={() => settle('rewind.confirm')}>
-            {t('rewind.approve')}
-          </button>
-          <button data-kind="no" onClick={() => settle('rewind.reject')}>
-            {t('rewind.decline')}
-          </button>
-        </div>
+        <RewindAsk who={view.seats.find((s) => s.id === proposal.by)?.name ?? t('play.table')} onSettle={settle} />
       )}
     </>
   )
@@ -159,7 +166,7 @@ export type SeatSurveyProps = {
 
 export function SeatSurvey({ view, seat, name, http, sessionId, version, saveUrl }: SeatSurveyProps) {
   if (!view.ended) return null
-  return <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat, answers })} />
+  return <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} remember={`${sessionId}:${seat}`} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat, answers })} />
 }
 
 // The three buttons every seat has, and three is the number (#31): the row is full at 375 px,
@@ -205,5 +212,27 @@ export function SessionButtons({ client, view, sheet, onSheet }: { client: Table
         {t('session.exit')}
       </button>
     </>
+  )
+}
+
+// Another seat's rewind, asked of this one (K13, #483): a dialog over the whole phone that takes the
+// focus and holds it, on the answer that changes nothing, until it is answered.
+function RewindAsk({ who, onSettle }: { who: string; onSettle(v: 'rewind.confirm' | 'rewind.reject'): void }) {
+  const t = useT()
+  const id = useId()
+  const box = useRef<HTMLDivElement>(null)
+  const no = useRef<HTMLButtonElement>(null)
+  useFocusTrap(box, { initial: () => no.current })
+  return (
+    <div className="byd-rewind-ask" data-rewind-ask ref={box} role="alertdialog" aria-modal="true" aria-labelledby={`${id}-title`} aria-describedby={`${id}-body`}>
+      <h1 id={`${id}-title`}>{t('rewind.ask.title', { who })}</h1>
+      <p id={`${id}-body`}>{t('rewind.ask.body')}</p>
+      <button data-kind="ok" className="byd-primary" onClick={() => onSettle('rewind.confirm')}>
+        {t('rewind.approve')}
+      </button>
+      <button data-kind="no" ref={no} onClick={() => onSettle('rewind.reject')}>
+        {t('rewind.decline')}
+      </button>
+    </div>
   )
 }

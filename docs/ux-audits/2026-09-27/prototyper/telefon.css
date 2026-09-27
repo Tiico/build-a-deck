@@ -1,0 +1,209 @@
+/* Telefonen i prototyperna 30–33 (#483). Spelarens mörka telefon, kopierad ur
+   `packages/web/src/player/player.css`, `packages/web/src/table/keyboard.css` och
+   `packages/web/src/rules/rules.css`: samma tecken, färger och mått. Ramen runt telefonen och
+   sidopanelen med «Regeln i dag» är prototypens egna. Ingenting här importeras av appen. */
+
+/* --- scenen: telefonerna till vänster, regeln och rekommendationen till höger ---------------- */
+body { display: flex; flex-direction: column; height: 100vh; }
+.tel-scen { flex: 1 1 auto; min-height: 0; display: flex; gap: var(--s4); padding: var(--s4); background: #15171c; overflow: hidden; }
+.tel-telefoner { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; gap: var(--s5); justify-content: center; align-items: flex-start; padding-top: 18px; }
+.tel-ram { position: relative; flex: none; }
+.tel-ram > .etikett { position: absolute; left: 0; top: -4px; transform: translateY(-100%); color: var(--quiet-2); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tel-skarm { position: absolute; container-type: size; font: 13px system-ui, sans-serif; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; border-radius: 22px; outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); }
+.tel-vy { position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto; scrollbar-width: none; }
+.tel-vy::-webkit-scrollbar { display: none; }
+
+.tel-sida { flex: 0 0 360px; min-height: 0; overflow: auto; display: grid; align-content: start; gap: var(--s3); color: #c3cbdd; font-size: 12.5px; line-height: 1.55; }
+.tel-sida h2 { margin: 0 0 6px; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--quiet-2); }
+.tel-sida p { margin: 0 0 6px; }
+.tel-sida ul { margin: 0; padding-left: 18px; }
+.tel-sida li + li { margin-top: 3px; }
+.tel-sida code { color: #e6ecfa; font-size: 11.5px; }
+.tel-ruta { padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.tel-ruta.rek { border-color: #3f6f55; background: #15241c; }
+.tel-ruta.rek h2 { color: #b7e4c7; }
+.tel-ruta.rek b { color: #e6ffe9; }
+.tel-ruta.trad { border-color: #4a4230; background: #1f1b12; color: #e9d7a8; }
+.tel-ruta.trad h2 { color: #ffd98a; }
+.tel-ruta.trad pre { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.5 ui-monospace, Menlo, monospace; color: #ffe9b8; }
+.tel-ruta.trad .dold { color: #b7dca0; }
+.tel-ruta.trad .lacker { color: #f0a58a; }
+
+/* Den rekommenderade varianten bär ett märke i växlaren. */
+.protorad .vaxlare button[data-rek]::after { content: ' ★'; font-size: 10px; }
+.protorad .del { display: flex; align-items: center; gap: 6px; }
+.protorad .del > span { color: #c8b98d; }
+
+/* --- spelarens telefon, ur player.css ------------------------------------------------------- */
+.byd-player, .tel-skarm {
+  --byd-bg: #14161c;
+  --byd-surface: #1b1e27;
+  --byd-control: #242938;
+  --byd-ink: #eee;
+  --byd-ink-strong: #fff;
+  --byd-ink-muted: #9aa3b8;
+  --byd-ink-quiet: #7d8597;
+  --byd-accent: #7dd3a0;
+  --byd-on-accent: #0b2a18;
+  --byd-warn: #ffd98a;
+  --byd-warn-bg: #2a2417;
+  --byd-danger: #ff9a9a;
+  --byd-danger-bg: #3a2a2d;
+  --byd-card-ink: #1c1c1c;
+  --byd-card-face-s: 40%;
+  --byd-card-face-l: 86%;
+  --byd-rule: #262a35;
+  --byd-rule-soft: #1f2330;
+  --byd-line: #2c3242;
+}
+.byd-player {
+  display: block; min-height: 100%; width: 100%;
+  background: var(--byd-bg); color: var(--byd-ink); font: 13px system-ui, sans-serif;
+}
+.byd-player *, .byd-player *::before, .byd-player *::after { box-sizing: border-box; }
+.byd-player button { font-family: inherit; cursor: pointer; }
+.byd-player > header {
+  display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 6px 10px;
+  padding: 6px 16px; min-height: 52px;
+  border-bottom: 1px solid var(--byd-rule); font-size: 13px; color: var(--byd-ink-muted);
+}
+.byd-player > header strong { color: var(--byd-ink-strong); font-size: 15px; }
+.byd-player > header > span { margin-right: auto; }
+.byd-player > header button {
+  min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 12px;
+  display: inline-flex; align-items: center; justify-content: center; white-space: nowrap;
+  background: var(--byd-control); color: var(--byd-ink-strong); font-size: 13px; font-weight: 700;
+}
+.byd-player > header button:disabled { opacity: 0.35; }
+/* Hjälpens frågetecken: 22 px ring i en 44 px träffyta med negativ marginal (help.css). */
+.byd-player > header .tel-hjalp { display: inline-grid; place-items: center; width: 44px; height: 44px; min-width: 44px; margin: -11px; padding: 0; background: transparent; }
+.byd-player > header .tel-hjalp > span { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 1px solid #9aa3b8; border-radius: 999px; font-size: 12px; font-weight: 700; color: #eee; }
+/* Regelknappen på telefonen (rules-open.css). */
+.byd-player > header .byd-rules-open { border: 1px solid #3b4358; border-radius: 8px; padding: 6px 10px; font-size: 12px; background: rgba(11, 13, 18, 0.9); color: #e6ecfa; }
+
+.byd-counters { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; padding: 10px 16px 0; }
+.byd-counter { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; background: var(--byd-surface); border-radius: 14px; overflow: hidden; }
+.byd-counter button { min-height: 44px; border: 0; padding: 0; background: var(--byd-control); color: var(--byd-ink-strong); font-size: 18px; font-weight: 800; }
+.byd-counter > div, .byd-counter > .tel-tal { display: grid; text-align: center; padding: 4px 6px; }
+.byd-counter b { font-size: 18px; color: var(--byd-ink-strong); line-height: 1; }
+.byd-counter span { font-size: 11px; color: var(--byd-ink-muted); text-transform: uppercase; letter-spacing: 1px; }
+
+.byd-phone-main { min-width: 0; padding: 18px 16px 24px; }
+.byd-phone-main h1 { margin: 0 0 12px; font-size: 22px; color: var(--byd-ink); }
+.byd-summary-zones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.byd-summary-zones > * { background: var(--byd-surface); border-radius: 10px; padding: 10px; min-height: 48px; display: grid; align-content: start; gap: 2px; min-width: 0; overflow-wrap: anywhere; font-size: 13px; color: var(--byd-ink-muted); }
+.byd-summary-zones > button { border: 1px solid var(--byd-line); background: var(--byd-control); color: var(--byd-ink-muted); font: inherit; text-align: left; }
+.byd-summary-zones strong { color: var(--byd-ink-strong); }
+.byd-summary-zones > button em { font-style: normal; font-weight: 600; color: var(--byd-ink-strong); margin-top: 4px; }
+
+.byd-strip { display: flex; gap: 12px; overflow-x: auto; min-width: 0; padding: 8px 6px 16px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.byd-strip-card {
+  position: relative; overflow: hidden; flex: 0 0 154px; aspect-ratio: 63 / 88; scroll-snap-align: start;
+  border-radius: 14px; padding: 16px; border: 0; text-align: left;
+  background: hsl(var(--hue, 0) var(--byd-card-face-s) var(--byd-card-face-l)); color: var(--byd-card-ink);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); touch-action: pan-x; user-select: none;
+  display: grid; align-content: start; gap: 6px;
+}
+.byd-strip-card[data-selected='true'] { outline: 4px solid var(--byd-accent); }
+.byd-strip-card strong { font-size: 20px; font-weight: 800; line-height: 1.15; }
+.byd-strip-card small { font-size: 12px; opacity: .7; }
+.byd-player .byd-hint { margin: 0 0 12px; font-size: 12px; color: var(--byd-ink-quiet); }
+.byd-hand-actions { padding: 0 0 12px; }
+.byd-hand-actions p { margin: 0 0 10px; color: var(--byd-ink-muted); font-size: 14px; }
+.byd-hand-actions button, .byd-mine-quick {
+  min-height: 44px; min-width: 44px; padding: 10px 12px;
+  border: 1px solid var(--byd-line); border-radius: 12px; background: var(--byd-control);
+  color: var(--byd-ink-strong); font: 600 14px system-ui;
+}
+.byd-hand-actions > button { width: 100%; margin-bottom: 8px; }
+.byd-hand-targets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.byd-hand-targets button:first-child { background: var(--byd-accent); color: var(--byd-on-accent); }
+.byd-personal, .byd-phone-table, .byd-phone-history { border-top: 1px solid var(--byd-line); margin-top: 8px; }
+.byd-personal > summary, .byd-phone-table > summary, .byd-phone-history > summary { padding: 14px 0; min-height: 48px; cursor: pointer; font-size: 15px; font-weight: 600; color: var(--byd-ink); }
+.byd-phone-history ol { padding: 0; margin: 0 0 12px; list-style: none; font-size: 13px; color: var(--byd-ink-muted); }
+.byd-phone-history li { padding: 8px 0; border-bottom: 1px solid var(--byd-rule-soft); }
+
+/* Framför dig (C4, #78). */
+.byd-mine { padding: 0 0 12px; }
+.byd-mine-strip { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; }
+.byd-mine-item { flex: 0 0 144px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.byd-mine-card { position: relative; display: grid; gap: 4px; padding: 0; border: 0; background: none; color: var(--byd-ink); font: inherit; text-align: left; width: 100%; }
+.byd-mine-face {
+  display: grid; align-content: start; padding: 10px; position: relative; overflow: hidden; aspect-ratio: 63 / 88; border-radius: 10px;
+  background: hsl(var(--hue, 0) var(--byd-card-face-s) var(--byd-card-face-l)); color: var(--byd-card-ink); font-style: normal; font-weight: 800; font-size: 15px;
+}
+.byd-mine-card[data-face='back'] .byd-mine-face { background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px); color: #fff; }
+.byd-mine-card strong { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Kortet som hålls upp (K8, K10) och verben under det (#78). */
+.byd-inspect {
+  position: absolute; inset: 0; z-index: 10;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 16px 16px 24px; background: rgba(0, 0, 0, 0.7);
+}
+.byd-inspect > [data-inspect] {
+  position: relative; overflow: hidden; width: auto; height: min(100%, calc(86cqw * 88 / 63)); min-height: 0; aspect-ratio: 63 / 88; flex: 0 1 auto;
+  border-radius: 18px; padding: 22px;
+  background: hsl(var(--hue, 0) var(--byd-card-face-s) var(--byd-card-face-l)); color: var(--byd-card-ink); font-size: 28px; font-weight: 800;
+}
+.byd-inspect > [data-inspect][data-face='back'] { background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 8px, #2f4068 8px, #2f4068 16px); color: #fff; }
+.byd-mine-actions { display: grid; gap: 8px; width: 100%; max-width: 420px; }
+.byd-mine-actions button { min-height: 48px; border: 0; border-radius: 12px; padding: 0 14px; background: var(--byd-control); color: var(--byd-ink-strong); font-size: 15px; font-weight: 700; }
+.byd-inspect-close { flex: 0 0 auto; min-width: 120px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--byd-line); border-radius: 12px; background: var(--byd-control); color: var(--byd-ink-strong); font: 600 15px system-ui; }
+
+/* Ark nerifrån: Spela-arket och Ut…-arket. */
+.byd-sheet-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.6); display: grid; align-content: end; z-index: 20; }
+.byd-sheet { background: var(--byd-surface); border-radius: 20px 20px 0 0; padding: 18px 18px 30px; max-height: 100%; overflow: auto; }
+.byd-sheet p { font-size: 13px; color: var(--byd-ink-muted); margin: 0 0 12px; }
+.byd-sheet p strong { color: var(--byd-ink-strong); }
+.byd-sheet-targets { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.byd-sheet-targets button {
+  padding: 16px 14px; border-radius: 12px; border: 1px solid var(--byd-line); background: var(--byd-control); color: var(--byd-ink-strong);
+  font-size: 16px; font-weight: 600; text-align: left; display: grid; gap: 2px;
+}
+.byd-sheet-targets small { font-size: 12px; color: var(--byd-ink-muted); font-weight: 400; }
+.byd-sheet-title { font-size: 16px; color: var(--byd-ink-strong) !important; margin: 0 0 10px !important; }
+.byd-exit-choice { margin-top: 18px; }
+.byd-exit-choice button { width: 100%; padding: 14px; border: 0; border-radius: 12px; font-size: 15px; font-weight: 700; }
+.byd-exit-choice button[data-kind='leave'] { background: var(--byd-control); color: var(--byd-ink-strong); }
+.byd-exit-choice button[data-kind='no'] { background: var(--byd-danger-bg); color: var(--byd-danger); }
+.byd-exit-choice p { margin: 6px 2px 0 !important; font-size: 13px; color: var(--byd-ink-muted); }
+.byd-sheet-actions { display: flex; gap: 8px; margin-top: 20px; }
+.byd-sheet-actions button { flex: 1; padding: 14px; border: 0; border-radius: 12px; font-size: 15px; font-weight: 700; background: var(--byd-control); color: var(--byd-ink-strong); }
+
+/* Tangentbordets adresspanel och «Sätt värde…», ur keyboard.css. */
+.byd-kbd-backdrop { position: absolute; inset: 0; z-index: 80; background: rgba(6, 8, 12, 0.55); display: grid; place-items: end center; }
+.byd-kbd-backdrop.byd-set-value-backdrop { place-items: center; }
+.byd-kbd-panel { width: 100%; max-height: 86%; overflow: auto; padding: 16px; border-radius: 18px 18px 0 0; background: #1b1e27; border: 1px solid #2c3242; border-bottom: 0; }
+.byd-kbd-panel h2 { margin: 0 0 4px; font-size: 19px; color: #fff; }
+.byd-kbd-panel h3 { margin: 14px 0 6px; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #9aa3b8; }
+.byd-kbd-list { display: grid; gap: 6px; }
+.byd-kbd-list button { display: flex; align-items: baseline; gap: 10px; min-height: 44px; padding: 10px 14px; border: 0; border-radius: 12px; background: #242938; color: #fff; font: 700 15px system-ui, sans-serif; text-align: left; }
+.byd-kbd-list button small { margin-left: auto; color: #9aa3b8; font-weight: 500; font-size: 12px; text-align: right; }
+.byd-kbd-list button:disabled { background: #191c24; color: #9aa3b8; border: 1px dashed #2c3242; }
+.byd-kbd-close { margin-top: 14px; width: 100%; min-height: 44px; border: 0; border-radius: 12px; background: #191c24; color: #fff; font: 700 15px system-ui, sans-serif; }
+.byd-set-value { width: min(300px, calc(100% - 24px)); padding: 16px; border-radius: 16px; background: #1b1e27; border: 1px solid #2c3242; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6); color: #fff; }
+.byd-set-value h2 { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 0 0 8px; font-size: 17px; }
+.byd-set-value h2 small { font-size: 12px; font-weight: 600; color: #9aa3b8; }
+.byd-set-value output { display: block; min-height: 48px; margin-bottom: 10px; padding: 8px 12px; border-radius: 10px; background: #191c24; font: 700 26px system-ui, sans-serif; text-align: right; }
+.byd-set-value-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.byd-set-value-keys button { min-height: 44px; border: 0; border-radius: 10px; background: #242938; color: #fff; font: 700 17px system-ui, sans-serif; }
+.byd-set-value-keys button:disabled { background: #191c24; color: #5d6577; }
+.byd-set-value-foot { display: flex; gap: 8px; margin-top: 12px; }
+.byd-set-value-foot button { flex: 1; min-height: 44px; border-radius: 10px; font: 700 14px system-ui, sans-serif; }
+.byd-set-value-foot .byd-secondary { background: transparent; border: 1px solid #6f7a90; color: #e6ecfa; }
+.byd-set-value-foot .byd-primary { background: #e6ecfa; border: 1px solid #e6ecfa; color: #14161c; }
+.byd-set-value-foot button:disabled { opacity: 0.5; }
+
+/* Regelboken på telefonen: papperet fyller skärmen (rules.css). */
+.byd-rules-panel { position: absolute; inset: 0; z-index: 40; display: grid; grid-template-rows: auto 1fr; background: #f7f3ea; color: #23201a; }
+.byd-rules-ask { display: flex; gap: 8px; padding: 12px; background: #ece5d8; border-bottom: 1px solid #d8cdb8; }
+.byd-rules-ask input { flex: 1; min-width: 0; padding: 9px 11px; border: 1px solid #cbbfa8; border-radius: 10px; background: #fff; color: #23201a; font: 14px system-ui, sans-serif; }
+.byd-rules-ask button { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: #6b6255; font-size: 20px; padding: 0 6px; }
+.byd-rules-body { overflow: auto; padding: 18px 20px; font: 14px/1.7 Georgia, serif; }
+.byd-rules-body h2 { margin: 0 0 12px; font-size: 20px; }
+.byd-rules-body p { margin: 0 0 8px; }
+
+/* Prototypens egna markeringar i telefonen: aldrig en del av förslaget. */
+.tel-skillnad { outline: 2px dashed #f0b64a !important; outline-offset: 2px; position: relative; }
+.tel-skillnad::after { content: attr(data-skillnad); position: absolute; right: 8px; top: 50%; transform: translateY(-50%); padding: 1px 6px; border-radius: 999px; background: #2a2417; color: #ffd98a; font: 600 10px system-ui; }

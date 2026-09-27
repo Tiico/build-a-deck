@@ -28,15 +28,27 @@ export type ActionPanelProps = {
   onSet(c: VisibleComponentState): void
   intentsFor(place: Place, moving: readonly string[]): Intent[]
   landedKey(place: Place): string
+  // A route whose touch surface offers its own places for a card in the hand — the phone's play
+  // sheet (#483, beslut A efter prototyp 33). The panel then offers exactly those, in the sheet's
+  // words and with the sheet's placement, and of its own verbs only looking: what a thumb is not
+  // offered, a keyboard is not offered either.
+  sheet?: HandSheet | undefined
 }
 
-export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet, intentsFor, landedKey }: ActionPanelProps) {
+export type HandSheet = {
+  places: readonly { key: string; label: string; hint: string; zone: string }[]
+  intentsFor(zone: string, moving: readonly string[]): Intent[]
+}
+
+export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet, intentsFor, landedKey, sheet }: ActionPanelProps) {
   const t = useT()
   const moving = cards.length > 0 ? [...cards] : isLoose(thing) ? [thing.id] : []
-  const verbs = verbsFor(view, thing, t)
+  const verbs = sheet ? verbsFor(view, thing, t).filter((a) => a.look !== undefined) : verbsFor(view, thing, t)
   // A thing is never offered the place it already is: a card or a chip its own zone, a pile
   // itself — the table refuses "cannot split a pile onto itself", so the panel does not ask.
-  const places = placesFor(view, new Set(moving), isLoose(thing) ? thing.zone : thing.pile, t)
+  const places: Place[] = sheet
+    ? sheet.places.map((p) => ({ key: p.key, label: p.label, hint: p.hint, zone: p.zone, kind: 'area' }))
+    : placesFor(view, new Set(moving), isLoose(thing) ? thing.zone : thing.pile, t)
   const first = useRef<HTMLButtonElement | null>(null)
   useEffect(() => first.current?.focus(), [])
   // Several marked cards are counted; a single thing is called what it is called, which for a
@@ -102,17 +114,20 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet,
               // first place instead, rather than opening a panel and leaving the reader standing
               // out on the felt.
               ref={verbs.length === 0 && i === 0 ? first : undefined}
-              onClick={() => onRun(intentsFor(p, moving), landedKey(p))}
+              onClick={() => (sheet ? onRun(sheet.intentsFor(p.zone, moving)) : onRun(intentsFor(p, moving), landedKey(p)))}
             >
               <span>{p.label}</span>
               <small>{p.hint}</small>
             </button>
           ))}
-          {/* The one address a keyboard cannot say. It is a row and not a silence. */}
-          <button type="button" disabled className="byd-kbd-no">
-            <span>{t('kbd.panel.free')}</span>
-            <small>{t('kbd.panel.free.hint')}</small>
-          </button>
+          {/* The one address a keyboard cannot say. It is a row and not a silence. The sheet has
+              no such row, because the sheet's table is a place of its own. */}
+          {!sheet && (
+            <button type="button" disabled className="byd-kbd-no">
+              <span>{t('kbd.panel.free')}</span>
+              <small>{t('kbd.panel.free.hint')}</small>
+            </button>
+          )}
         </div>
         <button type="button" className="byd-kbd-close" onClick={onClose}>
           {t('kbd.panel.close')}

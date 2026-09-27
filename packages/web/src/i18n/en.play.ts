@@ -207,6 +207,7 @@ export const enPlay = {
   'rewind.ask.body': 'The table shows how it looked. The draw pile is shuffled again.',
   'rewind.approve': 'Approve',
   'rewind.decline': 'Decline',
+  'rewind.declined': '{who} said no to rewinding.',
 
   // The box behind the question mark (L32's addendum, #305).
   'play.help.hand.topic': 'the hand',
@@ -219,8 +220,11 @@ export const enPlay = {
   'player.hint.selected.other': '{n} selected · drag up to play',
   'player.counter.minus': '{name} minus',
   'player.counter.plus': '{name} plus',
+  'player.counter.set': '{name}: {value}. Set value',
   'player.mine.title': 'In front of you · {n}',
   'player.mine.flip.down': 'Turn down',
+  'player.mine.down': 'face down · only you',
+  'player.mine.down.label': '{name}, face down – only you see it',
   'player.mine.flip.up': 'Turn up',
   'player.mine.take': 'Pick up',
   'player.mine.play': 'Play…',

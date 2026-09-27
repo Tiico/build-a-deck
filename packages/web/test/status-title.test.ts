@@ -49,6 +49,8 @@ describe('the title of a route', () => {
     ['table', { room: '4KJ2' }, 'Bordet · Rum 4KJ2 · build-your-deck'],
     ['join', { room: '4KJ2' }, 'Gå med i rum 4KJ2 · build-your-deck'],
     ['play', { room: '4KJ2' }, 'Din hand · Rum 4KJ2 · build-your-deck'],
+    // An ended table is not «Din hand» any more (#483): the phone is showing the survey.
+    ['play', { room: '4KJ2', part: 'Bordet är avslutat' }, 'Bordet är avslutat · Rum 4KJ2 · build-your-deck'],
     ['online', { room: '4KJ2' }, 'Spela · Rum 4KJ2 · build-your-deck'],
     ['observe', { room: '4KJ2' }, 'Tittar på rum 4KJ2 · build-your-deck'],
     ['unknown', {}, 'Sidan finns inte · build-your-deck'],

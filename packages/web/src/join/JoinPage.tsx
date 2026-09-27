@@ -39,7 +39,9 @@ function along(seats: readonly SeatView[]): Map<string, Along> {
 export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAULT_TIMING }: JoinPageProps) {
   const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
-  const code = params.get('code')
+  // `?code=KOD`, or the code on its own after the question mark, the way a person types an address
+  // off the TV (#483): the first key with no value that looks like a room code is the code.
+  const code = params.get('code') ?? [...params.entries()].find(([key, value]) => value === '' && /^[A-Za-z0-9]{4,8}$/.test(key))?.[0] ?? null
   const server = params.get('server')
   const url = server ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const http = url.replace(/^ws/, 'http')
@@ -99,7 +101,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
   const saysId = 'byd-join-name-says'
   // The room is the tab's name here (#12): a phone with three tabs open has to be able to tell
   // which room each of them is waiting to get into.
-  usePageTitle({ state: !code ? 'missing' : lookup === 'gone' ? 'missing' : lookup ?? live.state, room: code })
+  usePageTitle({ state: !code ? 'missing' : lookup === 'gone' ? 'missing' : lookup ?? live.state, room: code?.toUpperCase() ?? null })
 
   const free = view?.seats.filter((s) => s.name === null) ?? []
   const spread = along(view?.seats ?? [])
@@ -116,7 +118,8 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
 
   // A code that names nothing — never issued, or lapsed — is the phone's 404. It is one of the
   // nine states like any other, said in the words the room it failed to reach would have used.
-  if (!code) return <StatusNotice notice={noticeFor('missing', 'phone', t)} surface="page" links={links} />
+  // No code at all is not a table that ended: it is an address without the one thing it needs.
+  if (!code) return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), text: t('join.code.missing') }} surface="page" links={links} />
   if (lookup === 'gone') return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), text: t('join.code.gone', { code: code.toUpperCase() }) }} surface="page" links={links} />
   if (lookup === 'offline') return <StatusNotice notice={noticeFor('offline', 'phone', t)} surface="page" links={links} onRetry={retry} />
   if (!view || !sessionId) return <RouteStatus status={live} over="sheet" links={links} onRetry={retry} />

@@ -1,18 +1,24 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { QUESTIONS, type SurveyAnswers } from './surveyApi.js'
 import { useT } from '../i18n/index.js'
 
 // `saveUrl` (G1): where the guest goes to keep this session on an account; absent without a token.
-export type SurveyProps = { who: string; version: string; onSubmit(answers: SurveyAnswers): Promise<void>; saveUrl?: string | null | undefined }
+// `remember`: the seat and session the answers are for, so a reload after sending shows the thanks
+// rather than the first question again (#483).
+export type SurveyProps = { who: string; version: string; onSubmit(answers: SurveyAnswers): Promise<void>; saveUrl?: string | null | undefined; remember?: string | undefined }
 
 // The survey after a session (G3, prototype A): one question at a time with big buttons, a free
 // line last, then thanks. Answers are tied to the version the session ended on.
-export function Survey({ who, version, onSubmit, saveUrl }: SurveyProps) {
+export function Survey({ who, version, onSubmit, saveUrl, remember }: SurveyProps) {
   const t = useT()
   const [step, setStep] = useState(0)
   const [scales, setScales] = useState<Partial<Record<'fun' | 'clarity' | 'balance', number>>>({})
   const [change, setChange] = useState('')
-  const [state, setState] = useState<'open' | 'sending' | 'sent' | 'failed'>('open')
+  const [state, setState] = useState<'open' | 'sending' | 'sent' | 'failed'>(() => (remember !== undefined && wasSent(remember) ? 'sent' : 'open'))
+  // The survey takes the focus when it appears (#483): it replaces the view whose button ended the
+  // table, and a focus left on that button is a focus on nothing.
+  const here = useRef<HTMLDivElement>(null)
+  useEffect(() => here.current?.focus(), [state])
   const q = QUESTIONS[step]
   const send = async () => {
     const { fun, clarity, balance } = scales
@@ -20,6 +26,7 @@ export function Survey({ who, version, onSubmit, saveUrl }: SurveyProps) {
     setState('sending')
     try {
       await onSubmit({ fun, clarity, balance, change })
+      if (remember !== undefined) markSent(remember)
       setState('sent')
     } catch {
       setState('failed')
@@ -27,7 +34,7 @@ export function Survey({ who, version, onSubmit, saveUrl }: SurveyProps) {
   }
   if (state === 'sent') {
     return (
-      <div className="byd-survey" data-survey="sent">
+      <div className="byd-survey" data-survey="sent" ref={here} tabIndex={-1}>
         <div />
         <div className="byd-survey-thanks">
           <strong>{t('survey.thanks', { who })}</strong>
@@ -39,7 +46,7 @@ export function Survey({ who, version, onSubmit, saveUrl }: SurveyProps) {
     )
   }
   return (
-    <div className="byd-survey" data-survey={q ? q.key : 'change'}>
+    <div className="byd-survey" data-survey={q ? q.key : 'change'} ref={here} tabIndex={-1}>
       <div>
         <h1>{t('survey.title')}</h1>
         <div className="byd-survey-sub">{t('survey.sub', { version })}</div>
@@ -87,4 +94,21 @@ export function Survey({ who, version, onSubmit, saveUrl }: SurveyProps) {
       {saveUrl && <a className="byd-survey-save" href={saveUrl}>{t('survey.save')}</a>}
     </div>
   )
+}
+
+// Kept in the tab's own storage: a reload on this phone remembers, and nothing leaves the device.
+const SENT = 'byd.survey.sent.'
+function wasSent(key: string): boolean {
+  try {
+    return sessionStorage.getItem(SENT + key) === '1'
+  } catch {
+    return false
+  }
+}
+function markSent(key: string): void {
+  try {
+    sessionStorage.setItem(SENT + key, '1')
+  } catch {
+    // A browser that keeps nothing asks again after a reload, which is where it was before.
+  }
 }

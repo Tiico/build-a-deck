@@ -6,6 +6,8 @@ import { HandActions } from './HandActions.js'
 import { HandStrip } from './HandStrip.js'
 import { CountersRow, MineActions, MineStrip, inFrontOf } from './SeatExtras.js'
 import { PlaySheet } from './PlaySheet.js'
+import { standingRewind } from '../table/rewind.js'
+import { cardName } from '../table/keyboard.js'
 import { TableSummary, RecentActivity } from './TableSummary.js'
 import { SessionButtons, SessionOverlays, useToast, type Sheet } from './SessionOverlays.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
@@ -70,6 +72,10 @@ export type PlayerSurfaceProps = {
 
 export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, openHand, onLeft }: PlayerSurfaceProps) {
   const t = useT()
+  // Out of reach while another seat's rewind is asked of this one (#483): the question covers the
+  // phone and has to be answered, so nothing behind it is a Tab stop or a press.
+  const asking = standingRewind(view)
+  const behind = asking && asking.by !== seat ? { inert: true } : {}
   const personal = useRef<HTMLDetailsElement>(null)
   const [chosenId, setChosenId] = useState<string | null>(null)
   const [quickTarget, setQuickTarget] = useState<string | null>(null)
@@ -98,6 +104,13 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
 
   // A play the table refuses leaves the sheet open with the answer beside the button that was
   // pressed: the cards stay in the hand and nothing is quietly lost.
+  // A card carried to another place in the hand (K4; #483, beslut A efter prototyp 33). The strip
+  // draws the hand bottom-up (#415), so a place in the strip is counted from the other end of the
+  // zone's order. It is `move` with `index` inside the same hand: no new verb.
+  const reorder = (card: VisibleComponentState, position: number) => {
+    const n = view.components.filter((c) => c.zone === `hand:${seat}`).length
+    void client.send({ v: 'move', component: card.id, to: `hand:${seat}`, index: n - 1 - position })
+  }
   const play = (zone: string, at: 'top' | 'bottom') => {
     setRefusedZone(zone)
     void refusal.watch(client.send(...playIntents(view, toPlay, zone, undefined, at))).then((result) => {
@@ -150,9 +163,13 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
 
   return (
     <>
-      <header>
-        <strong>{name}</strong>
-        <span>{t(hand.length === 1 ? 'play.cards.one' : 'play.cards.other', { n: hand.length })}</span>
+      <header {...behind}>
+        {/* Who is holding the phone, over how many cards: stacked, so the name has the width of the
+            row that is left and gives way behind an ellipsis before the controls do (#483). */}
+        <span className="byd-player-who">
+          <strong>{name}</strong>
+          <span>{t(hand.length === 1 ? 'play.cards.one' : 'play.cards.other', { n: hand.length })}</span>
+        </span>
         {/* The one help pattern (L32), on a narrower screen (#305). It stands in the chrome and
             not beside the heading over the hand, and that is the whole of the measurement the
             decision was made on: from up here the box hangs over the top of the felt and covers
@@ -165,16 +182,14 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           <p>{t('play.help.hand.hidden')}</p>
         </Help>
         <SessionButtons client={client} view={view} sheet={sheet} onSheet={setSheet} />
-        {/* The rules this table plays by (B7), one press away beside the session's own buttons.
-            The living number (#226) reads this seat's own view: her own hand is a reading, the
-            deck and the others' hands are counts. */}
-        <RuleDrawer http={faces} sessionId={sessionId} placement="phone" live={view} />
       </header>
-      <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
-      <main className="byd-phone-main">
+      <div className="byd-behind" {...behind}>
+        <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
+      </div>
+      <main className="byd-phone-main" {...behind}>
         <h1>{t('player.hand.title')}</h1>
         <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} zones="piles" history={false} />
-        <HandStrip view={view} selected={new Set(chosenCards.map(c => c.id))} faces={faces} onTap={card => { setChosenId(card.id); marks.clear() }} onHold={toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} />
+        <HandStrip view={view} selected={new Set(chosenCards.map(c => c.id))} faces={faces} onTap={card => { setChosenId(card.id); marks.clear() }} onHold={toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} />
         {hand.length > 0 && <p className="byd-hint">{marks.selected.size > 0 ? t(marks.selected.size === 1 ? 'player.hint.selected.one' : 'player.hint.selected.other', { n: marks.selected.size }) : t('player.hint')}</p>}
         <HandActions refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} view={view} cards={chosenCards} pending={quickPending} onRead={setInspect} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} />
         {quickSource === 'hand' && <Refusal handle={quick} />}
@@ -196,6 +211,15 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         <details className="byd-phone-table" data-phone-table><summary>{t('player.table.title')}</summary><TableSummary view={view} activity={activity} zones="areas" history={false} /></details>
         <details className="byd-phone-history"><summary>{t('play.latest')}</summary><RecentActivity view={view} activity={activity} /></details>
       </main>
+      {/* The rules this table plays by (B7), on a bar of their own at the foot by the hand (#483,
+          beslut C efter prototyp 32): in the head they made the row two rows at 390 and covered
+          their own «Stäng». The living number (#226) reads this seat's own view: her own hand is a
+          reading, the deck and the others' hands are counts. Out of the way when the table asks
+          something of everyone (#483): an ended table's survey and a rewind's question. The bar is
+          empty, and draws nothing, for a table without a rulebook. */}
+      <div className="byd-phone-foot" {...behind}>
+        {!view.ended && !view.rewind && <RuleDrawer http={faces} sessionId={sessionId} placement="phone" live={view} />}
+      </div>
       {/* The card held up. A card that lies in front of you carries its verbs here, and a verb
           puts the card down as it goes: what it did is read off the strip behind it. */}
       {inspect && (
@@ -209,7 +233,13 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
               card={inspect}
               onFlip={(c) => {
                 setInspect(null)
-                void client.send({ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' })
+                // A card of your own turned face down in front of you is still yours to know (#483,
+                // beslut A efter prototyp 31): the flip peeks as it turns, in the same envelope, so
+                // the owner is told which card it is and the rest of the room is told what it was
+                // told before — that a card lies there.
+                void (c.face === 'front'
+                  ? client.send({ v: 'flip', component: c.id, face: 'back' }, { v: 'peek', components: [c.id] })
+                  : client.send({ v: 'flip', component: c.id, face: 'front' }))
               }}
               onTake={(c) => {
                 setInspect(null)
@@ -227,7 +257,8 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         <PlaySheet
           view={view}
           count={toPlay.length}
-          label={lifted.cardRef ?? ''}
+          // The card by the name the strip calls it, never by its id (#483).
+          label={cardName(lifted, t)}
           onPlay={play}
           onClose={() => {
             refusal.clear()
