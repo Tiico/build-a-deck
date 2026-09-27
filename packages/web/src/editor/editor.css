@@ -2624,16 +2624,25 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 /* The game's own colours (E4). A meaning reads as a row and not as a swatch grid: what a designer
    changes here is a word and a colour together, and the two must stay one thing on screen. */
 .byd-symbols-colours ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.byd-symbols-colours li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px 8px; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
+.byd-symbols-colours li { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: 'sample name inks remove' '. said said remove'; align-items: center; column-gap: var(--byd-s2); padding: 4px 8px; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
+/* The row is two lines on purpose (#481): the name, the inks and the × on the first, and what the
+   row says about the meaning under the name. The × spans both, so it never ends up alone. */
+.byd-symbols-colours li > :first-child { grid-area: sample; }
+.byd-symbols-colours li > input { grid-area: name; }
+.byd-symbols-colours li > .byd-symbols-inks { grid-area: inks; }
+.byd-symbols-colours li > button:last-child { grid-area: remove; }
+.byd-symbols-said { grid-area: said; display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--byd-s1) var(--byd-s3); }
 .byd-symbols-colours li[data-faint='true'] { border-color: #6b3242; }
 .byd-symbols-colours input { width: 120px; padding: 4px 8px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
 .byd-symbols-colours small { color: var(--byd-editor-quiet); font-size: 11px; }
 .byd-symbols-colours li > button:last-child { padding: 0 8px; font-size: 15px; color: #9aa3b8; }
 .byd-symbols-swatch, .byd-role-swatch { width: 16px; height: 16px; border-radius: 4px; box-shadow: inset 0 0 0 1px #ffffff40; }
-.byd-symbols-inks { display: flex; gap: 3px; }
-.byd-symbols-inks button { min-width: 24px; min-height: 24px; padding: 0; display: grid; place-items: center; border-radius: 6px; }
-.byd-symbols-inks button[aria-pressed='true'] { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 1px; }
-.byd-symbols-inks span { width: 14px; height: 14px; border-radius: 3px; box-shadow: inset 0 0 0 1px #ffffff40; }
+.byd-symbols-inks { display: flex; flex-wrap: wrap; }
+/* Each ink is a whole target (L12, #481) and draws a chip in the middle of it: the chips stand as
+   close as they did, and the room between them is the target's own. */
+.byd-symbols-inks button { width: var(--byd-tap); height: var(--byd-tap); padding: 0; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; }
+.byd-symbols-inks span { width: 14px; height: 14px; border-radius: 3px; box-shadow: inset 0 0 0 1px #ffffff40, 0 0 0 5px #1b1d23, 0 0 0 6px #3b414e; }
+.byd-symbols-inks button[aria-pressed='true'] span { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 6px; }
 /* Ink as one of the rows (L34): the example symbol as the card draws it with no meaning, and the
    string that writes it, in the same shape as the meanings under it. */
 .byd-symbols-ink { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 4px 8px; color: var(--byd-editor-quiet); font-size: 12px; }
@@ -2761,7 +2770,11 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
    library window uses, over a short list of quiet choices that the language marks. */
 .byd-media-cards { display: grid; gap: var(--byd-s2); width: 100%; }
 .byd-media-cards input { min-height: var(--byd-tap); box-sizing: border-box; padding: 0 12px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
-.byd-media-cards ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--byd-s2); max-height: 152px; overflow-y: auto; }
+.byd-media-cards ul { list-style: none; margin: 0; padding: 0 0 var(--byd-s1); display: flex; gap: var(--byd-s2); overflow-x: auto; }
+/* One row that scrolls sideways (#481): wrapped, six cards took two rows and pushed the card under
+   them out of the sheet at 1024. The search finds any card, and the row shows it is a row by
+   cutting the last chip at the edge. */
+.byd-media-cards li { flex: none; }
 .byd-media-cards li button { display: flex; align-items: baseline; gap: 6px; padding: 0 12px; }
 .byd-media-cards li button small { font-size: 11px; color: var(--byd-editor-quiet); }
 .byd-media-cards-none { margin: 0; font-size: 12px; color: var(--byd-editor-quiet); }
@@ -2795,7 +2808,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 /* Four corners, each centred on its corner of the window and the window's sibling, not its
    child. Twelve pixels to see and twenty-four to hit. */
 .byd-crop-corner { position: absolute; width: 12px; height: 12px; translate: -50% -50%; border-radius: 3px; background: #fff; cursor: nwse-resize; touch-action: none; }
-.byd-crop-corner::before { content: ''; position: absolute; inset: -6px; }
+.byd-crop-corner::before { content: ''; position: absolute; inset: -16px; /* undantag: hörnets träffyta är 44 px kring de 12 som syns (L12, #481), inte ett avstånd på stegen */ }
 .byd-crop-corner[data-corner='ne'], .byd-crop-corner[data-corner='sw'] { cursor: nesw-resize; }
 .byd-crop-corner:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 2px; }
 .byd-crop-keys { margin: 0; font-size: 11px; color: var(--byd-editor-quiet); }

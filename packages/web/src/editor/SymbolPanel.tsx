@@ -398,9 +398,13 @@ function GameColours({ doc, client, icons }: { doc: ProjectDoc; client: ProjectC
                     </button>
                   ))}
                 </div>
-                <small>{t(n === 1 ? 'wall.cards.one' : n === 0 ? 'symbols.colours.unused' : 'wall.cards.other', { n })}</small>
-                <small>{t('symbols.colours.ratio', { ratio: ratio.toFixed(1) })}</small>
-                {shown !== null && <code>{example(role)}</code>}
+                {/* What the row says about the meaning, on a line of its own under the name (#481):
+                    left to wrap on their own they pushed the × onto a line of its own at 1024. */}
+                <span className="byd-symbols-said">
+                  <small>{t(n === 1 ? 'wall.cards.one' : n === 0 ? 'symbols.colours.unused' : 'wall.cards.other', { n })}</small>
+                  <small>{t('symbols.colours.ratio', { ratio: ratio.toFixed(1) })}</small>
+                  {shown !== null && <code>{example(role)}</code>}
+                </span>
                 <button type="button" aria-label={t('symbols.colours.remove', { role })} onClick={() => ask(role, doc.rows.filter((r) => (rolesUsed([r])[role] ?? 0) > 0).map((r) => r.id))}>
                   ×
                 </button>
