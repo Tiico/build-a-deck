@@ -1,7 +1,8 @@
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { CardFace } from '@byd/server/doc'
 import { LoginCard } from './LoginCard.js'
 import { Help } from '../editor/HelpDrawer.js'
+import { Question } from '../editor/Question.js'
 import { CardPreview } from '../editor/CardPreview.js'
 import { CARD_PX } from '../editor/corner.js'
 import { previewIcons } from '../editor/assets.js'
@@ -9,6 +10,7 @@ import { previewFonts } from '../editor/fonts.js'
 import { logout, myCards, myPlayed, myProjects, removeProject, startTable, whoAmI, type Played, type ProjectSummary } from './api.js'
 import { seatColor } from '../table/seatColor.js'
 import { StatusNotice } from '../status/StatusNotice.js'
+import { useSay } from '../status/StatusLive.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { LanguagePicker, useLang, useT, type Lang, type T } from '../i18n/index.js'
@@ -45,6 +47,17 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const [menu, setMenu] = useState<string | null>(null)
   const [asking, setAsking] = useState<ProjectSummary | null>(null)
   const [started, setStarted] = useState<{ project: string; code: string; id: string; hostKey: string } | null>(null)
+  // Where the focus goes once whatever had it has gone away (#475): back to a game's ⋯ when its
+  // menu or its question closes, or to the heading once the game itself is gone — never to
+  // <body>, which is where a keyboard is left with no idea where it is.
+  const mores = useRef(new Map<string, HTMLButtonElement>())
+  const heading = useRef<HTMLHeadingElement>(null)
+  const [refocus, setRefocus] = useState<{ to: string } | null>(null)
+  useEffect(() => {
+    if (!refocus) return
+    ;(refocus.to === HEADING ? heading.current : mores.current.get(refocus.to))?.focus()
+  }, [refocus])
+  const say = useSay()
   useEffect(() => {
     setOffline(false)
     void whoAmI(http)
@@ -89,7 +102,9 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           </div>
         )}
         <header>
-          <h1>{t('home.title')}</h1>
+          <h1 ref={heading} tabIndex={-1}>
+            {t('home.title')}
+          </h1>
           <span className="byd-who">
             {email} ·{' '}
             <a
@@ -122,24 +137,33 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           </div>
         )}
         {asking && (
-          <div className="byd-home-asking" role="alertdialog" aria-label={t('home.remove.title')}>
-            <span>{marked(t('home.remove.ask'), { name: <b>{asking.name}</b> })}</span>
-            <button type="button" onClick={() => setAsking(null)}>{t('home.remove.keep')}</button>
-            <button
-              type="button"
-              className="byd-home-remove"
-              onClick={() => {
-                const gone = asking
-                setAsking(null)
-                void removeProject(http, gone.id, t).then(
-                  () => setProjects((list) => (list ?? []).filter((x) => x.id !== gone.id)),
-                  (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
-                )
-              }}
-            >
-              {t('home.remove.confirm')}
-            </button>
-          </div>
+          <Question
+            className="byd-home-asking"
+            label={t('home.remove.title')}
+            confirm={t('home.remove.confirm')}
+            cancel={t('home.remove.keep')}
+            onCancel={() => {
+              setAsking(null)
+              setRefocus({ to: asking.id })
+            }}
+            onConfirm={() => {
+              const gone = asking
+              setAsking(null)
+              // The game's own ⋯ holds the focus while the server is asked, and the heading takes
+              // it once there is no game left to hold it.
+              setRefocus({ to: gone.id })
+              void removeProject(http, gone.id, t).then(
+                () => {
+                  setProjects((list) => (list ?? []).filter((x) => x.id !== gone.id))
+                  say?.('polite', t('home.removed', { name: gone.name }))
+                  setRefocus({ to: HEADING })
+                },
+                (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
+              )
+            }}
+          >
+            {marked(t('home.remove.ask'), { name: <b>{asking.name}</b> })}
+          </Question>
         )}
         {/* An account with nothing in it (UX-16): one line, and what a game is and what the one
             card on it does behind the question mark beside it (L36) — it was the longest string
@@ -172,15 +196,33 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                 <strong>{p.name}</strong>
                 <span className="byd-muted">{t('home.card.line', { rev: p.rev, played: playedLine(t, lang, p) })}</span>
               </a>
-              <button type="button" className="byd-home-more" aria-label={t('home.menu.more', { name: p.name })} aria-expanded={menu === p.id} onClick={() => setMenu(menu === p.id ? null : p.id)}>
+              <button
+                ref={(el) => {
+                  if (el) mores.current.set(p.id, el)
+                  else mores.current.delete(p.id)
+                }}
+                type="button"
+                className="byd-home-more"
+                aria-label={t('home.menu.more', { name: p.name })}
+                aria-expanded={menu === p.id}
+                onClick={() => setMenu(menu === p.id ? null : p.id)}
+              >
                 ⋯
               </button>
               {menu === p.id && (
-                <div className="byd-home-menu" role="group" aria-label={t('home.menu.label', { name: p.name })}>
+                <GameMenu
+                  label={t('home.menu.label', { name: p.name })}
+                  more={mores.current.get(p.id) ?? null}
+                  onClose={(back) => {
+                    setMenu(null)
+                    if (back) setRefocus({ to: p.id })
+                  }}
+                >
                   <button
                     type="button"
                     onClick={() => {
                       setMenu(null)
+                      setRefocus({ to: p.id })
                       void startTable(http, p.id, t).then(
                         (table) => {
                           setStarted({ project: p.id, ...table })
@@ -201,7 +243,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                   >
                     {t('home.menu.remove')}
                   </button>
-                </div>
+                </GameMenu>
               )}
             </div>
           ))}
@@ -236,6 +278,50 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           </>
         )}
       </div>
+    </div>
+  )
+}
+
+// The heading, as a place the focus can be sent to (#475).
+const HEADING = '#heading'
+
+// A game's own menu (G1), and every way out of it (#475, L32): Escape gives the focus back to the
+// ⋯ it hangs from, and a press outside it or the focus walking out of it closes it where the
+// reader is — the press and the walk are already somewhere else, so the focus stays with them.
+// The first choice takes the focus when it opens, so the keys land in the menu and not behind it.
+// The ⋯ itself does not count as outside: pressing it is how the menu is closed on purpose, and a
+// menu that shut on the press would open again on the click that follows.
+function GameMenu({ label, more, onClose, children }: { label: string; more: HTMLButtonElement | null; onClose(back: boolean): void; children: ReactNode }) {
+  const box = useRef<HTMLDivElement>(null)
+  const close = useRef(onClose)
+  close.current = onClose
+  useEffect(() => {
+    box.current?.querySelector('button')?.focus()
+    const away = (event: PointerEvent) => {
+      const target = event.target as Node | null
+      if (target && (box.current?.contains(target) || more?.contains(target))) return
+      close.current(false)
+    }
+    document.addEventListener('pointerdown', away)
+    return () => document.removeEventListener('pointerdown', away)
+  }, [more])
+  return (
+    <div
+      ref={box}
+      className="byd-home-menu"
+      role="group"
+      aria-label={label}
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape' || event.defaultPrevented) return
+        event.preventDefault()
+        onClose(true)
+      }}
+      onBlur={(event) => {
+        const next = event.relatedTarget as Node | null
+        if (next && !event.currentTarget.contains(next) && next !== more) onClose(false)
+      }}
+    >
+      {children}
     </div>
   )
 }

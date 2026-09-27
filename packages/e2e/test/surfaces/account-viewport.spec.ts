@@ -141,3 +141,28 @@ test.describe('the "Nytt spel" tile on a row of its own (#231)', () => {
     expect(box.height).toBeGreaterThanOrEqual(cardH)
   })
 })
+
+// A game's menu and the question before it is taken away (#475). At 390 with six games the
+// question used to stand at the top of the page, a thousand pixels above the ⋯ that asked for it,
+// with the focus left on <body> — so the press looked like it did nothing at all.
+test.describe('taking a game away on a phone (#475)', () => {
+  test.use({ viewport: { width: 390, height: 844 }, locale: LANG, hasTouch: true, isMobile: true })
+
+  test('asks where it can be seen, with the focus on the answer that keeps the game, and every control a fingertip wide', async ({ page }) => {
+    await logIn(page.request)
+    for (let i = 1; i <= 6; i++) await makeProject(page.request, { name: `Spel ${i}`, cards: 0 })
+    await page.goto('/')
+    const last = page.getByRole('button', { name: 'Fler val för Spel 1' })
+    await last.scrollIntoViewIfNeeded()
+    await last.tap()
+    await expect(page.getByRole('group', { name: 'Val för Spel 1' })).toBeVisible()
+    expect(await tooSmall(page)).toEqual([])
+
+    await page.getByRole('button', { name: 'Ta bort spelet' }).tap()
+    const question = page.getByRole('alertdialog', { name: 'Ta bort spelet' })
+    await expect(question.getByRole('button', { name: 'Behåll' })).toBeFocused()
+    await expect(question).toBeInViewport({ ratio: 1 })
+    expect(await tooSmall(page)).toEqual([])
+    expect(await sideways(page)).toBe(0)
+  })
+})

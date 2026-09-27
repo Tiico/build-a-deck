@@ -26,6 +26,7 @@ export const enAccount = {
   'home.remove.ask': 'Delete {name}? Its whole history goes with it, and it cannot be undone.',
   'home.remove.keep': 'Keep it',
   'home.remove.confirm': 'Delete',
+  'home.removed': '{name} has been removed.',
   'home.menu.more': 'More for {name}',
   'home.menu.label': 'Choices for {name}',
   'home.menu.start': 'Start a table',

@@ -33,6 +33,7 @@ export const svAccount = {
   'home.remove.ask': 'Ta bort {name}? Hela historien följer med, och det går inte att ångra.',
   'home.remove.keep': 'Behåll',
   'home.remove.confirm': 'Ta bort',
+  'home.removed': '{name} är borttaget.',
   'home.menu.more': 'Fler val för {name}',
   'home.menu.label': 'Val för {name}',
   'home.menu.start': 'Starta bord',

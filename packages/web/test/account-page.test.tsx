@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { HomePage } from '../src/account/HomePage.js'
+import { StatusLive } from '../src/status/StatusLive.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { projectDoc } from './project-doc.js'
@@ -294,6 +295,70 @@ describe('a game on the home page (G1)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ta bort' }))
     await waitFor(() => expect(document.querySelector(`[data-project="${run.projectId}"]`)).toBeNull())
     expect((await (await fetch(`${run.http}/projects/${run.projectId}`)).status)).toBe(404)
+  })
+})
+
+// The question and the menu answer the keyboard the way every other one in the product does
+// (#475): the question takes the focus where it is read and Escape gives it back to ⋯, the menu
+// closes on Escape, on a press outside it and on the focus walking out of it, and nothing that
+// goes away leaves the focus standing on <body>.
+describe('the game menu and the question on the home page (#475)', () => {
+  async function home(): Promise<void> {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    await followMailedLink()
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    render(
+      <StatusLive>
+        <HomePage />
+      </StatusLive>,
+    )
+    await screen.findByText('Skogens herrar')
+  }
+  const more = () => screen.getByRole('button', { name: 'Fler val för Skogens herrar' })
+  const menu = () => screen.queryByRole('group', { name: 'Val för Skogens herrar' })
+
+  it('opens the menu with the focus on its first choice, and Escape closes it back onto ⋯', async () => {
+    await home()
+    fireEvent.click(more())
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Starta bord' })))
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    expect(menu()).toBeNull()
+    expect(document.activeElement).toBe(more())
+  })
+
+  it('closes the menu on a press outside it and when the focus walks out of it', async () => {
+    await home()
+    fireEvent.click(more())
+    expect(menu()).toBeTruthy()
+    fireEvent.pointerDown(screen.getByText('Mina spel'))
+    expect(menu()).toBeNull()
+
+    fireEvent.click(more())
+    const first = await screen.findByRole('button', { name: 'Starta bord' })
+    fireEvent.blur(first, { relatedTarget: screen.getByRole('link', { name: /Nytt spel/ }) })
+    expect(menu()).toBeNull()
+  })
+
+  it('asks with the focus on the answer that keeps the game, and Escape takes the question back onto ⋯', async () => {
+    await home()
+    fireEvent.click(more())
+    fireEvent.click(await screen.findByRole('button', { name: 'Ta bort spelet' }))
+    const question = screen.getByRole('alertdialog', { name: 'Ta bort spelet' })
+    await waitFor(() => expect(document.activeElement).toBe(within(question).getByRole('button', { name: 'Behåll' })))
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    await waitFor(() => expect(document.activeElement).toBe(more()))
+  })
+
+  it('says the game is gone once it is, and leaves the focus on the heading rather than on nothing', async () => {
+    await home()
+    fireEvent.click(more())
+    fireEvent.click(await screen.findByRole('button', { name: 'Ta bort spelet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort' }))
+    await waitFor(() => expect(document.querySelector(`[data-project="${run.projectId}"]`)).toBeNull())
+    await waitFor(() => expect(document.querySelector('[data-status-live="polite"]')?.textContent).toBe('Skogens herrar är borttaget.'))
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Mina spel' }))
   })
 })
 
