@@ -142,7 +142,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     client.tables().then(
       (tables) => {
         const running = tables.find((t) => !t.ended && t.code !== undefined)
-        if (live && running?.code) setTable((had) => had ?? { id: running.id, version: running.version, code: running.code!, kind: 'running' })
+        const code = running?.code
+        if (live && running && code) setTable((had) => had ?? { id: running.id, version: running.version, code, kind: 'running' })
       },
       () => undefined,
     )
