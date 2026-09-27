@@ -1216,9 +1216,19 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
             setAskingStart(false)
             onAct?.(start.intents)
           }}
-          onCancel={() => setAskingStart(false)}
+          onCancel={() => {
+            setAskingStart(false)
+            // Back on the tile that asked, not on <body> (#482).
+            requestAnimationFrame(() => document.querySelector<HTMLElement>('[data-table-start]')?.focus())
+          }}
         >
-          {t('start.again.text')}
+          {/* What the start does, built from its own steps (#482): only the designer's start
+              actions run again, and nothing is put back — the sentence used to promise both. */}
+          {t('start.again.text', {
+            actions: startsAt(view)
+              .map(({ zone, action }) => t('start.again.action', { action: action.label, pile: view.zones.find((z) => z.id === zone)?.name ?? zone }))
+              .join(t('start.again.and')),
+          })}
         </Question>
       )}
       {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable)} />}

@@ -1279,7 +1279,7 @@ describe('startbrickan på filten (#451)', () => {
   // Ett andra tryck mitt i spelet drar tillbaka varje hand och blandar om leken (#452). Det ska
   // gå — det är så en ny giv ges, och K23 säger att verktyget inte säger nej — men inte av
   // misstag. Frågan ställs bara när något faktiskt hänt vid bordet.
-  it('frågar innan den kör om ett bord där någon redan rört ett kort, och kör direkt annars', () => {
+  it('frågar innan den kör om ett bord där någon redan rört ett kort, och kör direkt annars', async () => {
     const table = withStart('start')
     const sent: Intent[][] = []
     const draw = () => render(<TableRenderer view={table.view(null)} mode="table" scale={2} onAct={(intents) => sent.push(intents)} />)
@@ -1299,13 +1299,18 @@ describe('startbrickan på filten (#451)', () => {
     fireEvent.click(tile()!)
     expect(sent).toHaveLength(1)
     const fraga = screen.getByRole('alertdialog')
-    expect(fraga.textContent).toMatch(/Korten som ligger ute går tillbaka/)
+    // Den säger vad starten gör, byggt av stegen (#482 fynd 2): bara designerns startåtgärder
+    // körs igen, och det som ligger ute ligger kvar. Förut lovade den att korten gick tillbaka.
+    expect(fraga.textContent).toContain('«Blanda» på Dragh')
+    expect(fraga.textContent).toMatch(/körs igen\. Korten som ligger ute ligger kvar där de är\./)
 
     // Och svaret som ingenting kostar är det frågan öppnar på.
     expect(document.activeElement?.textContent).toBe('Avbryt')
     fireEvent.click(within(fraga).getByRole('button', { name: 'Avbryt' }))
     expect(sent).toHaveLength(1)
     expect(screen.queryByRole('alertdialog')).toBeNull()
+    // Fokus står kvar på brickan som ställde frågan, inte på <body> (#482 fynd 9).
+    await waitFor(() => expect(document.activeElement).toBe(tile()))
 
     fireEvent.click(tile()!)
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Ja, starta om' }))
