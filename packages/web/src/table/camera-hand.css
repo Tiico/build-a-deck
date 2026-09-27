@@ -41,3 +41,9 @@
 }
 .byd-camera-controls .byd-camera-whole { font-size: 12px; font-weight: 600; white-space: nowrap; }
 .byd-camera-controls .byd-camera-fold { min-width: 34px; padding: 0; font-size: 13px; color: var(--byd-felt-chalk-off); }
+/* The press is taken over 44 px around each button, drawn at the size the prototype gave it (#325,
+   #482): the form the «?» beside it uses, a target larger than the thing that is seen. The cluster's
+   gap is 8 px; a pixel past 44 on each side takes sub-pixel positions, and the fold's reach past its neighbour's by one is the fold's. */
+.byd-camera-controls button { position: relative; }
+.byd-camera-controls button::before { content: ''; position: absolute; inset: -3px; }
+.byd-camera-controls .byd-camera-fold::before { inset: -3px -6px; }
