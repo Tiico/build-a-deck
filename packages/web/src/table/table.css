@@ -360,9 +360,9 @@
 /* On the television the count hangs inward, over the fan's inner edge (beslut 2026-09-27, #482
    fynd 5 B). Outward it lay in the band a set may hide (#322, C5), and pulling the picture back to
    clear it cost the card K9's floor. Inward it lies over its own hand, where the picture already is,
-   so the camera buys it no air at all. */
-.byd-table-frame[data-mode='tv'] .byd-hand-count { top: auto; bottom: calc(var(--hand-lift, 25px) - 1.4em); }
-.byd-table-frame[data-mode='tv'] .byd-hand[data-count-side='above'] .byd-hand-count { bottom: auto; top: calc(var(--hand-drop, 50px) - 1.4em); }
+   so the camera buys it no air at all. Not on the Bord tab, whose seat tiles stand there. */
+.byd-hand[data-count-in] .byd-hand-count { top: auto; bottom: calc(var(--hand-lift, 25px) - 1.4em); }
+.byd-hand[data-count-in][data-count-side='above'] .byd-hand-count { bottom: auto; top: calc(var(--hand-drop, 50px) - 1.4em); }
 
 /* Platsen tänds medan ett kort är på väg in i dess hand (#444, K24).
    Bandet ligger längs platsens egna millimeter av kanten (`handBand`), i platsens färg, och

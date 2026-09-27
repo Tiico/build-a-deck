@@ -1015,6 +1015,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 color={seatColor(seatIndex(z.owner))}
                 rot={handRot(z)}
                 countAt={countSide(z, floor, handRot(z))}
+                // Inward only on the television itself (#482 fynd 5 B): the Bord tab draws the
+                // same felt with the seat tiles at the rim, where an inward count lies on the
+                // tile, and an editor's screen hides no band that the count would have to clear.
+                countIn={mode === 'tv' && !seatNames}
                 folded={fold}
                 left={left(at.x)}
                 top={top(at.y)}
@@ -1634,7 +1638,7 @@ function SeatName({ zone, floor, name, color, mine, taking, read, left, top }: {
 // Other seats' hands are a fan of backs and a count; the owner reads theirs on the phone. A hand
 // whose order this view may see (the observer, C8) fans the cards themselves. Every measure in
 // the fan is a millimetre on the felt, so it shrinks with the table rather than swamping it (#23).
-function Hand({ zone, color, rot, countAt, folded = false, taking = 0, left, top, px, cards, faces }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; folded?: boolean; taking?: number; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
+function Hand({ zone, color, rot, countAt, countIn = false, folded = false, taking = 0, left, top, px, cards, faces }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; countIn?: boolean; folded?: boolean; taking?: number; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
   const count = zone.mode === 'count' ? zone.count : zone.order.length
   const fan = folded ? 0 : Math.min(count, FAN_MAX)
   const shown = cards ? Math.min(cards.length, FAN_MAX) : fan
@@ -1650,6 +1654,7 @@ function Hand({ zone, color, rot, countAt, folded = false, taking = 0, left, top
       data-count={count}
       data-rot={rot}
       data-count-side={countAt}
+      data-count-in={countIn ? '' : undefined}
       data-folded={folded ? 'true' : undefined}
       data-taking={taking > 0 ? String(taking) : undefined}
       style={{ left, top, transform: `rotate(${rot}deg)`, ['--seat' as string]: color, ['--hand-unrot' as string]: `${-rot}deg`, ['--hand-drop' as string]: `${px(HAND_COUNT_MM)}px`, ['--hand-lift' as string]: `${px(HAND_COUNT_ABOVE_MM)}px` }}
