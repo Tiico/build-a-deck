@@ -951,8 +951,9 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
           aria-label={t(moving?.id === box.id ? 'canvas.element.moving' : 'canvas.element', { name: layerName(box), kind: t(KIND_WORDS[box.kind]), x: box.x, y: box.y })}
           aria-pressed={moving?.id === box.id}
           {...(moving?.id === box.id ? { 'data-moving': '' } : {})}
+          {...hollowProps(box)}
           onKeyDown={(event) => keys(event, box)}
-          style={{ left: `${box.x}mm`, top: `${box.y}mm`, width: `${box.w}mm`, height: `${box.h}mm`, zIndex: boxes.length - 1 - fromTop }}
+          style={{ left: `${box.x}mm`, top: `${box.y}mm`, width: `${box.w}mm`, height: `${box.h}mm`, zIndex: boxes.length - 1 - fromTop, ...hollowStyle(box) }}
           // The selection follows the focus here for the same reason it does in the layer list
           // (L15): arriving on an element is the whole of choosing it, and the properties beside
           // the card — where a size is typed in millimetres — must be about what the keyboard
@@ -1566,6 +1567,15 @@ function Section({ name, children }: { name: string; children: ReactNode }) {
 // the pointer reports it (L14): the token is made at `pointerdown` and every step of the pull
 // wears it. What the pointer has travelled but not yet spent is kept on the hold, so a step that
 // took three reports of one pixel still arrives.
+// A shape with no fill is its outline and nothing else (#478, L26): its inside lets the pointer
+// through to whatever is drawn there, and the outline is hit within half its line plus the 2.4 mm
+// L26 gives a point. The ring is drawn by the stylesheet from the width said here.
+const RIM_MM = 2.4
+const isHollow = (box: BoxElement): boolean => box.kind === 'shape' && !('fill' in box && box.fill) && !('pattern' in box && box.pattern)
+const hollowProps = (box: BoxElement): { 'data-hollow'?: '' } => (isHollow(box) ? { 'data-hollow': '' } : {})
+const hollowStyle = (box: BoxElement): CSSProperties =>
+  isHollow(box) ? { ['--byd-rim' as string]: `${(('strokeMm' in box ? box.strokeMm ?? 0 : 0) / 2) + RIM_MM}mm` } : {}
+
 function Scrub({
   name,
   icon,

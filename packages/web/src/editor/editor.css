@@ -932,6 +932,19 @@
    makes a trackpad and a touch screen drag the element instead of scrolling the stage. */
 .byd-drag-layer { position: absolute; inset: 0; touch-action: none; }
 .byd-drag-box { position: absolute; touch-action: none; cursor: move; }
+/* A shape with no fill takes the pointer on its outline only (#478, L26): the box lets it through,
+   and a ring as wide as `--byd-rim` inside the box's edge takes it back. The ring is the box's own
+   pseudo-element, so what it catches is the box's and every handler still answers; the handles
+   hang on the box and take the pointer as they always did. */
+.byd-drag-box[data-hollow] { pointer-events: none; }
+.byd-drag-box[data-hollow]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  clip-path: polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, var(--byd-rim) var(--byd-rim), var(--byd-rim) calc(100% - var(--byd-rim)), calc(100% - var(--byd-rim)) calc(100% - var(--byd-rim)), calc(100% - var(--byd-rim)) var(--byd-rim), var(--byd-rim) var(--byd-rim));
+}
+.byd-drag-box[data-hollow] > .byd-drag-handle { pointer-events: auto; }
 /* The element as a keyboard stop, and the move mode it can be put into (#144). The card under the
    ring is the designer's and may be any colour she likes, so the ring is two: a dark one at the
    box's own edge and a bright one outside it. Whatever the card is painted, one of them is legible
