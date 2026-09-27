@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
 import { describeActivity } from './describe.js'
 import { seatColor } from './seatColor.js'
@@ -59,6 +59,31 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
   }
   const seatIndex = (seat: string) => Math.max(0, view.seats.findIndex((s) => s.id === seat))
   const recent = [...activity].slice(-9).reverse()
+  // Only the lines that fit whole (#482): nobody scrolls a television from the sofa, and a list cut
+  // through its last line — with the observers' row laid over it — read as broken. The newest stand
+  // first, so what gives way is the oldest. Measured after layout and again whenever the column
+  // changes size; `hidden` is the list's own and never React's, so a redraw does not undo it.
+  const feedRef = useRef<HTMLElement | null>(null)
+  const lines = recent.map((l) => l.seq).join(',')
+  useLayoutEffect(() => {
+    const feed = feedRef.current
+    if (!feed) return
+    const fit = () => {
+      const rows = [...feed.querySelectorAll<HTMLElement>('ol > li')]
+      for (const li of rows) li.hidden = false
+      const bottom = feed.getBoundingClientRect().bottom - parseFloat(getComputedStyle(feed).paddingBottom || '0')
+      let full = false
+      for (const li of rows) {
+        full ||= li.getBoundingClientRect().bottom > bottom + 0.5
+        li.hidden = full
+      }
+    }
+    fit()
+    if (typeof ResizeObserver !== 'function') return
+    const watch = new ResizeObserver(fit)
+    watch.observe(feed)
+    return () => watch.disconnect()
+  }, [lines])
   // What the panel holds when nobody is pointing (K8): the card the latest line was about, for as
   // long as it is the latest. Pointing is a good way into the panel and a bad requirement — a TV
   // is watched by a room and held by nobody — so the screen answers "what was just played?" on
@@ -132,7 +157,7 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
             })}
           </ul>
         </section>
-        <section className="byd-tv-feed">
+        <section className="byd-tv-feed" ref={feedRef}>
           <h2 id="tv-feed">{t('play.latest')}</h2>
           {/* A table nobody has touched yet (UX-16): the heading says what will fill it, rather
               than standing over an empty list. The list itself comes back with the first line. */}
