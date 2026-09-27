@@ -1,4 +1,5 @@
 import { createContext, Fragment, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react'
+import { cardsWhere, conditionWords, holds } from './conditions.js'
 import { CardRow } from './CardRow.js'
 import { useNumberDraft } from './number-draft.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
@@ -225,6 +226,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // counts them: the whole deck from the base, the rule's own cards from a group — which is also
   // exactly as far as `onRemove` goes.
   const drawnOn = column && group ? cardsInGroup(doc, group).length : doc.rows.length
+  // A condition layer goes from the cards it is drawn on, not from every card (#478).
+  const goesOn = goes?.kind === 'if' ? shownCards.filter((r) => holds(goes.when, r.fields)).length : drawnOn
   // A new element is added where it can be seen and is selected at once, so the next thing the
   // designer does — drag it, nudge it, bind it — is about the element they just asked for.
   const add = (kind: ElementKind) => {
@@ -304,6 +307,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             }}
             onRename={onRename}
             markOf={(id) => markOf(panel, column, group, id, t)}
+            conditionOf={(one) => (one.kind === 'if' ? t('canvas.if.row', { condition: conditionWords(one.when, t), n: shownCards.filter((r) => holds(one.when, r.fields)).length }) : null)}
             pictureName={(hash) => doc.pictures?.[hash]?.name ?? t('canvas.props.picture.unnamed')}
             removed={new Set(panel.filter((l) => l.source === 'removed').map((l) => l.element.id))}
             labelledBy="layers-heading"
@@ -361,7 +365,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             motifs={motifs}
             selectedElement={selectedElement}
             onSelectElement={onSelectElement}
-            overlay={<DragLayer grid={grid ? gridStep(zoom.scale) : null} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} point={pointAt} onPoint={setPointAt} />}
+            overlay={<DragLayer grid={grid ? gridStep(zoom.scale) : null} conditions={conditionFrames(shown, rowData, t)} onSelectCondition={onSelectElement} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} point={pointAt} onPoint={setPointAt} />}
           />
         </main>
           <ZoomBand zoom={zoom} />
@@ -406,7 +410,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
         {goes && (
           <Question
             className="byd-canvas-question"
-            label={removeLayerLabel(goes, face, drawnOn, t)}
+            label={removeLayerLabel(goes, face, goesOn, t)}
             confirm={t('canvas.layer.remove.yes')}
             onConfirm={() => {
               onRemove(goes.id)
@@ -417,7 +421,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             }}
             onCancel={handBack}
           >
-            {removeLayerLabel(goes, face, drawnOn, t)}
+            {removeLayerLabel(goes, face, goesOn, t)}
           </Question>
         )}
       </div>
@@ -430,7 +434,19 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
         {/* A panel with nothing in it says why rather than looking broken — and on a small screen
             the layers are another stage away, so it says where to go. */}
         {!layer && <p className="byd-canvas-hint">{t('canvas.props.empty')}</p>}
-        {el && (
+        {/* A condition layer is its condition and what is in it (#478, variant A): the panel edits
+            the one and names the other, and shows a card the layer is drawn on. */}
+        {el?.kind === 'if' && (
+          <ConditionProps
+            el={el}
+            fields={fields}
+            valuesIn={(field) => valuesIn(doc, field)}
+            cards={shownCards}
+            onPatch={(changed) => patch(el.id, changed)}
+            {...(onPickRow ? { onShow: onPickRow } : {})}
+          />
+        )}
+        {el && el.kind !== 'if' && (
           <Properties
             el={el}
             face={face}
@@ -775,7 +791,7 @@ const ARMS: readonly Arm[] = ['in', 'out']
 // the card's own millimetres. It draws no card content — the compiler behind it is still the one
 // renderer — and it holds the pointer with pointer capture, so a fast drag or a trackpad that
 // leaves the box keeps moving the element it grabbed.
-function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefused, point, onPoint }: { boxes: BoxElement[]; grid: number | null; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch']; onCallOff: TemplateCanvasProps['onCallOff']; onRefused(id: string): void; point: number | null; onPoint(at: number | null): void }) {
+function DragLayer({ boxes, conditions, onSelectCondition, grid, selected, onSelect, onPatch, onCallOff, onRefused, point, onPoint }: { boxes: BoxElement[]; conditions: ConditionFrame[]; onSelectCondition(id: string): void; grid: number | null; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch']; onCallOff: TemplateCanvasProps['onCallOff']; onRefused(id: string): void; point: number | null; onPoint(at: number | null): void }) {
   const t = useT()
   const say = useSay()
   const layer = useRef<HTMLDivElement | null>(null)
@@ -1092,6 +1108,25 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
           front of her (#144) — while the pointer must still find the top-most box on top of the
           pile, which is the order the card is drawn in. The two orders are each other turned
           around, so the tree carries one and `z-index` carries the other. */}
+      {/* A condition layer on the card (#478, variant A): a dashed frame round what is in it, the
+          condition on a tab that chooses the layer, and the whole of it faded where the condition
+          does not hold for the card shown — it is not drawn there, and the frame says so. */}
+      {conditions.map((frame) => (
+        <div
+          key={frame.id}
+          className="byd-condition"
+          data-condition={frame.id}
+          {...(frame.holds ? {} : { 'data-off': '' })}
+          style={{ left: `${frame.x}mm`, top: `${frame.y}mm`, width: `${frame.w}mm`, height: `${frame.h}mm` }}
+        >
+          <button type="button" className="byd-condition-tab" tabIndex={-1} onClick={(event) => {
+            event.stopPropagation()
+            onSelectCondition(frame.id)
+          }}>
+            {frame.words}
+          </button>
+        </div>
+      ))}
       {[...boxes].reverse().map((box, fromTop) => (
         <div
           key={box.id}
@@ -1781,6 +1816,81 @@ function useMeasure(): (n: number) => string {
     const format = new Intl.NumberFormat(lang === 'sv' ? 'sv-SE' : 'en-GB', { maximumFractionDigits: 2 })
     return (n: number) => format.format(n)
   }, [lang])
+}
+
+// Where a condition layer stands on the card (#478): round what is in it that has a place, with
+// its condition in words and whether it holds for the card shown.
+type ConditionFrame = { id: string; x: number; y: number; w: number; h: number; words: string; holds: boolean }
+function conditionFrames(shown: readonly Element[], row: Row, t: T): ConditionFrame[] {
+  return shown.flatMap((el) => {
+    if (el.kind !== 'if') return []
+    const placed = el.children.filter(isBox)
+    if (placed.length === 0) return []
+    const x = Math.min(...placed.map((b) => b.x))
+    const y = Math.min(...placed.map((b) => b.y))
+    const right = Math.max(...placed.map((b) => b.x + b.w))
+    const bottom = Math.max(...placed.map((b) => b.y + b.h))
+    return [{ id: el.id, x, y, w: right - x, h: bottom - y, words: conditionWords(el.when, t), holds: holds(el.when, row) }]
+  })
+}
+
+// The panel of a condition layer (#478, variant A): the column it asks, whether it asks for a value
+// or for anything at all, the value, on how many cards it holds, a way to one of them, and what is
+// in it.
+function ConditionProps({ el, fields, valuesIn, cards, onPatch, onShow }: { el: Extract<Element, { kind: 'if' }>; fields: string[]; valuesIn(field: string): string[]; cards: ProjectDoc['rows']; onPatch(patch: Partial<Element>): void; onShow?(id: string): void }) {
+  const t = useT()
+  const listId = useId()
+  const on = cardsWhere({ rows: cards }, el.when)
+  const first = on[0]
+  const equals = 'equals' in el.when
+  const write = (when: Extract<Element, { kind: 'if' }>['when']) => onPatch({ when } as Partial<Element>)
+  return (
+    <div className="byd-props">
+      <Section id="content" name={t('canvas.if.sec')}>
+        <label>
+          {t('canvas.if.field')}
+          <select value={el.when.field} onChange={(e) => write(equals ? { field: e.target.value, equals: (el.when as { equals: string }).equals } : { field: e.target.value, nonEmpty: true })}>
+            {[...new Set([...fields, el.when.field])].map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {t('canvas.if.mode')}
+          <select value={equals ? 'equals' : 'filled'} onChange={(e) => write(e.target.value === 'equals' ? { field: el.when.field, equals: valuesIn(el.when.field)[0] ?? '' } : { field: el.when.field, nonEmpty: true })}>
+            <option value="equals">{t('canvas.if.mode.equals')}</option>
+            <option value="filled">{t('canvas.if.mode.filled')}</option>
+          </select>
+        </label>
+        {equals && (
+          <label>
+            {t('canvas.if.value')}
+            <input list={listId} value={(el.when as { equals: string }).equals} onChange={(e) => write({ field: el.when.field, equals: e.target.value })} />
+            <datalist id={listId}>
+              {valuesIn(el.when.field).map((v) => (
+                <option key={v} value={v} />
+              ))}
+            </datalist>
+          </label>
+        )}
+        <p className="byd-props-wide byd-canvas-affects">{t('canvas.if.count', { n: on.length, of: cards.length })}</p>
+        {onShow && first && (
+          <button type="button" className="byd-props-wide byd-props-show byd-secondary" onClick={() => onShow(first.id)}>
+            {t('canvas.if.show')}
+          </button>
+        )}
+      </Section>
+      <Section id="shape" name={t('canvas.if.children')}>
+        <ul className="byd-props-wide byd-layer-inside" aria-label={t('canvas.if.inside', { name: layerName(el) })}>
+          {el.children.map((child) => (
+            <li key={child.id}>{layerName(child)}</li>
+          ))}
+        </ul>
+      </Section>
+    </div>
+  )
 }
 
 // How near the stage's edge a held hand pans it, and how fast at the very edge (#478).

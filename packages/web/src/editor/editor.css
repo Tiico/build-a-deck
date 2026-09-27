@@ -945,6 +945,15 @@
   clip-path: polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, var(--byd-rim) var(--byd-rim), var(--byd-rim) calc(100% - var(--byd-rim)), calc(100% - var(--byd-rim)) calc(100% - var(--byd-rim)), calc(100% - var(--byd-rim)) var(--byd-rim), var(--byd-rim) var(--byd-rim));
 }
 .byd-drag-box[data-hollow] > .byd-drag-handle { pointer-events: auto; }
+/* A condition layer on the card (#478, variant A): a dashed frame round what is in it and the
+   condition on a tab over its corner, faded and hatched where it does not hold for the card shown.
+   The frame takes no pointer — the card under it is still the card — and only the tab chooses. */
+.byd-condition { position: absolute; box-sizing: border-box; border: calc(1.5px / var(--byd-canvas-scale, 1)) dashed #c9a2ff; pointer-events: none; }
+.byd-condition[data-off] { border-color: var(--byd-editor-quiet); background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--byd-editor-quiet) 18%, transparent) 0 1mm, transparent 1mm 2mm); }
+.byd-condition > .byd-condition-tab { position: absolute; left: 0; bottom: 100%; transform: scale(calc(1 / var(--byd-canvas-scale, 1))); transform-origin: bottom left; min-height: 0; min-width: 0; margin: 0; padding: var(--byd-s1) var(--byd-s2); border: 0; border-radius: 4px 4px 0 0; background: #c9a2ff; color: #1b1d23; font: 600 11px system-ui; white-space: nowrap; pointer-events: auto; cursor: pointer; }
+.byd-condition[data-off] > .byd-condition-tab { background: var(--byd-editor-quiet); }
+/* The one way on from a condition's panel, in the panel's own button shape. */
+.byd-props .byd-props-show { min-height: var(--byd-tap); border-radius: 8px; padding: 0 var(--byd-s3); font-weight: 700; cursor: pointer; }
 /* Why the element stopped at the card's edge (#478): a word by it, in the screen's own size
    whatever the zoom, while the hand keeps pushing. */
 .byd-drag-kept { position: absolute; left: 50%; top: 100%; transform: translateY(calc(4px / var(--byd-canvas-scale, 1))) scale(calc(1 / var(--byd-canvas-scale, 1))); transform-origin: top left; padding: 4px 8px; border-radius: 6px; background: #1b1d23; border: 1px solid #f0b64a; color: #f0b64a; font: 600 12px system-ui; white-space: nowrap; pointer-events: none; z-index: 10002; }
@@ -1433,6 +1442,7 @@
 .byd-props-sec-sum { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #c7cede; font-size: 12px; letter-spacing: 0; text-transform: none; }
 @media (prefers-reduced-motion: reduce) { .byd-props-sec-head button::before { transition: none; } }
 .byd-props-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 8px; }
+.byd-props-wide { grid-column: 1 / -1; }
 /* A number and its grip (L25). The icon is the field's name and the thing to pull it by: three
    dots of a rule beside a glyph, so the drag is visible before anyone hovers over it. */
 .byd-props-f { display: grid; grid-template-columns: 27px minmax(0, 1fr) 20px; align-items: center; gap: 3px; min-height: 28px; }
@@ -3341,3 +3351,13 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
   .byd-library-veil { padding: var(--byd-s3); }
   .byd-library { padding: var(--byd-s3); }
 }
+
+/* A condition layer is a folder in the list (#478, variant A): a chevron to open it, and what is in
+   it under the row, set in from the row it belongs to. */
+.byd-layer-fold { flex: 0 0 auto; width: var(--byd-tap); min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: #9aa3b8; cursor: pointer; }
+.byd-layer-fold::before { content: ''; display: inline-block; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); }
+.byd-layer-fold[aria-expanded='true']::before { transform: rotate(45deg); }
+.byd-layer-inside { margin: 0; padding: 0 0 var(--byd-s1) var(--byd-s5); list-style: none; display: grid; gap: var(--byd-s1); color: #c7cede; font-size: 12px; }
+.byd-layer-inside li { display: flex; align-items: center; gap: var(--byd-s2); }
+.byd-layers [role='gridcell']:has(> .byd-layer-inside) { flex-wrap: wrap; }
+.byd-layers [role='gridcell'] > .byd-layer-inside { flex: 1 0 100%; }
