@@ -148,7 +148,17 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
                   key="w"
                   query={zone.fill ?? []}
                   columns={columns}
-                  label={zone.fill && zone.fill.length > 0 ? t('setup.fill.some', { what: queryWords(zone.fill, t) }) : t('setup.fill.none')}
+                  // The deck starts with every card no other pile claims (the server's `setup.ts`), so
+                  // it never starts with nothing (#480): it said «inga kort» over a pile of 146.
+                  label={
+                    doc.setup.deckZone === zone.id
+                      ? zone.fill && zone.fill.length > 0
+                        ? t('setup.fill.someAndRest', { what: queryWords(zone.fill, t) })
+                        : t('setup.fill.rest')
+                      : zone.fill && zone.fill.length > 0
+                        ? t('setup.fill.some', { what: queryWords(zone.fill, t) })
+                        : t('setup.fill.none')
+                  }
                   onChange={(fill) => onPatch({ fill: fill.length > 0 ? fill : undefined }, `fill:${zone.id}`)}
                   t={t}
                 />
