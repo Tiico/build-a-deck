@@ -524,14 +524,16 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
               </button>
             </div>
           )}
-          {/* A search that finds nothing says what was looked for and the way back (#477), rather
-              than leaving a wall with nothing on it. */}
+          {/* A search that finds nothing says what was looked for and the way back (#477), in the
+              same form as the empty game above it (#476, variant A): what is missing, and the door. */}
           {shown.length === 0 && isFiltering(filter) ? (
-            <div className="byd-wall-nomatch" role="status">
-              <p>{t('wall.search.none', { query: filter.query })}</p>
-              <button type="button" className="byd-secondary" onClick={() => setFilter(noFilter)}>
-                {t('wall.search.clear')}
-              </button>
+            <div className="byd-wall-empty" role="status">
+              <h2>{t('wall.search.none', { query: filter.query })}</h2>
+              <div className="byd-wall-empty-doors">
+                <button type="button" className="byd-secondary" onClick={() => setFilter(noFilter)}>
+                  {t('wall.search.clear')}
+                </button>
+              </div>
             </div>
           ) : bands.length === 0 ? (
             <div className="byd-wall" role="listbox" aria-label={t('wall.deck')}>
