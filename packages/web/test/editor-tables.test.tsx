@@ -489,7 +489,7 @@ describe('«Uppdatera bordet» answers the press before the table does (#315)', 
       // Said at once, and said in the accessibility tree rather than only in a colour.
       const busy = await screen.findByRole('button', { name: 'Uppdaterar bordet…' })
       expect(busy.getAttribute('aria-busy')).toBe('true')
-      expect((busy as HTMLButtonElement).disabled).toBe(true)
+      expect(busy.getAttribute('aria-disabled')).toBe('true')
 
       // The designer who presses again because nothing seemed to happen sends nothing.
       await user.click(busy)
@@ -503,7 +503,7 @@ describe('«Uppdatera bordet» answers the press before the table does (#315)', 
       // And the button is itself again, ready for the next change.
       const ready = await screen.findByRole('button', { name: 'Uppdatera bordet' })
       expect(ready.getAttribute('aria-busy')).toBe('false')
-      expect((ready as HTMLButtonElement).disabled).toBe(false)
+      expect(ready.getAttribute('aria-disabled')).toBe('false')
     } finally {
       spy.mockRestore()
     }

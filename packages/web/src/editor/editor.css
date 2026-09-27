@@ -308,8 +308,8 @@
    not, for the same reason `--byd-editor-quiet` was raised off 4.09:1. Held to 4.5:1 on the two
    grounds these rules land on there is no room under that register anyway, so the register is
    what refused is written in. Measured in `button-state-contrast.test.tsx`. */
-.byd-editor > header > button:not(.byd-primary):disabled { color: var(--byd-editor-quiet); }
-.byd-editor > header > button:disabled { cursor: default; }
+.byd-editor > header > button:not(.byd-primary):is(:disabled, [aria-disabled='true']) { color: var(--byd-editor-quiet); }
+.byd-editor > header > button:is(:disabled, [aria-disabled='true']) { cursor: default; }
 .byd-editor-table-link {
   flex: none;
   --byd-editor-table-bg: #1f2a1f;
@@ -501,8 +501,8 @@
 }
 /* The same pair below the desk, where the two buttons are pinned to the end of the stage strip
    (#315), in the same quiet register for the same reason. */
-.byd-editor-stagebar-actions button:not(.byd-primary):disabled { color: var(--byd-editor-quiet); }
-.byd-editor-stagebar-actions button:disabled { cursor: default; }
+.byd-editor-stagebar-actions button:not(.byd-primary):is(:disabled, [aria-disabled='true']) { color: var(--byd-editor-quiet); }
+.byd-editor-stagebar-actions button:is(:disabled, [aria-disabled='true']) { cursor: default; }
 
 /* The setup editor (B5, K2): the seats knob and the list of zones on the left, the felt as the
    workspace, the phone's sheet under it. The column scrolls on its own, since a table of eight

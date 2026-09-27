@@ -40,10 +40,10 @@ describe('EditorPage', () => {
     expect(document.querySelector('[data-mode]')!.getAttribute('data-mode')).toBe('table')
     fireEvent.change(screen.getByLabelText('dragon title'), { target: { value: 'Drakhona' } })
     const save = screen.getByRole('button', { name: /spara/i }) as HTMLButtonElement
-    expect(save.disabled).toBe(false)
+    expect(save.getAttribute('aria-disabled')).toBe('false')
     fireEvent.click(save)
     await screen.findByText('rev 2')
-    expect((screen.getByRole('button', { name: /spara/i }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole('button', { name: /spara/i }).getAttribute('aria-disabled')).toBe('true')
     const stored = await run.projects.load(run.projectId)
     expect(stored?.rev).toBe(2)
     expect(stored?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
@@ -84,7 +84,7 @@ describe('EditorPage', () => {
     expect(await screen.findByLabelText('phoenix title')).toBeTruthy()
     expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(1)
     const save = screen.getByRole('button', { name: /spara/i }) as HTMLButtonElement
-    expect(save.disabled).toBe(false)
+    expect(save.getAttribute('aria-disabled')).toBe('false')
 
     fireEvent.click(save)
     await screen.findByText('rev 2')
@@ -112,7 +112,7 @@ describe('EditorPage', () => {
     await user.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
 
     const save = screen.getByRole('button', { name: /spara/i }) as HTMLButtonElement
-    expect(save.disabled).toBe(false)
+    expect(save.getAttribute('aria-disabled')).toBe('false')
     fireEvent.click(save)
     await screen.findByText('rev 2')
     expect((await run.projects.load(run.projectId))?.rows).toEqual([
@@ -173,7 +173,7 @@ describe('the header says which of its two jobs the filled button will do (#417)
       fireEvent.click(screen.getByRole('button', { name: 'Starta bord' }))
       const busy = await screen.findByRole('button', { name: 'Startar bordet…' })
       expect(busy.getAttribute('aria-busy')).toBe('true')
-      expect((busy as HTMLButtonElement).disabled).toBe(true)
+      expect(busy.getAttribute('aria-disabled')).toBe('true')
       release()
       expect(await screen.findByRole('button', { name: 'Uppdatera bordet' })).toBeTruthy()
     } finally {

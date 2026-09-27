@@ -89,6 +89,19 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const [leaving, setLeaving] = useState(false)
   const [refocusLeave, setRefocusLeave] = useState(false)
   const leaveRef = useRef<HTMLAnchorElement>(null)
+  // Where the keyboard goes once a press has taken away what it was standing on (#477): the
+  // comparison a version was compared from, or the element that was chosen on a card on the wall.
+  // Moved after the render that draws it, because it is not there until then.
+  const [focusNext, setFocusNext] = useState<{ compare: true } | { layer: string } | null>(null)
+  useEffect(() => {
+    if (!focusNext) return
+    setFocusNext(null)
+    const target =
+      'compare' in focusNext
+        ? document.querySelector<HTMLElement>('.byd-data-compare button')
+        : (document.querySelector<HTMLElement>(`[data-layer="${CSS.escape(focusNext.layer)}"] .byd-layer-pick`) ?? document.getElementById(panelId('template')))
+    target?.focus()
+  }, [focusNext])
   // Set the moment the designer has answered the question herself. Every way out of the editor is
   // a page load, so without this the browser would ask her the same thing a second time.
   const answered = useRef(false)
@@ -357,8 +370,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onSelectElement={(id) => {
           setElement(id)
           // A phone has no canvas to open, so an element on the wall is only chosen there; every
-          // wider screen goes on to the card it belongs to.
-          if (room !== 'phone') setStage('canvas')
+          // wider screen goes on to the card it belongs to, and the keyboard with it.
+          if (room !== 'phone') {
+            setStage('canvas')
+            setFocusNext({ layer: id })
+          }
         }}
         // The measure belongs to the template's image element and one card's departure to the
         // deck (E1), so the wall changes two different things — but they are judged in one place,
@@ -472,7 +488,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // Saving and reaching the table are the same two buttons wherever they stand: in the header on
   // a desk, pinned to the end of the stage strip below one. They are written once.
   const saveButton = (
-    <button type="button" className="byd-secondary" onClick={() => void save()} disabled={!unsaved || saving}>
+    // `aria-disabled` and not `disabled` (#477): a button that disables itself while it has the
+    // focus hands the focus to <body>, and the next Tab starts from the top of the page. `save`
+    // already refuses what there is nothing to do about.
+    <button type="button" className="byd-secondary" onClick={() => void save()} aria-disabled={!unsaved || saving}>
       {t(saving ? 'editor.saving' : 'editor.save')}
     </button>
   )
@@ -482,7 +501,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // The name follows the state, in both what it does and what it is doing.
   const tableAction = table ? (updating ? 'editor.updatingTable' : 'editor.updateTable') : updating ? 'editor.startingTable' : 'editor.startTable'
   const updateButton = (
-    <button type="button" className="byd-editor-primary byd-primary" data-table-kind={table ? table.kind : 'none'} disabled={updating} aria-busy={updating} onClick={() => void updateTable()}>
+    <button type="button" className="byd-editor-primary byd-primary" data-table-kind={table ? table.kind : 'none'} aria-disabled={updating} aria-busy={updating} onClick={() => void updateTable()}>
       {t(tableAction)}
     </button>
   )
@@ -638,6 +657,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
               setCompare({ rev, doc: old, ...(label !== undefined ? { label } : {}) })
               setOver(null)
               setStage('table')
+              setFocusNext({ compare: true })
             })
           }}
         />
