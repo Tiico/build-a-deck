@@ -135,7 +135,10 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
               const held = dragged.current
               dragged.current = null
               setOver(null)
-              if (held && held !== el.id) moveTo(held, at)
+              // The line is drawn over the row dropped on, so the layer lands above it (#478).
+              // Dragged down, the layer leaves a gap above that row when it is lifted out, and
+              // the row's place is one less than it was.
+              if (held && held !== el.id) moveTo(held, ids.indexOf(held) < at ? at - 1 : at)
             }}
           >
             <span role="gridcell" className="byd-layer-lockcell">

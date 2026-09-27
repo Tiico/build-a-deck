@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { LayerList } from '../src/editor/LayerList.js'
 import { template } from './project-doc.js'
@@ -125,5 +125,30 @@ describe('renaming a layer (#478)', () => {
     expect(field.selectionEnd).toBe(field.value.length)
     await user.keyboard('Rubrik{Enter}')
     expect(onRename.mock.calls.at(-1)?.[1]).toBe('Rubrik')
+  })
+})
+
+// The drop line (#478): it is drawn over the row the layer is dropped on, and a layer dragged
+// downward landed under that row instead — the line said one place and the layer went to another.
+// It now lands where the line is, whichever way it was dragged.
+describe('dropping a layer where the line is (#478)', () => {
+  const row = (id: string) => document.querySelector(`[data-layer="${id}"]`) as HTMLElement
+  const dragOnto = (from: string, to: string) => {
+    fireEvent.dragStart(row(from))
+    fireEvent.dragOver(row(to))
+    expect(row(to).hasAttribute('data-over')).toBe(true)
+    fireEvent.drop(row(to))
+  }
+
+  it('lands above the row it is dropped on when dragged down', () => {
+    render(<MovableLayers ids={['body', 'title', 'frame']} />)
+    dragOnto('body', 'frame')
+    expect(named()).toEqual(['title', 'body', 'frame'])
+  })
+
+  it('and when dragged up', () => {
+    render(<MovableLayers ids={['body', 'title', 'frame']} />)
+    dragOnto('frame', 'body')
+    expect(named()).toEqual(['frame', 'body', 'title'])
   })
 })
