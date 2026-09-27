@@ -158,7 +158,13 @@ describe('PlayerPage', () => {
   })
 
   it('lifting a card and choosing a zone plays it there — one envelope, seen by the table', async () => {
-    const id = await createSession(run)
+    // Titled rows, so the name a card is called by and the id it is kept under are two things.
+    const titles = ['dragon', 'knight', 'wizard', 'rogue', 'priest', 'archer', 'golem', 'witch', 'bard', 'ogre']
+    const id = await createSession(run, 's1', {
+      template: { faces: { front: { base: [], variants: {} }, back: { base: [], variants: {} } } },
+      rows: Object.fromEntries(titles.map((ref) => [ref, { title: `Titel ${ref}` }])),
+      icons: {},
+    })
     const table = TableClient.connect(await asTable(run, id))
     await table.ready()
     await open(id, 'A', 'Ada')
@@ -169,6 +175,9 @@ describe('PlayerPage', () => {
     fireEvent.pointerDown(first, { clientX: 100, clientY: 500 })
     fireEvent.pointerMove(first, { clientX: 100, clientY: 430 })
     fireEvent.pointerUp(first, { clientX: 100, clientY: 430 })
+    // The sheet names the card by the name the strip shows, never by its id (#483, fynd 5).
+    const sheet = await screen.findByRole('dialog', { name: 'Spela till' })
+    expect(sheet.querySelector('strong')?.textContent).toMatch(/^Titel /)
     fireEvent.click(await screen.findByRole('button', { name: /Kasthög/ }))
 
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(2))

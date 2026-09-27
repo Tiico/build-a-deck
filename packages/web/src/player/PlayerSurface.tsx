@@ -6,6 +6,7 @@ import { HandActions } from './HandActions.js'
 import { HandStrip } from './HandStrip.js'
 import { CountersRow, MineActions, MineStrip, inFrontOf } from './SeatExtras.js'
 import { PlaySheet } from './PlaySheet.js'
+import { cardName } from '../table/keyboard.js'
 import { TableSummary, RecentActivity } from './TableSummary.js'
 import { SessionButtons, SessionOverlays, useToast, type Sheet } from './SessionOverlays.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
@@ -230,7 +231,8 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         <PlaySheet
           view={view}
           count={toPlay.length}
-          label={lifted.cardRef ?? ''}
+          // The card by the name the strip calls it, never by its id (#483).
+          label={cardName(lifted, t)}
           onPlay={play}
           onClose={() => {
             refusal.clear()
