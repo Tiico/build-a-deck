@@ -658,3 +658,28 @@ describe('att ta bort en åtgärd (#480)', () => {
     expect(within(panel()).getByRole('status').textContent).toMatch(/är borttagen/)
   })
 })
+
+// Fokus i panelen när det som hade det försvinner (#480 fynd 6).
+describe('fokus i högens panel (#480)', () => {
+  it('går till Ångra när sista steget tar åtgärden med sig', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    fireEvent.click(within(panel()).getByRole('button', { name: '＋ Åtgärd' }))
+    const x = await within(panel()).findByRole('button', { name: 'Ta bort steg 1' })
+    x.focus()
+    fireEvent.click(x)
+    await waitFor(() => expect(document.activeElement).toBe(within(panel()).getByRole('button', { name: 'Ångra' })))
+  })
+
+  it('lämnar tillbaka fokus till ratten när ett val tas med Enter i sökningen', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+    const box = open(step, 'till vänster om högen')
+    const find = within(box).getByLabelText('Sök bland valen')
+    fireEvent.change(find, { target: { value: 'kasthög' } })
+    fireEvent.keyDown(find, { key: 'Enter' })
+    await waitFor(() => expect(document.activeElement?.classList.contains('byd-slot')).toBe(true))
+    expect(document.activeElement?.getAttribute('aria-expanded')).toBe('false')
+  })
+})
