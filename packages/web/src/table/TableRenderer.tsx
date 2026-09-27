@@ -494,6 +494,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     const t = table.current
     if (!f || !w || !t) return false
     const fr = f.getBoundingClientRect()
+    // A frame that has not been laid out has nothing to say, and a missing answer never takes a
+    // play away — the same reading `board` and `column` make of a window not yet measured.
+    if (fr.width === 0 || fr.height === 0) return true
     if (cx < fr.left || cx > fr.right || cy < fr.top || cy > fr.bottom) return false
     if (mode === 'tv') {
       const tr = t.getBoundingClientRect()
