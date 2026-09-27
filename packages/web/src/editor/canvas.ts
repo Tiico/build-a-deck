@@ -168,6 +168,16 @@ export function movedTo(grab: Grab, to: Point): Point {
   return { x: round(grab.box.x + (to.x - grab.at.x) * grab.mmPerPx), y: round(grab.box.y + (to.y - grab.at.y) * grab.mmPerPx) }
 }
 
+// Where an element may be put (#478, beslut 2026-09-27, variant A): its middle stays on the card.
+// It may hang half its width over any edge — a decoration the knife cuts is a design — and no
+// further, so no drag, arrow or typed number can put it where nobody reaches it again. `held` says
+// the place was not the one asked for, which the canvas then says in a word by the edge.
+export function keptOnCard(box: { w: number; h: number }, at: Point, card: CardSize): { at: Point; held: boolean } {
+  const x = round(Math.min(card.widthMm - box.w / 2, Math.max(-box.w / 2, at.x)))
+  const y = round(Math.min(card.heightMm - box.h / 2, Math.max(-box.h / 2, at.y)))
+  return { at: { x, y }, held: x !== at.x || y !== at.y }
+}
+
 // The corners the selection is resized by. Only corners: an edge handle on a 10 mm-high text box
 // is a target too small to hit, and the property panel is there for one measure at a time.
 export const HANDLES = ['nw', 'ne', 'sw', 'se'] as const

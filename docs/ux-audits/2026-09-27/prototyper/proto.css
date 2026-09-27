@@ -123,3 +123,98 @@ body {
 .ed-knapp:focus-visible, .ed-flikar button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
 .spacer { flex: 1; }
 .who { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #d14d7c; color: #10131a; font: 800 11px system-ui; }
+
+/* --- fönstret: ett skrivbord i verklig storlek, skalat ner om skärmen är mindre (#478) ------ */
+.m-scen { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; padding: var(--s5) var(--s3) var(--s3); background: #15171c; overflow: hidden; }
+.m-ram { position: relative; }
+.m-ram > .etikett { position: absolute; left: 0; top: -4px; transform: translateY(-100%); color: var(--quiet-2); font-size: 11px; font-variant-numeric: tabular-nums; }
+.m-skarm { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); display: flex; flex-direction: column; }
+.protorad .storlek button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+
+/* --- Mall, ur packages/web/src/editor/editor.css (#478) --------------------------------------
+   Krönet, verktygsraden, lagerkolumnen (220 px), scenen med förstoringsbandet och
+   egenskapskolumnen (280 px). Mått och färger är editorns; ingenting här importeras av appen. */
+.byd-editor {
+  --hint-ink: #9aa3b8;
+  --source-ink: #9aa3b8;
+  --locked-ink: #e8c06a;
+  --handle-bg: #ffffff;
+  --grip-mark: #ffd98a;
+  --field-bg: #0f1115;
+  --field-line: #2a2d36;
+}
+.m-krona { flex: none; height: 61px; display: flex; align-items: center; gap: var(--s2); padding: 0 var(--s3); border-bottom: 1px solid var(--line); white-space: nowrap; }
+.m-krona label { display: flex; align-items: center; gap: var(--s2); color: var(--hint-ink); font-size: 11px; }
+.m-krona select, .m-krona .meny { min-height: 44px; border: 1px solid var(--line); border-radius: 8px; padding: 0 var(--s3); background: #15171c; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.m-krona .sidor { display: flex; gap: var(--s1); }
+.m-krona .sidor button { min-height: 44px; border: 1px solid var(--line); border-radius: 6px; padding: 0 var(--s3); background: transparent; color: #fff; font: inherit; font-weight: 700; }
+.m-krona .sidor button[aria-pressed='true'] { border-color: transparent; border-radius: 6px 6px 0 0; box-shadow: inset 0 -3px 0 var(--primary-mark); }
+.m-skarm > .ed-huvud { flex: none; }
+.m-duk { flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: 68px 220px minmax(0, 1fr) 280px; }
+.m-verktyg { display: grid; align-content: start; justify-items: center; gap: var(--s2); padding: var(--s3) 0; border-right: 1px solid var(--line); }
+.m-verktyg button { width: 50px; min-height: 44px; display: grid; place-items: center; gap: 2px; padding: var(--s1) 0; border: 1px solid var(--line); border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 11px; }
+.m-verktyg button b { font-size: 15px; line-height: 1; font-weight: 400; }
+
+.m-lager { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; padding: var(--s3); border-right: 1px solid var(--line); }
+.m-lager .krona { border-bottom: 1px solid var(--line); padding-bottom: var(--s2); }
+.m-lager h2, .m-props h2 { margin: 0 0 var(--s2); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--hint-ink); }
+.m-lager .krona p { margin: 0; color: var(--hint-ink); font-size: 11px; }
+.m-lista { min-height: 0; overflow: auto; padding-top: var(--s1); }
+.m-rad { position: relative; display: grid; grid-template-columns: 44px minmax(0, 1fr) 14px; align-items: center; min-height: 44px; border-radius: 6px; cursor: pointer; }
+.m-rad[aria-selected='true'] { background: #2f3a55; }
+.m-rad .las { display: grid; place-items: center; width: 44px; height: 44px; color: #545d70; }
+.m-rad .las svg { width: 16px; height: 16px; }
+.m-rad[aria-selected='true'] .las, .m-rad:hover .las { color: var(--source-ink); }
+.m-rad .las[data-last] { color: var(--locked-ink); }
+.m-rad .namn { display: flex; align-items: center; gap: var(--s2); min-width: 0; color: #dce3f2; font-size: 13px; }
+.m-rad .namn svg { flex: none; width: 16px; height: 16px; color: var(--source-ink); }
+.m-rad .namn span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.m-rad .namn i { flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-style: normal; font-size: 11px; color: var(--source-ink); }
+.m-rad .grepp { color: #454c5c; font-size: 12px; text-align: center; }
+.m-lager .fot { display: flex; align-items: center; gap: var(--s2); border-top: 1px solid var(--line); padding-top: var(--s2); color: var(--hint-ink); font-size: 11px; }
+.m-lager .fot b { display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid #6f7a90; border-radius: 50%; color: #dce3f2; font-size: 12px; }
+
+.m-rum { position: relative; min-width: 0; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.m-rum[data-rad] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+.m-sceneyta { position: relative; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px; }
+.m-sceneyta:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+.m-zoom { align-self: end; display: grid; gap: var(--s2); width: 92px; margin: 0 var(--s2) var(--s2) 0; padding: var(--s2) var(--s1); border: 1px solid var(--line); border-radius: 8px; background: #1b1d23; color: var(--hint-ink); font-size: 12px; text-align: center; }
+.m-rum[data-rad] .m-zoom { width: auto; margin: 0; display: flex; align-items: center; justify-content: flex-end; border-width: 1px 0 0; border-radius: 0; padding: var(--s1) var(--s2); }
+.m-zoom span { white-space: nowrap; }
+.m-zoom button { white-space: nowrap; min-height: 44px; min-width: 44px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: #fff; font: inherit; cursor: pointer; }
+.m-zoom button[aria-pressed='true'] { border-color: var(--primary-mark); }
+.m-zoom input { width: 100%; min-width: 60px; accent-color: var(--primary-mark); }
+.m-rum[data-rad] .m-zoom input { flex: 0 1 180px; }
+.m-skarm .who { flex: none; }
+.m-skarm .ed-huvud strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* Kortet i millimeter: --mm är en millimeter i skärmpixlar, satt av skriptet. */
+.m-kort { position: absolute; width: calc(63 * var(--mm)); height: calc(88 * var(--mm)); background: #f6efe0; overflow: hidden; box-shadow: 0 1px 3px rgb(0 0 0 / 40%); }
+.m-kort .el { position: absolute; left: calc(var(--x) * var(--mm)); top: calc(var(--y) * var(--mm)); width: calc(var(--w) * var(--mm)); height: calc(var(--h) * var(--mm)); box-sizing: border-box; margin: 0; overflow: hidden; }
+.m-kort .txt { line-height: 1.2; white-space: pre-line; overflow-wrap: anywhere; }
+.m-lagret { position: absolute; touch-action: none; }
+.m-box { position: absolute; left: calc(var(--x) * var(--mm)); top: calc(var(--y) * var(--mm)); width: calc(var(--w) * var(--mm)); height: calc(var(--h) * var(--mm)); cursor: move; touch-action: none; }
+.m-box[data-vald] { outline: 2px solid var(--primary-mark); }
+.m-box[data-last] { cursor: default; }
+.m-box .h { position: absolute; width: max(10px, calc(2.4 * var(--mm))); height: max(10px, calc(2.4 * var(--mm))); background: var(--handle-bg); border: 2px solid var(--primary-mark); box-sizing: border-box; transform: translate(-50%, -50%); }
+.m-box .h.nw { left: 0; top: 0; } .m-box .h.ne { left: 100%; top: 0; } .m-box .h.sw { left: 0; top: 100%; } .m-box .h.se { left: 100%; top: 100%; }
+
+/* Egenskapskolumnen, som L25 byggde den: sektioner med hårlinje, rader om två, greppkolumn. */
+.m-props { min-height: 0; overflow: auto; padding: var(--s3); border-left: 1px solid var(--line); }
+.m-sek { display: grid; gap: 5px; margin-bottom: var(--s3); }
+.m-sek > h3 { display: flex; align-items: center; gap: var(--s2); margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--hint-ink); }
+.m-sek > h3::after { content: ''; flex: 1 1 auto; height: 1px; background: #2a2d36; }
+.m-rader { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 8px; }
+.m-f { display: grid; grid-template-columns: 27px minmax(0, 1fr) 20px; align-items: center; gap: 3px; min-height: 44px; }
+.m-f .g { display: grid; grid-template-columns: 3px auto; align-items: center; justify-items: center; gap: 3px; height: 24px; color: var(--quiet); font-size: 10px; cursor: ew-resize; user-select: none; }
+.m-f .g::before { content: ''; width: 3px; height: 11px; border-radius: 2px; background: repeating-linear-gradient(to bottom, #4a5162 0 2px, transparent 2px 4px); }
+.m-f em { font-style: normal; font-size: 10px; color: var(--quiet); }
+.m-props input:not([type='checkbox']):not([type='range']):not([type='radio']), .m-props select { width: 100%; min-height: 44px; box-sizing: border-box; background: var(--field-bg); border: 1px solid var(--field-line); border-radius: 6px; padding: 4px 8px; color: #fff; font: inherit; font-size: 13px; }
+.m-props label { display: grid; gap: 3px; font-size: 11px; color: #9aa3b8; }
+.m-props label.vaxel { grid-column: 1 / -1; display: flex; align-items: center; gap: 7px; min-height: 28px; cursor: pointer; }
+.m-props .brunn { display: block; width: 124px; height: 44px; padding: 6px; border: 1px solid var(--field-line); border-radius: 6px; background: var(--field-bg); }
+.m-props .brunn i { display: block; height: 100%; border: 1px solid #555; border-radius: 2px; }
+.m-props .hint { margin: 0; color: var(--hint-ink); font-size: 11px; line-height: 1.45; }
+.m-knapp { min-height: 44px; border: 1px solid #6f7a90; border-radius: 8px; padding: 0 var(--s3); background: transparent; color: #dce3f2; font: inherit; font-weight: 600; cursor: pointer; }
+.m-knapp:hover { border-color: #9cc4f5; }
+.m-knapp:focus-visible, .m-rad:focus-visible, .m-box:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }

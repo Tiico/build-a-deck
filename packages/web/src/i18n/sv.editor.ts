@@ -415,6 +415,15 @@ export const svEditor = {
   'canvas.layer.lock': 'Lås {name}',
   'canvas.layer.unlock': 'Lås upp {name}',
   'canvas.layer.rename': 'Namn på lagret {name}',
+  'canvas.card.row': 'Kortet mallen visas på',
+  'canvas.card.prev': 'Föregående kort',
+  'canvas.card.next': 'Nästa kort',
+  'canvas.card.of': '{n} av {of}',
+  'canvas.card.search': 'Sök kort',
+  'canvas.card.search.of': 'Sök bland {n} kort …',
+  'canvas.card.list': 'Kort',
+  'canvas.card.none': 'Inget kort heter så.',
+  'canvas.drag.kept': 'Halva elementet stannar på kortet',
   'canvas.layer.isLocked': '{name} är låst. Lås upp lagret för att flytta det.',
   // Frågan innan ett lager tas bort (#143, L9). Den säger de tre sakerna som gör elementet till
   // den största av editorns borttagningar: vad designern kallar det, vilken sida det ritas på
@@ -564,6 +573,7 @@ export const svEditor = {
   'canvas.props.trim': 'Passa in motivet',
   'canvas.props.evenMotifs': 'Alla motiv lika stora i sin ruta',
   'canvas.props.fill': 'Fyllning',
+  'canvas.props.fill.on': 'Fyll formen',
   // Fyllning ur ett fältvärde (L16): växeln, kolumnen, och färgen för det som inte har en egen.
   'canvas.props.fill.byField': 'Färg efter fält',
   'canvas.props.fill.field': 'Fyll efter kolumnen',
@@ -637,6 +647,8 @@ export const svEditor = {
   // Färdiga baksidor (L17). De står framme när baksidan är öppen, inte bakom en knapp: den som
   // landar på en tom baksida ska se vägen vidare utan att leta efter den.
   'canvas.backs': 'Färdiga baksidor',
+  'canvas.back.swap.ask': 'Byt baksidan mot «{name}»? Baksidans {n} lager ersätts.',
+  'canvas.back.swap.yes': 'Ja, byt baksida',
   'canvas.back.plain': 'Enfärgad',
   'canvas.back.diamonds': 'Romber',
   'canvas.back.stripes': 'Diagonala ränder',

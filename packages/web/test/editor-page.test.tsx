@@ -34,6 +34,8 @@ describe('EditorPage', () => {
     expect(document.querySelector('[data-mode]')!.getAttribute('data-mode')).toBe('template')
     expect(document.querySelector('[data-layer="title"]')!.getAttribute('aria-selected')).toBe('true')
     fireEvent.change(screen.getByRole('spinbutton', { name: /storlek/i }), { target: { value: '18' } })
+    // A typed number is written when the field is left (#478).
+    fireEvent.blur(screen.getByRole('spinbutton', { name: /storlek/i }))
 
     // The table tab edits data; the save button reflects unsaved work.
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
@@ -364,6 +366,13 @@ describe('the layers of the template by keyboard (UX-04)', () => {
       await user.tab()
       expect(document.activeElement).toBe(screen.getByRole(name === 'Förstoring i procent' ? 'slider' : 'button', { name }))
     }
+    // Then the row under the card that says which card it is (#478): the step back is locked on
+    // the first card and is no stop, so the card's name and the step forward.
+    const cardRow = within(screen.getByRole('group', { name: 'Kortet mallen visas på' }))
+    await user.tab()
+    expect(document.activeElement).toBe(cardRow.getByRole('button', { name: /Drake/ }))
+    await user.tab()
+    expect(document.activeElement).toBe(cardRow.getByRole('button', { name: 'Nästa kort' }))
     // And then the properties, where the first stop is the grip beside the first number and the
     // second is the number itself (L25): the icon is the field's name and the thing it is pulled
     // by, and a reader who never reaches the field still has to reach the grip.

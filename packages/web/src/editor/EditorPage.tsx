@@ -368,6 +368,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onSelectFace={setFace}
         onReplaceFace={(base) => client.replaceFace(face, base)}
         row={row}
+        onPickRow={setRow}
         selectedElement={element}
         onSelectElement={setElement}
         onPatch={(id, patch, gesture) => client.patchElement(face, id, patch, group, gesture)}

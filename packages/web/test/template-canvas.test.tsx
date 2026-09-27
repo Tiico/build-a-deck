@@ -10,6 +10,12 @@ import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
+// A number is typed and the field is left, which is when it is written (#478).
+const typeIn = (el: HTMLElement, value: string) => {
+  fireEvent.change(el, { target: { value } })
+  fireEvent.blur(el)
+}
+
 describe('TemplateCanvas (A as the template mode)', () => {
   it('lists layers top-most first, previews the selected row with the selected element outlined, and patches through the property panel', () => {
     const doc = projectDoc()
@@ -27,12 +33,12 @@ describe('TemplateCanvas (A as the template mode)', () => {
 
     const size = screen.getByRole('spinbutton', { name: /storlek/i }) as HTMLInputElement
     expect(size.value).toBe('14')
-    fireEvent.change(size, { target: { value: '16' } })
+    typeIn(size, '16')
     // A control written into many times over for one thing hands a token in with every write, so
     // the whole of it is one step back (L14); which token it is belongs to the stack, not here.
     expect(onPatch).toHaveBeenCalledWith('title', { font: { family: 'sans-serif', sizePt: 16, weight: 700 } }, expect.any(String))
 
-    fireEvent.change(screen.getByRole('spinbutton', { name: /^x/i }), { target: { value: '7' } })
+    typeIn(screen.getByRole('spinbutton', { name: /^x/i }), '7')
     expect(onPatch).toHaveBeenCalledWith('title', { x: 7 }, expect.any(String))
     fireEvent.change(screen.getByLabelText(/fält/i), { target: { value: 'body' } })
     expect(onPatch).toHaveBeenCalledWith('title', { bind: { field: 'body' } }, undefined)

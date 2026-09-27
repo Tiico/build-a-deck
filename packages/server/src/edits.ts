@@ -70,7 +70,7 @@ export function checkedName(name: string): string {
   return name
 }
 
-export type Clearable = 'name' | 'locked' | 'shadow' | 'pattern' | 'points'
+export type Clearable = 'name' | 'locked' | 'shadow' | 'pattern' | 'points' | 'fill'
 
 export type EditIntent =
   | { v: 'rename'; name: string }

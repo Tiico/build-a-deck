@@ -1,8 +1,10 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react'
+import { CardRow } from './CardRow.js'
+import { useNumberDraft } from './number-draft.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
-import { arrowMove, fitScale, gridStep, HANDLES, round, iconSized, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, ZOOM_MAX, ZOOM_MIN, ZOOM_NOTCH, ZOOM_STEP, zoomPercent, zoomTo, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
+import { arrowMove, fitScale, gridStep, HANDLES, round, iconSized, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, ZOOM_MAX, ZOOM_MIN, ZOOM_NOTCH, ZOOM_STEP, zoomPercent, zoomTo, type Box, type ElementKind, type Grab, type Guides, type Handle, keptOnCard } from './canvas.js'
 import { useGesture, type Gesture } from './gesture.js'
 import { scrubbed, SCRUB_PX } from './scrub.js'
 import { afterPruning, bendStarted, bentEdge, bentPoints, edgeAt, grownPoint, handleAt, midpoints, movedHandle, movedPoint, prunedPoint, straightAll, straightPoint, type Arm, type Point } from './points.js'
@@ -46,8 +48,9 @@ export type TemplateCanvasProps = {
   // A whole face laid down at once (L17): one of the ready-made backs. One edit, because it is
   // one thing the designer did — see `replaceFace` in the edit vocabulary.
   onReplaceFace(base: Element[]): void
-  // The row the preview shows.
+  // The row the preview shows, and the way to show another (#478).
   row: string | null
+  onPickRow?(id: string): void
   selectedElement: string | null
   onSelectElement(id: string | null): void
   // `gesture` is the token of the grab a patch belongs to, when it belongs to one. A drag is one
@@ -107,7 +110,7 @@ export type TemplateCanvasProps = {
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont, onCatalogFont, onAddPicture }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, onPickRow, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont, onCatalogFont, onAddPicture }: TemplateCanvasProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
@@ -115,6 +118,10 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // The card the canvas shows: with a group open it must be a card of that group, or the group
   // could not be seen. A group whose cards have all gone is shown on the rule itself.
   const rowData = previewRow(doc, column, group, row)
+  // The cards the preview can be stepped through, and the one it is on (#478): the open group's,
+  // or the whole deck's.
+  const shownCards = column && group ? cardsInGroup(doc, group) : doc.rows
+  const shownCard = shownCards.find((r) => r.id === row) ?? shownCards[0]
   // The face the open tab is about (#13): with a group open, the face as it stands, so the group
   // is applied; with no group open, the face without its grouping rule, which is the base.
   const tabFace = useMemo(() => faceOfTab(faceTemplate, group), [faceTemplate, group])
@@ -168,6 +175,14 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
     asked.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     setAsking(id)
   }
+  // A ready-made back waiting for its answer (#478), and the gallery button it came from, which is
+  // where the focus goes back to whatever the answer.
+  const [swapping, setSwapping] = useState<{ name: string; base: Element[]; from: HTMLElement } | null>(null)
+  const swapBack = () => {
+    const from = swapping?.from
+    setSwapping(null)
+    from?.focus()
+  }
   const handBack = () => {
     const to = asked.current
     asked.current = null
@@ -181,7 +196,10 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // surface makes a third (StatusLive), so the canvas asks for the polite one by name.
   const say = useSay()
   const stageEl = useRef<HTMLElement | null>(null)
-  const zoom = useZoom(stageEl)
+  // The zoom grows around the element that is chosen (#478); read at the press, not at the render.
+  const chosenRef = useRef(selectedElement)
+  chosenRef.current = selectedElement
+  const zoom = useZoom(stageEl, useCallback(() => chosenRef.current, []))
   // The grid is a layer to see by, not a rule (variant C, kept as an option): it is off until it
   // is asked for, and it never rounds an element to itself — the guides and the arrow keys are
   // what place things, and a 1 mm grid would take the half millimetre away.
@@ -261,7 +279,16 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
               should see the way on without hunting for it. Not inside a group — a group's back is
               an override of the base's (#14), and laying a whole face down there would quietly
               make every layer of it the group's own. */}
-          {face === 'back' && !group && <BackGallery onReplaceFace={onReplaceFace} />}
+          {face === 'back' && !group && (
+            <BackGallery
+              onPick={(back, from) => {
+                // A back with layers on it is asked about first (#478), as one layer is (#143);
+                // a back with nothing on it is simply laid down.
+                if ((doc.template.faces['back']?.base.length ?? 0) === 0) onReplaceFace(back.base)
+                else setSwapping({ ...back, from })
+              }}
+            />
+          )}
           <LayerList
             layers={[...panel].reverse().map((l) => l.element)}
             selected={selectedElement}
@@ -317,6 +344,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
           // a tab stop: panning that only a wheel can do leaves everything off screen to the
           // mouse alone, and accessibility is not relaxed in the editor (L12).
           tabIndex={0}
+          // The zoom the card is drawn at, for the marks on it that must not shrink with it (#478).
+          style={{ ['--byd-canvas-scale' as string]: String(zoom.scale) }}
           onClick={() => onSelectElement(null)}
           {...(column ? { id: GROUP_PANEL, 'aria-labelledby': GROUP_BUTTON } : { 'aria-label': t('canvas.stage') })}
         >
@@ -333,20 +362,46 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             onSelectElement={onSelectElement}
             overlay={<DragLayer grid={grid ? gridStep(zoom.scale) : null} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} point={pointAt} onPoint={setPointAt} />}
           />
-          {refusedLayer && (
-            <p className="byd-canvas-locked" role="alert">
-              {t('canvas.layer.isLocked', { name: layerName(refusedLayer) })}
-            </p>
-          )}
         </main>
           <ZoomBand zoom={zoom} />
         </div>
+        {/* Which card the template is drawn on, under it (#478, variant B): among the cards of
+            the open group, or the whole deck. */}
+        {onPickRow && doc.rows.length > 0 && (
+          <CardRow
+            cards={shownCards}
+            current={shownCard}
+            face={faceTemplate}
+            onPick={onPickRow}
+          />
+        )}
         {/* Under the card and not on it. The stage deselects on a click anywhere in itself, so a
             question standing inside it would lose the layer the moment the answer that keeps it
             was pressed — which is the one answer that must cost nothing. It is otherwise the same
             strip the table asks its own two questions in, in the colours a deletion is asked in
             there, and in the column where the card it draws on is. */}
+        {/* Why a locked layer did not move (L15), under the card where the canvas's question
+            stands (#478): at the stage's foot it was cut by the stage it stood in. */}
+        {refusedLayer && (
+          <p className="byd-canvas-locked" role="alert">
+            {t('canvas.layer.isLocked', { name: layerName(refusedLayer) })}
+          </p>
+        )}
         {catalog && <FontCatalog words={cardWords(shown, rowData)} inGame={Object.keys(doc.fonts ?? {})} onChoose={onCatalogFont} onClose={() => setCatalog(false)} />}
+        {swapping && (
+          <Question
+            className="byd-canvas-question"
+            label={t('canvas.back.swap.ask', { name: swapping.name, n: doc.template.faces['back']?.base.length ?? 0 })}
+            confirm={t('canvas.back.swap.yes')}
+            onConfirm={() => {
+              onReplaceFace(swapping.base)
+              swapBack()
+            }}
+            onCancel={swapBack}
+          >
+            {t('canvas.back.swap.ask', { name: swapping.name, n: doc.template.faces['back']?.base.length ?? 0 })}
+          </Question>
+        )}
         {goes && (
           <Question
             className="byd-canvas-question"
@@ -555,7 +610,9 @@ function Licence({ family, licence, settled, onFontLicence }: { family: string; 
 // deliberate departure from L4's pattern that a view remembers itself in the browser: nobody
 // should be met by a crop they do not remember choosing (L19).
 type Zoom = { scale: number; fitting: boolean; to(scale: number): void; by(delta: number): void; fit(): void }
-function useZoom(stage: RefObject<HTMLElement | null>): Zoom {
+// A point on the screen the zoom grows around (#478), and what of the card was under it.
+type Anchor = { x: number; y: number; fx: number; fy: number }
+function useZoom(stage: RefObject<HTMLElement | null>, chosen: () => string | null = () => null): Zoom {
   const [scale, setScale] = useState(STAGE_SCALE)
   const [fitting, setFitting] = useState(true)
   // What the card is drawn at right now, for the two readers that run outside a render: the fit,
@@ -577,10 +634,48 @@ function useZoom(stage: RefObject<HTMLElement | null>): Zoom {
     watching.observe(stage.current)
     return () => watching.disconnect()
   }, [stage, fitting, measure])
-  const to = useCallback((next: number) => {
-    setFitting(false)
-    setScale(zoomTo(next))
-  }, [])
+  // What the zoom grows around (#478): it grew from the card's top left corner, so a badge at the
+  // foot of the card zoomed a thousand pixels out of the stage. The wheel grows it around the
+  // pointer; the band's controls around the chosen element, or the middle of the stage when
+  // nothing is chosen. What of the card was under that point is kept under it: after the new size
+  // is laid out, the stage is scrolled by however far that part of the card moved.
+  const anchor = useRef<Anchor | null>(null)
+  const hold = useCallback(
+    (at?: { x: number; y: number }) => {
+      const el = stage.current
+      const card = el?.querySelector('[data-card]')?.getBoundingClientRect()
+      if (!el || !card || card.width === 0 || card.height === 0) return
+      const picked = chosen()
+      const box = !at && picked ? el.querySelector(`[data-drag="${CSS.escape(picked)}"]`)?.getBoundingClientRect() : undefined
+      const room = el.getBoundingClientRect()
+      const point = at ?? (box ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : { x: room.left + room.width / 2, y: room.top + room.height / 2 })
+      anchor.current = { x: point.x, y: point.y, fx: (point.x - card.left) / card.width, fy: (point.y - card.top) / card.height }
+    },
+    [stage, chosen],
+  )
+  useLayoutEffect(() => {
+    const was = anchor.current
+    anchor.current = null
+    const el = stage.current
+    const card = el?.querySelector('[data-card]')?.getBoundingClientRect()
+    if (!was || !el || !card) return
+    // Where that part of the card stands now, and the scroll that puts it back under the point.
+    // For the band's controls the point is where the element was; if that is off the stage, the
+    // element is brought to the stage's middle instead.
+    const room = el.getBoundingClientRect()
+    const inside = was.x >= room.left && was.x <= room.right && was.y >= room.top && was.y <= room.bottom
+    const want = inside ? was : { x: room.left + room.width / 2, y: room.top + room.height / 2 }
+    el.scrollLeft += card.left + was.fx * card.width - want.x
+    el.scrollTop += card.top + was.fy * card.height - want.y
+  }, [scale, stage])
+  const to = useCallback(
+    (next: number, at?: { x: number; y: number }) => {
+      hold(at)
+      setFitting(false)
+      setScale(zoomTo(next))
+    },
+    [hold],
+  )
   // `Ctrl` with the wheel over the canvas, which is the gesture every drawing tool answers. It is
   // hung on the element and not on React's `onWheel`, because React listens for a wheel passively
   // at the root and a passive listener cannot keep the browser from zooming the whole page.
@@ -590,7 +685,7 @@ function useZoom(stage: RefObject<HTMLElement | null>): Zoom {
     const wheel = (event: WheelEvent) => {
       if (!event.ctrlKey) return
       event.preventDefault()
-      to(drawn.current - Math.sign(event.deltaY) * ZOOM_NOTCH)
+      to(drawn.current - Math.sign(event.deltaY) * ZOOM_NOTCH, { x: event.clientX, y: event.clientY })
     }
     el.addEventListener('wheel', wheel, { passive: false })
     return () => el.removeEventListener('wheel', wheel)
@@ -679,11 +774,15 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
   const t = useT()
   const say = useSay()
   const layer = useRef<HTMLDivElement | null>(null)
-  const grab = useRef<(Grab & { id: string; handle: Handle | null; gesture: string; moved: boolean }) | null>(null)
+  const grab = useRef<(Grab & { id: string; handle: Handle | null; gesture: string; moved: boolean; scroll: { x: number; y: number } }) | null>(null)
   // What makes one grab tell itself apart from the next one on the same element (L14). Two drags
   // of the same title are two things the designer did, and two steps back.
   const grabs = useGesture('grab')
   const [guides, setGuides] = useState<Guides>({ x: null, y: null })
+  // The element that was held at the card's edge by the last move (#478), which is said in a word
+  // beside it for as long as the hand keeps pushing.
+  // It grows from the element's middle in over the card, so it is never cut by the stage's edge.
+  const [kept, setKept] = useState<{ id: string; toward: 'left' | 'right' } | null>(null)
   // Whether a grab is running at all, which is the one thing about it that has to be drawn: the
   // way out of the drag is a door in the tree, and a door can only stand there while there is a
   // drag to leave. Everything else about the grab stays in the ref above, where it is read inside
@@ -827,7 +926,8 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
       // it the hand happened to land.
       if (edge) return takeHold(event, box, { point: null, edge: edge.edge, base: midpoints(points)[edge.edge] ?? edge.at })
     }
-    grab.current = { id: box.id, box, handle, gesture: grabs.begin(), moved: false, at: { x: event.clientX, y: event.clientY }, mmPerPx: CARD_STANDARD_63x88.physical.widthMm / rect.width }
+    const stage = stageOf(layer.current)
+    grab.current = { id: box.id, box, handle, gesture: grabs.begin(), moved: false, at: { x: event.clientX, y: event.clientY }, mmPerPx: CARD_STANDARD_63x88.physical.widthMm / rect.width, scroll: { x: stage?.scrollLeft ?? 0, y: stage?.scrollTop ?? 0 } }
     setHolding(true)
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }
@@ -836,20 +936,66 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
     if (shaping.current) return shapeMove(event)
     const held = grab.current
     if (!held) return
-    const to = { x: event.clientX, y: event.clientY }
+    pointer.current = { x: event.clientX, y: event.clientY }
+    place(held, pointer.current)
+    pan()
+  }
+  // Where the hand is, in the card's own frame: the stage may have scrolled under a hand that has
+  // not moved (#478), and the card moved with it.
+  const handAt = (held: NonNullable<typeof grab.current>, client: { x: number; y: number }) => {
+    const stage = stageOf(layer.current)
+    return { x: client.x + (stage?.scrollLeft ?? 0) - held.scroll.x, y: client.y + (stage?.scrollTop ?? 0) - held.scroll.y }
+  }
+  const place = (held: NonNullable<typeof grab.current>, client: { x: number; y: number }) => {
+    const to = handAt(held, client)
     if (held.handle) {
       held.moved = true
       return onPatch(held.id, resizedTo(held, to, held.handle), held.gesture)
     }
     const others = boxes.filter((b) => b.id !== held.id)
     const placed = snapped(held.box, movedTo(held, to), others, CARD_STANDARD_63x88.physical)
+    // The element's middle stays on the card (#478): past that the hand goes on and the element
+    // stays, and says why.
+    const onCard = keptOnCard(held.box, placed.at, CARD_STANDARD_63x88.physical)
+    setKept(onCard.held ? { id: held.id, toward: onCard.at.x + held.box.w / 2 < CARD_STANDARD_63x88.physical.widthMm / 2 ? 'right' : 'left' } : null)
     setGuides(placed.guides)
     // A click is a grab that went nowhere: it selects, and leaves the template alone.
-    if (placed.at.x === held.box.x && placed.at.y === held.box.y) return
+    if (onCard.at.x === held.box.x && onCard.at.y === held.box.y && !held.moved) return
     held.moved = true
-    onPatch(held.id, placed.at, held.gesture)
+    onPatch(held.id, onCard.at, held.gesture)
+  }
+  // The stage pans under a hand held near its edge (#478): at a zoom the card is bigger than the
+  // stage, and an element could not be dragged to a part of the card that was scrolled away. The
+  // nearer the edge, the faster; the element goes on following the hand while the stage moves.
+  const pointer = useRef<{ x: number; y: number } | null>(null)
+  const panning = useRef<number | null>(null)
+  const pan = () => {
+    if (panning.current !== null) return
+    const step = () => {
+      panning.current = null
+      const held = grab.current
+      const stage = stageOf(layer.current)
+      const hand = pointer.current
+      if (!held || !stage || !hand) return
+      const r = stage.getBoundingClientRect()
+      const speed = (d: number) => (d < PAN_EDGE_PX ? Math.ceil(((PAN_EDGE_PX - d) / PAN_EDGE_PX) * PAN_MAX_PX) : 0)
+      const dx = speed(hand.x - r.left) > 0 ? -speed(hand.x - r.left) : speed(r.right - hand.x)
+      const dy = speed(hand.y - r.top) > 0 ? -speed(hand.y - r.top) : speed(r.bottom - hand.y)
+      if (dx === 0 && dy === 0) return
+      const before = { x: stage.scrollLeft, y: stage.scrollTop }
+      stage.scrollLeft += dx
+      stage.scrollTop += dy
+      if (stage.scrollLeft === before.x && stage.scrollTop === before.y) return
+      place(held, hand)
+      panning.current = requestAnimationFrame(step)
+    }
+    panning.current = requestAnimationFrame(step)
   }
   const up = () => {
+    if (panning.current !== null) cancelAnimationFrame(panning.current)
+    panning.current = null
+    pointer.current = null
+    setKept(null)
     grab.current = null
     shaping.current = null
     setHolding(false)
@@ -910,9 +1056,12 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
     // and five with shift. Every nudge of one holding carries its token, so the whole of it is
     // one step back and Escape can give the element back to where the holding began.
     if (moving?.id !== box.id) return
-    const nudged = arrowMove(box, event.key, event.shiftKey)
-    if (!nudged) return
+    const arrowed = arrowMove(box, event.key, event.shiftKey)
+    if (!arrowed) return
     event.preventDefault()
+    // The arrows are held to the card as the hand is (#478).
+    const onCard = keptOnCard(box, { x: 'x' in arrowed ? arrowed.x : box.x, y: 'y' in arrowed ? arrowed.y : box.y }, CARD_STANDARD_63x88.physical).at
+    const nudged = 'x' in arrowed ? { x: onCard.x } : { y: onCard.y }
     onPatch(box.id, nudged, moving.gesture)
     // Where it now lies, said out loud. Half a millimetre is exactly the distance a screen cannot
     // show, so a nudge that is only drawn is a nudge nobody can check.
@@ -950,8 +1099,9 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
           aria-label={t(moving?.id === box.id ? 'canvas.element.moving' : 'canvas.element', { name: layerName(box), kind: t(KIND_WORDS[box.kind]), x: box.x, y: box.y })}
           aria-pressed={moving?.id === box.id}
           {...(moving?.id === box.id ? { 'data-moving': '' } : {})}
+          {...hollowProps(box)}
           onKeyDown={(event) => keys(event, box)}
-          style={{ left: `${box.x}mm`, top: `${box.y}mm`, width: `${box.w}mm`, height: `${box.h}mm`, zIndex: boxes.length - 1 - fromTop }}
+          style={{ left: `${box.x}mm`, top: `${box.y}mm`, width: `${box.w}mm`, height: `${box.h}mm`, zIndex: boxes.length - 1 - fromTop, ...hollowStyle(box) }}
           // The selection follows the focus here for the same reason it does in the layer list
           // (L15): arriving on an element is the whole of choosing it, and the properties beside
           // the card — where a size is typed in millimetres — must be about what the keyboard
@@ -969,6 +1119,11 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
           onPointerCancel={callOff}
           onClick={(event) => event.stopPropagation()}
         >
+          {kept?.id === box.id && (
+            <span className="byd-drag-kept" data-toward={kept.toward} role="status">
+              {t('canvas.drag.kept')}
+            </span>
+          )}
           {box.id === selected &&
             !box.locked &&
             HANDLES.map((corner) => (
@@ -1015,7 +1170,10 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
             onPointerCancel={callOff}
             // The way in for the hand that has no pointer. A way in that only exists under a
             // pointer is no way in at all (L24), and adding a point is the whole of this door.
-            onClick={() => {
+            onClick={(event) => {
+              // A click on the shape's own furniture is not a click on the empty stage (#478):
+              // the stage answers that by choosing nothing, which took the shape and its points away.
+              event.stopPropagation()
               if (shaped.current) {
                 shaped.current = false
                 return
@@ -1041,6 +1199,7 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
             // keyboard exactly as they do under the hand (L38).
             onFocus={() => onPoint(index)}
             onKeyDown={(event) => pointKeys(event, own, index)}
+            onClick={(event) => event.stopPropagation()}
           />
         ))}
       {/* The handles of the one point that is chosen (L38), drawn above the points themselves.
@@ -1072,6 +1231,7 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
                 onPointerUp={up}
                 onPointerCancel={callOff}
                 onKeyDown={(event) => handleKeys(event, own, chosen, arm)}
+                onClick={(event) => event.stopPropagation()}
               />
             </Fragment>
           )
@@ -1276,7 +1436,10 @@ function faceOfTab(face: FaceTemplate | undefined, group: string | null): FaceTe
 // The card the canvas shows. With a group open it is a card of that group; a group whose cards
 // have all gone is still shown, on a row made of the rule itself, so its design can be reached.
 function previewRow(doc: ProjectDoc, column: string | null, group: string | null, row: string | null): Row {
-  if (column && group) return cardsInGroup(doc, group)[0]?.fields ?? { [column]: group }
+  if (column && group) {
+    const inGroup = cardsInGroup(doc, group)
+    return (inGroup.find((r) => r.id === row) ?? inGroup[0])?.fields ?? { [column]: group }
+  }
   const picked = doc.rows.find((r) => r.id === row)?.fields ?? doc.rows[0]?.fields ?? {}
   return picked
 }
@@ -1463,9 +1626,16 @@ function Fill({ fill, fields, valuesIn, onPatch }: { fill: Paint | undefined; fi
   // left to show it on is still a colour the designer must be able to find and take away (L3).
   const painted = rule ? [...new Set([...values, ...Object.keys(rule.map)])] : []
   const write = (map: Record<string, string>, gesture?: string) => rule && onPatch({ fill: { ...rule, map } }, gesture)
+  // Whether the shape is filled at all (#478): a shape with none showed a black well, and none
+  // could not be chosen again once a colour had been. A switch, as the pattern over it has.
+  const filled = fill !== undefined
   return (
     <>
-      {fields.length > 0 && (
+      <label className="byd-props-switch">
+        <input type="checkbox" checked={filled} onChange={(e) => onPatch({ fill: e.target.checked ? plain : undefined })} />
+        {t('canvas.props.fill.on')}
+      </label>
+      {filled && fields.length > 0 && (
         <label className="byd-props-switch">
           <input
             type="checkbox"
@@ -1475,7 +1645,7 @@ function Fill({ fill, fields, valuesIn, onPatch }: { fill: Paint | undefined; fi
           {t('canvas.props.fill.byField')}
         </label>
       )}
-      {!rule && (
+      {filled && !rule && (
         <label>
           {t('canvas.props.fill')}
           <input type="color" value={plain} {...picking.visit} onChange={(e) => onPatch({ fill: e.target.value }, picking.token())} />
@@ -1552,6 +1722,20 @@ function Section({ name, children }: { name: string; children: ReactNode }) {
   )
 }
 
+// How near the stage's edge a held hand pans it, and how fast at the very edge (#478).
+const PAN_EDGE_PX = 32
+const PAN_MAX_PX = 18
+const stageOf = (el: HTMLElement | null): HTMLElement | null => el?.closest<HTMLElement>('.byd-canvas-stage') ?? null
+
+// A shape with no fill is its outline and nothing else (#478, L26): its inside lets the pointer
+// through to whatever is drawn there, and the outline is hit within half its line plus the 2.4 mm
+// L26 gives a point. The ring is drawn by the stylesheet from the width said here.
+const RIM_MM = 2.4
+const isHollow = (box: BoxElement): boolean => box.kind === 'shape' && !('fill' in box && box.fill) && !('pattern' in box && box.pattern)
+const hollowProps = (box: BoxElement): { 'data-hollow'?: '' } => (isHollow(box) ? { 'data-hollow': '' } : {})
+const hollowStyle = (box: BoxElement): CSSProperties =>
+  isHollow(box) ? { ['--byd-rim' as string]: `${(('strokeMm' in box ? box.strokeMm ?? 0 : 0) / 2) + RIM_MM}mm` } : {}
+
 // A number in the panel, marked with an icon and dragged rather than typed (L25). The icon is the
 // field's name and its grip at once: it carries its own name out loud — «Bredd (mm), dra för att
 // ändra» — beside the field's, so the word is not gone from the panel, it is only not drawn.
@@ -1623,8 +1807,12 @@ function Scrub({
     const steps = event.key === up ? 1 : event.key === down ? -1 : 0
     if (steps === 0 || event.altKey || event.ctrlKey || event.metaKey) return
     event.preventDefault()
+    typed.drop()
     nudge(steps, event.shiftKey)
   }
+  // What is typed is a draft until the field is left or Enter is pressed (#478): one number, held
+  // to this field's floor and ceiling, and nothing at all for an empty field.
+  const typed = useNumberDraft({ value, min, max, onCommit: (next) => onWrite(next, gesture.token()) })
   return (
     <div className="byd-props-f">
       <span
@@ -1647,12 +1835,15 @@ function Scrub({
         step={step}
         {...(min !== undefined ? { min } : {})}
         {...(max !== undefined ? { max } : {})}
-        value={value}
+        value={typed.value}
         readOnly={readOnly === true}
         {...(describedBy ? { 'aria-describedby': describedBy } : {})}
         {...gesture.visit}
-        onKeyDown={(event) => keys(event, 'ArrowUp', 'ArrowDown')}
-        onChange={(e) => onWrite(Number(e.target.value), gesture.token())}
+        onKeyDown={(event) => {
+          if (!typed.onKey(event)) keys(event, 'ArrowUp', 'ArrowDown')
+        }}
+        onChange={typed.onChange}
+        onBlur={typed.onBlur}
       />
       {/* The unit is drawn and not said: the field's own name already ends in it, and a reader
           hearing «Bredd (mm)» followed by «mm» hears it twice. It keeps its place even on a
@@ -1762,6 +1953,12 @@ function Properties({
         icon={icon}
         unit="mm"
         step={0.5}
+        // A box is never typed or pulled down to nothing (#478): an emptied Bredd used to be 0 mm
+        // and the heading it held vanished. Where it stands has no floor; how big it is does.
+        {...(key === 'w' || key === 'h' ? { min: 0.5 } : {})}
+        // A typed place is held to the card as a dragged one is (#478): the middle stays on it.
+        {...(key === 'x' && 'w' in el ? { min: -el.w / 2, max: CARD_STANDARD_63x88.physical.widthMm - el.w / 2 } : {})}
+        {...(key === 'y' && 'h' in el ? { min: -el.h / 2, max: CARD_STANDARD_63x88.physical.heightMm - el.h / 2 } : {})}
         value={(el as Record<string, unknown>)[key] as number}
         readOnly={el.locked === true}
         {...(el.locked ? { describedBy: LOCKED_NOTE } : {})}
@@ -2334,14 +2531,14 @@ function PatternGlyph({ kind }: { kind: Pattern['kind'] }) {
 // The ready-made backs (L17), each drawn by the one renderer at thumbnail size — a picture of a
 // card is a compiled card here as everywhere else (E2), so a back can never look like one thing
 // in the gallery and another once it is laid down.
-function BackGallery({ onReplaceFace }: { onReplaceFace(base: Element[]): void }) {
+function BackGallery({ onPick }: { onPick(back: { name: string; base: Element[] }, from: HTMLElement): void }) {
   const t = useT()
   return (
     <div className="byd-backs" role="group" aria-label={t('canvas.backs')}>
       <h2>{t('canvas.backs')}</h2>
       <div className="byd-backs-list">
         {BACKS.map((back) => (
-          <button key={back.id} type="button" onClick={() => onReplaceFace(back.base(t))}>
+          <button key={back.id} type="button" onClick={(event) => onPick({ name: t(back.name), base: back.base(t) }, event.currentTarget)}>
             <span className="byd-backs-card">
               <CardPreview id={`byd-back-${back.id}`} face={{ base: back.base(t), variants: {} }} row={{}} icons={{}} scale={0.26} />
             </span>

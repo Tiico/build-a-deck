@@ -118,7 +118,9 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
             role="row"
             data-layer={el.id}
             {...(removed?.has(el.id) ? { 'data-removed': '' } : {})}
-            {...(over === el.id && dragged.current !== el.id ? { 'data-over': '' } : {})}
+            // Where the layer lands is the row's place, which is above that row dragged up and
+            // below it dragged down (#478): the line is drawn on the side it will land on.
+            {...(over === el.id && dragged.current !== el.id ? { 'data-over': dragged.current !== null && ids.indexOf(dragged.current) < at ? 'below' : 'above' } : {})}
             aria-selected={el.id === selected ? 'true' : 'false'}
             draggable={onReorder !== undefined && renaming !== el.id}
             onDragStart={() => (dragged.current = el.id)}
@@ -158,6 +160,9 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
                   aria-label={t('canvas.layer.rename', { name })}
                   defaultValue={name}
                   autoFocus
+                  // The old name is marked (#478), so what is typed replaces it rather than being
+                  // written after it.
+                  onFocus={(event) => event.currentTarget.select()}
                   onKeyDown={(event) => {
                     if (event.key !== 'Enter' && event.key !== 'Escape') return
                     event.preventDefault()
