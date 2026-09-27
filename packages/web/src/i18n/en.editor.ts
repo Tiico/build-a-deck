@@ -117,6 +117,8 @@ export const enEditor = {
   'wall.tile': '{group}, {n} cards',
   /* The crown (#128, #130): a box says its state, never only its name. */
   'crown.box.state': '{name}: {state}',
+  // What stands before the choice in a box, and is what gives way below 1280 (#477).
+  'crown.box.lead': '{name}: ',
   'crown.box.count': '{name} ({n})',
   'crown.rail.more': 'More filters',
   // The help pattern (L32, #303): the question mark is named by what it is about, and the box it

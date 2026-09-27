@@ -734,6 +734,13 @@
    not a target. The editor may degrade under desk width (L12) but it never loses a control and
    never drops below a tap target, so the row keeps its height and scrolls sideways inside itself
    instead — the same answer #130 gave the filter chips, and the page itself still does not move. */
+/* At the desk's narrow end the row holds everything only if the boxes say less (beslut 2026-09-27,
+   #477 fynd 12, variant B): a box with a choice shows only the choice, the fold only its arrow, and
+   the field keeps room to be read. The full sentence stays each box's name and tooltip. */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .byd-crown-box > .byd-crown-name, .byd-crown-fold > .byd-crown-name { display: none; }
+  .byd-crown-search { min-width: 180px; }
+}
 @media (max-width: 1023px) {
   .byd-crown { overflow-x: auto; scrollbar-width: none; }
   .byd-crown::-webkit-scrollbar { display: none; }
@@ -858,7 +865,7 @@
    only appears under a pointer is the thing #184 is taking out of the editor elsewhere. */
 .byd-crown-fold { flex: 0 0 auto; display: inline-flex; align-items: center; gap: var(--byd-s1); min-height: var(--byd-tap); padding: 0 var(--byd-s3); border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 12px; white-space: nowrap; cursor: pointer; }
 .byd-crown-fold:hover { border-color: var(--byd-editor-primary-mark); color: #fff; }
-.byd-crown-fold span { color: var(--byd-editor-primary-mark); font-weight: 700; }
+.byd-crown-fold > span[aria-hidden='true'] { color: var(--byd-editor-primary-mark); font-weight: 700; }
 .byd-wall-card[data-marked] { outline: 3px solid #f0b64a; outline-offset: 3px; }
 .byd-wall-checks { flex: 1 1 auto; min-width: 0; }
 .byd-wall-ok { margin: 0; color: #7dd3a0; line-height: 1.5; }

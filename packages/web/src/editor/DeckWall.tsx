@@ -345,13 +345,15 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             className="byd-crown-fold"
             aria-expanded={jumpOpen}
             aria-controls={jumpId}
+            aria-label={jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}
+            title={jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}
             onClick={() => {
               setJumpOpen(!jumpOpen)
               rememberJumpOpen(!jumpOpen)
             }}
           >
             <span aria-hidden="true">{jumpOpen ? '\u27E8' : '\u27E9'}</span>
-            {jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}
+            <span className="byd-crown-name">{jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}</span>
           </button>
         )}
         <CrownBox name={t('wall.checks.title')} count={groups.length} open={box === 'checks'} onToggle={() => toggle('checks')} boxRef={checksBox} end />

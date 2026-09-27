@@ -141,6 +141,8 @@ export const svEditor = {
   'wall.tile': '{group}, {n} kort',
   /* Kronan (#128, #130): en låda säger sitt tillstånd, aldrig bara sitt namn. */
   'crown.box.state': '{name}: {state}',
+  // What stands before the choice in a box, and is what gives way below 1280 (#477).
+  'crown.box.lead': '{name}: ',
   'crown.box.count': '{name} ({n})',
   'crown.rail.more': 'Fler filter',
   // Hjälpmönstret (L32, #303): frågetecknet är namngivet efter vad det handlar om, och lådan

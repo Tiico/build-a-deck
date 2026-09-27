@@ -50,9 +50,20 @@ export function CrownBox({ name, state, count, open, onToggle, boxRef, end }: Cr
       type="button"
       className={end ? 'byd-crown-box byd-crown-end' : 'byd-crown-box'}
       aria-expanded={open}
+      // The whole sentence is the box's name, whatever the row has room to show of it (#477): below
+      // 1280 a box with a choice in it shows only the choice.
+      aria-label={said}
+      title={said}
       onClick={onToggle}
     >
-      {said}
+      {state !== undefined ? (
+        <>
+          <span className="byd-crown-name">{t('crown.box.lead', { name })}</span>
+          {state}
+        </>
+      ) : (
+        said
+      )}
       <span aria-hidden="true">▾</span>
     </button>
   )
