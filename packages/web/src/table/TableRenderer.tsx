@@ -117,6 +117,9 @@ export type TableRendererProps = {
   remember?: string | undefined
   // What the pointer is over (C): the TV shows it large beside the table. Null when it leaves.
   onInspect?: ((c: VisibleComponentState | null) => void) | undefined
+  // A card tapped to be looked at (#485): on a screen with no pointer to rest on it, pointing
+  // cannot say which card the eye is on, so a tap does.
+  onPick?: ((c: VisibleComponentState) => void) | undefined
   size?: Size | undefined
   glideMs?: number | undefined
   // Room kept clear around the table when it is fitted, in table millimetres (L30, #316). The
@@ -232,7 +235,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, onPick, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -577,7 +580,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const handlers = (target: DragTarget) => ({ onPointerDown: (e: RPointerEvent) => down(e, target), onPointerMove: move, onPointerUp: up, onPointerCancel: cancel })
   // Pointing at a card is not touching it: it only says what the screen should show large.
   const inspects = (c: VisibleComponentState | undefined) =>
-    onInspect && c ? { onPointerEnter: () => onInspect(c), onPointerLeave: () => onInspect(null) } : undefined
+    onInspect && c ? { onPointerEnter: () => onInspect(c), onPointerLeave: () => onInspect(null), ...(onPick ? { onClick: () => onPick(c) } : {}) } : undefined
   // And what the pointer is standing on, for the commands that act on it (#224). The keyboard
   // track is told; it is the one place on the felt that reads a key, and this is the address it
   // reads it about.

@@ -809,13 +809,24 @@
      and its place in the reading order — back to what the handle promised: what just happened,
      and who is sitting. */
   .byd-observer [data-tv] .byd-tv-feed { order: 2; flex: 0 0 auto; }
-  .byd-observer [data-tv] .byd-tv-inspect { order: 3; }
-  .byd-observer [data-tv] .byd-tv-inspect > div { width: 120px; height: 168px; padding: 10px; font-size: 15px; }
+  /* A tap holds a card up in a sheet of its own here (#485), so the column's «point at a card» box
+     has nothing to show and nothing to point with. */
+  .byd-observer [data-tv] .byd-tv-inspect { display: none; }
   /* Shut, the table is the screen. Open, the drawer takes its room from the table in shares of
      what there is — so the table is smaller, never gone, and never underneath anything. */
   .byd-observer[data-drawer='shut'] [data-tv] { grid-template-rows: minmax(0, 1fr); }
   .byd-observer[data-drawer='shut'] [data-tv] > aside { display: none; }
-  .byd-observer[data-drawer='open'] [data-tv] { grid-template-rows: minmax(0, 1.3fr) minmax(0, 1.7fr); }
+  /* Open, the drawer is a sheet over the table (#485, beställarens beslut A efter prototyp 34,
+     a revision of #6's «under, never over» below the desk): the table keeps the size #76 measured
+     it at, and a card on it stays readable. The sheet stands above the handle, whose «Mer» closes
+     it, over a dimmed table a tap on which closes it too. */
+  .byd-observer[data-drawer='open'] [data-tv] { grid-template-rows: minmax(0, 1fr); }
+  .byd-observer[data-drawer='open'] [data-tv] > aside {
+    position: fixed; left: 0; right: 0; bottom: var(--byd-observer-handle-h, 0px); z-index: 30;
+    max-height: 70vh; border-radius: 16px 16px 0 0; background: #14161c; box-shadow: 0 -18px 40px rgba(0, 0, 0, 0.5);
+  }
+  .byd-observer-scrim { position: fixed; inset: 0; z-index: 29; background: rgba(0, 0, 0, 0.45); }
+  .byd-observer[data-drawer='open'] .byd-observer-handle { position: relative; z-index: 31; }
 }
 /* On the narrowest screens the handle is two rows: who she is, and the things she can do.
    A right-aligned button alone on a second row reads as something that fell off the first.
