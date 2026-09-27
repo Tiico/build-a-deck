@@ -13,6 +13,11 @@
 .byd-online-me span { white-space: nowrap; }
 .byd-online-me em { font-style: normal; color: #ffd98a; }
 .byd-online-tools { display: flex; gap: 6px; flex: none; }
+/* What somebody else last did (#484 fynd 12): the bar's slack, and the first thing in it to give way. */
+.byd-online-last { flex: 1 1 0; min-width: 0; margin: 0 0 0 8px; color: #9aa3b8; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.byd-online-last { --byd-last-table: #e8e2d8; }
+.byd-online-last span { color: var(--seat); }
+.byd-online-last small { color: #7d8597; font-size: 12px; }
 /* The way into the hand's second mode (#24): the grid, for when the fan cannot show it all. */
 .byd-online-showall { min-height: 44px; min-width: 44px; margin-right: auto; padding: 0 14px; border: 1px solid #3a2f26; border-radius: 10px; background: #1d1815; color: #e8e2d8; font-size: 13px; font-weight: 700; }
 /* 44 px in both directions, which these three have never been: 76×32, 77×32 and 70×32 at every

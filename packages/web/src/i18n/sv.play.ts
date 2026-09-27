@@ -278,6 +278,10 @@ export const svPlay = {
   // Hela bordet, utfällt när det efterfrågas (C4). Raden över handen är högarna; det här är
   // varje zon läsaren ser in i, andra platsers ytor inräknade sedan #414.
   'player.table.title': 'Ytorna',
+  'online.last': 'Senast:',
+  'online.last.now': 'nyss',
+  'online.last.s': 'för {n} s sedan',
+  'online.last.min': 'för {n} min sedan',
   'online.table.where': 'Hela bordet står på TV:n, eller på en skärm som rymmer det.',
   // Tom hand (UX-16): samma form som raden ovanför, så telefonens två tomlägen läses som ett par.
   'player.hand.title': 'Dina kort',

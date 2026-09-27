@@ -15,6 +15,7 @@ import { PlayerSurface, useHandMarks } from '../player/PlayerSurface.js'
 import { useSitDown } from '../player/useSitDown.js'
 import { claimUrl } from '../account/api.js'
 import { SeatLine } from './SeatLine.js'
+import { LastMove } from './LastMove.js'
 import { HandFan } from './HandFan.js'
 import { HandColumn } from './HandColumn.js'
 import { HandSpread } from './HandSpread.js'
@@ -164,6 +165,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             {t('online.showall')}
           </button>
         )}
+        <LastMove view={view} activity={activity} seat={seat} />
         <div className="byd-online-tools">
           <SessionButtons client={client} view={view} sheet={sheet} onSheet={setSheet} />
         </div>
