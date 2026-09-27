@@ -73,13 +73,35 @@ describe('the import from Markdown (#131)', () => {
 
   it('leaves a first line that is a subheading alone: only the first level is a title (#191)', () => {
     const { doc, notes } = importRules('## En tur\n\nDra ett kort.', 'Skogens herrar')
-    // No title was swallowed, so nothing is raised either (#202): a book written by hand and a
-    // file that keeps its `#` for its sections are both left exactly as they stand.
-    expect(doc.blocks).toEqual([
-      { kind: 'heading', id: 'b1', level: 2, text: 'En tur' },
-      { kind: 'text', id: 'b2', text: 'Dra ett kort.' },
-    ])
+    // Nothing is swallowed: a `##` on the first line is a heading of the book, never its title.
+    expect(doc.blocks.map((b) => b.kind)).toEqual(['heading', 'text'])
     expect(notes).not.toContainEqual(expect.objectContaining({ of: 'title' }))
+  })
+
+  // A file with no `#` at all, beyond a title it may have had swallowed (#481, fynd 8, beställarens
+  // beslut A efter prototyp 18). Its `##` are its sections for the same reason #202 gave: a book
+  // with nothing on the first level has no disposition to list, and the file's own top rank is
+  // where its sections are. So the tree stands a step up and the report says so in one line.
+  it('raises a file whose top rank is `##`: its `##` are sections and its `###` subheadings', () => {
+    const { doc, notes } = importRules('## Översikt\n\nText.\n\n## Så spelar ni\n\n### Dra\n\n#### Detalj', 'Skogens herrar')
+    expect(doc.blocks.filter((b) => b.kind === 'heading').map((b) => [b.kind === 'heading' && b.level, b.kind === 'heading' && b.text])).toEqual([
+      [1, 'Översikt'],
+      [1, 'Så spelar ni'],
+      [2, 'Dra'],
+      [2, 'Detalj'],
+    ])
+    expect(notes).toContainEqual({ of: 'raised', n: 1 })
+    // What the report says about headings is what they became: two sections and two subheadings,
+    // and only the `####` was folded — the `###` stood where the raise put it.
+    expect(notes).toContainEqual({ of: 'heading', n: 2 })
+    expect(notes).toContainEqual({ of: 'subheading', n: 2 })
+    expect(notes).toContainEqual({ of: 'folded', n: 1 })
+  })
+
+  it('does not raise a file that has a `#` further down, nor count a `#` inside code as one', () => {
+    expect(importRules('## Före\n\n# Översikt\n\n## En tur', 'X').doc.blocks.map((b) => b.kind === 'heading' && b.level)).toEqual([2, 1, 2])
+    const fenced = importRules('## Översikt\n\n```\n# inte en rubrik\n```', 'X')
+    expect(fenced.doc.blocks[0]).toMatchObject({ kind: 'heading', level: 1 })
   })
 
   it('leaves a file that opens with prose exactly as it is, and says nothing about a title (#191)', () => {
@@ -102,10 +124,12 @@ describe('the import from Markdown (#131)', () => {
   })
 
   it('folds a heading deeper than two up to a subheading, because the book has two levels', () => {
-    const { doc, notes } = importRules('## En tur\n\n#### Att passa', 'Skogens herrar')
+    // Opened with prose, so nothing is a title and the file's `#` keeps its sections on level one.
+    const { doc, notes } = importRules('Ett spel.\n\n# En tur\n\n#### Att passa', 'Skogens herrar')
     expect(doc.blocks).toEqual([
-      { kind: 'heading', id: 'b1', level: 2, text: 'En tur' },
-      { kind: 'heading', id: 'b2', level: 2, text: 'Att passa' },
+      { kind: 'text', id: 'b1', text: 'Ett spel.' },
+      { kind: 'heading', id: 'b2', level: 1, text: 'En tur' },
+      { kind: 'heading', id: 'b3', level: 2, text: 'Att passa' },
     ])
     // And the folding is said out loud rather than done quietly.
     expect(notes).toContainEqual({ of: 'folded', n: 1 })
@@ -229,8 +253,10 @@ describe('the import from Markdown (#131)', () => {
     // The report is one list in one order, and the order is the argument it makes: what became a
     // block, what changed shape on the way — the file's own title at its head (#191) — and what
     // came in saying less about itself than it could have.
+    // Two headings became sections and one a subheading, and the report says which (#481).
     expect(notes).toEqual([
-      { of: 'heading', n: 3 },
+      { of: 'heading', n: 2 },
+      { of: 'subheading', n: 1 },
       { of: 'text', n: 4 },
       { of: 'list', n: 1 },
       { of: 'image', n: 1 },
