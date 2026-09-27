@@ -182,7 +182,10 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // surface makes a third (StatusLive), so the canvas asks for the polite one by name.
   const say = useSay()
   const stageEl = useRef<HTMLElement | null>(null)
-  const zoom = useZoom(stageEl)
+  // The zoom grows around the element that is chosen (#478); read at the press, not at the render.
+  const chosenRef = useRef(selectedElement)
+  chosenRef.current = selectedElement
+  const zoom = useZoom(stageEl, useCallback(() => chosenRef.current, []))
   // The grid is a layer to see by, not a rule (variant C, kept as an option): it is off until it
   // is asked for, and it never rounds an element to itself — the guides and the arrow keys are
   // what place things, and a 1 mm grid would take the half millimetre away.
@@ -558,7 +561,9 @@ function Licence({ family, licence, settled, onFontLicence }: { family: string; 
 // deliberate departure from L4's pattern that a view remembers itself in the browser: nobody
 // should be met by a crop they do not remember choosing (L19).
 type Zoom = { scale: number; fitting: boolean; to(scale: number): void; by(delta: number): void; fit(): void }
-function useZoom(stage: RefObject<HTMLElement | null>): Zoom {
+// A point on the screen the zoom grows around (#478), and what of the card was under it.
+type Anchor = { x: number; y: number; fx: number; fy: number }
+function useZoom(stage: RefObject<HTMLElement | null>, chosen: () => string | null = () => null): Zoom {
   const [scale, setScale] = useState(STAGE_SCALE)
   const [fitting, setFitting] = useState(true)
   // What the card is drawn at right now, for the two readers that run outside a render: the fit,
@@ -580,10 +585,48 @@ function useZoom(stage: RefObject<HTMLElement | null>): Zoom {
     watching.observe(stage.current)
     return () => watching.disconnect()
   }, [stage, fitting, measure])
-  const to = useCallback((next: number) => {
-    setFitting(false)
-    setScale(zoomTo(next))
-  }, [])
+  // What the zoom grows around (#478): it grew from the card's top left corner, so a badge at the
+  // foot of the card zoomed a thousand pixels out of the stage. The wheel grows it around the
+  // pointer; the band's controls around the chosen element, or the middle of the stage when
+  // nothing is chosen. What of the card was under that point is kept under it: after the new size
+  // is laid out, the stage is scrolled by however far that part of the card moved.
+  const anchor = useRef<Anchor | null>(null)
+  const hold = useCallback(
+    (at?: { x: number; y: number }) => {
+      const el = stage.current
+      const card = el?.querySelector('[data-card]')?.getBoundingClientRect()
+      if (!el || !card || card.width === 0 || card.height === 0) return
+      const picked = chosen()
+      const box = !at && picked ? el.querySelector(`[data-drag="${CSS.escape(picked)}"]`)?.getBoundingClientRect() : undefined
+      const room = el.getBoundingClientRect()
+      const point = at ?? (box ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : { x: room.left + room.width / 2, y: room.top + room.height / 2 })
+      anchor.current = { x: point.x, y: point.y, fx: (point.x - card.left) / card.width, fy: (point.y - card.top) / card.height }
+    },
+    [stage, chosen],
+  )
+  useLayoutEffect(() => {
+    const was = anchor.current
+    anchor.current = null
+    const el = stage.current
+    const card = el?.querySelector('[data-card]')?.getBoundingClientRect()
+    if (!was || !el || !card) return
+    // Where that part of the card stands now, and the scroll that puts it back under the point.
+    // For the band's controls the point is where the element was; if that is off the stage, the
+    // element is brought to the stage's middle instead.
+    const room = el.getBoundingClientRect()
+    const inside = was.x >= room.left && was.x <= room.right && was.y >= room.top && was.y <= room.bottom
+    const want = inside ? was : { x: room.left + room.width / 2, y: room.top + room.height / 2 }
+    el.scrollLeft += card.left + was.fx * card.width - want.x
+    el.scrollTop += card.top + was.fy * card.height - want.y
+  }, [scale, stage])
+  const to = useCallback(
+    (next: number, at?: { x: number; y: number }) => {
+      hold(at)
+      setFitting(false)
+      setScale(zoomTo(next))
+    },
+    [hold],
+  )
   // `Ctrl` with the wheel over the canvas, which is the gesture every drawing tool answers. It is
   // hung on the element and not on React's `onWheel`, because React listens for a wheel passively
   // at the root and a passive listener cannot keep the browser from zooming the whole page.
@@ -593,7 +636,7 @@ function useZoom(stage: RefObject<HTMLElement | null>): Zoom {
     const wheel = (event: WheelEvent) => {
       if (!event.ctrlKey) return
       event.preventDefault()
-      to(drawn.current - Math.sign(event.deltaY) * ZOOM_NOTCH)
+      to(drawn.current - Math.sign(event.deltaY) * ZOOM_NOTCH, { x: event.clientX, y: event.clientY })
     }
     el.addEventListener('wheel', wheel, { passive: false })
     return () => el.removeEventListener('wheel', wheel)
