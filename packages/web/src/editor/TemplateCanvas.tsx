@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react'
+import { CardRow } from './CardRow.js'
 import { useNumberDraft } from './number-draft.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
@@ -47,8 +48,9 @@ export type TemplateCanvasProps = {
   // A whole face laid down at once (L17): one of the ready-made backs. One edit, because it is
   // one thing the designer did — see `replaceFace` in the edit vocabulary.
   onReplaceFace(base: Element[]): void
-  // The row the preview shows.
+  // The row the preview shows, and the way to show another (#478).
   row: string | null
+  onPickRow?(id: string): void
   selectedElement: string | null
   onSelectElement(id: string | null): void
   // `gesture` is the token of the grab a patch belongs to, when it belongs to one. A drag is one
@@ -108,7 +110,7 @@ export type TemplateCanvasProps = {
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont, onCatalogFont, onAddPicture }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, onPickRow, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont, onCatalogFont, onAddPicture }: TemplateCanvasProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
@@ -116,6 +118,10 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // The card the canvas shows: with a group open it must be a card of that group, or the group
   // could not be seen. A group whose cards have all gone is shown on the rule itself.
   const rowData = previewRow(doc, column, group, row)
+  // The cards the preview can be stepped through, and the one it is on (#478): the open group's,
+  // or the whole deck's.
+  const shownCards = column && group ? cardsInGroup(doc, group) : doc.rows
+  const shownCard = shownCards.find((r) => r.id === row) ?? shownCards[0]
   // The face the open tab is about (#13): with a group open, the face as it stands, so the group
   // is applied; with no group open, the face without its grouping rule, which is the base.
   const tabFace = useMemo(() => faceOfTab(faceTemplate, group), [faceTemplate, group])
@@ -359,6 +365,16 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
         </main>
           <ZoomBand zoom={zoom} />
         </div>
+        {/* Which card the template is drawn on, under it (#478, variant B): among the cards of
+            the open group, or the whole deck. */}
+        {onPickRow && doc.rows.length > 0 && (
+          <CardRow
+            cards={shownCards}
+            current={shownCard}
+            face={faceTemplate}
+            onPick={onPickRow}
+          />
+        )}
         {/* Under the card and not on it. The stage deselects on a click anywhere in itself, so a
             question standing inside it would lose the layer the moment the answer that keeps it
             was pressed — which is the one answer that must cost nothing. It is otherwise the same
@@ -1419,7 +1435,10 @@ function faceOfTab(face: FaceTemplate | undefined, group: string | null): FaceTe
 // The card the canvas shows. With a group open it is a card of that group; a group whose cards
 // have all gone is still shown, on a row made of the rule itself, so its design can be reached.
 function previewRow(doc: ProjectDoc, column: string | null, group: string | null, row: string | null): Row {
-  if (column && group) return cardsInGroup(doc, group)[0]?.fields ?? { [column]: group }
+  if (column && group) {
+    const inGroup = cardsInGroup(doc, group)
+    return (inGroup.find((r) => r.id === row) ?? inGroup[0])?.fields ?? { [column]: group }
+  }
   const picked = doc.rows.find((r) => r.id === row)?.fields ?? doc.rows[0]?.fields ?? {}
   return picked
 }
