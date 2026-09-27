@@ -107,7 +107,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const answered = useRef(false)
   const links = statusLinks({ server: params.get('server') })
   // The tab says which game is open, and what is wrong with it while something is (#12).
-  usePageTitle({ state: projectId ? (fault === 'unauthorized' ? null : fault ?? (client ? null : 'loading')) : 'missing', game: client?.doc.name ?? null })
+  // Which tab is open is part of where the designer is (#477), so the browser's tab says it too.
+  const part = MODES.find(([m]) => m === mode)?.[1]
+  usePageTitle({ state: projectId ? (fault === 'unauthorized' ? null : fault ?? (client ? null : 'loading')) : 'missing', game: client?.doc.name ?? null, part: part ? t(part) : null })
   // What the header has standing over the work: the history (B4), which opens from the revision
   // where the version is already named, or who has the game (D3), which opens from the faces. One
   // state rather than two, because two panels over each other cover the work and each other — on

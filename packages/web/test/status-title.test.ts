@@ -56,6 +56,12 @@ describe('the title of a route', () => {
     expect(documentTitle(route, opts)).toBe(expected)
   })
 
+  // Seven tabs of the same editor used to be seven browser tabs with the same name (#477): the
+  // part of the editor that is open stands where the word «Editor» stood.
+  it('names the part of the editor that is open', () => {
+    expect(documentTitle('editor', { game: 'Skogens herrar', part: 'Tabell' })).toBe('Skogens herrar · Tabell · build-your-deck')
+  })
+
   it('leaves out the room and the game rather than writing an empty gap', () => {
     expect(documentTitle('table', {})).toBe('Bordet · build-your-deck')
     expect(documentTitle('editor', {})).toBe('Editor · build-your-deck')

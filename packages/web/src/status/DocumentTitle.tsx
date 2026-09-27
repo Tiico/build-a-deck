@@ -21,8 +21,8 @@ export function DocumentTitle({ route = routeOf(location.pathname), children }: 
 // re-rendering for any other reason does not rewrite the tab.
 export function usePageTitle(ctx: TitleContext): void {
   const report = useContext(Report)
-  const { state = null, room = null, game = null, route = null } = ctx
+  const { state = null, room = null, game = null, route = null, part = null } = ctx
   useEffect(() => {
-    report?.({ state, room, game, route })
-  }, [report, state, room, game, route])
+    report?.({ state, room, game, route, part })
+  }, [report, state, room, game, route, part])
 }

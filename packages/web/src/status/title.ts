@@ -38,7 +38,8 @@ export function routeOf(pathname: string): Route {
 // than where it stands: `/` is the games for whoever is logged in and the login card for whoever
 // is not, and a tab that says "Mina spel" over the second one names a page that is not there.
 // Only a page with two shapes reports it, and the address decides for every other one.
-export type TitleContext = { state?: StatusKey | null; room?: string | null; game?: string | null; route?: Route | null }
+// `part` is which part of a page with parts is open — the editor's tab (#477) — in the reader's words.
+export type TitleContext = { state?: StatusKey | null; room?: string | null; game?: string | null; route?: Route | null; part?: string | null }
 
 // The name of the page first, because a tab is clipped from the right, and `·` because that is
 // already the app's separator.
@@ -57,8 +58,9 @@ function nameOf(route: Route, ctx: TitleContext, t: T): string[] {
       return [t('title.invite')]
     case 'editor':
       // The game's own name is the designer's and is never translated (A4); only the word beside
-      // it is the tool's.
-      return [ctx.game ?? null, t('title.editor')].filter((s): s is string => s !== null)
+      // it is the tool's. The tab that is open stands in for the word «Editor» (#477): seven tabs of
+      // one editor were seven browser tabs with the same name.
+      return [ctx.game ?? null, ctx.part ?? t('title.editor')].filter((s): s is string => s !== null)
     case 'table':
       return [t('title.table'), room].filter((s): s is string => s !== null)
     case 'join':

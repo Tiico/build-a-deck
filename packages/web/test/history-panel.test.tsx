@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { EditorPage } from '../src/editor/EditorPage.js'
+import { DocumentTitle } from '../src/status/DocumentTitle.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { ProjectClient } from '../src/editor/ProjectClient.js'
@@ -119,6 +120,21 @@ describe('the history and the keyboard (#477)', () => {
     fireEvent.click(rev)
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
     await waitFor(() => expect(panel.contains(document.activeElement)).toBe(true))
+  })
+
+  it('names the open tab in the browser tab', async () => {
+    await withHistory()
+    await run.answering()
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(
+      <DocumentTitle route="editor">
+        <EditorPage />
+      </DocumentTitle>,
+    )
+    await screen.findByRole('button', { name: /rev \d/ })
+    await waitFor(() => expect(document.title).toMatch(/ · Kortvägg · build-your-deck$/))
+    fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
+    await waitFor(() => expect(document.title).toMatch(/ · Tabell · build-your-deck$/))
   })
 
   it('saves a version\'s name on Enter, not only when the field is left', async () => {
