@@ -618,6 +618,19 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   }, [refocus])
   // The card created by "Nytt kort" while a filter is on, kept on screen until the filter moves.
   const [pinned, setPinned] = useState<string | null>(null)
+  // The card «+ Nytt kort» just asked for (#479): once it is in the table it is scrolled in and
+  // the caret stands in its first cell to write in, rather than the row arriving 3 000 px below a
+  // table that stays at its top.
+  const [arriving, setArriving] = useState<string | null>(null)
+  useEffect(() => {
+    if (!arriving) return
+    const row = document.querySelector<HTMLElement>(`tr[data-card-ref="${CSS.escape(arriving)}"]`)
+    if (!row) return
+    setArriving(null)
+    const cell = row.querySelector<HTMLElement>('.byd-data-lane input, [contenteditable="true"]')
+    cell?.scrollIntoView?.({ block: 'nearest' })
+    cell?.focus()
+  }, [arriving, doc.rows])
   // The order held while a cell is being edited, as the ids that were on screen when it was entered.
   const [held, setHeld] = useState<string[] | null>(null)
   // Att lämna cellen, och bara det (#395). Fokus som stannar kvar inne i samma `<td>` är ingen
@@ -1587,6 +1600,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           const cardRef = nextRef()
           onAddRow(cardRef)
           setPinned(isFiltering(filter) ? cardRef : null)
+          setArriving(cardRef)
         }}>
         {t('table.addCard')}
       </button>

@@ -80,3 +80,32 @@ describe('the bulk row s count (#479)', () => {
     expect(onReplaceRows).not.toHaveBeenCalled()
   })
 })
+
+// A new card where it can be seen (#479): «+ Nytt kort» put the row 3 000 px down, left the table
+// at the top and the focus on the button, and all that changed on the screen was the count at the
+// foot. The row is now scrolled in and the caret stands in its first cell to write in.
+describe('a new card (#479)', () => {
+  it('puts the caret in the new card s first cell to write in', async () => {
+    const { useState } = await import('react')
+    function Growing() {
+      const [doc, setDoc] = useState(projectDoc())
+      return (
+        <DataTable
+          doc={doc}
+          selectedRow={null}
+          onSelectRow={() => undefined}
+          onCell={() => undefined}
+          onAddRow={(cardRef) => setDoc((was) => ({ ...was, rows: [...was.rows, { id: cardRef, fields: { title: '', antal: 1 } }] }))}
+          onRemoveRow={() => undefined}
+          onReplaceRows={() => undefined}
+          onAddField={() => undefined}
+          onRemoveField={() => undefined}
+          onMoveField={() => undefined}
+        />
+      )
+    }
+    render(<Growing />)
+    fireEvent.click(screen.getByRole('button', { name: '+ Nytt kort' }))
+    expect(document.activeElement).toBe(screen.getByLabelText('kort-4 title'))
+  })
+})
