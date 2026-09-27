@@ -118,6 +118,7 @@ describe.each(LIVE)('$path while the service does not answer at all', (live) => 
     await deaf.stop()
   })
 
+
   // On a clock the test drives, not on the wall clock. A deaf service sends nothing, so the only
   // thing that can ever paint `slow` is the single timer the wait arms for itself — one render,
   // somewhere between the 80 ms a wait may go unremarked and the 1200 ms deadline. Waiting for
@@ -174,6 +175,25 @@ describe.each(LIVE)('$path when the line dies mid-game', (live) => {
     expect(stale!.hasAttribute('inert')).toBe(true)
     expect(notice()!.textContent).toMatch(/Det du ser är från \d\d:\d\d/)
     await waitFor(() => expect(document.title).toBe('Frånkopplad · build-your-deck'))
+  })
+
+  // «Försök nu» takes its own message away once the line is back, and the focus went with it, to
+  // <body> (#485, fynd 12): the next Tab started from the top of the page. It lands on the view the
+  // message was laid over.
+  it('keeps the focus in the view once «Försök nu» has brought the line back', async () => {
+    const id = await createSession(run)
+    await open(live, { session: id, real: true, timing: SLOWER })
+    await waitFor(() => expect(noticeState()).toBeNull())
+    await run.stop()
+    await waitFor(() => expect(noticeState()).toBe('dropped'))
+    await run.restart()
+    const now = within(notice() as HTMLElement).getByRole('button', { name: /försök/i })
+    now.focus()
+    now.click()
+    await waitFor(() => expect(noticeState() === null || noticeState() === 'resumed').toBe(true))
+    await waitFor(() => expect(noticeState()).toBeNull(), { timeout: 5000 })
+    expect(document.activeElement === document.body || document.activeElement === null).toBe(false)
+    expect(document.querySelector('[data-page]')!.contains(document.activeElement)).toBe(true)
   })
 
   it('says the line is down assertively, because the screen has stopped being true', async () => {

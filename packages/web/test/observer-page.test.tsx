@@ -109,7 +109,9 @@ describe('the observer summons what is not the table (#6)', () => {
     await screen.findByText(/Du är observatör/)
 
     const handle = document.querySelector('.byd-observer-handle')!
-    expect(handle.textContent).toMatch(/Eva tittar på/)
+    // What she sees is said on the handle as well (#485, fynd 12): on a phone the column with her
+    // own sentence is shut, and visibility is never something only the drawer says.
+    expect(handle.textContent).toMatch(/Eva tittar på · ser allt/)
     expect(handle.querySelector('.byd-observer-flag')).toBeTruthy()
     // Nothing floats over the table any more: the banner is a row of the layout.
     expect(document.querySelector('.byd-observer-banner')).toBeNull()

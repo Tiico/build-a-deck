@@ -286,7 +286,7 @@ export const enPlay = {
 
   'observer.name': 'spectator',
   'observer.banner': 'You are a spectator: you see everyone’s hands and every pile. Everyone knows you are here.',
-  'observer.watching': '{name} is watching',
+  'observer.watching': '{name} is watching · sees everything',
   // The box behind the question mark (L32's addendum, #305).
   'observer.help.topic': 'observing',
   'observer.help.sees': 'You see every hand and every pile, including what is hidden at the table.',

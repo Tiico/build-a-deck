@@ -200,6 +200,9 @@
   background: hsl(var(--hue, 0) 40% 86%);
 }
 .byd-card { cursor: grab; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45); }
+/* An observer moves nothing (C8): a hand that promises a grab over a card she cannot take is a
+   control that lies (#485). Below the desk a tap holds the card up, and the pointer says that. */
+.byd-observer .byd-card { cursor: default; }
 
 /* Piles: a stack with thickness, a count, a label. */
 .byd-pile { box-sizing: border-box; }

@@ -346,7 +346,7 @@ export const svPlay = {
   // Åskådaren (C8).
   'observer.name': 'observatör',
   'observer.banner': 'Du är observatör: du ser allas händer och alla högar. Alla vet att du är här.',
-  'observer.watching': '{name} tittar på',
+  'observer.watching': '{name} tittar på · ser allt',
   // Fördjupningen bakom frågetecknet (L32:s tillägg, #305). Att hon syns för alla står kvar på
   // ytan i `observer.banner`: synlighetsupplysningar flyttar aldrig in i lådan.
   'observer.help.topic': 'observatörsläget',
