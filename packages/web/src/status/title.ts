@@ -66,7 +66,7 @@ function nameOf(route: Route, ctx: TitleContext, t: T): string[] {
     case 'join':
       return [ctx.room ? t('title.join', { code: ctx.room }) : t('title.join.any')]
     case 'play':
-      return [t('title.play'), room].filter((s): s is string => s !== null)
+      return [ctx.part ?? t('title.play'), room].filter((s): s is string => s !== null)
     case 'online':
       return [t('title.online'), room].filter((s): s is string => s !== null)
     case 'observe':

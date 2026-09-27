@@ -115,7 +115,9 @@ const HOLDERS: Record<string, Holder> = {
   },
   'a card held up on the phone': {
     up: true,
-    wrap: (inner) => `<div class="byd-player"><div class="byd-inspect"><div>${inner}<span>wizard</span></div></div></div>`,
+    // The held card as `HeldCard` draws it: the card is the `[data-inspect]` box (#483), and the rule
+    // that sizes it is written for that box and not for every `div` in the view.
+    wrap: (inner) => `<div class="byd-player"><div class="byd-inspect"><div data-inspect="c1" data-face="front">${inner}<span>wizard</span></div></div></div>`,
   },
   'a card in the online fan': { up: false, wrap: (inner) => `<div class="byd-fan"><div class="byd-fan-card">${inner}<span>wizard</span></div></div>` },
 }

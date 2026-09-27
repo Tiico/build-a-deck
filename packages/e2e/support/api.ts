@@ -167,3 +167,26 @@ export async function mailTo(to: string): Promise<{ subject: string; text: strin
     await new Promise((r) => setTimeout(r, 100))
   }
 }
+
+/**
+ * A table with a rulebook (B7), started from a project the way the editor starts one. A table made
+ * with `tableOf` has no project behind it and so no rules, and the phone draws no «Regler» at all.
+ */
+export async function tableWithRules(request: APIRequestContext, game: Game = {}): Promise<Table> {
+  await logIn(request)
+  const doc = gameDoc({ name: 'Skogens herrar', ...game }) as ReturnType<typeof gameDoc> & { rules?: unknown }
+  doc.rules = { title: 'Skogens herrar', blocks: [{ kind: 'heading', id: 'h1', level: 1, text: 'Så spelar ni' }, { kind: 'text', id: 't1', text: 'Dra ett kort.' }] }
+  const project = await makeProjectOf(request, doc)
+  const res = await request.post(`/projects/${encodeURIComponent(project.id)}/sessions`)
+  if (!res.ok()) throw new Error(`could not start a table on ${project.id}: ${res.status()} ${await res.text()}`)
+  const started = (await res.json()) as { id: string; code: string; hostKey: string }
+  const host = encodeURIComponent(started.hostKey)
+  return {
+    session: started.id,
+    code: started.code,
+    hostKey: started.hostKey,
+    seats: doc.setup.seats,
+    tableUrl: `/table?session=${encodeURIComponent(started.id)}&host=${host}&mode=table`,
+    tvUrl: `/table?session=${encodeURIComponent(started.id)}&host=${host}&mode=tv`,
+  }
+}

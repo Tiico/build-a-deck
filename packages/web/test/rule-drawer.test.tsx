@@ -43,6 +43,20 @@ const open = async (id: string) => {
 // The drawer's own × takes the panel away with the focus in it (#481, fynd 12). The knob that opens
 // the drawer is still standing, so that is where the hand goes.
 describe('closing the drawer from inside it', () => {
+  // Escape closes it too, the way every other sheet on the phone closes (#483, fynd 9) — after
+  // first emptying a question typed in the search, which is what Escape in a search box means.
+  it('closes on Escape, once the search is empty, and hands the focus back to the knob', async () => {
+    const panel = await open(await table())
+    const ask = within(panel).getByRole('searchbox')
+    fireEvent.change(ask, { target: { value: 'dra' } })
+    fireEvent.keyDown(ask, { key: 'Escape' })
+    expect((ask as HTMLInputElement).value).toBe('')
+    expect(screen.queryByRole('dialog', { name: 'Regler' })).not.toBeNull()
+    fireEvent.keyDown(ask, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Regler' })).toBeNull())
+    expect(document.activeElement?.classList.contains('byd-rules-open')).toBe(true)
+  })
+
   it('hands the focus back to the knob that opened it', async () => {
     const panel = await open(await table())
     const close = within(panel).getByRole('button', { name: 'Stäng reglerna' })

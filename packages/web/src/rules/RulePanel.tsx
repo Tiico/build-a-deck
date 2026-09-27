@@ -26,7 +26,19 @@ export function RulePanel({ rules, assets, query, onQuery, onClose, body }: Rule
   const t = useT()
   const hits = rules ? findRules(rules, query) : []
   return (
-    <aside className="byd-rules-panel" role="dialog" aria-label={t('rules.drawer.open')}>
+    <aside
+      className="byd-rules-panel"
+      role="dialog"
+      aria-label={t('rules.drawer.open')}
+      // Escape closes the book as it closes every sheet (#483) — after first emptying a question in
+      // the search, which is what Escape in a search box means.
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape') return
+        e.preventDefault()
+        if (query !== '') onQuery('')
+        else onClose()
+      }}
+    >
       <div className="byd-rules-ask">
         <input type="search" aria-label={t('rules.drawer.ask')} placeholder={t('rules.drawer.ask')} value={query} onChange={(e) => onQuery(e.target.value)} />
         <button type="button" aria-label={t('rules.drawer.close')} onClick={onClose}>

@@ -1,4 +1,5 @@
-import type { PointerEvent as ReactPointerEvent } from 'react'
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { CounterEntry } from '../table/CounterEntry.js'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
@@ -23,10 +24,18 @@ export function inFrontOf(view: Snapshot): VisibleComponentState[] {
 }
 
 // A counter as a pill: tap the sides to count, tap the number to type a value.
+//
+// The number is a button with a name that opens the tool's own number keys (#483, fynd 6; #67),
+// the same sheet the table screen uses. It used to be a `div` behind `prompt()`: no Tab reached
+// it, nothing named it, and «abc» was dropped without a word. No bounds (beslut A): a counter is
+// a number the players keep, and the tool plays no rules.
 export function CountersRow({ view, onSet }: { view: Snapshot; onSet(c: VisibleComponentState, value: number): void }) {
   const t = useT()
   const counters = countersOf(view)
+  const [entry, setEntry] = useState<string | null>(null)
+  const numbers = useRef(new Map<string, HTMLButtonElement>())
   if (counters.length === 0) return null
+  const open = entry === null ? undefined : counters.find((c) => c.id === entry)
   return (
     <div className="byd-counters" data-counters>
       {counters.map((c) => (
@@ -34,20 +43,36 @@ export function CountersRow({ view, onSet }: { view: Snapshot; onSet(c: VisibleC
           <button type="button" aria-label={t('player.counter.minus', { name: c.cardRef ?? '' })} onClick={() => onSet(c, (c.counter ?? 0) - 1)}>
             −
           </button>
-          <div
-            onClick={() => {
-              const typed = prompt(`${c.cardRef}:`, String(c.counter ?? 0))
-              if (typed !== null && typed.trim() !== '' && Number.isFinite(Number(typed))) onSet(c, Math.round(Number(typed)))
+          <button
+            type="button"
+            className="byd-counter-value"
+            aria-label={t('player.counter.set', { name: c.cardRef ?? '', value: c.counter ?? 0 })}
+            ref={(el) => {
+              if (el) numbers.current.set(c.id, el)
+              else numbers.current.delete(c.id)
             }}
+            onClick={() => setEntry(c.id)}
           >
             <b>{c.counter ?? 0}</b>
             <span>{c.cardRef}</span>
-          </div>
+          </button>
           <button type="button" aria-label={t('player.counter.plus', { name: c.cardRef ?? '' })} onClick={() => onSet(c, (c.counter ?? 0) + 1)}>
             +
           </button>
         </div>
       ))}
+      {open && (
+        <CounterEntry
+          view={view}
+          c={open}
+          onSet={(value) => onSet(open, value)}
+          onClose={() => {
+            setEntry(null)
+            // Back to the number that opened the keys, which is still there.
+            numbers.current.get(open.id)?.focus()
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -77,19 +102,27 @@ export function MineStrip({ view, faces, onOpen, onTake, onPlay, pending, headin
       {heading && <h2>{t('player.mine.title', { n: mine.length })}</h2>}
       <div className="byd-mine-strip">
         {mine.map((c) => {
-          const up = c.cardRef !== null
+          // Known and face up, known and face down — the owner's own card she turned down (#483,
+          // beslut A efter prototyp 31) — or not known at all. The middle one shows its face in a
+          // frame of the back's stripes and says in words that only she sees it.
+          const known = c.cardRef !== null
+          const face = !known ? 'back' : c.face === 'front' ? 'front' : 'known'
           return (
             <div className="byd-mine-item" key={c.id}>
               <button
                 type="button"
                 className="byd-mine-card"
                 data-mine-card={c.id}
-                data-face={up ? 'front' : 'back'}
-                aria-label={cardName(c, t)}
-                style={up ? { ['--hue' as string]: hue(c.cardRef ?? '') } : undefined}
+                data-face={face}
+                aria-label={face === 'known' ? t('player.mine.down.label', { name: cardName(c, t) }) : cardName(c, t)}
+                style={known ? { ['--hue' as string]: hue(c.cardRef ?? '') } : undefined}
                 onClick={() => onOpen(c)}
               >
-                <i className="byd-mine-face"><Texture faces={faces} c={c} /></i>
+                <i className="byd-mine-face">
+                  {/* Before the texture: the texture's own fallback hides every name that follows it. */}
+                  {face === 'known' && <span className="byd-mine-down" aria-hidden="true">{t('player.mine.down')}</span>}
+                  <Texture faces={faces} c={c} />
+                </i>
                 <strong aria-hidden="true">{cardWord(c) ?? ''}</strong>
               </button>
               {onTake && (

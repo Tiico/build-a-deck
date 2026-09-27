@@ -5,7 +5,7 @@ import { useRoving } from '../editor/roving.js'
 import { refusalText } from '../status/notice.js'
 import { useSay } from '../status/StatusLive.js'
 import { useT } from '../i18n/index.js'
-import { ActionPanel } from './ActionPanel.js'
+import { ActionPanel, type HandSheet } from './ActionPanel.js'
 import { CardLook } from './CardLook.js'
 import { CounterEntry } from './CounterEntry.js'
 import { cardName, feltLabels, intentsForPlace, landedKeyFor, shortcutIntents, thingsOn, type Thing } from './keyboard.js'
@@ -37,6 +37,9 @@ export type FeltKeyboardOptions = {
   onPlayed?: (() => void) | undefined
   // The HTTP origin that serves /faces/:hash, for the card the panel opens large.
   faces?: string | undefined
+  // What a card in the hand is offered, when the route has a touch sheet of its own for that
+  // (#483): the panel behind Enter then offers the sheet and nothing else.
+  handSheet?: ((view: Snapshot) => HandSheet) | undefined
 }
 
 // `felt` says whether this route draws a table that can be played on. The phone has no felt, so
@@ -45,7 +48,7 @@ export type FeltKeyboardOptions = {
 export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: FeltKeyboardOptions): FeltKeyboardHandle {
   const say = useSay()
   const t = useT()
-  const [open, setOpen] = useState<{ thing: Thing; cards: string[] } | null>(null)
+  const [open, setOpen] = useState<{ thing: Thing; cards: string[]; hand?: boolean } | null>(null)
   const [looking, setLooking] = useState<VisibleComponentState | null>(null)
   // The chip whose value is being said outright (#67), opened from the panel's "Sätt värde…".
   const [setting, setSetting] = useState<VisibleComponentState | null>(null)
@@ -178,6 +181,7 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
         }}
         intentsFor={(place, moving) => intentsForPlace(view, place, open.thing, moving)}
         landedKey={(place) => landedKeyFor(view, place, open.thing)}
+        sheet={open.hand ? options.handSheet?.(view) : undefined}
       />
     ) : null
   const panel = (
@@ -206,6 +210,7 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
       setOpen({
         thing: { key: `card:${card.id}`, kind: 'card', id: card.id, name: cardName(card, t), zone: card.zone },
         cards: marked.includes(card.id) ? [...marked] : [card.id],
+        hand: true,
       })
     },
   }

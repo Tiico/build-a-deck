@@ -194,3 +194,21 @@ describe('new cards lie last in the strip (#415, K4)', () => {
     expect(shown.slice(0, held.length)).toEqual(held)
   })
 })
+
+// Re-sorting the hand by keyboard (K4; #483 fynd 12, beslut A efter prototyp 33): Alt and an
+// arrow move the focused card one place along the strip, as Alt and an arrow move a layer or a
+// column everywhere else in this tool. The strip says where the card should stand; the page
+// turns that into the hand's own order.
+describe('re-sorting the hand with the keyboard', () => {
+  it('moves the focused card one place along the strip with Alt and an arrow, and not past either end', () => {
+    const { view } = buildScene()
+    const onReorder = vi.fn()
+    render(<HandStrip view={view('A')} selected={new Set()} onTap={() => undefined} onHold={() => undefined} onLift={() => undefined} onOpen={() => undefined} onReorder={onReorder} />)
+    const [knight, dragon] = [...document.querySelectorAll<HTMLElement>('[data-hand-card]')]
+    fireEvent.keyDown(knight!, { key: 'ArrowRight', altKey: true })
+    expect(onReorder).toHaveBeenLastCalledWith(expect.objectContaining({ id: knight!.dataset['handCard'] }), 1)
+    fireEvent.keyDown(knight!, { key: 'ArrowLeft', altKey: true })
+    fireEvent.keyDown(dragon!, { key: 'ArrowRight', altKey: true })
+    expect(onReorder).toHaveBeenCalledTimes(1)
+  })
+})

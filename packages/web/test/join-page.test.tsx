@@ -24,6 +24,21 @@ async function open(sessionId: string) {
 }
 
 describe('JoinPage', () => {
+  // A code written straight after the question mark, the way a person types an address from the
+  // TV (#483, fynd 12): it is the room she means, not a room that has ended.
+  it('reads a bare /join?KOD as the room code', async () => {
+    const id = await createSession(run)
+    history.replaceState(null, '', `/join?${roomOf(id).code}&server=${encodeURIComponent(run.url)}`)
+    render(<JoinPage />)
+    expect(await screen.findByRole('button', { name: /Plats A/ })).toBeTruthy()
+  })
+
+  it('says that no code was given when there is none, rather than that a table has ended', async () => {
+    history.replaceState(null, '', `/join?server=${encodeURIComponent(run.url)}`)
+    render(<JoinPage />)
+    expect(await screen.findByText('Ingen rumskod angiven.')).toBeTruthy()
+  })
+
   it('shows every seat live with who sits there, and preselects the next free one', async () => {
     const id = await createSession(run)
     const table = TableClient.connect(await asTable(run, id))

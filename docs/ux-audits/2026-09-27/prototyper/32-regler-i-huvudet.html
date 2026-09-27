@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 32 — Regler i huvudet (#483 fynd 9)</title>
+<link rel="stylesheet" href="proto.css">
+<link rel="stylesheet" href="telefon.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Med en regelbok får telefonens huvud en knapp till, «Regler», och raden bryts i två (107 px)
+     redan vid 390. När boken är öppen fyller den skärmen och täcker huvudets «Stäng reglerna».
+     Escape och fokus är AFK och finns i alla varianter; beslutet är var «Regler» står.
+
+       Nu  «Regler» sist i huvudet; två rader vid 390 och 320
+       A   «Regler» flyttar in i Ut…-arket, som då heter «Mer…»
+       B   «Regler» blir en knapp med bara en bok (namnet «Regler» för skärmläsaren)
+       C   «Regler» flyttar till en rad längst ner, bredvid handen
+
+     Mätningen i raden är huvudets höjd i telefonens egna pixlar. ──────────────────────── */
+  .tel-scen { gap: var(--s5); }
+  .byd-player > header .tel-ikon { padding: 0; width: 44px; }
+  .byd-player > header .tel-ikon svg { width: 22px; height: 22px; }
+  .byd-player > header .tel-ikon[aria-expanded='true'] { background: #e6ecfa; color: #14161c; }
+  /* C: raden längst ner. Klistrad mot telefonens nederkant, med handens egna mått. */
+  .tel-botten { position: sticky; bottom: 0; z-index: 5; display: flex; gap: 8px; padding: 8px 16px 12px; background: #14161c; border-top: 1px solid #262a35; }
+  .tel-botten button { flex: 1; min-height: 44px; border: 1px solid #2c3242; border-radius: 12px; background: #242938; color: #fff; font: 600 14px system-ui; display: inline-flex; gap: 8px; align-items: center; justify-content: center; }
+  .tel-botten svg { width: 18px; height: 18px; }
+  /* A: raden i arket. */
+  .tel-mer-regler { width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid #2c3242; border-radius: 12px; background: #242938; color: #fff; font: 700 15px system-ui; display: flex; align-items: center; gap: 10px; text-align: left; }
+  .tel-mer-regler svg { flex: none; width: 20px; height: 20px; }
+  .tel-mer-regler small { margin-left: auto; font-weight: 500; font-size: 12px; color: #9aa3b8; }
+  /* Prototypens markering av det som ligger under regelboken i Nu. */
+  .tel-under-boken { position: absolute; z-index: 41; right: 10px; top: 64px; padding: 3px 8px; border-radius: 999px; background: #2a2417; border: 1px dashed #f0b64a; color: #ffd98a; font: 600 11px system-ui; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c" data-rek>C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#483 fynd 9 · Var «Regler» står när huvudet är fullt.</b> Öppna och stäng regelboken i båda telefonerna. Läs huvudets höjd i raden här.</p>
+    <p>I B: pröva också att ta orden av Ångra och Flagga — det är vad som krävs för en rad vid 390.</p>
+  </div>
+  <div class="del" data-del="namn"><span>Spelaren heter:</span>
+    <div class="vaxlare" role="group" aria-label="Spelarens namn"><button type="button" data-v="Bea">Bea</button><button type="button" data-v="Margareta">Margareta</button></div></div>
+  <div class="del" data-del="ord" id="ord-del" hidden><span>Ångra, Flagga:</span>
+    <div class="vaxlare" role="group" aria-label="Ångra och Flagga"><button type="button" data-v="ord">med ord</button><button type="button" data-v="tecken">bara tecken</button></div></div>
+  <div class="matt" id="matt"></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="tel-scen">
+  <div class="tel-telefoner" id="telefoner"></div>
+  <aside class="tel-sida">
+    <section class="tel-ruta">
+      <h2>Regeln i dag</h2>
+      <ul>
+        <li><code>PlayerSurface.tsx</code>: huvudet är namn, antal kort, hjälpens «?», Ångra, Flagga, Ut… och sist <code>RuleDrawer placement="phone"</code> — «Regler», eller «Stäng reglerna» när boken är öppen.</li>
+        <li><code>player.css</code>: huvudet bryts hellre än krymper en kontroll under 44 px (<code>flex-wrap</code>, <code>min-height: 52px</code>). Utan bok ryms raden vid 390 — med 1 px till godo för «Bea». Med bok behöver den 428 px av 358 och blir två rader, 107 px.</li>
+        <li><code>rules.css</code>: på telefonen är boken skärmen, <code>position: fixed; inset: 0; z-index: 40</code>. Den täcker huvudets «Stäng reglerna»; vägen ut är bokens eget ×.</li>
+        <li>#31 (variant C): Ut… är en vanlig kontroll som öppnar ett ark med två utgångar och vad de kostar, eftersom raden var full vid 375.</li>
+        <li>L12: spelarens ytor är mobilförst och granskas vid 390 och 320. K7/L32: hjälpen står i huvudet och täcker inget tummen spelar med.</li>
+        <li>B7: reglerna hör till spelet och nås från bordet, TV:n och telefonen.</li>
+      </ul>
+    </section>
+    <section class="tel-ruta rek">
+      <h2>Rekommendation · C</h2>
+      <p><b>«Regler» längst ner, med ordet kvar.</b> Huvudet blir som utan bok, och Ut… förblir det #31 bestämde. Regelboken är ett uppslag man gör mitt i ett drag, med tummen, och där står den nu, ett tryck bort.</p>
+      <p>Men välj «Margareta»: raden utan bok har bara 1 px till godo, så ett längre namn bryter den i alla varianter, B med bara tecken också. Vilken variant som än väljs behöver namnet få krympa (ellips) för att 390 ska hålla — en följdfråga till beslutet.</p>
+      <p>B löser inte 390 utan att ta orden av Ångra och Flagga också, och Flagga är playtestets egen återkoppling. A gömmer boken bakom en utgång.</p>
+    </section>
+  </aside>
+</div>
+<script src="telefon.js"></script>
+<script>
+const { hue, ram, skala, vaxlare } = Telefon
+const BOK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5C17 4.5 14 5 12 6.5Z"/><path d="M12 6.5v13"/></svg>'
+const HAND = ['Quickdraw', "Sheriff's Check", 'Whiskey Run', 'Tumbleweed', 'Dead Man’s Hand']
+const s = { oppen: [false, false], mer: [false, false] }
+
+const NOT = {
+  nu: '<b>Nu.</b> «Regler» står sist i huvudet. <span class="minus">− Raden behöver 428 px av 358 och blir två rader, 107 px, redan vid 390: 55 px mer än en rad, en tredjedel av ett kort i remsan. När boken är öppen står «Stäng reglerna» under den, och bara bokens eget × leder ut.</span>',
+  a: '<b>A · I Ut…-arket, som blir «Mer…».</b> Huvudet är som utan bok. Arket får «Regler» överst och de två utgångarna under. <span class="plus">+ En rad vid 390 för ett kort namn; en plats för det som kommer härnäst.</span> <span class="minus">− Två tryck till boken, bakom en knapp som hette Ut…; #31 gav utgångarna ett eget ark just för att de ska läsas isär, och «Mer…» blandar ett uppslag med att lämna bordet. Ett nytt ord att lära sig.</span>',
+  b: '<b>B · En bok i huvudet.</b> «Regler» blir en 44 px knapp med bara en bok; skärmläsaren hör «Regler». <span class="plus">+ Ett tryck, samma plats som i dag.</span> <span class="minus">− Boken sparar 17 px mot ordet, och raden behöver 418 av 358: vid 390 blir det fortfarande två rader så länge Ångra och Flagga har sina ord. Tas de av (växeln ovan), ryms raden på pixeln för «Bea» — men då är tre av fyra knappar tecken en främling ska gissa, och Flagga är playtestets återkoppling.</span>',
+  c: '<b>C · Längst ner, bredvid handen.</b> En rad klistrad mot telefonens nederkant bär «Regler» med ordet. <span class="plus">+ Huvudet som utan bok: en rad vid 390 för ett kort namn. Ett tryck, där tummen redan är; ordet står kvar; Ut… orört.</span> <span class="minus">− 64 px av skärmens nederkant hela tiden, och tillbakaspolningens och förslagets banderoller, som också ligger längst ner, måste lägga sig ovanför den.</span>',
+}
+
+const ramar = [ram(document.getElementById('telefoner'), 390, 844), ram(document.getElementById('telefoner'), 320, 568)]
+let lage
+
+function huvud(v, i) {
+  const tecken = v === 'b' && lage.ord === 'tecken'
+  const ang = tecken ? '<button class="tel-ikon" aria-label="Ångra" style="font-size:18px">↶</button>' : '<button>↶ Ångra</button>'
+  const fla = tecken ? '<button class="tel-ikon" aria-label="Flagga" style="font-size:16px">⚑</button>' : '<button>⚑ Flagga</button>'
+  const regler = v === 'nu' ? `<button class="byd-rules-open" data-regler>${s.oppen[i] ? 'Stäng reglerna' : 'Regler'}</button>`
+    : v === 'b' ? `<button class="tel-ikon" data-regler aria-label="Regler" aria-expanded="${s.oppen[i]}">${BOK}</button>` : ''
+  const ut = v === 'a' ? '<button data-mer aria-haspopup="dialog">Mer…</button>' : '<button aria-label="Ut… ur bordet">Ut…</button>'
+  return `<header><strong>${lage.namn}</strong><span>5 kort</span><button class="tel-hjalp" aria-label="Hjälp om handen"><span>?</span></button>${v === 'b' ? regler : ''}${ang}${fla}${ut}${v === 'nu' ? regler : ''}</header>`
+}
+
+function telefon(v, i) {
+  return `<div class="byd-player">${huvud(v, i)}
+    <div class="byd-counters"><div class="byd-counter"><button aria-label="Poäng minus">−</button><div><b>4</b><span>Poäng</span></div><button aria-label="Poäng plus">+</button></div></div>
+    <main class="byd-phone-main">
+      <h1>Dina kort</h1>
+      <div class="byd-summary-zones"><button><strong>Kasthög</strong><span>5 kort</span><em>Dra 1 till min hand</em></button><button><strong>Kortlek</strong><span>104 kort</span><em>Dra 1 till min hand</em></button></div>
+      <div class="byd-strip">${HAND.map((n, j) => `<button class="byd-strip-card" data-selected="${j === 0}" style="--hue:${hue(n)}"><strong>${n}</strong></button>`).join('')}</div>
+      <p class="byd-hint">Välj → läs → spela · håll för att välja flera</p>
+      <section class="byd-hand-actions"><p>Valt: Quickdraw</p><button>Läs valt kort</button>
+        <div class="byd-hand-targets"><button>Till saloonen</button><button>Framför mig</button><button>Kasta</button><button>Spela…</button></div></section>
+      <details class="byd-personal"><summary>Framför dig · 0</summary></details>
+      <details class="byd-phone-table"><summary>Ytorna</summary></details>
+      <details class="byd-phone-history"><summary>Senast</summary></details>
+    </main>
+    ${v === 'c' ? `<div class="tel-botten"><button data-regler aria-expanded="${s.oppen[i]}">${BOK}Regler</button></div>` : ''}
+  </div>`
+}
+
+function boken(v) {
+  return `<aside class="byd-rules-panel" role="dialog" aria-label="Regler">
+    <div class="byd-rules-ask"><input type="search" aria-label="Vad undrar du?" placeholder="Vad undrar du?"><button type="button" aria-label="Stäng reglerna" data-stang>×</button></div>
+    <div class="byd-rules-body"><h2>Sal's Saloon</h2><p>Varje spelare börjar med fem kort och fyra poäng. Den som sitter närmast dörren börjar.</p><p>På din tur drar du ett kort ur Kortleken och spelar sedan ett kort till Saloonen eller framför dig.</p><p>Ett kort med en sheriffstjärna vänds upp genast. Ett kort framför dig räknas i slutet av rundan.</p></div>
+    ${v === 'nu' ? '' : ''}</aside>${v === 'nu' ? '<span class="tel-under-boken">under boken: «Stäng reglerna»</span>' : ''}`
+}
+
+function arket() {
+  return `<div class="byd-sheet-backdrop" data-bak><div class="byd-sheet" role="dialog" aria-labelledby="mer-titel">
+    <p class="byd-sheet-title" id="mer-titel">Mer</p>
+    <button type="button" class="tel-mer-regler" data-regler>${BOK}Regler<small>spelets regelbok</small></button>
+    <div class="byd-exit-choice"><button data-kind="leave">Lämna bordet</button><p>Din plats blir ledig och korten i din hand går tillbaka i draghögen. De andra spelar vidare.</p></div>
+    <div class="byd-exit-choice"><button data-kind="no">Avsluta bordet för alla</button><p>Ingen kan spela vidare, och alla får enkäten på sin telefon. Vi frågar en gång till innan det sker.</p></div>
+    <div class="byd-sheet-actions"><button data-stang-ark>Stäng</button></div></div></div>`
+}
+
+function rita(l) {
+  lage = l ?? lage
+  const v = lage.v
+  document.getElementById('ord-del').hidden = v !== 'b'
+  document.getElementById('anteckning').innerHTML = NOT[v]
+  const matt = []
+  for (const [i, f] of ramar.entries()) {
+    f.vy.innerHTML = telefon(v, i)
+    for (const o of f.skarm.querySelectorAll('.byd-rules-panel, .tel-under-boken, .byd-sheet-backdrop')) o.remove()
+    if (s.oppen[i]) f.skarm.insertAdjacentHTML('beforeend', boken(v))
+    if (s.mer[i]) f.skarm.insertAdjacentHTML('beforeend', arket())
+    const h = f.vy.querySelector('header')
+    const knappar = [...h.querySelectorAll('button')].map((b) => b.offsetTop)
+    const rader = new Set(knappar).size
+    const behov = [...h.children].reduce((sum, e) => { const cs = getComputedStyle(e); return sum + e.offsetWidth + parseFloat(cs.marginLeft) + parseFloat(cs.marginRight) }, 0) + 10 * (h.children.length - 1)
+    matt.push(`<span>Vid ${f.w}: huvudet <u>${h.offsetHeight} px</u> · ${rader === 1 ? "en rad" : `<u>${rader} rader</u>`} · raden behöver <u>${Math.round(behov)}</u> av ${h.clientWidth - 32} px</span>`)
+  }
+  matt.push(`<span>Till boken: <u>${v === 'a' ? '2 tryck' : '1 tryck'}</u></span>`)
+  document.getElementById('matt').innerHTML = matt.join('')
+  skala()
+}
+
+document.body.addEventListener('click', (e) => {
+  const b = e.target.closest('button, [data-bak]'); if (!b) return
+  const i = ramar.findIndex((f) => f.skarm.contains(b)); if (i < 0) return
+  if (b.hasAttribute('data-regler')) { s.mer[i] = false; s.oppen[i] = !s.oppen[i]; rita(); if (s.oppen[i]) ramar[i].skarm.querySelector('.byd-rules-ask input')?.focus() }
+  else if (b.hasAttribute('data-stang')) { s.oppen[i] = false; rita(); ramar[i].skarm.querySelector('[data-regler], [data-mer]')?.focus() }
+  else if (b.hasAttribute('data-mer')) { s.mer[i] = true; rita(); ramar[i].skarm.querySelector('.tel-mer-regler')?.focus() }
+  else if (b.hasAttribute('data-stang-ark') || (b.hasAttribute('data-bak') && e.target === b)) { s.mer[i] = false; rita() }
+})
+// Escape stänger boken och lämnar fokus på knappen som öppnade den (AFK i alla varianter).
+addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return
+  const i = ramar.findIndex((f) => f.skarm.contains(document.activeElement)); if (i < 0) return
+  if (s.oppen[i] || s.mer[i]) { s.oppen[i] = false; s.mer[i] = false; rita(); ramar[i].skarm.querySelector('[data-regler], [data-mer]')?.focus() }
+})
+
+vaxlare({ v: ['nu', 'a', 'b', 'c'], ord: ["ord", "tecken"], namn: ["Bea", "Margareta"] }, (l) => { s.oppen = [false, false]; s.mer = [false, false]; rita(l) })
+</script>
+</body>
+</html>

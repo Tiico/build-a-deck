@@ -249,6 +249,7 @@ export const svPlay = {
   'rewind.ask.body': 'Bordet visar hur det såg ut. Draghögen blandas om.',
   'rewind.approve': 'Godkänn',
   'rewind.decline': 'Neka',
+  'rewind.declined': '{who} sa nej till att spola tillbaka.',
 
   // Fördjupningen bakom frågetecknet (L32:s tillägg, #305). Samma låda som i editorn, på en
   // smalare skärm: den hänger över filtens övre del och täcker ingenting man spelar med, och
@@ -265,8 +266,11 @@ export const svPlay = {
   'player.hint.selected.other': '{n} valda · dra upp för att spela',
   'player.counter.minus': '{name} minus',
   'player.counter.plus': '{name} plus',
+  'player.counter.set': '{name}: {value}. Sätt värde',
   'player.mine.title': 'Framför dig · {n}',
   'player.mine.flip.down': 'Vänd ner',
+  'player.mine.down': 'nervänt · bara du',
+  'player.mine.down.label': '{name}, nervänt – bara du ser det',
   'player.mine.flip.up': 'Vänd upp',
   'player.mine.take': 'Ta upp',
   'player.mine.play': 'Spela…',

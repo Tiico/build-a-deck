@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { Snapshot } from '@byd/protocol'
 import { isCounter } from '../components.js'
 import { Refusal, type RefusalHandle } from '../status/Refusal.js'
@@ -53,6 +54,20 @@ function tilesOf(view: Snapshot, keep: (z: Snapshot['zones'][number]) => boolean
 // area to the sheet would also give the phone four buttons reading «Framför mig», because the
 // shortcut is written from its owner's point of view; giving cards away is a verb this tool does
 // not have, and adding one is a decision and not a filter.
+// The sheet's places as rows of words: what each target is called and what the line under it says.
+// The keyboard panel behind Enter on the phone offers exactly these (#483, beslut A efter prototyp
+// 33), so both read them from here.
+export type SheetPlace = { key: string; label: string; hint: string; zone: string; at: Placement }
+export function sheetPlaces(view: Snapshot, t: T = swedish): SheetPlace[] {
+  return targetsOf(view, t).map((target) => ({
+    key: `z:${target.id}`,
+    label: target.label,
+    hint: target.kind === 'pile' ? t(placeKey(target.at, target.count), { n: target.count, zone: target.name }) : t('play.target.free'),
+    zone: target.id,
+    at: target.at,
+  }))
+}
+
 export function targetsOf(view: Snapshot, t: T = swedish) {
   const mine = (z: Snapshot['zones'][number]) => z.owner === undefined || z.owner === view.seat
   const table = t('play.table')
@@ -75,6 +90,11 @@ export function overviewOf(view: Snapshot) {
 
 export function PlaySheet({ view, count, label, onPlay, onClose, refusal, refusedZone = null }: PlaySheetProps) {
   const t = useT()
+  // Back to what had the focus when the sheet opened — the card it was lifted from — when it closes
+  // and that is still there (#483), the way the held-up card does it. A card that was played is
+  // gone, and the browser's own place for the focus is then no worse than before.
+  const [opener] = useState(() => (typeof document === 'undefined' ? null : document.activeElement))
+  useEffect(() => () => void (opener instanceof HTMLElement && opener.isConnected && opener.focus()), [opener])
   return (
     // The backdrop closes on the next touch rather than on click: the sheet opens under a finger
     // that is still down, and a click is what the browser sends when that finger lets go (UX-30).
@@ -93,19 +113,19 @@ export function PlaySheet({ view, count, label, onPlay, onClose, refusal, refuse
           {t('play.sheet.verb')} <strong>{count > 1 ? t('play.cards.other', { n: count }) : label}</strong> {t('play.sheet.into')}
         </p>
         <div className="byd-sheet-targets">
-          {targetsOf(view, t).map((target, i) => (
+          {sheetPlaces(view, t).map((target, i) => (
             <button
-              key={target.id}
+              key={target.key}
               type="button"
               // The sheet takes focus when it opens, on the target a thumb would land on first:
               // a modal without focus is one Escape and Tab cannot reach.
               autoFocus={i === 0}
-              onClick={() => onPlay(target.id, target.at)}
-              className={refusedZone === target.id ? 'byd-status-refused-control' : undefined}
-              {...(refusedZone === target.id && refusal ? refusal.control : {})}
+              onClick={() => onPlay(target.zone, target.at)}
+              className={refusedZone === target.zone ? 'byd-status-refused-control' : undefined}
+              {...(refusedZone === target.zone && refusal ? refusal.control : {})}
             >
               <span>{target.label}</span>
-              <small>{target.kind === 'pile' ? t(placeKey(target.at, target.count), { n: target.count, zone: target.name }) : t('play.target.free')}</small>
+              <small>{target.hint}</small>
             </button>
           ))}
         </div>

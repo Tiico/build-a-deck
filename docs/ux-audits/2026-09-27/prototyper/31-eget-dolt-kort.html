@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 31 — Ditt eget dolda kort (#483 fynd 8)</title>
+<link rel="stylesheet" href="proto.css">
+<link rel="stylesheet" href="telefon.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Bea vänder ner ett av sina kort på ytan framför sig. Ytan är publik (L48), och `canSeeFace`
+     kräver framsidan i en `all`-zon, så projektionen ger `cardRef: null` till alla — Bea också.
+     Telefonen skriver «Dolt kort» om hennes eget kort, fast `MineActions` säger i sin kommentar att
+     kortet «is still yours to read».
+
+       Nu  «Dolt kort» för alla, utan ett ord om varför
+       A   ägaren ser framsidan på sin telefon; de andra och TV:n får fortfarande null
+       B   ägaren ser «Dolt kort» och en «Håll för att titta» som visar framsidan bara medan hon håller
+       C   som i dag, med ord som säger varför och vad Vänd ner kostar
+
+     Öppna ett kort under «Framför dig» och vänd det. Tråden till höger visar vad varje anslutning
+     får om det nervända kortet. ──────────────────────────────────────────────────────────── */
+  .tel-scen { gap: var(--s5); }
+  .tel-sida { flex-basis: 400px; }
+  /* A: framsidan i en ram av baksidans ränder, så att «ligger nervänt» syns utan att läsas. */
+  .byd-mine-card[data-face='egen'] .byd-mine-face { border: 7px solid transparent; border-image: repeating-linear-gradient(45deg, #3a4d7a 0 4px, #2f4068 4px 8px) 7; padding: 6px; }
+  .tel-nere { position: absolute; left: 6px; right: 6px; bottom: 6px; padding: 2px 6px; border-radius: 999px; background: #1b1e27; color: #cfd6e4; font: 600 10px system-ui; text-align: center; }
+  .byd-inspect > [data-inspect][data-face='egen'] { border: 16px solid transparent; border-image: repeating-linear-gradient(45deg, #3a4d7a 0 8px, #2f4068 8px 16px) 16; padding: 16px; }
+  .tel-rad { width: 100%; max-width: 420px; margin: 0; padding: 10px 12px; border-radius: 12px; background: #1b1e27; color: #cfd6e4; font-size: 13px; line-height: 1.45; text-align: left; }
+  .tel-rad b { color: #fff; }
+  .tel-under { display: block; font-size: 11px; font-weight: 500; color: #9aa3b8; margin-top: 2px; white-space: normal; }
+  .byd-mine-actions button small { display: block; font-size: 12px; font-weight: 500; color: #9aa3b8; }
+  .tel-titta { min-height: 48px; width: 100%; max-width: 420px; border: 1px solid #7dd3a0 !important; border-radius: 12px; background: #14161c !important; color: #7dd3a0 !important; font: 700 15px system-ui; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .tel-trad-rad { display: grid; grid-template-columns: 94px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-top: 1px solid #3a3322; }
+  .tel-trad-rad:first-of-type { border-top: 0; }
+  .tel-trad-rad > span { color: #ffd98a; font-weight: 600; }
+  .tel-trad-rad pre { margin: 0 !important; }
+  .tel-trad-rad em { display: block; font-style: normal; font-size: 11px; margin-top: 2px; }
+  .tel-sida .tel-logg { margin: 8px 0 0; padding: 0; list-style: none; }
+  .tel-logg li { padding: 3px 0; border-top: 1px solid #3a3322; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a" data-rek>A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#483 fynd 8 · Ditt eget kort, vänt ner framför dig.</b> Tryck på ett kort under «Framför dig» och vänd det ner eller upp. I B: håll «Håll för att titta».</p>
+    <p>Rutan «Tråden» till höger är vad servern skickar om det nervända kortet till varje anslutning — det är där dold information avgörs, inte på skärmen.</p>
+  </div>
+  <div class="matt" id="matt"></div>
+  <button type="button" id="aterstall">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="tel-scen">
+  <div class="tel-telefoner" id="telefoner"></div>
+  <aside class="tel-sida">
+    <section class="tel-ruta trad" id="trad"></section>
+    <section class="tel-ruta">
+      <h2>Regeln i dag</h2>
+      <ul>
+        <li><code>visibility.ts</code> <code>canSeeFace</code>: i en <code>all</code>-zon syns kortet bara med framsidan upp. Ägarskap räknas bara i en <code>owner</code>-zon. Undantagen är <code>shownTo</code>, <code>peekedBy</code> och <code>publicOverride</code>.</li>
+        <li><code>project.ts</code>: <code>cardRef: visible ? c.cardRef : null</code>, och titeln följer samma <code>visible</code>. Nervänt framför Bea blir alltså null till Bea, Ada och TV:n.</li>
+        <li><code>SeatExtras.tsx</code> <code>MineActions</code>: «a card you played face down in front of you is still yours to read» — koden antar det projektionen inte ger.</li>
+        <li>L48 och C4: ytan framför en plats är <code>all</code>. «Då vet ingen vad det är, inte heller den som lade det.» Mellanläget avvisades därför; «ett <code>showTo</code> till ägaren eller en fjärde synlighet» vore ett eget beslut.</li>
+        <li><code>peek</code> finns i motorn: den lägger platsen i <code>peekedBy</code>, <code>flip</code> rensar det inte, en flytt ut ur zonen gör det. Senast-raden: «Bea tittade på ett kort».</li>
+        <li>K15: «dras det in i en hand följer ingen kunskap med». Regeln i repot: dold information verifieras på nätverkstrafiken (<code>private-area.spec.ts</code>, <code>cardsIn</code>/<code>mentions</code>).</li>
+      </ul>
+    </section>
+    <section class="tel-ruta rek">
+      <h2>Rekommendation · A</h2>
+      <p><b>Ägaren ser sitt nervända kort.</b> Det är vad bordet i rummet gör: den som lade kortet vet vad det är och kan lyfta på hörnet när hon vill, de andra ser ryggen. Koden bakom «Vänd upp» antar det redan.</p>
+      <p>Byggs utan ny synlighet och utan protokollmigrering: «Vänd ner» på telefonen skickar <code>flip</code> och <code>peek</code> i ett kuvert, och <code>peekedBy</code> gör resten. Ett trafiktest bevisar det: Beas ramar bär kortet, Adas och TV:ns gör det inte.</p>
+    </section>
+  </aside>
+</div>
+<script src="telefon.js"></script>
+<script>
+const { hue, ram, skala, vaxlare } = Telefon
+const START = (v) => ({
+  kort: [
+    { id: 'k-12', ref: 'quickdraw', namn: 'Quickdraw', face: 'front' },
+    { id: 'k-17', ref: 'sheriffs-check', namn: "Sheriff's Check", face: 'back' },
+  ],
+  // Vem som har `peekedBy` på kortet. I A kom kortet ner genom telefonens «Vänd ner», som tittar.
+  tittat: new Set(v === "a" ? ["k-17"] : []),
+  logg: ['Bea spelade Sheriff’s Check till Framför Bea', 'Bea vände ett kort', ...(v === "a" ? ["Bea tittade på ett kort"] : [])],
+  upp: null, haller: false,
+})
+let s = START("nu")
+const HAND = ['Whiskey Run', 'Tumbleweed', 'Dead Man’s Hand']
+
+const NOT = {
+  nu: '<b>Nu.</b> Beas eget kort, vänt ner framför henne, heter «Dolt kort» också på hennes telefon, och uppslaget visar ryggen. <span class="minus">− Inget säger varför; det ser ut som ett fel. Koden bakom «Vänd upp» antar att hon kan läsa kortet. Bordet i rummet fungerar inte så: den som lade kortet vet vad det är.</span>',
+  a: '<b>A · Ägaren ser framsidan.</b> Kortet ritas med sin framsida i en ram av ryggens ränder och raden «nervänt · bara du». <span class="plus">+ Som bordet i rummet; det koden redan antar. Via <code>flip</code> + <code>peek</code>: ingen ny synlighet, inget nytt verb; TV:n och Ada får fortfarande null.</span> <span class="minus">− Senast säger «Bea tittade på ett kort» (sant, men en rad till). Vänds kortet ner av någon annan — bordsskärmen, som saknar plats — tittar ingen åt Bea; bara en projektionsregel («ägaren av en <code>all</code>-yta ser nervänt») täcker det, och den är en fjärde synlighet.</span>',
+  b: '<b>B · «Dolt kort» och «Håll för att titta».</b> Framsidan syns bara medan tummen håller. <span class="plus">+ Ett medvetet titta, som att lyfta på hörnet; ingenting syns av misstag på en telefon som ligger på bordet.</span> <span class="minus">− För att visa framsidan måste telefonen ha den: antingen skickar första hållet <code>peek</code>, och sedan bär Beas tråd kortet för gott medan skärmen gömmer det (det L48 kallar tillståndet regeln om dold information finns för), eller så behövs ett nytt engångssvar från servern — ett nytt meddelande och ett eget beslut. Ett tryck och ett håll till för något hon redan vet.</span>',
+  c: '<b>C · Som i dag, med ord.</b> «Dolt kort» står kvar, och uppslaget säger varför. «Vänd ner» säger vad det kostar innan man trycker. <span class="plus">+ Ingen ändring av tråden, projektionen eller testerna; ärligt mot L48 som det står.</span> <span class="minus">− Ärligt om ett tillstånd som inte finns vid ett riktigt bord: Bea måste komma ihåg sitt eget kort, eller vända upp det för alla för att se det. En lek med «lägg nervänt, avslöja senare» går inte att spela.</span>',
+}
+
+const ramen = ram(document.getElementById('telefoner'), 390, 844)
+let lage
+// Vad Beas telefon får veta om kortet: projektionens svar i varianten.
+const beaSer = (k, v) => k.face === 'front' || ((v === 'a' || v === 'b') && s.tittat.has(k.id))
+const syns = (k, v) => k.face === 'front' || (v === 'a' && beaSer(k, v)) || (v === 'b' && s.haller && s.upp === k.id)
+
+function kortet(k, v) {
+  const upp = k.face === 'front'
+  const egen = !upp && v === 'a' && beaSer(k, v)
+  const namn = upp || egen ? k.namn : 'Dolt kort'
+  return `<div class="byd-mine-item">
+    <button type="button" class="byd-mine-card" data-oppna="${k.id}" data-face="${upp ? 'front' : egen ? 'egen' : 'back'}" aria-label="${namn}${egen ? ', nervänt' : ''}" style="--hue:${hue(k.ref)}">
+      <i class="byd-mine-face">${upp || egen ? namn : ''}${egen ? '<span class="tel-nere">nervänt · bara du</span>' : ''}</i>
+      <strong aria-hidden="true">${namn}</strong>
+      ${!upp && v === 'c' ? '<span class="tel-under">Nervänt: ingen vet vad det är, inte heller du.</span>' : ''}
+    </button>
+    <button type="button" class="byd-mine-quick" aria-label="Ta upp ${namn}">Ta upp</button>
+    <button type="button" class="byd-mine-quick" aria-label="Kasta ${namn}">Kasta</button>
+  </div>`
+}
+
+function telefon(v) {
+  return `<div class="byd-player">
+    <header><strong>Bea</strong><span>3 kort</span><button class="tel-hjalp" aria-label="Hjälp om handen"><span>?</span></button>
+      <button>↶ Ångra</button><button>⚑ Flagga</button><button aria-label="Ut… ur bordet">Ut…</button></header>
+    <div class="byd-counters"><div class="byd-counter"><button aria-label="Poäng minus">−</button><div><b>4</b><span>Poäng</span></div><button aria-label="Poäng plus">+</button></div></div>
+    <main class="byd-phone-main">
+      <h1>Dina kort</h1>
+      <div class="byd-summary-zones"><button><strong>Kasthög</strong><span>5 kort</span><em>Dra 1 till min hand</em></button><button><strong>Kortlek</strong><span>104 kort</span><em>Dra 1 till min hand</em></button></div>
+      <div class="byd-strip">${HAND.map((n, i) => `<button class="byd-strip-card" data-selected="${i === 0}" style="--hue:${hue(n)}"><strong>${n}</strong></button>`).join('')}</div>
+      <p class="byd-hint">Välj → läs → spela · håll för att välja flera</p>
+      <section class="byd-hand-actions"><p>Valt: Whiskey Run</p><button>Läs valt kort</button>
+        <div class="byd-hand-targets"><button>Till saloonen</button><button>Framför mig</button><button>Kasta</button><button>Spela…</button></div></section>
+      <details class="byd-personal" open data-personal><summary>Framför dig · ${s.kort.length}</summary>
+        <section class="byd-mine"><div class="byd-mine-strip">${s.kort.map((k) => kortet(k, v)).join('')}</div></section></details>
+      <details class="byd-phone-table"><summary>Ytorna</summary></details>
+      <details class="byd-phone-history" open><summary>Senast</summary><ol>${[...s.logg].reverse().slice(0, 4).map((l) => `<li>${l}</li>`).join('')}</ol></details>
+    </main>
+  </div>`
+}
+
+function uppslaget(v) {
+  const k = s.kort.find((x) => x.id === s.upp)
+  const upp = k.face === 'front'
+  const visa = syns(k, v)
+  const egen = !upp && visa
+  const namn = upp || (v === 'a' && egen) ? k.namn : 'Dolt kort'
+  let rad = ''
+  if (!upp && v === 'a') rad = '<p class="tel-rad"><b>Nervänt.</b> Bara du ser framsidan; bordet och de andra ser ryggen.</p>'
+  if (!upp && v === 'b') rad = `<button type="button" class="tel-titta" data-titta aria-pressed="${s.haller}">${s.haller ? `${k.namn} · släpp för att dölja` : 'Håll för att titta'}</button>`
+  if (!upp && v === 'c') rad = '<p class="tel-rad"><b>Dolt kort.</b> Det ligger nervänt på en yta alla ser, och då vet ingen vad det är — inte heller du. Vänd upp det för att se det; då ser alla det.</p>'
+  const vandNer = v === 'c' ? 'Vänd ner<small>sedan ser ingen vad det är, inte heller du</small>' : v === 'a' ? 'Vänd ner<small>bara du ser det sedan</small>' : 'Vänd ner'
+  return `<div class="byd-inspect" role="dialog" aria-label="${namn}" data-inspect-bak>
+    <div data-inspect data-face="${upp ? 'front' : egen ? 'egen' : 'back'}" style="--hue:${hue(k.ref)}">${visa ? k.namn : ''}</div>
+    ${rad}
+    <div class="byd-mine-actions"><button type="button" data-vand="${k.id}">${upp ? vandNer : 'Vänd upp'}</button><button type="button">Ta upp</button><button type="button">Spela…</button></div>
+    <button class="byd-inspect-close" type="button" data-stang>Stäng</button>
+  </div>`
+}
+
+function tradRad(vem, k, v) {
+  const ref = vem === 'Bea' ? beaSer(k, v) : false
+  const obj = { id: k.id, zone: 'framfor:B', face: k.face, cardRef: ref ? k.ref : null, ...(ref ? { title: k.namn } : {}) }
+  let om = '<em class="dold">null — vet inte vad det är</em>'
+  if (ref) om = v === 'b' && !(s.haller && s.upp === k.id) ? '<em class="lacker">bär kortet, men skärmen gömmer det</em>' : '<em class="dold">ägaren vet — hon lade det</em>'
+  return `<div class="tel-trad-rad"><span>Till ${vem}${vem === 'Bea' ? '<br><small>äger ytan</small>' : ''}</span><div><pre>${JSON.stringify(obj, null, 1).replace(/\n\s*/g, " ").replace("{ ", "{").replace(" }", "}")}</pre>${om}</div></div>`
+}
+
+function rita(l) {
+  lage = l ?? lage
+  const v = lage.v
+  document.getElementById('anteckning').innerHTML = NOT[v]
+  const scroll = ramen.vy.scrollTop
+  ramen.vy.innerHTML = telefon(v)
+  ramen.vy.scrollTop = scroll
+  ramen.skarm.querySelector('.byd-inspect')?.remove()
+  if (s.upp) ramen.skarm.insertAdjacentHTML('beforeend', uppslaget(v))
+  const nere = s.kort.filter((k) => k.face === 'back')
+  document.getElementById('trad').innerHTML = `<h2>Tråden · det nervända kortet</h2>${nere.length ? nere.map((k) => ['Bea', 'Ada', 'TV:n'].map((vem) => tradRad(vem, k, v)).join('')).join('') : '<p>Inget kort ligger nervänt. Vänd ner ett under «Framför dig».</p>'}
+    <ul class="tel-logg">${[...s.logg].reverse().slice(0, 4).map((l) => `<li>Senast: ${l}</li>`).join('')}</ul>`
+  const beaVet = nere.filter((k) => beaSer(k, v)).length
+  document.getElementById('matt').innerHTML = `<span>Nervända: <u>${nere.length}</u></span><span>Som Beas tråd bär: <u>${beaVet}</u></span><span>Som Adas och TV:ns bär: <u>0</u></span>`
+  skala()
+}
+
+function vand(id) {
+  const k = s.kort.find((x) => x.id === id)
+  k.face = k.face === 'front' ? 'back' : 'front'
+  s.logg.push('Bea vände ett kort')
+  // A: telefonens «Vänd ner» är `flip` + `peek` i ett kuvert.
+  if (k.face === 'back' && lage.v === 'a') { s.tittat.add(k.id); s.logg.push('Bea tittade på ett kort') }
+  s.upp = null; rita()
+}
+
+document.body.addEventListener('click', (e) => {
+  const b = e.target.closest('button, [data-inspect-bak]'); if (!b) return
+  if (b.id === 'aterstall') { s = START(lage.v); rita(); return }
+  if (b.dataset.oppna) { s.upp = b.dataset.oppna; rita(); ramen.skarm.querySelector('[data-stang]')?.focus() }
+  else if (b.dataset.vand) vand(b.dataset.vand)
+  else if (b.hasAttribute('data-stang') || (b.hasAttribute('data-inspect-bak') && e.target === b)) { s.upp = null; s.haller = false; rita() }
+})
+// B: titta medan tummen eller mellanslaget håller.
+const titta = (på) => {
+  if (s.haller === på) return
+  s.haller = på
+  if (på && !s.tittat.has(s.upp)) { s.tittat.add(s.upp); s.logg.push('Bea tittade på ett kort') }
+  rita(); ramen.skarm.querySelector('[data-titta]')?.focus()
+}
+ramen.skarm.addEventListener('pointerdown', (e) => { if (e.target.closest('[data-titta]')) { e.preventDefault(); titta(true) } })
+addEventListener('pointerup', () => { if (s.haller) titta(false) })
+ramen.skarm.addEventListener('keydown', (e) => { if (e.key === ' ' && e.target.closest('[data-titta]')) { e.preventDefault(); titta(true) } if (e.key === 'Escape' && s.upp) { s.upp = null; s.haller = false; rita() } })
+ramen.skarm.addEventListener('keyup', (e) => { if (e.key === ' ' && s.haller) titta(false) })
+
+vaxlare({ v: ['nu', 'a', 'b', 'c'] }, (l) => {
+  s = START(l.v)
+  rita(l)
+  // Framför dig i synfältet, som efter ett spel dit (C4: att spela till sin yta öppnar den).
+  ramen.vy.scrollTop = ramen.vy.querySelector('[data-personal]').offsetTop - 12
+})
+</script>
+</body>
+</html>
