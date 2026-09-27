@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 20 — Handbrickan på TV:n (#482 fynd 5)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     TV:ns antal-på-hand-brickor hänger utanför handens solfjäder, 13–15 px från skärmens kant —
+     inne i det band på 32 px (3 % av kortsidan) som en TV får dölja (C5, #322). Att dra tillbaka
+     bilden så att de hamnar utanför bandet kostar kortstorlek: 45 → 43 px vid åtta platser, under
+     K9:s golv på 45, och fyraplatsbordets kort under grinden på 76. Kommentaren i
+     `felt-names.test.tsx` säger det: nästa sak som kostar filten höjd bryter K9. Så det är ett
+     formval, inte en inpassning.
+
+       Nu  brickan hänger utåt, i overscan-bandet
+       A   bilden dras tillbaka: brickan utanför bandet, kortet mindre (bryter K9 — skriv om K9)
+       B   brickan hänger inåt, över solfjäderns hörn, som #413 nämnde som den andra vägen ut
+       C   ingen bricka på TV:ns filt: spalten säger redan «4 kort på hand» per plats
+
+     Ramen är en TV på 1920 × 1080 skalad till fönstret. Det rödtonade bandet är overscan. ─── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .scen { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; background: #0a0c10; overflow: hidden; }
+  .tv { position: relative; width: 1920px; height: 1080px; background: #0f1218; transform-origin: 0 0; }
+  .band { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 32px rgb(240 120 100 / 16%); z-index: 20; }
+  .band span { position: absolute; left: 40px; top: 6px; color: #f0a58a; font: 700 14px system-ui; }
+  .filt { position: absolute; background: #151924; border: 1px solid #262b38; border-radius: 16px; }
+  .spalt { position: absolute; right: 0; top: 0; bottom: 0; width: 360px; background: #0c0e13; border-left: 1px solid #1a1e29; padding: 30px 20px; box-sizing: border-box; color: #dce3f2; font: 14px system-ui; }
+  .spalt h2 { margin: 16px 0 10px; font-size: 12px; letter-spacing: 2px; color: #7d8597; }
+  .plats { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: center; background: #151924; border-radius: 12px; padding: 9px 12px; margin-bottom: 8px; border-left: 6px solid var(--c); }
+  .plats i { width: 40px; height: 40px; border-radius: 50%; background: var(--c); display: grid; place-items: center; font: 800 18px system-ui; font-style: normal; color: #10131a; }
+  .plats b { display: block; font-size: 17px; }
+  .plats small { color: #9aa3b8; font-size: 13px; }
+  .solfjader { position: absolute; width: 110px; height: 90px; }
+  .solfjader i { position: absolute; width: 63px; height: 88px; border-radius: 6px; background: repeating-linear-gradient(45deg, #26324a 0 6px, #2d3a55 6px 12px); border: 1px solid #3b4a6b; }
+  .bricka { position: absolute; z-index: 5; min-width: 22px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: 999px; background: #0c0e13; color: #fff; font: 800 14px system-ui; display: grid; place-items: center; }
+  .kort { position: absolute; width: var(--k); aspect-ratio: 63 / 88; border-radius: 5px; background: #f4ead8; }
+  .mattlapp { position: absolute; left: 40px; bottom: 40px; z-index: 21; color: #dce3f2; font: 16px system-ui; background: #1b1d23; border: 1px solid #3b414e; border-radius: 10px; padding: 10px 14px; }
+  .mattlapp b { color: #fff; }
+  .mattlapp .fel { color: #f0a58a; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#482 fynd 5 · Var antalet på hand står på TV:n.</b> Titta på översta platsens bricka mot det rödtonade overscan-bandet, och på kortstorleken i rutan nere till vänster.</p>
+    <p>Kortmåtten är de uppmätta ur `felt-names.test.tsx` vid åtta platser (Nu 45 px, A 43 px); K9:s golv är 45.</p>
+  </div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="scen" id="scen"><div class="tv" id="tv"></div></div>
+<script>
+const s = { v: 'b' }
+const NOT = {
+  nu: '<b>Nu.</b> Brickan hänger utåt från solfjädern, 13–15 px från kanten. <span class="minus">− En TV som döljer sin kant döljer antalet vid platserna uppe och nere.</span>',
+  a: '<b>A · Dra tillbaka bilden.</b> Brickan hamnar utanför bandet; hela filten blir mindre. <span class="minus">− Åttaplatsbordets kort 45 → 43 px, under K9:s golv; fyraplatsbordets kort under 76. K9 skrivs om.</span>',
+  b: '<b>B · Inåt, över solfjäderns hörn.</b> Brickan sitter på solfjäderns inre hörn, mot bordets mitt. <span class="plus">+ Ingen kortstorlek betalas; brickan hör synligt till handen.</span> <span class="minus">− En ny form (#413 lät bli den med flit); brickan skymmer ett hörn av översta kortryggen.</span>',
+  c: '<b>C · Ingen bricka på TV:ns filt.</b> Spalten säger redan «4 kort på hand» vid varje plats. <span class="plus">+ Enklast; inget i overscan, inget betalt i kort.</span> <span class="minus">− Antalet står en blickvändning bort från handen; bordsläget har kvar sina brickor, så TV och bord skiljer sig.</span>',
+}
+const PLATSER = [['A', 'Ada', 4, '#e05d5d', 'S'], ['B', 'Bo', 3, '#3c8ce7', 'N'], ['C', 'C', 1, '#3fb27f', 'E'], ['D', 'D', 0, '#e0a93b', 'W']]
+function rita() {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  document.getElementById('anteckning').innerHTML = NOT[s.v]
+  const indrag = s.v === 'a' ? 70 : 56
+  const f = { l: indrag, t: indrag, r: 360 + indrag, b: indrag }
+  const kortPx = s.v === 'a' ? 43 : 45
+  const tv = document.getElementById('tv')
+  const handar = [
+    { plats: 'B', x: 1560 / 2 - 55 + f.l / 2, y: f.t - 50, uppat: true, n: 3 },
+    { plats: 'A', x: 1560 / 2 - 55 + f.l / 2, y: 1080 - f.b - 40, uppat: false, n: 4 },
+  ]
+  const bricka = (h) => {
+    if (s.v === 'c') return ''
+    const inat = s.v === 'b'
+    const x = h.x + 100
+    const y = inat ? (h.uppat ? h.y + 78 : h.y - 10) : h.uppat ? h.y - 34 + (s.v === 'a' ? 0 : 0) : h.y + 98
+    return `<div class="bricka" style="left:${x}px;top:${y}px">${h.n}</div>`
+  }
+  tv.innerHTML = `
+    <div class="filt" style="left:${f.l}px;top:${f.t}px;right:${f.r}px;bottom:${f.b}px"></div>
+    ${handar.map((h) => `<div class="solfjader" style="left:${h.x}px;top:${h.y}px">${[0, 1, 2].map((i) => `<i style="left:${i * 18}px;top:${h.uppat ? -i * 2 : i * 2}px;transform:rotate(${(i - 1) * 8}deg)"></i>`).join('')}</div>${bricka(h)}`).join('')}
+    ${[0, 1, 2, 3].map((i) => `<div class="kort" style="--k:${kortPx}px;left:${f.l + 380 + i * (kortPx + 14)}px;top:${520}px"></div>`).join('')}
+    <aside class="spalt"><h2>PLATSER</h2>${PLATSER.map(([id, namn, n, c]) => `<div class="plats" style="--c:${c}"><i>${id}</i><span><b>${namn}</b><small>${n} kort på hand</small></span></div>`).join('')}</aside>
+    <div class="band"><span>overscan · 32 px</span></div>
+    <div class="mattlapp">Kort vid åtta platser: <b class="${kortPx < 45 ? 'fel' : ''}">${kortPx} px</b> (K9:s golv 45) · Brickan: <b class="${s.v === 'nu' ? 'fel' : ''}">${s.v === 'c' ? 'ingen på filten' : s.v === 'nu' ? 'i bandet' : 'utanför bandet'}</b></div>`
+  const scen = document.getElementById('scen')
+  const k = Math.min((scen.clientWidth - 20) / 1920, (scen.clientHeight - 20) / 1080)
+  tv.style.transform = `scale(${k})`
+  tv.style.marginRight = `${1920 * k - 1920}px`; tv.style.marginBottom = `${1080 * k - 1080}px`
+}
+document.body.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-v]'); if (!b) return
+  s.v = b.dataset.v; const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita()
+})
+addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  s.v = alla[(alla.indexOf(s.v) + (e.key === 'ArrowRight' ? 1 : 3)) % 4]
+  const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita()
+})
+addEventListener('resize', rita)
+const q = new URLSearchParams(location.search).get('v')
+if (['nu', 'a', 'b', 'c'].includes(q)) s.v = q
+rita()
+</script>
+</body>
+</html>
