@@ -156,8 +156,11 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
         gone.add(under.id)
       }
     }
-    client.setRules({ ...rules, blocks: rules.blocks.filter((b) => !gone.has(b.id)) })
-    setEditing(null)
+    const left = rules.blocks.filter((b) => !gone.has(b.id))
+    client.setRules({ ...rules, blocks: left })
+    // The press that took it away came from the block's own foot, which went with it.
+    const next = left[Math.min(at, left.length - 1)]
+    close(next?.id ?? '', true)
   }
   // A section of the designer's own, at the end of the book, opened where it lands. It stands at
   // the foot of the column the book is found in, because that is where a reader who has read the
@@ -173,6 +176,22 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
     setEditing(head)
   }
   const open = (id: string) => rules && setEditing(id)
+  // Where the focus goes once an open block has closed on a key rather than on the focus leaving
+  // it (#481): back to the block it was writing, or — when the block is gone — to the one now
+  // standing in its place. Left alone it fell to <body> with the field it had been in.
+  const back = useRef<string | null>(null)
+  const close = (id: string, refocus: boolean) => {
+    if (refocus) back.current = id
+    setEditing(null)
+  }
+  useEffect(() => {
+    const id = back.current
+    if (editing !== null || id === null) return
+    back.current = null
+    // A book with nothing left in it has no block to stand on, and the way to write one is next.
+    const to = document.querySelector(`[data-block="${CSS.escape(id)}"] :is([role='button'], .byd-rules-caption-edit)`) ?? document.querySelector('.byd-rules-own')
+    ;(to as HTMLElement | null)?.focus()
+  }, [editing, rules])
   // Going to a picture is going there with the keyboard as well as with the eye: the block takes
   // the focus, so the next key press acts on the picture the count pointed at rather than on
   // whatever the column left behind (L12). `scrollIntoView` is a browser's and not jsdom's.
@@ -434,7 +453,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
                         names={names}
                         assetBase={assetBase}
                         onPatch={(next, gesture) => patch(b.id, next, gesture)}
-                        onClose={() => setEditing(null)}
+                        onClose={(refocus) => close(b.id, refocus)}
                         onRemove={() => remove(b.id)}
                       />
                     ) : writing && b.kind === 'setup' ? (
@@ -779,7 +798,10 @@ function Toc({
   }
   const marked = new Map([...(marks ?? [])].map((section) => [section.id, section.mark]))
   const [first] = silent ?? []
-  if (sections.length === 0) return null
+  // A book without a section still has a column while it can be written in: the way to write the
+  // first section stands in it, and a book left with none — emptied, or imported from a file whose
+  // headings are all of the second rank — lost that way along with the column (#481, fynd 8).
+  if (sections.length === 0 && !onAdd) return null
   // One row, whichever rank it is. What differs is what the row says about itself before it says
   // its own words: a subheading names its rank out loud, because the indent that shows it is worth
   // nothing to a reader who is not looking at it (L12).
@@ -805,6 +827,7 @@ function Toc({
   return (
     <nav className="byd-rules-toc" aria-label={label}>
       <b aria-hidden="true">{label}</b>
+      {sections.length > 0 && (
       <ul>
         {sections.map((section) => (
           <li key={section.heading.id}>
@@ -826,6 +849,7 @@ function Toc({
           </li>
         ))}
       </ul>
+      )}
       {/* The pictures nobody has written an alt text for, counted and gone to (#173). It stands in
           the column and not in a band that scrolls past: the import's report is gone by the next
           morning and the silent pictures are not, and this is "nothing disappears silently" said a
@@ -896,7 +920,8 @@ function Editing({
   names: Names
   assetBase?: string | undefined
   onPatch(next: Partial<RuleBlock>, gesture?: string): void
-  onClose(): void
+  // `refocus` when a key closed the block and the focus has nowhere of its own to go.
+  onClose(refocus: boolean): void
   onRemove(): void
 }) {
   const t = useT()
@@ -993,8 +1018,29 @@ function Editing({
         )}
       </PickList>
     )
+  // A list is closed with its empty points left out: a point nobody wrote is a bullet with nothing
+  // after it in the book (#481, fynd 10).
+  const leave = (refocus: boolean) => {
+    if (block.kind === 'list' && block.items.some((item) => item.trim() === '')) onPatch({ items: block.items.filter((item) => item.trim() !== '') })
+    onClose(refocus)
+  }
   return (
-    <div className="byd-rules-edit">
+    // The block closes when the focus leaves the block and not when it leaves a field (#481):
+    // tabbing from the heading to its chooser, from the picture's words to its caption, or from
+    // any field to the foot under it is staying, not going. Hung on the fields, as it was, a press
+    // on «Ta bort blocket» blurred the field first and the button was gone before it was clicked.
+    <div
+      className="byd-rules-edit"
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) leave(false)
+      }}
+      onKeyDown={(e) => {
+        // Escape belongs to the reference list while it is open, and it says so by taking it.
+        if (e.key !== 'Escape' || e.defaultPrevented) return
+        e.preventDefault()
+        leave(true)
+      }}
+    >
       {/* A section's question is the field's placeholder and never its value (#131), so it is
           gone at the first character rather than being text to select and type over. Under it
           stands the tool's own notice, on a line of its own and always (#215, the approved form
@@ -1019,23 +1065,15 @@ function Editing({
               onPatch({ text: e.target.value }, typing.token())
               openRefs('text', e.target)
             }}
-            onBlur={onClose}
             {...refField('text', (text) => onPatch({ text }))}
           />
           {refList('text', (text) => onPatch({ text }))}
         </div>
       )}
-      {/* The block closes when the focus leaves the row and not when it leaves the field: tabbing
-          from the heading to the chooser beside it is staying, not going. Hung on the field alone,
-          as it was, the chooser could never be reached — reaching for it was what closed the
-          block (#217). The picture's two fields already answer to this rule; so does this row. */}
+      {/* The heading and its chooser stand on one row; reaching for the chooser is staying in the
+          block, which is the block's own edge to decide (#217, #481). */}
       {block.kind === 'heading' && (
-        <div
-          className="byd-rules-row"
-          onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget)) onClose()
-          }}
-        >
+        <div className="byd-rules-row">
           {/* The heading is a field like the paragraph is (#272). It was kept outside this surface
               while a reference in a heading would have stayed seven raw characters (#215, and the
               bug that made it so); the heading reads its references now, so the reason is gone and
@@ -1105,12 +1143,7 @@ function Editing({
               imported book has no captions at all, so this is where every one of them is written.
               The block closes when the focus leaves both of them and not when it leaves either:
               tabbing from the one field to the other is staying, not going. */}
-          <div
-            className="byd-rules-figure-fields"
-            onBlur={(e) => {
-              if (!e.currentTarget.contains(e.relatedTarget)) onClose()
-            }}
-          >
+          <div className="byd-rules-figure-fields">
             <input
               autoFocus
               aria-label={t('rules.block.alt', { id: block.id })}
@@ -1129,7 +1162,7 @@ function Editing({
           </div>
         </>
       )}
-      {block.kind === 'setup' && <input autoFocus aria-label={t('rules.block.caption', { id: block.id })} placeholder={t('rules.caption.placeholder')} value={block.caption ?? ''} {...typing.visit} onChange={(e) => onPatch({ caption: e.target.value }, typing.token())} onBlur={onClose} />}
+      {block.kind === 'setup' && <input autoFocus aria-label={t('rules.block.caption', { id: block.id })} placeholder={t('rules.caption.placeholder')} value={block.caption ?? ''} {...typing.visit} onChange={(e) => onPatch({ caption: e.target.value }, typing.token())} />}
       {/* What is left under an open block once the row of references is gone (#215): the one
           control that acts on the block itself. It stands in a row of its own rather than loose
           among the fields, because a block's fields are what is written in it and this is what
