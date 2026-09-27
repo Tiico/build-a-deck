@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent, type FocusEvent, type KeyboardEvent } from 'react'
+import { passToEditor } from './keys.js'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { copiesOf, deckKeepsFields, fieldsOf, fieldLabel, takenNames, nextCardRef } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
@@ -333,6 +334,44 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const cellPicking = (cardRef: string, field: string) => brace?.cardRef === cardRef && brace.field === field
   // Tangenterna listan svarar på, hörda där markören står och inte i listan: fokus stannar i
   // meningen som skrivs. Räknandet av hur många som går att stega mellan följer steget.
+  // Undo inside a cell (#479, beslut 2026-09-27, variant C; L14). What the cell held when it was
+  // entered and every word finished since, per cell and per visit: Ctrl+Z comes back through them a
+  // word at a time, Escape goes straight to the first, and once there is nothing of the cell's own
+  // left the press is handed on to the editor's history.
+  const words = useRef(new Map<string, string[]>())
+  const wordsOf = (cardRef: string, field: string, value: unknown): string[] => {
+    const key = `${cardRef}\u0000${field}`
+    let kept = words.current.get(key)
+    if (!kept) {
+      kept = [value === undefined || value === null ? '' : String(value)]
+      words.current.set(key, kept)
+    }
+    return kept
+  }
+  const cellUndo = (cardRef: string, field: string, e: KeyboardEvent<HTMLInputElement>): boolean => {
+    const input = e.currentTarget
+    const kept = words.current.get(`${cardRef}\u0000${field}`)
+    if (e.key === 'Escape') {
+      const first = kept?.[0]
+      if (first === undefined || first === input.value) return false
+      e.preventDefault()
+      e.stopPropagation()
+      kept?.splice(1)
+      onCell(cardRef, field, first, cellGesture())
+      return true
+    }
+    if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'z') return false
+    while (kept && kept.length > 0 && kept[kept.length - 1] === input.value) kept.pop()
+    const back = kept?.[kept.length - 1]
+    if (back === undefined) {
+      // Nothing of the cell's own left: the step back is the editor's.
+      passToEditor(e.nativeEvent)
+      return true
+    }
+    e.preventDefault()
+    onCell(cardRef, field, back, cellGesture())
+    return true
+  }
   // The cell in the same column one row down or up, in the order the table shows (#479).
   const moveInColumn = (cardRef: string, field: string, by: number) => {
     const at = shownRef.current.findIndex((r) => r.id === cardRef)
@@ -1584,6 +1623,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                         onCell(cardRef, f, copies, cellGesture())
                         return
                       }
+                      // A word just finished is a place Ctrl+Z comes back to (#479).
+                      const was = wordsOf(cardRef, f, row[f])
+                      if (/\s$/.test(e.target.value) && !/\s$/.test(String(row[f] ?? ''))) was.push(e.target.value)
                       onCell(cardRef, f, e.target.value, cellGesture())
                       if (onSymbol) openBrace(cardRef, f, e.target)
                     }}
@@ -1595,6 +1637,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     onKeyDown={(e) => {
                       onListKey(cardRef, f, e)
                       if (e.defaultPrevented) return
+                      if (f !== ANTAL && cellUndo(cardRef, f, e)) return
                       // The spreadsheet's keys (#479, beslut 2026-09-27, variant A): Enter and ↓
                       // down the column, Shift+Enter and ↑ up it.
                       const by = e.key === 'Enter' ? (e.shiftKey ? -1 : 1) : e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0
@@ -1617,6 +1660,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       // A cell the keyboard walks into chooses its card, as a click on the row
                       // does (#479): the canvas and the wall follow the card being written in.
                       if (selectedRow !== cardRef) onSelectRow(cardRef)
+                      words.current.delete(`${cardRef}\u0000${f}`)
                     }}
                     onBlur={(event) => {
                       if (f === 'antal') setAntalDraft(({ [cardRef]: _gone, ...rest }) => rest)
