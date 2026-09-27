@@ -149,6 +149,10 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   // The jump column is one tab stop with the arrows moving inside it (APG), open and folded alike:
   // it is a list of the same eight things in the same order either way, so it is one list.
   const roving = useRoving({ ids: bands.map((band) => band.value ?? ''), selected: here, orientation: 'vertical' })
+  // The cards are one tab stop too (#477), in the order the wall draws them, and the arrows walk
+  // them in reading order whichever way the grid wraps. Tab lands on the chosen card.
+  const drawn = bands.length === 0 ? shown : bands.flatMap((band) => band.cards)
+  const cards = useRoving({ ids: drawn.map((row) => row.id), selected: selectedRow, orientation: 'both' })
   // A jump moves the focus to the band's first card and not merely the scroll position: a reader
   // on a keyboard who was only scrolled to would find the next Tab starting over from the deck.
   const jumpTo = (key: string) => {
@@ -178,18 +182,30 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
     // physical fault is nearly always the template's, and saying it on every card would be forty
     // red badges for one mistake; the report in the crown says it once.
     const count = warnings[cardRef] ?? 0
+    const roves = cards.itemProps(cardRef)
     return (
       <div
         key={cardRef}
-        role="listitem"
+        // An option in a listbox (#477): the one role in which being chosen is `aria-selected`, and
+        // the one a reader expects to walk with the arrows and choose with Enter or Space.
+        role="option"
         className="byd-wall-card"
         data-card-ref={cardRef}
         // A jump from the table of contents moves the focus to the band's first card and not only
-        // the scroll position, so every card has to be something focus can be put on.
-        tabIndex={-1}
+        // the scroll position, so every card is something focus can be put on; one of them is the
+        // wall's tab stop.
+        {...roves}
         aria-selected={selectedRow === cardRef ? 'true' : 'false'}
         {...(marked.has(cardRef) ? { 'data-marked': 'true' } : {})}
         onClick={() => onSelectRow(cardRef)}
+        onKeyDown={(event) => {
+          if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault()
+            onSelectRow(cardRef)
+            return
+          }
+          roves.onKeyDown(event)
+        }}
       >
         {/* The card's paper (#332, L28): the box the corner cuts, the hairline edge is drawn
             round and the light along the top sits inside. It is its own element because the
@@ -457,7 +473,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             </div>
           )}
           {bands.length === 0 ? (
-            <div className="byd-wall" role="list">
+            <div className="byd-wall" role="listbox" aria-label={t('wall.deck')}>
               {shown.map((row) => card(row))}
             </div>
           ) : (
@@ -479,7 +495,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
                   <small>{t(band.cards.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: band.cards.length })}</small>
                   <span className="byd-wall-band-rule" aria-hidden="true" />
                 </div>
-                <div className="byd-wall" role="list" aria-label={band.name}>
+                <div className="byd-wall" role="listbox" aria-label={band.name}>
                   {band.cards.map((row) => card(row))}
                 </div>
               </section>

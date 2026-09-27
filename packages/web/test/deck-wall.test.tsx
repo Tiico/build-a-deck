@@ -65,6 +65,31 @@ describe('DeckWall (C as the home view)', () => {
   })
 })
 
+// The wall is a list a keyboard can stand in (#477): one tab stop, the arrows between the cards,
+// and Enter or Space choosing the one that has focus — the same errand a click is on.
+describe('choosing a card from the keyboard (#477)', () => {
+  it('is one tab stop of options whose selection is valid ARIA, and Enter and Space choose', () => {
+    const onSelectRow = vi.fn()
+    render(<DeckWall doc={projectDoc()} face="front" selectedRow="knight" onSelectRow={onSelectRow} onSelectElement={() => undefined} />)
+    const options = screen.getAllByRole('option')
+    expect(options.map((o) => o.getAttribute('data-card-ref'))).toEqual(['dragon', 'knight', 'wizard'])
+    expect(options.map((o) => o.getAttribute('aria-selected'))).toEqual(['false', 'true', 'false'])
+    // The chosen card is where Tab lands; the others are reached with the arrows.
+    expect(options.map((o) => o.tabIndex)).toEqual([-1, 0, -1])
+    expect(options[0]!.closest('[role="listbox"]')).not.toBeNull()
+
+    options[1]!.focus()
+    fireEvent.keyDown(options[1]!, { key: 'ArrowRight' })
+    expect(document.activeElement).toBe(options[2])
+    fireEvent.keyDown(options[2]!, { key: 'Enter' })
+    expect(onSelectRow).toHaveBeenLastCalledWith('wizard')
+    fireEvent.keyDown(options[2]!, { key: 'ArrowLeft' })
+    fireEvent.keyDown(options[1]!, { key: 'ArrowLeft' })
+    fireEvent.keyDown(options[0]!, { key: ' ' })
+    expect(onSelectRow).toHaveBeenLastCalledWith('dragon')
+  })
+})
+
 describe('images on the wall (E1)', () => {
   it('draws a card whose row points at an asset with the image from the server', () => {
     const doc = projectDoc()
