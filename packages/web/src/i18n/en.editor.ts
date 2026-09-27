@@ -558,6 +558,8 @@ export const enEditor = {
   // The ready-made backs (L17). They stand in the open while the back is being edited rather
   // than behind a button: whoever lands on an empty back should see the way on without hunting.
   'canvas.backs': 'Ready-made backs',
+  'canvas.back.swap.ask': 'Replace the back with «{name}»? The back’s {n} layers are replaced.',
+  'canvas.back.swap.yes': 'Yes, replace the back',
   'canvas.back.plain': 'Plain',
   'canvas.back.diamonds': 'Diamonds',
   'canvas.back.stripes': 'Diagonal stripes',

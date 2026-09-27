@@ -637,6 +637,8 @@ export const svEditor = {
   // Färdiga baksidor (L17). De står framme när baksidan är öppen, inte bakom en knapp: den som
   // landar på en tom baksida ska se vägen vidare utan att leta efter den.
   'canvas.backs': 'Färdiga baksidor',
+  'canvas.back.swap.ask': 'Byt baksidan mot «{name}»? Baksidans {n} lager ersätts.',
+  'canvas.back.swap.yes': 'Ja, byt baksida',
   'canvas.back.plain': 'Enfärgad',
   'canvas.back.diamonds': 'Romber',
   'canvas.back.stripes': 'Diagonala ränder',

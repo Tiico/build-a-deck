@@ -272,6 +272,8 @@ describe('the ready-made backs (L17)', () => {
     const { onReplaceFace } = open({}, { face: 'back' })
     const gallery = screen.getByRole('group', { name: /färdiga baksidor/i })
     fireEvent.click(within(gallery).getByRole('button', { name: 'Romber' }))
+    // The fixture's back has a layer, so the gallery asks first (#478).
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Ja, byt baksida' }))
     const base = onReplaceFace.mock.calls.at(-1)?.[0] as Element[]
     expect(base.length).toBeGreaterThan(1)
     expect(base.every((e) => e.kind === 'shape')).toBe(true)
@@ -290,6 +292,7 @@ describe('what the ready-made backs are called (A4, L17)', () => {
   it('gives every layer an id nobody has to read and a name in the reader’s language', () => {
     const { onReplaceFace } = open({}, { face: 'back' })
     fireEvent.click(within(screen.getByRole('group', { name: /färdiga baksidor/i })).getByRole('button', { name: 'Medaljong' }))
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Ja, byt baksida' }))
     const base = onReplaceFace.mock.calls.at(-1)?.[0] as Element[]
     // Ids are the document's and are written in the same language every other id in this
     // codebase is written in.

@@ -169,6 +169,14 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
     asked.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     setAsking(id)
   }
+  // A ready-made back waiting for its answer (#478), and the gallery button it came from, which is
+  // where the focus goes back to whatever the answer.
+  const [swapping, setSwapping] = useState<{ name: string; base: Element[]; from: HTMLElement } | null>(null)
+  const swapBack = () => {
+    const from = swapping?.from
+    setSwapping(null)
+    from?.focus()
+  }
   const handBack = () => {
     const to = asked.current
     asked.current = null
@@ -265,7 +273,16 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
               should see the way on without hunting for it. Not inside a group — a group's back is
               an override of the base's (#14), and laying a whole face down there would quietly
               make every layer of it the group's own. */}
-          {face === 'back' && !group && <BackGallery onReplaceFace={onReplaceFace} />}
+          {face === 'back' && !group && (
+            <BackGallery
+              onPick={(back, from) => {
+                // A back with layers on it is asked about first (#478), as one layer is (#143);
+                // a back with nothing on it is simply laid down.
+                if ((doc.template.faces['back']?.base.length ?? 0) === 0) onReplaceFace(back.base)
+                else setSwapping({ ...back, from })
+              }}
+            />
+          )}
           <LayerList
             layers={[...panel].reverse().map((l) => l.element)}
             selected={selectedElement}
@@ -355,6 +372,20 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
           </p>
         )}
         {catalog && <FontCatalog words={cardWords(shown, rowData)} inGame={Object.keys(doc.fonts ?? {})} onChoose={onCatalogFont} onClose={() => setCatalog(false)} />}
+        {swapping && (
+          <Question
+            className="byd-canvas-question"
+            label={t('canvas.back.swap.ask', { name: swapping.name, n: doc.template.faces['back']?.base.length ?? 0 })}
+            confirm={t('canvas.back.swap.yes')}
+            onConfirm={() => {
+              onReplaceFace(swapping.base)
+              swapBack()
+            }}
+            onCancel={swapBack}
+          >
+            {t('canvas.back.swap.ask', { name: swapping.name, n: doc.template.faces['back']?.base.length ?? 0 })}
+          </Question>
+        )}
         {goes && (
           <Question
             className="byd-canvas-question"
@@ -2407,14 +2438,14 @@ function PatternGlyph({ kind }: { kind: Pattern['kind'] }) {
 // The ready-made backs (L17), each drawn by the one renderer at thumbnail size — a picture of a
 // card is a compiled card here as everywhere else (E2), so a back can never look like one thing
 // in the gallery and another once it is laid down.
-function BackGallery({ onReplaceFace }: { onReplaceFace(base: Element[]): void }) {
+function BackGallery({ onPick }: { onPick(back: { name: string; base: Element[] }, from: HTMLElement): void }) {
   const t = useT()
   return (
     <div className="byd-backs" role="group" aria-label={t('canvas.backs')}>
       <h2>{t('canvas.backs')}</h2>
       <div className="byd-backs-list">
         {BACKS.map((back) => (
-          <button key={back.id} type="button" onClick={() => onReplaceFace(back.base(t))}>
+          <button key={back.id} type="button" onClick={(event) => onPick({ name: t(back.name), base: back.base(t) }, event.currentTarget)}>
             <span className="byd-backs-card">
               <CardPreview id={`byd-back-${back.id}`} face={{ base: back.base(t), variants: {} }} row={{}} icons={{}} scale={0.26} />
             </span>
