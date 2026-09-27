@@ -1192,10 +1192,18 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const summaries = await opts.store.sessionsOf(gate.rec.id)
-    const tables: { id: string; version: string; ended: boolean; lastAt: string | null }[] = []
+    // The code guests join by comes along for whoever may start a table (#477): it is what lets the
+    // editor pick up the table it started after a reload. It is admission, so a viewer is not shown
+    // it, and a table that has ended has none to show.
+    const admits = canStartTables(gate.role)
+    const now = clock(opts).getTime()
+    const tables: { id: string; version: string; ended: boolean; lastAt: string | null; code?: string }[] = []
     for (const summary of summaries) {
       const actor = await opts.host.get(summary.id)
-      if (actor) tables.push({ id: summary.id, version: actor.version, ended: actor.ended, lastAt: summary.lastAt })
+      if (!actor) continue
+      const session = admits && !actor.ended ? await opts.store.loadSession(summary.id) : null
+      const code = session?.code !== undefined && session.codeExpiresAt !== undefined && Date.parse(session.codeExpiresAt) > now ? session.code : undefined
+      tables.push({ id: summary.id, version: actor.version, ended: actor.ended, lastAt: summary.lastAt, ...(code ? { code } : {}) })
     }
     json(res, 200, tables)
     return true

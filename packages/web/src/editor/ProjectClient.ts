@@ -66,7 +66,8 @@ export type Cell = string | number | boolean | null
 export type Textures = { total: number; done: number; failed: string[] }
 // A table of this game as the Bord tab lists it (#19): which session, the version it runs,
 // whether its log is locked (C9), and when it last moved.
-export type TableSummary = { id: string; version: string; ended: boolean; lastAt: string | null }
+// `code` is the room code of a running table, given only to a role that may start one (#477).
+export type TableSummary = { id: string; version: string; ended: boolean; lastAt: string | null; code?: string }
 
 // The project as the editor holds it, and its end of the actor (D3): the document, who else has
 // it open, and one socket the edits go both ways over. An edit is applied here at once and sent;
@@ -1067,14 +1068,15 @@ export class ProjectClient {
 
   // The host's controls (DRIFT §9): a new code, so those who have the old one can no longer
   // come in; and a kick, which frees the seat and ends its connections. The host key the table
-  // was started with is the authority, with or without an account.
-  async rotateCode(sessionId: string, hostKey: string): Promise<{ code: string; expiresAt: string }> {
-    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/code`, { method: 'POST', headers: { authorization: `Bearer ${hostKey}` } })
+  // was started with is the authority, with or without an account; a table picked up again after
+  // a reload has no key in the page, and the account that may start tables is the authority then.
+  async rotateCode(sessionId: string, hostKey?: string): Promise<{ code: string; expiresAt: string }> {
+    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/code`, hostAuthority(hostKey, { method: 'POST' }))
     if (!res.ok) throw new Error(`could not rotate the code: ${res.status}`)
     return (await res.json()) as { code: string; expiresAt: string }
   }
-  async kick(sessionId: string, hostKey: string, seat: string): Promise<void> {
-    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/kick`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${hostKey}` }, body: JSON.stringify({ seat }) })
+  async kick(sessionId: string, hostKey: string | undefined, seat: string): Promise<void> {
+    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/kick`, hostAuthority(hostKey, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ seat }) }))
     if (!res.ok) throw new Error(`could not kick ${seat}: ${res.status}`)
   }
 
@@ -1174,4 +1176,10 @@ function stamp(value: unknown): string {
   const entries = Object.entries(value as Record<string, unknown>).filter(([, v]) => v !== undefined)
   entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
   return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stamp(v)}`).join(',')}}`
+}
+
+// The host key when the page holds one, otherwise the account's cookie (DRIFT §9, #477).
+function hostAuthority(hostKey: string | undefined, init: RequestInit): RequestInit {
+  if (!hostKey) return withCredentials(init)
+  return { ...init, headers: { ...(init.headers as Record<string, string> | undefined), authorization: `Bearer ${hostKey}` } }
 }

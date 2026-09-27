@@ -108,7 +108,28 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // An older version the table is held against (B4), fetched once when the comparison starts.
   const [compare, setCompare] = useState<{ rev: number; label?: string | undefined; doc: ProjectDoc } | null>(null)
   // A running table (L5) with what admits people to it (DRIFT §9): the code and the host key.
-  const [table, setTable] = useState<{ id: string; version: string; code: string; hostKey: string; kind: 'new' | 'refreshed' } | null>(null)
+  // A table picked up after a reload (`running`) has no key in the page; the account is the
+  // authority for it instead.
+  const [table, setTable] = useState<{ id: string; version: string; code: string; hostKey?: string; kind: 'new' | 'refreshed' | 'running' } | null>(null)
+  // The table outlives the page (#477). Without this a reload put «Starta bord» back in the header
+  // while the table was still running, and the press that followed started a second table with a
+  // new code — the guests at the first never saw the update. The newest table that still runs and
+  // that this account may run is the one the header works on; the server shows its code to no one
+  // else, so a role that cannot start tables picks nothing up.
+  useEffect(() => {
+    if (!client) return
+    let live = true
+    client.tables().then(
+      (tables) => {
+        const running = tables.find((t) => !t.ended && t.code !== undefined)
+        if (live && running?.code) setTable((had) => had ?? { id: running.id, version: running.version, code: running.code!, kind: 'running' })
+      },
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [client])
   // The table's textures (L5): the link opens only when every card can be seen. Polled with a
   // growing pause while anything is still rendering.
   const [textures, setTextures] = useState<Textures | null>(null)
@@ -552,7 +573,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       )}
       {table && (
         <div className="byd-editor-table-link" role="status" {...(lost !== null ? { 'data-lost': '' } : {})} {...(stalled ? { 'data-stalled': '' } : {})}>
-          {t(table.kind === 'new' ? 'editor.table.started' : 'editor.table.refreshed', { version: table.version })}{' '}
+          {t(table.kind === 'new' ? 'editor.table.started' : table.kind === 'running' ? 'editor.table.running' : 'editor.table.refreshed', { version: table.version })}{' '}
           {lost !== null ? (
             <>
               <span className="byd-editor-warning">{t('editor.table.lost', { n: lost })}</span>{' '}
@@ -563,7 +584,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           ) : preparing ? (
             <span className="byd-editor-rendering">{t('editor.table.rendering', { done: preparing.done, total: preparing.total })}</span>
           ) : textures && textures.done + textures.failed.length >= textures.total ? (
-            <a href={tvUrl(table.id, params.get('server'), table.hostKey)} target="_blank" rel="noreferrer">
+            <a href={tvUrl(table.id, params.get('server'), table.hostKey, table.hostKey === undefined)} target="_blank" rel="noreferrer">
               {t('editor.table.open')}
             </a>
           ) : (
@@ -737,7 +758,7 @@ function homeUrl(server: string | null): string {
 
 // The seats as the lobby sees them (DRIFT §9), each taken one with a kick: the host's control
 // over who is at the table, from the screen the host already has open.
-function HostSeats({ client, sessionId, hostKey, ws, onNotice }: { client: ProjectClient; sessionId: string; hostKey: string; ws: string; onNotice(text: string | null): void }) {
+function HostSeats({ client, sessionId, hostKey, ws, onNotice }: { client: ProjectClient; sessionId: string; hostKey: string | undefined; ws: string; onNotice(text: string | null): void }) {
   const t = useT()
   const { view } = useTableClient({ url: ws, sessionId, seat: null, lobby: true })
   if (!view) return null

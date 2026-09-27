@@ -98,6 +98,7 @@ export const svEditor = {
   'editor.updatingTable': 'Uppdaterar bordet…',
   'editor.table.started': 'Nytt bord startat på {version} —',
   'editor.table.refreshed': 'Bordet uppdaterat på {version} —',
+  'editor.table.running': 'Bordet kör {version} —',
   'editor.table.lost': '{n} kort kunde inte renderas. Bordet står kvar på sin gamla version.',
   'editor.table.retry': 'Försök igen',
   'editor.table.rendering': 'renderar kort {done}/{total}',

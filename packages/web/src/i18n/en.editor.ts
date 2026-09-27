@@ -80,6 +80,7 @@ export const enEditor = {
   'editor.updatingTable': 'Updating the table…',
   'editor.table.started': 'New table started on {version} —',
   'editor.table.refreshed': 'Table updated to {version} —',
+  'editor.table.running': 'The table runs {version} —',
   'editor.table.lost': '{n} cards could not be rendered. The table stays on its old version.',
   'editor.table.retry': 'Try again',
   'editor.table.rendering': 'rendering cards {done}/{total}',
