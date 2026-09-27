@@ -62,3 +62,5 @@
 .byd-rules-drawer[data-placement='tv'] { display: contents; }
 .byd-rules-drawer[data-placement='phone'] { display: contents; }
 .byd-rules-drawer[data-placement='phone'] .byd-rules-open { border-radius: 8px; padding: 6px 10px; font-size: 12px; }
+/* The word and the book are the button's picture; a press on them is the button's (#484). */
+.byd-rules-word, .byd-rules-book { pointer-events: none; }

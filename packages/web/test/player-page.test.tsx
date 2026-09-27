@@ -668,7 +668,7 @@ describe('counters and the area in front of you (C4)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Läs valt kort' }))
     expect(document.querySelector('[data-inspect]')?.textContent).toContain('knight')
     fireEvent.pointerDown(document.querySelector('.byd-inspect')!)
-    fireEvent.click(screen.getByRole('button', { name: 'Framför mig' }))
+    fireEvent.click(within(document.querySelector('.byd-hand-actions') as HTMLElement).getByRole('button', { name: 'Framför mig' }))
     await waitFor(() => expect(document.querySelector('[data-mine-card]')?.getAttribute('data-mine-card')).toBe(idOfCard))
     expect(document.querySelector('[data-personal]')?.hasAttribute('open')).toBe(true)
     expect(document.querySelector('[data-hand]')!.compareDocumentPosition(document.querySelector('[data-mine]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -722,7 +722,7 @@ describe('counters and the area in front of you (C4)', () => {
     const idOfCard = card.getAttribute('data-hand-card')!
     fireEvent.click(card, { detail: 0 })
     expect(card.getAttribute('aria-pressed')).toBe('true')
-    fireEvent.click(screen.getByRole('button', { name: 'Kasta' }))
+    fireEvent.click(within(document.querySelector('.byd-hand-actions') as HTMLElement).getByRole('button', { name: 'Kasta' }))
     await waitFor(() => expect(me.view!.components.find(c => c.id === idOfCard)?.zone).toBe('discard'))
     me.close()
   })
