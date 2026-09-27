@@ -183,8 +183,10 @@ describe('the editor in the reader\'s own language (A4)', () => {
     await screen.findByText(/New table started/)
     await run.completeRenders()
     expect(await screen.findByRole('button', { name: 'Update the table' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'New table' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Start a table' })).toBeNull()
+    // «New table» is in the caret's menu (beslut 2026-09-27, #477 fynd 4).
+    fireEvent.click(screen.getByRole('button', { name: 'More ways to the table' }))
+    expect(await screen.findByRole('button', { name: 'New table' })).toBeTruthy()
   })
 
   it('says a zone\'s own properties in English when one is chosen', async () => {

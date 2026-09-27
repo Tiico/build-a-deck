@@ -65,6 +65,64 @@ describe('DeckWall (C as the home view)', () => {
   })
 })
 
+// The wall is a list a keyboard can stand in (#477): one tab stop, the arrows between the cards,
+// and Enter or Space choosing the one that has focus — the same errand a click is on.
+describe('choosing a card from the keyboard (#477)', () => {
+  it('is one tab stop of options whose selection is valid ARIA, and Enter and Space choose', () => {
+    const onSelectRow = vi.fn()
+    render(<DeckWall doc={projectDoc()} face="front" selectedRow="knight" onSelectRow={onSelectRow} onSelectElement={() => undefined} />)
+    const options = screen.getAllByRole('option')
+    expect(options.map((o) => o.getAttribute('data-card-ref'))).toEqual(['dragon', 'knight', 'wizard'])
+    expect(options.map((o) => o.getAttribute('aria-selected'))).toEqual(['false', 'true', 'false'])
+    // The chosen card is where Tab lands; the others are reached with the arrows.
+    expect(options.map((o) => o.tabIndex)).toEqual([-1, 0, -1])
+    expect(options[0]!.closest('[role="listbox"]')).not.toBeNull()
+
+    options[1]!.focus()
+    fireEvent.keyDown(options[1]!, { key: 'ArrowRight' })
+    expect(document.activeElement).toBe(options[2])
+    fireEvent.keyDown(options[2]!, { key: 'Enter' })
+    expect(onSelectRow).toHaveBeenLastCalledWith('wizard')
+    fireEvent.keyDown(options[2]!, { key: 'ArrowLeft' })
+    fireEvent.keyDown(options[1]!, { key: 'ArrowLeft' })
+    fireEvent.keyDown(options[0]!, { key: ' ' })
+    expect(onSelectRow).toHaveBeenLastCalledWith('dragon')
+  })
+})
+
+// How a card stops being chosen (beslut 2026-09-27, #477 fynd 3, variant C): the same gesture that
+// chose it, once more, and Escape. «Nothing chosen» is the template's base and no row.
+describe('letting the chosen card go (#477)', () => {
+  it('lets go on a second press, on Enter or Space on the chosen card, and on Escape', () => {
+    const onSelectRow = vi.fn()
+    render(<DeckWall doc={projectDoc()} face="front" selectedRow="knight" onSelectRow={onSelectRow} onSelectElement={() => undefined} />)
+    const knight = document.querySelector('[data-card-ref="knight"]') as HTMLElement
+    fireEvent.click(knight)
+    expect(onSelectRow).toHaveBeenLastCalledWith(null)
+    fireEvent.keyDown(knight, { key: 'Enter' })
+    expect(onSelectRow).toHaveBeenLastCalledWith(null)
+    fireEvent.keyDown(knight, { key: ' ' })
+    expect(onSelectRow).toHaveBeenLastCalledWith(null)
+    // Escape lets go from whichever card has the focus.
+    const dragon = document.querySelector('[data-card-ref="dragon"]') as HTMLElement
+    onSelectRow.mockClear()
+    fireEvent.keyDown(dragon, { key: 'Escape' })
+    expect(onSelectRow).toHaveBeenLastCalledWith(null)
+    // A card that is not chosen is chosen, as before.
+    fireEvent.click(dragon)
+    expect(onSelectRow).toHaveBeenLastCalledWith('dragon')
+  })
+
+  it('leaves Escape alone when nothing is chosen, so a door further out can answer it', () => {
+    const onSelectRow = vi.fn()
+    render(<DeckWall doc={projectDoc()} face="front" selectedRow={null} onSelectRow={onSelectRow} onSelectElement={() => undefined} />)
+    const dragon = document.querySelector('[data-card-ref="dragon"]') as HTMLElement
+    const passed = fireEvent.keyDown(dragon, { key: 'Escape' })
+    expect(onSelectRow).not.toHaveBeenCalled()
+    expect(passed).toBe(true)
+  })
+})
+
 describe('images on the wall (E1)', () => {
   it('draws a card whose row points at an asset with the image from the server', () => {
     const doc = projectDoc()
@@ -118,6 +176,19 @@ describe('the physical checks on the wall (E5)', () => {
     expect(within(rows[0]!).getByText(/5 pt/)).toBeTruthy()
     // Clicking it again lets the deck go.
     fireEvent.click(within(rows[0]!).getByRole('button', { name: /för liten text/ }))
+    expect(document.querySelectorAll('[data-card-ref][data-marked]')).toHaveLength(0)
+  })
+
+  // The marks belong to the report that made them (#477): with the box shut, 77 cards stood
+  // framed in yellow and nothing on the screen said why.
+  it('lets the marked cards go when the report is closed', () => {
+    wall()
+    openBox(/^Fysisk kontroll/)
+    const report = screen.getByRole('list', { name: 'Fysisk kontroll' })
+    fireEvent.click(within(within(report).getAllByRole('listitem')[0]!).getByRole('button', { name: /för liten text/ }))
+    expect(document.querySelectorAll('[data-card-ref][data-marked]')).toHaveLength(3)
+    openBox(/^Fysisk kontroll/)
+    expect(screen.queryByRole('list', { name: 'Fysisk kontroll' })).toBeNull()
     expect(document.querySelectorAll('[data-card-ref][data-marked]')).toHaveLength(0)
   })
 

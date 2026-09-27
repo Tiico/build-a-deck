@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { DocDiff, RowChange, VersionChange } from '@byd/server/doc'
 import type { VersionSummary } from '@byd/server'
 import type { ProjectClient } from './ProjectClient.js'
@@ -19,7 +19,7 @@ const swedish: T = (key, params) => translate('sv', key, params)
 // over is a list of timestamps and not a record of work, and the designer looking for the save
 // where the duel cards changed had no way through it but to open all fifteen. The words a row
 // says are `historyRow`'s; this file draws them.
-export type HistoryPanelProps = { client: ProjectClient; onClose(): void; onRestored(): void; onCompare(rev: number, label: string | undefined): void }
+export type HistoryPanelProps = { client: ProjectClient; onClose(): void; onRestored(rev: number): void; onCompare(rev: number, label: string | undefined): void }
 
 export function HistoryPanel({ client, onClose, onRestored, onCompare }: HistoryPanelProps) {
   const t = useT()
@@ -33,6 +33,12 @@ export function HistoryPanel({ client, onClose, onRestored, onCompare }: History
   // The clock the whole panel is read against, taken once when it opens: today must not turn into
   // yesterday between two rows of the same list.
   const now = useMemo(() => Date.now(), [asked])
+  // The panel takes the keyboard with it when it opens (#477), the way the help box does (L32):
+  // otherwise the next Tab walked the tabs, the people and the table buttons before it got here.
+  const cross = useRef<HTMLButtonElement>(null)
+  useLayoutEffect(() => {
+    cross.current?.focus()
+  }, [])
   useEffect(() => {
     let live = true
     client.versions().then(
@@ -79,7 +85,7 @@ export function HistoryPanel({ client, onClose, onRestored, onCompare }: History
   const restore = async (rev: number) => {
     try {
       await client.restore(rev)
-      onRestored()
+      onRestored(rev)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
@@ -89,7 +95,7 @@ export function HistoryPanel({ client, onClose, onRestored, onCompare }: History
     <div className="byd-history" role="dialog" aria-label={t('history.title')} aria-modal="false">
       <header>
         <h2>{t('history.title')}</h2>
-        <button type="button" aria-label={t('history.close')} onClick={onClose}>
+        <button ref={cross} type="button" aria-label={t('history.close')} onClick={onClose}>
           ×
         </button>
       </header>
@@ -144,6 +150,13 @@ export function HistoryPanel({ client, onClose, onRestored, onCompare }: History
                               placeholder={t('history.name.placeholder')}
                               defaultValue={v.label ?? ''}
                               onBlur={(e) => void name(v.rev, e.target.value.trim() || null)}
+                              // Enter is how a name is said to be finished (#477); leaving the
+                              // field still does the same, so a name is never lost to a click.
+                              onKeyDown={(e) => {
+                                if (e.key !== 'Enter') return
+                                e.preventDefault()
+                                void name(v.rev, e.currentTarget.value.trim() || null)
+                              }}
                             />
                           </label>
                           {v.rev !== client.rev && (

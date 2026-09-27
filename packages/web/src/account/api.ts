@@ -80,7 +80,31 @@ export async function inviteToProject(http: string, project: string, email: stri
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/invites`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, role, ...pageLang() }) }))
   if (res.status === 401) throw new Unauthorized()
   if (res.status === 403) throw new Error(t('error.invite.notOwner'))
+  // What the service could not do, said as the reason and not as its number (#477).
+  if (res.status === 400) throw new Error(t('error.invite.address'))
+  if (res.status === 409) {
+    const { why } = (await res.json().catch(() => ({}))) as { why?: string }
+    throw new Error(t(why === 'invited' ? 'error.invite.pending' : 'error.invite.member', { email }))
+  }
   if (!res.ok) throw new Error(t('error.invite.failed', { status: res.status }))
+}
+
+// The invitations nobody has followed yet (#477), for whoever may share; and taking one back.
+export type WaitingInvite = { email: string; role: Role; expiresAt: string }
+export async function waitingInvites(http: string, project: string, t: T = swedish): Promise<WaitingInvite[]> {
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/invites`, withCredentials())
+  if (res.status === 401) throw new Unauthorized()
+  // A role that may not share has nothing waiting to see; that is an answer, not a fault.
+  if (res.status === 403) return []
+  if (!res.ok) throw new Error(t('error.invites.failed', { status: res.status }))
+  return (await res.json()) as WaitingInvite[]
+}
+
+export async function withdrawInvite(http: string, project: string, email: string, t: T = swedish): Promise<void> {
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/invites/${encodeURIComponent(email)}`, withCredentials({ method: 'DELETE' }))
+  if (res.status === 401) throw new Unauthorized()
+  // Already followed or already gone: what the owner wanted is true either way.
+  if (!res.ok && res.status !== 404) throw new Error(t('error.withdraw.failed', { email }))
 }
 
 export async function unshareProject(http: string, project: string, email: string, t: T = swedish): Promise<void> {

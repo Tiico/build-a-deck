@@ -377,6 +377,28 @@ describe('the tables a project has (#19)', () => {
     expect(await firstMessage(looking)).toEqual({ t: 'refused', reason: 'the table needs the host key or its owner' })
     looking.close()
   })
+
+  // The editor's header forgets nothing on a reload (#477): the running table and the code guests
+  // join it by come back from the list. The code is admission, so only a role that may start a
+  // table is shown it; an ended table has no code to show.
+  it('carries the room code of a running table to whoever may start one, and to nobody else', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const ended = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+    const running = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; code: string }
+    const table = await WireClient.connect(run.base, ended.id, null, undefined, { host: ended.hostKey })
+    await table.send(null, { v: 'session.end' })
+    await table.close()
+
+    const tables = (await (await json('GET', `/projects/${id}/sessions`)).json()) as { id: string; code?: string }[]
+    expect(tables).toEqual([expect.objectContaining({ id: running.id, code: running.code }), expect.not.objectContaining({ code: expect.anything() })])
+
+    expect((await json('POST', `/projects/${id}/invites`, { email: 'dee@example.com', role: 'viewer' })).status).toBe(201)
+    const token = /\/invites\/([A-Za-z0-9_-]+)/.exec(run.mail.sent.at(-1)?.text ?? '')?.[1] ?? ''
+    const viewer = await login('dee@example.com')
+    expect((await fetch(`${run.http}/invites/${token}`, { method: 'POST', headers: { cookie: viewer } })).status).toBe(200)
+    const seen = (await (await fetch(`${run.http}/projects/${id}/sessions`, { headers: { cookie: viewer } })).json()) as { code?: string }[]
+    expect(seen.map((t) => t.code)).toEqual([undefined, undefined])
+  })
 })
 
 // The first message a raw connection gets: the snapshot it was admitted to, or the refusal.

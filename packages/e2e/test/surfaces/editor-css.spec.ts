@@ -34,7 +34,6 @@ const SHELL = `
     </nav>
     <span class="byd-editor-spacer"></span>
     <button data-stop="Spara">Spara</button>
-    <button data-stop="Nytt bord">Nytt bord</button>
     <button class="byd-editor-primary" data-stop="Uppdatera bordet">Uppdatera bordet</button>
     <span class="byd-editor-split">
       <button class="byd-editor-primary byd-editor-caret" aria-expanded="false" data-stop="the table shortcut">▾</button>
@@ -224,7 +223,6 @@ test.describe('the editor under a keyboard', () => {
       'the way out of the editor',
       'the open tab',
       'Spara',
-      'Nytt bord',
       'Uppdatera bordet',
       'the table shortcut',
       'saving on the way out',

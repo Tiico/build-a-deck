@@ -350,6 +350,24 @@ export class PostgresProjectStore implements ProjectStore {
     `
   }
 
+  async openInvites(project: string, now: string): Promise<{ email: string; role: Role; expiresAt: string }[]> {
+    const rows = await this.sql<{ email: string; role: string; expires_at: Date | string }[]>`
+      select email, role, expires_at from project_invites
+      where project_id = ${project} and accepted_at is null and expires_at > ${now}
+      order by expires_at
+    `
+    return rows.map((r) => ({ email: r.email, role: r.role as Role, expiresAt: new Date(r.expires_at).toISOString() }))
+  }
+
+  async withdrawInvites(project: string, email: string): Promise<number> {
+    const rows = await this.sql`
+      delete from project_invites
+      where project_id = ${project} and accepted_at is null and lower(email) = lower(${email})
+      returning token_hash
+    `
+    return rows.length
+  }
+
   async acceptInvite(tokenHash: string, now: string): Promise<{ project: string; email: string; role: Role } | null> {
     const [row] = await this.sql<{ project_id: string; email: string; role: string }[]>`
       update project_invites set accepted_at = now()

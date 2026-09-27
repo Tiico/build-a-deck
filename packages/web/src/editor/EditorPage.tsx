@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { nextCardRef } from './fields.js'
-import { DeckWall } from './DeckWall.js'
+import { DeckWall, type WallView } from './DeckWall.js'
 import { EditorTabs, MODES, panelId, tabId, type Mode } from './EditorTabs.js'
 import { EditorStages, isCanvasStage, modeOf, STAGES, type Stage } from './EditorStages.js'
 import { useRoom } from '../room.js'
@@ -89,18 +89,38 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const [leaving, setLeaving] = useState(false)
   const [refocusLeave, setRefocusLeave] = useState(false)
   const leaveRef = useRef<HTMLAnchorElement>(null)
+  // Where the keyboard goes once a press has taken away what it was standing on (#477): the
+  // comparison a version was compared from, or the element that was chosen on a card on the wall.
+  // Moved after the render that draws it, because it is not there until then.
+  const [focusNext, setFocusNext] = useState<{ compare: true } | { layer: string } | null>(null)
+  useEffect(() => {
+    if (!focusNext) return
+    setFocusNext(null)
+    const target =
+      'compare' in focusNext
+        ? document.querySelector<HTMLElement>('.byd-data-compare button')
+        : (document.querySelector<HTMLElement>(`[data-layer="${CSS.escape(focusNext.layer)}"] .byd-layer-pick`) ?? document.getElementById(panelId('template')))
+    target?.focus()
+  }, [focusNext])
   // Set the moment the designer has answered the question herself. Every way out of the editor is
   // a page load, so without this the browser would ask her the same thing a second time.
   const answered = useRef(false)
   const links = statusLinks({ server: params.get('server') })
   // The tab says which game is open, and what is wrong with it while something is (#12).
-  usePageTitle({ state: projectId ? (fault === 'unauthorized' ? null : fault ?? (client ? null : 'loading')) : 'missing', game: client?.doc.name ?? null })
+  // Which tab is open is part of where the designer is (#477), so the browser's tab says it too.
+  const part = MODES.find(([m]) => m === mode)?.[1]
+  usePageTitle({ state: projectId ? (fault === 'unauthorized' ? null : fault ?? (client ? null : 'loading')) : 'missing', game: client?.doc.name ?? null, part: part ? t(part) : null })
   // What the header has standing over the work: the history (B4), which opens from the revision
   // where the version is already named, or who has the game (D3), which opens from the faces. One
   // state rather than two, because two panels over each other cover the work and each other — on
   // the template tab the history lands over the layer list and the group strip — so opening one
   // closes the other.
   const [over, setOver] = useState<'history' | 'share' | null>(null)
+  // Where the wall was left (#477), for as long as the project is open. A ref and not state: the
+  // wall reads it when it is drawn again, and nothing else is drawn from it.
+  const wallView = useRef<WallView | undefined>(undefined)
+  // An address half written in the share panel outlives the panel (#477).
+  const [shareDraft, setShareDraft] = useState('')
   const historyOpen = over === 'history'
   const shareOpen = over === 'share'
   const revRef = useRef<HTMLButtonElement>(null)
@@ -108,7 +128,29 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // An older version the table is held against (B4), fetched once when the comparison starts.
   const [compare, setCompare] = useState<{ rev: number; label?: string | undefined; doc: ProjectDoc } | null>(null)
   // A running table (L5) with what admits people to it (DRIFT §9): the code and the host key.
-  const [table, setTable] = useState<{ id: string; version: string; code: string; hostKey: string; kind: 'new' | 'refreshed' } | null>(null)
+  // A table picked up after a reload (`running`) has no key in the page; the account is the
+  // authority for it instead.
+  const [table, setTable] = useState<{ id: string; version: string; code: string; hostKey?: string; kind: 'new' | 'refreshed' | 'running' } | null>(null)
+  // The table outlives the page (#477). Without this a reload put «Starta bord» back in the header
+  // while the table was still running, and the press that followed started a second table with a
+  // new code — the guests at the first never saw the update. The newest table that still runs and
+  // that this account may run is the one the header works on; the server shows its code to no one
+  // else, so a role that cannot start tables picks nothing up.
+  useEffect(() => {
+    if (!client) return
+    let live = true
+    client.tables().then(
+      (tables) => {
+        const running = tables.find((t) => !t.ended && t.code !== undefined)
+        const code = running?.code
+        if (live && running && code) setTable((had) => had ?? { id: running.id, version: running.version, code, kind: 'running' })
+      },
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [client])
   // The table's textures (L5): the link opens only when every card can be seen. Polled with a
   // growing pause while anything is still rendering.
   const [textures, setTextures] = useState<Textures | null>(null)
@@ -331,11 +373,17 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         face="front"
         selectedRow={row}
         onSelectRow={setRow}
+        view={wallView.current}
+        readOnly={!client.mayEdit}
+        onView={(v) => (wallView.current = v)}
         onSelectElement={(id) => {
           setElement(id)
           // A phone has no canvas to open, so an element on the wall is only chosen there; every
-          // wider screen goes on to the card it belongs to.
-          if (room !== 'phone') setStage('canvas')
+          // wider screen goes on to the card it belongs to, and the keyboard with it.
+          if (room !== 'phone') {
+            setStage('canvas')
+            setFocusNext({ layer: id })
+          }
         }}
         // The measure belongs to the template's image element and one card's departure to the
         // deck (E1), so the wall changes two different things — but they are judged in one place,
@@ -450,7 +498,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // Saving and reaching the table are the same two buttons wherever they stand: in the header on
   // a desk, pinned to the end of the stage strip below one. They are written once.
   const saveButton = (
-    <button type="button" className="byd-secondary" onClick={() => void save()} disabled={!unsaved || saving}>
+    // `aria-disabled` and not `disabled` (#477): a button that disables itself while it has the
+    // focus hands the focus to <body>, and the next Tab starts from the top of the page. `save`
+    // already refuses what there is nothing to do about.
+    <button type="button" className="byd-secondary" onClick={() => void save()} aria-disabled={!unsaved || saving}>
       {t(saving ? 'editor.saving' : 'editor.save')}
     </button>
   )
@@ -460,7 +511,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // The name follows the state, in both what it does and what it is doing.
   const tableAction = table ? (updating ? 'editor.updatingTable' : 'editor.updateTable') : updating ? 'editor.startingTable' : 'editor.startTable'
   const updateButton = (
-    <button type="button" className="byd-editor-primary byd-primary" disabled={updating} aria-busy={updating} onClick={() => void updateTable()}>
+    <button type="button" className="byd-editor-primary byd-primary" data-table-kind={table ? table.kind : 'none'} aria-disabled={updating} aria-busy={updating} onClick={() => void updateTable()}>
       {t(tableAction)}
     </button>
   )
@@ -518,13 +569,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         {room === 'desk' && (
           <>
             {saveButton}
-            {table && (
-              <button type="button" onClick={() => void startTable()}>
-                {t('editor.newTable')}
-              </button>
-            )}
+            {/* «Nytt bord» is in the caret's menu (beslut 2026-09-27, #477): the header holds the
+                errand the primary names, and a second table is the rarer, deliberate choice. */}
             {updateButton}
-            <TableMenu client={client} server={params.get('server')} onShowTables={() => setStage('tables')} />
+            <TableMenu client={client} server={params.get('server')} onShowTables={() => setStage('tables')} onNewTable={table ? () => void startTable() : undefined} />
           </>
         )}
       </header>
@@ -553,7 +601,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       )}
       {table && (
         <div className="byd-editor-table-link" role="status" {...(lost !== null ? { 'data-lost': '' } : {})} {...(stalled ? { 'data-stalled': '' } : {})}>
-          {t(table.kind === 'new' ? 'editor.table.started' : 'editor.table.refreshed', { version: table.version })}{' '}
+          {t(table.kind === 'new' ? 'editor.table.started' : table.kind === 'running' ? 'editor.table.running' : 'editor.table.refreshed', { version: table.version })}{' '}
           {lost !== null ? (
             <>
               <span className="byd-editor-warning">{t('editor.table.lost', { n: lost })}</span>{' '}
@@ -564,7 +612,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           ) : preparing ? (
             <span className="byd-editor-rendering">{t('editor.table.rendering', { done: preparing.done, total: preparing.total })}</span>
           ) : textures && textures.done + textures.failed.length >= textures.total ? (
-            <a href={tvUrl(table.id, params.get('server'), table.hostKey)} target="_blank" rel="noreferrer">
+            <a href={tvUrl(table.id, params.get('server'), table.hostKey, table.hostKey === undefined)} target="_blank" rel="noreferrer">
               {t('editor.table.open')}
             </a>
           ) : (
@@ -597,18 +645,26 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         </p>
       )}
       {over && <PanelDoor opener={over === 'history' ? revRef : hereRef} onClose={() => setOver(null)} />}
-      {shareOpen && projectId && <SharePanel http={http} project={projectId} here={client.here} onClose={() => setOver(null)} />}
+      {shareOpen && projectId && <SharePanel http={http} project={projectId} here={client.here} onClose={() => setOver(null)} draft={shareDraft} onDraft={setShareDraft} />}
       {historyOpen && (
         <HistoryPanel
           client={client}
           onClose={() => setOver(null)}
-          onRestored={() => setOver(null)}
+          // Everything under the panel changed at once, and «Osparat» was the only sign of it
+          // (#477). It is said in words, with the way back, and the keyboard goes back to the
+          // revision it came from rather than to a button that is no longer there.
+          onRestored={(rev) => {
+            setOver(null)
+            confirmation.confirm(t('history.restored', { rev }))
+            revRef.current?.focus()
+          }}
           onCompare={(rev, label) => {
             void client.at(rev).then((old) => {
               if (!old) return
               setCompare({ rev, doc: old, ...(label !== undefined ? { label } : {}) })
               setOver(null)
               setStage('table')
+              setFocusNext({ compare: true })
             })
           }}
         />
@@ -738,7 +794,7 @@ function homeUrl(server: string | null): string {
 
 // The seats as the lobby sees them (DRIFT §9), each taken one with a kick: the host's control
 // over who is at the table, from the screen the host already has open.
-function HostSeats({ client, sessionId, hostKey, ws, onNotice }: { client: ProjectClient; sessionId: string; hostKey: string; ws: string; onNotice(text: string | null): void }) {
+function HostSeats({ client, sessionId, hostKey, ws, onNotice }: { client: ProjectClient; sessionId: string; hostKey: string | undefined; ws: string; onNotice(text: string | null): void }) {
   const t = useT()
   const { view } = useTableClient({ url: ws, sessionId, seat: null, lobby: true })
   if (!view) return null

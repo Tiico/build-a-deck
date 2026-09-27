@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 11 — Sökfältet i krönet (#477 fynd 12)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Kortväggens krön är en rad: sökfältet, Ögon, Guider, − +, Grupperad efter, hoppspaltens
+     fällknapp och Fysisk kontroll. Vid 1024 krymper sökfältet till 58 px och platshållaren läser
+     «Sök i» (`editor.css:731`, flex 0 1 240px). Något måste vika.
+
+       Nu  sökfältet krymper; allt annat behåller sina ord
+       A   sökfältet blir en knapp «Sök» som fäller ut fältet över krönet när den trycks
+       B   boxarna kortar sina ord under 1280 («Ögon: Normal» → «Ögon», «Grupperad efter: typ» → «typ»),
+           sökfältet håller minst 180 px
+       C   sökfältet får en egen rad ovanför krönet under 1280
+
+     Krönet ritas i verklig bredd (skalat om skärmen är smalare). Typ i fältet. ──────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .scen { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 24px 16px; display: grid; gap: 28px; align-content: start; background: #15171c; }
+  .etikett { color: var(--quiet-2); font-size: 11px; margin-bottom: 4px; }
+  .skala { position: absolute; left: 0; top: 18px; transform-origin: 0 0; }
+  .yta { background: var(--chrome); border: 1px solid #3a3f4b; padding: 12px 16px; }
+  .kron { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; min-width: 0; padding: 0 0 8px; border-bottom: 1px solid var(--line); position: relative; }
+  .sok { flex: 0 1 240px; min-width: 0; min-height: 44px; padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: #14161c; color: #fff; font: 12px system-ui; }
+  .box { flex: none; min-height: 44px; display: inline-flex; align-items: center; gap: 4px; padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: var(--sunk); color: #fff; font: 700 12px system-ui; white-space: nowrap; cursor: pointer; }
+  .box span { color: #c8cfdc; font-weight: 600; }
+  .steg { display: inline-flex; gap: 4px; flex: none; }
+  .steg .box { width: 44px; justify-content: center; padding: 0; }
+  .slut { margin-left: auto; }
+  .sokrad { display: flex; margin-bottom: 8px; }
+  .sokrad .sok { flex: 1 1 auto; max-width: 420px; }
+  .utfalld { position: absolute; left: 0; top: 0; right: 0; z-index: 2; display: flex; gap: 8px; background: var(--chrome); }
+  .utfalld .sok { flex: 1 1 auto; max-width: none; }
+  .klippt { outline: 2px dashed #f0a58a; outline-offset: -2px; }
+  .vagg { height: 60px; margin-top: 10px; display: flex; gap: 10px; }
+  .vagg i { width: 42px; border-radius: 4px; background: #f4ead8; opacity: .9; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#477 fynd 12 · Vad som viker i krönet vid 1024.</b> Två krön, 1024 och 1280, med hoppspalten utfälld och väggen grupperad efter «typ». Streckat rött = klippt.</p>
+    <p>Sökningen delas mellan krönen i prototypen, så det som skrivs syns i båda.</p>
+  </div>
+  <div class="matt" id="matt"></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="scen" id="scen"></div>
+<script>
+const s = { v: 'b', sok: '', utfalld: null }
+const NOT = {
+  nu: '<b>Nu.</b> Fältet krymper till vad som blir över. <span class="minus">− 58 px vid 1024: «Sök i». Det man skriver syns inte.</span>',
+  a: '<b>A · Sök som knapp.</b> Under 1280 är sökningen en knapp «Sök» (med antalet träffar när den är i bruk); trycket fäller ut ett brett fält över krönet, Escape fäller ihop. <span class="plus">+ Allt annat i krönet står kvar med sina ord. Fältet är brett när det används.</span> <span class="minus">− En dörr framför något som används ofta. En pågående sökning måste sägas på knappen, annars glöms den.</span>',
+  b: '<b>B · Kortare ord i boxarna.</b> Under 1280 säger boxarna bara sitt val: «Normal ▾», «typ ▾», «Kontroll (2) ▾», och fällknappen blir en pil. Fältet håller 180 px. Hela namnet står i aria-label och tooltip. <span class="plus">+ Ingen dörr, ingen ny rad. Samma regel som huvudet redan har vid 1024 (flikarna tätare).</span> <span class="minus">− «Normal» utan «Ögon:» är svårare att läsa första gången; krönets regel «varje box säger vad den är» böjs.</span>',
+  c: '<b>C · Egen rad.</b> Under 1280 står sökningen på en rad ovanför krönet, bred. <span class="plus">+ Inget kortas, inget göms.</span> <span class="minus">− 52 px höjd som väggen förlorar vid 768 px höjd, där varje rad kostar kortstorlek.</span>',
+}
+function kron(w) {
+  const smal = w < 1280
+  const kort = s.v === 'b' && smal
+  const sok = `<input class="sok" data-sok aria-label="Sök i alla fält" placeholder="Sök i alla fält…" value="${s.sok.replace(/"/g, '&quot;')}"${kort ? ' style="min-width:180px"' : ''}>`
+  const boxar = `${s.v === 'a' && smal ? `<button type="button" class="box" data-oppna="${w}" aria-expanded="${s.utfalld === w}">⌕ Sök${s.sok ? ` <span>«${s.sok.replace(/</g, '&lt;')}»</span>` : ''}</button>` : s.v === 'c' && smal ? '' : sok}
+    <button type="button" class="box" aria-label="Ögon: Som du ser det" title="Ögon: Som du ser det">${kort ? '<span>Normal</span>' : 'Ögon: <span>Som du ser det</span>'} ▾</button>
+    <button type="button" class="box">${kort ? '<span>Guider</span>' : 'Guider (0)'} ▾</button>
+    <span class="steg"><button type="button" class="box">−</button><button type="button" class="box">+</button></span>
+    <button type="button" class="box" aria-label="Grupperad efter: typ" title="Grupperad efter: typ">${kort ? '<span>typ</span>' : 'Grupperad efter: <span>typ</span>'} ▾</button>
+    <button type="button" class="box" aria-label="Fäll ihop hoppspalten" title="Fäll ihop hoppspalten">⟨${kort ? '' : ' Fäll ihop hoppspalten'}</button>
+    <button type="button" class="box slut">${kort ? 'Kontroll (2)' : 'Fysisk kontroll (2)'} ▾</button>`
+  const ut = s.v === 'a' && s.utfalld === w ? `<div class="utfalld">${sok}<button type="button" class="box" data-stang="${w}">Klar</button></div>` : ''
+  return `<div style="position:relative"><div class="etikett">${w} px (väggens bredd ${w - 32} px)</div><div class="skala" data-skala="${w}"><div class="yta" style="width:${w}px">
+    ${s.v === 'c' && smal ? `<div class="sokrad">${sok}</div>` : ''}<div class="kron">${boxar}${ut}</div><div class="vagg">${'<i></i>'.repeat(18)}</div></div></div></div>`
+}
+function rita(fokus) {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  document.getElementById('anteckning').innerHTML = NOT[s.v]
+  const scen = document.getElementById('scen')
+  scen.innerHTML = kron(1024) + kron(1280)
+  const ut = []
+  for (const sk of scen.querySelectorAll('[data-skala]')) {
+    const w = Number(sk.dataset.skala), f = Math.min(1, (scen.clientWidth - 32) / w)
+    sk.style.transform = `scale(${f})`; sk.parentElement.style.height = `${sk.firstElementChild.offsetHeight * f + 18}px`; sk.parentElement.style.width = `${w * f}px`
+    const kr = sk.querySelector('.kron')
+    const faltet = sk.querySelector('.sok')
+    if (faltet && faltet.offsetParent) ut.push(`${w}: sökfältet <u>${Math.round(faltet.getBoundingClientRect().width / f)} px</u>`)
+    else ut.push(`${w}: sökfältet bakom en knapp`)
+    const over = kr.scrollWidth - kr.clientWidth
+    if (over > 0) { kr.classList.add('klippt'); ut.push(`${w}: krönet ${over} px för brett`) }
+    ut.push(`${w}: höjd ovan väggen <u>${Math.round(sk.querySelector('.vagg').offsetTop)} px</u>`)
+  }
+  document.getElementById('matt').innerHTML = ut.map((x) => `<span>${x}</span>`).join('')
+  if (fokus) document.querySelector(fokus)?.focus()
+}
+document.body.addEventListener('input', (e) => { if (e.target.matches('[data-sok]')) { s.sok = e.target.value; const at = e.target.selectionStart; const w = e.target.closest('[data-skala]').dataset.skala; rita(); const f = document.querySelector(`[data-skala="${w}"] [data-sok]`); f?.focus(); f?.setSelectionRange(at, at) } })
+document.body.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.v) { s.v = b.dataset.v; s.utfalld = null; const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita() }
+  else if (b.dataset.oppna) { s.utfalld = Number(b.dataset.oppna); rita(`[data-skala="${b.dataset.oppna}"] .utfalld [data-sok]`) }
+  else if (b.dataset.stang) { s.utfalld = null; rita(`[data-oppna="${b.dataset.stang}"]`) }
+})
+addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && s.utfalld) { const w = s.utfalld; s.utfalld = null; rita(`[data-oppna="${w}"]`); return }
+  if (e.target.closest('input')) return
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  s.v = alla[(alla.indexOf(s.v) + (e.key === 'ArrowRight' ? 1 : 3)) % 4]; s.utfalld = null
+  const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita()
+})
+addEventListener('resize', () => rita())
+const q = new URLSearchParams(location.search).get('v')
+if (['nu', 'a', 'b', 'c'].includes(q)) s.v = q
+rita()
+</script>
+</body>
+</html>

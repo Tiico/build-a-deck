@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { EditorPage } from '../src/editor/EditorPage.js'
+import { DocumentTitle } from '../src/status/DocumentTitle.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { ProjectClient } from '../src/editor/ProjectClient.js'
@@ -106,6 +107,60 @@ describe('the project\'s history in the editor (B4)', () => {
     expect(stored?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drake')
     // Nothing that came before was rewritten.
     expect((await run.projects.at(run.projectId, 3))?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
+  })
+})
+
+// The panel as a place the keyboard is taken to and brought back from (#477).
+describe('the history and the keyboard (#477)', () => {
+  it('takes the focus when it opens, so the next Tab is inside it and not in the header', async () => {
+    await withHistory()
+    await openEditor()
+    const rev = screen.getByRole('button', { name: /rev 3/ })
+    rev.focus()
+    fireEvent.click(rev)
+    const panel = await screen.findByRole('dialog', { name: 'Historik' })
+    await waitFor(() => expect(panel.contains(document.activeElement)).toBe(true))
+  })
+
+  it('names the open tab in the browser tab', async () => {
+    await withHistory()
+    await run.answering()
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(
+      <DocumentTitle route="editor">
+        <EditorPage />
+      </DocumentTitle>,
+    )
+    await screen.findByRole('button', { name: /rev \d/ })
+    await waitFor(() => expect(document.title).toMatch(/ · Kortvägg · build-your-deck$/))
+    fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
+    await waitFor(() => expect(document.title).toMatch(/ · Tabell · build-your-deck$/))
+  })
+
+  it('saves a version\'s name on Enter, not only when the field is left', async () => {
+    await withHistory()
+    await openEditor()
+    fireEvent.click(screen.getByRole('button', { name: /rev 3/ }))
+    const panel = await screen.findByRole('dialog', { name: 'Historik' })
+    fireEvent.click(await within(panel).findByRole('button', { name: /Version 2/ }))
+    const field = await within(panel).findByLabelText('Namn på version 2')
+    fireEvent.change(field, { target: { value: 'Andra blindtestet' } })
+    fireEvent.keyDown(field, { key: 'Enter' })
+    await waitFor(async () => expect((await run.projects.versions(run.projectId)).find((v) => v.rev === 2)?.label).toBe('Andra blindtestet'))
+  })
+
+  it('says in words that a version came back, and hands the focus back to the revision', async () => {
+    await withHistory()
+    await openEditor()
+    fireEvent.click(screen.getByRole('button', { name: /rev 3/ }))
+    const panel = await screen.findByRole('dialog', { name: 'Historik' })
+    fireEvent.click(await within(panel).findByRole('button', { name: /Version 1/ }))
+    const restore = await within(panel).findByRole('button', { name: 'Återställ version 1' })
+    restore.focus()
+    fireEvent.click(restore)
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Historik' })).toBeNull())
+    expect(await screen.findByText(/Version 1 är tillbaka/)).toBeTruthy()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /rev 3/ }))
   })
 })
 

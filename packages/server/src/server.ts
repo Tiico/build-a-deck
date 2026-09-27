@@ -544,7 +544,7 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
     ws.close(4004, 'unknown project')
     return
   }
-  const editor = { id: randomUUID(), name, role, send, close: () => ws.close(4003, 'gone') }
+  const editor = { id: randomUUID(), name, role, ...(account ? { account: account.id } : {}), send, close: () => ws.close(4003, 'gone') }
   const leave = actor.subscribe(editor)
   ws.on('close', leave)
   ws.on('message', (data) => {
@@ -1052,6 +1052,19 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     }
     const body = z.object({ email: z.string().email().max(254), role: z.enum(ROLES), lang: z.string().max(8).optional() }).parse(JSON.parse(await readBody(req)))
     const lang = langOf(body.lang)
+    // An invitation nobody could use is not sent (#477): to someone who already has the game —
+    // the owner included — or to an address whose invitation is still open. `why` says which, so
+    // the panel can say it in its own words.
+    const same = (a: string) => a.toLowerCase() === body.email.toLowerCase()
+    const members = await Promise.all((await projects.members(gate.rec.id)).map(async (m) => (await opts.auth?.accountById(m.account))?.email ?? m.account))
+    if (members.some(same)) {
+      json(res, 409, { error: 'already shared with them', why: 'member' })
+      return true
+    }
+    if ((await projects.openInvites(gate.rec.id, clock(opts).toISOString())).some((i) => same(i.email))) {
+      json(res, 409, { error: 'already invited', why: 'invited' })
+      return true
+    }
     const token = newSecret()
     const expiresAt = new Date(clock(opts).getTime() + INVITE_TTL_MS).toISOString()
     await projects.invite({ tokenHash: hash(token), project: gate.rec.id, email: body.email, role: body.role, ...(account ? { by: account.id } : {}), expiresAt })
@@ -1071,6 +1084,28 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
           },
     )
     json(res, 201, { ok: true })
+    return true
+  }
+  // What is waiting (beslut 2026-09-27, #477 fynd 10): the invitations nobody has followed yet, to
+  // whoever may share, and a way to take one back.
+  if (inviting && req.method === 'GET') {
+    const gate = await allowed(decodeURIComponent(inviting[1] ?? ''), canShare)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    json(res, 200, await projects.openInvites(gate.rec.id, clock(opts).toISOString()))
+    return true
+  }
+  const withdrawing = /^\/projects\/([^/]+)\/invites\/([^/]+)$/.exec(url.pathname)
+  if (withdrawing && req.method === 'DELETE') {
+    const gate = await allowed(decodeURIComponent(withdrawing[1] ?? ''), canShare)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    const gone = await projects.withdrawInvites(gate.rec.id, decodeURIComponent(withdrawing[2] ?? ''))
+    json(res, gone > 0 ? 200 : 404, gone > 0 ? { ok: true } : { error: 'no invitation waiting' })
     return true
   }
   const members = /^\/projects\/([^/]+)\/members$/.exec(url.pathname)
@@ -1101,6 +1136,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     await projects.unshare(gate.rec.id, leaving.account)
+    ;(await editors(opts, projects).running(gate.rec.id))?.dismiss(leaving.account)
     json(res, 200, { ok: true })
     return true
   }
@@ -1192,10 +1228,18 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const summaries = await opts.store.sessionsOf(gate.rec.id)
-    const tables: { id: string; version: string; ended: boolean; lastAt: string | null }[] = []
+    // The code guests join by comes along for whoever may start a table (#477): it is what lets the
+    // editor pick up the table it started after a reload. It is admission, so a viewer is not shown
+    // it, and a table that has ended has none to show.
+    const admits = canStartTables(gate.role)
+    const now = clock(opts).getTime()
+    const tables: { id: string; version: string; ended: boolean; lastAt: string | null; code?: string }[] = []
     for (const summary of summaries) {
       const actor = await opts.host.get(summary.id)
-      if (actor) tables.push({ id: summary.id, version: actor.version, ended: actor.ended, lastAt: summary.lastAt })
+      if (!actor) continue
+      const session = admits && !actor.ended ? await opts.store.loadSession(summary.id) : null
+      const code = session?.code !== undefined && session.codeExpiresAt !== undefined && Date.parse(session.codeExpiresAt) > now ? session.code : undefined
+      tables.push({ id: summary.id, version: actor.version, ended: actor.ended, lastAt: summary.lastAt, ...(code ? { code } : {}) })
     }
     json(res, 200, tables)
     return true

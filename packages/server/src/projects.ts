@@ -191,6 +191,10 @@ export type ProjectStore = {
   unshare(id: string, account: string): Promise<void>
   // An invitation (D3): kept hashed like every other secret, good once, and gone when used.
   invite(invite: { tokenHash: string; project: string; email: string; role: Role; by?: string; expiresAt: string }): Promise<void>
+  // The invitations to a project that can still be followed at `now` (#477).
+  openInvites(project: string, now: string): Promise<{ email: string; role: Role; expiresAt: string }[]>
+  // Takes back every open invitation to an address (#477): its link opens nothing after this.
+  withdrawInvites(project: string, email: string): Promise<number>
   acceptInvite(tokenHash: string, now: string): Promise<{ project: string; email: string; role: Role } | null>
 }
 
@@ -255,6 +259,20 @@ export class MemoryProjectStore implements ProjectStore {
 
   async invite(invite: { tokenHash: string; project: string; email: string; role: Role; by?: string; expiresAt: string }): Promise<void> {
     this.invites.set(invite.tokenHash, { project: invite.project, email: invite.email, role: invite.role, expiresAt: invite.expiresAt })
+  }
+
+  async openInvites(project: string, now: string): Promise<{ email: string; role: Role; expiresAt: string }[]> {
+    return [...this.invites.values()].filter((i) => i.project === project && !i.used && i.expiresAt > now).map(({ email, role, expiresAt }) => ({ email, role, expiresAt }))
+  }
+
+  async withdrawInvites(project: string, email: string): Promise<number> {
+    let n = 0
+    for (const [hash, i] of this.invites) {
+      if (i.project !== project || i.used || i.email.toLowerCase() !== email.toLowerCase()) continue
+      this.invites.delete(hash)
+      n++
+    }
+    return n
   }
 
   async acceptInvite(tokenHash: string, now: string): Promise<{ project: string; email: string; role: Role } | null> {

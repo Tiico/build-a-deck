@@ -46,10 +46,10 @@ describe('EditorPage', () => {
     expect(document.querySelector('[data-mode]')!.getAttribute('data-mode')).toBe('table')
     fireEvent.change(screen.getByLabelText('dragon title'), { target: { value: 'Drakhona' } })
     const save = screen.getByRole('button', { name: /spara/i }) as HTMLButtonElement
-    expect(save.disabled).toBe(false)
+    expect(save.getAttribute('aria-disabled')).toBe('false')
     fireEvent.click(save)
     await screen.findByText('rev 2')
-    expect((screen.getByRole('button', { name: /spara/i }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole('button', { name: /spara/i }).getAttribute('aria-disabled')).toBe('true')
     const stored = await run.projects.load(run.projectId)
     expect(stored?.rev).toBe(2)
     expect(stored?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
@@ -90,7 +90,7 @@ describe('EditorPage', () => {
     expect(await screen.findByLabelText('phoenix title')).toBeTruthy()
     expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(1)
     const save = screen.getByRole('button', { name: /spara/i }) as HTMLButtonElement
-    expect(save.disabled).toBe(false)
+    expect(save.getAttribute('aria-disabled')).toBe('false')
 
     fireEvent.click(save)
     await screen.findByText('rev 2')
@@ -118,7 +118,7 @@ describe('EditorPage', () => {
     await user.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
 
     const save = screen.getByRole('button', { name: /spara/i }) as HTMLButtonElement
-    expect(save.disabled).toBe(false)
+    expect(save.getAttribute('aria-disabled')).toBe('false')
     fireEvent.click(save)
     await screen.findByText('rev 2')
     expect((await run.projects.load(run.projectId))?.rows).toEqual([
@@ -153,8 +153,10 @@ describe('the header says which of its two jobs the filled button will do (#417)
     expect(await screen.findByRole('button', { name: 'Uppdatera bordet' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Starta bord' })).toBeNull()
     // And the table one already has is not the only one a game may have: the second way, «Nytt
-    // bord», is what starts another from here on.
-    expect(screen.getByRole('button', { name: 'Nytt bord' })).toBeTruthy()
+    // bord», is what starts another from here on — in the caret's menu (beslut 2026-09-27, #477).
+    expect(screen.queryByRole('button', { name: 'Nytt bord' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Fler vägar till bordet' }))
+    expect(await screen.findByRole('button', { name: 'Nytt bord' })).toBeTruthy()
   })
 
   // The press is answered before the table is (#315), and that answer is a name too: while the
@@ -179,7 +181,7 @@ describe('the header says which of its two jobs the filled button will do (#417)
       fireEvent.click(screen.getByRole('button', { name: 'Starta bord' }))
       const busy = await screen.findByRole('button', { name: 'Startar bordet…' })
       expect(busy.getAttribute('aria-busy')).toBe('true')
-      expect((busy as HTMLButtonElement).disabled).toBe(true)
+      expect(busy.getAttribute('aria-disabled')).toBe('true')
       release()
       expect(await screen.findByRole('button', { name: 'Uppdatera bordet' })).toBeTruthy()
     } finally {
@@ -207,7 +209,9 @@ describe('the table follows the editor (C7, L5)', () => {
     expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual(['version.change'])
     expect(screen.getAllByRole('link', { name: /öppna bordet/i })).toHaveLength(1)
 
-    fireEvent.click(screen.getByRole('button', { name: /nytt bord/i }))
+    // «Nytt bord» is in the caret's menu (beslut 2026-09-27, #477 fynd 4).
+    fireEvent.click(screen.getByRole('button', { name: 'Fler vägar till bordet' }))
+    fireEvent.click(await screen.findByRole('button', { name: /nytt bord/i }))
     await screen.findByText(/nytt bord startat/i)
     const second = ((await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement).href
     expect(new URL(second).searchParams.get('session')).not.toBe(sessionId)
@@ -529,5 +533,44 @@ describe('the wall of a game with nothing in it (#476)', () => {
     expect(wall().getByText('Korten har ingen framsida än: mallen är tom.')).toBeTruthy()
     await user.click(wall().getByRole('button', { name: 'Rita framsidan i Mall →' }))
     expect(screen.getByRole('tab', { name: /mall/i }).getAttribute('aria-selected')).toBe('true')
+  })
+})
+
+// The wall is a place the designer comes back to (#477): a tab switch threw away the search, the
+// eye the deck was read with and where the wall stood, and a card chosen elsewhere stood far down
+// the wall without being brought into view.
+describe('the wall remembers where it was left (#477)', () => {
+  it('keeps the search, the eye and the scroll across a tab switch, and brings the chosen card into view', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    const into = vi.fn()
+    const had = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = into
+    try {
+      render(<EditorPage />)
+      await screen.findByText('Skogens herrar')
+      fireEvent.change(screen.getByRole('searchbox', { name: 'Sök i alla fält' }), { target: { value: 'Drake' } })
+      fireEvent.click(screen.getByRole('button', { name: /^Ögon/ }))
+      fireEvent.click(screen.getByRole('button', { name: 'Gråskala' }))
+      const deck = document.querySelector('[data-wall]') as HTMLElement
+      deck.scrollTop = 240
+      fireEvent.scroll(deck)
+
+      fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
+      await waitFor(() => expect(document.querySelector('tr[data-card-ref="knight"]')).not.toBeNull())
+      fireEvent.click(document.querySelector('tr[data-card-ref="knight"]')!)
+      fireEvent.click(screen.getByRole('tab', { name: /kortvägg/i }))
+
+      expect((screen.getByRole('searchbox', { name: 'Sök i alla fält' }) as HTMLInputElement).value).toBe('Drake')
+      expect(document.querySelector('[data-wall]')!.getAttribute('data-eye')).toBe('gray')
+      expect((document.querySelector('[data-wall]') as HTMLElement).scrollTop).toBe(240)
+      // The search found only the dragon, so the knight chosen in Tabell is not on the wall to show.
+      fireEvent.change(screen.getByRole('searchbox', { name: 'Sök i alla fält' }), { target: { value: '' } })
+      fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
+      fireEvent.click(screen.getByRole('tab', { name: /kortvägg/i }))
+      await waitFor(() => expect(into.mock.contexts.some((el) => (el as Element).getAttribute('data-card-ref') === 'knight')).toBe(true))
+    } finally {
+      Element.prototype.scrollIntoView = had
+    }
   })
 })

@@ -38,7 +38,9 @@ afterEach(async () => {
   await run.stop()
 })
 
-const dialledFor = (id: string) => dialled.filter((url) => url.includes(id))
+// The rows' own connections. The header picks up the newest running table after a load (#477)
+// and watches its seats through the lobby; that is the header's socket and not a cost of a row.
+const dialledFor = (id: string) => dialled.filter((url) => url.includes(id) && !url.includes('role=lobby'))
 
 async function startTable(): Promise<string> {
   const res = await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })

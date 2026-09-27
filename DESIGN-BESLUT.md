@@ -3064,7 +3064,11 @@ Det är utdelningen ovan, nu ärligt ritad medan handen håller i den — ska de
 ### L5. Editor till bord: uttrycklig knapp, förrenderade texturer
 
 Editorn har en knapp som startar ett bord från projektet eller skickar `version.change` till det bord den startat.
-Knappen heter det jobb den står i begrepp att göra (#417, byggt 2026-09-21): utan bord heter den "Starta bord" ("Start a table"), och "Startar bordet…" medan starten är på väg; med ett bord heter den "Uppdatera bordet" som förut, och "Nytt bord" står då bredvid den.
+Knappen heter det jobb den står i begrepp att göra (#417, byggt 2026-09-21): utan bord heter den "Starta bord" ("Start a table"), och "Startar bordet…" medan starten är på väg; med ett bord heter den "Uppdatera bordet" som förut.
+"Nytt bord" står i pilens meny bredvid knappen, ovanför "Alla bord", vid alla bredder (beslut 2026-09-27, #477 fynd 4, prototyp 09 variant B).
+Den stod förut bredvid knappen i huvudet, och vid 1024 px var det "Uppdatera bordet" som fick ge plats: den klipptes till "Uppdatera bo".
+Ett andra bord är det sällsynta och medvetna valet, så det ligger ett tryck bort, och det frågas inte om (samma beslut).
+Efter en omladdning plockar editorn upp det nyaste bordet som fortfarande kör, så att knappen uppdaterar det i stället för att starta ett andra (#477 fynd 1).
 Den hette "Uppdatera bordet" i båda lägena, vilket gjorde att ett spel utan bord hade en blå knapp som lovade en uppdatering och i stället startade en session med rumskod; meningen i Bord-fliken förklarade skillnaden på en annan flik i stället för att knappen sade rätt ord.
 Meningen citerar numera det namn knappen bär.
 Bytet är atomiskt för spelarna: knappen köar först den nya revisionens texturer (`POST /sessions/:id/prepare`), visar "renderar kort n/m", och skickar bytet först när alla är renderade (byggt 2026-09-06).
@@ -3204,7 +3208,7 @@ En designer på en telefon ska lära sig att layout kräver en bredare skärm, i
 
 Etapperna och skrivbordet monteras aldrig samtidigt.
 Rummet avgörs i JavaScript och inte bara i CSS, eftersom två kopior av samma panel vore två av varje widget och två av varje element-id i ett dokument, och en skärmläsare skulle läsa den gömda kopian som verklig.
-`Nytt bord` och pilen bredvid `Uppdatera bordet` lämnar huvudet under 1024 px; båda är genvägar till det `Bord`-fliken redan äger (L5), så ingenting blir onåbart.
+Pilen bredvid `Uppdatera bordet`, med `Nytt bord` i sin meny, lämnar huvudet under 1024 px; den är en genväg till det `Bord`-fliken redan äger (L5), så ingenting blir onåbart.
 
 Datatabellen har bara ett ärligt svar på en bred tabell och en smal skärm, och det är inte ett variantval: tabellen scrollar i sin egen box, sidan gör det aldrig, och kolumnen som tar bort en rad är fastnitad till höger så att den inte kan scrollas bort — den låg längst ut och försvann först.
 Under 1024 px är filtret staplade rader där varje chip-grupp scrollar i sidled på en rad, eftersom en lek med en meningslång kolumn annars trycker ut raderna, som är det fliken finns för.

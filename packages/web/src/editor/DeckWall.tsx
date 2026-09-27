@@ -1,4 +1,4 @@
-import { useCallback, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import type { Frame, Motif, Nudge, Warning } from '@byd/template'
 import { CardPreview } from './CardPreview.js'
@@ -25,7 +25,8 @@ export type DeckWallProps = {
   doc: ProjectDoc
   face: string
   selectedRow: string | null
-  onSelectRow(cardRef: string): void
+  // `null` is no card chosen: the template's base and no row (#477).
+  onSelectRow(cardRef: string | null): void
   onSelectElement(id: string): void
   assetBase?: string | undefined
   // What is drawn inside each picture (E1), keyed by the URL a resolved row carries.
@@ -41,7 +42,16 @@ export type DeckWallProps = {
   // that draws it, which is drawn in Mall.
   onAddCard?(): void
   onOpenTemplate?(): void
+  // Where the wall was left (#477): the search, the eye and how far down it stood. The editor
+  // holds it for as long as the project is open, so a tab switch does not throw it away.
+  view?: WallView | undefined
+  onView?(view: WallView): void
+  // A role that may read the deck and not change it (D3): the checks are read, and their remedies
+  // are said to be someone else's rather than offered (#477).
+  readOnly?: boolean | undefined
 }
+
+export type WallView = { filter: FilterState; eye: string; scrollTop: number }
 
 // The eyes a card is read with (E5). The simulations are the transforms the check uses, applied
 // to the real cards: colour blindness is not something a sentence can convey.
@@ -68,7 +78,7 @@ type Box = 'eyes' | 'guides' | 'grouping' | 'checks'
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
 // the physical checks (E5), gathered by kind, and the eyes to read the deck with.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFraming, onFixChecks, onAddCard, onOpenTemplate }: DeckWallProps) {
+export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFraming, onFixChecks, onAddCard, onOpenTemplate, view, onView, readOnly = false }: DeckWallProps) {
   const t = useT()
   // What was mended is said out loud: an edit that changes the template under a deck of forty
   // cards and says nothing is the silence #32 forbids.
@@ -82,7 +92,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   // every call, and a fresh object is a fresh compile of the whole wall (E1).
   const icons = useMemo(() => previewIcons(doc, assetBase), [doc, assetBase])
   const [warnings, setWarnings] = useState<Record<string, number>>({})
-  const [eye, setEye] = useState<string>('normal')
+  const [eye, setEye] = useState<string>(view?.eye ?? 'normal')
   const [trim, setTrim] = useState(false)
   const [arm, setArm] = useState(false)
   // How close the deck is packed is this browser's and not this project's (#128), so it is read
@@ -94,7 +104,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const [atTop, setAtTop] = useState<string | null>(null)
   // The same question the data tab asks of the same fields (#130): one search, reused, so a term
   // that finds a card there finds it here. It is a view of the deck and never touches `doc.rows`.
-  const [filter, setFilter] = useState<FilterState>(noFilter)
+  const [filter, setFilter] = useState<FilterState>(view?.filter ?? noFilter)
   // Whether the wall stands in bands is this browser's, and which column it stands in is this
   // deck's: the template has already said what its groups are, and a column chosen over that
   // answer belongs to the deck it was chosen in (see `grouping.ts`).
@@ -105,6 +115,24 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const [jumpOpen, setJumpOpen] = useState(heldJumpOpen)
   const jumpId = useId()
   const deckRef = useRef<HTMLDivElement>(null)
+  // What the wall tells the editor about where it stands. The scroll goes by a ref, because a
+  // re-render per scrolled pixel is the price of nothing.
+  const scrolled = useRef(view?.scrollTop ?? 0)
+  const told = useRef(onView)
+  told.current = onView
+  useEffect(() => {
+    told.current?.({ filter, eye, scrollTop: scrolled.current })
+  }, [filter, eye])
+  // Back where it was left, and then the chosen card brought into view if it is not in it: a
+  // card chosen in Tabell could stand 2 800 px down the wall with nothing on the screen.
+  useLayoutEffect(() => {
+    const deck = deckRef.current
+    if (deck && scrolled.current > 0) deck.scrollTop = scrolled.current
+  }, [])
+  useLayoutEffect(() => {
+    if (!selectedRow) return
+    deckRef.current?.querySelector(`[data-card-ref="${CSS.escape(selectedRow)}"]`)?.scrollIntoView?.({ block: 'nearest' })
+  }, [selectedRow])
   const sections = useRef(new Map<string, HTMLElement>())
   // A drawer hands the focus back to the box it came from when it closes (#133), so each box has
   // to be findable from the drawer it opened.
@@ -121,8 +149,16 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const open = groups.find((g) => g.code === openGroup)
   const marked = new Set(open?.cards ?? [])
   const words = issueWords(t)
-  const toggle = (which: Box) => setBox((now) => (now === which ? null : which))
-  const close = () => setBox(null)
+  // The cards a remark marks are marked for as long as the report stands open (#477): closed,
+  // the frames were yellow on a whole deck with nothing on the screen saying why.
+  const toggle = (which: Box) => {
+    if (box === 'checks') setOpenGroup(null)
+    setBox((now) => (now === which ? null : which))
+  }
+  const close = () => {
+    if (box === 'checks') setOpenGroup(null)
+    setBox(null)
+  }
   const denser = (by: number) =>
     setStep((now) => {
       const next = Math.min(DENSITY.length - 1, Math.max(0, now + by))
@@ -149,6 +185,10 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   // The jump column is one tab stop with the arrows moving inside it (APG), open and folded alike:
   // it is a list of the same eight things in the same order either way, so it is one list.
   const roving = useRoving({ ids: bands.map((band) => band.value ?? ''), selected: here, orientation: 'vertical' })
+  // The cards are one tab stop too (#477), in the order the wall draws them, and the arrows walk
+  // them in reading order whichever way the grid wraps. Tab lands on the chosen card.
+  const drawn = bands.length === 0 ? shown : bands.flatMap((band) => band.cards)
+  const cards = useRoving({ ids: drawn.map((row) => row.id), selected: selectedRow, orientation: 'both' })
   // A jump moves the focus to the band's first card and not merely the scroll position: a reader
   // on a keyboard who was only scrolled to would find the next Tab starting over from the deck.
   const jumpTo = (key: string) => {
@@ -166,6 +206,8 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const onDeckScroll = () => {
     const deck = deckRef.current
     if (!deck) return
+    scrolled.current = deck.scrollTop
+    told.current?.({ filter, eye, scrollTop: deck.scrollTop })
     // The room left is part of the question: the last bands' tops lie beyond everything the wall
     // can scroll, so without it the mark could never reach them (#179).
     setAtTop(bandAtTop([...sections.current].map(([key, el]) => ({ key, top: el.offsetTop - deck.offsetTop })), deck.scrollTop, deck.scrollHeight - deck.clientHeight, atTop))
@@ -178,18 +220,39 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
     // physical fault is nearly always the template's, and saying it on every card would be forty
     // red badges for one mistake; the report in the crown says it once.
     const count = warnings[cardRef] ?? 0
+    const roves = cards.itemProps(cardRef)
     return (
       <div
         key={cardRef}
-        role="listitem"
+        // An option in a listbox (#477): the one role in which being chosen is `aria-selected`, and
+        // the one a reader expects to walk with the arrows and choose with Enter or Space.
+        role="option"
         className="byd-wall-card"
         data-card-ref={cardRef}
         // A jump from the table of contents moves the focus to the band's first card and not only
-        // the scroll position, so every card has to be something focus can be put on.
-        tabIndex={-1}
+        // the scroll position, so every card is something focus can be put on; one of them is the
+        // wall's tab stop.
+        {...roves}
         aria-selected={selectedRow === cardRef ? 'true' : 'false'}
         {...(marked.has(cardRef) ? { 'data-marked': 'true' } : {})}
-        onClick={() => onSelectRow(cardRef)}
+        // The gesture that chose a card, made again, lets it go (beslut 2026-09-27, #477 fynd 3 C).
+        onClick={() => onSelectRow(selectedRow === cardRef ? null : cardRef)}
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget) return
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            onSelectRow(selectedRow === cardRef ? null : cardRef)
+            return
+          }
+          // Escape lets go too, but only of something: with nothing chosen it belongs to whatever
+          // door is open further out.
+          if (event.key === 'Escape' && selectedRow !== null) {
+            event.preventDefault()
+            onSelectRow(null)
+            return
+          }
+          roves.onKeyDown(event)
+        }}
       >
         {/* The card's paper (#332, L28): the box the corner cuts, the hairline edge is drawn
             round and the light along the top sits inside. It is its own element because the
@@ -274,19 +337,23 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             under a pointer: a reader who has never folded anything has no way of guessing that the
             column to the left is foldable, and a hover-only door is the very thing #184 is taking
             out of the editor elsewhere. */}
-        {bands.length > 0 && (
+        {/* Read off the deck and not off what a search left standing (#477): a search that finds
+            nothing took the button with it, and every box after it moved. */}
+        {column !== null && doc.rows.length > 0 && (
           <button
             type="button"
             className="byd-crown-fold"
             aria-expanded={jumpOpen}
             aria-controls={jumpId}
+            aria-label={jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}
+            title={jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}
             onClick={() => {
               setJumpOpen(!jumpOpen)
               rememberJumpOpen(!jumpOpen)
             }}
           >
             <span aria-hidden="true">{jumpOpen ? '\u27E8' : '\u27E9'}</span>
-            {jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}
+            <span className="byd-crown-name">{jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}</span>
           </button>
         )}
         <CrownBox name={t('wall.checks.title')} count={groups.length} open={box === 'checks'} onToggle={() => toggle('checks')} boxRef={checksBox} end />
@@ -348,6 +415,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             words={words}
             openGroup={openGroup}
             onOpenGroup={setOpenGroup}
+            readOnly={readOnly}
             fixes={(code) => (onFixChecks ? fixesFor(doc, { code: code as (typeof groups)[number]['code'] }, found) : [])}
             onFix={(code, what) => {
               onFixChecks?.(fixesFor(doc, { code: code as (typeof groups)[number]['code'] }, found))
@@ -456,8 +524,19 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
               </button>
             </div>
           )}
-          {bands.length === 0 ? (
-            <div className="byd-wall" role="list">
+          {/* A search that finds nothing says what was looked for and the way back (#477), in the
+              same form as the empty game above it (#476, variant A): what is missing, and the door. */}
+          {shown.length === 0 && isFiltering(filter) ? (
+            <div className="byd-wall-empty" role="status">
+              <h2>{t('wall.search.none', { query: filter.query })}</h2>
+              <div className="byd-wall-empty-doors">
+                <button type="button" className="byd-secondary" onClick={() => setFilter(noFilter)}>
+                  {t('wall.search.clear')}
+                </button>
+              </div>
+            </div>
+          ) : bands.length === 0 ? (
+            <div className="byd-wall" role="listbox" aria-label={t('wall.deck')}>
               {shown.map((row) => card(row))}
             </div>
           ) : (
@@ -479,7 +558,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
                   <small>{t(band.cards.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: band.cards.length })}</small>
                   <span className="byd-wall-band-rule" aria-hidden="true" />
                 </div>
-                <div className="byd-wall" role="list" aria-label={band.name}>
+                <div className="byd-wall" role="listbox" aria-label={band.name}>
                   {band.cards.map((row) => card(row))}
                 </div>
               </section>
@@ -521,6 +600,7 @@ function Checks({
   onOpenGroup,
   fixes,
   onFix,
+  readOnly,
   t,
 }: {
   groups: ReturnType<typeof groupIssues>
@@ -530,6 +610,7 @@ function Checks({
   onOpenGroup(code: string | null): void
   fixes(code: string): Fix[]
   onFix(code: string, what: string): void
+  readOnly: boolean
   t: ReturnType<typeof useT>
 }) {
   return (
@@ -565,7 +646,9 @@ function Checks({
                         Where there is no remedy the reason stands in its place rather than a hole:
                         contrast and colour-alone need a choice of the designer's, and a font needs
                         a file (B3), none of which a patch can invent. */}
-                    {fixes(g.code).length > 0 ? (
+                    {readOnly && fixes(g.code).length > 0 ? (
+                      <small>{t('wall.checks.fix.readOnly')}</small>
+                    ) : fixes(g.code).length > 0 ? (
                       <button type="button" className="byd-secondary" onClick={() => onFix(g.code, words[g.code] ?? g.code)}>
                         {t('wall.checks.fix')}
                       </button>

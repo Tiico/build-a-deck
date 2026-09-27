@@ -40,7 +40,9 @@ export function useProjectClient(http: string | null, id: string | null, dropAft
         return
       }
       opened = client
-      unsubscribe = client.subscribe(() => setState((s) => ({ ...s, tick: s.tick + 1 })))
+      // A project that closes to this editor while it is open says so in the same words as one that
+      // would not open (#477): the document is no longer this reader's to look at.
+      unsubscribe = client.subscribe(() => setState((s) => (client.shut ? { client: null, fault: client.shut, tick: s.tick + 1 } : { ...s, tick: s.tick + 1 })))
       setState({ client, fault: null, tick: 0 })
     }
     void start().catch((err: unknown) => {

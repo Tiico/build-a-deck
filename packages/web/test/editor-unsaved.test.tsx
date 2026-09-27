@@ -111,7 +111,7 @@ describe('an edit made while the save is travelling (#380)', () => {
     expect(screen.getByText('Osparat')).toBeDefined()
     expect(closingTheTab()).toBe(true)
     const again = screen.getByRole('button', { name: /spara/i }) as HTMLButtonElement
-    expect(again.disabled).toBe(false)
+    expect(again.getAttribute('aria-disabled')).toBe('false')
 
     fireEvent.click(again)
     await screen.findByText('rev 3')

@@ -398,3 +398,27 @@ describe('the mark follows the deck as it rolls past (#179)', () => {
     })
   })
 })
+
+// A search that finds nothing says so, and the crown stays as it stood (#477): the wall went
+// blank without a word, and the fold button left the crown so everything after it jumped.
+describe('a search that finds nothing (#477)', () => {
+  it('says what was looked for, offers the way back, and keeps the crown still', () => {
+    // Grouped, which is what puts the fold in the crown; small, because the wall is drawn three
+    // times here and 308 compiled cards three times over outran CI's budget.
+    const doc = bigDeck()
+    doc.rows = doc.rows.filter((_, i) => i % 26 === 0)
+    wall(doc)
+    expect(document.querySelector('.byd-crown-fold')).not.toBeNull()
+    // Found by selector, as everything in this file is: a role query computes every accessible name
+    // in the document, and on CI that alone outran the budget.
+    fireEvent.change(document.querySelector('.byd-crown-search')!, { target: { value: 'zzzzqx' } })
+    expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(0)
+    const empty = document.querySelector('.byd-wall-empty[role="status"]')!
+    expect(empty.querySelector('h2')!.textContent).toBe('Inga kort matchar «zzzzqx».')
+    expect(document.querySelector('.byd-crown-fold')).not.toBeNull()
+    const clear = empty.querySelector('button')!
+    expect(clear.textContent).toBe('Rensa sökningen')
+    fireEvent.click(clear)
+    expect(document.querySelectorAll('[data-card-ref]').length).toBeGreaterThan(0)
+  })
+})

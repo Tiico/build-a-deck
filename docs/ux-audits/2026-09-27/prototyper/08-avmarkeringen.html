@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 08 — Avmarkeringen på väggen (#477 fynd 3)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Ett kort på Kortväggen väljs nu med klick, Enter och Mellanslag (byggt, #477 fynd 3). Men
+     ingenting avväljer: Escape gör inget, ett klick på tom yta gör inget, och ett valt kort bär
+     sin ring tills ett annat väljs. Vad är ett "inget kort valt", och hur når man det?
+
+       Nu  inget avväljer
+       A   Escape och klick på tom vägg avväljer; inget syns som gör det
+       B   ett chip i väggens fot: «Valt: Drake ×», krysset och Escape avväljer
+       C   ett nytt tryck på det valda kortet avväljer (växlar), och Escape
+
+     Väggen är en listbox: pilarna går mellan korten, Enter och Mellanslag väljer. Rutan
+     «Läst upp» visar vad en skärmläsare hör. ───────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .byd-editor { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  .krona { display: flex; gap: var(--s2); align-items: center; padding: var(--s3) var(--gutter); border-bottom: 1px solid var(--line); }
+  .krona .sok { flex: 0 1 220px; min-height: 44px; display: flex; align-items: center; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--sunk); color: var(--quiet); }
+  .krona .box { min-height: 44px; display: flex; align-items: center; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--sunk); color: #fff; font-weight: 700; }
+  .vagg { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--s4) var(--gutter); }
+  .kort-rad { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: var(--s3); }
+  .kort { position: relative; aspect-ratio: 63 / 88; border-radius: 7px; background: #f4ead8; color: #111; padding: 10px; font: 700 13px system-ui; cursor: pointer; transition: transform 130ms ease; }
+  .kort small { display: block; margin-top: 30%; font: 400 10px system-ui; color: #333; }
+  .kort:hover, .kort:focus-visible { transform: translateY(-3px); }
+  .kort:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 3px; }
+  .kort[aria-selected='true'] { box-shadow: 0 0 0 3px var(--chrome), 0 0 0 6px var(--primary-mark); }
+  .fot { display: flex; align-items: center; gap: var(--s4); min-height: 44px; padding: 0 var(--gutter); border-top: 1px solid var(--line); color: var(--quiet-2); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 4px 0 12px; border-radius: 999px; background: #1f3350; color: #dce8fb; font-weight: 600; }
+  .chip button { min-width: 44px; min-height: 44px; margin: -6px 0; border: 0; border-radius: 999px; background: transparent; color: #dce8fb; font: inherit; font-size: 16px; cursor: pointer; }
+  .chip button:focus-visible { outline: 2px solid var(--primary-mark); }
+  .last { margin-left: auto; color: var(--quiet); font-size: 12px; }
+  .last b { color: #ffe9b8; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#477 fynd 3 · Hur ett kort slutar vara valt.</b> Välj ett kort med klick eller pilar + Enter, och försök sedan få väggen att inte ha något valt.</p>
+    <p>Det valda kortet är det Mall öppnar och det Tabell markerar, så «inget valt» betyder: mallens grund, ingen rad.</p>
+  </div>
+  <div class="matt"><span>Valt: <u id="m-valt">—</u></span></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="byd-editor">
+  <div class="ed-huvud">
+    <span class="hem">Mina spel</span><strong>Skogens herrar</strong><span class="rev">rev 4</span><span class="sparat">Sparat</span>
+    <div class="ed-flikar" role="tablist" aria-label="Lägen"><button role="tab" aria-selected="true">Kortvägg</button><button role="tab" aria-selected="false">Mall</button><button role="tab" aria-selected="false">Tabell</button></div>
+    <span class="spacer"></span><span class="who">A</span>
+    <button type="button" class="ed-knapp kantad">Spara</button><button type="button" class="ed-knapp primar">Starta bord</button>
+  </div>
+  <div class="krona"><span class="sok">Sök i alla fält…</span><span class="box">Ögon: Som du ser det ▾</span><span class="box">Fysisk kontroll (0) ▾</span></div>
+  <div class="vagg" id="vagg"><div class="kort-rad" role="listbox" aria-label="Leken" id="lista"></div></div>
+  <div class="fot" id="fot"></div>
+</div>
+<script>
+const KORT = ['Drake', 'Riddare', 'Trollkarl', 'Varg', 'Björn', 'Räv', 'Lo', 'Järv', 'Älg', 'Hjort', 'Grävling', 'Uggla']
+const s = { v: 'a', valt: null, fokus: 0, last: '' }
+const NOT = {
+  nu: '<b>Nu.</b> Ett valt kort förblir valt. Escape, klick på tom yta och ett nytt klick på samma kort gör ingenting. <span class="minus">− Det finns inget sätt tillbaka till «inget valt» utom att ladda om.</span>',
+  a: '<b>A · Escape och tom yta.</b> Escape på väggen och ett klick mellan korten avväljer. Inget på skärmen säger att det går. <span class="plus">+ Inget nytt att rita; samma dörrar som panelerna (L32, doors.ts).</span> <span class="minus">− Osynligt för den som inte redan vet. En mus som missar ett kort avväljer av misstag.</span>',
+  b: '<b>B · Chip i foten.</b> Foten säger vilket kort som är valt, med ett kryss som avväljer. Escape gör samma sak. <span class="plus">+ Syns, säger vad som är valt även när kortet är utanför bild, och har en egen träffyta på 44 px.</span> <span class="minus">− Ett element till i foten; en fot som redan säger antal och anmärkningar.</span>',
+  c: '<b>C · Tryck igen.</b> Ett nytt klick, Enter eller Mellanslag på det valda kortet avväljer det, som en växlare. Escape också. <span class="plus">+ Ingen ny yta; samma gest som valde.</span> <span class="minus">− Ett dubbelklick blir välj + avvälj. En listbox växlar inte i APG — skärmläsaren säger «vald», inte «nedtryckt».</span>',
+}
+const lista = document.getElementById('lista')
+function say(t) { s.last = t }
+function rita(focus) {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  document.getElementById('anteckning').innerHTML = NOT[s.v]
+  document.getElementById('m-valt').textContent = s.valt ?? '—'
+  lista.innerHTML = KORT.map((k, i) => `<div class="kort" role="option" data-i="${i}" tabindex="${i === s.fokus ? 0 : -1}" aria-selected="${s.valt === k}">${k} 1<small>Rad ${i + 1}.</small></div>`).join('')
+  const fot = document.getElementById('fot')
+  fot.innerHTML = `<span>12 kort · 150 px breda</span><span>Inga anmärkningar</span>` +
+    (s.v === 'b' && s.valt ? `<span class="chip">Valt: ${s.valt}<button type="button" id="avvalj" aria-label="Avmarkera ${s.valt}">×</button></span>` : '') +
+    `<span class="last">Läst upp: <b>${s.last || '—'}</b></span>`
+  if (focus) (focus === 'chip' ? document.getElementById('avvalj') : lista.querySelector(`[data-i="${s.fokus}"]`))?.focus()
+}
+function valj(i) {
+  const k = KORT[i]
+  if (s.valt === k && s.v === 'c') { s.valt = null; say('Inget kort valt') }
+  else { s.valt = k; say(`${k}, vald`) }
+  s.fokus = i
+  rita('kort')
+}
+function avvalj() {
+  if (s.v === 'nu' || !s.valt) return
+  s.valt = null; say('Inget kort valt'); rita('kort')
+}
+lista.addEventListener('click', (e) => { const k = e.target.closest('.kort'); if (k) valj(Number(k.dataset.i)) })
+document.getElementById('vagg').addEventListener('click', (e) => { if (!e.target.closest('.kort') && s.v === 'a') avvalj() })
+document.getElementById('fot').addEventListener('click', (e) => { if (e.target.id === 'avvalj') { avvalj(); lista.querySelector(`[data-i="${s.fokus}"]`)?.focus() } })
+lista.addEventListener('keydown', (e) => {
+  const k = e.target.closest('.kort'); if (!k) return
+  const i = Number(k.dataset.i)
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); return valj(i) }
+  if (e.key === 'Escape') { e.preventDefault(); return avvalj() }
+  const d = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0
+  if (!d) return
+  e.preventDefault(); e.stopPropagation()
+  s.fokus = (i + d + KORT.length) % KORT.length; rita('kort')
+})
+document.body.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-v]'); if (!b) return
+  s.v = b.dataset.v; s.valt = null; s.last = ''
+  const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita()
+})
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [role="listbox"], [role="tablist"]')) return
+  if (e.key === 'Escape') return avvalj()
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  s.v = alla[(alla.indexOf(s.v) + (e.key === 'ArrowRight' ? 1 : 3)) % 4]; s.valt = null; s.last = ''
+  const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita()
+})
+const q = new URLSearchParams(location.search).get('v')
+if (['nu', 'a', 'b', 'c'].includes(q)) s.v = q
+rita()
+</script>
+</body>
+</html>

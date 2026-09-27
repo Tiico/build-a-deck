@@ -98,6 +98,7 @@ export const svEditor = {
   'editor.updatingTable': 'Uppdaterar bordet…',
   'editor.table.started': 'Nytt bord startat på {version} —',
   'editor.table.refreshed': 'Bordet uppdaterat på {version} —',
+  'editor.table.running': 'Bordet kör {version} —',
   'editor.table.lost': '{n} kort kunde inte renderas. Bordet står kvar på sin gamla version.',
   'editor.table.retry': 'Försök igen',
   'editor.table.rendering': 'renderar kort {done}/{total}',
@@ -129,6 +130,8 @@ export const svEditor = {
   'wall.group.without': 'Utan {column}',
   // Innehållsförteckningen över leken (#179): hoppspalten utfälld, remsan hopfälld.
   'wall.deck': 'Leken',
+  'wall.search.none': 'Inga kort matchar «{query}».',
+  'wall.search.clear': 'Rensa sökningen',
   'wall.groups': 'Grupper i leken',
   'wall.groups.folded': 'Grupper i leken, hopfälld',
   'wall.fold.in': 'Fäll ihop hoppspalten',
@@ -138,6 +141,8 @@ export const svEditor = {
   'wall.tile': '{group}, {n} kort',
   /* Kronan (#128, #130): en låda säger sitt tillstånd, aldrig bara sitt namn. */
   'crown.box.state': '{name}: {state}',
+  // What stands before the choice in a box, and is what gives way below 1280 (#477).
+  'crown.box.lead': '{name}: ',
   'crown.box.count': '{name} ({n})',
   'crown.rail.more': 'Fler filter',
   // Hjälpmönstret (L32, #303): frågetecknet är namngivet efter vad det handlar om, och lådan
@@ -196,6 +201,7 @@ export const svEditor = {
   'wall.checks.fix': 'Rätta i mallen',
   'wall.checks.fix.said': '{what} rättad i mallen.',
   'wall.checks.fix.none': 'Den här behöver ett formval och kan inte rättas åt dig.',
+  'wall.checks.fix.readOnly': 'Den som får ändra spelet kan rätta det här i mallen.',
   'wall.severity.error': 'fel',
   'wall.severity.warning': 'varning',
 
@@ -1182,6 +1188,7 @@ export const svEditor = {
   'history.compare.of': 'Jämför version {rev} i tabellen',
   'history.restore': 'Ta tillbaka den här versionen',
   'history.restore.of': 'Återställ version {rev}',
+  'history.restored': 'Version {rev} är tillbaka. Ångra tar bort den igen.',
   'history.diff.none': 'Inget ändrat.',
   'history.diff.other': 'Annat ändrat.',
   'history.diff.added': '{n} nya kort',
@@ -1259,6 +1266,13 @@ export const svEditor = {
   'share.hereNow': 'inne nu',
   'share.remove': 'Ta bort',
   'share.remove.of': 'Ta bort {email}',
+  'share.remove.ask': 'Ta spelet ifrån {email}? Det de har öppet stängs direkt.',
+  'share.remove.yes': 'Ja, ta bort',
+  'share.waiting.one': '1 inbjudan väntar',
+  'share.waiting.other': '{n} inbjudningar väntar',
+  'share.waiting.as': 'inbjuden som {role} · lever {days} d till',
+  'share.withdraw': 'Dra tillbaka',
+  'share.withdraw.of': 'Dra tillbaka inbjudan till {email}',
   'share.email': 'Adress att bjuda in',
   'share.email.placeholder': 'namn@exempel.se',
   'share.role': 'Roll',

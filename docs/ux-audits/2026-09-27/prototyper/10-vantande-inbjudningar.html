@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 10 — Väntande inbjudningar (#477 fynd 10)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Dela-panelen listar de som har spelet. En inbjudan som är skickad men inte använd syns
+     ingenstans: ägaren vet inte vem hon väntar på, och bjöd förut in samma adress igen (det
+     stoppas nu, #477 fynd 10, med «har redan en inbjudan som väntar»). Hur syns det som väntar?
+
+       Nu  bara medlemmarna; en inbjudan syns inte efter kvittot
+       A   i samma lista som medlemmarna, nedtonad: «inbjuden · går ut om 6 d», «Dra tillbaka»
+       B   ett eget avsnitt under medlemmarna: «Väntar på svar (2)»
+       C   en rad vid formuläret: «2 inbjudningar väntar ▸» som fäller ut dem
+
+     «Dra tillbaka» kräver en ny väg på servern (att stryka en öppen inbjudan). Listan finns
+     redan (`openInvites`, byggd för fynd 10). Panelen är 340 px, som i editor.css. ─────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .scen { flex: 1 1 auto; min-height: 0; overflow: auto; background: var(--chrome); position: relative; }
+  .panel { position: absolute; right: 16px; top: 16px; width: 340px; max-height: calc(100% - 32px); overflow: auto; padding: 16px; border-radius: 14px; background: var(--panel); border: 1px solid #3b4358; box-shadow: 0 18px 40px rgb(0 0 0 / 50%); }
+  .panel header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .panel h2, .panel h3 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .panel h3 { margin: 14px 0 8px; }
+  .panel header button { margin-left: auto; border: 0; background: transparent; color: var(--quiet-2); font-size: 18px; min-width: 44px; min-height: 44px; cursor: pointer; }
+  ul { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+  li { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; background: var(--card); }
+  li[data-here] { box-shadow: inset 3px 0 0 var(--good); }
+  li[data-pending] { background: transparent; border: 1px dashed #3b4358; }
+  li i { display: grid; place-items: center; width: 24px; height: 24px; flex: none; border-radius: 50%; color: #10131a; font: 800 11px system-ui; font-style: normal; }
+  li[data-pending] i { background: transparent !important; border: 1.5px dashed var(--quiet); color: var(--quiet-2); }
+  li span { display: grid; min-width: 0; }
+  li b { color: #fff; font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+  li[data-pending] b { color: #c8cfdc; font-weight: 600; }
+  li small { color: var(--quiet-2); font-size: 11px; }
+  li button { margin-left: auto; min-height: 44px; border: 1px solid var(--line); border-radius: 7px; padding: 0 10px; background: var(--sunk); color: var(--quiet-2); font: 12px system-ui; cursor: pointer; flex: none; }
+  form { display: grid; grid-template-columns: 1fr auto auto; gap: 6px; }
+  form input, form select { min-height: 44px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: #14161c; color: #fff; font: 12px system-ui; min-width: 0; }
+  form button { min-height: 44px; border: 1px solid var(--primary); border-radius: 8px; padding: 0 12px; background: var(--primary); color: #fff; font: 700 12px system-ui; cursor: pointer; }
+  .kvitto { grid-column: 1 / -1; margin: 4px 0 0; color: var(--good); font-size: 12px; line-height: 1.5; }
+  .vantar { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; margin-top: 10px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: #c8cfdc; font: 12px system-ui; cursor: pointer; text-align: left; }
+  .vantar[aria-expanded='true'] { border-color: var(--primary-mark); }
+  .tom { color: var(--quiet); font-size: 12px; margin: 0 0 8px; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#477 fynd 10 · Det som väntar i Dela.</b> Bjud in en adress och se var den hamnar. «Dra tillbaka» stryker en inbjudan; länken i mejlet slutar då fungera.</p>
+    <p>Pröva också att bjuda in <i>bo@example.com</i> igen: stoppet med ord är byggt.</p>
+  </div>
+  <button type="button" id="aterstall">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="scen"><div class="panel" id="panel" role="dialog" aria-label="Vilka som har spelet"></div></div>
+<script>
+const START = () => ({ medlemmar: [['ada@example.com', 'ägare', true], ['cilla@example.com', 'medredigerare', false]], vantar: [['bo@example.com', 'testledare', 6], ['dan@example.com', 'betraktare', 2]] })
+const s = { v: 'a', ...START(), kvitto: null, fel: null, oppen: false }
+const NOT = {
+  nu: '<b>Nu.</b> Kvittot står en stund och sedan finns inbjudan ingenstans. <span class="minus">− Ägaren vet inte vem som inte svarat, och kan inte ta tillbaka en inbjudan till fel adress.</span>',
+  a: '<b>A · I samma lista.</b> Den som väntar står bland medlemmarna, streckad, med rollen och hur länge länken lever. <span class="plus">+ En lista svarar på «vilka har eller får spelet» (D3). Syns utan att leta.</span> <span class="minus">− Blandar de som har spelet med de som inte har det; streckat är skillnaden.</span>',
+  b: '<b>B · Eget avsnitt.</b> Medlemmarna först, sedan «Väntar på svar» med antal. <span class="plus">+ Tydlig gräns mellan har och får. Rubriken säger antalet även när listan är lång.</span> <span class="minus">− Två listor i en panel på 340 px; panelen blir högre.</span>',
+  c: '<b>C · Vid formuläret.</b> En rad under inbjudan: «2 inbjudningar väntar ▸», som fäller ut dem. <span class="plus">+ Står där inbjudan görs, stör inte listan över de som har spelet.</span> <span class="minus">− En dörr till; det som väntar syns inte förrän den öppnas.</span>',
+}
+const esc = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+const farg = (e) => { let h = 0; for (const c of e) h = (h * 31 + c.charCodeAt(0)) % 360; return `hsl(${h} 55% 55%)` }
+const medlem = ([e, r, har]) => `<li ${har ? 'data-here' : ''}><i style="background:${farg(e)}">${e[0].toUpperCase()}</i><span><b>${esc(e)}</b><small>${r}${har ? ' · inne nu' : ''}</small></span>${r === 'ägare' ? '' : `<button type="button" aria-label="Ta bort ${esc(e)}">Ta bort</button>`}</li>`
+const vantande = ([e, r, d]) => `<li data-pending><i>${e[0].toUpperCase()}</i><span><b>${esc(e)}</b><small>inbjuden som ${r} · går ut om ${d} d</small></span><button type="button" data-drag="${esc(e)}" aria-label="Dra tillbaka inbjudan till ${esc(e)}">Dra tillbaka</button></li>`
+function rita(fokus) {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  document.getElementById('anteckning').innerHTML = NOT[s.v]
+  const visa = s.v !== 'nu'
+  let lista = ''
+  if (s.v === 'a') lista = `<ul>${s.medlemmar.map(medlem).join('')}${s.vantar.map(vantande).join('')}</ul>`
+  else if (s.v === 'b') lista = `<ul>${s.medlemmar.map(medlem).join('')}</ul><h3>Väntar på svar (${s.vantar.length})</h3>${s.vantar.length ? `<ul>${s.vantar.map(vantande).join('')}</ul>` : '<p class="tom">Ingen inbjudan väntar.</p>'}`
+  else lista = `<ul>${s.medlemmar.map(medlem).join('')}</ul>`
+  const c = s.v === 'c' && s.vantar.length ? `<button type="button" class="vantar" id="vantar" aria-expanded="${s.oppen}">${s.vantar.length} ${s.vantar.length === 1 ? 'inbjudan väntar' : 'inbjudningar väntar'} <span style="margin-left:auto">${s.oppen ? '▾' : '▸'}</span></button>${s.oppen ? `<ul style="margin-top:8px">${s.vantar.map(vantande).join('')}</ul>` : ''}` : ''
+  document.getElementById('panel').innerHTML = `<header><h2>Vilka som har spelet</h2><button type="button" aria-label="Stäng">×</button></header>
+    ${s.fel ? `<p role="alert" style="color:var(--warn);margin:0 0 10px">${esc(s.fel)}</p>` : ''}${lista}
+    <form id="form" novalidate><input type="email" id="adress" aria-label="Adress att bjuda in" placeholder="namn@exempel.se"><select aria-label="Roll"><option>medredigerare</option><option>testledare</option><option>betraktare</option></select><button type="submit">Bjud in</button>
+    ${s.kvitto ? `<p class="kvitto" role="status">Inbjudan är skickad till ${esc(s.kvitto)}. Den lever en vecka och går att använda en gång.</p>` : ''}</form>${c}`
+  if (!visa) void 0
+  if (fokus) document.querySelector(fokus)?.focus()
+}
+document.body.addEventListener('submit', (e) => {
+  e.preventDefault()
+  const a = document.getElementById('adress').value.trim(), r = document.querySelector('#form select').value
+  s.kvitto = null; s.fel = null
+  if (!/^[^\s@]+@[^\s@]+$/.test(a)) s.fel = 'Det där är ingen e-postadress.'
+  else if (s.medlemmar.some(([m]) => m === a.toLowerCase())) s.fel = `${a} har redan spelet.`
+  else if (s.vantar.some(([m]) => m === a.toLowerCase())) s.fel = `${a} har redan en inbjudan som väntar.`
+  else { s.vantar.push([a.toLowerCase(), r, 7]); s.kvitto = a }
+  rita('#adress')
+})
+document.body.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.v) { s.v = b.dataset.v; const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita() }
+  else if (b.id === 'aterstall') { Object.assign(s, START(), { kvitto: null, fel: null, oppen: false }); rita() }
+  else if (b.id === 'vantar') { s.oppen = !s.oppen; rita('#vantar') }
+  else if (b.dataset.drag) { s.vantar = s.vantar.filter(([m]) => m !== b.dataset.drag); s.kvitto = null; s.fel = null; rita('#adress') }
+})
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, select')) return
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  s.v = alla[(alla.indexOf(s.v) + (e.key === 'ArrowRight' ? 1 : 3)) % 4]
+  const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita()
+})
+const q = new URLSearchParams(location.search).get('v')
+if (['nu', 'a', 'b', 'c'].includes(q)) s.v = q
+rita()
+</script>
+</body>
+</html>

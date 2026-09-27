@@ -48,9 +48,9 @@ const saveButton = (): HTMLButtonElement => screen.getByRole('button', { name: '
 
 async function spara(): Promise<void> {
   const button = (await screen.findByRole('button', { name: 'Spara' })) as HTMLButtonElement
-  expect(button.disabled).toBe(false)
+  expect(button.getAttribute('aria-disabled')).toBe('false')
   fireEvent.click(button)
-  await waitFor(() => expect(saveButton().disabled).toBe(true))
+  await waitFor(() => expect(saveButton().getAttribute('aria-disabled')).toBe('true'))
 }
 const handle = (id: string) => document.querySelector(`[data-zone-handle="${id}"]`) as HTMLElement
 const row = (id: string) => document.querySelector(`[data-zone-row="${id}"]`) as HTMLElement

@@ -161,7 +161,11 @@ function TableGroupView({ group, server, rev, qrFor, onQr }: { group: TableGroup
 // Variant B, the shortcut: the newest table of this game, from the header, on whichever tab the
 // designer is standing (#19). It is the same row as in the Bord tab — not a second telling of
 // the same table — and the way on to all of them.
-export function TableMenu({ client, server, onShowTables }: { client: ProjectClient; server: string | null; onShowTables(): void }) {
+//
+// `onNewTable` is «Nytt bord» once a table runs. It stands here and not beside the primary
+// (beslut 2026-09-27, #477 fynd 4): at 1024 the header had no room for it, and the button that
+// gave way was «Uppdatera bordet».
+export function TableMenu({ client, server, onShowTables, onNewTable }: { client: ProjectClient; server: string | null; onShowTables(): void; onNewTable?: (() => void) | undefined }) {
   const t = useT()
   const [open, setOpen] = useState(false)
   const [tables, setTables] = useState<TableSummary[] | null>(null)
@@ -205,6 +209,18 @@ export function TableMenu({ client, server, onShowTables }: { client: ProjectCli
             </ul>
           ) : (
             <p>{t('tables.menu.none')}</p>
+          )}
+          {onNewTable && (
+            <button
+              type="button"
+              className="byd-editor-ways-new"
+              onClick={() => {
+                close()
+                onNewTable()
+              }}
+            >
+              {t('editor.newTable')}
+            </button>
           )}
           <button
             type="button"
