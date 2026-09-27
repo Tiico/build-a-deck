@@ -69,13 +69,15 @@ const clash = (a: ZoneAction): 'asks' | 'start' | undefined => (a.steps.some(ask
 // vilken form ett verb styr är därmed språkets sak och inte den här filens (A4).
 type PlaceForm = 'at' | 'to'
 
-const blank = (v: ActionStep['v']): ActionStep =>
+// `pile` is the first other pile, where a new «Flytta hela högen» goes (beslut 2026-09-27, #480
+// fynd 14): beside itself was the pile moved next to itself. With no other pile, beside it is.
+const blank = (v: ActionStep['v'], pile?: string): ActionStep =>
   v === 'shuffle'
     ? { v }
     : v === 'flipTop'
       ? { v, face: 'toggle' }
       : v === 'movePile'
-        ? { v, to: { at: 'beside' } }
+        ? { v, to: pile ? { at: 'zone', zone: pile } : { at: 'beside' } }
         : v === 'deal'
           ? { v, each: { of: 'number', n: 1 }, to: { at: 'hands' }, face: 'keep' }
           : v === 'take'
@@ -260,7 +262,7 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
                 <span>{t('setup.actions.andThen', { name: a.label })}</span>
                 <select
                   value=""
-                  onChange={(e) => e.target.value !== '' && setAction(a.id, { ...a, steps: [...a.steps, blank(e.target.value as ActionStep['v'])] })}
+                  onChange={(e) => e.target.value !== '' && setAction(a.id, { ...a, steps: [...a.steps, blank(e.target.value as ActionStep['v'], others.find((z) => z.kind === 'pile')?.id)] })}
                 >
                   <option value="">{t('setup.actions.andThen.pick')}</option>
                   {VERBS.map((v) => (

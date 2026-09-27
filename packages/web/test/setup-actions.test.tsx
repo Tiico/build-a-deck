@@ -751,3 +751,17 @@ describe('frågerutan på en stor lek (#480)', () => {
     expect(within(box).queryByRole('button', { name: 'Kort 13' })).toBeNull()
   })
 })
+
+// Ett nytt «Flytta hela högen» förvalts till den första andra högen (beslut 2026-09-27, #480
+// fynd 14): förut stod det «till vänster om högen», alltså högen bredvid sig själv.
+describe('förvalet för att flytta hela högen (#480)', () => {
+  it('är den första andra högen', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+    const action = step.closest('.byd-zone-action') as HTMLElement
+    fireEvent.change(within(action).getByRole('combobox'), { target: { value: 'movePile' } })
+    await waitFor(() => expect(action.querySelectorAll('ol li')).toHaveLength(2))
+    expect(action.querySelectorAll('ol li')[1]!.textContent).toContain('Flytta hela högen till Kasthög')
+  })
+})
