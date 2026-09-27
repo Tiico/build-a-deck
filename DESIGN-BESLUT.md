@@ -2947,6 +2947,12 @@ En bildcell är en referens till en innehållsadresserad asset; vid import löse
 Varje rad har en systemkolumn `antal` med standard 1.
 Setup skapar så många instanser med samma `cardRef`; tryckmanifestet summerar.
 
+*Tillagt 2026-09-27 (#479, beställarens beslut efter prototyp 13 och 15):*
+En import som skulle ta bort kort frågar först och säger hur många som finns och hur många filen har; en import som bara lägger till eller ändrar landar direkt.
+En rubrik i filen som bara skiljer i versaler från en kolumn leken redan har paras med den kolumnen i stället för att bli en ny.
+Tabellen går i kolumnen som ett kalkylark: Enter och nedpil tar samma fält på kortet under, Skift+Enter och uppil på kortet över, och i en prosacell gör Ctrl/Cmd+Enter samma sak eftersom Enter där är en radbrytning.
+En inklistring av flera celler — tabbar och radbrytningar — fyller ett block från cellen den klistras i och blir en enda ändring i historiken.
+
 Följdkrav:
 `cardRef` är en rad, inte ett fysiskt kort.
 "Vilket av de tre" finns bara som instans-id i loggen.
@@ -3422,6 +3428,11 @@ Regelboken skrev hela boken per bokstav, i ett stycke som dessutom stänger sig 
 Poletten görs nu på ett ställe för hela verktyget, `packages/web/src/editor/gesture.ts`, och varje yta som delar ut poletter tar först ett eget nummer: två paneler som räknar var för sig kan aldrig säga samma ord, inte heller när panelen byts ut mot en annan på samma plats i trädet.
 
 Byggt 2026-09-14 (ingen prototyp: ingenting nytt ritas, ett tryck gör det den som tryckte redan trodde att det gjorde).
+
+*Tillagt 2026-09-27 (#479, beställarens beslut efter prototyp 14):* inne i en cell är steget ett ord.
+Escape återställer cellen till värdet den hade när den fick fokus, och Ctrl+Z tar tillbaka ett ord i taget så länge cellen har något att ta tillbaka.
+När cellen är tillbaka där den började går nästa Ctrl+Z vidare till editorns stack, så samma tangent aldrig är död och aldrig hoppar över det designern nyss skrev.
+Stacken är oförändrad: orden är cellens egen minnesbild under ett och samma grepp, och greppet är fortfarande ett steg när cellen lämnas.
 
 ### L15. Lagerpanelen säger vad ett lager är, och ett lager går att låsa (prototypat 2026-09-14)
 
