@@ -125,7 +125,10 @@
   flex: 0 0 62vw; aspect-ratio: 63 / 88; scroll-snap-align: center;
   border-radius: 14px; padding: 16px; box-sizing: border-box;
   background: hsl(var(--hue, 0) var(--byd-card-face-s) var(--byd-card-face-l)); color: var(--byd-card-ink);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); touch-action: pan-x; user-select: none;
+  /* Sideways pans the strip, and a finger moving down scrolls the page from a card (#483): the page
+     used to be unscrollable anywhere a card lay, which at 62vw is most of the screen. Upward stays
+     the card's own, because that is the lift (K4). */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); touch-action: pan-x pan-up; user-select: none;
 }
 .byd-strip-card[data-selected='true'] { outline: 4px solid var(--byd-accent); }
 .byd-strip-card strong { font-size: 20px; font-weight: 800; }
@@ -168,8 +171,13 @@
 .byd-behind { display: contents; }
 
 /* Undo and rewind (B, C). */
+/* The proposer's strip stands at the foot and takes its own room there (#483): fixed, it lay over
+   «Spela…» and the sections under the hand with nothing left to scroll them out from under it.
+   The page is a column while it stands, so on a page shorter than the screen the strip is pushed
+   to the bottom of the screen and not left under the last section, where the toast can reach it. */
+.byd-player:has(> .byd-rewind-mine) { display: flex; flex-direction: column; }
 .byd-rewind-mine {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  position: sticky; bottom: 0; z-index: 30; margin-top: auto;
   display: grid; gap: 10px; padding: 14px 18px 22px; font-size: 14px;
   background: var(--byd-warn-bg); color: var(--byd-warn);
 }

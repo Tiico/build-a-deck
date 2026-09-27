@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { Snapshot } from '@byd/protocol'
 import { isCounter } from '../components.js'
 import { Refusal, type RefusalHandle } from '../status/Refusal.js'
@@ -75,6 +76,11 @@ export function overviewOf(view: Snapshot) {
 
 export function PlaySheet({ view, count, label, onPlay, onClose, refusal, refusedZone = null }: PlaySheetProps) {
   const t = useT()
+  // Back to what had the focus when the sheet opened — the card it was lifted from — when it closes
+  // and that is still there (#483), the way the held-up card does it. A card that was played is
+  // gone, and the browser's own place for the focus is then no worse than before.
+  const [opener] = useState(() => (typeof document === 'undefined' ? null : document.activeElement))
+  useEffect(() => () => void (opener instanceof HTMLElement && opener.isConnected && opener.focus()), [opener])
   return (
     // The backdrop closes on the next touch rather than on click: the sheet opens under a finger
     // that is still down, and a click is what the browser sends when that finger lets go (UX-30).

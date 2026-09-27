@@ -193,6 +193,27 @@ describe('PlayerPage', () => {
     table.close()
   })
 
+  // A sheet that closes without playing hands the focus back to the card it was opened from
+  // (#483, fynd 12), the way the held-up card and every other sheet here do.
+  it('hands the focus back to the card when the play sheet closes without playing', async () => {
+    const id = await createSession(run)
+    await open(id, 'A', 'Ada')
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(2))
+    const first = document.querySelector<HTMLElement>('[data-hand-card]')!
+    first.focus()
+    fireEvent.pointerDown(first, { clientX: 100, clientY: 500 })
+    fireEvent.pointerMove(first, { clientX: 100, clientY: 430 })
+    fireEvent.pointerUp(first, { clientX: 100, clientY: 430 })
+    const sheet = await screen.findByRole('dialog', { name: 'Spela till' })
+    fireEvent.keyDown(sheet, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Spela till' })).toBeNull())
+    expect(document.activeElement).toBe(first)
+    table.close()
+  })
+
   it('holding two cards and lifting plays both in one atomic envelope', async () => {
     const id = await createSession(run)
     const table = TableClient.connect(await asTable(run, id))
