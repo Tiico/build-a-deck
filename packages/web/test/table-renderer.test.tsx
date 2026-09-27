@@ -1338,6 +1338,18 @@ describe('startbrickan på filten (#451)', () => {
     expect(sent[1]).toEqual([{ v: 'shuffle', pile: 'draw' }])
   })
 
+  // När spelet har börjat lämnar brickan filten och står som «Starta om» i hörnet (beslut
+  // 2026-09-27, #482 fynd 3 C): kort som lades där den låg gick inte att greppa.
+  it('lämnar filten när något hänt vid bordet, och står som «Starta om» utanför den', () => {
+    const table = withStart('start')
+    table.run(null, { v: 'draw', from: 'draw', to: 'discard', count: 1 })
+    const { container } = render(<TableRenderer view={table.view(null)} mode="table" scale={2} onAct={() => undefined} />)
+    expect(container.querySelector('[data-table] [data-table-start]')).toBeNull()
+    const again = screen.getByRole('button', { name: 'Starta om' })
+    expect(again).toBe(tile())
+    expect(again.closest('[data-table]')).toBeNull()
+  })
+
   // Prototypen ritade högarna längre isär än receptet gör, och brickan lades i bandet mellan
   // dem. På ett riktigt bord är det bandet 217 mm brett — draghögen och kasthögen står på
   // (±140, 0) och är 63 mm breda — så en bricka på 260 mm låg ovanpå båda. Sett i den byggda

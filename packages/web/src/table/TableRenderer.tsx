@@ -319,6 +319,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // the line it hangs from (`handCountAt`) — and leaves a pill's air past that line, which is what
   // `TV_AIR_PX` is for and the whole of what it is for. What the badge takes past the line is
   // pixels, and no measure of the felt can own them.
+  // The line past the rim is still held on the television, where the count now hangs inward over
+  // its fan (#482 fynd 5 B): it is what keeps the fans themselves whole on the screen.
   const counts = union(hands.map((z) => ({ ...handCountAt(z, floor, handRot(z), folded(z)), w: 0, h: 0 })))
   const keepCounts = counts ? { rect: counts, margin: TV_AIR_PX } : undefined
   // How far the camera may reach: the table, anything in play that lies past its rim (#20), and
@@ -1137,7 +1139,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           {offTop && (
             <Ghost card={topOf(zoneById.get(offTop.pile) ?? floor)} zoneBack={backOf(zoneById.get(offTop.pile))} faces={faces} back={backAt('ghost')} hiding={hidingTop} left={left(offTop.at.x)} top={top(offTop.at.y)} px={px} />
           )}
-          {start && (
+          {/* On the felt until something has happened at the table (K25); after that the tile would
+              lie over the cards played where it stood, so it leaves for the corner (beslut
+              2026-09-27, #482 fynd 3 C). */}
+          {start && !view.played && (
             <button
               type="button"
               className="byd-table-start"
@@ -1238,6 +1243,18 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               .join(t('start.again.and')),
           })}
         </Question>
+      )}
+      {start && view.played && (
+        <button
+          type="button"
+          className="byd-table-restart"
+          data-table-start={start.ok ? 'ready' : 'why'}
+          disabled={!start.ok}
+          title={start.ok ? undefined : t('start.blocked', { why: t(whyKey(start)) })}
+          onClick={() => start.ok && setAskingStart(true)}
+        >
+          {t('start.again.tile')}
+        </button>
       )}
       {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable)} />}
       {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => onAct([{ v: 'setCounter', component: entry.id, value }])} onClose={() => setEntry(null)} />}

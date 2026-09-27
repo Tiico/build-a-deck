@@ -357,6 +357,12 @@
 /* With the rim above the fan as drawn — the TV's north seat — the count hangs off the top of the
    fan instead, past the cards' near edge, in the air past the rim like every other seat's (#84). */
 .byd-hand[data-count-side='above'] .byd-hand-count { top: auto; bottom: var(--hand-lift, 25px); }
+/* On the television the count hangs inward, over the fan's inner edge (beslut 2026-09-27, #482
+   fynd 5 B). Outward it lay in the band a set may hide (#322, C5), and pulling the picture back to
+   clear it cost the card K9's floor. Inward it lies over its own hand, where the picture already is,
+   so the camera buys it no air at all. */
+.byd-table-frame[data-mode='tv'] .byd-hand-count { top: auto; bottom: calc(var(--hand-lift, 25px) - 1.4em); }
+.byd-table-frame[data-mode='tv'] .byd-hand[data-count-side='above'] .byd-hand-count { bottom: auto; top: calc(var(--hand-drop, 50px) - 1.4em); }
 
 /* Platsen tänds medan ett kort är på väg in i dess hand (#444, K24).
    Bandet ligger längs platsens egna millimeter av kanten (`handBand`), i platsens färg, och
@@ -432,6 +438,15 @@
 /* Den avstängda raden säger varför i ord (K21) och inte bara genom att vara grå; `title` bär
    meningen, och brickan ser avstängd ut utan att försvinna — en start som inte går att köra är
    något designern ska kunna se skälet till, inte något som ska gömma sig. */
+/* «Starta om» once the game is under way (#482 fynd 3 C): off the felt, in the corner beside «?»,
+   in the felt's quiet chrome — a restart is a deliberate act and not the table's next step. */
+.byd-table-restart {
+  position: absolute; right: 64px; bottom: 16px; z-index: 30; min-height: 44px; padding: 0 14px;
+  border: 1px solid var(--byd-felt-chalk-off); border-radius: 999px; background: var(--byd-felt-plate);
+  color: var(--byd-felt-chalk); font: 700 14px/1 var(--byd-felt-font, system-ui, sans-serif); cursor: pointer;
+}
+.byd-table-restart:hover, .byd-table-restart:focus-visible { border-color: var(--byd-felt-accent); color: var(--byd-felt-accent); }
+.byd-table-restart:disabled { color: var(--byd-felt-chalk-off); cursor: not-allowed; }
 .byd-table-start:disabled { background: #46506b; color: #d3d8e6; cursor: not-allowed; box-shadow: none; }
 
 /* Frågan före ett omtryck (#452). Den står utanför filten och inte på den: en vriden filt får
