@@ -1356,10 +1356,9 @@
 }
 .byd-canvas-question button[data-kind='danger'] { background: var(--byd-editor-ask-danger-bg); }
 .byd-canvas-locked {
-  margin: 8px 0 0;
+  margin: 0;
   padding: 8px 12px;
-  border: 1px solid #6b5a2c;
-  border-radius: 8px;
+  border-top: 1px solid #6b5a2c;
   background: #2a2419;
   color: var(--byd-editor-locked-ink);
   font-size: 12px;

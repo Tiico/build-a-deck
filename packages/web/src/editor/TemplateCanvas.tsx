@@ -339,11 +339,6 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             onSelectElement={onSelectElement}
             overlay={<DragLayer grid={grid ? gridStep(zoom.scale) : null} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} point={pointAt} onPoint={setPointAt} />}
           />
-          {refusedLayer && (
-            <p className="byd-canvas-locked" role="alert">
-              {t('canvas.layer.isLocked', { name: layerName(refusedLayer) })}
-            </p>
-          )}
         </main>
           <ZoomBand zoom={zoom} />
         </div>
@@ -352,6 +347,13 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             was pressed — which is the one answer that must cost nothing. It is otherwise the same
             strip the table asks its own two questions in, in the colours a deletion is asked in
             there, and in the column where the card it draws on is. */}
+        {/* Why a locked layer did not move (L15), under the card where the canvas's question
+            stands (#478): at the stage's foot it was cut by the stage it stood in. */}
+        {refusedLayer && (
+          <p className="byd-canvas-locked" role="alert">
+            {t('canvas.layer.isLocked', { name: layerName(refusedLayer) })}
+          </p>
+        )}
         {catalog && <FontCatalog words={cardWords(shown, rowData)} inGame={Object.keys(doc.fonts ?? {})} onChoose={onCatalogFont} onClose={() => setCatalog(false)} />}
         {goes && (
           <Question
