@@ -81,6 +81,22 @@ describe.skipIf(!url)('PostgresProjectStore', () => {
     await store.close()
   })
 
+  it('lists the invitations that can still be followed, and none that were used or ran out (#477)', async () => {
+    const store = PostgresLogStore.connect(url!, { schema })
+    await store.migrate()
+    const projects = store.projects()
+    const id = `p-inv-${Date.now()}`
+    const { zones, seats, floor } = twoSeatSetup()
+    await projects.create(id, { name: 'Test', template, rows: [], icons: {}, setup: { zones, seats, floor, deckZone: 'draw' } })
+    const later = '2099-01-01T00:00:00.000Z'
+    await projects.invite({ tokenHash: `${id}-a`, project: id, email: 'bo@example.com', role: 'editor', expiresAt: later })
+    await projects.invite({ tokenHash: `${id}-b`, project: id, email: 'cee@example.com', role: 'viewer', expiresAt: later })
+    await projects.invite({ tokenHash: `${id}-c`, project: id, email: 'dee@example.com', role: 'viewer', expiresAt: '2000-01-01T00:00:00.000Z' })
+    await projects.acceptInvite(`${id}-b`, new Date().toISOString())
+    expect(await projects.openInvites(id, new Date().toISOString())).toEqual([{ email: 'bo@example.com', role: 'editor', expiresAt: later }])
+    await store.close()
+  })
+
   it("lists a game with its first card, the deck in the table's own order (G1)", async () => {
     const store = PostgresLogStore.connect(url!, { schema })
     await store.migrate()

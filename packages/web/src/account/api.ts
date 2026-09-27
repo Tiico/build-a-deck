@@ -80,6 +80,12 @@ export async function inviteToProject(http: string, project: string, email: stri
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/invites`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, role, ...pageLang() }) }))
   if (res.status === 401) throw new Unauthorized()
   if (res.status === 403) throw new Error(t('error.invite.notOwner'))
+  // What the service could not do, said as the reason and not as its number (#477).
+  if (res.status === 400) throw new Error(t('error.invite.address'))
+  if (res.status === 409) {
+    const { why } = (await res.json().catch(() => ({}))) as { why?: string }
+    throw new Error(t(why === 'invited' ? 'error.invite.pending' : 'error.invite.member', { email }))
+  }
   if (!res.ok) throw new Error(t('error.invite.failed', { status: res.status }))
 }
 

@@ -70,9 +70,99 @@ describe('who has the game, from the editor (D3)', () => {
     expect(panel.textContent).toContain('medredigerare')
 
     fireEvent.click(within(panel).getByRole('button', { name: 'Ta bort bo@example.com' }))
+    fireEvent.click(await within(panel).findByRole('button', { name: 'Ja, ta bort' }))
     await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(1))
     // The owner is nobody's to remove.
     expect(within(panel).queryByRole('button', { name: /Ta bort ada@example.com/ })).toBeNull()
+  })
+})
+
+// Sharing as something that answers in words and asks before it takes (#477).
+describe('the share panel says what happened (#477)', () => {
+  const owning = async () => {
+    await signIn('ada@example.com')
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    await openEditor()
+    fireEvent.click(await screen.findByRole('button', { name: 'Vilka som har spelet' }))
+    return screen.findByRole('dialog', { name: 'Vilka som har spelet' })
+  }
+  const invite = (panel: HTMLElement, email: string) => {
+    fireEvent.change(within(panel).getByLabelText('Adress att bjuda in'), { target: { value: email } })
+    fireEvent.click(within(panel).getByRole('button', { name: 'Bjud in' }))
+  }
+
+  it('takes the focus when it opens', async () => {
+    const panel = await owning()
+    await waitFor(() => expect(panel.contains(document.activeElement)).toBe(true))
+  })
+
+  it('refuses the owner herself, a second invitation and an address that is not one, in words', async () => {
+    const panel = await owning()
+    invite(panel, 'ada@example.com')
+    expect((await within(panel).findByRole('alert')).textContent).toBe('ada@example.com har redan spelet.')
+
+    invite(panel, 'bo@example.com')
+    expect(await within(panel).findByText(/Inbjudan är skickad till bo@example.com/)).toBeTruthy()
+    invite(panel, 'bo@example.com')
+    await waitFor(() => expect(within(panel).getByRole('alert').textContent).toBe('bo@example.com har redan en inbjudan som väntar.'))
+
+    const asked = run.mail.sent.length
+    invite(panel, 'bo')
+    await waitFor(() => expect(within(panel).getByRole('alert').textContent).toBe('Det där är ingen e-postadress.'))
+    expect(run.mail.sent.length).toBe(asked)
+  })
+
+  it('asks before taking the game back from someone, and keeps the keyboard in the panel', async () => {
+    await signIn('ada@example.com')
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    await fetch(`${run.http}/projects/${run.projectId}/invites`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com', role: 'editor' }) })
+    const token = inviteLink()
+    await signIn('bo@example.com')
+    await fetch(`${run.http}/invites/${token}`, { method: 'POST' })
+    await signIn('ada@example.com')
+    await openEditor()
+    fireEvent.click(await screen.findByRole('button', { name: 'Vilka som har spelet' }))
+    const panel = await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
+    await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(2))
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'Ta bort bo@example.com' }))
+    const question = await within(panel).findByRole('alertdialog')
+    expect(question.textContent).toContain('bo@example.com')
+    // Nothing is taken until the question is answered.
+    expect(within(panel).getAllByRole('listitem')).toHaveLength(2)
+    fireEvent.click(within(question).getByRole('button', { name: 'Ja, ta bort' }))
+    await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(1))
+    await waitFor(() => expect(panel.contains(document.activeElement)).toBe(true))
+  })
+
+  it('closes the game in front of someone it is taken back from, without a reload', async () => {
+    await signIn('ada@example.com')
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    await fetch(`${run.http}/projects/${run.projectId}/invites`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com', role: 'editor' }) })
+    const token = inviteLink()
+    await signIn('bo@example.com')
+    await fetch(`${run.http}/invites/${token}`, { method: 'POST' })
+    await openEditor()
+    await screen.findByRole('button', { name: 'Vilka som har spelet' })
+
+    // Ada takes it back. The jar is shared, so Bo's editor would reconnect as Ada if it tried:
+    // what is asserted is that it does not try.
+    await signIn('ada@example.com')
+    expect((await fetch(`${run.http}/projects/${run.projectId}/members/bo@example.com`, { method: 'DELETE' })).status).toBe(200)
+    await waitFor(() => expect(document.querySelector('[data-status-notice="forbidden"]')).toBeTruthy())
+    expect(screen.queryByText('Skogens herrar')).toBeNull()
+  })
+
+  it('keeps an address that was being written when Escape closes the panel', async () => {
+    const panel = await owning()
+    const field = within(panel).getByLabelText('Adress att bjuda in')
+    fireEvent.change(field, { target: { value: 'cilla@exa' } })
+    field.focus()
+    fireEvent.keyDown(field, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Vilka som har spelet' })).toBeNull())
+    fireEvent.click(screen.getByRole('button', { name: 'Vilka som har spelet' }))
+    const again = await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
+    expect((within(again).getByLabelText('Adress att bjuda in') as HTMLInputElement).value).toBe('cilla@exa')
   })
 })
 

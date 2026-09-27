@@ -101,6 +101,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // the template tab the history lands over the layer list and the group strip — so opening one
   // closes the other.
   const [over, setOver] = useState<'history' | 'share' | null>(null)
+  // An address half written in the share panel outlives the panel (#477).
+  const [shareDraft, setShareDraft] = useState('')
   const historyOpen = over === 'history'
   const shareOpen = over === 'share'
   const revRef = useRef<HTMLButtonElement>(null)
@@ -617,7 +619,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         </p>
       )}
       {over && <PanelDoor opener={over === 'history' ? revRef : hereRef} onClose={() => setOver(null)} />}
-      {shareOpen && projectId && <SharePanel http={http} project={projectId} here={client.here} onClose={() => setOver(null)} />}
+      {shareOpen && projectId && <SharePanel http={http} project={projectId} here={client.here} onClose={() => setOver(null)} draft={shareDraft} onDraft={setShareDraft} />}
       {historyOpen && (
         <HistoryPanel
           client={client}

@@ -32,7 +32,7 @@ export type WebSocketLike = {
   readyState: number
   onopen: (() => void) | null
   onmessage: ((event: { data: unknown }) => void) | null
-  onclose: (() => void) | null
+  onclose: ((event?: { code?: number }) => void) | null
   onerror: (() => void) | null
 }
 export type EditSocketCtor = new (url: string) => WebSocketLike
@@ -87,6 +87,9 @@ export class ProjectClient {
   // third of a second, moving the whole page down and back up with it. So the line is not gone
   // until it has been gone longer than a mending takes.
   public lineDown = false
+  // The project closed to this editor for good (#477): taken back from this account, or gone.
+  // The server says so with the close code, and nothing is reconnected after it.
+  public shut: ProjectFault | null = null
   private falling: ReturnType<typeof setTimeout> | null = null
   // What the others are told this editor is called (D3). It is set by `connect` on the first
   // socket and kept across every reconnection, so nobody's name changes under them mid-session.
@@ -211,7 +214,18 @@ export class ProjectClient {
       this.notify()
       this.reconnect()
     }
-    socket.onclose = dropped
+    socket.onclose = (event) => {
+      const code = event?.code
+      if (this.socket === socket && (code === 4003 || code === 4004)) {
+        this.socket = null
+        this.connected = false
+        this.shut = code === 4003 ? 'forbidden' : 'missing'
+        this.close()
+        this.notify()
+        return
+      }
+      dropped()
+    }
     socket.onerror = dropped
   }
 

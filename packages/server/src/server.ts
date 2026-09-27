@@ -544,7 +544,7 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
     ws.close(4004, 'unknown project')
     return
   }
-  const editor = { id: randomUUID(), name, role, send, close: () => ws.close(4003, 'gone') }
+  const editor = { id: randomUUID(), name, role, ...(account ? { account: account.id } : {}), send, close: () => ws.close(4003, 'gone') }
   const leave = actor.subscribe(editor)
   ws.on('close', leave)
   ws.on('message', (data) => {
@@ -1052,6 +1052,19 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     }
     const body = z.object({ email: z.string().email().max(254), role: z.enum(ROLES), lang: z.string().max(8).optional() }).parse(JSON.parse(await readBody(req)))
     const lang = langOf(body.lang)
+    // An invitation nobody could use is not sent (#477): to someone who already has the game —
+    // the owner included — or to an address whose invitation is still open. `why` says which, so
+    // the panel can say it in its own words.
+    const same = (a: string) => a.toLowerCase() === body.email.toLowerCase()
+    const members = await Promise.all((await projects.members(gate.rec.id)).map(async (m) => (await opts.auth?.accountById(m.account))?.email ?? m.account))
+    if (members.some(same)) {
+      json(res, 409, { error: 'already shared with them', why: 'member' })
+      return true
+    }
+    if ((await projects.openInvites(gate.rec.id, clock(opts).toISOString())).some((i) => same(i.email))) {
+      json(res, 409, { error: 'already invited', why: 'invited' })
+      return true
+    }
     const token = newSecret()
     const expiresAt = new Date(clock(opts).getTime() + INVITE_TTL_MS).toISOString()
     await projects.invite({ tokenHash: hash(token), project: gate.rec.id, email: body.email, role: body.role, ...(account ? { by: account.id } : {}), expiresAt })
@@ -1101,6 +1114,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     await projects.unshare(gate.rec.id, leaving.account)
+    ;(await editors(opts, projects).running(gate.rec.id))?.dismiss(leaving.account)
     json(res, 200, { ok: true })
     return true
   }

@@ -1,16 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ROLES, roleWord, type Role } from '@byd/server/doc'
 import { inviteToProject, projectMembers, unshareProject, type Member } from '../account/api.js'
 import type { Presence } from '@byd/server'
 import { useLang, useT } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
+import { Question } from './Question.js'
 
 // Who has the game (D3), from the prototype: the people in the editor's header are the door.
 // Who is here now and who may be here at all is one question, so one list answers it — the
 // ones present first, each with what they may do, and a field to invite one more.
-export type SharePanelProps = { http: string; project: string; here: readonly Presence[]; onClose(): void }
+//
+// The address being written is the editor's to hold (`draft`), so a panel closed with Escape half
+// way through an address gives it back when it opens again (#477).
+export type SharePanelProps = { http: string; project: string; here: readonly Presence[]; onClose(): void; draft?: string; onDraft?(email: string): void }
 
-export function SharePanel({ http, project, here, onClose }: SharePanelProps) {
+export function SharePanel({ http, project, here, onClose, draft = '', onDraft }: SharePanelProps) {
   const t = useT()
   // What a role is called is the tool's word, and the server keeps that word — it is the same
   // one an invitation is written with (A4).
@@ -18,7 +22,20 @@ export function SharePanel({ http, project, here, onClose }: SharePanelProps) {
   const [members, setMembers] = useState<Member[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState<string | null>(null)
-  const [email, setEmail] = useState('')
+  const [email, setEmailHere] = useState(draft)
+  const setEmail = (next: string) => {
+    setEmailHere(next)
+    onDraft?.(next)
+  }
+  // Who is about to have the game taken from them (#477): asked about before it happens.
+  const [asking, setAsking] = useState<string | null>(null)
+  // The panel takes the keyboard with it when it opens, as the help box does (L32), and keeps it
+  // when a row it was standing on goes.
+  const cross = useRef<HTMLButtonElement>(null)
+  const field = useRef<HTMLInputElement>(null)
+  useLayoutEffect(() => {
+    cross.current?.focus()
+  }, [])
   const [role, setRole] = useState<Role>('editor')
   const [asked, setAsked] = useState(0)
   useEffect(() => {
@@ -36,13 +53,19 @@ export function SharePanel({ http, project, here, onClose }: SharePanelProps) {
   const sorted = [...(members ?? [])].sort((a, b) => Number(present.has(b.email)) - Number(present.has(a.email)))
   const invite = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email.includes('@')) return
+    // The app's own words rather than the browser's bubble, and the same place every other
+    // answer stands (#477).
+    if (!/^[^\s@]+@[^\s@]+$/.test(email.trim())) {
+      setSent(null)
+      return setError(t('error.invite.address'))
+    }
     try {
-      await inviteToProject(http, project, email, role, t)
-      setSent(email)
+      await inviteToProject(http, project, email.trim(), role, t)
+      setSent(email.trim())
       setEmail('')
       setError(null)
     } catch (err) {
+      setSent(null)
       setError(err instanceof Error ? err.message : String(err))
     }
   }
@@ -51,6 +74,8 @@ export function SharePanel({ http, project, here, onClose }: SharePanelProps) {
       await unshareProject(http, project, who, t)
       setMembers((m) => (m ?? []).filter((x) => x.email !== who))
       setError(null)
+      // The row and its button are gone; the keyboard goes on to the address field.
+      field.current?.focus()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
@@ -62,7 +87,7 @@ export function SharePanel({ http, project, here, onClose }: SharePanelProps) {
         <Help topic={t('share.help.topic')}>
           <p>{t('share.help')}</p>
         </Help>
-        <button type="button" aria-label={t('share.close')} onClick={onClose}>
+        <button ref={cross} type="button" aria-label={t('share.close')} onClick={onClose}>
           ×
         </button>
       </header>
@@ -82,7 +107,7 @@ export function SharePanel({ http, project, here, onClose }: SharePanelProps) {
                 </small>
               </span>
               {m.role !== 'owner' && (
-                <button type="button" aria-label={t('share.remove.of', { email: m.email })} onClick={() => void drop(m.email)}>
+                <button type="button" aria-label={t('share.remove.of', { email: m.email })} onClick={() => setAsking(m.email)}>
                   {t('share.remove')}
                 </button>
               )}
@@ -90,8 +115,25 @@ export function SharePanel({ http, project, here, onClose }: SharePanelProps) {
           ))}
         </ul>
       )}
-      <form onSubmit={(e) => void invite(e)}>
-        <input type="email" aria-label={t('share.email')} placeholder={t('share.email.placeholder')} value={email} onChange={(e) => setEmail(e.target.value)} />
+      {asking && (
+        <Question
+          className="byd-share-question"
+          label={t('share.remove.ask', { email: asking })}
+          confirm={t('share.remove.yes')}
+          onConfirm={() => {
+            setAsking(null)
+            void drop(asking)
+          }}
+          onCancel={() => {
+            setAsking(null)
+            field.current?.focus()
+          }}
+        >
+          {t('share.remove.ask', { email: asking })}
+        </Question>
+      )}
+      <form noValidate onSubmit={(e) => void invite(e)}>
+        <input ref={field} type="email" aria-label={t('share.email')} placeholder={t('share.email.placeholder')} value={email} onChange={(e) => setEmail(e.target.value)} />
         <select aria-label={t('share.role')} value={role} onChange={(e) => setRole(e.target.value as Role)}>
           {ROLES.filter((r) => r !== 'owner').map((r) => (
             <option key={r} value={r}>

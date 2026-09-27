@@ -13,7 +13,8 @@ import type { Role } from './roles.js'
 // `from` is the connection the edit came from, so an editor can tell its own echo from someone
 // else's edit and not apply what it already applied.
 export type AppliedEdit = { seq: number; at: string; by?: string; from?: string; intent: EditIntent }
-export type Editor = { id: string; name: string; role?: Role; send(message: EditorMessage): void; close?(): void }
+// `account` is whose editor it is, so taking the game back from someone can end what they have open.
+export type Editor = { id: string; name: string; role?: Role; account?: string; send(message: EditorMessage): void; close?(): void }
 export type EditorMessage =
   | { v: 'project'; doc: ProjectDoc; rev: number; seq: number; here: Presence[]; you: Presence }
   | { v: 'edits'; edits: AppliedEdit[] }
@@ -89,6 +90,12 @@ export class ProjectActor {
       this.editors.delete(editor)
       this.tellPresence()
     }
+  }
+
+  // The game has been taken back from an account (#477): whatever it has open is closed, rather
+  // than left showing the whole deck until the page is reloaded.
+  dismiss(account: string): void {
+    for (const editor of [...this.editors]) if (editor.account === account) editor.close?.()
   }
 
   // One edit, in the only order there is: it must apply, then it is committed, then it is applied
@@ -170,6 +177,11 @@ export class ProjectHost {
     const actor = await loading
     if (!actor) this.actors.delete(id)
     return actor
+  }
+
+  // The actor if one is running, without loading one: nobody has a project open that has no actor.
+  async running(id: string): Promise<ProjectActor | null> {
+    return (await this.actors.get(id)?.catch(() => null)) ?? null
   }
 
   // A project that is gone has no actor: the next asker gets a fresh answer.

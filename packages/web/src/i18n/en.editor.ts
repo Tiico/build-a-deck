@@ -1082,6 +1082,8 @@ export const enEditor = {
   'share.hereNow': 'here now',
   'share.remove': 'Remove',
   'share.remove.of': 'Remove {email}',
+  'share.remove.ask': 'Take the game from {email}? Whatever they have open closes at once.',
+  'share.remove.yes': 'Yes, remove',
   'share.email': 'Address to invite',
   'share.email.placeholder': 'name@example.com',
   'share.role': 'Role',

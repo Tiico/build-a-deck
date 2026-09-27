@@ -149,6 +149,53 @@ describe('an invitation to a project (D3)', () => {
     expect((await send('DELETE', '/projects/p1/members/bo@example.com', ada)).status).toBe(200)
     expect((await send('GET', '/projects/p1', bo)).status).toBe(403)
   })
+
+  // An invitation that could only ever be spent on nothing is refused, and said so (#477): the
+  // owner inviting herself, someone who already has the game, and an address with an open
+  // invitation were all told «Inbjudan är skickad».
+  it('refuses to invite someone who already has the game or already has an invitation', async () => {
+    const ada = await login('ada@example.com')
+    await send('POST', '/projects', ada, { id: 'p1', ...doc() })
+
+    const self = await send('POST', '/projects/p1/invites', ada, { email: 'ADA@example.com', role: 'editor' })
+    expect(self.status).toBe(409)
+    expect(await self.json()).toMatchObject({ why: 'member' })
+
+    const sent = run.mail.sent.length
+    expect((await send('POST', '/projects/p1/invites', ada, { email: 'bo@example.com', role: 'editor' })).status).toBe(201)
+    const again = await send('POST', '/projects/p1/invites', ada, { email: 'bo@example.com', role: 'viewer' })
+    expect(again.status).toBe(409)
+    expect(await again.json()).toMatchObject({ why: 'invited' })
+    expect(run.mail.sent.length, 'only the first invitation was mailed').toBe(sent + 1)
+
+    const link = /\/invites\/([A-Za-z0-9_-]+)/.exec(run.mail.sent.at(-1)?.text ?? '')?.[1] ?? ''
+    const bo = await login('bo@example.com')
+    await send('POST', `/invites/${link}`, bo)
+    const member = await send('POST', '/projects/p1/invites', ada, { email: 'bo@example.com', role: 'viewer' })
+    expect(member.status).toBe(409)
+    expect(await member.json()).toMatchObject({ why: 'member' })
+  })
+
+  // Taking the game back from someone ends what they have open of it (#477): the removed editor
+  // sat on with the whole deck in view until she reloaded.
+  it('closes the editor of someone the game is taken back from', async () => {
+    const ada = await login('ada@example.com')
+    await send('POST', '/projects', ada, { id: 'p1', ...doc() })
+    await send('POST', '/projects/p1/invites', ada, { email: 'bo@example.com', role: 'editor' })
+    const link = /\/invites\/([A-Za-z0-9_-]+)/.exec(run.mail.sent.at(-1)?.text ?? '')?.[1] ?? ''
+    const bo = await login('bo@example.com')
+    await send('POST', `/invites/${link}`, bo)
+
+    const { WebSocket } = await import('ws')
+    const ws = new WebSocket(`${run.base}/projects/p1/edit?name=bo`, { headers: { cookie: bo } })
+    await new Promise<void>((resolve, reject) => {
+      ws.once('message', () => resolve())
+      ws.once('error', reject)
+    })
+    const closed = new Promise<number>((resolve) => ws.once('close', (code) => resolve(code)))
+    expect((await send('DELETE', '/projects/p1/members/bo@example.com', ada)).status).toBe(200)
+    expect(await closed).toBe(4003)
+  })
 })
 
 describe('what a role may do while the project is open (D3)', () => {

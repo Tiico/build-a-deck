@@ -1230,6 +1230,8 @@ export const svEditor = {
   'share.hereNow': 'inne nu',
   'share.remove': 'Ta bort',
   'share.remove.of': 'Ta bort {email}',
+  'share.remove.ask': 'Ta spelet ifrån {email}? Det de har öppet stängs direkt.',
+  'share.remove.yes': 'Ja, ta bort',
   'share.email': 'Adress att bjuda in',
   'share.email.placeholder': 'namn@exempel.se',
   'share.role': 'Roll',

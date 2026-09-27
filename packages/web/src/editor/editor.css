@@ -281,6 +281,10 @@
 .byd-share form { display: grid; grid-template-columns: 1fr auto auto; gap: 6px; }
 .byd-share form input, .byd-share form select { padding: 8px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: 12px system-ui; min-width: 0; }
 .byd-share form button { border: 1px solid var(--byd-editor-primary-bg); border-radius: 8px; padding: 8px 12px; background: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); font: 700 12px system-ui; cursor: pointer; }
+.byd-share-question { display: flex; align-items: center; gap: var(--byd-s2); flex-wrap: wrap; margin: 0 0 var(--byd-s3); padding: var(--byd-s2) var(--byd-s3); border: 1px solid #7a3243; border-radius: 8px; background: #3d2632; color: #ffe4ea; }
+.byd-share-question p { margin: 0; font-weight: 700; line-height: 1.45; }
+.byd-share-question button { min-height: var(--byd-tap); padding: 0 var(--byd-s3); border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: #ffe4ea; font: inherit; font-weight: 700; cursor: pointer; }
+.byd-share-question button[data-kind='danger'] { background: #7a3243; border-color: #7a3243; }
 .byd-share form [role='status'] { grid-column: 1 / -1; margin: 4px 0 0; color: #7dd3a0; font-size: 12px; line-height: 1.5; }
 /* A save that could not happen has to be readable, so it wraps rather than pushing the header
    sideways; on a desk the header has a whole row of its own for it. */
