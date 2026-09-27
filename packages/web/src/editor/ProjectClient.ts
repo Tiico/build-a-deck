@@ -360,6 +360,10 @@ export class ProjectClient {
   // way back from a move is one press and not sixty. Everything else leaves it out and is its own
   // step, as it always was.
   edit(intent: EditIntent, gesture?: string): void {
+    // A role that may not change the game changes nothing here either (#489; läsläge, decided in
+    // #477): the actor would refuse the save, so an edit is never applied, never sent and never a
+    // step back — and «Osparat» can never stand for something this reader cannot keep.
+    if (!this.mayEdit) return
     // It applies before anything is recorded, and that order is the whole of it: an edit the
     // document refuses never happened, so it must cost neither a version nor a step back (#41,
     // B4). `applyEdit` throws from here, with the stack untouched and nothing sent.

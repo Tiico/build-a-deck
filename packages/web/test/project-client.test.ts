@@ -1409,3 +1409,22 @@ describe('a crop on its way to the actor (#297, L33)', () => {
     expect(heard.at(-1)).toEqual([])
   })
 })
+
+// A role that may not change the game changes nothing in the page either (#489; beställarens
+// beslut i #477: läsläge, inte studsande ändringar). The client is where every gesture of every tab
+// arrives as an edit, so it is where an edit that could never be saved is turned away: nothing is
+// applied, nothing is sent, «Osparat» can never appear, and there is no step back to take.
+describe('an editor whose role may not change the game', () => {
+  it('turns every edit away before it touches the document', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    // What the actor says about this editor (D3), as it would say it for a tester.
+    ;(client as unknown as { role: string }).role = 'tester'
+    expect(client.mayEdit).toBe(false)
+    const before = client.doc
+    expect(() => client.edit({ v: 'setCell', cardRef: before.rows[0]!.id, field: 'title', value: 'Ändrad' })).not.toThrow()
+    expect(client.doc).toBe(before)
+    expect(client.dirty).toBe(false)
+    expect(client.canUndo).toBe(false)
+  })
+})
