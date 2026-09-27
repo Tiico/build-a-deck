@@ -275,7 +275,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               {played.map((p) => (
                 <div key={p.session} className="byd-home-game byd-home-played" data-played={p.session}>
                   <div className="byd-home-played-top">
-                    <i className="byd-home-seat" style={{ ['--seat' as string]: p.seat === null ? '#7d8597' : seatColor(seatIndexOf(p.seat)) }}>{p.seat ?? '👁'}</i>
+                    <i className="byd-home-seat" role="img" aria-label={p.seat === null ? t('home.played.watched') : t('home.played.seat', { seat: p.seat })} style={{ ['--seat' as string]: p.seat === null ? '#7d8597' : seatColor(seatIndexOf(p.seat)) }}><span aria-hidden="true">{p.seat ?? '👁'}</span></i>
                     <span className="byd-muted">{when(t, lang, p.at)}</span>
                   </div>
                   <strong>{p.game ?? t('home.played.some-table')}</strong>

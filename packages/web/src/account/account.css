@@ -64,7 +64,9 @@
 .byd-home-played-top { display: flex; justify-content: space-between; align-items: center; }
 .byd-home-seat { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--seat); color: #fff; font-style: normal; font-weight: 800; font-size: 12px; }
 .byd-home-facts { color: #cfd5e3; font-size: 13px; }
-.byd-home-action { color: #7dd3a0; font-weight: 700; text-decoration: none; }
+/* The way back to a table is a thumb's width tall like every other control (#475); the words keep
+   their size. */
+.byd-home-action { display: inline-flex; align-items: center; justify-self: start; min-height: 44px; color: #7dd3a0; font-weight: 700; text-decoration: none; }
 
 /* A game's own actions on the home page (G1): the card opens the editor, the menu does the rest. */
 .byd-home-game { position: relative; padding: 0; }

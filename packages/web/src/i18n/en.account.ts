@@ -58,6 +58,8 @@ export const enAccount = {
   'home.played.running': 'still going',
   'home.played.flags': '{n} flagged',
   'home.played.back': 'Back to the table',
+  'home.played.seat': 'Seat {seat}',
+  'home.played.watched': 'Observer',
 
   'claim.no-token': 'No link given.',
   'claim.saving': 'Saving…',

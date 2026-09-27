@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
-import { logIn, makeProject } from '../../support/api.js'
+import { join, logIn, makeProject, makeTable } from '../../support/api.js'
 
 // The way in, at the widths the audit checks. `/` is the first screen a creator ever sees and the
 // last one they come back to, and it was the only route with no measured check of its own — which
@@ -192,5 +192,24 @@ test.describe('"Mina spel" on a phone (#475)', () => {
     expect(box.x).toBeGreaterThanOrEqual(0)
     expect(box.x + box.width).toBeLessThanOrEqual(390)
     expect(await sideways(page)).toBe(0)
+  })
+})
+
+// A table the account sat at (#475): the way back to it was a 19 px line of text, and the seat's
+// letter was a coloured disc with nothing to say which seat it was.
+test.describe('"Bord du spelat vid" (#475)', () => {
+  test.use({ viewport: { width: 390, height: 844 }, locale: LANG, hasTouch: true, isMobile: true })
+
+  test('gives the way back to the table a fingertip, and names the seat', async ({ page }) => {
+    await logIn(page.request)
+    const table = await makeTable(page.request)
+    const seat = table.seats[0]!
+    const admission = await join(page.request, table, { name: 'Ada', seat })
+    const claimed = await page.request.post('/guests/claim', { data: { token: admission.token } })
+    expect(claimed.ok()).toBe(true)
+    await page.goto('/')
+    await expect(page.getByText('Bord du spelat vid')).toBeVisible()
+    await expect(page.getByRole('img', { name: `Plats ${seat}` })).toBeVisible()
+    expect(await tooSmall(page)).toEqual([])
   })
 })

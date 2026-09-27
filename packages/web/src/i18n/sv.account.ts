@@ -68,6 +68,8 @@ export const svAccount = {
   'home.played.running': 'pågår',
   'home.played.flags': '{n} flaggade',
   'home.played.back': 'Tillbaka till bordet',
+  'home.played.seat': 'Plats {seat}',
+  'home.played.watched': 'Åskådare',
 
   // Att spara en gästsession till kontot (G1): dit telefonens länk leder.
   'claim.no-token': 'Ingen länk angiven.',
