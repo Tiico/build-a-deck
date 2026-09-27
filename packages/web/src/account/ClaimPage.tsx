@@ -11,7 +11,11 @@ import './account.css'
 // token becomes the account's, and the start page says so.
 export type ClaimPageProps = { onNavigate?(url: string): void }
 
-export function ClaimPage({ onNavigate = (url) => location.assign(url) }: ClaimPageProps) {
+// One function for the life of the module, because it is a dependency of the effect that makes the
+// claim, and a fresh one per render would make it again (#475).
+const go = (url: string): void => location.assign(url)
+
+export function ClaimPage({ onNavigate = go }: ClaimPageProps) {
   const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const token = params.get('token')

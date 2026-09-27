@@ -10,7 +10,12 @@ import { AccountStatus, spent, waiting } from './AccountStatus.js'
 // brings them back here.
 export type InvitePageProps = { onNavigate?(url: string): void }
 
-export function InvitePage({ onNavigate = (url) => location.assign(url) }: InvitePageProps) {
+// The default is one function for the life of the module and not a fresh one per render: it is a
+// dependency of the effect that follows the invitation, and a fresh one followed it again on every
+// render (#475).
+const go = (url: string): void => location.assign(url)
+
+export function InvitePage({ onNavigate = go }: InvitePageProps) {
   const t = useT()
   const params = new URLSearchParams(location.search)
   const server = params.get('server')

@@ -14,7 +14,11 @@ import './account.css'
 // stop at a form. It is a replace and not a step, so Back does not land on the form again.
 export type LoginPageProps = { onNavigate?(url: string): void }
 
-export function LoginPage({ onNavigate = (url) => location.replace(url) }: LoginPageProps) {
+// One function for the life of the module, because it is a dependency of the effect that asks who
+// is here, and a fresh one per render would ask again (#475).
+const go = (url: string): void => location.replace(url)
+
+export function LoginPage({ onNavigate = go }: LoginPageProps) {
   const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const http = params.get('server') ?? location.origin
