@@ -1,28 +1,13 @@
-import type { ProjectDoc } from '../../web/src/editor/types.js'
-import { logIn, makeProjectOf, type Table } from '../support/api.js'
+import { tableWithRules } from '../support/api.js'
 import { PHONE } from '../support/devices.js'
-import { gameDoc } from '../support/game.js'
 import { expect, test } from '../support/test.js'
 
 // The table ends while the rulebook is open on a phone (#483, fynd 2; G3, #83). The book is drawn
 // at z-index 40 and the survey at 35, and `inert` does not change which of them is painted on top:
 // the player saw the book, and the book took the presses the survey was waiting for.
 test('puts the survey over an open rulebook when the table ends', async ({ request, player, host }) => {
-  await logIn(request)
-  const doc = gameDoc({ name: 'Skogens herrar', players: 2 }) as unknown as ProjectDoc
-  doc.rules = { title: 'Skogens herrar', blocks: [{ kind: 'heading', id: 'h1', level: 1, text: 'Så spelar ni' }, { kind: 'text', id: 't1', text: 'Dra ett kort.' }] }
-  const project = await makeProjectOf(request, doc)
-  const res = await request.post(`/projects/${encodeURIComponent(project.id)}/sessions`)
-  const started = (await res.json()) as { id: string; code: string; hostKey: string }
-  const table: Table = {
-    session: started.id,
-    code: started.code,
-    hostKey: started.hostKey,
-    seats: doc.setup.seats,
-    tableUrl: `/table?session=${encodeURIComponent(started.id)}&host=${encodeURIComponent(started.hostKey)}&mode=table`,
-    tvUrl: `/table?session=${encodeURIComponent(started.id)}&host=${encodeURIComponent(started.hostKey)}&mode=tv`,
-  }
-  const ada = await player(table, { name: 'Ada', seat: doc.setup.seats[0]!, device: PHONE })
+  const table = await tableWithRules(request, { players: 2 })
+  const ada = await player(table, { name: 'Ada', seat: table.seats[0]!, device: PHONE })
   await ada.page.getByRole('button', { name: 'Rules', exact: true }).click()
   await expect(ada.page.getByRole('dialog', { name: 'Rules' })).toBeVisible()
 
