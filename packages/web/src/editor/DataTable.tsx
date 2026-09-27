@@ -467,6 +467,13 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   }
   // What is being typed in an `antal` cell that is not (yet) a count (#479), by card.
   const [antalDraft, setAntalDraft] = useState<Record<string, string>>({})
+  // A comparison opened from the history lands the focus on the line that says what is compared
+  // (#479), rather than on <body> once the history's own button has gone with the history.
+  const compareRef = useRef<HTMLParagraphElement>(null)
+  const comparing = compareWith?.rev
+  useEffect(() => {
+    if (comparing !== undefined) compareRef.current?.focus()
+  }, [comparing])
   // What the last import did, said where it was asked for (#479).
   const [imported, setImported] = useState<string | null>(null)
   const [sort, setSort] = useState<SortState | null>(null)
@@ -913,6 +920,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const shown = held
     ? keepOrder(doc.rows.filter((row) => held.includes(row.id)), held)
     : filterRows(sortRows(doc.rows, sort), columns, filter, pinned)
+  // The cards gone since the version compared with, asked the same filter as every card (#479).
+  const goneShown = isFiltering(filter) ? filterRows(goneRows, columns, filter) : goneRows
   // What an action is about is never more than what is on screen: a checkbox is a fact about a
   // row the designer can see, so the selection is read through `shown` (#17 on #16).
   const chosen = shown.filter((row) => selected.has(row.id))
@@ -1103,7 +1112,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
         </div>
       )}
       {compareWith && diff && (
-        <p className="byd-data-compare" role="status">
+        <p ref={compareRef} className="byd-data-compare" role="status" tabIndex={-1}>
           {t('table.compare', { rev: compareWith.rev })}
           {compareWith.label ? ` · ${compareWith.label}` : ''}: <Summary diff={diff} />{' '}
           {onStopCompare && (
@@ -1368,7 +1377,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           </tr>
         </thead>
         <tbody>
-          {[...shown, ...goneRows].map(({ id: cardRef, fields: row }) => (
+          {shown.map(({ id: cardRef, fields: row }) => (
             <tr key={cardRef} data-card-ref={cardRef} data-change={changeOf(cardRef)?.kind} aria-selected={selectedRow === cardRef ? 'true' : 'false'} onClick={() => onSelectRow(cardRef)}>
               {/* Two different meanings of "selected" meet in a row: the tick says the next bulk
                   change is about this card, the row itself says the card is the one being looked
@@ -1607,6 +1616,23 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
               </td>
             </tr>
           ))}
+                  {/* A card gone since the version compared with is a record of what it was (#479, B4):
+              its values as text and struck through, with nothing on it to write in, tick or press
+              — it is not in the deck, and a write to it has nowhere to land. A filter asks it the
+              same question it asks every card, and the foot counts it. */}
+          {goneShown.map(({ id: cardRef, fields: row }) => (
+            <tr key={cardRef} data-card-ref={cardRef} data-change="removed">
+              <td className="byd-data-check" />
+              <td className="byd-data-id" data-col="id">{cardRef}</td>
+              {fields.map((f) => (
+                <td key={f} data-col={f} className="byd-data-gone">
+                  <s>{String(row[f] ?? '')}</s>
+                </td>
+              ))}
+              {grouping && <td />}
+              <td className="byd-data-remove" />
+            </tr>
+          ))}
         </tbody>
       </table>
       </div>
@@ -1623,7 +1649,10 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       {/* What the table adds up to, under it rather than over it (#130). */}
       <CrownFoot>
         <p className="byd-data-count" aria-live="polite">
-          <span>{countLabel(shown.length, doc.rows.length, t)}</span>
+          <span>
+            {countLabel(shown.length, doc.rows.length, t)}
+            {goneShown.length > 0 && ` · ${t(goneShown.length === 1 ? 'table.gone.one' : 'table.gone.other', { n: goneShown.length })}`}
+          </span>
           {chosen.length > 0 && (
             <>
               <span aria-hidden="true"> · </span>

@@ -3411,3 +3411,5 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-data-lane input[aria-invalid='true'], .byd-data-bulk input[aria-invalid='true'] { border-color: #f0b64a; }
 .byd-data-says { grid-column: 1 / -1; color: #f0b64a; font-size: 11px; white-space: nowrap; }
 .byd-data-out { grid-column: 1 / -1; color: var(--byd-editor-quiet); font-size: 11px; white-space: nowrap; }
+/* A card gone since the version compared with (#479, B4): what it was, struck through and quiet. */
+.byd-data-gone { color: var(--byd-editor-quiet); font-size: 12px; padding: 0 var(--byd-s2); }

@@ -744,3 +744,54 @@ describe('dropping a CSV on the import (#292)', () => {
     await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
   })
 })
+
+// A card gone since the version compared with is a record, not a card (#479): it was drawn with
+// live fields, a tick and a ×, a write to it threw «no row troll» into the console, a filter that
+// left nothing still drew it, and the foot never counted it.
+describe('a card gone since the version compared with (#479)', () => {
+  const older = () => {
+    const doc = projectDoc()
+    doc.rows = [...doc.rows, { id: 'troll', fields: { title: 'Troll', body: 'Stor.', antal: 1 } }]
+    return doc
+  }
+  const compare = () =>
+    render(
+      <DataTable
+        doc={projectDoc()}
+        selectedRow={null}
+        onSelectRow={() => undefined}
+        onCell={() => undefined}
+        onAddRow={() => undefined}
+        onRemoveRow={() => undefined}
+        onReplaceRows={() => undefined}
+        onAddField={() => undefined}
+        onRemoveField={() => undefined}
+        onMoveField={() => undefined}
+        compareWith={{ rev: 1, doc: older() }}
+      />,
+    )
+  const ghost = () => document.querySelector('tr[data-card-ref="troll"]') as HTMLElement | null
+
+  it('is drawn as what it was, with nothing on it to write in, tick or press', () => {
+    compare()
+    const row = ghost()!
+    expect(row.getAttribute('data-change')).toBe('removed')
+    expect(row.textContent).toContain('Troll')
+    expect(row.querySelectorAll('input, button, [contenteditable="true"]')).toHaveLength(0)
+  })
+
+  it('is counted at the foot, and left out by a filter that leaves it out', () => {
+    compare()
+    expect(screen.getByText(/1 borttaget/)).toBeTruthy()
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Drake' } })
+    expect(ghost()).toBeNull()
+  })
+})
+
+describe('opening a comparison (#479)', () => {
+  it('lands the focus on the line that says what is compared', () => {
+    const older = projectDoc()
+    render(<DataTable doc={projectDoc()} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} compareWith={{ rev: 1, doc: older }} />)
+    expect(document.activeElement).toBe(document.querySelector('.byd-data-compare'))
+  })
+})
