@@ -33,6 +33,8 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   // and lands after it, so the first screen is drawn on the list's own answer and never waits for
   // a single template, font or picture. Until it lands the tile holds the card's place.
   const [cards, setCards] = useState<Record<string, CardFace | null> | null>(null)
+  // The cards could not be had (#475): the places stop promising one rather than shimmer for ever.
+  const [cardsLost, setCardsLost] = useState(false)
   // Landing here from the claim page (G1): which session was just saved. Said once (#475): the
   // address stops carrying it as soon as it has been read, so a reload does not say it again.
   const claimed = params.get('claimed')
@@ -73,9 +75,9 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
         setEmail(e)
         if (!e) return undefined
         // The cards are asked for beside the list rather than after it: they are a second answer,
-        // not a second screen. A card that never arrives leaves its place waiting and takes
-        // nothing off the page — the games are the page, and the card is what one of them wears.
-        void myCards(http).then(setCards, () => undefined)
+        // not a second screen. A card that never arrives takes nothing off the page — the games
+        // are the page, and the card is what one of them wears — and its place stops waiting.
+        void myCards(http).then(setCards, () => setCardsLost(true))
         return Promise.all([myProjects(http).then(setProjects), myPlayed(http).then(setPlayed)])
       })
       .catch(() => setOffline(true))
@@ -186,79 +188,86 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             </Help>
           </div>
         )}
-        {/* How tall the card on a tile is, written down once (#231): the stylesheet reserves the
-            place from the very number the drawing is scaled by, so the box and the card in it
-            cannot drift apart. */}
-        <div className="byd-home-grid" data-projects style={{ ['--byd-home-card-h' as string]: `${HOME_CARD_H}px` }}>
-          {(projects ?? []).map((p) => (
-            <div key={p.id} className="byd-home-game" data-project={p.id}>
-              <a
-                className="byd-home-open"
-                href={`/editor?${suffix(new URLSearchParams({ project: p.id }))}`}
-                onClick={(e) => {
-                  e.preventDefault()
-                  onNavigate(`/editor?${suffix(new URLSearchParams({ project: p.id }))}`)
-                }}
-              >
-                <GameCard project={p.id} peek={p.card ?? null} face={cards?.[p.id] ?? null} assetBase={http} t={t} />
-                <strong>{p.name}</strong>
-                <span className="byd-muted">{t('home.card.line', { rev: p.rev, played: playedLine(t, lang, p) })}</span>
-              </a>
-              <button
-                ref={(el) => {
-                  if (el) mores.current.set(p.id, el)
-                  else mores.current.delete(p.id)
-                }}
-                type="button"
-                className="byd-home-more"
-                aria-label={t('home.menu.more', { name: p.name })}
-                aria-expanded={menu === p.id}
-                onClick={() => setMenu(menu === p.id ? null : p.id)}
-              >
-                ⋯
-              </button>
-              {menu === p.id && (
-                <GameMenu
-                  label={t('home.menu.label', { name: p.name })}
-                  more={mores.current.get(p.id) ?? null}
-                  onClose={(back) => {
-                    setMenu(null)
-                    if (back) setRefocus({ to: p.id })
+        {/* Until the games are known there is nowhere to put a tile (#475): «＋ Nytt spel» alone in
+            the first column jumped to the third when they arrived. How tall the card on a tile is
+            is written down once (#231): the stylesheet reserves the place from the very number the
+            drawing is scaled by, so the box and the card in it cannot drift apart. */}
+        {projects === null ? (
+          <p className="byd-muted" role="status">
+            {t('home.loading')}
+          </p>
+        ) : (
+          <div className="byd-home-grid" data-projects style={{ ['--byd-home-card-h' as string]: `${HOME_CARD_H}px` }}>
+            {projects.map((p) => (
+              <div key={p.id} className="byd-home-game" data-project={p.id}>
+                <a
+                  className="byd-home-open"
+                  href={`/editor?${suffix(new URLSearchParams({ project: p.id }))}`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    onNavigate(`/editor?${suffix(new URLSearchParams({ project: p.id }))}`)
                   }}
                 >
-                  <button
-                    type="button"
-                    onClick={() => {
+                  <GameCard project={p.id} peek={p.card ?? null} face={cards?.[p.id] ?? null} lost={cardsLost} assetBase={http} t={t} />
+                  <strong>{p.name}</strong>
+                  <span className="byd-muted">{t('home.card.line', { rev: p.rev, played: playedLine(t, lang, p) })}</span>
+                </a>
+                <button
+                  ref={(el) => {
+                    if (el) mores.current.set(p.id, el)
+                    else mores.current.delete(p.id)
+                  }}
+                  type="button"
+                  className="byd-home-more"
+                  aria-label={t('home.menu.more', { name: p.name })}
+                  aria-expanded={menu === p.id}
+                  onClick={() => setMenu(menu === p.id ? null : p.id)}
+                >
+                  ⋯
+                </button>
+                {menu === p.id && (
+                  <GameMenu
+                    label={t('home.menu.label', { name: p.name })}
+                    more={mores.current.get(p.id) ?? null}
+                    onClose={(back) => {
                       setMenu(null)
-                      setRefocus({ to: p.id })
-                      void startTable(http, p.id, t).then(
-                        (table) => {
-                          setStarted({ project: p.id, ...table })
-                          setProjects((list) => (list ?? []).map((x) => (x.id === p.id ? { ...x, tables: (x.tables ?? 0) + 1 } : x)))
-                        },
-                        (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
-                      )
+                      if (back) setRefocus({ to: p.id })
                     }}
                   >
-                    {t('home.menu.start')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenu(null)
-                      setAsking(p)
-                    }}
-                  >
-                    {t('home.menu.remove')}
-                  </button>
-                </GameMenu>
-              )}
-            </div>
-          ))}
-          <a className="byd-home-game" data-new href={`/new?${suffix(new URLSearchParams())}`} onClick={(e) => { e.preventDefault(); onNavigate(`/new?${suffix(new URLSearchParams())}`) }}>
-            {t('home.new')}
-          </a>
-        </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenu(null)
+                        setRefocus({ to: p.id })
+                        void startTable(http, p.id, t).then(
+                          (table) => {
+                            setStarted({ project: p.id, ...table })
+                            setProjects((list) => (list ?? []).map((x) => (x.id === p.id ? { ...x, tables: (x.tables ?? 0) + 1 } : x)))
+                          },
+                          (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
+                        )
+                      }}
+                    >
+                      {t('home.menu.start')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenu(null)
+                        setAsking(p)
+                      }}
+                    >
+                      {t('home.menu.remove')}
+                    </button>
+                  </GameMenu>
+                )}
+              </div>
+            ))}
+            <a className="byd-home-game" data-new href={`/new?${suffix(new URLSearchParams())}`} onClick={(e) => { e.preventDefault(); onNavigate(`/new?${suffix(new URLSearchParams())}`) }}>
+              {t('home.new')}
+            </a>
+          </div>
+        )}
         {played && played.length > 0 && (
           <>
             <h2 className="byd-home-h2">{t('home.played.title')}</h2>
@@ -361,13 +370,13 @@ function marked(message: string, parts: Record<string, ReactNode>): ReactNode[] 
 // To a screen reader it is one image with one name — "Första kortet: Drake" — and not the fourteen
 // loose words the template happens to print on it. `role="img"` is what makes the drawing inside
 // one thing rather than fourteen.
-function GameCard({ project, peek, face, assetBase, t }: { project: string; peek: { id: string; title: string } | null; face: CardFace | null; assetBase: string; t: T }) {
+function GameCard({ project, peek, face, lost, assetBase, t }: { project: string; peek: { id: string; title: string } | null; face: CardFace | null; lost: boolean; assetBase: string; t: T }) {
   // Resolved once per card and held by identity: `previewIcons` and `previewFonts` build a fresh
   // object every call, and a fresh object is a fresh compile of the card on every render (#320).
   const icons = useMemo(() => (face ? previewIcons({ icons: face.icons }, assetBase) : {}), [face, assetBase])
   const fonts = useMemo(() => (face ? previewFonts({ template: { faces: { front: face.face } }, ...(face.fonts ? { fonts: face.fonts } : {}) }, assetBase) : {}), [face, assetBase])
   if (!peek) return <div className="byd-home-card" data-empty>{t('home.card.nocards')}</div>
-  if (!face) return <div className="byd-home-card" data-waiting aria-hidden="true" />
+  if (!face) return <div className="byd-home-card" {...(lost ? { 'data-lost': '' } : { 'data-waiting': '' })} aria-hidden="true" />
   return (
     <div className="byd-home-card" role="img" aria-label={t('home.card.first', { title: face.title })}>
       <CardPreview

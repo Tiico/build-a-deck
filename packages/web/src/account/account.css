@@ -48,6 +48,7 @@
    to 0.01 ms under `prefers-reduced-motion`, and this one carries no meaning and has no `forwards`
    to land on, so it simply stands still on its first frame — no rule of its own needed. */
 .byd-home-card[data-waiting] { border: 1px solid #262a35; border-radius: 6px; background: linear-gradient(100deg, #1b1f2a 30%, #232836 50%, #1b1f2a 70%) 0 0 / 300% 100%; animation: byd-home-drawing 1.5s linear infinite; }
+.byd-home-card[data-lost] { border: 1px solid #262a35; border-radius: 6px; background: #1b1f2a; }
 .byd-home-card[data-empty] { display: grid; place-items: center; box-sizing: border-box; padding: 6px; border: 1px dashed #2c3242; border-radius: 6px; color: #9aa3b8; font-size: 11px; text-align: center; line-height: 1.35; }
 @keyframes byd-home-drawing { to { background-position: -150% 0; } }
 /* An account with no games at all has no row of games to give the invitation its height, so the

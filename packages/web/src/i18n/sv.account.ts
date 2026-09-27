@@ -22,7 +22,7 @@ export const svAccount = {
   'login.guest': 'Ska du bara spela? Skanna QR-koden på bordet — inget konto behövs.',
 
   // "Mina spel" (G1): kontots spel som ett rutnät, och bordet som just startades.
-  'home.loading': 'Laddar…',
+  'home.loading': 'Hämtar dina spel…',
   'home.title': 'Mina spel',
   'home.logout': 'logga ut',
   'home.claimed': 'Sparat: du spelade {game} som {name}. Enkäten och flaggorna hör nu till ditt konto.',

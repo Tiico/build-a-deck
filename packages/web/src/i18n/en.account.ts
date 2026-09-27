@@ -15,7 +15,7 @@ export const enAccount = {
   'login.no-password': 'No password. The link in the mail logs you in; the first time, it creates your account.',
   'login.guest': 'Only here to play? Scan the QR code on the table — no account needed.',
 
-  'home.loading': 'Loading…',
+  'home.loading': 'Fetching your games…',
   'home.title': 'My games',
   'home.logout': 'log out',
   'home.claimed': 'Saved: you played {game} as {name}. The survey and the flags now belong to your account.',

@@ -262,6 +262,49 @@ describe('a game on the home page (G1)', () => {
     }
   })
 
+  // While the list is on its way (#475): the page said nothing and showed «＋ Nytt spel» alone in
+  // the first column, which then jumped to the third when the games arrived.
+  it('says it is fetching the games, and draws no tile until it knows where the tiles go', async () => {
+    const real = globalThis.fetch
+    let land = (): void => undefined
+    const held = new Promise<void>((resolve) => {
+      land = resolve
+    })
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (new URL(String(input instanceof Request ? input.url : input)).pathname === '/projects') await held
+      return real(input, init)
+    })
+    try {
+      await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+      await followMailedLink()
+      history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+      render(<HomePage />)
+      expect(await screen.findByText('Hämtar dina spel…')).toBeTruthy()
+      expect(document.querySelector('.byd-home-game[data-new]')).toBeNull()
+      land()
+      await waitFor(() => expect(document.querySelector('.byd-home-game[data-new]')).toBeTruthy())
+      expect(screen.queryByText('Hämtar dina spel…')).toBeNull()
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  // The cards are a second answer; when it never comes the places stop shimmering rather than
+  // promising a card for ever (#475).
+  it('stops waiting for the card when what it takes to draw it could not be had', async () => {
+    const real = globalThis.fetch
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input instanceof Request ? input.url : input).includes('/me/cards')) return new Response('{}', { status: 500 })
+      return real(input, init)
+    })
+    try {
+      await home()
+      await waitFor(() => expect(card().querySelector('.byd-home-card')!.hasAttribute('data-waiting')).toBe(false))
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
   it('says it has never been played, and afterwards when it last was', async () => {
     await home()
     expect(card().textContent).toContain('aldrig spelat')
