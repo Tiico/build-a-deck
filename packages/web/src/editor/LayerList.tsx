@@ -158,6 +158,9 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
                   aria-label={t('canvas.layer.rename', { name })}
                   defaultValue={name}
                   autoFocus
+                  // The old name is marked (#478), so what is typed replaces it rather than being
+                  // written after it.
+                  onFocus={(event) => event.currentTarget.select()}
                   onKeyDown={(event) => {
                     if (event.key !== 'Enter' && event.key !== 'Escape') return
                     event.preventDefault()

@@ -104,3 +104,26 @@ describe('moving a layer in the list itself', () => {
     expect(document.activeElement).toBe(pick('body'))
   })
 })
+
+// Renaming a layer (#478): the field opened with the caret after the old name, so typing a new
+// one wrote «titleRubrik». The old name is marked, as every rename field marks it, so typing
+// replaces it.
+describe('renaming a layer (#478)', () => {
+  it('opens with the old name marked, so what is typed replaces it', async () => {
+    const user = userEvent.setup()
+    const onRename = vi.fn()
+    render(
+      <>
+        <h2 id="test-layers-heading">Lager</h2>
+        <LayerList layers={layersOf(['body', 'title'])} selected="title" onSelect={vi.fn()} onReorder={vi.fn()} onRename={onRename} labelledBy="test-layers-heading" />
+      </>,
+    )
+    pick('title').focus()
+    await user.keyboard('{F2}')
+    const field = document.querySelector('.byd-layer-rename') as HTMLInputElement
+    expect(field.selectionStart).toBe(0)
+    expect(field.selectionEnd).toBe(field.value.length)
+    await user.keyboard('Rubrik{Enter}')
+    expect(onRename.mock.calls.at(-1)?.[1]).toBe('Rubrik')
+  })
+})
