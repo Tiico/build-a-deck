@@ -184,6 +184,9 @@ describe('the tables the account sat at (G1)', () => {
     expect(card.textContent).toContain('du var Ada')
     expect(card.textContent).toContain('pågår')
     expect(screen.getByRole('status').textContent).toMatch(/Sparat.*som Ada/)
+    // Said once (#475): the address no longer carries it, so a reload does not say it again.
+    expect(new URLSearchParams(location.search).get('claimed')).toBeNull()
+    expect(new URLSearchParams(location.search).get('server')).toBe(run.http)
   })
 })
 
@@ -349,6 +352,15 @@ describe('the game menu and the question on the home page (#475)', () => {
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
     expect(screen.queryByRole('alertdialog')).toBeNull()
     await waitFor(() => expect(document.activeElement).toBe(more()))
+  })
+
+  it('keeps the focus on ⋯ after a table is started, and says the way to it opens a new tab', async () => {
+    await home()
+    fireEvent.click(more())
+    fireEvent.click(await screen.findByRole('button', { name: 'Starta bord' }))
+    await waitFor(() => expect(document.activeElement).toBe(more()))
+    const open = await screen.findByRole('link', { name: 'Öppna bordet (öppnas i ny flik)' })
+    expect(open.getAttribute('target')).toBe('_blank')
   })
 
   it('says the game is gone once it is, and leaves the focus on the heading rather than on nothing', async () => {

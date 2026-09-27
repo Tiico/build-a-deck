@@ -29,6 +29,7 @@ export const svAccount = {
   'home.claimed.some-table': 'ett bord',
   'home.started': 'Bordet är igång. Rumskoden är {code}.',
   'home.started.open': 'Öppna bordet',
+  'home.started.open.aria': 'Öppna bordet (öppnas i ny flik)',
   'home.remove.title': 'Ta bort spelet',
   'home.remove.ask': 'Ta bort {name}? Hela historien följer med, och det går inte att ångra.',
   'home.remove.keep': 'Behåll',

@@ -33,8 +33,16 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   // and lands after it, so the first screen is drawn on the list's own answer and never waits for
   // a single template, font or picture. Until it lands the tile holds the card's place.
   const [cards, setCards] = useState<Record<string, CardFace | null> | null>(null)
-  // Landing here from the claim page (G1): which session was just saved.
+  // Landing here from the claim page (G1): which session was just saved. Said once (#475): the
+  // address stops carrying it as soon as it has been read, so a reload does not say it again.
   const claimed = params.get('claimed')
+  useEffect(() => {
+    if (!claimed) return
+    const rest = new URLSearchParams(location.search)
+    rest.delete('claimed')
+    const q = rest.toString()
+    history.replaceState(history.state, '', `${location.pathname}${q ? `?${q}` : ''}${location.hash}`)
+  }, [claimed])
   // The start page is where every other route's way home leads, so it is the last place that
   // may answer with a sentence written for a developer (#12). A page that could not be read at
   // all is one thing; an action that failed is another, and the second must never take the games
@@ -131,7 +139,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
         {started && (
           <div className="byd-home-started" role="status">
             {marked(t('home.started'), { code: <strong>{started.code}</strong> })}{' '}
-            <a href={tableUrl(started.id, started.hostKey, server)} target="_blank" rel="noreferrer">
+            <a href={tableUrl(started.id, started.hostKey, server)} target="_blank" rel="noreferrer" aria-label={t('home.started.open.aria')}>
               {t('home.started.open')}
             </a>
           </div>

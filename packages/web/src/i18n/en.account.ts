@@ -22,6 +22,7 @@ export const enAccount = {
   'home.claimed.some-table': 'a table',
   'home.started': 'The table is running. The room code is {code}.',
   'home.started.open': 'Open the table',
+  'home.started.open.aria': 'Open the table (opens in a new tab)',
   'home.remove.title': 'Delete the game',
   'home.remove.ask': 'Delete {name}? Its whole history goes with it, and it cannot be undone.',
   'home.remove.keep': 'Keep it',
