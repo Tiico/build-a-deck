@@ -220,6 +220,24 @@ describe('an invitation to a project (D3)', () => {
     expect((await send('DELETE', '/projects/p1/members/bo@example.com', ada)).status).toBe(200)
     expect(await closed).toBe(4003)
   })
+
+  // A game deleted while someone has it open (#485, fynd 1): the editor was left holding a project
+  // that no longer existed, with no state at all, and learned it only as a raw «unknown project»
+  // on the next save. The socket is closed the way an unknown project is refused, so the editor
+  // gets its own «missing» state in the moment the server knows, with the work still in the page.
+  it('closes every open editor of a game that is deleted, as a project that is not there', async () => {
+    const ada = await login('ada@example.com')
+    await send('POST', '/projects', ada, { id: 'p1', ...doc() })
+    const { WebSocket } = await import('ws')
+    const ws = new WebSocket(`${run.base}/projects/p1/edit?name=ada`, { headers: { cookie: ada } })
+    await new Promise<void>((resolve, reject) => {
+      ws.once('message', () => resolve())
+      ws.once('error', reject)
+    })
+    const closed = new Promise<number>((resolve) => ws.once('close', (code) => resolve(code)))
+    expect((await send('DELETE', '/projects/p1', ada)).status).toBe(200)
+    expect(await closed).toBe(4004)
+  })
 })
 
 describe('what a role may do while the project is open (D3)', () => {

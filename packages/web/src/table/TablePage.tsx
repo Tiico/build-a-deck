@@ -4,12 +4,13 @@ import './table.css'
 import { TableRenderer, type TableMode } from './TableRenderer.js'
 import { TvChrome } from './TvChrome.js'
 import { useTableClient } from './useTableClient.js'
-import { previewOf, standingRewind, whereTo, whoDecides } from './rewind.js'
+import { previewOf, standingRewind } from './rewind.js'
 import { usePresence, useRecent } from './usePresence.js'
 import { useShuffles } from './shuffle.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { useFeltKeyboard } from './useFeltKeyboard.js'
 import { useActivityLive } from './useActivityLive.js'
+import { RewindFrame } from './RewindFrame.js'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
@@ -129,17 +130,10 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   // beside a tagged zone can say only what this screen was already told — and says it again on
   // every patch, without the drawer fetching anything a second time.
   const rules = (placement: 'table' | 'tv') => (sessionId ? <RuleDrawer http={url.replace(/^ws/, 'http')} sessionId={sessionId} placement={placement} live={view} /> : null)
-  const table = proposal?.preview ? (
-    <div className="byd-rewind-preview" data-rewind-preview={proposal.id}>
+  const table = (
+    <RewindFrame view={view} activity={activity}>
       {rendered}
-      <div className="byd-rewind-label">
-        <span>{t('rewind.proposal')}</span>
-        <span>{t('rewind.looked', { where: whereTo(view, proposal, activity, t) })}</span>
-        <span>{t('rewind.waiting', { who: whoDecides(view, proposal, t) })}</span>
-      </div>
-    </div>
-  ) : (
-    rendered
+    </RewindFrame>
   )
   return (
     <>

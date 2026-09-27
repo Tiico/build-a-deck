@@ -85,6 +85,8 @@ export const svStatus = {
   'status.forbidden.phone.text': 'Någon annan sitter på platsen. Välj en ledig plats igen, eller läs QR-koden på TV:n.',
   'status.forbidden.editor.heading': 'Spelet hör till någon annan',
   'status.forbidden.editor.text': 'Be den som äger spelet att bjuda in dig, eller logga in på rätt konto.',
+  'status.loggedOut.editor.heading': 'Du är utloggad',
+  'status.loggedOut.editor.text': 'Du loggades ut medan spelet var öppet. Logga in igen; det du har ändrat ligger kvar här.',
 
   'status.offline.mark': 'Ingen kontakt',
   'status.offline.heading': 'Vi når inte tjänsten',
@@ -150,6 +152,7 @@ export const svStatus = {
   'refusal.place': 'Det går inte att lägga korten där.',
   'refusal.peek': 'Den här skärmen har ingen hand att titta i.',
   'refusal.unknown': 'Kortet eller zonen finns inte längre på bordet.',
+  'refusal.projectGone': 'Spelet finns inte längre. Det du har ändrat ligger kvar här.',
   // Ett skäl den här klienten aldrig hört talas om får en mening av sin egen i stället för att
   // utvecklarens engelska ord skrivs ut på skärmen.
   'refusal.other': 'Bordet tog inte emot draget. Försök igen om en stund.',

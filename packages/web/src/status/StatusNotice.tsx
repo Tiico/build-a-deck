@@ -37,6 +37,24 @@ export function StatusNotice({ notice, surface, links = {}, onRetry, countdown =
   useEffect(() => {
     if (takesFocus) headingRef.current?.focus()
   }, [takesFocus, notice.state])
+  // «Försök igen» takes its own button away (#485): the next state is a wait with nothing to press,
+  // and once the line is back the message goes too. The focus goes with neither: it stays on the
+  // message while the message stands, and is handed to the view it lay over when it is gone.
+  const retried = useRef(false)
+  const lost = () => document.activeElement === null || document.activeElement === document.body
+  useEffect(() => {
+    if (retried.current && lost()) headingRef.current?.focus()
+  }, [notice.state])
+  useEffect(
+    () => () => {
+      if (!retried.current || !lost()) return
+      const view = document.querySelector<HTMLElement>('[data-page]')
+      if (!view) return
+      if (!view.hasAttribute('tabindex')) view.tabIndex = -1
+      view.focus({ preventScroll: true })
+    },
+    [],
+  )
 
   const waiting = notice.state === 'loading' || notice.state === 'connecting' || notice.state === 'slow'
   const Heading = surface === 'page' ? 'h1' : 'h2'
@@ -62,7 +80,16 @@ export function StatusNotice({ notice, surface, links = {}, onRetry, countdown =
         <div className="byd-status-acts">
           {actions.map((action) =>
             action.kind === 'retry' ? (
-              <button key={action.kind} type="button" className="byd-status-act" onClick={onRetry} {...(action.primary === true ? { 'data-primary': '' } : {})}>
+              <button
+                key={action.kind}
+                type="button"
+                className="byd-status-act"
+                onClick={() => {
+                  retried.current = true
+                  onRetry?.()
+                }}
+                {...(action.primary === true ? { 'data-primary': '' } : {})}
+              >
                 {action.label}
               </button>
             ) : (

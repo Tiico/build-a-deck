@@ -257,6 +257,9 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const code = normaliseCode(decodeURIComponent(room[1] ?? ''))
       const found = code ? await opts.store.sessionByCode(code) : null
       if (!found || Date.parse(found.codeExpiresAt) <= clock(opts).getTime()) return json(res, 404, { error: 'unknown or expired code' })
+      // A table that has ended is locked (C9), and the picker is told so rather than shown a table
+      // it can no longer sit down at (#485).
+      if ((await opts.host.get(found.id))?.ended) return json(res, 410, { error: 'session ended', session: found.id })
       return json(res, 200, { session: found.id })
     }
     // A code and a name buy a token (DRIFT §9): for a free seat, or for watching (C8).
@@ -268,6 +271,8 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const body = JoinBody.parse(JSON.parse(await readBody(req)))
       const actor = await opts.host.get(found.id)
       if (!actor) return json(res, 404, { error: 'unknown session' })
+      // And its door hands out nothing (#485): a token would land a newcomer in a finished game.
+      if (actor.ended) return json(res, 410, { error: 'session ended', session: found.id })
       if (body.seat !== undefined) {
         const seat = actor.seats().find((s) => s.id === body.seat)
         if (!seat) return json(res, 404, { error: `unknown seat ${body.seat}` })
@@ -536,7 +541,10 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
   }
   const role = rec.owner === undefined ? 'owner' : account ? await projects.roleOf(projectId, account.id) : null
   if (!role) {
-    ws.close(4003, 'not your project')
+    // Nobody logged in is not «someone else's game» (#485): the editor is told to log in again,
+    // with a code of its own, rather than that the game belongs to somebody else.
+    if (!account && opts.auth) ws.close(4401, 'log in')
+    else ws.close(4003, 'not your project')
     return
   }
   const actor = await editors(opts, projects).get(projectId)
@@ -544,7 +552,7 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
     ws.close(4004, 'unknown project')
     return
   }
-  const editor = { id: randomUUID(), name, role, ...(account ? { account: account.id } : {}), send, close: () => ws.close(4003, 'gone') }
+  const editor = { id: randomUUID(), name, role, ...(account ? { account: account.id } : {}), send, close: () => ws.close(4003, 'gone'), gone: () => ws.close(4004, 'unknown project') }
   const leave = actor.subscribe(editor)
   ws.on('close', leave)
   ws.on('message', (data) => {
@@ -1187,7 +1195,12 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, gate.status, { error: gate.error })
       return true
     }
-    json(res, 200, { ok: await projects.remove(gate.rec.id) })
+    const removed = await projects.remove(gate.rec.id)
+    // Everyone who has the game open is told it is gone, and the actor goes with it (#485).
+    const host = editors(opts, projects)
+    ;(await host.running(gate.rec.id))?.shutDown()
+    host.forget(gate.rec.id)
+    json(res, 200, { ok: removed })
     return true
   }
   const print = /^\/projects\/([^/]+)\/print$/.exec(url.pathname)
