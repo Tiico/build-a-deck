@@ -241,6 +241,8 @@ describe('the setup editor (B5, L17): the deck\'s own back', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Mall' }))
     fireEvent.click(screen.getByRole('radio', { name: 'Baksida' }))
     fireEvent.click(screen.getByRole('button', { name: 'Medaljong' }))
+    // The back has layers, so the gallery asks first (#478).
+    fireEvent.click(screen.getByRole('button', { name: 'Ja, byt baksida' }))
     fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
     expect(elementsOn('draw')).toEqual(['bottom', 'edge', 'medallion', 'star'])
   })

@@ -118,7 +118,9 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
             role="row"
             data-layer={el.id}
             {...(removed?.has(el.id) ? { 'data-removed': '' } : {})}
-            {...(over === el.id && dragged.current !== el.id ? { 'data-over': '' } : {})}
+            // Where the layer lands is the row's place, which is above that row dragged up and
+            // below it dragged down (#478): the line is drawn on the side it will land on.
+            {...(over === el.id && dragged.current !== el.id ? { 'data-over': dragged.current !== null && ids.indexOf(dragged.current) < at ? 'below' : 'above' } : {})}
             aria-selected={el.id === selected ? 'true' : 'false'}
             draggable={onReorder !== undefined && renaming !== el.id}
             onDragStart={() => (dragged.current = el.id)}
@@ -135,10 +137,7 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
               const held = dragged.current
               dragged.current = null
               setOver(null)
-              // The line is drawn over the row dropped on, so the layer lands above it (#478).
-              // Dragged down, the layer leaves a gap above that row when it is lifted out, and
-              // the row's place is one less than it was.
-              if (held && held !== el.id) moveTo(held, ids.indexOf(held) < at ? at - 1 : at)
+              if (held && held !== el.id) moveTo(held, at)
             }}
           >
             <span role="gridcell" className="byd-layer-lockcell">

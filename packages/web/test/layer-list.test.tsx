@@ -128,27 +128,27 @@ describe('renaming a layer (#478)', () => {
   })
 })
 
-// The drop line (#478): it is drawn over the row the layer is dropped on, and a layer dragged
-// downward landed under that row instead — the line said one place and the layer went to another.
-// It now lands where the line is, whichever way it was dragged.
-describe('dropping a layer where the line is (#478)', () => {
+// The drop line (#478): it was always drawn over the row dropped on, and a layer dragged downward
+// landed under that row — the line said one place and the layer went to another. The line is now
+// drawn on the side the layer lands: over the row dragged up, under it dragged down.
+describe('the drop line says where the layer lands (#478)', () => {
   const row = (id: string) => document.querySelector(`[data-layer="${id}"]`) as HTMLElement
-  const dragOnto = (from: string, to: string) => {
-    fireEvent.dragStart(row(from))
-    fireEvent.dragOver(row(to))
-    expect(row(to).hasAttribute('data-over')).toBe(true)
-    fireEvent.drop(row(to))
-  }
 
-  it('lands above the row it is dropped on when dragged down', () => {
+  it('is under the row, and the layer lands under it, when dragged down', () => {
     render(<MovableLayers ids={['body', 'title', 'frame']} />)
-    dragOnto('body', 'frame')
+    fireEvent.dragStart(row('body'))
+    fireEvent.dragOver(row('title'))
+    expect(row('title').getAttribute('data-over')).toBe('below')
+    fireEvent.drop(row('title'))
     expect(named()).toEqual(['title', 'body', 'frame'])
   })
 
-  it('and when dragged up', () => {
+  it('is over the row, and the layer lands over it, when dragged up', () => {
     render(<MovableLayers ids={['body', 'title', 'frame']} />)
-    dragOnto('frame', 'body')
-    expect(named()).toEqual(['frame', 'body', 'title'])
+    fireEvent.dragStart(row('frame'))
+    fireEvent.dragOver(row('title'))
+    expect(row('title').getAttribute('data-over')).toBe('above')
+    fireEvent.drop(row('title'))
+    expect(named()).toEqual(['body', 'frame', 'title'])
   })
 })

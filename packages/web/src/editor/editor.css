@@ -1298,6 +1298,8 @@
   border-radius: 2px;
   background: var(--byd-editor-primary-mark);
 }
+/* Dragged down, the layer lands under the row it is dropped on, and the line says so (#478). */
+.byd-layers [role='row'][data-over='below']::before { inset: auto 0 -1px 0; }
 .byd-layer-lock, .byd-layer-pick {
   display: flex;
   align-items: center;
