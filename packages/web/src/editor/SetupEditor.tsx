@@ -920,11 +920,17 @@ function ZoneProps({ zone, setup, rows, why, onPatch, onDeck, onHold }: { zone: 
             {t('setup.bottom')}
             <select aria-label={t('setup.bottom.of', { name: zone.name })} value={zone.bottom?.cardRef ?? ''} onChange={(e) => onPatch({ bottom: e.target.value ? { cardRef: e.target.value, face: zone.bottom?.face ?? 'back' } : undefined })}>
               <option value="">{t('setup.bottom.none')}</option>
-              {rows.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {titleOfRow(r)}
-                </option>
-              ))}
+              {/* A title that repeats says which row of Tabell it is (#480, K23): four «Duel» in
+                  the list could not be told apart, and the bottom card is one specific row. */}
+              {rows.map((r, i) => {
+                const title = titleOfRow(r)
+                const twin = rows.some((o) => o.id !== r.id && titleOfRow(o) === title)
+                return (
+                  <option key={r.id} value={r.id}>
+                    {twin ? t('setup.bottom.row', { title, n: i + 1 }) : title}
+                  </option>
+                )
+              })}
             </select>
           </label>
           {zone.bottom !== undefined && (

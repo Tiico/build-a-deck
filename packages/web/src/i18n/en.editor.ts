@@ -962,6 +962,7 @@ export const enEditor = {
   'setup.bottom': 'Bottom card',
   'setup.bottom.of': 'Bottom card of {name}',
   'setup.bottom.none': 'none',
+  'setup.bottom.row': '{title} · row {n}',
   'setup.bottom.face': 'The bottom card lies',
   'setup.bottom.face.of': 'Side of the bottom card of {name}',
   'setup.bottom.front': 'face up',
