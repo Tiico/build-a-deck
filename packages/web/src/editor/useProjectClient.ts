@@ -45,7 +45,7 @@ export function useProjectClient(http: string | null, id: string | null, dropAft
       // A game that is deleted while it is open (#485) is different: the work on the screen is the
       // designer's own and the only copy of it now, so the page keeps it and says so over it.
       unsubscribe = client.subscribe(() =>
-        setState((s) => (client.shut === 'missing' ? { client, fault: 'missing', tick: s.tick + 1 } : client.shut ? { client: null, fault: client.shut, tick: s.tick + 1 } : { ...s, tick: s.tick + 1 })),
+        setState((s) => (client.shut === 'missing' || client.shut === 'loggedOut' ? { client, fault: client.shut, tick: s.tick + 1 } : client.shut ? { client: null, fault: client.shut, tick: s.tick + 1 } : { ...s, tick: s.tick + 1 })),
       )
       setState({ client, fault: null, tick: 0 })
     }

@@ -541,7 +541,10 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
   }
   const role = rec.owner === undefined ? 'owner' : account ? await projects.roleOf(projectId, account.id) : null
   if (!role) {
-    ws.close(4003, 'not your project')
+    // Nobody logged in is not «someone else's game» (#485): the editor is told to log in again,
+    // with a code of its own, rather than that the game belongs to somebody else.
+    if (!account && opts.auth) ws.close(4401, 'log in')
+    else ws.close(4003, 'not your project')
     return
   }
   const actor = await editors(opts, projects).get(projectId)

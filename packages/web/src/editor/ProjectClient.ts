@@ -46,7 +46,8 @@ export type ProjectListener = (client: ProjectClient) => void
 
 // Why a project could not be opened, as one of the states the whole product shares (#12). The
 // server's own sentence is a fact about a request, not a message to a person, so it stops here.
-export type ProjectFault = 'missing' | 'forbidden' | 'offline'
+// `loggedOut`: the editor was open and its reader is no longer logged in (#485).
+export type ProjectFault = 'missing' | 'forbidden' | 'offline' | 'loggedOut'
 export class ProjectUnavailable extends Error {
   constructor(readonly fault: ProjectFault) {
     super(fault)
@@ -216,10 +217,10 @@ export class ProjectClient {
     }
     socket.onclose = (event) => {
       const code = event?.code
-      if (this.socket === socket && (code === 4003 || code === 4004)) {
+      if (this.socket === socket && (code === 4003 || code === 4004 || code === 4401)) {
         this.socket = null
         this.connected = false
-        this.shut = code === 4003 ? 'forbidden' : 'missing'
+        this.shut = code === 4003 ? 'forbidden' : code === 4401 ? 'loggedOut' : 'missing'
         this.close()
         this.notify()
         return

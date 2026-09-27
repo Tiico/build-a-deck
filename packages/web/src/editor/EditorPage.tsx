@@ -24,7 +24,7 @@ import type { ProjectClient, Textures } from './ProjectClient.js'
 import { loginUrl } from '../account/api.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
-import { noticeFor, refusalText } from '../status/notice.js'
+import { noticeFor, refusalText, loggedOutNotice } from '../status/notice.js'
 import { chordOf, isTyping, passedToEditor } from './keys.js'
 import { mediaInGame } from './assets.js'
 import { previewMotifs } from './motifs.js'
@@ -109,7 +109,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // The tab says which game is open, and what is wrong with it while something is (#12).
   // Which tab is open is part of where the designer is (#477), so the browser's tab says it too.
   const part = MODES.find(([m]) => m === mode)?.[1]
-  usePageTitle({ state: projectId ? (fault === 'unauthorized' ? null : fault ?? (client ? null : 'loading')) : 'missing', game: client?.doc.name ?? null, part: part ? t(part) : null })
+  usePageTitle({ state: projectId ? (fault === 'unauthorized' ? null : fault === 'loggedOut' ? 'forbidden' : fault ?? (client ? null : 'loading')) : 'missing', game: client?.doc.name ?? null, part: part ? t(part) : null })
   // What the header has standing over the work: the history (B4), which opens from the revision
   // where the version is already named, or who has the game (D3), which opens from the faces. One
   // state rather than two, because two panels over each other cover the work and each other — on
@@ -275,7 +275,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   }
   // A project that is missing, shut or out of reach says so in the editor's own words, with a
   // way back and — where waiting can help — a way to ask again (#12, UX-07).
-  if (fault && !client) return <StatusNotice notice={noticeFor(fault, 'editor', t)} surface="page" links={links} onRetry={retry} />
+  if (fault && fault !== 'loggedOut' && !client) return <StatusNotice notice={noticeFor(fault, 'editor', t)} surface="page" links={links} onRetry={retry} />
   if (!client) return <StatusNotice notice={noticeFor('loading', 'editor', t)} surface="page" links={links} />
   const doc = client.doc
   if (PlaytestPrototype && params.has('variant')) return <Suspense fallback={<p>Laddar prototyp…</p>}><PlaytestPrototype doc={doc} revision={client.rev} http={http} /></Suspense>
@@ -693,7 +693,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     </div>
     {/* A game deleted while it was open (#485): said over the work, which stays on the page and
         out of reach, rather than in place of it. */}
-    {fault && <StatusNotice notice={noticeFor(fault, 'editor', t)} surface="card" links={links} onRetry={retry} />}
+    {fault && <StatusNotice notice={fault === 'loggedOut' ? loggedOutNotice(t) : noticeFor(fault, 'editor', t)} surface="card" links={links} onRetry={retry} />}
     </>
   )
 }

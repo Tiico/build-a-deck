@@ -188,3 +188,10 @@ export function refusal(reason: string, voice: Voice, t: T = swedish): Notice {
 export function guestNotice(state: 'missing' | 'forbidden', t: T = swedish): Notice {
   return noticeFor(state, 'phone', t)
 }
+
+// An editor whose reader was logged out while it was open (#485, fynd 7): not «someone else's
+// game», which is what it used to be told, but what happened and the way back in. The work stays
+// on the page behind it.
+export function loggedOutNotice(t: T = swedish): Notice {
+  return { ...noticeFor('forbidden', 'editor', t), heading: t('status.loggedOut.editor.heading'), text: t('status.loggedOut.editor.text'), actions: [login(t)] }
+}

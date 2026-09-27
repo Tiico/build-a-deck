@@ -75,6 +75,8 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'status.forbidden.phone.text': 'Someone else is sitting in it. Pick a free seat again, or scan the QR code on the TV.',
   'status.forbidden.editor.heading': 'The game belongs to someone else',
   'status.forbidden.editor.text': 'Ask whoever owns the game to invite you, or sign in to the right account.',
+  'status.loggedOut.editor.heading': 'You are logged out',
+  'status.loggedOut.editor.text': 'You were logged out while the game was open. Log in again; what you changed is still here.',
 
   'status.offline.mark': 'No contact',
   'status.offline.heading': 'We cannot reach the service',
