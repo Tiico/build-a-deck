@@ -63,6 +63,23 @@ describe('the game’s colours', () => {
     expect(screen.getByRole('alert').textContent).toBe('«mitt hot» går inte att skriva på ett kort: ett namn har bara bokstäver, siffror, _ och -.')
   })
 
+  // A meaning the cards write is asked about before it goes, the way Media asks about a picture
+  // (#481, fynd 11; L22, #318); one nothing writes goes at once.
+  it('asks before taking away a meaning the cards write, and names the cards', () => {
+    const c = mount({ fara: '#8f2d20', vinst: '#2f6136' }, {
+      rows: [{ id: 'dragon', fields: { title: 'Drake', body: 'Skada {svard|fara} 2.', antal: 1 } }],
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort fara' }))
+    expect(c.removeRole).not.toHaveBeenCalled()
+    const question = screen.getByRole('alertdialog')
+    expect(question.textContent).toContain('Ta bort fara? Kortet dragon skriver den.')
+    fireEvent.click(within(question).getByRole('button', { name: 'Ja, ta bort' }))
+    expect(c.removeRole).toHaveBeenCalledWith('fara')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort vinst' }))
+    expect(c.removeRole).toHaveBeenCalledWith('vinst')
+  })
+
   it('names a new meaning without asking the designer to invent a colour first', () => {
     const c = mount({ fara: '#8f2d20' })
 

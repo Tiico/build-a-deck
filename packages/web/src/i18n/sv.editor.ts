@@ -795,6 +795,8 @@ export const svEditor = {
   'symbols.name.unwritable': '«{name}» går inte att skriva på ett kort: ett namn har bara bokstäver, siffror, _ och -.',
   'symbols.own': 'egen',
   'symbols.remove': 'Ta bort {name}',
+  'symbols.remove.question': 'Ta bort {name}? {n} kort skriver den: {cards}.',
+  'symbols.remove.question.one': 'Ta bort {name}? Kortet {cards} skriver den.',
 
   // Regelboken: sidan som är sin egen editor, och häftet för tryck.
   'rules.title': 'Regelboken',

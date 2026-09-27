@@ -710,6 +710,8 @@ export const enEditor = {
   'symbols.name.unwritable': '“{name}” cannot be written on a card: a name holds only letters, digits, _ and -.',
   'symbols.own': 'your own',
   'symbols.remove': 'Remove {name}',
+  'symbols.remove.question': 'Remove {name}? {n} cards write it: {cards}.',
+  'symbols.remove.question.one': 'Remove {name}? The card {cards} writes it.',
 
   'rules.title': 'The rulebook',
   'rules.view': 'Mode',
