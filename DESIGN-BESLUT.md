@@ -2934,6 +2934,10 @@ Kolumnen höll sina 280 px vare sig något var markerat eller inte, så duken fi
 För hand och inte av sig själv: den prövade automatiska fällningen byter dukens bredd varje gång formgivaren klickar bredvid ett element, så kortet flyttar sig under pekaren som arbetar på det. Läget minns i webbläsaren (L4) och skrivs aldrig i dokumentet.
 Lagerkolumnen är krona, lista och fot: rubriken, antalet kort panelen gäller och raden om att dra skrollade förut bort med listan, 690 px vid 1024 — det som behövs mest i slutet av en lång lista var precis det som hade försvunnit dit.
 
+**Tillägg 2026-09-27 (#478, beslut av beställaren efter prototyp 05): ett villkor visas som en mapp.**
+Ett villkorat element heter sitt villkor i lagerlistan («om typ = Guld · 18 kort») tills det getts ett namn, och fälls ut till vad som ingår; på kortet ritas en streckad ram runt innehållet med villkoret på en flik, tonad där villkoret inte gäller för kortet som visas; panelen redigerar villkoret, säger på hur många kort det syns och visar ett av dem; och frågan före en borttagning räknar de kort elementet faktiskt ritas på.
+Innehållet listas men redigeras ännu inte i mappen, eftersom `patchElement` bara når toppnivån.
+
 ### L4. Datatabellen: kolumntyper från registryt, systemkolumn `antal`
 
 Kolumntyper följer typregistryts `editorSchema`: text, tal, bild, boolean.
