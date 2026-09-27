@@ -320,7 +320,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // `TV_AIR_PX` is for and the whole of what it is for. What the badge takes past the line is
   // pixels, and no measure of the felt can own them.
   const counts = union(hands.map((z) => ({ ...handCountAt(z, floor, handRot(z), folded(z)), w: 0, h: 0 })))
-  const keepCounts = counts ? { rect: counts, margin: TV_AIR_PX } : undefined
+  // The overscan is kept by the counts as by everything else the camera frames by itself (#322,
+  // #482): with only their own air they stood 13–15 px from a television's edge, inside the band a
+  // set may hide.
+  const keepCounts = counts ? { rect: counts, margin: TV_AIR_PX + (following && size ? overscanPx(size) : 0) } : undefined
   // How far the camera may reach: the table, anything in play that lies past its rim (#20), and
   // the counts at the rim, which are as much a part of the table as the felt is. The counts belong
   // here as well as in the framing above, or the two would disagree: a view that is pulled back to
