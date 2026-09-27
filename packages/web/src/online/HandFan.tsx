@@ -13,6 +13,8 @@ export type HandFanProps = {
   faces?: string | undefined
   // A card dragged out of the fan, released at a client point.
   onPlay: HandPlay
+  // Nothing can be played — an undo is proposed, or the table has ended — so nothing is lifted (#484).
+  locked?: boolean | undefined
   // Enter on a card: the address panel, the same one the felt opens (#2, variant C).
   onOpen(card: VisibleComponentState): void
 }
@@ -27,12 +29,12 @@ export type HandFanProps = {
 //
 // In a landscape window this is not the shape the hand takes: there the band cost the felt the one
 // axis it was bound by, and the hand stands beside it as `HandColumn` instead (#77).
-export function HandFan({ cards, faces, onPlay, onOpen }: HandFanProps) {
+export function HandFan({ cards, faces, onPlay, locked = false, onOpen }: HandFanProps) {
   const t = useT()
   const scroller = useRef<HTMLDivElement>(null)
   const n = cards.length
   const roving = useRoving({ ids: cards.map((c) => c.id), selected: null, orientation: 'horizontal' })
-  const { drag, handlers } = useHandDrag('up', onPlay)
+  const { drag, handlers } = useHandDrag('up', onPlay, locked)
   const lifted = drag ? cards.find((c) => c.id === drag.id) : undefined
   return (
     <div className="byd-hand-band" data-hand-fan style={fanStyle(n)}>

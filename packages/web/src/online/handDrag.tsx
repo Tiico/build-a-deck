@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent as RPointerEvent } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
@@ -26,7 +26,10 @@ export type HandPlay = (card: VisibleComponentState, clientX: number, clientY: n
 //
 // A tap plays nothing, in either shape. The hand is never over the table, so the point a tap
 // releases at is not a place on the table to put a card (section I).
-export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay) {
+//
+// A locked hand lifts nothing (#484 fynd 13): the press still scrolls, but no card rises out of a
+// hand that cannot play it, and no release is swallowed without a word.
+export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay, locked = false) {
   const [drag, setDrag] = useState<Held | null>(null)
   // Where the press started and whether it may still become a play; a press that turned out to be
   // a scroll is forgotten here and nothing downstream can revive it.
@@ -35,9 +38,24 @@ export function useHandDrag(plays: 'up' | 'across', onPlay: HandPlay) {
     aim.current = null
     setDrag(null)
   }
+  // Escape puts a lifted card back (#484 fynd 2, K14): the release that follows finds nothing held
+  // and plays nothing. Listened for on the window while a card is carried, because the press has
+  // the pointer and focus is wherever it was.
+  const carrying = drag !== null
+  useEffect(() => {
+    if (!carrying) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      e.stopPropagation()
+      stop()
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [carrying])
   const handlers = (c: VisibleComponentState) => ({
     onPointerDown: (e: RPointerEvent) => {
-      aim.current = { id: c.id, x: e.clientX, y: e.clientY }
+      aim.current = locked ? null : { id: c.id, x: e.clientX, y: e.clientY }
     },
     onPointerMove: (e: RPointerEvent) => {
       if (drag?.id === c.id) {

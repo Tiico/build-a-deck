@@ -12,6 +12,8 @@ export type HandColumnProps = {
   faces?: string | undefined
   // A card dragged out of the column, released at a client point.
   onPlay: HandPlay
+  // Nothing can be played — an undo is proposed, or the table has ended — so nothing is lifted (#484).
+  locked?: boolean | undefined
   // Enter on a card: the address panel, the same one the felt opens (#2, #24).
   onOpen(card: VisibleComponentState): void
 }
@@ -37,11 +39,11 @@ export type HandColumnProps = {
 // know: every card but the last sits in a box one step tall that may shrink, and none of them
 // below `FAN_MIN_PX`. A hand that no longer fits at that scrolls in its own box, and the page
 // never does (L10).
-export function HandColumn({ cards, faces, onPlay, onOpen }: HandColumnProps) {
+export function HandColumn({ cards, faces, onPlay, locked = false, onOpen }: HandColumnProps) {
   const t = useT()
   const n = cards.length
   const roving = useRoving({ ids: cards.map((c) => c.id), selected: null, orientation: 'vertical' })
-  const { drag, handlers } = useHandDrag('across', onPlay)
+  const { drag, handlers } = useHandDrag('across', onPlay, locked)
   const lifted = drag ? cards.find((c) => c.id === drag.id) : undefined
   return (
     <div className="byd-hand-col" data-hand-fan data-hand-column role="group" aria-label={`Min hand, ${n} kort`} style={COLUMN_STYLE}>

@@ -119,9 +119,12 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const up = spread && hand.length > 0
   const onAct = (intents: Intent[]) => void client.send(...intents)
   // A card out of the fan lands where it is dropped, centred on the pointer, in what the felt
-  // shows there (K2, K11, #65).
+  // shows there (K2, K11, #65). Let go anywhere but over the table's picture — back over the hand,
+  // over the top bar, in the dark around the table — it was not played at all, and goes back into
+  // the hand (#484 fynd 1). The wooden frame is the table's, and there it lies on the felt (#66).
   const play = (card: (typeof hand)[number], clientX: number, clientY: number) => {
-    const p = table.current?.toTable(clientX, clientY)
+    if (!table.current?.onTable(clientX, clientY)) return
+    const p = table.current.toTable(clientX, clientY)
     if (!p || !playable) return
     const dest = playedAt(shown, seat, p)
     if (!dest) return
@@ -174,9 +177,9 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             controls would be two of every card to a screen reader (L10). */}
         <div className="byd-hand-under" {...(up ? { inert: true, 'aria-hidden': true } : {})}>
           {column ? (
-            <HandColumn cards={hand} faces={http} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
+            <HandColumn cards={hand} faces={http} locked={!playable} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
           ) : (
-            <HandFan cards={hand} faces={http} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
+            <HandFan cards={hand} faces={http} locked={!playable} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
           )}
         </div>
         {up && (

@@ -64,7 +64,9 @@ export type { TableMode } from './hand.js'
 // `camera` (C5, TV mode): the frame shows what is in play rather than the whole table, gliding as
 // that changes; a scroll or a double tap zooms around the pointer and the view returns by itself.
 // `size` is the frame's size when the renderer should not measure it; `glideMs` the glide.
-export type TableHandle = { toTable(clientX: number, clientY: number): Point | null }
+// `onTable` says whether a point on the screen lies on the table's own picture — the felt and the
+// wooden frame it lies in — as opposed to the dark around it and whatever stands beside it (#484).
+export type TableHandle = { toTable(clientX: number, clientY: number): Point | null; onTable(clientX: number, clientY: number): boolean }
 // The keyboard's layer over the felt (#1, #2, variant C). It draws nothing: it puts a role, a
 // name, one tab stop and a focus ring on the nodes this renderer already draws, which is what
 // keeps K9 — one renderer, one way to draw a card. A table that is only shown passes none of
@@ -483,7 +485,24 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       return turned({ x: (u.x + w.offsetWidth / 2 - t.offsetLeft) / scale + floor.geometry.x, y: (u.y + w.offsetHeight / 2 - t.offsetTop) / scale + floor.geometry.y })
     }
   }
-  useImperativeHandle(ref, () => ({ toTable: (cx, cy) => mapper()?.(cx, cy) ?? null }))
+  // On the table as it is painted: inside the frame, and on the wood once the tilt is undone. The
+  // wood is the frame's own plane, so its box before the tilt is the whole of the question; on the
+  // television there is no wood, and the felt is the table.
+  const onTable = (cx: number, cy: number): boolean => {
+    const f = frame.current
+    const w = wood.current
+    const t = table.current
+    if (!f || !w || !t) return false
+    const fr = f.getBoundingClientRect()
+    if (cx < fr.left || cx > fr.right || cy < fr.top || cy > fr.bottom) return false
+    if (mode === 'tv') {
+      const tr = t.getBoundingClientRect()
+      return cx >= tr.left && cx <= tr.right && cy >= tr.top && cy <= tr.bottom
+    }
+    const u = tiltedToTable({ frame: { w: fr.width, h: fr.height }, wood: { left: w.offsetLeft, top: w.offsetTop, w: w.offsetWidth, h: w.offsetHeight } }, cx - fr.left, cy - fr.top)
+    return Math.abs(u.x) <= w.offsetWidth / 2 && Math.abs(u.y) <= w.offsetHeight / 2
+  }
+  useImperativeHandle(ref, () => ({ toTable: (cx, cy) => mapper()?.(cx, cy) ?? null, onTable }))
 
   const down = (e: RPointerEvent, target: DragTarget) => {
     if (!onAct) return

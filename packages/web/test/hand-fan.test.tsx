@@ -108,3 +108,21 @@ describe('scrolling the fan and playing a card out of it are told apart by direc
     expect(onPlay).not.toHaveBeenCalled()
   })
 })
+
+// A locked table lifts nothing out of the hand (#484 fynd 13). While an undo is proposed or the
+// picture is out of date nothing can be played, and a card that rose out of the fan anyway was a
+// promise the release then broke without a word.
+describe('the fan while the table is locked (#484)', () => {
+  it('lifts no card and plays none', () => {
+    const onPlay = vi.fn()
+    render(<HandFan cards={[mine]} faces="http://faces.test" locked onPlay={onPlay} onOpen={() => undefined} />)
+    const el = document.querySelector('[data-hand-card="c1"]')!
+    act(() => void fireEvent.pointerDown(el, { clientX: 200, clientY: 700, pointerId: 1, isPrimary: true, button: 0 }))
+    act(() => void fireEvent.pointerMove(el, { clientX: 204, clientY: 660, pointerId: 1 }))
+    act(() => void fireEvent.pointerMove(el, { clientX: 210, clientY: 400, pointerId: 1 }))
+    expect(document.querySelector('.byd-fan-ghost')).toBeNull()
+    expect(el.getAttribute('data-lifted')).toBeNull()
+    act(() => void fireEvent.pointerUp(el, { clientX: 210, clientY: 400, pointerId: 1 }))
+    expect(onPlay).not.toHaveBeenCalled()
+  })
+})
