@@ -450,3 +450,17 @@ describe('per plats när alla platser redan har en (#480)', () => {
     expect(zones()).toBe(had)
   })
 })
+
+// Bottenkortet väljs bland kort som kan heta likadant (#480 fynd 13, K23): fyra «Duel» i listan
+// gick inte att skilja åt. Där titeln upprepas säger valet vilken rad i Tabell det är.
+describe('bottenkortets lista när titlar upprepas (#480)', () => {
+  it('skiljer korten åt med sin rad', async () => {
+    const doc = projectDoc()
+    doc.rows.push({ id: 'dragon-2', fields: { title: 'Drake', antal: 1 } })
+    await run.projects.create(run.projectId, doc)
+    await openBord()
+    fireEvent.click(document.querySelector('[data-zone-row="discard"] .byd-setup-name')!)
+    const options = [...(screen.getByLabelText('Bottenkort för Kasthög') as HTMLSelectElement).options].map((o) => o.textContent)
+    expect(options).toEqual(['inget', 'Drake · rad 1', 'Riddare', 'Trollkarl', 'Drake · rad 4'])
+  })
+})

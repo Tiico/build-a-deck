@@ -1103,6 +1103,7 @@ export const svEditor = {
   'setup.bottom': 'Bottenkort',
   'setup.bottom.of': 'Bottenkort för {name}',
   'setup.bottom.none': 'inget',
+  'setup.bottom.row': '{title} · rad {n}',
   'setup.bottom.face': 'Bottenkortet ligger',
   'setup.bottom.face.of': 'Bottenkortets sida för {name}',
   'setup.bottom.front': 'uppvänt',
