@@ -155,25 +155,25 @@ describe('Ta av högen', () => {
 describe('Leta fram', () => {
   describe('på svenska', () => {
     each('take', 'sv', {
-      'bredvid vänster': 'Leta fram varje kort där vilket kort som helst och lägg dem uppvända till vänster om högen',
-      'bredvid höger': 'Leta fram varje kort där vilket kort som helst och lägg dem uppvända till höger om högen',
-      'bredvid ovanför': 'Leta fram varje kort där vilket kort som helst och lägg dem uppvända ovanför högen',
-      'bredvid under': 'Leta fram varje kort där vilket kort som helst och lägg dem uppvända under högen',
-      'varje hand': 'Leta fram varje kort där vilket kort som helst och lägg dem uppvända i varje hand',
-      'min hand': 'Leta fram varje kort där vilket kort som helst och lägg dem uppvända i min hand',
-      'en zon': 'Leta fram varje kort där vilket kort som helst och lägg dem uppvända i Kasthög',
+      'bredvid vänster': 'Leta fram varje kort och lägg dem uppvända till vänster om högen',
+      'bredvid höger': 'Leta fram varje kort och lägg dem uppvända till höger om högen',
+      'bredvid ovanför': 'Leta fram varje kort och lägg dem uppvända ovanför högen',
+      'bredvid under': 'Leta fram varje kort och lägg dem uppvända under högen',
+      'varje hand': 'Leta fram varje kort och lägg dem uppvända i varje hand',
+      'min hand': 'Leta fram varje kort och lägg dem uppvända i min hand',
+      'en zon': 'Leta fram varje kort och lägg dem uppvända i Kasthög',
     })
   })
 
   describe('på engelska', () => {
     each('take', 'en', {
-      'bredvid vänster': "Search out every card where any card at all and lay them face up to the pile's left",
-      'bredvid höger': "Search out every card where any card at all and lay them face up to the pile's right",
-      'bredvid ovanför': 'Search out every card where any card at all and lay them face up above the pile',
-      'bredvid under': 'Search out every card where any card at all and lay them face up below the pile',
-      'varje hand': 'Search out every card where any card at all and lay them face up in every hand',
-      'min hand': 'Search out every card where any card at all and lay them face up in my hand',
-      'en zon': 'Search out every card where any card at all and lay them face up in Kasthög',
+      'bredvid vänster': "Search out every card and lay them face up to the pile's left",
+      'bredvid höger': "Search out every card and lay them face up to the pile's right",
+      'bredvid ovanför': 'Search out every card and lay them face up above the pile',
+      'bredvid under': 'Search out every card and lay them face up below the pile',
+      'varje hand': 'Search out every card and lay them face up in every hand',
+      'min hand': 'Search out every card and lay them face up in my hand',
+      'en zon': 'Search out every card and lay them face up in Kasthög',
     })
   })
 })
@@ -265,7 +265,11 @@ function whyLine(lang: Lang, action: ZoneAction): string | null {
 }
 
 const asking = (when?: ZoneAction['when']): ZoneAction => ({ id: 'a1', label: 'Åtgärd', steps: [{ v: 'deal', each: { of: 'ask' }, to: { at: 'hands' }, face: 'keep' }], when })
-const plain = (when?: ZoneAction['when']): ZoneAction => ({ id: 'a1', label: 'Åtgärd', steps: [{ v: 'shuffle' }], when })
+// En åtgärd med ett tal som inte frågar: där är raden skälet till att ratten inte erbjuder «så många
+// jag säger». En åtgärd utan tal alls — bara Blanda — har ingen sådan ratt, och då står ingen rad
+// (#480 fynd 14).
+const plain = (when?: ZoneAction['when']): ZoneAction => ({ id: 'a1', label: 'Åtgärd', steps: [{ v: 'split', count: { of: 'number', n: 1 }, to: { at: 'beside' }, face: 'keep' }], when })
+const shuffleOnly = (when?: ZoneAction['when']): ZoneAction => ({ id: 'a1', label: 'Åtgärd', steps: [{ v: 'shuffle' }], when })
 
 describe('raden under ratten när «så många jag säger» och starten möts', () => {
   it.each([
@@ -277,6 +281,10 @@ describe('raden under ratten när «så många jag säger» och starten möts', 
     ['en', plain('both'), 'No step can ask for a number: the action runs at game start.'],
   ] as const)('säger på %s vad som hindrar valet', (lang, action, said) => {
     expect(whyLine(lang, action)).toBe(said)
+  })
+
+  it.each(['sv', 'en'] as const)('säger ingenting på %s under en åtgärd som bara blandar vid start', (lang) => {
+    expect(whyLine(lang, shuffleOnly('start'))).toBeNull()
   })
 
   // Ett dokument som redan bär kombinationen — en import kan bära en — får meningen om steget, för
