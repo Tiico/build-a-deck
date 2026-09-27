@@ -232,6 +232,8 @@ export const enEditor = {
   'table.import.note': 'An import replaces the cards in the table. Save once the result looks right.',
   'table.export.filename': '{name}-cards.csv',
   'table.export.unnamed': 'game',
+  'table.import.ask': 'Replace all {had} cards with {n} from {file}? Cards not in the file are removed.',
+  'table.import.yes': 'Yes, replace the cards',
   'table.import.read': '{n} cards read:',
   'table.import.fresh.one': '{n} new',
   'table.import.fresh.other': '{n} new',

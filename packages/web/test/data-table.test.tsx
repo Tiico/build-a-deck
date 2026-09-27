@@ -68,6 +68,8 @@ describe('DataTable (B as a tab)', () => {
 
     const file = new File(['id,title,body,antal\ndrake,Drake,Flygande,2'], 'kort.csv', { type: 'text/csv' })
     fireEvent.change(screen.getByLabelText('Importera CSV…'), { target: { files: [file] } })
+    // The import takes the fixture's cards away, so it asks first (#479).
+    fireEvent.click(await screen.findByRole('button', { name: 'Ja, ersätt korten' }))
     await waitFor(() => expect(onReplaceRows).toHaveBeenCalledWith([
       { id: 'drake', fields: { title: 'Drake', body: 'Flygande', antal: 2 } },
     ]))
@@ -669,6 +671,8 @@ describe('dropping a CSV on the import (#292)', () => {
     expect(fireEvent.drop(control(), carrying([csv()]))).toBe(false)
 
     // The rows the picker's own test asserts, line for line — one reading and not two.
+    // The import takes the fixture's cards away, so it asks first (#479).
+    fireEvent.click(await screen.findByRole('button', { name: 'Ja, ersätt korten' }))
     await waitFor(() => expect(onReplaceRows).toHaveBeenCalledWith(ROWS))
     expect(screen.queryByRole('alert')).toBeNull()
   })
@@ -717,9 +721,12 @@ describe('dropping a CSV on the import (#292)', () => {
   it('takes a dropped CSV the browser had no type for, and a tab-separated file too', async () => {
     const { onReplaceRows } = open()
     fireEvent.drop(control(), carrying([csv('kort.csv', '')]))
+    // The import takes the fixture's cards away, so it asks first (#479).
+    fireEvent.click(await screen.findByRole('button', { name: 'Ja, ersätt korten' }))
     await waitFor(() => expect(onReplaceRows).toHaveBeenCalledWith(ROWS))
 
     fireEvent.drop(control(), carrying([csv('kort.tsv', '', 'id\ttitle\tbody\tantal\ndrake\tDrake\tFlygande\t2\nriddare\tRiddare\tTill häst\t1')]))
+    fireEvent.click(await screen.findByRole('button', { name: 'Ja, ersätt korten' }))
     await waitFor(() => expect(onReplaceRows).toHaveBeenCalledTimes(2))
     expect(onReplaceRows).toHaveBeenLastCalledWith(ROWS)
   })
@@ -738,6 +745,8 @@ describe('dropping a CSV on the import (#292)', () => {
     expect(picker.getAttribute('aria-describedby')).toBeTruthy()
 
     fireEvent.change(picker, { target: { files: [csv()] } })
+    // The import takes the fixture's cards away, so it asks first (#479).
+    fireEvent.click(await screen.findByRole('button', { name: 'Ja, ersätt korten' }))
     await waitFor(() => expect(onReplaceRows).toHaveBeenCalledWith(ROWS))
     // The refusal gave way once the retry went through: what stands is the state of the table,
     // not a line about a gesture that is over.

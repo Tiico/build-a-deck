@@ -474,6 +474,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   useEffect(() => {
     if (comparing !== undefined) compareRef.current?.focus()
   }, [comparing])
+  // An import waiting for its answer (#479): the cards it read and the file they came from.
+  const [replacing, setReplacing] = useState<{ rows: ProjectDoc['rows']; file: string } | null>(null)
   // What the last import did, said where it was asked for (#479).
   const [imported, setImported] = useState<string | null>(null)
   const [sort, setSort] = useState<SortState | null>(null)
@@ -973,15 +975,23 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     setSelected(keepRows(selected, filterRows(doc.rows, columns, next).map((row) => row.id)))
   }
   const nextRef = () => nextCardRef(doc)
+  const land = (rows: ProjectDoc['rows']) => {
+    onReplaceRows(rows)
+    setImported(importSummary(doc, rows, t))
+  }
   const importFile = (file: File | undefined) => {
     if (!file) return
     const reader = new FileReader()
     reader.onload = () => {
       try {
-        const rows = importCardsCsv(String(reader.result ?? ''), t)
-        onReplaceRows(rows)
+        const rows = importCardsCsv(String(reader.result ?? ''), t, fieldsOf(doc))
         setImportError(null)
-        setImported(importSummary(doc, rows, t))
+        // An import that takes cards away asks first (#479, beslut 2026-09-27; L9): the question
+        // before a deletion stands although there is an undo. One that only adds and changes
+        // is let through at once.
+        const now = new Set(rows.map((r) => r.id))
+        if (doc.rows.some((r) => !now.has(r.id))) setReplacing({ rows, file: file.name })
+        else land(rows)
       } catch (err) {
         setImportError(err instanceof Error ? err.message : String(err))
       }
@@ -1092,6 +1102,21 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 which is what #130 measured 189 px of. */}
             <span id={noteId}>{t('table.import.note')}</span>
             {importError && <span role="alert">{importError}</span>}
+            {replacing && (
+              <Question
+                className="byd-data-bulk"
+                label={t('table.import.ask', { had: doc.rows.length, n: replacing.rows.length, file: replacing.file })}
+                confirm={t('table.import.yes')}
+                cancel={t('editor.cancel')}
+                onConfirm={() => {
+                  land(replacing.rows)
+                  setReplacing(null)
+                }}
+                onCancel={() => setReplacing(null)}
+              >
+                {t('table.import.ask', { had: doc.rows.length, n: replacing.rows.length, file: replacing.file })}
+              </Question>
+            )}
             {imported && <span role="status">{imported}</span>}
             <a href={csvHref} download={filename}>{t('table.export')}</a>
           </div>

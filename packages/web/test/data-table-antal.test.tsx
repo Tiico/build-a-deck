@@ -113,15 +113,48 @@ describe('a new card (#479)', () => {
 // What an import did (#479): it replaced 77 cards with 2 and said nothing. It now says how many
 // cards it read, how many went, and which columns are new — in the status, where it is heard.
 describe('what an import did (#479)', () => {
-  it('says how many cards it read, how many went, and the new columns', async () => {
-    const { onReplaceRows } = table()
+  const importing = (text: string) => {
     fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
-    const file = new File(['id,title,Pris\ndragon,Drake,3\nny,Ny,1'], 'kort.csv', { type: 'text/csv' })
-    fireEvent.change(screen.getByLabelText('Importera CSV…'), { target: { files: [file] } })
-    const said = await screen.findByText(/kort lästes/)
+    fireEvent.change(screen.getByLabelText('Importera CSV…'), { target: { files: [new File([text], 'kort.csv', { type: 'text/csv' })] } })
+  }
+
+  // An import that would take cards away asks first (#479, beslut 2026-09-27, variant A; L9): the
+  // question before a deletion stands even though there is an undo.
+  it('asks before an import takes cards away, and does nothing on the safe answer', async () => {
+    const { onReplaceRows } = table()
+    importing('id,title\ndragon,Drake')
+    const question = await screen.findByRole('alertdialog')
+    expect(question.textContent).toContain('Ersätta alla 3 kort med 1 från kort.csv?')
+    expect(document.activeElement).toBe(within(question).getByRole('button', { name: 'Avbryt' }))
+    fireEvent.click(within(question).getByRole('button', { name: 'Avbryt' }))
+    expect(onReplaceRows).not.toHaveBeenCalled()
+  })
+
+  it('says how many cards it read, how many went, and the new columns, once it is answered', async () => {
+    const { onReplaceRows } = table()
+    importing('id,title,Pris\ndragon,Drake,3\nny,Ny,1')
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Ja, ersätt korten' }))
     expect(onReplaceRows).toHaveBeenCalled()
+    const said = await screen.findByText(/kort lästes/)
     expect(said.textContent).toBe('2 kort lästes: 1 nytt, 2 togs bort. Ny kolumn: Pris.')
     expect(said.getAttribute('role')).toBe('status')
+  })
+
+  it('imports at once when no card would go', async () => {
+    const { onReplaceRows } = table()
+    importing('id,title\ndragon,Drake\nknight,Riddare\nwizard,Trollkarl\nny,Ny')
+    await screen.findByText(/kort lästes/)
+    expect(onReplaceRows).toHaveBeenCalled()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+
+  // A header that differs from a column only in its capitals is that column (#479): `Title` stood
+  // as a new column beside `title`.
+  it('reads a header that differs from a column only in its capitals as that column', async () => {
+    const { onReplaceRows } = table()
+    importing('ID,Title,Body,Antal\ndragon,Drake,Flygande.,2\nknight,Riddare,Sköld.,1\nwizard,Trollkarl,Dra.,1')
+    await screen.findByText(/kort lästes/)
+    expect(onReplaceRows.mock.calls[0]?.[0][0]).toEqual({ id: 'dragon', fields: { title: 'Drake', body: 'Flygande.', antal: 2 } })
   })
 })
 

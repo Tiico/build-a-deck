@@ -275,6 +275,8 @@ export const svEditor = {
   // `{name}` är spelets eget namn och rörs aldrig — det står där formgivaren skrev det.
   'table.export.filename': '{name}-kort.csv',
   'table.export.unnamed': 'spel',
+  'table.import.ask': 'Ersätta alla {had} kort med {n} från {file}? Kort som inte finns i filen tas bort.',
+  'table.import.yes': 'Ja, ersätt korten',
   'table.import.read': '{n} kort lästes:',
   'table.import.fresh.one': '{n} nytt',
   'table.import.fresh.other': '{n} nya',
