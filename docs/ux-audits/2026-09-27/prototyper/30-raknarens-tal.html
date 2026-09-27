@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 30 — Räknarens tal (#483 fynd 6)</title>
+<link rel="stylesheet" href="proto.css">
+<link rel="stylesheet" href="telefon.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Räknarens tal på telefonen är en `div` med `window.prompt()` (`SeatExtras.tsx`). Att det
+     blir en riktig knapp som öppnar verktygets egen inmatning (`CounterEntry`, #67) är AFK och
+     finns i A–C. Beslutet är om värdet ska ha gränser.
+
+       Nu  div + prompt(); inga gränser; «abc» ignoreras tyst
+       A   inga gränser: varje heltal, negativa tal också
+       B   golv på 0 för varje räknare
+       C   gränser per räknare, satta av formgivaren i editorn (min/max)
+
+     Tryck på talet, på − och +. Pröva att gå under 0 på Poäng och förbi 20 på Liv. ───────── */
+  /* I förslagen får mitten krympa: vid 320 är den 52 px, och «POÄNG» med bokstavsavståndet
+     tryckte annars pillret 4 px förbi sin kolumn (så ser det ut i Nu). */
+  .tel-knapp .byd-counter { grid-template-columns: 44px minmax(0, 1fr) 44px; }
+  .tel-knapp .byd-counter .tel-tal { padding: 4px 2px; }
+  .tel-knapp .byd-counter span { letter-spacing: .5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .byd-counter .tel-tal { min-height: 44px; min-width: 0; border: 0; background: transparent; color: inherit; font: inherit; align-content: center; }
+  .byd-counter .tel-tal:focus-visible, .byd-counter button:focus-visible, .byd-set-value button:focus-visible { outline: 3px solid #9cc6ff; outline-offset: -3px; }
+  .byd-counter b[data-lang='true'] { font-size: 14px; }
+  .byd-counter button[aria-disabled='true'] { color: #5d6577; }
+  .tel-sagt { margin: 6px 16px 0; padding: 8px 12px; border-radius: 10px; background: var(--byd-warn-bg); color: var(--byd-warn); font-size: 13px; }
+  .tel-spann { margin: -4px 0 10px; font-size: 12px; color: #9aa3b8; text-align: right; }
+  .tel-spann[data-fel='true'] { color: #ffd98a; }
+  /* Webbläsarens egen prompt(), som den ser ut i Chromium: vit, överst, utanför appens stil. */
+  .tel-prompt-bak { position: absolute; inset: 0; z-index: 90; background: rgb(0 0 0 / 25%); display: grid; place-items: start center; padding-top: 12px; }
+  .tel-prompt { width: calc(100% - 24px); max-width: 340px; padding: 16px; border-radius: 10px; background: #fff; color: #1f1f1f; font: 13px system-ui; box-shadow: 0 8px 30px rgb(0 0 0 / 40%); }
+  .tel-prompt p { margin: 0 0 8px; }
+  .tel-prompt input { width: 100%; min-height: 32px; padding: 4px 8px; border: 2px solid #1a73e8; border-radius: 4px; font: 13px system-ui; }
+  .tel-prompt div { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+  .tel-prompt button { min-height: 32px; padding: 0 16px; border-radius: 16px; border: 1px solid #c4c7c5; background: #fff; color: #0b57d0; font: 600 13px system-ui; }
+  .tel-prompt button + button { background: #0b57d0; color: #fff; border-color: #0b57d0; }
+  /* C: editorns räknarlista, i sidopanelen. */
+  .tel-red table { width: 100%; border-collapse: collapse; }
+  .tel-red th { text-align: left; font-weight: 600; color: var(--quiet-2); font-size: 11px; padding: 0 4px 4px; }
+  .tel-red td { padding: 2px 4px; }
+  .tel-red input { width: 100%; min-height: 32px; border: 1px solid #3b414e; border-radius: 6px; padding: 0 6px; background: #0f1115; color: #e6ecfa; font: inherit; }
+  .tel-red td:first-child { color: #e6ecfa; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a" data-rek>A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#483 fynd 6 · Räknarens tal.</b> Tryck på talet i en räknare, eller på − och +. Pröva att gå under 0 på Poäng och förbi 20 på Liv, och att skriva ett negativt tal.</p>
+    <p>Att talet blir en knapp som öppnar verktygets egen inmatning (#67) är AFK och finns i A–C. Beslutet är gränserna.</p>
+  </div>
+  <div class="matt" id="matt"></div>
+  <button type="button" id="aterstall">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="tel-scen">
+  <div class="tel-telefoner" id="telefoner"></div>
+  <aside class="tel-sida">
+    <section class="tel-ruta">
+      <h2>Regeln i dag</h2>
+      <ul>
+        <li><code>SeatExtras.tsx</code>: talet är en <code>div</code> med <code>onClick</code> som öppnar <code>window.prompt()</code>. Ingen roll, inget namn, inget tabbstopp, 39 px hög. «abc» ignoreras tyst, 2,6 avrundas till 3.</li>
+        <li>− och + skickar <code>setCounter</code> med värdet ±1, utan golv och utan tak.</li>
+        <li>Protokollet: <code>setCounter</code> tar <code>value: z.number().int()</code>, alltså varje heltal. Motorns <code>decide</code> frågar bara om komponenten är en räknare.</li>
+        <li>Editorn: en räknare är <code>{ name, start }</code> (<code>recipe.ts</code>). Poäng börjar på 0, Liv på 20.</li>
+        <li>Bordets «Sätt värde…» (<code>CounterEntry.tsx</code>, #67) finns redan: siffror, «Byt tecken», «Sudda», Avbryt och «Sätt värdet», Escape och Enter.</li>
+        <li>C4: räknaren är <code>token.counter</code> och <code>setCounter</code> dess verb; protokollet orört. Verktyget playtestar «utan regelmotor».</li>
+      </ul>
+    </section>
+    <section class="tel-ruta tel-red" id="redaktor" hidden>
+      <h2>Editorn · Bord · Räknare (C)</h2>
+      <table>
+        <thead><tr><th>Räknare</th><th>Start</th><th>Lägst</th><th>Högst</th></tr></thead>
+        <tbody id="red-rader"></tbody>
+      </table>
+      <p style="margin-top:8px">Tom ruta = ingen gräns. Ändra här och se telefonen svara.</p>
+    </section>
+    <section class="tel-ruta rek">
+      <h2>Rekommendation · A</h2>
+      <p><b>Inga gränser.</b> En gräns är en spelregel, och verktyget playtestar utan regelmotor. Det fysiska motstycket — papper, pärlor, en tärning — har inget golv: liv går under 0 i många spel, och poäng blir negativa i andra. Inmatningen har redan «Byt tecken».</p>
+      <p>C går att lägga till senare utan att röra en enda gammal logg: en räknare utan gränser är precis vad varje räknare är i dag. B är en regel för alla spel på en gång.</p>
+    </section>
+  </aside>
+</div>
+<script src="telefon.js"></script>
+<script>
+const { hue, ram, skala, vaxlare } = Telefon
+const START = () => ({ poang: 0, liv: 20 })
+const s = { varden: START(), in: null, prompt: null, sagt: null, gr: { poang: { min: '', max: '' }, liv: { min: '0', max: '20' } } }
+const RAKNARE = [{ id: 'poang', namn: 'Poäng' }, { id: 'liv', namn: 'Liv' }]
+const HAND = ['Quickdraw', "Sheriff's Check", 'Whiskey Run', 'Dead Man’s Hand', 'Tumbleweed']
+
+const NOT = {
+  nu: '<b>Nu.</b> Talet är en <code>div</code>; ett tryck öppnar webbläsarens <code>prompt()</code>. <span class="minus">− Går inte att nå med Tab, har inget namn för en skärmläsare, 39 px hög. Skriv «abc» och tryck OK: ingenting händer och ingenting sägs. Prompten ser ut som webbläsaren, inte som bordet.</span>',
+  a: '<b>A · Inga gränser.</b> Talet är en knapp som öppnar verktygets inmatning, med «Byt tecken». Varje heltal går, −7 också. <span class="plus">+ Ingen regel i verktyget; samma <code>setCounter</code> som bordet skickar; inget nytt fält någonstans; ett långt tal krymper i pillret i stället för att klippas.</span> <span class="minus">− Ett spel där poäng aldrig är negativa kan hamna på −1 av ett feltryck; det är ett ångra bort.</span>',
+  b: '<b>B · Golv på 0.</b> − säger ifrån på 0 och inmatningen har ingen «Byt tecken». <span class="plus">+ Enkelt att förklara; täcker de flesta poängräknare.</span> <span class="minus">− En regel för alla spel på en gång: liv, skuld och temperatur kan inte gå under 0. Motorn måste vägra (annars kan bordet skicka −1), och en tidigare logg med ett negativt tal spelas upp till ett tillstånd den nya regeln förbjuder.</span>',
+  c: '<b>C · Gränser per räknare.</b> Formgivaren sätter Lägst och Högst i editorn (panelen till höger). Telefonen säger ifrån vid gränsen och inmatningen visar spannet. <span class="plus">+ Speglar spel med en fysisk ratt (1–20); tom ruta = som A.</span> <span class="minus">− Ett nytt fält i uppställningen, en ny vägran i <code>decide</code>, två rutor till i editorn och ett ord till i telefonen — för en fråga ingen playtest har ställt. Ett felaktigt satt tak stoppar ett spel mitt i.</span>',
+}
+
+function granser(id, v) {
+  if (v === 'b') return { min: 0, max: null }
+  if (v === 'c') {
+    const g = s.gr[id]
+    const tal = (x) => (x.trim() === '' || !/^-?\d+$/.test(x.trim()) ? null : Number(x))
+    return { min: tal(g.min), max: tal(g.max) }
+  }
+  return { min: null, max: null }
+}
+const utanfor = (id, v, x) => { const g = granser(id, v); return (g.min !== null && x < g.min) || (g.max !== null && x > g.max) }
+function spannText(namn, g) {
+  if (g.min !== null && g.max !== null) return `${namn} går från ${g.min} till ${g.max}.`
+  if (g.min !== null) return `${namn} går inte under ${g.min}.`
+  if (g.max !== null) return `${namn} går inte över ${g.max}.`
+  return ''
+}
+
+const ramar = [ram(document.getElementById('telefoner'), 390, 844), ram(document.getElementById('telefoner'), 320, 568)]
+let lage
+
+function telefon(v) {
+  const knapp = v !== 'nu'
+  return `<div class="byd-player${knapp ? ' tel-knapp' : ''}">
+    <header><strong>Bea</strong><span>5 kort</span><button class="tel-hjalp" aria-label="Hjälp om handen"><span>?</span></button>
+      <button disabled>↶ Ångra</button><button>⚑ Flagga</button><button aria-label="Ut… ur bordet">Ut…</button></header>
+    <div class="byd-counters" data-counters>${RAKNARE.map((r) => {
+      const x = s.varden[r.id], g = granser(r.id, v)
+      const golv = g.min !== null && x <= g.min, tak = g.max !== null && x >= g.max
+      const lang = String(x).length > 4
+      return `<div class="byd-counter">
+        <button type="button" data-steg="-1" data-r="${r.id}" aria-label="${r.namn} minus"${golv ? ' aria-disabled="true"' : ''}>−</button>
+        ${knapp
+          ? `<button type="button" class="tel-tal" data-tal="${r.id}" aria-label="${r.namn} ${x}. Sätt värde"><b data-lang="${lang}">${x}</b><span>${r.namn}</span></button>`
+          : `<div data-tal="${r.id}"><b>${x}</b><span>${r.namn}</span></div>`}
+        <button type="button" data-steg="1" data-r="${r.id}" aria-label="${r.namn} plus"${tak ? ' aria-disabled="true"' : ''}>+</button>
+      </div>`
+    }).join('')}</div>
+    ${s.sagt ? `<p class="tel-sagt" role="status">${s.sagt}</p>` : ''}
+    <main class="byd-phone-main">
+      <h1>Dina kort</h1>
+      <div class="byd-summary-zones"><button><strong>Kasthög</strong><span>5 kort</span><em>Dra 1 till min hand</em></button><button><strong>Kortlek</strong><span>104 kort</span><em>Dra 1 till min hand</em></button></div>
+      <div class="byd-strip">${HAND.map((n, i) => `<button class="byd-strip-card" data-selected="${i === 0}" style="--hue:${hue(n)}"><strong>${n}</strong></button>`).join('')}</div>
+      <p class="byd-hint">Välj → läs → spela · håll för att välja flera</p>
+      <section class="byd-hand-actions"><p>Valt: Quickdraw</p><button>Läs valt kort</button>
+        <div class="byd-hand-targets"><button>Till saloonen</button><button>Framför mig</button><button>Kasta</button><button>Spela…</button></div></section>
+    </main>
+  </div>`
+}
+
+function inmatning(v) {
+  const r = RAKNARE.find((x) => x.id === s.in.id), g = granser(r.id, v)
+  const varde = /^-?\d+$/.test(s.in.typed) ? Number(s.in.typed) : null
+  const fel = varde !== null && utanfor(r.id, v, varde)
+  const teckenAv = g.min !== null && g.min >= 0
+  const spann = spannText(r.namn, g)
+  return `<div class="byd-kbd-backdrop byd-set-value-backdrop" data-bak>
+    <div class="byd-set-value" role="dialog" aria-modal="false" aria-label="Sätt värde för ${r.namn}" tabindex="-1" data-in>
+      <h2>${r.namn}<small>Beas</small></h2>
+      <output aria-label="Nytt värde" aria-live="polite">${s.in.typed}</output>
+      ${spann ? `<p class="tel-spann" data-fel="${fel}">${fel ? `${varde} går inte. ` : ''}${spann}</p>` : ''}
+      <div class="byd-set-value-keys">
+        ${['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((k) => `<button type="button" data-siffra="${k}">${k}</button>`).join('')}
+        <button type="button" data-tecken aria-label="Byt tecken"${teckenAv ? ' disabled' : ''}>−</button>
+        <button type="button" data-siffra="0">0</button>
+        <button type="button" data-sudda aria-label="Sudda">⌫</button>
+      </div>
+      <div class="byd-set-value-foot">
+        <button type="button" class="byd-secondary" data-avbryt>Avbryt</button>
+        <button type="button" class="byd-primary" data-satt${varde === null || fel ? ' disabled' : ''}>Sätt värdet</button>
+      </div>
+    </div></div>`
+}
+
+function prompten() {
+  const r = RAKNARE.find((x) => x.id === s.prompt.id)
+  return `<div class="tel-prompt-bak"><div class="tel-prompt" role="dialog" aria-label="localhost säger">
+    <p><b>localhost:5173 säger</b></p><p>${r.namn}:</p>
+    <input data-prompt value="${s.varden[r.id]}">
+    <div><button type="button" data-prompt-avbryt>Avbryt</button><button type="button" data-prompt-ok>OK</button></div></div></div>`
+}
+
+function rita(l, fokus) {
+  lage = l ?? lage
+  const v = lage.v
+  document.getElementById('anteckning').innerHTML = NOT[v]
+  document.getElementById('redaktor').hidden = v !== 'c'
+  for (const [i, f] of ramar.entries()) {
+    const scroll = f.vy.scrollTop
+    f.vy.innerHTML = telefon(v)
+    f.vy.scrollTop = scroll
+    for (const o of f.skarm.querySelectorAll('.byd-kbd-backdrop, .tel-prompt-bak')) o.remove()
+    if (s.in && s.in.ram === i) f.skarm.insertAdjacentHTML('beforeend', inmatning(v))
+    if (s.prompt && s.prompt.ram === i) f.skarm.insertAdjacentHTML('beforeend', prompten())
+  }
+  // Mätt i telefonens egna pixlar, inte i den skalade ramen.
+  const tal = ramar[0].vy.querySelector('[data-tal]')
+  const r = ramar[1].vy.querySelector('.byd-counter [data-tal]')
+  document.getElementById('matt').innerHTML = `<span>Talet: <u>${tal.tagName === 'BUTTON' ? 'knapp' : 'div'}</u>, <u>${tal.offsetHeight} px</u>, ${tal.tabIndex >= 0 ? 'nås med Tab' : '<u>nås inte med Tab</u>'}</span><span>Talets bredd vid 320: <u>${r.offsetWidth} px</u></span>`
+  if (fokus && s.in) ramar[s.in.ram].skarm.querySelector('[data-in]')?.focus()
+  if (s.prompt) ramar[s.prompt.ram].skarm.querySelector('[data-prompt]')?.select()
+  skala()
+}
+
+function saga(text) {
+  s.sagt = text
+  clearTimeout(saga.t)
+  saga.t = setTimeout(() => { s.sagt = null; rita() }, 3500)
+}
+function steg(id, d) {
+  const v = lage.v, r = RAKNARE.find((x) => x.id === id), g = granser(id, v), ny = s.varden[id] + d
+  if (utanfor(id, v, ny)) {
+    saga(v === 'b' ? `${r.namn} står på ${s.varden[id]} och går inte lägre.` : `${r.namn} står på ${s.varden[id]} — spelets ${d < 0 ? 'lägsta' : 'högsta'}. ${spannText(r.namn, g)}`)
+  } else { s.varden[id] = ny; s.sagt = null }
+  rita()
+}
+function skriv(e) {
+  const t = s.in
+  if (e.siffra !== undefined) { t.typed = t.fresh || t.typed === '0' ? e.siffra : t.typed === '-0' ? `-${e.siffra}` : t.typed + e.siffra; t.fresh = false }
+  if (e.sudda) { t.typed = t.fresh ? '' : t.typed.slice(0, -1); t.fresh = false }
+  if (e.tecken) { t.typed = t.typed.startsWith('-') ? t.typed.slice(1) : `-${t.typed}`; t.fresh = false }
+  rita(null, true)
+}
+function satt() {
+  const x = /^-?\d+$/.test(s.in.typed) ? Number(s.in.typed) : null
+  if (x === null || utanfor(s.in.id, lage.v, x)) return
+  s.varden[s.in.id] = x; s.in = null; rita()
+}
+
+document.body.addEventListener('click', (e) => {
+  const b = e.target.closest('button, [data-tal], [data-bak]')
+  if (!b) return
+  if (b.id === 'aterstall') { s.varden = START(); s.in = null; s.prompt = null; s.sagt = null; rita(); return }
+  const i = ramar.findIndex((f) => f.skarm.contains(b))
+  if (b.dataset.steg) steg(b.dataset.r, Number(b.dataset.steg))
+  else if (b.dataset.tal) {
+    if (lage.v === 'nu') { s.prompt = { id: b.dataset.tal, ram: i }; rita() }
+    else { s.in = { id: b.dataset.tal, ram: i, typed: String(s.varden[b.dataset.tal]), fresh: true }; rita(null, true) }
+  }
+  else if (b.dataset.siffra) skriv({ siffra: b.dataset.siffra })
+  else if (b.hasAttribute('data-sudda')) skriv({ sudda: true })
+  else if (b.hasAttribute('data-tecken')) skriv({ tecken: true })
+  else if (b.hasAttribute('data-avbryt') || (b.hasAttribute('data-bak') && e.target === b)) { s.in = null; rita() }
+  else if (b.hasAttribute('data-satt')) satt()
+  else if (b.hasAttribute('data-prompt-avbryt')) { s.prompt = null; rita() }
+  else if (b.hasAttribute('data-prompt-ok')) {
+    // Som `SeatExtras.tsx`: ett tal som inte går att läsa ignoreras tyst.
+    const typed = ramar[s.prompt.ram].skarm.querySelector('[data-prompt]').value
+    if (typed.trim() !== '' && Number.isFinite(Number(typed))) s.varden[s.prompt.id] = Math.round(Number(typed))
+    s.prompt = null; rita()
+  }
+})
+document.body.addEventListener('keydown', (e) => {
+  if (s.in && e.target.closest('[data-in]')) {
+    if (e.key === 'Escape') { s.in = null; rita(); return }
+    if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') { e.preventDefault(); satt(); return }
+    if (/^[0-9]$/.test(e.key)) skriv({ siffra: e.key })
+    else if (e.key === 'Backspace') skriv({ sudda: true })
+    else if ((e.key === '-' || e.key === '+') && !(granser(s.in.id, lage.v).min >= 0)) skriv({ tecken: true })
+    else return
+    e.preventDefault()
+  }
+  if (s.prompt && e.target.matches('[data-prompt]') && e.key === 'Enter') ramar[s.prompt.ram].skarm.querySelector('[data-prompt-ok]').click()
+}, true)
+
+// C: editorns räknarlista.
+const rader = document.getElementById('red-rader')
+rader.innerHTML = RAKNARE.map((r) => `<tr><td>${r.namn}</td><td>${START()[r.id]}</td>
+  <td><input data-gr="${r.id}" data-sida="min" inputmode="numeric" aria-label="${r.namn}, lägst" value="${s.gr[r.id].min}"></td>
+  <td><input data-gr="${r.id}" data-sida="max" inputmode="numeric" aria-label="${r.namn}, högst" value="${s.gr[r.id].max}"></td></tr>`).join('')
+rader.addEventListener('input', (e) => { const i = e.target; s.gr[i.dataset.gr][i.dataset.sida] = i.value; rita() })
+
+vaxlare({ v: ['nu', 'a', 'b', 'c'] }, (l) => { s.in = null; s.prompt = null; s.sagt = null; s.varden = START(); rita(l) })
+</script>
+</body>
+</html>

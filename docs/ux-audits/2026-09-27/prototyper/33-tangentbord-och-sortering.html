@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 33 — Tangentbordet och sorteringen (#483 fynd 12)</title>
+<link rel="stylesheet" href="proto.css">
+<link rel="stylesheet" href="telefon.css">
+<style>
+  /* ── Frågorna ────────────────────────────────────────────────────────────────────────────
+     Två HITL-delar ur fynd 12.
+
+     Del a · Tangentbordets panel mot tryckarket. Enter på ett handkort öppnar adresspanelen
+     (`keyboard.ts` `placesFor`/`verbsFor`), som erbjuder andras händer («Adas hand»), Vänd,
+     Vrid och Avslöja; Spela…-arket (`PlaySheet.tsx` `targetsOf`) utesluter dem med avsikt.
+       Nu  som i dag, skillnaderna markerade
+       A   panelen erbjuder exakt det arket erbjuder
+       B   arket får det panelen erbjuder
+
+     Del b · K4:s «dra i sidled inom remsan sorterar om handen» finns inte.
+       Nu  tryck, håll, dra upp; sidled rullar
+       A   bygg det: håll, och dra sedan i sidled — kortet flyttar; ett vanligt svep rullar
+       B   stryk det ur K4; handen ligger i den ordning den gavs och drogs (#415) ────────── */
+  .tel-scen[hidden] { display: none; }
+  .tel-del-titel { position: absolute; }
+  .byd-kbd-list button[data-skillnad], .byd-sheet-targets button[data-skillnad] { outline: 2px dashed #f0b64a; outline-offset: 1px; }
+  .byd-kbd-list button[data-skillnad]::after, .byd-sheet-targets button[data-skillnad]::after { content: attr(data-skillnad); margin-left: 8px; padding: 1px 6px; border-radius: 999px; background: #2a2417; color: #ffd98a; font: 600 10px system-ui; white-space: nowrap; align-self: center; }
+  .byd-sheet-targets button[data-skillnad]::after { justify-self: start; margin: 4px 0 0; }
+  .byd-sheet h3 { margin: 14px 0 6px; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #9aa3b8; }
+  .byd-sheet-verbs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .byd-sheet-verbs button { min-height: 48px; border-radius: 12px; border: 1px solid var(--byd-line); background: var(--byd-control); color: var(--byd-ink-strong); font: 600 15px system-ui; }
+  .byd-sheet-verbs button:disabled { background: #191c24; color: #9aa3b8; border-style: dashed; }
+  /* Del b: remsan man kan sortera i. */
+  .byd-strip-card { cursor: grab; transition: transform .15s ease; }
+  .byd-strip-card[data-lyft='true'] { transform: translateY(-10px) scale(1.04); box-shadow: 0 18px 36px rgb(0 0 0 / 60%); z-index: 2; transition: none; }
+  .byd-strip-card:focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  .byd-strip-card[data-markerad='true'] { outline: 4px solid var(--byd-accent); }
+  #tel-ordning .byd-strip { padding-top: 16px; }
+  .tel-lucka { flex: 0 0 154px; border: 2px dashed #7dd3a0; border-radius: 14px; }
+  @media (prefers-reduced-motion: reduce) { .byd-strip-card { transition: none; } }
+  .tel-k4 { margin: 0; padding: 8px 10px; border-left: 3px solid #4a4230; background: #1f1b12; color: #e9d7a8; font-size: 12px; }
+  .tel-k4 s { color: #f0a58a; }
+  .tel-k4 ins { text-decoration: none; color: #b7dca0; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="del" data-del="panel"><span>a · Panelen:</span>
+    <div class="vaxlare" role="group" aria-label="Del a, tangentbordets panel"><button type="button" data-v="nu">Nu</button><button type="button" data-v="a" data-rek>A</button><button type="button" data-v="b">B</button></div></div>
+  <div class="del" data-del="ordning"><span>b · Sortera handen:</span>
+    <div class="vaxlare" role="group" aria-label="Del b, sortera handen"><button type="button" data-v="nu">Nu</button><button type="button" data-v="a" data-rek>A</button><button type="button" data-v="b">B</button></div></div>
+  <div class="fraga">
+    <p><b>#483 fynd 12 · Två småsaker som är beslut.</b> Välj en del; pilarna ← → byter i den del du senast rörde.</p>
+    <p id="instruktion"></p>
+  </div>
+  <div class="matt" id="matt"></div>
+  <button type="button" id="aterstall">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+
+<div class="tel-scen" id="scen-panel">
+  <div class="tel-telefoner" id="tel-panel"></div>
+  <aside class="tel-sida">
+    <section class="tel-ruta">
+      <h2>Regeln i dag · del a</h2>
+      <ul>
+        <li><code>PlaySheet.tsx</code> <code>targetsOf</code>: varje zon som inte är någon annans, med genvägens ord och placering, och Bordet sist. Regeln är ägarskap, inte synlighet (L48): «att ge bort ett kort är ett verb verktyget inte har — kommer det som ett önskemål är det ett eget beslut».</li>
+        <li><code>keyboard.ts</code> <code>placesFor</code> (#1, K16): varje sittande plats hand, varje zon utom någon annans yta, «På {kort}», Bordet. Högar alltid överst. Kommentaren säger «the same two rules the phone's sheet keeps» — men händerna slank igenom.</li>
+        <li><code>verbsFor</code> för ett kort: Vänd, Vrid 90°, Avslöja (avstängd när kortet redan syns för en), Titta. Arket har inga verb; telefonens «Läs valt kort» står utanför båda.</li>
+        <li>K16: tangentbordet och pekaren ska nå samma sak; ingenting får kräva ett pekdon.</li>
+      </ul>
+    </section>
+    <section class="tel-ruta rek">
+      <h2>Rekommendation · del a: A</h2>
+      <p><b>Panelen erbjuder det arket erbjuder.</b> Arkets innehåll är ett beslut (C4, L48) med en motivering; panelens avvikelse är ett förbiseende, som dess egen kommentar visar. «Adas hand» är att ge bort ett kort, vilket verktyget uttryckligen inte har. Samma knappar, samma ord — «Kasta», «Lägg underst» — och samma placering i högen på båda vägarna.</p>
+      <p>Filtens panel på <code>/table</code> och <code>/online</code> lämnas orörd; det här gäller handen på telefonen.</p>
+    </section>
+  </aside>
+</div>
+
+<div class="tel-scen" id="scen-ordning" hidden>
+  <div class="tel-telefoner" id="tel-ordning"></div>
+  <aside class="tel-sida">
+    <section class="tel-ruta">
+      <h2>Regeln i dag · del b</h2>
+      <ul>
+        <li>K4: «Långtryck startar flerval; dra i sidled inom remsan sorterar om handen.»</li>
+        <li><code>HandStrip.tsx</code> och <code>gesture.ts</code> känner tre gester: tryck (välj), håll 450 ms (markera fler), dra upp 40 px (lyft till arket). Sidled är webbläsarens rullning (<code>touch-action: pan-x</code>). Ingen omsortering.</li>
+        <li>#415 (beslut B): handen läses nerifrån — nytt kort sist, och korten man redan håller står kvar där ögat lämnade dem.</li>
+        <li>Protokollet har redan vägen: <code>move</code> med <code>index</code> inom samma hand (<code>apply.ts</code> <code>attach</code>). Inget nytt verb.</li>
+        <li>Fynd 1 i samma issue: en sidledsrullning i remsan väljer i dag kortet fingret startade på. Del b lägger en gest till i samma remsa.</li>
+      </ul>
+    </section>
+    <section class="tel-ruta rek">
+      <h2>Rekommendation · del b: A</h2>
+      <p><b>Bygg det, efter fynd 1.</b> Att sortera sin hand är det vanligaste man gör med den vid ett riktigt bord, och K4 har lovat det. Vägen finns redan i protokollet, och gesten är den en telefon lärt alla: håll, och dra. Ett vanligt svep rullar som förut.</p>
+      <p>Byggs efter att fynd 1 skilt rullning från tryck, med ett mätande test med riktiga pekhändelser, och med tangentbordets motsvarighet (Alt + ← →) från början.</p>
+    </section>
+  </aside>
+</div>
+
+<script src="telefon.js"></script>
+<script>
+const { hue, ram, skala, vaxlare } = Telefon
+const HAND0 = ['Quickdraw', "Sheriff's Check", 'Whiskey Run', 'Tumbleweed', 'Dead Man’s Hand', 'Gold Rush']
+const s = { hand: [...HAND0], markerad: new Set(), valt: 'Quickdraw', lyft: null }
+
+const NOT_PANEL = {
+  nu: '<b>Nu.</b> Samma kort, två vägar: Spela… till vänster, Enter på kortet till höger. Det som bara finns på ena vägen är markerat. <span class="minus">− Tangentbordet kan ge bort kortet till Ada och Cid, vända det, vrida det och lägga det överst i Kortleken där arket lägger det underst; arket kan inget av det. En och samma hand har två regler beroende på om man har ett tangentbord.</span>',
+  a: '<b>A · Panelen erbjuder det arket erbjuder.</b> Samma mål, samma ord och samma placering; Bordet sist. <span class="plus">+ En regel för handen, och den är redan beslutad (C4, L48); «Adas hand» försvinner, och med den ett verb verktyget inte har. Kortare panel, samma som tummen ser.</span> <span class="minus">− Tangentbordet tappar Vänd, Vrid och «På {kort}» från handen — som tummen inte heller har. Vill man ha dem är det del av B, för båda.</span>',
+  b: '<b>B · Arket får det panelen erbjuder.</b> Verben och alla platser kommer in i Spela…-arket. <span class="plus">+ Ingenting tas från tangentbordet; att vända eller visa ett handkort blir möjligt med tummen.</span> <span class="minus">− «Adas hand» i arket är att ge bort ett kort — ett nytt beslut som L48 uttryckligen skjutit upp. Arket blir långt (se mätningen) och trycker genvägarna ner; Vänd i handen gör ingenting någon ser; Avslöja är avstängt på varje kort man redan ser.</span>',
+}
+const NOT_ORDNING = {
+  nu: '<b>Nu.</b> Tryck väljer, håll markerar fler, dra upp lyfter. Sidled rullar. <span class="minus">− K4 lovar att dra i sidled sorterar om handen; det finns inte. Handen ligger i den ordning korten kom (#415), och den går inte att ändra.</span>',
+  a: '<b>A · Håll och dra.</b> Håll på ett kort tills det lyfter, och dra det i sidled — de andra flyttar undan, och det landar där du släpper. Släpper du utan att dra är det markerat, som förut. Ett vanligt svep rullar. Alt + ← → flyttar kortet som har fokus. <span class="plus">+ Det man gör med en hand vid ett bord; K4 blir sann; <code>move</code> med <code>index</code>, inget nytt verb.</span> <span class="minus">− En fjärde gest i remsan där fynd 1 redan visat att gesterna blandas ihop; en rad i loggen per flytt; kanten måste rulla remsan när ett kort dras dit.</span>',
+  b: '<b>B · Stryk det ur K4.</b> K4 blir «Långtryck startar flerval<s class="minus">; dra i sidled inom remsan sorterar om handen</s>.» Handen ligger i den ordning den gavs och drogs, nytt kort sist (#415). <span class="plus">+ Tre gester, inga förväxlingar; beslutet och koden säger samma sak; ingenting att bygga.</span> <span class="minus">− En spelare som vill ha sina färger ihop får hålla ordningen i huvudet; med 11–18 kort i handen (granskat i #483) är det mycket att hålla.</span>',
+}
+
+const hog = ramPar()
+function ramPar() {
+  return {
+    tryck: ram(document.getElementById('tel-panel'), 390, 844, '390 × 844 · tryck: Spela…'),
+    tangent: ram(document.getElementById('tel-panel'), 390, 844, '390 × 844 · tangentbord: Enter på kortet'),
+    ordning: ram(document.getElementById('tel-ordning'), 390, 844, '390 × 844'),
+  }
+}
+let lage, visad = 'panel'
+
+// Bordet: Bea sitter med Ada och Cid. Zonerna i uppställningens ordning.
+const MAL = [
+  { id: 'kortlek', namn: 'Kortlek', kind: 'pile', antal: 104, genvag: { ord: 'Lägg underst', at: 'bottom' } },
+  { id: 'kasthog', namn: 'Kasthög', kind: 'pile', antal: 5, genvag: { ord: 'Kasta', at: 'top' } },
+  { id: 'saloonen', namn: 'Saloonen', kind: 'area', antal: 2, genvag: { ord: 'Till saloonen' } },
+  { id: 'framfor-b', namn: 'Framför Bea', kind: 'area', antal: 1, genvag: { ord: 'Framför mig' } },
+]
+const arkMal = () => [...MAL.map((z) => ({ ord: z.genvag.ord, under: z.kind === 'pile' ? `${z.antal} kort · ${z.genvag.at === 'bottom' ? 'underst' : 'överst'} i ${z.namn}` : 'lägg fritt' })), { ord: 'Bordet', under: 'lägg fritt' }]
+const panelPlatser = () => [
+  { ord: 'Adas hand', under: '3 kort', bara: true },
+  { ord: 'Cids hand', under: '4 kort', bara: true },
+  { ord: 'Kortlek', under: '104 kort · överst', bara: 'överst, inte underst' },
+  { ord: 'Kasthög', under: '5 kort · överst' },
+  { ord: 'Saloonen', under: '2 kort · fri yta' },
+  { ord: 'Framför Bea', under: '1 kort · fri yta' },
+  { ord: 'Bordet', under: 'fri yta' },
+  { ord: 'På Whiskey Run', under: 'bildar en hög i Saloonen', bara: true },
+  { ord: 'På Tumbleweed', under: 'bildar en hög i Framför Bea', bara: true },
+]
+const VERB = [{ ord: 'Vänd' }, { ord: 'Vrid 90°' }, { ord: 'Avslöja', under: 'visar kortet för alla', av: true }, { ord: 'Titta', under: 'bara på den här skärmen' }]
+
+function hand(v, ordning) {
+  const kort = ordning ? s.hand : HAND0
+  return `<div class="byd-strip" data-hand>${kort.map((n) => {
+    const valt = ordning ? s.valt === n || s.markerad.has(n) : n === 'Quickdraw'
+    return `<button class="byd-strip-card" data-kort="${n}" data-selected="${valt}" data-lyft="${s.lyft?.namn === n}" aria-pressed="${valt}" aria-label="${n}, i min hand${valt ? ', markerat' : ''}" style="--hue:${hue(n)}" ${ordning ? 'data-egen-pil' : ''}><strong>${n}</strong></button>`
+  }).join('')}</div>`
+}
+function skal(inne, v, ordning) {
+  const hint = ordning && v === 'a' ? (s.lyft ? 'Dra i sidled för att flytta · släpp för att markera' : 'Välj → läs → spela · håll för att välja flera eller flytta') : 'Välj → läs → spela · håll för att välja flera'
+  return `<div class="byd-player">
+    <header><strong>Bea</strong><span>6 kort</span><button class="tel-hjalp" aria-label="Hjälp om handen"><span>?</span></button><button>↶ Ångra</button><button>⚑ Flagga</button><button aria-label="Ut… ur bordet">Ut…</button></header>
+    <main class="byd-phone-main">
+      <h1>Dina kort</h1>
+      <div class="byd-summary-zones"><button><strong>Kasthög</strong><span>5 kort</span><em>Dra 1 till min hand</em></button><button><strong>Kortlek</strong><span>104 kort</span><em>Dra 1 till min hand</em></button></div>
+      ${inne}
+      <p class="byd-hint">${hint}</p>
+      <section class="byd-hand-actions"><p>Valt: ${ordning ? (s.markerad.size > 1 ? `${s.markerad.size} kort` : s.valt) : 'Quickdraw'}</p><button>Läs valt kort</button>
+        <div class="byd-hand-targets"><button>Till saloonen</button><button>Framför mig</button><button>Kasta</button><button>Lägg underst</button><button>Spela…</button></div></section>
+    </main></div>`
+}
+
+function arket(v) {
+  const verb = v === 'b' ? `<h3>Gör</h3><div class="byd-sheet-verbs">${VERB.map((x) => `<button${x.av ? ' disabled' : ''}>${x.ord}</button>`).join('')}</div><h3>Spela till</h3>` : ''
+  const mal = v === 'b'
+    ? [...arkMal().slice(0, -1), { ord: 'Adas hand', under: '3 kort · ge bort' }, { ord: 'Cids hand', under: '4 kort · ge bort' }, { ord: 'På Whiskey Run', under: 'en hög i Saloonen' }, { ord: 'På Tumbleweed', under: 'en hög i Framför Bea' }, arkMal().at(-1)]
+    : arkMal()
+  const baraArk = (m) => v === 'nu' && m.ord === 'Lägg underst' ? ' data-skillnad="underst, inte överst"' : ''
+  return `<div class="byd-sheet-backdrop"><div class="byd-sheet" role="dialog" aria-label="Spela till" data-ark>
+    <p>Spela <strong>Quickdraw</strong> till</p>${verb}
+    <div class="byd-sheet-targets">${mal.map((m) => `<button${baraArk(m)}><span>${m.ord}</span><small>${m.under}</small></button>`).join('')}</div></div></div>`
+}
+function panelen(v) {
+  const rad = (x, bara) => `<button${x.av ? ' disabled class="byd-kbd-no"' : ''}${bara && v === 'nu' ? ` data-skillnad="${bara === true ? 'bara tangentbordet' : bara}"` : ''}><span>${x.ord}</span>${x.under ? `<small>${x.under}</small>` : ''}</button>`
+  const gor = v === 'a' ? '' : `<h3>Gör</h3><div class="byd-kbd-list">${VERB.map((x) => rad(x, true)).join('')}</div>`
+  const platser = v === 'a' ? arkMal().map((m) => rad(m)) : [...panelPlatser().map((p) => rad(p, p.bara)), rad({ ord: 'Fri placering — en punkt på filten', under: 'kräver pekdon; med tangentbord finns bara platser med namn', av: true }, true)]
+  return `<div class="byd-kbd-backdrop"><div class="byd-kbd-panel" role="dialog" aria-label="Handlingar för Quickdraw" data-panel>
+    <h2>Quickdraw</h2>${gor}<h3>${v === 'a' ? 'Spela till' : 'Flytta till'}</h3><div class="byd-kbd-list">${platser.join('')}</div>
+    <button class="byd-kbd-close">Stäng</button></div></div>`
+}
+
+function rita(l, fokus, senast) {
+  lage = l ?? lage
+  if (senast) visad = senast
+  document.getElementById('scen-panel').hidden = visad !== 'panel'
+  document.getElementById('scen-ordning').hidden = visad !== 'ordning'
+  const v = visad === 'panel' ? lage.panel : lage.ordning
+  document.getElementById('anteckning').innerHTML = (visad === 'panel' ? '<b>Del a.</b> ' + NOT_PANEL[v] : '<b>Del b.</b> ' + NOT_ORDNING[v])
+  document.getElementById('instruktion').textContent = visad === 'panel'
+    ? 'Del a: samma handkort, Quickdraw, öppnat två vägar. Rulla i arket och panelen.'
+    : lage.ordning === 'a' ? 'Del b: håll på ett kort tills det lyfter och dra det i sidled. Eller: Tab till remsan och Alt + ← →.' : 'Del b: tryck, håll och rulla i remsan.'
+  for (const o of document.querySelectorAll('.byd-sheet-backdrop, .byd-kbd-backdrop')) o.remove()
+  if (visad === 'panel') {
+    hog.tryck.vy.innerHTML = skal(hand(v, false), v, false)
+    hog.tangent.vy.innerHTML = skal(hand(v, false), v, false)
+    hog.tryck.skarm.insertAdjacentHTML('beforeend', arket(v))
+    hog.tangent.skarm.insertAdjacentHTML('beforeend', panelen(v))
+    const ark = hog.tryck.skarm.querySelector('[data-ark]'), pan = hog.tangent.skarm.querySelector('[data-panel]')
+    const n = (el) => el.querySelectorAll('button').length
+    document.getElementById('matt').innerHTML = `<span>Arket: <u>${n(ark)}</u> knappar, <u>${ark.scrollHeight} px</u> högt</span><span>Panelen: <u>${n(pan) - 1}</u> rader, <u>${pan.scrollHeight} px</u></span><span>Skiljer: <u>${hog.tryck.skarm.querySelectorAll('[data-skillnad]').length + hog.tangent.skarm.querySelectorAll('[data-skillnad]').length}</u></span>`
+  } else {
+    const scroll = hog.ordning.vy.querySelector('[data-hand]')?.scrollLeft ?? 0
+    hog.ordning.vy.innerHTML = skal(hand(v, true), v, true)
+    hog.ordning.vy.querySelector('[data-hand]').scrollLeft = scroll
+    document.getElementById('matt').innerHTML = `<span>Handen: <u>${s.hand.map((n) => n.split(' ')[0]).join(' · ')}</u></span>`
+    if (fokus && typeof fokus === 'string') hog.ordning.vy.querySelector(`[data-kort="${CSS.escape(fokus)}"]`)?.focus()
+  }
+  skala()
+}
+
+// Del b: remsan. Tryck väljer, håll markerar, håll och dra i sidled flyttar (bara A), dra upp lyfter.
+let spar = null
+const remsa = hog.ordning.skarm
+remsa.addEventListener('pointerdown', (e) => {
+  const k = e.target.closest('[data-kort]'); if (!k) return
+  const namn = k.dataset.kort
+  spar = { namn, x: e.clientX, y: e.clientY, beslut: null, timer: setTimeout(() => { if (!spar || spar.beslut) return; spar.beslut = 'hall'; s.lyft = { namn }; rita() }, 450) }
+  k.setPointerCapture(e.pointerId)
+})
+remsa.addEventListener('pointermove', (e) => {
+  if (!spar) return
+  const k = parseFloat(hog.ordning.skarm.style.transform.replace('scale(', '')) || 1
+  const dx = (e.clientX - spar.x) / k
+  if (!spar.beslut && Math.abs(dx) > 10) { clearTimeout(spar.timer); spar.beslut = 'rull'; const h = remsa.querySelector('[data-hand]'); spar.rull = h.scrollLeft }
+  if (spar.beslut === 'rull') { remsa.querySelector('[data-hand]').scrollLeft = spar.rull - dx; return }
+  if (spar.beslut === 'hall' && lage.ordning === 'a' && Math.abs(dx) > 12) spar.beslut = 'flytta'
+  if (spar.beslut === 'flytta') {
+    // Kortet byter plats med grannen när det dragits mer än halva sin bredd.
+    const steg = Math.trunc(dx / 83)
+    if (steg !== 0) {
+      const i = s.hand.indexOf(spar.namn), j = Math.max(0, Math.min(s.hand.length - 1, i + Math.sign(steg)))
+      if (i !== j) { s.hand.splice(i, 1); s.hand.splice(j, 0, spar.namn); spar.x += Math.sign(steg) * 166 * k; rita() }
+    }
+  }
+})
+addEventListener('pointerup', () => {
+  if (!spar) return
+  clearTimeout(spar.timer)
+  const { namn, beslut } = spar
+  spar = null
+  if (!beslut) { s.valt = namn; s.markerad.clear() }
+  if (beslut === 'hall') { if (s.markerad.has(namn)) s.markerad.delete(namn); else s.markerad.add(namn) }
+  s.lyft = null
+  if (visad === 'ordning') rita(null, namn)
+})
+remsa.addEventListener('keydown', (e) => {
+  const k = e.target.closest('[data-kort]'); if (!k) return
+  const namn = k.dataset.kort, i = s.hand.indexOf(namn)
+  if (e.altKey && lage.ordning === 'a' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+    e.preventDefault()
+    const j = Math.max(0, Math.min(s.hand.length - 1, i + (e.key === 'ArrowRight' ? 1 : -1)))
+    s.hand.splice(i, 1); s.hand.splice(j, 0, namn); rita(null, namn); return
+  }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); const n = s.hand[Math.max(0, Math.min(s.hand.length - 1, i + (e.key === 'ArrowRight' ? 1 : -1)))]; remsa.querySelector(`[data-kort="${CSS.escape(n)}"]`)?.focus() }
+  if (e.key === ' ') { e.preventDefault(); if (s.markerad.has(namn)) s.markerad.delete(namn); else s.markerad.add(namn); rita(null, namn) }
+})
+document.getElementById('aterstall').addEventListener('click', () => { s.hand = [...HAND0]; s.markerad.clear(); s.valt = 'Quickdraw'; rita() })
+
+vaxlare({ panel: ['nu', 'a', 'b'], ordning: ['nu', 'a', 'b'] }, (l, fokus, senast) => {
+  if (senast === 'ordning') { s.hand = [...HAND0]; s.markerad.clear(); s.valt = 'Quickdraw' }
+  rita(l, false, senast)
+})
+</script>
+</body>
+</html>
