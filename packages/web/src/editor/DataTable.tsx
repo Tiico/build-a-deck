@@ -467,6 +467,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   }
   // What is being typed in an `antal` cell that is not (yet) a count (#479), by card.
   const [antalDraft, setAntalDraft] = useState<Record<string, string>>({})
+  // What the last import did, said where it was asked for (#479).
+  const [imported, setImported] = useState<string | null>(null)
   const [sort, setSort] = useState<SortState | null>(null)
   const [filter, setFilter] = useState<FilterState>(noFilter)
   // The marking is the deck's and not this panel's (#222): it is made here and acted on here and
@@ -959,8 +961,10 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const reader = new FileReader()
     reader.onload = () => {
       try {
-        onReplaceRows(importCardsCsv(String(reader.result ?? ''), t))
+        const rows = importCardsCsv(String(reader.result ?? ''), t)
+        onReplaceRows(rows)
         setImportError(null)
+        setImported(importSummary(doc, rows, t))
       } catch (err) {
         setImportError(err instanceof Error ? err.message : String(err))
       }
@@ -1071,6 +1075,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 which is what #130 measured 189 px of. */}
             <span id={noteId}>{t('table.import.note')}</span>
             {importError && <span role="alert">{importError}</span>}
+            {imported && <span role="status">{imported}</span>}
             <a href={csvHref} download={filename}>{t('table.export')}</a>
           </div>
         </CrownDrawer>
@@ -1868,3 +1873,16 @@ function sortLabel(sort: SortState | null, t: T): string {
 
 // A field that moved between the two versions being held against each other (B4).
 const moved = (change: RowChange | undefined, field: string): boolean => change?.kind === 'changed' && change.fields.some((f) => f.field === field)
+
+// What an import did to the deck (#479): it replaces the table, so it says how many cards it read,
+// how many of them are new, how many of the old went, and which columns it brought.
+function importSummary(doc: ProjectDoc, rows: readonly ProjectDoc['rows'][number][], t: T): string {
+  const had = new Set(doc.rows.map((r) => r.id))
+  const now = new Set(rows.map((r) => r.id))
+  const fresh = rows.filter((r) => !had.has(r.id)).length
+  const gone = doc.rows.filter((r) => !now.has(r.id)).length
+  const known = new Set(['id', ...fieldsOf(doc)])
+  const columns = [...new Set(rows.flatMap((r) => Object.keys(r.fields)))].filter((f) => !known.has(f))
+  const read = `${t('table.import.read', { n: rows.length })} ${t(fresh === 1 ? 'table.import.fresh.one' : 'table.import.fresh.other', { n: fresh })}, ${t('table.import.gone', { n: gone })}.`
+  return columns.length === 0 ? read : `${read} ${t(columns.length === 1 ? 'table.import.column.one' : 'table.import.column.other', { names: columns.join(', ') })}`
+}

@@ -275,6 +275,12 @@ export const svEditor = {
   // `{name}` är spelets eget namn och rörs aldrig — det står där formgivaren skrev det.
   'table.export.filename': '{name}-kort.csv',
   'table.export.unnamed': 'spel',
+  'table.import.read': '{n} kort lästes:',
+  'table.import.fresh.one': '{n} nytt',
+  'table.import.fresh.other': '{n} nya',
+  'table.import.gone': '{n} togs bort',
+  'table.import.column.one': 'Ny kolumn: {names}.',
+  'table.import.column.other': 'Nya kolumner: {names}.',
   'table.import.needsId': 'CSV-filen behöver en id-kolumn',
   'table.import.noId': 'Alla kort behöver ett id',
   'table.import.duplicateId': 'Kort-id {id} förekommer flera gånger',

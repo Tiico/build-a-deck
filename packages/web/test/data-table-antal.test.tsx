@@ -109,3 +109,18 @@ describe('a new card (#479)', () => {
     expect(document.activeElement).toBe(screen.getByLabelText('kort-4 title'))
   })
 })
+
+// What an import did (#479): it replaced 77 cards with 2 and said nothing. It now says how many
+// cards it read, how many went, and which columns are new — in the status, where it is heard.
+describe('what an import did (#479)', () => {
+  it('says how many cards it read, how many went, and the new columns', async () => {
+    const { onReplaceRows } = table()
+    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
+    const file = new File(['id,title,Pris\ndragon,Drake,3\nny,Ny,1'], 'kort.csv', { type: 'text/csv' })
+    fireEvent.change(screen.getByLabelText('Importera CSV…'), { target: { files: [file] } })
+    const said = await screen.findByText(/kort lästes/)
+    expect(onReplaceRows).toHaveBeenCalled()
+    expect(said.textContent).toBe('2 kort lästes: 1 nytt, 2 togs bort. Ny kolumn: Pris.')
+    expect(said.getAttribute('role')).toBe('status')
+  })
+})
