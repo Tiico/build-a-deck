@@ -197,22 +197,35 @@ test.describe('the editor is not weighed against the felt’s face (#186)', () =
     })
     {
       await page.goto('/editor', { waitUntil: 'load' })
-      await page.waitForFunction(() => document.querySelectorAll('link[rel=stylesheet]').length > 1, undefined, { timeout: 20_000 })
-      // Two sheets on the wire: the one the first painting blocked on, and the editor's, asked for
-      // only once the route said it wanted it.
-      expect(css.length).toBe(2)
-      const second = readFileSync(join(OUT, css.find((p) => !blockingSheets(index).includes(p))!.replace(/^\//, '')), 'utf8')
+      // In force: a rule out of the editor's sheet reaches an element the document did not have when
+      // the page loaded. Waited for, because the route asks for more than one sheet and they land in
+      // whatever order the wire gives them.
+      await expect
+        .poll(
+          () =>
+            page.evaluate(() => {
+              const probe = document.createElement('div')
+              document.body.append(probe)
+              const bare = getComputedStyle(probe).flexGrow
+              probe.className = 'byd-editor-spacer'
+              const dressed = getComputedStyle(probe).flexGrow
+              probe.remove()
+              return { bare, dressed }
+            }),
+          { timeout: 20_000 },
+        )
+        .toEqual({ bare: '0', dressed: '1' })
+      // The sheet the first painting blocked on, and after it only what the route asked for: the
+      // editor's own, and — since the Regler tab draws the setup the drawer draws (#481) — the
+      // book's, which the two share. Nothing else, and nothing of either in the blocking sheet.
+      const read = (path: string) => readFileSync(join(OUT, path.replace(/^\//, '')), 'utf8')
+      const later = css.filter((p) => !blockingSheets(index).includes(p))
+      expect(css.length - later.length).toBe(1)
+      const books = later.filter((p) => /\.byd-rules-setup-toggle(?![a-z0-9-])/.test(read(p)) && !/\.byd-editor-spacer(?![a-z0-9-])/.test(read(p)))
+      expect(later.length - books.length).toBe(1)
+      expect(books.length).toBeLessThanOrEqual(1)
+      const second = read(later.find((p) => !books.includes(p))!)
       expect(editorsOwnClasses().filter((name) => new RegExp(`\\.${name}(?![a-z0-9-])`).test(second)).length).toBeGreaterThan(20)
-      // And in force: a rule out of that sheet reaches an element the document did not have when
-      // the page loaded.
-      const flex = await page.evaluate(() => {
-        const probe = document.createElement('div')
-        document.body.append(probe)
-        const bare = getComputedStyle(probe).flexGrow
-        probe.className = 'byd-editor-spacer'
-        return { bare, dressed: getComputedStyle(probe).flexGrow }
-      })
-      expect(flex).toEqual({ bare: '0', dressed: '1' })
     }
   })
 })
