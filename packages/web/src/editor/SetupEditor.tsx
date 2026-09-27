@@ -265,6 +265,14 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
               {said}
             </span>
           )}
+          {/* Where the chosen zone stands, over the felt where the eye already is while it is
+              dragged (#480, B5): the same numbers stood under the list's foot, out of sight. */}
+          {selectedZone && selectedZone.id !== setup.floor && (
+            <span className="byd-setup-coords" data-setup-coords>
+              {selectedZone.name} · {Math.round(selectedZone.geometry.x)}, {Math.round(selectedZone.geometry.y)}
+              {selectedZone.kind !== 'pile' ? ` · ${Math.round(selectedZone.geometry.w)} × ${Math.round(selectedZone.geometry.h)} mm` : ' mm'}
+            </span>
+          )}
           <span>{t('setup.hint')}</span>
           <Help topic={t('setup.help.topic')}>
             <p>{t('setup.help.resize')}</p>
@@ -284,6 +292,9 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
             onSelect={(id) => {
               select(id)
               setUndoable(null)
+              // The row is the other half of the choice (#480): brought into view in the list,
+              // after the render that has opened its family.
+              if (id) requestAnimationFrame(() => document.querySelector(`[data-zone-row="${CSS.escape(id)}"]`)?.scrollIntoView?.({ block: 'nearest' }))
             }}
             onGeometry={(id, geometry, gesture) => client.patchZone(id, { geometry }, gesture)}
             onRemove={remove}
