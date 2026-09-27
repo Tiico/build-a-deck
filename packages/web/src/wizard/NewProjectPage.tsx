@@ -22,7 +22,11 @@ export type NewProjectPageProps = { onNavigate?(url: string): void }
 // over, so it is written in the language they are building the game in (A4).
 const firstRow = (t: T): Record<string, string> => ({ title: t('wizard.card.n', { n: 1 }), cost: '1', body: '', art: '' })
 const emptyState = (t: T): WizardState => ({ name: '', players: 2, fields: defaultFields(t), frame: 'classic', rows: [firstRow(t)] })
+// The draft, kept for the life of the tab (#476): a reload, a step back or a login round gives it
+// back as it was. It is only ever *sent* on the way back from the login it was waiting for — the
+// `resume` mark on that one address — and never because `/new` was opened again later.
 const PENDING_KEY = 'byd.pending-wizard'
+const RESUME = 'resume'
 // `blank` is the door the draft was on its way through (L42), so a login asked for on the way
 // past the guided start resumes past it, not through it.
 type PendingWizard = { state: WizardState; server: string | null; blank?: boolean }
@@ -89,7 +93,14 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const server = params.get('server')
   const http = server ?? location.origin
   const pending = useMemo(() => pendingWizard(server), [server])
+  const resuming = useMemo(() => params.get(RESUME) === '1', [params])
+  // What an untouched wizard holds, so a draft is only a draft once something has been written.
+  const pristine = useMemo(() => JSON.stringify(emptyState(t)), [])
   const [s, setS] = useState<WizardState>(pending?.state ?? emptyState(t))
+  const dirty = JSON.stringify(s) !== pristine
+  // Set on the way out through one of the page's own doors, so the question below is not asked
+  // about a leaving the page itself asked for.
+  const leaving = useRef(false)
   const [selectedRow, setSelectedRow] = useState(0)
   const desk = useRoom() === 'desk'
   const [step, setStep] = useState<Step>('spelet')
@@ -143,7 +154,10 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     // this tab and comes back through the same door.
     const login = () => {
       rememberWizard({ state: s, server, blank: door === 'blank' })
-      onNavigate(loginUrl(location.pathname + location.search, server))
+      const back = new URLSearchParams(location.search)
+      back.set(RESUME, '1')
+      leaving.current = true
+      onNavigate(loginUrl(`${location.pathname}?${back.toString()}`, server))
       return new Error(t('wizard.error.login'))
     }
     try {
@@ -167,6 +181,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       if (!res.ok) throw new Error(t('wizard.error.create', { status: res.status }))
       forgetWizard()
       const { id } = (await res.json()) as { id: string }
+      leaving.current = true
       onNavigate(`/editor?${suffix(new URLSearchParams({ project: id }))}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -178,10 +193,32 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     nameField.current?.focus()
   }, [asked])
   useEffect(() => {
-    if (!pending || resumed.current) return
+    if (!pending || !resuming || resumed.current) return
     resumed.current = true
+    // Said once: the address stops carrying the mark, so a reload of the page it lands on is a
+    // reload and not a second «Skapa».
+    const rest = new URLSearchParams(location.search)
+    rest.delete(RESUME)
+    history.replaceState(history.state, '', `${location.pathname}${rest.toString() ? `?${rest.toString()}` : ''}`)
     void toEditor(pending.blank ? 'blank' : 'guided')
   }, [])
+  // The draft follows every keystroke into the tab's storage, and an untouched wizard keeps nothing.
+  useEffect(() => {
+    if (dirty) rememberWizard({ state: s, server })
+    else forgetWizard()
+  }, [s, dirty, server])
+  // And the browser asks before a reload or a closed tab takes it, as the editor does.
+  useEffect(() => {
+    if (!dirty) return
+    const hold = (event: BeforeUnloadEvent) => {
+      if (leaving.current) return
+      event.preventDefault()
+      // Older browsers read the answer off the event instead of the cancellation.
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', hold)
+    return () => window.removeEventListener('beforeunload', hold)
+  }, [dirty])
 
   const setFields = (fields: Field[]) => setS((current) => ({ ...current, fields }))
   const updateRow = (index: number, key: string, value: string) => setS((current) => ({

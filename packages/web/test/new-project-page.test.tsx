@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MAX_PLAYERS } from '@byd/server/doc'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { startServer, type Running } from './fixture.js'
@@ -174,5 +174,44 @@ describe('a game without the guided start (L42)', () => {
     const blank = screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' })
     expect(blank.classList.contains('byd-secondary')).toBe(true)
     expect(blank.classList.contains('byd-primary')).toBe(false)
+  })
+})
+
+// The draft (#476): a reload, a step back or a closed tab threw away everything typed, without a
+// word — and a draft kept for the login round was sent by itself on the next visit to `/new`,
+// making a game nobody pressed «Skapa» for.
+describe('the draft in the wizard (#476)', () => {
+  it('is still there after a reload, and nothing is made by the reload', async () => {
+    const gone: string[] = []
+    open((u) => gone.push(u))
+    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
+    fireEvent.change(screen.getByLabelText('kort 1 Titel'), { target: { value: 'Drake' } })
+    cleanup()
+    open((u) => gone.push(u))
+    expect((screen.getByLabelText('Spelets namn') as HTMLInputElement).value).toBe('Skogens herrar')
+    expect((screen.getByLabelText('kort 1 Titel') as HTMLInputElement).value).toBe('Drake')
+    await new Promise((r) => setTimeout(r, 100))
+    expect(gone).toEqual([])
+  })
+
+  it('asks before the page is left with something typed, and not before', () => {
+    open(() => undefined)
+    const leave = () => {
+      const event = new Event('beforeunload', { cancelable: true })
+      window.dispatchEvent(event)
+      return event.defaultPrevented
+    }
+    expect(leave()).toBe(false)
+    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
+    expect(leave()).toBe(true)
+  })
+
+  it('is never sent by itself when the page is opened again later', async () => {
+    sessionStorage.setItem('byd.pending-wizard', JSON.stringify({ state: { name: 'Övergivet', players: 2, frame: 'classic', fields: [], rows: [] }, server: run.http, blank: true }))
+    const gone: string[] = []
+    open((u) => gone.push(u))
+    expect((screen.getByLabelText('Spelets namn') as HTMLInputElement).value).toBe('Övergivet')
+    await new Promise((r) => setTimeout(r, 200))
+    expect(gone).toEqual([])
   })
 })
