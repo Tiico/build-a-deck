@@ -238,3 +238,39 @@ describe('the way back from the wizard (#476)', () => {
     expect(home.getAttribute('href')).toBe(`/?server=${encodeURIComponent(run.http)}`)
   })
 })
+
+// When the game could not be made (#476): the wizard said «kunde inte skapa spelet: 500» or the
+// browser's own «Failed to fetch», never that nothing had been made, and left the focus where it
+// was. It now says so in the catalogue's words, with what to do, and takes the focus to it.
+describe('when the game could not be made (#476)', () => {
+  const create = () => fireEvent.click(screen.getByRole('button', { name: /Skapa spelet och fortsätt i editorn/ }))
+
+  it('says the game was not made and what to do when the service answers with an error', async () => {
+    const real = globalThis.fetch
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(String(input instanceof Request ? input.url : input))
+      if (url.pathname === '/projects' && init?.method === 'POST') return new Response('{"error":"boom"}', { status: 500 })
+      return real(input, init)
+    })
+    try {
+      open(() => undefined)
+      fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
+      create()
+      const said = await screen.findByRole('alert')
+      expect(said.textContent).toBe('Spelet skapades inte. Tjänsten svarade med ett fel. Försök igen om en stund.')
+      expect(document.activeElement).toBe(said)
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  it('says the service could not be reached, not the browser s words for it', async () => {
+    history.replaceState(null, '', `/new?server=${encodeURIComponent('http://127.0.0.1:1')}`)
+    render(<NewProjectPage onNavigate={() => undefined} />)
+    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
+    fireEvent.click(screen.getByRole('button', { name: /Fortsätt i editorn/i }))
+    const said = await screen.findByRole('alert')
+    expect(said.textContent).toBe('Spelet skapades inte. Vi når inte tjänsten; kontrollera anslutningen och försök igen.')
+    expect(said.textContent).not.toMatch(/fetch|Error/i)
+  })
+})

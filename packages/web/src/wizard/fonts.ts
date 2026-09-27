@@ -3,6 +3,7 @@ import { catalogStack, type CatalogFamily, fileInSheet, fileSheetHref } from '..
 import { assetRef, assetRefOf } from '../editor/assets.js'
 import { withCredentials } from '../account/api.js'
 import type { T } from '../i18n/index.js'
+import { NotMade } from './not-made.js'
 import type { Frame } from './frames.js'
 
 // Hur startramens ansikte hamnar i projektet (#420, B3, L27).
@@ -44,7 +45,7 @@ export async function uploadFrameFont(t: T, http: string, frame: Frame): Promise
   const bytes = await bytesOf(catalog, t)
   const res = await fetch(`${http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': 'font/woff2' }, body: bytes }))
   if (res.status === 401) return 'login'
-  if (!res.ok) throw new Error(t('wizard.error.upload', { status: res.status }))
+  if (!res.ok) throw new NotMade('wizard.error.upload')
   const ref = assetRef(((await res.json()) as { hash: string }).hash)
   // Asseten heter hashen av sina bytes och ingenting annat, så namnet går att räkna ut på den här
   // sidan också. Håller de två inte med varandra pekar dokumentet på ingenting, och det ska sägas

@@ -170,8 +170,11 @@ export const svAccount = {
   'wizard.creating': 'Skapar…',
   'wizard.create': 'Skapa spelet och fortsätt i editorn →',
   'wizard.error.login': 'logga in först',
-  'wizard.error.create': 'kunde inte skapa spelet: {status}',
-  'wizard.error.upload': 'kunde inte ladda upp bilden: {status}',
+  'wizard.error.not-made': 'Spelet skapades inte.',
+  'wizard.error.create': 'Tjänsten svarade med ett fel. Försök igen om en stund.',
+  'wizard.error.upload': 'En fil kunde inte laddas upp. Försök igen om en stund.',
+  'wizard.error.too-big': 'En bild är för stor för att laddas upp. Välj en mindre bild.',
+  'wizard.error.offline': 'Vi når inte tjänsten; kontrollera anslutningen och försök igen.',
 
   // Ord guiden föreslår och som designern sedan får ändra: de skrivs på det språk spelet byggs i.
 

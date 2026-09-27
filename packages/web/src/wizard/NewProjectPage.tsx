@@ -8,6 +8,7 @@ import { DropSays, dropSurface, oneFile } from '../editor/dropping.js'
 import { suggestFieldKey } from '../editor/fields.js'
 import { buildBlankProject, buildProject, type WizardState } from './build.js'
 import { uploadFrameFont } from './fonts.js'
+import { NotMade } from './not-made.js'
 import { defaultFields, DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
 import { useT, type Key, type T } from '../i18n/index.js'
 import { Help } from '../editor/HelpDrawer.js'
@@ -140,6 +141,8 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     return q.toString()
   }
   const toEditor = async (door: Via = 'guided') => {
+    // A second press while the first is on its way is not a second game.
+    if (busy) return
     // Den utgång som trycks utan namn går ingenstans — den säger vad som saknas, vid fältet, och
     // lämnar markören där det rättas.
     if (!named) {
@@ -180,20 +183,32 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       }
       const res = await fetch(`${http}/projects`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(doc) }))
       if (res.status === 401) throw login()
-      if (!res.ok) throw new Error(t('wizard.error.create', { status: res.status }))
+      if (!res.ok) throw new NotMade('wizard.error.create')
       forgetWizard()
       const { id } = (await res.json()) as { id: string }
       leaving.current = true
       onNavigate(`/editor?${suffix(new URLSearchParams({ project: id }))}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      // Said as what did not happen and what to do (#476): a reason of the wizard's own, the
+      // service out of reach (the browser's words for that are a `TypeError`), or a sentence the
+      // catalogue already wrote — and never a status code.
+      const why = err instanceof NotMade ? t(err.reason) : err instanceof TypeError ? t('wizard.error.offline') : err instanceof Error ? err.message : String(err)
+      setError(`${t('wizard.error.not-made')} ${why}`)
       setBusy(false)
+      setSaid((n) => n + 1)
     }
   }
   useEffect(() => {
     if (asked === 0) return
     nameField.current?.focus()
   }, [asked])
+  // The focus goes to what went wrong, where it is read, rather than staying on a button that has
+  // just come back to life.
+  const [said, setSaid] = useState(0)
+  const errorRef = useRef<HTMLParagraphElement>(null)
+  useEffect(() => {
+    if (said > 0) errorRef.current?.focus()
+  }, [said])
   useEffect(() => {
     if (!pending || !resuming || resumed.current) return
     resumed.current = true
@@ -338,8 +353,8 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       <div className="byd-wizard-blank">
         <strong>{t('wizard.blank.title')}</strong>
         <p>{t('wizard.blank.body')}</p>
-        <button type="button" className="byd-secondary" disabled={busy} onClick={() => void toEditor('blank')}>{t(busy && via === 'blank' ? 'wizard.creating' : 'wizard.blank.create')}</button>
-        {error && via === 'blank' && <span role="alert">{error}</span>}
+        <button type="button" className="byd-secondary" {...working(busy)} onClick={() => void toEditor('blank')}><Held busy={busy && via === 'blank'} idle={t('wizard.blank.create')} working={t('wizard.creating')} /></button>
+        {error && via === 'blank' && <p ref={errorRef} className="byd-wizard-error" role="alert" tabIndex={-1}>{error}</p>}
       </div>
     </section>
   )
@@ -391,7 +406,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         >{row[field.key] ? <img src={row[field.key]} alt={t('wizard.image.preview', { label: field.label })} /> : <i>{t('wizard.image.none')}</i>}{over === field.key && <DropSays />}<label className="byd-wizard-file-button byd-secondary">{t(row[field.key] ? 'wizard.image.change' : 'wizard.image.choose')}<input className="byd-offscreen" type="file" accept="image/*" aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} onChange={(event) => chooseImage(selectedRow, field.key, [...(event.target.files ?? [])])} /></label>{row[field.key] && <button type="button" onClick={() => updateRow(selectedRow, field.key, '')}>{t('wizard.image.remove')}</button>}</div>{refused?.field === field.key && <span role="alert">{refused.said}</span>}</div> : <label key={field.key} className={field.key === 'body' ? 'is-wide' : ''}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span>{field.key === 'body' ? <textarea rows={4} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} /> : <input type={field.kind === 'number' ? 'number' : 'text'} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} />}</label>)}</div>
       </div>
       <div className="byd-wizard-card-tabs">{s.rows.map((candidate, index) => <button type="button" key={index} className="byd-choice" aria-pressed={selectedRow === index} onClick={() => setSelectedRow(index)}><b>{index + 1}</b>{candidate['title'] || t('wizard.card.untitled')}</button>)}<button type="button" className="is-add" onClick={addRow}>{t('wizard.card.add')}</button><button type="button" disabled={s.rows.length === 1} onClick={() => removeRow(selectedRow)}>{t('wizard.card.remove')}</button></div>
-      <footer><button type="button" className="byd-wizard-primary byd-primary" disabled={!hasCards || busy} onClick={() => void toEditor()}>{t(busy && via === 'guided' ? 'wizard.creating' : 'wizard.create')}</button>{error && via === 'guided' && <span role="alert">{error}</span>}</footer>
+      <footer><button type="button" className="byd-wizard-primary byd-primary" disabled={!hasCards} {...working(busy)} onClick={() => void toEditor()}><Held busy={busy && via === 'guided'} idle={t('wizard.create')} working={t('wizard.creating')} /></button>{error && via === 'guided' && <p ref={errorRef} className="byd-wizard-error" role="alert" tabIndex={-1}>{error}</p>}</footer>
     </section>
   )
   // The handoff's body is said behind the first step's question mark (L36); the title stays.
@@ -468,6 +483,27 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   )
 }
 
+// A button at work is not a locked button (#476): it keeps its look and its width, says it is
+// busy, and a press on it does nothing — the handler refuses it — rather than greying out under
+// the pointer as a locked one does.
+const working = (busy: boolean) => (busy ? { 'aria-disabled': true, 'aria-busy': true } : {})
+
+// A button's two words in one place (#476): both are laid out, and only the one that is true is
+// seen and read, so the button is as wide as its longer word through the wait and does not
+// shrink under the pointer that pressed it.
+function Held({ busy, idle, working }: { busy: boolean; idle: string; working: string }) {
+  return (
+    <span className="byd-wizard-held">
+      <span data-on={!busy} aria-hidden={busy}>
+        {idle}
+      </span>
+      <span data-on={busy} aria-hidden={!busy}>
+        {working}
+      </span>
+    </span>
+  )
+}
+
 // Every image field holding a chosen image becomes an asset reference; the state comes back
 // with the references in place. 'login' when the server wants an account first.
 async function uploadImages(t: T, http: string, state: WizardState): Promise<WizardState | 'login'> {
@@ -482,7 +518,7 @@ async function uploadImages(t: T, http: string, state: WizardState): Promise<Wiz
       if (!image) continue
       const res = await fetch(`${http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': image.type }, body: image.bytes }))
       if (res.status === 401) return 'login'
-      if (!res.ok) throw new Error(t('wizard.error.upload', { status: res.status }))
+      if (!res.ok) throw new NotMade(res.status === 413 ? 'wizard.error.too-big' : 'wizard.error.upload')
       next[key] = assetRef(((await res.json()) as { hash: string }).hash)
     }
     rows.push(next)

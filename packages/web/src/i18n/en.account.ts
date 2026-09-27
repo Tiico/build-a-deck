@@ -149,8 +149,11 @@ export const enAccount = {
   'wizard.creating': 'Creating…',
   'wizard.create': 'Create the game and continue in the editor →',
   'wizard.error.login': 'log in first',
-  'wizard.error.create': 'could not create the game: {status}',
-  'wizard.error.upload': 'could not upload the image: {status}',
+  'wizard.error.not-made': 'The game was not made.',
+  'wizard.error.create': 'The service answered with an error. Try again in a moment.',
+  'wizard.error.upload': 'A file could not be uploaded. Try again in a moment.',
+  'wizard.error.too-big': 'A picture is too large to upload. Choose a smaller one.',
+  'wizard.error.offline': 'We cannot reach the service; check the connection and try again.',
 
 
   'error.members.failed': 'the list of who has the game could not be read: {status}',

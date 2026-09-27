@@ -145,6 +145,12 @@
 .byd-wizard-card-tabs .is-add { border-style: dashed; }
 .byd-wizard-block > footer { padding-top: 18px; display: grid; gap: 14px; border-top: 1px solid var(--line); }
 .byd-wizard-primary { padding: 0 18px; }
+/* Both of a button's words are laid out in one cell and only the true one is seen (#476), so the
+   wait does not shrink the button under the pointer. `visibility` also takes the other out of
+   what a screen reader hears. */
+.byd-wizard-held { display: inline-grid; }
+.byd-wizard-held > span { grid-area: 1 / 1; }
+.byd-wizard-held > span[data-on='false'] { visibility: hidden; }
 .byd-wizard [role='alert'] { color: #8d3823; }
 /* Och fältet ett besked handlar om pekas ut där ögat är, och inte bara i trädet (#416). Samma
    färg som beskedet självt, så att raden och rutan hör ihop. */
@@ -160,7 +166,8 @@
   .byd-wizard-card-form .is-wide { grid-column: 1 / -1; }
   /* What came after the button is said behind the step's question mark (L36); the button stands
      at the end on its own. */
-  .byd-wizard-block > footer { justify-content: end; grid-auto-flow: column; align-items: center; }
+  /* The error goes under the button and never beside it, so it cannot push the button along. */
+  .byd-wizard-block > footer { justify-items: end; }
   .byd-wizard-field { grid-template-columns: 54px minmax(90px, 1fr) minmax(98px, auto) var(--tap); }
   .byd-wizard-field small { grid-column: 3; grid-row: 1; text-align: right; }
   .byd-wizard-field > button { grid-column: 4; }
