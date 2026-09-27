@@ -318,6 +318,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
           // a tab stop: panning that only a wheel can do leaves everything off screen to the
           // mouse alone, and accessibility is not relaxed in the editor (L12).
           tabIndex={0}
+          // The zoom the card is drawn at, for the marks on it that must not shrink with it (#478).
+          style={{ ['--byd-canvas-scale' as string]: String(zoom.scale) }}
           onClick={() => onSelectElement(null)}
           {...(column ? { id: GROUP_PANEL, 'aria-labelledby': GROUP_BUTTON } : { 'aria-label': t('canvas.stage') })}
         >

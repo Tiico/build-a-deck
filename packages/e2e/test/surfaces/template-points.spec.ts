@@ -55,3 +55,29 @@ test('keeps the shape chosen when its point, its mid-dot or a handle is clicked'
   await expect(page.locator('.byd-point[data-point="1"]')).toBeVisible()
   await expect(page.locator('.byd-point:not(.byd-point-mid):not(.byd-point-handle)')).toHaveCount(5)
 })
+
+// The marks on the card are drawn in millimetres of card, so they shrank with the zoom: 18 px at
+// «Passa in», 9 × 9 at 100 % and 5 × 5 at 50 % (#478). They keep their size in millimetres while
+// that is a fingertip's worth of screen, and never go under 10 px.
+test('keeps every handle and point at least 10 pixels wide at every zoom', async ({ page }) => {
+  await logIn(page.request)
+  const project = await makeProjectOf(page.request, withOwnShape())
+  await page.goto(project.editorUrl)
+  await expect(page.getByText('Skogens herrar').first()).toBeVisible()
+  await page.locator('#byd-editor-tab-template').click()
+  await page.locator('[data-drag="banner"]').click()
+  await expect(page.locator('.byd-point[data-point="0"]')).toBeVisible()
+  const zoom = page.getByRole('slider', { name: 'Förstoring i procent' })
+  for (const percent of ['100', '50']) {
+    await zoom.fill(percent)
+    await page.waitForTimeout(100)
+    const sizes = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>('.byd-drag-handle, .byd-point')].map((el) => {
+        const r = el.getBoundingClientRect()
+        return { what: el.className, w: Math.round(r.width * 10) / 10, h: Math.round(r.height * 10) / 10 }
+      }),
+    )
+    expect(sizes.length, `marks at ${percent} %`).toBeGreaterThan(0)
+    expect(sizes.filter((s) => s.w < 10 || s.h < 10), `marks under 10 px at ${percent} %`).toEqual([])
+  }
+})

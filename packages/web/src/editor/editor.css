@@ -964,11 +964,16 @@
     repeating-linear-gradient(to right, var(--byd-editor-grid-mm) 0 0.06mm, transparent 0.06mm var(--byd-grid-step, 1mm)),
     repeating-linear-gradient(to bottom, var(--byd-editor-grid-mm) 0 0.06mm, transparent 0.06mm var(--byd-grid-step, 1mm));
 }
-.byd-drag-handle { position: absolute; width: 2.4mm; height: 2.4mm; background: var(--byd-editor-handle-bg); border: 0.4mm solid var(--byd-editor-primary-mark); box-sizing: border-box; touch-action: none; }
-.byd-drag-handle[data-handle='nw'] { left: -1.2mm; top: -1.2mm; cursor: nwse-resize; }
-.byd-drag-handle[data-handle='ne'] { right: -1.2mm; top: -1.2mm; cursor: nesw-resize; }
-.byd-drag-handle[data-handle='sw'] { left: -1.2mm; bottom: -1.2mm; cursor: nesw-resize; }
-.byd-drag-handle[data-handle='se'] { right: -1.2mm; bottom: -1.2mm; cursor: nwse-resize; }
+/* The marks on the card are millimetres of card, and the card is drawn at the zoom (#478): at 50 %
+   a 2.4 mm handle was 5 px, which no hand hits. They keep their millimetres while that is enough
+   screen and never go under 10 px — the card is under CSS `zoom`, so 10 px divided by the zoom is
+   10 px on the screen. */
+.byd-drag-layer { --byd-mark: max(2.4mm, calc(10px / var(--byd-canvas-scale, 1))); --byd-point-mark: max(2.6mm, calc(10px / var(--byd-canvas-scale, 1))); }
+.byd-drag-handle { position: absolute; width: var(--byd-mark); height: var(--byd-mark); background: var(--byd-editor-handle-bg); border: 0.4mm solid var(--byd-editor-primary-mark); box-sizing: border-box; touch-action: none; }
+.byd-drag-handle[data-handle='nw'] { left: calc(var(--byd-mark) / -2); top: calc(var(--byd-mark) / -2); cursor: nwse-resize; }
+.byd-drag-handle[data-handle='ne'] { right: calc(var(--byd-mark) / -2); top: calc(var(--byd-mark) / -2); cursor: nesw-resize; }
+.byd-drag-handle[data-handle='sw'] { left: calc(var(--byd-mark) / -2); bottom: calc(var(--byd-mark) / -2); cursor: nesw-resize; }
+.byd-drag-handle[data-handle='se'] { right: calc(var(--byd-mark) / -2); bottom: calc(var(--byd-mark) / -2); cursor: nwse-resize; }
 /* The marks on a shape of the designer's own (L26). The point is round where the corner handle
    is square — one says «this corner of the box», the other «this corner of the outline» — and it
    lies above the box and its handles both, because the point is always above the edge and above
@@ -977,9 +982,9 @@
    rather than hung from its top-left corner, so the dot really is where the point is. */
 .byd-point {
   position: absolute;
-  width: 2.6mm;
-  height: 2.6mm;
-  margin: -1.3mm 0 0 -1.3mm;
+  width: var(--byd-point-mark, 2.6mm);
+  height: var(--byd-point-mark, 2.6mm);
+  margin: calc(var(--byd-point-mark, 2.6mm) / -2) 0 0 calc(var(--byd-point-mark, 2.6mm) / -2);
   padding: 0;
   border: 0.4mm solid var(--byd-editor-primary-mark);
   /* A point is a square, and it is the shape that says so (L38). */
