@@ -29,6 +29,11 @@ import { ASSET_PREFIX, RULE_IMAGE_MAX_BYTES, assetUrl, imageSizeOf, imageTypeOf 
 import { when } from './HistoryPanel.js'
 import { RuleShelf } from '../rules/RuleDrawer.js'
 import { SetupOverview } from '../rules/SetupOverview.js'
+// The setup is drawn by the book's own sheet, which since #346 travels with the drawer at the table
+// and nothing else. The tab draws the same setup in the editable book, so it fetches the sheet
+// itself; otherwise its buttons stood in the browser's Arial until «Som på bordet» had been opened
+// once (#481). The editor is a chunk of its own, so this costs the table's first frame nothing.
+import '../rules/rules.css'
 import { readTo, readingIn, sectionOf, type Reading } from '../rules/reading.js'
 import { PickList, pickKey, pickOptionId, triggerBehind, writeTrigger } from './picking.js'
 
