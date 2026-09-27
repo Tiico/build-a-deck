@@ -70,16 +70,18 @@ export const svAccount = {
 
   // Att spara en gästsession till kontot (G1): dit telefonens länk leder.
   'claim.no-token': 'Ingen länk angiven.',
-  'claim.loading': 'Laddar…',
   'claim.saving': 'Sparar…',
   'claim.lead': 'Logga in för att spara bordet till ditt konto.',
   'claim.help': 'Bordet du spelade vid följer med till kontot du loggar in med.',
+  'claim.failed.heading': 'Bordet kunde inte sparas',
+  'claim.taken.heading': 'Bordet är redan sparat',
   'claim.error.other': 'Det här bordet är redan sparat till ett annat konto.',
   'claim.error.unknown': 'Länken gäller inte. Gå tillbaka till telefonen och tryck på "Spara till ditt konto" igen.',
 
   // Att följa en inbjudan till ett spel (D3).
   'invite.title': 'Inbjudan',
   'invite.opening': 'Öppnar spelet…',
+  'invite.spent.heading': 'Inbjudan gäller inte längre',
   'invite.spent': 'Den här inbjudan är använd eller har gått ut. Be den som bjöd in dig om en ny.',
 
   // Guidad start (L6): tre steg som gör dokumentet editorn sedan redigerar.

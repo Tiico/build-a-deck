@@ -95,7 +95,11 @@ describe('following an invitation (D3)', () => {
     await signIn('bo@example.com')
     history.replaceState(null, '', `/invites/spent?server=${encodeURIComponent(run.http)}`)
     render(<InvitePage onNavigate={() => undefined} />)
-    expect((await screen.findByRole('alert')).textContent).toMatch(/använd eller har gått ut/)
+    // In the status family (D5, #475), with the focus on its heading and a way on, rather than a
+    // line of red with nothing to press and the focus on <body>.
+    await waitFor(() => expect(document.querySelector('[data-status-notice="missing"]')?.textContent).toMatch(/använd eller har gått ut/))
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 }))
+    expect(screen.getByRole('link', { name: 'Till mina spel' }).getAttribute('href')).toBe(`/?server=${encodeURIComponent(run.http)}`)
   })
 })
 

@@ -59,15 +59,17 @@ export const enAccount = {
   'home.played.back': 'Back to the table',
 
   'claim.no-token': 'No link given.',
-  'claim.loading': 'Loading…',
   'claim.saving': 'Saving…',
   'claim.lead': 'Log in to save the table to your account.',
   'claim.help': 'The table you played at comes along to the account you log in with.',
+  'claim.failed.heading': 'The table could not be saved',
+  'claim.taken.heading': 'The table is already saved',
   'claim.error.other': 'This table is already saved to another account.',
   'claim.error.unknown': 'The link is not valid. Go back to the phone and press "Save to your account" again.',
 
   'invite.title': 'Invitation',
   'invite.opening': 'Opening the game…',
+  'invite.spent.heading': 'The invitation no longer works',
   'invite.spent': 'This invitation has been used, or it has run out. Ask whoever invited you for a new one.',
 
   'wizard.eyebrow': 'Guided start',

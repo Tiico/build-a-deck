@@ -127,6 +127,13 @@ export function noticeFor(state: StatusKey, voice: Voice, t: T = swedish): Notic
   return { ...base(state, t), ...(PER_VOICE[voice][state]?.(t) ?? {}) }
 }
 
+// The way home from a page read by someone who is not signed in (#475). `/` is the login card for
+// them, and "Till mina spel" over it is a promise the page does not keep; "Till startsidan" is true
+// of both shapes the start page has.
+export function signedOut(notice: Notice, t: T = swedish): Notice {
+  return { ...notice, actions: notice.actions.map((a) => (a.kind === 'home' ? { ...a, label: t('status.act.home.start') } : a)) }
+}
+
 // When old data is left on the screen the reader has to be told how old it is, or the picture
 // goes on looking current (#7). The clock is the app's own, not the server's.
 export function asOf(at: Date): string {

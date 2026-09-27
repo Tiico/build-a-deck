@@ -34,10 +34,29 @@ describe('ClaimPage', () => {
     await waitFor(() => expect(gone.at(-1)).toBe(`/?claimed=${id}&server=${encodeURIComponent(run.http)}`))
   })
 
-  it('says when the token is not one, and when another account has the session', async () => {
+  // Every state the page can stand in is one of the status family's (D5, #475): the waits, the
+  // missing link and the refusals were bare lines on a white page, and the errors had nothing to
+  // press and left the focus on <body>.
+  it('says when the token is not one in the status family, with the focus on its heading and a way to the games', async () => {
     await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com' }) })
     history.replaceState(null, '', `/claim?token=nope&server=${encodeURIComponent(run.http)}`)
     render(<ClaimPage onNavigate={() => undefined} />)
-    expect(await screen.findByRole('alert')).toHaveProperty('textContent', expect.stringMatching(/gäller inte/))
+    await waitFor(() => expect(document.querySelector('[data-status-notice="missing"]')?.textContent).toMatch(/gäller inte/))
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 }))
+    expect(screen.getByRole('link', { name: 'Till mina spel' }).getAttribute('href')).toBe(`/?server=${encodeURIComponent(run.http)}`)
+  })
+
+  it('says a link without a token is not one, with a way to the start page for whoever is reading', async () => {
+    history.replaceState(null, '', '/claim')
+    render(<ClaimPage onNavigate={() => undefined} />)
+    expect(document.querySelector('[data-status-notice="missing"]')).toBeTruthy()
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 }))
+    expect(screen.getByRole('link', { name: 'Till startsidan' }).getAttribute('href')).toBe('/')
+  })
+
+  it('waits in the status family rather than on a bare line', () => {
+    history.replaceState(null, '', `/claim?token=nope&server=${encodeURIComponent(run.http)}`)
+    render(<ClaimPage onNavigate={() => undefined} />)
+    expect(document.querySelector('[data-status-notice="loading"]')).toBeTruthy()
   })
 })
