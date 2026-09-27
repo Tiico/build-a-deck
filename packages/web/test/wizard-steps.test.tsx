@@ -2,7 +2,7 @@
 // The starter flow below the desk (#4, L10): three steps with one job each, instead of one page
 // two and a half screens long where the frame is chosen half a metre from the card it changes.
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { atWidth } from './viewport.js'
@@ -82,5 +82,50 @@ describe('the wizard on a desk', () => {
     expect(screen.getByLabelText('Spelets namn')).toBeTruthy()
     expect(screen.getByText('Startram')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Skapa spelet/ })).toBeTruthy()
+  })
+})
+
+// Where the focus goes (#476): Enter in a field did nothing, a new field or card left the focus
+// on the button that made it, and a control that went away or locked left it on <body>.
+describe('the focus in the wizard (#476)', () => {
+  it('starts in the name on a desk, and Enter there goes on to the fields', async () => {
+    const user = userEvent.setup()
+    wizardAt(1280)
+    expect(document.activeElement).toBe(screen.getByLabelText('Spelets namn'))
+    await user.type(screen.getByLabelText('Spelets namn'), 'Skogens herrar{Enter}')
+    expect(document.activeElement).toBe(screen.getByLabelText('Titel namn'))
+  })
+
+  it('goes on to the next step from the name on a phone', async () => {
+    const user = userEvent.setup()
+    wizardAt(390)
+    await user.type(screen.getByLabelText('Spelets namn'), 'Skogens herrar{Enter}')
+    expect(screen.getByRole('tab', { name: '2 · Fälten' }).getAttribute('aria-selected')).toBe('true')
+    expect(document.activeElement).toBe(screen.getByLabelText('Titel namn'))
+  })
+
+  it('puts the focus in what was just made: a new field s name, a new card s title', async () => {
+    const user = userEvent.setup()
+    wizardAt(1280)
+    await user.click(screen.getByRole('button', { name: '+ Textfält' }))
+    expect(document.activeElement).toBe(screen.getByLabelText('Nytt textfält namn'))
+    await user.click(screen.getByRole('button', { name: '+ Nytt kort' }))
+    expect(document.activeElement).toBe(screen.getByLabelText('kort 2 Titel'))
+  })
+
+  it('never leaves the focus on nothing when a card is taken away or a step button locks', async () => {
+    const user = userEvent.setup()
+    wizardAt(1280)
+    await user.click(screen.getByRole('button', { name: '+ Nytt kort' }))
+    await user.click(screen.getByRole('button', { name: 'Ta bort valt kort' }))
+    expect(document.activeElement).not.toBe(document.body)
+    expect(document.activeElement?.getAttribute('aria-pressed')).toBe('true')
+    cleanup()
+
+    wizardAt(390)
+    await user.click(screen.getByRole('button', { name: 'Nästa →' }))
+    await user.click(screen.getByRole('button', { name: 'Nästa →' }))
+    expect(document.activeElement).not.toBe(document.body)
+    expect(screen.getByRole('tabpanel').contains(document.activeElement)).toBe(true)
   })
 })

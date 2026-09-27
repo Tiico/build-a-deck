@@ -203,6 +203,13 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     if (asked === 0) return
     nameField.current?.focus()
   }, [asked])
+  // Where the focus goes after a press that makes, removes or moves something (#476): into what
+  // was just made, onto what is left when a thing goes, into the step that was walked to — never
+  // onto <body>. Asked for by what it is, and found after the render that drew it.
+  const [focusOn, setFocusOn] = useState<{ at: string } | null>(null)
+  useEffect(() => {
+    if (focusOn) document.querySelector<HTMLElement>(focusOn.at)?.focus()
+  }, [focusOn])
   // The focus goes to what went wrong, where it is read, rather than staying on a button that has
   // just come back to life.
   const [said, setSaid] = useState(0)
@@ -238,6 +245,14 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     return () => window.removeEventListener('beforeunload', hold)
   }, [dirty])
 
+  // A step walked to by the buttons takes the focus with it: the button pressed may lock at the
+  // end it has reached, and a locked button cannot keep the focus.
+  const walk = (by: number) => {
+    const to = STEPS[at + by]?.[0]
+    if (!to) return
+    setStep(to)
+    setFocusOn({ at: `#byd-wizard-panel-${to}` })
+  }
   const setFields = (fields: Field[]) => setS((current) => ({ ...current, fields }))
   const updateRow = (index: number, key: string, value: string) => setS((current) => ({
     ...current,
@@ -292,6 +307,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       fields: [...current.fields, field],
       rows: current.rows.map((candidate) => ({ ...candidate, [field.key]: '' })),
     }))
+    setFocusOn({ at: `[data-field="${field.key}"] input` })
   }
   const removeField = (key: string) => setS((current) => ({
     ...current,
@@ -302,11 +318,13 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     const next = Object.fromEntries(s.fields.map((field) => [field.key, field.key === 'title' ? t('wizard.card.n', { n: s.rows.length + 1 }) : field.key === 'cost' ? '1' : '']))
     setS((current) => ({ ...current, rows: [...current.rows, next] }))
     setSelectedRow(s.rows.length)
+    setFocusOn({ at: '.byd-wizard-card-form :is(input, textarea)' })
   }
   const removeRow = (index: number) => {
     if (s.rows.length === 1) return
     setS((current) => ({ ...current, rows: current.rows.filter((_, rowIndex) => rowIndex !== index) }))
     setSelectedRow(Math.max(0, Math.min(selectedRow, s.rows.length - 2)))
+    setFocusOn({ at: '.byd-wizard-card-tabs [aria-pressed="true"]' })
   }
 
   // Steps 1 and 2 are one panel each, and the cards are the third. On a desk they are read side
@@ -337,6 +355,15 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
           // Villkoret gäller inte längre så snart något står i fältet.
           if (event.target.value.trim()) setSays(null)
         }}
+        onKeyDown={(event) => {
+          // Enter goes on to the fields, which is what comes next whether they stand beside the
+          // name or behind the next step.
+          if (event.key !== 'Enter') return
+          event.preventDefault()
+          if (!desk) setStep('falten')
+          setFocusOn({ at: '.byd-wizard-field input' })
+        }}
+        autoFocus={desk}
         aria-required="true"
         aria-invalid={says ? 'true' : 'false'}
         maxLength={PROJECT_NAME_MAX}
@@ -383,7 +410,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       </div>
       <p>{t('wizard.fields.body')}</p>
       <div className="byd-wizard-fields">
-        <div className="byd-wizard-field-list">{s.fields.map((field) => <div className="byd-wizard-field" key={field.key}>
+        <div className="byd-wizard-field-list">{s.fields.map((field) => <div className="byd-wizard-field" key={field.key} data-field={field.key}>
           <span>{t(field.kind === 'image' ? 'wizard.kind.image' : field.kind === 'number' ? 'wizard.kind.number' : 'wizard.kind.text')}</span>
           <input aria-label={t('wizard.field.name', { label: field.label })} value={field.label} onChange={(event) => setFields(s.fields.map((candidate) => candidate.key === field.key ? { ...candidate, label: event.target.value } : candidate))} />
           <small>{t(mappedByStarterFrame(field.key) ? 'wizard.field.in-frame' : 'wizard.field.in-editor')}</small>
@@ -408,7 +435,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       </div>
       <div className="byd-wizard-card-workspace">
         <div className="byd-wizard-preview"><CardPreview id="wizard-live" face={front} row={row} icons={{}} /><span>{t('wizard.preview')}</span></div>
-        <div className="byd-wizard-card-form">{s.fields.map((field) => field.kind === 'image' ? <div key={field.key} className="byd-wizard-image-field is-wide"><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span><div
+        <div className="byd-wizard-card-form">{s.fields.map((field) => field.kind === 'image' ? <div key={field.key} className="byd-wizard-image-field is-wide" data-image-field={field.key}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span><div
           role="group"
           aria-label={t('wizard.image.field', { label: field.label })}
           {...dropSurface({
@@ -418,7 +445,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
             onOver: (on) => setOver(on ? field.key : null),
             onFiles: (files) => chooseImage(selectedRow, field.key, files),
           })}
-        >{row[field.key] ? <img src={row[field.key]} alt={t('wizard.image.preview', { label: field.label })} /> : <i>{t('wizard.image.none')}</i>}{over === field.key && <DropSays />}<label className="byd-wizard-file-button byd-secondary">{t(row[field.key] ? 'wizard.image.change' : 'wizard.image.choose')}<input className="byd-offscreen" type="file" accept="image/png,image/jpeg,image/gif,image/webp" aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} onChange={(event) => chooseImage(selectedRow, field.key, [...(event.target.files ?? [])])} /></label>{row[field.key] && <button type="button" onClick={() => updateRow(selectedRow, field.key, '')}>{t('wizard.image.remove')}</button>}</div>{refused?.field === field.key && <span role="alert">{refused.said}</span>}</div> : <label key={field.key} className={field.key === 'body' ? 'is-wide' : ''}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span>{field.key === 'body' ? <textarea rows={4} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} /> : <input type={field.kind === 'number' ? 'number' : 'text'} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} />}</label>)}</div>
+        >{row[field.key] ? <img src={row[field.key]} alt={t('wizard.image.preview', { label: field.label })} /> : <i>{t('wizard.image.none')}</i>}{over === field.key && <DropSays />}<label className="byd-wizard-file-button byd-secondary">{t(row[field.key] ? 'wizard.image.change' : 'wizard.image.choose')}<input className="byd-offscreen" type="file" accept="image/png,image/jpeg,image/gif,image/webp" aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} onChange={(event) => chooseImage(selectedRow, field.key, [...(event.target.files ?? [])])} /></label>{row[field.key] && <button type="button" onClick={() => { updateRow(selectedRow, field.key, ''); setFocusOn({ at: `[data-image-field="${field.key}"] input[type="file"]` }) }}>{t('wizard.image.remove')}</button>}</div>{refused?.field === field.key && <span role="alert">{refused.said}</span>}</div> : <label key={field.key} className={field.key === 'body' ? 'is-wide' : ''}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span>{field.key === 'body' ? <textarea rows={4} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} /> : <input type={field.kind === 'number' ? 'number' : 'text'} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} />}</label>)}</div>
       </div>
       <div className="byd-wizard-card-tabs">{s.rows.map((candidate, index) => <button type="button" key={index} className="byd-choice" aria-pressed={selectedRow === index} onClick={() => setSelectedRow(index)}><b>{index + 1}</b>{candidate['title'] || t('wizard.card.untitled')}</button>)}<button type="button" className="is-add" onClick={addRow}>{t('wizard.card.add')}</button><button type="button" disabled={s.rows.length === 1} onClick={() => removeRow(selectedRow)}>{t('wizard.card.remove')}</button></div>
       <footer><button type="button" className="byd-wizard-primary byd-primary" disabled={!hasCards} {...working(busy)} onClick={() => void toEditor()}><Held busy={busy && via === 'guided'} idle={t('wizard.create')} working={t('wizard.creating')} /></button>{error && via === 'guided' && <p ref={errorRef} className="byd-wizard-error" role="alert" tabIndex={-1}>{error}</p>}</footer>
@@ -489,8 +516,8 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
           {/* The steps are a tablist, so they can be walked with the arrows; these two are the
               same move said the way a form says it, for someone who reads the page in order. */}
           <nav className="byd-wizard-steps" aria-label={t('wizard.stepnav')}>
-            <button type="button" disabled={at === 0} onClick={() => setStep(STEPS[at - 1]?.[0] ?? step)}>{t('wizard.prev')}</button>
-            <button type="button" className="byd-wizard-primary byd-primary" disabled={at === STEPS.length - 1} onClick={() => setStep(STEPS[at + 1]?.[0] ?? step)}>{t('wizard.next')}</button>
+            <button type="button" disabled={at === 0} onClick={() => walk(-1)}>{t('wizard.prev')}</button>
+            <button type="button" className="byd-wizard-primary byd-primary" disabled={at === STEPS.length - 1} onClick={() => walk(1)}>{t('wizard.next')}</button>
           </nav>
         </div>
       )}
