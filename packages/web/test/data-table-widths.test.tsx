@@ -114,7 +114,7 @@ type View = 'plain' | 'filtered' | 'sorted'
 function markupOf(doc: ProjectDoc, view: View = 'plain'): string {
   const { container, unmount } = render(<Table doc={doc} />)
   if (view === 'filtered') fireEvent.change(screen.getByLabelText('Sök i alla fält'), { target: { value: 'Gruva' } })
-  if (view === 'sorted') fireEvent.click(screen.getByRole('button', { name: /^title/ }))
+  if (view === 'sorted') fireEvent.click(screen.getByRole('button', { name: /^Titel/ }))
   const html = container.innerHTML
   unmount()
   return html

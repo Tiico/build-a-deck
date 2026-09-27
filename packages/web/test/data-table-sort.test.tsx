@@ -70,14 +70,14 @@ describe('DataTable sorting (a view, #15)', () => {
     renderTable(costedDoc())
     expect(shownOrder()).toEqual(['dragon', 'knight', 'wizard'])
 
-    fireEvent.click(screen.getByRole('button', { name: /^title/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Titel/ }))
 
     expect(shownOrder()).toEqual(['wizard', 'dragon', 'knight'])
   })
 
   it('turns the order around on the second activation and releases the sort on the third', () => {
     renderTable(costedDoc())
-    const title = screen.getByRole('button', { name: /^title/ })
+    const title = screen.getByRole('button', { name: /^Titel/ })
 
     fireEvent.click(title)
     fireEvent.click(title)
@@ -110,7 +110,7 @@ describe('DataTable sorting (a view, #15)', () => {
     fireEvent.click(kostnad)
     expect(headerOf(kostnad).getAttribute('aria-sort')).toBe('ascending')
     expect(headerOf(kostnad).textContent).toContain('↑')
-    expect(headerOf(screen.getByRole('button', { name: /^title/ })).getAttribute('aria-sort')).toBe('none')
+    expect(headerOf(screen.getByRole('button', { name: /^Titel/ })).getAttribute('aria-sort')).toBe('none')
     expect(screen.getByRole('status').textContent).toBe('Sorterad på kostnad, stigande.')
 
     fireEvent.click(kostnad)
@@ -195,7 +195,7 @@ describe('DataTable sorting from the keyboard (#15)', () => {
     // the × that took the column away — so a designer tabbing to the column she wanted passed
     // through a control that removes one on the way to each. They are behind the head's own door
     // now (#46 on #32), which is one stop rather than one per column.
-    expect(buttons.map(nameOf)).toEqual(['id', 'title', 'body', 'kostnad', 'antal', 'Kolumner'])
+    expect(buttons.map(nameOf)).toEqual(['id', 'Titel', 'body', 'kostnad', 'antal', 'Kolumner'])
     for (const button of buttons) {
       await user.tab()
       expect(document.activeElement).toBe(button)
@@ -233,7 +233,7 @@ describe('DataTable sorting from the keyboard (#15)', () => {
   it('activates on Space as well, and moving on to the next header starts that column ascending', async () => {
     const user = userEvent.setup()
     renderTable(costedDoc())
-    const title = screen.getByRole('button', { name: /^title/ })
+    const title = screen.getByRole('button', { name: /^Titel/ })
     const kostnad = screen.getByRole('button', { name: /^kostnad/ })
 
     await tabTo(user, title)

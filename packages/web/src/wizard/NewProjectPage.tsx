@@ -3,15 +3,19 @@ import { CardPreview } from '../editor/CardPreview.js'
 import { useRoving } from '../editor/roving.js'
 import { useRoom } from '../room.js'
 import { loginUrl, withCredentials } from '../account/api.js'
-import { assetRef, bytesOfDataUrl } from '../editor/assets.js'
+import { assetRef, bytesOfDataUrl, imageTypeOf } from '../editor/assets.js'
+import { ASSET_MAX_BYTES } from '@byd/protocol'
 import { DropSays, dropSurface, oneFile } from '../editor/dropping.js'
 import { suggestFieldKey } from '../editor/fields.js'
-import { buildBlankProject, buildProject, type WizardState } from './build.js'
-import { uploadFrameFont } from './fonts.js'
-import { defaultFields, DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
+import { buildBlankProject, buildProject, typedFields, type WizardState } from './build.js'
+import { frameFontSource, uploadFrameFont } from './fonts.js'
+import { NotMade } from './not-made.js'
+import { columnOf, defaultFields, DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
+import { fieldLabel } from '../editor/fields.js'
+import { ANTAL } from '@byd/server/doc'
 import { useT, type Key, type T } from '../i18n/index.js'
 import { Help } from '../editor/HelpDrawer.js'
-import { MAX_PLAYERS } from '@byd/server/doc'
+import { MAX_PLAYERS, PROJECT_NAME_MAX } from '@byd/server/doc'
 import './wizard.css'
 
 export type NewProjectPageProps = { onNavigate?(url: string): void }
@@ -22,7 +26,11 @@ export type NewProjectPageProps = { onNavigate?(url: string): void }
 // over, so it is written in the language they are building the game in (A4).
 const firstRow = (t: T): Record<string, string> => ({ title: t('wizard.card.n', { n: 1 }), cost: '1', body: '', art: '' })
 const emptyState = (t: T): WizardState => ({ name: '', players: 2, fields: defaultFields(t), frame: 'classic', rows: [firstRow(t)] })
+// The draft, kept for the life of the tab (#476): a reload, a step back or a login round gives it
+// back as it was. It is only ever *sent* on the way back from the login it was waiting for — the
+// `resume` mark on that one address — and never because `/new` was opened again later.
 const PENDING_KEY = 'byd.pending-wizard'
+const RESUME = 'resume'
 // `blank` is the door the draft was on its way through (L42), so a login asked for on the way
 // past the guided start resumes past it, not through it.
 type PendingWizard = { state: WizardState; server: string | null; blank?: boolean }
@@ -71,6 +79,7 @@ const mappedByStarterFrame = (key: string) => ['title', 'cost', 'body', 'art'].i
 // Vad fältet pekar på: exemplet alltid, beskedet när det finns (#416).
 const NAME_EXAMPLE = 'byd-wizard-name-example'
 const NAME_SAYS = 'byd-wizard-name-says'
+const NAME_LIMIT = 'byd-wizard-name-limit'
 
 // The three steps the header has promised all along. Below the desk they are three screens with
 // one job each; on a desk they are the two columns the wizard has always had (L10, #4).
@@ -89,7 +98,14 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const server = params.get('server')
   const http = server ?? location.origin
   const pending = useMemo(() => pendingWizard(server), [server])
+  const resuming = useMemo(() => params.get(RESUME) === '1', [params])
+  // What an untouched wizard holds, so a draft is only a draft once something has been written.
+  const pristine = useMemo(() => JSON.stringify(emptyState(t)), [])
   const [s, setS] = useState<WizardState>(pending?.state ?? emptyState(t))
+  const dirty = JSON.stringify(s) !== pristine
+  // Set on the way out through one of the page's own doors, so the question below is not asked
+  // about a leaving the page itself asked for.
+  const leaving = useRef(false)
   const [selectedRow, setSelectedRow] = useState(0)
   const desk = useRoom() === 'desk'
   const [step, setStep] = useState<Step>('spelet')
@@ -116,17 +132,43 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const resumed = useRef(false)
   const frame = FRAMES.find((candidate) => candidate.id === s.frame) ?? DEFAULT_FRAME
   const named = s.name.trim().length > 0
+  const atLimit = s.name.length >= PROJECT_NAME_MAX
   // Det namnet stänger är inte längre knappen utan bara vägen igenom den (#416). Vad som faktiskt
   // låser den guidade utgången är ett spel utan kort eller fält, vilket den inte kan göra något av.
   const hasCards = s.rows.length > 0 && s.fields.length > 0
+  // What stands in the way of a name becoming a column (#476, L44), field by field.
+  const problems = useMemo(() => fieldProblems(s.fields, t), [s.fields, t])
   const front = useMemo(() => frame.front(s.fields), [frame, s.fields])
+  // Each frame's face, once a press on that frame has fetched it (#476, L27): the preview is drawn
+  // in it from then on, and until then it says the face comes with the choice.
+  // The asking itself is kept too, so «Skapa» pressed before it has answered waits for the same
+  // answer instead of asking the catalogue a second time.
+  const [faces, setFaces] = useState<Record<string, { stack: string; src: string }>>({})
+  const asking = useRef(new Map<string, Promise<{ stack: string; src: string } | null>>())
+  const pickFrame = (id: string) => {
+    setS((current) => ({ ...current, frame: id }))
+    const chosen = FRAMES.find((candidate) => candidate.id === id)
+    if (!chosen || asking.current.has(id)) return
+    const asked = frameFontSource(chosen.font)
+    asking.current.set(id, asked)
+    void asked.then((face) => {
+      if (face) setFaces((known) => ({ ...known, [id]: face }))
+      else asking.current.delete(id)
+    })
+  }
+  const face = faces[frame.id]
+  const previewFonts = useMemo(() => (face ? { [frame.font.family]: face } : undefined), [face, frame.font.family])
   const row = s.rows[selectedRow] ?? s.rows[0] ?? firstRow(t)
+  // The card as the game will hold it, under the columns the fields were named (#476).
+  const card = useMemo(() => typedFields(row, s.fields), [row, s.fields])
 
   const suffix = (q: URLSearchParams) => {
     if (server) q.set('server', server)
     return q.toString()
   }
   const toEditor = async (door: Via = 'guided') => {
+    // A second press while the first is on its way is not a second game.
+    if (busy) return
     // Den utgång som trycks utan namn går ingenstans — den säger vad som saknas, vid fältet, och
     // lämnar markören där det rättas.
     if (!named) {
@@ -136,6 +178,13 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       return
     }
     setSays(null)
+    // A field whose name the document cannot hold is put right where it is written first.
+    const faulty = door === 'guided' ? s.fields.find((field) => problems[field.key]) : undefined
+    if (faulty) {
+      if (!desk) setStep('falten')
+      setFocusOn({ at: `[data-field="${faulty.key}"] input` })
+      return
+    }
     setBusy(true)
     setVia(door)
     setError(null)
@@ -143,7 +192,10 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     // this tab and comes back through the same door.
     const login = () => {
       rememberWizard({ state: s, server, blank: door === 'blank' })
-      onNavigate(loginUrl(location.pathname + location.search, server))
+      const back = new URLSearchParams(location.search)
+      back.set(RESUME, '1')
+      leaving.current = true
+      onNavigate(loginUrl(`${location.pathname}?${back.toString()}`, server))
       return new Error(t('wizard.error.login'))
     }
     try {
@@ -158,31 +210,81 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         if (uploaded === 'login') throw login()
         // And the frame's own face with them (#420): the game is set in a typeface it carries,
         // so the first screen in the editor is a card that can be printed as it stands.
-        const fonts = await uploadFrameFont(t, http, frame)
+        const fonts = await uploadFrameFont(t, http, frame, (await asking.current.get(frame.id))?.src)
         if (fonts === 'login') throw login()
         doc = buildProject(uploaded, t, fonts)
       }
       const res = await fetch(`${http}/projects`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(doc) }))
       if (res.status === 401) throw login()
-      if (!res.ok) throw new Error(t('wizard.error.create', { status: res.status }))
+      if (!res.ok) throw new NotMade('wizard.error.create')
       forgetWizard()
       const { id } = (await res.json()) as { id: string }
+      leaving.current = true
       onNavigate(`/editor?${suffix(new URLSearchParams({ project: id }))}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      // Said as what did not happen and what to do (#476): a reason of the wizard's own, the
+      // service out of reach (the browser's words for that are a `TypeError`), or a sentence the
+      // catalogue already wrote — and never a status code.
+      const why = err instanceof NotMade ? t(err.reason) : err instanceof TypeError ? t('wizard.error.offline') : err instanceof Error ? err.message : String(err)
+      setError(`${t('wizard.error.not-made')} ${why}`)
       setBusy(false)
+      setSaid((n) => n + 1)
     }
   }
   useEffect(() => {
     if (asked === 0) return
     nameField.current?.focus()
   }, [asked])
+  // Where the focus goes after a press that makes, removes or moves something (#476): into what
+  // was just made, onto what is left when a thing goes, into the step that was walked to — never
+  // onto <body>. Asked for by what it is, and found after the render that drew it.
+  const [focusOn, setFocusOn] = useState<{ at: string } | null>(null)
   useEffect(() => {
-    if (!pending || resumed.current) return
+    if (focusOn) document.querySelector<HTMLElement>(focusOn.at)?.focus()
+  }, [focusOn])
+  // The focus goes to what went wrong, where it is read, rather than staying on a button that has
+  // just come back to life.
+  const [said, setSaid] = useState(0)
+  const errorRef = useRef<HTMLParagraphElement>(null)
+  useEffect(() => {
+    if (said > 0) errorRef.current?.focus()
+  }, [said])
+  useEffect(() => {
+    if (!pending || !resuming || resumed.current) return
     resumed.current = true
+    // Said once: the address stops carrying the mark, so a reload of the page it lands on is a
+    // reload and not a second «Skapa».
+    const rest = new URLSearchParams(location.search)
+    rest.delete(RESUME)
+    history.replaceState(history.state, '', `${location.pathname}${rest.toString() ? `?${rest.toString()}` : ''}`)
     void toEditor(pending.blank ? 'blank' : 'guided')
   }, [])
+  // The draft follows every keystroke into the tab's storage, and an untouched wizard keeps nothing.
+  useEffect(() => {
+    if (dirty) rememberWizard({ state: s, server })
+    else forgetWizard()
+  }, [s, dirty, server])
+  // And the browser asks before a reload or a closed tab takes it, as the editor does.
+  useEffect(() => {
+    if (!dirty) return
+    const hold = (event: BeforeUnloadEvent) => {
+      if (leaving.current) return
+      event.preventDefault()
+      // Older browsers read the answer off the event instead of the cancellation.
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', hold)
+    return () => window.removeEventListener('beforeunload', hold)
+  }, [dirty])
 
+  // A step walked to by the buttons takes the focus with it: the button pressed may lock at the
+  // end it has reached, and a locked button cannot keep the focus.
+  const walk = (by: number) => {
+    const to = STEPS[at + by]?.[0]
+    if (!to) return
+    setStep(to)
+    setFocusOn({ at: `#byd-wizard-panel-${to}` })
+  }
   const setFields = (fields: Field[]) => setS((current) => ({ ...current, fields }))
   const updateRow = (index: number, key: string, value: string) => setS((current) => ({
     ...current,
@@ -197,25 +299,39 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       setRefused({ field: key, said: one.said })
       return
     }
-    setRefused(null)
-    const reader = new FileReader()
-    reader.onload = () => updateRow(index, key, String(reader.result ?? ''))
-    reader.readAsDataURL(one.file)
+    // Said at the field the moment the file is chosen (#476), and not as «413» or «415» when the
+    // game is made: the weight before anything is read, and then what the bytes say they are — the
+    // same reading the service makes, so the two cannot disagree.
+    const file = one.file
+    if (file.size > ASSET_MAX_BYTES) {
+      setRefused({ field: key, said: t('wizard.image.too-big', { mb: ASSET_MAX_BYTES / 1024 / 1024 }) })
+      return
+    }
+    void file.arrayBuffer().then((buffer) => {
+      if (!imageTypeOf(new Uint8Array(buffer))) {
+        setRefused({ field: key, said: t('wizard.image.not-image') })
+        return
+      }
+      setRefused(null)
+      const reader = new FileReader()
+      reader.onload = () => updateRow(index, key, String(reader.result ?? ''))
+      reader.readAsDataURL(file)
+    })
   }
   const addField = (kind: Field['kind']) => {
-    // Decided, not left alone by accident (#27, A4): the key is an identifier in the document
-    // and does not follow the reader. Two people clicking the same button must get the same
-    // column, or a template that binds `bild2` would break for whoever was reading in the other
-    // language — and the four keys the wizard already lays out (`title`, `cost`, `body`, `art`)
-    // are English on a Swedish surface for exactly that reason. What the tool suggests at
-    // creation and then hands over is the *label* below, which is written in the designer's own
-    // language and frozen there.
-    //
-    // The editor's own form suggests from the same place (#32), so the two doors into a new
-    // field cannot come to suggest different names for it.
+    // The key is the form's own handle for the field — what the rows are kept under while the
+    // wizard is open — and never reaches the document: the field becomes the column it is *named*
+    // (#476, L44), and the frame finds it by this key, which is its place on the card. The editor's
+    // own form suggests keys from the same place (#32).
+    // The suggested name is the column the field becomes (#476, L44), so it is one no other field
+    // has: a second «Nytt textfält» is «Nytt textfält 2», not a field born refused.
+    const suggested = t(kind === 'image' ? 'wizard.field.new.image' : kind === 'number' ? 'wizard.field.new.number' : 'wizard.field.new.text')
+    const names = new Set(s.fields.map((f) => columnOf(f).toLowerCase()))
+    let label = suggested
+    for (let n = 2; names.has(label.toLowerCase()); n++) label = `${suggested} ${n}`
     const field: Field = {
       key: suggestFieldKey(kind, s.fields.map((f) => f.key)),
-      label: t(kind === 'image' ? 'wizard.field.new.image' : kind === 'number' ? 'wizard.field.new.number' : 'wizard.field.new.text'),
+      label,
       kind,
     }
     setS((current) => ({
@@ -223,6 +339,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       fields: [...current.fields, field],
       rows: current.rows.map((candidate) => ({ ...candidate, [field.key]: '' })),
     }))
+    setFocusOn({ at: `[data-field="${field.key}"] input` })
   }
   const removeField = (key: string) => setS((current) => ({
     ...current,
@@ -233,11 +350,13 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     const next = Object.fromEntries(s.fields.map((field) => [field.key, field.key === 'title' ? t('wizard.card.n', { n: s.rows.length + 1 }) : field.key === 'cost' ? '1' : '']))
     setS((current) => ({ ...current, rows: [...current.rows, next] }))
     setSelectedRow(s.rows.length)
+    setFocusOn({ at: '.byd-wizard-card-form :is(input, textarea)' })
   }
   const removeRow = (index: number) => {
     if (s.rows.length === 1) return
     setS((current) => ({ ...current, rows: current.rows.filter((_, rowIndex) => rowIndex !== index) }))
     setSelectedRow(Math.max(0, Math.min(selectedRow, s.rows.length - 2)))
+    setFocusOn({ at: '.byd-wizard-card-tabs [aria-pressed="true"]' })
   }
 
   // Steps 1 and 2 are one panel each, and the cards are the third. On a desk they are read side
@@ -268,13 +387,30 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
           // Villkoret gäller inte längre så snart något står i fältet.
           if (event.target.value.trim()) setSays(null)
         }}
+        onKeyDown={(event) => {
+          // Enter goes on to the fields, which is what comes next whether they stand beside the
+          // name or behind the next step.
+          if (event.key !== 'Enter') return
+          event.preventDefault()
+          if (!desk) setStep('falten')
+          setFocusOn({ at: '.byd-wizard-field input' })
+        }}
+        autoFocus={desk}
         aria-required="true"
         aria-invalid={says ? 'true' : 'false'}
-        aria-describedby={says ? `${NAME_EXAMPLE} ${NAME_SAYS}` : NAME_EXAMPLE}
+        maxLength={PROJECT_NAME_MAX}
+        aria-describedby={[NAME_EXAMPLE, says ? NAME_SAYS : null, atLimit ? NAME_LIMIT : null].filter(Boolean).join(' ')}
       /></label>
       <p className="byd-wizard-hint" id={NAME_EXAMPLE}>{t('wizard.name.example')}</p>
       {/* Villkoret, sagt en gång per skärm och vid fältet — inte en gång per utgång, fastän de två
           ligger i var sin spalt. Det föds efter trycket och föds därför som en levande region. */}
+      {/* The limit is said once it is reached (#476): a name that stops growing without a word
+          looks like a keyboard that stopped working. */}
+      {atLimit && (
+        <p className="byd-wizard-hint" id={NAME_LIMIT}>
+          {t('wizard.name.max', { n: PROJECT_NAME_MAX })}
+        </p>
+      )}
       {says && (
         <p className="byd-wizard-says" id={NAME_SAYS} role="alert" aria-live="assertive">
           {says}
@@ -291,8 +427,8 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       <div className="byd-wizard-blank">
         <strong>{t('wizard.blank.title')}</strong>
         <p>{t('wizard.blank.body')}</p>
-        <button type="button" className="byd-secondary" disabled={busy} onClick={() => void toEditor('blank')}>{t(busy && via === 'blank' ? 'wizard.creating' : 'wizard.blank.create')}</button>
-        {error && via === 'blank' && <span role="alert">{error}</span>}
+        <button type="button" className="byd-secondary" {...working(busy)} onClick={() => void toEditor('blank')}><Held busy={busy && via === 'blank'} idle={t('wizard.blank.create')} working={t('wizard.creating')} /></button>
+        {error && via === 'blank' && <p ref={errorRef} className="byd-wizard-error" role="alert" tabIndex={-1}>{error}</p>}
       </div>
     </section>
   )
@@ -306,15 +442,27 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       </div>
       <p>{t('wizard.fields.body')}</p>
       <div className="byd-wizard-fields">
-        <div className="byd-wizard-field-list">{s.fields.map((field) => <div className="byd-wizard-field" key={field.key}>
+        <div className="byd-wizard-field-list">{s.fields.map((field) => <div className="byd-wizard-field" key={field.key} data-field={field.key}>
           <span>{t(field.kind === 'image' ? 'wizard.kind.image' : field.kind === 'number' ? 'wizard.kind.number' : 'wizard.kind.text')}</span>
-          <input aria-label={t('wizard.field.name', { label: field.label })} value={field.label} onChange={(event) => setFields(s.fields.map((candidate) => candidate.key === field.key ? { ...candidate, label: event.target.value } : candidate))} />
+          {field.key === 'title' ? (
+            // The tool's own column (#476): what every card is called, shown in the designer's
+            // language and not written over, as `antal` is in the editor.
+            <b className="byd-wizard-field-fixed">{fieldLabel('title', t)}</b>
+          ) : (
+            <input
+              aria-label={t('wizard.field.name', { label: field.label })}
+              value={field.label}
+              onChange={(event) => setFields(s.fields.map((candidate) => candidate.key === field.key ? { ...candidate, label: event.target.value } : candidate))}
+              {...(problems[field.key] ? { 'aria-invalid': true, 'aria-describedby': `byd-wizard-field-says-${field.key}` } : {})}
+            />
+          )}
           <small>{t(mappedByStarterFrame(field.key) ? 'wizard.field.in-frame' : 'wizard.field.in-editor')}</small>
-          <button type="button" aria-label={t('wizard.field.remove', { label: field.label })} onClick={() => removeField(field.key)}>×</button>
+          {field.key !== 'title' && <button type="button" aria-label={t('wizard.field.remove', { label: field.label })} onClick={() => removeField(field.key)}>×</button>}
+          {problems[field.key] && <p className="byd-wizard-field-says" id={`byd-wizard-field-says-${field.key}`}>{problems[field.key]}</p>}
         </div>)}</div>
         <div className="byd-wizard-add-fields"><button type="button" onClick={() => addField('text')}>{t('wizard.add.text')}</button><button type="button" onClick={() => addField('number')}>{t('wizard.add.number')}</button><button type="button" onClick={() => addField('image')}>{t('wizard.add.image')}</button></div>
       </div>
-      <fieldset className="byd-wizard-frames"><legend>{t('wizard.frame')}</legend>{FRAMES.map((candidate) => <button key={candidate.id} type="button" className="byd-choice" aria-pressed={s.frame === candidate.id} onClick={() => setS({ ...s, frame: candidate.id })}>{t(candidate.name)}</button>)}</fieldset>
+      <fieldset className="byd-wizard-frames"><legend>{t('wizard.frame')}</legend>{FRAMES.map((candidate) => <button key={candidate.id} type="button" className="byd-choice" aria-pressed={s.frame === candidate.id} onClick={() => pickFrame(candidate.id)}>{t(candidate.name)}</button>)}</fieldset>
     </section>
   )
   const korten = (
@@ -330,8 +478,8 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         <span>{t(s.rows.length === 1 ? 'wizard.cards.count.one' : 'wizard.cards.count.other', { n: s.rows.length })}</span>
       </div>
       <div className="byd-wizard-card-workspace">
-        <div className="byd-wizard-preview"><CardPreview id="wizard-live" face={front} row={row} icons={{}} /><span>{t('wizard.preview')}</span></div>
-        <div className="byd-wizard-card-form">{s.fields.map((field) => field.kind === 'image' ? <div key={field.key} className="byd-wizard-image-field is-wide"><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span><div
+        <div className="byd-wizard-preview"><CardPreview id="wizard-live" face={front} row={card} icons={{}} fonts={previewFonts} /><span>{t('wizard.preview')}</span>{!face && <span className="byd-wizard-preview-font">{t('wizard.preview.font')}</span>}</div>
+        <div className="byd-wizard-card-form">{s.fields.map((field) => field.kind === 'image' ? <div key={field.key} className="byd-wizard-image-field is-wide" data-image-field={field.key}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span><div
           role="group"
           aria-label={t('wizard.image.field', { label: field.label })}
           {...dropSurface({
@@ -341,10 +489,10 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
             onOver: (on) => setOver(on ? field.key : null),
             onFiles: (files) => chooseImage(selectedRow, field.key, files),
           })}
-        >{row[field.key] ? <img src={row[field.key]} alt={t('wizard.image.preview', { label: field.label })} /> : <i>{t('wizard.image.none')}</i>}{over === field.key && <DropSays />}<label className="byd-wizard-file-button byd-secondary">{t(row[field.key] ? 'wizard.image.change' : 'wizard.image.choose')}<input className="byd-offscreen" type="file" accept="image/*" aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} onChange={(event) => chooseImage(selectedRow, field.key, [...(event.target.files ?? [])])} /></label>{row[field.key] && <button type="button" onClick={() => updateRow(selectedRow, field.key, '')}>{t('wizard.image.remove')}</button>}</div>{refused?.field === field.key && <span role="alert">{refused.said}</span>}</div> : <label key={field.key} className={field.key === 'body' ? 'is-wide' : ''}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span>{field.key === 'body' ? <textarea rows={4} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} /> : <input type={field.kind === 'number' ? 'number' : 'text'} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} />}</label>)}</div>
+        >{row[field.key] ? <img src={row[field.key]} alt={t('wizard.image.preview', { label: field.label })} /> : <i>{t('wizard.image.none')}</i>}{over === field.key && <DropSays />}<label className="byd-wizard-file-button byd-secondary">{t(row[field.key] ? 'wizard.image.change' : 'wizard.image.choose')}<input className="byd-offscreen" type="file" accept="image/png,image/jpeg,image/gif,image/webp" aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} onChange={(event) => chooseImage(selectedRow, field.key, [...(event.target.files ?? [])])} /></label>{row[field.key] && <button type="button" onClick={() => { updateRow(selectedRow, field.key, ''); setFocusOn({ at: `[data-image-field="${field.key}"] input[type="file"]` }) }}>{t('wizard.image.remove')}</button>}</div>{refused?.field === field.key && <span role="alert">{refused.said}</span>}</div> : <label key={field.key} className={field.key === 'body' ? 'is-wide' : ''}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span>{field.key === 'body' ? <textarea rows={4} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} /> : <input type={field.kind === 'number' ? 'number' : 'text'} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} />}</label>)}</div>
       </div>
       <div className="byd-wizard-card-tabs">{s.rows.map((candidate, index) => <button type="button" key={index} className="byd-choice" aria-pressed={selectedRow === index} onClick={() => setSelectedRow(index)}><b>{index + 1}</b>{candidate['title'] || t('wizard.card.untitled')}</button>)}<button type="button" className="is-add" onClick={addRow}>{t('wizard.card.add')}</button><button type="button" disabled={s.rows.length === 1} onClick={() => removeRow(selectedRow)}>{t('wizard.card.remove')}</button></div>
-      <footer><button type="button" className="byd-wizard-primary byd-primary" disabled={!hasCards || busy} onClick={() => void toEditor()}>{t(busy && via === 'guided' ? 'wizard.creating' : 'wizard.create')}</button>{error && via === 'guided' && <span role="alert">{error}</span>}</footer>
+      <footer><button type="button" className="byd-wizard-primary byd-primary" disabled={!hasCards} {...working(busy)} onClick={() => void toEditor()}><Held busy={busy && via === 'guided'} idle={t('wizard.create')} working={t('wizard.creating')} /></button>{error && via === 'guided' && <p ref={errorRef} className="byd-wizard-error" role="alert" tabIndex={-1}>{error}</p>}</footer>
     </section>
   )
   // The handoff's body is said behind the first step's question mark (L36); the title stays.
@@ -354,6 +502,11 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   return (
     <div className="byd-wizard" data-page="new" data-room={desk ? 'desk' : 'steps'}>
       <header>
+        {/* The way back, where the editor has its own (#476): the draft stays in the tab, and the
+            browser asks first if something is written. */}
+        <a className="byd-wizard-home" href={server ? `/?${new URLSearchParams({ server }).toString()}` : '/'}>
+          {t('editor.home')}
+        </a>
         <div><span>{t('wizard.eyebrow')}</span><h1>{t('wizard.title')}</h1></div>
         <span>{t('wizard.steps')}</span>
       </header>
@@ -407,12 +560,49 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
           {/* The steps are a tablist, so they can be walked with the arrows; these two are the
               same move said the way a form says it, for someone who reads the page in order. */}
           <nav className="byd-wizard-steps" aria-label={t('wizard.stepnav')}>
-            <button type="button" disabled={at === 0} onClick={() => setStep(STEPS[at - 1]?.[0] ?? step)}>{t('wizard.prev')}</button>
-            <button type="button" className="byd-wizard-primary byd-primary" disabled={at === STEPS.length - 1} onClick={() => setStep(STEPS[at + 1]?.[0] ?? step)}>{t('wizard.next')}</button>
+            <button type="button" disabled={at === 0} onClick={() => walk(-1)}>{t('wizard.prev')}</button>
+            <button type="button" className="byd-wizard-primary byd-primary" disabled={at === STEPS.length - 1} onClick={() => walk(1)}>{t('wizard.next')}</button>
           </nav>
         </div>
       )}
     </div>
+  )
+}
+
+// Why a field's name cannot become a column (#476, L44): none at all, one another field already
+// has, or one of the tool's own — the card's id, `antal`, and the title in any of its words. The
+// comparison is the one a reader makes, without regard to case.
+function fieldProblems(fields: readonly Field[], t: T): Record<string, string> {
+  const owned = ['id', 'title', ANTAL, fieldLabel('title', t), fieldLabel(ANTAL, t)].map((n) => n.toLowerCase())
+  const out: Record<string, string> = {}
+  for (const field of fields) {
+    if (field.key === 'title') continue
+    const name = columnOf(field)
+    if (name === '') out[field.key] = t('wizard.field.empty')
+    else if (owned.includes(name.toLowerCase())) out[field.key] = t('wizard.field.owned', { name })
+    else if (fields.some((other) => other !== field && columnOf(other).toLowerCase() === name.toLowerCase())) out[field.key] = t('wizard.field.twice', { name })
+  }
+  return out
+}
+
+// A button at work is not a locked button (#476): it keeps its look and its width, says it is
+// busy, and a press on it does nothing — the handler refuses it — rather than greying out under
+// the pointer as a locked one does.
+const working = (busy: boolean) => (busy ? { 'aria-disabled': true, 'aria-busy': true } : {})
+
+// A button's two words in one place (#476): both are laid out, and only the one that is true is
+// seen and read, so the button is as wide as its longer word through the wait and does not
+// shrink under the pointer that pressed it.
+function Held({ busy, idle, working }: { busy: boolean; idle: string; working: string }) {
+  return (
+    <span className="byd-wizard-held">
+      <span data-on={!busy} aria-hidden={busy}>
+        {idle}
+      </span>
+      <span data-on={busy} aria-hidden={!busy}>
+        {working}
+      </span>
+    </span>
   )
 }
 
@@ -430,7 +620,7 @@ async function uploadImages(t: T, http: string, state: WizardState): Promise<Wiz
       if (!image) continue
       const res = await fetch(`${http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': image.type }, body: image.bytes }))
       if (res.status === 401) return 'login'
-      if (!res.ok) throw new Error(t('wizard.error.upload', { status: res.status }))
+      if (!res.ok) throw new NotMade(res.status === 413 ? 'wizard.error.too-big' : 'wizard.error.upload')
       next[key] = assetRef(((await res.json()) as { hash: string }).hash)
     }
     rows.push(next)

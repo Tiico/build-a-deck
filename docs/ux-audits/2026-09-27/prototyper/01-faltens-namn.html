@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 01 — Fältens namn (#476 fynd 1 och 9)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Designern skriver «Pris», «Styrka», «Liv» i steg 2. Editorns tabell visar `cost`, `fält1`,
+     `värde1`: namnet lagras bara i guidens state (`NewProjectPage.tsx` addField) och `build.ts`
+     läser bara `key`. Dokumentet har ingen etikett — namnet *är* nyckeln (L44) — så frågan är
+     vad steg 2 ska låta designern skriva, och vad det blir.
+
+       Nu  etiketten försvinner, nyckeln är verktygets
+       A   namnet blir kolumnen, alla sex; startramen binder det designern döpt
+       B   steg 2 är kolumnhuvudet självt, med de nycklar dokumentet har i dag
+       C   ramens fyra är fasta ord, bara egna fält döps här
+
+     Fynd 9 (tomt och dubbelt namn) stoppas vid fältet i A, B och C. Till höger: editorns
+     Tabell-flik och mallens bindningar, räknade ur samma lista som vänstersidan. ─────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .yta { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(420px, 520px) minmax(0, 1fr); }
+
+  /* Vänster: guidens vänsterspalt, steg 2, i wizard.css:s mått. */
+  .yta > .byd-wizard { min-height: 0; overflow: auto; background: var(--byd-wizard-panel-bg); border-right: 1px solid var(--line); padding: 26px 30px 40px 36px; display: grid; align-content: start; gap: 14px; }
+  .byd-help-row { display: flex; align-items: center; gap: 8px; }
+  .lead { margin: 0 !important; }
+  .lead b { color: var(--ink); font-weight: 700; }
+
+  /* Listan, som i dag (Nu, A, C). */
+  .falt-lista { display: grid; grid-template-columns: 54px minmax(90px, 1fr) max-content var(--tap); column-gap: 8px; row-gap: 8px; }
+  /* Ett rutnät för hela listan (subgrid), så att namnrutorna står lika breda rad för rad. */
+  .falt { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; row-gap: 4px; align-items: center; }
+  .falt > .sort { border-radius: 999px; padding: 5px 7px; background: #e2e8e2; color: #3f4b3f; text-align: center; font-size: 10px; font-weight: 800; }
+  .falt > small { color: var(--muted); font-size: 11px; }
+  .falt > button { padding: 0; width: var(--tap); }
+  .falt > .sagt { grid-column: 2 / 5; margin: 0; }
+  .falt > .fast { min-height: var(--tap); display: flex; align-items: center; gap: 8px; padding: 0 11px; border: 1px solid var(--line); border-radius: 9px; background: #f7f6f0; color: var(--ink); font-weight: 600; }
+  .falt > .fast i { font-style: normal; font-size: 10px; font-weight: 700; color: #6a6a62; border-radius: 999px; padding: 2px 6px; background: #ecebe5; margin-left: auto; white-space: nowrap; }
+  .falt > small.plats { color: #3f4b3f; font-weight: 600; }
+
+  /* B: steg 2 ritat som kolumnhuvudet, på papper. */
+  .huvud-remsa { display: flex; flex-wrap: wrap; gap: 8px; }
+  .kolumn { width: calc(50% - 4px); display: grid; grid-template-columns: minmax(0, 1fr) var(--tap); grid-template-rows: auto auto auto; gap: 2px 6px; padding: 8px 8px 8px 10px; border: 1px solid var(--line); border-top: 3px solid #1e2620; border-radius: 4px 4px 9px 9px; background: #fff; }
+  .kolumn .sort { grid-column: 1; font-size: 10px; font-weight: 800; color: #3f4b3f; letter-spacing: .06em; text-transform: uppercase; }
+  .kolumn input { grid-column: 1; font: 700 14px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace !important; letter-spacing: -.01em; }
+  .kolumn button { grid-column: 2; grid-row: 1 / 3; align-self: end; padding: 0; width: var(--tap); }
+  .kolumn small { grid-column: 1 / 3; color: var(--muted); font-size: 11px; }
+  .kolumn .sagt { grid-column: 1 / 3; margin: 0; }
+
+  .lagg-till { display: flex; gap: 6px; flex-wrap: wrap; }
+  .lagg-till button { border-style: dashed; font-size: 12px; }
+  .skapa { margin-top: 10px; padding-top: 16px; border-top: 1px solid var(--line); display: grid; gap: 8px; justify-items: start; }
+  .skapa button { padding: 0 18px; }
+
+  /* Höger: editorns Tabell, som i wizard-editor-tabell-1280x800.png. */
+  .yta > .byd-editor { min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .ed-rad { display: flex; align-items: center; gap: 12px; padding: 12px var(--gutter); border-bottom: 1px solid var(--line); }
+  .sok { flex: 0 1 240px; min-height: 44px; display: flex; align-items: center; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--sunk); color: var(--quiet); }
+  .tabell-lada { margin: 16px var(--gutter) 0; overflow-x: auto; border-radius: 6px; background: #1b1d23; scrollbar-width: thin; }
+  table { border-collapse: collapse; width: max-content; min-width: 100%; }
+  th, td { height: 60px; padding: 0 14px; text-align: left; white-space: nowrap; }
+  th { color: #c9d0de; font-weight: 800; font-size: 13px; border-bottom: 1px solid var(--line); }
+  th .pil { color: var(--quiet); font-weight: 400; margin-left: 4px; }
+  td { color: #dce3f2; font-size: 12px; border-bottom: 1px solid var(--line-soft); }
+  td.id { color: var(--quiet-2); font: 12px ui-monospace, Menlo, monospace; }
+  th.ruta, td.ruta { width: 44px; padding: 0 0 0 14px; }
+  th.ruta i, td.ruta i { display: inline-block; width: 18px; height: 18px; border: 1px solid #6f7a90; border-radius: 4px; }
+  th.plus { width: 46px; text-align: center; font-size: 20px; font-weight: 400; background: #20232b; }
+  th.ny { animation: ny 1.2s ease-out; }
+  @keyframes ny { from { background: #2c4a78; } to { background: transparent; } }
+  .bild { display: inline-block; width: 60px; height: 38px; border-radius: 4px; background: #28a36f; position: relative; vertical-align: middle; }
+  .bild::after { content: ''; position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; background: #f5d431; }
+
+  .utfall { margin: 18px var(--gutter) 0; display: grid; gap: 12px; }
+  .utfall h3 { margin: 8px 0 0; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--quiet); }
+  .bindningar { display: flex; flex-wrap: wrap; gap: 6px; }
+  .bindningar span { padding: 5px 9px; border-radius: 6px; background: var(--sunk); border: 1px solid var(--line); color: var(--quiet-2); }
+  .bindningar span b { color: #fff; }
+  .jamfor { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; align-items: baseline; }
+  .jamfor dt { color: var(--quiet); }
+  .jamfor dd { margin: 0; color: #dce3f2; }
+  .dom { padding: 10px 12px; border-radius: 8px; font-weight: 600; }
+  .dom.ja { background: #16301f; color: #9fe0b5; border: 1px solid #245a37; }
+  .dom.nej { background: #3a1d17; color: #f7b4a0; border: 1px solid #6e3222; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>Fynd 1 och 9 · Fältnamnen i steg 2.</b> Skriv i namnrutorna, lägg till och ta bort fält — tabellen till höger är det editorn skulle få.</p>
+    <p>Pröva ett tomt namn, två «Liv», «antal» och «id». ← → byter variant när inget fält har fokus.</p>
+  </div>
+  <button type="button" id="aterstall">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+
+<div class="yta">
+  <section class="byd-wizard" aria-labelledby="h2">
+    <div class="byd-help-row">
+      <h2 id="h2"><span class="byd-wizard-step">2</span>Fält</h2>
+      <button type="button" class="fraga-tecken" aria-label="Hjälp om fälten">?</button>
+    </div>
+    <p class="lead" id="lead"></p>
+    <div id="falten"></div>
+    <div class="lagg-till">
+      <button type="button" data-lagg="text">+ Textfält</button>
+      <button type="button" data-lagg="number">+ Talfält</button>
+      <button type="button" data-lagg="image">+ Bildfält</button>
+    </div>
+    <div class="skapa">
+      <button type="button" class="byd-primary" id="skapa">Skapa spelet och fortsätt i editorn →</button>
+      <span class="sagt" id="skapa-sagt" role="status"></span>
+    </div>
+  </section>
+
+  <section class="byd-editor" aria-label="Editorn efter «Skapa spelet»">
+    <div class="ed-huvud">
+      <span class="hem">Mina spel</span><strong>Kråkkriget</strong><span class="rev">rev 1</span><span class="sparat">Sparat</span>
+      <div class="ed-flikar" role="tablist" aria-label="Lägen">
+        <button role="tab" aria-selected="false" tabindex="-1">Kortvägg</button><button role="tab" aria-selected="false" tabindex="-1">Mall</button><button role="tab" aria-selected="true" tabindex="-1">Tabell</button><button role="tab" aria-selected="false" tabindex="-1">Bord</button>
+      </div>
+      <span class="spacer"></span>
+      <button type="button" class="ed-knapp primar" tabindex="-1">Starta bord</button>
+    </div>
+    <div class="ed-rad"><span class="sok">Sök i alla fält…</span><span class="spacer"></span><button type="button" class="ed-knapp" tabindex="-1">Importera ▾</button></div>
+    <div class="tabell-lada"><table><thead><tr id="huvud"></tr></thead><tbody id="kropp"></tbody></table></div>
+    <div class="utfall">
+      <h3>Startramen binder</h3>
+      <div class="bindningar" id="bindningar"></div>
+      <h3>Samma fält, två ställen</h3>
+      <dl class="jamfor">
+        <dt>Steg 3 i guiden</dt><dd id="i-steg3"></dd>
+        <dt>Editorns tabell</dt><dd id="i-editorn"></dd>
+      </dl>
+      <div class="dom" id="dom"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+// Rollerna är startramens platser (frames.ts): vad ramen ritar var. I dag är rollen och nyckeln
+// samma ord; i A och C är de skilda åt, och ramen binder den nyckel fältet med rollen fick.
+const PLATS = { title: 'rubriken', cost: 'hörnet', body: 'brödtexten', art: 'bilden' }
+const SORT = { text: 'Text', number: 'Tal', image: 'Bild' }
+const SV = { title: 'Titel', cost: 'Kostnad', body: 'Text', art: 'Illustration' }
+const EXEMPEL = { title: 'Korpen', cost: '1', body: 'Flyger över fältet.', art: '▣', Styrka: 'hög', Liv: '3' }
+
+const VARIANTER = {
+  nu: {
+    lead: 'Fälten på varje kort.',
+    not: '<b>Nu.</b> Rutan är en etikett som bara guiden läser. Editorn får verktygets nycklar: <code>cost</code>, <code>fält1</code>, <code>värde1</code>. Inget stoppar ett tomt eller dubbelt namn.',
+  },
+  a: {
+    lead: 'Fälten på varje kort. <b>Namnen blir kolumnerna i editorn.</b>',
+    not: '<b>A · Namnet blir kolumnen.</b> Det designern skriver blir nyckeln, alla sex. Startramen binder fältet på sin plats, inte ett visst ord, så «Pris» hamnar i hörnet ändå. <span class="plus">+ Ett namn för ett fält, precis som L44 och A4 redan säger. Förslagen står på designerns språk.</span> <span class="minus">− <code>build.ts</code> och <code>frames.ts</code> binder per plats i stället för per ord. Kommentaren om #27 i <code>addField</code> skrivs om.</span>',
+  },
+  b: {
+    lead: 'Det du skriver här är <b>kolumnernas namn</b>. Samma ord står överst i editorns tabell och i CSV-filen.',
+    not: '<b>B · Kolumnhuvudet självt.</b> Steg 2 ritas som tabellens huvud, och rutan är nyckeln som den ser ut i dag: <code>title</code>, <code>cost</code>, <code>fält1</code>. <span class="plus">+ Ingen ändring i ramar eller dokument. Det man ser är ordagrant det man får.</span> <span class="minus">− Engelska och kod-ord på en svensk yta, vilket A4 säger emot («föreslås på designerns språk»). Blandningen «cost, Styrka» blir kvar i spelet. Tyngre för en förstagångsdesigner.</span>',
+  },
+  c: {
+    lead: 'De fyra första är <b>startramens</b> och heter så i editorn. Döp om dem där. Fält du lägger till döper du här, och namnet blir kolumnen.',
+    not: '<b>C · Ramens fält är fasta.</b> Titel, Kostnad, Text och Illustration är fasta ord på designerns språk som ramen binder. Bara egna fält får namn, och ett nytt fält börjar tomt med markören i. <span class="plus">+ Ingen ombindning. Färre beslut i steg 2.</span> <span class="minus">− Den som vill ha «Pris» får döpa om det i editorn (L44:s dörr). Fasta rader och fria rader ser olika ut i samma lista.</span>',
+  },
+}
+
+const rot = document.documentElement
+let variant = 'a'
+let falt = []
+let uid = 0
+const rord = new Set()
+
+function start(v) {
+  const f = (role, kind, namn) => ({ uid: ++uid, role, kind, namn })
+  const startnamn = (r) => v === 'b' ? r : SV[r]
+  falt = ['title', 'cost', 'body', 'art'].map((r) => f(r, r === 'cost' ? 'number' : r === 'art' ? 'image' : 'text', startnamn(r)))
+  // Som i granskningens skärmbild: «Kostnad» döpt till «Pris», och två egna fält.
+  if (v !== 'c' && v !== 'b') falt[1].namn = 'Pris'
+  falt.push(f(null, 'text', 'Styrka'), f(null, 'number', 'Liv'))
+  // I dag bär varje fält också en nyckel verktyget valt.
+  let n = { text: 0, number: 0, image: 0 }
+  for (const x of falt) x.nyckel = x.role ?? ({ text: 'fält', number: 'värde', image: 'bild' }[x.kind] + (++n[x.kind]))
+  rord.clear()
+}
+
+const nyckel = (x) => variant === 'nu' ? x.nyckel : x.namn.trim()
+const fast = (x) => variant === 'c' && x.role
+
+// Fynd 9: vad som stoppar ett namn, sagt vid fältet. Jämförelsen struntar i versaler, eftersom
+// «Liv» och «liv» är två kolumner för servern men ett ord för den som läser tabellen.
+function problem(x) {
+  if (variant === 'nu') return null
+  const namn = x.namn.trim()
+  if (!namn) return 'Fältet behöver ett namn.'
+  const lag = namn.toLocaleLowerCase('sv')
+  if (lag === 'antal') return '«antal» är lekens eget: hur många av kortet leken har.'
+  if (lag === 'id') return '«id» är kortets eget namn i tabellen.'
+  const forst = falt.find((y) => y.namn.trim().toLocaleLowerCase('sv') === lag)
+  if (forst !== x) return `Det finns redan ett fält som heter «${forst.namn.trim()}».`
+  return null
+}
+
+function nyttNamn(kind) {
+  if (variant === 'c') return ''
+  if (variant === 'b' || variant === 'nu') {
+    const bas = { text: 'fält', number: 'värde', image: 'bild' }[kind]
+    let n = 1
+    while (falt.some((y) => (variant === 'nu' ? y.nyckel : y.namn) === bas + n)) n++
+    return variant === 'nu' ? { text: 'Nytt textfält', number: 'Nytt tal', image: 'Ny bild' }[kind] + '\u0000' + bas + n : bas + n
+  }
+  const bas = { text: 'Nytt textfält', number: 'Nytt tal', image: 'Ny bild' }[kind]
+  let namn = bas
+  for (let n = 2; falt.some((y) => y.namn.trim().toLocaleLowerCase('sv') === namn.toLocaleLowerCase('sv')); n++) namn = `${bas} ${n}`
+  return namn
+}
+
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+
+function ritaFalten(fokus) {
+  const lada = document.getElementById('falten')
+  if (variant === 'b') {
+    lada.className = 'huvud-remsa'
+    lada.innerHTML = falt.map((x) => {
+      const p = rord.has(x.uid) ? problem(x) : null
+      return `<div class="kolumn" data-uid="${x.uid}">
+        <span class="sort">${SORT[x.kind]}</span>
+        <input aria-label="Kolumnens namn" spellcheck="false" value="${esc(x.namn)}" aria-invalid="${p ? 'true' : 'false'}" ${p ? `aria-describedby="s${x.uid}"` : ''}>
+        <button type="button" aria-label="Ta bort kolumnen ${esc(x.namn)}">×</button>
+        <small>${x.role ? 'Startramen ritar den i ' + PLATS[x.role] : 'Placeras på mallen i editorn'}</small>
+        ${p ? `<p class="sagt" id="s${x.uid}" role="alert">${p}</p>` : ''}
+      </div>`
+    }).join('')
+  } else {
+    lada.className = 'falt-lista'
+    lada.innerHTML = falt.map((x) => {
+      const p = rord.has(x.uid) ? problem(x) : null
+      const namnet = fast(x)
+        ? `<span class="fast">${esc(x.namn)}<i>ramens</i></span>`
+        : `<input aria-label="${esc(x.namn || 'Nytt fält')} namn" value="${esc(variant === 'nu' ? x.namn : x.namn)}" aria-invalid="${p ? 'true' : 'false'}" ${p ? `aria-describedby="s${x.uid}"` : ''}>`
+      const sagt = variant === 'nu'
+        ? (x.role ? 'Visas i startramen' : 'Placeras på mallen i editorn')
+        : (x.role ? 'Ramen ritar den i ' + PLATS[x.role] : 'Placeras på mallen i editorn')
+      return `<div class="falt" data-uid="${x.uid}">
+        <span class="sort">${SORT[x.kind]}</span>
+        ${namnet}
+        <small class="${x.role && variant !== 'nu' ? 'plats' : ''}">${sagt}</small>
+        <button type="button" aria-label="Ta bort ${esc(x.namn)}">×</button>
+        ${p ? `<p class="sagt" id="s${x.uid}" role="alert">${p}</p>` : ''}
+      </div>`
+    }).join('')
+  }
+  if (fokus) {
+    const inp = lada.querySelector(`[data-uid="${fokus.uid}"] input`)
+    if (inp) { inp.focus(); if (fokus.markera) inp.select(); else inp.setSelectionRange(fokus.pos, fokus.pos) }
+  }
+}
+
+let senastNy = null
+function ritaEditorn() {
+  const giltiga = falt.filter((x) => !problem(x))
+  const stoppade = falt.filter((x) => problem(x))
+  const huvud = document.getElementById('huvud')
+  const kol = giltiga.map((x) => nyckel(x))
+  huvud.innerHTML = `<th class="ruta"><i></i></th><th>id<span class="pil">↕</span></th>`
+    + giltiga.map((x) => `<th class="${x.uid === senastNy ? 'ny' : ''}">${esc(nyckel(x))}<span class="pil">↕</span></th>`).join('')
+    + `<th>antal<span class="pil">↕</span></th><th class="plus">+</th>`
+  const varde = (x) => {
+    if (x.kind === 'image') return x.role === 'art' ? '<span class="bild"></span>' : ''
+    if (x.role) return esc(EXEMPEL[x.role])
+    return esc(EXEMPEL[x.namn.trim()] ?? '')
+  }
+  document.getElementById('kropp').innerHTML = `<tr><td class="ruta"><i></i></td><td class="id">korpen</td>`
+    + giltiga.map((x) => `<td>${varde(x)}</td>`).join('')
+    + `<td>1</td><td></td></tr>`
+
+  // Mallens bindningar: varje plats i startramen och det fält den läser.
+  const bind = ['title', 'cost', 'body', 'art'].map((r) => {
+    const x = falt.find((y) => y.role === r)
+    if (!x) return `<span>${PLATS[r]}: <b>—</b> (utelämnas)</span>`
+    const n = variant === 'nu' ? r : x.namn.trim()
+    return `<span>${PLATS[r]} → <b>${esc(n || '?')}</b></span>`
+  })
+  document.getElementById('bindningar').innerHTML = bind.join('')
+
+  const steg3 = falt.map((x) => x.namn.trim() || '(tomt)')
+  const editorn = falt.map((x) => problem(x) ? '(stoppas)' : nyckel(x))
+  document.getElementById('i-steg3').textContent = steg3.join(' · ')
+  document.getElementById('i-editorn').textContent = editorn.join(' · ')
+  const lika = steg3.every((s, i) => s === editorn[i])
+  const dom = document.getElementById('dom')
+  dom.className = 'dom ' + (lika && !stoppade.length ? 'ja' : 'nej')
+  dom.textContent = stoppade.length
+    ? `Stoppas vid fältet och blir ingen kolumn: ${stoppade.map((x) => '«' + (x.namn.trim() || 'inget namn') + '»').join(', ')}.`
+    : lika ? '✓ Samma ord i guiden och i editorn.' : `✗ ${steg3.filter((s, i) => s !== editorn[i]).length} av ${steg3.length} fält heter något annat i editorn än i guiden.`
+}
+
+function rita(fokus) {
+  rot.dataset.variant = variant
+  for (const k of document.querySelectorAll('.vaxlare button')) k.setAttribute('aria-pressed', String(k.dataset.v === variant))
+  document.getElementById('lead').innerHTML = VARIANTER[variant].lead
+  document.getElementById('anteckning').innerHTML = VARIANTER[variant].not
+  document.getElementById('skapa-sagt').textContent = ''
+  ritaFalten(fokus)
+  ritaEditorn()
+}
+
+function byt(v) {
+  variant = v
+  start(v)
+  const url = new URL(location.href)
+  url.searchParams.set('v', v)
+  history.replaceState(null, '', url)
+  rita()
+}
+
+document.querySelector('.vaxlare').addEventListener('click', (e) => { const v = e.target.closest('button')?.dataset.v; if (v) byt(v) })
+document.getElementById('aterstall').addEventListener('click', () => byt(variant))
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [contenteditable]')) return
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  byt(alla[(alla.indexOf(variant) + (e.key === 'ArrowRight' ? 1 : alla.length - 1)) % alla.length])
+})
+
+const falten = document.getElementById('falten')
+falten.addEventListener('input', (e) => {
+  const rad = e.target.closest('[data-uid]')
+  const x = falt.find((y) => y.uid === Number(rad.dataset.uid))
+  x.namn = e.target.value
+  rord.add(x.uid)
+  // Namnet rättas medan man skriver, så listan ritas om och markören ställs tillbaka.
+  ritaFalten({ uid: x.uid, pos: e.target.selectionStart })
+  ritaEditorn()
+})
+falten.addEventListener('focusout', (e) => {
+  const rad = e.target.closest('[data-uid]')
+  if (!rad || e.target.tagName !== 'INPUT') return
+  const x = falt.find((y) => y.uid === Number(rad.dataset.uid))
+  if (!x || rord.has(x.uid)) return
+  rord.add(x.uid)
+  // Ett tomt nytt fält säger till först när man lämnat det, inte i samma stund det föds.
+  requestAnimationFrame(() => {
+    // Ritas om utan att tappa fokus: det fält som har markören nu får den tillbaka efteråt.
+    const aktiv = document.activeElement
+    const rad = aktiv?.closest?.('[data-uid]')
+    const knapp = aktiv?.dataset?.lagg ? aktiv : null
+    ritaFalten(rad && aktiv.tagName === 'INPUT' ? { uid: Number(rad.dataset.uid), pos: aktiv.selectionStart } : null)
+    ritaEditorn()
+    if (knapp) knapp.focus()
+  })
+})
+falten.addEventListener('click', (e) => {
+  const knapp = e.target.closest('button')
+  if (!knapp) return
+  const uidNu = Number(knapp.closest('[data-uid]').dataset.uid)
+  const i = falt.findIndex((y) => y.uid === uidNu)
+  falt.splice(i, 1)
+  rita()
+  // Fokus lämnas aldrig på <body> (fynd 8): till nästa rads ta-bort, annars till lägg-till.
+  const nasta = falten.querySelectorAll('[data-uid] button')[Math.min(i, falt.length - 1)]
+  ;(nasta ?? document.querySelector('[data-lagg]')).focus()
+})
+for (const k of document.querySelectorAll('[data-lagg]')) k.addEventListener('click', () => {
+  const kind = k.dataset.lagg
+  const n = nyttNamn(kind)
+  const x = { uid: ++uid, role: null, kind, namn: n }
+  if (variant === 'nu') { const [etikett, nyck] = n.split('\u0000'); x.namn = etikett; x.nyckel = nyck }
+  falt.push(x)
+  senastNy = x.uid
+  rita({ uid: x.uid, markera: true })
+})
+document.getElementById('skapa').addEventListener('click', () => {
+  for (const x of falt) rord.add(x.uid)
+  const forst = falt.find((x) => problem(x))
+  rita(forst ? { uid: forst.uid, markera: true } : null)
+  document.getElementById('skapa-sagt').textContent = forst
+    ? 'Spelet skapades inte: ett fältnamn behöver rättas först.'
+    : '(Prototyp: spelet skulle skapas nu, med tabellen till höger.)'
+})
+
+const fran = new URLSearchParams(location.search).get('v')
+byt(['nu', 'a', 'b', 'c'].includes(fran) ? fran : 'a')
+</script>
+</body>
+</html>

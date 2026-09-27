@@ -30,6 +30,20 @@ describe('an edit is a thing that happened to the project (D3)', () => {
     expect(next.rows).toBe(before.rows)
   })
 
+  // A game's name is a line on a tile and a tab, not a paragraph (#476): 64 characters, as a
+  // player's name at the table has (`JoinBody`).
+  it('refuses a name longer than a game s name may be, or none at all', () => {
+    expect(() => applyEdit(base(), { v: 'rename', name: 'x'.repeat(65) })).toThrow()
+    expect(() => applyEdit(base(), { v: 'rename', name: '  ' })).toThrow()
+    expect(applyEdit(base(), { v: 'rename', name: 'x'.repeat(64) }).name).toHaveLength(64)
+  })
+
+  // The title is the card's own name everywhere a card is spoken of (#476): like `antal`, it is
+  // the tool's column and not one to rename.
+  it('refuses to rename the title column', () => {
+    expect(() => applyEdit(base(), { v: 'renameField', from: 'title', to: 'Namn' })).toThrow()
+  })
+
   it('writes the deck: a cell, a card added, a card taken away, the whole table at once', () => {
     const doc = after(
       base(),

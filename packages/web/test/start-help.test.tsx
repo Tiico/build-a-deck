@@ -119,7 +119,7 @@ const HANDOFF = /Layout, hela leken och CSV-verktyg väntar i editorn/
 const BLANK = /utan kort, fält eller mall/
 const FIELDS = /Varje fält blir direkt en kontroll/
 const CARDS = /hjälper editorn att visa hur fälten faktiskt används/
-const FOOTER = /importera CSV och finjustera mallen/
+const FOOTER = /CSV-import och finjusteringen av mallen/
 
 const wizard = (width: number) => {
   atWidth(width)

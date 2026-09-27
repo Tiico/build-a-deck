@@ -70,6 +70,13 @@ describe('projects (L4, L5)', () => {
     expect((await json('GET', '/projects/nope')).status).toBe(404)
   })
 
+  // A name of 445 characters made the home page's tile sixteen lines tall (#476).
+  it('refuses to make or replace a game whose name is longer than 64 characters', async () => {
+    expect((await json('POST', '/projects', { ...project(), name: 'x'.repeat(65) })).status).toBe(400)
+    const { id } = (await (await json('POST', '/projects', { ...project(), name: 'x'.repeat(64) })).json()) as { id: string }
+    expect((await json('PUT', `/projects/${id}`, { ...project(), name: 'x'.repeat(65), rev: 1 })).status).toBe(400)
+  })
+
   it('starts a table from a project: antal becomes copies in the deck zone, and textures are queued', async () => {
     const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
     const started = await json('POST', `/projects/${id}/sessions`, {})

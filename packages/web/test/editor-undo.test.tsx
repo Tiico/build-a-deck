@@ -130,8 +130,8 @@ describe('ett namnbyte går att ångra (#384)', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
 
     await userEvent.click(await screen.findByRole('button', { name: 'Kolumner' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Byt namn på kolumnen title' }))
-    const name = screen.getByLabelText('Namn på kolumnen title')
+    await userEvent.click(screen.getByRole('button', { name: 'Byt namn på kolumnen body' }))
+    const name = screen.getByLabelText('Namn på kolumnen body')
     await userEvent.clear(name)
     await userEvent.type(name, 'rubrik{Enter}')
     await screen.findByLabelText('dragon rubrik')
@@ -141,7 +141,7 @@ describe('ett namnbyte går att ångra (#384)', () => {
     // Ett fält och inte «en ändring i kortleken»: ett namnbyte når varje kort på en gång, och
     // mallen med dem, så steget säger vad det var.
     expect(saidIn('polite')).toMatch(/Tog tillbaka: ett fält i kortleken/)
-    expect(await screen.findByLabelText('dragon title')).toBeTruthy()
+    expect(await screen.findByLabelText('dragon body')).toBeTruthy()
     expect(screen.queryByLabelText('dragon rubrik')).toBeNull()
 
     // Och det går framåt igen, för ett steg tillbaka är också ett steg.

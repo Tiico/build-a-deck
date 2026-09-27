@@ -90,6 +90,7 @@ export const svAccount = {
   'invite.spent': 'Den här inbjudan är använd eller har gått ut. Be den som bjöd in dig om en ny.',
 
   // Guidad start (L6): tre steg som gör dokumentet editorn sedan redigerar.
+  'wizard.name.max': 'Namnet får vara högst {n} tecken.',
   'wizard.eyebrow': 'Guidad start',
   'wizard.title': 'Ge spelet en flygande start',
   'wizard.steps': '3 enkla steg · cirka 3 min',
@@ -154,6 +155,7 @@ export const svAccount = {
   'wizard.cards.body': 'Exempelkorten hjälper editorn att visa hur fälten faktiskt används.',
   'wizard.cards.count.one': '{n} kort',
   'wizard.cards.count.other': '{n} kort',
+  'wizard.preview.font': 'Ramens typsnitt hämtas när du väljer ram.',
   'wizard.preview': 'Levande förhandsvisning',
   'wizard.image.field': 'Bild för {label}',
   'wizard.image.preview': 'Förhandsvisning av {label}',
@@ -165,12 +167,20 @@ export const svAccount = {
   'wizard.card.untitled': 'Namnlöst kort',
   'wizard.card.add': '+ Nytt kort',
   'wizard.card.remove': 'Ta bort valt kort',
-  'wizard.footer': 'Du kan lägga till resten av leken, importera CSV och finjustera mallen efter nästa steg.',
+  'wizard.footer': 'Resten av leken, CSV-import och finjusteringen av mallen gör du i editorn när spelet är skapat.',
   'wizard.creating': 'Skapar…',
   'wizard.create': 'Skapa spelet och fortsätt i editorn →',
   'wizard.error.login': 'logga in först',
-  'wizard.error.create': 'kunde inte skapa spelet: {status}',
-  'wizard.error.upload': 'kunde inte ladda upp bilden: {status}',
+  'wizard.image.too-big': 'Bilden är större än {mb} MB. Välj en mindre bild.',
+  'wizard.image.not-image': 'Det där är ingen bild. Välj en PNG, JPEG, GIF eller WebP.',
+  'wizard.field.empty': 'Fältet behöver ett namn.',
+  'wizard.field.twice': 'Två fält kan inte heta «{name}».',
+  'wizard.field.owned': '«{name}» är verktygets eget namn.',
+  'wizard.error.not-made': 'Spelet skapades inte.',
+  'wizard.error.create': 'Tjänsten svarade med ett fel. Försök igen om en stund.',
+  'wizard.error.upload': 'En fil kunde inte laddas upp. Försök igen om en stund.',
+  'wizard.error.too-big': 'En bild är för stor för att laddas upp. Välj en mindre bild.',
+  'wizard.error.offline': 'Vi når inte tjänsten; kontrollera anslutningen och försök igen.',
 
   // Ord guiden föreslår och som designern sedan får ändra: de skrivs på det språk spelet byggs i.
 

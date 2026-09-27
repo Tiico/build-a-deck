@@ -82,10 +82,12 @@ describe('the editor in the reader\'s own language (A4)', () => {
     expect(screen.getByText('Unsorted: the cards’ order in the game.')).toBeTruthy()
     expect(screen.getByRole('button', { name: '+ New card' })).toBeTruthy()
     expect(screen.getByLabelText('Select all shown')).toBeTruthy()
-    // `title` and `body` are the designer's own columns and stay as they are. `antal` is not
-    // theirs — it is the one column the engine reads, how many copies of the card there are —
-    // so it is named in the reader's language while the field itself keeps its name (L4).
-    expect(screen.getByRole('button', { name: /^title/ })).toBeTruthy()
+    // `body` is the designer's own column and stays as it is. `antal` is not theirs — it is the
+    // one column the engine reads, how many copies of the card there are — so it is named in the
+    // reader's language while the field itself keeps its name (L4); and so is the title, which
+    // is what every card is called (#476).
+    expect(screen.getByRole('button', { name: /^body/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Title/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /^copies/ })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^antal/ })).toBeNull()
   })

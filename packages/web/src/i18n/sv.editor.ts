@@ -159,6 +159,12 @@ export const svEditor = {
   'wall.foot.cards': '{n} kort · {px} px breda',
   'wall.foot.found': '{shown} av {total} kort · {px} px breda',
   'wall.foot.checked': 'Inga anmärkningar',
+  'wall.empty.title': 'Spelet har inga kort än',
+  'wall.empty.body': 'Ett kort är en rad i Tabell, och mallen i Mall ritar det. Börja var du vill.',
+  'wall.empty.drawn.title': 'Framsidan är ritad, men leken är tom',
+  'wall.empty.drawn.body': 'Mallen har {n} element. Korten den ritar görs här eller i Tabell.',
+  'wall.empty.template': 'Rita framsidan i Mall →',
+  'wall.nofront': 'Korten har ingen framsida än: mallen är tom.',
   'wall.foot.remarks.one': 'En anmärkning',
   'wall.foot.remarks.other': '{n} anmärkningar',
   'wall.measure': 'Bildernas mått',
@@ -1292,6 +1298,7 @@ export const svEditor = {
   'counter.score': 'Poäng',
   'counter.life': 'Liv',
   'table.field.antal': 'antal',
+  'table.field.title': 'Titel',
 
   // Zonerna receptet gör. De är designerns dokument från den stund de görs, så de skrivs på
   // det språk spelet byggs i; sedan äger designern namnet.

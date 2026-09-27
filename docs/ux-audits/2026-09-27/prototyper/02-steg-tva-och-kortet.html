@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 02 — Steg 2 och kortet (#476 fynd 3)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Vid 1024×768 och 1280×800 ligger steg 2 (fälten och startramen) under vecket i vänsterspalten,
+     och när man scrollar dit för att byta ram åker kortet i högerspalten ut överst: hela sidan
+     scrollar (`wizard.css:69–70`). Granskningen mätte 38 % av kortet synligt vid 1024×768 medan
+     ramväljaren var i bild.
+
+       Nu  hela sidan scrollar, som i dag
+       A   förhandsvisningen står kvar (sticky) medan sidan scrollar
+       B   sidan står still, varje spalt scrollar för sig
+       C   startramen flyttar till kortet; fälten stannar i steg 2
+
+     Rutan i mitten är ett webbläsarfönster i verklig storlek (skalat om skärmen är mindre).
+     Mätningen i bärnstensraden läses om vid varje scroll: hur stor del av kortet som syns, och om
+     ramväljaren är i bild. Färger och mått ur wizard.css. ──────────────────────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .scen { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; padding: 14px; background: #15171c; overflow: hidden; }
+  .ram { position: relative; }
+  .ram > .etikett { position: absolute; left: 0; top: -2px; transform: translateY(-100%); color: var(--quiet-2); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .skarm { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: auto; outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); scrollbar-width: thin; }
+  .protorad .storlek button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+  .storlek { display: flex; gap: 4px; }
+
+  /* ── Guiden på skrivbordet, ur wizard.css ─────────────────────────────────────────────── */
+  .byd-wizard { min-height: 100%; }
+  .byd-wizard-grid { display: grid; grid-template-columns: minmax(300px, .8fr) minmax(562px, 1.2fr); min-height: calc(var(--H) - 92px); }
+  .byd-wizard-grid > aside { padding: 26px 30px 100px 36px; border-right: 1px solid var(--line); display: grid; align-content: start; gap: 24px; background: var(--byd-wizard-panel-bg); min-width: 0; }
+  .byd-wizard-grid > main { min-width: 0; padding: 28px 36px 100px; display: grid; align-content: start; gap: 22px; }
+  .byd-wizard-handoff { padding: 15px 17px; border: 1px solid #ecd9a8; border-radius: 12px; background: #fff3d5; }
+  .byd-wizard-handoff strong { color: #7f5111; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+  .byd-wizard-block { display: grid; gap: 10px; align-content: start; min-width: 0; }
+  .byd-help-row { display: flex; align-items: center; gap: 8px; }
+  .byd-wizard-blank { display: grid; gap: 8px; justify-items: start; margin-top: 6px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: #fafaf7; }
+  .byd-wizard-blank strong { color: #454c44; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+  .byd-wizard-blank p { margin: 0; font-size: 12px; }
+  .byd-wizard-label { display: grid; gap: 5px; color: #454c44; font-size: 12px; font-weight: 700; }
+  .byd-wizard-hint { font-size: 14px; }
+  .byd-wizard fieldset { margin: 4px 0 0; padding: 0; border: 0; min-width: 0; }
+  .byd-wizard legend { margin-bottom: 6px; color: #454c44; font-size: 12px; font-weight: 700; }
+  .byd-wizard-players { display: flex; gap: 6px; flex-wrap: wrap; }
+  .byd-wizard-players button { padding: 0; width: var(--tap); }
+  .byd-wizard-fields { display: grid; gap: 10px; }
+  .byd-wizard-field-list { display: grid; gap: 8px; }
+  .byd-wizard-field { display: grid; grid-template-columns: 54px minmax(90px, 1fr) minmax(98px, auto) var(--tap); gap: 6px 8px; align-items: center; }
+  .byd-wizard-field > span { border-radius: 999px; padding: 5px 7px; background: #e2e8e2; color: #3f4b3f; text-align: center; font-size: 10px; font-weight: 800; }
+  .byd-wizard-field small { grid-column: 3; grid-row: 1; text-align: right; color: var(--muted); font-size: 11px; }
+  .byd-wizard-field > button { grid-row: 1; grid-column: 4; padding: 0; width: var(--tap); }
+  .byd-wizard-add-fields, .byd-wizard-frames { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .byd-wizard-add-fields button { border-style: dashed; font-size: 12px; }
+  .byd-wizard-frames { margin-top: 4px; }
+  .byd-wizard-frames button { font-size: 12px; }
+  .byd-wizard-cards-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .byd-wizard-cards-head > span { color: var(--muted); }
+  .byd-wizard-card-workspace { display: grid; grid-template-columns: minmax(266px, .9fr) minmax(200px, 1.1fr); gap: 20px; align-items: start; }
+  .byd-wizard-preview { padding: 12px; display: grid; place-items: center; gap: 8px; border-radius: 18px; background: #dfe6dc; }
+  .byd-wizard-preview > span { color: #4f5a4d; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+  .byd-wizard-card-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-content: start; }
+  .byd-wizard-card-form .is-wide { grid-column: 1 / -1; }
+  .byd-wizard-card-form > label, .byd-wizard-image-field { display: grid; align-content: start; gap: 5px; }
+  .byd-wizard-card-form label > span, .byd-wizard-image-field > span { display: flex; justify-content: space-between; gap: 8px; color: #454c44; font-size: 12px; font-weight: 700; }
+  .byd-wizard-card-form em { border-radius: 999px; padding: 2px 6px; background: #ecebe5; color: #6a6a62; font-size: 9px; font-style: normal; font-weight: 650; }
+  .byd-wizard-image-field > div { min-height: 84px; padding: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border: 1px dashed #b9b9ae; border-radius: 10px; background: #fafaf7; }
+  .byd-wizard-image-field .tum { width: 76px; height: 58px; border-radius: 7px; background-size: cover; background-position: center; display: grid; place-items: center; background-color: #e9e8e1; color: #5c6459; font-size: 10px; font-style: italic; }
+  .byd-wizard-card-tabs { padding-top: 14px; display: flex; gap: 7px; flex-wrap: wrap; border-top: 1px solid var(--line); }
+  .byd-wizard-card-tabs button { display: flex; align-items: center; gap: 7px; }
+  .byd-wizard-card-tabs b { width: 20px; height: 20px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 5px; background: #eeece5; font-size: 10px; }
+  .byd-wizard-card-tabs .is-add { border-style: dashed; }
+  .byd-wizard-block > footer { padding-top: 18px; display: grid; justify-content: end; grid-auto-flow: column; border-top: 1px solid var(--line); }
+  .byd-wizard-primary { padding: 0 18px; }
+
+  /* ── Kortet: startramarna ur frames.ts, i millimeter. 63 mm = 238 px. ─────────────────── */
+  .kort { --mm: calc(238px / 63); position: relative; width: 238px; height: calc(88 * var(--mm)); overflow: hidden; border-radius: calc(3 * var(--mm)); box-shadow: 0 1px 2px rgb(0 0 0 / 18%); transition: background .15s; }
+  .kort > * { position: absolute; left: calc(var(--x) * var(--mm)); top: calc(var(--y) * var(--mm)); width: calc(var(--w) * var(--mm)); height: calc(var(--h) * var(--mm)); margin: 0; overflow: hidden; }
+  .kort .bild { background-size: cover; background-position: center; }
+  .kort .text { line-height: 1.2; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .kort[data-ram='classic'] { background: #f4ead8; font-family: 'EB Garamond', Garamond, Georgia, serif; }
+  .kort[data-ram='classic'] .ram-linje { border: calc(.6 * var(--mm)) solid #3a2a1a; border-radius: calc(3 * var(--mm)); }
+  .kort[data-ram='classic'] .titel { font-size: calc(13pt); font-weight: 800; color: #1c1c1c; }
+  .kort[data-ram='classic'] .brod { font-size: 8.5pt; color: #333; }
+  .kort[data-ram='classic'] .kostnad-bg { border-radius: 50%; background: #8b2e2e; }
+  .kort[data-ram='classic'] .kostnad { font-size: 14pt; font-weight: 800; color: #fff; text-align: center; }
+  .kort[data-ram='classic'] .bild:not([style*='url']) { background: #c9b8a0; border-radius: calc(2 * var(--mm)); }
+  .kort[data-ram='minimal'] { background: #fff; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+  .kort[data-ram='minimal'] .ram-linje { border: calc(.4 * var(--mm)) solid #111; border-radius: calc(2 * var(--mm)); }
+  .kort[data-ram='minimal'] .titel { font-size: 15pt; font-weight: 800; color: #111; }
+  .kort[data-ram='minimal'] .kostnad { font-size: 15pt; font-weight: 800; color: #111; text-align: right; }
+  .kort[data-ram='minimal'] .linje { background: #111; }
+  .kort[data-ram='minimal'] .brod { font-size: 10pt; color: #222; }
+  .kort[data-ram='dark'] { background: #1b1d23; font-family: 'Roboto Condensed', 'Arial Narrow', sans-serif; font-stretch: condensed; }
+  .kort[data-ram='dark'] .bild { border-radius: calc(2 * var(--mm)); }
+  .kort[data-ram='dark'] .bild:not([style*='url']) { background: #3a4d7a; }
+  .kort[data-ram='dark'] .platta { background: #2a2d36; border-radius: calc(2 * var(--mm)); }
+  .kort[data-ram='dark'] .titel { font-size: 12pt; font-weight: 800; color: #fff; }
+  .kort[data-ram='dark'] .brod { font-size: 8.5pt; color: #cfd3dc; }
+  .kort[data-ram='dark'] .kostnad { font-size: 14pt; font-weight: 800; color: #fff; text-align: center; }
+
+  /* ── A: förhandsvisningen står kvar. Steg 3:s block och arbetsytan löses upp i högerspaltens
+     eget rutnät, så att kortet är en egen rad som spänner hela spaltens höjd och kan stå sticky i
+     den medan sidan scrollar under. ──────────────────────────────────────────────────────── */
+  [data-variant='a'] .byd-wizard-grid > main { padding-left: 28px; padding-right: 28px; grid-template-columns: 266px minmax(0, 1fr); grid-template-rows: auto auto auto auto 1fr; align-content: stretch; column-gap: 20px; row-gap: 22px; }
+  [data-variant='a'] main > .byd-wizard-block, [data-variant='a'] .byd-wizard-card-workspace { display: contents; }
+  [data-variant='a'] .byd-wizard-cards-head { grid-column: 1 / -1; }
+  [data-variant='a'] .byd-wizard-preview { grid-column: 1; grid-row: 2 / 6; align-self: start; position: sticky; top: 16px; }
+  [data-variant='a'] .byd-wizard-card-form { grid-column: 2; grid-row: 2; grid-template-columns: minmax(0, 1fr); }
+  [data-variant='a'] .byd-wizard-card-tabs { grid-column: 2; grid-row: 3; }
+  [data-variant='a'] main footer { grid-column: 2; grid-row: 4; align-self: start; justify-content: stretch; }
+  [data-variant='a'] main footer button { width: 100%; padding: 0 12px; white-space: nowrap; }
+
+  /* ── B: sidan står still. Huvudet ligger kvar, och varje spalt är sitt eget scrollområde. ── */
+  [data-variant='b'] .skarm { overflow: hidden; }
+  [data-variant='b'] .byd-wizard { height: 100%; display: flex; flex-direction: column; }
+  [data-variant='b'] .byd-wizard > header { flex: none; }
+  [data-variant='b'] .byd-wizard-grid { flex: 1 1 auto; min-height: 0; }
+  [data-variant='b'] .byd-wizard-grid > aside, [data-variant='b'] .byd-wizard-grid > main { min-height: 0; overflow: auto; scrollbar-width: thin; padding-bottom: 36px; }
+  [data-variant='b'] .byd-wizard-grid > main { padding-top: 24px; }
+
+  /* ── C: startramen står vid kortet den ändrar, som tre små kort. ───────────────────────── */
+  .ramval { display: none; }
+  [data-variant='c'] .byd-wizard-frames:not(.ramval) { display: none; }
+  [data-variant='c'] .ramval { display: grid; grid-template-columns: repeat(3, auto); gap: 8px; justify-content: center; margin: 2px 0 0; }
+  [data-variant='c'] .ramval legend { grid-column: 1 / -1; margin: 0 auto 4px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #4f5a4d; font-weight: 600; }
+  .ramval button { display: grid; justify-items: center; gap: 4px; min-height: 0; padding: 6px 8px 7px; font-size: 11px; font-weight: 600; background: #eef2ec !important; }
+  .ramval button[aria-pressed='true'] { background: #fff !important; }
+  .ramval .mini { width: 38px; height: 53px; border-radius: 3px; border: 1px solid rgb(0 0 0 / 15%); display: block; }
+  .ramval .mini[data-ram='classic'] { background: linear-gradient(#c9b8a0 0 40%, #f4ead8 40%); box-shadow: inset 0 0 0 2px #f4ead8, inset 0 0 0 3px #3a2a1a; }
+  .ramval .mini[data-ram='minimal'] { background: linear-gradient(#fff 0 20%, #111 20% 21.5%, #fff 21.5%); box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 2.6px #111; }
+  .ramval .mini[data-ram='dark'] { background: linear-gradient(#3a4d7a 0 55%, #1b1d23 55% 60%, #2a2d36 60%); }
+  [data-variant='c'] .byd-wizard-preview { padding-bottom: 14px; }
+
+  /* Vad mätningen läser: ramväljaren och kortet, markerade medan man tittar. */
+  .matare-av .byd-wizard-frames, .matare-av .ramval { outline: none; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="storlek vaxlare" role="group" aria-label="Fönstrets storlek">
+    <button type="button" data-s="1024x768">1024 × 768</button>
+    <button type="button" data-s="1280x800">1280 × 800</button>
+  </div>
+  <button type="button" id="till-ramen">Scrolla till startramen</button>
+  <button type="button" id="upp">Till toppen</button>
+  <div class="matt" aria-live="polite">
+    <span>Kortet synligt: <u id="m-kort">–</u></span>
+    <span>Startramen i bild: <u id="m-ram">–</u></span>
+  </div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+
+<div class="scen" id="scen">
+  <div class="ram" id="ram"><span class="etikett" id="etikett"></span>
+    <div class="skarm" id="skarm" data-variant="nu">
+      <div class="byd-wizard" data-page="new" data-room="desk">
+        <header>
+          <div><span>Guidad start</span><h1>Ge spelet en flygande start</h1></div>
+          <span>3 enkla steg · cirka 3 min</span>
+        </header>
+        <div class="byd-wizard-grid">
+          <aside id="aside">
+            <div class="byd-wizard-handoff"><strong>Wizarden är startpunkten</strong></div>
+            <section class="byd-wizard-block">
+              <div class="byd-help-row"><h2><span class="byd-wizard-step">1</span>Spelet</h2><button type="button" class="fraga-tecken" aria-label="Hjälp om spelet">?</button></div>
+              <label class="byd-wizard-label">Spelets namn<input value="Kråkkriget"></label>
+              <p class="byd-wizard-hint">Till exempel «Skogens herrar».</p>
+              <fieldset><legend>Spelare</legend><div class="byd-wizard-players" id="spelare"></div></fieldset>
+              <div class="byd-wizard-blank">
+                <strong>Utan guidad start</strong>
+                <p>Bygg hellre allt själv?</p>
+                <button type="button" class="byd-secondary">Skapa ett tomt spel i editorn</button>
+              </div>
+            </section>
+            <section class="byd-wizard-block">
+              <div class="byd-help-row"><h2><span class="byd-wizard-step">2</span>Fält</h2><button type="button" class="fraga-tecken" aria-label="Hjälp om fälten">?</button></div>
+              <p>Fälten på varje kort.</p>
+              <div class="byd-wizard-fields">
+                <div class="byd-wizard-field-list" id="faltlista"></div>
+                <div class="byd-wizard-add-fields">
+                  <button type="button" data-lagg="text">+ Textfält</button><button type="button" data-lagg="number">+ Talfält</button><button type="button" data-lagg="image">+ Bildfält</button>
+                </div>
+              </div>
+              <fieldset class="byd-wizard-frames" id="ramar-vanster"><legend>Startram</legend></fieldset>
+            </section>
+          </aside>
+          <main id="main">
+            <section class="byd-wizard-block">
+              <div class="byd-wizard-cards-head">
+                <div class="byd-help-row"><h2><span class="byd-wizard-step">3</span>Gör några exempelkort</h2><button type="button" class="fraga-tecken" aria-label="Hjälp om korten">?</button></div>
+                <span id="antal-kort">1 kort</span>
+              </div>
+              <div class="byd-wizard-card-workspace">
+                <div class="byd-wizard-preview" id="preview">
+                  <div class="kort" id="kort" data-ram="classic"></div>
+                  <span>Levande förhandsvisning</span>
+                  <fieldset class="byd-wizard-frames ramval" id="ramar-kortet"><legend>Startram</legend></fieldset>
+                </div>
+                <div class="byd-wizard-card-form" id="formular"></div>
+              </div>
+              <div class="byd-wizard-card-tabs" id="flikar"></div>
+              <footer><button type="button" class="byd-wizard-primary byd-primary">Skapa spelet och fortsätt i editorn →</button></footer>
+            </section>
+          </main>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const NOT = {
+  nu: '<b>Nu.</b> Hela sidan scrollar. Vid 1024 × 768 står startramen under vecket i vänsterspalten, och när den väl syns har kortet åkt ut överst. Tryck «Scrolla till startramen» och läs mätningen.',
+  a: '<b>A · Kortet står kvar.</b> Förhandsvisningen är sticky i högerspalten och följer med när sidan scrollar, så kortet syns helt medan ramen byts. Kortets fält står i en smalare spalt bredvid. <span class="plus">+ Minst ändring. Samma sida, samma scroll, och kortet syns i varje läge.</span> <span class="minus">− Formuläret i steg 3 blir en enda spalt och längre. Vid 768 i höjd tar kortet (≈ 380 px) halva fönstret, och högerspalten är tom under kortet när man scrollat långt.</span>',
+  b: '<b>B · Sidan står still.</b> Huvudet ligger fast och varje spalt scrollar för sig (som etappläget redan gör, L10). Kortet rör sig bara om högerspalten själv scrollas. <span class="plus">+ Kortet står i ro oberoende av hur lång fältlistan blir. Samma modell som editorn: sidan scrollar aldrig.</span> <span class="minus">− Två scrollområden sida vid sida, och hjulet gör olika saker beroende på var pekaren står. Högerspalten får egen scroll vid 768 om kortets fält blir många.</span>',
+  c: '<b>C · Ramen står vid kortet.</b> Startramen flyttar från steg 2 till förhandsvisningen, som tre små kort under den stora. Steg 2 är bara fälten. <span class="plus">+ Ramen byts där man tittar, utan scroll, vid alla bredder. Steg 2 blir kortare.</span> <span class="minus">− L10 flyttade «Startram» <i>till</i> steg 2 för etappläget, så C gäller skrivbordet och etapperna skiljer sig. Fälten (att ta bort «Kostnad» tar bort cirkeln) står fortfarande under vecket, långt från kortet.</span>',
+}
+
+const RAMAR = [['classic', 'Klassisk'], ['minimal', 'Minimal'], ['dark', 'Mörk']]
+// Två bilder att välja mellan, ritade här så att ingenting hämtas.
+const BILDER = [
+  "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 72"><defs><linearGradient id="g" x2="0" y2="1"><stop offset="0" stop-color="#8fb3c9"/><stop offset="1" stop-color="#e7d7b1"/></linearGradient></defs><rect width="110" height="72" fill="url(#g)"/><path d="M0 58 Q30 44 55 56 T110 50 V72 H0Z" fill="#4c6b3c"/><path d="M40 30 q8 -9 16 -2 q6 -6 14 -1 q-9 1 -14 7 q-7 -4 -16 -4z" fill="#1d1d24"/></svg>'),
+  "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 72"><rect width="110" height="72" fill="#2b2a3f"/><circle cx="78" cy="22" r="11" fill="#f1e3a6"/><path d="M0 72 L28 36 L46 56 L66 30 L110 72Z" fill="#5a5f7d"/></svg>'),
+]
+
+const s = {
+  variant: 'nu', storlek: '1024x768', ram: 'dark', spelare: 2, vald: 0,
+  falt: [
+    { key: 'title', label: 'Titel', kind: 'text' },
+    { key: 'cost', label: 'Kostnad', kind: 'number' },
+    { key: 'body', label: 'Text', kind: 'text' },
+    { key: 'art', label: 'Illustration', kind: 'image' },
+  ],
+  kort: [{ title: 'Korpen', cost: '2', body: 'Flyger över fältet.\nSe två kort i leken.', art: BILDER[0] }],
+}
+const has = (k) => s.falt.some((f) => f.key === k)
+const skarm = document.getElementById('skarm')
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+
+// Ramen, som frames.ts lägger ut den: elementen finns bara för de fält spelet har.
+function ritaKort() {
+  const k = s.kort[s.vald]
+  const el = (cls, x, y, w, h, inner = '', stil = '') => `<div class="${cls}" style="--x:${x};--y:${y};--w:${w};--h:${h};${stil}">${inner}</div>`
+  const bild = (x, y, w, h) => el('bild', x, y, w, h, '', has('art') && k.art ? `background-image:url('${k.art}')` : '')
+  let h = ''
+  if (s.ram === 'classic') {
+    h += el('ram-linje', 3, 3, 57, 82)
+    h += has('art') ? bild(4, 4, 55, 36) : el('bild', 4, 4, 55, 36)
+    h += el('text titel', 5, 42, 53, 9, esc(k.title))
+    if (has('body')) h += el('text brod', 5, 53, 53, 30, esc(k.body))
+    if (has('cost')) h += el('kostnad-bg', 49, 4.5, 9, 9) + el('text kostnad', 48, 5.5, 11, 8, esc(k.cost))
+  } else if (s.ram === 'minimal') {
+    h += el('ram-linje', 3, 3, 57, 82)
+    h += el('text titel', 5, 6, 44, 10, esc(k.title))
+    if (has('cost')) h += el('text kostnad', 49, 6, 9, 10, esc(k.cost))
+    h += el('linje', 5, 18, 53, .5)
+    if (has('body')) h += el('text brod', 5, 22, 53, 60, esc(k.body))
+  } else {
+    h += has('art') ? bild(3, 3, 57, 48) : el('bild', 3, 3, 57, 48)
+    h += el('platta', 3, 53, 57, 32)
+    h += el('text titel', 5, 55, 53, 8, esc(k.title))
+    if (has('body')) h += el('text brod', 5, 64, 53, 20, esc(k.body))
+    if (has('cost')) h += el('text kostnad', 48, 4, 11, 8, esc(k.cost))
+  }
+  const kort = document.getElementById('kort')
+  kort.dataset.ram = s.ram
+  kort.innerHTML = h
+}
+
+function ritaRamar() {
+  document.getElementById('ramar-vanster').innerHTML = '<legend>Startram</legend>' + RAMAR.map(([id, namn]) => `<button type="button" class="byd-choice" data-ram="${id}" aria-pressed="${s.ram === id}">${namn}</button>`).join('')
+  document.getElementById('ramar-kortet').innerHTML = '<legend>Startram</legend>' + RAMAR.map(([id, namn]) => `<button type="button" class="byd-choice" data-ram="${id}" aria-pressed="${s.ram === id}"><i class="mini" data-ram="${id}"></i>${namn}</button>`).join('')
+}
+
+function ritaFalt() {
+  const i = { text: 'Text', number: 'Tal', image: 'Bild' }
+  const iRam = (k) => ['title', 'cost', 'body', 'art'].includes(k)
+  document.getElementById('faltlista').innerHTML = s.falt.map((f) => `<div class="byd-wizard-field"><span>${i[f.kind]}</span><input value="${esc(f.label)}" data-etikett="${f.key}" aria-label="${esc(f.label)} namn"><small>${iRam(f.key) ? 'Visas i startramen' : 'Placeras på mallen i editorn'}</small><button type="button" data-bort="${f.key}" aria-label="Ta bort ${esc(f.label)}">×</button></div>`).join('')
+  const k = s.kort[s.vald]
+  document.getElementById('formular').innerHTML = s.falt.map((f) => {
+    const place = iRam(f.key) ? '' : '<em>placera i editorn</em>'
+    if (f.kind === 'image') return `<div class="byd-wizard-image-field is-wide"><span>${esc(f.label)}${place}</span><div><i class="tum" style="${k[f.key] ? `background-image:url('${k[f.key]}')` : ''}">${k[f.key] ? '' : 'Ingen bild vald'}</i><button type="button" class="byd-secondary" data-bild="${f.key}">${k[f.key] ? 'Byt bild' : 'Välj bild'}</button></div></div>`
+    if (f.key === 'body') return `<label class="is-wide"><span>${esc(f.label)}</span><textarea rows="3" data-kortfalt="${f.key}">${esc(k[f.key] ?? '')}</textarea></label>`
+    return `<label><span>${esc(f.label)}${place}</span><input ${f.kind === 'number' ? 'type="number"' : ''} data-kortfalt="${f.key}" value="${esc(k[f.key] ?? '')}"></label>`
+  }).join('')
+  document.getElementById('flikar').innerHTML = s.kort.map((c, n) => `<button type="button" class="byd-choice" data-kort="${n}" aria-pressed="${n === s.vald}"><b>${n + 1}</b>${esc(c.title || 'Namnlöst kort')}</button>`).join('') + '<button type="button" class="is-add" id="nytt-kort">+ Nytt kort</button>'
+  document.getElementById('antal-kort').textContent = `${s.kort.length} kort`
+}
+
+function rita() {
+  skarm.dataset.variant = s.variant
+  document.getElementById('spelare').innerHTML = Array.from({ length: 8 }, (_, n) => `<button type="button" class="byd-choice" data-spelare="${n + 1}" aria-pressed="${s.spelare === n + 1}">${n + 1}</button>`).join('')
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.variant))
+  for (const b of document.querySelectorAll('[data-s]')) b.setAttribute('aria-pressed', String(b.dataset.s === s.storlek))
+  document.getElementById('anteckning').innerHTML = NOT[s.variant]
+  ritaRamar(); ritaFalt(); ritaKort(); skala(); mat()
+}
+
+// Fönstret: verklig storlek, skalat ner om scenen är mindre.
+function skala() {
+  const [W, H] = s.storlek.split('x').map(Number)
+  const scen = document.getElementById('scen')
+  const f = Math.min(1, (scen.clientWidth - 28) / W, (scen.clientHeight - 40) / H)
+  skarm.style.width = W + 'px'; skarm.style.height = H + 'px'
+  skarm.style.setProperty('--H', H + 'px')
+  skarm.style.transform = `scale(${f})`
+  const ram = document.getElementById('ram')
+  ram.style.width = W * f + 'px'; ram.style.height = H * f + 'px'
+  document.getElementById('etikett').textContent = `${W} × ${H}` + (f < 1 ? ` · visas i ${Math.round(f * 100)} %` : '')
+}
+
+// Mätningen: den del av kortet som ligger innanför fönstret och innanför sitt eget scrollområde,
+// och om ramväljaren som gäller i varianten står helt i bild.
+const scroller = (el) => { for (let n = el.parentElement; n; n = n.parentElement) { const o = getComputedStyle(n).overflowY; if (o === 'auto' || o === 'scroll' || n === skarm) return n } return skarm }
+function synligt(el) {
+  const r = el.getBoundingClientRect()
+  const a = skarm.getBoundingClientRect(), b = scroller(el).getBoundingClientRect()
+  const top = Math.max(r.top, a.top, b.top), bot = Math.min(r.bottom, a.bottom, b.bottom)
+  return Math.max(0, bot - top) / r.height
+}
+function mat() {
+  const kort = synligt(document.getElementById('kort'))
+  const ram = s.variant === 'c' ? document.getElementById('ramar-kortet') : document.getElementById('ramar-vanster')
+  document.getElementById('m-kort').textContent = Math.round(kort * 100) + ' %'
+  document.getElementById('m-ram').textContent = synligt(ram) > .99 ? 'ja' : 'nej'
+}
+
+function tillRamen() {
+  const ram = s.variant === 'c' ? document.getElementById('ramar-kortet') : document.getElementById('ramar-vanster')
+  const sc = scroller(ram)
+  const f = skarm.getBoundingClientRect().width / skarm.offsetWidth
+  const d = (ram.getBoundingClientRect().bottom - Math.min(sc.getBoundingClientRect().bottom, skarm.getBoundingClientRect().bottom)) / f
+  if (d > 0) sc.scrollTop += d + 24
+  mat()
+}
+
+document.querySelector('.protorad').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.v) { s.variant = b.dataset.v; spara(); for (const n of skarm.querySelectorAll('*')) n.scrollTop = 0; skarm.scrollTop = 0; rita() }
+  if (b.dataset.s) { s.storlek = b.dataset.s; spara(); rita() }
+  if (b.id === 'till-ramen') tillRamen()
+  if (b.id === 'upp') { skarm.scrollTop = 0; for (const n of skarm.querySelectorAll('aside, main')) n.scrollTop = 0; mat() }
+})
+skarm.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  // Knapparna ritas om, så fokus ställs tillbaka på samma knapp i den nya ritningen och lämnas
+  // aldrig på <body> (fynd 8).
+  const igen = b.dataset.ram ? `#${b.closest('fieldset').id} [data-ram="${b.dataset.ram}"]`
+    : b.dataset.spelare ? `[data-spelare="${b.dataset.spelare}"]`
+    : b.dataset.bild ? `[data-bild="${b.dataset.bild}"]`
+    : b.dataset.kort ? `[data-kort="${b.dataset.kort}"]`
+    : b.id === 'nytt-kort' ? '#nytt-kort' : null
+  if (b.dataset.ram) { s.ram = b.dataset.ram; ritaRamar(); ritaKort() }
+  else if (b.dataset.spelare) { s.spelare = Number(b.dataset.spelare); rita() }
+  else if (b.dataset.bort) {
+    const i = s.falt.findIndex((f) => f.key === b.dataset.bort)
+    s.falt.splice(i, 1); ritaFalt(); ritaKort()
+    ;(skarm.querySelectorAll('[data-bort]')[Math.min(i, s.falt.length - 1)] ?? skarm.querySelector('[data-lagg]')).focus()
+  }
+  else if (b.dataset.lagg) { const n = s.falt.length + 1; s.falt.push({ key: 'f' + n, label: { text: 'Nytt textfält', number: 'Nytt tal', image: 'Ny bild' }[b.dataset.lagg], kind: b.dataset.lagg }); ritaFalt() }
+  else if (b.dataset.bild) { const k = s.kort[s.vald]; const i = BILDER.indexOf(k[b.dataset.bild]); k[b.dataset.bild] = BILDER[(i + 1) % BILDER.length]; ritaFalt(); ritaKort() }
+  else if (b.dataset.kort) { s.vald = Number(b.dataset.kort); ritaFalt(); ritaKort() }
+  else if (b.id === 'nytt-kort') { s.kort.push({ title: `Kort ${s.kort.length + 1}`, cost: '1', body: '', art: '' }); s.vald = s.kort.length - 1; ritaFalt(); ritaKort() }
+  if (igen) skarm.querySelector(igen)?.focus({ preventScroll: true })
+  mat()
+})
+skarm.addEventListener('input', (e) => {
+  const k = e.target.dataset.kortfalt
+  if (k) { s.kort[s.vald][k] = e.target.value; ritaKort(); if (k === 'title') document.querySelector(`[data-kort="${s.vald}"]`).lastChild.textContent = e.target.value || 'Namnlöst kort' }
+  const et = e.target.dataset.etikett
+  if (et) s.falt.find((f) => f.key === et).label = e.target.value
+})
+skarm.addEventListener('scroll', mat, true)
+addEventListener('resize', () => { skala(); mat() })
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [contenteditable]')) return
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  s.variant = alla[(alla.indexOf(s.variant) + (e.key === 'ArrowRight' ? 1 : 3)) % 4]
+  spara(); skarm.scrollTop = 0; for (const n of skarm.querySelectorAll('aside, main')) n.scrollTop = 0; rita()
+})
+function spara() { const u = new URL(location.href); u.searchParams.set('v', s.variant); u.searchParams.set('s', s.storlek); history.replaceState(null, '', u) }
+const q = new URLSearchParams(location.search)
+if (['nu', 'a', 'b', 'c'].includes(q.get('v'))) s.variant = q.get('v')
+if (['1024x768', '1280x800'].includes(q.get('s'))) s.storlek = q.get('s')
+rita()
+</script>
+</body>
+</html>

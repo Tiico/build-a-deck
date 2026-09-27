@@ -67,7 +67,7 @@ describe('a field arrives in the editor (#32)', () => {
     await user.click(screen.getByRole('button', { name: 'Lägg till' }))
     expect(screen.getByRole('alert').textContent).toBe('Det finns redan ett fält som heter title.')
     // Nothing happened to the deck: `title` is one column and still holds what it held.
-    expect(screen.getAllByRole('columnheader').filter((h) => /^title/.test(h.textContent ?? ''))).toHaveLength(1)
+    expect(screen.getAllByRole('columnheader').filter((h) => /^Titel/.test(h.textContent ?? ''))).toHaveLength(1)
     expect(screen.getByDisplayValue('Drake')).toBeTruthy()
 
     // `antal` is the engine's own column (L4) and is refused by the same sentence: it is a name

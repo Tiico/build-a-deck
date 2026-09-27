@@ -152,3 +152,29 @@ describe('the face a start frame is set in (#420, B3, L27)', () => {
     }
   })
 })
+
+// The preview in the frame's own face (#476, beslut 2026-09-27): «Minimal» stood in a serif in the
+// wizard and in Inter in the editor — a preview that lied (E2). The face is fetched from the
+// catalogue when a frame is pressed, which is the designer's own act (L27), and not before: the
+// wizard opening asks Google for nothing, and says the face comes with the choice.
+describe('the preview in the frame s own face (#476)', () => {
+  const preview = () => document.querySelector('.byd-wizard-preview') as HTMLElement
+  const drawn = () => [...preview().querySelectorAll('style')].map((s) => s.textContent ?? '').join('\n')
+
+  it('asks the catalogue for nothing until a frame is pressed, and says the face comes with it', async () => {
+    history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
+    render(<NewProjectPage onNavigate={() => undefined} />)
+    await new Promise((r) => setTimeout(r, 50))
+    expect(net.asked).toEqual([])
+    expect(preview().textContent).toContain('Ramens typsnitt hämtas när du väljer ram.')
+  })
+
+  it('draws the preview in the pressed frame s face once it has been fetched', async () => {
+    history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
+    render(<NewProjectPage onNavigate={() => undefined} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Minimal' }))
+    await waitFor(() => expect(drawn()).toMatch(/@font-face\{font-family:"Inter";src:url\("https:\/\/fonts\.gstatic\.com\/s\/inter\/latin\.woff2"\)/))
+    expect(net.asked.some((u) => u.startsWith('https://fonts.googleapis.com/') && u.includes('Inter'))).toBe(true)
+    expect(preview().textContent).not.toContain('Ramens typsnitt hämtas när du väljer ram.')
+  })
+})

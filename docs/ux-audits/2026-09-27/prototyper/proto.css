@@ -1,0 +1,125 @@
+/* Slit-och-släng-prototyper för interaktionsgranskningen 2026-09-27, sida 2 (#476). Grunden är
+   kopierad ur `docs/ux-audits/2026-09-22/prototyper/proto.css` — editorns mörka krom, stegen i
+   avståndsstegen och prototypens bärnstensrad — och guidens papper är lagt till längst ner, med
+   färger och mått ur `packages/web/src/wizard/wizard.css` och `packages/web/src/buttons.css`.
+   Ingenting här importeras av appen. */
+:root {
+  --chrome: #23262e;
+  --panel: #171a23;
+  --sunk: #1b1d23;
+  --card: #1b1f2a;
+  --line: #2f333d;
+  --line-soft: #262b38;
+  --ink: #e6ecfa;
+  --quiet: #868ea3;
+  --quiet-2: #9aa3b8;
+  --primary: #1f6fd0;
+  --primary-mark: #3c8ce7;
+  --good: #7dd3a0;
+  --warn: #f0b64a;
+  --tap: 44px;
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --gutter: var(--s4);
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--chrome);
+  color: #ddd;
+  font: 13px system-ui, sans-serif;
+  overflow: hidden;
+}
+
+/* --- prototypens egen rad ---------------------------------------------- */
+/* Aldrig en del av ett förslag: den bär växlaren, anteckningen om varianten och det prototypen
+   behöver för att låtsas. Bärnsten av samma skäl som 2026-09-22. */
+.protorad { flex: none; display: flex; align-items: flex-start; gap: var(--s3); flex-wrap: wrap; padding: var(--s2) var(--s4); background: #2a2417; border-bottom: 1px solid #4a4230; color: #ffd98a; font-size: 12px; line-height: 1.5; }
+.protorad b { color: #ffe9b8; }
+.protorad p { margin: 0; }
+.protorad .fraga { flex: 1 1 320px; min-width: 0; }
+.protorad .fraga p + p { margin-top: 2px; color: #c8b98d; }
+.protorad .matt { display: flex; gap: var(--s3); font-variant-numeric: tabular-nums; }
+.protorad .matt u { text-decoration: none; color: #ffe9b8; font-weight: 700; }
+.protorad button { min-height: 32px; border: 1px solid #4a4230; border-radius: 7px; padding: 0 10px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; }
+.protorad button:hover { border-color: #ffd98a; }
+.protorad button:focus-visible { outline: 2px solid #ffd98a; outline-offset: 2px; }
+.protorad a { color: #ffe9b8; }
+
+/* A / B / C — växlaren. Pilarna vänster/höger byter också, utom när ett fält har fokus. */
+.vaxlare { display: flex; gap: 4px; padding: 3px; border-radius: 9px; background: #1f1b12; border: 1px solid #4a4230; }
+.protorad .vaxlare button { border: 0; min-height: 30px; min-width: 34px; font-weight: 700; }
+.protorad .vaxlare button[aria-pressed='true'] { background: #ffd98a; color: #2a2417; }
+/* Tre rader reserverade, så att ytan under inte hoppar när en variant har kortare anteckning. */
+.protorad .anteckning { flex: 1 1 100%; min-height: calc(3 * 1.5em + 14px); margin: 0; padding: 6px 10px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; }
+.protorad .anteckning b { color: #ffe9b8; }
+.protorad .anteckning .plus { color: #b7dca0; }
+.protorad .anteckning .minus { color: #f0a58a; }
+
+.offscreen { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* --- guidens papper, ur wizard.css och buttons.css ----------------------- */
+.byd-wizard {
+  --ink: #1e2620;
+  --muted: #5c6459;
+  --paper: #f5f3eb;
+  --byd-wizard-panel-bg: #eeece4;
+  --byd-wizard-field-bg: #ffffff;
+  --line: #d9d8cc;
+  --accent: #b8461f;
+  --tap: 44px;
+  --byd-primary-bg: var(--ink);
+  --byd-primary-ink: #ffffff;
+  --byd-secondary-line: #797d75;
+  --byd-secondary-ink: var(--ink);
+  --byd-chosen-bar: var(--accent);
+  --byd-chosen-ink: var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font: 14px/1.45 Inter, ui-sans-serif, system-ui, sans-serif;
+}
+.byd-wizard * { box-sizing: border-box; }
+.byd-wizard button, .byd-wizard input, .byd-wizard textarea { font: inherit; }
+.byd-wizard button { min-height: var(--tap); min-width: var(--tap); border: 1px solid #cbcabe; border-radius: 9px; padding: 0 12px; background: var(--byd-wizard-field-bg); color: inherit; cursor: pointer; }
+.byd-wizard button:hover { border-color: #8d918a; }
+.byd-wizard button:disabled { background: transparent; border: 1px solid var(--byd-secondary-line); color: var(--muted); font-weight: 600; cursor: default; }
+.byd-wizard input:not([type='file']), .byd-wizard textarea { min-height: var(--tap); width: 100%; min-width: 0; border: 1px solid #c9c9bd; border-radius: 9px; padding: 9px 11px; background: var(--byd-wizard-field-bg); color: var(--ink); }
+.byd-wizard input:focus, .byd-wizard textarea:focus { border-color: var(--accent); outline: 3px solid color-mix(in srgb, var(--accent), transparent 82%); }
+.byd-wizard input[aria-invalid='true'] { border-color: #8d3823; }
+.byd-wizard h1 { margin: 2px 0 0; font: 700 28px/1.15 Georgia, serif; }
+.byd-wizard h2 { margin: 0; display: flex; align-items: center; gap: 9px; font-size: 16px; }
+.byd-wizard p { margin: 3px 0; color: var(--muted); }
+.byd-wizard > header { padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; border-bottom: 1px solid var(--line); background: rgb(255 255 255 / 60%); }
+.byd-wizard > header > div > span { color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+.byd-wizard > header > span { color: var(--muted); font-weight: 650; }
+.byd-wizard .byd-primary { border: 1px solid var(--byd-primary-bg); background: var(--byd-primary-bg); color: var(--byd-primary-ink); font-weight: 750; }
+.byd-wizard .byd-primary:hover { border-color: var(--byd-primary-bg); }
+.byd-wizard .byd-secondary { background: transparent; border: 1px solid var(--byd-secondary-line); color: var(--byd-secondary-ink); font-weight: 600; }
+.byd-wizard .byd-choice { background: transparent; border: 1px solid var(--byd-secondary-line); border-radius: 6px; color: var(--byd-secondary-ink); font-weight: 600; }
+.byd-wizard .byd-choice[aria-pressed='true'] { border-color: transparent; border-radius: 6px 6px 0 0; box-shadow: inset 0 -3px 0 var(--byd-chosen-bar); color: var(--byd-chosen-ink); font-weight: 700; }
+.byd-wizard [role='alert'], .byd-wizard .sagt { color: #8d3823; font-size: 12px; }
+.byd-wizard-step { width: 24px; height: 24px; flex: 0 0 auto; display: inline-grid; place-items: center; border-radius: 999px; background: var(--ink); color: #fff; font-size: 12px; font-weight: 800; }
+.byd-wizard .fraga-tecken { display: inline-grid; place-items: center; width: 22px; height: 22px; min-width: 0; min-height: 0; padding: 0; border-radius: 999px; border: 1px solid #797d75; font-size: 12px; font-weight: 700; color: var(--ink); background: transparent; }
+
+/* --- editorns krom, som i skärmbilderna -------------------------------- */
+.byd-editor { background: var(--chrome); color: #dce3f2; font: 13px system-ui, sans-serif; }
+.ed-huvud { height: 56px; display: flex; align-items: center; gap: var(--s3); padding: 0 var(--gutter); border-bottom: 1px solid var(--line); white-space: nowrap; }
+.ed-huvud .hem { color: #c3cbdd; font-weight: 600; }
+.ed-huvud strong { color: #fff; font-size: 15px; }
+.ed-huvud .rev { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; background: var(--sunk); color: #fff; font-weight: 700; }
+.ed-huvud .sparat { color: var(--quiet-2); }
+.ed-flikar { display: flex; background: var(--sunk); border-radius: 8px; padding: 3px; }
+.ed-flikar button { min-height: 44px; border: 0; border-radius: 6px; padding: 0 12px; background: transparent; color: var(--quiet-2); font: inherit; font-weight: 600; cursor: pointer; }
+.ed-flikar button[aria-selected='true'] { color: #fff; box-shadow: inset 0 -3px 0 0 var(--primary-mark); border-radius: 6px 6px 0 0; }
+.ed-knapp { min-height: 44px; border: 1px solid var(--line); border-radius: 8px; padding: 0 14px; background: var(--sunk); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.ed-knapp.primar { background: var(--primary); border-color: var(--primary); }
+.ed-knapp.kantad { background: transparent; border-color: #6f7a90; color: #dce3f2; font-weight: 600; }
+.ed-knapp:focus-visible, .ed-flikar button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+.spacer { flex: 1; }
+.who { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #d14d7c; color: #10131a; font: 800 11px system-ui; }

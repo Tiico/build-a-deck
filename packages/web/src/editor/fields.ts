@@ -47,7 +47,10 @@ export const deckKeepsFields = (doc: ProjectDoc): boolean => doc.rows.length > 0
 // `antal` is the engine's — how many copies of the card the deck holds (L4) — so it is the one
 // the tool names, in the reader's language (A4). The field itself keeps its name everywhere it
 // matters: in the document, in the CSV, and in what the engine reads.
-export const fieldLabel = (field: string, t: T): string => (field === ANTAL ? t('table.field.antal') : field)
+// The title is the second column the tool owns (#476): it is what a card is called everywhere,
+// so it is shown in the designer's language, as `antal` is, and the guided start says the same
+// word for it.
+export const fieldLabel = (field: string, t: T): string => (field === ANTAL ? t('table.field.antal') : field === 'title' ? t('table.field.title') : field)
 
 // The words the recipe names its zones with (B5, A4). They are the designer's document the
 // moment the zone exists, so they are written in the language the designer is working in; the
@@ -64,3 +67,11 @@ export const recipeWords = (t: T): RecipeWords => ({
   counters: t('zone.counters'),
   hand: t('zone.hand'),
 })
+
+// The id a new card is given wherever it is made (#476): the table's button and the empty wall's
+// door ask the same question of the same deck, so the two cannot come to different answers.
+export function nextCardRef(doc: Pick<ProjectDoc, 'rows'>): string {
+  let n = doc.rows.length + 1
+  while (doc.rows.some((r) => r.id === `kort-${n}`)) n++
+  return `kort-${n}`
+}

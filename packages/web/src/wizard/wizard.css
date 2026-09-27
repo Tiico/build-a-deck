@@ -39,15 +39,21 @@
 .byd-wizard h2 { margin: 0; display: flex; align-items: center; gap: 9px; font-size: 16px; }
 .byd-wizard p { margin: 3px 0; color: var(--muted); }
 
-.byd-wizard > header { padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; border-bottom: 1px solid var(--line); background: rgb(255 255 255 / 60%); }
+.byd-wizard > header { padding: 18px 24px; display: flex; align-items: center; justify-content: flex-start; gap: 20px; flex-wrap: wrap; border-bottom: 1px solid var(--line); background: rgb(255 255 255 / 60%); }
 .byd-wizard > header > div > span { color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
-.byd-wizard > header > span { color: var(--muted); font-weight: 650; }
+.byd-wizard > header > span { margin-left: auto; color: var(--muted); font-weight: 650; }
+/* The way back to the games, as the editor has it at its top left (#476). */
+.byd-wizard-home { display: inline-flex; align-items: center; min-height: 44px; color: var(--muted); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.byd-wizard-home:hover { text-decoration: underline; }
 
 /* On a phone the title is a title, not a poster: three lines of it before the first field is
    three lines of the step nobody came for. */
 @media (max-width: 767px) {
-  .byd-wizard > header { padding: 12px 16px; }
+  .byd-wizard > header { padding: 12px 16px; row-gap: 0; }
   .byd-wizard h1 { font-size: 21px; }
+  /* The way back and the promise share the first line, and the title takes the second, so the
+     way back costs no height of its own (#476). */
+  .byd-wizard > header > div { order: 2; flex-basis: 100%; }
 }
 
 /* Steps (L10, prototype C): the same APG tablist the editor's modes are, with one panel under it
@@ -66,7 +72,14 @@
 .byd-wizard-steps button { flex: 1; font-weight: 700; }
 
 /* The desk: what the wizard has always looked like, with the card given room enough to be whole. */
-.byd-wizard-grid { display: grid; grid-template-columns: minmax(300px, .8fr) minmax(562px, 1.2fr); min-height: calc(100vh - 92px); }
+/* The page stands still on a desk (#476, beslut 2026-09-27, variant B): the head stays where it is
+   and each column scrolls on its own, as the stepped wizard and the editor do. The whole page used
+   to scroll, so the frame picker in step 2 and the live card in step 3 were never on the screen at
+   once at 1024 × 768 — a frame was chosen for a card nobody could see. */
+.byd-wizard[data-room='desk'] { height: 100vh; display: flex; flex-direction: column; }
+.byd-wizard[data-room='desk'] > header { flex: 0 0 auto; }
+.byd-wizard-grid { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(300px, .8fr) minmax(562px, 1.2fr); }
+.byd-wizard-grid > aside, .byd-wizard-grid > main { min-height: 0; overflow: auto; overscroll-behavior: contain; }
 .byd-wizard-grid > aside { padding: 26px 30px 100px 36px; border-right: 1px solid var(--line); display: grid; align-content: start; gap: 24px; background: var(--byd-wizard-panel-bg); }
 .byd-wizard-grid > main { min-width: 0; padding: 28px 36px 100px; display: grid; align-content: start; gap: 22px; }
 .byd-wizard-handoff { padding: 15px 17px; border: 1px solid #ecd9a8; border-radius: 12px; background: #fff3d5; }
@@ -94,6 +107,10 @@
 .byd-wizard-field > span { border-radius: 999px; padding: 5px 7px; background: #e2e8e2; color: #3f4b3f; text-align: center; font-size: 10px; font-weight: 800; }
 .byd-wizard-field small { grid-column: 2 / 4; color: var(--muted); font-size: 11px; }
 .byd-wizard-field > button { grid-row: 1; grid-column: 3; padding: 0; width: var(--tap); }
+/* The title is the tool's own column (#476): its word, set where a name would be written. */
+.byd-wizard-field-fixed { padding: 0 2px; font-weight: 700; }
+/* Why a name cannot be a column, under the row it is about (#476). */
+.byd-wizard .byd-wizard-field-says { grid-column: 2 / -1; margin: 0; color: #8d3823; font-size: 12px; }
 .byd-wizard-add-fields, .byd-wizard-frames { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .byd-wizard-add-fields button { border-style: dashed; font-size: 12px; }
 .byd-wizard-frames { margin-top: 4px; }
@@ -106,6 +123,8 @@
 .byd-wizard-card-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-items: start; }
 .byd-wizard-preview { padding: 12px; display: grid; place-items: center; gap: 8px; border-radius: 18px; background: #dfe6dc; }
 .byd-wizard-preview > span { color: #4f5a4d; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+/* Why the card is not yet in its frame's face (#476): a sentence, not a caption. */
+.byd-wizard-preview > .byd-wizard-preview-font { max-width: 26ch; font-size: 12px; letter-spacing: 0; text-transform: none; text-align: center; }
 .byd-wizard-card-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; }
 .byd-wizard-card-form > label, .byd-wizard-image-field { display: grid; align-content: start; gap: 5px; }
 .byd-wizard-card-form label > span, .byd-wizard-image-field > span { display: flex; justify-content: space-between; gap: 8px; color: #454c44; font-size: 12px; font-weight: 700; }
@@ -139,6 +158,12 @@
 .byd-wizard-card-tabs .is-add { border-style: dashed; }
 .byd-wizard-block > footer { padding-top: 18px; display: grid; gap: 14px; border-top: 1px solid var(--line); }
 .byd-wizard-primary { padding: 0 18px; }
+/* Both of a button's words are laid out in one cell and only the true one is seen (#476), so the
+   wait does not shrink the button under the pointer. `visibility` also takes the other out of
+   what a screen reader hears. */
+.byd-wizard-held { display: inline-grid; }
+.byd-wizard-held > span { grid-area: 1 / 1; }
+.byd-wizard-held > span[data-on='false'] { visibility: hidden; }
 .byd-wizard [role='alert'] { color: #8d3823; }
 /* Och fältet ett besked handlar om pekas ut där ögat är, och inte bara i trädet (#416). Samma
    färg som beskedet självt, så att raden och rutan hör ihop. */
@@ -154,7 +179,8 @@
   .byd-wizard-card-form .is-wide { grid-column: 1 / -1; }
   /* What came after the button is said behind the step's question mark (L36); the button stands
      at the end on its own. */
-  .byd-wizard-block > footer { justify-content: end; grid-auto-flow: column; align-items: center; }
+  /* The error goes under the button and never beside it, so it cannot push the button along. */
+  .byd-wizard-block > footer { justify-items: end; }
   .byd-wizard-field { grid-template-columns: 54px minmax(90px, 1fr) minmax(98px, auto) var(--tap); }
   .byd-wizard-field small { grid-column: 3; grid-row: 1; text-align: right; }
   .byd-wizard-field > button { grid-column: 4; }

@@ -2,7 +2,7 @@
 // The starter flow below the desk (#4, L10): three steps with one job each, instead of one page
 // two and a half screens long where the frame is chosen half a metre from the card it changes.
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { atWidth } from './viewport.js'
@@ -27,7 +27,7 @@ describe('the wizard on a phone', () => {
     expect(screen.queryByText('Startram')).toBeNull()
 
     await user.click(screen.getByRole('tab', { name: '2 · Fälten' }))
-    expect(screen.getByLabelText('Titel namn')).toBeTruthy()
+    expect(screen.getByLabelText('Kostnad namn')).toBeTruthy()
     // The frame belongs with the fields it frames, not in another chapter.
     expect(screen.getByText('Startram')).toBeTruthy()
 
@@ -82,5 +82,106 @@ describe('the wizard on a desk', () => {
     expect(screen.getByLabelText('Spelets namn')).toBeTruthy()
     expect(screen.getByText('Startram')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Skapa spelet/ })).toBeTruthy()
+  })
+})
+
+// Where the focus goes (#476): Enter in a field did nothing, a new field or card left the focus
+// on the button that made it, and a control that went away or locked left it on <body>.
+describe('the focus in the wizard (#476)', () => {
+  it('starts in the name on a desk, and Enter there goes on to the fields', async () => {
+    const user = userEvent.setup()
+    wizardAt(1280)
+    expect(document.activeElement).toBe(screen.getByLabelText('Spelets namn'))
+    await user.type(screen.getByLabelText('Spelets namn'), 'Skogens herrar{Enter}')
+    expect(document.activeElement).toBe(screen.getByLabelText('Kostnad namn'))
+  })
+
+  it('goes on to the next step from the name on a phone', async () => {
+    const user = userEvent.setup()
+    wizardAt(390)
+    await user.type(screen.getByLabelText('Spelets namn'), 'Skogens herrar{Enter}')
+    expect(screen.getByRole('tab', { name: '2 · Fälten' }).getAttribute('aria-selected')).toBe('true')
+    expect(document.activeElement).toBe(screen.getByLabelText('Kostnad namn'))
+  })
+
+  it('puts the focus in what was just made: a new field s name, a new card s title', async () => {
+    const user = userEvent.setup()
+    wizardAt(1280)
+    await user.click(screen.getByRole('button', { name: '+ Textfält' }))
+    expect(document.activeElement).toBe(screen.getByLabelText('Nytt textfält namn'))
+    await user.click(screen.getByRole('button', { name: '+ Nytt kort' }))
+    expect(document.activeElement).toBe(screen.getByLabelText('kort 2 Titel'))
+  })
+
+  it('never leaves the focus on nothing when a card is taken away or a step button locks', async () => {
+    const user = userEvent.setup()
+    wizardAt(1280)
+    await user.click(screen.getByRole('button', { name: '+ Nytt kort' }))
+    await user.click(screen.getByRole('button', { name: 'Ta bort valt kort' }))
+    expect(document.activeElement).not.toBe(document.body)
+    expect(document.activeElement?.getAttribute('aria-pressed')).toBe('true')
+    cleanup()
+
+    wizardAt(390)
+    await user.click(screen.getByRole('button', { name: 'Nästa →' }))
+    await user.click(screen.getByRole('button', { name: 'Nästa →' }))
+    expect(document.activeElement).not.toBe(document.body)
+    expect(screen.getByRole('tabpanel').contains(document.activeElement)).toBe(true)
+  })
+})
+
+// The names in step 2 are the columns the game gets (#476, L44), so the ones the document cannot
+// hold are stopped where they are written: none, one used twice, and the tool's own. The title is
+// the tool's column too, shown as «Titel» and not written over.
+describe('the names of the fields (#476)', () => {
+  it('shows the title as the tool s own column, not a name to write over', () => {
+    wizardAt(1280)
+    const row = document.querySelector('[data-field="title"]') as HTMLElement
+    expect(row.textContent).toContain('Titel')
+    expect(row.querySelector('input')).toBeNull()
+  })
+
+  it('stops a name used twice, an empty one and the tool s own at the field, and keeps «Skapa» from going on', async () => {
+    const user = userEvent.setup()
+    const gone: string[] = []
+    atWidth(1280)
+    history.replaceState(null, '', '/new')
+    render(<NewProjectPage onNavigate={(u) => gone.push(u)} />)
+    await user.type(screen.getByLabelText('Spelets namn'), 'Skogens herrar')
+    const cost = screen.getByLabelText('Kostnad namn')
+
+    await user.clear(cost)
+    await user.type(cost, 'Text')
+    expect(cost.getAttribute('aria-invalid')).toBe('true')
+    const said = document.getElementById(cost.getAttribute('aria-describedby') ?? '')
+    expect(said?.textContent).toBe('Två fält kan inte heta «Text».')
+
+    await user.clear(cost)
+    expect(document.getElementById(cost.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Fältet behöver ett namn.')
+
+    await user.type(cost, 'antal')
+    expect(document.getElementById(cost.getAttribute('aria-describedby') ?? '')?.textContent).toBe('«antal» är verktygets eget namn.')
+    await user.clear(cost)
+    await user.type(cost, 'titel')
+    expect(document.getElementById(cost.getAttribute('aria-describedby') ?? '')?.textContent).toBe('«titel» är verktygets eget namn.')
+
+    await user.click(screen.getByRole('button', { name: /Skapa spelet och fortsätt i editorn/ }))
+    expect(document.activeElement).toBe(cost)
+    expect(gone).toEqual([])
+
+    await user.clear(cost)
+    await user.type(cost, 'Pris')
+    expect(cost.getAttribute('aria-invalid')).not.toBe('true')
+  })
+})
+
+describe('a field added twice (#476)', () => {
+  it('suggests a name no other field has, so a new field is never born refused', async () => {
+    const user = userEvent.setup()
+    wizardAt(1280)
+    await user.click(screen.getByRole('button', { name: '+ Textfält' }))
+    await user.click(screen.getByRole('button', { name: '+ Textfält' }))
+    expect(screen.getByLabelText('Nytt textfält 2 namn')).toBeTruthy()
+    expect(document.querySelector('[aria-invalid="true"]')).toBeNull()
   })
 })

@@ -63,7 +63,9 @@ const wearingThePrimary = (root: string) => (page: Page) =>
       return [...surface.querySelectorAll<HTMLElement>('button, a[href], label, [role="tab"], [role="option"]')]
         .filter((el) => el.checkVisibility())
         .filter((el) => getComputedStyle(el).backgroundColor === fill)
-        .map((el) => (el.getAttribute('aria-label') ?? el.textContent ?? el.tagName).trim().slice(0, 40))
+        // What is written on it as it is seen: a button that holds its width with a second word
+        // laid out unseen (#476) is named by the one that shows.
+        .map((el) => (el.getAttribute('aria-label') ?? el.innerText ?? el.tagName).trim().slice(0, 40))
     })
   }, root)
 

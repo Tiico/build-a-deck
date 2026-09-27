@@ -3,6 +3,11 @@ import { cleanup, configure } from '@testing-library/react'
 
 // Testing Library only cleans up on its own with vitest globals; do it explicitly.
 afterEach(cleanup)
+// Every test is a tab of its own: what a page kept for the rest of its tab's life (the wizard's
+// draft, #476) must not be found by the next test as if it were the same tab reloaded.
+afterEach(() => {
+  if (typeof sessionStorage !== 'undefined') sessionStorage.clear()
+})
 
 // How long a `waitFor` or a `findBy` waits before it calls the thing it is waiting for a failure.
 // Testing Library's own default is one second, and this suite does not run in one second's worth

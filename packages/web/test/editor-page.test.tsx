@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { TableClient } from '../src/client.js'
@@ -484,4 +484,34 @@ describe('a game made without the guided start (L42)', () => {
     expect(stored?.template.faces['front']?.base.map((e) => e.id)).toEqual(['text-1'])
     expect(stored?.rows).toHaveLength(1)
   }, 20_000)
+})
+
+// The empty game on the wall (#476, beslut 2026-09-27, variant A): a black wall and «0 kort · Inga
+// anmärkningar», which reads as an approval, and nothing about where the first card and the first
+// element are made. The wall now says so and has the two doors on it.
+describe('the wall of a game with nothing in it (#476)', () => {
+  async function blank(): Promise<void> {
+    await run.projects.create(run.projectId, buildBlankProject({ name: 'Kråkkriget', players: 3 }))
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Kråkkriget')
+  }
+  const wall = () => within(document.querySelector('.byd-wall-deck') as HTMLElement)
+
+  it('says the game has no cards, where they are made, and does not call an empty deck checked', async () => {
+    await blank()
+    expect(wall().getByRole('heading', { name: 'Spelet har inga kort än' })).toBeTruthy()
+    expect(wall().getByText('Ett kort är en rad i Tabell, och mallen i Mall ritar det. Börja var du vill.')).toBeTruthy()
+    expect(screen.queryByText('Inga anmärkningar')).toBeNull()
+  })
+
+  it('makes the first card on the spot, and then points at the front that is still to be drawn', async () => {
+    const user = userEvent.setup()
+    await blank()
+    await user.click(wall().getByRole('button', { name: '+ Nytt kort' }))
+    await waitFor(() => expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(1))
+    expect(wall().getByText('Korten har ingen framsida än: mallen är tom.')).toBeTruthy()
+    await user.click(wall().getByRole('button', { name: 'Rita framsidan i Mall →' }))
+    expect(screen.getByRole('tab', { name: /mall/i }).getAttribute('aria-selected')).toBe('true')
+  })
 })

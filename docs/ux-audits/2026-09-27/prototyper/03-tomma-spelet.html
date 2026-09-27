@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 03 — Det tomma spelet (#476 fynd 12)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Ett spel skapat «Utan guidad start» (L42) har inga kort, inga fält och två tomma sidor.
+     Editorn öppnar på Kortvägg: en svart yta och «0 kort · 150 px breda · Inga anmärkningar».
+     Ingenting säger att första kortet görs i Tabell och första elementet i Mall. Vad ska den
+     tomma väggen säga?
+
+       Nu  svart vägg, som i dag
+       A   två dörrar mitt på väggen
+       B   spökkortet: väggens sista plats är alltid «+ Nytt kort»
+       C   en kort checklista överst som bockas av och försvinner
+
+     Liten med flit: editorns tomma lägen hör till #477 (Kortvägg) också — fynd 14 där, tom
+     sökning, bör få samma form som det som väljs här. ─────────────────────────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .byd-editor { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  .verktyg { flex: none; display: flex; align-items: center; gap: 8px; padding: 16px var(--gutter); border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .verktyg .sok { flex: 0 1 240px; min-height: 44px; display: flex; align-items: center; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: #15171c; color: var(--quiet); }
+  .verktyg .ed-knapp { font-weight: 700; }
+  .vagg { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 20px var(--gutter); position: relative; }
+  .fot { flex: none; display: flex; gap: 12px; align-items: center; min-height: 38px; padding: 0 var(--gutter); border-top: 1px solid var(--line); color: var(--quiet-2); }
+  .fot a, .lank { color: #9cc4f5; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; background: none; border: 0; font: inherit; padding: 0; }
+
+  /* Korten på väggen: 150 px breda, 63 × 88. */
+  .rutnat { display: grid; grid-template-columns: repeat(auto-fill, 150px); gap: 18px; align-items: start; }
+  .kort { width: 150px; aspect-ratio: 63 / 88; border-radius: 6px; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 50%); position: relative; overflow: hidden; }
+  .kort .t { position: absolute; left: 8%; top: 7%; right: 8%; font: 800 15px/1.15 Inter, system-ui, sans-serif; color: #111; }
+  .kort .r { position: absolute; left: 8%; right: 8%; top: 22%; height: 1px; background: #111; }
+  .rutan { display: grid; gap: 6px; justify-items: start; }
+  .rutan small { color: var(--quiet); font-size: 11px; }
+
+  /* A: två dörrar mitt på väggen. */
+  .dorrar { max-width: 420px; margin: 12vh auto 0; text-align: center; display: grid; gap: 10px; justify-items: center; }
+  .dorrar h2 { margin: 0; color: #fff; font-size: 18px; }
+  .dorrar p { margin: 0; color: var(--quiet-2); line-height: 1.55; }
+  .dorrar .par { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
+  .band { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 8px; background: #1b1e26; color: #c9d0de; }
+  .band .ed-knapp { min-height: 36px; }
+
+  /* B: spökkortet, en plats på väggen i kortets egen form. */
+  .spoke { width: 150px; aspect-ratio: 63 / 88; border: 1.5px dashed #5b6477; border-radius: 6px; background: transparent; color: #c9d0de; font: inherit; font-weight: 700; display: grid; place-content: center; gap: 6px; text-align: center; cursor: pointer; }
+  .spoke b { font-size: 26px; font-weight: 300; line-height: 1; color: #9cc4f5; }
+  .spoke:hover { border-color: #9cc4f5; background: #1f2530; }
+  .spoke:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 3px; }
+  .spoke small { font-weight: 400; color: var(--quiet); font-size: 11px; padding: 0 10px; }
+
+  /* C: första stegen, överst på väggen. */
+  .steg { max-width: 560px; margin: 0 0 20px; padding: 12px 14px 14px; border: 1px solid var(--line); border-radius: 10px; background: #1b1e26; }
+  .steg header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .steg header b { color: #fff; }
+  .steg header span { color: var(--quiet); }
+  .steg ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+  .steg li { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 44px; }
+  .steg li i { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #6f7a90; display: grid; place-items: center; font-style: normal; font-size: 12px; color: transparent; }
+  .steg li.klar i { background: #245a37; border-color: #3f9a62; color: #cfeedd; }
+  .steg li.klar span { color: var(--quiet); text-decoration: line-through; }
+  .steg li span { color: #dce3f2; }
+  .steg .ed-knapp { min-height: 36px; }
+
+  /* Mall och Tabell: bara så mycket att dörrarna går någonstans. */
+  .flik-yta { max-width: 640px; margin: 10vh auto 0; display: grid; gap: 12px; justify-items: center; text-align: center; color: var(--quiet-2); }
+  .flik-yta h2 { margin: 0; color: #fff; font-size: 16px; }
+  .duk { width: 150px; aspect-ratio: 63 / 88; border-radius: 6px; background: #fff; position: relative; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>Fynd 12 · Det tomma spelet (L42).</b> Följ dörrarna: de lägger till ett kort eller ett element på riktigt i prototypen, och väggen svarar.</p>
+    <p>Samordnas med #477 (Kortvägg): fynd 14 där, tom sökning, bör få samma form som den variant som väljs här.</p>
+  </div>
+  <div class="matt"><span>Kort: <u id="m-kort">0</u></span><span>Element på framsidan: <u id="m-el">0</u></span></div>
+  <button type="button" id="aterstall">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+
+<div class="byd-editor">
+  <div class="ed-huvud">
+    <span class="hem">Mina spel</span><strong>Tomma spelet</strong><span class="rev">rev <span id="rev">1</span></span><span class="sparat">Sparat</span>
+    <div class="ed-flikar" role="tablist" aria-label="Lägen" id="flikar"></div>
+    <span class="spacer"></span>
+    <span class="who">A</span>
+    <button type="button" class="ed-knapp kantad">Spara</button>
+    <button type="button" class="ed-knapp primar">Starta bord ▾</button>
+  </div>
+  <div id="yta" style="flex:1 1 auto;min-height:0;display:flex;flex-direction:column"></div>
+</div>
+
+<script>
+const NOT = {
+  nu: '<b>Nu.</b> Svart vägg. Foten säger «Inga anmärkningar» om en lek utan kort, vilket låter som ett godkännande. Vägen till första kortet (Tabell) och första elementet (Mall) står ingenstans.',
+  a: '<b>A · Två dörrar.</b> Mitt på den tomma väggen: vad som saknas och de två ställen det görs. «+ Nytt kort» gör kortet här, utan flikbyte. När bara det ena finns står det andra kvar som ett band över väggen. <span class="plus">+ Tydligast första gången. Försvinner av sig själv när leken har kort och mall. Samma form kan svara på tom sökning (#477:14).</span> <span class="minus">− Ny yta med egen text (L36 vill hålla texten kort). En primärknapp mitt på väggen utöver «Starta bord» i huvudet.</span>',
+  b: '<b>B · Spökkortet.</b> Väggens sista plats är alltid en streckad kortform med «+ Nytt kort», även när leken är full. Ett kort utan framsida får en rad under sig, inte på sig (E2: kortet ritas av mallen och inget annat). <span class="plus">+ Ingen förklaringstext: väggen visar själv var nästa kort hamnar. Nyttig även i en lek med 300 kort.</span> <span class="minus">− Säger inget om Mall förrän ett kort finns. En extra platta i varje vägg, också i sökresultat och grupper.</span>',
+  c: '<b>C · Första stegen.</b> En kort lista överst på väggen: framsidan, första kortet, provspela. Varje rad bockas av när det är gjort och listan går bort när alla tre är klara. <span class="plus">+ Visar hela vägen till ett bord, inte bara nästa steg. Knyter ihop tre flikar.</span> <span class="minus">− Mest text och mest tillstånd (vad är «klart»?). En checklista är mer krom, och L36 kortade just guidens förklaringar. Hör kanske mer hemma i guiden än i editorn.</span>',
+}
+const FLIKAR = ['Kortvägg', 'Mall', 'Tabell', 'Symboler', 'Media', 'Regler', 'Bord']
+const s = { v: 'a', flik: 'Kortvägg', kort: 0, el: 0, bord: false, rev: 1 }
+const yta = document.getElementById('yta')
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+
+const kortHtml = (n) => `<div class="kort" aria-label="Kort ${n}">${s.el ? `<span class="t">Kort ${n}</span><span class="r"></span>` : ''}</div>`
+
+function vagg() {
+  const verktyg = `<div class="verktyg"><span class="sok">Sök i alla fält…</span><button class="ed-knapp" tabindex="-1">Ögon: Som du ser det ▾</button><button class="ed-knapp" tabindex="-1">Guider (0) ▾</button><button class="ed-knapp" tabindex="-1">−</button><button class="ed-knapp" tabindex="-1">+</button><span class="spacer"></span><button class="ed-knapp" tabindex="-1">Fysisk kontroll (0) ▾</button></div>`
+  let inne = ''
+  const kort = Array.from({ length: s.kort }, (_, i) => kortHtml(i + 1))
+  if (s.v === 'nu') {
+    inne = `<div class="rutnat">${kort.join('')}</div>`
+  } else if (s.v === 'a') {
+    if (!s.kort && !s.el) {
+      inne = `<div class="dorrar"><h2>Spelet har inga kort än</h2>
+        <p>Ett kort är en rad i Tabell, och mallen i Mall ritar det. Börja var du vill.</p>
+        <div class="par"><button type="button" class="ed-knapp primar" data-gor="kort">+ Nytt kort</button><button type="button" class="ed-knapp kantad" data-till="Mall">Rita framsidan i Mall →</button></div></div>`
+    } else if (!s.kort) {
+      inne = `<div class="dorrar"><h2>Framsidan är ritad, men leken är tom</h2><p>Mallen har ${s.el} ${s.el === 1 ? 'element' : 'element'}. Korten den ritar görs här eller i Tabell.</p>
+        <div class="par"><button type="button" class="ed-knapp primar" data-gor="kort">+ Nytt kort</button></div></div>`
+    } else {
+      inne = (!s.el ? `<div class="band"><span>Korten har ingen framsida än: mallen är tom.</span><span class="spacer"></span><button type="button" class="ed-knapp kantad" data-till="Mall">Rita framsidan i Mall →</button></div>` : '') + `<div class="rutnat">${kort.join('')}</div>`
+    }
+  } else if (s.v === 'b') {
+    const under = s.el ? '' : '<small>Tom framsida · <button type="button" class="lank" data-till="Mall">Mall →</button></small>'
+    inne = `<div class="rutnat">${kort.map((k) => `<div class="rutan">${k}${under}</div>`).join('')}<button type="button" class="spoke" data-gor="kort"><b>+</b>Nytt kort${s.kort ? '' : '<small>Blir en rad i Tabell</small>'}</button></div>`
+  } else {
+    const rader = [
+      ['Rita framsidan', s.el > 0, 'Mall →', 'Mall'],
+      ['Första kortet', s.kort > 0, '+ Nytt kort', 'kort'],
+      ['Provspela vid ett bord', s.bord, 'Starta bord', 'bord'],
+    ]
+    const klara = rader.filter((r) => r[1]).length
+    const lista = klara === 3 ? '' : `<section class="steg" aria-label="Första stegen"><header><b>Första stegen</b><span>${klara} av 3</span></header><ol>${rader.map(([t, klar, knapp, mal]) => `<li class="${klar ? 'klar' : ''}"><i>✓</i><span>${t}</span>${klar ? '' : `<button type="button" class="ed-knapp kantad" ${mal === 'Mall' ? 'data-till="Mall"' : `data-gor="${mal}"`}>${knapp}</button>`}</li>`).join('')}</ol></section>`
+    inne = lista + `<div class="rutnat">${kort.join('')}</div>`
+  }
+  const fot = s.v === 'nu'
+    ? `<span>${s.kort} kort · 150 px breda</span><span>Inga anmärkningar</span>`
+    : `<span>${s.kort} kort · 150 px breda</span>${s.kort ? '<span>Inga anmärkningar</span>' : ''}`
+  return `${verktyg}<div class="vagg">${inne}</div><div class="fot">${fot}</div>`
+}
+
+function mall() {
+  return `<div class="vagg"><div class="flik-yta"><h2>Mall · framsidan</h2>
+    <div class="duk">${s.el ? '<span style="position:absolute;left:8%;top:7%;font:800 15px Inter,system-ui;color:#111">{title}</span>' : ''}</div>
+    <p>(Prototyp: här står mallens verktyg. ${s.el ? `Framsidan har ${s.el} element.` : 'Framsidan är tom.'})</p>
+    <button type="button" class="ed-knapp primar" data-gor="el">+ Textelement</button>
+    <button type="button" class="ed-knapp kantad" data-till="Kortvägg">← Tillbaka till Kortvägg</button></div></div>`
+}
+function tabell() {
+  return `<div class="vagg"><div class="flik-yta"><h2>Tabell</h2><p>(Prototyp: ${s.kort} ${s.kort === 1 ? 'rad' : 'rader'}.)</p>
+    <button type="button" class="ed-knapp primar" data-gor="kort">+ Nytt kort</button>
+    <button type="button" class="ed-knapp kantad" data-till="Kortvägg">← Tillbaka till Kortvägg</button></div></div>`
+}
+
+function rita(fokus) {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  document.getElementById('anteckning').innerHTML = NOT[s.v]
+  document.getElementById('flikar').innerHTML = FLIKAR.map((f) => `<button role="tab" aria-selected="${f === s.flik}" data-flik="${f}">${f}</button>`).join('')
+  document.getElementById('m-kort').textContent = s.kort
+  document.getElementById('m-el').textContent = s.el
+  document.getElementById('rev').textContent = s.rev
+  yta.innerHTML = s.flik === 'Mall' ? mall() : s.flik === 'Tabell' ? tabell() : s.flik === 'Kortvägg' ? vagg() : `<div class="vagg"><div class="flik-yta"><h2>${esc(s.flik)}</h2><p>(Inte en del av prototypen.)</p></div></div>`
+  // Fokus lämnas aldrig på <body>: tillbaka till samma sorts knapp, annars fliken.
+  if (fokus) (yta.querySelector(fokus) ?? document.querySelector('[data-flik][aria-selected="true"]'))?.focus()
+}
+
+document.body.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.v) { s.v = b.dataset.v; const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita() }
+  else if (b.id === 'aterstall') { Object.assign(s, { flik: 'Kortvägg', kort: 0, el: 0, bord: false, rev: 1 }); rita() }
+  else if (b.dataset.flik) { s.flik = b.dataset.flik; rita(`[data-flik]`) }
+  else if (b.dataset.till) { s.flik = b.dataset.till; rita('[data-gor]') }
+  else if (b.dataset.gor === 'kort') { s.kort++; s.rev++; rita('[data-gor="kort"], [data-till]') }
+  else if (b.dataset.gor === 'el') { s.el++; s.rev++; rita('[data-gor="el"], [data-till]') }
+  else if (b.dataset.gor === 'bord') { s.bord = true; rita() }
+})
+addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [contenteditable]')) return
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  if (e.target.closest('[role="tablist"]')) return
+  const alla = ['nu', 'a', 'b', 'c']
+  s.v = alla[(alla.indexOf(s.v) + (e.key === 'ArrowRight' ? 1 : 3)) % 4]
+  const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u)
+  rita()
+})
+const q = new URLSearchParams(location.search).get('v')
+if (['nu', 'a', 'b', 'c'].includes(q)) s.v = q
+rita()
+</script>
+</body>
+</html>

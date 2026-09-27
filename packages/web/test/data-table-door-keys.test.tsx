@@ -88,15 +88,17 @@ async function errand(user: ReturnType<typeof userEvent.setup>, keys: Press[]): 
 const door = () => within(screen.getByRole('group', { name: 'Kolumner' }))
 
 describe('vad dörren kostar i tangenttryck (#388)', () => {
-  it('når första kolumnens namn på tre tryck: listan är ett enda tabbstopp', async () => {
+  it('når första namnbara kolumnens namn på fyra tryck: listan är ett enda tabbstopp', async () => {
     const user = userEvent.setup()
     twoOwnWidths()
     render(<Editing />)
 
     // Enter öppnar dörren och autofokus står kvar i formuläret, en bakåt-Tabb går in i listan —
-    // som är ett stopp, och står på sin första rad — och Enter öppnar rutan där namnet skrivs.
-    expect(await errand(user, ['Enter', 'bakTabb', 'Enter'])).toBe(3)
-    expect(document.activeElement).toBe(screen.getByLabelText('Namn på kolumnen title'))
+    // som är ett stopp, och står på sin första rad. Den raden är titeln, som är verktygets egen
+    // kolumn och inte döps om (#476), så ett `↓` till står på `body`, och Enter öppnar rutan där
+    // namnet skrivs.
+    expect(await errand(user, ['Enter', 'bakTabb', 'ned', 'Enter'])).toBe(4)
+    expect(document.activeElement).toBe(screen.getByLabelText('Namn på kolumnen body'))
   })
 
   it('når sista kolumnens namn på fyra tryck, lika billigt som i dagens dörr', async () => {
@@ -207,10 +209,10 @@ describe('dörren håller tangentbordet så länge den står (#388)', () => {
     render(<Editing />)
 
     // Dörrens två Escape-lager från #384 står kvar: fällan får inte svara för något av dem.
-    await errand(user, ['Enter', 'bakTabb', 'Enter'])
+    await errand(user, ['Enter', 'bakTabb', 'ned', 'Enter'])
     await user.keyboard('{Escape}')
     expect(screen.getByRole('group', { name: 'Kolumner' })).toBeTruthy()
-    expect(document.activeElement).toBe(door().getByRole('button', { name: 'Byt namn på kolumnen title' }))
+    expect(document.activeElement).toBe(door().getByRole('button', { name: 'Byt namn på kolumnen body' }))
 
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('group', { name: 'Kolumner' })).toBeNull()
