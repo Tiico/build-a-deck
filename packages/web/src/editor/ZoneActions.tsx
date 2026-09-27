@@ -7,6 +7,7 @@ import { queryColumns } from './queries.js'
 import { fieldsOf } from './fields.js'
 import { ownerOf } from './zone-name.js'
 import { useDoor } from '../doors.js'
+import { useNumberDraft } from './number-draft.js'
 import { useT, type Key, type T } from '../i18n/index.js'
 
 // Authoring what a pile starts with and what it can be asked for, as sentences (prototyped
@@ -59,7 +60,10 @@ const atStart = (a: ZoneAction): boolean => a.when === 'start' || a.when === 'bo
 // Vilket av de två hållen som gäller, och därmed vilken rad som står under ratten. Ett dokument
 // som bär kombinationen redan — en import kan göra det — får `asks`, för det är den meningen som
 // säger varför ratten inte erbjuder det läge åtgärden faktiskt står i, och därmed vägen ur det.
-const clash = (a: ZoneAction): 'asks' | 'start' | undefined => (a.steps.some(asksForANumber) ? 'asks' : atStart(a) ? 'start' : undefined)
+// `start` bara där det finns ett tal att fråga efter (#480): under en åtgärd som bara blandar sade
+// raden något om ett steg som inte fanns.
+const hasAmount = (step: ActionStep): boolean => step.v === 'split' || step.v === 'deal'
+const clash = (a: ZoneAction): 'asks' | 'start' | undefined => (a.steps.some(asksForANumber) ? 'asks' : atStart(a) && a.steps.some(hasAmount) ? 'start' : undefined)
 // Var korten ligger, och vart de går. Prepositionen sitter i platsen och aldrig i steget (#285),
 // så en mening säger vilken form den vill ha genom att namnge hålet `{at}` eller `{to}` — och
 // vilken form ett verb styr är därmed språkets sak och inte den här filens (A4).
@@ -329,7 +333,8 @@ function Step({ step, columns, zones, beside, noAsk, t, onChange }: { step: Acti
       <>
         {parts(t('setup.step.take'), {
           which: (
-            <QuerySlot key="w" query={step.which} columns={columns} label={step.which.length > 0 ? queryWords(step.which, t) : t('setup.query.any')} onChange={(which) => onChange({ ...step, which })} t={t} />
+            // «varje kort» with nothing asked, rather than «varje kort där vilket kort som helst» (#480).
+            <QuerySlot key="w" query={step.which} columns={columns} label={step.which.length > 0 ? t('setup.take.where', { what: queryWords(step.which, t) }) : t('setup.take.every')} onChange={(which) => onChange({ ...step, which })} t={t} />
           ),
           face: side(step.face, LANDS, (face) => onChange({ ...step, face: face as typeof step.face })),
           ...place(step.to, (to) => onChange({ ...step, to })),
@@ -572,6 +577,15 @@ function Choices({ choices, close, t }: { choices: readonly Choice[]; close(): v
   )
 }
 
+// The number in an amount knob, written the way a number is written (#478's `number-draft.ts`,
+// #480): the digits are a draft until the field is left or Enter is pressed, then one whole number
+// from 1 up is written and shown. 0 and 2,5 were refused without a word, and the field kept
+// showing what had never been written.
+function AmountField({ n, onCommit }: { n: number; onCommit(n: number): void }) {
+  const draft = useNumberDraft({ value: n, min: 1, onCommit: (next) => onCommit(Math.max(1, Math.round(next))) })
+  return <input type="number" min="1" step="1" value={draft.value} onChange={draft.onChange} onBlur={draft.onBlur} onKeyDown={(e) => void draft.onKey(e)} />
+}
+
 function AmountSlot({ amount, zones, noAsk, t, onChange }: { amount: ActionAmount; zones: readonly Zone[]; noAsk: boolean; t: T; onChange(next: ActionAmount): void }) {
   const choices: Choice[] = [
     {
@@ -581,16 +595,7 @@ function AmountSlot({ amount, zones, noAsk, t, onChange }: { amount: ActionAmoun
       node: (
         <label key="amount:number">
           {t('setup.amount.number')}
-          <input
-            type="number"
-            min="1"
-            step="1"
-            defaultValue={amount.of === 'number' ? amount.n : 1}
-            onChange={(e) => {
-              const n = Number(e.target.value)
-              if (Number.isInteger(n) && n > 0) onChange({ of: 'number', n })
-            }}
-          />
+          <AmountField n={amount.of === 'number' ? amount.n : 1} onCommit={(n) => onChange({ of: 'number', n })} />
         </label>
       ),
     },

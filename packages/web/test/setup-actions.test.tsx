@@ -683,3 +683,43 @@ describe('fokus i högens panel (#480)', () => {
     expect(document.activeElement?.getAttribute('aria-expanded')).toBe('false')
   })
 })
+
+// Raden om varför en åtgärd vid start inte kan fråga efter ett tal hör till en åtgärd som har ett
+// tal att fråga efter (#480 fynd 14). Under en åtgärd som bara blandar sade den något om ingenting.
+describe('raden under ratten när åtgärden bara blandar (#480)', () => {
+  it('står inte under en åtgärd utan tal', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+    const action = step.closest('.byd-zone-action') as HTMLElement
+    fireEvent.change(within(action).getByRole('combobox'), { target: { value: 'shuffle' } })
+    fireEvent.click(within(action).getByRole('button', { name: 'Ta bort steg 1' }))
+    await waitFor(() => expect(action.querySelectorAll('ol li')).toHaveLength(1))
+    fireEvent.click(within(action).getByRole('button', { name: 'bara när någon ber om det' }))
+    fireEvent.click(await within(action).findByRole('button', { name: 'bara vid spelstart' }))
+    await waitFor(() => expect(within(action).queryByRole('button', { name: 'bara när någon ber om det' })).toBeNull())
+    expect(action.querySelector('.byd-zone-action-why')).toBeNull()
+  })
+})
+
+// Talet i en ratt skrivs som ett tal skrivs (#480 fynd 14, #478:s regel i `number-draft.ts`): 0 och
+// 2,5 nekades förut tyst, och fältet stod kvar med det som aldrig skrevs.
+describe('talet i antalsratten (#480)', () => {
+  it('skriver ett helt tal från 1 när fältet lämnas, och fältet visar det', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+    const field = within(open(step, '1')).getByRole('spinbutton') as HTMLInputElement
+    fireEvent.change(field, { target: { value: '0' } })
+    fireEvent.blur(field)
+    // 0 is no amount: the floor is 1, written and shown, not a draft left standing unsaid.
+    await waitFor(() => expect(field.value).toBe('1'))
+    const knob = () => step.querySelector('.byd-slot')!.textContent
+    expect(knob()).toBe('1')
+    // «2,5» as a Swedish Chromium hands it to the page; jsdom has no locale input of its own.
+    fireEvent.change(field, { target: { value: '2.5' } })
+    fireEvent.keyDown(field, { key: 'Enter' })
+    await waitFor(() => expect(knob()).toBe('3'))
+    expect(field.value).toBe('3')
+  })
+})
