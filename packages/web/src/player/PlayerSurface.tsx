@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { HeldCard } from './HeldCard.js'
-import { HandActions } from './HandActions.js'
+import { FootPlay, HandActions } from './HandActions.js'
 import { HandStrip } from './HandStrip.js'
 import { CountersRow, MineActions, MineStrip, inFrontOf } from './SeatExtras.js'
 import { PlaySheet } from './PlaySheet.js'
@@ -221,6 +221,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           something of everyone (#483): an ended table's survey and a rewind's question. The bar is
           empty, and draws nothing, for a table without a rulebook. */}
       <div className="byd-phone-foot" {...behind}>
+        {!view.ended && !view.rewind && <FootPlay view={view} cards={chosenCards} pending={quickPending} refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} />}
         {!view.ended && !view.rewind && <RuleDrawer http={faces} sessionId={sessionId} placement="phone" live={view} />}
       </div>
       {/* The card held up. A card that lies in front of you carries its verbs here, and a verb
