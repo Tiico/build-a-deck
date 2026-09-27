@@ -175,6 +175,7 @@ export const enEditor = {
   'wall.checks.fix': 'Mend it in the template',
   'wall.checks.fix.said': '{what} mended in the template.',
   'wall.checks.fix.none': 'This one needs a choice of yours; it cannot be mended for you.',
+  'wall.checks.fix.readOnly': 'Whoever may change the game can fix this in the template.',
   'wall.severity.error': 'error',
   'wall.severity.warning': 'warning',
 

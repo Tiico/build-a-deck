@@ -373,6 +373,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         selectedRow={row}
         onSelectRow={setRow}
         view={wallView.current}
+        readOnly={!client.mayEdit}
         onView={(v) => (wallView.current = v)}
         onSelectElement={(id) => {
           setElement(id)

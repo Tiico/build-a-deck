@@ -63,6 +63,17 @@ describe('a check that offers its own remedy on the wall (#233)', () => {
     expect(deckIssues(doc).filter((i) => i.code === 'text-too-small')).toEqual([])
   })
 
+  // A test leader reads the checks and may not change the template (D3, #477): the remedy is not
+  // offered as though it were hers to press, and the place says whose it is.
+  it('offers no remedy to a role that may not edit, and says whose it is', async () => {
+    render(<DeckWall doc={tooSmall()} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} onFixChecks={() => undefined} readOnly />)
+    fireEvent.click(screen.getByRole('button', { name: /^Fysisk kontroll/ }))
+    const remark = [...document.querySelectorAll<HTMLElement>('.byd-wall-checks li > button')].find((b) => /för liten text/.test(b.textContent ?? ''))!
+    fireEvent.click(remark)
+    await waitFor(() => expect(screen.getByText('Den som får ändra spelet kan rätta det här i mallen.')).toBeTruthy())
+    expect(screen.queryByRole('button', { name: 'Rätta i mallen' })).toBeNull()
+  })
+
   it('says why, rather than leaving a hole, where the answer is a choice somebody has to make', async () => {
     // A font nothing pins: the remedy is a font *file*, which is not in the template at all.
     const doc = projectDoc()

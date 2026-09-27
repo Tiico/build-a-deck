@@ -45,6 +45,9 @@ export type DeckWallProps = {
   // holds it for as long as the project is open, so a tab switch does not throw it away.
   view?: WallView | undefined
   onView?(view: WallView): void
+  // A role that may read the deck and not change it (D3): the checks are read, and their remedies
+  // are said to be someone else's rather than offered (#477).
+  readOnly?: boolean | undefined
 }
 
 export type WallView = { filter: FilterState; eye: string; scrollTop: number }
@@ -74,7 +77,7 @@ type Box = 'eyes' | 'guides' | 'grouping' | 'checks'
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
 // the physical checks (E5), gathered by kind, and the eyes to read the deck with.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFraming, onFixChecks, onAddCard, onOpenTemplate, view, onView }: DeckWallProps) {
+export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFraming, onFixChecks, onAddCard, onOpenTemplate, view, onView, readOnly = false }: DeckWallProps) {
   const t = useT()
   // What was mended is said out loud: an edit that changes the template under a deck of forty
   // cards and says nothing is the silence #32 forbids.
@@ -400,6 +403,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             words={words}
             openGroup={openGroup}
             onOpenGroup={setOpenGroup}
+            readOnly={readOnly}
             fixes={(code) => (onFixChecks ? fixesFor(doc, { code: code as (typeof groups)[number]['code'] }, found) : [])}
             onFix={(code, what) => {
               onFixChecks?.(fixesFor(doc, { code: code as (typeof groups)[number]['code'] }, found))
@@ -582,6 +586,7 @@ function Checks({
   onOpenGroup,
   fixes,
   onFix,
+  readOnly,
   t,
 }: {
   groups: ReturnType<typeof groupIssues>
@@ -591,6 +596,7 @@ function Checks({
   onOpenGroup(code: string | null): void
   fixes(code: string): Fix[]
   onFix(code: string, what: string): void
+  readOnly: boolean
   t: ReturnType<typeof useT>
 }) {
   return (
@@ -626,7 +632,9 @@ function Checks({
                         Where there is no remedy the reason stands in its place rather than a hole:
                         contrast and colour-alone need a choice of the designer's, and a font needs
                         a file (B3), none of which a patch can invent. */}
-                    {fixes(g.code).length > 0 ? (
+                    {readOnly && fixes(g.code).length > 0 ? (
+                      <small>{t('wall.checks.fix.readOnly')}</small>
+                    ) : fixes(g.code).length > 0 ? (
                       <button type="button" className="byd-secondary" onClick={() => onFix(g.code, words[g.code] ?? g.code)}>
                         {t('wall.checks.fix')}
                       </button>

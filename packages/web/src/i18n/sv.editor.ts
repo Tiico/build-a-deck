@@ -199,6 +199,7 @@ export const svEditor = {
   'wall.checks.fix': 'Rätta i mallen',
   'wall.checks.fix.said': '{what} rättad i mallen.',
   'wall.checks.fix.none': 'Den här behöver ett formval och kan inte rättas åt dig.',
+  'wall.checks.fix.readOnly': 'Den som får ändra spelet kan rätta det här i mallen.',
   'wall.severity.error': 'fel',
   'wall.severity.warning': 'varning',
 
