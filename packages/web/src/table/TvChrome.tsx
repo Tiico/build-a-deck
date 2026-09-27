@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
 import { describeActivity } from './describe.js'
 import { seatColor } from './seatColor.js'
@@ -9,6 +9,9 @@ import { cardWord } from './keyboard.js'
 import { componentOf } from './presence.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { useT } from '../i18n/index.js'
+
+// From how many seats a seat stands on one line in the column (#482 fynd 6).
+const DENSE_SEATS = 7
 
 export type TvChromeProps = {
   view: Snapshot
@@ -58,7 +61,40 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
     return hand.mode === 'count' ? hand.count : hand.order.length
   }
   const seatIndex = (seat: string) => Math.max(0, view.seats.findIndex((s) => s.id === seat))
-  const recent = [...activity].slice(-9).reverse()
+  // Three lines (#482 fynd 6, beslut B): the newest large, as the thing the room looks up for, and
+  // two before it small. The whole history is on every phone; the television keeps what a glance
+  // from the sofa takes in.
+  const recent = [...activity].slice(-3).reverse()
+  // A full table stands its seats on one line each (#482 fynd 6, beslut 2026-09-27, prototyp 22):
+  // up to six, three lines each fit whole at 1920 × 1080; seven and eight do not, and a dock
+  // scrolled to a half-drawn seat reads as a broken row. The sizes stay; what goes is the line of
+  // what the seat last did, which the feed under it already says in the seat's colour.
+  const dense = view.seats.length >= DENSE_SEATS
+  // Only the lines that fit whole (#482): nobody scrolls a television from the sofa, and a list cut
+  // through its last line — with the observers' row laid over it — read as broken. The newest stand
+  // first, so what gives way is the oldest. Measured after layout and again whenever the column
+  // changes size; `hidden` is the list's own and never React's, so a redraw does not undo it.
+  const feedRef = useRef<HTMLElement | null>(null)
+  const lines = recent.map((l) => l.seq).join(',')
+  useLayoutEffect(() => {
+    const feed = feedRef.current
+    if (!feed) return
+    const fit = () => {
+      const rows = [...feed.querySelectorAll<HTMLElement>('ol > li')]
+      for (const li of rows) li.hidden = false
+      const bottom = feed.getBoundingClientRect().bottom - parseFloat(getComputedStyle(feed).paddingBottom || '0')
+      let full = false
+      for (const li of rows) {
+        full ||= li.getBoundingClientRect().bottom > bottom + 0.5
+        li.hidden = full
+      }
+    }
+    fit()
+    if (typeof ResizeObserver !== 'function') return
+    const watch = new ResizeObserver(fit)
+    watch.observe(feed)
+    return () => watch.disconnect()
+  }, [lines])
   // What the panel holds when nobody is pointing (K8): the card the latest line was about, for as
   // long as it is the latest. Pointing is a good way into the panel and a bad requirement — a TV
   // is watched by a room and held by nobody — so the screen answers "what was just played?" on
@@ -116,7 +152,7 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
         </section>
         <section className="byd-tv-seats" aria-labelledby="tv-seats">
           <h2 id="tv-seats">{t('tv.seats')}</h2>
-          <ul aria-labelledby="tv-seats">
+          <ul aria-labelledby="tv-seats" data-dense={dense ? '' : undefined}>
             {view.seats.map((s, i) => {
               const last = [...activity].reverse().find((l) => l.by === s.id)
               return (
@@ -124,15 +160,15 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
                   <i data-avatar>{(s.name ?? s.id).slice(0, 1)}</i>
                   <div>
                     <span>{s.name ?? s.id}</span>
-                    <span>{t(handCount(s.id) === 1 ? 'tv.seat.hand.one' : 'tv.seat.hand.other', { n: handCount(s.id) })}</span>
-                    <small>{last ? describeActivity(last, view, t) : t('tv.seat.none')}</small>
+                    <span>{t(`tv.seat.hand${dense ? '.short' : ''}.${handCount(s.id) === 1 ? 'one' : 'other'}`, { n: handCount(s.id) })}</span>
+                    {!dense && <small>{last ? describeActivity(last, view, t) : t('tv.seat.none')}</small>}
                   </div>
                 </li>
               )
             })}
           </ul>
         </section>
-        <section className="byd-tv-feed">
+        <section className="byd-tv-feed" ref={feedRef}>
           <h2 id="tv-feed">{t('play.latest')}</h2>
           {/* A table nobody has touched yet (UX-16): the heading says what will fill it, rather
               than standing over an empty list. The list itself comes back with the first line. */}

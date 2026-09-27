@@ -84,3 +84,16 @@ describe('the countdown to the next automatic attempt', () => {
     expect(countdownFrom({ nextRetryAt: null, made: 4, of: 4 }, 1_000)).toBeNull()
   })
 })
+
+// A line that is open and never answers (#482 fynd 4). The transport said all was well, so eighteen
+// seconds with the network gone said nothing at all, and a drop bounced back after four as though
+// it had been refused. An envelope nobody has answered for longer than a wait is allowed is the
+// same «långsam» the first connection already says — not a tenth state.
+describe('an open line that does not answer (#482)', () => {
+  it('is slow once an envelope has waited past the allowance, and nothing before', () => {
+    expect(connectionState(facts({ status: 'open', hasView: true, unansweredMs: 100 }))).toBeNull()
+    expect(connectionState(facts({ status: 'open', hasView: true, unansweredMs: DEFAULT_TIMING.slowAfterMs + 1 }))).toBe('slow')
+    // What the reader was just told takes its turn first.
+    expect(connectionState(facts({ status: 'open', hasView: true, resumed: true, unansweredMs: DEFAULT_TIMING.slowAfterMs + 1 }))).toBe('resumed')
+  })
+})

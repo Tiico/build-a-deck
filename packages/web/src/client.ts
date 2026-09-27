@@ -80,6 +80,14 @@ export class TableClient {
   private readonly readyPromise: Promise<void>
   private resolveReady!: () => void
   private readonly pending = new Map<string, (result: SendResult) => void>()
+  // When each unanswered envelope was sent (#482): an open line that has stopped answering is only
+  // visible as envelopes that wait.
+  private readonly sentAt = new Map<string, number>()
+  get unansweredSince(): number | null {
+    let oldest: number | null = null
+    for (const at of this.sentAt.values()) oldest = oldest === null ? at : Math.min(oldest, at)
+    return oldest
+  }
   private readonly seqWaiters: { seq: number; resolve: () => void }[] = []
   private readonly listeners = new Set<Listener>()
   private readonly presenceListeners = new Set<PresenceListener>()
@@ -138,7 +146,9 @@ export class TableClient {
         return
       }
       this.pending.set(envelope.id, resolve)
+      this.sentAt.set(envelope.id, Date.now())
       this.ws.send(JSON.stringify({ t: 'envelope', envelope }))
+      this.notify()
     })
   }
 
@@ -261,6 +271,7 @@ export class TableClient {
     if (ws !== this.ws || this.lost.has(ws) || this.status === 'closed' || this.trouble !== null || this.refused !== null) return
     for (const resolve of this.pending.values()) resolve({ ok: false, reason: 'connection lost' })
     this.pending.clear()
+    this.sentAt.clear()
     this.setStatus('reconnecting')
     const delay = this.plan[this.made]
     // The plan is spent: trying again on our own would only be a page blinking at nobody.
@@ -357,6 +368,8 @@ export class TableClient {
     const resolve = this.pending.get(id)
     if (!resolve) return
     this.pending.delete(id)
+    this.sentAt.delete(id)
+    this.notify()
     // A patch for this envelope may arrive after the ack; the view is authoritative, so
     // wait for it before resolving so that `await send()` always sees its own effect.
     if (result.ok && result.seqs.length > 0) {

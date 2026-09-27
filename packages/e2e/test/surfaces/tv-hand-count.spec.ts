@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { TV_AIR_PX } from '../../../web/src/table/fit.js'
+import { TV_OVERSCAN } from '../../../web/src/table/camera.js'
 import { TV } from '../../support/devices.js'
 import { expect, test, type Fixtures } from '../../support/test.js'
 
@@ -27,7 +27,7 @@ const WINDOWS = [
   { name: '2560 × 1440', width: 2560, height: 1440 },
 ] as const
 
-type Badge = { zone: string; count: string; left: number; top: number; right: number; bottom: number }
+type Badge = { zone: string; count: string; left: number; top: number; right: number; bottom: number; onFan: boolean }
 type Reading = { badges: Badge[]; window: { w: number; h: number }; cardShortPx: number }
 
 // Vad sidan har ritat: varje antalsbricka med sin ruta, fönstret den ligger i, och kortets
@@ -44,6 +44,11 @@ const read = (page: Page): Promise<Reading> =>
         top: Math.round(r.top * 10) / 10,
         right: Math.round(r.right * 10) / 10,
         bottom: Math.round(r.bottom * 10) / 10,
+        // Over its own hand: the badge's box meets one of the cards its fan draws.
+        onFan: [...(el.closest('.byd-hand')?.querySelectorAll('.byd-hand-fan > *') ?? [])].some((card) => {
+          const c = card.getBoundingClientRect()
+          return Math.min(c.right, r.right) > Math.max(c.left, r.left) && Math.min(c.bottom, r.bottom) > Math.max(c.top, r.top)
+        }),
       }
     })
     // Kortets kortsida, som filten själv ritar den: en hög är ett kort brett (`CARD_MM.w`), och en
@@ -103,25 +108,17 @@ test.describe('TV:ns handbricka ligger innanför fönstret (#413)', () => {
     })
   }
 
-  // Det tredje kriteriet: kortets kortsida minskar inte mer än vad brickans höjd kostar (#413).
-  //
-  // Det mäts inte som ett kortmått i pixlar. Vad ett kort blir på TV:n hänger på hur bred klungan i
-  // hörnet råkar bli, och den är satt i filtens egen skärning — ett pinnat kortmått här vore den
-  // här maskinens typsnitt och inte produktens (#111, `felt-font`). Det som mäts är i stället vad
-  // inpassningen *betalade*: brickan hänger från en linje på filten, och luften förbi den linjen är
-  // en pillerbredd, `TV_AIR_PX`. Ligger den linje som kom närmast kanten ungefär sin egen luft in,
-  // har bilden köpt brickan och ingenting mer; hade någon löst det genom att krympa bordet i stället
-  // skulle brickorna ligga långt inne på skärmen, och det här säger ifrån.
-  //
-  // Linjen och inte rutan, eftersom linjen är millimeter gånger skala och rutan är siffrans bredd i
-  // maskinens typsnitt. Övre gränsen är rundlig med flit: bilden binds inte alltid av brickorna —
-  // är ramen smal nog binder spelets bredd i stället, och då blir luften på höjden ramens form och
-  // inte ett överköp. En pillerbredd till är taket, och ett överköp värt namnet är långt över det.
-  test('köper brickans luft och inte flera: den linje som kom närmast kanten ligger ungefär sin egen luft in', async ({ tableOf, open, host }) => {
-    const now = await dealtTable({ tableOf, open, host }, { width: 1920, height: 1080 })
-    // Linjen varje bricka hänger från är dess inre kant, den mot fläkten: brickan hänger utåt från
-    // den, uppåt vid norra platsen och nedåt vid alla andra (#84).
-    const closest = Math.round(Math.min(...now.badges.map((b) => (b.top < now.window.h / 2 ? b.bottom : now.window.h - b.top))) * 10) / 10
-    expect({ closest, given: closest >= TV_AIR_PX - 0.5, andNoMore: closest <= 2 * TV_AIR_PX }).toEqual({ closest, given: true, andNoMore: true })
+  // Brickan hänger inåt, över solfjäderns hörn (beslut 2026-09-27, #482 fynd 5 B). Utåt hängde den
+  // i TV:ns overscan (#322, C5), och att dra tillbaka bilden för att få ut den ur bandet kostade
+  // kortet under K9:s golv. Inåt ligger den över sin egen hand, utanför bandet, och bilden behöver
+  // inte längre köpa luft åt den — det som #413 betalade i kort kommer tillbaka.
+  test('ligger över sin egen hand och utanför TV:ns overscan vid 1920 × 1080', async ({ tableOf, open, host }) => {
+    const tv = { width: 1920, height: 1080 }
+    const now = await dealtTable({ tableOf, open, host }, tv)
+    const safe = TV_OVERSCAN * Math.min(tv.width, tv.height)
+    for (const b of now.badges) {
+      const edge = Math.min(b.left, b.top, now.window.w - b.right, now.window.h - b.bottom)
+      expect({ zone: b.zone, outside: edge >= safe - 0.5, onFan: b.onFan }).toEqual({ zone: b.zone, outside: true, onFan: true })
+    }
   })
 })

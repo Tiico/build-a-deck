@@ -9,11 +9,12 @@ import { feltScale, fitScale, leaningSquare, woodLayout, TOUCH_PX, TV_AIR_PX } f
 import { CAMERA_MIN_MM, CAMERA_STEP, activeBounds, cameraOf, centre, fitFloor, frameRect, overscanPx, pad, panBy, reachOf, same, shownRect, tween, union, zoomAround, type Rect, type Size } from './camera.js'
 import { recallCamera, rememberCamera, type CameraMemory } from './cameraMemory.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
-import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, handBound, type Drag, type DragTarget } from './drop.js'
+import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, handBound, nobodysHand, type Drag, type DragTarget } from './drop.js'
 import { isCounter, standIn } from '../components.js'
 import { cardWord, counterActs, drawOne, feltShortcuts, flipUnder, modifierHeld, ownerOf, type Act } from './keyboard.js'
 import { ShortcutHelp } from './ShortcutHelp.js'
 import { CounterEntry } from './CounterEntry.js'
+import { useSay } from '../status/StatusLive.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ActionSheet } from './ActionSheet.js'
@@ -318,6 +319,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // the line it hangs from (`handCountAt`) — and leaves a pill's air past that line, which is what
   // `TV_AIR_PX` is for and the whole of what it is for. What the badge takes past the line is
   // pixels, and no measure of the felt can own them.
+  // The line past the rim is still held on the television, where the count now hangs inward over
+  // its fan (#482 fynd 5 B): it is what keeps the fans themselves whole on the screen.
   const counts = union(hands.map((z) => ({ ...handCountAt(z, floor, handRot(z), folded(z)), w: 0, h: 0 })))
   const keepCounts = counts ? { rect: counts, margin: TV_AIR_PX } : undefined
   // How far the camera may reach: the table, anything in play that lies past its rim (#20), and
@@ -388,9 +391,16 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // hold its placement for ever. It is held exactly as long as the tool still considers the
   // connection fine; after that the table is the truth again and the reader sees where the card
   // really is (#29).
+  //
+  // And it is said (#482): a card that went back without a word read as a drop refused, and then
+  // happened after all when a quiet line came back.
+  const say = useSay()
   useEffect(() => {
     if (!settling) return
-    const timer = setTimeout(() => setSettling(null), DEFAULT_TIMING.slowAfterMs)
+    const timer = setTimeout(() => {
+      setSettling(null)
+      say?.('polite', t('drop.unanswered'))
+    }, DEFAULT_TIMING.slowAfterMs)
     return () => clearTimeout(timer)
   }, [settling])
   const px = (mm: number) => mm * scale
@@ -553,7 +563,14 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       return
     }
     const intents = dropIntents(view, d, mode)
-    if (intents.length === 0) return
+    if (intents.length === 0) {
+      // A hand nobody sits at takes no card (#482 fynd 7): the card is already back where it was,
+      // and it is said why, or the felt would seem not to have heard the drop.
+      const empty = nobodysHand(view, d, mode)
+      const seat = empty === null ? undefined : view.zones.find((z) => z.id === empty)?.owner
+      if (seat !== undefined) say?.('polite', t('drop.nobody', { seat: view.seats.find((s) => s.id === seat)?.name ?? seat }))
+      return
+    }
     onAct(intents)
     // The card stays where it was put until the table has moved it. Between here and the patch the
     // view still says where the card came from, and drawing it there is the flinch (#29).
@@ -779,15 +796,19 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // its `dblclick` on the frame the two presses have in common, and the card is not in it. What
   // was pressed is therefore remembered, and the frame asks what it was.
   const doubled = (e: RMouseEvent) => {
+    if (turnAgain()) return
+    doubleTap(e)
+  }
+  // The second press of a double press, read where it lands (#482): on the backdrop of the ring the
+  // first press opened. Answers whether it turned something, so the ring knows to take the press.
+  const turnAgain = (): boolean => {
     const was = clicked.current
     clicked.current = null
     const turn = was && onAct && Date.now() - was.at < DOUBLE_MS ? flipUnder(view, was.target) : null
-    if (turn) {
-      setRing(null)
-      onAct?.(turn)
-      return
-    }
-    doubleTap(e)
+    if (!turn) return false
+    setRing(null)
+    onAct?.(turn)
+    return true
   }
 
   // The felt itself: where this pointer is, and a hold that points (K6).
@@ -1001,6 +1022,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 color={seatColor(seatIndex(z.owner))}
                 rot={handRot(z)}
                 countAt={countSide(z, floor, handRot(z))}
+                // Inward only on the television itself (#482 fynd 5 B): the Bord tab draws the
+                // same felt with the seat tiles at the rim, where an inward count lies on the
+                // tile, and an editor's screen hides no band that the count would have to clear.
+                countIn={mode === 'tv' && !seatNames}
                 folded={fold}
                 left={left(at.x)}
                 top={top(at.y)}
@@ -1125,7 +1150,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           {offTop && (
             <Ghost card={topOf(zoneById.get(offTop.pile) ?? floor)} zoneBack={backOf(zoneById.get(offTop.pile))} faces={faces} back={backAt('ghost')} hiding={hidingTop} left={left(offTop.at.x)} top={top(offTop.at.y)} px={px} />
           )}
-          {start && (
+          {/* On the felt until something has happened at the table (K25); after that the tile would
+              lie over the cards played where it stood, so it leaves for the corner (beslut
+              2026-09-27, #482 fynd 3 C). */}
+          {start && !view.played && (
             <button
               type="button"
               className="byd-table-start"
@@ -1179,6 +1207,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           items={ringVerbs}
           hub={ringChip ? <CounterHub view={view} c={ringChip} t={t} /> : ringPile ? <PileHub view={view} chips={ringPile} t={t} /> : undefined}
           onClose={shut(ring)}
+          onPressAgain={turnAgain}
         />
       )}
       {ring && onAct && ringZone && ringActions.length > 0 && (
@@ -1211,10 +1240,32 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
             setAskingStart(false)
             onAct?.(start.intents)
           }}
-          onCancel={() => setAskingStart(false)}
+          onCancel={() => {
+            setAskingStart(false)
+            // Back on the tile that asked, not on <body> (#482).
+            requestAnimationFrame(() => document.querySelector<HTMLElement>('[data-table-start]')?.focus())
+          }}
         >
-          {t('start.again.text')}
+          {/* What the start does, built from its own steps (#482): only the designer's start
+              actions run again, and nothing is put back — the sentence used to promise both. */}
+          {t('start.again.text', {
+            actions: startsAt(view)
+              .map(({ zone, action }) => t('start.again.action', { action: action.label, pile: view.zones.find((z) => z.id === zone)?.name ?? zone }))
+              .join(t('start.again.and')),
+          })}
         </Question>
+      )}
+      {start && view.played && (
+        <button
+          type="button"
+          className="byd-table-restart"
+          data-table-start={start.ok ? 'ready' : 'why'}
+          disabled={!start.ok}
+          title={start.ok ? undefined : t('start.blocked', { why: t(whyKey(start)) })}
+          onClick={() => start.ok && setAskingStart(true)}
+        >
+          {t('start.again.tile')}
+        </button>
       )}
       {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable)} />}
       {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => onAct([{ v: 'setCounter', component: entry.id, value }])} onClose={() => setEntry(null)} />}
@@ -1594,7 +1645,7 @@ function SeatName({ zone, floor, name, color, mine, taking, read, left, top }: {
 // Other seats' hands are a fan of backs and a count; the owner reads theirs on the phone. A hand
 // whose order this view may see (the observer, C8) fans the cards themselves. Every measure in
 // the fan is a millimetre on the felt, so it shrinks with the table rather than swamping it (#23).
-function Hand({ zone, color, rot, countAt, folded = false, taking = 0, left, top, px, cards, faces }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; folded?: boolean; taking?: number; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
+function Hand({ zone, color, rot, countAt, countIn = false, folded = false, taking = 0, left, top, px, cards, faces }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; countIn?: boolean; folded?: boolean; taking?: number; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
   const count = zone.mode === 'count' ? zone.count : zone.order.length
   const fan = folded ? 0 : Math.min(count, FAN_MAX)
   const shown = cards ? Math.min(cards.length, FAN_MAX) : fan
@@ -1610,6 +1661,7 @@ function Hand({ zone, color, rot, countAt, folded = false, taking = 0, left, top
       data-count={count}
       data-rot={rot}
       data-count-side={countAt}
+      data-count-in={countIn ? '' : undefined}
       data-folded={folded ? 'true' : undefined}
       data-taking={taking > 0 ? String(taking) : undefined}
       style={{ left, top, transform: `rotate(${rot}deg)`, ['--seat' as string]: color, ['--hand-unrot' as string]: `${-rot}deg`, ['--hand-drop' as string]: `${px(HAND_COUNT_MM)}px`, ['--hand-lift' as string]: `${px(HAND_COUNT_ABOVE_MM)}px` }}

@@ -135,7 +135,9 @@
   left: var(--name-x, 0%); top: var(--name-y, 0%);
   transform-origin: 0 0;
   transform: translate(var(--name-in), calc(-100% - var(--name-off) - var(--name-row)));
-  font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: rgba(255, 255, 255, 0.45);
+  /* White at 80 %, the least that reads at 4.5:1 where the felt is lightest (#482); at 45 % it
+     was 3.05:1. `seat-contrast.test.ts` lays it over each of the felt's stops. */
+  font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: rgba(255, 255, 255, 0.8);
   /* One line, always. A name is laid out in a box as wide as its zone, so beside a narrow zone it
      would break in two and fold back over the zone it names; away from a rim it has nothing to
      break against at all. */
@@ -355,6 +357,12 @@
 /* With the rim above the fan as drawn — the TV's north seat — the count hangs off the top of the
    fan instead, past the cards' near edge, in the air past the rim like every other seat's (#84). */
 .byd-hand[data-count-side='above'] .byd-hand-count { top: auto; bottom: var(--hand-lift, 25px); }
+/* On the television the count hangs inward, over the fan's inner edge (beslut 2026-09-27, #482
+   fynd 5 B). Outward it lay in the band a set may hide (#322, C5), and pulling the picture back to
+   clear it cost the card K9's floor. Inward it lies over its own hand, where the picture already is,
+   so the camera buys it no air at all. Not on the Bord tab, whose seat tiles stand there. */
+.byd-hand[data-count-in] .byd-hand-count { top: auto; bottom: calc(var(--hand-lift, 25px) - 1.4em); }
+.byd-hand[data-count-in][data-count-side='above'] .byd-hand-count { bottom: auto; top: calc(var(--hand-drop, 50px) - 1.4em); }
 
 /* Platsen tänds medan ett kort är på väg in i dess hand (#444, K24).
    Bandet ligger längs platsens egna millimeter av kanten (`handBand`), i platsens färg, och
@@ -430,6 +438,15 @@
 /* Den avstängda raden säger varför i ord (K21) och inte bara genom att vara grå; `title` bär
    meningen, och brickan ser avstängd ut utan att försvinna — en start som inte går att köra är
    något designern ska kunna se skälet till, inte något som ska gömma sig. */
+/* «Starta om» once the game is under way (#482 fynd 3 C): off the felt, in the corner beside «?»,
+   in the felt's quiet chrome — a restart is a deliberate act and not the table's next step. */
+.byd-table-restart {
+  position: absolute; right: 64px; bottom: 16px; z-index: 30; min-height: 44px; padding: 0 14px;
+  border: 1px solid var(--byd-felt-chalk-off); border-radius: 999px; background: var(--byd-felt-plate);
+  color: var(--byd-felt-chalk); font: 700 14px/1 var(--byd-felt-font, system-ui, sans-serif); cursor: pointer;
+}
+.byd-table-restart:hover, .byd-table-restart:focus-visible { border-color: var(--byd-felt-accent); color: var(--byd-felt-accent); }
+.byd-table-restart:disabled { color: var(--byd-felt-chalk-off); cursor: not-allowed; }
 .byd-table-start:disabled { background: #46506b; color: #d3d8e6; cursor: not-allowed; box-shadow: none; }
 
 /* Frågan före ett omtryck (#452). Den står utanför filten och inte på den: en vriden filt får
@@ -520,13 +537,16 @@
 /* What gives first, when the window is short and the column wants more than it has. The card is
    the most elastic thing in it — it is a picture and reads at any size — so it gives first, down
    to a card that is still a card. The seats give next, and last: who is playing and how much they
-   hold is the dock, and a dock is what a TV is for. The feed takes whatever is left and scrolls
+   hold is the dock, and a dock is what a TV is for (and so its shrink is a hundredth of one, #482:
+   at 1 it took its share of every shortfall beside the card and scrolled while the card still
+   had room to give). The feed takes whatever is left and scrolls
    inside it, because it is the one thing here that is endless by nature. */
 [data-tv] .byd-tv-inspect { min-height: 0; flex: 0 20 auto; display: flex; flex-direction: column; }
-[data-tv] .byd-tv-seats { min-height: 0; overflow: auto; flex: 0 1 auto; }
-/* Two lines and its own heading, always: a feed cut to nothing is a feed that has been removed,
-   and what just happened is half of what a TV is watched for. */
-[data-tv] .byd-tv-feed { min-height: 84px; overflow: auto; flex: 1 1 0; }
+[data-tv] .byd-tv-seats { min-height: 0; overflow: auto; flex: 0 0.01 auto; }
+/* Its heading and its three lines, always (#482 fynd 6 B): a feed cut to nothing is a feed that
+   has been removed, and what just happened is half of what a TV is watched for. The card above it
+   is what gives the room: it gives first and still reads. */
+[data-tv] .byd-tv-feed { min-height: 140px; overflow: auto; flex: 1 1 0; }
 /* Inspection on a TV (K8, C): the card everyone in the room looks at, beside the table. */
 [data-tv] .byd-tv-inspect > div {
   position: relative; overflow: hidden;
@@ -549,10 +569,16 @@
 [data-tv] .byd-tv-inspect > div > img ~ span:not([data-texture]) { visibility: hidden; }
 
 /* Nothing has happened yet (UX-16): the same quiet voice the waiting inspection panel speaks in. */
-[data-tv] .byd-tv-feed > p[data-empty] { margin: 0; color: #7d8597; font-size: 14px; line-height: 1.5; }
-[data-tv] h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; margin: 0 0 10px; }
+[data-tv] .byd-tv-feed > p[data-empty] { margin: 0; color: #7d8597; font-size: 16px; line-height: 1.5; }
+/* Two levels, read from the sofa (#482 fynd 6, beslut B, prototyp 21): what the room looks up for —
+   who sits where, how much each holds, the line that just happened — at 20–24 px; the headings and
+   the history under it at 15–16. At 1920 × 1080 on a 55-inch set a pixel is about 0.63 mm. */
+[data-tv] h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; margin: 0 0 10px; }
 [data-tv] ol { list-style: none; margin: 0; padding: 0; }
-[data-tv] ol li { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #1a1e29; font-size: 14px; }
+[data-tv] ol li { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #1a1e29; font-size: 16px; }
+[data-tv] ol li:first-child { font-size: 20px; }
+/* A line that does not fit whole is not drawn (#482); the list says which with `hidden`. */
+[data-tv] ol li[hidden] { display: none; }
 [data-tv] ol li b { flex: 0 0 30px; font-family: ui-monospace, monospace; font-weight: 400; color: #4c5468; }
 [data-tv] ol li span { color: var(--seat, #9aa3b8); }
 /* The seats, stacked down the column rather than laid along the bottom of the screen. A seat is
@@ -569,9 +595,13 @@
   display: grid; place-items: center; font: 800 18px/1 system-ui, sans-serif; font-style: normal; color: var(--byd-seat-ink);
 }
 [data-tv] .byd-tv-seats li > div { min-width: 0; }
-[data-tv] .byd-tv-seats li span { display: block; font-size: 17px; font-weight: 700; }
-[data-tv] .byd-tv-seats li span + span { color: #9aa3b8; font-size: 13px; font-weight: 400; }
-[data-tv] .byd-tv-seats li small { display: block; margin-top: 1px; color: #7d8597; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-tv] .byd-tv-seats li span { display: block; font-size: 24px; font-weight: 700; }
+[data-tv] .byd-tv-seats li span + span { color: #9aa3b8; font-size: 20px; font-weight: 400; }
+/* A full table, one line a seat (#482 fynd 6, prototyp 22): the name takes what the count leaves. */
+[data-tv] .byd-tv-seats ul[data-dense] li { padding: 7px 12px; }
+[data-tv] .byd-tv-seats ul[data-dense] li > div { display: flex; align-items: baseline; gap: 10px; }
+[data-tv] .byd-tv-seats ul[data-dense] li span:first-child { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-tv] .byd-tv-seats li small { display: block; margin-top: 1px; color: #7d8597; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* On a short screen the dock stands two abreast and drops what a seat last did. A list scrolled to
    a half-drawn seat reads as a broken row rather than as more below, and a dock is the one thing
    on this screen that should always be whole — so it takes the width it has instead of the height

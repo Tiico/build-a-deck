@@ -13,7 +13,11 @@ export type RadialItem = { key?: string; label: string; run: (() => void) | null
 // `hub` is what the ring is about, written in its centre: never a control, and only for a thing
 // the felt cannot say for itself — a chip's name is never drawn on the felt at any screen measured,
 // and a chip lifted into a ring has lost the one thing that said whose it was, where it lay (#67).
-export function RadialMenu({ id, x, y, items, hub, onClose }: { id: string; x: number; y: number; items: RadialItem[]; hub?: ReactNode; onClose(): void }) {
+// `onPressAgain` is asked about a press on the backdrop before the backdrop closes the ring, and
+// takes it when it answers yes (#482): a second press on the card that opened the ring lands here,
+// and the backdrop used to take itself away on `pointerup` before the browser could make a
+// `dblclick` of the two — so the double press the help promises never turned anything.
+export function RadialMenu({ id, x, y, items, hub, onClose, onPressAgain }: { id: string; x: number; y: number; items: RadialItem[]; hub?: ReactNode; onClose(): void; onPressAgain?: () => boolean }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
@@ -30,7 +34,16 @@ export function RadialMenu({ id, x, y, items, hub, onClose }: { id: string; x: n
   }
   const radius = 82
   return (
-    <div className="byd-radial-backdrop" onPointerUp={onClose} onClick={onClose}>
+    <div
+      className="byd-radial-backdrop"
+      onPointerDown={(e) => {
+        if (e.target !== e.currentTarget || !onPressAgain?.()) return
+        e.preventDefault()
+        e.stopPropagation()
+      }}
+      onPointerUp={onClose}
+      onClick={onClose}
+    >
       <div className="byd-radial" data-radial={id} style={{ left: x, top: y }}>
         {hub !== undefined && (
           <div className="byd-radial-hub" data-radial-hub>

@@ -24,7 +24,9 @@ describe('the play surfaces in the reader\'s own language (A4)', () => {
   it('says the table screen in English: its headings, its seats, and what just happened', () => {
     const { view, log } = buildScene()
     english(
-      <TvChrome view={view(null)} activity={log.map(projectActivity)} roomCode="KX7P">
+      // The first five lines: the television keeps three (#482 fynd 6), and these three hold both a
+      // line the table says in the reader's words and one that names the designer's zone.
+      <TvChrome view={view(null)} activity={log.map(projectActivity).slice(0, 5)} roomCode="KX7P">
         <div data-testid="table" />
       </TvChrome>,
     )

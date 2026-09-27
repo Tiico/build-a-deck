@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createRef } from 'react'
 import type { Intent, Snapshot } from '@byd/protocol'
+import { StatusLive } from '../src/status/StatusLive.js'
 import { TableRenderer, type FeltKeyboard, type TableHandle } from '../src/table/TableRenderer.js'
 import { buildScene, tableOf } from './scene.js'
 import { recipeSetup, twoSeatSetup } from './fixture.js'
@@ -1079,6 +1080,48 @@ describe('the gap between the drop and the patch (K1)', () => {
     vi.useRealTimers()
   })
 
+  // The card goes back without a word was the other half of #482 fynd 4: a drop that bounced after
+  // four seconds read as refused, and then happened after all when the line came back. It is said.
+  it('says the table has not answered when it gives the card back', () => {
+    vi.useFakeTimers()
+    const { view, faceUp } = buildScene()
+    render(
+      <StatusLive>
+        <TableRenderer view={view(null)} mode="tv" scale={1} onAct={() => undefined} />
+      </StatusLive>,
+    )
+    const placed = () => document.querySelector(`[data-component="${faceUp}"]`) as HTMLElement
+    fireEvent.pointerDown(placed(), client(100, 50))
+    fireEvent.pointerMove(placed(), client(300, 150))
+    fireEvent.pointerUp(placed(), client(300, 150))
+    act(() => vi.advanceTimersByTime(DEFAULT_TIMING.slowAfterMs))
+    expect(document.querySelector('[data-status-live="polite"]')!.textContent).toBe('Bordet har inte svarat på draget än.')
+    vi.useRealTimers()
+  })
+
+  // A hand nobody sits at is no place for a card (#482 fynd 7, beslut 2026-09-27): the pointer keeps
+  // the keyboard's rule. Nothing is sent, the card is where it was, and it is said why — a drop that
+  // went back without a word would read as a felt that did not work.
+  it('gives a card let go in an empty seat\'s hand straight back, and says nobody sits there', () => {
+    const { view, faceUp } = buildScene()
+    const v = view(null)
+    const onAct = vi.fn()
+    render(
+      <StatusLive>
+        <TableRenderer view={v} mode="tv" scale={1} onAct={onAct} />
+      </StatusLive>,
+    )
+    const hand = v.zones.find((z) => z.id === 'hand:B')!.geometry
+    const at = client(hand.x + hand.w / 2, hand.y + hand.h / 2)
+    const placed = () => document.querySelector(`[data-component="${faceUp}"]`) as HTMLElement
+    fireEvent.pointerDown(placed(), client(100, 50))
+    fireEvent.pointerMove(placed(), at)
+    fireEvent.pointerUp(placed(), at)
+    expect(onAct.mock.calls).toEqual([])
+    expect({ left: placed().style.left, top: placed().style.top }).toEqual({ left: '100px', top: '50px' })
+    expect(document.querySelector('[data-status-live="polite"]')!.textContent).toBe('Ingen sitter vid B än, så kortet går tillbaka.')
+  })
+
   // Drawing the top card off a pile is the same gap, and the one place it was never closed: the
   // drag has no component id to hold — a hidden pile gives none — so the drop fell through the
   // guard that holds a loose card and a whole pile, and the card was drawn back into the stack
@@ -1279,7 +1322,7 @@ describe('startbrickan på filten (#451)', () => {
   // Ett andra tryck mitt i spelet drar tillbaka varje hand och blandar om leken (#452). Det ska
   // gå — det är så en ny giv ges, och K23 säger att verktyget inte säger nej — men inte av
   // misstag. Frågan ställs bara när något faktiskt hänt vid bordet.
-  it('frågar innan den kör om ett bord där någon redan rört ett kort, och kör direkt annars', () => {
+  it('frågar innan den kör om ett bord där någon redan rört ett kort, och kör direkt annars', async () => {
     const table = withStart('start')
     const sent: Intent[][] = []
     const draw = () => render(<TableRenderer view={table.view(null)} mode="table" scale={2} onAct={(intents) => sent.push(intents)} />)
@@ -1299,18 +1342,35 @@ describe('startbrickan på filten (#451)', () => {
     fireEvent.click(tile()!)
     expect(sent).toHaveLength(1)
     const fraga = screen.getByRole('alertdialog')
-    expect(fraga.textContent).toMatch(/Korten som ligger ute går tillbaka/)
+    // Den säger vad starten gör, byggt av stegen (#482 fynd 2): bara designerns startåtgärder
+    // körs igen, och det som ligger ute ligger kvar. Förut lovade den att korten gick tillbaka.
+    expect(fraga.textContent).toContain('«Blanda» på Dragh')
+    expect(fraga.textContent).toMatch(/körs igen\. Korten som ligger ute ligger kvar där de är\./)
 
     // Och svaret som ingenting kostar är det frågan öppnar på.
     expect(document.activeElement?.textContent).toBe('Avbryt')
     fireEvent.click(within(fraga).getByRole('button', { name: 'Avbryt' }))
     expect(sent).toHaveLength(1)
     expect(screen.queryByRole('alertdialog')).toBeNull()
+    // Fokus står kvar på brickan som ställde frågan, inte på <body> (#482 fynd 9).
+    await waitFor(() => expect(document.activeElement).toBe(tile()))
 
     fireEvent.click(tile()!)
     fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Ja, starta om' }))
     expect(sent).toHaveLength(2)
     expect(sent[1]).toEqual([{ v: 'shuffle', pile: 'draw' }])
+  })
+
+  // När spelet har börjat lämnar brickan filten och står som «Starta om» i hörnet (beslut
+  // 2026-09-27, #482 fynd 3 C): kort som lades där den låg gick inte att greppa.
+  it('lämnar filten när något hänt vid bordet, och står som «Starta om» utanför den', () => {
+    const table = withStart('start')
+    table.run(null, { v: 'draw', from: 'draw', to: 'discard', count: 1 })
+    const { container } = render(<TableRenderer view={table.view(null)} mode="table" scale={2} onAct={() => undefined} />)
+    expect(container.querySelector('[data-table] [data-table-start]')).toBeNull()
+    const again = screen.getByRole('button', { name: 'Starta om' })
+    expect(again).toBe(tile())
+    expect(again.closest('[data-table]')).toBeNull()
   })
 
   // Prototypen ritade högarna längre isär än receptet gör, och brickan lades i bandet mellan

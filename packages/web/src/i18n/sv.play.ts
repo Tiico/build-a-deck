@@ -56,6 +56,9 @@ export const svPlay = {
   'tv.seats': 'Platser',
   'tv.seat.hand.one': '{n} kort på hand',
   'tv.seat.hand.other': '{n} kort på hand',
+  // En plats på en rad, vid fulla bord (#482 fynd 6): namnet tar resten av raden.
+  'tv.seat.hand.short.one': '{n} kort',
+  'tv.seat.hand.short.other': '{n} kort',
   // Platsens tredje rad innan platsen gjort något (UX-41): ett ord, inte ett streck.
   'tv.seat.none': 'Inget ännu',
   'tv.observers.one': '{names} tittar på · ser allt',
@@ -82,9 +85,15 @@ export const svPlay = {
   'start.tile': 'Starta spelet',
   'start.blocked': 'Går inte att starta just nu: {why}',
   'start.again.label': 'Starta om spelet?',
-  'start.again.text': 'Korten som ligger ute går tillbaka, och lekarna blandas om.',
+  'start.again.tile': 'Starta om',
+  'drop.unanswered': 'Bordet har inte svarat på draget än.',
+  'drop.nobody': 'Ingen sitter vid {seat} än, så kortet går tillbaka.',
+  'start.again.text': '{actions} körs igen. Korten som ligger ute ligger kvar där de är.',
+  'start.again.action': '«{action}» på {pile}',
+  'start.again.and': ' och ',
   'start.again.yes': 'Ja, starta om',
   'kbd.hint.action.asks': 'kräver ett tal; skriv det i listan vid högen',
+  'kbd.hint.action.own': 'spelets egen åtgärd',
   'ring.action.list': 'Vad {zone} kan',
   // En räknares verb (C4, #67): ett steg åt vardera hållet och ett tal sagt rakt ut. Ringen och
   // tangentbordets panel läser samma lista; varje handling går ut som `setCounter`.
@@ -170,6 +179,7 @@ export const svPlay = {
   'kbd.place.floor': 'Bordet',
   'kbd.place.floor.hint': 'fri yta',
   'kbd.place.onCard': 'På {name}',
+  'kbd.place.nth': '{label} {n}',
   'kbd.place.onCard.hint': 'bildar en hög i {zone}',
   'kbd.place.pile.one': '{n} kort · överst',
   'kbd.place.pile.other': '{n} kort · överst',

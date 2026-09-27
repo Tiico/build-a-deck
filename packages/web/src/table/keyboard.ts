@@ -202,8 +202,10 @@ export function verbsFor(view: Snapshot, thing: Thing, t: T = swedish): Act[] {
     // off, saying that it wants one.
     ...(z.actions ?? []).map((a): Act => {
       const made = compileAction(view, z.id, a)
-      const hint = made.ok ? undefined : 'asks' in made ? t('kbd.hint.action.asks') : t(`ring.action.why.${made.why}` as Key)
-      return { key: `action:${a.id}`, label: a.label, intents: made.ok ? made.intents : null, ...(hint === undefined ? {} : { hint }) }
+      // The game's own, said as such (#482): an action the designer named «Blanda» stood beside the
+      // tool's «Blanda» with nothing to tell the two apart.
+      const hint = made.ok ? t('kbd.hint.action.own') : 'asks' in made ? t('kbd.hint.action.asks') : t(`ring.action.why.${made.why}` as Key)
+      return { key: `action:${a.id}`, label: a.label, intents: made.ok ? made.intents : null, hint }
     }),
   ]
 }
@@ -265,7 +267,23 @@ export function placesFor(view: Snapshot, moving: ReadonlySet<string>, sourceZon
       kind: 'card',
       anchor: c,
     }))
-  return [...zones, ...onFloor, ...cards].filter((p) => p.zone !== sourceZone || p.kind === 'card')
+  return numbered([...zones, ...onFloor, ...cards].filter((p) => p.zone !== sourceZone || p.kind === 'card'), t)
+}
+
+// Places whose words would be the same are numbered in the order they are offered (#482): three
+// hidden cards on one area were three «På Dolt kort» with one hint, and nobody could pick between
+// them.
+function numbered(places: Place[], t: T): Place[] {
+  const seen = new Map<string, number>()
+  for (const p of places) seen.set(`${p.label}\u0000${p.hint}`, (seen.get(`${p.label}\u0000${p.hint}`) ?? 0) + 1)
+  const at = new Map<string, number>()
+  return places.map((p) => {
+    const words = `${p.label}\u0000${p.hint}`
+    if ((seen.get(words) ?? 0) < 2) return p
+    const n = (at.get(words) ?? 0) + 1
+    at.set(words, n)
+    return { ...p, label: t('kbd.place.nth', { label: p.label, n }) }
+  })
 }
 
 // ================================================================================================

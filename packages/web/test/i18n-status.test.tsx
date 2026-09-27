@@ -141,6 +141,7 @@ describe('the nine states in the reader\'s own language (A4)', () => {
       room: null,
       refused: null,
       trouble: null,
+      unansweredSince: null,
       schedule: { nextRetryAt: null, made: 0, of: 0 },
       retry: () => undefined,
     }

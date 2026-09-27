@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 22 — TV-spalten vid åtta platser (#482 fynd 6)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Beslut B för fynd 6 (prototyp 21) valdes på ett fyraplatsbord: namn 24, antal 20, platsens
+     senaste rad 16, flödet 20/16 och tre rader. Byggt och mätt vid 1920 × 1080 får fyra platser
+     plats, och sex gör det med kortet nere på 120 px. Åtta gör det inte: varje plats är ~90 px
+     hög, åtta är ~780 px, och listan rullar med en halv plats nederst — det var den redan före B (då ~70 px per plats, «H» halv),
+     men B gör det värre, och inspektionskortet krymper till sitt golv på 110 px.
+
+       Nu  B som byggt: tre rader per plats; sex får plats, åtta rullar
+       A   en rad per plats vid alla antal: «Ada  4 kort», 24/20; platsens senaste rad går
+           (flödet under säger den redan, i samma färg)
+       B   B som beslutat upp till fyra platser, en rad per plats (A:s form) från fem
+       C   B upp till fyra; från fem står platserna två i bredd, namn 20, antal 16, utan senaste rad
+
+     Spalten ritas i verklig storlek för en 1920 × 1080-skärm, 360 px bred, skalad till fönstret.
+     Raden överst säger om platserna får plats hela, och hur högt inspektionskortet blir. ───── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .scen { flex: 1 1 auto; min-height: 0; display: flex; justify-content: center; align-items: flex-start; gap: 24px; padding: 16px; background: #0a0c10; overflow: hidden; }
+  .skala { transform-origin: top center; }
+  .spalt { width: 360px; height: 1080px; box-sizing: border-box; padding: 18px 20px; background: #0c0e13; border: 1px solid #1a1e29; color: #dce3f2; font-family: system-ui, sans-serif; overflow: hidden; display: flex; flex-direction: column; gap: 18px; }
+  .spalt > * { flex: 0 0 auto; }
+  .spalt h1 { margin: 0; font-size: 22px; color: #fff; }
+  .spalt h1 em { color: #7d8597; font-weight: 400; font-style: normal; }
+  .spalt .kod { display: flex; gap: 18px; align-items: center; }
+  .spalt .kod b { font: 700 26px ui-monospace, monospace; letter-spacing: 6px; background: #1a1e29; border-radius: 8px; padding: 4px 14px; }
+  .spalt .qr { width: 52px; height: 52px; background: repeating-conic-gradient(#fff 0 25%, #000 0 50%) 0 0 / 8px 8px; }
+  .spalt h2 { margin: 0 0 10px; font-size: 15px; letter-spacing: 2px; color: #7d8597; text-transform: uppercase; }
+  .insp { min-height: 0; flex: 0 20 auto; display: flex; flex-direction: column; }
+  .insp > div { height: 266px; min-height: 110px; flex: 0 1 auto; aspect-ratio: 63 / 88; align-self: flex-start; border-radius: 12px; background: #1a1e29; border: 1px dashed #2c3242; color: #7d8597; font-size: 13px; text-align: center; padding: 16px; box-sizing: border-box; }
+  /* Platserna ger efter sist, som koden säger att de ska: kortet tar hela underskottet först. */
+  .platser { min-height: 0; overflow: auto; flex: 0 0.01 auto; }
+  .platser ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .platser li { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: center; min-width: 0; background: #151924; border-radius: 12px; padding: 9px 12px; border-left: 6px solid var(--c); }
+  .platser li i { width: 40px; height: 40px; border-radius: 50%; background: var(--c); display: grid; place-items: center; font: 800 18px/1 system-ui; font-style: normal; color: #0d0f14; }
+  .platser li > div { min-width: 0; }
+  .platser li span { display: block; font-size: 24px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .platser li span + span { color: #9aa3b8; font-size: 20px; font-weight: 400; }
+  .platser li small { display: block; margin-top: 1px; color: #7d8597; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* En rad per plats: namnet och antalet på samma rad, antalet till höger. */
+  .enrad .platser li { padding: 7px 12px; }
+  .enrad .platser li > div { display: flex; align-items: baseline; gap: 10px; }
+  .enrad .platser li span { flex: 1 1 auto; min-width: 0; }
+  .enrad .platser li span + span { flex: 0 0 auto; }
+  .enrad .platser li small { display: none; }
+  /* Två i bredd. */
+  .tva .platser ul { grid-template-columns: 1fr 1fr; }
+  .tva .platser li { grid-template-columns: 30px 1fr; gap: 8px; padding: 6px 8px; }
+  .tva .platser li i { width: 30px; height: 30px; font-size: 15px; }
+  .tva .platser li span { font-size: 20px; }
+  .tva .platser li span + span { font-size: 16px; }
+  .tva .platser li small { display: none; }
+  .flode { min-height: 140px; overflow: hidden; flex: 1 1 0; }
+  .flode ol { list-style: none; margin: 0; padding: 0; }
+  .flode li { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #1a1e29; font-size: 16px; color: var(--c, #9aa3b8); }
+  .flode li:first-child { font-size: 20px; }
+  .flode li b { flex: 0 0 30px; font: 400 0.8em ui-monospace, monospace; color: #4c5468; }
+  .matt .fel { color: #f0a58a; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="vaxlare" role="group" aria-label="Platser">
+    <button type="button" data-n="4">4 platser</button>
+    <button type="button" data-n="6">6</button>
+    <button type="button" data-n="8">8</button>
+  </div>
+  <div class="fraga">
+    <p><b>#482 fynd 6 · TV-spalten när bordet är fullt.</b> Beslut B valdes vid fyra platser; växla till sex och åtta.</p>
+  </div>
+  <div class="matt" id="matt"></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="scen" id="scen"></div>
+<script>
+const s = { v: 'a', n: 8 }
+const NOT = {
+  nu: '<b>Nu · B som byggt.</b> Tre rader per plats vid alla antal. <span class="plus">+ Beslutet som det står.</span> <span class="minus">− Sex platser får plats med kortet på 120 px; vid åtta rullar listan och den sista platsen står halv, kortet på sitt golv 110 px.</span>',
+  a: '<b>A · En rad per plats, alltid.</b> Namnet och antalet på samma rad, i B:s storlekar; platsens senaste rad går. <span class="plus">+ Åtta platser står hela vid 1080, kortet behåller mer höjd; en form vid alla antal.</span> <span class="minus">− Vad var och en senast gjorde står bara i flödet (i platsens färg); ett långt namn kortas med «…».</span>',
+  b: '<b>B · Beslutet till fyra, en rad från fem.</b> Fyraplatsbordet ser ut som prototyp 21 B; större bord byter till A:s form. <span class="plus">+ Beslutet står orört där det mättes.</span> <span class="minus">− Två former för samma spalt; platsens senaste rad försvinner när det sätter sig en femte.</span>',
+  c: '<b>C · Två i bredd från fem.</b> Som skärmar under 900 px redan gör: platserna står två och två, namn 20 och antal 16. <span class="plus">+ Formen finns redan i appen (korta skärmar).</span> <span class="minus">− Mindre text än beslutet vid stora bord, och namnen kortas tidigt i en halv spalt.</span>',
+}
+const FARG = ['#e05d5d', '#3c8ce7', '#3fb27f', '#e0a93b', '#9b6ef3', '#2bb3b1', '#e06aa6', '#a6c43a']
+const NAMN = ['Ada', 'Bo', 'Cilla', 'Dan', 'Elsa-Marie', 'Filip', 'Gun', 'Hassan']
+const RADER = ['Ada spelade Revolverman till Framför A', 'Bo drog 1 kort från Kortlek', 'Cilla lade Sheriff på Kasthög']
+function rita() {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  for (const b of document.querySelectorAll('[data-n]')) b.setAttribute('aria-pressed', String(Number(b.dataset.n) === s.n))
+  document.getElementById('anteckning').innerHTML = NOT[s.v]
+  const form = s.v === 'a' || (s.v === 'b' && s.n > 4) ? 'enrad' : s.v === 'c' && s.n > 4 ? 'tva' : ''
+  const scen = document.getElementById('scen')
+  scen.innerHTML = `<div class="skala" id="skala"><aside class="spalt ${form}">
+    <h1>Bordet <em>v0.7</em></h1>
+    <div class="kod"><span>anslut med telefon</span><b>FMXMQ</b><span class="qr"></span></div>
+    <section class="insp"><h2>Inspektion</h2><div>peka på ett kort</div></section>
+    <section class="platser"><h2>Platser</h2><ul>${NAMN.slice(0, s.n).map((n, i) => `<li style="--c:${FARG[i]}"><i>${n[0]}</i><div><span>${n}</span><span>${(i * 3) % 7} kort</span><small>${i < 3 ? RADER[i] : 'Inget ännu'}</small></div></li>`).join('')}</ul></section>
+    <section class="flode"><h2>Senast</h2><ol>${RADER.map((r, i) => `<li style="--c:${FARG[i]}"><b>${39 - i}</b>${r}</li>`).join('')}</ol></section>
+  </aside></div>`
+  const k = Math.min(1, (scen.clientHeight - 32) / 1080)
+  const skala = document.getElementById('skala')
+  skala.style.transform = `scale(${k})`
+  skala.style.marginBottom = `${1080 * k - 1080}px`
+  const pl = scen.querySelector('.platser')
+  const helt = pl.scrollHeight <= pl.clientHeight + 1
+  const kort = Math.round(scen.querySelector('.insp > div').getBoundingClientRect().height / k)
+  document.getElementById('matt').innerHTML = `<span>Platserna: <u class="${helt ? '' : 'fel'}">${helt ? 'hela' : 'rullar'}</u></span><span>Inspektionskortet: <u>${kort} px</u></span>`
+}
+document.body.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.v) s.v = b.dataset.v
+  else if (b.dataset.n) s.n = Number(b.dataset.n)
+  else return
+  const u = new URL(location.href); u.searchParams.set('v', s.v); u.searchParams.set('n', String(s.n)); history.replaceState(null, '', u); rita()
+})
+addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  s.v = alla[(alla.indexOf(s.v) + (e.key === 'ArrowRight' ? 1 : 3)) % 4]
+  const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita()
+})
+addEventListener('resize', rita)
+const q = new URLSearchParams(location.search)
+if (['nu', 'a', 'b', 'c'].includes(q.get('v'))) s.v = q.get('v')
+if (['4', '6', '8'].includes(q.get('n'))) s.n = Number(q.get('n'))
+rita()
+</script>
+</body>
+</html>

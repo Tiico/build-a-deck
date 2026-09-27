@@ -23,7 +23,7 @@ export type LiveStatus = {
 // live route needs to say about itself, and the only place that decides it.
 export function useLiveStatus(conn: TableConnection, voice: Voice, timing: StatusTiming = DEFAULT_TIMING): LiveStatus {
   const t = useT()
-  const { status, view, trouble, schedule } = conn
+  const { status, view, trouble, schedule, unansweredSince } = conn
   const hasView = view !== null
 
   // The wait is counted from the first attempt of this connection, and starts over when a
@@ -78,6 +78,14 @@ export function useLiveStatus(conn: TableConnection, voice: Voice, timing: Statu
     return () => clearTimeout(timer)
   }, [resumedAt])
 
+  // An envelope that has gone unanswered wakes the route when the allowance runs out, or the word
+  // would wait for whatever next happened to redraw it (#482).
+  useEffect(() => {
+    if (unansweredSince === null || unansweredSince === undefined) return
+    const timer = setTimeout(() => tick((n) => n + 1), Math.max(0, timing.slowAfterMs - (Date.now() - unansweredSince) + 50))
+    return () => clearTimeout(timer)
+  }, [unansweredSince, timing.slowAfterMs])
+
   const state = connectionState({
     status,
     hasView,
@@ -87,6 +95,7 @@ export function useLiveStatus(conn: TableConnection, voice: Voice, timing: Statu
     downMs: downSince === null ? 0 : Date.now() - downSince,
     dropAfterMs: timing.dropAfterMs,
     resumed: resumedAt !== null,
+    unansweredMs: unansweredSince === null || unansweredSince === undefined ? 0 : Date.now() - unansweredSince,
   })
 
   // When the picture was last true. Read from the break itself, so it is the age of the data and

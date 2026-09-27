@@ -76,11 +76,14 @@ test.describe('spelstarten vid ett riktigt bord', () => {
     expect(await count('hand:A')).toBe('2')
     expect(await count('hand:B')).toBe('2')
 
-    // Nu har något hänt vid bordet, så ett andra tryck frågar först.
+    // Nu har något hänt vid bordet: brickan har lämnat filten och står som «Starta om» i hörnet
+    // (#482 fynd 3 C), och ett tryck frågar först. Frågan säger vad en omstart gör — startens egna
+    // åtgärder, och inget annat (#482 fynd 2): korten som redan ligger ute blir liggande.
+    await expect(tile).toHaveText('Starta om')
     await tile.click()
     const fraga = screen.page.getByRole('alertdialog')
     await expect(fraga).toBeVisible()
-    await expect(fraga).toHaveText(/Korten som ligger ute går tillbaka/)
+    await expect(fraga).toHaveText(/«Ge alla en starthand» på Draghög körs igen\. Korten som ligger ute ligger kvar där de är\./)
 
     // Avbryt lämnar bordet orört.
     await fraga.getByRole('button', { name: 'Avbryt' }).click()
