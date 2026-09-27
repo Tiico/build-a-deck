@@ -274,3 +274,25 @@ describe('when the game could not be made (#476)', () => {
     expect(said.textContent).not.toMatch(/fetch|Error/i)
   })
 })
+
+// The image field took any file at all (#476): a .txt was shown as a broken picture, a 36 MB PNG
+// was read into memory, and the answer came at «Skapa» as «415» or «413». It now says so at the
+// field the moment the file is chosen, and the field stays as it was.
+describe('a file that is not a picture the game can hold (#476)', () => {
+  it('refuses a file that is not a picture at the field, and keeps the field as it was', async () => {
+    open(() => undefined)
+    const input = screen.getByLabelText('kort 1 Illustration') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [new File(['hej'], 'drake.png', { type: 'image/png' })] } })
+    expect((await screen.findByRole('alert')).textContent).toBe('Det där är ingen bild. Välj en PNG, JPEG, GIF eller WebP.')
+    expect(screen.queryByRole('img', { name: 'Förhandsvisning av Illustration' })).toBeNull()
+  })
+
+  it('refuses a picture larger than the service keeps, before reading it', async () => {
+    open(() => undefined)
+    const big = new Uint8Array(8 * 1024 * 1024 + 1)
+    big.set(PNG)
+    fireEvent.change(screen.getByLabelText('kort 1 Illustration'), { target: { files: [new File([big], 'stor.png', { type: 'image/png' })] } })
+    expect((await screen.findByRole('alert')).textContent).toBe('Bilden är större än 8 MB. Välj en mindre bild.')
+    expect(screen.queryByRole('img', { name: 'Förhandsvisning av Illustration' })).toBeNull()
+  })
+})

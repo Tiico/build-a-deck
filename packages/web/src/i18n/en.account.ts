@@ -149,6 +149,8 @@ export const enAccount = {
   'wizard.creating': 'Creating…',
   'wizard.create': 'Create the game and continue in the editor →',
   'wizard.error.login': 'log in first',
+  'wizard.image.too-big': 'The picture is larger than {mb} MB. Choose a smaller one.',
+  'wizard.image.not-image': 'That is not a picture. Choose a PNG, JPEG, GIF or WebP.',
   'wizard.error.not-made': 'The game was not made.',
   'wizard.error.create': 'The service answered with an error. Try again in a moment.',
   'wizard.error.upload': 'A file could not be uploaded. Try again in a moment.',

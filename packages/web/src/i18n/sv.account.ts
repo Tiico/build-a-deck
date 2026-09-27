@@ -170,6 +170,8 @@ export const svAccount = {
   'wizard.creating': 'Skapar…',
   'wizard.create': 'Skapa spelet och fortsätt i editorn →',
   'wizard.error.login': 'logga in först',
+  'wizard.image.too-big': 'Bilden är större än {mb} MB. Välj en mindre bild.',
+  'wizard.image.not-image': 'Det där är ingen bild. Välj en PNG, JPEG, GIF eller WebP.',
   'wizard.error.not-made': 'Spelet skapades inte.',
   'wizard.error.create': 'Tjänsten svarade med ett fel. Försök igen om en stund.',
   'wizard.error.upload': 'En fil kunde inte laddas upp. Försök igen om en stund.',

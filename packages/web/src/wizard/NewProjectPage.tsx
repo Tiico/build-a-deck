@@ -3,7 +3,8 @@ import { CardPreview } from '../editor/CardPreview.js'
 import { useRoving } from '../editor/roving.js'
 import { useRoom } from '../room.js'
 import { loginUrl, withCredentials } from '../account/api.js'
-import { assetRef, bytesOfDataUrl } from '../editor/assets.js'
+import { assetRef, bytesOfDataUrl, imageTypeOf } from '../editor/assets.js'
+import { ASSET_MAX_BYTES } from '@byd/protocol'
 import { DropSays, dropSurface, oneFile } from '../editor/dropping.js'
 import { suggestFieldKey } from '../editor/fields.js'
 import { buildBlankProject, buildProject, type WizardState } from './build.js'
@@ -251,10 +252,24 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       setRefused({ field: key, said: one.said })
       return
     }
-    setRefused(null)
-    const reader = new FileReader()
-    reader.onload = () => updateRow(index, key, String(reader.result ?? ''))
-    reader.readAsDataURL(one.file)
+    // Said at the field the moment the file is chosen (#476), and not as «413» or «415» when the
+    // game is made: the weight before anything is read, and then what the bytes say they are — the
+    // same reading the service makes, so the two cannot disagree.
+    const file = one.file
+    if (file.size > ASSET_MAX_BYTES) {
+      setRefused({ field: key, said: t('wizard.image.too-big', { mb: ASSET_MAX_BYTES / 1024 / 1024 }) })
+      return
+    }
+    void file.arrayBuffer().then((buffer) => {
+      if (!imageTypeOf(new Uint8Array(buffer))) {
+        setRefused({ field: key, said: t('wizard.image.not-image') })
+        return
+      }
+      setRefused(null)
+      const reader = new FileReader()
+      reader.onload = () => updateRow(index, key, String(reader.result ?? ''))
+      reader.readAsDataURL(file)
+    })
   }
   const addField = (kind: Field['kind']) => {
     // Decided, not left alone by accident (#27, A4): the key is an identifier in the document
@@ -403,7 +418,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
             onOver: (on) => setOver(on ? field.key : null),
             onFiles: (files) => chooseImage(selectedRow, field.key, files),
           })}
-        >{row[field.key] ? <img src={row[field.key]} alt={t('wizard.image.preview', { label: field.label })} /> : <i>{t('wizard.image.none')}</i>}{over === field.key && <DropSays />}<label className="byd-wizard-file-button byd-secondary">{t(row[field.key] ? 'wizard.image.change' : 'wizard.image.choose')}<input className="byd-offscreen" type="file" accept="image/*" aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} onChange={(event) => chooseImage(selectedRow, field.key, [...(event.target.files ?? [])])} /></label>{row[field.key] && <button type="button" onClick={() => updateRow(selectedRow, field.key, '')}>{t('wizard.image.remove')}</button>}</div>{refused?.field === field.key && <span role="alert">{refused.said}</span>}</div> : <label key={field.key} className={field.key === 'body' ? 'is-wide' : ''}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span>{field.key === 'body' ? <textarea rows={4} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} /> : <input type={field.kind === 'number' ? 'number' : 'text'} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} />}</label>)}</div>
+        >{row[field.key] ? <img src={row[field.key]} alt={t('wizard.image.preview', { label: field.label })} /> : <i>{t('wizard.image.none')}</i>}{over === field.key && <DropSays />}<label className="byd-wizard-file-button byd-secondary">{t(row[field.key] ? 'wizard.image.change' : 'wizard.image.choose')}<input className="byd-offscreen" type="file" accept="image/png,image/jpeg,image/gif,image/webp" aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} onChange={(event) => chooseImage(selectedRow, field.key, [...(event.target.files ?? [])])} /></label>{row[field.key] && <button type="button" onClick={() => updateRow(selectedRow, field.key, '')}>{t('wizard.image.remove')}</button>}</div>{refused?.field === field.key && <span role="alert">{refused.said}</span>}</div> : <label key={field.key} className={field.key === 'body' ? 'is-wide' : ''}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span>{field.key === 'body' ? <textarea rows={4} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} /> : <input type={field.kind === 'number' ? 'number' : 'text'} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} />}</label>)}</div>
       </div>
       <div className="byd-wizard-card-tabs">{s.rows.map((candidate, index) => <button type="button" key={index} className="byd-choice" aria-pressed={selectedRow === index} onClick={() => setSelectedRow(index)}><b>{index + 1}</b>{candidate['title'] || t('wizard.card.untitled')}</button>)}<button type="button" className="is-add" onClick={addRow}>{t('wizard.card.add')}</button><button type="button" disabled={s.rows.length === 1} onClick={() => removeRow(selectedRow)}>{t('wizard.card.remove')}</button></div>
       <footer><button type="button" className="byd-wizard-primary byd-primary" disabled={!hasCards} {...working(busy)} onClick={() => void toEditor()}><Held busy={busy && via === 'guided'} idle={t('wizard.create')} working={t('wizard.creating')} /></button>{error && via === 'guided' && <p ref={errorRef} className="byd-wizard-error" role="alert" tabIndex={-1}>{error}</p>}</footer>
