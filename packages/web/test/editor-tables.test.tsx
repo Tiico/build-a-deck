@@ -219,7 +219,7 @@ describe('ending a table from the editor (#19, C9)', () => {
     await run.projects.create(run.projectId, projectDoc())
     const id = await startTable()
     await openTables()
-    const row = await onlyRow()
+    let row = await onlyRow()
     const name = id.slice(0, 8)
     // Ending is not a way into the table and does not stand in the row: it is the last entry in
     // the row's menu, behind a line of its own (#176, C9).
@@ -245,7 +245,11 @@ describe('ending a table from the editor (#19, C9)', () => {
     await waitFor(async () => expect((await run.store.read(id)).map((l) => l.intent.v)).toEqual(['session.end']))
 
     // An ended table is not played any more; its log is locked and the ways in that would put
-    // someone at it are gone.
+    // someone at it are gone. It moves to the ended group at once (#480), which is a row of its
+    // own there, opened for it and holding the focus.
+    const endedList = await screen.findByRole('list', { name: 'Avslutade bord · 1' })
+    row = within(endedList).getByRole('listitem')
+    await waitFor(() => expect(document.activeElement).toBe(within(row).getByRole('button', { name: `Fler vägar in till bordet ${name}` })))
     expect(await within(row).findByText(/avslutat/)).toBeTruthy()
     // A table that is over is quieter than a live one on the screen too, not only in words.
     expect(row.getAttribute('data-ended')).toBe('true')
@@ -338,10 +342,10 @@ describe('the wait, the second press and the failure of «Starta nytt bord» (#2
       tables: () => Promise.resolve(done ? [one] : []),
       startTable: () => {
         started += 1
-        return new Promise<void>((resolve) => {
+        return new Promise<typeof one>((resolve) => {
           finish = () => {
             done = true
-            resolve()
+            resolve(one)
           }
         })
       },
@@ -359,14 +363,14 @@ describe('the wait, the second press and the failure of «Starta nytt bord» (#2
     // Sagt i trädet, inte bara i en färg — och ikonen är det som rör sig.
     const busy = await screen.findByRole('button', { name: 'Startar bordet…' })
     expect(busy.getAttribute('aria-busy')).toBe('true')
-    expect((busy as HTMLButtonElement).disabled).toBe(true)
+    expect(busy.getAttribute('aria-disabled')).toBe('true')
     expect(busy.querySelector('.byd-tables-new-icon > svg')).not.toBeNull()
 
     act(() => finish())
     await waitFor(() => expect(document.querySelectorAll('.byd-table-row')).toHaveLength(1))
     const ready = screen.getByRole('button', { name: 'Starta nytt bord' })
     expect(ready.getAttribute('aria-busy')).toBe('false')
-    expect((ready as HTMLButtonElement).disabled).toBe(false)
+    expect(ready.getAttribute('aria-disabled')).toBe('false')
     expect(started).toBe(1)
   })
 
@@ -382,7 +386,7 @@ describe('the wait, the second press and the failure of «Starta nytt bord» (#2
         attempts += 1
         if (attempts === 1) return Promise.reject(new Error('servern svarade inte'))
         done = true
-        return Promise.resolve()
+        return Promise.resolve(one)
       },
     }
     render(<TablesTab client={client as unknown as Client} server={run.http} />)

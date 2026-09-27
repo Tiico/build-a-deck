@@ -1121,6 +1121,7 @@ export const svEditor = {
   'tables.none': 'Inget bord ännu. "Starta bord" startar ett från den sparade versionen.',
   'tables.menu.none': 'Inget bord ännu. "Starta bord" startar ett.',
   'tables.starting': 'Startar bordet…',
+  'tables.started': 'Nytt bord startat: {table}.',
   'tables.new': 'Starta nytt bord',
   'tables.failed': 'Bordet kunde inte startas: {reason}. Spelet och dess bord är orörda.',
   'tables.retry': 'Försök igen',

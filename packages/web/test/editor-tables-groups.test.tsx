@@ -237,3 +237,36 @@ describe('the one way that stands ready and the five in the row’s menu (#176)'
     expect(within(row).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Bordsläge', 'Titta på', `QR för telefoner ${name}`])
   })
 })
+
+// «Starta nytt bord» sade förut bara «· 2 → · 3» i en hopfälld rad (#480 fynd 7). L31 lovar att
+// bordet dyker upp i listan: det sägs, och dess grupp står öppen. Och ett bord som avslutas här
+// byter grupp direkt, inte när listan hämtas om nästa gång.
+describe('a table started or ended from the column (#480)', () => {
+  it('says the new table has started and shows its row', async () => {
+    const user = userEvent.setup()
+    await openTables()
+    await user.click(await screen.findByRole('button', { name: 'Starta nytt bord' }))
+    const said = await screen.findByText(/Nytt bord startat:/)
+    expect(said.closest('[role="status"]')).not.toBeNull()
+    const id = await waitFor(async () => {
+      const [only] = await (await fetch(`${run.http}/projects/${run.projectId}/sessions`)).json() as { id: string }[]
+      expect(only).toBeTruthy()
+      return only!.id
+    })
+    expect(said.textContent).toContain(id.slice(0, 8))
+    await waitFor(() => expect(document.querySelector(`[data-table="${id}"]`)).not.toBeNull())
+  })
+
+  it('moves a table it ends to the ended group at once', async () => {
+    const user = userEvent.setup()
+    const id = await played()
+    await openTables()
+    const row = await playingRow()
+    await within(row).findByRole('link', { name: /Spela härifrån/ })
+    await user.click(within(row).getByRole('button', { name: `Fler vägar in till bordet ${id.slice(0, 8)}` }))
+    await user.click(within(row).getByRole('menuitem', { name: `Avsluta bordet ${id.slice(0, 8)}` }))
+    await user.click(await screen.findByRole('button', { name: 'Ja, avsluta' }))
+    expect(await screen.findByRole('button', { name: 'Avslutade bord · 1' })).toBeTruthy()
+    expect(screen.queryByRole('list', { name: 'Bord som spelas' })).toBeNull()
+  })
+})

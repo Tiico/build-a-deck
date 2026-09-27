@@ -2527,6 +2527,8 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 @media (prefers-reduced-motion: reduce) {
   .byd-tables-new[aria-busy='true'] > .byd-tables-new-icon { animation: none; }
 }
+/* What a start just did (#480): the new table's name, in the green the table strip says good news in. */
+.byd-tables-started { margin: 0; color: #7dd3a0; font-size: 12px; line-height: 1.5; }
 .byd-tables-failed { margin: 0; display: flex; flex-wrap: wrap; gap: var(--byd-s1) var(--byd-s2); align-items: center; max-width: 62ch; font-size: 12px; line-height: 1.5; }
 .byd-tables-failed > .byd-secondary { min-height: var(--byd-tap); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; cursor: pointer; }
 /* The shortcut in the header (variant B): "Uppdatera bordet" keeps its job, and the caret beside

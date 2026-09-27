@@ -993,6 +993,7 @@ export const enEditor = {
   'tables.none': 'No table yet. "Start a table" starts one from the saved version.',
   'tables.menu.none': 'No table yet. "Start a table" starts one.',
   'tables.starting': 'Starting the table…',
+  'tables.started': 'New table started: {table}.',
   'tables.new': 'Start a new table',
   'tables.failed': 'The table could not be started: {reason}. The game and its tables are untouched.',
   'tables.retry': 'Try again',
