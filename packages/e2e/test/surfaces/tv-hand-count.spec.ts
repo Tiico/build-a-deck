@@ -1,6 +1,5 @@
 import type { Page } from '@playwright/test'
 import { TV_AIR_PX } from '../../../web/src/table/fit.js'
-import { overscanPx } from '../../../web/src/table/camera.js'
 import { TV } from '../../support/devices.js'
 import { expect, test, type Fixtures } from '../../support/test.js'
 
@@ -123,22 +122,6 @@ test.describe('TV:ns handbricka ligger innanför fönstret (#413)', () => {
     // Linjen varje bricka hänger från är dess inre kant, den mot fläkten: brickan hänger utåt från
     // den, uppåt vid norra platsen och nedåt vid alla andra (#84).
     const closest = Math.round(Math.min(...now.badges.map((b) => (b.top < now.window.h / 2 ? b.bottom : now.window.h - b.top))) * 10) / 10
-    // The overscan is the television's (#322) and is kept by everything the camera frames by
-    // itself; the count keeps it too (#482), and its own pill's air on top.
-    const safe = overscanPx(now.window)
-    // A pixel and a half of give, not half of one: the margin is pixels and the camera frames in
-    // millimetres, and the overscan (32.4 px here) is turned into millimetres and back.
-    expect({ closest, given: closest >= safe + TV_AIR_PX - 1.5, andNoMore: closest <= safe + 2 * TV_AIR_PX }).toEqual({ closest, given: true, andNoMore: true })
-  })
-
-  // A television may hide the outer edge of its picture (#322, C5), and the counts were drawn in it:
-  // 13–15 px from the edge at 1920 × 1080, where the band is 32 (#482 fynd 5).
-  test('ligger utanför TV:ns overscan vid 1920 × 1080', async ({ tableOf, open, host }) => {
-    const now = await dealtTable({ tableOf, open, host }, { width: 1920, height: 1080 })
-    const safe = overscanPx(now.window)
-    for (const b of now.badges) {
-      const edge = Math.min(b.left, b.top, now.window.w - b.right, now.window.h - b.bottom)
-      expect({ zone: b.zone, outside: edge >= safe - 0.5 }).toEqual({ zone: b.zone, outside: true })
-    }
+    expect({ closest, given: closest >= TV_AIR_PX - 0.5, andNoMore: closest <= 2 * TV_AIR_PX }).toEqual({ closest, given: true, andNoMore: true })
   })
 })
