@@ -109,8 +109,8 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
   // som står i dokumentet just då. Zonen och allt som redan skrivits i den rörs inte; ingenting
   // av det här når dokumentet, och därmed inte heller något bord eller någon session.
   //
-  // Fokus går till raden i listan och aldrig till handtaget på filten: handtaget väljer zonen
-  // redan när det får fokus, så vägen ut hade lett rakt in igen. Raden finns kvar att peka ut —
+  // Fokus går till raden i listan och inte till handtaget på filten: raden är det som öppnade
+  // panelen från listan, och den står där vare sig zonen är markerad eller inte. Raden finns kvar att peka ut —
   // den ritas vare sig zonen är markerad eller inte, och `select` har redan fällt ut familjen den
   // ligger i — så den läses ur DOM:en på samma sätt som regelpanelen läser sin (#152).
   const close = (zone: Zone) => {
@@ -669,6 +669,13 @@ function Felt({
     drag.current = null
   }
   const nudge = (e: RKeyboardEvent, z: Zone) => {
+    // Enter and Space choose (#480): the focus alone does not, or Tab onto the felt would choose
+    // the first pile and its panel would carry the keyboard off before the rest were reached.
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onSelect(z.id)
+      return
+    }
     const step = e.shiftKey ? NUDGE_MM * 5 : NUDGE_MM
     const d = e.key === 'ArrowLeft' ? { x: -step, y: 0 } : e.key === 'ArrowRight' ? { x: step, y: 0 } : e.key === 'ArrowUp' ? { x: 0, y: -step } : e.key === 'ArrowDown' ? { x: 0, y: step } : null
     if (!d) return
@@ -754,7 +761,6 @@ function Felt({
             onPointerCancel={up}
             onClick={() => onSelect(z.id)}
             onKeyDown={(e) => nudge(e, z)}
-            onFocus={() => onSelect(z.id)}
             onPointerEnter={() => setUnder(z.id)}
             onPointerLeave={() => setUnder((now) => (now === z.id ? null : now))}
           >

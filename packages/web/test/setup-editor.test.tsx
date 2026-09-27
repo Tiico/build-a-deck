@@ -373,3 +373,28 @@ describe('högens bottenkort', () => {
     expect(screen.queryByLabelText('Bottenkort för Spelyta')).toBeNull()
   })
 })
+
+// Tab through the felt without being caught (#480 fynd 1). A handle chose its zone the moment it
+// had the focus, and a chosen pile's panel takes the focus when it opens — so the first Tab onto
+// the felt landed on the deck and was carried off into its panel, and the fourteen handles after
+// it were never reached. Focus is where the keyboard stands; Enter or Space chooses (L24, L29).
+describe('the felt under a keyboard (#480)', () => {
+  it('lets Tab stand on a handle without choosing it, and chooses on Enter or Space', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    const handles = [...document.querySelectorAll<HTMLElement>('[data-zone-handle]')]
+    expect(handles.length).toBeGreaterThan(2)
+    handles[0]!.focus()
+    expect(handles[0]!.getAttribute('aria-pressed')).toBe('false')
+    expect(document.querySelector('[data-zone-actions]')).toBeNull()
+    expect(document.activeElement).toBe(handles[0])
+    handles[1]!.focus()
+    expect(document.activeElement).toBe(handles[1])
+
+    fireEvent.keyDown(handles[1]!, { key: 'Enter' })
+    expect(handles[1]!.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.keyDown(handles[0]!, { key: ' ' })
+    expect(handles[0]!.getAttribute('aria-pressed')).toBe('true')
+    expect(handles[1]!.getAttribute('aria-pressed')).toBe('false')
+  })
+})
