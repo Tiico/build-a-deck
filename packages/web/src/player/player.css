@@ -53,7 +53,11 @@
   box-sizing: border-box; border-bottom: 1px solid var(--byd-rule); font-size: 13px; color: var(--byd-ink-muted);
 }
 .byd-player > header strong { color: var(--byd-ink-strong); font-size: 15px; }
-.byd-player > header > span { margin-right: auto; }
+/* The name gives way before the row does (#483): it shrinks behind an ellipsis, down to a few
+   letters, rather than push the controls onto a second row. */
+.byd-player-who { flex: 1 1 0; min-width: 4em; display: grid; line-height: 1.2; }
+.byd-player-who > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-player-who > span { font-size: 12px; }
 /* Every control in the head is one thumb target (44 × 44) inside the same pill. */
 .byd-player > header button {
   min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 12px;
@@ -266,3 +270,10 @@
 .byd-phone-history ol { padding: 0; list-style: none; font-size: 13px; color: var(--byd-ink-muted); }
 .byd-phone-history li { padding: 8px 0; border-bottom: 1px solid var(--byd-rule-soft); }
 .byd-inspect-close { flex: 0 0 auto; min-width: 120px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--byd-line); border-radius: 12px; background: var(--byd-control); color: var(--byd-ink-strong); font: 600 15px system-ui; }
+
+/* «Regler» at the foot, by the hand (#483, beslut C efter prototyp 32): held at the bottom of the
+   screen where the thumb is, and the page ends a bar's height earlier so nothing lies under it. */
+.byd-player:has(.byd-phone-foot:not(:empty)) { padding-bottom: 64px; }
+.byd-phone-foot { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; box-sizing: border-box; min-height: 64px; display: flex; padding: 8px 16px 12px; background: var(--byd-bg); border-top: 1px solid var(--byd-rule); }
+.byd-phone-foot:empty { display: none; }
+.byd-phone-foot .byd-rules-open { flex: 1; min-height: 44px; border-radius: 12px; font-size: 14px; }

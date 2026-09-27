@@ -157,8 +157,12 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   return (
     <>
       <header {...behind}>
-        <strong>{name}</strong>
-        <span>{t(hand.length === 1 ? 'play.cards.one' : 'play.cards.other', { n: hand.length })}</span>
+        {/* Who is holding the phone, over how many cards: stacked, so the name has the width of the
+            row that is left and gives way behind an ellipsis before the controls do (#483). */}
+        <span className="byd-player-who">
+          <strong>{name}</strong>
+          <span>{t(hand.length === 1 ? 'play.cards.one' : 'play.cards.other', { n: hand.length })}</span>
+        </span>
         {/* The one help pattern (L32), on a narrower screen (#305). It stands in the chrome and
             not beside the heading over the hand, and that is the whole of the measurement the
             decision was made on: from up here the box hangs over the top of the felt and covers
@@ -171,13 +175,6 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           <p>{t('play.help.hand.hidden')}</p>
         </Help>
         <SessionButtons client={client} view={view} sheet={sheet} onSheet={setSheet} />
-        {/* The rules this table plays by (B7), one press away beside the session's own buttons.
-            The living number (#226) reads this seat's own view: her own hand is a reading, the
-            deck and the others' hands are counts. */}
-        {/* And out of the way when the table asks something of everyone (#483): an ended table's
-            survey and a rewind's question are drawn under the book's layer, and the view they
-            stand over is inert, so presses went to a survey nobody could see. */}
-        {!view.ended && !view.rewind && <RuleDrawer http={faces} sessionId={sessionId} placement="phone" live={view} />}
       </header>
       <div className="byd-behind" {...behind}>
         <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
@@ -207,6 +204,15 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         <details className="byd-phone-table" data-phone-table><summary>{t('player.table.title')}</summary><TableSummary view={view} activity={activity} zones="areas" history={false} /></details>
         <details className="byd-phone-history"><summary>{t('play.latest')}</summary><RecentActivity view={view} activity={activity} /></details>
       </main>
+      {/* The rules this table plays by (B7), on a bar of their own at the foot by the hand (#483,
+          beslut C efter prototyp 32): in the head they made the row two rows at 390 and covered
+          their own «Stäng». The living number (#226) reads this seat's own view: her own hand is a
+          reading, the deck and the others' hands are counts. Out of the way when the table asks
+          something of everyone (#483): an ended table's survey and a rewind's question. The bar is
+          empty, and draws nothing, for a table without a rulebook. */}
+      <div className="byd-phone-foot" {...behind}>
+        {!view.ended && !view.rewind && <RuleDrawer http={faces} sessionId={sessionId} placement="phone" live={view} />}
+      </div>
       {/* The card held up. A card that lies in front of you carries its verbs here, and a verb
           puts the card down as it goes: what it did is read off the strip behind it. */}
       {inspect && (
