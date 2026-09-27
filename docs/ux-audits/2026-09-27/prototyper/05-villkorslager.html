@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 05 — Villkorslagren (#478 fynd 8)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Ett villkorslager (`kind: 'if'`, L1, L3) visar sina barn bara på kort där `when` håller.
+     Demoleken har sex: if-karaktar … if-diamant, var och en med en rundad platta i raritetens
+     färg (spelkort.ts). Att välja ett av dem ger i dag en tom panel med en tom «Layout»-rubrik,
+     ingen ram på kortet och inget om villkoret, och Delete frågar «Det ritas på 77 kort» —
+     fast plattan bara ritas på 18. Hur ska ett villkor visas och redigeras?
+
+       Nu  som i dag
+       A   villkoret är en mapp i lagerlistan: raden säger villkoret, barnen står under den
+       B   villkoret är en egenskap hos elementet: listan visar plattorna, panelen säger «Visas när»
+       C   villkor på samma fält blir en växel: en rad, en tabell per värde — och en väg till L16
+
+     Förhandsvisat kort väljs i bärnstensraden (prototypens krycka; hur mallen byter kort är
+     prototyp 07). ────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .yta { position: relative; }
+  .m-rad.barn .namn { padding-left: 22px; }
+  .m-rad .pil { display: grid; place-items: center; width: 16px; height: 44px; flex: none; color: var(--source-ink); font-size: 13px; cursor: pointer; }
+  .m-rad .pil:hover { color: #fff; }
+  .m-rad .namn .vill { flex: none; padding: 1px 6px; border-radius: 999px; border: 1px solid #4a5a7a; color: #cfe0ff; font-size: 10px; font-style: normal; }
+  .m-rad .namn .vill.av { border-color: #3a3f4b; color: var(--quiet); }
+  .m-rad .rad2 { display: grid; min-width: 0; }
+  .m-rad .rad2 small { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--source-ink); font-size: 11px; }
+  .m-rad .rad2 small.av { color: var(--quiet); }
+  /* Villkorets ram på kortet: streckad, med villkoret i en flik ovanför. */
+  .vram { position: absolute; pointer-events: none; outline: 2px dashed var(--primary-mark); outline-offset: 2px; }
+  .vram.spoke { outline-color: #8b93a7; background: repeating-linear-gradient(45deg, rgb(139 147 167 / 18%) 0 3px, transparent 3px 7px); }
+  .vflik { position: absolute; transform: translateY(calc(-100% - 6px)); padding: 3px 8px; border-radius: 6px; background: #1b2a44; border: 1px solid var(--primary-mark); color: #cfe0ff; font-size: 11px; white-space: nowrap; pointer-events: none; }
+  .vflik.spoke { background: #23262e; border-color: #8b93a7; color: #dce3f2; }
+  .m-box { cursor: pointer; }
+  /* Frågan före en borttagning, som .byd-canvas-question. */
+  .fragan { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 12px; border-top: 1px solid #7a3243; background: #3d2632; color: #ffe4ea; font-size: 12px; }
+  .fragan p { margin: 0; font-weight: 700; flex: 1 1 260px; }
+  .fragan button { padding: 8px 12px; min-height: 36px; border: 1px solid #7a3243; border-radius: 8px; background: transparent; color: #ffe4ea; font: inherit; font-weight: 700; cursor: pointer; }
+  .fragan button[data-farlig] { background: #7a3243; }
+  .fragan button:focus-visible { outline: 2px solid #ffe4ea; outline-offset: 2px; }
+  .m-rum { grid-template-rows: minmax(0, 1fr) auto; }
+  .m-rum:not([data-rad]) > .m-zoom { grid-row: 1; grid-column: 2; }
+  .m-rum[data-rad] { grid-template-rows: minmax(0, 1fr) auto auto; }
+  /* Panelens villkorsdelar. */
+  .villkor { display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; align-items: end; }
+  .villkor label { min-width: 0; }
+  .villkor .ar { align-self: center; padding-top: 14px; color: var(--hint-ink); font-size: 12px; }
+  .rakning { margin: 0; color: #dce3f2; font-size: 12px; line-height: 1.5; }
+  .rakning b { color: #fff; }
+  .rakning .nej { color: #f0b64a; }
+  .barnlista { display: grid; gap: 4px; }
+  .barnlista button { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; text-align: left; cursor: pointer; }
+  .barnlista button i { width: 14px; height: 14px; border-radius: 3px; flex: none; }
+  .barnlista button small { margin-left: auto; color: var(--quiet); }
+  .spar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11px; color: var(--hint-ink); }
+  .spar button { min-height: 32px; border: 1px solid var(--line); border-radius: 6px; padding: 0 8px; background: transparent; color: #cfe0ff; font: inherit; cursor: pointer; }
+  .radio { display: grid; gap: 4px; }
+  .radio label { display: flex !important; align-items: center; gap: 7px; min-height: 28px; font-size: 12px !important; color: #dce3f2 !important; cursor: pointer; }
+  .vaxeltabell { display: grid; gap: 2px; }
+  .vaxeltabell > div { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto 44px; align-items: center; gap: 8px; min-height: 44px; padding: 0 0 0 8px; border-radius: 6px; font-size: 12px; color: #dce3f2; }
+  .vaxeltabell > div[data-har] { background: #1f2638; box-shadow: inset 3px 0 0 var(--primary-mark); }
+  .vaxeltabell i { width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgb(255 255 255 / 25%); }
+  .vaxeltabell small { color: var(--quiet); font-size: 11px; }
+  .vaxeltabell button { min-height: 44px; min-width: 44px; border: 0; border-radius: 6px; background: transparent; color: #9cc4f5; font: inherit; font-size: 11px; cursor: pointer; }
+  .forslag { display: grid; gap: 8px; padding: 10px; border: 1px solid #3b4a66; border-radius: 8px; background: #1a2130; color: #cfd8ea; font-size: 12px; line-height: 1.45; }
+  .forslag .m-knapp { justify-self: start; border-color: var(--primary-mark); color: #fff; }
+  .dekor { opacity: .55; pointer-events: none; }
+  .protorad select { min-height: 32px; border: 1px solid #4a4230; border-radius: 7px; padding: 0 8px; background: #1f1b12; color: #ffd98a; font: inherit; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>Fynd 8 · Villkorslagren (L1, L3, L15).</b> Välj ett villkorslager i listan, byt förhandsvisat kort och tryck Delete. Frågan före borttagningen visar vad varianten räknar.</p>
+    <p>Sex av tretton lager i demolekens framsida är villkor; tillsammans ritar de en platta per kort.</p>
+  </div>
+  <label>Förhandsvisat kort <select id="kortval"></select></label>
+  <div class="storlek vaxlare" role="group" aria-label="Fönstrets storlek">
+    <button type="button" data-s="1280x800">1280 × 800</button>
+    <button type="button" data-s="1024x768">1024 × 768</button>
+  </div>
+  <button type="button" id="valj">Välj if-guld</button>
+  <button type="button" id="del">Tryck Delete</button>
+  <button type="button" id="aterstall">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+
+<div class="m-scen" id="mscen">
+  <div class="m-ram" id="ram"><span class="etikett" id="etikett"></span>
+    <div class="m-skarm byd-editor" id="skarm">
+      <div class="ed-huvud">
+        <span class="hem">Mina spel</span><strong>Sal's Saloon</strong><span class="rev">rev 1</span><span class="sparat">Sparat</span>
+        <div class="ed-flikar" role="tablist" aria-label="Lägen"><button role="tab" tabindex="-1">Kortvägg</button><button role="tab" aria-selected="true" tabindex="-1">Mall</button><button role="tab" tabindex="-1">Tabell</button><button role="tab" tabindex="-1">Symboler</button><button role="tab" tabindex="-1">Media</button><button role="tab" tabindex="-1">Regler</button><button role="tab" tabindex="-1">Bord</button></div>
+        <span class="spacer"></span><span class="who">A</span>
+        <button type="button" class="ed-knapp kantad" tabindex="-1">Spara</button><button type="button" class="ed-knapp primar" tabindex="-1">Starta bord ▾</button>
+      </div>
+      <div class="m-krona">
+        <label>Grupperas av kolumnen <select tabindex="-1"><option>typ</option></select></label>
+        <button type="button" class="meny" tabindex="-1">Bas (alla) · 77 kort ▾</button>
+        <span class="spacer"></span>
+        <button type="button" class="m-knapp" tabindex="-1">Fäll ihop egenskaperna</button>
+        <div class="sidor"><button type="button" aria-pressed="true" tabindex="-1">Framsida</button><button type="button" tabindex="-1">Baksida</button></div>
+      </div>
+      <div class="m-duk">
+        <nav class="m-verktyg" aria-label="Verktyg">
+          <button type="button" tabindex="-1"><b>T</b>Text</button><button type="button" tabindex="-1"><b>▣</b>Bild</button><button type="button" tabindex="-1"><b>●</b>Ikon</button><button type="button" tabindex="-1"><b>●●</b>Ikonrad</button><button type="button" tabindex="-1"><b>□</b>Form</button>
+        </nav>
+        <aside class="m-lager">
+          <div class="krona"><h2>Lager · Framsida</h2><p>Alla 77 kort</p></div>
+          <div class="m-lista" id="lista" role="grid" aria-label="Lager"></div>
+          <div class="fot">Dra för att ändra ordningen. <b>?</b></div>
+        </aside>
+        <div class="m-rum" id="rum">
+          <main class="m-sceneyta" id="scenen" tabindex="0" aria-label="Kortet"><div class="yta" id="yta"></div></main>
+          <div class="m-zoom" id="zoom"><span>198 %</span><button type="button" tabindex="-1">−</button><input type="range" value="30" tabindex="-1" aria-label="Förstoring"><button type="button" tabindex="-1">+</button><button type="button" aria-pressed="true" tabindex="-1">Passa in</button><button type="button" tabindex="-1">100 %</button></div>
+          <div id="fragan" hidden></div>
+        </div>
+        <aside class="m-props" id="props"></aside>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const NOT = {
+  nu: '<b>Nu.</b> Välj if-guld: panelen säger «Layout» och sedan ingenting, kortet får ingen ram, och inget säger vad lagret är till för. Delete frågar «Det ritas på 77 kort» — plattan ritas på 18. Glyfen är gruppens, så ett villkor och en grupp ser likadana ut.',
+  a: '<b>A · Villkoret är en mapp.</b> Raden säger villkoret («om raritet = Guld · 18 kort») och fälls ut till det den visar. Valt villkor ramas in på kortet med villkoret i en flik — streckat och grått när det inte gäller det förhandsvisade kortet. Panelen redigerar villkoret och listar innehållet. <span class="plus">+ Modellen som den är (L1: villkor är ett element med barn). Håller för villkor med flera barn. Räkningen i Delete blir sann.</span> <span class="minus">− Sex rader till när allt är utfällt; listan blir ett träd, och dragningen i den får en nivå till att tänka på (in i / ut ur ett villkor).</span>',
+  b: '<b>B · Villkoret är en egenskap.</b> Listan visar det som ritas — plattorna — med villkoret på radens andra rad. Panelen börjar med «Visas: Alltid / När …», och resten är formens vanliga panel. Omslaget syns aldrig. <span class="plus">+ Den kortaste vägen: man väljer det man ser och får det man väntar sig. Ingen ny radtyp i listan.</span> <span class="minus">− Döljer strukturen: ett villkor med tre barn blir tre rader med samma bricka, och att ändra villkoret på ett av dem måste antingen dela omslaget eller ändra syskonen — båda överraskar.</span>',
+  c: '<b>C · En växel.</b> Villkor som prövar samma fält mot olika värden står som en rad: «Raritetsbricka · växlar efter raritet». Panelen är en tabell per värde med antal kort och en genväg till ett kort med värdet. Är barnen samma form i olika färg erbjuds en väg till L16: en form med färg efter raritet. <span class="plus">+ Svarar på det designern faktiskt byggt: en bricka i sex färger. Sex rader blir en. Visar luckor (ett värde utan villkor) direkt.</span> <span class="minus">− En gruppering listan hittar på, som måste veta när villkor «hör ihop». Villkor som inte hör ihop behöver ändå A eller B. Omvandlingen är en engångsdörr (som L26:s punkter).</span>',
+}
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const $ = (q) => document.querySelector(q)
+const W_MM = 63, H_MM = 88, PAD = 24, TOTAL = 77
+
+// Raritet, färg ur arket, antal kortrader i demoleken med värdet — i lagerordning uppifrån.
+const RAR = [['Karaktär', 'karaktar', '#FF00FF', 10], ['Silver', 'silver', '#CCCCCC', 14], ['Koppar', 'koppar', '#FF9902', 12], ['Special', 'special', '#FF0000', 11], ['Guld', 'guld', '#FFD700', 18], ['Diamant', 'diamant', '#6D9EEB', 12]]
+const TYP = { Playcard: '#6b4a2b', Location: '#2f5d3a', Effect: '#8b2e2e', Character: '#7a2a6b' }
+const KORT = [
+  { title: "Juice em' up!", typ: 'Playcard', raritet: 'Diamant', body: 'Välj två andra spelare. De blandar en shot till varann' },
+  { title: "Sal's Saloon", typ: 'Location', raritet: 'Guld', body: 'Saloonen öppnar! Lägg upp ett shopkort per spelare som går in. I turordning från dig: slå tärningen – slaget plus ditt guld är din budget.' },
+  { title: 'Free for all', typ: 'Effect', raritet: 'Special', body: 'Era stöldgods är i fara! Så länge effekten ligger får ni sno varandras stöldgodskort.' },
+  { title: 'Duel', typ: 'Playcard', raritet: 'Koppar', body: 'Utmana en spelare på duell. Förloraren dricker 3' },
+  { title: 'Duel', typ: 'Playcard', raritet: 'Silver', body: 'Utmana en spelare på duell. Förloraren dricker 5' },
+  { title: 'Drunken Gambler', typ: 'Character', raritet: 'Karaktär', body: 'Du dricker alltid 1 klunk mer än kortet säger. När du delar ut SHOTS delar du ut dubbelt så många' },
+]
+const PILL = { x: 5, y: 77, w: 26, h: 6 }
+const BAS = [
+  { id: 'raritet', kind: 'text', x: 5, y: 77.3, w: 26, h: 5.4 },
+  ...RAR.map(([v, sl, fill, n]) => ({ id: `if-${sl}`, kind: 'if', when: { field: 'raritet', equals: v }, barn: [{ id: `pill-${sl}`, kind: 'shape', ...PILL, fill, r: 3 }] })),
+  { id: 'body', kind: 'text', x: 5, y: 19, w: 53, h: 55 },
+  { id: 'typ', kind: 'text', x: 5, y: 11.5, w: 40, h: 4 },
+  { id: 'title', kind: 'text', x: 5, y: 4.5, w: 53, h: 7 },
+  { id: 'frame', kind: 'shape', x: 3, y: 3, w: 57, h: 82 },
+  { id: 'band', kind: 'shape', x: 3, y: 3, w: 57, h: 13 },
+  { id: 'paper', kind: 'shape', x: -3, y: -3, w: 69, h: 94 },
+]
+const s = { v: 'nu', storlek: '1280x800', kort: 0, vald: null, fraga: false, borta: new Set(), oppna: new Set(), slagen: false, S: 1 }
+const rad = () => KORT[s.kort]
+const antal = (v) => RAR.find((r) => r[0] === v)?.[3] ?? 0
+const galler = (el) => rad()[el.when.field] === el.when.equals
+const ifs = () => BAS.filter((e) => e.kind === 'if' && !s.borta.has(e.id))
+const hitta = (id) => { for (const e of BAS) { if (e.id === id) return { el: e, far: null }; for (const b of e.barn ?? []) if (b.id === id) return { el: b, far: e } } return null }
+const farg = (v) => RAR.find((r) => r[0] === v)?.[2]
+
+// ── Fönstret ────────────────────────────────────────────────────────────────────────────
+const skarm = $('#skarm')
+function skala() {
+  const [W, H] = s.storlek.split('x').map(Number)
+  const scen = $('#mscen')
+  const f = Math.min(1, (scen.clientWidth - 24) / W, (scen.clientHeight - 36) / H)
+  skarm.style.width = W + 'px'; skarm.style.height = H + 'px'
+  skarm.style.transform = `scale(${f})`
+  $('#ram').style.width = W * f + 'px'; $('#ram').style.height = H * f + 'px'
+  $('#etikett').textContent = `${W} × ${H}` + (f < 1 ? ` · visas i ${Math.round(f * 100)} %` : '')
+  $('#rum').toggleAttribute('data-rad', W < 1200)
+}
+
+// ── Kortet ──────────────────────────────────────────────────────────────────────────────
+const scenen = $('#scenen'), yta = $('#yta')
+function ritaScen() {
+  const S = s.S = Math.min((scenen.clientWidth - 2 * PAD) / W_MM, (scenen.clientHeight - 2 * PAD) / H_MM)
+  const W = scenen.clientWidth, H = scenen.clientHeight
+  const ox = (W - W_MM * S) / 2, oy = (H - H_MM * S) / 2
+  yta.style.width = W + 'px'; yta.style.height = H + 'px'
+  yta.style.setProperty('--mm', S + 'px')
+  const r = rad(), px = (mm) => mm * S + 'px'
+  const t = (x, y, w, h, text, pt, wt, color, extra = '') => `<p class="el txt" style="--x:${x};--y:${y};--w:${w};--h:${h};color:${color};font:${wt} calc(${pt * 0.3528} * var(--mm)) / 1.2 ${extra.includes('serif') ? 'Georgia, serif' : 'system-ui, sans-serif'};${extra.includes('center') ? 'text-align:center;' : ''}">${esc(text)}</p>`
+  // Plattan: i A–C och Nu ritar ett villkor som gäller sitt barn; efter omvandlingen i C är det en form med färg efter raritet.
+  let platta = ''
+  if (s.v === 'c' && s.slagen) platta = `<div class="el" style="--x:5;--y:77;--w:26;--h:6;background:${farg(r.raritet)};border-radius:calc(3 * var(--mm))"></div>`
+  else for (const e of ifs().slice().reverse()) if (galler(e)) for (const b of e.barn) platta += `<div class="el" style="--x:${b.x};--y:${b.y};--w:${b.w};--h:${b.h};background:${b.fill};border-radius:calc(${b.r} * var(--mm))"></div>`
+  const kort = `<div class="el" style="--x:3;--y:3;--w:57;--h:13;background:${TYP[r.typ]};border-radius:calc(2.5 * var(--mm))"></div>
+    <div class="el" style="--x:3;--y:3;--w:57;--h:82;border:calc(.5 * var(--mm)) solid #3b2a1a;border-radius:calc(3 * var(--mm))"></div>
+    ${t(5, 4.5, 53, 7, r.title, 12, 800, '#fff8e7', 'serif')}${t(5, 11.5, 40, 4, r.typ, 8.5, 700, '#fff8e7')}${t(5, 19, 53, 55, r.body, 8.5, 400, '#2b2118')}
+    ${platta}${t(5, 77.3, 26, 5.4, r.raritet, 8.5, 700, '#000000', 'center')}`
+  // Boxarna som tar klick: de vanliga elementen. Villkoren väljs i listan (och i C plattan).
+  const vanliga = BAS.filter((e) => e.kind !== 'if' && !['paper', 'frame'].includes(e.id)).reverse()
+  let boxar = vanliga.map((e) => `<div class="m-box" data-id="${e.id}" style="--x:${e.x};--y:${e.y};--w:${e.w};--h:${e.h}" ${s.vald === e.id ? 'data-vald' : ''}>${s.vald === e.id ? '<i class="h nw"></i><i class="h ne"></i><i class="h sw"></i><i class="h se"></i>' : ''}</div>`).join('')
+  yta.innerHTML = `<div class="m-kort" style="left:${ox}px;top:${oy}px">${kort}</div><div class="m-lagret" style="left:${ox}px;top:${oy}px;width:${px(W_MM)};height:${px(H_MM)}">${boxar}${villkorsram()}</div>`
+}
+// Det varianten ritar runt ett valt villkor.
+function villkorsram() {
+  const px = (mm) => mm * s.S + 'px'
+  const ram = (b, text, spoke, handtag) => `<div class="vram ${spoke ? 'spoke' : ''}" style="left:${px(b.x)};top:${px(b.y)};width:${px(b.w)};height:${px(b.h)}"></div>${text ? `<div class="vflik ${spoke ? 'spoke' : ''}" style="left:${px(b.x)};top:${px(b.y)}">${text}</div>` : ''}${handtag ? `<div class="m-box" data-vald style="--x:${b.x};--y:${b.y};--w:${b.w};--h:${b.h};pointer-events:none"><i class="h nw"></i><i class="h ne"></i><i class="h sw"></i><i class="h se"></i></div>` : ''}`
+  const r = rad()
+  if (s.v === 'c' && s.vald === 'rar') return ram(PILL, `raritet = ${r.raritet}`, false, true)
+  const h = s.vald && hitta(s.vald); if (!h) return ''
+  if (s.v === 'nu') return ''
+  if (s.v === 'a') {
+    if (h.el.kind === 'if') return ram(PILL, galler(h.el) ? `om raritet = ${h.el.when.equals}` : `om raritet = ${h.el.when.equals} · syns inte här, kortet är ${r.raritet}`, !galler(h.el), false)
+    if (h.far) return ram(PILL, galler(h.far) ? '' : `syns inte här, kortet är ${r.raritet}`, !galler(h.far), galler(h.far))
+  }
+  if (s.v === 'b' && h.far) return ram(PILL, galler(h.far) ? `visas när raritet = ${h.far.when.equals}` : `visas när raritet = ${h.far.when.equals} · inte på det här kortet`, !galler(h.far), galler(h.far))
+  return ''
+}
+
+// ── Lagerlistan ─────────────────────────────────────────────────────────────────────────
+const G = {
+  text: '<svg viewBox="0 0 16 16"><path d="M3 3h10v2.2M8 3v10M5.6 13h4.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  shape: '<svg viewBox="0 0 16 16"><rect x="2.6" y="3.6" width="10.8" height="8.8" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+  if: '<svg viewBox="0 0 16 16"><path d="M3 4.5h10M3 8h10M3 11.5h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  // Ett villkor ritas som en gren: en väg som delar sig (A och C), aldrig som gruppens tre streck.
+  gren: '<svg viewBox="0 0 16 16"><path d="M3 8h4M7 8l5-4M7 8l5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12.5" cy="4" r="1.3" fill="currentColor"/><circle cx="12.5" cy="12" r="1.3" fill="currentColor"/></svg>',
+}
+const LAS = '<svg viewBox="0 0 16 16"><rect x="3.5" y="7" width="9" height="6.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>'
+const radHtml = ({ id, glyf, namn, rad2, barn, pil, vill, av }) => `<div class="m-rad ${barn ? 'barn' : ''}" role="row" tabindex="-1" data-rad="${id}" aria-selected="${s.vald === id}"><span class="las">${LAS}</span><span class="namn">${pil !== undefined ? `<span class="pil" data-fall="${id}">${pil}</span>` : ''}${glyf}<span class="rad2"><span>${esc(namn)}</span>${rad2 ? `<small class="${av ? 'av' : ''}">${rad2}</small>` : ''}</span>${vill ? `<i class="vill ${av ? 'av' : ''}">${vill}</i>` : ''}</span><span class="grepp">⠿</span></div>`
+function ritaLista() {
+  const r = rad(), rader = []
+  let rarSatt = false
+  for (const e of BAS) {
+    if (s.borta.has(e.id)) continue
+    if (e.kind !== 'if') { rader.push(radHtml({ id: e.id, glyf: G[e.kind], namn: e.id })); continue }
+    if (s.v === 'nu') rader.push(radHtml({ id: e.id, glyf: G.if, namn: e.id }))
+    else if (s.v === 'a') {
+      const open = s.oppna.has(e.id)
+      rader.push(radHtml({ id: e.id, glyf: '', namn: e.id, rad2: `om ${e.when.equals} · ${antal(e.when.equals)} kort`, pil: `<svg viewBox="0 0 12 12" width="12" height="12" style="transform:rotate(${open ? 90 : 0}deg)"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`, av: !galler(e) }))
+      if (open) for (const b of e.barn) rader.push(radHtml({ id: b.id, glyf: G.shape, namn: b.id, barn: true }))
+    } else if (s.v === 'b') {
+      for (const b of e.barn) rader.push(radHtml({ id: b.id, glyf: G.shape, namn: b.id, rad2: `om ${e.when.equals} · ${antal(e.when.equals)} kort`, av: !galler(e) }))
+    } else if (!rarSatt) {
+      rarSatt = true
+      rader.push(s.slagen
+        ? radHtml({ id: 'pill', glyf: G.shape, namn: 'pill', rad2: 'färg efter raritet' })
+        : radHtml({ id: 'rar', glyf: G.gren, namn: 'Raritetsbricka', rad2: `efter raritet · ${ifs().length}` }))
+    }
+  }
+  $('#lista').innerHTML = rader.join('')
+}
+
+// ── Panelen ─────────────────────────────────────────────────────────────────────────────
+const TYPSNITT = `<section class="m-sek"><h3>Typsnitt i spelet</h3><p class="hint">Inget eget typsnitt ännu. Utan en fil sätts korten i vad tryckeriets dator råkar ha.</p><div class="spar"><button type="button" class="m-knapp" tabindex="-1">Sök i Google Fonts …</button><button type="button" class="m-knapp" tabindex="-1">Ladda upp typsnitt</button></div></section>`
+const layout = (e, ro) => `<section class="m-sek"><h3>Layout</h3><div class="m-rader">${[['x', 'X'], ['y', 'Y'], ['w', 'B'], ['h', 'H']].map(([k, g]) => `<div class="m-f"><span class="g">${g}</span><input value="${String(e[k]).replace('.', ',')}" ${ro ? 'readonly' : ''} aria-label="${g} (mm)"><em>mm</em></div>`).join('')}</div></section>`
+const vardeval = (v) => `<select data-varde>${RAR.map(([x]) => `<option ${x === v ? 'selected' : ''}>${x}</option>`).join('')}</select>`
+function ritaProps() {
+  const p = $('#props'), r = rad()
+  if (!s.vald) { p.innerHTML = `<h2>Egenskaper</h2><p class="hint">Välj ett lager i lagerlistan, eller ett element på kortet.</p><br>${TYPSNITT}`; return }
+  if (s.vald === 'rar') {
+    p.innerHTML = `<h2>Egenskaper · Raritetsbricka</h2>
+      <section class="m-sek"><h3>Växlar efter raritet</h3>
+        <p class="rakning">Sex villkor på kolumnen <b>raritet</b>, ett per värde. Varje kort får det som står på sin rad.</p>
+        <div class="vaxeltabell">${ifs().map((e) => `<div ${galler(e) ? 'data-har' : ''}><i style="background:${e.barn[0].fill}"></i><span>${e.when.equals}${galler(e) ? ' <small>· här</small>' : ''}</span><small>${antal(e.when.equals)} kort</small><button type="button" data-visa="${e.when.equals}" aria-label="Visa ett kort med ${e.when.equals}">Visa</button></div>`).join('')}</div>
+        <p class="hint">Alla 77 kort har en raritet med ett villkor. Ett kort utan värde får ingen bricka.</p>
+      </section>
+      <div class="forslag"><span>De sex lagren är samma form i sex färger. En form med <b>färg efter raritet</b> (L16) säger samma sak med ett lager.</span><button type="button" class="m-knapp" id="slaihop">Gör om till en form</button></div><br>${TYPSNITT}`
+    return
+  }
+  if (s.vald === 'pill') {
+    p.innerHTML = `<h2>Egenskaper · pill</h2>${layout(PILL)}
+      <section class="m-sek"><h3>Fyllning</h3><label class="vaxel"><input type="checkbox" checked tabindex="-1"> Färg efter fält</label>
+      <label>Fyll efter kolumnen<select><option>raritet</option></select></label>
+      <div class="vaxeltabell">${RAR.map(([v, , f, n]) => `<div ${r.raritet === v ? 'data-har' : ''}><i style="background:${f}"></i><span>${v}</span><small>${n} kort</small><button type="button" aria-label="Ta bort färgen för ${v}">×</button></div>`).join('')}<div><i style="background:transparent"></i><span>Övriga</span><small>0 kort</small><span></span></div></div></section>
+      <p class="hint">Samma utseende på alla 77 kort som de sex villkoren gav — ett lager i stället för sex.</p><br>${TYPSNITT}`
+    return
+  }
+  const h = hitta(s.vald), e = h.el
+  if (e.kind === 'if') {
+    if (s.v === 'nu') { p.innerHTML = `<h2>Egenskaper · ${e.id}</h2><section class="m-sek"><h3>Layout</h3></section>${TYPSNITT}`; return }
+    const ja = galler(e), n = antal(e.when.equals)
+    p.innerHTML = `<h2>Egenskaper · ${e.id}</h2>
+      <section class="m-sek"><h3>Villkor</h3>
+        <div class="villkor"><label>Visas när<select><option>raritet</option></select></label><span class="ar">är</span><label>&nbsp;${vardeval(e.when.equals)}</label></div>
+        <p class="rakning">Ritas på <b>${n} av ${TOTAL} kort</b>. ${ja ? 'Syns på det här kortet.' : `<span class="nej">Syns inte på det här kortet</span> — raritet är ${r.raritet}.`}</p>
+        ${ja ? '' : `<div class="spar"><button type="button" data-visa="${e.when.equals}">Visa ett kort där det syns</button></div>`}
+      </section>
+      <section class="m-sek"><h3>Innehåll</h3><div class="barnlista">${e.barn.map((b) => `<button type="button" data-rad="${b.id}"><i style="background:${b.fill}"></i>${b.id}<small>${b.w} × ${b.h} mm</small></button>`).join('')}</div>
+        <p class="hint">Ett villkor har ingen ruta av sin egen; ramen på kortet är innehållets.</p></section>${TYPSNITT}`
+    return
+  }
+  if (h.far) {
+    const f = h.far, ja = galler(f), n = antal(f.when.equals)
+    const visas = s.v === 'b'
+      ? `<section class="m-sek"><h3>Visas</h3><div class="radio"><label><input type="radio" name="visas" tabindex="-1"> Alltid</label><label><input type="radio" name="visas" checked tabindex="-1"> När …</label></div>
+          <div class="villkor"><label>Fältet<select><option>raritet</option></select></label><span class="ar">är</span><label>&nbsp;${vardeval(f.when.equals)}</label></div>
+          <p class="rakning">Ritas på <b>${n} av ${TOTAL} kort</b>. ${ja ? 'Syns på det här kortet.' : `<span class="nej">Syns inte på det här kortet</span> — raritet är ${r.raritet}.`}</p>
+          ${ja ? '' : `<div class="spar"><button type="button" data-visa="${f.when.equals}">Visa ett kort där det syns</button></div>`}</section>`
+      : `<div class="spar" style="margin-bottom:12px">Inuti <button type="button" data-rad="${f.id}">${f.id}</button> · om raritet = ${f.when.equals}</div>`
+    p.innerHTML = `<h2>Egenskaper · ${e.id}</h2>${visas}${layout(e)}<div class="dekor"><section class="m-sek"><h3>Form</h3><p class="hint">(Formens panel, som prototyp 06.)</p></section><section class="m-sek"><h3>Fyllning</h3><span class="brunn"><i style="background:${e.fill}"></i></span></section></div>${TYPSNITT}`
+    return
+  }
+  p.innerHTML = `<h2>Egenskaper · ${e.id}</h2>${layout(e)}<div class="dekor"><section class="m-sek"><h3>${e.kind === 'text' ? 'Text' : 'Form'}</h3><p class="hint">(Resten av panelen hör till prototyp 06.)</p></section></div>${TYPSNITT}`
+}
+
+// ── Frågan före borttagningen (L9, #143) ────────────────────────────────────────────────
+function fragetext() {
+  if (s.vald === 'rar') return `Ta bort raritetsbrickans ${ifs().length} villkor från framsidan? Tillsammans ritar de en bricka på ${TOTAL} av ${TOTAL} kort.`
+  if (s.vald === 'pill') return `Ta bort pill från framsidan? Det ritas på ${TOTAL} kort.`
+  const h = hitta(s.vald); if (!h) return ''
+  const e = h.el
+  if (e.kind === 'if') return s.v === 'nu' ? `Ta bort ${e.id} från framsida? Det ritas på ${TOTAL} kort.` : `Ta bort ${e.id} och det som står i det (${e.barn.map((b) => b.id).join(', ')}) från framsidan? Det ritas på ${antal(e.when.equals)} av ${TOTAL} kort.`
+  if (h.far) return `Ta bort ${e.id} från framsidan? Det ritas på ${antal(h.far.when.equals)} av ${TOTAL} kort.`
+  return `Ta bort ${e.id} från framsidan? Det ritas på ${TOTAL} kort.`
+}
+function ritaFraga() {
+  const f = $('#fragan')
+  f.hidden = !s.fraga
+  f.className = 'fragan'
+  if (s.fraga) f.innerHTML = `<p>${esc(fragetext())}</p><button type="button" id="avbryt">Avbryt</button><button type="button" id="jaTa" data-farlig>Ja, ta bort</button>`
+}
+function taBort() {
+  if (s.vald === 'rar') for (const e of ifs()) s.borta.add(e.id)
+  else if (s.vald === 'pill') s.borta.add('if-guld'), s.slagen = false, RAR.forEach(([, sl]) => s.borta.add(`if-${sl}`))
+  else { const h = hitta(s.vald); if (h?.far && h.far.barn.length === 1) s.borta.add(h.far.id); else s.borta.add(s.vald) }
+  s.vald = null; s.fraga = false
+  rita()
+}
+
+// ── Rita allt ───────────────────────────────────────────────────────────────────────────
+function rita() {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  for (const b of document.querySelectorAll('[data-s]')) b.setAttribute('aria-pressed', String(b.dataset.s === s.storlek))
+  $('#anteckning').innerHTML = NOT[s.v]
+  $('#kortval').innerHTML = KORT.map((k, i) => `<option value="${i}" ${i === s.kort ? 'selected' : ''}>${esc(k.title)} (${k.raritet})</option>`).join('')
+  skala(); ritaFraga(); ritaScen(); ritaLista(); ritaProps(); if (s.fraga) $('#avbryt').focus({ preventScroll: true })
+}
+// Ett val som inte finns i varianten översätts till det närmaste som gör det.
+function giltigt() {
+  const h = s.vald && hitta(s.vald)
+  if (s.vald === 'rar' || s.vald === 'pill') { if (s.v !== 'c') s.vald = s.v === 'b' ? 'pill-guld' : 'if-guld' }
+  else if (h && s.v === 'b' && h.el.kind === 'if') s.vald = h.el.barn[0].id
+  else if (h && s.v === 'c' && (h.el.kind === 'if' || h.far)) s.vald = s.slagen ? 'pill' : 'rar'
+  else if (h && (s.v === 'nu') && h.far) s.vald = h.far.id
+}
+const satt = (k, v) => { const u = new URL(location.href); u.searchParams.set(k, v); history.replaceState(null, '', u) }
+
+document.body.addEventListener('click', (ev) => {
+  const t = ev.target
+  const fall = t.closest('[data-fall]')
+  if (fall) { const id = fall.dataset.fall; s.oppna.has(id) ? s.oppna.delete(id) : s.oppna.add(id); s.vald = id; rita(); return }
+  const b = t.closest('button, .m-rad, .m-box'); if (!b) { if (t.closest('#scenen')) { s.vald = null; s.fraga = false; rita() } return }
+  if (b.dataset.v) { s.v = b.dataset.v; satt('v', s.v); giltigt(); s.fraga = false; rita() }
+  else if (b.dataset.s) { s.storlek = b.dataset.s; satt('s', s.storlek); rita() }
+  else if (b.id === 'aterstall') { Object.assign(s, { kort: 0, vald: null, fraga: false, borta: new Set(), oppna: new Set(), slagen: false }); rita() }
+  else if (b.id === 'valj') { s.vald = 'if-guld'; giltigt(); if (s.v === 'a') s.oppna.add('if-guld'); s.fraga = false; rita() }
+  else if (b.id === 'del') { if (!s.vald) { s.vald = 'if-guld'; giltigt() } s.fraga = true; rita() }
+  else if (b.id === 'avbryt') { s.fraga = false; rita(); document.querySelector('.m-rad[aria-selected="true"]')?.focus() }
+  else if (b.id === 'jaTa') taBort()
+  else if (b.id === 'slaihop') { s.slagen = true; s.vald = 'pill'; rita() }
+  else if (b.dataset.visa) { s.kort = KORT.findIndex((k) => k.raritet === b.dataset.visa); rita() }
+  else if (b.dataset.rad) { s.vald = b.dataset.rad; s.fraga = false; rita(); document.querySelector(`.m-rad[data-rad="${s.vald}"]`)?.focus({ preventScroll: true }) }
+  else if (b.dataset.id) { s.vald = b.dataset.id; s.fraga = false; rita() }
+})
+document.body.addEventListener('change', (ev) => {
+  if (ev.target.id === 'kortval') { s.kort = Number(ev.target.value); rita() }
+  if (ev.target.dataset.varde !== undefined) {
+    const h = hitta(s.vald), e = h.el.kind === 'if' ? h.el : h.far
+    e.when.equals = ev.target.value; rita()
+  }
+})
+addEventListener('keydown', (ev) => {
+  if (ev.target.closest('input, textarea, select, [contenteditable]')) return
+  if ((ev.key === 'Delete' || ev.key === 'Backspace') && s.vald) { ev.preventDefault(); s.fraga = true; rita(); return }
+  if (ev.key === 'Escape' && s.fraga) { s.fraga = false; rita(); return }
+  if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  s.v = alla[(alla.indexOf(s.v) + (ev.key === 'ArrowRight' ? 1 : 3)) % 4]
+  satt('v', s.v); giltigt(); s.fraga = false; rita()
+})
+new ResizeObserver(() => { skala(); ritaScen() }).observe($('#mscen'))
+
+const q = new URLSearchParams(location.search)
+if (['nu', 'a', 'b', 'c'].includes(q.get('v'))) s.v = q.get('v')
+if (['1024x768', '1280x800'].includes(q.get('s'))) s.storlek = q.get('s')
+rita()
+</script>
+</body>
+</html>
