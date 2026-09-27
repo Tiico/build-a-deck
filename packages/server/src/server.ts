@@ -257,6 +257,9 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const code = normaliseCode(decodeURIComponent(room[1] ?? ''))
       const found = code ? await opts.store.sessionByCode(code) : null
       if (!found || Date.parse(found.codeExpiresAt) <= clock(opts).getTime()) return json(res, 404, { error: 'unknown or expired code' })
+      // A table that has ended is locked (C9), and the picker is told so rather than shown a table
+      // it can no longer sit down at (#485).
+      if ((await opts.host.get(found.id))?.ended) return json(res, 410, { error: 'session ended', session: found.id })
       return json(res, 200, { session: found.id })
     }
     // A code and a name buy a token (DRIFT §9): for a free seat, or for watching (C8).
@@ -268,6 +271,8 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const body = JoinBody.parse(JSON.parse(await readBody(req)))
       const actor = await opts.host.get(found.id)
       if (!actor) return json(res, 404, { error: 'unknown session' })
+      // And its door hands out nothing (#485): a token would land a newcomer in a finished game.
+      if (actor.ended) return json(res, 410, { error: 'session ended', session: found.id })
       if (body.seat !== undefined) {
         const seat = actor.seats().find((s) => s.id === body.seat)
         if (!seat) return json(res, 404, { error: `unknown seat ${body.seat}` })

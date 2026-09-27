@@ -296,6 +296,7 @@ export const enPlay = {
 
   'join.code.missing': 'No room code given.',
   'join.code.gone': 'The room code {code} is no longer valid. Ask the host for a new one.',
+  'join.ended': 'This table has ended. Ask the host to start a new one.',
   'join.code.expired': 'The room code is no longer valid. Ask the host for a new one.',
   'join.seat.taken': 'That seat was just taken by someone else. Choose another.',
   'join.left': 'Your seat is open and your hand is back in the draw pile. The others play on.',

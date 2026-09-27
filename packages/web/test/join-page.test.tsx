@@ -33,6 +33,21 @@ describe('JoinPage', () => {
     expect(await screen.findByRole('button', { name: /Plats A/ })).toBeTruthy()
   })
 
+  // A code for a table that has ended (#485, fynd 3; C9): the picker used to look normal, hand out
+  // a token and land the newcomer in a finished game. It says the table is over, and offers no seat.
+  it('says the table is over for a code whose table has ended, and offers no seat', async () => {
+    const id = await createSession(run)
+    const host = TableClient.connect(await asTable(run, id))
+    await host.ready()
+    await host.send({ v: 'session.end' })
+    history.replaceState(null, '', `/join?code=${roomOf(id).code}&server=${encodeURIComponent(run.url)}`)
+    render(<JoinPage />)
+    expect(await screen.findByRole('heading', { name: 'Bordet är slut' })).toBeTruthy()
+    expect(screen.getByText('Det här bordet är avslutat. Be värden starta ett nytt.')).toBeTruthy()
+    expect(document.querySelector('[data-seat]')).toBeNull()
+    host.close()
+  })
+
   it('says that no code was given when there is none, rather than that a table has ended', async () => {
     history.replaceState(null, '', `/join?server=${encodeURIComponent(run.url)}`)
     render(<JoinPage />)
