@@ -275,6 +275,8 @@ export const svEditor = {
   // `{name}` är spelets eget namn och rörs aldrig — det står där formgivaren skrev det.
   'table.export.filename': '{name}-kort.csv',
   'table.export.unnamed': 'spel',
+  'table.import.ask': 'Ersätta alla {had} kort med {n} från {file}? Kort som inte finns i filen tas bort.',
+  'table.import.yes': 'Ja, ersätt korten',
   'table.import.read': '{n} kort lästes:',
   'table.import.fresh.one': '{n} nytt',
   'table.import.fresh.other': '{n} nya',
@@ -404,10 +406,7 @@ export const svEditor = {
   // kolumn ligger där borta.
   'table.field.new': 'Nytt fält',
   'table.field.name': 'Namn',
-  'table.field.kind': 'Typ',
-  'table.field.kind.text': 'Text',
-  'table.field.kind.number': 'Tal',
-  'table.field.kind.image': 'Bild',
+  'table.field.kindHint': 'En kolumn blir en bildkolumn där mallen ritar den som bild.',
   'table.field.create': 'Lägg till',
   'table.field.needsName': 'Ett fält behöver ett namn.',
   'table.field.needsCards': 'Ett fält är en kolumn på korten. Lägg till ett kort först.',

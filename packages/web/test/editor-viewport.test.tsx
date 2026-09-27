@@ -511,43 +511,10 @@ describe.each(WIDTHS)('the card table with a picture in it, at %ipx', (width) =>
   }, 90_000)
 })
 
-// The form that makes a column, with its door held open (#50). A radio is a tick like any other:
-// the designer picks the kind of field in the same breath as she names it, and the circle she
-// picks it with stood 13 across in the platform's own paint and the darker of the two blues,
-// beside a box the editor had already taught to be 18 and the lighter one. Same numbers as the
-// tabs above, read the same way — out of the stylesheet through a probe, never out of this file.
+// The form that makes a column, with its door held open (#50). It asks for a name and nothing
+// else: the kind of field follows from where it was opened (#479), so the radios that once stood
+// here are gone and only the name and the two answers are left to measure.
 describe.each(WIDTHS)('the form that makes a column, at %ipx', (width) => {
-  it('draws every kind as the one tick box the editor declares', async () => {
-    const measured = await measure(
-      width,
-      (page) =>
-        page.$$eval(".byd-newfield input[type='radio']", (els) => {
-          const probe = document.querySelector('.byd-editor')!.appendChild(document.createElement('span'))
-          probe.style.cssText = 'position: absolute; top: 0; left: 0; display: block; width: var(--byd-tick); height: var(--byd-tick); color: var(--byd-editor-primary-mark)'
-          const want = `${probe.offsetWidth}×${probe.offsetHeight} ${getComputedStyle(probe).color} on dark`
-          probe.remove()
-          const seen = els.filter((el) => el.checkVisibility({ opacityProperty: true }))
-          return {
-            // The kinds are counted as well as measured: a selector that matched nothing would
-            // otherwise report a clean form, which is the shape of guard this repo keeps finding.
-            kinds: seen.length,
-            drawn: seen
-              .map((el) => {
-                const box = el.getBoundingClientRect()
-                return {
-                  what: (el.parentElement?.textContent ?? el.tagName).trim().slice(0, 24),
-                  drawn: `${Math.round(box.width)}×${Math.round(box.height)} ${getComputedStyle(el).accentColor} on ${getComputedStyle(el).colorScheme}`,
-                }
-              })
-              .filter(({ drawn }) => drawn !== want)
-              .map(({ what, drawn }) => `${what}: ${drawn}, not ${want}`),
-          }
-        }),
-      newField,
-    )
-    expect(measured).toEqual({ 'Nytt fält': { kinds: 3, drawn: [] } })
-  }, 90_000)
-
   it('gives every control in it a 44 by 44 pixel hit area', async () => {
     const measured = await measure(
       width,
@@ -567,8 +534,8 @@ describe.each(WIDTHS)('the form that makes a column, at %ipx', (width) => {
         }),
       newField,
     )
-    // The name, the three kinds, and the two answers.
-    expect(measured).toEqual({ 'Nytt fält': { controls: 6, small: [] } })
+    // The name and the two answers.
+    expect(measured).toEqual({ 'Nytt fält': { controls: 3, small: [] } })
   }, 90_000)
 })
 

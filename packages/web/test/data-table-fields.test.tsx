@@ -195,20 +195,19 @@ describe('a field arrives in the editor (#32)', () => {
     expect(within(form).getByRole('button', { name: 'Add' })).toBeTruthy()
     expect(name().value).toBe('fält1')
 
-    // The kind is the wizard's three, in the reader's words; the key it suggests is the wizard's.
-    expect(within(form).getAllByRole('radio').map((r) => r.parentElement?.textContent)).toEqual(['Text', 'Number', 'Image'])
-    await user.click(within(form).getByRole('radio', { name: 'Image' }))
-    expect(name().value).toBe('bild1')
+    // The kind is not asked (#479, beslut 2026-09-27, variant B): it only ever changed the name
+    // it suggested, and «Image» gave a text column. A column is a picture column where the
+    // template draws it as a picture, and the door says so instead.
+    expect(within(form).queryAllByRole('radio')).toEqual([])
+    expect(within(form).getByText('A column becomes a picture column where the template draws it as a picture.')).toBeTruthy()
 
     await user.click(within(form).getByRole('button', { name: 'Add' }))
-    expect(column('bild1')).toBeTruthy()
-    // And a designer who writes her own word gets hers, kind or no kind.
+    expect(column('fält1')).toBeTruthy()
+    // And a designer who writes her own word gets hers.
     await user.click(screen.getByRole('button', { name: 'Columns' }))
     const second = screen.getByRole('form', { name: 'New field' })
     await user.clear(within(second).getByLabelText('Name'))
     await user.type(within(second).getByLabelText('Name'), 'styrka')
-    await user.click(within(second).getByRole('radio', { name: 'Number' }))
-    expect((within(second).getByLabelText('Name') as HTMLInputElement).value).toBe('styrka')
     await user.click(within(second).getByRole('button', { name: 'Add' }))
     expect(column('styrka')).toBeTruthy()
   })

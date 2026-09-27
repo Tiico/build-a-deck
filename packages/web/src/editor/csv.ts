@@ -43,8 +43,14 @@ export function exportCardsCsv(doc: ProjectDoc): string {
   return records.map((record) => record.map(csvCell).join(',')).join('\r\n')
 }
 
-export function importCardsCsv(text: string, t: T = swedish): ProjectRow[] {
-  const parsed = parseCsv(text)
+// `known` is the columns the deck already has. A header that differs from one of them, or from `id`
+// or `antal`, only in its capitals is that column (#479): `Title` from a spreadsheet stood as a new
+// column beside `title`.
+export function importCardsCsv(text: string, t: T = swedish, known: readonly string[] = []): ProjectRow[] {
+  const raw = parseCsv(text)
+  const names = ['id', 'antal', ...known]
+  const paired = (header: string) => names.find((name) => name !== header && name.toLowerCase() === header.toLowerCase()) ?? header
+  const parsed = { headers: raw.headers.map(paired), rows: raw.rows.map((row) => Object.fromEntries(Object.entries(row).map(([k, v]) => [paired(k), v]))) }
   if (!parsed.headers.includes('id')) throw new Error(t('table.import.needsId'))
   const fields = parsed.headers.filter((header) => header !== 'id')
   const ids = new Set<string>()

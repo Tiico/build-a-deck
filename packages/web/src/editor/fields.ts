@@ -5,7 +5,6 @@ import { ANTAL, columnsOf, type RecipeWords } from '@byd/server/doc'
 // The three kinds a field can be, and they are the wizard's three — the editor does not get a
 // fourth (L4 leaves boolean to the type registry, not to this form).
 export type FieldKind = 'text' | 'number' | 'image'
-export const FIELD_KINDS: readonly FieldKind[] = ['text', 'number', 'image']
 
 // The name the tool puts in the box when a field is made — in the wizard and in the editor, from
 // here, so the two doors cannot drift apart. It is a *key*, and #27 settled what that means: an

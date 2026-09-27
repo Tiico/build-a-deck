@@ -27,3 +27,13 @@ export function chordOf(event: KeyboardEvent): Chord | null {
   if (key === 'z') return event.shiftKey ? 'redo' : 'undo'
   return null
 }
+
+// A step back a field has handed on (#479): a cell that has nothing of its own left to take back
+// marks the press, and the editor, which leaves presses in a field to the field, takes this one.
+const handed = new WeakSet<Event>()
+export function passToEditor(event: Event): void {
+  handed.add(event)
+}
+export function passedToEditor(event: Event): boolean {
+  return handed.has(event)
+}

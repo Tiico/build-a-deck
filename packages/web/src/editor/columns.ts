@@ -90,16 +90,23 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
   const lane = parseFloat(getComputedStyle(table).getPropertyValue('--byd-data-rail')) || 0
   const hasLane = (i: number): boolean => table.querySelector(`tbody tr > *:nth-child(${i + 1})[data-rail]`) !== null
 
-  // The font a value is actually drawn in, and the room around it, taken from a cell that is
-  // really on the page. A deck with no cards has no cell to ask, and also nothing to measure.
-  const probe = table.querySelector('tbody input:not([type=checkbox])') as HTMLElement | null
-  const ink = probe ? getComputedStyle(probe) : null
-  const font = ink ? `${ink.fontStyle} ${ink.fontWeight} ${ink.fontSize} ${ink.fontFamily}` : '12px system-ui, sans-serif'
-  // The cell's own padding, plus the two pixels a caret standing after the last character needs.
-  const sides = (ink ? parseFloat(ink.paddingLeft) + parseFloat(ink.paddingRight) : 20) + 3
+  // The font a value is actually drawn in, and the room around it, taken from a cell of its own
+  // column that is really on the page — the field in it, or the cell itself where there is none.
+  // The fields share one face, but a card's id is a key and is drawn in a smaller monospace, and
+  // measured in the fields' font `kort-10` came out short of its own cell and broke over two lines
+  // (#479). A deck with no cards has no cell to ask, and also nothing to measure.
+  type Ink = { font: string; sides: number }
+  const inkOf = (i: number): Ink => {
+    const cell = table.querySelector(`tbody tr > *:nth-child(${i + 1})`) as HTMLElement | null
+    const drawer = (cell?.querySelector('input:not([type=checkbox])') as HTMLElement | null) ?? cell
+    if (!drawer) return { font: '12px system-ui, sans-serif', sides: 23 }
+    const ink = getComputedStyle(drawer)
+    // The drawer's own padding, plus the two pixels a caret standing after the last character needs.
+    return { font: `${ink.fontStyle} ${ink.fontWeight} ${ink.fontSize} ${ink.fontFamily}`, sides: parseFloat(ink.paddingLeft) + parseFloat(ink.paddingRight) + 3 }
+  }
 
   const paper = document.createElement('canvas').getContext('2d')
-  const drawn = (text: string): number => {
+  const drawn = (text: string, font: string): number => {
     if (!paper) return text.length * 7
     paper.font = font
     return paper.measureText(text).width
@@ -112,16 +119,24 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
   //
   // Kept against the font and the padding it was measured with, because those are the only two
   // things that can make the same string a different width: a zoom, a theme, a stylesheet
-  // reloaded in development. When either moves, everything is forgotten and measured again.
-  const kept = box as unknown as { __bydInk?: { font: string; sides: number; of: Map<string, number> } }
-  if (!kept.__bydInk || kept.__bydInk.font !== font || kept.__bydInk.sides !== sides) kept.__bydInk = { font, sides, of: new Map() }
-  const seen = kept.__bydInk.of
-  const need = (text: string): number => {
-    const had = seen.get(text)
-    if (had !== undefined) return had
-    const asked = Math.ceil(drawn(text) + sides)
-    seen.set(text, asked)
-    return asked
+  // reloaded in development. Each face keeps its own list, and when a face moves its list is
+  // forgotten and measured again.
+  const kept = box as unknown as { __bydInk?: Map<string, Map<string, number>> }
+  const lists = (kept.__bydInk ??= new Map())
+  const faces = new Set<string>()
+  const needIn = (ink: Ink): ((text: string) => number) => {
+    const face = `${ink.sides} ${ink.font}`
+    faces.add(face)
+    let seen = lists.get(face)
+    if (!seen) lists.set(face, (seen = new Map()))
+    const known = seen
+    return (text) => {
+      const had = known.get(text)
+      if (had !== undefined) return had
+      const asked = Math.ceil(drawn(text, ink.font) + ink.sides)
+      known.set(text, asked)
+      return asked
+    }
   }
 
   // What a heading takes: everything standing in its flow, plus the cell's own padding. A control
@@ -187,10 +202,15 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
     const own = parseFloat(col.getAttribute('data-width') ?? '')
     if (Number.isFinite(own) && own > 0) return { col, width: own, own: true }
     let widest = kind === 'image' ? imageNeed(i) : 0
-    for (const value of (name && deck[name]) || []) widest = Math.max(widest, need(value))
+    const values = (name && deck[name]) || []
+    if (values.length > 0) {
+      const need = needIn(inkOf(i))
+      for (const value of values) widest = Math.max(widest, need(value))
+    }
     // The heading has no lane under it, so only the value's side of the question pays for one.
     return { col, width: Math.max(headNeed(i), widest + (hasLane(i) ? lane : 0)), own: false }
   })
+  for (const face of [...lists.keys()]) if (!faces.has(face)) lists.delete(face)
 
   // And no measured column is drawn wider than the room it can show its own right edge in (#398).
   //

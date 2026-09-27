@@ -284,6 +284,40 @@ async function measurements(doc: ProjectDoc): Promise<{ first: number; second: n
   }
 }
 
+// An id is drawn in the key's own face — a smaller monospace — and not in the font of the fields
+// around it. Measured in the fields' font, `kort-10` came out a pixel or two short of what its own
+// cell needs, and from the tenth card on every id broke over two lines (#479, seen in passing).
+describe("a card's id is measured in the face it is drawn in", () => {
+  it('draws every id on one line, from the first card to the seventy-seventh', async () => {
+    const doc = { ...deckDoc(), rows: Array.from({ length: 77 }, (_, i) => ({ id: `kort-${i + 1}`, fields: { art: 'Plats', title: `Kort ${i + 1}`, body: 'Rad.', cost: 1, antal: 1 } })) }
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+    try {
+      await page.setContent(shellOf(markupOf(doc), ''), { waitUntil: 'load' })
+      const broken = await page.evaluate(
+        ({ deck, decide }) => {
+          const box = document.querySelector('.byd-data-scroll') as HTMLElement
+          new Function('box', 'deck', `(${decide})(box, deck)`)(box, deck)
+          const ids = [...document.querySelectorAll('tbody td.byd-data-id')]
+          return {
+            ids: ids.length,
+            broken: ids
+              .filter((td) => {
+                const range = document.createRange()
+                range.selectNodeContents(td)
+                return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size > 1
+              })
+              .map((td) => td.textContent),
+          }
+        },
+        { deck: deckValues(doc, sv), decide: String(fitColumns) },
+      )
+      expect(broken).toEqual({ ids: 77, broken: [] })
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})
+
 // A column is only as wide as what stands in it if what stands in it will accept the width. Every
 // cell is an `<input>`, and the rule that gave one a floor of twelve characters was written for
 // the auto layout it was fighting — an input whose intrinsic width is `size="20"`, in a table that

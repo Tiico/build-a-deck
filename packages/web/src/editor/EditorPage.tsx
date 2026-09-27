@@ -25,7 +25,7 @@ import { loginUrl } from '../account/api.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
 import { noticeFor } from '../status/notice.js'
-import { chordOf, isTyping } from './keys.js'
+import { chordOf, isTyping, passedToEditor } from './keys.js'
 import { mediaInGame } from './assets.js'
 import { previewMotifs } from './motifs.js'
 import type { Motif } from '@byd/template'
@@ -774,7 +774,7 @@ function EditorChords({ client, onSave, onConfirm }: { client: ProjectClient; on
       const chord = chordOf(event)
       if (!chord) return
       // Saving is the editor's wherever it is pressed; a step back belongs to the field first.
-      if (chord !== 'save' && isTyping(event.target)) return
+      if (chord !== 'save' && isTyping(event.target) && !passedToEditor(event)) return
       event.preventDefault()
       const now = latest.current
       if (chord === 'save') return now.onSave()
