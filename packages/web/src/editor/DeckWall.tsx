@@ -25,7 +25,8 @@ export type DeckWallProps = {
   doc: ProjectDoc
   face: string
   selectedRow: string | null
-  onSelectRow(cardRef: string): void
+  // `null` is no card chosen: the template's base and no row (#477).
+  onSelectRow(cardRef: string | null): void
   onSelectElement(id: string): void
   assetBase?: string | undefined
   // What is drawn inside each picture (E1), keyed by the URL a resolved row carries.
@@ -234,11 +235,20 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         {...roves}
         aria-selected={selectedRow === cardRef ? 'true' : 'false'}
         {...(marked.has(cardRef) ? { 'data-marked': 'true' } : {})}
-        onClick={() => onSelectRow(cardRef)}
+        // The gesture that chose a card, made again, lets it go (beslut 2026-09-27, #477 fynd 3 C).
+        onClick={() => onSelectRow(selectedRow === cardRef ? null : cardRef)}
         onKeyDown={(event) => {
-          if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+          if (event.target !== event.currentTarget) return
+          if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault()
-            onSelectRow(cardRef)
+            onSelectRow(selectedRow === cardRef ? null : cardRef)
+            return
+          }
+          // Escape lets go too, but only of something: with nothing chosen it belongs to whatever
+          // door is open further out.
+          if (event.key === 'Escape' && selectedRow !== null) {
+            event.preventDefault()
+            onSelectRow(null)
             return
           }
           roves.onKeyDown(event)

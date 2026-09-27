@@ -90,6 +90,39 @@ describe('choosing a card from the keyboard (#477)', () => {
   })
 })
 
+// How a card stops being chosen (beslut 2026-09-27, #477 fynd 3, variant C): the same gesture that
+// chose it, once more, and Escape. «Nothing chosen» is the template's base and no row.
+describe('letting the chosen card go (#477)', () => {
+  it('lets go on a second press, on Enter or Space on the chosen card, and on Escape', () => {
+    const onSelectRow = vi.fn()
+    render(<DeckWall doc={projectDoc()} face="front" selectedRow="knight" onSelectRow={onSelectRow} onSelectElement={() => undefined} />)
+    const knight = document.querySelector('[data-card-ref="knight"]') as HTMLElement
+    fireEvent.click(knight)
+    expect(onSelectRow).toHaveBeenLastCalledWith(null)
+    fireEvent.keyDown(knight, { key: 'Enter' })
+    expect(onSelectRow).toHaveBeenLastCalledWith(null)
+    fireEvent.keyDown(knight, { key: ' ' })
+    expect(onSelectRow).toHaveBeenLastCalledWith(null)
+    // Escape lets go from whichever card has the focus.
+    const dragon = document.querySelector('[data-card-ref="dragon"]') as HTMLElement
+    onSelectRow.mockClear()
+    fireEvent.keyDown(dragon, { key: 'Escape' })
+    expect(onSelectRow).toHaveBeenLastCalledWith(null)
+    // A card that is not chosen is chosen, as before.
+    fireEvent.click(dragon)
+    expect(onSelectRow).toHaveBeenLastCalledWith('dragon')
+  })
+
+  it('leaves Escape alone when nothing is chosen, so a door further out can answer it', () => {
+    const onSelectRow = vi.fn()
+    render(<DeckWall doc={projectDoc()} face="front" selectedRow={null} onSelectRow={onSelectRow} onSelectElement={() => undefined} />)
+    const dragon = document.querySelector('[data-card-ref="dragon"]') as HTMLElement
+    const passed = fireEvent.keyDown(dragon, { key: 'Escape' })
+    expect(onSelectRow).not.toHaveBeenCalled()
+    expect(passed).toBe(true)
+  })
+})
+
 describe('images on the wall (E1)', () => {
   it('draws a card whose row points at an asset with the image from the server', () => {
     const doc = projectDoc()
