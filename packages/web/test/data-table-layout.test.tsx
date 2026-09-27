@@ -152,7 +152,7 @@ describe("the head's own door for its columns (#32, #46)", () => {
     expect(open.door).not.toBeNull()
     expect(open.door!.h).toBeGreaterThan(open.row.h)
     expect(shut.door).toBeNull()
-    expect(shut.headings.map((h) => h.name)).toEqual(['id ↕', 'title ↕', 'body ↕', 'antal ↕', 'Ta bort'])
+    expect(shut.headings.map((h) => h.name)).toEqual(['id ↕', 'Titel ↕', 'body ↕', 'antal ↕', 'Ta bort'])
     expect(open.headings.map((h) => h.name)).toEqual(shut.headings.map((h) => h.name))
 
     // The condition itself: the head is exactly as tall as it was, every heading cell stands
@@ -181,7 +181,7 @@ describe("the head's own door for its columns (#32, #46)", () => {
 
     // Not a reading of an empty list: the designer's own columns are there, and the two the tool
     // owns are not — they are the two `renameField` refuses.
-    expect(open.renames.map((r) => r.field)).toEqual(['title', 'body'])
+    expect(open.renames.map((r) => r.field)).toEqual(['body'])
     for (const { field, box } of open.renames) {
       expect({ field, tall: box.h >= open.tap }).toEqual({ field, tall: true })
       expect({ field, wide: box.w >= open.tap }).toEqual({ field, wide: true })
@@ -201,7 +201,7 @@ describe("the head's own door for its columns (#32, #46)", () => {
     // And that is exactly the fault the prototype had: every heading beside it is pushed down,
     // and so is the first card.
     const pushed = inFlow.headings.filter((h, i) => h.ink.y > held.headings[i]!.ink.y)
-    expect(pushed.map((h) => h.name)).toEqual(['id ↕', 'title ↕', 'body ↕', 'antal ↕'])
+    expect(pushed.map((h) => h.name)).toEqual(['id ↕', 'Titel ↕', 'body ↕', 'antal ↕'])
     expect(inFlow.firstRow.y).toBeGreaterThan(held.firstRow.y)
   }, 60_000)
 })
@@ -222,7 +222,7 @@ describe('the head and the rows are the same table (#32)', () => {
 
     // The head is the shape it is meant to be, named rather than counted, so this is not a guard
     // over a table without the cells in question.
-    expect(columns.map((c) => c.head)).toEqual(['check', 'id ↕', 'title ↕', 'body ↕', 'antal ↕', 'remove'])
+    expect(columns.map((c) => c.head)).toEqual(['check', 'id ↕', 'Titel ↕', 'body ↕', 'antal ↕', 'remove'])
 
     // Nothing in the head stands over nothing.
     expect(columns.filter((c) => c.bodyBox === null).map((c) => c.head)).toEqual([])
@@ -248,7 +248,7 @@ describe('the head and the rows are the same table (#32)', () => {
 
     // Every column from the missing cell on has drifted, and the head still has all of its own.
     const drift = short.columns.filter((c) => c.bodyBox === null || c.bodyBox.x !== c.headBox.x || c.bodyBox.w !== c.headBox.w)
-    expect(drift.map((c) => c.head)).toEqual(['id ↕', 'title ↕', 'body ↕', 'antal ↕', 'remove'])
+    expect(drift.map((c) => c.head)).toEqual(['id ↕', 'Titel ↕', 'body ↕', 'antal ↕', 'remove'])
 
     // And the drift is the one that shipped: the × has slid a whole heading to the left, onto
     // `antal`, and taken that heading's width instead of a tap target's.

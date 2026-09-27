@@ -88,7 +88,8 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     expect(stored?.name).toBe('Skogens herrar')
     expect(stored?.rows.map((r) => r.id)).toEqual(['drake', 'riddare'])
     // The image went up as an asset (E1): the row points at it by hash, and the server serves it.
-    const art = String(stored?.rows[0]?.fields['art'])
+    // The column is the field's name as written in step 2 (#476, L44).
+    const art = String(stored?.rows[0]?.fields['Illustration'])
     expect(art).toMatch(/^asset:[0-9a-f]{64}$/)
     const served = await fetch(`${run.http}/assets/${art.slice('asset:'.length)}`)
     expect(served.headers.get('content-type')).toBe('image/png')

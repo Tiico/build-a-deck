@@ -1140,6 +1140,7 @@ export const enEditor = {
   'counter.score': 'Score',
   'counter.life': 'Life',
   'table.field.antal': 'copies',
+  'table.field.title': 'Title',
 
   'zone.floor': 'Table',
   'zone.draw': 'Draw pile',

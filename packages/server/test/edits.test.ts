@@ -38,6 +38,12 @@ describe('an edit is a thing that happened to the project (D3)', () => {
     expect(applyEdit(base(), { v: 'rename', name: 'x'.repeat(64) }).name).toHaveLength(64)
   })
 
+  // The title is the card's own name everywhere a card is spoken of (#476): like `antal`, it is
+  // the tool's column and not one to rename.
+  it('refuses to rename the title column', () => {
+    expect(() => applyEdit(base(), { v: 'renameField', from: 'title', to: 'Namn' })).toThrow()
+  })
+
   it('writes the deck: a cell, a card added, a card taken away, the whole table at once', () => {
     const doc = after(
       base(),

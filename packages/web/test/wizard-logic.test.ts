@@ -60,13 +60,33 @@ describe('buildProject', () => {
 
     const front = doc.template.faces['front']!
     const bound = front.base.flatMap((e) => ('bind' in e && 'field' in e.bind ? [e.bind.field] : []))
-    expect(bound).toEqual(expect.arrayContaining(['title', 'cost', 'body']))
+    // The names written in step 2 are the columns (#476, L44), and the frame binds them by their
+    // place on the card; the title is the one column the tool owns, as `antal` is.
+    expect(bound).toEqual(expect.arrayContaining(['title', 'Kostnad', 'Text']))
     expect(doc.template.faces['back']).toBeDefined()
 
     expect(doc.rows.map((r) => r.id)).toEqual(['drake', 'drake-2', 'kort-3'])
-    expect(doc.rows[0]?.fields).toEqual({ title: 'Drake', cost: 5, body: 'Flygande.', antal: 2 })
+    expect(doc.rows[0]?.fields).toEqual({ title: 'Drake', Kostnad: 5, Text: 'Flygande.', antal: 2 })
     expect(doc.rows[1]?.fields['antal']).toBe(1)
     expect(doc.rows[2]?.fields['title']).toBe('')
+  })
+
+  // What the designer wrote in step 2 is what the editor shows (#476): «Pris», «Styrka» and «Liv»
+  // reached the editor as `cost`, `fält1` and `värde1`.
+  it('makes every field the column it was named, and binds the frame to it wherever it stands', () => {
+    const named = buildProject({
+      ...state,
+      fields: [
+        { key: 'title', label: 'Titel', kind: 'text' },
+        { key: 'cost', label: 'Pris', kind: 'number' },
+        { key: 'body', label: 'Text', kind: 'text' },
+        { key: 'fält1', label: 'Styrka', kind: 'number' },
+      ],
+      rows: [{ title: 'Drake', cost: '5', body: 'Flygande.', fält1: '7' }],
+    })
+    expect(named.rows[0]?.fields).toEqual({ title: 'Drake', Pris: 5, Text: 'Flygande.', Styrka: 7, antal: 1 })
+    const cost = named.template.faces['front']!.base.find((e) => e.id === 'cost')
+    expect(cost && 'bind' in cost ? cost.bind : null).toEqual({ field: 'Pris' })
   })
 
   it('leaves out frame elements for fields the game does not have', () => {

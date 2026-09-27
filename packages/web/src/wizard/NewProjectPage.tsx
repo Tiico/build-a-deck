@@ -10,7 +10,9 @@ import { suggestFieldKey } from '../editor/fields.js'
 import { buildBlankProject, buildProject, type WizardState } from './build.js'
 import { frameFontSource, uploadFrameFont } from './fonts.js'
 import { NotMade } from './not-made.js'
-import { defaultFields, DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
+import { columnOf, defaultFields, DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
+import { fieldLabel } from '../editor/fields.js'
+import { ANTAL } from '@byd/server/doc'
 import { useT, type Key, type T } from '../i18n/index.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { MAX_PLAYERS, PROJECT_NAME_MAX } from '@byd/server/doc'
@@ -134,6 +136,8 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   // Det namnet stänger är inte längre knappen utan bara vägen igenom den (#416). Vad som faktiskt
   // låser den guidade utgången är ett spel utan kort eller fält, vilket den inte kan göra något av.
   const hasCards = s.rows.length > 0 && s.fields.length > 0
+  // What stands in the way of a name becoming a column (#476, L44), field by field.
+  const problems = useMemo(() => fieldProblems(s.fields, t), [s.fields, t])
   const front = useMemo(() => frame.front(s.fields), [frame, s.fields])
   // Each frame's face, once a press on that frame has fetched it (#476, L27): the preview is drawn
   // in it from then on, and until then it says the face comes with the choice.
@@ -172,6 +176,13 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       return
     }
     setSays(null)
+    // A field whose name the document cannot hold is put right where it is written first.
+    const faulty = door === 'guided' ? s.fields.find((field) => problems[field.key]) : undefined
+    if (faulty) {
+      if (!desk) setStep('falten')
+      setFocusOn({ at: `[data-field="${faulty.key}"] input` })
+      return
+    }
     setBusy(true)
     setVia(door)
     setError(null)
@@ -306,19 +317,19 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     })
   }
   const addField = (kind: Field['kind']) => {
-    // Decided, not left alone by accident (#27, A4): the key is an identifier in the document
-    // and does not follow the reader. Two people clicking the same button must get the same
-    // column, or a template that binds `bild2` would break for whoever was reading in the other
-    // language — and the four keys the wizard already lays out (`title`, `cost`, `body`, `art`)
-    // are English on a Swedish surface for exactly that reason. What the tool suggests at
-    // creation and then hands over is the *label* below, which is written in the designer's own
-    // language and frozen there.
-    //
-    // The editor's own form suggests from the same place (#32), so the two doors into a new
-    // field cannot come to suggest different names for it.
+    // The key is the form's own handle for the field — what the rows are kept under while the
+    // wizard is open — and never reaches the document: the field becomes the column it is *named*
+    // (#476, L44), and the frame finds it by this key, which is its place on the card. The editor's
+    // own form suggests keys from the same place (#32).
+    // The suggested name is the column the field becomes (#476, L44), so it is one no other field
+    // has: a second «Nytt textfält» is «Nytt textfält 2», not a field born refused.
+    const suggested = t(kind === 'image' ? 'wizard.field.new.image' : kind === 'number' ? 'wizard.field.new.number' : 'wizard.field.new.text')
+    const names = new Set(s.fields.map((f) => columnOf(f).toLowerCase()))
+    let label = suggested
+    for (let n = 2; names.has(label.toLowerCase()); n++) label = `${suggested} ${n}`
     const field: Field = {
       key: suggestFieldKey(kind, s.fields.map((f) => f.key)),
-      label: t(kind === 'image' ? 'wizard.field.new.image' : kind === 'number' ? 'wizard.field.new.number' : 'wizard.field.new.text'),
+      label,
       kind,
     }
     setS((current) => ({
@@ -431,9 +442,21 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       <div className="byd-wizard-fields">
         <div className="byd-wizard-field-list">{s.fields.map((field) => <div className="byd-wizard-field" key={field.key} data-field={field.key}>
           <span>{t(field.kind === 'image' ? 'wizard.kind.image' : field.kind === 'number' ? 'wizard.kind.number' : 'wizard.kind.text')}</span>
-          <input aria-label={t('wizard.field.name', { label: field.label })} value={field.label} onChange={(event) => setFields(s.fields.map((candidate) => candidate.key === field.key ? { ...candidate, label: event.target.value } : candidate))} />
+          {field.key === 'title' ? (
+            // The tool's own column (#476): what every card is called, shown in the designer's
+            // language and not written over, as `antal` is in the editor.
+            <b className="byd-wizard-field-fixed">{fieldLabel('title', t)}</b>
+          ) : (
+            <input
+              aria-label={t('wizard.field.name', { label: field.label })}
+              value={field.label}
+              onChange={(event) => setFields(s.fields.map((candidate) => candidate.key === field.key ? { ...candidate, label: event.target.value } : candidate))}
+              {...(problems[field.key] ? { 'aria-invalid': true, 'aria-describedby': `byd-wizard-field-says-${field.key}` } : {})}
+            />
+          )}
           <small>{t(mappedByStarterFrame(field.key) ? 'wizard.field.in-frame' : 'wizard.field.in-editor')}</small>
-          <button type="button" aria-label={t('wizard.field.remove', { label: field.label })} onClick={() => removeField(field.key)}>×</button>
+          {field.key !== 'title' && <button type="button" aria-label={t('wizard.field.remove', { label: field.label })} onClick={() => removeField(field.key)}>×</button>}
+          {problems[field.key] && <p className="byd-wizard-field-says" id={`byd-wizard-field-says-${field.key}`}>{problems[field.key]}</p>}
         </div>)}</div>
         <div className="byd-wizard-add-fields"><button type="button" onClick={() => addField('text')}>{t('wizard.add.text')}</button><button type="button" onClick={() => addField('number')}>{t('wizard.add.number')}</button><button type="button" onClick={() => addField('image')}>{t('wizard.add.image')}</button></div>
       </div>
@@ -542,6 +565,22 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       )}
     </div>
   )
+}
+
+// Why a field's name cannot become a column (#476, L44): none at all, one another field already
+// has, or one of the tool's own — the card's id, `antal`, and the title in any of its words. The
+// comparison is the one a reader makes, without regard to case.
+function fieldProblems(fields: readonly Field[], t: T): Record<string, string> {
+  const owned = ['id', 'title', ANTAL, fieldLabel('title', t), fieldLabel(ANTAL, t)].map((n) => n.toLowerCase())
+  const out: Record<string, string> = {}
+  for (const field of fields) {
+    if (field.key === 'title') continue
+    const name = columnOf(field)
+    if (name === '') out[field.key] = t('wizard.field.empty')
+    else if (owned.includes(name.toLowerCase())) out[field.key] = t('wizard.field.owned', { name })
+    else if (fields.some((other) => other !== field && columnOf(other).toLowerCase() === name.toLowerCase())) out[field.key] = t('wizard.field.twice', { name })
+  }
+  return out
 }
 
 // A button at work is not a locked button (#476): it keeps its look and its width, says it is

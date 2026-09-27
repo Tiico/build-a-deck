@@ -95,6 +95,9 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
   // that arrives at Enter is a throw in a better typeface, and a throw is no answer at all. The
   // door's own list of names is the same one the form under it collides against, so a column
   // cannot be renamed onto `id`, onto `antal`, or onto a column that already exists.
+  // A column the designer owns can be renamed; the title, like the two the tool keeps, cannot
+  // (#476) — it is what every card is called, and `renameField` refuses it.
+  const canRename = (field: string): boolean => canRemove(field) && field !== 'title' && onRename !== undefined
   const trouble = (from: string, to: string): string | null => {
     const name = to.trim()
     if (name === '') return t('table.field.needsName')
@@ -153,7 +156,7 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
   // they are span names with the padlock in the ×'s place — so a row with nothing to focus is no
   // row in the ring at all. A width is a control only for a column a hand has pulled (#46).
   const cellsOf = (field: string): Cell[] => [
-    ...(canRemove(field) && onRename ? (['name'] as Cell[]) : []),
+    ...(canRename(field) ? (['name'] as Cell[]) : []),
     ...(widths[field] !== undefined ? (['width'] as Cell[]) : []),
     ...(canRemove(field) ? (['remove'] as Cell[]) : []),
   ]
@@ -234,7 +237,7 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
                       the key (#384), so reading it and changing it are the same place. The two the
                       tool owns keep the word they had — they are exactly the two `renameField`
                       refuses, for exactly the reason the padlock beside them gives. */}
-                  {canRemove(field) && onRename ? (
+                  {canRename(field) ? (
                     <button
                       type="button"
                       className="byd-columns-name"

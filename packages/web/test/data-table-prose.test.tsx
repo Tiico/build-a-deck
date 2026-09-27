@@ -114,7 +114,7 @@ describe('märket säger vad kolumnen är och vem som sade det (L43)', () => {
     expect(screen.getByRole('group', { name: 'body skrivs som prosa, höjden föreslog' })).toBeTruthy()
     fireEvent.pointerLeave(head('body'))
     reach('title')
-    expect(screen.getByRole('group', { name: 'title skrivs som vanlig text, höjden föreslog' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Titel skrivs som vanlig text, höjden föreslog' })).toBeTruthy()
   })
 
   it('säger «du valde» om en kolumn designern har svarat för, åt båda hållen', () => {
@@ -125,7 +125,7 @@ describe('märket säger vad kolumnen är och vem som sade det (L43)', () => {
     expect(screen.getByRole('group', { name: 'body skrivs som vanlig text, du valde' })).toBeTruthy()
     fireEvent.pointerLeave(head('body'))
     reach('title')
-    expect(screen.getByRole('group', { name: 'title skrivs som prosa, du valde' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Titel skrivs som prosa, du valde' })).toBeTruthy()
   })
 
   it('bär skillnaden i form också, så den syns utan att läsas', () => {

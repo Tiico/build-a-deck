@@ -100,6 +100,10 @@
 .byd-wizard-field > span { border-radius: 999px; padding: 5px 7px; background: #e2e8e2; color: #3f4b3f; text-align: center; font-size: 10px; font-weight: 800; }
 .byd-wizard-field small { grid-column: 2 / 4; color: var(--muted); font-size: 11px; }
 .byd-wizard-field > button { grid-row: 1; grid-column: 3; padding: 0; width: var(--tap); }
+/* The title is the tool's own column (#476): its word, set where a name would be written. */
+.byd-wizard-field-fixed { padding: 0 2px; font-weight: 700; }
+/* Why a name cannot be a column, under the row it is about (#476). */
+.byd-wizard .byd-wizard-field-says { grid-column: 2 / -1; margin: 0; color: #8d3823; font-size: 12px; }
 .byd-wizard-add-fields, .byd-wizard-frames { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .byd-wizard-add-fields button { border-style: dashed; font-size: 12px; }
 .byd-wizard-frames { margin-top: 4px; }

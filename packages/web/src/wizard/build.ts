@@ -1,5 +1,5 @@
 import type { ProjectDoc } from '@byd/server'
-import { DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
+import { columnOf, DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
 import { openingSetup } from '@byd/server/doc'
 import { translate, type T } from '../i18n/index.js'
 import { recipeWords } from '../editor/fields.js'
@@ -66,11 +66,14 @@ function tableOf(state: Pick<WizardState, 'players' | 'counters'>, t: T): Projec
 // Numbers become numbers, antal defaults to 1, everything else stays text.
 function typedFields(row: Record<string, string>, fields: Field[]): Record<string, string | number> {
   const out: Record<string, string | number> = {}
+  // Each field is written under the column it was named (#476), and nothing else of the wizard's
+  // own bookkeeping — the key a field was held by in the form — reaches the document.
+  const held = new Set(fields.map((f) => f.key))
   for (const f of fields) {
     const v = row[f.key] ?? ''
-    out[f.key] = f.kind === 'number' && v !== '' && !Number.isNaN(Number(v)) ? Number(v) : v
+    out[columnOf(f)] = f.kind === 'number' && v !== '' && !Number.isNaN(Number(v)) ? Number(v) : v
   }
-  for (const [k, v] of Object.entries(row)) if (!(k in out) && k !== 'antal') out[k] = v
+  for (const [k, v] of Object.entries(row)) if (!held.has(k) && !(k in out) && k !== 'antal') out[k] = v
   const antal = Number(row['antal'] ?? '')
   out['antal'] = Number.isFinite(antal) && antal > 0 ? Math.floor(antal) : 1
   return out

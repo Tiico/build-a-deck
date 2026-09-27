@@ -1292,6 +1292,7 @@ export const svEditor = {
   'counter.score': 'Poäng',
   'counter.life': 'Liv',
   'table.field.antal': 'antal',
+  'table.field.title': 'Titel',
 
   // Zonerna receptet gör. De är designerns dokument från den stund de görs, så de skrivs på
   // det språk spelet byggs i; sedan äger designern namnet.

@@ -270,6 +270,9 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
 
     case 'renameField': {
       if (intent.from === ANTAL || intent.to === ANTAL) throw new Error(`field ${ANTAL} is the deck's own`)
+      // The title is what a card is called everywhere it is spoken of (#476): the tool's column,
+      // shown in the designer's language, and not one to rename away.
+      if (intent.from === 'title') throw new Error('title is the card\u2019s own name')
       if (intent.to === 'id') throw new Error('id is the card\u2019s own')
       if (intent.from === intent.to) throw new Error(`field ${intent.from} already has that name`)
       const columns = columnsOf(doc)

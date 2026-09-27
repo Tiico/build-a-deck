@@ -4621,6 +4621,11 @@ En kolumn som bara flyttade hälften av sig är värre än en som inte kunde fly
 Det finns alltså ingen separat etikett att byta: det designern skriver in är det som står i dokumentet och det som läses upp (A4), och ett fält räcker.
 Alternativet — en etikett vid sidan av nyckeln — hade gjort namnbytet gratis för dokumentet, men till priset av ett nytt fält i `ProjectDoc`, en protokollmigrering, en omläsning av A4, och `renameField` kvar oanropat för det *riktiga* nyckelbytet, vilket är precis det här problemet olöst.
 
+**Titeln är verktygets andra kolumn, som `antal` (beslut 2026-09-27, #476).**
+`title` är vad ett kort heter överallt där det nämns — regelbokens referenser, bordets upplysningar, startsidans kort — så nyckeln står kvar som `title`, visas som «Titel» i designerns språk i både den guidade starten och editorns tabell, och döps inte om: `renameField` vägrar den.
+Alla andra fält blir exakt det namn som skrivs, också i den guidade starten, där namnen i steg 2 förut stannade i formuläret och spelet fick `cost`, `fält1` och `värde1`; startramarna binder fälten efter deras plats på kortet, så «Pris» hamnar i hörnet ändå.
+Tomma namn, två fält med samma namn och verktygets egna namn stoppas vid fältet.
+
 **Priset är taget medvetet: CSV-rubrikerna byter namn med kolumnen.**
 En lek som exporterats tidigare får en annan rubrikrad, så ett kalkylark eller en import som designern håller utanför verktyget slutar matcha tills hon byter namnet där också.
 Det är följdriktigt — rubriken *är* kolumnens namn — men det står skrivet, här och vid `exportCardsCsv` i `packages/web/src/editor/csv.ts`, i stället för att upptäckas av någon som undrar varför importen slutade fungera.
