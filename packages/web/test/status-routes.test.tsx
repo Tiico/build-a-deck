@@ -187,6 +187,36 @@ describe.each(LIVE)('$path when the line dies mid-game', (live) => {
 
 // The transport tries again by itself, and the countdown is what makes that visible instead of
 // a screen that keeps blinking for reasons nobody is told (#7).
+// A guest's ways out (#485, fynd 2, 10 och 11). A guest refused at the door, or sent to a table the
+// server does not know, has a room code and no account: the way on is the seat picker, and it is
+// the one primary answer. «Logga in» belongs to the table screen, whose host may have one.
+const GUESTS = LIVE.filter((l) => l.route === 'play' || l.route === 'online' || l.route === 'observe')
+describe.each(GUESTS)('$path for a guest who cannot get in', (live) => {
+  const primaries = () => [...(notice()?.querySelectorAll('[data-primary]') ?? [])].map((el) => el.textContent)
+
+  it('offers the seat picker as the one way on when the door refuses the token, and never a login', async () => {
+    const id = await createSession(run)
+    const q = new URLSearchParams({ server: run.url, session: id, code: roomOf(id).code, token: 'not-a-token', name: 'Eva' })
+    if (live.seated) q.set('seat', 'A')
+    history.replaceState(null, '', `${live.path}?${q.toString()}`)
+    render(<StatusLive>{live.page(FAST)}</StatusLive>)
+    await waitFor(() => expect(noticeState()).toBe('forbidden'))
+    expect(primaries()).toEqual(['Välj plats igen'])
+    expect(within(notice() as HTMLElement).getByRole('link', { name: 'Välj plats igen' }).getAttribute('href')).toContain(`/join?code=${roomOf(id).code}`)
+    expect(within(notice() as HTMLElement).queryByRole('link', { name: 'Logga in' })).toBeNull()
+  })
+
+  it('offers the seat picker for a table the server does not know, when a code came along', async () => {
+    const q = new URLSearchParams({ server: run.url, session: 'no-such-room', code: 'ABCD', token: 'x', name: 'Eva' })
+    if (live.seated) q.set('seat', 'A')
+    history.replaceState(null, '', `${live.path}?${q.toString()}`)
+    render(<StatusLive>{live.page(FAST)}</StatusLive>)
+    await waitFor(() => expect(noticeState()).toBe('missing'))
+    expect(primaries()).toEqual(['Välj plats igen'])
+    expect(notice()!.textContent).not.toMatch(/Mina spel/)
+  })
+})
+
 describe('the wait for the next automatic attempt', () => {
   it('is counted down in seconds, and stops counting once the plan is spent', async () => {
     const id = await createSession(run)

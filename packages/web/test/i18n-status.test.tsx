@@ -117,8 +117,9 @@ describe('the nine states in the reader\'s own language (A4)', () => {
   // behind it is opened here with nothing in its address.
   it.each([
     ['/table', () => <TablePage />, 'The table is over'],
-    ['/observe', () => <ObserverPage />, 'The table is over'],
-    ['/online', () => <OnlinePage />, 'The table is over'],
+    // A guest's routes say it in the guest's words (#485): the host's «start a new table» is not hers.
+    ['/observe', () => <ObserverPage />, 'The table is not there'],
+    ['/online', () => <OnlinePage />, 'The table is not there'],
     ['/play', () => <PlayerPage />, 'The table is not there'],
     ['/join', () => <JoinPage />, 'The table is not there'],
   ])('opens %s with nothing in its address and says so in English', (path, page, heading) => {

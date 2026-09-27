@@ -104,8 +104,10 @@ const PER_VOICE: Record<Voice, Partial<Record<StatusKey, Voiced>>> = {
   phone: {
     loading: (t) => ({ heading: t('status.loading.phone.heading'), text: t('status.loading.phone.text') }),
     slow: (t) => ({ heading: t('status.slow.phone.heading'), text: t('status.slow.phone.text'), actions: [retry(t), home(t, 'status.act.home.start')] }),
-    missing: (t) => ({ heading: t('status.missing.phone.heading'), text: t('status.missing.phone.text'), actions: [home(t, 'status.act.home.start')] }),
-    forbidden: (t) => ({ heading: t('status.forbidden.phone.heading'), text: t('status.forbidden.phone.text'), actions: [rescan(t), login(t), home(t, 'status.act.home.start')] }),
+    // A guest has a room code and no account (#485): the way on is the seat picker, and it is the
+    // one primary answer. «Logga in» belongs to the table screen.
+    missing: (t) => ({ heading: t('status.missing.phone.heading'), text: t('status.missing.phone.text'), actions: [rescan(t), home(t, 'status.act.home.start')] }),
+    forbidden: (t) => ({ heading: t('status.forbidden.phone.heading'), text: t('status.forbidden.phone.text'), actions: [rescan(t), home(t, 'status.act.home.start')] }),
     offline: (t) => ({ heading: t('status.offline.phone.heading'), text: t('status.offline.phone.text'), actions: [retry(t), home(t, 'status.act.home.start')] }),
     connecting: (t) => ({ heading: t('status.connecting.phone.heading'), text: t('status.connecting.phone.text') }),
     dropped: (t) => ({ heading: t('status.dropped.phone.heading'), text: t('status.dropped.phone.text'), actions: [retry(t, 'status.act.retry.now'), home(t, 'status.act.home.start')] }),
@@ -175,4 +177,12 @@ export function refusalText(reason: string, t: T = swedish): string {
 // everything else — only smaller and standing somewhere different.
 export function refusal(reason: string, voice: Voice, t: T = swedish): Notice {
   return { ...noticeFor('refused', voice, t), text: refusalText(reason, t) }
+}
+
+// What a guest's route says when it cannot show a table at all (#485): the phone's words and ways
+// out, on every route a guest reaches through the seat picker — /play, /online, /observe — whatever
+// voice the rest of that route speaks in. A guest told «Starta ett nytt bord från Mina spel», or
+// offered «Logga in», was offered a way on she does not have.
+export function guestNotice(state: 'missing' | 'forbidden', t: T = swedish): Notice {
+  return noticeFor(state, 'phone', t)
 }

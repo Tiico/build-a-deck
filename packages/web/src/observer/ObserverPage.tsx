@@ -18,7 +18,7 @@ import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { statusLinks } from '../status/links.js'
-import { noticeFor } from '../status/notice.js'
+import { guestNotice } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useRefusal } from '../status/Refusal.js'
 import { Help } from '../editor/HelpDrawer.js'
@@ -69,10 +69,10 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
       .catch(() => setVersion('?'))
   }, [sessionId, view?.ended, version, http])
 
-  if (!sessionId) return <StatusNotice notice={noticeFor('missing', 'table', t)} surface="page" links={links} />
+  if (!sessionId) return <StatusNotice notice={guestNotice('missing', t)} surface="page" links={links} />
   // Not admitted, or kicked (DRIFT §9): a shut door rather than a broken line.
-  if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'table', t), text: refusedText(refused, t) }} surface="page" links={links} />
-  if (!view || !client) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
+  if (refused) return <StatusNotice notice={{ ...guestNotice('forbidden', t), text: refusedText(refused, t) }} surface="page" links={links} />
+  if (!view || !client) return <RouteStatus status={live.state === 'missing' ? { ...live, notice: guestNotice('missing', t) } : live} over="card" links={links} onRetry={conn.retry} />
 
   // A landscape table in a portrait window is turned a quarter so that its long side runs down
   // the screen and the felt fills the width (C5, C8, #76). The observer sits at no seat, so
@@ -139,7 +139,7 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
       )}
       </div>
       {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} who={name} version={version ?? '…'} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat: null, observer: true, answers })} />}
-      <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
+      <RouteStatus status={live.state === 'missing' ? { ...live, notice: guestNotice('missing', t) } : live} over="card" links={links} onRetry={conn.retry} />
     </>
   )
 }
