@@ -124,3 +124,29 @@ describe('what an import did (#479)', () => {
     expect(said.getAttribute('role')).toBe('status')
   })
 })
+
+// From the wall and back (#479, with #477's own half on the wall): the table opened at its top
+// whichever card was chosen, and a caret in a cell did not choose its card. The table now opens
+// with the chosen card in view, and a cell the keyboard walks into chooses the card it is on.
+describe('the chosen card in the table (#479)', () => {
+  it('opens with the chosen card scrolled into view', () => {
+    const seen: string[] = []
+    const was = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function (this: Element) {
+      seen.push(this.getAttribute('data-card-ref') ?? this.tagName)
+    }
+    try {
+      render(<DataTable doc={projectDoc()} selectedRow="wizard" onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} />)
+      expect(seen).toContain('wizard')
+    } finally {
+      Element.prototype.scrollIntoView = was
+    }
+  })
+
+  it('chooses the card a cell stands on when the caret walks into it', () => {
+    const onSelectRow = vi.fn()
+    render(<DataTable doc={projectDoc()} selectedRow="dragon" onSelectRow={onSelectRow} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} />)
+    fireEvent.focus(screen.getByLabelText('knight title'))
+    expect(onSelectRow).toHaveBeenLastCalledWith('knight')
+  })
+})

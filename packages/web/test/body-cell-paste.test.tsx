@@ -2,6 +2,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { BodyCell } from '../src/editor/BodyCell.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // A paste into a body cell (#479, L39): the string took the right subset of what was pasted, but
 // the cell kept the pasted HTML on the screen — a table, a picture — that the card would never

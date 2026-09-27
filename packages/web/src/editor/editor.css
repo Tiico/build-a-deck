@@ -1712,7 +1712,7 @@
 .byd-data-was { display: block; padding: 0 8px; color: #f0b64a; font-size: 11px; }
 .byd-data tr[data-change='added'] td { background: rgba(125, 211, 160, 0.1); }
 .byd-data tr[data-change='removed'] td { background: rgba(224, 92, 92, 0.1); }
-.byd-data tr[data-change='removed'] input { color: #9aa3b8; text-decoration: line-through; }
+.byd-data tr[data-change='removed'] :is(input, .byd-data-gone) { color: #9aa3b8; text-decoration: line-through; }
 /* ── Body-cellen (L39, #324) ─────────────────────────────────────────────────────────────────
    Samma cell stängd och öppen. Stängd visar den formen — fet som fet, stycken som stycken,
    punkter som punkter — med ett tak på två rader och en uttoning under. Öppen får den ett huvud,
@@ -3412,4 +3412,4 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-data-says { grid-column: 1 / -1; color: #f0b64a; font-size: 11px; white-space: nowrap; }
 .byd-data-out { grid-column: 1 / -1; color: var(--byd-editor-quiet); font-size: 11px; white-space: nowrap; }
 /* A card gone since the version compared with (#479, B4): what it was, struck through and quiet. */
-.byd-data-gone { color: var(--byd-editor-quiet); font-size: 12px; padding: 0 var(--byd-s2); }
+.byd-data-gone { font-size: 12px; padding: 0 var(--byd-s2); }

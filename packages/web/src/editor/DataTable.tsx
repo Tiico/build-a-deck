@@ -631,6 +631,14 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // the caret stands in its first cell to write in, rather than the row arriving 3 000 px below a
   // table that stays at its top.
   const [arriving, setArriving] = useState<string | null>(null)
+  // The table opens with the chosen card in view (#479): coming back from the wall, it stood at
+  // its top whichever card had been chosen there. Once, when the table is drawn; after that the
+  // scroll is the designer's.
+  useEffect(() => {
+    if (!selectedRow) return
+    document.querySelector<HTMLElement>(`tr[data-card-ref="${CSS.escape(selectedRow)}"]`)?.scrollIntoView?.({ block: 'center' })
+    // Only on opening.
+  }, [])
   useEffect(() => {
     if (!arriving) return
     const row = document.querySelector<HTMLElement>(`tr[data-card-ref="${CSS.escape(arriving)}"]`)
@@ -1523,6 +1531,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       visits.visit.onFocus()
                       setHeld(shown.map((r) => r.id))
                       setHere({ cardRef, field: f })
+                      // A cell the keyboard walks into chooses its card, as a click on the row
+                      // does (#479): the canvas and the wall follow the card being written in.
+                      if (selectedRow !== cardRef) onSelectRow(cardRef)
                     }}
                     onBlur={(event) => {
                       if (f === 'antal') setAntalDraft(({ [cardRef]: _gone, ...rest }) => rest)
