@@ -218,3 +218,107 @@ body {
 .m-knapp { min-height: 44px; border: 1px solid #6f7a90; border-radius: 8px; padding: 0 var(--s3); background: transparent; color: #dce3f2; font: inherit; font-weight: 600; cursor: pointer; }
 .m-knapp:hover { border-color: #9cc4f5; }
 .m-knapp:focus-visible, .m-rad:focus-visible, .m-box:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+
+/* --- Tabell, ur packages/web/src/editor/editor.css (#479) ------------------------------------
+   Kronans räls med sök, chips och «Importera ▾», importlådan, tabellen med bocken, det fastnålade
+   `×`-spåret och `+`-dörren, frågeremsan (L9) och foten. Delas av prototyp 08–11. */
+.byd-editor { --tick: 18px; --focus: #9cc6ff; --panel-bg: #171a23; }
+.t-krona :focus-visible, .t-lada :focus-visible, .t-vy :focus-visible, .t-fraga :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.ed-huvud .t-status { flex: 0 1 200px; min-width: 0; color: var(--quiet-2); font-size: 12px; line-height: 1.3; white-space: normal; }
+.ed-huvud .t-status:not(:empty) { min-width: 170px; }
+.m-skarm[data-smal] .ed-flikar button { padding: 0 7px; }
+.m-skarm[data-smal] .ed-huvud { gap: var(--s2); }
+.m-skarm[data-smal] .ed-huvud .t-status:not(:empty) { min-width: 120px; font-size: 11px; }
+.m-skarm[data-smal] .ed-huvud > strong { min-width: 56px; }
+.t-krona { flex: none; display: flex; align-items: center; gap: var(--s2); padding: var(--s4) var(--s4) var(--s2); border-bottom: 1px solid var(--line); }
+.t-sok { flex: 0 1 190px; min-width: 0; min-height: var(--tap); padding: 8px 12px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; }
+.t-sok::placeholder { color: #9aa3b8; }
+.t-chips { flex: 1 1 auto; min-width: 0; display: flex; gap: 6px; overflow: hidden; mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); }
+.t-chip, .t-rund, .t-box { flex: none; min-height: var(--tap); padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.t-rund { min-width: var(--tap); padding: 0; }
+.t-box[aria-expanded='true'] { border-color: var(--primary-mark); }
+.t-lada { flex: none; display: flex; align-items: center; gap: 9px; flex-wrap: wrap; padding: var(--s2) var(--s4); background: var(--panel-bg); border-bottom: 1px solid var(--line); }
+.t-lada > button { min-height: var(--tap); border: 1px solid #3b414e; border-radius: 8px; padding: 0 12px; background: #1b1d23; color: #dce3f2; font: inherit; font-weight: 700; cursor: pointer; }
+.t-lada > span { flex: 1 1 260px; color: var(--quiet); line-height: 1.4; }
+.t-lada > span[role='status'] { color: #c3cbdd; }
+.t-lada > span b { color: #fff; }
+.t-vy { position: relative; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; padding: 0 var(--s4) var(--s2); }
+.t-rulla { flex: 1 1 auto; min-height: 0; overflow: auto; scroll-padding-top: 61px; }
+.t-data { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; background: #1b1d23; font-size: 12px; }
+.t-data th { position: sticky; top: 0; z-index: 2; height: 60px; padding: 0 10px; background: #1b1d23; border-bottom: 1px solid #2f333d; color: var(--quiet); font-weight: 700; text-align: left; white-space: nowrap; }
+.t-data th .sort { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: var(--tap); padding: 0; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; }
+.t-data th .sort > span { overflow: hidden; text-overflow: ellipsis; }
+.t-data th .sort::after { content: '↕'; font-size: 11px; }
+.t-data th .sort:hover { color: #dce3f2; }
+.t-data th .ring { flex: none; width: 5px; height: 5px; border: 1px solid #555d70; border-radius: 50%; }
+.t-data th .slag { flex: none; padding: 0 5px; border: 1px solid #3b414e; border-radius: 999px; color: #9aa3b8; font-size: 10px; font-weight: 600; }
+.t-data td { height: 45px; padding: 0; border-bottom: 1px solid #20232b; vertical-align: middle; color: #ddd; }
+.t-data td input:not([type='checkbox']) { display: block; width: 100%; min-height: 44px; padding: 8px 10px; border: 0; border-radius: 2px; background: transparent; color: #ddd; font: inherit; font-size: 12px; text-overflow: ellipsis; }
+.t-data td input:not([type='checkbox']):focus { outline: none; box-shadow: inset 0 0 0 2px var(--focus); }
+.t-data td input[data-tal] { text-align: right; font-variant-numeric: tabular-nums; }
+.t-data td input[aria-invalid='true'] { box-shadow: inset 0 -2px 0 #f0b64a; color: #ffd98a; }
+.t-data td input[aria-invalid='true']:focus { box-shadow: inset 0 0 0 2px #f0b64a; }
+.t-data .bock { width: 44px; text-align: center; }
+.t-data input[type='checkbox'] { width: var(--tick); height: var(--tick); margin: 0; accent-color: var(--primary-mark); color-scheme: dark; vertical-align: middle; }
+.t-data .id { padding: 0 8px; color: var(--quiet); font-family: ui-monospace, monospace; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-data th.id { font-family: inherit; }
+.t-data .spar { position: sticky; right: 0; z-index: 1; width: 44px; padding: 0; background: #1b1d23; box-shadow: -10px 0 10px -10px #000; text-align: center; }
+.t-data th.spar { z-index: 3; }
+.t-data .spar button { width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--quiet); font: inherit; cursor: pointer; }
+.t-data th.spar button { color: #fff; font-size: 20px; font-weight: 400; }
+.t-data th.spar button[aria-expanded='true'] { box-shadow: inset 0 0 0 1px var(--primary-mark); border-radius: 8px; }
+.t-data tr:focus-within td { background: #232838; }
+.t-data tr[data-change='added'] td { background: rgb(125 211 160 / 10%); }
+.t-data tr[data-change='removed'] td { background: rgb(224 92 92 / 10%); }
+.t-data tr[data-change='removed'] td:not(.bock):not(.spar) { color: #9aa3b8; text-decoration: line-through; }
+.t-data td[data-change='moved'] { background: rgb(240 182 74 / 8%); }
+.t-data .was { display: block; padding: 4px 10px 0; color: #f0b64a; font-size: 11px; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.t-data .las { display: block; padding: 8px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-data td.blink { animation: t-blink 1s ease-out; }
+@keyframes t-blink { from { background: #3c5a8a; } }
+.t-ny { flex: none; margin-top: var(--s2); min-height: var(--tap); border: 1px dashed #2f333d; border-radius: 8px; background: transparent; color: #9aa3b8; font: inherit; cursor: pointer; }
+.t-fot { flex: none; margin: var(--s2) 0 0; color: #c3cbdd; font-size: 12px; font-variant-numeric: tabular-nums; }
+.t-fot span { margin-left: var(--s2); color: var(--quiet); }
+
+/* Bildcellen (E1): tumnagel, en plats att släppa på, «Välj», och × som tömmer. */
+.t-bild { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 2px 4px; }
+.t-bild > span, .t-bild > i { flex: none; width: 60px; height: 38px; display: grid; place-items: center; border-radius: 5px; font-size: 10px; font-style: normal; }
+.t-bild > span { border: 1px dashed #4a5163; color: var(--quiet); }
+.t-bild > button { min-width: 44px; min-height: 44px; border: 1px solid #3b414e; border-radius: 6px; padding: 0 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.t-bild > button.tom { border: 0; background: transparent; color: #9aa3b8; font-size: 16px; font-weight: 400; }
+
+/* Dörren bakom `+` (#46, L44, L45): listan över kolumner och formuläret för ett nytt fält. */
+.t-dorr { position: absolute; top: 58px; right: var(--s4); z-index: 6; width: 260px; max-height: calc(100% - 66px); display: flex; flex-direction: column; padding: 8px 12px 12px; border: 1px solid #3b4358; border-radius: 10px; background: var(--panel-bg); box-shadow: 0 12px 30px rgb(0 0 0 / 50%); color: #dce3f2; }
+.t-dorr h3 { flex: none; margin: 4px 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--quiet); }
+.t-dorr ul { flex: 1 1 auto; min-height: 60px; margin: 0 0 8px; padding: 0; overflow-y: auto; list-style: none; display: grid; align-content: start; gap: 2px; }
+.t-dorr li { display: flex; align-items: center; gap: 4px; min-height: 36px; font-size: 12px; }
+.t-dorr li > b { flex: 1 1 auto; min-width: 0; padding: 0 8px; font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-dorr li > em { flex: none; padding: 1px 6px; border: 1px solid #3b414e; border-radius: 999px; color: #9aa3b8; font-size: 10px; font-style: normal; }
+.t-dorr li > small { flex: none; padding-right: 8px; color: var(--quiet); font-size: 10px; }
+.t-dorr li > button { flex: none; width: 44px; min-height: 36px; border: 0; background: transparent; color: var(--quiet); font: inherit; cursor: pointer; }
+.t-dorr li > button:hover { color: #e05c5c; }
+.t-dorr form { flex: none; display: grid; gap: 8px; padding-top: 8px; border-top: 1px solid #2f333d; }
+.t-dorr form > label { display: grid; gap: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--quiet); }
+.t-dorr form > label input { min-height: var(--tap); width: 100%; border: 1px solid #3b414e; border-radius: 6px; padding: 4px 8px; background: #1b1d23; color: #e6ecfa; font: inherit; font-size: 13px; text-transform: none; letter-spacing: 0; }
+.t-dorr form > label input:focus { outline: none; border-color: var(--focus); box-shadow: inset 0 0 0 2px var(--focus); }
+.t-dorr fieldset { display: flex; flex-wrap: wrap; gap: 0 10px; margin: 0; padding: 0; border: 0; }
+.t-dorr legend { padding: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--quiet); }
+.t-dorr fieldset label { display: flex; align-items: center; gap: 6px; min-width: 44px; min-height: var(--tap); font-size: 12px; color: #dce3f2; cursor: pointer; }
+.t-dorr fieldset input { width: var(--tick); height: var(--tick); margin: 0; accent-color: var(--primary-mark); color-scheme: dark; }
+.t-dorr .hint { margin: 0; color: #9aa3b8; font-size: 11px; line-height: 1.45; }
+.t-dorr .hint b { color: #dce3f2; font-weight: 600; }
+.t-dorr [role='alert'] { margin: 0; color: #f0b64a; font-size: 12px; }
+.t-dorr .do { display: flex; gap: 8px; }
+.t-dorr .do button { min-height: var(--tap); border: 1px solid #6f7a90; border-radius: 8px; padding: 0 12px; background: transparent; color: #dce3f2; font: inherit; font-weight: 600; cursor: pointer; }
+.t-dorr .do button.tyst { border-color: #3b414e; color: #9aa3b8; font-weight: 400; }
+
+/* Frågan (L9): en remsa där handlingen begärdes, som tar fokus och öppnar på det säkra svaret. */
+.t-fraga { flex: none; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: var(--s2) 0; padding: 8px 12px; border: 1px solid #7a3243; border-radius: 8px; background: #3d2632; color: #ffe4ea; }
+.t-fraga p { flex: 1 1 320px; margin: 0; font-weight: 700; line-height: 1.4; }
+.t-fraga p small { display: block; font-size: 12px; font-weight: 400; color: #e8c3cc; }
+.t-fraga button { min-height: var(--tap); padding: 0 12px; border: 1px solid #6b4a55; border-radius: 8px; background: transparent; color: #ffe4ea; font: inherit; font-weight: 700; cursor: pointer; }
+.t-fraga button[data-kind='danger'] { background: #7a3243; border-color: #7a3243; }
+.t-fraga[data-ton='neutral'] { border-color: #3b414e; background: #1f2937; color: #e6ecfa; }
+.t-fraga[data-ton='neutral'] button { border-color: #3b414e; color: #e6ecfa; }
+.t-fraga[data-ton='neutral'] button[data-kind='primary'] { background: var(--primary); border-color: var(--primary); color: #fff; }
+.t-fraga[data-ton='neutral'] p small { color: #a9b3c9; }

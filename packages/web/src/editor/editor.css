@@ -400,7 +400,7 @@
 }
 .byd-editor-leave p { margin: 0; font-weight: 700; }
 .byd-editor-leave button {
-  min-height: 32px;
+  min-height: var(--byd-tap);
   padding: 4px 12px;
   border: 1px solid #6b5c3c;
   border-radius: 8px;
@@ -1712,7 +1712,7 @@
 .byd-data-was { display: block; padding: 0 8px; color: #f0b64a; font-size: 11px; }
 .byd-data tr[data-change='added'] td { background: rgba(125, 211, 160, 0.1); }
 .byd-data tr[data-change='removed'] td { background: rgba(224, 92, 92, 0.1); }
-.byd-data tr[data-change='removed'] input { color: #9aa3b8; text-decoration: line-through; }
+.byd-data tr[data-change='removed'] :is(input, .byd-data-gone) { color: #9aa3b8; text-decoration: line-through; }
 /* ── Body-cellen (L39, #324) ─────────────────────────────────────────────────────────────────
    Samma cell stängd och öppen. Stängd visar den formen — fet som fet, stycken som stycken,
    punkter som punkter — med ett tak på två rader och en uttoning under. Öppen får den ett huvud,
@@ -1945,7 +1945,7 @@
   font: inherit;
 }
 .byd-data-bulk button {
-  min-height: 32px;
+  min-height: var(--byd-tap);
   padding: 4px 12px;
   border: 1px solid #3b414e;
   border-radius: 8px;
@@ -2521,7 +2521,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
   color: var(--byd-tables-ask-ink);
 }
 .byd-tables-question p { margin: 0; font-weight: 700; }
-.byd-tables-question button { min-height: 32px; padding: 4px 12px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: var(--byd-tables-ask-ink); font: inherit; font-weight: 700; cursor: pointer; }
+.byd-tables-question button { min-height: var(--byd-tap); padding: 4px 12px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: var(--byd-tables-ask-ink); font: inherit; font-weight: 700; cursor: pointer; }
 .byd-tables-question button[data-kind='danger'] { background: #7a3243; border-color: #7a3243; }
 /* «Starta nytt bord» (#299, L31): first in the column, a second action in the shared language
    (`.byd-secondary` draws the line and the ink), never the dashed ghost it was — that is the
@@ -2698,7 +2698,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 /* Frågan står över rutnätet, där handlingen bads om, i samma form som bordsflikens fråga. */
 .byd-media-question { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 var(--byd-s3); padding: 8px 12px; border: 1px solid #7a3243; border-radius: 8px; background: #3d2632; color: #ffe4ea; }
 .byd-media-question p { margin: 0; font-weight: 700; }
-.byd-media-question button { min-height: 32px; padding: 4px 12px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: #ffe4ea; font: inherit; font-weight: 700; cursor: pointer; }
+.byd-media-question button { min-height: var(--byd-tap); padding: 4px 12px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: #ffe4ea; font: inherit; font-weight: 700; cursor: pointer; }
 .byd-media-question button[data-kind='danger'] { background: #7a3243; border-color: #7a3243; }
 .byd-media-tile u { position: absolute; box-sizing: border-box; border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 3px; box-shadow: 0 0 0 999px rgba(8, 10, 14, 0.45); }
 /* The mark on the tile (L33): what has been done to a picture, in words, where the picture is
@@ -3406,3 +3406,10 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-layer-inside li { display: flex; align-items: center; gap: var(--byd-s2); }
 .byd-layers [role='gridcell']:has(> .byd-layer-inside) { flex-wrap: wrap; }
 .byd-layers [role='gridcell'] > .byd-layer-inside { flex: 1 0 100%; }
+/* A count that is not one, said under the cell it is typed in, in the amber the editor says what
+   wants looking at in (#479); and a card that is in the table but not in the deck, said quietly. */
+.byd-data-lane input[aria-invalid='true'], .byd-data-bulk input[aria-invalid='true'] { border-color: #f0b64a; }
+.byd-data-says { grid-column: 1 / -1; color: #f0b64a; font-size: 11px; white-space: nowrap; }
+.byd-data-out { grid-column: 1 / -1; color: var(--byd-editor-quiet); font-size: 11px; white-space: nowrap; }
+/* A card gone since the version compared with (#479, B4): what it was, struck through and quiet. */
+.byd-data-gone { font-size: 12px; padding: 0 var(--byd-s2); }

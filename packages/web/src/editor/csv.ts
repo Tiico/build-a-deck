@@ -1,5 +1,5 @@
 import type { ProjectDoc, ProjectRow } from '@byd/server'
-import { fieldsOf } from './fields.js'
+import { copiesOf, fieldsOf } from './fields.js'
 import { translate, type T } from '../i18n/index.js'
 
 // Without a catalogue of its own this module speaks Swedish, exactly as a surface mounted
@@ -8,10 +8,13 @@ const swedish: T = (key, params) => translate('sv', key, params)
 
 export type ParsedCsv = { headers: string[]; rows: Record<string, string>[] }
 
-// CSV as spreadsheets export it: a header line, then rows; commas or tabs; RFC-style quotes
-// with doubled quotes inside; CRLF tolerated. Values stay strings until the editor types them.
+// CSV as spreadsheets export it: a header line, then rows; commas, semicolons or tabs; RFC-style
+// quotes with doubled quotes inside; CRLF tolerated. Values stay strings until the editor types
+// them. The separator is read off the header line, where the columns' names stand and no value can
+// carry one of its own: Swedish Excel writes `;` (#479), and a file that had an id column was told
+// it needed one.
 export function parseCsv(text: string): ParsedCsv {
-  const separator = text.includes('\t') ? '\t' : ','
+  const separator = separatorOf(text)
   const records = splitCsv(text, separator).filter((record) => record.some((cell) => cell.trim().length > 0))
   const [head, ...rest] = records
   if (!head) return { headers: [], rows: [] }
@@ -62,9 +65,10 @@ function csvCell(value: unknown): string {
   return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
 }
 
+// A card with no count, or a count that is not one, is one copy: the import cannot ask, and one is
+// what a card with no `antal` is everywhere else. The rule for what is one is the cell's (#479).
 function count(value: string | undefined): number {
-  const number = Number(value ?? '')
-  return Number.isFinite(number) && number >= 0 ? number : 1
+  return copiesOf(value ?? '') ?? 1
 }
 
 function splitCsv(text: string, separator: string): string[][] {
@@ -98,4 +102,13 @@ function splitCsv(text: string, separator: string): string[][] {
     records.push(record)
   }
   return records
+}
+
+// The separator the header line uses most, outside quotes; a comma when it uses none.
+function separatorOf(text: string): string {
+  const head = text.split(/\r?\n/, 1)[0] ?? ''
+  const unquoted = head.replace(/"[^"]*"/g, '')
+  const counts = ['\t', ';', ','].map((sep) => ({ sep, n: unquoted.split(sep).length - 1 }))
+  const best = counts.reduce((a, b) => (b.n > a.n ? b : a))
+  return best.n > 0 ? best.sep : ','
 }

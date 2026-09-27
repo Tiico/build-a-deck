@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 09 — Importen (#479 fynd 7)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     En CSV-import ersätter 77 kort med 2 utan att fråga (`DataTable.tsx` `importFile` →
+     `onReplaceRows`), och en kolumn `Title` hamnar bredvid `title`. Statusmeningen («2 kort
+     lästes, 77 togs bort, 2 nya kolumner») byggs oavsett (AFK) och finns i A–C. Beslutet är om
+     och hur importen frågar först.
+
+       Nu  som i dag: ersätter direkt, säger ingenting
+       A   frågan (L9): en remsa i importlådan före ersättningen, på det säkra svaret
+       B   förhandsvisningen: tabellen visar vad som händer, rubrikerna paras ihop, sedan Importera
+       C   slå ihop på id: importen uppdaterar och lägger till, tar aldrig bort; att ta bort är ett
+           eget, frågat steg efteråt
+
+     Filväljaren låtsas: filen i den bärnstensfärgade raden är den som väljs. Ctrl/Cmd+Z utanför
+     en cell tar tillbaka importen. ──────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .protorad .matt { flex: 0 0 auto; flex-wrap: wrap; }
+  .protorad select { min-height: 32px; border: 1px solid #4a4230; border-radius: 7px; padding: 0 8px; background: #1f1b12; color: #ffd98a; font: inherit; }
+  .protorad label { display: flex; align-items: center; gap: 6px; }
+  .ed-huvud .sparat[data-osparat] { color: #f0b64a; }
+  .t-lada > span[role='status'] { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; }
+  .t-lada > span[role='status'] > span { margin-right: 4px; }
+  .t-lada > span[role='status'] button { min-height: 32px; margin-left: 6px; border: 1px solid #3b414e; border-radius: 8px; padding: 0 10px; background: transparent; color: #dce3f2; font: inherit; font-size: 12px; cursor: pointer; }
+  .t-fraga { margin: 0; border-radius: 0; border-width: 0 0 1px; padding: var(--s2) var(--s4); }
+  /* B: förhandsvisningen står där tabellen står. */
+  .forhand { flex: none; display: grid; gap: var(--s2); margin: var(--s2) 0; }
+  .forhand .t-fraga { border-width: 1px; border-radius: 8px; margin: 0; }
+  .summa { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .summa span { padding: 2px 8px; border-radius: 999px; border: 1px solid #3b414e; font-size: 12px; font-weight: 600; }
+  .summa .ny { border-color: #3f6f55; color: #b7e4c7; }
+  .summa .bort { border-color: #7a3243; color: #ffc2cc; }
+  .summa .and { border-color: #6b5a2c; color: #f5d58f; }
+  .para { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4); padding: var(--s2) 12px; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #c3cbdd; }
+  .para > b { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--quiet); }
+  .para label { display: flex; align-items: center; gap: 8px; }
+  .para code { color: #fff; }
+  .para select { min-height: 44px; border: 1px solid #3b414e; border-radius: 8px; padding: 0 8px; background: #0f1115; color: #e6ecfa; font: inherit; }
+  .orort td { height: 40px; color: var(--quiet); text-align: center; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>Fynd 7 · Importen.</b> Öppna <b>Importera ▾</b> och välj <b>Importera CSV…</b>. Pröva båda filerna: granskningens två rader med <code>Title</code>, och en export av leken som redigerats i ett kalkylark.</p>
+    <p>Ctrl/Cmd+Z utanför en cell tar tillbaka importen, som i editorn.</p>
+  </div>
+  <label>Filen som väljs <select id="fil">
+    <option value="tva">kort-2.csv — id, Title, kostnad · 2 rader</option>
+    <option value="redig">sals-saloon-kort.csv — exporten, redigerad · 77 rader</option>
+  </select></label>
+  <div class="matt"><span>Kort i leken: <u id="m-antal">77</u></span><span>Steg att ta tillbaka: <u id="m-steg">0</u></span></div>
+  <div class="storlek vaxlare" role="group" aria-label="Fönstrets storlek">
+    <button type="button" data-s="1280x800">1280 × 800</button>
+    <button type="button" data-s="1024x768">1024 × 768</button>
+  </div>
+  <button type="button" id="aterstall">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+
+<div class="m-scen" id="mscen">
+  <div class="m-ram" id="ram"><span class="etikett" id="etikett"></span>
+    <div class="m-skarm byd-editor" id="skarm">
+      <div class="ed-huvud">
+        <span class="hem">Mina spel</span><strong>Sal's Saloon</strong><span class="rev">rev 1</span><span class="sparat" id="sparat">Sparat</span>
+        <div class="ed-flikar" role="tablist" aria-label="Lägen"><button role="tab" tabindex="-1">Kortvägg</button><button role="tab" tabindex="-1">Mall</button><button role="tab" aria-selected="true">Tabell</button><button role="tab" tabindex="-1">Symboler</button><button role="tab" tabindex="-1">Media</button><button role="tab" tabindex="-1">Regler</button><button role="tab" tabindex="-1">Bord</button></div>
+        <span class="spacer"></span><span class="who">A</span><span class="t-status" role="status" id="status"></span>
+        <button type="button" class="ed-knapp kantad" tabindex="-1">Spara</button><button type="button" class="ed-knapp primar" tabindex="-1">Starta bord ▾</button>
+      </div>
+      <div class="t-krona">
+        <input class="t-sok" placeholder="Sök i alla fält…" aria-label="Sök i alla fält">
+        <div class="t-chips" id="chips"></div>
+        <button type="button" class="t-rund" tabindex="-1" aria-label="Fler">›</button>
+        <button type="button" class="t-box" id="importera" aria-expanded="false">Importera ▾</button>
+      </div>
+      <div id="lada"></div>
+      <div class="t-vy" id="vy"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Demolekens 77 kortrader: id, titel, typ, raritet, text, antal (spelkort.csv genom rowsOfSheet).
+const RADER = [["juice-em-up", "Juice em' up!", "Playcard", "Diamant", "Välj två andra spelare. De blandar en shot till varann", 1], ["sals-saloon", "Sal's Saloon", "Location", "Guld", "Saloonen öppnar! Lägg upp ett shopkort per spelare som går in. I turordning från dig: slå tärningen – slaget plus ditt guld är din budget. Köp ett eller flera kort eller avstå", 2], ["dustydice-casino", "DustyDice Casino", "Location", "Guld", "Välkommen till kasinot! Alla annonserar sin insats (1–10 klunkar) och slår sedan en tärning samtidigt. 5–6: dela ut dubbla insatsen. 1–4: drick din insats. 🏴‍☠️ - Här går det att sälja dina stöldgods", 2], ["free-for-all", "Free for all", "Effect", "Special", "Era stöldgods är i fara! Så länge effekten ligger får ni sno varandras stöldgodskort. Blir du påkommen (någon säger till medan du snor) dricker du kortets värde i klunkar", 1], ["duel-koppar", "Duel", "Playcard", "Koppar", "Utmana en spelare på duell. Förloraren dricker 3", 4], ["duel-silver", "Duel", "Playcard", "Silver", "Utmana en spelare på duell. Förloraren dricker 5", 4], ["duel-guld", "Duel", "Playcard", "Guld", "Utmana en spelare på duell. Förloraren dricker 7", 2], ["duel-diamant", "Duel", "Playcard", "Diamant", "Utmana en spelare på duell. Vinnaren blandar en shot till förloraren", 1], ["saddle-pals", "Saddle Pals", "Playcard", "Diamant", "Välj en annan spelare. Ni är allierade resten av spelet. När en av er får klunkar dricker BÅDA fullt. Båda delar ut +2 klunkar", 1], ["standoff", "Standoff", "Event", "Diamant", "Dela upp er i två lag efter hur ni sitter. Öppna en ny enhet och duellera lag mot lag – laget som druckit upp sist förlorar. Vinnarna går raka vägen till Sal's Saloon", 1], ["zorros-here", "Zorro's here!", "Event", "Guld", "Zorro är här för att stoppa er. Slå en tärning var. Slår MINST HÄLFTEN 4 eller mer kommer ni undan. Annars beslagtar Zorro allt stöldgods och alla dricker 5", 2], ["the-heist", "The Heist", "Event", "Silver", "Ni ska försöka råna ett bankvalv. Råna valvet: 3 guld + allt i The Bank. Ta upp till 2 kompanjoner och dela vinsten. Slå en tärning var per omgång. 4+ av någon = omgången lyckas. Tre i rad = valvet är ert. Miss: alla dricker 5", 3], ["stolen-goods-koppar", "Stolen Goods", "Playcard", "Koppar", "1 värdesak! Värde 1. Säljs för 1 guld. Böter 1 klunk. Dessa går att säljas på två sätt. 1. Besök en plats där det står att man kan sälja dem 2. Bränn din runda och slå 5 eller 6, misslyckas du måste du slänga 1 stöldgods av ditt val Var försiktig för det är enkelt att bli av med dessa", 4], ["stolen-goods-silver", "Stolen Goods", "Playcard", "Silver", "2 värdesaker! Värde 2. Säljs för 2 guld. Böter 2 klunkar. Dessa går att säljas på två sätt. 1. Besök en plats där det står att man kan sälja dem 2. Bränn din runda och slå 5 eller 6, misslyckas du måste du slänga 1 stöldgods av ditt val Var försiktig för det är enkelt att bli av med dessa", 4], ["stolen-goods-guld", "Stolen Goods", "Playcard", "Guld", "3 värdesaker! Värde 3. Säljs för 3 guld. Böter 3 klunkar. Dessa går att säljas på två sätt. 1. Besök en plats där det står att man kan sälja dem 2. Bränn din runda och slå 5 eller 6, misslyckas du måste du slänga 1 stöldgods av ditt val Var försiktig för det är enkelt att bli av med dessa", 2], ["the-alley", "The Alley", "Location", "Silver", "I gränden kan man stöta på mycket skumma typer, slå en tärning. 1-2: Ajdå! Du stöter på en skum typ och blir skjuten, drick 5 3-4: Lokala alkisen bjussar på en jäkel, dela ut 5 5-6: Du träffar Hasse som visar dig bakvägen in till Sal's Saloon", 4], ["sheriffs-check", "Sheriff's Check", "Playcard", "Koppar", "Har du stöldgods: annonsera två siffror och slå. Slår du en av siffrorna du sa så tar sheriffen allt ditt stöldgods. Har du inget: tjalla på någon som har. Den annonserar två egna siffror och slår i stället", 4], ["deflect", "Deflect", "Trap+", "Guld", "Klunkarna riktade mot dig går istället till dina grannar, båda dricker full mängd", 2], ["reflection", "Reflection", "Trap+", "Silver", "Tillbakakaka gubbjävel, ge tillbaka klunkarna till den som delade ut dem", 4], ["double-down", "Double Down", "Trap+", "Diamant", "Den som delar ut klunkar till dig får tillbaka dem och tar dessutom en shot som en annan spelare väljer", 1], ["final-shootout", "Final Shootout", "Playcard", "Special", "Sista kortet i leken, gå varvet runt och spela en stor duell mot varann, vinnaren donerar en del av sin dryck till Sal's Concucktion™ och slinker undan. Repetera tills det bara finns en spelare kvar, denna spelare måste ta sig an Sal's Concucktion™. Karaktärer och shopkort från Sal's Saloon gäller här – inget annat", 1], ["the-bank", "The Bank", "Location", "Guld", "Du kan sätta in ditt guld i banken. Bankat guld räknas med när du handlar i saloonen, men kan gå förlorat i The Heist", 2], ["cactus-hugger", "Cactus Hugger", "Playcard", "Koppar", "Dålig idé att krama en kaktus, Drick 2", 2], ["snake-in-the-boot", "Snake in the boot", "Playcard", "Silver", "Orm i stöveln! Drick 4", 4], ["buckaroos-backfire", "Buckaroo's Backfire", "Playcard", "Guld", "Hästen sparkar skiten ur dig! Drick 6", 2], ["shoot-from-the-hip", "Shoot from the hip", "Playcard", "Koppar", "Lyckoträff från höften. Dela ut 2", 2], ["quickdraw", "Quickdraw", "Playcard", "Silver", "Ingen drar snabbare än dig. Dela ut 4", 4], ["bullseye", "Bullseye", "Playcard", "Guld", "Rakt mellan ögonen. Dela ut 6", 2], ["drunken-gambler", "Drunken Gambler", "Character", "Karaktär", "Du dricker alltid 1 klunk mer än kortet säger. När du delar ut SHOTS delar du ut dubbelt så många", 1], ["lucky-luuk", "Lucky Luuk", "Character", "Karaktär", "Du har +1 i dueller", 1], ["sore-loser-lou", "Sore Loser Lou", "Character", "Karaktär", "I dueller räknas både 1 och 6 som att du slår 6", 1], ["big-busta", "Big Busta", "Character", "Karaktär", "Du delar ut och dricker 2 extra klunkar", 1], ["lightweight-lenny", "Lightweight Lenny", "Character", "Karaktär", "Du delar ut och dricker 1 klunk mindre", 1], ["goldrush-gus", "Goldrush Gus", "Character", "Karaktär", "Varje gång du säljer stöldgods får du 1 guld extra", 1], ["lightweight-lisa", "Lightweight Lisa", "Character", "Karaktär", "Du delar ut och dricker 1 klunk mindre", 1], ["beermageddon", "Beermageddon", "Shopcard", "Diamant", "Alla andra spelare dricker lika många klunkar varje gång du dricker, resten av spelet", 1], ["silver-bullet", "Silver bullet", "Shopcard", "Koppar", "\"+1\" i en duel", 2], ["to-the-brim", "To the brim!", "Shopcard", "Koppar", "Nästa gång du delar ut klunkar delar du ut 2 extra", 2], ["faster-than-your-own-shadow", "Faster Than Your Own Shadow", "Shopcard", "Guld", "Vinn en duell automatiskt", 2], ["lazy-lloyd", "Lazy Lloyd", "Character", "Karaktär", "Du kan när som helst be valfri spelare hämta ny dryck åt dig – vägrar den dricker den 2. En gång per spel kan du låta en annan spelare ta dina klunkar.", 1], ["poisoned", "Poisoned", "Playcard", "Silver", "Lägg kortet framför en annan spelare. Den har -1 i dueller under SIN NÄSTA TUR. Sedan slängs kortet", 2], ["jagerbomb", "Jägerbomb", "Shopcard", "Silver", "Blanda in kortet i spelleken upp och ner. Den som drar det dricker 6.", 2], ["cholera", "Cholera", "Shopcard", "Diamant", "Välj en spelare. Den har ett varv på sig att avsluta sin dryck. Misslyckas den tar den också en shot", 1], ["tumbleweed-town", "Tumbleweed Town", "Effect", "Special", "Stan är tyst. Ingen får prata under sin egen tur – den som gör det dricker 2.", 1], ["rolling-stone", "Rolling Stone", "Playcard", "Diamant", "Stoppa bumlingen och få en belöning! Detta är ett \"växande\" kort, Dela ut 1 klunk och passa kortet medsols. Nästa delar ut 2, sedan 3, upp till 8. Kedjan kan inte brytas. Den som dricker de sista 8 får 1 guld.", 1], ["hit-by-tumbleweed", "Hit by Tumbleweed", "Playcard", "Koppar", "Se upp för fan! Drick 2", 2], ["russian-roulette", "Russian Roulette", "Shopcard", "Guld", "Annonsera lågt (1–3) eller högt (4–6) och slå en tärning. Rätt: dela ut 12. Fel: drick 6.", 2], ["shots-fired", "Shots Fired", "Shopcard", "Diamant", "Annonsera lågt (1–3) eller högt (4–6) och slå en tärning. Rätt: dela ut 2 shots till en spelare. Fel: ta 1 shot", 1], ["lucky-draw", "Lucky Draw", "Playcard", "Koppar", "Plötsligt händer det. Dela ut 2", 2], ["master-of-the-jukebox", "Master of the Jukebox", "Shopcard", "Koppar", "Du bestämmer musiken resten av spelet. En gång per varv kan du peka på en spelare som måste ge namnet på artisten – annars dricker den 3.", 2], ["luck-of-the-draw", "Luck of the Draw", "Playcard", "Guld", "Du får ett gratis shopkort. Slå en tärning för att bestämma vilket. 1-2: Koppar 3-4: Silver 5: Guld 6: Diamant", 2], ["high-noon", "High Noon", "Shopcard", "Guld", "Lägg detta kort och säg \"High Noon\", sist av medspelarna att dra fram sina fingerguns dricker 6", 2], ["shots-shots-shots", "SHOTS SHOTS SHOTS", "Shopcard", "Diamant", "Alla tar en shot. Du väljer en spelare som tar en dubbel", 1], ["the-giver", "The Giver", "Shopcard", "Guld", "Alla andra dricker 5", 2], ["fact-or-fable", "Fact or Fable", "Playcard", "Guld", "Säg ett påstående om dig själv, folk gissar sant eller falskt, förlorarna dricker 6", 2], ["howdy-neighbour", "Howdy Neighbour", "Shopcard", "Guld", "Välj en spelare. Den slår en tärning – den och båda dess grannar dricker så många klunkar.", 2], ["reverse", "Reverse", "Effect", "Special", "Spelriktningen byts – ni spelar motsols. Och allt byter håll: ska du DRICKA delar du i stället UT, ska du DELA UT dricker du själv. Trap och Debuff påverkas inte.", 1], ["hammer-time", "Hammer Time!", "Effect", "Special", "Alla klunkar är +1", 1], ["double-up", "Double Up!", "Effect", "Special", "Spelarna får dra två kort per runda", 1], ["wild-west", "Wild West", "Effect", "Special", "Fritt fram att satsa 1–5 klunkar och utmana vem du vill på duell, när du vill", 1], ["four-sure-fred", "Four-Sure Fred", "Character", "Karaktär", "I DUELLER: 1–3 räknas som 1 och du dricker 3 klunkar 4–6 räknas som 6 Övriga tärningsslag slår du som vanligt", 1], ["trapster-trevor", "Trapster Trevor", "Character", "Karaktär", "När en av dina Traps utlöses kan du slå en tärning. Slår du 1–3 behöver du inte slänga kortet – det kan användas en gång till.", 1], ["devastating-defeat", "Devastating Defeat", "Trap-", "Silver", "Förlorar du en duell dricker du +4", 4], ["misfire", "Misfire", "Trap-", "Guld", "Du har -2 i din nästa duell", 2], ["minefield", "Minefield", "Trap-", "Diamant", "När någon delar ut klunkar till dig, slå två tärningar. Två lika: du klarar dig och dricker som vanligt. Annars adderas tärningarna till antalet", 1], ["mexican-standoff", "Mexican Standoff", "Shopcard", "Silver", "Välj tre spelare som duellerar mot varandra. Alla slår, de två lägsta förlorar. Vinnaren delar ut 5 till en av förlorarna", 2], ["selective-drawing", "Selective Drawing", "Shopcard", "Silver", "På din tur: titta på de tre översta korten, välj ett och lägg tillbaka de andra i valfri ordning på toppen. Detta förbrukar din tur", 2], ["saloon-brawl", "Saloon Brawl", "Event", "Koppar", "Slagsmål bryter ut! Alla duellerar samtidigt mot sin vänstra granne. Förlorarna dricker 4", 4], ["cattle-stampede", "Cattle Stampede", "Event", "Silver", "Boskapen skenar genom stan! Alla slår en tärning. Alla som slår 1–3 trampas ner och dricker 4. Den som slår högst delar ut 4", 3], ["wanted-poster", "Wanted Poster", "Event", "Silver", "Sheriffen spikar upp en efterlysning. Spelaren med mest stöldgods är efterlyst – alla andra med stöldgods delar ut 2 klunkar var till den efterlysta. Har ingen stöldgods är det du", 3], ["last-train-out-of-town", "Last Train Out of Town", "Event", "Guld", "Tåget går! Slå en tärning i turordning från dig. Första spelaren som slår 6 hinner ombord och slipper undan. Slår ingen 6 på ett varv dricker alla 5", 2], ["dust-storm", "Dust Storm", "Event", "Diamant", "Sandstormen sveper in. Lägg alla Traps på bordet, blanda dem och dela ut dem slumpmässigt igen. Alla dricker 2 medan ni gör det", 1], ["sundown", "Sundown", "Effect", "Special", "Solen går ner. Alla klunkar är -1, men aldrig mindre än 1", 1], ["bounty-season", "Bounty Season", "Effect", "Special", "Alla stöldgods är dubbelt värda vid försäljning", 1], ["quickdraw-hour", "Quickdraw Hour", "Effect", "Special", "Alla dueller avgörs med två tärningar per spelare. Summan gäller.", 1], ["gold-fever", "Gold Fever", "Effect", "Special", "Varje gång en spelare delar ut 5 klunkar eller mer får den 1 guld.", 1], ["steady-hand", "Steady Hand", "Shopcard", "Koppar", "Slå om en tärning – din egen eller någon annans.", 2]]
+const NOT = {
+  nu: '<b>Nu.</b> «Importera CSV…» ersätter hela leken med filens rader i samma ögonblick. Ingen fråga, ingen statusmening; det enda som säger något är raden «Import ersätter korten i tabellen» som stod där innan. <code>Title</code> blir en egen kolumn bredvid <code>title</code>, och <code>typ</code>, <code>title</code>, <code>body</code> står tomma. <span class="minus">− 77 kort borta på ett klick. Ctrl+Z räddar, men bara den som vet att det gick fel.</span>',
+  a: '<b>A · Frågan (L9).</b> Tar importen bort kort frågar den först, i en remsa där importen begärdes: hur många som försvinner, vad som kommer i stället, och de nya kolumnerna. Fokus står på «Avbryt». En import som inte tar bort något går rakt igenom. Efteråt står statusmeningen i lådan. <span class="plus">+ Minsta ändringen; samma <code>Question</code> och samma regel som radens × och åtgärdsradens borttagning (L9: bekräftelsen står kvar fast ångra finns).</span> <span class="minus">− Siffror, inte kort: «1 kort tas bort» säger inte vilket av 77 som ändrades. <code>Title</code>-felet syns bara som ett ord i en mening.</span>',
+  b: '<b>B · Förhandsvisningen.</b> Filen läses men ingenting ändras: tabellen visar vad importen gör, med jämförelselägets färger (B4) — nya gröna, borttagna överstrukna, ändrade celler med det gamla värdet ovanför. Ovanför paras rubrikerna: <code>Title</code> föreslås bli <code>title</code>. «Importera» genomför, «Avbryt» lämnar allt orört. <span class="plus">+ Det enda alternativet som visar <i>vilka</i> kort och löser <code>Title</code>-felet i samma steg. Återanvänder B4:s form.</span> <span class="minus">− Dyrast att bygga; ett läge till i tabellen. Ett extra steg också för den som importerar en lek hon just exporterat och vet är rätt.</span>',
+  c: '<b>C · Slå ihop på id.</b> Importen tar aldrig bort. Ett id som finns uppdateras med filens värden, ett nytt id läggs till sist, och kort som inte finns i filen står kvar. Statusmeningen säger vad som hände och har en knapp till de nya korten. Att ta bort det filen saknar är ett eget steg efteråt, med fråga. <span class="plus">+ Det vanliga ärendet — exportera, rätta i kalkylarket, importera — kan inte längre radera något. Ingen fråga behövs på vägen in.</span> <span class="minus">− Ändrar vad import betyder: den som ville byta hela leken gör det i två steg. Två rader med <code>Title</code> blir två nya kort bland 77, vilket är lika fel men tystare. Kolumner som saknas i filen blir kvar orörda.</span>',
+}
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const $ = (q) => document.querySelector(q)
+const BAS = ['typ', 'title', 'body', 'raritet']
+const BREDD = { typ: 96, title: 170, raritet: 88 }
+const CHIPS = ['Character', 'Effect', 'Event', 'Location', 'Playcard', 'Shopcard', 'Trap-', 'Trap+', 'Diamant', 'Guld', 'Karaktär']
+const START = RADER.map(([id, title, typ, raritet, body, antal]) => ({ id, typ, title, body, raritet, antal: String(antal) }))
+
+// Filerna. Den första är granskningens; den andra är leken exporterad, rättad på tre ställen,
+// ett kort borttaget och ett nytt tillagt — det vanliga ärendet.
+const FILER = {
+  tva: { namn: 'kort-2.csv', rubriker: ['id', 'Title', 'kostnad'], rader: [{ id: 'x-1', Title: 'Hello', kostnad: '3' }, { id: 'x-2', Title: 'World', kostnad: '4' }] },
+  redig: (() => {
+    const rader = START.filter((r) => r.id !== 'steady-hand').map((r) => ({ ...r }))
+    rader.find((r) => r.id === 'duel-koppar').body = 'Utmana en spelare på duell. Förloraren dricker 2'
+    rader.find((r) => r.id === 'the-bank').raritet = 'Silver'
+    rader.find((r) => r.id === 'cactus-hugger').title = 'Cactus Hug'
+    rader.push({ id: 'dust-devil', typ: 'Event', title: 'Dust Devil', body: 'Virvelvinden tar allas hattar. Alla dricker 2.', raritet: 'Silver', antal: '2' })
+    return { namn: 'sals-saloon-kort.csv', rubriker: ['id', 'title', 'typ', 'body', 'raritet', 'antal'], rader }
+  })(),
+}
+
+const s = { v: 'nu', storlek: '1280x800', fil: 'tva' }
+const tom = () => ({ rader: START.map((r) => ({ ...r })), extra: [], osparat: false, lada: false, fraga: null, forhand: false, para: {}, statusLada: '', status: '', historik: [], markerat: null })
+Object.assign(s, tom())
+
+const kolumner = () => [...BAS, ...s.extra]
+// Vad en import av filen gör med leken, i det läge varianten importerar i.
+function plan(slaIhop) {
+  const fil = FILER[s.fil]
+  const kanda = new Set(['id', ...kolumner(), 'antal'])
+  const mal = (h) => (s.v === 'b' && s.para[h] ? s.para[h] : h)
+  const rubriker = fil.rubriker.filter((h) => h !== 'id' && mal(h) !== 'hoppa')
+  const nyaKol = [...new Set(rubriker.map(mal).filter((h) => !kanda.has(h)))]
+  const gamla = new Map(s.rader.map((r) => [r.id, r]))
+  const ids = new Set(fil.rader.map((r) => r.id))
+  const lasta = fil.rader.map((r) => { const o = { id: r.id }; for (const h of rubriker) o[mal(h)] = r[h] ?? ''; if (o.antal === undefined) o.antal = '1'; return o })
+  const nya = lasta.filter((r) => !gamla.has(r.id)).map((r) => r.id)
+  const bort = slaIhop ? [] : s.rader.filter((r) => !ids.has(r.id)).map((r) => r.id)
+  const andrade = {}
+  for (const r of lasta) {
+    const g = gamla.get(r.id)
+    if (!g) continue
+    const f = Object.keys(r).filter((k) => k !== 'id' && String(g[k] ?? '') !== String(r[k] ?? ''))
+    if (f.length) andrade[r.id] = f
+  }
+  const resultat = slaIhop
+    ? [...s.rader.map((g) => (ids.has(g.id) ? { ...g, ...lasta.find((r) => r.id === g.id) } : g)), ...lasta.filter((r) => !gamla.has(r.id))]
+    : lasta
+  const saknas = slaIhop ? s.rader.filter((r) => !ids.has(r.id)).map((r) => r.id) : []
+  return { fil, lasta, nya, bort, andrade, nyaKol, resultat, saknas, gamla }
+}
+function mening(p, slaIhop) {
+  const n = Object.keys(p.andrade).length
+  const delar = [p.nya.length ? `${p.nya.length} ${p.nya.length === 1 ? 'nytt' : 'nya'}` : '', n ? `${n} ändrade` : '', p.bort.length ? `${p.bort.length} togs bort` : ''].filter(Boolean)
+  let t = `<b>${p.lasta.length} kort lästes</b>${delar.length ? ': ' + delar.join(', ') : ', inget ändrades'}.`
+  if (p.nyaKol.length) t += ` ${p.nyaKol.length === 1 ? 'En ny kolumn' : p.nyaKol.length + ' nya kolumner'}: ${p.nyaKol.map((k) => `<b>${esc(k)}</b>`).join(', ')}.`
+  if (slaIhop && p.saknas.length) t += ` ${p.saknas.length} kort som inte fanns i filen står kvar.`
+  return t
+}
+function genomfor(p, slaIhop) {
+  s.historik.push({ rader: s.rader, extra: s.extra })
+  s.rader = p.resultat.map((r) => ({ ...r }))
+  s.extra = [...s.extra, ...p.nyaKol]
+  s.osparat = true
+  s.status = ''
+  s.statusLada = mening(p, slaIhop)
+  s.markerat = slaIhop ? { nya: p.nya, andrade: p.andrade, gamla: p.gamla, saknas: p.saknas } : null
+}
+
+// ── Fönstret ────────────────────────────────────────────────────────────────────────────
+const skarm = $('#skarm')
+function skala() {
+  const [W, H] = s.storlek.split('x').map(Number)
+  const scen = $('#mscen')
+  const f = Math.min(1, (scen.clientWidth - 24) / W, (scen.clientHeight - 36) / H)
+  skarm.style.width = W + 'px'; skarm.style.height = H + 'px'
+  skarm.style.transform = `scale(${f})`
+  $('#ram').style.width = W * f + 'px'; $('#ram').style.height = H * f + 'px'
+  $('#etikett').textContent = `${W} × ${H}` + (f < 1 ? ` · visas i ${Math.round(f * 100)} %` : '')
+  skarm.toggleAttribute('data-smal', W < 1200)
+}
+
+// ── Rita ────────────────────────────────────────────────────────────────────────────────
+function colgroup(kol) {
+  return `<colgroup><col style="width:44px"><col style="width:150px">${kol.map((f) => `<col${BREDD[f] ? ` style="width:${BREDD[f]}px"` : f === 'body' ? '' : ' style="width:100px"'}>`).join('')}<col style="width:80px"><col style="width:44px"></colgroup>`
+}
+function thead(kol, las) {
+  return `<thead><tr><th class="bock">${las ? '' : '<input type="checkbox" aria-label="Markera alla" tabindex="-1">'}</th><th class="id"><button type="button" class="sort" tabindex="-1"><span>id</span></button></th>${kol.map((f) => `<th><button type="button" class="sort" tabindex="-1">${BAS.includes(f) ? '<span class="ring"></span>' : ''}<span>${esc(f)}</span></button></th>`).join('')}<th><button type="button" class="sort" tabindex="-1"><span>antal</span></button></th><th class="spar">${las ? '' : '<button type="button" tabindex="-1" aria-label="Nytt fält">+</button>'}</th></tr></thead>`
+}
+function tabell() {
+  const kol = kolumner()
+  const m = s.markerat
+  const body = s.rader.map((r) => {
+    const ny = m?.nya.includes(r.id)
+    const and = m?.andrade[r.id] ?? []
+    return `<tr data-id="${esc(r.id)}"${ny ? ' data-change="added"' : ''}><td class="bock"><input type="checkbox" aria-label="Markera ${esc(r.id)}" tabindex="-1"></td><td class="id">${esc(r.id)}</td>${kol.map((f) => `<td${and.includes(f) ? ' data-change="moved"' : ''}>${and.includes(f) ? `<s class="was">${esc(m.gamla.get(r.id)[f] ?? '')}</s>` : ''}<input value="${esc(r[f] ?? '')}" aria-label="${esc(r.id)} ${esc(f)}"></td>`).join('')}<td><input value="${esc(r.antal ?? '1')}" data-tal aria-label="${esc(r.id)} antal"></td><td class="spar"><button type="button" tabindex="-1" aria-label="Ta bort ${esc(r.id)}">×</button></td></tr>`
+  }).join('')
+  return `<div class="t-rulla"><table class="t-data">${colgroup(kol)}${thead(kol)}<tbody>${body}</tbody></table></div><button type="button" class="t-ny" tabindex="-1">+ Nytt kort</button><p class="t-fot">${s.rader.length} av ${s.rader.length} kort<span>Osorterad: kortens ordning i spelet.</span></p>`
+}
+function forhand() {
+  const p = plan(false)
+  const fil = p.fil
+  const mal = (h) => s.para[h] ?? h
+  const kol = [...kolumner(), ...p.nyaKol]
+  const n = Object.keys(p.andrade).length
+  const nyaRubriker = fil.rubriker.filter((h) => h !== 'id' && !['id', ...kolumner(), 'antal'].includes(h))
+  const para = nyaRubriker.length ? `<div class="para"><b>Rubrikerna</b>${nyaRubriker.map((h) => {
+    const lik = kolumner().find((k) => k.toLowerCase() === h.toLowerCase())
+    const val = [...(lik ? [[lik, `blir ${lik} (samma namn, annan bokstav)`]] : []), [h, `ny kolumn ${h}`], ['hoppa', 'hoppas över']]
+    return `<label><code>${esc(h)}</code><select data-para="${esc(h)}">${val.map(([v, o]) => `<option value="${esc(v)}"${mal(h) === v ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></label>`
+  }).join('')}</div>` : ''
+  const cell = (r, f, and, gammal) => `<td${and.includes(f) ? ' data-change="moved"' : ''}>${and.includes(f) ? `<s class="was">${esc(gammal?.[f] ?? '')}</s>` : ''}<span class="las">${esc(r[f] ?? '')}</span></td>`
+  const rad = (r, typ) => {
+    const and = p.andrade[r.id] ?? []
+    return `<tr${typ ? ` data-change="${typ}"` : ''}><td class="bock"></td><td class="id">${esc(r.id)}</td>${kol.map((f) => cell(r, f, and, p.gamla.get(r.id))).join('')}<td><span class="las" style="text-align:right">${esc(r.antal ?? '1')}</span></td><td class="spar"></td></tr>`
+  }
+  const ororda = p.lasta.filter((r) => p.gamla.has(r.id) && !p.andrade[r.id]).length
+  const rows = [
+    ...p.lasta.filter((r) => !p.gamla.has(r.id)).map((r) => rad(r, 'added')),
+    ...p.lasta.filter((r) => p.andrade[r.id]).map((r) => rad(r, '')),
+    ...s.rader.filter((r) => p.bort.includes(r.id)).map((r) => rad(r, 'removed')),
+    ororda ? `<tr class="orort"><td colspan="${kol.length + 4}">${ororda} kort är oförändrade och visas inte</td></tr>` : '',
+  ].join('')
+  return `<div class="forhand"><div class="t-fraga" data-ton="neutral" role="region" aria-label="Förhandsvisning"><p>Förhandsvisning av ${esc(fil.namn)}: ingenting är ändrat ännu.<span class="summa"><span class="ny">${p.nya.length} ${p.nya.length === 1 ? 'nytt' : 'nya'}</span><span class="and">${n} ändrade</span><span class="bort">${p.bort.length} tas bort</span>${p.nyaKol.length ? `<span>${p.nyaKol.length === 1 ? 'ny kolumn' : p.nyaKol.length + ' nya kolumner'}: ${p.nyaKol.map(esc).join(', ')}</span>` : ''}</span></p><button type="button" id="b-avbryt">Avbryt</button><button type="button" data-kind="primary" id="b-ok">Importera</button></div>${para}</div>
+    <div class="t-rulla"><table class="t-data">${colgroup(kol)}${thead(kol, true)}<tbody>${rows}</tbody></table></div><p class="t-fot">Efter importen: ${p.resultat.length} kort<span>i dag ${s.rader.length}.</span></p>`
+}
+function lada() {
+  let h = ''
+  if (s.lada) {
+    const not = s.v === 'c' ? 'Importen uppdaterar kort med samma id och lägger till nya. Inget kort tas bort.' : 'Import ersätter korten i tabellen. Spara när resultatet ser rätt ut.'
+    const status = s.statusLada && s.v !== 'nu' ? `<span role="status"><span>${s.statusLada}</span>${s.v === 'c' && s.markerat?.nya.length ? '<button type="button" id="c-visa">Visa de nya</button>' : ''}${s.v === 'c' && s.markerat?.saknas.length ? `<button type="button" id="c-bort">${s.markerat.saknas.length === 1 ? `Ta bort ${esc(s.markerat.saknas[0])}…` : `Ta bort de ${s.markerat.saknas.length} som inte fanns i filen…`}</button>` : ''}</span>` : `<span>${not}</span>`
+    h += `<div class="t-lada"><button type="button" id="valj">Importera CSV…</button><button type="button" tabindex="-1">Ladda ner CSV</button>${status}</div>`
+  }
+  if (s.fraga) h += `<div class="t-fraga" role="alertdialog" aria-labelledby="fraga-t"><p id="fraga-t">${s.fraga.rubrik}<small>${s.fraga.detalj}</small></p><button type="button" id="f-avbryt">Avbryt</button><button type="button" data-kind="danger" id="f-ok">${s.fraga.ja}</button></div>`
+  return h
+}
+function rita(fokus) {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  for (const b of document.querySelectorAll('[data-s]')) b.setAttribute('aria-pressed', String(b.dataset.s === s.storlek))
+  $('#anteckning').innerHTML = NOT[s.v]
+  $('#fil').value = s.fil
+  $('#chips').innerHTML = CHIPS.map((c) => `<button type="button" class="t-chip" tabindex="-1">${c}</button>`).join('')
+  $('#importera').setAttribute('aria-expanded', String(s.lada))
+  $('#lada').innerHTML = lada()
+  const top = $('.t-rulla')?.scrollTop ?? 0
+  $('#vy').innerHTML = s.forhand ? forhand() : tabell()
+  if (!s.forhand) $('.t-rulla').scrollTop = top
+  $('#status').textContent = s.status
+  $('#sparat').textContent = s.osparat ? 'Osparat' : 'Sparat'
+  $('#sparat').toggleAttribute('data-osparat', s.osparat)
+  $('#m-antal').textContent = s.rader.length
+  $('#m-steg').textContent = s.historik.length
+  skala()
+  if (fokus) document.querySelector(fokus)?.focus({ preventScroll: true })
+}
+const satt = (k, v) => { const u = new URL(location.href); u.searchParams.set(k, v); history.replaceState(null, '', u) }
+function byt(v) { s.v = v; satt('v', v); Object.assign(s, tom()); rita() }
+
+function valj() {
+  s.status = ''
+  if (s.v === 'nu') { genomfor(plan(false), false); s.statusLada = ''; return rita('#valj') }
+  if (s.v === 'c') { genomfor(plan(true), true); return rita('#valj') }
+  if (s.v === 'b') {
+    s.para = {}
+    for (const h of FILER[s.fil].rubriker) { const lik = kolumner().find((k) => k !== h && k.toLowerCase() === h.toLowerCase()); if (lik) s.para[h] = lik }
+    s.forhand = true; return rita('#b-avbryt')
+  }
+  const p = plan(false)
+  if (!p.bort.length) { genomfor(p, false); return rita('#valj') }
+  const alla = p.bort.length === s.rader.length
+  const namn = p.bort.length <= 3 ? ` (${p.bort.join(', ')})` : ''
+  const n = Object.keys(p.andrade).length
+  s.fraga = {
+    rubrik: alla ? `Ersätta alla ${s.rader.length} kort med ${p.lasta.length} från ${esc(p.fil.namn)}?` : `Importen tar bort ${p.bort.length} kort${esc(namn)} som inte finns i ${esc(p.fil.namn)}.`,
+    detalj: [`${p.nya.length} ${p.nya.length === 1 ? 'nytt kort' : 'nya kort'}`, n ? `${n} ändrade` : '', p.nyaKol.length ? `${p.nyaKol.length === 1 ? 'en ny kolumn' : p.nyaKol.length + ' nya kolumner'}: ${p.nyaKol.map(esc).join(', ')}` : ''].filter(Boolean).join(', ') + '. Ctrl+Z tar tillbaka importen.',
+    ja: alla ? 'Ja, ersätt korten' : `Ja, importera och ta bort ${p.bort.length}`,
+    p,
+  }
+  rita('#f-avbryt')
+}
+function angra() {
+  const f = s.historik.pop()
+  if (!f) return
+  s.rader = f.rader; s.extra = f.extra; s.markerat = null; s.statusLada = ''; s.fraga = null
+  s.osparat = s.historik.length > 0
+  s.status = 'Tog tillbaka: en ändring i kortleken'
+  rita()
+}
+
+document.body.addEventListener('click', (ev) => {
+  const b = ev.target.closest('button')
+  if (!b) return
+  if (b.dataset.v) byt(b.dataset.v)
+  else if (b.dataset.s) { s.storlek = b.dataset.s; satt('s', s.storlek); rita() }
+  else if (b.id === 'aterstall') byt(s.v)
+  else if (b.id === 'importera') { s.lada = !s.lada; if (!s.lada) s.fraga = null; rita(s.lada ? '#valj' : '#importera') }
+  else if (b.id === 'valj') valj()
+  else if (b.id === 'f-avbryt') { s.fraga = null; rita('#valj') }
+  else if (b.id === 'f-ok') { const f = s.fraga; s.fraga = null; if (f.bara) { s.historik.push({ rader: s.rader, extra: s.extra }); s.rader = s.rader.filter((r) => !f.bara.includes(r.id)); s.statusLada = `<b>${f.bara.length} kort togs bort.</b> Leken är nu filens ${s.rader.length}.`; s.markerat = null } else genomfor(f.p, false); rita('#valj') }
+  else if (b.id === 'b-avbryt') { s.forhand = false; rita('#valj') }
+  else if (b.id === 'b-ok') { genomfor(plan(false), false); s.forhand = false; rita('#valj') }
+  else if (b.id === 'c-visa') {
+    const id = s.markerat.nya[0]
+    const tr = document.querySelector(`tr[data-id="${CSS.escape(id)}"]`)
+    tr?.scrollIntoView({ block: 'center' }); tr?.querySelector('td:nth-child(4) input')?.focus({ preventScroll: true })
+  }
+  else if (b.id === 'c-bort') {
+    const bara = s.markerat.saknas
+    s.fraga = { rubrik: `Ta bort ${bara.length} kort som inte fanns i ${esc(FILER[s.fil].namn)}?`, detalj: (bara.length <= 3 ? bara.join(', ') : `${bara.slice(0, 3).join(', ')} och ${bara.length - 3} till`) + '. Ctrl+Z tar tillbaka.', ja: `Ja, ta bort ${bara.length}`, bara }
+    rita('#f-avbryt')
+  }
+})
+document.body.addEventListener('change', (ev) => {
+  if (ev.target.id === 'fil') { s.fil = ev.target.value; s.fraga = null; if (s.forhand) { s.forhand = false; valj() } else rita() }
+  if (ev.target.dataset.para) { s.para[ev.target.dataset.para] = ev.target.value; rita(`[data-para="${CSS.escape(ev.target.dataset.para)}"]`) }
+})
+document.body.addEventListener('input', (ev) => { if (ev.target.closest('.t-data')) { s.osparat = true; $('#sparat').textContent = 'Osparat'; $('#sparat').setAttribute('data-osparat', '') } })
+addEventListener('keydown', (ev) => {
+  const skriver = ev.target.closest('input, textarea, select, [contenteditable]')
+  if ((ev.ctrlKey || ev.metaKey) && !ev.shiftKey && ev.key.toLowerCase() === 'z' && !skriver) { ev.preventDefault(); angra(); return }
+  if (ev.key === 'Escape' && s.fraga) { s.fraga = null; rita('#valj'); return }
+  if (ev.key === 'Escape' && s.forhand) { s.forhand = false; rita('#valj'); return }
+  if (skriver) return
+  if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  byt(alla[(alla.indexOf(s.v) + (ev.key === 'ArrowRight' ? 1 : 3)) % 4])
+})
+new ResizeObserver(skala).observe($('#mscen'))
+
+const q = new URLSearchParams(location.search)
+if (['nu', 'a', 'b', 'c'].includes(q.get('v'))) s.v = q.get('v')
+if (['1024x768', '1280x800'].includes(q.get('s'))) s.storlek = q.get('s')
+rita()
+</script>
+</body>
+</html>

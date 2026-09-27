@@ -126,3 +126,12 @@ describe('buildBlankProject', () => {
     expect(english.setup.counters).toEqual([{ name: 'Score', start: 0 }])
   })
 })
+
+// Swedish Excel writes `;` (#479): the import said «behöver en id-kolumn» about a file that had
+// one. The separator is the one the header line is split by.
+describe('parseCsv with a semicolon (#479)', () => {
+  it('reads the separator off the header line, and keeps a comma inside a value', () => {
+    expect(parseCsv('id;title;antal\r\ndrake;"Drake, stor";2\r\n')).toEqual({ headers: ['id', 'title', 'antal'], rows: [{ id: 'drake', title: 'Drake, stor', antal: '2' }] })
+    expect(parseCsv('id,title\na;b;c,d').rows).toEqual([{ id: 'a;b;c', title: 'd' }])
+  })
+})
