@@ -42,7 +42,9 @@ function scene(): Snapshot {
       { type: CARD, cardRef: 'Skogsvakten', zone: setup.floor, x: 520, y: 180, face: 'front' as const },
     ],
   }
-  return project(initialState('v1', def, registry), registry, null)
+  const view = project(initialState('v1', def, registry), registry, null)
+  // Somebody sits at every seat: a hand nobody sits at takes no card and lights no band (#482 fynd 7).
+  return { ...view, seats: view.seats.map((s) => ({ ...s, name: s.name ?? s.id })) }
 }
 
 let browser: Browser
