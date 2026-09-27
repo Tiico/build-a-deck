@@ -12,6 +12,7 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'title.login': 'Sign in',
   'title.new': 'New game',
   'title.claim': 'Save the table',
+  'title.invite': 'Invitation',
   'title.editor': 'Editor',
   'title.table': 'The table',
   'title.join': 'Join room {code}',

@@ -19,6 +19,14 @@ describe('which route a path is', () => {
     expect(routeOf(path)).toBe(route)
   })
 
+  // The link in an invitation mail is a page of its own (#475), and its tab is not "the page does
+  // not exist" while the invitation is being opened.
+  it('reads an invitation link as the invitation, whatever its token', () => {
+    expect(routeOf('/invites/abc_DEF-123')).toBe('invite')
+    expect(documentTitle('invite', {})).toBe('Inbjudan · build-your-deck')
+    expect(routeOf('/invites')).toBe('unknown')
+  })
+
   it('reads a path nothing serves as its own route rather than as the start page', () => {
     expect(routeOf('/spel/4KJ2')).toBe('unknown')
     expect(routeOf('/table/')).toBe('unknown')

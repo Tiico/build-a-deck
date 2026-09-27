@@ -377,7 +377,7 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       return json(res, 404, { error: 'unknown face' })
     }
     if (opts.staticDir && (req.method === 'GET' || req.method === 'HEAD')) {
-      if (await serveStatic(opts.staticDir, url.pathname, req.headers['accept-encoding'], res)) return
+      if (await serveStatic(opts.staticDir, url.pathname, req.headers['accept'], req.headers['accept-encoding'], res)) return
     }
     json(res, 404, { error: 'not found' })
   } catch (err) {
@@ -406,9 +406,14 @@ const MIME: Record<string, string> = {
 // (/table, /play, …) fall back to index.html so the client can pick the page. Never a byte
 // outside the directory.
 const API_PREFIXES = ['/sessions', '/projects', '/faces', '/health', '/rooms', '/guests', '/me', '/invites']
-async function serveStatic(dir: string, pathname: string, accept: string | undefined, res: ServerResponse): Promise<boolean> {
+// The one API path that is also a page: the invitation link in the mail (D3, #475). A browser
+// following it asks for HTML and gets the app, which accepts the invitation with a POST to the
+// same path; anything else asking gets the API's answer.
+const PAGE_PATHS = [/^\/invites\/[A-Za-z0-9_-]+$/]
+async function serveStatic(dir: string, pathname: string, wants: string | undefined, accept: string | undefined, res: ServerResponse): Promise<boolean> {
+  const page = PAGE_PATHS.some((p) => p.test(pathname)) && (wants ?? '').includes('text/html')
   // The API never falls back to the app, whatever is or is not mounted.
-  if (API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))) return false
+  if (!page && API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))) return false
   const root = resolve(dir)
   const wanted = resolve(root, '.' + normalize(decodeURIComponent(pathname)))
   if (wanted !== root && !wanted.startsWith(root + sep)) return false

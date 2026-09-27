@@ -16,23 +16,27 @@ export const svAccount = {
   'login.email.placeholder': 'din@epost.se',
   'login.submit': 'Skicka inloggningslänk',
   'login.error.too-many': 'Vi har redan skickat flera länkar till den adressen. Kolla mejlen, eller vänta en stund.',
+  'login.error.empty': 'Skriv in din e-postadress först.',
+  'login.error.at': 'Adressen behöver ett @.',
   'login.error.invalid': 'Det där ser inte ut som en e-postadress.',
   'login.error.failed': 'Det gick inte att skicka. Försök igen.',
   'login.no-password': 'Inget lösenord. Länken i mejlet loggar in dig; första gången skapar den ditt konto.',
   'login.guest': 'Ska du bara spela? Skanna QR-koden på bordet — inget konto behövs.',
 
   // "Mina spel" (G1): kontots spel som ett rutnät, och bordet som just startades.
-  'home.loading': 'Laddar…',
+  'home.loading': 'Hämtar dina spel…',
   'home.title': 'Mina spel',
   'home.logout': 'logga ut',
   'home.claimed': 'Sparat: du spelade {game} som {name}. Enkäten och flaggorna hör nu till ditt konto.',
   'home.claimed.some-table': 'ett bord',
   'home.started': 'Bordet är igång. Rumskoden är {code}.',
   'home.started.open': 'Öppna bordet',
+  'home.started.open.aria': 'Öppna bordet (öppnas i ny flik)',
   'home.remove.title': 'Ta bort spelet',
   'home.remove.ask': 'Ta bort {name}? Hela historien följer med, och det går inte att ångra.',
   'home.remove.keep': 'Behåll',
   'home.remove.confirm': 'Ta bort',
+  'home.removed': '{name} är borttaget.',
   'home.menu.more': 'Fler val för {name}',
   'home.menu.label': 'Val för {name}',
   'home.menu.start': 'Starta bord',
@@ -66,19 +70,23 @@ export const svAccount = {
   'home.played.running': 'pågår',
   'home.played.flags': '{n} flaggade',
   'home.played.back': 'Tillbaka till bordet',
+  'home.played.seat': 'Plats {seat}',
+  'home.played.watched': 'Åskådare',
 
   // Att spara en gästsession till kontot (G1): dit telefonens länk leder.
   'claim.no-token': 'Ingen länk angiven.',
-  'claim.loading': 'Laddar…',
   'claim.saving': 'Sparar…',
   'claim.lead': 'Logga in för att spara bordet till ditt konto.',
   'claim.help': 'Bordet du spelade vid följer med till kontot du loggar in med.',
+  'claim.failed.heading': 'Bordet kunde inte sparas',
+  'claim.taken.heading': 'Bordet är redan sparat',
   'claim.error.other': 'Det här bordet är redan sparat till ett annat konto.',
   'claim.error.unknown': 'Länken gäller inte. Gå tillbaka till telefonen och tryck på "Spara till ditt konto" igen.',
 
   // Att följa en inbjudan till ett spel (D3).
   'invite.title': 'Inbjudan',
   'invite.opening': 'Öppnar spelet…',
+  'invite.spent.heading': 'Inbjudan gäller inte längre',
   'invite.spent': 'Den här inbjudan är använd eller har gått ut. Be den som bjöd in dig om en ny.',
 
   // Guidad start (L6): tre steg som gör dokumentet editorn sedan redigerar.

@@ -33,7 +33,13 @@ export function helpPlacement(anchor: Anchor, wants: Wants, view: Viewport): Hel
   const style: CSSProperties = { ['--byd-place-room' as string]: `${at.room}px` }
   if (at.y === 'down') style.top = `${anchor.y + anchor.h + GAP}px`
   else style.bottom = `${view.h - anchor.y + GAP}px`
+  const w = wants.w || HELP_WIDTH
+  // Hanging from the far edge is only an answer when the far side has the room. On a phone
+  // neither side of a question mark in the middle of a line may have it, and the far edge then
+  // ran the box off the window's other side instead (#475): it is held against the window's own
+  // edge, as near the ring as the window allows.
   if (at.x === 'start') style.left = `${anchor.x}px`
-  else style.right = `${view.w - (anchor.x + anchor.w)}px`
+  else if (anchor.x + anchor.w - w >= GAP) style.right = `${view.w - (anchor.x + anchor.w)}px`
+  else style.left = `${Math.max(GAP, Math.min(anchor.x, view.w - w - GAP))}px`
   return { y: at.y, x: at.x, style }
 }

@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
-import { logIn, makeProject } from '../../support/api.js'
+import { join, logIn, makeProject, makeTable } from '../../support/api.js'
 
 // The way in, at the widths the audit checks. `/` is the first screen a creator ever sees and the
 // last one they come back to, and it was the only route with no measured check of its own — which
@@ -139,5 +139,77 @@ test.describe('the "Nytt spel" tile on a row of its own (#231)', () => {
     expect(cardH).toBeGreaterThan(0)
     const box = (await page.locator('.byd-home-game[data-new]').boundingBox())!
     expect(box.height).toBeGreaterThanOrEqual(cardH)
+  })
+})
+
+// A game's menu and the question before it is taken away (#475). At 390 with six games the
+// question used to stand at the top of the page, a thousand pixels above the ⋯ that asked for it,
+// with the focus left on <body> — so the press looked like it did nothing at all.
+test.describe('taking a game away on a phone (#475)', () => {
+  test.use({ viewport: { width: 390, height: 844 }, locale: LANG, hasTouch: true, isMobile: true })
+
+  test('asks where it can be seen, with the focus on the answer that keeps the game, and every control a fingertip wide', async ({ page }) => {
+    await logIn(page.request)
+    for (let i = 1; i <= 6; i++) await makeProject(page.request, { name: `Spel ${i}`, cards: 0 })
+    await page.goto('/')
+    const last = page.getByRole('button', { name: 'Fler val för Spel 1' })
+    await last.scrollIntoViewIfNeeded()
+    await last.tap()
+    await expect(page.getByRole('group', { name: 'Val för Spel 1' })).toBeVisible()
+    expect(await tooSmall(page)).toEqual([])
+
+    await page.getByRole('button', { name: 'Ta bort spelet' }).tap()
+    const question = page.getByRole('alertdialog', { name: 'Ta bort spelet' })
+    await expect(question.getByRole('button', { name: 'Behåll' })).toBeFocused()
+    await expect(question).toBeInViewport({ ratio: 1 })
+    expect(await tooSmall(page)).toEqual([])
+    expect(await sideways(page)).toBe(0)
+  })
+})
+
+// The rest of "Mina spel" on a phone (#475): the heading on one line with the account beneath it
+// rather than squeezed beside it, and the help beside «Inget spel ännu.» inside the window — it
+// used to open at x = −90, hanging from the far edge of a question mark that had no room on
+// either side.
+test.describe('"Mina spel" on a phone (#475)', () => {
+  test.use({ viewport: { width: 390, height: 844 }, locale: LANG, hasTouch: true, isMobile: true })
+
+  test('keeps the heading on one line and the help for an empty account inside the window', async ({ page }) => {
+    await logIn(page.request)
+    await page.goto('/')
+    const heading = page.getByRole('heading', { name: 'Mina spel' })
+    await expect(heading).toBeVisible()
+    // Lines as the text itself was laid out: one rectangle per line box the words landed in.
+    const lines = await heading.evaluate((el) => {
+      const range = document.createRange()
+      range.selectNodeContents(el)
+      return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size
+    })
+    expect(lines, 'the heading is one line').toBeLessThanOrEqual(1)
+
+    await page.getByRole('button', { name: 'Hjälp om spel' }).tap()
+    const box = (await page.locator('.byd-help-box').boundingBox())!
+    expect(box.x).toBeGreaterThanOrEqual(0)
+    expect(box.x + box.width).toBeLessThanOrEqual(390)
+    expect(await sideways(page)).toBe(0)
+  })
+})
+
+// A table the account sat at (#475): the way back to it was a 19 px line of text, and the seat's
+// letter was a coloured disc with nothing to say which seat it was.
+test.describe('"Bord du spelat vid" (#475)', () => {
+  test.use({ viewport: { width: 390, height: 844 }, locale: LANG, hasTouch: true, isMobile: true })
+
+  test('gives the way back to the table a fingertip, and names the seat', async ({ page }) => {
+    await logIn(page.request)
+    const table = await makeTable(page.request)
+    const seat = table.seats[0]!
+    const admission = await join(page.request, table, { name: 'Ada', seat })
+    const claimed = await page.request.post('/guests/claim', { data: { token: admission.token } })
+    expect(claimed.ok()).toBe(true)
+    await page.goto('/')
+    await expect(page.getByText('Bord du spelat vid')).toBeVisible()
+    await expect(page.getByRole('img', { name: `Plats ${seat}` })).toBeVisible()
+    expect(await tooSmall(page)).toEqual([])
   })
 })

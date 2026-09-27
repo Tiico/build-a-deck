@@ -63,6 +63,27 @@ describe('serving the web app (DRIFT §1)', () => {
     expect((await fetch(`${http}/assets/missing.js`)).status).toBe(404)
   })
 
+  // The invitation in the mail is `/invites/<token>` on the app's own origin (D3, #475): a browser
+  // following it asks for a page and must get the app, which then accepts it with a POST to the
+  // very same path. Anything that is not a browser asking for a page still gets the API's answer.
+  it('hands the invitation link to the app when a browser asks for a page, and keeps the API answer otherwise', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'byd-static-'))
+    await writeFile(join(dir, 'index.html'), '<!doctype html><title>byd</title>')
+    const http = await serve(dir)
+    const page = await fetch(`${http}/invites/abc_DEF-123`, { headers: { accept: 'text/html,application/xhtml+xml,*/*;q=0.8' } })
+    expect(page.status).toBe(200)
+    expect(page.headers.get('content-type')).toMatch(/text\/html/)
+    expect(await page.text()).toContain('<title>byd</title>')
+    const head = await fetch(`${http}/invites/abc_DEF-123`, { method: 'HEAD', headers: { accept: 'text/html' } })
+    expect(head.status).toBe(200)
+    const api = await fetch(`${http}/invites/abc_DEF-123`, { headers: { accept: 'application/json' } })
+    expect(api.status).toBe(404)
+    expect(await api.json()).toEqual({ error: 'not found' })
+    // Only the link itself is a page; the rest of the prefix stays the API's.
+    expect((await fetch(`${http}/invites`, { headers: { accept: 'text/html' } })).status).toBe(404)
+    expect((await fetch(`${http}/invites/a/b`, { headers: { accept: 'text/html' } })).status).toBe(404)
+  })
+
   it('without STATIC_DIR unknown paths are 404 as before', async () => {
     const http = await serve()
     expect((await fetch(`${http}/`)).status).toBe(404)

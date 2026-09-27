@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { HomePage } from '../src/account/HomePage.js'
+import { StatusLive } from '../src/status/StatusLive.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { projectDoc } from './project-doc.js'
@@ -183,6 +184,9 @@ describe('the tables the account sat at (G1)', () => {
     expect(card.textContent).toContain('du var Ada')
     expect(card.textContent).toContain('pågår')
     expect(screen.getByRole('status').textContent).toMatch(/Sparat.*som Ada/)
+    // Said once (#475): the address no longer carries it, so a reload does not say it again.
+    expect(new URLSearchParams(location.search).get('claimed')).toBeNull()
+    expect(new URLSearchParams(location.search).get('server')).toBe(run.http)
   })
 })
 
@@ -258,6 +262,49 @@ describe('a game on the home page (G1)', () => {
     }
   })
 
+  // While the list is on its way (#475): the page said nothing and showed «＋ Nytt spel» alone in
+  // the first column, which then jumped to the third when the games arrived.
+  it('says it is fetching the games, and draws no tile until it knows where the tiles go', async () => {
+    const real = globalThis.fetch
+    let land = (): void => undefined
+    const held = new Promise<void>((resolve) => {
+      land = resolve
+    })
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (new URL(String(input instanceof Request ? input.url : input)).pathname === '/projects') await held
+      return real(input, init)
+    })
+    try {
+      await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+      await followMailedLink()
+      history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+      render(<HomePage />)
+      expect(await screen.findByText('Hämtar dina spel…')).toBeTruthy()
+      expect(document.querySelector('.byd-home-game[data-new]')).toBeNull()
+      land()
+      await waitFor(() => expect(document.querySelector('.byd-home-game[data-new]')).toBeTruthy())
+      expect(screen.queryByText('Hämtar dina spel…')).toBeNull()
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  // The cards are a second answer; when it never comes the places stop shimmering rather than
+  // promising a card for ever (#475).
+  it('stops waiting for the card when what it takes to draw it could not be had', async () => {
+    const real = globalThis.fetch
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input instanceof Request ? input.url : input).includes('/me/cards')) return new Response('{}', { status: 500 })
+      return real(input, init)
+    })
+    try {
+      await home()
+      await waitFor(() => expect(card().querySelector('.byd-home-card')!.hasAttribute('data-waiting')).toBe(false))
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
   it('says it has never been played, and afterwards when it last was', async () => {
     await home()
     expect(card().textContent).toContain('aldrig spelat')
@@ -294,6 +341,79 @@ describe('a game on the home page (G1)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ta bort' }))
     await waitFor(() => expect(document.querySelector(`[data-project="${run.projectId}"]`)).toBeNull())
     expect((await (await fetch(`${run.http}/projects/${run.projectId}`)).status)).toBe(404)
+  })
+})
+
+// The question and the menu answer the keyboard the way every other one in the product does
+// (#475): the question takes the focus where it is read and Escape gives it back to ⋯, the menu
+// closes on Escape, on a press outside it and on the focus walking out of it, and nothing that
+// goes away leaves the focus standing on <body>.
+describe('the game menu and the question on the home page (#475)', () => {
+  async function home(): Promise<void> {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    await followMailedLink()
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    render(
+      <StatusLive>
+        <HomePage />
+      </StatusLive>,
+    )
+    await screen.findByText('Skogens herrar')
+  }
+  const more = () => screen.getByRole('button', { name: 'Fler val för Skogens herrar' })
+  const menu = () => screen.queryByRole('group', { name: 'Val för Skogens herrar' })
+
+  it('opens the menu with the focus on its first choice, and Escape closes it back onto ⋯', async () => {
+    await home()
+    fireEvent.click(more())
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Starta bord' })))
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    expect(menu()).toBeNull()
+    expect(document.activeElement).toBe(more())
+  })
+
+  it('closes the menu on a press outside it and when the focus walks out of it', async () => {
+    await home()
+    fireEvent.click(more())
+    expect(menu()).toBeTruthy()
+    fireEvent.pointerDown(screen.getByText('Mina spel'))
+    expect(menu()).toBeNull()
+
+    fireEvent.click(more())
+    const first = await screen.findByRole('button', { name: 'Starta bord' })
+    fireEvent.blur(first, { relatedTarget: screen.getByRole('link', { name: /Nytt spel/ }) })
+    expect(menu()).toBeNull()
+  })
+
+  it('asks with the focus on the answer that keeps the game, and Escape takes the question back onto ⋯', async () => {
+    await home()
+    fireEvent.click(more())
+    fireEvent.click(await screen.findByRole('button', { name: 'Ta bort spelet' }))
+    const question = screen.getByRole('alertdialog', { name: 'Ta bort spelet' })
+    await waitFor(() => expect(document.activeElement).toBe(within(question).getByRole('button', { name: 'Behåll' })))
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    await waitFor(() => expect(document.activeElement).toBe(more()))
+  })
+
+  it('keeps the focus on ⋯ after a table is started, and says the way to it opens a new tab', async () => {
+    await home()
+    fireEvent.click(more())
+    fireEvent.click(await screen.findByRole('button', { name: 'Starta bord' }))
+    await waitFor(() => expect(document.activeElement).toBe(more()))
+    const open = await screen.findByRole('link', { name: 'Öppna bordet (öppnas i ny flik)' })
+    expect(open.getAttribute('target')).toBe('_blank')
+  })
+
+  it('says the game is gone once it is, and leaves the focus on the heading rather than on nothing', async () => {
+    await home()
+    fireEvent.click(more())
+    fireEvent.click(await screen.findByRole('button', { name: 'Ta bort spelet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort' }))
+    await waitFor(() => expect(document.querySelector(`[data-project="${run.projectId}"]`)).toBeNull())
+    await waitFor(() => expect(document.querySelector('[data-status-live="polite"]')?.textContent).toBe('Skogens herrar är borttaget.'))
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Mina spel' }))
   })
 })
 

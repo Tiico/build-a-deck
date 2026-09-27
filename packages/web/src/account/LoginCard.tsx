@@ -1,8 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { requestLink } from './api.js'
 import { markPitchSeen, pitchSeen } from './pitch.js'
 import { Help } from '../editor/HelpDrawer.js'
-import { LanguagePicker, useT } from '../i18n/index.js'
+import { LanguagePicker, useT, type Key } from '../i18n/index.js'
 
 // Logging in (G1, prototype A): one field, one button, one line about what logging in is for.
 // Never a password, never a word about whether the address is known. The password-less link and
@@ -17,12 +17,29 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
     if (pitch) markPitchSeen()
   }, [pitch])
   const [email, setEmail] = useState('')
-  const [state, setState] = useState<'open' | 'busy' | 'sent' | 'too-many' | 'invalid' | 'failed'>('open')
+  const [state, setState] = useState<State>('open')
+  const field = useRef<HTMLInputElement>(null)
+  // The sentence under the field is tied to it, and the field says it is the one at fault when it
+  // is (#475). Both go the moment the address is edited: a sentence about the old address standing
+  // under a new one is a sentence about nothing.
+  const errorId = useId()
+  const error = ERRORS[state] ?? null
+  // The address is the one at fault for these, and not for a service that is busy or down.
+  const faulty = state === 'empty' || state === 'at' || state === 'invalid'
   const submit = async (e: FormEvent) => {
     e.preventDefault()
+    // An address that is not one yet is said here, before the server is asked (#475): the button
+    // used to be toned and Enter did nothing, so nobody was told what was missing. Said the way
+    // the wizard says «Spelet behöver ett namn först», with the focus put back where the fix is.
+    const address = email.trim()
+    if (!address || !address.includes('@')) {
+      setState(address ? 'at' : 'empty')
+      field.current?.focus()
+      return
+    }
     setState('busy')
     try {
-      const result = await requestLink(http, email.trim(), next)
+      const result = await requestLink(http, address, next)
       if (result === 'logged-in') {
         onNavigate(next)
         return
@@ -51,14 +68,33 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
           <span>{t('login.sent.body', { email: email.trim() })}</span>
         </div>
       ) : (
-        <form onSubmit={(e) => void submit(e)}>
-          <input type="email" placeholder={t('login.email.placeholder')} aria-label={t('login.email')} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" autoFocus required />
-          <button type="submit" className="byd-primary" disabled={state === 'busy' || !email.includes('@')}>
+        // The browser's own bubble is not the product's voice and says nothing a screen reader
+        // keeps, so the card checks the address itself.
+        <form noValidate onSubmit={(e) => void submit(e)}>
+          <input
+            ref={field}
+            type="email"
+            placeholder={t('login.email.placeholder')}
+            aria-label={t('login.email')}
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              if (error) setState('open')
+            }}
+            autoComplete="email"
+            autoFocus
+            required
+            {...(faulty ? { 'aria-invalid': true } : {})}
+            {...(error ? { 'aria-describedby': errorId } : {})}
+          />
+          <button type="submit" className="byd-primary" disabled={state === 'busy'}>
             {t('login.submit')}
           </button>
-          {state === 'too-many' && <p className="byd-login-error" role="alert">{t('login.error.too-many')}</p>}
-          {state === 'invalid' && <p className="byd-login-error" role="alert">{t('login.error.invalid')}</p>}
-          {state === 'failed' && <p className="byd-login-error" role="alert">{t('login.error.failed')}</p>}
+          {error && (
+            <p id={errorId} className="byd-login-error" role="alert">
+              {t(error)}
+            </p>
+          )}
         </form>
       )}
       {/* The reader who cannot read this card is the one who most needs the switch on it. */}
@@ -68,4 +104,14 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
       </label>
     </div>
   )
+}
+
+type State = 'open' | 'busy' | 'sent' | 'empty' | 'at' | 'too-many' | 'invalid' | 'failed'
+// What the card says under the field in each state that has something to say.
+const ERRORS: Partial<Record<State, Key>> = {
+  empty: 'login.error.empty',
+  at: 'login.error.at',
+  'too-many': 'login.error.too-many',
+  invalid: 'login.error.invalid',
+  failed: 'login.error.failed',
 }

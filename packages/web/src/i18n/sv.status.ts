@@ -18,6 +18,7 @@ export const svStatus = {
   'title.login': 'Logga in',
   'title.new': 'Nytt spel',
   'title.claim': 'Spara bordet',
+  'title.invite': 'Inbjudan',
   'title.editor': 'Editor',
   'title.table': 'Bordet',
   'title.join': 'Gå med i rum {code}',

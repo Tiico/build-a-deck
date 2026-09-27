@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { execFile } from 'node:child_process'
-import { rmSync } from 'node:fs'
+import { appendFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { build } from 'vite'
@@ -16,6 +16,7 @@ const HERE = import.meta.dirname
 const WEB = join(HERE, '..', '..', 'web')
 const SERVER_MAIN = join(HERE, '..', '..', 'server', 'src', 'main.ts')
 const OUT = join(HERE, '..', '.stack', 'web')
+const LOG = join(HERE, '..', '.stack', 'server.log')
 
 /** The running stack, and the one way to take it down again. */
 export type Stack = {
@@ -30,6 +31,12 @@ export type Stack = {
    * built its own copy would be building the same files a second time to ask about them.
    */
   webDist: string
+  /**
+   * Everything the server has said, as it said it. It is where the mail goes when no mail service
+   * is configured (`ConsoleMailer`), which is what lets a journey follow the link in an
+   * invitation the way its recipient would (#475) — the box sends the same text through Resend.
+   */
+  serverLog: string
   stop: () => Promise<void>
 }
 
@@ -61,7 +68,7 @@ export async function start(): Promise<Stack> {
 
     const server = await listen({ STATIC_DIR: OUT, ...(db ? { DATABASE_URL: db.url } : {}) })
     closers.push(server.stop)
-    return { origin: server.origin, store: db ? 'postgres' : 'memory', webDist: OUT, stop }
+    return { origin: server.origin, store: db ? 'postgres' : 'memory', webDist: OUT, serverLog: LOG, stop }
   } catch (cause) {
     await stop()
     throw cause
@@ -81,17 +88,23 @@ export async function start(): Promise<Stack> {
  */
 async function listen(env: Record<string, string>): Promise<{ origin: string; stop: () => Promise<void> }> {
   let port = await free()
+  mkdirSync(join(LOG, '..'), { recursive: true })
   for (let attempt = 0; attempt < 8; attempt++) {
+    const origin = `http://127.0.0.1:${port}`
+    // The links the server writes into mail are on its public origin, as they are on the box.
     const child = spawn('pnpm', ['exec', 'tsx', SERVER_MAIN], {
       cwd: join(HERE, '..'),
-      env: { ...process.env, ...env, PORT: String(port), AUTH_BYPASS: 'true', IDLE_EVICT_MS: String(24 * 3600_000), IDLE_END_MS: String(24 * 3600_000) },
+      env: { ...process.env, ...env, PORT: String(port), PUBLIC_ORIGIN: origin, AUTH_BYPASS: 'true', IDLE_EVICT_MS: String(24 * 3600_000), IDLE_END_MS: String(24 * 3600_000) },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
     const log: string[] = []
-    child.stdout.on('data', (b: Buffer) => log.push(String(b)))
+    writeFileSync(LOG, '')
+    child.stdout.on('data', (b: Buffer) => {
+      log.push(String(b))
+      appendFileSync(LOG, b)
+    })
     child.stderr.on('data', (b: Buffer) => log.push(String(b)))
 
-    const origin = `http://127.0.0.1:${port}`
     const stop = () => drain(child)
     if (await healthy(origin, child)) return { origin, stop }
     await stop()
