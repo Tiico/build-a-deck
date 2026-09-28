@@ -5,6 +5,7 @@ import { HeldCard } from './HeldCard.js'
 import { FootPlay, HandActions } from './HandActions.js'
 import { HandStrip } from './HandStrip.js'
 import { CountersRow, MineActions, MineStrip, inFrontOf } from './SeatExtras.js'
+import { isCounter } from '../components.js'
 import { PlaySheet } from './PlaySheet.js'
 import { standingRewind } from '../table/rewind.js'
 import { cardName } from '../table/keyboard.js'
@@ -86,7 +87,9 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   const quick = useRefusal('phone')
   const quickBusy = useRef(false)
   const [quickPending, setQuickPending] = useState(false)
-  const [inspect, setInspect] = useState<VisibleComponentState | null>(null)
+  // The card held up, and the row it was lifted from (#507, beslut A): her hand, what lies in front
+  // of her, or an area of the table — which is what the held card walks, and what it offers to do.
+  const [held, setHeld] = useState<{ card: VisibleComponentState; row: 'hand' | 'mine' | { zone: string } } | null>(null)
   const [lifted, setLifted] = useState<VisibleComponentState | null>(null)
   const [sheet, setSheet] = useState<Sheet>(null)
   // Which target the table said no to, and why.
@@ -159,6 +162,18 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
       setQuickPending(false)
     }
   }
+  // The row as it is drawn now, so a card that moved while it was held leaves the walk with it.
+  const rowOf = (row: 'hand' | 'mine' | { zone: string }): VisibleComponentState[] =>
+    row === 'hand' ? [...hand].reverse() : row === 'mine' ? inFrontOf(view) : view.components.filter((c) => c.zone === row.zone && !isCounter(c))
+  // The card read in the hand is the card chosen (#507, beslut A): what the foot plays is what she
+  // last read, so reading and choosing are one press and never two that can disagree.
+  const hold = (card: VisibleComponentState, row: 'hand' | 'mine' | { zone: string }) => {
+    setHeld({ card, row })
+    if (row === 'hand') {
+      setChosenId(card.id)
+      marks.clear()
+    }
+  }
   const toggle = (card: VisibleComponentState) => {
     if (marks.selected.size === 1 && marks.selected.has(card.id)) setChosenId('')
     marks.toggle(card)
@@ -192,13 +207,13 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
       <main className="byd-phone-main" {...behind}>
         <h1>{t('player.hand.title')}</h1>
         <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} zones="piles" history={false} />
-        <HandStrip view={view} selected={new Set(chosenCards.map(c => c.id))} faces={faces} onTap={card => { setChosenId(card.id); marks.clear() }} onHold={toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} />
+        <HandStrip view={view} selected={new Set(chosenCards.map(c => c.id))} faces={faces} onTap={card => hold(card, 'hand')} onHold={toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} />
         {hand.length > 0 && <p className="byd-hint">{marks.selected.size > 0 ? t(marks.selected.size === 1 ? 'player.hint.selected.one' : 'player.hint.selected.other', { n: marks.selected.size }) : t('player.hint')}</p>}
-        <HandActions refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} view={view} cards={chosenCards} pending={quickPending} onRead={setInspect} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} />
+        <HandActions refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} view={view} cards={chosenCards} pending={quickPending} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} />
         {quickSource === 'hand' && <Refusal handle={quick} />}
         <details ref={personal} className="byd-personal" data-personal>
           <summary>{t('player.mine.title', { n: inFrontOf(view).length })}</summary>
-          <MineStrip refusal={quick} refusedCard={quickSource} refusedZone={quickTarget} onTake={card => void playDirect([card], `hand:${seat}`, 'top')} heading={false} view={view} faces={faces} onOpen={setInspect} pending={quickPending} onPlay={(card, zone, at) => void playDirect([card], zone, at)} />
+          <MineStrip refusal={quick} refusedCard={quickSource} refusedZone={quickTarget} onTake={card => void playDirect([card], `hand:${seat}`, 'top')} heading={false} view={view} faces={faces} onOpen={(card) => hold(card, 'mine')} pending={quickPending} onPlay={(card, zone, at) => void playDirect([card], zone, at)} />
           {quickSource !== 'hand' && <Refusal handle={quick} />}
         </details>
         {/* The full table, folded out when it is asked for (C4). The row above the hand is the
@@ -211,7 +226,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
             screen that hid what its socket had been sent is the state the repo's rule about
             hidden information exists to keep out. It reads and never acts — the draw stays in the
             row above, where a thumb already knows to find it. */}
-        <details className="byd-phone-table" data-phone-table><summary>{t('player.table.title')}</summary>{away && <p className="byd-phone-table-where">{t('online.table.where')}</p>}<TableSummary view={view} activity={activity} zones="areas" history={false} /></details>
+        <details className="byd-phone-table" data-phone-table><summary>{t('player.table.title')}</summary>{away && <p className="byd-phone-table-where">{t('online.table.where')}</p>}<TableSummary view={view} activity={activity} zones="areas" history={false} faces={faces} onRead={(_, card) => hold(card, { zone: card.zone })} /></details>
         <details className="byd-phone-history"><summary>{t('play.latest')}</summary><RecentActivity view={view} activity={activity} /></details>
       </main>
       {/* The rules this table plays by (B7), on a bar of their own at the foot by the hand (#483,
@@ -226,37 +241,57 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
       </div>
       {/* The card held up. A card that lies in front of you carries its verbs here, and a verb
           puts the card down as it goes: what it did is read off the strip behind it. */}
-      {inspect && (
-        <HeldCard
-          card={inspect}
-          faces={faces}
-          onClose={() => setInspect(null)}
-          actions={
-            <MineActions
-              view={view}
-              card={inspect}
-              onFlip={(c) => {
-                setInspect(null)
-                // A card of your own turned face down in front of you is still yours to know (#483,
-                // beslut A efter prototyp 31): the flip peeks as it turns, in the same envelope, so
-                // the owner is told which card it is and the rest of the room is told what it was
-                // told before — that a card lies there.
-                void (c.face === 'front'
-                  ? client.send({ v: 'flip', component: c.id, face: 'back' }, { v: 'peek', components: [c.id] })
-                  : client.send({ v: 'flip', component: c.id, face: 'front' }))
-              }}
-              onTake={(c) => {
-                setInspect(null)
-                void client.send({ v: 'move', component: c.id, to: `hand:${seat}` })
-              }}
-              onPlay={(c) => {
-                setInspect(null)
-                setLifted(c)
-              }}
-            />
-          }
-        />
-      )}
+      {held && (() => {
+        const row = rowOf(held.row)
+        // The card as it lies now, so a flip seen while it is held shows the face it has.
+        const card = row.find((c) => c.id === held.card.id) ?? held.card
+        const put = () => setHeld(null)
+        return (
+          <HeldCard
+            card={card}
+            faces={faces}
+            row={row}
+            onStep={(next) => hold(next, held.row)}
+            onClose={put}
+            actions={
+              held.row === 'hand' ? (
+                // The hand's own second press, the same two the foot carries: the setup's first
+                // place, and the way to every other one. A verb puts the card down as it goes.
+                <FootPlay
+                  view={view}
+                  cards={[card]}
+                  pending={quickPending}
+                  onPlay={(zone, at) => { put(); void playDirect([card], zone, at) }}
+                  onMore={(c) => { put(); setLifted(c) }}
+                />
+              ) : held.row === 'mine' ? (
+                <MineActions
+                  view={view}
+                  card={card}
+                  onFlip={(c) => {
+                    put()
+                    // A card of your own turned face down in front of you is still yours to know (#483,
+                    // beslut A efter prototyp 31): the flip peeks as it turns, in the same envelope, so
+                    // the owner is told which card it is and the rest of the room is told what it was
+                    // told before — that a card lies there.
+                    void (c.face === 'front'
+                      ? client.send({ v: 'flip', component: c.id, face: 'back' }, { v: 'peek', components: [c.id] })
+                      : client.send({ v: 'flip', component: c.id, face: 'front' }))
+                  }}
+                  onTake={(c) => {
+                    put()
+                    void client.send({ v: 'move', component: c.id, to: `hand:${seat}` })
+                  }}
+                  onPlay={(c) => {
+                    put()
+                    setLifted(c)
+                  }}
+                />
+              ) : undefined
+            }
+          />
+        )
+      })()}
       {lifted && (
         <PlaySheet
           view={view}

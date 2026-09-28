@@ -151,26 +151,34 @@
 }
 .byd-sheet-targets small { font-size: 12px; color: var(--byd-ink-muted); font-weight: 400; }
 
-/* The card held up (K8, K10), and under it the verbs a card lying in front of you carries (#78).
-   The card is the one thing here that gives way: it asks for 86vw, and on a screen too short for
-   that it shrinks out of the verbs' way, keeping its shape as it goes. So the two never have to
-   share a pixel, and what a player is looking at stays in the middle of the screen. */
+/* The card held up (K8, K10), and under it the verbs it carries (#78, #507) and the way through
+   the row it was lifted from. The card is the one thing here that gives way: it asks for the
+   reading width, and on a screen too short for that it shrinks out of the verbs' way, keeping its
+   shape as it goes. So the two never have to share a pixel, and what a player is looking at stays
+   in the middle of the screen.
+
+   The reading width is the floor's and not a share of the screen (K26, #507 beslut A): 294 px is
+   where 8.5 pt body text reaches 14 px, and 336 px where it reaches 16 — the phone's span for text
+   one is meant to read. It used to be 86vw, which is 275 px at 320 (13 px) and 660 px at 768. */
 .byd-player .byd-inspect {
+  --byd-read-w: clamp(294px, calc(100vw - 26px), 336px);
   position: fixed; inset: 0; z-index: 10; box-sizing: border-box;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 14px; padding: 16px 16px 24px; background: rgba(0, 0, 0, 0.7);
+  gap: 12px; padding: 12px 12px 16px; background: rgba(0, 0, 0, 0.7);
 }
 .byd-player .byd-inspect > [data-inspect] {
   position: relative; overflow: hidden;
   /* Release the table inspection's fixed width so the phone's height preserves the card. */
   width: auto;
-  height: min(100%, calc(86vw * 88 / 63)); min-height: 0; aspect-ratio: 63 / 88;
+  height: min(100%, calc(var(--byd-read-w) * 88 / 63)); min-height: 0; aspect-ratio: 63 / 88;
   border-radius: 18px; padding: 22px; box-sizing: border-box;
   background: hsl(var(--hue, 0) var(--byd-card-face-s) var(--byd-card-face-l)); color: var(--byd-card-ink); font-size: 28px; font-weight: 800;
 }
-/* One verb to a row, the full width of the sheet: a verb is a word, and a word that has to be
-   read at 10 px over two lines is a verb nobody presses (#78, form C). */
-.byd-mine-actions { display: grid; gap: 8px; width: 100%; max-width: 420px; }
+/* A verb is a word, and a word that has to be read at 10 px over two lines is a verb nobody presses
+   (#78, form C). Under the card they stand side by side, each in a third of the reading width and
+   in one line at 15 px, so the card keeps the height the floor needs (#507); a language whose
+   word does not fit a third takes a row of its own instead of breaking. */
+.byd-mine-actions { display: grid; gap: 8px; width: 100%; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); }
 .byd-mine-actions button { min-height: 48px; border: 0; border-radius: 12px; padding: 0 14px; background: var(--byd-control); color: var(--byd-ink-strong); font-size: 15px; font-weight: 700; }
 
 /* A wrapper that only carries `inert` while a rewind is asked (#483); it lays nothing out. */
@@ -199,10 +207,10 @@
 
 /* Textures (TUNN-SKIVA §5): the rendered face fills the card; the name stays for screen readers. */
 .byd-strip-card { position: relative; overflow: hidden; }
-.byd-strip-card img, .byd-mine-face img, .byd-player .byd-inspect img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.byd-strip-card img, .byd-mine-face img, .byd-summary-card img, .byd-player .byd-inspect img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 /* The face says the name once it has one, so the line under it is for the ear only. It leaves
    the flow as it goes, so the strip is the same height whether the render has landed or not. */
-.byd-strip-card img ~ strong, .byd-mine-card:has(img) strong, .byd-player .byd-inspect img ~ span:not([data-texture]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.byd-strip-card img ~ strong, .byd-mine-card:has(img) strong, .byd-summary-card img ~ strong, .byd-player .byd-inspect img ~ span:not([data-texture]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 /* Flagging, the way out, ending, the survey (G3, C9, #31, prototype A). The way out is a plain
    control like the other two: the row holds no red one any more, because the difference between
@@ -261,8 +269,18 @@
 .byd-phone-main .byd-summary { padding: 0; overflow: visible; }
 .byd-phone-main .byd-summary-zones { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 12px; }
 .byd-summary-zones > * { min-width: 0; overflow-wrap: anywhere; }
+/* The areas, each a row of its own with the cards it holds (#506 beslut 3, #507): read by the
+   hand's tap, so they are drawn only as large as a thumb needs to find one. */
+.byd-phone-table .byd-summary-zones { grid-template-columns: minmax(0, 1fr); }
+.byd-summary-cards { display: flex; gap: 8px; overflow-x: auto; margin-top: 8px; padding-bottom: 4px; }
+.byd-summary-card {
+  position: relative; overflow: hidden; flex: 0 0 84px; aspect-ratio: 63 / 88; padding: 0; border: 0; border-radius: 8px;
+  background: hsl(var(--hue, 0) var(--byd-card-face-s) var(--byd-card-face-l)); color: var(--byd-card-ink); font: 600 11px system-ui;
+}
 .byd-player .byd-strip { min-width: 0; padding: 8px 6px 16px; gap: 12px; }
-.byd-player .byd-strip-card { flex-basis: 154px; flex-shrink: 0; scroll-snap-align: start; }
+/* Small at rest, since one tap reads (#507 beslut A), and following the screen rather than one
+   width from 320 to 768 (fynd 1): two cards and the edge of a third at a phone, more on a tablet. */
+.byd-player .byd-strip-card { flex-basis: clamp(112px, 34vw, 200px); flex-shrink: 0; scroll-snap-align: start; }
 .byd-hand-actions { padding: 0 0 12px; }
 .byd-hand-actions p { margin: 0 0 10px; color: var(--byd-ink-muted); font-size: 14px; overflow-wrap: anywhere; }
 .byd-hand-actions button, .byd-mine-quick {
@@ -285,6 +303,11 @@
 .byd-mine-item .byd-mine-card { width: 100%; flex: none; }
 .byd-phone-history ol { padding: 0; list-style: none; font-size: 13px; color: var(--byd-ink-muted); }
 .byd-phone-history li { padding: 8px 0; border-bottom: 1px solid var(--byd-rule-soft); }
+.byd-inspect-actions, .byd-inspect-walk { display: flex; align-items: center; gap: 8px; width: var(--byd-read-w); max-width: 100%; flex: none; }
+.byd-inspect-walk { justify-content: center; }
+.byd-inspect-step { flex: 0 0 44px; min-height: 44px; padding: 0; border: 1px solid var(--byd-line); border-radius: 12px; background: var(--byd-control); color: var(--byd-ink-strong); font: 600 22px system-ui; }
+.byd-inspect-step:disabled { opacity: .35; }
+.byd-inspect-at { flex: 1; text-align: center; color: var(--byd-ink-muted); font: 600 14px system-ui; }
 .byd-inspect-close { flex: 0 0 auto; min-width: 120px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--byd-line); border-radius: 12px; background: var(--byd-control); color: var(--byd-ink-strong); font: 600 15px system-ui; }
 
 /* «Regler» at the foot, by the hand (#483, beslut C efter prototyp 32): held at the bottom of the

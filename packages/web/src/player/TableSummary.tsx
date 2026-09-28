@@ -1,5 +1,9 @@
-import type { Activity, Snapshot } from '@byd/protocol'
+import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
 import { describeActivity } from '../table/describe.js'
+import { Texture } from '../table/Texture.js'
+import { hue } from '../table/hue.js'
+import { cardName, cardWord } from '../table/keyboard.js'
+import { isCounter } from '../components.js'
 import { overviewOf } from './PlaySheet.js'
 import { Refusal, type RefusalHandle } from '../status/Refusal.js'
 import { useT, type T } from '../i18n/index.js'
@@ -29,6 +33,12 @@ export type TableSummaryProps = {
   // The answer to the last press, and which pile it was an answer to (#7).
   refusal?: RefusalHandle
   refusedZone?: string | null
+  // Hold a card in an area up to be read (#506 beslut 3, #507 beslut A): given, every area shows
+  // the cards it holds and not only how many, and a tap on one is the hand's tap. `row` is the
+  // area's cards as they are drawn, which the held card walks.
+  onRead?(row: VisibleComponentState[], card: VisibleComponentState): void
+  // The HTTP origin that serves /faces/:hash.
+  faces?: string | undefined
 }
 
 type ZoneTile = ReturnType<typeof overviewOf>[number]
@@ -42,7 +52,7 @@ const drawable = (view: Snapshot, tile: ZoneTile) => tile.kind === 'pile' && til
 // The table folded up small (C4): every zone this reader may look into, with its count, and what
 // just happened. `overviewOf` and not `targetsOf` since #414 — an area in front of another seat
 // is public and is read here, and it is still not somewhere a card of this reader's may go.
-export function TableSummary({ view, activity, onDraw, refusal, refusedZone = null, zones = 'all', history = true }: TableSummaryProps) {
+export function TableSummary({ view, activity, onDraw, refusal, refusedZone = null, zones = 'all', history = true, onRead, faces }: TableSummaryProps) {
   const t = useT()
   return (
     <div className="byd-summary">
@@ -68,6 +78,7 @@ export function TableSummary({ view, activity, onDraw, refusal, refusedZone = nu
             ) : (
               <div key={zone.id} data-zone-summary={zone.id}>
                 <Tile zone={zone} t={t} />
+                {onRead && <AreaCards view={view} zone={zone.id} faces={faces} onRead={onRead} t={t} />}
               </div>
             ),
           )}
@@ -86,6 +97,24 @@ function Tile({ zone, t }: { zone: ZoneTile; t: T }) {
       <strong>{zone.name}</strong>
       <span>{t(zone.count === 1 ? 'play.cards.one' : 'play.cards.other', { n: zone.count })}</span>
     </>
+  )
+}
+
+// The cards an area holds, each one a control that holds it up. Only what this reader was sent is
+// here: an area she may not look into sends a count and no component (B6), so it draws nothing.
+// A face-down card in an open area is drawn as the back it is, and read as that back (K8).
+function AreaCards({ view, zone, faces, onRead, t }: { view: Snapshot; zone: string; faces: string | undefined; onRead(row: VisibleComponentState[], card: VisibleComponentState): void; t: T }) {
+  const row = view.components.filter((c) => c.zone === zone && !isCounter(c))
+  if (row.length === 0) return null
+  return (
+    <div className="byd-summary-cards">
+      {row.map((c) => (
+        <button key={c.id} type="button" className="byd-summary-card" data-area-card={c.id} aria-label={cardName(c, t)} style={{ ['--hue' as string]: hue(c.cardRef ?? '') }} onClick={() => onRead(row, c)}>
+          <Texture faces={faces} c={c} />
+          <strong aria-hidden="true">{cardWord(c) ?? ''}</strong>
+        </button>
+      ))}
+    </div>
   )
 }
 

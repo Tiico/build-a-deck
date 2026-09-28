@@ -50,7 +50,7 @@ describe('a lost card held up on the phone (#82)', () => {
   })
 })
 
-// The card held up large is the phone's «Läs valt kort» (K8): its heading is what a screen reader
+// The card held up large is what a tap on the phone reads (K8, #507): its heading is what a screen reader
 // says the moment it opens, so it says what the card is called and not what the row is keyed on
 // (#412).
 describe('the card held up says its title (#412)', () => {
@@ -82,4 +82,80 @@ it('offers a keyboard way back from reading and returns focus to its opener', ()
   unmount()
   expect(document.activeElement).toBe(opener)
   opener.remove()
+})
+
+// One action reads a card (K26, #506 beslut 2; #507 beslut A): the card held up is the reader for
+// the whole row it was lifted from, so the next card is one step away and never three presses.
+describe('the card held up walks the row it was lifted from (#507)', () => {
+  const row: VisibleComponentState[] = ['c1', 'c2', 'c3'].map((id, i) => ({ ...card, id, cardRef: `kort-${i + 1}`, title: `Kort ${i + 1}` }))
+
+  function hold(start = 'c1') {
+    const shown: string[] = []
+    const onClose = vi.fn()
+    const at = { id: start }
+    const view = render(<HeldCard card={row.find((c) => c.id === at.id)!} row={row} onStep={(c) => { shown.push(c.id); at.id = c.id }} onClose={onClose} />)
+    const again = () => view.rerender(<HeldCard card={row.find((c) => c.id === at.id)!} row={row} onStep={(c) => { shown.push(c.id); at.id = c.id }} onClose={onClose} />)
+    return { shown, onClose, again }
+  }
+
+  it('says where in the row it is, and steps by its arrows without being put down', () => {
+    const { shown, onClose, again } = hold('c2')
+    expect(screen.getByText('2 av 3')).toBeTruthy()
+    const next = screen.getByRole('button', { name: 'Nästa kort' })
+    // A press on an arrow is not the touch that puts the card down (UX-30).
+    fireEvent.pointerDown(next)
+    fireEvent.click(next)
+    again()
+    expect(shown).toEqual(['c3'])
+    expect(onClose).not.toHaveBeenCalled()
+    expect((screen.getByRole('button', { name: 'Nästa kort' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Föregående kort' }))
+    expect(shown).toEqual(['c3', 'c2'])
+  })
+
+  it('steps by the arrow keys', () => {
+    const { shown } = hold('c1')
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowRight' })
+    expect(shown).toEqual(['c2'])
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'ArrowLeft' })
+    // From c1, which the test did not re-render: the step is from the card shown, and it has none before it.
+    expect(shown).toEqual(['c2'])
+  })
+
+  // Put down on its own click and not on the pointerup before it: a card gone at pointerup hands
+  // the trailing click to whatever lay under the finger, which on the phone is the verbs (UX-30).
+  it('steps by a swipe across the card, and a tap on the card still puts it down', () => {
+    const { shown, onClose } = hold('c2')
+    const face = document.querySelector('[data-inspect="c2"]')!
+    const touch = (from: number, to: number) => {
+      fireEvent.pointerDown(face, { clientX: from, clientY: 200 })
+      fireEvent.pointerUp(face, { clientX: to, clientY: 204 })
+      fireEvent.click(face, { clientX: to, clientY: 204 })
+    }
+    touch(300, 180)
+    expect(shown).toEqual(['c3'])
+    touch(100, 220)
+    expect(shown).toEqual(['c3', 'c1'])
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.pointerDown(face, { clientX: 150, clientY: 200 })
+    fireEvent.pointerUp(face, { clientX: 152, clientY: 201 })
+    expect(onClose, 'still up between the pointerup and its click').not.toHaveBeenCalled()
+    fireEvent.click(face)
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  // The tap that opened it ends in a click, and that click lands where the finger was — which on a
+  // phone is the middle of the screen, where the card now is. It is the opening tap's, not a tap on
+  // the card, so the card stays up: it is put down only by a touch that began on it.
+  it('stays up through the click that ends the tap that opened it', () => {
+    const { onClose } = hold('c2')
+    fireEvent.click(document.querySelector('[data-inspect="c2"]')!)
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('draws no arrows for a card that is alone in its row', () => {
+    render(<HeldCard card={row[0]!} row={[row[0]!]} onStep={() => undefined} onClose={() => undefined} />)
+    expect(screen.queryByRole('button', { name: 'Nästa kort' })).toBeNull()
+    expect(screen.queryByText('1 av 1')).toBeNull()
+  })
 })

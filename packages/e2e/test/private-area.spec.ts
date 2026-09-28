@@ -73,11 +73,26 @@ test.describe('the area in front of a seat, on the opening table', () => {
     // The zone's name is the designer's and is never translated; the count beside it is the
     // reader's language, so it is read as the number it is and not as the sentence around it.
     const tile = bo.page.locator('[data-phone-table] [data-zone-summary="mine:A"]')
-    await expect(tile.locator('strong')).toHaveText('Framför A')
-    await expect(tile.locator('span')).toHaveText(/^1\b/)
+    // The tile's own words, not those of the cards it now carries.
+    await expect(tile.locator(':scope > strong')).toHaveText('Framför A')
+    await expect(tile.locator(':scope > span')).toHaveText(/^1\b/)
     // Reading it is not playing into it: the sheet offers Bo's own area and never Ada's (C4).
     await expect(bo.page.locator('[data-zone="mine:A"]')).toHaveCount(0)
     await expect(bo.page.locator('[data-zone="mine:B"]')).toHaveCount(1)
+
+    // And the card itself is read there, not only counted (#506 beslut 3, #507 beslut A): the
+    // hand's tap holds it up, with its title, and with nothing on it that plays.
+    const card = tile.locator('[data-area-card]')
+    await expect(card).toHaveCount(1)
+    const id = await card.getAttribute('data-area-card')
+    const title = await card.getAttribute('aria-label')
+    // Non-vacuity: the name is the card's title, which Bo was sent because the area is open.
+    expect(Array.from({ length: 16 }, (_, i) => cardTitle(i))).toContain(title)
+    await card.click()
+    const held = bo.page.locator('.byd-inspect')
+    await expect(held.locator('[data-inspect]')).toHaveAttribute('data-inspect', id!)
+    await expect(held).toHaveAttribute('aria-label', title!)
+    await expect(held.locator('[data-zone]')).toHaveCount(0)
   })
 })
 
