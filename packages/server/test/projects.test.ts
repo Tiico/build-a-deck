@@ -440,6 +440,31 @@ describe('a group rules what a card looks like on the table (#13)', () => {
     }
   }
 
+  // What a texture's smallest text was fitted to (#523), from the server itself and never through
+  // the object store: a link to R2 carries no header a page could read. The hash is the capability,
+  // as it is for the picture, and the answer says nothing the picture does not show.
+  it('says what a texture’s smallest text was fitted to, once it is rendered', async () => {
+    const { id } = (await (await json('POST', '/projects', groupedProject())).json()) as { id: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
+    await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 2 }, { v: 'flip', component: 'c0', face: 'front' }, { v: 'flip', component: 'c1', face: 'front' })
+    await table.synced(3)
+    const trap = table.view!.components.find((c) => c.cardRef === 'trap')!.faces!['front']!
+    await table.close()
+
+    const fit = (hash: string) => fetch(`${run.http}/faces/${hash}/fit`)
+    expect((await fit(trap)).status).toBe(202)
+    expect((await fit('0'.repeat(64))).status).toBe(404)
+    await run.renderAll()
+    const res = await fit(trap)
+    expect(res.status).toBe(200)
+    // The trap's front has one text on it, its 14 pt title.
+    expect(await res.json()).toEqual({ smallestPt: 14 })
+    // Read by `fetch` and not by an <img>, so from the page's own origin it needs the API's CORS.
+    const cross = await fetch(`${run.http}/faces/${trap}/fit`, { headers: { origin: 'http://elsewhere.test' } })
+    expect(cross.headers.get('vary')).toBe('origin')
+  }, 90_000)
+
   it('renders a different texture for each group, on the front and on the back', async () => {
     const { id } = (await (await json('POST', '/projects', groupedProject())).json()) as { id: string }
     const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }

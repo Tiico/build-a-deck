@@ -1,6 +1,6 @@
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { PT_TO_MM } from '@byd/template'
-import { liftBox } from './table/lift.js'
+import { LIFT_GAP, LIFT_SHARE } from './table/lift-share.js'
 
 // Måttstocken (K26, #506): vad läsbar korttext är på skärm, skrivet på ett ställe.
 //
@@ -50,10 +50,18 @@ export const tvShowWidth = (feltHeightPx: number): number =>
 export type ReadingView = { key: 'phone' | 'desk' | 'tv'; screen: Screen; window: { w: number; h: number }; width: number }
 export const READING_VIEWS: readonly ReadingView[] = [
   { key: 'phone', screen: 'phone', window: { w: 320, h: 568 }, width: PHONE_READ_PX },
-  { key: 'desk', screen: 'desk', window: { w: 1024, h: 768 }, width: liftBox({ left: 0, right: 0, top: 0, bottom: 0 }, { w: 1024, h: 768 }).w },
+  { key: 'desk', screen: 'desk', window: { w: 1024, h: 768 }, width: (Math.min(768 * LIFT_SHARE, 768 - 2 * LIFT_GAP) * CARD_WIDTH_MM) / CARD_STANDARD_63x88.physical.heightMm },
   { key: 'tv', screen: 'tv', window: { w: 1920, h: 1080 }, width: tvShowWidth(1080) },
 ]
 
 // Under den här punktstorleken blir text mindre än skärmens golv för all text i läsvyn.
-export const minPtIn = (view: ReadingView): number => cardPxForTextSize(view.width, SCREENS[view.screen].floorPx)
-const cardPxForTextSize = (cardPx: number, textPx: number): number => (textPx * CARD_WIDTH_MM) / (PT_TO_MM * cardPx)
+export const minPtIn = (view: ReadingView): number => (SCREENS[view.screen].floorPx * CARD_WIDTH_MM) / (PT_TO_MM * view.width)
+// The card width at which `sizePt` becomes `textPx`, unrounded.
+const cardPxForTextSize = (textPx: number, sizePt: number): number => (textPx * CARD_WIDTH_MM) / (PT_TO_MM * sizePt)
+
+// How wide a card is held up so that its own smallest text reaches the floor (#523): the view's
+// width for the wizard's frame, or wider for a card whose words are smaller than that frame's —
+// set so, or shrunk by E6. `smallestPt` is what the renderer found (`/faces/:hash/fit`), null when
+// it is not known. The caller caps it at the room the screen has.
+export const readingWidth = (base: number, smallestPt: number | null | undefined, screen: Screen): number =>
+  smallestPt ? Math.max(base, cardPxForTextSize(SCREENS[screen].floorPx, smallestPt)) : base

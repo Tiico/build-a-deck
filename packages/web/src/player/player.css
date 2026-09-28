@@ -161,7 +161,9 @@
    where 8.5 pt body text reaches 14 px, and 336 px where it reaches 16 — the phone's span for text
    one is meant to read. It used to be 86vw, which is 275 px at 320 (13 px) and 660 px at 768. */
 .byd-player .byd-inspect {
-  --byd-read-w: clamp(294px, calc(100vw - 26px), 336px);
+  /* A card whose own smallest text needs more (#523) is held up wider, as far as the screen goes:
+     `--byd-read-need` is set on the card that asks for it, and 16 px of air are kept. */
+  --byd-read-w: max(clamp(294px, calc(100vw - 26px), 336px), min(var(--byd-read-need, 0px), calc(100vw - 16px)));
   position: fixed; inset: 0; z-index: 10; box-sizing: border-box;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 12px; padding: 12px 12px 16px; background: rgba(0, 0, 0, 0.7);

@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import postgres from 'postgres'
 import type { RenderKind } from './hash.js'
-import { contentTypeOf, outputKey, type ClaimedJob, type EnqueueResult, type JobStatus, type RenderRequest, type RenderStore } from './store.js'
+import { contentTypeOf, outputKey, type ClaimedJob, type EnqueueResult, type Fit, type JobStatus, type RenderRequest, type RenderStore } from './store.js'
 import type { ObjectStore } from './objects.js'
 
 type Row = {
@@ -80,14 +80,14 @@ export class PostgresRenderStore implements RenderStore {
     return { hash: row.hash, kind: row.kind, priority: row.priority, compiled: row.compiled, requestedAt: Number(row.requested_at), startedAt: now }
   }
 
-  async complete(hash: string, output: Uint8Array): Promise<void> {
+  async complete(hash: string, output: Uint8Array, fit: Fit = { smallestPt: null }): Promise<void> {
     if (this.objects) {
       const [job] = await this.sql<Pick<Row, 'kind'>[]>`select kind from render_jobs where hash = ${hash}`
       await this.objects.put(outputKey(hash), output, contentTypeOf(job?.kind))
     }
     const bytes = this.objects ? null : Buffer.from(output)
     await this.sql.begin(async (tx) => {
-      await tx`insert into render_outputs (hash, bytes) values (${hash}, ${bytes}) on conflict (hash) do update set bytes = excluded.bytes`
+      await tx`insert into render_outputs (hash, bytes, smallest_pt) values (${hash}, ${bytes}, ${fit.smallestPt}) on conflict (hash) do update set bytes = excluded.bytes, smallest_pt = excluded.smallest_pt`
       await tx`update render_jobs set state = 'done' where hash = ${hash}`
     })
   }
@@ -122,6 +122,11 @@ export class PostgresRenderStore implements RenderStore {
     if (!row) return null
     if (row.bytes) return new Uint8Array(row.bytes)
     return this.objects ? this.objects.get(outputKey(hash)) : null
+  }
+
+  async fitOf(hash: string): Promise<Fit | null> {
+    const [row] = await this.sql<{ smallest_pt: number | null }[]>`select smallest_pt from render_outputs where hash = ${hash}`
+    return row ? { smallestPt: row.smallest_pt === null ? null : Number(row.smallest_pt) } : null
   }
 
   async link(hash: string, ttlSeconds: number): Promise<string | null> {

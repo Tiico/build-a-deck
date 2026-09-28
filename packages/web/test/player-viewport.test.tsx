@@ -472,6 +472,24 @@ describe('a card held up on the phone reads at the floor, at every phone and tab
     }
   }, 60_000)
 
+  // A card whose smallest text is 6.5 pt (#523): the phone holds it up wider, until that text
+  // reaches the floor for all text — and at 320 the screen itself is the limit, which is the one
+  // place the issue says the phone cannot reach it.
+  it.each([[320, 568], [390, 844], [768, 1024]] as const)('holds a card with 6.5 pt text up until it reads, or the screen ends, at %i × %i', async (width, height) => {
+    const row = hand()
+    const page = await browser.newPage({ viewport: { width, height } })
+    try {
+      await page.setContent(document_(<div className="byd-player"><HeldCard card={row[1]!} row={row} onStep={noop} onClose={noop} smallestPt={6.5} actions={<FootPlay view={view} cards={[row[1]!]} pending={false} onPlay={noop} onMore={noop} />} /></div>), { waitUntil: 'load' })
+      const card = (await page.evaluate(`document.querySelector('[data-inspect]').getBoundingClientRect().width`)) as number
+      const reads = textPxOnCard(6.5, card) >= SCREENS.phone.floorPx - 0.05
+      const edge = card >= width - 16 - 0.5
+      expect({ width, card: Math.round(card), readsOrEdge: reads || edge }).toEqual({ width, card: Math.round(card), readsOrEdge: true })
+      if (width > 320) expect(reads).toBe(true)
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+
   // The strip is small at rest now that one tap reads (#507 fynd 1): it follows the screen rather
   // than standing at one width from 320 to 768.
   it('draws the hand strip at a width that follows the screen', async () => {

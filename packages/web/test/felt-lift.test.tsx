@@ -3,10 +3,11 @@
 // bredvid sig självt i golvets storlek, och ringen står bakom ett andra tryck. Bordslägets filt och
 // distansvyns filt är samma renderare i `mode="table"`; TV:n läser genom INSPEKTION (K8, #508) och
 // rörs inte här.
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { liftBox } from '../src/table/lift.js'
+import { forgetFits } from '../src/table/smallest.js'
 import { buildScene } from './scene.js'
 import { DEFAULT_BODY_PT, SCREENS, textPxOnCard } from './legibility.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
@@ -55,6 +56,33 @@ describe('where the lifted card goes and how big it is (K26, #509)', () => {
       }
     })
   }
+
+  // A card whose smallest text is under 8.5 pt (#523): the lift grows until that text reaches the
+  // desk's floor for all text, as far as the window's height lets it, and never shrinks below the
+  // size it has for the wizard's own frame.
+  for (const win of windows) {
+    // 5.5 pt: the desk's own lift already carries anything from 6.3 pt up.
+    it(`grows for a card with 5.5 pt text until it reaches the desk floor at ${win.w} × ${win.h}, or the window`, () => {
+      const plain = liftBox(leftCard, win)
+      const box = liftBox(leftCard, win, 5.5)
+      const px = textPxOnCard(5.5, box.w)
+      const room = box.h >= win.h - 2 * 16 - 0.5
+      expect({ at: `${win.w} × ${win.h}`, grew: box.w >= plain.w, reads: px >= SCREENS.desk.floorPx - 0.05 || room }).toEqual({ at: `${win.w} × ${win.h}`, grew: true, reads: true })
+      expect(box.top + box.h).toBeLessThanOrEqual(win.h)
+    })
+  }
+
+  it('really grows where the plain lift would leave 5.5 pt under the floor', () => {
+    const win = { w: 1024, h: 768 }
+    expect(textPxOnCard(5.5, liftBox(leftCard, win).w)).toBeLessThan(SCREENS.desk.floorPx)
+    expect(liftBox(leftCard, win, 5.5).w).toBeGreaterThan(liftBox(leftCard, win).w)
+  })
+
+  it('does not change for a card whose smallest text is already read at its size', () => {
+    const win = { w: 1280, h: 800 }
+    expect(liftBox(leftCard, win, 9)).toEqual(liftBox(leftCard, win))
+    expect(liftBox(leftCard, win, null)).toEqual(liftBox(leftCard, win))
+  })
 
   it('keeps the card of a playing card, 63 by 88', () => {
     const box = liftBox(leftCard, { w: 1280, h: 800 })
@@ -289,5 +317,29 @@ describe('the observer reads with the same lift, and asks nothing (C8, K26, #511
     render(<TableRenderer view={scene.view('A')} mode="tv" scale={1} />)
     fireEvent.pointerEnter(document.querySelector(`[data-component="${scene.faceUp}"]`)!, at(200, 200))
     expect(lifted()).toBeNull()
+  })
+})
+
+// The felt asks what the lifted card's smallest text was fitted to (#523), and lifts it larger when
+// its words need it: the same box `liftBox` gives for that size, on the page and not only on paper.
+describe('a lifted card with small words is lifted larger (#523)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    forgetFits()
+  })
+
+  it('draws the lift at the size the card’s own smallest text needs', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ smallestPt: 5.5 }), { status: 200 })))
+    const scene = buildScene()
+    const view = scene.view(null)
+    const withFaces = { ...view, components: view.components.map((c) => (c.id === scene.faceUp ? { ...c, faces: { front: 'a'.repeat(64) } } : c)) }
+    render(<TableRenderer view={withFaces} mode="table" scale={1} faces="http://faces.test" onAct={() => undefined} />)
+    tap(document.querySelector(`[data-component="${scene.faceUp}"]`)!)
+    await act(async () => undefined)
+    const win = { w: window.innerWidth, h: window.innerHeight }
+    const plain = liftBox({ left: 0, right: 0, top: 0, bottom: 0 }, win).w
+    const grown = liftBox({ left: 0, right: 0, top: 0, bottom: 0 }, win, 5.5).w
+    expect(grown).toBeGreaterThan(plain)
+    expect(parseFloat((lifted() as HTMLElement).style.width)).toBeCloseTo(grown, 3)
   })
 })

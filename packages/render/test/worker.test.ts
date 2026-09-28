@@ -26,6 +26,10 @@ describe('runWorker', () => {
     expect(done).toEqual([png, pdf])
     expect(pngSize((await store.output(png))!).w).toBeGreaterThan(300)
     expect(Buffer.from((await store.output(pdf))!).subarray(0, 4).toString()).toBe('%PDF')
+    // The texture keeps what its smallest text was fitted to (#523); a print has no reader to size for.
+    const smallest = Math.min(...(await renderer.fit(card)).filter((f) => !f.empty).map((f) => f.sizePt))
+    expect(await store.fitOf(png)).toEqual({ smallestPt: smallest })
+    expect(await store.fitOf(pdf)).toEqual({ smallestPt: null })
   }, 30_000)
 
   it('records a failure and moves on', async () => {

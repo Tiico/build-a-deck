@@ -4,6 +4,7 @@ import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
 import { Lifted } from '../table/Lifted.js'
 import { liftBox } from '../table/lift.js'
+import { useSmallestPt } from '../table/smallest.js'
 import { useRoving } from '../editor/roving.js'
 import { cardWord, handLabel } from '../table/keyboard.js'
 import { useT } from '../i18n/index.js'
@@ -83,6 +84,8 @@ export function HandColumn({ cards, faces, onPlay, locked = false, onCarry, aim,
   }, [dragging])
   const reading = drag ? null : pointed ?? read
   const readCard = reading ? cards.find((c) => c.id === reading.id) : undefined
+  // A card whose words are smaller than the wizard's frame is lifted larger (#523).
+  const readingPt = useSmallestPt(faces, readCard)
   // A card read by a press stays until it is put down: Escape, or a press anywhere that is neither
   // the column nor the lift.
   const col = useRef<HTMLDivElement>(null)
@@ -159,7 +162,7 @@ export function HandColumn({ cards, faces, onPlay, locked = false, onCarry, aim,
           these after it the slot shrank to a step, the column re-centred 45 px lower, and the card
           under a pointer that had not moved became its neighbour. */}
       {drag && lifted && <HandGhost at={drag} card={lifted} faces={faces} size={aim?.size} />}
-      {reading && readCard && <Lifted c={readCard} box={liftBox(edges(reading.at), { w: window.innerWidth, h: window.innerHeight })} faces={faces} onAsk={() => open(readCard)} />}
+      {reading && readCard && <Lifted c={readCard} box={liftBox(edges(reading.at), { w: window.innerWidth, h: window.innerHeight }, readingPt)} faces={faces} onAsk={() => open(readCard)} />}
       {drag && <DragDoor onCancel={cancel} />}
     </>
   )

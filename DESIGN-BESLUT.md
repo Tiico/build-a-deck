@@ -712,7 +712,7 @@ Remsan är liten i vila, `clamp(112px, 34vw, 200px)`, och följer skärmen i st�
 «Senast» och varje annan logg säger kortets titel när raden handlar om ett kort som läsarens egen vy har ett namn på, «Bo vände Björnen», och «ett kort» annars; namnet kommer ur projektionen och ingen annanstans, så raden kan inte säga något som skärmen inte redan fått veta (B6, #412).
 Två förkastade varianter, mätta med riktiga texturer: B ritade remsan i läsbredd med handen som miniatyrer ovanför, vilket läste utan handling men visade ett kort åt gången och sköt genvägarna under skärmkanten; C lät det valda kortet växa där det låg, vilket vid 390 lämnade en strimma av grannarna.
 Bilder och tal: [`docs/ux-audits/2026-09-28/prototyper/507/`](docs/ux-audits/2026-09-28/prototyper/507/README.md).
-Känd lucka: läsbredden räknas på förvalsramens 8,5 pt brödtext (L6), eftersom telefonen inte vet vilken punktstorlek mallen har — projektionen bär texturens hash och inte mallens mått.
+Känd lucka när detta skrevs: läsbredden räknades på förvalsramens 8,5 pt brödtext (L6), eftersom telefonen inte visste vilken punktstorlek mallen har — projektionen bär texturens hash och inte mallens mått. Stängd i #523: läsvyn läser kortets minsta text från renderaren och växer efter den (K26).
 En mall med 7 pt brödtext når därför 11,5–13,2 px i läsvyn; K26:s «golvet gäller mallens brödtext som den är» kräver att den storleken når klienten, vilket är en egen fråga.
 
 ### C5. Rumslig modell: konfigurerbart TV- eller bordsläge (fråga 32)
@@ -3006,6 +3006,15 @@ Telefonen håller upp det i 294 px vid 320 × 568 (`--byd-read-w` i `player.css`
 Bordet håller upp det i 341 px vid 1024 × 768 (`liftBox` i `lift.ts`).
 TV:n håller upp det i 672 px vid 1920 × 1080 (`.byd-tv-show` i `table.css`, som `tvShowWidth`).
 Varje ytas mätande test säger att den ritar talet som står där, så att editorns ögon (E5) och ytorna inte kan glida isär.
+
+Tillagt 2026-09-28 (#523, beställarens beslut A + C): **läsvyerna växer för ett kort vars ord behöver det.**
+Renderaren kör E6:s anpassning när den ritar texturen och sparar nu kortets minsta text i pt med texturen, nycklad på hashen (`render_outputs.smallest_pt`).
+Servern svarar på `GET /faces/:hash/fit` med `{ smallestPt }`, 202 medan texturen renderas; alltid från servern själv och aldrig via objektlagringens länk, som inte bär något en sida kan läsa.
+Hashen är nyckeln, som för bilden, och svaret säger inget som bilden inte redan visar; projektionen och protokollet är orörda.
+Varje läsvy håller upp kortet i `readingWidth(bredden, minstaPt, skärm)`: sin vanliga bredd, eller den bredd där kortets minsta text når skärmens golv för all text, upp till vad skärmen rymmer.
+Telefonen har 16 px luft kvar mot kanten, bordets lyft fönstrets höjd, och TV:n filtens höjd förbi sina 938 px.
+En textur ritad före det här har ingen uppgift, och läses i den vanliga bredden som förut.
+Vid 320 är skärmen gränsen: 304 px bär 7,0 pt i 11,9 px och 6,5 pt i 11,1 px, under golvet, och det är den gräns C varnar designern för (#523).
 
 ## L. Editorn (grillad 2026-09-06)
 

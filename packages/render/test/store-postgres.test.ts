@@ -44,6 +44,15 @@ describe.skipIf(!url)('PostgresRenderStore', () => {
     expect((await store.claim(11))?.hash).toBe(`${tag}-p`)
   })
 
+  it('keeps the smallest text a texture was fitted to with its output (#523)', async () => {
+    await store.enqueue(req('f', 'texture', 20))
+    expect(await store.fitOf(`${tag}-f`)).toBeNull()
+    const job = await store.claim(21)
+    await store.complete(job!.hash, new Uint8Array([7]), { smallestPt: 6.5 })
+    expect(await store.fitOf(`${tag}-f`)).toEqual({ smallestPt: 6.5 })
+    expect(await store.fitOf(`${tag}-t`)).toEqual({ smallestPt: null })
+  })
+
   it('fails, retries and reaps', async () => {
     await store.fail(`${tag}-p`, 'boom')
     expect(await store.status(`${tag}-p`)).toMatchObject({ state: 'failed', error: 'boom' })

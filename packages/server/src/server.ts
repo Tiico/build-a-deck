@@ -380,6 +380,22 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const handled = await routeProjects(opts, opts.projects, req, res, url)
       if (handled) return
     }
+    // What a texture's smallest text was fitted to (#523), so a surface can hold the card up large
+    // enough to read. Answered here and never through the object store, whose link carries nothing a
+    // page can read; the hash is the capability, as it is for the picture itself.
+    const fitted = /^\/faces\/([0-9a-f]{64})\/fit$/.exec(url.pathname)
+    if (req.method === 'GET' && fitted && opts.renders) {
+      const hash = fitted[1] ?? ''
+      const fit = await opts.renders.fitOf(hash)
+      if (fit) {
+        res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=31536000, immutable' })
+        res.end(JSON.stringify(fit))
+        return
+      }
+      const status = await opts.renders.status(hash)
+      if (status && status.state !== 'failed') return json(res, 202, { state: status.state })
+      return json(res, 404, { error: 'unknown face' })
+    }
     const face = /^\/faces\/([0-9a-f]{64})$/.exec(url.pathname)
     if (req.method === 'GET' && face && opts.renders) {
       // The hash is the capability: only a seat that may see a face was ever told its hash.

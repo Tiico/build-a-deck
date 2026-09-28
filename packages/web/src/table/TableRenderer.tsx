@@ -22,6 +22,7 @@ import { compileStart, startsAt } from './actions.js'
 import { Question } from '../editor/Question.js'
 import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
 import { liftBox, type Edges } from './lift.js'
+import { useSmallestPt } from './smallest.js'
 import { Lifted } from './Lifted.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAt, handBand, handCountAt, handExtent, handRotation, type TableMode } from './hand.js'
 import { gapAbove, nameAt, type Grow, type Rim } from './labels.js'
@@ -998,6 +999,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     return c ? { ...l, c } : null
   }
   const reading = onAct || watch ? liftOf(pointed) ?? liftOf(read) : null
+  // What the lifted card's smallest text was fitted to (#523): a card whose words need it is lifted larger.
+  const readingPt = useSmallestPt(faces, reading?.c)
   const readingNow = reading !== null
   useEffect(() => {
     if (!readingNow || ring) return
@@ -1452,7 +1455,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
         <Lifted
           c={reading.c}
           box={(() => {
-            const box = liftBox(reading.at, { w: window.innerWidth, h: window.innerHeight })
+            const box = liftBox(reading.at, { w: window.innerWidth, h: window.innerHeight }, readingPt)
             const at = fixedAt(box.left, box.top)
             return { ...box, left: at.x, top: at.y }
           })()}
