@@ -18,6 +18,9 @@ import './account.css'
 
 // /  — "Mina spel" (G1, prototype A): the account's projects as a grid of game cards, and a new
 // one as a dashed card. Not logged in, the login card stands here instead.
+// PROTOTYPE — throwaway (#529)
+import { useExportProto } from '../prototype/529-export/proto.js'
+
 export type HomePageProps = { onNavigate?(url: string): void }
 
 export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePageProps) {
@@ -28,6 +31,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const http = server ?? location.origin
   const [email, setEmail] = useState<string | null | undefined>(undefined)
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null)
+  const proto = useExportProto(http, () => void myProjects(http).then(setProjects))
   const [played, setPlayed] = useState<Played[] | null>(null)
   // What it takes to draw each game's first card (G1, #231). It is asked for apart from the list
   // and lands after it, so the first screen is drawn on the list's own answer and never waits for
@@ -115,6 +119,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           <h1 ref={heading} tabIndex={-1}>
             {t('home.title')}
           </h1>
+          {proto?.header}
           <span className="byd-who">
             {email} ·{' '}
             <a
@@ -212,6 +217,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                   <strong>{p.name}</strong>
                   <span className="byd-muted">{t('home.card.line', { rev: p.rev, played: playedLine(t, lang, p) })}</span>
                 </a>
+                {proto?.onCard(p)}
                 <button
                   ref={(el) => {
                     if (el) mores.current.set(p.id, el)
@@ -250,6 +256,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                     >
                       {t('home.menu.start')}
                     </button>
+                    {proto?.menuItem(p, () => setMenu(null))}
                     <button
                       type="button"
                       onClick={() => {
@@ -266,6 +273,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             <a className="byd-home-game" data-new href={`/new?${suffix(new URLSearchParams())}`} onClick={(e) => { e.preventDefault(); onNavigate(`/new?${suffix(new URLSearchParams())}`) }}>
               {t('home.new')}
             </a>
+            {proto?.tiles}
           </div>
         )}
         {played && played.length > 0 && (
@@ -295,6 +303,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           </>
         )}
       </div>
+      {proto?.overlay}
     </div>
   )
 }
