@@ -18,7 +18,8 @@ import { useRoving } from './roving.js'
 import { framingOf, measuredSpots, objections } from './framing.js'
 import { frameWindow } from '@byd/template'
 import { assetUrl, isAssetRef } from './assets.js'
-import { useT, type Key } from '../i18n/index.js'
+import { useLang, useT, type Key, type T } from '../i18n/index.js'
+import { READING_VIEWS, SCREENS, textPxOnCard, type ReadingView } from '../legibility.js'
 import { Help } from './HelpDrawer.js'
 
 export type DeckWallProps = {
@@ -62,6 +63,10 @@ const EYES: readonly { key: string; name: Key }[] = [
   { key: 'tritanopia', name: 'wall.eye.tritanopia' },
   { key: 'gray', name: 'wall.eye.gray' },
 ]
+// The reading views among the eyes (#512, beslut A): the wall drawn at the width a play surface
+// holds a card up at to read it (K26), each card saying the smallest text it carries there. The
+// widths are the surfaces' own, read from the one module their measuring tests check them against.
+const READS: readonly { key: string; name: Key; view: ReadingView }[] = READING_VIEWS.map((view) => ({ key: `read.${view.key}`, name: `wall.eye.read.${view.key}` as Key, view }))
 const MATRICES: Record<string, string> = {
   protanopia: '0.11238 0.88762 0 0 0  0.11238 0.88762 0 0 0  0.00401 -0.00401 1 0 0  0 0 0 1 0',
   deuteranopia: '0.29275 0.70725 0 0 0  0.29275 0.70725 0 0 0  -0.02234 0.02234 1 0 0  0 0 0 1 0',
@@ -92,6 +97,9 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   // every call, and a fresh object is a fresh compile of the whole wall (E1).
   const icons = useMemo(() => previewIcons(doc, assetBase), [doc, assetBase])
   const [warnings, setWarnings] = useState<Record<string, number>>({})
+  // The smallest text each card carries once E6 has fitted it, in pt (#512).
+  const [smallest, setSmallest] = useState<Record<string, number>>({})
+  const { lang } = useLang()
   const [eye, setEye] = useState<string>(view?.eye ?? 'normal')
   const [trim, setTrim] = useState(false)
   const [arm, setArm] = useState(false)
@@ -140,6 +148,14 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const guidesBox = useRef<HTMLButtonElement>(null)
   const groupingBox = useRef<HTMLButtonElement>(null)
   const checksBox = useRef<HTMLButtonElement>(null)
+  const onFitted = useCallback((cardRef: string, sizes: { sizePt: number }[]) => {
+    const least = sizes.length > 0 ? Math.min(...sizes.map((s) => s.sizePt)) : undefined
+    setSmallest((m) => {
+      if (m[cardRef] === least) return m
+      if (least !== undefined) return { ...m, [cardRef]: least }
+      return Object.fromEntries(Object.entries(m).filter(([row]) => row !== cardRef))
+    })
+  }, [])
   const onWarnings = useCallback((cardRef: string, w: Warning[]) => {
     setWarnings((m) => (m[cardRef] === w.length ? m : { ...m, [cardRef]: w.length }))
   }, [])
@@ -165,8 +181,11 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
       rememberDensity(next)
       return next
     })
-  const px = arm ? ARM_PX : (DENSITY[step] ?? DENSITY[DENSITY_DEFAULT] ?? 150)
-  const eyeNow = EYES.find((e) => e.key === eye) ?? { key: 'normal', name: 'wall.eye.normal' as const }
+  const reading = READS.find((r) => r.key === eye)
+  // A reading view draws the card at its own width: it is the size the eye is about, so it wins
+  // over the density and over arm's length alike.
+  const px = reading ? reading.view.width : arm ? ARM_PX : (DENSITY[step] ?? DENSITY[DENSITY_DEFAULT] ?? 150)
+  const eyeNow = reading ?? EYES.find((e) => e.key === eye) ?? { key: 'normal', name: 'wall.eye.normal' as const }
   // The wall groups by the column the template already groups by (L3): the deck has said once
   // what its groups are, and the home view reads that answer rather than asking a second time.
   const columns = ['id', ...fieldsOf(doc)]
@@ -281,8 +300,10 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
               onSelectElement(id)
             }}
             onWarnings={(w) => onWarnings(cardRef, w)}
+            onFitted={(sizes) => onFitted(cardRef, sizes)}
           />
         </div>
+        {reading && smallest[cardRef] !== undefined && <ReadOut sizePt={smallest[cardRef]} view={reading.view} lang={lang} t={t} />}
         {copies > 1 && <span className="byd-wall-copies" data-copies>×{copies}</span>}
         {count > 0 && (
           <span className="byd-wall-warnings" data-warnings>
@@ -360,7 +381,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
       </Crown>
       {box === 'eyes' && (
         <CrownDrawer label={t('wall.eyes')} opener={eyesBox} onClose={close}>
-          {EYES.map((e) => (
+          {[...EYES, ...READS].map((e) => (
             <button key={e.key} type="button" className="byd-choice" aria-pressed={eye === e.key} onClick={() => setEye(e.key)}>
               {t(e.name)}
             </button>
@@ -572,8 +593,8 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
       <CrownFoot>
         <span>
           {isFiltering(filter)
-            ? t('wall.foot.found', { shown: shown.length, total: doc.rows.length, px })
-            : t('wall.foot.cards', { n: doc.rows.length, px })}
+            ? t('wall.foot.found', { shown: shown.length, total: doc.rows.length, px: Math.round(px) })
+            : t('wall.foot.cards', { n: doc.rows.length, px: Math.round(px) })}
         </span>
         {/* An empty deck is not a checked one (#476): «Inga anmärkningar» over nothing reads as
             an approval. */}
@@ -863,5 +884,21 @@ function Source({
         </button>
       </div>
     </section>
+  )
+}
+
+// What a card carries in a reading view (#512): its smallest text in px there, and in words — not
+// by colour alone — when that is under the screen's floor for all text (K26).
+function ReadOut({ sizePt, view, lang, t }: { sizePt: number; view: ReadingView; lang: string; t: T }) {
+  const px = textPxOnCard(sizePt, view.width)
+  const floor = SCREENS[view.screen].floorPx
+  // Rounded as it is shown, so a text shown at the floor is never said to be under it.
+  const shown = Math.round(px * 10) / 10
+  const said = shown.toLocaleString(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+  const under = shown < floor
+  return (
+    <p className="byd-wall-read" data-read {...(under ? { 'data-under': 'true' } : {})}>
+      {under ? t('wall.read.under', { px: said, floor }) : t('wall.read', { px: said })}
+    </p>
   )
 }

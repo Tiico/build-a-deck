@@ -13,6 +13,7 @@ import { contrastRatio, flatten } from '../src/player/contrast.js'
 import { TableClient } from '../src/client.js'
 import { FootPlay, HandActions } from '../src/player/HandActions.js'
 import { DEFAULT_BODY_PT, SCREENS, textPxOnCard } from './legibility.js'
+import { READING_VIEWS } from '../src/legibility.js'
 import { HandStrip } from '../src/player/HandStrip.js'
 import { HeldCard } from '../src/player/HeldCard.js'
 import { Texture } from '../src/table/Texture.js'
@@ -456,6 +457,10 @@ describe('a card held up on the phone reads at the floor, at every phone and tab
         return { card: card.width, top: Math.round(card.top), controls }
       })()`) as { card: number; top: number; controls: { name: string; w: number; h: number; bottom: number; right: number; left: number }[] }
       const body = Number(textPxOnCard(DEFAULT_BODY_PT, seen.card).toFixed(1))
+      // At its narrowest it is the width the reading views give the phone (#512), which is what the
+      // editor's eye draws the wall at.
+      const phone = READING_VIEWS.find((v) => v.key === 'phone')!
+      if (width === phone.window.w && height === phone.window.h) expect(Math.round(seen.card)).toBe(phone.width)
       expect({ width, height, kind, body: body >= SCREENS.phone.bodyPx.min && body <= SCREENS.phone.bodyPx.max }).toEqual({ width, height, kind, body: true })
       // Everything on it is reachable: on the screen, and big enough for a thumb.
       expect(seen.top).toBeGreaterThanOrEqual(0)

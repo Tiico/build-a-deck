@@ -980,6 +980,11 @@
 /* The ring out of #234, untouched by all of the above: it stands outside the lift and is never
    what the lift replaces. */
 .byd-wall-card[aria-selected='true'] { outline: 3px solid var(--byd-editor-primary-mark); outline-offset: 3px; }
+/* What a card carries in a reading view (#512): a line under the card, in the card's width. Under
+   the floor it says so in words, and the colour and the mark only repeat it (K26). */
+.byd-wall-read { margin: var(--byd-s2) 0 0; max-width: var(--byd-wall-card); font-size: 12px; font-weight: 600; color: var(--byd-editor-quiet); }
+.byd-wall-read[data-under] { color: #ff8a80; font-weight: 700; }
+.byd-wall-read[data-under]::before { content: '▲ ' / ''; }
 .byd-wall-copies, .byd-wall-warnings { position: absolute; border-radius: 999px; font-size: 11px; font-weight: 700; padding: 0 4px; }
 .byd-wall-copies { bottom: -6px; right: -6px; background: #1b1d23; color: #fff; border: 1px solid #444; }
 .byd-wall-warnings { top: -6px; right: -6px; background: #f0b64a; color: #1c1c1c; }
