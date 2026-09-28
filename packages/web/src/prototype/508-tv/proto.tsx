@@ -27,7 +27,7 @@ type Shown = { card: VisibleComponentState; why: string; until: number; ms: numb
 const publicCards = (view: Snapshot | null): VisibleComponentState[] => {
   if (!view) return []
   const hands = new Set(view.zones.filter((z) => z.kind === 'hand').map((z) => z.id))
-  return view.components.filter((c) => c.cardRef !== null && !hands.has(c.zone))
+  return view.components.filter((c) => c.cardRef !== null && c.counter === undefined && !hands.has(c.zone))
 }
 const seatName = (view: Snapshot | null, seat: string | null) => (seat === null ? 'Bordet' : (view?.seats.find((s) => s.id === seat)?.name ?? seat))
 
