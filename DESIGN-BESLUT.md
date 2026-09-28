@@ -3016,6 +3016,13 @@ Telefonen har 16 px luft kvar mot kanten, bordets lyft fönstrets höjd, och TV:
 En textur ritad före det här har ingen uppgift, och läses i den vanliga bredden som förut.
 Vid 320 är skärmen gränsen: 304 px bär 7,0 pt i 11,9 px och 6,5 pt i 11,1 px, under golvet, och det är den gräns C varnar designern för (#523).
 
+Tillagt 2026-09-28 (#523, beslut C: efter start): **editorn säger vilka kort en telefon inte kan läsa, när bordet är uppe.**
+Svaren från `/sessions/:id/textures` och `/sessions/:id/prepare` bär `smallest`: det varje korts renderade framsida anpassades till, per rad.
+När renderingen är klar räknar editorn korten under `minPtIn` för telefonens läsvy vid 320 (7,3 pt) och säger det i remsan under huvudet, i E5:s form: «4 kort har text under 7,3 pt, som en telefon på 320 px visar under 12 px.»
+Anmärkningen stoppar inget, och bordet är uppe när den står där.
+«Visa på kortväggen» öppnar väggen med telefonens öga (E5, #512), där de korten är markerade.
+Den står efter start och inte före, eftersom storleken är renderarens och finns först när texturerna finns: samma tal som spelarna får, och ingen väntan vid start.
+
 ## L. Editorn (grillad 2026-09-06)
 
 E1, E2 och E3 gav principerna; det här är hur de blir konkreta.

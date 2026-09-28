@@ -164,10 +164,12 @@ describe('texture readiness (L5)', () => {
     const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
     const before = await (await fetch(`${run.http}/sessions/${sessionId}/textures`)).json()
     // Three cards, two faces each: the back is one shared texture, the fronts are three.
-    expect(before).toEqual({ total: 4, done: 0, failed: [] })
+    expect(before).toEqual({ total: 4, done: 0, failed: [], smallest: {} })
     await run.renderAll()
     const after = await (await fetch(`${run.http}/sessions/${sessionId}/textures`)).json()
-    expect(after).toEqual({ total: 4, done: 4, failed: [] })
+    // And what each card's front was fitted to once it is rendered (#523): the editor says, after a
+    // start, which cards a phone cannot read. The template's one text is a 14 pt title.
+    expect(after).toEqual({ total: 4, done: 4, failed: [], smallest: { dragon: 14, knight: 14, wizard: 14 } })
     expect((await fetch(`${run.http}/sessions/nope/textures`)).status).toBe(404)
   }, 60_000)
 })
@@ -187,13 +189,14 @@ describe('a version change is atomic for the players (L5)', () => {
     expect((await json('PUT', `/projects/${id}`, { ...project(), rows, rev: rec.rev })).status).toBe(200)
 
     const prepared = (await (await json('POST', `/sessions/${sessionId}/prepare`, {})).json()) as { total: number; done: number; failed: string[] }
-    // One new front (the dragon's); the other three textures are already rendered.
-    expect(prepared).toEqual({ total: 4, done: 3, failed: [] })
+    // One new front (the dragon's); the other three textures are already rendered, and only a
+    // rendered front says what it was fitted to (#523).
+    expect(prepared).toEqual({ total: 4, done: 3, failed: [], smallest: { knight: 14, wizard: 14 } })
     expect(table.view!.components[0]!.faces!['front']).toBe(before)
     expect(table.view!.seq).toBe(2)
 
     await run.renderAll()
-    expect(await (await json('POST', `/sessions/${sessionId}/prepare`, {})).json()).toEqual({ total: 4, done: 4, failed: [] })
+    expect(await (await json('POST', `/sessions/${sessionId}/prepare`, {})).json()).toEqual({ total: 4, done: 4, failed: [], smallest: { dragon: 14, knight: 14, wizard: 14 } })
     expect((await json('POST', `/sessions/${sessionId}/refresh`, {})).status).toBe(200)
     await table.synced(3)
     expect(table.view!.components[0]!.faces!['front']).not.toBe(before)
@@ -259,12 +262,12 @@ describe('a texture that failed for good (#10)', () => {
     const job = (await run.renders.claim(Date.now()))!
     await run.renders.fail(job.hash, 'chromium gave up')
 
-    expect(await prepare()).toEqual({ total: 4, done: 0, failed: [job.hash] })
+    expect(await prepare()).toEqual({ total: 4, done: 0, failed: [job.hash], smallest: {} })
     // Asking again is not a retry: a dead job stays dead until someone says otherwise.
-    expect(await prepare()).toEqual({ total: 4, done: 0, failed: [job.hash] })
+    expect(await prepare()).toEqual({ total: 4, done: 0, failed: [job.hash], smallest: {} })
     expect((await run.renders.status(job.hash))?.state).toBe('failed')
 
-    expect(await prepare('?retry=1')).toEqual({ total: 4, done: 0, failed: [] })
+    expect(await prepare('?retry=1')).toEqual({ total: 4, done: 0, failed: [], smallest: {} })
     // Back in the queue for real: a worker claims it along with the rest and finishes it.
     const claimed: string[] = []
     for (;;) {
@@ -274,7 +277,8 @@ describe('a texture that failed for good (#10)', () => {
       await run.renders.complete(next.hash, new Uint8Array([137, 80, 78, 71]))
     }
     expect(claimed).toContain(job.hash)
-    expect(await prepare()).toEqual({ total: 4, done: 4, failed: [] })
+    // Completed by hand with no fit, as every texture rendered before #523 was: nothing to say.
+    expect(await prepare()).toEqual({ total: 4, done: 4, failed: [], smallest: {} })
   })
 })
 

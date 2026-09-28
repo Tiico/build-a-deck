@@ -111,6 +111,10 @@ export const svEditor = {
   'editor.table.stalled': 'renderingen står stilla — korten på bordet visar sin reservtext tills den kommer igång',
   'editor.table.open': 'öppna bordet',
   'editor.table.failed': '{n} kort kunde inte renderas',
+  // Efter start (#523): kort vars minsta text en telefon inte kan visa i golvets storlek (K26).
+  'editor.table.unreadable.one': '1 kort har text under {pt} pt, som en telefon på {width} px visar under {floor} px.',
+  'editor.table.unreadable.other': '{n} kort har text under {pt} pt, som en telefon på {width} px visar under {floor} px.',
+  'editor.table.unreadable.show': 'Visa på kortväggen',
   'editor.table.roomCode': 'rumskod',
   'editor.table.newCode': 'Ny kod',
   'editor.role.tester': 'Du är testledare här: du kan starta bord, läsa spelet och jämföra versioner, men inte ändra det.',

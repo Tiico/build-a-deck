@@ -48,8 +48,10 @@ export const tvShowWidth = (feltHeightPx: number): number =>
   (Math.min(TV_SHOW.maxPx, feltHeightPx - 2 * TV_SHOW.airPx - TV_SHOW.captionPx - TV_SHOW.gapPx) * CARD_WIDTH_MM) / CARD_STANDARD_63x88.physical.heightMm
 
 export type ReadingView = { key: 'phone' | 'desk' | 'tv'; screen: Screen; window: { w: number; h: number }; width: number }
+// The phone's on its own too: it is the view that says no first, and the one the editor warns by (#523).
+export const PHONE_READING: ReadingView = { key: 'phone', screen: 'phone', window: { w: 320, h: 568 }, width: PHONE_READ_PX }
 export const READING_VIEWS: readonly ReadingView[] = [
-  { key: 'phone', screen: 'phone', window: { w: 320, h: 568 }, width: PHONE_READ_PX },
+  PHONE_READING,
   { key: 'desk', screen: 'desk', window: { w: 1024, h: 768 }, width: (Math.min(768 * LIFT_SHARE, 768 - 2 * LIFT_GAP) * CARD_WIDTH_MM) / CARD_STANDARD_63x88.physical.heightMm },
   { key: 'tv', screen: 'tv', window: { w: 1920, h: 1080 }, width: tvShowWidth(1080) },
 ]
