@@ -1,6 +1,8 @@
 import { z } from 'zod'
-import { strToU8, zipSync, type Zippable } from 'fflate'
-import { ProjectDoc } from './projects.js'
+import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate'
+import { ASSET_MAX_BYTES, sniffAsset } from '@byd/protocol'
+import { ProjectDoc, checkedHistory, liftDoc } from './projects.js'
+import { assetHash } from './assets.js'
 
 // Full export of a game (G5, #527): the designer's data, whole, in a format they can open without
 // the tool. A game is two to four years of work before it reaches a printer, and "what happens to
@@ -161,4 +163,73 @@ Det behöver ingenting utöver den här mappen för att läsas.
 
 Formatet \`${m.format}\`, version ${m.formatVersion}.
 `
+}
+
+// An export read back (#528): the manifest, every version lifted to today's document, and each
+// asset's bytes checked against the name it carries, the kind it says it is and the size an
+// upload may have. What does not hold is said, every thing at once, and nothing is kept: a zip
+// is taken whole or not at all. `unlisted` are assets a version uses that the zip does not carry
+// — the caller asks its own store, since an asset is the same asset wherever it was uploaded.
+export type ReadExport =
+  | { ok: true; manifest: ProjectExport; current: ProjectExport['versions'][number]['doc']; assets: Map<string, { bytes: Uint8Array; contentType: string; motif?: ProjectExport['assets'][number]['motif'] }>; unlisted: string[] }
+  | { ok: false; problems: string[] }
+
+export function readExport(zip: Uint8Array): ReadExport {
+  let files: Record<string, Uint8Array>
+  try {
+    files = unzipSync(zip)
+  } catch {
+    return { ok: false, problems: ['the file is not a zip'] }
+  }
+  const raw = files['spel.json']
+  if (!raw) return { ok: false, problems: ['the zip has no spel.json, so it is not an export of a game'] }
+  let json: unknown
+  try {
+    json = JSON.parse(strFromU8(raw))
+  } catch {
+    return { ok: false, problems: ['spel.json is not JSON'] }
+  }
+  const head = json as { format?: unknown; formatVersion?: unknown; versions?: unknown }
+  if (head.format !== EXPORT_FORMAT) return { ok: false, problems: [`spel.json is not a ${EXPORT_FORMAT}`] }
+  if (typeof head.formatVersion === 'number' && head.formatVersion > EXPORT_FORMAT_VERSION)
+    return { ok: false, problems: [`the export was made by a newer version of the tool (format ${head.formatVersion}; this one reads ${EXPORT_FORMAT_VERSION})`] }
+  // Documents saved before today's shape are lifted to it, as they are when they are loaded.
+  if (Array.isArray(head.versions)) for (const v of head.versions as { doc?: unknown }[]) if (v && typeof v === 'object' && v.doc) v.doc = liftDoc(v.doc)
+  const parsed = ProjectExport.safeParse(json)
+  if (!parsed.success) return { ok: false, problems: parsed.error.issues.slice(0, 20).map((i) => `spel.json: ${i.path.join('.')}: ${i.message}`) }
+  const manifest = parsed.data
+  let last: ProjectExport['versions'][number]
+  try {
+    last = checkedHistory(manifest.versions)
+  } catch (e) {
+    return { ok: false, problems: [String((e as Error).message)] }
+  }
+  const problems: string[] = []
+  if (last.rev !== manifest.current.rev) problems.push('current.rev is not the last version')
+  const assets = new Map<string, { bytes: Uint8Array; contentType: string; motif?: ProjectExport['assets'][number]['motif'] }>()
+  for (const asset of manifest.assets) {
+    const bytes = files[asset.file]
+    if (!bytes) {
+      problems.push(`asset ${asset.hash}: ${asset.file} is not in the zip`)
+      continue
+    }
+    if (assetHash(bytes) !== asset.hash) {
+      problems.push(`asset ${asset.hash}: the bytes in ${asset.file} are not the file its name says`)
+      continue
+    }
+    if (bytes.length > ASSET_MAX_BYTES) {
+      problems.push(`asset ${asset.hash}: larger than an upload may be`)
+      continue
+    }
+    const format = sniffAsset(bytes)
+    if (!format || format.type !== asset.contentType) {
+      problems.push(`asset ${asset.hash}: the bytes are not ${asset.contentType}`)
+      continue
+    }
+    assets.set(asset.hash, { bytes, contentType: format.type, ...(asset.motif ? { motif: asset.motif } : {}) })
+  }
+  if (problems.length > 0) return { ok: false, problems }
+  const listed = new Set(manifest.assets.map((a) => a.hash))
+  const unlisted = [...new Set(manifest.versions.flatMap((v) => assetHashesOf(v.doc)))].filter((h) => !listed.has(h)).sort()
+  return { ok: true, manifest, current: last.doc, assets, unlisted }
 }

@@ -1516,6 +1516,11 @@ Preciserat 2026-09-28 av beställaren (#526):
 
 Byggt 2026-09-28 (#527): `POST /projects/:id/export` köar trycket, och `GET` svarar 202 med förloppet och sedan med zippen. Servern håller inget jobb mellan anropen; planen räknas fram ur dokumentet och renderarens lager varje gång. Formatet står i `packages/server/src/export.ts`, och grinden är `packages/server/test/export.test.ts`.
 
+Byggt 2026-09-28 (#528): `POST /projects/import` tar zippen och skapar ett **nytt** spel som ägs av den som tar in det, med varje version på sin revision, sitt datum och sitt namn (`restore` i båda lagren). Ett spel skrivs aldrig över.
+Ingenting skrivs förrän allt har lästs och hållit: manifestet mot schemat, varje asset mot sin hash, sitt format och uppladdningens gräns, och den aktuella versionens uppställning. En asset som zippen inte bär måste redan finnas på servern.
+Tryck-PDF:erna läses inte in, eftersom de kan härledas. Redigeringsloggen följer inte med, så `atSeq` gör det inte heller.
+Rundturen — exportera, importera, exportera igen — ger samma `spel.json` bortsett från id och tidpunkt, och det är grinden.
+
 ---
 
 ## H. Sekvensering
