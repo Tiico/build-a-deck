@@ -5,7 +5,9 @@
    seat's line and the session's tools have a row of their own at the top, the felt takes what is
    left, and the hand owns the bottom alone. */
 .byd-online { position: relative; background: #17120f; display: flex; flex-direction: column; }
-.byd-online-felt { position: relative; flex: 1 1 auto; min-height: 0; }
+.byd-online-felt { position: relative; flex: 1 1 auto; min-height: 0; min-width: 0; overflow: hidden; }
+/* The felt's row keeps its size whatever the lens draws in it (#502): an enlarged wood is clipped
+   by its row, and never grows the row it is measured in — which would feed back into the fit. */
 .byd-online-felt > .byd-table-frame { width: 100%; height: 100%; }
 .byd-online-top { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 8px 16px; background: #100d0b; border-bottom: 1px solid #2a221c; }
 .byd-online-me { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-width: 0; min-height: 44px; padding: 0 14px; border-radius: 999px; background: rgba(20, 22, 28, 0.9); color: #9aa3b8; font-size: 13px; border-left: 4px solid var(--seat); }

@@ -195,6 +195,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             onAct={playable ? onAct : undefined}
             keyboard={kbd.keyboard}
             aimed={aimed}
+            // A lens on the felt (#502, beslut B): K9's 45 px one step in, at any table and window.
+            lens
             peers={Object.values(presence.peers)}
             pulses={presence.pulses}
             recent={recent}
