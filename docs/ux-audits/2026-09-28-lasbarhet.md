@@ -223,6 +223,13 @@ Väg till läsning: hover → 138 px (6,6 px); telefon: tryck → 252 px (12 px)
 ![Observatören vid 1280 × 800: INSPEKTION 138 px](2026-09-28/observator-01-inspektionen-138px-1280x800.png)
 ![Observatören på telefon: trycket ger 252 px](2026-09-28/observator-02-tryck-252px-390x844.png)
 
+**Åtgärdat 2026-09-28 (#511, beslut A, C8):** fynd 1 och 2 genom lyftet.
+En vilande mus eller ett tryck på ett kort, också i en hand, lyfter det bredvid sig: **355 px och 17,0 px brödtext** vid 1280 × 800, 479 px och 23 px vid 1920 × 1080 (mätt i den byggda appen).
+Korten i händerna svarade tidigare inte på pekaren alls, så INSPEKTION kunde aldrig visa ett handkort; nu gör de det, och INSPEKTION fylls också från dem.
+Filten, kolumnen och det observatören får över tråden är orörda; fynd 3 (telefonens tryck) står kvar.
+
+![Observatören läser ett handkort vid 1280 × 800: lyftet 355 px, 17 px brödtext](2026-09-28/observator-03-lyftet-355px-1280x800.png)
+
 ### 6. Editorn — Kortvägg och Mall
 
 Editorn är inte en spelyta, men den är där designern ser kortet innan bordet startas, och där svaret på «hur läses det här på en telefon?» borde stå.

@@ -86,6 +86,29 @@ describe('the observer inspects too (C8, K8)', () => {
   })
 })
 
+// Reading a hand is the observer's role (C8, #511, beslut A): a card in any hand lifts beside
+// itself on a resting mouse or a press, in the window's size (K26), and she can ask nothing of it.
+describe('the observer reads a card in any hand with one gesture (C8, K26, #511)', () => {
+  it('lifts a card from a player’s hand on the felt, and opens no ring', async () => {
+    const id = await createSession(run)
+    const ada = TableClient.connect(await asSeat(run, id, 'A'))
+    await ada.ready()
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
+    render(<ObserverPage />)
+    await screen.findByText(/Du är observatör/)
+    await waitFor(() => expect(document.querySelectorAll('[data-zone="hand:A"] .byd-hand-card').length).toBe(2))
+
+    const card = document.querySelector('[data-zone="hand:A"] .byd-hand-card')!
+    const id0 = card.getAttribute('data-component')
+    fireEvent.pointerEnter(card, { pointerType: 'mouse', clientX: 200, clientY: 200 })
+    await waitFor(() => expect(document.querySelector('[data-lift]')?.getAttribute('data-lift')).toBe(id0))
+    fireEvent.pointerDown(card, { pointerType: 'mouse', clientX: 200, clientY: 200, button: 0, pointerId: 1 })
+    expect(document.querySelector('[data-radial]')).toBeNull()
+    ada.close()
+  })
+})
+
 describe('the observer screen is not a screen to join from (K12)', () => {
   it('shows no room code at all rather than the session id spelled out', async () => {
     const id = await createSession(run)
