@@ -23,7 +23,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { userEvent, type UserEvent } from '@testing-library/user-event'
 import { chromium, type Browser, type Page } from 'playwright'
 import type { ProjectDoc } from '@byd/server'
@@ -81,6 +81,14 @@ function groupedDeck(): ProjectDoc {
 // The Mall tab as the editor mounts it at a width, after whatever the designer did there. The doing
 // has to happen in React — a fold and an open menu are state, not markup — so it happens here and
 // what comes out is measured.
+// The strip over the card, where the crown's own buttons stand. A button is asked for there and not
+// on the whole page (#543): asking by role and name computes the accessible name of every button
+// the query is asked across, and in jsdom that is a style resolution per element. The deck wall
+// beside the card draws a button for every card it shows, so a query across the page grew with the
+// desk — 3, 6 and 9 s for one click at 1024, 1280 and 1440 — until the suite's worker could not
+// answer its own RPC in time and the gate failed with every test green.
+const strip = () => within(document.querySelector<HTMLElement>('.byd-canvas-strip')!)
+
 async function templateTab(width: number, did?: (user: UserEvent) => Promise<void>): Promise<string> {
   atWidth(width)
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
@@ -188,7 +196,7 @@ describe.each(DESKS)('the crown over the card on a %ix%i desk', (width, height) 
 
   it('has every group of the deck behind its one button, counted, and none of them cut off', async () => {
     const html = await templateTab(width, async (user) => {
-      await user.click(screen.getByRole('button', { name: /kortgrupper/i }))
+      await user.click(strip().getByRole('button', { name: /kortgrupper/i }))
     })
     const seen = await measure(width, height, html, (page) =>
       page.evaluate(() => {
@@ -236,7 +244,7 @@ describe.each(DESKS)('the card on a %ix%i desk', (width, height) => {
       width,
       height,
       await templateTab(width, async (user) => {
-        await user.click(screen.getByRole('button', { name: /fäll ihop egenskaperna/i }))
+        await user.click(strip().getByRole('button', { name: /fäll ihop egenskaperna/i }))
       }),
       stage,
     )
