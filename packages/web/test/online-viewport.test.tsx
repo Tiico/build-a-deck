@@ -21,6 +21,8 @@ import { TableClient } from '../src/client.js'
 import { OnlinePage } from '../src/online/OnlinePage.js'
 import { admit, asTable, createSession, startServer, type Running } from './fixture.js'
 import { atWindow, type Size } from './felt-frame.js'
+import { DEFAULT_BODY_PT, SCREENS, textPxOnCard } from './legibility.js'
+import { READ_CARD_MAX_PX } from '../src/online/fan.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
@@ -355,15 +357,19 @@ const spreadAt = (held: number, size: { w: number; h: number }) =>
     true,
   )
 
-describe('the hand raised as a grid is the whole hand at reading size (#24)', () => {
+describe('the hand raised as a grid is the whole hand at reading size (#24, K26)', () => {
   for (const size of SIZES) {
     it(`lays out twenty-one cards whole, over the table and never over the tools, at ${size.w}`, async () => {
       const { cards, tools, sheetTop, topBottom, sideways } = await spreadAt(21, size)
       expect(cards).toHaveLength(21)
-      // Reading size is the whole promise of this mode: a card here is the size the fan reads at
-      // and keeps the card's own proportion, or the grid is just the fan with the turning taken
-      // out. Two decimals of tolerance for the browser's own rounding.
-      const wrong = cards.filter((c) => c.w < 56 || c.w > 112 || Math.abs(c.h / c.w - 88 / 63) > 0.02).map((c) => `${c.what}: ${c.w}×${c.h}`)
+      // Reading size is the whole promise of this mode: a card here carries its body text at the
+      // desk's floor (K26, #510) and keeps the card's own proportion, or the grid is just the fan
+      // with the turning taken out. It used to be the fan's 56–112 px, which K17 called reading
+      // size and which carries the wizard's body at 5 px. Two decimals of tolerance for the
+      // browser's own rounding.
+      const wrong = cards
+        .filter((c) => textPxOnCard(DEFAULT_BODY_PT, c.w) < SCREENS.desk.bodyPx.min || c.w > READ_CARD_MAX_PX || Math.abs(c.h / c.w - 88 / 63) > 0.02)
+        .map((c) => `${c.what}: ${c.w}×${c.h}`)
       const small = tools.filter((t) => t.w < 44 || t.h < 44).map((t) => `${t.what}: ${t.w}×${t.h}`)
       // Nothing in the grid hides anything else. A card that keeps its size while the row it
       // sits in is shorter than it lands on the card below, and a grid whose rows overlap is the
