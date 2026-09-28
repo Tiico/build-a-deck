@@ -707,6 +707,7 @@ Kortet läggs ner av ett tryck som börjar på det, av bakgrunden eller av «St�
 «Läs valt kort» är borta.
 Håll för flerval, lyft uppåt till arket och omsortering (K4, #483) är orörda: bara vad ett tryck gör har ändrats.
 Remsan är liten i vila, `clamp(112px, 34vw, 200px)`, och följer skärmen i stället för att stå i 154 px från 320 till 768.
+«Senast» och varje annan logg säger kortets titel när raden handlar om ett kort som läsarens egen vy har ett namn på, «Bo vände Björnen», och «ett kort» annars; namnet kommer ur projektionen och ingen annanstans, så raden kan inte säga något som skärmen inte redan fått veta (B6, #412).
 Två förkastade varianter, mätta med riktiga texturer: B ritade remsan i läsbredd med handen som miniatyrer ovanför, vilket läste utan handling men visade ett kort åt gången och sköt genvägarna under skärmkanten; C lät det valda kortet växa där det låg, vilket vid 390 lämnade en strimma av grannarna.
 Bilder och tal: [`docs/ux-audits/2026-09-28/prototyper/507/`](docs/ux-audits/2026-09-28/prototyper/507/README.md).
 Känd lucka: läsbredden räknas på förvalsramens 8,5 pt brödtext (L6), eftersom telefonen inte vet vilken punktstorlek mallen har — projektionen bär texturens hash och inte mallens mått.

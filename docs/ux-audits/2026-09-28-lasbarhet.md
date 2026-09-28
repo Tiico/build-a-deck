@@ -113,7 +113,7 @@ Ett tryck håller upp kortet i K26:s läsbredd och väljer det: 294 px vid 320 (
 ‹ › och svep går igenom raden, så en hand på sju kort läses med ett tryck och sex steg i stället för 21 tryck.
 «Ytorna» visar korten i varje öppen yta med samma tryck (fynd 3), och kortet framför en själv hålls upp i samma läsbredd (fynd 4 och 5).
 Remsan följer skärmen: 112 · 133 · 200 px vid 320 · 390 · 768 (fynd 1).
-Fynd 6, «Senast» utan kortets namn, står kvar.
+«Senast» säger kortets namn när läsaren får se kortet, «Bo vände Björnen», och «ett kort» annars (fynd 6).
 
 ![Efter: remsan i vila, 133 px](2026-09-28/telefon-04-efter-remsan-133px-390x844.png)
 ![Efter: ett tryck, 336 px](2026-09-28/telefon-05-efter-ett-tryck-336px-390x844.png)

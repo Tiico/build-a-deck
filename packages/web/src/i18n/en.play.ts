@@ -166,10 +166,12 @@ export const enPlay = {
   'counter.entry.cancel': 'Cancel',
 
   'activity.move': '{who} moved a card to {zone}',
+  'activity.move.named': '{who} moved {card} to {zone}',
   'activity.hand.my': 'my hand',
   'activity.hand.other': '{name:s} hand',
   'activity.rotate': '{who} turned a card',
   'activity.flip': '{who} flipped a card',
+  'activity.flip.named': '{who} flipped {card}',
   'activity.stack': '{who} put a card on another',
   'activity.split.to': '{who} drew {n} from {zone} to {to}',
   'activity.split.beside': '{who} split {n} off {zone} into a new pile',

@@ -90,3 +90,30 @@ describe('the log tells a drawn card from a cut pile (#421)', () => {
     expect(describeActivity(drawn, table('A'), sv)).toBe('Ada drog 3 från Draghög till min hand')
   })
 })
+
+// Which card a line is about, when the reader may know it (#507 fynd 6). «Bo vände ett kort» was
+// all the phone said about the card a player had to answer. The name comes out of the reader's own
+// view and nowhere else, so a card she may not see stays «ett kort»: the projection has already
+// decided what she is told (B6, #412), and the line only says it again.
+describe('the log names the card a line is about, when the reader can see it (#507)', () => {
+  const card = { id: 'c1', type: { id: 'card.standard.63x88', version: 1 }, zone: 'table', face: 'front', x: 0, y: 0, rot: 0, cardRef: 'bjornen', title: 'Björnen' }
+  const withCard = (seat: string | null, c: Record<string, unknown> = card): Snapshot => ({ ...table(seat), components: [c] } as unknown as Snapshot)
+  const flip: Activity = { seq: 10, by: 'B', at: '2026-09-28T00:00:00.000Z', intent: { v: 'flip', component: 'c1', face: 'front' } } as Activity
+
+  it('says the title of a card turned face up where the reader sees it', () => {
+    expect(describeActivity(flip, withCard('A'), sv)).toBe('Bo vände Björnen')
+    expect(describeActivity(flip, withCard(null), en)).toBe('Bo flipped Björnen')
+  })
+
+  it('says the title of a card moved where the reader sees it', () => {
+    expect(describeActivity(moveToHand('table'), withCard('B'), sv)).toBe('Ada flyttade Björnen till Spelyta')
+    expect(describeActivity(moveToHand('table'), withCard(null), en)).toBe('Ada moved Björnen to Spelyta')
+  })
+
+  it('says «ett kort» for a card the reader is not told, or no longer sees', () => {
+    // Face down in an open area: the component is there, its identity is not (B6).
+    expect(describeActivity(flip, withCard('A', { ...card, face: 'back', cardRef: null, title: undefined }), sv)).toBe('Bo vände ett kort')
+    // Gone from the reader's view altogether — into a hand, or a pile nobody reads.
+    expect(describeActivity(flip, table('A'), sv)).toBe('Bo vände ett kort')
+  })
+})

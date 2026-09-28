@@ -204,11 +204,14 @@ export const svPlay = {
 
   // En rad ur loggen i ord. Namn och zoner kommer från vyn och översätts inte.
   'activity.move': '{who} flyttade ett kort till {zone}',
+  // Med kortets namn när läsaren får se kortet (#507 fynd 6); annars raden ovan.
+  'activity.move.named': '{who} flyttade {card} till {zone}',
   // En hand namnges av den som sitter där (K19), mitt i meningen: "till Adas hand", "till min hand".
   'activity.hand.my': 'min hand',
   'activity.hand.other': '{name:s} hand',
   'activity.rotate': '{who} vred ett kort',
   'activity.flip': '{who} vände ett kort',
+  'activity.flip.named': '{who} vände {card}',
   'activity.stack': '{who} lade ett kort på ett annat',
   'activity.split.to': '{who} drog {n} från {zone} till {to}',
   'activity.split.beside': '{who} delade av {n} från {zone} till en ny hög',
