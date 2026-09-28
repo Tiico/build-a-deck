@@ -214,7 +214,7 @@ describe('the survey after a session (G3)', () => {
     await table.close()
     expect((await json('POST', `/sessions/${sessionId}/survey`, answer)).status).toBe(201)
     expect((await json('POST', `/sessions/${sessionId}/survey`, { ...answer, answers: { fun: 9 } })).status).toBe(400)
-    const listed = (await (await fetch(`${run.http}/sessions/${sessionId}/surveys`)).json()) as unknown[]
+    const listed = (await (await json('GET', `/sessions/${sessionId}/surveys`)).json()) as unknown[]
     expect(listed).toEqual([expect.objectContaining({ ...answer, version })])
   })
 })
@@ -239,12 +239,12 @@ describe('exporting a session for the replay corpus (DRIFT §7)', () => {
     const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
     await table.send(null, { v: 'shuffle', pile: 'draw' })
     await table.close()
-    const exported = (await (await fetch(`${run.http}/sessions/${sessionId}/export`)).json()) as { version: string; setup: unknown; log: { outcome?: unknown }[]; deck?: unknown }
+    const exported = (await (await json('GET', `/sessions/${sessionId}/export`)).json()) as { version: string; setup: unknown; log: { outcome?: unknown }[]; deck?: unknown }
     expect(exported.version).toBe('rev-1')
     expect(exported.log).toHaveLength(1)
     expect(exported.log[0]?.outcome).toMatchObject({ kind: 'shuffle' })
     expect(exported.deck).toBeUndefined()
-    expect((await fetch(`${run.http}/sessions/nope/export`)).status).toBe(404)
+    expect((await json('GET', '/sessions/nope/export')).status).toBe(404)
   })
 })
 
@@ -777,5 +777,41 @@ describe('the setup the players are handed (B5, B7, #270)', () => {
     // Nor anything else a zone knows about itself: where it lies, who may see into it, what it
     // fills with. A zone in the book is a name and the id the book's own references use.
     for (const field of ['geometry', 'visibility', 'returnTo', 'shortcut', 'fill', 'components']) expect(raw, `${field} reached the players' rulebook`).not.toContain(field)
+  })
+})
+
+// The whole log and the survey answers are the project's playtest data, not the table's (D3, G3).
+// The log carries every hand — each draw's outcome says which cards went where — the guests' own
+// names and what was written in a flag, and a session's id is in every player's link. So both are
+// read by those the project lets open its tables as host, who may already watch every hand with
+// `owner=1` (C8); never by a player, a stranger, or the table screen's host key, which sees only
+// what is public.
+describe('who may read a session’s log and its surveys (D3, C8)', () => {
+  const read = (path: string, headers: Record<string, string> = {}) => fetch(`${run.http}${path}`, { headers })
+  const shareWith = async (email: string, role: string): Promise<string> => {
+    await json('POST', '/projects/p1/invites', { email, role })
+    const link = /\/invites\/([A-Za-z0-9_-]+)/.exec(run.mail.sent.at(-1)?.text ?? '')?.[1] ?? ''
+    const theirs = await login(email)
+    await fetch(`${run.http}/invites/${link}`, { method: 'POST', headers: { cookie: theirs } })
+    return theirs
+  }
+
+  it('hands them to the project’s owner and test leaders, and to nobody else', async () => {
+    await json('POST', '/projects', { id: 'p1', ...project() })
+    const { id: sessionId, hostKey } = (await (await json('POST', '/projects/p1/sessions', {})).json()) as { id: string; hostKey: string }
+    const tester = await shareWith('bo@example.com', 'tester')
+    const viewer = await shareWith('cilla@example.com', 'viewer')
+    const stranger = await login('dan@example.com')
+    for (const path of [`/sessions/${sessionId}/export`, `/sessions/${sessionId}/surveys`]) {
+      const at = (status: number) => ({ path, status })
+      expect(at((await read(path, { cookie })).status)).toEqual(at(200))
+      expect(at((await read(path, { cookie: tester })).status)).toEqual(at(200))
+      expect(at((await read(path, { cookie: viewer })).status)).toEqual(at(403))
+      expect(at((await read(path, { cookie: stranger })).status)).toEqual(at(403))
+      // A player's phone has no account to show, only the link the id travels in.
+      expect(at((await read(path)).status)).toEqual(at(401))
+      // The table screen's key opens the table, which sees only what is public.
+      expect(at((await read(path, { authorization: `Bearer ${hostKey}` })).status)).toEqual(at(403))
+    }
   })
 })

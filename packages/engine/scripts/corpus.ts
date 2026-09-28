@@ -8,6 +8,10 @@ import { TypeRegistry, initialState, project, replay, type SetupDef, STANDARD_TY
 //
 //   pnpm --filter @byd/engine corpus <name> <export.json|http://…/sessions/:id/export>
 //
+// Over HTTP the export is read as the project's test leader: the log carries every hand, so the
+// server hands it only to an account the project lets open its tables (D3, C8). Pass that
+// account's session cookie as `BYD_COOKIE=byd_session=…`.
+//
 // Anonymisation keeps the play (what moved where, which card) and drops the people: names,
 // notes, who watched. Card refs stay — they are the game, and that is the open question in DRIFT.
 
@@ -70,7 +74,8 @@ if (isMain) {
   const registry = new TypeRegistry(STANDARD_TYPES)
   const load = async (): Promise<{ version: string; setup: SetupDef; log: Applied[] }> => {
     if (/^https?:/.test(source)) {
-      const res = await fetch(source)
+      const cookie = process.env['BYD_COOKIE']
+      const res = await fetch(source, cookie ? { headers: { cookie } } : {})
       if (!res.ok) throw new Error(`export failed: ${res.status}`)
       return (await res.json()) as { version: string; setup: SetupDef; log: Applied[] }
     }

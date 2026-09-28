@@ -121,6 +121,34 @@ async function hostOf(opts: ServerOptions, req: IncomingMessage, session: Sessio
   return role !== null && canStartTables(role) ? 'host' : 'wrong'
 }
 
+// Who may read a session's whole log and its survey answers (D3, C8, G3): the project's playtest
+// data, not the table's. The log carries every hand, the guests' names and what a flag said, and a
+// session's id travels in every player's link — so it is the project's test leaders and nobody
+// else: whoever may open its tables as host, who may already watch every hand (`owner=1`). A
+// table screen's host key is not enough, since the table sees only what is public; and a table
+// with no project has no one to read it once accounts are on. Without accounts, as everywhere
+// else in this server, the door is open.
+async function playtestReader(opts: ServerOptions, req: IncomingMessage, session: SessionRecord): Promise<'yes' | 'login' | 'no'> {
+  if (!opts.auth) return 'yes'
+  if (/^Bearer\s/i.test(req.headers.authorization ?? '')) return 'no'
+  if (!opts.projects || !session.project) return 'no'
+  const project = await opts.projects.load(session.project)
+  if (!project) return 'no'
+  // A project from before accounts belongs to nobody and is open to anyone (D3).
+  if (project.owner === undefined) return 'yes'
+  const account = await accountOf(opts.auth, req)
+  if (!account) return 'login'
+  const role = await opts.projects.roleOf(session.project, account.id)
+  return role !== null && canStartTables(role) ? 'yes' : 'no'
+}
+// Answers a refused reader and says whether the caller may go on.
+async function mayReadPlaytest(opts: ServerOptions, req: IncomingMessage, res: ServerResponse, session: SessionRecord): Promise<boolean> {
+  const may = await playtestReader(opts, req, session)
+  if (may === 'yes') return true
+  json(res, may === 'login' ? 401 : 403, { error: may === 'login' ? 'log in' : 'not yours to read' })
+  return false
+}
+
 const CreateSession = z.object({
   id: z.string().min(1).optional(),
   version: z.string().min(1),
@@ -1282,6 +1310,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 404, { error: 'unknown session' })
       return true
     }
+    if (!(await mayReadPlaytest(opts, req, res, session))) return true
     json(res, 200, { id: sessionId, version: session.version, setup: session.setup, log: await opts.store.read(sessionId) })
     return true
   }
@@ -1348,7 +1377,14 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
   }
   const surveys = /^\/sessions\/([^/]+)\/surveys$/.exec(url.pathname)
   if (surveys && req.method === 'GET' && opts.surveys) {
-    json(res, 200, await opts.surveys.list(decodeURIComponent(surveys[1] ?? '')))
+    const sessionId = decodeURIComponent(surveys[1] ?? '')
+    const session = await opts.store.loadSession(sessionId)
+    if (!session) {
+      json(res, 404, { error: 'unknown session' })
+      return true
+    }
+    if (!(await mayReadPlaytest(opts, req, res, session))) return true
+    json(res, 200, await opts.surveys.list(sessionId))
     return true
   }
   // How far the textures of a table have come (L5): the editor shows a table only once its
