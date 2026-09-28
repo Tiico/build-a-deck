@@ -1,6 +1,6 @@
 /* PROTOTYPE — throwaway (#529). */
 .p529-card-line { display: grid; gap: 6px; font-size: 13px; color: var(--byd-ink-muted, #9aa3b8); padding: 0 12px 12px; }
-.p529-card-line button { font: inherit; background: none; border: 0; padding: 0; color: inherit; text-decoration: underline; cursor: pointer; }
+.p529-card-line button { justify-self: start; font: inherit; background: none; border: 0; padding: 0; color: inherit; text-decoration: underline; cursor: pointer; }
 .p529-bar { display: block; height: 4px; border-radius: 2px; background: rgb(127 127 127 / 0.25); overflow: hidden; }
 .p529-bar > b { display: block; height: 100%; background: var(--byd-primary-bg, #3b6fd8); transition: width 300ms; }
 .p529-bar-busy > b { width: 40%; animation: p529-busy 1.2s ease-in-out infinite; }
