@@ -143,6 +143,19 @@ Väg till läsning: 3 handlingar → 252 px (12 px).
 ![Ett håll öppnar ringen, inte kortet](2026-09-28/bord-01-ringen-i-stallet-for-hall-1280x800.png)
 ![«Titta»: 252 px vid 1280 × 800](2026-09-28/bord-02-titta-252px-1280x800.png)
 
+**Ändrat 2026-09-28 (#509, K8, K26).**
+Första trycket, klicket eller hållet på ett uppvänt kort lyfter det upp bredvid sig självt i 0,62 av fönstrets höjd, och en mus som vilar på kortet gör detsamma; ringen står bakom ett andra tryck, som lägger ner kortet och öppnar ringen kring det.
+Prototypen hade tre varianter (lyft, lässpalt, kortet med verben); beställaren valde lyftet, eftersom spalten tog filtens kort till 28–32 px vid 1024 × 768 och 36–42 vid 1280 × 800, under K9:s 45.
+Uppmätt med riktiga texturer: 341 px kort och 16,4 px brödtext vid 1024 × 768, 355 och 17,0 vid 1280 × 800, 479 och 23,0 vid 1920 × 1080 — en handling, över skrivbordets 14 px vid varje skärm.
+Filtens kort är orörda (lyftet ligger ovanpå filten och tar ingen plats ur den), så inget K9-, K17- eller K18-tal föll.
+Ringens «Titta» håller upp kortet på samma sätt i stället för i fasta 252 px (fynd 3).
+Fynd 4 — ringens verb över grannkorten — står kvar; läsningen behöver inte längre ringen, men ringen täcker fortfarande grannarna medan den är öppen.
+Grindarna är `packages/web/test/felt-lift.test.tsx` (storleken mot K26:s modul och gesterna) och `packages/e2e/test/table-read.spec.ts` (resan i den byggda appen).
+Samma renderare ritar distansvyns filt, så sida 4:s fynd 4 följer med.
+
+![Efter: ett klick lyfter kortet bredvid sig, 355 px](2026-09-28/bord-03-lyftet-355px-1280x800.png)
+![Efter: andra klicket lägger ner det och öppnar ringen kring kortet](2026-09-28/bord-04-andra-trycket-ringen-1280x800.png)
+
 ### 4. Distansvyn — `/online`
 
 Distansvyn har **flest vägar och ingen som räcker**: handen i 112 px, en hover som lyfter kortet till 180 px, «Visa alla» som lägger ut samma 112 px utan överlapp, och ringens «Titta» på 252 px.
@@ -233,7 +246,7 @@ Varje issue följer samma arbetsgång, så att helheten blir en helhet och inte 
 | 0. Måttstocken | — | — | — | #506 |
 | 1. Telefonen | 6 | 3 | 335 px / 16 px, 3 tryck, bara egna kort | #507 |
 | 2. TV:n | 5 | 2 | 177 px / 8 px, kan inte väljas | #508 |
-| 3. Bordsläget | 4 | 1 | 252 px / 12 px, 3 handlingar | #509 |
+| 3. Bordsläget | 4 | 1 | 252 px / 12 px, 3 handlingar → **341–479 px / 16–23 px, 1 handling** | #509 |
 | 4. Distansvyn | 6 | 2 | 180 px / 8,6 px hover; 252 / 12 «Titta» | #510 |
 | 5. Observatören | 4 | 2 | 138 px / 6,6 px; telefon 252 / 12 | #511 |
 | 6. Editorn | 3 | 0 | (389 px / 19 px — mer än någon spelare ser) | #512 |

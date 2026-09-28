@@ -1625,6 +1625,23 @@ Panelen ber om att bli pekad på bara när ingenting som hänt handlade om ett k
 Kortet slås upp i samma ögonblicksbild som ritas, så en rad om ett kort skärmen inte längre ser lämnar panelen där den stod i stället för att namnge något som inte finns.
 Regeln för vilket kort en rad handlar om sägs på ett ställe — `componentOf` i `packages/web/src/table/presence.ts` — och läses av både filten, som färgar ett kort som just flyttats (K6), och panelen.
 
+Reviderat 2026-09-28 (#509, K26): på filten som spelas i handen läser första trycket, och kortet lyfts upp bredvid sig självt.
+Beslutet sa «tryck-och-håll visar kortet i full upplösning», men ytan hade gjort hållet till ringen (K14) och gömt förstoringen bakom ringens «Titta»: klick, ring, Titta, Escape — tre handlingar till ett kort i fasta 252 px, alltså 12 px brödtext på varje skärm.
+Nu gäller K26:s gest: tryck, klick eller håll på ett uppvänt kort — löst eller överst i en hög — lyfter det upp bredvid där det ligger, och en mus som vilar på kortet gör detsamma så länge den vilar där.
+Ringen står bakom ett andra tryck, på kortet eller på det lyfta kortet, och öppnas kring kortet den handlar om; ett nedvänt kort och en dold hög har inget att läsa och öppnar ringen direkt som förut.
+Att fråga lägger ner kortet: ringens skivor ritades annars över texten man läste, och kontrastgrinden för skivorna (`button-language.test.tsx`) mätte dem mot kortets papper i stället för mot filten de står på.
+Bar filt eller Escape lägger ner det, och en dragning lägger undan det när den börjar.
+Tre varianter prototypades på bordsläget med riktiga texturer (#509: lyft bredvid kortet, en lässpalt, kortet med verben i en lista); lyftet valdes, eftersom det lämnar filten synlig runt kortet och ringen orörd, medan spalten tog filtens kort under K9:s 45 px vid 1024 och 1280 och listan tog bort K14:s glid till verbet.
+
+Storleken är en andel av fönstrets höjd, 0,62, och inte ett fast tal: det är den minsta andel som bär startramens 8,5 pt brödtext över skrivbordets 14 px (K26) vid 1024 × 768, och ett större fönster läser större — 341 px kort och 16 px brödtext vid 1024 × 768, 355 och 17 vid 1280 × 800, 479 och 23 vid 1920 × 1080.
+Kortet läggs på den sida om sig där det får plats och i höjd med sig där fönstret tillåter; saknas plats på båda sidor centreras det.
+Ringens «Titta» håller upp kortet på samma sätt, och ett dolt kort som baksida som förut.
+Det gäller bordsläget och distansvyns filt, som är samma renderare; TV:n läser genom INSPEKTION (#508), och telefonens håll (#507) och tangentbordets «Titta» (K16) är sina egna.
+
+Följdkrav: kortet som just släppts efter en dragning läses inte av att pekaren står kvar på det — webbläsaren säger att pekaren gick in i kortet när greppet släpps — utan först när pekaren rört sig.
+Ett tryck på det lyfta kortet räknas bara om trycket började där, för klicket en webbläsare gör av tappet som lyfte kortet landar där fingret var.
+Talen står i `packages/web/src/table/lift.ts` (`liftBox`); grinden är `packages/web/test/felt-lift.test.tsx`, som läser brödtexten och golvet ur K26:s modul och prövar gesterna.
+
 ### K9. Bordsvyns utseende: filtbord som renderare, sändningslayout som TV-omgivning (prototypat 2026-09-06)
 
 Tre prototyper byggdes och jämfördes: planritning, filtbord med perspektiv, och en mörk sändningslayout.
@@ -2021,6 +2038,10 @@ Sidan bor därför på zonen och inte i steget som ber om korten: ringens Dra 1 
 Den är fyra: `left`, `right`, `above` och `below`, i högens egen vridning som vänster alltid räknats i, och en vriden hög vid en sidoplats får dem med sig.
 Ovanför och under mäts i kortets höjd och inte dess bredd, för en hög som läggs ovanför en annan måste gå fri från långsidan.
 Se K21 för ratten i editorn och för meningen som läser den.
+
+Reviderat 2026-09-28 (#509, K26): på filten som läser öppnar ett tryck på ett uppvänt kort inte ringen utan lyfter kortet för att läsas (K8); ringen står bakom ett andra tryck.
+Regeln på filten blir därmed: en dragning flyttar saken, ett tryck läser den, och ett tryck till frågar vad som går att göra med den.
+Ett nedvänt kort, en dold hög och högens etikett frågar som förut.
 
 Reviderat 2026-09-12: ringen håller verb och inget annat.
 Den bar också en **Stäng**, som beslutet aldrig räknade upp och som tog en plats i cirkeln där varje annan plats gör något.
