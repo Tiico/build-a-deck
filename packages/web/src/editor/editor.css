@@ -146,6 +146,10 @@
   /* And the tabs speak at the crown's 12 px here: seven of them were over 400 px of the row. */
   .byd-editor > header [role='tab'] { padding: 0 4px; font-size: 12px; }
   .byd-editor > header > button { padding: 0 8px; }
+  /* The game's own ⋯ (#542) leans on the name beside it rather than on the row: its 44 px are a
+     target and mostly air, the name is no control, and at 1024 in English with DejaVu the name was
+     1 px short once the ⋯ and its gap were in the row. */
+  .byd-editor > header > .byd-editor-more { margin-left: -4px; }
 }
 /* The same air, given more gently, where the desk is wide but not wide: at 1280 in English the row
    had 4 px left with DejaVu (#477). */
