@@ -277,6 +277,8 @@
 .byd-player .byd-hint { margin: 0 0 12px; text-align: left; }
 .byd-personal, .byd-phone-table, .byd-phone-history { border-top: 1px solid var(--byd-line); margin-top: 8px; }
 .byd-personal > summary, .byd-phone-table > summary, .byd-phone-history > summary { padding: 14px 0; min-height: 48px; box-sizing: border-box; cursor: pointer; font-size: 15px; font-weight: 600; }
+/* Played from afar with no felt (C2, #484): where the whole table is, first in the fold that holds it. */
+.byd-phone-table-where { margin: 0 0 12px; color: var(--byd-ink-muted); font-size: 14px; line-height: 1.4; }
 .byd-personal .byd-mine { padding: 0 0 12px; }
 .byd-mine-item { flex: 0 0 84px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .byd-mine-item:has(.byd-mine-quick) { flex-basis: 144px; }
@@ -290,4 +292,15 @@
 .byd-player:has(.byd-phone-foot:not(:empty)) { padding-bottom: 64px; }
 .byd-phone-foot { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; box-sizing: border-box; min-height: 64px; display: flex; padding: 8px 16px 12px; background: var(--byd-bg); border-top: 1px solid var(--byd-rule); }
 .byd-phone-foot:empty { display: none; }
-.byd-phone-foot .byd-rules-open { flex: 1; min-height: 44px; border-radius: 12px; font-size: 14px; }
+.byd-phone-foot .byd-rules-open { flex: 1; min-height: 44px; border-radius: 12px; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+/* The chosen card's first place and «Spela…» beside «Regler» (#484 fynd 11, beslut B): the play
+   takes the room, and «Regler» steps down to its own width once there is a play to make. */
+.byd-phone-foot { gap: 8px; }
+.byd-foot-play, .byd-foot-more { min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 12px; font: 700 14px system-ui, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.byd-foot-play { flex: 1 1 0; min-width: 0; background: var(--byd-accent); color: var(--byd-on-accent); }
+.byd-foot-more { flex: 0 0 auto; background: var(--byd-control); color: var(--byd-ink); }
+.byd-foot-play:disabled, .byd-foot-more:disabled { opacity: 0.5; }
+.byd-phone-foot:has(.byd-foot-more) .byd-rules-open { flex: 0 0 auto; padding: 0 12px; }
+@media (max-width: 359px) {
+  .byd-phone-foot:has(.byd-foot-more) .byd-rules-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}

@@ -55,8 +55,13 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet,
   // card and a zone is the designer's word (B5).
   const what = cards.length > 1 ? t('play.cards.other', { n: cards.length }) : thing.name
 
+  // A click closes the panel only when its press began on the backdrop (#484). A tap on a card in the
+  // hand opens the panel on its release, and the click the browser then makes of the touch lands
+  // where the finger was — on this backdrop, where the panel has just arrived — and took it away
+  // again. The ring had the same fault (`RadialMenu`).
+  const pressed = useRef(false)
   return (
-    <div className="byd-kbd-backdrop" onClick={onClose}>
+    <div className="byd-kbd-backdrop" onPointerDown={(e) => (pressed.current = e.target === e.currentTarget)} onClick={() => pressed.current && onClose()}>
       <div
         className="byd-kbd-panel"
         role="dialog"

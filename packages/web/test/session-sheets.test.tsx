@@ -40,6 +40,8 @@ describe.each(['flag', 'exit', 'end'] as const)('the %s sheet', (sheet) => {
       await user.tab()
       expect(dialog.contains(document.activeElement)).toBe(true)
     }
+    // Escape answers from wherever the focus fell, <body> included (#484 fynd 7).
+    ;(document.activeElement as HTMLElement).blur()
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(document.activeElement).toBe(opener)

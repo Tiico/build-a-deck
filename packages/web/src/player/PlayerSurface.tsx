@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { HeldCard } from './HeldCard.js'
-import { HandActions } from './HandActions.js'
+import { FootPlay, HandActions } from './HandActions.js'
 import { HandStrip } from './HandStrip.js'
 import { CountersRow, MineActions, MineStrip, inFrontOf } from './SeatExtras.js'
 import { PlaySheet } from './PlaySheet.js'
@@ -68,9 +68,12 @@ export type PlayerSurfaceProps = {
   openHand(card: VisibleComponentState, marked: readonly string[]): void
   // Where the way out (#31) leads once the seat has been given up.
   onLeft(): void
+  // Played from afar with no felt in the window (`/online` on a phone, C2): the table fold says
+  // where the whole table is, which a phone beside the television never needs told.
+  away?: boolean | undefined
 }
 
-export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, openHand, onLeft }: PlayerSurfaceProps) {
+export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, openHand, onLeft, away = false }: PlayerSurfaceProps) {
   const t = useT()
   // Out of reach while another seat's rewind is asked of this one (#483): the question covers the
   // phone and has to be answered, so nothing behind it is a Tab stop or a press.
@@ -208,7 +211,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
             screen that hid what its socket had been sent is the state the repo's rule about
             hidden information exists to keep out. It reads and never acts — the draw stays in the
             row above, where a thumb already knows to find it. */}
-        <details className="byd-phone-table" data-phone-table><summary>{t('player.table.title')}</summary><TableSummary view={view} activity={activity} zones="areas" history={false} /></details>
+        <details className="byd-phone-table" data-phone-table><summary>{t('player.table.title')}</summary>{away && <p className="byd-phone-table-where">{t('online.table.where')}</p>}<TableSummary view={view} activity={activity} zones="areas" history={false} /></details>
         <details className="byd-phone-history"><summary>{t('play.latest')}</summary><RecentActivity view={view} activity={activity} /></details>
       </main>
       {/* The rules this table plays by (B7), on a bar of their own at the foot by the hand (#483,
@@ -218,6 +221,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           something of everyone (#483): an ended table's survey and a rewind's question. The bar is
           empty, and draws nothing, for a table without a rulebook. */}
       <div className="byd-phone-foot" {...behind}>
+        {!view.ended && !view.rewind && <FootPlay view={view} cards={chosenCards} pending={quickPending} refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} />}
         {!view.ended && !view.rewind && <RuleDrawer http={faces} sessionId={sessionId} placement="phone" live={view} />}
       </div>
       {/* The card held up. A card that lies in front of you carries its verbs here, and a verb

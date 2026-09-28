@@ -56,6 +56,10 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
   // Where the focus is heading once the table has answered. The node it names does not exist
   // yet when the move is sent, so it is claimed on the first render that draws it.
   const pending = useRef<string | null>(null)
+  // The table as it stood when a move was sent (#484 fynd 5): a card played out of the hand is not
+  // on the felt until the table has answered, and until then its absence says nothing. Null is a
+  // target that is already due — one named for a thing on the felt, or a move that was refused.
+  const pendingAt = useRef<number | null>(null)
   const on = view !== null && felt
   const things = on ? thingsOn(view, t) : []
   const roving = useRoving({ ids: things.map((t) => t.key), selected: null, orientation: 'both' })
@@ -68,8 +72,11 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
       return
     }
     // The thing focus was heading for can have left the felt — a card played into a hand, a pile
-    // that dissolved. Focus then goes to the first stop that is left, never to nothing.
+    // that dissolved. Focus then goes to the first stop that is left, never to nothing. But not
+    // before the table has answered the move: the card is on its way, not gone.
     if (things.some((t) => t.key === want)) return
+    if (pendingAt.current !== null && view !== null && view.seq === pendingAt.current) return
+    pendingAt.current = null
     pending.current = null
     roving.focus(things[0]?.key)
   })
@@ -81,7 +88,10 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
   // same thing asked two ways cannot be answered two ways.
   const run = (intents: Intent[]) => {
     void options.act(intents).then((result) => {
-      if (!result.ok) say?.('assertive', refusalText(result.reason, t))
+      if (result.ok) return
+      say?.('assertive', refusalText(result.reason, t))
+      // Nothing is on its way, so the focus stops waiting for it.
+      pendingAt.current = null
     })
   }
 
@@ -125,6 +135,7 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
     setOpen(null)
     if (landedOn !== undefined) {
       pending.current = landedOn
+      pendingAt.current = view?.seq ?? null
       return
     }
     giveBack(open?.thing.key)

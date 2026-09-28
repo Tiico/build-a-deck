@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { TableClient } from '../src/client.js'
 import { DocumentTitle } from '../src/status/DocumentTitle.js'
 import { StatusLive } from '../src/status/StatusLive.js'
@@ -49,7 +49,8 @@ describe('an action the table refuses', () => {
     await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
     await table.send({ v: 'session.end' })
-    const cast = screen.getByRole('button', { name: 'Kasta' })
+    // The actions under the hand; the bar at the foot carries the first of them too (#484).
+    const cast = within(document.querySelector('.byd-hand-actions') as HTMLElement).getByRole('button', { name: 'Kasta' })
     fireEvent.click(cast)
     const said = await screen.findByTestId('refusal')
     expect(said.textContent).toMatch(/avslutat/i)

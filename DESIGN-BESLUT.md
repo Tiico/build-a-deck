@@ -607,6 +607,12 @@ Ingen yta hindrar någon från att spela på en telefon; den erbjuder bara inte 
 Handen på en telefon är K10:s remsa oavsett vilken route den nåddes från.
 Grinden som #77 och K17 avstod från kan därmed skrivas, men om en annan sak: vid 390 px ska ingen filt ritas, i stället för att ett kort på filten ska vara 45 px.
 
+Tillägg 2026-09-28 (#484 fynd 9, prototyp 24, beslut A):
+Ett stående fönster får filten först när dess kort når K9:s 45 px; under det får det spelarytan, som en telefon.
+Filten i ett stående fönster binds av bredden, och kortets kortsida mättes i Chromium till 27 px vid 600 × 900, 36 vid 768 × 1024 och 45 vid 960 × 1280.
+Gränsen är därför 960 px bredd för stående fönster (`UPRIGHT_BOARD_FLOOR`); liggande fönster har kvar kortsidan 600 (`BOARD_FLOOR`).
+En surfplatta upprätt under 960 px ser alltså inte filten, men handen och bordet som namn och antal, och kan vända den för att få filten.
+
 ### C3. Identitetens tre begrepp (fråga 12)
 
 Användare äger spel och lägger beställningar.

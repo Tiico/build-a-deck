@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import type { Intent } from '@byd/protocol'
+import type { Intent, VisibleComponentState } from '@byd/protocol'
 import '../table/table.css'
 import '../player/player.css'
 import './online.css'
@@ -15,6 +15,7 @@ import { PlayerSurface, useHandMarks } from '../player/PlayerSurface.js'
 import { useSitDown } from '../player/useSitDown.js'
 import { claimUrl } from '../account/api.js'
 import { SeatLine } from './SeatLine.js'
+import { LastMove } from './LastMove.js'
 import { HandFan } from './HandFan.js'
 import { HandColumn } from './HandColumn.js'
 import { HandSpread } from './HandSpread.js'
@@ -27,7 +28,7 @@ import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { statusLinks, wayBack } from '../status/links.js'
-import { guestNotice } from '../status/notice.js'
+import { guestNotice, towardSeat } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT } from '../i18n/index.js'
 
@@ -57,6 +58,13 @@ export type OnlinePageProps = { timing?: StatusTiming; onLeave?(url: string): vo
 // where it stands rather than settled in passing.
 const BOARD_FLOOR = 600
 
+// The narrowest upright window that gets a board (#484 fynd 9, beslut A). An upright felt is bound
+// by the window's width, and its card reaches K9's 45 px only here: measured on the painted card's
+// short side in Chromium, 27 px at 600 × 900, 36 at 768 × 1024, 45 at 960 × 1280. A felt whose card
+// cannot be played is the 16 px of #99 at a larger size, so the window below it gets the player's own
+// surface, as a phone does (C2). Landscape windows keep `BOARD_FLOOR` alone.
+const UPRIGHT_BOARD_FLOOR = 960
+
 export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => location.assign(url) }: OnlinePageProps = {}) {
   const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
@@ -72,6 +80,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   // A whole table on a whole screen: the message stands on the felt, like the TV's.
   const live = useLiveStatus(conn, 'table', timing)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
+  // A seat whose line is gone is offered the room's seat picker before the way home (#484 fynd 14).
+  const said = links.rescan && live.notice ? { ...live, notice: towardSeat(live.notice, t) } : live
   usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code') ?? sessionId })
   // The window this seat is playing in: it is half of which way round the felt is drawn (#77).
   const room = useRoom()
@@ -83,18 +93,25 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const [sheet, setSheet] = useState<Sheet>(null)
   // The hand's second mode (#24): the fan at rest, the whole hand as a grid when it is asked for.
   const [spread, setSpread] = useState(false)
+  // A card carried out of the hand, and where (#484 fynd 4): the felt is asked what lies under it.
+  const [carried, setCarried] = useState<{ card: VisibleComponentState; x: number; y: number } | null>(null)
   const showAll = useRef<HTMLButtonElement>(null)
   const [toast, setToast] = useToast()
   const marks = useHandMarks()
   const version = useSessionVersion(http, sessionId, view?.ended === true)
   // Whether this window gets a board at all (#99). Off a browser there is no window to ask, and a
   // missing answer must never take the board away — the same reading `column` below makes.
-  const board = !(room.w > 0 && room.h > 0) || Math.min(room.w, room.h) >= BOARD_FLOOR
+  const board = !(room.w > 0 && room.h > 0) || (Math.min(room.w, room.h) >= BOARD_FLOOR && (room.w > room.h || room.w >= UPRIGHT_BOARD_FLOOR))
   // The felt and the fan, both as controls, both opening the same address panel (#1, #2). Where
   // there is no felt the keyboard is the hand and the panel alone, exactly as on `/play`.
   const kbd = useFeltKeyboard(view, board && view !== null && !view.rewind && !view.ended && client !== null, {
     act: (intents) => (client ? client.send(...intents) : Promise.resolve({ ok: false as const, reason: 'not connected' })),
-    onPlayed: marks.clear,
+    // A card played out of «Visa alla» closes it (#484 fynd 6): the grid was raised to choose a
+    // card, and the focus is on its way to where the card now lies.
+    onPlayed: () => {
+      marks.clear()
+      setSpread(false)
+    },
     faces: http,
   })
   useActivityLive(activity, view, seat)
@@ -105,7 +122,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   if (!sessionId || !seat) return <StatusNotice notice={guestNotice('missing', t)} surface="page" links={links} />
   // Not admitted, or kicked (DRIFT §9): a shut door rather than a broken line.
   if (refused) return <StatusNotice notice={{ ...guestNotice('forbidden', t), text: refusedText(refused, t) }} surface="page" links={links} />
-  if (!view || !client) return <RouteStatus status={live.state === 'missing' ? { ...live, notice: guestNotice('missing', t) } : live} over="card" links={links} onRetry={conn.retry} />
+  if (!view || !client) return <RouteStatus status={live.state === 'missing' ? { ...live, notice: guestNotice('missing', t) } : said} over="card" links={links} onRetry={conn.retry} />
 
   const me = view.seats.find((s) => s.id === seat)
   // Which shape the hand takes (K17's revision of 2026-09-14, #77). In a landscape window it is a
@@ -119,14 +136,29 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const up = spread && hand.length > 0
   const onAct = (intents: Intent[]) => void client.send(...intents)
   // A card out of the fan lands where it is dropped, centred on the pointer, in what the felt
-  // shows there (K2, K11, #65).
+  // shows there (K2, K11, #65). Let go anywhere but over the table's picture — back over the hand,
+  // over the top bar, in the dark around the table — it was not played at all, and goes back into
+  // the hand (#484 fynd 1). The wooden frame is the table's, and there it lies on the felt (#66).
+  // Where a card let go at this point would land: the one reading both the release and the felt's
+  // answer while it is carried make (#484 fynd 4), so what is promised is what happens.
+  const landing = (clientX: number, clientY: number) => {
+    if (!table.current?.onTable(clientX, clientY)) return null
+    const p = table.current.toTable(clientX, clientY)
+    return p ? playedAt(shown, seat, p) : null
+  }
   const play = (card: (typeof hand)[number], clientX: number, clientY: number) => {
-    const p = table.current?.toTable(clientX, clientY)
-    if (!p || !playable) return
-    const dest = playedAt(shown, seat, p)
+    if (!playable) return
+    const dest = landing(clientX, clientY)
     if (!dest) return
     void client.send(...playIntents(view, [card], dest.zone, { x: dest.x, y: dest.y }))
   }
+  // While it is carried the felt says where it will land (beslut C, prototyp 23): the zone or hand
+  // under it is marked, the ghost is the card it will become, and off the table the hand says the
+  // card goes back to it.
+  const over = carried ? table.current?.onTable(carried.x, carried.y) === true : false
+  const dest = carried && over ? landing(carried.x, carried.y) : null
+  const aimed = dest ? { zone: dest.zone, cards: 1 } : null
+  const aim = carried ? { size: over ? { w: table.current?.cardPx() ?? 0 } : null, back: !over } : undefined
 
   return (
     <>
@@ -145,6 +177,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             {t('online.showall')}
           </button>
         )}
+        <LastMove view={view} activity={activity} seat={seat} />
         <div className="byd-online-tools">
           <SessionButtons client={client} view={view} sheet={sheet} onSheet={setSheet} />
         </div>
@@ -161,6 +194,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             faces={http}
             onAct={playable ? onAct : undefined}
             keyboard={kbd.keyboard}
+            aimed={aimed}
             peers={Object.values(presence.peers)}
             pulses={presence.pulses}
             recent={recent}
@@ -173,10 +207,16 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             the page behind any raised surface is. Two live copies of the same twenty-one
             controls would be two of every card to a screen reader (L10). */}
         <div className="byd-hand-under" {...(up ? { inert: true, 'aria-hidden': true } : {})}>
+          {/* Off the table a carried card goes back into the hand, and the hand says so (#484). */}
+          {aim?.back && (
+            <p className="byd-hand-back" aria-hidden="true">
+              {t('online.hand.back')}
+            </p>
+          )}
           {column ? (
-            <HandColumn cards={hand} faces={http} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
+            <HandColumn cards={hand} faces={http} locked={!playable} onCarry={setCarried} aim={aim} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
           ) : (
-            <HandFan cards={hand} faces={http} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
+            <HandFan cards={hand} faces={http} locked={!playable} onCarry={setCarried} aim={aim} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
           )}
         </div>
         {up && (
@@ -212,12 +252,13 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             marks={marks}
             openHand={kbd.openHand}
             onLeft={() => onLeave(wayBack(links))}
+            away
           />
           {kbd.panel}
         </div>
       )}
       <SeatSurvey view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
-      <RouteStatus status={live.state === 'missing' ? { ...live, notice: guestNotice('missing', t) } : live} over="card" links={links} onRetry={conn.retry} />
+      <RouteStatus status={live.state === 'missing' ? { ...live, notice: guestNotice('missing', t) } : said} over="card" links={links} onRetry={conn.retry} />
     </>
   )
 }

@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 28 — Spelknapparna vid 320 (#484 fynd 11)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Vid 320 × 568 når ingen spelknapp utan rullning — på `/play` och på `/online`, som visar
+     spelarytan på en telefon (C2). Huvudet är två rader (107 px), räknarna, högarna och remsan
+     med sitt 154 px breda kort tar resten, och «Till saloonen» står en bra bit under kanten.
+     #483 har beslutat huvudet vid 390 (fynd 9 C): «Regler» flyttar till en rad längst ner och
+     namnet får krympa med «…». Det är utgångsläget här, i alla varianter — och raden längst ner
+     tar 64 px till av just den höjd som fattas vid 320.
+
+       Nu  #483:s beslut: huvudet, räknarna, högarna, remsan, spelknapparna, raden med Regler
+       A   handen först: remsan och spelknapparna direkt under huvudet, räknare och högar under
+           dem, och kortet i remsan tar den höjd som blir över (aldrig under 96 px)
+       B   raden längst ner, som #483 ändå lägger dit, bär det valda kortets första mål och
+           «Spela…» bredvid «Regler»
+       C   ett tryck på kortet håller upp det med sina mål under (som korten framför dig, #78);
+           «välj → läs → spela» blir «tryck → spela»
+
+     Två telefoner i verklig storlek, skalade. Raden här ovan mäter var den första spelknappen
+     står när sidan inte är rullad. ───────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .tel-scen { flex: 1 1 auto; min-height: 0; display: flex; gap: 32px; justify-content: center; align-items: flex-start; padding: 34px 16px 16px; background: #15171c; overflow: hidden; }
+  .tel-ram { position: relative; flex: none; }
+  .tel-ram > .etikett { position: absolute; left: 0; top: -6px; transform: translateY(-100%); color: var(--quiet-2); font-size: 11px; white-space: nowrap; }
+  .tel-skarm { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; border-radius: 22px; outline: 1px solid #3a3f4b; box-shadow: 0 10px 40px rgb(0 0 0 / 45%); container-type: size; font: 13px system-ui, sans-serif; }
+  .tel-vy { position: absolute; inset: 0; overflow-x: hidden; overflow-y: auto; scrollbar-width: none; display: flex; flex-direction: column; }
+  .tel-vy::-webkit-scrollbar { display: none; }
+  .kant { position: absolute; left: 0; right: 0; z-index: 30; height: 0; border-top: 2px dashed #f0b64a; pointer-events: none; }
+  .kant span { position: absolute; right: 8px; top: -18px; padding: 0 6px; border-radius: 999px; background: #2a2417; color: #ffd98a; font: 600 10px/16px system-ui; }
+
+  /* Spelarens telefon, ur `packages/web/src/player/player.css` (samma mått och färger). */
+  .byd-player { flex: 1 0 auto; display: flex; flex-direction: column; background: #14161c; color: #eee; }
+  .byd-player *, .byd-player *::before { box-sizing: border-box; }
+  .byd-player button { font-family: inherit; cursor: pointer; }
+  .byd-player > header { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 6px 10px; padding: 6px 16px; min-height: 52px; border-bottom: 1px solid #262a35; font-size: 13px; color: #9aa3b8; }
+  .byd-player > header strong { color: #fff; font-size: 15px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; }
+  .byd-player > header > span { margin-right: auto; white-space: nowrap; }
+  .byd-player > header button { min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 12px; background: #242938; color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .byd-player > header .hjalp { width: 44px; margin: -11px; padding: 0; background: transparent; display: grid; place-items: center; }
+  .byd-player > header .hjalp i { display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid #9aa3b8; border-radius: 999px; font: 700 12px system-ui; font-style: normal; }
+  .raknare { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; margin: 10px 16px 0; background: #1b1e27; border-radius: 14px; overflow: hidden; }
+  .raknare button { min-height: 44px; border: 0; background: #242938; color: #fff; font-size: 18px; font-weight: 800; }
+  .raknare div { display: grid; text-align: center; padding: 4px; }
+  .raknare b { font-size: 18px; color: #fff; line-height: 1; }
+  .raknare span { font-size: 11px; color: #9aa3b8; letter-spacing: 1px; }
+  main { padding: 18px 16px 24px; }
+  main h1 { margin: 0 0 12px; font-size: 22px; }
+  .hogar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .hogar button { border: 1px solid #2c3242; border-radius: 10px; background: #242938; color: #9aa3b8; padding: 10px; min-height: 48px; display: grid; gap: 2px; text-align: left; font: 13px system-ui; }
+  .hogar strong, .hogar em { color: #fff; font-style: normal; }
+  .hogar em { font-weight: 600; margin-top: 4px; }
+  .remsa { display: flex; gap: 12px; overflow-x: auto; padding: 8px 6px 16px; scrollbar-width: none; }
+  .remsa button { position: relative; flex: 0 0 var(--kort, 154px); aspect-ratio: 63 / 88; border: 0; border-radius: 14px; padding: 14px; text-align: left; display: grid; align-content: start; background: hsl(var(--hue) 40% 86%); color: #1c1c1c; box-shadow: 0 8px 24px rgb(0 0 0 / 50%); }
+  .remsa button[aria-pressed='true'] { outline: 4px solid #7dd3a0; }
+  .remsa strong { font-size: calc(var(--kort, 154px) * .13); font-weight: 800; line-height: 1.15; }
+  .tips { margin: 0 0 12px; font-size: 12px; color: #7d8597; }
+  .val p { margin: 0 0 10px; color: #9aa3b8; font-size: 14px; }
+  .val > button, .mal button { min-height: 44px; padding: 10px 12px; border: 1px solid #2c3242; border-radius: 12px; background: #242938; color: #fff; font: 600 14px system-ui; }
+  .val > button { width: 100%; margin-bottom: 8px; }
+  .mal { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mal button:first-child:not(:disabled) { background: #7dd3a0; color: #0b2a18; }
+  .mal button:disabled, .val > button:disabled { opacity: .5; }
+  details { border-top: 1px solid #2c3242; margin-top: 8px; }
+  summary { padding: 14px 0; min-height: 48px; font-size: 15px; font-weight: 600; }
+  .botten { position: sticky; bottom: 0; z-index: 5; margin-top: auto; display: flex; gap: 8px; padding: 8px 16px 12px; background: #14161c; border-top: 1px solid #262a35; }
+  .botten button { flex: 0 1 auto; min-width: 44px; min-height: 44px; padding: 0 12px; border: 1px solid #2c3242; border-radius: 12px; background: #242938; color: #fff; font: 600 14px system-ui; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-flex; gap: 6px; align-items: center; justify-content: center; }
+  .botten .regler { flex: 1 1 auto; }
+  .botten .primar { flex: 1 1 0; min-width: 0; background: #7dd3a0; color: #0b2a18; border-color: #7dd3a0; }
+  .botten .primar:disabled { background: #242938; color: #9aa3b8; border-color: #2c3242; }
+  .botten svg { flex: none; width: 18px; height: 18px; }
+  .uppe { position: absolute; inset: 0; z-index: 35; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; background: rgb(0 0 0 / 72%); }
+  .uppe > i { flex: 0 1 auto; min-height: 0; height: min(52cqh, calc(86cqw * 88 / 63)); aspect-ratio: 63 / 88; border-radius: 18px; padding: 18px; background: hsl(var(--hue) 40% 86%); color: #1c1c1c; font: 800 24px system-ui; font-style: normal; }
+  .uppe .mal { width: 100%; max-width: 420px; }
+  .uppe .stang { flex: none; min-width: 120px; min-height: 44px; border: 1px solid #2c3242; border-radius: 12px; background: #242938; color: #fff; font: 600 15px system-ui; }
+  .matt .fel { color: #f0a58a; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#484 fynd 11 · Spelknapparna vid 320.</b> Välj ett kort i remsan och spela det, utan att rulla. Den streckade linjen är skärmens underkant ovanför raden längst ner.</p>
+    <p>Huvudet är #483 fynd 9 C som beslutat (Regler längst ner, namnet med «…»); vid 320 är det ändå två rader.</p>
+  </div>
+  <div class="matt" id="matt"></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="tel-scen" id="scen"></div>
+<script>
+const hue = (ref) => { let h = 0; for (const ch of ref) h = (h * 31 + ch.charCodeAt(0)) % 360; return h }
+const BOK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5C17 4.5 14 5 12 6.5Z"/><path d="M12 6.5v13"/></svg>'
+const HAND = ['Double Up!', 'Buckaroo’s Revenge', 'Stolen Goods', 'Steady Hands', 'Duel', 'Poisoned', 'Big Busta', 'Standoff', 'Howdy Neighbour', 'Beermageddon', 'Snake in the Grass', 'Hit by Tumbleweed']
+const MAL = ['Till saloonen', 'Framför mig', 'Kasta', 'Spela…']
+const s = { v: 'b', val: [0, 0], uppe: [null, null], hand: [HAND.slice(), HAND.slice()], logg: '' }
+const NOT = {
+  nu: '<b>Nu, med #483:s beslut.</b> Huvudet utan Regler, Regler i raden längst ner. <span class="minus">− Vid 320 står «Till saloonen» långt under kanten: huvudet är fortfarande två rader, remsans kort 154 px brett, och raden längst ner tar 64 px av det som fattades. Vid 390 når knapparna.</span>',
+  a: '<b>A · Handen först.</b> Remsan och spelknapparna direkt under huvudet; räknarna och högarna under dem; kortet tar den höjd som blir över. <span class="plus">+ Knapparna nås vid 320 utan att något nytt byggs; handen och dess verb hör ihop.</span> <span class="minus">− Kortet krymper vid 320 (raden ovan mäter hur mycket); att dra från högen och ändra räknaren, som man gör varje tur, hamnar under kanten i stället; ordningen skiljer sig från 390 om den bara gäller låga skärmar.</span>',
+  b: '<b>B · Raden längst ner spelar.</b> Raden #483 lägger längst ner för Regler bär också det valda kortets första mål och «Spela…» (alla mål). Utan valt kort: «Välj ett kort». <span class="plus">+ Knapparna nås vid varje höjd, där tummen är; raden kostar inget nytt — den är redan beslutad; sidan i övrigt orörd.</span> <span class="minus">− Bara ett direkt mål i raden, resten bakom «Spela…» eller en rullning; «Regler» krymper till boken vid 320; samma verb står två gånger på sidan när den är rullad.</span>',
+  c: '<b>C · Tryck håller upp kortet.</b> Ett tryck i remsan håller upp kortet med dess mål under, som korten framför dig sedan #78. Håll väljer flera som förut. <span class="plus">+ Målen står alltid på skärmen, vid varje höjd; läsa och spela blir ett ställe; samma form som Framför dig.</span> <span class="minus">− Ändrar K10:s «välj → läs → spela»; ett kort man bara ville se över täcker handen tills man stänger; «Läs valt kort» och raden med mål under remsan blir kvar bara för flera valda.</span>',
+}
+const ramar = [[390, 844], [320, 568]].map(([w, h]) => {
+  const r = document.createElement('div')
+  r.className = 'tel-ram'
+  r.innerHTML = `<span class="etikett">${w} × ${h}</span><div class="tel-skarm" style="width:${w}px;height:${h}px"><div class="tel-vy"></div></div>`
+  document.getElementById('scen').append(r)
+  return { r, w, h, skarm: r.querySelector('.tel-skarm'), vy: r.querySelector('.tel-vy') }
+})
+
+function telefon(i, kortPx) {
+  const f = ramar[i], v = s.v
+  const hand = s.hand[i]
+  const valt = hand[s.val[i]]
+  const huvud = `<header><strong>Ada</strong><span>${hand.length} kort</span><button class="hjalp" aria-label="Hjälp om handen"><i>?</i></button><button>↶ Ångra</button><button>⚑ Flagga</button><button>Ut…</button></header>`
+  const raknare = '<div class="raknare"><button aria-label="Guld minus">−</button><div><b>0</b><span>GULD</span></div><button aria-label="Guld plus">+</button></div>'
+  const hogar = '<div class="hogar"><button><strong>Kasthög</strong>4 kort<em>Dra 1 till min hand</em></button><button><strong>Kortlek</strong>107 kort<em>Dra 1 till min hand</em></button></div>'
+  const remsa = `<div class="remsa" style="--kort:${kortPx}px">${hand.map((n, j) => `<button data-kort="${j}" aria-pressed="${j === s.val[i]}" style="--hue:${hue(n)}"><strong>${n}</strong></button>`).join('')}</div>`
+  const tips = '<p class="tips">Välj → läs → spela · håll för att välja flera</p>'
+  const mal = `<div class="mal">${MAL.map((m) => `<button data-mal="${m}"${valt ? '' : ' disabled'}>${m}</button>`).join('')}</div>`
+  const val = `<section class="val"><p>Valt: ${valt ?? 'inget'}</p><button${valt ? '' : ' disabled'}>Läs valt kort</button>${mal}</section>`
+  const fallor = '<details><summary>Framför dig · 0</summary></details><details><summary>Ytorna</summary></details><details><summary>Senast</summary></details>'
+  const main = v === 'a'
+    ? `<main style="padding-top:12px">${remsa}${val}<div style="margin:14px -16px 12px">${raknare}</div>${hogar}${fallor}</main>`
+    : `<main><h1>Dina kort</h1>${hogar}${remsa}${tips}${val}${fallor}</main>`
+  const smal = f.w < 360
+  const botten = v === 'b'
+    ? `<div class="botten"><button class="primar" data-mal="${MAL[0]}"${valt ? '' : ' disabled'}>${valt ? MAL[0] : 'Välj ett kort'}</button><button data-mal="Spela…"${valt ? '' : ' disabled'}>Spela…</button><button aria-label="Regler">${BOK}${smal ? '' : 'Regler'}</button></div>`
+    : `<div class="botten"><button class="regler" aria-label="Regler">${BOK}Regler</button></div>`
+  const uppe = v === 'c' && s.uppe[i] !== null
+    ? `<div class="uppe"><i style="--hue:${hue(hand[s.uppe[i]])}">${hand[s.uppe[i]]}</i>${mal.replaceAll(' disabled', '')}<button class="stang" data-stang>Stäng</button></div>`
+    : ''
+  return { html: `<div class="byd-player">${huvud}${v === 'a' ? '' : raknare}${main}${botten}</div>`, uppe }
+}
+// Var står den första spelknappen, i telefonens egna pixlar, när sidan inte är rullad?
+function forsta(i) {
+  const f = ramar[i], k = f.skarm.getBoundingClientRect().width / f.w
+  const sk = f.skarm.getBoundingClientRect()
+  const botten = f.vy.querySelector('.botten')
+  const kant = f.h - (s.v === 'b' ? 0 : botten.offsetHeight)
+  const knapp = s.v === 'b' ? botten.querySelector('.primar') : s.v === 'c' ? f.skarm.querySelector('.uppe [data-mal]') : f.vy.querySelector('.mal [data-mal]')
+  if (!knapp) return { kant, under: null }
+  const r = knapp.getBoundingClientRect()
+  return { kant, under: Math.round((r.bottom - sk.top) / k - kant) }
+}
+function rita() {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  document.getElementById('anteckning').innerHTML = NOT[s.v]
+  const matt = []
+  for (const [i, f] of ramar.entries()) {
+    const rullat = f.vy.scrollTop
+    let kortPx = 154
+    const bygg = () => {
+      const t = telefon(i, kortPx)
+      f.vy.innerHTML = t.html
+      for (const o of f.skarm.querySelectorAll('.uppe, .kant')) o.remove()
+      if (t.uppe) f.skarm.insertAdjacentHTML('beforeend', t.uppe)
+    }
+    f.vy.scrollTop = 0
+    bygg()
+    // A: kortet tar den höjd som blir över, i steg om 2 px, aldrig under 96.
+    if (s.v === 'a') while (kortPx > 96 && forsta(i).under > 0) { kortPx -= 2; bygg() }
+    // C mäts med kortet uppe, efter ett tryck.
+    let m = forsta(i)
+    if (s.v === 'c' && s.uppe[i] === null) { s.uppe[i] = s.val[i]; bygg(); m = forsta(i); s.uppe[i] = null; bygg() }
+    f.skarm.insertAdjacentHTML('beforeend', `<div class="kant" style="top:${m.kant}px"><span>${s.v === 'b' ? 'underkant' : 'ovanför raden längst ner'}</span></div>`)
+    f.vy.scrollTop = rullat
+    const text = m.under === null ? '—' : m.under <= 0 ? 'nås' : `${m.under} px under kanten`
+    matt.push(`<span>Vid ${f.w}: första spelknappen <u class="${m.under > 0 ? 'fel' : ''}">${text}</u>${s.v === 'c' ? ' (efter ett tryck)' : ''}${s.v === 'a' ? ` · kortet ${kortPx} px` : ''}</span>`)
+  }
+  matt.push(`<span>Senast: <u>${s.logg || '—'}</u></span>`)
+  document.getElementById('matt').innerHTML = matt.join('')
+  skala()
+}
+function skala() {
+  const b = document.getElementById('scen')
+  const k = Math.min(1, (b.clientHeight - 50) / 844, (b.clientWidth - 64) / (390 + 320))
+  for (const f of ramar) { f.skarm.style.transform = `scale(${k})`; Object.assign(f.r.style, { width: `${f.w * k}px`, height: `${f.h * k}px` }) }
+}
+document.body.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.v) { s.v = b.dataset.v; s.uppe = [null, null]; const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); return rita() }
+  const i = ramar.findIndex((f) => f.skarm.contains(b)); if (i < 0) return
+  if (b.dataset.kort !== undefined) { s.val[i] = Number(b.dataset.kort); if (s.v === 'c') s.uppe[i] = s.val[i]; return rita() }
+  if (b.hasAttribute('data-stang')) { s.uppe[i] = null; return rita() }
+  if (b.dataset.mal) {
+    const n = s.hand[i][s.val[i]]
+    if (b.dataset.mal === 'Spela…') { s.logg = `${n}: arket med alla mål (vid ${ramar[i].w})`; s.uppe[i] = null; return rita() }
+    s.hand[i].splice(s.val[i], 1)
+    s.val[i] = Math.min(s.val[i], s.hand[i].length - 1)
+    s.uppe[i] = null
+    s.logg = `${n} → ${b.dataset.mal} (vid ${ramar[i].w})`
+    rita()
+  }
+})
+addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { s.uppe = [null, null]; return rita() }
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  s.v = alla[(alla.indexOf(s.v) + (e.key === 'ArrowRight' ? 1 : 3)) % 4]
+  s.uppe = [null, null]
+  const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita()
+})
+addEventListener('resize', skala)
+const q = new URLSearchParams(location.search).get('v')
+if (['nu', 'a', 'b', 'c'].includes(q)) s.v = q
+rita()
+</script>
+</body>
+</html>

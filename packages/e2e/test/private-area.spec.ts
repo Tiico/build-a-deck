@@ -34,7 +34,7 @@ test.describe('the area in front of a seat, on the opening table', () => {
     for (let n = 1; n <= 3; n++) {
       await ada.page.locator('[data-zone-draw="draw"]').click()
       await expect(ada.page.locator('[data-hand-card]')).toHaveCount(1)
-      await ada.page.getByRole('button', { name: 'Framför mig' }).click()
+      await ada.page.locator('.byd-hand-actions').getByRole('button', { name: 'Framför mig' }).click()
       await expect(ada.page.locator('[data-hand-card]')).toHaveCount(0)
       // The television draws the cards themselves, face up. `playIntents` turns them over by
       // itself, because it already had the branch for a public target zone.
@@ -62,7 +62,7 @@ test.describe('the area in front of a seat, on the opening table', () => {
 
     await ada.page.locator('[data-zone-draw="draw"]').click()
     await expect(ada.page.locator('[data-hand-card]')).toHaveCount(1)
-    await ada.page.getByRole('button', { name: 'Framför mig' }).click()
+    await ada.page.locator('.byd-hand-actions').getByRole('button', { name: 'Framför mig' }).click()
     await expect(ada.page.locator('[data-hand-card]')).toHaveCount(0)
 
     // Bo's browser has been sent the card, so Bo's screen says so. An area that is public on one
@@ -99,7 +99,7 @@ test.describe('an area the designer keeps private', () => {
     for (let n = 1; n <= 3; n++) {
       await ada.page.locator('[data-zone-draw="draw"]').click()
       await expect(ada.page.locator('[data-hand-card]')).toHaveCount(1)
-      await ada.page.getByRole('button', { name: 'Framför mig' }).click()
+      await ada.page.locator('.byd-hand-actions').getByRole('button', { name: 'Framför mig' }).click()
       await expect(ada.page.locator('[data-hand-card]')).toHaveCount(0)
       // The felt says the new number, and says it on the television without anyone asking.
       await expect(mine.locator('[data-area-count]')).toHaveText(String(n))

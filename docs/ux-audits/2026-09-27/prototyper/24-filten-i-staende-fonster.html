@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 24 — Filten i stående fönster (#484 fynd 9)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     `BOARD_FLOOR = 600` frågar fönstrets kortsida om det får bära en filt (C2, #99). Vid
+     768 × 1024 ritar filten kortet 33 × 45 px — K9:s golv är 45 över kortsidan — med 250 px död
+     höjd i filtraden; 600 × 900 ger 25 × 34. Ett stående fönster har bandet under filten (K17), och
+     bandet tar 230 px av den långa sidan; filten binds av bredden. Golvet släpper alltså igenom
+     filtar ingen kan spela på, medan telefonen redan fått spelarytan av samma skäl.
+
+       Nu  kortsidan ≥ 600 ger filt; stående fönster har bandet
+       A   ett stående fönster får filten först när kortet når 45 px (≈ 1020 px bredd), annars
+           spelarytan som telefonen; liggande som i dag
+       B   bordet vrids ett kvartsvarv i stående fönster (C8:s regel, given åt platsen), så att
+           långsidan löper nedför — pröva med bandet och med handen som kolumn
+       C   filten står kvar; det skrivs in i K17 och C2 som ett känt och accepterat undantag
+
+     Kortstorleken är en modell ur de mätta punkterna — 33 px vid 768 × 1024, 25 vid 600 × 900,
+     46 vid 1280 × 800 och 62 vid 1920 × 1080 (K9, K17) — och håller på ± 3 px. Den räknar
+     bredden (filten med händer, 1295 mm) och höjden (892 mm) var för sig och tar den som binder.
+     Fönstret ritas i verklig storlek, skalat till skärmen; det randiga är död yta. ────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .scen { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; padding: 28px 12px 12px; background: #0a0c10; overflow: hidden; }
+  .ram { position: relative; }
+  .ram > .etikett { position: absolute; left: 0; top: -4px; transform: translateY(-100%); color: var(--quiet-2); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .fonster { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; background: #17120f; outline: 1px solid #3a3f4b; font-family: system-ui, sans-serif; }
+  .topp { position: absolute; left: 0; top: 0; right: 0; height: 61px; display: flex; align-items: center; gap: 8px; padding: 8px 16px; box-sizing: border-box; background: #100d0b; border-bottom: 1px solid #2a221c; }
+  .jag { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px; border-radius: 999px; background: rgb(20 22 28 / 90%); color: #9aa3b8; font-size: 13px; border-left: 4px solid #e05d5d; white-space: nowrap; }
+  .jag strong { color: #fff; font-size: 15px; }
+  .topp button { min-height: 44px; padding: 0 12px; border: 1px solid #3a2f26; border-radius: 10px; background: #1d1815; color: #e8e2d8; font: 700 13px system-ui; white-space: nowrap; }
+  .topp .verktyg { margin-left: auto; display: flex; gap: 6px; }
+  .topp .verktyg button { border: 0; background: rgb(36 41 56 / 92%); color: #fff; }
+  .dod { position: absolute; background: repeating-linear-gradient(135deg, rgb(240 165 138 / 13%) 0 8px, transparent 8px 16px); display: grid; place-items: center; color: #f0a58a; font: 700 13px system-ui; }
+  .tra { position: absolute; border-radius: 22px; background: linear-gradient(#5a3a22, #3e2716); box-shadow: 0 14px 30px rgb(0 0 0 / 55%); }
+  .filt { position: absolute; border-radius: 10px; background: radial-gradient(at 50% 40%, #2e6b46, #1f4a30 70%, #173a26); overflow: hidden; }
+  .zon { position: absolute; box-sizing: border-box; border: 1px solid rgb(232 234 220 / 28%); border-radius: 4px; }
+  .kort { position: absolute; box-sizing: border-box; border-radius: 3px; background: #f4ead8; box-shadow: 0 1px 3px rgb(0 0 0 / 50%); }
+  .kort.mat { outline: 2px solid #ffd98a; outline-offset: 2px; }
+  .hog { position: absolute; box-sizing: border-box; border-radius: 3px; background: repeating-linear-gradient(45deg, #26324a 0 4px, #2d3a55 4px 8px); border: 1px solid #e8eaf0; }
+  .namn { position: absolute; padding: 1px 8px; border-radius: 999px; background: var(--c); color: #10131a; font: 800 11px system-ui; white-space: nowrap; transform: translate(-50%, -50%); }
+  .band { position: absolute; left: 0; right: 0; bottom: 0; height: 230px; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 34px; box-sizing: border-box; }
+  .band i, .kolumn i { position: relative; flex: none; width: 112px; height: 156px; box-sizing: border-box; border-radius: 10px; padding: 10px; background: #232a3a; color: #eef2fb; font: 700 14px system-ui; font-style: normal; text-align: center; box-shadow: 0 6px 16px rgb(0 0 0 / 50%); }
+  .band i { margin: 0 -22px; transform-origin: 50% 130%; }
+  .kolumn { position: absolute; right: 0; top: 61px; bottom: 0; width: 136px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+  .kolumn i { margin-bottom: -88px; }
+  .kolumn i:last-child { margin-bottom: 0; }
+  /* A: spelarytan, som telefonen (K10, C4), i ett bredare fönster. */
+  .spelare { position: absolute; inset: 61px 0 0; overflow: hidden; background: #14161c; color: #eee; font: 13px system-ui; }
+  .spelare > div { max-width: 560px; margin: 0 auto; padding: 16px; }
+  .spelare .rad { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; margin-bottom: 14px; }
+  .spelare .rad > * { background: #1b1e27; border-radius: 12px; padding: 10px; min-height: 48px; color: #9aa3b8; }
+  .spelare .rad b { display: block; color: #fff; }
+  .spelare h1 { margin: 0 0 12px; font-size: 22px; }
+  .spelare .remsa { display: flex; gap: 12px; overflow: hidden; padding: 8px 4px 14px; }
+  .spelare .remsa i { flex: 0 0 154px; aspect-ratio: 63 / 88; border-radius: 14px; background: #f4ead8; color: #1c1c1c; padding: 14px; box-sizing: border-box; font: 800 18px system-ui; font-style: normal; }
+  .spelare .remsa i:first-child { outline: 4px solid #7dd3a0; }
+  .spelare .mal { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .spelare .mal span { min-height: 44px; display: grid; place-items: center; border: 1px solid #2c3242; border-radius: 12px; background: #242938; font: 600 14px system-ui; }
+  .spelare .mal span:first-child { background: #7dd3a0; color: #0b2a18; }
+  .spelare .var { margin: 0 0 14px; padding: 10px 12px; border: 1px solid #3a4258; border-radius: 12px; color: #c3cbdd; background: #191c24; }
+  .protorad .del { display: flex; align-items: center; gap: 6px; }
+  .protorad .del > span { color: #c8b98d; }
+  .matt .fel { color: #f0a58a; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="vaxlare" role="group" aria-label="Fönster">
+    <button type="button" data-f="768x1024">768 × 1024</button>
+    <button type="button" data-f="600x900">600 × 900</button>
+    <button type="button" data-f="1024x600">1024 × 600</button>
+    <button type="button" data-f="1024x768">1024 × 768</button>
+    <button type="button" data-f="1366x768">1366 × 768</button>
+  </div>
+  <div class="del" id="hand-del" hidden><span>Handen:</span>
+    <div class="vaxlare" role="group" aria-label="Handens form"><button type="button" data-h="band">band</button><button type="button" data-h="kolumn">kolumn</button></div></div>
+  <div class="fraga">
+    <p><b>#484 fynd 9 · Filten i ett stående fönster.</b> Växla fönster och läs kortets storlek mot K9:s 45 px. Det gula ringade kortet är det som mäts.</p>
+    <p>De liggande fönstren står utanför frågan men är med för jämförelse: modellen ger 1024 × 600 35 px och 1024 × 768 39 px, fast K9 säger 45 «vid varje liggande fönster» — det är mätt vid 1280 och 1920 och bör mätas vid 1024.</p>
+  </div>
+  <div class="matt" id="matt"></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="scen" id="scen"><div class="ram" id="ram"><span class="etikett" id="etikett"></span><div class="fonster" id="fonster"></div></div></div>
+<script>
+const s = { v: 'a', f: '768x1024', h: 'band' }
+const TOPP = 61, BAND = 230, KOL = 136, GOLV = 45
+const NOT = {
+  nu: '<b>Nu.</b> Kortsidan 600 eller mer ger filt. Stående fönster har bandet under filten, och filten binds av bredden. <span class="minus">− 768 × 1024 ritar 33 px, 600 × 900 25 px; en surfplatta på höjden får en filt ingen kan greppa ett kort på, med en fjärdedel av höjden död.</span>',
+  a: '<b>A · Ett stående fönster bär filten först vid 45 px.</b> Under ungefär 1020 px bredd får ett stående fönster spelarytan, som telefonen (C2, K10), och säger var bordet finns. Liggande fönster som i dag. <span class="plus">+ C2:s egen regel, frågad till kortet i stället för till skärmen: ingen filt ritas som inte går att spela på. Inget nytt att bygga — ytan finns.</span> <span class="minus">− En surfplatta på höjden ser inte bordet; den som vänder den får det. Två regler (kortsida och form) i stället för en.</span>',
+  b: '<b>B · Bordet vrids i stående fönster.</b> C8 vrider observatörens bord ett kvartsvarv där fönstrets form inte är bordets (#76); här ges regeln åt platsen, och den egna kanten hamnar på sidan. <span class="plus">+ Med handen som kolumn når 768 × 1024 40 px och fyller höjden.</span> <span class="minus">− Med bandet kvar blir kortet <i>mindre</i> (31 px): bandet tar 230 px av höjden och filtraden är nästan kvadratisk, så vridningen har ingenting att fylla. Ingen form når 45 vid 768; den egna kanten står inte längre nederst (C5).</span>',
+  c: '<b>C · Filten står kvar, och det skrivs in.</b> K17 och C2 får en mening: «Ett stående fönster mellan 600 och ~1020 px bredd ritar filten under K9:s golv. Det är accepterat; handen, Visa alla och adresspanelen spelar där filten inte räcker.» <span class="plus">+ Ingenting byggs; spelaren ser bordet och kan läsa det.</span> <span class="minus">− 33 px och 25 px är kvar, och 250 px död höjd; ett beslut som skriver in ett brott mot K9 i stället för att följa det.</span>',
+}
+const FONSTER = { '768x1024': [768, 1024], '600x900': [600, 900], '1024x600': [1024, 600], '1024x768': [1024, 768], '1366x768': [1366, 768] }
+
+// Modellen: kortets kortsida när bredden binder och när höjden binder, ur de mätta punkterna.
+// Bredden: 768 → 33 och 600 → 25 i stående fönster. Höjden: filtraden 739 → 46 och 1019 → 62
+// i liggande. Vriden byter axlarna plats.
+const avBredd = (w) => (w - 75) / 21
+const avHojd = (h) => (h + 66) / 17.5
+function kort(w, h, form, vriden) {
+  const rad = form === 'band' ? { w, h: h - TOPP - BAND } : { w: w - KOL, h: h - TOPP }
+  const px = vriden ? Math.min(avBredd(rad.h), avHojd(rad.w)) : Math.min(avBredd(rad.w), avHojd(rad.h))
+  return { px: Math.round(px), rad }
+}
+function beslut(w, h) {
+  const staende = h > w
+  const form = s.v === 'b' && staende ? s.h : staende ? 'band' : 'kolumn'
+  const vriden = s.v === 'b' && staende
+  const filt = s.v === 'a' && staende ? kort(w, h, form, false).px >= GOLV : Math.min(w, h) >= 600
+  return { staende, form, vriden, filt, ...kort(w, h, form, vriden) }
+}
+
+function rita() {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  for (const b of document.querySelectorAll('[data-f]')) b.setAttribute('aria-pressed', String(b.dataset.f === s.f))
+  for (const b of document.querySelectorAll('[data-h]')) b.setAttribute('aria-pressed', String(b.dataset.h === s.h))
+  document.getElementById('hand-del').hidden = s.v !== 'b'
+  document.getElementById('anteckning').innerHTML = NOT[s.v]
+  const [W, H] = FONSTER[s.f]
+  const b = beslut(W, H)
+  const f = document.getElementById('fonster')
+  Object.assign(f.style, { width: `${W}px`, height: `${H}px` })
+  document.getElementById('etikett').textContent = `${W} × ${H}`
+  const topp = `<div class="topp"><span class="jag"><strong>Ada</strong><span>3 kort</span></span>${b.filt ? '<button>Visa alla</button>' : '<span style="flex:1"></span>'}<span class="verktyg"><button>↶ Ångra</button><button>⚑ Flagga</button><button>Ut…</button></span></div>`
+  let inne = ''
+  let dod = 0, dodAxel = 'höjd'
+  if (!b.filt) {
+    inne = `<div class="spelare"><div>
+      <p class="var">Bordet i sin helhet står på TV:n, eller på en skärm som rymmer det. Här är din hand.</p>
+      <div class="rad"><div><b>0</b>GULD</div></div>
+      <h1>Dina kort</h1>
+      <div class="rad"><div><b>Kasthög</b>4 kort</div><div><b>Kortlek</b>107 kort</div></div>
+      <div class="remsa"><i>High Noon</i><i>The Alley</i><i>Bullseye</i></div>
+      <div class="mal"><span>Till saloonen</span><span>Framför mig</span><span>Kasta</span><span>Spela…</span></div>
+    </div></div>`
+  } else {
+    // Filten i sin rad: millimeterskalan ur kortet, bordet 1200 × 800 mm, träet 30 px runt.
+    const mm = b.px / 63
+    const [fw, fh] = b.vriden ? [800 * mm, 1200 * mm] : [1200 * mm, 800 * mm]
+    const radX = 0, radY = TOPP
+    const cx = radX + b.rad.w / 2, cy = radY + b.rad.h / 2
+    const fx = cx - fw / 2, fy = cy - fh / 2
+    const tra = `<div class="tra" style="left:${fx - 30}px;top:${fy - 30}px;width:${fw + 60}px;height:${fh + 60}px"></div>`
+    // Död yta i filtraden: det modellen säger blir över på den axel som inte binder — bordet med
+    // händer, trä och luft behöver 21 × kort + 75 px längs långsidan och 17,5 × kort − 66 tvärs.
+    const lang = b.px * 21 + 75, kort_ = b.px * 17.5 - 66
+    const ledigH = b.rad.h - (b.vriden ? lang : kort_), ledigW = b.rad.w - (b.vriden ? kort_ : lang)
+    let dodHtml = ''
+    if (ledigH > 60) {
+      dod = Math.round(ledigH)
+      const d = ledigH / 2
+      dodHtml = `<div class="dod" style="left:0;top:${radY}px;width:${b.rad.w}px;height:${d}px">död höjd ≈ ${dod} px</div><div class="dod" style="left:0;top:${radY + b.rad.h - d}px;width:${b.rad.w}px;height:${d}px"></div>`
+    } else if (ledigW > 60) {
+      dod = Math.round(ledigW); dodAxel = 'bredd'
+      const d = ledigW / 2
+      dodHtml = `<div class="dod" style="left:0;top:${radY}px;width:${d}px;height:${b.rad.h}px"></div><div class="dod" style="left:${b.rad.w - d}px;top:${radY}px;width:${d}px;height:${b.rad.h}px">död bredd ≈ ${dod} px</div>`
+    }
+    // Zonerna och korten i bordets millimeter, vridna om bordet vrids (bottenplatsen hamnar till höger).
+    const p = (x, y) => (b.vriden ? { x: fx + (800 - y) * mm, y: fy + x * mm } : { x: fx + x * mm, y: fy + y * mm })
+    const r = (x, y, w, h) => { const a = p(x, y), c = p(x + w, y + h); return `left:${Math.min(a.x, c.x)}px;top:${Math.min(a.y, c.y)}px;width:${Math.abs(c.x - a.x)}px;height:${Math.abs(c.y - a.y)}px` }
+    const zoner = [[330, 110, 540, 130], [330, 560, 540, 140], [110, 150, 150, 500], [940, 150, 150, 500]].map((z) => `<div class="zon" style="${r(...z)}"></div>`).join('')
+    const kw = b.vriden ? 88 : 63, kh = b.vriden ? 63 : 88
+    const kortlist = [[400, 130, 'mat'], [520, 130], [640, 130], [380, 590], [480, 590]].map(([x, y, m]) => { const a = p(x, y); const pos = b.vriden ? `left:${a.x - 88 * mm}px;top:${a.y}px` : `left:${a.x}px;top:${a.y}px`; return `<div class="kort ${m ?? ''}" style="${pos};width:${kw * mm}px;height:${kh * mm}px"></div>` }).join('')
+    const hogar = [[470, 356], [670, 356]].map(([x, y]) => { const a = p(x, y); const pos = b.vriden ? `left:${a.x - 88 * mm}px;top:${a.y}px` : `left:${a.x}px;top:${a.y}px`; return `<div class="hog" style="${pos};width:${kw * mm}px;height:${kh * mm}px"></div>` }).join('')
+    const namn = [['Bo', '#3c8ce7', 600, 30], ['Cy', '#3fb27f', 1170, 400], ['Di', '#e0a93b', 30, 400], ['Ada', '#e05d5d', 600, 770]].map(([n, c, x, y]) => { const a = p(x, y); return `<span class="namn" style="--c:${c};left:${a.x}px;top:${a.y}px">${n}</span>` }).join('')
+    const filt = `<div class="filt" style="left:${fx}px;top:${fy}px;width:${fw}px;height:${fh}px"></div>`
+    const hand = b.form === 'band'
+      ? `<div class="band">${['High Noon', 'The Alley', 'Bullseye'].map((n, i) => `<i style="transform:rotate(${(i - 1) * 8}deg) translateY(${Math.abs(i - 1) * 6}px)">${n}</i>`).join('')}</div>`
+      : `<div class="kolumn">${['High Noon', 'The Alley', 'Bullseye'].map((n) => `<i>${n}</i>`).join('')}</div>`
+    inne = `${dodHtml}${tra}${filt}${zoner}${kortlist}${hogar}${namn}${hand}`
+  }
+  f.innerHTML = topp + inne
+  const regel = s.v === 'a' && b.staende ? 'stående: kortet ≥ 45' : 'kortsidan ≥ 600'
+  document.getElementById('matt').innerHTML = b.filt
+    ? `<span>Kort på filten: <u class="${b.px < GOLV ? 'fel' : ''}">${b.px} px</u> (K9 ${GOLV})</span><span>Död ${dodAxel}: <u>≈ ${dod} px</u></span><span>Yta: <u>filt${b.vriden ? ', vriden' : ''}, hand som ${b.form}</u> · ${regel}</span>`
+    : `<span>Kort på filten: <u>ingen filt</u> (hade varit ${kort(W, H, 'band', false).px} px)</span><span>Yta: <u>spelarytan</u> · ${regel}</span>`
+  const scen = document.getElementById('scen')
+  const k = Math.min(1, (scen.clientHeight - 40) / H, (scen.clientWidth - 24) / W)
+  f.style.transform = `scale(${k})`
+  Object.assign(document.getElementById('ram').style, { width: `${W * k}px`, height: `${H * k}px` })
+}
+function satt(nyckel, varde) {
+  s[nyckel] = varde
+  const u = new URL(location.href); u.searchParams.set('v', s.v); u.searchParams.set('f', s.f); u.searchParams.set('h', s.h); history.replaceState(null, '', u); rita()
+}
+document.body.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.v) satt('v', b.dataset.v)
+  else if (b.dataset.f) satt('f', b.dataset.f)
+  else if (b.dataset.h) satt('h', b.dataset.h)
+})
+addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  satt('v', alla[(alla.indexOf(s.v) + (e.key === 'ArrowRight' ? 1 : 3)) % 4])
+})
+addEventListener('resize', rita)
+const q = new URLSearchParams(location.search)
+if (['nu', 'a', 'b', 'c'].includes(q.get('v'))) s.v = q.get('v')
+if (FONSTER[q.get('f')]) s.f = q.get('f')
+if (['band', 'kolumn'].includes(q.get('h'))) s.h = q.get('h')
+rita()
+</script>
+</body>
+</html>

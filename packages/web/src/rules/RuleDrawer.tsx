@@ -88,7 +88,14 @@ export function RuleShelf({ rules, assets, placement, startOpen, body, live }: R
     <LiveTableContext.Provider value={live ?? null}>
       <div className="byd-rules-drawer" data-placement={placement}>
         <button type="button" ref={knob} className="byd-rules-open" onClick={() => setOpen((o) => !o)}>
-          {open ? t('rules.drawer.close') : t('rules.drawer.open')}
+          {/* A book on the phone, which stands alone where the bar at the foot is too narrow for the
+              word beside the plays it carries (#484 fynd 11); the word stays the button's name. */}
+          {placement === 'phone' && (
+            <svg className="byd-rules-book" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+              <path d="M3 4.5C5.5 3.5 8 3.8 10 5.2c2-1.4 4.5-1.7 7-.7V16c-2.5-1-5-.7-7 .7-2-1.4-4.5-1.7-7-.7Z M10 5.2V16.7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+            </svg>
+          )}
+          <span className="byd-rules-word">{open ? t('rules.drawer.close') : t('rules.drawer.open')}</span>
         </button>
         {open && (
           // Ingenting under tiden, med flit: knappen står kvar och säger «Stäng», och luckan

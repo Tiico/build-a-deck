@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { STATUS_KEYS, blocksView, noticeFor, refusal, refusalText, VOICES } from '../src/status/notice.js'
+import { STATUS_KEYS, blocksView, noticeFor, refusal, refusalText, towardSeat, VOICES } from '../src/status/notice.js'
 
 // One model, nine states, three voices (#12, #7). The model is what every route shares; the
 // wording is what each route is allowed to change.
@@ -142,3 +142,17 @@ describe('a refusal in the reader s language', () => {
     expect(refusal('session has ended', 'phone').live).toBe('assertive')
   })
 })
+
+// A seat that has lost its line on /online (#484 fynd 14): «Till mina spel» took a guest — who has
+// no games — to the front page, while the room's code in the address still opened the seat picker.
+// Where there is a picker to go back to, it is offered first after trying again.
+describe('a seat’s way back when its line is gone (#484)', () => {
+  it('offers the seat picker before the way home, and leaves a notice with no way home alone', () => {
+    const kinds = (n: ReturnType<typeof noticeFor>) => n.actions.map((a) => a.kind)
+    expect(kinds(towardSeat(noticeFor('dropped', 'table')))).toEqual(['retry', 'rescan', 'home'])
+    expect(kinds(towardSeat(noticeFor('offline', 'table')))).toEqual(['retry', 'rescan', 'home'])
+    expect(kinds(towardSeat(noticeFor('connecting', 'table')))).toEqual([])
+    expect(towardSeat(noticeFor('dropped', 'table')).actions.find((a) => a.kind === 'rescan')?.label).toBe('Välj plats igen')
+  })
+})
+

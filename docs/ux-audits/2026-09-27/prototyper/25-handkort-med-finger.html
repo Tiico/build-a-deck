@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 25 — Handkort med finger (#484 fynd 10)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Med ett finger går det inte att läsa eller öppna ett kort i handen utan «Visa alla». Musen
+     lyfter kortet på hovring och Enter öppnar adresspanelen (K16), men ett finger har ingen
+     hovring: ett tryck på fjädern eller kolumnen gör ingenting (K17: «ett tryck som inte färdas
+     spelar ingenting»), och att hålla gör ingenting heller. I uppslaget bakom «Visa alla» öppnar
+     ett tryck panelen (`HandSpread.tsx:79`) — samma hand, två svar på samma tryck. Vid 768 × 1024
+     visar fjädern 68 px av varje kort, och namnet står «Stolen Go…».
+
+       Nu  tryck och håll gör inget; vägen är «Visa alla» → tryck
+       A   ett tryck öppnar adresspanelen, som i uppslaget; dra spelar som förut
+       B   att hålla (500 ms) öppnar panelen; ett tryck gör fortfarande inget
+       C   att hålla lyfter kortet förstorat så det går att läsa; släpp lägger tillbaka det,
+           dra uppåt ur lyftet spelar det
+
+     En surfplatta på 768 × 1024 i verklig storlek, skalad. Musen spelar finger: ingen hovring.
+     Tryck, håll, dra uppåt för att spela, dra i sidled för att rulla (inget händer). ──────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .scen { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; padding: 28px 12px 12px; background: #0a0c10; overflow: hidden; }
+  .ram { position: relative; }
+  .ram > .etikett { position: absolute; left: 0; top: -4px; transform: translateY(-100%); color: var(--quiet-2); font-size: 11px; }
+  .fonster { position: absolute; left: 0; top: 0; width: 768px; height: 1024px; transform-origin: 0 0; overflow: hidden; background: #17120f; outline: 1px solid #3a3f4b; font-family: system-ui, sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
+  .topp { position: absolute; left: 0; top: 0; right: 0; height: 61px; display: flex; align-items: center; gap: 8px; padding: 8px 16px; box-sizing: border-box; background: #100d0b; border-bottom: 1px solid #2a221c; }
+  .jag { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px; border-radius: 999px; background: rgb(20 22 28 / 90%); color: #9aa3b8; font-size: 13px; border-left: 4px solid #e05d5d; }
+  .jag strong { color: #fff; font-size: 15px; }
+  .topp button { min-height: 44px; padding: 0 14px; border: 1px solid #3a2f26; border-radius: 10px; background: #1d1815; color: #e8e2d8; font: 700 13px system-ui; }
+  .topp .verktyg { margin-left: auto; display: flex; gap: 6px; }
+  .topp .verktyg button { border: 0; background: rgb(36 41 56 / 92%); color: #fff; }
+  .tra { position: absolute; left: 34px; top: 180px; width: 700px; height: 480px; border-radius: 22px; background: linear-gradient(#5a3a22, #3e2716); }
+  .filt { position: absolute; left: 64px; top: 210px; width: 640px; height: 420px; border-radius: 10px; background: radial-gradient(at 50% 40%, #2e6b46, #1f4a30 70%, #173a26); }
+  .zon { position: absolute; box-sizing: border-box; border: 1px solid rgb(232 234 220 / 28%); border-radius: 4px; }
+  .zon u { position: absolute; left: 3px; top: -15px; text-decoration: none; color: rgb(232 234 220 / 60%); font: 700 9px system-ui; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
+  .fkort { position: absolute; width: 33px; height: 46px; border-radius: 3px; background: #232a3a; color: #eef2fb; font: 700 5px system-ui; display: grid; place-items: center; text-align: center; overflow: hidden; box-shadow: 0 1px 3px rgb(0 0 0 / 50%); }
+  .band { position: absolute; left: 0; right: 0; bottom: 0; height: 230px; }
+  .hkort { position: absolute; bottom: 36px; width: 112px; height: 156px; box-sizing: border-box; border-radius: 10px; padding: 10px; background: #232a3a; color: #eef2fb; text-align: center; box-shadow: 0 6px 16px rgb(0 0 0 / 50%); transform-origin: 50% 130%; container-type: inline-size; touch-action: pan-x; transition: transform .15s; }
+  .hkort b { display: block; font-size: 15.7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hkort small { display: block; margin-top: 4px; color: #a7b0c4; font-size: 10px; font-weight: 600; }
+  .hkort[data-lyft] { opacity: .3; }
+  .hkort[data-trycks] { transform: var(--vila) translateY(-6px) !important; }
+  .halla { position: absolute; inset: -6px; border-radius: 14px; pointer-events: none; background: conic-gradient(#ffd98a var(--p, 0%), transparent 0); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 0); mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 0); }
+  .titt { position: absolute; z-index: 30; width: 230px; height: 321px; box-sizing: border-box; border-radius: 18px; padding: 20px; background: #232a3a; color: #eef2fb; text-align: center; box-shadow: 0 30px 60px rgb(0 0 0 / 70%); pointer-events: none; }
+  .titt b { display: block; font-size: 28px; line-height: 1.15; }
+  .titt small { display: block; margin-top: 10px; color: #a7b0c4; font-size: 14px; }
+  .titt p { position: absolute; left: 16px; right: 16px; bottom: 16px; margin: 0; color: #c3cbdd; font-size: 13px; line-height: 1.4; }
+  .spoke { position: absolute; z-index: 40; width: 119px; height: 166px; box-sizing: border-box; border-radius: 10px; padding: 10px; background: #232a3a; color: #eef2fb; font: 700 15px system-ui; text-align: center; transform: translate(-50%, -50%); box-shadow: 0 24px 40px rgb(0 0 0 / 60%); pointer-events: none; }
+  .morker { position: absolute; inset: 61px 0 0; z-index: 50; background: rgb(10 8 7 / 70%); display: flex; flex-direction: column; justify-content: flex-end; }
+  .ark { background: #1a1512; border-top: 1px solid #3a2f26; border-radius: 18px 18px 0 0; padding: 12px 16px 18px; color: #9aa3b8; font-size: 13px; }
+  .ark header { display: flex; align-items: center; gap: 10px; padding-bottom: 10px; }
+  .ark header strong { color: #fff; font-size: 15px; }
+  .ark header button, .panel .stang { margin-left: auto; min-height: 44px; padding: 0 14px; border: 0; border-radius: 10px; background: rgb(36 41 56 / 92%); color: #fff; font: 700 13px system-ui; }
+  .rutnat { display: grid; grid-template-columns: repeat(auto-fill, 112px); grid-auto-rows: 156px; gap: 10px; justify-content: center; }
+  .rutnat .hkort { position: relative; bottom: auto; transform: none; transition: none; }
+  .rutnat .hkort b { white-space: normal; }
+  .panel { position: absolute; left: 0; right: 0; bottom: 0; z-index: 60; padding: 16px; border-radius: 18px 18px 0 0; background: #1b1e27; border: 1px solid #2c3242; border-bottom: 0; color: #fff; }
+  .panel .huvud { display: flex; gap: 16px; align-items: flex-start; }
+  .panel .huvud i { flex: none; width: 112px; height: 156px; border-radius: 10px; background: #232a3a; box-sizing: border-box; padding: 10px; font: 700 15px system-ui; font-style: normal; text-align: center; }
+  .panel h2 { margin: 0 0 4px; font-size: 21px; }
+  .panel h3 { margin: 14px 0 6px; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #9aa3b8; }
+  .panel .lista { display: grid; gap: 6px; }
+  .panel .lista button { display: flex; min-height: 44px; padding: 10px 14px; border: 0; border-radius: 12px; background: #242938; color: #fff; font: 700 15px system-ui; text-align: left; }
+  .panel .stang { margin: 14px 0 0; width: 100%; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#484 fynd 10 · Att läsa och öppna ett handkort med finger.</b> Tryck på ett kort i fjädern, håll på ett, dra ett uppåt på filten, och öppna «Visa alla».</p>
+    <p>Hålltiden är 500 ms, samma som telefonremsans (K10); tröskeln mellan tryck och drag 12 px (`FAN_AIM_PX`).</p>
+  </div>
+  <div class="matt" id="matt"></div>
+  <button type="button" id="aterstall">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="scen" id="scen"><div class="ram" id="ram"><span class="etikett">768 × 1024 · finger</span><div class="fonster" id="fonster"></div></div></div>
+<script>
+const HALL = 500, SIKTE = 12
+const START = () => ({
+  hand: ['Stolen Goods', 'Stolen Gold', 'Buckaroo’s Revenge', 'Faster Than Lightning', 'Snake in the Grass'].map((namn, i) => ({ id: `h${i}`, namn })),
+  filt: [], uppslag: false, panel: null, titt: null, drag: null, tryck: null, gest: 'ingen ännu',
+})
+const s = { v: 'a', ...START() }
+const NOT = {
+  nu: '<b>Nu.</b> Ett tryck och ett håll på fjädern gör ingenting; att läsa och att öppna går bara via «Visa alla». <span class="minus">− Två tryck och ett uppslag som täcker bordet för att läsa ett namn; uppslaget svarar på ett tryck, fjädern inte — samma kort, två regler.</span>',
+  a: '<b>A · Ett tryck öppnar panelen.</b> Som i uppslaget och som Enter: adresspanelen med kortet i läsbar storlek och vart det kan spelas. Drag uppåt spelar som förut; sidled rullar. <span class="plus">+ En regel för hela handen, fjäder, kolumn och uppslag; trycket var en död gest och spelar fortfarande ingenting; ingen timer.</span> <span class="minus">− Ett tryck som var tänkt som början på ett drag öppnar panelen; den som bara ville läsa får en panel med verb.</span>',
+  b: '<b>B · Håll öppnar panelen.</b> Efter 500 ms öppnas samma adresspanel; ett tryck gör fortfarande ingenting. <span class="plus">+ Inget öppnas av misstag.</span> <span class="minus">− Hålla är osynligt tills man vet om det; på telefonen (K4) betyder hålla «välj flera», och #483 lät det lyfta kortet för sortering — samma finger, en tredje betydelse.</span>',
+  c: '<b>C · Håll lyfter kortet att läsa.</b> Kortet stiger förstorat ur fjädern så länge fingret ligger kvar; släpp lägger tillbaka det, dra uppåt ur lyftet spelar det. Panelen nås som i dag. <span class="plus">+ Läsa blir en tittning, inte ett ärende; nära #483:s «håll tills kortet lyfts».</span> <span class="minus">− Löser läsandet men inte panelen: den är fortfarande «Visa alla» → tryck bort för ett finger.</span>',
+}
+const panelVag = { nu: 'Visa alla → tryck (2 tryck)', a: 'tryck (1)', b: 'håll 500 ms (1)', c: 'Visa alla → tryck (2 tryck)' }
+const lasVag = { nu: 'Visa alla (uppslaget)', a: 'tryck (panelen)', b: 'håll (panelen)', c: 'håll (lyftet)' }
+
+function fan() {
+  const n = s.hand.length
+  const tilt = n > 1 ? Math.min(8, 30 / (n - 1)) : 0
+  const steg = Math.min(68, (768 - 24 - 112 * 1.3) / Math.max(1, n - 1))
+  const bredd = (n - 1) * steg + 112
+  const x0 = (768 - bredd) / 2
+  return s.hand.map((k, i) => {
+    const m = i - (n - 1) / 2
+    return { ...k, x: x0 + i * steg, rot: m * tilt, dip: Math.abs(m) * 6 * (tilt / 8) }
+  })
+}
+function rita() {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  document.getElementById('anteckning').innerHTML = NOT[s.v]
+  const f = document.getElementById('fonster')
+  const zoner = [['Sal’s Saloon', 150, 40, 340, 80], ['Framför A', 150, 300, 340, 90], ['Kasthög', 380, 170, 40, 56, 1], ['Kortlek', 220, 170, 40, 56, 1]]
+    .map(([n, x, y, w, h, hog]) => `<div class="zon" style="left:${64 + x}px;top:${210 + y}px;width:${w}px;height:${h}px${hog ? ';background:repeating-linear-gradient(45deg,#26324a 0 4px,#2d3a55 4px 8px);border-color:#e8eaf0' : ''}"><u>${n}</u></div>`).join('')
+  const lagda = s.filt.map((k) => `<div class="fkort" style="left:${k.x - 16}px;top:${k.y - 23}px">${k.namn}</div>`).join('')
+  const kort = fan().map((k) => {
+    const vila = `rotate(${k.rot}deg) translateY(${k.dip}px)`
+    const t = s.tryck?.id === k.id
+    return `<div class="hkort" data-kort="${k.id}" style="left:${k.x}px;--vila:${vila};transform:${vila}"${s.drag?.id === k.id || s.titt === k.id ? ' data-lyft' : ''}${t ? ' data-trycks' : ''}><b>${k.namn}</b><small>Kortet renderas…</small>${t && s.tryck.p !== undefined ? `<span class="halla" style="--p:${s.tryck.p}%"></span>` : ''}</div>`
+  }).join('')
+  let over = ''
+  if (s.titt) {
+    const k = fan().find((x) => x.id === s.titt)
+    const left = Math.max(12, Math.min(768 - 242, k.x + 56 - 115))
+    over += `<div class="titt" style="left:${left}px;top:${1024 - 230 - 321 + 40}px"><b>${k.namn}</b><small>Kortet renderas…</small><p>Släpp: tillbaka i handen · dra uppåt: spela</p></div>`
+  }
+  if (s.drag) { const k = s.hand.find((x) => x.id === s.drag.id); over += `<div class="spoke" style="left:${s.drag.x}px;top:${s.drag.y}px">${k.namn}</div>` }
+  if (s.uppslag) {
+    over += `<div class="morker" data-bak><div class="ark"><header><strong>Din hand</strong><span>${s.hand.length} kort · tryck för att spela eller läsa</span><button type="button" data-stang-uppslag>Stäng</button></header>
+      <div class="rutnat">${s.hand.map((k) => `<div class="hkort" data-uppslag="${k.id}"><b>${k.namn}</b><small>Kortet renderas…</small></div>`).join('')}</div></div></div>`
+  }
+  if (s.panel) {
+    const k = s.hand.find((x) => x.id === s.panel)
+    over += `<div class="morker" data-bak-panel></div><div class="panel" role="dialog" aria-label="${k.namn}"><div class="huvud"><i>${k.namn}</i><div><h2>${k.namn}</h2><span style="color:#9aa3b8">I din hand · 1 av ${s.hand.length}</span></div></div>
+      <h3>Spela till</h3><div class="lista">${['Framför mig', 'Kasthög', 'Sal’s Saloon', 'Bos hand'].map((m) => `<button type="button" data-spela="${m}">${m}</button>`).join('')}</div><button type="button" class="stang" data-stang-panel>Stäng</button></div>`
+  }
+  f.innerHTML = `<div class="topp"><span class="jag"><strong>Ada</strong><span>${s.hand.length} kort</span></span><button type="button" data-uppslag-knapp aria-expanded="${s.uppslag}">Visa alla</button><span class="verktyg"><button>↶ Ångra</button><button>⚑ Flagga</button><button>Ut…</button></span></div>
+    <div class="tra"></div><div class="filt"></div>${zoner}${lagda}<div class="band">${kort}</div>${over}`
+  document.getElementById('matt').innerHTML = `<span>Senaste gest: <u>${s.gest}</u></span><span>Till panelen: <u>${panelVag[s.v]}</u></span><span>Läsa ett kort: <u>${lasVag[s.v]}</u></span>`
+  const scen = document.getElementById('scen')
+  const k = Math.min(1, (scen.clientHeight - 40) / 1024, (scen.clientWidth - 24) / 768)
+  s.k = k
+  f.style.transform = `scale(${k})`
+  Object.assign(document.getElementById('ram').style, { width: `${768 * k}px`, height: `${1024 * k}px` })
+}
+function lokal(e) {
+  const r = document.getElementById('fonster').getBoundingClientRect()
+  return { x: (e.clientX - r.left) / s.k, y: (e.clientY - r.top) / s.k }
+}
+const overFilt = (p) => p.x >= 34 && p.x <= 734 && p.y >= 180 && p.y <= 660
+const MAL = { 'Framför mig': [64 + 180, 210 + 345], 'Kasthög': [64 + 400, 210 + 198], 'Sal’s Saloon': [64 + 180, 210 + 80] }
+function spela(id, var_, p) {
+  const k = s.hand.find((x) => x.id === id)
+  s.hand = s.hand.filter((x) => x.id !== id)
+  const m = MAL[var_]
+  const n = s.filt.filter((x) => x.var_ === var_).length
+  if (p || m) s.filt.push({ namn: k.namn, var_, x: p?.x ?? m[0] + (var_ === 'Kasthög' ? 0 : n * 40), y: p?.y ?? m[1] })
+  s.gest = `${k.namn} spelat till ${var_}`
+}
+
+// Fingret: tryck, håll och drag delas som `useHandDrag` delar dem — den första rörelsen på 12 px
+// avgör, uppåt är spel och sidled är rullning — och hålltimern går bara medan ingen rörelse sagt något.
+const fonster = document.getElementById('fonster')
+let timer = null, anim = null
+function stoppaHall() { clearTimeout(timer); cancelAnimationFrame(anim); timer = null }
+fonster.addEventListener('pointerdown', (e) => {
+  const el = e.target.closest('[data-kort]'); if (!el || s.panel || s.uppslag) return
+  const p = lokal(e)
+  s.tryck = { id: el.dataset.kort, x: p.x, y: p.y, t: performance.now(), hallen: false }
+  try { fonster.setPointerCapture(e.pointerId) } catch {}
+  if (s.v === 'b' || s.v === 'c') {
+    s.tryck.p = 0
+    const t0 = performance.now()
+    const steg = () => { if (!s.tryck) return; s.tryck.p = Math.min(100, ((performance.now() - t0) / HALL) * 100); rita(); if (s.tryck.p < 100) anim = requestAnimationFrame(steg) }
+    anim = requestAnimationFrame(steg)
+    timer = setTimeout(() => {
+      if (!s.tryck) return
+      s.tryck.hallen = true
+      cancelAnimationFrame(anim)
+      const k = s.hand.find((x) => x.id === s.tryck.id)
+      if (s.v === 'b') { s.panel = s.tryck.id; s.gest = `håll → panelen för ${k.namn}`; s.tryck = null }
+      else { s.titt = s.tryck.id; s.gest = `håll → ${k.namn} lyft`; s.tryck.p = undefined }
+      rita()
+    }, HALL)
+  }
+  rita()
+})
+fonster.addEventListener('pointermove', (e) => {
+  const p = lokal(e)
+  if (s.drag) { s.drag.x = p.x; s.drag.y = p.y; rita(); return }
+  const t = s.tryck; if (!t) return
+  const dx = Math.abs(p.x - t.x), dy = Math.abs(p.y - t.y)
+  if (Math.max(dx, dy) < SIKTE) return
+  stoppaHall()
+  if (dx >= dy) { s.gest = s.titt ? 'sidled under lyftet → inget' : 'sidled → fjädern rullar'; s.titt = null; s.tryck = null; rita(); return }
+  if (p.y > t.y) { s.tryck = null; s.titt = null; rita(); return }
+  s.titt = null
+  s.drag = { id: t.id, x: p.x, y: p.y }
+  s.tryck = null
+  rita()
+})
+fonster.addEventListener('pointerup', (e) => {
+  stoppaHall()
+  const p = lokal(e)
+  if (s.drag) {
+    const d = s.drag; s.drag = null
+    if (overFilt(p)) spela(d.id, 'filten', p)
+    else s.gest = 'släppt utanför filten → tillbaka i handen'
+    rita(); return
+  }
+  const t = s.tryck; s.tryck = null
+  if (s.titt) { s.titt = null; s.gest = 'släppt → tillbaka i fjädern'; rita(); return }
+  if (!t) { rita(); return }
+  const ms = Math.round(performance.now() - t.t)
+  const k = s.hand.find((x) => x.id === t.id)
+  if (s.v === 'a') { s.panel = t.id; s.gest = `tryck · ${ms} ms → panelen för ${k.namn}` }
+  else s.gest = `tryck · ${ms} ms → inget`
+  rita()
+})
+fonster.addEventListener('pointercancel', () => { stoppaHall(); s.tryck = null; s.drag = null; s.titt = null; rita() })
+
+document.body.addEventListener('click', (e) => {
+  const b = e.target.closest('button, [data-uppslag], [data-bak], [data-bak-panel]'); if (!b) return
+  if (b.id === 'aterstall') { Object.assign(s, START()); rita(); return }
+  if (b.dataset.v) { s.v = b.dataset.v; s.panel = null; s.uppslag = false; const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita(); return }
+  if (b.hasAttribute('data-uppslag-knapp')) { s.uppslag = !s.uppslag; rita(); return }
+  if (b.hasAttribute('data-stang-uppslag') || (b.hasAttribute('data-bak') && e.target === b)) { s.uppslag = false; rita(); return }
+  if (b.dataset.uppslag) { s.panel = b.dataset.uppslag; s.uppslag = false; s.gest = 'tryck i uppslaget → panelen'; rita(); return }
+  if (b.hasAttribute('data-stang-panel') || b.hasAttribute('data-bak-panel')) { s.panel = null; rita(); return }
+  if (b.dataset.spela) { spela(s.panel, b.dataset.spela); s.panel = null; rita() }
+})
+addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { if (s.drag) s.gest = 'Escape → tillbaka i handen'; s.drag = null; s.panel = null; s.uppslag = false; s.titt = null; rita(); return }
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  s.v = alla[(alla.indexOf(s.v) + (e.key === 'ArrowRight' ? 1 : 3)) % 4]
+  s.panel = null; s.uppslag = false
+  const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita()
+})
+addEventListener('resize', rita)
+const q = new URLSearchParams(location.search).get('v')
+if (['nu', 'a', 'b', 'c'].includes(q)) s.v = q
+rita()
+</script>
+</body>
+</html>

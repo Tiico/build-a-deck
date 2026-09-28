@@ -1,4 +1,4 @@
-import { useEffect, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
+import { useEffect, useRef, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
 
 // `key` is only for telling two entries apart when their words are the same — a pile of chips can
 // hold two counters a designer gave the same name and the same value (#89).
@@ -17,6 +17,17 @@ export type RadialItem = { key?: string; label: string; run: (() => void) | null
 // takes it when it answers yes (#482): a second press on the card that opened the ring lands here,
 // and the backdrop used to take itself away on `pointerup` before the browser could make a
 // `dblclick` of the two — so the double press the help promises never turned anything.
+//
+// A `click` closes the ring only when its press began on the backdrop (#484 fynd 3). A tap opens
+// the ring on its release, and a finger's release is followed by the `click` the browser makes of
+// the touch, hit-tested where the finger was — on this backdrop, which had arrived there in between.
+// The ring stood for eight milliseconds. A release still closes it, whatever pressed: a press held
+// until the ring opens and let go beside it is the never-mind the ring has always had.
+//
+// A verb answers the same way. Near the felt's edge the ring is drawn in from the edge, and the
+// click made of a tap then lands on whichever verb was drawn under the finger — and ran it. A verb's
+// click counts when its press began in the ring, or when it is the keyboard's (`detail` 0); a verb
+// reached by sliding a held press onto it answers on the release, as it always has.
 export function RadialMenu({ id, x, y, items, hub, onClose, onPressAgain }: { id: string; x: number; y: number; items: RadialItem[]; hub?: ReactNode; onClose(): void; onPressAgain?: () => boolean }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -32,17 +43,19 @@ export function RadialMenu({ id, x, y, items, hub, onClose, onPressAgain }: { id
     if (item.run) item.run()
     onClose()
   }
+  const pressed = useRef(false)
   const radius = 82
   return (
     <div
       className="byd-radial-backdrop"
       onPointerDown={(e) => {
+        pressed.current = true
         if (e.target !== e.currentTarget || !onPressAgain?.()) return
         e.preventDefault()
         e.stopPropagation()
       }}
       onPointerUp={onClose}
-      onClick={onClose}
+      onClick={() => pressed.current && onClose()}
     >
       <div className="byd-radial" data-radial={id} style={{ left: x, top: y }}>
         {hub !== undefined && (
@@ -59,7 +72,10 @@ export function RadialMenu({ id, x, y, items, hub, onClose, onPressAgain }: { id
               disabled={item.run === null}
               style={{ left: Math.cos(ang) * radius, top: Math.sin(ang) * radius }}
               onPointerUp={(e) => choose(e, item)}
-              onClick={(e) => choose(e, item)}
+              onClick={(e) => {
+                if (pressed.current || e.detail === 0) choose(e, item)
+                else e.stopPropagation()
+              }}
             >
               {item.label}
             </button>

@@ -20,12 +20,12 @@ afterEach(async () => {
 
 // A landscape window, said outright: it is what decides which shape the seat's own hand takes
 // (#77), and jsdom's own default would otherwise decide it by accident.
-async function open(sessionId: string, seat: string, name: string, props: OnlinePageProps = {}) {
-  atWindow({ w: 1280, h: 800 })
+async function open(sessionId: string, seat: string, name: string, props: OnlinePageProps = {}, room = { w: 1280, h: 800 }) {
+  atWindow(room)
   const address = `/online?session=${sessionId}&seat=${seat}&name=${name}&token=${await admit(run, sessionId, seat, name)}&code=${roomOf(sessionId).code}&server=${encodeURIComponent(run.url)}`
   history.replaceState(null, '', address)
   render(<OnlinePage {...props} />)
-  await screen.findByText(/Draghög/)
+  await screen.findAllByText(/Draghög/)
 }
 
 describe('OnlinePage (C2): both roles in one window', () => {
@@ -151,3 +151,17 @@ describe('the ended table goes quiet behind the survey (C9, D5, G3, #83)', () =>
     table.close()
   })
 })
+
+// A phone gets the player's surface and no felt (C2's revision of 2026-09-16, #99), and C2's own
+// follow-up asks it to say where the whole table is (#484 fynd 11). It says so where a reader looks
+// for the table on a phone — in the fold that holds the table as names and counts — so it costs the
+// hand no height at 320.
+describe('/online on a phone says where the whole table is (C2, #484)', () => {
+  it('names the television, or a screen that holds it, in the fold with the table', async () => {
+    const id = await createSession(run)
+    await open(id, 'A', 'Ada', {}, { w: 390, h: 844 })
+    const fold = document.querySelector('[data-phone-table]')!
+    expect(fold.textContent).toMatch(/Hela bordet står på TV:n, eller på en skärm som rymmer det\./)
+  })
+})
+

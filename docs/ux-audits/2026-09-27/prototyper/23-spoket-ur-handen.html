@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 23 — Spöket ur handen (#484 fynd 4)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Medan ett kort bärs ur handen säger filten inte var det landar. Spöket är handens kort i
+     läsbar storlek, 119 × 166 px (112 × 1,06), mot 47 × 66 på filten vid 1280 × 800 — 2,5 gånger
+     större, och 3,6 vid 768 × 1024. Det täcker zonen det ska släppas i, och ingen zon tänds. K24
+     ger filtdrag ett besked när ett kort är på väg in i en hand; ett drag ur handen får inget.
+     Släpp utanför filten lägger sedan #484 fynd 1 tillbaka kortet i handen — tyst.
+
+       Nu  spöket i läsbar storlek hela vägen; ingen zon tänds
+       A   spöket krymper till filtens kortstorlek så fort pekaren är över bordet
+       B   spöket som i dag, men zonen under pekaren tänds (K24:s band över en annan hand,
+           kolumnen tänds som «tillbaka» utanför filten)
+       C   båda
+
+     Fönstret är 1280 × 800 i verklig storlek, skalat till skärmen: listen, filten (förenklad,
+     utan lutning) och handen som kolumn. Dra ett kort ur kolumnen åt vänster, in på filten.
+     Escape under draget lägger tillbaka kortet, som byggt. ──────────────────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .scen { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; background: #0a0c10; overflow: hidden; }
+  .fonster { position: relative; width: 1280px; height: 800px; background: #17120f; transform-origin: 0 0; overflow: hidden; font-family: system-ui, sans-serif; user-select: none; touch-action: none; }
+  .topp { position: absolute; left: 0; top: 0; right: 0; height: 61px; display: flex; align-items: center; gap: 8px; padding: 8px 16px; box-sizing: border-box; background: #100d0b; border-bottom: 1px solid #2a221c; }
+  .jag { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px; border-radius: 999px; background: rgb(20 22 28 / 90%); color: #9aa3b8; font-size: 13px; border-left: 4px solid #e05d5d; }
+  .jag strong { color: #fff; font-size: 15px; }
+  .topp button { min-height: 44px; padding: 0 14px; border: 1px solid #3a2f26; border-radius: 10px; background: #1d1815; color: #e8e2d8; font: 700 13px system-ui; }
+  .topp .verktyg { margin-left: auto; display: flex; gap: 6px; }
+  .topp .verktyg button { border: 0; background: rgb(36 41 56 / 92%); color: #fff; }
+  .topp .verktyg button:disabled { opacity: .35; }
+  .tra { position: absolute; border-radius: 26px; background: linear-gradient(#5a3a22, #3e2716); box-shadow: 0 18px 40px rgb(0 0 0 / 55%); }
+  .filt { position: absolute; border-radius: 12px; background: radial-gradient(at 50% 40%, #2e6b46, #1f4a30 70%, #173a26); box-shadow: inset 0 0 40px rgb(0 0 0 / 40%); }
+  .zon { position: absolute; box-sizing: border-box; border: 1.5px solid rgb(232 234 220 / 28%); border-radius: 6px; }
+  .zon > u { position: absolute; left: 4px; top: -17px; text-decoration: none; color: rgb(232 234 220 / 60%); font: 700 10px system-ui; letter-spacing: 1.2px; text-transform: uppercase; white-space: nowrap; }
+  .zon[data-tand] { border: 3px solid var(--tand); background: color-mix(in srgb, var(--tand), transparent 84%); }
+  .zon[data-tand] > u { color: #fff; }
+  .hog { position: absolute; box-sizing: border-box; border-radius: 4px; background: repeating-linear-gradient(45deg, #26324a 0 5px, #2d3a55 5px 10px); border: 1.5px solid #e8eaf0; }
+  .hog[data-tand] { outline: 3px solid var(--tand); outline-offset: 3px; }
+  .hog > b { position: absolute; left: 50%; bottom: -26px; translate: -50% 0; padding: 2px 9px; border-radius: 999px; background: #0f2418; color: #e8eadc; font: 700 12px system-ui; white-space: nowrap; }
+  .kort { position: absolute; box-sizing: border-box; border-radius: 4px; background: #232a3a; color: #eef2fb; font: 700 7px system-ui; padding: 3px; overflow: hidden; box-shadow: 0 2px 5px rgb(0 0 0 / 45%); text-align: center; display: grid; place-items: center; }
+  .kort[data-ny] { outline: 2px solid #e05d5d; }
+  .flakt { position: absolute; }
+  .flakt i { position: absolute; width: 30px; height: 42px; border-radius: 3px; background: repeating-linear-gradient(45deg, #26324a 0 4px, #2d3a55 4px 8px); border: 1px solid #3b4a6b; }
+  .namn { position: absolute; padding: 2px 10px; border-radius: 999px; background: var(--c); color: #10131a; font: 800 12px system-ui; white-space: nowrap; }
+  .namn[data-ring] { box-shadow: 0 0 0 3px #f4efe0; }
+  .antal { position: absolute; min-width: 22px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: 999px; background: #0c0e13; color: #fff; font: 800 12px system-ui; display: grid; place-items: center; white-space: nowrap; }
+  .kant { position: absolute; background: var(--c); box-shadow: 0 0 0 1.5px #f4efe0; border-radius: 3px; }
+  .kolumn { position: absolute; right: 0; top: 61px; bottom: 0; width: 136px; box-sizing: border-box; }
+  .kolumn[data-tand] { background: color-mix(in srgb, #e05d5d, transparent 86%); box-shadow: inset 0 0 0 3px #e05d5d; }
+  .kolumn > em { position: absolute; left: 8px; right: 8px; top: 14px; color: #ffd4d4; font: 700 12px system-ui; font-style: normal; text-align: center; }
+  .handkort { position: absolute; left: 12px; width: 112px; height: 156px; box-sizing: border-box; border-radius: 10px; padding: 10px; background: #232a3a; color: #eef2fb; font: 700 15px system-ui; text-align: center; box-shadow: 0 6px 16px rgb(0 0 0 / 50%); cursor: grab; touch-action: pan-y; }
+  .handkort small { display: block; margin-top: 4px; color: #a7b0c4; font-size: 10px; font-weight: 600; }
+  .handkort:hover { z-index: 2; }
+  .handkort[data-lyft] { opacity: .3; }
+  .spoke { position: absolute; z-index: 50; pointer-events: none; box-sizing: border-box; border-radius: 10px; background: #232a3a; color: #eef2fb; text-align: center; box-shadow: 0 24px 40px rgb(0 0 0 / 60%); transform: translate(-50%, -50%); overflow: hidden; transition: width .12s, height .12s, border-radius .12s, padding .12s, font-size .12s; display: grid; align-content: start; }
+  .spoke[data-rygg] { background: repeating-linear-gradient(45deg, #26324a 0 5px, #2d3a55 5px 10px); color: transparent; border: 1.5px solid #e8eaf0; }
+  .etikett { position: absolute; z-index: 51; pointer-events: none; transform: translate(-50%, 0); padding: 3px 10px; border-radius: 999px; background: #0c0e13; color: #fff; font: 700 12px system-ui; white-space: nowrap; border: 1.5px solid var(--tand, #e05d5d); }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#484 fynd 4 · Var kortet landar medan det bärs ur handen.</b> Dra ett kort ur kolumnen till vänster, in på filten — sikta på Kasthög, på Framför A, på Bos hand överst, och släpp utanför träet.</p>
+    <p>Spökets och filtkortets mått är de uppmätta (1280 × 800, 112 px läsbar storlek × 1,06). Filten är förenklad, utan lutning.</p>
+  </div>
+  <div class="matt" id="matt"></div>
+  <button type="button" id="aterstall">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="scen" id="scen"><div class="fonster" id="fonster"></div></div>
+<script>
+// Fönstret och filten, i fönstrets egna pixlar. En millimeter på filten är 0,746 px, så kortet
+// på filten är 47 × 66 — det uppmätta vid 1280 × 800 i kolumnläget.
+const W = 1280, H = 800, TOPP = 61, KOL = 136
+const MM = 47 / 63
+const FILT = { w: 1200 * MM, h: 800 * MM }
+FILT.x = (W - KOL - FILT.w) / 2
+FILT.y = TOPP + (H - TOPP - FILT.h) / 2
+const TRA = 30
+const KORT = { w: 63 * MM, h: 88 * MM }
+const SPOKE = { w: 119, h: 166 }
+const ADA = '#e05d5d'
+const PLATSER = {
+  B: { namn: 'Bo', c: '#3c8ce7', kant: 'N' },
+  C: { namn: 'Cy', c: '#3fb27f', kant: 'E' },
+  D: { namn: 'Di', c: '#e0a93b', kant: 'W' },
+}
+// Zonerna i filtens millimeter, som wizardens fyraplatsbord ungefär lägger dem.
+const ZONER = [
+  { id: 'framfor-b', namn: 'Framför B', typ: 'yta', x: 330, y: 110, w: 540, h: 130 },
+  { id: 'framfor-a', namn: 'Framför A', typ: 'yta', x: 330, y: 560, w: 540, h: 140 },
+  { id: 'framfor-d', namn: 'Framför D', typ: 'yta', x: 110, y: 150, w: 150, h: 500 },
+  { id: 'framfor-c', namn: 'Framför C', typ: 'yta', x: 940, y: 150, w: 150, h: 500 },
+  { id: 'kortlek', namn: 'Kortlek', typ: 'hog', x: 440, y: 350 },
+  { id: 'kasthog', namn: 'Kasthög', typ: 'hog', x: 700, y: 350 },
+]
+// Andras händer: den ritade fläkten tar emot (K2, #65), och kanten är platsens 500 mm (K18, K24).
+const HANDER = {
+  B: { x: 500, y: -30, w: 200, h: 80 },
+  C: { x: 1150, y: 300, w: 80, h: 200 },
+  D: { x: -30, y: 300, w: 80, h: 200 },
+}
+const START = () => ({
+  hand: [{ id: 'h1', namn: 'High Noon' }, { id: 'h2', namn: 'The Alley' }, { id: 'h3', namn: 'Bullseye' }],
+  lagda: [
+    { id: 'f1', namn: 'Duel', zon: 'framfor-b', x: 400, y: 130 },
+    { id: 'f2', namn: 'Saloon Brawl', zon: 'framfor-b', x: 520, y: 130 },
+    { id: 'f3', namn: 'Tumbleweed', zon: 'framfor-b', x: 640, y: 130 },
+  ],
+  hogar: { kortlek: { n: 124, topp: null }, kasthog: { n: 3, topp: 'Fact or Fable' } },
+  antal: { B: 3, C: 3, D: 3 },
+  drag: null, aim: null, sist: 'inget ännu',
+})
+const s = { v: 'c', ...START() }
+const NOT = {
+  nu: '<b>Nu.</b> Spöket är handens kort, 119 × 166 px, hela vägen; filten säger ingenting förrän kortet ligger där. <span class="minus">− Spöket täcker zonen det ska i, ett släpp krymper kortet till 47 × 66 någon annanstans än ögat väntade, och ett släpp utanför träet går tyst tillbaka i handen.</span>',
+  a: '<b>A · Filtskalat spöke.</b> Över bordet blir spöket det kort det ska bli: 47 × 66, där det kommer att ligga. Över kolumnen är det läsbart igen. <span class="plus">+ Det man ser är det som händer; zonen under syns runt kortet.</span> <span class="minus">− Ingenting säger vilken zon det är; kanten mellan två zoner, eller en hand, gissas fortfarande; släpp utanför säger inget.</span>',
+  b: '<b>B · Zonen tänds.</b> Zonen under pekaren ramas i din färg med sitt namn; över en annan hand tänds platsens kant och antalet räknar upp, som K24 för filtdrag; utanför filten tänds kolumnen: «Släpp: tillbaka i handen». <span class="plus">+ Varje släpp sägs innan det sker, också ångern.</span> <span class="minus">− Spöket är kvar i läsbar storlek och täcker det som tänds; tänd zon betyder inte var i zonen.</span>',
+  c: '<b>C · Båda.</b> Spöket krymper till filtens kort över bordet, och zonen, handen eller kolumnen under det tänds. <span class="plus">+ Var och vad, båda innan släppet; K24:s beskedsform återanvänd, ingen ny.</span> <span class="minus">− Två rörelser under ett drag (K24 accepterade samma pris); mest att bygga.</span>',
+}
+const krymper = () => s.v === 'a' || s.v === 'c'
+const tands = () => s.v === 'b' || s.v === 'c'
+const px = (mm) => ({ x: FILT.x + mm.x * MM, y: FILT.y + mm.y * MM })
+
+// Vad pekaren är över, frågat i samma ordning som `dropAt`: en hands fläkt, en hög, en yta,
+// annars golvet; träet hör till bordet (#66). Utanför träet: tillbaka i handen (#484 fynd 1).
+function under(lx, ly) {
+  const mx = (lx - FILT.x) / MM, my = (ly - FILT.y) / MM
+  const inne = lx >= FILT.x - TRA && lx <= FILT.x + FILT.w + TRA && ly >= FILT.y - TRA && ly <= FILT.y + FILT.h + TRA
+  if (!inne) return { typ: 'tillbaka', namn: 'Tillbaka i handen' }
+  for (const [id, r] of Object.entries(HANDER)) if (mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h) return { typ: 'hand', id, namn: `${PLATSER[id].namn}s hand` }
+  for (const z of ZONER) {
+    const w = z.typ === 'hog' ? 63 : z.w, h = z.typ === 'hog' ? 88 : z.h
+    if (mx >= z.x && mx <= z.x + w && my >= z.y && my <= z.y + h) return { typ: z.typ, id: z.id, namn: z.namn }
+  }
+  return { typ: 'golv', id: 'golv', namn: 'Filten (golvet)' }
+}
+
+function rita() {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  document.getElementById('anteckning').innerHTML = NOT[s.v]
+  const f = document.getElementById('fonster')
+  const d = s.drag
+  const mal = d ? under(d.x, d.y) : null
+  const tand = tands() && mal
+  const zonHtml = ZONER.map((z) => {
+    const p = px(z)
+    const lit = tand && mal.id === z.id ? ` data-tand style="--tand:${ADA};` : ' style="'
+    if (z.typ === 'hog') {
+      const h = s.hogar[z.id]
+      const plus = tand && mal.id === z.id ? ` → ${h.n + 1}` : ''
+      return `<div class="hog"${lit}left:${p.x}px;top:${p.y}px;width:${KORT.w}px;height:${KORT.h}px">${h.topp ? `<div class="kort" style="inset:0;width:auto;height:auto">${h.topp}</div>` : ''}<b>${z.namn} · ${h.n}${plus}</b></div>`
+    }
+    return `<div class="zon"${lit}left:${p.x}px;top:${p.y}px;width:${z.w * MM}px;height:${z.h * MM}px"><u>${z.namn}</u></div>`
+  }).join('')
+  const lagda = s.lagda.map((k) => { const p = px(k); return `<div class="kort"${k.ny ? ' data-ny' : ''} style="left:${p.x}px;top:${p.y}px;width:${KORT.w}px;height:${KORT.h}px">${k.namn}</div>` }).join('')
+  // Andras händer: fläkt, namnbricka och antal; K24:s kant när ett kort är på väg in.
+  const hander = Object.entries(HANDER).map(([id, r]) => {
+    const pl = PLATSER[id], p = px(r)
+    const pa = tand && mal.typ === 'hand' && mal.id === id
+    const cx = p.x + (r.w * MM) / 2, cy = p.y + (r.h * MM) / 2
+    const flakt = [0, 1, 2].map((i) => {
+      const rot = pl.kant === 'N' ? 0 : 90
+      return `<i style="left:${cx - 15 + (rot ? 0 : (i - 1) * 12)}px;top:${cy - 21 + (rot ? (i - 1) * 12 : 0)}px;transform:rotate(${rot + (i - 1) * 8}deg)"></i>`
+    }).join('')
+    const n = s.antal[id]
+    const kant = pa ? (pl.kant === 'N' ? `<div class="kant" style="--c:${pl.c};left:${FILT.x + 350 * MM}px;top:${FILT.y}px;width:${500 * MM}px;height:${16 * MM}px"></div>`
+      : pl.kant === 'E' ? `<div class="kant" style="--c:${pl.c};left:${FILT.x + FILT.w - 16 * MM}px;top:${FILT.y + 150 * MM}px;width:${16 * MM}px;height:${500 * MM}px"></div>`
+      : `<div class="kant" style="--c:${pl.c};left:${FILT.x}px;top:${FILT.y + 150 * MM}px;width:${16 * MM}px;height:${500 * MM}px"></div>`) : ''
+    const nx = pl.kant === 'N' ? cx - 14 : pl.kant === 'E' ? cx - 58 : cx + 22
+    const ny = pl.kant === 'N' ? cy + 20 : cy - 10
+    const ax = pl.kant === 'N' ? cx - 11 : pl.kant === 'E' ? cx + 24 : cx - 48
+    const ay = pl.kant === 'N' ? p.y - 22 : cy - 11
+    return `${kant}<div class="flakt">${flakt}</div><span class="namn" style="--c:${pl.c};left:${nx}px;top:${ny}px"${pa ? ' data-ring' : ''}>${pl.namn}</span><span class="antal" style="left:${ax}px;top:${ay}px">${pa ? `${n} → ${n + 1}` : n}</span>`
+  }).join('')
+  // Den egna handen är hopvikt till sin bricka (K9, #77): kolumnen är handen.
+  const eget = `<span class="namn" style="--c:${ADA};left:${FILT.x + FILT.w / 2 - 20}px;top:${FILT.y + FILT.h - 26}px">Ada</span><span class="antal" style="left:${FILT.x + FILT.w / 2 - 11}px;top:${FILT.y + FILT.h + 6}px">${s.hand.length}</span>`
+  const n = s.hand.length
+  const steg = 68
+  const topp0 = TOPP + (H - TOPP - ((n - 1) * steg + 156)) / 2
+  const tillbaka = tand && mal.typ === 'tillbaka'
+  const kolumn = `<div class="kolumn"${tillbaka ? ' data-tand' : ''}>${tillbaka ? '<em>Släpp: tillbaka i handen</em>' : ''}${s.hand.map((k, i) => `<div class="handkort" data-kort="${k.id}"${d?.id === k.id ? ' data-lyft' : ''} style="top:${topp0 - TOPP + i * steg}px">${k.namn}<small>Kortet renderas…</small></div>`).join('')}</div>`
+  let spoke = ''
+  if (d) {
+    const k = s.hand.find((x) => x.id === d.id)
+    const liten = krymper() && mal.typ !== 'tillbaka'
+    const rygg = tands() && mal.typ === 'hand'
+    const [w, h] = liten ? [Math.round(KORT.w * 1.06), Math.round(KORT.h * 1.06)] : [SPOKE.w, SPOKE.h]
+    spoke = `<div class="spoke"${rygg ? ' data-rygg' : ''} style="left:${d.x}px;top:${d.y}px;width:${w}px;height:${h}px;border-radius:${liten ? 4 : 10}px;padding:${liten ? 3 : 10}px;font:700 ${liten ? 7 : 15}px system-ui">${k.namn}</div>`
+    if (tand && mal.typ !== 'tillbaka') {
+      const c = mal.typ === 'hand' ? PLATSER[mal.id].c : ADA
+      const text = mal.typ === 'hand' ? `Till ${mal.namn} · dolt för alla andra` : mal.namn
+      spoke += `<span class="etikett" style="--tand:${c};left:${d.x}px;top:${mal.typ === 'hand' ? d.y + h / 2 + 8 : d.y - h / 2 - 30}px">${text}</span>`
+    }
+  }
+  f.innerHTML = `
+    <div class="topp"><span class="jag"><strong>Ada</strong><span>${n} kort</span></span><button type="button">Visa alla</button>
+      <span class="verktyg"><button type="button" disabled>↶ Ångra</button><button type="button">⚑ Flagga</button><button type="button">Ut…</button></span></div>
+    <div class="tra" style="left:${FILT.x - TRA}px;top:${FILT.y - TRA}px;width:${FILT.w + 2 * TRA}px;height:${FILT.h + 2 * TRA}px"></div>
+    <div class="filt" style="left:${FILT.x}px;top:${FILT.y}px;width:${FILT.w}px;height:${FILT.h}px"></div>
+    ${zonHtml}${lagda}${hander}${eget}${kolumn}${spoke}`
+  const storlek = d && krymper() && mal.typ !== 'tillbaka' ? `${Math.round(KORT.w * 1.06)} × ${Math.round(KORT.h * 1.06)}` : `${SPOKE.w} × ${SPOKE.h}`
+  const ggr = d && krymper() && mal.typ !== 'tillbaka' ? '1,06×' : `${(SPOKE.w / KORT.w).toFixed(1).replace('.', ',')}×`
+  document.getElementById('matt').innerHTML = `<span>Spöket: <u>${storlek} px</u> · filtens kort ${Math.round(KORT.w)} × ${Math.round(KORT.h)} · <u>${ggr}</u></span><span>Under pekaren: <u>${mal ? mal.namn : '—'}</u>${mal && !tands() ? ' (bara här i raden)' : ''}</span><span>Senaste släpp: <u>${s.sist}</u></span>`
+  skala()
+}
+
+function skala() {
+  const scen = document.getElementById('scen'), f = document.getElementById('fonster')
+  const k = Math.min((scen.clientWidth - 20) / W, (scen.clientHeight - 20) / H)
+  f.style.transform = `scale(${k})`
+  f.style.marginRight = `${W * k - W}px`; f.style.marginBottom = `${H * k - H}px`
+  s.k = k
+}
+function lokal(e) {
+  const r = document.getElementById('fonster').getBoundingClientRect()
+  return { x: (e.clientX - r.left) / s.k, y: (e.clientY - r.top) / s.k }
+}
+
+// Gestdelningen som `useHandDrag` gör den: den första rörelsen på 12 px avgör; på tvären ur
+// kolumnen är ett drag, längs den är kolumnen som rullar.
+const fonster = document.getElementById('fonster')
+fonster.addEventListener('pointerdown', (e) => {
+  const kort = e.target.closest('[data-kort]'); if (!kort) return
+  const p = lokal(e)
+  s.aim = { id: kort.dataset.kort, x: p.x, y: p.y, pid: e.pointerId }
+  fonster.setPointerCapture(e.pointerId)
+})
+fonster.addEventListener('pointermove', (e) => {
+  const p = lokal(e)
+  if (s.drag) { s.drag.x = p.x; s.drag.y = p.y; rita(); return }
+  const a = s.aim; if (!a) return
+  const dx = Math.abs(p.x - a.x), dy = Math.abs(p.y - a.y)
+  if (Math.max(dx, dy) < 12) return
+  if (dy >= dx) { s.aim = null; return }
+  s.drag = { id: a.id, x: p.x, y: p.y }
+  rita()
+})
+fonster.addEventListener('pointerup', (e) => {
+  const d = s.drag
+  s.aim = null
+  if (!d) return
+  s.drag = null
+  const mal = under(d.x, d.y)
+  const k = s.hand.find((x) => x.id === d.id)
+  for (const x of s.lagda) delete x.ny
+  if (mal.typ === 'tillbaka') s.sist = `${k.namn} tillbaka i handen`
+  else {
+    s.hand = s.hand.filter((x) => x.id !== d.id)
+    if (mal.typ === 'hand') { s.antal[mal.id]++; s.sist = `${k.namn} → ${mal.namn}` }
+    else if (mal.typ === 'hog') { s.hogar[mal.id].n++; s.hogar[mal.id].topp = k.namn; s.sist = `${k.namn} → ${mal.namn}` }
+    else {
+      const mx = Math.min(1200 - 63, Math.max(0, (d.x - FILT.x) / MM - 31.5)), my = Math.min(800 - 88, Math.max(0, (d.y - FILT.y) / MM - 44))
+      s.lagda.push({ id: d.id, namn: k.namn, x: mx, y: my, ny: true })
+      s.sist = `${k.namn} → ${mal.namn}`
+    }
+  }
+  rita()
+})
+fonster.addEventListener('pointercancel', () => { s.aim = null; s.drag = null; rita() })
+
+document.body.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.id === 'aterstall') { Object.assign(s, START()); rita(); return }
+  if (!b.dataset.v) return
+  s.v = b.dataset.v; const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita()
+})
+addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && s.drag) { const k = s.hand.find((x) => x.id === s.drag.id); s.sist = `${k.namn} tillbaka (Escape)`; s.drag = null; s.aim = null; rita(); return }
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  s.v = alla[(alla.indexOf(s.v) + (e.key === 'ArrowRight' ? 1 : 3)) % 4]
+  const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita()
+})
+addEventListener('resize', rita)
+const q = new URLSearchParams(location.search).get('v')
+if (['nu', 'a', 'b', 'c'].includes(q)) s.v = q
+rita()
+</script>
+</body>
+</html>
