@@ -1,5 +1,6 @@
 import type { Device } from '../support/devices.js'
 import { DESK } from '../support/devices.js'
+import { join } from '../support/api.js'
 import { standing } from '../support/surface.js'
 import { expect, test } from '../support/test.js'
 
@@ -78,5 +79,44 @@ test.describe('the lifted card in the shipped stylesheet (#509)', () => {
     await expect(img).toBeVisible()
     const drawn = (await img.boundingBox())!
     expect({ x: drawn.x, y: drawn.y, w: Math.round(drawn.width), h: Math.round(drawn.height) }).toEqual({ x: 40, y: 30, w: 341, h: 476 })
+  })
+})
+
+// The distance view draws the same felt under its own header (#509). The felt's frame carries the
+// tilt's `perspective`, and a `perspective` makes an element the box every `position: fixed` inside
+// it is placed in — so a ring or a lift placed in window coordinates landed a header's height below
+// where it was asked for, and the lift ran off the bottom of the window.
+test.describe('the felt under the distance view’s header (#509)', () => {
+  const LAPTOP: Device = { name: 'laptop', viewport: { width: 1280, height: 800 } }
+  test.use({ viewport: LAPTOP.viewport })
+
+  test('opens the ring where it was pressed, and keeps the lift whole in the window', async ({ tableOf, open, host, request }) => {
+    const table = await tableOf({ players: 2, counters: [], cards: 4, copies: 1 })
+    const dealer = await host(table)
+    await dealer.send([{ v: 'draw', from: 'draw', to: 'table', count: 1 }])
+    const seat = await join(request, table, { name: 'Ada', seat: 'A' })
+    const { page } = await open(LAPTOP, `${seat.onlineUrl}&lang=sv`)
+    const card = page.locator('.byd-online-felt .byd-card[data-component]').first()
+    await expect(card).toHaveAttribute('data-face', 'back')
+
+    const at = (await card.boundingBox())!
+    const x = at.x + at.width / 2
+    const y = at.y + at.height / 2
+    await page.mouse.click(x, y)
+    const ring = page.locator('.byd-radial')
+    await expect(ring).toHaveCount(1)
+    const centre = (await ring.boundingBox())!
+    expect({ x: Math.round(centre.x), y: Math.round(centre.y) }).toEqual({ x: Math.round(x), y: Math.round(y) })
+    await page.getByRole('button', { name: 'Vänd' }).click()
+    await expect(card).toHaveAttribute('data-face', 'front')
+    await page.mouse.move(4, 790)
+
+    await card.click()
+    const lift = page.locator('[data-lift]')
+    await expect(lift).toHaveCount(1)
+    const box = (await lift.boundingBox())!
+    expect(box.y).toBeGreaterThanOrEqual(0)
+    expect(box.y + box.height).toBeLessThanOrEqual(LAPTOP.viewport.height)
+    expect(box.x + box.width).toBeLessThanOrEqual(LAPTOP.viewport.width)
   })
 })

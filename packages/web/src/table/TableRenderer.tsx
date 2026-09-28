@@ -980,6 +980,18 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [readingNow, ring])
+  // Where the window's corner is, for what is drawn over the felt in window coordinates. The tilted
+  // felt's frame carries a `perspective`, and that makes it the box every `position: fixed` inside it
+  // is placed in: on the table screen the frame is the window and it makes no difference, but under
+  // the distance view's header a ring asked for at the pointer landed a header's height below it,
+  // and a lift ran off the bottom of the window (#509).
+  const fixedAt = (x: number, y: number): Point => {
+    const f = frame.current
+    if (!f || typeof getComputedStyle === 'undefined' || getComputedStyle(f).perspective === 'none') return { x, y }
+    const r = f.getBoundingClientRect()
+    return { x: x - r.left, y: y - r.top }
+  }
+  const ringAt = ring ? fixedAt(ring.x, ring.y) : null
   const ringOn = ring?.target
   const ringChip = ringOn?.kind === 'counter' ? view.components.find((c) => c.id === ringOn.id) : undefined
   // The game's own actions for the pile the ring is about (K14, extended). They hang under the
@@ -1337,8 +1349,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       {ringVerbs.length > 0 && ring && (
         <RadialMenu
           id={ringName(ring.target)}
-          x={ring.x}
-          y={ring.y}
+          x={ringAt!.x}
+          y={ringAt!.y}
           items={ringVerbs}
           hub={ringChip ? <CounterHub view={view} c={ringChip} t={t} /> : ringPile ? <PileHub view={view} chips={ringPile} t={t} /> : undefined}
           onClose={shut(ring)}
@@ -1351,8 +1363,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           pile={ringZone.id}
           name={ringZone.name}
           actions={ringActions}
-          x={ring.x}
-          y={ring.y + RING_REACH + RING_AIR * 2}
+          x={ringAt!.x}
+          y={ringAt!.y + RING_REACH + RING_AIR * 2}
           onAct={onAct}
           onClose={shut(ring)}
         />
@@ -1407,7 +1419,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       {reading && (
         <Lifted
           c={reading.c}
-          box={liftBox(reading.at, { w: window.innerWidth, h: window.innerHeight })}
+          box={(() => {
+            const box = liftBox(reading.at, { w: window.innerWidth, h: window.innerHeight })
+            const at = fixedAt(box.left, box.top)
+            return { ...box, left: at.x, top: at.y }
+          })()}
           faces={faces}
           // Around the card it lifts, which is what the ring is about, and not around the lift.
           onAsk={() => ask(reading.target, (reading.at.left + reading.at.right) / 2, (reading.at.top + reading.at.bottom) / 2)}

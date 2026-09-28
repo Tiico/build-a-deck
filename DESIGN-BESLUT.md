@@ -1640,6 +1640,8 @@ Det gäller bordsläget och distansvyns filt, som är samma renderare; TV:n läs
 
 Följdkrav: kortet som just släppts efter en dragning läses inte av att pekaren står kvar på det — webbläsaren säger att pekaren gick in i kortet när greppet släpps — utan först när pekaren rört sig.
 Ett tryck på det lyfta kortet räknas bara om trycket började där, för klicket en webbläsare gör av tappet som lyfte kortet landar där fingret var.
+Filtens ram bär lutningens `perspective`, och en `perspective` gör ramen till lådan som allt med `position: fixed` inuti den placeras i; under distansvyns rubrik hamnade därför både ringen och lyftet en rubrikhöjd under där de bads om, och lyftet gick ut över fönstrets nederkant.
+Det som ritas över filten i fönstrets koordinater räknas därför om till ramens (`fixedAt`), och `packages/e2e/test/table-read.spec.ts` mäter det på `/online`.
 Talen står i `packages/web/src/table/lift.ts` (`liftBox`); grinden är `packages/web/test/felt-lift.test.tsx`, som läser brödtexten och golvet ur K26:s modul och prövar gesterna.
 
 ### K9. Bordsvyns utseende: filtbord som renderare, sändningslayout som TV-omgivning (prototypat 2026-09-06)
