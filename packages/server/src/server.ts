@@ -24,7 +24,7 @@ import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountO
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
 import { facesOf, printExportOf } from './faces.js'
-import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, exportDisposition, packExport, printFileOf, readExport, readmeOf } from './export.js'
+import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, exportDisposition, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
 import { MotifBody, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, resolveTemplate, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
 
@@ -790,12 +790,17 @@ async function printPlanOf(opts: ServerOptions, rec: ProjectRecord, lang: Return
   if (errors.length === 0) {
     const printed = printExportOf(await deckOf(opts, rec), setupFromProject(rec), opts.registry, clock(opts).getTime())
     const byHash = new Map(printed.jobs.map((j) => [j.hash, j]))
+    const used = new Set<string>()
     for (const card of printed.cards) {
       // Copies of a card are one card to print: the manifest names each card once.
       if (cards.some((c) => c.cardRef === card.cardRef)) continue
       const faces: Record<string, string> = {}
+      // Two cards whose ids fold to the same file name are numbered apart.
+      let nth = 1
+      while (Object.keys(card.faces).some((face) => used.has(printFileOf(card.cardRef, face, nth)))) nth++
       for (const [face, hash] of Object.entries(card.faces)) {
-        const file = printFileOf(card.cardRef, face)
+        const file = printFileOf(card.cardRef, face, nth)
+        used.add(file)
         faces[face] = file
         const job = byHash.get(hash)
         if (job) jobs.push({ file, job })
@@ -1013,14 +1018,13 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 422, { error: 'not an export that can be read', problems: read.problems })
       return true
     }
-    const missing: string[] = []
-    for (const hash of read.unlisted) if (!(opts.assets && (await opts.assets.get(hash)))) missing.push(`asset ${hash} is used but is neither in the zip nor here`)
-    const current = read.current
+    const missing: ImportProblem[] = []
+    for (const hash of read.unlisted) if (!(opts.assets && (await opts.assets.get(hash)))) missing.push({ code: 'asset-unknown', values: { hash } })
     try {
-      checkedName(current.name)
-      validateSetup(setupFromProject(current), opts.registry)
+      checkedName(read.current.name)
+      validateSetup(setupFromProject(read.current), opts.registry)
     } catch (e) {
-      missing.push(`the current version cannot be played: ${(e as Error).message}`)
+      missing.push({ code: 'unplayable', values: { message: (e as Error).message } })
     }
     if (missing.length > 0) {
       json(res, 422, { error: 'not an export that can be read', problems: missing })
@@ -1032,12 +1036,12 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
         if (asset.motif) await opts.assets.setMotif(hash, asset.motif as never)
       }
     }
+    // A copy beside its original says it is one (#529), in the language it was brought in in.
+    const taken = account ? (await projects.list(account.id)).map((p) => p.name) : []
+    const name = importedName(read.current.name, taken, langOf(url.searchParams.get('lang')))
+    const versions = read.manifest.versions.map((v, i, all) => ({ rev: v.rev, at: v.at, ...(v.label !== undefined ? { label: v.label } : {}), doc: i === all.length - 1 ? { ...v.doc, name } : v.doc }))
     // The edit log is not exported, so how far it had come (`atSeq`) says nothing here.
-    const rec = await projects.restore(
-      randomUUID(),
-      read.manifest.versions.map((v) => ({ rev: v.rev, at: v.at, ...(v.label !== undefined ? { label: v.label } : {}), doc: v.doc })),
-      account?.id,
-    )
+    const rec = await projects.restore(randomUUID(), versions, account?.id)
     json(res, 201, { id: rec.id, rev: rec.rev })
     return true
   }
@@ -1407,9 +1411,13 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const motifs = opts.assets ? await opts.assets.motifs(hashes) : {}
     const assetFiles = new Map<string, Uint8Array>()
     const assets = []
+    const absent: string[] = []
     for (const hash of hashes) {
       const got = opts.assets ? await opts.assets.get(hash) : null
-      if (!got) continue
+      if (!got) {
+        absent.push(hash)
+        continue
+      }
       const file = assetFileOf(hash, got.contentType)
       assetFiles.set(file, got.bytes)
       assets.push({ hash, file, contentType: got.contentType, size: got.bytes.length, ...(motifs[hash] ? { motif: motifs[hash] } : {}) })
@@ -1428,6 +1436,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       current: { rev: rec.rev },
       versions,
       assets,
+      absent,
       print: { rev: rec.rev, cards: plan.cards, ...(plan.rulebook && prints.has(plan.rulebook) ? { rulebook: plan.rulebook } : {}), credits: creditsOf(rec), warnings: plan.warnings, errors: plan.errors, failed },
     })
     const zip = packExport({ manifest, readme: readmeOf(lang, manifest), assets: assetFiles, prints })

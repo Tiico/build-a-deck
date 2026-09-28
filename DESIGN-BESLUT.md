@@ -1506,7 +1506,7 @@ Preciserat 2026-09-28 av beställaren (#526):
 - **Formen är en zip** som går att öppna utan verktyget. Den innehåller:
   - `spel.json`, manifestet med varje version av dokumentet (hel, äldst först, med datum och etikett),
   - `schema.json`, dess JSON Schema, genererat ur samma zod-schema som validerar det,
-  - `LÄSMIG.md` på exportörens språk (A4),
+  - `LASMIG.md` på exportörens språk (A4); formatets filnamn är ASCII, eftersom den unzip macOS har i Terminalen inte läser zippens UTF-8-märkning,
   - `assets/<hash>.<ext>` med varje bild och typsnitt någon version använder, som den fil den är,
   - `tryck/` med den aktuella versionens tryck-PDF:er med utfall, en per sida av varje kort, och regelhäftet.
   Filnamnen är formatets och översätts aldrig.
@@ -1521,6 +1521,13 @@ Byggt 2026-09-28 (#528): `POST /projects/import` tar zippen och skapar ett **nyt
 Ingenting skrivs förrän allt har lästs och hållit: manifestet mot schemat, varje asset mot sin hash, sitt format och uppladdningens gräns, och den aktuella versionens uppställning. En asset som zippen inte bär måste redan finnas på servern.
 Tryck-PDF:erna läses inte in, eftersom de kan härledas. Redigeringsloggen följer inte med, så `atSeq` gör det inte heller.
 Rundturen — exportera, importera, exportera igen — ger samma `spel.json` bortsett från id och tidpunkt, och det är grinden.
+
+Byggt 2026-09-28 (#529, beställarens beslut B efter [prototypen](https://github.com/Tiico/build-a-deck/blob/f24bd56bc75cc4596ba2ef611440a3691e8d402b/docs/ux-audits/2026-09-28/prototyper/529/README.md)): **export och import är dialoger i Mina spel.**
+- «Exportera…» i spelets ⋯ säger vad som följer med och att borden inte gör det, förbereder tryckfilerna med förlopp och lämnar sedan zippen med «Ladda ner». Valet visas bara för ägare och medredigerare.
+- «Importera spel…» i huvudet tar en zip och säger felen i läsarens ord, eftersom servern svarar med koder (A4). När den är klar öppnar den spelet.
+- En kopia får «(importerad)» eller «(imported)» efter namnet, på det språk den togs in på, men bara när kontot redan har ett spel med samma namn.
+- Assets som ett spel pekar på men som servern inte hade står i `absent`, i stället för att tyst utelämnas, och importen godtar dem.
+- E2E-sviten går hela vägen med en riktig renderare (`packages/e2e/test/game-export.spec.ts`).
 
 ---
 

@@ -88,7 +88,10 @@ describe('exporting a whole game (G5, #527)', () => {
     // The manifest, valid against the schema that documents it, which travels in the zip too.
     const manifest = ProjectExport.parse(JSON.parse(strFromU8(files['spel.json']!)))
     expect(JSON.parse(strFromU8(files['schema.json']!))).toMatchObject({ type: 'object' })
-    expect(strFromU8(files['LÄSMIG.md']!)).toMatch(/spel\.json/)
+    expect(strFromU8(files['LASMIG.md']!)).toMatch(/spel\.json/)
+    // Every name in the zip is ASCII: an unzip that does not read the UTF-8 flag — the one macOS
+    // ships in its Terminal — would otherwise write «LÄSMIG.md» as «L+?SMIG.md».
+    expect(Object.keys(files).filter((f) => !/^[\x20-\x7e]+$/.test(f))).toEqual([])
     expect(manifest).toMatchObject({ format: 'byd-export', formatVersion: 1, project: { id: 'p1', name: 'Skogens herrar' }, current: { rev: 2 } })
 
     // The whole history, each version as it stood, with its name.
@@ -114,6 +117,18 @@ describe('exporting a whole game (G5, #527)', () => {
     const pdfs = Object.keys(files).filter((f) => f.startsWith('tryck/'))
     expect(pdfs).toContain(manifest.print.rulebook!)
     expect(pdfs.length).toBeGreaterThan(2)
+  }, 90_000)
+
+  it('gives two cards whose ids fold to the same name a print file each', async () => {
+    const twins = { ...game(b), rows: [{ id: '龍', fields: { title: 'Drake', antal: 1 } }, { id: '鳳', fields: { title: 'Fenix', antal: 1 } }] }
+    await owner('POST', '/projects', { id: 'p2', ...twins })
+    await owner('POST', '/projects/p2/export')
+    await run.renderAll()
+    const files = unzipSync(new Uint8Array(await (await owner('GET', '/projects/p2/export')).arrayBuffer()))
+    const manifest = ProjectExport.parse(JSON.parse(strFromU8(files['spel.json']!)))
+    const named = manifest.print.cards.flatMap((c) => Object.values(c.faces))
+    expect(new Set(named).size).toBe(named.length)
+    for (const file of named) expect({ file, there: files[file] !== undefined }).toEqual({ file, there: true })
   }, 90_000)
 
   it('exports a game the print checks stop, without its print files and with why', async () => {
@@ -172,7 +187,9 @@ describe('what the export collects and what it names things (#527)', () => {
 
   it('names a print file after the card whatever the card is called, and a download after the game', () => {
     expect(printFileOf('drake', 'front')).toBe('tryck/drake-front.pdf')
-    expect(printFileOf('Häxan / den svarta', 'back')).toBe('tryck/Häxan_den_svarta-back.pdf')
+    expect(printFileOf('Häxan / den svarta', 'back')).toBe('tryck/Haxan_den_svarta-back.pdf')
+    expect(printFileOf('龍', 'front')).toBe('tryck/_-front.pdf')
+    expect(printFileOf('鳳', 'front', 2)).toBe('tryck/_-2-front.pdf')
     expect(exportDisposition('Skogens härskare', 3)).toBe(`attachment; filename="Skogens h_rskare rev-3.zip"; filename*=UTF-8''${encodeURIComponent('Skogens härskare rev-3.zip')}`)
   })
 })
@@ -216,7 +233,9 @@ describe('importing an export (G5, #528)', () => {
     await run.renderAll()
     const again = manifestOf(new Uint8Array(await (await owner('GET', `/projects/${id}/export`)).arrayBuffer()))
     const before = manifestOf(zip)
-    const same = (m: ProjectExport) => ({ ...m, exportedAt: '', project: { ...m.project, id: '' }, versions: m.versions.map(({ atSeq: _, ...v }) => v) })
+    // Ada has the original too, so the copy says it is one (#529); nothing else differs.
+    expect(again.project.name).toBe('Skogens herrar (importerad)')
+    const same = (m: ProjectExport) => ({ ...m, exportedAt: '', project: { id: '', name: '' }, versions: m.versions.map(({ atSeq: _, doc, ...v }) => ({ ...v, doc: { ...doc, name: '' } })) })
     expect(same(again)).toEqual(same(before))
   }, 90_000)
 
@@ -224,16 +243,18 @@ describe('importing an export (G5, #528)', () => {
     const [asset] = manifestOf(zip).assets
     const res = await bring(edited((files) => (files[asset!.file] = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 9, 9, 9]))))
     expect(res.status).toBe(422)
-    expect(JSON.stringify(await res.json())).toContain(asset!.hash)
+    expect(await res.json()).toMatchObject({ problems: [{ code: 'asset-hash', values: { hash: asset!.hash, file: asset!.file } }] })
     expect(await run.projects.list((await run.projects.load('p1'))!.owner!)).toHaveLength(1)
   }, 90_000)
 
   it('refuses what is not an export, a newer format, and a document that points at a picture it does not carry', async () => {
-    expect((await bring(strToU8('not a zip'))).status).toBe(422)
-    expect((await bring(edited((files) => delete files['spel.json']))).status).toBe(422)
+    // Every refusal is a code and what it is about, so the tool can say it in the reader's words.
+    const refused = async (res: Response) => ({ status: res.status, codes: ((await res.json()) as { problems: { code: string }[] }).problems.map((p) => p.code) })
+    expect(await refused(await bring(strToU8('not a zip')))).toEqual({ status: 422, codes: ['not-zip'] })
+    expect(await refused(await bring(edited((files) => delete files['spel.json'])))).toEqual({ status: 422, codes: ['no-manifest'] })
     const newer = await bring(edited((files) => (files['spel.json'] = strToU8(JSON.stringify({ ...manifestOf(zip), formatVersion: 2 })))))
     expect(newer.status).toBe(422)
-    expect(await newer.text()).toMatch(/newer/)
+    expect(await newer.json()).toMatchObject({ problems: [{ code: 'newer-format', values: { version: 2 } }] })
     const ghost = 'f'.repeat(64)
     const lost = await bring(
       edited((files) => {
@@ -243,8 +264,33 @@ describe('importing an export (G5, #528)', () => {
       }),
     )
     expect(lost.status).toBe(422)
-    expect(await lost.text()).toContain(ghost)
+    expect(await lost.json()).toMatchObject({ problems: [{ code: 'asset-unknown', values: { hash: ghost } }] })
     expect(await run.projects.list((await run.projects.load('p1'))!.owner!)).toHaveLength(1)
+  }, 90_000)
+
+  // A copy is named as a copy only where there is something to tell it apart from (#529), and in the
+  // language it was brought in in (A4): what the tool writes into a game is the designer's.
+  it('keeps the name when nothing is called the same, and says «imported» in English', async () => {
+    const bo = await login('bo@example.com')
+    const theirs = await fetch(`${run.http}/projects/import`, { method: 'POST', headers: { 'content-type': 'application/zip', cookie: bo }, body: Buffer.from(zip) })
+    expect((await run.projects.load(((await theirs.json()) as { id: string }).id))?.name).toBe('Skogens herrar')
+    const english = await fetch(`${run.http}/projects/import?lang=en`, { method: 'POST', headers: { 'content-type': 'application/zip', cookie }, body: Buffer.from(zip) })
+    expect((await run.projects.load(((await english.json()) as { id: string }).id))?.name).toBe('Skogens herrar (imported)')
+  }, 90_000)
+
+  // A game can point at a picture the server never had — a reference written by hand, an asset lost
+  // before it — and it is still the designer's game. The export says which are missing rather than
+  // leaving them out in silence, and the import takes what the export says was already missing.
+  it('exports a picture the game points at but the server does not have as missing, and takes it back', async () => {
+    const ghost = 'e'.repeat(64)
+    const [asset] = manifestOf(zip).assets
+    await owner('PUT', '/projects/p1', { rev: 2, ...game(asset!.hash), icons: { sol: `asset:${asset!.hash}`, måne: `asset:${ghost}` } })
+    await owner('POST', '/projects/p1/export')
+    await run.renderAll()
+    const again = new Uint8Array(await (await owner('GET', '/projects/p1/export')).arrayBuffer())
+    expect(manifestOf(again).absent).toEqual([ghost])
+    expect(manifestOf(again).assets.map((a) => a.hash)).not.toContain(ghost)
+    expect((await bring(again)).status).toBe(201)
   }, 90_000)
 
   it('is for someone logged in', async () => {
