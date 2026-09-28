@@ -4,7 +4,8 @@
 // the renderer — one algorithm everywhere. Self-contained on purpose: it is serialised into
 // the page by the renderer, so it must not reference anything outside itself.
 
-export type FitReport = { element: string; sizePt: number; overflow: boolean }
+// `empty`: the box holds no words, so its size is no text anyone reads (#523).
+export type FitReport = { element: string; sizePt: number; overflow: boolean; empty: boolean }
 
 export function fitInDocument(root: ParentNode): FitReport[] {
   const out: FitReport[] = []
@@ -22,7 +23,7 @@ export function fitInDocument(root: ParentNode): FitReport[] {
         el.style.fontSize = `${size}pt`
       }
     }
-    out.push({ element: el.dataset['element'] ?? '', sizePt: size, overflow: overflows() })
+    out.push({ element: el.dataset['element'] ?? '', sizePt: size, overflow: overflows(), empty: (el.textContent ?? '').trim() === '' })
   }
   return out
 }

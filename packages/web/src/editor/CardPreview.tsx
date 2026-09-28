@@ -74,10 +74,7 @@ export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedEl
       // whoever is debugging, in the language the rest of the compiler speaks (A4).
       .map((r) => ({ element: r.element, code: 'text-too-small', detail: `the text does not fit even at ${r.sizePt}pt` }))
     onWarnings?.([...out.warnings.filter((w) => w.code !== 'text-too-small' && w.code !== 'text-overflow'), ...fromDom])
-    if (onFitted) {
-      const root = ref.current
-      onFitted(report.filter((r) => (root.querySelector(`[data-element="${CSS.escape(r.element)}"]`)?.textContent ?? '').trim() !== '').map((r) => ({ element: r.element, sizePt: r.sizePt })))
-    }
+    onFitted?.(report.filter((r) => !r.empty).map((r) => ({ element: r.element, sizePt: r.sizePt })))
   }, [out.html, out.css, out.warnings, onWarnings, onFitted])
   const highlight = selectedElement ? `#${id} [data-element="${selectedElement}"]{outline:0.6mm solid var(--byd-editor-primary-mark);outline-offset:0.3mm}` : ''
   return (

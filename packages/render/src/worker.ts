@@ -25,13 +25,12 @@ export async function runWorker(opts: WorkerOptions): Promise<string[]> {
       continue
     }
     try {
-      const output =
+      // A texture keeps what its smallest text was fitted to (#523); a print has no reader to size for.
+      const { output, fit } =
         job.kind.kind === 'png'
-          ? await opts.renderer.renderPng(job.compiled, { dpi: job.kind.dpi })
-          : job.kind.kind === 'booklet'
-            ? await opts.renderer.renderBooklet(job.compiled)
-            : await opts.renderer.renderPdf(job.compiled)
-      await opts.store.complete(job.hash, output)
+          ? await opts.renderer.renderTexture(job.compiled, { dpi: job.kind.dpi }).then(({ png, smallestPt }) => ({ output: png, fit: { smallestPt } }))
+          : { output: job.kind.kind === 'booklet' ? await opts.renderer.renderBooklet(job.compiled) : await opts.renderer.renderPdf(job.compiled), fit: undefined }
+      await opts.store.complete(job.hash, output, fit)
       done.push(job.hash)
       opts.log?.({ msg: 'rendered', hash: job.hash, kind: job.kind.kind, bytes: output.byteLength })
     } catch (err) {

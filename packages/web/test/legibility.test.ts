@@ -98,3 +98,25 @@ describe('the reading views, and the smallest text each one carries (K26, #512)'
     ])
   })
 })
+
+// How wide a card is held up so its own smallest text reaches the floor (#523): never narrower than
+// the view already is for the wizard's frame, and wider only for a card whose words need it.
+describe('the width a card needs to be read, from its own smallest text (#523)', () => {
+  it('keeps the view’s width for a card that reads at it, and widens it for one that does not', async () => {
+    const { readingWidth } = await import('../src/legibility.js')
+    expect(readingWidth(294, null, 'phone')).toBe(294)
+    expect(readingWidth(294, 9, 'phone')).toBe(294)
+    // 6.5 pt reaches 12 px at 329.7 px.
+    expect(Math.round(readingWidth(294, 6.5, 'phone'))).toBe(330)
+    // The television's floor is 24 px: 6.5 pt needs 659 px, which its 672 already is.
+    expect(readingWidth(672, 6.5, 'tv')).toBe(672)
+    expect(Math.round(readingWidth(672, 6, 'tv'))).toBe(714)
+  })
+})
+
+it('holds the desk’s reading width to what the lift itself draws at 1024 × 768 (#509, #523)', async () => {
+  const { READING_VIEWS } = await import('../src/legibility.js')
+  const { liftBox } = await import('../src/table/lift.js')
+  const desk = READING_VIEWS.find((v) => v.key === 'desk')!
+  expect(desk.width).toBeCloseTo(liftBox({ left: 0, right: 0, top: 0, bottom: 0 }, desk.window).w, 6)
+})

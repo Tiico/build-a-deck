@@ -95,3 +95,20 @@ describe('a booklet is a document, not a card (B7)', () => {
     expect(contentTypeOf({ kind: 'booklet' })).toBe('application/pdf')
   })
 })
+
+// What a texture's smallest text became (#523) is kept with the output, under the same hash: it is
+// a fact about the picture, not about the table, and it says nothing the picture does not show.
+describe('what a texture’s text was fitted to (#523)', () => {
+  it('keeps the smallest text with the output, and knows nothing before there is one', async () => {
+    const q = new MemoryRenderStore()
+    await q.enqueue(req('a', 'texture', 1))
+    await q.enqueue(req('b', 'texture', 2))
+    expect(await q.fitOf('h-a')).toBeNull()
+    await q.complete((await q.claim(5))!.hash, new Uint8Array([1]), { smallestPt: 6.5 })
+    await q.complete((await q.claim(6))!.hash, new Uint8Array([2]))
+    expect(await q.fitOf('h-a')).toEqual({ smallestPt: 6.5 })
+    // An output made without it — every texture rendered before this — is known and says nothing.
+    expect(await q.fitOf('h-b')).toEqual({ smallestPt: null })
+    expect(await q.fitOf('h-unknown')).toBeNull()
+  })
+})

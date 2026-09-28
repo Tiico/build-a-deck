@@ -4,6 +4,8 @@ import type { VisibleComponentState } from '@byd/protocol'
 import { Texture } from '../table/Texture.js'
 import { hue } from '../table/hue.js'
 import { cardName, cardWord } from '../table/keyboard.js'
+import { useSmallestPt } from '../table/smallest.js'
+import { readingWidth } from '../legibility.js'
 
 // How far a thumb goes across the card before it is a step to the next one and not a tap.
 const SWIPE_PX = 40
@@ -23,7 +25,7 @@ const SWIPE_PX = 40
 // at the floor's size (K26), and the rest of the row is a swipe or an arrow away rather than three
 // presses each. The card itself is still put down by a tap, but on its own click and not at the
 // touch that begins it — a swipe begins the same way — and the click after a swipe is the swipe's.
-export function HeldCard({ card, faces, onClose, actions, row, onStep }: {
+export function HeldCard({ card, faces, onClose, actions, row, onStep, smallestPt }: {
   card: VisibleComponentState
   faces?: string | undefined
   onClose(): void
@@ -31,8 +33,15 @@ export function HeldCard({ card, faces, onClose, actions, row, onStep }: {
   // The row the card was lifted from, as it is drawn, and what showing another card of it means.
   row?: readonly VisibleComponentState[] | undefined
   onStep?: ((card: VisibleComponentState) => void) | undefined
+  // The card's own smallest text (#523), when the caller already knows it; otherwise it is asked of
+  // the server the picture comes from.
+  smallestPt?: number | null | undefined
 }) {
   const t = useT()
+  // Held up wider for a card whose words are smaller than the wizard's frame (#523): the width that
+  // brings them to the floor, which the stylesheet caps at the screen's own room.
+  const heard = useSmallestPt(faces, card)
+  const need = readingWidth(0, smallestPt === undefined ? heard : smallestPt, 'phone')
   const [opener] = useState(() => typeof document === 'undefined' ? null : document.activeElement)
   useEffect(() => () => { if (opener instanceof HTMLElement && opener.isConnected) opener.focus() }, [opener])
   const at = row ? row.findIndex((c) => c.id === card.id) : -1
@@ -50,6 +59,7 @@ export function HeldCard({ card, faces, onClose, actions, row, onStep }: {
       aria-modal="false"
       aria-label={cardName(card, t)}
       onPointerDown={onClose}
+      {...(need > 0 ? { style: { ['--byd-read-need' as string]: `${need}px` } } : {})}
       onKeyDown={event => {
         if (event.key === 'Escape') { event.stopPropagation(); onClose() }
         if (walkable && event.key === 'ArrowRight') { event.preventDefault(); step(1) }
