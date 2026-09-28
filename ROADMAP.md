@@ -140,7 +140,7 @@ Klar 2026-09-08: varje punkt nedan är byggd, och besluten bakom dem står i DES
 Målet är att kunna ta betalt och lämna ifrån sig allt.
 
 - ⬜ Abonnemang via Stripe: gratisnivå med tak på projekt, kort och sessioner, betalnivåer, kvoter (A2, DRIFT §12).
-- 🔶 Full export i dokumenterat JSON med assets, mallar, historik och tryckfiler; läsläge vid utgånget abonnemang (G5). Exporten på servern är byggd (#527); import (#528), knapparna i verktyget (#529) och läsläget återstår.
+- 🔶 Full export i dokumenterat JSON med assets, mallar, historik och tryckfiler; läsläge vid utgånget abonnemang (G5). Exporten och importen på servern är byggda (#527, #528); knapparna i verktyget (#529) och läsläget återstår.
 - ✅ Att claima en gästsession till ett konto efteråt: telefonen erbjuder det när sessionen är slut, claim-sidan knyter gästens admission till kontot, och startsidan visar "Bord du spelat vid" med plats, namn, utfall och vägen tillbaka (G1).
 - ⬜ Passkeys och OAuth som bekvämlighet; passkey-återställning som UX (DRIFT §11).
 - ✅ Behörighetsroller: ägare, medredigerare, testledare, betraktare, med inbjudan per adress; byggt med D3 i fas 2.
