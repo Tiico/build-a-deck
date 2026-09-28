@@ -232,6 +232,15 @@ I dag ser designern kortet i två storlekar som ingen spelare någonsin ser det 
 
 ![Kortväggen vid 1280 × 800: 150 px](2026-09-28/editor-01-kortvaggen-150px-1280x800.png)
 
+**Åtgärdat 2026-09-28 (#512, beslut A efter [prototypen](2026-09-28/prototyper/512/README.md)).**
+Frågan hade flyttat sig: sedan #507–#509 läser varje spelyta kortet med en handling i golvets storlek, så det designern behöver se är om texten räcker **när kortet hålls upp**, inte i vila.
+Kortväggens ögon har fått telefonens läsvy (294 px), bordets lyft (341 px) och TV:ns «Visa för alla» (672 px); väggen ritas i den bredden och varje kort säger sin minsta text i px, efter E6:s krympning, med «under golvet» i ord (fynd 1 och 2).
+En lek med halverad brödtextruta visar fyra kort under telefonens golv (6,5 och 7,0 pt), och inga under bordets eller TV:ns.
+Fynd 3, en digital kontroll i rapporten, valdes bort av beställaren: svaret står på kortet självt.
+
+![Efter: telefonens läsvy, 294 px](2026-09-28/editor-02-efter-telefonens-lasvy-294px-1280x800.png)
+![Efter: TV:ns «Visa för alla», 672 px](2026-09-28/editor-03-efter-tv-visa-for-alla-672px-1280x800.png)
+
 ## Mönster som återkommer
 
 Tre saker står på flera sidor.

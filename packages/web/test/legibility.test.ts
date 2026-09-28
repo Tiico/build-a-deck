@@ -74,3 +74,27 @@ describe('each starter frame says how wide its card must be drawn to be read (K2
     })
   })
 })
+
+// Where each surface holds a card up to read it (#507–#509), on the smallest screen it answers
+// for, and so the smallest text that still reaches that screen's floor there (#512). The editor
+// reads these to show the designer a card the way a surface reads it; each surface's own
+// measuring test checks that it draws the width written here, so the two cannot drift apart.
+describe('the reading views, and the smallest text each one carries (K26, #512)', () => {
+  it('names the three views, their window and the width they hold a card up at', async () => {
+    const { READING_VIEWS } = await import('../src/legibility.js')
+    expect(READING_VIEWS.map((v) => ({ key: v.key, screen: v.screen, window: v.window, width: Math.round(v.width) }))).toEqual([
+      { key: 'phone', screen: 'phone', window: { w: 320, h: 568 }, width: 294 },
+      { key: 'desk', screen: 'desk', window: { w: 1024, h: 768 }, width: 341 },
+      { key: 'tv', screen: 'tv', window: { w: 1920, h: 1080 }, width: 672 },
+    ])
+  })
+
+  it('says below which point size text falls under the floor in each of them', async () => {
+    const { READING_VIEWS, minPtIn } = await import('../src/legibility.js')
+    expect(READING_VIEWS.map((v) => [v.key, Number(minPtIn(v).toFixed(1))])).toEqual([
+      ['phone', 7.3],
+      ['desk', 6.3],
+      ['tv', 6.4],
+    ])
+  })
+})

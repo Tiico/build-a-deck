@@ -1328,6 +1328,19 @@ Kontrollen fann tre fel i vårt eget arbete första gången den kördes: startra
 Följdkrav:
 Reglerna måste kalibreras mot faktiskt tryckta provkort, annars blir de brus som stängs av.
 
+Tillagt 2026-09-28 (#512, beställarens beslut A efter prototypen på grenen `proto/512-editorn`): **ögonen visar också hur kortet läses på skärm.**
+Bland väggens ögon står nu de tre läsvyerna: telefonens läsvy, bordets lyft och TV:ns «Visa för alla».
+Väljs en av dem ritas väggen i den bredd ytan håller upp ett kort i för att läsas (K26): 294, 341 respektive 672 px.
+Under varje kort står dess minsta text i px där, räknad på den storlek E6 faktiskt gav texten och inte på mallens.
+Är den under skärmens golv för all text säger raden det i ord, «Minsta text 10,7 px · under golvet 12 px», och färgen och märket upprepar bara det.
+Frågan är läsvyn och inte vilan, eftersom K26 låter ett kort i vila vara oläsligt så länge en handling visar det i golvets storlek.
+Det som kan gå fel för en designer är därför text mindre än läsvyerna räknar med, satt så eller krympt av E6: under 7,3 pt i telefonens läsvy, 6,3 pt vid bordet och 6,4 pt på TV:n.
+Telefonen säger alltså nej först.
+Två förkastade varianter: en digital kontroll i rapporten bredvid den fysiska, med en rad per läsvy och korten under golvet som länkar (B), och en remsa under duken i Mall med kortet i alla tre läsvyerna (C).
+Beställaren valde ögonen ensamma, alltså utan B.
+Därmed sägs en text under golvet på kortet självt och inte samlad i rapporten med en länk; E6:s krav på länk till raden gäller tryckets anmärkningar och inte skärmens.
+Bilder och tal: [`docs/ux-audits/2026-09-28/prototyper/512/`](docs/ux-audits/2026-09-28/prototyper/512/README.md).
+
 ### E6. Textanpassning: automatisk krympning ned till validerad minimigräns (fråga 34)
 
 Texten skalas ned stegvis tills den ryms, men aldrig under minsta läsbara punktstorlek från E5.
@@ -2965,6 +2978,13 @@ Talen står på ett ställe i koden, `packages/web/test/legibility.ts` (`textPxO
 Grinden för beslutet är `packages/web/test/legibility.test.ts`, som läser startramarnas brödtext (L6) och golven ur samma modul och säger vilken kortbredd varje ram behöver per skärm, så att en ändring av endera syns.
 Ytornas egna mätningar byggs i #507–#512.
 ---
+
+Tillagt 2026-09-28 (#512): måttstocken bor i produkten, i `packages/web/src/legibility.ts`, sedan editorn behöver den; `packages/web/test/legibility.ts` läser därifrån.
+Där står också läsvyerna, `READING_VIEWS`: bredden varje yta håller upp ett kort i på den minsta skärm den svarar för.
+Telefonen håller upp det i 294 px vid 320 × 568 (`--byd-read-w` i `player.css`).
+Bordet håller upp det i 341 px vid 1024 × 768 (`liftBox` i `lift.ts`).
+TV:n håller upp det i 672 px vid 1920 × 1080 (`.byd-tv-show` i `table.css`, som `tvShowWidth`).
+Varje ytas mätande test säger att den ritar talet som står där, så att editorns ögon (E5) och ytorna inte kan glida isär.
 
 ## L. Editorn (grillad 2026-09-06)
 

@@ -1,0 +1,176 @@
+[
+  {
+    "tag": "idag-77-1280x800",
+    "loadMs": 2995
+  },
+  {
+    "tag": "A-77-1280x800",
+    "loadMs": 1960,
+    "under": 0,
+    "readouts": 77,
+    "cardPx": 294
+  },
+  {
+    "tag": "B-77-1280x800",
+    "loadMs": 1562,
+    "lines": [
+      "all text når 12 px",
+      "all text når 12 px",
+      "all text når 24 px"
+    ]
+  },
+  {
+    "tag": "C-77-1280x800",
+    "loadMs": 1746,
+    "strip": [
+      "14,0 px minsta text (typ, 8,5 pt)",
+      "16,2 px minsta text (typ, 8,5 pt)",
+      "31,7 px minsta text (typ, 8,5 pt)"
+    ]
+  },
+  {
+    "tag": "idag-tat-1280x800",
+    "loadMs": 1893
+  },
+  {
+    "tag": "A-tat-1280x800",
+    "loadMs": 1895,
+    "under": 4,
+    "readouts": 77,
+    "cardPx": 294
+  },
+  {
+    "tag": "B-tat-1280x800",
+    "loadMs": 1902,
+    "lines": [
+      "4 kort under 12 px",
+      "all text når 12 px",
+      "all text når 24 px"
+    ]
+  },
+  {
+    "tag": "C-tat-1280x800",
+    "loadMs": 1939,
+    "strip": [
+      "14,0 px minsta text (typ, 8,5 pt)",
+      "16,2 px minsta text (typ, 8,5 pt)",
+      "31,7 px minsta text (typ, 8,5 pt)"
+    ]
+  },
+  {
+    "tag": "idag-308-1280x800",
+    "loadMs": 1995
+  },
+  {
+    "tag": "A-308-1280x800",
+    "loadMs": 1913,
+    "under": 0,
+    "readouts": 308,
+    "cardPx": 294
+  },
+  {
+    "tag": "B-308-1280x800",
+    "loadMs": 1954,
+    "lines": [
+      "all text når 12 px",
+      "all text når 12 px",
+      "all text når 24 px"
+    ]
+  },
+  {
+    "tag": "C-308-1280x800",
+    "loadMs": 1937,
+    "strip": [
+      "14,0 px minsta text (typ, 8,5 pt)",
+      "16,2 px minsta text (typ, 8,5 pt)",
+      "31,7 px minsta text (typ, 8,5 pt)"
+    ]
+  },
+  {
+    "tag": "idag-77-1920x1080",
+    "loadMs": 1555
+  },
+  {
+    "tag": "A-77-1920x1080",
+    "loadMs": 1908,
+    "under": 0,
+    "readouts": 77,
+    "cardPx": 294
+  },
+  {
+    "tag": "B-77-1920x1080",
+    "loadMs": 1909,
+    "lines": [
+      "all text når 12 px",
+      "all text når 12 px",
+      "all text når 24 px"
+    ]
+  },
+  {
+    "tag": "C-77-1920x1080",
+    "loadMs": 1934,
+    "strip": [
+      "14,0 px minsta text (typ, 8,5 pt)",
+      "16,2 px minsta text (typ, 8,5 pt)",
+      "31,7 px minsta text (typ, 8,5 pt)"
+    ]
+  },
+  {
+    "tag": "idag-tat-1920x1080",
+    "loadMs": 1887
+  },
+  {
+    "tag": "A-tat-1920x1080",
+    "loadMs": 1873,
+    "under": 4,
+    "readouts": 77,
+    "cardPx": 294
+  },
+  {
+    "tag": "B-tat-1920x1080",
+    "loadMs": 1868,
+    "lines": [
+      "4 kort under 12 px",
+      "all text når 12 px",
+      "all text når 24 px"
+    ]
+  },
+  {
+    "tag": "C-tat-1920x1080",
+    "loadMs": 1869,
+    "strip": [
+      "14,0 px minsta text (typ, 8,5 pt)",
+      "16,2 px minsta text (typ, 8,5 pt)",
+      "31,7 px minsta text (typ, 8,5 pt)"
+    ]
+  },
+  {
+    "tag": "idag-308-1920x1080",
+    "loadMs": 1927
+  },
+  {
+    "tag": "A-308-1920x1080",
+    "loadMs": 1936,
+    "under": 0,
+    "readouts": 308,
+    "cardPx": 294
+  },
+  {
+    "tag": "B-308-1920x1080",
+    "loadMs": 1895,
+    "lines": [
+      "all text når 12 px",
+      "all text når 12 px",
+      "all text når 24 px"
+    ]
+  },
+  {
+    "tag": "C-308-1920x1080",
+    "loadMs": 1814,
+    "strip": [
+      "14,0 px minsta text (typ, 8,5 pt)",
+      "16,2 px minsta text (typ, 8,5 pt)",
+      "31,7 px minsta text (typ, 8,5 pt)"
+    ]
+  }
+]

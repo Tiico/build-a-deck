@@ -164,6 +164,12 @@ export const svEditor = {
   'wall.eye.protanopia': 'Protanopi',
   'wall.eye.tritanopia': 'Tritanopi',
   'wall.eye.gray': 'Gråskala',
+  // Läsvyerna (#512): väggen i den bredd en spelyta håller upp ett kort i för att läsas (K26).
+  'wall.eye.read.phone': 'Telefonens läsvy',
+  'wall.eye.read.desk': 'Bordets lyft',
+  'wall.eye.read.tv': 'TV:ns «Visa för alla»',
+  'wall.read': 'Minsta text {px} px',
+  'wall.read.under': 'Minsta text {px} px · under golvet {floor} px',
   'wall.trim': 'snitt och skyddsmarginal',
   'wall.arm': 'på armlängds avstånd',
   'wall.guides': 'Guider',

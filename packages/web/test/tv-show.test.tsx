@@ -20,6 +20,7 @@ import { TvChrome } from '../src/table/TvChrome.js'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { FELT_FONT, feltOf, sceneOf, sheet } from './felt-labels.js'
 import { DEFAULT_BODY_PT, SCREENS, textPxOnCard } from './legibility.js'
+import { READING_VIEWS, tvShowWidth } from '../src/legibility.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const SHEETS = [FELT_FONT, 'src/table/table.css', 'src/table/texture.css', 'src/buttons.css', 'src/a11y.css']
@@ -97,6 +98,15 @@ describe('a card shown for everyone is read from the sofa (K26, #508)', () => {
 
   // A 1280 × 800 window is a laptop in TV mode, not a set across a room: K26 puts it at the desk's
   // numbers, and the card is as tall as that window can hold.
+  // The width the editor's eye draws the wall at for the television (#512) is this one, read
+  // off the felt the card stands over: a change to the box in table.css moves this test.
+  it('draws the card at the width the reading views give the television', async () => {
+    const tv = READING_VIEWS.find((v) => v.key === 'tv')!
+    const reading = await shownOn(4, tv.window)
+    expect({ card: Math.round(reading.card.w), felt: Math.round(reading.felt.h) }).toEqual({ card: Math.round(tv.width), felt: Math.round(reading.felt.h) })
+    expect(Math.round(tvShowWidth(reading.felt.h))).toBe(Math.round(reading.card.w))
+  }, 60_000)
+
   it('draws it at the desk’s reading size in a 1280 × 800 window', async () => {
     const reading = await shownOn(4, { w: 1280, h: 800 })
     const at = `1280 × 800, card ${Math.round(reading.card.w)} px`

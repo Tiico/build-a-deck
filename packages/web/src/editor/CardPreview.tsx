@@ -15,6 +15,10 @@ export type CardPreviewProps = {
   selectedElement?: string | null
   onSelectElement?(id: string): void
   onWarnings?(warnings: Warning[]): void
+  // The size every text on the card ended up at once E6 had fitted it, for the texts that hold
+  // any words: what the card really carries, which the eyes read to say how it reads on a screen
+  // (#512). An empty box is no text at all.
+  onFitted?(sizes: { element: string; sizePt: number }[]): void
   // Drawn over the card, in the card's own coordinates: the editor's handles and guides (#18).
   // It shows no card content — the compiler above is still the only thing that renders a card.
   overlay?: ReactNode
@@ -33,7 +37,7 @@ export type CardPreviewProps = {
 
 // One card through the real compiler and the real DOM fitting — the same code the renderer runs,
 // so what the editor shows is what the table and the print get (E2).
-export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedElement, onSelectElement, onWarnings, overlay, assetBase, motifs, palette, framing }: CardPreviewProps) {
+export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedElement, onSelectElement, onWarnings, onFitted, overlay, assetBase, motifs, palette, framing }: CardPreviewProps) {
   // The face's own pictures resolved once per face (#320), for the same reason the icons are
   // resolved once per document: a fresh face every render is a fresh compile every render.
   const drawnFace = useMemo(() => (assetBase ? resolveAssetFace(face, assetBase) : face), [face, assetBase])
@@ -70,7 +74,11 @@ export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedEl
       // whoever is debugging, in the language the rest of the compiler speaks (A4).
       .map((r) => ({ element: r.element, code: 'text-too-small', detail: `the text does not fit even at ${r.sizePt}pt` }))
     onWarnings?.([...out.warnings.filter((w) => w.code !== 'text-too-small' && w.code !== 'text-overflow'), ...fromDom])
-  }, [out.html, out.css, out.warnings, onWarnings])
+    if (onFitted) {
+      const root = ref.current
+      onFitted(report.filter((r) => (root.querySelector(`[data-element="${CSS.escape(r.element)}"]`)?.textContent ?? '').trim() !== '').map((r) => ({ element: r.element, sizePt: r.sizePt })))
+    }
+  }, [out.html, out.css, out.warnings, onWarnings, onFitted])
   const highlight = selectedElement ? `#${id} [data-element="${selectedElement}"]{outline:0.6mm solid var(--byd-editor-primary-mark);outline-offset:0.3mm}` : ''
   return (
     <div id={id} className="byd-preview" style={{ zoom: scale }}>
