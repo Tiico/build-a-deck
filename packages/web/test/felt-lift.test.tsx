@@ -235,3 +235,59 @@ describe('«Titta» on the felt holds the card up the same way (K8, K26)', () =>
     expect(document.querySelector('.byd-inspect')).toBeNull()
   })
 })
+
+// A screen that watches (C8, #511, beslut A): the observer sees every hand and touches nothing. The
+// same gesture reads there — a resting mouse or a press lifts the card beside itself — but nothing
+// asks, because there is nothing she may do; and a card in a hand reads like any other, since
+// seeing the hands is the whole of her role.
+describe('the observer reads with the same lift, and asks nothing (C8, K26, #511)', () => {
+  // Ada's own view carries her hand's faces, the way the observer's carries every hand's.
+  const watching = () => {
+    const scene = buildScene()
+    const view = scene.view('A')
+    render(<TableRenderer view={view} mode="tv" scale={1} watch />)
+    const hand = view.components.filter((c) => c.zone === 'hand:A' && c.cardRef !== null)
+    const el = (id: string) => document.querySelector(`[data-component="${id}"]`)!
+    return { ...scene, hand, el }
+  }
+
+  it('lifts a card in a hand while the mouse rests on it, and puts it down when the mouse leaves', () => {
+    const { hand, el } = watching()
+    const card = hand[0]!.id
+    fireEvent.pointerEnter(el(card), at(200, 200))
+    expect(lifted()?.getAttribute('data-lift')).toBe(card)
+    fireEvent.pointerLeave(el(card), at(20, 20))
+    expect(lifted()).toBeNull()
+  })
+
+  it('keeps a pressed card lifted, never opens a ring, and puts it down on Escape', () => {
+    const { faceUp, el } = watching()
+    tap(el(faceUp))
+    expect(lifted()?.getAttribute('data-lift')).toBe(faceUp)
+    tap(el(faceUp))
+    expect(ring()).toBeNull()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(lifted()).toBeNull()
+  })
+
+  it('reads a card in a hand with a finger as well', () => {
+    const { hand, el } = watching()
+    tap(el(hand[1]!.id), 200, 200, 'touch')
+    expect(lifted()?.getAttribute('data-lift')).toBe(hand[1]!.id)
+  })
+
+  it('has nothing to read on a face-down card, and still opens nothing', () => {
+    const { faceDown, el } = watching()
+    tap(el(faceDown))
+    fireEvent.pointerEnter(el(faceDown), at(200, 200))
+    expect(lifted()).toBeNull()
+    expect(ring()).toBeNull()
+  })
+
+  it('leaves a screen that does not watch as it was: the TV lifts nothing on a hover', () => {
+    const scene = buildScene()
+    render(<TableRenderer view={scene.view('A')} mode="tv" scale={1} />)
+    fireEvent.pointerEnter(document.querySelector(`[data-component="${scene.faceUp}"]`)!, at(200, 200))
+    expect(lifted()).toBeNull()
+  })
+})
