@@ -305,6 +305,8 @@ Följdkrav:
 Undantag måste städas när komponenten byter zon, annars läcker gamla rättigheter.
 Detta är den mest sannolika källan till informationsläckor och behöver testas hårt.
 
+Reviderad 2026-09-28 (#518): **varje vy säger zonens synlighet** (`visibility`: `all`, `owner` eller `none`). Den är uppställningens och ingen hemlighet — den står i regelboken — och det den avgör om ett ansikte är fortfarande ansiktets regel ovan. Telefonen läser den för att skilja ett kort bordet ser, som den får hålla upp för rummet (K8), från ett som bara är dess eget att veta; utan den gick ett område som designern gjort privat inte att skilja från det publika i ägarens egen vy.
+
 Reviderad 2026-09-22 (#412): kortets namn är dold information och färdas i projektionen.
 
 Namnet var tidigare ingen egen sak på tråden.
@@ -1698,7 +1700,7 @@ Vilan är orörd: panelen i spalten står kvar som ovan, och filten, platserna o
 Rummet väljer kortet på två sätt: telefonen skickar `show` (K6) med kortets id, och på TV:n själv gör både K16:s «Titta» och ringens «Titta» samma sak — på TV:n är den stora vyn rummets, och K8:s privata vy var privat för ingen.
 Ett kort TV:n ser nedvänt behåller K8:s vy, eftersom en baksida upphållen för rummet inte säger det något (K23).
 **TV:n visar bara vad den själv ser.** `show` bär ett id och inget annat, och skärmen slår upp det i sin egen ögonblicksbild och ritar det bara om den bär kortets framsida (`shownCard`), så ett meddelande aldrig kan visa ett kort på hand eller ett nedvänt.
-Telefonens knapp «Visa för alla» står i läsvyn för andras publika kort (#507); bordslägets lyft (#509) gäller inte på TV:n, som läser på det här sättet.
+Telefonens knapp «Visa för alla» (#518) står i läsvyn under kortet, på andras kort under «Ytorna» och som ett fjärde verb på ens egna kort i ett publikt område, och säger «Visas för alla» en stund efter trycket; den erbjuds bara på ett kort bordet ser uppvänt (`forTheRoom`: uppvänt i en zon som visar för alla, eller överst i en hög, K15), aldrig på ett handkort eller i ett område bara ägaren ser. Bordslägets lyft (#509) gäller inte på TV:n, som läser på det här sättet.
 Grindarna: `packages/web/test/tv-show.test.tsx` (kortets bredd mot K26:s TV-golv vid 1920 × 1080 med fyra och åtta platser, skrivbordets vid 1280 × 800, och spalten orörd), `presence.test.ts` (meddelandet, tiden och att bara ett uppvänt kort ritas), `tv-chrome.test.tsx`, `table-page.test.tsx` (en telefon visar, ett nedvänt kort ritas inte), `table-keyboard.test.tsx` och `table-renderer.test.tsx` («Titta» på TV:n, från panelen och från ringen).
 
 ### K9. Bordsvyns utseende: filtbord som renderare, sändningslayout som TV-omgivning (prototypat 2026-09-06)

@@ -2,6 +2,8 @@ import { useRef, useState } from 'react'
 import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { HeldCard } from './HeldCard.js'
+import { ShowForAll } from './ShowForAll.js'
+import { forTheRoom } from '../table/presence.js'
 import { FootPlay, HandActions } from './HandActions.js'
 import { HandStrip } from './HandStrip.js'
 import { CountersRow, MineActions, MineStrip, inFrontOf } from './SeatExtras.js'
@@ -246,6 +248,8 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         // The card as it lies now, so a flip seen while it is held shows the face it has.
         const card = row.find((c) => c.id === held.card.id) ?? held.card
         const put = () => setHeld(null)
+        // A card the table sees face up can be held up on the room's screen too (#518).
+        const share = forTheRoom(view, card) ? <ShowForAll card={card} client={client} /> : null
         return (
           <HeldCard
             card={card}
@@ -265,6 +269,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
                   onMore={(c) => { put(); setLifted(c) }}
                 />
               ) : held.row === 'mine' ? (
+                <>
                 <MineActions
                   view={view}
                   card={card}
@@ -287,7 +292,9 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
                     setLifted(c)
                   }}
                 />
-              ) : undefined
+                {share}
+                </>
+              ) : (share ?? undefined)
             }
           />
         )

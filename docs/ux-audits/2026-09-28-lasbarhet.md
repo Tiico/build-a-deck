@@ -142,7 +142,9 @@ Väg till läsning: ingen egen; INSPEKTION visar senaste kortet i 177 px (8 px).
 En telefon (presence `show`, K6) eller TV:ns eget «Titta» håller upp ett kort över filten: 672 px brett, **32,2 px brödtext** vid 1920 × 1080 (mätt på texturbilden i den byggda appen), med vem som visar och en nedräkning på 15 sekunder.
 Vilan, spalten och filtens kortsida är orörda; fynd 4 behövdes inte, eftersom prototypen visade att en bredare spalt ändå inte når golvet och kostar K9.
 TV:n ritar bara ett kort den själv ser uppvänt.
-Telefonens knapp kommer med läsvyn för andras kort (#507).
+Telefonens knapp «Visa för alla» står i läsvyn under kortet sedan #518, på kort bordet ser uppvända.
+
+![Telefonen efter «Visa för alla» vid 390 × 844: knappen säger att kortet visas](2026-09-28/telefon-08-visa-for-alla-390x844.png)
 
 ![TV:n när Ada visar ett kort vid 1920 × 1080: 672 px, 32 px brödtext](2026-09-28/tv-02-visa-for-alla-1920x1080.png)
 

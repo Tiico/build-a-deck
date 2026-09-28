@@ -141,3 +141,16 @@ function assertNoLeak(state: TableState, view: Snapshot, seat: string | null): v
     expect(z.mode === 'order', `seat ${seat} sees order of ${z.id}`).toBe(mayList)
   }
 }
+
+// Whether a zone is public is the setup's and not a secret (B6, #518): every view says it, so a
+// phone can tell a card the table sees — one it may hold up for the room — from one that is its own
+// to know. The face stays the face's rule; this names only the zone's.
+describe('every view says who a zone shows its cards to (#518)', () => {
+  it('names the visibility of each zone in every seat’s view and the table’s', () => {
+    const h = new Harness()
+    for (const seat of SEATS) {
+      const v = h.view(seat)
+      expect({ seat, draw: zoneView(v, 'draw')!.visibility, hand: zoneView(v, 'hand:A')!.visibility, table: zoneView(v, 'table')!.visibility }).toEqual({ seat, draw: 'none', hand: 'owner', table: 'all' })
+    }
+  })
+})

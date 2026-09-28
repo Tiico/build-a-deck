@@ -28,8 +28,8 @@ const doc: RuleDoc = {
 const book = renderRules(doc, names)
 
 const geometry = { x: 0, y: 0, w: 10, h: 10, rot: 0 }
-const counted = (id: string, name: string, count: number): ZoneView => ({ mode: 'count', id, kind: 'pile', name, geometry, dynamic: false, count })
-const read = (id: string, name: string, order: string[]): ZoneView => ({ mode: 'order', id, kind: 'pile', name, geometry, dynamic: false, order })
+const counted = (id: string, name: string, count: number): ZoneView => ({ mode: 'count', id, kind: 'pile', name, visibility: 'none', geometry, dynamic: false, count })
+const read = (id: string, name: string, order: string[]): ZoneView => ({ mode: 'order', id, kind: 'pile', name, visibility: 'all', geometry, dynamic: false, order })
 
 // Luckan hämtas med sin egen stilmall sedan #346, så den står inte i DOM:en i samma bildruta som
 // knappen — den kommer när modulen är framme. Väntan ligger därför här, i det som ställer upp

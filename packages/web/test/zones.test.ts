@@ -7,6 +7,7 @@ const zone = (id: string, kind: ZoneView['kind'], x: number, y: number, w: numbe
   id,
   kind,
   name: id,
+  visibility: kind === 'hand' ? 'owner' : 'all',
   geometry: { x, y, w, h, rot: 0 },
   dynamic: false,
   order: [],

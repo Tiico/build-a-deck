@@ -37,6 +37,8 @@ export const enPlay = {
   'tv.inspect.empty': 'point at a card',
   'tv.show.by': '{name} is showing',
   'tv.show.table': 'The table is showing',
+  'player.show': 'Show everyone',
+  'player.show.said': 'Shown to everyone',
   'tv.latest.empty': 'Nothing has happened yet. What is played at the table turns up here.',
   // The box behind the question mark (L32's addendum, #305).
   'tv.join.help.topic': 'joining',

@@ -1179,6 +1179,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "all",
           "order": []
         },
         {
@@ -1194,6 +1195,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "none",
           "count": 10
         },
         {
@@ -1209,6 +1211,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "owner",
           "owner": "A",
           "order": []
         },
@@ -1225,6 +1228,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "owner",
           "owner": "B",
           "count": 0
         },
@@ -1241,6 +1245,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "all",
           "order": []
         }
       ],
@@ -1283,6 +1288,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "all",
           "order": []
         },
         {
@@ -1298,6 +1304,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "none",
           "count": 10
         },
         {
@@ -1313,6 +1320,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "owner",
           "owner": "A",
           "count": 0
         },
@@ -1329,6 +1337,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "owner",
           "owner": "B",
           "order": []
         },
@@ -1345,6 +1354,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "all",
           "order": []
         }
       ],
@@ -1384,6 +1394,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "all",
           "order": []
         },
         {
@@ -1399,6 +1410,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "none",
           "count": 10
         },
         {
@@ -1414,6 +1426,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "owner",
           "owner": "A",
           "count": 0
         },
@@ -1430,6 +1443,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "owner",
           "owner": "B",
           "count": 0
         },
@@ -1446,6 +1460,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "all",
           "order": []
         }
       ],
@@ -1485,6 +1500,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "all",
           "order": []
         },
         {
@@ -1500,6 +1516,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "none",
           "order": [
             "r25",
             "r29",
@@ -1526,6 +1543,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "owner",
           "owner": "A",
           "order": []
         },
@@ -1542,6 +1560,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "owner",
           "owner": "B",
           "order": []
         },
@@ -1558,6 +1577,7 @@
             "rot": 0
           },
           "dynamic": false,
+          "visibility": "all",
           "order": []
         }
       ],

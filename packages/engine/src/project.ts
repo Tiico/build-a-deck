@@ -110,6 +110,7 @@ function zoneBase(z: Zone) {
     name: z.name,
     geometry: { ...z.geometry },
     dynamic: z.dynamic,
+    visibility: z.visibility,
     ...(z.owner !== undefined ? { owner: z.owner } : {}),
     ...(z.shortcut !== undefined ? { shortcut: { ...z.shortcut } } : {}),
     ...(z.beside !== undefined ? { beside: z.beside } : {}),
