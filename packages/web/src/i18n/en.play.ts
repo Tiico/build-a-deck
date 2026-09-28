@@ -166,10 +166,12 @@ export const enPlay = {
   'counter.entry.cancel': 'Cancel',
 
   'activity.move': '{who} moved a card to {zone}',
+  'activity.move.named': '{who} moved {card} to {zone}',
   'activity.hand.my': 'my hand',
   'activity.hand.other': '{name:s} hand',
   'activity.rotate': '{who} turned a card',
   'activity.flip': '{who} flipped a card',
+  'activity.flip.named': '{who} flipped {card}',
   'activity.stack': '{who} put a card on another',
   'activity.split.to': '{who} drew {n} from {zone} to {to}',
   'activity.split.beside': '{who} split {n} off {zone} into a new pile',
@@ -211,11 +213,11 @@ export const enPlay = {
 
   // The box behind the question mark (L32's addendum, #305).
   'play.help.hand.topic': 'the hand',
-  'play.help.hand.pick': 'Tap a card to choose it, hold a card to choose several.',
+  'play.help.hand.pick': 'Tap a card to read it, and it is chosen. Hold to choose several.',
   'play.help.hand.play': 'Drag a chosen card upward to play it, or use the buttons under the hand.',
   'play.help.hand.hidden': 'The others see how many cards you hold, never which.',
 
-  'player.hint': 'Select → read → play · hold to select several',
+  'player.hint': 'Tap to read · hold to select several',
   'player.hint.selected.one': '{n} selected · drag up to play',
   'player.hint.selected.other': '{n} selected · drag up to play',
   'player.counter.minus': '{name} minus',
@@ -242,6 +244,9 @@ export const enPlay = {
   'player.hand.chosen': 'Selected: {name}',
   'player.hand.none': 'No card selected',
   'player.hand.empty': 'Empty hand. Draw a card from the draw pile.',
+  'player.read.prev': 'Previous card',
+  'player.read.next': 'Next card',
+  'player.read.at': '{n} of {of}',
 
   'play.sheet.title': 'Play to',
   'play.sheet.verb': 'Play',

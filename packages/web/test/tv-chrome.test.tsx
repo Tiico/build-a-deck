@@ -28,7 +28,9 @@ describe('TvChrome (C as the TV surroundings)', () => {
     const lines = within(feed).getAllByRole('listitem').map((l) => l.textContent)
     // Most recent first, and three lines (#482 fynd 6, beslut B): the rest of the history is on
     // every phone. The draws and the claim before them have gone off the television.
-    expect(lines[0]).toMatch(/Bordet vände ett kort/)
+    // The card turned face up on the table is one the television may see, so the line names it
+    // (#507 fynd 6) rather than saying «ett kort».
+    expect(lines[0]).toMatch(/Bordet vände (?!ett kort)\S/)
     expect(lines).toHaveLength(3)
     expect(lines).not.toContainEqual(expect.stringMatching(/satte sig/))
     expect(lines).not.toContainEqual(expect.stringMatching(/Bordet drog 2 från Draghög/))

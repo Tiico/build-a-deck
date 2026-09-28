@@ -6,13 +6,15 @@ import { targetsOf, type Placement } from './PlaySheet.js'
 
 // Every destination belongs to the setup. The full address sheet remains available for zones
 // without explicit shortcuts and for the floor; no role is inferred from an id or a label.
-export function HandActions({ view, cards, pending, onRead, onPlay, onMore, refusal, refusedZone }: {
+//
+// Reading is not one of them (#507, beslut A): a tap on the card holds it up, so «Läs valt kort»
+// was a second way to do what the first press already does, and it cost two presses to get there.
+export function HandActions({ view, cards, pending, onPlay, onMore, refusal, refusedZone }: {
   view: Snapshot
   cards: VisibleComponentState[]
   pending: boolean
   refusal?: RefusalHandle | undefined
   refusedZone?: string | null
-  onRead(card: VisibleComponentState): void
   onPlay(zone: string, at: Placement): void
   onMore(card: VisibleComponentState): void
 }) {
@@ -22,7 +24,6 @@ export function HandActions({ view, cards, pending, onRead, onPlay, onMore, refu
   return (
     <section className="byd-hand-actions" aria-label={t('player.hand.actions')}>
       <p>{first ? t('player.hand.chosen', { name: cards.length === 1 ? cardName(first, t) : t('play.cards.other', { n: cards.length }) }) : t('player.hand.none')}</p>
-      <button type="button" disabled={!first || pending} onClick={() => first && onRead(first)}>{t('player.hand.read')}</button>
       <div className="byd-hand-targets">
         {targets.map(target => (
           <button

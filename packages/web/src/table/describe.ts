@@ -1,6 +1,8 @@
 import type { Activity, Snapshot } from '@byd/protocol'
 import type { T } from '../i18n/index.js'
 import { handName } from './handName.js'
+import { cardWord } from './keyboard.js'
+import { componentOf } from './presence.js'
 
 // One line per log line, for the activity feed, in whichever language the reader is given (A4).
 // Names come from the view; zone names too, so "Draghög" rather than "draw" — a zone's name is
@@ -13,14 +15,19 @@ export function describeActivity(line: Activity, view: Snapshot, t: T): string {
     // A hand is the one zone the log does not call by the designer's name (K19).
     return z.kind === 'hand' ? handName(view, z, t, 'inSentence') : z.name
   }
+  // The card the line is about, by its title, only as the reader's own view has it (#507 fynd 6).
+  // The projection has already decided what this reader is told (B6, #412): a card she may not
+  // see is not in her view, or is there without a name, and the line then says «ett kort».
+  const about = componentOf(line)
+  const card = about === null ? null : cardWord(view.components.find((c) => c.id === about))
   const it = line.intent
   switch (it.v) {
     case 'move':
-      return t('activity.move', { who, zone: zone(it.to) })
+      return card ? t('activity.move.named', { who, card, zone: zone(it.to) }) : t('activity.move', { who, zone: zone(it.to) })
     case 'rotate':
       return t('activity.rotate', { who })
     case 'flip':
-      return t('activity.flip', { who })
+      return card ? t('activity.flip.named', { who, card }) : t('activity.flip', { who })
     case 'stack':
       return t('activity.stack', { who })
     // One protocol verb, two moves a player recognises (#421). `split` is both "Dra 1 till min

@@ -52,7 +52,8 @@ describe('the play surfaces in the reader\'s own language (A4)', () => {
 
     const feed = screen.getByRole('list', { name: /latest/i })
     const lines = within(feed).getAllByRole('listitem').map((l) => l.textContent)
-    expect(lines).toContainEqual(expect.stringMatching(/The table flipped a card/))
+    // Named, because the card lies face up where the television sees it (#507 fynd 6).
+    expect(lines).toContainEqual(expect.stringMatching(/The table flipped (?!a card)\S/))
     // The zone is the designer's word and stays theirs, in either language.
     expect(lines).toContainEqual(expect.stringMatching(/The table drew 2 from Draghög/))
   })

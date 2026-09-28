@@ -11,7 +11,8 @@ import type { ReactNode } from 'react'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { contrastRatio, flatten } from '../src/player/contrast.js'
 import { TableClient } from '../src/client.js'
-import { HandActions } from '../src/player/HandActions.js'
+import { FootPlay, HandActions } from '../src/player/HandActions.js'
+import { DEFAULT_BODY_PT, SCREENS, textPxOnCard } from './legibility.js'
 import { HandStrip } from '../src/player/HandStrip.js'
 import { HeldCard } from '../src/player/HeldCard.js'
 import { Texture } from '../src/table/Texture.js'
@@ -118,17 +119,17 @@ function surfaces(view: Snapshot) {
           {/* The help pattern's question mark stands in the chrome on this screen (L32, #305),
               so the row it has to share is measured with it in place. */}
           <Help topic="handen">
-            <p>Tryck på ett kort för att välja det.</p>
+            <p>Tryck på ett kort för att läsa det i full storlek.</p>
           </Help>
           <SessionButtons client={idle} view={view} sheet={null} onSheet={noop} />
         </header>
         {/* The overview since #79: a pile that has a card is a control that draws it (K14). */}
         <TableSummary view={view} activity={[]} onDraw={noop} />
         <HandStrip view={view} selected={new Set()} onTap={noop} onHold={noop} onLift={noop} onOpen={noop} />
-        <p className="byd-hint">tryck = titta · dra upp = spela · håll = välj flera</p>
+        <p className="byd-hint">Tryck för att läsa · håll för att välja flera</p>
       </div>
     ),
-    handActions: <div className="byd-player"><HandActions view={view} cards={view.components.filter(c => c.zone === 'hand:A').slice(0, 1)} pending={false} onRead={noop} onPlay={noop} onMore={noop} /></div>,
+    handActions: <div className="byd-player"><HandActions view={view} cards={view.components.filter(c => c.zone === 'hand:A').slice(0, 1)} pending={false} onPlay={noop} onMore={noop} /></div>,
     // The cards in front of the seat (C4): a strip of faces, each one control (#78).
     mine: (
       <div className="byd-player">
@@ -417,5 +418,65 @@ describe("the seat's control row at 375px (#31)", () => {
     } finally {
       await page.close()
     }
+  }, 60_000)
+})
+
+// Ett kort läses med en handling i golvets storlek (K26, #506 beslut 2; #507 beslut A). Talet är
+// måttstockens och inte det här testets: kortets ritade bredd ger dess brödtext i px, och den ska
+// ligga i telefonens spann för brödtext man ska läsa — inte under, och inte större än den behöver.
+describe('a card held up on the phone reads at the floor, at every phone and tablet size (K26, #507)', () => {
+  const SIZES = [[320, 568], [390, 844], [768, 1024]] as const
+  const hand = () => view.components.filter((c) => c.zone === 'hand:A').reverse()
+  const held = {
+    // Ur handen: med handens eget andra tryck under kortet.
+    hand: () => {
+      const row = hand()
+      return <div className="byd-player"><HeldCard card={row[1]!} row={row} onStep={noop} onClose={noop} actions={<FootPlay view={view} cards={[row[1]!]} pending={false} onPlay={noop} onMore={noop} />} /></div>
+    },
+    // Framför dig: med de tre verb ett liggande kort har (#78), som är det högsta raden kan bli.
+    mine: () => {
+      const v = inFront(view)
+      const row = v.components.filter((c) => c.zone === 'mine:A')
+      return <div className="byd-player"><HeldCard card={row[0]!} row={row} onStep={noop} onClose={noop} actions={<MineActions view={v} card={row[0]!} onFlip={noop} onTake={noop} onPlay={noop} />} /></div>
+    },
+    // En annan yta: bara läsas.
+    area: () => {
+      const row = inFront(view).components.filter((c) => c.zone === 'mine:A')
+      return <div className="byd-player"><HeldCard card={row[0]!} row={row} onStep={noop} onClose={noop} /></div>
+    },
+  }
+
+  it.each(SIZES.flatMap(([w, h]) => Object.keys(held).map((kind) => [w, h, kind] as const)))('at %i × %i, held up from the %s', async (width, height, kind) => {
+    const page = await browser.newPage({ viewport: { width, height } })
+    try {
+      await page.setContent(document_(held[kind as keyof typeof held]()), { waitUntil: 'load' })
+      const seen = await page.evaluate(`(() => {
+        const card = document.querySelector('[data-inspect]').getBoundingClientRect()
+        const controls = [...document.querySelectorAll('.byd-inspect button')].map((b) => { const r = b.getBoundingClientRect(); return { name: b.getAttribute('aria-label') || b.textContent, w: Math.round(r.width), h: Math.round(r.height), bottom: Math.round(r.bottom), right: Math.round(r.right), left: Math.round(r.left) } })
+        return { card: card.width, top: Math.round(card.top), controls }
+      })()`) as { card: number; top: number; controls: { name: string; w: number; h: number; bottom: number; right: number; left: number }[] }
+      const body = Number(textPxOnCard(DEFAULT_BODY_PT, seen.card).toFixed(1))
+      expect({ width, height, kind, body: body >= SCREENS.phone.bodyPx.min && body <= SCREENS.phone.bodyPx.max }).toEqual({ width, height, kind, body: true })
+      // Everything on it is reachable: on the screen, and big enough for a thumb.
+      expect(seen.top).toBeGreaterThanOrEqual(0)
+      for (const c of seen.controls) {
+        expect({ ...c, fits: c.bottom <= height && c.left >= 0 && c.right <= width, big: c.w >= 44 && c.h >= 44 }).toMatchObject({ fits: true, big: true })
+      }
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+
+  // The strip is small at rest now that one tap reads (#507 fynd 1): it follows the screen rather
+  // than standing at one width from 320 to 768.
+  it('draws the hand strip at a width that follows the screen', async () => {
+    const widths: number[] = []
+    for (const width of [320, 768]) {
+      const page = await browser.newPage({ viewport: { width, height: 844 } })
+      await page.setContent(document_(<div className="byd-player"><HandStrip view={view} selected={new Set()} onTap={noop} onHold={noop} onLift={noop} onOpen={noop} /></div>), { waitUntil: 'load' })
+      widths.push(await page.evaluate(`document.querySelector('[data-hand-card]').getBoundingClientRect().width`) as number)
+      await page.close()
+    }
+    expect(widths[1]).toBeGreaterThan(widths[0]!)
   }, 60_000)
 })

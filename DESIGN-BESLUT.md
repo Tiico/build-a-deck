@@ -696,6 +696,23 @@ Det mildras av att de tre är sällanhandlingar — ångra, flagga ett ögonblic
 Alternativen var att ta bort solfjädern (K9, C2) eller att gömma handen tills den kallas fram, och båda kostade mer.
 Vad som faktiskt ligger i bandet, och de två lägen handen har, står i K17.
 
+Reviderat 2026-09-28 (#507, beställarens beslut A efter prototypen på grenen `proto/507-telefonen`): **ett tryck läser, och det lästa kortet är det valda.**
+Telefon A:s «välj → Läs valt kort → Stäng» kostade tre tryck per kort, och «Läs valt kort» nådde 275 px vid 320, alltså 13 px brödtext och under K26:s golv.
+Ett tryck på ett kort i handen håller nu upp det i läsbredd, och kortet blir samtidigt det valda, så det foten och knapparna under handen spelar är det spelaren senast läste.
+Läsbredden är K26:s och inte en andel av skärmen: `clamp(294px, 100vw − 26px, 336px)`, alltså 14 px brödtext vid 320 och 16 px från 390, där den tidigare 86vw gav 660 px vid 768.
+Under kortet står handens andra tryck, samma två som foten bär: setupens första genväg och «Spela…» till alla andra platser.
+Därunder står ‹ och › med «2 av 6», och ett svep över kortet gör samma sak, så nästa kort i handen är ett steg och aldrig tre tryck.
+Ett kort som ligger framför en själv hålls upp i samma vy med sina tre verb (#78) sida vid sida, och en annan ytas kort utan verb.
+Kortet läggs ner av ett tryck som börjar på det, av bakgrunden eller av «Stäng»; klicket som avslutar trycket som öppnade det landar mitt på skärmen, där kortet nu är, och lägger inte ner det (UX-30).
+«Läs valt kort» är borta.
+Håll för flerval, lyft uppåt till arket och omsortering (K4, #483) är orörda: bara vad ett tryck gör har ändrats.
+Remsan är liten i vila, `clamp(112px, 34vw, 200px)`, och följer skärmen i stället för att stå i 154 px från 320 till 768.
+«Senast» och varje annan logg säger kortets titel när raden handlar om ett kort som läsarens egen vy har ett namn på, «Bo vände Björnen», och «ett kort» annars; namnet kommer ur projektionen och ingen annanstans, så raden kan inte säga något som skärmen inte redan fått veta (B6, #412).
+Två förkastade varianter, mätta med riktiga texturer: B ritade remsan i läsbredd med handen som miniatyrer ovanför, vilket läste utan handling men visade ett kort åt gången och sköt genvägarna under skärmkanten; C lät det valda kortet växa där det låg, vilket vid 390 lämnade en strimma av grannarna.
+Bilder och tal: [`docs/ux-audits/2026-09-28/prototyper/507/`](docs/ux-audits/2026-09-28/prototyper/507/README.md).
+Känd lucka: läsbredden räknas på förvalsramens 8,5 pt brödtext (L6), eftersom telefonen inte vet vilken punktstorlek mallen har — projektionen bär texturens hash och inte mallens mått.
+En mall med 7 pt brödtext når därför 11,5–13,2 px i läsvyn; K26:s «golvet gäller mallens brödtext som den är» kräver att den storleken når klienten, vilket är en egen fråga.
+
 ### C5. Rumslig modell: konfigurerbart TV- eller bordsläge (fråga 32)
 
 Sessionen väljer vid start mellan TV-läge, där allt orienteras mot betraktaren och platser radas längs nedre kanten, och bordsläge, där platser ligger runt om och orientering följer platsen.
@@ -1585,6 +1602,9 @@ Går tummen i stället i sidled efter att kortet lyft sig bär den kortet längs
 Med tangentbordet flyttar Alt och en pil kortet ett steg, som Alt och en pil flyttar ett lager eller en kolumn överallt annars i verktyget.
 Översikten är samma remsa nedzoomad.
 
+*Reviderat 2026-09-28 (#507, beslut A):* ett tryck håller upp kortet i K26:s läsbredd och väljer det i samma handling; «Läs valt kort» är borta och läsvyn går igenom handen med ‹ › och svep (C4).
+Remsan är liten i vila och följer skärmen, `clamp(112px, 34vw, 200px)`.
+
 ### K5. Inga objekt utanför spelets setup
 
 Ingen inbyggd låda med generiska tärningar, kuber eller lappar.
@@ -1849,6 +1869,8 @@ Mitten är den kollapsade bordsöversikten — zoner med antal och senaste-flöd
 Följdkrav:
 Zonernas namn är genvägarnas etiketter; ett spel med zoner som heter "Zon 3" får obegripliga knappar (B5).
 Platsen claimas med namnet ur länken vid första anslutning om den är ledig; annars visas den som sitter där.
+
+*Reviderat 2026-09-28 (#507, beslut A):* «tryck inspekterar i fullstorlek» gäller igen, efter att #156 gjort det till välj → läs → spela; storleken är K26:s golv och inte skärmens bredd (C4).
 
 ### K11. Att spela ett kort vänder det upp om målet är publikt (2026-09-06)
 
@@ -5003,6 +5025,9 @@ Vinsten är mätt i telefonens knappaste resurs: vid fyra platser försvinner en
 Telefonen ritar kortet med framsidan i en ram av ryggens ränder och orden «nervänt · bara du».
 Luckan är erkänd: ett kort som bordsskärmen vänder ner framför någon har ingen som tittar åt ägaren, och bara en projektionsregel skulle täcka det — en fjärde synlighet, som inte är beslutad.
 
+*Tillagt 2026-09-28 (#506 beslut 3, #507 beslut A):* «Ytorna» visar korten i varje yta läsaren får se in i och inte bara deras antal, och samma tryck som på handen håller upp dem i läsbredd, utan verb eftersom de inte är hennes att spela.
+Rutans namn och antal står kvar överst; ytorna står en per rad, så att korten får plats.
+En yta läsaren inte får se in i skickar inget kort alls (B6), så den ritar inget heller; det bevisas i `packages/e2e/test/private-area.spec.ts`.
 
 ## I. Öppna frågor
 
