@@ -2860,6 +2860,41 @@ Raden bär brickans egen form — vad som inte går, kolon, och skälet — och 
 Ratten pekar på raden med `aria-describedby`, eftersom den som tabbar till ratten hoppar över texten ovanför den.
 
 Grindarna för tillägget: `packages/web/test/setup-actions.test.tsx` (rattens lägen, rutans rad och att ratten pekar på texten), `packages/web/test/setup-sentence-matrix.test.tsx` (raden ordagrant i båda språken, och att den uteblir när de två inte möts), `packages/web/test/slot-badge-contrast.test.ts` (att både den avstängda raden och raden under ratten går att läsa på sin egen botten) samt `packages/web/test/game-start.test.ts` och `packages/web/test/table-renderer.test.tsx` för bordshalvan.
+
+### K26. Läsbar korttext på skärm: ett golv per skärm, och en handling dit (beslutat 2026-09-28, #505, #506)
+
+E5 och E6 sätter golvet för text **i tryck**, K9 sätter kortets storlek som kontroll på filten och K18 räknar läsbarhet i kortsida på tre meter — men inget beslut sa vad **texten på kortet** blir när kortet ritas på en skärm.
+Läsbarhetsgranskningen 2026-09-28 ([rapporten](docs/ux-audits/2026-09-28-lasbarhet.md#måttstocken)) fann att varje yta valt sin storlek på kortets ram: distansvyns 112 px (K17) gav 5 px brödtext, telefonens remsa 154 px gav 7 px, TV:ns INSPEKTION 177 px gav 8 px på tre meter, och K8:s 252 px gav exakt 12 px.
+
+**Formeln.** Textens storlek på skärmen i CSS-px = punktstorleken × 0,3528 mm/pt × (kortets ritade bredd i px ÷ kortets bredd i mm).
+På ett 63 mm brett kort blir 8,5 pt brödtext **0,048 × kortbredden** och 12 pt titel **0,067 × kortbredden**.
+
+**Golvet per skärm**, ur plattformsriktlinjerna (Apple HIG, Material, Android TV; WCAG sätter inget golv utan kräver bara att text går att förstora):
+
+| Skärm | Avstånd | Golv för all text | Brödtext man ska läsa |
+| --- | --- | --- | --- |
+| Telefon i handen | 30–40 cm | 12 px | 14–16 px |
+| Skrivbord, laptop, platta | 50–70 cm | 12 px | 14–16 px |
+| TV (K9) vid 1920 × 1080 CSS-px | ~3 m | 24 px | 28–32 px |
+
+En 4K-TV räknas som 1920 × 1080 CSS-px vid DPR 2, alltså samma tal.
+Omvänt kräver 8,5 pt brödtext ett kort som ritas **252 px brett för 12 px, 294 för 14, 504 för 24 och 588 för 28**.
+
+**Vägen till läsning är en handling, samma gest överallt.**
+Tryck, klick eller hover på kortet visar det i golvets storlek; ringen och verben (K14) står kvar bakom ett andra tryck.
+Det som ritas i vila får vara oläsligt — ett kort på filten i K9:s 45 px bär 2,1 px brödtext — men bara om den handlingen finns.
+
+**Andras publika kort läses på telefonen.**
+Runt en TV är telefonen spelarens enda läsyta (C2, C4), så översikten visar korten i publika ytor och inte bara deras antal, med samma läsgest som handen (C4:s «fäll ut bordet», #507).
+TV:n får därtill INSPEKTION i läsbar storlek för det senaste kortet (K8, #508).
+
+**Golvet gäller mallens brödtext som den är.**
+En mall med 7 pt brödtext får 18 % mindre än varje tal ovan och en med 10 pt 18 % mer; ytan räknar med mallens egen storlek och inte med 8,5 pt.
+Om E5:s fysiska kontroll också ska varna för skärmen avgörs av editorns prototyp (#512), inte här.
+
+Talen står på ett ställe i koden, `packages/web/test/legibility.ts` (`textPxOnCard`, `cardPxForText`, `SCREENS`), och varje mätande test på en spelyta läser dem därifrån; ingen yta får ett eget tal.
+Grinden för beslutet är `packages/web/test/legibility.test.ts`, som läser startramarnas brödtext (L6) och golven ur samma modul och säger vilken kortbredd varje ram behöver per skärm, så att en ändring av endera syns.
+Ytornas egna mätningar byggs i #507–#512.
 ---
 
 ## L. Editorn (grillad 2026-09-06)
