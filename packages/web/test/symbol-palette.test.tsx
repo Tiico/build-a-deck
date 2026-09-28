@@ -12,7 +12,7 @@ import type { ProjectClient } from '../src/editor/ProjectClient.js'
 // The game's own colours (E4). A card writes the meaning and never the colour, so this is the one
 // place a deck is repainted — and the one place it can be told that a colour will not be read on
 // the card it sits on, or that two of its meanings become one for a colour-blind reader (E5).
-const client = () => ({ setRole: vi.fn(), renameRole: vi.fn(), removeRole: vi.fn(), useSymbol: vi.fn() }) as unknown as ProjectClient & { setRole: ReturnType<typeof vi.fn>; renameRole: ReturnType<typeof vi.fn>; removeRole: ReturnType<typeof vi.fn> }
+const client = () => ({ mayEdit: true, setRole: vi.fn(), renameRole: vi.fn(), removeRole: vi.fn(), useSymbol: vi.fn() }) as unknown as ProjectClient & { setRole: ReturnType<typeof vi.fn>; renameRole: ReturnType<typeof vi.fn>; removeRole: ReturnType<typeof vi.fn> }
 
 const mount = (palette: Record<string, string>, extra: Partial<ReturnType<typeof projectDoc>> = {}) => {
   const c = client()

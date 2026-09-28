@@ -50,7 +50,7 @@ function paletteMarkup(): string {
     icons: { svärd: `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#1c1c1c"><path d="M4 20l3-1 10-10 2-6-6 2L3 15l-1 3z"/></svg>')}` },
     rows: [{ id: 'dragon', fields: { title: 'Drake', body: 'Skada {svärd|fara} 2.', antal: 1 } }],
   }
-  const client = { setRole: vi.fn(), renameRole: vi.fn(), removeRole: vi.fn(), useSymbol: vi.fn() } as unknown as ProjectClient
+  const client = { mayEdit: true, setRole: vi.fn(), renameRole: vi.fn(), removeRole: vi.fn(), useSymbol: vi.fn() } as unknown as ProjectClient
   const { container, unmount } = render(<SymbolPanel doc={doc} client={client} assetBase="http://test.local" />)
   try {
     return container.innerHTML

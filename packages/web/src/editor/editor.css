@@ -259,7 +259,7 @@
 /* A role that may not edit says so once, rather than letting every change be refused (D3). */
 /* The reading band (#489, beslut C efter prototyp 35): the amber the role line always had, with a
    heading and the way on. */
-.byd-editor-readonly { flex: none; display: flex; align-items: center; gap: var(--byd-s3); margin: 0; padding: 10px 16px; background: #2a2418; border-bottom: 1px solid #4a4230; color: #ffe4b0; font-size: 13px; line-height: 1.4; }
+.byd-editor-readonly { flex: none; display: flex; align-items: center; gap: var(--byd-s3); margin: 0; padding: var(--byd-s3) var(--byd-s4); background: #2a2418; border-bottom: 1px solid #4a4230; color: #ffe4b0; font-size: 13px; line-height: 1.4; }
 .byd-editor-readonly > svg { width: 18px; height: 18px; flex: none; color: #ffd98a; }
 .byd-editor-readonly b { color: #ffd98a; }
 .byd-editor-readonly small { display: block; color: #e0cfa3; font-size: 12px; }
