@@ -1,0 +1,51 @@
+/* PROTOTYPE — throwaway (#508). */
+
+/* A: spalten så bred att INSPEKTION når TV-golvet (504 px kort = 24 px brödtext, K26). Kortet
+   ger inte längre efter först; platserna blir två och två och flödet får det som blir över. */
+[data-proto508='A'] [data-tv] { grid-template-columns: 1fr 544px; }
+[data-proto508='A'] [data-tv] .byd-tv-inspect { flex: 0 1 auto; }
+[data-proto508='A'] [data-tv] .byd-tv-inspect > div { height: 704px; min-height: 200px; }
+[data-proto508='A'] [data-tv] .byd-tv-seats { flex: 0 1 auto; }
+[data-proto508='A'] [data-tv] .byd-tv-seats ul { grid-template-columns: 1fr 1fr; }
+[data-proto508='A'] [data-tv] .byd-tv-seats li small { display: none; }
+[data-proto508='A'] [data-tv] .byd-tv-feed { min-height: 60px; }
+[data-proto508='A'] [data-tv] .byd-tv-join > span { display: none; }
+
+/* B och C: kortet över filten, i läsbar storlek, med spalten orörd. Högst 672 × 938 (32 px
+   brödtext); annars så högt som fönstret ger efter marginal och bildtext. */
+[data-proto508] .p508-spot {
+  position: fixed; inset: 0 360px 0 0; z-index: 40;
+  display: grid; place-items: center;
+  background: rgb(8 10 14 / 0.72);
+  animation: p508-in 180ms ease-out;
+}
+[data-proto508] .p508-spot figure { margin: 0; display: grid; justify-items: center; gap: 14px; }
+.p508-spot .p508-card {
+  position: relative; overflow: hidden; border-radius: 18px;
+  height: min(calc(100vh - 150px), 938px); aspect-ratio: 63 / 88;
+  box-shadow: 0 30px 80px rgb(0 0 0 / 0.6);
+}
+.p508-spot .p508-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.p508-spot .p508-card > span { display: none; }
+.p508-spot figcaption { position: relative; color: #e8eaf0; font-size: 26px; padding-bottom: 10px; min-width: 60%; text-align: center; }
+.p508-spot figcaption b { color: #f0b64a; }
+.p508-spot figcaption i {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 4px; border-radius: 2px;
+  background: #f0b64a; transform-origin: left; animation: p508-left linear forwards;
+}
+@keyframes p508-in { from { opacity: 0; transform: scale(0.97); } }
+@keyframes p508-left { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+/* Prototypens egen panel: telefonens knapp och tangentbordet, simulerade. */
+.p508-phone {
+  position: fixed; left: 12px; bottom: 12px; z-index: 60; width: 300px;
+  background: #fff8; backdrop-filter: blur(6px); color: #111; font: 12px/1.35 system-ui, sans-serif;
+  border: 2px dashed #c0392b; border-radius: 8px; padding: 8px;
+}
+.p508-phone header { font-weight: 700; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.p508-phone header a { color: #111; padding: 0 5px; border: 1px solid #111; border-radius: 4px; text-decoration: none; }
+.p508-phone header a[aria-current='true'] { background: #111; color: #fff; }
+.p508-phone p { margin: 6px 0 4px; }
+.p508-list { display: flex; flex-wrap: wrap; gap: 4px; max-height: 110px; overflow: auto; }
+.p508-list button, .p508-play { font: inherit; padding: 2px 6px; border-radius: 4px; border: 1px solid #555; background: #fff; cursor: pointer; }
+.p508-play { margin-top: 6px; width: 100%; }

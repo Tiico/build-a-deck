@@ -8,15 +8,18 @@ import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurv
 import { MemoryRenderStore, Renderer, runWorker } from '@byd/render'
 import { spelkortDoc } from '../spelkort.js'
 import type { Intent } from '@byd/protocol'
-const http = 'http://localhost:8319'
-const web = 'http://localhost:5319'
+const apiPort = Number(process.env['BYD_PROTO_API'] ?? 8319)
+const webPort = Number(process.env['BYD_PROTO_WEB'] ?? 5319)
+const seatCount = Number(process.env['BYD_PROTO_SEATS'] ?? 4)
+const http = `http://localhost:${apiPort}`
+const web = `http://localhost:${webPort}`
 const out = process.argv[2] ?? '/tmp/byd-lasbarhet-links.json'
 const registry = new TypeRegistry(STANDARD_TYPES)
 const store = new MemoryLogStore()
 const renders = new MemoryRenderStore()
 const host = new TableHost(registry,store,undefined,renders)
 const server = createServer({host,store,registry,renders,projects:new MemoryProjectStore(),surveys:new MemorySurveyStore(),auth:new MemoryAuthStore(),mailer:new MemoryMailer(),assets:new MemoryAssetStore(),authBypass:true,appOrigin:web})
-await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(8319,'127.0.0.1',resolve)})
+await new Promise<void>((resolve,reject)=>{server.once('error',reject);server.listen(apiPort,'127.0.0.1',resolve)})
 const renderer = await Renderer.launch()
 void runWorker({store:renders,renderer,until:'forever',pollMs:150})
 const login = await fetch(`${http}/auth/login`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:'lasbarhet@example.com'})})
@@ -26,11 +29,12 @@ const post = async (path:string,body:unknown) => {
   if(!res.ok)throw new Error(`${path}: ${res.status} ${await res.text()}`)
   return res.json()
 }
-const doc=spelkortDoc()
+const doc=spelkortDoc(seatCount)
 await post('/projects',{id:'lasbarhet',...doc})
 const session=await post('/projects/lasbarhet/sessions',{})
+const SEATS=([['A','Ada'],['B','Bo'],['C','Cy'],['D','Di'],['E','Eli'],['F','Fu'],['G','Gry'],['H','Hal']] as const).slice(0,seatCount)
 const guests: Record<string,{token:string}> = {}
-for (const [seat,name] of [['A','Ada'],['B','Bo'],['C','Cy'],['D','Di']] as const) guests[seat]=await post(`/rooms/${session.code}/join`,{seat,name})
+for (const [seat,name] of SEATS) guests[seat]=await post(`/rooms/${session.code}/join`,{seat,name})
 type Seen = { zones: { id: string; order?: string[] }[]; components: { id: string; zone: string }[] }
 let latest: Seen | null = null
 const connect = async (query:string) => {
@@ -47,8 +51,8 @@ const send=(ws:WebSocket,seat:string|null,intents:Intent[])=>new Promise<void>((
 })
 const snapshot = async (): Promise<Seen> => { await new Promise((r)=>setTimeout(r,30)); if(!latest) throw new Error('no snapshot'); return latest }
 const table=await connect(`host=${session.hostKey}`)
-for (const [seat,name] of [['A','Ada'],['B','Bo'],['C','Cy'],['D','Di']] as const) await send(table,null,[{v:'seat.claim',seat,name}])
-await send(table,null,[{v:'shuffle',pile:'draw'},{v:'deal',from:'draw',to:['hand:A','hand:B','hand:C','hand:D'],each:7}])
+for (const [seat,name] of SEATS) await send(table,null,[{v:'seat.claim',seat,name}])
+await send(table,null,[{v:'shuffle',pile:'draw'},{v:'deal',from:'draw',to:SEATS.map(([seat])=>`hand:${seat}`),each:7}])
 await send(table,null,[{v:'draw',from:'draw',to:'market',count:4}])
 const market=(await snapshot()).zones.find((z)=>z.id==='market') as {order:string[]}
 await send(table,null,market.order.flatMap((id,i)=>[{v:'flip',component:id,face:'front'} as Intent,{v:'move',component:id,to:'market',x:20+i*125,y:16} as Intent]))
@@ -56,7 +60,7 @@ await send(table,null,[{v:'draw',from:'draw',to:'discard',count:3}])
 const discard=(await snapshot()).zones.find((z)=>z.id==='discard') as {order:string[]}
 await send(table,null,discard.order.map((id)=>({v:'flip',component:id,face:'front'}) as Intent))
 // Ett kort framför varje plats, framsidan upp (C4: publik yta).
-for (const seat of ['A','B','C','D'] as const) {
+for (const [seat] of SEATS) {
   const mine=await connect(`seat=${seat}&token=${guests[seat]!.token}`)
   const hand=(await snapshot()).zones.find((z)=>z.id===`hand:${seat}`) as {order?:string[]}
   const top=hand.order?.[0] ?? (await snapshot()).components.find((c)=>c.zone===`hand:${seat}`)?.id
@@ -78,7 +82,7 @@ const links={
   observe:`${web}/observe?session=${session.id}&host=${encodeURIComponent(session.hostKey)}&code=${session.code}&server=${ws}`,
 }
 writeFileSync(out,JSON.stringify(links,null,2))
-const vite=spawn('pnpm',['--filter','@byd/web','dev'],{stdio:'inherit',env:{...process.env,PORT:'5319'}})
+const vite=spawn('pnpm',['--filter','@byd/web','dev'],{stdio:'inherit',env:{...process.env,PORT:String(webPort)}})
 console.log(`\nLÄSBARHET · länkar i ${out}\n`)
 const stop=async()=>{vite.kill('SIGTERM');table.close();server.close();await renderer.close();process.exit(0)}
 process.on('SIGINT',()=>void stop())

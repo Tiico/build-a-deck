@@ -19,6 +19,8 @@ import { statusLinks } from '../status/links.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT, type Key } from '../i18n/index.js'
+// PROTOTYPE — throwaway (#508)
+import { useTvProto } from '../prototype/508-tv/proto.js'
 
 type SessionRecord = { name?: string; version?: string }
 
@@ -60,6 +62,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
 
   // What the screen is pointed at (C): only the TV has a panel to show it in.
   const [inspecting, setInspecting] = useState<VisibleComponentState | null>(null)
+  const proto = useTvProto(view, activity, client, url.replace(/^ws/, 'http'))
   const presence = usePresence(client, view)
   const recent = useRecent(activity)
   // Which piles are being shuffled right now (L35): played by the line, on this screen as on
@@ -152,9 +155,9 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       {mode === 'tv' ? (
         // On a TV the rulebook goes into the header, where the way in already is: the two wanted
         // the same corner, and only the header can lay both out (#30).
-        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} title={record?.name} version={record?.version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} observers={observers} rules={rules('tv')}>
+        proto.wrap(<><TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} title={record?.name} version={record?.version} inspecting={proto.inspecting ?? inspecting} faces={url.replace(/^ws/, 'http')} observers={observers} rules={rules('tv')}>
           {table}
-        </TvChrome>
+        </TvChrome>{proto.extra}</>)
       ) : (
         table
       )}
