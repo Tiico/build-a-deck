@@ -1,0 +1,5 @@
+/* A game's own menu (G1, #475): under a tile's ⋯ in «Mina spel», and under the ⋯ beside the game's
+   name in the editor (#542). Where it hangs is the page's; what it looks like is said here. */
+.byd-game-menu { position: absolute; z-index: 5; display: grid; padding: 6px; border-radius: 10px; background: #1b1f2a; border: 1px solid #3b4358; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5); }
+.byd-game-menu button { min-height: 44px; border: 0; border-radius: 7px; padding: 8px 12px; background: transparent; color: #e6ecfa; font: inherit; text-align: left; white-space: nowrap; cursor: pointer; }
+.byd-game-menu button:hover { background: #262a35; }

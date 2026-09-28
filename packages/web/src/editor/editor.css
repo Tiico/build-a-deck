@@ -3512,3 +3512,9 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-editor[data-readonly] .byd-setup-players button:disabled { cursor: default; }
 /* Symbols without the library: the game's own set takes the whole width. */
 .byd-editor[data-readonly] .byd-symbols-work { grid-template-columns: minmax(0, 1fr); }
+
+/* The game's own ⋯ beside its name (#542), as quiet as the revision beside it. */
+.byd-editor-more { position: relative; flex: none; }
+.byd-editor-more > button { display: inline-grid; place-items: center; min-width: var(--byd-tap); min-height: var(--byd-tap); border: 0; border-radius: 6px; padding: 0; background: transparent; color: var(--byd-editor-quiet); font: inherit; cursor: pointer; }
+.byd-editor-more > button:hover, .byd-editor-more > button[aria-expanded='true'] { background: #1b1d23; color: #dce3f2; }
+.byd-editor-more > .byd-game-menu { left: 0; top: calc(100% + 4px); z-index: 30; width: max-content; }

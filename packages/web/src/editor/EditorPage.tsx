@@ -15,6 +15,7 @@ import { SymbolPanel } from './SymbolPanel.js'
 import { MediaPanel } from './MediaPanel.js'
 import { MarkedProvider } from './marked.js'
 import { HistoryPanel } from './HistoryPanel.js'
+import { GameMore } from './GameMore.js'
 import { RulesPanel } from './RulesPanel.js'
 import { SharePanel, colourOf } from './SharePanel.js'
 import { tvUrl } from './tableLinks.js'
@@ -569,6 +570,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           {t('editor.home')}
         </a>
         <strong>{doc.name}</strong>
+        {client.mayEdit && projectId && <GameMore http={http} game={{ id: projectId, name: doc.name, rev: client.rev }} />}
         {/* The revision is also the way into the history (B4): the version is already named here. */}
         <button ref={revRef} type="button" className="byd-editor-rev" aria-expanded={historyOpen} onClick={() => setOver((on) => (on === 'history' ? null : 'history'))}>
           {t('editor.rev', { n: client.rev })}

@@ -75,9 +75,6 @@
    else (UX-KONTROLLER: träffytor); the dots stay the same size, the button around them grows. */
 .byd-home-more { position: absolute; right: 4px; top: 4px; display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; border: 0; border-radius: 8px; padding: 0 8px; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
 .byd-home-more:hover, .byd-home-more[aria-expanded='true'] { background: #262a35; color: #fff; }
-.byd-home-menu { position: absolute; right: 8px; top: 34px; z-index: 5; display: grid; padding: 6px; border-radius: 10px; background: #1b1f2a; border: 1px solid #3b4358; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5); }
-.byd-home-menu button { min-height: 44px; border: 0; border-radius: 7px; padding: 8px 12px; background: transparent; color: #e6ecfa; font: inherit; text-align: left; white-space: nowrap; cursor: pointer; }
-.byd-home-menu button:hover { background: #262a35; }
 .byd-home-started, .byd-home-asking { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 16px; border-radius: 12px; }
 .byd-home-started { background: #1b2a22; color: #d8ffe8; }
 .byd-home-started strong { font: 700 15px ui-monospace, monospace; letter-spacing: 2px; }
@@ -98,20 +95,5 @@
 
 /* Taking a game out and bringing it back (G5, #529, beslut B): a window over the list that says
    what it is about first, and the way to it in the header beside the account. */
-.byd-home-import { margin-left: auto; }
-.byd-home-scrim { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, 0.55); }
-.byd-home-dialog { width: min(520px, 100%); max-height: calc(100vh - 32px); overflow: auto; box-sizing: border-box; padding: 24px; border-radius: 16px; background: #1b1f2a; border: 1px solid #3b4358; color: #e6ecfa; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); }
-.byd-home-dialog h2 { margin: 0 0 12px; font-size: 20px; }
-.byd-home-dialog p { margin: 8px 0; line-height: 1.45; }
-.byd-home-dialog ul { margin: 8px 0; padding-left: 20px; line-height: 1.45; }
-.byd-home-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; margin-top: 16px; }
-.byd-home-progress { display: grid; gap: 8px; margin: 12px 0; }
-.byd-home-progress progress { appearance: none; width: 100%; height: 8px; border: 0; border-radius: 4px; background: #2c3242; overflow: hidden; }
-.byd-home-progress progress::-webkit-progress-bar { background: #2c3242; border-radius: 4px; }
-.byd-home-progress progress::-webkit-progress-value { background: #7dd3a0; border-radius: 4px; transition: width 300ms; }
-.byd-home-progress progress::-moz-progress-bar { background: #7dd3a0; border-radius: 4px; }
-/* A press the size of a fingertip (#475), with the button language's own fill and line on it. */
-.byd-home-dialog-actions button, .byd-home-import { min-height: 44px; border-radius: 12px; padding: 8px 16px; font-family: inherit; font-size: 15px; cursor: pointer; }
-.byd-home-dialog-actions button:disabled { opacity: 0.45; cursor: default; }
-.byd-home-bad { color: #ff9c8c; font-weight: 700; }
-.byd-home-problems { max-height: 180px; overflow: auto; }
+.byd-home-import { margin-left: auto; min-height: 44px; border-radius: 12px; padding: 8px 16px; font-family: inherit; font-size: 15px; cursor: pointer; }
+.byd-home-game > .byd-game-menu { right: 8px; top: 34px; }

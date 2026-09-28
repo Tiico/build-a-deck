@@ -1,0 +1,20 @@
+/* The windows for taking a game out and bringing it back (G5, #529, #542): opened from «Mina spel»
+   and from the editor, so they carry their own look and take the room's colours (L13). */
+.byd-game-scrim { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, 0.55); }
+.byd-game-dialog { font-size: 16px; width: min(520px, 100%); max-height: calc(100vh - 32px); overflow: auto; box-sizing: border-box; padding: 24px; border-radius: 16px; background: #1b1f2a; border: 1px solid #3b4358; color: #e6ecfa; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); }
+.byd-game-dialog h2 { margin: 0 0 12px; font-size: 20px; }
+.byd-game-dialog p { margin: 8px 0; line-height: 1.45; }
+.byd-game-dialog ul { margin: 8px 0; padding-left: 20px; line-height: 1.45; }
+.byd-game-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; margin-top: 16px; }
+.byd-game-progress { display: grid; gap: 8px; margin: 12px 0; }
+.byd-game-progress progress { appearance: none; width: 100%; height: 8px; border: 0; border-radius: 4px; background: #2c3242; overflow: hidden; }
+.byd-game-progress progress::-webkit-progress-bar { background: #2c3242; border-radius: 4px; }
+.byd-game-progress progress::-webkit-progress-value { background: #7dd3a0; border-radius: 4px; transition: width 300ms; }
+.byd-game-progress progress::-moz-progress-bar { background: #7dd3a0; border-radius: 4px; }
+/* A press the size of a fingertip (#475), with the button language's own fill and line on it. */
+.byd-game-dialog-actions button { min-height: 44px; border-radius: 12px; padding: 8px 16px; font-family: inherit; font-size: 15px; cursor: pointer; }
+.byd-game-dialog-actions button:disabled { opacity: 0.45; cursor: default; }
+.byd-game-bad { color: #ff9c8c; font-weight: 700; }
+.byd-game-problems { max-height: 180px; overflow: auto; }
+/* The quiet line says the same thing in the editor, where the account's stylesheet is not loaded. */
+.byd-game-dialog .byd-muted { color: #9aa3b8; font-size: 14px; line-height: 1.5; }
