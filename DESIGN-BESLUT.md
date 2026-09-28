@@ -968,6 +968,17 @@ Lådan «Senast och platser» öppnas där som ett ark över en nedtonad filt i 
 Det vänder #6:s «under, aldrig över» under skrivbordsbredd: vid 390 krympte en öppen låda filten från 735 till 319 px och korten till 16 px, vilket inte är att se bordet.
 På skrivbordet är kolumnen oförändrad.
 
+*Reviderat 2026-09-28 (#511, beställarens beslut A, [prototyp](https://github.com/Tiico/build-a-deck/blob/c87eb24430dd89fd81e6089e05913198729d7541/docs/ux-audits/2026-09-28/prototyper/511/README.md)):* **på skrivbordet läser observatören ett kort i vilken hand som helst med lyftet.**
+Hennes filt ritar alla händer, och vid 1280 × 800 är ett handkort 34 px brett — 1,6 px brödtext — och korten i händerna svarade inte på pekaren alls, så INSPEKTION (138 px, 6,6 px brödtext) kunde aldrig visa ett av dem, fast att se händerna är hela rollen.
+Nu gör en vilande mus eller ett tryck på ett uppvänt kort, också i en hand, detsamma som i bordsläget (K8, K26, #509): kortet lyfts upp bredvid sig i fönstrets storlek, 355 px och 17 px brödtext vid 1280 × 800, 479 px och 23 px vid 1920 × 1080.
+Ingenting frågas: ett tryck på det lyfta kortet, på bar filt eller Escape lägger ner det, och ringen öppnas aldrig, eftersom hon inte får röra bordet.
+Filten är i övrigt TV:ns (`mode="tv"`), och renderaren säger det med `watch`: en yta som läser som bordsläget och inte har något att göra.
+INSPEKTION i kolumnen fylls av samma pekning som förut, också från ett handkort.
+Under skrivbordsbredd står #485:s tryck kvar, eftersom en pekare som vilar inte finns där.
+Hon ser exakt det hon såg förut: lyftet ritar ur samma ögonblicksbild, och inget nytt går över tråden.
+Prototypen prövade också händerna som läsbara rader (inga handlingar, men 4 av 24 kort synliga vid 1280 × 800 och filten som en oläslig karta) och INSPEKTION i golvets storlek i kolumnen (14 px, men flödet försvann vid 1280 × 800).
+Grindarna: `packages/web/test/felt-lift.test.tsx` (lyftet på en yta som tittar, handkort, ingen ring), `observer-page.test.tsx` och `packages/e2e/test/observer-reads.spec.ts` (i den byggda appen, mätt mot K26:s modul vid 1280 × 800 och 1920 × 1080).
+
 ### C9. Livscykel: persistenta bord med uttrycklig avslutning (fråga 25)
 
 Tillståndet överlever att alla kopplar ner, så gruppen kan återuppta med samma ställning och samma platser.

@@ -62,7 +62,8 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   // Below the desk (#485, beslut A efter prototyp 34) a tap holds the card up in a sheet over the
   // table, as the player's phone does, and the column is a sheet over the table too: the table
   // keeps its size either way. There is no pointer to rest on a card there, so a tap is how the
-  // eye says which one.
+  // eye says which one. On a desk the felt watches (#511, beslut A): a resting mouse or a press
+  // lifts a card in any hand beside itself, the gesture the table screen reads with (K26).
   const narrow = useNarrow()
   const [held, setHeld] = useState<VisibleComponentState | null>(null)
   const handle = useRef<HTMLDivElement>(null)
@@ -132,7 +133,7 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
         {/* A proposed rewind as the table screen shows it (#485, K13): the table it would bring back,
             in the same frame and with the same words. */}
         <RewindFrame view={view} activity={activity}>
-          <TableRenderer view={previewOf(view)} mode="tv" camera="hand" {...(sessionId ? { remember: `observe:${sessionId}` } : {})} rotate={turn} faces={http} onInspect={setInspecting} {...(narrow ? { onPick: setHeld } : {})} shuffles={shuffles} />
+          <TableRenderer view={previewOf(view)} mode="tv" camera="hand" {...(sessionId ? { remember: `observe:${sessionId}` } : {})} rotate={turn} faces={http} onInspect={setInspecting} {...(narrow ? { onPick: setHeld } : { watch: true })} shuffles={shuffles} />
         </RewindFrame>
       </TvChrome>
       {/* The handle (#6): a row of its own under the table, never a banner over it. What she is
