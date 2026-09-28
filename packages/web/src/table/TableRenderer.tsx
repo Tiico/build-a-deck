@@ -128,6 +128,11 @@ export type TableRendererProps = {
   // Where «Titta» goes on a screen whose large view is the room's (#508): the TV holds a face it
   // sees up over the felt for everyone. A back keeps K8's view, which is all a back has to say.
   onShow?: ((c: VisibleComponentState) => void) | undefined
+  // A screen that watches and never touches (C8, #511): the observer. It reads the way the table
+  // screen does — a resting mouse or a press lifts the card beside itself (K26) — and asks nothing,
+  // since there is nothing it may do; a card in a hand reads like any other, because seeing the
+  // hands is the whole of the role.
+  watch?: boolean | undefined
   size?: Size | undefined
   glideMs?: number | undefined
   // Room kept clear around the table when it is fitted, in table millimetres (L30, #316). The
@@ -257,7 +262,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, onPick, onShow, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -313,8 +318,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // Reading a card on the felt (K26, #509): the first press lifts it up beside itself in the
   // window's size, and the ring is behind a second press. A card that is pointed at with a mouse is
   // lifted for as long as the mouse stays on it (`pointed`); a press keeps it lifted (`read`) until
-  // the bare felt is pressed or Escape. The TV reads through its own INSPEKTION (K8, #508).
-  const lifts = mode === 'table'
+  // the bare felt is pressed or Escape. The TV reads through its own INSPEKTION (K8, #508); the
+  // observer's felt is drawn as the TV's and reads as the table's (#511).
+  const lifts = mode === 'table' || watch
   const [read, setRead] = useState<Lift | null>(null)
   const [pointed, setPointed] = useState<Lift | null>(null)
   // Where a drag let go, until the pointer has moved on from it. The card let go lies under a
@@ -684,7 +690,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // A mouse resting on a card reads it (K26), for as long as it rests there. A finger has no
   // resting: its enter is the start of a press, and the press is what reads.
   const reads = (target: DragTarget): Pointing | undefined =>
-    lifts && onAct
+    lifts && (onAct || watch)
       ? {
           onPointerEnter: (e) => {
             if (!e || e.pointerType !== 'mouse' || live.current) return
@@ -695,6 +701,24 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
             if (c) setPointed({ c, target, at: edgesOf(e.currentTarget as HTMLElement), standIn: false })
           },
           onPointerLeave: () => setPointed(null),
+        }
+      : undefined
+  // A press on a screen that watches only reads (#511): it lifts a card whose face the screen sees,
+  // and does nothing else — there is no drag to start and no ring to ask.
+  const watches = (target: DragTarget): Handlers | undefined =>
+    watch && !onAct
+      ? {
+          onPointerDown: (e) => {
+            if (isPan(e)) return
+            e.stopPropagation()
+            const c = readableOf(target)
+            if (!c) return
+            setPointed(null)
+            setRead({ c, target, at: edgesOf(e.currentTarget as HTMLElement), standIn: false })
+          },
+          onPointerMove: () => undefined,
+          onPointerUp: () => undefined,
+          onPointerCancel: () => undefined,
         }
       : undefined
   // And what the pointer is standing on, for the commands that act on it (#224). The keyboard
@@ -972,7 +996,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     const c = l.standIn ? l.c : byId.get(l.c.id)
     return c ? { ...l, c } : null
   }
-  const reading = onAct ? liftOf(pointed) ?? liftOf(read) : null
+  const reading = onAct || watch ? liftOf(pointed) ?? liftOf(read) : null
   const readingNow = reading !== null
   useEffect(() => {
     if (!readingNow || ring) return
@@ -1150,7 +1174,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 topInspects={bothPointing(inspects(lifting ? topOf(z, 1) : topOf(z)), reads({ kind: 'pileTop', pile: z.id }))}
                 bottomCard={bottomOf(z, byId)}
                 bottomInspects={inspects(bottomOf(z, byId) ?? bottomStandIn(z))}
-                topHandlers={onAct && count > 0 ? handlers({ kind: 'pileTop', pile: z.id }) : undefined}
+                topHandlers={count > 0 ? (onAct ? handlers({ kind: 'pileTop', pile: z.id }) : watches({ kind: 'pileTop', pile: z.id })) : undefined}
                 labelHandlers={onAct ? handlers({ kind: 'pile', pile: z.id }) : undefined}
                 topKeys={keys(`top:${z.id}`)}
                 labelKeys={keys(`pile:${z.id}`)}
@@ -1182,6 +1206,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 top={top(at.y)}
                 px={px}
                 cards={z.mode === 'order' ? z.order.flatMap((id) => byId.get(id) ?? []) : undefined}
+                // A hand whose faces this screen sees answers the pointer as a card on the felt does
+                // (#511): the observer's hands were drawn and could not be pointed at or read.
+                reach={(c) => ({ ...bothPointing(inspects(c), reads({ kind: 'card', id: c.id })), ...watches({ kind: 'card', id: c.id }) })}
                 faces={faces}
               />
             )
@@ -1247,7 +1274,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 by={movedBy.has(c.id) ? { seat: movedBy.get(c.id) ?? null, colour: colourOf(movedBy.get(c.id) ?? null) } : undefined}
                 faces={faces}
                 back={backAt(`card-${c.id}`)}
-                handlers={onAct ? handlers({ kind: 'card', id: c.id }) : undefined}
+                handlers={onAct ? handlers({ kind: 'card', id: c.id }) : watches({ kind: 'card', id: c.id })}
                 points={bothPointing(bothPointing(inspects(c), reads({ kind: 'card', id: c.id })), points({ kind: 'card', id: c.id }))}
                 keys={keys(`card:${c.id}`)}
               />
@@ -1430,7 +1457,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           })()}
           faces={faces}
           // Around the card it lifts, which is what the ring is about, and not around the lift.
-          onAsk={() => ask(reading.target, (reading.at.left + reading.at.right) / 2, (reading.at.top + reading.at.bottom) / 2)}
+          // A screen that watches has nothing to ask, so a press on what it reads puts it down.
+          onAsk={() => (onAct ? ask(reading.target, (reading.at.left + reading.at.right) / 2, (reading.at.top + reading.at.bottom) / 2) : putDown())}
         />
       )}
       {held && (
@@ -1835,7 +1863,7 @@ function SeatName({ zone, floor, name, color, mine, taking, read, left, top }: {
 // Other seats' hands are a fan of backs and a count; the owner reads theirs on the phone. A hand
 // whose order this view may see (the observer, C8) fans the cards themselves. Every measure in
 // the fan is a millimetre on the felt, so it shrinks with the table rather than swamping it (#23).
-function Hand({ zone, color, rot, countAt, countIn = false, folded = false, taking = 0, left, top, px, cards, faces }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; countIn?: boolean; folded?: boolean; taking?: number; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
+function Hand({ zone, color, rot, countAt, countIn = false, folded = false, taking = 0, left, top, px, cards, faces, reach }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; countIn?: boolean; folded?: boolean; taking?: number; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined; reach?: ((c: VisibleComponentState) => Partial<Pointing & Handlers>) | undefined }) {
   const count = zone.mode === 'count' ? zone.count : zone.order.length
   const fan = folded ? 0 : Math.min(count, FAN_MAX)
   const shown = cards ? Math.min(cards.length, FAN_MAX) : fan
@@ -1865,6 +1893,7 @@ function Hand({ zone, color, rot, countAt, countIn = false, folded = false, taki
                 data-component={c.id}
                 data-face={c.cardRef === null ? 'back' : 'front'}
                 style={{ ...box, transform: place(i, true), ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }) }}
+                {...(reach?.(c) ?? {})}
               >
                 <Texture faces={faces} c={c} />
                 <span>{cardWord(c) ?? ''}</span>
