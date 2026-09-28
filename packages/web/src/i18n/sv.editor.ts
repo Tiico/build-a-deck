@@ -114,6 +114,7 @@ export const svEditor = {
   'editor.table.newCode': 'Ny kod',
   'editor.role.tester': 'Du är testledare här: du kan starta bord och läsa spelet, men inte ändra det.',
   'editor.role.viewer': 'Du är betraktare här: du kan läsa spelet, men inte ändra det.',
+  'editor.readonly.refused': 'Läsläge: du kan läsa spelet men inte ändra det.',
   'editor.seats.at': 'vid bordet:',
   'editor.seats.kick': 'Sparka {name}',
   // Vägen hem, och det telefonen inte får plats med.

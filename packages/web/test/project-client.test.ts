@@ -829,6 +829,28 @@ describe('a click in the symbol library does not wait for the network (#310, E4)
     expect(client.doc.icons['sköld']).toBeUndefined()
     expect(client.canUndo).toBe(false)
   })
+
+  // And a file it chooses is never sent (#489): the edit would be refused after the bytes were
+  // already stored, so the door is shut before the wire is touched.
+  it('sends no file for a role that may not change the game', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    ;(client as unknown as { role: string }).role = 'viewer'
+    const seen: string[] = []
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      seen.push(`${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`)
+      return real(input, init)
+    }) as typeof fetch
+    try {
+      const png = Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3])
+      await expect(client.addPicture(new File([png], 'drake.png', { type: 'image/png' }))).rejects.toThrow(/Läsläge/)
+      await expect(client.uploadAsset(new Blob([png]), 'image')).rejects.toThrow(/Läsläge/)
+    } finally {
+      globalThis.fetch = real
+    }
+    expect(seen.filter((c) => c.startsWith('POST'))).toEqual([])
+  })
 })
 
 // A typeface and a picture used to do the opposite of the symbol (#339): upload first, and read

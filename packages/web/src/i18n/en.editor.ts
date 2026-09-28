@@ -96,6 +96,7 @@ export const enEditor = {
   'editor.table.newCode': 'New code',
   'editor.role.tester': 'You are a test lead here: you can start tables and read the game, but not change it.',
   'editor.role.viewer': 'You are a viewer here: you can read the game, but not change it.',
+  'editor.readonly.refused': 'Read-only: you can read the game but not change it.',
   'editor.seats.at': 'at the table:',
   'editor.seats.kick': 'Kick {name}',
   'editor.home': 'My games',
