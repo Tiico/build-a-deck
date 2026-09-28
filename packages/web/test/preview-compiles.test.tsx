@@ -84,7 +84,7 @@ describe('a card is not compiled again for a keystroke in the search box', () =>
   it('leaves the deck below the library alone while a symbol is searched for', () => {
     const base = withIcon()
     const doc = { ...base, rows: base.rows.map((r) => ({ ...r, fields: { ...r.fields, body: `${String(r.fields['body'] ?? '')} {svärd}` } })) }
-    render(<SymbolPanel doc={doc} client={{} as ProjectClient} assetBase="http://api.local" />)
+    render(<SymbolPanel doc={doc} client={{ mayEdit: true } as unknown as ProjectClient} assetBase="http://api.local" />)
 
     // The control: the spy is real, and the panel did compile each of the three cards to draw it.
     expect(spy.compiles).toBe(doc.rows.length)
@@ -142,7 +142,7 @@ describe('the card on the canvas is not compiled again for nothing', () => {
 describe('the deck’s back on the felt is not compiled again for nothing', () => {
   it('leaves it alone while a zone is dragged, and compiles it when the back changes', () => {
     const doc = withIcon()
-    const client = { recipe: { players: 2, mine: false, discard: true, market: false, counters: [] } } as unknown as ProjectClient
+    const client = { mayEdit: true, recipe: { players: 2, mine: false, discard: true, market: false, counters: [] } } as unknown as ProjectClient
     const { rerender } = render(<SetupEditor doc={doc} client={client} assetBase="http://api.local" />)
     // The control: the draw pile lies face down, so the back was compiled once to draw it.
     expect(spy.compiles).toBe(1)
