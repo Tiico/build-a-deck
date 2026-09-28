@@ -1412,7 +1412,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 404, { error: 'unknown session' })
       return true
     }
-    json(res, 200, await progress(opts, actor.textureHashes()))
+    json(res, 200, await progress(opts, actor.textureHashes(), frontsOf(actor.faceHashes())))
     return true
   }
   // Before "Uppdatera bordet" (L5): queue the textures of the project's current rev without
@@ -1437,7 +1437,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
         await opts.renders.enqueue(job)
       }
     }
-    json(res, 200, await progress(opts, compiled.jobs.map((j) => j.hash)))
+    json(res, 200, await progress(opts, compiled.jobs.map((j) => j.hash), frontsOf(compiled.faces)))
     return true
   }
   // "Uppdatera bordet" on a running table (C7, L5): the project's current rev becomes a
@@ -1471,7 +1471,9 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
   return false
 }
 
-async function progress(opts: ServerOptions, hashes: readonly string[]): Promise<{ total: number; done: number; failed: string[] }> {
+// `fronts`: each card's front texture, by row (#523). A rendered front says what its smallest text
+// was fitted to, so the editor can say, once a table is up, which cards a phone cannot read.
+async function progress(opts: ServerOptions, hashes: readonly string[], fronts: Record<string, string>): Promise<{ total: number; done: number; failed: string[]; smallest: Record<string, number> }> {
   let done = 0
   const failed: string[] = []
   for (const hash of hashes) {
@@ -1479,8 +1481,16 @@ async function progress(opts: ServerOptions, hashes: readonly string[]): Promise
     if (status?.state === 'done') done++
     else if (status?.state === 'failed') failed.push(hash)
   }
-  return { total: hashes.length, done, failed }
+  const smallest: Record<string, number> = {}
+  for (const [row, hash] of Object.entries(fronts)) {
+    const pt = opts.renders ? (await opts.renders.fitOf(hash))?.smallestPt : null
+    if (typeof pt === 'number') smallest[row] = pt
+  }
+  return { total: hashes.length, done, failed, smallest }
 }
+
+const frontsOf = (faces: Record<string, Record<string, string>>): Record<string, string> =>
+  Object.fromEntries(Object.entries(faces).flatMap(([row, perFace]) => (perFace['front'] ? [[row, perFace['front']]] : [])))
 
 // Magic links (G1, DRIFT §11). POST /auth/login mails a link and always answers 200 — never a
 // word about whether the address is known. GET /auth/verify redeems it once, sets the session

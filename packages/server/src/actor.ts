@@ -93,6 +93,11 @@ export class TableActor {
   }
 
   // Every distinct texture this table needs (L5): the editor waits for them before opening it.
+  // Each card's faces by row, as the table was dealt them.
+  faceHashes(): Record<string, Record<string, string>> {
+    return this.cards?.faces ?? {}
+  }
+
   textureHashes(): string[] {
     const all = new Set<string>()
     for (const perFace of Object.values(this.cards?.faces ?? {})) for (const hash of Object.values(perFace)) all.add(hash)
