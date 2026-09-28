@@ -359,9 +359,12 @@ describe('the editor by keyboard alone (UX-04)', () => {
     expect(screen.getByRole('tabpanel', { name: 'Kortvägg' })).toBeTruthy()
 
     // "Mina spel" is the header's first stop (#8) — a way back belongs before what it leads away
-    // from — and the revision, which names the version and opens the history (B4), is the next.
-    // The tablist follows them, and the arrow keys move inside it as before.
+    // from — then the game's own ⋯ beside its name (#542), and then the revision, which names the
+    // version and opens the history (B4). The tablist follows them, and the arrow keys move inside
+    // it as before.
     await user.tab()
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fler val för Skogens herrar' }))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: /rev 1/ }))
     await user.tab()
@@ -386,9 +389,9 @@ describe('the layers of the template by keyboard (UX-04)', () => {
     history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
-    await user.tab()
-    await user.tab()
-    await user.tab()
+    // «Mina spel», the game's ⋯ (#542) and the revision, and then the tablist.
+    for (let i = 0; i < 4; i++) await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Kortvägg' }))
     await user.keyboard('{ArrowRight}{Enter}')
     expect(layerNames()).toEqual(['body', 'title', 'frame'])
     const cells = layerRows().map((r) => r.querySelector('.byd-layer-pick') as HTMLElement)

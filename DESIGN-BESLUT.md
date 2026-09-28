@@ -1529,6 +1529,13 @@ Byggt 2026-09-28 (#529, beställarens beslut B efter [prototypen](https://github
 - Assets som ett spel pekar på men som servern inte hade står i `absent`, i stället för att tyst utelämnas, och importen godtar dem.
 - E2E-sviten går hela vägen med en riktig renderare (`packages/e2e/test/game-export.spec.ts`).
 
+Tillägg 2026-09-28 (#542, uppföljning av #529):
+- **Samma val finns i editorn**, i en ⋯ bredvid spelets namn — spelets egen meny, samma `GameMenu` som i Mina spel, med det som görs med hela spelet. Den visas bara för ägare och medredigerare, och fokus går tillbaka till ⋯ när fönstret stängs.
+- **Zippen sparas under det namn servern ger den** (`content-disposition`), eftersom det säger vilken version den innehåller; listan fönstret öppnades ur kan ligga en version efter.
+- **Det som går fel sägs i ord och aldrig som en statuskod** (A4): 401 säger logga in igen, 403 att bara ägare och medredigerare får exportera, och 503 att tryckfilerna inte kan ritas just nu.
+- **En server som inte går att nå sägs, och ingenting fryser.** En import som lyckats står som lyckad även om listan inte går att läsa om direkt efteråt.
+- Grindarna är `packages/web/test/game-dialogs.test.tsx` och `packages/web/test/editor-export.test.tsx`.
+
 ---
 
 ## H. Sekvensering
