@@ -1178,6 +1178,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 top={top(at.y)}
                 px={px}
                 cards={z.mode === 'order' ? z.order.flatMap((id) => byId.get(id) ?? []) : undefined}
+                // PROTOTYPE — throwaway (#511): the observer's hand cards answer the pointer.
+                inspect={inspects}
                 faces={faces}
               />
             )
@@ -1831,7 +1833,7 @@ function SeatName({ zone, floor, name, color, mine, taking, read, left, top }: {
 // Other seats' hands are a fan of backs and a count; the owner reads theirs on the phone. A hand
 // whose order this view may see (the observer, C8) fans the cards themselves. Every measure in
 // the fan is a millimetre on the felt, so it shrinks with the table rather than swamping it (#23).
-function Hand({ zone, color, rot, countAt, countIn = false, folded = false, taking = 0, left, top, px, cards, faces }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; countIn?: boolean; folded?: boolean; taking?: number; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
+function Hand({ zone, color, rot, countAt, countIn = false, folded = false, taking = 0, left, top, px, cards, faces, inspect }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; countIn?: boolean; folded?: boolean; taking?: number; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined; inspect?: ((c: VisibleComponentState | undefined) => Record<string, unknown> | undefined) | undefined }) {
   const count = zone.mode === 'count' ? zone.count : zone.order.length
   const fan = folded ? 0 : Math.min(count, FAN_MAX)
   const shown = cards ? Math.min(cards.length, FAN_MAX) : fan
@@ -1861,6 +1863,7 @@ function Hand({ zone, color, rot, countAt, countIn = false, folded = false, taki
                 data-component={c.id}
                 data-face={c.cardRef === null ? 'back' : 'front'}
                 style={{ ...box, transform: place(i, true), ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }) }}
+                {...(inspect?.(c) ?? {})}
               >
                 <Texture faces={faces} c={c} />
                 <span>{cardWord(c) ?? ''}</span>

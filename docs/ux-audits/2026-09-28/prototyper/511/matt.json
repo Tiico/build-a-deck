@@ -1,0 +1,82 @@
+[
+  {
+    "variant": "I dag",
+    "size": "1280×800",
+    "handShort": 33.63433837890625,
+    "feltShortMin": 33.63433837890625,
+    "handCards": 24,
+    "readPx": 138,
+    "readBody": 6.6,
+    "actions": "1 (hover)"
+  },
+  {
+    "variant": "A",
+    "size": "1280×800",
+    "handShort": 33.63433837890625,
+    "feltShortMin": 33.63433837890625,
+    "handCards": 24,
+    "readPx": 355,
+    "readBody": 17,
+    "actions": "1 (hover)"
+  },
+  {
+    "variant": "B",
+    "size": "1280×800",
+    "handShort": null,
+    "feltShortMin": 294,
+    "handCards": 24,
+    "readPx": 294,
+    "readBody": 14.1,
+    "actions": "0 (4 av 24 kort synliga utan att rulla)"
+  },
+  {
+    "variant": "C",
+    "size": "1280×800",
+    "handShort": 33.63433837890625,
+    "feltShortMin": 33.63433837890625,
+    "handCards": 24,
+    "readPx": 294,
+    "readBody": 14.1,
+    "actions": "1 (hover)"
+  },
+  {
+    "variant": "I dag",
+    "size": "1920×1080",
+    "handShort": 56.3594970703125,
+    "feltShortMin": 56.3594970703125,
+    "handCards": 24,
+    "readPx": 139,
+    "readBody": 6.7,
+    "actions": "1 (hover)"
+  },
+  {
+    "variant": "A",
+    "size": "1920×1080",
+    "handShort": 56.3594970703125,
+    "feltShortMin": 56.3594970703125,
+    "handCards": 24,
+    "readPx": 479,
+    "readBody": 23,
+    "actions": "1 (hover)"
+  },
+  {
+    "variant": "B",
+    "size": "1920×1080",
+    "handShort": null,
+    "feltShortMin": 294,
+    "handCards": 24,
+    "readPx": 294,
+    "readBody": 14.1,
+    "actions": "0 (12 av 24 kort synliga utan att rulla)"
+  },
+  {
+    "variant": "C",
+    "size": "1920×1080",
+    "handShort": 56.3594970703125,
+    "feltShortMin": 56.3594970703125,
+    "handCards": 24,
+    "readPx": 294,
+    "readBody": 14.1,
+    "actions": "1 (hover)"
+  }
+]
