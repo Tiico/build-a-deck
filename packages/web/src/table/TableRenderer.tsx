@@ -21,7 +21,8 @@ import { ActionSheet } from './ActionSheet.js'
 import { compileStart, startsAt } from './actions.js'
 import { Question } from '../editor/Question.js'
 import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
-import { liftBox, type Box, type Edges } from './lift.js'
+import { liftBox, type Edges } from './lift.js'
+import { Lifted } from './Lifted.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAt, handBand, handCountAt, handExtent, handRotation, type TableMode } from './hand.js'
 import { gapAbove, nameAt, type Grow, type Rim } from './labels.js'
 import { useT, type Key, type T } from '../i18n/index.js'
@@ -1704,31 +1705,6 @@ function topIdOf(z: ZoneView, skip = 0): string | undefined {
 
 // A pile is a point; the stack is centred on it. A hidden pile has a count and nothing else,
 // unless its top lies face-up.
-// The card lifted up to be read (K26, #509), drawn the way «Titta» draws one — the texture over
-// the card's own paper, its name while the texture is on its way — in the box `liftBox` gives it.
-// A press on it asks what may be done with it, and only a press that began on it: the click a
-// browser makes of the tap that lifted it lands wherever the finger was, which may be here.
-function Lifted({ c, box, faces, onAsk }: { c: VisibleComponentState; box: Box; faces: string | undefined; onAsk(): void }) {
-  const pressed = useRef(false)
-  return (
-    <div
-      className="byd-lift"
-      data-lift={c.id}
-      data-face={c.cardRef === null ? 'back' : 'front'}
-      style={{ left: box.left, top: box.top, width: box.w, height: box.h, ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }) }}
-      onPointerDown={() => (pressed.current = true)}
-      onClick={(e) => {
-        if (!pressed.current && e.detail !== 0) return
-        pressed.current = false
-        onAsk()
-      }}
-    >
-      <Texture faces={faces} c={c} retry />
-      <span>{cardWord(c) ?? ''}</span>
-    </div>
-  )
-}
-
 function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, lifted, aimed = false, shuffle, still = false, topHandlers, topInspects, bottomInspects, labelHandlers, topKeys, labelKeys, points }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; bottomCard?: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; aimed?: boolean | undefined; shuffle?: number | undefined; still?: boolean | undefined; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; bottomInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; topKeys?: FeltNodeProps | undefined; labelKeys?: FeltNodeProps | undefined; points?: Pointing | undefined }) {
   const t = useT()
   // What a face-down pile wears. Its top card's own back first, which is the one thing about a

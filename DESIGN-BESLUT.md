@@ -2310,6 +2310,24 @@ Grinden står i `online-felt.test.tsx` och är skriven som tal just därför att
 Byggt 2026-09-14 (#77). Prototypen `claude/proto-77-column` togs bort när den hade svarat; dess resonemang står här.
 Grindarna är invarianter och inte tal, mätta vid 3, 13 och 21 kort och vid 1280 × 800, 1920 × 1080 och 1024 × 600: inget kort i kolumnen är utan sitt namn, inget steg är under 44 px, kortet är alltid mellan 56 och 112 px, kolumnen tar aldrig mer än en fjärdedel av fönstrets bredd, sidan rullar aldrig i sidled, och ingenting av sidans krom ligger över filten eller en zon på den.
 
+Reviderat 2026-09-28 (#510, K26): **kolumnens kort läses med en handling, i golvets storlek, och uppslaget läses i den också.**
+K17 kallade 112 px «läsbar storlek» från prototyp B, men talet mättes på ramen och aldrig på texten: 8,5 pt brödtext blir 5,3 px där.
+Hovern som lyfte kortet till 180 px (#484 fynd 15) gav 8,6 px, och ett tryck öppnade adresspanelen direkt.
+Tre varianter prototypades på `/online` med riktiga texturer (#510): **A, bred kolumn** — korten ritas i golvets storlek i kolumnen själv; **B, lyft bredvid kolumnen** — som filtens lyft (K8, #509); **C, handen hålls upp** — hela handen i golvets storlek över filten.
+**B valdes.**
+A nådde inte golvet vid 1024 × 768 (11,1 px), eftersom kolumnen aldrig får ta mer än en fjärdedel av fönstret, och tog filtens kort till 31–35 px vid 1024 och 40–45 vid 1280; C visade hela handen men överlappande, med ett steg som krymper med handen, och täckte filten medan den stod.
+
+Hover, tangentbordets fokus eller ett tryck på ett kort i kolumnen lyfter det bredvid kolumnen med filtlyftets form och storlek (`liftBox`, `Lifted`): 341 px och 16,4 px brödtext vid 1024 × 768, 355 och 17,0 vid 1280 × 800, 479 och 23,0 vid 1920 × 1080.
+Ett andra tryck — på kortet eller på det lyfta kortet — öppnar adresspanelen; Enter gör det direkt som förut (K16).
+Ett kort lyft av ett tryck står kvar tills Escape, ett tryck utanför kolumnen och lyftet, eller det andra trycket; en dragning lägger undan det när den börjar.
+Kolumnen och filten är oförändrade, och K17:s invarianter står.
+Uppslaget (`Visa alla`) ritar sina kort i minst **295 px**, där startramens brödtext når skrivbordets 14 px (K26:s 294 avrundas till närmaste pixel och ger 13,99), och upp till 336 px på breda skärmar; aldrig bredare än sidan, som aldrig rullar i sidled.
+Stående fönster, där handen är bandet, följer telefonens beslut (#507).
+
+Följdkrav: det som ritas fast mot fönstret över kolumnen — lyftet, spöket under en dragning och dragets dörr — ritas **bredvid** listan och aldrig i den.
+Ett barn till kolumnen är fortfarande ett barn, och det sista kortets ruta mäts med `:last-child`: med ett lyft efter sig krympte den till ett steg, kolumnen centrerades om 45 px lägre, och kortet under en pekare som inte rört sig blev grannen.
+Grindarna är `packages/web/test/online-column-lift.test.tsx` (gesterna och uppslagets storlek mot K26:s modul) och `packages/e2e/test/online-hand-read.spec.ts` (resan i den byggda appen, att det lyfta kortet är kortet under pekaren, och att sidan inte rullar i sidled).
+
 ### K18. Filten växer med sällskapet (2026-09-13, #54)
 
 Filtens storlek följer antalet platser.
