@@ -36,6 +36,9 @@ import { useSay } from '../status/StatusLive.js'
 
 export type DataTableProps = {
   doc: ProjectDoc
+  // A role that may not change the game (#489, beslut C efter prototyp 35): the table is read,
+  // searched, sorted, filtered and downloaded, and nothing in it is written.
+  reading?: boolean
   // The game this table is of, when it was opened from one. It is what a width the designer set
   // herself is remembered under (#46): a width is a view and not the project (L4), so it lives in
   // her browser — but it is a view of *these* columns, and a column called `body` in one game says
@@ -174,7 +177,7 @@ export function markCut(box: Element): void {
 
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
 // This is where the designer already lives; a change here reaches every copy of the card.
-export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, onRenameField, onProse, assetBase, onUpload, onSymbol, compareWith, onStopCompare }: DataTableProps) {
+export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, onRenameField, onProse, assetBase, onUpload, onSymbol, compareWith, onStopCompare, reading = false }: DataTableProps) {
   const t = useT()
   // The one channel everything on a screen speaks in (#7): a column that moved under the focus
   // says so here rather than in a live region this table made for itself.
@@ -1120,39 +1123,44 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             {t('table.filter.clear')}
           </button>
         )}
-        <CrownBox name={t('table.import.box')} open={importing} onToggle={() => setImporting(!importing)} boxRef={importBox} end />
+        <CrownBox name={t(reading ? 'table.export.box' : 'table.import.box')} open={importing} onToggle={() => setImporting(!importing)} boxRef={importBox} end />
       </Crown>
       {importing && (
-        <CrownDrawer label={t('table.import.box')} opener={importBox} onClose={() => setImporting(false)}>
+        <CrownDrawer label={t(reading ? 'table.export.box' : 'table.import.box')} opener={importBox} onClose={() => setImporting(false)}>
           <div className="byd-data-tools">
             {/* The control is the receiver (#292, #291 variant B): the data file is let go on the
                 thing that takes it, and there is no second box beside it and no drop over the
                 whole Data tab. Both halves of the drag are cancelled, because a file let go
                 anywhere the page does not catch it is the browser leaving the editor to open the
                 CSV as a page of its own. */}
-            <label
-              data-over={csvOver ? 'true' : undefined}
-              onDragOver={(event) => {
-                event.preventDefault()
-                setCsvOver(true)
-              }}
-              onDragLeave={() => setCsvOver(false)}
-              onDrop={(event) => {
-                event.preventDefault()
-                setCsvOver(false)
-                dropFile([...(event.dataTransfer.files ?? [])])
-              }}
-            >
-              {t('table.import')}
-              <input className="byd-offscreen" type="file" accept={CSV_ACCEPT} aria-label={t('table.import')} aria-describedby={noteId} onChange={(event) => importFile(event.target.files?.[0])} />
-            </label>
-            {/* What an import costs is import's own warning (#36). It stands where it is read —
-                after the control it warns about, before the one it says nothing about — and it is
-                bound to that control besides, so a reader who never sees the two standing next to
-                each other hears the warning as part of the thing that carries it. It came with
-                the pair into the box rather than staying over the table as a band of its own,
-                which is what #130 measured 189 px of. */}
-            <span id={noteId}>{t('table.import.note')}</span>
+            {/* A reader downloads the cards and never replaces them (#489). */}
+            {!reading && (
+              <>
+                <label
+                  data-over={csvOver ? 'true' : undefined}
+                  onDragOver={(event) => {
+                    event.preventDefault()
+                    setCsvOver(true)
+                  }}
+                  onDragLeave={() => setCsvOver(false)}
+                  onDrop={(event) => {
+                    event.preventDefault()
+                    setCsvOver(false)
+                    dropFile([...(event.dataTransfer.files ?? [])])
+                  }}
+                >
+                  {t('table.import')}
+                  <input className="byd-offscreen" type="file" accept={CSV_ACCEPT} aria-label={t('table.import')} aria-describedby={noteId} onChange={(event) => importFile(event.target.files?.[0])} />
+                </label>
+                {/* What an import costs is import's own warning (#36). It stands where it is read —
+                    after the control it warns about, before the one it says nothing about — and it is
+                    bound to that control besides, so a reader who never sees the two standing next to
+                    each other hears the warning as part of the thing that carries it. It came with
+                    the pair into the box rather than staying over the table as a band of its own,
+                    which is what #130 measured 189 px of. */}
+                <span id={noteId}>{t('table.import.note')}</span>
+              </>
+            )}
             {importError && <span role="alert">{importError}</span>}
             {replacing && (
               <Question
@@ -1588,6 +1596,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       what `position: relative` is on, so it stays outside this box. */}
                   <div className="byd-data-lane">
                   <input
+                    readOnly={reading}
                     type={f === 'antal' ? 'number' : 'text'}
                     min={f === 'antal' ? 0 : undefined}
                     step={f === 'antal' ? 1 : undefined}

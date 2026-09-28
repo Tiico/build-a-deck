@@ -13,7 +13,7 @@ import { idsOnFace } from './groups.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { freeIconName, svgBytes, symbolName, type GameSymbol } from './symbols.js'
 import type { EditorMessage, Presence } from '@byd/server'
-import { canEdit, type Role } from '@byd/server/doc'
+import { canEdit, canStartTables, type Role } from '@byd/server/doc'
 import { translate, type Key, type T } from '../i18n/index.js'
 import { UNDO_STEPS, whatOf } from './undo.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
@@ -352,6 +352,11 @@ export class ProjectClient {
   // editor assumes it may: a project without accounts is everyone's.
   get mayEdit(): boolean {
     return this.role === null || canEdit(this.role)
+  }
+
+  // Whether this account may start and run tables (D3): a tester may, a viewer may not (#489).
+  get mayStartTables(): boolean {
+    return this.role === null || canStartTables(this.role)
   }
 
   // The door for everything that sends bytes before it edits (#489): a file chosen by a role that

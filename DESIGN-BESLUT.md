@@ -1029,6 +1029,14 @@ Behörigheter är en modell, inte ett fält: ägare, medredigerare, testledare, 
 En inbjudan mejlas till en adress, lever en vecka och går att använda en gång. Den säger ingenting om spelet förrän den använts, så en vilsen länk berättar inget för en främling. Den som följer den medan hen är inloggad går med i den roll den nämner och landar i editorn.
 Ytan prototypades i tre former: en panel från editorns huvud, ett ark på spelets kort, och de som är inne som dörren. Valet blev det sista: vilka som är inne nu och vilka som får vara med är samma fråga, så en lista svarar på den, med de närvarande överst.
 Ett projekt från före konton tillhör fortfarande ingen och är öppet för alla, som det alltid varit.
+Läsläget, prototypat och beslutat 2026-09-28 (#489, beslut C efter prototyp 35):
+En roll som inte får ändra spelet möter ett läsband under huvudet, på varje flik: vad rollen får, och att den ber ägaren om rätten att ändra.
+Det som bara ändrar ritas inte alls: verktygsraden, lägg till och ta bort, uppladdning, dragpunkterna, «Ta tillbaka» och «Spara».
+Det som bär ett värde står kvar som ett värde, skrivskyddat eller avstängt, och läses utan ruta att skriva i.
+Det som läser lever som förut: sökning, zoom, Ögon, flikarna, historiken, jämförelsen, CSV-exporten och valet av kort och lager; testledaren startar dessutom bord.
+Ett tomt bibliotek säger vad spelet har, aldrig hur man lägger till, och symbolbiblioteket visas inte, eftersom dess enda verb är att ta in.
+Arbetsytan står på ett dämpat, randigt papper, och ett kortkommando utan något att göra, som Ctrl+S, svaras i bandet med «Läsläge: inget att spara».
+Klienten vägrar dessutom varje redigering och skickar inga filer för en sådan roll, så en gest som gränssnittet missat ändrar ändå ingenting och huvudet säger aldrig «Osparat».
 Återuppkoppling, byggt 2026-09-08:
 Ett brutet socket kopplar upp sig igen av sig självt, med allt längre väntan mellan försöken så en nere server inte hamras, och aldrig så länge att någon sitter och väntar.
 Det som skrivs medan linjen är borta stannar i editorn och skickas när den är tillbaka, i den ordning det skrevs. Aktören lämnar över sitt dokument på den nya förbindelsen, så ingenting behöver frågas efter.

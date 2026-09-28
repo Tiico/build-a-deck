@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import type { Motif } from '@byd/template'
 import type { ZoneBeside } from '@byd/protocol'
@@ -218,6 +218,7 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
     return () => window.removeEventListener('keydown', onKey)
   }, [])
   return (
+    <Reading.Provider value={!client.mayEdit}>
     <div className="byd-setup" data-setup-editor>
       <div className="byd-setup-side">
         <SeatsPanel client={client} setup={setup} />
@@ -273,7 +274,7 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
               {selectedZone.kind !== 'pile' ? ` · ${Math.round(selectedZone.geometry.w)} × ${Math.round(selectedZone.geometry.h)} mm` : ' mm'}
             </span>
           )}
-          <span>{t('setup.hint')}</span>
+          {client.mayEdit && <span>{t('setup.hint')}</span>}
           <Help topic={t('setup.help.topic')}>
             <p>{t('setup.help.resize')}</p>
             <p>{t('setup.help.keys')}</p>
@@ -338,9 +339,10 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
           Den står efter kolumnen den ersätter och inte före: tabbordningen och läsordningen är
           DOM:ens, och panelen läses där spelararket hade stått. */}
       {selectedZone?.kind === 'pile' && (
-        <ZoneActions doc={doc} zone={selectedZone} onPatch={(patch, gesture) => client.patchZone(selectedZone.id, patch, gesture)} onClose={() => close(selectedZone)} />
+        <ZoneActions doc={doc} zone={selectedZone} onPatch={(patch, gesture) => client.patchZone(selectedZone.id, patch, gesture)} onClose={() => close(selectedZone)} reading={!client.mayEdit} />
       )}
     </div>
+    </Reading.Provider>
   )
 }
 
@@ -353,6 +355,10 @@ function fixed(setup: Setup, zone: Zone, t: T): string | null {
   if (zone.id === setup.deckZone) return t('setup.fixed.deck')
   return null
 }
+
+// Whether the table is read rather than written (#489): what a zone is stays there to read, and
+// nothing in it takes a keystroke.
+const Reading = createContext(false)
 
 // The knob the recipe still owns: who sits at the table, and what each seat keeps count of.
 function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) {
@@ -381,7 +387,7 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
               was eight, so the two counts a designer most needed to look at — the ones where an
               edge first carries two seats (K18) — were the two nobody could reach. */}
           {Array.from({ length: MAX_PLAYERS }, (_, i) => i + 1).map((n) => (
-            <button key={n} type="button" className="byd-choice" aria-pressed={recipe.players === n} onClick={() => turn({ players: n })}>
+            <button key={n} type="button" className="byd-choice" aria-pressed={recipe.players === n} disabled={!client.mayEdit} onClick={() => turn({ players: n })}>
               {n}
             </button>
           ))}
@@ -404,9 +410,9 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
           </div>
           {recipe.counters.map((c, i) => (
             <div key={i} className="byd-setup-counter">
-              <input aria-label={t('setup.counter.name', { n: i + 1 })} value={c.name} {...typing.visit} onChange={(e) => setCounter(i, { name: e.target.value })} />
+              <input aria-label={t('setup.counter.name', { n: i + 1 })} value={c.name} readOnly={!client.mayEdit} {...typing.visit} onChange={(e) => setCounter(i, { name: e.target.value })} />
               <span>{t('setup.counter.from')}</span>
-              <input aria-label={t('setup.counter.start', { n: i + 1 })} type="number" value={c.start} {...typing.visit} onChange={(e) => setCounter(i, { start: Math.trunc(Number(e.target.value) || 0) })} />
+              <input aria-label={t('setup.counter.start', { n: i + 1 })} type="number" value={c.start} readOnly={!client.mayEdit} {...typing.visit} onChange={(e) => setCounter(i, { start: Math.trunc(Number(e.target.value) || 0) })} />
               <button type="button" aria-label={t('setup.counter.remove', { n: i + 1 })} onClick={() => turn({ counters: recipe.counters.filter((_, j) => j !== i) })}>
                 ×
               </button>
@@ -596,6 +602,7 @@ function ZoneRow({
   onHold(id: string | null): void
 }) {
   const t = useT()
+  const reading = useContext(Reading)
   const why = fixed(setup, zone, t)
   const open = selected === zone.id
   const deck = setup.deckZone === zone.id
@@ -618,7 +625,15 @@ function ZoneRow({
           </span>
         )}
       </div>
-      {open && <ZoneProps zone={zone} setup={setup} rows={rows} why={why} onPatch={(patch, gesture) => onPatch(zone.id, patch, gesture)} onDeck={() => onDeck(zone.id)} onHold={onHold} />}
+      {open &&
+        (reading ? (
+          // A reader reads the zone's properties and writes none of them (#489).
+          <fieldset className="byd-reading-set" disabled>
+            <ZoneProps zone={zone} setup={setup} rows={rows} why={why} onPatch={(patch, gesture) => onPatch(zone.id, patch, gesture)} onDeck={() => onDeck(zone.id)} onHold={onHold} />
+          </fieldset>
+        ) : (
+          <ZoneProps zone={zone} setup={setup} rows={rows} why={why} onPatch={(patch, gesture) => onPatch(zone.id, patch, gesture)} onDeck={() => onDeck(zone.id)} onHold={onHold} />
+        ))}
     </li>
   )
 }

@@ -268,6 +268,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const deckMotifs = useMemo(() => previewMotifs(motifs, http, cropped), [motifs, http, cropped])
 
   const line = useLineState(client?.lineDown ?? false)
+  // What the reading band has just answered a shortcut with; gone after a moment (#489).
+  const [readingSaid, setReadingSaid] = useState<string | null>(null)
+  useEffect(() => {
+    if (readingSaid === null) return
+    const timer = setTimeout(() => setReadingSaid(null), 3000)
+    return () => clearTimeout(timer)
+  }, [readingSaid])
+  const sayReading = (text: string) => setReadingSaid(text)
   if (!projectId) return <StatusNotice notice={noticeFor('missing', 'editor', t)} surface="page" links={links} />
   if (fault === 'unauthorized') {
     // Not logged in (G1): to the login card and back here after.
@@ -390,7 +398,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         // The measure belongs to the template's image element and one card's departure to the
         // deck (E1), so the wall changes two different things — but they are judged in one place,
         // because the wall is where the whole deck is visible at once.
-        onFraming={(cardRef, field, framing) => client?.setFraming(cardRef, field, framing)}
+        {...(client.mayEdit ? { onFraming: (cardRef: string, field: string, framing: Parameters<typeof client.setFraming>[2]) => client.setFraming(cardRef, field, framing) } : {})}
         // One check mended across the whole deck (#233). Every patch carries the same gesture, so
         // the edits land as one version and one step back: a designer who presses this once and
         // changes her mind presses undo once.
@@ -400,17 +408,22 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         }}
         // The empty game's two doors (#476): the first card is made here and chosen, and the front
         // is drawn in Mall.
-        onAddCard={() => {
-          const cardRef = nextCardRef(doc)
-          client.addRow(cardRef, { title: '', antal: 1 })
-          setRow(cardRef)
-        }}
+        {...(client.mayEdit
+          ? {
+              onAddCard: () => {
+                const cardRef = nextCardRef(doc)
+                client.addRow(cardRef, { title: '', antal: 1 })
+                setRow(cardRef)
+              },
+            }
+          : {})}
         onOpenTemplate={() => setStage('canvas')}
       />
     ),
     template: () => (
       <TemplateCanvas
         stage={canvasStage}
+        reading={!client.mayEdit}
         doc={doc}
         assetBase={http}
         motifs={deckMotifs}
@@ -456,6 +469,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     table: () => (
       <DataTable
         doc={doc}
+        reading={!client.mayEdit}
         project={projectId ?? undefined}
         assetBase={http}
         onUpload={(file) => client.uploadAsset(file, 'image', t)}
@@ -478,7 +492,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     symbols: () => <SymbolPanel doc={doc} client={client} assetBase={http} />,
     // The pictures the deck is drawn from, in one place (#222). The table's own image strip is
     // what is in use; this is what the game has.
-    media: () => <MediaPanel doc={doc} assetBase={http} motifs={deckMotifs} onCrop={(hash, crop) => client.setCrop(hash, crop)} saving={client.cropsInFlight} onAdd={(file) => client.addPicture(file, t)} onRemove={(hash) => client.removePicture(hash)} />,
+    media: () => <MediaPanel doc={doc} assetBase={http} motifs={deckMotifs} onCrop={(hash, crop) => client.setCrop(hash, crop)} saving={client.cropsInFlight} {...(client.mayEdit ? { onAdd: (file: File) => client.addPicture(file, t), onRemove: (hash: string) => client.removePicture(hash) } : {})} />,
     rules: () => <RulesPanel doc={doc} client={client} assetBase={http} />,
     // Bord is the home for both the game's board vocabulary and its running tables (#19, C4).
     // One panel and not two stacked (#126): the list of running tables stands in the setup's third
@@ -499,7 +513,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
 
   // Saving and reaching the table are the same two buttons wherever they stand: in the header on
   // a desk, pinned to the end of the stage strip below one. They are written once.
-  const saveButton = (
+  // Nothing to save for a role that may not change the game (#489): the button is not drawn, and
+  // the shortcut is answered in the reading band.
+  const saveButton = !client.mayEdit ? null : (
     // `aria-disabled` and not `disabled` (#477): a button that disables itself while it has the
     // focus hands the focus to <body>, and the next Tab starts from the top of the page. `save`
     // already refuses what there is nothing to do about.
@@ -512,7 +528,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // it believing she was changing something started a session with a room code guests could join.
   // The name follows the state, in both what it does and what it is doing.
   const tableAction = table ? (updating ? 'editor.updatingTable' : 'editor.updateTable') : updating ? 'editor.startingTable' : 'editor.startTable'
-  const updateButton = (
+  // A tester runs tables and a viewer does not (D3, #489).
+  const updateButton = !client.mayStartTables ? null : (
     <button type="button" className="byd-editor-primary byd-primary" data-table-kind={table ? table.kind : 'none'} aria-disabled={updating} aria-busy={updating} onClick={() => void updateTable()}>
       {t(tableAction)}
     </button>
@@ -520,7 +537,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
 
   return (
     <>
-    <div className="byd-editor" data-page="editor" data-mode={mode} data-room={room} {...(fault ? { inert: true } : {})}>
+    <div className="byd-editor" data-page="editor" data-mode={mode} data-room={room} {...(!client.mayEdit ? { 'data-readonly': '' } : {})} {...(fault ? { inert: true } : {})}>
       <header>
         <a
           ref={leaveRef}
@@ -565,7 +582,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         {/* What just happened, in the channel routine news belongs in. It is read out politely by
             `useConfirmation` and stands here only while it is still what just happened. */}
         {confirmation.text && <span className="byd-editor-confirm">{confirmation.text}</span>}
-        <EditorChords client={client} onSave={() => void save()} onConfirm={confirmation.confirm} />
+        <EditorChords client={client} onSave={() => void save()} onConfirm={confirmation.confirm} onReading={() => sayReading(t('editor.reading.nothing'))} />
         {/* "Nytt bord" and the shortcut beside "Uppdatera bordet" are two ways to the tables that
             the Bord stage also holds, so below the desk they leave the header rather than being
             squeezed into it: nothing they reach becomes unreachable. */}
@@ -575,7 +592,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             {/* «Nytt bord» is in the caret's menu (beslut 2026-09-27, #477): the header holds the
                 errand the primary names, and a second table is the rarer, deliberate choice. */}
             {updateButton}
-            <TableMenu client={client} server={params.get('server')} onShowTables={() => setStage('tables')} onNewTable={table ? () => void startTable() : undefined} />
+            {client.mayStartTables && <TableMenu client={client} server={params.get('server')} onShowTables={() => setStage('tables')} onNewTable={table ? () => void startTable() : undefined} />}
           </>
         )}
       </header>
@@ -650,10 +667,24 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           />
         </div>
       )}
+      {/* The reading band (#489, beställarens beslut C efter prototyp 35): the role line become
+          a band that says, once and in the same place on every tab, that this is read-only and
+          why — and the one sentence a shortcut that has nothing to do is answered with. The tab
+          panels point to it, so a keyboard entering one hears the reason too (L12). */}
       {!client.mayEdit && (
-        <p className="byd-editor-readonly" role="status" data-role-note>
-          {t(client.role === 'tester' ? 'editor.role.tester' : 'editor.role.viewer')}
-        </p>
+        <div className="byd-editor-readonly" id="byd-editor-reading" role="note" aria-label={t('editor.reading')} data-role-note>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
+            <path d="M1.5 3.5c2-1 4.5-1 6.5.5 2-1.5 4.5-1.5 6.5-.5v9c-2-1-4.5-1-6.5.5-2-1.5-4.5-1.5-6.5-.5z" />
+            <path d="M8 4v9" />
+          </svg>
+          <div>
+            <b>{t('editor.reading')}</b> — {t(client.role === 'tester' ? 'editor.role.tester' : 'editor.role.viewer')}
+            <small>{t('editor.reading.ask')}</small>
+          </div>
+          <span className="byd-editor-reading-said" role="status">
+            {readingSaid ?? ''}
+          </span>
+        </div>
       )}
       {over && <PanelDoor opener={over === 'history' ? revRef : hereRef} onClose={() => setOver(null)} />}
       {shareOpen && projectId && <SharePanel http={http} project={projectId} here={client.here} onClose={() => setOver(null)} draft={shareDraft} onDraft={setShareDraft} />}
@@ -687,7 +718,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         {(stages ?? MODES).map(([key]) => (
           // One panel per tab, so every tab's `aria-controls` names a panel that exists; only the
           // open one carries content, so switching mode still mounts a single canvas.
-          <div key={key} id={panelId(key)} role="tabpanel" aria-labelledby={tabId(key)} tabIndex={0} hidden={(stages ? here : mode) !== key}>
+          <div key={key} id={panelId(key)} role="tabpanel" aria-labelledby={tabId(key)} {...(!client.mayEdit ? { 'aria-describedby': 'byd-editor-reading' } : {})} tabIndex={0} hidden={(stages ? here : mode) !== key}>
             {(stages ? here === key : mode === key) && panel[modeOf(key as Stage)]()}
           </div>
         ))}
@@ -779,10 +810,10 @@ function useConfirmation(): { text: string | null; confirm(text: string): void }
 // listener is hung once the editor has a project to act on rather than by a hook that would have
 // to run before there is one. The callbacks are read through a ref so the editor's every keystroke
 // does not swap the listener out.
-function EditorChords({ client, onSave, onConfirm }: { client: ProjectClient; onSave(): void; onConfirm(text: string): void }) {
+function EditorChords({ client, onSave, onConfirm, onReading }: { client: ProjectClient; onSave(): void; onConfirm(text: string): void; onReading(): void }) {
   const t = useT()
-  const latest = useRef({ client, onSave, onConfirm, t })
-  latest.current = { client, onSave, onConfirm, t }
+  const latest = useRef({ client, onSave, onConfirm, onReading, t })
+  latest.current = { client, onSave, onConfirm, onReading, t }
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return
@@ -792,6 +823,9 @@ function EditorChords({ client, onSave, onConfirm }: { client: ProjectClient; on
       if (chord !== 'save' && isTyping(event.target) && !passedToEditor(event)) return
       event.preventDefault()
       const now = latest.current
+      // A role that may not change the game has nothing to save and no step to take (#489): the
+      // shortcut is answered in the reading band, rather than doing nothing without a word.
+      if (!now.client.mayEdit) return now.onReading()
       if (chord === 'save') return now.onSave()
       const what = chord === 'undo' ? now.client.undo() : now.client.redo()
       // Nothing behind, or nothing ahead: the editor says nothing rather than claiming it undid.

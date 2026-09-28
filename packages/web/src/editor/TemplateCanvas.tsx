@@ -106,12 +106,15 @@ export type TemplateCanvasProps = {
   // Uploading is the client's work, so the canvas asks and is told the hash the bytes were
   // filed under.
   onAddPicture?: ((file: File) => Promise<string>) | undefined
+  // A role that may not change the game (#489, beslut C efter prototyp 35): every layer is read
+  // and chosen as before, and none is taken hold of, moved, renamed, locked or removed.
+  reading?: boolean
 }
 
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, onPickRow, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont, onCatalogFont, onAddPicture }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, onPickRow, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont, onCatalogFont, onAddPicture, reading = false }: TemplateCanvasProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
@@ -193,7 +196,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   }
   // The key is the card's again only once the question is answered: while it stands, the focus is
   // on one of its answers, and a second Delete there would ask about the same element twice.
-  useElementKeys(asking === null ? el : undefined, ask, setRefused)
+  useElementKeys(asking === null && !reading ? el : undefined, ask, setRefused)
   // What a deletion is said in when it has happened. The editor has two live regions and no
   // surface makes a third (StatusLive), so the canvas asks for the polite one by name.
   const say = useSay()
@@ -251,7 +254,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
         <div className="byd-canvas-strip">
           <label className="byd-canvas-group-column">
             {t('canvas.groupBy')}
-            <select value={column ?? ''} onChange={(event) => onGroupColumn(event.target.value === '' ? null : event.target.value)}>
+            <select value={column ?? ''} disabled={reading} onChange={(event) => onGroupColumn(event.target.value === '' ? null : event.target.value)}>
               <option value="">{t('canvas.groupBy.none')}</option>
               {fields.map((f) => (
                 <option key={f} value={f}>
@@ -300,12 +303,16 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             // The list reads top-most first; the base list is drawn back to front. One is the other
             // turned around, and that is the only place the two orders meet.
             // The order is the base's, shared by every group, so it is only moved from the base.
-            {...(group ? {} : { onReorder: (id: string, to: number) => onReorder(id, faceTemplate.base.length - 1 - to) })}
-            onLock={(id, locked) => {
-              setRefused(null)
-              onLock(id, locked)
-            }}
-            onRename={onRename}
+            {...(group || reading ? {} : { onReorder: (id: string, to: number) => onReorder(id, faceTemplate.base.length - 1 - to) })}
+            {...(reading
+              ? {}
+              : {
+                  onLock: (id: string, locked: boolean) => {
+                    setRefused(null)
+                    onLock(id, locked)
+                  },
+                  onRename,
+                })}
             markOf={(id) => markOf(panel, column, group, id, t)}
             conditionOf={(one) => (one.kind === 'if' ? t('canvas.if.row', { condition: conditionWords(one.when, t), n: shownCards.filter((r) => holds(one.when, r.fields)).length }) : null)}
             pictureName={(hash) => doc.pictures?.[hash]?.name ?? t('canvas.props.picture.unnamed')}
@@ -322,6 +329,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             whole sentence was six lines in this 220 px column — a third of the list's height,
             two layer rows that did not fit. In a group the order is the base's and there is
             nothing to move, so the line says that and offers no help about moving. */}
+        {!reading && (
         <div className="byd-canvas-hint byd-help-row">
           <span>{t(group ? 'canvas.hint.group' : 'canvas.hint.base')}</span>
           {!group && (
@@ -332,6 +340,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             </Help>
           )}
         </div>
+        )}
       </aside>
       )}
       {shows('canvas') && (
@@ -365,7 +374,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             motifs={motifs}
             selectedElement={selectedElement}
             onSelectElement={onSelectElement}
-            overlay={<DragLayer grid={grid ? gridStep(zoom.scale) : null} conditions={conditionFrames(shown, rowData, t)} onSelectCondition={onSelectElement} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} point={pointAt} onPoint={setPointAt} />}
+            overlay={<DragLayer grid={grid ? gridStep(zoom.scale) : null} conditions={conditionFrames(shown, rowData, t)} onSelectCondition={onSelectElement} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} point={pointAt} onPoint={setPointAt} reading={reading} />}
           />
         </main>
           <ZoomBand zoom={zoom} />
@@ -427,6 +436,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       </div>
       )}
       {shows('props') && !(stage === null && folded) && (
+      <Reading.Provider value={reading}>
       <SectionsOpen.Provider value={sections}>
       <aside className="byd-canvas-props" id={PROPS_COLUMN}>
         <h2>{layer ? t('canvas.props.of', { id: layer.element.id }) : t('canvas.props')}</h2>
@@ -471,9 +481,17 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
         )}
         {/* The game's typefaces are the game's and not a layer's (#478): they stand here while no
             layer is chosen, and give the chosen layer's properties the whole column. */}
-        {!layer && <FontShelf doc={doc} onFontFile={onFontFile} onFontLicence={onFontLicence} onRemoveFont={onRemoveFont} onOpenCatalog={() => setCatalog(true)} />}
+        {!layer &&
+          (reading ? (
+            <fieldset className="byd-reading-set" disabled>
+              <FontShelf doc={doc} onFontFile={onFontFile} onFontLicence={onFontLicence} onRemoveFont={onRemoveFont} onOpenCatalog={() => setCatalog(true)} />
+            </fieldset>
+          ) : (
+            <FontShelf doc={doc} onFontFile={onFontFile} onFontLicence={onFontLicence} onRemoveFont={onRemoveFont} onOpenCatalog={() => setCatalog(true)} />
+          ))}
       </aside>
       </SectionsOpen.Provider>
+      </Reading.Provider>
       )}
     </div>
   )
@@ -791,7 +809,7 @@ const ARMS: readonly Arm[] = ['in', 'out']
 // the card's own millimetres. It draws no card content — the compiler behind it is still the one
 // renderer — and it holds the pointer with pointer capture, so a fast drag or a trackpad that
 // leaves the box keeps moving the element it grabbed.
-function DragLayer({ boxes, conditions, onSelectCondition, grid, selected, onSelect, onPatch, onCallOff, onRefused, point, onPoint }: { boxes: BoxElement[]; conditions: ConditionFrame[]; onSelectCondition(id: string): void; grid: number | null; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch']; onCallOff: TemplateCanvasProps['onCallOff']; onRefused(id: string): void; point: number | null; onPoint(at: number | null): void }) {
+function DragLayer({ boxes, conditions, onSelectCondition, grid, selected, onSelect, onPatch, onCallOff, onRefused, point, onPoint, reading = false }: { boxes: BoxElement[]; conditions: ConditionFrame[]; onSelectCondition(id: string): void; grid: number | null; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch']; onCallOff: TemplateCanvasProps['onCallOff']; onRefused(id: string): void; point: number | null; onPoint(at: number | null): void; reading?: boolean }) {
   const t = useT()
   const say = useSay()
   const layer = useRef<HTMLDivElement | null>(null)
@@ -818,7 +836,7 @@ function DragLayer({ boxes, conditions, onSelectCondition, grid, selected, onSel
 
   // A shape of the designer's own (L26): which element wears points, and which point the
   // keyboard is to be put on after one has been taken away.
-  const own = boxes.find((b) => b.id === selected && b.kind === 'shape' && b.points !== undefined && !b.locked) as (BoxElement & Shape) | undefined
+  const own = boxes.find((b) => b.id === selected && b.kind === 'shape' && b.points !== undefined && !b.locked && !reading) as (BoxElement & Shape) | undefined
   // The point whose handles are out. A point that has since been taken away leaves none behind.
   const chosen = point !== null && point < (own?.points ?? []).length ? point : null
   const ownPointsOf = (box: BoxElement): Point[] => ('points' in box && box.points ? box.points : [])
@@ -933,6 +951,8 @@ function DragLayer({ boxes, conditions, onSelectCondition, grid, selected, onSel
     // A locked layer is still a layer you can point at — pointing selects it, so its properties
     // can be read and its lock found — but the pointer never takes hold of it (L15).
     if (box.locked) return onRefused(box.id)
+    // Nor does it for a reader (#489): the band over the page has already said why, once.
+    if (reading) return
     const rect = layer.current?.getBoundingClientRect()
     if (!rect?.width) return
     // «Ytan flyttar, punkten formar» (L26). The fill drags the element like any other, but the
@@ -1071,6 +1091,7 @@ function DragLayer({ boxes, conditions, onSelectCondition, grid, selected, onSel
       // A locked layer is one the keyboard can stand on and read, and never one it takes hold of
       // (L15) — the same answer the pointer already gets, said in the same place.
       if (box.locked) return onRefused(box.id)
+      if (reading) return
       return setMoving({ id: box.id, gesture: grabs.begin(), from: { x: box.x, y: box.y } })
     }
     // The two steps the pointer already has, in the hand that has no pointer: half a millimetre,
@@ -1166,6 +1187,7 @@ function DragLayer({ boxes, conditions, onSelectCondition, grid, selected, onSel
           )}
           {box.id === selected &&
             !box.locked &&
+            !reading &&
             HANDLES.map((corner) => (
               <i
                 key={corner}
@@ -1761,6 +1783,9 @@ const LOCKED_NOTE = 'byd-props-locked-note'
 type SectionId = 'layout' | 'content' | 'text' | 'picture' | 'shape' | 'fill' | 'line' | 'effects'
 const OPEN_FROM_START: readonly SectionId[] = ['layout', 'content', 'text', 'picture', 'shape']
 const OPEN_KEY = 'byd.props-open'
+// Whether the panel is read rather than written (#489): its rows stand in a disabled fieldset, so
+// every value is still there to read and none of them takes a keystroke.
+const Reading = createContext(false)
 const SectionsOpen = createContext<{ open: ReadonlySet<string>; toggle(id: SectionId): void }>({ open: new Set(OPEN_FROM_START), toggle: () => undefined })
 function useSectionsOpen(): { open: ReadonlySet<string>; toggle(id: SectionId): void } {
   const [open, setOpen] = useState<ReadonlySet<string>>(() => {
@@ -1790,6 +1815,7 @@ function useSectionsOpen(): { open: ReadonlySet<string>; toggle(id: SectionId): 
 
 function Section({ id, name, summary, children }: { id: SectionId; name: string; summary?: ReactNode; children: ReactNode }) {
   const { open, toggle } = useContext(SectionsOpen)
+  const reading = useContext(Reading)
   const rows = useId()
   const shown = open.has(id)
   return (
@@ -1802,7 +1828,13 @@ function Section({ id, name, summary, children }: { id: SectionId; name: string;
       </h3>
       {shown && (
         <div className="byd-props-rows" id={rows}>
-          {children}
+          {reading ? (
+            <fieldset className="byd-reading-set" disabled>
+              {children}
+            </fieldset>
+          ) : (
+            children
+          )}
         </div>
       )}
     </section>

@@ -149,6 +149,7 @@ export function HistoryPanel({ client, onClose, onRestored, onCompare }: History
                               aria-label={t('history.name.of', { rev: v.rev })}
                               placeholder={t('history.name.placeholder')}
                               defaultValue={v.label ?? ''}
+                              readOnly={!client.mayEdit}
                               onBlur={(e) => void name(v.rev, e.target.value.trim() || null)}
                               // Enter is how a name is said to be finished (#477); leaving the
                               // field still does the same, so a name is never lost to a click.
@@ -164,9 +165,11 @@ export function HistoryPanel({ client, onClose, onRestored, onCompare }: History
                               <button type="button" aria-label={t('history.compare.of', { rev: v.rev })} onClick={() => onCompare(v.rev, v.label)}>
                                 {t('history.compare')}
                               </button>
-                              <button type="button" aria-label={t('history.restore.of', { rev: v.rev })} onClick={() => void restore(v.rev)}>
-                                {t('history.restore')}
-                              </button>
+                              {client.mayEdit && (
+                                <button type="button" aria-label={t('history.restore.of', { rev: v.rev })} onClick={() => void restore(v.rev)}>
+                                  {t('history.restore')}
+                                </button>
+                              )}
                             </>
                           )}
                         </div>
