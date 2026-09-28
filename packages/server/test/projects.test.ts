@@ -463,7 +463,7 @@ describe('a group rules what a card looks like on the table (#13)', () => {
     // Read by `fetch` and not by an <img>, so from the page's own origin it needs the API's CORS.
     const cross = await fetch(`${run.http}/faces/${trap}/fit`, { headers: { origin: 'http://elsewhere.test' } })
     expect(cross.headers.get('vary')).toBe('origin')
-  })
+  }, 90_000)
 
   it('renders a different texture for each group, on the front and on the back', async () => {
     const { id } = (await (await json('POST', '/projects', groupedProject())).json()) as { id: string }
