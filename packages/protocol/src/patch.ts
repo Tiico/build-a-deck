@@ -64,6 +64,11 @@ const zoneBase = {
   // they are in the rulebook — so every view gets them as they stand.
   actions: z.array(ZoneAction).optional(),
   owner: SeatId.optional(),
+  // Who the zone shows its cards to (B6): everyone, its owner, or nobody. It is the setup's and no
+  // secret, so every view carries it; what it decides about a face is still the face's rule. A
+  // phone reads it to tell a card the table sees — one it may hold up for the room (#518) — from
+  // one that is its own to know.
+  visibility: z.enum(['all', 'owner', 'none']),
   geometry: Geometry,
   // Created during play by stacking (K1); dissolves when one component remains.
   dynamic: z.boolean(),

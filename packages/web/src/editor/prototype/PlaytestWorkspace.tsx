@@ -77,7 +77,7 @@ export default function PlaytestWorkspace({ doc, revision, http }: Props) {
   const snapshot: Snapshot = useMemo(() => ({
     seq: 0, seat: 'A', floor: 'table', ended: false, played: false, undo: null, rewind: null,
     seats: doc.setup.seats.map((s, i) => ({ id: s, name: ['Ada', 'Bo', 'Cy'][i] ?? null, edge: null })),
-    zones: [{ id: 'draw', kind: 'pile', name: 'Dra', geometry: { x: 0, y: 0, w: 0, h: 0, rot: 0 }, dynamic: false, mode: 'count', count: Math.max(0, run.rows.reduce((n, r) => n + Number(r.fields['antal'] ?? 1), 0) - Math.min(5, run.rows.length)) }],
+    zones: [{ id: 'draw', kind: 'pile', name: 'Dra', visibility: 'none', geometry: { x: 0, y: 0, w: 0, h: 0, rot: 0 }, dynamic: false, mode: 'count', count: Math.max(0, run.rows.reduce((n, r) => n + Number(r.fields['antal'] ?? 1), 0) - Math.min(5, run.rows.length)) }],
     components: run.rows.slice(0, 5).map(r => ({ id: r.id, type: { id: 'card.standard.63x88', version: 1 }, zone: 'hand:A', face: 'front', x: 0, y: 0, rot: 0, cardRef: r.id })),
   }), [run.rows, doc.setup.seats])
   const cardList = <div className="ux-card-list">{filtered.length ? filtered.map(r => <button key={r.id} aria-pressed={card?.id === r.id} onClick={() => select(r.id)}><span>{title(r)}</span><small>× {Number(r.fields['antal'] ?? 1)}</small></button>) : <p>Inga kort matchar. <button onClick={() => search('')}>Visa alla kort</button></p>}</div>

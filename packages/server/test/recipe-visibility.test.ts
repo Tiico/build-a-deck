@@ -18,7 +18,8 @@ import { setupFromProject } from '../src/setup.js'
 //
 // The `owner` case is pinned whole and on purpose. The recipe's area was `owner` until this
 // decision and the only thing that changed was that word, so the object below is, byte for byte,
-// the zone view a designer's own private area has always produced.
+// the zone view a designer's own private area has always produced — with the zone's visibility
+// named in it since #518 (B6), which every zone view carries.
 
 const registry = new TypeRegistry(STANDARD_TYPES)
 
@@ -57,6 +58,7 @@ describe('the area in front of a seat, as the other seat is told about it (#414)
       name: 'Framför A',
       geometry,
       dynamic: false,
+      visibility: 'all',
       owner: 'A',
       shortcut: { label: 'Framför mig', at: 'top' },
       order: [expect.any(String)],
@@ -69,7 +71,9 @@ describe('the area in front of a seat, as the other seat is told about it (#414)
 
   it('is the old private area again when the designer sets it back, byte for byte', () => {
     const { seen, geometry } = playIntoArea('owner')
-    const mine = { mode: 'count', id: 'mine:A', kind: 'area', name: 'Framför A', geometry, dynamic: false, owner: 'A', shortcut: { label: 'Framför mig', at: 'top' }, count: 1 }
+    // Since #518 every zone view also says who the zone shows its cards to (B6). That is the
+    // setup's and no secret, and it says nothing about what lies in the area.
+    const mine = { mode: 'count', id: 'mine:A', kind: 'area', name: 'Framför A', geometry, dynamic: false, visibility: 'owner', owner: 'A', shortcut: { label: 'Framför mig', at: 'top' }, count: 1 }
     // A count and nothing else. No `top`, no `back`, no `bottom`: the area says how much lies in
     // it and never what, which is what the felt draws as a number (decision B, #437).
     expect(zoneOf(seen('B'))).toEqual(mine)
