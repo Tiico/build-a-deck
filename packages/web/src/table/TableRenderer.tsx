@@ -125,6 +125,9 @@ export type TableRendererProps = {
   // A card tapped to be looked at (#485): on a screen with no pointer to rest on it, pointing
   // cannot say which card the eye is on, so a tap does.
   onPick?: ((c: VisibleComponentState) => void) | undefined
+  // Where «Titta» goes on a screen whose large view is the room's (#508): the TV holds a face it
+  // sees up over the felt for everyone. A back keeps K8's view, which is all a back has to say.
+  onShow?: ((c: VisibleComponentState) => void) | undefined
   size?: Size | undefined
   glideMs?: number | undefined
   // Room kept clear around the table when it is fitted, in table millimetres (L30, #316). The
@@ -254,7 +257,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, onPick, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, onPick, onShow, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -956,6 +959,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // the window's size, beside where the ring was asked for. A hidden pile's top is a stand-in the
   // view does not carry, so it is held up as itself.
   const look = (c: VisibleComponentState) => {
+    if (onShow && c.cardRef !== null && byId.has(c.id)) return onShow(c)
     if (!lifts || !ring) return setHeld(c)
     setPointed(null)
     setRead({ c, target: { kind: 'card', id: c.id }, at: { left: ring.x, right: ring.x, top: ring.y, bottom: ring.y }, standIn: !byId.has(c.id) })

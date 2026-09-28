@@ -752,6 +752,30 @@ describe('inspection (K8)', () => {
   })
 })
 
+// On the TV, «Titta» in the ring is for the room (#508): the screen hands a face it sees to the
+// room's own showing rather than K8's private view, and a back still goes to K8's view.
+describe('«Titta» in the ring on the TV shows the card to the room (#508)', () => {
+  it('hands a face-up card to `onShow` and holds a face-down one up as a back', () => {
+    vi.useFakeTimers()
+    const { view, faceUp, faceDown } = buildScene()
+    const shown: string[] = []
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={() => undefined} onShow={(c) => shown.push(c.id)} />)
+
+    fireEvent.pointerDown(document.querySelector(`[data-component="${faceUp}"]`)!, client(-390, -240))
+    act(() => vi.advanceTimersByTime(400))
+    fireEvent.pointerUp(screen.getByRole('button', { name: 'Titta' }), client(-390, -300))
+    expect(shown).toEqual([faceUp])
+    expect(document.querySelector('[data-inspect]')).toBeNull()
+
+    fireEvent.pointerDown(document.querySelector(`[data-component="${faceDown}"]`)!, client(-190, -90))
+    act(() => vi.advanceTimersByTime(400))
+    fireEvent.pointerUp(screen.getByRole('button', { name: 'Titta' }), client(-190, -150))
+    expect(shown).toEqual([faceUp])
+    expect(document.querySelector('[data-inspect]')!.getAttribute('data-face')).toBe('back')
+    vi.useRealTimers()
+  })
+})
+
 // The felt card is a control the keyboard names, so it carries no way back of its own (UX-37,
 // #82); the card held up by "Titta" is the big, quiet view that does.
 describe('a lost card held up by "Titta" (#82)', () => {

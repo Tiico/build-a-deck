@@ -1599,7 +1599,8 @@ Allt går i en separat efemär kanal och hamnar aldrig i loggen.
 
 Prototypat och byggt 2026-09-06, variant "mjuka markörer + speglade dragningar":
 Markörerna är prickar med namn, inte pilar, och en anslutnings pågående dragning speglas live på de andras bord — kortet lyfts, följer handen och bär namnbricka tills det släpps och loggen säger var det landade.
-Kanalen är ett `presence`-meddelande på samma WebSocket (`cursor`, `away`, `drag`, `drop`, `point`) som aktören vidarebefordrar till övriga anslutningar; avsändaren är anslutningens plats (null för en bordsskärm) och ett anslutnings-id.
+Kanalen är ett `presence`-meddelande på samma WebSocket (`cursor`, `away`, `drag`, `drop`, `point`, och sedan 2026-09-28 `show`) som aktören vidarebefordrar till övriga anslutningar; avsändaren är anslutningens plats (null för en bordsskärm) och ett anslutnings-id.
+`show` (#508) håller upp ett kort för rummet: det bär kortets id, och TV:n ritar det bara om dess egen vy bär kortets framsida (K8).
 Markörrörelser stryps till ~20 per sekund i klienten; en bruten anslutning ger de andra `drop` och `away`.
 Tillskrivningen behöver ingen kanal: aktivitetsraden bär `by`, så bordet låter kortet glöda i platsens färg när raden kommer.
 Överlägget ligger inne i bordsplanet, så det följer perspektivet i bordsläget.
@@ -1643,6 +1644,18 @@ Ett tryck på det lyfta kortet räknas bara om trycket började där, för klick
 Filtens ram bär lutningens `perspective`, och en `perspective` gör ramen till lådan som allt med `position: fixed` inuti den placeras i; under distansvyns rubrik hamnade därför både ringen och lyftet en rubrikhöjd under där de bads om, och lyftet gick ut över fönstrets nederkant.
 Det som ritas över filten i fönstrets koordinater räknas därför om till ramens (`fixedAt`), och `packages/e2e/test/table-read.spec.ts` mäter det på `/online`.
 Talen står i `packages/web/src/table/lift.ts` (`liftBox`); grinden är `packages/web/test/felt-lift.test.tsx`, som läser brödtexten och golvet ur K26:s modul och prövar gesterna.
+
+Reviderat 2026-09-28 (#508, beställarens beslut B, [prototyp](https://github.com/Tiico/build-a-deck/blob/745594d8a66a2a94271a5fb75dff47ac3057fb41/docs/ux-audits/2026-09-28/prototyper/508/README.md)): **på TV:n läser rummet ett kort genom «Visa för alla», över filten.**
+Panelen läste ingen: 177 px bred vid 1920 × 1080 är 8,5 px brödtext på tre meter, där K26:s golv är 24 px, och vid åtta platser gav spalten den 97 px.
+Prototypen breddade spalten till 544 px och nådde ändå inte golvet (462 px vid fyra platser, 417 vid åtta), och det kostade flödet, halva platserna och filtens kortsida (75 → 68 px vid fyra platser, 44 → 34 vid 1280 × 800).
+Filten är bunden av sin höjd och har rummet, så ett kort som hålls upp står **över filten**: så högt som filten ger efter en rad bildtext, högst 938 px (32 px brödtext): 672 px bred och 32 px brödtext vid 1920 × 1080, mätt på texturbilden i den byggda appen.
+Det säger vem som visar det («Ada visar · Duel», «Bordet visar» från TV:ns eget tangentbord), går av sig självt efter 15 sekunder (`SHOW_MS`) och tas ner med Escape eller ett tryck; ett nyare kort ersätter det.
+Vilan är orörd: panelen i spalten står kvar som ovan, och filten, platserna och flödet ritas som förut.
+Rummet väljer kortet på två sätt: telefonen skickar `show` (K6) med kortets id, och på TV:n själv gör både K16:s «Titta» och ringens «Titta» samma sak — på TV:n är den stora vyn rummets, och K8:s privata vy var privat för ingen.
+Ett kort TV:n ser nedvänt behåller K8:s vy, eftersom en baksida upphållen för rummet inte säger det något (K23).
+**TV:n visar bara vad den själv ser.** `show` bär ett id och inget annat, och skärmen slår upp det i sin egen ögonblicksbild och ritar det bara om den bär kortets framsida (`shownCard`), så ett meddelande aldrig kan visa ett kort på hand eller ett nedvänt.
+Telefonens knapp «Visa för alla» står i läsvyn för andras publika kort (#507); bordslägets lyft (#509) gäller inte på TV:n, som läser på det här sättet.
+Grindarna: `packages/web/test/tv-show.test.tsx` (kortets bredd mot K26:s TV-golv vid 1920 × 1080 med fyra och åtta platser, skrivbordets vid 1280 × 800, och spalten orörd), `presence.test.ts` (meddelandet, tiden och att bara ett uppvänt kort ritas), `tv-chrome.test.tsx`, `table-page.test.tsx` (en telefon visar, ett nedvänt kort ritas inte), `table-keyboard.test.tsx` och `table-renderer.test.tsx` («Titta» på TV:n, från panelen och från ringen).
 
 ### K9. Bordsvyns utseende: filtbord som renderare, sändningslayout som TV-omgivning (prototypat 2026-09-06)
 

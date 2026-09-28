@@ -6,6 +6,7 @@ import { TvChrome } from './TvChrome.js'
 import { useTableClient } from './useTableClient.js'
 import { previewOf, standingRewind } from './rewind.js'
 import { usePresence, useRecent } from './usePresence.js'
+import { useShowing } from './useShowing.js'
 import { useShuffles } from './shuffle.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { useFeltKeyboard } from './useFeltKeyboard.js'
@@ -68,7 +69,23 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   // The felt as controls (#2): the table screen plays as the table itself, so what it can reach
   // is what a table may see.
   const playable = view !== null && !view.rewind && !view.ended && client !== null
-  const felt = useFeltKeyboard(view, playable, { act: (intents) => (client ? client.send(...intents) : Promise.resolve({ ok: false, reason: 'not connected' })) })
+  // What the room's screen holds up for everyone (#508): a phone's «Visa för alla», or the table's
+  // own «Titta». Only the TV has the room in front of it; the felt's own screen keeps K8's view.
+  const shown = useShowing(view, mode === 'tv' ? presence.shown : null)
+  const felt = useFeltKeyboard(view, playable, {
+    act: (intents) => (client ? client.send(...intents) : Promise.resolve({ ok: false, reason: 'not connected' })),
+    look: mode === 'tv' ? shown.show : undefined,
+  })
+  const showing = shown.showing
+  const dismiss = shown.dismiss
+  useEffect(() => {
+    if (!showing) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.defaultPrevented) dismiss()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showing, dismiss])
   // The table screen acts as the table itself, so a line with no seat on it is its own (K14).
   useActivityLive(activity, view, null)
 
@@ -107,6 +124,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       camera={mode === 'tv' ? 'follow' : undefined}
       {...(sessionId ? { remember: `table:${sessionId}` } : {})}
       onInspect={mode === 'tv' ? setInspecting : undefined}
+      onShow={mode === 'tv' ? shown.show : undefined}
     />
   )
   const flags = activity.filter((l) => l.intent.v === 'flag').length
@@ -152,7 +170,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       {mode === 'tv' ? (
         // On a TV the rulebook goes into the header, where the way in already is: the two wanted
         // the same corner, and only the header can lay both out (#30).
-        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} title={record?.name} version={record?.version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} observers={observers} rules={rules('tv')}>
+        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} title={record?.name} version={record?.version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} showing={showing} onDismiss={dismiss} observers={observers} rules={rules('tv')}>
           {table}
         </TvChrome>
       ) : (
