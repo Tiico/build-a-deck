@@ -46,6 +46,8 @@ export const svPlay = {
   'tv.inspect': 'Inspektion',
   'tv.inspect.hidden': 'dolt kort',
   'tv.inspect.empty': 'peka på ett kort',
+  'tv.show.by': '{name} visar',
+  'tv.show.table': 'Bordet visar',
   // "Senast" innan någon rört bordet (UX-16): rubriken säger vad listan fylls av.
   'tv.latest.empty': 'Inget hänt ännu. Det som spelas vid bordet hamnar här.',
   // Fördjupningen bakom frågetecknet (L32:s tillägg, #305). Raden vid koden är fyra ord; vad

@@ -40,6 +40,10 @@ export type FeltKeyboardOptions = {
   // What a card in the hand is offered, when the route has a touch sheet of its own for that
   // (#483): the panel behind Enter then offers the sheet and nothing else.
   handSheet?: ((view: Snapshot) => HandSheet) | undefined
+  // Where «Titta» goes instead of the private large view, on a screen whose large view is the
+  // room's: the TV holds the card up over the felt for everyone (#508). Only a face: a back held
+  // up for the room says nothing to it, so a card this view sees face down keeps K8's view (K23).
+  look?: ((card: VisibleComponentState) => void) | undefined
 }
 
 // `felt` says whether this route draws a table that can be played on. The phone has no felt, so
@@ -167,7 +171,8 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
         cards={open.cards}
         onClose={() => close()}
         onLook={(c) => {
-          setLooking(c)
+          if (options.look && c.cardRef !== null) options.look(c)
+          else setLooking(c)
           close()
         }}
         onSet={(c) => {

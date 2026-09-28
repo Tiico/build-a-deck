@@ -1292,6 +1292,7 @@ describe('every suite that measures a surface', () => {
       'template-crown.test.tsx',
       'text-placement.test.tsx',
       'texture-layout.test.tsx',
+      'tv-show.test.tsx',
       'wall-card-look.test.tsx',
       'wizard-viewport.test.tsx',
     ])

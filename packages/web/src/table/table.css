@@ -571,6 +571,44 @@
 [data-tv] .byd-tv-inspect img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 [data-tv] .byd-tv-inspect > div > img ~ span:not([data-texture]) { visibility: hidden; }
 
+/* «Visa för alla» (#508, beslut B, K26): a card somebody holds up, over the felt. The felt is bound
+   by its height and the column is 360 px, and a card the room reads from three metres is 504 px
+   across (24 px body) — so the card stands where the height is, and the column under it and
+   beside it stays as it was. It fills the felt's height less one fixed line of caption, which
+   keeps the reading geometry and not type; and it stops at 938 px, where 8.5 pt body is 32 px, the
+   top of K26's band: larger reads no better and hides more of the table. */
+[data-tv] > main { position: relative; }
+[data-tv] .byd-tv-show {
+  position: absolute; inset: 0; z-index: 30; padding: 24px;
+  display: grid; grid-template-rows: minmax(0, 1fr);
+  background: rgb(8 10 14 / 0.72); cursor: pointer;
+}
+[data-tv] .byd-tv-show figure {
+  margin: 0; min-height: 0;
+  display: grid; grid-template-rows: minmax(0, 1fr) 40px; gap: 16px; justify-items: center;
+}
+[data-tv] .byd-tv-show [data-tv-show] {
+  position: relative; overflow: hidden; height: 100%; max-height: 938px; aspect-ratio: 63 / 88;
+  border-radius: 16px; box-shadow: 0 24px 64px rgb(0 0 0 / 0.6);
+  font-size: 32px; font-weight: 700; color: #1c1c1c; background: hsl(var(--hue, 0) 40% 86%);
+}
+[data-tv] .byd-tv-show [data-tv-show] img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+[data-tv] .byd-tv-show [data-tv-show] > span:not([data-texture]) { position: absolute; inset: 24px; }
+[data-tv] .byd-tv-show [data-tv-show] > img ~ span:not([data-texture]) { visibility: hidden; }
+/* One line, always: who is showing it and what it is, at the size the column's newest line has. */
+[data-tv] .byd-tv-show figcaption {
+  position: relative; max-width: 100%; font-size: 24px; line-height: 32px; height: 40px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #e8eaf0;
+}
+[data-tv] .byd-tv-show figcaption b { color: var(--byd-felt-accent); }
+/* The time it has left, as a line that runs out under the caption. */
+[data-tv] .byd-tv-show figcaption i {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 4px; border-radius: 2px;
+  background: var(--byd-felt-accent); transform-origin: left; animation: byd-tv-show-left linear forwards;
+}
+@keyframes byd-tv-show-left { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { [data-tv] .byd-tv-show figcaption i { display: none; } }
+
 /* Nothing has happened yet (UX-16): the same quiet voice the waiting inspection panel speaks in. */
 [data-tv] .byd-tv-feed > p[data-empty] { margin: 0; color: #7d8597; font-size: 16px; line-height: 1.5; }
 /* Two levels, read from the sofa (#482 fynd 6, beslut B, prototyp 21): what the room looks up for —

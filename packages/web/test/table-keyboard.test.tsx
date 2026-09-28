@@ -369,3 +369,26 @@ describe('the bottom card of a pile from the keyboard (K23)', () => {
     other.close()
   })
 })
+
+// On the TV, «Titta» is for the room (#508, beslut B): the screen has nobody holding it, so the card
+// the keyboard names is held up over the felt at the size the sofa reads, as the table showing it,
+// and Escape takes it down — rather than K8's private view, which on a TV was private to no one.
+describe('«Titta» on the TV shows the card to the room (#508)', () => {
+  it('holds the card up over the felt as the table’s, and takes it down on Escape', async () => {
+    const { other } = await tableWithTwoCards()
+    const user = userEvent.setup()
+    screen.getByRole('button', { name: /^dragon, kort i Spelyta/ }).focus()
+    await user.keyboard('{Enter}')
+    const panel = await screen.findByRole('dialog', { name: 'Handlingar för dragon' })
+    await user.click(within(panel).getByRole('button', { name: /^Titta/ }))
+
+    const shown = await screen.findByRole('status', { name: /Bordet visar/ })
+    expect(shown.textContent).toMatch(/dragon/)
+    expect(shown.closest('[data-tv] > main')).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: /dragon/ })).toBeNull()
+
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('status', { name: /Bordet visar/ })).toBeNull())
+    other.close()
+  })
+})

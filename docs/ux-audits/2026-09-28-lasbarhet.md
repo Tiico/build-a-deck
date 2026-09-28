@@ -138,6 +138,14 @@ Väg till läsning: ingen egen; INSPEKTION visar senaste kortet i 177 px (8 px).
 
 ![TV:n i vila vid 1920 × 1080: INSPEKTION 177 px](2026-09-28/tv-01-inspektionen-177px-1920x1080.png)
 
+**Åtgärdat 2026-09-28 (#508, beslut B, K8):** fynd 1 och 2 genom «Visa för alla».
+En telefon (presence `show`, K6) eller TV:ns eget «Titta» håller upp ett kort över filten: 672 px brett, **32,2 px brödtext** vid 1920 × 1080 (mätt på texturbilden i den byggda appen), med vem som visar och en nedräkning på 15 sekunder.
+Vilan, spalten och filtens kortsida är orörda; fynd 4 behövdes inte, eftersom prototypen visade att en bredare spalt ändå inte når golvet och kostar K9.
+TV:n ritar bara ett kort den själv ser uppvänt.
+Telefonens knapp kommer med läsvyn för andras kort (#507).
+
+![TV:n när Ada visar ett kort vid 1920 × 1080: 672 px, 32 px brödtext](2026-09-28/tv-02-visa-for-alla-1920x1080.png)
+
 ### 3. Bordsläget — `/table?mode=table`
 
 En platta eller laptop som ligger på bordet och delas av gruppen.
