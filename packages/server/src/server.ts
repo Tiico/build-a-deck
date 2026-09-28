@@ -10,10 +10,10 @@ import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, s
 import { CARD_STANDARD_63x88, validateSetup, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { renderRules, Template, validateCard, type Issue } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
-import { contentHash, type ObjectStore, type RenderKind, type RenderStore } from '@byd/render/queue'
+import { contentHash, type ObjectStore, type RenderKind, type RenderRequest, type RenderStore } from '@byd/render/queue'
 import type { Subscriber, TableHost } from './actor.js'
 import type { Deck, LogStore, SessionRecord } from './store.js'
-import { ProjectDoc, deckFromProject, liftDoc, type ProjectCredit, type ProjectRecord, type ProjectStore } from './projects.js'
+import { ProjectDoc, deckFromProject, liftDoc, type ProjectCredit, type ProjectRecord, type ProjectStore, type RuleDoc } from './projects.js'
 import { setupFromProject } from './setup.js'
 import { changeOf, diffProjects, type DocDiff, type VersionChange } from './diff.js'
 import { ProjectHost, type EditorMessage } from './project-actor.js'
@@ -24,6 +24,7 @@ import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountO
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
 import { facesOf, printExportOf } from './faces.js'
+import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, exportDisposition, packExport, printFileOf, readmeOf } from './export.js'
 import { MotifBody, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, resolveTemplate, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
 
@@ -715,6 +716,54 @@ function checkedCards(rec: ProjectRecord, registry: TypeRegistry): (Issue & { ca
 // The project's credits as a list: the symbols first, in the icon set's order, then the
 // typefaces the version is pinned to (B3). Both are borrowed under a licence, and both travel
 // with a print order (E4).
+// The rulebook as a print job (B7): the rules as they stand, through the same worker that renders
+// every card, keyed by what is on the page so the same rules asked for twice are one rendering.
+async function bookletJobOf(opts: ServerOptions, rec: ProjectRecord, rules: RuleDoc, lang: ReturnType<typeof langOf>): Promise<RenderRequest> {
+  const compiled = bookletOf({
+    rules: renderRules(rules, namesOfProject(rec), arrangementOf(rec)),
+    icons: opts.assets ? await resolveIcons(rec.icons, opts.assets) : rec.icons,
+    // The pictures the book holds travel with it (#173): the printer is handed the bytes, never
+    // a reference it could not follow.
+    images: opts.assets ? await resolveRuleImages(rules, opts.assets) : {},
+    pageMm: A5,
+    credits: creditsOf(rec),
+    // The one heading the tool contributes follows the language the order was placed in (A4).
+    lang,
+  })
+  return { hash: contentHash(compiled, BOOKLET), kind: BOOKLET, priority: 'print', compiled, requestedAt: clock(opts).getTime() }
+}
+
+// The print files of a version for its export (G5, #527): every face of every card with bleed, by
+// the file it gets in the zip, and the rulebook. A version the physical checks stop (E5) has no
+// card files — the game is exported all the same, and why stands in the manifest — while its
+// rulebook, which the checks do not read, still goes.
+async function printPlanOf(opts: ServerOptions, rec: ProjectRecord, lang: ReturnType<typeof langOf>) {
+  const found = checkedCards(rec, opts.registry)
+  const errors = found.filter((f) => f.severity === 'error')
+  const warnings = found.filter((f) => f.severity === 'warning')
+  const jobs: { file: string; job: RenderRequest }[] = []
+  const cards: { cardRef: string; faces: Record<string, string> }[] = []
+  if (errors.length === 0) {
+    const printed = printExportOf(await deckOf(opts, rec), setupFromProject(rec), opts.registry, clock(opts).getTime())
+    const byHash = new Map(printed.jobs.map((j) => [j.hash, j]))
+    for (const card of printed.cards) {
+      // Copies of a card are one card to print: the manifest names each card once.
+      if (cards.some((c) => c.cardRef === card.cardRef)) continue
+      const faces: Record<string, string> = {}
+      for (const [face, hash] of Object.entries(card.faces)) {
+        const file = printFileOf(card.cardRef, face)
+        faces[face] = file
+        const job = byHash.get(hash)
+        if (job) jobs.push({ file, job })
+      }
+      cards.push({ cardRef: card.cardRef, faces })
+    }
+  }
+  const rulebook = rec.rules ? RULEBOOK_FILE : undefined
+  if (rec.rules) jobs.push({ file: RULEBOOK_FILE, job: await bookletJobOf(opts, rec, rec.rules, lang) })
+  return { cards, rulebook, warnings, errors, jobs }
+}
+
 function creditsOf(rec: ProjectRecord): (ProjectCredit & { name: string })[] {
   const icons = Object.entries(rec.credits ?? {}).map(([name, c]) => ({ name, ...c }))
   const fonts = Object.entries(rec.fonts ?? {}).flatMap(([name, f]) => (f.licence ? [{ name, ...f.licence }] : []))
@@ -1167,21 +1216,9 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 404, { error: 'no rules' })
       return true
     }
-    const names = namesOfProject(rec)
-    const icons = opts.assets ? await resolveIcons(rec.icons, opts.assets) : rec.icons
-    const compiled = bookletOf({
-      rules: renderRules(rec.rules, names, arrangementOf(rec)),
-      icons,
-      // The pictures the book holds travel with it (#173): the printer is handed the bytes, never
-      // a reference it could not follow.
-      images: opts.assets ? await resolveRuleImages(rec.rules, opts.assets) : {},
-      pageMm: A5,
-      credits: creditsOf(rec),
-      // The one heading the tool contributes follows the language the order was placed in (A4).
-      lang: langOf(url.searchParams.get('lang')),
-    })
-    const hash = contentHash(compiled, BOOKLET)
-    await opts.renders.enqueue({ hash, kind: BOOKLET, priority: 'print', compiled, requestedAt: clock(opts).getTime() })
+    const job = await bookletJobOf(opts, rec, rec.rules, langOf(url.searchParams.get('lang')))
+    const hash = job.hash
+    await opts.renders.enqueue(job)
     json(res, 202, { hash })
     return true
   }
@@ -1228,6 +1265,81 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     // The licences of every symbol the game uses go with the order (E4): the printer is handed
     // what the deck is made of, not only how it looks.
     json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards, credits: creditsOf(rec), warnings: found })
+    return true
+  }
+  // The whole game for the designer to keep (G5, #527): POST asks for the print files to be made,
+  // GET says how far they have come (202) and then hands over the zip. Nothing is held between the
+  // two: both work the plan out of the document and the render store, so a restart loses nothing
+  // and asking twice is asking once. The owner's and the co-editors', whose work it is.
+  const exporting = /^\/projects\/([^/]+)\/export$/.exec(url.pathname)
+  if (exporting && (req.method === 'POST' || req.method === 'GET')) {
+    const gate = await allowed(decodeURIComponent(exporting[1] ?? ''), canEdit)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    if (!opts.renders) {
+      json(res, 503, { error: 'render queue unavailable' })
+      return true
+    }
+    const rec = gate.rec
+    const lang = langOf(url.searchParams.get('lang'))
+    const plan = await printPlanOf(opts, rec, lang)
+    let done = 0
+    const failed: string[] = []
+    for (const { file, job } of plan.jobs) {
+      if ((await opts.renders.output(job.hash)) !== null) {
+        done++
+        continue
+      }
+      const state = (await opts.renders.status(job.hash))?.state
+      if (state === 'failed') failed.push(file)
+      // Asked for here too, so a GET alone gets there, and a job reaped since is asked again.
+      else if (state !== 'queued' && state !== 'running') await opts.renders.enqueue(job)
+    }
+    const total = plan.jobs.length
+    if (req.method === 'POST' || done + failed.length < total) {
+      json(res, 202, { project: rec.id, rev: rec.rev, total, done, failed: failed.length })
+      return true
+    }
+    const summaries = [...(await projects.versions(rec.id))].reverse()
+    const versions = []
+    for (const v of summaries) {
+      const at = await projects.at(rec.id, v.rev)
+      if (!at) continue
+      const { id: _id, rev: _rev, owner: _owner, ...doc } = at
+      versions.push({ rev: v.rev, at: v.at, ...(v.label !== undefined ? { label: v.label } : {}), ...(v.atSeq !== undefined ? { atSeq: v.atSeq } : {}), doc })
+    }
+    const hashes = [...new Set(versions.flatMap((v) => assetHashesOf(v.doc)))].sort()
+    const motifs = opts.assets ? await opts.assets.motifs(hashes) : {}
+    const assetFiles = new Map<string, Uint8Array>()
+    const assets = []
+    for (const hash of hashes) {
+      const got = opts.assets ? await opts.assets.get(hash) : null
+      if (!got) continue
+      const file = assetFileOf(hash, got.contentType)
+      assetFiles.set(file, got.bytes)
+      assets.push({ hash, file, contentType: got.contentType, size: got.bytes.length, ...(motifs[hash] ? { motif: motifs[hash] } : {}) })
+    }
+    const prints = new Map<string, Uint8Array>()
+    for (const { file, job } of plan.jobs) {
+      const bytes = await opts.renders.output(job.hash)
+      if (bytes) prints.set(file, bytes)
+    }
+    const manifest = ProjectExport.parse({
+      format: EXPORT_FORMAT,
+      formatVersion: EXPORT_FORMAT_VERSION,
+      exportedAt: clock(opts).toISOString(),
+      ...(opts.release ? { release: opts.release } : {}),
+      project: { id: rec.id, name: rec.name },
+      current: { rev: rec.rev },
+      versions,
+      assets,
+      print: { rev: rec.rev, cards: plan.cards, ...(plan.rulebook && prints.has(plan.rulebook) ? { rulebook: plan.rulebook } : {}), credits: creditsOf(rec), warnings: plan.warnings, errors: plan.errors, failed },
+    })
+    const zip = packExport({ manifest, readme: readmeOf(lang, manifest), assets: assetFiles, prints })
+    res.writeHead(200, { 'content-type': 'application/zip', 'content-length': String(zip.length), 'content-disposition': exportDisposition(rec.name, rec.rev), 'cache-control': 'no-store' })
+    res.end(zip)
     return true
   }
   const start = /^\/projects\/([^/]+)\/sessions$/.exec(url.pathname)

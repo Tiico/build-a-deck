@@ -1501,6 +1501,21 @@ Följdkrav:
 Domänmodellen måste vara serialiserbar i sin helhet — vilket behövs för backup och migrering ändå.
 Lagringskostnad för icke-betalande konton kvarstår permanent.
 
+Preciserat 2026-09-28 av beställaren (#526):
+- **Formen är en zip** som går att öppna utan verktyget. Den innehåller:
+  - `spel.json`, manifestet med varje version av dokumentet (hel, äldst först, med datum och etikett),
+  - `schema.json`, dess JSON Schema, genererat ur samma zod-schema som validerar det,
+  - `LÄSMIG.md` på exportörens språk (A4),
+  - `assets/<hash>.<ext>` med varje bild och typsnitt någon version använder, som den fil den är,
+  - `tryck/` med den aktuella versionens tryck-PDF:er med utfall, en per sida av varje kort, och regelhäftet.
+  Filnamnen är formatets och översätts aldrig.
+- **«Hela historiken» är versionshistoriken.** Bordens loggar och enkäter ingår inte: de bär gästers personuppgifter och hör till GDPR-arbetet i fas 3.
+- **Ett spel som tryckkontrollen (E5) stoppar exporteras ändå.** Kort-PDF:erna utelämnas och fynden står i manifestet, eftersom dataägandet går före trycket.
+- **Exporten är ägarens och medredigerarnas** (`canEdit`).
+- **Importen byggs i samma skiva** (#528), med rundturen som acceptans.
+
+Byggt 2026-09-28 (#527): `POST /projects/:id/export` köar trycket, och `GET` svarar 202 med förloppet och sedan med zippen. Servern håller inget jobb mellan anropen; planen räknas fram ur dokumentet och renderarens lager varje gång. Formatet står i `packages/server/src/export.ts`, och grinden är `packages/server/test/export.test.ts`.
+
 ---
 
 ## H. Sekvensering
