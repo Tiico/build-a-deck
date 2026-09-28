@@ -24,7 +24,7 @@ import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountO
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
 import { facesOf, printExportOf } from './faces.js'
-import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, exportDisposition, packExport, printFileOf, readmeOf } from './export.js'
+import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, exportDisposition, packExport, printFileOf, readExport, readmeOf } from './export.js'
 import { MotifBody, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, resolveTemplate, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
 
@@ -819,6 +819,8 @@ function creditsOf(rec: ProjectRecord): (ProjectCredit & { name: string })[] {
 // How many pictures one question may ask about. A deck of a few hundred cards asks in one go;
 // past that the question is somebody else's.
 const MOTIFS_AT_ONCE = 500
+// How large an export may be brought back (#528): a few hundred pictures at the upload limit.
+const IMPORT_MAX_BYTES = 256 * 1024 * 1024
 const ASSET_LINK_TTL_S = 3600
 
 // Images (E1, DRIFT §4): POST /assets takes one from a logged-in creator and answers with its
@@ -990,6 +992,53 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       faces[p.id] = rec ? peekFace(rec) : null
     }
     json(res, 200, faces)
+    return true
+  }
+  // A game brought back from an export (G5, #528): a new project owned by whoever brings it, with
+  // the history it had and every asset it uses. Nothing is written until everything has been read
+  // and found to hold — the manifest, each asset against its hash and kind, the current version's
+  // setup — and an asset the zip does not carry must already be here. A game is never written over.
+  if (req.method === 'POST' && url.pathname === '/projects/import') {
+    if (opts.auth && !account) {
+      json(res, 401, { error: 'log in first' })
+      return true
+    }
+    const bytes = await readBytes(req, IMPORT_MAX_BYTES)
+    if (!bytes) {
+      json(res, 413, { error: 'too big' })
+      return true
+    }
+    const read = readExport(bytes)
+    if (!read.ok) {
+      json(res, 422, { error: 'not an export that can be read', problems: read.problems })
+      return true
+    }
+    const missing: string[] = []
+    for (const hash of read.unlisted) if (!(opts.assets && (await opts.assets.get(hash)))) missing.push(`asset ${hash} is used but is neither in the zip nor here`)
+    const current = read.current
+    try {
+      checkedName(current.name)
+      validateSetup(setupFromProject(current), opts.registry)
+    } catch (e) {
+      missing.push(`the current version cannot be played: ${(e as Error).message}`)
+    }
+    if (missing.length > 0) {
+      json(res, 422, { error: 'not an export that can be read', problems: missing })
+      return true
+    }
+    if (opts.assets) {
+      for (const [hash, asset] of read.assets) {
+        if ((await opts.assets.put(asset.bytes, asset.contentType)) !== hash) throw new Error(`asset ${hash} stored under another name`)
+        if (asset.motif) await opts.assets.setMotif(hash, asset.motif as never)
+      }
+    }
+    // The edit log is not exported, so how far it had come (`atSeq`) says nothing here.
+    const rec = await projects.restore(
+      randomUUID(),
+      read.manifest.versions.map((v) => ({ rev: v.rev, at: v.at, ...(v.label !== undefined ? { label: v.label } : {}), doc: v.doc })),
+      account?.id,
+    )
+    json(res, 201, { id: rec.id, rev: rec.rev })
     return true
   }
   if (req.method === 'POST' && url.pathname === '/projects') {

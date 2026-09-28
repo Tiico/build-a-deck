@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createHash } from 'node:crypto'
-import { strFromU8, unzipSync } from 'fflate'
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 import { template } from './deck.js'
 import { ProjectExport, assetHashesOf, exportDisposition, printFileOf } from '../src/export.js'
@@ -175,4 +175,79 @@ describe('what the export collects and what it names things (#527)', () => {
     expect(printFileOf('Häxan / den svarta', 'back')).toBe('tryck/Häxan_den_svarta-back.pdf')
     expect(exportDisposition('Skogens härskare', 3)).toBe(`attachment; filename="Skogens h_rskare rev-3.zip"; filename*=UTF-8''${encodeURIComponent('Skogens härskare rev-3.zip')}`)
   })
+})
+
+// Bringing an export back (G5, #528): a new game, owned by whoever brings it, with the document,
+// its every version and every asset it had — never written over one that is there.
+describe('importing an export (G5, #528)', () => {
+  let cookie = ''
+  let owner: ReturnType<typeof as>
+  let zip = new Uint8Array()
+  beforeEach(async () => {
+    cookie = await login('ada@example.com')
+    owner = as(cookie)
+    const up = async (bytes: Uint8Array) => ((await (await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: Buffer.from(bytes) })).json()) as { hash: string }).hash
+    const a = await up(PNG_A)
+    const b = await up(PNG_B)
+    await owner('POST', '/projects', { id: 'p1', ...game(a) })
+    await owner('PUT', '/projects/p1', { rev: 1, ...game(b) })
+    await owner('PUT', '/projects/p1/versions/1/label', { label: 'Första utkastet' })
+    await owner('POST', '/projects/p1/export')
+    await run.renderAll()
+    zip = new Uint8Array(await (await owner('GET', '/projects/p1/export')).arrayBuffer())
+  }, 90_000)
+  const bring = (bytes: Uint8Array, who = cookie) => fetch(`${run.http}/projects/import`, { method: 'POST', headers: { 'content-type': 'application/zip', cookie: who }, body: Buffer.from(bytes) })
+  const manifestOf = (bytes: Uint8Array) => ProjectExport.parse(JSON.parse(strFromU8(unzipSync(bytes)['spel.json']!)))
+  const edited = (change: (files: Record<string, Uint8Array>) => void) => {
+    const files = unzipSync(zip)
+    change(files)
+    return zipSync(files)
+  }
+
+  it('makes a new game of it that exports as the same game', async () => {
+    const res = await bring(zip)
+    expect(res.status).toBe(201)
+    const { id, rev } = (await res.json()) as { id: string; rev: number }
+    expect(id).not.toBe('p1')
+    expect(rev).toBe(2)
+    expect((await run.projects.load(id))?.owner).toBe((await run.projects.load('p1'))?.owner)
+
+    await owner('POST', `/projects/${id}/export`)
+    await run.renderAll()
+    const again = manifestOf(new Uint8Array(await (await owner('GET', `/projects/${id}/export`)).arrayBuffer()))
+    const before = manifestOf(zip)
+    const same = (m: ProjectExport) => ({ ...m, exportedAt: '', project: { ...m.project, id: '' }, versions: m.versions.map(({ atSeq: _, ...v }) => v) })
+    expect(same(again)).toEqual(same(before))
+  }, 90_000)
+
+  it('refuses a zip whose picture is not what its name says, and leaves nothing behind', async () => {
+    const [asset] = manifestOf(zip).assets
+    const res = await bring(edited((files) => (files[asset!.file] = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 9, 9, 9]))))
+    expect(res.status).toBe(422)
+    expect(JSON.stringify(await res.json())).toContain(asset!.hash)
+    expect(await run.projects.list((await run.projects.load('p1'))!.owner!)).toHaveLength(1)
+  }, 90_000)
+
+  it('refuses what is not an export, a newer format, and a document that points at a picture it does not carry', async () => {
+    expect((await bring(strToU8('not a zip'))).status).toBe(422)
+    expect((await bring(edited((files) => delete files['spel.json']))).status).toBe(422)
+    const newer = await bring(edited((files) => (files['spel.json'] = strToU8(JSON.stringify({ ...manifestOf(zip), formatVersion: 2 })))))
+    expect(newer.status).toBe(422)
+    expect(await newer.text()).toMatch(/newer/)
+    const ghost = 'f'.repeat(64)
+    const lost = await bring(
+      edited((files) => {
+        const m = manifestOf(zip)
+        const last = m.versions.at(-1)!
+        files['spel.json'] = strToU8(JSON.stringify({ ...m, versions: [...m.versions.slice(0, -1), { ...last, doc: { ...last.doc, icons: { ...last.doc.icons, måne: `asset:${ghost}` } } }] }))
+      }),
+    )
+    expect(lost.status).toBe(422)
+    expect(await lost.text()).toContain(ghost)
+    expect(await run.projects.list((await run.projects.load('p1'))!.owner!)).toHaveLength(1)
+  }, 90_000)
+
+  it('is for someone logged in', async () => {
+    expect((await bring(zip, '')).status).toBe(401)
+  }, 90_000)
 })
