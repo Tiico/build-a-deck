@@ -23,6 +23,7 @@ import { seatRotation } from '../src/online/seat.js'
 import { admit, asTable, createSession, startServer, type Running } from './fixture.js'
 import { atWindow, feltIsFitted, withFrame, type Size } from './felt-frame.js'
 import { FELT_FONT, defOf, feltOf, sceneOf, sheet } from './felt-labels.js'
+import { CARD_CONTROL_PX, DEFAULT_BODY_PT, textPxOnCard } from './legibility.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
@@ -174,7 +175,11 @@ const UPRIGHT: Size = { w: 960, h: 1280 }
 // the column bought (#77): the band under the felt spent 218 px of an 800 px window on a row, and
 // the seat's own fan of backs spent the felt's own binding axis on a hand that is already drawn
 // beside it. See DESIGN-BESLUT, K9 and K17's revisions of 2026-09-14.
-const PLAYABLE_PX = 45
+//
+// It is a floor for the card as a control and not for its text (K26): a card at 45 px carries its
+// body at 2.1 px, so the reading says what the text came to as well, and reading it is the one
+// gesture K26 asks for rather than anything this window has to draw.
+const PLAYABLE_PX = CARD_CONTROL_PX
 
 // How many cards the seat holds. Seven is a hand somebody is playing out of and thirteen is a big
 // one; both used to shrink the felt, because the seat's own fan grew what the fit had to hold.
@@ -190,7 +195,7 @@ describe('a card on the seat\u2019s own felt is as big as the window can make it
         it(`draws ${where}\u2019s cards at ${PLAYABLE_PX} px or more at ${size.w} \u00d7 ${size.h} with ${held} in hand`, async () => {
           const { smallest, sides, felt, hand } = await cardsOn(seat, size, held)
           expect(sides.length).toBeGreaterThan(0)
-          const at = `${where}, ${held} in hand at ${size.w} \u00d7 ${size.h}`
+          const at = `${where}, ${held} in hand at ${size.w} \u00d7 ${size.h}, body text ${textPxOnCard(DEFAULT_BODY_PT, smallest).toFixed(1)} px`
           expect({ at, smallest, felt, hand, playable: smallest >= PLAYABLE_PX }).toEqual({ at, smallest, felt, hand: 'column', playable: true })
         }, 90_000)
 })

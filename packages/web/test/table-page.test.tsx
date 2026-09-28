@@ -292,3 +292,36 @@ describe('the host\'s screen (DRIFT §9)', () => {
     expect(qr.getAttribute('alt')).toContain(`join?code=${roomOf(id).code}`)
   })
 })
+
+// «Visa för alla» (#508, beslut B): a phone holds a public card up on the room's screen. It goes
+// over the wire as presence and nowhere else, and the TV draws only what it sees face up itself.
+describe('a card a phone shows for everyone (#508)', () => {
+  it('stands over the felt on the TV with the name of whoever showed it, and a hidden one does not', async () => {
+    const id = await createSession(run)
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await screen.findByText(roomOf(id).code)
+
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await table.send({ v: 'draw', from: 'draw', to: 'table', count: 2 })
+    await table.synced(1)
+    const [up, down] = table.view!.components.filter((c) => c.zone === 'table').map((c) => c.id) as [string, string]
+    await table.send({ v: 'flip', component: up, face: 'front' })
+    const ada = TableClient.connect(await asSeat(run, id, 'A', 'Ada'))
+    await ada.ready()
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await waitFor(() => expect(screen.getByRole('list', { name: /platser/i }).textContent).toMatch(/Ada/))
+
+    // Face down on the TV's own view: nothing is drawn, whoever asks.
+    ada.sendPresence({ kind: 'show', component: down })
+    await new Promise((r) => setTimeout(r, 200))
+    expect(screen.queryByRole('status', { name: /visar/ })).toBeNull()
+
+    ada.sendPresence({ kind: 'show', component: up })
+    const shown = await screen.findByRole('status', { name: /Ada visar/ })
+    expect(shown.querySelector(`[data-tv-show="${up}"]`)).toBeTruthy()
+    table.close()
+    ada.close()
+  })
+})

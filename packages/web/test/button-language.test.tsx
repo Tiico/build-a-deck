@@ -746,8 +746,12 @@ async function feltCardView(mode: 'table' | 'tv', width = 1280): Promise<Record<
       return found
     })
     const card = cards[1]!
-    fireEvent.pointerDown(card, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
-    fireEvent.pointerUp(card, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
+    // On the table screen the first press reads the card and the second asks (K26, #509); the TV
+    // asks on the first.
+    for (let press = 0; press < (mode === 'table' ? 2 : 1); press++) {
+      fireEvent.pointerDown(card, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
+      fireEvent.pointerUp(card, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
+    }
     const reveal = await screen.findByRole('button', { name: 'Avslöja' })
     // The disabled disc is the subject, so a view that came back with it live would be measuring
     // the wrong button and passing.
@@ -1288,6 +1292,7 @@ describe('every suite that measures a surface', () => {
       'template-crown.test.tsx',
       'text-placement.test.tsx',
       'texture-layout.test.tsx',
+      'tv-show.test.tsx',
       'wall-card-look.test.tsx',
       'wizard-viewport.test.tsx',
     ])

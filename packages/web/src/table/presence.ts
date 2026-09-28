@@ -1,9 +1,11 @@
-import type { Activity, Presence, PresenceFrom, SeatId } from '@byd/protocol'
+import type { Activity, Presence, PresenceFrom, SeatId, Snapshot, VisibleComponentState } from '@byd/protocol'
 
 // Presence (K6) as a view sees it: the others at the table, what they carry, where they point.
 export type Point = { x: number; y: number }
 export type Peer = { id: string; seat: SeatId | null; name: string; cursor: Point | null; drag: { component: string; x: number; y: number } | null; at?: number }
 export type Pulse = { id: string; seat: SeatId | null; name: string; x: number; y: number; at: number }
+// A card someone held up for the room (K8, #508), and who did: the latest one, until its time is up.
+export type Shown = { component: string; seat: SeatId | null; name: string; at: number }
 // A card that just moved, and who moved it: the colour it carries for a moment.
 export type Recent = { component: string; seat: SeatId | null; at: number }
 
@@ -20,10 +22,13 @@ export function componentOf(line: Activity): string | null {
 export const CURSOR_IDLE_MS = 2500
 export const PULSE_MS = 1200
 export const RECENT_MS = 1600
+// How long a shown card stands before it goes by itself (#508): long enough to read a card's body
+// from the sofa, and short enough that nobody has to get up to take it down.
+export const SHOW_MS = 15_000
 
-export type PresenceState = { peers: Record<string, Peer>; pulses: Pulse[] }
+export type PresenceState = { peers: Record<string, Peer>; pulses: Pulse[]; shown: Shown | null }
 
-export const emptyPresence = (): PresenceState => ({ peers: {}, pulses: [] })
+export const emptyPresence = (): PresenceState => ({ peers: {}, pulses: [], shown: null })
 
 // Folds one relayed message into the state. `name` resolves a seat to what the view calls it.
 export function reducePresence(state: PresenceState, from: PresenceFrom, p: Presence, now: number, name: (seat: SeatId | null) => string): PresenceState {
@@ -44,6 +49,8 @@ export function reducePresence(state: PresenceState, from: PresenceFrom, p: Pres
       break
     case 'point':
       return { ...state, pulses: [...state.pulses, { id: from.id, seat: from.seat, name: name(from.seat), x: p.x, y: p.y, at: now }] }
+    case 'show':
+      return { ...state, shown: { component: p.component, seat: from.seat, name: name(from.seat), at: now } }
   }
   const peers: Record<string, Peer> = {}
   for (const [id, other] of Object.entries(state.peers)) if (id !== from.id) peers[id] = other
@@ -60,5 +67,14 @@ export function prunePresence(state: PresenceState, now: number): PresenceState 
     if (next.cursor || next.drag) peers[id] = next
   }
   const pulses = state.pulses.filter((p) => now - p.at < PULSE_MS)
-  return { peers, pulses }
+  const shown = state.shown && now - state.shown.at < SHOW_MS ? state.shown : null
+  return { peers, pulses, shown }
+}
+
+// The card a screen draws for a `show`, looked up in its own view: only when that view carries the
+// face. A card in a hand, face down, or gone from the table is not drawn, whatever was asked.
+export function shownCard(view: Snapshot | null, shown: Shown | null): VisibleComponentState | null {
+  if (!view || !shown) return null
+  const card = view.components.find((c) => c.id === shown.component)
+  return card && card.cardRef !== null && card.counter === undefined ? card : null
 }

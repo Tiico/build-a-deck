@@ -9,7 +9,7 @@ import { expect, test } from '../support/test.js'
 test.describe('a double press on the table screen (#482)', () => {
   test.use({ viewport: DESK.viewport })
 
-  test('turns the card over, and a single press still opens the ring', async ({ tableOf, open }) => {
+  test('turns the card over whether it reads or not, and a single press still asks about one that does not', async ({ tableOf, open }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 1, copies: 3 })
     const { page } = await open(DESK, `${table.tableUrl}&lang=sv`)
     const pile = page.locator('.byd-pile[data-zone="draw"]')
@@ -25,8 +25,20 @@ test.describe('a double press on the table screen (#482)', () => {
     await expect(card).not.toHaveAttribute('data-face', before ?? '')
     await expect(page.locator('[data-radial]')).toHaveCount(0)
 
-    // And one press is still the ring.
+    // And one press is still the ring on a card with nothing to read. The double press turned this
+    // one face up, so one press reads it now (K26, #509), and the next asks.
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+    await expect(page.locator('[data-lift]')).toHaveCount(1)
+    await expect(page.locator('[data-radial]')).toHaveCount(0)
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
     await expect(page.locator('[data-radial]')).toHaveCount(1)
+    await page.keyboard.press('Escape')
+
+    // A double press on a card that reads turns it just the same: the first press lifts it, the
+    // second is the double press, and nothing is left standing.
+    await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2)
+    await expect(card).toHaveAttribute('data-face', before ?? '')
+    await expect(page.locator('[data-radial]')).toHaveCount(0)
+    await expect(page.locator('[data-lift]')).toHaveCount(0)
   })
 })

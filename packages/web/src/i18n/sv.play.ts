@@ -46,6 +46,8 @@ export const svPlay = {
   'tv.inspect': 'Inspektion',
   'tv.inspect.hidden': 'dolt kort',
   'tv.inspect.empty': 'peka på ett kort',
+  'tv.show.by': '{name} visar',
+  'tv.show.table': 'Bordet visar',
   // "Senast" innan någon rört bordet (UX-16): rubriken säger vad listan fylls av.
   'tv.latest.empty': 'Inget hänt ännu. Det som spelas vid bordet hamnar här.',
   // Fördjupningen bakom frågetecknet (L32:s tillägg, #305). Raden vid koden är fyra ord; vad
@@ -204,11 +206,14 @@ export const svPlay = {
 
   // En rad ur loggen i ord. Namn och zoner kommer från vyn och översätts inte.
   'activity.move': '{who} flyttade ett kort till {zone}',
+  // Med kortets namn när läsaren får se kortet (#507 fynd 6); annars raden ovan.
+  'activity.move.named': '{who} flyttade {card} till {zone}',
   // En hand namnges av den som sitter där (K19), mitt i meningen: "till Adas hand", "till min hand".
   'activity.hand.my': 'min hand',
   'activity.hand.other': '{name:s} hand',
   'activity.rotate': '{who} vred ett kort',
   'activity.flip': '{who} vände ett kort',
+  'activity.flip.named': '{who} vände {card}',
   'activity.stack': '{who} lade ett kort på ett annat',
   'activity.split.to': '{who} drog {n} från {zone} till {to}',
   'activity.split.beside': '{who} delade av {n} från {zone} till en ny hög',
@@ -256,12 +261,12 @@ export const svPlay = {
   // stängs med ett tryck utanför — vilket på en telefon är nästan hela skärmen. Det som säger
   // vad en handling får för följd flyttar aldrig hit; raden över handen står kvar där den står.
   'play.help.hand.topic': 'handen',
-  'play.help.hand.pick': 'Tryck på ett kort för att välja det, håll ett kort för att välja flera.',
+  'play.help.hand.pick': 'Tryck på ett kort för att läsa det, och det blir valt. Håll för att välja flera.',
   'play.help.hand.play': 'Dra ett valt kort uppåt för att spela det, eller använd knapparna under handen.',
   'play.help.hand.hidden': 'De andra ser hur många kort du har, aldrig vilka.',
 
   // Telefonen: handen, det som ligger framför en, och räknarna.
-  'player.hint': 'Välj → läs → spela · håll för att välja flera',
+  'player.hint': 'Tryck för att läsa · håll för att välja flera',
   'player.hint.selected.one': '{n} valda · dra upp för att spela',
   'player.hint.selected.other': '{n} valda · dra upp för att spela',
   'player.counter.minus': '{name} minus',
@@ -291,6 +296,10 @@ export const svPlay = {
   'player.hand.chosen': 'Valt: {name}',
   'player.hand.none': 'Inget kort valt',
   'player.hand.empty': 'Tom hand. Dra ett kort ur draghögen.',
+  // Läsvyn går igenom raden kortet lyftes ur (#507): handen, ytan framför dig, eller en annan yta.
+  'player.read.prev': 'Föregående kort',
+  'player.read.next': 'Nästa kort',
+  'player.read.at': '{n} av {of}',
 
   // Arket som säger vart ett kort går (C4). Kortets eget namn står fetstilt mitt i meningen, så
   // verbet och riktningen är två nycklar med namnet emellan.

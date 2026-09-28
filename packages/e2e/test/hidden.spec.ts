@@ -101,7 +101,9 @@ test.describe('what the table tells each person', () => {
 
     // Into the discard, which everyone can read the order of. This is a reveal and not a leak:
     // the card turns over on the way, and being told what it is *is* the point of an open pile.
+    // A tap reads the card and chooses it (#507, beslut A); putting it down leaves it chosen.
     await ada.page.locator('[data-hand-card]').first().tap()
+    await ada.page.locator('.byd-inspect-close').click()
     await ada.page.locator('.byd-hand-targets button[data-zone="discard"]').click()
     await expect(ada.page.locator('[data-hand-card]')).toHaveCount(1)
     const revealed = await bo.wire.until((f) => f.includes('"zone":"discard"') && f.includes('"face":"front"'))
@@ -117,6 +119,7 @@ test.describe('what the table tells each person', () => {
     const secret = held.find((c) => c !== shown)!
     const beforeBo = bo.wire.received().length
     await ada.page.locator('[data-hand-card]').first().tap()
+    await ada.page.locator('.byd-inspect-close').click()
     await ada.page.locator('.byd-hand-targets button[data-zone="draw"]').click()
     await expect(ada.page.locator('[data-hand-card]'), 'her hand is empty').toHaveCount(0)
 

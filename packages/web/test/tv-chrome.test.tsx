@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, renderHook, screen, within } from '@testing-library/react'
 import { projectActivity } from '@byd/engine'
 import { TvChrome } from '../src/table/TvChrome.js'
 import { seatColor } from '../src/table/seatColor.js'
+import { SHOW_MS, type Shown } from '../src/table/presence.js'
+import { useShowing } from '../src/table/useShowing.js'
 import { buildScene } from './scene.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -28,7 +30,9 @@ describe('TvChrome (C as the TV surroundings)', () => {
     const lines = within(feed).getAllByRole('listitem').map((l) => l.textContent)
     // Most recent first, and three lines (#482 fynd 6, beslut B): the rest of the history is on
     // every phone. The draws and the claim before them have gone off the television.
-    expect(lines[0]).toMatch(/Bordet vände ett kort/)
+    // The card turned face up on the table is one the television may see, so the line names it
+    // (#507 fynd 6) rather than saying «ett kort».
+    expect(lines[0]).toMatch(/Bordet vände (?!ett kort)\S/)
     expect(lines).toHaveLength(3)
     expect(lines).not.toContainEqual(expect.stringMatching(/satte sig/))
     expect(lines).not.toContainEqual(expect.stringMatching(/Bordet drog 2 från Draghög/))
@@ -301,5 +305,110 @@ describe('seat colours follow the approved prototypes (K9, #20)', () => {
     )
     const dock = within(screen.getByRole('list', { name: /platser/i })).getAllByRole('listitem')
     expect(dock.map((li) => li.style.getPropertyValue('--seat'))).toEqual(['#e05a4f', '#3c8ce7', '#3aa76d', '#d99a1f'])
+  })
+})
+
+// «Visa för alla» (#508, beslut B): a card somebody holds up is drawn over the felt, large enough
+// to read from the sofa (K26), and says who is showing it. The column beside it is left as it
+// was: the card is shown over the table, not instead of the dock.
+describe('a card shown for everyone stands over the felt (K8, K26, #508)', () => {
+  const scene = () => {
+    const { view, log } = buildScene()
+    const table = view(null)
+    const card = { ...table.components.find((c) => c.zone === 'table' && c.cardRef !== null)!, title: 'Björnen' }
+    return { table, activity: log.map(projectActivity), card }
+  }
+
+  it('draws the card inside the felt’s box, with who is showing it and the card’s name', () => {
+    const { table, activity, card } = scene()
+    const { container } = render(
+      <TvChrome view={table} activity={activity} roomCode="KX7P" showing={{ card, by: 'Ada', at: 1 }}>
+        <div data-testid="felt" />
+      </TvChrome>,
+    )
+    const shown = screen.getByRole('status', { name: /Ada visar/ })
+    expect(shown.closest('[data-tv] > main')).toBeTruthy()
+    expect(shown.textContent).toMatch(/Ada visar.*Björnen/)
+    expect(shown.querySelector(`[data-tv-show="${card.id}"]`)).toBeTruthy()
+    // The felt is still there under it, and the column is untouched.
+    expect(screen.getByTestId('felt')).toBeTruthy()
+    expect(container.querySelector('aside [data-tv-show]')).toBeNull()
+  })
+
+  it('says the table is showing it when nobody at a seat did', () => {
+    const { table, activity, card } = scene()
+    render(
+      <TvChrome view={table} activity={activity} showing={{ card, by: null, at: 1 }}>
+        <div />
+      </TvChrome>,
+    )
+    expect(screen.getByRole('status', { name: /Bordet visar/ })).toBeTruthy()
+  })
+
+  it('draws nothing over the felt when nothing is shown, and is taken down by a press on it', () => {
+    const { table, activity, card } = scene()
+    const { container, rerender } = render(
+      <TvChrome view={table} activity={activity}>
+        <div />
+      </TvChrome>,
+    )
+    expect(container.querySelector('[data-tv-show]')).toBeNull()
+    const down = vi.fn()
+    rerender(
+      <TvChrome view={table} activity={activity} showing={{ card, by: 'Ada', at: 1 }} onDismiss={down}>
+        <div />
+      </TvChrome>,
+    )
+    fireEvent.click(screen.getByRole('status', { name: /Ada visar/ }))
+    expect(down).toHaveBeenCalledOnce()
+  })
+})
+
+// What the TV holds up, and for how long (#508): the room's `show`, or the table's own keyboard
+// asking «Titta» on a card. The newest wins, each goes by itself, and Escape takes it down until
+// somebody shows something again.
+describe('which shown card the TV draws (#508)', () => {
+  const setup = () => {
+    const { view } = buildScene()
+    const table = view(null)
+    const [one, two] = table.components.filter((c) => c.cardRef !== null && c.counter === undefined)
+    return { table, one: one!, two: two! }
+  }
+  const from = (component: string, at: number, seat: string | null = 'A'): Shown => ({ component, seat, name: seat === 'A' ? 'Ada' : 'bordet', at })
+
+  it('draws what the room shows, by the name of whoever showed it', () => {
+    const { table, one } = setup()
+    const { result } = renderHook(() => useShowing(table, from(one.id, 1000)))
+    expect(result.current.showing).toMatchObject({ card: { id: one.id }, by: 'Ada', at: 1000 })
+  })
+
+  it('draws the table’s own «Titta» as the table showing it, and lets it go after its time', () => {
+    vi.useFakeTimers()
+    try {
+      const { table, one } = setup()
+      const { result } = renderHook(() => useShowing(table, null))
+      act(() => result.current.show(one))
+      expect(result.current.showing).toMatchObject({ card: { id: one.id }, by: null })
+      act(() => vi.advanceTimersByTime(SHOW_MS))
+      expect(result.current.showing).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps the newer of the two, and a dismissed card down until another is shown', () => {
+    const { table, one, two } = setup()
+    const { result, rerender } = renderHook(({ shown }) => useShowing(table, shown), { initialProps: { shown: from(one.id, Date.now() + 10) } })
+    act(() => result.current.dismiss())
+    expect(result.current.showing).toBeNull()
+    rerender({ shown: from(two.id, Date.now() + 20) })
+    expect(result.current.showing).toMatchObject({ card: { id: two.id } })
+  })
+
+  it('draws nothing for a card this screen does not see face up', () => {
+    const { table } = setup()
+    const down = table.components.find((c) => c.cardRef === null)!
+    const { result } = renderHook(() => useShowing(table, from(down.id, 1000)))
+    expect(result.current.showing).toBeNull()
   })
 })

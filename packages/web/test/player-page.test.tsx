@@ -85,7 +85,7 @@ describe('PlayerPage', () => {
     expect(box()).toBeNull()
 
     fireEvent.click(ask)
-    expect((await screen.findByRole('dialog', { name: 'handen' })).textContent).toMatch(/håll ett kort för att välja flera/i)
+    expect((await screen.findByRole('dialog', { name: 'handen' })).textContent).toMatch(/tryck på ett kort för att läsa det/i)
     // What the surface itself says stays on the surface: the box is not where the hint went.
     expect(screen.getByText(/Dina kort/)).toBeTruthy()
 
@@ -110,7 +110,7 @@ describe('PlayerPage', () => {
 
     await table.send({ v: 'deal', from: 'draw', to: ['hand:A'], each: 1 })
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
-    expect(screen.getByText('Välj → läs → spela · håll för att välja flera')).toBeTruthy()
+    expect(screen.getByText('Tryck för att läsa · håll för att välja flera')).toBeTruthy()
     expect(screen.queryByText(/Tom hand/)).toBeNull()
     table.close()
   })
@@ -135,7 +135,8 @@ describe('PlayerPage', () => {
   // A tap is a pointerdown and a pointerup, and the browser sends a click after them to whatever
   // is under the finger by then. The inspection opened on the pointerup, so the click landed on
   // the inspection, which closed on click: on a phone the card flashed and was gone.
-  it('reading the selected card stays open through the trailing click', async () => {
+  // One tap reads (K26, #506 beslut 2; #507 beslut A): there is no «Läs valt kort» to find first.
+  it('a tap holds the card up at once, and it stays up through the trailing click', async () => {
     const id = await createSession(run)
     const table = TableClient.connect(await asTable(run, id))
     await table.ready()
@@ -143,18 +144,60 @@ describe('PlayerPage', () => {
     await table.synced(1)
     await table.send({ v: 'deal', from: 'draw', to: ['hand:A'], each: 1 })
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
+    expect(screen.queryByRole('button', { name: 'Läs valt kort' })).toBeNull()
     const card = document.querySelector('[data-hand-card]')!
     fireEvent.pointerDown(card, { clientX: 100, clientY: 600 })
     fireEvent.pointerUp(card, { clientX: 100, clientY: 600 })
-    fireEvent.click(screen.getByRole('button', { name: 'Läs valt kort' }))
     const held = document.querySelector('.byd-inspect')
-    expect(held).not.toBeNull()
+    expect(held?.querySelector('[data-inspect]')?.getAttribute('data-inspect')).toBe(card.getAttribute('data-hand-card'))
     fireEvent.click(held!)
     expect(document.querySelector('.byd-inspect')).not.toBeNull()
     // The next touch anywhere puts it down.
     fireEvent.pointerDown(document.querySelector('.byd-inspect')!)
     expect(document.querySelector('.byd-inspect')).toBeNull()
     table.close()
+  })
+
+  // The card read is the card chosen (#507 beslut A): what the foot plays is what she last read.
+  it('walks the hand from the held card in the strip’s order, and the card walked to is the chosen one', async () => {
+    const id = await createSession(run)
+    const token = await open(id, 'A', 'Ada')
+    const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', token })
+    await me.ready()
+    await me.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 3 })
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(3))
+    const strip = () => [...document.querySelectorAll('[data-hand-card]')].map((c) => c.getAttribute('data-hand-card')!)
+    const [first, second] = strip()
+    const card = document.querySelector(`[data-hand-card="${first}"]`)!
+    fireEvent.pointerDown(card, { clientX: 100, clientY: 300 })
+    fireEvent.pointerUp(card, { clientX: 100, clientY: 300 })
+    expect(screen.getByText('1 av 3')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Nästa kort' }))
+    expect(document.querySelector('[data-inspect]')?.getAttribute('data-inspect')).toBe(second)
+    expect(document.querySelector(`[data-hand-card="${second}"]`)?.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.pointerDown(document.querySelector('.byd-inspect')!)
+    expect(screen.getByText(/^Valt: /).textContent).toBe(`Valt: ${document.querySelector(`[data-hand-card="${second}"]`)?.textContent}`)
+    me.close()
+  })
+
+  it('plays the held card from under it, and puts it down as it goes', async () => {
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    const token = await open(id, 'A', 'Ada')
+    const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', token })
+    await me.ready()
+    await me.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(2))
+    const card = document.querySelector('[data-hand-card]')!
+    const idOfCard = card.getAttribute('data-hand-card')!
+    fireEvent.pointerDown(card, { clientX: 100, clientY: 300 })
+    fireEvent.pointerUp(card, { clientX: 100, clientY: 300 })
+    const held = within(document.querySelector('.byd-inspect') as HTMLElement)
+    // The setup's first place and the way to every other one: the second press, under the card.
+    expect(held.getByRole('button', { name: 'Spela…' })).toBeTruthy()
+    fireEvent.click(held.getByRole('button', { name: 'Framför mig' }))
+    expect(document.querySelector('.byd-inspect')).toBeNull()
+    await waitFor(() => expect(me.view!.components.find((c) => c.id === idOfCard)?.zone).toBe('mine:A'))
+    me.close()
   })
 
   it('lifting a card and choosing a zone plays it there — one envelope, seen by the table', async () => {
@@ -650,6 +693,33 @@ describe('counters and the area in front of you (C4)', () => {
     table.close()
   })
 
+  // Andras publika kort läses på telefonen (#506 beslut 3, #507 beslut A): fliken visar korten och
+  // inte bara antalet, och samma tryck som på handen håller upp dem — utan verb, eftersom de inte
+  // är hennes att spela.
+  it('reads the cards in front of another seat from the fold, with the hand’s tap and no verb', async () => {
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    await open(id, 'A', 'Ada')
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await table.send({ v: 'draw', from: 'draw', to: 'mine:B', count: 2 })
+    const cards = await waitFor(() => {
+      const found = document.querySelectorAll('[data-phone-table] [data-zone-summary="mine:B"] [data-area-card]')
+      expect(found).toHaveLength(2)
+      return [...found]
+    })
+    const [first, second] = cards.map((c) => c.getAttribute('data-area-card')!)
+    fireEvent.click(cards[0]!)
+    const held = document.querySelector('.byd-inspect') as HTMLElement
+    expect(held.querySelector('[data-inspect]')?.getAttribute('data-inspect')).toBe(first)
+    expect(held.querySelector('[data-zone]'), 'another seat’s card is read, never played').toBeNull()
+    expect(held.querySelector('[data-mine-actions]')).toBeNull()
+    fireEvent.click(within(held).getByRole('button', { name: 'Nästa kort' }))
+    expect(document.querySelector('[data-inspect]')?.getAttribute('data-inspect')).toBe(second)
+    // Reading another seat's card chooses nothing in her own hand.
+    expect(document.querySelector('[data-hand-card][aria-pressed="true"]')).toBeNull()
+    table.close()
+  })
+
   it('selects, reads and plays from the hand first, then opens the private area', async () => {
     const id = await createSession(run, 's1', undefined, seatSetup())
     const token = await open(id, 'A', 'Ada')
@@ -664,8 +734,6 @@ describe('counters and the area in front of you (C4)', () => {
     fireEvent.pointerDown(card, { clientX: 100, clientY: 300 })
     fireEvent.pointerUp(card, { clientX: 100, clientY: 300 })
     expect(card.getAttribute('aria-pressed')).toBe('true')
-    expect(document.querySelector('.byd-inspect')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Läs valt kort' }))
     expect(document.querySelector('[data-inspect]')?.textContent).toContain('knight')
     fireEvent.pointerDown(document.querySelector('.byd-inspect')!)
     fireEvent.click(within(document.querySelector('.byd-hand-actions') as HTMLElement).getByRole('button', { name: 'Framför mig' }))
@@ -817,7 +885,7 @@ describe('counters and the area in front of you (C4)', () => {
     me.close()
   })
 
-  it('holds a hand card up to be looked at, and offers no verb there', async () => {
+  it('holds a hand card up with the hand’s own way to play it, and none of a lying card’s verbs', async () => {
     const id = await createSession(run, 's1', undefined, seatSetup())
     const token = await open(id, 'A', 'Ada')
     const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', token })
@@ -830,10 +898,10 @@ describe('counters and the area in front of you (C4)', () => {
     })
     fireEvent.pointerDown(card, { clientX: 10, clientY: 10 })
     fireEvent.pointerUp(card, { clientX: 10, clientY: 10 })
-    fireEvent.click(screen.getByRole('button', { name: 'Läs valt kort' }))
     const sheet = await waitFor(() => document.querySelector('.byd-inspect')!)
     // A card in the hand is not lying in front of you, so there is nothing to turn or take up.
     expect(sheet.querySelector('[data-mine-actions]')).toBeNull()
+    expect(sheet.querySelector('[data-zone="mine:A"]')).not.toBeNull()
     me.close()
   })
 })

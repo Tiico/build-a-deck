@@ -16,6 +16,10 @@ export const Presence = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('drop') }),
   // A pointing pulse: "look here".
   z.object({ kind: z.literal('point'), x: z.number(), y: z.number() }),
+  // «Visa för alla» (K8, #508): a card held up on the room's screen for everyone to read. It names
+  // the card and nothing else, and the screen draws it only if its own view already carries the
+  // face — so a message can never show what the screen could not see.
+  z.object({ kind: z.literal('show'), component: ComponentId }),
 ])
 export type Presence = z.infer<typeof Presence>
 // Who said it: the connection's seat, and an id that tells two screens at the table apart.

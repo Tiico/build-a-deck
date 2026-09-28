@@ -696,6 +696,23 @@ Det mildras av att de tre är sällanhandlingar — ångra, flagga ett ögonblic
 Alternativen var att ta bort solfjädern (K9, C2) eller att gömma handen tills den kallas fram, och båda kostade mer.
 Vad som faktiskt ligger i bandet, och de två lägen handen har, står i K17.
 
+Reviderat 2026-09-28 (#507, beställarens beslut A efter prototypen på grenen `proto/507-telefonen`): **ett tryck läser, och det lästa kortet är det valda.**
+Telefon A:s «välj → Läs valt kort → Stäng» kostade tre tryck per kort, och «Läs valt kort» nådde 275 px vid 320, alltså 13 px brödtext och under K26:s golv.
+Ett tryck på ett kort i handen håller nu upp det i läsbredd, och kortet blir samtidigt det valda, så det foten och knapparna under handen spelar är det spelaren senast läste.
+Läsbredden är K26:s och inte en andel av skärmen: `clamp(294px, 100vw − 26px, 336px)`, alltså 14 px brödtext vid 320 och 16 px från 390, där den tidigare 86vw gav 660 px vid 768.
+Under kortet står handens andra tryck, samma två som foten bär: setupens första genväg och «Spela…» till alla andra platser.
+Därunder står ‹ och › med «2 av 6», och ett svep över kortet gör samma sak, så nästa kort i handen är ett steg och aldrig tre tryck.
+Ett kort som ligger framför en själv hålls upp i samma vy med sina tre verb (#78) sida vid sida, och en annan ytas kort utan verb.
+Kortet läggs ner av ett tryck som börjar på det, av bakgrunden eller av «Stäng»; klicket som avslutar trycket som öppnade det landar mitt på skärmen, där kortet nu är, och lägger inte ner det (UX-30).
+«Läs valt kort» är borta.
+Håll för flerval, lyft uppåt till arket och omsortering (K4, #483) är orörda: bara vad ett tryck gör har ändrats.
+Remsan är liten i vila, `clamp(112px, 34vw, 200px)`, och följer skärmen i stället för att stå i 154 px från 320 till 768.
+«Senast» och varje annan logg säger kortets titel när raden handlar om ett kort som läsarens egen vy har ett namn på, «Bo vände Björnen», och «ett kort» annars; namnet kommer ur projektionen och ingen annanstans, så raden kan inte säga något som skärmen inte redan fått veta (B6, #412).
+Två förkastade varianter, mätta med riktiga texturer: B ritade remsan i läsbredd med handen som miniatyrer ovanför, vilket läste utan handling men visade ett kort åt gången och sköt genvägarna under skärmkanten; C lät det valda kortet växa där det låg, vilket vid 390 lämnade en strimma av grannarna.
+Bilder och tal: [`docs/ux-audits/2026-09-28/prototyper/507/`](docs/ux-audits/2026-09-28/prototyper/507/README.md).
+Känd lucka: läsbredden räknas på förvalsramens 8,5 pt brödtext (L6), eftersom telefonen inte vet vilken punktstorlek mallen har — projektionen bär texturens hash och inte mallens mått.
+En mall med 7 pt brödtext når därför 11,5–13,2 px i läsvyn; K26:s «golvet gäller mallens brödtext som den är» kräver att den storleken når klienten, vilket är en egen fråga.
+
 ### C5. Rumslig modell: konfigurerbart TV- eller bordsläge (fråga 32)
 
 Sessionen väljer vid start mellan TV-läge, där allt orienteras mot betraktaren och platser radas längs nedre kanten, och bordsläge, där platser ligger runt om och orientering följer platsen.
@@ -1585,6 +1602,9 @@ Går tummen i stället i sidled efter att kortet lyft sig bär den kortet längs
 Med tangentbordet flyttar Alt och en pil kortet ett steg, som Alt och en pil flyttar ett lager eller en kolumn överallt annars i verktyget.
 Översikten är samma remsa nedzoomad.
 
+*Reviderat 2026-09-28 (#507, beslut A):* ett tryck håller upp kortet i K26:s läsbredd och väljer det i samma handling; «Läs valt kort» är borta och läsvyn går igenom handen med ‹ › och svep (C4).
+Remsan är liten i vila och följer skärmen, `clamp(112px, 34vw, 200px)`.
+
 ### K5. Inga objekt utanför spelets setup
 
 Ingen inbyggd låda med generiska tärningar, kuber eller lappar.
@@ -1599,7 +1619,8 @@ Allt går i en separat efemär kanal och hamnar aldrig i loggen.
 
 Prototypat och byggt 2026-09-06, variant "mjuka markörer + speglade dragningar":
 Markörerna är prickar med namn, inte pilar, och en anslutnings pågående dragning speglas live på de andras bord — kortet lyfts, följer handen och bär namnbricka tills det släpps och loggen säger var det landade.
-Kanalen är ett `presence`-meddelande på samma WebSocket (`cursor`, `away`, `drag`, `drop`, `point`) som aktören vidarebefordrar till övriga anslutningar; avsändaren är anslutningens plats (null för en bordsskärm) och ett anslutnings-id.
+Kanalen är ett `presence`-meddelande på samma WebSocket (`cursor`, `away`, `drag`, `drop`, `point`, och sedan 2026-09-28 `show`) som aktören vidarebefordrar till övriga anslutningar; avsändaren är anslutningens plats (null för en bordsskärm) och ett anslutnings-id.
+`show` (#508) håller upp ett kort för rummet: det bär kortets id, och TV:n ritar det bara om dess egen vy bär kortets framsida (K8).
 Markörrörelser stryps till ~20 per sekund i klienten; en bruten anslutning ger de andra `drop` och `away`.
 Tillskrivningen behöver ingen kanal: aktivitetsraden bär `by`, så bordet låter kortet glöda i platsens färg när raden kommer.
 Överlägget ligger inne i bordsplanet, så det följer perspektivet i bordsläget.
@@ -1624,6 +1645,37 @@ Vilotillståndet är därför kortet den senaste raden handlade om, så länge d
 Panelen ber om att bli pekad på bara när ingenting som hänt handlade om ett kort — ett bord ingen rört, eller en logg med bara sittningar, blandningar och givar i sig.
 Kortet slås upp i samma ögonblicksbild som ritas, så en rad om ett kort skärmen inte längre ser lämnar panelen där den stod i stället för att namnge något som inte finns.
 Regeln för vilket kort en rad handlar om sägs på ett ställe — `componentOf` i `packages/web/src/table/presence.ts` — och läses av både filten, som färgar ett kort som just flyttats (K6), och panelen.
+
+Reviderat 2026-09-28 (#509, K26): på filten som spelas i handen läser första trycket, och kortet lyfts upp bredvid sig självt.
+Beslutet sa «tryck-och-håll visar kortet i full upplösning», men ytan hade gjort hållet till ringen (K14) och gömt förstoringen bakom ringens «Titta»: klick, ring, Titta, Escape — tre handlingar till ett kort i fasta 252 px, alltså 12 px brödtext på varje skärm.
+Nu gäller K26:s gest: tryck, klick eller håll på ett uppvänt kort — löst eller överst i en hög — lyfter det upp bredvid där det ligger, och en mus som vilar på kortet gör detsamma så länge den vilar där.
+Ringen står bakom ett andra tryck, på kortet eller på det lyfta kortet, och öppnas kring kortet den handlar om; ett nedvänt kort och en dold hög har inget att läsa och öppnar ringen direkt som förut.
+Att fråga lägger ner kortet: ringens skivor ritades annars över texten man läste, och kontrastgrinden för skivorna (`button-language.test.tsx`) mätte dem mot kortets papper i stället för mot filten de står på.
+Bar filt eller Escape lägger ner det, och en dragning lägger undan det när den börjar.
+Tre varianter prototypades på bordsläget med riktiga texturer (#509: lyft bredvid kortet, en lässpalt, kortet med verben i en lista); lyftet valdes, eftersom det lämnar filten synlig runt kortet och ringen orörd, medan spalten tog filtens kort under K9:s 45 px vid 1024 och 1280 och listan tog bort K14:s glid till verbet.
+
+Storleken är en andel av fönstrets höjd, 0,62, och inte ett fast tal: det är den minsta andel som bär startramens 8,5 pt brödtext över skrivbordets 14 px (K26) vid 1024 × 768, och ett större fönster läser större — 341 px kort och 16 px brödtext vid 1024 × 768, 355 och 17 vid 1280 × 800, 479 och 23 vid 1920 × 1080.
+Kortet läggs på den sida om sig där det får plats och i höjd med sig där fönstret tillåter; saknas plats på båda sidor centreras det.
+Ringens «Titta» håller upp kortet på samma sätt, och ett dolt kort som baksida som förut.
+Det gäller bordsläget och distansvyns filt, som är samma renderare; TV:n läser genom INSPEKTION (#508), och telefonens håll (#507) och tangentbordets «Titta» (K16) är sina egna.
+
+Följdkrav: kortet som just släppts efter en dragning läses inte av att pekaren står kvar på det — webbläsaren säger att pekaren gick in i kortet när greppet släpps — utan först när pekaren rört sig.
+Ett tryck på det lyfta kortet räknas bara om trycket började där, för klicket en webbläsare gör av tappet som lyfte kortet landar där fingret var.
+Filtens ram bär lutningens `perspective`, och en `perspective` gör ramen till lådan som allt med `position: fixed` inuti den placeras i; under distansvyns rubrik hamnade därför både ringen och lyftet en rubrikhöjd under där de bads om, och lyftet gick ut över fönstrets nederkant.
+Det som ritas över filten i fönstrets koordinater räknas därför om till ramens (`fixedAt`), och `packages/e2e/test/table-read.spec.ts` mäter det på `/online`.
+Talen står i `packages/web/src/table/lift.ts` (`liftBox`); grinden är `packages/web/test/felt-lift.test.tsx`, som läser brödtexten och golvet ur K26:s modul och prövar gesterna.
+
+Reviderat 2026-09-28 (#508, beställarens beslut B, [prototyp](https://github.com/Tiico/build-a-deck/blob/745594d8a66a2a94271a5fb75dff47ac3057fb41/docs/ux-audits/2026-09-28/prototyper/508/README.md)): **på TV:n läser rummet ett kort genom «Visa för alla», över filten.**
+Panelen läste ingen: 177 px bred vid 1920 × 1080 är 8,5 px brödtext på tre meter, där K26:s golv är 24 px, och vid åtta platser gav spalten den 97 px.
+Prototypen breddade spalten till 544 px och nådde ändå inte golvet (462 px vid fyra platser, 417 vid åtta), och det kostade flödet, halva platserna och filtens kortsida (75 → 68 px vid fyra platser, 44 → 34 vid 1280 × 800).
+Filten är bunden av sin höjd och har rummet, så ett kort som hålls upp står **över filten**: så högt som filten ger efter en rad bildtext, högst 938 px (32 px brödtext): 672 px bred och 32 px brödtext vid 1920 × 1080, mätt på texturbilden i den byggda appen.
+Det säger vem som visar det («Ada visar · Duel», «Bordet visar» från TV:ns eget tangentbord), går av sig självt efter 15 sekunder (`SHOW_MS`) och tas ner med Escape eller ett tryck; ett nyare kort ersätter det.
+Vilan är orörd: panelen i spalten står kvar som ovan, och filten, platserna och flödet ritas som förut.
+Rummet väljer kortet på två sätt: telefonen skickar `show` (K6) med kortets id, och på TV:n själv gör både K16:s «Titta» och ringens «Titta» samma sak — på TV:n är den stora vyn rummets, och K8:s privata vy var privat för ingen.
+Ett kort TV:n ser nedvänt behåller K8:s vy, eftersom en baksida upphållen för rummet inte säger det något (K23).
+**TV:n visar bara vad den själv ser.** `show` bär ett id och inget annat, och skärmen slår upp det i sin egen ögonblicksbild och ritar det bara om den bär kortets framsida (`shownCard`), så ett meddelande aldrig kan visa ett kort på hand eller ett nedvänt.
+Telefonens knapp «Visa för alla» står i läsvyn för andras publika kort (#507); bordslägets lyft (#509) gäller inte på TV:n, som läser på det här sättet.
+Grindarna: `packages/web/test/tv-show.test.tsx` (kortets bredd mot K26:s TV-golv vid 1920 × 1080 med fyra och åtta platser, skrivbordets vid 1280 × 800, och spalten orörd), `presence.test.ts` (meddelandet, tiden och att bara ett uppvänt kort ritas), `tv-chrome.test.tsx`, `table-page.test.tsx` (en telefon visar, ett nedvänt kort ritas inte), `table-keyboard.test.tsx` och `table-renderer.test.tsx` («Titta» på TV:n, från panelen och från ringen).
 
 ### K9. Bordsvyns utseende: filtbord som renderare, sändningslayout som TV-omgivning (prototypat 2026-09-06)
 
@@ -1840,6 +1892,8 @@ Följdkrav:
 Zonernas namn är genvägarnas etiketter; ett spel med zoner som heter "Zon 3" får obegripliga knappar (B5).
 Platsen claimas med namnet ur länken vid första anslutning om den är ledig; annars visas den som sitter där.
 
+*Reviderat 2026-09-28 (#507, beslut A):* «tryck inspekterar i fullstorlek» gäller igen, efter att #156 gjort det till välj → läs → spela; storleken är K26:s golv och inte skärmens bredd (C4).
+
 ### K11. Att spela ett kort vänder det upp om målet är publikt (2026-09-06)
 
 Zongenvägen skickar `move` och `flip` till framsidan som ett kuvert när målzonen är publik, och enbart `move` när målet är en dold hög.
@@ -2030,6 +2084,10 @@ Sidan bor därför på zonen och inte i steget som ber om korten: ringens Dra 1 
 Den är fyra: `left`, `right`, `above` och `below`, i högens egen vridning som vänster alltid räknats i, och en vriden hög vid en sidoplats får dem med sig.
 Ovanför och under mäts i kortets höjd och inte dess bredd, för en hög som läggs ovanför en annan måste gå fri från långsidan.
 Se K21 för ratten i editorn och för meningen som läser den.
+
+Reviderat 2026-09-28 (#509, K26): på filten som läser öppnar ett tryck på ett uppvänt kort inte ringen utan lyfter kortet för att läsas (K8); ringen står bakom ett andra tryck.
+Regeln på filten blir därmed: en dragning flyttar saken, ett tryck läser den, och ett tryck till frågar vad som går att göra med den.
+Ett nedvänt kort, en dold hög och högens etikett frågar som förut.
 
 Reviderat 2026-09-12: ringen håller verb och inget annat.
 Den bar också en **Stäng**, som beslutet aldrig räknade upp och som tog en plats i cirkeln där varje annan plats gör något.
@@ -2869,6 +2927,41 @@ Raden bär brickans egen form — vad som inte går, kolon, och skälet — och 
 Ratten pekar på raden med `aria-describedby`, eftersom den som tabbar till ratten hoppar över texten ovanför den.
 
 Grindarna för tillägget: `packages/web/test/setup-actions.test.tsx` (rattens lägen, rutans rad och att ratten pekar på texten), `packages/web/test/setup-sentence-matrix.test.tsx` (raden ordagrant i båda språken, och att den uteblir när de två inte möts), `packages/web/test/slot-badge-contrast.test.ts` (att både den avstängda raden och raden under ratten går att läsa på sin egen botten) samt `packages/web/test/game-start.test.ts` och `packages/web/test/table-renderer.test.tsx` för bordshalvan.
+
+### K26. Läsbar korttext på skärm: ett golv per skärm, och en handling dit (beslutat 2026-09-28, #505, #506)
+
+E5 och E6 sätter golvet för text **i tryck**, K9 sätter kortets storlek som kontroll på filten och K18 räknar läsbarhet i kortsida på tre meter — men inget beslut sa vad **texten på kortet** blir när kortet ritas på en skärm.
+Läsbarhetsgranskningen 2026-09-28 ([rapporten](docs/ux-audits/2026-09-28-lasbarhet.md#måttstocken)) fann att varje yta valt sin storlek på kortets ram: distansvyns 112 px (K17) gav 5 px brödtext, telefonens remsa 154 px gav 7 px, TV:ns INSPEKTION 177 px gav 8 px på tre meter, och K8:s 252 px gav exakt 12 px.
+
+**Formeln.** Textens storlek på skärmen i CSS-px = punktstorleken × 0,3528 mm/pt × (kortets ritade bredd i px ÷ kortets bredd i mm).
+På ett 63 mm brett kort blir 8,5 pt brödtext **0,048 × kortbredden** och 12 pt titel **0,067 × kortbredden**.
+
+**Golvet per skärm**, ur plattformsriktlinjerna (Apple HIG, Material, Android TV; WCAG sätter inget golv utan kräver bara att text går att förstora):
+
+| Skärm | Avstånd | Golv för all text | Brödtext man ska läsa |
+| --- | --- | --- | --- |
+| Telefon i handen | 30–40 cm | 12 px | 14–16 px |
+| Skrivbord, laptop, platta | 50–70 cm | 12 px | 14–16 px |
+| TV (K9) vid 1920 × 1080 CSS-px | ~3 m | 24 px | 28–32 px |
+
+En 4K-TV räknas som 1920 × 1080 CSS-px vid DPR 2, alltså samma tal.
+Omvänt kräver 8,5 pt brödtext ett kort som ritas **252 px brett för 12 px, 294 för 14, 504 för 24 och 588 för 28**.
+
+**Vägen till läsning är en handling, samma gest överallt.**
+Tryck, klick eller hover på kortet visar det i golvets storlek; ringen och verben (K14) står kvar bakom ett andra tryck.
+Det som ritas i vila får vara oläsligt — ett kort på filten i K9:s 45 px bär 2,1 px brödtext — men bara om den handlingen finns.
+
+**Andras publika kort läses på telefonen.**
+Runt en TV är telefonen spelarens enda läsyta (C2, C4), så översikten visar korten i publika ytor och inte bara deras antal, med samma läsgest som handen (C4:s «fäll ut bordet», #507).
+TV:n får därtill INSPEKTION i läsbar storlek för det senaste kortet (K8, #508).
+
+**Golvet gäller mallens brödtext som den är.**
+En mall med 7 pt brödtext får 18 % mindre än varje tal ovan och en med 10 pt 18 % mer; ytan räknar med mallens egen storlek och inte med 8,5 pt.
+Om E5:s fysiska kontroll också ska varna för skärmen avgörs av editorns prototyp (#512), inte här.
+
+Talen står på ett ställe i koden, `packages/web/test/legibility.ts` (`textPxOnCard`, `cardPxForText`, `SCREENS`), och varje mätande test på en spelyta läser dem därifrån; ingen yta får ett eget tal.
+Grinden för beslutet är `packages/web/test/legibility.test.ts`, som läser startramarnas brödtext (L6) och golven ur samma modul och säger vilken kortbredd varje ram behöver per skärm, så att en ändring av endera syns.
+Ytornas egna mätningar byggs i #507–#512.
 ---
 
 ## L. Editorn (grillad 2026-09-06)
@@ -4954,6 +5047,9 @@ Vinsten är mätt i telefonens knappaste resurs: vid fyra platser försvinner en
 Telefonen ritar kortet med framsidan i en ram av ryggens ränder och orden «nervänt · bara du».
 Luckan är erkänd: ett kort som bordsskärmen vänder ner framför någon har ingen som tittar åt ägaren, och bara en projektionsregel skulle täcka det — en fjärde synlighet, som inte är beslutad.
 
+*Tillagt 2026-09-28 (#506 beslut 3, #507 beslut A):* «Ytorna» visar korten i varje yta läsaren får se in i och inte bara deras antal, och samma tryck som på handen håller upp dem i läsbredd, utan verb eftersom de inte är hennes att spela.
+Rutans namn och antal står kvar överst; ytorna står en per rad, så att korten får plats.
+En yta läsaren inte får se in i skickar inget kort alls (B6), så den ritar inget heller; det bevisas i `packages/e2e/test/private-area.spec.ts`.
 
 ## I. Öppna frågor
 

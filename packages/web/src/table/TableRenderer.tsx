@@ -21,6 +21,7 @@ import { ActionSheet } from './ActionSheet.js'
 import { compileStart, startsAt } from './actions.js'
 import { Question } from '../editor/Question.js'
 import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
+import { liftBox, type Box, type Edges } from './lift.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAt, handBand, handCountAt, handExtent, handRotation, type TableMode } from './hand.js'
 import { gapAbove, nameAt, type Grow, type Rim } from './labels.js'
 import { useT, type Key, type T } from '../i18n/index.js'
@@ -125,6 +126,9 @@ export type TableRendererProps = {
   // A card tapped to be looked at (#485): on a screen with no pointer to rest on it, pointing
   // cannot say which card the eye is on, so a tap does.
   onPick?: ((c: VisibleComponentState) => void) | undefined
+  // Where «Titta» goes on a screen whose large view is the room's (#508): the TV holds a face it
+  // sees up over the felt for everyone. A back keeps K8's view, which is all a back has to say.
+  onShow?: ((c: VisibleComponentState) => void) | undefined
   size?: Size | undefined
   glideMs?: number | undefined
   // Room kept clear around the table when it is fitted, in table millimetres (L30, #316). The
@@ -186,6 +190,16 @@ const HOLD_MS = 350
 const DOUBLE_MS = 700
 const POINT_MS = 450
 const DRAG_MM = 4
+// How far the pointer must move off the point a drag let go at before resting on a card reads it.
+const DRAG_PX = 4
+
+// A card being read on the felt (K26): what it is, what a second press asks about, and where it
+// lay on the screen when it was lifted, which is what the lift is placed beside.
+type Lift = { c: VisibleComponentState; target: DragTarget; at: Edges; standIn: boolean }
+const edgesOf = (el: Element): Edges => {
+  const r = el.getBoundingClientRect()
+  return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }
+}
 const TABLE_GREY = '#8a93a8'
 // The narrowest chip that still has room for the name under the number, in screen pixels.
 const TOKEN_NAME_PX = 34
@@ -252,7 +266,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, onPick, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, onPick, onShow, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -305,6 +319,17 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
 
   // Inspection (K8): "Titta" in the ring, private to this screen, until tapped away.
   const [held, setHeld] = useState<VisibleComponentState | null>(null)
+  // Reading a card on the felt (K26, #509): the first press lifts it up beside itself in the
+  // window's size, and the ring is behind a second press. A card that is pointed at with a mouse is
+  // lifted for as long as the mouse stays on it (`pointed`); a press keeps it lifted (`read`) until
+  // the bare felt is pressed or Escape. The TV reads through its own INSPEKTION (K8, #508).
+  const lifts = mode === 'table'
+  const [read, setRead] = useState<Lift | null>(null)
+  const [pointed, setPointed] = useState<Lift | null>(null)
+  // Where a drag let go, until the pointer has moved on from it. The card let go lies under a
+  // pointer that has not moved, and the browser tells it the pointer entered it when the capture
+  // is released — which is not somebody pointing at it (#509).
+  const letGo = useRef<{ x: number; y: number } | null>(null)
   const [drag, setDrag] = useState<Live | null>(null)
   const [settling, setSettling] = useState<Settled | null>(null)
   const [ring, setRing] = useState<Ring | null>(null)
@@ -382,6 +407,33 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const openRing = (target: Ring['target'], x: number, y: number) => {
     const room = typeof window === 'undefined' ? null : { w: window.innerWidth, h: window.innerHeight }
     setRing({ target, ...(room ? ringCentre({ x, y }, room) : { x, y }) })
+  }
+  // What a press on a thing reads, when it reads anything: a card whose face this screen sees,
+  // loose or on top of a pile. A face-down card or a hidden pile has nothing to read, and a press
+  // on it asks what may be done with it, as it always has (K14).
+  const readableOf = (target: DragTarget): VisibleComponentState | null => {
+    const pile = target.kind === 'pileTop' ? zoneById.get(target.pile) : undefined
+    const c = target.kind === 'card' ? byId.get(target.id) : pile ? byId.get(topIdOf(pile) ?? '') : undefined
+    return c && c.cardRef !== null ? c : null
+  }
+  // The first press reads and the second asks (K26). Answers whether the press was taken as a
+  // reading, so the caller knows not to open the ring.
+  const readFirst = (target: DragTarget, at: Edges): boolean => {
+    if (!lifts) return false
+    const c = readableOf(target)
+    if (!c || read?.c.id === c.id) return false
+    setRead({ c, target, at, standIn: false })
+    setPointed(null)
+    return true
+  }
+  const putDown = () => {
+    setRead(null)
+    setPointed(null)
+  }
+  // Asking puts down what is read: the ring's verbs are not drawn over the text being read.
+  const ask = (target: DragTarget, x: number, y: number) => {
+    putDown()
+    openRing(target, x, y)
   }
   // What the last press that was a click and not a drag was on, and when. It is what a double
   // press is about (#224); a press on bare felt or a drag clears it.
@@ -569,13 +621,14 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     if (target.kind === 'pile') return
     const held = target
     const { clientX, clientY, pointerId } = e
+    const edges = edgesOf(el)
     holdTimer.current = setTimeout(() => {
       holdTimer.current = null
       if (!live.current || live.current.started) return
       live.current = null
       setDrag(null)
       if (typeof el.releasePointerCapture === 'function' && typeof el.hasPointerCapture === 'function' && el.hasPointerCapture(pointerId)) el.releasePointerCapture(pointerId)
-      openRing(held, clientX, clientY)
+      if (!readFirst(held, edges)) ask(held, clientX, clientY)
     }, HOLD_MS)
   }
   const move = (e: RPointerEvent) => {
@@ -585,6 +638,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     const at = map(e.clientX, e.clientY)
     const started = d.started || Math.hypot(at.x - d.grab.x, at.y - d.grab.y) > DRAG_MM
     if (started) clearHold()
+    // A drag moves the thing and reads nothing: the lift would stand over where it is going.
+    if (started && !d.started) putDown()
     const next = { ...d, at, started }
     live.current = next
     setDrag(next)
@@ -597,18 +652,19 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // not a drop: the ring opens where the hand already is. That is the whole rule on the felt —
   // a drag moves the thing, a click asks what may be done with it (K14). A cancelled pointer
   // asks nothing, which is why it comes in here without a place to open at.
-  const release = (asked: Point | null) => {
+  const release = (asked: Point | null, edges: Edges | null = null) => {
     const d = live.current
     clearHold()
     live.current = null
     setDrag(null)
     if (d?.started && d.target.kind === 'card') onPresence?.({ kind: 'drop' })
+    if (d?.started && asked) letGo.current = asked
     clicked.current = null
     if (!d || !onAct) return
     if (!d.started) {
       if (asked) {
         clicked.current = { target: d.target, at: Date.now() }
-        openRing(d.target, asked.x, asked.y)
+        if (!readFirst(d.target, edges ?? { left: asked.x, right: asked.x, top: asked.y, bottom: asked.y })) ask(d.target, asked.x, asked.y)
       }
       return
     }
@@ -639,12 +695,28 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       dy: d.at.y - d.grab.y,
     })
   }
-  const up = (e: RPointerEvent) => release({ x: e.clientX, y: e.clientY })
+  const up = (e: RPointerEvent) => release({ x: e.clientX, y: e.clientY }, edgesOf(e.currentTarget as HTMLElement))
   const cancel = () => release(null)
   const handlers = (target: DragTarget) => ({ onPointerDown: (e: RPointerEvent) => down(e, target), onPointerMove: move, onPointerUp: up, onPointerCancel: cancel })
   // Pointing at a card is not touching it: it only says what the screen should show large.
   const inspects = (c: VisibleComponentState | undefined) =>
     onInspect && c ? { onPointerEnter: () => onInspect(c), onPointerLeave: () => onInspect(null), ...(onPick ? { onClick: () => onPick(c) } : {}) } : undefined
+  // A mouse resting on a card reads it (K26), for as long as it rests there. A finger has no
+  // resting: its enter is the start of a press, and the press is what reads.
+  const reads = (target: DragTarget): Pointing | undefined =>
+    lifts && onAct
+      ? {
+          onPointerEnter: (e) => {
+            if (!e || e.pointerType !== 'mouse' || live.current) return
+            const from = letGo.current
+            if (from && Math.hypot(e.clientX - from.x, e.clientY - from.y) < DRAG_PX) return
+            letGo.current = null
+            const c = readableOf(target)
+            if (c) setPointed({ c, target, at: edgesOf(e.currentTarget as HTMLElement), standIn: false })
+          },
+          onPointerLeave: () => setPointed(null),
+        }
+      : undefined
   // And what the pointer is standing on, for the commands that act on it (#224). The keyboard
   // track is told; it is the one place on the felt that reads a key, and this is the address it
   // reads it about.
@@ -657,13 +729,13 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const bothPointing = (a: Pointing | undefined, b: Pointing | undefined): Pointing | undefined =>
     a && b
       ? {
-          onPointerEnter: () => {
-            a.onPointerEnter()
-            b.onPointerEnter()
+          onPointerEnter: (e) => {
+            a.onPointerEnter(e)
+            b.onPointerEnter(e)
           },
-          onPointerLeave: () => {
-            a.onPointerLeave()
-            b.onPointerLeave()
+          onPointerLeave: (e) => {
+            a.onPointerLeave(e)
+            b.onPointerLeave(e)
           },
         }
       : a ?? b
@@ -923,6 +995,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   useEffect(() => clearPoint, [])
   const feltMove = (e: RPointerEvent) => {
     if (live.current) return
+    const from = letGo.current
+    if (from && Math.hypot(e.clientX - from.x, e.clientY - from.y) >= DRAG_PX) letGo.current = null
     clearPoint()
     const map = mapper()
     if (!map || !onPresence) return
@@ -931,6 +1005,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const feltDown = (e: RPointerEvent) => {
     if (isPan(e)) return
     if (e.target !== e.currentTarget && !(e.target as HTMLElement).classList.contains('byd-zone')) return
+    // The bare felt puts down what is being read.
+    putDown()
     const map = mapper()
     if (!map || !onPresence) return
     const at = map(e.clientX, e.clientY)
@@ -952,7 +1028,47 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // survive its own closing: the backdrop closes whatever was open, and what was open by then is
   // the ring the choice just opened. So the close is told which ring it is closing.
   const shut = (open: Ring) => () => setRing((r) => (r === open ? null : r))
-  const ringVerbs = ring && onAct ? ringItems(view, ring, setRing, onAct, setHeld, setEntry, t) : []
+  // «Titta» holds the card up the way the first press does, on the felt that reads (K8, K26): in
+  // the window's size, beside where the ring was asked for. A hidden pile's top is a stand-in the
+  // view does not carry, so it is held up as itself.
+  const look = (c: VisibleComponentState) => {
+    if (onShow && c.cardRef !== null && byId.has(c.id)) return onShow(c)
+    if (!lifts || !ring) return setHeld(c)
+    setPointed(null)
+    setRead({ c, target: { kind: 'card', id: c.id }, at: { left: ring.x, right: ring.x, top: ring.y, bottom: ring.y }, standIn: !byId.has(c.id) })
+  }
+  const ringVerbs = ring && onAct ? ringItems(view, ring, setRing, onAct, look, setEntry, t) : []
+  // What is lifted now, read off the table as it is now: a card turned since is drawn turned, and
+  // one that has left what this screen sees is not drawn at all.
+  const liftOf = (l: Lift | null): Lift | null => {
+    if (!l) return null
+    const c = l.standIn ? l.c : byId.get(l.c.id)
+    return c ? { ...l, c } : null
+  }
+  const reading = onAct ? liftOf(pointed) ?? liftOf(read) : null
+  const readingNow = reading !== null
+  useEffect(() => {
+    if (!readingNow || ring) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      putDown()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [readingNow, ring])
+  // Where the window's corner is, for what is drawn over the felt in window coordinates. The tilted
+  // felt's frame carries a `perspective`, and that makes it the box every `position: fixed` inside it
+  // is placed in: on the table screen the frame is the window and it makes no difference, but under
+  // the distance view's header a ring asked for at the pointer landed a header's height below it,
+  // and a lift ran off the bottom of the window (#509).
+  const fixedAt = (x: number, y: number): Point => {
+    const f = frame.current
+    if (!f || typeof getComputedStyle === 'undefined' || getComputedStyle(f).perspective === 'none') return { x, y }
+    const r = f.getBoundingClientRect()
+    return { x: x - r.left, y: y - r.top }
+  }
+  const ringAt = ring ? fixedAt(ring.x, ring.y) : null
   const ringOn = ring?.target
   const ringChip = ringOn?.kind === 'counter' ? view.components.find((c) => c.id === ringOn.id) : undefined
   // The game's own actions for the pile the ring is about (K14, extended). They hang under the
@@ -1109,7 +1225,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 lifted={whole}
                 shuffle={shuffling.get(z.id)}
                 still={still}
-                topInspects={inspects(lifting ? topOf(z, 1) : topOf(z))}
+                topInspects={bothPointing(inspects(lifting ? topOf(z, 1) : topOf(z)), reads({ kind: 'pileTop', pile: z.id }))}
                 bottomCard={bottomOf(z, byId)}
                 bottomInspects={inspects(bottomOf(z, byId) ?? bottomStandIn(z))}
                 topHandlers={onAct && count > 0 ? handlers({ kind: 'pileTop', pile: z.id }) : undefined}
@@ -1210,7 +1326,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 faces={faces}
                 back={backAt(`card-${c.id}`)}
                 handlers={onAct ? handlers({ kind: 'card', id: c.id }) : undefined}
-                points={bothPointing(inspects(c), points({ kind: 'card', id: c.id }))}
+                points={bothPointing(bothPointing(inspects(c), reads({ kind: 'card', id: c.id })), points({ kind: 'card', id: c.id }))}
                 keys={keys(`card:${c.id}`)}
               />
             )
@@ -1313,25 +1429,25 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       ) : (
         felt
       )}
-      {ringVerbs.length > 0 && ring && (
+      {ringVerbs.length > 0 && ring && ringAt && (
         <RadialMenu
           id={ringName(ring.target)}
-          x={ring.x}
-          y={ring.y}
+          x={ringAt.x}
+          y={ringAt.y}
           items={ringVerbs}
           hub={ringChip ? <CounterHub view={view} c={ringChip} t={t} /> : ringPile ? <PileHub view={view} chips={ringPile} t={t} /> : undefined}
           onClose={shut(ring)}
           onPressAgain={turnAgain}
         />
       )}
-      {ring && onAct && ringZone && ringActions.length > 0 && (
+      {ring && ringAt && onAct && ringZone && ringActions.length > 0 && (
         <ActionSheet
           view={view}
           pile={ringZone.id}
           name={ringZone.name}
           actions={ringActions}
-          x={ring.x}
-          y={ring.y + RING_REACH + RING_AIR * 2}
+          x={ringAt.x}
+          y={ringAt.y + RING_REACH + RING_AIR * 2}
           onAct={onAct}
           onClose={shut(ring)}
         />
@@ -1394,6 +1510,19 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       )}
       {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable)} />}
       {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => onAct([{ v: 'setCounter', component: entry.id, value }])} onClose={() => setEntry(null)} />}
+      {reading && (
+        <Lifted
+          c={reading.c}
+          box={(() => {
+            const box = liftBox(reading.at, { w: window.innerWidth, h: window.innerHeight })
+            const at = fixedAt(box.left, box.top)
+            return { ...box, left: at.x, top: at.y }
+          })()}
+          faces={faces}
+          // Around the card it lifts, which is what the ring is about, and not around the lift.
+          onAsk={() => ask(reading.target, (reading.at.left + reading.at.right) / 2, (reading.at.top + reading.at.bottom) / 2)}
+        />
+      )}
       {held && (
         <div className="byd-inspect" onClick={() => setHeld(null)}>
           <div data-inspect={held.id} data-face={held.cardRef === null ? 'back' : 'front'} style={held.cardRef === null ? undefined : { ['--hue' as string]: hue(held.cardRef) }}>
@@ -1541,7 +1670,7 @@ type FeltNodeProps = {
   onFocus(): void
   onKeyDown(e: RKeyboardEvent): void
 }
-type Pointing = { onPointerEnter(): void; onPointerLeave(): void }
+type Pointing = { onPointerEnter(e?: RPointerEvent): void; onPointerLeave(e?: RPointerEvent): void }
 
 function Card({ c, left, top, px, dragging, hiding = false, carried, by, faces, back, handlers, points, keys }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; hiding?: boolean; carried?: boolean; by?: { seat: string | null; colour: string } | undefined; faces?: string | undefined; back?: ReactNode | undefined; handlers?: Handlers | undefined; points?: Pointing | undefined; keys?: FeltNodeProps | undefined }) {
   // A card on its way into a hand is drawn as the card it is about to be (#444, K24): face down,
@@ -1637,6 +1766,31 @@ function topIdOf(z: ZoneView, skip = 0): string | undefined {
 
 // A pile is a point; the stack is centred on it. A hidden pile has a count and nothing else,
 // unless its top lies face-up.
+// The card lifted up to be read (K26, #509), drawn the way «Titta» draws one — the texture over
+// the card's own paper, its name while the texture is on its way — in the box `liftBox` gives it.
+// A press on it asks what may be done with it, and only a press that began on it: the click a
+// browser makes of the tap that lifted it lands wherever the finger was, which may be here.
+function Lifted({ c, box, faces, onAsk }: { c: VisibleComponentState; box: Box; faces: string | undefined; onAsk(): void }) {
+  const pressed = useRef(false)
+  return (
+    <div
+      className="byd-lift"
+      data-lift={c.id}
+      data-face={c.cardRef === null ? 'back' : 'front'}
+      style={{ left: box.left, top: box.top, width: box.w, height: box.h, ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }) }}
+      onPointerDown={() => (pressed.current = true)}
+      onClick={(e) => {
+        if (!pressed.current && e.detail !== 0) return
+        pressed.current = false
+        onAsk()
+      }}
+    >
+      <Texture faces={faces} c={c} retry />
+      <span>{cardWord(c) ?? ''}</span>
+    </div>
+  )
+}
+
 function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, lifted, aimed = false, shuffle, still = false, topHandlers, topInspects, bottomInspects, labelHandlers, topKeys, labelKeys, points }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; bottomCard?: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; aimed?: boolean | undefined; shuffle?: number | undefined; still?: boolean | undefined; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; bottomInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; topKeys?: FeltNodeProps | undefined; labelKeys?: FeltNodeProps | undefined; points?: Pointing | undefined }) {
   const t = useT()
   // What a face-down pile wears. Its top card's own back first, which is the one thing about a

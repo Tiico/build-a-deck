@@ -6,7 +6,7 @@ import { QrCode } from './QrCode.js'
 import { Texture } from './Texture.js'
 import { hue } from './hue.js'
 import { cardWord } from './keyboard.js'
-import { componentOf } from './presence.js'
+import { SHOW_MS, componentOf } from './presence.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { useT } from '../i18n/index.js'
 
@@ -28,6 +28,11 @@ export type TvChromeProps = {
   // null is not "nothing to show" but "nobody is pointing". `faces` is where the texture is from.
   inspecting?: VisibleComponentState | null | undefined
   faces?: string | undefined
+  // A card somebody holds up for the room (K8, #508): drawn over the felt at a size the sofa can
+  // read (K26), with who is showing it — a seat's name, or null for the table's own keyboard. The
+  // caller has already checked that this screen sees the card's face (`shownCard`).
+  showing?: { card: VisibleComponentState; by: string | null; at: number } | null | undefined
+  onDismiss?: (() => void) | undefined
   // Who is watching (C8): observers are never invisible.
   observers?: readonly { id: string; name: string }[] | undefined
   // A line the surrounding screen wants said beside the table rather than over it — the
@@ -53,7 +58,7 @@ export type TvChromeProps = {
 // at 1920 x 1080 measured 68 px across for it. The same card is 82 px with the rows gone and
 // their contents moved into the column, which is the difference between a card that has to be
 // pointed at to be told apart and one that does not (`tv-card-size.test.ts`, K8).
-export function TvChrome({ view, activity, roomCode, joinUrl, title, version, inspecting, faces, observers = [], note, rules, children }: TvChromeProps) {
+export function TvChrome({ view, activity, roomCode, joinUrl, title, version, inspecting, faces, showing, onDismiss, observers = [], note, rules, children }: TvChromeProps) {
   const t = useT()
   const handCount = (seat: string) => {
     const hand = view.zones.find((z) => z.kind === 'hand' && z.owner === seat)
@@ -104,7 +109,26 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
   const shown = inspecting ?? lastCard(view, activity)
   return (
     <div data-tv>
-      <main>{children}</main>
+      <main>
+        {children}
+        {/* «Visa för alla» (#508, beslut B): over the felt and not in the column, because the felt
+            is bound by its height and the column is not wide enough to hold a card the room can
+            read (K26); the rest of the screen stays as it was, and the card goes by itself. */}
+        {showing && (
+          <div className="byd-tv-show" role="status" aria-labelledby="tv-show" onClick={onDismiss}>
+            <figure>
+              <div data-tv-show={showing.card.id} style={showing.card.cardRef === null ? undefined : { ['--hue' as string]: hue(showing.card.cardRef) }}>
+                <Texture faces={faces} c={showing.card} />
+                <span>{cardWord(showing.card)}</span>
+              </div>
+              <figcaption id="tv-show">
+                <b>{showing.by === null ? t('tv.show.table') : t('tv.show.by', { name: showing.by })}</b> · {cardWord(showing.card)}
+                <i key={showing.at} style={{ animationDuration: `${SHOW_MS}ms` }} />
+              </figcaption>
+            </figure>
+          </div>
+        )}
+      </main>
       <aside>
         {note}
         <div className="byd-tv-head">
