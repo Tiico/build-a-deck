@@ -27,6 +27,8 @@ import { usePageTitle } from '../status/DocumentTitle.js'
 import { useRefusal } from '../status/Refusal.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { useT } from '../i18n/index.js'
+// PROTOTYPE — throwaway (#511)
+import { useObserverProto } from '../prototype/511-observer/proto.js'
 
 // /observe?session=…&name=Eva&server=ws://…
 // The observer (C8): sees every hand and every hidden pile, is announced to everyone, and can
@@ -65,6 +67,7 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   // eye says which one.
   const narrow = useNarrow()
   const [held, setHeld] = useState<VisibleComponentState | null>(null)
+  const proto = useObserverProto(view, http)
   const handle = useRef<HTMLDivElement>(null)
   const [handleH, setHandleH] = useState(0)
   useEffect(() => {
@@ -121,20 +124,33 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
       {/* An ended table is one more state of D5's kind: the picture behind the survey is not to be
           acted on, so it is out of reach the same way a stale one is (UX-38, #83). */}
       <div data-page="observe" data-drawer={drawer ? 'open' : 'shut'} data-status={status} className={`byd-fit byd-observer${live.stale ? ' byd-status-stale' : ''}`} style={{ ['--byd-observer-handle-h' as string]: `${handleH}px` }} {...(live.stale || view.ended ? { inert: true } : {})}>
+      {(proto?.wrap ?? ((x: React.ReactNode) => x))(<>
       <TvChrome
         view={previewOf(view)}
         activity={activity}
         inspecting={inspecting}
         faces={http}
         observers={observers}
-        note={<p className="byd-observer-note">{t('observer.banner')}</p>}
+        note={
+          <>
+            <p className="byd-observer-note">{t('observer.banner')}</p>
+            {proto?.variant === 'B' && (
+              <div className="p511-map">
+                <TableRenderer view={previewOf(view)} mode="tv" camera="hand" size={{ w: 320, h: 240 }} rotate={turn} faces={http} shuffles={shuffles} />
+              </div>
+            )}
+          </>
+        }
       >
         {/* A proposed rewind as the table screen shows it (#485, K13): the table it would bring back,
             in the same frame and with the same words. */}
         <RewindFrame view={view} activity={activity}>
-          <TableRenderer view={previewOf(view)} mode="tv" camera="hand" {...(sessionId ? { remember: `observe:${sessionId}` } : {})} rotate={turn} faces={http} onInspect={setInspecting} {...(narrow ? { onPick: setHeld } : {})} shuffles={shuffles} />
+          <TableRenderer view={previewOf(view)} mode="tv" camera="hand" {...(sessionId ? { remember: `observe:${sessionId}` } : {})} rotate={turn} faces={http} onInspect={proto?.onInspect ?? setInspecting} {...(proto?.onPick ? { onPick: proto.onPick } : narrow ? { onPick: setHeld } : {})} shuffles={shuffles} />
         </RewindFrame>
+        {proto?.rows}
       </TvChrome>
+      {proto?.extra}
+      </>)}
       {/* The handle (#6): a row of its own under the table, never a banner over it. What she is
           is always on it; the rest of the sentence, the feed and the seats are one press away and
           open under the table rather than across it. */}
