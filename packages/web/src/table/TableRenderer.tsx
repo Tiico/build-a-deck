@@ -1346,25 +1346,25 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       ) : (
         felt
       )}
-      {ringVerbs.length > 0 && ring && (
+      {ringVerbs.length > 0 && ring && ringAt && (
         <RadialMenu
           id={ringName(ring.target)}
-          x={ringAt!.x}
-          y={ringAt!.y}
+          x={ringAt.x}
+          y={ringAt.y}
           items={ringVerbs}
           hub={ringChip ? <CounterHub view={view} c={ringChip} t={t} /> : ringPile ? <PileHub view={view} chips={ringPile} t={t} /> : undefined}
           onClose={shut(ring)}
           onPressAgain={turnAgain}
         />
       )}
-      {ring && onAct && ringZone && ringActions.length > 0 && (
+      {ring && ringAt && onAct && ringZone && ringActions.length > 0 && (
         <ActionSheet
           view={view}
           pile={ringZone.id}
           name={ringZone.name}
           actions={ringActions}
-          x={ringAt!.x}
-          y={ringAt!.y + RING_REACH + RING_AIR * 2}
+          x={ringAt.x}
+          y={ringAt.y + RING_REACH + RING_AIR * 2}
           onAct={onAct}
           onClose={shut(ring)}
         />
