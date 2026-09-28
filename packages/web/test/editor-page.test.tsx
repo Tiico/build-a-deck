@@ -235,6 +235,24 @@ describe('a table opens only once its cards can be seen (L5)', () => {
   })
 })
 
+// Every hook of the page is called on every render, loading or loaded: a hook placed after the
+// page's early returns (#534 put `useLang` there) is called only once the project has arrived,
+// and React says so — and would lose the page's state the day it mattered.
+describe('the editor page keeps the order of its hooks (Rules of Hooks)', () => {
+  it('calls the same hooks while it loads as once it has loaded', async () => {
+    const said = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      await run.projects.create(run.projectId, projectDoc())
+      history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+      render(<EditorPage />)
+      await screen.findByText('Skogens herrar')
+      expect(said.mock.calls.map((c) => String(c[0])).filter((m) => m.includes('order of Hooks'))).toEqual([])
+    } finally {
+      said.mockRestore()
+    }
+  })
+})
+
 // Efter start (#523, beställarens beslut C): när texturerna är renderade säger editorn vilka kort
 // en telefon inte kan läsa, i E5:s form — en anmärkning som inte stoppar något — och visar dem på
 // kortväggen med telefonens öga. Talet är måttstockens (`minPtIn`), aldrig ett eget.

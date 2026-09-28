@@ -60,6 +60,8 @@ export type EditorPageProps = { onNavigate?(url: string): void; timing?: EditorT
 
 export function EditorPage({ onNavigate = (url) => location.assign(url), timing = DEFAULT_EDITOR_TIMING }: EditorPageProps = {}) {
   const t = useT()
+  // Before every early return below: a hook after them is called only once the project has come.
+  const { lang } = useLang()
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const projectId = params.get('project')
   const http = params.get('server') ?? location.origin
@@ -384,7 +386,6 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // up and never before it: what the renderer fitted each front to, against the smallest text the
   // phone's reading view carries at 320 px (K26). A remark in E5's form, which stops nothing.
   const settled = preparing ?? textures
-  const { lang } = useLang()
   const phone = PHONE_READING
   const unreadable = settled && settled.done + settled.failed.length >= settled.total ? Object.values(settled.smallest ?? {}).filter((pt) => pt < minPtIn(phone)).length : 0
   const showOnWall = () => {
