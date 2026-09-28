@@ -95,7 +95,9 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
   // A book is being written in only when nothing is lying in it: a proposal is a reading of what
   // the book would become, and a page that can be typed into while it says what it is about to
   // lose would be two things at once.
-  const writing = rules !== undefined && proposal === null
+  // A role that may not change the game reads the book and writes nothing (#489): no block opens,
+  // no ＋ is drawn, and the ways in are not offered.
+  const writing = rules !== undefined && proposal === null && client.mayEdit
   // There is no table to show a book that has not been written, and a proposal is a reading of
   // what the book would become rather than a book anybody is handed. Both fall back to the
   // editable mode rather than offering a preview of something that is not there.
@@ -315,7 +317,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
             {t(out.warnings.length === 1 ? 'rules.warnings.one' : 'rules.warnings.other', { n: out.warnings.length })}
           </span>
         )}
-        {!rules && !proposal && (
+        {client.mayEdit && !rules && !proposal && (
           <div className="byd-rules-ways">
             {/* Three ways in, and each of them does what it says: a control that does nothing yet
                 would be a promise nobody kept. */}
@@ -355,11 +357,13 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
             name on it, not a group. */}
         {rules && !proposal && (
           <div className="byd-rules-ways byd-rules-tools" role="group" aria-label={t('rules.tools')}>
-            <PickFile
-              label={rules.source ? t('rules.import.again') : t('rules.import.over')}
-              {...(rules.source ? { spoken: t('rules.import.again.of', { file: rules.source.file }) } : {})}
-              onPick={pick}
-            />
+            {client.mayEdit && (
+              <PickFile
+                label={rules.source ? t('rules.import.again') : t('rules.import.over')}
+                {...(rules.source ? { spoken: t('rules.import.again.of', { file: rules.source.file }) } : {})}
+                onPick={pick}
+              />
+            )}
             <Booklet client={client} />
           </div>
         )}

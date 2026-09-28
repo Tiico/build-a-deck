@@ -31,6 +31,9 @@ export type ZoneActionsProps = {
   // Att lägga undan panelen (#300). Den som stänger den har inte bett om att bli av med högen, så
   // ytan säger bara att den är färdigläst; vad det gör med markeringen är den väljandes sak.
   onClose(): void
+  // En roll som inte får ändra spelet (#489, beslut C efter prototyp 35) läser meningarna och
+  // vrider ingen ratt i dem: kroppen står i en avstängd fieldset, och krysset ut står utanför den.
+  reading?: boolean
 }
 
 const AMOUNTS: ActionAmount['of'][] = ['number', 'seats', 'zone', 'ask']
@@ -84,7 +87,7 @@ const blank = (v: ActionStep['v'], pile?: string): ActionStep =>
             ? { v, which: [], to: { at: 'beside' }, face: 'keep' }
             : { v, count: { of: 'number', n: 1 }, to: { at: 'beside' }, face: 'keep' }
 
-export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
+export function ZoneActions({ doc, zone, onPatch, onClose, reading = false }: ZoneActionsProps) {
   const t = useT()
   const actions = zone.actions ?? []
   const setAction = (id: string, next: ZoneAction, gesture?: string) => onPatch({ actions: actions.map((a) => (a.id === id ? next : a)) }, gesture)
@@ -155,150 +158,152 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
           </button>
         </header>
         <div className="byd-zone-actions-body">
-          <p className="byd-sentence">
-            {parts(t('setup.fill.sentence'), {
-              zone: <b key="z">{zone.name}</b>,
-              what: (
-                <QuerySlot
-                  key="w"
-                  query={zone.fill ?? []}
-                  columns={columns}
-                  // The deck starts with every card no other pile claims (the server's `setup.ts`), so
-                  // it never starts with nothing (#480): it said «inga kort» over a pile of 146.
-                  label={
-                    doc.setup.deckZone === zone.id
-                      ? zone.fill && zone.fill.length > 0
-                        ? t('setup.fill.someAndRest', { what: queryWords(zone.fill, t) })
-                        : t('setup.fill.rest')
-                      : zone.fill && zone.fill.length > 0
-                        ? t('setup.fill.some', { what: queryWords(zone.fill, t) })
-                        : t('setup.fill.none')
-                  }
-                  onChange={(fill) => onPatch({ fill: fill.length > 0 ? fill : undefined }, `fill:${zone.id}`)}
-                  t={t}
-                />
-              ),
-            })}
-          </p>
-
-          <h3>{t('setup.actions.heading')}</h3>
-          {actions.map((a) => {
-            const why = clash(a)
-            const whyId = `${panel}why${a.id}`
-            return (
-            <div key={a.id} className="byd-zone-action" data-action={a.id}>
-              <input
-                value={a.label}
-                aria-label={t('setup.actions.name', { name: a.label })}
-                onChange={(e) => setAction(a.id, { ...a, label: e.target.value }, `action:${zone.id}:${a.id}`)}
-              />
-              {/* När den körs, som en mening med en ratt i (K21): tidpunkten ställs in där allt
-                  annat i den här panelen ställs in, inne i texten. «Bara när någon ber om det» är
-                  vad en åtgärd utan fältet betyder, och skrivs därför som ingen egenskap alls —
-                  samma regel som högens sida följer, och av samma skäl (#331). */}
-              <p className="byd-sentence">
-                {parts(t('setup.actions.when'), {
-                  when: (
-                    <Slot key="w" label={t(`setup.when.${a.when ?? 'request'}` as Key)} describedBy={why === undefined ? undefined : whyId}>
-                      {(close) =>
-                        WHENS.map((w) => (
-                          <button
-                            key={w}
-                            type="button"
-                            // Ett läge som hör till starten går inte att välja åt en åtgärd vars
-                            // steg frågar efter ett tal. Åt andra hållet står ratten orörd: den
-                            // som märkt en åtgärd för start måste kunna ta tillbaka det.
-                            disabled={why === 'asks' && w !== 'request'}
-                            onClick={() => {
-                              const { when: _was, ...bare } = a
-                              setAction(a.id, w === 'request' ? bare : { ...bare, when: w })
-                              close()
-                            }}
-                          >
-                            {t(`setup.when.${w}` as Key)}
-                          </button>
-                        ))
-                      }
-                    </Slot>
-                  ),
-                })}
-              </p>
-              {/* Raden som säger varför, i ord och inte i en tooltip. Den står under ratten och
-                  inte inne i meningen: att låta meningen skriva om sig själv var det eleganta
-                  alternativet, men då försvinner skälet i samma ögonblick som `ask`-steget tas
-                  bort och syns alltså aldrig bredvid valet det handlar om. */}
-              {why !== undefined && (
-                <p className="byd-zone-action-why" id={whyId}>
-                  {t(`setup.when.why.${why}` as Key)}
-                </p>
-              )}
-              <ol>
-                {a.steps.map((step, i) => (
-                  <li key={i}>
-                    <span className="byd-sentence">
-                      <Step step={step} columns={columns} zones={others} beside={zone.beside ?? 'left'} noAsk={atStart(a)} t={t} onChange={(next) => setAction(a.id, { ...a, steps: a.steps.map((s, j) => (j === i ? next : s)) })} />
-                    </span>
-                    <button
-                      type="button"
-                      className="byd-zone-action-x"
-                      aria-label={t('setup.actions.removeStep', { n: i + 1 })}
-                      onClick={() => {
-                        const steps = a.steps.filter((_, j) => j !== i)
-                        // An action with no steps is not an action: the last step going takes it with
-                        // it, which is also the only way to be rid of one.
-                        if (steps.length > 0) setAction(a.id, { ...a, steps })
-                        else drop(a)
-                      }}
-                    >
-                      ×
-                    </button>
-                  </li>
-                ))}
-              </ol>
-              <button type="button" className="byd-zone-action-drop" aria-label={t('setup.actions.remove.of', { name: a.label })} onClick={() => drop(a)}>
-                {t('setup.actions.remove')}
-              </button>
-              <label className="byd-zone-step-add">
-                <span>{t('setup.actions.andThen', { name: a.label })}</span>
-                <select
-                  value=""
-                  onChange={(e) => e.target.value !== '' && setAction(a.id, { ...a, steps: [...a.steps, blank(e.target.value as ActionStep['v'], others.find((z) => z.kind === 'pile')?.id)] })}
-                >
-                  <option value="">{t('setup.actions.andThen.pick')}</option>
-                  {VERBS.map((v) => (
-                    <option key={v} value={v}>
-                      {t(`setup.verb.${v}` as Key)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            )
-          })}
-          {/* What was taken, and the way back (#480): an action went silently with its last step. */}
-          {dropped && (
-            <p className="byd-zone-action-undo" role="status">
-              {t('setup.actions.removed', { name: dropped.action.label })}{' '}
-              <button
-                ref={undoRef}
-                type="button"
-                onClick={() => {
-                  const back = [...actions]
-                  back.splice(Math.min(dropped.at, back.length), 0, dropped.action)
-                  onPatch({ actions: back })
-                  setDropped(null)
-                  // And back on the action's own name once it stands again.
-                  const id = dropped.action.id
-                  requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-action="${CSS.escape(id)}"] > input`)?.focus())
-                }}
-              >
-                {t('setup.undo')}
-              </button>
+          <fieldset className="byd-reading-set" disabled={reading}>
+            <p className="byd-sentence">
+              {parts(t('setup.fill.sentence'), {
+                zone: <b key="z">{zone.name}</b>,
+                what: (
+                  <QuerySlot
+                    key="w"
+                    query={zone.fill ?? []}
+                    columns={columns}
+                    // The deck starts with every card no other pile claims (the server's `setup.ts`), so
+                    // it never starts with nothing (#480): it said «inga kort» over a pile of 146.
+                    label={
+                      doc.setup.deckZone === zone.id
+                        ? zone.fill && zone.fill.length > 0
+                          ? t('setup.fill.someAndRest', { what: queryWords(zone.fill, t) })
+                          : t('setup.fill.rest')
+                        : zone.fill && zone.fill.length > 0
+                          ? t('setup.fill.some', { what: queryWords(zone.fill, t) })
+                          : t('setup.fill.none')
+                    }
+                    onChange={(fill) => onPatch({ fill: fill.length > 0 ? fill : undefined }, `fill:${zone.id}`)}
+                    t={t}
+                  />
+                ),
+              })}
             </p>
-          )}
-          <button type="button" className="byd-zone-action-new" onClick={() => onPatch({ actions: [...actions, { id: `a${Date.now().toString(36)}`, label: t('setup.actions.newName'), steps: [blank('split')] }] })}>
-            {t('setup.actions.new')}
-          </button>
+
+            <h3>{t('setup.actions.heading')}</h3>
+            {actions.map((a) => {
+              const why = clash(a)
+              const whyId = `${panel}why${a.id}`
+              return (
+              <div key={a.id} className="byd-zone-action" data-action={a.id}>
+                <input
+                  value={a.label}
+                  aria-label={t('setup.actions.name', { name: a.label })}
+                  onChange={(e) => setAction(a.id, { ...a, label: e.target.value }, `action:${zone.id}:${a.id}`)}
+                />
+                {/* När den körs, som en mening med en ratt i (K21): tidpunkten ställs in där allt
+                    annat i den här panelen ställs in, inne i texten. «Bara när någon ber om det» är
+                    vad en åtgärd utan fältet betyder, och skrivs därför som ingen egenskap alls —
+                    samma regel som högens sida följer, och av samma skäl (#331). */}
+                <p className="byd-sentence">
+                  {parts(t('setup.actions.when'), {
+                    when: (
+                      <Slot key="w" label={t(`setup.when.${a.when ?? 'request'}` as Key)} describedBy={why === undefined ? undefined : whyId}>
+                        {(close) =>
+                          WHENS.map((w) => (
+                            <button
+                              key={w}
+                              type="button"
+                              // Ett läge som hör till starten går inte att välja åt en åtgärd vars
+                              // steg frågar efter ett tal. Åt andra hållet står ratten orörd: den
+                              // som märkt en åtgärd för start måste kunna ta tillbaka det.
+                              disabled={why === 'asks' && w !== 'request'}
+                              onClick={() => {
+                                const { when: _was, ...bare } = a
+                                setAction(a.id, w === 'request' ? bare : { ...bare, when: w })
+                                close()
+                              }}
+                            >
+                              {t(`setup.when.${w}` as Key)}
+                            </button>
+                          ))
+                        }
+                      </Slot>
+                    ),
+                  })}
+                </p>
+                {/* Raden som säger varför, i ord och inte i en tooltip. Den står under ratten och
+                    inte inne i meningen: att låta meningen skriva om sig själv var det eleganta
+                    alternativet, men då försvinner skälet i samma ögonblick som `ask`-steget tas
+                    bort och syns alltså aldrig bredvid valet det handlar om. */}
+                {why !== undefined && (
+                  <p className="byd-zone-action-why" id={whyId}>
+                    {t(`setup.when.why.${why}` as Key)}
+                  </p>
+                )}
+                <ol>
+                  {a.steps.map((step, i) => (
+                    <li key={i}>
+                      <span className="byd-sentence">
+                        <Step step={step} columns={columns} zones={others} beside={zone.beside ?? 'left'} noAsk={atStart(a)} t={t} onChange={(next) => setAction(a.id, { ...a, steps: a.steps.map((s, j) => (j === i ? next : s)) })} />
+                      </span>
+                      <button
+                        type="button"
+                        className="byd-zone-action-x"
+                        aria-label={t('setup.actions.removeStep', { n: i + 1 })}
+                        onClick={() => {
+                          const steps = a.steps.filter((_, j) => j !== i)
+                          // An action with no steps is not an action: the last step going takes it with
+                          // it, which is also the only way to be rid of one.
+                          if (steps.length > 0) setAction(a.id, { ...a, steps })
+                          else drop(a)
+                        }}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+                <button type="button" className="byd-zone-action-drop" aria-label={t('setup.actions.remove.of', { name: a.label })} onClick={() => drop(a)}>
+                  {t('setup.actions.remove')}
+                </button>
+                <label className="byd-zone-step-add">
+                  <span>{t('setup.actions.andThen', { name: a.label })}</span>
+                  <select
+                    value=""
+                    onChange={(e) => e.target.value !== '' && setAction(a.id, { ...a, steps: [...a.steps, blank(e.target.value as ActionStep['v'], others.find((z) => z.kind === 'pile')?.id)] })}
+                  >
+                    <option value="">{t('setup.actions.andThen.pick')}</option>
+                    {VERBS.map((v) => (
+                      <option key={v} value={v}>
+                        {t(`setup.verb.${v}` as Key)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              )
+            })}
+            {/* What was taken, and the way back (#480): an action went silently with its last step. */}
+            {dropped && (
+              <p className="byd-zone-action-undo" role="status">
+                {t('setup.actions.removed', { name: dropped.action.label })}{' '}
+                <button
+                  ref={undoRef}
+                  type="button"
+                  onClick={() => {
+                    const back = [...actions]
+                    back.splice(Math.min(dropped.at, back.length), 0, dropped.action)
+                    onPatch({ actions: back })
+                    setDropped(null)
+                    // And back on the action's own name once it stands again.
+                    const id = dropped.action.id
+                    requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-action="${CSS.escape(id)}"] > input`)?.focus())
+                  }}
+                >
+                  {t('setup.undo')}
+                </button>
+              </p>
+            )}
+            <button type="button" className="byd-zone-action-new" onClick={() => onPatch({ actions: [...actions, { id: `a${Date.now().toString(36)}`, label: t('setup.actions.newName'), steps: [blank('split')] }] })}>
+              {t('setup.actions.new')}
+            </button>
+          </fieldset>
         </div>
       </div>
     </Chosen.Provider>

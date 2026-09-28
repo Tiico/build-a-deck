@@ -257,7 +257,13 @@
 /* The line's state stands in the editor's column as D5's bar (#485); the bar draws itself. */
 .byd-editor-offline { flex: none; margin: 0; }
 /* A role that may not edit says so once, rather than letting every change be refused (D3). */
-.byd-editor-readonly { flex: none; margin: 0; padding: 8px 16px; background: #2a2418; color: #ffe4b0; font-size: 12px; }
+/* The reading band (#489, beslut C efter prototyp 35): the amber the role line always had, with a
+   heading and the way on. */
+.byd-editor-readonly { flex: none; display: flex; align-items: center; gap: var(--byd-s3); margin: 0; padding: var(--byd-s3) var(--byd-s4); background: #2a2418; border-bottom: 1px solid #4a4230; color: #ffe4b0; font-size: 13px; line-height: 1.4; }
+.byd-editor-readonly > svg { width: 18px; height: 18px; flex: none; color: #ffd98a; }
+.byd-editor-readonly b { color: #ffd98a; }
+.byd-editor-readonly small { display: block; color: #e0cfa3; font-size: 12px; }
+.byd-editor-reading-said { margin-left: auto; color: #ffd98a; font-weight: 700; font-size: 12px; white-space: nowrap; }
 /* The people in the header (D3): who is here, and the door to who has the game at all. How many
    are here must not change how wide the header is — someone arriving would otherwise push the
    row, and at 1024 there is nothing to push into. So the faces overlap and the button is capped:
@@ -3464,3 +3470,40 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-data-gone { font-size: 12px; padding: 0 var(--byd-s2); }
 /* Why the table's own door asks for no kind (#479): a line, quiet, where the choice used to stand. */
 .byd-newfield-hint { margin: 0; color: var(--byd-editor-quiet); font-size: 12px; line-height: 1.4; }
+
+/* The reading mode (#489, beställarens beslut C efter prototyp 35). What would change the game is
+   not drawn for a role that may not change it — the client refuses every such edit as well, so a
+   gesture this list does not reach still changes nothing — and the working surfaces stand on a
+   quiet hatched paper under the reading band. What reads — search, zoom, Ögon, the tabs, history
+   and comparing, choosing a card or an element — is left exactly as it is. */
+.byd-editor[data-readonly] :is(
+  .byd-wall-measure-drop,
+  .byd-canvas-tools, .byd-backs, .byd-drag-handle, .byd-point-mid, .byd-point, .byd-point-handle, .byd-canvas-reset,
+  .byd-props-picture .byd-secondary, .byd-props-straighten, .byd-fonts li[data-font] button, .byd-fonts-catalog, .byd-fonts-upload, .byd-newfield,
+  .byd-data-bulk, .byd-data-tick, td.byd-data-remove button, th.byd-data-remove button, .byd-data-icon,
+  .byd-data-add, .byd-data-bodytools, .byd-prose-turn, [data-image-cell] .byd-data-file, [data-image-cell] .byd-data-drop > button:last-child,
+  .byd-columns-rename, .byd-columns-name, .byd-data-dropfield,
+  .byd-symbols-tile, .byd-symbols-add, .byd-symbols-set li[data-icon] > button, .byd-symbols-colours li[data-role] > button:last-child,
+  .byd-crop-corner, .byd-media-crop-row .byd-secondary,
+  .byd-setup-tools, .byd-setup-x, .byd-setup-corner, .byd-setup-counter button, .byd-setup-counters > button, .byd-setup-props > button,
+  .byd-zone-action-x, .byd-zone-action-drop, .byd-zone-step-add, .byd-zone-action-undo, .byd-zone-action-new
+) { display: none !important; }
+.byd-editor[data-readonly] > main { background: repeating-linear-gradient(135deg, rgb(255 255 255 / 3%) 0 2px, transparent 2px 9px), #1d1f25; }
+/* The template without its tool rail keeps its three other columns at their widths. */
+.byd-editor[data-readonly] .byd-canvas:not([data-stage]) { grid-template-columns: 220px minmax(0, 1fr) 280px; }
+.byd-editor[data-readonly] .byd-canvas[data-folded='props']:not([data-stage]) { grid-template-columns: 220px minmax(0, 1fr); }
+/* A panel read rather than written stands in a disabled fieldset that draws nothing of its own. */
+.byd-reading-set { display: contents; }
+/* What a reader cannot change reads as a value and not as a field: no box to type into, and no
+   arrow that promises a list. */
+.byd-editor[data-readonly] :is(.byd-reading-set, .byd-setup-counter) :is(input:is(:disabled, :read-only):not([type='checkbox']), select:disabled) {
+  border-color: transparent;
+  background: transparent;
+  appearance: none;
+  opacity: 1;
+  padding-inline: 0;
+}
+.byd-editor[data-readonly] .byd-reading-set .byd-slot:disabled { background: transparent; border-color: transparent; padding-inline: 0; color: inherit; cursor: default; }
+.byd-editor[data-readonly] .byd-setup-players button:disabled { cursor: default; }
+/* Symbols without the library: the game's own set takes the whole width. */
+.byd-editor[data-readonly] .byd-symbols-work { grid-template-columns: minmax(0, 1fr); }

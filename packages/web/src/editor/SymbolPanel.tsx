@@ -77,23 +77,27 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
           was already scrolling — two bars for one gesture. They belong to the panel, so they are
           the panel's crown, and the library below is free to be part of the one thing that
           scrolls here. */}
-      <Crown>
-        <input
-          className="byd-crown-search"
-          type="search"
-          aria-label={t('symbols.search')}
-          placeholder={t('symbols.search.placeholder')}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <CrownBox
-          name={t('symbols.category')}
-          state={category === null ? t('symbols.all') : t(category as Key)}
-          open={open}
-          onToggle={() => setOpen((now) => !now)}
-          boxRef={categoryBox}
-        />
-      </Crown>
+      {/* The library's only verb is taking a symbol in (#489), so a reader is shown the game's own
+          symbols and colours and neither the library nor the search and categories that sift it. */}
+      {client.mayEdit && (
+        <Crown>
+          <input
+            className="byd-crown-search"
+            type="search"
+            aria-label={t('symbols.search')}
+            placeholder={t('symbols.search.placeholder')}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <CrownBox
+            name={t('symbols.category')}
+            state={category === null ? t('symbols.all') : t(category as Key)}
+            open={open}
+            onToggle={() => setOpen((now) => !now)}
+            boxRef={categoryBox}
+          />
+        </Crown>
+      )}
       {open && (
         <CrownDrawer label={t('symbols.categories')} opener={categoryBox} onClose={() => setOpen(false)}>
           <button type="button" className="byd-choice" aria-pressed={category === null} onClick={() => setCategory(null)}>
@@ -107,39 +111,41 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
         </CrownDrawer>
       )}
       <div className="byd-symbols-work">
-        <aside className="byd-symbols-library">
-          <div className="byd-help-row">
-            <h2>{t('symbols.library')}</h2>
-            <Help topic={t('symbols.help.topic')}>
-              <p>{t('symbols.help')}</p>
-            </Help>
-          </div>
-          {found.length === 0 ? (
-            <p className="byd-symbols-empty">{t('symbols.none')}</p>
-          ) : (
-            <div className="byd-symbols-grid">
-              {found.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  className="byd-symbols-tile"
-                  aria-label={t('symbols.take', { name: symbolName(s, t) })}
-                  {...(had.has(s.id) ? { 'data-had': 'true', 'aria-describedby': `${tileId}-${s.id}` } : {})}
-                  onClick={() => take(s)}
-                >
-                  <img src={symbolPreview(s)} alt="" />
-                  <span>{symbolName(s, t)}</span>
-                  {/* In words and not only as a mark (L13): the game already has this one. */}
-                  {had.has(s.id) ? <small id={`${tileId}-${s.id}`} className="byd-symbols-had">{t('symbols.had')}</small> : <small>{s.licence}</small>}
-                </button>
-              ))}
+        {client.mayEdit && (
+          <aside className="byd-symbols-library">
+            <div className="byd-help-row">
+              <h2>{t('symbols.library')}</h2>
+              <Help topic={t('symbols.help.topic')}>
+                <p>{t('symbols.help')}</p>
+              </Help>
             </div>
-          )}
-          {notice && <p role="alert">{notice}</p>}
-          <p className="byd-symbols-note" role="status">
-            {hadSaid ?? ''}
-          </p>
-        </aside>
+            {found.length === 0 ? (
+              <p className="byd-symbols-empty">{t('symbols.none')}</p>
+            ) : (
+              <div className="byd-symbols-grid">
+                {found.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className="byd-symbols-tile"
+                    aria-label={t('symbols.take', { name: symbolName(s, t) })}
+                    {...(had.has(s.id) ? { 'data-had': 'true', 'aria-describedby': `${tileId}-${s.id}` } : {})}
+                    onClick={() => take(s)}
+                  >
+                    <img src={symbolPreview(s)} alt="" />
+                    <span>{symbolName(s, t)}</span>
+                    {/* In words and not only as a mark (L13): the game already has this one. */}
+                    {had.has(s.id) ? <small id={`${tileId}-${s.id}`} className="byd-symbols-had">{t('symbols.had')}</small> : <small>{s.licence}</small>}
+                  </button>
+                ))}
+              </div>
+            )}
+            {notice && <p role="alert">{notice}</p>}
+            <p className="byd-symbols-note" role="status">
+              {hadSaid ?? ''}
+            </p>
+          </aside>
+        )}
         <div className="byd-symbols-main">
           <ProjectSet doc={doc} client={client} assetBase={assetBase} />
           <GameColours doc={doc} client={client} icons={icons} />
@@ -212,7 +218,7 @@ function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
     client.removeIcon(name)
     setLanding((n) => n + 1)
   }, (name) => `[aria-label="${CSS.escape(t('symbols.remove', { name }))}"]`)
-  if (names.length === 0) return <p className="byd-symbols-empty">{t('symbols.set.none')}</p>
+  if (names.length === 0) return <p className="byd-symbols-empty">{t(client.mayEdit ? 'symbols.set.none' : 'symbols.set.none.reading')}</p>
   return (
     <section className="byd-symbols-set">
       <h2 ref={heading} tabIndex={-1}>

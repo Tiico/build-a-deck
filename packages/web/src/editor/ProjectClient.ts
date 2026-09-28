@@ -13,7 +13,7 @@ import { idsOnFace } from './groups.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { freeIconName, svgBytes, symbolName, type GameSymbol } from './symbols.js'
 import type { EditorMessage, Presence } from '@byd/server'
-import { canEdit, type Role } from '@byd/server/doc'
+import { canEdit, canStartTables, type Role } from '@byd/server/doc'
 import { translate, type Key, type T } from '../i18n/index.js'
 import { UNDO_STEPS, whatOf } from './undo.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
@@ -354,12 +354,28 @@ export class ProjectClient {
     return this.role === null || canEdit(this.role)
   }
 
+  // Whether this account may start and run tables (D3): a tester may, a viewer may not (#489).
+  get mayStartTables(): boolean {
+    return this.role === null || canStartTables(this.role)
+  }
+
+  // The door for everything that sends bytes before it edits (#489): a file chosen by a role that
+  // may not change the game is never uploaded, because the edit after it would be refused with
+  // the bytes already stored.
+  private mustBeAbleToEdit(t: T): void {
+    if (!this.mayEdit) throw new Error(t('editor.readonly.refused'))
+  }
+
   // `gesture` names the one thing the designer is doing, when what she is doing arrives in
   // pieces: a drag is sixty patches and a cell is one per keystroke. Every edit carrying the
   // token that is already on top of the stack joins that step instead of making its own, so the
   // way back from a move is one press and not sixty. Everything else leaves it out and is its own
   // step, as it always was.
   edit(intent: EditIntent, gesture?: string): void {
+    // A role that may not change the game changes nothing here either (#489; läsläge, decided in
+    // #477): the actor would refuse the save, so an edit is never applied, never sent and never a
+    // step back — and «Osparat» can never stand for something this reader cannot keep.
+    if (!this.mayEdit) return
     // It applies before anything is recorded, and that order is the whole of it: an edit the
     // document refuses never happened, so it must cost neither a version nor a step back (#41,
     // B4). `applyEdit` throws from here, with the stack untouched and nothing sent.
@@ -612,6 +628,7 @@ export class ProjectClient {
   // The name of the version is the designer's own word from here on, so it is written in the
   // language she was working in and then stays put.
   async importRules(rules: RuleDoc, file: string, t: T = swedish): Promise<void> {
+    this.mustBeAbleToEdit(t)
     this.edit({ v: 'setRules', rules: { ...rules, source: { file, at: new Date().toISOString() } } })
     const saved = await this.save()
     if (!saved.ok) throw new Error(saved.reason)
@@ -678,6 +695,7 @@ export class ProjectClient {
   // assets, the icon set gets a name for it, and the licence is kept beside the set so it can
   // travel to the printer. The same symbol twice is the same entry, not a second name.
   async useSymbol(symbol: GameSymbol, as?: string, t: T = swedish): Promise<string> {
+    this.mustBeAbleToEdit(t)
     const file = svgBytes(symbol)
     // The reference first, off the bytes themselves (#310). It is the name the service will give
     // them, so the question the next line asks — does the game already have this symbol? — is
@@ -701,6 +719,7 @@ export class ProjectClient {
   // The element is the `icons` element the canvas already had, bound to the name rather than to a
   // column, so the one renderer draws it and packages/template needed nothing (L1).
   async placeIcon(symbol: GameSymbol, face: string, group: string | null, t: T = swedish): Promise<string> {
+    this.mustBeAbleToEdit(t)
     if (!this.doc.template.faces[face]) throw new Error(`template has no face ${face}`)
     const file = svgBytes(symbol)
     // The bytes' own name, before anything is read and before anything is sent (#310).
@@ -910,6 +929,7 @@ export class ProjectClient {
   //
   // A licence is not in the file: only the designer knows it, and it is stated beside the family.
   async useFont(file: File, t: T = swedish): Promise<string> {
+    this.mustBeAbleToEdit(t)
     // The reference first, off the bytes themselves (#339, as #310 did for the symbol): whether
     // the game already has this typeface is a question about a name, and the name is known here.
     const ref = await assetRefOfFile(file)
@@ -979,6 +999,7 @@ export class ProjectClient {
   // so a name not taken here is a name gone for good. It is untrusted input and is made into a
   // name by `pictureNameOf`, which is where the schema that bounds it lives.
   async addPicture(file: File, t: T = swedish): Promise<string> {
+    this.mustBeAbleToEdit(t)
     // The hash first, off the bytes themselves (#339, as #310 did for the symbol): it is the name
     // the service will give them, so whether the game already has the picture is known here.
     const ref = await assetRefOfFile(file)
@@ -1010,6 +1031,7 @@ export class ProjectClient {
   // "the bytes are not that", and the message blamed the file for both. Saying the kind ourselves
   // leaves only the second, so the refusal names the formats that kind may be in.
   async uploadAsset(file: Blob, kind: AssetKind, t: T = swedish): Promise<string> {
+    this.mustBeAbleToEdit(t)
     const res = await fetch(`${this.http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': assetTypeDeclaring(kind) }, body: file }))
     if (res.status === 401) throw new Unauthorized()
     if (res.status === 415) throw new Error(t('upload.notThisKind', { formats: assetFormatsNamed(kind, t('upload.or')) }))

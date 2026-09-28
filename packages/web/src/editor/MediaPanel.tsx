@@ -336,19 +336,22 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
             och filvalsknappen står kvar i krönet, för tangentbordets skull. */}
         <ul
           aria-label={t('media.title')}
-          {...dropSurface({
-            className: 'byd-media-grid',
-            over,
-            onOver: setOver,
-            onFiles: (files) => void take(files),
-          })}
+          // A reader's library takes no file (#489): nothing lights up under a dragged one.
+          {...(onAdd
+            ? dropSurface({
+                className: 'byd-media-grid',
+                over,
+                onOver: setOver,
+                onFiles: (files) => void take(files),
+              })
+            : { className: 'byd-media-grid' })}
         >
           {over && (
             <li className="byd-media-empty">
               <DropSays many />
             </li>
           )}
-          {media.length === 0 && !over && <li className="byd-media-empty">{t('media.empty')}</li>}
+          {media.length === 0 && !over && <li className="byd-media-empty">{t(onAdd ? 'media.empty' : 'media.empty.reading')}</li>}
           {media.map(({ hash, cards, template }) => {
             const spare = cards.length === 0 && !template
             // What is stored, not what is being dragged: the tile says how the picture stands in
