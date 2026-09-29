@@ -259,7 +259,9 @@ describe('when the game could not be made (#476)', () => {
       create()
       const said = await screen.findByRole('alert')
       expect(said.textContent).toBe('Spelet skapades inte. Tjänsten svarade med ett fel. Försök igen om en stund.')
-      expect(document.activeElement).toBe(said)
+      // The message is drawn in one commit and focused by the effect after it, so the focus is
+      // waited for rather than read the moment the message is found (it lost that race on CI).
+      await waitFor(() => expect(document.activeElement).toBe(said))
     } finally {
       spy.mockRestore()
     }
