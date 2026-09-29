@@ -186,7 +186,7 @@ describe('märket säger vad kolumnen är och vem som sade det (L43)', () => {
 
 // En utfällning vid hover är ett a11y-åtagande: den ska nås med tangentbordet också (#184, #216).
 describe('utfällningen nås med pekaren och med tangentbordet (L43)', () => {
-  const turn = () => screen.queryByRole('button', { name: 'Gör vanlig text' })
+  const turn = () => screen.queryByRole('button', { name: 'Gör vanlig text, body' })
 
   it('står stängd i vila och kostar ingenting', () => {
     table()
@@ -202,11 +202,21 @@ describe('utfällningen nås med pekaren och med tangentbordet (L43)', () => {
     expect(turn()).toBeNull()
   })
 
+  // Fyra kolumner gav fyra knappar som hette likadant (#557 E-12): namnet bär kolumnen, och
+  // skälet under rubriken är knappens beskrivning.
+  it('namnger knappen med kolumnen och beskriver den med skälet', () => {
+    table()
+    reach('body')
+    const vand = turn()!
+    const why = document.getElementById(vand.getAttribute('aria-describedby') ?? '')
+    expect(why?.textContent).toMatch(/^Höjden föreslår/)
+  })
+
   it('fälls ut av fokus ensamt, och knapparna står i tabbordningen efter rubriken', async () => {
     table()
     const user = userEvent.setup()
     act(() => (screen.getByRole('button', { name: /^body$/ }) as HTMLElement).focus())
-    const vand = screen.getByRole('button', { name: 'Gör vanlig text' })
+    const vand = screen.getByRole('button', { name: 'Gör vanlig text, body' })
     // Nästa Tabb landar i utfällningen och inte förbi den: en utfällning som inte går att tabba
     // in i är ingen väg in alls (#216).
     await user.tab()
@@ -253,7 +263,7 @@ describe('knapparna vänder valet och lämnar tillbaka det (L43)', () => {
     const onProse = vi.fn()
     table(projectDoc(), { onProse })
     reach('body')
-    fireEvent.click(screen.getByRole('button', { name: 'Gör vanlig text' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Gör vanlig text, body' }))
     expect(onProse.mock.calls).toEqual([['body', false]])
   })
 
@@ -261,7 +271,7 @@ describe('knapparna vänder valet och lämnar tillbaka det (L43)', () => {
     const onProse = vi.fn()
     table(projectDoc(), { onProse })
     reach('title')
-    fireEvent.click(screen.getByRole('button', { name: 'Gör prosa' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Gör prosa, Titel' }))
     expect(onProse.mock.calls).toEqual([['title', true]])
   })
 
@@ -271,10 +281,10 @@ describe('knapparna vänder valet och lämnar tillbaka det (L43)', () => {
     doc.prose = { body: false }
     table(doc, { onProse })
     reach('title')
-    expect(screen.queryByRole('button', { name: 'Följ höjden igen' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Följ höjden igen, body' })).toBeNull()
     fireEvent.pointerLeave(head('title'))
     reach('body')
-    fireEvent.click(screen.getByRole('button', { name: 'Följ höjden igen' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Följ höjden igen, body' }))
     expect(onProse.mock.calls).toEqual([['body', null]])
   })
 

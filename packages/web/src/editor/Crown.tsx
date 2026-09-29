@@ -107,13 +107,23 @@ export function CrownDrawer({ label, opener, onClose, children }: { label: strin
 export function CrownRail({ label, children }: { label: string; children: ReactNode }) {
   const t = useT()
   const scroll = useRef<HTMLDivElement>(null)
+  const moreButton = useRef<HTMLButtonElement>(null)
   const [more, setMore] = useState(false)
   useEffect(() => {
     const el = scroll.current
     if (!el) return
     // Whether there is anything to the right is measured and not assumed: the arrow is a promise
     // that something is there, and an arrow that points at nothing is worse than none.
-    const look = () => setMore(el.scrollWidth - el.clientWidth - el.scrollLeft > 1)
+    const look = () => {
+      const next = el.scrollWidth - el.clientWidth - el.scrollLeft > 1
+      // The arrow goes when the row has reached its end, and the focus must not go with it to
+      // <body> (#557): it lands on the last chip, the one the roll just brought into view.
+      if (!next && moreButton.current !== null && moreButton.current === document.activeElement) {
+        const chips = el.querySelectorAll<HTMLElement>('button, [href], input, select, [tabindex]:not([tabindex="-1"])')
+        chips[chips.length - 1]?.focus({ preventScroll: true })
+      }
+      setMore(next)
+    }
     look()
     el.addEventListener('scroll', look)
     const watch = typeof ResizeObserver === 'function' ? new ResizeObserver(look) : null
@@ -141,6 +151,7 @@ export function CrownRail({ label, children }: { label: string; children: ReactN
       </div>
       {more && (
         <button
+          ref={moreButton}
           type="button"
           className="byd-crown-more"
           aria-label={t('crown.rail.more')}

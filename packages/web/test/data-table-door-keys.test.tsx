@@ -219,3 +219,20 @@ describe('dörren håller tangentbordet så länge den står (#388)', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Kolumner' }))
   })
 })
+
+// The door stands inside the head of the × column, the way a sort button stands inside its own
+// head (#557 E-17). What a reader hears as that column's name is the cell's own name and nothing
+// the door holds, open or shut: the × under it is still «Ta bort», not «Ta bort + Kolumner titel…».
+describe('vad ×-kolumnen heter när dörren står öppen (#557)', () => {
+  it('heter «Ta bort», och dörrens lista och formulär lånar den inte sitt namn', async () => {
+    const user = userEvent.setup()
+    twoOwnWidths()
+    render(<Editing />)
+    const head = () => screen.getByRole('columnheader', { name: 'Ta bort' })
+    expect(head().contains(screen.getByRole('button', { name: 'Kolumner' }))).toBe(true)
+    await errand(user, ['Enter'])
+    expect(door()).toBeTruthy()
+    expect(head().getAttribute('aria-label')).toBe('Ta bort')
+    expect(screen.getAllByRole('columnheader').filter((h) => /Ta bort/.test(h.getAttribute('aria-label') ?? h.textContent ?? ''))).toHaveLength(1)
+  })
+})

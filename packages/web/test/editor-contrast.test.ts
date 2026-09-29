@@ -307,3 +307,21 @@ describe('the lock on a layer that is not locked', () => {
     expect(rule).toContain('color: var(--byd-editor-unlocked-ink)')
   })
 })
+
+// A chosen row in the table is a lighter ground (#557 E-6), and the quiet grey read 3.45:1 on it:
+// the id, the cell's `{ }` and the label over an open cell. The row lends the quiet things a
+// lighter grey of their own, so everything that reaches for the token is read at AA there too.
+describe('the quiet things on a chosen row in the table', () => {
+  const rule = /\.byd-data tr\[aria-selected='true'\] \{[^}]*\}/.exec(css)?.[0] ?? ''
+  const ground = /background: (#[0-9a-f]{6})/i.exec(rule)?.[1] ?? ''
+
+  it('lends the row a quiet grey that is read at AA on its ground', () => {
+    expect(ground).toMatch(/^#/)
+    expect(contrastRatio(token('--byd-editor-quiet-chosen'), ground)).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('paints the id, the label over an open cell and its tools in it', () => {
+    const lends = /\.byd-data tr\[aria-selected='true'\] :is\(([^)]*\))\) \{ color: var\(--byd-editor-quiet-chosen\); \}/.exec(css)?.[1] ?? ''
+    for (const what of ['.byd-data-id', '.byd-data-bodyhead > b', '.byd-data-bodytools button']) expect(lends).toContain(what)
+  })
+})

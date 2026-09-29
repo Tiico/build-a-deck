@@ -281,6 +281,7 @@ export const svEditor = {
   'table.prose.why.undrawn': 'Mallen ritar ingen ruta för kolumnen, så höjden föreslår vanlig text.',
   // De två knapparna. Den första vänder valet och gör det uttryckligt; den andra lämnar tillbaka
   // frågan till höjden och står bara där det finns ett val att lämna.
+  'table.prose.turn.named': '{turn}, {field}',
   'table.prose.make.prose': 'Gör prosa',
   'table.prose.make.plain': 'Gör vanlig text',
   'table.prose.follow': 'Följ höjden igen',
