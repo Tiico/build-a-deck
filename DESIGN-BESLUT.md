@@ -3214,9 +3214,9 @@ Innehållet listas men redigeras ännu inte i mappen, eftersom `patchElement` ba
 
 *Tillagt 2026-09-29 (#569, beställarens beslut B efter prototypen i `docs/ux-audits/2026-09-29-tillganglighet/prototyper/569/`):* ett villkor kapas i början, inte i slutet.
 Sex villkor på samma fält lästes förut som sex rader «om raritet = …» i en kolumn på 220 px, eftersom det som skiljer dem — värdet och antalet kort — var det som klipptes bort.
-Början är densamma på alla, så den får ge vika: raden börjar med «…» och slutar med värdet och antalet kort, och hela namnet står kvar i knappens `title` och tillgängliga namn.
+Början är densamma på alla, så den får ge vika: raden börjar med «…» och slutar med antalet kort och, där typsnittet ger rum, värdets sista bokstav, och hela namnet står kvar i knappens `title` och tillgängliga namn.
 Bara villkor kapas så; ett namngivet element är skrivet av formgivaren och läses från början som förut.
-Känd begränsning: två villkor med samma antal kort skiljs bara av värdets sista bokstäver (Koppar och Diamant har båda 12 i Sal's Saloon), vilket räcker där värdena slutar olika men inte annars.
+Känd begränsning: två villkor med samma antal kort skiljs högst av värdets sista bokstav (Koppar och Diamant har båda 12 i Sal's Saloon), och med ett bredare typsnitt än Macens — DejaVu på Linux — inte alls; då är det namnet i `title` och panelen som skiljer dem.
 
 ### L4. Datatabellen: kolumntyper från registryt, systemkolumn `antal`
 
