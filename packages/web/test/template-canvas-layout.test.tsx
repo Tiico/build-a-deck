@@ -187,3 +187,65 @@ describe('the four panels of the template mode (#18)', () => {
     expect(overflow).toBe(0)
   }, 60_000)
 })
+
+// The row under the card that says which card it is (#478), measured where it is tightest: 1024
+// is the desk's narrowest width, and the width of a 13-inch iPad held upright and of a Galaxy Tab
+// lying down. The card that is shown has more to say than the row has room for, which is the case
+// a real deck is in: the look follows the body, and the body is a sentence.
+async function cardRowAt1024() {
+  const doc = projectDoc()
+  doc.template.faces.front!.variantBy = 'body'
+  doc.rows[0]!.fields['title'] = 'Drakens förbannade vrede över kungariket'
+  doc.rows[0]!.fields['body'] = 'Välj två andra spelare. De blandar en shot till varann och dricker den tillsammans.'
+  const { container, unmount } = render(
+    <TemplateCanvas doc={doc} face="front" row="dragon" onPickRow={vi.fn()} selectedElement={null} onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} onFontFile={async () => 'Typsnitt'} onFontLicence={vi.fn()} onRemoveFont={vi.fn()} onCatalogFont={vi.fn(async () => undefined)} />,
+  )
+  const html = container.innerHTML
+  unmount()
+  const page = await browser.newPage({ viewport: { width: 1024, height: 768 } })
+  try {
+    const shell = read('index.html')
+      .replace('<script type="module" src="/src/main.tsx"></script>', '')
+      .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}</style></head>`)
+      .replace(
+        '<div id="root"></div>',
+        `<div id="root"><div class="byd-editor" data-page="editor" data-mode="template"><header></header><div></div><main><div role="tabpanel">${html}</div></main></div></div>`,
+      )
+    await page.setContent(shell, { waitUntil: 'load' })
+    return await page.evaluate(() => {
+      const rect = (selector: string) => document.querySelector(selector)!.getBoundingClientRect()
+      const values = document.querySelector('.byd-card-row-values')!
+      const button = rect('.byd-card-row-name')
+      const name = rect('.byd-card-row-name span')
+      return {
+        main: Math.round(rect('.byd-canvas-main').right),
+        row: Math.round(rect('.byd-card-row').right),
+        room: Math.round(rect('.byd-canvas-room').right),
+        props: Math.round(rect('.byd-canvas-props').left),
+        cut: values.scrollWidth > values.clientWidth,
+        above: name.top - button.top,
+        below: button.bottom - name.bottom,
+      }
+    })
+  } finally {
+    await page.close()
+  }
+}
+
+describe('the card row in the card’s column (#478)', () => {
+  // A column that grew to fit a row it was meant to cut short pushed the card 30 px over the
+  // properties, and painted over their left edge.
+  it('cuts its values short rather than widening the column over the properties', async () => {
+    const seen = await cardRowAt1024()
+    // Not vacuous: the values really are longer than the row.
+    expect(seen.cut).toBe(true)
+    expect({ main: seen.main, row: seen.row, room: seen.room }).toEqual({ main: seen.props, row: seen.props, room: seen.props })
+  }, 60_000)
+
+  // The steps either side of the name are centred on their 44 px; the name stood at the top of
+  // its own, a line flush with the button's upper edge beside two arrows in the middle of theirs.
+  it('stands the card’s name in the middle of its button, like the steps beside it', async () => {
+    const seen = await cardRowAt1024()
+    expect(Math.abs(seen.above - seen.below)).toBeLessThanOrEqual(1)
+  }, 60_000)
+})
