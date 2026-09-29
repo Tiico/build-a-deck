@@ -3120,9 +3120,9 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 /* A heading carries the button that opens it (#580): drawn as the heading it stands in, with the
    ground a block button has under the pointer. Not `all: unset`, which would take the focus ring
    the editor draws on every control with it. */
-.byd-rules-block h2 > .byd-rules-open, .byd-rules-block h3 > .byd-rules-open { display: block; width: calc(100% + 8px); box-sizing: border-box; margin: 0 -4px; padding: 0 4px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: text; }
-.byd-rules-block h2 > .byd-rules-open:hover, .byd-rules-block h3 > .byd-rules-open:hover { background: #ece5d8; }
-.byd-rules-block[data-at] :is(h2, h3) > .byd-rules-open:not(:hover) { background: #f0e9db; }
+.byd-rules-block h2 > .byd-block-door, .byd-rules-block h3 > .byd-block-door { display: block; width: calc(100% + 8px); box-sizing: border-box; margin: 0 -4px; padding: 0 4px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: text; }
+.byd-rules-block h2 > .byd-block-door:hover, .byd-rules-block h3 > .byd-block-door:hover { background: #ece5d8; }
+.byd-rules-block[data-at] :is(h2, h3) > .byd-block-door:not(:hover) { background: #f0e9db; }
 /* A list or a picture is opened from a pencil in the left margin (#580), the ＋'s mirror; a click
    on the block itself still opens it for a pointer. */
 .byd-rules-pen { position: absolute; left: -34px; top: 2px; width: 24px; height: 24px; padding: 0; border: 1px solid #cbbfa8; border-radius: 7px; background: #ece5d8; color: #6b6255; cursor: pointer; }

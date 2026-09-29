@@ -166,7 +166,7 @@ describe('a picture in the editor’s book (#173)', () => {
     expect(await within(book()).findByText('Utan alt-text: dold för skärmläsare')).toBeTruthy()
     expect(within(book()).queryByRole('img')).toBeNull()
 
-    fireEvent.click(book().querySelector('[data-block="i1"] .byd-rules-open')!)
+    fireEvent.click(book().querySelector('[data-block="i1"] .byd-block-door')!)
     const field = await within(book()).findByLabelText('Alt-text för bilden under Så spelar ni')
     fireEvent.change(field, { target: { value: 'Bordet från ovan' } })
     await waitFor(() => expect(within(book()).getByRole('img', { name: 'Bordet från ovan' })).toBeTruthy())
@@ -200,7 +200,7 @@ describe('the picture’s caption in the editor (#173)', () => {
     // It is in the book, because it is the reader's own line and is printed.
     expect(await within(book()).findByText('Bordet vid tre spelare')).toBeTruthy()
 
-    fireEvent.click(book().querySelector('[data-block="i1"] .byd-rules-open')!)
+    fireEvent.click(book().querySelector('[data-block="i1"] .byd-block-door')!)
     const alt = await within(book()).findByLabelText('Alt-text för bilden under Så spelar ni')
     const caption = await within(book()).findByLabelText('Bildtext till bilden under Så spelar ni')
     // Two fields, and neither of them holds what the other says.
@@ -253,7 +253,7 @@ describe('the pictures without alt text, counted in the contents (#173)', () => 
     expect(within(found).getByText('Bilden du sökte')).toBeTruthy()
     // And it is a picture the designer can act on where she was taken: the block is open to its
     // fields, so the mark is not a place to look at but a place to write.
-    expect(document.activeElement).toBe(found.querySelector('[role="button"], .byd-rules-open'))
+    expect(document.activeElement).toBe(found.querySelector('[role="button"], .byd-block-door'))
   })
 
   it('says nothing at all when every picture in the book says something', async () => {
