@@ -239,6 +239,12 @@ addEventListener('keydown', (ev) => {
     matt(); return
   }
   if (kolumn()) { matt(); return }
+  // C: raderna byts med ↑/↓ från varje stopp i raden, också kryssrutan och ×.
+  if (s.v === 'c' && tr && !f && (ev.key === 'ArrowDown' || ev.key === 'ArrowUp')) {
+    const ri = s.rader.findIndex((r) => r.id === tr.dataset.rad) + (ev.key === 'ArrowDown' ? 1 : -1)
+    if (ri >= 0 && ri < s.rader.length) { ev.preventDefault(); blirRad(s.rader[ri].id, el.type === 'checkbox' ? 'input[type="checkbox"]' : 'td.spar button') }
+    matt(); return
+  }
   // C: Tab efter radens sista stopp lämnar tabellen; Skift+Tab före radens första också.
   if (s.v === 'c' && ev.key === 'Tab' && tr) {
     const mina = stopp().filter((x) => tr.contains(x))
