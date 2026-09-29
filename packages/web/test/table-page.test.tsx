@@ -32,7 +32,8 @@ describe('TablePage', () => {
     expect(await screen.findByText(/Ada satte sig/)).toBeTruthy()
     expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('7')
     expect(document.querySelector('[data-zone="hand:A"]')!.getAttribute('data-count')).toBe('3')
-    expect(screen.getByRole('list', { name: /platser/i }).textContent).toMatch(/Ada.*3 kort på hand/)
+    // The seat's words stand on its plate on the felt (#573, beslut C), not in the column.
+    await waitFor(() => expect(document.querySelector('[data-seat-plate="A"]')?.textContent).toMatch(/Ada.*3 kort på hand/))
     other.close()
   })
 })
@@ -311,7 +312,7 @@ describe('a card a phone shows for everyone (#508)', () => {
     const ada = TableClient.connect(await asSeat(run, id, 'A', 'Ada'))
     await ada.ready()
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
-    await waitFor(() => expect(screen.getByRole('list', { name: /platser/i }).textContent).toMatch(/Ada/))
+    await waitFor(() => expect(document.querySelector('[data-seat-plate="A"]')?.textContent).toMatch(/Ada/))
 
     // Face down on the TV's own view: nothing is drawn, whoever asks.
     ada.sendPresence({ kind: 'show', component: down })

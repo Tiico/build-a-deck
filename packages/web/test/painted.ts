@@ -107,6 +107,10 @@ export async function painted(page: Page, spots: readonly Spot[]): Promise<Recor
         const hole = spot.outside ? (document.querySelector(spot.outside)?.getBoundingClientRect() ?? null) : null
         if (spot.outside && !hole) throw new Error(`nothing matches ${spot.outside}, so "${spot.what}" is not a strip`)
         const inset = spot.inset ?? 0.15
+        // What lies on it, by its box as well as by the hit test: a thing drawn over the ground that
+        // takes no pointer — a seat's plate on the room's television (#573) — is passed straight
+        // through by \`elementFromPoint\`, and its colours were sampled as the felt's own.
+        const covers = spot.avoid ? [...document.querySelectorAll(spot.avoid)].map((c) => c.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0) : []
         const found: number[][] = []
         const STEPS = 40
         for (let i = 0; i <= STEPS; i++)
@@ -118,6 +122,7 @@ export async function painted(page: Page, spots: readonly Spot[]): Promise<Recor
             if (spot.avoid) {
               const hit = document.elementFromPoint(x, y)
               if (hit?.closest(spot.avoid)) continue
+              if (covers.some((r) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom)) continue
             }
             const colour = at(x, y)
             if (colour) found.push(colour)

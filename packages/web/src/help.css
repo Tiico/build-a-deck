@@ -35,3 +35,6 @@
 .byd-help-row > :first-child { flex: 0 1 auto; min-width: 0; }
 .byd-help-row > h2 { margin-top: 0; margin-bottom: 0; }
 .byd-help-row:has(> h2) { margin-bottom: var(--byd-s2, 8px); }
+
+/* On the room's own television the question mark is at K26's floor too (#573): read from the sofa. */
+[data-tv][data-room] .byd-help-ask > span { width: 36px; height: 36px; font-size: 24px; }

@@ -45,7 +45,8 @@ test.describe('joining a table from the television', () => {
 
     // And the table knows. This is the half that no single-client test can reach: the seat was
     // claimed on one machine and has to appear on another, over a socket nobody prompted.
-    await expect(tv.page.locator('.byd-tv-seats')).toContainText('Signe')
+    // On the seat's plate on the felt (#573, beslut C).
+    await expect(tv.page.locator('[data-seat-plate]').filter({ hasText: 'Signe' })).toHaveCount(1)
   })
 
   test('refuses a seat that was taken while the phone was looking at it', async ({ table, open, player }) => {

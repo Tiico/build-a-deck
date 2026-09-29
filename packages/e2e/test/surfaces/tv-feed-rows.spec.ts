@@ -37,9 +37,9 @@ test.describe('the latest lines on a television (#482)', () => {
     expect(measured).toEqual({ shown: measured.shown, cut: 0, under: 0, scrolls: false })
   })
 
-  // Read from the sofa (#482 fynd 6, beslut B 2026-09-27, prototyp 21): what the room looks up for
-  // is large — who sits where, how much they hold, and the line that just happened — and the rest
-  // of the history is smaller and only three lines long; the whole of it is on every phone.
+  // Read from the sofa (#482 fynd 6, prototyp 21; K26 och #573 beslut C): every word the room reads
+  // is at the floor of 24 px — who sits where and how much they hold, on each seat's plate on the
+  // felt, and the latest lines — and the history is three lines long; the whole of it is on every phone.
   test('says who holds what and what just happened large enough for the sofa, and keeps three lines', async ({ tableOf, open, host }) => {
     const table = await tableOf({ players: 4, cards: 12, copies: 2 })
     const tv = await open(TV, `${table.tvUrl}&lang=sv`)
@@ -48,52 +48,41 @@ test.describe('the latest lines on a television (#482)', () => {
     await expect(tv.page.locator('.byd-tv-feed li')).not.toHaveCount(0)
     const size = await tv.page.evaluate(() => {
       const px = (el: Element | null) => (el ? parseFloat(getComputedStyle(el).fontSize) : null)
-      const seat = document.querySelector('.byd-tv-seats li')!
-      const [name, held] = seat.querySelectorAll(':scope > div > span')
+      const plate = document.querySelector('[data-seat-plate]')!
       const lines = [...document.querySelectorAll('.byd-tv-feed li')]
       return {
         heading: px(document.querySelector('[data-tv] h2')),
-        name: px(name ?? null),
-        held: px(held ?? null),
-        last: px(seat.querySelector('small')),
+        name: px(plate.querySelector(':scope > b')),
+        held: px(plate.querySelector(':scope > span')),
         latest: px(lines[0] ?? null),
         history: px(lines[1] ?? null),
         lines: lines.length,
       }
     })
-    expect(size).toEqual({ heading: 15, name: 24, held: 20, last: 16, latest: 20, history: 16, lines: 3 })
+    expect(size).toEqual({ heading: 24, name: 24, held: 24, latest: 24, history: 24, lines: 3 })
   })
 
-  // A full table (beslut 2026-09-27, prototyp 22): the seats are what the room looks up for, so they
-  // stand whole. Up to six they keep B's three lines; from seven a seat is one line — its name and
-  // what it holds, in the same sizes — and the line of what it last did goes, since the feed under
-  // it already says so in the seat's colour.
-  for (const [players, lines] of [[6, 3], [8, 1]] as const) {
-    test(`stands every one of ${players} seats whole, ${lines === 1 ? 'on one line each' : 'on three lines each'}`, async ({ tableOf, open, host }) => {
+  // A full table: every seat's plate stands whole on the felt, and a seat at the side stacks its
+  // words so that its plate does not reach the piles (#573, beslut C, measured at four seats).
+  for (const players of [6, 8] as const) {
+    test(`stands every one of ${players} seats whole on its plate`, async ({ tableOf, open, host }) => {
       const table = await tableOf({ players, cards: 12, copies: 2 })
       const tv = await open(TV, `${table.tvUrl}&lang=sv`)
       const dealer = await host(table)
       for (let i = 0; i < 4; i++) await dealer.send([{ v: 'draw', from: 'draw', to: 'discard', count: 1 }])
-      await expect(tv.page.locator('.byd-tv-feed li')).not.toHaveCount(0)
-      const seats = await tv.page.evaluate(async () => {
+      await expect(tv.page.locator('[data-seat-plate]')).toHaveCount(players)
+      const plates = await tv.page.evaluate(async () => {
         await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
-        const list = document.querySelector('.byd-tv-seats') as HTMLElement
-        const rows = [...list.querySelectorAll<HTMLElement>('li')]
-        // Lines of text in a seat: a part that starts below the one before it has ended is a new line;
-        // two parts beside each other overlap vertically whatever their baselines do.
-        const tops = (li: HTMLElement) => {
-          const parts = [...li.querySelectorAll(':scope > div > *')].filter((e) => getComputedStyle(e).display !== 'none').map((e) => e.getBoundingClientRect())
-          return parts.filter((r, i) => i === 0 || r.top >= parts[i - 1]!.bottom - 1).length
-        }
-        const [name, held] = rows[0]!.querySelectorAll(':scope > div > span')
-        return {
-          scrolls: list.scrollHeight > list.clientHeight + 1,
-          lines: Math.max(...rows.map(tops)),
-          name: parseFloat(getComputedStyle(name!).fontSize),
-          held: parseFloat(getComputedStyle(held!).fontSize),
-        }
+        const felt = document.querySelector('[data-table]')!.getBoundingClientRect()
+        return [...document.querySelectorAll<HTMLElement>('[data-seat-plate]')].map((p) => {
+          const r = p.getBoundingClientRect()
+          const parts = [...p.children].map((c) => c.getBoundingClientRect())
+          const lines = parts.filter((b, i) => i === 0 || b.top >= parts[i - 1]!.bottom - 1).length
+          const side = p.dataset['edge'] === 'E' || p.dataset['edge'] === 'W'
+          return { seat: p.dataset['seatPlate'], inside: r.left >= felt.left && r.right <= felt.right && r.top >= felt.top && r.bottom <= felt.bottom, stacked: side ? lines > 1 : lines === 1 }
+        })
       })
-      expect(seats).toEqual({ scrolls: false, lines, name: 24, held: 20 })
+      for (const p of plates) expect(p).toEqual({ seat: p.seat, inside: true, stacked: true })
     })
   }
 })

@@ -3074,6 +3074,21 @@ Tabellens kolumn heter «golv för all text», och det är så den ska läsas: z
 Granskningen 2026-09-29 mätte kromet till 13–16 px.
 Eftersom TV:ns filt är höjdbunden och varje etikett i 24 px kostar plats prototypas kromet i #573 innan det byggs.
 
+Beslutat 2026-09-29 efter prototyp (#573, beslut C): **varje plats ord står på en skylt på filten, intill platsens egna zoner, och spalten släpper PLATSER.**
+Skylten bär platsens bokstav och namn i platsens färg, antalet kort på hand och platsens räknare med namn och värde, i 24 px.
+Den står på den sida av zonerna som vetter mot bordets mitt; en plats vid sidan staplar sina ord, eftersom en bred skylt där nådde högarna vid fyra platser.
+Skylten ritas före högarna och korten, så att ett kort som spelas intill en plats ligger över skylten och aldrig under den.
+Det skylten säger ritas inte en gång till: platsens egna zonnamn, handens bricka vid kanten och räknarbrickans siffra.
+En zon som ingen äger behåller sitt namn, och högarna sina namn och antal, i 24 px.
+Spalten ger PLATSER:s höjd till INSPEKTION och SENAST, och all dess text är minst 24 px.
+Det ersätter på TV:n spaltens platslista från #482 (fynd 6).
+Observatörens skärm läses vid ett skrivbord och inte från soffan, så den behåller dagens filt och spalt.
+Filtens geometri är orörd, och kortet är 78 px vid två och fyra platser och 45 px vid åtta, som förut (K9).
+De två avvisade varianterna och mätningen vid 2, 4 och 8 platser står i #573, med skärmbilder i `docs/ux-audits/2026-09-29/prototyper/573/`.
+A lade varje ord där det står, i 24 px: etiketterna trängdes vid hörnen vid åtta platser, och INSPEKTION krympte till ungefär 80 px.
+B flyttade platsernas ord till spalten: filten blev lugnast, men vid åtta platser trycktes INSPEKTION ihop till nästan ingenting.
+Grindar: `packages/e2e/test/tv-text-floor.spec.ts` (ingen text på TV:n under 24 px vid 2, 4 och 8 platser; skyltarna täcker varken högarna eller varandra; K9:s kort håller) och `packages/web/test/tv-seat-plates.test.tsx`.
+
 ## L. Editorn (grillad 2026-09-06)
 
 E1, E2 och E3 gav principerna; det här är hur de blir konkreta.
