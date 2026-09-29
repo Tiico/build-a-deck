@@ -656,7 +656,7 @@
 .byd-setup-x { flex: none; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #c7cede; font-size: 15px; line-height: 1; padding: 4px 8px; cursor: pointer; }
 .byd-setup-x:hover { background: #2a1b1b; border-color: #6b2b2b; color: #ff9a9a; }
 /* A zone the table cannot be without says so where its × would have been, and why when it opens. */
-.byd-setup-fast { flex: none; color: #7c8496; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #2f333d; border-radius: 999px; padding: 4px 8px; }
+.byd-setup-fast { flex: none; color: var(--byd-editor-quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #2f333d; border-radius: 999px; padding: 4px 8px; }
 .byd-setup-why { margin: 0; color: #9aa3b8; font-size: 11px; line-height: 1.45; }
 /* The felt takes the room it gets: the frame must not size itself after the table it holds. */
 .byd-setup-felt { position: relative; flex: 1 1 auto; min-height: 240px; background: #0d0f14; border-radius: 16px; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); user-select: none; touch-action: none; }
@@ -3010,7 +3010,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 /* The third place the same grey stood, and the one where it mattered most: this button is refused
    precisely while the booklet is being made, so the word it is refused in is a word about work in
    progress. Same register, same bar. */
-.byd-rules-booklet:disabled { color: var(--byd-editor-quiet); cursor: default; }
+.byd-rules-booklet[aria-disabled='true'] { color: var(--byd-editor-quiet); cursor: default; }
 /* The book the designer writes is a page of prose in a serif, and its rhythm — the air over a
    heading, the space after a paragraph, the page's own margins — is the book's, not the editor's.
    The ladder sets the tool's chrome; it has no business setting somebody's rulebook. Every line

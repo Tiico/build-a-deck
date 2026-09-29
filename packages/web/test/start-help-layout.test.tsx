@@ -213,4 +213,31 @@ describe.each(ROOMS)('the help box in $what', ({ root }) => {
       await page.close()
     }
   }, 90_000)
+
+  // The cross stands in the box's top right corner, and the box scrolls, so a ring drawn outside
+  // the cross was clipped by the box on two sides (#558 F-16). It is drawn inside the cross.
+  it('draws the whole of the cross’s focus ring inside the box', async () => {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+    try {
+      await page.setContent(document_(`<div class="${root}">${BOX}</div>`), { waitUntil: 'load' })
+      await page.keyboard.press('Tab')
+      const seen = await page.evaluate(() => {
+        const cross = document.querySelector('.byd-help-close') as HTMLElement
+        const box = document.querySelector('.byd-help-box') as HTMLElement
+        const style = getComputedStyle(cross)
+        const reach = parseFloat(style.outlineOffset) + parseFloat(style.outlineWidth)
+        const c = cross.getBoundingClientRect()
+        const b = box.getBoundingClientRect()
+        const edge = parseFloat(getComputedStyle(box).borderTopWidth)
+        return {
+          focused: document.activeElement === cross && cross.matches(':focus-visible'),
+          drawn: style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0,
+          inside: c.top - reach >= b.top + edge - 0.5 && c.right + reach <= b.right - edge + 0.5,
+        }
+      })
+      expect(seen).toEqual({ focused: true, drawn: true, inside: true })
+    } finally {
+      await page.close()
+    }
+  }, 90_000)
 })

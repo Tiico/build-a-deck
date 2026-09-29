@@ -325,3 +325,12 @@ describe('the quiet things on a chosen row in the table', () => {
     for (const what of ['.byd-data-id', '.byd-data-bodyhead > b', '.byd-data-bodytools button']) expect(lends).toContain(what)
   })
 })
+
+// The word «fast» beside a zone that stays is 10 px text (#558 F-10), and it read 4.03:1. It is
+// drawn in the quiet grey every small word of the editor carries, which is held to AA above.
+describe('the mark on a zone that cannot be taken away', () => {
+  it('is drawn in the quiet token and no grey of its own', () => {
+    const rule = /\.byd-setup-fast \{[^}]*\}/.exec(css)?.[0] ?? ''
+    expect(rule).toContain('color: var(--byd-editor-quiet)')
+  })
+})

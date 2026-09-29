@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import type { ProjectDoc } from '@byd/server'
 import { projectDoc } from './project-doc.js'
@@ -763,5 +764,39 @@ describe('förvalet för att flytta hela högen (#480)', () => {
     fireEvent.change(within(action).getByRole('combobox'), { target: { value: 'movePile' } })
     await waitFor(() => expect(action.querySelectorAll('ol li')).toHaveLength(2))
     expect(action.querySelectorAll('ol li')[1]!.textContent).toContain('Flytta hela högen till Kasthög')
+  })
+})
+
+// Fokus i åtgärdspanelen (#558 F-13, F-14): en ny åtgärd lämnade handen på knappen, som flyttat sig
+// långt ned, och Escape lämnade tillbaka fokus till listraden i stället för till handtaget på filten
+// som öppnade panelen.
+describe('fokus i en zons åtgärder (#558)', () => {
+  it('ställer handen i den nya åtgärdens namn, med namnet markerat', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const user = userEvent.setup()
+    within(panel()).getByRole('button', { name: '＋ Åtgärd' }).focus()
+    await user.keyboard('{Enter}')
+    const name = await waitFor(() => {
+      const field = document.activeElement as HTMLInputElement
+      expect(field.getAttribute('aria-label')).toBe('Namn för Ny åtgärd')
+      return field
+    })
+    expect([name.selectionStart, name.selectionEnd]).toEqual([0, name.value.length])
+  })
+
+  it('lämnar tillbaka fokus till handtaget på filten som öppnade panelen', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
+    const user = userEvent.setup()
+    const handle = document.querySelector<HTMLElement>('[data-zone-handle="draw"]')!
+    handle.focus()
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(panel()?.contains(document.activeElement)).toBe(true))
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(document.activeElement).toBe(document.querySelector('[data-zone-handle="draw"]')))
   })
 })

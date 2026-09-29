@@ -543,7 +543,7 @@ describe('a rule written as one step back', () => {
     // both where the writing starts and what standing one step back has to bring back.
     const asked = 'Vad handlar spelet om, i två meningar? Hur många spelar, och hur länge?'
     fireEvent.click(await within(book()).findByText(asked))
-    const field = await within(book()).findByLabelText('Text b2')
+    const field = await within(book()).findByLabelText(/^Text /)
     await userEvent.type(field, 'Vinner gör den som först är av med sina kort.')
     fireEvent.blur(field)
     await waitFor(() => expect(within(book()).getByText(/Vinner gör den/)).toBeTruthy())

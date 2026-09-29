@@ -137,7 +137,7 @@ describe('the file is laid into the book as a proposal (#131, prototype 8 varian
     await aWrittenBook()
     await reportOverTheBook()
     const proposed = proposedBook()
-    expect(within(proposed).getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Översikt', 'En tur', 'Två spelare', 'Fusk och straff'])
+    expect(within(proposed).getAllByRole('heading', { level: 4 }).map((h) => h.textContent)).toEqual(['Översikt', 'En tur', 'Två spelare', 'Fusk och straff'])
     expect([...proposed.querySelectorAll('[data-block]')].map((el) => el.getAttribute('data-mark'))).toEqual([
       'kept',
       'changed',
@@ -222,7 +222,7 @@ describe('the two answers, over a book that is already written (#131)', () => {
     const report = await reportOverTheBook()
     fireEvent.click(within(report).getByRole('button', { name: 'Avbryt' }))
     const written = await bookIsThere()
-    expect(within(written).getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Översikt', 'En tur', 'Fusk och straff'])
+    expect(within(written).getAllByRole('heading', { level: 4 }).map((h) => h.textContent)).toEqual(['Översikt', 'En tur', 'Fusk och straff'])
     expect(written.querySelector('[data-mark]')).toBeNull()
     expect(await screen.findByLabelText('Importera samma fil igen: skrivet.md')).toBeTruthy()
   })
@@ -233,7 +233,7 @@ describe('the two answers, over a book that is already written (#131)', () => {
     fireEvent.click(within(report).getByRole('button', { name: 'Gör boken' }))
     const written = await waitFor(async () => {
       const book = document.querySelector('[data-rulebook]') as HTMLElement
-      expect(within(book).getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Översikt', 'En tur', 'Två spelare'])
+      expect(within(book).getAllByRole('heading', { level: 4 }).map((h) => h.textContent)).toEqual(['Översikt', 'En tur', 'Två spelare'])
       return book
     })
     expect(written.textContent).not.toContain('Fusk och straff')
@@ -278,7 +278,7 @@ describe('the setup block can never be imported away (#131, B5)', () => {
     await waitFor(async () => {
       const book = document.querySelector('[data-rulebook]') as HTMLElement
       // Four of the five sections the template laid out are gone, because the file decided that.
-      expect(within(book).getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Uppställning'])
+      expect(within(book).getAllByRole('heading', { level: 4 }).map((h) => h.textContent)).toEqual(['Uppställning'])
       // The zones are still drawn, and the prose beside them is the file's.
       expect(book.querySelector('.byd-rules-setup')).not.toBeNull()
       expect(book.textContent).toContain('Var och en får fem guld.')

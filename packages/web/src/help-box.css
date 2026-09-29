@@ -28,3 +28,6 @@
 /* Krysset tar lådans bläck och inte rummets: `--byd-secondary-ink` är rummets roll, och i guiden
    är den pappersbläck — 1,2:1 mot lådans mörka botten. Det som står i lådan ärver lådan. */
 .byd-help-box .byd-help-close { position: absolute; top: 0; right: 0; width: var(--byd-tap, 44px); height: var(--byd-tap, 44px); min-width: var(--byd-tap, 44px); min-height: var(--byd-tap, 44px); border: 0; border-radius: 10px; padding: 0; background: transparent; color: inherit; font: inherit; font-size: 16px; cursor: pointer; }
+/* The cross stands in the box's top right corner and the box scrolls, so a ring drawn outside it
+   was clipped by the box on two sides (#558). It is drawn inside the cross's own 44 px instead. */
+.byd-help-box .byd-help-close:focus-visible { outline-offset: -5px; }

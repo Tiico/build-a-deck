@@ -54,7 +54,7 @@ describe('the rulebook in the editor (B7)', () => {
     await openRules()
     expect(book().querySelector('textarea')).toBeNull()
     fireEvent.click(within(book()).getByText(/Dra ett kort ur/))
-    const field = await within(book()).findByLabelText('Text t1')
+    const field = await within(book()).findByLabelText('Text under Så spelar ni')
     fireEvent.change(field, { target: { value: 'Dra två kort ur [[zon:draw]].' } })
     await waitFor(() => expect(within(book()).getByText(/Dra två kort ur/)).toBeTruthy())
     fireEvent.blur(field)
@@ -77,7 +77,7 @@ describe('the rulebook in the editor (B7)', () => {
     // The one ＋ the book draws stands at the block the hand is on (#216), so the hand goes there
     // first; where it stands and what it does with a keyboard is `rules-one-plus`'s.
     fireEvent.pointerOver(book().querySelector('[data-block="h1"]')!)
-    fireEvent.click(await within(book()).findByRole('button', { name: 'Lägg till efter h1' }))
+    fireEvent.click(await within(book()).findByRole('button', { name: 'Lägg till efter Så spelar ni' }))
     await waitFor(() => expect(book().querySelectorAll('[data-block]')).toHaveLength(before + 1))
     fireEvent.click(within(book()).getByRole('button', { name: 'Ta bort blocket' }))
     await waitFor(() => expect(book().querySelectorAll('[data-block]')).toHaveLength(before))
@@ -166,7 +166,7 @@ describe('a picture in the editor’s book (#173)', () => {
     expect(within(book()).queryByRole('img')).toBeNull()
 
     fireEvent.click(book().querySelector('[data-block="i1"] [role="button"]')!)
-    const field = await within(book()).findByLabelText('Alt-text för bilden i1')
+    const field = await within(book()).findByLabelText('Alt-text för bilden under Så spelar ni')
     fireEvent.change(field, { target: { value: 'Bordet från ovan' } })
     await waitFor(() => expect(within(book()).getByRole('img', { name: 'Bordet från ovan' })).toBeTruthy())
     fireEvent.blur(field)
@@ -200,8 +200,8 @@ describe('the picture’s caption in the editor (#173)', () => {
     expect(await within(book()).findByText('Bordet vid tre spelare')).toBeTruthy()
 
     fireEvent.click(book().querySelector('[data-block="i1"] [role="button"]')!)
-    const alt = await within(book()).findByLabelText('Alt-text för bilden i1')
-    const caption = await within(book()).findByLabelText('Bildtext i1')
+    const alt = await within(book()).findByLabelText('Alt-text för bilden under Så spelar ni')
+    const caption = await within(book()).findByLabelText('Bildtext till bilden under Så spelar ni')
     // Two fields, and neither of them holds what the other says.
     expect((alt as HTMLInputElement).value).toBe('Bordet från ovan')
     expect((caption as HTMLInputElement).value).toBe('Bordet vid tre spelare')
@@ -261,6 +261,21 @@ describe('the pictures without alt text, counted in the contents (#173)', () => 
   })
 })
 
+// The book sits under the tab's own heading (#558 F-19): its title was an h1 after the tab's h2,
+// and its sections h2 beside it. The book keeps its look and is read one level under the tab, and
+// the line above it says how to write without naming a mouse.
+describe('the book under its tab, to a screen reader (#558)', () => {
+  it('reads the title under the tab, the sections under the title, and says how to write without a mouse', async () => {
+    await openRules()
+    const levels = [...document.querySelectorAll('.byd-rules [role="heading"], .byd-rules h1, .byd-rules h2, .byd-rules h3')].map((h) => Number(h.getAttribute('aria-level') ?? h.tagName.slice(1)))
+    expect(levels[0]).toBe(2)
+    expect(screen.getByRole('heading', { level: 3, name: 'Skogens herrar' })).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 4, name: 'Så spelar ni' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull()
+    expect(screen.getByText('Välj ett block på sidan för att skriva i det.')).toBeTruthy()
+  })
+})
+
 describe('the rulebook as a booklet (B7)', () => {
   it('is ordered from the rules and opens when it is rendered', async () => {
     await openRules()
@@ -289,6 +304,23 @@ describe('the rulebook as a booklet (B7)', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
+  // The button went `disabled` while the booklet was rendered, and a disabled button lets go of
+  // the focus, to <body> (#558 F-6). It stays where it was, says it is busy, and a second press
+  // orders nothing.
+  it('keeps the focus on the button while it works, and a second press orders nothing', async () => {
+    await openRules()
+    const order = screen.getByRole('button', { name: 'Häfte för tryck' })
+    order.focus()
+    fireEvent.click(order)
+    expect(await screen.findByText(/Häftet renderas/)).toBeTruthy()
+    expect(document.activeElement).toBe(order)
+    expect(order.getAttribute('aria-disabled')).toBe('true')
+    expect((order as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(order)
+    await run.completeRenders()
+    await screen.findByRole('link', { name: 'Öppna häftet' }, { timeout: 3000 })
+  })
+
   it('is not offered at all before there are any rules', async () => {
     await openRules(false)
     expect(screen.queryByRole('button', { name: 'Häfte för tryck' })).toBeNull()
@@ -299,34 +331,35 @@ describe('a heading kept open while its level is chosen (#217)', () => {
   it('stays open when the focus goes from the field to the level beside it', async () => {
     await openRules()
     fireEvent.click(within(book()).getByRole('heading', { name: 'Så spelar ni' }))
-    const field = await within(book()).findByLabelText('Rubrik h1')
-    const level = within(book()).getByLabelText('Nivå på h1')
+    const field = await within(book()).findByLabelText('Rubrik 1')
+    const level = within(book()).getByLabelText('Nivå på rubrik 1')
     // Leaving the field for the chooser beside it is staying, not going — the same rule the
     // picture's two fields already follow.
     fireEvent.blur(field, { relatedTarget: level })
-    await waitFor(() => expect(within(book()).queryByLabelText('Nivå på h1')).toBeTruthy())
-    expect(within(book()).getByLabelText('Rubrik h1')).toBeTruthy()
+    await waitFor(() => expect(within(book()).queryByLabelText('Nivå på rubrik 1')).toBeTruthy())
+    expect(within(book()).getByLabelText('Rubrik 1')).toBeTruthy()
   })
 
   it('takes the level the chooser is set to, and draws the heading at it', async () => {
     await openRules()
     fireEvent.click(within(book()).getByRole('heading', { name: 'Så spelar ni' }))
-    const field = await within(book()).findByLabelText('Rubrik h1')
-    const level = within(book()).getByLabelText('Nivå på h1')
+    const field = await within(book()).findByLabelText('Rubrik 1')
+    const level = within(book()).getByLabelText('Nivå på rubrik 1')
     fireEvent.blur(field, { relatedTarget: level })
     fireEvent.change(level, { target: { value: '2' } })
     // An open block shows its fields and not the heading, so the level is read off the book once
     // the block is closed again — which is where the reader meets it.
     fireEvent.blur(level, { relatedTarget: document.body })
-    await waitFor(() => expect(within(book()).getByRole('heading', { level: 3, name: 'Så spelar ni' })).toBeTruthy())
+    // The chosen level 2 is an h3, read at 5 under the tab (#558).
+    await waitFor(() => expect(within(book()).getByRole('heading', { level: 5, name: 'Så spelar ni' })).toBeTruthy())
   })
 
   it('closes when the focus leaves the heading row altogether', async () => {
     await openRules()
     fireEvent.click(within(book()).getByRole('heading', { name: 'Så spelar ni' }))
-    const field = await within(book()).findByLabelText('Rubrik h1')
+    const field = await within(book()).findByLabelText('Rubrik 1')
     fireEvent.blur(field, { relatedTarget: document.body })
-    await waitFor(() => expect(within(book()).queryByLabelText('Rubrik h1')).toBeNull())
+    await waitFor(() => expect(within(book()).queryByLabelText('Rubrik 1')).toBeNull())
   })
 })
 
@@ -352,7 +385,7 @@ describe('uppställningens block i editorn (#270)', () => {
     expect(book().querySelector('input')).toBeNull()
     // Och bildtexten är vägen in i blocket.
     fireEvent.click(within(book()).getByRole('button', { name: 'Så ställs bordet upp' }))
-    const field = await within(book()).findByLabelText('Bildtext s1')
+    const field = await within(book()).findByLabelText('Bildtext till uppställningen under Så spelar ni')
     expect((field as HTMLInputElement).value).toBe('Så ställs bordet upp')
     fireEvent.change(field, { target: { value: 'Bordet vid två spelare' } })
     fireEvent.blur(field)
@@ -366,6 +399,7 @@ describe('uppställningens block i editorn (#270)', () => {
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
     fireEvent.click(await within(book()).findByRole('button', { name: 'Bildtext…' }))
-    expect(await within(book()).findByLabelText('Bildtext s1')).toBeTruthy()
+    // The book is the setup alone, so it stands at the start of the book (#558).
+    expect(await within(book()).findByLabelText('Bildtext till uppställningen i början av boken')).toBeTruthy()
   })
 })

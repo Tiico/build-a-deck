@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { EditorPage } from '../src/editor/EditorPage.js'
+import { StatusLive } from '../src/status/StatusLive.js'
 import { projectDoc } from './project-doc.js'
 import type { ProjectDoc } from '@byd/server'
 import { startServer, type Running } from './fixture.js'
@@ -19,11 +20,17 @@ afterEach(async () => {
 
 async function openSymbols(): Promise<void> {
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
-  render(<EditorPage />)
+  render(
+    <StatusLive>
+      <EditorPage />
+    </StatusLive>,
+  )
   await screen.findByText('Skogens herrar')
   fireEvent.click(screen.getByRole('tab', { name: 'Symboler' }))
 }
 const tile = (name: string) => screen.getByRole('button', { name: `Ta in ${name}` })
+// A symbol the game has is named by what the tile shows (#558 F-15): «sköld, i spelet».
+const hadTile = (name: string) => screen.getByRole('button', { name: `${name}, i spelet` })
 
 describe('the symbol library in the editor (E4)', () => {
   it('searches the library, narrows to a category, and says what a symbol is licensed under', async () => {
@@ -98,10 +105,11 @@ describe('the symbol library in the editor (E4)', () => {
     fireEvent.click(tile('sköld'))
     const set = await screen.findByRole('list', { name: 'Symboler i spelet' })
     await waitFor(() => expect(within(set).getByText('{sköld}')).toBeTruthy())
-    expect(within(tile('sköld')).getByText('I spelet')).toBeTruthy()
-    expect(tile('sköld').getAttribute('aria-describedby')).toBeTruthy()
+    // Taking it in is said (#558), and the tile is then named by what it shows.
+    await waitFor(() => expect(document.querySelector('.byd-symbols-note')!.textContent).toBe('sköld är i spelet.'))
+    expect(within(hadTile('sköld')).getByText('I spelet')).toBeTruthy()
 
-    fireEvent.click(tile('sköld'))
+    fireEvent.click(hadTile('sköld'))
     expect(await screen.findByText('sköld finns redan i spelet som {sköld}.')).toBeTruthy()
     expect(within(set).getAllByRole('listitem')).toHaveLength(1)
   })
@@ -121,8 +129,11 @@ describe('the symbol library in the editor (E4)', () => {
     expect(question.textContent).toContain(`Kortet ${doc.rows[0]!.id} skriver den.`)
     fireEvent.click(within(question).getByRole('button', { name: 'Ja, ta bort' }))
     await waitFor(() => expect(screen.getByText(/Inga symboler ännu/)).toBeTruthy())
-    // The last symbol took its heading with it, so the hand is on the library's search.
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Sök symbol')))
+    // The last symbol took its heading with it. The hand used to go to the library's search at
+    // the top of the page (#481); it lands where the list stood, on the line that says the game
+    // has none, and the removal is said (#558).
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByText(/Inga symboler ännu/)))
+    expect(document.querySelector('[data-status-live="polite"]')!.textContent).toBe('sköld är borttagen.')
   })
 
   it('draws a symbol on the cards it is written into, and says which cards use it', async () => {
