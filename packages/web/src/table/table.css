@@ -620,7 +620,9 @@
 [data-tv] ol li:first-child { font-size: 20px; }
 /* A line that does not fit whole is not drawn (#482); the list says which with `hidden`. */
 [data-tv] ol li[hidden] { display: none; }
-[data-tv] ol li b { flex: 0 0 30px; font-family: ui-monospace, monospace; font-weight: 400; color: #4c5468; }
+/* The row's number is the chrome's quiet grey, as the zone names are: quieter than the names beside
+   it and still text that reads, 5.18:1 on the chrome where #4c5468 was 2.53 (#560 P-14). */
+[data-tv] ol li b { flex: 0 0 30px; font-family: ui-monospace, monospace; font-weight: 400; color: #7d8597; }
 [data-tv] ol li span { color: var(--seat, #9aa3b8); }
 /* The seats, stacked down the column rather than laid along the bottom of the screen. A seat is
    still a card of its own with the seat's colour down its left edge, so what a reader learned to
