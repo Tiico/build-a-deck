@@ -32,6 +32,7 @@ export const enPlay = {
   'qr.enlarge': 'Show the code larger',
   'qr.title': 'Join with your phone',
   'qr.close': 'Close',
+  'qr.join.alt': 'QR code: join with your phone, room {code} ({url})',
   'tv.inspect': 'Inspection',
   'tv.inspect.hidden': 'hidden card',
   'tv.inspect.empty': 'point at a card',

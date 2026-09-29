@@ -153,7 +153,7 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
             {roomCode && <strong>{roomCode}</strong>}
             {/* One line of the TV's own heading, and nobody presses a television: the code stays a
                 picture there (#225). The room's code stands beside it in plain figures anyway. */}
-            {joinUrl && <QrCode text={joinUrl} size={52} enlarge={false} />}
+            {joinUrl && <QrCode text={joinUrl} label={t('qr.join.alt', { code: roomCode ?? '', url: joinUrl })} size={52} enlarge={false} />}
             {/* The one help pattern (L32, #305), after the code and the square rather than in
                 front of them: what the room reads from across it comes first, and what a joined
                 phone becomes is behind the question mark instead of on a second line over the

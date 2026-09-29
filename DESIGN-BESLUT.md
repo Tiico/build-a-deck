@@ -1753,6 +1753,7 @@ Snapshoten bär de senaste femtio raderna på samma sätt (2026-09-07), så att 
 
 Byggt 2026-09-07 (bordet ställt sida vid sida med de godkända prototyperna B och C, #20):
 TV-läget har åter rubriken — spelets namn och den version aktören kör — där hela join-URL:en tidigare stod i klartext; adressen finns kvar som QR-kodens alternativtext, så den går att skriva av utan kamera.
+Reviderat 2026-09-29 (#560 P-21): alternativtexten säger först vad bilden är till och vilket rum, och adressen står sist inom parentes — «QR-kod: anslut med telefonen, rum KX7P (…)». En skärmläsare läste annars upp en rå adress utan att säga vad den var, och den går fortfarande att skriva av.
 Namnet kommer ur projektet bordet startades ur (L5) och `GET /sessions/:id` svarar därför också med det; ett bord som startats utan projekt heter bara "Bordet".
 INSPEKTION är tillbaka: kortet pekaren vilar på visas stort bredvid bordet genom samma texturväg som bordet självt (K9, E2), och panelen ber om "peka på ett kort" när ingen pekar.
 Ett kort skärmen inte får se heter "dolt kort" och inget annat (B6).
