@@ -110,7 +110,9 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
         moveTo(id, to)
         // The focus goes with the layer, so nothing is read when it moves; the new place is said
         // instead, as the card says every nudge (#556).
-        return say?.('polite', t('canvas.layer.moved', { name: nameOf(layers[at]!), at: to + 1, of: layers.length }))
+        const moved = layers[at]
+        if (moved) say?.('polite', t('canvas.layer.moved', { name: nameOf(moved), at: to + 1, of: layers.length }))
+        return
       }
       props.onKeyDown(event)
     },

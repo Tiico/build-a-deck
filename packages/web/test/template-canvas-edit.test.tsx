@@ -210,7 +210,9 @@ describe('the tool rail by keyboard (#18, UX-04)', () => {
   it('is one tab stop the arrows move inside, and the layer list is the next stop', async () => {
     const user = userEvent.setup()
     canvas()
-    const tools = within(screen.getByRole('toolbar', { name: /verktyg/i })).getAllByRole('button')
+    // Every tool is a <button>; the icon's is the library's combobox (#556), so it is found by
+    // the element and not by the role.
+    const tools = [...screen.getByRole('toolbar', { name: /verktyg/i }).querySelectorAll('button')]
     expect(tools.map((t) => t.textContent)).toEqual(['TText', '▣Bild', '●Ikon', '●●Ikonrad', '◻Form'])
     expect(tools.map((t) => t.getAttribute('tabindex'))).toEqual(['0', '-1', '-1', '-1', '-1'])
 

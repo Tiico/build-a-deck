@@ -331,10 +331,10 @@ async function editorViews(width: number): Promise<Record<string, string>> {
       // The symbol library is a door too: the rail's Ikon tool opens it, and until it is open
       // nothing in the walk has ever seen an option of it drawn.
       if (tab.textContent?.trim() === 'Mall') {
-        fireEvent.click(screen.getByRole('button', { name: /Ikon$/ }))
+        fireEvent.click(screen.getByRole('combobox', { name: 'Ikon' }))
         if (!document.querySelector('.byd-symbol-list [role="option"][aria-selected="true"]')) throw new Error('the rail never opened the symbol library')
         out['Mall, ikonbiblioteket öppet'] = document.querySelector('.byd-editor')!.outerHTML
-        fireEvent.click(screen.getByRole('button', { name: /Ikon$/ }))
+        fireEvent.click(screen.getByRole('combobox', { name: 'Ikon' }))
       }
     }
     return out
