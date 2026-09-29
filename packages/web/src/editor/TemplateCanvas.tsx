@@ -351,7 +351,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             need it. It stands beside the stage and never on it, which is what keeps it off the
             card at every zoom (#146, L19). */}
         <div className="byd-canvas-room">
-        <main
+        {/* A named region inside the page's one main, not a second main (#556). */}
+        <section
           className="byd-canvas-stage"
           ref={stageEl}
           // A box that scrolls once the card is bigger than it (#146), and a box that scrolls is
@@ -376,7 +377,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             onSelectElement={onSelectElement}
             overlay={<DragLayer grid={grid ? gridStep(zoom.scale) : null} conditions={conditionFrames(shown, rowData, t)} onSelectCondition={onSelectElement} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} point={pointAt} onPoint={setPointAt} reading={reading} />}
           />
-        </main>
+        </section>
           <ZoomBand zoom={zoom} />
         </div>
         {/* Which card the template is drawn on, under it (#478, variant B): among the cards of
@@ -1599,7 +1600,9 @@ function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPl
           <button
             key={tool.id}
             type="button"
-            {...(tool.id === 'icon' ? { 'aria-expanded': picking, ...(picking && under ? { 'aria-controls': TOOL_SYMBOLS, 'aria-activedescendant': symbolOptionId(TOOL_SYMBOLS, under) } : {}) } : {})}
+            // The icon tool is the library's combobox, as the cell's brace is (#556): a screen
+            // reader reads `aria-activedescendant` on a combobox, and on a button it reads nothing.
+            {...(tool.id === 'icon' ? { role: 'combobox', 'aria-label': t(tool.name), 'aria-haspopup': 'listbox' as const, 'aria-expanded': picking, ...(picking && under ? { 'aria-controls': TOOL_SYMBOLS, 'aria-activedescendant': symbolOptionId(TOOL_SYMBOLS, under) } : {}) } : {})}
             // Another tool is another element, and the library was opened for this one: leaving it
             // floating over the rail while a text box lands on the card is a list about nothing.
             onClick={() => {
@@ -2021,15 +2024,24 @@ function Scrub({
     <div className="byd-props-f">
       <span
         className="byd-props-grip"
-        role="button"
+        // A slider and not a button (#556): it holds a value the arrows move, and it never
+        // answered Enter the way a button promises to.
+        role="slider"
         tabIndex={readOnly ? -1 : 0}
         aria-label={t('canvas.props.grip', { name })}
+        aria-valuenow={value}
+        aria-valuetext={unit ? `${value} ${unit}` : String(value)}
+        {...(min !== undefined ? { 'aria-valuemin': min } : {})}
+        {...(max !== undefined ? { 'aria-valuemax': max } : {})}
         aria-hidden={readOnly ? 'true' : undefined}
         onPointerDown={take}
         onPointerMove={drag}
         onPointerUp={letGo}
         onPointerCancel={letGo}
-        onKeyDown={(event) => keys(event, 'ArrowRight', 'ArrowLeft')}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowUp' || event.key === 'ArrowDown') return keys(event, 'ArrowUp', 'ArrowDown')
+          keys(event, 'ArrowRight', 'ArrowLeft')
+        }}
       >
         {icon}
       </span>

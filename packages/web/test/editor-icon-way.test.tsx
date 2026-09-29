@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { userEvent } from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { EditorPage } from '../src/editor/EditorPage.js'
@@ -120,9 +121,26 @@ describe('the icon as a tool on the canvas (#33)', () => {
     // The control case: a row of icons is a tool of its own, and it is not this one.
     expect(within(tools).getByRole('button', { name: 'Ikonrad' })).toBeTruthy()
 
-    fireEvent.click(within(tools).getByRole('button', { name: 'Ikon' }))
+    fireEvent.click(within(tools).getByRole('combobox', { name: 'Ikon' }))
     const list = await screen.findByRole('listbox', { name: 'Symboler' })
     expect(within(list).getAllByRole('option').length).toBeGreaterThan(0)
+  })
+
+  // `aria-activedescendant` is not read on a button (#556 E-4): the arrows moved the live symbol
+  // and a screen reader heard nothing. The tool is the list's combobox, as the cell's brace is.
+  it('is a combobox for the library, and the arrows point it at an option in it', async () => {
+    const tools = await openTemplate()
+    const tool = within(tools).getByRole('combobox', { name: 'Ikon' })
+    expect(tool.getAttribute('aria-haspopup')).toBe('listbox')
+    expect(tool.getAttribute('aria-expanded')).toBe('false')
+    tool.focus()
+    await userEvent.keyboard('{Enter}')
+    const list = await screen.findByRole('listbox', { name: 'Symboler' })
+    expect(tool.getAttribute('aria-expanded')).toBe('true')
+    await userEvent.keyboard('{ArrowDown}')
+    const active = tool.getAttribute('aria-activedescendant')
+    expect(active).toBeTruthy()
+    expect(list.querySelector(`[id="${active}"]`)?.getAttribute('role')).toBe('option')
   })
 
   it('puts the chosen icon on the card, drawn by the one renderer', async () => {
@@ -133,7 +151,7 @@ describe('the icon as a tool on the canvas (#33)', () => {
     const tools = await openTemplate(doc)
     expect(document.querySelectorAll('#canvas img.byd-icon')).toHaveLength(0)
 
-    fireEvent.click(within(tools).getByRole('button', { name: 'Ikon' }))
+    fireEvent.click(within(tools).getByRole('combobox', { name: 'Ikon' }))
     fireEvent.click(within(await screen.findByRole('listbox', { name: 'Symboler' })).getByRole('option', { name: /svärd/ }))
 
     // `byd-icon` is a class only the compiler in packages/template writes, so an image wearing it
@@ -159,7 +177,7 @@ describe('the icon as a tool on the canvas (#33)', () => {
   // carrying an element that points at a name the icon set no longer answers to.
   it('is one edit: the symbol and the element that shows it come and go together', async () => {
     const tools = await openTemplate()
-    fireEvent.click(within(tools).getByRole('button', { name: 'Ikon' }))
+    fireEvent.click(within(tools).getByRole('combobox', { name: 'Ikon' }))
     fireEvent.click(within(await screen.findByRole('listbox', { name: 'Symboler' })).getByRole('option', { name: /svärd/ }))
     await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeTruthy())
 
@@ -182,7 +200,7 @@ describe('the icon as a tool on the canvas (#33)', () => {
 
   it('lands selected and behaves like every other element, and says which icon it shows', async () => {
     const tools = await openTemplate()
-    fireEvent.click(within(tools).getByRole('button', { name: 'Ikon' }))
+    fireEvent.click(within(tools).getByRole('combobox', { name: 'Ikon' }))
     fireEvent.click(within(await screen.findByRole('listbox', { name: 'Symboler' })).getByRole('option', { name: /svärd/ }))
 
     // Selected the moment it lands, so the next thing the designer does is about it (#18).
@@ -193,7 +211,7 @@ describe('the icon as a tool on the canvas (#33)', () => {
 
     // The panel says which icon this is, and it does not claim a column it does not show: the
     // picker names the first field for anything bound to a literal, and that would be a lie.
-    expect((screen.getByLabelText('Ikon') as HTMLSelectElement).value).toBe('svärd')
+    expect((screen.getByLabelText('Ikon', { selector: 'select' }) as HTMLSelectElement).value).toBe('svärd')
     const field = screen.getByLabelText('Fält') as HTMLSelectElement
     expect(field.value).toBe('')
     expect(within(field).getByRole('option', { name: 'inget fält' }).getAttribute('value')).toBe('')
@@ -219,7 +237,7 @@ describe('the icon as a tool on the canvas (#33)', () => {
   // a tool whose whole product is one image, the size is the thing being edited.
   it('grows the symbol with the box, so what is dragged is what shows', async () => {
     const tools = await openTemplate()
-    fireEvent.click(within(tools).getByRole('button', { name: 'Ikon' }))
+    fireEvent.click(within(tools).getByRole('combobox', { name: 'Ikon' }))
     fireEvent.click(within(await screen.findByRole('listbox', { name: 'Symboler' })).getByRole('option', { name: /svärd/ }))
     await screen.findByRole('heading', { name: /icon-1/ })
 
@@ -243,7 +261,7 @@ describe('the icon as a tool on the canvas (#33)', () => {
   // the arrows there walked to the next tool with the list still floating over it.
   it('is driven from the tool the way the cell picker is driven from the cell', async () => {
     const tools = await openTemplate()
-    const tool = within(tools).getByRole('button', { name: 'Ikon' })
+    const tool = within(tools).getByRole('combobox', { name: 'Ikon' })
     fireEvent.click(tool)
     // A real press leaves the focus on the button it pressed; jsdom's does not.
     tool.focus()
@@ -275,7 +293,7 @@ describe('the icon as a tool on the canvas (#33)', () => {
 
   it('closes when another tool is pressed, instead of floating over the rail', async () => {
     const tools = await openTemplate()
-    fireEvent.click(within(tools).getByRole('button', { name: 'Ikon' }))
+    fireEvent.click(within(tools).getByRole('combobox', { name: 'Ikon' }))
     await screen.findByRole('listbox', { name: 'Symboler' })
 
     fireEvent.click(within(tools).getByRole('button', { name: 'Text' }))
@@ -291,7 +309,7 @@ describe('the icon as a tool on the canvas (#33)', () => {
   // is the way out of what the other did, and neither guesses on the designer's behalf.
   it('lets an icon bound to a column be an icon again', async () => {
     const tools = await openTemplate()
-    fireEvent.click(within(tools).getByRole('button', { name: 'Ikon' }))
+    fireEvent.click(within(tools).getByRole('combobox', { name: 'Ikon' }))
     fireEvent.click(within(await screen.findByRole('listbox', { name: 'Symboler' })).getByRole('option', { name: /svärd/ }))
     await screen.findByRole('heading', { name: /icon-1/ })
 
@@ -302,7 +320,7 @@ describe('the icon as a tool on the canvas (#33)', () => {
 
     // And the icon picker is still there, claiming nothing: it says the element takes its icons
     // from the column, exactly as the field picker says "inget fält" for one bound to a name.
-    const icon = screen.getByLabelText('Ikon') as HTMLSelectElement
+    const icon = screen.getByLabelText('Ikon', { selector: 'select' }) as HTMLSelectElement
     expect(icon.value).toBe('')
     expect(within(icon).getByRole('option', { name: 'från kolumnen' }).getAttribute('value')).toBe('')
 
@@ -310,12 +328,12 @@ describe('the icon as a tool on the canvas (#33)', () => {
     fireEvent.change(icon, { target: { value: 'svärd' } })
     await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeTruthy())
     expect((screen.getByLabelText('Fält') as HTMLSelectElement).value).toBe('')
-    expect((screen.getByLabelText('Ikon') as HTMLSelectElement).value).toBe('svärd')
+    expect((screen.getByLabelText('Ikon', { selector: 'select' }) as HTMLSelectElement).value).toBe('svärd')
   })
 
   it('closes when the focus leaves the rail, instead of hanging over the canvas', async () => {
     const tools = await openTemplate()
-    const tool = within(tools).getByRole('button', { name: 'Ikon' })
+    const tool = within(tools).getByRole('combobox', { name: 'Ikon' })
     fireEvent.click(tool)
     tool.focus()
     await screen.findByRole('listbox', { name: 'Symboler' })
@@ -331,7 +349,7 @@ describe('the icon as a tool on the canvas (#33)', () => {
 
   it('closes the library with Escape, placing nothing and leaving the focus where it was', async () => {
     const tools = await openTemplate()
-    const tool = within(tools).getByRole('button', { name: 'Ikon' })
+    const tool = within(tools).getByRole('combobox', { name: 'Ikon' })
     fireEvent.click(tool)
     await screen.findByRole('listbox', { name: 'Symboler' })
     expect(tool.getAttribute('aria-expanded')).toBe('true')

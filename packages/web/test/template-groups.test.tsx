@@ -102,6 +102,20 @@ describe('the two faces of the template (#13, L7)', () => {
 // Variant A, as chosen: a column makes the groups, and what is changed with a group open becomes
 // that group's override (#13). Which group is open is the crown's menu since #129 — the row of tabs
 // hid 61 % of itself — but a group is the same rule it always was.
+// The page has one main (#556 E-11): the stage is a named region inside it, named by the canvas
+// until the deck is grouped and by the group button after.
+describe('the stage to a screen reader (#556)', () => {
+  it('is a region inside the one main, named by the canvas and then by the open group', async () => {
+    const user = await openTemplate()
+    expect(document.querySelectorAll('main')).toHaveLength(1)
+    const stage = document.querySelector('.byd-canvas-stage') as HTMLElement
+    expect(screen.getByRole('region', { name: 'Duken' })).toBe(stage)
+    await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
+    expect(document.querySelectorAll('main')).toHaveLength(1)
+    expect(screen.getByRole('region', { name: /kortgrupper/i })).toBe(document.querySelector('.byd-canvas-stage'))
+  })
+})
+
 describe('grouping the deck by a column (#13)', () => {
   it('has no groups until a column is chosen, and then one per value in it', async () => {
     const user = await openTemplate()

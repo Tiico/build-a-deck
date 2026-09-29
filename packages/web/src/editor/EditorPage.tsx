@@ -588,8 +588,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             bottom of the screen, and mounting both would put two of every tab in the document. */}
         {room === 'desk' && <EditorTabs mode={mode} onSelect={(m) => setStage(m === 'template' ? 'canvas' : m)} />}
         {/* The people in the header are the door to who has the game at all (D3): who is here
-            now and who may be here is one question. */}
-        <button ref={hereRef} type="button" className="byd-editor-here" data-here aria-label={t('share.title')} aria-expanded={shareOpen} onClick={() => setOver((on) => (on === 'share' ? null : 'share'))}>
+            now and who may be here is one question. The name carries the count the button shows,
+            so it can be spoken to by what it says (#556). */}
+        <button ref={hereRef} type="button" className="byd-editor-here" data-here aria-label={client.here.length > 1 ? t('editor.here.name', { n: client.here.length }) : t('share.title')} aria-expanded={shareOpen} onClick={() => setOver((on) => (on === 'share' ? null : 'share'))}>
           {client.here.map((p) => (
             <i key={p.id} title={p.name} style={{ ['--who' as string]: colourOf(p.name) }}>
               {p.name.slice(0, 1).toUpperCase()}
