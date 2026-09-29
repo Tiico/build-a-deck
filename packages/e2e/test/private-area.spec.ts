@@ -73,8 +73,8 @@ test.describe('the area in front of a seat, on the opening table', () => {
     // The zone's name is the designer's and is never translated; the count beside it is the
     // reader's language, so it is read as the number it is and not as the sentence around it.
     const tile = bo.page.locator('[data-phone-table] [data-zone-summary="mine:A"]')
-    // The tile's own words, not those of the cards it now carries.
-    await expect(tile.locator(':scope > strong')).toHaveText('Framför A')
+    // The tile's own words, not those of the cards it now carries: its heading (#560 P-20).
+    await expect(tile.getByRole('heading', { level: 2 })).toHaveText('Framför A')
     await expect(tile.locator(':scope > span')).toHaveText(/^1\b/)
     // Reading it is not playing into it: the sheet offers Bo's own area and never Ada's (C4).
     await expect(bo.page.locator('[data-zone="mine:A"]')).toHaveCount(0)
