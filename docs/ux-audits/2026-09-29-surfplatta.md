@@ -44,11 +44,15 @@ Rättat i samma gren som den här rapporten, tillsammans med kortets namn i samm
 
 ### 2. Tabellens breddgrepp gör ingenting med fingret
 
+Issue #564.
+
 Med musen blir en kolumn 60 px bredare av ett drag i greppet vid rubrikens högerkant.
 Med fingret händer ingenting, eftersom greppet saknar `touch-action` och webbläsaren tar gesten.
 Greppet är dessutom 10 px brett och syns bara vid hover, så en platta visar det aldrig.
 
 ### 3. Dukens storlekshandtag är för små för ett finger
+
+Issue #565.
 
 Handtagen är 15 px i fyrkant vid den zoom duken passar in kortet i.
 En fingertopp täcker ungefär 40 px.
@@ -56,10 +60,14 @@ Ett tryck som träffar 8 px bredvid ett handtag tar tag i elementet under, oftas
 
 ### 4. Ångra finns bara på tangentbordet
 
+Issue #566, prototyp och beslut först.
+
 Ångra och gör om nås med Ctrl eller Cmd och Z, och den enda synliga ångra-knappen finns i uppställningen.
 En platta utan tangentbord kan alltså inte ta tillbaka ett misstag på duken, i tabellen eller på väggen.
 
 ### 5. Editorns rader tar plattans höjd och gömmer kontroller i sidled
+
+Issue #567, prototyp och beslut först.
 
 Vid 960 × 490 tar huvudet, verktygsraden, statusraden och etappremsan 280 av 490 px, så kortväggen visar knappt en rad kort.
 
