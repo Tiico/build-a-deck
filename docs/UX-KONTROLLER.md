@@ -32,6 +32,10 @@ Bredderna en yta granskas i följer vem som håller ytan (DESIGN-BESLUT L12):
   går sönder eller tappar arbete. Den är skrivbordsförst och ska degradera, inte
   garantera, under skrivbordsbredd. Ett fynd som bara gäller editorn vid 390
   eller 320 är inte ett fynd.
+  Stora surfplattor är önskvärda (L12, tillägg 2026-09-29): editorn granskas
+  därför också med pekinmatning och grov pekare i 1024×640 och 1180×746, och
+  i 820×1106 för etapperna. Där prövas att allt går med fingret och att inga
+  kontroller kräver att man rullar runt för att nå dem.
 - **Bordets skärm** — `/table` — är en TV och har sina egna mått (K9, C5).
 
 Allt annat nedan gäller **varje** yta oavsett bredd. Tillgänglighet är inte

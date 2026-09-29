@@ -3522,6 +3522,17 @@ Den är nu uppdelad per yta i samma dokument.
 Mätande tester som låser editorns layout vid 390 eller 320 låser ett krav som inte längre finns; de tas bort eller skrivs om till skrivbordsbredder när de står i vägen för ett designval, men jagas inte upp i förväg.
 Ett öppet issue vars fynd bara gäller editorn på en smal skärm är inte längre ett fynd.
 
+**Tillägg 2026-09-29: stora surfplattor är önskvärda.**
+Beställaren: editorn behöver inte stödja telefoner, men stora surfplattor vore bra att ha.
+Det gäller en iPad eller en Galaxy Tab i liggande läge och en stor iPad i stående, och det är ett önskemål och inte en garanti: en surfplatta får aldrig bli skälet att göra editorn sämre vid skrivbordet.
+Editorn får ingen egen surfplattelayout.
+En stor platta hamnar i skrivbordsformen från 1024 px och i etapperna mellan 768 och 1023 px (L10), så det som skiljer den från skrivbordet är fingret och höjden, inte bredden.
+Två krav följer av det.
+Allt som går att göra med musen ska gå att göra med fingret: ett drag, ett handtag, ett grepp och en ångring får inte förutsätta hover, pixelprecision eller ett tangentbord.
+Och editorn ska inte kräva att man rullar runt för att nå sina egna kontroller: på en platta är den synliga höjden ofta under 500 px när webbläsarens fält är avdragna, och rader som rullar i sidled gömmer det man letar efter.
+Hur det senare löses utan att skrivbordet betalar är ett visuellt beslut och prototypas först.
+Granskningen som ledde hit står i [`docs/ux-audits/2026-09-29-surfplatta.md`](docs/ux-audits/2026-09-29-surfplatta.md).
+
 ### L13. Ett knappspråk: tre roller, en form var (2026-09-11)
 
 Granskningen UX-13 (#44) fann tre primärknappar som inte såg ut som varandra — wizardens nästan svarta, editorns blå, inloggningens gröna — och rekommenderade en gemensam.
