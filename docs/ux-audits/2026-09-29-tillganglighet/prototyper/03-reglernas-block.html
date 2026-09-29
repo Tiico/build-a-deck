@@ -23,7 +23,8 @@
   .protorad .matt { flex: 1 1 360px; flex-direction: column; gap: 2px; }
   .matt u { text-decoration: none; color: #ffe9b8; }
   .matt ol { margin: 2px 0 0; padding-left: 18px; }
-  .lasyta { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--s5) 0 120px; display: flex; justify-content: center; background: #15171c; }
+  /* `flex-start`: en sträckt bok får läsytans höjd, och texten under den ritas utanför sidan. */
+  .lasyta { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--s5) 0 120px; display: flex; align-items: flex-start; justify-content: center; background: #15171c; }
   .bok { position: relative; width: calc(68ch + 80px); max-width: 100%; box-sizing: border-box; padding: 32px 56px; border-radius: 14px; background: #f7f3ea; color: #23201a; font: 14px/1.7 Georgia, serif; }
   .bok h1 { margin: 0 0 18px; font-size: 26px; }
   .bok h2 { margin: 0 0 8px; font-size: 19px; }
@@ -168,15 +169,22 @@ document.addEventListener('keydown', (ev) => {
   if (el.matches?.('[role="button"][data-oppna]') && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); s.oppen = el.dataset.oppna; s.vid = s.oppen; rita(`[data-blk="${s.oppen}"] textarea, [data-blk="${s.oppen}"] input`) }
   if (ev.key === 'Escape' && s.oppen) { const id = s.oppen; s.oppen = null; s.vid = id; rita(`[data-blk="${id}"] [data-oppna]:not([data-mus])`) }
 })
+// Det enda ＋:et flyttas till blocket handen står i utan att boken ritas om: en omritning tar
+// bort elementet som just fick fokus, och fokus faller då till body.
+function flyttaPlus(id) {
+  if (s.oppen !== null || s.vid === id) return
+  s.vid = id
+  $('#bok .plus')?.remove()
+  const blk = $(`#bok [data-blk="${id}"]`)
+  const b = BOK.find((x) => x.id === id)
+  if (blk && b) blk.insertAdjacentHTML('beforeend', `<button type="button" class="plus" aria-label="Lägg till efter ${esc(b.namn)}">＋</button>`)
+}
 document.addEventListener('focusin', (ev) => {
   const blk = ev.target.closest?.('[data-blk]')
-  if (blk && s.oppen === null && s.vid !== blk.dataset.blk && !ev.target.classList.contains('plus')) {
-    const sel = ev.target.matches('[data-oppna]') ? `[data-blk="${blk.dataset.blk}"] [data-oppna]:not([data-mus])` : null
-    s.vid = blk.dataset.blk; rita(sel); return
-  }
+  if (blk && !ev.target.classList.contains('plus')) flyttaPlus(blk.dataset.blk)
   matt()
 })
-document.addEventListener('mouseover', (ev) => { const blk = ev.target.closest?.('[data-blk]'); if (blk && s.oppen === null && s.vid !== blk.dataset.blk && !document.activeElement?.closest?.('[data-blk]')) { s.vid = blk.dataset.blk; rita() } })
+document.addEventListener('mouseover', (ev) => { const blk = ev.target.closest?.('[data-blk]'); if (blk && !document.activeElement?.closest?.('[data-blk]')) flyttaPlus(blk.dataset.blk) })
 const sattUrl = (k, v) => { const u = new URL(location.href); u.searchParams.set(k, v); history.replaceState(null, '', u) }
 const q = new URLSearchParams(location.search)
 if (['nu', 'a', 'b', 'c'].includes(q.get('v'))) s.v = q.get('v')
