@@ -35,6 +35,17 @@ export function ExportDialog({ http, game, onClose }: { http: string; game: Game
   useFocusTrap(box, { onEscape: onClose })
   const [now, setNow] = useState<Exporting>({ state: 'idle' })
   const live = useRef(true)
+  // Where the keys go while the window works (WCAG 2.4.3): the pressed button goes still while the
+  // print files are made, and a still button lets the focus fall to the page behind the window. So
+  // the waiting itself holds it, and what was waited for takes it when it is there.
+  const waiting = useRef<HTMLDivElement>(null)
+  const download = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    const at = document.activeElement
+    const lost = !box.current?.contains(at) || (at instanceof HTMLButtonElement && at.disabled)
+    if (now.state === 'preparing' && lost) waiting.current?.focus()
+    if (now.state === 'ready') download.current?.focus()
+  }, [now.state])
   useEffect(
     () => () => {
       live.current = false
@@ -68,8 +79,8 @@ export function ExportDialog({ http, game, onClose }: { http: string; game: Game
         </ul>
         <p className="byd-muted">{t('home.export.not')}</p>
         {now.state === 'preparing' && (
-          <div className="byd-game-progress">
-            <span>{t('home.export.progress', { done: now.done, total: now.total })}</span>
+          <div ref={waiting} className="byd-game-progress" tabIndex={-1}>
+            <span role="status">{t('home.export.progress', { done: now.done, total: now.total })}</span>
             <progress aria-label={t('home.export.progress.label')} max={Math.max(1, now.total)} value={now.done} aria-valuemin={0} aria-valuemax={Math.max(1, now.total)} aria-valuenow={now.done} />
           </div>
         )}
@@ -78,7 +89,7 @@ export function ExportDialog({ http, game, onClose }: { http: string; game: Game
         {now.state === 'offline' && <p role="alert">{t('home.export.offline')}</p>}
         <div className="byd-game-dialog-actions">
           {now.state === 'ready' ? (
-            <button type="button" className="byd-primary" onClick={() => save(now.zip, now.name)}>
+            <button ref={download} type="button" className="byd-primary" onClick={() => save(now.zip, now.name)}>
               {t('home.export.download')}
             </button>
           ) : (
@@ -108,6 +119,16 @@ export function ImportDialog({ http, onClose, onImported, onOpen, nameOf }: { ht
   const picker = useRef<HTMLInputElement>(null)
   useFocusTrap(box, { onEscape: onClose })
   const [now, setNow] = useState<Importing>({ state: 'idle' })
+  // The next thing to do is where the keys are (WCAG 2.4.3): another file after a refusal, the
+  // game after it came in, and the words about the reading while it reads.
+  const choose = useRef<HTMLButtonElement>(null)
+  const open = useRef<HTMLButtonElement>(null)
+  const reading = useRef<HTMLParagraphElement>(null)
+  useEffect(() => {
+    if (now.state === 'reading') reading.current?.focus()
+    if (now.state === 'failed') choose.current?.focus()
+    if (now.state === 'done') open.current?.focus()
+  }, [now.state])
   const bring = async (file: File) => {
     const name = file.name.replace(/\.zip$/i, '').replace(/ rev-\d+$/, '')
     setNow({ state: 'reading', name })
@@ -143,7 +164,7 @@ export function ImportDialog({ http, onClose, onImported, onOpen, nameOf }: { ht
           }}
         />
         {now.state === 'reading' && (
-          <p role="status" className="byd-game-progress">
+          <p ref={reading} role="status" className="byd-game-progress" tabIndex={-1}>
             {t('home.import.reading', { name: now.name })}
             <progress aria-label={t('home.import.reading', { name: now.name })} />
           </p>
@@ -161,11 +182,11 @@ export function ImportDialog({ http, onClose, onImported, onOpen, nameOf }: { ht
         {now.state === 'done' && <p role="status">{t('home.import.done', { name: nameOf(now.id) ?? now.name })}</p>}
         <div className="byd-game-dialog-actions">
           {now.state === 'done' ? (
-            <button type="button" className="byd-primary" onClick={() => onOpen(now.id)}>
+            <button ref={open} type="button" className="byd-primary" onClick={() => onOpen(now.id)}>
               {t('home.import.open-game')}
             </button>
           ) : (
-            <button type="button" className="byd-primary" disabled={now.state === 'reading'} onClick={() => picker.current?.click()}>
+            <button ref={choose} type="button" className="byd-primary" disabled={now.state === 'reading'} onClick={() => picker.current?.click()}>
               {t('home.import.choose')}
             </button>
           )}
