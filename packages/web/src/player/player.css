@@ -45,6 +45,10 @@
   display: block; min-height: 100svh; width: 100%; max-width: 580px; margin: 0 auto; padding-bottom: env(safe-area-inset-bottom);
   background: var(--byd-bg); color: var(--byd-ink); font-family: system-ui, sans-serif;
 }
+/* The column is 580 px and the window may be wider — a tablet, or a laptop at 200 % zoom — and the
+   page behind it has no ground of its own: the column stood in white bands (#560 P-22). The page
+   takes the column's ground (`--byd-bg`, which is not bound up here) wherever the column is shown. */
+html:has(.byd-player) { background: #14161c; }
 /* The row wraps rather than shrink its controls below a thumb's width at 320px; who you are
    stays left, and what you can press stays right on whichever line it lands on. */
 .byd-player > header {
