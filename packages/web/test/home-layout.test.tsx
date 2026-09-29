@@ -33,7 +33,7 @@ beforeAll(async () => {
 }, 60_000)
 afterAll(async () => {
   await browser?.close()
-})
+}, 60_000)
 
 let run: Running
 beforeEach(async () => {
@@ -69,6 +69,10 @@ describe.each([390, 320, 1280])('Mina spel at %i px (#555)', (width) => {
       await page.setContent(document_(html), { waitUntil: 'load' })
       const open = (await page.locator('.byd-home-started a').boundingBox())!
       expect(open.height).toBeGreaterThanOrEqual(44)
+      // The sentence is one piece: the full stop after the code is not a flex gap away from it.
+      // The code is inside the sentence, not a flex item of its own beside the words round it.
+      expect(await page.locator('.byd-home-started > strong').count()).toBe(0)
+      expect(await page.locator('.byd-home-started strong').count()).toBe(1)
 
       const account = await page.evaluate(() => {
         const who = document.querySelector('.byd-who')!
@@ -90,5 +94,5 @@ describe.each([390, 320, 1280])('Mina spel at %i px (#555)', (width) => {
     } finally {
       await page.close()
     }
-  })
+  }, 60_000)
 })

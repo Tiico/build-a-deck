@@ -40,8 +40,11 @@ if (typeof document !== 'undefined' && typeof MutationObserver !== 'undefined') 
   new MutationObserver((records) => {
     for (const record of records)
       for (const node of record.removedNodes) {
-        if (!(node instanceof Element) || node.isConnected) continue
-        for (const style of [...(node.localName === 'style' ? [node] : []), ...node.querySelectorAll('style')]) {
+        // By node type, not `instanceof Element`: a removal can be reported after the environment
+        // has been torn down and `Element` and `Node` are gone, which threw into the run's output.
+        if (node.nodeType !== 1 || node.isConnected) continue
+        const element = node as Element
+        for (const style of [...(element.localName === 'style' ? [element] : []), ...element.querySelectorAll('style')]) {
           if (released.has(style)) continue
           released.add(style)
           document.documentElement.append(style)

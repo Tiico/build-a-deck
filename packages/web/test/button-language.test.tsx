@@ -1285,7 +1285,6 @@ describe('every suite that measures a surface', () => {
       'setup-landing-room.test.tsx',
       'setup-sheet-fold.test.tsx',
       'start-help-layout.test.tsx',
-      'status-page-reading.test.tsx',
       'symbol-samples-paper.test.tsx',
       'table-layout.test.tsx',
       'template-canvas-layout.test.tsx',

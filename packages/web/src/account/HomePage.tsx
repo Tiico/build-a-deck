@@ -160,7 +160,8 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
         )}
         {started && (
           <div className="byd-home-started">
-            {marked(t('home.started'), { code: <strong>{started.code}</strong> })}{' '}
+            {/* One flex item, so the gap between the banner's parts never opens inside the sentence. */}
+            <span>{marked(t('home.started'), { code: <strong>{started.code}</strong> })}</span>
             <a href={tableUrl(started.id, started.hostKey, server)} target="_blank" rel="noreferrer" aria-label={t('home.started.open.aria')}>
               {t('home.started.open')}
             </a>

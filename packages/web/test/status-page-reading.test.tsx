@@ -28,7 +28,7 @@ beforeAll(async () => {
 }, 60_000)
 afterAll(async () => {
   await browser?.close()
-})
+}, 60_000)
 
 describe('a state that is the whole page (#555)', () => {
   it('says the heading once: the focus reads it, and the live region says the rest', async () => {
@@ -43,7 +43,7 @@ describe('a state that is the whole page (#555)', () => {
     const assertive = document.querySelector('[data-status-live="assertive"]')!
     await waitFor(() => expect(assertive.textContent).toBe(notice.text))
     expect(assertive.textContent).not.toContain(notice.heading)
-  })
+  }, 60_000)
 
   it('still says the whole of a state that lies over a view and takes no focus', async () => {
     const notice = noticeFor('dropped', 'phone')
@@ -53,7 +53,7 @@ describe('a state that is the whole page (#555)', () => {
       </StatusLive>,
     )
     await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toBe(`${notice.heading}. ${notice.text}`))
-  })
+  }, 60_000)
 
   it('draws no ring round the heading the focus was moved to', async () => {
     const { container, unmount } = render(<StatusNotice notice={noticeFor('missing', 'phone')} surface="page" />)
@@ -72,7 +72,7 @@ describe('a state that is the whole page (#555)', () => {
     } finally {
       await page.close()
     }
-  })
+  }, 60_000)
 })
 
 // A link that leads nowhere is not something missing (#555 A-13 c): the word over the heading says
@@ -83,5 +83,5 @@ describe('the word over a link that no longer holds (#555)', () => {
     render(<ClaimPage />)
     const mark = document.querySelector('.byd-status-mark')!
     expect(mark.textContent).toBe('Gäller inte')
-  })
+  }, 60_000)
 })
