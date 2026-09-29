@@ -1929,6 +1929,15 @@ Att låta kameran rama bara det som verkligen är i spel — tomma rutor framfö
 Att aldrig beskära en hand är vid fyra platser ordagrant detsamma som att visa hela filten, eftersom händerna ligger vid alla fyra kanterna: det villkoret och de 116 px:en går inte att ha samtidigt.
 Valet blev hela bordet och 82 px, tillsammans med panelen som fyller sig själv (K8) — två små grepp i stället för ett som gör TV:n till ett utsnitt av bordet i stället för ett bord.
 
+Reviderat 2026-09-28 (#502, prototyp 36, beslut B): **på `/online` når kortet 45 px med ett steg in, inte i vila.**
+Revisionen 2026-09-14 sa att 45 px är ett golv vid varje liggande fönster, men det mättes bara på fyraplatsbordet vid 1280 × 800 och 1920 × 1080.
+Uppmätt i Chromium, kortsidan på den målade rutan: fyra platser 36 px vid 1024 × 600, 42 vid 1024 × 768, 45 vid 1280 × 720; åtta platser 20–29 px vid 1024–1366 och 41 vid 1920 × 1080.
+Filten i vila är därför hela bordet, i den skala inpassningen ger, och ett golv i vila gäller inte längre.
+I stället har filten en lins: +, hjul eller dubbelklick på bar filt förstorar, och första steget landar där kortet är 45 px i layout — vilket perspektivet målar som 45,2 px vid filtens bortre kant, 46,8 mitt på och 48,4 vid den närmre, så golvet håller var på filten kortet än ligger.
+«Visa hela bordet» och Escape tar tillbaka översikten, och ett drag på bar filt flyttar den förstorade bilden.
+Linsen är bordslägets egen och inte TV:ns kamera: TV:ns är platt och räknar i ovridna millimetrar, medan `/online` lutar och vrider bordet till platsen.
+Den skalar inpassningen och flyttar träet i sin ram, så pekarens mappning, spöket ur handen och K24:s band räknar rätt utan att veta om den.
+
 ### K10. Telefonvyns utseende: remsan (prototypat 2026-09-06)
 
 Reviderat 2026-09-16 (#99): **remsan är telefonens hand överallt, också i `/online`.**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { feltScale, fitScale, turnToFit, TV_AIR_PX, WOOD_AIR_PX, WOOD_RIM_PX } from '../src/table/fit.js'
+import { feltScale, fitScale, lensReach, turnToFit, woodLayout, TV_AIR_PX, WOOD_AIR_PX, WOOD_RIM_PX } from '../src/table/fit.js'
 import { projectTilted } from '../src/table/geometry.js'
 
 describe('fitScale', () => {
@@ -110,5 +110,36 @@ describe('turnToFit — a landscape table in a portrait window turns (C5, C8, #7
     const turned = fitScale({ w: TABLE.h, h: TABLE.w }, phone, TV_AIR_PX)
     expect(turnToFit(TABLE, phone)).toBe(90)
     expect(turned).toBeGreaterThan(upright * 1.5)
+  })
+})
+
+describe('lensReach — how far the lens on /online moves an enlarged wood (#502, #504)', () => {
+  const felt = { w: 1400, h: 900 }
+  const frame = { w: 880, h: 540 }
+  // The wood's painted box, moved by `at` from the centre it is laid out on.
+  const painted = (scale: number, at: { x: number; y: number }) => {
+    const l = woodLayout(felt, frame, scale)
+    const moved = { ...l, wood: { ...l.wood, left: l.wood.left + at.x, top: l.wood.top + at.y } }
+    const corners = [
+      { x: -l.wood.w / 2, y: -l.wood.h / 2 },
+      { x: l.wood.w / 2, y: -l.wood.h / 2 },
+      { x: -l.wood.w / 2, y: l.wood.h / 2 },
+      { x: l.wood.w / 2, y: l.wood.h / 2 },
+    ].map((c) => projectTilted(moved, c))
+    const xs = corners.map((c) => c.x)
+    const ys = corners.map((c) => c.y)
+    return { left: Math.min(...xs), right: Math.max(...xs), top: Math.min(...ys), bottom: Math.max(...ys) }
+  }
+
+  it('brings each painted rim of the wood to the frame, the tilted near rim included, and no further', () => {
+    const reach = lensReach(felt, frame, 1.2)
+    expect(painted(1.2, { x: reach.x[0], y: 0 }).right).toBeCloseTo(frame.w, 6)
+    expect(painted(1.2, { x: reach.x[1], y: 0 }).left).toBeCloseTo(0, 6)
+    expect(painted(1.2, { x: 0, y: reach.y[0] }).bottom).toBeCloseTo(frame.h, 6)
+    expect(painted(1.2, { x: 0, y: reach.y[1] }).top).toBeCloseTo(0, 6)
+  })
+
+  it('holds a wood the frame is wider than where it is laid out', () => {
+    expect(lensReach(felt, { w: 4000, h: 540 }, 1.2).x).toEqual([0, 0])
   })
 })

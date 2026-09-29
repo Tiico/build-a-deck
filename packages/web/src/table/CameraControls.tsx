@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useDoor } from '../doors.js'
 import { useT } from '../i18n/index.js'
 import { CAMERA_STEP } from './camera.js'
@@ -33,9 +34,16 @@ export type CameraControlsProps = {
   // Ett steg in eller ut, sagt som den faktor kamerans bredd ändras med.
   onZoom(factor: number): void
   onWhole(): void
+  // Take the focus onto the step in when the cluster appears (#502): on /online it takes the place
+  // of the lens's own way in, and the focus that stood on that button has nowhere else to go.
+  focusIn?: boolean | undefined
 }
 
-export function CameraControls({ level, folded, onFold, onZoom, onWhole }: CameraControlsProps) {
+export function CameraControls({ level, folded, onFold, onZoom, onWhole, focusIn = false }: CameraControlsProps) {
+  const stepIn = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (focusIn) stepIn.current?.focus()
+  }, [])
   const t = useT()
   // Escape lämnar tillbaka vyn, och gör det i husets egen ordning (#152): en ring eller en panel
   // som öppnats sedan dess står närmare handen och svarar först. Dörren finns bara så länge det
@@ -51,7 +59,7 @@ export function CameraControls({ level, folded, onFold, onZoom, onWhole }: Camer
           {/* Nivån är en avläsning och ingen kontroll, men den är det enda som säger hur långt
               in vyn står — och det är vad «egen vy» betyder i siffror. */}
           <span className="byd-camera-level">{t('camera.level', { n: level })}</span>
-          <button type="button" className="byd-camera-step" aria-label={t('camera.zoom.in')} onClick={() => onZoom(1 / CAMERA_STEP)}>
+          <button type="button" ref={stepIn} className="byd-camera-step" aria-label={t('camera.zoom.in')} onClick={() => onZoom(1 / CAMERA_STEP)}>
             +
           </button>
         </>
@@ -71,3 +79,21 @@ export function CameraControls({ level, folded, onFold, onZoom, onWhole }: Camer
     </div>
   )
 }
+
+// The lens's way in on /online (#502): one step, in the corner the cluster stands in once the felt
+// is enlarged. Nothing enlarges by itself there, so the way in is seen and not only known.
+export function LensEntry({ onZoom, focusIn = false }: { onZoom(): void; focusIn?: boolean | undefined }) {
+  const t = useT()
+  const step = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (focusIn) step.current?.focus()
+  }, [])
+  return (
+    <div className="byd-camera-controls" data-lens-entry role="group" aria-label={t('camera.controls')}>
+      <button type="button" ref={step} className="byd-camera-step" aria-label={t('camera.zoom.in')} onClick={onZoom}>
+        +
+      </button>
+    </div>
+  )
+}
+

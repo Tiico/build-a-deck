@@ -5,7 +5,7 @@ import type { Peer, Pulse, Recent } from './presence.js'
 import { FAN, useStill, type Shuffle } from './shuffle.js'
 import { hue } from './hue.js'
 import { seatColor } from './seatColor.js'
-import { feltScale, fitScale, leaningSquare, woodLayout, TOUCH_PX, TV_AIR_PX } from './fit.js'
+import { feltScale, fitScale, leaningSquare, lensReach, woodLayout, TOUCH_PX, TV_AIR_PX } from './fit.js'
 import { CAMERA_MIN_MM, CAMERA_STEP, activeBounds, cameraOf, centre, fitFloor, frameRect, overscanPx, pad, panBy, reachOf, same, shownRect, tween, union, zoomAround, type Rect, type Size } from './camera.js'
 import { recallCamera, rememberCamera, type CameraMemory } from './cameraMemory.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
@@ -54,6 +54,7 @@ const whyKey = (made: { ok: false; why: string } | { ok: false; asks: string } |
 // och klungan kan därför inte visas oklädd. En platshållare vore precis den oklädda blink flytten
 // inte får kosta.
 const CameraControls = lazy(() => import('./CameraControls.js').then((m) => ({ default: m.CameraControls })))
+const LensEntry = lazy(() => import('./CameraControls.js').then((m) => ({ default: m.LensEntry })))
 
 export type { TableMode } from './hand.js'
 // Without an explicit `scale`, the renderer fits the table to its own frame.
@@ -179,7 +180,15 @@ export type TableRendererProps = {
   // (#484 fynd 4): `/online`'s own hand is drawn beside the felt, so its drag is never the felt's.
   // A hand is lit the way the felt's own drags light one (K24); an area or a pile is marked.
   aimed?: { zone: string; cards: number } | null | undefined
+  // A lens on the felt in table mode (#502, beslut B, prototyp 36): at rest the whole table as the
+  // fit draws it; a step in lands where a card is K9's 45 px, and the whole table is one press away.
+  lens?: boolean | undefined
 }
+
+// The short side a card on the felt is brought to by the lens's first step in (K9).
+const LENS_CARD_PX = 45
+// How far past that the lens goes in, as a multiple of it.
+const LENS_MAX = 2.5
 
 const HOLD_MS = 350
 // How long after a click the press that follows it is still the other half of a double one. The
@@ -264,7 +273,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -386,7 +395,18 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   if (!drag) heldCamera.current = viewing ?? auto
   const cam = useGlide(drivable ? heldCamera.current : null, glideMs)
   const placed = drivable && cam ? cameraOf(cam, size, floorRect) : null
-  const scale = fixedScale ?? placed?.scale ?? fitted ?? 1
+  // The lens (#502): a multiple of the fit and an offset of the wood in its frame, in pixels. It is
+  // the table mode's own, where the felt is tilted and turned to the seat and the television's
+  // camera — flat, in unturned millimetres — cannot go. Scaling the fit and moving the wood is what
+  // keeps everything else true: every measure on the felt is `px`, and the pointer's mapping reads
+  // the wood where it is laid out.
+  const [lensAt, setLensAt] = useState<{ k: number; x: number; y: number }>({ k: 1, x: 0, y: 0 })
+  // Whether the corner's focus is to be handed over when one of its two forms takes the other's
+  // place: only when the focus stood in the corner, so a wheel on the felt takes nothing.
+  const lensHandOver = useRef(false)
+  const lensOn = lens && mode === 'table' && fixedScale === undefined && fitted !== null && size !== null && size.w > 0 && size.h > 0
+  const zoomed = lensOn ? lensAt.k : 1
+  const scale = (fixedScale ?? placed?.scale ?? fitted ?? 1) * zoomed
   const measured = fixedScale !== undefined || (size !== null && (!following || placed !== null))
   const live = useRef<Live | null>(null)
   const toTable = useRef<((cx: number, cy: number) => Point) | null>(null)
@@ -923,8 +943,66 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // press lands the ring the first one opened is covering the card — so the browser dispatches
   // its `dblclick` on the frame the two presses have in common, and the card is not in it. What
   // was pressed is therefore remembered, and the frame asks what it was.
+  // The lens's own steps (#502). The first step in lands where a card on the felt is K9's 45 px;
+  // steps after it go on by the camera's step, up to `LENS_MAX` of that; out, and the last step out
+  // is the whole table again. A step is taken about a point on the screen — the pointer, or the
+  // frame's middle for a button — and that point stays where it is while the felt grows around it.
+  const lensFloor = lensOn && fitted ? Math.max(1, LENS_CARD_PX / (CARD_MM.w * fitted)) : 1
+  const lensTo = (k: number, around?: { x: number; y: number }) => {
+    lensHandOver.current = document.activeElement instanceof Element && document.activeElement.closest('.byd-camera-controls') !== null
+    setLensAt((cur) => {
+      if (k <= 1.001 || !size || !fitted) return { k: 1, x: 0, y: 0 }
+      const f = frame.current?.getBoundingClientRect()
+      const p = around && f ? { x: around.x - (f.left + f.width / 2), y: around.y - (f.top + f.height / 2) } : { x: 0, y: 0 }
+      const x = p.x - ((p.x - cur.x) * k) / cur.k
+      const y = p.y - ((p.y - cur.y) * k) / cur.k
+      // Kept so the painted wood covers the frame where it can: a lens never drifts into the dark,
+      // and reaches the tilted near rim (#504).
+      const felt = rotate % 180 === 0 ? { w: floorRect.w, h: floorRect.h } : { w: floorRect.h, h: floorRect.w }
+      const reach = lensReach(felt, size, fitted * k)
+      return { k, x: Math.min(reach.x[1], Math.max(reach.x[0], x)), y: Math.min(reach.y[1], Math.max(reach.y[0], y)) }
+    })
+  }
+  const lensStep = (dir: 1 | -1, around?: { x: number; y: number }) => {
+    const k = lensAt.k
+    lensTo(dir > 0 ? (k < lensFloor - 1e-3 ? lensFloor : Math.min(lensFloor * LENS_MAX, k * CAMERA_STEP)) : k / CAMERA_STEP, around)
+  }
+  const lensWheel = (e: RWheelEvent) => {
+    if (drag) return
+    const k = Math.min(lensFloor * LENS_MAX, Math.max(1, lensAt.k * Math.exp(-e.deltaY * 0.002)))
+    lensTo(k, { x: e.clientX, y: e.clientY })
+  }
+  // A drag on the felt itself — not on anything that lies on it — moves an enlarged view (#502).
+  const lensPan = useRef<{ x: number; y: number; from: { x: number; y: number } } | null>(null)
+  const onBare = (el: EventTarget) => el instanceof Element && !el.closest('[data-component], .byd-pile, .byd-hand, button, [role="button"], .byd-radial-backdrop')
+  const lensDown = (e: RPointerEvent) => {
+    if (!lensOn || lensAt.k <= 1 || e.button !== 0 || !onBare(e.target)) return
+    lensPan.current = { x: e.clientX, y: e.clientY, from: { x: lensAt.x, y: lensAt.y } }
+    // Held for as long as the button is, as the camera's pan is: let go of over the hand or the
+    // top row, the drag still ends here (#504).
+    const el = e.currentTarget as HTMLElement
+    if (typeof el.setPointerCapture === 'function') el.setPointerCapture(e.pointerId)
+  }
+  const lensMove = (e: RPointerEvent) => {
+    const held = lensPan.current
+    if (!held) return
+    const dx = e.clientX - held.x
+    const dy = e.clientY - held.y
+    const k = lensAt.k
+    setLensAt((cur) => ({ ...cur, x: held.from.x + dx, y: held.from.y + dy }))
+    lensTo(k)
+  }
+  const lensUp = () => {
+    lensPan.current = null
+  }
+
   const doubled = (e: RMouseEvent) => {
     if (turnAgain()) return
+    // A double press on the bare felt is the lens's way in and out (#502), where one is carried.
+    if (lensOn && onBare(e.target)) {
+      lensTo(lensAt.k > 1 ? 1 : lensFloor, { x: e.clientX, y: e.clientY })
+      return
+    }
     doubleTap(e)
   }
   // The second press of a double press, read where it lands (#482): on the backdrop of the ring the
@@ -1093,7 +1171,12 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
 
   // A quarter-turned table (C5) is as tall as the floor is wide, so the wood it lies on takes
   // that shape too and holds it centred; otherwise the felt hangs over its own frame.
-  const turnedWood = rotate % 180 === 0 ? undefined : { width: px(floor.geometry.h), height: px(floor.geometry.w) }
+  const turnedWood = {
+    ...(rotate % 180 === 0 ? {} : { width: px(floor.geometry.h), height: px(floor.geometry.w) }),
+    // Where the lens has moved the wood (#502). Laid out, not transformed, because the pointer's
+    // mapping reads the wood's own offset.
+    ...(lensOn && lensAt.k > 1 ? { position: 'relative' as const, left: lensAt.x, top: lensAt.y } : {}),
+  }
   // The felt's own box keeps the floor's shape whatever the turn, so it is nudged by half the
   // difference to sit centred on the wood that now has the other shape.
   const turnedFelt = rotate % 180 === 0 ? {} : { marginLeft: px((floor.geometry.h - floor.geometry.w) / 2), marginTop: px((floor.geometry.w - floor.geometry.h) / 2) }
@@ -1367,12 +1450,13 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       data-pan={grabbing ? 'panning' : armed ? 'ready' : undefined}
       ref={frame}
       style={measured ? undefined : { visibility: 'hidden' }}
-      onWheel={drivable ? wheel : undefined}
+      data-lens={lensOn ? String(Math.round(lensAt.k * 100)) : undefined}
+      onWheel={drivable ? wheel : lensOn ? lensWheel : undefined}
       onDoubleClick={onAct || drivable ? doubled : undefined}
-      onPointerDown={drivable ? panDown : undefined}
-      onPointerMove={drivable ? panMove : undefined}
-      onPointerUp={drivable ? panUp : undefined}
-      onPointerCancel={drivable ? panUp : undefined}
+      onPointerDown={drivable ? panDown : lensOn ? lensDown : undefined}
+      onPointerMove={drivable ? panMove : lensOn ? lensMove : undefined}
+      onPointerUp={drivable ? panUp : lensOn ? lensUp : undefined}
+      onPointerCancel={drivable ? panUp : lensOn ? lensUp : undefined}
     >
       {placed ? (
         <div className="byd-camera-world" style={{ left: placed.left, top: placed.top, width: px(floorRect.w), height: px(floorRect.h) }}>
@@ -1411,6 +1495,17 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       {drivable && viewing && (
         <Suspense fallback={null}>
           <CameraControls level={level} folded={tucked} onFold={setTucked} onZoom={stepZoom} onWhole={() => zoomTo(null)} />
+        </Suspense>
+      )}
+      {/* The lens's corner (#502): the camera's own cluster while the felt is enlarged, and its one
+          step in while it is not — the way in has to be seen, since nothing enlarges on its own. */}
+      {lensOn && (
+        <Suspense fallback={null}>
+          {lensAt.k > 1 ? (
+            <CameraControls level={Math.round(lensAt.k * 100)} folded={tucked} onFold={setTucked} onZoom={(factor) => lensStep(factor < 1 ? 1 : -1)} onWhole={() => lensTo(1)} focusIn={lensHandOver.current} />
+          ) : (
+            <LensEntry onZoom={() => lensStep(1)} focusIn={lensHandOver.current} />
+          )}
         </Suspense>
       )}
       {askingStart && start?.ok && (

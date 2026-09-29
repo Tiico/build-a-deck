@@ -22,6 +22,7 @@
   padding: 5px; border-radius: 12px;
   border: 1px solid var(--byd-felt-chalk-off); background: var(--byd-felt-plate);
   font: 700 15px/1 var(--byd-felt-font, system-ui, sans-serif);
+  user-select: none;
 }
 /* Fälld tar den bort sina zoomsteg men aldrig vägen hem, och kryper ihop med en pixel på varje
    sida: 300 px framme mot 152 px fälld i filtens egen skärning, mätt i `felt-camera.test.tsx`.

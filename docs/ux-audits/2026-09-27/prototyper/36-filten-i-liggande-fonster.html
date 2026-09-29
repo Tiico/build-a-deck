@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 36 — Filten i liggande fönster (#502)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     K9 säger att filtens kort på `/online` är minst 45 px (kortsidan) vid varje liggande fönster.
+     Uppmätt 2026-09-28 i Chromium, plats A, samma för 7 och 13 kort på hand:
+
+                     4 platser   8 platser
+       1024 × 600      36          20
+       1024 × 768      42          28
+       1280 × 720      45          26
+       1280 × 800      51          29
+       1366 × 768      49          28
+       1920 × 1080     66          41
+
+     Stående fönster fick sitt svar i #484 fynd 9 (spelarytan under 960 px bredd).
+
+       Nu  filten ritas som i dag, oavsett kortets storlek
+       A   samma regel som stående: under 45 px får fönstret spelarytan (handen, bordet som
+           namn och antal) — ett åttaplatsbord får då aldrig filten på en vanlig skärm
+       B   filten får en kamera (TV:ns, C5): i vila hela bordet, och + / hjul / dubbelklick
+           förstorar tills kortet är 45 px; «Hela bordet» tar tillbaka översikten
+       C   ritas som i dag och skrivs in: K9:s golv gäller fyraplatsbordet från 1280 × 720;
+           mindre fönster och större bord ritas mindre (K18), och inspektionen läser kortet
+
+     Fönstret ritas i verklig storlek och skalas till rutan. Raden överst säger kortets storlek. ─ */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .scen { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; background: #0a0c10; overflow: hidden; }
+  .fonster { position: relative; background: #17120f; overflow: hidden; transform-origin: 0 0; font-family: system-ui, sans-serif; color: #e8e2d8; }
+  .topp { position: absolute; left: 0; right: 0; top: 0; height: 60px; display: flex; align-items: center; gap: 10px; padding: 0 16px; background: #100d0b; border-bottom: 1px solid #2a221c; box-sizing: border-box; }
+  .topp .jag { padding: 10px 14px; border-radius: 999px; background: #1b1d23; border-left: 4px solid #e05d5d; font-weight: 700; }
+  .topp .verktyg { margin-left: auto; display: flex; gap: 6px; }
+  .topp .verktyg span { padding: 12px; border-radius: 10px; background: #242938; font-size: 13px; font-weight: 700; }
+  .spelrad { position: absolute; left: 0; right: 0; top: 60px; bottom: 0; display: flex; }
+  .filtrum { position: relative; flex: 1 1 auto; overflow: hidden; }
+  .kolumn { flex: 0 0 136px; background: #120f0d; border-left: 1px solid #2a221c; display: flex; flex-direction: column; gap: 6px; padding: 12px; box-sizing: border-box; }
+  .kolumn i { display: block; height: 44px; border-radius: 8px; background: #2c3550; }
+  .kolumn i:last-child { height: 156px; }
+  .tra { position: absolute; border-radius: 24px; background: linear-gradient(135deg, #5a3b22, #3a2414); box-shadow: 0 30px 60px rgba(0,0,0,.6); }
+  .filt { position: absolute; border-radius: 14px; background: radial-gradient(at 50% 40%, #2e6b46, #1f4a30 70%, #173a26); overflow: hidden; }
+  .kort { position: absolute; border-radius: 4px; background: #f4ead8; box-shadow: 0 2px 5px rgba(0,0,0,.5); }
+  .kort.rygg { background: repeating-linear-gradient(45deg, #26324a 0 5px, #2d3a55 5px 10px); }
+  .hand { position: absolute; border: 1px dashed rgba(255,255,255,.25); border-radius: 8px; }
+  .kamera { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 6px; z-index: 3; }
+  .kamera button { min-width: 44px; min-height: 44px; border-radius: 10px; border: 1px solid #3a2f26; background: #1d1815; color: #e8e2d8; font: 700 16px system-ui; cursor: pointer; }
+  .kamera button.hela { font-size: 13px; padding: 0 12px; }
+  .spelaryta { position: absolute; inset: 60px 0 0 0; display: grid; place-items: center; }
+  .spelaryta .tel { width: 420px; max-width: 90%; background: #14161c; border: 1px solid #262b38; border-radius: 16px; padding: 18px; display: grid; gap: 10px; }
+  .spelaryta .tel b { font-size: 18px; }
+  .spelaryta .rad { height: 44px; border-radius: 10px; background: #1b1e27; }
+  .spelaryta .remsa { display: flex; gap: 8px; }
+  .spelaryta .remsa i { width: 96px; height: 134px; border-radius: 8px; background: #2c3550; }
+  .spelaryta p { margin: 0; color: #9aa3b8; font-size: 13px; }
+  .matt .fel { color: #f0a58a; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="vaxlare" role="group" aria-label="Fönster">
+    <button type="button" data-f="1024x600">1024 × 600</button>
+    <button type="button" data-f="1024x768">1024 × 768</button>
+    <button type="button" data-f="1280x800">1280 × 800</button>
+    <button type="button" data-f="1920x1080">1920 × 1080</button>
+  </div>
+  <div class="vaxlare" role="group" aria-label="Platser">
+    <button type="button" data-p="4">4 platser</button>
+    <button type="button" data-p="8">8</button>
+  </div>
+  <div class="matt" id="matt"></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="scen" id="scen"></div>
+<script>
+// Uppmätt kortsida i px (Chromium, 2026-09-28), och bordets mått i mm per platsantal (K18).
+const MATT = { '1024x600': { 4: 36, 8: 20 }, '1024x768': { 4: 42, 8: 28 }, '1280x800': { 4: 51, 8: 29 }, '1920x1080': { 4: 66, 8: 41 } }
+const BORD = { 4: { w: 1200, h: 800 }, 8: { w: 1680, h: 1280 } }
+const KORT_MM = 63
+const s = { v: 'b', f: '1024x768', p: 8, zoom: 1 }
+const NOT = {
+  nu: '<b>Nu.</b> Filten ritas i den storlek fönstret ger. <span class="minus">− Kort på 20–42 px går knappt att greppa; K9 säger 45 och påstår att det håller.</span>',
+  a: '<b>A · Spelarytan under 45 px.</b> Samma regel som stående fönster (#484 fynd 9): ett fönster vars filtkort inte når 45 px får telefonens spelaryta. <span class="plus">+ Ingen filt som inte går att spela på; en regel för alla fönster.</span> <span class="minus">− Ett åttaplatsbord får aldrig filten på en vanlig skärm (41 px vid 1920 × 1080); en distansspelare ser bordet som namn och antal.</span>',
+  b: '<b>B · Kamera på filten.</b> I vila syns hela bordet; +, hjul eller dubbelklick på en tom plats förstorar tills kortet är 45 px, och «Hela bordet» tar tillbaka översikten. <span class="plus">+ Filten finns kvar vid alla bord och fönster, och ett kort går alltid att greppa i den storlek K9 kräver.</span> <span class="minus">− Mest att bygga: TV:ns kamera är platt, `/online` lutar (K9:s perspektiv) — antingen lär sig kameran lutningen eller så plattas filten ut när den är förstorad; en del av bordet är utanför bild medan man spelar.</span>',
+  c: '<b>C · Skriv in det.</b> Inget byggs. K9 säger att golvet gäller fyraplatsbordet från 1280 × 720, och att mindre fönster och större bord ritas mindre (K18); inspektionen och ringen är vägen till ett litet kort. <span class="plus">+ Inget att bygga; K18:s logik om större bord gäller redan på TV:n.</span> <span class="minus">− Ett kort på 20–28 px är en liten måltavla för en mus och ännu mindre för en pekskärmslaptop; beslutet skriver in ett K9-brott.</span>',
+}
+const scen = document.getElementById('scen')
+function rita() {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  for (const b of document.querySelectorAll('[data-f]')) b.setAttribute('aria-pressed', String(b.dataset.f === s.f))
+  for (const b of document.querySelectorAll('[data-p]')) b.setAttribute('aria-pressed', String(Number(b.dataset.p) === s.p))
+  document.getElementById('anteckning').innerHTML = NOT[s.v]
+  const [W, H] = s.f.split('x').map(Number)
+  const vila = MATT[s.f][s.p]
+  const spelaryta = s.v === 'a' && vila < 45
+  const zoom = s.v === 'b' ? s.zoom : 1
+  const kortPx = Math.round(vila * zoom)
+  const bord = BORD[s.p]
+  const pxPerMm = vila / KORT_MM * zoom
+  const fW = bord.w * pxPerMm, fH = bord.h * pxPerMm
+  const rumW = W - 136, rumH = H - 60
+  const cx = rumW / 2, cy = rumH / 2
+  const kort = []
+  // Några kort på filten, i bordets egna millimetrar kring mitten.
+  for (const [x, y, r] of [[-120, -40, 0], [-40, -40, 1], [60, 20, 0], [140, -80, 1], [-200, 120, 0], [0, 160, 0]]) {
+    kort.push(`<div class="kort${r ? ' rygg' : ''}" style="left:${cx + x * pxPerMm - 31.5 * pxPerMm}px;top:${cy + y * pxPerMm - 44 * pxPerMm}px;width:${63 * pxPerMm}px;height:${88 * pxPerMm}px"></div>`)
+  }
+  const hander = []
+  const n = s.p
+  for (let i = 0; i < n; i++) {
+    const kant = ['S', 'N', 'E', 'W'][i % 4]
+    const lang = 500 * pxPerMm, djup = 60 * pxPerMm
+    const forskj = (n > 4 ? (i < 4 ? -1 : 1) * 0.25 : 0) * (kant === 'S' || kant === 'N' ? fW : fH)
+    const pos = kant === 'S' ? { l: cx - lang / 2 + forskj, t: cy + fH / 2 - djup, w: lang, h: djup } : kant === 'N' ? { l: cx - lang / 2 + forskj, t: cy - fH / 2, w: lang, h: djup } : kant === 'E' ? { l: cx + fW / 2 - djup, t: cy - lang / 2 + forskj, w: djup, h: lang } : { l: cx - fW / 2, t: cy - lang / 2 + forskj, w: djup, h: lang }
+    hander.push(`<div class="hand" style="left:${pos.l}px;top:${pos.t}px;width:${pos.w}px;height:${pos.h}px"></div>`)
+  }
+  const filt = `<div class="tra" style="left:${cx - fW / 2 - 24}px;top:${cy - fH / 2 - 24}px;width:${fW + 48}px;height:${fH + 48}px"></div><div class="filt" style="left:${cx - fW / 2}px;top:${cy - fH / 2}px;width:${fW}px;height:${fH}px"></div>${hander.join('')}${kort.join('')}`
+  const kamera = s.v === 'b' ? `<div class="kamera"><button type="button" data-z="-" aria-label="Mindre">−</button><button type="button" data-z="+" aria-label="Större">+</button><button type="button" class="hela" data-z="0">Hela bordet</button></div>` : ''
+  scen.innerHTML = `<div class="fonster" id="fonster" style="width:${W}px;height:${H}px">
+    <div class="topp"><span class="jag">Ada · 7 kort</span><span style="color:#9aa3b8;font-size:14px">Senast: Bo lade Duel på Kasthög · nyss</span><span class="verktyg"><span>↶ Ångra</span><span>⚑ Flagga</span><span>Ut…</span></span></div>
+    ${spelaryta ? `<div class="spelaryta"><div class="tel"><b>Dina kort</b><div class="rad"></div><div class="remsa"><i></i><i></i><i></i></div><div class="rad"></div><p>Hela bordet står på TV:n, eller på en skärm som rymmer det.</p></div></div>` : `<div class="spelrad"><div class="filtrum" id="filtrum">${filt}${kamera}</div><div class="kolumn"><i></i><i></i><i></i><i></i></div></div>`}
+  </div>`
+  const k = Math.min((scen.clientWidth - 24) / W, (scen.clientHeight - 24) / H, 1)
+  const f = document.getElementById('fonster')
+  f.style.transform = `scale(${k})`
+  f.style.marginRight = `${W * k - W}px`
+  f.style.marginBottom = `${H * k - H}px`
+  const ok = spelaryta || kortPx >= 45
+  document.getElementById('matt').innerHTML = spelaryta
+    ? `<span>Filtens kort: <u>ingen filt</u> (spelarytan)</span>`
+    : `<span>Filtens kort: <u class="${ok ? '' : 'fel'}">${kortPx} px</u> (K9: 45)</span>${s.v === 'b' ? `<span>Förstoring: <u>${zoom.toFixed(2)}×</u></span>` : ''}${s.v === 'c' ? `<span>K9 skrivs om: <u>golvet gäller 4 platser från 1280 × 720</u></span>` : ''}`
+}
+scen.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-z]'); if (!b) return
+  const vila = MATT[s.f][s.p]
+  const behov = Math.max(1, 45 / vila)
+  if (b.dataset.z === '0') s.zoom = 1
+  // Första steget landar på exakt 45 px; steg därefter förstorar vidare.
+  else if (b.dataset.z === '+') s.zoom = s.zoom < behov ? behov : Math.min(behov * 1.4, s.zoom * 1.25)
+  else s.zoom = Math.max(1, s.zoom / 1.25)
+  rita()
+})
+scen.addEventListener('dblclick', (e) => {
+  if (s.v !== 'b' || !e.target.closest('#filtrum')) return
+  const vila = MATT[s.f][s.p]
+  s.zoom = s.zoom > 1 ? 1 : Math.max(1, 45 / vila); rita()
+})
+scen.addEventListener('wheel', (e) => {
+  if (s.v !== 'b' || !e.target.closest('#filtrum')) return
+  e.preventDefault()
+  const vila = MATT[s.f][s.p]
+  s.zoom = Math.min(Math.max(1, 45 / vila) * 1.4, Math.max(1, s.zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1))); rita()
+}, { passive: false })
+document.body.addEventListener('click', (e) => {
+  const b = e.target.closest('.protorad button'); if (!b) return
+  if (b.dataset.v) s.v = b.dataset.v
+  else if (b.dataset.f) s.f = b.dataset.f
+  else if (b.dataset.p) s.p = Number(b.dataset.p)
+  else return
+  s.zoom = 1
+  const u = new URL(location.href); u.searchParams.set('v', s.v); u.searchParams.set('f', s.f); u.searchParams.set('p', String(s.p)); history.replaceState(null, '', u); rita()
+})
+addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const alla = ['nu', 'a', 'b', 'c']
+  s.v = alla[(alla.indexOf(s.v) + (e.key === 'ArrowRight' ? 1 : 3)) % 4]; s.zoom = 1
+  const u = new URL(location.href); u.searchParams.set('v', s.v); history.replaceState(null, '', u); rita()
+})
+addEventListener('resize', rita)
+const q = new URLSearchParams(location.search)
+if (['nu', 'a', 'b', 'c'].includes(q.get('v'))) s.v = q.get('v')
+if (MATT[q.get('f')]) s.f = q.get('f')
+if (['4', '8'].includes(q.get('p'))) s.p = Number(q.get('p'))
+rita()
+</script>
+</body>
+</html>
