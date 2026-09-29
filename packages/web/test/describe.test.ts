@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Activity, Snapshot } from '@byd/protocol'
-import { describeActivity } from '../src/table/describe.js'
+import { describeActivity, sayable } from '../src/table/describe.js'
 import { translate } from '../src/i18n/index.js'
 
 // What the log says about a hand (K19, #86): a hand is named by whoever sits there — "Adas hand",
@@ -115,5 +115,31 @@ describe('the log names the card a line is about, when the reader can see it (#5
     expect(describeActivity(flip, withCard('A', { ...card, face: 'back', cardRef: null, title: undefined }), sv)).toBe('Bo vände ett kort')
     // Gone from the reader's view altogether — into a hand, or a pile nobody reads.
     expect(describeActivity(flip, table('A'), sv)).toBe('Bo vände ett kort')
+  })
+})
+
+// A card played to a public zone is one envelope with a move and a flip, and it used to be said as
+// its flip — «Ada vände Quickdraw» — so where it went was never said (#560 P-12). The flip of a card
+// moved in the same envelope is folded into the move, whose sentence names the card and the zone.
+describe('a card played somewhere is said as where it went (#560 P-12)', () => {
+  const played = (batch: string, by = 'A'): Activity[] => [
+    { seq: 10, batch, schemaVersion: 1, by, at: '2026-09-29T00:00:00.000Z', intent: { v: 'move', component: 'c1', to: 'front:A' } } as Activity,
+    { seq: 11, batch, schemaVersion: 1, by, at: '2026-09-29T00:00:00.000Z', intent: { v: 'flip', component: 'c1', face: 'front' } } as Activity,
+  ]
+
+  it('drops the flip of a card the same envelope moved, and keeps the move', () => {
+    expect(sayable(played('b1')).map((l) => l.intent.v)).toEqual(['move'])
+  })
+
+  it('keeps a flip on its own, and a flip of another card, and the same card turned in another envelope', () => {
+    const alone = { seq: 12, batch: 'b2', schemaVersion: 1, by: 'B', at: '', intent: { v: 'flip', component: 'c1', face: 'back' } } as Activity
+    const other = { seq: 13, batch: 'b1', schemaVersion: 1, by: 'A', at: '', intent: { v: 'flip', component: 'c2', face: 'front' } } as Activity
+    expect(sayable([...played('b1'), other, alone]).map((l) => `${l.intent.v}:${l.seq}`)).toEqual(['move:10', 'flip:13', 'flip:12'])
+  })
+
+  it('says the move with the card and the zone', () => {
+    const view = { ...table(null), components: [{ id: 'c1', type: { id: 'card.standard.63x88', version: 1 }, zone: 'front:A', face: 'front', x: 0, y: 0, rot: 0, cardRef: 'quickdraw', title: 'Quickdraw' }] } as unknown as Snapshot
+    const [said] = sayable(played('b1')).map((l) => describeActivity(l, view, sv))
+    expect(said).toBe('Ada flyttade Quickdraw till Framför A')
   })
 })

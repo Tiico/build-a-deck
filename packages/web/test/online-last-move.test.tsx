@@ -55,3 +55,17 @@ describe('the last move somebody else made (#484)', () => {
   })
 })
 
+
+describe('the last move is where a played card went (#560 P-12)', () => {
+  it('says the move of a card played and turned in one envelope, not its flip', () => {
+    vi.useFakeTimers({ now: NOW })
+    const at = new Date(NOW - 5000).toISOString()
+    const withCard = { ...view, components: [{ id: 'c1', type: { id: 'card.standard.63x88', version: 1 }, zone: 'table', face: 'front', x: 0, y: 0, rot: 0, cardRef: 'minefield', title: 'Minefield' }] } as unknown as Snapshot
+    const played = [
+      { seq: 3, batch: 'b3', schemaVersion: 1, by: 'B', at, intent: { v: 'move', component: 'c1', to: 'table' } },
+      { seq: 4, batch: 'b3', schemaVersion: 1, by: 'B', at, intent: { v: 'flip', component: 'c1', face: 'front' } },
+    ] as Activity[]
+    const { container } = render(<LastMove view={withCard} activity={played} seat="A" />)
+    expect(container.querySelector('[data-last-move]')!.textContent).toMatch(/^Senast: Bo flyttade Minefield till Spelyta/)
+  })
+})

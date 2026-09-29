@@ -4,6 +4,14 @@ import { handName } from './handName.js'
 import { cardWord } from './keyboard.js'
 import { componentOf } from './presence.js'
 
+// The lines worth saying. A card played to a public zone is one envelope with a move and a flip,
+// and said as its flip it never said where the card went (#560 P-12): the flip of a card the same
+// envelope moved is folded into the move, whose sentence names both the card and the zone.
+export function sayable(lines: readonly Activity[]): Activity[] {
+  const moved = new Set(lines.flatMap((l) => (l.intent.v === 'move' ? [`${l.batch}\u0000${l.intent.component}`] : [])))
+  return lines.filter((l) => l.intent.v !== 'flip' || !moved.has(`${l.batch}\u0000${l.intent.component}`))
+}
+
 // One line per log line, for the activity feed, in whichever language the reader is given (A4).
 // Names come from the view; zone names too, so "Draghög" rather than "draw" — a zone's name is
 // the designer's word and is never translated — except a hand, which is named by whoever sits there.

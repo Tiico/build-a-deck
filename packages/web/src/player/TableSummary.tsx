@@ -1,5 +1,5 @@
 import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
-import { describeActivity } from '../table/describe.js'
+import { describeActivity, sayable } from '../table/describe.js'
 import { Texture } from '../table/Texture.js'
 import { hue } from '../table/hue.js'
 import { cardName, cardWord } from '../table/keyboard.js'
@@ -121,5 +121,5 @@ function AreaCards({ view, zone, faces, onRead, t }: { view: Snapshot; zone: str
 
 export function RecentActivity({ view, activity }: Pick<TableSummaryProps, 'view' | 'activity'>) {
   const t = useT()
-  return <ol aria-label={t('play.latest')}>{[...activity].slice(-5).reverse().map(l => <li key={l.seq}>{describeActivity(l, view, t)}</li>)}</ol>
+  return <ol aria-label={t('play.latest')}>{sayable(activity).slice(-5).reverse().map(l => <li key={l.seq}>{describeActivity(l, view, t)}</li>)}</ol>
 }
