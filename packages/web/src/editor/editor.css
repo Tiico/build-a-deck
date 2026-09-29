@@ -1459,6 +1459,10 @@
 .byd-layer-lock[aria-pressed='true'], .byd-layers [role='row']:hover .byd-layer-lock[aria-pressed='true'] { color: var(--byd-editor-locked-ink); }
 .byd-layer-kind { flex: none; width: 16px; height: 16px; color: var(--byd-editor-source-ink); }
 .byd-layer-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* A condition cut at its start (#569): the ellipsis stands first and the end of the name shows,
+   while the name itself is still read left to right inside its own isolate. */
+.byd-layer-name[data-cut='start'] { direction: rtl; text-align: left; }
+.byd-layer-name[data-cut='start'] > bdi { direction: ltr; unicode-bidi: isolate; }
 .byd-layer-shows { flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-style: normal; font-size: 11px; color: var(--byd-editor-source-ink); }
 .byd-layer-grip { color: #454c5c; font-size: 12px; text-align: center; cursor: grab; }
 .byd-layer-rename { width: 100%; min-height: var(--byd-tap); box-sizing: border-box; background: #0f1115; border: 1px solid var(--byd-editor-primary-mark); border-radius: 6px; color: #fff; font: inherit; font-size: 13px; padding: 0 8px; }

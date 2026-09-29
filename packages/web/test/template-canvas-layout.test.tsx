@@ -249,3 +249,57 @@ describe('the card row in the card’s column (#478)', () => {
     expect(Math.abs(seen.above - seen.below)).toBeLessThanOrEqual(1)
   }, 60_000)
 })
+
+// Lagerlistans villkorslager kapas i början (#569, beställarens beslut B): alla sex i Sal's Saloon
+// hette «om rarite…» vid 1024 och gick inte att skilja åt. Slutet syns nu — värdets sista tecken och
+// antalet kort — och det är det enda som skiljer dem åt i en kolumn på 220 px. Mätt på Sal's Saloon
+// själv, därför att beslutet är fattat mot den och dess antal: två villkor med samma antal skiljs åt
+// bara av värdets sista bokstav, vilket är beslutets kända begränsning.
+describe('the condition layers in the layer list (#569)', () => {
+  it('cuts a condition’s name at its start, so that each of Sal’s Saloon’s six can be told apart at 1024', async () => {
+    // Sal's Saloon's six conditions as `spelkortDoc` makes them, one per rarity on `raritet`, over
+    // the same number of cards each (the script itself reads its sheet through `import.meta.url`,
+    // which jsdom's own URL cannot resolve).
+    const SALS = { Karaktär: 10, Silver: 14, Koppar: 12, Special: 11, Guld: 18, Diamant: 12 }
+    const doc = projectDoc()
+    doc.template.faces.front!.base = [
+      ...Object.keys(SALS).map((rarity) => ({ kind: 'if' as const, id: `if-${rarity}`, when: { field: 'raritet', equals: rarity }, children: [{ kind: 'shape' as const, id: `pill-${rarity}`, x: 5, y: 80, w: 26, h: 6, shape: 'rect' as const, fill: '#888888' }] })),
+      ...doc.template.faces.front!.base,
+    ]
+    doc.rows = Object.entries(SALS).flatMap(([rarity, n]) => Array.from({ length: n }, (_, i) => ({ id: `${rarity}-${i}`, fields: { title: `${rarity} ${i}`, raritet: rarity, antal: 1 } })))
+    const { container, unmount } = render(
+      <TemplateCanvas doc={doc} face="front" row={doc.rows[0]!.id} onPickRow={vi.fn()} selectedElement={null} onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} onFontFile={async () => 'Typsnitt'} onFontLicence={vi.fn()} onRemoveFont={vi.fn()} onCatalogFont={vi.fn(async () => undefined)} />,
+    )
+    const html = container.innerHTML
+    unmount()
+    const page = await browser.newPage({ viewport: { width: 1024, height: 768 } })
+    try {
+      const shell = read('index.html')
+        .replace('<script type="module" src="/src/main.tsx"></script>', '')
+        .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}</style></head>`)
+        .replace('<div id="root"></div>', `<div id="root"><div class="byd-editor" data-page="editor" data-mode="template"><header></header><div></div><main><div role="tabpanel">${html}</div></main></div></div>`)
+      await page.setContent(shell, { waitUntil: 'load' })
+      const seen = (await page.evaluate(`(() => {
+        const ctx = document.createElement('canvas').getContext('2d')
+        return [...document.querySelectorAll('.byd-layer-name')].filter((el) => el.textContent.includes(' kort')).map((el) => {
+          const cs = getComputedStyle(el); ctx.font = cs.font
+          const text = el.textContent
+          if (el.scrollWidth <= el.clientWidth + 1) return { text, seen: text }
+          const room = el.clientWidth - ctx.measureText('…').width
+          const fromEnd = cs.direction === 'rtl'
+          let n = text.length
+          while (n > 0 && ctx.measureText(fromEnd ? text.slice(-n) : text.slice(0, n)).width > room) n--
+          return { text, seen: fromEnd ? '…' + text.slice(-n) : text.slice(0, n) + '…' }
+        })
+      })()`)) as { text: string; seen: string }[]
+      // Not vacuous: the six are there, and they really are cut.
+      expect(seen).toHaveLength(6)
+      expect(seen.every((s) => s.seen !== s.text)).toBe(true)
+      // The end of each is what shows, and no two show the same.
+      expect(seen.every((s) => s.seen.startsWith('…') && s.text.endsWith(s.seen.slice(1)))).toBe(true)
+      expect(new Set(seen.map((s) => s.seen)).size).toBe(6)
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})

@@ -210,7 +210,12 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
                   }}
                 >
                   <KindGlyph kind={el.kind} />
-                  <span className="byd-layer-name" title={name}>{name}</span>
+                  {/* A condition is cut at its start (#569, beslut B): «om raritet = …» is the same on
+                      every one of them, and what tells them apart is their end — the value's last
+                      letters and how many cards they hold. The whole name is still the button's. */}
+                  <span className="byd-layer-name" title={name} {...(el.kind === 'if' ? { 'data-cut': 'start' } : {})}>
+                    {el.kind === 'if' ? <bdi>{name}</bdi> : name}
+                  </span>
                   {shows && <i className="byd-layer-shows">{shows}</i>}
                   {mark && <span className="byd-layer-source">· {mark}</span>}
                 </button>
