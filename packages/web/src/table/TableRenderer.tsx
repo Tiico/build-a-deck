@@ -1,4 +1,4 @@
-import { Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent } from 'react'
+import { Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent, type CSSProperties } from 'react'
 import { BackTexture, Texture } from './Texture.js'
 import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import type { Peer, Pulse, Recent } from './presence.js'
@@ -183,6 +183,11 @@ export type TableRendererProps = {
   // A lens on the felt in table mode (#502, beslut B, prototyp 36): at rest the whole table as the
   // fit draws it; a step in lands where a card is K9's 45 px, and the whole table is one press away.
   lens?: boolean | undefined
+  // The room's own television (#573, beslut C, K26): each seat's words on one plate beside its
+  // zones, at the floor's 24 px — its name, its hand and its counters — and the seat's zone names,
+  // the hand's badge and the chip's figure left off, since the plate says them. Not the observer's
+  // screen, which is read at a desk and not from the sofa.
+  forTheRoom?: boolean | undefined
 }
 
 // The short side a card on the felt is brought to by the lens's first step in (K9).
@@ -273,7 +278,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -554,6 +559,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     return { '--name-side': `calc(${side})`, '--name-end': `calc(-100% - ${NAME_RIM_PX}px${grow === 'back' ? ` - ${px(turnedZone.h)}px` : ''})` }
   }
   const seatIndex = (id: string | undefined) => Math.max(0, view.seats.findIndex((s) => s.id === id))
+  const ownedBySeat = (zone: string) => view.zones.find((z) => z.id === zone)?.owner !== undefined
   const seatName = (id: string | undefined) => view.seats.find((s) => s.id === id)?.name ?? id ?? ''
   const colourOf = (seat: string | null) => (seat === null ? TABLE_GREY : seatColor(seatIndex(seat)))
   const carried = new Map(peers.filter((p) => p.drag).map((p) => [p.drag?.component ?? '', p]))
@@ -1213,7 +1219,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 {...(crowded ? { 'data-mid': '' } : {})}
                 style={{ left: left(z.geometry.x), top: top(z.geometry.y), width: px(z.geometry.w), height: px(z.geometry.h), ['--name-x' as string]: `${anchor.x}%`, ['--name-y' as string]: `${anchor.y}%` }}
               >
-                <span style={overRim(z, rim, grow)}>{z.name}</span>
+                {!(forTheRoom && z.owner !== undefined) && <span style={overRim(z, rim, grow)}>{z.name}</span>}
                 {/* How much lies in an area this screen may not look into (#414, decision B of
                     2026-09-22). `count` is already on the wire and was being thrown away, so a
                     seat with three cards in front of it drew the same empty box as a seat with
@@ -1229,6 +1235,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               </div>
             )
           })}
+          {forTheRoom && view.seats.map((seat, i) => <SeatPlate key={seat.id} view={view} seat={seat} color={seatColor(i)} left={left} top={top} t={t} />)}
           {/* Platsen tänds medan ett kort är på väg in i dess hand (#444, K24): platsens egna
               millimeter av kanten, i platsens färg. Den ligger vid kanten och inte kring
               fläkten, eftersom kanten är den enda ytan kring en hand som kortet man bär aldrig
@@ -1293,6 +1300,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 // same felt with the seat tiles at the rim, where an inward count lies on the
                 // tile, and an editor's screen hides no band that the count would have to clear.
                 countIn={mode === 'tv' && !seatNames}
+                counted={!forTheRoom}
                 folded={fold}
                 left={left(at.x)}
                 top={top(at.y)}
@@ -1347,7 +1355,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                   {...keys(`counter:${c.id}`)}
                   style={{ position: 'absolute', left: left(a.x + (m ? dx : 0)), top: top(a.y + (m ? dy : 0)) + peek, width: px(TOKEN_MM), height: px(TOKEN_MM) }}
                 >
-                  <b style={{ fontSize: tokenInkPx(px(TOKEN_MM), String(c.counter ?? 0), wide) }}>{c.counter ?? 0}</b>
+                  {/* On the room's television a seat's chip is said on its plate (#573). */}
+                  {!(forTheRoom && ownedBySeat(c.zone)) && <b style={{ fontSize: tokenInkPx(px(TOKEN_MM), String(c.counter ?? 0), wide) }}>{c.counter ?? 0}</b>}
                   {wide && <span>{c.cardRef ?? ''}</span>}
                   {hit > 0 && <i className="byd-token-hit" data-counter-hit={c.id} style={{ width: hit, height: hit, left: (px(TOKEN_MM) - hit) / 2, top: (px(TOKEN_MM) - hit) / 2 }} />}
                 </div>
@@ -1956,7 +1965,47 @@ function SeatName({ zone, floor, name, color, mine, taking, read, left, top }: {
 // Other seats' hands are a fan of backs and a count; the owner reads theirs on the phone. A hand
 // whose order this view may see (the observer, C8) fans the cards themselves. Every measure in
 // the fan is a millimetre on the felt, so it shrinks with the table rather than swamping it (#23).
-function Hand({ zone, color, rot, countAt, countIn = false, folded = false, taking = 0, left, top, px, cards, faces, reach }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; countIn?: boolean; folded?: boolean; taking?: number; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined; reach?: ((c: VisibleComponentState) => Partial<Pointing & Handlers>) | undefined }) {
+// A seat's words on the room's television, on one plate beside the seat's own zones (#573,
+// beslut C efter prototyp): its letter and name in its colour, what its hand holds, and its
+// counters by name and value. It stands on the side of the zones that faces the middle of the
+// table, and a seat at the side stacks its words, since a wide plate there reached the piles
+// (measured at four seats). It is drawn before the piles and the cards, so a card played
+// beside a seat lies over the plate and never under it.
+const PLATE_AIR_PX = 8
+function SeatPlate({ view, seat, color, left, top, t }: { view: Snapshot; seat: Snapshot['seats'][number]; color: string; left: (mm: number) => number; top: (mm: number) => number; t: T }) {
+  const own = view.zones.filter((z) => z.owner === seat.id && z.kind === 'area')
+  const hand = view.zones.find((z) => z.owner === seat.id && z.kind === 'hand')
+  const around = own.length > 0 ? own : hand ? [hand] : []
+  if (around.length === 0) return null
+  const x0 = Math.min(...around.map((z) => z.geometry.x))
+  const y0 = Math.min(...around.map((z) => z.geometry.y))
+  const x1 = Math.max(...around.map((z) => z.geometry.x + z.geometry.w))
+  const y1 = Math.max(...around.map((z) => z.geometry.y + z.geometry.h))
+  const edge = seat.edge ?? 'S'
+  const at: CSSProperties =
+    edge === 'N' ? { left: left(x0), top: top(y1) + PLATE_AIR_PX } :
+    edge === 'S' ? { left: left(x0), top: top(y0) - PLATE_AIR_PX, transform: 'translateY(-100%)' } :
+    edge === 'W' ? { left: left(x1) + PLATE_AIR_PX, top: top((y0 + y1) / 2), transform: 'translateY(-50%)' } :
+    { left: left(x0) - PLATE_AIR_PX, top: top((y0 + y1) / 2), transform: 'translate(-100%, -50%)' }
+  const held = hand ? (hand.mode === 'count' ? hand.count : hand.order.length) : null
+  const owned = new Set(own.map((z) => z.id))
+  const chips = view.components.filter((c) => c.counter !== null && c.counter !== undefined && owned.has(c.zone))
+  const name = seat.name ?? seat.id
+  return (
+    <div className="byd-seat-plate" data-seat-plate={seat.id} data-edge={edge} style={{ ...at, ['--seat' as string]: color }}>
+      <b>
+        <i aria-hidden="true">{name.slice(0, 1)}</i>
+        {name}
+      </b>
+      {held !== null && <span>{t(held === 1 ? 'tv.seat.hand.one' : 'tv.seat.hand.other', { n: held })}</span>}
+      {chips.map((c) => (
+        <span key={c.id}>{c.cardRef ? `${c.cardRef} ${c.counter ?? 0}` : String(c.counter ?? 0)}</span>
+      ))}
+    </div>
+  )
+}
+
+function Hand({ zone, color, rot, countAt, countIn = false, counted = true, folded = false, taking = 0, left, top, px, cards, faces, reach }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; countIn?: boolean; counted?: boolean; folded?: boolean; taking?: number; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined; reach?: ((c: VisibleComponentState) => Partial<Pointing & Handlers>) | undefined }) {
   const count = zone.mode === 'count' ? zone.count : zone.order.length
   const fan = folded ? 0 : Math.min(count, FAN_MAX)
   const shown = cards ? Math.min(cards.length, FAN_MAX) : fan
@@ -1999,7 +2048,8 @@ function Hand({ zone, color, rot, countAt, countIn = false, folded = false, taki
       {/* How much the hand holds, and — while a card is on its way into it — how much it is
           about to hold (#444, K24). Figures and an arrow rather than a word: the badge is the
           same one at every table, whatever language its people brought (A4). */}
-      <b className="byd-hand-count">{taking > 0 ? `${count} → ${count + taking}` : count}</b>
+      {/* On the room's television the hand's count is on its seat's plate (#573). */}
+      {counted && <b className="byd-hand-count">{taking > 0 ? `${count} → ${count + taking}` : count}</b>}
     </div>
   )
 }

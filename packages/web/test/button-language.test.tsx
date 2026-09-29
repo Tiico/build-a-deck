@@ -550,7 +550,7 @@ const FELT_CSS = `${TABLE_CSS}\n${PROBE}`
 
 // Everything that lies on the felt rather than being it. The ground is the felt where none of
 // these is covering it; without the list the green would be sampled through a card.
-const ON_THE_FELT = '.byd-card, .byd-pile, .byd-token, .byd-hand, .byd-seat-name, .byd-table-plate, .byd-radial, .byd-set-value, .byd-inspect, [data-probe]'
+const ON_THE_FELT = '.byd-card, .byd-pile, .byd-token, .byd-hand, .byd-seat-name, .byd-seat-plate, .byd-table-plate, .byd-radial, .byd-set-value, .byd-inspect, [data-probe]'
 // And everything laid over the whole screen rather than over the felt: an open ring, an open
 // sheet, a card held up, and this file's own probe.
 const OVER_IT_ALL = '.byd-radial, .byd-set-value, .byd-inspect, [data-probe]'

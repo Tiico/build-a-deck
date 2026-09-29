@@ -1039,3 +1039,41 @@
 
 /* The felt as the table screen's main content (#560 P-20), as large as the page it fills. */
 .byd-table-main { width: 100%; height: 100%; }
+
+/* The room's own television at K26's floor (#573, beslut C efter prototyp; K26 förtydligad
+   2026-09-29): every word is at least 24 px, since the room reads it from three metres. The
+   observer's screen shares this chrome and is read at a desk, so all of it hangs on `data-room`,
+   which only the table screen sets. */
+[data-tv][data-room] aside h2 { font-size: 24px; letter-spacing: 1px; margin-bottom: 8px; }
+[data-tv][data-room] .byd-tv-head h1 { font-size: 28px; }
+[data-tv][data-room] .byd-tv-join > span { font-size: 24px; }
+[data-tv][data-room] .byd-tv-inspect [data-empty] span { font-size: 24px; line-height: 1.2; }
+[data-tv][data-room] ol li, [data-tv][data-room] ol li:first-child { font-size: 24px; }
+[data-tv][data-room] ol li b { flex-basis: 36px; }
+[data-tv][data-room] .byd-tv-feed > p[data-empty] { font-size: 24px; }
+[data-tv][data-room] .byd-tv-observers { font-size: 24px; }
+[data-tv][data-room] .byd-table-restart { font-size: 24px; min-height: 56px; padding: 0 20px; }
+[data-tv][data-room] .byd-shortcut-open { width: 56px; height: 56px; }
+[data-tv][data-room] .byd-shortcut-open > span { width: 40px; height: 40px; font-size: 24px; }
+/* The felt's own words: a zone nobody owns keeps its name, now in the room's size, and the piles
+   say their names and counts as large. A seat's zones are named on its plate instead. */
+[data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-zone > span { font-size: 24px; letter-spacing: 0; text-transform: none; color: #9aa3b8; }
+[data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-pile-name { bottom: -38px; font-size: 24px; letter-spacing: 0; text-transform: none; color: #9aa3b8; }
+[data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-pile-n { min-width: 40px; height: 40px; font-size: 24px; }
+[data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-area-count { font-size: 24px; }
+/* A chip no seat owns keeps its figure, on a badge the figure's own size rather than inside a disc
+   a third of it. */
+[data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-token { display: grid; place-items: center; overflow: visible; }
+[data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-token b { padding: 0 8px; border-radius: 999px; background: #0d0f14; color: #fff; font-size: 24px !important; line-height: 32px; }
+
+/* A seat's plate (#573): its letter and name in its colour, its hand and its counters. */
+.byd-seat-plate {
+  position: absolute; z-index: 1; display: flex; align-items: center; gap: 4px 12px; box-sizing: border-box;
+  padding: 6px 14px 6px 6px; border-left: 4px solid var(--seat); border-radius: 12px;
+  background: rgb(13 15 20 / 0.88); color: #e8eaf0; font: 24px/1.2 system-ui, sans-serif; white-space: nowrap; pointer-events: none;
+}
+.byd-seat-plate > b { display: inline-flex; align-items: center; gap: 10px; color: #fff; }
+.byd-seat-plate > b > i { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: var(--seat); color: #0d0f14; font-style: normal; font-weight: 700; }
+/* A seat at the side stands its words one under the other: a wide plate there reached the piles. */
+.byd-seat-plate[data-edge='E'], .byd-seat-plate[data-edge='W'] { flex-direction: column; align-items: flex-start; gap: 2px; padding-bottom: 8px; }
+.byd-seat-plate[data-edge='E'] > span, .byd-seat-plate[data-edge='W'] > span { padding-left: 46px; }

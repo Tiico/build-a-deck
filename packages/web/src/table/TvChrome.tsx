@@ -46,6 +46,9 @@ export type TvChromeProps = {
   // in rather than over it: both wanted the top right corner, and only the header can lay both
   // out (#30).
   rules?: ReactNode
+  // The room's own television (#573): the seats are on the felt's plates, and every word is at
+  // K26's 24 px. The observer's screen is not the room's and leaves it off.
+  room?: boolean | undefined
   children: ReactNode
 }
 
@@ -61,7 +64,7 @@ export type TvChromeProps = {
 // at 1920 x 1080 measured 68 px across for it. The same card is 82 px with the rows gone and
 // their contents moved into the column, which is the difference between a card that has to be
 // pointed at to be told apart and one that does not (`tv-card-size.test.ts`, K8).
-export function TvChrome({ view, activity, roomCode, joinUrl, title, version, inspecting, faces, showing, onDismiss, observers = [], note, rules, children }: TvChromeProps) {
+export function TvChrome({ view, activity, roomCode, joinUrl, title, version, inspecting, faces, showing, onDismiss, observers = [], note, rules, room = false, children }: TvChromeProps) {
   // A card whose words are smaller than the wizard's frame is shown taller (#523), into the felt's
   // height, until they read from the sofa: the height its width needs, which the stylesheet lets past
   // the 938 px the frame's own card stops at.
@@ -116,7 +119,7 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
   // see leaves the panel where it was rather than naming something that is not there.
   const shown = inspecting ?? lastCard(view, activity)
   return (
-    <div data-tv>
+    <div data-tv {...(room ? { 'data-room': '' } : {})}>
       <main>
         {children}
         {/* «Visa för alla» (#508, beslut B): over the felt and not in the column, because the felt
@@ -182,24 +185,28 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
             </div>
           )}
         </section>
-        <section className="byd-tv-seats" aria-labelledby="tv-seats">
-          <h2 id="tv-seats">{t('tv.seats')}</h2>
-          <ul aria-labelledby="tv-seats" data-dense={dense ? '' : undefined}>
-            {view.seats.map((s, i) => {
-              const last = sayable(activity).reverse().find((l) => l.by === s.id)
-              return (
-                <li key={s.id} style={{ ['--seat' as string]: seatColor(i) }}>
-                  <i data-avatar>{(s.name ?? s.id).slice(0, 1)}</i>
-                  <div>
-                    <span>{s.name ?? s.id}</span>
-                    <span>{t(`tv.seat.hand${dense ? '.short' : ''}.${handCount(s.id) === 1 ? 'one' : 'other'}`, { n: handCount(s.id) })}</span>
-                    {!dense && <small>{last ? describeActivity(last, view, t) : t('tv.seat.none')}</small>}
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        </section>
+        {/* On the room's television each seat's words stand on its plate on the felt (#573, beslut
+            C), and the column gives their height to the card being looked at and the latest moves. */}
+        {!room && (
+          <section className="byd-tv-seats" aria-labelledby="tv-seats">
+            <h2 id="tv-seats">{t('tv.seats')}</h2>
+            <ul aria-labelledby="tv-seats" data-dense={dense ? '' : undefined}>
+              {view.seats.map((s, i) => {
+                const last = sayable(activity).reverse().find((l) => l.by === s.id)
+                return (
+                  <li key={s.id} style={{ ['--seat' as string]: seatColor(i) }}>
+                    <i data-avatar>{(s.name ?? s.id).slice(0, 1)}</i>
+                    <div>
+                      <span>{s.name ?? s.id}</span>
+                      <span>{t(`tv.seat.hand${dense ? '.short' : ''}.${handCount(s.id) === 1 ? 'one' : 'other'}`, { n: handCount(s.id) })}</span>
+                      {!dense && <small>{last ? describeActivity(last, view, t) : t('tv.seat.none')}</small>}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+        )}
         <section className="byd-tv-feed" ref={feedRef}>
           <h2 id="tv-feed">{t('play.latest')}</h2>
           {/* A table nobody has touched yet (UX-16): the heading says what will fill it, rather
