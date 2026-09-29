@@ -611,11 +611,18 @@
 
    `flex: none` is #126's: the middle column is a flex column now, and a row that may shrink is a
    row that gives its words away to the felt under it. */
-.byd-setup-said { flex: none; display: flex; gap: 12px; align-items: center; min-height: 30px; color: #9aa3b8; font-size: 12px; }
+/* A tap tall since #579: a chosen zone's place and size are fields there, and a row that grew when a
+   zone was chosen would move the felt under the hand that chose it. */
+.byd-setup-said { flex: none; display: flex; gap: 12px; align-items: center; min-height: var(--byd-tap); color: #9aa3b8; font-size: 12px; }
 .byd-setup-said > span:last-child { flex: 1; min-width: 0; }
 /* The word a zone held at the table's edge says (#480, the form #478 gave the card's edge). */
 .byd-setup-kept { position: absolute; left: 50%; top: 100%; transform: translate(-50%, var(--byd-s1)); padding: var(--byd-s1) var(--byd-s2); border-radius: 6px; background: #1b1d23; border: 1px solid #f0b64a; color: #f0b64a; font: 600 12px system-ui; white-space: nowrap; pointer-events: none; z-index: 5; }
 .byd-setup-coords { font: 12px ui-monospace, monospace; color: #c8cfdc; }
+/* Where the chosen zone stands, as fields (#579, #554): the numbers where they already stood. */
+.byd-setup-place { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--byd-s1) var(--byd-s2); }
+.byd-setup-place b { color: #dce3f2; font: 600 12px system-ui, sans-serif; }
+.byd-setup-place label { display: inline-flex; align-items: center; gap: var(--byd-s1); color: #9aa3b8; }
+.byd-setup-place input { box-sizing: border-box; width: 64px; min-height: var(--byd-tap); padding: 0 var(--byd-s2); border: 1px solid #3b414e; border-radius: 8px; background: #12141a; color: #dce3f2; font: inherit; font-variant-numeric: tabular-nums; text-align: right; }
 .byd-setup-undo { display: flex; gap: 8px; align-items: center; color: #ffd98a; }
 .byd-setup-undo button { border: 1px solid #5c4a1f; border-radius: 8px; padding: 4px 8px; background: #241f13; color: #ffd98a; font-weight: 700; cursor: pointer; }
 /* The list of zones: every one the table has, in two groups, and the row is the way into it —
@@ -2882,6 +2889,17 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-crop-corner[data-corner='ne'], .byd-crop-corner[data-corner='sw'] { cursor: nesw-resize; }
 .byd-crop-corner:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 2px; }
 .byd-crop-keys { margin: 0; font-size: 11px; color: var(--byd-editor-quiet); }
+/* The pad a pointer moves and sizes the window with, without a drag (#579): a column beside the
+   picture and not a row under it, so the sheet keeps L33's promise that nothing under the picture
+   needs a scroll. The height is what the sheet has too little of; the width beside it is free. */
+/* The first column is the picture's widest (520 px) and the sheet's air on both sides, and never
+   an `auto`: the picture's width is a share of it, and a share of an auto column is a share of
+   itself, which shrinks to nothing. */
+.byd-crop { grid-template-columns: minmax(0, calc(520px + 2 * var(--byd-s5))) auto; align-items: start; }
+.byd-crop > :not(.byd-crop-sheet, .byd-crop-pad) { grid-column: 1 / -1; }
+.byd-crop-pad { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; gap: var(--byd-s1); }
+.byd-crop-pad button { min-width: var(--byd-tap); min-height: var(--byd-tap); padding: 0 var(--byd-s3); border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.byd-crop-pad button:hover { border-color: var(--byd-editor-primary-mark); }
 /* The deck's measure, beside the wall where the whole deck can be seen at once (E1). */
 .byd-wall-measure { grid-column: 2; align-self: start; width: 320px; padding: 12px; border-radius: 12px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
 .byd-wall-measure h2 { margin: 0 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }

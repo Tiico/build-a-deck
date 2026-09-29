@@ -31,6 +31,14 @@ const LEAST = 0.1
 // 31.999999999999996 % of a picture — and so the name read out is a number a person recognises.
 const tidy = (v: number): number => Math.round(v * 1e4) / 1e4
 
+// The pad's four arrows, as the keys they stand for, what each is called and what it draws.
+const PAD: readonly (readonly [string, Key, string])[] = [
+  ['ArrowUp', 'media.crop.pad.up', '↑'],
+  ['ArrowLeft', 'media.crop.pad.left', '←'],
+  ['ArrowRight', 'media.crop.pad.right', '→'],
+  ['ArrowDown', 'media.crop.pad.down', '↓'],
+]
+
 export type Corner = 'nw' | 'ne' | 'sw' | 'se'
 const CORNERS: readonly Corner[] = ['nw', 'ne', 'sw', 'se']
 const CORNER_NAME: Record<Corner, Key> = { nw: 'media.crop.corner.nw', ne: 'media.crop.corner.ne', sw: 'media.crop.corner.sw', se: 'media.crop.corner.se' }
@@ -80,6 +88,10 @@ export function Crop({ url, ratio, crop, onChange, handle, status }: CropProps) 
   const held = useRef<{ corner: Corner | null; x: number; y: number; from: AssetCrop; box: DOMRect } | null>(null)
   const picture = useRef<HTMLDivElement | null>(null)
 
+  const press = (next: AssetCrop | null) => {
+    if (!next || (next.x === crop.x && next.y === crop.y && next.w === crop.w && next.h === crop.h)) return
+    onChange(next, true)
+  }
   const keys = (event: ReactKeyboardEvent, corner: Corner | null) => {
     const next = moved(crop, event.key, event.shiftKey, corner)
     if (!next) return
@@ -174,6 +186,22 @@ export function Crop({ url, ratio, crop, onChange, handle, status }: CropProps) 
         </div>
       </div>
       {status}
+      {/* The window moved and sized by a pointer without a drag (#579, beslut 2026-09-29): a pad
+          of arrows, and «Mindre» and «Större» round its middle. No zoom (L33). Each press is one
+          settled change, as a key press is, and a press that changes nothing changes nothing. */}
+      <div className="byd-crop-pad" role="group" aria-label={t('media.crop.pad')}>
+        {PAD.map(([key, name, glyph]) => (
+          <button key={key} type="button" data-pad={key} aria-label={t(name)} onClick={(event) => press(moved(crop, key, event.shiftKey, null))}>
+            <span aria-hidden="true">{glyph}</span>
+          </button>
+        ))}
+        <button type="button" aria-label={t('media.crop.pad.smaller.name')} onClick={(event) => press(scaled(crop, -STEP * (event.shiftKey ? SHIFT : 1)))}>
+          {t('media.crop.pad.smaller')}
+        </button>
+        <button type="button" aria-label={t('media.crop.pad.larger.name')} onClick={(event) => press(scaled(crop, STEP * (event.shiftKey ? SHIFT : 1)))}>
+          {t('media.crop.pad.larger')}
+        </button>
+      </div>
       <p id={said} className="byd-crop-keys">
         {t('media.crop.keys')}
       </p>
@@ -210,5 +238,16 @@ function sized(from: AssetCrop, corner: Corner, by: { x: number; y: number }): A
   const w = west ? right - x : Math.min(Math.max(LEAST, from.w + by.x), 1 - from.x)
   const y = north ? Math.min(Math.max(0, from.y + by.y), bottom - LEAST) : from.y
   const h = north ? bottom - y : Math.min(Math.max(LEAST, from.h + by.y), 1 - from.y)
+  return { x: tidy(x), y: tidy(y), w: tidy(w), h: tidy(h) }
+}
+
+// The window grown or shrunk by a share on every side at once, round its middle (#579): «Större»
+// and «Mindre». It never goes under the least size, never past the whole picture, and a middle
+// near an edge is moved in so the window stays inside.
+function scaled(from: AssetCrop, by: number): AssetCrop {
+  const w = Math.min(1, Math.max(LEAST, from.w + by))
+  const h = Math.min(1, Math.max(LEAST, from.h + by))
+  const x = Math.min(Math.max(0, from.x + (from.w - w) / 2), 1 - w)
+  const y = Math.min(Math.max(0, from.y + (from.h - h) / 2), 1 - h)
   return { x: tidy(x), y: tidy(y), w: tidy(w), h: tidy(h) }
 }
