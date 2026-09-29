@@ -52,7 +52,7 @@ async function markup(surface: Surface): Promise<{ closed: string; open: string 
     const closed = document.querySelector(surface.root)!.outerHTML
     fireEvent.click(screen.getByRole('button', { name: `Hjälp om ${surface.topic}` }))
     // The box's code and its stylesheet travel when it is asked for (#304).
-    await screen.findByRole('dialog', { name: surface.topic })
+    await screen.findByRole('dialog', { name: `Hjälp om ${surface.topic}` })
     return { closed, open: document.querySelector(surface.root)!.outerHTML }
   } finally {
     unmount()

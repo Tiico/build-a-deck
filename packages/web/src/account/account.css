@@ -15,6 +15,8 @@
 .byd-login { width: min(420px, 100%); background: var(--byd-account-card-bg); border: 1px solid #262a35; border-radius: 20px; padding: 32px; display: grid; gap: 14px; box-sizing: border-box; }
 .byd-login h1 { margin: 0; font-size: 26px; }
 .byd-login form { display: grid; gap: 10px; }
+.byd-login-email { display: grid; gap: 6px; }
+.byd-login-email > span { color: #cdd4e4; font-size: 13px; font-weight: 700; }
 .byd-login input { width: 100%; box-sizing: border-box; padding: 14px 16px; border-radius: 12px; border: 1px solid #2c3242; background: var(--byd-account-field-bg); color: #fff; font-size: 16px; }
 .byd-login button { padding: 14px 18px; border-radius: 12px; font-size: 16px; cursor: pointer; }
 .byd-login button:disabled { opacity: 0.4; cursor: default; }
@@ -26,6 +28,9 @@
 .byd-home header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 16px; }
 .byd-home h1 { margin: 0; font-size: 28px; }
 .byd-who { color: #9aa3b8; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.byd-who > span { display: inline-flex; align-items: center; gap: 4px; }
+/* A dot leads each part after the first, so it wraps with the part and never ends a line (#555). */
+.byd-who > span + span::before { content: '·' / ''; }
 /* The way out is a word in a sentence, and a word in a sentence is 16 px tall. It keeps the look
    and takes the room every control in the product takes (UX-KONTROLLER: träffytor). */
 .byd-who a { color: #9aa3b8; display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; }
@@ -79,6 +84,8 @@
 .byd-home-started { background: #1b2a22; color: #d8ffe8; }
 .byd-home-started strong { font: 700 15px ui-monospace, monospace; letter-spacing: 2px; }
 .byd-home-started a { color: #7dd3a0; }
+/* The one thing to do next after a table is started takes the room every control takes, as "logga ut" does (#555). */
+.byd-home-started a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; }
 .byd-home-asking { background: #2a1b1b; color: #ffd8d8; }
 .byd-home-asking p { margin: 0; }
 .byd-home-asking button { min-height: 44px; border: 1px solid #4a3232; border-radius: 8px; padding: 6px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }

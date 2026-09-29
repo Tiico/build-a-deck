@@ -24,10 +24,12 @@ const mount = () =>
     </div>,
   )
 const ask = () => screen.getByRole('button', { name: 'Hjälp om lagerlistan' })
-const box = () => screen.queryByRole('dialog', { name: 'lagerlistan' })
+// The box is called what the question mark is called (#555): "lagerlistan, dialog" said nothing
+// about what the box was.
+const box = () => screen.queryByRole('dialog', { name: 'Hjälp om lagerlistan' })
 // The box's code and its stylesheet travel when it is asked for (#304), so it arrives a tick
 // after the press rather than in the same one. Waiting for it is what a reader does too.
-const appears = () => screen.findByRole('dialog', { name: 'lagerlistan' })
+const appears = () => screen.findByRole('dialog', { name: 'Hjälp om lagerlistan' })
 const open = async () => {
   fireEvent.click(ask())
   return appears()

@@ -52,12 +52,12 @@ describe('the observer’s own help (L32, #305)', () => {
     await screen.findByText(/Du är observatör/)
 
     const ask = screen.getByRole('button', { name: 'Hjälp om observatörsläget' })
-    const box = () => screen.queryByRole('dialog', { name: 'observatörsläget' })
+    const box = () => screen.queryByRole('dialog', { name: 'Hjälp om observatörsläget' })
     fireEvent.pointerEnter(ask)
     expect(box()).toBeNull()
 
     fireEvent.click(ask)
-    expect((await screen.findByRole('dialog', { name: 'observatörsläget' })).textContent).toMatch(/aldrig röra ett kort/i)
+    expect((await screen.findByRole('dialog', { name: 'Hjälp om observatörsläget' })).textContent).toMatch(/aldrig röra ett kort/i)
     expect(screen.getByText(/Du är observatör/)).toBeTruthy()
 
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' })

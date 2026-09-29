@@ -135,6 +135,7 @@ export const enAccount = {
   'wizard.cards.count.one': '{n} card',
   'wizard.cards.count.other': '{n} cards',
   'wizard.preview.font': 'The frame s typeface is fetched when you choose a frame.',
+  'wizard.preview.card': 'Preview of card {n}: {title}',
   'wizard.preview': 'Live preview',
   'wizard.image.field': 'Image for {label}',
   'wizard.image.preview': 'Preview of {label}',

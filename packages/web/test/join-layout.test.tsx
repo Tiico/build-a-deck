@@ -346,6 +346,34 @@ describe('a seat is a thumb-sized target (UX-KONTROLLER: träffytor)', () => {
   }, 60_000)
 })
 
+// A chosen seat wears a white ring, and the focus ring used to land right on top of it (#555
+// A-12): chosen and focused looked just like focused. The focus ring now stands outside the
+// chosen one, so both can be seen at once. Reached with a real Tab, because a ring drawn for
+// `element.focus()` is not the one a keyboard gets.
+describe('a chosen seat under the keyboard (#555)', () => {
+  it('draws the focus ring outside the white ring that says the seat is chosen', async () => {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+    try {
+      await page.setContent(document_(await picker(twoSeatSetup())), { waitUntil: 'load' })
+      const chosen = page.locator('.byd-join-table button[aria-pressed="true"]')
+      expect(await chosen.count()).toBe(1)
+      for (let i = 0; i < 10 && !(await chosen.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab')
+      const ring = await chosen.evaluate((el) => {
+        const cs = getComputedStyle(el)
+        return { focusVisible: el.matches(':focus-visible'), style: cs.outlineStyle, width: parseFloat(cs.outlineWidth), offset: parseFloat(cs.outlineOffset), border: parseFloat(cs.borderTopWidth), borderColor: cs.borderTopColor }
+      })
+      expect(ring.focusVisible).toBe(true)
+      expect(ring.borderColor).toBe('rgb(255, 255, 255)')
+      expect(ring.style).toBe('solid')
+      expect(ring.width).toBeGreaterThanOrEqual(2)
+      // The ring starts past the edge of the border box, so the white border stays in view.
+      expect(ring.offset).toBeGreaterThanOrEqual(2)
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})
+
 // A free seat used to say `ledig` and nothing else, so the only things telling one apart from
 // another were its colour and its place on the felt (#80, UX-35). Somebody who wants seat C has
 // nothing to aim at: the letter was in the spoken label and in the heading, and nowhere on the

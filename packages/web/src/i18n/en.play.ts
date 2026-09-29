@@ -329,6 +329,7 @@ export const enPlay = {
   'join.room': 'Room {code}',
   'join.seat.chosen': 'Seat {seat} chosen',
   'join.seats.full': 'Every seat is taken',
+  'join.seats.group': 'Seats at the table',
   'join.seat.pick': 'Tap a free seat',
   'join.seat.free': 'free',
   'join.seat.label.free': 'Seat {seat}, free',

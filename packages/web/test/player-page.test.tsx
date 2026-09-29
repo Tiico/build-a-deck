@@ -77,7 +77,7 @@ describe('PlayerPage', () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada')
     const ask = await screen.findByRole('button', { name: 'Hjälp om handen' })
-    const box = () => screen.queryByRole('dialog', { name: 'handen' })
+    const box = () => screen.queryByRole('dialog', { name: 'Hjälp om handen' })
     expect(box()).toBeNull()
 
     fireEvent.pointerEnter(ask)
@@ -85,7 +85,7 @@ describe('PlayerPage', () => {
     expect(box()).toBeNull()
 
     fireEvent.click(ask)
-    expect((await screen.findByRole('dialog', { name: 'handen' })).textContent).toMatch(/tryck på ett kort för att läsa det/i)
+    expect((await screen.findByRole('dialog', { name: 'Hjälp om handen' })).textContent).toMatch(/tryck på ett kort för att läsa det/i)
     // What the surface itself says stays on the surface: the box is not where the hint went.
     expect(screen.getByText(/Dina kort/)).toBeTruthy()
 

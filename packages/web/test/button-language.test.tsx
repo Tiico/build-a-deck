@@ -1268,6 +1268,7 @@ describe('every suite that measures a surface', () => {
       'hand-strip-scroll.test.tsx',
       'help-layout.test.tsx',
       'history-layout.test.tsx',
+      'home-layout.test.tsx',
       'join-layout.test.tsx',
       'locked-look.test.tsx',
       'media-crop-layout.test.tsx',

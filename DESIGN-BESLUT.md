@@ -1124,6 +1124,8 @@ Assertive används bara när det som står på skärmen har slutat vara sant, el
 Laddar, ansluter och återansluten är polite.
 Båda regionerna ligger i trädet från start och tomma, i `App`, av samma skäl som `TextureFailures` gör det (#10): en live-region som skapas tillsammans med sin text är en region ingen lyssnade på.
 När ett läge tar hela vyn flyttas fokus till rubriken, annars står tangentbordsläsaren kvar i ett dokument som inte längre innehåller det hon läste.
+Då säger live-regionen bara texten under rubriken, eftersom fokus redan läser rubriken; annars läses den två gånger (#555).
+Rubriken ritar ingen fokusring, för den går inte att trycka på.
 
 Återhämtning är både och, aldrig `location.reload()`.
 Transporten försöker själv med synlig nedräkning och ger sedan upp och väntar på en människa; allt en människa måste besluta får en knapp eller en länk från första stund, för ett 404 som görs om är fortfarande ett 404.

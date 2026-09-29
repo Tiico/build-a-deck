@@ -103,7 +103,7 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     expect(screen.getByText('Wizarden är startpunkten')).toBeTruthy()
     // What waits in the editor is said behind the first step's question mark (L36).
     fireEvent.click(screen.getByRole('button', { name: 'Hjälp om spelet' }))
-    expect((await screen.findByRole('dialog', { name: 'spelet' })).textContent).toMatch(/csv-verktyg väntar i editorn/i)
+    expect((await screen.findByRole('dialog', { name: 'Hjälp om spelet' })).textContent).toMatch(/csv-verktyg väntar i editorn/i)
     expect(screen.queryByRole('button', { name: /öppna bordet/i })).toBeNull()
   })
 
@@ -171,7 +171,7 @@ describe('a game without the guided start (L42)', () => {
     expect(screen.getByText('Utan guidad start')).toBeTruthy()
     expect(screen.getByText('Bygg hellre allt själv?')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Hjälp om spelet' }))
-    expect((await screen.findByRole('dialog', { name: 'spelet' })).textContent).toMatch(/utan kort, fält eller mall/i)
+    expect((await screen.findByRole('dialog', { name: 'Hjälp om spelet' })).textContent).toMatch(/utan kort, fält eller mall/i)
     const blank = screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' })
     expect(blank.classList.contains('byd-secondary')).toBe(true)
     expect(blank.classList.contains('byd-primary')).toBe(false)

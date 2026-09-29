@@ -71,22 +71,27 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
         // The browser's own bubble is not the product's voice and says nothing a screen reader
         // keeps, so the card checks the address itself.
         <form noValidate onSubmit={(e) => void submit(e)}>
-          <input
-            ref={field}
-            type="email"
-            placeholder={t('login.email.placeholder')}
-            aria-label={t('login.email')}
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value)
-              if (error) setState('open')
-            }}
-            autoComplete="email"
-            autoFocus
-            required
-            {...(faulty ? { 'aria-invalid': true } : {})}
-            {...(error ? { 'aria-describedby': errorId } : {})}
-          />
+          {/* A visible name: the placeholder goes as soon as anything is typed, and the address being
+              typed is exactly when a reader needs to know what the field is. The same form `/join`
+              has (#416, #555). */}
+          <label className="byd-login-email">
+            <span>{t('login.email')}</span>
+            <input
+              ref={field}
+              type="email"
+              placeholder={t('login.email.placeholder')}
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value)
+                if (error) setState('open')
+              }}
+              autoComplete="email"
+              autoFocus
+              required
+              {...(faulty ? { 'aria-invalid': true } : {})}
+              {...(error ? { 'aria-describedby': errorId } : {})}
+            />
+          </label>
           <button type="submit" className="byd-primary" disabled={state === 'busy'}>
             {t('login.submit')}
           </button>

@@ -99,7 +99,10 @@ describe.each(LIVE)('$path when the room does not exist', (live) => {
 
   it('announces it assertively, because it is an answer to something someone asked for', async () => {
     await open(live, { session: 'no-such-room' })
-    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toMatch(/bordet/i))
+    // What the page says under its heading: the heading itself is read where the focus lands (#555).
+    await waitFor(() => expect(noticeState()).toBe('missing'))
+    const text = notice()!.querySelector('p')!.textContent!
+    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toBe(text))
     expect(document.querySelector('[data-status-live="polite"]')!.textContent).toBe('')
   })
 })

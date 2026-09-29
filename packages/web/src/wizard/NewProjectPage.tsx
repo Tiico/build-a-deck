@@ -343,11 +343,20 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     }))
     setFocusOn({ at: `[data-field="${field.key}"] input` })
   }
-  const removeField = (key: string) => setS((current) => ({
-    ...current,
-    fields: current.fields.filter((field) => field.key !== key),
-    rows: current.rows.map((candidate) => Object.fromEntries(Object.entries(candidate).filter(([field]) => field !== key))),
-  }))
+  const removeField = (key: string) => {
+    // The × that was pressed goes with its field, so the keys go to its neighbour (#555, WCAG 2.4.3):
+    // the next field's ×, the one before it when it was the last, and the way to add a field when
+    // none is left to take away.
+    const removable = s.fields.filter((field) => field.key !== 'title')
+    const at = removable.findIndex((field) => field.key === key)
+    const neighbour = removable[at + 1] ?? removable[at - 1]
+    setFocusOn({ at: neighbour ? `[data-field="${neighbour.key}"] > button` : '.byd-wizard-add-fields button' })
+    setS((current) => ({
+      ...current,
+      fields: current.fields.filter((field) => field.key !== key),
+      rows: current.rows.map((candidate) => Object.fromEntries(Object.entries(candidate).filter(([field]) => field !== key))),
+    }))
+  }
   const addRow = () => {
     const next = Object.fromEntries(s.fields.map((field) => [field.key, field.key === 'title' ? t('wizard.card.n', { n: s.rows.length + 1 }) : field.key === 'cost' ? '1' : '']))
     setS((current) => ({ ...current, rows: [...current.rows, next] }))
@@ -480,7 +489,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         <span>{t(s.rows.length === 1 ? 'wizard.cards.count.one' : 'wizard.cards.count.other', { n: s.rows.length })}</span>
       </div>
       <div className="byd-wizard-card-workspace">
-        <div className="byd-wizard-preview"><CardPreview id="wizard-live" face={front} row={card} icons={{}} fonts={previewFonts} /><span>{t('wizard.preview')}</span>{!face && <span className="byd-wizard-preview-font">{t('wizard.preview.font')}</span>}</div>
+        <div className="byd-wizard-preview"><div role="img" aria-label={t('wizard.preview.card', { n: selectedRow + 1, title: row['title'] || t('wizard.card.untitled') })}><CardPreview id="wizard-live" face={front} row={card} icons={{}} fonts={previewFonts} /></div><span>{t('wizard.preview')}</span>{!face && <span className="byd-wizard-preview-font">{t('wizard.preview.font')}</span>}</div>
         <div className="byd-wizard-card-form">{s.fields.map((field) => field.kind === 'image' ? <div key={field.key} className="byd-wizard-image-field is-wide" data-image-field={field.key}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span><div
           role="group"
           aria-label={t('wizard.image.field', { label: field.label })}
@@ -513,16 +522,18 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         <span>{t('wizard.steps')}</span>
       </header>
       {desk ? (
-        <div className="byd-wizard-grid">
-          <aside>
+        // All three steps are the page's main content (#555): the first two are the form as much
+        // as the third, not something beside it.
+        <main className="byd-wizard-grid">
+          <div className="byd-wizard-side">
             {handoff}
             {spelet}
             {falten}
-          </aside>
-          <main>{korten}</main>
-        </div>
+          </div>
+          <div className="byd-wizard-main">{korten}</div>
+        </main>
       ) : (
-        <div className="byd-wizard-flow">
+        <main className="byd-wizard-flow">
           <div className="byd-wizard-stepbar" role="tablist" aria-label={t('wizard.steplist')}>
             {STEPS.map(([key, label]) => {
               const roving = itemProps(key)
@@ -565,7 +576,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
             <button type="button" disabled={at === 0} onClick={() => walk(-1)}>{t('wizard.prev')}</button>
             <button type="button" className="byd-wizard-primary byd-primary" disabled={at === STEPS.length - 1} onClick={() => walk(1)}>{t('wizard.next')}</button>
           </nav>
-        </div>
+        </main>
       )}
     </div>
   )

@@ -83,7 +83,12 @@ describe('HomePage and the login card', () => {
     fireEvent.click(screen.getByText(/Nytt spel/))
     expect(gone.at(-1)).toMatch(/^\/new\?/)
     fireEvent.click(screen.getByText('logga ut'))
-    expect(await screen.findByLabelText('E-post')).toBeTruthy()
+    const field = await screen.findByLabelText('E-post')
+    // Named by a word that stays on the page while one types (#555 A-5, WCAG 3.3.2): the placeholder
+    // goes the moment anything is written, so it cannot be the only thing saying what the field is.
+    const said = screen.getByText('E-post', { selector: 'label span' })
+    expect(said.closest('label')?.contains(field)).toBe(true)
+    expect(field.hasAttribute('aria-label')).toBe(false)
   })
 })
 
@@ -102,7 +107,7 @@ describe('the first thing a new account sees (UX-16)', () => {
     // question mark beside the line (L36): the longest string in the catalogue was this one.
     expect(screen.queryByText(/kortlek med sin mall/)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Hjälp om spel' }))
-    const box = await screen.findByRole('dialog', { name: 'spel' })
+    const box = await screen.findByRole('dialog', { name: 'Hjälp om spel' })
     expect(box.textContent).toMatch(/Ett spel är en kortlek med sin mall, sina regler och sitt bord/)
     expect(box.textContent).toMatch(/frågar efter namn och antal spelare/)
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
@@ -178,12 +183,18 @@ describe('the tables the account sat at (G1)', () => {
     expect(claimed.status).toBe(200)
 
     history.replaceState(null, '', `/?claimed=${id}&server=${encodeURIComponent(run.http)}`)
-    render(<HomePage onNavigate={() => undefined} />)
+    render(
+      <StatusLive>
+        <HomePage onNavigate={() => undefined} />
+      </StatusLive>,
+    )
     expect(await screen.findByText('Bord du spelat vid')).toBeTruthy()
     const card = await waitFor(() => document.querySelector(`[data-played="${id}"]`)!)
     expect(card.textContent).toContain('du var Ada')
     expect(card.textContent).toContain('pågår')
-    expect(screen.getByRole('status').textContent).toMatch(/Sparat.*som Ada/)
+    expect(document.querySelector('.byd-home-claimed')?.textContent).toMatch(/Sparat.*som Ada/)
+    // The banner is drawn with its text, so the page's live region says it (4.1.3, #555).
+    await waitFor(() => expect(document.querySelector('[data-status-live="polite"]')?.textContent).toMatch(/^Sparat: du spelade .* som Ada\./))
     // Said once (#475): the address no longer carries it, so a reload does not say it again.
     expect(new URLSearchParams(location.search).get('claimed')).toBeNull()
     expect(new URLSearchParams(location.search).get('server')).toBe(run.http)
@@ -305,6 +316,16 @@ describe('a game on the home page (G1)', () => {
     }
   })
 
+  // Someone going through the page's links hears the game first (#555 A-16), not the title of a
+  // card on its tile.
+  it('names the link to a game by the game, then its line, and the card last', async () => {
+    await home()
+    await waitFor(() => within(card()).getByRole('img', { name: 'Första kortet: Drake' }))
+    const open = within(card()).getAllByRole('link')[0]!
+    expect(open.getAttribute('href')).toMatch(/^\/editor\?/)
+    expect(screen.getByRole('link', { name: /^Skogens herrar rev 1 · aldrig spelat Första kortet: Drake$/ })).toBe(open)
+  })
+
   it('says it has never been played, and afterwards when it last was', async () => {
     await home()
     expect(card().textContent).toContain('aldrig spelat')
@@ -320,7 +341,11 @@ describe('a game on the home page (G1)', () => {
     await home()
     fireEvent.click(within(card()).getByRole('button', { name: 'Fler val för Skogens herrar' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Starta bord' }))
-    const said = await screen.findByRole('status')
+    const said = await waitFor(() => {
+      const banner = document.querySelector('.byd-home-started')
+      expect(banner).not.toBeNull()
+      return banner!
+    })
     expect(said.textContent).toMatch(/[A-Z2-9]{6}/)
     // The table is the server's, not something the page made up.
     const tables = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`)).json()) as unknown[]
@@ -403,7 +428,10 @@ describe('the game menu and the question on the home page (#475)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Starta bord' }))
     await waitFor(() => expect(document.activeElement).toBe(more()))
     const open = await screen.findByRole('link', { name: 'Öppna bordet (öppnas i ny flik)' })
-    expect(open.getAttribute('target')).toBe('_blank')
+    expect(open.getAttribute('target')).toBe('_blank')    // Said in the page's own live region rather than by a region born with the words in it, which
+    // screen readers do not reliably read (#555 A-8, WCAG 4.1.3).
+    await waitFor(() => expect(document.querySelector('[data-status-live="polite"]')?.textContent).toMatch(/^Bordet är igång\. Rumskoden är [A-Z0-9]{6}\.$/))
+    expect(document.querySelector('.byd-home-started')?.getAttribute('role')).toBeNull()
   })
 
   it('says the game is gone once it is, and leaves the focus on the heading rather than on nothing', async () => {
@@ -468,6 +496,8 @@ describe('exporting and importing a game (G5, #529)', () => {
     fireEvent.click(more)
     fireEvent.click(screen.getByRole('button', { name: 'Exportera…' }))
     const dialog = await screen.findByRole('dialog', { name: 'Exportera «Skogens herrar»' })
+    // The window's status region is there before anything is said in it (#555 A-8).
+    expect(within(dialog).getByRole('status').textContent).toBe('')
     expect(dialog.textContent).toMatch(/varje version/)
     expect(dialog.textContent).toMatch(/Bordens loggar och enkätsvar följer inte med/)
 
