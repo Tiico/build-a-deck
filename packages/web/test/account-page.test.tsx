@@ -472,11 +472,18 @@ describe('exporting and importing a game (G5, #529)', () => {
     expect(dialog.textContent).toMatch(/Bordens loggar och enkätsvar följer inte med/)
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Förbered export' }))
-    // The print files are made by the renderer; until they are, the window says how far it is.
+    // The print files are made by the renderer; until they are, the window says how far it is —
+    // in a live region, since the reader is waiting on it — and the keys stay in the window rather
+    // than falling to the page behind it when the pressed button goes still.
     const bar = await within(dialog).findByRole('progressbar', { name: /tryckfiler/ })
     expect(bar.getAttribute('aria-valuemax')).not.toBe('0')
+    expect(within(dialog).getByRole('status').textContent).toMatch(/Förbereder tryckfilerna/)
+    expect(dialog.contains(document.activeElement)).toBe(true)
     await run.completeRenders()
-    fireEvent.click(await within(dialog).findByRole('button', { name: 'Ladda ner' }, { timeout: 5000 }))
+    const download = await within(dialog).findByRole('button', { name: 'Ladda ner' }, { timeout: 5000 })
+    // What the waiting was for is where the keys are.
+    await waitFor(() => expect(document.activeElement).toBe(download))
+    fireEvent.click(download)
     expect(saved.map((s) => s.name)).toEqual(['Skogens herrar rev-1.zip'])
 
     // Escape closes it and gives the keys back to the ⋯ it was opened from.
@@ -503,11 +510,14 @@ describe('exporting and importing a game (G5, #529)', () => {
     const refusal = await within(dialog).findByRole('alert')
     expect(refusal.textContent).toMatch(/«trasig» kunde inte importeras/)
     expect(refusal.textContent).toMatch(/Filen är inte en zip/)
+    // The next thing to do after a refusal is to choose another file, and the keys are there.
+    await waitFor(() => expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Välj fil…' })))
 
     fireEvent.change(file, { target: { files: [new File([zip], 'Skogens herrar rev-1.zip', { type: 'application/zip' })] } })
     // The account already has the game, so the copy says it is one.
     await within(dialog).findByText(/«Skogens herrar \(importerad\)» är importerat/)
     await screen.findByText('Skogens herrar (importerad)', { selector: '.byd-home-game strong' })
+    await waitFor(() => expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Öppna spelet' })))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Öppna spelet' }))
     expect(gone.at(-1)).toMatch(/^\/editor\?project=/)
   })
