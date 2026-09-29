@@ -40,7 +40,7 @@ async function openEditor(tab?: string): Promise<void> {
 // box's code and its stylesheet travel when it is asked for (#304), so it is waited for.
 const opened = async (topic: string): Promise<HTMLElement> => {
   fireEvent.click(screen.getByRole('button', { name: `Hjälp om ${topic}` }))
-  return screen.findByRole('dialog', { name: topic })
+  return screen.findByRole('dialog', { name: `Hjälp om ${topic}` })
 }
 // The counters' own button, by the catalogue's word for it.
 const ADD_COUNTER = translate('sv', 'setup.counter.add')

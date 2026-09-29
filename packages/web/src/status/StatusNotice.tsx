@@ -29,11 +29,13 @@ export type StatusNoticeProps = {
 
 export function StatusNotice({ notice, surface, links = {}, onRetry, countdown = null, asOf = null }: StatusNoticeProps) {
   const t = useT()
-  useAnnounce(notice)
   // A message that replaces the view takes the focus with it. Without that a keyboard reader is
   // left standing in a document that no longer holds what she was reading.
   const headingRef = useRef<HTMLHeadingElement>(null)
   const takesFocus = surface === 'page' && blocksView(notice.state)
+  // The focus reads the heading it lands on, so the live region says only the rest (#555): both
+  // said the heading, and it was read twice.
+  useAnnounce(takesFocus ? { ...notice, heading: '' } : notice)
   useEffect(() => {
     if (takesFocus) headingRef.current?.focus()
   }, [takesFocus, notice.state])

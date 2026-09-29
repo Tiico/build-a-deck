@@ -84,7 +84,7 @@ async function markup(width: number, surface: Surface): Promise<{ closed: string
     await waitFor(() => expect(document.querySelector(surface.line)).not.toBeNull())
     const closed = document.querySelector('.byd-editor')!.outerHTML
     fireEvent.click(screen.getByRole('button', { name: `Hjälp om ${surface.topic}` }))
-    await screen.findByRole('dialog', { name: surface.topic })
+    await screen.findByRole('dialog', { name: `Hjälp om ${surface.topic}` })
     const open = document.querySelector('.byd-editor')!.outerHTML
     return { closed, open }
   } finally {
@@ -236,7 +236,7 @@ describe('the same box on the phone, the distance view and the table screen (#30
       await table.send({ v: 'deal', from: 'draw', to: ['hand:A'], each: 4 })
       await waitFor(() => expect(document.querySelectorAll('[data-hand-card]').length).toBe(4))
       fireEvent.click(screen.getByRole('button', { name: 'Hjälp om handen' }))
-      await screen.findByRole('dialog', { name: 'handen' })
+      await screen.findByRole('dialog', { name: 'Hjälp om handen' })
       return document.querySelector('.byd-player')!.outerHTML
     } finally {
       unmount()
@@ -253,7 +253,7 @@ describe('the same box on the phone, the distance view and the table screen (#30
     try {
       await screen.findByText(/Du är observatör/)
       fireEvent.click(screen.getByRole('button', { name: 'Hjälp om observatörsläget' }))
-      await screen.findByRole('dialog', { name: 'observatörsläget' })
+      await screen.findByRole('dialog', { name: 'Hjälp om observatörsläget' })
       return document.querySelector('.byd-observer')!.outerHTML
     } finally {
       unmount()
@@ -269,7 +269,7 @@ describe('the same box on the phone, the distance view and the table screen (#30
     try {
       await waitFor(() => expect(document.querySelector('.byd-tv-join')).not.toBeNull())
       fireEvent.click(screen.getByRole('button', { name: 'Hjälp om att ansluta' }))
-      await screen.findByRole('dialog', { name: 'att ansluta' })
+      await screen.findByRole('dialog', { name: 'Hjälp om att ansluta' })
       return document.querySelector('.byd-table')!.outerHTML
     } finally {
       unmount()

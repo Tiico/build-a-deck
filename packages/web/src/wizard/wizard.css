@@ -79,9 +79,9 @@
 .byd-wizard[data-room='desk'] { height: 100vh; display: flex; flex-direction: column; }
 .byd-wizard[data-room='desk'] > header { flex: 0 0 auto; }
 .byd-wizard-grid { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(300px, .8fr) minmax(562px, 1.2fr); }
-.byd-wizard-grid > aside, .byd-wizard-grid > main { min-height: 0; overflow: auto; overscroll-behavior: contain; }
-.byd-wizard-grid > aside { padding: 26px 30px 100px 36px; border-right: 1px solid var(--line); display: grid; align-content: start; gap: 24px; background: var(--byd-wizard-panel-bg); }
-.byd-wizard-grid > main { min-width: 0; padding: 28px 36px 100px; display: grid; align-content: start; gap: 22px; }
+.byd-wizard-grid > .byd-wizard-side, .byd-wizard-grid > .byd-wizard-main { min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.byd-wizard-grid > .byd-wizard-side { padding: 26px 30px 100px 36px; border-right: 1px solid var(--line); display: grid; align-content: start; gap: 24px; background: var(--byd-wizard-panel-bg); }
+.byd-wizard-grid > .byd-wizard-main { min-width: 0; padding: 28px 36px 100px; display: grid; align-content: start; gap: 22px; }
 .byd-wizard-handoff { padding: 15px 17px; border: 1px solid #ecd9a8; border-radius: 12px; background: #fff3d5; }
 .byd-wizard-handoff strong { color: #7f5111; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
 .byd-wizard-handoff p { color: #6c5530; }

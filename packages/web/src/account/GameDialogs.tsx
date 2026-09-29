@@ -80,11 +80,14 @@ export function ExportDialog({ http, game, onClose }: { http: string; game: Game
         <p className="byd-muted">{t('home.export.not')}</p>
         {now.state === 'preparing' && (
           <div ref={waiting} className="byd-game-progress" tabIndex={-1}>
-            <span role="status">{t('home.export.progress', { done: now.done, total: now.total })}</span>
+            <span aria-hidden="true">{t('home.export.progress', { done: now.done, total: now.total })}</span>
             <progress aria-label={t('home.export.progress.label')} max={Math.max(1, now.total)} value={now.done} aria-valuemin={0} aria-valuemax={Math.max(1, now.total)} aria-valuenow={now.done} />
           </div>
         )}
-        {now.state === 'ready' && <p role="status">{t('home.export.ready')}</p>}
+        {/* One status region from the start, so a screen reader hears its text change (4.1.3, #555). */}
+        <p role="status" className={now.state === 'ready' ? undefined : 'byd-offscreen'}>
+          {now.state === 'preparing' ? t('home.export.progress', { done: now.done, total: now.total }) : now.state === 'ready' ? t('home.export.ready') : ''}
+        </p>
         {now.state === 'refused' && <p role="alert">{t(refusal(now.status))}</p>}
         {now.state === 'offline' && <p role="alert">{t('home.export.offline')}</p>}
         <div className="byd-game-dialog-actions">
@@ -164,7 +167,7 @@ export function ImportDialog({ http, onClose, onImported, onOpen, nameOf }: { ht
           }}
         />
         {now.state === 'reading' && (
-          <p ref={reading} role="status" className="byd-game-progress" tabIndex={-1}>
+          <p ref={reading} className="byd-game-progress" tabIndex={-1}>
             {t('home.import.reading', { name: now.name })}
             <progress aria-label={t('home.import.reading', { name: now.name })} />
           </p>
@@ -179,7 +182,9 @@ export function ImportDialog({ http, onClose, onImported, onOpen, nameOf }: { ht
             </ul>
           </div>
         )}
-        {now.state === 'done' && <p role="status">{t('home.import.done', { name: nameOf(now.id) ?? now.name })}</p>}
+        <p role="status" className={now.state === 'done' ? undefined : 'byd-offscreen'}>
+          {now.state === 'done' ? t('home.import.done', { name: nameOf(now.id) ?? now.name }) : ''}
+        </p>
         <div className="byd-game-dialog-actions">
           {now.state === 'done' ? (
             <button ref={open} type="button" className="byd-primary" onClick={() => onOpen(now.id)}>

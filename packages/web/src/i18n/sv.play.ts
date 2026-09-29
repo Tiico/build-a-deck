@@ -395,6 +395,7 @@ export const svPlay = {
   'join.room': 'Rum {code}',
   'join.seat.chosen': 'Plats {seat} vald',
   'join.seats.full': 'Alla platser är upptagna',
+  'join.seats.group': 'Platser vid bordet',
   'join.seat.pick': 'Tryck på en ledig plats',
   'join.seat.free': 'ledig',
   // Två lediga platser säger samma ord, och vilken som är vilken bärs av färgen och av kanten de

@@ -120,9 +120,12 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
   // A code that names nothing — never issued, or lapsed — is the phone's 404. It is one of the
   // nine states like any other, said in the words the room it failed to reach would have used.
   // No code at all is not a table that ended: it is an address without the one thing it needs.
-  if (!code) return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), text: t('join.code.missing') }} surface="page" links={links} />
-  if (lookup === 'gone') return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), text: t('join.code.gone', { code: code.toUpperCase() }) }} surface="page" links={links} />
-  if (lookup === 'ended') return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), heading: t('status.missing.table.heading'), text: t('join.ended') }} surface="page" links={links} />
+  // A code that names nothing, or a table that is over, has no seat to choose again: the picker
+  // at the same code is this very page, so it is not offered as a way out (#555).
+  const { rescan: _again, ...away } = links
+  if (!code) return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), text: t('join.code.missing') }} surface="page" links={away} />
+  if (lookup === 'gone') return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), text: t('join.code.gone', { code: code.toUpperCase() }) }} surface="page" links={away} />
+  if (lookup === 'ended') return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), heading: t('status.missing.table.heading'), text: t('join.ended') }} surface="page" links={away} />
   if (lookup === 'offline') return <StatusNotice notice={noticeFor('offline', 'phone', t)} surface="page" links={links} onRetry={retry} />
   if (!view || !sessionId) return <RouteStatus status={live} over="sheet" links={links} onRetry={retry} />
 
@@ -162,10 +165,10 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
 
   return (
     <>
-      <div className={`byd-join${live.stale ? ' byd-status-stale' : ''}`} data-page="join" {...(live.stale ? { inert: true } : {})}>
+      <main className={`byd-join${live.stale ? ' byd-status-stale' : ''}`} data-page="join" {...(live.stale ? { inert: true } : {})}>
       <header>
         <span>{t('join.into')}</span>
-        <strong>{t('join.room', { code: code.toUpperCase() })}</strong>
+        <h1>{t('join.room', { code: code.toUpperCase() })}</h1>
         <span>{chosen ? t('join.seat.chosen', { seat: chosen }) : t(free.length === 0 ? 'join.seats.full' : 'join.seat.pick')}</span>
         {/* Whoever just left a seat comes back here (#31). The picker looks exactly as it did on
             the way in, so the acknowledgement is the only thing saying the leaving happened —
@@ -176,7 +179,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
           </p>
         )}
       </header>
-      <div className="byd-join-table" {...(shared ? { 'data-shares': '' } : {})}>
+      <div className="byd-join-table" role="group" aria-label={t('join.seats.group')} {...(shared ? { 'data-shares': '' } : {})}>
         {view.seats.map((s, i) => {
           const taken = s.name !== null
           const place = spread.get(s.id)
@@ -270,7 +273,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
           {t('join.observe')}
         </button>
       </form>
-      </div>
+      </main>
       <RouteStatus status={live} over="sheet" links={links} onRetry={retry} />
     </>
   )

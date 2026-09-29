@@ -35,5 +35,5 @@ export function waiting(heading: string, t: ReturnType<typeof useT>): Notice {
 
 // A link that leads nowhere, said as what it was meant to do.
 export function spent(heading: string, text: string, t: ReturnType<typeof useT>): Notice {
-  return { ...noticeFor('missing', 'app', t), heading, text }
+  return { ...noticeFor('missing', 'app', t), mark: t('status.spent.mark'), heading, text }
 }

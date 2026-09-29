@@ -53,7 +53,9 @@ export function HelpBox({ id, topic, ask, onClose, children }: HelpBoxProps) {
       id={id}
       className="byd-help-box"
       role="dialog"
-      aria-labelledby={`${id}-topic`}
+      // Called what the question mark that opens it is called (#555): the topic word alone read
+      // as "lagerlistan, dialog", which says nothing about what the box is.
+      aria-label={t('help.about', { topic })}
       data-place-y={place?.y}
       data-place-x={place?.x}
       style={place?.style}

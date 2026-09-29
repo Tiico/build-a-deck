@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { TableClient } from '../src/client.js'
 import { JoinPage } from '../src/join/JoinPage.js'
@@ -176,7 +176,28 @@ describe('a code that does not resolve (DRIFT §9)', () => {
     )
     const said = await screen.findByText(/gäller inte längre/)
     expect(said.textContent).toContain('ZZZZZZ')
-    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toMatch(/bordet finns inte/i))
+    // The heading is read where the focus lands, and the live region says the rest (#555).
+    await waitFor(() => expect(document.activeElement?.textContent).toMatch(/bordet finns inte/i))
+    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toMatch(/ZZZZZZ gäller inte längre/))
+    // Choosing a seat again at the same code leads back to this very page (#555 A-14).
+    expect(screen.queryByRole('link', { name: 'Välj plats igen' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Till startsidan' })).toBeTruthy()
+  })
+})
+
+// The page's outline (#555 A-11): the room is the page's heading, the picker is its main content,
+// and the seats are one choice among several with a name for the whole of it.
+describe('the picker to a screen reader (#555)', () => {
+  it('heads the page with the room, and names the seats as one group', async () => {
+    const id = await createSession(run)
+    await open(id)
+    const main = screen.getByRole('main')
+    const heading = screen.getByRole('heading', { level: 1 })
+    expect(heading.textContent).toMatch(/^Rum [A-Z0-9]{6}$/)
+    expect(main.contains(heading)).toBe(true)
+    const seats = screen.getByRole('group', { name: 'Platser vid bordet' })
+    expect(main.contains(seats)).toBe(true)
+    expect(within(seats).getAllByRole('button').map((b) => b.getAttribute('data-seat'))).toEqual(['A', 'B'])
   })
 })
 

@@ -85,6 +85,37 @@ describe('the wizard on a desk', () => {
   })
 })
 
+// Landmarks and the preview (#555 A-9, A-10): the form is the page's main content, all three steps
+// of it, and the card beside it is one picture with one name rather than three nameless drawings.
+describe.each([1280, 390])('the wizard to a screen reader at %i px (#555)', (width) => {
+  it('keeps every step inside main, and has nothing to call a side column', () => {
+    wizardAt(width)
+    const main = screen.getByRole('main')
+    expect(screen.queryByRole('complementary')).toBeNull()
+    expect(main.contains(screen.getByLabelText('Spelets namn'))).toBe(true)
+    for (const panel of document.querySelectorAll('[role="tabpanel"]')) expect(main.contains(panel)).toBe(true)
+    if (width === 1280) {
+      expect(main.contains(screen.getByLabelText('Kostnad namn'))).toBe(true)
+      expect(main.contains(screen.getByRole('button', { name: /Skapa spelet/ }))).toBe(true)
+    }
+  })
+})
+
+describe('the wizard\'s preview (#555)', () => {
+  it('is one image named for the card it shows, with nothing inside it to read on its own', async () => {
+    const user = userEvent.setup()
+    wizardAt(1280)
+    const preview = document.querySelector('.byd-wizard-preview')!
+    const images = screen.getAllByRole('img').filter((image) => preview.contains(image))
+    expect(images).toHaveLength(1)
+    const [card] = images
+    expect(card!.contains(preview.querySelector('[data-card]'))).toBe(true)
+    await user.clear(screen.getByLabelText('kort 1 Titel'))
+    await user.type(screen.getByLabelText('kort 1 Titel'), 'Drake')
+    expect(card!.getAttribute('aria-label')).toBe('Förhandsvisning av kort 1: Drake')
+  })
+})
+
 // Where the focus goes (#476): Enter in a field did nothing, a new field or card left the focus
 // on the button that made it, and a control that went away or locked left it on <body>.
 describe('the focus in the wizard (#476)', () => {
@@ -183,5 +214,31 @@ describe('a field added twice (#476)', () => {
     await user.click(screen.getByRole('button', { name: '+ Textfält' }))
     expect(screen.getByLabelText('Nytt textfält 2 namn')).toBeTruthy()
     expect(document.querySelector('[aria-invalid="true"]')).toBeNull()
+  })
+})
+
+// A field taken away hands the keys to its neighbour (#555 A-4, WCAG 2.4.3): the × that was pressed
+// is gone, and the focus used to fall to the page, where a screen reader is told nothing.
+describe('taking a field away keeps the keys in the field list (#555)', () => {
+  it('moves the focus to the next field’s ×, and to the field before it when it was the last', async () => {
+    const user = userEvent.setup()
+    wizardAt(1280)
+    const removes = () => [...document.querySelectorAll<HTMLButtonElement>('.byd-wizard-field-list button')]
+    const [first] = removes()
+    const next = removes()[1]!
+    first!.focus()
+    await user.keyboard('{Enter}')
+    expect(document.activeElement).toBe(next)
+    // The last one: the focus goes back to the field before it.
+    const all = removes()
+    all.at(-1)!.focus()
+    await user.keyboard('{Enter}')
+    expect(document.activeElement).toBe(removes().at(-1))
+    // None left: the way to add one.
+    while (removes().length > 0) {
+      removes()[0]!.focus()
+      await user.keyboard('{Enter}')
+    }
+    expect(document.activeElement?.closest('.byd-wizard-add-fields')).not.toBeNull()
   })
 })

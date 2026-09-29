@@ -56,6 +56,7 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'status.slow.editor.heading': 'The game is taking its time',
   'status.slow.editor.text': 'We are still waiting for the server.',
 
+  'status.spent.mark': 'No longer valid',
   'status.missing.mark': 'Not found',
   'status.missing.heading': 'We cannot find what you asked for',
   'status.missing.text': 'The link points at something that is no longer there. Check the address, or go to your games.',

@@ -87,10 +87,11 @@
   margin: 0;
   max-width: 46ch;
 }
+/* The heading takes the focus without anyone pressing a key, and it cannot be pressed: a ring
+   round it on a phone reads as something to tap (#555). */
 .byd-status h1:focus-visible,
 .byd-status h2:focus-visible {
-  outline: 3px solid currentcolor;
-  outline-offset: 4px;
+  outline: none;
 }
 .byd-status-mark {
   font-size: 12px;

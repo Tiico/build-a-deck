@@ -26,7 +26,7 @@ const ask = () => screen.getByRole('button', { name: 'Hjälp om inloggningen' })
 // The box travels when it is asked for (#304), so it is waited for.
 const opened = async () => {
   fireEvent.click(ask())
-  return screen.findByRole('dialog', { name: 'inloggningen' })
+  return screen.findByRole('dialog', { name: 'Hjälp om inloggningen' })
 }
 
 beforeEach(() => {
@@ -129,7 +129,7 @@ const wizard = (width: number) => {
 const asks = () => screen.getAllByRole('button', { name: /^Hjälp om / })
 const askOn = async (topic: string) => {
   fireEvent.click(screen.getByRole('button', { name: `Hjälp om ${topic}` }))
-  return screen.findByRole('dialog', { name: topic })
+  return screen.findByRole('dialog', { name: `Hjälp om ${topic}` })
 }
 // The question mark stands in the heading's own row, and nowhere else on the step.
 const atHeading = (topic: string, heading: RegExp) => {

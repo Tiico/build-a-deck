@@ -66,6 +66,7 @@ export const svStatus = {
   'status.slow.editor.heading': 'Spelet dröjer',
   'status.slow.editor.text': 'Vi väntar fortfarande på servern.',
 
+  'status.spent.mark': 'Gäller inte',
   'status.missing.mark': 'Finns inte',
   'status.missing.heading': 'Vi hittar inte det du sökte',
   'status.missing.text': 'Länken pekar på något som inte finns längre. Kontrollera adressen, eller gå till dina spel.',

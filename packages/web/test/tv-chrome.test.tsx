@@ -50,12 +50,12 @@ describe('the table screen’s own help (L32, #305)', () => {
       </TvChrome>,
     )
     const ask = screen.getByRole('button', { name: 'Hjälp om att ansluta' })
-    expect(screen.queryByRole('dialog', { name: 'att ansluta' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Hjälp om att ansluta' })).toBeNull()
     fireEvent.pointerEnter(ask)
-    expect(screen.queryByRole('dialog', { name: 'att ansluta' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Hjälp om att ansluta' })).toBeNull()
 
     fireEvent.click(ask)
-    expect((await screen.findByRole('dialog', { name: 'att ansluta' })).textContent).toMatch(/rumskoden/i)
+    expect((await screen.findByRole('dialog', { name: 'Hjälp om att ansluta' })).textContent).toMatch(/rumskoden/i)
     // The code itself is what the room reads from across it, and it stays where it stands.
     expect(screen.getByText('KX7P')).toBeTruthy()
   })

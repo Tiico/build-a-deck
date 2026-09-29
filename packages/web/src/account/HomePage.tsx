@@ -96,6 +96,11 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
     return q.toString()
   }
   const justSaved = claimed ? played?.find((p) => p.session === claimed) : undefined
+  // The banner is drawn with its text, so it is said once in the page's live region (4.1.3, #555).
+  const savedLine = justSaved ? t('home.claimed', { game: justSaved.game ?? t('home.claimed.some-table'), name: justSaved.name }) : null
+  useEffect(() => {
+    if (savedLine) say?.('polite', savedLine)
+  }, [savedLine, say])
   if (offline) return <StatusNotice notice={noticeFor('offline', 'app', t)} surface="page" onRetry={() => setAttempt((n) => n + 1)} />
   if (email === undefined) return <StatusNotice notice={noticeFor('loading', 'app', t)} surface="page" />
   if (email === null) {
@@ -109,7 +114,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
     <div className="byd-account byd-account-wide" data-page="home">
       <div className="byd-home">
         {justSaved && (
-          <div className="byd-home-claimed" role="status">
+          <div className="byd-home-claimed">
             <span>
               {marked(t('home.claimed'), {
                 game: <b>{justSaved.game ?? t('home.claimed.some-table')}</b>,
@@ -125,22 +130,27 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           <button type="button" className="byd-secondary byd-home-import" onClick={() => setImporting(true)}>
             {t('home.import.open')}
           </button>
+          {/* The dots between the parts are drawn by the stylesheet at the start of the part they
+              lead, so a wrapped line never ends on one (#555). */}
           <span className="byd-who">
-            {email} ·{' '}
-            <a
-              href="/login"
-              onClick={(e) => {
-                e.preventDefault()
-                void logout(http).then(() => setEmail(null))
-              }}
-            >
-              {t('home.logout')}
-            </a>{' '}
-            ·{' '}
-            <label className="byd-lang">
-              {t('account.language')}
-              <LanguagePicker />
-            </label>
+            <span>{email}</span>
+            <span>
+              <a
+                href="/login"
+                onClick={(e) => {
+                  e.preventDefault()
+                  void logout(http).then(() => setEmail(null))
+                }}
+              >
+                {t('home.logout')}
+              </a>
+            </span>
+            <span>
+              <label className="byd-lang">
+                {t('account.language')}
+                <LanguagePicker />
+              </label>
+            </span>
           </span>
         </header>
         {notice && (
@@ -149,7 +159,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           </p>
         )}
         {started && (
-          <div className="byd-home-started" role="status">
+          <div className="byd-home-started">
             {marked(t('home.started'), { code: <strong>{started.code}</strong> })}{' '}
             <a href={tableUrl(started.id, started.hostKey, server)} target="_blank" rel="noreferrer" aria-label={t('home.started.open.aria')}>
               {t('home.started.open')}
@@ -210,8 +220,11 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           <div className="byd-home-grid" data-projects style={{ ['--byd-home-card-h' as string]: `${HOME_CARD_H}px` }}>
             {projects.map((p) => (
               <div key={p.id} className="byd-home-game" data-project={p.id}>
+                {/* The game's name leads the link's name, and the card on the tile comes last (#555):
+                    going through the page's links, the game is what is heard first. */}
                 <a
                   className="byd-home-open"
+                  aria-labelledby={`home-${p.id}-name home-${p.id}-line home-${p.id}-card`}
                   href={`/editor?${suffix(new URLSearchParams({ project: p.id }))}`}
                   onClick={(e) => {
                     e.preventDefault()
@@ -219,8 +232,10 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                   }}
                 >
                   <GameCard project={p.id} peek={p.card ?? null} face={cards?.[p.id] ?? null} lost={cardsLost} assetBase={http} t={t} />
-                  <strong>{p.name}</strong>
-                  <span className="byd-muted">{t('home.card.line', { rev: p.rev, played: playedLine(t, lang, p) })}</span>
+                  <strong id={`home-${p.id}-name`}>{p.name}</strong>
+                  <span id={`home-${p.id}-line`} className="byd-muted">
+                    {t('home.card.line', { rev: p.rev, played: playedLine(t, lang, p) })}
+                  </span>
                 </a>
                 <button
                   ref={(el) => {
@@ -252,6 +267,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                         void startTable(http, p.id, t).then(
                           (table) => {
                             setStarted({ project: p.id, ...table })
+                            say?.('polite', t('home.started', { code: table.code }))
                             setProjects((list) => (list ?? []).map((x) => (x.id === p.id ? { ...x, tables: (x.tables ?? 0) + 1 } : x)))
                           },
                           (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
@@ -376,10 +392,11 @@ function GameCard({ project, peek, face, lost, assetBase, t }: { project: string
   // object every call, and a fresh object is a fresh compile of the card on every render (#320).
   const icons = useMemo(() => (face ? previewIcons({ icons: face.icons }, assetBase) : {}), [face, assetBase])
   const fonts = useMemo(() => (face ? previewFonts({ template: { faces: { front: face.face } }, ...(face.fonts ? { fonts: face.fonts } : {}) }, assetBase) : {}), [face, assetBase])
-  if (!peek) return <div className="byd-home-card" data-empty>{t('home.card.nocards')}</div>
-  if (!face) return <div className="byd-home-card" {...(lost ? { 'data-lost': '' } : { 'data-waiting': '' })} aria-hidden="true" />
+  const id = `home-${project}-card`
+  if (!peek) return <div id={id} className="byd-home-card" data-empty>{t('home.card.nocards')}</div>
+  if (!face) return <div id={id} className="byd-home-card" {...(lost ? { 'data-lost': '' } : { 'data-waiting': '' })} aria-hidden="true" />
   return (
-    <div className="byd-home-card" role="img" aria-label={t('home.card.first', { title: face.title })}>
+    <div id={id} className="byd-home-card" role="img" aria-label={t('home.card.first', { title: face.title })}>
       <CardPreview
         id={`home-${project}`}
         face={face.face}
