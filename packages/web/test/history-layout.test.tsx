@@ -96,7 +96,11 @@ async function markupOfPanel(filled: boolean): Promise<string> {
     await screen.findByRole('button', { name: /rev \d/ })
     fireEvent.click(screen.getByRole('button', { name: /rev \d/ }))
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
-    await waitFor(() => expect(panel.querySelector(filled ? '.byd-history-parts i' : 'li[data-waiting]')).not.toBeNull())
+    // The summaries are the server's diff of every version against the one before, a real round
+    // trip. At the worked history's 26 versions it took up to 739 ms with every core busy, and the
+    // whole gate — Chromium and three hundred other files on the same machine — pushed it past
+    // waitFor's default second. The condition is the right one; the budget is the server's work.
+    await waitFor(() => expect(panel.querySelector(filled ? '.byd-history-parts i' : 'li[data-waiting]')).not.toBeNull(), { timeout: 10_000 })
     return document.querySelector('.byd-editor')!.outerHTML
   } finally {
     unmount()
