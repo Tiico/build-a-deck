@@ -393,7 +393,12 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const viewing = manual && size ? frameRect(manual, size, reach, CAMERA_MIN_MM) : null
   const heldCamera = useRef<Rect | null>(null)
   if (!drag) heldCamera.current = viewing ?? auto
-  const cam = useGlide(drivable ? heldCamera.current : null, glideMs)
+  // A reader who has asked for less motion is not asked to watch the felt pan and zoom when somebody
+  // else plays (#560 P-13, WCAG 2.3.3): the camera stands where it is going at once, as it does on
+  // its first frame. The same `STILL` the shuffle's fan answers to (L35), asked once for the felt
+  // and not once per pile.
+  const still = useStill()
+  const cam = useGlide(drivable ? heldCamera.current : null, still ? 0 : glideMs)
   const placed = drivable && cam ? cameraOf(cam, size, floorRect) : null
   // The lens (#502): a multiple of the fit and an offset of the wood in its frame, in pixels. It is
   // the table mode's own, where the felt is tilted and turned to the seat and the television's
@@ -554,8 +559,6 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const carried = new Map(peers.filter((p) => p.drag).map((p) => [p.drag?.component ?? '', p]))
   const movedBy = new Map(recent.map((r) => [r.component, r.seat]))
   const shuffling = new Map(shuffles.map((s) => [s.pile, s.seq]))
-  // Whether the reader has asked for less motion (L35): asked once for the felt, not once per pile.
-  const still = useStill()
 
   // Pointer → table millimetres, fixed when a drag begins (the layout does not change under it).
   const mapper = (): ((cx: number, cy: number) => Point) | null => {
