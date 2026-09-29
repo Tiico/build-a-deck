@@ -3069,6 +3069,11 @@ Anmärkningen stoppar inget, och bordet är uppe när den står där.
 «Visa på kortväggen» öppnar väggen med telefonens öga (E5, #512), där de korten är markerade.
 Den står efter start och inte före, eftersom storleken är renderarens och finns först när texturerna finns: samma tal som spelarna får, och ingen väntan vid start.
 
+Förtydligat 2026-09-29 (#560 P-25, beställarens beslut): **TV:ns golv på 24 px gäller all text på TV:n, inte bara korttext.**
+Tabellens kolumn heter «golv för all text», och det är så den ska läsas: zonnamn, högnamn, «anslut med telefon», «Starta om», INSPEKTION och «Senast» står i samma rum på tre meter som kortet.
+Granskningen 2026-09-29 mätte kromet till 13–16 px.
+Eftersom TV:ns filt är höjdbunden och varje etikett i 24 px kostar plats prototypas kromet i #573 innan det byggs.
+
 ## L. Editorn (grillad 2026-09-06)
 
 E1, E2 och E3 gav principerna; det här är hur de blir konkreta.
