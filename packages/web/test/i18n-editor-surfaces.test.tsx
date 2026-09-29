@@ -8,7 +8,7 @@ import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
-import { useEditSocketImplementation, type EditSocketCtor } from '../src/editor/ProjectClient.js'
+import { setEditSocketImplementation, type EditSocketCtor } from '../src/editor/ProjectClient.js'
 import { EditSocket } from './setup.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -19,7 +19,7 @@ beforeEach(async () => {
   run = await startServer()
 })
 afterEach(async () => {
-  useEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
+  setEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
   await run.stop()
 })
 
@@ -93,7 +93,7 @@ describe('the editor\'s newer surfaces in the reader\'s own language (A4)', () =
   // cannot follow each reader instead: it goes over the wire once and is read by everyone.
   it('lets an editor without an account arrive under the word in their own language', async () => {
     const seen: string[] = []
-    useEditSocketImplementation(
+    setEditSocketImplementation(
       class extends EditSocket {
         constructor(url: string) {
           seen.push(url)

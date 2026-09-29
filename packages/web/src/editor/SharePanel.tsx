@@ -52,6 +52,7 @@ export function SharePanel({ http, project, here, onClose, draft = '', onDraft }
     return () => {
       live = false
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- a new language is no reason to ask for the invitations again
   }, [http, project, waited])
   useEffect(() => {
     let live = true
@@ -62,6 +63,7 @@ export function SharePanel({ http, project, here, onClose, draft = '', onDraft }
     return () => {
       live = false
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- a new language is no reason to ask for the members again
   }, [http, project, asked])
 
   const present = new Set(here.map((p) => p.name))

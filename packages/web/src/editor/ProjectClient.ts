@@ -37,7 +37,7 @@ export type WebSocketLike = {
 }
 export type EditSocketCtor = new (url: string) => WebSocketLike
 let editSocket: EditSocketCtor | null = null
-export function useEditSocketImplementation(ctor: EditSocketCtor | null): void {
+export function setEditSocketImplementation(ctor: EditSocketCtor | null): void {
   editSocket = ctor
 }
 const makeEditSocket = (url: string): WebSocketLike => new (editSocket ?? (globalThis.WebSocket as unknown as EditSocketCtor))(url)

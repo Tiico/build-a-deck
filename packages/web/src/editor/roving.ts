@@ -68,6 +68,7 @@ export function useRoving({ ids, selected, orientation, followFocus = false, onA
     setFocused(heir)
     if (heir && stranded) elements.current.get(heir)?.focus()
     // The list's identity is its ids, not the array that carries them.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the list’s identity is its ids, not the array that carries them
   }, [ids.join('\u0000')])
 
   const itemProps = (id: string): RovingItemProps => ({

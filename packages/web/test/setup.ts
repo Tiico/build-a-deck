@@ -54,9 +54,9 @@ if (typeof document !== 'undefined' && typeof MutationObserver !== 'undefined') 
 // Under jsdom, its WebSocket wraps Node's undici, which dispatches jsdom Events on a Node
 // EventTarget and throws. The `ws` client speaks the same API and has no such split.
 import { WebSocket as WsClient } from 'ws'
-import { useWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
-import { useEditSocketImplementation, type EditSocketCtor, type WebSocketLike } from '../src/editor/ProjectClient.js'
-if (typeof document !== 'undefined') useWebSocketImplementation(WsClient as unknown as WebSocketCtor)
+import { setWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
+import { setEditSocketImplementation, type EditSocketCtor, type WebSocketLike } from '../src/editor/ProjectClient.js'
+if (typeof document !== 'undefined') setWebSocketImplementation(WsClient as unknown as WebSocketCtor)
 
 // A cookie jar for fetch under jsdom: the session cookie (G1) must survive from the login link to
 // the next request, as it does in a browser. Cookies are kept per origin and sent back to it.
@@ -74,7 +74,7 @@ export class EditSocket extends WsClient {
     super(url, cookie ? { headers: { cookie } } : {})
   }
 }
-useEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
+setEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
 
 // An actor that will not make a version of what it is holding, because someone else already made
 // one from the same rev. Everything else about the socket is what a socket does.

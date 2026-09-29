@@ -45,6 +45,7 @@ export function HandSpread({ cards, faces, onOpen, onClose }: HandSpreadProps) {
     if (raised.current || !first) return
     raised.current = true
     roving.focus(first)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the focus goes with the grid once, when its first card is known
   }, [first])
   // The grid is what Escape is about while it stands; whatever it was raised over stays.
   useDoor('standing', onClose)

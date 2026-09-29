@@ -192,6 +192,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
   // one has just been made, or the import, when its report was left. Taken once the tab has drawn
   // what the press made, since a book arrives through the client and not in the same render.
   const [land, setLand] = useState<'book' | 'import' | null>(null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs until what the press made is drawn; it stops itself by clearing `land`
   useEffect(() => {
     if (land === null) return
     const to =

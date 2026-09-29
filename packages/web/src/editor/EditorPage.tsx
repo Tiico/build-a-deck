@@ -187,6 +187,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     const seen = watching
     const timer = setTimeout(() => setStalledAt(seen), timing.renderStalledAfterMs)
     return () => clearTimeout(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the watched record is new every render; its three values are what is watched
   }, [watching?.table, watching?.done, watching?.asked, timing.renderStalledAfterMs])
   useEffect(() => {
     if (!client || !table) return
@@ -209,6 +210,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       stop = true
       if (timer) clearTimeout(timer)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- another table or version starts the poll over; the kind is read as it stands
   }, [client, table?.id, table?.version])
 
   // Whether the project differs from the one the server holds (#8, L9). Everything the editor

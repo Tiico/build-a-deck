@@ -1,5 +1,6 @@
 import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
+import reactHooks from 'eslint-plugin-react-hooks'
 
 export default tseslint.config(
   // Prototypes are throwaway by definition (see CLAUDE.md); they are not held to lint.
@@ -17,6 +18,17 @@ export default tseslint.config(
       // wraps; the names left behind are the point, not an oversight. This is the base rule's
       // own default, which the TypeScript rule does not carry over.
       '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
+    },
+  },
+  {
+    // The rules of hooks (#562): a hook after an early return is called only on the renders that
+    // get past it, which #534 shipped and only React's own warning caught. React Compiler's newer
+    // rules in the plugin's `recommended` are a question of their own and are not taken here.
+    files: ['packages/web/**/*.{ts,tsx}'],
+    plugins: { 'react-hooks': reactHooks },
+    rules: {
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'error',
     },
   },
   {

@@ -32,6 +32,7 @@ export function HistoryPanel({ client, onClose, onRestored, onCompare }: History
   const [asked, setAsked] = useState(0)
   // The clock the whole panel is read against, taken once when it opens: today must not turn into
   // yesterday between two rows of the same list.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- asking again takes a new clock, which is the point of the dependency
   const now = useMemo(() => Date.now(), [asked])
   // The panel takes the keyboard with it when it opens (#477), the way the help box does (L32):
   // otherwise the next Tab walked the tabs, the people and the table buttons before it got here.

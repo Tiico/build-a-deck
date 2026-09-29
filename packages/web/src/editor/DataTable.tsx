@@ -693,6 +693,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     if (!selectedRow) return
     document.querySelector<HTMLElement>(`tr[data-card-ref="${CSS.escape(selectedRow)}"]`)?.scrollIntoView?.({ block: 'center' })
     // Only on opening.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only on opening; after that the scroll is the designer’s
   }, [])
   useEffect(() => {
     if (!arriving) return

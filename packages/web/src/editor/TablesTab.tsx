@@ -450,6 +450,7 @@ function RowWays({ table, ways, button }: { table: string; ways: WayItem[]; butt
   // back from what the reader does inside it.
   useEffect(() => {
     if (open) focus(ways[0]?.id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- on opening only: the menu must not take the focus back
   }, [open])
   const close = () => {
     setOpen(false)

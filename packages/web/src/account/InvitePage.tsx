@@ -50,6 +50,7 @@ export function InvitePage({ onNavigate = go }: InvitePageProps) {
     // The token is the page: it cannot change while the page is open, and the language the answer
     // is read in is no reason to follow the invitation a second time. Asking again after a lost
     // line is.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the token is the page; a new language is no reason to follow the invitation again
   }, [http, token, server, onNavigate, attempt])
   // Whoever reads anything here is signed in: without a login the page has already gone on to the
   // login card.

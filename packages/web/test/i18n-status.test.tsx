@@ -85,6 +85,7 @@ describe('the nine states in the reader\'s own language (A4)', () => {
       const handle = useRefusal('phone')
       useEffect(() => {
         void handle.watch(Promise.resolve({ ok: false, reason: 'pile draw is empty' }))
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- watched once, from the handle the component was given
       }, [handle.watch])
       return <Refusal handle={handle} />
     }

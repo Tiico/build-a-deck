@@ -52,7 +52,7 @@ export type WebSocketLike = {
 export type WebSocketCtor = new (url: string) => WebSocketLike
 
 let implementation: WebSocketCtor | null = null
-export function useWebSocketImplementation(ctor: WebSocketCtor | null): void {
+export function setWebSocketImplementation(ctor: WebSocketCtor | null): void {
   implementation = ctor
 }
 const makeSocket = (url: string): WebSocketLike => new (implementation ?? (globalThis.WebSocket as unknown as WebSocketCtor))(url)

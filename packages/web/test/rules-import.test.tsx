@@ -7,7 +7,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { useEditSocketImplementation, type EditSocketCtor } from '../src/editor/ProjectClient.js'
+import { setEditSocketImplementation, type EditSocketCtor } from '../src/editor/ProjectClient.js'
 import { EditSocket, RefusesToSave } from './setup.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -18,7 +18,7 @@ beforeEach(async () => {
   run = await startServer()
 })
 afterEach(async () => {
-  useEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
+  setEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
   await run.stop()
 })
 
@@ -382,7 +382,7 @@ describe('the report is read without a mouse (L12)', () => {
 // waits on the screen rather than on a clock.
 describe('when the save behind the import collides with someone else (#131)', () => {
   it('says the book is not saved and what to do about it, and leaves nothing behind on the server', async () => {
-    useEditSocketImplementation(RefusesToSave)
+    setEditSocketImplementation(RefusesToSave)
     await openRules()
     fireEvent.click(within(await pick()).getByRole('button', { name: 'Gör boken' }))
 

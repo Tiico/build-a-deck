@@ -9,7 +9,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { useEditSocketImplementation, type EditSocketCtor } from '../src/editor/ProjectClient.js'
+import { setEditSocketImplementation, type EditSocketCtor } from '../src/editor/ProjectClient.js'
 import { EditSocket } from './setup.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -20,7 +20,7 @@ beforeEach(async () => {
   run = await startServer()
 })
 afterEach(async () => {
-  useEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
+  setEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
   await run.stop()
 })
 
