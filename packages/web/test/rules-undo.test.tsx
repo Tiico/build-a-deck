@@ -40,7 +40,7 @@ describe('a step back in a field of the rulebook', () => {
     await user.click(screen.getByRole('tab', { name: 'Regler' }))
     const book = document.querySelector('[data-rulebook]') as HTMLElement
     await user.click(within(book).getByText('Dra ett kort.'))
-    const field = (await within(book).findByLabelText('Text t1')) as HTMLTextAreaElement
+    const field = (await within(book).findByLabelText('Text under Så spelar ni')) as HTMLTextAreaElement
     await user.clear(field)
     await user.type(field, 'Lägg två kort')
 

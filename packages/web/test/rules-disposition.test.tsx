@@ -45,7 +45,7 @@ describe('the empty rules tab is the book’s disposition (#131)', () => {
     expect(within(toc()).getAllByRole('link').map((a) => a.textContent)).toEqual(SECTIONS.map((s) => `${s}\u00b7 tomt`))
     expect(
       within(sheet())
-        .getAllByRole('heading', { level: 2 })
+        .getAllByRole('heading', { level: 4 })
         .map((h) => h.textContent),
     ).toEqual(SECTIONS)
   })
@@ -77,7 +77,7 @@ describe('the three ways in (#131)', () => {
     await openRules()
     fireEvent.click(screen.getByRole('button', { name: 'Börja skriva reglerna' }))
     const written = await waitFor(() => document.querySelector('[data-rulebook]') as HTMLElement)
-    expect(within(written).getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Översikt'])
+    expect(within(written).getAllByRole('heading', { level: 4 }).map((h) => h.textContent)).toEqual(['Översikt'])
     expect(within(written).getByText('Vad handlar spelet om, i två meningar? Hur många spelar, och hur länge?')).toBeTruthy()
   })
 
@@ -85,7 +85,7 @@ describe('the three ways in (#131)', () => {
     await openRules()
     fireEvent.click(screen.getByRole('button', { name: 'Börja från en mall' }))
     const written = await waitFor(() => document.querySelector('[data-rulebook]') as HTMLElement)
-    expect(within(written).getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(SECTIONS)
+    expect(within(written).getAllByRole('heading', { level: 4 }).map((h) => h.textContent)).toEqual(SECTIONS)
     // Every section asks its question rather than standing as an empty line.
     expect(written.querySelectorAll('[data-ask]')).toHaveLength(SECTIONS.length)
     // And the setup is the game's own zones (B5), so it is right from the start and never drawn.
@@ -122,7 +122,7 @@ describe('the template is a proposal and not a form (#131)', () => {
     fireEvent.click(within(written).getByRole('heading', { name: 'Handlingar' }))
     fireEvent.click(await within(written).findByRole('button', { name: 'Ta bort avsnittet' }))
     await waitFor(() =>
-      expect(within(written).getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Översikt', 'Uppställning', 'En tur', 'Spelet tar slut']),
+      expect(within(written).getAllByRole('heading', { level: 4 }).map((h) => h.textContent)).toEqual(['Översikt', 'Uppställning', 'En tur', 'Spelet tar slut']),
     )
     // The question under it goes with it; a heading taken away never leaves its own prompt behind.
     expect(written.querySelectorAll('[data-ask]')).toHaveLength(asked - 1)

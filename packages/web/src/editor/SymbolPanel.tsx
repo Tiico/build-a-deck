@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { CARD_PX, cornerPx } from './corner.js'
@@ -13,6 +13,7 @@ import type { ProjectClient } from './ProjectClient.js'
 import { useT, type Key } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
 import { Question } from './Question.js'
+import { useSay } from '../status/StatusLive.js'
 
 // The symbol library (E4), from the prototype: the library is a surface of its own, with search,
 // categories and the licence on every symbol. Taking one in names it in the project's icon set,
@@ -61,14 +62,17 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
   // The library's symbols the game already has, by the source its credit names (#481): the name
   // in the game is the designer's and may be anything, the source is the library's own id.
   const had = new Map(Object.entries(doc.credits ?? {}).flatMap(([name, credit]) => (doc.icons[name] !== undefined && credit.source ? [[credit.source, name] as const] : [])))
-  const tileId = useId()
   const [hadSaid, setHadSaid] = useState<string | null>(null)
   const take = (symbol: GameSymbol) => {
     // A second press on a symbol the game has says so, rather than doing nothing without a word.
     const kept = had.get(symbol.id)
     if (kept !== undefined) return setHadSaid(t('symbols.take.had', { name: symbolName(symbol, t), as: `{${kept}}` }))
     setHadSaid(null)
-    void client.useSymbol(symbol, undefined, t).catch((err: unknown) => setNotice(err instanceof Error ? err.message : String(err)))
+    void client
+      .useSymbol(symbol, undefined, t)
+      // Taking it in is said where a second press is (#558): the tile changed and nothing read it.
+      .then(() => setHadSaid(t('symbols.taken', { name: symbolName(symbol, t) })))
+      .catch((err: unknown) => setNotice(err instanceof Error ? err.message : String(err)))
   }
   return (
     <div className="byd-symbols" data-symbol-panel>
@@ -128,14 +132,16 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
                     key={s.id}
                     type="button"
                     className="byd-symbols-tile"
-                    aria-label={t('symbols.take', { name: symbolName(s, t) })}
-                    {...(had.has(s.id) ? { 'data-had': 'true', 'aria-describedby': `${tileId}-${s.id}` } : {})}
+                    // A symbol the game has is named by what the tile shows (#558), since a press
+                    // on it no longer takes anything in: it says it is already there.
+                    aria-label={had.has(s.id) ? t('symbols.had.name', { name: symbolName(s, t) }) : t('symbols.take', { name: symbolName(s, t) })}
+                    {...(had.has(s.id) ? { 'data-had': 'true' } : {})}
                     onClick={() => take(s)}
                   >
                     <img src={symbolPreview(s)} alt="" />
                     <span>{symbolName(s, t)}</span>
                     {/* In words and not only as a mark (L13): the game already has this one. */}
-                    {had.has(s.id) ? <small id={`${tileId}-${s.id}`} className="byd-symbols-had">{t('symbols.had')}</small> : <small>{s.licence}</small>}
+                    {had.has(s.id) ? <small className="byd-symbols-had">{t('symbols.had')}</small> : <small>{s.licence}</small>}
                   </button>
                 ))}
               </div>
@@ -210,15 +216,25 @@ function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
   // Taken once the set has drawn itself without the symbol: the last one takes the heading with
   // it, and the library's search is then the nearest thing standing.
   const [landing, setLanding] = useState(0)
+  // The last one leaves the line that says the game has none where the list stood, and that is
+  // where the hand goes (#558), rather than to the library's search at the top of the page.
+  const none = useRef<HTMLParagraphElement>(null)
+  const say = useSay()
   useEffect(() => {
     if (landing === 0) return
-    ;(heading.current ?? (document.querySelector(`[aria-label="${CSS.escape(t('symbols.search'))}"]`) as HTMLElement | null))?.focus()
-  }, [landing, t])
+    ;(heading.current ?? none.current)?.focus()
+  }, [landing])
   const [ask, removing] = useRemoval((name) => {
     client.removeIcon(name)
     setLanding((n) => n + 1)
+    say?.('polite', t('symbols.removed', { name }))
   }, (name) => `[aria-label="${CSS.escape(t('symbols.remove', { name }))}"]`)
-  if (names.length === 0) return <p className="byd-symbols-empty">{t(client.mayEdit ? 'symbols.set.none' : 'symbols.set.none.reading')}</p>
+  if (names.length === 0)
+    return (
+      <p ref={none} className="byd-symbols-empty" tabIndex={-1}>
+        {t(client.mayEdit ? 'symbols.set.none' : 'symbols.set.none.reading')}
+      </p>
+    )
   return (
     <section className="byd-symbols-set">
       <h2 ref={heading} tabIndex={-1}>

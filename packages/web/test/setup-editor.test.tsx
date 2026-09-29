@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { EditorPage } from '../src/editor/EditorPage.js'
+import { StatusLive } from '../src/status/StatusLive.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
@@ -16,7 +17,7 @@ afterEach(async () => {
   await run.stop()
 })
 
-async function openBord(): Promise<void> {
+async function openBord(opts: { live?: boolean } = {}): Promise<void> {
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   // Ask the fixture whether it is answering before standing the editor up (#149). The editor
   // opens a project with a single `fetch` and keeps no second attempt, so a surface that loses
@@ -24,7 +25,15 @@ async function openBord(): Promise<void> {
   // word waited for below never comes. Seen once under a full gate run: «Spara» was not there,
   // and neither was anything else the editor draws. The word stays, saying only what it can say.
   await run.answering()
-  render(<EditorPage />)
+  render(
+    opts.live ? (
+      <StatusLive>
+        <EditorPage />
+      </StatusLive>
+    ) : (
+      <EditorPage />
+    ),
+  )
   await screen.findByText('Skogens herrar')
   fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
 }
@@ -95,11 +104,19 @@ describe('the setup editor (B5, K2): what the table cannot be without', () => {
     expect(screen.queryByRole('button', { name: 'Ta bort Draghög' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Ta bort Hand' })).toBeNull()
     expect(row('table').textContent).toMatch(/fast/)
+    // Why it stays is said to the keyboard too (#558 F-10): it was a title and an aria-label on a
+    // span with no role, which neither a keyboard nor the tree could reach. The row's name button
+    // is described by it now, and the mark itself is only the word.
+    const name = within(row('table')).getByRole('button', { name: /Spelyta/ })
+    expect(document.getElementById(name.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Filten är bordet självt och kan inte tas bort.')
+    expect(row('table').querySelector('.byd-setup-fast')!.hasAttribute('aria-label')).toBe(false)
 
     fireEvent.click(within(row('draw')).getByRole('button', { name: /Draghög/ }))
-    expect(screen.getByText(/Lägg leken i en annan hög först/)).toBeTruthy()
+    // Said in the open row, and as the row's description (#558).
+    expect(screen.getAllByText(/Lägg leken i en annan hög först/).some((el) => !el.classList.contains('byd-offscreen'))).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Hand 2 platser' }))
-    expect(within(row('hand:A')).getByLabelText(/En plats är en hand/)).toBeTruthy()
+    const hand = within(row('hand:A')).getByRole('button', { name: /Hand/ })
+    expect(document.getElementById(hand.getAttribute('aria-describedby') ?? '')?.textContent).toMatch(/En plats är en hand/)
 
     // En egen hög tar rollen; först då går draghögen att ta bort.
     fireEvent.click(screen.getByRole('button', { name: '＋ Hög' }))
@@ -396,6 +413,40 @@ describe('the felt under a keyboard (#480)', () => {
     fireEvent.keyDown(handles[0]!, { key: ' ' })
     expect(handles[0]!.getAttribute('aria-pressed')).toBe('true')
     expect(handles[1]!.getAttribute('aria-pressed')).toBe('false')
+  })
+})
+
+// The nudge is the keyboard's way to move a zone, and nobody who did not open the help knew of it
+// (#558 F-3): the handle says its keys, and a move is said where the page says things.
+describe('a handle says its keys and where a nudge left the zone (#558)', () => {
+  it('is described by its keys, and says the new place after an arrow', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord({ live: true })
+    const handle = document.querySelector<HTMLElement>('[data-zone-handle="discard"]') ?? document.querySelectorAll<HTMLElement>('[data-zone-handle]')[1]!
+    const keys = document.getElementById(handle.getAttribute('aria-describedby') ?? '')
+    expect(keys?.textContent).toMatch(/Piltangenterna/)
+    handle.focus()
+    fireEvent.keyDown(handle, { key: 'ArrowRight' })
+    const name = (handle.getAttribute('aria-label') ?? '').replace(/^Zon /, '').split(' · ')[0]!
+    await waitFor(() => expect(document.querySelector('[data-status-live="polite"]')!.textContent).toMatch(new RegExp(`^${name}.* · \\d+, \\d+ mm$`)))
+  })
+})
+
+// Delete took the chosen zone away wherever the focus stood that was not a field (#558 F-12): on
+// the help's question mark, on «Spara». It answers on the felt and on the zone's own row only.
+describe('Delete takes a zone away only where the zone is (#558)', () => {
+  it('leaves the chosen zone alone when the focus is on a control elsewhere', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    fireEvent.click(screen.getByRole('button', { name: '＋ Hög' }))
+    expect(handle('hog-1')).toBeTruthy()
+    const tab = screen.getByRole('tab', { name: 'Bord' })
+    tab.focus()
+    fireEvent.keyDown(tab, { key: 'Delete' })
+    expect(handle('hog-1')).toBeTruthy()
+    handle('hog-1')!.focus()
+    fireEvent.keyDown(handle('hog-1')!, { key: 'Delete' })
+    expect(handle('hog-1')).toBeNull()
   })
 })
 

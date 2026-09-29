@@ -116,7 +116,9 @@ describe('zonlistan vid platserna (#175): handen räknas som de andra', () => {
     expect(seatRows()).toEqual(['Hand 1 av 2 platser'])
     // Och den står fast av sitt eget skäl: en plats *är* en hand (C3), så raden bär inget ×.
     expect(screen.queryByRole('button', { name: /^Ta bort Hand/ })).toBeNull()
-    expect(within(seatsList()).getByLabelText('En plats är en hand. Ta bort platsen i stället, så följer handen med.')).toBeTruthy()
+    // The reason is the row's description (#558), which a keyboard reaches with the row.
+    const hand = within(seatsList()).getByRole('button', { name: /^Hand/ })
+    expect(document.getElementById(hand.getAttribute('aria-describedby') ?? '')?.textContent).toBe('En plats är en hand. Ta bort platsen i stället, så följer handen med.')
   })
 })
 

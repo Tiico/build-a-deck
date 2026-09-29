@@ -72,18 +72,18 @@ describe('the one ＋ the book draws (#216)', () => {
   it('follows the pointer from block to block, and goes home when the pointer leaves the book', async () => {
     await openBook()
     fireEvent.pointerOver(blockOf('t1').querySelector('[role="button"]')!)
-    await waitFor(() => expect(says()).toBe('Lägg till efter t1'))
+    await waitFor(() => expect(says()).toBe('Lägg till efter texten 1 under Så spelar ni'))
     expect(plusses()).toHaveLength(1)
     expect(blockOf('t1').contains(plus())).toBe(true)
     fireEvent.pointerOver(blockOf('l1').querySelector('[role="button"]')!)
-    await waitFor(() => expect(says()).toBe('Lägg till efter l1'))
+    await waitFor(() => expect(says()).toBe('Lägg till efter listan under Så spelar ni'))
     expect(blockOf('t1').contains(plus())).toBe(false)
     // The title is not a block and not nothing either: it is the first gap, and the ＋ goes there
     // rather than staying where the hand last was.
     fireEvent.pointerOver(within(book()).getByRole('heading', { name: 'Skogens herrar' }))
     await waitFor(() => expect(says()).toBe('Lägg till först'))
     fireEvent.pointerOver(blockOf('l1').querySelector('[role="button"]')!)
-    await waitFor(() => expect(says()).toBe('Lägg till efter l1'))
+    await waitFor(() => expect(says()).toBe('Lägg till efter listan under Så spelar ni'))
     fireEvent.pointerLeave(book())
     await waitFor(() => expect(says()).toBe('Lägg till först'))
   })
@@ -93,7 +93,7 @@ describe('the one ＋ the book draws (#216)', () => {
     await openBook()
     const handle = blockOf('t2').querySelector<HTMLElement>('[role="button"]')!
     handle.focus()
-    await waitFor(() => expect(says()).toBe('Lägg till efter t2'))
+    await waitFor(() => expect(says()).toBe('Lägg till efter texten 2 under Så spelar ni'))
     // Next in the tab order means next in the document: the block's own handle, then its ＋, then
     // the block after it. Nothing here sets `tabindex`, so the order is the order of the page.
     const stops = [...book().querySelectorAll<HTMLElement>('[role="button"], button')]
@@ -103,7 +103,7 @@ describe('the one ＋ the book draws (#216)', () => {
     // neighbour must not take the button out from under a hand that has just reached it.
     plus().focus()
     fireEvent.pointerOver(blockOf('h1').querySelector('[role="button"]')!)
-    await waitFor(() => expect(says()).toBe('Lägg till efter t2'))
+    await waitFor(() => expect(says()).toBe('Lägg till efter texten 2 under Så spelar ni'))
     expect(document.activeElement).toBe(plus())
   })
 
@@ -114,7 +114,7 @@ describe('the one ＋ the book draws (#216)', () => {
     await openBook()
     const handle = blockOf('t1').querySelector<HTMLElement>('[role="button"]')!
     handle.focus()
-    await waitFor(() => expect(says()).toBe('Lägg till efter t1'))
+    await waitFor(() => expect(says()).toBe('Lägg till efter texten 1 under Så spelar ni'))
     screen.getByRole('tab', { name: 'Kortvägg' }).focus()
     await waitFor(() => expect(says()).toBe('Lägg till först'))
     expect(plusses()).toHaveLength(1)
@@ -131,15 +131,15 @@ describe('the one ＋ the book draws (#216)', () => {
     expect(ids().slice(1)).toEqual(['h1', 't1', 't2', 'l1'])
     // The new block is opened where it landed, and the ＋ follows it there rather than staying in
     // a gap the book no longer has in the same place.
-    const laid = ids()[0]!
-    expect(await within(book()).findByLabelText(`Text ${laid}`)).toBeTruthy()
-    await waitFor(() => expect(says()).toBe(`Lägg till efter ${laid}`))
+    // It is named by where it stands, the start of the book, and not by its id (#558).
+    expect(await within(book()).findByLabelText('Text i början av boken')).toBeTruthy()
+    await waitFor(() => expect(says()).toBe('Lägg till efter texten i början av boken'))
   })
 
   it('lays it after the block it stands at, when it stands at one', async () => {
     await openBook()
     fireEvent.pointerOver(blockOf('t1').querySelector('[role="button"]')!)
-    await waitFor(() => expect(says()).toBe('Lägg till efter t1'))
+    await waitFor(() => expect(says()).toBe('Lägg till efter texten 1 under Så spelar ni'))
     fireEvent.click(plus())
     const ids = () => [...book().querySelectorAll('[data-block]')].map((b) => b.getAttribute('data-block'))
     await waitFor(() => expect(ids()).toHaveLength(5))

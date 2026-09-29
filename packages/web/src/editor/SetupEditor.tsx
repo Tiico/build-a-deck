@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
+import { useSay } from '../status/StatusLive.js'
 import type { ProjectDoc } from '@byd/server'
 import type { Motif } from '@byd/template'
 import type { ZoneBeside } from '@byd/protocol'
@@ -104,7 +105,14 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
   const selectedZone = setup.zones.find((z) => z.id === selected)
   // Att välja en zon markerar dess rad, och den raden måste finnas: hör zonen till en familj fälls
   // familjen ut. En hopfälld familj som markeras vore en markering ingen ser.
+  // Where the panel was opened from, so closing it hands the focus back there (#558, K16's rule):
+  // a handle on the felt, or the zone's row in the list. Read before the panel takes the focus.
+  const opener = useRef<HTMLElement | null>(null)
   const select = (id: string | null) => {
+    if (id !== null) {
+      const at = document.activeElement
+      opener.current = at instanceof HTMLElement && at.closest('[data-zone-handle], [data-zone-row]') ? at : null
+    }
     setSelected(id)
     const zone = id === null ? undefined : setup.zones.find((z) => z.id === id)
     const role = zone === undefined ? null : familyRole(zone)
@@ -121,7 +129,9 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
   // ligger i — så den läses ur DOM:en på samma sätt som regelpanelen läser sin (#152).
   const close = (zone: Zone) => {
     select(null)
-    document.querySelector<HTMLElement>(`[data-zone-row="${zone.id}"] .byd-setup-name`)?.focus()
+    const back = opener.current?.isConnected ? opener.current : document.querySelector<HTMLElement>(`[data-zone-row="${zone.id}"] .byd-setup-name`)
+    opener.current = null
+    back?.focus()
   }
   const remove = (zone: Zone) => {
     client.removeZone(zone.id)
@@ -553,11 +563,12 @@ function FamilyRow({ family, setup, open, onOpen, children }: { family: Family; 
   const n = family.zones.length
   const seats = setup.seats.length
   const why = fixed(setup, family.first, t)
+  const whyId = useId()
   const allFixed = why !== null && family.zones.every((zone) => fixed(setup, zone, t) !== null)
   return (
     <li data-zone-family={family.role} data-open={open ? 'true' : undefined}>
       <div className="byd-setup-row">
-        <button type="button" className="byd-setup-name" aria-expanded={open} onClick={onOpen}>
+        <button type="button" className="byd-setup-name" aria-expanded={open} onClick={onOpen} {...(allFixed ? { 'aria-describedby': whyId } : {})}>
           <i className="byd-setup-caret" aria-hidden="true" />
           <i aria-hidden="true" data-kind={family.first.kind} />
           {/* Mellanrummen är läsordningen och inte layouten: raden är en flexrad, som inte ritar
@@ -568,9 +579,16 @@ function FamilyRow({ family, setup, open, onOpen, children }: { family: Family; 
           {family.differ.length > 0 && <> <em data-differ="true">{t('setup.family.differ', { n: family.differ.length })}</em></>}
         </button>
         {allFixed && (
-          <span className="byd-setup-fast" title={why} aria-label={why}>
-            {t('setup.fixed')}
-          </span>
+          <>
+            <span className="byd-setup-fast" title={why}>
+              {t('setup.fixed')}
+            </span>
+            {/* Why it stays, said to the keyboard as the row's description (#558): a title is
+                reached by a pointer alone, and an aria-label on a span with no role by nothing. */}
+            <span id={whyId} className="byd-offscreen">
+              {why}
+            </span>
+          </>
         )}
       </div>
       {open && <ul aria-label={family.name}>{children}</ul>}
@@ -604,12 +622,13 @@ function ZoneRow({
   const t = useT()
   const reading = useContext(Reading)
   const why = fixed(setup, zone, t)
+  const whyId = useId()
   const open = selected === zone.id
   const deck = setup.deckZone === zone.id
   return (
     <li data-zone-row={zone.id} data-open={open ? 'true' : undefined}>
       <div className="byd-setup-row">
-        <button type="button" className="byd-setup-name" aria-expanded={open} onClick={() => onSelect(open ? null : zone.id)}>
+        <button type="button" className="byd-setup-name" aria-expanded={open} onClick={() => onSelect(open ? null : zone.id)} {...(why !== null ? { 'aria-describedby': whyId } : {})}>
           <i aria-hidden="true" data-kind={zone.kind} />
           <span>{zone.name}</span>
           {zone.owner !== undefined && <> <em>{zone.owner}</em></>}
@@ -620,9 +639,14 @@ function ZoneRow({
             ×
           </button>
         ) : (
-          <span className="byd-setup-fast" title={why} aria-label={why}>
-            {t('setup.fixed')}
-          </span>
+          <>
+            <span className="byd-setup-fast" title={why}>
+              {t('setup.fixed')}
+            </span>
+            <span id={whyId} className="byd-offscreen">
+              {why}
+            </span>
+          </>
         )}
       </div>
       {open &&
@@ -669,6 +693,8 @@ function Felt({
   onRemove(zone: Zone): void
 }) {
   const t = useT()
+  const say = useSay()
+  const keysId = useId()
   // What the back is compiled from, held by identity and by the parts of the document it is
   // actually made of. The wall can key these on the whole document because nothing redraws the
   // wall but the deck; the felt is dragged, and a zone moved a millimetre is a new document with
@@ -757,18 +783,26 @@ function Felt({
     const d = e.key === 'ArrowLeft' ? { x: -step, y: 0 } : e.key === 'ArrowRight' ? { x: step, y: 0 } : e.key === 'ArrowUp' ? { x: 0, y: -step } : e.key === 'ArrowDown' ? { x: 0, y: step } : null
     if (!d) return
     e.preventDefault()
-    onGeometry(z.id, onTable(z, { ...z.geometry, x: z.geometry.x + d.x, y: z.geometry.y + d.y }))
+    const to = onTable(z, { ...z.geometry, x: z.geometry.x + d.x, y: z.geometry.y + d.y })
+    onGeometry(z.id, to)
+    // The place a nudge left the zone, said where the page says things (#558): the text beside
+    // the list changed, and nothing read it.
+    say?.('polite', t('setup.moved', { name: z.owner ? `${z.name} · ${z.owner}` : z.name, x: Math.round(to.x), y: Math.round(to.y) }))
   }
-  // Delete is bound to the window and not to the handle, because a handle never has the focus: the
-  // pointer that selects it is the pointer that starts a drag, and the drag takes the default
-  // action — focus among it — away. Bound where the focus actually is, a field being typed in is
-  // the one place the key means something else.
+  // Delete is bound to the window and not to the handle, because a handle chosen by the pointer
+  // has no focus: the pointer that selects it is the pointer that starts a drag, and the drag takes
+  // the default action — focus among it — away. So the key answers where the zone is and nowhere
+  // else (#558): on the felt, on the zone's own row, and on nothing at all after a pointer chose
+  // it. On the help's question mark or on «Spara» it took the chosen zone away unasked.
   const state = useRef({ selected, setup, onRemove })
   state.current = { selected, setup, onRemove }
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Delete' && e.key !== 'Backspace') return
       if (inAField(e)) return
+      const at = e.target instanceof Element ? e.target : null
+      const here = at === null || at === document.body || at.closest('.byd-setup-felt, [data-zone-row]') !== null
+      if (!here) return
       const now = state.current
       const zone = now.setup.zones.find((z) => z.id === now.selected)
       if (!zone || fixed(now.setup, zone, t) !== null) return
@@ -828,6 +862,7 @@ function Felt({
               t('setup.zone', { name: z.owner ? `${z.name} · ${z.owner}` : z.name })
             }
             aria-pressed={selected === z.id}
+            aria-describedby={keysId}
             data-zone-handle={z.id}
             data-kind={z.kind}
             data-deck={z.id === setup.deckZone ? 'true' : undefined}
@@ -852,6 +887,10 @@ function Felt({
       })
   return (
     <div className="byd-setup-felt" ref={feltBox}>
+      {/* What a handle answers to, said to every handle (#558): the arrows were in the help alone. */}
+      <span id={keysId} className="byd-offscreen">
+        {t('setup.handle.keys')}
+      </span>
       {/* The handles carry no names of their own (K19): the felt underneath already names every
           area and every pile, and `seatNames` asks it for the one name this surface would
           otherwise be missing — whose hand is whose, which the played TV gets from its dock. The

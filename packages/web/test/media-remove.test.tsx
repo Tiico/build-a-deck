@@ -66,6 +66,20 @@ describe('a picture is taken out of the game (#318)', () => {
     await waitFor(() => expect(document.activeElement).toBe(within(tile(SKOG)!).getByRole('button', { name: 'Ta bort skogsbryn.jpg' })))
   })
 
+  // The last picture took its control and the hand with it to the page, and nothing was said
+  // (#558 F-5). The hand goes to the way to add one, and the status line says what went.
+  it('says what went, and hands the focus to the way in when the last picture leaves', async () => {
+    const doc = projectDoc()
+    doc.pictures = { [KARTA]: { name: 'karta.png' } }
+    await run.projects.replace(run.projectId, (await run.projects.load(run.projectId))!.rev, doc)
+    const user = await openMedia()
+    within(tile(KARTA)!).getByRole('button', { name: 'Ta bort karta.png' }).focus()
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(tile(KARTA)).toBeNull())
+    expect(document.querySelector('.byd-media-said')!.textContent).toBe('karta.png är borttagen.')
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Ladda upp media')))
+  })
+
   it('asks before taking a picture cards use, names the cards up to a cap, and keeps everything on Avbryt', async () => {
     const user = await openMedia()
     const remove = within(tile(SKOG)!).getByRole('button', { name: 'Ta bort skogsbryn.jpg' })

@@ -300,7 +300,21 @@ export function ZoneActions({ doc, zone, onPatch, onClose, reading = false }: Zo
                 </button>
               </p>
             )}
-            <button type="button" className="byd-zone-action-new" onClick={() => onPatch({ actions: [...actions, { id: `a${Date.now().toString(36)}`, label: t('setup.actions.newName'), steps: [blank('split')] }] })}>
+            <button
+              type="button"
+              className="byd-zone-action-new"
+              onClick={() => {
+                const id = `a${Date.now().toString(36)}`
+                onPatch({ actions: [...actions, { id, label: t('setup.actions.newName'), steps: [blank('split')] }] })
+                // The hand goes to the new action's name, marked so typing replaces it (#558): it
+                // stayed on this button, which the new action had pushed far down the panel.
+                requestAnimationFrame(() => {
+                  const name = document.querySelector<HTMLInputElement>(`[data-action="${CSS.escape(id)}"] > input`)
+                  name?.focus()
+                  name?.select()
+                })
+              }}
+            >
               {t('setup.actions.new')}
             </button>
           </fieldset>

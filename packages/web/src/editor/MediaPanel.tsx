@@ -72,6 +72,9 @@ export const NAMED_CARDS = 5
 type Named = { name: string; named: boolean }
 type Result = (Named & { hash: string }) | (Named & { why: string })
 
+// The focus target that is not a picture's own control: the way to add one.
+const ADD = '\u0000add'
+
 export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, saving = [] }: MediaPanelProps) {
   const t = useT()
   const said = useId()
@@ -82,9 +85,12 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
   const [leaving, setLeaving] = useState<string | null>(null)
   const removeRefs = useRef(new Map<string, HTMLButtonElement>())
   const [refocus, setRefocus] = useState<string | null>(null)
+  // The way to add a picture, where the hand goes when the last one leaves (#558).
+  const addRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
     if (refocus === null) return
-    removeRefs.current.get(refocus)?.focus()
+    if (refocus === ADD) addRef.current?.focus()
+    else removeRefs.current.get(refocus)?.focus()
     setRefocus(null)
   }, [refocus])
   // The template is a user too (#320): a picture it carries by itself is asked about as one on
@@ -93,8 +99,10 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
     if (cards.length === 0 && !template) {
       onRemove?.(hash)
       // The control goes with the picture, so the hand goes to the nearest one still standing
-      // rather than to the page (#481), as it does after the question.
-      setRefocus(media.find((m) => m.hash !== hash)?.hash ?? null)
+      // rather than to the page (#481), as it does after the question — and to the way to add one
+      // when it was the last (#558), which is also when the leaving is said.
+      setRefocus(media.find((m) => m.hash !== hash)?.hash ?? ADD)
+      setNote(t('media.removed', { name: nameOf(hash, cards) }))
     } else setLeaving(hash)
   }
   const asked = leaving === null ? undefined : media.find((m) => m.hash === leaving)
@@ -265,7 +273,7 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
           {onAdd && (
             <label className="byd-secondary byd-media-add">
               {t('media.add')}
-              <input className="byd-offscreen" type="file" accept="image/*" multiple aria-label={t('media.add')} onChange={(event) => void take([...(event.target.files ?? [])], event.target)} />
+              <input ref={addRef} className="byd-offscreen" type="file" accept="image/*" multiple aria-label={t('media.add')} onChange={(event) => void take([...(event.target.files ?? [])], event.target)} />
             </label>
           )}
         </div>
@@ -315,7 +323,8 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
               setLeaving(null)
               // The control that asked goes with the picture, so the hand is put on the nearest
               // one still standing rather than dropped on the page.
-              setRefocus(media.find((m) => m.hash !== asked.hash)?.hash ?? null)
+              setRefocus(media.find((m) => m.hash !== asked.hash)?.hash ?? ADD)
+              setNote(t('media.removed', { name: nameOf(asked.hash, asked.cards) }))
             }}
             onCancel={() => {
               setLeaving(null)

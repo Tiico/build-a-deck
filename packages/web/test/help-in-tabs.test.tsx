@@ -44,7 +44,9 @@ const opened = async (topic: string): Promise<HTMLElement> => {
 }
 // The counters' own button, by the catalogue's word for it.
 const ADD_COUNTER = translate('sv', 'setup.counter.add')
-const absent = (text: RegExp) => expect(screen.queryByText(text)).toBeNull()
+// On the surface, that is: L32 is about what the surface draws. A control's own description
+// (#558) is read with the control and draws nothing, so it is not a line the surface carries.
+const absent = (text: RegExp) => expect(screen.queryAllByText(text).filter((el) => !el.classList.contains('byd-offscreen'))).toEqual([])
 
 describe('Mall: the layer column (L32, the surface that measured the cost)', () => {
   it('keeps one line about dragging and moves the keyboard behind the question mark', async () => {

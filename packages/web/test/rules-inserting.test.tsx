@@ -100,17 +100,17 @@ describe('the way a reference is put into a rule (#215)', () => {
     await openBook()
     // The row it replaces drew one button per reference, always, under every block opened.
     expect(referables(namesOfProject(bigGame()))).toHaveLength(28)
-    await openBlock('t1', 'Text t1')
+    await openBlock('t1', 'Text 1 under Så spelar ni')
     const names = within(blockOf('t1'))
       .getAllByRole('button')
       .map((b) => b.getAttribute('aria-label') ?? b.textContent)
     // What is left is the block's own two controls: take it away, and add one after it.
-    expect(names).toEqual(['Ta bort blocket', 'Lägg till efter t1'])
+    expect(names).toEqual(['Ta bort blocket', 'Lägg till efter texten 1 under Så spelar ni'])
   })
 
   it('opens a list of what the game has when [[ is written, and adds no stop to the tab order', async () => {
     await openBook()
-    const field = await openBlock('t1', 'Text t1')
+    const field = await openBlock('t1', 'Text 1 under Så spelar ni')
     expect(list()).toBeNull()
     typeInto(field, 'Dra ett kort ur [[')
     await waitFor(() => expect(list()).toBeTruthy())
@@ -122,7 +122,7 @@ describe('the way a reference is put into a rule (#215)', () => {
 
   it('narrows as more is written, and holds every reference the game has within reach', async () => {
     await openBook()
-    const field = await openBlock('t1', 'Text t1')
+    const field = await openBlock('t1', 'Text 1 under Så spelar ni')
     typeInto(field, 'Dra ett kort ur [[')
     // Eight of twenty-eight: the list is a list and never the whole game.
     await waitFor(() => expect(optionNames()).toHaveLength(8))
@@ -140,7 +140,7 @@ describe('the way a reference is put into a rule (#215)', () => {
 
   it('says so when nothing in the game is called what was written, rather than vanishing', async () => {
     await openBook()
-    const field = await openBlock('t1', 'Text t1')
+    const field = await openBlock('t1', 'Text 1 under Så spelar ni')
     typeInto(field, 'Dra ett kort ur [[xyzzy')
     expect(await within(book()).findByText('Inget med det namnet')).toBeTruthy()
     expect(within(list()!).queryAllByRole('option')).toHaveLength(0)
@@ -148,7 +148,7 @@ describe('the way a reference is put into a rule (#215)', () => {
 
   it('puts the reference where the designer is writing, not at the end of the field, and keeps the focus', async () => {
     await openBook()
-    const field = await openBlock('t1', 'Text t1')
+    const field = await openBlock('t1', 'Text 1 under Så spelar ni')
     field.focus()
     // Mid-sentence, with the rest of it already written behind the caret. The row this replaces
     // could only ever append, so a reference could not be put into a sentence at all.
@@ -156,7 +156,7 @@ describe('the way a reference is put into a rule (#215)', () => {
     typeInto(field, `${upto} och lägg det i kasthögen.`, upto.length)
     await waitFor(() => expect(optionNames()).toEqual(['Draghög']))
     fireEvent.keyDown(field, { key: 'Enter' })
-    const written = () => within(book()).getByLabelText('Text t1') as HTMLTextAreaElement
+    const written = () => within(book()).getByLabelText('Text 1 under Så spelar ni') as HTMLTextAreaElement
     await waitFor(() => expect(written().value).toBe('Dra ett kort ur [[zon:draw]] och lägg det i kasthögen.'))
     // The list is gone, and the sentence is still being written: the focus never left the field,
     // and the caret stands after what was put in.
@@ -170,7 +170,7 @@ describe('the way a reference is put into a rule (#215)', () => {
 
   it('walks the list with the arrows and takes the one they stand on', async () => {
     await openBook()
-    const field = await openBlock('t1', 'Text t1')
+    const field = await openBlock('t1', 'Text 1 under Så spelar ni')
     field.focus()
     typeInto(field, 'Dra ett kort ur [[dra')
     await waitFor(() => expect(optionNames()).toEqual(['Draghög', 'Drake', 'Klippvandraren']))
@@ -178,7 +178,7 @@ describe('the way a reference is put into a rule (#215)', () => {
     fireEvent.keyDown(field, { key: 'ArrowDown' })
     await waitFor(() => expect(field.getAttribute('aria-activedescendant')).toBe(within(list()!).getAllByRole('option')[2]!.id))
     fireEvent.keyDown(field, { key: 'Enter' })
-    await waitFor(() => expect((within(book()).getByLabelText('Text t1') as HTMLTextAreaElement).value).toBe('Dra ett kort ur [[kort:c10]]'))
+    await waitFor(() => expect((within(book()).getByLabelText('Text 1 under Så spelar ni') as HTMLTextAreaElement).value).toBe('Dra ett kort ur [[kort:c10]]'))
   })
 
   // Eight rows are eight targets, and every target in the editor is 44 px tall: the box is 230 px
@@ -194,7 +194,7 @@ describe('the way a reference is put into a rule (#215)', () => {
     }
     try {
       await openBook()
-      const field = await openBlock('t1', 'Text t1')
+      const field = await openBlock('t1', 'Text 1 under Så spelar ni')
       field.focus()
       typeInto(field, 'Dra ett kort ur [[')
       await waitFor(() => expect(optionNames()).toHaveLength(8))
@@ -208,22 +208,22 @@ describe('the way a reference is put into a rule (#215)', () => {
 
   it('closes on Escape and leaves what was written exactly as it was written', async () => {
     await openBook()
-    const field = await openBlock('t1', 'Text t1')
+    const field = await openBlock('t1', 'Text 1 under Så spelar ni')
     field.focus()
     typeInto(field, 'Dra ett kort ur [[drag')
     await waitFor(() => expect(list()).toBeTruthy())
     fireEvent.keyDown(field, { key: 'Escape' })
     await waitFor(() => expect(list()).toBeNull())
-    expect((within(book()).getByLabelText('Text t1') as HTMLTextAreaElement).value).toBe('Dra ett kort ur [[drag')
+    expect((within(book()).getByLabelText('Text 1 under Så spelar ni') as HTMLTextAreaElement).value).toBe('Dra ett kort ur [[drag')
   })
 
   it('leaves a [[ that led nowhere standing in the book as the text somebody typed', async () => {
     await openBook()
-    const field = await openBlock('t1', 'Text t1')
+    const field = await openBlock('t1', 'Text 1 under Så spelar ni')
     field.focus()
     typeInto(field, 'Skriv [[ för att hämta något.')
     fireEvent.keyDown(field, { key: 'Escape' })
-    fireEvent.blur(within(book()).getByLabelText('Text t1'))
+    fireEvent.blur(within(book()).getByLabelText('Text 1 under Så spelar ni'))
     await waitFor(() => expect(book().querySelector('textarea')).toBeNull())
     // Two characters somebody typed are two characters somebody typed, in the book and in what
     // is saved of it.
@@ -235,26 +235,26 @@ describe('the way a reference is put into a rule (#215)', () => {
   it('answers in a list block too, and writes into the point being written in', async () => {
     await openBook()
     fireEvent.click(blockOf('l1').querySelector('[role="button"]')!)
-    const item = (await within(book()).findByLabelText('Punkt 2 i l1')) as HTMLInputElement
+    const item = (await within(book()).findByLabelText('Punkt 2 i listan under Så spelar ni')) as HTMLInputElement
     item.focus()
     typeInto(item, 'Spela ut i [[spel')
     await waitFor(() => expect(optionNames()).toEqual(['Spelyta']))
     fireEvent.keyDown(item, { key: 'Enter' })
-    await waitFor(() => expect((within(book()).getByLabelText('Punkt 2 i l1') as HTMLInputElement).value).toBe('Spela ut i [[zon:table]]'))
+    await waitFor(() => expect((within(book()).getByLabelText('Punkt 2 i listan under Så spelar ni') as HTMLInputElement).value).toBe('Spela ut i [[zon:table]]'))
     // The point beside it is untouched: the list belongs to the field the caret is in.
-    expect((within(book()).getByLabelText('Punkt 1 i l1') as HTMLInputElement).value).toBe('Dra.')
+    expect((within(book()).getByLabelText('Punkt 1 i listan under Så spelar ni') as HTMLInputElement).value).toBe('Dra.')
   })
 
   it('is one step back of its own, so the way out of an insertion is one press', async () => {
     await openBook()
-    const field = await openBlock('t1', 'Text t1')
+    const field = await openBlock('t1', 'Text 1 under Så spelar ni')
     field.focus()
     typeInto(field, 'Dra ett kort ur [[drag')
     await waitFor(() => expect(optionNames()).toEqual(['Draghög']))
     fireEvent.keyDown(field, { key: 'Enter' })
-    await waitFor(() => expect((within(book()).getByLabelText('Text t1') as HTMLTextAreaElement).value).toBe('Dra ett kort ur [[zon:draw]]'))
+    await waitFor(() => expect((within(book()).getByLabelText('Text 1 under Så spelar ni') as HTMLTextAreaElement).value).toBe('Dra ett kort ur [[zon:draw]]'))
     // The chord is the project's and not a field's (#35), so the block is left first.
-    fireEvent.blur(within(book()).getByLabelText('Text t1'))
+    fireEvent.blur(within(book()).getByLabelText('Text 1 under Så spelar ni'))
     await waitFor(() => expect(book().querySelector('textarea')).toBeNull())
     fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
     // One press, and what she typed is back — the letters, not the sentence before them.
@@ -269,14 +269,14 @@ describe('the way a reference is put into a rule (#215)', () => {
   it('answers in a heading too, now that a heading reads its references (#272)', async () => {
     await openBook()
     fireEvent.click(blockOf('h1').querySelector('[role="button"]')!)
-    const head = (await within(book()).findByLabelText('Rubrik h1')) as HTMLInputElement
+    const head = (await within(book()).findByLabelText('Rubrik 1')) as HTMLInputElement
     head.focus()
     typeInto(head, 'Så spelar ni [[drag')
     await waitFor(() => expect(optionNames()).toEqual(['Draghög']))
     fireEvent.keyDown(head, { key: 'Enter' })
-    await waitFor(() => expect((within(book()).getByLabelText('Rubrik h1') as HTMLInputElement).value).toBe('Så spelar ni [[zon:draw]]'))
+    await waitFor(() => expect((within(book()).getByLabelText('Rubrik 1') as HTMLInputElement).value).toBe('Så spelar ni [[zon:draw]]'))
     // And what the reader meets above the section is the name, never what was written.
-    fireEvent.blur(within(book()).getByLabelText('Rubrik h1'))
+    fireEvent.blur(within(book()).getByLabelText('Rubrik 1'))
     await waitFor(() => expect(blockOf('h1').textContent).toContain('Så spelar ni Draghög'))
   })
 })
@@ -292,7 +292,7 @@ describe('the list opens where there is room (#229)', () => {
     window.innerHeight = 800
     window.innerWidth = 1200
     await openBook()
-    const field = await openBlock('t1', 'Text t1')
+    const field = await openBlock('t1', 'Text 1 under Så spelar ni')
     const wrap = field.closest('.byd-rules-field') as HTMLElement
     wrap.getBoundingClientRect = () =>
       ({ x: 540, y: topPx, top: topPx, left: 540, right: 1108, bottom: topPx + 90, width: 568, height: 90, toJSON: () => ({}) }) as DOMRect
@@ -323,13 +323,13 @@ describe('the list opens where there is room (#229)', () => {
 describe('what an empty block says about the way in (#215)', () => {
   it('carries the block’s own question on the first line and the tool’s notice on the second', async () => {
     await openBook()
-    const field = await openBlock('t2', 'Text t2')
+    const field = await openBlock('t2', 'Text 2 under Så spelar ni')
     expect(field.getAttribute('placeholder')).toBe(`${ASK}\n[[ hämtar en zon eller ett kort.`)
   })
 
   it('carries the notice alone in a block the designer added herself, which has no question', async () => {
     await openBook()
-    const field = await openBlock('t3', 'Text t3')
+    const field = await openBlock('t3', 'Text 3 under Så spelar ni')
     expect(field.getAttribute('placeholder')).toBe('[[ hämtar en zon eller ett kort.')
   })
 })

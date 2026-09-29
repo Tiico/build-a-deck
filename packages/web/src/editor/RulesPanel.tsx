@@ -1,4 +1,5 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type FocusEvent, type PointerEvent } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type PointerEvent } from 'react'
+import { blockNames, type BlockName } from './rulesNames.js'
 import { arrangementOf, namesOfProject } from '@byd/server/doc'
 import type { ProjectDoc, RuleBlock, RuleDoc } from '@byd/server'
 import {
@@ -109,6 +110,8 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
   // The book is rendered against this very document, setup and all (#270): what the designer
   // reads is what a table locked to this version would hand its players.
   const out = renderRules(shown, names, arrangementOf(doc))
+  // What each block is called to a reader who cannot see where it stands (#558): by its section.
+  const called = useMemo(() => blockNames(shown.blocks, t), [shown.blocks, t])
   // The area the book is read in, whichever mode it is being read in. At the moment the switch is
   // pressed this is still the one being left, which is what makes the reading a reading of it.
   const scroller = (): HTMLElement | null => (mode === 'table' ? shelf.current : page.current)
@@ -272,7 +275,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
     <button
       type="button"
       className="byd-rules-add"
-      aria-label={id === null ? t('rules.addFirst') : t('rules.addAfter', { id })}
+      aria-label={id === null ? t('rules.addFirst') : t('rules.addAfter', { what: called.get(id)?.self ?? '' })}
       onFocus={() => {
         held.current = true
       }}
@@ -454,7 +457,10 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
                   }
                 : {})}
             >
-              <h1>{out.title}</h1>
+              {/* The book is read one level under its tab's own heading (#558): the title at 3,
+                  the sections at 4 and 5. The tags stay, so the book keeps the look the reader
+                  and the print share. */}
+              <h1 aria-level={3}>{out.title}</h1>
               {/* ＋:ets viloläge: skarven före block ett (#216). Den skarven har inget block före
                   sig att hänga vid, och utan en plats av sitt eget vore den enda skarven i boken
                   som varken en hand eller ett tangentbord kunde nå. */}
@@ -497,6 +503,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
                     {editing === b.id && source && writing ? (
                       <Editing
                         block={source}
+                        called={called.get(b.id) ?? { where: '', self: '', nth: '' }}
                         names={names}
                         assetBase={assetBase}
                         onPatch={(next, gesture) => patch(b.id, next, gesture)}
@@ -954,10 +961,15 @@ function Booklet({ client }: { client: ProjectClient }) {
   }
   return (
     <>
-      <button type="button" className="byd-rules-booklet" disabled={state === 'working'} onClick={() => void order()}>
+      {/* `aria-disabled` and not `disabled` while it works (#558): a disabled button lets go of the
+          focus, to <body>, and on the error the focus never came back. The press is refused here
+          instead, and the status line is there from the start so what it says is heard. */}
+      <button type="button" className="byd-rules-booklet" aria-disabled={state === 'working' ? 'true' : undefined} onClick={() => state !== 'working' && void order()}>
         {t('rules.booklet')}
       </button>
-      {state === 'working' && <span role="status">{t('rules.booklet.rendering')}</span>}
+      <span role="status" className={state === 'working' ? undefined : 'byd-offscreen'}>
+        {state === 'working' ? t('rules.booklet.rendering') : ''}
+      </span>
       {typeof state === 'object' && 'error' in state && <span role="alert">{state.error}</span>}
     </>
   )
@@ -966,6 +978,7 @@ function Booklet({ client }: { client: ProjectClient }) {
 // One block open for writing, with the things the game has to hand.
 function Editing({
   block,
+  called,
   names,
   assetBase,
   onPatch,
@@ -973,6 +986,7 @@ function Editing({
   onRemove,
 }: {
   block: RuleBlock
+  called: BlockName
   names: Names
   assetBase?: string | undefined
   onPatch(next: Partial<RuleBlock>, gesture?: string): void
@@ -1128,7 +1142,7 @@ function Editing({
           <textarea
             autoFocus
             rows={4}
-            aria-label={t('rules.block.text', { id: block.id })}
+            aria-label={t('rules.block.text', { nth: called.nth, where: called.where })}
             placeholder={block.ask ? `${block.ask}\n${t('rules.ask.refs')}` : t('rules.ask.refs')}
             value={block.text}
             {...typing.visit}
@@ -1154,7 +1168,7 @@ function Editing({
           <div className="byd-rules-field">
             <input
               autoFocus
-              aria-label={t('rules.block.heading', { id: block.id })}
+              aria-label={t('rules.block.heading', { n: called.heading ?? 1 })}
               value={block.text}
               {...typing.visit}
               onChange={(e) => {
@@ -1165,7 +1179,7 @@ function Editing({
             />
             {refList('heading', (text) => onPatch({ text }))}
           </div>
-          <select aria-label={t('rules.block.level', { id: block.id })} value={block.level} onChange={(e) => onPatch({ level: e.target.value === '1' ? 1 : 2 })}>
+          <select aria-label={t('rules.block.level', { n: called.heading ?? 1 })} value={block.level} onChange={(e) => onPatch({ level: e.target.value === '1' ? 1 : 2 })}>
             <option value="1">{t('rules.level.1')}</option>
             <option value="2">{t('rules.level.2')}</option>
           </select>
@@ -1182,7 +1196,7 @@ function Editing({
               <div className="byd-rules-field" key={i}>
                 <input
                   {...(i === 0 ? { autoFocus: true } : {})}
-                  aria-label={t('rules.block.item', { n: i + 1, id: block.id })}
+                  aria-label={t('rules.block.item', { n: i + 1, block: called.self })}
                   value={item}
                   {...typing.visit}
                   onChange={(e) => {
@@ -1217,14 +1231,14 @@ function Editing({
           <div className="byd-rules-figure-fields">
             <input
               autoFocus
-              aria-label={t('rules.block.alt', { id: block.id })}
+              aria-label={t('rules.block.alt', { block: called.self })}
               placeholder={t('rules.alt.placeholder')}
               value={block.alt}
               {...typing.visit}
               onChange={(e) => onPatch({ alt: e.target.value }, typing.token())}
             />
             <input
-              aria-label={t('rules.block.caption', { id: block.id })}
+              aria-label={t('rules.block.caption', { block: called.self })}
               placeholder={t('rules.caption.placeholder')}
               value={block.caption ?? ''}
               {...typing.visit}
@@ -1233,7 +1247,7 @@ function Editing({
           </div>
         </>
       )}
-      {block.kind === 'setup' && <input autoFocus aria-label={t('rules.block.caption', { id: block.id })} placeholder={t('rules.caption.placeholder')} value={block.caption ?? ''} {...typing.visit} onChange={(e) => onPatch({ caption: e.target.value }, typing.token())} />}
+      {block.kind === 'setup' && <input autoFocus aria-label={t('rules.block.caption', { block: called.self })} placeholder={t('rules.caption.placeholder')} value={block.caption ?? ''} {...typing.visit} onChange={(e) => onPatch({ caption: e.target.value }, typing.token())} />}
       {/* What is left under an open block once the row of references is gone (#215): the one
           control that acts on the block itself. It stands in a row of its own rather than loose
           among the fields, because a block's fields are what is written in it and this is what
@@ -1255,11 +1269,11 @@ function Block({ block, source, assetBase }: { block: RenderedBlock; source?: Ru
       // rather than the chrome around it. Its words are the same nodes a paragraph's are (#272):
       // what the designer wrote as a reference is drawn as one here too.
       return block.level === 1 ? (
-        <h2 id={anchorOf(block.id)}>
+        <h2 id={anchorOf(block.id)} aria-level={4}>
           <Span nodes={block.children} />
         </h2>
       ) : (
-        <h3 id={anchorOf(block.id)}>
+        <h3 id={anchorOf(block.id)} aria-level={5}>
           <Span nodes={block.children} />
         </h3>
       )

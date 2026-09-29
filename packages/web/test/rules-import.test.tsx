@@ -90,8 +90,8 @@ describe('the report, which is the last thing read before the book (#131)', () =
     // (#191), and the tree under it therefore stands a step up: `##` is a section and `###` a
     // subheading, so the book has the disposition the file had (#202).
     const proposed = document.querySelector('[data-proposal]') as HTMLElement
-    expect(within(proposed).getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['En tur'])
-    expect(within(proposed).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Att passa'])
+    expect(within(proposed).getAllByRole('heading', { level: 4 }).map((h) => h.textContent)).toEqual(['En tur'])
+    expect(within(proposed).getAllByRole('heading', { level: 5 }).map((h) => h.textContent)).toEqual(['Att passa'])
   })
 
   it('shows the proposed book in the column too, and never marks its sections empty', async () => {
@@ -190,7 +190,7 @@ describe('what the report says about the pictures (#173)', () => {
     // And the book is called what the project is called, with no section made out of the file's
     // first line — the pictures came in under it all the same.
     const proposed = document.querySelector('[data-proposal]') as HTMLElement
-    expect(within(proposed).queryAllByRole('heading', { level: 2 })).toEqual([])
+    expect(within(proposed).queryAllByRole('heading', { level: 4 })).toEqual([])
     expect(proposed.querySelectorAll('.byd-rules-image').length).toBe(2)
   })
 
@@ -258,7 +258,7 @@ describe('the two answers the report stands beside (#131)', () => {
     const report = await pick()
     fireEvent.click(within(report).getByRole('button', { name: 'Gör boken' }))
     const written = await waitFor(() => document.querySelector('[data-rulebook]') as HTMLElement)
-    expect(within(written).getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['En tur'])
+    expect(within(written).getAllByRole('heading', { level: 4 }).map((h) => h.textContent)).toEqual(['En tur'])
     expect(written.textContent).toContain('Ett spel om skogen.')
     // The emphasis the file wrote is emphasis in the book, not four asterisks in the prose.
     expect(written.querySelector('strong')?.textContent).toBe('skogen')

@@ -163,7 +163,7 @@ describe('the editor in the reader\'s own language (A4)', () => {
     expect(screen.getByRole('button', { name: '＋ Area per seat' })).toBeTruthy()
     // What the table cannot be without says so in the reader's language too.
     expect(screen.getByRole('button', { name: 'Remove Kasthög' })).toBeTruthy()
-    expect(screen.getByLabelText('The felt is the table itself and cannot be removed.')).toBeTruthy()
+    expect(screen.getByText('The felt is the table itself and cannot be removed.').classList.contains('byd-offscreen')).toBe(true)
     // The sheet is folded until asked for (#301); the fold says so in English too.
     fireEvent.click(screen.getByRole('button', { name: 'Show the player view' }))
     expect(screen.getByRole('heading', { name: 'What the player sees' })).toBeTruthy()
