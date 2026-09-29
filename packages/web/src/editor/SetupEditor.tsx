@@ -227,9 +227,33 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+  // What the felt names (#581, beslut B): the zones the list or the felt is pointed at, stood on
+  // with the keyboard, or chosen. At 1024 the felt is 382 px across and every name drawn at once
+  // lay over its neighbours; the list beside it names every zone already, so it is the legend, and
+  // the felt answers what is asked of it. A family's row lights every zone it holds.
+  const [pointed, setPointed] = useState<readonly string[]>([])
+  const [stoodOn, setStoodOn] = useState<readonly string[]>([])
+  const askedAbout = (target: EventTarget | null): string[] => {
+    if (!(target instanceof Element)) return []
+    const one = target.closest('[data-zone-row], [data-zone-handle]')
+    const id = one?.getAttribute('data-zone-row') ?? one?.getAttribute('data-zone-handle')
+    if (id) return [id]
+    const role = target.closest('[data-zone-family]')?.getAttribute('data-zone-family')
+    return role ? setup.zones.filter((z) => familyRole(z) === role).map((z) => z.id) : []
+  }
+  const lit = new Set([...pointed, ...stoodOn, ...(selected ? [selected] : [])])
   return (
     <Reading.Provider value={!client.mayEdit}>
-    <div className="byd-setup" data-setup-editor>
+    <div
+      className="byd-setup"
+      data-setup-editor
+      onPointerOver={(event) => setPointed(askedAbout(event.target))}
+      onPointerLeave={() => setPointed([])}
+      onFocus={(event) => setStoodOn(askedAbout(event.target))}
+      onBlur={(event) => {
+        if (!(event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget))) setStoodOn([])
+      }}
+    >
       <div className="byd-setup-side">
         <SeatsPanel client={client} setup={setup} />
         <ZoneList
@@ -300,6 +324,7 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
             setup={setup}
             selected={selected}
             held={held}
+            lit={lit}
             onSelect={(id) => {
               select(id)
               setUndoable(null)
@@ -677,6 +702,7 @@ function Felt({
   setup,
   selected,
   held,
+  lit,
   onSelect,
   onGeometry,
   onRemove,
@@ -688,6 +714,7 @@ function Felt({
   setup: Setup
   selected: string | null
   held: string | null
+  lit: ReadonlySet<string>
   onSelect(id: string | null): void
   onGeometry(id: string, geometry: Geometry, gesture?: string): void
   onRemove(zone: Zone): void
@@ -900,6 +927,7 @@ function Felt({
         ref={table}
         view={view}
         mode="tv"
+        lit={lit}
         // A card's width of dark around the table (L30): the outline that says a pile lays its
         // cards off the table has to be drawn *off the table*, and was clipped by the felt's edge
         // until the felt left room for it.

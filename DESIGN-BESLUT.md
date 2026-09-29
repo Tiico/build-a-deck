@@ -2693,6 +2693,15 @@ Innanför sin egen låda kan ett grepp aldrig hamna under zonens eget namn, efte
 Grinden är samma läsning igen: `felt-names.test.tsx` läser numera också varje greppruta och säger vilka namn som ligger på en, med antalet grepp utskrivet så att ett tomt urval inte kan gå igenom.
 Kvar står ett känt fall som inte är detta: med en delad yta lagd där panelen lägger den hamnar `Räknare A`:s namn på **marknadens** ruta — en grannes, vilket K19 alltid tillåtit — och därmed på dess grepp. Det är pinnat i mätningen och ligger i #424.
 
+Reviderat 2026-09-29 (#581, beslut B efter prototyp): **på Bord-flikens filt är listan förklaringen, och filten namnger det som frågas om.**
+Vid 1024 är filten 382 px bred, och namnen, ritade intill varje zon enligt regeln ovan, låg över grannarna: sju krockar vid åtta platser i Sal's Saloon.
+I vila ritar Bord-flikens filt därför inga zon- eller högnamn; platsernas namnkort på händerna står kvar.
+Den som pekar på en rad i listan, på en familj eller på en zon på filten, står på en med tangentbordet, eller har valt en, ser zonen tändas och dess namn stå på en platta; en familj tänder alla sina zoner.
+Namnen ritas fortfarande och döljs bara, så ett tänt namn står där regeln ovan lägger det, och grindarna i `packages/web/test/felt-names.test.tsx` mäter dem med alla zoner tända på en gång: det som står fritt då står fritt för varje enskild zon.
+Det gäller Bord-fliken och ingen annan filt; spelets filter säger sina namn som förut.
+De två avvisade varianterna — namnet inne i zonen, som vid 1024 kortades till «Rä…», och en filt som vändes ett kvarts varv och ändå krockade — står med mätningar och skärmbilder i #581 och i `docs/ux-audits/2026-09-29/prototyper/581/`.
+Samma beslut: under 1280 är huvudets väg hem en pil (←) med namnet «Mina spel», så att «Sparat» får luft mellan revisionen och flikarna.
+
 ---
 
 ### K20. Filten skriver i ett eget typsnitt: Roboto Condensed, skeppat med appen (prototypat och byggt 2026-09-13, #95, #94)

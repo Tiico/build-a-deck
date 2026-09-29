@@ -19,7 +19,11 @@ for (const width of [1024, 1280]) {
       await add.click()
       await expect(page.locator('.byd-setup-felt .byd-pile')).toHaveCount(5)
       const crossings = await page.evaluate(() => {
+        // The felt names a pile when it is asked about (#581); lit all at once is the most any
+        // pointing can show, and what is clear then is clear for one.
+        for (const pile of document.querySelectorAll('.byd-setup-felt .byd-pile')) pile.setAttribute('data-lit', '')
         const names = [...document.querySelectorAll<HTMLElement>('.byd-setup-felt .byd-pile .byd-pile-name')].map((el) => ({ text: el.textContent ?? '', box: el.getBoundingClientRect() }))
+        if (names.filter((n) => n.box.width > 0).length !== 5) throw new Error(`not every pile's name is drawn: ${JSON.stringify(names.map((n) => n.text))}`)
         const out: string[] = []
         for (let i = 0; i < names.length; i++)
           for (let j = i + 1; j < names.length; j++) {

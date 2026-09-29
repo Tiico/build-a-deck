@@ -565,12 +565,16 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           ref={leaveRef}
           className="byd-editor-home"
           href={home}
+          // Under 1280 the way home is an arrow, which gives the row the room «Sparat» lacked beside
+          // the revision (#581, beslut 2026-09-29); its name is the same at every width.
+          aria-label={t('editor.home')}
           onClick={(event) => {
             event.preventDefault()
             leave()
           }}
         >
-          {t('editor.home')}
+          <span className="byd-editor-home-arrow" aria-hidden="true">←</span>
+          <span className="byd-editor-home-word">{t('editor.home')}</span>
         </a>
         <strong>{doc.name}</strong>
         {client.mayEdit && projectId && <GameMore http={http} game={{ id: projectId, name: doc.name, rev: client.rev }} />}

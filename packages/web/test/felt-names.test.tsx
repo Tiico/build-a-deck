@@ -395,9 +395,17 @@ async function bordTabDrawn(seats: number, desk: { w: number; h: number } = DESK
   return bordTab(seats, await feltBox(desk), desk, market, picked)
 }
 
+// The Bord tab's felt names what is asked about and nothing else (#581, beslut B): at rest a name is
+// drawn and hidden, and it shows when its zone is lit. The gates below are about where a name
+// stands when it shows, so they read the felt with every zone lit at once — the most any pointing
+// can ever light — and what is clear then is clear for any one zone or family lit alone. Read at
+// rest instead, every hidden name measured zero wide, and «a name fits its cover» held by nothing.
+const everyZoneLit = (html: string): string => html.replaceAll('class="byd-zone"', 'class="byd-zone" data-lit=""').replaceAll('class="byd-pile"', 'class="byd-pile" data-lit=""')
+
 describe('one name per zone (#43)', () => {
   it('gives every zone in the Bord tab exactly one name, and it is the name on the screen', async () => {
-    const html = await bordTabDrawn(2)
+    const rest = await bordTabDrawn(2)
+    const html = everyZoneLit(rest)
     const counted = await onPage(html, DESK, (page) =>
       page.evaluate(() => {
         const shown = (el: Element | null) => !!el && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden'
@@ -429,6 +437,18 @@ describe('one name per zone (#43)', () => {
     // paper and false on the screen.
     expect({ 'hand:A': counted['hand:A'], 'hand:B': counted['hand:B'] }).toEqual({ 'hand:A': ['A'], 'hand:B': ['B'] })
     expect(Object.values(counted).flat()).not.toContain('Hand')
+
+    // At rest the felt names the hands' seats and the zone that is chosen, and no other: the list
+    // beside it is the legend (#581). The handles still carry every name to a reader, lit or not.
+    const resting = await onPage(rest, DESK, (page) =>
+      page.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>('.byd-setup-felt .byd-zone > span, .byd-setup-felt .byd-pile-name, .byd-setup-felt .byd-seat-name')]
+          .filter((el) => el.getClientRects().length > 0)
+          .map((el) => (el.textContent ?? '').trim())
+          .sort(),
+      ),
+    )
+    expect(resting).toEqual(['A', 'B', 'Framför B'])
   }, 60_000)
 })
 
@@ -439,7 +459,7 @@ describe('the Bord tab gives the felt the room its names need (#43)', () => {
   // longer of the two, and the felt's box no longer has to be conjured taller than the window.
   // What is asserted is therefore the thing the tab is for: a name fits in the cover it names.
   it.each(DESKS)('gives a seat room for its own name at eight seats, at $w × $h', async (desk) => {
-    const html = await bordTabDrawn(MAX_PLAYERS, desk)
+    const html = everyZoneLit(await bordTabDrawn(MAX_PLAYERS, desk))
     const room = await onPage(html, desk, (page) =>
       page.evaluate(() => {
         const box = (sel: string) => document.querySelector(sel)!.getBoundingClientRect()
@@ -466,7 +486,7 @@ describe('the Bord tab gives the felt the room its names need (#43)', () => {
     const seatsHere = SEAT_IDS.slice(0, seats)
     const wanted = [...seatsHere.flatMap((s) => [`Framför ${s}`, `Räknare ${s}`, s]), 'Draghög', 'Kasthög', ...(market ? ['Marknad'] : [])]
     const where = `the Bord tab at ${desk.w} × ${desk.h}, ${seats} seats, market ${market}`
-    const reading = await readNames(await bordTabDrawn(seats, desk, market), desk)
+    const reading = await readNames(everyZoneLit(await bordTabDrawn(seats, desk, market)), desk)
     // This is the one surface that has grips at all (#419), so it is here that the reading of them
     // has to be shown not to be vacuous: a selector that matched nothing would report no name over
     // a grip at every seat count and mean nothing by it.
@@ -498,7 +518,7 @@ describe('the Bord tab gives the felt the room its names need (#43)', () => {
   // platsantal där krocken dyker upp eller försvinner fäller det här lika säkert.
   it.each([2, 3, 4, 5])('keeps every name clear of the grip on the zone being held, at %i seats', async (seats) => {
     const where = `the Bord tab holding the market at ${seats} seats`
-    const reading = await readHeld(await bordTabDrawn(seats, DESK, true, null), DESK)
+    const reading = await readHeld(everyZoneLit(await bordTabDrawn(seats, DESK, true, null)), DESK)
     // Icke-vakuitet, och den avgörande: ett grepp ritas verkligen, och det är den hållna ytans.
     // Utan det här skulle ett förslag som slutade rita grepp över huvud taget läsa grönt.
     expect({ where, grips: reading.gripCount }).toEqual({ where, grips: 1 })

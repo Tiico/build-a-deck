@@ -188,6 +188,11 @@ export type TableRendererProps = {
   // the hand's badge and the chip's figure left off, since the plate says them. Not the observer's
   // screen, which is read at a desk and not from the sofa.
   forTheRoom?: boolean | undefined
+  // The Bord tab's quiet felt (#581, beslut B): when given, the felt names only the zones in it —
+  // the ones the list or the felt is pointing at, has focus on or has chosen — and the list beside
+  // it is the legend for the rest. The names are still drawn and only hidden, so a name that is lit
+  // stands where K19 puts it.
+  lit?: ReadonlySet<string> | undefined
 }
 
 // The short side a card on the felt is brought to by the lens's first step in (K9).
@@ -278,7 +283,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -1214,6 +1219,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 className="byd-zone"
                 data-area={z.id}
                 {...(aimedAt === z.id ? { 'data-aimed': '' } : {})}
+                {...(lit?.has(z.id) ? { 'data-lit': '' } : {})}
                 data-rim={rim}
                 data-grow={grow}
                 {...(crowded ? { 'data-mid': '' } : {})}
@@ -1260,6 +1266,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 key={z.id}
                 zone={z}
                 aimed={aimedAt === z.id}
+                lit={lit?.has(z.id) ?? false}
                 count={lifting ? count - 1 : count}
                 topCard={lifting ? topOf(z, 1) : topOf(z)}
                 faces={faces}
@@ -1459,6 +1466,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       className="byd-table-frame"
       data-mode={mode}
       data-tight={tight ? 'true' : undefined}
+      {...(lit ? { 'data-quiet': '' } : {})}
       data-camera={placed ? 'follow' : undefined}
       data-drive={camera}
       data-playable={onAct ? 'true' : undefined}
@@ -1832,7 +1840,7 @@ function topIdOf(z: ZoneView, skip = 0): string | undefined {
 
 // A pile is a point; the stack is centred on it. A hidden pile has a count and nothing else,
 // unless its top lies face-up.
-function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, lifted, aimed = false, shuffle, still = false, topHandlers, topInspects, bottomInspects, labelHandlers, pileKeys, points }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; bottomCard?: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; aimed?: boolean | undefined; shuffle?: number | undefined; still?: boolean | undefined; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; bottomInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; pileKeys?: FeltNodeProps | undefined; points?: Pointing | undefined }) {
+function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, lifted, aimed = false, lit = false, shuffle, still = false, topHandlers, topInspects, bottomInspects, labelHandlers, pileKeys, points }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; bottomCard?: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; aimed?: boolean | undefined; lit?: boolean | undefined; shuffle?: number | undefined; still?: boolean | undefined; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; bottomInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; pileKeys?: FeltNodeProps | undefined; points?: Pointing | undefined }) {
   const t = useT()
   // What a face-down pile wears. Its top card's own back first, which is the one thing about a
   // hidden pile that is public in the room (#313): a deck whose cards carry their own back (#14)
@@ -1892,6 +1900,7 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
       data-zone={zone.id}
       data-count={count}
       {...(aimed ? { 'data-aimed': '' } : {})}
+      {...(lit ? { 'data-lit': '' } : {})}
       data-dynamic={zone.dynamic ? 'true' : 'false'}
       data-dragging={lifted ? 'true' : undefined}
       data-shuffling={playing ? (still ? 'pulse' : 'fan') : undefined}
