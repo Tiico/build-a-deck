@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { HeldCard } from './HeldCard.js'
@@ -143,6 +143,18 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
       }
     })
   }
+  // A card played from the hand takes the control that played it along — «Kasta» has nothing to
+  // offer once nothing is chosen — and focus fell to BODY, so the next Tab began at the header
+  // (#559 P-3, K16: never to nothing). Once the cards have left the hand, focus that was stranded
+  // goes to the strip's one tab stop, which is the card now chosen.
+  const regain = useRef<string[] | null>(null)
+  useEffect(() => {
+    const gone = regain.current
+    if (!gone || gone.some(id => hand.some(c => c.id === id))) return
+    regain.current = null
+    const stranded = document.activeElement === null || document.activeElement === document.body
+    if (stranded) document.querySelector<HTMLElement>('.byd-strip[data-hand] [data-hand-card][tabindex="0"]')?.focus()
+  }, [hand])
   const playDirect = async (cards: VisibleComponentState[], zone: string, at: 'top' | 'bottom') => {
     const first = cards[0]
     if (quickBusy.current || !first) return
@@ -155,6 +167,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
       const intents = zone === `hand:${seat}` ? cards.map(c => ({ v: 'move' as const, component: c.id, to: zone })) : playIntents(view, cards, zone, undefined, at)
       const result = await quick.watch(client.send(...intents))
       if (result.ok) {
+        if (zone !== `hand:${seat}` && cards.some(c => c.zone === `hand:${seat}`)) regain.current = cards.map(c => c.id)
         if (cards.some(c => c.zone === `hand:${seat}`) || zone === `hand:${seat}`) {
           marks.clear()
           setChosenId(null)

@@ -113,7 +113,9 @@ describe('the hand is playable without a gesture (#1)', () => {
     const { table } = await phone()
     const user = userEvent.setup()
     expect(screen.getByRole('button', { name: 'dragon, i min hand, markerat. Enter öppnar handlingar.' })).toBeTruthy()
-    expect(handStops()).toEqual(['0', '-1', '-1'])
+    // The one tab stop is the chosen card, dragon, and not the strip's first (#559 P-26).
+    expect(handStops()).toEqual(['-1', '-1', '0'])
+    expect(labelOf(handCards()[2]!)).toMatch(/^dragon/)
 
     const [first, second] = handCards()
     first!.focus()

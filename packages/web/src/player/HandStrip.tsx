@@ -38,7 +38,6 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
   // backwards is what makes the hand grow towards the reading direction: the card that just
   // arrived is last, and the cards already held keep the places the eye left them in.
   const hand = view.components.filter((c) => c.zone === `hand:${view.seat}`).reverse()
-  const roving = useRoving({ ids: hand.map((c) => c.id), selected: null, orientation: 'horizontal' })
   const tracking = useRef<{ card: VisibleComponentState; t: Tracking; timer: ReturnType<typeof setTimeout> } | null>(null)
 
   // The marked card is the one the buttons under the strip act on, so it is the one that has to
@@ -48,6 +47,9 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
   // The marked card nearest the growing end: with one card chosen that is the chosen card, and
   // with several held it is the newest of them.
   const markedId = hand.reduce<string | null>((last, c) => (selected.has(c.id) ? c.id : last), null)
+  // The strip's one tab stop is the chosen card (#559 P-26): Tab used to land on the first card
+  // while «Valt» named another, and the first arrow then moved the choice as well as the focus.
+  const roving = useRoving({ ids: hand.map((c) => c.id), selected: markedId, orientation: 'horizontal' })
   useEffect(() => {
     const el = strip.current
     if (!el || markedId === null) return
