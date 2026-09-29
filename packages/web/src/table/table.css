@@ -1034,3 +1034,6 @@
 }
 .byd-lift[data-face='back'] { background: #33405a; color: #ddd; text-align: center; }
 .byd-lift img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
+
+/* The felt as the table screen's main content (#560 P-20), as large as the page it fills. */
+.byd-table-main { width: 100%; height: 100%; }

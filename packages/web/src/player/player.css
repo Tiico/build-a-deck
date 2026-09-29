@@ -103,6 +103,8 @@
 .byd-summary-zones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
 .byd-summary-zones > * { background: var(--byd-surface); border-radius: 10px; padding: 10px; min-height: 48px; display: grid; align-content: start; gap: 2px; }
 .byd-summary-zones strong { color: var(--byd-ink-strong); }
+/* A zone's name as the heading of what it holds (#560 P-20), drawn as the name always was. */
+.byd-summary-zones h2 { margin: 0; font: inherit; font-weight: 700; color: var(--byd-ink-strong); }
 /* A pile that has a card in it is a control, and the whole tile is that control (#79): the verb
    is read inside it at the tile's own width, so nothing sits inside it that a finger has to find
    (UX-37, #82). It is drawn as the sheet's targets are — the phone's pressable surface with a

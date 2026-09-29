@@ -174,7 +174,8 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
           {table}
         </TvChrome>
       ) : (
-        table
+        // The felt is the page's main content (#560 P-20); the TV's chrome marks its own.
+        <main className="byd-table-main">{table}</main>
       )}
         {/* The felt's own screen has no header, so the drawer stands over the felt as it did. */}
         {mode !== 'tv' && rules('table')}

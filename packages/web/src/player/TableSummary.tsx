@@ -77,7 +77,7 @@ export function TableSummary({ view, activity, onDraw, refusal, refusedZone = nu
               </button>
             ) : (
               <div key={zone.id} data-zone-summary={zone.id}>
-                <Tile zone={zone} t={t} />
+                <Tile zone={zone} t={t} heading />
                 {onRead && <AreaCards view={view} zone={zone.id} faces={faces} onRead={onRead} t={t} />}
               </div>
             ),
@@ -90,11 +90,12 @@ export function TableSummary({ view, activity, onDraw, refusal, refusedZone = nu
 }
 
 // What every tile says, whether or not it can be pressed: the designer's name for the zone, and
-// how much lies in it.
-function Tile({ zone, t }: { zone: ZoneTile; t: T }) {
+// how much lies in it. A tile that is no control heads what it holds with the zone's name, so a
+// reader can move from zone to zone (#560 P-20); a tile that is a button cannot hold a heading.
+function Tile({ zone, t, heading = false }: { zone: ZoneTile; t: T; heading?: boolean }) {
   return (
     <>
-      <strong>{zone.name}</strong>
+      {heading ? <h2>{zone.name}</h2> : <strong>{zone.name}</strong>}
       <span>{t(zone.count === 1 ? 'play.cards.one' : 'play.cards.other', { n: zone.count })}</span>
     </>
   )
