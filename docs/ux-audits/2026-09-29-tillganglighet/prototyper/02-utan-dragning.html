@@ -55,7 +55,10 @@
   .ark { margin: auto; width: 560px; display: grid; gap: var(--s3); padding: var(--s4); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
   .yta-bild { position: relative; margin: 16px auto; width: 480px; height: 320px; background: linear-gradient(135deg, #3a5a7a, #7a5a3a 60%, #2a3a2a); border-radius: 4px; }
   .yta-bild::after { content: 'skogsbryn.jpg'; position: absolute; left: 8px; bottom: 6px; color: rgba(255, 255, 255, 0.6); font-size: 11px; }
-  .skugga { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.55); clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, var(--x1) var(--y1), var(--x1) var(--y2), var(--x2) var(--y2), var(--x2) var(--y1), var(--x1) var(--y1)); pointer-events: none; }
+  /* Skuggan utanför utsnittet i ett eget lager som klipper, så att greppen längs bildens kant inte
+     klipps (L33). */
+  .klipp { position: absolute; inset: 0; overflow: hidden; border-radius: 4px; pointer-events: none; }
+  .klipp > i { position: absolute; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55); }
   .utsnitt { position: absolute; border: 2px solid #fff; cursor: move; touch-action: none; }
   .utsnitt:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
   .grepp { position: absolute; width: 12px; height: 12px; border-radius: 3px; background: #fff; translate: -50% -50%; }
@@ -156,11 +159,17 @@ function skala() {
 }
 
 // ── Bord ───────────────────────────────────────────────────────────────────────────────
-function mm() {
-  // Filtens skala: det rum mitten har, som i appen, så 1024 ger mindre handtag (F-11).
-  const [W, H] = s.storlek.split('x').map(Number)
-  const bred = W - 240 - 80, hog = H - 56 - 56 - 60
-  return Math.min(bred / FILT.w, hog / FILT.h)
+// Filtens skala: det rum som faktiskt blir kvar under raden, som i appen, så 1024 ger mindre
+// handtag (F-11) och en högre rad (B:s knappsats) en mindre filt.
+let skalaMm = 1.4
+function mm() { return skalaMm }
+function matFilt() {
+  const lada = skarm.querySelector('.filtlada')
+  if (!lada) return false
+  const k = Math.min((lada.clientWidth - 60) / FILT.w, (lada.clientHeight - 60) / FILT.h)
+  if (Math.abs(k - skalaMm) < 0.01) return false
+  skalaMm = k
+  return true
 }
 function raden() {
   const z = zon()
@@ -189,7 +198,7 @@ function ritaMedia() {
   const falt = cropFalt() ? `<div class="falt">${[['x', 'Vänster'], ['y', 'Topp'], ['w', 'Bredd'], ['h', 'Höjd']].map(([k, n]) => `<label>${n} <input inputmode="numeric" data-pct="${k}" value="${Math.round(c[k])}" aria-label="Utsnittets ${n.toLowerCase()} i procent"> %</label>`).join('')}</div>` : ''
   const pil = (dx, dy, t, n) => `<button type="button" data-cflytt="${dx},${dy}" aria-label="Flytta utsnittet ${n}">${t}</button>`
   const steg = cropSteg() ? `<div class="falt"><span class="knappsats" role="group" aria-label="Flytta utsnittet"><span></span>${pil(0, -1, '↑', 'upp')}<span></span>${pil(-1, 0, '←', 'vänster')}<span></span>${pil(1, 0, '→', 'höger')}<span></span>${pil(0, 1, '↓', 'ned')}<span></span></span><span class="steg" role="group" aria-label="Storlek"><button type="button" data-cskala="-1">Mindre</button><button type="button" data-cskala="1">Större</button></span></div>` : ''
-  $('#innehall').innerHTML = `<div class="ark" role="dialog" aria-label="Beskär skogsbryn.jpg"><h2>Beskär skogsbryn.jpg</h2><div class="yta-bild" id="bild"><div class="skugga" style="--x1:${c.x}%;--y1:${c.y}%;--x2:${c.x + c.w}%;--y2:${c.y + c.h}%"></div><div class="utsnitt" id="utsnitt" tabindex="0" role="group" aria-label="Utsnitt" style="left:${c.x}%;top:${c.y}%;width:${c.w}%;height:${c.h}%">${['nw', 'ne', 'sw', 'se'].map((h) => `<i class="grepp" tabindex="0" role="button" aria-label="Hörn ${h}" data-grepp="${h}" style="left:${h.includes('w') ? 0 : 100}%;top:${h.includes('n') ? 0 : 100}%"></i>`).join('')}</div></div><p class="status">${c.w >= 100 && c.h >= 100 ? '▢ Hela bilden' : `✓ Beskuren · visar ${pct} %`}</p>${falt}${steg}<p style="margin:0;color:var(--quiet)">Pilarna flyttar utsnittet, ett fokuserat hörn ändrar storlek; Skift ger större steg.</p></div>`
+  $('#innehall').innerHTML = `<div class="ark" role="dialog" aria-label="Beskär skogsbryn.jpg"><h2>Beskär skogsbryn.jpg</h2><div class="yta-bild" id="bild"><div class="klipp"><i style="left:${c.x}%;top:${c.y}%;width:${c.w}%;height:${c.h}%"></i></div><div class="utsnitt" id="utsnitt" tabindex="0" role="group" aria-label="Utsnitt" style="left:${c.x}%;top:${c.y}%;width:${c.w}%;height:${c.h}%">${['nw', 'ne', 'sw', 'se'].map((h) => `<i class="grepp" tabindex="0" role="button" aria-label="Hörn ${h}" data-grepp="${h}" style="left:${h.includes('w') ? 0 : 100}%;top:${h.includes('n') ? 0 : 100}%"></i>`).join('')}</div></div><p class="status">${c.w >= 100 && c.h >= 100 ? '▢ Hela bilden' : `✓ Beskuren · visar ${pct} %`}</p>${falt}${steg}<p style="margin:0;color:var(--quiet)">Pilarna flyttar utsnittet, ett fokuserat hörn ändrar storlek; Skift ger större steg.</p></div>`
 }
 function sattCrop(p) {
   const c = s.crop
@@ -203,8 +212,9 @@ function rita() {
   for (const b of document.querySelectorAll('[data-y]')) b.setAttribute('aria-pressed', String(b.dataset.y === s.y))
   for (const b of document.querySelectorAll('[data-s]')) b.setAttribute('aria-pressed', String(b.dataset.s === s.storlek))
   $('#anteckning').innerHTML = NOT[s.v]
-  if (s.y === 'bord') ritaBord(); else ritaMedia()
-  skala(); matt()
+  skala()
+  if (s.y === 'bord') { ritaBord(); if (matFilt()) ritaBord() } else ritaMedia()
+  matt()
 }
 function matt() {
   const z = zon()
