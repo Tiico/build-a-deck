@@ -46,7 +46,7 @@ test.describe('a connection that goes away', () => {
     // hand — and the seat would be taken by the time you came out of it.
     const ada = await player(table, { name: 'Ada', seat: 'A', device: PHONE })
     const tv = await open(TV, table.tvUrl)
-    await expect(tv.page.locator('.byd-tv-seats')).toContainText('Ada')
+    await expect(tv.page.locator('[data-seat-plate="A"]')).toContainText('Ada')
 
     await ada.line.cut()
     await expect(ada.page.locator('.byd-status-stale')).toBeVisible({ timeout: 30_000 })
@@ -57,6 +57,6 @@ test.describe('a connection that goes away', () => {
 
     ada.line.restore()
     await expect(ada.page.locator('.byd-status-stale')).toHaveCount(0, { timeout: 30_000 })
-    await expect(tv.page.locator('.byd-tv-seats')).toContainText('Ada')
+    await expect(tv.page.locator('[data-seat-plate="A"]')).toContainText('Ada')
   })
 })
