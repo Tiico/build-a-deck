@@ -260,6 +260,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
             row={row}
             onStep={(next) => hold(next, held.row)}
             onClose={put}
+            returnTo={(c) => document.querySelector<HTMLElement>(held.row === 'hand' ? `[data-hand-card="${CSS.escape(c.id)}"]` : `[data-area-card="${CSS.escape(c.id)}"]`)}
             actions={
               held.row === 'hand' ? (
                 // The hand's own second press, the same two the foot carries: the setup's first
