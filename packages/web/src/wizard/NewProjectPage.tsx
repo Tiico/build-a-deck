@@ -100,6 +100,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const pending = useMemo(() => pendingWizard(server), [server])
   const resuming = useMemo(() => params.get(RESUME) === '1', [params])
   // What an untouched wizard holds, so a draft is only a draft once something has been written.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- what an untouched wizard holds is taken once, in the language `s` was begun in
   const pristine = useMemo(() => JSON.stringify(emptyState(t)), [])
   const [s, setS] = useState<WizardState>(pending?.state ?? emptyState(t))
   const dirty = JSON.stringify(s) !== pristine
@@ -258,6 +259,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     rest.delete(RESUME)
     history.replaceState(history.state, '', `${location.pathname}${rest.toString() ? `?${rest.toString()}` : ''}`)
     void toEditor(pending.blank ? 'blank' : 'guided')
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- said once, on arrival: the mark leaves the address as it is read
   }, [])
   // The draft follows every keystroke into the tab's storage, and an untouched wizard keeps nothing.
   useEffect(() => {

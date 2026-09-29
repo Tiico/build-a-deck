@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { WebSocket as WsClient } from 'ws'
-import { TableClient, useWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
+import { TableClient, setWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
 import { PlayerPage, type PlayerPageProps } from '../src/player/PlayerPage.js'
 import { DEFAULT_TIMING } from '../src/status/connection.js'
 import { admit, asSeat, asTable, createSession, roomOf, seatSetup, startServer, type Running } from './fixture.js'
@@ -17,7 +17,7 @@ beforeEach(async () => {
 })
 afterEach(async () => {
   vi.useRealTimers()
-  useWebSocketImplementation(WsClient as unknown as WebSocketCtor)
+  setWebSocketImplementation(WsClient as unknown as WebSocketCtor)
   await run.stop()
 })
 
@@ -121,7 +121,7 @@ describe('PlayerPage', () => {
   // its own name in the link, until somebody thought to reload the page.
   it('sits down again when the first claim never lands', async () => {
     const id = await createSession(run)
-    useWebSocketImplementation(losesTheFirstClaim())
+    setWebSocketImplementation(losesTheFirstClaim())
     const token = await admit(run, id, 'A', 'Ada')
     history.replaceState(null, '', `/play?session=${id}&seat=A&name=Ada&token=${token}&code=${roomOf(id).code}&server=${encodeURIComponent(run.url)}`)
     render(<PlayerPage timing={{ ...DEFAULT_TIMING, retryPlanMs: [20, 40, 80] }} />)

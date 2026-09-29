@@ -5,7 +5,7 @@ import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { useEditSocketImplementation, type EditSocketCtor } from '../src/editor/ProjectClient.js'
+import { setEditSocketImplementation, type EditSocketCtor } from '../src/editor/ProjectClient.js'
 import { EditSocket, RefusesToSave } from './setup.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -16,7 +16,7 @@ beforeEach(async () => {
   run = await startServer()
 })
 afterEach(async () => {
-  useEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
+  setEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
   await run.stop()
 })
 
@@ -208,7 +208,7 @@ describe('leaving the editor with unsaved work (#8)', () => {
     // real one: with a live actor (D3) an editor is told about someone else's version as it
     // happens, so the collision is a moment too short to arrange from outside. What is under
     // test is what the editor does when a save it asked for did not happen.
-    useEditSocketImplementation(RefusesToSave)
+    setEditSocketImplementation(RefusesToSave)
     const user = userEvent.setup()
     const went: string[] = []
     await run.projects.create(run.projectId, projectDoc())
@@ -231,7 +231,7 @@ describe('leaving the editor with unsaved work (#8)', () => {
   // still only in this tab. Routine confirmations shared the slot with it and simply wrote over
   // it, so a designer who pressed Ctrl+Z next never learned that her save had failed.
   it('keeps the news that a save failed when the designer takes a step back', async () => {
-    useEditSocketImplementation(RefusesToSave)
+    setEditSocketImplementation(RefusesToSave)
     const user = userEvent.setup()
     await run.projects.create(run.projectId, projectDoc())
     history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)

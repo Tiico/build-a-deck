@@ -9,7 +9,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { WebSocket as WsClient } from 'ws'
 import { EditorPage } from '../src/editor/EditorPage.js'
-import { TableClient, useWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
+import { TableClient, setWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
 import { projectDoc } from './project-doc.js'
 import { asSeat, asTable, registerRoom, startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
@@ -29,12 +29,12 @@ class Dialling extends WsClient {
 let run: Running
 beforeEach(async () => {
   dialled.length = 0
-  useWebSocketImplementation(Dialling as unknown as WebSocketCtor)
+  setWebSocketImplementation(Dialling as unknown as WebSocketCtor)
   run = await startServer()
   await run.projects.create(run.projectId, projectDoc())
 })
 afterEach(async () => {
-  useWebSocketImplementation(WsClient as unknown as WebSocketCtor)
+  setWebSocketImplementation(WsClient as unknown as WebSocketCtor)
   await run.stop()
 })
 

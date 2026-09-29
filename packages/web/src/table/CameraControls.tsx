@@ -43,6 +43,7 @@ export function CameraControls({ level, folded, onFold, onZoom, onWhole, focusIn
   const stepIn = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     if (focusIn) stepIn.current?.focus()
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the focus is taken once, when the cluster appears
   }, [])
   const t = useT()
   // Escape lämnar tillbaka vyn, och gör det i husets egen ordning (#152): en ring eller en panel
@@ -87,6 +88,7 @@ export function LensEntry({ onZoom, focusIn = false }: { onZoom(): void; focusIn
   const step = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     if (focusIn) step.current?.focus()
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the focus is taken once, when the way in appears
   }, [])
   return (
     <div className="byd-camera-controls" data-lens-entry role="group" aria-label={t('camera.controls')}>

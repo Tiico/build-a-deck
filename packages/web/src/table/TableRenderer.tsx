@@ -458,6 +458,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // The drop's own placement is let go the moment the table has moved the card: from there on the
   // table is the truth, as it always was (#29). A card that has left the view — into a hidden pile
   // — has moved too.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- checks every render whether the table has moved the dropped card; it stops itself
   useEffect(() => {
     if (!settling) return
     const cardMoved = settling.ids.some((id) => {
@@ -492,6 +493,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       say?.('polite', t('drop.unanswered'))
     }, DEFAULT_TIMING.slowAfterMs)
     return () => clearTimeout(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the wait starts over only with another drop; what is said is said as it stands
   }, [settling])
   const px = (mm: number) => mm * scale
   // How wide the felt is drawn across the reader's own view (C5). It is the axis a name at a side
@@ -1604,6 +1606,7 @@ function useGlide(target: Rect | null, ms: number): Rect | null {
     raf.current = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf.current)
     // The target is keyed by value: a fresh object with the same rectangle is no new target.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the target is keyed by value: a fresh object with the same rectangle is no new target
   }, [key, ms])
   return cur
 }

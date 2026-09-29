@@ -1334,6 +1334,7 @@ function GroupMenu({ doc, column, groups, group, onSelect }: { doc: ProjectDoc; 
   // on every render: the menu must not take the focus back from what the designer does inside it.
   useEffect(() => {
     if (open) focus(group ?? '')
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- on opening only: the menu must not take the focus back
   }, [open])
   // The way out, and back to the button the menu was opened from: closing unmounts whatever had
   // the focus, so without this a keyboard that opened the menu is dropped on `<body>`.

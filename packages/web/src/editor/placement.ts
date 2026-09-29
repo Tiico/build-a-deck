@@ -92,6 +92,7 @@ export function usePlacement(open: boolean, box: RefObject<HTMLElement | null>, 
     setPlace(placeBox({ x: r.left, y: r.top, w: r.width, h: r.height }, { w: b.offsetWidth, h: b.scrollHeight }, { w: window.innerWidth, h: window.innerHeight }, room))
     // The two numbers and not the record: the room a box keeps is a constant of that box, and a
     // fresh `{}` on every render would take a new reading for a pair of values that never move.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the room is a constant of the box, read by its two numbers
   }, [box, room.gap, room.least])
   useLayoutEffect(() => {
     if (!open) {

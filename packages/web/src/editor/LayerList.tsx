@@ -87,6 +87,7 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
     const id = back.current
     back.current = null
     focus(id, 'layer')
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the focus goes back when the rename ends, not whenever `focus` is a new function
   }, [renaming])
 
   const moveTo = (id: string, to: number) => {
@@ -279,6 +280,7 @@ function useCells(ids: string[], selected: string | null) {
     setAt({ id: heir, col: at.col })
     if (stranded) elements.current.get(key(heir, at.col))?.focus()
     // The grid's identity is its ids, not the array that carries them.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the grid’s identity is its ids, not the array that carries them
   }, [ids.join('\u0000')])
 
   const cellProps = (id: string, col: Col, onFocused?: () => void) => ({
