@@ -27,6 +27,30 @@ afterEach(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
 // that never happens still fails, four seconds later and inside vitest's own five.
 configure({ asyncUtilTimeout: 4000 })
 
+// jsdom 30 keeps the style sheet of a <style> that leaves the document along with an ancestor
+// (#538): removing the element itself lets its sheet go, removing the element round it does not.
+// React unmounts a card preview by removing the element round it, so every wall of cards left its
+// sheets in `document.styleSheets` — 132 of them per editor — and every `getComputedStyle` after
+// that walked all of them. One editor test came to lock its worker for 37 s, and the CPU it took is
+// what made its neighbours' deadlines expire before an answer already on the socket was read.
+// So a <style> that went with its ancestor is put back and taken out by itself, the one removal
+// jsdom does let go of. `test/jsdom-stylesheets.test.tsx` says when this is no longer needed.
+if (typeof document !== 'undefined' && typeof MutationObserver !== 'undefined') {
+  const released = new WeakSet<Element>()
+  new MutationObserver((records) => {
+    for (const record of records)
+      for (const node of record.removedNodes) {
+        if (!(node instanceof Element) || node.isConnected) continue
+        for (const style of [...(node.localName === 'style' ? [node] : []), ...node.querySelectorAll('style')]) {
+          if (released.has(style)) continue
+          released.add(style)
+          document.documentElement.append(style)
+          style.remove()
+        }
+      }
+  }).observe(document, { childList: true, subtree: true })
+}
+
 // Under jsdom, its WebSocket wraps Node's undici, which dispatches jsdom Events on a Node
 // EventTarget and throws. The `ws` client speaks the same API and has no such split.
 import { WebSocket as WsClient } from 'ws'
