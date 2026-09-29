@@ -1061,6 +1061,27 @@
 .byd-drag-handle[data-handle='ne'] { right: calc(var(--byd-mark) / -2); top: calc(var(--byd-mark) / -2); cursor: nesw-resize; }
 .byd-drag-handle[data-handle='sw'] { left: calc(var(--byd-mark) / -2); bottom: calc(var(--byd-mark) / -2); cursor: nesw-resize; }
 .byd-drag-handle[data-handle='se'] { right: calc(var(--byd-mark) / -2); bottom: calc(var(--byd-mark) / -2); cursor: nwse-resize; }
+/* A fingertip's target on a tablet (#565, L12). A handle is drawn 15 px square at the zoom that fits
+   the card, and a fingertip covers about 40: a press just off the corner chose the shape under it.
+   At a coarse pointer each handle catches 44 px round its corner — measured on the screen, so the
+   layer's millimetres are divided by the canvas's scale — without being drawn any larger. Inward the
+   catch stops at the element's middle, so on an element too small for four fingertips a press goes
+   to the corner it is nearest and never the one across. A mouse keeps the handle as it is drawn. */
+@media (pointer: coarse) {
+  .byd-drag-layer { --byd-finger: calc(22px / var(--byd-canvas-scale, 1)); }
+  .byd-drag-handle::before {
+    content: '';
+    position: absolute;
+    --byd-in-x: min(var(--byd-finger), var(--byd-box-w, 0mm) / 2);
+    --byd-in-y: min(var(--byd-finger), var(--byd-box-h, 0mm) / 2);
+    width: calc(var(--byd-finger) + var(--byd-in-x));
+    height: calc(var(--byd-finger) + var(--byd-in-y));
+    left: calc(50% - var(--byd-finger));
+    top: calc(50% - var(--byd-finger));
+  }
+  .byd-drag-handle[data-handle='ne']::before, .byd-drag-handle[data-handle='se']::before { left: calc(50% - var(--byd-in-x)); }
+  .byd-drag-handle[data-handle='sw']::before, .byd-drag-handle[data-handle='se']::before { top: calc(50% - var(--byd-in-y)); }
+}
 /* The marks on a shape of the designer's own (L26). The point is round where the corner handle
    is square — one says «this corner of the box», the other «this corner of the outline» — and it
    lies above the box and its handles both, because the point is always above the edge and above
