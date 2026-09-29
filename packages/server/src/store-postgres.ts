@@ -5,7 +5,7 @@ import type { ObjectStore } from '@byd/render'
 import type { Applied } from '@byd/protocol'
 import { liftLine, type SetupDef } from '@byd/engine'
 import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionRecord, type SessionSummary, type PlayedRecord } from './store.js'
-import { liftDoc, stamp, type ProjectDoc, type ProjectRecord, type ProjectRow, type ProjectStore, type ProjectSummary, type VersionSummary } from './projects.js'
+import { checkedHistory, liftDoc, stamp, type ProjectDoc, type ProjectRecord, type ProjectRow, type ProjectStore, type ProjectSummary, type RestoredVersion, type VersionSummary } from './projects.js'
 import { peekCard } from './names.js'
 import { PostgresAssetStore } from './assets.js'
 import type { AppliedEdit } from './project-actor.js'
@@ -290,6 +290,19 @@ export class PostgresProjectStore implements ProjectStore {
       await tx`insert into project_versions (project_id, rev, doc) values (${id}, 1, ${tx.json(doc as never)})`
     })
     return { ...doc, id, rev: 1, ...(owner !== undefined ? { owner } : {}) }
+  }
+
+  async restore(id: string, versions: RestoredVersion[], owner?: string): Promise<ProjectRecord> {
+    const last = checkedHistory(versions)
+    // One transaction: a history is brought back whole or not at all, and an id that is taken fails
+    // on its primary key before anything is kept.
+    await this.sql.begin(async (tx) => {
+      await tx`insert into projects (id, rev, doc, owner) values (${id}, ${last.rev}, ${tx.json(last.doc as never)}, ${owner ?? null})`
+      for (const v of versions) {
+        await tx`insert into project_versions (project_id, rev, doc, label, created_at) values (${id}, ${v.rev}, ${tx.json(v.doc as never)}, ${v.label ?? null}, ${v.at})`
+      }
+    })
+    return { ...last.doc, id, rev: last.rev, ...(owner !== undefined ? { owner } : {}) }
   }
 
   async load(id: string): Promise<ProjectRecord | null> {

@@ -235,6 +235,56 @@ describe('a table opens only once its cards can be seen (L5)', () => {
   })
 })
 
+// Every hook of the page is called on every render, loading or loaded: a hook placed after the
+// page's early returns (#534 put `useLang` there) is called only once the project has arrived,
+// and React says so — and would lose the page's state the day it mattered.
+describe('the editor page keeps the order of its hooks (Rules of Hooks)', () => {
+  it('calls the same hooks while it loads as once it has loaded', async () => {
+    const said = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      await run.projects.create(run.projectId, projectDoc())
+      history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+      render(<EditorPage />)
+      await screen.findByText('Skogens herrar')
+      expect(said.mock.calls.map((c) => String(c[0])).filter((m) => m.includes('order of Hooks'))).toEqual([])
+    } finally {
+      said.mockRestore()
+    }
+  })
+})
+
+// Efter start (#523, beställarens beslut C): när texturerna är renderade säger editorn vilka kort
+// en telefon inte kan läsa, i E5:s form — en anmärkning som inte stoppar något — och visar dem på
+// kortväggen med telefonens öga. Talet är måttstockens (`minPtIn`), aldrig ett eget.
+describe('the cards a phone cannot read, said once the table is up (#523)', () => {
+  const start = async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
+    await screen.findByText(/renderar kort/i)
+  }
+
+  it('counts the cards whose text a 320 px phone shows under the floor, and opens the wall at the phone’s eye', async () => {
+    await start()
+    await run.completeRenders(Infinity, 6.5)
+    const said = await screen.findByText(/har text under/)
+    expect(said.textContent).toBe('3 kort har text under 7,3 pt, som en telefon på 320 px visar under 12 px.')
+    // The table is up all the same: a remark stops nothing.
+    expect(await screen.findByRole('link', { name: /öppna bordet/i })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Visa på kortväggen' }))
+    expect((await screen.findByRole('button', { name: /^Ögon/ })).textContent).toContain('Telefonens läsvy')
+  })
+
+  it('says nothing when every card reads', async () => {
+    await start()
+    await run.completeRenders(Infinity, 9)
+    expect(await screen.findByRole('link', { name: /öppna bordet/i })).toBeTruthy()
+    expect(screen.queryByText(/har text under/)).toBeNull()
+  })
+})
+
 describe('"Uppdatera bordet" switches the table only when the new cards can be seen (L5)', () => {
   it('renders first, then sends the version change; the table never sees a card without its texture', async () => {
     await run.projects.create(run.projectId, projectDoc())
@@ -309,9 +359,12 @@ describe('the editor by keyboard alone (UX-04)', () => {
     expect(screen.getByRole('tabpanel', { name: 'Kortvägg' })).toBeTruthy()
 
     // "Mina spel" is the header's first stop (#8) — a way back belongs before what it leads away
-    // from — and the revision, which names the version and opens the history (B4), is the next.
-    // The tablist follows them, and the arrow keys move inside it as before.
+    // from — then the game's own ⋯ beside its name (#542), and then the revision, which names the
+    // version and opens the history (B4). The tablist follows them, and the arrow keys move inside
+    // it as before.
     await user.tab()
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fler val för Skogens herrar' }))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: /rev 1/ }))
     await user.tab()
@@ -336,9 +389,9 @@ describe('the layers of the template by keyboard (UX-04)', () => {
     history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
-    await user.tab()
-    await user.tab()
-    await user.tab()
+    // «Mina spel», the game's ⋯ (#542) and the revision, and then the tablist.
+    for (let i = 0; i < 4; i++) await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Kortvägg' }))
     await user.keyboard('{ArrowRight}{Enter}')
     expect(layerNames()).toEqual(['body', 'title', 'frame'])
     const cells = layerRows().map((r) => r.querySelector('.byd-layer-pick') as HTMLElement)

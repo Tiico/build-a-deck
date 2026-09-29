@@ -78,3 +78,15 @@ export function shownCard(view: Snapshot | null, shown: Shown | null): VisibleCo
   const card = view.components.find((c) => c.id === shown.component)
   return card && card.cardRef !== null && card.counter === undefined ? card : null
 }
+
+// Whether a card is one the table itself sees face up, and so one a phone may hold up for the room
+// (#518): face up in a zone that shows its cards to everyone, or lying face up on top of a pile,
+// which everyone sees whatever the pile (K15). A card only its owner may know is never offered —
+// the room's screen would have nothing to draw (`shownCard`).
+export function forTheRoom(view: Snapshot, card: VisibleComponentState): boolean {
+  if (card.cardRef === null || card.counter !== undefined || card.face !== 'front') return false
+  const zone = view.zones.find((z) => z.id === card.zone)
+  if (!zone || zone.kind === 'hand') return false
+  if (zone.visibility === 'all') return true
+  return zone.kind === 'pile' && (zone.mode === 'count' ? zone.top === card.id : zone.order[0] === card.id)
+}

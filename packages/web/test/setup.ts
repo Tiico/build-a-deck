@@ -9,6 +9,14 @@ afterEach(() => {
   if (typeof sessionStorage !== 'undefined') sessionStorage.clear()
 })
 
+// The event loop gets a turn after every test (#543). vitest goes from one test to the next on its
+// own promises, which are microtasks, so a file of synchronous tests ran from its first to its last
+// without a single timer or message being let through — and the worker's answer to its own RPC is
+// such a message. `deck-wall-groups` is twenty synchronous tests that took 22 s alone and 112 s
+// under load, and vitest ended a run with every test green on «Timeout calling onTaskUpdate».
+// One macrotask per test costs a millisecond and lets every answer through between them.
+afterEach(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
+
 // How long a `waitFor` or a `findBy` waits before it calls the thing it is waiting for a failure.
 // Testing Library's own default is one second, and this suite does not run in one second's worth
 // of quiet: a file starts a real server, opens real sockets, and half a dozen of them drive

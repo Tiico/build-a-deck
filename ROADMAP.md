@@ -140,7 +140,7 @@ Klar 2026-09-08: varje punkt nedan är byggd, och besluten bakom dem står i DES
 Målet är att kunna ta betalt och lämna ifrån sig allt.
 
 - ⬜ Abonnemang via Stripe: gratisnivå med tak på projekt, kort och sessioner, betalnivåer, kvoter (A2, DRIFT §12).
-- ⬜ Full export i dokumenterat JSON med assets, mallar, historik och tryckfiler; läsläge vid utgånget abonnemang (G5).
+- 🔶 Full export i dokumenterat JSON med assets, mallar, historik och tryckfiler; läsläge vid utgånget abonnemang (G5). Exporten och importen är byggda, på servern och i Mina spel (#527, #528, #529); läsläget vid utgånget abonnemang återstår och väntar på abonnemangen.
 - ✅ Att claima en gästsession till ett konto efteråt: telefonen erbjuder det när sessionen är slut, claim-sidan knyter gästens admission till kontot, och startsidan visar "Bord du spelat vid" med plats, namn, utfall och vägen tillbaka (G1).
 - ⬜ Passkeys och OAuth som bekvämlighet; passkey-återställning som UX (DRIFT §11).
 - ✅ Behörighetsroller: ägare, medredigerare, testledare, betraktare, med inbjudan per adress; byggt med D3 i fas 2.
@@ -158,7 +158,7 @@ Deployen är pull-baserad och timern är på: att tagga är att deploya.
 - ✅ WAL-arkivering till R2 med WAL-G i Postgres-bilden, nattlig basbackup, återställningsprov som spelar upp den senaste sessionen genom motorn (DRIFT §5).
 - ✅ Hälsokontroll som även prövar R2 (DRIFT §2).
 - ✅ Händelseschemats `schemaVersion` på varje rad och upcasters vid inläsning; korpusens filer lyfts, aldrig skrivs om (DRIFT §7).
-- ⬜ Riktiga loggar i replay-korpusen, anonymiserade; svar på hur anonymiseringen behåller det värdefulla (DRIFT §7, öppen fråga).
+- 🔶 Riktiga loggar i replay-korpusen, anonymiserade; svar på hur anonymiseringen behåller det värdefulla (DRIFT §7). Svaret och verktyget finns (#540): spelets egna ord och kortens id byts mot pseudonymer, spelet och utfallen står kvar. Kvar är den första riktiga sessionen ur lådan, som beställaren lägger till med sin egen kaka.
 - 🔶 Rate limiting mot join- och login-endpointerna (DRIFT §9): lådans egen proxy gör det sedan 2026-09-11, 100 i sekunden med burst 50, räknat på riktiga besökar-IP:n eftersom proxyn litar på Cloudflares vidarebefordrade huvuden. Kvar är att flytta den framför huset, vilket §9 ber om — den här stoppar inget innan det når fibern.
 - 🔶 Tailscale för administration är i drift sedan 2026-09-11; UPS för lådan och beslutet om en extern pulskoll står kvar (DRIFT §10, öppna frågor).
 - 🔶 Minnesbudgeten reviderad och mätt i vila 2026-09-11: taken är render 1,5 GB, Postgres 768 MB, app 512 MB på en låda som delas med ett trettiotal andra containrar, och stacken tar 605 MB av dem när ingen spelar (DRIFT §1). Under last är den oprövad.
@@ -202,7 +202,7 @@ Från DESIGN-BESLUT I och DRIFT:
 
 ## Öppna frågor som inte blockerar release
 
-- Anonymisering av replay-korpusen (fas 4).
+- ~~Anonymisering av replay-korpusen (fas 4).~~ Besvarad 2026-09-28 (#540): se DRIFT §7.
 - UPS och extern pulskoll (fas 4).
 - Tillgänglighet utöver grundnivån (fas 6).
 

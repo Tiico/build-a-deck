@@ -437,3 +437,78 @@ describe('when something goes wrong on the home page (G1)', () => {
     expect(document.querySelector(`[data-project="${run.projectId}"]`)).toBeTruthy()
   })
 })
+
+// Taking a game out and bringing it back (G5, #529, beslut B): «Exportera…» in the game's own ⋯
+// opens a window that says what goes with it, prepares it and hands it over; «Importera spel…» in
+// the header opens one that takes the zip and says why when it cannot.
+describe('exporting and importing a game (G5, #529)', () => {
+  async function home(): Promise<void> {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    await followMailedLink()
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+  }
+  const saved: { name: string; blob: Blob }[] = []
+  beforeEach(() => {
+    saved.length = 0
+    let n = 0
+    // jsdom has no object URLs; the browser's are stood in for, and the download is caught.
+    Object.assign(URL, { createObjectURL: () => `blob:saved-${n++}`, revokeObjectURL: () => undefined })
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      saved.push({ name: this.download, blob: new Blob() })
+    })
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('says what goes with the game, prepares it, and hands over the zip', async () => {
+    await home()
+    render(<HomePage />)
+    await screen.findByText('Skogens herrar')
+    const more = screen.getByRole('button', { name: 'Fler val för Skogens herrar' })
+    fireEvent.click(more)
+    fireEvent.click(screen.getByRole('button', { name: 'Exportera…' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Exportera «Skogens herrar»' })
+    expect(dialog.textContent).toMatch(/varje version/)
+    expect(dialog.textContent).toMatch(/Bordens loggar och enkätsvar följer inte med/)
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Förbered export' }))
+    // The print files are made by the renderer; until they are, the window says how far it is.
+    const bar = await within(dialog).findByRole('progressbar', { name: /tryckfiler/ })
+    expect(bar.getAttribute('aria-valuemax')).not.toBe('0')
+    await run.completeRenders()
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'Ladda ner' }, { timeout: 5000 }))
+    expect(saved.map((s) => s.name)).toEqual(['Skogens herrar rev-1.zip'])
+
+    // Escape closes it and gives the keys back to the ⋯ it was opened from.
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(document.activeElement).toBe(more)
+  })
+
+  it('brings an exported game back as a new game, and says why a file cannot be', async () => {
+    await home()
+    // An export of the game made through the server, the way the window makes one.
+    await fetch(`${run.http}/projects/${run.projectId}/export`, { method: 'POST' })
+    await run.completeRenders()
+    const zip = await (await fetch(`${run.http}/projects/${run.projectId}/export`)).arrayBuffer()
+    const gone: string[] = []
+    render(<HomePage onNavigate={(u) => gone.push(u)} />)
+    await screen.findByText('Skogens herrar')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Importera spel…' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Importera spel' })
+    const file = dialog.querySelector('input[type="file"]') as HTMLInputElement
+
+    fireEvent.change(file, { target: { files: [new File(['inte en zip'], 'trasig.zip', { type: 'application/zip' })] } })
+    const refusal = await within(dialog).findByRole('alert')
+    expect(refusal.textContent).toMatch(/«trasig» kunde inte importeras/)
+    expect(refusal.textContent).toMatch(/Filen är inte en zip/)
+
+    fireEvent.change(file, { target: { files: [new File([zip], 'Skogens herrar rev-1.zip', { type: 'application/zip' })] } })
+    // The account already has the game, so the copy says it is one.
+    await within(dialog).findByText(/«Skogens herrar \(importerad\)» är importerat/)
+    await screen.findByText('Skogens herrar (importerad)', { selector: '.byd-home-game strong' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Öppna spelet' }))
+    expect(gone.at(-1)).toMatch(/^\/editor\?project=/)
+  })
+})

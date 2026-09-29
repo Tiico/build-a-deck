@@ -75,9 +75,6 @@
    else (UX-KONTROLLER: träffytor); the dots stay the same size, the button around them grows. */
 .byd-home-more { position: absolute; right: 4px; top: 4px; display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; border: 0; border-radius: 8px; padding: 0 8px; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
 .byd-home-more:hover, .byd-home-more[aria-expanded='true'] { background: #262a35; color: #fff; }
-.byd-home-menu { position: absolute; right: 8px; top: 34px; z-index: 5; display: grid; padding: 6px; border-radius: 10px; background: #1b1f2a; border: 1px solid #3b4358; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5); }
-.byd-home-menu button { min-height: 44px; border: 0; border-radius: 7px; padding: 8px 12px; background: transparent; color: #e6ecfa; font: inherit; text-align: left; white-space: nowrap; cursor: pointer; }
-.byd-home-menu button:hover { background: #262a35; }
 .byd-home-started, .byd-home-asking { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 16px; border-radius: 12px; }
 .byd-home-started { background: #1b2a22; color: #d8ffe8; }
 .byd-home-started strong { font: 700 15px ui-monospace, monospace; letter-spacing: 2px; }
@@ -95,3 +92,8 @@
 /* The picker the reader who cannot read this page reaches for first, at the size a thumb needs. */
 .byd-lang select { min-height: 44px; border: 1px solid #2c3242; border-radius: 8px; padding: 4px 8px; background: var(--byd-account-field-bg); color: #e6e6e6; font: inherit; cursor: pointer; }
 .byd-login .byd-lang { justify-content: flex-start; margin-top: 2px; }
+
+/* Taking a game out and bringing it back (G5, #529, beslut B): a window over the list that says
+   what it is about first, and the way to it in the header beside the account. */
+.byd-home-import { margin-left: auto; min-height: 44px; border-radius: 12px; padding: 8px 16px; font-family: inherit; font-size: 15px; cursor: pointer; }
+.byd-home-game > .byd-game-menu { right: 8px; top: 34px; }

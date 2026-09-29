@@ -1,4 +1,5 @@
 import { CARD_MM } from './drop.js'
+import { readingWidth } from '../legibility.js'
 
 // The card a first press reads (K26, #509): lifted up beside itself, in the room the window has.
 //
@@ -12,15 +13,18 @@ import { CARD_MM } from './drop.js'
 // It lies beside the card and not over it, so the card being read is still where the eye left
 // it, and on the side with room; it stands level with the card where the window lets it. A window
 // with room on neither side centres it, which covers the card, and is the least bad answer.
-export const LIFT_SHARE = 0.62
-// The air between the card and its lift, and between the lift and the window's edge.
-export const LIFT_GAP = 16
+export { LIFT_GAP, LIFT_SHARE } from './lift-share.js'
+import { LIFT_GAP, LIFT_SHARE } from './lift-share.js'
 
 export type Edges = { left: number; right: number; top: number; bottom: number }
 export type Box = { left: number; top: number; w: number; h: number }
 
-export function liftBox(card: Edges, window: { w: number; h: number }): Box {
-  const h = Math.min(window.h * LIFT_SHARE, window.h - 2 * LIFT_GAP)
+// `smallestPt`: the card's own smallest text (#523). A card whose words are smaller than the
+// wizard's frame is lifted larger, until they reach the desk's floor or the window's height.
+export function liftBox(card: Edges, window: { w: number; h: number }, smallestPt?: number | null): Box {
+  const share = window.h * LIFT_SHARE
+  const need = (readingWidth((share * CARD_MM.w) / CARD_MM.h, smallestPt, 'desk') * CARD_MM.h) / CARD_MM.w
+  const h = Math.min(need, window.h - 2 * LIFT_GAP)
   const w = (h * CARD_MM.w) / CARD_MM.h
   const onRight = window.w - card.right - LIFT_GAP >= w + LIFT_GAP
   const onLeft = card.left - LIFT_GAP >= w + LIFT_GAP

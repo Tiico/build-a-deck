@@ -142,7 +142,9 @@ Väg till läsning: ingen egen; INSPEKTION visar senaste kortet i 177 px (8 px).
 En telefon (presence `show`, K6) eller TV:ns eget «Titta» håller upp ett kort över filten: 672 px brett, **32,2 px brödtext** vid 1920 × 1080 (mätt på texturbilden i den byggda appen), med vem som visar och en nedräkning på 15 sekunder.
 Vilan, spalten och filtens kortsida är orörda; fynd 4 behövdes inte, eftersom prototypen visade att en bredare spalt ändå inte når golvet och kostar K9.
 TV:n ritar bara ett kort den själv ser uppvänt.
-Telefonens knapp kommer med läsvyn för andras kort (#507).
+Telefonens knapp «Visa för alla» står i läsvyn under kortet sedan #518, på kort bordet ser uppvända.
+
+![Telefonen efter «Visa för alla» vid 390 × 844: knappen säger att kortet visas](2026-09-28/telefon-08-visa-for-alla-390x844.png)
 
 ![TV:n när Ada visar ett kort vid 1920 × 1080: 672 px, 32 px brödtext](2026-09-28/tv-02-visa-for-alla-1920x1080.png)
 
@@ -195,6 +197,17 @@ Väg till läsning: hover → 180 px (8,6 px); tre handlingar → 252 px (12 px)
 ![«Visa alla»: sex kort på 112 px](2026-09-28/distans-02-visa-alla-112px-1280x800.png)
 ![768 × 1024: remsan på 154 px i ett 768 px fönster](2026-09-28/distans-03-remsan-154px-768x1024.png)
 
+**Ändrat 2026-09-28 (#510, K17, K26).**
+Hover, fokus eller ett tryck på ett kort i handkolumnen lyfter det bredvid kolumnen med filtlyftets form (#509); ett andra tryck öppnar adresspanelen.
+Uppmätt med riktiga texturer: 341 px / 16,4 px brödtext vid 1024 × 768, 355 / 17,0 vid 1280 × 800, 479 / 23,0 vid 1920 × 1080 — mot hoverns 180 px / 8,6.
+«Visa alla» ritar korten i 295 px (14,2 px brödtext) vid 1024 och 1280 och 336 (16,1) vid 1920, utan sidledsrullning.
+Filtens kort är orörda (36–41 / 43–49 / 61–69 px), och fynd 4 löstes redan av #509; fynd 5 följer #507.
+På vägen hittades att allt som ritas fast över kolumnen låg i den och fick den att hoppa 45 px, så att fel kort lyftes; det ritas nu bredvid listan.
+Prototypen hade tre varianter (bred kolumn, lyft, handen hålls upp); beställaren valde lyftet.
+
+![Efter: hover lyfter kortet bredvid kolumnen, 355 px](2026-09-28/distans-04-handen-lyfts-355px-1280x800.png)
+![Efter: «Visa alla» i 295 px](2026-09-28/distans-05-visa-alla-295px-1280x800.png)
+
 ### 5. Observatören — `/observe`
 
 Observatören **ser allt** (C8) — alla händer ligger uppvända — **i 34–43 px**.
@@ -231,6 +244,15 @@ I dag ser designern kortet i två storlekar som ingen spelare någonsin ser det 
 | 3 | Låg | Fysisk kontroll (E5) säger «En anmärkning» om leken; en «digital kontroll» med samma form — det här kortets brödtext blir n px på telefonen, m px på TV:n — finns inte | följer 2 |
 
 ![Kortväggen vid 1280 × 800: 150 px](2026-09-28/editor-01-kortvaggen-150px-1280x800.png)
+
+**Åtgärdat 2026-09-28 (#512, beslut A efter [prototypen](2026-09-28/prototyper/512/README.md)).**
+Frågan hade flyttat sig: sedan #507–#509 läser varje spelyta kortet med en handling i golvets storlek, så det designern behöver se är om texten räcker **när kortet hålls upp**, inte i vila.
+Kortväggens ögon har fått telefonens läsvy (294 px), bordets lyft (341 px) och TV:ns «Visa för alla» (672 px); väggen ritas i den bredden och varje kort säger sin minsta text i px, efter E6:s krympning, med «under golvet» i ord (fynd 1 och 2).
+En lek med halverad brödtextruta visar fyra kort under telefonens golv (6,5 och 7,0 pt), och inga under bordets eller TV:ns.
+Fynd 3, en digital kontroll i rapporten, valdes bort av beställaren: svaret står på kortet självt.
+
+![Efter: telefonens läsvy, 294 px](2026-09-28/editor-02-efter-telefonens-lasvy-294px-1280x800.png)
+![Efter: TV:ns «Visa för alla», 672 px](2026-09-28/editor-03-efter-tv-visa-for-alla-672px-1280x800.png)
 
 ## Mönster som återkommer
 
@@ -274,7 +296,7 @@ Varje issue följer samma arbetsgång, så att helheten blir en helhet och inte 
 | 1. Telefonen | 6 | 3 | 335 px / 16 px, 3 tryck, bara egna kort | #507 |
 | 2. TV:n | 5 | 2 | 177 px / 8 px, kan inte väljas | #508 |
 | 3. Bordsläget | 4 | 1 | 252 px / 12 px, 3 handlingar → **341–479 px / 16–23 px, 1 handling** | #509 |
-| 4. Distansvyn | 6 | 2 | 180 px / 8,6 px hover; 252 / 12 «Titta» | #510 |
+| 4. Distansvyn | 6 | 2 | 180 px / 8,6 px hover; 252 / 12 «Titta» → **341–479 px / 16–23 px, 1 handling; «Visa alla» 295–336 px** | #510 |
 | 5. Observatören | 4 | 2 | 138 px / 6,6 px; telefon 252 / 12 | #511 |
 | 6. Editorn | 3 | 0 | (389 px / 19 px — mer än någon spelare ser) | #512 |
 | **Summa** | **28** | **10** | | #505 |

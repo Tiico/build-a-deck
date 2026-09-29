@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { Presence } from '@byd/protocol'
-import { CURSOR_IDLE_MS, PULSE_MS, SHOW_MS, emptyPresence, prunePresence, reducePresence, shownCard } from '../src/table/presence.js'
+import { CURSOR_IDLE_MS, PULSE_MS, SHOW_MS, emptyPresence, forTheRoom, prunePresence, reducePresence, shownCard } from '../src/table/presence.js'
 import { buildScene } from './scene.js'
 
 const name = (seat: string | null) => (seat === null ? 'bordet' : seat === 'A' ? 'Ada' : seat)
@@ -74,5 +74,33 @@ describe('a card shown for everyone (K6, K8, #508)', () => {
     expect(shownCard(table, at(held.id))).toBeNull()
     expect(shownCard(table, at('nothing'))).toBeNull()
     expect(shownCard(table, null)).toBeNull()
+  })
+})
+
+// Which cards a phone may hold up for the room (#518): the ones the table itself sees face up. The
+// phone reads that off the zone's visibility, which every view carries, and the card's face; a
+// card that only its owner may know is never offered, since the TV would have nothing to draw.
+describe('a phone offers «Visa för alla» only on a card the table sees (#518)', () => {
+  it('offers a face-up card in a public area or pile, and a face-up top of a hidden pile (K15)', () => {
+    const { view, faceUp, flipDrawTop } = buildScene()
+    const a = view('A')
+    const on = (v: typeof a, id: string) => forTheRoom(v, v.components.find((c) => c.id === id)!)
+    expect(on(a, faceUp)).toBe(true)
+    const discard = a.components.find((c) => c.zone === 'discard' && c.cardRef !== null)!
+    expect(on(a, discard.id)).toBe(true)
+    const flipped = flipDrawTop()
+    const top = flipped.zones.find((z) => z.id === 'draw')!
+    const topId = top.mode === 'count' ? top.top! : top.order[0]!
+    expect(on(flipped, topId)).toBe(true)
+  })
+
+  it('never offers a card in a hand, a face-down card, or a card in an area only its owner sees', () => {
+    const { view, faceDown, faceUp } = buildScene()
+    const a = view('A')
+    const held = a.components.find((c) => c.zone === 'hand:A' && c.cardRef !== null)!
+    expect(forTheRoom(a, held)).toBe(false)
+    expect(forTheRoom(a, a.components.find((c) => c.id === faceDown)!)).toBe(false)
+    const own = { ...a, zones: a.zones.map((z) => (z.id === 'table' ? { ...z, visibility: 'owner' as const } : z)) }
+    expect(forTheRoom(own, own.components.find((c) => c.id === faceUp)!)).toBe(false)
   })
 })

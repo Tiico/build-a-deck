@@ -164,10 +164,12 @@ describe('texture readiness (L5)', () => {
     const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
     const before = await (await fetch(`${run.http}/sessions/${sessionId}/textures`)).json()
     // Three cards, two faces each: the back is one shared texture, the fronts are three.
-    expect(before).toEqual({ total: 4, done: 0, failed: [] })
+    expect(before).toEqual({ total: 4, done: 0, failed: [], smallest: {} })
     await run.renderAll()
     const after = await (await fetch(`${run.http}/sessions/${sessionId}/textures`)).json()
-    expect(after).toEqual({ total: 4, done: 4, failed: [] })
+    // And what each card's front was fitted to once it is rendered (#523): the editor says, after a
+    // start, which cards a phone cannot read. The template's one text is a 14 pt title.
+    expect(after).toEqual({ total: 4, done: 4, failed: [], smallest: { dragon: 14, knight: 14, wizard: 14 } })
     expect((await fetch(`${run.http}/sessions/nope/textures`)).status).toBe(404)
   }, 60_000)
 })
@@ -187,13 +189,14 @@ describe('a version change is atomic for the players (L5)', () => {
     expect((await json('PUT', `/projects/${id}`, { ...project(), rows, rev: rec.rev })).status).toBe(200)
 
     const prepared = (await (await json('POST', `/sessions/${sessionId}/prepare`, {})).json()) as { total: number; done: number; failed: string[] }
-    // One new front (the dragon's); the other three textures are already rendered.
-    expect(prepared).toEqual({ total: 4, done: 3, failed: [] })
+    // One new front (the dragon's); the other three textures are already rendered, and only a
+    // rendered front says what it was fitted to (#523).
+    expect(prepared).toEqual({ total: 4, done: 3, failed: [], smallest: { knight: 14, wizard: 14 } })
     expect(table.view!.components[0]!.faces!['front']).toBe(before)
     expect(table.view!.seq).toBe(2)
 
     await run.renderAll()
-    expect(await (await json('POST', `/sessions/${sessionId}/prepare`, {})).json()).toEqual({ total: 4, done: 4, failed: [] })
+    expect(await (await json('POST', `/sessions/${sessionId}/prepare`, {})).json()).toEqual({ total: 4, done: 4, failed: [], smallest: { dragon: 14, knight: 14, wizard: 14 } })
     expect((await json('POST', `/sessions/${sessionId}/refresh`, {})).status).toBe(200)
     await table.synced(3)
     expect(table.view!.components[0]!.faces!['front']).not.toBe(before)
@@ -214,7 +217,7 @@ describe('the survey after a session (G3)', () => {
     await table.close()
     expect((await json('POST', `/sessions/${sessionId}/survey`, answer)).status).toBe(201)
     expect((await json('POST', `/sessions/${sessionId}/survey`, { ...answer, answers: { fun: 9 } })).status).toBe(400)
-    const listed = (await (await fetch(`${run.http}/sessions/${sessionId}/surveys`)).json()) as unknown[]
+    const listed = (await (await json('GET', `/sessions/${sessionId}/surveys`)).json()) as unknown[]
     expect(listed).toEqual([expect.objectContaining({ ...answer, version })])
   })
 })
@@ -239,12 +242,12 @@ describe('exporting a session for the replay corpus (DRIFT §7)', () => {
     const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
     await table.send(null, { v: 'shuffle', pile: 'draw' })
     await table.close()
-    const exported = (await (await fetch(`${run.http}/sessions/${sessionId}/export`)).json()) as { version: string; setup: unknown; log: { outcome?: unknown }[]; deck?: unknown }
+    const exported = (await (await json('GET', `/sessions/${sessionId}/export`)).json()) as { version: string; setup: unknown; log: { outcome?: unknown }[]; deck?: unknown }
     expect(exported.version).toBe('rev-1')
     expect(exported.log).toHaveLength(1)
     expect(exported.log[0]?.outcome).toMatchObject({ kind: 'shuffle' })
     expect(exported.deck).toBeUndefined()
-    expect((await fetch(`${run.http}/sessions/nope/export`)).status).toBe(404)
+    expect((await json('GET', '/sessions/nope/export')).status).toBe(404)
   })
 })
 
@@ -259,12 +262,12 @@ describe('a texture that failed for good (#10)', () => {
     const job = (await run.renders.claim(Date.now()))!
     await run.renders.fail(job.hash, 'chromium gave up')
 
-    expect(await prepare()).toEqual({ total: 4, done: 0, failed: [job.hash] })
+    expect(await prepare()).toEqual({ total: 4, done: 0, failed: [job.hash], smallest: {} })
     // Asking again is not a retry: a dead job stays dead until someone says otherwise.
-    expect(await prepare()).toEqual({ total: 4, done: 0, failed: [job.hash] })
+    expect(await prepare()).toEqual({ total: 4, done: 0, failed: [job.hash], smallest: {} })
     expect((await run.renders.status(job.hash))?.state).toBe('failed')
 
-    expect(await prepare('?retry=1')).toEqual({ total: 4, done: 0, failed: [] })
+    expect(await prepare('?retry=1')).toEqual({ total: 4, done: 0, failed: [], smallest: {} })
     // Back in the queue for real: a worker claims it along with the rest and finishes it.
     const claimed: string[] = []
     for (;;) {
@@ -274,7 +277,8 @@ describe('a texture that failed for good (#10)', () => {
       await run.renders.complete(next.hash, new Uint8Array([137, 80, 78, 71]))
     }
     expect(claimed).toContain(job.hash)
-    expect(await prepare()).toEqual({ total: 4, done: 4, failed: [] })
+    // Completed by hand with no fit, as every texture rendered before #523 was: nothing to say.
+    expect(await prepare()).toEqual({ total: 4, done: 4, failed: [], smallest: {} })
   })
 })
 
@@ -439,6 +443,31 @@ describe('a group rules what a card looks like on the table (#13)', () => {
       ],
     }
   }
+
+  // What a texture's smallest text was fitted to (#523), from the server itself and never through
+  // the object store: a link to R2 carries no header a page could read. The hash is the capability,
+  // as it is for the picture, and the answer says nothing the picture does not show.
+  it('says what a texture’s smallest text was fitted to, once it is rendered', async () => {
+    const { id } = (await (await json('POST', '/projects', groupedProject())).json()) as { id: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
+    await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 2 }, { v: 'flip', component: 'c0', face: 'front' }, { v: 'flip', component: 'c1', face: 'front' })
+    await table.synced(3)
+    const trap = table.view!.components.find((c) => c.cardRef === 'trap')!.faces!['front']!
+    await table.close()
+
+    const fit = (hash: string) => fetch(`${run.http}/faces/${hash}/fit`)
+    expect((await fit(trap)).status).toBe(202)
+    expect((await fit('0'.repeat(64))).status).toBe(404)
+    await run.renderAll()
+    const res = await fit(trap)
+    expect(res.status).toBe(200)
+    // The trap's front has one text on it, its 14 pt title.
+    expect(await res.json()).toEqual({ smallestPt: 14 })
+    // Read by `fetch` and not by an <img>, so from the page's own origin it needs the API's CORS.
+    const cross = await fetch(`${run.http}/faces/${trap}/fit`, { headers: { origin: 'http://elsewhere.test' } })
+    expect(cross.headers.get('vary')).toBe('origin')
+  }, 90_000)
 
   it('renders a different texture for each group, on the front and on the back', async () => {
     const { id } = (await (await json('POST', '/projects', groupedProject())).json()) as { id: string }
@@ -777,5 +806,41 @@ describe('the setup the players are handed (B5, B7, #270)', () => {
     // Nor anything else a zone knows about itself: where it lies, who may see into it, what it
     // fills with. A zone in the book is a name and the id the book's own references use.
     for (const field of ['geometry', 'visibility', 'returnTo', 'shortcut', 'fill', 'components']) expect(raw, `${field} reached the players' rulebook`).not.toContain(field)
+  })
+})
+
+// The whole log and the survey answers are the project's playtest data, not the table's (D3, G3).
+// The log carries every hand — each draw's outcome says which cards went where — the guests' own
+// names and what was written in a flag, and a session's id is in every player's link. So both are
+// read by those the project lets open its tables as host, who may already watch every hand with
+// `owner=1` (C8); never by a player, a stranger, or the table screen's host key, which sees only
+// what is public.
+describe('who may read a session’s log and its surveys (D3, C8)', () => {
+  const read = (path: string, headers: Record<string, string> = {}) => fetch(`${run.http}${path}`, { headers })
+  const shareWith = async (email: string, role: string): Promise<string> => {
+    await json('POST', '/projects/p1/invites', { email, role })
+    const link = /\/invites\/([A-Za-z0-9_-]+)/.exec(run.mail.sent.at(-1)?.text ?? '')?.[1] ?? ''
+    const theirs = await login(email)
+    await fetch(`${run.http}/invites/${link}`, { method: 'POST', headers: { cookie: theirs } })
+    return theirs
+  }
+
+  it('hands them to the project’s owner and test leaders, and to nobody else', async () => {
+    await json('POST', '/projects', { id: 'p1', ...project() })
+    const { id: sessionId, hostKey } = (await (await json('POST', '/projects/p1/sessions', {})).json()) as { id: string; hostKey: string }
+    const tester = await shareWith('bo@example.com', 'tester')
+    const viewer = await shareWith('cilla@example.com', 'viewer')
+    const stranger = await login('dan@example.com')
+    for (const path of [`/sessions/${sessionId}/export`, `/sessions/${sessionId}/surveys`]) {
+      const at = (status: number) => ({ path, status })
+      expect(at((await read(path, { cookie })).status)).toEqual(at(200))
+      expect(at((await read(path, { cookie: tester })).status)).toEqual(at(200))
+      expect(at((await read(path, { cookie: viewer })).status)).toEqual(at(403))
+      expect(at((await read(path, { cookie: stranger })).status)).toEqual(at(403))
+      // A player's phone has no account to show, only the link the id travels in.
+      expect(at((await read(path)).status)).toEqual(at(401))
+      // The table screen's key opens the table, which sees only what is public.
+      expect(at((await read(path, { authorization: `Bearer ${hostKey}` })).status)).toEqual(at(403))
+    }
   })
 })

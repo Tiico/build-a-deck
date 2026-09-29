@@ -39,11 +39,11 @@ function scene(): Snapshot {
     floor: 'table',
     seats: [{ id: 'N', name: 'Ada', edge: 'N' as const }],
     zones: [
-      { mode: 'order', id: 'table', kind: 'area', name: 'Spelyta', geometry: { x: -600, y: -400, w: 1200, h: 800, rot: 0 }, dynamic: false, order: [] },
-      { mode: 'order', id: 'market', kind: 'area', name: 'Marknad', geometry: { x: -330, y: -330, w: 660, h: 120, rot: 0 }, dynamic: false, order: ['m1', 'm2'] },
-      { mode: 'count', id: 'draw', kind: 'pile', name: 'Draghög', geometry: { x: -140, y: 0, w: 0, h: 0, rot: 0 }, dynamic: false, count: 8 },
-      { mode: 'count', id: 'discard', kind: 'pile', name: 'Kasthög', geometry: { x: 140, y: 0, w: 0, h: 0, rot: 0 }, dynamic: false, count: 3 },
-      { mode: 'count', id: 'hand:N', kind: 'hand', name: 'Hand', owner: 'N', geometry: { x: -250, y: -400, w: 500, h: 60, rot: 0 }, dynamic: false, count: 5 },
+      { mode: 'order', id: 'table', kind: 'area', name: 'Spelyta', visibility: 'all', geometry: { x: -600, y: -400, w: 1200, h: 800, rot: 0 }, dynamic: false, order: [] },
+      { mode: 'order', id: 'market', kind: 'area', name: 'Marknad', visibility: 'all', geometry: { x: -330, y: -330, w: 660, h: 120, rot: 0 }, dynamic: false, order: ['m1', 'm2'] },
+      { mode: 'count', id: 'draw', kind: 'pile', name: 'Draghög', visibility: 'none', geometry: { x: -140, y: 0, w: 0, h: 0, rot: 0 }, dynamic: false, count: 8 },
+      { mode: 'count', id: 'discard', kind: 'pile', name: 'Kasthög', visibility: 'none', geometry: { x: 140, y: 0, w: 0, h: 0, rot: 0 }, dynamic: false, count: 3 },
+      { mode: 'count', id: 'hand:N', kind: 'hand', name: 'Hand', visibility: 'owner', owner: 'N', geometry: { x: -250, y: -400, w: 500, h: 60, rot: 0 }, dynamic: false, count: 5 },
     ],
     components: [
       card('m1', 'market', 4, 4, 'Gruva'),
@@ -75,7 +75,7 @@ function handScene(): Snapshot {
     seats: seats.map((s) => ({ id: s.id, name: `Spelare ${s.id}`, edge: s.id })),
     zones: [
       ...scene().zones.filter((z) => z.kind !== 'hand'),
-      ...seats.map((s) => ({ mode: 'order' as const, id: `hand:${s.id}`, kind: 'hand' as const, name: 'Hand', owner: s.id, geometry: s.geometry, dynamic: false, order: cards.filter((c) => c.zone === `hand:${s.id}`).map((c) => c.id) })),
+      ...seats.map((s) => ({ mode: 'order' as const, id: `hand:${s.id}`, kind: 'hand' as const, name: 'Hand', visibility: 'owner' as const, owner: s.id, geometry: s.geometry, dynamic: false, order: cards.filter((c) => c.zone === `hand:${s.id}`).map((c) => c.id) })),
     ],
     components: [...scene().components, ...cards],
   }
@@ -639,7 +639,7 @@ function onlineScene(held: number): Snapshot {
     seats: seats.map((s) => ({ id: s.id, name: `Spelare ${s.id}`, edge: s.edge })),
     zones: [
       ...scene().zones.filter((z) => z.kind !== 'hand'),
-      ...seats.map((s) => ({ mode: 'count' as const, id: `hand:${s.id}`, kind: 'hand' as const, name: 'Hand', owner: s.id, geometry: s.geometry, dynamic: false, count: s.held })),
+      ...seats.map((s) => ({ mode: 'count' as const, id: `hand:${s.id}`, kind: 'hand' as const, name: 'Hand', visibility: 'owner' as const, owner: s.id, geometry: s.geometry, dynamic: false, count: s.held })),
     ],
   }
 }

@@ -9,6 +9,9 @@ import { cardWord } from './keyboard.js'
 import { SHOW_MS, componentOf } from './presence.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { useT } from '../i18n/index.js'
+import { useSmallestPt } from './smallest.js'
+import { readingWidth } from '../legibility.js'
+import { CARD_STANDARD_63x88 } from '@byd/engine'
 
 // From how many seats a seat stands on one line in the column (#482 fynd 6).
 const DENSE_SEATS = 7
@@ -59,6 +62,11 @@ export type TvChromeProps = {
 // their contents moved into the column, which is the difference between a card that has to be
 // pointed at to be told apart and one that does not (`tv-card-size.test.ts`, K8).
 export function TvChrome({ view, activity, roomCode, joinUrl, title, version, inspecting, faces, showing, onDismiss, observers = [], note, rules, children }: TvChromeProps) {
+  // A card whose words are smaller than the wizard's frame is shown taller (#523), into the felt's
+  // height, until they read from the sofa: the height its width needs, which the stylesheet lets past
+  // the 938 px the frame's own card stops at.
+  const showPt = useSmallestPt(faces, showing?.card)
+  const showNeed = readingWidth(0, showPt, 'tv') * CARD_STANDARD_63x88.physical.heightMm / CARD_STANDARD_63x88.physical.widthMm
   const t = useT()
   const handCount = (seat: string) => {
     const hand = view.zones.find((z) => z.kind === 'hand' && z.owner === seat)
@@ -117,7 +125,7 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
         {showing && (
           <div className="byd-tv-show" role="status" aria-labelledby="tv-show" onClick={onDismiss}>
             <figure>
-              <div data-tv-show={showing.card.id} style={showing.card.cardRef === null ? undefined : { ['--hue' as string]: hue(showing.card.cardRef) }}>
+              <div data-tv-show={showing.card.id} style={{ ...(showing.card.cardRef === null ? {} : { ['--hue' as string]: hue(showing.card.cardRef) }), ...(showNeed > 0 ? { ['--byd-show-need-h' as string]: `${showNeed}px` } : {}) }}>
                 <Texture faces={faces} c={showing.card} />
                 <span>{cardWord(showing.card)}</span>
               </div>

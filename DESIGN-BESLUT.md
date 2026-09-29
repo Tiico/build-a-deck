@@ -305,6 +305,8 @@ Följdkrav:
 Undantag måste städas när komponenten byter zon, annars läcker gamla rättigheter.
 Detta är den mest sannolika källan till informationsläckor och behöver testas hårt.
 
+Reviderad 2026-09-28 (#518): **varje vy säger zonens synlighet** (`visibility`: `all`, `owner` eller `none`). Den är uppställningens och ingen hemlighet — den står i regelboken — och det den avgör om ett ansikte är fortfarande ansiktets regel ovan. Telefonen läser den för att skilja ett kort bordet ser, som den får hålla upp för rummet (K8), från ett som bara är dess eget att veta; utan den gick ett område som designern gjort privat inte att skilja från det publika i ägarens egen vy.
+
 Reviderad 2026-09-22 (#412): kortets namn är dold information och färdas i projektionen.
 
 Namnet var tidigare ingen egen sak på tråden.
@@ -710,7 +712,7 @@ Remsan är liten i vila, `clamp(112px, 34vw, 200px)`, och följer skärmen i st�
 «Senast» och varje annan logg säger kortets titel när raden handlar om ett kort som läsarens egen vy har ett namn på, «Bo vände Björnen», och «ett kort» annars; namnet kommer ur projektionen och ingen annanstans, så raden kan inte säga något som skärmen inte redan fått veta (B6, #412).
 Två förkastade varianter, mätta med riktiga texturer: B ritade remsan i läsbredd med handen som miniatyrer ovanför, vilket läste utan handling men visade ett kort åt gången och sköt genvägarna under skärmkanten; C lät det valda kortet växa där det låg, vilket vid 390 lämnade en strimma av grannarna.
 Bilder och tal: [`docs/ux-audits/2026-09-28/prototyper/507/`](docs/ux-audits/2026-09-28/prototyper/507/README.md).
-Känd lucka: läsbredden räknas på förvalsramens 8,5 pt brödtext (L6), eftersom telefonen inte vet vilken punktstorlek mallen har — projektionen bär texturens hash och inte mallens mått.
+Känd lucka när detta skrevs: läsbredden räknades på förvalsramens 8,5 pt brödtext (L6), eftersom telefonen inte visste vilken punktstorlek mallen har — projektionen bär texturens hash och inte mallens mått. Stängd i #523: läsvyn läser kortets minsta text från renderaren och växer efter den (K26).
 En mall med 7 pt brödtext når därför 11,5–13,2 px i läsvyn; K26:s «golvet gäller mallens brödtext som den är» kräver att den storleken når klienten, vilket är en egen fråga.
 
 ### C5. Rumslig modell: konfigurerbart TV- eller bordsläge (fråga 32)
@@ -1054,6 +1056,7 @@ Huvudet visar vilka andra som har spelet öppet, med kontots adress som namn.
 Roller och inbjudningar, byggt 2026-09-08:
 Behörigheter är en modell, inte ett fält: ägare, medredigerare, testledare, betraktare, och varje väg frågar vad rollen får göra i stället för att minnas reglerna.
 Ägaren delar spelet och tar bort det. En medredigerare ändrar det. En testledare startar bord och kör speltest utan att röra leken. En betraktare ser projektet ändras på tråden utan att kunna ändra det, och får veta det i huvudet i stället för att varje ändring avvisas.
+Speltestens data — ett bords hela logg (`GET /sessions/:id/export`) och dess enkätsvar — läses av den som får öppna projektets bord som värd, alltså ägare, medredigerare och testledare, och av ingen annan (2026-09-28): loggen bär varje hand, gästernas namn och flaggornas text, och ett bords id står i varje spelares länk. Bordsskärmens värdnyckel räcker inte, eftersom bordet bara ser det publika.
 En inbjudan mejlas till en adress, lever en vecka och går att använda en gång. Den säger ingenting om spelet förrän den använts, så en vilsen länk berättar inget för en främling. Den som följer den medan hen är inloggad går med i den roll den nämner och landar i editorn.
 Ytan prototypades i tre former: en panel från editorns huvud, ett ark på spelets kort, och de som är inne som dörren. Valet blev det sista: vilka som är inne nu och vilka som får vara med är samma fråga, så en lista svarar på den, med de närvarande överst.
 Ett projekt från före konton tillhör fortfarande ingen och är öppet för alla, som det alltid varit.
@@ -1328,6 +1331,19 @@ Kontrollen fann tre fel i vårt eget arbete första gången den kördes: startra
 Följdkrav:
 Reglerna måste kalibreras mot faktiskt tryckta provkort, annars blir de brus som stängs av.
 
+Tillagt 2026-09-28 (#512, beställarens beslut A efter prototypen på grenen `proto/512-editorn`): **ögonen visar också hur kortet läses på skärm.**
+Bland väggens ögon står nu de tre läsvyerna: telefonens läsvy, bordets lyft och TV:ns «Visa för alla».
+Väljs en av dem ritas väggen i den bredd ytan håller upp ett kort i för att läsas (K26): 294, 341 respektive 672 px.
+Under varje kort står dess minsta text i px där, räknad på den storlek E6 faktiskt gav texten och inte på mallens.
+Är den under skärmens golv för all text säger raden det i ord, «Minsta text 10,7 px · under golvet 12 px», och färgen och märket upprepar bara det.
+Frågan är läsvyn och inte vilan, eftersom K26 låter ett kort i vila vara oläsligt så länge en handling visar det i golvets storlek.
+Det som kan gå fel för en designer är därför text mindre än läsvyerna räknar med, satt så eller krympt av E6: under 7,3 pt i telefonens läsvy, 6,3 pt vid bordet och 6,4 pt på TV:n.
+Telefonen säger alltså nej först.
+Två förkastade varianter: en digital kontroll i rapporten bredvid den fysiska, med en rad per läsvy och korten under golvet som länkar (B), och en remsa under duken i Mall med kortet i alla tre läsvyerna (C).
+Beställaren valde ögonen ensamma, alltså utan B.
+Därmed sägs en text under golvet på kortet självt och inte samlad i rapporten med en länk; E6:s krav på länk till raden gäller tryckets anmärkningar och inte skärmens.
+Bilder och tal: [`docs/ux-audits/2026-09-28/prototyper/512/`](docs/ux-audits/2026-09-28/prototyper/512/README.md).
+
 ### E6. Textanpassning: automatisk krympning ned till validerad minimigräns (fråga 34)
 
 Texten skalas ned stegvis tills den ryms, men aldrig under minsta läsbara punktstorlek från E5.
@@ -1485,6 +1501,40 @@ Frågan om vad som händer om bolaget läggs ner är den vanligaste invändninge
 Följdkrav:
 Domänmodellen måste vara serialiserbar i sin helhet — vilket behövs för backup och migrering ändå.
 Lagringskostnad för icke-betalande konton kvarstår permanent.
+
+Preciserat 2026-09-28 av beställaren (#526):
+- **Formen är en zip** som går att öppna utan verktyget. Den innehåller:
+  - `spel.json`, manifestet med varje version av dokumentet (hel, äldst först, med datum och etikett),
+  - `schema.json`, dess JSON Schema, genererat ur samma zod-schema som validerar det,
+  - `LASMIG.md` på exportörens språk (A4); formatets filnamn är ASCII, eftersom den unzip macOS har i Terminalen inte läser zippens UTF-8-märkning,
+  - `assets/<hash>.<ext>` med varje bild och typsnitt någon version använder, som den fil den är,
+  - `tryck/` med den aktuella versionens tryck-PDF:er med utfall, en per sida av varje kort, och regelhäftet.
+  Filnamnen är formatets och översätts aldrig.
+- **«Hela historiken» är versionshistoriken.** Bordens loggar och enkäter ingår inte: de bär gästers personuppgifter och hör till GDPR-arbetet i fas 3.
+- **Ett spel som tryckkontrollen (E5) stoppar exporteras ändå.** Kort-PDF:erna utelämnas och fynden står i manifestet, eftersom dataägandet går före trycket.
+- **Exporten är ägarens och medredigerarnas** (`canEdit`).
+- **Importen byggs i samma skiva** (#528), med rundturen som acceptans.
+
+Byggt 2026-09-28 (#527): `POST /projects/:id/export` köar trycket, och `GET` svarar 202 med förloppet och sedan med zippen. Servern håller inget jobb mellan anropen; planen räknas fram ur dokumentet och renderarens lager varje gång. Formatet står i `packages/server/src/export.ts`, och grinden är `packages/server/test/export.test.ts`.
+
+Byggt 2026-09-28 (#528): `POST /projects/import` tar zippen och skapar ett **nytt** spel som ägs av den som tar in det, med varje version på sin revision, sitt datum och sitt namn (`restore` i båda lagren). Ett spel skrivs aldrig över.
+Ingenting skrivs förrän allt har lästs och hållit: manifestet mot schemat, varje asset mot sin hash, sitt format och uppladdningens gräns, och den aktuella versionens uppställning. En asset som zippen inte bär måste redan finnas på servern.
+Tryck-PDF:erna läses inte in, eftersom de kan härledas. Redigeringsloggen följer inte med, så `atSeq` gör det inte heller.
+Rundturen — exportera, importera, exportera igen — ger samma `spel.json` bortsett från id och tidpunkt, och det är grinden.
+
+Byggt 2026-09-28 (#529, beställarens beslut B efter [prototypen](https://github.com/Tiico/build-a-deck/blob/f24bd56bc75cc4596ba2ef611440a3691e8d402b/docs/ux-audits/2026-09-28/prototyper/529/README.md)): **export och import är dialoger i Mina spel.**
+- «Exportera…» i spelets ⋯ säger vad som följer med och att borden inte gör det, förbereder tryckfilerna med förlopp och lämnar sedan zippen med «Ladda ner». Valet visas bara för ägare och medredigerare.
+- «Importera spel…» i huvudet tar en zip och säger felen i läsarens ord, eftersom servern svarar med koder (A4). När den är klar öppnar den spelet.
+- En kopia får «(importerad)» eller «(imported)» efter namnet, på det språk den togs in på, men bara när kontot redan har ett spel med samma namn.
+- Assets som ett spel pekar på men som servern inte hade står i `absent`, i stället för att tyst utelämnas, och importen godtar dem.
+- E2E-sviten går hela vägen med en riktig renderare (`packages/e2e/test/game-export.spec.ts`).
+
+Tillägg 2026-09-28 (#542, uppföljning av #529):
+- **Samma val finns i editorn**, i en ⋯ bredvid spelets namn — spelets egen meny, samma `GameMenu` som i Mina spel, med det som görs med hela spelet. Den visas bara för ägare och medredigerare, och fokus går tillbaka till ⋯ när fönstret stängs.
+- **Zippen sparas under det namn servern ger den** (`content-disposition`), eftersom det säger vilken version den innehåller; listan fönstret öppnades ur kan ligga en version efter.
+- **Det som går fel sägs i ord och aldrig som en statuskod** (A4): 401 säger logga in igen, 403 att bara ägare och medredigerare får exportera, och 503 att tryckfilerna inte kan ritas just nu.
+- **En server som inte går att nå sägs, och ingenting fryser.** En import som lyckats står som lyckad även om listan inte går att läsa om direkt efteråt.
+- Grindarna är `packages/web/test/game-dialogs.test.tsx` och `packages/web/test/editor-export.test.tsx`.
 
 ---
 
@@ -1685,7 +1735,7 @@ Vilan är orörd: panelen i spalten står kvar som ovan, och filten, platserna o
 Rummet väljer kortet på två sätt: telefonen skickar `show` (K6) med kortets id, och på TV:n själv gör både K16:s «Titta» och ringens «Titta» samma sak — på TV:n är den stora vyn rummets, och K8:s privata vy var privat för ingen.
 Ett kort TV:n ser nedvänt behåller K8:s vy, eftersom en baksida upphållen för rummet inte säger det något (K23).
 **TV:n visar bara vad den själv ser.** `show` bär ett id och inget annat, och skärmen slår upp det i sin egen ögonblicksbild och ritar det bara om den bär kortets framsida (`shownCard`), så ett meddelande aldrig kan visa ett kort på hand eller ett nedvänt.
-Telefonens knapp «Visa för alla» står i läsvyn för andras publika kort (#507); bordslägets lyft (#509) gäller inte på TV:n, som läser på det här sättet.
+Telefonens knapp «Visa för alla» (#518) står i läsvyn under kortet, på andras kort under «Ytorna» och som ett fjärde verb på ens egna kort i ett publikt område, och säger «Visas för alla» en stund efter trycket; den erbjuds bara på ett kort bordet ser uppvänt (`forTheRoom`: uppvänt i en zon som visar för alla, eller överst i en hög, K15), aldrig på ett handkort eller i ett område bara ägaren ser. Bordslägets lyft (#509) gäller inte på TV:n, som läser på det här sättet.
 Grindarna: `packages/web/test/tv-show.test.tsx` (kortets bredd mot K26:s TV-golv vid 1920 × 1080 med fyra och åtta platser, skrivbordets vid 1280 × 800, och spalten orörd), `presence.test.ts` (meddelandet, tiden och att bara ett uppvänt kort ritas), `tv-chrome.test.tsx`, `table-page.test.tsx` (en telefon visar, ett nedvänt kort ritas inte), `table-keyboard.test.tsx` och `table-renderer.test.tsx` («Titta» på TV:n, från panelen och från ringen).
 
 ### K9. Bordsvyns utseende: filtbord som renderare, sändningslayout som TV-omgivning (prototypat 2026-09-06)
@@ -2305,6 +2355,24 @@ Grinden står i `online-felt.test.tsx` och är skriven som tal just därför att
 
 Byggt 2026-09-14 (#77). Prototypen `claude/proto-77-column` togs bort när den hade svarat; dess resonemang står här.
 Grindarna är invarianter och inte tal, mätta vid 3, 13 och 21 kort och vid 1280 × 800, 1920 × 1080 och 1024 × 600: inget kort i kolumnen är utan sitt namn, inget steg är under 44 px, kortet är alltid mellan 56 och 112 px, kolumnen tar aldrig mer än en fjärdedel av fönstrets bredd, sidan rullar aldrig i sidled, och ingenting av sidans krom ligger över filten eller en zon på den.
+
+Reviderat 2026-09-28 (#510, K26): **kolumnens kort läses med en handling, i golvets storlek, och uppslaget läses i den också.**
+K17 kallade 112 px «läsbar storlek» från prototyp B, men talet mättes på ramen och aldrig på texten: 8,5 pt brödtext blir 5,3 px där.
+Hovern som lyfte kortet till 180 px (#484 fynd 15) gav 8,6 px, och ett tryck öppnade adresspanelen direkt.
+Tre varianter prototypades på `/online` med riktiga texturer (#510): **A, bred kolumn** — korten ritas i golvets storlek i kolumnen själv; **B, lyft bredvid kolumnen** — som filtens lyft (K8, #509); **C, handen hålls upp** — hela handen i golvets storlek över filten.
+**B valdes.**
+A nådde inte golvet vid 1024 × 768 (11,1 px), eftersom kolumnen aldrig får ta mer än en fjärdedel av fönstret, och tog filtens kort till 31–35 px vid 1024 och 40–45 vid 1280; C visade hela handen men överlappande, med ett steg som krymper med handen, och täckte filten medan den stod.
+
+Hover, tangentbordets fokus eller ett tryck på ett kort i kolumnen lyfter det bredvid kolumnen med filtlyftets form och storlek (`liftBox`, `Lifted`): 341 px och 16,4 px brödtext vid 1024 × 768, 355 och 17,0 vid 1280 × 800, 479 och 23,0 vid 1920 × 1080.
+Ett andra tryck — på kortet eller på det lyfta kortet — öppnar adresspanelen; Enter gör det direkt som förut (K16).
+Ett kort lyft av ett tryck står kvar tills Escape, ett tryck utanför kolumnen och lyftet, eller det andra trycket; en dragning lägger undan det när den börjar.
+Kolumnen och filten är oförändrade, och K17:s invarianter står.
+Uppslaget (`Visa alla`) ritar sina kort i minst **295 px**, där startramens brödtext når skrivbordets 14 px (K26:s 294 avrundas till närmaste pixel och ger 13,99), och upp till 336 px på breda skärmar; aldrig bredare än sidan, som aldrig rullar i sidled.
+Stående fönster, där handen är bandet, följer telefonens beslut (#507).
+
+Följdkrav: det som ritas fast mot fönstret över kolumnen — lyftet, spöket under en dragning och dragets dörr — ritas **bredvid** listan och aldrig i den.
+Ett barn till kolumnen är fortfarande ett barn, och det sista kortets ruta mäts med `:last-child`: med ett lyft efter sig krympte den till ett steg, kolumnen centrerades om 45 px lägre, och kortet under en pekare som inte rört sig blev grannen.
+Grindarna är `packages/web/test/online-column-lift.test.tsx` (gesterna och uppslagets storlek mot K26:s modul) och `packages/e2e/test/online-hand-read.spec.ts` (resan i den byggda appen, att det lyfta kortet är kortet under pekaren, och att sidan inte rullar i sidled).
 
 ### K18. Filten växer med sällskapet (2026-09-13, #54)
 
@@ -2974,6 +3042,29 @@ Talen står på ett ställe i koden, `packages/web/test/legibility.ts` (`textPxO
 Grinden för beslutet är `packages/web/test/legibility.test.ts`, som läser startramarnas brödtext (L6) och golven ur samma modul och säger vilken kortbredd varje ram behöver per skärm, så att en ändring av endera syns.
 Ytornas egna mätningar byggs i #507–#512.
 ---
+
+Tillagt 2026-09-28 (#512): måttstocken bor i produkten, i `packages/web/src/legibility.ts`, sedan editorn behöver den; `packages/web/test/legibility.ts` läser därifrån.
+Där står också läsvyerna, `READING_VIEWS`: bredden varje yta håller upp ett kort i på den minsta skärm den svarar för.
+Telefonen håller upp det i 294 px vid 320 × 568 (`--byd-read-w` i `player.css`).
+Bordet håller upp det i 341 px vid 1024 × 768 (`liftBox` i `lift.ts`).
+TV:n håller upp det i 672 px vid 1920 × 1080 (`.byd-tv-show` i `table.css`, som `tvShowWidth`).
+Varje ytas mätande test säger att den ritar talet som står där, så att editorns ögon (E5) och ytorna inte kan glida isär.
+
+Tillagt 2026-09-28 (#523, beställarens beslut A + C): **läsvyerna växer för ett kort vars ord behöver det.**
+Renderaren kör E6:s anpassning när den ritar texturen och sparar nu kortets minsta text i pt med texturen, nycklad på hashen (`render_outputs.smallest_pt`).
+Servern svarar på `GET /faces/:hash/fit` med `{ smallestPt }`, 202 medan texturen renderas; alltid från servern själv och aldrig via objektlagringens länk, som inte bär något en sida kan läsa.
+Hashen är nyckeln, som för bilden, och svaret säger inget som bilden inte redan visar; projektionen och protokollet är orörda.
+Varje läsvy håller upp kortet i `readingWidth(bredden, minstaPt, skärm)`: sin vanliga bredd, eller den bredd där kortets minsta text når skärmens golv för all text, upp till vad skärmen rymmer.
+Telefonen har 16 px luft kvar mot kanten, bordets lyft fönstrets höjd, och TV:n filtens höjd förbi sina 938 px.
+En textur ritad före det här har ingen uppgift, och läses i den vanliga bredden som förut.
+Vid 320 är skärmen gränsen: 304 px bär 7,0 pt i 11,9 px och 6,5 pt i 11,1 px, under golvet, och det är den gräns C varnar designern för (#523).
+
+Tillagt 2026-09-28 (#523, beslut C: efter start): **editorn säger vilka kort en telefon inte kan läsa, när bordet är uppe.**
+Svaren från `/sessions/:id/textures` och `/sessions/:id/prepare` bär `smallest`: det varje korts renderade framsida anpassades till, per rad.
+När renderingen är klar räknar editorn korten under `minPtIn` för telefonens läsvy vid 320 (7,3 pt) och säger det i remsan under huvudet, i E5:s form: «4 kort har text under 7,3 pt, som en telefon på 320 px visar under 12 px.»
+Anmärkningen stoppar inget, och bordet är uppe när den står där.
+«Visa på kortväggen» öppnar väggen med telefonens öga (E5, #512), där de korten är markerade.
+Den står efter start och inte före, eftersom storleken är renderarens och finns först när texturerna finns: samma tal som spelarna får, och ingen väntan vid start.
 
 ## L. Editorn (grillad 2026-09-06)
 

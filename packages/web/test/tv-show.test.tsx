@@ -13,13 +13,15 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ReactElement } from 'react'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { render } from '@testing-library/react'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { act, render } from '@testing-library/react'
+import { forgetFits } from '../src/table/smallest.js'
 import { chromium, type Browser, type Page } from 'playwright'
 import { TvChrome } from '../src/table/TvChrome.js'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { FELT_FONT, feltOf, sceneOf, sheet } from './felt-labels.js'
 import { DEFAULT_BODY_PT, SCREENS, textPxOnCard } from './legibility.js'
+import { READING_VIEWS, tvShowWidth } from '../src/legibility.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const SHEETS = [FELT_FONT, 'src/table/table.css', 'src/table/texture.css', 'src/buttons.css', 'src/a11y.css']
@@ -97,6 +99,41 @@ describe('a card shown for everyone is read from the sofa (K26, #508)', () => {
 
   // A 1280 × 800 window is a laptop in TV mode, not a set across a room: K26 puts it at the desk's
   // numbers, and the card is as tall as that window can hold.
+  // The width the editor's eye draws the wall at for the television (#512) is this one, read
+  // off the felt the card stands over: a change to the box in table.css moves this test.
+  it('draws the card at the width the reading views give the television', async () => {
+    const tv = READING_VIEWS.find((v) => v.key === 'tv')!
+    const reading = await shownOn(4, tv.window)
+    expect({ card: Math.round(reading.card.w), felt: Math.round(reading.felt.h) }).toEqual({ card: Math.round(tv.width), felt: Math.round(reading.felt.h) })
+    expect(Math.round(tvShowWidth(reading.felt.h))).toBe(Math.round(reading.card.w))
+  }, 60_000)
+
+  // A card whose smallest text is 6.2 pt (#523): at the television's own 672 px that is 22.9 px,
+  // under its 24, so the card is shown taller, into the felt's height, until it reads.
+  it('shows a card with 6.2 pt text larger, until it reads from the sofa', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ smallestPt: 6.2 }), { status: 200 })))
+    try {
+      const scene = sceneOf(feltOf(4))
+      const found = scene.components.find((c) => c.cardRef !== null && c.counter === undefined)!
+      const card = { ...found, faces: { front: 'a'.repeat(64) } }
+      const size = { w: 1920, h: 1080 }
+      const { container, unmount } = render(
+        <TvChrome view={scene} activity={[]} roomCode="KX7P" title="Visa" faces="http://faces.test" showing={{ card, by: 'Ada', at: 1 }}>
+          <TableRenderer view={scene} mode="tv" camera="follow" size={{ w: size.w - 360, h: size.h }} glideMs={0} />
+        </TvChrome>,
+      )
+      await act(async () => undefined)
+      const html = container.innerHTML
+      unmount()
+      const reading = await onPage(html, size, (page) => page.evaluate(READ) as Promise<Reading>)
+      expect(textPxOnCard(6.2, 672)).toBeLessThan(SCREENS.tv.floorPx)
+      expect({ card: Math.round(reading.card.w), reads: textPxOnCard(6.2, reading.card.w) >= SCREENS.tv.floorPx - 0.05 }).toEqual({ card: Math.round(reading.card.w), reads: true })
+    } finally {
+      vi.unstubAllGlobals()
+      forgetFits()
+    }
+  }, 60_000)
+
   it('draws it at the desk’s reading size in a 1280 × 800 window', async () => {
     const reading = await shownOn(4, { w: 1280, h: 800 })
     const at = `1280 × 800, card ${Math.round(reading.card.w)} px`

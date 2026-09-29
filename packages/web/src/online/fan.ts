@@ -154,3 +154,16 @@ export const COLUMN_STYLE: Record<string, string> = {
   '--col-min': `${FAN_MIN_PX}px`,
   '--fan-gutter': `${FAN_GUTTER_PX}px`,
 }
+
+// The hand read all at once, «Visa alla» (K17's second mode), at the size a card is read at
+// (K26, #510). The grid used the fan's 112 px card, which carries the wizard's 8.5 pt body at
+// 5 px: every card legible as *which* card and none as *what* it says. Its smallest card now
+// carries that body at the desk's 14 px — 295 px, one more than the 294 K26 names, because K26
+// rounds to the nearest pixel and 294 lands at 13.99 — and a wider screen reads larger, up to 16 px. Never wider than the sheet it stands in, so the page never scrolls
+// sideways (L10); a screen narrower than that is a phone, which gets `/play` and not this (#99).
+export const READ_CARD_MIN_PX = 295
+export const READ_CARD_MAX_PX = 336
+export const READ_CARD_VW = 23
+export function spreadStyle(count: number): Record<string, string> {
+  return { ...fanStyle(count), '--fan-card': `min(clamp(${READ_CARD_MIN_PX}px, ${READ_CARD_VW}vw, ${READ_CARD_MAX_PX}px), 100vw - ${4 * FAN_GUTTER_PX}px)` }
+}

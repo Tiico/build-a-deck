@@ -15,11 +15,12 @@
   "dependencies": {
     "@byd/engine": "workspace:*",
     "@byd/protocol": "workspace:*",
+    "@byd/render": "workspace:*",
+    "@byd/template": "workspace:*",
+    "fflate": "^0.8.3",
     "postgres": "^3.4.5",
     "ws": "^8.18.0",
-    "zod": "^4.0.0",
-    "@byd/template": "workspace:*",
-    "@byd/render": "workspace:*"
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "@types/ws": "^8.18.0",

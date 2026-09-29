@@ -6,7 +6,7 @@ import { Texture } from '../table/Texture.js'
 import { useRoving } from '../editor/roving.js'
 import { cardWord, handLabel } from '../table/keyboard.js'
 import { useT } from '../i18n/index.js'
-import { fanStyle } from './fan.js'
+import { spreadStyle } from './fan.js'
 
 export type HandSpreadProps = {
   cards: readonly VisibleComponentState[]
@@ -51,7 +51,7 @@ export function HandSpread({ cards, faces, onOpen, onClose }: HandSpreadProps) {
   return (
     <div
       className="byd-hand-spread"
-      style={fanStyle(n)}
+      style={spreadStyle(n)}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}

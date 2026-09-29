@@ -20,3 +20,6 @@ create table if not exists render_outputs (
 );
 -- Outputs moved to the object store (DRIFT §4): a row without bytes is one that lives there.
 alter table render_outputs alter column bytes drop not null;
+-- What a texture's smallest text was fitted to (#523), in pt; null for no words, and for every
+-- output made before it was kept.
+alter table render_outputs add column if not exists smallest_pt real;

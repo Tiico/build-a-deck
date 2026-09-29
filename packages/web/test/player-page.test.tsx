@@ -720,6 +720,45 @@ describe('counters and the area in front of you (C4)', () => {
     table.close()
   })
 
+  // «Visa för alla» (#518, #508 beslut B): a card the table sees can be held up on the room's TV
+  // from the phone's reader. It goes as presence, names the card and nothing else, and is never
+  // offered on a card in her hand.
+  it('holds another seat’s public card up for the room, and offers nothing of the kind on her hand', async () => {
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    await open(id, 'A', 'Ada')
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    const shown: unknown[] = []
+    table.onPresence((from, p) => shown.push({ seat: from.seat, ...p }))
+    await table.send({ v: 'draw', from: 'draw', to: 'mine:B', count: 1 }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await table.synced(2)
+    const card = table.view!.components.find((c) => c.zone === 'mine:B')!.id
+    await table.send({ v: 'flip', component: card, face: 'front' })
+    const read = await waitFor(() => {
+      const found = document.querySelector(`[data-phone-table] [data-area-card="${card}"]`)
+      expect(found).toBeTruthy()
+      return found!
+    })
+    fireEvent.click(read)
+    const held = document.querySelector('.byd-inspect') as HTMLElement
+    fireEvent.click(within(held).getByRole('button', { name: 'Visa för alla' }))
+    await waitFor(() => expect(shown).toContainEqual({ seat: 'A', kind: 'show', component: card }))
+    // Said where she pressed, so the press is not a control that did nothing on her screen.
+    expect(within(held).getByRole('button', { name: 'Visas för alla' })).toBeTruthy()
+
+    fireEvent.pointerDown(held)
+    const mine = await waitFor(() => {
+      const found = document.querySelector('[data-hand-card]')
+      expect(found).toBeTruthy()
+      return found!
+    })
+    fireEvent.pointerDown(mine, { clientX: 100, clientY: 300 })
+    fireEvent.pointerUp(mine, { clientX: 100, clientY: 300 })
+    expect(document.querySelector('[data-inspect]')).toBeTruthy()
+    expect(within(document.querySelector('.byd-inspect') as HTMLElement).queryByRole('button', { name: /Visa(s)? för alla/ })).toBeNull()
+    table.close()
+  })
+
   it('selects, reads and plays from the hand first, then opens the private area', async () => {
     const id = await createSession(run, 's1', undefined, seatSetup())
     const token = await open(id, 'A', 'Ada')

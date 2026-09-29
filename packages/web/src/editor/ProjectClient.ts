@@ -64,7 +64,9 @@ type Step = { doc: ProjectDoc; what: Key }
 
 export type SaveResult = { ok: true; rev: number } | { ok: false; reason: 'conflict' | 'missing' | string }
 export type Cell = string | number | boolean | null
-export type Textures = { total: number; done: number; failed: string[] }
+// `smallest`: what each card's rendered front was fitted to, by row (#523) — a card whose front is
+// not rendered yet, or was rendered before this was kept, is not in it.
+export type Textures = { total: number; done: number; failed: string[]; smallest?: Record<string, number> }
 // A table of this game as the Bord tab lists it (#19): which session, the version it runs,
 // whether its log is locked (C9), and when it last moved.
 // `code` is the room code of a running table, given only to a role that may start one (#477).

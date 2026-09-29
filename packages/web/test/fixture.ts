@@ -264,7 +264,7 @@ export type Running = {
   answering(door?: string): Promise<void>
   stop(): Promise<void>
   restart(): Promise<void>
-  completeRenders(limit?: number): Promise<number>
+  completeRenders(limit?: number, smallestPt?: number | null): Promise<number>
   failRenders(): Promise<number>
 }
 // Enough to tell two fixtures apart within a worker, which is as far as a port ever travels.
@@ -303,12 +303,13 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean }
     // Marks every queued texture as rendered, with a stand-in for the PNG: what the render
     // container would do, without Chromium. A limit renders only that many, which is a worker
     // that has come along part of the way.
-    completeRenders: async (limit = Infinity) => {
+    // `smallestPt` is what the stand-in says every texture's smallest text was fitted to (#523).
+    completeRenders: async (limit = Infinity, smallestPt: number | null = null) => {
       let n = 0
       while (n < limit) {
         const job = await renders.claim(Date.now())
         if (!job) break
-        await renders.complete(job.hash, new Uint8Array([137, 80, 78, 71]))
+        await renders.complete(job.hash, new Uint8Array([137, 80, 78, 71]), { smallestPt })
         n++
       }
       return n

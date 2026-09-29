@@ -71,6 +71,26 @@ describe('fitting in the page (E6 with real metrics)', () => {
   }, 30_000)
 })
 
+// The texture carries what its smallest text became (#523): the size a card has to be held up at
+// to be read is a question about its words after E6 fitted them, and the renderer is where that
+// fitting is true. An empty box is no text at all, so it has no say in it.
+describe('Renderer.renderTexture (#523)', () => {
+  const long = 'När detta kort spelas: dra två kort, sedan kasta ett. Om du kontrollerar ett Torn får du dessutom en extra handling. '
+  it('renders the same picture as renderPng and says the smallest text on the card after fitting', async () => {
+    const c = compiled({ title: 'Drake', body: long.repeat(4) })
+    const { png, smallestPt } = await renderer.renderTexture(c, { dpi: 150 })
+    expect(Buffer.compare(Buffer.from(png), Buffer.from(await renderer.renderPng(c, { dpi: 150 })))).toBe(0)
+    const body = (await renderer.fit(c)).find((f) => f.element === 'body')!.sizePt
+    expect(smallestPt).toBe(body)
+    expect(smallestPt).toBeLessThan(9)
+  }, 30_000)
+
+  it('leaves an empty box out, and says nothing for a card with no words', async () => {
+    expect((await renderer.renderTexture(compiled({ title: 'Drake', body: '' }), { dpi: 96 })).smallestPt).toBe(14)
+    expect((await renderer.renderTexture(compiled({ title: '', body: '' }), { dpi: 96 })).smallestPt).toBeNull()
+  }, 30_000)
+})
+
 // Transparency on a shape (#317) reaches the card the one way anything reaches it: through
 // `compile`, into the one renderer. Read off the pixels rather than off the stylesheet, because
 // what the acceptance criterion is about is the ink — half of black over white is grey in the

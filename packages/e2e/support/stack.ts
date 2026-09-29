@@ -25,6 +25,12 @@ export type Stack = {
   /** What the log is kept in. `memory` is a run that proves less, and says so. */
   store: 'postgres' | 'memory'
   /**
+   * The database the server keeps everything in, render queue included, when it is Postgres. A
+   * journey that needs print files made starts a render worker against it (`renderWorker`), as
+   * the box runs one beside the app.
+   */
+  database?: string
+  /**
    * Where the built web app is on disk, for the few gates that are about the build itself rather
    * than about the page: what is in the blocking stylesheet, what the browser would have to fetch,
    * what the whole thing weighs (#95, #186). The suite builds it once either way, so a gate that
@@ -68,7 +74,7 @@ export async function start(): Promise<Stack> {
 
     const server = await listen({ STATIC_DIR: OUT, ...(db ? { DATABASE_URL: db.url } : {}) })
     closers.push(server.stop)
-    return { origin: server.origin, store: db ? 'postgres' : 'memory', webDist: OUT, serverLog: LOG, stop }
+    return { origin: server.origin, store: db ? 'postgres' : 'memory', ...(db ? { database: db.url } : {}), webDist: OUT, serverLog: LOG, stop }
   } catch (cause) {
     await stop()
     throw cause

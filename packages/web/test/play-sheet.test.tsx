@@ -66,7 +66,7 @@ describe('what is not a target (C4, #414)', () => {
   it('leaves out another seat\'s area even when it is public, and any zone that holds only counters, and keeps one\'s own area', () => {
     const { view } = buildScene()
     const v = view('A')
-    const zone = (id: string, owner: string) => ({ mode: 'order' as const, id, kind: 'area' as const, name: id, geometry: { x: 0, y: 0, w: 10, h: 10, rot: 0 }, dynamic: false, owner, order: [] as string[] })
+    const zone = (id: string, owner: string) => ({ mode: 'order' as const, id, kind: 'area' as const, name: id, visibility: 'all' as const, geometry: { x: 0, y: 0, w: 10, h: 10, rot: 0 }, dynamic: false, owner, order: [] as string[] })
     const counter = { id: 'k1', type: { id: 'token.counter', version: 1 }, zone: 'counters:B', face: 'front', x: 0, y: 0, rot: 0, counter: 20, cardRef: 'Liv' }
     const more = { ...v, zones: [...v.zones, zone('mine:A', 'A'), zone('mine:B', 'B'), { ...zone('counters:B', 'B'), order: ['k1'] }], components: [...v.components, counter] }
     const ids = targetsOf(more).map((t) => t.id)

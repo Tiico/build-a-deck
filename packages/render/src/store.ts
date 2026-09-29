@@ -12,18 +12,23 @@ export type JobState = 'queued' | 'running' | 'done' | 'failed'
 export type JobStatus = { state: JobState; error?: string; startedAt?: number }
 export type ClaimedJob = RenderRequest & { startedAt: number }
 export type EnqueueResult = 'queued' | 'queued-already' | 'cached'
+// What a texture's text was fitted to (#523): its smallest text in pt once E6 had fitted it, or
+// null for a card with no words — and for every output made before this was kept.
+export type Fit = { smallestPt: number | null }
 
 export type RenderStore = {
   enqueue(req: RenderRequest): Promise<EnqueueResult>
   // The next job to run, marked running as of `now`; null when nothing is waiting.
   claim(now: number): Promise<ClaimedJob | null>
-  complete(hash: string, output: Uint8Array): Promise<void>
+  complete(hash: string, output: Uint8Array, fit?: Fit): Promise<void>
   fail(hash: string, error: string): Promise<void>
   status(hash: string): Promise<JobStatus | null>
   // A job that failed goes back in the queue, keeping the compiled page it was made from;
   // false when there is no such job or it did not fail. The one way back from `failed`.
   requeue(hash: string): Promise<boolean>
   output(hash: string): Promise<Uint8Array | null>
+  // Null until there is an output under the hash.
+  fitOf(hash: string): Promise<Fit | null>
   // A URL a browser may fetch the finished output from directly for `ttlSeconds` (DRIFT §4);
   // null when there is no such output, or when the bytes have to come through the server.
   link(hash: string, ttlSeconds: number): Promise<string | null>
@@ -39,7 +44,7 @@ export const contentTypeOf = (kind: RenderKind | undefined): string =>
 
 export class MemoryRenderStore implements RenderStore {
   private readonly jobs = new Map<string, RenderRequest & JobStatus>()
-  private readonly outputs = new Set<string>()
+  private readonly outputs = new Map<string, Fit>()
 
   constructor(private readonly objects: ObjectStore = new MemoryObjectStore()) {}
 
@@ -62,11 +67,15 @@ export class MemoryRenderStore implements RenderStore {
     return { ...next, startedAt: now }
   }
 
-  async complete(hash: string, output: Uint8Array): Promise<void> {
+  async complete(hash: string, output: Uint8Array, fit: Fit = { smallestPt: null }): Promise<void> {
     const job = this.jobs.get(hash)
     await this.objects.put(outputKey(hash), output, contentTypeOf(job?.kind))
     if (job) job.state = 'done'
-    this.outputs.add(hash)
+    this.outputs.set(hash, fit)
+  }
+
+  async fitOf(hash: string): Promise<Fit | null> {
+    return this.outputs.get(hash) ?? null
   }
 
   async fail(hash: string, error: string): Promise<void> {

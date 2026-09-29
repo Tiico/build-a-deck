@@ -161,9 +161,24 @@ export type ProjectSummary = { id: string; name: string; rev: number; tables?: n
 // `atSeq` is how far the edit log had come when the version was made (D3), so an actor knows
 // which edits are already in it.
 export type VersionSummary = { rev: number; at: string; label?: string; atSeq?: number }
+export type RestoredVersion = { rev: number; at: string; label?: string; doc: ProjectDoc }
+
+// A history is one save after another from 1 (B4); what would read otherwise is refused whole.
+export function checkedHistory<T extends { rev: number }>(versions: readonly T[]): T {
+  versions.forEach((v, i) => {
+    if (v.rev !== i + 1) throw new Error(`a restored history runs 1, 2, 3…; found rev ${v.rev} at ${i + 1}`)
+  })
+  const last = versions[versions.length - 1]
+  if (!last) throw new Error('a restored history needs at least one version')
+  return last
+}
 
 export type ProjectStore = {
   create(id: string, doc: ProjectDoc, owner?: string): Promise<ProjectRecord>
+  // A new project with a history it already had (G5, #528): brought back from an export, each
+  // version at its own revision, date and name. The revisions are one save after another from 1,
+  // as the history always is; an id that is taken is refused and nothing is written.
+  restore(id: string, versions: RestoredVersion[], owner?: string): Promise<ProjectRecord>
   load(id: string): Promise<ProjectRecord | null>
   list(owner: string): Promise<ProjectSummary[]>
   // Replaces the document if `expectedRev` is current; 'conflict' otherwise (optimistic concurrency).
@@ -213,6 +228,18 @@ export class MemoryProjectStore implements ProjectStore {
     const rec: ProjectRecord = { ...structuredClone(doc), id, rev: 1, ...(owner !== undefined ? { owner } : {}) }
     this.docs.set(id, rec)
     this.history.set(id, [{ rev: 1, at: new Date().toISOString(), doc: structuredClone(doc) }])
+    return structuredClone(rec)
+  }
+
+  async restore(id: string, versions: RestoredVersion[], owner?: string): Promise<ProjectRecord> {
+    const last = checkedHistory(versions)
+    if (this.docs.has(id)) throw new Error(`project ${id} already exists`)
+    const rec: ProjectRecord = { ...structuredClone(last.doc), id, rev: last.rev, ...(owner !== undefined ? { owner } : {}) }
+    this.docs.set(id, rec)
+    this.history.set(
+      id,
+      versions.map((v) => ({ rev: v.rev, at: v.at, ...(v.label !== undefined ? { label: v.label } : {}), doc: structuredClone(v.doc) })),
+    )
     return structuredClone(rec)
   }
 

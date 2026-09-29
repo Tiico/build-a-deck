@@ -3,6 +3,8 @@ import { nextCardRef } from './fields.js'
 import { DeckWall, type WallView } from './DeckWall.js'
 import { EditorTabs, MODES, panelId, tabId, type Mode } from './EditorTabs.js'
 import { EditorStages, isCanvasStage, modeOf, STAGES, type Stage } from './EditorStages.js'
+import { PHONE_READING, SCREENS, minPtIn } from '../legibility.js'
+import { noFilter } from './filtering.js'
 import { useRoom } from '../room.js'
 import { useDoor } from '../doors.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
@@ -13,6 +15,7 @@ import { SymbolPanel } from './SymbolPanel.js'
 import { MediaPanel } from './MediaPanel.js'
 import { MarkedProvider } from './marked.js'
 import { HistoryPanel } from './HistoryPanel.js'
+import { GameMore } from './GameMore.js'
 import { RulesPanel } from './RulesPanel.js'
 import { SharePanel, colourOf } from './SharePanel.js'
 import { tvUrl } from './tableLinks.js'
@@ -32,7 +35,7 @@ import type { Motif } from '@byd/template'
 import { statusLinks } from '../status/links.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
-import { useT } from '../i18n/index.js'
+import { useLang, useT } from '../i18n/index.js'
 import './editor.css'
 
 const PlaytestPrototype = import.meta.env.DEV ? lazy(() => import('./prototype/PlaytestWorkspace.js')) : null
@@ -57,6 +60,8 @@ export type EditorPageProps = { onNavigate?(url: string): void; timing?: EditorT
 
 export function EditorPage({ onNavigate = (url) => location.assign(url), timing = DEFAULT_EDITOR_TIMING }: EditorPageProps = {}) {
   const t = useT()
+  // Before every early return below: a hook after them is called only once the project has come.
+  const { lang } = useLang()
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const projectId = params.get('project')
   const http = params.get('server') ?? location.origin
@@ -119,6 +124,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // Where the wall was left (#477), for as long as the project is open. A ref and not state: the
   // wall reads it when it is drawn again, and nothing else is drawn from it.
   const wallView = useRef<WallView | undefined>(undefined)
+  // The wall is mounted afresh when something outside it chooses its eye (#523): it reads its view
+  // once, where it was left.
+  const [wallMount, setWallMount] = useState(0)
   // An address half written in the share panel outlives the panel (#477).
   const [shareDraft, setShareDraft] = useState('')
   const historyOpen = over === 'history'
@@ -374,9 +382,21 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       setNotice(err instanceof Error ? err.message : String(err))
     }
   }
+  // The cards a phone cannot read once they are rendered (#523, beslut C), said after the table is
+  // up and never before it: what the renderer fitted each front to, against the smallest text the
+  // phone's reading view carries at 320 px (K26). A remark in E5's form, which stops nothing.
+  const settled = preparing ?? textures
+  const phone = PHONE_READING
+  const unreadable = settled && settled.done + settled.failed.length >= settled.total ? Object.values(settled.smallest ?? {}).filter((pt) => pt < minPtIn(phone)).length : 0
+  const showOnWall = () => {
+    wallView.current = { filter: wallView.current?.filter ?? noFilter, scrollTop: 0, eye: `read.${phone.key}` }
+    setWallMount((n) => n + 1)
+    setStage('wall')
+  }
   const panel: Record<Mode, () => ReactNode> = {
     wall: () => (
       <DeckWall
+        key={wallMount}
         doc={doc}
         assetBase={http}
         motifs={deckMotifs}
@@ -551,6 +571,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           {t('editor.home')}
         </a>
         <strong>{doc.name}</strong>
+        {client.mayEdit && projectId && <GameMore http={http} game={{ id: projectId, name: doc.name, rev: client.rev }} />}
         {/* The revision is also the way into the history (B4): the version is already named here. */}
         <button ref={revRef} type="button" className="byd-editor-rev" aria-expanded={historyOpen} onClick={() => setOver((on) => (on === 'history' ? null : 'history'))}>
           {t('editor.rev', { n: client.rev })}
@@ -647,6 +668,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             </>
           )}
           {textures && textures.failed.length > 0 && <span className="byd-editor-warning"> · {t('editor.table.failed', { n: textures.failed.length })}</span>}
+          {unreadable > 0 && (
+            <>
+              {' '}· <span className="byd-editor-warning" data-unreadable>{t(unreadable === 1 ? 'editor.table.unreadable.one' : 'editor.table.unreadable.other', { n: unreadable, pt: minPtIn(phone).toLocaleString(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 }), width: phone.window.w, floor: SCREENS[phone.screen].floorPx })}</span>{' '}
+              <button type="button" onClick={showOnWall}>{t('editor.table.unreadable.show')}</button>
+            </>
+          )}
           <span className="byd-editor-room">
             {' '}· {t('editor.table.roomCode')} <strong data-room-code>{table.code}</strong>{' '}
             <button type="button" onClick={() => void rotate()}>{t('editor.table.newCode')}</button>

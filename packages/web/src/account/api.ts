@@ -49,7 +49,7 @@ export async function logout(http: string): Promise<void> {
 // A game as "Mina spel" lists it (G1): where its history stands, how many tables it has, when one
 // of them was last played at, and which of its own cards stands on it (#231) — `null` for a game
 // with no cards yet, which is the tile's deliberate empty state.
-export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null; card?: CardPeek | null }
+export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null; card?: CardPeek | null; role?: 'owner' | 'editor' | 'tester' | 'viewer' }
 export async function myProjects(http: string): Promise<ProjectSummary[]> {
   const res = await fetch(`${http}/projects`, withCredentials())
   if (res.status === 401) throw new Unauthorized()
@@ -168,4 +168,46 @@ export function loginUrl(next: string, server: string | null): string {
   const q = new URLSearchParams({ next })
   if (server) q.set('server', server)
   return `/login?${q.toString()}`
+}
+
+// A whole game to keep (G5, #527, #529). Asking starts the print files; reading says how far they
+// have come until the zip is ready. The same question twice is the same question: nothing is held
+// between the two, so a window closed half-way and opened again goes on from where the renderer is.
+export type ExportState = { state: 'preparing'; total: number; done: number } | { state: 'ready'; zip: Blob; name: string } | { state: 'refused'; status: number }
+export async function startExport(http: string, project: string): Promise<ExportState> {
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/export`, withCredentials({ method: 'POST' }))
+  if (res.status !== 202) return { state: 'refused', status: res.status }
+  const body = (await res.json()) as { total: number; done: number }
+  return { state: 'preparing', total: body.total, done: body.done }
+}
+export async function readExport(http: string, project: string): Promise<ExportState> {
+  const q = new URLSearchParams(pageLang())
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/export?${q.toString()}`, withCredentials())
+  // Saved under the name the server gives it (#542), which says the version the zip holds: the
+  // list the window was opened from may be a version behind.
+  if (res.status === 200) return { state: 'ready', zip: await res.blob(), name: zipName(res.headers.get('content-disposition'), project) }
+  if (res.status !== 202) return { state: 'refused', status: res.status }
+  const body = (await res.json()) as { total: number; done: number }
+  return { state: 'preparing', total: body.total, done: body.done }
+}
+
+// The file name in a `content-disposition`: `filename*` in UTF-8 when the game's name needs it,
+// the plain `filename` when it does not (RFC 6266), and the game when the header says nothing.
+export function zipName(disposition: string | null, fallback: string): string {
+  const star = disposition ? /filename\*=UTF-8''([^;]+)/i.exec(disposition) : null
+  if (star?.[1]) return decodeURIComponent(star[1])
+  const plain = disposition ? /filename="([^"]+)"/i.exec(disposition) : null
+  return plain?.[1] ?? `${fallback}.zip`
+}
+
+// An export brought back as a new game (G5, #528). Why it could not be comes back as codes, which
+// the window says in the reader's words.
+export type ImportProblem = { code: string; values?: Record<string, string | number> }
+export async function importGame(http: string, file: Blob): Promise<{ ok: true; id: string } | { ok: false; problems: ImportProblem[] }> {
+  const q = new URLSearchParams(pageLang())
+  const res = await fetch(`${http}/projects/import?${q.toString()}`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/zip' }, body: file }))
+  if (res.status === 201) return { ok: true, id: ((await res.json()) as { id: string }).id }
+  if (res.status === 413) return { ok: false, problems: [{ code: 'too-big' }] }
+  const body = (await res.json().catch(() => ({}))) as { problems?: ImportProblem[] }
+  return { ok: false, problems: body.problems ?? [{ code: 'refused', values: { status: res.status } }] }
 }

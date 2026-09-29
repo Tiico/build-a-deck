@@ -180,7 +180,13 @@ describe('a catalog that does not answer (L27)', () => {
     canvas()
     fireEvent.click(screen.getByRole('button', { name: /sök i google fonts/i }))
     await screen.findByRole('list', { name: /träffar/i })
-    const link = document.head.querySelector('link[href*="fonts.googleapis.com"]')!
+    // The sheet is put in <head> by an effect, which React may run after the list is drawn and
+    // `findBy*` has answered (#537): wait for the link itself, not for the list beside it.
+    const link = await waitFor(() => {
+      const sheet = document.head.querySelector('link[href*="fonts.googleapis.com"]')
+      expect(sheet).not.toBeNull()
+      return sheet as HTMLLinkElement
+    })
     fireEvent.error(link)
     expect((await screen.findByRole('alert')).textContent).toMatch(/katalogen svarar inte/i)
   })

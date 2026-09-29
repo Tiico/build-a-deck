@@ -55,17 +55,25 @@ export class Renderer {
   // the card's box rounded to whole pixels. Element screenshots round the box before scaling and
   // drift by several pixels at print resolution; a clip is exact.
   async renderPng(compiled: CompiledLike, opts: PngOptions): Promise<Uint8Array> {
+    return (await this.renderTexture(compiled, opts)).png
+  }
+
+  // The texture and what its smallest text became once E6 had fitted it (#523): the size a play
+  // surface must hold the card up at to read it follows from its words, not from the template's
+  // nominal size. `null` for a card with no words on it.
+  async renderTexture(compiled: CompiledLike, opts: PngOptions): Promise<{ png: Uint8Array; smallestPt: number | null }> {
     const zoom = opts.dpi / CSS_DPI
     const context = await this.browser.newContext({ deviceScaleFactor: 1, viewport: { width: 4000, height: 6000 } })
     try {
       const page = await context.newPage()
       await page.setContent(hostDocument(compiled, zoom), { waitUntil: 'load' })
       await page.evaluate(() => document.fonts.ready)
-      await fitPage(page)
+      const fitted = (await fitPage(page)).filter((f) => !f.empty)
       const box = await cardBox(page)
       if (!box) throw new Error('compiled output has no [data-card]')
       const clip = { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) }
-      return await page.screenshot({ type: 'png', clip, animations: 'disabled', caret: 'hide' })
+      const png = await page.screenshot({ type: 'png', clip, animations: 'disabled', caret: 'hide' })
+      return { png, smallestPt: fitted.length > 0 ? Math.min(...fitted.map((f) => f.sizePt)) : null }
     } finally {
       await context.close()
     }

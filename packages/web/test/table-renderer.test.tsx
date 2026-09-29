@@ -838,7 +838,7 @@ describe('textures (TUNN-SKIVA §5)', () => {
     const own = 'c'.repeat(64)
     const hidden = {
       ...snapshot,
-      zones: snapshot.zones.map((z) => (z.id === 'draw' ? { id: z.id, kind: z.kind, name: z.name, geometry: z.geometry, dynamic: z.dynamic, mode: 'count' as const, count: 5, back: own } : z)),
+      zones: snapshot.zones.map((z) => (z.id === 'draw' ? { id: z.id, kind: z.kind, name: z.name, visibility: z.visibility, geometry: z.geometry, dynamic: z.dynamic, mode: 'count' as const, count: 5, back: own } : z)),
       components: snapshot.components.filter((c) => c.zone !== 'draw'),
     }
     render(<TableRenderer view={hidden} mode="table" faces="http://faces.test" back={() => <span data-deck-back="" />} />)

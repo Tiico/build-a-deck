@@ -13,6 +13,7 @@ import { contrastRatio, flatten } from '../src/player/contrast.js'
 import { TableClient } from '../src/client.js'
 import { FootPlay, HandActions } from '../src/player/HandActions.js'
 import { DEFAULT_BODY_PT, SCREENS, textPxOnCard } from './legibility.js'
+import { READING_VIEWS } from '../src/legibility.js'
 import { HandStrip } from '../src/player/HandStrip.js'
 import { HeldCard } from '../src/player/HeldCard.js'
 import { Texture } from '../src/table/Texture.js'
@@ -456,12 +457,34 @@ describe('a card held up on the phone reads at the floor, at every phone and tab
         return { card: card.width, top: Math.round(card.top), controls }
       })()`) as { card: number; top: number; controls: { name: string; w: number; h: number; bottom: number; right: number; left: number }[] }
       const body = Number(textPxOnCard(DEFAULT_BODY_PT, seen.card).toFixed(1))
+      // At its narrowest it is the width the reading views give the phone (#512), which is what the
+      // editor's eye draws the wall at.
+      const phone = READING_VIEWS.find((v) => v.key === 'phone')!
+      if (width === phone.window.w && height === phone.window.h) expect(Math.round(seen.card)).toBe(phone.width)
       expect({ width, height, kind, body: body >= SCREENS.phone.bodyPx.min && body <= SCREENS.phone.bodyPx.max }).toEqual({ width, height, kind, body: true })
       // Everything on it is reachable: on the screen, and big enough for a thumb.
       expect(seen.top).toBeGreaterThanOrEqual(0)
       for (const c of seen.controls) {
         expect({ ...c, fits: c.bottom <= height && c.left >= 0 && c.right <= width, big: c.w >= 44 && c.h >= 44 }).toMatchObject({ fits: true, big: true })
       }
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+
+  // A card whose smallest text is 6.5 pt (#523): the phone holds it up wider, until that text
+  // reaches the floor for all text — and at 320 the screen itself is the limit, which is the one
+  // place the issue says the phone cannot reach it.
+  it.each([[320, 568], [390, 844], [768, 1024]] as const)('holds a card with 6.5 pt text up until it reads, or the screen ends, at %i × %i', async (width, height) => {
+    const row = hand()
+    const page = await browser.newPage({ viewport: { width, height } })
+    try {
+      await page.setContent(document_(<div className="byd-player"><HeldCard card={row[1]!} row={row} onStep={noop} onClose={noop} smallestPt={6.5} actions={<FootPlay view={view} cards={[row[1]!]} pending={false} onPlay={noop} onMore={noop} />} /></div>), { waitUntil: 'load' })
+      const card = (await page.evaluate(`document.querySelector('[data-inspect]').getBoundingClientRect().width`)) as number
+      const reads = textPxOnCard(6.5, card) >= SCREENS.phone.floorPx - 0.05
+      const edge = card >= width - 16 - 0.5
+      expect({ width, card: Math.round(card), readsOrEdge: reads || edge }).toEqual({ width, card: Math.round(card), readsOrEdge: true })
+      if (width > 320) expect(reads).toBe(true)
     } finally {
       await page.close()
     }
