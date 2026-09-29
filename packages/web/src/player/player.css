@@ -325,6 +325,11 @@ html:has(.byd-player) { background: #14161c; }
 /* «Regler» at the foot, by the hand (#483, beslut C efter prototyp 32): held at the bottom of the
    screen where the thumb is, and the page ends a bar's height earlier so nothing lies under it. */
 .byd-player:has(.byd-phone-foot:not(:empty)) { padding-bottom: 64px; }
+/* A control Tab reaches is scrolled into view at the window's bottom edge, which is where the foot
+   stands, and «Senast» at 390 and the region's buttons at 320 were focused wholly behind it
+   (#559 P-6, WCAG 2.4.11). The window keeps the foot's own height clear when it scrolls to one:
+   64 px of foot, its 1 px rule, and 8 px of air. */
+html:has(.byd-phone-foot:not(:empty)) { scroll-padding-bottom: 73px; }
 .byd-phone-foot { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; box-sizing: border-box; min-height: 64px; display: flex; padding: 8px 16px 12px; background: var(--byd-bg); border-top: 1px solid var(--byd-rule); }
 .byd-phone-foot:empty { display: none; }
 .byd-phone-foot .byd-rules-open { flex: 1; min-height: 44px; border-radius: 12px; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }

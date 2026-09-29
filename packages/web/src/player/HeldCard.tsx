@@ -5,6 +5,7 @@ import { Texture } from '../table/Texture.js'
 import { hue } from '../table/hue.js'
 import { cardName, cardWord } from '../table/keyboard.js'
 import { useSmallestPt } from '../table/smallest.js'
+import { cycleTab } from '../table/cycleTab.js'
 import { readingWidth } from '../legibility.js'
 
 // How far a thumb goes across the card before it is a step to the next one and not a tap.
@@ -25,7 +26,13 @@ const SWIPE_PX = 40
 // at the floor's size (K26), and the rest of the row is a swipe or an arrow away rather than three
 // presses each. The card itself is still put down by a tap, but on its own click and not at the
 // touch that begins it — a swipe begins the same way — and the click after a swipe is the swipe's.
-export function HeldCard({ card, faces, onClose, actions, row, onStep, smallestPt }: {
+//
+// Focus goes into it and comes back out to the card (C4, #559 P-4). A tap on a hand card opens it on
+// the release, before the browser makes a mousedown of the touch: nothing had focus yet to come back
+// to, and that mousedown, landing on the reader's own ground, took focus off «Stäng» to BODY. So a
+// press on anything in here but a control keeps focus where it is, and a reader opened with nothing
+// focused gives focus back to `returnTo` — the card as it is read when it is put down.
+export function HeldCard({ card, faces, onClose, actions, row, onStep, smallestPt, returnTo }: {
   card: VisibleComponentState
   faces?: string | undefined
   onClose(): void
@@ -36,6 +43,7 @@ export function HeldCard({ card, faces, onClose, actions, row, onStep, smallestP
   // The card's own smallest text (#523), when the caller already knows it; otherwise it is asked of
   // the server the picture comes from.
   smallestPt?: number | null | undefined
+  returnTo?: ((card: VisibleComponentState) => HTMLElement | null) | undefined
 }) {
   const t = useT()
   // Held up wider for a card whose words are smaller than the wizard's frame (#523): the width that
@@ -43,24 +51,34 @@ export function HeldCard({ card, faces, onClose, actions, row, onStep, smallestP
   const heard = useSmallestPt(faces, card)
   const need = readingWidth(0, smallestPt === undefined ? heard : smallestPt, 'phone')
   const [opener] = useState(() => typeof document === 'undefined' ? null : document.activeElement)
-  useEffect(() => () => { if (opener instanceof HTMLElement && opener.isConnected) opener.focus() }, [opener])
+  const back = useRef({ card, returnTo })
+  back.current = { card, returnTo }
+  useEffect(() => () => {
+    if (opener instanceof HTMLElement && opener !== document.body && opener.isConnected) return opener.focus()
+    back.current.returnTo?.(back.current.card)?.focus()
+  }, [opener])
   const at = row ? row.findIndex((c) => c.id === card.id) : -1
   const walkable = row !== undefined && onStep !== undefined && row.length > 1
   const step = (by: number) => {
     const next = row?.[at + by]
     if (at >= 0 && next && onStep) onStep(next)
   }
+  const box = useRef<HTMLDivElement | null>(null)
   const swipe = useRef<{ x: number; stepped: boolean } | null>(null)
   const keep = (event: { stopPropagation(): void }) => event.stopPropagation()
   return (
     <div
       className="byd-inspect"
       role="dialog"
-      aria-modal="false"
+      aria-modal="true"
       aria-label={cardName(card, t)}
       onPointerDown={onClose}
+      onMouseDown={(event) => { if (!(event.target as Element).closest('button, a, input, select, textarea')) event.preventDefault() }}
       {...(need > 0 ? { style: { ['--byd-read-need' as string]: `${need}px` } } : {})}
+      ref={box}
       onKeyDown={event => {
+        // Modal, as its veil says (#559 P-19): Tab stays among its own controls.
+        if (event.key === 'Tab' && box.current) return cycleTab(event, box.current)
         if (event.key === 'Escape') { event.stopPropagation(); onClose() }
         if (walkable && event.key === 'ArrowRight') { event.preventDefault(); step(1) }
         if (walkable && event.key === 'ArrowLeft') { event.preventDefault(); step(-1) }

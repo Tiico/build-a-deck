@@ -192,7 +192,17 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
   const panel = (
     <>
       {sheet}
-      {looking && <CardLook card={looking} faces={options.faces} onClose={() => setLooking(null)} />}
+      {looking && (
+        <CardLook
+          card={looking}
+          faces={options.faces}
+          onClose={() => {
+            // Back to the card it was asked about, as the panel that opened it gives back (K16).
+            giveBack(open?.thing.key)
+            setLooking(null)
+          }}
+        />
+      )}
       {view && setting && (
         <CounterEntry
           view={view}

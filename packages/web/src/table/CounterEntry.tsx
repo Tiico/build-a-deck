@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent } from 'react'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { ownerOf } from './keyboard.js'
+import { cycleTab } from './cycleTab.js'
 import { useT } from '../i18n/index.js'
 
 // "Sätt värde…" (C4, #67): a counter's value said outright. The phone's `CountersRow` asks with
@@ -54,6 +55,7 @@ export function CounterEntry({ view, c, onSet, onClose }: CounterEntryProps) {
     onClose()
   }
   const onKeyDown = (e: RKeyboardEvent) => {
+    if (e.key === 'Tab' && root.current) return cycleTab(e, root.current)
     if (e.key === 'Escape') {
       e.stopPropagation()
       onClose()
@@ -80,8 +82,9 @@ export function CounterEntry({ view, c, onSet, onClose }: CounterEntryProps) {
         className="byd-set-value"
         data-set-value={c.id}
         role="dialog"
-        // Not modal: the felt behind it is what the number is about.
-        aria-modal="false"
+        // Modal (#559 P-19): the veil covers the whole screen and a press on it closes the lock, so
+        // nothing behind it can be used while it stands, and Tab stays among its keys.
+        aria-modal="true"
         aria-label={t('counter.entry.label', { what: name })}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
