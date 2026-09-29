@@ -1163,7 +1163,7 @@ function DragLayer({ boxes, conditions, onSelectCondition, grid, selected, onSel
           {...(moving?.id === box.id ? { 'data-moving': '' } : {})}
           {...hollowProps(box)}
           onKeyDown={(event) => keys(event, box)}
-          style={{ left: `${box.x}mm`, top: `${box.y}mm`, width: `${box.w}mm`, height: `${box.h}mm`, zIndex: boxes.length - 1 - fromTop, ...hollowStyle(box) }}
+          style={{ left: `${box.x}mm`, top: `${box.y}mm`, width: `${box.w}mm`, height: `${box.h}mm`, ['--byd-box-w' as string]: `${box.w}mm`, ['--byd-box-h' as string]: `${box.h}mm`, zIndex: boxes.length - 1 - fromTop, ...hollowStyle(box) }}
           // The selection follows the focus here for the same reason it does in the layer list
           // (L15): arriving on an element is the whole of choosing it, and the properties beside
           // the card — where a size is typed in millimetres — must be about what the keyboard
