@@ -134,7 +134,7 @@ describe.each<[Lang, string, string]>([
 
     // The control: the same felt, the same catalogue, a node that really is a card — so the chip's
     // silence about cards is this sentence and not a pattern that matches nothing.
-    const top = document.querySelector('[data-kbd="top:draw"]')!
+    const top = document.querySelector('[data-kbd="pile:draw"]')!
     expect(top.getAttribute('aria-label')).toMatch(saysCard)
   })
 

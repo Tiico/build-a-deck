@@ -24,9 +24,12 @@ describe('the felt as controls (#2, variant C)', () => {
 
     expect(screen.getByRole('button', { name: 'wizard, kort i Spelyta, vridet. Enter öppnar handlingar.' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Dolt kort, kort i Spelyta. Enter öppnar handlingar.' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Översta kortet i Draghög: Dolt kort. Enter öppnar handlingar.' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Draghög, hela högen, 3 kort. Enter öppnar handlingar.' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Kasthög, hela högen, 3 kort. Enter öppnar handlingar.' })).toBeTruthy()
+    // A pile is one stop, as it is one thing to the eye (#572): its name, how much is in it, and
+    // what lies on top — a hidden pile's top is said to be hidden and no more (B6).
+    expect(screen.getByRole('button', { name: 'Draghög, 3 kort, överst: Dolt kort. Enter öppnar handlingar.' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Kasthög, 3 kort, överst: (?!Dolt kort)\S+\. Enter öppnar handlingar\.$/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Översta kortet i/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /hela högen/ })).toBeNull()
   })
 
   it('a table that is only shown grows no tab stops at all — the editor renders thumbnails through the same component (K9)', () => {

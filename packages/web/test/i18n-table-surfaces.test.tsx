@@ -82,7 +82,9 @@ describe('the keyboard on the felt in the reader\'s own language', () => {
     // The pile is called what the designer called it, inside a sentence that is the tool's.
     expect(screen.getByRole('dialog', { name: 'Actions for Draghög' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Do', level: 3 })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Move to', level: 3 })).toBeTruthy()
+    // A pile moves two ways from its one stop (#572): the whole of it, and the card on top.
+    expect(screen.getByRole('heading', { name: 'Move the whole pile to', level: 3 })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Move the top card to', level: 3 })).toBeTruthy()
     expect(screen.getByRole('button', { name: /^Shuffle/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /^Split in half/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /^Free placement/ })).toBeTruthy()
@@ -97,7 +99,7 @@ describe('the keyboard on the felt in the reader\'s own language', () => {
     const v = view(null)
     const said = [...feltLabels(v, english).values()]
     expect(said.every((s) => s.endsWith('. Enter opens actions.'))).toBe(true)
-    expect(said).toContainEqual(expect.stringMatching(/^Top card in Draghög: Hidden card\./))
+    expect(said).toContainEqual(expect.stringMatching(/^Draghög, \d+ cards, top: Hidden card\./))
     expect(said.some((s) => /[åäö]/i.test(s.replace(/Draghög|Kasthög|Spelyta/g, '')))).toBe(false)
 
     const card = v.components.find((c) => c.cardRef !== null)!

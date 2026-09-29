@@ -1275,8 +1275,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 bottomInspects={inspects(bottomOf(z, byId) ?? bottomStandIn(z))}
                 topHandlers={count > 0 ? (onAct ? handlers({ kind: 'pileTop', pile: z.id }) : watches({ kind: 'pileTop', pile: z.id })) : undefined}
                 labelHandlers={onAct ? handlers({ kind: 'pile', pile: z.id }) : undefined}
-                topKeys={keys(`top:${z.id}`)}
-                labelKeys={keys(`pile:${z.id}`)}
+                // One stop per pile (#572), on the pile itself: a card's box whether or not there is a
+                // card on it, so an empty pile stands where it is seen and the arrows aim at it there.
+                pileKeys={keys(`pile:${z.id}`)}
                 points={points({ kind: 'pile', pile: z.id })}
               />
             )
@@ -1831,7 +1832,7 @@ function topIdOf(z: ZoneView, skip = 0): string | undefined {
 
 // A pile is a point; the stack is centred on it. A hidden pile has a count and nothing else,
 // unless its top lies face-up.
-function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, lifted, aimed = false, shuffle, still = false, topHandlers, topInspects, bottomInspects, labelHandlers, topKeys, labelKeys, points }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; bottomCard?: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; aimed?: boolean | undefined; shuffle?: number | undefined; still?: boolean | undefined; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; bottomInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; topKeys?: FeltNodeProps | undefined; labelKeys?: FeltNodeProps | undefined; points?: Pointing | undefined }) {
+function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, lifted, aimed = false, shuffle, still = false, topHandlers, topInspects, bottomInspects, labelHandlers, pileKeys, points }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; bottomCard?: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; aimed?: boolean | undefined; shuffle?: number | undefined; still?: boolean | undefined; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; bottomInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; pileKeys?: FeltNodeProps | undefined; points?: Pointing | undefined }) {
   const t = useT()
   // What a face-down pile wears. Its top card's own back first, which is the one thing about a
   // hidden pile that is public in the room (#313): a deck whose cards carry their own back (#14)
@@ -1896,6 +1897,7 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
       data-shuffling={playing ? (still ? 'pulse' : 'fan') : undefined}
       style={{ position: 'absolute', left: left - px(CARD_MM.w / 2), top: top - px(CARD_MM.h / 2), width: px(CARD_MM.w), height: px(CARD_MM.h), transform: `rotate(${zone.geometry.rot}deg)` }}
       {...points}
+      {...pileKeys}
     >
       {bottom !== undefined && (
         <div
@@ -1916,7 +1918,6 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
         data-back={own ? 'own' : undefined}
         {...topInspects}
         {...topHandlers}
-        {...topKeys}
         style={{ boxShadow: thickness, ...(topCard?.cardRef ? { ['--hue' as string]: hue(topCard.cardRef) } : {}) }}
       >
         {own}
@@ -1932,7 +1933,7 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
           ))}
         </div>
       )}
-      <span className="byd-pile-count" data-handle={labelHandlers ? 'true' : undefined} {...labelHandlers} {...labelKeys}>
+      <span className="byd-pile-count" data-handle={labelHandlers ? 'true' : undefined} {...labelHandlers}>
         <span className="byd-pile-name">{zone.dynamic ? t('pile.dynamic') : zone.name}</span>
         <b className="byd-pile-n">{count}</b>
       </span>

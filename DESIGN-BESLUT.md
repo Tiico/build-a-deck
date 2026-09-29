@@ -2241,6 +2241,16 @@ En hög erbjuds aldrig sig själv som destination, eftersom bordet svarar ”can
 Byggt 2026-09-08 (#1, #2). Prototypen `packages/web/src/prototype/keyboard` togs bort när den hade svarat; dess resonemang står här.
 Fem frågor som prototypen väckte och som inte är besvarade står i avsnitt I.
 
+Reviderat 2026-09-29 (#572, beställarens beslut D efter prototypen på grenen `proto/572-pilarna`): **filtens pilar följer skärmen.**
+Pilarna gick en lista sorterad rad för rad i bordets millimetrar. På en riktig filt gick 30 % av pilarna åt fel håll vid fyra platser och 34 % vid åtta, mätt för TV:n och för varje plats vars filt är vriden på `/online`.
+Nu går pilen till det närmaste inom ±45° av sin riktning, i skärmens koordinater. Finns inget där går den till det närmaste framåt, med sidled vid dubbel vikt, och en sak som står i samma höjd räknas inte som framåt.
+Den går aldrig bakåt och står aldrig still när något ligger åt det hållet; motsatt pil leder inte alltid tillbaka, vilket ingen rumslig regel kan lova.
+Tre andra regler prövades: bara konen (återvändsgränder), bara halvplanet (stora sidhopp) och rader med tolerans (återvändsgränder och sidhopp).
+Regeln är `nextInDirection` i `packages/web/src/table/spatial.ts`, och `useRoving` har läget `spatial`, som frågar varje stopps ritade ruta. Home och End följer listan, och filten är fortfarande ett tabbstopp.
+**En hög är ett stopp.** Den läses upp med namn, antal och vad som ligger överst, till exempel «Draghög, 10 kort, överst: Dolt kort», och stoppet är högen själv, en korts storlek även när den är tom.
+Panelen bakom Enter har det översta kortets verb (vänd, titta) före högens, och två flyttavsnitt: «Flytta hela högen till» och «Flytta översta kortet till».
+Bevisat med riktiga tangenttryck i den byggda appen i `packages/e2e/test/felt-arrows.spec.ts`, på TV:n och på en plats vars filt är vriden.
+
 ### K17. Distansvyns nedre band: facket, med uppslaget bakom `Visa alla` (prototypat och byggt 2026-09-08)
 
 Två issues, en yta, ett svar.

@@ -165,8 +165,9 @@ export const svPlay = {
   'kbd.counter.unnamed': 'Räknare i {zone}, värde {n}',
   'kbd.pile.top': 'Översta kortet i {zone}: {name}',
   'kbd.pile.empty': '{zone}, tom',
-  'kbd.pile.whole.one': '{zone}, hela högen, {n} kort',
-  'kbd.pile.whole.other': '{zone}, hela högen, {n} kort',
+  // En hög är ett stopp (#572): namnet, hur mycket som ligger i den, och vad som ligger överst.
+  'kbd.pile.one': '{zone}, {n} kort, överst: {top}',
+  'kbd.pile.other': '{zone}, {n} kort, överst: {top}',
   // Vad Enter gör, sagt sist i meningen: en kontroll som öppnar en panel ska säga det.
   'kbd.enter': '{label}. Enter öppnar handlingar.',
   'kbd.hand.mine': '{name}, i min hand',
@@ -196,6 +197,8 @@ export const svPlay = {
   'kbd.panel.label': 'Handlingar för {what}',
   'kbd.panel.do': 'Gör',
   'kbd.panel.moveTo': 'Flytta till',
+  'kbd.panel.movePile': 'Flytta hela högen till',
+  'kbd.panel.moveTop': 'Flytta översta kortet till',
   'kbd.panel.free': 'Fri placering — en punkt på filten',
   'kbd.panel.free.hint': 'kräver pekdon; med tangentbord finns bara platser med namn',
   'kbd.panel.close': 'Stäng',

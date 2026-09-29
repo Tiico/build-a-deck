@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import type { Intent, Snapshot, VisibleComponentState } from '@byd/protocol'
 import { isLoose, placesFor, verbsFor, type Place, type Thing } from './keyboard.js'
 import { useT } from '../i18n/index.js'
@@ -26,8 +26,10 @@ export type ActionPanelProps = {
   // "Sätt värde…" on a chip (#67): opens the value entry on this screen; nothing is sent until a
   // number has been said there.
   onSet(c: VisibleComponentState): void
-  intentsFor(place: Place, moving: readonly string[]): Intent[]
-  landedKey(place: Place): string
+  // `as`: what is being moved, when it is not the thing the panel is about — the top card of a pile,
+  // whose moves stand in the pile's own panel (#572).
+  intentsFor(place: Place, moving: readonly string[], as?: Thing): Intent[]
+  landedKey(place: Place, as?: Thing): string
   // A route whose touch surface offers its own places for a card in the hand — the phone's play
   // sheet (#483, beslut A efter prototyp 33). The panel then offers exactly those, in the sheet's
   // words and with the sheet's placement, and of its own verbs only looking: what a thumb is not
@@ -49,6 +51,19 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet,
   const places: Place[] = sheet
     ? sheet.places.map((p) => ({ key: p.key, label: p.label, hint: p.hint, zone: p.zone, kind: 'area' }))
     : placesFor(view, new Set(moving), isLoose(thing) ? thing.zone : thing.pile, t)
+  // Where the thing can be moved to, in one group per way of moving it. A pile is one stop since
+  // #572, and it moves two ways: the whole pile, and — when there is one — the card on top of it.
+  // Each group is named by its heading, so the same place said twice is said under what it does.
+  const pileZone = thing.kind === 'pile' ? view.zones.find((z) => z.id === thing.pile) : undefined
+  const topCount = pileZone ? (pileZone.mode === 'count' ? pileZone.count : pileZone.order.length) : 0
+  const groups: { heading: string; as?: Thing }[] =
+    thing.kind === 'pile' && !sheet
+      ? [
+          { heading: t('kbd.panel.movePile') },
+          ...(topCount > 0 ? [{ heading: t('kbd.panel.moveTop'), as: { key: thing.key, kind: 'pileTop' as const, pile: thing.pile, name: thing.name } }] : []),
+        ]
+      : [{ heading: t('kbd.panel.moveTo') }]
+  const groupId = useId()
   const first = useRef<HTMLButtonElement | null>(null)
   useEffect(() => first.current?.focus(), [])
   // Several marked cards are counted; a single thing is called what it is called, which for a
@@ -108,32 +123,37 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet,
             </button>
           ))}
         </div>
-        <h3>{t('kbd.panel.moveTo')}</h3>
-        <div className="byd-kbd-list">
-          {places.map((p, i) => (
-            <button
-              key={p.key}
-              type="button"
-              // The panel is answered where it is read, so it takes the focus on the way in. That
-              // is the first verb when there is one; a thing with no verbs at all hands it to the
-              // first place instead, rather than opening a panel and leaving the reader standing
-              // out on the felt.
-              ref={verbs.length === 0 && i === 0 ? first : undefined}
-              onClick={() => (sheet ? onRun(sheet.intentsFor(p.zone, moving)) : onRun(intentsFor(p, moving), landedKey(p)))}
-            >
-              <span>{p.label}</span>
-              <small>{p.hint}</small>
-            </button>
-          ))}
-          {/* The one address a keyboard cannot say. It is a row and not a silence. The sheet has
-              no such row, because the sheet's table is a place of its own. */}
-          {!sheet && (
-            <button type="button" disabled className="byd-kbd-no">
-              <span>{t('kbd.panel.free')}</span>
-              <small>{t('kbd.panel.free.hint')}</small>
-            </button>
-          )}
-        </div>
+        {groups.map((group, g) => (
+          <div key={group.heading} role="group" aria-labelledby={`${groupId}-${g}`}>
+            <h3 id={`${groupId}-${g}`}>{group.heading}</h3>
+            <div className="byd-kbd-list">
+              {places.map((p, i) => (
+                <button
+                  key={p.key}
+                  type="button"
+                  // The panel is answered where it is read, so it takes the focus on the way in. That
+                  // is the first verb when there is one; a thing with no verbs at all hands it to the
+                  // first place instead, rather than opening a panel and leaving the reader standing
+                  // out on the felt.
+                  ref={verbs.length === 0 && g === 0 && i === 0 ? first : undefined}
+                  onClick={() => (sheet ? onRun(sheet.intentsFor(p.zone, moving)) : onRun(intentsFor(p, moving, group.as), landedKey(p, group.as)))}
+                >
+                  <span>{p.label}</span>
+                  <small>{p.hint}</small>
+                </button>
+              ))}
+              {/* The one address a keyboard cannot say. It is a row and not a silence, and it is said
+                  once, after the last group. The sheet has no such row, because the sheet's table is
+                  a place of its own. */}
+              {!sheet && g === groups.length - 1 && (
+                <button type="button" disabled className="byd-kbd-no">
+                  <span>{t('kbd.panel.free')}</span>
+                  <small>{t('kbd.panel.free.hint')}</small>
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
         <button type="button" className="byd-kbd-close" onClick={onClose}>
           {t('kbd.panel.close')}
         </button>

@@ -89,7 +89,8 @@ describe('samma lista för tangentbordet', () => {
       zones: snapshot.zones.map((z) => (z.id === 'draw' ? { ...z, actions: [act([{ v: 'shuffle' }, { v: 'deal', each: { of: 'number', n: 2 }, to: { at: 'hands' }, face: 'keep' }])] } : z)),
     }
     const acts = verbsFor(withAction, { key: 'pile:draw', kind: 'pile', pile: 'draw', name: 'Draghög', count: 3 })
-    expect(acts.map((a) => a.label)).toEqual(['Blanda', 'Dra 1', 'Dela på hälften', 'Åtgärd'])
+    // The top card's verbs first since #572, when the pile became one stop; the game's own after.
+    expect(acts.map((a) => a.label)).toEqual(['Vänd översta', 'Titta på översta', 'Blanda', 'Dra 1', 'Dela på hälften', 'Åtgärd'])
     expect(acts.at(-1)!.intents).toEqual([
       { v: 'shuffle', pile: 'draw' },
       { v: 'deal', from: 'draw', to: ['hand:A'], each: 2 },

@@ -54,24 +54,28 @@ async function tableWithTwoCards(setup = twoSeatSetup()) {
 const stops = () => [...document.querySelectorAll('[data-kbd]')].map((el) => `${el.getAttribute('data-kbd')}:${el.getAttribute('tabindex')}`)
 
 describe('the felt is one tab stop with the arrows inside it (#2)', () => {
-  it('opens on the first thing on the felt and walks the rest with the arrow keys, never trapping Tab', async () => {
+  // The arrows follow the screen since #572 (K16), which is a question about where things are
+  // drawn, and jsdom draws nothing: that walk is in `packages/e2e/test/felt-arrows.spec.ts`, with
+  // real keys in the built app. What is asked here is the one tab stop and the list's own ends.
+  it('opens on the first thing on the felt and walks to the other end and back with End and Home, never trapping Tab', async () => {
     const { other } = await tableWithTwoCards()
     const user = userEvent.setup()
 
     const zero = stops().filter((s) => s.endsWith(':0'))
     expect(zero).toHaveLength(1)
-    expect(stops().filter((s) => s.endsWith(':-1')).length).toBeGreaterThan(3)
+    // Two cards and two piles, one stop each since #572: three besides the one that is the way in.
+    expect(stops().filter((s) => s.endsWith(':-1')).length).toBe(3)
 
     const first = document.querySelector('[data-kbd][tabindex="0"]') as HTMLElement
     first.focus()
     expect(document.activeElement).toBe(first)
-    await user.keyboard('{ArrowDown}')
+    await user.keyboard('{End}')
     await waitFor(() => expect(document.activeElement).not.toBe(first))
-    const second = document.activeElement as HTMLElement
-    expect(second.getAttribute('data-kbd')).toMatch(/^card:/)
-    expect(stops().filter((s) => s.endsWith(':0'))).toEqual([`${second.getAttribute('data-kbd')}:0`])
+    const last = document.activeElement as HTMLElement
+    expect(last.getAttribute('data-kbd')).toMatch(/^(card|pile|counter):/)
+    expect(stops().filter((s) => s.endsWith(':0'))).toEqual([`${last.getAttribute('data-kbd')}:0`])
 
-    await user.keyboard('{ArrowUp}')
+    await user.keyboard('{Home}')
     await waitFor(() => expect(document.activeElement).toBe(first))
     other.close()
   })
@@ -135,11 +139,12 @@ describe('the panel says the verbs the pointer already says, and no new one', ()
     await user.click((await open(/^Dolt kort, kort i Spelyta/)).getByRole('button', { name: /^Avslöja/ }))
     await waitFor(async () => expect(await lastIntents(id, 1)).toEqual([{ v: 'reveal', components: ['c0'] }]))
 
-    await user.click((await open(/^Draghög, hela högen/)).getByRole('button', { name: /^Blanda/ }))
+    await user.click((await open(/^Draghög, \d+ kort/)).getByRole('button', { name: /^Blanda/ }))
     await waitFor(async () => expect(await lastIntents(id, 1)).toEqual([{ v: 'shuffle', pile: 'draw' }]))
 
-    // A hidden pile grants no id for its top, so the address is the pile itself (K15).
-    await user.click((await open(/^Översta kortet i Draghög/)).getByRole('button', { name: /^Vänd översta/ }))
+    // A hidden pile grants no id for its top, so the address is the pile itself (K15). The top's
+    // verbs are in the pile's own panel since #572: a pile is one stop, as it is one thing.
+    await user.click((await open(/^Draghög, \d+ kort/)).getByRole('button', { name: /^Vänd översta/ }))
     await waitFor(async () => expect(await lastIntents(id, 1)).toEqual([{ v: 'flip', component: { top: 'draw' }, face: 'front' }]))
     other.close()
   })
@@ -188,10 +193,13 @@ describe('a card moved by keyboard gets a coordinate the client works out (#2)',
       return within(await screen.findByRole('dialog'))
     }
 
-    await user.click((await open(/^Översta kortet i Draghög/)).getByRole('button', { name: /^Kasthög/ }))
+    // One stop, two ways to move from it (#572): the top card on its own, and the whole pile.
+    const top = within((await open(/^Draghög, \d+ kort/)).getByRole('group', { name: 'Flytta översta kortet till' }))
+    await user.click(top.getByRole('button', { name: /^Kasthög/ }))
     await waitFor(async () => expect(await lastIntents(id, 1)).toEqual([{ v: 'split', pile: 'draw', at: 1, to: 'discard' }]))
 
-    await user.click((await open(/^Draghög, hela högen/)).getByRole('button', { name: /^Marknad/ }))
+    const whole = within((await open(/^Draghög, \d+ kort/)).getByRole('group', { name: 'Flytta hela högen till' }))
+    await user.click(whole.getByRole('button', { name: /^Marknad/ }))
     await waitFor(async () => expect(await lastIntents(id, 1)).toEqual([{ v: 'movePile', pile: 'draw', to: 'market', x: -240, y: -190 }]))
     other.close()
   })
@@ -238,12 +246,15 @@ describe('the panel never offers a place that is where the thing already is', ()
   it("leaves a pile's own name out of Flytta till: a pile cannot be split onto itself", async () => {
     const { other } = await tableWithTwoCards(withMarket())
     const user = userEvent.setup()
-    const top = screen.getByRole('button', { name: /^Översta kortet i Draghög/ })
-    top.focus()
+    const pile = screen.getByRole('button', { name: /^Draghög, \d+ kort/ })
+    pile.focus()
     await user.keyboard('{Enter}')
     const panel = within(await screen.findByRole('dialog'))
-    expect(panel.queryByRole('button', { name: /^Draghög/ })).toBeNull()
-    expect(panel.getByRole('button', { name: /^Kasthög/ })).toBeTruthy()
+    for (const group of ['Flytta översta kortet till', 'Flytta hela högen till']) {
+      const places = within(panel.getByRole('group', { name: group }))
+      expect(places.queryByRole('button', { name: /^Draghög/ })).toBeNull()
+      expect(places.getByRole('button', { name: /^Kasthög/ })).toBeTruthy()
+    }
     other.close()
   })
 })
