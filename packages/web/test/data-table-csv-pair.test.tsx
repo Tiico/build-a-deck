@@ -209,7 +209,8 @@ describe('the CSV pair above the table (#36)', () => {
     const chooser = screen.getByLabelText('Importera CSV…')
     expect(chooser.tagName).toBe('INPUT')
     expect(chooser.getAttribute('type')).toBe('file')
-    expect(screen.getAllByRole('link')).toEqual([exportLink()])
+    // The row's one link; the way past the table (#575) stands under it and is the table's.
+    expect(screen.getAllByRole('link').filter((a) => !a.classList.contains('byd-data-skip'))).toEqual([exportLink()])
     expect(screen.getByRole('link', { name: 'Ladda ner CSV' })).toBe(exportLink())
     unmount()
 

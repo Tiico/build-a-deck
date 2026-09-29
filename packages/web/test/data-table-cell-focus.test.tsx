@@ -95,10 +95,13 @@ describe('en Tabb ur en cell landar aldrig utanför dokumentet (#395)', () => {
     table()
     await user.click(screen.getByLabelText('dragon title'))
     const seen: string[] = []
-    for (let step = 0; step < 8; step++) {
+    // Through the row to its end, where the table is left for «+ Nytt kort» (#575).
+    const row = document.querySelector('tr[data-card-ref="dragon"]')!
+    for (let step = 0; step < 12 && row.contains(document.activeElement); step++) {
       await user.tab()
       seen.push(at())
     }
     expect(seen).not.toContain('<body>')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '+ Nytt kort' }))
   })
 })

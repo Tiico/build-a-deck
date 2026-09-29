@@ -54,10 +54,12 @@ export type BodyCellProps = {
   // listan. `null` när ingen sådan står på tur.
   caretAt?: number | null | undefined
   aria?: Record<string, string> | undefined
+  // Out of the tab order in a row the hand is not standing in (#575): -1, or left as it is.
+  tabIndex?: number | undefined
   children?: ReactNode
 }
 
-export function BodyCell({ label, head, value, open, icons, onWrite, onOpen, onClose, onListKey, onSymbol, caretAt, aria, children }: BodyCellProps) {
+export function BodyCell({ label, head, value, open, icons, onWrite, onOpen, onClose, onListKey, onSymbol, caretAt, aria, tabIndex, children }: BodyCellProps) {
   const write = useRef<HTMLDivElement | null>(null)
   const [marks, setMarks] = useState<BodyMarks>(NO_MARKS)
 
@@ -174,6 +176,7 @@ export function BodyCell({ label, head, value, open, icons, onWrite, onOpen, onC
           onListKey?.(event)
         }}
         {...aria}
+        {...(tabIndex !== undefined ? { tabIndex } : {})}
       />
       {children}
     </div>

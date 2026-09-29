@@ -264,6 +264,9 @@ describe.each(WIDTHS)('the editor at %ipx', (width) => {
           .filter((el) => el.checkVisibility({ opacityProperty: true }))
           // The gallery's tiles are 30 px by decision (L25); see the shape panel below.
           .filter((el) => el.closest('.byd-props-gallery') === null)
+          // The way past the table is drawn only while it has the focus (#575): unfocused it is no
+          // target for a pointer at all, and focused it is a 44 px line of its own.
+          .filter((el) => !el.matches('.byd-data-skip:not(:focus)'))
           .map((el) => {
             const target = el.closest('label') ?? el
             const box = target.getBoundingClientRect()
