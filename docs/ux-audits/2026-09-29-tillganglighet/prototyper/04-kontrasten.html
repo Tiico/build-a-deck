@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 4 — Fältens kanter och zonernas konturer (#553)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Textfältens kanter mäter 1,41–1,48:1 och zonernas kontur på den gröna filten 1,55:1, mot
+     WCAG:s 3:1 för annat än text (A-6, E-8, P-9). Fokus i beskärningen är ett ensamt band som
+     mäter 1,02–1,93:1 mot bilden (F-17). L13 lyfte knapparna men inte fälten, och filtens
+     utseende är K9. Hur ska fälten och zonerna se ut på varje yta?
+       Nu  som i dag.
+       A   fältet får knappspråkets kant (--byd-secondary-line); zonen en hel kritlinje.
+       B   fältet behåller sin svaga kant och får en understrykning på 2 px i den linjen; zonen två
+           band, mörkt innanför och krita utanför, som sätesbanden.
+       C   fältet får en fyllning som skiljer sig från sidan i stället för en kant; zonen en
+           streckad kritlinje.
+     Fokus i beskärningen är K16:s tvåbandsring i A, B och C.
+     Kontrasten under varje prov räknas på den färg som faktiskt ritas, mot det den ritas på. ── */
+  body { display: flex; flex-direction: column; min-height: 100vh; background: #15171c; }
+  .ytor { flex: 1 1 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--s4); padding: var(--s4); }
+  .yta { border-radius: 14px; padding: var(--s4); display: grid; gap: var(--s3); align-content: start; }
+  .yta h2 { margin: 0; font: 700 12px system-ui, sans-serif; letter-spacing: 1.5px; text-transform: uppercase; }
+  .matt { font: 12px ui-monospace, monospace; }
+  .matt b { font-weight: 700; }
+  .matt .ok { color: #7dd3a0; }
+  .matt .nej { color: #ff8a80; }
+  label.f { display: grid; gap: 6px; font: 700 13px system-ui, sans-serif; }
+  .falt { box-sizing: border-box; width: 100%; min-height: 44px; padding: 0 12px; border-radius: 10px; font: 16px system-ui, sans-serif; outline: none; }
+  .falt:focus-visible { outline: 3px solid var(--fokus); outline-offset: 2px; }
+  /* Kontot och /join: mörkt. */
+  .mork { --sida: #14161c; --falt: #1b1e27; --svag: #2c3242; --linje: #6f7a90; --ljusare: #2a3040; --fokus: #9cc6ff; background: var(--sida); color: #e6e6e6; }
+  /* Wizarden: papper. */
+  .papper { --sida: #eeece4; --falt: #ffffff; --svag: #c9c9bd; --linje: #797d75; --ljusare: #d9d6ca; --fokus: #1f6fd0; background: var(--sida); color: #1e2620; }
+  /* Editorn: krom. */
+  .krom { --sida: #23262e; --falt: #1b1d23; --svag: #3b414e; --linje: #6f7a90; --ljusare: #353a47; --fokus: #9cc6ff; background: var(--sida); color: #dce3f2; }
+  body[data-v='nu'] .falt { border: 1px solid var(--svag); background: var(--falt); color: inherit; }
+  body[data-v='a'] .falt { border: 1px solid var(--linje); background: var(--falt); color: inherit; }
+  body[data-v='b'] .falt { border: 1px solid var(--svag); border-bottom: 2px solid var(--linje); background: var(--falt); color: inherit; }
+  body[data-v='c'] .falt { border: 1px solid transparent; background: var(--ljusare); color: inherit; }
+  .krom select.falt { appearance: auto; }
+  .bock { display: inline-flex; align-items: center; gap: 8px; font: 13px system-ui, sans-serif; }
+  .bock input { width: 18px; height: 18px; margin: 0; }
+  body:not([data-v='nu']) .bock input { appearance: none; border: 2px solid var(--linje); border-radius: 4px; background: var(--falt); }
+  body:not([data-v='nu']) .bock input:checked { background: #3c8ce7; border-color: #3c8ce7; }
+  /* Filten. */
+  .filt { position: relative; height: 230px; border-radius: 22px; border: 14px solid #4a2f1c; background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26); }
+  .tv { position: relative; height: 230px; border-radius: 14px; background: #151924; }
+  .zon { position: absolute; box-sizing: border-box; border-radius: 8px; color: rgba(243, 233, 214, 0.75); font: 700 10px system-ui, sans-serif; letter-spacing: 1px; text-transform: uppercase; display: grid; place-items: center; }
+  body[data-v='nu'] .zon { border: 2px solid rgba(255, 255, 255, 0.18); }
+  body[data-v='a'] .zon { border: 2px solid rgba(243, 233, 214, 0.65); }
+  body[data-v='b'] .zon { border: 1px solid rgba(243, 233, 214, 0.8); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45); }
+  body[data-v='c'] .zon { border: 2px dashed rgba(243, 233, 214, 0.65); }
+  /* Beskärningen. */
+  .bild { position: relative; height: 200px; border-radius: 6px; background: linear-gradient(90deg, #e08a3a 0 50%, #3a6fd0 50% 100%); }
+  .utsnitt { position: absolute; left: 12%; top: 12%; right: 12%; bottom: 12%; border: 2px solid #fff; }
+  .horn { position: absolute; width: 12px; height: 12px; border-radius: 3px; background: #fff; translate: -50% -50%; }
+  body[data-v='nu'] .horn[data-fokus] { outline: 2px solid #3c8ce7; outline-offset: 2px; }
+  body:not([data-v='nu']) .horn[data-fokus] { box-shadow: 0 0 0 2px #0d0f14, 0 0 0 5px #9cc6ff; }
+</style>
+</head>
+<body data-v="nu">
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga"><p><b>#553 · Kontrasten för annat än text.</b> Jämför fälten och zonerna på varje yta. Siffran under varje prov är kantens kontrast mot det den ritas på; 3:1 är WCAG:s golv (1.4.11).</p></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="ytor">
+  <section class="yta mork"><h2>Kontot och /join</h2>
+    <label class="f">E-post<input class="falt" data-matt value="" placeholder="din@epost.se"></label>
+    <label class="f">Ditt namn<input class="falt" data-matt value="Ada"></label>
+    <p class="matt" data-rad></p>
+  </section>
+  <section class="yta papper"><h2>Guidade starten</h2>
+    <label class="f">Spelets namn<input class="falt" data-matt value="Skogens herrar"></label>
+    <label class="f">Kostnad namn<input class="falt" data-matt value="Kostnad"></label>
+    <p class="matt" data-rad></p>
+  </section>
+  <section class="yta krom"><h2>Editorn</h2>
+    <input class="falt" data-matt placeholder="Sök i alla fält…" aria-label="Sök i alla fält">
+    <select class="falt" data-matt aria-label="Grupperas av kolumnen"><option>Grupperas av kolumnen …</option></select>
+    <span class="bock"><input type="checkbox" data-bock aria-label="Markera dragon"> Markera kort</span>
+    <p class="matt" data-rad></p>
+  </section>
+  <section class="yta krom"><h2>Filten: bord och distansvy</h2>
+    <div class="filt" data-filt><div class="zon" data-zon style="left:6%;top:56%;width:36%;height:34%">Framför A</div><div class="zon" data-zon style="left:38%;top:12%;width:22%;height:38%">Kasthög</div><div class="zon" data-zon style="left:58%;top:56%;width:36%;height:34%">Framför B</div></div>
+    <p class="matt" data-zonrad="filt"></p>
+  </section>
+  <section class="yta krom"><h2>Filten: TV</h2>
+    <div class="tv"><div class="zon" data-zon style="left:6%;top:56%;width:36%;height:34%">Framför A</div><div class="zon" data-zon style="left:38%;top:12%;width:22%;height:38%">Kasthög</div></div>
+    <p class="matt" data-zonrad="tv"></p>
+  </section>
+  <section class="yta krom"><h2>Beskärningen: fokus på ett hörn</h2>
+    <div class="bild"><div class="utsnitt"></div><i class="horn" data-fokus style="left:12%;top:12%"></i><i class="horn" style="left:88%;top:12%"></i><i class="horn" style="left:12%;top:88%"></i><i class="horn" style="left:88%;top:88%"></i></div>
+    <p class="matt" data-cropmatt></p>
+  </section>
+</div>
+<script>
+const NOT = {
+  nu: '<b>Nu.</b> Fältens kanter 1,41–1,48:1, zonernas kontur omkring 1,5:1 mot filten, och fokus på ett beskärningshörn ett ensamt blått band som försvinner mot en blå bild.',
+  a: '<b>A · Hel kant och hel kritlinje.</b> Fältet får knappspråkets linje (L13), samma som en sekundärknapp, så ett fält och en knapp har samma kant. Zonen en kritlinje på 2 px, 65 % täckning, som klarar 3:1 också mot filtens ljusaste mitt. <span class="plus">+ Ett mönster för hela verktyget, och det minsta att bygga.</span> <span class="minus">− Filten blir tydligt randad; zonerna tar mer av ögat än i dag.</span>',
+  b: '<b>B · Understrykning och två band.</b> Fältet behåller sin svaga ram och får 2 px understrykning i linjen, som gränsen man ser. Zonen två band, en mörk hårlinje innanför och kritan utanför, som sätesbanden (K16). <span class="plus">+ Kontrasten bärs mellan de två banden och håller mot varje del av filten och mot ett kort som ligger i zonen.</span> <span class="minus">− Två mönster för fält (understrykning) och knappar (ram); en understrykning läses som ett formulär av annan sort.</span>',
+  c: '<b>C · Fyllning och streckad krita.</b> Fältet utan synlig kant men med en fyllning som skiljer sig från sidan. Zonen streckad krita. <span class="plus">+ Lugnast att se på.</span> <span class="minus">− Fyllningen når inte 3:1 mot sidan utan att texten i fältet tappar sin egen kontrast; en streckad linje läses som «tillfällig» eller «mål», inte som en gräns.</span>',
+}
+const $ = (q) => document.querySelector(q)
+const rgb = (s) => { const m = s.match(/[\d.]+/g); return m ? m.slice(0, 4).map(Number) : [0, 0, 0, 1] }
+const L = (c) => { const v = c.slice(0, 3).map((x) => x / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2] }
+const over = (fg, bg) => { const a = fg[3] ?? 1; return [0, 1, 2].map((i) => fg[i] * a + bg[i] * (1 - a)) }
+const kontrast = (a, b) => { const [x, y] = [L(a), L(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) }
+const tal = (k) => `<b class="${k >= 3 ? 'ok' : 'nej'}">${k.toFixed(2)}:1</b>`
+function matt() {
+  for (const yta of document.querySelectorAll('.yta')) {
+    const rad = yta.querySelector('[data-rad]')
+    if (!rad) continue
+    const sida = rgb(getComputedStyle(yta).backgroundColor)
+    const ut = [...yta.querySelectorAll('[data-matt]')].map((el) => {
+      const cs = getComputedStyle(el)
+      const kant = rgb(cs.borderBottomColor), fyll = rgb(cs.backgroundColor)
+      const gräns = cs.borderBottomStyle !== 'none' && (rgb(cs.borderBottomColor)[3] ?? 1) > 0 ? kontrast(over(kant, sida), sida) : 0
+      const fyllning = kontrast(over(fyll, sida), sida)
+      return `${(el.getAttribute('aria-label') ?? el.previousSibling?.textContent ?? el.parentElement.textContent).trim().slice(0, 18)}: kant ${tal(gräns)} · fyllning ${tal(fyllning)}`
+    })
+    const bock = yta.querySelector('[data-bock]')
+    if (bock) { const cs = getComputedStyle(bock); ut.push(`Kryssruta: kant ${cs.appearance === 'none' ? tal(kontrast(rgb(cs.borderTopColor), sida)) : '<b class="nej">≈2,5:1 (webbläsarens)</b>'}`) }
+    rad.innerHTML = ut.join('<br>')
+  }
+  // Zonerna mot filtens ljusaste och mörkaste ton, och mot TV:n.
+  const zon = getComputedStyle(document.querySelector('[data-zon]'))
+  const linje = rgb(zon.borderTopColor)
+  const tvåband = zon.boxShadow !== 'none'
+  const mot = (bg) => { const B = rgb(bg); return tvåband ? kontrast(over(linje, B), [0, 0, 0].map((c, i) => B[i] * 0.55)) : kontrast(over(linje, B), B) }
+  $('[data-zonrad="filt"]').innerHTML = `Konturen mot filtens mitt ${tal(mot('rgb(46,107,70)'))} · mot kanten ${tal(mot('rgb(23,58,38)'))}${tvåband ? ' (kritan mot det mörka bandet)' : ''}`
+  $('[data-zonrad="tv"]').innerHTML = `Konturen mot TV:ns filt ${tal(mot('rgb(21,25,36)'))}`
+  const v = document.body.dataset.v
+  $('[data-cropmatt]').innerHTML = v === 'nu' ? `Fokusbandet mot orange ${tal(kontrast([60, 140, 231], [224, 138, 58]))} · mot blått ${tal(kontrast([60, 140, 231], [58, 111, 208]))}` : `Ljusa bandet mot det mörka ${tal(kontrast([156, 198, 255], [13, 15, 20]))}, på vilken bild som helst`
+}
+function byt(v) {
+  document.body.dataset.v = v
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === v))
+  $('#anteckning').innerHTML = NOT[v]
+  const u = new URL(location.href); u.searchParams.set('v', v); history.replaceState(null, '', u)
+  matt()
+}
+document.addEventListener('click', (ev) => { const b = ev.target.closest('.protorad [data-v]'); if (b) byt(b.dataset.v) })
+addEventListener('keydown', (ev) => { if (ev.target.closest?.('.protorad') && (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight')) { const ks = ['nu', 'a', 'b', 'c']; byt(ks[(ks.indexOf(document.body.dataset.v) + (ev.key === 'ArrowRight' ? 1 : -1) + 4) % 4]) } })
+const q = new URLSearchParams(location.search)
+byt(['nu', 'a', 'b', 'c'].includes(q.get('v')) ? q.get('v') : 'nu')
+</script>
+</body>
+</html>
