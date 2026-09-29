@@ -280,3 +280,18 @@ describe('the observer is shown and told what the table is', () => {
     expect((await screen.findByText('Ögonblicket är flaggat')).closest('[role="status"]')).not.toBeNull()
   })
 })
+
+// An observer whose link does not hold is told so as an observer (#560 P-24). She has no seat, so
+// «Din plats är inte längre din» and «Välj plats igen» — the phone's words — were words for someone
+// else; what she needs is that the link is spent and who gives her a new one.
+describe('an observer whose link does not hold (#560 P-24)', () => {
+  it('is told about her link, not about a seat, and offered no seat to pick', async () => {
+    const id = await createSession(run)
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=not-a-token&server=${encodeURIComponent(run.url)}`)
+    render(<ObserverPage />)
+    const heading = await screen.findByRole('heading', { name: /länk/i })
+    expect(heading.textContent).toBe('Länken till observatören gäller inte längre')
+    expect(document.body.textContent).not.toMatch(/Din plats|Välj plats igen|platsen/)
+    expect(screen.getByText(/be testledaren om en ny länk/i)).toBeTruthy()
+  })
+})

@@ -200,6 +200,24 @@ export function guestNotice(state: 'missing' | 'forbidden', t: T = swedish): Not
   return noticeFor(state, 'phone', t)
 }
 
+// An observer's ways out (#560 P-24). She has no seat, so the phone's «Din plats är inte längre
+// din» and «Välj plats igen» are words for someone else. The way back is still the room's door —
+// the join page lets one in to «Bara titta» (#485) — so it is kept, and named as what it is for
+// her: going in again. A link that does not hold says so, and who gives her a new one.
+export function asObserver(notice: Notice, t: T = swedish): Notice {
+  return { ...notice, actions: notice.actions.map((a) => (a.kind === 'rescan' ? { ...a, label: t('status.act.rejoin') } : a)) }
+}
+export function observerNotice(refused: string, t: T = swedish): Notice {
+  return asObserver(
+    {
+      ...noticeFor('forbidden', 'phone', t),
+      heading: t('status.forbidden.observer.heading'),
+      text: t(refused === 'kicked' ? 'session.refused.kicked' : 'status.forbidden.observer.text'),
+    },
+    t,
+  )
+}
+
 // An editor whose reader was logged out while it was open (#485, fynd 7): not «someone else's
 // game», which is what it used to be told, but what happened and the way back in. The work stays
 // on the page behind it.
