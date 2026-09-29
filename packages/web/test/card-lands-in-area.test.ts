@@ -290,3 +290,69 @@ describe('samma yta nådd med pekaren (#461)', () => {
     expect(orderIn(table.view('A'), 'mine:A')).toEqual(['kort-1', 'kort-2', 'kort-3'])
   })
 })
+
+// K16 lovar att två kort som spelas med tangentbord aldrig landar på samma millimeter, och L47:s
+// fjäder räknade bara kort (#560 P-11): ett kort som lämnat ytan gav en lucka, antalet sjönk, och
+// nästa kort lades på steget där ett kvarvarande kort redan låg. Nästa plats är nu den första i
+// fjädern där inget kort ligger, räknat från antalets steg och sedan från början.
+describe('nästa kort i ytan landar där inget kort redan ligger (#560 P-11)', () => {
+  const alongOf = (view: Snapshot, zone: string) => {
+    const g = zoneOf(view, zone).geometry
+    return boxes(view, zone).map((b) => Math.round(g.w >= g.h ? b.x - g.x : b.y - g.y))
+  }
+  const tooClose = (steps: number[]) => steps.some((a, i) => steps.some((b, j) => i < j && Math.abs(a - b) < HAND_STEP_MM / 2))
+
+  it.each(SEATS)('lägger inte telefonens kort på ett kvarvarande kort vid %i platser', (players) => {
+    const table = tableOf(felt(players, 4))
+    table.run(null, { v: 'seat.claim', seat: 'A', name: 'Nina' })
+    const play = () => {
+      const view = table.view('A')
+      const card = view.components.find((c) => c.zone === 'hand:A')!
+      table.run('A', ...playIntents(view, [card], 'mine:A'))
+    }
+    play()
+    play()
+    play()
+    const first = table.view('A').components.find((c) => c.zone === 'mine:A' && c.cardRef === 'kort-1')!
+    table.run('A', { v: 'move', component: first.id, to: 'hand:A' })
+    play()
+    const steps = alongOf(table.view('A'), 'mine:A')
+    expect(steps).toHaveLength(3)
+    expect(tooClose(steps)).toBe(false)
+  })
+
+  it('lägger inte tangentbordets kort på ett som släppts för hand där fjädern skulle ha lagt det', () => {
+    const table = tableOf(felt(4, 2))
+    table.run(null, { v: 'seat.claim', seat: 'A', name: 'Nina' })
+    const view = table.view('A')
+    const g = zoneOf(view, 'mine:A').geometry
+    const [dropped, next] = view.components.filter((c) => c.zone === 'hand:A')
+    // Handens kort släpps på fjäderns andra steg, med ytan annars tom.
+    const along = g.w >= g.h
+    table.run('A', { v: 'move', component: dropped!.id, to: 'mine:A', ...(along ? { x: HAND_STEP_MM + 2, y: Math.round((g.h - CARD_MM.h) / 2) } : { x: Math.round((g.w - CARD_MM.w) / 2), y: HAND_STEP_MM + 2 }) })
+    const before = table.view('A')
+    const thing: Thing = { key: `card:${next!.id}`, kind: 'card', id: next!.id, name: 'kort-2', zone: 'hand:A' }
+    const place = placesFor(before, new Set([next!.id]), 'hand:A').find((p) => p.zone === 'mine:A' && p.kind === 'area')!
+    table.run('A', ...intentsForPlace(before, place, thing, [next!.id]))
+    const steps = alongOf(table.view('A'), 'mine:A')
+    expect(steps).toHaveLength(2)
+    expect(tooClose(steps)).toBe(false)
+  })
+
+  it('lägger två kort i samma kuvert på var sin plats runt ett kvarvarande kort', () => {
+    const table = tableOf(felt(4, 5))
+    table.run(null, { v: 'seat.claim', seat: 'A', name: 'Nina' })
+    const play = (n: number) => {
+      const view = table.view('A')
+      const cards = view.components.filter((c) => c.zone === 'hand:A').slice(0, n)
+      table.run('A', ...playIntents(view, cards, 'mine:A'))
+    }
+    play(3)
+    const first = table.view('A').components.find((c) => c.zone === 'mine:A' && c.cardRef === 'kort-1')!
+    table.run('A', { v: 'move', component: first.id, to: 'hand:A' })
+    play(2)
+    const steps = alongOf(table.view('A'), 'mine:A')
+    expect(steps).toHaveLength(4)
+    expect(tooClose(steps)).toBe(false)
+  })
+})

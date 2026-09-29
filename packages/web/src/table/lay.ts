@@ -64,8 +64,27 @@ export function laidIn(view: Snapshot, zone: string, nth = 0): Laid | null {
   const held = z.mode === 'order' ? z.order.length : z.count
   const i = held + nth
   const g = z.geometry
-  const step = stepOf(g, i)
-  return alongIsWidth(g)
-    ? { x: mm(step), y: mm((g.h - CARD_MM.h) / 2), index: i }
-    : { x: mm((g.w - CARD_MM.w) / 2), y: mm(step), index: i }
+  const along = alongIsWidth(g)
+  // Var längs fjädern korten redan ligger — ytans egna och de som kuvertet lagt före det här.
+  const taken = view.components.filter((c) => c.zone === zone).map((c) => (along ? c.x : c.y))
+  let step = 0
+  for (let k = 0; k <= nth; k++) {
+    step = freeStep(g, held + k, taken)
+    taken.push(step)
+  }
+  return along ? { x: step, y: mm((g.h - CARD_MM.h) / 2), index: i } : { x: mm((g.w - CARD_MM.w) / 2), y: step, index: i }
+}
+
+// Nästa plats i fjädern där inget kort redan ligger (K16, #560 P-11). Antalet säger var fjädern
+// står, men ett kort som lämnat ytan lämnar en lucka, och ett kort som släppts för hand ligger där
+// handen släppte det: räknat bara på antalet lades nästa kort ovanpå ett kvarvarande. Så steget
+// provas från antalets plats och framåt, sedan från början, och det första där inget kort ligger
+// närmare än ett halvt steg är svaret. En fjäder utan ledig plats svarar som förut, på tolvans
+// millimeter — ingenting lämnar ytan, någonsin.
+function freeStep(g: { w: number; h: number }, i: number, taken: readonly number[]): number {
+  const fan = fanIn(g)
+  const first = Math.min(i, fan - 1)
+  const order = [...Array.from({ length: fan - first }, (_, k) => first + k), ...Array.from({ length: first }, (_, k) => k)]
+  const free = order.map((k) => mm(k * HAND_STEP_MM)).find((s) => taken.every((t) => Math.abs(t - s) >= HAND_STEP_MM / 2))
+  return free ?? mm(stepOf(g, i))
 }

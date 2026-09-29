@@ -5099,6 +5099,14 @@ Blir det ett problem är det ett eget issue med en egen rad.
 Att ingen förlorar något är mätt och inte antaget: dragvägen satte aldrig `index`, så att kortet hamnade underst var en slump och inte en möjlighet.
 Vill man kunna skjuta in ett kort *under* en trave är det ett eget beslut om vad som ska styra djupet, och det finns inte i dag.
 
+Reviderat 2026-09-29 (#560 P-11): **nästa plats i fjädern är den första där inget kort redan ligger.**
+Fjädern räknade kort och inte platser: ett kort som lämnat ytan gav en lucka, antalet sjönk, och nästa kort lades på steget där ett kvarvarande kort låg.
+Ett kort som släppts för hand på ett av fjäderns steg gjorde samma sak, och granskningen mätte ett tangentbordsspelat kort 4 px från det som låg där sedan tidigare.
+Det bröt K16:s löfte att två kort som spelas med tangentbord aldrig landar på samma millimeter.
+Steget provas därför från antalets plats och framåt, sedan från början, och det första där inget kort ligger närmare än ett halvt steg (13 mm) längs fjädern är svaret; kort i samma kuvert tar var sin.
+Ordningen är orörd — det nyaste kortet ligger fortfarande överst — och ingenting som redan ligger flyttas (K2).
+En fjäder utan ledig plats svarar som förut, på tolvans millimeter.
+
 Grinden är `card-lands-in-area.test.ts`, som nu mäter alla tre vägarna: telefonens, tangentbordets och pekarens, med kortens ordning läst ur `project`, och med en mätning av att pekarens punkt är orörd.
 
 ### L48. Ytan framför en plats är publik, och översikten frågar synlighet där arket frågar ägarskap (prototypat och beslutat 2026-09-22, #414; fliken delad från raden 2026-09-24, #465)
