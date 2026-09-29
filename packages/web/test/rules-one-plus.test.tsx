@@ -71,18 +71,18 @@ describe('the one ＋ the book draws (#216)', () => {
 
   it('follows the pointer from block to block, and goes home when the pointer leaves the book', async () => {
     await openBook()
-    fireEvent.pointerOver(blockOf('t1').querySelector('[role="button"]')!)
+    fireEvent.pointerOver(blockOf('t1').querySelector('[role="button"], .byd-rules-open')!)
     await waitFor(() => expect(says()).toBe('Lägg till efter texten 1 under Så spelar ni'))
     expect(plusses()).toHaveLength(1)
     expect(blockOf('t1').contains(plus())).toBe(true)
-    fireEvent.pointerOver(blockOf('l1').querySelector('[role="button"]')!)
+    fireEvent.pointerOver(blockOf('l1').querySelector('[role="button"], .byd-rules-open')!)
     await waitFor(() => expect(says()).toBe('Lägg till efter listan under Så spelar ni'))
     expect(blockOf('t1').contains(plus())).toBe(false)
     // The title is not a block and not nothing either: it is the first gap, and the ＋ goes there
     // rather than staying where the hand last was.
     fireEvent.pointerOver(within(book()).getByRole('heading', { name: 'Skogens herrar' }))
     await waitFor(() => expect(says()).toBe('Lägg till först'))
-    fireEvent.pointerOver(blockOf('l1').querySelector('[role="button"]')!)
+    fireEvent.pointerOver(blockOf('l1').querySelector('[role="button"], .byd-rules-open')!)
     await waitFor(() => expect(says()).toBe('Lägg till efter listan under Så spelar ni'))
     fireEvent.pointerLeave(book())
     await waitFor(() => expect(says()).toBe('Lägg till först'))
@@ -91,7 +91,7 @@ describe('the one ＋ the book draws (#216)', () => {
   // The half a follower ＋ is most likely to lose, and the one #184 already had to put back.
   it('follows the focus too, and is the next stop after the block it stands at', async () => {
     await openBook()
-    const handle = blockOf('t2').querySelector<HTMLElement>('[role="button"]')!
+    const handle = blockOf('t2').querySelector<HTMLElement>('[role="button"], .byd-rules-open')!
     handle.focus()
     await waitFor(() => expect(says()).toBe('Lägg till efter texten 2 under Så spelar ni'))
     // Next in the tab order means next in the document: the block's own handle, then its ＋, then
@@ -102,7 +102,7 @@ describe('the one ＋ the book draws (#216)', () => {
     // And the ＋ stands still while it is the thing that has the focus: a pointer drifting over a
     // neighbour must not take the button out from under a hand that has just reached it.
     plus().focus()
-    fireEvent.pointerOver(blockOf('h1').querySelector('[role="button"]')!)
+    fireEvent.pointerOver(blockOf('h1').querySelector('[role="button"], .byd-rules-open')!)
     await waitFor(() => expect(says()).toBe('Lägg till efter texten 2 under Så spelar ni'))
     expect(document.activeElement).toBe(plus())
   })
@@ -112,7 +112,7 @@ describe('the one ＋ the book draws (#216)', () => {
   // Tab into the book meets that gap again.
   it('goes home when the focus leaves the book for something outside it', async () => {
     await openBook()
-    const handle = blockOf('t1').querySelector<HTMLElement>('[role="button"]')!
+    const handle = blockOf('t1').querySelector<HTMLElement>('[role="button"], .byd-rules-open')!
     handle.focus()
     await waitFor(() => expect(says()).toBe('Lägg till efter texten 1 under Så spelar ni'))
     screen.getByRole('tab', { name: 'Kortvägg' }).focus()
@@ -138,7 +138,7 @@ describe('the one ＋ the book draws (#216)', () => {
 
   it('lays it after the block it stands at, when it stands at one', async () => {
     await openBook()
-    fireEvent.pointerOver(blockOf('t1').querySelector('[role="button"]')!)
+    fireEvent.pointerOver(blockOf('t1').querySelector('[role="button"], .byd-rules-open')!)
     await waitFor(() => expect(says()).toBe('Lägg till efter texten 1 under Så spelar ni'))
     fireEvent.click(plus())
     const ids = () => [...book().querySelectorAll('[data-block]')].map((b) => b.getAttribute('data-block'))

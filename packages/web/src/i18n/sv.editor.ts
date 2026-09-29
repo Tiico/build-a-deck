@@ -959,6 +959,7 @@ export const svEditor = {
   'rules.booklet.noRules': 'Spelet har inga regler att trycka.',
   'rules.booklet.orderFailed': 'Häftet kunde inte beställas ({status}).',
   'rules.booklet.notSaved': 'Boken kunde inte sparas, så häftet beställdes inte. Spara och försök igen.',
+  'rules.block.edit': 'Redigera {block}',
   'rules.block.text': 'Text {nth}{where}',
   'rules.block.heading': 'Rubrik {n}',
   'rules.block.level': 'Nivå på rubrik {n}',

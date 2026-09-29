@@ -77,7 +77,7 @@ const blockOf = (id: string) => book().querySelector(`[data-block="${id}"]`) as 
 
 // The block opened to its fields, by pressing the paragraph the reader sees.
 async function openBlock(id: string, label: string): Promise<HTMLTextAreaElement> {
-  fireEvent.click(blockOf(id).querySelector('[role="button"]')!)
+  fireEvent.click(blockOf(id).querySelector('[role="button"], .byd-rules-open')!)
   return (await within(book()).findByLabelText(label)) as HTMLTextAreaElement
 }
 
@@ -234,7 +234,7 @@ describe('the way a reference is put into a rule (#215)', () => {
 
   it('answers in a list block too, and writes into the point being written in', async () => {
     await openBook()
-    fireEvent.click(blockOf('l1').querySelector('[role="button"]')!)
+    fireEvent.click(blockOf('l1').querySelector('[role="button"], .byd-rules-open')!)
     const item = (await within(book()).findByLabelText('Punkt 2 i listan under Så spelar ni')) as HTMLInputElement
     item.focus()
     typeInto(item, 'Spela ut i [[spel')
@@ -268,7 +268,7 @@ describe('the way a reference is put into a rule (#215)', () => {
   // until then, and it is changed here deliberately.
   it('answers in a heading too, now that a heading reads its references (#272)', async () => {
     await openBook()
-    fireEvent.click(blockOf('h1').querySelector('[role="button"]')!)
+    fireEvent.click(blockOf('h1').querySelector('[role="button"], .byd-rules-open')!)
     const head = (await within(book()).findByLabelText('Rubrik 1')) as HTMLInputElement
     head.focus()
     typeInto(head, 'Så spelar ni [[drag')

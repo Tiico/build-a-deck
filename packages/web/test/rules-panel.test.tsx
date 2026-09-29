@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
@@ -165,7 +166,7 @@ describe('a picture in the editor’s book (#173)', () => {
     expect(await within(book()).findByText('Utan alt-text: dold för skärmläsare')).toBeTruthy()
     expect(within(book()).queryByRole('img')).toBeNull()
 
-    fireEvent.click(book().querySelector('[data-block="i1"] [role="button"]')!)
+    fireEvent.click(book().querySelector('[data-block="i1"] .byd-rules-open')!)
     const field = await within(book()).findByLabelText('Alt-text för bilden under Så spelar ni')
     fireEvent.change(field, { target: { value: 'Bordet från ovan' } })
     await waitFor(() => expect(within(book()).getByRole('img', { name: 'Bordet från ovan' })).toBeTruthy())
@@ -199,7 +200,7 @@ describe('the picture’s caption in the editor (#173)', () => {
     // It is in the book, because it is the reader's own line and is printed.
     expect(await within(book()).findByText('Bordet vid tre spelare')).toBeTruthy()
 
-    fireEvent.click(book().querySelector('[data-block="i1"] [role="button"]')!)
+    fireEvent.click(book().querySelector('[data-block="i1"] .byd-rules-open')!)
     const alt = await within(book()).findByLabelText('Alt-text för bilden under Så spelar ni')
     const caption = await within(book()).findByLabelText('Bildtext till bilden under Så spelar ni')
     // Two fields, and neither of them holds what the other says.
@@ -252,7 +253,7 @@ describe('the pictures without alt text, counted in the contents (#173)', () => 
     expect(within(found).getByText('Bilden du sökte')).toBeTruthy()
     // And it is a picture the designer can act on where she was taken: the block is open to its
     // fields, so the mark is not a place to look at but a place to write.
-    expect(document.activeElement).toBe(found.querySelector('[role="button"]'))
+    expect(document.activeElement).toBe(found.querySelector('[role="button"], .byd-rules-open'))
   })
 
   it('says nothing at all when every picture in the book says something', async () => {
@@ -330,7 +331,7 @@ describe('the rulebook as a booklet (B7)', () => {
 describe('a heading kept open while its level is chosen (#217)', () => {
   it('stays open when the focus goes from the field to the level beside it', async () => {
     await openRules()
-    fireEvent.click(within(book()).getByRole('heading', { name: 'Så spelar ni' }))
+    fireEvent.click(within(within(book()).getByRole('heading', { name: 'Så spelar ni' })).getByRole('button'))
     const field = await within(book()).findByLabelText('Rubrik 1')
     const level = within(book()).getByLabelText('Nivå på rubrik 1')
     // Leaving the field for the chooser beside it is staying, not going — the same rule the
@@ -342,7 +343,7 @@ describe('a heading kept open while its level is chosen (#217)', () => {
 
   it('takes the level the chooser is set to, and draws the heading at it', async () => {
     await openRules()
-    fireEvent.click(within(book()).getByRole('heading', { name: 'Så spelar ni' }))
+    fireEvent.click(within(within(book()).getByRole('heading', { name: 'Så spelar ni' })).getByRole('button'))
     const field = await within(book()).findByLabelText('Rubrik 1')
     const level = within(book()).getByLabelText('Nivå på rubrik 1')
     fireEvent.blur(field, { relatedTarget: level })
@@ -356,7 +357,7 @@ describe('a heading kept open while its level is chosen (#217)', () => {
 
   it('closes when the focus leaves the heading row altogether', async () => {
     await openRules()
-    fireEvent.click(within(book()).getByRole('heading', { name: 'Så spelar ni' }))
+    fireEvent.click(within(within(book()).getByRole('heading', { name: 'Så spelar ni' })).getByRole('button'))
     const field = await within(book()).findByLabelText('Rubrik 1')
     fireEvent.blur(field, { relatedTarget: document.body })
     await waitFor(() => expect(within(book()).queryByLabelText('Rubrik 1')).toBeNull())
@@ -401,5 +402,43 @@ describe('uppställningens block i editorn (#270)', () => {
     fireEvent.click(await within(book()).findByRole('button', { name: 'Bildtext…' }))
     // The book is the setup alone, so it stands at the start of the book (#558).
     expect(await within(book()).findByLabelText('Bildtext till uppställningen i början av boken')).toBeTruthy()
+  })
+})
+
+// The book keeps its outline where it is written (#580, beställarens beslut 2026-09-29, C): a
+// heading carries the button that opens it, as an accordion's does, instead of being the text of
+// a button that swallowed it. A paragraph is a button as before; a list keeps its points and is
+// opened by a pencil beside it.
+describe('the book’s outline while it is written (#580)', () => {
+  it('keeps every heading a heading, with the button that opens it inside', async () => {
+    await openRules()
+    const heading = within(book()).getByRole('heading', { name: 'Så spelar ni' })
+    expect(heading.closest('[role="button"], button')).toBeNull()
+    const opens = within(heading).getByRole('button', { name: 'Så spelar ni' })
+    for (const h of book().querySelectorAll('h1, h2, h3, h4')) expect(h.closest('[role="button"]')).toBeNull()
+    const user = userEvent.setup()
+    opens.focus()
+    await user.keyboard('{Enter}')
+    const field = await within(book()).findByLabelText('Rubrik 1')
+    expect(document.activeElement).toBe(field)
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(document.activeElement).toBe(within(within(book()).getByRole('heading', { name: 'Så spelar ni' })).getByRole('button')))
+  })
+
+  it('keeps a list a list, and opens it from the pencil beside it', async () => {
+    await openRules()
+    const list = within(book()).getByRole('list')
+    expect(list.closest('[role="button"], button')).toBeNull()
+    expect(within(list).getAllByRole('listitem')).toHaveLength(2)
+    const user = userEvent.setup()
+    within(book()).getByRole('button', { name: 'Redigera listan under Så spelar ni' }).focus()
+    await user.keyboard('{Enter}')
+    expect(await within(book()).findByLabelText('Punkt 1 i listan under Så spelar ni')).toBeTruthy()
+  })
+
+  it('leaves a paragraph the button it was', async () => {
+    await openRules()
+    const paragraph = within(book()).getByText(/Dra ett kort ur/).closest('[role="button"]')
+    expect(paragraph).not.toBeNull()
   })
 })
