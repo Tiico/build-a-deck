@@ -11,7 +11,7 @@ import { recallCamera, rememberCamera, type CameraMemory } from './cameraMemory.
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, handBound, nobodysHand, type Drag, type DragTarget } from './drop.js'
 import { isCounter, standIn } from '../components.js'
-import { cardWord, counterActs, drawOne, feltShortcuts, flipUnder, modifierHeld, ownerOf, type Act } from './keyboard.js'
+import { cardWord, counterActs, drawOne, feltShortcuts, flipUnder, labelOf, modifierHeld, ownerOf, thingsOn, type Act } from './keyboard.js'
 import { ShortcutHelp } from './ShortcutHelp.js'
 import { CounterEntry } from './CounterEntry.js'
 import { useSay } from '../status/StatusLive.js'
@@ -1477,6 +1477,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           y={ringAt.y}
           items={ringVerbs}
           hub={ringChip ? <CounterHub view={view} c={ringChip} t={t} /> : ringPile ? <PileHub view={view} chips={ringPile} t={t} /> : undefined}
+          label={ringLabel(view, ring.target, t)}
+          returnTo={() => frame.current?.querySelector<HTMLElement>(`[data-kbd="${CSS.escape(ringKey(ring.target))}"]`) ?? null}
           onClose={shut(ring)}
           onPressAgain={turnAgain}
         />
@@ -1617,6 +1619,17 @@ function useGlide(target: Rect | null, ms: number): Rect | null {
 // What a ring is drawn about, for the sake of a test that has to find it again.
 const ringName = (target: Ring['target']): string =>
   target.kind === 'card' || target.kind === 'counter' ? target.id : target.kind === 'counterPile' ? target.ids.join('+') : target.pile
+
+// The felt node a ring is opened on, keyed the way the keyboard layer knows it (`thingsOn`): where
+// focus goes back to when the ring closes (#560 P-10). A pile of chips is its first chip.
+const ringKey = (target: Ring['target']): string =>
+  target.kind === 'card' ? `card:${target.id}` : target.kind === 'counter' ? `counter:${target.id}` : target.kind === 'counterPile' ? `counter:${target.ids[0] ?? ''}` : target.kind === 'pileTop' ? `top:${target.pile}` : `pile:${target.pile}`
+
+// What the ring is called: the sentence the keyboard reader hears on the thing it was opened on.
+function ringLabel(view: Snapshot, target: Ring['target'], t: T): string | undefined {
+  const thing = thingsOn(view, t).find((x) => x.key === ringKey(target))
+  return thing ? labelOf(view, thing, t) : undefined
+}
 
 // The verbs a drag cannot say (C): for a card, for a pile, for a chip, and for a pile of chips.
 function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void, enter: (c: VisibleComponentState) => void, t: T): RadialItem[] {
