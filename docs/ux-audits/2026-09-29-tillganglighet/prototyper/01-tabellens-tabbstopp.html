@@ -119,11 +119,6 @@ function falt(r, f, tab) {
   if (f === 'body') return `<div class="prosa" contenteditable="plaintext-only" spellcheck="false" ${d}>${esc(r.body)}</div>`
   return `<input value="${esc(r[f])}" ${d} autocomplete="off" spellcheck="false">`
 }
-function cell(ri, k, r, inner) {
-  if (s.v !== 'a') return inner
-  const har = s.cell.r === ri && s.cell.k === k
-  return inner
-}
 function rita() {
   for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
   for (const b of document.querySelectorAll('[data-s]')) b.setAttribute('aria-pressed', String(b.dataset.s === s.storlek))
@@ -160,7 +155,8 @@ function matt() {
   const i = alla.indexOf($('#sok')), j = alla.indexOf($('#ny'))
   const tabell = alla.filter((el) => el.closest('tbody')).length
   $('#m-stopp').textContent = String(tabell)
-  $('#m-vag').textContent = i >= 0 && j >= 0 ? String(j - i) : '–'
+  const h = alla.indexOf($('#hopp'))
+  $('#m-vag').textContent = i < 0 || j < 0 ? '–' : h >= 0 ? `${h - i} Tab + Enter via hopplänken (utan den ${j - i})` : String(j - i)
   $('#m-tryck').textContent = s.tryck === null ? '–' : String(s.tryck)
   const a = document.activeElement
   const namn = a?.getAttribute?.('aria-label') ?? a?.textContent?.trim().slice(0, 30) ?? ''
