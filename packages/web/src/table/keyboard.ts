@@ -89,10 +89,10 @@ export function thingsOn(view: Snapshot, t: T = swedish): Thing[] {
     .filter((z) => z.kind === 'pile')
     .flatMap((z) => {
       const at = { x: z.geometry.x, y: z.geometry.y }
-      return [
-        { at, thing: { key: `top:${z.id}`, kind: 'pileTop' as const, pile: z.id, name: cardName(topOf(view, z), t) } },
-        { at, thing: { key: `pile:${z.id}`, kind: 'pile' as const, pile: z.id, name: z.name, count: countOf(z) } },
-      ]
+      // One stop per pile (#572): a pile and the card on top of it stand on one spot and are one
+      // thing to the eye, and an arrow that follows the screen can only land on one of them. The
+      // stop says what is on top, and its panel carries the top card's verbs beside the pile's.
+      return [{ at, thing: { key: `pile:${z.id}`, kind: 'pile' as const, pile: z.id, name: z.name, count: countOf(z) } }]
     })
   return [...placed, ...piles]
     .sort((a, b) => (Math.abs(a.at.y - b.at.y) > 45 ? a.at.y - b.at.y : a.at.x - b.at.x))
@@ -115,7 +115,10 @@ export function labelOf(view: Snapshot, thing: Thing, t: T = swedish): string {
     const zone = zoneName(view, thing.pile)
     return z && countOf(z) === 0 ? t('kbd.pile.empty', { zone }) : t('kbd.pile.top', { zone, name: thing.name })
   }
-  return t(thing.count === 1 ? 'kbd.pile.whole.one' : 'kbd.pile.whole.other', { zone: zoneName(view, thing.pile), n: thing.count })
+  const z = view.zones.find((x) => x.id === thing.pile)
+  const zone = zoneName(view, thing.pile)
+  if (!z || countOf(z) === 0) return t('kbd.pile.empty', { zone })
+  return t(thing.count === 1 ? 'kbd.pile.one' : 'kbd.pile.other', { zone, n: thing.count, top: cardName(topOf(view, z), t) })
 }
 
 // What every node on the felt is called, keyed the way the renderer knows it. The sentence ends
@@ -181,7 +184,10 @@ export function verbsFor(view: Snapshot, thing: Thing, t: T = swedish): Act[] {
       { key: 'look', label: t('kbd.verb.lookTop'), hint: t('kbd.hint.look'), intents: top ? [] : null, ...(top ? { look: top.id } : {}) },
     ]
   }
+  // The top card's verbs first, in the pile's own panel (#572): the pile is one stop.
+  const onTop = verbsFor(view, { key: thing.key, kind: 'pileTop', pile: thing.pile, name: cardName(top, t) }, t)
   return [
+    ...onTop,
     { key: 'shuffle', label: t('ring.shuffle'), intents: n > 1 ? [{ v: 'shuffle', pile: z.id }] : null },
     // The ring's «Dra 1», in the panel and in the ring's own order (#224). It is here because of
     // the caveat the shortcuts were decided under: `D` draws from the pile under the pointer, and
@@ -337,9 +343,10 @@ export function landedKeyFor(view: Snapshot, place: Place, thing: Thing): string
   // A chip stacks on nothing: sent onto a card it lands in that card's zone, still itself, so the
   // focus stays on the chip where a card's would follow it into the pile it made.
   if (place.kind === 'card') return thing.kind === 'counter' ? thing.key : `card:${place.anchor?.id ?? ''}`
-  if (z?.kind === 'pile') return `top:${z.id}`
+  if (z?.kind === 'pile') return `pile:${z.id}`
   if (z?.kind === 'area' && isLoose(thing)) return thing.key
-  return `top:${place.zone}`
+  // A whole pile moved keeps its own id; the top of one is a card and lands as one, above.
+  return thing.kind === 'pile' ? thing.key : `pile:${place.zone}`
 }
 
 // A card in this seat's own hand, for a reader. The hand is not on the felt, so it is not a

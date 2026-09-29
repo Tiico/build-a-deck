@@ -87,7 +87,7 @@ describe('a keyboard learns nothing a pointer does not (B6, D4)', () => {
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 
-    expect(screen.getByRole('button', { name: 'Översta kortet i Draghög: Dolt kort. Enter öppnar handlingar.' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Draghög, \d+ kort, överst: Dolt kort\. Enter öppnar handlingar\.$/ })).toBeTruthy()
     expect(frames.join('\n')).not.toMatch(NOT_HERS)
   })
 })

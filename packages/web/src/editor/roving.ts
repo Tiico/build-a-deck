@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { nextInDirection, type Arrow } from '../table/spatial.js'
 
 export type RovingOptions = {
   // The items in the order they are rendered, identified the way React keys them.
@@ -7,7 +8,10 @@ export type RovingOptions = {
   selected: string | null
   // `both` is a list laid out in two dimensions — the felt, where a card is above and beside
   // its neighbours at once — and takes all four arrows into the same one order.
-  orientation: 'horizontal' | 'vertical' | 'both'
+  //
+  // `spatial` is the felt since #572 (K16): the arrows go to what is drawn in their direction on the
+  // screen, asked of each item's own box, and never the other way; Home and End keep the list's ends.
+  orientation: 'horizontal' | 'vertical' | 'both' | 'spatial'
   // A list whose selection follows focus tells the outside world about every move; a list that
   // activates on purpose (a tablist over costly panels) leaves that to Enter, Space or a click.
   followFocus?: boolean
@@ -24,6 +28,8 @@ export type RovingItemProps = {
 // A roving tabindex (APG): a list of items is one tab stop, and the arrow keys move focus inside
 // it. Both the editor's tablist and its layer list are such lists, so the behaviour lives here
 // once instead of being written twice.
+const ARROWS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']
+
 export function useRoving({ ids, selected, orientation, followFocus = false, onActivate }: RovingOptions) {
   const [focused, setFocused] = useState<string | null>(null)
   const elements = useRef(new Map<string, HTMLElement>())
@@ -82,6 +88,17 @@ export function useRoving({ ids, selected, orientation, followFocus = false, onA
       if (followFocus) onActivate?.(id)
     },
     onKeyDown: (event) => {
+      if (orientation === 'spatial' && ARROWS.includes(event.key)) {
+        const spots = ids.flatMap((key) => {
+          const box = elements.current.get(key)?.getBoundingClientRect()
+          return box ? [{ key, x: box.left + box.width / 2, y: box.top + box.height / 2 }] : []
+        })
+        const next = nextInDirection(spots, id, event.key as Arrow)
+        if (next !== null) moveTo(next)
+        // An arrow with nothing that way stays put, and is still the felt's: it must not scroll.
+        event.preventDefault()
+        return
+      }
       const at = ids.indexOf(id)
       // The ends wrap: a list this short is quicker to leave through its own end than to walk back.
       if (forward.includes(event.key)) moveTo(ids[(at + 1) % ids.length])

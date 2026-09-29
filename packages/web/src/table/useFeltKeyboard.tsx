@@ -66,7 +66,7 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
   const pendingAt = useRef<number | null>(null)
   const on = view !== null && felt
   const things = on ? thingsOn(view, t) : []
-  const roving = useRoving({ ids: things.map((t) => t.key), selected: null, orientation: 'both' })
+  const roving = useRoving({ ids: things.map((t) => t.key), selected: null, orientation: 'spatial' })
 
   useLayoutEffect(() => {
     const want = pending.current
@@ -184,8 +184,8 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
           options.onPlayed?.()
           close(landedOn)
         }}
-        intentsFor={(place, moving) => intentsForPlace(view, place, open.thing, moving)}
-        landedKey={(place) => landedKeyFor(view, place, open.thing)}
+        intentsFor={(place, moving, as) => intentsForPlace(view, place, as ?? open.thing, moving)}
+        landedKey={(place, as) => landedKeyFor(view, place, as ?? open.thing)}
         sheet={open.hand ? options.handSheet?.(view) : undefined}
       />
     ) : null
