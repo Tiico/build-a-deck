@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { BODY_LINES, type FieldBox } from './body.js'
 import { useLang, useT } from '../i18n/index.js'
 
@@ -49,6 +50,9 @@ const mm = (n: number, lang: string) => n.toLocaleString(lang, { minimumFraction
 
 export function ProseMark({ label, prose, choice, box, open, onProse }: ProseMarkProps) {
   const t = useT()
+  // Each column has its own pair of buttons, so each name carries the column after the words on
+  // the button (#557), and the reason above them is what describes them.
+  const whyId = useId()
   const { lang } = useLang()
   const said = t(
     prose ? (choice === null ? 'table.prose.is.prose.height' : 'table.prose.is.prose.choice') : choice === null ? 'table.prose.is.plain.height' : 'table.prose.is.plain.choice',
@@ -66,20 +70,32 @@ export function ProseMark({ label, prose, choice, box, open, onProse }: ProseMar
           {/* Orsaken, och bara orsaken. Att höjden *föreslog* eller att designern *valde* står i
               formen och i utfällningens namn och inte här: den meningen valdes bort, och det är
               att den är samma i båda lägena som gör att den kan väljas bort. */}
-          <p>
+          <p id={whyId}>
             {box === null
               ? t('table.prose.why.undrawn')
               : t(box.h >= BODY_LINES * box.line ? 'table.prose.why.prose' : 'table.prose.why.plain', { box: mm(box.h, lang), line: mm(box.line, lang) })}
           </p>
           {onProse && (
             <div className="byd-prose-turn-row">
-              <button type="button" className="byd-prose-turn byd-prose-turn-strong" onClick={() => onProse(!prose)}>
+              <button
+                type="button"
+                className="byd-prose-turn byd-prose-turn-strong"
+                aria-label={t('table.prose.turn.named', { turn: t(prose ? 'table.prose.make.plain' : 'table.prose.make.prose'), field: label })}
+                aria-describedby={whyId}
+                onClick={() => onProse(!prose)}
+              >
                 {t(prose ? 'table.prose.make.plain' : 'table.prose.make.prose')}
               </button>
               {/* Bara där det finns ett val att lämna: en knapp som lämnar tillbaka ingenting är
                   en knapp som inte gör något. */}
               {choice !== null && (
-                <button type="button" className="byd-prose-turn" onClick={() => onProse(null)}>
+                <button
+                  type="button"
+                  className="byd-prose-turn"
+                  aria-label={t('table.prose.turn.named', { turn: t('table.prose.follow'), field: label })}
+                  aria-describedby={whyId}
+                  onClick={() => onProse(null)}
+                >
                   {t('table.prose.follow')}
                 </button>
               )}

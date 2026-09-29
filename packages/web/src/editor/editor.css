@@ -10,6 +10,9 @@
      lighter of the two shades it lands on, the old var(--byd-editor-quiet) gave 4.09:1 and did not.
      Measured in `editor-contrast.test.ts`. */
   --byd-editor-quiet: #868ea3;
+  /* The same quiet grey on a chosen row of the table, whose ground is lighter (#557): 4.96:1 there,
+     where the grey above read 3.45:1. */
+  --byd-editor-quiet-chosen: #a3acc0;
   --byd-editor-home-ink: #c3cbdd;
   --byd-editor-saved-ink: #9aa3b8;
   --byd-editor-unsaved-ink: #f0b64a;
@@ -1948,6 +1951,9 @@
 .byd-data th button[data-active='true'] { color: #dce3f2; }
 .byd-data th button[data-active='true'] span { color: #7dd3a0; }
 .byd-data tr[aria-selected='true'] { background: #2f3a55; }
+/* The quiet things on a chosen row are read on its lighter ground (#557): the id, the label over an
+   open cell and its tools. A marked row's id keeps its own ink, which is declared later. */
+.byd-data tr[aria-selected='true'] :is(.byd-data-id, .byd-data-bodyhead > b, .byd-data-bodytools button:not([aria-pressed='true'])) { color: var(--byd-editor-quiet-chosen); }
 .byd-data-id { padding: 8px !important; color: var(--byd-editor-quiet); font-family: ui-monospace, monospace; font-size: 12px; }
 .byd-data input { background: transparent; border: 0; color: #ddd; padding: 8px var(--byd-data-cell-pad); width: 100%; box-sizing: border-box; font-size: 12px; }
 .byd-data button { background: transparent; border: 0; color: var(--byd-editor-quiet); cursor: pointer; padding: 4px 8px; }

@@ -241,6 +241,7 @@ export const enEditor = {
   'table.prose.why.prose': 'The height suggests prose: the box is {box} mm and one line of its size is {line} mm.',
   'table.prose.why.plain': 'The height suggests plain text: the box is {box} mm and one line of its size is {line} mm.',
   'table.prose.why.undrawn': 'The template draws no box for the column, so the height suggests plain text.',
+  'table.prose.turn.named': '{turn}, {field}',
   'table.prose.make.prose': 'Make it prose',
   'table.prose.make.plain': 'Make it plain text',
   'table.prose.follow': 'Follow the height again',
