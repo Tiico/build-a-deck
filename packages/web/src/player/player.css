@@ -144,6 +144,11 @@ html:has(.byd-player) { background: #14161c; }
   .byd-strip-card { transition: scale 120ms ease-out; }
 }
 .byd-strip-card strong { font-size: 20px; font-weight: 800; }
+/* A touch keeps the element it began on as its target to the end. Begun on the words a waiting
+   face says, it lost the card when the face arrived and took the words away: the moves after went
+   to an element no longer in the page, the strip never heard them, and a carry became a pan (#590).
+   The card is the thumb's only target, so nothing in it can leave from under the thumb. */
+.byd-strip-card > * { pointer-events: none; }
 .byd-hint { text-align: center; font-size: 12px; color: var(--byd-ink-quiet); margin: 6px 0 20px; }
 
 .byd-sheet-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: grid; align-content: end; z-index: 20; }
