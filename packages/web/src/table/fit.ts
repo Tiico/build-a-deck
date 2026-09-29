@@ -119,6 +119,31 @@ export function woodLayout(felt: Size, container: Size, scale: number): TiltLayo
   return { frame: container, wood: { left: (container.w - wood.w) / 2, top: (container.h - wood.h) / 2, w: wood.w, h: wood.h } }
 }
 
+// How far the lens on `/online` may move an enlarged wood from the centre it is laid out on
+// (#502, #504), as the least and the most offset along each axis, in the frame's pixels. The ends
+// are where a painted rim of the wood meets the frame: a drag brings every rim of the felt into
+// view, the tilted near one included, and no dark ever shows beside the wood. Measuring the
+// untilted wood instead left the near rim, and the seat's own hand on it, out of reach.
+//
+// A corner's painted place is affine in the offset — the perspective's factor depends on where on
+// the plane the corner is, not on where the plane is moved to — so each end is solved, not searched.
+// A wood the frame is wider than on an axis stays where it is laid out on that axis.
+export function lensReach(felt: Size, container: Size, scale: number): { x: [number, number]; y: [number, number] } {
+  const at = woodLayout(felt, container, scale)
+  const moved = (dx: number, dy: number): TiltLayout => ({ ...at, wood: { ...at.wood, left: at.wood.left + dx, top: at.wood.top + dy } })
+  const corners = [-1, 1].flatMap((sx) => [-1, 1].map((sy) => ({ x: (sx * at.wood.w) / 2, y: (sy * at.wood.h) / 2 })))
+  const ends = (axis: 'x' | 'y', size: number): [number, number] => {
+    const lines = corners.map((c) => {
+      const a = projectTilted(at, c)[axis]
+      return { a, k: projectTilted(axis === 'x' ? moved(1, 0) : moved(0, 1), c)[axis] - a }
+    })
+    const least = Math.min(...lines.map(({ a, k }) => (size - a) / k))
+    const most = Math.max(...lines.map(({ a, k }) => -a / k))
+    return least <= most ? [least, most] : [0, 0]
+  }
+  return { x: ends('x', container.w), y: ends('y', container.h) }
+}
+
 // The side of a square on the wood plane at `p` (px from the wood's centre) whose projection
 // on the screen still holds an upright `want` × `want` square inside it. A square set to 44 in
 // the felt's plane is not 44 on the screen under `rotateX(13deg)` in a perspective: it measured

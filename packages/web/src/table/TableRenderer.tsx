@@ -5,7 +5,7 @@ import type { Peer, Pulse, Recent } from './presence.js'
 import { FAN, useStill, type Shuffle } from './shuffle.js'
 import { hue } from './hue.js'
 import { seatColor } from './seatColor.js'
-import { feltScale, fitScale, leaningSquare, woodLayout, TOUCH_PX, TV_AIR_PX } from './fit.js'
+import { feltScale, fitScale, leaningSquare, lensReach, woodLayout, TOUCH_PX, TV_AIR_PX } from './fit.js'
 import { CAMERA_MIN_MM, CAMERA_STEP, activeBounds, cameraOf, centre, fitFloor, frameRect, overscanPx, pad, panBy, reachOf, same, shownRect, tween, union, zoomAround, type Rect, type Size } from './camera.js'
 import { recallCamera, rememberCamera, type CameraMemory } from './cameraMemory.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
@@ -956,10 +956,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       const p = around && f ? { x: around.x - (f.left + f.width / 2), y: around.y - (f.top + f.height / 2) } : { x: 0, y: 0 }
       const x = p.x - ((p.x - cur.x) * k) / cur.k
       const y = p.y - ((p.y - cur.y) * k) / cur.k
-      // Kept so the wood covers the frame where it can: a lens never drifts into the dark.
-      const wood = { w: (rotate % 180 === 0 ? floorRect.w : floorRect.h) * fitted * k + 60, h: (rotate % 180 === 0 ? floorRect.h : floorRect.w) * fitted * k + 60 }
-      const spare = { x: Math.max(0, (wood.w - size.w) / 2), y: Math.max(0, (wood.h - size.h) / 2) }
-      return { k, x: Math.min(spare.x, Math.max(-spare.x, x)), y: Math.min(spare.y, Math.max(-spare.y, y)) }
+      // Kept so the painted wood covers the frame where it can: a lens never drifts into the dark,
+      // and reaches the tilted near rim (#504).
+      const felt = rotate % 180 === 0 ? { w: floorRect.w, h: floorRect.h } : { w: floorRect.h, h: floorRect.w }
+      const reach = lensReach(felt, size, fitted * k)
+      return { k, x: Math.min(reach.x[1], Math.max(reach.x[0], x)), y: Math.min(reach.y[1], Math.max(reach.y[0], y)) }
     })
   }
   const lensStep = (dir: 1 | -1, around?: { x: number; y: number }) => {
@@ -977,6 +978,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const lensDown = (e: RPointerEvent) => {
     if (!lensOn || lensAt.k <= 1 || e.button !== 0 || !onBare(e.target)) return
     lensPan.current = { x: e.clientX, y: e.clientY, from: { x: lensAt.x, y: lensAt.y } }
+    // Held for as long as the button is, as the camera's pan is: let go of over the hand or the
+    // top row, the drag still ends here (#504).
+    const el = e.currentTarget as HTMLElement
+    if (typeof el.setPointerCapture === 'function') el.setPointerCapture(e.pointerId)
   }
   const lensMove = (e: RPointerEvent) => {
     const held = lensPan.current
