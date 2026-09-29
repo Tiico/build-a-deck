@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { LayerList } from '../src/editor/LayerList.js'
+import { StatusLive } from '../src/status/StatusLive.js'
 import { template } from './project-doc.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -102,6 +103,21 @@ describe('moving a layer in the list itself', () => {
     await user.keyboard('{ArrowDown}')
     expect(named()).toEqual(['title', 'body', 'frame'])
     expect(document.activeElement).toBe(pick('body'))
+  })
+
+  // The focus follows the layer, so nothing is read when it moves (#556 E-13): the new place is
+  // said in the page's live region, as the card says every nudge.
+  it('says where a moved layer landed', async () => {
+    const user = userEvent.setup()
+    render(
+      <StatusLive>
+        <MovableLayers ids={['body', 'title', 'frame']} />
+      </StatusLive>,
+    )
+    await user.tab()
+    await user.keyboard('{Alt>}{ArrowDown}{/Alt}')
+    expect(named()).toEqual(['body', 'frame', 'title'])
+    expect(document.querySelector('[data-status-live="polite"]')!.textContent).toBe('title, plats 3 av 3.')
   })
 })
 

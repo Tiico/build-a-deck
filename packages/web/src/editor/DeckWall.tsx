@@ -364,8 +364,9 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
           <button
             type="button"
             className="byd-crown-fold"
-            aria-expanded={jumpOpen}
-            aria-controls={jumpId}
+            // With no column drawn — a search that found nothing — it opens and controls nothing
+            // (#556), so it says neither; it stays in the crown so nothing after it moves (#477).
+            {...(bands.length > 0 ? { 'aria-expanded': jumpOpen, 'aria-controls': jumpId } : {})}
             aria-label={jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}
             title={jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}
             onClick={() => {
@@ -591,7 +592,9 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
       {/* What the wall adds up to, under it rather than over it (#130): the size it is drawn at,
           which nothing else on the surface says now that density is two bare presses. */}
       <CrownFoot>
-        <span>
+        {/* Said as it changes, as the table's count is (#556): a search that narrows the wall
+            says how many are left. */}
+        <span aria-live="polite">
           {isFiltering(filter)
             ? t('wall.foot.found', { shown: shown.length, total: doc.rows.length, px: Math.round(px) })
             : t('wall.foot.cards', { n: doc.rows.length, px: Math.round(px) })}

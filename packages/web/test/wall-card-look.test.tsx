@@ -270,6 +270,39 @@ describe('the ring on the chosen card survives the lift (#234, #332)', () => {
     }
   }, 60_000)
 
+  // The focus ring and the ring of the chosen card were two blues on one outline (#556 E-10), so a
+  // chosen card that had the focus looked like a chosen card and nothing more. The chosen ring
+  // stays where it is, and the focus is a band of its own outside it, with the wall between them.
+  it('keeps the chosen ring on a focused card and draws the focus outside it', async () => {
+    const on = await open()
+    try {
+      for (let i = 0; i < 20 && !(await on.evaluate(() => document.activeElement?.getAttribute('aria-selected') === 'true')); i++) await on.keyboard.press('Tab')
+      const seen = await on.evaluate(() => {
+        const tile = document.activeElement as HTMLElement
+        const style = getComputedStyle(tile)
+        const probe = document.querySelector('.byd-editor')!.appendChild(document.createElement('span'))
+        probe.style.cssText = 'color: var(--byd-editor-primary-mark)'
+        const mark = getComputedStyle(probe).color
+        probe.remove()
+        return { chosen: tile.getAttribute('aria-selected'), focusVisible: tile.matches(':focus-visible'), outline: style.outlineColor, offset: style.outlineOffset, mark, shadow: style.boxShadow }
+      })
+      expect(seen.chosen).toBe('true')
+      expect(seen.focusVisible).toBe(true)
+      expect(seen.outline).toBe(seen.mark)
+      expect(seen.offset).toBe('3px')
+      // Two spreads: the wall's own colour up to past the chosen ring, then the focus blue.
+      const bands = seen.shadow.split(/,(?![^(]*\))/).map((part) => ({ colour: /rgba?\([^)]*\)/.exec(part)?.[0] ?? '', spread: Number([...part.matchAll(/(-?[\d.]+)px/g)].map((m) => m[1])[3] ?? 0) }))
+      const focus = bands.find((b) => b.colour === 'rgb(156, 198, 255)')
+      expect(focus).toBeTruthy()
+      // The chosen ring ends 6 px out (3 px wide, 3 px away); the focus starts past it.
+      const gap = bands.find((b) => b !== focus && b.spread > 6 && b.spread < focus!.spread)
+      expect(gap).toBeTruthy()
+      expect(focus!.spread - gap!.spread).toBeGreaterThanOrEqual(2)
+    } finally {
+      await on.close()
+    }
+  }, 60_000)
+
   it('clears 3:1 against the wall behind it and against the card’s own edge beside it', async () => {
     const seen = await page.evaluate(() => {
       const tile = document.querySelector('.byd-wall-card[aria-selected="true"]') as HTMLElement

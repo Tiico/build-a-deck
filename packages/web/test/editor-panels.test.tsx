@@ -11,6 +11,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
+import { ProjectClient } from '../src/editor/ProjectClient.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
@@ -64,6 +65,22 @@ describe('the history over the editor’s work (B4)', () => {
 
     await user.click(await within(panel).findByRole('button', { name: /Version 1/ }))
     expect(screen.getByRole('dialog', { name: 'Historik' })).toBeTruthy()
+  })
+})
+
+// The faces in the header say how many are in when there are several, and the button's name says
+// it too (#556 E-18): a name without the words on the button cannot be spoken to it (2.5.3).
+describe('the faces in the header, to a screen reader (#556)', () => {
+  it('names the count it shows', async () => {
+    await openEditor()
+    const other = await ProjectClient.open({ http: run.http, id: run.projectId, name: 'Lo' })
+    try {
+      const here = await screen.findByRole('button', { name: 'Vilka som har spelet, 2 inne' })
+      expect(here.textContent).toContain('2 inne')
+    } finally {
+      other.close()
+    }
+    await screen.findByRole('button', { name: 'Vilka som har spelet' })
   })
 })
 

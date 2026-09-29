@@ -161,7 +161,7 @@ describe('how see-through a shape is (L17, #317)', () => {
     expect(opacity().type).toBe('number')
     expect(opacity().min).toBe('0')
     expect(opacity().max).toBe('100')
-    expect(screen.getByRole('button', { name: 'Opacitet (%), dra för att ändra' })).toBeTruthy()
+    expect(screen.getByRole('slider', { name: 'Opacitet (%), dra för att ändra' })).toBeTruthy()
   })
 
   // A visit to the field is one entry in the history (L14): what was typed there is written

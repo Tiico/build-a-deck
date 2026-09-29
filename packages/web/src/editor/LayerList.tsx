@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type Keyb
 import { ASSET_PREFIX, isAssetRef } from './assets.js'
 import type { Element } from './types.js'
 import { useT } from '../i18n/index.js'
+import { useSay } from '../status/StatusLive.js'
 
 export type LayerListProps = {
   // Top-most first, the way the list is read.
@@ -90,6 +91,10 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
   // eslint-disable-next-line react-hooks/exhaustive-deps -- the focus goes back when the rename ends, not whenever `focus` is a new function
   }, [renaming])
 
+  // A condition layer nobody has named is called by its condition (#478): «if-guld» says
+  // nothing the condition does not say better.
+  const nameOf = (el: Element) => (el.kind === 'if' && !el.name ? (conditionOf?.(el) ?? layerName(el)) : layerName(el))
+  const say = useSay()
   const moveTo = (id: string, to: number) => {
     if (!onReorder || to < 0 || to >= layers.length) return
     onReorder(id, to)
@@ -100,7 +105,14 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
     onKeyDown: (event: KeyboardEvent) => {
       if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
         event.preventDefault()
-        return moveTo(id, at + (event.key === 'ArrowUp' ? -1 : 1))
+        const to = at + (event.key === 'ArrowUp' ? -1 : 1)
+        if (!onReorder || to < 0 || to >= layers.length) return
+        moveTo(id, to)
+        // The focus goes with the layer, so nothing is read when it moves; the new place is said
+        // instead, as the card says every nudge (#556).
+        const moved = layers[at]
+        if (moved) say?.('polite', t('canvas.layer.moved', { name: nameOf(moved), at: to + 1, of: layers.length }))
+        return
       }
       props.onKeyDown(event)
     },
@@ -114,9 +126,7 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
   return (
     <div role="grid" aria-labelledby={labelledBy} className="byd-layers">
       {layers.map((el, at) => {
-        // A condition layer nobody has named is called by its condition (#478): «if-guld» says
-        // nothing the condition does not say better.
-        const name = el.kind === 'if' && !el.name ? (conditionOf?.(el) ?? layerName(el)) : layerName(el)
+        const name = nameOf(el)
         const shows = el.kind === 'if' ? (el.name ? (conditionOf?.(el) ?? null) : null) : layerShows(el, pictureName)
         const folder = el.kind === 'if' ? el : null
         const unfold = folder !== null && (unfolded.has(el.id) || selected === el.id)

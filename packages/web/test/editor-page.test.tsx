@@ -443,7 +443,7 @@ describe('the layers of the template by keyboard (UX-04)', () => {
     await user.tab()
     expect(document.activeElement?.closest('.byd-props-sec-head')).toBeTruthy()
     await user.tab()
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'X (mm), dra för att ändra' }))
+    expect(document.activeElement).toBe(screen.getByRole('slider', { name: 'X (mm), dra för att ändra' }))
     await user.tab()
     await user.keyboard('9')
     expect((screen.getByRole('spinbutton', { name: /^x/i }) as HTMLInputElement).value).toBe('9')

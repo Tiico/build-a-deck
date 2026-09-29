@@ -984,6 +984,10 @@
 /* The ring out of #234, untouched by all of the above: it stands outside the lift and is never
    what the lift replaces. */
 .byd-wall-card[aria-selected='true'] { outline: 3px solid var(--byd-editor-primary-mark); outline-offset: 3px; }
+/* A chosen card with the focus on it shows both (#556): the chosen ring stays, and the focus is
+   K16's second band outside it — the wall's own colour past the ring, then the focus blue. On one
+   outline the two blues were one ring, and the focus could not be seen. */
+.byd-wall-card[aria-selected='true']:focus-visible { box-shadow: 0 0 0 8px var(--byd-editor-chrome-bg), 0 0 0 11px #9cc6ff; }
 /* What a card carries in a reading view (#512): a line under the card, in the card's width. Under
    the floor it says so in words, and the colour and the mark only repeat it (K26). */
 .byd-wall-read { margin: var(--byd-s2) 0 0; max-width: var(--byd-wall-card); font-size: 12px; font-weight: 600; color: var(--byd-editor-quiet); }
@@ -1127,6 +1131,9 @@
      lock is not an error, it is something the designer asked for. Measured against the panel and
      the strip it is read on in `editor-contrast.test.ts`. */
   --byd-editor-locked-ink: #e8c06a;
+  /* The lock of a layer that is not locked is an icon and nothing else, so it is a graphic that
+     must be seen (3:1), and quieter than the row under the pointer (#556). */
+  --byd-editor-unlocked-ink: #707a8f;
   height: 100%;
   display: grid;
   /* The middle column may be as narrow as the room allows: an `1fr` that refuses to shrink under
@@ -1398,7 +1405,7 @@
   cursor: pointer;
 }
 .byd-layer-pick { flex: 1; min-width: 0; padding: 0; }
-.byd-layer-lock { justify-content: center; width: var(--byd-tap); padding: 0; color: #545d70; }
+.byd-layer-lock { justify-content: center; width: var(--byd-tap); padding: 0; color: var(--byd-editor-unlocked-ink); }
 .byd-layer-lock svg { width: 16px; height: 16px; }
 .byd-layers [role='row']:hover .byd-layer-lock, .byd-layers [role='row'][aria-selected='true'] .byd-layer-lock { color: var(--byd-editor-source-ink); }
 /* Locked is a colour of its own and a shut padlock: the shape says it where the colour cannot. */

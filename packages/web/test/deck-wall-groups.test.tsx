@@ -120,9 +120,15 @@ describe('the crown’s search (#179)', () => {
   it('is the search the data tab already has, and says how many of how many are left', () => {
     wall(bigDeck())
     expect(search().getAttribute('aria-label')).toBe('Sök i alla fält')
+    // The count is said as it changes, as the table's is (#556): a live region that was there
+    // before the search, so a reader hears how many are left.
+    const said = document.querySelector('.byd-crown-foot [aria-live="polite"]')!
+    expect(said.textContent).toContain('308 kort')
     fireEvent.change(search(), { target: { value: 'Trap+' } })
     expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(12)
     expect(document.querySelector('.byd-crown-foot')!.textContent).toContain('12 av 308 kort')
+    expect(document.querySelector('.byd-crown-foot [aria-live="polite"]')).toBe(said)
+    expect(said.textContent).toContain('12 av 308 kort')
     // The wall narrows and so does its table of contents: a band with nothing left to show is a
     // line that jumps nowhere.
     expect([...document.querySelectorAll('[data-band]')].map((b) => b.getAttribute('data-band'))).toEqual(['Trap+'])
@@ -415,10 +421,16 @@ describe('a search that finds nothing (#477)', () => {
     expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(0)
     const empty = document.querySelector('.byd-wall-empty[role="status"]')!
     expect(empty.querySelector('h2')!.textContent).toBe('Inga kort matchar «zzzzqx».')
-    expect(document.querySelector('.byd-crown-fold')).not.toBeNull()
+    // The fold stays, but with no column drawn it controls nothing and opens nothing (#556).
+    const fold = document.querySelector('.byd-crown-fold')!
+    expect(fold.hasAttribute('aria-controls')).toBe(false)
+    expect(fold.hasAttribute('aria-expanded')).toBe(false)
     const clear = empty.querySelector('button')!
     expect(clear.textContent).toBe('Rensa sökningen')
     fireEvent.click(clear)
     expect(document.querySelectorAll('[data-card-ref]').length).toBeGreaterThan(0)
+    const id = fold.getAttribute('aria-controls')
+    expect(fold.getAttribute('aria-expanded')).not.toBeNull()
+    expect(id && document.getElementById(id)).toBeTruthy()
   })
 })

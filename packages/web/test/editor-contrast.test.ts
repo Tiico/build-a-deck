@@ -290,3 +290,20 @@ describe('the two ranks of the contents column (#207)', () => {
     expect(declarations(css)).toMatch(/\.byd-rules-toc a\[data-level='2'\][^}]*color: var\(--byd-editor-quiet\)/)
   })
 })
+
+// The lock beside a layer is a control that is only an icon (#556 E-7), so its unlocked look is a
+// graphic that has to be seen: 3:1 on the panel. It stays quieter than a row being pointed at,
+// which is how the lock says it can be pressed.
+describe('the lock on a layer that is not locked', () => {
+  it('can be seen on the panel, and is still quieter than the row under the pointer', () => {
+    const unlocked = token('--byd-editor-unlocked-ink')
+    const panel = token('--byd-editor-canvas-bg')
+    expect(contrastRatio(unlocked, panel)).toBeGreaterThanOrEqual(3)
+    expect(contrastRatio(unlocked, panel)).toBeLessThan(contrastRatio(token('--byd-editor-source-ink'), panel))
+  })
+
+  it('is drawn in that token and in no colour of its own', () => {
+    const rule = /\.byd-layer-lock \{[^}]*\}/.exec(css)?.[0] ?? ''
+    expect(rule).toContain('color: var(--byd-editor-unlocked-ink)')
+  })
+})

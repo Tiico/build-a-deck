@@ -79,6 +79,7 @@ export const svEditor = {
   'editor.loading': 'Laddar spelet…',
   'editor.conflict': 'Någon annan har sparat sedan du laddade. Ladda om och gör om ändringen.',
   'editor.rev': 'rev {n}',
+  'editor.here.name': 'Vilka som har spelet, {n} inne',
   'editor.here.count': '{n} inne',
   // Namnet en redigerare utan konto visas som för de andra (D3). Se A4:s gräns: ett namn tillhör
   // den det namnger, så ordet skrivs på det språk den som kommer in läser verktyget i och blir
@@ -481,6 +482,7 @@ export const svEditor = {
   'canvas.layer.remove.one': 'Ta bort {name} från {face}? Det ritas på {n} kort.',
   'canvas.layer.remove.other': 'Ta bort {name} från {face}? Det ritas på {n} kort.',
   'canvas.layer.remove.yes': 'Ja, ta bort',
+  'canvas.layer.moved': '{name}, plats {at} av {of}.',
   'canvas.layer.removed': '{name} är borttaget från {face}.',
   'canvas.props.locked': 'Låst — måtten går att läsa men inte att ändra. Lås upp lagret i lagerlistan.',
   'canvas.grid': 'Rutnät 1 mm',

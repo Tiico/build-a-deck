@@ -50,7 +50,9 @@ function open(over: Partial<Element> = {}, id = 'frame') {
   return { onPatch }
 }
 
-const grip = (name: string) => screen.getByRole('button', { name: `${name}, dra för att ändra` })
+// A slider (#556 E-16): it was a button that answered no Enter, a role promising something else
+// than it does. It is a value that the arrows move, which is what a slider is.
+const grip = (name: string) => screen.getByRole('slider', { name: `${name}, dra för att ändra` })
 const pull = (name: string, from: number, to: number, opts: { shiftKey?: boolean } = {}) => {
   const el = grip(name)
   fireEvent.pointerDown(el, { pointerId: 1, button: 0, clientX: from, clientY: 0 })
@@ -115,7 +117,8 @@ describe('every number in the panel is the same control (L25)', () => {
       expect(grip(name)).toBeTruthy()
       expect(screen.getByRole('spinbutton', { name })).toBeTruthy()
     }
-    expect(within(document.querySelector('.byd-props') as HTMLElement).queryAllByRole('slider')).toEqual([])
+    // No range inputs: the grips are the only sliders, one beside each field.
+    expect(document.querySelectorAll('.byd-props input[type="range"]')).toHaveLength(0)
   })
 
   it('pulls a turn by a degree a step and a line by a tenth of a millimetre', () => {
@@ -182,6 +185,19 @@ describe('the keyboard way to every number (L25, L12)', () => {
     expect(onPatch.mock.calls.at(-1)?.[1]).toEqual({ w: 61.5 })
     fireEvent.keyDown(grip('Bredd (mm)'), { key: 'ArrowLeft', shiftKey: true })
     expect(onPatch.mock.calls.at(-1)?.[1]).toEqual({ w: 56 })
+  })
+
+  // A slider says its value and moves with every arrow a slider answers to (#556).
+  it('says its value, and moves with up and down as well', () => {
+    const { onPatch } = open()
+    const el = grip('Bredd (mm)')
+    const field = screen.getByRole('spinbutton', { name: 'Bredd (mm)' }) as HTMLInputElement
+    expect(el.getAttribute('aria-valuenow')).toBe(field.value)
+    expect(el.getAttribute('aria-valuetext')).toBe(`${field.value} mm`)
+    fireEvent.keyDown(el, { key: 'ArrowUp' })
+    expect(onPatch.mock.calls.at(-1)?.[1]).toEqual({ w: 61.5 })
+    fireEvent.keyDown(el, { key: 'ArrowDown' })
+    expect(onPatch.mock.calls.at(-1)?.[1]).toEqual({ w: 60.5 })
   })
 
   // One press is one thing done, so it is a whole step back by itself (L14).
