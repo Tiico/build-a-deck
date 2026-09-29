@@ -5,6 +5,7 @@ import { Texture } from '../table/Texture.js'
 import { hue } from '../table/hue.js'
 import { cardName, cardWord } from '../table/keyboard.js'
 import { useSmallestPt } from '../table/smallest.js'
+import { cycleTab } from '../table/cycleTab.js'
 import { readingWidth } from '../legibility.js'
 
 // How far a thumb goes across the card before it is a step to the next one and not a tap.
@@ -62,18 +63,22 @@ export function HeldCard({ card, faces, onClose, actions, row, onStep, smallestP
     const next = row?.[at + by]
     if (at >= 0 && next && onStep) onStep(next)
   }
+  const box = useRef<HTMLDivElement | null>(null)
   const swipe = useRef<{ x: number; stepped: boolean } | null>(null)
   const keep = (event: { stopPropagation(): void }) => event.stopPropagation()
   return (
     <div
       className="byd-inspect"
       role="dialog"
-      aria-modal="false"
+      aria-modal="true"
       aria-label={cardName(card, t)}
       onPointerDown={onClose}
       onMouseDown={(event) => { if (!(event.target as Element).closest('button, a, input, select, textarea')) event.preventDefault() }}
       {...(need > 0 ? { style: { ['--byd-read-need' as string]: `${need}px` } } : {})}
+      ref={box}
       onKeyDown={event => {
+        // Modal, as its veil says (#559 P-19): Tab stays among its own controls.
+        if (event.key === 'Tab' && box.current) return cycleTab(event, box.current)
         if (event.key === 'Escape') { event.stopPropagation(); onClose() }
         if (walkable && event.key === 'ArrowRight') { event.preventDefault(); step(1) }
         if (walkable && event.key === 'ArrowLeft') { event.preventDefault(); step(-1) }
