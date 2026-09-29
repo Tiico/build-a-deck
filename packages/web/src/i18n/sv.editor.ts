@@ -399,6 +399,7 @@ export const svEditor = {
   'table.writes': 'Skriver',
   'table.removeRow': 'ta bort {cardRef}',
   'table.empty': 'Inga kort matchar filtret.',
+  'table.skip': 'Hoppa förbi tabellen, {n} kort',
   'table.addCard': '+ Nytt kort',
 
   // Ett nytt fält, från tabellhuvudet eller från mallens bindning (#32). Namnet verktyget

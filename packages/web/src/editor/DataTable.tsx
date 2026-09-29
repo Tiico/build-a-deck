@@ -599,6 +599,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // The same for every column's ×, and for the button that makes one.
   const dropRefs = useRef(new Map<string, HTMLButtonElement>())
   const addRef = useRef<HTMLButtonElement>(null)
+  // «+ Nytt kort», where the way past the table leads (#575).
+  const addCardRef = useRef<HTMLButtonElement>(null)
   // The box that scrolls, so it can be asked whether a column has run in under the pin (#53).
   const scrollRef = useRef<HTMLDivElement>(null)
   // What the deck holds, by column, for the measurement below (#46). It is read off `doc.rows`
@@ -987,6 +989,24 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     : filterRows(sortRows(doc.rows, sort), columns, filter, pinned)
   // The cards gone since the version compared with, asked the same filter as every card (#479).
   shownRef.current = shown
+  // The row the hand stands in, which is the only row with tab stops (#575, beslut 2026-09-29):
+  // the table costs one row of stops and not every row's. Tab walks that row in its own order and
+  // leaves the table after its last stop by itself, since every other row's controls are out of
+  // the order; Enter and ↑/↓ change rows (L4). The first row until the hand has been in one.
+  const [standing, setStanding] = useState<string | null>(null)
+  const stopRow = shown.some((r) => r.id === standing) ? standing : shown.some((r) => r.id === selectedRow) ? selectedRow : (shown[0]?.id ?? null)
+  const stop = (cardRef: string): { tabIndex?: number } => (cardRef === stopRow ? {} : { tabIndex: -1 })
+  // ↑ and ↓ change rows from the checkbox and the × as they do from a field, to the same control.
+  const rowKey = (cardRef: string, event: KeyboardEvent<HTMLElement>, of: (row: Element) => HTMLElement | null) => {
+    const by = event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0
+    if (by === 0 || event.altKey || event.ctrlKey || event.metaKey) return
+    const at = shownRef.current.findIndex((r) => r.id === cardRef)
+    const next = shownRef.current[at + by]
+    if (!next) return
+    event.preventDefault()
+    const row = document.querySelector(`tr[data-card-ref="${CSS.escape(next.id)}"]`)
+    if (row) of(row)?.focus()
+  }
   const goneShown = isFiltering(filter) ? filterRows(goneRows, columns, filter) : goneRows
   // What an action is about is never more than what is on screen: a checkbox is a fact about a
   // row the designer can see, so the selection is read through `shown` (#17 on #16).
@@ -1358,6 +1378,18 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           box, the page never scrolls sideways, and the column that removes a card is pinned to
           the right edge so it cannot be scrolled away — it is the thing that would be lost
           first. */}
+      {/* The way past the table (#575): first in it, seen when it has the focus, to the button
+          that adds a card — the thing after the table a hand usually came for. */}
+      <a
+        className="byd-data-skip"
+        href="#byd-data-add"
+        onClick={(event) => {
+          event.preventDefault()
+          addCardRef.current?.focus()
+        }}
+      >
+        {t('table.skip', { n: shown.length })}
+      </a>
       <div className="byd-data-scroll" ref={scrollRef}>
       <table className="byd-data">
         {/* Where the measured width is said (#46). It is said to the table and not to the cells,
@@ -1472,7 +1504,15 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
         </thead>
         <tbody>
           {shown.map(({ id: cardRef, fields: row }) => (
-            <tr key={cardRef} data-card-ref={cardRef} data-change={changeOf(cardRef)?.kind} aria-selected={selectedRow === cardRef ? 'true' : 'false'} onClick={() => onSelectRow(cardRef)}>
+            <tr
+              key={cardRef}
+              data-card-ref={cardRef}
+              data-change={changeOf(cardRef)?.kind}
+              aria-selected={selectedRow === cardRef ? 'true' : 'false'}
+              onClick={() => onSelectRow(cardRef)}
+              // The hand in a row, by key or by pointer, makes it the row with the stops (#575).
+              onFocus={() => setStanding(cardRef)}
+            >
               {/* Two different meanings of "selected" meet in a row: the tick says the next bulk
                   change is about this card, the row itself says the card is the one being looked
                   at. A click on the checkbox is only ever the first of them. */}
@@ -1482,6 +1522,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     type="checkbox"
                     checked={selected.has(cardRef)}
                     onChange={() => setSelected(toggleRow(selected, cardRef))}
+                    onKeyDown={(event) => rowKey(cardRef, event, (row) => row.querySelector('.byd-data-check input'))}
+                    {...stop(cardRef)}
                     aria-label={t('table.mark', { cardRef })}
                   />
                 </label>
@@ -1511,15 +1553,15 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       {/* The library (#296): a picture the game already has, into this cell.
                           The upload beside it stays as it was — a file off the disk is the
                           other way a picture reaches a card (#291 owns the drop). */}
-                      <button type="button" className="byd-data-file" aria-label={t('table.image.chooseFor', { cardRef })} onClick={() => setLibrary({ kind: 'cell', cardRef, field: f })}>
+                      <button type="button" className="byd-data-file" {...stop(cardRef)} aria-label={t('table.image.chooseFor', { cardRef })} onClick={() => setLibrary({ kind: 'cell', cardRef, field: f })}>
                         {isAssetRef(row[f]) ? t('table.image.replace') : t('table.image.choose')}
                       </button>
                       <label className="byd-data-file">
                         {t('table.image.upload')}
-                        <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('table.image.uploadFor', { cardRef })} onChange={(e) => void upload(cardRef, f, [...(e.target.files ?? [])])} />
+                        <input className="byd-offscreen" type="file" accept="image/*" {...stop(cardRef)} aria-label={t('table.image.uploadFor', { cardRef })} onChange={(e) => void upload(cardRef, f, [...(e.target.files ?? [])])} />
                       </label>
                       {isAssetRef(row[f]) && (
-                        <button type="button" aria-label={t('table.image.removeFor', { cardRef })} onClick={() => onCell(cardRef, f, '')}>
+                        <button type="button" {...stop(cardRef)} aria-label={t('table.image.removeFor', { cardRef })} onClick={() => onCell(cardRef, f, '')}>
                           ×
                         </button>
                       )}
@@ -1574,6 +1616,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       }
                     }}
                     aria={listAria(cardRef, f)}
+                    {...stop(cardRef)}
                   >
                     {cellPicker(cardRef, f)}
                   </BodyTd>
@@ -1598,6 +1641,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                   <div className="byd-data-lane">
                   <input
                     readOnly={reading}
+                    {...stop(cardRef)}
                     type={f === 'antal' ? 'number' : 'text'}
                     min={f === 'antal' ? 0 : undefined}
                     step={f === 'antal' ? 1 : undefined}
@@ -1737,6 +1781,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     event.stopPropagation()
                     setRemoving(cardRef)
                   }}
+                  onKeyDown={(event) => rowKey(cardRef, event, (row) => row.querySelector('.byd-data-remove button'))}
+                  {...stop(cardRef)}
                   aria-label={t('table.removeRow', { cardRef })}
                 >
                   ×
@@ -1766,7 +1812,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       </div>
       {/* A deck with no cards at all is not a filter's doing: then the button below is the answer. */}
       {shown.length === 0 && isFiltering(filter) && <p className="byd-data-empty">{t('table.empty')}</p>}
-      <button type="button" className="byd-data-add" onClick={() => {
+      <button type="button" id="byd-data-add" ref={addCardRef} className="byd-data-add" onClick={() => {
           const cardRef = nextRef()
           onAddRow(cardRef)
           setPinned(isFiltering(filter) ? cardRef : null)

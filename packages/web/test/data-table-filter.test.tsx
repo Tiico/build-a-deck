@@ -264,6 +264,9 @@ describe('DataTable filtering from the keyboard (#16)', () => {
     expect(document.activeElement).toBe(screen.getByLabelText('Importera CSV…'))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Ladda ner CSV' }))
+    // First in the table, the way past it (#575).
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('link', { name: /^Hoppa förbi tabellen/ }))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByLabelText('Markera alla synliga'))
     await user.tab()

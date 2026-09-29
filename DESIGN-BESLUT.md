@@ -5266,3 +5266,29 @@ Var för sig är alla fyra försvarbara.
 Tillsammans skär de bort kopplingarna mellan pelarna.
 Resultatet är tre bra verktyg bredvid varandra snarare än en sluten slinga, och slingan var den ursprungliga säljpunkten.
 Detta är en observation, inte en invändning — men det är den axel produkten kan komma att behöva omprövas längs.
+
+### L49. Tabellen är en rad med tabbstopp, och en länk går förbi den (prototypat och beslutat 2026-09-29, #575)
+
+Tabellen hade ett tabbstopp för varje kryssruta, cell och ×.
+Sal's Saloons 77 kort blev omkring 470 tryck på Tab innan «+ Nytt kort» gick att nå, och det fanns ingen väg förbi (WCAG 2.4.1).
+
+Fyra varianter prövades i en prototyp med riktiga tangenttryck: tabellen som den var, ett rutnät med ett enda tabbstopp, en hopplänk och en rad i taget.
+Rutnätet kräver två lägen, att markera och att skriva, och det är det L4 valde bort 2026-09-27 när cellen blev ett fält man skriver rakt i.
+Beställaren valde en rad i taget, med hopplänken ovanpå.
+
+- **Bara raden man står i har tabbstopp.**
+  Tab går genom raden och lämnar tabellen efter radens sista stopp; Skift+Tab går tillbaka till huvudet.
+  Det sker av sig självt: alla andra raders kontroller står utanför tabbordningen (`tabindex="-1"`) och går fortfarande att peka på och att flytta fokus till.
+- **Rader byts i kolumnen**, som L4 redan bestämt: Enter och ↓ till raden under, Skift+Enter och ↑ till raden över.
+  Från kryssrutan och × gör ↑ och ↓ samma sak, till samma kontroll i grannraden.
+- **Raden man står i följer handen.**
+  Fokus i en rad, med tangentbordet eller med ett klick, gör den till raden.
+  Innan handen har varit i någon rad är det den valda raden, och annars den första som visas.
+- **Först i tabellen står en länk**, «Hoppa förbi tabellen, N kort», som syns när den har fokus och ställer fokus på «+ Nytt kort».
+
+Mätt i prototypen från sökfältet till «+ Nytt kort»: 550 tryck på Tab före, 18 med en rad i taget och 3 Tab och Enter med länken.
+Priset är att Tab inte längre tar sig till nästa rad: raderna byts med ↑ och ↓, samma rörelse som kolumnen redan lärt ut.
+
+Följdkrav:
+Varje ny kontroll i en rad ska bära radens tabbstopp (`stop(cardRef)` i `DataTable.tsx`), annars blir den ett stopp i varje rad igen.
+`data-table-row-stop.test.tsx` håller regeln med riktiga tangenttryck.

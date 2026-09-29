@@ -186,6 +186,9 @@ describe('DataTable sorting from the keyboard (#15)', () => {
     expect(document.activeElement).toBe(screen.getByLabelText('Sök i alla fält'))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Importera' }))
+    // First in the table, the way past it (#575).
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('link', { name: /^Hoppa förbi tabellen/ }))
     // The header's own checkbox (#17) sits in the first column, before the columns that sort.
     await user.tab()
     expect(document.activeElement).toBe(screen.getByLabelText('Markera alla synliga'))

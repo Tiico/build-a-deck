@@ -187,8 +187,11 @@ describe('DataTable bulk delete from the keyboard (#17)', () => {
     const onRows = vi.fn()
     render(<BulkTable start={bigDoc()} onRows={onRows} />)
 
+    // Into the table on the row the hand stands in, and down the checkboxes to the card (#575):
+    // only that row has tab stops, and ↓ goes from checkbox to checkbox.
     const grop = box('markera grop')
-    for (let i = 0; i < 40 && document.activeElement !== grop; i++) await user.tab()
+    for (let i = 0; i < 40 && !(document.activeElement instanceof HTMLInputElement && document.activeElement.type === 'checkbox' && document.activeElement.closest('tbody')); i++) await user.tab()
+    for (let i = 0; i < 40 && document.activeElement !== grop; i++) await user.keyboard('{ArrowDown}')
     await user.keyboard(' ')
     expect(grop.checked).toBe(true)
 

@@ -88,7 +88,10 @@ async function air(html: string): Promise<Air> {
       // panel that had been restacked would say so here rather than quietly report the air
       // between two other things.
       const over = strip.previousElementSibling!
-      const under = strip.nextElementSibling!
+      // The way past the table stands between the two (#575), out of the flow until it has the
+      // focus, so the table is the next thing that takes room.
+      let under = strip.nextElementSibling!
+      if (under.classList.contains('byd-data-skip')) under = under.nextElementSibling!
       const box = strip.getBoundingClientRect()
       return {
         rung,

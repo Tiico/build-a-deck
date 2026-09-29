@@ -351,6 +351,7 @@ export const enEditor = {
   'table.writes': 'Writes',
   'table.removeRow': 'remove {cardRef}',
   'table.empty': 'No cards match the filter.',
+  'table.skip': 'Skip past the table, {n} cards',
   'table.addCard': '+ New card',
 
   'editor.drag.cancelled': 'The drag was cancelled',

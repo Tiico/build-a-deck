@@ -3571,3 +3571,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-editor-more > button { display: inline-grid; place-items: center; min-width: var(--byd-tap); min-height: var(--byd-tap); border: 0; border-radius: 6px; padding: 0; background: transparent; color: var(--byd-editor-quiet); font: inherit; cursor: pointer; }
 .byd-editor-more > button:hover, .byd-editor-more > button[aria-expanded='true'] { background: #1b1d23; color: #dce3f2; }
 .byd-editor-more > .byd-game-menu { left: 0; top: calc(100% + 4px); z-index: 30; width: max-content; }
+/* The way past the table (#575): out of sight until it has the focus, then a line of its own over
+   the table, where the eye is when the next Tab would have gone into the rows. */
+.byd-data-skip { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.byd-data-skip:focus { position: static; width: auto; height: auto; overflow: visible; clip-path: none; display: inline-flex; align-items: center; min-height: var(--byd-tap); margin: 0 0 var(--byd-s2); padding: 0 var(--byd-s3); border-radius: 8px; background: #2f3a55; color: #dce3f2; font-size: 12px; font-weight: 700; text-decoration: none; }
