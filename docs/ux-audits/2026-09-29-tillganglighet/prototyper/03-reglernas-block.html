@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 3 — Reglernas block i redigeringsläget (#580)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     I redigeringsläget är varje block en `div[role=button]` som innehåller sin rubrik (F-8,
+     WCAG 1.3.1 och 4.1.2). Barn till en knapp är presentationella, så bokens rubriker finns
+     inte för en skärmläsare just där man skriver. Hur öppnas ett block utan att rubriken göms?
+       Nu  blocket är knappen, och rubriken, stycket och listan är knappens text.
+       A   pennan i marginalen: blocket är vanlig text med sina rubriker och listor, och en ✎
+           «Redigera …» står alltid vid varje block. Ett klick i texten öppnar som i dag.
+       B   pennan vid pekaren: som A, men ✎ syns när blocket pekas på eller har fokus i sig.
+       C   rubriken bär knappen (APG:s accordion): `<h2><button>`; ett stycke är en knapp som i
+           dag, eftersom ett stycke inte har något att förlora; en lista får pennan, eftersom en
+           lista i en knapp förlorar sina punkter.
+     Uppställningens block har redan sin egen väg in, bildtexten (#270), i alla varianter.
+     Det enda ＋:et (#216) står i högermarginalen vid blocket handen står i, som i dag. ──────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .protorad .matt { flex: 1 1 360px; flex-direction: column; gap: 2px; }
+  .matt u { text-decoration: none; color: #ffe9b8; }
+  .matt ol { margin: 2px 0 0; padding-left: 18px; }
+  .lasyta { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--s5) 0 120px; display: flex; justify-content: center; background: #15171c; }
+  .bok { position: relative; width: calc(68ch + 80px); max-width: 100%; box-sizing: border-box; padding: 32px 56px; border-radius: 14px; background: #f7f3ea; color: #23201a; font: 14px/1.7 Georgia, serif; }
+  .bok h1 { margin: 0 0 18px; font-size: 26px; }
+  .bok h2 { margin: 0 0 8px; font-size: 19px; }
+  .bok h3 { margin: 0 0 6px; font-size: 15px; color: #4a4438; }
+  .bok p { margin: 0; }
+  .bok ol { margin: 0; padding-left: 22px; }
+  .bok li { margin-bottom: 4px; }
+  .blk { position: relative; margin: 0 0 14px; }
+  /* Det klickbara: i Nu hela blocket, i A och B texten (bara för pekaren), i C stycket. */
+  .ytan { border-radius: 6px; padding: 4px 6px; margin: 0 -6px; cursor: text; }
+  .ytan:hover { background: #ece5d8; }
+  .ytan:focus-visible { outline: 2px solid #b08a5a; outline-offset: 1px; background: #ece5d8; }
+  /* C: knappen i rubriken ser ut som rubriken. */
+  .rubrikknapp { all: unset; display: block; border-radius: 6px; padding: 0 6px; margin: 0 -6px; cursor: text; }
+  .rubrikknapp:hover { background: #ece5d8; }
+  .rubrikknapp:focus-visible { outline: 2px solid #b08a5a; outline-offset: 1px; background: #ece5d8; }
+  /* A och B: pennan i vänstermarginalen, med träffytan 44 runt de 24 som syns. */
+  .penna { position: absolute; left: -40px; top: 2px; width: 24px; height: 24px; padding: 0; border: 1px solid #cbbfa8; border-radius: 7px; background: #ece5d8; color: #6b6255; font: 13px/1 system-ui, sans-serif; cursor: pointer; }
+  .penna::before { content: ''; position: absolute; left: 50%; top: 50%; width: var(--tap); height: var(--tap); transform: translate(-50%, -50%); }
+  .penna:hover { border-color: #b08a5a; color: #23201a; }
+  .penna:focus-visible { outline: 2px solid #b08a5a; outline-offset: 2px; }
+  .bok[data-v='b'] .penna { opacity: 0; }
+  .bok[data-v='b'] .blk:hover .penna, .bok[data-v='b'] .blk:focus-within .penna { opacity: 1; }
+  .plus { position: absolute; right: -40px; top: 2px; width: 24px; height: 24px; padding: 0; border: 1px solid #cbbfa8; border-radius: 7px; background: #ece5d8; color: #6b6255; font: 15px/1 system-ui, sans-serif; cursor: pointer; }
+  .plus::before { content: ''; position: absolute; left: 50%; top: 50%; width: var(--tap); height: var(--tap); transform: translate(-50%, -50%); }
+  .plus:focus-visible { outline: 2px solid #b08a5a; outline-offset: 2px; }
+  /* Det öppna blocket, som i appen: ett fält där texten stod. */
+  .oppen textarea, .oppen input { width: 100%; box-sizing: border-box; border: 2px solid #b08a5a; border-radius: 6px; padding: 6px 8px; background: #fffdf8; color: #23201a; font: inherit; }
+  .oppen textarea { min-height: 80px; resize: vertical; }
+  .oppen .rad { display: flex; gap: 8px; margin-top: 6px; font: 12px system-ui, sans-serif; }
+  .oppen .rad button { min-height: var(--tap); padding: 0 12px; border: 1px solid #cbbfa8; border-radius: 8px; background: #ece5d8; color: #23201a; font: inherit; font-weight: 700; cursor: pointer; }
+  /* Uppställningen (#270): figuren, dess egna kontroller och bildtexten som väg in. */
+  .figur { margin: 0; padding: 12px; border-radius: 10px; background: #ebe4d6; }
+  .figur .filt { height: 120px; border-radius: 10px; background: radial-gradient(#2f6b45, #1f4d31); border: 8px solid #4a2f1c; }
+  .figur .kontroller { display: flex; gap: 8px; margin-top: 8px; font: 12px system-ui, sans-serif; }
+  .figur .kontroller button, .figur .bildtext { min-height: var(--tap); padding: 0 12px; border: 1px solid #cbbfa8; border-radius: 8px; background: #f7f3ea; color: #23201a; font: inherit; font-weight: 700; cursor: pointer; }
+  .figur figcaption { margin-top: 8px; font-style: italic; color: #4a4438; }
+  .figur button:focus-visible { outline: 2px solid #b08a5a; outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>F-8 · Reglernas block.</b> Öppna stycket under «En tur» med tangentbordet och med musen. Läs till höger vad en skärmläsare hittar som rubriker, och räkna tabbstoppen.</p>
+  </div>
+  <div class="matt">
+    <span>Rubriker en skärmläsare hittar: <u id="m-antal">–</u></span>
+    <ol id="m-rubriker"></ol>
+    <span>Tabbstopp i boken: <u id="m-stopp">–</u> · Fokus: <u id="m-fokus">–</u></span>
+  </div>
+  <button type="button" id="aterstall">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="lasyta"><article class="bok" id="bok" aria-label="Regelboken"></article></div>
+
+<script>
+const NOT = {
+  nu: '<b>Nu.</b> Varje block är en <code>div[role=button]</code>. Rubrikerna är knappens text, så en skärmläsares rubriknavigering hittar bara bokens titel. Listan är också knappens text och läses som en rad. <span class="minus">− Just där man skriver försvinner bokens struktur.</span>',
+  a: '<b>A · Pennan i marginalen.</b> Blocket är vanlig text: rubriken är en rubrik och listan en lista. En ✎ står alltid i vänstermarginalen, «Redigera Översikt», «Redigera texten under En tur», och är blockets tabbstopp. Ett klick i texten öppnar som i dag, för pekaren. <span class="plus">+ Strukturen är orörd, och vägen in syns utan att man letar.</span> <span class="minus">− En penna vid varje block är ett mönster till i boken, bredvid ＋:et i högermarginalen.</span>',
+  b: '<b>B · Pennan vid pekaren.</b> Som A, men ✎ syns bara när blocket pekas på eller har fokus i sig. Tabbordningen är densamma. <span class="plus">+ Boken ser ut som en bok i vila.</span> <span class="minus">− En väg in som syns först när man hittat den; #184 och #216 tog bort just den sortens kontroll på andra ställen.</span>',
+  c: '<b>C · Rubriken bär knappen.</b> En rubrik är <code>&lt;h2&gt;&lt;button&gt;</code>, APG:s mönster för en accordion: rubriken finns kvar, och knappen i den öppnar blocket. Ett stycke är en knapp som i dag, eftersom ett stycke inte har något att förlora. En lista får pennan från A, eftersom en lista i en knapp förlorar sina punkter. <span class="plus">+ Ingen ny kontroll för rubriker och stycken; boken ser ut som i dag.</span> <span class="minus">− Två mönster i samma bok: listan har en penna, resten har inte.</span>',
+}
+const $ = (q) => document.querySelector(q)
+const BOK = [
+  { id: 'h1', kind: 'heading', level: 1, text: 'Översikt', namn: 'Översikt' },
+  { id: 't1', kind: 'text', text: 'Sal’s Saloon är ett spel för två till åtta spelare. Den som sist står upp vinner.', namn: 'texten under Översikt' },
+  { id: 'h2', kind: 'heading', level: 1, text: 'Uppställning', namn: 'Uppställning' },
+  { id: 's1', kind: 'setup', caption: 'Så ställs bordet upp', namn: 'uppställningen under Uppställning' },
+  { id: 'h3', kind: 'heading', level: 1, text: 'En tur', namn: 'En tur' },
+  { id: 't2', kind: 'text', text: 'Dra ett kort ur högen. Spela det, eller lägg det framför dig.', namn: 'texten under En tur' },
+  { id: 'l1', kind: 'list', items: ['Dra ett kort.', 'Spela eller spara det.', 'Turen går till vänster.'], namn: 'listan under En tur' },
+  { id: 'h4', kind: 'heading', level: 2, text: 'Att passa', namn: 'Att passa' },
+  { id: 't3', kind: 'text', text: 'Den som inte kan spela passar och drar ett kort till.', namn: 'texten under Att passa' },
+]
+const s = { v: 'nu', oppen: null, vid: null }
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+
+function innehall(b) {
+  if (b.kind === 'heading') return `<h${b.level + 1}>${esc(b.text)}</h${b.level + 1}>`
+  if (b.kind === 'list') return `<ol>${b.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ol>`
+  return `<p>${esc(b.text)}</p>`
+}
+function oppet(b) {
+  const falt = b.kind === 'heading' ? `<input value="${esc(b.text)}" aria-label="Rubrik">` : b.kind === 'list' ? `<textarea aria-label="Listan">${esc(b.items.join('\n'))}</textarea>` : `<textarea aria-label="Text ${esc(b.namn.replace(/^texten /, ''))}">${esc(b.text)}</textarea>`
+  return `<div class="oppen">${falt}<div class="rad"><button type="button" data-stang>Klar</button></div></div>`
+}
+const penna = (b) => `<button type="button" class="penna" data-oppna="${b.id}" aria-label="Redigera ${esc(b.namn)}"><span aria-hidden="true">✎</span></button>`
+function block(b) {
+  if (s.oppen === b.id) return oppet(b)
+  if (b.kind === 'setup') return `<figure class="figur"><div class="filt" role="img" aria-label="Bordet vid två spelare"></div><div class="kontroller"><button type="button">Två spelare ▾</button><button type="button" class="bildtext" data-oppna="${b.id}">Bildtext…</button></div><figcaption>${esc(b.caption)}</figcaption></figure>`
+  if (s.v === 'nu') return `<div class="ytan" role="button" tabindex="0" data-oppna="${b.id}">${innehall(b)}</div>`
+  if (s.v === 'a' || s.v === 'b') return `${penna(b)}<div class="ytan" data-oppna="${b.id}" data-mus>${innehall(b)}</div>`
+  // C
+  if (b.kind === 'heading') return `<h${b.level + 1}><button type="button" class="rubrikknapp" data-oppna="${b.id}" aria-describedby="c-hint">${esc(b.text)}</button></h${b.level + 1}>`
+  if (b.kind === 'list') return `${penna(b)}<div class="ytan" data-oppna="${b.id}" data-mus>${innehall(b)}</div>`
+  return `<div class="ytan" role="button" tabindex="0" data-oppna="${b.id}">${innehall(b)}</div>`
+}
+function rita(fokus) {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  $('#anteckning').innerHTML = NOT[s.v]
+  const bok = $('#bok')
+  bok.dataset.v = s.v
+  bok.innerHTML = `<h1>Sal’s Saloon</h1>${s.v === 'c' ? '<span id="c-hint" hidden>Öppnar avsnittets rubrik för att skriva</span>' : ''}${BOK.map((b) => `<div class="blk" data-blk="${b.id}">${block(b)}${s.vid === b.id && s.oppen === null ? `<button type="button" class="plus" aria-label="Lägg till efter ${esc(b.namn)}">＋</button>` : ''}</div>`).join('')}`
+  if (fokus) bok.querySelector(fokus)?.focus()
+  matt()
+}
+
+// Vad en skärmläsare hittar: rubriker, utom i en knapp, där allt är knappens text.
+function matt() {
+  const bok = $('#bok')
+  const presentationell = (el) => el.closest('[role="button"], button') !== null
+  const rubriker = [...bok.querySelectorAll('h1, h2, h3, h4')].filter((h) => !presentationell(h) || h.querySelector('button')).map((h) => `nivå ${h.tagName.slice(1)}: ${h.textContent.trim()}`)
+  $('#m-antal').textContent = String(rubriker.length)
+  $('#m-rubriker').innerHTML = rubriker.map((r) => `<li>${esc(r)}</li>`).join('')
+  const stopp = [...bok.querySelectorAll('button, [tabindex], input, textarea')].filter((el) => el.tabIndex >= 0 && !el.closest('[hidden]'))
+  $('#m-stopp').textContent = String(stopp.length)
+  const a = document.activeElement
+  $('#m-fokus').textContent = a && a !== document.body ? (a.getAttribute('aria-label') ?? a.textContent.trim().slice(0, 40)) : '–'
+}
+
+document.addEventListener('click', (ev) => {
+  const vb = ev.target.closest('.protorad [data-v]')
+  if (vb) { s.v = vb.dataset.v; s.oppen = null; s.vid = null; sattUrl('v', s.v); rita(); return }
+  if (ev.target.closest('#aterstall')) { s.oppen = null; s.vid = null; rita(); return }
+  if (ev.target.closest('[data-stang]')) { const id = s.oppen; s.oppen = null; s.vid = id; rita(`[data-blk="${id}"] [data-oppna]:not([data-mus])`); return }
+  const o = ev.target.closest('[data-oppna]')
+  if (o) { s.oppen = o.dataset.oppna; s.vid = o.dataset.oppna; rita(`[data-blk="${s.oppen}"] textarea, [data-blk="${s.oppen}"] input`) }
+})
+document.addEventListener('keydown', (ev) => {
+  const el = ev.target
+  if (el.closest?.('.protorad')) {
+    if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') { const ks = ['nu', 'a', 'b', 'c']; s.v = ks[(ks.indexOf(s.v) + (ev.key === 'ArrowRight' ? 1 : -1) + 4) % 4]; s.oppen = null; sattUrl('v', s.v); rita() }
+    return
+  }
+  // En div med role=button lovar Enter och mellanslag.
+  if (el.matches?.('[role="button"][data-oppna]') && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); s.oppen = el.dataset.oppna; s.vid = s.oppen; rita(`[data-blk="${s.oppen}"] textarea, [data-blk="${s.oppen}"] input`) }
+  if (ev.key === 'Escape' && s.oppen) { const id = s.oppen; s.oppen = null; s.vid = id; rita(`[data-blk="${id}"] [data-oppna]:not([data-mus])`) }
+})
+document.addEventListener('focusin', (ev) => {
+  const blk = ev.target.closest?.('[data-blk]')
+  if (blk && s.oppen === null && s.vid !== blk.dataset.blk && !ev.target.classList.contains('plus')) {
+    const sel = ev.target.matches('[data-oppna]') ? `[data-blk="${blk.dataset.blk}"] [data-oppna]:not([data-mus])` : null
+    s.vid = blk.dataset.blk; rita(sel); return
+  }
+  matt()
+})
+document.addEventListener('mouseover', (ev) => { const blk = ev.target.closest?.('[data-blk]'); if (blk && s.oppen === null && s.vid !== blk.dataset.blk && !document.activeElement?.closest?.('[data-blk]')) { s.vid = blk.dataset.blk; rita() } })
+const sattUrl = (k, v) => { const u = new URL(location.href); u.searchParams.set(k, v); history.replaceState(null, '', u) }
+const q = new URLSearchParams(location.search)
+if (['nu', 'a', 'b', 'c'].includes(q.get('v'))) s.v = q.get('v')
+rita()
+</script>
+</body>
+</html>
