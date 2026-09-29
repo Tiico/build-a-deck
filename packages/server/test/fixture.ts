@@ -179,7 +179,17 @@ export async function start(opts: { appOrigin?: string; authBypass?: boolean; ob
     renderAll: async () => {
       const renderer = await Renderer.launch()
       try {
-        await runWorker({ store: renders, renderer, until: 'empty' })
+        // A failure is kept on the job and never thrown (#10), so a test that finds one texture
+        // short says only a hash. The reason goes to the run's output, where a flake on CI can be
+        // read afterwards (#533 is waiting for exactly that).
+        await runWorker({
+          store: renders,
+          renderer,
+          until: 'empty',
+          log: (line) => {
+            if (line['msg'] === 'render-failed') console.error(`[render-failed] ${String(line['hash'])}: ${String(line['error'])}`)
+          },
+        })
       } finally {
         await renderer.close()
       }
