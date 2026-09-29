@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
-import { describeActivity } from './describe.js'
+import { describeActivity, sayable } from './describe.js'
 import { seatColor } from './seatColor.js'
 import { QrCode } from './QrCode.js'
 import { Texture } from './Texture.js'
@@ -77,7 +77,7 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
   // Three lines (#482 fynd 6, beslut B): the newest large, as the thing the room looks up for, and
   // two before it small. The whole history is on every phone; the television keeps what a glance
   // from the sofa takes in.
-  const recent = [...activity].slice(-3).reverse()
+  const recent = sayable(activity).slice(-3).reverse()
   // A full table stands its seats on one line each (#482 fynd 6, beslut 2026-09-27, prototyp 22):
   // up to six, three lines each fit whole at 1920 × 1080; seven and eight do not, and a dock
   // scrolled to a half-drawn seat reads as a broken row. The sizes stay; what goes is the line of
@@ -153,7 +153,7 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
             {roomCode && <strong>{roomCode}</strong>}
             {/* One line of the TV's own heading, and nobody presses a television: the code stays a
                 picture there (#225). The room's code stands beside it in plain figures anyway. */}
-            {joinUrl && <QrCode text={joinUrl} size={52} enlarge={false} />}
+            {joinUrl && <QrCode text={joinUrl} label={t('qr.join.alt', { code: roomCode ?? '', url: joinUrl })} size={52} enlarge={false} />}
             {/* The one help pattern (L32, #305), after the code and the square rather than in
                 front of them: what the room reads from across it comes first, and what a joined
                 phone becomes is behind the question mark instead of on a second line over the
@@ -186,7 +186,7 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
           <h2 id="tv-seats">{t('tv.seats')}</h2>
           <ul aria-labelledby="tv-seats" data-dense={dense ? '' : undefined}>
             {view.seats.map((s, i) => {
-              const last = [...activity].reverse().find((l) => l.by === s.id)
+              const last = sayable(activity).reverse().find((l) => l.by === s.id)
               return (
                 <li key={s.id} style={{ ['--seat' as string]: seatColor(i) }}>
                   <i data-avatar>{(s.name ?? s.id).slice(0, 1)}</i>

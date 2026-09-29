@@ -390,7 +390,7 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded }: { table: TableS
           of codes in a list is unreadable, and the code is meant to be held up to a camera. */}
       {qrOpen && room && (
         <div className="byd-tables-qr">
-          <QrCode text={joinUrl(room.code, server)} />
+          <QrCode text={joinUrl(room.code, server)} label={t('qr.join.alt', { code: room.code, url: joinUrl(room.code, server) })} />
           <Way href={joinUrl(room.code, server)} label="tables.way.join" table={name} />
         </div>
       )}

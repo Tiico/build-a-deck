@@ -216,6 +216,9 @@ describe.each(LIVE)('$path when the line dies mid-game', (live) => {
 const GUESTS = LIVE.filter((l) => l.route === 'play' || l.route === 'online' || l.route === 'observe')
 describe.each(GUESTS)('$path for a guest who cannot get in', (live) => {
   const primaries = () => [...(notice()?.querySelectorAll('[data-primary]') ?? [])].map((el) => el.textContent)
+  // The same door, named for who goes through it: a seat is picked again, an observer goes in again
+  // with «Bara titta» (#560 P-24).
+  const back = live.route === 'observe' ? 'Gå in igen' : 'Välj plats igen'
 
   it('offers the seat picker as the one way on when the door refuses the token, and never a login', async () => {
     const id = await createSession(run)
@@ -224,8 +227,8 @@ describe.each(GUESTS)('$path for a guest who cannot get in', (live) => {
     history.replaceState(null, '', `${live.path}?${q.toString()}`)
     render(<StatusLive>{live.page(FAST)}</StatusLive>)
     await waitFor(() => expect(noticeState()).toBe('forbidden'))
-    expect(primaries()).toEqual(['Välj plats igen'])
-    expect(within(notice() as HTMLElement).getByRole('link', { name: 'Välj plats igen' }).getAttribute('href')).toContain(`/join?code=${roomOf(id).code}`)
+    expect(primaries()).toEqual([back])
+    expect(within(notice() as HTMLElement).getByRole('link', { name: back }).getAttribute('href')).toContain(`/join?code=${roomOf(id).code}`)
     expect(within(notice() as HTMLElement).queryByRole('link', { name: 'Logga in' })).toBeNull()
   })
 
@@ -235,7 +238,7 @@ describe.each(GUESTS)('$path for a guest who cannot get in', (live) => {
     history.replaceState(null, '', `${live.path}?${q.toString()}`)
     render(<StatusLive>{live.page(FAST)}</StatusLive>)
     await waitFor(() => expect(noticeState()).toBe('missing'))
-    expect(primaries()).toEqual(['Välj plats igen'])
+    expect(primaries()).toEqual([back])
     expect(notice()!.textContent).not.toMatch(/Mina spel/)
   })
 })

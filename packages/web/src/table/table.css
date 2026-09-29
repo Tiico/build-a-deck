@@ -578,8 +578,10 @@
    keeps the reading geometry and not type; and it stops at 938 px, where 8.5 pt body is 32 px, the
    top of K26's band: larger reads no better and hides more of the table. */
 [data-tv] > main { position: relative; }
+/* Over everything the felt brings forward — the keyboard's focused card is 70 and came through the
+   shown card's text (#560 P-23) — and under the keyboard's own panel (80), which still answers. */
 [data-tv] .byd-tv-show {
-  position: absolute; inset: 0; z-index: 30; padding: 24px;
+  position: absolute; inset: 0; z-index: 75; padding: 24px;
   display: grid; grid-template-rows: minmax(0, 1fr);
   background: rgb(8 10 14 / 0.72); cursor: pointer;
 }
@@ -620,7 +622,9 @@
 [data-tv] ol li:first-child { font-size: 20px; }
 /* A line that does not fit whole is not drawn (#482); the list says which with `hidden`. */
 [data-tv] ol li[hidden] { display: none; }
-[data-tv] ol li b { flex: 0 0 30px; font-family: ui-monospace, monospace; font-weight: 400; color: #4c5468; }
+/* The row's number is the chrome's quiet grey, as the zone names are: quieter than the names beside
+   it and still text that reads, 5.18:1 on the chrome where #4c5468 was 2.53 (#560 P-14). */
+[data-tv] ol li b { flex: 0 0 30px; font-family: ui-monospace, monospace; font-weight: 400; color: #7d8597; }
 [data-tv] ol li span { color: var(--seat, #9aa3b8); }
 /* The seats, stacked down the column rather than laid along the bottom of the screen. A seat is
    still a card of its own with the seat's colour down its left edge, so what a reader learned to
@@ -1032,3 +1036,6 @@
 }
 .byd-lift[data-face='back'] { background: #33405a; color: #ddd; text-align: center; }
 .byd-lift img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
+
+/* The felt as the table screen's main content (#560 P-20), as large as the page it fills. */
+.byd-table-main { width: 100%; height: 100%; }

@@ -74,7 +74,9 @@ describe('the table screen’s own help (L32, #305)', () => {
 })
 
 describe('QR to join', () => {
-  it('renders a QR image for the join URL, labelled with the URL so a reader can type it', async () => {
+  // A reader hears what the picture is for and which room before the address (#560 P-21), and the
+  // address is still there to type for someone without a camera (K9).
+  it('renders a QR image for the join URL, named for what it does and the room, and still carrying the address', async () => {
     const { view, log } = buildScene()
     render(
       <TvChrome view={view(null)} activity={log.map(projectActivity)} roomCode="KX7P" joinUrl="http://example.test/join?session=s1">
@@ -83,6 +85,7 @@ describe('QR to join', () => {
     )
     const img = (await screen.findByRole('img', { name: /example\.test\/join/ })) as HTMLImageElement
     expect(img.src.startsWith('data:image/')).toBe(true)
+    expect(img.alt).toBe('QR-kod: anslut med telefonen, rum KX7P (http://example.test/join?session=s1)')
   })
 })
 

@@ -11,7 +11,7 @@ import { recallCamera, rememberCamera, type CameraMemory } from './cameraMemory.
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, handBound, nobodysHand, type Drag, type DragTarget } from './drop.js'
 import { isCounter, standIn } from '../components.js'
-import { cardWord, counterActs, drawOne, feltShortcuts, flipUnder, modifierHeld, ownerOf, type Act } from './keyboard.js'
+import { cardWord, counterActs, drawOne, feltShortcuts, flipUnder, labelOf, modifierHeld, ownerOf, thingsOn, type Act } from './keyboard.js'
 import { ShortcutHelp } from './ShortcutHelp.js'
 import { CounterEntry } from './CounterEntry.js'
 import { useSay } from '../status/StatusLive.js'
@@ -393,7 +393,12 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const viewing = manual && size ? frameRect(manual, size, reach, CAMERA_MIN_MM) : null
   const heldCamera = useRef<Rect | null>(null)
   if (!drag) heldCamera.current = viewing ?? auto
-  const cam = useGlide(drivable ? heldCamera.current : null, glideMs)
+  // A reader who has asked for less motion is not asked to watch the felt pan and zoom when somebody
+  // else plays (#560 P-13, WCAG 2.3.3): the camera stands where it is going at once, as it does on
+  // its first frame. The same `STILL` the shuffle's fan answers to (L35), asked once for the felt
+  // and not once per pile.
+  const still = useStill()
+  const cam = useGlide(drivable ? heldCamera.current : null, still ? 0 : glideMs)
   const placed = drivable && cam ? cameraOf(cam, size, floorRect) : null
   // The lens (#502): a multiple of the fit and an offset of the wood in its frame, in pixels. It is
   // the table mode's own, where the felt is tilted and turned to the seat and the television's
@@ -554,8 +559,6 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const carried = new Map(peers.filter((p) => p.drag).map((p) => [p.drag?.component ?? '', p]))
   const movedBy = new Map(recent.map((r) => [r.component, r.seat]))
   const shuffling = new Map(shuffles.map((s) => [s.pile, s.seq]))
-  // Whether the reader has asked for less motion (L35): asked once for the felt, not once per pile.
-  const still = useStill()
 
   // Pointer → table millimetres, fixed when a drag begins (the layout does not change under it).
   const mapper = (): ((cx: number, cy: number) => Point) | null => {
@@ -1474,6 +1477,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           y={ringAt.y}
           items={ringVerbs}
           hub={ringChip ? <CounterHub view={view} c={ringChip} t={t} /> : ringPile ? <PileHub view={view} chips={ringPile} t={t} /> : undefined}
+          label={ringLabel(view, ring.target, t)}
+          returnTo={() => frame.current?.querySelector<HTMLElement>(`[data-kbd="${CSS.escape(ringKey(ring.target))}"]`) ?? null}
           onClose={shut(ring)}
           onPressAgain={turnAgain}
         />
@@ -1614,6 +1619,17 @@ function useGlide(target: Rect | null, ms: number): Rect | null {
 // What a ring is drawn about, for the sake of a test that has to find it again.
 const ringName = (target: Ring['target']): string =>
   target.kind === 'card' || target.kind === 'counter' ? target.id : target.kind === 'counterPile' ? target.ids.join('+') : target.pile
+
+// The felt node a ring is opened on, keyed the way the keyboard layer knows it (`thingsOn`): where
+// focus goes back to when the ring closes (#560 P-10). A pile of chips is its first chip.
+const ringKey = (target: Ring['target']): string =>
+  target.kind === 'card' ? `card:${target.id}` : target.kind === 'counter' ? `counter:${target.id}` : target.kind === 'counterPile' ? `counter:${target.ids[0] ?? ''}` : target.kind === 'pileTop' ? `top:${target.pile}` : `pile:${target.pile}`
+
+// What the ring is called: the sentence the keyboard reader hears on the thing it was opened on.
+function ringLabel(view: Snapshot, target: Ring['target'], t: T): string | undefined {
+  const thing = thingsOn(view, t).find((x) => x.key === ringKey(target))
+  return thing ? labelOf(view, thing, t) : undefined
+}
 
 // The verbs a drag cannot say (C): for a card, for a pile, for a chip, and for a pile of chips.
 function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void, enter: (c: VisibleComponentState) => void, t: T): RadialItem[] {

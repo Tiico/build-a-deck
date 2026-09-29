@@ -274,8 +274,9 @@ describe('the QR for the phones (#19, K12)', () => {
     expect(show.getAttribute('aria-expanded')).toBe('false')
     await user.click(show)
 
-    // The alt text is the address itself, so a phone without a camera can be typed at it.
-    expect((await within(row).findByRole('img')).getAttribute('alt')).toBe(join)
+    // The alt text says what the picture is for and the room, and carries the address, so a phone
+    // without a camera can be typed at it (K9, #560 P-21).
+    expect((await within(row).findByRole('img')).getAttribute('alt')).toBe(`QR-kod: anslut med telefonen, rum ${roomOf(id).code} (${join})`)
     expect(within(row).getByRole('link', { name: /Anslutningssidan/ }).getAttribute('href')).toBe(join)
 
     // The menu closed behind the press, and the same entry takes the code away again.

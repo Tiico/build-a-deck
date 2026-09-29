@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { HeldCard } from './HeldCard.js'
@@ -77,6 +77,9 @@ export type PlayerSurfaceProps = {
 }
 
 export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, openHand, onLeft, away = false }: PlayerSurfaceProps) {
+  // What each fold is called is its summary, said on the fold itself (#560 P-20): a `details` is a
+  // group, and a group without a name is one a reader cannot tell from the next.
+  const folds = useId()
   const t = useT()
   // Out of reach while another seat's rewind is asked of this one (#483): the question covers the
   // phone and has to be answered, so nothing behind it is a Tab stop or a press.
@@ -213,8 +216,8 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         {hand.length > 0 && <p className="byd-hint">{marks.selected.size > 0 ? t(marks.selected.size === 1 ? 'player.hint.selected.one' : 'player.hint.selected.other', { n: marks.selected.size }) : t('player.hint')}</p>}
         <HandActions refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} view={view} cards={chosenCards} pending={quickPending} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} />
         {quickSource === 'hand' && <Refusal handle={quick} />}
-        <details ref={personal} className="byd-personal" data-personal>
-          <summary>{t('player.mine.title', { n: inFrontOf(view).length })}</summary>
+        <details ref={personal} className="byd-personal" data-personal aria-labelledby={`${folds}-mine`}>
+          <summary id={`${folds}-mine`}>{t('player.mine.title', { n: inFrontOf(view).length })}</summary>
           <MineStrip refusal={quick} refusedCard={quickSource} refusedZone={quickTarget} onTake={card => void playDirect([card], `hand:${seat}`, 'top')} heading={false} view={view} faces={faces} onOpen={(card) => hold(card, 'mine')} pending={quickPending} onPlay={(card, zone, at) => void playDirect([card], zone, at)} />
           {quickSource !== 'hand' && <Refusal handle={quick} />}
         </details>
@@ -228,8 +231,8 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
             screen that hid what its socket had been sent is the state the repo's rule about
             hidden information exists to keep out. It reads and never acts — the draw stays in the
             row above, where a thumb already knows to find it. */}
-        <details className="byd-phone-table" data-phone-table><summary>{t('player.table.title')}</summary>{away && <p className="byd-phone-table-where">{t('online.table.where')}</p>}<TableSummary view={view} activity={activity} zones="areas" history={false} faces={faces} onRead={(_, card) => hold(card, { zone: card.zone })} /></details>
-        <details className="byd-phone-history"><summary>{t('play.latest')}</summary><RecentActivity view={view} activity={activity} /></details>
+        <details className="byd-phone-table" data-phone-table aria-labelledby={`${folds}-table`}><summary id={`${folds}-table`}>{t('player.table.title')}</summary>{away && <p className="byd-phone-table-where">{t('online.table.where')}</p>}<TableSummary view={view} activity={activity} zones="areas" history={false} faces={faces} onRead={(_, card) => hold(card, { zone: card.zone })} /></details>
+        <details className="byd-phone-history" aria-labelledby={`${folds}-latest`}><summary id={`${folds}-latest`}>{t('play.latest')}</summary><RecentActivity view={view} activity={activity} /></details>
       </main>
       {/* The rules this table plays by (B7), on a bar of their own at the foot by the hand (#483,
           beslut C efter prototyp 32): in the head they made the row two rows at 390 and covered

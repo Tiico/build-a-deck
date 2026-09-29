@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Activity, Snapshot } from '@byd/protocol'
-import { describeActivity } from '../table/describe.js'
+import { describeActivity, sayable } from '../table/describe.js'
 import { seatColor } from '../table/seatColor.js'
 import { useT } from '../i18n/index.js'
 
@@ -14,7 +14,7 @@ import { useT } from '../i18n/index.js'
 // twice.
 export function LastMove({ view, activity, seat }: { view: Snapshot; activity: readonly Activity[]; seat: string }) {
   const t = useT()
-  const line = [...activity].reverse().find((l) => l.by !== seat)
+  const line = sayable(activity).reverse().find((l) => l.by !== seat)
   const now = useNow(line !== undefined)
   if (!line) return null
   const index = line.by === null ? -1 : view.seats.findIndex((s) => s.id === line.by)

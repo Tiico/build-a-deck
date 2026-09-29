@@ -182,7 +182,10 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
           <SessionButtons client={client} view={view} sheet={sheet} onSheet={setSheet} />
         </div>
       </div>
-      <div className="byd-online-play" data-hand={column ? 'column' : 'band'}>
+      {/* The page's heading, for a screen reader (#560 P-20): the seat's line says who, the felt says
+          what, and neither is a heading. */}
+      <h1 className="byd-offscreen">{t('play.table')}</h1>
+      <main className="byd-online-play" data-hand={column ? 'column' : 'band'}>
         <div className="byd-online-felt">
           <TableRenderer
             ref={table}
@@ -232,7 +235,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             }}
           />
         )}
-      </div>
+      </main>
       {kbd.panel}
       <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={() => onLeave(wayBack(links))} toast={toast} onToast={setToast} version={version} />
       </div>

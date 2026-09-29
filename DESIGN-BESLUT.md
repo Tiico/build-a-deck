@@ -1753,6 +1753,7 @@ Snapshoten bär de senaste femtio raderna på samma sätt (2026-09-07), så att 
 
 Byggt 2026-09-07 (bordet ställt sida vid sida med de godkända prototyperna B och C, #20):
 TV-läget har åter rubriken — spelets namn och den version aktören kör — där hela join-URL:en tidigare stod i klartext; adressen finns kvar som QR-kodens alternativtext, så den går att skriva av utan kamera.
+Reviderat 2026-09-29 (#560 P-21): alternativtexten säger först vad bilden är till och vilket rum, och adressen står sist inom parentes — «QR-kod: anslut med telefonen, rum KX7P (…)». En skärmläsare läste annars upp en rå adress utan att säga vad den var, och den går fortfarande att skriva av.
 Namnet kommer ur projektet bordet startades ur (L5) och `GET /sessions/:id` svarar därför också med det; ett bord som startats utan projekt heter bara "Bordet".
 INSPEKTION är tillbaka: kortet pekaren vilar på visas stort bredvid bordet genom samma texturväg som bordet självt (K9, E2), och panelen ber om "peka på ett kort" när ingen pekar.
 Ett kort skärmen inte får se heter "dolt kort" och inget annat (B6).
@@ -3067,6 +3068,11 @@ När renderingen är klar räknar editorn korten under `minPtIn` för telefonens
 Anmärkningen stoppar inget, och bordet är uppe när den står där.
 «Visa på kortväggen» öppnar väggen med telefonens öga (E5, #512), där de korten är markerade.
 Den står efter start och inte före, eftersom storleken är renderarens och finns först när texturerna finns: samma tal som spelarna får, och ingen väntan vid start.
+
+Förtydligat 2026-09-29 (#560 P-25, beställarens beslut): **TV:ns golv på 24 px gäller all text på TV:n, inte bara korttext.**
+Tabellens kolumn heter «golv för all text», och det är så den ska läsas: zonnamn, högnamn, «anslut med telefon», «Starta om», INSPEKTION och «Senast» står i samma rum på tre meter som kortet.
+Granskningen 2026-09-29 mätte kromet till 13–16 px.
+Eftersom TV:ns filt är höjdbunden och varje etikett i 24 px kostar plats prototypas kromet i #573 innan det byggs.
 
 ## L. Editorn (grillad 2026-09-06)
 
@@ -5097,6 +5103,14 @@ Blir det ett problem är det ett eget issue med en egen rad.
 
 Att ingen förlorar något är mätt och inte antaget: dragvägen satte aldrig `index`, så att kortet hamnade underst var en slump och inte en möjlighet.
 Vill man kunna skjuta in ett kort *under* en trave är det ett eget beslut om vad som ska styra djupet, och det finns inte i dag.
+
+Reviderat 2026-09-29 (#560 P-11): **nästa plats i fjädern är den första där inget kort redan ligger.**
+Fjädern räknade kort och inte platser: ett kort som lämnat ytan gav en lucka, antalet sjönk, och nästa kort lades på steget där ett kvarvarande kort låg.
+Ett kort som släppts för hand på ett av fjäderns steg gjorde samma sak, och granskningen mätte ett tangentbordsspelat kort 4 px från det som låg där sedan tidigare.
+Det bröt K16:s löfte att två kort som spelas med tangentbord aldrig landar på samma millimeter.
+Steget provas därför från antalets plats och framåt, sedan från början, och det första där inget kort ligger närmare än ett halvt steg (13 mm) längs fjädern är svaret; kort i samma kuvert tar var sin.
+Ordningen är orörd — det nyaste kortet ligger fortfarande överst — och ingenting som redan ligger flyttas (K2).
+En fjäder utan ledig plats svarar som förut, på tolvans millimeter.
 
 Grinden är `card-lands-in-area.test.ts`, som nu mäter alla tre vägarna: telefonens, tangentbordets och pekarens, med kortens ordning läst ur `project`, och med en mätning av att pekarens punkt är orörd.
 

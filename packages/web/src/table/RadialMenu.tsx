@@ -1,4 +1,4 @@
-import { useEffect, useRef, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
 
 // `key` is only for telling two entries apart when their words are the same — a pile of chips can
 // hold two counters a designer gave the same name and the same value (#89).
@@ -28,20 +28,38 @@ export type RadialItem = { key?: string; label: string; run: (() => void) | null
 // click made of a tap then lands on whichever verb was drawn under the finger — and ran it. A verb's
 // click counts when its press began in the ring, or when it is the keyboard's (`detail` 0); a verb
 // reached by sliding a held press onto it answers on the release, as it always has.
-export function RadialMenu({ id, x, y, items, hub, onClose, onPressAgain }: { id: string; x: number; y: number; items: RadialItem[]; hub?: ReactNode; onClose(): void; onPressAgain?: () => boolean }) {
+//
+// The ring is a group named for what it was opened on (#560 P-10), and a ring that closes with
+// focus inside it hands focus back to that thing (`returnTo`): it used to leave focus on BODY, and a
+// keyboard reader lost her place on the felt. Whatever the verb opened and focused keeps it.
+export function RadialMenu({ id, x, y, items, hub, label, returnTo, onClose, onPressAgain }: { id: string; x: number; y: number; items: RadialItem[]; hub?: ReactNode; label?: string | undefined; returnTo?: () => HTMLElement | null; onClose(): void; onPressAgain?: () => boolean }) {
+  const root = useRef<HTMLDivElement | null>(null)
+  const latest = useRef({ onClose, returnTo })
+  latest.current = { onClose, returnTo }
+  const close = useCallback(() => {
+    const { onClose, returnTo } = latest.current
+    const inside = root.current?.contains(document.activeElement) ?? false
+    onClose()
+    if (!inside || !returnTo) return
+    requestAnimationFrame(() => {
+      const lost = document.activeElement === null || document.activeElement === document.body
+      const back = returnTo()
+      if (lost && back?.isConnected) back.focus()
+    })
+  }, [])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       e.preventDefault()
-      onClose()
+      close()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [close])
   const choose = (e: RPointerEvent | React.MouseEvent, item: RadialItem) => {
     e.stopPropagation()
     if (item.run) item.run()
-    onClose()
+    close()
   }
   const pressed = useRef(false)
   const radius = 82
@@ -54,10 +72,10 @@ export function RadialMenu({ id, x, y, items, hub, onClose, onPressAgain }: { id
         e.preventDefault()
         e.stopPropagation()
       }}
-      onPointerUp={onClose}
-      onClick={() => pressed.current && onClose()}
+      onPointerUp={close}
+      onClick={() => pressed.current && close()}
     >
-      <div className="byd-radial" data-radial={id} style={{ left: x, top: y }}>
+      <div ref={root} className="byd-radial" data-radial={id} role="group" aria-label={label} style={{ left: x, top: y }}>
         {hub !== undefined && (
           <div className="byd-radial-hub" data-radial-hub>
             {hub}

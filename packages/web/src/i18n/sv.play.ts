@@ -43,6 +43,8 @@ export const svPlay = {
   'qr.enlarge': 'Visa koden större',
   'qr.title': 'Anslut med telefonen',
   'qr.close': 'Stäng',
+  // Vad bilden är till och vilket rum, före adressen som går att skriva av utan kamera (K9, #560).
+  'qr.join.alt': 'QR-kod: anslut med telefonen, rum {code} ({url})',
   'tv.inspect': 'Inspektion',
   'tv.inspect.hidden': 'dolt kort',
   'tv.inspect.empty': 'peka på ett kort',

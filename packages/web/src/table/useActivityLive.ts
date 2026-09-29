@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { Activity, Snapshot } from '@byd/protocol'
 import { useSay } from '../status/StatusLive.js'
-import { describeActivity } from './describe.js'
+import { describeActivity, sayable } from './describe.js'
 import { useT } from '../i18n/index.js'
 
 // A beat long enough that three moves in a busy round arrive as one sentence, short enough that
@@ -39,7 +39,7 @@ export function useActivityLive(activity: readonly Activity[], view: Snapshot | 
       spoken.current = last
       return
     }
-    const fresh = activity.filter((line) => line.seq > (spoken.current ?? 0))
+    const fresh = sayable(activity).filter((line) => line.seq > (spoken.current ?? 0))
     if (fresh.length === 0) return
     spoken.current = last
     for (const line of fresh) {

@@ -18,8 +18,9 @@ const BIG_VMIN = 66
 const BIG_LEAST = 240
 
 // A QR code as an inline SVG data URL — no canvas, so it renders anywhere, jsdom included.
-// The alt text is the URL itself, so a screen reader (or a person without a camera) can type it.
-export function QrCode({ text, size = 120, enlarge = true }: { text: string; size?: number; enlarge?: boolean }) {
+// The alt text carries the URL, so a screen reader (or a person without a camera) can type it (K9);
+// `label` says what the picture is for first, when the caller knows (#560 P-21).
+export function QrCode({ text, label, size = 120, enlarge = true }: { text: string; label?: string; size?: number; enlarge?: boolean }) {
   const t = useT()
   const [src, setSrc] = useState<string | null>(null)
   const [big, setBig] = useState(false)
@@ -34,7 +35,7 @@ export function QrCode({ text, size = 120, enlarge = true }: { text: string; siz
     }
   }, [text])
   if (!src) return <div className="byd-qr" style={{ width: size, height: size }} aria-hidden="true" />
-  const picture = <img className="byd-qr" src={src} alt={text} width={size} height={size} />
+  const picture = <img className="byd-qr" src={src} alt={label ?? text} width={size} height={size} />
   // Where a press would mean nothing — the TV's own chrome, where the code is one line of a
   // heading and nobody presses a television — the code stays a picture and nothing more.
   if (!enlarge) return picture
@@ -46,6 +47,7 @@ export function QrCode({ text, size = 120, enlarge = true }: { text: string; siz
       {big && (
         <Big
           text={text}
+          {...(label !== undefined ? { label } : {})}
           src={src}
           t={t}
           onClose={() => {
@@ -60,7 +62,7 @@ export function QrCode({ text, size = 120, enlarge = true }: { text: string; siz
   )
 }
 
-function Big({ text, src, t, onClose }: { text: string; src: string; t: ReturnType<typeof useT>; onClose(): void }) {
+function Big({ text, label, src, t, onClose }: { text: string; label?: string; src: string; t: ReturnType<typeof useT>; onClose(): void }) {
   // Escape goes through the one door in the app, which knows what else is open and in what order
   // (#152). It stands over the work rather than being something the hand has hold of.
   useDoor('standing', onClose)
@@ -81,7 +83,7 @@ function Big({ text, src, t, onClose }: { text: string; src: string; t: ReturnTy
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
       >
-        <img className="byd-qr" src={src} alt={text} width={BIG_LEAST} height={BIG_LEAST} style={{ width: px, height: px }} />
+        <img className="byd-qr" src={src} alt={label ?? text} width={BIG_LEAST} height={BIG_LEAST} style={{ width: px, height: px }} />
         {/* The address in words as well: not everyone round a table has a camera to hand, and the
             one who does not is the one who most needs to be able to read it out. */}
         <p className="byd-qr-address">{text}</p>

@@ -6,6 +6,7 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'status.act.login': 'Sign in',
   'status.act.home': 'To my games',
   'status.act.home.start': 'To the start page',
+  'status.act.rejoin': 'Go in again',
   'status.act.rescan': 'Pick a seat again',
 
   'title.home': 'My games',
@@ -74,6 +75,8 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'status.forbidden.table.text': 'Sign in to the account that owns the game to show it on this screen.',
   'status.forbidden.phone.heading': 'Your seat is no longer yours',
   'status.forbidden.phone.text': 'Someone else is sitting in it. Pick a free seat again, or scan the QR code on the TV.',
+  'status.forbidden.observer.heading': 'The observer’s link no longer works',
+  'status.forbidden.observer.text': 'Go in again with the room code, or ask the test leader for a new link.',
   'status.forbidden.editor.heading': 'The game belongs to someone else',
   'status.forbidden.editor.text': 'Ask whoever owns the game to invite you, or sign in to the right account.',
   'status.loggedOut.editor.heading': 'You are logged out',
