@@ -578,8 +578,10 @@
    keeps the reading geometry and not type; and it stops at 938 px, where 8.5 pt body is 32 px, the
    top of K26's band: larger reads no better and hides more of the table. */
 [data-tv] > main { position: relative; }
+/* Over everything the felt brings forward — the keyboard's focused card is 70 and came through the
+   shown card's text (#560 P-23) — and under the keyboard's own panel (80), which still answers. */
 [data-tv] .byd-tv-show {
-  position: absolute; inset: 0; z-index: 30; padding: 24px;
+  position: absolute; inset: 0; z-index: 75; padding: 24px;
   display: grid; grid-template-rows: minmax(0, 1fr);
   background: rgb(8 10 14 / 0.72); cursor: pointer;
 }
