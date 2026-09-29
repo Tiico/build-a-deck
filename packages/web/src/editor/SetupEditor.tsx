@@ -7,6 +7,8 @@ import { targetsOf } from '../player/PlaySheet.js'
 import { stepAside } from './grips.js'
 import { TableRenderer, type FeltFit, type TableHandle } from '../table/TableRenderer.js'
 import { previewOf } from '../setup/preview.js'
+import { MIN_MM, NUDGE_MM, onTableOf, sizedBy } from './zone-geometry.js'
+import { useNumberDraft } from './number-draft.js'
 import { MAX_PLAYERS, newAreaSpot, newPileSpot, pasteSpot, titleOfRow, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
 import type { ZonePatch } from '@byd/server/doc'
@@ -61,8 +63,6 @@ function inAField(e: KeyboardEvent): boolean {
   const on = [e.target, document.activeElement].filter((n): n is HTMLElement => n instanceof HTMLElement)
   return on.some((el) => el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
 }
-const NUDGE_MM = 10
-const MIN_MM = 40
 
 export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEditorProps) {
   const t = useT()
@@ -278,7 +278,12 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
           )}
           {/* Where the chosen zone stands, over the felt where the eye already is while it is
               dragged (#480, B5): the same numbers stood under the list's foot, out of sight. */}
-          {selectedZone && selectedZone.id !== setup.floor && (
+          {/* To an editor the numbers are fields, where they already stood (#579, #554, beslut
+              2026-09-29): a zone is moved and sized without dragging, and exactly. */}
+          {selectedZone && selectedZone.id !== setup.floor && client.mayEdit && (
+            <ZonePlace key={selectedZone.id} zone={selectedZone} floor={setup.zones.find((z) => z.id === setup.floor)?.geometry} onGeometry={(geometry) => client.patchZone(selectedZone.id, { geometry })} />
+          )}
+          {selectedZone && selectedZone.id !== setup.floor && !client.mayEdit && (
             <span className="byd-setup-coords" data-setup-coords>
               {selectedZone.name} · {Math.round(selectedZone.geometry.x)}, {Math.round(selectedZone.geometry.y)}
               {selectedZone.kind !== 'pile' ? ` · ${Math.round(selectedZone.geometry.w)} × ${Math.round(selectedZone.geometry.h)} mm` : ' mm'}
@@ -738,13 +743,9 @@ function Felt({
   const [kept, setKept] = useState<string | null>(null)
   const floorBox = setup.zones.find((z) => z.id === setup.floor)?.geometry
   const onTable = (z: Zone, g: Geometry): Geometry => {
-    if (!floorBox) return g
-    const half = z.kind === 'pile' ? { w: 0, h: 0 } : { w: g.w / 2, h: g.h / 2 }
-    const x = Math.min(floorBox.x + floorBox.w, Math.max(floorBox.x, g.x + half.w)) - half.w
-    const y = Math.min(floorBox.y + floorBox.h, Math.max(floorBox.y, g.y + half.h)) - half.h
-    const held = x !== g.x || y !== g.y
+    const { geometry, held } = onTableOf(floorBox, z, g)
     setKept(held ? z.id : null)
-    return held ? { ...g, x: Math.round(x), y: Math.round(y) } : g
+    return geometry
   }
   const toMm = (e: RPointerEvent) => table.current?.toTable(e.clientX, e.clientY) ?? { x: 0, y: 0 }
   const down = (e: RPointerEvent, z: Zone, mode: Drag['mode']) => {
@@ -765,7 +766,7 @@ function Felt({
     const g = d.geometry
     const zone = setup.zones.find((z) => z.id === d.id)
     if (d.mode === 'move' && zone) return onGeometry(d.id, onTable(zone, { ...g, x: g.x + dx, y: g.y + dy }), d.gesture)
-    onGeometry(d.id, { ...g, w: Math.max(MIN_MM, g.w + dx), h: Math.max(MIN_MM, g.h + dy) }, d.gesture)
+    if (zone) onGeometry(d.id, sizedBy(zone, g, dx, dy), d.gesture)
   }
   const up = () => {
     drag.current = null
@@ -783,6 +784,14 @@ function Felt({
     const d = e.key === 'ArrowLeft' ? { x: -step, y: 0 } : e.key === 'ArrowRight' ? { x: step, y: 0 } : e.key === 'ArrowUp' ? { x: 0, y: -step } : e.key === 'ArrowDown' ? { x: 0, y: step } : null
     if (!d) return
     e.preventDefault()
+    // Alt and an arrow size the zone from its top left corner (#554, beslut 2026-09-29): the
+    // corner was the only way, and only a pointer's. A pile has no size, so it answers nothing.
+    if (e.altKey) {
+      if (z.kind === 'pile') return
+      const sized = sizedBy(z, z.geometry, d.x, d.y)
+      onGeometry(z.id, sized)
+      return say?.('polite', t('setup.sized', { name: z.owner ? `${z.name} · ${z.owner}` : z.name, w: Math.round(sized.w), h: Math.round(sized.h) }))
+    }
     const to = onTable(z, { ...z.geometry, x: z.geometry.x + d.x, y: z.geometry.y + d.y })
     onGeometry(z.id, to)
     // The place a nudge left the zone, said where the page says things (#558): the text beside
@@ -1110,5 +1119,52 @@ function SheetPreview({ view, seat }: { view: NonNullable<ReturnType<typeof prev
         ))}
       </div>
     </div>
+  )
+}
+
+// Where a zone stands and how big it is, as fields in millimetres over the felt (#579, #554). Each
+// takes its value when it is left or on Enter, and ↑/↓ step it as the handle's arrows do. A place
+// is held where half the zone still stands on the table, as a drag and a nudge are (#480), and a
+// size never goes under the least a zone may be.
+type PlaceKey = 'x' | 'y' | 'w' | 'h'
+function ZonePlace({ zone, floor, onGeometry }: { zone: Zone; floor: Geometry | undefined; onGeometry(geometry: Geometry): void }) {
+  const t = useT()
+  const name = zone.owner ? `${zone.name} · ${zone.owner}` : zone.name
+  const write = (key: PlaceKey, value: number) => {
+    const g = { ...zone.geometry, [key]: key === 'w' || key === 'h' ? Math.max(MIN_MM, value) : value }
+    onGeometry(onTableOf(floor, zone, g).geometry)
+  }
+  const keys: PlaceKey[] = zone.kind === 'pile' ? ['x', 'y'] : ['x', 'y', 'w', 'h']
+  return (
+    <span className="byd-setup-coords byd-setup-place" data-setup-coords role="group" aria-label={t('setup.zoneAt.of', { name })}>
+      <b>{name}</b>
+      {keys.map((key) => (
+        <PlaceField key={key} label={t(`setup.zoneAt.${key}`)} name={name} value={Math.round(zone.geometry[key])} onCommit={(value) => write(key, value)} />
+      ))}
+      <span aria-hidden="true">mm</span>
+    </span>
+  )
+}
+function PlaceField({ label, name, value, onCommit }: { label: string; name: string; value: number; onCommit(value: number): void }) {
+  const typed = useNumberDraft({ value, onCommit })
+  return (
+    <label>
+      <span aria-hidden="true">{label}</span>
+      <input
+        inputMode="numeric"
+        aria-label={`${name} ${label} (mm)`}
+        value={typed.value}
+        onChange={typed.onChange}
+        onBlur={typed.onBlur}
+        onKeyDown={(event) => {
+          if (typed.onKey(event)) return
+          const by = event.key === 'ArrowUp' ? 1 : event.key === 'ArrowDown' ? -1 : 0
+          if (by === 0 || event.altKey || event.ctrlKey || event.metaKey) return
+          event.preventDefault()
+          typed.drop()
+          onCommit(value + by * (event.shiftKey ? NUDGE_MM * 5 : NUDGE_MM))
+        }}
+      />
+    </label>
   )
 }

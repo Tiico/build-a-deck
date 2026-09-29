@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { projectDoc } from './project-doc.js'
@@ -555,11 +556,14 @@ describe('valet på filten i listan och i talen (#480)', () => {
     try {
       fireEvent.keyDown(handle('discard'), { key: 'Enter' })
       await waitFor(() => expect(into.mock.contexts.some((el) => (el as Element).closest?.('[data-zone-row="discard"]'))).toBe(true))
+      // Said in the fields over the felt since #579: the name, and x and y where it stands.
       const said = document.querySelector('[data-setup-said] [data-setup-coords]')!
       const g = (await run.projects.load(run.projectId))!.setup.zones.find((z) => z.id === 'discard')!.geometry
-      expect(said.textContent).toContain(`Kasthög · ${Math.round(g.x)}, ${Math.round(g.y)}`)
+      const at = () => [...said.querySelectorAll('input')].map((i) => Number(i.value))
+      expect(said.textContent).toContain('Kasthög')
+      expect(at()).toEqual([Math.round(g.x), Math.round(g.y)])
       fireEvent.keyDown(handle('discard'), { key: 'ArrowRight' })
-      await waitFor(() => expect(said.textContent).toContain(`${Math.round(g.x) + 10}, ${Math.round(g.y)}`))
+      await waitFor(() => expect(at()).toEqual([Math.round(g.x) + 10, Math.round(g.y)]))
     } finally {
       Element.prototype.scrollIntoView = had
     }
@@ -577,10 +581,67 @@ describe('en zon vid bordets kant (#480)', () => {
     const h = handle('discard')
     fireEvent.keyDown(h, { key: 'Enter' })
     for (let i = 0; i < 40; i++) fireEvent.keyDown(handle('discard'), { key: 'ArrowRight', shiftKey: true })
-    const coords = document.querySelector('[data-setup-coords]')!.textContent!
-    const x = Number(/· (-?\d+),/.exec(coords)![1])
+    const x = Number((screen.getByLabelText('Kasthög x (mm)') as HTMLInputElement).value)
     expect(x).toBeLessThanOrEqual(floor.x + floor.w)
     expect(x).toBeGreaterThan(floor.x + floor.w - 60)
     expect(await screen.findByText('Halva zonen stannar på bordet')).toBeTruthy()
+  })
+})
+
+// A zone is moved and sized without dragging (#579, #554, beställarens beslut 2026-09-29, C): the
+// line over the felt, where its numbers already stood, is fields in millimetres, and Alt and an
+// arrow on its handle change its size.
+describe('läge och storlek utan att dra (#579, #554)', () => {
+  const field = (name: string) => screen.getByLabelText(name) as HTMLInputElement
+  const geometryOf = async (id: string) => (await run.projects.load(run.projectId))!.setup.zones.find((z) => z.id === id)!.geometry
+
+  it('writes a pile where its x and y are typed, and offers it no size', async () => {
+    const user = userEvent.setup()
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    fireEvent.keyDown(handle('discard'), { key: 'Enter' })
+    expect(field('Kasthög x (mm)').value).toBe('200')
+    expect(screen.queryByLabelText('Kasthög b (mm)')).toBeNull()
+    await user.clear(field('Kasthög x (mm)'))
+    await user.type(field('Kasthög x (mm)'), '150{Enter}')
+    await user.clear(field('Kasthög y (mm)'))
+    await user.type(field('Kasthög y (mm)'), '-40')
+    await user.tab()
+    await spara()
+    expect(await geometryOf('discard')).toMatchObject({ x: 150, y: -40 })
+  })
+
+  it('writes a hand’s width and height, steps a field with the arrows, and keeps half the zone on the table', async () => {
+    const user = userEvent.setup()
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    fireEvent.keyDown(handle('hand:A'), { key: 'Enter' })
+    await user.clear(field('Hand · A b (mm)'))
+    await user.type(field('Hand · A b (mm)'), '400{Enter}')
+    // ↑ steps as the handle's arrow does, ten millimetres, and Shift five of those.
+    field('Hand · A h (mm)').focus()
+    await user.keyboard('{ArrowUp}')
+    expect(field('Hand · A h (mm)').value).toBe('110')
+    await user.keyboard('{Shift>}{ArrowUp}{/Shift}')
+    expect(field('Hand · A h (mm)').value).toBe('160')
+    // A place off the table is held where half the zone still stands on it (#480).
+    await user.clear(field('Hand · A x (mm)'))
+    await user.type(field('Hand · A x (mm)'), '5000{Enter}')
+    expect(Number(field('Hand · A x (mm)').value)).toBe(500 - 200)
+    await spara()
+    expect(await geometryOf('hand:A')).toMatchObject({ x: 300, w: 400, h: 160 })
+  })
+
+  it('sizes a zone with Alt and an arrow on its handle, and leaves a pile alone', async () => {
+    const user = userEvent.setup()
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    handle('hand:A').focus()
+    await user.keyboard('{Alt>}{ArrowRight}{ArrowRight}{ArrowDown}{/Alt}')
+    handle('discard').focus()
+    await user.keyboard('{Alt>}{ArrowRight}{/Alt}')
+    await spara()
+    expect(await geometryOf('hand:A')).toMatchObject({ x: -300, y: 320, w: 620, h: 110 })
+    expect(await geometryOf('discard')).toMatchObject({ x: 200, y: 0 })
   })
 })

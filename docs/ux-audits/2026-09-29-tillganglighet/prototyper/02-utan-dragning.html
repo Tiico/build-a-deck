@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 2 — Flytta och ändra storlek utan att dra (#579, #554)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     En zon på filten flyttas och ändrar storlek bara genom att dra, och storleken inte ens
+     med tangentbordet (#554 F-1, #579 F-2, F-11). Beskärningen i Media ändrar storlek med en
+     pekare bara genom att dra ett hörn (F-7). WCAG 2.5.7 vill ha en väg med en enda pekare utan
+     dragning, och 2.1.1 en med tangentbordet. Vad ska den vägen vara?
+       Nu  dra, och pilarna flyttar en zon (Skift fem steg). Storleken bara med hörnet.
+       A   fält: läge och storlek skrivs i raden över filten, där siffrorna redan står; beskärningen
+           får fyra procentfält under utsnittet.
+       B   stegknappar: en knappsats flyttar och ändrar storlek, utan fält, i båda.
+       C   fält för zonerna, stegknappar för beskärningen.
+     I A, B och C ändrar Alt+pil storleken på ett handtag (#554). #579 föreslog zoomknappar för
+     beskärningen; L33 säger «ingen zoom och ingen panorering», så de finns inte här.
+     Beslut 2026-09-29: C (L50). ──────────────────────────────────────────────────────────────── */
+  :root { --focus: #9cc6ff; }
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .protorad .matt { flex: 0 1 420px; flex-wrap: wrap; gap: 2px var(--s3); }
+  .matt u { text-decoration: none; color: #ffe9b8; font-variant-numeric: tabular-nums; }
+  kbd { font: inherit; padding: 0 4px; border: 1px solid #4a4230; border-radius: 4px; }
+  .skarm { display: flex; flex-direction: column; background: var(--chrome); color: var(--ink); font: 13px/1.4 system-ui, sans-serif; overflow: hidden; }
+  .yta { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 240px minmax(0, 1fr); }
+  .lista { border-right: 1px solid var(--line); padding: var(--s3); display: grid; align-content: start; gap: 2px; background: var(--panel); }
+  .lista h2, .ark h2 { margin: 0 0 var(--s2); font-size: 13px; color: var(--quiet-2); }
+  .lista button { min-height: var(--tap); display: flex; align-items: center; gap: var(--s2); padding: 0 var(--s2); border: 0; border-radius: 8px; background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+  .lista button[aria-pressed='true'] { background: #26324a; }
+  .lista button:focus-visible, .rad :focus-visible, .knappsats :focus-visible, .ark :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .mitt { min-width: 0; display: flex; flex-direction: column; }
+  /* Raden över filten, där zonens siffror redan står (#480). */
+  .rad { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2) var(--s3); min-height: 56px; padding: var(--s2) var(--s4); border-bottom: 1px solid var(--line); color: var(--quiet-2); }
+  .rad b { color: var(--ink); }
+  .rad label { display: inline-flex; align-items: center; gap: 4px; }
+  .rad input, .ark input { width: 64px; min-height: var(--tap); padding: 0 6px; border: 1px solid #3b414e; border-radius: 8px; background: #12141a; color: var(--ink); font: inherit; font-variant-numeric: tabular-nums; text-align: right; }
+  .rad .enhet { color: var(--quiet); }
+  .filtlada { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; background: #15171c; position: relative; }
+  .filt { position: relative; background: radial-gradient(#2f6b45, #1f4d31); border: 14px solid #4a2f1c; border-radius: 22px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+  .zon { position: absolute; box-sizing: border-box; border: 2px dashed rgba(255, 255, 255, 0.45); border-radius: 6px; color: rgba(255, 255, 255, 0.8); font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; display: grid; place-items: center; cursor: grab; touch-action: none; }
+  .zon[data-kind='pile'] { border-style: solid; background: rgba(0, 0, 0, 0.18); }
+  .zon[aria-pressed='true'] { border: 2px solid #ffd98a; background: rgba(255, 217, 138, 0.12); }
+  .zon:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+  .horn { position: absolute; right: -7px; bottom: -7px; width: 12px; height: 12px; border-radius: 3px; background: #ffd98a; cursor: nwse-resize; }
+  .horn::before { content: ''; position: absolute; inset: -16px; }
+  /* B: knappsatsen. */
+  .knappsats { display: inline-grid; grid-template-columns: repeat(3, var(--tap)); gap: 2px; }
+  .knappsats button, .steg button { min-width: var(--tap); min-height: var(--tap); border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; }
+  .steg { display: inline-flex; align-items: center; gap: 2px; }
+  .steg span { min-width: 20px; text-align: center; color: var(--quiet); }
+  .grupp { display: inline-flex; align-items: center; gap: var(--s2); }
+  /* Media: beskärningsarket (L33). */
+  .ark { margin: auto; width: 560px; display: grid; gap: var(--s3); padding: var(--s4); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+  .yta-bild { position: relative; margin: 16px auto; width: 480px; height: 320px; background: linear-gradient(135deg, #3a5a7a, #7a5a3a 60%, #2a3a2a); border-radius: 4px; }
+  .yta-bild::after { content: 'skogsbryn.jpg'; position: absolute; left: 8px; bottom: 6px; color: rgba(255, 255, 255, 0.6); font-size: 11px; }
+  /* Skuggan utanför utsnittet i ett eget lager som klipper, så att greppen längs bildens kant inte
+     klipps (L33). */
+  .klipp { position: absolute; inset: 0; overflow: hidden; border-radius: 4px; pointer-events: none; }
+  .klipp > i { position: absolute; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55); }
+  .utsnitt { position: absolute; border: 2px solid #fff; cursor: move; touch-action: none; }
+  .utsnitt:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+  .grepp { position: absolute; width: 12px; height: 12px; border-radius: 3px; background: #fff; translate: -50% -50%; }
+  .grepp::before { content: ''; position: absolute; inset: -16px; }
+  .grepp:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .status { color: var(--good); }
+  .ark .falt { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s3); align-items: center; color: var(--quiet-2); }
+  .ark .falt label { display: inline-flex; align-items: center; gap: 4px; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="vaxlare" role="group" aria-label="Ytan">
+    <button type="button" data-y="bord">Bord</button>
+    <button type="button" data-y="media">Media</button>
+  </div>
+  <div class="fraga">
+    <p><b>#579 och #554 · Utan att dra.</b> Flytta «Framför A» 20 mm åt höger och gör den 20 mm bredare, med bara klick eller bara tangentbord. I Media: gör utsnittet mindre och flytta det mot bildens övre vänstra hörn.</p>
+  </div>
+  <div class="matt">
+    <span>Läge: <u id="m-lage">–</u></span>
+    <span>Senaste ändringen: <u id="m-hur">–</u></span>
+    <span>Ändringar utan dragning: <u id="m-utan">0</u> · med: <u id="m-med">0</u></span>
+    <span>Fokus: <u id="m-fokus">–</u></span>
+  </div>
+  <div class="storlek vaxlare" role="group" aria-label="Fönstrets storlek">
+    <button type="button" data-s="1280x800">1280 × 800</button>
+    <button type="button" data-s="1024x768">1024 × 768</button>
+  </div>
+  <button type="button" id="aterstall">Börja om</button>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+
+<div class="m-scen" id="mscen">
+  <div class="m-ram" id="ram"><span class="etikett" id="etikett"></span>
+    <div class="m-skarm skarm" id="skarm">
+      <div class="ed-huvud"><span class="hem">Mina spel</span><strong>Sal's Saloon</strong><span class="rev">rev 1</span></div>
+      <div id="innehall" style="flex: 1 1 auto; min-height: 0; display: flex;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const NOT = {
+  nu: '<b>Nu.</b> En zon flyttas genom att dra den eller med pilarna på handtaget, 4 mm per tryck och 20 med Skift. Storleken ändras bara genom att dra hörnet. Raden över filten säger läget i text. Beskärningen dras, och med tangentbordet flyttar pilarna utsnittet och ett fokuserat hörn ändrar storlek (L33). <span class="minus">− Ingen väg för en pekare utan dragning, och ingen alls för en zons storlek med tangentbordet.</span>',
+  a: '<b>A · Fält.</b> Raden över filten blir fält: x och y, och b och h för en yta, i millimeter. Ett fält tar sitt värde när det lämnas eller vid Enter, och ↑/↓ i fältet stegar som pilarna på handtaget. Alt+pil på handtaget ändrar storleken. Beskärningen får fyra procentfält under utsnittet: vänster, topp, bredd, höjd. <span class="plus">+ Exakt placering och exakt storlek, som designern redan läser av i samma rad. Samma mönster som egenskapernas millimeterfält (L25).</span> <span class="minus">− Siffror är inte hur man tänker om ett utsnitt; procent av bilden kräver att man räknar.</span>',
+  b: '<b>B · Stegknappar.</b> En knappsats flyttar den valda zonen 4 mm per tryck, och «− b +», «− h +» ändrar storleken. Beskärningen får samma knappsats och «Mindre» och «Större» runt utsnittets mitt. <span class="plus">+ Inga siffror att räkna, och samma rörelse som pilarna.</span> <span class="minus">− 20 mm är fem tryck, och en exakt placering går inte att skriva. Knappsatsen tar en rad av filtens höjd.</span>',
+  c: '<b>C · Fält för zonerna, stegknappar för beskärningen.</b> Zonerna som A, eftersom en zon har mått i millimeter som designern redan läser. Beskärningen som B, eftersom ett utsnitt bedöms med ögat och inte i procent. <span class="plus">+ Varje yta får den form som passar vad man gör där.</span> <span class="minus">− Två mönster för samma fråga i verktyget.</span>',
+}
+const $ = (q) => document.querySelector(q)
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const FILT = { w: 560, h: 340 }
+const STEG = 4
+const START = [
+  { id: 'kortlek', namn: 'Kortlek', kind: 'pile', x: 220, y: 110, w: 63, h: 88 },
+  { id: 'kasthog', namn: 'Kasthög', kind: 'pile', x: 300, y: 110, w: 63, h: 88 },
+  { id: 'framfor-a', namn: 'Framför A', kind: 'area', x: 40, y: 230, w: 160, h: 70 },
+  { id: 'framfor-b', namn: 'Framför B', kind: 'area', x: 360, y: 230, w: 160, h: 70 },
+  { id: 'hand-a', namn: 'Hand A', kind: 'hand', x: 0, y: 310, w: 280, h: 30 },
+  { id: 'hand-b', namn: 'Hand B', kind: 'hand', x: 280, y: 310, w: 280, h: 30 },
+]
+const s = { v: 'nu', y: 'bord', storlek: '1280x800' }
+const tom = () => ({ zoner: START.map((z) => ({ ...z })), vald: 'framfor-a', hur: '–', utan: 0, med: 0, crop: { x: 0, y: 0, w: 100, h: 100 } })
+Object.assign(s, tom())
+const zon = () => s.zoner.find((z) => z.id === s.vald)
+const faltVariant = () => s.v === 'a' || s.v === 'c'
+const cropFalt = () => s.v === 'a'
+const cropSteg = () => s.v === 'b' || s.v === 'c'
+
+function kvitto(hur, drag) {
+  s.hur = hur
+  if (drag) s.med++
+  else s.utan++
+}
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
+function satt(z, patch) {
+  Object.assign(z, patch)
+  z.w = clamp(Math.round(z.w), 20, FILT.w); z.h = clamp(Math.round(z.h), 20, FILT.h)
+  z.x = clamp(Math.round(z.x), 0, FILT.w - z.w); z.y = clamp(Math.round(z.y), 0, FILT.h - z.h)
+}
+
+// ── Fönstret ───────────────────────────────────────────────────────────────────────────
+const skarm = $('#skarm')
+function skala() {
+  const [W, H] = s.storlek.split('x').map(Number)
+  const scen = $('#mscen')
+  const f = Math.min(1, (scen.clientWidth - 24) / W, (scen.clientHeight - 36) / H)
+  skarm.style.width = W + 'px'; skarm.style.height = H + 'px'
+  skarm.style.transform = `scale(${f})`; skarm.style.transformOrigin = '0 0'
+  $('#ram').style.width = W * f + 'px'; $('#ram').style.height = H * f + 'px'
+  $('#etikett').textContent = `${W} × ${H}` + (f < 1 ? ` · visas i ${Math.round(f * 100)} %` : '')
+}
+
+// ── Bord ───────────────────────────────────────────────────────────────────────────────
+// Filtens skala: det rum som faktiskt blir kvar under raden, som i appen, så 1024 ger mindre
+// handtag (F-11) och en högre rad (B:s knappsats) en mindre filt.
+let skalaMm = 1.4
+function mm() { return skalaMm }
+function matFilt() {
+  const lada = skarm.querySelector('.filtlada')
+  if (!lada) return false
+  const k = Math.min((lada.clientWidth - 60) / FILT.w, (lada.clientHeight - 60) / FILT.h)
+  if (Math.abs(k - skalaMm) < 0.01) return false
+  skalaMm = k
+  return true
+}
+function raden() {
+  const z = zon()
+  if (!z) return '<span>Välj en zon.</span>'
+  const yta = z.kind !== 'pile'
+  if (faltVariant()) {
+    const f = (k, namn) => `<label>${namn} <input inputmode="numeric" data-mm="${k}" value="${z[k]}" aria-label="${esc(z.namn)} ${namn} i mm"></label>`
+    return `<b>${esc(z.namn)}</b> ${f('x', 'x')}${f('y', 'y')}${yta ? f('w', 'b') + f('h', 'h') : ''}<span class="enhet">mm</span>`
+  }
+  const text = `<b>${esc(z.namn)}</b> · ${z.x}, ${z.y}${yta ? ` · ${z.w} × ${z.h} mm` : ' mm'}`
+  if (s.v !== 'b') return `${text}<span>Dra en zon på filten för att flytta den.</span>`
+  const pil = (dx, dy, t, namn) => `<button type="button" data-flytt="${dx},${dy}" aria-label="Flytta ${esc(z.namn)} ${namn}">${t}</button>`
+  const steg = (k, namn) => `<span class="steg" role="group" aria-label="${namn}"><button type="button" data-storlek="${k},-1" aria-label="${esc(z.namn)} smalare">−</button><span>${k === 'w' ? 'b' : 'h'}</span><button type="button" data-storlek="${k},1" aria-label="${esc(z.namn)} ${k === 'w' ? 'bredare' : 'högre'}">+</button></span>`
+  return `${text}<span class="grupp"><span class="knappsats" role="group" aria-label="Flytta ${esc(z.namn)}"><span></span>${pil(0, -1, '↑', 'upp')}<span></span>${pil(-1, 0, '←', 'vänster')}<span></span>${pil(1, 0, '→', 'höger')}<span></span>${pil(0, 1, '↓', 'ned')}<span></span></span>${yta ? steg('w', 'Bredd') + steg('h', 'Höjd') : ''}</span>`
+}
+function ritaBord() {
+  const k = mm()
+  $('#innehall').innerHTML = `<div class="yta" style="flex: 1 1 auto;"><nav class="lista" aria-label="Zoner"><h2>Zoner</h2>${s.zoner.map((z) => `<button type="button" data-lista="${z.id}" aria-pressed="${z.id === s.vald}">${esc(z.namn)}</button>`).join('')}</nav><div class="mitt"><div class="rad" id="rad">${raden()}</div><div class="filtlada"><div class="filt" id="filt" style="width:${FILT.w * k + 28}px;height:${FILT.h * k + 28}px">${s.zoner.map((z) => `<div class="zon" role="button" tabindex="0" data-zon="${z.id}" data-kind="${z.kind}" aria-pressed="${z.id === s.vald}" aria-label="Zon ${esc(z.namn)}" style="left:${z.x * k}px;top:${z.y * k}px;width:${z.w * k}px;height:${z.h * k}px">${esc(z.namn)}${z.id === s.vald && z.kind !== 'pile' ? '<i class="horn" data-horn></i>' : ''}</div>`).join('')}</div></div></div></div>`
+}
+
+// ── Media ──────────────────────────────────────────────────────────────────────────────
+const BILD = { w: 480, h: 320 }
+function ritaMedia() {
+  const c = s.crop
+  const pct = Math.round(c.w * c.h / 100)
+  const falt = cropFalt() ? `<div class="falt">${[['x', 'Vänster'], ['y', 'Topp'], ['w', 'Bredd'], ['h', 'Höjd']].map(([k, n]) => `<label>${n} <input inputmode="numeric" data-pct="${k}" value="${Math.round(c[k])}" aria-label="Utsnittets ${n.toLowerCase()} i procent"> %</label>`).join('')}</div>` : ''
+  const pil = (dx, dy, t, n) => `<button type="button" data-cflytt="${dx},${dy}" aria-label="Flytta utsnittet ${n}">${t}</button>`
+  const steg = cropSteg() ? `<div class="falt"><span class="knappsats" role="group" aria-label="Flytta utsnittet"><span></span>${pil(0, -1, '↑', 'upp')}<span></span>${pil(-1, 0, '←', 'vänster')}<span></span>${pil(1, 0, '→', 'höger')}<span></span>${pil(0, 1, '↓', 'ned')}<span></span></span><span class="steg" role="group" aria-label="Storlek"><button type="button" data-cskala="-1">Mindre</button><button type="button" data-cskala="1">Större</button></span></div>` : ''
+  $('#innehall').innerHTML = `<div class="ark" role="dialog" aria-label="Beskär skogsbryn.jpg"><h2>Beskär skogsbryn.jpg</h2><div class="yta-bild" id="bild"><div class="klipp"><i style="left:${c.x}%;top:${c.y}%;width:${c.w}%;height:${c.h}%"></i></div><div class="utsnitt" id="utsnitt" tabindex="0" role="group" aria-label="Utsnitt" style="left:${c.x}%;top:${c.y}%;width:${c.w}%;height:${c.h}%">${['nw', 'ne', 'sw', 'se'].map((h) => `<i class="grepp" tabindex="0" role="button" aria-label="Hörn ${h}" data-grepp="${h}" style="left:${h.includes('w') ? 0 : 100}%;top:${h.includes('n') ? 0 : 100}%"></i>`).join('')}</div></div><p class="status">${c.w >= 100 && c.h >= 100 ? '▢ Hela bilden' : `✓ Beskuren · visar ${pct} %`}</p>${falt}${steg}<p style="margin:0;color:var(--quiet)">Pilarna flyttar utsnittet, ett fokuserat hörn ändrar storlek; Skift ger större steg.</p></div>`
+}
+function sattCrop(p) {
+  const c = s.crop
+  Object.assign(c, p)
+  c.w = clamp(c.w, 10, 100); c.h = clamp(c.h, 10, 100)
+  c.x = clamp(c.x, 0, 100 - c.w); c.y = clamp(c.y, 0, 100 - c.h)
+}
+
+function rita() {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  for (const b of document.querySelectorAll('[data-y]')) b.setAttribute('aria-pressed', String(b.dataset.y === s.y))
+  for (const b of document.querySelectorAll('[data-s]')) b.setAttribute('aria-pressed', String(b.dataset.s === s.storlek))
+  $('#anteckning').innerHTML = NOT[s.v]
+  skala()
+  if (s.y === 'bord') { ritaBord(); if (matFilt()) ritaBord() } else ritaMedia()
+  matt()
+}
+function matt() {
+  const z = zon()
+  $('#m-lage').textContent = s.y === 'bord' ? (z ? `${z.namn} · ${z.x}, ${z.y} · ${z.w} × ${z.h} mm` : '–') : `utsnitt ${Math.round(s.crop.x)}, ${Math.round(s.crop.y)} · ${Math.round(s.crop.w)} × ${Math.round(s.crop.h)} %`
+  $('#m-hur').textContent = s.hur
+  $('#m-utan').textContent = String(s.utan); $('#m-med').textContent = String(s.med)
+  const a = document.activeElement
+  $('#m-fokus').textContent = a && a !== document.body ? (a.getAttribute('aria-label') ?? a.textContent.trim().slice(0, 30)) : '–'
+}
+// Behåll fokus på samma kontroll när raden ritas om.
+function omFokus(sel) { rita(); if (sel) skarm.querySelector(sel)?.focus() }
+
+// ── Pekaren ────────────────────────────────────────────────────────────────────────────
+let drag = null
+skarm.addEventListener('pointerdown', (ev) => {
+  const horn = ev.target.closest('[data-horn]'), el = ev.target.closest('[data-zon]')
+  if (el) {
+    s.vald = el.dataset.zon
+    const z = zon()
+    drag = { typ: horn ? 'storlek' : 'flytt', x: ev.clientX, y: ev.clientY, z0: { ...z }, rort: false }
+    ev.preventDefault(); omFokus(`[data-zon="${z.id}"]`); return
+  }
+  const grepp = ev.target.closest('[data-grepp]'), ut = ev.target.closest('#utsnitt')
+  if (ut) { drag = { typ: grepp ? 'grepp' : 'cflytt', h: grepp?.dataset.grepp, x: ev.clientX, y: ev.clientY, c0: { ...s.crop }, rort: false }; ev.preventDefault() }
+})
+addEventListener('pointermove', (ev) => {
+  if (!drag) return
+  const f = parseFloat(skarm.style.transform.slice(6)) || 1
+  const dx = (ev.clientX - drag.x) / f, dy = (ev.clientY - drag.y) / f
+  if (Math.abs(dx) + Math.abs(dy) > 2) drag.rort = true
+  if (drag.typ === 'flytt' || drag.typ === 'storlek') {
+    const k = mm(), z = zon()
+    if (drag.typ === 'flytt') satt(z, { x: drag.z0.x + dx / k, y: drag.z0.y + dy / k })
+    else satt(z, { w: drag.z0.w + dx / k, h: drag.z0.h + dy / k })
+    ritaBord(); matt(); return
+  }
+  const px = (dx / BILD.w) * 100, py = (dy / BILD.h) * 100, c0 = drag.c0
+  if (drag.typ === 'cflytt') sattCrop({ x: c0.x + px, y: c0.y + py })
+  else {
+    const h = drag.h
+    const x1 = h.includes('w') ? c0.x + px : c0.x, x2 = h.includes('e') ? c0.x + c0.w + px : c0.x + c0.w
+    const y1 = h.includes('n') ? c0.y + py : c0.y, y2 = h.includes('s') ? c0.y + c0.h + py : c0.y + c0.h
+    sattCrop({ x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) })
+  }
+  ritaMedia(); matt()
+})
+addEventListener('pointerup', () => {
+  if (drag?.rort) kvitto(drag.typ === 'flytt' || drag.typ === 'cflytt' ? 'drag (flytt)' : 'drag (storlek)', true)
+  drag = null; matt()
+})
+
+// ── Knappar och fält ───────────────────────────────────────────────────────────────────
+document.body.addEventListener('click', (ev) => {
+  const b = ev.target.closest('button')
+  if (!b) return
+  if (b.closest('.protorad')) {
+    if (b.dataset.v) { s.v = b.dataset.v; sattUrl('v', s.v); Object.assign(s, tom()); rita() }
+    else if (b.dataset.y) { s.y = b.dataset.y; sattUrl('y', s.y); rita() }
+    else if (b.dataset.s) { s.storlek = b.dataset.s; sattUrl('s', s.storlek); rita() }
+    else if (b.id === 'aterstall') { Object.assign(s, tom()); rita() }
+    return
+  }
+  const steg = ev.shiftKey ? STEG * 5 : STEG
+  if (b.dataset.lista) { s.vald = b.dataset.lista; omFokus(`[data-lista="${s.vald}"]`) }
+  else if (b.dataset.flytt) { const [dx, dy] = b.dataset.flytt.split(',').map(Number); const z = zon(); satt(z, { x: z.x + dx * steg, y: z.y + dy * steg }); kvitto('knapp (flytt)'); omFokus(`[data-flytt="${b.dataset.flytt}"]`) }
+  else if (b.dataset.storlek) { const [k, d] = b.dataset.storlek.split(','); const z = zon(); satt(z, { [k]: z[k] + Number(d) * steg }); kvitto('knapp (storlek)'); omFokus(`[data-storlek="${b.dataset.storlek}"]`) }
+  else if (b.dataset.cflytt) { const [dx, dy] = b.dataset.cflytt.split(',').map(Number); sattCrop({ x: s.crop.x + dx * (ev.shiftKey ? 10 : 2), y: s.crop.y + dy * (ev.shiftKey ? 10 : 2) }); kvitto('knapp (flytt)'); omFokus(`[data-cflytt="${b.dataset.cflytt}"]`) }
+  else if (b.dataset.cskala) {
+    const d = Number(b.dataset.cskala) * (ev.shiftKey ? 20 : 5), c = s.crop
+    sattCrop({ x: c.x - d / 2, y: c.y - d / 2, w: c.w + d, h: c.h + d }); kvitto('knapp (storlek)'); omFokus(`[data-cskala="${b.dataset.cskala}"]`)
+  }
+})
+function taFalt(el) {
+  const v = Number(el.value.replace(',', '.'))
+  if (!Number.isFinite(v)) return rita()
+  if (el.dataset.mm) { const z = zon(); if (z[el.dataset.mm] === Math.round(v)) return; satt(z, { [el.dataset.mm]: v }); kvitto('fält'); omFokus(`[data-mm="${el.dataset.mm}"]`) }
+  if (el.dataset.pct) { if (Math.round(s.crop[el.dataset.pct]) === Math.round(v)) return; sattCrop({ [el.dataset.pct]: v }); kvitto('fält'); omFokus(`[data-pct="${el.dataset.pct}"]`) }
+}
+document.addEventListener('change', (ev) => { if (ev.target.matches('[data-mm], [data-pct]')) taFalt(ev.target) })
+
+// ── Tangenterna ────────────────────────────────────────────────────────────────────────
+addEventListener('keydown', (ev) => {
+  const el = ev.target
+  if (el.closest?.('.protorad')) {
+    if (!el.matches('input') && (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight')) {
+      const ks = ['nu', 'a', 'b', 'c']; s.v = ks[(ks.indexOf(s.v) + (ev.key === 'ArrowRight' ? 1 : -1) + 4) % 4]; sattUrl('v', s.v); Object.assign(s, tom()); rita()
+    }
+    return
+  }
+  const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[ev.key]
+  // Fälten: ↑/↓ stegar, Enter tar värdet.
+  if (el.matches?.('[data-mm], [data-pct]')) {
+    if (ev.key === 'Enter') { ev.preventDefault(); taFalt(el) }
+    else if (ev.key === 'ArrowUp' || ev.key === 'ArrowDown') { ev.preventDefault(); const n = (ev.shiftKey ? 5 : 1) * (el.dataset.mm ? STEG : 1) * (ev.key === 'ArrowUp' ? 1 : -1); el.value = String(Number(el.value) + n); taFalt(el) }
+    return
+  }
+  if (!d) { matt(); return }
+  const steg = ev.shiftKey ? STEG * 5 : STEG
+  const zel = el.closest?.('[data-zon]')
+  if (zel) {
+    ev.preventDefault()
+    s.vald = zel.dataset.zon; const z = zon()
+    // Alt+pil ändrar storleken (#554) — i A, B och C; i Nu gör pilarna bara det de gör i dag.
+    if (ev.altKey && s.v !== 'nu') { if (z.kind !== 'pile') { satt(z, { w: z.w + d[0] * steg, h: z.h + d[1] * steg }); kvitto('Alt+pil (storlek)') } }
+    else { satt(z, { x: z.x + d[0] * steg, y: z.y + d[1] * steg }); kvitto('pil (flytt)') }
+    omFokus(`[data-zon="${z.id}"]`); return
+  }
+  const cs = ev.shiftKey ? 10 : 2
+  if (el.matches?.('[data-grepp]')) {
+    ev.preventDefault(); const h = el.dataset.grepp, c = s.crop
+    const x1 = h.includes('w') ? c.x + d[0] * cs : c.x, x2 = h.includes('e') ? c.x + c.w + d[0] * cs : c.x + c.w
+    const y1 = h.includes('n') ? c.y + d[1] * cs : c.y, y2 = h.includes('s') ? c.y + c.h + d[1] * cs : c.y + c.h
+    sattCrop({ x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) }); kvitto('pil på hörn (storlek)'); omFokus(`[data-grepp="${h}"]`); return
+  }
+  if (el.id === 'utsnitt') { ev.preventDefault(); sattCrop({ x: s.crop.x + d[0] * cs, y: s.crop.y + d[1] * cs }); kvitto('pil (flytt)'); omFokus('#utsnitt') }
+})
+document.addEventListener('focusin', matt)
+const sattUrl = (k, v) => { const u = new URL(location.href); u.searchParams.set(k, v); history.replaceState(null, '', u) }
+addEventListener('resize', skala)
+const q = new URLSearchParams(location.search)
+if (['nu', 'a', 'b', 'c'].includes(q.get('v'))) s.v = q.get('v')
+if (['bord', 'media'].includes(q.get('y'))) s.y = q.get('y')
+if (['1280x800', '1024x768'].includes(q.get('s'))) s.storlek = q.get('s')
+rita()
+</script>
+</body>
+</html>

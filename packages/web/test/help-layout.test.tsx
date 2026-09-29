@@ -161,7 +161,9 @@ describe.each([1280, 1024])('the three surfaces L32 measured, at %ipx', (width) 
   it.each(SURFACES)('$name: the line is at most two lines, and the same height with the help open', async (surface) => {
     const { closed, open } = await measure(width, surface)
     // Six lines it was; two is the ceiling, so a wider face on CI may wrap once and still pass.
-    expect(closed.line.h).toBeLessThan(3 * closed.lineHeight)
+    // Uppställningen's line holds a chosen zone's fields since #579 (L50) and is one tap tall
+    // (44 px) whether or not a zone is chosen: a row of controls, not a third line of words.
+    expect(closed.line.h).toBeLessThan(Math.max(3 * closed.lineHeight, 44 + 1))
     expect(open.line.h).toBe(closed.line.h)
     expect(open.column.h).toBe(closed.column.h)
   }, 90_000)

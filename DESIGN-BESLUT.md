@@ -5302,3 +5302,28 @@ Priset är att Tab inte längre tar sig till nästa rad: raderna byts med ↑ oc
 Följdkrav:
 Varje ny kontroll i en rad ska bära radens tabbstopp (`stop(cardRef)` i `DataTable.tsx`), annars blir den ett stopp i varje rad igen.
 `data-table-row-stop.test.tsx` håller regeln med riktiga tangenttryck.
+
+### L50. En zon och ett utsnitt flyttas och ändrar storlek utan att dras (prototypat och beslutat 2026-09-29, #579, #554)
+
+En zon på filten flyttades med en pekare bara genom att dras, och dess storlek ändrades bara genom att dra ett hörn på 12 px, också med tangentbordet (WCAG 2.5.7 och 2.1.1).
+Beskärningens utsnitt ändrade storlek med en pekare bara genom att dra ett hörn.
+
+Tre varianter prövades i en prototyp, med samma uppgift i båda ytorna: fält, stegknappar och en blandning.
+Beställaren valde blandningen.
+
+- **Zonens läge och storlek är fält i millimeter**, i raden över filten där siffrorna redan stod (#480): x och y, och för en zon med storlek b och h.
+  Ett fält tar sitt värde när det lämnas eller vid Enter, och ↑/↓ i fältet stegar som pilarna på handtaget (10 mm, fem gånger så mycket med Skift).
+  Ett läge hålls där halva zonen står kvar på bordet, som ett drag och en knuff (#480), och en storlek går aldrig under 40 mm.
+  Raden är alltid 44 px hög, så att filten inte flyttar sig under handen när en zon väljs.
+  Den som bara läser ser siffrorna som text, som förut.
+- **Alt och en pil på handtaget ändrar zonens storlek** från det övre vänstra hörnet och säger den nya storleken. En hög har ingen storlek och svarar inte.
+- **Beskärningen får en knappsats bredvid bilden:** fyra pilar som flyttar utsnittet, och «Mindre» och «Större» runt dess mitt.
+  Den står bredvid bilden och inte under den, eftersom L33 lovar att ingenting under bilden kräver rullning vid 1280×800, och höjden är det arket saknar.
+  Ingen zoom (L33).
+  Ett tryck är en ändring i historiken, som en tangent, och ett tryck som inte ändrar något är ingen ändring.
+
+En zon har mått i millimeter som designern redan läser, så där är fält exakta och billiga.
+Ett utsnitt bedöms med ögat, och procent av en bild är inget man tänker i, så där är knappar rätt form.
+
+Följdkrav:
+Varje väg som flyttar eller ändrar en zons storlek går genom `zone-geometry.ts` (`onTableOf`, `sizedBy`), så att ett skrivet läge hamnar exakt där ett draget skulle ha hamnat.
