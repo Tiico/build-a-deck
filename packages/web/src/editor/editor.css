@@ -1151,7 +1151,10 @@
    question — which is not up most of the time — takes only the height its words need. */
 /* `relative` for the typeface catalog's sheet (#329, L27), which is the canvas' own bottom
    edge and nothing else's: 62 % of the canvas, and never over the layers or the properties. */
-.byd-canvas-main { position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
+/* Its one column is named and may shrink to nothing: an implicit track is `auto`, and `auto` grows to
+   the widest thing in it that will not wrap — the card row's values, which were meant to be cut
+   short — so the column spilled 30 px over the properties at 1024 (#478). */
+.byd-canvas-main { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
 /* The stage and the zoom band beside it (#146, L19). The band is the canvas' own corner and not
    the crown's, and it is outside the thing that scrolls: a control that pans away with the card is
    gone exactly when the card is big enough to need it. It is outside the stage altogether, which
@@ -1441,9 +1444,12 @@
 .byd-card-row { position: relative; display: flex; align-items: center; gap: var(--byd-s2); padding: var(--byd-s1) var(--byd-s3); border-top: 1px solid #2f333d; background: #14161c; }
 .byd-card-row > button { border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; cursor: pointer; }
 .byd-card-row > button:disabled { color: var(--byd-editor-quiet); cursor: default; }
-.byd-card-row-name { display: inline-flex; align-items: baseline; gap: var(--byd-s2); min-width: 0; max-width: 40%; padding: 0 var(--byd-s3); }
+/* A grid of one row and not a flex line: a flex line fills the button's 44 px, so the baseline the
+   name and its count share sat at the button's top edge. One grid row is as tall as its words and
+   stands in the middle of the button, the way the steps either side of it do. */
+.byd-card-row-name { display: inline-grid; grid-template-columns: minmax(0, auto) auto; align-items: baseline; align-content: center; gap: var(--byd-s2); min-width: 0; max-width: 40%; padding: 0 var(--byd-s3); }
 .byd-card-row-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
-.byd-card-row-name small { flex: 0 0 auto; color: #9aa3b8; }
+.byd-card-row-name small { color: #9aa3b8; }
 .byd-card-row-values { flex: 1 1 auto; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #9aa3b8; font-size: 12px; }
 .byd-card-row-values b { color: #c7cede; font-weight: 600; }
 .byd-card-row-list { position: absolute; left: var(--byd-s3); bottom: calc(100% + 4px); z-index: 20; display: grid; gap: var(--byd-s1); width: min(320px, calc(100% - 24px)); max-height: 50vh; padding: var(--byd-s2); border: 1px solid #3b4358; border-radius: 10px; background: #1b1f2a; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5); }
