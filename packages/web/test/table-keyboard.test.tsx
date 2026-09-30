@@ -403,3 +403,24 @@ describe('«Titta» on the TV shows the card to the room (#508)', () => {
     other.close()
   })
 })
+
+// A pointer with no drag reaches a move too (#552, WCAG 2.5.7): the ring on a card on the felt
+// offers «Flytta…», which opens the keyboard's own panel on that card rather than a second list
+// of places, so the hand and the keys are offered the same «Flytta till».
+describe('the ring on a card on the felt offers «Flytta…» (#552)', () => {
+  it('opens the address panel where the card stands, and a place chosen there moves it', async () => {
+    const { id, other } = await tableWithTwoCards(withMarket())
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /^dragon, kort i Spelyta/ }))
+    const ring = document.querySelector('[data-radial]')!
+    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Vänd', 'Vrid', 'Titta', 'Avslöja', 'Flytta…'])
+
+    await user.click(within(ring as HTMLElement).getByRole('button', { name: 'Flytta…' }))
+    const panel = await screen.findByRole('dialog', { name: 'Handlingar för dragon' })
+    expect(document.querySelector('[data-radial]')).toBeNull()
+    expect(panel.contains(document.activeElement)).toBe(true)
+    await user.click(within(panel).getByRole('button', { name: /^Marknad/ }))
+    await waitFor(async () => expect((await lastIntents(id, 2))[0]).toMatchObject({ v: 'move', component: 'c0', to: 'market' }))
+    other.close()
+  })
+})

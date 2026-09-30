@@ -85,6 +85,7 @@ export const svPlay = {
   'ring.look': 'Titta',
   'ring.rotate': 'Vrid',
   'ring.reveal': 'Avslöja',
+  'ring.move': 'Flytta…',
   'ring.shuffle': 'Blanda',
   'ring.draw': 'Dra 1',
   'ring.half': 'Dela på hälften',
@@ -312,6 +313,8 @@ export const svPlay = {
   'player.hand.read': 'Läs valt kort',
   'player.hand.chosen': 'Valt: {name}',
   'player.hand.none': 'Inget kort valt',
+  'player.hand.left': 'Flytta vänster',
+  'player.hand.right': 'Flytta höger',
   'player.hand.empty': 'Tom hand. Dra ett kort ur draghögen.',
   // Läsvyn går igenom raden kortet lyftes ur (#507): handen, ytan framför dig, eller en annan yta.
   'player.read.prev': 'Föregående kort',

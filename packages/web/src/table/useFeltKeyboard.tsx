@@ -114,6 +114,11 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || now.open !== null) return
       const el = event.target
       if (el instanceof HTMLElement && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return
+      // A bare key is the felt's only while the felt has the hand (#552, beslut 2026-09-30): the
+      // focus on the felt or on something on it, or nowhere. On a control beside the felt the key
+      // is that control's, and a card the pointer merely rests on is not turned (WCAG 2.1.4).
+      const at = document.activeElement
+      if (at instanceof HTMLElement && at !== document.body && !at.closest('.byd-table-frame')) return
       if (now.view === null) return
       const intents = shortcutIntents(now.view, event.key, pointing.current)
       if (!intents) return

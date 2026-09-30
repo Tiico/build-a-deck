@@ -5452,3 +5452,25 @@ Beställaren valde den sista.
 - Uppställningen har kvar bildtexten som väg in (#270).
 
 Mätt i prototypen: fem rubriker hittas i stället för en, med lika många tabbstopp och lika många tryck in till ett block.
+
+### L53. Filtens tangenter verkar bara när filten har handen, och ringen och remsan flyttar utan att dra (prototypat och beslutat 2026-09-30, #552)
+
+F, D och S verkade på kortet under pekaren var fokus än stod, också när man skrev i ett fält, och de gick inte att stänga av (WCAG 2.1.4).
+Ringen på ett kort som redan låg på filten hade ingen flytt, och remsans ordning på telefonen gick bara att ändra genom att dra (2.5.7).
+
+Fyra varianter prövades i en prototyp: som i dag, bara på filten, en brytare under «?» och båda.
+Beställaren valde bara på filten.
+
+- **F, D och S verkar bara när fokus står på filten, på något på den, eller ingenstans** (sidan själv).
+  Står fokus i ett fält eller på en kontroll utanför filten gör tangenten det den gör där.
+  En genväg som bara är aktiv när dess komponent har fokus uppfyller 2.1.4 utan en inställning, och en mus som bara pekar på filten fungerar som förut.
+  Det gäller `/online` och `/table`.
+- **Ringen på ett kort på filten får «Flytta…»**, som stänger ringen och öppnar K16:s adresspanel där kortet står.
+  Det är samma panel och samma «Flytta till» som tangentbordet har, och ingen ny vokabulär.
+  Utan tangentbordets lager finns ingen panel, och då ingen «Flytta…».
+  En hög har kvar sina verb: det som flyttas från en hög är dess översta kort, och det nås genom att dra, med «Dra 1» och från panelen.
+- **Handens åtgärder på telefonen får «← Flytta vänster» och «Flytta höger →»** för det valda kortet, som Alt och en pil i remsan (K4).
+  Varje tryck byter plats med grannen, kortet förblir valt och fokus stannar på knappen.
+  Vid en ände är knappen `aria-disabled`, så fokus som bar kortet dit inte tappas.
+
+Brytaren i B och C är ett andra skydd för den som styr med rösten medan fokus står på filten; den kan läggas till senare utan att något annat ändras.

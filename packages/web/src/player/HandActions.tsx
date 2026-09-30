@@ -9,7 +9,7 @@ import { targetsOf, type Placement } from './PlaySheet.js'
 //
 // Reading is not one of them (#507, beslut A): a tap on the card holds it up, so «Läs valt kort»
 // was a second way to do what the first press already does, and it cost two presses to get there.
-export function HandActions({ view, cards, pending, onPlay, onMore, refusal, refusedZone }: {
+export function HandActions({ view, cards, pending, onPlay, onMore, refusal, refusedZone, order }: {
   view: Snapshot
   cards: VisibleComponentState[]
   pending: boolean
@@ -17,6 +17,8 @@ export function HandActions({ view, cards, pending, onPlay, onMore, refusal, ref
   refusedZone?: string | null
   onPlay(zone: string, at: Placement): void
   onMore(card: VisibleComponentState): void
+  // Where the one chosen card stands in the strip, and a step along it (#552).
+  order?: { at: number; of: number; onStep(by: -1 | 1): void } | undefined
 }) {
   const t = useT()
   const first = cards[0]
@@ -43,6 +45,19 @@ export function HandActions({ view, cards, pending, onPlay, onMore, refusal, ref
         ))}
         <button type="button" disabled={!first || pending} onClick={() => first && onMore(first)}>{t('player.mine.play')}</button>
       </div>
+      {order && order.of > 1 && (
+        // The strip's order without a drag (#552, beslut A; WCAG 2.5.7): what Alt and an arrow do
+        // on the strip (K4). At an end the button stays where it is and says it can go no further,
+        // so the focus that carried the card there is not dropped to the page (`aria-disabled`).
+        <div className="byd-hand-order">
+          <button type="button" aria-disabled={order.at === 0 ? true : undefined} onClick={() => order.at > 0 && order.onStep(-1)}>
+            <span aria-hidden="true">←</span> {t('player.hand.left')}
+          </button>
+          <button type="button" aria-disabled={order.at === order.of - 1 ? true : undefined} onClick={() => order.at < order.of - 1 && order.onStep(1)}>
+            {t('player.hand.right')} <span aria-hidden="true">→</span>
+          </button>
+        </div>
+      )}
     </section>
   )
 }

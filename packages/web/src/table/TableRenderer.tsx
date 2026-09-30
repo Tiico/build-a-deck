@@ -1084,7 +1084,18 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     setPointed(null)
     setRead({ c, target: { kind: 'card', id: c.id }, at: { left: ring.x, right: ring.x, top: ring.y, bottom: ring.y }, standIn: !byId.has(c.id) })
   }
-  const ringVerbs = ring && onAct ? ringItems(view, ring, setRing, onAct, look, setEntry, t) : []
+  // «Flytta…» hands the card to the keyboard's own panel, where it stands (#552): the ring closes
+  // and the panel opens on the same node, so a pointer that cannot drag is offered the very
+  // «Flytta till» the keys are. Without the keyboard layer there is no panel to hand it to.
+  const moveOn = (target: Ring['target']) => {
+    const key = ringKey(target)
+    if (!keyboard?.labels.has(key)) return undefined
+    return () => {
+      setRing(null)
+      keyboard.onActivate(key)
+    }
+  }
+  const ringVerbs = ring && onAct ? ringItems(view, ring, setRing, onAct, look, setEntry, moveOn(ring.target), t) : []
   // What is lifted now, read off the table as it is now: a card turned since is drawn turned, and
   // one that has left what this screen sees is not drawn at all.
   const liftOf = (l: Lift | null): Lift | null => {
@@ -1650,7 +1661,7 @@ function ringLabel(view: Snapshot, target: Ring['target'], t: T): string | undef
 }
 
 // The verbs a drag cannot say (C): for a card, for a pile, for a chip, and for a pile of chips.
-function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void, enter: (c: VisibleComponentState) => void, t: T): RadialItem[] {
+function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void, enter: (c: VisibleComponentState) => void, move: (() => void) | undefined, t: T): RadialItem[] {
   const target = ring.target
   const flip = (c: VisibleComponentState): RadialItem => ({ label: t('ring.flip'), run: () => act([{ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' }]) })
   const look = (c: VisibleComponentState | undefined): RadialItem => ({ label: t('ring.look'), run: c ? () => inspect(c) : null })
@@ -1682,6 +1693,7 @@ function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (in
       { label: t('ring.rotate'), run: () => act([{ v: 'rotate', component: c.id, rot: (c.rot + 90) % 360 }]) },
       look(c),
       { label: t('ring.reveal'), run: c.cardRef === null ? () => act([{ v: 'reveal', components: [c.id] }]) : null },
+      ...(move ? [{ label: t('ring.move'), run: move }] : []),
     ]
   }
   const z = view.zones.find((x) => x.id === target.pile)
