@@ -112,6 +112,8 @@ export const svEditor = {
   'editor.startTable': 'Starta bord',
   'editor.startingTable': 'Startar bordet…',
   'editor.updateTable': 'Uppdatera bordet',
+  'editor.updateTable.short': 'Uppdatera',
+  'editor.updatingTable.short': 'Uppdaterar…',
   'editor.updatingTable': 'Uppdaterar bordet…',
   'editor.table.started': 'Nytt bord startat på {version} —',
   'editor.table.refreshed': 'Bordet uppdaterat på {version} —',

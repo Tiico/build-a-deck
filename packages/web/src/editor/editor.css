@@ -156,11 +156,18 @@
      target and mostly air, the name is no control, and at 1024 in English with DejaVu the name was
      1 px short once the ⋯ and its gap were in the row. */
   .byd-editor > header > .byd-editor-more { margin-left: -4px; }
-  /* Saved is a tick here (#566, beslut 2026-09-30): the step buttons took the room, and with a table
-     running the game's name was cut. Its word is still what a reader hears; «Osparat», the state
-     that asks for something, keeps its word and its colour. */
+}
+/* Below 1440 on the desk the step buttons (#566) took the room the row had left (beslut 2026-09-30):
+   measured on CI's DejaVu with a table running, the game's name and «Uppdatera bordet» were 19 to
+   40 px short. So «Sparat» is a tick — its word is still what a reader hears, and «Osparat», the
+   state that asks for something, keeps its word and colour — and the primary says its errand short,
+   named whole. */
+.byd-editor-primary-short { display: none; }
+@media (min-width: 1024px) and (max-width: 1439px) {
   .byd-editor > header > .byd-editor-saved[data-unsaved='false'] { font-size: 0; }
   .byd-editor > header > .byd-editor-saved[data-unsaved='false']::before { content: '✓'; font-size: 16px; }
+  .byd-editor-primary-long { display: none; }
+  .byd-editor-primary-short { display: inline; }
 }
 /* The same air, given more gently, where the desk is wide but not wide: at 1280 in English the row
    had 4 px left with DejaVu (#477). */

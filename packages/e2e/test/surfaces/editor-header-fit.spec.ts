@@ -38,6 +38,10 @@ for (const locale of ['sv-SE', 'en-GB']) {
           return out
         })
         expect(clipped).toEqual({})
+        // Below 1440 the primary says its errand short, and still names it whole (#566, beslut
+        // 2026-09-30): the step buttons took the room its last word stood in.
+        await expect(primary).toHaveAccessibleName(locale === 'sv-SE' ? 'Uppdatera bordet' : 'Update the table')
+        expect((await primary.innerText()).trim()).toBe(locale === 'sv-SE' ? 'Uppdatera' : 'Update')
 
         // «Nytt bord» stands in the caret's menu at every width (beslut 2026-09-27, #477 fynd 4 B):
         // one place, one press away, above «Alla bord».

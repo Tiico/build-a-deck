@@ -558,8 +558,25 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const tableAction = table ? (updating ? 'editor.updatingTable' : 'editor.updateTable') : updating ? 'editor.startingTable' : 'editor.startTable'
   // A tester runs tables and a viewer does not (D3, #489).
   const updateButton = !client.mayStartTables ? null : (
-    <button type="button" className="byd-editor-primary byd-primary" data-table-kind={table ? table.kind : 'none'} aria-disabled={updating} aria-busy={updating} onClick={() => void updateTable()}>
-      {t(tableAction)}
+    <button
+      type="button"
+      className="byd-editor-primary byd-primary"
+      data-table-kind={table ? table.kind : 'none'}
+      aria-disabled={updating}
+      aria-busy={updating}
+      // Below 1440 the errand is said short (#566, beslut 2026-09-30): the step buttons took the room
+      // its last word stood in. The name is whole at every width, and begins with what is drawn.
+      {...(table ? { 'aria-label': t(tableAction) } : {})}
+      onClick={() => void updateTable()}
+    >
+      {table ? (
+        <>
+          <span className="byd-editor-primary-long">{t(tableAction)}</span>
+          <span className="byd-editor-primary-short" aria-hidden="true">{t(updating ? 'editor.updatingTable.short' : 'editor.updateTable.short')}</span>
+        </>
+      ) : (
+        t(tableAction)
+      )}
     </button>
   )
 

@@ -94,6 +94,8 @@ export const enEditor = {
   'editor.startTable': 'Start a table',
   'editor.startingTable': 'Starting the table…',
   'editor.updateTable': 'Update the table',
+  'editor.updateTable.short': 'Update',
+  'editor.updatingTable.short': 'Updating…',
   'editor.updatingTable': 'Updating the table…',
   'editor.table.started': 'New table started on {version} —',
   'editor.table.refreshed': 'Table updated to {version} —',
