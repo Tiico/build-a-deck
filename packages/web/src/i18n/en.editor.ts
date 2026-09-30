@@ -596,6 +596,8 @@ export const enEditor = {
   'canvas.point.handle.in': 'In-handle for point {n}',
   'canvas.point.handle.out': 'Out-handle for point {n}',
   'canvas.point.least': 'A shape needs at least three points.',
+  'canvas.props.shape.more': 'More shapes ({n})',
+  'canvas.props.shape.fewer': 'Fewer shapes',
   'canvas.props.own': 'Customise the points',
   'canvas.props.straight': 'Straighten the point',
   'canvas.props.straightAll': 'Straighten all',

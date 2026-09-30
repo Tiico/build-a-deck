@@ -1576,14 +1576,17 @@
 .byd-props-wide { grid-column: 1 / -1; }
 /* A number and its grip (L25). The icon is the field's name and the thing to pull it by: three
    dots of a rule beside a glyph, so the drag is visible before anyone hovers over it. */
-.byd-props-f { display: grid; grid-template-columns: 27px minmax(0, 1fr) 20px; align-items: center; gap: 3px; min-height: 28px; }
+/* The grip is a 44 by 44 target (#570): three dots and the field's letter, drawn as before, in a
+   square a finger or a pointer can take hold of. */
+.byd-props-f { display: grid; grid-template-columns: var(--byd-tap) minmax(0, 1fr) 20px; align-items: center; gap: 3px; min-height: var(--byd-tap); }
 .byd-props-grip {
   display: grid;
   grid-template-columns: 3px auto;
   align-items: center;
   justify-items: center;
   gap: 3px;
-  height: 24px;
+  height: var(--byd-tap);
+  border-radius: 6px;
   color: var(--byd-editor-quiet);
   font-size: 10px;
   cursor: ew-resize;
@@ -1597,7 +1600,7 @@
   border-radius: 2px;
   background: repeating-linear-gradient(to bottom, #4a5162 0 2px, transparent 2px 4px);
 }
-.byd-props-grip:hover, .byd-props-grip:focus-visible { color: #cfe0ff; }
+.byd-props-grip:hover, .byd-props-grip:focus-visible { color: #cfe0ff; background: #1b1f29; }
 .byd-props-unit { font-style: normal; font-size: 10px; color: var(--byd-editor-quiet); }
 .byd-props label { display: grid; gap: 3px; font-size: 11px; color: #9aa3b8; }
 .byd-props input, .byd-props select { background: #0f1115; border: 1px solid #2a2d36; color: #fff; border-radius: 6px; padding: 4px 8px; font-size: 13px; width: 100%; box-sizing: border-box; }
@@ -3216,28 +3219,24 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 /* What a shape is (L17). The gallery, the tiles and the shadow's presets are three grids of
    buttons in a 280 px panel, so they are sized by what fits rather than by a fixed count: the
    panel is the narrowest thing in the editor and the one that has to hold the most. */
-/* Thirty pixels and not forty-four (L25). Seventeen tiles at 44 took forty-four per cent of the
-   panel; at 30 five stand on a row. The exception from the tap rule is these tiles and nothing
-   else in the panel: they are pointed at with a mouse on a desktop-first surface (L12), and they
-   lie in a grid where the neighbour is the same kind of thing — a miss is another shape and not a
-   lost action. */
-.byd-props-gallery { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(30px, 1fr)); gap: 3px; }
+.byd-props-gallery { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: var(--byd-s1); }
+/* At the editor's floor of 44 (#570, beslut B, L25 reviderad): five outlines in the row and
+   «Fler former» for the rest, rather than all seventeen at thirty. */
 .byd-props-gallery button {
   display: grid;
   place-items: center;
-  min-height: 26px;
-  /* The editor's floor under every button is 44 (docs/UX-KONTROLLER.md), and this is the one
-     place L25 lifts it. Said here in both directions, because a tile that is 30 tall and 44 wide
-     is three to a row again — which is the whole of what the decision was about. */
-  min-width: 30px;
-  padding: 2px; /* undantag: brickan är 30 px och bilden i den 20 × 15 (L25) */
+  min-height: var(--byd-tap);
+  min-width: var(--byd-tap);
+  padding: 0;
   border: 1px solid #2a2d36;
-  border-radius: 5px;
+  border-radius: 6px;
   background: #0f1115;
   color: #cdd5e6;
   cursor: pointer;
 }
 .byd-props-gallery button:hover { border-color: var(--byd-editor-primary-mark); }
+.byd-props-more { grid-column: 1 / -1; min-height: var(--byd-tap); border: 1px solid #2a2d36; border-radius: 6px; background: #0f1115; color: #cdd5e6; font: inherit; font-size: 12px; cursor: pointer; }
+.byd-props-more:hover { border-color: var(--byd-editor-primary-mark); }
 /* Chosen is a colour and an edge, not a colour alone: the gallery's pictures are single-colour
    shapes, so the one thing that cannot carry the state is the picture itself. */
 .byd-props-gallery button[aria-pressed='true'], .byd-props-chips button[aria-pressed='true'] {
