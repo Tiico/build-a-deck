@@ -35,7 +35,7 @@ import type { Motif } from '@byd/template'
 import { statusLinks } from '../status/links.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
-import { useLang, useT } from '../i18n/index.js'
+import { useLang, useT, type T } from '../i18n/index.js'
 import './editor.css'
 
 const PlaytestPrototype = import.meta.env.DEV ? lazy(() => import('./prototype/PlaytestWorkspace.js')) : null
@@ -558,8 +558,25 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const tableAction = table ? (updating ? 'editor.updatingTable' : 'editor.updateTable') : updating ? 'editor.startingTable' : 'editor.startTable'
   // A tester runs tables and a viewer does not (D3, #489).
   const updateButton = !client.mayStartTables ? null : (
-    <button type="button" className="byd-editor-primary byd-primary" data-table-kind={table ? table.kind : 'none'} aria-disabled={updating} aria-busy={updating} onClick={() => void updateTable()}>
-      {t(tableAction)}
+    <button
+      type="button"
+      className="byd-editor-primary byd-primary"
+      data-table-kind={table ? table.kind : 'none'}
+      aria-disabled={updating}
+      aria-busy={updating}
+      // Below 1440 the errand is said short (#566, beslut 2026-09-30): the step buttons took the room
+      // its last word stood in. The name is whole at every width, and begins with what is drawn.
+      {...(table ? { 'aria-label': t(tableAction) } : {})}
+      onClick={() => void updateTable()}
+    >
+      {table ? (
+        <>
+          <span className="byd-editor-primary-long">{t(tableAction)}</span>
+          <span className="byd-editor-primary-short" aria-hidden="true">{t(updating ? 'editor.updatingTable.short' : 'editor.updateTable.short')}</span>
+        </>
+      ) : (
+        t(tableAction)
+      )}
     </button>
   )
 
@@ -594,6 +611,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         <span className="byd-editor-saved" role="status" data-unsaved={unsaved}>
           {t(unsaved ? 'editor.unsaved' : 'editor.saved')}
         </span>
+        {client.mayEdit && <StepButtons client={client} onConfirm={confirmation.confirm} />}
         {/* The modes are the header's on a desk; below one they are the stage strip at the
             bottom of the screen, and mounting both would put two of every tab in the document. */}
         {room === 'desk' && <EditorTabs mode={mode} onSelect={(m) => setStage(m === 'template' ? 'canvas' : m)} />}
@@ -873,14 +891,39 @@ function EditorChords({ client, onSave, onConfirm, onReading }: { client: Projec
       // shortcut is answered in the reading band, rather than doing nothing without a word.
       if (!now.client.mayEdit) return now.onReading()
       if (chord === 'save') return now.onSave()
-      const what = chord === 'undo' ? now.client.undo() : now.client.redo()
-      // Nothing behind, or nothing ahead: the editor says nothing rather than claiming it undid.
-      if (what) now.onConfirm(now.t(chord === 'undo' ? 'undo.took' : 'undo.redid', { what: now.t(what) }))
+      takeStep(now.client, chord, now.t, now.onConfirm)
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [])
   return null
+}
+
+// A step back or forward, and what it took said in the confirmation — the one way both the keys and
+// the header's buttons take it (#566). Nothing behind, or nothing ahead: the editor says nothing
+// rather than claiming it undid.
+function takeStep(client: ProjectClient, dir: 'undo' | 'redo', t: T, onConfirm: (text: string) => void): void {
+  const what = dir === 'undo' ? client.undo() : client.redo()
+  if (what) onConfirm(t(dir === 'undo' ? 'undo.took' : 'undo.redid', { what: t(what) }))
+}
+
+// Undo and redo for a hand without a keyboard (#566, beslut D; L12's addition for large tablets):
+// in the header, in every tab, since the stack is the project's and not a tab's. Each is named
+// for what it would take, and refused — still there, and saying so — when there is nothing.
+function StepButtons({ client, onConfirm }: { client: ProjectClient; onConfirm(text: string): void }) {
+  const t = useT()
+  const back = client.undoWhat
+  const ahead = client.redoWhat
+  return (
+    <span className="byd-editor-steps">
+      <button type="button" aria-label={back ? t('undo.button', { what: t(back) }) : t('undo.button.none')} title={back ? t('undo.button', { what: t(back) }) : t('undo.button.none')} aria-disabled={back === null} onClick={() => back && takeStep(client, 'undo', t, onConfirm)}>
+        <span aria-hidden="true">↶</span>
+      </button>
+      <button type="button" aria-label={ahead ? t('redo.button', { what: t(ahead) }) : t('redo.button.none')} title={ahead ? t('redo.button', { what: t(ahead) }) : t('redo.button.none')} aria-disabled={ahead === null} onClick={() => ahead && takeStep(client, 'redo', t, onConfirm)}>
+        <span aria-hidden="true">↷</span>
+      </button>
+    </span>
+  )
 }
 
 function homeUrl(server: string | null): string {

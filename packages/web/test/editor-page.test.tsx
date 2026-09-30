@@ -360,13 +360,17 @@ describe('the editor by keyboard alone (UX-04)', () => {
 
     // "Mina spel" is the header's first stop (#8) — a way back belongs before what it leads away
     // from — then the game's own ⋯ beside its name (#542), and then the revision, which names the
-    // version and opens the history (B4). The tablist follows them, and the arrow keys move inside
-    // it as before.
+    // version and opens the history (B4). The step back and forward follow the save status they
+    // belong to (#566), and then the tablist, where the arrow keys move inside it as before.
     await user.tab()
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fler val för Skogens herrar' }))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: /rev 1/ }))
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ångra: inget att ta tillbaka' }))
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Gör om: inget att göra om' }))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Kortvägg' }))
     await user.keyboard('{ArrowRight}{Enter}')
@@ -389,8 +393,9 @@ describe('the layers of the template by keyboard (UX-04)', () => {
     history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
-    // «Mina spel», the game's ⋯ (#542) and the revision, and then the tablist.
-    for (let i = 0; i < 4; i++) await user.tab()
+    // «Mina spel», the game's ⋯ (#542), the revision, the step back and forward (#566), and then
+    // the tablist.
+    for (let i = 0; i < 6; i++) await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Kortvägg' }))
     await user.keyboard('{ArrowRight}{Enter}')
     expect(layerNames()).toEqual(['body', 'title', 'frame'])

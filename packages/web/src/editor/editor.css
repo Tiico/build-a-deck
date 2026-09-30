@@ -157,6 +157,18 @@
      1 px short once the ⋯ and its gap were in the row. */
   .byd-editor > header > .byd-editor-more { margin-left: -4px; }
 }
+/* Below 1440 on the desk the step buttons (#566) took the room the row had left (beslut 2026-09-30):
+   measured on CI's DejaVu with a table running, the game's name and «Uppdatera bordet» were 19 to
+   40 px short. So «Sparat» is a tick — its word is still what a reader hears, and «Osparat», the
+   state that asks for something, keeps its word and colour — and the primary says its errand short,
+   named whole. */
+.byd-editor-primary-short { display: none; }
+@media (min-width: 1024px) and (max-width: 1439px) {
+  .byd-editor > header > .byd-editor-saved[data-unsaved='false'] { font-size: 0; }
+  .byd-editor > header > .byd-editor-saved[data-unsaved='false']::before { content: '✓'; font-size: 16px; }
+  .byd-editor-primary-long { display: none; }
+  .byd-editor-primary-short { display: inline; }
+}
 /* The same air, given more gently, where the desk is wide but not wide: at 1280 in English the row
    had 4 px left with DejaVu (#477). */
 @media (min-width: 1280px) and (max-width: 1439px) {
@@ -335,7 +347,24 @@
 .byd-editor-notice { min-width: 0; color: #f0b64a; }
 /* What just happened, beside it and quieter: nothing is wrong, so nothing is amber, and it wraps
    for the same reason the amber one does. */
-.byd-editor-confirm { min-width: 0; color: var(--byd-editor-confirm-ink); }
+/* What just happened stands at the bottom of the screen and not in the header (#566, beslut D): said
+   in the header it squeezed the game's name and, beside the step buttons, took «Spara» and «Starta
+   bord» off their own width. It is transient and read out politely, so it lies over the work for
+   the moment it stands, and the header keeps every control whole. */
+.byd-editor-confirm {
+  position: fixed; left: 50%; bottom: var(--byd-s4, 16px); transform: translateX(-50%); z-index: 60;
+  max-width: calc(100vw - 32px); padding: var(--byd-s2) var(--byd-s4, 16px); box-sizing: border-box;
+  border: 1px solid #3a4152; border-radius: 10px; background: #1b1f29; box-shadow: 0 10px 30px rgb(0 0 0 / 0.5);
+  color: #dce3f2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;
+}
+/* Undo and redo for a hand without a keyboard (#566): two 44 px steps beside the save status. */
+.byd-editor-steps { display: inline-flex; gap: 2px; flex: 0 0 auto; }
+.byd-editor-steps button {
+  min-width: var(--byd-tap); min-height: var(--byd-tap); padding: 0; border: 1px solid #2a2d36; border-radius: 8px;
+  background: #0f1115; color: #dce3f2; font: 700 18px/1 system-ui, sans-serif; cursor: pointer;
+}
+.byd-editor-steps button:hover:not([aria-disabled='true']) { border-color: var(--byd-editor-primary-mark); }
+.byd-editor-steps button[aria-disabled='true'] { color: var(--byd-editor-quiet); cursor: default; }
 .byd-editor > header > button { min-height: var(--byd-tap); min-width: var(--byd-tap); border: 1px solid #2f333d; border-radius: 8px; padding: 0 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 /* A control that cannot be pressed goes quiet — but the quiet is for a button drawn on the
    header's own ground, and a first action is not drawn on it: it is filled. Laid over that fill
