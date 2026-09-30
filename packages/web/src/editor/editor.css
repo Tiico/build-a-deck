@@ -568,7 +568,7 @@
    because the page's own scrolling has to know it too — focus that the page scrolls to must not
    land behind the strip that stays (WCAG 2.4.11). */
 :root:has(.byd-editor) { --byd-editor-stagebar-h: calc(44px + 2 * 4px + 1px); }
-.byd-editor-stagebar { box-sizing: border-box; min-height: var(--byd-editor-stagebar-h); }
+.byd-editor-stagebar { box-sizing: border-box; height: var(--byd-editor-stagebar-h); }
 @media (max-height: 560px) {
   :root:has(.byd-editor:not([data-room='desk'])) { scroll-padding-bottom: var(--byd-editor-stagebar-h); scroll-snap-type: y proximity; }
   .byd-editor:not([data-room='desk']) { height: auto; min-height: 100vh; }
