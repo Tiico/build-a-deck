@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { suggestFieldKey, type FieldKind } from './fields.js'
 import { placedProps, usePlacement } from './placement.js'
 import { useT } from '../i18n/index.js'
@@ -43,6 +43,14 @@ export function NewField({ taken, keeps = true, kind, onCreate, onCancel }: NewF
   // of the window is the very thing that falls away (#229).
   const form = useRef<HTMLFormElement>(null)
   const place = usePlacement(true, form)
+  // The caret goes into the name as the form is drawn, and nothing is scrolled to show it (#611).
+  // The form is placed in the room the window has, so it never needs a scroll to be seen — but it
+  // is focused before a lifted door around it has left the table it hangs from, and `autoFocus`
+  // then scrolled the table down to reveal a box that was about to stand over it anyway.
+  const nameBox = useRef<HTMLInputElement>(null)
+  useLayoutEffect(() => {
+    nameBox.current?.focus({ preventScroll: true })
+  }, [])
   return (
     <form
       ref={form}
@@ -60,7 +68,7 @@ export function NewField({ taken, keeps = true, kind, onCreate, onCancel }: NewF
       <label>
         {t('table.field.name')}
         <input
-          autoFocus
+          ref={nameBox}
           value={name}
           onChange={(event) => {
             setName(event.target.value)

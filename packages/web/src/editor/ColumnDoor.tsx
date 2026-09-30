@@ -132,7 +132,7 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
   // it, so no stylesheet knows the number: `100vh` minus a guess is a guess. That reading — and the
   // one this door did not make, which way to open at all — is `placement.ts` now, asked by every
   // box in the editor that opens under something (#229).
-  const place = usePlacement(true, panel, { least: DOOR_FLOOR, gap: DOOR_AIR })
+  const place = usePlacement(true, panel, { least: DOOR_FLOOR, gap: DOOR_AIR, lift: true })
   // The keyboard is held inside the door for as long as it stands (#388, L45). It is the same trap the
   // library and the font sheet have; what it holds is the head's last cell, so the ＋ that opened
   // the door is the ring's first stop and not the way out of it. Escape is deliberately not the
