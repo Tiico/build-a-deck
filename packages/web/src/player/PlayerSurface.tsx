@@ -122,6 +122,20 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
     const n = view.components.filter((c) => c.zone === `hand:${seat}`).length
     void client.send({ v: 'move', component: card.id, to: `hand:${seat}`, index: n - 1 - position })
   }
+  // The one chosen card's place in the strip, and a step along it from the actions under the hand
+  // (#552). The card stays chosen where it lands: an unpinned choice is the hand's first card,
+  // which after a step is a different one.
+  const orderOf = (card: VisibleComponentState) => {
+    const at = hand.length - 1 - hand.findIndex((c) => c.id === card.id)
+    return {
+      at,
+      of: hand.length,
+      onStep: (by: -1 | 1) => {
+        setChosenId(card.id)
+        reorder(card, at + by)
+      },
+    }
+  }
   const play = (zone: string, at: 'top' | 'bottom') => {
     setRefusedZone(zone)
     void refusal.watch(client.send(...playIntents(view, toPlay, zone, undefined, at))).then((result) => {
@@ -227,7 +241,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} zones="piles" history={false} />
         <HandStrip view={view} selected={new Set(chosenCards.map(c => c.id))} faces={faces} onTap={card => hold(card, 'hand')} onHold={toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} />
         {hand.length > 0 && <p className="byd-hint">{marks.selected.size > 0 ? t(marks.selected.size === 1 ? 'player.hint.selected.one' : 'player.hint.selected.other', { n: marks.selected.size }) : t('player.hint')}</p>}
-        <HandActions refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} view={view} cards={chosenCards} pending={quickPending} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} />
+        <HandActions refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} view={view} cards={chosenCards} pending={quickPending} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} order={chosenCards.length === 1 && chosenCards[0] ? orderOf(chosenCards[0]) : undefined} />
         {quickSource === 'hand' && <Refusal handle={quick} />}
         <details ref={personal} className="byd-personal" data-personal aria-labelledby={`${folds}-mine`}>
           <summary id={`${folds}-mine`}>{t('player.mine.title', { n: inFrontOf(view).length })}</summary>

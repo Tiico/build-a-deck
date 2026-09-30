@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 5 — Genvägarna och en flytt utan dragning (#552)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     F, D och S verkar på kortet under pekaren var fokus än står, och går inte att stänga av (P-7,
+     WCAG 2.1.4): med fokus på «Visa alla» och pekaren över ett kort vände F kortet, och den som
+     styr med rösten och säger ett ord med s i kan blanda en hög. Och ringen på ett kort som ligger
+     på filten har ingen flytt, så en pekare utan dragning kan inte flytta det (P-8, 2.5.7).
+       Nu  genvägarna verkar var fokus än står; ringen: Vänd, Vrid, Titta, Avslöja.
+       A   genvägarna verkar bara när fokus står på filten eller ingenstans; ringen får «Flytta…»,
+           som öppnar K16:s adresspanel där den står.
+       B   genvägarna verkar som i dag men går att stänga av i «?» (Snabbkommandon); ringen som A.
+       C   både A och B.
+     Telefonens remsa: kortets blad får «Flytta vänster» och «Flytta höger» i A–C.
+     L24 gör F, D och S till genvägar och inte vägar; hjulet och panelen är vägarna.
+     Beslut 2026-09-30: A (L53). ──────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; min-height: 100vh; background: #15171c; }
+  .protorad .matt { flex: 1 1 360px; flex-direction: column; gap: 2px; }
+  .matt u { text-decoration: none; color: #ffe9b8; }
+  .ytor { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: var(--s4); padding: var(--s4); align-items: start; }
+  .spel { border-radius: 14px; background: #1b1d23; padding: var(--s3); display: grid; gap: var(--s3); color: #dce3f2; font: 13px system-ui, sans-serif; }
+  .krona { display: flex; gap: var(--s2); align-items: center; }
+  .krona button, .krona input, .panel button, .ring button, .blad button, .hjalp button { min-height: 44px; border: 1px solid #6f7a90; border-radius: 10px; background: #23262e; color: #dce3f2; font: inherit; padding: 0 12px; }
+  .krona input { flex: 1; background: #14161c; }
+  .krona :focus-visible, .panel :focus-visible, .ring :focus-visible, .blad :focus-visible, .hjalp :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  .filt { position: relative; height: 380px; border-radius: 22px; border: 14px solid #4a2f1c; background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26); outline: none; }
+  .filt:focus-visible { outline: 3px solid #9cc6ff; outline-offset: 4px; }
+  .zon { position: absolute; border: 1px solid #f3e9d6cc; box-shadow: inset 0 0 0 1px #00000073; border-radius: 10px; color: #f3e9d6; font: 700 10px system-ui, sans-serif; letter-spacing: 1px; text-transform: uppercase; padding: 4px 8px; }
+  .kort { position: absolute; width: 63px; height: 88px; border-radius: 6px; background: #f3ead6; color: #23201a; font: 700 10px Georgia, serif; display: grid; place-items: center; text-align: center; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); cursor: grab; }
+  .kort[data-dold] { background: repeating-linear-gradient(45deg, #7a2a2a 0 6px, #6a2020 6px 12px); color: transparent; }
+  .kort[data-hog]::after { content: attr(data-hog); position: absolute; right: -8px; top: -8px; min-width: 20px; height: 20px; border-radius: 10px; background: #23201a; color: #f3e9d6; font: 700 11px system-ui; display: grid; place-items: center; }
+  .kort[data-under] { outline: 2px dashed #ffd98a; outline-offset: 3px; }
+  .ring { position: absolute; z-index: 5; display: grid; gap: 4px; padding: 8px; border-radius: 14px; background: #12141a; border: 1px solid #6f7a90; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+  .panel { position: absolute; z-index: 6; width: 260px; display: grid; gap: 4px; padding: 10px; border-radius: 14px; background: #12141a; border: 1px solid #6f7a90; }
+  .panel h3 { margin: 4px 0; font: 700 11px system-ui; letter-spacing: 1.5px; text-transform: uppercase; color: #9aa3b8; }
+  .panel button { text-align: left; }
+  .hjalp { position: absolute; right: 10px; bottom: 10px; z-index: 4; }
+  .hjalp .lada { position: absolute; right: 0; bottom: 52px; width: 280px; padding: 12px; border-radius: 12px; background: #12141a; border: 1px solid #6f7a90; font: 12px/1.6 system-ui; }
+  .hjalp .lada label { display: flex; align-items: center; gap: 8px; margin-top: 8px; min-height: 44px; }
+  .logg { margin: 0; padding: 8px 12px; border-radius: 10px; background: #12141a; font: 12px ui-monospace, monospace; color: #c8cfdc; min-height: 64px; }
+  /* Telefonens remsa och kortets blad. */
+  .telefon { border-radius: 28px; background: #101216; border: 8px solid #2a2d36; padding: 12px; color: #dce3f2; font: 13px system-ui; display: grid; gap: 10px; }
+  .remsa { display: flex; gap: 6px; overflow-x: auto; padding: 6px 2px; }
+  .remsa .rk { flex: none; width: 56px; height: 78px; border-radius: 6px; background: #f3ead6; color: #23201a; font: 700 9px Georgia, serif; display: grid; place-items: center; text-align: center; border: 0; }
+  .remsa .rk[aria-pressed='true'] { outline: 3px solid #7dd3a0; outline-offset: 2px; }
+  .blad { display: grid; gap: 6px; padding: 10px; border-radius: 14px; background: #1b1d23; }
+  .blad .rad { display: flex; gap: 6px; }
+  .blad .rad button { flex: 1; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#552 · Genvägarna och en flytt utan dragning.</b> Klicka i «Skriv ett meddelande» eller på «Visa alla», peka på ett kort och tryck <kbd>F</kbd>. Peka på högen och tryck <kbd>S</kbd>. Klicka sedan på ett kort (ringen) och flytta det till «Framför B» utan att dra.</p>
+  </div>
+  <div class="matt"><span>Fokus: <u id="m-fokus">–</u></span><span>Pekaren över: <u id="m-under">–</u></span></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="ytor">
+  <section class="spel" aria-label="Distansvyn">
+    <div class="krona"><button type="button" id="visa">Visa alla</button><input id="chatt" placeholder="Skriv ett meddelande" aria-label="Skriv ett meddelande"></div>
+    <div class="filt" id="filt" tabindex="0" role="application" aria-label="Filten"></div>
+    <p class="logg" id="logg" role="status" aria-live="polite"></p>
+  </section>
+  <section class="telefon" aria-label="Telefonen">
+    <b>Din hand</b>
+    <div class="remsa" id="remsa" role="group" aria-label="Din hand"></div>
+    <div class="blad" id="blad"></div>
+  </section>
+</div>
+<script>
+const NOT = {
+  nu: '<b>Nu.</b> F, D och S verkar på det pekaren står på var fokus än står, också när man skriver i ett fält, och kan inte stängas av. Ringen på ett kort på filten: Vänd, Vrid, Titta, Avslöja — ingen flytt. Remsans ordning ändras bara genom att dra, eller med Alt+pil.',
+  a: '<b>A · Bara på filten.</b> Genvägarna verkar när fokus står på filten eller på något på den, eller ingenstans (sidan själv). Står fokus i ett fält eller på en knapp utanför filten gör F, D och S det de gör där. Ringen får «Flytta…», som öppnar K16:s panel där den står. <span class="plus">+ 2.1.4 uppfylls utan en inställning: genvägen är aktiv bara när filten är det man står i. En mus som bara pekar fungerar som i dag.</span> <span class="minus">− Den som klickat på «Visa alla» och sedan pekar på ett kort måste klicka på filten innan F fungerar.</span>',
+  b: '<b>B · En knapp för att stänga av.</b> Genvägarna verkar som i dag, men «?» (L24) har en brytare: «Enteckensgenvägar (F, D, S)», påslagen från början och ihågkommen i webbläsaren. Ringen får «Flytta…» som i A. <span class="plus">+ Inget ändras för den som vill ha genvägarna.</span> <span class="minus">− Den som skriver i ett fält och råkar peka på ett kort vänder det fortfarande, tills hon hittat brytaren.</span>',
+  c: '<b>C · Båda.</b> Genvägarna verkar bara när fokus står på filten eller ingenstans, och kan dessutom stängas av i «?». <span class="plus">+ Ingen vänder ett kort genom att skriva, och den som styr med rösten kan stänga av dem helt.</span> <span class="minus">− Två regler att förklara i «?».</span>',
+}
+const $ = (q) => document.querySelector(q)
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const ZONER = [{ id: 'a', namn: 'Framför A', x: 30, y: 230, w: 260, h: 110 }, { id: 'b', namn: 'Framför B', x: 380, y: 230, w: 260, h: 110 }, { id: 'kast', namn: 'Kasthög', x: 380, y: 40, w: 90, h: 120 }]
+const START = () => ({ kort: [{ id: 'high-noon', namn: 'High Noon', x: 70, y: 250, zon: 'a', dold: false }, { id: 'gold-fever', namn: 'Gold Fever', x: 160, y: 250, zon: 'a', dold: false }, { id: 'duel', namn: 'Duel', x: 420, y: 250, zon: 'b', dold: false }], hog: { id: 'lek', namn: 'Kortlek', x: 250, y: 60, antal: 12, ordning: 'i ordning' }, hand: ['Cactus Hugger', 'Bullseye', 'Quickdraw', 'Sundown'], vald: 1 })
+const s = { v: 'nu', av: false, ...START(), under: null, ring: null, panel: null, hjalp: false, logg: [] }
+const ringFlytt = () => s.v !== 'nu'
+const genvagAktiv = (ev) => {
+  if ((s.v === 'b' || s.v === 'c') && s.av) return 'avstängda i «?»'
+  if (s.v === 'a' || s.v === 'c') {
+    const a = document.activeElement
+    if (a && a !== document.body && !a.closest('#filt')) return `fokus på «${a.getAttribute('aria-label') ?? a.textContent.trim()}», utanför filten`
+  }
+  return null
+}
+function logga(t) { s.logg.unshift(t); s.logg = s.logg.slice(0, 3); $('#logg').innerHTML = s.logg.map(esc).join('<br>') }
+
+function ritaFilt() {
+  const f = $('#filt')
+  f.innerHTML = ZONER.map((z) => `<div class="zon" style="left:${z.x}px;top:${z.y}px;width:${z.w}px;height:${z.h}px">${z.namn}</div>`).join('')
+    + `<div class="kort" data-id="lek" data-dold data-hog="${s.hog.antal}" style="left:${s.hog.x}px;top:${s.hog.y}px" ${s.under === 'lek' ? 'data-under' : ''} aria-label="${s.hog.namn}, ${s.hog.antal} kort"></div>`
+    + s.kort.map((k) => `<div class="kort" data-id="${k.id}" ${k.dold ? 'data-dold' : ''} ${s.under === k.id ? 'data-under' : ''} style="left:${k.x}px;top:${k.y}px">${esc(k.namn)}</div>`).join('')
+    + (s.ring ? ring() : '') + (s.panel ? panel() : '')
+    + `<div class="hjalp"><button type="button" id="hjalpknapp" aria-expanded="${s.hjalp}" aria-label="Snabbkommandon">?</button>${s.hjalp ? hjalpLada() : ''}</div>`
+}
+function ring() {
+  const k = s.kort.find((x) => x.id === s.ring)
+  const verb = ['Vänd', 'Vrid', 'Titta', 'Avslöja']
+  return `<div class="ring" role="menu" aria-label="Handlingar för ${esc(k.namn)}" style="left:${k.x + 70}px;top:${k.y - 20}px">${verb.map((v) => `<button type="button" role="menuitem" data-verb="${v}">${v}</button>`).join('')}${ringFlytt() ? '<button type="button" role="menuitem" data-verb="flytta">Flytta…</button>' : ''}</div>`
+}
+function panel() {
+  const k = s.kort.find((x) => x.id === s.panel)
+  return `<div class="panel" role="dialog" aria-label="Flytta ${esc(k.namn)}" style="left:${k.x + 70}px;top:${Math.max(0, k.y - 140)}px"><h3>Flytta till</h3>${ZONER.filter((z) => z.id !== k.zon).map((z) => `<button type="button" data-till="${z.id}">${z.namn}</button>`).join('')}<button type="button" data-till="hand">Din hand</button><button type="button" disabled>Fri placering — kräver pekdon</button></div>`
+}
+function hjalpLada() {
+  const kan = s.v === 'b' || s.v === 'c'
+  return `<div class="lada" role="dialog" aria-label="Snabbkommandon"><b>Snabbkommandon</b><br>Cmd/Ctrl + klick vänder · <kbd>F</kbd> vänder · <kbd>D</kbd> drar · <kbd>S</kbd> blandar${s.v === 'a' || s.v === 'c' ? '<br><i>när filten har fokus</i>' : ''}${kan ? `<label><input type="checkbox" id="brytare" ${s.av ? '' : 'checked'}> Enteckensgenvägar (F, D, S)</label>` : ''}</div>`
+}
+function ritaTelefon() {
+  $('#remsa').innerHTML = s.hand.map((n, i) => `<button type="button" class="rk" aria-pressed="${i === s.vald}" data-hk="${i}">${esc(n)}</button>`).join('')
+  const n = s.hand[s.vald]
+  $('#blad').innerHTML = `<b>${esc(n)}</b><div class="rad"><button type="button">Spela</button><button type="button">Kasta</button></div>${s.v !== 'nu' ? `<div class="rad"><button type="button" data-flytt="-1" ${s.vald === 0 ? 'disabled' : ''}>← Flytta vänster</button><button type="button" data-flytt="1" ${s.vald === s.hand.length - 1 ? 'disabled' : ''}>Flytta höger →</button></div>` : '<small style="color:#9aa3b8">Ordningen ändras genom att dra kortet i remsan.</small>'}`
+}
+function rita() {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  $('#anteckning').innerHTML = NOT[s.v]
+  ritaFilt(); ritaTelefon(); matt()
+}
+function matt() {
+  const a = document.activeElement
+  $('#m-fokus').textContent = a && a !== document.body ? (a.getAttribute('aria-label') ?? a.textContent.trim().slice(0, 30)) : 'ingenstans'
+  const u = s.under === 'lek' ? s.hog.namn : s.kort.find((k) => k.id === s.under)?.namn
+  $('#m-under').textContent = u ?? '–'
+}
+
+// Pekaren: det den står på är det F, D och S verkar på (L24).
+$('#filt').addEventListener('mousemove', (ev) => {
+  const el = ev.target.closest('.kort')
+  const id = el?.dataset.id ?? null
+  if (id !== s.under) { s.under = id; for (const k of document.querySelectorAll('.kort')) k.toggleAttribute('data-under', k.dataset.id === id); matt() }
+})
+$('#filt').addEventListener('mouseleave', () => { s.under = null; for (const k of document.querySelectorAll('.kort')) k.removeAttribute('data-under'); matt() })
+addEventListener('keydown', (ev) => {
+  if (ev.target.closest?.('.protorad')) {
+    if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') { const ks = ['nu', 'a', 'b', 'c']; byt(ks[(ks.indexOf(s.v) + (ev.key === 'ArrowRight' ? 1 : -1) + 4) % 4]) }
+    return
+  }
+  if (ev.key === 'Escape') { s.ring = null; s.panel = null; s.hjalp = false; ritaFilt(); return }
+  const tangent = ev.key.toLowerCase()
+  if (!['f', 'd', 's'].includes(tangent) || ev.ctrlKey || ev.metaKey || ev.altKey || !s.under) return
+  const stopp = genvagAktiv(ev)
+  if (stopp) { logga(`${ev.key.toUpperCase()} verkade inte: ${stopp}.`); return }
+  // Nu skriver F också i fältet det står i, och vänder ändå kortet — det är felet.
+  if (s.v === 'nu' && ev.target.matches?.('input')) { /* tecknet skrivs som vanligt */ } else ev.preventDefault()
+  if (tangent === 'f' && s.under !== 'lek') { const k = s.kort.find((x) => x.id === s.under); k.dold = !k.dold; logga(`F vände ${k.namn}.`) }
+  if (tangent === 's' && s.under === 'lek') { logga(`S blandade ${s.hog.namn}.`) }
+  if (tangent === 'd' && s.under === 'lek') { s.hog.antal--; logga(`D drog ett kort ur ${s.hog.namn}.`) }
+  ritaFilt(); matt()
+})
+document.addEventListener('click', (ev) => {
+  const vb = ev.target.closest('.protorad [data-v]'); if (vb) { byt(vb.dataset.v); return }
+  if (ev.target.id === 'hjalpknapp') { s.hjalp = !s.hjalp; ritaFilt(); $('#hjalpknapp').focus(); return }
+  if (ev.target.id === 'brytare') { s.av = !ev.target.checked; try { localStorage.setItem('proto552-av', s.av ? '1' : '0') } catch {} ; logga(`Enteckensgenvägarna är ${s.av ? 'avstängda' : 'påslagna'}.`); return }
+  const verb = ev.target.closest('[data-verb]')
+  if (verb) {
+    if (verb.dataset.verb === 'flytta') { s.panel = s.ring; s.ring = null; ritaFilt(); $('.panel button').focus(); return }
+    const k = s.kort.find((x) => x.id === s.ring); if (verb.dataset.verb === 'Vänd') k.dold = !k.dold
+    logga(`${verb.dataset.verb}: ${k.namn}.`); s.ring = null; ritaFilt(); return
+  }
+  const till = ev.target.closest('[data-till]')
+  if (till) {
+    const k = s.kort.find((x) => x.id === s.panel)
+    if (till.dataset.till === 'hand') { s.kort = s.kort.filter((x) => x !== k); s.hand.push(k.namn); logga(`${k.namn} flyttades till din hand, utan att dras.`) }
+    else { const z = ZONER.find((x) => x.id === till.dataset.till); const i = s.kort.filter((x) => x.zon === z.id).length; Object.assign(k, { zon: z.id, x: z.x + 20 + i * 70, y: z.y + 12 }); logga(`${k.namn} flyttades till ${z.namn}, utan att dras.`) }
+    s.panel = null; rita(); return
+  }
+  const kort = ev.target.closest('#filt .kort')
+  if (kort && kort.dataset.id !== 'lek') { s.ring = kort.dataset.id; s.panel = null; ritaFilt(); $('.ring button').focus(); return }
+  const hk = ev.target.closest('[data-hk]'); if (hk) { s.vald = Number(hk.dataset.hk); ritaTelefon(); $(`[data-hk="${s.vald}"]`).focus(); return }
+  const fl = ev.target.closest('[data-flytt]')
+  if (fl) { const d = Number(fl.dataset.flytt), i = s.vald, j = i + d; [s.hand[i], s.hand[j]] = [s.hand[j], s.hand[i]]; s.vald = j; ritaTelefon(); $(`[data-flytt="${d}"]`)?.focus(); logga(`${s.hand[j]} flyttades ${d < 0 ? 'åt vänster' : 'åt höger'} i handen.`) }
+})
+document.addEventListener('focusin', matt)
+function byt(v) { s.v = v; Object.assign(s, START(), { ring: null, panel: null, hjalp: false }); const u = new URL(location.href); u.searchParams.set('v', v); history.replaceState(null, '', u); rita() }
+try { s.av = localStorage.getItem('proto552-av') === '1' } catch {}
+const q = new URLSearchParams(location.search)
+byt(['nu', 'a', 'b', 'c'].includes(q.get('v')) ? q.get('v') : 'nu')
+</script>
+</body>
+</html>

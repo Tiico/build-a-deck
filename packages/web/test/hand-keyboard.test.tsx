@@ -182,3 +182,41 @@ describe('the hand is playable without a gesture (#1)', () => {
     table.close()
   })
 })
+
+// The strip's order without a drag (#552, WCAG 2.5.7): the actions under the hand carry the chosen
+// card one place along the strip, as Alt and an arrow do (K4), and the focus stays on the button so
+// the next press carries it one more. At an end the button says it can go no further.
+describe('the chosen card moves along the strip without a drag (#552)', () => {
+  it('swaps the chosen card with its neighbour, keeps it chosen, and keeps the focus on the button', async () => {
+    const { id } = await phone()
+    const user = userEvent.setup()
+    const first = handCards()[0]!
+    await user.click(first)
+    await user.keyboard('{Escape}')
+    const name = labelOf(first).split(',')[0]!
+    const actions = screen.getByRole('region', { name: 'Spela valda kort' })
+    const left = within(actions).getByRole('button', { name: 'Flytta vänster' })
+    const right = within(actions).getByRole('button', { name: 'Flytta höger' })
+    expect(left.getAttribute('aria-disabled')).toBe('true')
+    // The arrows are drawn for the eye; a reader hears the words alone.
+    expect(left.textContent).toBe('← Flytta vänster')
+    expect(right.textContent).toBe('Flytta höger →')
+
+    right.focus()
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(labelOf(handCards()[1]!).split(',')[0]).toBe(name))
+    await waitFor(async () => expect((await run.store.read(id)).at(-1)?.intent).toMatchObject({ v: 'move', to: 'hand:A', index: 1 }))
+    expect(document.activeElement).toBe(right)
+    expect(within(actions).getByText(`Valt: ${name}`)).toBeTruthy()
+    expect(left.getAttribute('aria-disabled')).toBeNull()
+
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(labelOf(handCards()[2]!).split(',')[0]).toBe(name))
+    expect(right.getAttribute('aria-disabled')).toBe('true')
+    // A press at the end sends nothing.
+    const lines = (await run.store.read(id)).length
+    await user.keyboard('{Enter}')
+    expect((await run.store.read(id)).length).toBe(lines)
+    expect(document.activeElement).toBe(right)
+  })
+})

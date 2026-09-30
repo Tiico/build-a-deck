@@ -183,6 +183,45 @@ describe('F flips what the pointer is standing on (#258)', () => {
   })
 })
 
+// A bare key is the felt's only while the felt is what the hand stands in (#552, beställarens
+// beslut 2026-09-30, A): with the focus on a control beside the felt, «Visa alla» say, F turned
+// the card the pointer happened to rest on (WCAG 2.1.4). On the felt, or with the focus nowhere,
+// the keys are the felt's as before, so a mouse that only points loses nothing.
+describe('the bare keys belong to the felt only while the felt has the hand (#552)', () => {
+  const scene = () => {
+    const { view, faceUp } = buildScene()
+    const sent: Intent[][] = []
+    render(
+      <>
+        <button type="button">Visa alla</button>
+        <Felt view={view(null)} act={(i) => sent.push(i)} />
+      </>,
+    )
+    fireEvent.pointerEnter(document.querySelector(`[data-component="${faceUp}"]`)!)
+    return { sent, faceUp }
+  }
+
+  it('leaves F, D and S alone while the focus stands on a control beside the felt', () => {
+    const { sent } = scene()
+    const beside = screen.getByRole('button', { name: 'Visa alla' })
+    beside.focus()
+    for (const key of ['f', 'd', 's']) expect(fireEvent.keyDown(beside, { key })).toBe(true)
+    expect(sent).toEqual([])
+  })
+
+  it('answers them with the focus on the felt, or nowhere at all', () => {
+    const { sent, faceUp } = scene()
+    const stop = document.querySelector<HTMLElement>('.byd-table-frame [tabindex="0"]')!
+    stop.focus()
+    fireEvent.keyDown(stop, { key: 'f' })
+    expect(sent).toEqual([[{ v: 'flip', component: faceUp, face: 'back' }]])
+    stop.blur()
+    expect(document.activeElement).toBe(document.body)
+    fireEvent.keyDown(window, { key: 'f' })
+    expect(sent).toHaveLength(2)
+  })
+})
+
 describe('a double click flips too (#224)', () => {
   // The way without a modifier, for whoever cannot hold two keys down. The second press never
   // reaches the card — the ring the first one opened lies over it — so the gesture is read on the
