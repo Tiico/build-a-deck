@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 4 — Kortets text för skärmläsare, och observatörens bord (#551)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Kortets text finns bara i den renderade bilden (P-1), och observatörens bord har inga
+     kortnamn för en skärmläsare (P-2) och 36 × 26 px träffytor på 390 (P-17). Tre svar:
+       Nu  som i dag: projektionen bär `title`, texturen har alt="", läsvyn säger bara titeln.
+       A   trycket i läsvyn: projektionen bär `text: string[]` — det som står tryckt på den
+           synliga sidan utöver titeln, i mallens ordning. Det läses i läsvyn och bara där.
+           Observatörens «Platser» blir en lista att fälla ut: händer och zoner med sina kort.
+       B   fälten överallt: projektionen bär `fields: {label?, text}[]`, med lagrets namn (L15)
+           som etikett. Varje kortkontroll bär texten som beskrivning, och läsvyn som lista.
+           Observatörens filt blir K16:s adress, läsbar men utan verb; ett tryck på en solfjäder
+           öppnar luppen.
+       C   designerns mening: projektionen bär `speech: string`, byggd ur en uppläsningsmall
+           designern skriver. Den är texturens alt överallt. Observatören får «Som text».
+     Allt är låtsas: korten ritas med CSS, inte av renderaren, och ingen tråd finns. ──────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .protorad .matt { flex: 1 1 420px; flex-direction: column; gap: 2px; min-width: 0; }
+  .protorad .matt span { overflow-wrap: anywhere; }
+  .protorad .grupp { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
+  /* På telefonen tar prototypraden annars halva skärmen: anteckningen fälls in, och `ren=1`
+     döljer raden helt för skärmbilderna (mätningen i den räknas fortfarande). */
+  @media (max-width: 899px) { .protorad .anteckning { display: none; } .protorad[data-mer] .anteckning { display: block; } .protorad .matt { font-size: 11px; } }
+  body[data-ren] .protorad { position: absolute; left: -9999px; }
+  .rum { flex: 1 1 auto; min-height: 0; display: flex; overflow: hidden; }
+  .scen { flex: 1 1 auto; min-width: 0; position: relative; overflow: auto; background: #0f1116; color: #e6ecfa; }
+  .scen:focus { outline: none; }
+  .trad { flex: 0 0 340px; overflow: auto; border-left: 1px solid var(--line); background: var(--panel); padding: var(--s3); font: 12px/1.45 ui-monospace, Menlo, monospace; color: #c9d2e6; }
+  .trad h2 { font: 700 12px system-ui, sans-serif; color: #fff; margin: 0 0 var(--s2); }
+  .trad h3 { font: 600 12px system-ui, sans-serif; color: var(--quiet-2); margin: var(--s3) 0 var(--s1); }
+  .trad pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--sunk); border: 1px solid var(--line-soft); border-radius: 6px; padding: var(--s2); }
+  .trad .ny { color: #b7dca0; }
+  .trad p { font-family: system-ui, sans-serif; margin: var(--s2) 0 0; }
+  @media (max-width: 899px) { .rum { flex-direction: column; overflow: auto; } .scen { flex: none; min-height: 100%; overflow: visible; } .trad { flex: none; border-left: 0; border-top: 1px solid var(--line); } }
+
+  /* ── kortet, med CSS ── */
+  .kort { position: relative; display: block; width: var(--w, 110px); aspect-ratio: 63 / 88; border-radius: calc(var(--w, 110px) * .06); background: #f3ecdd; border: calc(var(--w, 110px) * .02 + 1px) solid #3c2a1c; overflow: hidden; color: #222; font-family: Georgia, serif; text-align: left; }
+  .kort .hd { display: block; background: var(--hd, #6b4a2c); color: #fff; padding: 6% 7% 4%; }
+  .kort .t { display: block; font-weight: 700; font-size: calc(var(--w, 110px) * .11); line-height: 1.1; }
+  .kort .ty { display: block; font: 700 calc(var(--w, 110px) * .07) system-ui, sans-serif; }
+  .kort .rt { display: block; padding: 6% 7%; font: calc(var(--w, 110px) * .065)/1.3 system-ui, sans-serif; }
+  .kort .pill { position: absolute; left: 7%; bottom: 5%; width: 45%; border-radius: 99px; background: var(--pill, #ffd400); font: 700 calc(var(--w, 110px) * .07)/1.6 system-ui, sans-serif; text-align: center; }
+  .kort.bak { background: repeating-linear-gradient(45deg, #2a3350 0 6px, #232b45 6px 12px); border-color: #111; }
+  .kort.liten .rt, .kort.liten .ty { display: none; }
+  .kort.liten .hd { padding: 8% 6%; }
+  .kort.liten .t { font-size: 0; height: calc(var(--w) * .12); }
+
+  button.kortknapp { all: unset; display: block; cursor: pointer; border-radius: 8px; }
+  button.kortknapp:focus-visible, [role=button]:focus-visible, .obsknapp:focus-visible, .radknapp:focus-visible, .luppkort:focus-visible { outline: 3px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 6px #111; }
+
+  /* ── handen ── */
+  .telefon { max-width: 430px; margin: 0 auto; padding: var(--s4); }
+  .telefon h1 { font: 700 20px system-ui; margin: 0; }
+  .telefon .sub { color: var(--quiet-2); margin: 0 0 var(--s4); }
+  .remsa { display: flex; gap: var(--s2); overflow-x: auto; padding: var(--s2) 2px var(--s3); }
+  .remsa .kort { --w: 110px; }
+
+  /* ── filten ── */
+  .filt { position: relative; margin: var(--s4) auto; width: min(100% - 32px, 900px); aspect-ratio: 3 / 2; border-radius: 18px; background: #1f5f3b; box-shadow: inset 0 0 0 2px #2c7a4f; }
+  .filt .zon { position: absolute; border: 2px solid rgba(255,255,255,.28); border-radius: 10px; }
+  .filt .zon > b { position: absolute; left: 6px; top: -20px; font: 700 11px system-ui; letter-spacing: .08em; text-transform: uppercase; color: #dff3e6; }
+  .filt .zon .innehall { display: flex; gap: 8px; padding: 8px; }
+  .filt .kort { --w: clamp(44px, 8vw, 78px); }
+  .filt .hog-n { position: absolute; right: -6px; top: -6px; background: #fff; color: #111; border-radius: 99px; font: 700 12px system-ui; padding: 1px 6px; }
+
+  /* ── observatören ── */
+  .obs { display: grid; grid-template-columns: 1fr 340px; height: 100%; min-height: 560px; }
+  .obs .obsfilt { position: relative; display: grid; place-items: center; padding: var(--s5); }
+  .obs .bordet { position: relative; width: min(100%, 760px); aspect-ratio: 3 / 2; border-radius: 16px; background: #161a24; border: 1px solid #2a3040; }
+  .obs .kol { border-left: 1px solid #2a3040; padding: var(--s4); overflow: auto; background: #12151c; }
+  .obs .kol h2 { font: 700 18px system-ui; margin: var(--s4) 0 var(--s2); }
+  .obs .kol h3 { font: 700 11px system-ui; letter-spacing: .12em; text-transform: uppercase; color: var(--quiet-2); margin: var(--s4) 0 var(--s2); }
+  .obs .not { background: #2a2417; color: #ffd98a; border: 1px solid #4a4230; border-radius: 10px; padding: 10px 12px; font-weight: 600; }
+  .obs .insp { min-height: 190px; }
+  .obs .insp .kort { --w: 140px; }
+  .platser { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .platser > li { background: #1b1f2a; border-radius: 8px; border-left: 4px solid var(--sc); }
+  .platser .rad, .platser .radknapp { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 6px 10px; color: #e6ecfa; font: 600 14px system-ui; text-align: left; background: none; border: 0; cursor: pointer; }
+  .platser .radknapp[aria-expanded]::after { content: '▸'; margin-left: auto; color: var(--quiet-2); }
+  .platser .radknapp[aria-expanded=true]::after { content: '▾'; }
+  .platser small { display: block; font-weight: 400; color: var(--quiet-2); }
+  .platser .bokstav { flex: none; width: 28px; height: 28px; border-radius: 99px; display: grid; place-items: center; background: var(--sc); color: #fff; font-weight: 700; }
+  .platser ul { list-style: none; margin: 0; padding: 0 0 6px 48px; }
+  .platser ul button { display: block; width: 100%; min-height: 44px; padding: 0 10px; text-align: left; color: #e6ecfa; background: #232838; border: 1px solid #2f3547; border-radius: 6px; margin-top: 4px; font: 14px system-ui; cursor: pointer; }
+  .obs .handtag { display: none; }
+  .solfjader { position: absolute; display: flex; }
+  .solfjader.v { flex-direction: column; }
+  .solfjader .kort, .obs .zonkort .kort { --w: 34px; }
+  .solfjader.h > * + * { margin-left: -14px; }
+  .solfjader.v > * + * { margin-top: -30px; }
+  .solfjader .n { position: absolute; inset: 50% auto auto 50%; transform: translate(-50%, -50%); background: #333a; color: #fff; border-radius: 99px; font: 700 12px system-ui; padding: 2px 6px; pointer-events: none; }
+  .obs .ozon { position: absolute; border: 2px solid #2f3547; border-radius: 10px; display: flex; gap: 6px; padding: 6px; align-items: center; justify-content: center; }
+  .obs .ozon > b { position: absolute; bottom: -18px; left: 0; right: 0; text-align: center; font: 700 10px system-ui; letter-spacing: .1em; text-transform: uppercase; color: #8b93a8; white-space: nowrap; }
+  .obs .ozon .hog-n { position: absolute; right: -4px; top: -6px; background: #eee; color: #111; border-radius: 99px; font: 700 11px system-ui; padding: 0 5px; }
+  .obs .satt { display: flex; gap: 4px; margin: 0 0 var(--s3); }
+  .obs .satt button { min-height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid #3a4152; background: #1b1f2a; color: #e6ecfa; font: 600 14px system-ui; cursor: pointer; }
+  .obs .satt button[aria-pressed=true] { background: #e6ecfa; color: #111; }
+  .somtext { padding: var(--s4); max-width: 640px; font: 15px/1.5 system-ui; }
+  .somtext h2 { font-size: 17px; margin: var(--s4) 0 var(--s1); }
+  .somtext h3 { font-size: 15px; margin: var(--s3) 0 var(--s1); }
+  .somtext ul { margin: 0; padding-left: 20px; }
+  .somtext li { margin: 4px 0; }
+  .fotrad { display: flex; gap: var(--s2); align-items: center; }
+  .fotrad button, .obs .kol .fotrad button { min-height: 44px; border-radius: 22px; padding: 0 16px; border: 1px solid #4a4230; background: #1f1b12; color: #ffd98a; font: 700 15px system-ui; cursor: pointer; }
+  .fotrad .flagga { margin-left: auto; background: #ffd98a; color: #2a2417; }
+  .fotrad .fraga-knapp { width: 44px; padding: 0; border-radius: 99px; }
+  /* Under skrivbordet: filten fyller, kolumnen blir en låda under en rad (#485). */
+  @media (max-width: 899px) {
+    .obs { display: block; min-height: 0; }
+    .obs .obsfilt { padding: var(--s3) var(--s2) 90px; }
+    .obs .bordet { width: 100%; aspect-ratio: 2 / 3; }
+    .obs .kol { display: none; border: 0; }
+    .obs[data-ladan=oppen] .kol { display: block; position: fixed; left: 0; right: 0; bottom: 76px; max-height: 70vh; border-top: 1px solid #4a4230; border-radius: 14px 14px 0 0; z-index: 5; }
+    .obs .handtag { display: flex; position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px; background: #1f1b12; border-top: 1px solid #4a4230; z-index: 6; }
+    .solfjader .kort, .obs .zonkort .kort { --w: 26px; }
+    .solfjader.h > * + * { margin-left: -12px; }
+    .solfjader.v > * + * { margin-top: -24px; }
+  }
+
+  /* ── läsvyn och luppen ── */
+  .slojan { position: fixed; inset: 0; background: rgba(0,0,0,.72); display: grid; place-items: center; z-index: 20; padding: var(--s4); }
+  .lasvy { background: #f3ecdd; border-radius: 18px; padding: 16px; display: grid; gap: 12px; justify-items: center; max-height: 100%; overflow: auto; }
+  .lasvy .kort { --w: min(294px, 80vw); }
+  .lasvy .knappar { display: flex; gap: 8px; width: 100%; }
+  .lasvy .knappar button { flex: 1; min-height: 48px; border-radius: 10px; border: 0; background: #22283a; color: #fff; font: 700 16px system-ui; cursor: pointer; }
+  .lasvy dl { display: none; }
+  .lupp { background: #171a23; border-radius: 14px; padding: 16px; width: min(100%, 720px); }
+  .lupp h2 { margin: 0 0 12px; font: 700 16px system-ui; }
+  .lupp .rad { display: flex; gap: 10px; overflow-x: auto; padding: 4px; }
+  .lupp .kort { --w: 92px; }
+  .luppkort { all: unset; cursor: pointer; border-radius: 8px; }
+  .lupp > button { margin-top: 12px; min-height: 44px; width: 100%; border-radius: 10px; border: 0; background: #22283a; color: #fff; font: 700 15px system-ui; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="grupp">
+    <div class="vaxlare" role="group" aria-label="Variant">
+      <button type="button" data-v="nu">Nu</button><button type="button" data-v="a">A</button><button type="button" data-v="b">B</button><button type="button" data-v="c">C</button>
+    </div>
+    <div class="vaxlare" role="group" aria-label="Yta">
+      <button type="button" data-yta="hand">Handen</button><button type="button" data-yta="filt">Filten</button><button type="button" data-yta="obs">Observatören</button>
+    </div>
+    <button type="button" data-mer aria-expanded="false">Om varianten</button>
+  </div>
+  <div class="matt" aria-live="off">
+    <span>Skärmläsaren om <b id="m-vem">–</b>: <u id="m-sager">–</u></span>
+    <span>Tabbstopp i ytan: <u id="m-stopp">–</u> · kortnamn i trädet: <u id="m-namn">–</u> · minsta träffyta på ett kort: <u id="m-yta">–</u></span>
+  </div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="rum">
+  <main class="scen" id="scen" tabindex="-1" aria-label="Ytan"></main>
+  <aside class="trad" aria-label="Tråden"><h2>Tråden: vad Duel (Guld) blir i varje vy</h2><div id="trad"></div></aside>
+</div>
+
+<script>
+// Ur Sal's Saloon (prototyp 1): id, titel, typ, valör, regeltext.
+const RADER = {
+  'duel-koppar': ['Duel', 'Playcard', 'Koppar', 'Utmana en spelare på duell. Förloraren dricker 3'],
+  'duel-guld': ['Duel', 'Playcard', 'Guld', 'Utmana en spelare på duell. Förloraren dricker 7'],
+  'snake-in-the-boot': ['Snake in the boot', 'Playcard', 'Silver', 'Orm i stöveln! Drick 4'],
+  'quickdraw': ['Quickdraw', 'Playcard', 'Silver', 'Ingen drar snabbare än dig. Dela ut 4'],
+  'cactus-hugger': ['Cactus Hugger', 'Playcard', 'Koppar', 'Dålig idé att krama en kaktus, Drick 2'],
+  'reflection': ['Reflection', 'Trap+', 'Silver', 'Tillbakakaka gubbjävel, ge tillbaka klunkarna till den som delade ut dem'],
+  'deflect': ['Deflect', 'Trap+', 'Guld', 'Klunkarna riktade mot dig går istället till dina grannar, båda dricker full mängd'],
+  'bullseye': ['Bullseye', 'Playcard', 'Guld', 'Rakt mellan ögonen. Dela ut 6'],
+  'standoff': ['Standoff', 'Event', 'Diamant', 'Dela upp er i två lag efter hur ni sitter. Laget som druckit upp sist förlorar'],
+  'the-bank': ['The Bank', 'Location', 'Guld', 'Du kan sätta in ditt guld i banken. Bankat guld räknas med när du handlar i saloonen'],
+  'lucky-luuk': ['Lucky Luuk', 'Character', 'Karaktär', 'Du har +1 i dueller'],
+  'shoot-from-the-hip': ['Shoot from the hip', 'Playcard', 'Koppar', 'Lyckoträff från höften. Dela ut 2'],
+  'stolen-goods-silver': ['Stolen Goods', 'Playcard', 'Silver', '2 värdesaker! Värde 2. Säljs för 2 guld. Böter 2 klunkar'],
+  'sals-saloon': ["Sal's Saloon", 'Location', 'Guld', 'Saloonen öppnar! Lägg upp ett shopkort per spelare som går in'],
+  'buckaroos-backfire': ["Buckaroo's Backfire", 'Playcard', 'Guld', 'Hästen sparkar skiten ur dig! Drick 6'],
+  'the-heist': ['The Heist', 'Event', 'Silver', 'Ni ska försöka råna ett bankvalv. Råna valvet: 3 guld + allt i The Bank'],
+  'high-noon': ['High Noon', 'Shopcard', 'Guld', 'Lägg detta kort och säg "High Noon", sist av medspelarna att dra fram sina fingerguns dricker 6'],
+  'saddle-pals': ['Saddle Pals', 'Playcard', 'Diamant', 'Välj en annan spelare. Ni är allierade resten av spelet'],
+  'zorros-here': ["Zorro's here!", 'Event', 'Guld', 'Zorro är här för att stoppa er. Slå en tärning var'],
+  'the-alley': ['The Alley', 'Location', 'Silver', 'I gränden kan man stöta på mycket skumma typer, slå en tärning'],
+  'double-down': ['Double Down', 'Trap+', 'Diamant', 'Den som delar ut klunkar till dig får tillbaka dem och tar dessutom en shot'],
+  'juice-em-up': ["Juice em' up!", 'Playcard', 'Diamant', 'Välj två andra spelare. De blandar en shot till varann'],
+  'sheriffs-check': ["Sheriff's Check", 'Playcard', 'Koppar', 'Har du stöldgods: annonsera två siffror och slå'],
+  'free-for-all': ['Free for all', 'Effect', 'Special', 'Era stöldgods är i fara! Så länge effekten ligger får ni sno varandras stöldgodskort'],
+}
+const PILL = { Koppar: '#d08a4a', Silver: '#c9ccd3', Guld: '#ffd400', Diamant: '#8fd3ff', Karaktär: '#e07bd0', Special: '#ff5a5a' }
+const HD = { Playcard: '#6b4a2c', 'Trap+': '#2f6b3a', Event: '#6a2c5f', Location: '#2c4f6b', Character: '#5a2c2c', Shopcard: '#6b4a2c', Effect: '#444' }
+const PLATSER = [
+  { id: 'A', namn: 'Ada', farg: '#e0524a', hand: ['duel-guld', 'snake-in-the-boot', 'quickdraw', 'cactus-hugger', 'reflection', 'deflect'] },
+  { id: 'B', namn: 'Bo', farg: '#3b82e0', hand: ['duel-koppar', 'bullseye', 'standoff', 'the-bank', 'lucky-luuk'] },
+  { id: 'C', namn: 'Cy', farg: '#2f9e6a', hand: ['high-noon', 'saddle-pals', 'zorros-here', 'the-alley', 'double-down', 'juice-em-up'] },
+  { id: 'D', namn: 'Di', farg: '#d49a1a', hand: ['sheriffs-check', 'free-for-all', 'bullseye', 'reflection', 'quickdraw', 'snake-in-the-boot'] },
+]
+// Zonerna på bordet. `dolt` är ett nedvänt kort: ingen utom observatören ser framsidan.
+const ZONER = [
+  { id: 'framfor-a', namn: 'Framför A', kort: ['stolen-goods-silver', 'shoot-from-the-hip', { dolt: 'the-heist' }] },
+  { id: 'saloon', namn: "Sal's Saloon", kort: ['sals-saloon'] },
+  { id: 'kasthog', namn: 'Kasthög', hog: 4, kort: ['buckaroos-backfire'] },
+  { id: 'kortlek', namn: 'Kortlek', hog: 108, kort: [{ dolt: 'the-alley' }] },
+]
+const $ = (s) => document.querySelector(s)
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+const mening = (s) => { s = String(s).trim(); return /[.!?]$/.test(s) ? s : `${s}.` }
+const rad = (ref) => { const [title, typ, valor, text] = RADER[ref]; return { ref, title, typ, valor, text } }
+
+// ── Vad projektionen bär per variant, för en vy som får se framsidan. ─────────────────────────
+// A: det som står tryckt utöver titeln, i mallens ordning (typen, regeltexten, pillret).
+// B: samma sak med lagrets namn (L15) som etikett, när designern har namngett lagret.
+// C: en mening ur designerns uppläsningsmall «{title}. {typ}. {text}. Valör {valör}.».
+const falt = {
+  a: (r) => ({ text: [r.typ, r.text, r.valor] }),
+  b: (r) => ({ fields: [{ label: 'Typ', text: r.typ }, { label: 'Regeltext', text: r.text }, { label: 'Valör', text: r.valor }] }),
+  c: (r) => ({ speech: `${mening(r.title)} ${mening(r.typ)} ${mening(r.text)} Valör ${r.valor.toLowerCase()}.` }),
+  nu: () => ({}),
+}
+// Det en skärmläsare hör som kortets text, per variant.
+const uppläst = {
+  a: (r) => falt.a(r).text.map(mening).join(' '),
+  b: (r) => falt.b(r).fields.map((f) => `${f.label}: ${mening(f.text)}`).join(' '),
+  c: (r) => falt.c(r).speech,
+  nu: () => '',
+}
+
+const s = { v: 'nu', yta: 'hand', lada: false, som: 'filt', oppna: new Set(), lasvy: null, lupp: null, fokus: null }
+{
+  const q = new URLSearchParams(location.search)
+  if (['nu', 'a', 'b', 'c'].includes(q.get('v'))) s.v = q.get('v')
+  if (['hand', 'filt', 'obs'].includes(q.get('yta'))) s.yta = q.get('yta')
+  if (q.get('lada') === '1') s.lada = true
+  if (q.get('ren') === '1') document.body.dataset.ren = ''
+  if (q.get('som') === 'text') s.som = 'text'
+  if (q.get('oppna')) for (const id of q.get('oppna').split(',')) s.oppna.add(id)
+}
+const smal = () => innerWidth < 900
+
+const ANTECKNING = {
+  nu: '<b>Nu.</b> Projektionen bär <code>title</code> och inget mer (#412). Texturen har <code>alt=""</code> och läsvyn heter bara «Duel» — fyra olika Duel-kort i leken låter likadant. Observatörens filt har inga kortnamn alls, ingen tabbväg in, och solfjäderns kort är ~26 px breda på 390.',
+  a: '<b>A · Trycket i läsvyn.</b> Nytt fält <code>text: string[]</code>: det som står tryckt utöver titeln, i mallens ordning. Läsvyn beskrivs av det, så en skärmläsare hör hela kortet när den öppnas — samma handling som den seende gör (K26). Kortkontrollerna heter som i dag. Observatörens «Platser» blir en lista att fälla ut med händer och zoner, 44 px per rad. <span class="plus">+ Minsta tråden, orden är mallens egna, remsan går lika fort att tabba.</span> <span class="minus">− Två tryck till en text; filtens små kort står kvar för pekaren.</span>',
+  b: '<b>B · Fälten överallt.</b> Nytt fält <code>fields: {label?, text}[]</code> med lagrets namn (L15) som etikett. Varje kortkontroll bär texten som beskrivning, i handen, på filten och hos observatören. Observatörens filt blir K16:s adress utan verb: ett tabbstopp, pilar, Enter läser. Ett tryck på en solfjäder öppnar luppen med korten i 92 px. <span class="plus">+ Texten hörs utan att öppna något; etiketter ger «Valör: Guld» mening.</span> <span class="minus">− Varje pil i remsan läser upp ett helt kort; lagernamn är verkstadsord och kan vara «Text 3»; 55 % större tråd.</span>',
+  c: '<b>C · Designerns mening.</b> Nytt fält <code>speech: string</code>, byggt ur en uppläsningsmall designern skriver i mallredigeraren. Den blir texturens alt överallt, så kortet «är» sin mening. Observatören får en växel «Filt | Som text» med händer och zoner som rubriker och listor. <span class="plus">+ Bäst formulerat när designern gjort jobbet; texten en läser är en bild med alt, som webben väntar sig.</span> <span class="minus">− Ny redigeringsyta i editorn och en tom mall för varje befintlig lek; namnet blir hela kortet; P-17 löses inte på filten.</span>',
+}
+
+// ── kortets bild ────────────────────────────────────────────────────────────────────────────
+// `alt` är bildens namn i C; annars är bilden dekor, som texturen i dag (alt="").
+function kortbild(ref, { liten = false, dolt = false, w } = {}) {
+  const stil = w ? ` style="--w:${w}px"` : ''
+  if (dolt) return `<span class="kort bak${liten ? ' liten' : ''}"${stil} aria-hidden="true"></span>`
+  const r = rad(ref)
+  const alt = s.v === 'c' ? ` role="img" aria-label="${esc(falt.c(r).speech)}"` : ' aria-hidden="true"'
+  return `<span class="kort${liten ? ' liten' : ''}"${alt} style="--hd:${HD[r.typ] ?? '#6b4a2c'};--pill:${PILL[r.valor] ?? '#ddd'}${w ? `;--w:${w}px` : ''}"><span class="hd"><span class="t">${esc(r.title)}</span><span class="ty">${esc(r.typ)}</span></span><span class="rt">${esc(r.text)}</span><span class="pill">${esc(r.valor)}</span></span>`
+}
+// Kontrollens namn och beskrivning, med K16:s ord.
+function kontroll(ref, var_, { dolt = false } = {}) {
+  if (dolt) return { namn: `Dolt kort, i ${var_}`, beskr: '' }
+  const r = rad(ref)
+  if (s.v === 'c') return { namn: '', efter: ` I ${var_}`, beskr: '' }
+  return { namn: `${r.title}, i ${var_}`, beskr: s.v === 'b' ? uppläst.b(r) : '' }
+}
+function kortknapp(ref, var_, { liten = false, dolt = false, extra = '', id = '' } = {}) {
+  const k = kontroll(ref, var_, { dolt })
+  const namn = k.namn ? ` aria-label="${esc(k.namn)}. Enter läser kortet."` : ''
+  const beskr = k.beskr ? ` aria-description="${esc(k.beskr)}"` : ''
+  const efter = k.efter ? `<span class="offscreen">${esc(k.efter)}. Enter läser kortet.</span>` : ''
+  return `<button type="button" class="kortknapp" data-kort="${ref}"${dolt ? ' data-dolt="1"' : ''}${id ? ` id="${id}"` : ''} tabindex="-1"${namn}${beskr}${extra}>${kortbild(ref, { liten, dolt })}${efter}</button>`
+}
+
+// ── ytorna ──────────────────────────────────────────────────────────────────────────────────
+function handen() {
+  const ada = PLATSER[0]
+  return `<div class="telefon"><h1>Ada</h1><p class="sub">6 kort</p><div class="remsa" data-roving role="group" aria-label="Min hand">${ada.hand.map((ref, i) => kortknapp(ref, 'min hand', { id: i === 0 ? 'probe' : '' })).join('')}</div><p class="sub">Tryck eller Enter på ett kort öppnar läsvyn. Pilar går i handen.</p></div>`
+}
+function filten() {
+  const zon = (z, x, y, w, h) => `<div class="zon" style="left:${x}%;top:${y}%;width:${w}%;height:${h}%"><b>${esc(z.namn)}</b><div class="innehall">${z.kort.map((k, i) => {
+    const dolt = typeof k === 'object'
+    const ref = dolt ? k.dolt : k
+    if (z.hog) return `<span style="position:relative">${kortknapp(ref, z.namn, { dolt, extra: ` data-hog="${z.hog}"` })}<span class="hog-n" aria-hidden="true">${z.hog}</span></span>`
+    return kortknapp(ref, z.namn, { dolt, id: z.id === 'framfor-a' && i === 0 ? 'probe' : '' })
+  }).join('')}</div></div>`
+  return `<div class="filt" data-roving role="group" aria-label="Bordet, Adas vy">${zon(ZONER[0], 6, 52, 50, 38)}${zon(ZONER[1], 6, 12, 22, 34)}${zon(ZONER[2], 64, 12, 13, 34)}${zon(ZONER[3], 80, 12, 13, 34)}<div class="zon" style="left:64%;top:58%;width:30%;height:32%"><b>Bos hand</b><div class="innehall">${PLATSER[1].hand.slice(0, 3).map((ref) => kortknapp(ref, 'Bos hand', { dolt: true })).join('')}</div></div></div><p class="telefon sub" style="padding-top:0">Adas filt på /online. Ett tabbstopp, pilar inuti (K16). Bos hand och korten i högarna är dolda för Ada — deras text finns inte på hennes tråd i någon variant.</p>`
+}
+
+// Observatörens filt: fyra solfjädrar och zonerna. I nu och A är den bara en bild för
+// skärmläsaren (C lägger alt på korten); i B är den K16:s adress utan verb.
+function obsfilt() {
+  const n = smal()
+  const b = s.v === 'b'
+  const kortet = (ref, var_, opt = {}) => {
+    if (b) return kortknapp(ref, var_, { liten: true, ...opt })
+    return `<span class="obsknapp" data-kort="${ref}"${s.v === 'a' ? ' data-kopia' : ''}${opt.dolt ? ' data-dolt="1"' : ''}${opt.id ? ` id="${opt.id}"` : ''}>${kortbild(ref, { liten: true, dolt: opt.dolt })}</span>`
+  }
+  // Var solfjädrarna ligger: på telefonen är bordet vridet ett kvartsvarv (C8, #76).
+  const pos = n
+    ? { D: 'left:44%;top:-2%;', A: 'left:-3%;top:40%;', B: 'right:-3%;top:40%;', C: 'left:44%;bottom:-2%;' }
+    : { C: 'left:44%;top:-6%;', D: 'left:-4%;top:42%;', B: 'right:-4%;top:42%;', A: 'left:44%;bottom:-6%;' }
+  const riktning = n ? { D: 'v', A: 'v', B: 'v', C: 'v' } : { C: 'h', D: 'h', B: 'h', A: 'h' }
+  const fjadrar = PLATSER.map((p) => `<div class="solfjader ${riktning[p.id]}" data-fjader="${p.id}" style="${pos[p.id]}" ${b ? `role="group" aria-label="${esc(p.namn)}s hand, ${p.hand.length} kort"` : ''}>${p.hand.map((ref, i) => kortet(ref, `${p.namn}s hand`, { id: p.id === 'A' && i === 0 && s.v !== 'a' ? 'probe' : '' })).join('')}<span class="n" aria-hidden="true">${p.hand.length}</span></div>`).join('')
+  const zonpos = n
+    ? [['framfor-a', 'left:20%;top:30%;width:22%;height:36%'], ['saloon', 'left:58%;top:30%;width:22%;height:16%'], ['kasthog', 'left:58%;top:58%;width:22%;height:10%'], ['kortlek', 'left:38%;top:74%;width:22%;height:10%']]
+    : [['framfor-a', 'left:30%;top:62%;width:40%;height:20%'], ['saloon', 'left:30%;top:16%;width:18%;height:22%'], ['kasthog', 'left:56%;top:36%;width:10%;height:20%'], ['kortlek', 'left:40%;top:36%;width:10%;height:20%']]
+  const zoner = zonpos.map(([id, st]) => {
+    const z = ZONER.find((x) => x.id === id)
+    return `<div class="ozon zonkort" style="${st}" ${b ? `role="group" aria-label="${esc(z.namn)}"` : ''}><b>${esc(z.namn)}</b>${z.kort.map((k) => { const dolt = typeof k === 'object'; return kortet(dolt ? k.dolt : k, z.namn, { dolt: dolt && id !== 'kortlek' ? false : dolt }) }).join('')}${z.hog ? `<span class="hog-n">${z.hog}</span>` : ''}</div>`
+  }).join('')
+  // Nu och A: filten är dekor för skärmläsaren (i A finns samma sak som lista i kolumnen).
+  const hidden = s.v === 'a' ? ' aria-hidden="true"' : ''
+  return `<div class="bordet" ${b ? 'data-roving role="group" aria-label="Bordet. Pilar går mellan korten, Enter läser."' : ''}${hidden}>${fjadrar}${zoner}</div>`
+}
+function platser() {
+  if (s.v !== 'a') {
+    return `<ul class="platser">${PLATSER.map((p) => `<li style="--sc:${p.farg}"><div class="rad"><span class="bokstav" aria-hidden="true">${p.id}</span><span>${p.namn}<small>${p.hand.length} kort på hand</small></span></div></li>`).join('')}</ul>`
+  }
+  // A: raden är en knapp som fäller ut handen; varje kort öppnar läsvyn.
+  const grupp = (id, rubrik, under, farg, kort, bokstav) => {
+    const oppen = s.oppna.has(id)
+    return `<li style="--sc:${farg}"><button type="button" class="radknapp" aria-expanded="${oppen}" aria-controls="lista-${id}" data-fall="${id}">${bokstav ? `<span class="bokstav" aria-hidden="true">${bokstav}</span>` : ''}<span>${esc(rubrik)}<small>${esc(under)}</small></span></button><ul id="lista-${id}" ${oppen ? '' : 'hidden'} data-bakom>${kort.map(({ ref, var_, dolt, id: pid }) => `<li><button type="button" data-kort="${ref}"${pid ? ` id="${pid}"` : ''} class="listkort" aria-label="${esc(`${rad(ref).title}${dolt ? ', nedvänt' : ''}, i ${var_}`)}">${esc(dolt ? `${rad(ref).title} (nedvänt)` : rad(ref).title)}</button></li>`).join('')}</ul></li>`
+  }
+  const handen = PLATSER.map((p) => grupp(p.id, p.namn, `${p.hand.length} kort på hand`, p.farg, p.hand.map((ref, i) => ({ ref, var_: `${p.namn}s hand`, id: p.id === 'A' && i === 0 ? 'probe' : '' })), p.id)).join('')
+  const bordet = ZONER.map((z) => grupp(z.id, z.namn, z.hog ? `hög, ${z.hog} kort, överst ${rad(z.kort[0].dolt ?? z.kort[0]).title}` : `${z.kort.length} kort`, '#4a5266', z.kort.map((k) => ({ ref: k.dolt ?? k, var_: z.namn, dolt: typeof k === 'object' })))).join('')
+  return `<ul class="platser" aria-label="Platser">${handen}</ul><h3>På bordet</h3><ul class="platser" aria-label="På bordet">${bordet}</ul>`
+}
+function somText() {
+  const li = (ref, dolt) => `<li>${esc(falt.c(rad(ref)).speech)}${dolt ? ' (nedvänt)' : ''}</li>`
+  return `<article class="somtext" aria-label="Bordet som text"><h2>Händerna</h2>${PLATSER.map((p) => `<h3>${p.namn}, ${p.hand.length} kort</h3><ul>${p.hand.map((r) => li(r)).join('')}</ul>`).join('')}<h2>På bordet</h2>${ZONER.map((z) => `<h3>${esc(z.namn)}${z.hog ? `, hög med ${z.hog} kort` : ''}</h3><ul>${z.kort.map((k) => li(k.dolt ?? k, typeof k === 'object')).join('')}${z.hog ? '<li>… och resten av högen i sin ordning</li>' : ''}</ul>`).join('')}</article>`
+}
+function observatoren() {
+  const n = smal()
+  const vaxel = s.v === 'c' ? `<div class="satt" role="group" aria-label="Visa bordet"><button type="button" data-som="filt" aria-pressed="${s.som === 'filt'}">Filt</button><button type="button" data-som="text" aria-pressed="${s.som === 'text'}">Som text</button></div>` : ''
+  const filt = s.v === 'c' && s.som === 'text' ? somText() : obsfilt()
+  const kol = `<section class="kol" aria-label="Bordet"><p class="not">Du är observatör: du ser allas händer och alla högar. Alla vet att du är här.</p>${n ? '' : `<h2>Bordet</h2><h3>Inspektion</h3><div class="insp" id="insp"></div>`}<h3>Platser</h3>${platser()}<h3>Senast</h3><p style="color:#8fb4ff">Bo vände High Noon</p>${n ? '' : `<div class="fotrad"><button type="button" class="fraga-knapp" aria-label="Hjälp om observatörsläget">?</button><button type="button" class="flagga">⚑ Flagga</button></div>`}</section>`
+  const handtag = `<div class="handtag fotrad"><button type="button" class="fraga-knapp" aria-label="Hjälp om observatörsläget">?</button><button type="button" data-lada aria-expanded="${s.lada}">Senast och platser ▴</button><button type="button" class="flagga">⚑ Flagga</button></div>`
+  return `<div class="obs" data-ladan="${s.lada ? 'oppen' : 'stangd'}"><div class="obsfilt">${vaxel}${filt}</div>${kol}${n ? handtag : ''}</div>`
+}
+
+// ── läsvyn: K26:s handling. Namnet är titeln; beskrivningen är variantens text. ──────────────
+function lasvy(ref, lista) {
+  const r = rad(ref)
+  const i = lista.indexOf(ref)
+  const beskr = s.v === 'nu' ? '' : `<p id="lasvy-text" class="offscreen">${esc(s.v === 'c' ? '' : uppläst[s.v](r))}</p>`
+  const describedby = s.v === 'a' || s.v === 'b' ? ' aria-describedby="lasvy-text"' : ''
+  return `<div class="slojan" data-stang><div class="lasvy" role="dialog" aria-modal="true" aria-labelledby="lasvy-titel"${describedby}><span id="lasvy-titel" class="offscreen">${esc(r.title)}</span>${kortbild(ref, {})}${beskr}<div class="knappar">${lista.length > 1 ? `<button type="button" data-steg="-1" aria-label="Föregående kort">‹</button><span style="align-self:center;color:#444;font:600 15px system-ui">${i + 1} av ${lista.length}</span><button type="button" data-steg="1" aria-label="Nästa kort">›</button>` : ''}<button type="button" data-stang>Stäng</button></div></div></div>`
+}
+function lupp(pid) {
+  const p = PLATSER.find((x) => x.id === pid)
+  return `<div class="slojan" data-stang><div class="lupp" role="dialog" aria-modal="true" aria-label="${p.namn}s hand, ${p.hand.length} kort"><h2>${p.namn}s hand · ${p.hand.length} kort</h2><div class="rad">${p.hand.map((ref) => `<button type="button" class="luppkort" data-kort="${ref}" data-lista="${pid}" aria-label="${esc(rad(ref).title)}" aria-description="${esc(uppläst.b(rad(ref)))}">${kortbild(ref, { w: 92 })}</button>`).join('')}</div><button type="button" data-stang>Stäng</button></div></div>`
+}
+
+// ── tråden ──────────────────────────────────────────────────────────────────────────────────
+function traden() {
+  const r = rad('duel-guld')
+  const bas = { id: 'c-017', type: 'card', zone: 'hand-A', face: 'front', x: 0, y: 0, rot: 0 }
+  const synlig = { ...bas, cardRef: 'duel-guld', title: 'Duel', faces: { front: '9f2c…', back: '41aa…' } }
+  const dold = { ...bas, cardRef: null, faces: { back: '41aa…' } }
+  const med = { ...synlig, ...falt[s.v](r) }
+  const json = (o, nya) => esc(JSON.stringify(o, null, 1)).replace(new RegExp(`(&quot;(?:${nya.join('|')})&quot;[^\\n]*)`, 'g'), '<span class="ny">$1</span>')
+  const nya = Object.keys(falt[s.v](r))
+  const kb = { nu: '0', a: '≈ 21 kB', b: '≈ 33 kB', c: '≈ 22 kB' }[s.v]
+  return `<h3>Till Ada (kortet i hennes hand) och till observatören</h3><pre>${json(med, nya.length ? nya : ['__'])}</pre>
+<h3>Till Bo, Cy och Di</h3><pre>${json(dold, ['__'])}</pre>
+<p>${s.v === 'nu' ? 'Ingen ändring.' : `Nytt fält <code>${nya[0]}</code>, härlett ur samma <code>canSeeFace</code> som <code>cardRef</code>, <code>title</code> och framsidans hash — en härledning i <code>project</code>, som titeln (B6, #412). Där framsidan inte får ses finns fältet inte.`}</p>
+<p>Hela bordet till observatören (146 kort, Sal's Saloon, okomprimerat): <b>+${kb}</b> i första ögonblicksbilden. En spelare får bara sin hand och det publika.</p>
+<p>${{ nu: '', a: 'Härleds i <code>facesOf</code> ur samma <code>compileCard</code> som texturen: textelementen på framsidan, utom det som bär <code>title</code>; ikoner som sina namn.', b: 'Som A, med varje textelements <code>name</code> (L15) som etikett. Ett onamngivet lager får ingen etikett.', c: 'Ny del av mallen: <code>speech</code>, en sträng med <code>{kolumn}</code>. Utan den: trycket fogat med punkter, som A.' }[s.v]}</p>
+<p>${s.v === 'nu' ? '' : 'Protokollmigrering: patch op för fältet, korpusen härledd om ur oförändrade loggar, och de handskrivna literalerna som bara typecheck hittar.'}</p>`
+}
+
+// ── ritningen och växlarna ──────────────────────────────────────────────────────────────────
+function rita() {
+  for (const b of document.querySelectorAll('[data-v]')) b.setAttribute('aria-pressed', String(b.dataset.v === s.v))
+  for (const b of document.querySelectorAll('[data-yta]')) b.setAttribute('aria-pressed', String(b.dataset.yta === s.yta))
+  $('#anteckning').innerHTML = ANTECKNING[s.v]
+  $('#trad').innerHTML = traden()
+  $('#scen').innerHTML = (s.yta === 'hand' ? handen() : s.yta === 'filt' ? filten() : observatoren()) + (s.lasvy ? lasvy(s.lasvy.ref, s.lasvy.lista) : '') + (s.lupp ? lupp(s.lupp) : '')
+  // Rovande tabindex (K16, roving.ts): ett stopp per grupp.
+  for (const g of document.querySelectorAll('#scen [data-roving]')) {
+    const k = [...g.querySelectorAll('.kortknapp')]
+    if (k.length) k[0].tabIndex = 0
+  }
+  const q = new URLSearchParams({ v: s.v, yta: s.yta })
+  if (document.body.dataset.ren !== undefined) q.set('ren', '1')
+  history.replaceState(null, '', `?${q}`)
+  matt()
+}
+function lasvyLista(el) {
+  if (el.dataset.lista) return PLATSER.find((p) => p.id === el.dataset.lista).hand
+  const grupp = el.closest('[data-fjader], .remsa, ul[data-bakom]')
+  return grupp ? [...grupp.querySelectorAll('[data-kort]')].filter((x) => !x.dataset.dolt).map((x) => x.dataset.kort) : [el.dataset.kort]
+}
+function oppnaLasvy(el) {
+  if (el.dataset.dolt && s.v !== 'b') return
+  if (el.dataset.dolt && !el.closest('.obs')) return
+  s.fokus = el.id || null
+  s.aterfokus = el
+  s.lasvy = { ref: el.dataset.kort, lista: lasvyLista(el) }
+  s.lupp = null
+  rita()
+  document.querySelector('.lasvy [data-stang]').focus()
+}
+function stang() {
+  const tillbaka = s.aterfokus
+  s.lasvy = null
+  s.lupp = null
+  rita()
+  const sel = tillbaka?.dataset?.kort ? `[data-kort="${tillbaka.dataset.kort}"]` : null
+  const el = (tillbaka?.id && document.getElementById(tillbaka.id)) || (sel && document.querySelector(`#scen ${sel}`))
+  if (el) { if (el.tabIndex < 0 && el.closest('[data-roving]')) { for (const x of el.closest('[data-roving]').querySelectorAll('.kortknapp')) x.tabIndex = -1; el.tabIndex = 0 } el.focus() }
+}
+
+document.addEventListener('click', (ev) => {
+  const t = ev.target
+  const v = t.closest('.protorad [data-v]')
+  if (v) { s.v = v.dataset.v; s.lasvy = null; s.lupp = null; rita(); return }
+  const y = t.closest('.protorad [data-yta]')
+  if (y) { s.yta = y.dataset.yta; s.lasvy = null; s.lupp = null; rita(); return }
+  if (t.closest('[data-stang]') && (t.matches('[data-stang]') || t.closest('button[data-stang]'))) { stang(); return }
+  const steg = t.closest('[data-steg]')
+  if (steg && s.lasvy) { const L = s.lasvy.lista; s.lasvy.ref = L[(L.indexOf(s.lasvy.ref) + Number(steg.dataset.steg) + L.length) % L.length]; rita(); document.querySelector(`[data-steg="${steg.dataset.steg}"]`).focus(); return }
+  const mer = t.closest('.protorad [data-mer]')
+  if (mer) { const r = $('.protorad'); const o = r.toggleAttribute('data-mer'); mer.setAttribute('aria-expanded', String(o)); return }
+  const lada = t.closest('[data-lada]')
+  if (lada) { s.lada = !s.lada; rita(); document.querySelector('[data-lada]').focus(); return }
+  const som = t.closest('[data-som]')
+  if (som) { s.som = som.dataset.som; rita(); document.querySelector(`[data-som="${s.som}"]`).focus(); return }
+  const fall = t.closest('[data-fall]')
+  if (fall) { const id = fall.dataset.fall; s.oppna.has(id) ? s.oppna.delete(id) : s.oppna.add(id); rita(); document.querySelector(`[data-fall="${id}"]`).focus(); return }
+  // B på telefonen: ett tryck på en solfjäder öppnar luppen (P-17), inte ett av de små korten.
+  const fj = t.closest('.obs [data-fjader]')
+  if (fj && s.v === 'b' && smal() && ev.detail > 0) { s.lupp = fj.dataset.fjader; s.aterfokus = null; rita(); document.querySelector('.lupp [data-kort]').focus(); return }
+  const k = t.closest('#scen [data-kort]')
+  if (k) oppnaLasvy(k)
+})
+// Skrivbordet: vilande pekare fyller Inspektion (#511).
+document.addEventListener('pointerover', (ev) => {
+  const k = ev.target.closest?.('.obs [data-kort]')
+  const i = $('#insp')
+  if (k && i && !k.dataset.dolt) i.innerHTML = kortbild(k.dataset.kort, { w: 140 })
+})
+document.addEventListener('focusin', (ev) => {
+  const k = ev.target.closest?.('.obs [data-kort]')
+  const i = $('#insp')
+  if (k && i && !k.dataset.dolt && s.v === 'b') i.innerHTML = kortbild(k.dataset.kort, { w: 140 })
+  matt()
+})
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape' && (s.lasvy || s.lupp)) { stang(); return }
+  const el = document.activeElement
+  const g = el?.closest?.('[data-roving]')
+  if (g && ['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(ev.key)) {
+    const k = [...g.querySelectorAll('.kortknapp')]
+    let i = k.indexOf(el)
+    i = ev.key === 'Home' ? 0 : ev.key === 'End' ? k.length - 1 : i + (ev.key === 'ArrowRight' || ev.key === 'ArrowDown' ? 1 : -1)
+    i = Math.max(0, Math.min(k.length - 1, i))
+    for (const x of k) x.tabIndex = -1
+    k[i].tabIndex = 0
+    k[i].focus()
+    ev.preventDefault()
+  }
+})
+// Pilarna vänster/höger i prototypraden byter variant.
+addEventListener('resize', () => rita())
+
+// ── mätningen: vad trädet säger, räknat i sidan (Playwright-mätningen står i kommentaren) ──────
+function dolj(el) {
+  for (let e = el; e && e !== document.body; e = e.parentElement) {
+    if (e.getAttribute('aria-hidden') === 'true' || e.hidden) return true
+    if (getComputedStyle(e).display === 'none') return true
+  }
+  return false
+}
+function namnPa(el) {
+  if (el.getAttribute('aria-label')) return el.getAttribute('aria-label')
+  let t = ''
+  const gå = (n) => { for (const c of n.childNodes) { if (c.nodeType === 3) t += c.textContent; else if (c.nodeType === 1 && c.getAttribute('aria-hidden') !== 'true') { if (c.getAttribute('role') === 'img' && c.getAttribute('aria-label')) t += c.getAttribute('aria-label'); else gå(c) } } }
+  gå(el)
+  return t.replace(/\s+/g, ' ').trim()
+}
+function matt() {
+  const scen = $('#scen')
+  const stopp = [...scen.querySelectorAll('button, [tabindex]')].filter((el) => el.tabIndex >= 0 && !el.disabled && !dolj(el) && !el.closest('[inert]'))
+  $('#m-stopp').textContent = String(stopp.length)
+  // Vad som sägs om proben: fokuserat kort om det finns, annars kortet märkt probe.
+  const aktiv = document.activeElement?.closest?.('#scen [data-kort]')
+  const probe = aktiv ?? document.getElementById('probe')
+  if (probe && !dolj(probe)) {
+    const roll = probe.tagName === 'BUTTON' ? 'knapp' : probe.getAttribute('role') ?? 'text'
+    const beskr = probe.getAttribute('aria-description')
+    const sagt = namnPa(probe)
+    $('#m-vem').textContent = aktiv ? 'kortet med fokus' : 'Duel'
+    $('#m-sager').textContent = sagt ? `«${sagt}» (${roll})${beskr ? ` — «${beskr}»` : ''}` : '(ingenting: kortet finns inte i trädet)'
+  } else {
+    $('#m-vem').textContent = 'Duel'
+    $('#m-sager').textContent = s.yta === 'obs' && s.v === 'a' ? '(bakom «Ada ▸» i Platser)' : s.yta === 'obs' && s.v === 'c' && s.som === 'text' ? 'läses som listpunkt i «Som text»' : '(ingenting: kortet finns inte i trädet)'
+  }
+  if (s.lasvy) {
+    const d = document.querySelector('.lasvy')
+    const n = document.getElementById('lasvy-titel').textContent
+    const b = d.getAttribute('aria-describedby') ? document.getElementById(d.getAttribute('aria-describedby')).textContent : ''
+    const alt = d.querySelector('.kort[role=img]')?.getAttribute('aria-label')
+    $('#m-vem').textContent = 'läsvyn'
+    $('#m-sager').textContent = `«${n}, dialog»${b ? ` — «${b}»` : ''}${alt ? ` · bilden: «${alt}»` : ''}`
+  }
+  // Kortnamn i trädet: kort med framsida vars titel går att höra någonstans.
+  // En kopia (A:s filt, som är dold för trädet) räknas inte två gånger. I C bär bilden namnet.
+  const alla = [...scen.querySelectorAll('[data-kort]:not([data-dolt]):not([data-kopia])')]
+  const heter = (el) => namnPa(el) + (el.querySelector('[role=img]')?.getAttribute('aria-label') ?? '')
+  const hors = alla.filter((el) => !dolj(el) && heter(el).includes(rad(el.dataset.kort).title)).length
+  const bakom = alla.filter((el) => el.closest('[data-bakom][hidden]')).length
+  const text = scen.querySelectorAll('.somtext li').length
+  $('#m-namn').textContent = text ? `${text} listpunkter (som text)` : `${hors} av ${alla.length}${bakom ? ` (${bakom} bakom ett tryck)` : ''}`
+  // Minsta träffyta: den synliga delen av ett kort man kan trycka på, i CSS-px. Filten mäts för
+  // pekaren, oavsett om trädet ser den; listan och luppen för sig.
+  const syns = (el) => { for (let e = el; e && e !== document.body; e = e.parentElement) if (e.hidden || getComputedStyle(e).display === 'none') return false; return true }
+  const minst = (els) => {
+    let min = null
+    for (const el of els) {
+      if (!syns(el)) continue
+      const r = el.getBoundingClientRect()
+      if (!r.width) continue
+      let w = r.width, h = r.height
+      const nasta = el.nextElementSibling
+      if (nasta?.matches?.('[data-kort]') && el.parentElement.matches('[data-fjader]')) {
+        const q = nasta.getBoundingClientRect()
+        if (el.parentElement.classList.contains('v')) h = Math.min(h, q.top - r.top); else w = Math.min(w, q.left - r.left)
+      }
+      if (!min || w * h < min.w * min.h) min = { w, h }
+    }
+    return min ? `${Math.round(min.w)} × ${Math.round(min.h)} px` : null
+  }
+  // B på telefonen: ett tryck på solfjädern öppnar luppen, så solfjädern är träffytan.
+  const luppen = s.v === 'b' && smal()
+  const filt = minst([...scen.querySelectorAll(luppen ? '[data-fjader], .ozon [data-kort]' : '.bordet [data-kort], .filt [data-kort], .remsa [data-kort]')])
+  const lista = minst([...scen.querySelectorAll('.platser [data-kort], .lupp [data-kort]')])
+  $('#m-yta').textContent = [filt && `filten ${filt}`, lista && `listan ${lista}`].filter(Boolean).join(' · ') || '–'
+}
+rita()
+</script>
+</body>
+</html>
