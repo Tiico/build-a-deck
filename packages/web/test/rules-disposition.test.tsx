@@ -119,7 +119,7 @@ describe('the template is a proposal and not a form (#131)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Börja från en mall' }))
     const written = await waitFor(() => document.querySelector('[data-rulebook]') as HTMLElement)
     const asked = written.querySelectorAll('[data-ask]').length
-    fireEvent.click(within(written).getByRole('heading', { name: 'Handlingar' }))
+    fireEvent.click(within(within(written).getByRole('heading', { name: 'Handlingar' })).getByRole('button'))
     fireEvent.click(await within(written).findByRole('button', { name: 'Ta bort avsnittet' }))
     await waitFor(() =>
       expect(within(written).getAllByRole('heading', { level: 4 }).map((h) => h.textContent)).toEqual(['Översikt', 'Uppställning', 'En tur', 'Spelet tar slut']),

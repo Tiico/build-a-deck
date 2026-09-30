@@ -866,6 +866,7 @@ export const enEditor = {
   'rules.booklet.noRules': 'The game has no rules to print.',
   'rules.booklet.orderFailed': 'The booklet could not be ordered ({status}).',
   'rules.booklet.notSaved': 'The book could not be saved, so no booklet was ordered. Save and try again.',
+  'rules.block.edit': 'Edit {block}',
   'rules.block.text': 'Text {nth}{where}',
   'rules.block.heading': 'Heading {n}',
   'rules.block.level': 'Level of heading {n}',

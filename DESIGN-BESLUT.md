@@ -5342,3 +5342,20 @@ Ett utsnitt bedöms med ögat, och procent av en bild är inget man tänker i, s
 
 Följdkrav:
 Varje väg som flyttar eller ändrar en zons storlek går genom `zone-geometry.ts` (`onTableOf`, `sizedBy`), så att ett skrivet läge hamnar exakt där ett draget skulle ha hamnat.
+
+### L51. I regelbokens redigeringsläge bär rubriken sin knapp, och en lista öppnas med en penna (prototypat och beslutat 2026-09-29, #580)
+
+I redigeringsläget var varje block en `div[role=button]` som innehöll hela blockets text.
+Barn till en knapp är presentationella, så en skärmläsare fann bara bokens titel som rubrik just där boken skrivs (WCAG 1.3.1 och 4.1.2), och en lista lästes som en rad.
+
+Fyra varianter prövades i en prototyp: som i dag, en penna i marginalen som alltid syns, en penna vid pekaren och rubriken som bär knappen.
+Beställaren valde den sista.
+
+- **En rubrik är `<h2><button>`** (och `<h3>` för en underrubrik), som APG:s accordion: rubriken finns kvar, och knappen i den öppnar blocket. Den ritas som rubriken den står i.
+- **Ett stycke är en knapp som förut**, eftersom ett stycke inte har något att förlora på att vara det.
+- **En lista och en bild öppnas med en penna**, ✎ «Redigera listan under …», i vänstermarginalen där ＋:et står i den högra.
+  En lista inuti en knapp förlorar sina punkter, och en bild sin alt-text och bildtext till knappens namn.
+  Ett klick i listan eller bilden öppnar den för en pekare som förut.
+- Uppställningen har kvar bildtexten som väg in (#270).
+
+Mätt i prototypen: fem rubriker hittas i stället för en, med lika många tabbstopp och lika många tryck in till ett block.

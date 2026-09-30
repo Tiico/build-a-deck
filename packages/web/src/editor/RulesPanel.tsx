@@ -215,7 +215,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
     if (editing !== null || id === null) return
     back.current = null
     // A book with nothing left in it has no block to stand on, and the way to write one is next.
-    const to = document.querySelector(`[data-block="${CSS.escape(id)}"] :is([role='button'], .byd-rules-caption-edit)`) ?? document.querySelector('.byd-rules-own')
+    const to = document.querySelector(`[data-block="${CSS.escape(id)}"] :is([role='button'], .byd-block-door, .byd-rules-caption-edit)`) ?? document.querySelector('.byd-rules-own')
     ;(to as HTMLElement | null)?.focus()
   }, [editing, rules])
   // Going to a picture is going there with the keyboard as well as with the eye: the block takes
@@ -225,7 +225,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
     if (!found) return
     const here = foundHere.current
     here?.scrollIntoView?.({ block: 'center' })
-    here?.querySelector<HTMLElement>('[role="button"]')?.focus()
+    here?.querySelector<HTMLElement>('[role="button"], .byd-block-door')?.focus()
   }, [found])
   // A file the designer picked, read and laid out as the book it would become — and never taken
   // in on the way past. What it loses is read first (#131).
@@ -516,6 +516,20 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
                       // block: a control inside a control is invalid and unreachable (UX-37, #82).
                       // Its caption is the way in, and the only thing about a setup that is written.
                       <SetupOverview block={b} level={3} onCaption={() => open(b.id)} />
+                    ) : writing && b.kind === 'heading' ? (
+                      <Block block={b} source={source} assetBase={assetBase} open={() => open(b.id)} />
+                    ) : writing && (b.kind === 'list' || b.kind === 'image') ? (
+                      // A list inside a button loses its points, and a picture its alt text and
+                      // caption to the button's name (#580): the block stays what it is, a pencil
+                      // beside it is the way in, and a click on it opens it for a pointer as before.
+                      <>
+                        <button type="button" className="byd-rules-pen byd-block-door" aria-label={t('rules.block.edit', { block: called.get(b.id)?.self ?? '' })} onClick={() => open(b.id)}>
+                          <span aria-hidden="true">✎</span>
+                        </button>
+                        <div className="byd-rules-writable" onClick={() => open(b.id)}>
+                          <Block block={b} source={source} assetBase={assetBase} />
+                        </div>
+                      </>
                     ) : writing ? (
                       <div
                         role="button"
@@ -1261,20 +1275,35 @@ function Editing({
   )
 }
 
-function Block({ block, source, assetBase }: { block: RenderedBlock; source?: RuleBlock | undefined; assetBase?: string | undefined }) {
+function Block({ block, source, assetBase, open }: { block: RenderedBlock; source?: RuleBlock | undefined; assetBase?: string | undefined; open?: (() => void) | undefined }) {
   const t = useT()
   switch (block.kind) {
     case 'heading':
       // The heading is where the column beside the book points, so it carries the anchor itself
       // rather than the chrome around it. Its words are the same nodes a paragraph's are (#272):
       // what the designer wrote as a reference is drawn as one here too.
+      // While the book is written the heading carries the button that opens it (#580, beslut
+      // 2026-09-29, C), as an accordion's heading does: the heading stays a heading, which it was
+      // not as the text of a button.
       return block.level === 1 ? (
         <h2 id={anchorOf(block.id)} aria-level={4}>
-          <Span nodes={block.children} />
+          {open ? (
+            <button type="button" className="byd-block-door" onClick={open}>
+              <Span nodes={block.children} />
+            </button>
+          ) : (
+            <Span nodes={block.children} />
+          )}
         </h2>
       ) : (
         <h3 id={anchorOf(block.id)} aria-level={5}>
-          <Span nodes={block.children} />
+          {open ? (
+            <button type="button" className="byd-block-door" onClick={open}>
+              <Span nodes={block.children} />
+            </button>
+          ) : (
+            <Span nodes={block.children} />
+          )}
         </h3>
       )
     case 'text': {
