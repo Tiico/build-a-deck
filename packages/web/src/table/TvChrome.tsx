@@ -3,6 +3,7 @@ import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
 import { describeActivity, sayable } from './describe.js'
 import { seatColor } from './seatColor.js'
 import { QrCode } from './QrCode.js'
+import { PlaceLists, type ReadCard } from './PlaceLists.js'
 import { Texture } from './Texture.js'
 import { hue } from './hue.js'
 import { cardWord } from './keyboard.js'
@@ -49,6 +50,9 @@ export type TvChromeProps = {
   // The room's own television (#573): the seats are on the felt's plates, and every word is at
   // K26's 24 px. The observer's screen is not the room's and leaves it off.
   room?: boolean | undefined
+  // What a card opened from the seats' lists does (#551): the observer holds it up to be read. A
+  // screen that passes nothing keeps its seats as rows that open nothing.
+  onRead?: ReadCard | undefined
   children: ReactNode
 }
 
@@ -64,18 +68,13 @@ export type TvChromeProps = {
 // at 1920 x 1080 measured 68 px across for it. The same card is 82 px with the rows gone and
 // their contents moved into the column, which is the difference between a card that has to be
 // pointed at to be told apart and one that does not (`tv-card-size.test.ts`, K8).
-export function TvChrome({ view, activity, roomCode, joinUrl, title, version, inspecting, faces, showing, onDismiss, observers = [], note, rules, room = false, children }: TvChromeProps) {
+export function TvChrome({ view, activity, roomCode, joinUrl, title, version, inspecting, faces, showing, onDismiss, observers = [], note, rules, room = false, onRead, children }: TvChromeProps) {
   // A card whose words are smaller than the wizard's frame is shown taller (#523), into the felt's
   // height, until they read from the sofa: the height its width needs, which the stylesheet lets past
   // the 938 px the frame's own card stops at.
   const showPt = useSmallestPt(faces, showing?.card)
   const showNeed = readingWidth(0, showPt, 'tv') * CARD_STANDARD_63x88.physical.heightMm / CARD_STANDARD_63x88.physical.widthMm
   const t = useT()
-  const handCount = (seat: string) => {
-    const hand = view.zones.find((z) => z.kind === 'hand' && z.owner === seat)
-    if (!hand) return 0
-    return hand.mode === 'count' ? hand.count : hand.order.length
-  }
   const seatIndex = (seat: string) => Math.max(0, view.seats.findIndex((s) => s.id === seat))
   // Three lines (#482 fynd 6, beslut B): the newest large, as the thing the room looks up for, and
   // two before it small. The whole history is on every phone; the television keeps what a glance
@@ -190,21 +189,7 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
         {!room && (
           <section className="byd-tv-seats" aria-labelledby="tv-seats">
             <h2 id="tv-seats">{t('tv.seats')}</h2>
-            <ul aria-labelledby="tv-seats" data-dense={dense ? '' : undefined}>
-              {view.seats.map((s, i) => {
-                const last = sayable(activity).reverse().find((l) => l.by === s.id)
-                return (
-                  <li key={s.id} style={{ ['--seat' as string]: seatColor(i) }}>
-                    <i data-avatar>{(s.name ?? s.id).slice(0, 1)}</i>
-                    <div>
-                      <span>{s.name ?? s.id}</span>
-                      <span>{t(`tv.seat.hand${dense ? '.short' : ''}.${handCount(s.id) === 1 ? 'one' : 'other'}`, { n: handCount(s.id) })}</span>
-                      {!dense && <small>{last ? describeActivity(last, view, t) : t('tv.seat.none')}</small>}
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
+            <PlaceLists view={view} activity={activity} dense={dense} onRead={onRead} />
           </section>
         )}
         <section className="byd-tv-feed" ref={feedRef}>

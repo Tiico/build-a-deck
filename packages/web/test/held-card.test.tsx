@@ -159,3 +159,34 @@ describe('the card held up walks the row it was lifted from (#507)', () => {
     expect(screen.queryByText('1 av 1')).toBeNull()
   })
 })
+
+// The texture is a picture, and what the card prints is heard when it is held up to be read (#551,
+// K27): the name stays the title, and the printed words are the reader's description.
+describe('the card held up reads out what it prints (#551)', () => {
+  const described = () => {
+    const id = screen.getByRole('dialog').getAttribute('aria-describedby')
+    return id === null ? null : [...document.getElementById(id)!.querySelectorAll('p')].map((p) => p.textContent)
+  }
+
+  it('describes the reader with the printed lines, each ended as a sentence, and its name stays the title', () => {
+    render(<HeldCard card={{ ...card, title: 'Duel', text: ['Playcard', 'Utmana en spelare på duell.', 'Guld'] }} onClose={() => undefined} />)
+    expect(screen.getByRole('dialog').getAttribute('aria-label')).toBe('Duel')
+    expect(described()).toEqual(['Playcard.', 'Utmana en spelare på duell.', 'Guld.'])
+  })
+
+  it('reads the next card when the row is walked', () => {
+    const row: VisibleComponentState[] = [{ ...card, id: 'c1', title: 'Duel', text: ['Guld'] }, { ...card, id: 'c2', title: 'Duel', text: ['Koppar'] }]
+    const { rerender } = render(<HeldCard card={row[0]!} row={row} onStep={() => undefined} onClose={() => undefined} />)
+    expect(described()).toEqual(['Guld.'])
+    rerender(<HeldCard card={row[1]!} row={row} onStep={() => undefined} onClose={() => undefined} />)
+    expect(described()).toEqual(['Koppar.'])
+  })
+
+  it('has no description for a card that prints nothing more, or whose words the view was not told', () => {
+    const { unmount } = render(<HeldCard card={{ ...card, text: [] }} onClose={() => undefined} />)
+    expect(described()).toBeNull()
+    unmount()
+    render(<HeldCard card={card} onClose={() => undefined} />)
+    expect(described()).toBeNull()
+  })
+})

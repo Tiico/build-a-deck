@@ -67,6 +67,16 @@ export const svPlay = {
   'tv.seat.hand.short.other': '{n} kort',
   // Platsens tredje rad innan platsen gjort något (UX-41): ett ord, inte ett streck.
   'tv.seat.none': 'Inget ännu',
+  // Observatörens platser som listor att fälla ut (#551, beslut A): ett kort per rad, och raden
+  // säger var kortet ligger. Handen heter som på filten, «Adas hand» (K19).
+  'tv.list.table': 'På bordet',
+  'tv.list.card': '{card}, i {where}',
+  'tv.list.card.down': '{card}, nedvänt, i {where}',
+  'tv.list.down': '{card} (nedvänt)',
+  'tv.list.pile.one': 'hög, {n} kort, överst {top}',
+  'tv.list.pile.other': 'hög, {n} kort, överst {top}',
+  'tv.list.area.one': '{n} kort',
+  'tv.list.area.other': '{n} kort',
   'tv.observers.one': '{names} tittar på · ser allt',
   'tv.observers.other': '{names} tittar på · ser allt',
 

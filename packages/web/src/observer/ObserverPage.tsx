@@ -65,6 +65,14 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   // lifts a card in any hand beside itself, the gesture the table screen reads with (K26).
   const narrow = useNarrow()
   const [held, setHeld] = useState<VisibleComponentState | null>(null)
+  // A card opened from her seats' lists (#551, beslut A) is held up the same way, on a desk as on a
+  // phone, with the rest of its list to walk: the list is the keyboard's way to it and the reader
+  // is where its words are heard (K27). A card tapped on the felt has no list to walk.
+  const [row, setRow] = useState<VisibleComponentState[] | undefined>(undefined)
+  const read = (card: VisibleComponentState, list?: VisibleComponentState[]) => {
+    setHeld(card)
+    setRow(list)
+  }
   const handle = useRef<HTMLDivElement>(null)
   const [handleH, setHandleH] = useState(0)
   useEffect(() => {
@@ -128,11 +136,12 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
         faces={http}
         observers={observers}
         note={<p className="byd-observer-note">{t('observer.banner')}</p>}
+        onRead={read}
       >
         {/* A proposed rewind as the table screen shows it (#485, K13): the table it would bring back,
             in the same frame and with the same words. */}
         <RewindFrame view={view} activity={activity}>
-          <TableRenderer view={previewOf(view)} mode="tv" camera="hand" {...(sessionId ? { remember: `observe:${sessionId}` } : {})} rotate={turn} faces={http} onInspect={setInspecting} {...(narrow ? { onPick: setHeld } : { watch: true })} shuffles={shuffles} />
+          <TableRenderer view={previewOf(view)} mode="tv" camera="hand" {...(sessionId ? { remember: `observe:${sessionId}` } : {})} rotate={turn} faces={http} onInspect={setInspecting} {...(narrow ? { onPick: (card: VisibleComponentState) => read(card) } : { watch: true })} shuffles={shuffles} />
         </RewindFrame>
       </TvChrome>
       {/* The handle (#6): a row of its own under the table, never a banner over it. What she is
@@ -160,7 +169,15 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
           {t('session.flag')}
         </button>
       </div>
-      {held && <HeldCard card={held} faces={http} onClose={() => setHeld(null)} />}
+      {held && (
+        <HeldCard
+          card={view.components.find((c) => c.id === held.id) ?? held}
+          faces={http}
+          row={row?.map((c) => view.components.find((now) => now.id === c.id) ?? c)}
+          onStep={setHeld}
+          onClose={() => setHeld(null)}
+        />
+      )}
       {toast && (
         <div className="byd-toast" role="status">
           {toast}
