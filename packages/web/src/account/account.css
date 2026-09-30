@@ -17,7 +17,7 @@
 .byd-login form { display: grid; gap: 10px; }
 .byd-login-email { display: grid; gap: 6px; }
 .byd-login-email > span { color: #cdd4e4; font-size: 13px; font-weight: 700; }
-.byd-login input { width: 100%; box-sizing: border-box; padding: 14px 16px; border-radius: 12px; border: 1px solid #2c3242; background: var(--byd-account-field-bg); color: #fff; font-size: 16px; }
+.byd-login input { width: 100%; box-sizing: border-box; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--byd-secondary-line); background: var(--byd-account-field-bg); color: #fff; font-size: 16px; }
 .byd-login button { padding: 14px 18px; border-radius: 12px; font-size: 16px; cursor: pointer; }
 .byd-login button:disabled { opacity: 0.4; cursor: default; }
 .byd-login-sent { padding: 18px; border-radius: 14px; background: #1b2a22; color: #d8ffe8; display: grid; gap: 6px; font-size: 14px; line-height: 1.5; }
@@ -97,7 +97,7 @@
    cannot read the page can still change what it speaks. */
 .byd-lang { display: inline-flex; gap: 6px; align-items: center; color: #9aa3b8; font-size: 13px; }
 /* The picker the reader who cannot read this page reaches for first, at the size a thumb needs. */
-.byd-lang select { min-height: 44px; border: 1px solid #2c3242; border-radius: 8px; padding: 4px 8px; background: var(--byd-account-field-bg); color: #e6e6e6; font: inherit; cursor: pointer; }
+.byd-lang select { min-height: 44px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; padding: 4px 8px; background: var(--byd-account-field-bg); color: #e6e6e6; font: inherit; cursor: pointer; }
 .byd-login .byd-lang { justify-content: flex-start; margin-top: 2px; }
 
 /* Taking a game out and bringing it back (G5, #529, beslut B): a window over the list that says

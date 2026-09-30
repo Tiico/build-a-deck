@@ -213,7 +213,7 @@
 .byd-join-table button[data-edge='E'] { right: calc(var(--byd-seat-hang-x) * -1); top: calc(50% + var(--seat-step) * var(--byd-seat-pitch-y)); transform: translateY(-50%); }
 .byd-join-table button[data-edge='W'] { left: calc(var(--byd-seat-hang-x) * -1); top: calc(50% + var(--seat-step) * var(--byd-seat-pitch-y)); transform: translateY(-50%); }
 .byd-join form { display: grid; gap: 10px; }
-.byd-join input { padding: 16px; border-radius: 12px; border: 1px solid #2c3242; background: #1b1e27; color: #fff; font-size: 18px; }
+.byd-join input { padding: 16px; border-radius: 12px; border: 1px solid var(--byd-secondary-line); background: #1b1e27; color: #fff; font-size: 18px; }
 /* The name is written over the field instead of inside it (#416). A placeholder reading "Ditt
    namn" is read as a filled-in value, and a field whose only name is an `aria-label` has nothing
    written for somebody saying the words on the screen out loud to reach (WCAG 2.5.3). */

@@ -258,7 +258,7 @@
 .byd-history-detail { padding: 0 12px 12px; display: grid; gap: 8px; }
 .byd-history-detail p { margin: 0; color: #cfd5e3; font-size: 12px; line-height: 1.5; }
 .byd-history-detail label { display: grid; gap: 4px; font-size: 11px; color: #9aa3b8; }
-.byd-history-detail input { padding: 4px 8px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
+.byd-history-detail input { padding: 4px 8px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
 .byd-history-detail button { border: 1px solid #2f333d; border-radius: 8px; padding: 4px 8px; background: #1b1d23; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
 .byd-history [role='alert'] { color: #f0b64a; font-size: 12px; }
 .byd-editor [role='tablist'] { display: flex; background: #1b1d23; border-radius: 8px; padding: 4px; margin-left: 12px; }
@@ -310,7 +310,7 @@
 .byd-share li small { color: #9aa3b8; font-size: 11px; }
 .byd-share li button { margin-left: auto; border: 1px solid #2f333d; border-radius: 7px; padding: 4px 8px; background: #1b1d23; color: #9aa3b8; font: 11px system-ui; cursor: pointer; }
 .byd-share form { display: grid; grid-template-columns: 1fr auto auto; gap: 6px; }
-.byd-share form input, .byd-share form select { padding: 8px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: 12px system-ui; min-width: 0; }
+.byd-share form input, .byd-share form select { padding: 8px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #14161c; color: #fff; font: 12px system-ui; min-width: 0; }
 .byd-share form button { border: 1px solid var(--byd-editor-primary-bg); border-radius: 8px; padding: 8px 12px; background: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); font: 700 12px system-ui; cursor: pointer; }
 /* What is waiting (#477 fynd 10, variant C): a line under the form that opens the invitations
    nobody has followed yet. Dashed, as the prototype had it, because they are not members. */
@@ -486,6 +486,11 @@
   color-scheme: dark;
   cursor: pointer;
 }
+/* The unticked box keeps the platform's paint and wears the button language's line over its edge
+   (#553, beslut 2026-09-30): the platform's own grey is its own, 4.1:1 on one machine and about
+   2.5:1 on another, and a box a reader has to find carries the 3:1 a graphic does. Inside the box,
+   so it takes no room, and never over the focus ring, which is the editor's. */
+.byd-editor input[type='checkbox']:not(:checked):not(:disabled):not(:focus-visible) { outline: 1px solid var(--byd-secondary-line); outline-offset: -1px; }
 /* The target is the label, and it is a target wide as well as tall: it grows around the drawn
    box and never with it. "Tal" is the short word that proves it — the kind's own label came to
    41 across without this, and a thumb has no more to aim at than the word is wide (#50). */
@@ -625,7 +630,7 @@
 .byd-setup-counter button { border: 0; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
 /* Border-box (#480): the editor's 44 px floor is the whole field's height, and with the padding
    counted on top of it every field on this tab stood 62 px tall. */
-.byd-setup input:not([type='checkbox']), .byd-setup select { box-sizing: border-box; padding: 8px; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; min-width: 0; }
+.byd-setup input:not([type='checkbox']), .byd-setup select { box-sizing: border-box; padding: 8px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; min-width: 0; }
 .byd-setup-counter input:not([type='number']) { flex: 1 1 60px; width: auto; max-width: 140px; }
 .byd-setup input[type='number'] { width: 64px; }
 .byd-setup-hint { margin: 0; color: var(--byd-editor-quiet); font-size: 12px; line-height: 1.5; }
@@ -660,7 +665,7 @@
 .byd-setup-place { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--byd-s1) var(--byd-s2); }
 .byd-setup-place b { color: #dce3f2; font: 600 12px system-ui, sans-serif; }
 .byd-setup-place label { display: inline-flex; align-items: center; gap: var(--byd-s1); color: #9aa3b8; }
-.byd-setup-place input { box-sizing: border-box; width: 64px; min-height: var(--byd-tap); padding: 0 var(--byd-s2); border: 1px solid #3b414e; border-radius: 8px; background: #12141a; color: #dce3f2; font: inherit; font-variant-numeric: tabular-nums; text-align: right; }
+.byd-setup-place input { box-sizing: border-box; width: 64px; min-height: var(--byd-tap); padding: 0 var(--byd-s2); border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #12141a; color: #dce3f2; font: inherit; font-variant-numeric: tabular-nums; text-align: right; }
 .byd-setup-undo { display: flex; gap: 8px; align-items: center; color: #ffd98a; }
 .byd-setup-undo button { border: 1px solid #5c4a1f; border-radius: 8px; padding: 4px 8px; background: #241f13; color: #ffd98a; font-weight: 700; cursor: pointer; }
 /* The list of zones: every one the table has, in two groups, and the row is the way into it —
@@ -836,7 +841,7 @@
 .byd-crown-end { margin-left: auto; }
 /* A search is a tool of the row like any other, and is held to the same height as a box so the
    crown reads as one row rather than as a field with buttons round it. */
-.byd-crown-search { flex: 0 1 240px; min-width: 0; min-height: var(--byd-tap); box-sizing: border-box; padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: #14161c; color: #fff; font: inherit; font-size: 12px; }
+.byd-crown-search { flex: 0 1 240px; min-width: 0; min-height: var(--byd-tap); box-sizing: border-box; padding: 0 12px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #14161c; color: #fff; font: inherit; font-size: 12px; }
 /* Below the desk the wall's crown carries more than one row can hold, and the field is the only
    thing in it that can give: measured at 768 px it had been squeezed to 26 px, which is a slit and
    not a target. The editor may degrade under desk width (L12) but it never loses a control and
@@ -1337,7 +1342,7 @@
    shrinking under their own words and setting them over one another. The desk keeps its one row. */
 .byd-canvas[data-stage] > .byd-canvas-strip { flex-wrap: wrap; }
 .byd-canvas-group-column { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 11px; color: var(--byd-editor-hint-ink); }
-.byd-canvas-group-column select { min-width: 0; background: #0f1115; border: 1px solid #2a2d36; color: #dce3f2; border-radius: 6px; padding: 4px; font-size: 12px; }
+.byd-canvas-group-column select { min-width: 0; background: #0f1115; border: 1px solid var(--byd-secondary-line); color: #dce3f2; border-radius: 6px; padding: 4px; font-size: 12px; }
 /* The groups as a menu in the crown, and the button that opens it. The button carries the open
    group and its count — the two things the old row of tabs said only by being long enough to hide
    61 % of itself — and the list behind it carries every group at once, so nothing is out of sight
@@ -1551,7 +1556,7 @@
 .byd-card-row-values { flex: 1 1 auto; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #9aa3b8; font-size: 12px; }
 .byd-card-row-values b { color: #c7cede; font-weight: 600; }
 .byd-card-row-list { position: absolute; left: var(--byd-s3); bottom: calc(100% + 4px); z-index: 20; display: grid; gap: var(--byd-s1); width: min(320px, calc(100% - 24px)); max-height: 50vh; padding: var(--byd-s2); border: 1px solid #3b4358; border-radius: 10px; background: #1b1f2a; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5); }
-.byd-card-row-list input { min-height: var(--byd-tap); padding: 0 var(--byd-s2); border: 1px solid #2f333d; border-radius: 8px; background: #0f1115; color: #fff; font: inherit; }
+.byd-card-row-list input { min-height: var(--byd-tap); padding: 0 var(--byd-s2); border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #0f1115; color: #fff; font: inherit; }
 .byd-card-row-list ul { margin: 0; padding: 0; list-style: none; overflow: auto; }
 .byd-card-row-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--byd-s2); min-height: var(--byd-tap); padding: 0 var(--byd-s2); border-radius: 6px; color: #e6ecfa; cursor: pointer; }
 .byd-card-row-list li[data-active], .byd-card-row-list li:hover { background: #262a35; }
@@ -1643,7 +1648,7 @@
 .byd-props-grip:hover, .byd-props-grip:focus-visible { color: #cfe0ff; background: #1b1f29; }
 .byd-props-unit { font-style: normal; font-size: 10px; color: var(--byd-editor-quiet); }
 .byd-props label { display: grid; gap: 3px; font-size: 11px; color: #9aa3b8; }
-.byd-props input, .byd-props select { background: #0f1115; border: 1px solid #2a2d36; color: #fff; border-radius: 6px; padding: 4px 8px; font-size: 13px; width: 100%; box-sizing: border-box; }
+.byd-props input, .byd-props select { background: #0f1115; border: 1px solid var(--byd-secondary-line); color: #fff; border-radius: 6px; padding: 4px 8px; font-size: 13px; width: 100%; box-sizing: border-box; }
 /* The binding is the second door into a new field (#32). Here the form stands in the flow under
    the picker rather than over it: the properties are a scrolling column, so a sheet hanging out
    of it would be cut off at the panel's edge — and a column of fields growing by one is what a
@@ -1681,7 +1686,7 @@
 .byd-fonts-name { font-size: 14px; color: #dce3f2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-fonts li small { grid-column: 1 / -1; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--byd-editor-hint-ink); }
 .byd-fonts-licence { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.byd-fonts-licence input { background: #0f1115; border: 1px solid #2a2d36; color: #fff; border-radius: 6px; padding: 4px 8px; font-size: 12px; width: 100%; box-sizing: border-box; }
+.byd-fonts-licence input { background: #0f1115; border: 1px solid var(--byd-secondary-line); color: #fff; border-radius: 6px; padding: 4px 8px; font-size: 12px; width: 100%; box-sizing: border-box; }
 .byd-fonts li > button { justify-self: end; border: 1px solid #3b414e; border-radius: 6px; background: #1b1d23; color: #9aa3b8; font-size: 11px; padding: 4px 8px; cursor: pointer; }
 .byd-fonts-upload { display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; padding: 8px 12px; font-size: 12px; cursor: pointer; }
 /* A typeface is over the control (#294). Färgen är dragmarkeringens token (#291, L22), och
@@ -1741,7 +1746,7 @@
 }
 .byd-font-catalog header { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: var(--byd-s2); border-bottom: 1px solid var(--byd-editor-line-soft); }
 .byd-font-catalog-search { min-width: 0; }
-.byd-font-catalog-search input { width: 100%; box-sizing: border-box; min-height: 32px; border: 1px solid #2a2d36; border-radius: 8px; background: #0f1115; color: #fff; font: inherit; padding: 0 var(--byd-s3); }
+.byd-font-catalog-search input { width: 100%; box-sizing: border-box; min-height: 32px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #0f1115; color: #fff; font: inherit; padding: 0 var(--byd-s3); }
 .byd-font-catalog-close { min-height: 32px; border: 1px solid var(--byd-editor-line); border-radius: 8px; background: transparent; color: var(--byd-editor-home-ink); font: inherit; font-size: 12px; padding: 0 var(--byd-s3); cursor: pointer; }
 .byd-font-catalog-kinds { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
 .byd-font-catalog-kinds button { min-height: 26px; border: 1px solid var(--byd-editor-line); border-radius: 999px; padding: 0 var(--byd-s3); background: #0f1115; color: var(--byd-editor-home-ink); font: inherit; font-size: 11px; cursor: pointer; }
@@ -2004,7 +2009,7 @@
   flex: 0 1 240px;
   min-width: 0;
   padding: 8px 12px;
-  border: 1px solid #3b414e;
+  border: 1px solid var(--byd-secondary-line);
   border-radius: 8px;
   background: var(--byd-editor-filter-bg);
   color: var(--byd-editor-filter-ink);
@@ -2078,7 +2083,7 @@
 .byd-data-bulk label { display: flex; align-items: center; gap: 6px; color: var(--byd-editor-bulk-quiet); }
 .byd-data-bulk select, .byd-data-bulk input {
   padding: 4px 8px;
-  border: 1px solid #3b414e;
+  border: 1px solid var(--byd-secondary-line);
   border-radius: 8px;
   background: var(--byd-editor-filter-bg);
   color: var(--byd-editor-filter-ink);
@@ -2454,7 +2459,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
   text-align: left;
 }
 .byd-newfield label { display: grid; gap: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--byd-editor-quiet); }
-.byd-newfield input[type='text'], .byd-newfield > label input { width: 100%; border: 1px solid #3b414e; border-radius: 6px; padding: 4px 8px; background: #1b1d23; color: #e6ecfa; font: inherit; }
+.byd-newfield input[type='text'], .byd-newfield > label input { width: 100%; border: 1px solid var(--byd-secondary-line); border-radius: 6px; padding: 4px 8px; background: #1b1d23; color: #e6ecfa; font: inherit; }
 .byd-newfield fieldset { display: flex; gap: 10px; margin: 0; padding: 0; border: 0; }
 .byd-newfield legend { padding: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--byd-editor-quiet); }
 .byd-newfield fieldset label { display: flex; align-items: center; gap: 4px; font-size: 12px; text-transform: none; letter-spacing: 0; color: #dce3f2; }
@@ -2740,7 +2745,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-symbols h2 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-symbols p { margin: 0 0 12px; color: #9aa3b8; line-height: 1.5; }
 .byd-symbols-library { padding: 16px; border-radius: 16px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
-.byd-symbols-set input { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
+.byd-symbols-set input { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
 .byd-symbols-work button { border: 1px solid #2f333d; border-radius: 8px; padding: 4px 12px; background: #1b1d23; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
 .byd-symbols-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
 .byd-symbols-tile { display: grid; justify-items: center; gap: 3px; padding: 8px 4px; font-weight: 400; font-size: 10px; color: #9aa3b8; }
@@ -2773,7 +2778,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-symbols-colours li > button:last-child { grid-area: remove; }
 .byd-symbols-said { grid-area: said; display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--byd-s1) var(--byd-s3); }
 .byd-symbols-colours li[data-faint='true'] { border-color: #6b3242; }
-.byd-symbols-colours input { width: 120px; padding: 4px 8px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
+.byd-symbols-colours input { width: 120px; padding: 4px 8px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
 .byd-symbols-colours small { color: var(--byd-editor-quiet); font-size: 11px; }
 .byd-symbols-colours li > button:last-child { padding: 0 8px; font-size: 15px; color: #9aa3b8; }
 .byd-symbols-swatch, .byd-role-swatch { width: 16px; height: 16px; border-radius: 4px; box-shadow: inset 0 0 0 1px #ffffff40; }
@@ -2909,7 +2914,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 /* The cards the picture is on, searched rather than scrolled (#295): the same search box the
    library window uses, over a short list of quiet choices that the language marks. */
 .byd-media-cards { display: grid; gap: var(--byd-s2); width: 100%; }
-.byd-media-cards input { min-height: var(--byd-tap); box-sizing: border-box; padding: 0 12px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
+.byd-media-cards input { min-height: var(--byd-tap); box-sizing: border-box; padding: 0 12px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
 .byd-media-cards ul { list-style: none; margin: 0; padding: 0 0 var(--byd-s1); display: flex; gap: var(--byd-s2); overflow-x: auto; }
 /* One row that scrolls sideways (#481): wrapped, six cards took two rows and pushed the card under
    them out of the sheet at 1024. The search finds any card, and the row shows it is a row by
@@ -2944,13 +2949,14 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-crop-shade { position: absolute; inset: 0; overflow: hidden; border-radius: 4px; pointer-events: none; }
 .byd-crop-shade i { position: absolute; box-shadow: 0 0 0 9999px rgba(8, 10, 14, 0.6); }
 .byd-crop-window { position: absolute; box-sizing: border-box; border: 2px solid #fff; cursor: move; touch-action: none; }
-.byd-crop-window:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 2px; }
+/* K16's ring on a picture of any colour (#553): a light band with dark on both sides. */
+.byd-crop-window:focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; box-shadow: 0 0 0 2px #0d0f14, 0 0 0 8px #0d0f14; }
 /* Four corners, each centred on its corner of the window and the window's sibling, not its
    child. Twelve pixels to see and twenty-four to hit. */
 .byd-crop-corner { position: absolute; width: 12px; height: 12px; translate: -50% -50%; border-radius: 3px; background: #fff; cursor: nwse-resize; touch-action: none; }
 .byd-crop-corner::before { content: ''; position: absolute; inset: -16px; /* undantag: hörnets träffyta är 44 px kring de 12 som syns (L12, #481), inte ett avstånd på stegen */ }
 .byd-crop-corner[data-corner='ne'], .byd-crop-corner[data-corner='sw'] { cursor: nesw-resize; }
-.byd-crop-corner:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 2px; }
+.byd-crop-corner:focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; box-shadow: 0 0 0 2px #0d0f14, 0 0 0 8px #0d0f14; }
 .byd-crop-keys { margin: 0; font-size: 11px; color: var(--byd-editor-quiet); }
 /* The pad a pointer moves and sizes the window with, without a drag (#579): a column beside the
    picture and not a row under it, so the sheet keeps L33's promise that nothing under the picture
@@ -3178,7 +3184,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-rules-writable { border-radius: 6px; padding: 0 4px; margin: 0 -4px; cursor: text; }
 .byd-rules-writable:hover { background: #ece5d8; }
 .byd-rules-edit { display: grid; gap: 6px; padding: 12px; margin: 8px -12px; border-radius: 10px; background: #23262e; }
-.byd-rules-edit input, .byd-rules-edit textarea, .byd-rules-edit select { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: 13px/1.6 system-ui, sans-serif; }
+.byd-rules-edit input, .byd-rules-edit textarea, .byd-rules-edit select { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #14161c; color: #fff; font: 13px/1.6 system-ui, sans-serif; }
 .byd-rules-row { display: flex; gap: 8px; }
 /* Rubrikfältet bär sitt eget omslag sedan `[[` svarar i det också (#272). Omslaget är det raden
    sträcker ut, inte fältet: annars krymper rubriken till sitt innehåll och nivåväljaren tar resten. */
@@ -3429,7 +3435,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
    filten, som var nästan lika brett som hela fliken; i en kolumn om 320 px är 260 plus padding och
    ram bredare än de 272 px som blir kvar innanför panelens och blockets indrag, och fältet hade
    stuckit ut ur kolumnen. `border-box` är vad som gör `max-width` sann om det ritade fältet. */
-.byd-zone-action > input { min-width: 0; width: 100%; max-width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; }
+.byd-zone-action > input { min-width: 0; width: 100%; max-width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; }
 .byd-zone-action ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; justify-items: start; width: 100%; }
 .byd-zone-action li { display: flex; gap: 8px; align-items: baseline; }
 /* Varför ett av rattens lägen inte går att välja, i ord under ratten (#454, K25). Samma sätt som
@@ -3577,7 +3583,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-library-close:hover, .byd-library-close:focus-visible { color: #fff; }
 .byd-library-target { margin: var(--byd-s1) 0 var(--byd-s3); font-weight: 700; }
 .byd-library-find { display: flex; align-items: center; flex-wrap: wrap; gap: var(--byd-s3); margin: 0 0 var(--byd-s3); }
-.byd-library-find input { flex: 1 1 200px; min-height: var(--byd-tap); box-sizing: border-box; padding: 0 12px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
+.byd-library-find input { flex: 1 1 200px; min-height: var(--byd-tap); box-sizing: border-box; padding: 0 12px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
 .byd-library-filter { display: flex; gap: var(--byd-s2); }
 .byd-library-filter button { min-height: var(--byd-tap); padding: 0 12px; border-radius: 8px; font: inherit; cursor: pointer; }
 .byd-library-scroll { flex: 1 1 auto; min-height: 120px; overflow-y: auto; overflow-x: hidden; }
