@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 01 — Prosavalets plats i Tabell</title>
+<!--
+  Throwaway-prototyp. Importerar ingenting från packages/. Färger och mått är avlästa från
+  packages/web/src/editor/editor.css (.byd-data, .byd-prose-*, .byd-columns) och från en
+  skärmdump av den riktiga Tabell-fliken i Chromium, 1440 × 900.
+  Varianter växlas med knapparna överst eller ?v=nu|a|b|c.
+-->
+<style>
+  :root {
+    --bg: #1b1d23; --panel: #171a23; --chrome: #23262e; --line: #2f333d; --line-row: #20232b;
+    --ink: #dce3f2; --ink-2: #e6ecfa; --quiet: #868ea3; --quiet-2: #9aa3b8;
+    --primary: #1f6fd0; --primary-mark: #3c8ce7; --good: #7dd3a0; --prose: #9ec4e8;
+    --tap: 44px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--chrome); color: var(--ink); font: 13px system-ui, sans-serif; }
+  .protorad { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 8px 16px; background: #2a2417; border-bottom: 1px solid #4a4230; color: #ffd98a; font-size: 11.5px; line-height: 1.5; }
+  .protorad b { color: #ffe9b8; }
+  .protorad p { margin: 0; flex: 1 1 520px; }
+  .protorad .matt { display: flex; gap: 14px; font-variant-numeric: tabular-nums; }
+  .protorad .matt u { text-decoration: none; color: #ffe9b8; font-weight: 700; }
+  .switch { display: flex; gap: 4px; background: #1f1b12; border-radius: 8px; padding: 3px; }
+  .switch button { min-height: 32px; border: 0; border-radius: 6px; padding: 0 12px; background: transparent; color: #ffd98a; font: inherit; font-weight: 700; cursor: pointer; }
+  .switch button[aria-pressed='true'] { background: #ffd98a; color: #1f1b12; }
+
+  header.app { display: flex; align-items: center; gap: 16px; height: 56px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+  header.app strong { color: #fff; font-size: 16px; }
+  .tabs { display: flex; gap: 2px; background: var(--bg); border-radius: 8px; padding: 3px; }
+  .tabs span { padding: 12px 12px; color: var(--quiet-2); font-weight: 600; }
+  .tabs span[aria-current] { color: #fff; box-shadow: inset 0 -3px 0 var(--primary-mark); }
+  main { padding: 16px; }
+  .wrap { position: relative; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+
+  table { border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed; }
+  th { position: relative; text-align: left; padding: 0 10px; height: 60px; color: var(--quiet); font-weight: 600; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--bg); }
+  td { padding: 0 10px; height: 46px; border-bottom: 1px solid var(--line-row); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; }
+  td.id { font-family: ui-monospace, Menlo, monospace; color: var(--quiet); font-size: 12px; }
+  th.check, td.check { width: 44px; padding: 0 12px; }
+  .box { display: inline-block; width: 18px; height: 18px; border: 1px solid #4a5163; border-radius: 3px; background: #2a2e38; vertical-align: middle; }
+  th.door, td.door { width: 44px; padding: 0; text-align: center; }
+  td.door { color: var(--quiet); font-size: 12px; }
+  .sort { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; min-height: 32px; border-radius: 4px; }
+  .sort:hover { color: var(--ink); }
+  .sort:focus-visible, button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .sort .pil { color: var(--quiet); }
+  .plus { width: 44px; height: 44px; border: 0; background: transparent; color: #c3cbdd; font-size: 18px; cursor: pointer; }
+
+  /* ── Nu: pricken klistrad mot ordet och utfällningen med en primärknapp ─────────────────── */
+  .prick { position: absolute; left: 2px; top: 50%; transform: translateY(-50%); width: 6px; height: 6px; border-radius: 50%; }
+  .prick[data-from='height'] { border: 1px dotted #7d879c; }
+  .prick[data-from='height'][data-prose='true'] { border-color: var(--prose); }
+  .prick[data-from='choice'] { background: #7d879c; }
+  .prick[data-from='choice'][data-prose='true'] { background: var(--prose); }
+  .why { display: none; position: absolute; top: 100%; left: 0; z-index: 8; width: 268px; padding: 8px 12px; border: 1px solid #3b4358; border-radius: 10px; background: var(--panel); box-shadow: 0 12px 30px rgb(0 0 0 / 50%); white-space: normal; font-weight: 400; }
+  th[data-open] > .why { display: block; }
+  .why b { display: block; margin-bottom: 4px; color: var(--ink-2); font-size: 12px; }
+  .why p { margin: 0 0 8px; color: var(--quiet); font-size: 11px; line-height: 1.5; }
+  .turn { min-height: var(--tap); border: 1px solid #3b414e; border-radius: 8px; padding: 0 12px; background: #1b1d23; color: var(--ink); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .turn.strong { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+  /* ── Ett lugnt märke i vila (A, C): ¶ efter pilen, bara på prosakolumner ─────────────────── */
+  .pilcrow { margin-left: 2px; font-weight: 400; color: #5f6b85; }
+  .pilcrow[data-from='choice'] { color: var(--prose); }
+
+  /* ── Dörren (＋): kolumnlistan, nu med prosavalet på varje rad (A, C) ───────────────────── */
+  .dorr { display: none; position: absolute; top: 61px; right: 0; z-index: 6; width: 340px; padding: 8px 12px 12px; border: 1px solid #3b4358; border-radius: 10px; background: var(--panel); box-shadow: 0 12px 30px rgb(0 0 0 / 50%); }
+  .dorr[data-open] { display: block; }
+  .dorr ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+  .dorr li { display: grid; grid-template-columns: minmax(0,1fr) auto 44px; align-items: center; gap: 2px 8px; min-height: 44px; }
+  .dorr li .namn { font-size: 12px; padding: 0 8px; min-height: 44px; display: flex; align-items: center; border: 1px solid transparent; border-radius: 6px; }
+  .dorr li .namn:hover { border-color: #3b414e; background: #1b1d23; cursor: text; }
+  .dorr li .las { grid-column: 1 / -1; padding: 0 8px 6px; color: var(--quiet); font-size: 11px; }
+  .dorr li .x { width: 44px; height: 44px; border: 0; background: transparent; color: var(--quiet); cursor: pointer; }
+  .dorr li .under { grid-column: 1 / -1; padding: 0 8px 6px; margin-top: -4px; color: var(--quiet); font-size: 10.5px; line-height: 1.45; }
+  .dorr li .under u { text-decoration: none; color: var(--prose); }
+  .dorr li .under button { border: 0; padding: 0; background: none; color: var(--quiet-2); font: inherit; text-decoration: underline; cursor: pointer; min-height: 24px; }
+  .seg { display: inline-flex; background: #12141a; border: 1px solid #2f333d; border-radius: 8px; padding: 2px; }
+  .seg button { min-height: 44px; min-width: 52px; border: 0; border-radius: 6px; padding: 0 8px; background: transparent; color: var(--quiet-2); font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+  .seg button[aria-pressed='true'] { background: #2b3446; color: #fff; box-shadow: inset 0 0 0 1px #46597a; }
+  .seg[data-from='height'] button[aria-pressed='true'] { background: transparent; color: var(--prose); box-shadow: inset 0 0 0 1px #46597a; outline: 1px dashed #46597a; outline-offset: -4px; }
+  .dorr .ny { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--quiet); font-size: 11px; }
+
+  /* ── B: kolumnmenyn ▾ i rubrikens högerkant ─────────────────────────────────────────────── */
+  .meny-knapp { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--quiet); cursor: pointer; opacity: 0; }
+  th:hover .meny-knapp, th:focus-within .meny-knapp, .meny-knapp[aria-expanded='true'] { opacity: 1; border-color: #3b414e; }
+  .meny { display: none; position: absolute; top: 100%; right: 0; z-index: 8; width: 260px; padding: 6px; border: 1px solid #3b4358; border-radius: 10px; background: var(--panel); box-shadow: 0 12px 30px rgb(0 0 0 / 50%); white-space: normal; font-weight: 400; }
+  th[data-meny] > .meny { display: block; }
+  .meny .rad { display: flex; align-items: center; width: 100%; min-height: 40px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+  .meny .rad:hover { background: #232835; }
+  .meny hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; }
+  .meny .etikett { padding: 4px 10px 6px; color: var(--quiet); font-size: 11px; }
+  .meny .seg { margin: 0 10px 4px; display: flex; }
+  .meny .seg button { flex: 1; }
+  .meny .skal { padding: 4px 10px 6px; color: var(--quiet); font-size: 10.5px; line-height: 1.45; }
+  .meny .fara { color: #ffb3ad; }
+
+  /* ── C: valet i cellens egen verktygsrad ────────────────────────────────────────────────── */
+  td[data-edit] { overflow: visible; z-index: 3; }
+  .redig { position: absolute; left: 0; top: -38px; right: -4px; display: flex; align-items: center; gap: 2px; padding: 0 6px; height: 38px; border: 1px solid #5b8fd6; border-bottom: 0; border-radius: 10px 10px 0 0; background: #2c3a55; }
+  .redig .v { width: 36px; height: 32px; border: 0; background: transparent; color: #cfd8ea; font: inherit; font-weight: 700; cursor: pointer; border-radius: 6px; }
+  .redig .v:hover { background: #38476a; }
+  .redig .sp { flex: 1; }
+  .redig .streck { width: 1px; height: 20px; background: #4a5d84; margin: 0 6px; }
+  .redig .prosaval { min-height: 32px; border: 1px solid #4a5d84; border-radius: 6px; padding: 0 10px; background: #243150; color: #cfd8ea; font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .redig .prosaval[aria-pressed='true'] { background: #3c5a8e; border-color: #7aa6e6; color: #fff; }
+  td[data-edit] .ruta { position: absolute; inset: 0 -4px -2px 0; border: 2px solid #9ec4e8; background: #37425a; padding: 12px 10px; white-space: normal; }
+
+  .note { max-width: 1100px; margin: 16px auto 0; color: var(--quiet-2); font-size: 12px; line-height: 1.6; }
+  .note b { color: var(--ink-2); }
+  .shell[data-v='nu'] .only-a, .shell[data-v='nu'] .only-b, .shell[data-v='nu'] .only-c { display: none; }
+</style>
+</head>
+<body>
+<div class="shell" id="shell" data-v="nu">
+  <div class="protorad">
+    <b>Prototyp · prosavalets plats</b>
+    <div class="switch" role="group" aria-label="Variant">
+      <button type="button" data-v="nu" aria-pressed="true">Nu</button>
+      <button type="button" data-v="a" aria-pressed="false">A · Dörren</button>
+      <button type="button" data-v="b" aria-pressed="false">B · Kolumnmenyn</button>
+      <button type="button" data-v="c" aria-pressed="false">C · Cellen + dörren</button>
+    </div>
+    <p id="hjalp"></p>
+    <div class="matt">
+      <span>kontroller i vila <u id="m-vila">–</u></span>
+      <span>tabbstopp i huvudet <u id="m-tabb">–</u></span>
+      <span>minsta träffyta för valet <u id="m-tap">–</u></span>
+    </div>
+  </div>
+
+  <header class="app">
+    <strong>Sal's Saloon</strong>
+    <nav class="tabs"><span>Kortvägg</span><span>Mall</span><span aria-current="page">Tabell</span><span>Symboler</span><span>Media</span><span>Regler</span><span>Bord</span></nav>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <table>
+        <colgroup><col style="width:44px"><col style="width:200px"><col style="width:76px"><col style="width:190px"><col><col style="width:90px"><col style="width:70px"><col style="width:140px"><col style="width:44px"></colgroup>
+        <thead><tr id="huvud"></tr></thead>
+        <tbody id="kropp"></tbody>
+      </table>
+      <div class="dorr" id="dorr"></div>
+    </div>
+    <div class="note" id="notis"></div>
+  </main>
+</div>
+
+<script>
+// Kolumnerna, och vad var och en skrivs som. `from` är L43:s upphov: height = höjden föreslog
+// (ingen post i ProjectDoc.prose), choice = designern valde.
+const COLS = [
+  { key: 'id', sys: true },
+  { key: 'typ', prose: false, from: 'height', box: 5.0, line: 4.2 },
+  { key: 'Titel', prose: false, from: 'height', box: 7.0, line: 5.3 },
+  { key: 'body', prose: true, from: 'height', box: 40.0, line: 4.0 },
+  { key: 'raritet', prose: false, from: 'choice', box: 12.0, line: 4.2 },
+  { key: 'antal', sys: true },
+  { key: 'grupp', sys: true, nosort: true },
+]
+const ROWS = [
+  ['juice-em-up', 'Playcard', 'Juice ’em up', 'Välj två spelare. De blandar en shot till varann', 'Diamant', '1', 'typ = Playcard'],
+  ['sals-saloon', 'Location', "Sal's Saloon", 'Välkommen in! Lägg upp ett shopkort per spelare som går in. I turordning från dig: slå tärningen', 'Guld', '2', 'typ = Location'],
+  ['dustydice-casino', 'Location', 'Dusty Dice', 'Alla annonserar sin insats (1–10 klunkar) och slår sedan en tärning samtidigt.', 'Guld', '2', 'typ = Location'],
+  ['free-for-all', 'Effect', 'Free for all', 'Era stöldgods är i fara! Så länge effekten ligger får ni sno varandras stöldgodskort.', 'Special', '1', 'typ = Effect'],
+  ['duel-koppar', 'Playcard', 'Duel', 'Utmana en spelare på duell. Förloraren dricker 3', 'Koppar', '3', 'typ = Playcard'],
+  ['duel-silver', 'Playcard', 'Duel', 'Utmana en spelare på duell. Förloraren dricker 5', 'Silver', '2', 'typ = Playcard'],
+  ['duel-guld', 'Playcard', 'Duel', 'Utmana en spelare på duell. Förloraren dricker 7', 'Guld', '1', 'typ = Playcard'],
+  ['saddle-pals', 'Playcard', 'Saddle Pals', 'Välj en annan spelare. Ni är allierade resten av spelet.', 'Silver', '1', 'typ = Playcard'],
+  ['standoff', 'Event', 'Standoff', 'Dela upp er i två lag efter hur ni sitter. Öppna en ny enhet och duellera lag mot lag', 'Special', '1', 'typ = Event'],
+  ['the-heist', 'Event', 'The Heist', 'Ni ska försöka råna ett bankvalv. Råna valvet: 3 guld + allt i The Bank.', 'Special', '1', 'typ = Event'],
+]
+const HJALP = {
+  nu: 'Dagens läge (L43 variant C): pricken står klistrad mot ordet, och vila 300 ms på rubriken fäller ut en ruta med en primärknapp över raderna. Varje designerkolumn lägger ett extra tabbstopp i huvudet.',
+  a: 'A · Dörren: valet flyttar in i kolumnlistan bakom ＋, på samma rad som namnet (L44) — en växel Prosa | Text per kolumn, med höjdens skäl under. Huvudet bär bara ett ¶ efter prosakolumnernas namn. Ingen hover.',
+  b: 'B · Kolumnmenyn: ett ▾ i rubrikens högerkant (syns vid hover/fokus) öppnar kolumnens alla verb — sortera, skrivs som, byt namn, ta bort. Samlar det #46 och L44 spred ut.',
+  c: 'C · Cellen + dörren: valet visas där det verkar — i cellens verktygsrad när du skriver (klicka en body- eller Titel-cell). Dörren från A är den fullständiga vägen, också för kolumner utan celler.',
+}
+let v = new URLSearchParams(location.search).get('v') || 'nu'
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const mm = (n) => n.toFixed(1).replace('.', ',')
+const why = (c) => `Höjden föreslår ${c.box >= 2 * c.line ? 'prosa' : 'vanlig text'}: rutan är ${mm(c.box)} mm och en rad av dess grad är ${mm(c.line)} mm.`
+const suggested = (c) => c.box >= 2 * c.line
+
+function setProse(key, prose) { const c = COLS.find((x) => x.key === key); c.prose = prose; c.from = 'choice'; render() }
+function follow(key) { const c = COLS.find((x) => x.key === key); c.prose = suggested(c); c.from = 'height'; render() }
+
+function head() {
+  const cells = ['<th class="check"><span class="box"></span></th>']
+  for (const c of COLS) {
+    const sort = c.nosort ? esc(c.key) : `<button type="button" class="sort">${esc(c.key)} <span class="pil" aria-hidden="true">↕</span>${(v === 'a' || v === 'c') && !c.sys && c.prose ? `<span class="pilcrow" data-from="${c.from}" title="Skrivs som prosa">¶</span>` : ''}</button>`
+    if (c.sys) { cells.push(`<th>${sort}</th>`); continue }
+    if (v === 'nu') {
+      cells.push(`<th data-col="${c.key}">${sort}<span class="prick" data-from="${c.from}" data-prose="${c.prose}"></span>
+        <div class="why" role="group" aria-label="${esc(c.key)}"><b>${esc(c.key)} skrivs som ${c.prose ? 'prosa' : 'vanlig text'}</b><p>${why(c)}</p>
+        <div style="display:flex;gap:6px"><button type="button" class="turn strong" data-act="turn" data-key="${c.key}">${c.prose ? 'Gör vanlig text' : 'Gör prosa'}</button>${c.from === 'choice' ? `<button type="button" class="turn" data-act="follow" data-key="${c.key}">Följ höjden igen</button>` : ''}</div></div></th>`)
+    } else if (v === 'b') {
+      cells.push(`<th data-col="${c.key}">${sort}<button type="button" class="meny-knapp" aria-haspopup="menu" aria-expanded="false" aria-label="Kolumnen ${esc(c.key)}" data-act="meny" data-key="${c.key}">▾</button>
+        <div class="meny" role="menu">
+          <button type="button" class="rad">Sortera stigande</button><button type="button" class="rad">Sortera fallande</button><hr>
+          <div class="etikett">Skrivs som</div>${seg(c)}
+          <div class="skal">${c.from === 'height' ? why(c) : `Du valde. ${why(c)} <button type="button" data-act="follow" data-key="${c.key}" style="border:0;background:none;color:var(--quiet-2);text-decoration:underline;font:inherit;cursor:pointer;padding:0">Följ höjden igen</button>`}</div><hr>
+          <button type="button" class="rad">Byt namn…</button><button type="button" class="rad">Automatisk bredd</button><button type="button" class="rad fara">Ta bort kolumnen…</button>
+        </div></th>`)
+    } else {
+      cells.push(`<th data-col="${c.key}">${sort}</th>`)
+    }
+  }
+  cells.push('<th class="door"><button type="button" class="plus" aria-label="Kolumner" data-act="dorr">+</button></th>')
+  return cells.join('')
+}
+
+function seg(c) {
+  return `<div class="seg" role="group" aria-label="${esc(c.key)} skrivs som" data-from="${c.from}">
+    <button type="button" aria-pressed="${c.prose}" data-act="set" data-key="${c.key}" data-val="1">Prosa</button>
+    <button type="button" aria-pressed="${!c.prose}" data-act="set" data-key="${c.key}" data-val="0">Text</button></div>`
+}
+
+function door() {
+  const items = COLS.map((c) => {
+    if (c.sys) return `<li><span class="namn">${esc(c.key)}</span><span></span><span></span>${c.key === 'grupp' ? '' : `<span class="las">🔒 ${esc(c.key)} är verktygets egen kolumn</span>`}</li>`
+    if (v === 'b') return `<li><span class="namn">${esc(c.key)}</span><span></span><button type="button" class="x">×</button></li>`
+    return `<li><span class="namn">${esc(c.key)}</span>${seg(c)}<button type="button" class="x" aria-label="Ta bort ${esc(c.key)}">×</button>
+      <span class="under">${c.from === 'height' ? `<u>Höjden föreslog.</u> Rutan ${mm(c.box)} mm, en rad ${mm(c.line)} mm.` : `Du valde. Höjden föreslår ${suggested(c) ? 'prosa' : 'text'}. <button type="button" data-act="follow" data-key="${c.key}">Följ höjden igen</button>`}</span></li>`
+  }).join('')
+  return `<ul>${items}</ul><div class="ny">NAMN · Lägg till kolumn …</div>`
+}
+
+function body() {
+  return ROWS.map((r, i) => `<tr>${['<td class="check"><span class="box"></span></td>', ...r.map((val, j) => `<td class="${j === 0 ? 'id' : ''}" data-row="${i}" data-col="${COLS[j].key}">${esc(val)}</td>`), '<td class="door">×</td>'].join('')}</tr>`).join('')
+}
+
+let editing = null
+function render() {
+  document.getElementById('shell').dataset.v = v
+  document.getElementById('huvud').innerHTML = head()
+  document.getElementById('kropp').innerHTML = body()
+  document.getElementById('dorr').innerHTML = door()
+  document.getElementById('hjalp').textContent = HJALP[v]
+  document.querySelectorAll('.switch button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === v)))
+  if (editing && v === 'c') openEditor(editing.row, editing.col)
+  measure()
+}
+
+function openEditor(row, key) {
+  const td = document.querySelector(`td[data-row="${row}"][data-col="${key}"]`)
+  const c = COLS.find((x) => x.key === key)
+  if (!td || !c || c.sys) return
+  editing = { row, col: key }
+  td.dataset.edit = ''
+  const tools = c.prose ? '<button class="v">F</button><button class="v"><i>K</i></button><button class="v">•—</button><button class="v">{ }</button>' : '<button class="v">{ }</button>'
+  td.innerHTML = `<div class="redig">${tools}<span class="sp"></span><span class="streck"></span><button type="button" class="prosaval" aria-pressed="${c.prose}" data-act="set" data-key="${key}" data-val="${c.prose ? 0 : 1}" title="${esc(why(c))}">¶ ${c.prose ? 'Prosa' : 'Gör prosa'}</button></div><div class="ruta">${esc(td.textContent)}</div>`
+}
+
+function measure() {
+  const thead = document.querySelector('thead')
+  const vila = [...thead.querySelectorAll('button')].filter((b) => getComputedStyle(b).opacity !== '0' && b.offsetParent !== null && !b.closest('.why,.meny')).length
+  const tabb = [...thead.querySelectorAll('button')].filter((b) => !b.closest('.why:not([data-x]),.meny')).length
+    + (v === 'nu' ? COLS.filter((c) => !c.sys).length : 0)
+  document.getElementById('m-vila').textContent = vila
+  document.getElementById('m-tabb').textContent = tabb
+  document.getElementById('m-tap').textContent = { nu: '44 px', a: '44 px', b: '44 px', c: '32 px / 44 px' }[v]
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-act],[data-v],td[data-col]')
+  if (!t) { closeAll(); return }
+  if (t.dataset.v && t.closest('.switch')) { v = t.dataset.v; editing = null; history.replaceState(null, '', `?v=${v}`); closeAll(); render(); return }
+  const act = t.dataset.act
+  if (act === 'turn') { const c = COLS.find((x) => x.key === t.dataset.key); setProse(c.key, !c.prose); return }
+  if (act === 'follow') { follow(t.dataset.key); return }
+  if (act === 'set') { const keepDoor = document.getElementById('dorr').hasAttribute('data-open'); const m = t.closest('th')?.dataset.col; setProse(t.dataset.key, t.dataset.val === '1'); if (keepDoor) document.getElementById('dorr').setAttribute('data-open', ''); if (m) document.querySelector(`th[data-col="${m}"]`).setAttribute('data-meny', ''); return }
+  if (act === 'dorr') { const d = document.getElementById('dorr'); d.toggleAttribute('data-open'); return }
+  if (act === 'meny') { const th = t.closest('th'); const was = th.hasAttribute('data-meny'); closeAll(); if (!was) { th.setAttribute('data-meny', ''); t.setAttribute('aria-expanded', 'true') } return }
+  if (t.matches('td[data-col]') && v === 'c' && !t.hasAttribute('data-edit')) { editing = null; render(); openEditor(t.dataset.row, t.dataset.col); return }
+})
+function closeAll() {
+  document.getElementById('dorr').removeAttribute('data-open')
+  document.querySelectorAll('th[data-meny]').forEach((th) => th.removeAttribute('data-meny'))
+  document.querySelectorAll('.meny-knapp').forEach((b) => b.setAttribute('aria-expanded', 'false'))
+}
+// Nu: vila 300 ms på rubriken fäller ut (PROSE_HOVER_MS, #479), fokus fäller ut direkt.
+let timer = null
+document.addEventListener('pointerover', (e) => {
+  if (v !== 'nu') return
+  const th = e.target.closest('th[data-col]')
+  document.querySelectorAll('th[data-open]').forEach((x) => { if (x !== th) x.removeAttribute('data-open') })
+  clearTimeout(timer)
+  if (th && !th.hasAttribute('data-open')) timer = setTimeout(() => th.setAttribute('data-open', ''), 300)
+})
+document.addEventListener('focusin', (e) => { if (v === 'nu') { const th = e.target.closest('th[data-col]'); document.querySelectorAll('th[data-open]').forEach((x) => { if (x !== th) x.removeAttribute('data-open') }); th?.setAttribute('data-open', '') } })
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeAll(); document.querySelectorAll('th[data-open]').forEach((x) => x.removeAttribute('data-open')) } })
+// Mätningsläget för skärmdumpar: ?open=<kolumn> fäller ut, ?door=1 öppnar dörren, ?edit=<rad>,<kolumn>.
+render()
+const q = new URLSearchParams(location.search)
+if (q.get('open')) { const th = document.querySelector(`th[data-col="${q.get('open')}"]`); if (v === 'nu') th?.setAttribute('data-open', ''); if (v === 'b') { th?.setAttribute('data-meny', ''); th?.querySelector('.meny-knapp')?.setAttribute('aria-expanded', 'true') } }
+if (q.get('door')) document.getElementById('dorr').setAttribute('data-open', '')
+if (q.get('edit')) { const [r, k] = q.get('edit').split(','); openEditor(r, k) }
+</script>
+</body>
+</html>
