@@ -108,11 +108,14 @@
    it keeps its 24 mm. A child laid outside its parent's box still hands the parent the press. */
 .byd-token-hit { position: absolute; display: block; background: transparent; touch-action: none; }
 
-/* Zones that are areas other than the floor get an outline and a label. */
+/* Zones that are areas other than the floor get an outline and a label. The outline is two bands
+   (#553): the chalk outside a dark hairline, as the seat band is (K16), so it holds 3:1 between
+   its bands on all of the felt, on the TV and against a card lying in the zone. */
 .byd-zone {
   position: absolute;
   box-sizing: border-box;
-  border: 2px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid #f3e9d6cc;
+  box-shadow: inset 0 0 0 1px #00000073;
   border-radius: 10px;
 }
 /* The name straddles the zone's border rather than lying inside it: a zone that fills up with

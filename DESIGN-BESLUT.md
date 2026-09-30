@@ -5359,3 +5359,22 @@ Beställaren valde den sista.
 - Uppställningen har kvar bildtexten som väg in (#270).
 
 Mätt i prototypen: fem rubriker hittas i stället för en, med lika många tabbstopp och lika många tryck in till ett block.
+
+### L52. Fälten har knappspråkets kant, och en zon ritas i två band (prototypat och beslutat 2026-09-30, #553)
+
+Textfältens kanter mätte 1,41–1,48:1 mot sin grund och zonernas kontur på den gröna filten 1,5:1, mot WCAG:s 3:1 för annat än text (1.4.11).
+L13 lyfte knapparna till 3:1 men inte fälten.
+Fokus på beskärningens hörn var ett ensamt blått band som mätte 1,02–1,93:1 mot bilden.
+
+Tre varianter prövades i en prototyp, med kontrasten räknad på det som ritas: hel kant och hel kritlinje, understrykning och två band, samt fyllning och streckad krita.
+Fyllningen föll, eftersom den inte når 3:1 mot sidan utan att fältets egen text tappar kontrast.
+Beställaren valde den hela kanten för fälten och två band för zonerna.
+
+- **Ett fält ritar sin kant i knappspråkets linje**, `--byd-secondary-line`, på kontot, vid platsvalet, i guidade starten och i editorn. Det är samma kant som en sekundärknapp: 3,50–4,19:1.
+- **Editorns okryssade ruta** ritas fortfarande av plattformen (#45, #50), men bär linjen över sin kant. Plattformens egen grå är dess egen och varierar: 4,1:1 på en maskin, ungefär 2,5:1 på en annan.
+- **En zons kontur är två band:** filtens krita utanför en mörk hårlinje, som sätesbandet (K16). Kontrasten bärs mellan banden, 7,8–10,6:1, och håller därför på hela filtens gradient, på TV:n och mot ett kort som ligger i zonen.
+- **Fokus i beskärningen är K16:s ring:** ett ljust band med mörkt på båda sidor, så att det ena står kvar vilken färg bilden än har.
+
+Följdkrav:
+`field-edges.test.ts` läser varje fältregel på de fyra ytorna och håller kanten i linjen.
+`zone-outline.test.ts` håller zonens två band över filtens ljusaste och mörkaste ton och TV:ns.

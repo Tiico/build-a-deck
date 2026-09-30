@@ -334,3 +334,16 @@ describe('the mark on a zone that cannot be taken away', () => {
     expect(rule).toContain('color: var(--byd-editor-quiet)')
   })
 })
+
+// The focus on the crop's window and its corners stands on a picture, which may be any colour: a
+// single blue band read 1.02–1.93:1 against a blue or an orange photograph (#553 F-17). It is K16's
+// ring now, a light band with dark on both sides, so whichever the picture swallows, the other
+// stands.
+describe('the focus on the crop sheet (#553)', () => {
+  it.each(['.byd-crop-window', '.byd-crop-corner'])('draws %s’s focus as K16’s two-band ring', (selector) => {
+    const rule = new RegExp(`${selector.replace('.', '\\.')}:focus-visible \\{([^}]*)\\}`).exec(declarations(css))?.[1] ?? ''
+    expect(rule).toMatch(/outline: 3px solid #9cc6ff/)
+    expect(rule).toMatch(/box-shadow: 0 0 0 2px #0d0f14, 0 0 0 8px #0d0f14/)
+    expect(contrastRatio('#9cc6ff', '#0d0f14')).toBeGreaterThanOrEqual(3)
+  })
+})
