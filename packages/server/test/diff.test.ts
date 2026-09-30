@@ -23,13 +23,13 @@ describe('what changed between two versions (B4): the diff the card table shows'
     expect(diffProjects(base(), base())).toEqual({ rows: [], template: false, setup: false, icons: false, rules: false, reordered: false, columns: false })
   })
 
-  // What this does not look at, written down (#177). `palette`, `framing` and `fonts` are parts of
-  // the document like the rest, and none of them is compared here — a picture nudged in its frame
-  // (E1) or a font swapped (B3) comes out as no change at all. A byte-identical document is refused
+  // What this does not look at, written down (#177). `palette` and `fonts` are parts of the
+  // document like the rest, and neither is compared here — a meaning repainted (E4) or a font
+  // swapped (B3) comes out as no change at all. A byte-identical document is refused
   // a version, so an empty change is reachable and never means "nothing happened": it is the whole
   // reason the history has a word for a save it cannot name.
   it('reports a change it does not look at as no change at all', () => {
-    const diff = diffProjects(base(), { ...base(), framing: { 'dragon/title': { zoom: 1.4 } } })
+    const diff = diffProjects(base(), { ...base(), palette: { fara: '#8f2d20' } })
     expect(diff.rows).toEqual([])
     expect(changeOf(2, diff)).toEqual({ rev: 2, added: 0, removed: 0, changed: 0, parts: [], reordered: false, columns: false })
   })

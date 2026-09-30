@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ProjectDoc } from '@byd/server'
-import type { Frame, Motif, Nudge, Warning } from '@byd/template'
+import type { Motif, Warning } from '@byd/template'
 import { CardPreview } from './CardPreview.js'
 import { CARD_PX, cornerPx } from './corner.js'
 import { Crown, CrownBox, CrownDrawer, CrownFoot } from './Crown.js'
@@ -15,9 +15,6 @@ import { filterRows, isFiltering, noFilter, type FilterState } from './filtering
 import { fieldsOf } from './fields.js'
 import { heldGrouped, heldJumpOpen, rememberGrouped, rememberJumpOpen } from './grouping.js'
 import { useRoving } from './roving.js'
-import { framingOf, measuredSpots, objections } from './framing.js'
-import { frameWindow } from '@byd/template'
-import { assetUrl, isAssetRef } from './assets.js'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { READING_VIEWS, SCREENS, textPxOnCard, type ReadingView } from '../legibility.js'
 import { Help } from './HelpDrawer.js'
@@ -32,10 +29,6 @@ export type DeckWallProps = {
   assetBase?: string | undefined
   // What is drawn inside each picture (E1), keyed by the URL a resolved row carries.
   motifs?: Record<string, Motif> | undefined
-  // One card's departure from the deck's measure (E1) is the deck's own, so the wall is where it
-  // is written: the wall is where the whole deck can be seen at once, which is the only place
-  // uniformity can be judged. The measure itself is the template's and is set there (#221).
-  onFraming?(cardRef: string, field: string, framing: Nudge | null): void
   // One edit that mends a whole check (#233). The wall works out what to change; applying it is
   // the project's, like every other change the wall judges.
   onFixChecks?(fixes: readonly Fix[]): void
@@ -83,7 +76,7 @@ type Box = 'eyes' | 'guides' | 'grouping' | 'checks'
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
 // the physical checks (E5), gathered by kind, and the eyes to read the deck with.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFraming, onFixChecks, onAddCard, onOpenTemplate, view, onView, readOnly = false }: DeckWallProps) {
+export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, view, onView, readOnly = false }: DeckWallProps) {
   const t = useT()
   // What was mended is said out loud: an edit that changes the template under a deck of forty
   // cards and says nothing is the silence #32 forbids.
@@ -287,7 +280,6 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             assetBase={assetBase}
             motifs={motifs}
             palette={doc.palette}
-            framing={doc.framing ? framingOf(doc, cardRef) : undefined}
             // The card, and then the element in it (#234). Almost the whole of a card is its
             // elements — the front's frame shape alone covers 61 × 86 of its 63 × 88 — so a click on
             // a card is nearly always a click on an element of it, and the preview quite rightly
@@ -586,7 +578,6 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
               </section>
             ))
           )}
-          {onFraming && <Measure doc={doc} assetBase={assetBase} motifs={motifs} onFraming={onFraming} />}
         </div>
       </div>
       {/* What the wall adds up to, under it rather than over it (#130): the size it is drawn at,
@@ -710,183 +701,6 @@ function EyeFilters() {
         ))}
       </defs>
     </svg>
-  )
-}
-
-// The deck's answer to the measure (E1, prototype variant C).
-//
-// Framing is not a decision per card: nobody frames forty pictures by hand, and what a designer
-// actually does is say how the deck should look and then deal with the handful of files that
-// cannot get there. The measure itself moved into the template's image element, which owns the
-// frame it is a share of (#221, L22, beslut 3); what is left here is the work it makes — the list
-// of files that cannot answer, which is meant to empty, and each card's own exception to it.
-function Measure({
-  doc,
-  assetBase,
-  motifs,
-  onFraming,
-}: {
-  doc: ProjectDoc
-  assetBase: string | undefined
-  motifs: Record<string, Motif> | undefined
-  onFraming(cardRef: string, field: string, framing: Nudge | null): void
-}) {
-  const t = useT()
-  const [openSource, setOpenSource] = useState<{ cardRef: string; field: string } | null>(null)
-  const spots = measuredSpots(doc)
-  // The document keys its cells by `asset:<hash>`; the wall keys its measurements by the URL a
-  // resolved row carries. Only here is both known, so the walk from one to the other happens here.
-  const motifFor = (value: string): Motif | undefined =>
-    assetBase && isAssetRef(value) ? motifs?.[assetUrl(assetBase, value.slice('asset:'.length))] : motifs?.[value]
-  const cannot = objections(doc, motifFor)
-  const measured = spots.filter((s) => s.frame)
-  // How many cards draw their motif at the size the measure asked for. A card that had to be put
-  // right is still uniform — it simply says, out loud, the size its file forced.
-  const even = doc.rows.length - new Set(cannot.map((o) => o.cardRef)).size
-  // A wall with no measure anywhere has nothing to say about one: the switch that gives a picture
-  // area its measure stands in the template, beside the frame the measure is a share of.
-  if (measured.length === 0) return null
-  return (
-    <section className="byd-wall-measure" role="group" aria-label={t('wall.measure')}>
-      <div className="byd-help-row">
-        <h2>{t('wall.measure')}</h2>
-        <Help topic={t('wall.measure.help.topic')}>
-          <p>{t('wall.measure.help', { fields: [...new Set(measured.map((s) => s.field))].join(', ') })}</p>
-        </Help>
-      </div>
-      {cannot.length === 0 ? (
-        <p className="byd-wall-ok">{t('wall.measure.even', { n: even, of: doc.rows.length })}</p>
-      ) : (
-        <>
-          <p className="byd-wall-lead">{t(cannot.length === 1 ? 'wall.measure.cannot.one' : 'wall.measure.cannot.other', { n: cannot.length })}</p>
-          <ul aria-label={t('wall.measure.cannot')}>
-            {cannot.map((o) => (
-              <li key={`${o.cardRef}/${o.field}`} data-card-ref={o.cardRef}>
-                <b>{o.cardRef}</b>
-                <span>{t('wall.measure.short')}</span>
-                <button type="button" onClick={() => onFraming(o.cardRef, o.field, o.to)}>
-                  {t('wall.measure.fix', { percent: Math.round(o.drawnAt * 100) })}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-      <div className="byd-wall-measure-open">
-        {doc.rows.map((row) => {
-          const spot = measured[0]
-          if (!spot) return null
-          const open = openSource?.cardRef === row.id && openSource.field === spot.field
-          return (
-            <button key={row.id} type="button" aria-pressed={open} onClick={() => setOpenSource(open ? null : { cardRef: row.id, field: spot.field })}>
-              {t('wall.measure.open', { cardRef: row.id })}
-            </button>
-          )
-        })}
-      </div>
-      {openSource &&
-        (() => {
-          const spot = measured.find((m) => m.field === openSource.field)
-          const value = doc.rows.find((r) => r.id === openSource.cardRef)?.fields[openSource.field]
-          const motif = typeof value === 'string' ? motifFor(value) : undefined
-          const url = typeof value === 'string' && assetBase && isAssetRef(value) ? assetUrl(assetBase, value.slice('asset:'.length)) : typeof value === 'string' ? value : ''
-          if (!spot?.frame || !motif || !url) return null
-          return (
-            <Source
-              cardRef={openSource.cardRef}
-              field={openSource.field}
-              url={url}
-              motif={motif}
-              frame={spot.frame}
-              ratio={spot.ratio}
-              nudge={framingOf(doc, openSource.cardRef)[openSource.field] ?? {}}
-              onFraming={onFraming}
-              onClose={() => setOpenSource(null)}
-            />
-          )
-        })()}
-      {Object.keys(doc.framing ?? {}).length > 0 && (
-        <p className="byd-wall-lead">
-          {t('wall.measure.byHand', { n: Object.keys(doc.framing ?? {}).length })}{' '}
-          {doc.rows.some((r) => Object.keys(framingOf(doc, r.id)).length > 0) && (
-            <button type="button" className="byd-wall-measure-drop" onClick={() => {
-              for (const key of Object.keys(doc.framing ?? {})) {
-                const cut = key.indexOf('/')
-                onFraming(key.slice(0, cut), key.slice(cut + 1), null)
-              }
-            }}>
-              {t('wall.measure.drop')}
-            </button>
-          )}
-        </p>
-      )}
-    </section>
-  )
-}
-
-// One file, opened (E1). The file is shown whole and dimmed with the window lit over it, because
-// what is being judged is which part of the drawing the card will show — and the measure it is
-// being judged against is still on screen above, since the fix is nearly always to the measure
-// and not to this one picture.
-//
-// Nothing here rewrites the file. What the sliders write is this card's departure, and "back to
-// the measure" is the way out that does not ask anyone to remember a number.
-function Source({
-  cardRef,
-  field,
-  url,
-  motif,
-  frame,
-  ratio,
-  nudge,
-  onFraming,
-  onClose,
-}: {
-  cardRef: string
-  field: string
-  url: string
-  motif: Motif
-  frame: Frame
-  ratio: number
-  nudge: Nudge
-  onFraming(cardRef: string, field: string, framing: Nudge | null): void
-  onClose(): void
-}) {
-  const t = useT()
-  const win = frameWindow(motif, frame, ratio, nudge)
-  // The file drawn to fit a fixed box; the window is then laid on it in those same screen pixels.
-  const view = 320
-  const by = Math.min(view / motif.w, view / motif.h)
-  const write = (next: Partial<Nudge>) => onFraming(cardRef, field, { zoom: nudge.zoom ?? 1, dx: nudge.dx ?? 0, dy: nudge.dy ?? 0, ...next })
-  return (
-    <section className="byd-wall-source" role="group" aria-label={t('wall.measure.source', { cardRef })}>
-      <div className="byd-wall-source-file" style={{ width: motif.w * by, height: motif.h * by }}>
-        <img src={url} alt={t('wall.measure.source', { cardRef })} style={{ width: motif.w * by, height: motif.h * by }} />
-        <span data-testid="byd-window" className="byd-wall-source-window" style={{ left: win.x * by, top: win.y * by, width: win.w * by, height: win.h * by }} />
-      </div>
-      <div className="byd-wall-source-tools">
-        <b>{cardRef}</b>
-        <p className="byd-wall-lead">{t('wall.measure.source.lead')}</p>
-        <label>
-          {t('wall.measure.size')}
-          <input type="range" min={0.5} max={3} step={0.01} value={nudge.zoom ?? 1} onChange={(e) => write({ zoom: Number(e.target.value) })} />
-        </label>
-        <label>
-          {t('wall.measure.across')}
-          <input type="range" min={-0.5} max={0.5} step={0.01} value={nudge.dx ?? 0} onChange={(e) => write({ dx: Number(e.target.value) })} />
-        </label>
-        <label>
-          {t('wall.measure.down')}
-          <input type="range" min={-0.5} max={0.5} step={0.01} value={nudge.dy ?? 0} onChange={(e) => write({ dy: Number(e.target.value) })} />
-        </label>
-        <button type="button" onClick={() => onFraming(cardRef, field, null)}>
-          {t('wall.measure.back')}
-        </button>
-        <button type="button" onClick={onClose}>
-          {t('wall.measure.close')}
-        </button>
-      </div>
-    </section>
   )
 }
 

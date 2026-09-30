@@ -1,9 +1,9 @@
 import type { ComponentTypeDef } from '@byd/engine'
 import { parseBody, parseInline, type InlineNode } from './inline.js'
 import { BLOCK_GAP_EM, DEFAULT_LINE_HEIGHT, INDENT_EM, ITEM_GAP_EM, detectScript, estimateHeight, fitText, type Measure } from './fit.js'
-import { paintOf, shadowCss, type Bind, type Condition, type Element, type FaceTemplate, type Pattern, type Row, type Template } from './model.js'
+import { paintOf, shadowCss, type Condition, type Element, type FaceTemplate, type Pattern, type Row, type Template } from './model.js'
 import type { Motif } from './motif.js'
-import { frameWindow, type Frame, type Nudge } from './frame.js'
+import { frameWindow, type Frame } from './frame.js'
 import { coord, isOpen, pathFor } from './shapes.js'
 import { tileMarkup } from './patterns.js'
 
@@ -34,11 +34,6 @@ export type CompileInput = {
   // asset far from here; an image element told to `trim` fits the motif rather than the file, so
   // the same motif is the same size on every card however much air its own file happens to have.
   motifs?: Record<string, Motif>
-  // What this card asks of the deck's measure that the measure did not give it (E1): zoom and
-  // offset, by the column the picture sits in. It belongs to the deck and not to the file — the
-  // same bytes may sit in ten other people's decks — so it arrives per card rather than beside
-  // the measurement, which is of the bytes and shared by everyone.
-  framing?: Record<string, Nudge>
 }
 
 // Compiles one face of one card to HTML and CSS. The same output feeds the editor preview,
@@ -128,45 +123,32 @@ const mm = (v: number): string => `${Math.round(v * 1e4) / 1e4}mm`
 // frame with what is drawn — and the file is then laid out around it at the same scale and
 // cropped by the frame, which is what already crops every other picture. A motif with no extent
 // is no motif, and such a file is left to its frame.
-function aroundMotif(el: { w: number; h: number; fit?: 'cover' | 'contain' | 'fill' | undefined }, motif: Motif, nudge: Nudge = {}): string | null {
+function aroundMotif(el: { w: number; h: number; fit?: 'cover' | 'contain' | 'fill' | undefined }, motif: Motif): string | null {
   const drawn = { w: motif.w - motif.trim.left - motif.trim.right, h: motif.h - motif.trim.top - motif.trim.bottom }
   if (drawn.w <= 0 || drawn.h <= 0) return null
-  // This card's own exception (#222, beslut 2). A crop is the picture's and reaches every card
-  // drawn from it; the row is where a single card says it wants another window. The departure
-  // means here exactly what it means through the measure — a larger zoom is a smaller window and
-  // so a larger drawing, and an offset is a share of the frame — so the same three numbers move
-  // the same picture the same way whether or not the template carries a measure.
-  const zoom = nudge.zoom ?? 1
   const by = { w: el.w / drawn.w, h: el.h / drawn.h }
   const even = (el.fit ?? 'cover') === 'contain' ? Math.min(by.w, by.h) : Math.max(by.w, by.h)
   const stretched = (el.fit ?? 'cover') === 'fill'
-  const sx = (stretched ? by.w : even) * zoom
-  const sy = (stretched ? by.h : even) * zoom
+  const sx = stretched ? by.w : even
+  const sy = stretched ? by.h : even
   // The motif centred in the frame: its own centre, in the file's pixels, laid on the frame's.
-  const left = el.w / 2 - (motif.trim.left + drawn.w / 2) * sx - (nudge.dx ?? 0) * el.w
-  const top = el.h / 2 - (motif.trim.top + drawn.h / 2) * sy - (nudge.dy ?? 0) * el.h
+  const left = el.w / 2 - (motif.trim.left + drawn.w / 2) * sx
+  const top = el.h / 2 - (motif.trim.top + drawn.h / 2) * sy
   return `left:${mm(left)};top:${mm(top)};width:${mm(motif.w * sx)};height:${mm(motif.h * sy)};`
 }
 
 // Where the whole picture has to lie for the deck's measure to be met (E1). The window is worked
-// out by `frameWindow` — the one function the editor calls too, so a card can never be framed one
-// way on screen and another in print — and the file is then laid out so that exactly the window
+// out by `frameWindow` — the same for the editor's preview, the table's texture and print, because
+// all three are this compile — and the file is then laid out so that exactly the window
 // fills the element. The frame crops the rest, as it crops every other picture.
-function throughWindow(el: { w: number; h: number }, measure: Frame, motif: Motif, nudge: Nudge): string | null {
+function throughWindow(el: { w: number; h: number }, measure: Frame, motif: Motif): string | null {
   if (motif.w <= 0 || motif.h <= 0) return null
-  const win = frameWindow(motif, measure, el.w / el.h, nudge)
+  const win = frameWindow(motif, measure, el.w / el.h)
   if (win.w <= 0) return null
   // Millimetres per file pixel. The window is the frame's shape, so its height lands on the
   // element's height by the same scale that puts its width on the element's width.
   const by = el.w / win.w
   return `left:${mm(-win.x * by)};top:${mm(-win.y * by)};width:${mm(motif.w * by)};height:${mm(motif.h * by)};`
-}
-
-// This card's own departure from the measure, if it has one. It is keyed by the column the
-// picture came from, because that is where the designer put the picture — an element bound to a
-// literal is the template's own picture and is never one card's to nudge.
-function nudgeFor(el: { bind: Bind }, input: CompileInput): Nudge {
-  return ('field' in el.bind && input.framing?.[el.bind.field]) || {}
 }
 
 const symbolsOf = (input: CompileInput): Symbols => ({ icons: input.icons, palette: input.palette })
@@ -234,8 +216,7 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
       // picture (#222).
       const found = input.motifs?.[src]
       const motif = el.frame || el.trim || found?.cropped ? found : undefined
-      const nudge = nudgeFor(el, input)
-      const laid = motif && (el.frame ? throughWindow(el, el.frame, motif, nudge) : aroundMotif(el, motif, nudge))
+      const laid = motif && (el.frame ? throughWindow(el, el.frame, motif) : aroundMotif(el, motif))
       css.push(`[data-element="${attr(el.id)}"]{left:${el.x + dx}mm;top:${el.y + dy}mm;width:${el.w}mm;height:${el.h}mm;}`)
       css.push(`[data-element="${attr(el.id)}"] .byd-art{${laid ?? `width:100%;height:100%;object-fit:${el.fit ?? 'cover'};`}}`)
       html.push(src ? `<div data-element="${attr(el.id)}"><img class="byd-art" src="${attr(src)}" alt=""></div>` : `<div data-element="${attr(el.id)}"></div>`)
@@ -490,7 +471,7 @@ export function compileCard(input: CompileCardInput): Record<string, Compiled> {
     if (!face) throw new Error(`template has no face "${faceId}", which ${input.type.id} requires`)
     // Everything the caller handed over, minus the template, plus the face it names. Written as
     // a spread and not as a list of fields: the list was copied by hand and silently dropped the
-    // two newest ones — the palette and this card's framing — from every card the server renders.
+    // newest fields — the palette among them — from every card the server renders.
     out[faceId] = compile({ ...rest, face })
   }
   return out

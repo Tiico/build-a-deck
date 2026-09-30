@@ -207,15 +207,15 @@ describe('a row in the history says what its save changed (#177)', () => {
 
   // A save the history has no word for is still a save (#177). `diffProjects` looks at the cards,
   // the two orders, the name, the template, the setup, the rules and the symbols — and at none of
-  // `palette`, `framing` or `fonts`, which the editor writes every time a picture is nudged in its
-  // frame (E1) or a font is swapped (B3). A byte-identical document is refused a version, so such a
+  // `palette` or `fonts`, which the editor writes every time a meaning is repainted (E4) or a font
+  // is swapped (B3). A byte-identical document is refused a version, so such a
   // save really did change the game; the row must not tell the designer that nothing happened.
   it('says a save it has no word for as something changed, never as nothing changed', async () => {
     const doc = projectDoc()
     await run.projects.create(run.projectId, doc)
-    const nudged = structuredClone(doc)
-    nudged.framing = { 'dragon/body': { zoom: 1.4 } }
-    expect(await run.projects.replace(run.projectId, 1, nudged)).toMatchObject({ rev: 2 })
+    const repainted = structuredClone(doc)
+    repainted.palette = { fara: '#8f2d20' }
+    expect(await run.projects.replace(run.projectId, 1, repainted)).toMatchObject({ rev: 2 })
     await openEditor()
 
     fireEvent.click(screen.getByRole('button', { name: /rev 2/ }))

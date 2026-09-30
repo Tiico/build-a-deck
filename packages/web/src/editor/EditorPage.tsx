@@ -423,10 +423,6 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             setFocusNext({ layer: id })
           }
         }}
-        // The measure belongs to the template's image element and one card's departure to the
-        // deck (E1), so the wall changes two different things — but they are judged in one place,
-        // because the wall is where the whole deck is visible at once.
-        {...(client.mayEdit ? { onFraming: (cardRef: string, field: string, framing: Parameters<typeof client.setFraming>[2]) => client.setFraming(cardRef, field, framing) } : {})}
         // One check mended across the whole deck (#233). Every patch carries the same gesture, so
         // the edits land as one version and one step back: a designer who presses this once and
         // changes her mind presses undo once.

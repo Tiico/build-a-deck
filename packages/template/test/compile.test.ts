@@ -575,8 +575,8 @@ describe('compile — a picture framed by the deck’s measure (E1)', () => {
   const doubled = { w: 400, h: 200, trim: { left: 120, top: 20, right: 120, bottom: 20 } }
   const airy = { w: 300, h: 150, trim: { left: 110, top: 35, right: 110, bottom: 35 } }
 
-  const at = (motif: typeof plain, src: string, face: FaceTemplate, framing?: Record<string, { zoom?: number; dx?: number; dy?: number }>) =>
-    drawnBox(compile({ type: CARD_STANDARD_63x88, face, row: { art: src }, icons, motifs: { [src]: motif }, ...(framing ? { framing } : {}) }).css, motif)
+  const at = (motif: typeof plain, src: string, face: FaceTemplate) =>
+    drawnBox(compile({ type: CARD_STANDARD_63x88, face, row: { art: src }, icons, motifs: { [src]: motif } }).css, motif)
 
   it('draws the motif of three unlike files at the same size in the same place', () => {
     const face: FaceTemplate = { base: [{ ...frame, frame: measure }], variants: {} }
@@ -585,15 +585,6 @@ describe('compile — a picture framed by the deck’s measure (E1)', () => {
     expect(at(plain, 'a.png', face)).toEqual({ x: 8, y: 3, w: 24, h: 24 })
     expect(at(doubled, 'b.png', face)).toEqual({ x: 8, y: 3, w: 24, h: 24 })
     expect(at(airy, 'c.png', face)).toEqual({ x: 8, y: 3, w: 24, h: 24 })
-  })
-
-  it('takes one card’s own departure from the measure, and only that card’s', () => {
-    const face: FaceTemplate = { base: [{ ...frame, frame: measure }], variants: {} }
-
-    // Twice as close: the drawing is 48 mm across in a 40 × 30 mm frame, so it is cropped by the
-    // frame on all four sides and still centred in it. The card beside it is untouched.
-    expect(at(plain, 'a.png', face, { art: { zoom: 2 } })).toEqual({ x: -4, y: -9, w: 48, h: 48 })
-    expect(at(plain, 'a.png', face)).toEqual({ x: 8, y: 3, w: 24, h: 24 })
   })
 
   it('draws the whole drawing when the file has no air to give, rather than sampling what was never drawn', () => {

@@ -57,8 +57,8 @@ describe('what a row in the history says (#177)', () => {
   })
 
   // A change with nothing in it is not a save where nothing happened (#177): a version is only
-  // written when the document really changed, and `diffProjects` does not look at `palette`,
-  // `framing` or `fonts`. So the empty change means "something we have no word for", and the row
+  // written when the document really changed, and `diffProjects` does not look at `palette`
+  // or `fonts`. So the empty change means "something we have no word for", and the row
   // says that rather than a sentence that cannot be true.
   it('says a save it has no word for as something changed, never as nothing changed', () => {
     const said = row(version(), change())
