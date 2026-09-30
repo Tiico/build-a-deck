@@ -3563,6 +3563,35 @@ Wizardens accent är nedtonad från `#d85b36` till `#b8461f`, som bär AA i 11 p
 Två fynd på vägen är egna issues och inte lösta här: primärblå `#3c8ce7` ger vit text 3.44:1 (#22, avgjort i L11), och `TableRenderer` ritar handsolfjädrar i fasta pixlar och passar bara in golvet i sin ram, så ett bord som passats kant i kant alltid klipper sina egna händer (#23) — det syns fortfarande på `/observe` vid 390 och 768 px.
 Prototypen `packages/web/src/prototype/responsive` togs bort när den hade svarat; dess resonemang står här.
 
+**Undantag 2026-09-30: i ett lågt fönster rullar sidan (#550).**
+«Sidan gör det aldrig» antog ett fönster som var högt nog för ramen, och ett skrivbord zoomat till 200 % är inte det.
+1280 × 800 vid 200 % är ett fönster på 640 × 400, och vid 400 % på 1280 × 1024 är det 320 × 256.
+Där stod huvudet, bordsraden och etappremsan stilla och lämnade arbetet 147 px respektive ingenting: kortväggen fick 38 och 2 px, tabellen visade ingen rad, och wizardens steg fick 167 och 23 px.
+Tre varianter prototypades mot varandra: A fällde banden till en rad var, B lät sidan rulla, och C lade huvudet bakom en ≡.
+Beställaren valde **B:s omflöde med A:s pekarregel** (`?proto=B&rum=pekare`), eftersom B är den enda där tabellen visar rader och kortväggen syns vid 400 %, och den gömmer ingenting — en sida som flyter om är just det WCAG 1.4.10 beskriver.
+
+Under 560 px höjd, och bara under skrivbordet, släpper ramen.
+Sidan rullar, huvudet och remsorna under det rullar bort med den, och etappremsan med `Spara` och `Uppdatera bordet` är det enda som står kvar, längst ner där den redan stod.
+Så når inget arbete utom räckhåll.
+560 px är 1280 × 800 från 150 %, 1440 × 900 från 175 %, och en surfplatta på tvären med webbläsarens fält avdragna.
+De tre ytorna arbetet görs på flyter om en gång till: kortväggens lista, tabellens rader och dukens rum är var och en ett helt fönster minus etappremsan, och sidan stannar på dem (`scroll-snap`, närhet).
+Deras kronor rullar bort med sidan precis som huvudet.
+Dukens rum kom med i implementationen och inte i prototypen, som lät duken behålla sin ram: vid 400 % tar dukens krona tre rader, och i en ram som stod stilla blev det inget rum alls kvar åt kortet.
+Övriga flikar behåller sin ram, ett fönster minus remsan.
+Wizarden gör likadant i sitt stegläge: huvudet och stegfliken rullar bort, `Föregående` och `Nästa` står kvar längst ner, och steget är minst ett fönster minus de två.
+Fokus som sidan rullar fram får inte hamna bakom det som står kvar (2.4.11), så remsans höjd är sidans `scroll-padding-bottom`.
+Mätt i Chromium på en lek med 300 kort: kortväggen 347 och 203 px, tabellen fem och två hela rader, wizardens steg 339 och 195 px, och ingen sidledsrullning.
+`packages/e2e/test/surfaces/editor-low-window.spec.ts` håller det, med varje tal räknat ur sidan i stället för nedskrivet.
+
+Dukens verktygsrad och zoomkolumn hade aldrig ritats under 768 px, eftersom pekarregeln i L12 är det som först erbjuder duken där.
+Kronan tar så många rader den behöver i etapperna i stället för att krympa under sina egna ord, och skrivbordet behåller sin enda rad.
+Zoomkolumnen lägger sig ner även i ett rum som är för lågt för att den ska stå — omkring 290 px, fem tryckytor och procenttalet — och tar en andra rad där en rad är för bred.
+Vid 640 stod den annars upp ur rummet och över `Baksida`.
+
+Text i rem prövades i samma prototyp och väljs bort nu: zoom uppfyller redan 1.4.4 och fungerar med omflödet, medan rem vid 200 % gör skrivbordets huvud för brett och kräver att filten undantas.
+Granskningens fynd A-1, E-1 och F-4 löses av detta; E-2, A-17 och P-18 antecknas utan åtgärd.
+Prototypens mätningar och bilder står i [`docs/ux-audits/2026-09-29-tillganglighet/prototyper/550/`](docs/ux-audits/2026-09-29-tillganglighet/prototyper/550/), och det byggda, mätt på samma sätt, i `byggt.json` och `byggt-*.png` bredvid dem.
+
 ### L11. Primärblått är två tokens, och en platsfärg bär mörk text (2026-09-08, reviderad 2026-09-10)
 
 `#3c8ce7` var en färg med två jobb och klarade bara det ena.
@@ -3633,6 +3662,16 @@ Allt som går att göra med musen ska gå att göra med fingret: ett drag, ett h
 Och editorn ska inte kräva att man rullar runt för att nå sina egna kontroller: på en platta är den synliga höjden ofta under 500 px när webbläsarens fält är avdragna, och rader som rullar i sidled gömmer det man letar efter.
 Hur det senare löses utan att skrivbordet betalar är ett visuellt beslut och prototypas först.
 Granskningen som ledde hit står i [`docs/ux-audits/2026-09-29-surfplatta.md`](docs/ux-audits/2026-09-29-surfplatta.md).
+
+**Tillägg 2026-09-30: en fin pekare är skrivbord, oavsett bredd (#550).**
+Gränsen ovan går vid vem som håller ytan, men rummet i L10 avgjordes av bredden ensam.
+Ett skrivbord zoomat till 200 % är 640 px brett och vid 400 % 320 px, och bredden kallade det en telefon: `Mall` försvann ur editorn för precis den formgivare som hade zoomat in för att kunna arbeta.
+En mus eller en styrplatta — `(hover: hover) and (pointer: fine)`, den primära pekaren — får därför aldrig telefonens rum.
+Under 768 px får den etapperna, duken bland dem, som den skulle ha fått mellan 768 och 1023; skrivbordets fyra kolumner kräver fortfarande 1024 px.
+En telefon, med finger och utan hover, har rummet den alltid haft: ingen duk, och en mening som säger varför.
+En bärbar dator med pekskärm är ett skrivbord, eftersom musen är dess primära pekare, och byts den primära pekaren följer rummet med utan omladdning.
+Pekarregeln är ingen egen zoombrytpunkt, och den ändrar ingenting i spelarens ytor.
+Hur editorn och wizarden flyter om när fönstret också är lågt står i L10:s undantag samma dag.
 
 ### L13. Ett knappspråk: tre roller, en form var (2026-09-11)
 

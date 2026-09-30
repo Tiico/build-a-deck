@@ -554,6 +554,37 @@
 .byd-editor-stagebar-actions button:not(.byd-primary):is(:disabled, [aria-disabled='true']) { color: var(--byd-editor-quiet); }
 .byd-editor-stagebar-actions button:is(:disabled, [aria-disabled='true']) { cursor: default; }
 
+/* A low window (#550, L10 undantag 2026-09-30): a desk zoomed to 200 % is 640 × 400, at 400 % it
+   is 320 × 256, and a tablet on its side is under 500 px once its browser has drawn its bars. The
+   frame above stood still in all of them, and the header, the strips under it and the stage strip
+   left the work 147 px at 200 % and nothing at 400 %. So below 560 px of height the frame lets
+   go: the page scrolls, the header and its strips scroll away with it, and the stage strip — with
+   «Spara» and «Uppdatera bordet» pinned to its end — is the one thing that stays, at the bottom
+   where it already was. The desk is not touched: from 1024 px the modes are in the header, and a
+   window that wide and that low is not one the audit found anyone in.
+
+   The strip's height is the one number the reflow is built on: the work is a whole window less
+   it. A tap, the strip's own padding above and below it, and its rule. It is declared on the root
+   because the page's own scrolling has to know it too — focus that the page scrolls to must not
+   land behind the strip that stays (WCAG 2.4.11). */
+:root:has(.byd-editor) { --byd-editor-stagebar-h: calc(44px + 2 * 4px + 1px); }
+.byd-editor-stagebar { box-sizing: border-box; min-height: var(--byd-editor-stagebar-h); }
+@media (max-height: 560px) {
+  :root:has(.byd-editor:not([data-room='desk'])) { scroll-padding-bottom: var(--byd-editor-stagebar-h); scroll-snap-type: y proximity; }
+  .byd-editor:not([data-room='desk']) { height: auto; min-height: 100vh; }
+  .byd-editor:not([data-room='desk']) > main { flex: none; height: calc(100dvh - var(--byd-editor-stagebar-h)); scroll-snap-align: start; }
+  .byd-editor:not([data-room='desk']) .byd-editor-stagebar { position: sticky; bottom: 0; z-index: 5; }
+  /* The three surfaces the work is done on reflow once more: the card wall's list, the card
+     table's rows, and the room the canvas draws the card in. Their crowns scroll away with the page
+     as the header does, and the surface itself is the one box that is a whole window less the
+     strip — so the page settles on it, and it is where the reader is working. The canvas is the
+     one that needs it most: at 400 % its crown takes three rows, and the frame left the card none. */
+  .byd-editor:not([data-room='desk']) > main:has(.byd-table-wrap, .byd-wall-view, .byd-canvas[data-stage='canvas']) { height: auto; overflow: visible; scroll-snap-align: none; }
+  .byd-editor:not([data-room='desk']) > main:has(.byd-table-wrap, .byd-wall-view, .byd-canvas[data-stage='canvas']) > [role='tabpanel'] { height: auto; }
+  .byd-editor:not([data-room='desk']) :is(.byd-table-wrap, .byd-wall-view, .byd-canvas[data-stage='canvas']) { height: auto; }
+  .byd-editor:not([data-room='desk']) :is(.byd-data-scroll, .byd-wall-work, .byd-canvas[data-stage='canvas'] .byd-canvas-room) { flex: none; box-sizing: border-box; height: calc(100dvh - var(--byd-editor-stagebar-h)); scroll-snap-align: start; }
+}
+
 /* The setup editor (B5, K2): the seats knob and the list of zones on the left, the felt as the
    workspace, the phone's sheet under it. The column scrolls on its own, since a table of eight
    seats carries some thirty zones and the felt must not be pushed off the screen by the list. */
@@ -1274,11 +1305,16 @@
 .byd-canvas-zoom output { min-width: 5ch; padding: 0 var(--byd-s1); color: var(--byd-editor-hint-ink); text-align: center; font-variant-numeric: tabular-nums; }
 /* And where there is no width to stand in — a stage no wider than it is tall, which is 1024 with
    the properties open — the band lies down under the stage instead. That row is the only thing it
-   ever costs the card, and it costs it only where the fitting had nothing spare to give. */
-@container (max-aspect-ratio: 1/1) {
+   ever costs the card, and it costs it only where the fitting had nothing spare to give.
+   It lies down too where there is no height to stand in (#550). Standing, the band is five taps,
+   the percentage, and the gaps and edges between them — some 290 px — and a room shorter than
+   that, a desk zoomed to 200 % or more, had it stand up out of the room and over the crown's
+   «Baksida». */
+@container (max-aspect-ratio: 1/1) or (max-height: 320px) {
   /* Lying down it is as thin as a row can be: every pixel of it is a pixel of card height, and
-     this is the one shape where the band is not free. */
-  .byd-canvas-zoom { grid-area: 2 / 1; justify-self: end; flex-direction: row; align-items: center; margin: var(--byd-s1) var(--byd-s2); padding: 0 var(--byd-s1); }
+     this is the one shape where the band is not free. Where even a row is too wide for the room —
+     320 px — it takes a second row rather than going past the edge. */
+  .byd-canvas-zoom { grid-area: 2 / 1; justify-self: end; flex-direction: row; flex-wrap: wrap; justify-content: flex-end; align-items: center; margin: var(--byd-s1) var(--byd-s2); padding: 0 var(--byd-s1); }
 }
 /* The crown over the desk (#13, #129): one row, at every width and on every deck. Which column
    makes the groups, which group is open, whether the properties are folded away, and which face is
@@ -1296,6 +1332,10 @@
   background: var(--byd-editor-strip-bg);
   border-bottom: 1px solid #2f333d;
 }
+/* Below the desk the crown belongs to the canvas stage alone, and a stage can be as narrow as a
+   desk zoomed to 400 % (#550): there the four controls take as many rows as they need, rather than
+   shrinking under their own words and setting them over one another. The desk keeps its one row. */
+.byd-canvas[data-stage] > .byd-canvas-strip { flex-wrap: wrap; }
 .byd-canvas-group-column { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 11px; color: var(--byd-editor-hint-ink); }
 .byd-canvas-group-column select { min-width: 0; background: #0f1115; border: 1px solid #2a2d36; color: #dce3f2; border-radius: 6px; padding: 4px; font-size: 12px; }
 /* The groups as a menu in the crown, and the button that opens it. The button carries the open

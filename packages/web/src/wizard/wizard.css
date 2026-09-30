@@ -71,6 +71,25 @@
 .byd-wizard-steps { flex: 0 0 auto; display: flex; gap: 10px; padding: 8px 20px; border-top: 1px solid var(--line); background: rgb(255 255 255 / 70%); }
 .byd-wizard-steps button { flex: 1; font-weight: 700; }
 
+/* A low window (#550, L10 undantag 2026-09-30), as the editor has it: a desk at 400 % left the step
+   23 px between the head, the step strip and the two moves, all standing still. Below 560 px of
+   height the page scrolls instead: the head and the step strip scroll away with it, and the two
+   moves stay at the bottom where they already were. The step is at least a window less the moves,
+   so a short step does not leave them standing in the middle of the page.
+
+   The moves' height is a tap, their padding above and below it, and their rule, declared on the
+   root because the page's own scrolling must not bring focus to rest behind them (WCAG 2.4.11). */
+:root:has(.byd-wizard) { --byd-wizard-moves-h: calc(44px + 2 * 8px + 1px); }
+.byd-wizard-steps { min-height: var(--byd-wizard-moves-h); }
+@media (max-height: 560px) {
+  :root:has(.byd-wizard[data-room='steps']) { scroll-padding-bottom: var(--byd-wizard-moves-h); }
+  .byd-wizard[data-room='steps'] { height: auto; min-height: 100vh; display: block; }
+  .byd-wizard[data-room='steps'] .byd-wizard-flow { display: block; }
+  .byd-wizard[data-room='steps'] .byd-wizard-body { overflow: visible; min-height: calc(100dvh - var(--byd-wizard-moves-h)); }
+  /* Opaque here, the same white-on-paper it is drawn as elsewhere: the step now passes under it. */
+  .byd-wizard[data-room='steps'] .byd-wizard-steps { position: sticky; bottom: 0; z-index: 5; background: color-mix(in srgb, #fff 70%, var(--paper)); }
+}
+
 /* The desk: what the wizard has always looked like, with the card given room enough to be whole. */
 /* The page stands still on a desk (#476, beslut 2026-09-27, variant B): the head stays where it is
    and each column scrolls on its own, as the stepped wizard and the editor do. The whole page used

@@ -1,0 +1,116 @@
+[
+  {
+    "text": 100,
+    "kortvagg": {
+      "hscroll": false,
+      "headerOverflow": false,
+      "headerH": 57,
+      "cut": 0,
+      "bodyPx": "13px"
+    },
+    "mall": {
+      "hscroll": false,
+      "headerOverflow": false,
+      "headerH": 57,
+      "cut": 0,
+      "bodyPx": "13px"
+    },
+    "tabell": {
+      "hscroll": false,
+      "headerOverflow": false,
+      "headerH": 57,
+      "cut": 1,
+      "bodyPx": "13px"
+    },
+    "bord": {
+      "hscroll": false,
+      "headerOverflow": false,
+      "headerH": 57,
+      "cut": 0,
+      "bodyPx": "13px"
+    },
+    "wizard": {
+      "hscroll": false,
+      "headerOverflow": false,
+      "headerH": 91,
+      "cut": 0,
+      "bodyPx": "14px"
+    }
+  },
+  {
+    "text": 150,
+    "kortvagg": {
+      "hscroll": false,
+      "headerOverflow": false,
+      "headerH": 57,
+      "cut": 1,
+      "bodyPx": "19.5px"
+    },
+    "mall": {
+      "hscroll": false,
+      "headerOverflow": false,
+      "headerH": 57,
+      "cut": 1,
+      "bodyPx": "19.5px"
+    },
+    "tabell": {
+      "hscroll": false,
+      "headerOverflow": false,
+      "headerH": 57,
+      "cut": 2,
+      "bodyPx": "19.5px"
+    },
+    "bord": {
+      "hscroll": false,
+      "headerOverflow": false,
+      "headerH": 57,
+      "cut": 1,
+      "bodyPx": "19.5px"
+    },
+    "wizard": {
+      "hscroll": false,
+      "headerOverflow": false,
+      "headerH": 118,
+      "cut": 0,
+      "bodyPx": "21px"
+    }
+  },
+  {
+    "text": 200,
+    "kortvagg": {
+      "hscroll": true,
+      "headerOverflow": true,
+      "headerH": 57,
+      "cut": 3,
+      "bodyPx": "26px"
+    },
+    "mall": {
+      "hscroll": true,
+      "headerOverflow": true,
+      "headerH": 57,
+      "cut": 4,
+      "bodyPx": "26px"
+    },
+    "tabell": {
+      "hscroll": true,
+      "headerOverflow": true,
+      "headerH": 57,
+      "cut": 4,
+      "bodyPx": "26px"
+    },
+    "bord": {
+      "hscroll": true,
+      "headerOverflow": true,
+      "headerH": 57,
+      "cut": 3,
+      "bodyPx": "26px"
+    },
+    "wizard": {
+      "hscroll": false,
+      "headerOverflow": false,
+      "headerH": 205,
+      "cut": 0,
+      "bodyPx": "28px"
+    }
+  }
+]
