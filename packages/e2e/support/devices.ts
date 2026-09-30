@@ -21,3 +21,15 @@ export const DESK: Device = { name: 'desk', viewport: { width: 1440, height: 900
  * dispatch pointer events of the kind the real one gets.
  */
 export const PHONE: Device = { name: 'phone', viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }
+/**
+ * A large tablet, which the editor wishes to serve (L12, tillägg 2026-09-29): a finger and no
+ * hover, and less height than the screen promises once the browser has drawn its bars. The sizes
+ * are the three #567 was measured at — a Galaxy Tab and an iPad on their side, and an iPad Air
+ * standing — and the narrow end of the stages' band (L10), where the header has least room.
+ */
+export const TABLETS: readonly Device[] = [
+  { name: 'tab-landscape', viewport: { width: 960, height: 490 }, hasTouch: true, isMobile: true },
+  { name: 'ipad-landscape', viewport: { width: 1024, height: 600 }, hasTouch: true, isMobile: true },
+  { name: 'ipad-portrait', viewport: { width: 820, height: 1106 }, hasTouch: true, isMobile: true },
+  { name: 'ipad-mini-portrait', viewport: { width: 768, height: 1024 }, hasTouch: true, isMobile: true },
+]

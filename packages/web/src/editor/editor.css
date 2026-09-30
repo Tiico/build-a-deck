@@ -133,6 +133,9 @@
    save that failed is spoken here too, and it is the one thing long enough to need a second row. */
 @media (max-width: 1023px) {
   .byd-editor > header { flex-wrap: wrap; padding: 4px 12px; }
+  /* Where the header stands, «Spara» and «Uppdatera bordet» are in it as at the desk (#567), at
+     its end. */
+  .byd-editor > header > .byd-editor-save { margin-left: auto; }
 }
 /* Six modes, two actions, the people who have the game (D3) and everything that says whose game
    this is, all in one row. On a wide desk they fit; at the width the desk begins they do not, and
@@ -531,7 +534,11 @@
 }
 .byd-editor-stagebar [role='tab'] { color: var(--byd-editor-stage-ink); }
 .byd-editor-stagebar [role='tablist'] { flex: 1 1 auto; min-width: 0; margin-left: 0; padding: 0; background: transparent; border-radius: 0; gap: 4px; overflow-x: auto; }
-.byd-editor-stagebar [role='tab'] { flex: 0 0 auto; white-space: nowrap; border-radius: 9px; }
+/* The tabs share the strip and give up their air before one is scrolled out of sight (#567): at
+   820 px the ten stages fit once «Spara» and «Uppdatera bordet» stand in the header, and at 960 ×
+   490, where the two stay here, they fit beside them. */
+.byd-editor-stagebar [role='tab'] { flex: 1 0 auto; padding-inline: var(--byd-s1); white-space: nowrap; border-radius: 9px; }
+.byd-editor-stagebar-actions:empty { display: none; }
 .byd-editor-stagebar-actions {
   display: flex;
   gap: 6px;
@@ -854,10 +861,14 @@
   .byd-crown-box > .byd-crown-name, .byd-crown-fold > .byd-crown-name { display: none; }
   .byd-crown-search { min-width: 180px; }
 }
-@media (max-width: 1023px) {
-  .byd-crown { overflow-x: auto; scrollbar-width: none; }
-  .byd-crown::-webkit-scrollbar { display: none; }
+/* Below the desk, and under a finger at any width, the row breaks instead (#567, beslut B): the
+   sideways scroll hid «Fäll ihop hoppspalten» and «Fysisk kontroll» on a tablet, where nothing
+   says there is more and a swipe on the row is easily a swipe on the page. The field keeps its
+   room, and the filters break with the row. */
+@media (max-width: 1023px), (pointer: coarse) {
+  .byd-crown { flex-wrap: wrap; row-gap: var(--byd-s2); }
   .byd-crown-search { min-width: 180px; }
+  .byd-crown-rail-scroll, .byd-crown-rail .byd-data-chips { flex-wrap: wrap; overflow: visible; }
 }
 /* What a box opened: a band under the row, on the panel's own ground so it reads as standing over
    the work rather than as a second crown. This one may wrap — it is what the row refused to. */
@@ -2529,6 +2540,11 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 }
 .byd-tables { overflow: auto; display: grid; gap: var(--byd-s3); align-content: start; }
 .byd-tables-lead, .byd-tables-empty { margin: 0; color: var(--byd-tables-quiet); max-width: 62ch; font-size: 12px; line-height: 1.5; }
+/* The lead's «?» draws a 22 px ring in a 44 px target, and the target's air hangs over the row by
+   its negative margin (help.css). `.byd-tables` scrolls, and so clips: the air past the column's
+   edge was cut, 11 px of the target at the right and 4 above, at every width (#567). The row makes
+   room for it inside the box that clips. */
+.byd-tables-lead.byd-help-row { padding: var(--byd-s1) var(--byd-s3) 0 0; }
 
 /* Three groups, one under the other (#176): what is being played, what was started and never
    touched, what is over. The first stands open under a heading; the other two are one row each

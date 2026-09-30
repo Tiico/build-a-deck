@@ -78,14 +78,15 @@ describe('en enda definition, och den står i basarket (#321)', () => {
   })
 })
 
-// De tre ytorna som medvetet inte har någon list, och skälet var aldrig att listen var ful. Kronan
-// och filterrälsen rullar i sidled inuti en rad som ska läsas som en rad (#128, #130), och
-// väggens remsa är en stapel där varje grupps höjd är dess andel av leken — en list i den vore en
-// fjärde kolumn i en bild som redan räknar tre. Alla tre har en väg vidare som inte är listen:
-// pilen, tonandet i kanten, tangentbordet. Den gemensamma definitionen står på `*` och är (0,0,0),
-// så de vinner över den — men det är en tyst sak att luta sig mot, och därför mäts den.
+// De ytor som medvetet inte har någon list, och skälet var aldrig att listen var ful. Filterrälsen
+// rullar i sidled inuti en rad som ska läsas som en rad vid skrivbordet (#130), och väggens remsa
+// är en stapel där varje grupps höjd är dess andel av leken — en list i den vore en fjärde kolumn
+// i en bild som redan räknar tre. Båda har en väg vidare som inte är listen: pilen, tonandet i
+// kanten, tangentbordet. Den gemensamma definitionen står på `*` och är (0,0,0), så de vinner över
+// den — men det är en tyst sak att luta sig mot, och därför mäts den.
+// Kronan under skrivbordsbredd var den tredje (#128) tills den slutade rulla: den bryter nu till
+// fler rader (#567, L54), och en ruta som inte rullar har ingen list att gömma.
 const GÖMDA: Record<string, { selector: string; css: string }> = {
-  'kronan under skrivbordsbredd': { selector: '.byd-crown', css: read('editor/editor.css') },
   'filterrälsen i kronan': { selector: '.byd-crown-rail-scroll', css: read('editor/editor.css') },
   'väggens remsa': { selector: '.byd-wall-rail', css: read('editor/editor.css') },
 }
