@@ -1242,6 +1242,7 @@ describe('every suite that measures a surface', () => {
       'button-state-contrast.test.tsx',
       'canvas-band.test.tsx',
       'canvas-pan.test.tsx',
+      'checkbox-edge.test.tsx',
       'counter-ink.test.tsx',
       'counter-touch.test.tsx',
       'counter-zone.test.tsx',
