@@ -184,7 +184,7 @@ Innan första betalande användaren:
 - ⬜ Betabruk med tre till fem designers ur målgruppen (A1), rekryterade med delbar länk (A3), med enkäterna som mått (G3).
 - ⬜ Replay-korpusen innehåller deras sessioner och spelar upp identiskt på varje commit (D4).
 - ⬜ Återställningsprovet har körts mot en riktig backup (DRIFT §5).
-- ⬜ Tillgänglighet i verktyget självt på en grundnivå: tangentbord, kontrast, skärmläsarnamn (I).
+- ✅ Tillgänglighet i verktyget självt på en grundnivå: tangentbord, kontrast, skärmläsarnamn (I). Granskningen 2026-09-29 (#549) fann 84 fynd, och alla är rättade eller beslutade och byggda (#550–#560, #569, #570, #575, #579–#581).
 - ⬜ Prisnivåernas tak och gratisnivåns gränser beslutade (I, A2).
 - ⬜ Villkor, integritetspolicy och GDPR-rutiner på plats (I).
 - ⬜ En sista genomgång av mönstret i avsnitt J: att de fyra besluten som skär bort kopplingarna mellan pelarna fortfarande är rätt.
