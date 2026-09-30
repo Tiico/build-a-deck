@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 01 — Tabellens filter (#617)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Tabellens krön är sökfältet, fjorton chips i en räls och «Importera ▾». Rälsen tar tre
+     fjärdedelar av raden, döljer 204 px vid 1280 och 420 px vid 1024, och säger inte vilken
+     kolumn ett chip hör till. Var ska det valda synas, om inte i rälsen?
+
+       Nu  chips i en räls med «›»
+       A   kolumnhuvudet filtrerar (▾ vid sorteringen), sökfältet bär brickor «typ: Playcard ×»
+       B   ett tecken öppnar en lista (L23): skriv «typ:» i sökfältet; ▾ i fältet för musen
+       C   en box som säger sitt läge: «Filter: typ Playcard ▾», chipsen under sina kolumnnamn i en låda
+
+     Klicka i krönet och huvudet. Skriv i fältet. Streckat rött = det som klipps. ─────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .scen { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 24px 16px; display: grid; gap: 28px; align-content: start; background: #15171c; }
+  .ram { position: relative; }
+  .etikett { color: var(--quiet-2); font-size: 11px; margin-bottom: 4px; }
+  .skala { position: absolute; left: 0; top: 18px; transform-origin: 0 0; }
+  .yta { background: var(--chrome); outline: 1px solid #3a3f4b; }
+  .ed-huvud .ed-mer, .ed-huvud .ed-angra { color: var(--quiet); }
+  .ed-huvud .ed-angra .ed-knapp { padding: 0 12px; margin-right: 2px; }
+  .ed-huvud[data-smal] .ed-flikar button { padding: 0 7px; }
+  .ed-huvud[data-smal] { gap: var(--s2); }
+
+  .t-vy { position: relative; padding: var(--s4) var(--s4) var(--s2); }
+  .t-krona { position: relative; padding: 0 0 var(--s2); }
+  .t-sok { flex: 0 1 240px; }
+  .t-rail { position: relative; flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--s1); }
+  .t-rail-scroll { display: flex; gap: 6px; flex: 1 1 auto; min-width: 0; overflow: hidden; }
+  .t-rail-scroll > div { flex: none; }
+  .t-rail-scroll .t-chip { border-radius: 999px; padding: 4px 12px; font-weight: 400; }
+  .t-rail::after { content: ''; position: absolute; right: 48px; top: 0; bottom: 0; width: 36px; background: linear-gradient(90deg, transparent, var(--chrome)); pointer-events: none; }
+  .t-chip[aria-pressed='true'] { border-color: transparent; border-radius: 6px 6px 0 0; box-shadow: inset 0 -3px 0 var(--primary-mark); }
+  .t-rensa { flex: none; min-height: var(--tap); padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: var(--quiet-2); font: inherit; cursor: pointer; }
+  .t-box.slut { margin-left: auto; }
+  .t-box .val { color: #c8cfdc; font-weight: 600; }
+
+  /* A och B: fältet bär brickorna. */
+  .t-falt { position: relative; flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 4px 6px 4px 10px; border: 1px solid #6f7a90; border-radius: 8px; background: #1b1d23; }
+  .t-falt:focus-within { border-color: var(--primary-mark); }
+  .t-falt input { flex: 1 1 120px; min-width: 60px; min-height: 34px; border: 0; background: transparent; color: #dce3f2; font: inherit; }
+  .t-falt input:focus { outline: none; }
+  .t-falt input::placeholder { color: #9aa3b8; }
+  .t-token { flex: none; display: inline-flex; align-items: center; gap: 2px; height: 34px; padding: 0 2px 0 10px; border-radius: 6px; background: #2f3a55; color: #fff; font-weight: 600; white-space: nowrap; }
+  .t-token i { font-style: normal; color: #b9c6e4; font-weight: 400; margin-right: 4px; }
+  .t-token button { width: 30px; height: 30px; border: 0; border-radius: 5px; background: transparent; color: #dbe4ff; font: inherit; font-size: 15px; cursor: pointer; }
+  .t-token button:hover { background: #3c4a6d; }
+  .t-falt-pil { flex: none; width: 34px; height: 34px; border: 0; border-radius: 6px; background: transparent; color: var(--quiet-2); font: inherit; cursor: pointer; }
+  .t-falt-pil[aria-expanded='true'] { color: #fff; background: #2f3a55; }
+
+  /* Lådan (C) och listorna (A, B). */
+  .t-lada { margin: 0 -16px; padding: var(--s2) var(--s4); gap: var(--s3); }
+  .t-grupp { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .t-grupp > b { flex: none; min-width: 56px; color: var(--quiet-2); font-weight: 600; font-size: 12px; }
+  .t-lista { position: absolute; z-index: 8; top: calc(100% + 4px); left: 0; min-width: 240px; max-width: 420px; padding: 6px; border: 1px solid #3b4358; border-radius: 10px; background: var(--panel); box-shadow: 0 12px 30px rgb(0 0 0 / 50%); }
+  .t-lista h4 { margin: 4px 8px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--quiet); }
+  .t-lista label, .t-lista .rad { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 8px; border-radius: 6px; color: #dce3f2; cursor: pointer; }
+  .t-lista label:hover, .t-lista .rad:hover, .t-lista .rad[data-pek] { background: #232838; }
+  .t-lista label input { width: 16px; height: 16px; margin: 0; accent-color: var(--primary-mark); color-scheme: dark; }
+  .t-lista small { margin-left: auto; color: var(--quiet); font-variant-numeric: tabular-nums; }
+  .t-lista .do { display: flex; gap: 6px; padding: 6px 4px 2px; border-top: 1px solid #2f333d; margin-top: 4px; }
+  .t-lista .do button { min-height: 36px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 7px; background: transparent; color: var(--quiet-2); font: inherit; cursor: pointer; }
+  .t-lista .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+  .t-lista .rad { padding-left: 10px; }
+  .t-lista .rad b { color: var(--quiet-2); font-weight: 600; margin-right: 6px; }
+
+  /* Huvudet: sortering och (A) filtret. */
+  .t-data th { position: relative; }
+  .t-data th .huvud { display: inline-flex; align-items: center; gap: 4px; }
+  .t-filt { display: inline-grid; place-items: center; width: 28px; height: 28px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #6f7a90; font: inherit; font-size: 11px; cursor: pointer; }
+  .t-filt:hover, .t-filt[aria-expanded='true'] { color: #fff; border-color: #3b414e; }
+  .t-filt[data-on] { color: #fff; background: var(--primary); border-color: var(--primary); }
+  .t-filt[data-on]::after { content: attr(data-on); font-size: 10px; margin-left: 2px; }
+  th .t-lista { top: 50px; left: 6px; }
+  .klippt { outline: 2px dashed #f0a58a; outline-offset: -2px; }
+  .t-rulla { overflow: visible; }
+  th:nth-last-child(-n+3) .t-lista { left: auto; right: 6px; }
+  .t-fot { display: flex; gap: var(--s2); }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#617 · Var det valda ska synas när chipsrälsen är borta.</b> Två krön, 1280 och 1024, med Sal's Saloon: <code>typ</code> har åtta värden, <code>raritet</code> sex. Klicka på ett värde och se var det landar. Streckat rött = klippt.</p>
+    <p>Tangentbord: pilarna byter variant, Escape stänger det som är öppet. Filtret delas mellan krönen.</p>
+  </div>
+  <div class="matt" id="matt"></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="scen" id="scen"></div>
+<script>
+const TYP = [['Character', 10], ['Effect', 10], ['Event', 8], ['Location', 4], ['Playcard', 23], ['Shopcard', 16], ['Trap-', 3], ['Trap+', 3]]
+const RAR = [['Diamant', 9], ['Guld', 12], ['Karaktär', 10], ['Koppar', 20], ['Silver', 14], ['Special', 12]]
+const KOL = { typ: TYP, raritet: RAR }
+const RADER = [
+  ['juice-em-up', 'Playcard', "Juice em' up!", 'Välj två andra spelare. De blandar en shot till varann', 'Diamant', 1],
+  ['sals-saloon', 'Location', "Sal's Saloon", 'Saloonen öppnar! Lägg upp ett shopkort per spelare som går in.', 'Guld', 2],
+  ['dustydice-casino', 'Location', 'DustyDice Casino', 'Välkommen till kasinot! Alla annonserar sin insats (1–10 klunkar)', 'Guld', 2],
+  ['free-for-all', 'Effect', 'Free for all', 'Era stöldgods är i fara! Så länge effekten ligger får ni sno varandras', 'Special', 1],
+  ['duel-koppar', 'Playcard', 'Duel', 'Utmana en spelare på duell. Förloraren dricker 3', 'Koppar', 4],
+  ['wanted-poster', 'Event', 'Wanted Poster', 'Sheriffen spikar upp en efterlysning.', 'Silver', 1],
+]
+window.PROTO = {
+  varianter: ['nu', 'a', 'b', 'c'],
+  bredder: [1280, 1024],
+  s: { v: 'a', q: '', val: { typ: ['Playcard'], raritet: [] }, oppen: null, pek: 0 },
+  not: {
+    nu: '<b>Nu.</b> Fjorton chips i en räls på tre fjärdedelar av raden, utan kolumnnamn. <span class="minus">− 204 px dolda vid 1280, 420 vid 1024. «Diamant» bredvid «Character» säger inte att det är två kolumner. Sökfältet 202/161 px.</span>',
+    a: '<b>A · Kolumnhuvudet filtrerar, fältet bär valet.</b> Ett ▾ bredvid sorteringen på kolumner med ordförråd öppnar värdena som bockar med antal; valt blir en bricka «typ: Playcard ×» i sökfältet och huvudet markeras. <span class="plus">+ Kalkylarkets form (L4). Det valda syns på två ställen utan att något öppnas. Krönet är sökfältet och Importera.</span> <span class="minus">− Filtret ligger i tabellens huvud, som rullar i sidled med kolumnerna; ett filter på en kolumn utanför bild syns bara som bricka.</span>',
+    b: '<b>B · Ett tecken öppnar en lista.</b> Skriv «typ:» i sökfältet och kolumnens värden smalnar som en lista under fältet (L23, samma som «{» i en cell); valt blir en bricka. ▾ i fältets ände är musens väg: alla kolumner, alla värden. <span class="plus">+ En kontroll för sök och filter, tangentbordet snabbast. Huvudet rörs inte.</span> <span class="minus">− En väg in som bara är ett tecken syns inte (L23:s svaga punkt); platshållaren får bära den.</span>',
+    c: '<b>C · En box som säger sitt läge.</b> «Filter: typ Playcard ▾» i krönet; lådan under visar chipsen under sina kolumnnamn. <span class="plus">+ Krönets egen regel: boxen bär det valda. Billigast — CrownBox och CrownDrawer finns.</span> <span class="minus">− Två kolumner ger «Filter: typ Playcard, raritet Guld ▾» och boxen växer; att ändra kräver en låda som täcker raderna. Det som #130 avvisade, med etiketten som bot.</span>',
+  },
+}
+const P = window.PROTO, s = P.s
+const esc = (t) => String(t).replace(/</g, '&lt;').replace(/"/g, '&quot;')
+const valda = () => Object.entries(s.val).flatMap(([k, vs]) => vs.map((v) => [k, v]))
+const filtrerar = () => valda().length > 0 || s.q.trim() !== ''
+const visade = () => RADER.filter((r) => (s.val.typ.length === 0 || s.val.typ.includes(r[1])) && (s.val.raritet.length === 0 || s.val.raritet.includes(r[4])) && (s.q.trim() === '' || r.join(' ').toLowerCase().includes(s.q.trim().toLowerCase())))
+const antal = () => visade().length + ' av 77 kort'
+const vaxla = (k, v) => { const i = s.val[k].indexOf(v); if (i < 0) s.val[k].push(v); else s.val[k].splice(i, 1) }
+
+const brickor = () => valda().map(([k, v]) => `<span class="t-token"><i>${k}:</i>${esc(v)}<button type="button" data-act="bort" data-kol="${k}" data-val="${esc(v)}" aria-label="Ta bort filtret ${k}: ${esc(v)}">×</button></span>`).join('')
+const chip = (k, v, n) => `<button type="button" class="t-chip" data-act="vaxla" data-kol="${k}" data-val="${esc(v)}" aria-pressed="${s.val[k].includes(v)}">${esc(v)}${n !== undefined ? ` <small style="color:#9aa3b8">${n}</small>` : ''}</button>`
+const lista = (k) => `<div class="t-lista" data-lista role="group" aria-label="Filtrera på ${k}"><h4>${k}</h4>${KOL[k].map(([v, n]) => `<label><input type="checkbox" data-act="vaxla" data-kol="${k}" data-val="${esc(v)}" ${s.val[k].includes(v) ? 'checked' : ''}>${esc(v)}<small>${n} kort</small></label>`).join('')}<div class="do"><button type="button" data-act="rensa" data-kol="${k}">Rensa ${k}</button><button type="button" data-act="stang">Klar</button></div></div>`
+
+// B: listan under fältet, styrd av «kolumn:prefix».
+const bLista = () => {
+  const m = /^(\S+):(.*)$/.exec(s.q)
+  if (s.oppen === 'alla') return `<div class="t-lista" data-lista style="left:auto;right:0;min-width:420px"><div class="grid">${Object.keys(KOL).map((k) => `<div><h4>${k}</h4>${KOL[k].map(([v, n]) => `<label><input type="checkbox" data-act="vaxla" data-kol="${k}" data-val="${esc(v)}" ${s.val[k].includes(v) ? 'checked' : ''}>${esc(v)}<small>${n}</small></label>`).join('')}</div>`).join('')}</div><div class="do"><button type="button" data-act="rensa">Rensa alla</button><button type="button" data-act="stang">Klar</button></div></div>`
+  if (!m) return ''
+  const k = Object.keys(KOL).find((x) => x.toLowerCase() === m[1].toLowerCase())
+  if (!k) return `<div class="t-lista" data-lista><div class="rad"><b>${esc(m[1])}</b><span style="color:#9aa3b8">är ingen kolumn med ordförråd — ${Object.keys(KOL).join(', ')}</span></div></div>`
+  const pre = m[2].trim().toLowerCase()
+  const tr = KOL[k].filter(([v]) => v.toLowerCase().startsWith(pre))
+  return `<div class="t-lista" data-lista role="listbox" aria-label="${k}"><h4>${k}</h4>${tr.map(([v, n], i) => `<div class="rad" role="option" data-act="valj" data-kol="${k}" data-val="${esc(v)}" ${i === s.pek % Math.max(1, tr.length) ? 'data-pek' : ''}><b>${k}:</b>${esc(v)}<small>${n} kort</small></div>`).join('') || '<div class="rad" style="color:#9aa3b8">inget värde börjar så</div>'}</div>`
+}
+
+function kron(w) {
+  const importera = `<button type="button" class="t-box slut" aria-expanded="false">Importera <span aria-hidden="true">▾</span></button>`
+  if (s.v === 'nu') {
+    const chips = Object.keys(KOL).map((k) => `<div class="t-chips" role="group" aria-label="Filtrera på ${k}" style="display:flex;gap:6px">${KOL[k].map(([v]) => chip(k, v)).join('')}</div>`).join('')
+    return `<input class="t-sok" data-in="q" aria-label="Sök i alla fält" placeholder="Sök i alla fält…" value="${esc(s.q)}">
+      <div class="t-rail" data-rail><div class="t-rail-scroll" data-scroll>${chips}</div><button type="button" class="t-rund" aria-label="Fler filter">›</button></div>
+      ${filtrerar() ? '<button type="button" class="t-rensa" data-act="rensa">Rensa</button>' : ''}${importera}`
+  }
+  if (s.v === 'c') {
+    const v = valda()
+    const lage = v.length ? `Filter: <span class="val">${Object.entries(s.val).filter(([, vs]) => vs.length).map(([k, vs]) => `${k} ${vs.join(', ')}`).join(', ')}</span>` : 'Filter'
+    return `<input class="t-sok" data-in="q" aria-label="Sök i alla fält" placeholder="Sök i alla fält…" value="${esc(s.q)}">
+      <button type="button" class="t-box" data-act="oppna" data-kol="c" aria-expanded="${s.oppen === 'c'}" data-fbox>${lage} <span aria-hidden="true">▾</span></button>${importera}`
+  }
+  const ph = s.v === 'b' ? 'Sök i alla fält, eller skriv typ: eller raritet: för att filtrera' : 'Sök i alla fält…'
+  return `<div class="t-falt" data-falt>${brickor()}<input data-in="q" aria-label="Sök i alla fält" placeholder="${ph}" value="${esc(s.q)}">${s.v === 'b' ? `<button type="button" class="t-falt-pil" data-act="oppna" data-kol="alla" aria-expanded="${s.oppen === 'alla'}" aria-label="Filtrera på en kolumn">▾</button>` : ''}${s.v === 'b' ? bLista() : ''}</div>${importera}`
+}
+function huvud(k) {
+  const sort = `<button type="button" class="sort"><span>${k}</span></button>`
+  if (s.v !== 'a' || !KOL[k]) return sort
+  const n = s.val[k].length
+  return `<span class="huvud">${sort}<button type="button" class="t-filt" data-act="oppna" data-kol="${k}" aria-expanded="${s.oppen === k}" aria-label="Filtrera på ${k}${n ? `, ${n} valt` : ''}" ${n ? `data-on="${n}"` : ''}>▾</button></span>${s.oppen === k ? lista(k) : ''}`
+}
+P.skarm = (w) => `${P.huvud(w, 'Tabell')}<div class="t-vy">
+  <div class="t-krona" data-krona>${kron(w)}</div>
+  ${s.v === 'c' && s.oppen === 'c' ? `<div class="t-lada" data-lada>${Object.keys(KOL).map((k) => `<div class="t-grupp"><b>${k}</b>${KOL[k].map(([v, n]) => chip(k, v, n)).join('')}</div>`).join('')}<button type="button" class="t-rensa" data-act="rensa">Rensa</button></div>` : ''}
+  <div class="t-rulla"><table class="t-data"><colgroup><col style="width:44px"><col style="width:190px"><col style="width:110px"><col style="width:170px"><col><col style="width:110px"><col style="width:70px"><col style="width:44px"></colgroup>
+    <thead><tr><th class="bock"><input type="checkbox" aria-label="Markera alla"></th><th class="id">${huvud('id')}</th><th>${huvud('typ')}</th><th>${huvud('Titel')}</th><th>${huvud('body')}</th><th>${huvud('raritet')}</th><th>${huvud('antal')}</th><th class="spar"><button type="button" aria-label="Kolumner">+</button></th></tr></thead>
+    <tbody data-rader>${visade().map((r) => `<tr><td class="bock"><input type="checkbox" aria-label="Markera ${esc(r[2])}"></td><td class="id">${r[0]}</td><td><input value="${esc(r[1])}"></td><td><input value="${esc(r[2])}"></td><td><input value="${esc(r[3])}"></td><td><input value="${esc(r[4])}"></td><td><input data-tal value="${r[5]}"></td><td class="spar"><button type="button" aria-label="Ta bort">×</button></td></tr>`).join('') || `<tr><td colspan="8" style="padding:16px 10px;color:#c3cbdd">Inget kort svarar på sökningen.</td></tr>`}</tbody></table></div>
+  <button type="button" class="t-ny">+ Nytt kort</button>
+  <div class="t-fot"><b style="color:#fff">${antal()}</b><span>Osorterad: kortens ordning i spelet.</span></div>
+</div>`
+
+P.matt = (root, w, f) => {
+  const ut = []
+  const kr = root.querySelector('[data-krona]')
+  ut.push(`krönet <u>${Math.round(kr.offsetHeight)} px</u>`)
+  const sok = root.querySelector('.t-sok, [data-falt]')
+  ut.push(`sökfältet <u>${Math.round(sok.offsetWidth)} px</u>`)
+  const sc = root.querySelector('[data-scroll]')
+  if (sc) { const d = sc.scrollWidth - sc.clientWidth; ut.push(`dolt bakom ›: <u>${d} px</u>`); if (d > 0) root.querySelector('[data-rail]').classList.add('klippt') }
+  const rad = root.querySelector('[data-rader] tr')
+  const topp = P.box(root, f).y
+  if (rad) ut.push(`första raden vid <u>${Math.round(P.box(rad, f).y - topp)} px</u>`)
+  const l = root.querySelector('[data-lista]')
+  if (l) { const b = P.box(l, f), r = P.box(root, f); if (b.r > r.r) l.classList.add('klippt') }
+  return ut
+}
+P.act = (namn, d) => {
+  if (namn === 'byt') { s.oppen = null; return }
+  if (namn === 'escape' || namn === 'stang') { const var_ = s.oppen; s.oppen = null; return var_ && var_ !== 'alla' ? `[data-act="oppna"][data-kol="${var_}"]` : '[data-in="q"]' }
+  if (namn === 'oppna') { s.oppen = s.oppen === d.kol ? null : d.kol; return d.kol === 'alla' || d.kol === 'c' ? undefined : `[data-lista] input` }
+  if (namn === 'vaxla') { vaxla(d.kol, d.val); return }
+  if (namn === 'valj') { if (!s.val[d.kol].includes(d.val)) s.val[d.kol].push(d.val); s.q = ''; s.oppen = null; return '[data-in="q"]' }
+  if (namn === 'bort') { vaxla(d.kol, d.val); return '[data-in="q"]' }
+  if (namn === 'rensa') { if (d.kol) s.val[d.kol] = []; else { s.val = { typ: [], raritet: [] }; s.q = '' } return }
+}
+P.input = (namn, v) => { if (namn === 'q') { s.q = v; s.pek = 0 } }
+P.key = (key, namn, el) => {
+  if (namn !== 'q' || s.v !== 'b') return
+  const m = /^(\S+):(.*)$/.exec(s.q)
+  if (key === 'Backspace' && s.q === '' && valda().length) { const [k, v] = valda().at(-1); vaxla(k, v); return '[data-in="q"]' }
+  if (!m) return
+  if (key === 'ArrowDown') { s.pek++; return '[data-in="q"]' }
+  if (key === 'ArrowUp') { s.pek = Math.max(0, s.pek - 1); return '[data-in="q"]' }
+  if (key === 'Enter') { const pek = el.closest('[data-falt]').querySelector('[data-pek]'); if (pek) { P.act('valj', pek.dataset) } return '[data-in="q"]' }
+}
+</script>
+<script type="module" src="komp.js"></script>
+</body>
+</html>

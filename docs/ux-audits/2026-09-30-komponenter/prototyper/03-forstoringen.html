@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 03 — Förstoringen (#619)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Förstoringen i Mall är sex kontroller i en stapel, 94 × 269 px vid 1280, en rad på 365 × 50
+     vid 1024. Kortväggens täthet är ett annat par knappar, − +, med värdet i foten. Vilken form
+     ska en förstoring ha, så att båda ytorna kan ha samma?
+
+       Nu  stapeln i hörnet; raden under scenen vid 1024
+       A   pillret [−][164 % ▾][+], procenttalet öppnar Passa in · 100 % · 50 % · 200 %
+       B   allt synligt på en rad: [Passa in][100 %][−][164 %][+]
+       C   reglaget lodrätt längs scenens kant, med hack för Passa in och 100 %
+
+     Platsen är L19:s och ändras inte: i dukens hörn, aldrig i krönet, aldrig över kortet. ─── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .scen { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 24px 16px; display: grid; gap: 28px; align-content: start; background: #15171c; }
+  .ram { position: relative; }
+  .etikett { color: var(--quiet-2); font-size: 11px; margin-bottom: 4px; }
+  .skala { position: absolute; left: 0; top: 18px; transform-origin: 0 0; }
+  .yta { background: var(--chrome); outline: 1px solid #3a3f4b; display: flex; flex-direction: column; }
+  .ed-huvud .ed-mer, .ed-huvud .ed-angra { color: var(--quiet); }
+  .ed-huvud .ed-angra .ed-knapp { padding: 0 12px; margin-right: 2px; }
+  .ed-huvud[data-smal] .ed-flikar button { padding: 0 7px; }
+  .ed-huvud[data-smal] { gap: var(--s2); }
+  .m-duk { height: 620px; }
+  .yta[data-w='1024'] .m-duk { height: 588px; }
+  .m-rum { position: relative; }
+  .m-sceneyta { display: grid; place-items: center; }
+  .kort { width: calc(63 * var(--mm)); height: calc(88 * var(--mm)); background: #f6efe0; border-radius: calc(2 * var(--mm)); box-shadow: 0 1px 3px rgb(0 0 0 / 40%); position: relative; overflow: hidden; border: calc(0.8 * var(--mm)) solid #4a3322; }
+  .kort .band { position: absolute; left: calc(3 * var(--mm)); top: calc(3 * var(--mm)); width: calc(57 * var(--mm)); height: calc(13 * var(--mm)); background: #6b4a2b; border-radius: calc(1.5 * var(--mm)); color: #fff; font: 700 calc(4.2 * var(--mm)) Georgia, serif; padding: calc(1.5 * var(--mm)) calc(2 * var(--mm)); }
+  .kort .band small { display: block; font: 700 calc(2.6 * var(--mm)) system-ui; margin-top: calc(1.2 * var(--mm)); }
+  .kort .text { position: absolute; left: calc(4 * var(--mm)); top: calc(19 * var(--mm)); width: calc(55 * var(--mm)); color: #1e2620; font: calc(3.2 * var(--mm))/1.3 system-ui; }
+  .kort .rar { position: absolute; left: calc(5 * var(--mm)); bottom: calc(5 * var(--mm)); width: calc(24 * var(--mm)); height: calc(6 * var(--mm)); border-radius: calc(3 * var(--mm)); background: #7fb0ea; color: #10131a; font: 700 calc(3 * var(--mm))/calc(6 * var(--mm)) system-ui; text-align: center; }
+  .m-krona .grupp { color: var(--hint-ink); font-size: 11px; display: flex; align-items: center; gap: 8px; }
+  .m-krona .sidor { margin-left: auto; }
+  .m-krona .m-knapp { margin-left: auto; }
+  .m-krona .m-knapp + .sidor { margin-left: 0; }
+
+  /* Nu: stapeln, ur proto.css .m-zoom. */
+  .m-zoom output { display: block; }
+
+  /* A: pillret. */
+  .pill { align-self: end; justify-self: end; display: inline-flex; align-items: center; margin: 0 8px 8px 0; border: 1px solid var(--line); border-radius: 999px; background: #1b1d23; position: relative; }
+  .pill button { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: #fff; font: inherit; cursor: pointer; }
+  .pill button:first-child { border-radius: 999px 0 0 999px; }
+  .pill button:last-child { border-radius: 0 999px 999px 0; }
+  .pill button:hover { background: #262a33; }
+  .pill .tal { min-width: 76px; padding: 0 8px; font-variant-numeric: tabular-nums; font-weight: 600; border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+  .pill .tal[aria-expanded='true'] { color: var(--primary-mark); }
+  .pill .tal i { font-style: normal; color: var(--quiet-2); font-size: 10px; margin-left: 4px; }
+  .pill .meny { position: absolute; z-index: 8; right: 0; bottom: calc(100% + 6px); min-width: 150px; padding: 6px; border: 1px solid #3b4358; border-radius: 10px; background: var(--panel); box-shadow: 0 12px 30px rgb(0 0 0 / 50%); }
+  .pill .meny button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; padding: 0 10px; border-radius: 6px; text-align: left; }
+  .pill .meny button[aria-checked='true']::after { content: '✓'; color: var(--primary-mark); }
+  .m-rum[data-rad] .pill { margin: 4px 8px; }
+  .m-rum[data-rad] .rad-under { display: flex; justify-content: flex-end; border-top: 1px solid var(--line); }
+
+  /* B: allt synligt. */
+  .radb { align-self: end; justify-self: end; display: inline-flex; align-items: center; gap: 4px; margin: 0 8px 8px 0; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: #1b1d23; }
+  .radb button, .radb output { min-height: 44px; min-width: 44px; padding: 0 10px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #fff; font: inherit; cursor: pointer; display: grid; place-items: center; }
+  .radb button[aria-pressed='true'] { border-color: transparent; border-radius: 6px 6px 0 0; box-shadow: inset 0 -3px 0 var(--primary-mark); }
+  .radb output { color: var(--quiet-2); font-variant-numeric: tabular-nums; }
+
+  /* C: lodrätt reglage. */
+  .lodr { align-self: stretch; display: grid; grid-template-rows: auto 44px minmax(0, 1fr) 44px; justify-items: center; gap: 6px; width: 44px; padding: 8px 0; border-left: 1px solid var(--line); background: #1b1d23; color: var(--quiet-2); font-size: 11px; }
+  .lodr button { width: 44px; height: 44px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: #fff; font: inherit; cursor: pointer; }
+  .lodr .spar { position: relative; width: 6px; border-radius: 3px; background: #2f333d; }
+  .lodr .knopp { position: absolute; left: 50%; width: 20px; height: 20px; border-radius: 50%; background: #fff; transform: translate(-50%, 50%); box-shadow: 0 0 0 2px var(--primary-mark); }
+  .lodr .hack { position: absolute; left: 50%; transform: translate(-50%, 50%); width: 16px; height: 2px; background: var(--primary-mark); cursor: pointer; }
+  .lodr .hack::after { content: attr(data-namn); position: absolute; right: 14px; top: -7px; color: var(--quiet-2); font-size: 10px; white-space: nowrap; }
+  .lodr output { font-variant-numeric: tabular-nums; }
+
+  /* Kortväggens krön, andra scenen. */
+  .vagg { border-top: 2px solid #15171c; }
+  .kron { display: flex; align-items: center; gap: 8px; padding: 12px 16px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .kron .box { flex: none; min-height: 44px; display: inline-flex; align-items: center; gap: 4px; padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: var(--sunk); color: #fff; font: inherit; font-weight: 700; }
+  .kron .box span { color: #c8cfdc; font-weight: 600; }
+  .kron .sok { flex: 0 1 240px; min-width: 0; min-height: 44px; padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: #14161c; color: #fff; font: 12px system-ui; }
+  .kron .steg { display: inline-flex; gap: 4px; }
+  .kron .steg .box { width: 44px; justify-content: center; padding: 0; }
+  .kron .slut { margin-left: auto; }
+  .kron .pill { align-self: center; margin: 0; }
+  .vaggfot { padding: 8px 16px; color: var(--quiet-2); font-size: 12px; }
+  .klippt { outline: 2px dashed #f0a58a; outline-offset: -2px; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#619 · Formen på en förstoring.</b> Mall vid 1280 med egenskaperna hopfällda och vid 1024 med dem uppfällda (då finns ingen spalt kvar bredvid kortet). Under varje duk: Kortväggens krön med samma kontroll för tätheten. Stega, öppna menyn, klicka på hacken.</p>
+    <p>Måtten: kontrollens låda, om den täcker kortet, och hur hög scenen blir.</p>
+  </div>
+  <div class="matt" id="matt"></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="scen" id="scen"></div>
+<script>
+window.PROTO = {
+  varianter: ['nu', 'a', 'b', 'c'],
+  bredder: [1280, 1024],
+  s: { v: 'a', zoom: 164, fit: true, meny: false, tathet: 150 },
+  not: {
+    nu: '<b>Nu.</b> Sex kontroller i en stapel på 94 × 269 px i hörnet; vid 1024 en rad på 365 × 50 under scenen. Väggen: − + i krönet och «150 px breda» i foten. <span class="minus">− Två former för en fråga. Stapeln är högre än halva kortet; raden tar 50 px av scenens höjd.</span>',
+    a: '<b>A · Pillret.</b> [−][164 % ▾][+] på 44 px; procenttalet öppnar «Passa in ✓ · 100 % · 50 % · 200 %» uppåt. Reglaget går; Ctrl+rullhjul och stegen står kvar, piltangenterna på talet stegar. Väggen: [−][150 px][+] och foten slutar upprepa talet. <span class="plus">+ En komponent på två ytor, 170 px bred. Vid 1024 faller den till raden som i dag, men raden är 44 px hög i stället för 50 och 170 px bred i stället för 365.</span> <span class="minus">− Inpassningen står bakom en meny; det syns bara på talet att kortet är inpassat («Passa in» i talets ställe kan säga det).</span>',
+    b: '<b>B · Allt synligt på en rad.</b> [Passa in][100 %][−][164 %][+], ~270 px, ingen meny; inpassningen är en synlig vald-form (L13). Väggen: [−][150 px][+]. <span class="plus">+ Inget bakom en dörr. Två val och tre steg, alla läsbara.</span> <span class="minus">− 270 px ryms inte i hörnspalten vid 1280 med egenskaperna uppfällda heller (120 px över), så raden under scenen blir vanligare än i dag.</span>',
+    c: '<b>C · Lodrätt reglage i kanten.</b> En spalt på 44 px längs scenens högerkant: + överst, − nederst, talet ovanför, «Passa in» och «100 %» som hack på spåret. <span class="plus">+ Behåller det kontinuerliga greppet och tar 44 px bredd i stället för 94; täcker aldrig kortet.</span> <span class="minus">− En ovanlig form; hacken är små mål. Passar inte i väggens krön, så väggen behåller − + och två former består.</span>',
+  },
+}
+const P = window.PROTO, s = P.s
+const MM = 3.78 // px per millimeter vid 100 % (96 dpi)
+
+const kort = () => `<div class="kort" data-kort style="--mm:${(MM * s.zoom) / 100}px"><div class="band">Juice em' up!<small>Playcard</small></div><div class="text">Välj två andra spelare. De blandar en shot till varann</div><div class="rar">Diamant</div></div>`
+const talet = () => (s.fit ? `${s.zoom} % <i>Passa in</i>` : `${s.zoom} %`)
+function kontroll() {
+  if (s.v === 'nu') return `<div class="m-zoom" data-ctl role="group" aria-label="Förstoring"><output>${s.zoom} %</output><button type="button" data-act="steg" data-d="-10" aria-label="Förstora mindre">−</button><input type="range" min="25" max="400" value="${s.zoom}" data-in="zoom" aria-label="Förstoring i procent"><button type="button" data-act="steg" data-d="10" aria-label="Förstora mer">+</button><button type="button" aria-pressed="${s.fit}" data-act="fit">Passa in</button><button type="button" aria-pressed="${!s.fit && s.zoom === 100}" data-act="till" data-z="100">100 %</button></div>`
+  if (s.v === 'a') return `<div class="pill" data-ctl role="group" aria-label="Förstoring"><button type="button" data-act="steg" data-d="-10" aria-label="Förstora mindre">−</button><button type="button" class="tal" data-act="meny" aria-expanded="${s.meny}" aria-haspopup="menu" aria-label="Förstoring ${s.zoom} procent${s.fit ? ', inpassad' : ''}" data-tal>${talet()} <span aria-hidden="true">▾</span></button><button type="button" data-act="steg" data-d="10" aria-label="Förstora mer">+</button>${s.meny ? `<div class="meny" role="menu"><button type="button" role="menuitemradio" aria-checked="${s.fit}" data-act="fit">Passa in</button><button type="button" role="menuitemradio" aria-checked="${!s.fit && s.zoom === 100}" data-act="till" data-z="100">100 %</button><button type="button" role="menuitemradio" aria-checked="${!s.fit && s.zoom === 50}" data-act="till" data-z="50">50 %</button><button type="button" role="menuitemradio" aria-checked="${!s.fit && s.zoom === 200}" data-act="till" data-z="200">200 %</button></div>` : ''}</div>`
+  if (s.v === 'b') return `<div class="radb" data-ctl role="group" aria-label="Förstoring"><button type="button" aria-pressed="${s.fit}" data-act="fit">Passa in</button><button type="button" aria-pressed="${!s.fit && s.zoom === 100}" data-act="till" data-z="100">100 %</button><button type="button" data-act="steg" data-d="-10" aria-label="Förstora mindre">−</button><output>${s.zoom} %</output><button type="button" data-act="steg" data-d="10" aria-label="Förstora mer">+</button></div>`
+  const pos = (z) => `${((z - 25) / 375) * 100}%`
+  return `<div class="lodr" data-ctl role="group" aria-label="Förstoring"><output>${s.zoom} %</output><button type="button" data-act="steg" data-d="10" aria-label="Förstora mer">+</button><div class="spar"><i class="hack" data-namn="Passa in${s.fit ? ' ✓' : ''}" data-act="fit" style="bottom:${pos(164)}" role="button" tabindex="0"></i><i class="hack" data-namn="100 %" data-act="till" data-z="100" style="bottom:${pos(100)}" role="button" tabindex="0"></i><b class="knopp" style="bottom:${pos(s.zoom)}"></b></div><button type="button" data-act="steg" data-d="-10" aria-label="Förstora mindre">−</button></div>`
+}
+function duk(w) {
+  const smal = w === 1024
+  const rad = smal && s.v !== 'c'
+  const props = smal
+  const scen = `<div class="m-sceneyta" data-scen>${kort()}</div>`
+  return `<div class="m-duk" style="grid-template-columns:68px 220px minmax(0,1fr) ${props ? '280px' : '0'}">
+    <div class="m-verktyg">${['Text', 'Bild', 'Ikon', 'Ikonrad', 'Form'].map((t) => `<button type="button"><b>${t[0]}</b>${t}</button>`).join('')}</div>
+    <div class="m-lager"><div class="krona"><h2>Lager · framsida</h2><p>Alla 77 kort</p></div><div class="m-lista">${['raritet', 'body', 'typ', 'title', 'frame', 'band', 'paper'].map((n) => `<div class="m-rad"><span class="las"></span><span class="namn"><span>${n}</span></span><span class="grepp">⋮⋮</span></div>`).join('')}</div><div class="fot">Dra för att ändra ordningen. <b>?</b></div></div>
+    <div class="m-rum" ${rad ? 'data-rad' : ''} style="${s.v === 'c' ? 'grid-template-columns:minmax(0,1fr) 44px' : ''}">${scen}${rad ? `<div class="rad-under">${kontroll()}</div>` : kontroll()}</div>
+    ${props ? `<div class="m-props"><h2>Egenskaper</h2><p class="hint">Välj ett lager i lagerlistan, eller ett element på kortet.</p><h2 style="margin-top:16px">Typsnitt i spelet</h2><p class="hint">Inget eget typsnitt ännu.</p><button type="button" class="m-knapp" style="margin-top:8px">Sök i Google Fonts …</button></div>` : '<div></div>'}
+  </div>`
+}
+function vagg(w) {
+  const gammal = s.v === 'nu' || s.v === 'c'
+  const tat = gammal
+    ? `<span class="steg" role="group" aria-label="Täthet"><button type="button" class="box" data-act="tat" data-d="-25">−</button><button type="button" class="box" data-act="tat" data-d="25">+</button></span>`
+    : `<div class="pill" role="group" aria-label="Täthet" data-tat><button type="button" data-act="tat" data-d="-25" aria-label="Tätare">−</button><button type="button" class="tal" aria-label="Korten ${s.tathet} px breda" data-act="inget">${s.tathet} px</button><button type="button" data-act="tat" data-d="25" aria-label="Glesare">+</button></div>`
+  const kort = w < 1280
+  return `<div class="vagg"><div class="kron"><input class="sok" placeholder="Sök i alla fält…" aria-label="Sök i alla fält"><button type="button" class="box">${kort ? '' : 'Ögon: '}<span>Som du ser det</span> ▾</button><button type="button" class="box">Guider (0) ▾</button>${tat}<button type="button" class="box">${kort ? '' : 'Grupperad efter: '}<span>typ</span> ▾</button><button type="button" class="box">⟨${kort ? '' : ' Fäll ihop hoppspalten'}</button><button type="button" class="box slut">Fysisk kontroll (1) ▾</button></div><div class="vaggfot">77 kort${gammal ? ` · ${s.tathet} px breda` : ''} · En anmärkning</div></div>`
+}
+P.skarm = (w) => `<div data-w="${w}" style="display:contents"><div class="yta-inre" data-w="${w}">${P.huvud(w, 'Mall')}<div class="m-krona"><span class="grupp">Grupperas av kolumnen <select><option>typ</option></select></span><button type="button" class="meny">Bas (alla) · 77 kort ▾</button><button type="button" class="m-knapp">${w === 1024 ? 'Fäll ihop egenskaperna' : 'Fäll ut egenskaperna'}</button><div class="sidor"><button type="button" aria-pressed="true">Framsida</button><button type="button">Baksida</button></div></div>${duk(w)}${vagg(w)}</div></div>`
+
+P.matt = (root, w, f) => {
+  const ut = []
+  const c = root.querySelector('[data-ctl]')
+  const cb = P.box(c, f)
+  ut.push(`kontrollen <u>${Math.round(cb.w)} × ${Math.round(cb.h)} px</u>`)
+  const k = root.querySelector('[data-kort]')
+  const over = P.over(P.box(k, f), cb)
+  ut.push(over ? '<span style="color:#f0a58a">täcker kortet</span>' : 'täcker inte kortet')
+  if (over) c.classList.add('klippt')
+  ut.push(`scenen <u>${Math.round(P.box(root.querySelector('[data-scen]'), f).h)} px</u> hög`)
+  const t = root.querySelector('[data-tat]')
+  if (t) ut.push(`väggens täthet <u>${Math.round(t.offsetWidth)} px</u>`)
+  return ut
+}
+const kläm = (z) => Math.max(25, Math.min(400, z))
+P.act = (namn, d) => {
+  if (namn === 'byt' || namn === 'escape') { const var_ = s.meny; s.meny = false; return var_ ? '[data-tal]' : undefined }
+  if (namn === 'steg') { s.zoom = kläm(s.zoom + Number(d.d)); s.fit = false; return }
+  if (namn === 'till') { s.zoom = Number(d.z); s.fit = false; s.meny = false; return s.v === 'a' ? '[data-tal]' : undefined }
+  if (namn === 'fit') { s.fit = true; s.zoom = 164; s.meny = false; return s.v === 'a' ? '[data-tal]' : undefined }
+  if (namn === 'meny') { s.meny = !s.meny; return s.meny ? '[role="menu"] button' : '[data-tal]' }
+  if (namn === 'tat') { s.tathet = Math.max(100, Math.min(300, s.tathet + Number(d.d))); return }
+}
+P.input = (namn, v) => { if (namn === 'zoom') { s.zoom = kläm(Number(v)); s.fit = false } }
+</script>
+<script type="module" src="komp.js"></script>
+</body>
+</html>

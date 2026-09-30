@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 02 — Åtgärdsraden (#618)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     När ett kort bockas fälls ett band på 72 px ut mellan krönet och raderna, och raderna flyttar
+     80 px. Foten säger redan «1 markerat kort». Var ska markeringens handlingar stå?
+
+       Nu  bandet mellan krönet och raderna
+       A   foten bär markeringen: 44 px under tabellen, «Sätt fält ▾» öppnar uppåt
+       B   en flytande remsa över tabellens nederkant; inget flyttar sig
+       C   krönet byter innehåll så länge något är markerat
+
+     Bocka i raderna. ──────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .scen { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 24px 16px; display: grid; gap: 28px; align-content: start; background: #15171c; }
+  .ram { position: relative; }
+  .etikett { color: var(--quiet-2); font-size: 11px; margin-bottom: 4px; }
+  .skala { position: absolute; left: 0; top: 18px; transform-origin: 0 0; }
+  .yta { background: var(--chrome); outline: 1px solid #3a3f4b; }
+  .ed-huvud .ed-mer, .ed-huvud .ed-angra { color: var(--quiet); }
+  .ed-huvud .ed-angra .ed-knapp { padding: 0 12px; margin-right: 2px; }
+  .ed-huvud[data-smal] .ed-flikar button { padding: 0 7px; }
+  .ed-huvud[data-smal] { gap: var(--s2); }
+  .t-vy { position: relative; padding: var(--s4) var(--s4) var(--s2); height: 604px; }
+  .t-krona { padding: 0 0 var(--s2); }
+  .t-sok { flex: 0 1 202px; }
+  .t-rail { flex: 1 1 auto; min-width: 0; display: flex; gap: 6px; overflow: hidden; mask-image: linear-gradient(to right, #000 calc(100% - 60px), transparent calc(100% - 44px), #000 calc(100% - 44px)); }
+  .t-rail .t-chip { border-radius: 999px; font-weight: 400; padding: 4px 12px; }
+  .t-box.slut { margin-left: auto; }
+  .t-rulla { flex: 1 1 auto; min-height: 0; }
+  .t-fot { display: flex; align-items: center; gap: var(--s2); min-height: 24px; }
+  .t-fot b { color: #fff; }
+
+  /* Bandet (nu) och dess knappar, ur editor.css. */
+  .t-band { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 14px 12px; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; }
+  .t-band label { display: flex; align-items: center; gap: 6px; color: #9aa3b8; }
+  .t-band select, .t-band input, .t-pop select, .t-pop input { min-height: 44px; border: 1px solid #3b414e; border-radius: 8px; padding: 0 10px; background: #14161c; color: #fff; font: inherit; }
+  .t-band input { width: 164px; }
+  .knapp { min-height: 44px; padding: 0 12px; border: 1px solid #6f7a90; border-radius: 8px; background: transparent; color: #dce3f2; font: inherit; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .knapp[data-kind='danger'] { border-color: #7a3243; background: #7a3243; color: #ffe4ea; }
+  .knapp[data-kind='quiet'] { border-color: transparent; color: #9aa3b8; font-weight: 400; }
+  .knapp[aria-expanded='true'] { border-color: var(--primary-mark); }
+
+  /* A: foten som verktygsrad. */
+  .t-fot.verktyg { min-height: 44px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #2f333d; }
+  .t-fot.verktyg .knapp { min-height: 36px; }
+  .t-fot .hoger { margin-left: auto; color: var(--quiet); }
+  .t-pop { position: absolute; z-index: 8; bottom: 52px; left: 16px; display: flex; align-items: center; gap: 8px; padding: 10px; border: 1px solid #3b4358; border-radius: 10px; background: var(--panel); box-shadow: 0 12px 30px rgb(0 0 0 / 50%); }
+  .t-pop label { display: flex; align-items: center; gap: 6px; color: #9aa3b8; }
+  .t-pop input { width: 164px; }
+
+  /* B: flytande remsa. */
+  .t-flyt { position: absolute; z-index: 8; left: 50%; bottom: 84px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid #3b4358; border-radius: 12px; background: var(--panel); box-shadow: 0 12px 30px rgb(0 0 0 / 55%); white-space: nowrap; }
+  .t-flyt b { color: #fff; margin-right: 4px; }
+
+  /* C: krönet som verktygsrad. */
+  .t-krona .markering { display: flex; align-items: center; gap: 8px; }
+  .t-krona .markering b { color: #fff; margin-right: 4px; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#618 · Var markeringens handlingar står.</b> Bocka och avbocka rader och se vad som flyttar sig. Måtten säger var första raden börjar och vad som växte.</p>
+    <p>Tangentbord: pilarna byter variant, Escape stänger «Sätt fält».</p>
+  </div>
+  <div class="matt" id="matt"></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="scen" id="scen"></div>
+<script>
+const RADER = [
+  ['juice-em-up', 'Playcard', "Juice em' up!", 'Välj två andra spelare. De blandar en shot till varann', 'Diamant', 1],
+  ['sals-saloon', 'Location', "Sal's Saloon", 'Saloonen öppnar! Lägg upp ett shopkort per spelare som går in.', 'Guld', 2],
+  ['dustydice-casino', 'Location', 'DustyDice Casino', 'Välkommen till kasinot! Alla annonserar sin insats (1–10 klunkar)', 'Guld', 2],
+  ['free-for-all', 'Effect', 'Free for all', 'Era stöldgods är i fara! Så länge effekten ligger får ni sno varandras', 'Special', 1],
+  ['duel-koppar', 'Playcard', 'Duel', 'Utmana en spelare på duell. Förloraren dricker 3', 'Koppar', 4],
+  ['duel-silver', 'Playcard', 'Duel', 'Utmana en spelare på duell. Förloraren dricker 5', 'Silver', 4],
+  ['wanted-poster', 'Event', 'Wanted Poster', 'Sheriffen spikar upp en efterlysning.', 'Silver', 1],
+  ['standoff', 'Event', 'Standoff', 'Dela upp er i två lag efter hur ni sitter.', 'Koppar', 1],
+]
+window.PROTO = {
+  varianter: ['nu', 'a', 'b', 'c'],
+  bredder: [1280, 1024],
+  s: { v: 'a', markerade: ['juice-em-up'], satt: false },
+  not: {
+    nu: '<b>Nu.</b> Ett band på 72 px mellan krönet och raderna. <span class="minus">− Raderna flyttar 80 px när första bocken sätts och tillbaka när sista släpps; bocken man tryckte glider iväg. Markeringen sägs på två ställen: bandet och foten.</span>',
+    a: '<b>A · Foten bär markeringen.</b> Foten växer till en verktygsrad på 44 px: antal, «Sätt fält ▾» (kolumn och värde i en låda uppåt), Duplicera, Ta bort, Avmarkera. <span class="plus">+ Ingenting över raderna flyttar sig; det som växer växer under tabellen, där #130 redan lade antal och sortering. Foten sa redan antalet.</span> <span class="minus">− Handlingarna står längst från bocken; Sätt fält behöver en låda.</span>',
+    b: '<b>B · Flytande remsa.</b> En remsa hänger över tabellens nederkant med samma knappar. <span class="plus">+ Noll förskjutning, nära ögat.</span> <span class="minus">− Täcker sista raden i lådan — det som L19 valde bort för förstoringen: inget får ligga över arbetet. Hänger också i vägen för «+ Nytt kort».</span>',
+    c: '<b>C · Krönet byter innehåll.</b> Så länge något är markerat visar krönet markeringens knappar i stället för sök och filter; Importera står kvar. <span class="plus">+ Noll förskjutning, samma rad som förut.</span> <span class="minus">− Sökningen och filtret försvinner medan man markerar, fast markeringen ofta börjar med ett filter; två ytor som turas om på en rad.</span>',
+  },
+}
+const P = window.PROTO, s = P.s
+const esc = (t) => String(t).replace(/</g, '&lt;').replace(/"/g, '&quot;')
+const n = () => s.markerade.length
+const ord = () => (n() === 1 ? '1 markerat kort' : `${n()} markerade kort`)
+const knappar = (satt) => `${satt}<button type="button" class="knapp" data-act="inget">${n() === 1 ? 'Duplicera' : `Duplicera ${n()}`}</button><button type="button" class="knapp" data-kind="danger" data-act="inget">${n() === 1 ? 'Ta bort' : `Ta bort ${n()}`}</button><button type="button" class="knapp" data-kind="quiet" data-act="avmarkera">Avmarkera</button>`
+const sattFalt = `<label>Sätt <select aria-label="Kolumn"><option>typ</option><option>Titel</option><option>body</option><option>raritet</option><option>antal</option></select></label><input aria-label="Värde" placeholder="Värde">`
+const sattBox = () => `<button type="button" class="knapp" data-act="satt" aria-expanded="${s.satt}" data-satt>Sätt fält <span aria-hidden="true">▾</span></button>${s.satt ? `<div class="t-pop" role="group" aria-label="Sätt ett fält på ${ord()}">${sattFalt}<button type="button" class="knapp" data-act="inget">Sätt på ${n()} kort</button></div>` : ''}`
+
+function kron() {
+  const importera = `<button type="button" class="t-box slut">Importera <span aria-hidden="true">▾</span></button>`
+  if (s.v === 'c' && n() > 0) return `<div class="markering" role="toolbar" aria-label="Markerade kort"><b>${ord()}</b>${knappar(sattBox())}</div>${importera}`
+  const chips = ['Character', 'Effect', 'Event', 'Location', 'Playcard', 'Shopcard', 'Trap-', 'Trap+', 'Diamant', 'Guld', 'Karaktär', 'Koppar', 'Silver', 'Special']
+  return `<input class="t-sok" aria-label="Sök i alla fält" placeholder="Sök i alla fält…"><div class="t-rail">${chips.map((c) => `<button type="button" class="t-chip">${c}</button>`).join('')}</div><button type="button" class="t-rund" aria-label="Fler filter">›</button>${importera}`
+}
+P.skarm = (w) => `${P.huvud(w, 'Tabell')}<div class="t-vy" style="display:flex;flex-direction:column">
+  <div class="t-krona" data-krona>${kron()}</div>
+  ${s.v === 'nu' && n() > 0 ? `<div class="t-band" role="toolbar" aria-label="Markerade kort" data-band>${sattFalt}<button type="button" class="knapp" data-act="inget">Sätt typ på ${n()} kort</button><button type="button" class="knapp" data-act="inget">Duplicera ${n()} kort</button><button type="button" class="knapp" data-kind="danger" data-act="inget">Ta bort ${n()} kort</button><button type="button" class="knapp" data-kind="quiet" data-act="avmarkera">Avmarkera alla</button></div>` : ''}
+  <div class="t-rulla" data-rulla><table class="t-data"><colgroup><col style="width:44px"><col style="width:190px"><col style="width:110px"><col style="width:170px"><col><col style="width:110px"><col style="width:70px"><col style="width:44px"></colgroup>
+    <thead><tr><th class="bock"><input type="checkbox" aria-label="Markera alla" ${n() > 0 ? 'checked' : ''}></th><th class="id"><button type="button" class="sort"><span>id</span></button></th><th><button type="button" class="sort"><span>typ</span></button></th><th><button type="button" class="sort"><span>Titel</span></button></th><th><button type="button" class="sort"><span>body</span></button></th><th><button type="button" class="sort"><span>raritet</span></button></th><th><button type="button" class="sort"><span>antal</span></button></th><th class="spar"><button type="button" aria-label="Kolumner">+</button></th></tr></thead>
+    <tbody data-rader>${RADER.map((r) => `<tr ${s.markerade.includes(r[0]) ? 'style="background:#2f3a55"' : ''}><td class="bock"><input type="checkbox" data-act="bocka" data-id="${r[0]}" aria-label="Markera ${esc(r[2])}" ${s.markerade.includes(r[0]) ? 'checked' : ''}></td><td class="id">${r[0]}</td><td><input value="${esc(r[1])}"></td><td><input value="${esc(r[2])}"></td><td><input value="${esc(r[3])}"></td><td><input value="${esc(r[4])}"></td><td><input data-tal value="${r[5]}"></td><td class="spar"><button type="button" aria-label="Ta bort">×</button></td></tr>`).join('')}</tbody></table></div>
+  ${s.v === 'b' && n() > 0 ? `<div class="t-flyt" role="toolbar" aria-label="Markerade kort" data-flyt><b>${ord()}</b>${knappar(sattBox())}</div>` : ''}
+  <button type="button" class="t-ny" data-ny>+ Nytt kort</button>
+  ${s.v === 'a' && n() > 0
+    ? `<div class="t-fot verktyg" role="toolbar" aria-label="Markerade kort" data-fot><b>${ord()}</b>${knappar(sattBox())}<span class="hoger">77 kort · Osorterad</span></div>`
+    : `<div class="t-fot" data-fot><b>77 av 77 kort${n() > 0 ? ` · ${ord()}` : ''}</b><span>Osorterad: kortens ordning i spelet.</span></div>`}
+</div>`
+
+P.matt = (root, w, f) => {
+  const ut = []
+  const topp = P.box(root, f).y
+  const rad = root.querySelector('[data-rader] tr')
+  ut.push(`första raden vid <u>${Math.round(P.box(rad, f).y - topp)} px</u>${n() > 0 ? '' : ' (omarkerat)'}`)
+  const band = root.querySelector('[data-band]')
+  if (band) ut.push(`bandet <u>${band.offsetHeight} px</u> + 8`)
+  const fot = root.querySelector('[data-fot]')
+  ut.push(`foten <u>${fot.offsetHeight} px</u>`)
+  const fl = root.querySelector('[data-flyt]')
+  if (fl) {
+    const rader = [...root.querySelectorAll('[data-rader] tr')].map((r) => P.box(r, f))
+    const b = P.box(fl, f)
+    const tackta = rader.filter((r) => P.over(r, b)).length
+    ut.push(`remsan täcker <u>${tackta} rad${tackta === 1 ? '' : 'er'}</u>`)
+  }
+  return ut
+}
+P.act = (namn, d) => {
+  if (namn === 'byt') { s.satt = false; return }
+  if (namn === 'bocka') { const i = s.markerade.indexOf(d.id); if (i < 0) s.markerade.push(d.id); else s.markerade.splice(i, 1); if (!n()) s.satt = false; return `[data-act="bocka"][data-id="${d.id}"]` }
+  if (namn === 'avmarkera') { s.markerade = []; s.satt = false; return '[data-rader] input' }
+  if (namn === 'satt') { s.satt = !s.satt; return s.satt ? '.t-pop select' : '[data-satt]' }
+  if (namn === 'escape') { if (s.satt) { s.satt = false; return '[data-satt]' } }
+  if (namn === 'inget') return
+}
+</script>
+<script type="module" src="komp.js"></script>
+</body>
+</html>
