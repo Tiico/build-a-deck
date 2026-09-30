@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 04 — Platsväljaren (#620)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Antalet spelare väljs med åtta knappar på 44 px: två rader och 94 px i Bords receptspalt,
+     en rad om 445 px i guidad start. Ett tal mellan 1 och 8 kostar åtta träffytor.
+
+       Nu  åtta knappar
+       A   stegaren «Spelare [−] [4] [+]», talet skrivbart; samma på guidens papper
+       B   segmenterad rad: åtta celler i en ram — 37 px breda i spalten
+       C   bordet är väljaren: spökplats «+» vid nästa kant, × på den sista; guiden får A
+
+     Stega, skriv, klicka på platserna. ───────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .scen { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 24px 16px; display: grid; gap: 28px; align-content: start; background: #15171c; }
+  .ram { position: relative; }
+  .etikett { color: var(--quiet-2); font-size: 11px; margin-bottom: 4px; }
+  .skala { position: absolute; left: 0; top: 18px; transform-origin: 0 0; }
+  .yta { background: var(--chrome); outline: 1px solid #3a3f4b; }
+  .ed-huvud .ed-mer, .ed-huvud .ed-angra { color: var(--quiet); }
+  .ed-huvud .ed-angra .ed-knapp { padding: 0 12px; margin-right: 2px; }
+  .ed-huvud[data-smal] .ed-flikar button { padding: 0 7px; }
+  .ed-huvud[data-smal] { gap: var(--s2); }
+
+  .bord { display: grid; gap: 16px; padding: 16px; height: 520px; }
+  .recept { display: grid; align-content: start; gap: 16px; }
+  .recept h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #9aa3b8; }
+  .recept h2 .q { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 1px solid #6f7a90; border-radius: 50%; color: #dce3f2; font-size: 12px; text-transform: none; letter-spacing: 0; }
+  .val { display: flex; flex-wrap: wrap; gap: 6px; }
+  .val button { min-width: 44px; min-height: 44px; padding: 8px 12px; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+  .val button[aria-pressed='true'] { border-color: transparent; border-radius: 6px 6px 0 0; box-shadow: inset 0 -3px 0 var(--primary-mark); }
+  .raknare { display: flex; align-items: center; gap: 8px; }
+  .raknare input { min-height: 44px; border: 1px solid #2f333d; border-radius: 8px; padding: 0 10px; background: #1b1d23; color: #fff; font: inherit; }
+  .raknare input:first-child { width: 128px; } .raknare input:last-child { width: 80px; }
+  .raknare span { color: #9aa3b8; }
+  .knapp { min-height: 44px; padding: 0 12px; border: 1px solid #6f7a90; border-radius: 8px; background: transparent; color: #dce3f2; font: inherit; font-weight: 700; cursor: pointer; }
+  .lista { display: grid; gap: 4px; }
+  .lista div { display: flex; align-items: center; gap: 8px; min-height: 44px; color: #dce3f2; }
+  .lista div i { width: 16px; height: 12px; border: 1px dashed #6f7a90; border-radius: 2px; }
+  .lista div em { margin-left: auto; font: 600 10px system-ui; letter-spacing: 1px; color: #9aa3b8; border: 1px solid #2f333d; border-radius: 999px; padding: 2px 8px; }
+
+  /* A: stegaren. */
+  .stegare { display: inline-flex; align-items: center; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; }
+  .stegare button { width: 44px; height: 44px; border: 0; background: transparent; color: #fff; font: inherit; font-size: 16px; cursor: pointer; }
+  .stegare button:disabled { color: #4a5163; cursor: default; }
+  .stegare input { width: 56px; height: 44px; border: 0; border-left: 1px solid #2f333d; border-right: 1px solid #2f333d; background: transparent; color: #fff; font: 700 15px system-ui; text-align: center; }
+  .stegare input:focus { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  .stegare-rad { display: flex; align-items: center; gap: 12px; }
+  .stegare-rad small { color: #9aa3b8; }
+
+  /* B: segmenterad rad. */
+  .segment { display: flex; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; overflow: hidden; }
+  .segment button { flex: 1 1 0; min-width: 0; height: 44px; border: 0; border-right: 1px solid #2f333d; background: transparent; color: #fff; font: inherit; font-weight: 700; cursor: pointer; padding: 0; }
+  .segment button:last-child { border-right: 0; }
+  .segment button[aria-pressed='true'] { box-shadow: inset 0 -3px 0 var(--primary-mark); }
+
+  /* Filten. */
+  .filt-rum { position: relative; display: grid; place-items: center; border-radius: 12px; background: #15171c; }
+  .filt-rum > p { position: absolute; left: 0; top: 0; margin: 0; padding: 4px 0; color: #9aa3b8; font-size: 12px; }
+  .filt { position: relative; width: 540px; height: 360px; border-radius: 14px; background: #1b2130; border: 1px solid #2f3a55; }
+  .zon { position: absolute; border: 1px dashed #b6a06a; border-radius: 6px; color: #d9c58f; font: 700 9px system-ui; letter-spacing: 1px; display: grid; place-items: center; }
+  .plats { position: absolute; width: 34px; height: 22px; border-radius: 11px; display: grid; place-items: center; color: #10131a; font: 800 11px system-ui; transform: translate(-50%, -50%); }
+  .plats.spoke { width: 44px; height: 44px; border-radius: 50%; border: 1px dashed #6f7a90; background: transparent; color: #dce3f2; font-size: 18px; cursor: pointer; }
+  .plats.spoke::after { content: 'Lägg till plats'; position: absolute; top: 100%; margin-top: 2px; color: #9aa3b8; font: 600 10px system-ui; white-space: nowrap; }
+  .plats .x { position: absolute; left: 100%; top: 50%; transform: translate(4px, -50%); width: 44px; height: 44px; border: 0; border-radius: 50%; background: #2f3a55; color: #fff; font: inherit; font-size: 16px; cursor: pointer; display: grid; place-items: center; }
+  .plats .x::after { content: 'Ta bort platsen'; position: absolute; top: 100%; color: #9aa3b8; font: 600 10px system-ui; white-space: nowrap; }
+
+  /* Bordslistan till höger. */
+  .tabl { display: grid; align-content: start; gap: 12px; color: #dce3f2; }
+  .tabl p { margin: 0; color: #c3cbdd; font-size: 12px; line-height: 1.4; }
+  .tabl h3 { margin: 8px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #9aa3b8; }
+
+  /* Guiden. */
+  .byd-wizard { border-top: 2px solid #15171c; padding: 20px 36px 24px; }
+  .byd-wizard fieldset { border: 0; margin: 0; padding: 0; width: 445px; }
+  .byd-wizard legend { font-weight: 700; margin-bottom: 8px; }
+  .byd-wizard .val { gap: 6px; }
+  .byd-wizard .val button { width: var(--tap); padding: 0; background: #fff; border-color: #797d75; color: #1e2620; }
+  .byd-wizard .val button[aria-pressed='true'] { box-shadow: inset 0 -3px 0 #b8461f; border-color: transparent; }
+  .byd-wizard .stegare { background: #fff; border-color: #797d75; }
+  .byd-wizard .stegare button { color: #1e2620; }
+  .byd-wizard .stegare input { width: 56px; color: #1e2620; border-color: #d9d8cc; }
+  .byd-wizard .segment { background: #fff; border-color: #797d75; }
+  .byd-wizard .segment button { color: #1e2620; border-color: #d9d8cc; }
+  .byd-wizard .segment button[aria-pressed='true'] { box-shadow: inset 0 -3px 0 #b8461f; }
+  .byd-wizard .stegare-rad small { color: #5c6459; }
+  .klippt { outline: 2px dashed #f0a58a; outline-offset: -2px; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#620 · Hur ett tal mellan 1 och 8 väljs.</b> Bord vid 1280 (receptspalten 296 px) och 1024 (256 px), med filten och bordslistan; under, guidens steg 1 på sitt papper. Antalet delas mellan ytorna.</p>
+    <p>Måtten: sektionen «Spelare» i höjd, och den minsta träffytan i kontrollen.</p>
+  </div>
+  <div class="matt" id="matt"></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="scen" id="scen"></div>
+<script>
+window.PROTO = {
+  varianter: ['nu', 'a', 'b', 'c'],
+  bredder: [1280, 1024],
+  s: { v: 'a', n: 4 },
+  not: {
+    nu: '<b>Nu.</b> Åtta knappar på 44 px. I receptspalten bryter de på två rader: 94 px, med rubriken 124. <span class="minus">− Åtta träffytor för ett tal. Sektionen är dubbelt så hög som sitt innehåll.</span>',
+    a: '<b>A · Stegaren.</b> «Spelare [−] [4] [+]» på en rad om 44 px. Talet är ett fält: skriv en siffra, eller stega med pilarna och tangenterna. Guiden får samma kontroll på sitt papper. <span class="plus">+ En rad i stället för två; tre mål på 44 px; samma form på båda ytorna. Gränserna 1 och 8 syns som släckt pil.</span> <span class="minus">− Sju platser är sju tryck från en, om man inte skriver. De andra talen syns inte förrän man stegat.</span>',
+    b: '<b>B · Segmenterad rad.</b> Åtta celler i en ram på 44 px höjd. <span class="plus">+ Alla tal synliga, ett tryck till vart och ett, en rad.</span> <span class="minus">− Cellerna blir 37 px breda i receptspalten vid 1280 och 32 vid 1024 — under träffytans 44. På guidens 445 px räcker det (55 px).</span>',
+    c: '<b>C · Bordet är väljaren.</b> Ingen kontroll i spalten, bara «Spelare: 4». Filten visar en spökplats «+» vid nästa kant och × på den sista platsen. Guiden får stegaren (A), den har ingen filt. <span class="plus">+ Man ser var platsen hamnar (K18) i samma ögonblick man lägger till den. Spalten får 80 px tillbaka.</span> <span class="minus">− Två former ändå (filten här, stegaren i guiden). Tangentbordet behöver en väg till spökplatsen; ett fält blir nödvändigt ändå för att skriva ett tal.</span>',
+  },
+}
+const P = window.PROTO, s = P.s
+// Platsernas ordning runt filten (K18): A nere, B uppe, C höger, D vänster, sedan en till per kant.
+const POS = [[50, 100], [50, 0], [100, 50], [0, 50], [22, 100], [78, 0], [100, 22], [0, 78]]
+const FARG = ['#e05c5c', '#3c8ce7', '#7dd3a0', '#f0b64a', '#c58fe0', '#f28b5c', '#5cd0d9', '#e6d15a']
+const BOK = 'ABCDEFGH'
+
+function kontroll(papper) {
+  if (s.v === 'nu' || (s.v === 'b' && !papper) || (s.v === 'b' && papper)) {
+    if (s.v === 'b') return `<div class="segment" role="group" aria-label="Spelare" data-ctl>${BOK.split('').map((_, i) => `<button type="button" aria-pressed="${s.n === i + 1}" data-act="satt" data-n="${i + 1}">${i + 1}</button>`).join('')}</div>`
+    return `<div class="val" role="group" aria-label="Spelare" data-ctl>${BOK.split('').map((_, i) => `<button type="button" aria-pressed="${s.n === i + 1}" data-act="satt" data-n="${i + 1}">${i + 1}</button>`).join('')}</div>`
+  }
+  if (s.v === 'c' && !papper) return `<p style="margin:0;color:#dce3f2;font-size:14px" data-ctl>Spelare: <b>${s.n}</b> <small style="color:#9aa3b8">— lägg till och ta bort platser på filten</small></p>`
+  return `<div class="stegare-rad"><div class="stegare" role="group" aria-label="Spelare" data-ctl><button type="button" data-act="steg" data-d="-1" aria-label="En spelare färre" ${s.n <= 1 ? 'disabled' : ''}>−</button><input type="text" inputmode="numeric" value="${s.n}" data-in="n" aria-label="Antal spelare, 1 till 8" aria-valuetext="${s.n} spelare"><button type="button" data-act="steg" data-d="1" aria-label="En spelare fler" ${s.n >= 8 ? 'disabled' : ''}>+</button></div><small>1–8</small></div>`
+}
+function filt() {
+  const platser = []
+  for (let i = 0; i < s.n; i++) {
+    const [x, y] = POS[i]
+    platser.push(`<span class="plats" style="left:${x}%;top:${y}%;background:${FARG[i]}">${BOK[i]}${s.v === 'c' && i === s.n - 1 && s.n > 1 ? `<button type="button" class="x" data-act="steg" data-d="-1" aria-label="Ta bort plats ${BOK[i]}">×</button>` : ''}</span>`)
+  }
+  if (s.v === 'c' && s.n < 8) { const [x, y] = POS[s.n]; platser.push(`<button type="button" class="plats spoke" style="left:${x}%;top:${y}%" data-act="steg" data-d="1" aria-label="Lägg till plats ${BOK[s.n]}">+</button>`) }
+  return `<div class="filt-rum"><p>Dra en zon på filten för att flytta den. <b class="q" style="border:1px solid #6f7a90;border-radius:50%;padding:0 6px">?</b></p><div class="filt">
+    <div class="zon" style="left:120px;top:40px;width:300px;height:40px">Sal's Saloon</div>
+    <div class="zon" style="left:120px;top:120px;width:300px;height:44px">Framför B</div>
+    <div class="zon" style="left:130px;top:200px;width:110px;height:44px">Kortlek</div>
+    <div class="zon" style="left:300px;top:200px;width:110px;height:44px">Kasthög</div>
+    <div class="zon" style="left:120px;top:280px;width:300px;height:44px">Framför A</div>
+    ${platser.join('')}</div></div>`
+}
+P.skarm = (w) => {
+  const spalt = w === 1280 ? 296 : 256
+  return `${P.huvud(w, 'Bord')}<div class="bord" style="grid-template-columns:${spalt}px minmax(0,1fr) ${w === 1280 ? 320 : 280}px">
+    <div class="recept">
+      <section data-sek><h2>Spelare <span class="q">?</span></h2>${kontroll(false)}</section>
+      <section><h2>Räknare <span class="q">?</span></h2><div class="raknare"><input value="Guld" aria-label="Räknarens namn"><span>från</span><input value="0" aria-label="Startvärde"></div><button type="button" class="knapp" style="margin-top:8px">+ Räknare</button></section>
+      <section><h2>På bordet</h2><div class="lista"><div><i></i>Spelyta<em>fast</em></div><div><i></i>Kortlek<em>fast</em></div><div><i></i>Kasthög</div></div></section>
+    </div>
+    ${filt()}
+    <div class="tabl"><p>▸ Visa spelarvyn</p><p>Bord på det här spelet. Ett nytt startar från den sparade versionen, rev 1.</p><button type="button" class="knapp" style="justify-self:start">▶ Starta nytt bord</button><h3>Bord som spelas</h3><p>rev-1 · Ada, Bo, Cy spelar</p></div>
+  </div>
+  <div class="byd-wizard"><fieldset><legend>Spelare</legend>${kontroll(true)}</fieldset></div>`
+}
+P.matt = (root, w, f) => {
+  const ut = []
+  ut.push(`sektionen «Spelare» <u>${root.querySelector('[data-sek]').offsetHeight} px</u>`)
+  const ctl = root.querySelector('[data-sek] [data-ctl]')
+  const mal = [...ctl.querySelectorAll('button, input')].map((b) => b.offsetWidth)
+  if (mal.length) { const min = Math.min(...mal); ut.push(`minsta träffytan <u>${min} px</u>${min < 44 ? ' <span style="color:#f0a58a">under 44</span>' : ''}`); if (min < 44) ctl.classList.add('klippt') }
+  else ut.push('ingen kontroll i spalten')
+  const g = root.querySelector('.byd-wizard [data-ctl]')
+  const gm = [...g.querySelectorAll('button, input')].map((b) => b.offsetWidth)
+  ut.push(`guiden: ${g.offsetWidth} px bred, minsta mål ${Math.min(...gm)} px`)
+  return ut
+}
+const kläm = (n) => Math.max(1, Math.min(8, n))
+P.act = (namn, d) => {
+  if (namn === 'satt') { s.n = Number(d.n); return }
+  if (namn === 'steg') { s.n = kläm(s.n + Number(d.d)); return `[data-act="steg"][data-d="${d.d}"]:not(:disabled), [data-in="n"]` }
+}
+P.input = (namn, v) => { if (namn === 'n' && /^\d$/.test(v.trim())) s.n = kläm(Number(v)) }
+</script>
+<script type="module" src="komp.js"></script>
+</body>
+</html>
