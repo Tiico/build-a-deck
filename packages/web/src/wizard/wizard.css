@@ -33,7 +33,7 @@
    egen sekundärlinje står kvar så att kontrollen fortfarande är ett piller. Ingen streckad linje
    — streckat betyder redan «lägg till» i den här vyn. */
 .byd-wizard button:disabled { opacity: 1; background: transparent; border: 1px solid var(--byd-secondary-line); color: var(--muted); font-weight: 600; cursor: default; }
-.byd-wizard input:not([type='file']), .byd-wizard textarea { min-height: var(--tap); width: 100%; min-width: 0; border: 1px solid #c9c9bd; border-radius: 9px; padding: 9px 11px; background: var(--byd-wizard-field-bg); color: var(--ink); }
+.byd-wizard input:not([type='file']), .byd-wizard textarea { min-height: var(--tap); width: 100%; min-width: 0; border: 1px solid var(--byd-secondary-line); border-radius: 9px; padding: 9px 11px; background: var(--byd-wizard-field-bg); color: var(--ink); }
 .byd-wizard input:focus, .byd-wizard textarea:focus { border-color: var(--accent); outline: 3px solid color-mix(in srgb, var(--accent), transparent 82%); }
 .byd-wizard h1 { margin: 2px 0 0; font: 700 28px/1.15 Georgia, serif; }
 .byd-wizard h2 { margin: 0; display: flex; align-items: center; gap: 9px; font-size: 16px; }
