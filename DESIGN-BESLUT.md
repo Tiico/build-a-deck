@@ -3664,6 +3664,17 @@ Hur det senare löses utan att skrivbordet betalar är ett visuellt beslut och p
 Det är löst i L54 (#567): raderna bryter, och etappremsan är etappernas.
 Granskningen som ledde hit står i [`docs/ux-audits/2026-09-29-surfplatta.md`](docs/ux-audits/2026-09-29-surfplatta.md).
 
+Beslutat 2026-09-30 efter prototyp (#566, D): **ångra och gör om står i huvudet, och det som hänt sägs längst ner.**
+Ångra och gör om nåddes bara med Ctrl eller Cmd och Z, och en platta har sällan ett tangentbord.
+↶ och ↷ står i 44 px bredvid revisionen och sparstatusen, i varje flik och vid varje bredd, eftersom ångerstacken är projektets och inte en fliks.
+De heter efter vad de skulle ta tillbaka («Ångra en ändring i mallen»), och när det inte finns något står de kvar, inaktiva, och säger det.
+Tangenterna och knapparna tar samma steg, och bekräftelsen «Tog tillbaka: …» är densamma.
+Bekräftelserna står nu som en rad längst ner på skärmen i stället för i huvudet: där tryckte de ihop spelets namn redan i dag, och bredvid knapparna tog de «Spara» och «Starta bord» ifrån sin egen bredd vid 1024 och 1280.
+Uppställningens egen «Ångra» efter en borttagning (B5) står kvar, eftersom den står där borttagningen syns.
+Två varianter avvisades: textknappen «Ångra: …» bredvid sparstatusen, som inte fick plats vid 1280, och knappar som bara syns vid grov pekare, som gav plattan samma trängsel och skrivbordet ingen väg utan tangentbord.
+Knapparna i huvudet förutsätter att sidan inte rullar på en låg platta, vilket #567 kräver.
+Prototypen och mätningarna står i #566 och i `docs/ux-audits/2026-09-29/prototyper/566/`; grinden är `packages/e2e/test/editor-undo-buttons.spec.ts`.
+
 **Tillägg 2026-09-30: en fin pekare är skrivbord, oavsett bredd (#550).**
 Gränsen ovan går vid vem som håller ytan, men rummet i L10 avgjordes av bredden ensam.
 Ett skrivbord zoomat till 200 % är 640 px brett och vid 400 % 320 px, och bredden kallade det en telefon: `Mall` försvann ur editorn för precis den formgivare som hade zoomat in för att kunna arbeta.

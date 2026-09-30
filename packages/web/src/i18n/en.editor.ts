@@ -218,6 +218,10 @@ export const enEditor = {
   'wall.issue.colour-only': 'told apart by colour alone',
 
   // One step back (#35): what it took back, in the designer's own words rather than the verb's.
+  'undo.button': 'Undo {what}',
+  'undo.button.none': 'Undo: nothing to take back',
+  'redo.button': 'Redo {what}',
+  'redo.button.none': 'Redo: nothing to do again',
   'undo.took': 'Took back: {what}',
   'undo.redid': 'Put back: {what}',
   'undo.what.name': "the game's name",

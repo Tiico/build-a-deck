@@ -246,6 +246,10 @@ export const svEditor = {
 
   // Tabellen: import och export, filtret, det markerade och raderna.
   // Ett steg bakåt (#35): vad det tog tillbaka, i designerns egna ord snarare än verbets.
+  'undo.button': 'Ångra {what}',
+  'undo.button.none': 'Ångra: inget att ta tillbaka',
+  'redo.button': 'Gör om {what}',
+  'redo.button.none': 'Gör om: inget att göra om',
   'undo.took': 'Tog tillbaka: {what}',
   'undo.redid': 'Gjorde om: {what}',
   'undo.what.name': 'namnet på spelet',
