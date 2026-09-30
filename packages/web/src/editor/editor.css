@@ -357,7 +357,7 @@
   background: #0f1115; color: #dce3f2; font: 700 18px/1 system-ui, sans-serif; cursor: pointer;
 }
 .byd-editor-steps button:hover:not([aria-disabled='true']) { border-color: var(--byd-editor-primary-mark); }
-.byd-editor-steps button[aria-disabled='true'] { color: #5b6275; cursor: default; }
+.byd-editor-steps button[aria-disabled='true'] { color: var(--byd-editor-quiet); cursor: default; }
 .byd-editor > header > button { min-height: var(--byd-tap); min-width: var(--byd-tap); border: 1px solid #2f333d; border-radius: 8px; padding: 0 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 /* A control that cannot be pressed goes quiet — but the quiet is for a button drawn on the
    header's own ground, and a first action is not drawn on it: it is filled. Laid over that fill
