@@ -361,8 +361,10 @@
 .byd-editor-steps { display: inline-flex; gap: 2px; flex: 0 0 auto; }
 .byd-editor-steps button {
   min-width: var(--byd-tap); min-height: var(--byd-tap); padding: 0; border: 1px solid #2a2d36; border-radius: 8px;
-  background: #0f1115; color: #dce3f2; font: 700 18px/1 system-ui, sans-serif; cursor: pointer;
+  display: inline-grid; place-items: center; background: #0f1115; color: #dce3f2; cursor: pointer;
 }
+.byd-editor-steps svg { width: 20px; height: 20px; }
+.byd-editor-steps svg[data-mirrored] { transform: scaleX(-1); }
 .byd-editor-steps button:hover:not([aria-disabled='true']) { border-color: var(--byd-editor-primary-mark); }
 .byd-editor-steps button[aria-disabled='true'] { color: var(--byd-editor-quiet); cursor: default; }
 .byd-editor > header > button { min-height: var(--byd-tap); min-width: var(--byd-tap); border: 1px solid #2f333d; border-radius: 8px; padding: 0 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
