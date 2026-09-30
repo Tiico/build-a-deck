@@ -4,7 +4,7 @@ import { spelkortDoc } from '../../server/scripts/spelkort.js'
 import { logIn, makeProjectOf } from '../support/api.js'
 
 // Undo and redo for a hand without a keyboard (#566, beslut D; L12's addition for large tablets):
-// ↶ and ↷ in the header, in every tab, named for what they take back and refused when there is
+// A hook back and a hook forward in the header, in every tab, named for what they take back and refused when there is
 // nothing to take. What they did is said in a line at the bottom of the screen, as every
 // confirmation now is, so the header keeps its buttons whole when it is said.
 async function openTemplate(page: Page) {

@@ -342,6 +342,27 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
   }, 20_000)
 })
 
+describe('the header steps (#566)', () => {
+  // A character is drawn by whatever font the machine has, and ↶ ↷ are a hairline hook on a Mac
+  // and something else on Linux. The steps are drawn by the editor, a mirrored pair of one hook.
+  it('draws undo and redo as one hook, mirrored, rather than as characters', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+
+    const undo = screen.getByRole('button', { name: 'Ångra: inget att ta tillbaka' })
+    const redo = screen.getByRole('button', { name: 'Gör om: inget att göra om' })
+    for (const b of [undo, redo]) {
+      expect(b.textContent).toBe('')
+      expect(b.querySelector('svg[aria-hidden="true"]')).toBeTruthy()
+    }
+    expect(redo.querySelector('svg')!.innerHTML).toBe(undo.querySelector('svg')!.innerHTML)
+    expect(redo.querySelector('svg')!.hasAttribute('data-mirrored')).toBe(true)
+    expect(undo.querySelector('svg')!.hasAttribute('data-mirrored')).toBe(false)
+  })
+})
+
 describe('the editor by keyboard alone (UX-04)', () => {
   it('switches mode from the tablist, and every tab names the panel it controls', async () => {
     const user = userEvent.setup()
