@@ -62,6 +62,8 @@ const patched = (onPatch: ReturnType<typeof vi.fn>) => onPatch.mock.calls.at(-1)
 describe('the shape gallery (L17)', () => {
   it('gives a shape its whole outline in one press, parameters and all', () => {
     const { onPatch } = open()
+    // The twelve outlines past the first five are behind «Fler former» (#570).
+    fireEvent.click(screen.getByRole('button', { name: /^Fler former/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Sexhörning' }))
     expect(patched(onPatch)).toMatchObject({ shape: 'polygon', corners: 6, rotationDeg: 0 })
 
@@ -74,6 +76,7 @@ describe('the shape gallery (L17)', () => {
   // turned four-cornered polygon is its own entry and not a rediscovery the designer has to make.
   it('offers the same corner count at two turns as two entries', () => {
     const { onPatch } = open()
+    fireEvent.click(screen.getByRole('button', { name: /^Fler former/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Romb' }))
     expect(patched(onPatch)).toMatchObject({ shape: 'polygon', corners: 4, rotationDeg: 0 })
     fireEvent.click(screen.getByRole('button', { name: 'Kvadrat' }))
@@ -98,8 +101,25 @@ describe('the shape gallery (L17)', () => {
 
   it('says which entry the shape already is', () => {
     open({ shape: 'polygon', corners: 6, rotationDeg: 30 })
+    // Chosen from among the twelve, it stands in the row beside the five (#570).
     expect(screen.getByRole('button', { name: 'Sexhörning, platt' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.queryByRole('button', { name: 'Sexhörning' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /^Fler former/ }))
     expect(screen.getByRole('button', { name: 'Sexhörning' }).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  // The editor's floor of 44 holds for the gallery (#570, beslut B): the five outlines most cards are
+  // made of stand in the row, and «Fler former» opens the other twelve in place and closes them again.
+  it('shows five outlines and opens the other twelve in place', () => {
+    open()
+    const gallery = screen.getByRole('group', { name: 'Form' })
+    expect(within(gallery).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Rektangel', 'Rundad', 'Kapsel', 'Cirkel', 'Linje'])
+    const more = screen.getByRole('button', { name: 'Fler former (12)' })
+    expect(more.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(more)
+    expect(within(gallery).getAllByRole('button')).toHaveLength(17)
+    fireEvent.click(screen.getByRole('button', { name: 'Färre former' }))
+    expect(within(gallery).getAllByRole('button')).toHaveLength(5)
   })
 })
 

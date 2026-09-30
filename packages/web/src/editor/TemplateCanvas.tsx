@@ -2427,6 +2427,11 @@ function ShapeProps({ el, point, fields, valuesIn, onPatch }: { el: Shape; point
   const own = el.points !== undefined
   const takes = own ? { corners: false, innerRatio: false, rotation: false, radius: false } : shapeTakes(el.shape)
   const chosen = galleryIdOf(el)
+  // The gallery at the editor's floor of 44 (#570, beslut B; L25 reviderad): the five outlines most
+  // cards are made of, and «Fler former» for the other twelve, opened in place. An outline chosen
+  // from among the twelve stands in the row as well, so the shape the element has is always shown.
+  const [allShapes, setAllShapes] = useState(false)
+  const shown = allShapes ? SHAPE_GALLERY : SHAPE_GALLERY.filter((entry, i) => i < COMMON_SHAPES || entry.id === chosen)
   // The door into a shape of her own, offered only on an outline that consists of points and
   // only while she has not walked through it — the way back is the gallery above.
   const door = own ? null : ownPoints(el)
@@ -2453,12 +2458,15 @@ function ShapeProps({ el, point, fields, valuesIn, onPatch }: { el: Shape; point
     <>
       <Section id="shape" name={t('canvas.props.shape')}>
         <div className="byd-props-gallery" role="group" aria-label={t('canvas.props.shape')}>
-          {SHAPE_GALLERY.map((entry) => (
+          {shown.map((entry) => (
             <button key={entry.id} type="button" aria-label={t(entry.name)} title={t(entry.name)} aria-pressed={chosen === entry.id} onClick={() => onPatch(shapeChoice(entry, el))}>
               <ShapeGlyph geometry={glyphGeometry(entry, GLYPH)} />
             </button>
           ))}
         </div>
+        <button type="button" className="byd-props-more" aria-expanded={allShapes} onClick={() => setAllShapes((was) => !was)}>
+          {allShapes ? t('canvas.props.shape.fewer') : t('canvas.props.shape.more', { n: SHAPE_GALLERY.length - COMMON_SHAPES })}
+        </button>
         {door && (
           <button type="button" className="byd-props-disclose" onClick={() => onPatch(door)}>
             {t('canvas.props.own')}
@@ -2736,7 +2744,10 @@ function ShadowProps({ shadow, onPatch }: { shadow: Shadow | undefined; onPatch(
 // is on the button can never disagree with what pressing it produces. The glyph box is wider
 // than it is tall: a capsule in a square box is a circle, and a gallery where two buttons draw
 // the same picture is a gallery that cannot be read.
-const GLYPH = { w: 20, h: 15 }
+const GLYPH = { w: 28, h: 21 }
+// How many of the gallery's outlines stand in the row before «Fler former» (#570): rectangle,
+// rounded, capsule, circle and line, which is the order the gallery is written in.
+const COMMON_SHAPES = 5
 function ShapeGlyph({ geometry }: { geometry: Geometry }) {
   const inset = 1.2
   const open = geometry.shape === 'line'

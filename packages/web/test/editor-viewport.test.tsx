@@ -152,6 +152,7 @@ async function shapePanel(width: number): Promise<Record<string, string>> {
     fireEvent.click(layerPick('frame'))
     // Everything the panel can hold at once: a star has the most numbers, and a pattern and a
     // shadow opened by hand put the rest of the controls on the screen beside them.
+    fireEvent.click(screen.getByRole('button', { name: /^Fler former/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Stjärna' }))
     fireEvent.click(screen.getByLabelText('Mönster över fyllningen'))
     fireEvent.click(screen.getByRole('button', { name: 'Mjuk' }))
@@ -262,8 +263,6 @@ describe.each(WIDTHS)('the editor at %ipx', (width) => {
       page.$$eval(TARGETS, (els) =>
         els
           .filter((el) => el.checkVisibility({ opacityProperty: true }))
-          // The gallery's tiles are 30 px by decision (L25); see the shape panel below.
-          .filter((el) => el.closest('.byd-props-gallery') === null)
           // The way past the table is drawn only while it has the focus (#575): unfocused it is no
           // target for a pointer at all, and focused it is a 44 px line of its own.
           .filter((el) => !el.matches('.byd-data-skip:not(:focus)'))
@@ -392,13 +391,7 @@ describe.each([1024, 1280] as const)('the shape panel at %ipx', (width) => {
         page.$$eval(TARGETS, (els) =>
           els
             .filter((el) => el.checkVisibility({ opacityProperty: true }))
-            // The one exception in the whole editor (L25): a gallery tile is 30 px and not 44.
-            // Seventeen outlines at 44 took forty-four per cent of a 280 px panel. They are
-            // pointed at with a mouse on a desktop-first surface (L12) and they lie in a grid
-            // where the neighbour is the same kind of thing, so a miss is another shape and not a
-            // lost action. It holds for the tiles and for nothing else here, which is why this
-            // sweep still runs over every other control in the panel.
-            .filter((el) => el.closest('.byd-props-gallery') === null)
+            // No exception any more (#570, beslut B): the gallery's tiles are 44 too.
             .map((el) => {
               const target = el.closest('label') ?? el
               const box = target.getBoundingClientRect()

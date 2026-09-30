@@ -677,6 +677,8 @@ export const svEditor = {
   'canvas.point.handle.in': 'Inhandtag för punkt {n}',
   'canvas.point.handle.out': 'Uthandtag för punkt {n}',
   'canvas.point.least': 'En form behöver minst tre punkter.',
+  'canvas.props.shape.more': 'Fler former ({n})',
+  'canvas.props.shape.fewer': 'Färre former',
   'canvas.props.own': 'Anpassa punkterna',
   'canvas.props.straight': 'Räta ut punkten',
   'canvas.props.straightAll': 'Räta ut alla',

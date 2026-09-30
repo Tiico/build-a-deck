@@ -493,6 +493,7 @@ describe('the template panel as one step back', () => {
     await openEditor()
     fireEvent.click(screen.getByRole('tab', { name: 'Mall' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Form' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Fler former/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Triangel' }))
     const turn = () => screen.getByLabelText('Vridning') as HTMLInputElement
     expect(turn().value).toBe('0')

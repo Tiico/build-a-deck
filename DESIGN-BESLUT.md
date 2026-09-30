@@ -4355,6 +4355,16 @@ Layout, Innehåll, Text, Bild och Form står öppna från början; vad som är �
 Priset L25 ville slippa — ett läge att minnas — är taget medvetet: ett läge per editor, inte ett per element, och ett stängt huvud som säger vad som står bakom det.
 Spelets typsnitt står i panelen bara när inget lager är valt, eftersom de är spelets och inte lagrets.
 
+Reviderat 2026-09-29 (#570, beslut A och B efter prototyp): **undantaget för formgalleriet är borta, och editorns golv om 44 px gäller hela panelen.**
+L12 säger att träffytorna står kvar även vid skrivbordet, och granskningen 2026-09-29 räknade 22 kontroller under 44 px i en panel med ett formelement valt.
+Galleriet visar de fem former de flesta kort är byggda av — rektangel, rundad, kapsel, cirkel och linje — i 44 px, och «Fler former (12)» öppnar de andra tolv på plats.
+En form vald bland de tolv står kvar i raden, så att elementets form alltid syns.
+Formsektionen tar då 239 px mot 231 med 30 px-brickorna, och panelen rullar inte.
+Alla sjutton i 44 px provades och avvisades: 104 px mer, och panelen började rulla, 20 px vid 1280 och 52 px vid 1024; en enda knapp som öppnar rutnätet avvisades eftersom varje formbyte blir två tryck.
+Greppen bredvid talen är 44 × 44 px med samma ritning.
+«Sätt in en ikon» i Tabell lyftes ut till #593, eftersom dess kolumn reserveras i varje textcell (#140) och 44 px där kostar varje cell 18 px hela tiden.
+Mätningarna och skärmbilderna står i #570 och i `docs/ux-audits/2026-09-29/prototyper/570/`; grindarna är `packages/web/test/editor-props-density.test.tsx` och svepet i `packages/web/test/editor-viewport.test.tsx`, som inte längre undantar galleriet.
+
 ### L26. En egen form är en punktlista, och punkten läggs till där kanten redan bär en (prototypat 2026-09-20, #309)
 
 Formgalleriet är parametriskt: en form är ett hörnantal och en vridning (L42, L17).
