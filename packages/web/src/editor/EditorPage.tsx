@@ -5,7 +5,7 @@ import { EditorTabs, MODES, panelId, tabId, type Mode } from './EditorTabs.js'
 import { EditorStages, isCanvasStage, modeOf, STAGES, type Stage } from './EditorStages.js'
 import { PHONE_READING, SCREENS, minPtIn } from '../legibility.js'
 import { noFilter } from './filtering.js'
-import { useRoom } from '../room.js'
+import { useHeaderStands, useRoom } from '../room.js'
 import { useDoor } from '../doors.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
 import { DataTable } from './DataTable.js'
@@ -70,6 +70,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // the desk shows a mode, a smaller screen shows the stage that mode is made of.
   const room = useRoom()
   const stages = room === 'desk' ? null : STAGES[room]
+  // Below the desk «Spara» and «Uppdatera bordet» stand in the header while the header stands, as
+  // they do at the desk, and the strip is the stages' own (#567, beslut B): at 820 px the two had
+  // hidden Media, Regler and Bord behind them. In a low window the header scrolls away (#550), so
+  // there they stay at the end of the strip, the one thing that does not.
+  const headerStands = useHeaderStands()
+  const actionsInHeader = room === 'desk' || headerStands
   const [stage, setStage] = useState<Stage>('wall')
   // A room that does not offer the stage that was open — a phone has no canvas — puts the
   // designer on the deck wall rather than on a panel that is not there.
@@ -541,7 +547,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     // `aria-disabled` and not `disabled` (#477): a button that disables itself while it has the
     // focus hands the focus to <body>, and the next Tab starts from the top of the page. `save`
     // already refuses what there is nothing to do about.
-    <button type="button" className="byd-secondary" onClick={() => void save()} aria-disabled={!unsaved || saving}>
+    <button type="button" className="byd-secondary byd-editor-save" onClick={() => void save()} aria-disabled={!unsaved || saving}>
       {t(saving ? 'editor.saving' : 'editor.save')}
     </button>
   )
@@ -614,6 +620,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         {/* "Nytt bord" and the shortcut beside "Uppdatera bordet" are two ways to the tables that
             the Bord stage also holds, so below the desk they leave the header rather than being
             squeezed into it: nothing they reach becomes unreachable. */}
+        {room !== 'desk' && actionsInHeader && (
+          <>
+            {saveButton}
+            {updateButton}
+          </>
+        )}
         {room === 'desk' && (
           <>
             {saveButton}
@@ -760,8 +772,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       </MarkedProvider>
       {stages && (
         <EditorStages stages={stages} stage={here} onSelect={setStage}>
-          {saveButton}
-          {updateButton}
+          {!actionsInHeader && saveButton}
+          {!actionsInHeader && updateButton}
         </EditorStages>
       )}
     </div>

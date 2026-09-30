@@ -3661,6 +3661,7 @@ Två krav följer av det.
 Allt som går att göra med musen ska gå att göra med fingret: ett drag, ett handtag, ett grepp och en ångring får inte förutsätta hover, pixelprecision eller ett tangentbord.
 Och editorn ska inte kräva att man rullar runt för att nå sina egna kontroller: på en platta är den synliga höjden ofta under 500 px när webbläsarens fält är avdragna, och rader som rullar i sidled gömmer det man letar efter.
 Hur det senare löses utan att skrivbordet betalar är ett visuellt beslut och prototypas först.
+Det är löst i L54 (#567): raderna bryter, och etappremsan är etappernas.
 Granskningen som ledde hit står i [`docs/ux-audits/2026-09-29-surfplatta.md`](docs/ux-audits/2026-09-29-surfplatta.md).
 
 **Tillägg 2026-09-30: en fin pekare är skrivbord, oavsett bredd (#550).**
@@ -5500,3 +5501,25 @@ Beställaren valde bara på filten.
   Vid en ände är knappen `aria-disabled`, så fokus som bar kortet dit inte tappas.
 
 Brytaren i B och C är ett andra skydd för den som styr med rösten medan fokus står på filten; den kan läggas till senare utan att något annat ändras.
+
+### L54. På en platta bryter raderna, och etappremsan är etappernas (prototypat och beslutat 2026-09-30, #567)
+
+På en Galaxy Tab rullade editorns kronor och tabellens filterrad i sidled inuti sina rader, och etappremsan gömde Media, Regler och Bord bakom «Spara» och «Uppdatera bordet».
+Vid 820 × 1106 låg fem kontroller utanför skärmen när editorn öppnades, och tio filterchips låg bakom en rullning.
+#550 hade redan löst höjden: under 560 px rullar sidan och bara etappremsan står kvar (L10, undantag).
+
+Tre varianter prövades i den riktiga editorn med 308 kort: allt bryter, remsan är etappernas och en «Mer ▾»-meny.
+Beställaren valde remsan är etappernas.
+
+- **Under skrivbordet, och under ett finger i alla bredder, bryter kronan och filterraden** till fler rader i stället för att rulla i sidled.
+  På en platta säger ingenting att raden fortsätter, och ett svep på raden blir lätt ett svep på sidan.
+- **Står huvudet kvar, över 560 px höjd, står «Spara» och «Uppdatera bordet» i det**, sist, som vid skrivbordet.
+  Etappremsan bär då bara etapperna.
+- **I ett lågt fönster står de två kvar sist i remsan**, eftersom huvudet rullar bort med sidan (#550).
+- **Flikarna delar remsans bredd och ger upp sin luft** innan någon rullas ur sikte.
+- Skrivbordet, med fin pekare från 1024 px, är oförändrat: dess krona är en rad.
+
+A kostade arbetsytan 48 px vid 960 × 490 för en andra rad i remsan, och C gömde det som issuet klagade på att man fick leta efter, bara bakom ett tryck i stället för en rullning.
+`packages/e2e/test/surfaces/editor-tablet.spec.ts` håller det vid 960 × 490, 1024 × 600, 820 × 1106 och 768 × 1024: ingen kontroll i kromen är kapad, på någon etapp.
+Den fann också att «Hjälp om borden» i Bord var kapad i alla bredder: träffytans luft hängde utanför en rullruta.
+Prototypens bilder står i [`docs/ux-audits/2026-09-29-tillganglighet/prototyper/567/`](docs/ux-audits/2026-09-29-tillganglighet/prototyper/567/).

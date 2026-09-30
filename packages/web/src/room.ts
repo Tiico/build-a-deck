@@ -51,3 +51,22 @@ export function useRoom(): Room {
   }, [])
   return room
 }
+
+// Whether the header stands (#567, beslut B): above 560 px of height the editor's frame holds, and
+// below it the page scrolls and the header scrolls away with it (L10, undantag 2026-09-30, #550).
+// The number is the one `editor.css` lets the frame go at, and the two must move together.
+const STANDS = '(min-height: 561px)'
+
+export function useHeaderStands(): boolean {
+  const ask = () => typeof window === 'undefined' || typeof window.matchMedia !== 'function' || window.matchMedia(STANDS).matches
+  const [stands, setStands] = useState(ask)
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const query = window.matchMedia(STANDS)
+    const answer = () => setStands(query.matches)
+    query.addEventListener('change', answer)
+    answer()
+    return () => query.removeEventListener('change', answer)
+  }, [])
+  return stands
+}
