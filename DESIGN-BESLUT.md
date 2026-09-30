@@ -3671,6 +3671,7 @@ De heter efter vad de skulle ta tillbaka («Ångra en ändring i mallen»), och 
 Tangenterna och knapparna tar samma steg, och bekräftelsen «Tog tillbaka: …» är densamma.
 Bekräftelserna står nu som en rad längst ner på skärmen i stället för i huvudet: där tryckte de ihop spelets namn redan i dag, och bredvid knapparna tog de «Spara» och «Starta bord» ifrån sin egen bredd vid 1024 och 1280.
 Uppställningens egen «Ångra» efter en borttagning (B5) står kvar, eftersom den står där borttagningen syns.
+Vid 1024–1279 px är «Sparat» en bock (✓) med ordet kvar för skärmläsare, eftersom knapparna annars kortade spelets namn när ett bord kör (#477); «Osparat» står kvar i ord och färg, eftersom det är läget som ber om något.
 Två varianter avvisades: textknappen «Ångra: …» bredvid sparstatusen, som inte fick plats vid 1280, och knappar som bara syns vid grov pekare, som gav plattan samma trängsel och skrivbordet ingen väg utan tangentbord.
 Knapparna i huvudet förutsätter att sidan inte rullar på en låg platta, vilket #567 kräver.
 Prototypen och mätningarna står i #566 och i `docs/ux-audits/2026-09-29/prototyper/566/`; grinden är `packages/e2e/test/editor-undo-buttons.spec.ts`.
