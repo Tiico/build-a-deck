@@ -5152,6 +5152,13 @@ I en vanlig textcell står ikonen efter fältet (#140) och nås framåt; i body-
 Det är ordningen som är gemensam och inte tangenten: fokus går dit ögat går (WCAG 2.4.3).
 #397:s ursprungliga acceptanskriterium bad om samma tangent och är ändrat efter det här beslutet.
 
+*Tillagt 2026-09-30 (#593, beställarens beslut A efter prototypen i `docs/ux-audits/2026-09-29-tillganglighet/prototyper/593/`):* textcellens «Sätt in en ikon» är en flik på fältets övre högra hörn, 44 × 44 px.
+#140 gav den en egen kolumn på 26 px i varje textcell, så att den aldrig låg över fältet; kolumnen höll fältet fritt men gjorde knappen för smal för 44 px-regeln (L12, #570), och en kolumn på 44 px hade kostat varje textcell 18 px till, hela tiden, för en knapp som ritas i en cell åt gången.
+Fliken står över raden ovanför, som formgivaren redan har lämnat, och ritas bara i cellen man skriver i; den ligger aldrig över fältet och fältet flyttar sig aldrig för den.
+Kolumnen är borta, så en textkolumn mäts efter sitt innehåll och inget annat, och de 26 px går tillbaka till tabellen.
+Två alternativ prototypades och avvisades: knappen i tabellens krona, som står långt från markören och bryter ordningen fält → knapp, och en ram som går 44 px ut åt höger, som täcker texten bredvid den man skriver i.
+Tabbordningen ovan står kvar: knappen nås framåt från fältet.
+
 ### L47. En yta lägger själv ut kortet den fått utan punkt: fjädrat, med det nyaste överst (prototypat och beslutat 2026-09-22, #449; ordningen utvidgad till dragvägen 2026-09-24, #461)
 
 Telefonen skickar ingen position.

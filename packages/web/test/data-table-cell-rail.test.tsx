@@ -1,20 +1,21 @@
 // @vitest-environment jsdom
-// The icon control's own lane in a cell (#140, förslag A).
+// The icon control in a cell (#140, #593).
 //
 // The `{ }` that opens the symbol picker was drawn to be a small plate with a warm glyph on it.
 // It was in fact 44 × 44 px, transparent and grey, lying on top of the cell's own value — three
-// rules colliding in the cascade and nobody choosing any of it: `.byd-data button` (0,1,1) is
-// later and more specific than `.byd-data-icon` (0,1,0) and took away the plate and the colour,
-// and `.byd-editor button { min-width: var(--byd-tap) }` blew what was left up to a tap target.
-// In a 64 px `typ` column it covered 61 % of the cell, and a click where the caret belongs wrote
-// a `{` into the card.
+// rules colliding in the cascade and nobody choosing any of it. In a 64 px `typ` column it covered
+// 61 % of the cell, and a click where the caret belongs wrote a `{` into the card.
 //
-// The decision is that the two never share ground: every cell that carries the control is a grid,
-// the field ends where the lane begins, and the lane is the same width in every column. That makes
-// the acceptance true by construction rather than by a margin somebody has to keep choosing — and
-// it is why the lane is reserved whether or not the control is drawn in it, since the control is
-// only ever drawn in the cell being worked in and a field that jumps 26 px when the caret arrives
-// is the same fault wearing a different hat.
+// #140 answered with a lane: a 26 px column reserved in every cell beside the field, so that the
+// two never shared ground. It kept the field clear, but it made the control 26 px wide — under the
+// 44 px every target in the editor is held to (L12, #570) — and a 44 px lane would have cost every
+// text cell 18 px more, all the time, to hold a control drawn in one cell at a time.
+//
+// The decision since #593 (beställarens beslut A) is a tab: the control is 44 × 44 px and stands on
+// the field's top right corner, over the row above — the row the designer has already left — and
+// is drawn only in the cell being worked in. The lane is gone, so the field has the whole cell and
+// every text cell got its 26 px back. The field still never moves when the caret arrives, and the
+// control still never lies over it.
 //
 // jsdom lays nothing out, so this is asked of a real engine against the stylesheet the editor
 // ships, the way the head of the table is (#32, #46).
@@ -73,6 +74,10 @@ const RAILED = ['typ', 'title', 'body', 'raritet'] as const
 // both: the control may not lie over the place the caret goes. So the place the caret goes is
 // looked up by what it is for and not by what tag it happens to be.
 const FIELD = 'input, [role="textbox"]'
+
+// The columns written in a one-line field, which is where the `{ }` control is drawn. `body` is a
+// writing area with a toolbar of its own (#324), and the questions below are about this control.
+const FIELDS = ['typ', 'title', 'raritet'] as const
 
 function Table() {
   const [doc, setDoc] = useState(saloonDoc)
@@ -197,9 +202,9 @@ describe.each(DESKS)('a cell with the icon path, at %ipx', (width) => {
     expect(found).toEqual(Object.fromEntries(RAILED.map((f) => [f, 'the field'])))
   }, 120_000)
 
-  it('keeps the lane whether the control is drawn in it or not, so no field moves under the caret', async () => {
-    // The control is only ever drawn in the cell being worked in. If the lane came and went with
-    // it, every field in the column would jump the moment the caret arrived — the same fault as
+  it('leaves every field where it was whether the control is drawn or not, so none moves under the caret', async () => {
+    // The control is only ever drawn in the cell being worked in. If drawing it took room from the
+    // field, every field in the column would jump the moment the caret arrived — the same fault as
     // the overlap, arriving by movement instead of by paint.
     const widths = (page: import('playwright').Page) =>
       page.evaluate(
@@ -216,13 +221,59 @@ describe.each(DESKS)('a cell with the icon path, at %ipx', (width) => {
     const open = await measure(markup('typ'), width, widths)
     expect(open).toEqual(closed)
   }, 120_000)
+
+  it('draws the control a whole target, 44 × 44 px, standing on the field’s top right corner', async () => {
+    const found: Record<string, string> = {}
+    for (const field of FIELDS) {
+      found[field] = await measure(markup(field), width, (page) =>
+        page.evaluate((f) => {
+          const td = document.querySelector<HTMLElement>(`.byd-data tbody tr td[data-col="${f}"]`)!
+          const control = td.querySelector<HTMLElement>('.byd-data-icon')
+          if (!control) return `no control in ${f}`
+          const c = control.getBoundingClientRect()
+          const at = td.querySelector('input')!.getBoundingClientRect()
+          return `${Math.round(c.width)}×${Math.round(c.height)}, ${Math.round(at.right - c.right)} px in from the field's right, ${Math.round(at.top - c.bottom)} px above it`
+        }, field),
+      )
+    }
+    expect(found).toEqual(Object.fromEntries(FIELDS.map((f) => [f, "44×44, 0 px in from the field's right, 0 px above it"])))
+  }, 120_000)
+
+  it('gives the field the whole cell, with nothing reserved beside it', async () => {
+    // The lane the control used to stand in was 26 px of every text cell at rest. Nothing may be
+    // kept there now: the field ends where the cell does.
+    const kept = await measure(markup(null), width, (page) =>
+      page.evaluate((fields) => Object.fromEntries(fields.map((f) => {
+        const td = document.querySelector<HTMLElement>(`.byd-data tbody tr td[data-col="${f}"]`)!
+        return [f, Math.round(td.getBoundingClientRect().right - td.querySelector('input')!.getBoundingClientRect().right)]
+      })), [...FIELDS]),
+    )
+    expect(kept).toEqual(Object.fromEntries(FIELDS.map((f) => [f, 0])))
+  }, 120_000)
+
+  it('can be seen and pressed in the first row, where what is above it is the table’s head', async () => {
+    // The head is sticky and painted over the rows; a tab that went under it would be a control
+    // that is there and cannot be seen or reached, in the row a new table starts in.
+    const found: Record<string, string> = {}
+    for (const field of FIELDS) {
+      found[field] = await measure(markup(field), width, (page) =>
+        page.evaluate((f) => {
+          const control = document.querySelector<HTMLElement>(`.byd-data tbody tr:first-child td[data-col="${f}"] .byd-data-icon`)
+          if (!control) return `no control in ${f}`
+          const c = control.getBoundingClientRect()
+          const hit = document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2)
+          return hit === control || control.contains(hit) ? 'the control' : `${hit?.tagName.toLowerCase()}`
+        }, field),
+      )
+    }
+    expect(found).toEqual(Object.fromEntries(FIELDS.map((f) => [f, 'the control'])))
+  }, 120_000)
 })
 
-describe('the lane is paid for out of the column and not out of the value (#130)', () => {
-  it('leaves a word-wide column wide enough for its widest word at 1280', async () => {
-    // The lane costs 26 px of the cell in every column, narrow ones included — an explicit price,
-    // and one the measurement has to know about, or `typ` and `title` go back to `Play…` and
-    // `Sal's Sa…`, which is the thing #130 measured and fixed.
+describe('a word-wide column is wide enough for its widest word (#130)', () => {
+  it('leaves `typ`, `raritet` and `title` whole at 1280, with the control drawn', async () => {
+    // What #130 measured and fixed: `Play…` and `Sal's Sa…`. The control stands above the field
+    // now and takes nothing of its width, so the column's own measurement is the whole answer.
     const cut = await measure(markup('typ'), 1280, (page) =>
       page.evaluate(() =>
         ['typ', 'raritet', 'title']

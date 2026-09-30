@@ -83,12 +83,6 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
 
   // The one target size the editor declares, asked of the page rather than repeated here.
   const tap = parseFloat(getComputedStyle(table).getPropertyValue('--byd-tap')) || 44
-  // And the lane the icon control stands in (#140), which is the cell's and not the field's. A
-  // column that carries it has that much less room for its value, so it asks for that much more —
-  // otherwise `typ` and `title` go straight back to `Play…` and `Sal's Sa…`, which is what #130
-  // measured and fixed. Read off the page for the same reason the target is.
-  const lane = parseFloat(getComputedStyle(table).getPropertyValue('--byd-data-rail')) || 0
-  const hasLane = (i: number): boolean => table.querySelector(`tbody tr > *:nth-child(${i + 1})[data-rail]`) !== null
 
   // The font a value is actually drawn in, and the room around it, taken from a cell of its own
   // column that is really on the page — the field in it, or the cell itself where there is none.
@@ -207,8 +201,7 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
       const need = needIn(inkOf(i))
       for (const value of values) widest = Math.max(widest, need(value))
     }
-    // The heading has no lane under it, so only the value's side of the question pays for one.
-    return { col, width: Math.max(headNeed(i), widest + (hasLane(i) ? lane : 0)), own: false }
+    return { col, width: Math.max(headNeed(i), widest), own: false }
   })
   for (const face of [...lists.keys()]) if (!faces.has(face)) lists.delete(face)
 
@@ -222,7 +215,7 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
   // The ceiling is measured against the room that is really visible, which is not the box: the
   // tick and `id` stand pinned on top of the column (#145) and eat into it, so a column exactly
   // the width of the box has its edge underneath them. What is pinned is asked of the stylesheet
-  // rather than named here, for the same reason the target and the lane are.
+  // rather than named here, for the same reason the target is.
   //
   // A width the designer pulled to herself is not touched. The ceiling is an opinion about a
   // measurement, and hers is not one (L4, #46): she can see the edge she dragged, because she
