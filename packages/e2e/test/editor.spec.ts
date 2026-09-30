@@ -90,19 +90,19 @@ test.describe('the header remembers the table (#477)', () => {
     const primary = page.locator('.byd-editor-primary:not(.byd-editor-caret)')
     await expect(primary).toHaveText('Start a table')
     await primary.click()
-    await expect(primary).toHaveText('Update the table')
+    await expect(primary).toHaveAccessibleName('Update the table')
     expect(await tables()).toHaveLength(1)
 
     await page.reload()
     await expect(page.getByText('Minnets bord').first()).toBeVisible()
     // The table outlived the page; the header knows it without being asked.
-    await expect(primary).toHaveText('Update the table')
+    await expect(primary).toHaveAccessibleName('Update the table')
     await expect(page.locator('[data-room-code]')).toHaveText(/\S+/)
     await expect(page.locator('.byd-editor-table-link')).toContainText('The table runs rev-1')
     // The stack renders no textures, so the update waits on them for as long as the test lasts;
     // what matters is which errand the press went on, and that no second table was born.
     await primary.click()
-    await expect(primary).toHaveText('Updating the table…')
+    await expect(primary).toHaveAccessibleName('Updating the table…')
     expect(await tables(), 'the press updated the table the header remembered').toHaveLength(1)
   })
 })
