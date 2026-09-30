@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useT } from '../i18n/index.js'
 import type { VisibleComponentState } from '@byd/protocol'
 import { Texture } from '../table/Texture.js'
@@ -10,6 +10,11 @@ import { readingWidth } from '../legibility.js'
 
 // How far a thumb goes across the card before it is a step to the next one and not a tap.
 const SWIPE_PX = 40
+
+// One printed line as it is read aloud (#551): a line the template ends without a stop gets one,
+// as the prototype read it, so «Playcard» and «Guld» are heard as words of their own and not run
+// into the next line. The words themselves are the designer's and are never changed.
+const spoken = (line: string): string => (/[.!?…:;]$/.test(line) ? line : `${line}.`)
 
 // A card held up large after a tap (K4). It is put down on the next touch, not on click: a tap is
 // a pointerup and then a click, and the click lands on what the pointerup just opened (UX-30).
@@ -66,12 +71,18 @@ export function HeldCard({ card, faces, onClose, actions, row, onStep, smallestP
   const box = useRef<HTMLDivElement | null>(null)
   const swipe = useRef<{ x: number; stepped: boolean } | null>(null)
   const keep = (event: { stopPropagation(): void }) => event.stopPropagation()
+  // What the card prints beside its title (#551, K27), heard as the reader's description when it
+  // opens and again as the row is walked: the texture is a picture, and this is its words. The
+  // name stays the title, so the hand and the felt keep their short names.
+  const printed = useId()
+  const lines = card.text ?? []
   return (
     <div
       className="byd-inspect"
       role="dialog"
       aria-modal="true"
       aria-label={cardName(card, t)}
+      {...(lines.length > 0 ? { 'aria-describedby': printed } : {})}
       onPointerDown={onClose}
       onMouseDown={(event) => { if (!(event.target as Element).closest('button, a, input, select, textarea')) event.preventDefault() }}
       {...(need > 0 ? { style: { ['--byd-read-need' as string]: `${need}px` } } : {})}
@@ -108,6 +119,11 @@ export function HeldCard({ card, faces, onClose, actions, row, onStep, smallestP
         <Texture faces={faces} c={card} retry />
         <span>{cardWord(card)}</span>
       </div>
+      {lines.length > 0 && (
+        <div id={printed} className="byd-offscreen">
+          {lines.map((line, i) => <p key={i}>{spoken(line)}</p>)}
+        </div>
+      )}
       {actions && <div className="byd-inspect-actions" onPointerDown={keep}>{actions}</div>}
       <div className="byd-inspect-walk" onPointerDown={keep}>
         {walkable && (

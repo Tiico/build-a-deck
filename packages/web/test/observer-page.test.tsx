@@ -109,6 +109,40 @@ describe('the observer reads a card in any hand with one gesture (C8, K26, #511)
   })
 })
 
+// Her seats open into lists of cards (#551, beslut A): the keyboard's and the screen reader's way to
+// a card in any hand, and a card opened from there is read aloud with what it prints (K27).
+describe('the observer reads a hand from its list (#551, P-2)', () => {
+  it('opens Ada’s hand from «Platser», and Enter on a card holds it up with its printed words', async () => {
+    const cards = ['dragon', 'knight', 'wizard', 'rogue', 'priest', 'archer', 'golem', 'witch', 'bard', 'ogre']
+    const rules = { kind: 'text', id: 'rules', x: 5, y: 20, w: 53, h: 30, bind: { field: 'rules' }, font: { family: 'sans-serif', sizePt: 9 }, color: '#111' }
+    const id = await createSession(run, 's1', {
+      template: { faces: { front: { base: [rules], variants: {} }, back: { base: [], variants: {} } } },
+      rows: Object.fromEntries(cards.map((ref) => [ref, { title: `Titel ${ref}`, rules: `Gör ${ref}` }])),
+      icons: {},
+    })
+    const ada = TableClient.connect(await asSeat(run, id, 'A'))
+    await ada.ready()
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
+    render(<ObserverPage />)
+    await screen.findByText(/Du är observatör/)
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: /Ada.*2 kort på hand/ }))
+    const first = screen.getByRole('button', { name: 'Titel dragon, i Adas hand' })
+    first.focus()
+    await user.keyboard('{Enter}')
+
+    const reader = await screen.findByRole('dialog', { name: 'Titel dragon' })
+    expect(document.getElementById(reader.getAttribute('aria-describedby')!)!.textContent).toBe('Gör dragon.')
+    expect(reader.textContent).toMatch(/1 av 2/)
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Titel dragon' })).toBeNull())
+    expect(document.activeElement).toBe(first)
+    ada.close()
+  })
+})
+
 describe('the observer screen is not a screen to join from (K12)', () => {
   it('shows no room code at all rather than the session id spelled out', async () => {
     const id = await createSession(run)
@@ -170,7 +204,8 @@ describe('the observer has no seat to leave (#31)', () => {
     expect(screen.queryByRole('button', { name: 'Ut…' })).toBeNull()
     expect(screen.queryByText(/Lämna bordet/)).toBeNull()
     // The question mark is one of them since #305: the help is a control she keeps, not a way out.
-    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['?', expect.stringMatching(/Senast och platser/), expect.stringMatching(/Flagga/)])
+    // The rows of «Platser» open lists to read (#551) and are no way out either.
+    expect(screen.getAllByRole('button').filter((b) => !b.closest('.byd-tv-seats')).map((b) => b.textContent)).toEqual(['?', expect.stringMatching(/Senast och platser/), expect.stringMatching(/Flagga/)])
   })
 })
 

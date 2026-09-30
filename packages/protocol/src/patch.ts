@@ -22,6 +22,12 @@ export const VisibleComponentState = z.object({
   // whenever it may not, and absent as well for a deck whose row carries no title, which falls
   // back to `cardRef` at the reader.
   title: z.string().optional(),
+  // What the card prints beside its title (#551, K27): each text on its face in the template's
+  // order, a symbol as its name in the game's set. The texture is a picture, so this is what the
+  // reading view reads aloud. Hidden information on exactly the terms of `title` — present only
+  // where the seat may see the face, absent wherever it may not, and absent for a deck the server
+  // never read. It rides in the component's `upsert` like every other field of it.
+  text: z.array(z.string()).optional(),
   // Texture hashes the seat may fetch from /faces/:hash: the back for any visible component,
   // the front only when the face itself is visible. The hash is the capability.
   faces: z.record(FaceId, z.string()).optional(),

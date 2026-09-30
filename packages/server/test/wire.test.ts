@@ -664,3 +664,58 @@ describe('a card is called by its title, and the title is hidden information (#4
     }
   }, 60_000)
 })
+
+// What a card prints beside its title (#551, K27) rides beside the title in the projection, and is
+// hidden information on exactly its terms (B6): the seat holding the card is told, the observer is
+// told (C8), and Bo, Cy, Di and the table screen never are — for as long as the face is hidden.
+// The proof is the frames that left the server, never the screen (D4).
+describe('the printed text is hidden information, like the title (#551, B6)', () => {
+  const fourSeats = () => {
+    const setup = twoSeatSetup()
+    const hand = (seat: string, y: number) => ({ id: `hand:${seat}`, kind: 'hand' as const, name: 'Hand', visibility: 'owner' as const, owner: seat, returnTo: 'draw', geometry: { x: -300, y, w: 600, h: 100, rot: 0 } })
+    return { ...setup, seats: ['A', 'B', 'C', 'D'], zones: [...setup.zones, hand('C', 500), hand('D', -600)] }
+  }
+  const front = deck.template.faces['front']!
+  const rules = { kind: 'text' as const, id: 'rules', x: 5, y: 20, w: 53, h: 30, bind: { field: 'rules' }, font: { family: 'sans-serif', sizePt: 9 }, color: '#111' }
+  const words: Record<string, string> = { dragon: 'Spottar eld', knight: 'Rider fort' }
+  const worded = {
+    ...deck,
+    template: { faces: { ...deck.template.faces, front: { ...front, base: [...front.base, rules] } } },
+    rows: Object.fromEntries(Object.entries(deck.rows).map(([id, row]) => [id, { ...row, rules: words[id] ?? `Gör ${id}` }])),
+  }
+
+  it('reaches Ada and the observer, and never Bo, Cy, Di or the table — verified on raw frames', async () => {
+    const res = await fetch(`${run.http}/sessions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: 'printed', version: 'v1', setup: fourSeats(), deck: worded }),
+    })
+    expect(res.status).toBe(201)
+    registerRoom('printed', (await res.json()) as { code: string; hostKey: string })
+    const a = await connect('printed', 'A')
+    const others = [await connect('printed', 'B'), await connect('printed', 'C'), await connect('printed', 'D'), await connect('printed', null)]
+    const eva = await connect('printed', null, { role: 'observer', name: 'Eva' })
+
+    // Ada draws the dragon into her hand, and lays the next card face-down on the table.
+    await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await a.send('A', { v: 'draw', from: 'draw', to: 'table', count: 1 })
+    for (const c of [a, ...others, eva]) await c.synced(2)
+
+    expect(a.view!.components.find((c) => c.zone === 'hand:A')).toMatchObject({ cardRef: 'dragon', text: ['Spottar eld'] })
+    expect(eva.view!.components.find((c) => c.zone === 'hand:A')).toMatchObject({ text: ['Spottar eld'] })
+    expect(eva.view!.components.find((c) => c.zone === 'table')).toMatchObject({ face: 'back', text: ['Rider fort'] })
+    for (const other of others) {
+      expect(other.frames.join('\n')).not.toMatch(/Spottar eld|Rider fort/)
+      expect(componentsOnWire(other).filter((c) => c.text !== undefined)).toHaveLength(0)
+    }
+
+    // Turned face-up, the card on the table is read by everyone, and its words with it; the hand
+    // is still Ada's alone.
+    await a.send('A', { v: 'flip', component: a.view!.components.find((c) => c.zone === 'table')!.id, face: 'front' })
+    for (const other of others) {
+      await other.synced(3)
+      expect(other.view!.components.find((c) => c.zone === 'table')).toMatchObject({ text: ['Rider fort'] })
+      expect(other.frames.join('\n')).not.toMatch(/Spottar eld/)
+    }
+  }, 60_000)
+})

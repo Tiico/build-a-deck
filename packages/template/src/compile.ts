@@ -424,6 +424,60 @@ function attr(s: string): string {
   return escape(s).replace(/"/g, '&quot;')
 }
 
+// What one face says in words, apart from what the card is called (#551, K27): the words a reader
+// hears when the card is held up to be read, since the texture itself is a picture. It is read off
+// exactly the elements `compile` draws for this row — the same variant, the same conditions — in
+// the template's order, so the words cannot say something the picture does not.
+//
+// The title is left out because every surface already says it as the card's name (#412). A symbol
+// is read as its name in the game's set and a pip as its number; bold and italic are how the words
+// look and not what they say. Each paragraph and each list item is a line of its own, and an icon
+// row is one line of its symbols' names. Nothing printed is nothing: a picture or a shape says no
+// words, and an empty cell prints no line.
+export function printedText(input: Pick<CompileInput, 'face' | 'row'>): string[] {
+  const lines: string[] = []
+  const say = (nodes: readonly InlineNode[]): string => nodes.map(spoken).join('').replace(/\s+/g, ' ').trim()
+  const walk = (els: readonly Element[]): void => {
+    for (const el of els) {
+      if (el.kind === 'text') {
+        if ('field' in el.bind && el.bind.field === TITLE_FIELD) continue
+        for (const block of parseBody(resolve(el.bind, input.row))) {
+          for (const nodes of block.type === 'paragraph' ? [block.children] : block.items) {
+            const line = say(nodes)
+            if (line.length > 0) lines.push(line)
+          }
+        }
+      } else if (el.kind === 'icons') {
+        const names = resolve(el.bind, input.row).split(/[\s,]+/).filter((n) => n.length > 0)
+        if (names.length > 0) lines.push(names.map((n) => spoken(iconNode(n))).join(', '))
+      } else if (el.kind === 'if') {
+        if (holds(el.when, input.row)) walk(el.children)
+      } else if (el.kind === 'group') {
+        walk(el.children)
+      }
+    }
+  }
+  walk(elementsFor(input.face, input.row))
+  return lines
+}
+
+// The column a card's name is read from (#412): the same one `titleOfFields` reads on the server.
+const TITLE_FIELD = 'title'
+
+function spoken(n: InlineNode): string {
+  switch (n.type) {
+    case 'text':
+      return n.text
+    case 'bold':
+    case 'italic':
+      return n.children.map(spoken).join('')
+    case 'icon':
+      return n.name
+    case 'ref':
+      return n.id
+  }
+}
+
 export type CompileCardInput = Omit<CompileInput, 'face'> & { template: Template }
 
 // One card, every face the type declares (L7). A face the template lacks is an error: a card

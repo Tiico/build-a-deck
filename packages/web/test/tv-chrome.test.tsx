@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, renderHook, screen, within } from '@testing-library/react'
-import { projectActivity } from '@byd/engine'
+import { project, projectActivity } from '@byd/engine'
+import { userEvent } from '@testing-library/user-event'
 import { TvChrome } from '../src/table/TvChrome.js'
 import { seatColor } from '../src/table/seatColor.js'
 import { SHOW_MS, type Shown } from '../src/table/presence.js'
 import { useShowing } from '../src/table/useShowing.js'
-import { buildScene } from './scene.js'
+import { buildScene, registry } from './scene.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -288,6 +289,60 @@ describe('the inspect box names the card by its title (#412)', () => {
   it('writes «Björnen» for the row `bjornen`, and the id for a row with no title', () => {
     expect(shownWith({ cardRef: 'bjornen', title: 'Björnen' })).toBe('Björnen')
     expect(shownWith({ cardRef: 'bjornen' })).toBe('bjornen')
+  })
+})
+
+// The observer's «Platser» is the way to the cards for a screen reader and for a thumb (#551, beslut A,
+// P-2, P-17): each hand and each zone a list that opens, a card per row, and a card opens the reader.
+describe('the observer’s seats open into lists of cards (#551)', () => {
+  const observed = () => {
+    const scene = buildScene()
+    const cards = Object.values(scene.state.components).map((c) => c.cardRef)
+    const titles = Object.fromEntries(cards.map((ref) => [ref, `Kort ${ref}`]))
+    return { scene, view: project(scene.state, registry, null, { titles }, undefined, true) }
+  }
+  const mount = (onRead = vi.fn()) => {
+    const { scene, view } = observed()
+    render(
+      <TvChrome view={view} activity={scene.log.map(projectActivity)} onRead={onRead}>
+        <div />
+      </TvChrome>,
+    )
+    return { view, onRead }
+  }
+
+  it('makes a seat holding cards a button that opens its hand, a card per row, named where it lies', async () => {
+    const { view, onRead } = mount()
+    const ada = screen.getByRole('button', { name: /Ada.*2 kort på hand/ })
+    expect(ada.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByRole('button', { name: /i Adas hand/ })).toBeNull()
+    // A seat with nothing in its hand has nothing to open.
+    expect(screen.queryByRole('button', { name: /^B/ })).toBeNull()
+
+    await userEvent.click(ada)
+    expect(ada.getAttribute('aria-expanded')).toBe('true')
+    const hand = view.components.filter((c) => c.zone === 'hand:A')
+    const rows = screen.getAllByRole('button', { name: /i Adas hand$/ })
+    expect(rows.map((r) => r.getAttribute('aria-label'))).toEqual(hand.map((c) => `${c.title}, i Adas hand`))
+
+    // Enter on a card opens the reader, with the rest of the hand to walk.
+    rows[1]!.focus()
+    await userEvent.keyboard('{Enter}')
+    expect(onRead).toHaveBeenCalledWith(hand[1], hand)
+  })
+
+  it('lists what lies on the table, zone by zone: a pile by its top, a face-down card said as such', async () => {
+    const { view } = mount()
+    const onTable = screen.getByRole('list', { name: 'På bordet' })
+    const discard = view.zones.find((z) => z.id === 'discard')!
+    const top = view.components.find((c) => discard.mode === 'order' && c.id === discard.order[0])!
+    const pile = within(onTable).getByRole('button', { name: new RegExp(`Kasthög.*hög, 3 kort, överst ${top.title}`) })
+    await userEvent.click(pile)
+    expect(within(onTable).getAllByRole('button', { name: /, i Kasthög$/ }).map((b) => b.getAttribute('aria-label'))).toEqual([`${top.title}, i Kasthög`])
+
+    await userEvent.click(within(onTable).getByRole('button', { name: /Spelyta.*2 kort/ }))
+    const down = view.components.find((c) => c.zone === 'table' && c.face === 'back')!
+    expect(within(onTable).getByRole('button', { name: `${down.title}, nedvänt, i Spelyta` }).textContent).toBe(`${down.title} (nedvänt)`)
   })
 })
 

@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { chromium, type Browser, type Page } from 'playwright'
 import { contrastRatio, flatten } from '../src/player/contrast.js'
 import { TableClient } from '../src/client.js'
@@ -35,7 +35,7 @@ const SEATS = 4
 const TABLE = feltOf(SEATS)
 
 // The observer's page as it mounts against a real session, with every seat holding cards.
-async function markup(size: Size, box: Size | null = null): Promise<string> {
+async function markup(size: Size, box: Size | null = null, opened = false): Promise<string> {
   atWindow(size)
   const id = await createSession(run, `obs${++sessions}`, undefined, defOf(TABLE))
   const seated = await Promise.all(TABLE.seats.map((seat) => asSeat(run, id, seat, `Spelare ${seat}`).then((at) => TableClient.connect(at))))
@@ -47,6 +47,12 @@ async function markup(size: Size, box: Size | null = null): Promise<string> {
     try {
       await screen.findByText(/Du är observatör/)
       await waitFor(() => expect(feltIsFitted()).toBe(true))
+      // Her column called in, and Ada's hand opened in it (#551): the list as she reads it.
+      if (opened) {
+        fireEvent.click(screen.getByRole('button', { name: /Senast och platser/ }))
+        fireEvent.click(await screen.findByRole('button', { name: /^A.*kort på hand/ }))
+        await screen.findAllByRole('button', { name: /, i Adas hand$/ })
+      }
       return document.querySelector('#root, body')!.innerHTML
     } finally {
       unmount()
@@ -186,6 +192,31 @@ describe.each(WINDOWS)('the observer at $w × $h', (size) => {
       })),
     )
     expect(measured).toEqual({ overflow: 0, small: [] })
+  }, 90_000)
+})
+
+// Her «Platser» open into lists (#551, beslut A; P-17): a card a row, and every row a thumb can hit
+// on its own. At 390 the felt's fans gave a card 26 × 12 px; the list is the control beside them
+// that does not ask a thumb to find a sliver.
+describe.each([NARROW, PHONE, DESK])('the observer’s opened hand at $w × $h', (size) => {
+  it('gives every card its own row of at least 44 px, and the page no sideways scroll', async () => {
+    const measured = await measure(
+      size,
+      (page) =>
+        page.evaluate(() => {
+          const rows = [...document.querySelectorAll<HTMLElement>('.byd-tv-cards button')].filter((el) => el.checkVisibility())
+          const boxes = rows.map((el) => el.getBoundingClientRect())
+          return {
+            rows: rows.length,
+            small: boxes.filter((b) => b.width < 44 || b.height < 44).length,
+            overlapping: boxes.slice(1).filter((b, i) => b.top < boxes[i]!.bottom - 0.5).length,
+            overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          }
+        }),
+      await markup(size, null, true),
+    )
+    expect(measured).toEqual({ rows: expect.any(Number), small: 0, overlapping: 0, overflow: 0 })
+    expect(measured.rows).toBeGreaterThan(0)
   }, 90_000)
 })
 
