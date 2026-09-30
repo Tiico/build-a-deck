@@ -38,7 +38,9 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
   // backwards is what makes the hand grow towards the reading direction: the card that just
   // arrived is last, and the cards already held keep the places the eye left them in.
   const hand = view.components.filter((c) => c.zone === `hand:${view.seat}`).reverse()
-  const tracking = useRef<{ card: VisibleComponentState; t: Tracking; timer: ReturnType<typeof setTimeout> } | null>(null)
+  // `to` is where the carried card would land now, kept here and not read from `carrying`: the lift
+  // can arrive before the last move has been drawn (#590), and then the render's `carrying` is old.
+  const tracking = useRef<{ card: VisibleComponentState; t: Tracking; timer: ReturnType<typeof setTimeout>; from?: number; to?: number } | null>(null)
 
   // The marked card is the one the buttons under the strip act on, so it is the one that has to
   // be in view (#415). Which card that is, and how many cards are held, are the two things that
@@ -57,10 +59,10 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
     if (card) keepInView(el, card)
   }, [markedId, hand.length])
 
-  // The card a resting thumb has lifted, and the one being carried along the strip: where it
-  // started, where it would land now, and how far the thumb has gone (K4, #483).
+  // The card a resting thumb has lifted, and the one being carried along the strip and how far the
+  // thumb has gone with it (K4, #483). Where it would land is the gesture's, in `tracking`.
   const [lifting, setLifting] = useState<string | null>(null)
-  const [carrying, setCarrying] = useState<{ id: string; from: number; to: number; dx: number } | null>(null)
+  const [carrying, setCarrying] = useState<{ id: string; dx: number } | null>(null)
   const fire = (g: 'tap' | 'hold' | 'lift' | 'sort' | null, card: VisibleComponentState) => {
     if (g === 'tap') onTap(card)
     if (g === 'hold') onHold(card)
@@ -93,7 +95,9 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
     if (cur.t.decided) clearTimeout(cur.timer)
     if (g === 'sort' || cur.t.decided === 'sort') {
       const from = hand.findIndex((c) => c.id === cur.card.id)
-      setCarrying({ id: cur.card.id, from, to: landingAt(x, from), dx: x - cur.t.x })
+      cur.from = from
+      cur.to = landingAt(x, from)
+      setCarrying({ id: cur.card.id, dx: x - cur.t.x })
       // A carried card near the strip's edge brings the rest of the hand to it.
       const box = strip.current?.getBoundingClientRect()
       if (strip.current && box) {
@@ -110,7 +114,7 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
     clearTimeout(cur.timer)
     setLifting(null)
     if (cur.t.decided === 'sort') {
-      if (carrying && carrying.to !== carrying.from) onReorder?.(cur.card, carrying.to)
+      if (cur.to !== undefined && cur.to !== cur.from) onReorder?.(cur.card, cur.to)
       setCarrying(null)
       tracking.current = null
       return
