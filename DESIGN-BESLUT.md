@@ -3112,7 +3112,7 @@ Grindar: `packages/e2e/test/tv-text-floor.spec.ts` (ingen text på TV:n under 24
 
 Kortets text fanns bara i den renderade bilden (#560 P-1): en skärmläsare hörde titeln och inget mer, så fyra olika Duel-kort i samma lek lät likadant.
 Observatörens bord hade inga kortnamn alls i tillgänglighetsträdet och ingen tangentbordsväg till ett kort (P-2), och handfläktarnas kort var ungefär 26 × 12 px träffytor på 390 px (P-17).
-Tre varianter prototypades och mättes i Chromium ([`04-kortets-text.html`](https://github.com/Tiico/build-a-deck/blob/8e053ec85b1dc9656c33f8d6d3eec8ed270cc0d2/docs/ux-audits/2026-09-29-tillganglighet/prototyper/04-kortets-text.html)); beställaren valde A.
+Tre varianter prototypades och mättes i Chromium ([`04-kortets-text.html`](https://github.com/Tiico/build-a-deck/blob/69b7e10eec66a8eb6b233e29d6567fbc0af2e66f/docs/ux-audits/2026-09-29-tillganglighet/prototyper/04-kortets-text.html)); beställaren valde A.
 
 **Projektionen bär kortets tryck.**
 `VisibleComponentState` får fältet `text: string[]`: det som står tryckt på kortet utöver titeln, i mallens ordning.
