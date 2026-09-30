@@ -3108,6 +3108,50 @@ A lade varje ord där det står, i 24 px: etiketterna trängdes vid hörnen vid 
 B flyttade platsernas ord till spalten: filten blev lugnast, men vid åtta platser trycktes INSPEKTION ihop till nästan ingenting.
 Grindar: `packages/e2e/test/tv-text-floor.spec.ts` (ingen text på TV:n under 24 px vid 2, 4 och 8 platser; skyltarna täcker varken högarna eller varandra; K9:s kort håller) och `packages/web/test/tv-seat-plates.test.tsx`.
 
+### K27. Kortets tryck hörs i läsvyn, och observatörens platser är listor (prototypat 2026-09-29, beslutat 2026-09-30, #551)
+
+Kortets text fanns bara i den renderade bilden (#560 P-1): en skärmläsare hörde titeln och inget mer, så fyra olika Duel-kort i samma lek lät likadant.
+Observatörens bord hade inga kortnamn alls i tillgänglighetsträdet och ingen tangentbordsväg till ett kort (P-2), och handfläktarnas kort var ungefär 26 × 12 px träffytor på 390 px (P-17).
+Tre varianter prototypades och mättes i Chromium ([`04-kortets-text.html`](https://github.com/Tiico/build-a-deck/blob/8e053ec85b1dc9656c33f8d6d3eec8ed270cc0d2/docs/ux-audits/2026-09-29-tillganglighet/prototyper/04-kortets-text.html)); beställaren valde A.
+
+**Projektionen bär kortets tryck.**
+`VisibleComponentState` får fältet `text: string[]`: det som står tryckt på kortet utöver titeln, i mallens ordning.
+Det är en protokollmigrering, och den står här av det skälet.
+Fältet härleds i `project` ur exakt samma `canSeeFace` som `cardRef`, `title` och framsidans hash (B6), så det finns där ansiktet får ses och saknas annars.
+Raderna läses av `printedText` i `packages/template` ur samma element som `compile` ritar för raden, med samma variant och samma villkor, så orden kan inte säga något bilden inte säger.
+Servern läser dem i `facesOf` i samma pass som titeln och texturernas hash.
+Varje stycke och varje listpunkt är en rad, en ikonrad är en rad med symbolernas namn, och bild och form säger inget.
+En symbol läses som sitt namn i spelets Symboler, till exempel «Guld» (tillägget till beslutet); ett pip läses som sitt tal, och fetstil och kursiv är utseende och inte ord.
+Inget nytt fält för ikonerna.
+
+**Sidan som ligger upp.**
+Beslutet säger att `text` följer den sida som ligger upp, som titeln.
+Under B6 sammanfaller det med innehållssidan för varje vy som får höra orden: en vy ser ansiktet antingen för att det ligger upp, eller för att den håller kortet, har tittat på det eller är observatören, och då visas den kortets framsida — bilden ritas ur framsidans hash, och läsvyn läser det bilden visar.
+Ett kort vars andra sida ligger upp för en vy utan sådan rätt har ingen `text`, precis som det saknar titel.
+En framtida typ med ord på båda sidor, där baksidans ord ska höras när den ligger upp, är därför en egen fråga och inget denna implementation hittar på.
+
+**Texten hörs när läsvyn öppnas, och bara där.**
+Läsvyn (`HeldCard`) är en dialog som heter kortets titel och beskrivs av trycket, en rad per stycke; en rad som inte slutar med skiljetecken får en punkt när den läses, så «Playcard» och «Guld» hörs som egna ord.
+När raden bläddras läses nästa korts ord.
+Kortens namn i handen och på filten förblir korta, och tabbstoppen i hand och filt är oförändrade.
+Det är K26:s enda handling till läsning, och en skärmläsare får texten på samma villkor som ögat.
+
+**Observatörens «Platser» fälls ut.**
+Varje hand är en rad som öppnar sina kort, och under «På bordet» är varje zon med kort en rad på samma sätt; en hög listas med sitt översta kort, och raden säger «hög, 108 kort, överst …».
+Ett kort per rad, minst 44 px högt, med namnet och var det ligger: «Duel, i Adas hand», och «The Heist, nedvänt, i Framför A» för ett nedvänt kort på bordet.
+Enter eller ett tryck på ett kort öppnar läsvyn med resten av listan att bläddra i, på skrivbordet som på telefonen, och Escape lämnar tillbaka fokus till raden.
+En rad utan kort är ingen knapp.
+Med en lista öppen rullar observatörens spalt på skrivbordet som helhet, i stället för att klämma inspektionskortet under sitt golv.
+Filten ritas som förut och går att trycka på som förut; listan är den likvärdiga kontrollen bredvid den (WCAG 2.5.8:s undantag), inte en lagning av filten.
+
+De avvisade varianterna var B, fälten med lagrens namn som etikett överallt, och C, en uppläsningsmening designern skriver.
+B gjorde varje pil i remsan till ett helt kort att lyssna igenom och gav verkstadsord som «Text 3» som etiketter; C krävde en ny redigeringsyta och löste inte P-17.
+B:s adress på observatörens filt går att lägga till senare utan att tråden ändras, om listan visar sig för lång vid åtta platser.
+
+Följdkrav:
+Trycket är dold information och bevisas på råa frames (D4): `packages/server/test/wire.test.ts` visar att Ada och observatören får `text` och att Bo, Cy, Di och bordet aldrig får den för ett dolt kort.
+`packages/template/test/printed.test.ts` håller läsningen av mallen, `packages/engine/test/printed-text.test.ts` härledningen, och `packages/web/test/held-card.test.tsx`, `tv-chrome.test.tsx`, `observer-page.test.tsx` och `observer-viewport.test.tsx` läsvyn, listorna och 44 px vid 320, 390 och 1280.
+
 ## L. Editorn (grillad 2026-09-06)
 
 E1, E2 och E3 gav principerna; det här är hur de blir konkreta.
