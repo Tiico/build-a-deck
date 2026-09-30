@@ -36,6 +36,11 @@ Bredderna en yta granskas i följer vem som håller ytan (DESIGN-BESLUT L12):
   därför också med pekinmatning och grov pekare i 1024×640 och 1180×746, och
   i 820×1106 för etapperna. Där prövas att allt går med fingret och att inga
   kontroller kräver att man rullar runt för att nå dem.
+  Ett zoomat skrivbord är också ett skrivbord (L12, tillägg 2026-09-30): editorn och
+  `/new` granskas med mus vid 640×400 och 320×256, alltså 200 % och 400 % zoom.
+  Där ska mallen finnas kvar, sidan får rulla uppåt och nedåt men aldrig i sidled,
+  och etappremsan respektive Föregående/Nästa ska stå kvar längst ner (L10, undantag
+  2026-09-30).
 - **Bordets skärm** — `/table` — är en TV och har sina egna mått (K9, C5).
 
 Allt annat nedan gäller **varje** yta oavsett bredd. Tillgänglighet är inte

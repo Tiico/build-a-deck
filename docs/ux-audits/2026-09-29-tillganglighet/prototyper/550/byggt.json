@@ -1,0 +1,238 @@
+[
+  {
+    "variant": "nu",
+    "window": "1280×800 @200 %",
+    "wall": {
+      "room": "tablet",
+      "tabs": [
+        "Kortvägg",
+        "Verktyg",
+        "Lager",
+        "Duk",
+        "Egenskaper",
+        "Tabell*",
+        "Symboler*",
+        "Media*",
+        "Regler*",
+        "Bord*"
+      ],
+      "template": true,
+      "tabCount": 10,
+      "wall": 347,
+      "cardsInView": 2,
+      "table": null,
+      "rowsInView": 0,
+      "work": 347,
+      "hscroll": false,
+      "pageScrolls": true,
+      "header": 65,
+      "stagebar": 53
+    },
+    "table": {
+      "room": "tablet",
+      "tabs": [
+        "Kortvägg*",
+        "Verktyg",
+        "Lager",
+        "Duk",
+        "Egenskaper",
+        "Tabell",
+        "Symboler*",
+        "Media*",
+        "Regler*",
+        "Bord*"
+      ],
+      "template": true,
+      "tabCount": 10,
+      "wall": null,
+      "cardsInView": 0,
+      "table": 347,
+      "rowsInView": 5,
+      "work": 347,
+      "hscroll": false,
+      "pageScrolls": true,
+      "header": 65,
+      "stagebar": 53
+    },
+    "template": {
+      "room": "tablet",
+      "tabs": [
+        "Kortvägg*",
+        "Verktyg",
+        "Lager",
+        "Duk",
+        "Egenskaper",
+        "Tabell",
+        "Symboler*",
+        "Media*",
+        "Regler*",
+        "Bord*"
+      ],
+      "template": true,
+      "tabCount": 10,
+      "wall": null,
+      "cardsInView": 0,
+      "table": null,
+      "rowsInView": 0,
+      "work": 347,
+      "hscroll": false,
+      "pageScrolls": true,
+      "header": 65,
+      "stagebar": 53
+    },
+    "wizard": {
+      "room": "steps",
+      "panelTop": 0,
+      "readable": 339,
+      "navFixed": "sticky",
+      "hscroll": false,
+      "pageScrolls": true
+    }
+  },
+  {
+    "variant": "nu",
+    "window": "1280×1024 @400 %",
+    "wall": {
+      "room": "tablet",
+      "tabs": [
+        "Kortvägg*",
+        "Verktyg*",
+        "Lager*",
+        "Duk*",
+        "Egenskaper*",
+        "Tabell*",
+        "Symboler*",
+        "Media*",
+        "Regler*",
+        "Bord*"
+      ],
+      "template": true,
+      "tabCount": 10,
+      "wall": 203,
+      "cardsInView": 1,
+      "table": null,
+      "rowsInView": 0,
+      "work": 203,
+      "hscroll": false,
+      "pageScrolls": true,
+      "header": 109,
+      "stagebar": 53
+    },
+    "table": {
+      "room": "tablet",
+      "tabs": [
+        "Kortvägg*",
+        "Verktyg*",
+        "Lager*",
+        "Duk*",
+        "Egenskaper*",
+        "Tabell",
+        "Symboler*",
+        "Media*",
+        "Regler*",
+        "Bord*"
+      ],
+      "template": true,
+      "tabCount": 10,
+      "wall": null,
+      "cardsInView": 0,
+      "table": 203,
+      "rowsInView": 2,
+      "work": 203,
+      "hscroll": false,
+      "pageScrolls": true,
+      "header": 109,
+      "stagebar": 53
+    },
+    "template": {
+      "room": "tablet",
+      "tabs": [
+        "Kortvägg*",
+        "Verktyg*",
+        "Lager*",
+        "Duk",
+        "Egenskaper*",
+        "Tabell*",
+        "Symboler*",
+        "Media*",
+        "Regler*",
+        "Bord*"
+      ],
+      "template": true,
+      "tabCount": 10,
+      "wall": null,
+      "cardsInView": 0,
+      "table": null,
+      "rowsInView": 0,
+      "work": 203,
+      "hscroll": false,
+      "pageScrolls": true,
+      "header": 109,
+      "stagebar": 53
+    },
+    "wizard": {
+      "room": "steps",
+      "panelTop": 0,
+      "readable": 195,
+      "navFixed": "sticky",
+      "hscroll": false,
+      "pageScrolls": true
+    }
+  },
+  {
+    "variant": "nu",
+    "window": "telefon 390×844",
+    "wall": {
+      "room": "phone",
+      "tabs": [
+        "Kortvägg",
+        "Tabell*",
+        "Symboler*",
+        "Media*",
+        "Regler*",
+        "Bord*"
+      ],
+      "template": false,
+      "tabCount": 6,
+      "wall": 376,
+      "cardsInView": 2,
+      "table": null,
+      "rowsInView": 0,
+      "work": 485,
+      "hscroll": false,
+      "pageScrolls": false,
+      "header": 109,
+      "stagebar": 53
+    },
+    "table": {
+      "room": "phone",
+      "tabs": [
+        "Kortvägg*",
+        "Tabell",
+        "Symboler*",
+        "Media*",
+        "Regler*",
+        "Bord*"
+      ],
+      "template": false,
+      "tabCount": 6,
+      "wall": null,
+      "cardsInView": 0,
+      "table": 324,
+      "rowsInView": 4,
+      "work": 485,
+      "hscroll": false,
+      "pageScrolls": false,
+      "header": 109,
+      "stagebar": 53
+    },
+    "wizard": {
+      "room": "steps",
+      "panelTop": 172,
+      "readable": 611,
+      "navFixed": "static",
+      "hscroll": false,
+      "pageScrolls": false
+    }
+  }
+]

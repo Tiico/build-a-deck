@@ -109,7 +109,13 @@ test.describe('the height the Bord tab works with', () => {
     // replaced, and a guard that cannot tell a rule from the sentence explaining it would fail on
     // the explanation.
     const rules = editorCss.replaceAll(/\/\*[\s\S]*?\*\//g, '')
-    expect([...rules.matchAll(/[^;{}]*calc\(\s*100[dls]*vh\s*-[^;}]*/g)].map((m) => m[0].trim())).toEqual([])
+    // One subtraction is not a guess, and it is the only one allowed: the stage strip's own height
+    // (#550). In a low window the work is a whole window less the strip, and the strip is drawn at
+    // exactly `--byd-editor-stagebar-h` — the rule that sizes it is asserted below, so the number
+    // and the strip cannot come apart.
+    const guesses = [...rules.matchAll(/[^;{}]*calc\(\s*100[dls]*vh\s*-[^;}]*/g)].map((m) => m[0].trim()).filter((rule) => !/^height: calc\(100dvh - var\(--byd-editor-stagebar-h\)\)$/.test(rule))
+    expect(guesses).toEqual([])
+    expect(rules).toMatch(/\.byd-editor-stagebar \{[^}]*\bheight: var\(--byd-editor-stagebar-h\)/)
   })
 
   test('is found at all, so this guard cannot pass by reading an empty file', () => {

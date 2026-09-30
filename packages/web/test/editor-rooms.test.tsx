@@ -23,8 +23,8 @@ afterEach(async () => {
   await run.stop()
 })
 
-async function editorAt(width: number) {
-  atWidth(width)
+async function editorAt(width: number, pointer?: 'fine' | 'coarse') {
+  atWidth(width, pointer ? { pointer } : {})
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(<EditorPage />)
   await screen.findByText('Skogens herrar')
@@ -51,6 +51,27 @@ describe('the editor on a phone (L10)', () => {
     await userEvent.click(document.querySelector('[data-card-ref="knight"] [data-element="title"]')!)
     expect(document.querySelector('[data-mode]')!.getAttribute('data-mode')).toBe('wall')
     expect(document.querySelector('.byd-canvas')).toBeNull()
+  })
+})
+
+// A desk zoomed to 200 or 400 % is a narrow window with a mouse in it (#550, L12 tillägg
+// 2026-09-30). Width alone called it a phone and took the template away from someone at a desk;
+// the pointer says who is holding the surface, which is the line L12 draws.
+describe('the editor under a mouse, however narrow the window (L12)', () => {
+  for (const width of [640, 320]) {
+    it(`keeps the template's stages at ${width} px, and does not say it is a phone`, async () => {
+      await editorAt(width, 'fine')
+      expect(tabNames()).toEqual(['Kortvägg', 'Verktyg', 'Lager', 'Duk', 'Egenskaper', 'Tabell', 'Symboler', 'Media', 'Regler', 'Bord'])
+      expect(screen.queryByText(/Mallen ritas inte på telefon/)).toBeNull()
+      expect(document.querySelector('.byd-editor')!.getAttribute('data-room')).toBe('tablet')
+    })
+  }
+
+  it('leaves a phone the room it has always had', async () => {
+    await editorAt(390, 'coarse')
+    expect(document.querySelector('.byd-editor')!.getAttribute('data-room')).toBe('phone')
+    expect(tabNames()).toEqual(['Kortvägg', 'Tabell', 'Symboler', 'Media', 'Regler', 'Bord'])
+    expect(screen.getByText(/Mallen ritas inte på telefon/)).toBeTruthy()
   })
 })
 
