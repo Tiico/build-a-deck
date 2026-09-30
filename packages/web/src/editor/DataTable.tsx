@@ -1624,20 +1624,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 <td
                   key={f}
                   data-col={f}
-                  // The lane the icon control stands in (#140). It is declared on every cell of a
-                  // column the icon path reaches, and not only on the one being worked in: the
-                  // control is drawn in one cell at a time, and a lane that came and went with it
-                  // would move every field in the column the moment the caret arrived.
-                  {...(onSymbol && f !== ANTAL ? { 'data-rail': 'true' } : {})}
                   className={brace?.cardRef === cardRef && brace.field === f ? 'byd-data-picking' : undefined}
                 >
                   {moved(changeOf(cardRef), f) && <s className="byd-data-was">{String(wasCell(cardRef, f) ?? '')}</s>}
-                  {/* The field and the lane its control stands in, as one grid (#140). It is a box
-                      inside the cell and not the cell itself: `display: grid` on a `<td>` stops it
-                      being a table cell at all, and the table then wraps every run of them in one
-                      anonymous cell where they stack — two railed columns measured a 90 px row
-                      where the editor allows 44. The picker below hangs off the cell, which is
-                      what `position: relative` is on, so it stays outside this box. */}
+                  {/* The field and the tab its icon control hangs from (#593). It is a box inside
+                      the cell and not the cell itself, so the tab can stand on the field's own
+                      corner; the picker below hangs off the cell, which it always has. */}
                   <div className="byd-data-lane">
                   <input
                     readOnly={reading}
@@ -1713,10 +1705,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       writes the brace and opens the same picker typing one does — one way in, seen
                       rather than known. Only in the cell being worked in: one handle per cell is a
                       wall of braces on screen, and a hundred stops in the tab order.
-                      It stands after the field and not before it, because that is where it stands
-                      on the screen: the cell is a grid and the two are laid out in the order they
-                      are written (#140). It is also the order they are read in — the field, and
-                      then the control that belongs to it. */}
+                      It stands after the field and not before it: the field, and then the control
+                      that belongs to it, which is the order they are read in (#140). On the screen
+                      it is a tab on the field's top right corner (#593). */}
                   {onSymbol && f !== 'antal' && here?.cardRef === cardRef && here.field === f && (
                     <button
                       type="button"
