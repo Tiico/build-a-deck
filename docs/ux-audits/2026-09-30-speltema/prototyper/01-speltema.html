@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 01 — Speltema (#612)</title>
+<!-- PROTOTYP, #612. Kastas när en variant är vald. Tre vyer (Speltema-fliken, klammern i Tabell,
+     wizardens temasteg), var och en med strukturellt olika varianter. ?vy=tema|tabell|wizard&variant=A|B|C.
+     Ingenting här importeras av appen. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;600;700&family=Lora:wght@400;600&family=Merriweather:wght@400;700&family=Oswald:wght@500&family=Roboto+Condensed:wght@400;700&family=Space+Grotesk:wght@500;700&display=swap">
+<link rel="stylesheet" href="proto.css">
+<style>
+  h2 { margin: 0 0 var(--s3); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  h3 { margin: 0 0 var(--s2); font-size: 13px; color: #fff; }
+  p.lead { margin: 0 0 var(--s3); color: var(--quiet-2); line-height: 1.5; max-width: 62ch; }
+  .knapp { min-height: 32px; border: 1px solid var(--line); border-radius: 8px; padding: 0 11px; background: var(--sunk); color: #e6ecfa; font: inherit; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .knapp:hover { border-color: var(--primary-mark); }
+  .knapp.primar { background: var(--primary); border-color: var(--primary); font-weight: 700; }
+  .lank { border: 0; background: none; color: #8ab8f0; font: inherit; cursor: pointer; padding: 4px 0; text-decoration: underline; text-underline-offset: 3px; }
+  select { min-height: 32px; border: 1px solid var(--line); border-radius: 8px; background: #0f1115; color: #fff; font: inherit; padding: 0 8px; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #8ad0ff; }
+
+  /* ── Kortet, ritat med temat ─────────────────────────────────────────────── */
+  .kort { width: 220px; aspect-ratio: 63 / 88; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.45); flex: none; position: relative; }
+  .kort .topp { display: flex; align-items: center; gap: 6px; }
+  .kort .titel { font-size: 15px; line-height: 1.15; flex: 1; }
+  .kort .kostnad { display: inline-flex; align-items: center; gap: 1px; }
+  .kort .bild { flex: 1; border-radius: 6px; background: repeating-linear-gradient(45deg, rgba(0,0,0,.06) 0 6px, rgba(0,0,0,.02) 6px 12px); border: 1px solid rgba(0,0,0,.12); }
+  .kort .text { font-size: 11.5px; line-height: 1.45; min-height: 52px; }
+  .kort.stor { width: 300px; padding: 16px; }
+  .kort.stor .titel { font-size: 20px; }
+  .kort.stor .text { font-size: 14px; }
+  .kort.liten { width: 120px; padding: 7px; gap: 5px; border-radius: 7px; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
+  .kort.liten .titel { font-size: 9.5px; }
+  .kort.liten .text { font-size: 7.5px; min-height: 30px; }
+  .sym { display: inline-block; width: 1.1em; height: 1.1em; vertical-align: -0.18em; }
+  .sym svg { display: block; width: 100%; height: 100%; }
+  [data-klick] { cursor: pointer; outline: 1px dashed transparent; outline-offset: 2px; border-radius: 3px; }
+  [data-klick]:hover { outline-color: var(--primary-mark); }
+  [data-klick].vald { outline: 2px solid var(--primary-mark); }
+
+  /* Ett prov står alltid mot kortets papper (L34). */
+  .papper { display: inline-grid; place-items: center; border-radius: 5px; padding: 3px; }
+
+  /* ── Ytan ────────────────────────────────────────────────────────────────── */
+  .yta { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--s5) var(--gutter) 120px; }
+  .paneler { display: grid; gap: var(--s4); }
+  .sektion { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: var(--s4); }
+  .sektion > header { display: flex; align-items: baseline; gap: var(--s3); margin-bottom: var(--s3); }
+  .sektion > header h3 { margin: 0; }
+  .sektion > header small { color: var(--quiet); }
+  .sektion > header .knapp, .sektion > header .lank { margin-left: auto; }
+
+  /* Typsnitt */
+  .slot { display: grid; grid-template-columns: 90px minmax(0,1fr) auto; gap: var(--s3); align-items: center; padding: var(--s2) 0; border-top: 1px solid var(--line-soft); }
+  .slot:first-of-type { border-top: 0; }
+  .slot .etikett { color: var(--quiet-2); }
+  .slot .prov { font-size: 20px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Betydelser */
+  .betydelser { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .betydelser li { display: grid; grid-template-columns: 34px 110px minmax(0,1fr) auto; gap: var(--s3); align-items: center; padding: 6px 0; border-top: 1px solid var(--line-soft); }
+  .betydelser li:first-child { border-top: 0; }
+  .betydelser b { color: #fff; font-weight: 600; }
+  .black { display: flex; gap: 4px; flex-wrap: wrap; }
+  .black button { width: 24px; height: 24px; border-radius: 6px; border: 2px solid transparent; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); cursor: pointer; padding: 0; }
+  .black button[aria-pressed='true'] { border-color: #fff; }
+  .kontrast { color: var(--quiet); font-variant-numeric: tabular-nums; font-size: 11px; white-space: nowrap; }
+  .kontrast.lag { color: var(--warn); }
+
+  /* Ikoner */
+  .ikoner { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 6px; }
+  .ikoner button { display: grid; justify-items: center; gap: 4px; padding: 8px 4px; border-radius: 10px; border: 1px solid var(--line); background: #0f1115; color: #c7cede; font: inherit; font-size: 11px; cursor: pointer; }
+  .ikoner button:hover { border-color: var(--primary-mark); }
+  .ikoner button[aria-pressed='true'] { border-color: var(--primary-mark); background: #1b2437; }
+  .ikoner .papper .sym { width: 22px; height: 22px; }
+  .ikoner small { color: var(--quiet); font-size: 10px; }
+  .ikoner .ny { border-style: dashed; color: var(--quiet-2); align-content: center; }
+
+  /* Biblioteket, två klick bort: ett ark ovanpå ytan. */
+  .ark { position: fixed; inset: 64px 0 0 auto; width: min(480px, 100vw); background: #12141a; border-left: 1px solid #3a4050; box-shadow: -18px 0 44px rgba(0,0,0,.5); z-index: 30; display: flex; flex-direction: column; }
+  .ark[hidden] { display: none; }
+  .ark > header { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s4); border-bottom: 1px solid var(--line); }
+  .ark > header h3 { margin: 0; }
+  .ark > header .knapp { margin-left: auto; }
+  .ark .inne { flex: 1; overflow: auto; padding: var(--s4); }
+  .ark .inne h4 { margin: var(--s4) 0 var(--s2); font-size: 10.5px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--quiet); }
+  .ark .licens { color: var(--quiet); font-size: 11px; margin-top: var(--s3); }
+
+  /* ── Variant A: stilark med kortet bredvid ───────────────────────────────── */
+  .A-rum { display: grid; grid-template-columns: minmax(0, 760px) 320px; gap: var(--s5); align-items: start; }
+  .A-rum .sido { position: sticky; top: 0; display: grid; gap: var(--s3); justify-items: center; }
+  .A-rum .sido .rad { display: flex; gap: var(--s2); }
+  .skrivs { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: var(--s3); background: var(--panel); }
+  .skrivs div { display: flex; align-items: center; gap: var(--s2); padding: 3px 0; color: #e6ecfa; font-size: 12px; }
+  .skrivs code { margin-left: auto; }
+
+  /* ── Variant B: kortet är kartan ────────────────────────────────────────── */
+  .B-rum { display: grid; grid-template-columns: minmax(0,1fr) 360px; gap: var(--s5); height: 100%; }
+  .B-mitt { display: grid; grid-template-rows: auto 1fr auto; gap: var(--s4); justify-items: center; min-height: 0; }
+  .polletter { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  .pollett { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 12px 0 6px; border-radius: 999px; border: 1px solid var(--line); background: var(--sunk); color: #e6ecfa; font: inherit; font-size: 12px; cursor: pointer; }
+  .pollett[aria-pressed='true'] { border-color: var(--primary-mark); background: #1b2437; }
+  .pollett .aa { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #f4efe4; color: #241a0c; font-size: 13px; }
+  .pollett .prick { width: 18px; height: 18px; border-radius: 50%; margin-left: 4px; }
+  .B-kort { display: flex; gap: var(--s5); align-items: center; }
+  .B-tips { color: var(--quiet-2); font-size: 12px; }
+  .granskare { border-left: 1px solid var(--line); padding-left: var(--s5); overflow: auto; }
+
+  /* ── Variant C: tema som ett val ─────────────────────────────────────────── */
+  .galleri { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s4); max-width: 1100px; }
+  .galleri button { display: grid; gap: var(--s2); justify-items: center; padding: var(--s4) var(--s3); border-radius: 14px; border: 1px solid var(--line); background: var(--panel); color: #e6ecfa; font: inherit; cursor: pointer; }
+  .galleri button[aria-pressed='true'] { border-color: var(--primary-mark); box-shadow: 0 0 0 1px var(--primary-mark); background: #172033; }
+  .galleri button b { font-size: 14px; }
+  .galleri button small { color: var(--quiet); font-size: 11px; text-align: center; }
+  .avvik { margin: var(--s5) 0 var(--s3); display: flex; align-items: center; gap: var(--s3); color: var(--quiet-2); max-width: 1100px; }
+  .avvik b { color: var(--warn); font-weight: 600; }
+  details.fall { max-width: 1100px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); margin-bottom: var(--s2); }
+  details.fall > summary { list-style: none; cursor: pointer; min-height: 48px; display: flex; align-items: center; gap: var(--s3); padding: 0 var(--s4); color: #fff; font-weight: 600; }
+  details.fall > summary::before { content: '▸'; color: var(--quiet); }
+  details.fall[open] > summary::before { content: '▾'; }
+  details.fall > summary small { color: var(--quiet); font-weight: 400; margin-left: auto; }
+  details.fall > div { padding: 0 var(--s4) var(--s4); }
+
+  /* ── Tabell med klammerns lista ──────────────────────────────────────────── */
+  .T-rum { display: grid; grid-template-columns: minmax(0,1fr) 240px; gap: var(--s5); }
+  .tabell { border: 1px solid var(--line); border-radius: 12px; overflow: visible; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; padding: 8px 10px; background: #1b1f2a; color: var(--quiet); font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.2px; border-bottom: 1px solid var(--line); }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--line-soft); color: #e6ecfa; vertical-align: top; }
+  td .papper { padding: 1px 3px; }
+  tr.oppen td { background: #1b2437; }
+  .cell { position: relative; border: 1px solid var(--primary-mark); border-radius: 8px; background: #0f1115; padding: 6px 8px; font-size: 12.5px; line-height: 1.6; }
+  .cell .ra { color: #5d6577; font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; margin-top: 4px; word-break: break-all; }
+  .caret { display: inline-block; width: 1px; height: 1.1em; background: #fff; vertical-align: -0.2em; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0 } }
+  .valj { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; width: 360px; padding: 10px; border-radius: 12px; background: #12141a; border: 1px solid #3a4050; box-shadow: 0 18px 44px rgba(0,0,0,.66); }
+  .valj[hidden] { display: none; }
+  .valj .sok { width: 100%; min-height: 32px; border: 1px solid #2a2d36; border-radius: 8px; background: #0f1115; color: #fff; font: inherit; padding: 0 9px; margin-bottom: 8px; }
+  .valj h4 { margin: 8px 0 5px; font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--quiet); display: flex; }
+  .valj h4 span { margin-left: auto; text-transform: none; letter-spacing: 0; }
+  .vanliga { display: flex; flex-wrap: wrap; gap: 5px; }
+  .vanliga button, .betyd button { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; border: 1px solid var(--line); border-radius: 999px; padding: 0 10px 0 5px; background: #0f1115; color: #c7cede; font: inherit; font-size: 11.5px; cursor: pointer; }
+  .vanliga button:hover, .betyd button:hover, .vanliga button:focus-visible { border-color: var(--primary-mark); outline: none; }
+  .vanliga .papper .sym, .betyd .papper .sym { width: 15px; height: 15px; }
+  .vanliga small { color: var(--quiet); }
+  .valj .ikoner { grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); }
+  .valj .ikoner button { padding: 5px 2px; font-size: 10px; }
+  .valj .ikoner .papper .sym { width: 18px; height: 18px; }
+  .betyd { display: flex; flex-wrap: wrap; gap: 5px; }
+  .betyd button[aria-pressed='true'] { border-color: var(--primary-mark); background: #24507f; color: #fff; }
+  .valj .fot { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line-soft); }
+  .valj .fot code { margin-left: auto; }
+  .klick { color: var(--quiet); font-size: 10.5px; }
+
+  /* ── Wizard ──────────────────────────────────────────────────────────────── */
+  .W { max-width: 1060px; margin: 0 auto; }
+  .steg { display: flex; gap: 4px; margin-bottom: var(--s5); flex-wrap: wrap; }
+  .steg span { padding: 6px 12px; border-radius: 999px; background: var(--sunk); color: var(--quiet); font-size: 12px; }
+  .steg span.klar { color: var(--good); }
+  .steg span.nu { background: var(--primary); color: #fff; font-weight: 700; }
+  .W-rum { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: var(--s5); align-items: start; }
+  .W-rum .sido { display: grid; justify-items: center; gap: var(--s3); position: sticky; top: 0; }
+  .W .galleri { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .W .galleri button { grid-template-columns: auto 1fr; justify-items: start; align-items: center; text-align: left; }
+  .W .galleri button small { text-align: left; }
+  .ramar { display: flex; gap: var(--s3); margin-bottom: var(--s5); }
+  .ramar button { flex: 1; min-height: 56px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: #e6ecfa; font: inherit; cursor: pointer; }
+  .ramar button[aria-pressed='true'] { border-color: var(--primary-mark); background: #172033; }
+  .ramar button small { display: block; color: var(--quiet); font-size: 11px; }
+  .ram-minimal .bild { flex: 1 1 auto; } .ram-minimal .text { min-height: 0; font-size: 12px !important; }
+  .ram-mork .bild { flex: 0 0 22%; } .ram-mork .text { flex: 1; }
+  .W .fot { display: flex; gap: var(--s3); margin-top: var(--s5); }
+
+  /* ── Växlaren: aldrig en del av förslaget ────────────────────────────────── */
+  .vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font-weight: 700; }
+  .vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; }
+  .vaxlare .namn { padding: 0 12px; min-width: 260px; text-align: center; font-size: 12.5px; }
+  .vaxlare .sep { width: 1px; height: 24px; background: #b89a55; margin: 0 4px; }
+  .vaxlare .vy[aria-pressed='true'] { background: #fff4d6; color: #1f1b12; }
+  .vaxlare .vy { padding: 0 12px; }
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+  <a class="home" href="#">‹ Spel</a>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs" id="flikar"></nav>
+  <span class="spacer"></span>
+  <span class="saved">Sparat</span>
+  <span class="who">P</span>
+</header>
+<div class="protorad">
+  <b>#612</b>
+  <p id="beskrivning"></p>
+</div>
+<main><div class="yta" id="yta"></div></main>
+</div>
+
+<aside class="ark" id="ark" hidden aria-label="Symbolbibliotek"></aside>
+
+<div class="vaxlare" role="toolbar" aria-label="Prototypens växlare">
+  <button type="button" class="vy" data-vy="tema">Speltema</button>
+  <button type="button" class="vy" data-vy="tabell">Tabell · {</button>
+  <button type="button" class="vy" data-vy="wizard">Wizard</button>
+  <span class="sep"></span>
+  <button type="button" id="bak" aria-label="Föregående variant">←</button>
+  <span class="namn" id="variantnamn"></span>
+  <button type="button" id="fram" aria-label="Nästa variant">→</button>
+</div>
+
+<script>
+// ── Bibliotek ─────────────────────────────────────────────────────────────────────────────────
+const GLYF = {
+  mynt: '<path fill-rule="evenodd" d="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1zm0 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/>',
+  droppe: '<path d="M8 1s5 5.5 5 8.6A5 5 0 1 1 3 9.6C3 6.5 8 1 8 1z"/>',
+  blad: '<path d="M14 2C7 2 2 5 2 10c0 2 1 3.5 2 4 1-4 4-7 8-8-3 2-5 4-6 8 5 0 8-5 8-12z"/>',
+  stjarna: '<path d="M8 1l2 4.6 5 .4-3.8 3.2 1.2 4.9L8 11.5 3.6 14.1l1.2-4.9L1 6l5-.4z"/>',
+  krona: '<path d="M1 5l3.5 3L8 2l3.5 6L15 5l-1.5 8h-11z"/>',
+  svard: '<path d="M8 1l2 3v6l-2 2-2-2V4z"/><path d="M4 11h8v1.6H4z"/><path d="M7.2 12.6h1.6V15H7.2z"/>',
+  pil: '<path d="M1 7h9V3l5 5-5 5V9H1z"/>',
+  oga: '<path fill-rule="evenodd" d="M8 3c4 0 7 5 7 5s-3 5-7 5-7-5-7-5 3-5 7-5zm0 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>',
+  kort: '<path d="M4 2h8a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/>',
+  nyckel: '<path fill-rule="evenodd" d="M5 2a4 4 0 0 1 3.9 5H15v3h-2v2h-2v-2H8.9A4 4 0 1 1 5 2zm0 2.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/>',
+  skold: '<path d="M2 3h12v6q0 5-6 7-6-2-6-7z"/>',
+  hjarta: '<path d="M8 14S1 9.5 1 5.5A3.5 3.5 0 0 1 8 4a3.5 3.5 0 0 1 7 1.5C15 9.5 8 14 8 14z"/>',
+  flamma: '<path d="M8 1c1 3 5 5 5 9a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3-1-3 0-6 1-8z"/>',
+  blixt: '<path d="M9 1L3 9h4l-1 6 6-8H8z"/>',
+  timglas: '<path d="M3 1h10v2l-4 5 4 5v2H3v-2l4-5-4-5z"/>',
+  tarning: '<path fill-rule="evenodd" d="M3 1h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2zm2 3a1.2 1.2 0 1 0 0 2.4A1.2 1.2 0 0 0 5 4zm6 6a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4zM8 6.8a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4z"/>',
+  torn: '<path d="M3 1h2v2h2V1h2v2h2V1h2v5l-1 1v8H4V7L3 6z"/>',
+}
+const NAMN = { mynt:'mynt', droppe:'droppe', blad:'blad', stjarna:'stjärna', krona:'krona', svard:'svärd', pil:'pil', oga:'öga', kort:'kort', nyckel:'nyckel', skold:'sköld', hjarta:'hjärta', flamma:'flamma', blixt:'blixt', timglas:'timglas', tarning:'tärning', torn:'torn' }
+const KATEGORIER = [
+  ['Resurser', ['mynt','droppe','blad','stjarna','krona']],
+  ['Handlingar', ['svard','pil','oga','kort','nyckel']],
+  ['Tillstånd', ['skold','hjarta','flamma','blixt','timglas']],
+  ['Platshållare', ['tarning','torn']],
+]
+const INKS = [['bläck','#241a0c'],['rost','#8f2d20'],['glöd','#a8410c'],['guld','#7a5c00'],['lund','#2f6136'],['djup','#155e75'],['natt','#3b3a86'],['plommon','#6b2d5c']]
+const TYPSNITT = ['Cinzel','EB Garamond','Lora','Merriweather','Inter','Space Grotesk','Oswald','Roboto Condensed']
+
+// ── Förinställda teman ────────────────────────────────────────────────────────────────────────
+const TEMAN = {
+  skog: { namn: 'Skogssaga', om: 'Graverad rubrik, klassisk brödtext, jordfärger', rubrik: 'Cinzel', brod: 'EB Garamond', papper: '#f4efe4', blak: '#241a0c',
+    betydelser: [['kostnad','Kostnad','#8f2d20'],['vinst','Vinst','#2f6136'],['forsvar','Försvar','#155e75'],['anfall','Anfall','#a8410c']] },
+  ren: { namn: 'Ren', om: 'En sans rakt igenom, kallt papper, klara färger', rubrik: 'Inter', brod: 'Inter', papper: '#ffffff', blak: '#15171c',
+    betydelser: [['kostnad','Kostnad','#8f2d20'],['vinst','Vinst','#2f6136'],['forsvar','Försvar','#3b3a86'],['anfall','Anfall','#a8410c']] },
+  retro: { namn: 'Retro', om: 'Smal versal rubrik, kondenserad text, gulnat papper', rubrik: 'Oswald', brod: 'Roboto Condensed', papper: '#fbf1d6', blak: '#2a1c10',
+    betydelser: [['kostnad','Kostnad','#a8410c'],['vinst','Vinst','#7a5c00'],['forsvar','Försvar','#155e75'],['anfall','Anfall','#6b2d5c']] },
+  bok: { namn: 'Krönika', om: 'Bokserif, varm läsbarhet, dämpade färger', rubrik: 'Lora', brod: 'Merriweather', papper: '#f7f2ea', blak: '#2a2320',
+    betydelser: [['kostnad','Kostnad','#6b2d5c'],['vinst','Vinst','#2f6136'],['forsvar','Försvar','#3b3a86'],['anfall','Anfall','#8f2d20']] },
+}
+const klona = (t) => JSON.parse(JSON.stringify(t))
+let tema = klona(TEMAN.skog), temaFran = 'skog'
+let ikonset = ['mynt','skold','blad','kort','droppe','svard','flamma']
+
+// ── Leken ─────────────────────────────────────────────────────────────────────────────────────
+let RADER = [
+  ['Gläntans väktare', 2, 'Betala {mynt|kostnad}{mynt|kostnad}: få {skold|forsvar}.'],
+  ['Bergets vandrare', 1, 'Dra ett {kort}. Få {blad|vinst}.'],
+  ['Flodens härold', 3, 'Betala {droppe|kostnad}: {svard|anfall} mot en varelse.'],
+  ['Eldens barn', 2, '{flamma|anfall} Gör 2 skada. Få {mynt|vinst}.'],
+  ['Tornets vakt', 4, 'Få {skold|forsvar}{skold|forsvar}. Blanda din hög.'],
+]
+
+// ── Hjälpare ──────────────────────────────────────────────────────────────────────────────────
+const farg = (roll) => (tema.betydelser.find((b) => b[0] === roll) || [0, 0, tema.blak])[2]
+const sym = (namn, f) => '<span class="sym" aria-hidden="true"><svg viewBox="0 0 16 16" fill="' + f + '">' + (GLYF[namn] || GLYF.tarning) + '</svg></span>'
+const prov = (namn, f) => '<span class="papper" style="background:' + tema.papper + '">' + sym(namn, f || tema.blak) + '</span>'
+const TRAFF = /\{([\p{L}\p{N}_-]+)(?:\|([\p{L}\p{N}_-]+))?\}/gu
+const rendera = (s, klick) => s.replace(TRAFF, (h, n, r) => {
+  const s2 = sym(n, r ? farg(r) : tema.blak)
+  return klick && r ? '<span data-klick="betydelse:' + r + '">' + s2 + '</span>' : s2
+})
+const renderaTabell = (s) => s.replace(TRAFF, (h, n, r) => prov(n, r ? farg(r) : tema.blak))
+
+function lum(hex) {
+  const c = [1,3,5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+}
+const kvot = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) }
+
+function anvandning() {
+  const n = {}, par = {}
+  for (const [, , t] of RADER) for (const m of t.matchAll(TRAFF)) {
+    n[m[1]] = (n[m[1]] || 0) + 1
+    const k = m[1] + '|' + (m[2] || '')
+    par[k] = (par[k] || 0) + 1
+  }
+  return { n, par }
+}
+
+function kort(rad, klass = '', klick = false) {
+  const [namn, kostnad, text] = rad
+  const k = klick ? (x) => ' data-klick="' + x + '"' : () => ''
+  return '<div class="kort ' + klass + '"' + k('papper') + ' style="background:' + tema.papper + ';color:' + tema.blak + '">'
+    + '<div class="topp"><span class="titel"' + k('rubrik') + ' style="font-family:\'' + tema.rubrik + '\'">' + namn + '</span>'
+    + '<span class="kostnad">' + Array.from({ length: kostnad }, () => sym('mynt', farg('kostnad'))).join('') + '</span></div>'
+    + '<div class="bild"></div>'
+    + '<div class="text"' + k('brod') + ' style="font-family:\'' + tema.brod + '\'">' + rendera(text, klick) + '</div></div>'
+}
+
+// ── Temats delar, som varianterna ställer upp olika ──────────────────────────────────────────
+function delTypsnitt() {
+  const slot = (id, etikett) => '<div class="slot"><span class="etikett">' + etikett + '</span>'
+    + '<span class="prov" style="font-family:\'' + tema[id] + '\'">' + (id === 'rubrik' ? 'Gläntans väktare' : 'Betala två mynt: få en sköld.') + '</span>'
+    + '<select data-font="' + id + '" aria-label="' + etikett + '">' + TYPSNITT.map((f) => '<option' + (f === tema[id] ? ' selected' : '') + '>' + f + '</option>').join('') + '<option>Hela katalogen…</option></select></div>'
+  return slot('rubrik', 'Rubrik') + slot('brod', 'Brödtext')
+}
+function delPapper() {
+  return '<div class="slot"><span class="etikett">Papper</span><span class="prov" style="font-size:13px;color:var(--quiet-2)">Korten ritas på det här. Betydelsernas kontrast mäts mot det.</span>'
+    + '<div class="black">' + ['#f4efe4','#ffffff','#fbf1d6','#f7f2ea','#e9efe6'].map((p) => '<button type="button" data-papper="' + p + '" aria-pressed="' + (p === tema.papper) + '" style="background:' + p + '" aria-label="Papper ' + p + '"></button>').join('') + '</div></div>'
+}
+function delBetydelser(fokus) {
+  const { n } = anvandning()
+  return '<ul class="betydelser">' + tema.betydelser.map(([id, namn, f]) => {
+    const k = kvot(f, tema.papper)
+    const kort = RADER.filter((r) => r[2].includes('|' + id + '}')).length
+    return '<li' + (fokus === id ? ' style="background:#1b2437;border-radius:8px"' : '') + '>' + prov('mynt', f) + '<span><b>' + namn + '</b><br><small class="kontrast">' + kort + ' kort</small></span>'
+      + '<div class="black">' + INKS.map(([inamn, hex]) => '<button type="button" data-ink="' + id + ':' + hex + '" aria-pressed="' + (hex === f) + '" style="background:' + hex + '" aria-label="Måla ' + namn + ' i ' + inamn + '"></button>').join('') + '</div>'
+      + '<span class="kontrast' + (k < 3 ? ' lag' : '') + '">' + k.toFixed(1) + ':1</span></li>'
+  }).join('') + '</ul>'
+}
+function delIkoner() {
+  const { n } = anvandning()
+  return '<div class="ikoner">' + ikonset.map((i) => '<button type="button" data-ikon="' + i + '">' + prov(i) + NAMN[i] + '<small>' + (n[i] || 0) + ' kort</small></button>').join('')
+    + '<button type="button" class="ny" data-bibliotek>＋ Ur biblioteket</button></div>'
+}
+function skrivs() {
+  return '<div class="skrivs"><div style="color:var(--quiet-2)">Så skrivs det i Tabell</div>'
+    + '<div>' + prov('mynt') + ' utan betydelse <code>{mynt}</code></div>'
+    + tema.betydelser.map(([id, namn, f]) => '<div>' + prov('mynt', f) + ' ' + namn + ' <code>{mynt|' + id + '}</code></div>').join('') + '</div>'
+}
+
+// ── Speltema: tre varianter ───────────────────────────────────────────────────────────────────
+const TEMA_VARIANTER = {
+  A: { namn: 'A — Stilark', om: 'Temat som ett stilark: typsnitt, färger och ikoner uppifrån och ned, med ett levande kort bredvid som byter utseende medan du ändrar. Allt syns på en gång; biblioteket är ett klick bort bakom «＋ Ur biblioteket».', rita: () =>
+    '<div class="A-rum"><div class="paneler">'
+    + '<section class="sektion"><header><h3>Typsnitt</h3><small>två familjer, en för rubriker och en för text</small></header>' + delTypsnitt() + delPapper() + '</section>'
+    + '<section class="sektion"><header><h3>Färger och betydelser</h3><small>korten skriver betydelsen, aldrig färgen</small><button type="button" class="knapp">＋ Ny betydelse</button></header>' + delBetydelser() + '</section>'
+    + '<section class="sektion"><header><h3>Spelets ikoner</h3><small>det här är vad klammern i Tabell föreslår först</small></header>' + delIkoner() + '</section>'
+    + '</div><div class="sido">' + kort(RADER[0], 'stor') + '<div class="rad">' + RADER.slice(1, 3).map((r) => kort(r, 'liten')).join('') + '</div>' + skrivs() + '</div></div>' },
+
+  B: { namn: 'B — Kortet är kartan', om: 'Ett stort kort i mitten; klicka på rubriken, brödtexten, papperet eller en färgad symbol för att ändra just den delen till höger. Raden av polletter ovanför är hela temat i sammandrag. Mindre att läsa, men man måste hitta rätt del att klicka.', rita: () => {
+    const val = bVal
+    const pol = '<div class="polletter">'
+      + '<button type="button" class="pollett" data-b="rubrik" aria-pressed="' + (val === 'rubrik') + '"><span class="aa" style="font-family:\'' + tema.rubrik + '\'">Aa</span>' + tema.rubrik + '</button>'
+      + '<button type="button" class="pollett" data-b="brod" aria-pressed="' + (val === 'brod') + '"><span class="aa" style="font-family:\'' + tema.brod + '\'">Aa</span>' + tema.brod + '</button>'
+      + '<button type="button" class="pollett" data-b="papper" aria-pressed="' + (val === 'papper') + '"><span class="prick" style="background:' + tema.papper + '"></span>Papper</button>'
+      + tema.betydelser.map(([id, n, f]) => '<button type="button" class="pollett" data-b="betydelse:' + id + '" aria-pressed="' + (val === 'betydelse:' + id) + '"><span class="prick" style="background:' + f + '"></span>' + n + '</button>').join('')
+      + '<button type="button" class="pollett" data-b="ikoner" aria-pressed="' + (val === 'ikoner') + '">' + prov('mynt') + ikonset.length + ' ikoner</button></div>'
+    let insp = ''
+    if (val === 'rubrik' || val === 'brod') insp = '<h3>' + (val === 'rubrik' ? 'Rubrikens typsnitt' : 'Brödtextens typsnitt') + '</h3><p class="lead">Gäller varje kort. Ett lager i Mall kan fortfarande välja ett eget.</p>'
+      + '<div class="ikoner" style="grid-template-columns:1fr">' + TYPSNITT.map((f) => '<button type="button" data-fontval="' + val + ':' + f + '" aria-pressed="' + (tema[val] === f) + '" style="justify-items:start;padding:8px 12px;font-size:17px;font-family:\'' + f + '\'">' + f + '</button>').join('') + '</div><p><button type="button" class="lank">Hela katalogen (1 500+) ›</button></p>'
+    else if (val === 'papper') insp = '<h3>Papper</h3><p class="lead">Kortets botten. Varje betydelse mäts mot det.</p>' + delPapper()
+    else if (val.startsWith('betydelse:')) insp = '<h3>Betydelser</h3><p class="lead">Klicka en symbol på kortet för att hoppa hit. En ändring målar om varje kort som säger betydelsen.</p>' + delBetydelser(val.split(':')[1]) + '<p><button type="button" class="knapp">＋ Ny betydelse</button></p>'
+    else insp = '<h3>Spelets ikoner</h3><p class="lead">Det klammern i Tabell föreslår först.</p>' + delIkoner()
+    return '<div class="B-rum"><div class="B-mitt">' + pol
+      + '<div class="B-kort">' + kort(RADER[0], 'stor', true) + '<div style="display:grid;gap:12px">' + RADER.slice(1, 4).map((r) => kort(r, 'liten')).join('') + '</div></div>'
+      + '<p class="B-tips">Klicka på en del av kortet för att ändra den.</p></div>'
+      + '<div class="granskare">' + insp + '</div></div>'
+  } },
+
+  C: { namn: 'C — Tema som ett val', om: 'Temat är först ett val bland färdiga teman — samma galleri som wizardens temasteg. Det som avviker från det valda temat sägs på en rad, och justeringen ligger fälld, ett klick bort per del. Minst brus för den som är nöjd; ett klick mer för den som vill pilla.', rita: () => {
+    const avv = []
+    const bas = TEMAN[temaFran]
+    if (tema.rubrik !== bas.rubrik) avv.push('rubrik ' + tema.rubrik)
+    if (tema.brod !== bas.brod) avv.push('brödtext ' + tema.brod)
+    if (tema.papper !== bas.papper) avv.push('papperet')
+    tema.betydelser.forEach((b, i) => { if (b[2] !== bas.betydelser[i][2]) avv.push(b[1].toLowerCase() + 's färg') })
+    return '<div class="galleri">' + Object.entries(TEMAN).map(([id, t]) => {
+      const spar = tema; tema = id === temaFran ? spar : klona(t)
+      const html = '<button type="button" data-tema="' + id + '" aria-pressed="' + (id === temaFran) + '">' + kort(RADER[0], 'liten') + '<b>' + t.namn + '</b><small>' + t.om + '</small></button>'
+      tema = spar; return html
+    }).join('') + '</div>'
+      + '<div class="avvik">' + (avv.length ? 'Ditt tema är <b>' + TEMAN[temaFran].namn + ' med ' + avv.length + ' ändring' + (avv.length > 1 ? 'ar' : '') + '</b>: ' + avv.join(', ') + '. <button type="button" class="lank" data-tema="' + temaFran + '">Återställ</button>' : 'Ditt tema är ' + TEMAN[temaFran].namn + ', oförändrat.') + '</div>'
+      + '<details class="fall"><summary>Typsnitt <small>' + tema.rubrik + ' · ' + tema.brod + '</small></summary><div>' + delTypsnitt() + delPapper() + '</div></details>'
+      + '<details class="fall"><summary>Färger och betydelser <small>' + tema.betydelser.map((b) => b[1]).join(' · ') + '</small></summary><div>' + delBetydelser() + '</div></details>'
+      + '<details class="fall"><summary>Spelets ikoner <small>' + ikonset.length + ' st — det klammern i Tabell föreslår först</small></summary><div>' + delIkoner() + '</div></details>'
+  } },
+}
+let bVal = 'rubrik'
+
+// ── Tabell: klammerns lista ur temat ──────────────────────────────────────────────────────────
+let klammer = { oppen: true, lage: 'tema', vald: null, roll: null, sok: '' }
+let cellText = 'Betala {droppe|kostnad}: '
+const TABELL_VARIANTER = {
+  A: { namn: 'A — Temat först, biblioteket bakom en länk', om: 'Skriv { i den öppna cellen. Överst står det leken redan skriver, färdigt att infoga med ett klick. Sedan spelets ikoner; välj en och betydelserna visas som färgade kopior (L34). «Hela biblioteket» är klick två; en ikon som tas in därifrån hamnar i temat. Sökningen söker allt men visar temat först.', rita: ritaTabell },
+}
+function ritaTabell() {
+  const { par } = anvandning()
+  const vanliga = Object.entries(par).sort((a, b) => b[1] - a[1]).slice(0, 5)
+  const sokt = klammer.sok.trim().toLowerCase()
+  const traff = (i) => !sokt || NAMN[i].includes(sokt) || tema.betydelser.some((b) => b[1].toLowerCase().includes(sokt) && ikonset.includes(i))
+  let lista = ''
+  if (klammer.lage === 'tema') {
+    const egna = ikonset.filter(traff)
+    const andra = sokt ? Object.keys(GLYF).filter((i) => !ikonset.includes(i) && NAMN[i].includes(sokt)) : []
+    lista = (sokt ? '' : '<h4>Som leken skriver dem <span class="klick">ett klick</span></h4><div class="vanliga">' + vanliga.map(([k, c]) => {
+      const [n, r] = k.split('|')
+      return '<button type="button" data-infoga="' + k + '">' + prov(n, r ? farg(r) : null) + '<code>{' + n + (r ? '|' + r : '') + '}</code><small>' + c + '×</small></button>'
+    }).join('') + '</div>')
+      + '<h4>Spelets ikoner</h4><div class="ikoner">' + egna.map((i) => '<button type="button" data-kvalj="' + i + '" aria-pressed="' + (klammer.vald === i) + '">' + prov(i, klammer.vald === i && klammer.roll ? farg(klammer.roll) : null) + NAMN[i] + '</button>').join('') + '</div>'
+      + (andra.length ? '<h4>Ur biblioteket <span class="klick">tas in i temat</span></h4><div class="ikoner">' + andra.map((i) => '<button type="button" data-kvalj="' + i + '">' + prov(i) + NAMN[i] + '</button>').join('') + '</div>' : '')
+  } else {
+    lista = '<h4><button type="button" class="lank" data-klage="tema">‹ Spelets ikoner</button></h4>' + KATEGORIER.map(([k, is]) => '<h4>' + k + '</h4><div class="ikoner">' + is.filter(traff).map((i) => '<button type="button" data-kvalj="' + i + '" aria-pressed="' + (klammer.vald === i) + '">' + prov(i) + NAMN[i] + (ikonset.includes(i) ? '<small>i temat</small>' : '') + '</button>').join('') + '</div>').join('')
+  }
+  const betyd = klammer.vald ? '<h4>Betydelse</h4><div class="betyd"><button type="button" data-kroll="" aria-pressed="' + (!klammer.roll) + '">' + prov(klammer.vald) + 'utan</button>'
+    + tema.betydelser.map(([id, n, f]) => '<button type="button" data-kroll="' + id + '" aria-pressed="' + (klammer.roll === id) + '">' + prov(klammer.vald, f) + n + '</button>').join('') + '</div>' : ''
+  const str = klammer.vald ? '{' + klammer.vald + (klammer.roll ? '|' + klammer.roll : '') + '}' : ''
+  const valj = '<div class="valj" id="valj"' + (klammer.oppen ? '' : ' hidden') + '><input class="sok" id="ksok" placeholder="Sök symbol eller betydelse…" value="' + klammer.sok + '" aria-label="Sök symbol">'
+    + lista + betyd
+    + '<div class="fot">' + (klammer.lage === 'tema' ? '<button type="button" class="lank" data-klage="bibliotek">Hela biblioteket (' + Object.keys(GLYF).length + ') ›</button>' : '<span class="klick">Licensen följer med i trycket</span>')
+    + (str ? '<code>' + str + '</code><button type="button" class="knapp primar" data-infoga="' + klammer.vald + '|' + (klammer.roll || '') + '">Infoga</button>' : '') + '</div></div>'
+  return '<div class="T-rum"><div class="tabell"><table><thead><tr><th style="width:26%">Namn</th><th style="width:10%">Kostnad</th><th>Text</th></tr></thead><tbody>'
+    + RADER.map((r, i) => i === 2
+      ? '<tr class="oppen"><td>' + r[0] + '</td><td>' + r[1] + '</td><td><div class="cell">' + renderaTabell(cellText) + '<span class="caret"></span>' + (klammer.oppen ? '<span style="color:#8ad0ff">{</span>' : '') + '<div class="ra">' + cellText + (klammer.oppen ? '{' : '') + '</div>' + valj + '</div></td></tr>'
+      : '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td><td>' + renderaTabell(r[2]) + '</td></tr>').join('')
+    + '</tbody></table></div><div>' + kort([RADER[2][0], RADER[2][1], cellText], '') + (klammer.oppen ? '' : '<p><button type="button" class="knapp" data-kopna>Skriv { igen</button></p>') + '</div></div>'
+}
+
+// ── Wizard: temasteget ────────────────────────────────────────────────────────────────────────
+let ram = 'klassisk'
+const RAMAR = { klassisk: ['Klassisk', 'Titel, bild, text'], minimal: ['Minimal', 'Stor bild, liten text'], mork: ['Tät', 'Mycket text'] }
+function temaGalleri() {
+  return '<div class="galleri">' + Object.entries(TEMAN).map(([id, t]) => {
+    const spar = tema; tema = klona(t)
+    const html = '<button type="button" data-tema="' + id + '" aria-pressed="' + (id === temaFran) + '">' + kort(RADER[0], 'liten') + '<span><b>' + t.namn + '</b><br><small>' + t.om + '</small></span></button>'
+    tema = spar; return html
+  }).join('') + '</div>'
+}
+const WIZARD_VARIANTER = {
+  A: { namn: 'A — Tema som eget steg efter ramen', om: 'Wizarden får ett sjunde steg, Tema, efter Ram. Ramen bestämmer var saker står; temat bestämmer typsnitt, färger och ikoner. Ramens egen familj (#420) ersätts då av temats. Ett steg till, men varje steg frågar en sak.', rita: () =>
+    '<div class="W"><div class="steg"><span class="klar">1 Namn</span><span class="klar">2 Spelare</span><span class="klar">3 Fält</span><span class="klar">4 Ram · Klassisk</span><span class="nu">5 Tema</span><span>6 Data</span><span>7 Spela</span></div>'
+    + '<div class="W-rum"><div><h3 style="font-size:18px">Hur ska spelet kännas?</h3><p class="lead">Ett tema är spelets typsnitt, färger och ikoner. Tabellen föreslår sedan ur det. Allt går att ändra i fliken Speltema.</p>'
+    + temaGalleri() + '<div class="fot"><button type="button" class="knapp">‹ Ram</button><span class="spacer"></span><button type="button" class="knapp primar">Nästa: Data ›</button></div></div>'
+    + '<div class="sido">' + kort(RADER[0], 'stor') + skrivs() + '</div></div></div>' },
+  B: { namn: 'B — Ram och tema i ett steg, «Utseende»', om: 'Steget Ram blir Utseende: ramen överst (var saker står), temat under (hur det känns), ett kort som visar båda. Wizarden behåller sex steg, men steget frågar två saker. Svarar också på #420: ramen bär inget typsnitt längre, temat gör det.', rita: () =>
+    '<div class="W"><div class="steg"><span class="klar">1 Namn</span><span class="klar">2 Spelare</span><span class="klar">3 Fält</span><span class="nu">4 Utseende</span><span>5 Data</span><span>6 Spela</span></div>'
+    + '<div class="W-rum"><div><h3 style="font-size:18px">Hur ska korten se ut?</h3><h2 style="margin-top:var(--s4)">Ram — var saker står</h2>'
+    + '<div class="ramar">' + Object.entries(RAMAR).map(([id, [n, o]]) => '<button type="button" data-ram="' + id + '" aria-pressed="' + (ram === id) + '">' + n + '<small>' + o + '</small></button>').join('') + '</div>'
+    + '<h2>Tema — hur det känns</h2>' + temaGalleri() + '<div class="fot"><button type="button" class="knapp">‹ Fält</button><span class="spacer"></span><button type="button" class="knapp primar">Nästa: Data ›</button></div></div>'
+    + '<div class="sido">' + kort(RADER[0], 'stor ram-' + ram) + '<p class="klick" style="text-align:center">Allt går att ändra i Speltema.</p></div></div></div>' },
+}
+
+// ── Biblioteksarket (Speltema: «＋ Ur biblioteket») ───────────────────────────────────────────
+function ritaArk() {
+  document.getElementById('ark').innerHTML = '<header><h3>Symbolbibliotek</h3><button type="button" class="knapp" data-stangark>Klar</button></header><div class="inne">'
+    + '<input class="sok" style="width:100%;min-height:36px;border:1px solid var(--line);border-radius:8px;background:#0f1115;color:#fff;font:inherit;padding:0 10px" placeholder="Sök symbol…" aria-label="Sök symbol">'
+    + KATEGORIER.map(([k, is]) => '<h4>' + k + '</h4><div class="ikoner">' + is.map((i) => '<button type="button" data-tain="' + i + '" aria-pressed="' + ikonset.includes(i) + '">' + prov(i) + NAMN[i] + '<small>' + (ikonset.includes(i) ? 'i temat' : 'ta in') + '</small></button>').join('') + '</div>').join('')
+    + '<p class="licens">Ritat för projektet, CC0. Licensen följer med i trycket.</p></div>'
+}
+
+// ── Växlaren och ritningen ───────────────────────────────────────────────────────────────────
+const VYER = { tema: TEMA_VARIANTER, tabell: TABELL_VARIANTER, wizard: WIZARD_VARIANTER }
+const q = new URLSearchParams(location.search)
+let vy = VYER[q.get('vy')] ? q.get('vy') : 'tema'
+let variant = VYER[vy][q.get('variant')] ? q.get('variant') : 'A'
+
+function rita() {
+  const v = VYER[vy][variant]
+  const aktiv = vy === 'wizard' ? null : vy === 'tema' ? 'Speltema' : 'Tabell'
+  document.getElementById('flikar').innerHTML = vy === 'wizard' ? '<button type="button" aria-selected="true">Ny lek · guidad start</button>'
+    : ['Kortvägg','Mall','Tabell','Speltema','Media','Regler','Bord'].map((f) => '<button type="button"' + (f === aktiv ? ' aria-selected="true"' : '') + '>' + f + '</button>').join('')
+  document.getElementById('beskrivning').textContent = v.om
+  document.getElementById('variantnamn').textContent = v.namn + '  (' + (Object.keys(VYER[vy]).indexOf(variant) + 1) + '/' + Object.keys(VYER[vy]).length + ')'
+  document.querySelectorAll('.vaxlare .vy').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.vy === vy)))
+  const oppna = [...document.querySelectorAll('details.fall')].map((d) => d.open)
+  document.getElementById('yta').innerHTML = v.rita()
+  document.querySelectorAll('details.fall').forEach((d, i) => { d.open = !!oppna[i] })
+  if (!document.getElementById('ark').hidden) ritaArk()
+  const s = document.getElementById('ksok')
+  if (s && klammer.fokus) { s.focus(); s.setSelectionRange(s.value.length, s.value.length) }
+}
+function byt(steg) {
+  const ks = Object.keys(VYER[vy])
+  variant = ks[(ks.indexOf(variant) + steg + ks.length) % ks.length]
+  history.replaceState(null, '', '?vy=' + vy + '&variant=' + variant)
+  rita()
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('button, [data-klick], summary')
+  if (!t) return
+  const d = t.dataset
+  if (t.id === 'bak') return byt(-1)
+  if (t.id === 'fram') return byt(1)
+  if (d.vy) { vy = d.vy; variant = 'A'; history.replaceState(null, '', '?vy=' + vy + '&variant=A'); return rita() }
+  if (d.ink) { const [id, hex] = d.ink.split(':'); tema.betydelser.find((b) => b[0] === id)[2] = hex; return rita() }
+  if (d.papper) { tema.papper = d.papper; return rita() }
+  if (d.tema) { temaFran = d.tema; tema = klona(TEMAN[d.tema]); return rita() }
+  if (d.ram) { ram = d.ram; return rita() }
+  if (d.b) { bVal = d.b; return rita() }
+  if (d.klick) { bVal = d.klick; return rita() }
+  if (d.fontval) { const [slot, f] = d.fontval.split(':'); tema[slot] = f; return rita() }
+  if ('bibliotek' in d) { document.getElementById('ark').hidden = false; ritaArk(); return }
+  if ('stangark' in d) { document.getElementById('ark').hidden = true; return }
+  if (d.tain) { const i = d.tain; ikonset = ikonset.includes(i) ? ikonset.filter((x) => x !== i) : [...ikonset, i]; return rita() }
+  if (d.klage) { klammer.lage = d.klage; klammer.vald = null; klammer.roll = null; return rita() }
+  if (d.kvalj) { klammer.vald = d.kvalj; klammer.roll = null; return rita() }
+  if ('kroll' in d) { klammer.roll = d.kroll || null; return rita() }
+  if (d.infoga) {
+    const [n, r] = d.infoga.split('|')
+    cellText += '{' + n + (r ? '|' + r : '') + '} '
+    if (!ikonset.includes(n)) ikonset.push(n)
+    klammer = { oppen: false, lage: 'tema', vald: null, roll: null, sok: '' }
+    return rita()
+  }
+  if ('kopna' in d) { klammer.oppen = true; return rita() }
+})
+document.addEventListener('change', (e) => {
+  const f = e.target.dataset.font
+  if (f && e.target.value !== 'Hela katalogen…') { tema[f] = e.target.value; rita() }
+})
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'ksok') { klammer.sok = e.target.value; klammer.fokus = true; rita() }
+})
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, select, [contenteditable]')) { if (e.key === 'Escape' && e.target.id === 'ksok') { klammer.oppen = false; rita() } return }
+  if (e.key === 'ArrowLeft') byt(-1)
+  if (e.key === 'ArrowRight') byt(1)
+  if (e.key === 'Escape') { document.getElementById('ark').hidden = true }
+})
+rita()
+</script>
+</body>
+</html>
