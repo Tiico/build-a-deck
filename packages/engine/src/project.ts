@@ -23,10 +23,14 @@ export type FaceHashes = Record<string, Record<string, string>>
 // here at all, and the card is then named by its id at the reader, as it always was.
 export type CardTitles = Record<string, string>
 
+// What each row prints beside its title, keyed by `cardRef` (#551, K27): the words of the face a
+// view that may see the card is shown — the content face — in the template's order.
+export type CardTexts = Record<string, string[]>
+
 // Everything the compiled deck knows about a card, in one place because it is filtered in one
 // place: both the face a seat may fetch and the word a seat may hear are hidden information and
 // follow the zone's visibility together (B6).
-export type DeckFacts = { faces?: FaceHashes; titles?: CardTitles }
+export type DeckFacts = { faces?: FaceHashes; titles?: CardTitles; texts?: CardTexts }
 
 // With a `history` the view also learns what undo means for its seat, and — while a rewind is
 // proposed — how the table looked at the target, projected for this same view (B, C).
@@ -149,6 +153,11 @@ function view(state: TableState, registry: TypeRegistry, c: ComponentInstance, s
   // nothing here, and the reader falls back to the id as it always did.
   const title = visible ? deck?.titles?.[c.cardRef] : undefined
   if (title !== undefined) v.title = title
+  // What it prints beside the title (#551), off the same `visible`: the words go where the name
+  // goes and nowhere else. A view that may see the face is shown the content face — lying up, or
+  // held, peeked at or overseen — so those are the words it is told, whichever side lies up.
+  const text = visible ? deck?.texts?.[c.cardRef] : undefined
+  if (text !== undefined) v.text = [...text]
   if (c.counter !== undefined) v.counter = c.counter
   const hashes = deck?.faces?.[c.cardRef]
   if (hashes) {

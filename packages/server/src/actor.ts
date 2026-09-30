@@ -51,7 +51,7 @@ export class TableActor {
     private readonly store: LogStore,
     sources: Sources,
     // What the compiled deck knows about each card — the texture hashes per face and the title
-    // the card is called by (#412); undefined for a session without a deck.
+    // the card is called by (#412), and what it prints beside it (#551); undefined for a session without a deck.
     private cards: DeckFacts | undefined,
     private readonly renders: RenderStore | undefined,
   ) {
@@ -74,7 +74,7 @@ export class TableActor {
     if (record.deck) {
       // Enqueue is idempotent by hash, so loading a table twice costs nothing the second time.
       const compiled = facesOf(record.deck, record.setup, registry, TEXTURE_DPI, Date.now())
-      cards = { faces: compiled.faces, titles: compiled.titles }
+      cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts }
       if (renders) for (const job of compiled.jobs) await renders.enqueue(job)
     }
     return new TableActor(id, initial, state, log, registry, store, sources ?? defaultSources(), cards, renders)
@@ -84,7 +84,7 @@ export class TableActor {
   // pick the new hashes up with the next projection.
   async refreshDeck(deck: Deck, setup: SetupDef): Promise<void> {
     const compiled = facesOf(deck, setup, this.registry, TEXTURE_DPI, Date.now())
-    this.cards = { faces: compiled.faces, titles: compiled.titles }
+    this.cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts }
     if (this.renders) for (const job of compiled.jobs) await this.renders.enqueue(job)
   }
 
