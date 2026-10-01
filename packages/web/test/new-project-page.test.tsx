@@ -37,10 +37,30 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
   // while the table seats `MAX_PLAYERS`, so a game for seven or eight could not be started at all
   // — and the two counts where a rim first carries two seats (K18) were the two nobody could ask
   // for. What is offered is what the table can hold, said once rather than written out.
-  it('offers every seat count the table can hold', () => {
+  //
+  // Since #620 (variant A) the count is a stepper and not eight buttons: «Spelare [−] [2] [+]»,
+  // one row, the number a field of its own. Every count is still reachable — a step at a time
+  // from either end, or written straight in.
+  it('offers every seat count the table can hold, one step at a time', () => {
     open(() => undefined)
     const group = screen.getByRole('group', { name: 'Spelare' })
-    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(Array.from({ length: MAX_PLAYERS }, (_, i) => String(i + 1)))
+    const field = within(group).getByRole('spinbutton', { name: `Antal spelare, 1 till ${MAX_PLAYERS}` }) as HTMLInputElement
+    const fewer = within(group).getByRole('button', { name: 'En spelare färre' }) as HTMLButtonElement
+    const more = within(group).getByRole('button', { name: 'En spelare fler' }) as HTMLButtonElement
+    expect(within(group).getAllByRole('button')).toHaveLength(2)
+
+    fireEvent.click(fewer)
+    expect(field.value).toBe('1')
+    expect(field.getAttribute('aria-valuenow')).toBe('1')
+    expect(fewer.disabled).toBe(true)
+    const seen = [field.value]
+    while (!more.disabled) {
+      fireEvent.click(more)
+      seen.push(field.value)
+    }
+    expect(seen).toEqual(Array.from({ length: MAX_PLAYERS }, (_, i) => String(i + 1)))
+    expect(field.getAttribute('aria-valuemin')).toBe('1')
+    expect(field.getAttribute('aria-valuemax')).toBe(String(MAX_PLAYERS))
   })
 
   it('builds starter cards graphically and shows a newly added field on every card', () => {
@@ -70,7 +90,10 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     expect(live().getByText('Kort 1')).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
-    fireEvent.click(screen.getByRole('button', { name: /^3$/ }))
+    // The number written straight into the stepper's field, and kept when the field is left.
+    const seats = screen.getByRole('spinbutton', { name: /Antal spelare/ })
+    fireEvent.change(seats, { target: { value: '3' } })
+    fireEvent.blur(seats)
     fireEvent.change(screen.getByLabelText('kort 1 Titel'), { target: { value: 'Drake' } })
     const file = new File([PNG], 'drake.png', { type: 'image/png' })
     fireEvent.change(screen.getByLabelText('kort 1 Illustration'), { target: { files: [file] } })
@@ -132,6 +155,67 @@ describe('the field is called what it says it is called', () => {
   })
 })
 
+// The seat count as a stepper (#620, variant A): the number is a field, so what is written into it
+// has to land somewhere sensible — inside the two ends, or back where it was.
+describe('the seat stepper (#620)', () => {
+  const seats = () => screen.getByRole('spinbutton', { name: /Antal spelare/ }) as HTMLInputElement
+  const write = (text: string) => fireEvent.change(seats(), { target: { value: text } })
+
+  it('holds a number written past either end to that end', () => {
+    open(() => undefined)
+    write('12')
+    fireEvent.blur(seats())
+    expect(seats().value).toBe(String(MAX_PLAYERS))
+    expect((screen.getByRole('button', { name: 'En spelare fler' }) as HTMLButtonElement).disabled).toBe(true)
+    write('0')
+    fireEvent.keyDown(seats(), { key: 'Enter' })
+    expect(seats().value).toBe('1')
+    expect((screen.getByRole('button', { name: 'En spelare färre' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('goes back to the number it had when what was written is no number at all', () => {
+    open(() => undefined)
+    write('fem')
+    fireEvent.blur(seats())
+    expect(seats().value).toBe('2')
+    write('')
+    fireEvent.blur(seats())
+    expect(seats().value).toBe('2')
+    // Escape throws a draft away without writing it.
+    write('6')
+    fireEvent.keyDown(seats(), { key: 'Escape' })
+    expect(seats().value).toBe('2')
+  })
+
+  it('steps with the arrow keys, and stops at the ends', () => {
+    open(() => undefined)
+    fireEvent.keyDown(seats(), { key: 'ArrowUp' })
+    expect(seats().value).toBe('3')
+    fireEvent.keyDown(seats(), { key: 'ArrowDown' })
+    fireEvent.keyDown(seats(), { key: 'ArrowDown' })
+    fireEvent.keyDown(seats(), { key: 'ArrowDown' })
+    expect(seats().value).toBe('1')
+    // An arrow over a draft steps from what was written, not from what stood there before.
+    write('5')
+    fireEvent.keyDown(seats(), { key: 'ArrowUp' })
+    expect(seats().value).toBe('6')
+  })
+
+  it('is one stop for the keyboard, and keeps the focus when a button reaches its end', () => {
+    open(() => undefined)
+    const fewer = screen.getByRole('button', { name: 'En spelare färre' })
+    expect(fewer.tabIndex).toBe(-1)
+    expect(screen.getByRole('button', { name: 'En spelare fler' }).tabIndex).toBe(-1)
+    expect(seats().tabIndex).toBe(0)
+    // A pointer press focuses the button; the press that reaches 1 turns it off under the pointer,
+    // and the focus goes to the number instead of falling out onto the page.
+    fewer.focus()
+    fireEvent.click(fewer)
+    expect(seats().value).toBe('1')
+    expect(document.activeElement).toBe(seats())
+  })
+})
+
 // The guided start is a door, not a gate (L42): whoever would rather build everything in the
 // editor gives the game a name and its seats — the two things every game has — and goes
 // straight there with no cards, no fields and no frame. The same request makes the same kind of
@@ -141,7 +225,9 @@ describe('a game without the guided start (L42)', () => {
     const gone: string[] = []
     open((url) => gone.push(url))
     fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Kråkkriget' } })
-    fireEvent.click(screen.getByRole('button', { name: /^4$/ }))
+    // Two seats more than the two it starts at, a step at a time.
+    fireEvent.click(screen.getByRole('button', { name: 'En spelare fler' }))
+    fireEvent.click(screen.getByRole('button', { name: 'En spelare fler' }))
     fireEvent.click(screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' }))
 
     await waitFor(() => expect(gone).toHaveLength(1))

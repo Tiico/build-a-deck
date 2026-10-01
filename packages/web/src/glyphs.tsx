@@ -19,3 +19,22 @@ export function FlagGlyph() {
     </svg>
   )
 }
+
+// One less and one more (#620), drawn rather than typed for the same reason as the two above: a
+// font's minus sits on its own baseline and at its own weight, and beside the number it steps
+// it was a different hand on every machine.
+export function MinusGlyph() {
+  return (
+    <svg className="byd-glyph" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+      <path d="M3 8h10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function PlusGlyph() {
+  return (
+    <svg className="byd-glyph" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+      <path d="M3 8h10M8 3v10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  )
+}
