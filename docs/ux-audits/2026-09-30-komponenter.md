@@ -122,6 +122,11 @@ Rubrikens prosautfällning öppnas inte av en hand på handtaget eller ett fokus
 
 ![A: brickorna vid 1280 och 1024](2026-09-30-komponenter/05-a.png)
 
+**Beslut (beställaren 2026-10-01): A.**
+**Ändrat (#621, L59):** varje plats i bandet är en bricka `[Ada ×]`, och × är en full träffyta på 44 × 44 px som heter «Sparka Ada».
+Brickorna går under länken och rumskoden tillsammans när de inte ryms, och med åtta vid bordet rinner inget utanför vid 1024 eller 1280 (`editor-seat-chips.spec.ts`).
+En sparkad plats lämnar fokus till nästa bricka, eller till «Ny kod» när ingen är kvar.
+
 ## Rekommendation
 
 Ordningen är efter hur mycket yta som vinns per byggd rad, och efter vad som ger en komponent de

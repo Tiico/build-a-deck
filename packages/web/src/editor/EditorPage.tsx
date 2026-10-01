@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { nextCardRef } from './fields.js'
 import { DeckWall, type WallView } from './DeckWall.js'
 import { EditorTabs, MODES, panelId, tabId, type Mode } from './EditorTabs.js'
@@ -140,6 +140,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const shareOpen = over === 'share'
   const revRef = useRef<HTMLButtonElement>(null)
   const hereRef = useRef<HTMLButtonElement>(null)
+  // «Ny kod», where the focus goes when the last seat it stood beside is kicked (#621).
+  const newCodeRef = useRef<HTMLButtonElement>(null)
   // An older version the table is held against (B4), fetched once when the comparison starts.
   const [compare, setCompare] = useState<{ rev: number; label?: string | undefined; doc: ProjectDoc } | null>(null)
   // A running table (L5) with what admits people to it (DRIFT §9): the code and the host key.
@@ -714,9 +716,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           )}
           <span className="byd-editor-room">
             {' '}· {t('editor.table.roomCode')} <strong data-room-code>{table.code}</strong>{' '}
-            <button type="button" onClick={() => void rotate()}>{t('editor.table.newCode')}</button>
+            <button type="button" ref={newCodeRef} onClick={() => void rotate()}>{t('editor.table.newCode')}</button>
           </span>
-          <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={setNotice} />
+          <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={setNotice} lastStop={newCodeRef} />
         </div>
       )}
       {/* The line to the project, in D5's own states (#485, fynd 8): gone, with how old the
@@ -933,24 +935,65 @@ function homeUrl(server: string | null): string {
 
 // The seats as the lobby sees them (DRIFT §9), each taken one with a kick: the host's control
 // over who is at the table, from the screen the host already has open.
-function HostSeats({ client, sessionId, hostKey, ws, onNotice }: { client: ProjectClient; sessionId: string; hostKey: string | undefined; ws: string; onNotice(text: string | null): void }) {
+//
+// A seat is a chip, its name and an × (#621, beslut A 2026-10-01). The kick used to be an outlined
+// «Sparka Ada» of its own beside each name, so the strip grew by a button's width per player and
+// broke between a name and its kick; the × is a full target that carries the same sentence as its
+// name, and the chips go under the strip's first row together rather than one by one.
+//
+// The pressed × goes with its seat, and a focus whose element is taken away falls to the page,
+// where the next Tab starts over from the top (#477, fynd 6). So it is handed on: to the seat
+// that took the kicked one's place, the one before it at the end of the row, and «Ny kod» when
+// nobody is left.
+function HostSeats({ client, sessionId, hostKey, ws, onNotice, lastStop }: { client: ProjectClient; sessionId: string; hostKey: string | undefined; ws: string; onNotice(text: string | null): void; lastStop: RefObject<HTMLButtonElement | null> }) {
   const t = useT()
+  const labelId = useId()
   const { view } = useTableClient({ url: ws, sessionId, seat: null, lobby: true })
-  if (!view) return null
-  const taken = view.seats.filter((s) => s.name !== null)
+  const list = useRef<HTMLUListElement>(null)
+  const kicked = useRef<{ seat: string; at: number } | null>(null)
+  const taken = view ? view.seats.filter((s) => s.name !== null) : []
+  const seated = taken.map((s) => s.id).join(' ')
+  useEffect(() => {
+    const was = kicked.current
+    if (!was || seated.split(' ').includes(was.seat)) return
+    kicked.current = null
+    // Only a focus that went with the chip is handed on; one the host has since put somewhere
+    // else stays where she put it.
+    if (document.activeElement !== null && document.activeElement !== document.body) return
+    const crosses = list.current?.querySelectorAll('button') ?? []
+    ;(crosses[Math.min(was.at, crosses.length - 1)] ?? lastStop.current)?.focus()
+  }, [seated, lastStop])
   if (taken.length === 0) return null
   return (
-    <span className="byd-editor-seats">
-      {' '}· {t('editor.seats.at')}{' '}
-      {taken.map((s) => (
-        <span key={s.id} data-host-seat={s.id}>
-          {s.name}{' '}
-          <button type="button" onClick={() => void client.kick(sessionId, hostKey, s.id).catch((err: unknown) => onNotice(err instanceof Error ? err.message : String(err)))}>
-            {t('editor.seats.kick', { name: s.name ?? '' })}
-          </button>{' '}
-        </span>
-      ))}
-    </span>
+    <>
+      <span className="byd-editor-seats-at">
+        · <span id={labelId}>{t('editor.seats.at')}</span>
+      </span>
+      <ul className="byd-editor-seats" ref={list} aria-labelledby={labelId}>
+        {taken.map((s, at) => {
+          const name = t('editor.seats.kick', { name: s.name ?? '' })
+          return (
+            <li key={s.id} data-host-seat={s.id}>
+              {s.name}
+              <button
+                type="button"
+                aria-label={name}
+                title={name}
+                onClick={() => {
+                  kicked.current = { seat: s.id, at }
+                  void client.kick(sessionId, hostKey, s.id).catch((err: unknown) => {
+                    kicked.current = null
+                    onNotice(err instanceof Error ? err.message : String(err))
+                  })
+                }}
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    </>
   )
 }
 
