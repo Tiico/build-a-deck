@@ -159,3 +159,48 @@
   color: var(--byd-chosen-ink);
   font-weight: 700;
 }
+
+/* A chip: a thing with an × beside it that takes it away — a filter in the table's search field
+   (#617), a seat at the table in the editor's strip (#621), and whatever comes next. One form
+   (#648, beställarens beslut A after prototype 06): a pill as tall as a target, the name and then
+   the × as a full target square at its round end. The surface gives it its colours and nothing
+   else, so a chip in the field and a chip in the strip are told apart by the room they stand in.
+
+   The line, where a surface has one, is an outline drawn inside the box and not a border round it:
+   a border would make the chip 46 px or the × 42. The outline is painted over the ×'s own fill, so
+   the chip keeps its edge under the pointer. The × is named for what it does («Ta bort filtret
+   typ: fälla», «Sparka Ada»); the eye gets the name and the cross. */
+.byd-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--byd-s1);
+  height: var(--byd-tap);
+  box-sizing: border-box;
+  padding-left: var(--byd-s3);
+  border-radius: 999px;
+  outline: 1px solid var(--byd-chip-line, transparent);
+  outline-offset: -1px;
+  background: var(--byd-chip-bg, transparent);
+  color: var(--byd-chip-ink);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.byd-chip > button {
+  flex: none;
+  width: var(--byd-tap);
+  height: var(--byd-tap);
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0 999px 999px 0;
+  background: transparent;
+  color: var(--byd-chip-mark);
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+.byd-chip > button:hover { background: var(--byd-chip-hover-bg); color: var(--byd-chip-hover-mark, var(--byd-chip-mark)); }
+/* The ring is drawn inside the ×, so it lies over neither the name beside it nor the next chip;
+   it follows the chip's round end. */
+.byd-chip > button:focus-visible { outline-offset: -3px; }
