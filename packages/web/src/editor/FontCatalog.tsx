@@ -28,11 +28,14 @@ export type FontCatalogProps = {
   // The families the project already holds, so a hit already taken says so rather than offering
   // to be taken twice.
   inGame: string[]
+  // Opened from a layer in Mall (#634): every hit sets the layer, so a family the game already
+  // holds is offered too — it is the layer's choice, not the game's — and the verb says so.
+  forLayer?: boolean
   onChoose(family: CatalogFamily): Promise<void>
   onClose(): void
 }
 
-export function FontCatalog({ words, inGame, onChoose, onClose }: FontCatalogProps) {
+export function FontCatalog({ words, inGame, forLayer = false, onChoose, onClose }: FontCatalogProps) {
   const t = useT()
   const [all, setAll] = useState<CatalogFamily[] | null>(null)
   const [failed, setFailed] = useState(false)
@@ -103,7 +106,7 @@ export function FontCatalog({ words, inGame, onChoose, onClose }: FontCatalogPro
       ) : (
         <ul className="byd-font-catalog-hits" aria-label={t('fonts.catalog.hits')}>
           {shown.map((family) => (
-            <Hit key={family.family} family={family} words={words} taken={inGame.includes(family.family)} onChoose={onChoose} onRefused={setRefused} />
+            <Hit key={family.family} family={family} words={words} taken={!forLayer && inGame.includes(family.family)} forLayer={forLayer} onChoose={onChoose} onRefused={setRefused} />
           ))}
         </ul>
       )}
@@ -123,7 +126,7 @@ export function FontCatalog({ words, inGame, onChoose, onClose }: FontCatalogPro
 // One hit. The sample is the card's own words in the family's own face — which is the whole of
 // why C was chosen over A and B — and the meta line under it is what the project would take on:
 // the licence a catalog entry knows and an uploaded file does not.
-function Hit({ family, words, taken, onChoose, onRefused }: { family: CatalogFamily; words: CardWords | null; taken: boolean; onChoose(family: CatalogFamily): Promise<void>; onRefused(why: string | null): void }) {
+function Hit({ family, words, taken, forLayer, onChoose, onRefused }: { family: CatalogFamily; words: CardWords | null; taken: boolean; forLayer: boolean; onChoose(family: CatalogFamily): Promise<void>; onRefused(why: string | null): void }) {
   const t = useT()
   const [busy, setBusy] = useState(false)
   // The face is asked for by name; the stylesheet the sheet fetched is what makes it the real
@@ -156,7 +159,7 @@ function Hit({ family, words, taken, onChoose, onRefused }: { family: CatalogFam
             .finally(() => setBusy(false))
         }}
       >
-        {taken ? t('fonts.catalog.taken', { family: family.family }) : t('fonts.catalog.add', { family: family.family })}
+        {taken ? t('fonts.catalog.taken', { family: family.family }) : t(forLayer ? 'fonts.catalog.use' : 'fonts.catalog.add', { family: family.family })}
       </button>
     </li>
   )

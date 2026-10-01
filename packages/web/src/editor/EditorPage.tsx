@@ -37,6 +37,7 @@ import { DEFAULT_TIMING } from '../status/connection.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useLang, useT, type T } from '../i18n/index.js'
 import { HookGlyph } from '../glyphs.js'
+import type { CatalogFamily } from './font-catalog.js'
 import './editor.css'
 
 const PlaytestPrototype = import.meta.env.DEV ? lazy(() => import('./prototype/PlaytestWorkspace.js')) : null
@@ -486,6 +487,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           revealThemeSection('fonts')
           setStage('theme')
         }}
+        // A text layer's «Fler typsnitt…» (#634): the family comes into the game the way Speltema
+        // brings it, and the canvas sets the layer in whatever it came to be called.
+        {...(client.mayEdit ? { onCatalogFont: (family: CatalogFamily) => client.useCatalogFont(family, t) } : {})}
         // The template's own picture is uploaded by the path Media takes (#320), so it lands there.
         onAddPicture={(file) => client.addPicture(file, t)}
         group={group}

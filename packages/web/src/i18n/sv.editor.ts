@@ -627,6 +627,11 @@ export const svEditor = {
   // precis som att välja en kolumn är vägen dit — ingen av dem gissar åt formgivaren (#33).
   'canvas.props.icon.fromField': 'från kolumnen',
   'canvas.props.font': 'Typsnitt',
+  // Lagrets familj (L57, #634): spelets typsnitt först och sagda vara spelets, en familj spelet
+  // inte längre har för sig, och hela katalogen sist.
+  'canvas.font.game': 'Spelets typsnitt',
+  'canvas.font.kept': 'Inte i spelet',
+  'canvas.font.more': 'Fler typsnitt…',
   'canvas.props.size': 'Storlek (pt)',
   'canvas.props.weight': 'Vikt',
   'canvas.props.color': 'Färg',
@@ -793,6 +798,9 @@ export const svEditor = {
   'fonts.catalog.variable': ' · variabel',
   'fonts.catalog.add': 'Lägg till {family}',
   'fonts.catalog.taken': '{family} finns i spelet',
+  // Ur Mallen väljs familjen åt ett lager (#634): den tas in i spelet om den inte redan finns där,
+  // och lagret sätts i den.
+  'fonts.catalog.use': 'Använd {family}',
   'fonts.catalog.none': 'Ingen familj heter så. Pröva ett kortare ord.',
   'fonts.catalog.loading': 'Katalogen hämtas …',
   'fonts.catalog.failed': 'Katalogen svarar inte just nu. Proven kan inte ritas, och ingen familj kan hämtas hem förrän den gör det.',
