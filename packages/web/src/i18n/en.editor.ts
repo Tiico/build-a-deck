@@ -3,7 +3,7 @@ export const enEditor = {
   'editor.tab.wall': 'Card wall',
   'editor.tab.template': 'Template',
   'editor.tab.table': 'Data',
-  'editor.tab.theme': 'Game theme',
+  'editor.tab.theme': 'Theme',
   'editor.tab.media': 'Media',
   'media.title': 'Media in the game',
   'media.unused': 'no card uses it',
@@ -717,7 +717,7 @@ export const enEditor = {
   'theme.none': 'none yet',
   'theme.library.open': '＋ From the library',
   'theme.library.done': 'Done',
-  'canvas.fonts.moved': 'The game’s fonts are in Game theme ›',
+  'canvas.fonts.moved': 'The game’s fonts are under Theme ›',
 
   'symbols.colours': 'The game’s colours',
   'symbols.colours.help': 'One meaning, one colour. The cards write the meaning and never the colour, so a change here repaints every card that says it.',
