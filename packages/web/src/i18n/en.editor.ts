@@ -725,6 +725,8 @@ export const enEditor = {
   'theme.gallery.kronika': 'Chronicle',
   'theme.gallery.kronika.about': 'Book serifs, warm and readable, muted colours',
   'theme.gallery.choose': 'Choose the theme {name}',
+  'theme.gallery.show': 'Show the themes in their typefaces',
+  'theme.gallery.show.busy': 'Fetching the themes’ typefaces…',
   'theme.gallery.busy': 'Choosing {name}…',
   'theme.gallery.chosen': 'The game now starts from {name}.',
   'theme.meaning.cost': 'cost',

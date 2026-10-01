@@ -98,4 +98,48 @@ describe('the gallery of ready-made themes (L57, #632)', () => {
       globalThis.fetch = real
     }
   })
+
+  // Beställarens val C (2026-10-01): korten i temats typsnitt finns, men bara på tryck. Katalogen
+  // nås på designerns handling och inte när fliken öppnas (L27, DRIFT §12).
+  it('draws each theme on the game’s own card in its own typefaces, and only once that is asked for', async () => {
+    await openTheme()
+    expect(document.querySelectorAll('.byd-theme-tile [data-theme-card]')).toHaveLength(0)
+    expect(net.asked).toEqual([])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Visa temana i sina typsnitt' }))
+    await waitFor(() => expect(document.querySelectorAll('.byd-theme-tile [data-theme-card]')).toHaveLength(4))
+    // One sheet for each of the seven families the four themes are set in. The tool fetches no
+    // file itself: the card names the catalog's own address and the page draws from it, and
+    // nothing becomes the game's until a theme is chosen.
+    const sheets = net.asked.filter((url) => url.startsWith('https://fonts.googleapis.com/'))
+    expect(sheets.map((url) => new URL(url).searchParams.get('family')?.split(':')[0]).sort()).toEqual(['Cinzel', 'EB Garamond', 'Inter', 'Lora', 'Merriweather', 'Oswald', 'Roboto Condensed'])
+    expect(net.asked.filter((url) => url.startsWith('https://fonts.gstatic.com/'))).toEqual([])
+    // The card is the game's first card, its title set in the theme's heading family.
+    const skog = within(gallery()).getByRole('button', { name: 'Välj temat Skogssaga' })
+    expect(skog.textContent).toContain('Drake')
+    expect(skog.querySelector('style')?.textContent).toContain('Cinzel')
+    // The button has done its work and goes.
+    expect(screen.queryByRole('button', { name: 'Visa temana i sina typsnitt' })).toBeNull()
+    // And nothing was chosen by looking.
+    expect(line().textContent).toBe('Spelet utgår inte från något av temana.')
+  })
+
+  it('says it when the catalog does not answer the preview, and the tiles stay as they were', async () => {
+    net.undo()
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input instanceof Request ? input.url : String(input)
+      if (url.startsWith('https://fonts.')) return new Response('', { status: 503 })
+      return real(input as RequestInfo, init)
+    }) as typeof fetch
+    try {
+      await openTheme()
+      fireEvent.click(screen.getByRole('button', { name: 'Visa temana i sina typsnitt' }))
+      expect(await screen.findByText(/Katalogen svarade inte/)).toBeTruthy()
+      expect(document.querySelectorAll('.byd-theme-tile [data-theme-card]')).toHaveLength(0)
+      expect(screen.getByRole('button', { name: 'Visa temana i sina typsnitt' })).toBeTruthy()
+    } finally {
+      globalThis.fetch = real
+    }
+  })
 })

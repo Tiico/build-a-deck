@@ -121,7 +121,7 @@ export function ThemePanel({ doc, client, assetBase }: ThemePanelProps) {
       <div className="byd-theme-work">
         {/* The gallery of ready themes, and the line that says what departs from the chosen one,
             stand here above the parts a theme is made of (L57, #632). */}
-        <ThemeGallery doc={doc} client={client} />
+        <ThemeGallery doc={doc} client={client} assetBase={assetBase} />
         <ThemeSection id="fonts" open={open.has('fonts')} name={t('theme.fonts')} value={families.length === 0 ? t('theme.fonts.none') : families.join(' · ')}>
           {reading ? (
             <fieldset className="byd-reading-set" disabled>

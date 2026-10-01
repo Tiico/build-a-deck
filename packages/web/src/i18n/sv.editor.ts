@@ -811,6 +811,8 @@ export const svEditor = {
   'theme.gallery.kronika': 'Krönika',
   'theme.gallery.kronika.about': 'Bokserif, varm läsbarhet, dämpade färger',
   'theme.gallery.choose': 'Välj temat {name}',
+  'theme.gallery.show': 'Visa temana i sina typsnitt',
+  'theme.gallery.show.busy': 'Hämtar temanas typsnitt…',
   'theme.gallery.busy': 'Väljer {name}…',
   'theme.gallery.chosen': 'Spelet utgår nu från {name}.',
   'theme.meaning.cost': 'kostnad',

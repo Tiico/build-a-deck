@@ -5719,9 +5719,15 @@ Försvaret blev djupblått i båda, Retros kostnad rost, och Rens anfall plommon
 **Startikonerna ges bara ett spel som inte har några ikoner än.**
 Ett spel med en egen uppsättning får inte sex ikoner det inte bett om vid varje temabyte; det är vad «start» i startuppsättning betyder.
 
-**Galleriets brickor visar temat utan att nå Google.**
+**Galleriets brickor visar temat utan att nå Google, och kortet i temats typsnitt på begäran (beställarens val C, 2026-10-01).**
 Prototypens brickor ritade kortet i temats typsnitt, men det hade krävt katalogens ark i samma stund som fliken öppnades, och katalogen nås på designerns handling och aldrig före den (L27, DRIFT §12) — samma gräns som den guidade starten drar för sina ramar (#476).
-En bricka visar därför temats betydelser som färgade symboler på dess papper och familjerna utskrivna med namn; trycket är handlingen, och korten på väggen visar sedan typsnitten.
+Tre vägar lades fram: brickorna utan typsnittsprov (A), att låta öppnandet av Speltema räknas som handlingen (B), och brickorna plus en knapp som hämtar proven först på tryck (C).
+Valet blev **C**.
+En bricka visar temats betydelser som färgade symboler på dess papper och familjerna utskrivna med namn, och under galleriet står «Visa temana i sina typsnitt».
+Trycket på den är handlingen: det hämtar ett ark per familj och ritar spelets eget första kort på varje bricka, satt i temat genom samma redigering som valet skickar, så brickan inte kan visa något valet inte gör.
+Ingenting väljs genom att titta, och ingen fil blir spelets förrän ett tema trycks.
+B valdes bort för att det hade gjort varje besök på fliken till en förfrågan till Google; A för att typsnittet är halva skälet att välja ett tema.
+`font-catalog.spec.ts` läser på trafiken att fliken öppnas utan Google och att proven hämtas först efter trycket.
 
 ### L58. Markeringens handlingar står i tabellens fot (prototypat och beslutat 2026-10-01, #618)
 
