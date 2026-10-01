@@ -31,7 +31,7 @@ const EDITS: Record<string, readonly string[]> = {
   wall: [],
   template: ['.byd-canvas-tools', '.byd-backs', '.byd-drag-handle', '.byd-newfield'],
   table: ['.byd-data-add', '.byd-data-tick', 'td.byd-data-remove button', 'th.byd-data-remove button', '.byd-data-icon', '.byd-data-bulk'],
-  theme: ['.byd-theme-library-open', '.byd-symbols-tile', '.byd-symbols-add', '.byd-symbols-set li[data-icon] > button', '.byd-symbols-colours li[data-role] > button:last-child', '.byd-fonts-upload', '.byd-fonts-catalog'],
+  theme: ['.byd-theme-tile', '.byd-theme-reset', '.byd-theme-library-open', '.byd-symbols-tile', '.byd-symbols-add', '.byd-symbols-set li[data-icon] > button', '.byd-symbols-colours li[data-role] > button:last-child', '.byd-fonts-upload', '.byd-fonts-catalog'],
   media: ['.byd-media-add', '.byd-media-remove'],
   rules: ['.byd-rules-ways:not(.byd-rules-tools)', '.byd-rules-tools label', '.byd-rules-add', '.byd-rules-own', '.byd-rules-block > div[role="button"]'],
   tables: ['.byd-setup-tools', '.byd-setup-x', '.byd-setup-corner', '.byd-zone-action-new'],

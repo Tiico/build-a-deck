@@ -2921,6 +2921,26 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-theme[data-sheet] { grid-template-columns: minmax(0, 1fr) minmax(320px, 440px); }
 .byd-theme-work { min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1100px); align-content: start; gap: var(--byd-s2); }
 .byd-theme-sec { border: 1px solid #2f333d; border-radius: 12px; background: var(--byd-editor-panel-bg); }
+/* The ready-made themes (L57, #632): a row of tiles above the parts, and the line that says what
+   the game has made of the one it started from. A tile's sample stands on the theme's own paper,
+   never on the editor's dark ground (L34). */
+.byd-theme-gallery { display: grid; gap: var(--byd-s2); }
+.byd-theme-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--byd-s3); }
+.byd-theme-tile { display: grid; align-content: start; justify-items: start; gap: var(--byd-s1); padding: var(--byd-s3); border: 1px solid #2f333d; border-radius: 12px; background: var(--byd-editor-panel-bg); color: #fff; font: inherit; text-align: left; cursor: pointer; }
+.byd-theme-tile:hover { border-color: #4a5060; }
+.byd-theme-tile[aria-pressed='true'] { border-color: var(--byd-editor-primary-mark); box-shadow: 0 0 0 1px var(--byd-editor-primary-mark); }
+.byd-theme-tile[aria-disabled='true'] { cursor: progress; }
+.byd-theme-tile-paper { display: flex; gap: var(--byd-s2); width: 100%; box-sizing: border-box; margin-bottom: var(--byd-s1); padding: var(--byd-s3); border-radius: 8px; }
+.byd-theme-tile-paper img { width: 22px; height: 22px; }
+.byd-theme-tile b { font-size: 14px; }
+.byd-theme-tile small { color: #9aa3b8; font-size: 12px; line-height: 1.4; }
+.byd-theme-tile .byd-theme-tile-families { color: #c3cbdd; }
+.byd-theme .byd-theme-departs { color: #c3cbdd; }
+.byd-theme-departs[data-away] b { color: #f0b64a; font-weight: 600; }
+.byd-theme-reset { min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: #c3cbdd; font: inherit; text-decoration: underline; cursor: pointer; }
+.byd-theme-reset[aria-disabled='true'] { cursor: progress; }
+.byd-theme-gallery-line { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--byd-s3); min-height: var(--byd-tap); }
+.byd-theme-gallery-said { color: #9aa3b8; }
 .byd-theme-head { display: flex; align-items: center; gap: var(--byd-s2); padding: 0 var(--byd-s4); }
 .byd-theme-head h2 { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 14px; font-weight: 600; }
 /* The head is the button that folds the part, as Mall's sections are (#478): the name, a chevron
@@ -3843,6 +3863,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
   .byd-data-bulk, .byd-data-tick, td.byd-data-remove button, th.byd-data-remove button, .byd-data-icon,
   .byd-data-add, .byd-data-bodytools, .byd-prose-switch, .byd-prose-follow, [data-image-cell] .byd-data-file, [data-image-cell] .byd-data-drop > button:last-child,
   .byd-columns-rename, .byd-columns-name, .byd-data-dropfield,
+  .byd-theme-tiles, .byd-theme-reset,
   .byd-symbols-tile, .byd-symbols-add, .byd-theme-library-open, .byd-symbols-set li[data-icon] > button, .byd-symbols-colours li[data-role] > button:last-child,
   .byd-crop-corner, .byd-media-crop-row .byd-secondary,
   .byd-setup-tools, .byd-setup-x, .byd-setup-corner, .byd-setup-counter button, .byd-setup-counters > button, .byd-setup-props > button,
