@@ -45,7 +45,7 @@ type Column = { head: string; body: string | null; headBox: Box; bodyBox: Box | 
 // `renames` is every control in the door that renames a column (#384), and `tap` is what the page
 // itself says a target has to be — read off the editor rather than written down here, so the
 // claim is a relation between the two and not a number pinned to the machine that wrote it.
-type Head = { row: Box; headings: { name: string; box: Box; ink: Box }[]; door: Box | null; scroll: Box; firstRow: Box; columns: Column[]; renames: { field: string; box: Box }[]; tap: number }
+type Head = { row: Box; headings: { name: string; box: Box; ink: Box }[]; door: Box | null; scroll: Box; firstRow: Box; columns: Column[]; renames: { field: string; box: Box }[]; switches: { name: string; box: Box }[]; tap: number }
 
 const VIEW = { w: 1280, h: 800 }
 
@@ -64,19 +64,22 @@ function Table({ doc: initial = projectDoc() }: { doc?: ProjectDoc }) {
       onRemoveField={(field) => setDoc((current) => applyEdit(current, { v: 'removeField', field }))}
       onMoveField={() => undefined}
       onRenameField={(from, to) => setDoc((current) => applyEdit(current, { v: 'renameField', from, to }))}
+      onProse={(field, prose) => setDoc((current) => applyEdit(current, { v: 'setProse', field, prose }))}
     />
   )
 }
 
 // The table's markup as it stands after `act`ing on it: closed, and with the form open and half a
 // name typed into it — which is the moment the prototype's head grew.
-async function markup(open: boolean): Promise<Table> {
+async function markup(open: boolean, marked = false): Promise<Table> {
   const user = userEvent.setup()
   const { container, unmount } = render(<Table />)
   if (open) {
     await user.click(screen.getByRole('button', { name: 'Kolumner' }))
     await user.type(screen.getByLabelText('Namn'), 'a')
   }
+  // A marking, for the foot that carries its actions (#618).
+  if (marked) await user.click(screen.getAllByRole('checkbox')[1]!)
   const html = container.innerHTML
   unmount()
   return { html, deck: deckValues(projectDoc(), sv) }
@@ -127,6 +130,7 @@ async function measure({ html, deck }: Table, extra = ''): Promise<Head> {
         scroll: box(document.querySelector('.byd-data-scroll'))!,
         firstRow: box(document.querySelector('.byd-data tbody tr'))!,
         renames: [...document.querySelectorAll('.byd-columns button.byd-columns-name')].map((el) => ({ field: el.closest('li')!.getAttribute('data-col')!, box: box(el)! })),
+        switches: [...document.querySelectorAll('.byd-columns .byd-prose-switch button, .byd-columns .byd-prose-follow')].map((el) => ({ name: el.getAttribute('aria-label')!, box: box(el)! })),
         tap: parseFloat(getComputedStyle(document.querySelector('.byd-data-scroll')!).getPropertyValue('--byd-tap')),
         columns: heads.map((th, i) => ({
           head: named(th),
@@ -152,7 +156,7 @@ describe("the head's own door for its columns (#32, #46)", () => {
     expect(open.door).not.toBeNull()
     expect(open.door!.h).toBeGreaterThan(open.row.h)
     expect(shut.door).toBeNull()
-    expect(shut.headings.map((h) => h.name)).toEqual(['id ↕', 'Titel ↕', 'body ↕', 'antal ↕', 'Ta bort'])
+    expect(shut.headings.map((h) => h.name)).toEqual(['id ↕', 'Titel ↕', 'body ↕¶', 'antal ↕', 'Ta bort'])
     expect(open.headings.map((h) => h.name)).toEqual(shut.headings.map((h) => h.name))
 
     // The condition itself: the head is exactly as tall as it was, every heading cell stands
@@ -163,12 +167,13 @@ describe("the head's own door for its columns (#32, #46)", () => {
     expect(open.headings.map((h) => h.ink.y)).toEqual(shut.headings.map((h) => h.ink.y))
     expect(open.firstRow.y).toBe(shut.firstRow.y)
 
-    // It hangs from the cell it was opened from, over what is under it, and inside the box the
-    // table scrolls in — it is not a sheet that floats off somewhere else on the page.
+    // It hangs from the cell it was opened from, over what is under it — it is not a sheet that
+    // floats off somewhere else on the page. That it is lifted over the box the table scrolls in,
+    // rather than cut by it, is the running editor's to show (#611): this markup is static, and
+    // the lift is something the door does once it is open (`table-column-door-over.spec.ts`).
     const cell = open.headings.at(-1)!.box
     expect(Math.abs(open.door!.y - (cell.y + cell.h))).toBeLessThanOrEqual(2)
     expect(open.door!.y).toBeLessThan(open.firstRow.y + open.firstRow.h)
-    expect(open.door!.x + open.door!.w).toBeLessThanOrEqual(open.scroll.x + open.scroll.w + 1)
   }, 60_000)
 
   // Where a column is renamed (#384). The whole reason the rename went behind the door and not
@@ -190,6 +195,18 @@ describe("the head's own door for its columns (#32, #46)", () => {
     expect(open.tap).toBeGreaterThan(0)
   }, 60_000)
 
+  // What a column is written as moved out of the head and into the door (#615), and the reason it
+  // could: a row of the list has room for two whole targets beside the name and the ×, where the
+  // fold-out under a heading was the only place the old switch reached 44 px at all.
+  it('gives the prose switch in every row whole targets, and leaves the name its own', async () => {
+    const open = await measure(await markup(true))
+    expect(open.switches.map((s) => s.name)).toEqual(['Prosa, Titel', 'Text, Titel', 'Prosa, body', 'Text, body'])
+    for (const { name, box } of open.switches) {
+      expect({ name, tall: box.h >= open.tap, wide: box.w >= open.tap }).toEqual({ name, tall: true, wide: true })
+    }
+    for (const { field, box } of open.renames) expect({ field, wide: box.w >= open.tap }).toEqual({ field, wide: true })
+  }, 60_000)
+
   it('is a real condition and not a rule that cannot be broken: in the flow, the head does grow', async () => {
     // The same markup with one property taken back — the door standing in the cell instead of
     // over the rows — is the prototype that was rejected. If this passed too, the pair above
@@ -201,7 +218,7 @@ describe("the head's own door for its columns (#32, #46)", () => {
     // And that is exactly the fault the prototype had: every heading beside it is pushed down,
     // and so is the first card.
     const pushed = inFlow.headings.filter((h, i) => h.ink.y > held.headings[i]!.ink.y)
-    expect(pushed.map((h) => h.name)).toEqual(['id ↕', 'Titel ↕', 'body ↕', 'antal ↕'])
+    expect(pushed.map((h) => h.name)).toEqual(['id ↕', 'Titel ↕', 'body ↕¶', 'antal ↕'])
     expect(inFlow.firstRow.y).toBeGreaterThan(held.firstRow.y)
   }, 60_000)
 })
@@ -222,7 +239,7 @@ describe('the head and the rows are the same table (#32)', () => {
 
     // The head is the shape it is meant to be, named rather than counted, so this is not a guard
     // over a table without the cells in question.
-    expect(columns.map((c) => c.head)).toEqual(['check', 'id ↕', 'Titel ↕', 'body ↕', 'antal ↕', 'remove'])
+    expect(columns.map((c) => c.head)).toEqual(['check', 'id ↕', 'Titel ↕', 'body ↕¶', 'antal ↕', 'remove'])
 
     // Nothing in the head stands over nothing.
     expect(columns.filter((c) => c.bodyBox === null).map((c) => c.head)).toEqual([])
@@ -248,7 +265,7 @@ describe('the head and the rows are the same table (#32)', () => {
 
     // Every column from the missing cell on has drifted, and the head still has all of its own.
     const drift = short.columns.filter((c) => c.bodyBox === null || c.bodyBox.x !== c.headBox.x || c.bodyBox.w !== c.headBox.w)
-    expect(drift.map((c) => c.head)).toEqual(['id ↕', 'Titel ↕', 'body ↕', 'antal ↕', 'remove'])
+    expect(drift.map((c) => c.head)).toEqual(['id ↕', 'Titel ↕', 'body ↕¶', 'antal ↕', 'remove'])
 
     // And the drift is the one that shipped: the × has slid a whole heading to the left, onto
     // `antal`, and taken that heading's width instead of a tap target's.
@@ -680,3 +697,41 @@ describe('a table that stops being the size it was (#53)', () => {
     }
   }, 60_000)
 })
+
+// The actions for a marking stand in the foot (#618, variant A). They stood in a band between
+// the crown and the rows, 72 px of it, and every row moved 80 px when a box was ticked — the box
+// the hand had just pressed slid away under it. Measured here on the page rather than asserted
+// from the markup: the rows begin where they began, and the foot is still one row.
+describe('the rows stand still when a card is marked (#618)', () => {
+  it('keeps the first row where it was, and keeps the foot one row tall', async () => {
+    const [quiet, marked] = await Promise.all([measure(await markup(false)), measure(await markup(false, true))])
+    expect(marked.scroll.y).toBe(quiet.scroll.y)
+    expect(marked.firstRow.y).toBe(quiet.firstRow.y)
+    const foot = await measureFoot(await markup(false, true))
+    // One target plus the air the foot keeps above it, read off the stylesheet's own ladder.
+    expect(foot.toolbar).not.toBeNull()
+    expect(foot.height).toBeLessThanOrEqual(foot.tap + 2 * foot.air)
+  }, 60_000)
+})
+
+async function measureFoot({ html, deck }: Table): Promise<{ height: number; toolbar: Box | null; tap: number; air: number }> {
+  const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
+  try {
+    await page.setContent(shellOf(html, ''), { waitUntil: 'load' })
+    return (await page.evaluate(({ deck, fit }) => {
+      new Function('box', 'deck', `(${fit})(box, deck)`)(document.querySelector('.byd-data-scroll'), deck)
+      const foot = document.querySelector<HTMLElement>('.byd-crown-foot')!
+      const toolbar = foot.querySelector('.byd-data-bulk')
+      const r = toolbar?.getBoundingClientRect()
+      const cs = getComputedStyle(foot)
+      return {
+        height: Math.round(foot.getBoundingClientRect().height),
+        toolbar: r ? { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) } : null,
+        tap: parseFloat(cs.getPropertyValue('--byd-tap')),
+        air: parseFloat(cs.getPropertyValue('--byd-s2')),
+      }
+    }, { deck, fit: FIT })) as { height: number; toolbar: Box | null; tap: number; air: number }
+  } finally {
+    await page.close()
+  }
+}

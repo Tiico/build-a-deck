@@ -177,8 +177,9 @@ describe('the setup editor (B5, K2): the seats knob, and giving the seats a zone
     await run.projects.create(run.projectId, projectDoc())
     await openBord()
     fireEvent.click(screen.getByRole('button', { name: 'Ta bort Kasthög' }))
-    fireEvent.click(screen.getByRole('button', { name: '3' }))
-    expect(screen.getByRole('button', { name: '3', pressed: true })).toBeTruthy()
+    // Platsantalet är en stegare sedan #620: ett steg upp från två.
+    fireEvent.click(screen.getByRole('button', { name: 'En spelare fler' }))
+    expect((screen.getByRole('spinbutton', { name: 'Antal spelare, 1 till 8' }) as HTMLInputElement).value).toBe('3')
     // Den nya platsen syns på familjeraden innan någon fällt ut den (#175).
     expect(screen.getByRole('button', { name: 'Hand 3 platser' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Hand 3 platser' }))
@@ -225,7 +226,7 @@ describe('the setup editor (B5, C4): the phone’s sheet as a preview', () => {
   it('shows one seat’s sheet, not every seat’s', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openBord()
-    fireEvent.click(screen.getByRole('button', { name: '3' }))
+    fireEvent.click(screen.getByRole('button', { name: 'En spelare fler' }))
     fireEvent.click(screen.getByRole('button', { name: '＋ Räknare' }))
     fireEvent.click(screen.getByRole('button', { name: '＋ Räknarzon per plats' }))
     fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))

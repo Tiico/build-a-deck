@@ -27,7 +27,9 @@ async function openBord(): Promise<void> {
 // Åtta platser med allt tre: en hand, en yta framför sig och en räknarzon — tjugofyra zoner, som
 // är precis det tal granskningen mätte listan på (#175).
 function eightSeatsWithEverything(): void {
-  fireEvent.click(screen.getByRole('button', { name: '8' }))
+  const seats = screen.getByRole('spinbutton', { name: /Antal spelare/ })
+  fireEvent.change(seats, { target: { value: '8' } })
+  fireEvent.keyDown(seats, { key: 'Enter' })
   fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
   fireEvent.click(screen.getByRole('button', { name: '＋ Räknare' }))
   fireEvent.click(screen.getByRole('button', { name: '＋ Räknarzon per plats' }))

@@ -4,7 +4,7 @@ export const svEditor = {
   'editor.tab.wall': 'Kortvägg',
   'editor.tab.template': 'Mall',
   'editor.tab.table': 'Tabell',
-  'editor.tab.symbols': 'Symboler',
+  'editor.tab.theme': 'Speltema',
   'editor.tab.media': 'Media',
   'media.title': 'Media i spelet',
   'media.unused': 'inget kort använder den',
@@ -112,6 +112,8 @@ export const svEditor = {
   'editor.startTable': 'Starta bord',
   'editor.startingTable': 'Startar bordet…',
   'editor.updateTable': 'Uppdatera bordet',
+  'editor.updateTable.short': 'Uppdatera',
+  'editor.updatingTable.short': 'Uppdaterar…',
   'editor.updatingTable': 'Uppdaterar bordet…',
   'editor.table.started': 'Nytt bord startat på {version} —',
   'editor.table.refreshed': 'Bordet uppdaterat på {version} —',
@@ -168,7 +170,6 @@ export const svEditor = {
   // What stands before the choice in a box, and is what gives way below 1280 (#477).
   'crown.box.lead': '{name}: ',
   'crown.box.count': '{name} ({n})',
-  'crown.rail.more': 'Fler filter',
   // Hjälpmönstret (L32, #303): frågetecknet är namngivet efter vad det handlar om, och lådan
   // det öppnar har ett kryss. Ämnet skrivs där frågetecknet står, i sin flik.
   'help.about': 'Hjälp om {topic}',
@@ -191,8 +192,11 @@ export const svEditor = {
   'wall.density': 'Täthet',
   'wall.density.more': 'Fler kort per rad',
   'wall.density.less': 'Färre och större kort',
-  'wall.foot.cards': '{n} kort · {px} px breda',
-  'wall.foot.found': '{shown} av {total} kort · {px} px breda',
+  // Bredden står i pillret mellan de två stegen (#619), inte i foten en halv skärm bort.
+  'wall.density.px': '{px} px',
+  'wall.density.said': 'Korten {px} px breda',
+  'wall.foot.cards': '{n} kort',
+  'wall.foot.found': '{shown} av {total} kort',
   'wall.foot.checked': 'Inga anmärkningar',
   'wall.empty.title': 'Spelet har inga kort än',
   'wall.empty.body': 'Ett kort är en rad i Tabell, och mallen i Mall ritar det. Börja var du vill.',
@@ -227,6 +231,10 @@ export const svEditor = {
 
   // Tabellen: import och export, filtret, det markerade och raderna.
   // Ett steg bakåt (#35): vad det tog tillbaka, i designerns egna ord snarare än verbets.
+  'undo.button': 'Ångra {what}',
+  'undo.button.none': 'Ångra: inget att ta tillbaka',
+  'redo.button': 'Gör om {what}',
+  'redo.button.none': 'Gör om: inget att göra om',
   'undo.took': 'Tog tillbaka: {what}',
   'undo.redid': 'Gjorde om: {what}',
   'undo.what.name': 'namnet på spelet',
@@ -250,31 +258,27 @@ export const svEditor = {
   // Vad huvudet säger: fältet, och kortet det gäller. Fältets namn är designerns eget ord och
   // står som hon skrev det (A4).
   'table.body.head': '{field} · {cardRef}',
-  // Kolumnens märke i tabellhuvudet (L43, #362, variant C). «Höjden föreslår, designern avgör»:
+  // Kolumnens växel i dörren bakom ＋ (L43, ändrat i #615). «Höjden föreslår, designern avgör»:
   // rutans höjd i mallen föreslår vilken kolumn som skrivs som prosa, och designern avgör.
   //
-  // Skillnaden mellan förval och val bärs i form — prickad mot ifylld — och en prickad
-  // understrykning finns inte för en skärmläsare. Så märkets *namn* bär samma skillnad i ord.
+  // Skillnaden mellan förval och val bärs i form — streckad mot ifylld — och en streckad kant
+  // finns inte för en skärmläsare. Så växelns *namn* bär samma skillnad i ord.
   // Det är fyra meningar och inte två halvor som sätts ihop: ett tillstånd och ett upphov hör
   // ihop i en mening, och ett språk som fogar dem på annat håll ska kunna skriva om hela raden.
   'table.prose.is.prose.height': '{field} skrivs som prosa, höjden föreslog',
   'table.prose.is.prose.choice': '{field} skrivs som prosa, du valde',
   'table.prose.is.plain.height': '{field} skrivs som vanlig text, höjden föreslog',
   'table.prose.is.plain.choice': '{field} skrivs som vanlig text, du valde',
-  // Vad utfällningen säger överst: tillståndet, utan upphovet. Upphovet står i formen och i
-  // märkets namn, och en mening om det i ytan var det som valdes bort.
-  'table.prose.is.prose': '{field} skrivs som prosa',
-  'table.prose.is.plain': '{field} skrivs som vanlig text',
   // Och orsaken: rutan mallen ritar, mot en rad av dess egen grad. Två rader är vad ett stycke
   // eller en punkt behöver för att synas (L39).
   'table.prose.why.prose': 'Höjden föreslår prosa: rutan är {box} mm och en rad av dess grad är {line} mm.',
   'table.prose.why.plain': 'Höjden föreslår vanlig text: rutan är {box} mm och en rad av dess grad är {line} mm.',
   'table.prose.why.undrawn': 'Mallen ritar ingen ruta för kolumnen, så höjden föreslår vanlig text.',
-  // De två knapparna. Den första vänder valet och gör det uttryckligt; den andra lämnar tillbaka
-  // frågan till höjden och står bara där det finns ett val att lämna.
+  // Växelns två knappar, och knappen som lämnar tillbaka frågan till höjden — den står bara där
+  // det finns ett val att lämna. Var och en bär kolumnen i sitt namn (#557).
   'table.prose.turn.named': '{turn}, {field}',
-  'table.prose.make.prose': 'Gör prosa',
-  'table.prose.make.plain': 'Gör vanlig text',
+  'table.prose.as.prose': 'Prosa',
+  'table.prose.as.plain': 'Text',
   'table.prose.follow': 'Följ höjden igen',
   'table.icon.hint': 'Sätt in en ikon — eller skriv {',
   // De två står bredvid varandra i samma ram, men den ena stannar och frågar efter en fil medan
@@ -313,6 +317,12 @@ export const svEditor = {
   'table.import.box': 'Importera',
   'table.export.box': 'Exportera',
   'table.filterOn': 'Filtrera på {field}',
+  'table.filterOn.count': 'Filtrera på {field}, {n} valt',
+  'table.filter.token': '{field}: {value}',
+  'table.filter.remove': 'Ta bort filtret {field}: {value}',
+  'table.filter.cards': '{n} kort',
+  'table.filter.none': 'inget värde börjar så',
+  'table.search.placeholder.typed': 'Sök i alla fält, eller {field}: …',
   'table.count': '{shown} av {total} kort',
   'table.selected.one': '{n} markerat kort',
   'table.selected.other': '{n} markerade kort',
@@ -327,6 +337,8 @@ export const svEditor = {
   'table.antal.out': 'ingår inte i leken',
   'table.bulk': 'Markerade kort',
   'table.bulk.field': 'Sätt',
+  'table.bulk.set.box': 'Sätt fält',
+  'table.bulk.set.label': 'Sätt ett fält på {n} kort',
   'table.column': 'Kolumn',
   'table.value': 'Värde',
   'table.bulk.set': 'Sätt {field} på {n} kort',
@@ -387,6 +399,16 @@ export const svEditor = {
   'table.meaning.none': 'Utan betydelse',
   'table.meanings.none': 'Spelet har inga betydelser; symbolen ritas i bläck.',
   'table.writes': 'Skriver',
+  'table.brace.written': 'Som leken skriver dem',
+  'table.brace.written.hint': 'ett klick',
+  'table.brace.count': '{n}×',
+  'table.brace.icons': 'Spelets ikoner',
+  'table.brace.found': 'Ur biblioteket',
+  'table.brace.found.hint': 'tas in i spelet',
+  'table.brace.inGame': 'i spelet',
+  'table.brace.library': 'Biblioteket',
+  'table.brace.more': 'Hela biblioteket ({n}) ›',
+  'table.brace.back': '‹ Spelets ikoner',
   'table.removeRow': 'ta bort {cardRef}',
   'table.empty': 'Inga kort matchar filtret.',
   'table.skip': 'Hoppa förbi tabellen, {n} kort',
@@ -484,14 +506,21 @@ export const svEditor = {
   // gränssnittet alls: inget reglage, ingen procentsats, ingen Ctrl-rulle.
   'canvas.stage': 'Duken',
   'canvas.zoom': 'Förstoring',
-  'canvas.zoom.level': 'Förstoring i procent',
   'canvas.zoom.percent': '{n} %',
+  // Ett piller, [−][164 % ▾][+] (#619): procenttalet är knappen som öppnar valen, och dess namn
+  // säger måttet och om kortet är inpassat — inpassningen är annars ett val bakom en meny, och ett
+  // val ingen ser är ett läge ingen vet att kortet står i.
+  'canvas.zoom.said': 'Förstoring: {n} %',
+  'canvas.zoom.said.fit': 'Förstoring: {n} %, inpassad',
+  'canvas.zoom.choices': 'Välj förstoring',
   'canvas.zoom.in': 'Förstora mer',
   'canvas.zoom.out': 'Förstora mindre',
   'canvas.zoom.fit': 'Passa in',
-  // Kortets eget mått, som det trycks. Knappen heter det den gör: 100 % är en millimeter ritad
+  // Kortets eget mått, som det trycks. Valet heter det det gör: 100 % är en millimeter ritad
   // som en millimeter, och det betyder samma sak i varje fönster — vilket Passa in aldrig gör.
   'canvas.zoom.actual': '100 %',
+  'canvas.zoom.half': '50 %',
+  'canvas.zoom.double': '200 %',
   // Vad som går, och inte bara vad som gick (#144). Meningen var sann bara så länge elementet inte
   // gick att flytta från tangentbordet: den namngav ordningen och omdöpningen och teg om själva
   // flytten, vilket var precis den som saknades.
@@ -752,6 +781,18 @@ export const svEditor = {
   'fonts.catalog.count': '{shown} av {all}',
   'fonts.catalog.silent': 'Katalogen svarade inte. Familjen kunde inte hämtas hem.',
   'fonts.catalog.badge': 'Katalog',
+  // Speltema (L57, #630): the game's typefaces, meanings and icons, each folded behind a head
+  // that carries its value while closed.
+  'theme.fonts': 'Typsnitt',
+  'theme.fonts.none': 'inga egna',
+  'theme.colours': 'Färger och betydelser',
+  'theme.icons': 'Spelets ikoner',
+  'theme.icons.count.one': '1 st',
+  'theme.icons.count.other': '{n} st',
+  'theme.none': 'inga än',
+  'theme.library.open': '＋ Ur biblioteket',
+  'theme.library.done': 'Klar',
+  'canvas.fonts.moved': 'Spelets typsnitt finns i Speltema ›',
 
   // Symbolbiblioteket och spelets egen uppsättning.
   'symbols.colours': 'Spelets färger',
@@ -782,7 +823,6 @@ export const svEditor = {
   'symbols.help.topic': 'biblioteket',
   'symbols.search': 'Sök symbol',
   'symbols.search.placeholder': 'Sök symbol…',
-  'symbols.category': 'Kategori',
   'symbols.foot': '{n} av {of} symboler · {m} i spelet',
   'symbols.categories': 'Kategorier',
   'symbols.all': 'Alla',

@@ -18,7 +18,9 @@ afterEach(async () => {
   await run.stop()
 })
 
+// Speltema (L57): the icons are folded until opened, and the library opens from them.
 async function openSymbols(): Promise<void> {
+  localStorage.clear()
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(
     <StatusLive>
@@ -26,7 +28,9 @@ async function openSymbols(): Promise<void> {
     </StatusLive>,
   )
   await screen.findByText('Skogens herrar')
-  fireEvent.click(screen.getByRole('tab', { name: 'Symboler' }))
+  fireEvent.click(screen.getByRole('tab', { name: 'Speltema' }))
+  fireEvent.click(screen.getByRole('button', { name: /^Spelets ikoner/ }))
+  fireEvent.click(screen.getByRole('button', { name: /Ur biblioteket/ }))
 }
 const tile = (name: string) => screen.getByRole('button', { name: `Ta in ${name}` })
 // A symbol the game has is named by what the tile shows (#558 F-15): «sköld, i spelet».
@@ -42,12 +46,11 @@ describe('the symbol library in the editor (E4)', () => {
     fireEvent.change(screen.getByLabelText('Sök symbol'), { target: { value: 'försvar' } })
     expect(screen.getAllByRole('button', { name: /^Ta in / })).toHaveLength(1)
     fireEvent.change(screen.getByLabelText('Sök symbol'), { target: { value: '' } })
-    // Since #128 the categories live in a named box in the panel's crown, which says which one is
-    // chosen before it is opened.
-    expect(screen.getByRole('button', { name: /^Kategori/ }).textContent).toContain('Alla')
-    fireEvent.click(screen.getByRole('button', { name: /^Kategori/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Platshållare' }))
-    expect(screen.getByRole('button', { name: /^Kategori/ }).textContent).toContain('Platshållare')
+    // The categories stand in the library as a row of choices, the chosen one pressed (L57).
+    const kinds = screen.getByRole('group', { name: 'Kategorier' })
+    expect(within(kinds).getByRole('button', { name: 'Alla' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(within(kinds).getByRole('button', { name: 'Platshållare' }))
+    expect(within(kinds).getByRole('button', { name: 'Platshållare' }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.queryByRole('button', { name: 'Ta in sköld' })).toBeNull()
     expect(screen.getByRole('button', { name: /Ta in ram-tunn/ })).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Sök symbol'), { target: { value: 'ingenting alls' } })
@@ -129,9 +132,9 @@ describe('the symbol library in the editor (E4)', () => {
     expect(question.textContent).toContain(`Kortet ${doc.rows[0]!.id} skriver den.`)
     fireEvent.click(within(question).getByRole('button', { name: 'Ja, ta bort' }))
     await waitFor(() => expect(screen.getByText(/Inga symboler ännu/)).toBeTruthy())
-    // The last symbol took its heading with it. The hand used to go to the library's search at
-    // the top of the page (#481); it lands where the list stood, on the line that says the game
-    // has none, and the removal is said (#558).
+    // The last symbol took the list with it. The hand used to go to the library's search at the
+    // top of the page (#481); it lands where the list stood, on the line that says the game has
+    // none, and the removal is said (#558).
     await waitFor(() => expect(document.activeElement).toBe(screen.getByText(/Inga symboler ännu/)))
     expect(document.querySelector('[data-status-live="polite"]')!.textContent).toBe('sköld är borttagen.')
   })
@@ -150,7 +153,10 @@ describe('the symbol library in the editor (E4)', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Kortvägg' }))
     await waitFor(() => expect(document.querySelector('[data-card-ref="dragon"] .byd-icon-missing')).toBeTruthy())
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Symboler' }))
+    localStorage.clear()
+    fireEvent.click(screen.getByRole('tab', { name: 'Speltema' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Spelets ikoner/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Ur biblioteket/ }))
     fireEvent.click(tile('sköld'))
     await waitFor(() => expect(document.querySelector('[data-card-ref="dragon"] img.byd-icon')).toBeTruthy())
     const set = await screen.findByRole('list', { name: 'Symboler i spelet' })
@@ -158,7 +164,7 @@ describe('the symbol library in the editor (E4)', () => {
   })
 })
 
-// The deck the symbol tab draws under the library (#178). It used to draw every card in the game,
+// The deck Speltema draws under the game's icons (#178). It used to draw every card in the game,
 // always, whatever was asked — a deck of 308 was 10 132 px of compiled cards under a line that
 // said "no symbols yet", each one of them through the card renderer. The tab is about symbols and
 // where they are said, so the deck it shows is the cards that say the symbol in hand.
@@ -178,7 +184,7 @@ const withIcons = (): ProjectDoc => {
   }
 }
 
-const drawn = () => document.querySelectorAll('.byd-symbols-main .byd-wall-card').length
+const drawn = () => document.querySelectorAll('.byd-symbols-deck .byd-wall-card').length
 const chip = (name: string | RegExp) => screen.getByRole('button', { name })
 
 describe('the deck the symbol tab draws (#178)', () => {

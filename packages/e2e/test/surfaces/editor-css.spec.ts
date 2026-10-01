@@ -52,7 +52,7 @@ const SHELL = `
           <input type="search" class="byd-crown-search" aria-label="Sök i alla fält" data-stop="the wall's search" />
           <button class="byd-crown-box" aria-expanded="false" data-stop="the eyes box">Ögon: Som du ser det ▾</button>
           <button class="byd-crown-box" aria-expanded="false" data-stop="the guides box">Guider (0) ▾</button>
-          <div class="byd-crown-step" role="group"><button data-stop="packing the wall closer">−</button><button data-stop="larger cards">+</button></div>
+          <div class="byd-pill" role="group"><button class="byd-pill-step" data-stop="packing the wall closer">−</button><output class="byd-pill-value">150 px</output><button class="byd-pill-step" data-stop="larger cards">+</button></div>
           <button class="byd-crown-box" aria-expanded="false" data-stop="the grouping box">Grupperad efter: typ ▾</button>
           <button class="byd-crown-fold" aria-expanded="true" data-stop="folding the jump column"><span>⟨</span>Fäll ihop hoppspalten</button>
           <button class="byd-crown-box byd-crown-end" aria-expanded="false" data-stop="the checks box">Fysisk kontroll (1) ▾</button>
@@ -67,7 +67,7 @@ const SHELL = `
           </nav>
           <div class="byd-wall-deck"><div class="byd-wall"><div class="byd-wall-card" aria-selected="true"></div></div></div>
         </div>
-        <div class="byd-crown-foot"><span>3 kort · 150 px breda</span></div>
+        <div class="byd-crown-foot"><span>3 kort</span></div>
       </div>
     </div>
     <div role="tabpanel" tabindex="0" data-stop="the template panel">
@@ -89,6 +89,13 @@ const SHELL = `
             <div class="byd-drag-box" role="button" tabindex="0" data-moving data-stop="an element in move mode"></div>
           </div></div>
         </main>
+        <div class="byd-canvas-zoom"><div class="byd-pill" role="group">
+          <button class="byd-pill-step" data-stop="the zoom's step down">−</button>
+          <div class="byd-pill-measure"><button class="byd-pill-value" aria-haspopup="menu" aria-expanded="true" data-stop="the zoom's percentage">164 %</button>
+            <div class="byd-pill-menu" role="menu"><button class="byd-pill-choice" role="menuitemradio" aria-checked="true" data-stop="a zoom choice">Passa in</button><button class="byd-pill-choice" role="menuitemradio" aria-checked="false" tabindex="-1">100 %</button></div>
+          </div>
+          <button class="byd-pill-step" data-stop="the zoom's step up">+</button>
+        </div></div>
         <aside class="byd-canvas-props">
           <div class="byd-props">
             <label>X (mm)<input type="number" data-stop="a property field" /></label>
@@ -100,11 +107,9 @@ const SHELL = `
     <div role="tabpanel" tabindex="0" data-stop="the table panel">
       <div class="byd-table-wrap">
         <div class="byd-crown">
-          <input type="search" class="byd-data-search" data-stop="the search field" />
-          <div class="byd-crown-rail">
-            <div class="byd-crown-rail-scroll" role="group">
-              <div class="byd-data-chips" role="group"><button class="byd-data-chip byd-choice" aria-pressed="false" data-stop="a type chip">fälla</button></div>
-            </div>
+          <div class="byd-data-filter">
+            <span class="byd-data-token"><span>typ: fälla</span><button aria-label="Ta bort filtret typ: fälla" data-stop="a filter token's ×"><span aria-hidden="true">×</span></button></span>
+            <input type="search" data-stop="the search field" />
           </div>
           <button class="byd-data-clear" data-stop="the clear-filter button">Rensa filter</button>
           <button class="byd-crown-box byd-crown-end" aria-expanded="true" data-stop="the import box">Importera ▾</button>
@@ -112,26 +117,25 @@ const SHELL = `
         <div class="byd-crown-drawer" data-crown-drawer role="group">
           <div class="byd-data-tools"><label>Importera CSV…<input type="file" data-stop="the CSV import" aria-describedby="import-note" /></label><span id="import-note">Import ersätter korten i tabellen. Spara när resultatet ser rätt ut.</span><a href="#" data-stop="the CSV export">Ladda ner CSV</a></div>
         </div>
-        <div class="byd-data-bulk" role="toolbar">
-          <label>Sätt<select data-stop="the bulk column"><option>typ</option></select></label>
-          <input data-stop="the bulk value" />
-          <button data-stop="the bulk set">Sätt typ på 2 kort</button>
-          <button data-stop="the bulk duplicate">Duplicera 2 kort</button>
-          <button data-kind="danger" data-stop="the bulk delete">Ta bort 2 kort</button>
-          <button data-kind="quiet" data-stop="the unmark">Avmarkera alla</button>
-        </div>
-        <div class="byd-data-bulk" role="alertdialog">
-          <p>Ta bort kortet drake ur leken?</p>
-          <button data-kind="danger" data-stop="the yes to removing a card">Ja, ta bort</button>
-          <button data-stop="the way out of removing a card">Avbryt</button>
-        </div>
         <table class="byd-data">
-          <thead><tr><th class="byd-data-check"><input type="checkbox" data-stop="the header checkbox" /></th></tr></thead>
+          <thead><tr><th class="byd-data-check"><input type="checkbox" data-stop="the header checkbox" /></th><th data-col="typ"><button data-stop="a column heading">typ <span aria-hidden="true">↕</span></button><button class="byd-column-filter" aria-expanded="true" data-on="1" data-stop="a column's filter handle"><span aria-hidden="true">▾</span></button><div class="byd-column-filter-door" role="group" data-column-filter="typ"><label class="byd-column-filter-tick"><input type="checkbox" checked data-stop="a filter tick" /><span>fälla</span><small>8 kort</small></label></div></th></tr></thead>
           <tbody><tr aria-selected="true"><td class="byd-data-check"><input type="checkbox" data-stop="a row's checkbox" /></td><td><input data-stop="a cell" /></td><td><button data-stop="a row's delete">Ta bort</button></td></tr></tbody>
         </table>
         <button class="byd-data-add" data-stop="the add-row button">Lägg till kort</button>
         <div class="byd-crown-foot">
           <p class="byd-data-count">1 av 3 kort</p>
+          <div class="byd-data-bulk" role="toolbar">
+            <button class="byd-data-set" aria-expanded="true" data-stop="the set box">Sätt fält ▾</button>
+            <div class="byd-data-set-box" role="group"><label>Sätt<select data-stop="the bulk column"><option>typ</option></select></label><input data-stop="the bulk value" /><button data-stop="the bulk set">Sätt typ på 2 kort</button></div>
+            <button data-stop="the bulk duplicate">Duplicera 2 kort</button>
+            <button data-kind="danger" data-stop="the bulk delete">Ta bort 2 kort</button>
+            <button data-kind="quiet" data-stop="the unmark">Avmarkera alla</button>
+          </div>
+          <div class="byd-data-bulk" role="alertdialog">
+            <p>Ta bort kortet drake ur leken?</p>
+            <button data-kind="danger" data-stop="the yes to removing a card">Ja, ta bort</button>
+            <button data-stop="the way out of removing a card">Avbryt</button>
+          </div>
           <p class="byd-data-sort">Osorterat: kortens ordning i spelet</p>
         </div>
       </div>
@@ -189,7 +193,7 @@ async function tabThrough(page: Page): Promise<Stop[]> {
   await standing(page, SHELL, { at: '/editor', needs: EDITOR })
   {
     const stops: Stop[] = []
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 80; i++) {
       await page.keyboard.press('Tab')
       const stop = await page.evaluate(() => {
         const el = document.activeElement
@@ -244,15 +248,28 @@ test.describe('the editor under a keyboard', () => {
       'the grid toggle',
       'an element on the card',
       'an element in move mode',
+      "the zoom's step down",
+      "the zoom's percentage",
+      'a zoom choice',
+      "the zoom's step up",
       'a property field',
       'a property choice',
       'the table panel',
+      "a filter token's ×",
       'the search field',
-      'a type chip',
       'the clear-filter button',
       'the import box',
       'the CSV import',
       'the CSV export',
+      'the header checkbox',
+      'a column heading',
+      "a column's filter handle",
+      'a filter tick',
+      "a row's checkbox",
+      'a cell',
+      "a row's delete",
+      'the add-row button',
+      'the set box',
       'the bulk column',
       'the bulk value',
       'the bulk set',
@@ -261,11 +278,6 @@ test.describe('the editor under a keyboard', () => {
       'the unmark',
       'the yes to removing a card',
       'the way out of removing a card',
-      'the header checkbox',
-      "a row's checkbox",
-      'a cell',
-      "a row's delete",
-      'the add-row button',
       'the tables panel',
       'the new-table button',
       'playing from here',

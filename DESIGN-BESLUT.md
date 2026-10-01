@@ -1292,6 +1292,7 @@ Spelets egen uppsättning står bredvid biblioteket med vad man skriver, vilken 
 En symbol som tas in blir ett av projektets assets (E1): bytesen laddas upp och uppsättningen pekar på `asset:<hash>`, så kortens utseende inte hänger på att biblioteket står stilla.
 Licensen lagras i dokumentets `credits` bredvid uppsättningen, så kompilatorns `icons` förblir namn → URL, och `POST /projects/:id/print` svarar med licenserna tillsammans med korten — det är följdkravet att licensmetadata når tryckunderlaget.
 Biblioteket är ritat för projektet och släppt som CC0; strukturen bär licens och upphovsman per symbol, så kurerat CC-BY-material kan läggas till utan ändring.
+Reviderat 2026-10-01 (L57, #612): fliken Symboler ersätts av Speltema, där biblioteket öppnas ur spelets ikoner; klammern i Tabell föreslår temat först.
 
 Symbolerna bär färg, och färgen hör till bruket (prototypat och byggt 2026-09-15):
 Beslutet ovan att en symbol ritas mörk och når kortet som en bild faller här: en symbol som inte kan färgas kan inte skilja kostnad från vinst, och det är vad ett effektspråk på ett kort behöver göra.
@@ -3456,6 +3457,7 @@ Den fysiska kontrollen (E5) flaggar varje familj versionen inte bär (B3), så p
 `system-ui` var dessutom precis det felet handlar om: ett ansikte på formgivarens Mac, ett annat i renderarens Chromium och ett tredje hos tryckeriet.
 
 Beslutet är **en familj per ram**: Klassisk i **EB Garamond**, Minimal i **Inter**, Mörk i **Roboto Condensed**.
+Reviderat 2026-10-01 (L57, #612): ramen bär inget typsnitt längre; familjen kommer ur temat som väljs tillsammans med ramen, «Utseende».
 
 Två kandidater valdes bort, och skälen är ramgalleriets egna.
 Att sätta alla tre i samma familj hade kostat noll nya byte och tagit bort det galleriet finns för: tre utseenden hade blivit en typografi i tre färgsättningar.
@@ -3672,6 +3674,18 @@ Och editorn ska inte kräva att man rullar runt för att nå sina egna kontrolle
 Hur det senare löses utan att skrivbordet betalar är ett visuellt beslut och prototypas först.
 Det är löst i L54 (#567): raderna bryter, och etappremsan är etappernas.
 Granskningen som ledde hit står i [`docs/ux-audits/2026-09-29-surfplatta.md`](docs/ux-audits/2026-09-29-surfplatta.md).
+
+Beslutat 2026-09-30 efter prototyp (#566, D): **ångra och gör om står i huvudet, och det som hänt sägs längst ner.**
+Ångra och gör om nåddes bara med Ctrl eller Cmd och Z, och en platta har sällan ett tangentbord.
+↶ och ↷ står i 44 px bredvid revisionen och sparstatusen, i varje flik och vid varje bredd, eftersom ångerstacken är projektets och inte en fliks.
+De heter efter vad de skulle ta tillbaka («Ångra en ändring i mallen»), och när det inte finns något står de kvar, inaktiva, och säger det.
+Tangenterna och knapparna tar samma steg, och bekräftelsen «Tog tillbaka: …» är densamma.
+Bekräftelserna står nu som en rad längst ner på skärmen i stället för i huvudet: där tryckte de ihop spelets namn redan i dag, och bredvid knapparna tog de «Spara» och «Starta bord» ifrån sin egen bredd vid 1024 och 1280.
+Uppställningens egen «Ångra» efter en borttagning (B5) står kvar, eftersom den står där borttagningen syns.
+Under 1440 px på skrivbordet är «Sparat» en bock (✓) med ordet kvar för skärmläsare, och primärknappen säger «Uppdatera» med hela namnet «Uppdatera bordet» (beställarens beslut 2026-09-30): mätt på CI:s DejaVu med ett bord igång fattades 19–40 px vid 1024 och 1280, och spelets namn och primärknappen klipptes (#477). «Osparat» står kvar i ord och färg, eftersom det är läget som ber om något.
+Två varianter avvisades: textknappen «Ångra: …» bredvid sparstatusen, som inte fick plats vid 1280, och knappar som bara syns vid grov pekare, som gav plattan samma trängsel och skrivbordet ingen väg utan tangentbord.
+Knapparna i huvudet förutsätter att sidan inte rullar på en låg platta, vilket #567 kräver.
+Prototypen och mätningarna står i #566 och i `docs/ux-audits/2026-09-29/prototyper/566/`; grinden är `packages/e2e/test/editor-undo-buttons.spec.ts`.
 
 **Tillägg 2026-09-30: en fin pekare är skrivbord, oavsett bredd (#550).**
 Gränsen ovan går vid vem som håller ytan, men rummet i L10 avgjordes av bredden ensam.
@@ -4033,6 +4047,20 @@ Draglagret mäter fortfarande millimetrar ur kortets egen ruta och aldrig ur ska
 **Tillägg 2026-09-27 (#478, beslut av beställaren efter prototyperna 04 och 07).**
 Förstoringen växer kring något: Ctrl och hjulet kring det som står under pekaren, bandets egna kontroller kring det valda elementet eller scenens mitt när inget är valt; så länge kortet är mindre än scenen finns inget att rulla och kortet växer från mitten som förut.
 Handtag och punkter behåller sina millimetrar men går aldrig under 10 px på skärmen.
+
+**Tillägg 2026-10-01 (#619, prototypat och beslutat av beställaren, variant A av tre).**
+Kontrollens form.
+Bandet var sex kontroller i en stapel — procenttalet, `−`, reglaget, `+`, **Passa in** och **100 %** — som mätte 94 × 269 px vid 1280 och en rad på 365 × 50 under scenen vid 1024; Kortväggens täthet var ett annat par knappar, `− +` i krönet, med bredden sagd i foten en halv skärm bort.
+Två ytor, samma fråga, två former.
+Nu är det **ett piller**, `[−][164 % ▾][+]`, 154 × 44 px: ett steg ned, måttet, ett steg upp.
+Procenttalet är knappen som öppnar valen — **Passa in**, **100 %**, **50 %**, **200 %** — uppåt och i toppskiktet som varje öppnad låda (L55); piltangenterna på procenttalet stegar, så reglagets tangentbord är kvar utan reglaget.
+Reglaget går.
+Medan kortet är inpassat står ordet «Passa in» under procenttalet, och knappens namn säger det: inpassningen är annars ett val bakom en meny, och ett val ingen ser är ett läge ingen vet att kortet står i.
+Under och inte bredvid: bredvid blev pillret 206 px, och vid 1280 med egenskaperna uppfällda blev kortet breddbundet med 5 px — det enda ett band i den överblivna bredden aldrig får göra.
+Platsen är oförändrad: dukens hörn, aldrig krönet, aldrig över kortet, och raden under scenen där spalten inte finns.
+Samma komponent (`StepPill`) ritar Kortväggens täthet i krönet, `[−][150 px][+]`, där måttet läses och inte trycks eftersom väggen inget har att välja bland; foten upprepar inte längre talet.
+Variant B, allt synligt på en rad om ~270 px, valdes bort för att den ryms ännu mer sällan i hörnet; variant C, ett lodrätt reglage i scenens kant, för att formen är ovanlig och inte passar krönet.
+Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/03-forstoringen.html`.
 Ett elements mitt stannar på kortet vid drag, piltangenter och skrivet X/Y — det kan hänga halvt över en kant, aldrig mer — och en etikett säger varför det stannade.
 Vid förstoring panorerar scenen när en hand som drar hålls nära dess kant, och elementet följer med.
 Under kortet står en rad som säger vilket kort mallen visas på, med ‹ och ›, en sökbar lista (som Media, L22) och de värden på kortet som styr hur det ritas; den kostar en rad av kortets höjd, som bandet redan gjorde vid 1024.
@@ -5005,7 +5033,40 @@ Ett uttryckligt val väger över förslaget.
 En kolumn som aldrig fått ett val följer höjden, så varje lek som fanns före det här beslutet beter sig precis som den gjorde.
 Och följden som fällde dagens regel: **att ändra rutans höjd i mallen ändrar inte ett uttryckligt val.** När valet en gång är skrivet är det designerns, inte höjdens.
 
-**Ytan är ett märke per kolumn i tabellhuvudet, och den fälls ut vid beröring.**
+**Ytan är kolumnens rad i dörren bakom `＋`, och huvudet bär bara ett ¶ (ändrat 2026-10-01, #615).**
+Det första beslutet lade valet i huvudet som en prick per kolumn och en utfällning vid beröring (variant C nedan).
+I den byggda editorn såg det trasigt ut: pricken stod utanför rubrikens flöde och hamnade klistrad mot ordet, «○typ», en vila på 300 ms på rubriken lade en ruta med en primärknapp över raderna också när handen bara skulle sortera, och varje designerkolumn kostade ett tabbstopp i huvudet.
+Prototypen (`docs/ux-audits/2026-09-30/prototyper/01-prosavalets-plats.html`) mätte tre platser mot dagens läge i Chromium, 1440 × 900, i exempelleken.
+
+| | tabbstopp i huvudet | minsta träffyta för valet | hover-utfällning |
+|---|---|---|---|
+| Nu · prick och utfällning | 11 | 44 px | ja |
+| **A · dörren** | **7** | **44 px** | **nej** |
+| B · kolumnmeny i rubriken | 11 | 44 px | nej |
+| C · cellens verktygsrad och dörren | 7 | 32 px i cellen | nej |
+
+Beställaren valde **A**.
+B lägger en knapp på 28 px i rubriken, vilket är samma räkning som fällde variant A 2026-09-21, och den river upp L44:s dörr.
+C ger vanliga textkolumner en verktygsrad de inte har, och ett kolumnval görs från en enskild cell.
+A kostar noll i huvudet och lägger valet på samma rad som namnbytet, vilket tar bort det pris L44 skrev ut.
+
+Valet är en växel **Prosa | Text** mellan kolumnens namn och ×, och orsaken står på en egen rad under, med «Följ höjden igen» där designern har valt.
+Verktygets två kolumner, `id` och `antal`, har ingen växel: en kontroll som bara kan svara ett är ingen fråga.
+Dörren blev 340 px bred för att raden ska rymma namn, växel och × utan att namnet kläms.
+
+**Skillnaden mellan förval och val bärs i form och i ord.**
+Den tryckta knappen är streckad när höjden föreslog och ifylld när designern valde, och ¶ i rubriken är dämpad respektive blå på samma sätt.
+En streckad kant finns inte för en skärmläsare och editorns a11y är inte mjukad (L12), så samma skillnad står i växelns **namn**: «Kostnad skrivs som vanlig text, du valde» mot «…, höjden föreslog».
+¶ är tyst för skärmläsaren; orden står i dörren.
+Att trycka den redan tryckta knappen på en kolumn som följer höjden gör förslaget till ett val, så att nästa omritning av mallen inte tar det.
+
+Växeln nås med dörrens egen tangentbordsordning (L45): raden är ett stopp i listan, och pilarna går namn → växel → × → «Följ höjden igen».
+¶ står utanför rubrikknappens flöde, förankrat i dess högerkant, av samma skäl som pricken gjorde: knappen är `sticky` (#401) och `fitColumns` räknar en kolumns golv på flödet (#46).
+Priset är att valet är ett klick längre bort från kolumnen det gäller.
+
+<details>
+<summary>Det första beslutet, 2026-09-21: märket i huvudet (variant C)</summary>
+
 Prototypen (`docs/ux-audits/2026-09-21/prototyper/01-prosakolumnen.html`) mätte fyra lägen i Chromium, 1440 × 900, ytan i vila.
 
 | | valkontroller | huvudets höjd | ytans höjd | rullar | minsta träffyta |
@@ -5016,27 +5077,11 @@ Prototypen (`docs/ux-audits/2026-09-21/prototyper/01-prosakolumnen.html`) mätte
 | **C · vid beröring** (vila) | **0** | **25 px** | **749 px** | **nej** | – |
 | C · vid beröring (utfälld) | 2 | 25 px | 749 px | nej | 44 px |
 
-Valet blev **C**.
-A är utesluten av träffytan: 20 px mot `--byd-tap`:s 44, och rubriken kapad till «KOST…» av sina egna två kontroller — samma räkning som #46 gjorde när × fick lämna rubriken.
-B är tydligast och den enda som kan visa förslag och val samtidigt i ord, men den rullar redan vid fyra kolumner och lägger valet en bit från kolumnen det gäller.
-C kostar ingenting i vila, når 44 px när den är öppen, och rullar inte.
-Priset är att den varaktiga signalen är en prick — och det är priset som betalas för att L36 nyss sade att ytan ska bära mindre.
+C valdes för att den kostade ingenting i vila och nådde 44 px när den var öppen.
+Pricken var ingen kontroll och rubriken var handtaget; en utfällning vid hover nåddes med pekaren och med tangentbordet (#184, #216).
+Kostnaden som mätningen inte såg var den i det byggda huvudet, och det är den #615 ersatte.
 
-**Pricken är ingen kontroll, och rubriken är handtaget.**
-Det följer av mätningen och inte av bekvämlighet: C:s rad «minsta träffyta» är tom i vila, och en knapp där hade blivit sex till åtta pixlar i en kolumn som är en siffra bred — under `--byd-tap` överallt, vilket är exakt vad som fällde A.
-Så pricken är dekor utanför rubrikens flöde — `fitColumns` räknar en kolumns golv på flödet, och sex pixlar i det hade lyft `kostnad` från 88 px till 108 — och det som fälls ut och vänder valet är kontroller som når hela 44.
-
-**Skillnaden mellan förval och val bärs i form, och i utfällningens namn.**
-Prickad ring betyder att höjden föreslog, ifylld bricka att designern valde.
-En prickad ring finns inte för en skärmläsare och editorns a11y är inte mjukad (L12), så samma skillnad står i ord som utfällningens **namn**: «Kostnad skrivs som vanlig text, du valde» mot «…, höjden föreslog».
-Den läses upp i samma ögonblick som formen visar sig för ögat, och den kostar ingen höjd i ytan.
-Utfällningen säger därutöver orsaken i rutans egna mått — «Höjden föreslår prosa: rutan är 40,0 mm och en rad av dess grad är 4,0 mm» — och det är samma mening vare sig valet är gjort eller inte, vilket är just vad som gör att den inte bär skillnaden.
-Meningen «du valde det, och höjden hade föreslagit prosa» är den som valdes bort.
-
-**En utfällning vid hover är ett a11y-åtagande.**
-Den nås med pekaren *och* med tangentbordet, aldrig bara det ena — det är felet #184 rättade i en annan kontroll och #216 fick bygga om för att inte återinföra.
-Pekaren eller fokus någonstans i rubriken fäller ut; fokus vidare till utfällningens egna knappar räknas inte som att lämna, och Escape lägger ihop den utan att flytta handen.
-Priset är att en Tabb genom huvudet passerar de knapparna på vägen till nästa kolumn, och det är priset för att de över huvud taget går att nå utan pekare.
+</details>
 
 **Följdkrav i koden.**
 Valet är dokumentdata: `prose` i `ProjectDoc`, en post per kolumnnyckel, valfri.
@@ -5082,7 +5127,7 @@ A faller på 44 tabbstopp mot 24 vid tio kolumner — knappt märkbart vid fyra,
 B:s fält är lika brett som kolumnen, 64 px vid tio, och `F2` är en väg in ingen ser.
 D gör huvudet billigast av alla (24 → 11) och är enda stället hela namnet syns vid tio kolumner, men panelen rullar redan vid tio — exakt det som fällde L43:s variant B — och den förutsätter att L43 rörs tre dagar efter att den prototypades.
 C kostar noll extra tabbstopp i huvudet, når `--byd-tap`, och lägger namnbytet där kolumnens andra verb redan bor.
-Priset är en klick längre bort från kolumnen, och att namnet och prosavalet hamnar på var sitt ställe.
+Priset är en klick längre bort från kolumnen. Att namnet och prosavalet hamnade på var sitt ställe var priset tills L43 flyttade prosavalet in i samma rad (#615).
 
 **Vägen in finns för tangentbordet, inte bara under en pekare** (#184, #216).
 Namnet i listan är en knapp och inte ett ord: den nås med Tabb, öppnas med Enter, och Enter i rutan byter namn medan Escape svarar rutan utan att stänga dörren.
@@ -5537,3 +5582,157 @@ A kostade arbetsytan 48 px vid 960 × 490 för en andra rad i remsan, och C göm
 `packages/e2e/test/surfaces/editor-tablet.spec.ts` håller det vid 960 × 490, 1024 × 600, 820 × 1106 och 768 × 1024: ingen kontroll i kromen är kapad, på någon etapp.
 Den fann också att «Hjälp om borden» i Bord var kapad i alla bredder: träffytans luft hängde utanför en rullruta.
 Prototypens bilder står i [`docs/ux-audits/2026-09-29-tillganglighet/prototyper/567/`](docs/ux-audits/2026-09-29-tillganglighet/prototyper/567/).
+
+### L55. En öppnad låda ligger över allt annat, och tabellens fasta kolumner står på en list (prototypat och beslutat 2026-09-30, #609, #610, #611)
+
+Beställaren hittade tre saker i tabellen.
+Kontrasten mellan raderna gjorde den svår att titta på, och det syntes knappt att `id`-kolumnen var fast när man skrollade i sidled.
+Det var inte tydligt att man skulle trycka på ＋ igen för att stänga kolumndörren.
+Och dörren visades under «+ Nytt kort» i botten.
+
+**En öppnad låda ligger över allt annat.**
+Det är beställarens regel, och den gäller generellt.
+Kolumndörren hängde i huvudets sista cell *inne i* lådan tabellen skrollar i, och den lådan klipper.
+I ett fönster på 640 px höjd skars «Lägg till» och «Avbryt» av vid skrolllådans kant, och «+ Nytt kort» stod där de skulle ha stått.
+`placement.ts` mätte rummet mot fönstret och trodde att dörren fick plats.
+Nu lyfts varje låda som `usePlacement` placerar till sidans toppskikt (`popover="manual"`) och hålls fast mot elementet den hänger i: kolumndörren, cellernas symbolruta och betydelselista, regelbokens `[[`, Ikon-verktygets bibliotek, zonernas val och bordens meny (#622).
+I toppskiktet klipper ingen låda den, och inget ritas över den.
+Den lämnar toppskiktet genom att lämna sidan, aldrig med `hidePopover`.
+En låda som arket lägger i flödet, som formuläret i dörren och i egenskapspanelen, lyfts inte, och inte heller en låda som står inne i en lyft låda.
+
+Var lådan hänger är fortfarande arkets sak.
+Varje låda säger sitt avstånd och sin sida i fyra variabler, `--byd-place-gap`, `--byd-place-inset`, `--byd-place-beside` och `--byd-place-x`, och arkets egna regler läser samma variabler.
+Den lyfta lådan räknas från ankarets padding-box, alltså från samma kant som arkets `top: 100%`.
+`packages/e2e/test/surfaces/opened-boxes-over.spec.ts` sänker varje yta tillbaka på plats och kräver att den stod på samma bildpunkt lyft som oklippt.
+
+Samma mätning hittade ett äldre fel: namnrutans `autoFocus` fick fokus medan dörren ännu stod inne i tabellen, och tabellen skrollade flera hundra bildpunkter nedåt för att visa den.
+Namnrutan tar nu fokus med `preventScroll`, och ingenting bakom dörren flyttar sig när den öppnas.
+`packages/e2e/test/surfaces/table-column-door-over.spec.ts` är grinden.
+
+**Bocken och `id` står på en list** (variant B av tre: randiga rader, fastnålad list och rutnät).
+Listen är en slöja över radens egen grund och inte en färg i stället för den, så att en markerad, påtittad eller jämförd rad förblir vad den är även under den.
+En kant på 2 px mot det som glider in under ritas hela tiden, inte bara när något redan ligger under.
+Kanten har 3:1 mot varje grund en rad kan ha, och `id` läses med AA på listen i ett eget bläck.
+Linjen mellan två kort gick från 1,07:1 till 1,24:1, och huvudet stängs av med en tyngre linje på en egen, något ljusare grund.
+Jämförelsens tinter ligger nu som ett lager över cellens grund i stället för att vara grunden.
+Som grund gjorde de de fastnålade cellerna genomskinliga, så att ett värde som skrollats in under dem syntes igenom.
+`data-table-hover.test.tsx` mäter listen, kanten och bläcket på målade bildpunkter, på alla fem grunderna.
+
+**Kolumndörrens handtag blir × medan dörren står** (variant A av tre: ＋ blir ×, en stängknapp i dörren och klick utanför stänger).
+Handtaget ritas nedtryckt, i dörrens egen grund.
+Namnet det hörs under är fortfarande dörrens, och `aria-expanded` säger om dörren står öppen, som förut.
+L45:s fokusfälla står kvar, och ett klick utanför stänger inte dörren.
+
+Prototypen låg på grenen `prototype/tabell-kontrast`, på den riktiga tabellen, och togs bort när detta byggdes.
+
+### L56. Tabellens filter står i kolumnens huvud och läses i sökfältet (prototypat och beslutat 2026-10-01, #617)
+
+Beställaren pekade på filtret på tabellsidan som exempel på ett GUI-element som tar för mycket plats, i en helhetsöverblick över sådana (`docs/ux-audits/2026-09-30-komponenter.md`).
+Mätt på Sal's Saloon: fjorton chips i två grupper tog tre fjärdedelar av krönet, 204 px av dem låg bakom «›» vid 1280 och 420 vid 1024, och sökfältet — det enda i raden som svarar på vad som helst — hade trängts ihop till 202 respektive 161 px.
+Chipsen sa inte heller vilken kolumn de hörde till: «Diamant» stod bredvid «Character» utan rubrik.
+
+#130 lät chipsen stå kvar i raden för att ett filter är ett läge och inte en handling, och ett läge ska synas utan att något öppnas.
+Det kravet står kvar.
+Det som ändras är var läget syns.
+
+**Kolumnhuvudet filtrerar** (variant A av tre: kolumnhuvudet, ett tecken i fältet, en box som säger sitt läge).
+En kolumn med ett ordförråd (`discreteColumns`, oförändrad) får ett handtag ▾ bredvid sin sortering.
+Det öppnar kolumnens värden som bockar, med hur många kort som bär vart och ett.
+Dörren lyfts till toppskiktet som varje öppnad låda (L55), tar fokus på första bocken, stängs med Escape tillbaka till handtaget och av ett tryck i arbetet.
+Handtaget bär antalet valda när något är valt, i ord («Filtrera på typ, 1 valt») och som märke.
+
+**Sökfältet bär vad som valts.**
+Varje valt värde står som en bricka i fältet, «typ: varelse ×», före det designern söker på.
+Brickans × tar bort valet och lämnar handen i fältet; Backspace i ett tomt fält tar den sista.
+Det valda syns alltså på två ställen utan att något öppnas — i fältet och i huvudet — vilket är det #128 kräver av krönet.
+Krönet är därmed sökfältet och Importera, och fältet håller minst 400 px vid 1024, 1280 och 1440 (`editor-crown.test.tsx`).
+
+**Ett tecken öppnar en lista** (variant B:s väg, som tangentbordets väg in i samma fält, L23).
+Att skriva «typ:» i fältet listar kolumnens värden under det, listan smalnar med det som skrivs, pilarna går i den och Enter tar värdet som en bricka.
+Medan texten namnger en kolumn söker den inte: raderna frågas om allt utom den.
+L23:s svaga punkt — att en väg in som bara är ett tecken inte syns — bärs av platshållaren, som säger «Sök i alla fält, eller typ: …».
+
+Variant C, en box «Filter: typ Playcard ▾» i krönet, valdes bort: den är det #130 avvisade, med etiketten som bot, och etiketten växer med varje kolumn som filtreras.
+
+`CrownRail` och dess räls är borta; väggens krön rör inte detta.
+Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/01-tabellens-filter.html`.
+
+### L57. Speltema ersätter Symboler: spelets typsnitt, färger och ikoner väljs som ett tema, och Tabell föreslår ur det (prototypat och beslutat 2026-10-01, #612)
+
+Beställaren förstod inte poängen med fliken Symboler, och det var ett riktigt fynd.
+Det vanliga flödet — `{` i en textcell i Tabell (L23) — gick aldrig genom fliken, och det fliken ensam gjorde, betydelserna och spelets uppsättning (E4, L34), stod under ett bibliotek som mest upprepade klammerns sökning.
+Spelets typsnitt stod samtidigt i Mallens panel och bara när inget lager var valt (L25), så spelets identitet låg på tre ställen och inget av dem sa att den var spelets.
+
+Beslutet är en flik **Speltema** i Symbolers ställe.
+Där bestäms spelets **typsnitt** (rubrik och brödtext), **papper**, **betydelser med sina färger** och **ikonuppsättning** en gång.
+**Tabell styr fortfarande**: temat finns för att Tabell och Mall ska kunna föreslå ur det och hålla bruset nere.
+Allt utanför temat är kvar, men får ligga två till tre klick bort.
+Ram och kortets stil ingår inte i temat.
+
+Tre former av fliken prövades: ett stilark med ett levande kort bredvid (A), kortet som karta där man klickar den del man vill ändra (B), och temat som ett val (C).
+Valet blev **C**.
+
+- **Fliken börjar med ett galleri av färdiga teman**, samma galleri som wizarden visar.
+  Ett tema är ett utgångsläge, inte ett lås.
+- **Det som avviker från det valda temat sägs på en rad**, med en väg tillbaka till temat som det var.
+- **Justeringen ligger fälld, ett klick bort per del**: Typsnitt, Färger och betydelser, Spelets ikoner.
+  Ett stängt huvud bär sitt värde, som L25:s sektioner, så inget döljs utan att sägas.
+- **Hela symbolbiblioteket öppnas ur Spelets ikoner**, och en symbol som tas in därifrån blir en av temats ikoner.
+  Licensen följer med som förut (E4).
+
+Stilarket visade allt men var mest skärm för den som är nöjd med sitt tema, och kartan var elegant men gömde vad som gick att ändra.
+
+**Klammerns lista i Tabell föreslår ur temat**, i den ordning den prototypades:
+
+1. Det leken redan skriver, ordnat efter hur ofta, som `{sköld|försvar}` — infogat med ett klick.
+2. Spelets ikoner; en vald ikon visar betydelserna som färgade kopior av sig själv (L34).
+3. «Hela biblioteket» är klick två. En ikon som infogas därifrån tas in i temat.
+
+Sökningen söker allt men visar temat först.
+
+**I wizarden blir ramvalet «Utseende»** (L6, L10): ramen säger var saker står och temat hur det känns, valda på samma ställe som ramen väljs i dag, med ett kort som visar båda.
+Ett eget steg för temat prövades och valdes bort; wizarden får inget nytt steg.
+Därmed bär ramen inget typsnitt längre — det gör temat — och #420:s «en familj per ram» blir en familj per tema.
+Kravet bakom #420 står kvar oförändrat: varje tema bär sina familjer som projektets egna filer, så den guidade starten faller aldrig på den fysiska kontrollen.
+
+Prototypen står i [`docs/ux-audits/2026-09-30-speltema/prototyper/01-speltema.html`](docs/ux-audits/2026-09-30-speltema/prototyper/01-speltema.html).
+
+### L58. Markeringens handlingar står i tabellens fot (prototypat och beslutat 2026-10-01, #618)
+
+Helhetsöverblicken (`docs/ux-audits/2026-09-30-komponenter.md`) mätte åtgärdsraden: när ett kort bockades fälldes ett band på 72 px ut mellan krönet och raderna, och raderna flyttade 80 px — bocken man just tryckt på gled iväg under fingret, och när sista bocken släpptes hoppade allt tillbaka.
+Samtidigt sa foten redan «1 markerat kort».
+
+**Handlingarna står i foten** (variant A av tre: foten, en flytande remsa, krönet som byter innehåll).
+Foten är den rad #130 gav antalet och sorteringen, och den växer till en verktygsrad — Duplicera, Ta bort, Avmarkera alla — efter antalet när något är markerat.
+Ingenting ovanför raderna flyttar sig; det som växer växer under tabellen.
+Frågan före en borttagning tar verktygsradens plats i foten, som förut tog hela bandet, så inget kan tryckas av misstag bakom den.
+
+**Kolumnen och värdet står bakom «Sätt fält ▾».**
+Foten är en rad, och en väljare och ett fält hade gjort den till två.
+Boxen lyfts till toppskiktet (L55) och öppnas uppåt ur foten; Escape stänger tillbaka till handtaget och ett tryck i arbetet stänger.
+Samma låda som kolumnfiltrets dörr (L56): `Lifted.tsx` är en komponent för en box som öppnas under en knapp och står över arbetet tills den stängs.
+
+Variant B, en flytande remsa över tabellens nederkant, valdes bort för att den täcker sista raden — det L19 redan valt bort för förstoringen.
+Variant C, att krönet byter innehåll medan något är markerat, tar bort sökningen i det ögonblick man markerar.
+
+`data-table-layout.test.tsx` mäter att första raden står kvar och att foten är en rad; `data-table-bulk.test.tsx` håller handlingarna och boxen.
+Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/02-atgardsraden.html`.
+
+### L59. Antalet spelare är en stegare, i Bord och i guidad start (prototypat och beslutat 2026-10-01, #620)
+
+Ett tal mellan 1 och 8 valdes med åtta knappar på 44 px.
+I Bords receptspalt bröt de på två rader, så sektionen «Spelare» var 124 px hög för ett enda tal, och i guidad start tog raden 445 px.
+
+Beslutet är variant A: `Spelare [−] [4] [+]` på en rad, talet skrivbart, samma kontroll i Bord och i guidad start.
+Sektionen blir 76 px hög och guidens rad omkring 150 px bred, med tre mål på 44 px i stället för åtta.
+K18:s anmärkning — vad en ny plats får och vad en plats som lämnar tar med sig — står kvar bakom `?` vid rubriken.
+
+Kontrollen är en `spinbutton` i WAI-ARIA:s mening: talet är det enda tabbstoppet, pil upp och pil ned stegar det, och knapparna är pekarens och står utanför tabbordningen.
+Det som skrivs i fältet är ett utkast tills fältet lämnas eller Enter trycks (`number-draft.ts`, #478): ett tal utanför ändarna hålls vid närmaste ände, och det som inte är ett tal skriver ingenting.
+Knappen vid en ände är släckt, och den som just nådde sin ände lämnar fokus till talet i stället för till sidan.
+Komponenten är en och står i `packages/web/src/Stepper.tsx` med sitt eget ark, så rummen säger bara sina färger.
+
+Det förkastade: **B**, åtta celler i en ram på en rad, gav celler på 37 px i spalten vid 1280 och 32 px vid 1024, under träffytans 44.
+**C**, där filten själv är väljaren med en spökplats «+» och ett × på den sista, var vackrast men lämnade guiden, som inte har någon filt, med en annan form, och tangentbordet utan väg till spökplatsen.
+
+Prototypen står i [`docs/ux-audits/2026-09-30-komponenter/prototyper/04-platsvaljaren.html`](docs/ux-audits/2026-09-30-komponenter/prototyper/04-platsvaljaren.html), och mätningen i `packages/e2e/test/surfaces/seat-stepper.spec.ts`.

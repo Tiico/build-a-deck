@@ -13,6 +13,13 @@
   /* The same quiet grey on a chosen row of the table, whose ground is lighter (#557): 4.96:1 there,
      where the grey above read 3.45:1. */
   --byd-editor-quiet-chosen: #a3acc0;
+  /* The rail the table's pinned tick and id stand on (#609): a veil over the row's own ground, so a
+     marked, chosen or compared row stays what it is under it, and an edge a graphic can be read by
+     against every one of those grounds, and the ink the id is read in there, which keeps AA on the
+     lightest of them: a chosen row under the rail. */
+  --byd-editor-data-rail: rgba(160, 180, 230, 0.09);
+  --byd-editor-data-rail-edge: #7d879c;
+  --byd-editor-data-rail-ink: #b7c0d6;
   --byd-editor-home-ink: #c3cbdd;
   --byd-editor-saved-ink: #9aa3b8;
   --byd-editor-unsaved-ink: #f0b64a;
@@ -156,6 +163,18 @@
      target and mostly air, the name is no control, and at 1024 in English with DejaVu the name was
      1 px short once the ⋯ and its gap were in the row. */
   .byd-editor > header > .byd-editor-more { margin-left: -4px; }
+}
+/* Below 1440 on the desk the step buttons (#566) took the room the row had left (beslut 2026-09-30):
+   measured on CI's DejaVu with a table running, the game's name and «Uppdatera bordet» were 19 to
+   40 px short. So «Sparat» is a tick — its word is still what a reader hears, and «Osparat», the
+   state that asks for something, keeps its word and colour — and the primary says its errand short,
+   named whole. */
+.byd-editor-primary-short { display: none; }
+@media (min-width: 1024px) and (max-width: 1439px) {
+  .byd-editor > header > .byd-editor-saved[data-unsaved='false'] { font-size: 0; }
+  .byd-editor > header > .byd-editor-saved[data-unsaved='false']::before { content: '✓'; font-size: 16px; }
+  .byd-editor-primary-long { display: none; }
+  .byd-editor-primary-short { display: inline; }
 }
 /* The same air, given more gently, where the desk is wide but not wide: at 1280 in English the row
    had 4 px left with DejaVu (#477). */
@@ -335,7 +354,26 @@
 .byd-editor-notice { min-width: 0; color: #f0b64a; }
 /* What just happened, beside it and quieter: nothing is wrong, so nothing is amber, and it wraps
    for the same reason the amber one does. */
-.byd-editor-confirm { min-width: 0; color: var(--byd-editor-confirm-ink); }
+/* What just happened stands at the bottom of the screen and not in the header (#566, beslut D): said
+   in the header it squeezed the game's name and, beside the step buttons, took «Spara» and «Starta
+   bord» off their own width. It is transient and read out politely, so it lies over the work for
+   the moment it stands, and the header keeps every control whole. */
+.byd-editor-confirm {
+  position: fixed; left: 50%; bottom: var(--byd-s4, 16px); transform: translateX(-50%); z-index: 60;
+  max-width: calc(100vw - 32px); padding: var(--byd-s2) var(--byd-s4, 16px); box-sizing: border-box;
+  border: 1px solid #3a4152; border-radius: 10px; background: #1b1f29; box-shadow: 0 10px 30px rgb(0 0 0 / 0.5);
+  color: #dce3f2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;
+}
+/* Undo and redo for a hand without a keyboard (#566): two 44 px steps beside the save status. */
+.byd-editor-steps { display: inline-flex; gap: 2px; flex: 0 0 auto; }
+.byd-editor-steps button {
+  min-width: var(--byd-tap); min-height: var(--byd-tap); padding: 0; border: 1px solid #2a2d36; border-radius: 8px;
+  display: inline-grid; place-items: center; background: #0f1115; color: #dce3f2; cursor: pointer;
+}
+.byd-editor-steps svg { width: 20px; height: 20px; }
+.byd-editor-steps svg[data-mirrored] { transform: scaleX(-1); }
+.byd-editor-steps button:hover:not([aria-disabled='true']) { border-color: var(--byd-editor-primary-mark); }
+.byd-editor-steps button[aria-disabled='true'] { color: var(--byd-editor-quiet); cursor: default; }
 .byd-editor > header > button { min-height: var(--byd-tap); min-width: var(--byd-tap); border: 1px solid #2f333d; border-radius: 8px; padding: 0 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 /* A control that cannot be pressed goes quiet — but the quiet is for a button drawn on the
    header's own ground, and a first action is not drawn on it: it is filled. Laid over that fill
@@ -623,9 +661,8 @@
 .byd-setup h2 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-setup-recipe { display: grid; gap: 18px; min-width: 0; }
 .byd-setup-recipe label { display: flex; gap: 8px; align-items: center; margin: 4px 0; color: #e6ecfa; }
-/* Eight of them, which is one more than the 300 mm column fits in a line. */
-.byd-setup-players { display: flex; flex-wrap: wrap; gap: 6px; }
-.byd-setup-players button, .byd-setup-tools button, .byd-setup-counters > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
+/* The seat count is the shared stepper (#620, `stepper.css`): one row, where eight buttons wrapped. */
+.byd-setup-tools button, .byd-setup-counters > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 .byd-setup-counters { display: grid; gap: 6px; justify-items: start; }
 /* A counter is a name, «från», a number and ×. The row wraps rather than setting the column's
    width (#480): at 1024 it was 296 px of content in a 260 px track, and the whole column scrolled
@@ -868,35 +905,14 @@
 @media (max-width: 1023px), (pointer: coarse) {
   .byd-crown { flex-wrap: wrap; row-gap: var(--byd-s2); }
   .byd-crown-search { min-width: 180px; }
-  .byd-crown-rail-scroll, .byd-crown-rail .byd-data-chips { flex-wrap: wrap; overflow: visible; }
 }
 /* What a box opened: a band under the row, on the panel's own ground so it reads as standing over
    the work rather than as a second crown. This one may wrap — it is what the row refused to. */
 .byd-crown-drawer { flex: none; display: flex; align-items: flex-start; gap: var(--byd-s2); flex-wrap: wrap; max-height: 40%; overflow: auto; padding: var(--byd-s2) 0; border-bottom: 1px solid #2f333d; background: var(--byd-editor-panel-bg); }
 .byd-crown-drawer .byd-choice { align-self: center; }
 .byd-crown-tick { display: flex; align-items: center; gap: var(--byd-s1); align-self: center; min-height: var(--byd-tap); color: #cfd5e3; font-size: 12px; }
-/* Two presses and no door: the one control here that is used over and over while looking at
-   something else. It wears the same skin as a box so the row reads as one row of controls. */
-.byd-crown-step { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; }
-.byd-crown-step button, .byd-crown-more { min-width: var(--byd-tap); min-height: var(--byd-tap); border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 15px; cursor: pointer; }
-/* The filters, which keep their place in the row. The fade says there is more without taking a
-   target's worth of room to say it; the arrow is drawn only when the rail has somewhere to go. */
-.byd-crown-rail { position: relative; display: flex; align-items: center; gap: var(--byd-s1); flex: 1 1 auto; min-width: 0; }
-/* Utfyllnaden uppåt och nedåt är fokusringens och ingen annans (#396): rälsen rullar och klipper
-   därför sitt innehåll, och ringen ritas utanför chipets ruta. Ett steg mot en ring som når fem
-   pixlar gav en 3 px ring ritad som 2 px upptill och nedtill — på varje chip, inte bara på det i
-   kanten. Steget tas tillbaka i marginalen åt alla håll, så kronan är exakt lika hög som den var
-   (#130) och chipsen står kvar där de stod.
-   I sidled behövs båda delarna. Mitt i rullningen räcker utfyllnad inte — `scrollIntoView` ställer
-   chipets egen kant mot rullningsrutans och bryr sig inte om vad som ligger innanför den, och
-   rummet ringen behöver där heter `scroll-padding`. I rullningens båda ändar finns ingen rullning
-   kvar att göra, och då är utfyllnaden allt rummet som finns. */
-.byd-crown-rail-scroll { display: flex; align-items: center; gap: var(--byd-s1); flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: var(--byd-s2); margin: -8px -4px; scroll-padding: var(--byd-s2); }
-.byd-crown-rail-scroll::-webkit-scrollbar { display: none; }
-.byd-crown-rail[data-more]::after { content: ''; position: absolute; right: 44px; top: 0; bottom: 0; width: 36px; pointer-events: none; background: linear-gradient(90deg, transparent, var(--byd-editor-chrome-bg)); }
-.byd-crown-more { flex: 0 0 auto; }
 /* What the work adds up to, under it rather than over it. */
-.byd-crown-foot { flex: none; display: flex; align-items: center; gap: var(--byd-s3); padding: var(--byd-s2) 0 0; border-top: 1px solid #2f333d; color: var(--byd-editor-quiet); font-size: 12px; }
+.byd-crown-foot { position: relative; flex: none; display: flex; align-items: center; gap: var(--byd-s3); padding: var(--byd-s2) 0 0; border-top: 1px solid #2f333d; color: var(--byd-editor-quiet); font-size: 12px; }
 .byd-crown-foot span { white-space: nowrap; }
 .byd-crown-foot p { margin: 0; }
 
@@ -1285,53 +1301,126 @@
   align-self: end;
   margin: var(--byd-s2);
   display: flex;
-  flex-direction: column;
-  gap: var(--byd-s1);
-  padding: var(--byd-s1);
-  border: 1px solid #2f333d;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--byd-editor-tool-bg) 92%, transparent);
+}
+/* And where there is no width to stand in — a stage no wider than it is tall, which is 1024 with
+   the properties open — the band lies down under the stage instead. That row is the only thing it
+   ever costs the card, and it costs it only where the fitting had nothing spare to give.
+   It lies down too where there is no height to stand in (#550). Standing, the band was five taps,
+   the percentage, and the gaps and edges between them — some 290 px — and a room shorter than
+   that, a desk zoomed to 200 % or more, had it stand up out of the room and over the crown's
+   «Baksida». The pill is 46 px tall (#619) and would stand there, but the row is the shape #550
+   measured and approved, so the room keeps it. */
+@container (max-aspect-ratio: 1/1) or (max-height: 320px) {
+  /* Lying down it is as thin as a row can be: every pixel of it is a pixel of card height, and
+     this is the one shape where the band is not free. The pill is 46 px of it where the stack's
+     row was 50 (#619). */
+  .byd-canvas-zoom { grid-area: 2 / 1; justify-self: end; margin: var(--byd-s1) var(--byd-s2); }
+}
+/* The pill itself (#619, L19 tillägg): `[−][164 % ▾][+]`, one control for the canvas' zoom and
+   the wall's density. Three targets of a tap each in one rounded edge, the measure between the
+   two steps, and nothing else on the screen — «Passa in», «100 %», «50 %» and «200 %» are behind
+   the measure. The six controls in a stack it replaces were 94 × 269 px at 1280; this is 46 tall.
+   Never a fill on what is merely chosen (L13): the open measure is marked in ink, and the chosen
+   item in the menu by its own word. */
+.byd-pill {
+  display: inline-flex;
+  align-items: stretch;
+  flex: 0 0 auto;
+  /* The edge is drawn outside the box and not as a border: the pill is exactly a target tall, as
+     the crown's boxes are, so it stands on the same row as they do rather than two pixels proud. */
+  box-shadow: 0 0 0 1px #2f333d;
+  border-radius: 999px;
+  background: var(--byd-editor-tool-bg);
   color: var(--byd-editor-tool-ink);
   font-size: 12px;
 }
-/* The band's own controls are the crown's control with square shoulders: the same edge, the same
-   words, the same hit area (UX-KONTROLLER: träffytor). Never a fill — what is merely chosen here
-   is marked with its edge, since a fill is what a first action is drawn in (L13). */
-.byd-canvas-zoom button {
+/* In the crown it wears the crown's skin, as the two bare presses it replaces did, so the row
+   reads as one row of controls. */
+.byd-crown .byd-pill { background: #1b1d23; box-shadow: 0 0 0 1px #3b414e; color: #dce3f2; }
+.byd-pill-step, .byd-pill-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: var(--byd-tap);
   min-height: var(--byd-tap);
-  padding: 0 var(--byd-s2);
-  border: 1px solid #2f333d;
-  border-radius: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
   background: transparent;
   color: inherit;
   font: inherit;
   white-space: nowrap;
+}
+/* The two steps are a glyph each and a glyph is read at its own size: at the pill's own twelve
+   pixels a minus sign is a hairline beside a plus. The ends take the pill's own corners, so a
+   hover is drawn inside the edge and never squares it. */
+.byd-pill-step { font-size: 16px; line-height: 1; cursor: pointer; }
+.byd-pill-step:first-child { border-radius: 999px 0 0 999px; }
+.byd-pill-step:last-child { border-radius: 0 999px 999px 0; }
+.byd-pill-step:hover, button.byd-pill-value:hover { background: #262a33; }
+.byd-pill-measure { position: relative; display: flex; }
+/* The measure keeps its own width: a pill that grows a pixel between 99 and 100 % moves every
+   control on it under the hand. It is a number, so the digits are the same width every time. */
+.byd-pill-value {
+  padding: 0 var(--byd-s2);
+  border-left: 1px solid #2f333d;
+  border-right: 1px solid #2f333d;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+/* The word stands under the number and not beside it: beside, the pill was 206 px, and at 1280
+   with the properties open that made the card width-bound by 5 px — the one thing a band in the
+   spare width must never do (L19); CI's wider font makes it worse. Under, the pill is 164. */
+button.byd-pill-value { flex-direction: column; justify-content: center; line-height: 1.2; }
+.byd-pill-number { display: inline-flex; align-items: center; gap: var(--byd-s1); }
+button.byd-pill-value { cursor: pointer; }
+button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-mark); }
+.byd-pill-note, .byd-pill-caret { font-size: 10px; font-weight: 400; color: var(--byd-editor-hint-ink); }
+/* The word stands in its room while the card is not fitted, unseen: the room is what keeps the
+   steps where they were. */
+.byd-pill-note[data-on='false'] { visibility: hidden; }
+/* The choices, over the measure and never under it: the pill stands at the foot of its surface,
+   which `placement.ts` reads, and lifted over the page there like every opened box (L55). */
+.byd-pill-menu {
+  position: absolute;
+  z-index: 20;
+  --byd-place-gap: 6px;
+  --byd-place-inset: 0px;
+  --byd-place-x: end;
+  right: var(--byd-place-inset);
+  top: calc(100% + var(--byd-place-gap));
+  min-width: 150px;
+  max-height: var(--byd-place-room, none);
+  overflow: auto;
+  display: grid;
+  gap: 2px;
+  padding: var(--byd-s1);
+  border: 1px solid #3b4358;
+  border-radius: 10px;
+  background: var(--byd-editor-panel-bg);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+.byd-pill-menu[data-place-y='up'] { top: auto; bottom: calc(100% + var(--byd-place-gap)); }
+.byd-pill-choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--byd-s3);
+  min-height: var(--byd-tap);
+  padding: 0 var(--byd-s2);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--byd-editor-tool-ink);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  white-space: nowrap;
   cursor: pointer;
 }
-.byd-canvas-zoom button:hover { border-color: var(--byd-editor-primary-mark); }
-.byd-canvas-zoom button[aria-pressed='true'] { border-color: var(--byd-editor-primary-mark); color: #fff; }
-.byd-canvas-zoom input { width: 80px; height: var(--byd-tap); accent-color: var(--byd-editor-primary-mark); }
-/* The two steps are a glyph each and a glyph is read at its own size: at the band's own twelve
-   pixels a minus sign is a hairline beside a plus. */
-.byd-canvas-zoom button[data-step] { font-size: 16px; line-height: 1; }
-/* The percentage is a fact and not a control, so it is quieter than the buttons and stands apart
-   from them. It keeps its own width: a band that grows a pixel between 99 and 100 % moves every
-   control on it under the hand. */
-.byd-canvas-zoom output { min-width: 5ch; padding: 0 var(--byd-s1); color: var(--byd-editor-hint-ink); text-align: center; font-variant-numeric: tabular-nums; }
-/* And where there is no width to stand in — a stage no wider than it is tall, which is 1024 with
-   the properties open — the band lies down under the stage instead. That row is the only thing it
-   ever costs the card, and it costs it only where the fitting had nothing spare to give.
-   It lies down too where there is no height to stand in (#550). Standing, the band is five taps,
-   the percentage, and the gaps and edges between them — some 290 px — and a room shorter than
-   that, a desk zoomed to 200 % or more, had it stand up out of the room and over the crown's
-   «Baksida». */
-@container (max-aspect-ratio: 1/1) or (max-height: 320px) {
-  /* Lying down it is as thin as a row can be: every pixel of it is a pixel of card height, and
-     this is the one shape where the band is not free. Where even a row is too wide for the room —
-     320 px — it takes a second row rather than going past the edge. */
-  .byd-canvas-zoom { grid-area: 2 / 1; justify-self: end; flex-direction: row; flex-wrap: wrap; justify-content: flex-end; align-items: center; margin: var(--byd-s1) var(--byd-s2); padding: 0 var(--byd-s1); }
-}
+.byd-pill-choice:hover { background: #262a33; }
+.byd-pill-choice[aria-checked='true'] { color: var(--byd-chosen-ink); font-weight: 700; }
+.byd-pill-choice[aria-checked='true'] > span { color: var(--byd-editor-primary-mark); }
 /* The crown over the desk (#13, #129): one row, at every width and on every deck. Which column
    makes the groups, which group is open, whether the properties are folded away, and which face is
    being edited — four controls, and the last of them keeps its own right edge. It is a row and not
@@ -1454,13 +1543,14 @@
    was opened from. When the rail lies down as a stage strip it hangs under itself instead, since
    there is no room beside it there. */
 .byd-canvas-tool-icon { position: relative; display: grid; }
-.byd-canvas-symbols { left: calc(100% + 6px); top: -6px; max-height: min(260px, var(--byd-place-room, 260px)); }
+/* Beside the tool it opens from, and lifted there by `placement.ts` with the same three numbers (L55). */
+.byd-canvas-symbols { --byd-place-beside: 1; --byd-place-gap: -6px; --byd-place-inset: 6px; --byd-place-x: start; left: calc(100% + var(--byd-place-inset)); top: var(--byd-place-gap); max-height: min(260px, var(--byd-place-room, 260px)); }
 /* Rutan öppnas dit det finns plats (#229): listan hänger vid verktygets överkant och speglas mot
    dess underkant, vilket är vad som gör vändningen exakt. */
-.byd-canvas-symbols[data-place-y='up'] { top: auto; bottom: -6px; }
+.byd-canvas-symbols[data-place-y='up'] { top: auto; bottom: var(--byd-place-gap); }
 .byd-canvas-tools .byd-symbol-list button { font-size: 12px; }
 .byd-canvas-tools .byd-symbol-list button span { font-size: 12px; line-height: 1.3; }
-.byd-canvas[data-stage] .byd-canvas-symbols { left: 8px; top: calc(100% + 4px); }
+.byd-canvas[data-stage] .byd-canvas-symbols { --byd-place-beside: 0; --byd-place-gap: 4px; --byd-place-inset: 8px; left: var(--byd-place-inset); top: calc(100% + var(--byd-place-gap)); }
 .byd-canvas-grid-toggle { display: flex; align-items: center; gap: 7px; color: var(--byd-editor-hint-ink); font-size: 12px; margin-top: 12px; cursor: pointer; }
 .byd-canvas-hint { color: var(--byd-editor-hint-ink); font-size: 11px; line-height: 1.4; margin: 8px 0 0; }
 .byd-canvas h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--byd-editor-hint-ink); margin: 0 0 8px; }
@@ -1690,6 +1780,9 @@
 
 /* The fonts the game carries (B3): under the properties, because that is where a family is
    chosen. Each row says whether the file travels to the printer and under what licence. */
+/* Where the game's typefaces went (L57, #630): they stood here while no layer was chosen, and the
+   panel says where they are now with a way there. */
+.byd-canvas-fonts-moved { display: inline-flex; align-items: center; min-height: var(--byd-tap); margin-top: var(--byd-s3); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
 .byd-fonts { margin-top: 16px; border-top: 1px solid #2f333d; padding-top: 12px; }
 .byd-fonts ul { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 10px; }
 .byd-fonts li { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: baseline; }
@@ -1730,30 +1823,15 @@
 .byd-fonts-licence[data-settled='true'] input { border-style: dashed; color: var(--byd-editor-quiet); text-decoration: line-through; }
 
 /* ── The typeface catalog: «Provraden», variant C of #329 (L27) ──────────────────────────────
-   A sheet under the card, not a box over the panel and not the properties column. What settled
-   it is what a sample shows: this one sets the card's own heading and its own rule text, in the
-   card's own grade, which is where a typeface actually falls.
-
-   The price is stated in L27 and is not conjured away: the sheet is 62 % of the canvas, and the
-   card's lower third is hidden while the designer chooses. The card moves up when the sheet
-   opens — without that the sample row would be a sample of a card nobody can see, which is the
-   whole of its reason for existing. */
-.byd-canvas[data-catalog='open'] .byd-canvas-stage { align-items: start; padding-top: 8px; }
+   Every hit sets the card's own heading and its own rule text, in the card's own grade, which is
+   where a typeface actually falls. It stood as a sheet under the card in Mall; since L57 (#630)
+   the typefaces are Speltema's, and the catalog is the sheet beside them there. */
 .byd-font-catalog {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 9;
-  max-height: 62%;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
   background: var(--byd-editor-panel-bg);
-  border: 1px solid var(--byd-editor-line);
-  border-bottom: 0;
-  border-radius: 14px 14px 0 0;
-  box-shadow: 0 -24px 60px var(--byd-editor-card-shadow);
 }
 .byd-font-catalog header { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: var(--byd-s2); border-bottom: 1px solid var(--byd-editor-line-soft); }
 .byd-font-catalog-search { min-width: 0; }
@@ -1827,8 +1905,8 @@
   /* And what a cell keeps on each side of its field. Named for the same reason: the strip a cut
      cell reserves for its cue is measured from the field's own text area, not from its border. */
   --byd-data-cell-pad: 10px; }
-.byd-data th { text-align: left; padding: 8px var(--byd-data-head-pad); color: var(--byd-editor-quiet); font-weight: 600; border-bottom: 1px solid #2f333d; position: sticky; top: 0; z-index: 1; background: #1b1d23; }
-.byd-data td { padding: 0; border-bottom: 1px solid #20232b; }
+.byd-data th { text-align: left; padding: 8px var(--byd-data-head-pad); color: var(--byd-editor-quiet); font-weight: 600; border-bottom: 1px solid #3b4358; position: sticky; top: 0; z-index: 1; background: #20232d; }
+.byd-data td { padding: 0; border-bottom: 1px solid #2a2e39; }
 /* A field takes the width of the column it stands in and no other (#46). It used to claim a floor
    of twelve characters — written when the table laid itself out on what the browser could see,
    which in an `<input>` is `size` and never the value, so the floor was the only thing keeping a
@@ -1863,8 +1941,12 @@
 .byd-data-compare { margin: 0 0 8px; color: #cfd5e3; font-size: 12px; }
 .byd-data-compare button { margin-left: 4px; border: 1px solid #3b414e; border-radius: 6px; padding: 4px 8px; background: #1b1d23; color: #dce3f2; font: inherit; cursor: pointer; }
 .byd-data-was { display: block; padding: 0 8px; color: #f0b64a; font-size: 11px; }
-.byd-data tr[data-change='added'] td { background: rgba(125, 211, 160, 0.1); }
-.byd-data tr[data-change='removed'] td { background: rgba(224, 92, 92, 0.1); }
+/* The tint is a layer over the cell's ground and not the ground itself (#609): written as the ground
+   it made the pinned tick and id translucent, so a value scrolled in under them showed through, and
+   it wiped the rail they stand on. The row names it once and every layer below reads it. */
+.byd-data tr[data-change='added'] { --byd-data-tint: rgba(125, 211, 160, 0.1); }
+.byd-data tr[data-change='removed'] { --byd-data-tint: rgba(224, 92, 92, 0.1); }
+.byd-data tr[data-change] td { background-image: linear-gradient(var(--byd-data-tint), var(--byd-data-tint)); }
 .byd-data tr[data-change='removed'] :is(input, .byd-data-gone) { color: #9aa3b8; text-decoration: line-through; }
 /* ── Body-cellen (L39, #324) ─────────────────────────────────────────────────────────────────
    Samma cell stängd och öppen. Stängd visar den formen — fet som fet, stycken som stycken,
@@ -1966,9 +2048,9 @@
 /* The symbol picker at the brace (E4): it opens under the cell being typed in. */
 .byd-data td { position: relative; }
 .byd-data-picking { z-index: 2; }
-.byd-data-symbols { left: 4px; top: 100%; max-height: min(230px, var(--byd-place-room, 230px)); }
+.byd-data-symbols { --byd-place-inset: 4px; left: var(--byd-place-inset); top: 100%; max-height: min(230px, var(--byd-place-room, 230px)); }
 .byd-data-symbols[data-place-y='up'] { top: auto; bottom: 100%; }
-.byd-data-symbols[data-place-x='end'] { left: auto; right: 4px; }
+.byd-data-symbols[data-place-x='end'] { left: auto; right: var(--byd-place-inset); }
 /* One library, one look, wherever it is opened (E4): the rail's Ikon tool and the brace in a cell
    draw the same component, so what an option is and which one the keys are on is written once.
    The two classes above are what places each of them, and that is all they are for. This block
@@ -2014,62 +2096,74 @@
   --byd-editor-marked-bg: #253044;
   --byd-editor-marked-ink: #c3cbdd;
 }
-/* The table's own search wears the filter's colours rather than the crown's plain one: it is the
-   head of the filter and is read with the chips beside it. Everything else about it is the row's. */
-.byd-data-search {
-  flex: 0 1 240px;
-  min-width: 0;
-  padding: 8px 12px;
-  border: 1px solid var(--byd-secondary-line);
-  border-radius: 8px;
-  background: var(--byd-editor-filter-bg);
-  color: var(--byd-editor-filter-ink);
-  font: inherit;
-}
-.byd-data-search::placeholder { color: var(--byd-editor-filter-quiet); }
-.byd-data-chips { display: flex; gap: 6px; flex-wrap: wrap; }
-/* In the crown the chips are one line that scrolls sideways, never a field that wraps: the row is
-   exactly one row, and thirteen chips do not fit on a line even at 1440 (#130). */
-.byd-crown-rail .byd-data-chips { flex-wrap: nowrap; }
-.byd-crown-rail .byd-data-chip { flex: 0 0 auto; white-space: nowrap; }
-.byd-data-chip {
-  padding: 4px 12px;
-  border: 1px solid #3b414e;
-  border-radius: 999px;
-  background: var(--byd-editor-filter-bg);
-  color: var(--byd-editor-filter-ink);
-  font: inherit;
-  cursor: pointer;
-}
+/* The search field, with the filter's tokens in it (#617, variant A). It is the one thing in the
+   crown that answers to anything, so it takes the row: what the column doors choose is read here as
+   «typ: varelse ×», and the text the designer searches with stands after the tokens. The field is
+   held to a box's height so the crown reads as one row (#130); tokens that will not fit a row wrap
+   inside it, which is the field growing and never the crown becoming two. */
+.byd-data-filter { position: relative; flex: 1 1 auto; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--byd-s1); min-height: var(--byd-tap); box-sizing: border-box; padding: 0 var(--byd-s1) 0 var(--byd-s3); border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: var(--byd-editor-filter-bg); cursor: text; }
+.byd-data-filter:focus-within { border-color: var(--byd-editor-primary-mark); }
+.byd-data-filter > input { flex: 1 1 160px; min-width: 0; min-height: 34px; border: 0; background: transparent; color: var(--byd-editor-filter-ink); font: inherit; }
+.byd-data-filter > input:focus { outline: none; }
+.byd-data-filter > input::placeholder { color: var(--byd-editor-filter-quiet); }
+/* A token is the chosen value with the column it was chosen from, and the way to let go of it. The
+   × is a full target in height and width; the token stands as tall as the field's inner row. */
+.byd-data-token { flex: none; display: inline-flex; align-items: center; height: 34px; padding-left: var(--byd-s2); border-radius: 6px; background: var(--byd-editor-marked-bg); color: #fff; font-weight: 600; white-space: nowrap; }
+.byd-data-token > button { min-width: 34px; height: 34px; border: 0; border-radius: 6px; background: transparent; color: #dbe4ff; font: inherit; font-size: 15px; cursor: pointer; }
+.byd-data-token > button:hover { background: #3c4a6d; }
+/* The list «typ:» opens under the field (L23): the column's values that begin as typed, the one
+   under the cursor marked, each with how many cards carry it. */
+.byd-data-typed { position: absolute; z-index: 6; top: calc(100% + var(--byd-s1)); left: 0; min-width: 240px; max-width: 420px; padding: var(--byd-s1); border: 1px solid #3b4358; border-radius: 10px; background: var(--byd-editor-panel-bg); box-shadow: 0 12px 30px rgb(0 0 0 / 50%); }
+.byd-data-typed > [role='option'] { display: flex; align-items: center; gap: var(--byd-s2); min-height: 40px; padding: 0 var(--byd-s2); border-radius: 6px; color: #dce3f2; cursor: pointer; }
+.byd-data-typed > [role='option'] > b { color: var(--byd-editor-filter-quiet); font-weight: 600; }
+.byd-data-typed > [role='option'] > small, .byd-column-filter-tick > small { margin-left: auto; color: var(--byd-editor-filter-quiet); font-variant-numeric: tabular-nums; }
+.byd-data-typed > [role='option'][aria-selected='true'], .byd-data-typed > [role='option']:hover { background: #232838; }
+.byd-data-typed > p { margin: 0; padding: var(--byd-s2); color: var(--byd-editor-filter-quiet); }
+/* The column's door in its head (#617): the handle beside the sort, quiet until it holds a
+   choice. It stands in the head's flow and is therefore counted by `fitColumns` as part of what
+   the heading needs, so it is kept as narrow as a target can be — 24 px, the head's own height to
+   press on — and it never changes width: a count takes the glyph's place rather than standing
+   beside it, since a column that grew when it was filtered would move every column after it.
+   The door lifts into the top layer like every opened box (L55) and lists the values as ticks. */
+.byd-column-filter { display: inline-flex !important; align-items: center; justify-content: center; width: 24px; min-width: 24px; min-height: var(--byd-tap); margin: 0; border: 1px solid transparent !important; border-radius: 6px !important; padding: 0 !important; color: #6f7a90 !important; font-size: 11px; line-height: 1; vertical-align: middle; }
+.byd-column-filter:hover, .byd-column-filter[aria-expanded='true'] { color: #fff !important; border-color: #3b414e !important; }
+/* On, it is a mark and never a fill: the one filled thing in the room is the action that puts the
+   work on the table (L13), and a filter is a state, not that action. */
+.byd-column-filter[data-on] { color: var(--byd-editor-primary-mark) !important; border-color: var(--byd-editor-primary-mark) !important; font-weight: 700; }
+/* The head's own rules for its buttons are the sort control's — the 44 px floor it needs as a
+   target and the sticky left that keeps the word in view under a sideways scroll — and they would
+   make the handle 44 px wide and glued to the word. The handle is a column's worth narrower than
+   that, and stands where it stands. */
+.byd-data thead th[data-col] > .byd-column-filter { position: static; left: auto; min-width: 24px; width: 24px; }
+.byd-column-filter-door { position: absolute; z-index: 6; top: calc(100% + var(--byd-s1)); left: 0; min-width: 240px; max-height: var(--byd-place-room, 40vh); overflow: auto; padding: var(--byd-s1); border: 1px solid #3b4358; border-radius: 10px; background: var(--byd-editor-panel-bg); box-shadow: 0 12px 30px rgb(0 0 0 / 50%); font-weight: 400; }
+.byd-column-filter-door[data-place-y='up'] { top: auto; bottom: calc(100% + var(--byd-s1)); }
+.byd-column-filter-door[data-place-x='end'] { left: auto; right: 0; }
+.byd-column-filter-tick { display: flex; align-items: center; gap: var(--byd-s2); min-height: 40px; padding: 0 var(--byd-s2); border-radius: 6px; color: #dce3f2; cursor: pointer; }
+.byd-column-filter-tick:hover { background: #232838; }
+.byd-column-filter-tick > input { width: var(--byd-tick); height: var(--byd-tick); margin: 0; accent-color: var(--byd-editor-primary-mark); color-scheme: dark; }
 .byd-data-count { margin: 0; color: var(--byd-editor-count-ink); font-variant-numeric: tabular-nums; }
 .byd-data-pinned { color: var(--byd-editor-filter-quiet); }
 .byd-data-clear { border: 1px solid #3b414e; border-radius: 8px; padding: 4px 12px; background: transparent; color: var(--byd-editor-filter-quiet); font: inherit; cursor: pointer; }
 .byd-data-clear:hover { color: var(--byd-editor-filter-ink); }
 .byd-data-empty { margin: 16px 0 0; color: var(--byd-editor-count-ink); }
-/* Below the desk the filter is a stack of single lines that scroll in their own boxes rather
-   than a field of wrapped chips: a deck with a sentence-long column would otherwise push the
-   rows — the thing the tab is for — off the bottom of the screen. */
-@media (max-width: 1023px) {
-  .byd-data-chip { flex: 0 0 auto; max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-}
 .byd-data th button { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
 .byd-data th button span { color: var(--byd-editor-quiet); }
 .byd-data th button:hover { color: #dce3f2; }
 .byd-data th button[data-active='true'] { color: #dce3f2; }
 .byd-data th button[data-active='true'] span { color: #7dd3a0; }
 .byd-data tr[aria-selected='true'] { background: #2f3a55; }
-/* The quiet things on a chosen row are read on its lighter ground (#557): the id, the label over an
-   open cell and its tools. A marked row's id keeps its own ink, which is declared later. */
-.byd-data tr[aria-selected='true'] :is(.byd-data-id, .byd-data-bodyhead > b, .byd-data-bodytools button:not([aria-pressed='true'])) { color: var(--byd-editor-quiet-chosen); }
+/* The quiet things on a chosen row are read on its lighter ground (#557): the label over an open
+   cell and its tools. The id stands on the rail now (#609) and is read in the rail's own ink. */
+.byd-data tr[aria-selected='true'] :is(.byd-data-bodyhead > b, .byd-data-bodytools button:not([aria-pressed='true'])) { color: var(--byd-editor-quiet-chosen); }
 .byd-data-id { padding: 8px !important; color: var(--byd-editor-quiet); font-family: ui-monospace, monospace; font-size: 12px; }
 .byd-data input { background: transparent; border: 0; color: #ddd; padding: 8px var(--byd-data-cell-pad); width: 100%; box-sizing: border-box; font-size: 12px; }
 .byd-data button { background: transparent; border: 0; color: var(--byd-editor-quiet); cursor: pointer; padding: 4px 8px; }
-.byd-data-search { min-height: var(--byd-tap); box-sizing: border-box; }
 .byd-data-add { margin-top: 8px; border: 1px dashed #2f333d; background: transparent; color: #9aa3b8; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
-/* The action row (#17, prototype A): it is not there at all until a card is marked, and then it
-   stands between the filter and the rows — right where the eye goes after ticking a box. The
-   delete is the only destructive button in the editor and is the only one drawn in red; the
-   question it asks first takes the whole row, so nothing can be pressed by mistake behind it. */
+/* The action row (#17, prototype A; #618, variant A): it is not there at all until a card is
+   marked. It stood between the filter and the rows and moved every row 80 px when a box was
+   ticked; since #618 it stands in the foot, after the count, where nothing above the rows moves.
+   The delete is the only destructive button in the editor and is the only one drawn in red; the
+   question it asks first takes the toolbar's place, so nothing can be pressed by mistake behind it. */
 .byd-data-bulk {
   --byd-editor-bulk-bg: #1f2937;
   --byd-editor-bulk-ink: #e6ecfa;
@@ -2119,6 +2213,21 @@
    on the row's lighter panel the same dark box reads as a hole punched through it, while every
    other control there is drawn as an outline. So it takes the row's ground, like the rest. */
 .byd-data-bulk .byd-data-file { background: transparent; color: var(--byd-editor-bulk-ink); }
+/* In the foot the row is the foot's own: no band of its own, no margin, and buttons that keep the
+   foot one row tall. The column and the value are behind «Sätt fält», in a box that lifts into
+   the top layer (L55) and opens upward from the foot. */
+.byd-crown-foot .byd-data-bulk { flex: 0 1 auto; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; flex-wrap: nowrap; }
+.byd-crown-foot .byd-data-bulk[role='alertdialog'] { padding: 0 var(--byd-s3); border: 1px solid var(--byd-editor-bulk-danger-bg); border-radius: 8px; background: var(--byd-editor-bulk-ask-bg); }
+.byd-crown-foot .byd-data-bulk button { white-space: nowrap; }
+.byd-data-set[aria-expanded='true'] { border-color: var(--byd-editor-primary-mark); }
+.byd-data-set-box { position: absolute; z-index: 6; bottom: calc(100% + var(--byd-s1)); left: 0; display: flex; align-items: center; gap: var(--byd-s2); flex-wrap: wrap; min-width: 240px; padding: var(--byd-s2); border: 1px solid #3b4358; border-radius: 10px; background: var(--byd-editor-panel-bg); box-shadow: 0 12px 30px rgb(0 0 0 / 50%); color: var(--byd-editor-bulk-ink); }
+.byd-data-set-box[data-place-y='down'] { bottom: auto; top: calc(100% + var(--byd-s1)); }
+.byd-data-set-box[data-place-x='end'] { left: auto; right: 0; }
+.byd-data-set-box label { display: flex; align-items: center; gap: 6px; color: var(--byd-editor-bulk-quiet); }
+.byd-data-set-box select, .byd-data-set-box input { min-height: var(--byd-tap); padding: 4px 8px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: var(--byd-editor-filter-bg); color: var(--byd-editor-filter-ink); font: inherit; }
+.byd-data-set-box > button { min-height: var(--byd-tap); padding: 4px 12px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: var(--byd-editor-bulk-ink); font: inherit; font-weight: 700; cursor: pointer; }
+.byd-data-set-box > button:disabled { color: var(--byd-editor-bulk-quiet); cursor: default; }
+.byd-data-set-box .byd-data-file { background: transparent; color: var(--byd-editor-bulk-ink); }
 /* The checkbox column (#17): wide enough for a real hit target. The tick itself is the editor's
    one tick box (#45) and is drawn nowhere but there, so "marked" here and "marked" in the recipe
    are the same blue and the same square. */
@@ -2136,6 +2245,22 @@
 .byd-data tbody tr { background: #1b1d23; }
 .byd-data tbody .byd-data-check { position: sticky; left: 0; z-index: 2; background: inherit; }
 .byd-data tbody .byd-data-id { position: sticky; left: var(--byd-tap); z-index: 2; background: inherit; }
+/* And they stand on a rail of their own (#609, beställarens beslut B): inheriting the row's ground,
+   nothing but a shadow drawn once a value was already under them said they were standing still.
+   The rail is a veil laid over the inherited ground rather than a colour instead of it, so every
+   tint the row carries reaches the pinned cells too; under the pointer the row's own lift is laid
+   over it (#400). The edge against what slides in is drawn at all times, not only once something
+   has slid in, because it is what says the column stands still before anything has moved. */
+.byd-data tbody tr :is(.byd-data-check, .byd-data-id) { background-image: linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)), linear-gradient(var(--byd-data-tint, transparent), var(--byd-data-tint, transparent)); }
+.byd-data thead :is(.byd-data-check, th[data-col='id']) { background-image: linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)); }
+.byd-data tbody tr:hover :is(.byd-data-check, .byd-data-id) { background-image: linear-gradient(rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03)), linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)), linear-gradient(var(--byd-data-tint, transparent), var(--byd-data-tint, transparent)); }
+.byd-data tbody .byd-data-id, .byd-data thead th[data-col='id'] { box-shadow: inset -2px 0 0 var(--byd-editor-data-rail-edge); }
+/* The id heading is read on the head's rail in the same ink, save while it is what the table is
+   sorted by, when it is the green every sorting heading is. */
+.byd-data thead th[data-col='id'] > button:not([data-active='true'], :hover),
+.byd-data thead th[data-col='id'] > button:not([data-active='true']) span { color: var(--byd-editor-data-rail-ink); }
+/* A marked row's id keeps its own ink, which is declared later and weighs the same. */
+.byd-data tbody tr .byd-data-id { color: var(--byd-editor-data-rail-ink); }
 /* The head's own two, so the corner where the row that stands still upward crosses the columns
    that stand still sideways belongs to both. Above the body's, or a value would be drawn over the
    heading at the moment both are held. */
@@ -2145,14 +2270,16 @@
    redan bär, applicerat på huvudet. `sticky` klipps av sin egen `th`, så namnet lämnar aldrig sin
    kolumn: det stannar av sig självt när kolumnens högerkant kommer. Var lanen slutar vet bara
    mätningen, som säger det i `--byd-data-lane`; före första mätningen räcker bocken. */
-.byd-data thead th[data-col] > button { position: sticky; left: var(--byd-data-lane, var(--byd-tap)); }
+/* Utom `id` (#629): den är själv en del av det fastnålade som lanen mäter, så lanens slut är dess
+   egen cells högerkant — och dit knuffades namnet, ~150 px från texten under det. */
+.byd-data thead th[data-col]:not([data-col='id']) > button { position: sticky; left: var(--byd-data-lane, var(--byd-tap)); }
 .byd-data thead .byd-data-check { position: sticky; left: 0; z-index: 3; }
 .byd-data thead th[data-col='id'] { position: sticky; left: var(--byd-tap); z-index: 3; }
 /* The edge that says there is more to the left. It is a promise that something is there, so it is
    drawn only once something is: `data-under` is set on the box by the same frame that asks
    whether a value has run under the pin. */
 .byd-data-scroll[data-under] .byd-data .byd-data-id,
-.byd-data-scroll[data-under] .byd-data thead th[data-col='id'] { box-shadow: 8px 0 12px -8px rgb(0 0 0 / 80%); }
+.byd-data-scroll[data-under] .byd-data thead th[data-col='id'] { box-shadow: inset -2px 0 0 var(--byd-editor-data-rail-edge), 8px 0 12px -8px rgb(0 0 0 / 80%); }
 /* The tick keeps the size a tick has; what a thumb hits is the label around it. */
 .byd-data-tick { display: grid; place-items: center; min-width: var(--byd-tap); min-height: var(--byd-tap); cursor: pointer; }
 /* The column that removes a card is pinned to the right edge of the scrolling box: it is the
@@ -2290,8 +2417,11 @@
 /* A heading is one line and stays inside its own column (#46). Both are what a measured width
    costs: a column drawn at the width of what stands in it has no room for a heading that wraps,
    and a wrapped heading is the very first thing a narrow column does. The head's own last cell is
-   the exception — the form that makes a column hangs out of it on purpose. */
-.byd-data th { overflow: hidden; white-space: nowrap; }
+   the exception — the form that makes a column hangs out of it on purpose.
+   `clip` and not `hidden` (#615): `hidden` makes every heading a scroll container of its own, and
+   a `sticky` name inside one sticks to its own cell and never glides (#401). It glided only in the
+   columns the old prose fold-out had set to `visible`, which is the only reason #401's test passed. */
+.byd-data th { overflow: clip; white-space: nowrap; }
 /* A heading a column can be carried by (#46), and where it would land drawn before it lands
    there — a head that can be dragged and says nothing about the drop is a head you have to drag
    twice. The same line the layer list draws, along the leading edge instead of the top one,
@@ -2327,67 +2457,26 @@
    on every row. A tap-wide cell holds a `+` and nothing more, so that is what it holds; the word
    is what the button is heard by. The form it opens has to be let out of the cell, which is the
    one heading that is deliberately not clipped. */
-.byd-data thead .byd-data-remove { z-index: 4; overflow: visible; white-space: nowrap; }
+.byd-data thead .byd-data-remove { z-index: 4; overflow: visible; white-space: nowrap; background: #20232d; }
 .byd-data thead .byd-data-remove > button { display: grid; place-items: center; width: var(--byd-tap); padding: 0; color: var(--byd-editor-count-ink); font-size: 18px; line-height: 1; }
-/* ── Kolumnens märke: prosa eller vanlig text (L43, #362, variant C) ─────────────────────────
-   «Höjden föreslår, designern avgör.» I vila kostar märket ingenting: en prick i huvudet, inga
-   kontroller, och rubriken exakt lika hög som den var — vilket är varför varianten valdes framför
-   en växel i rubriken, som mätte 20 px träffyta och kapade «Kostnad» till «KOST…».
+/* And while the door stands the handle is drawn pressed, joined to the panel hanging from it, so
+   the × reads as the door's own and not as one more column to take away (#610). */
+.byd-data thead .byd-data-remove > button[aria-expanded='true'] { align-self: stretch; min-height: var(--byd-tap); border-radius: 8px; background: var(--byd-editor-panel-bg); box-shadow: inset 0 0 0 1px #6b7899; color: #e6ecfa; }
+/* ── Vad en kolumn skrivs som: prosa eller vanlig text (L43, ändrat i #615) ─────────────────
+   «Höjden föreslår, designern avgör.» Valet står i dörren bakom ＋, på kolumnens egen rad; huvudet
+   bär bara ett ¶ efter namnet på en kolumn som skrivs som prosa. Det stod förut som en prick
+   utanför rubrikens flöde — klistrad mot ordet, «○typ» — och en utfällning med en primärknapp
+   som lades över raderna när en hand vilade på rubriken.
 
-   Formen bär skillnaden mellan förval och val: prickad ring när höjden föreslog, ifylld bricka
-   när designern valde. Orden bär samma skillnad i märkets namn, eftersom en prickad ring inte
-   finns för en skärmläsare (L12).
-
-   Utfällningen hänger ur rubriken och måste därför kunna gå utanför den; rubriken den hänger i
-   säger det med `data-prose`, precis som dörrens cell redan säger det om dörren. */
-.byd-data th[data-prose] { overflow: visible; }
-.byd-data th[data-prose]:hover, .byd-data th[data-prose]:focus-within { z-index: 7; }
-/* Pricken står **utanför rubrikens flöde**, precis som × och dragkanten redan gör (#46). Det är
-   inte städning: `fitColumns` räknar en kolumns golv på det som står i rubrikens flöde, och sex
-   pixlar plus mellanrum per kolumn hade lyft `kostnad` från 88 px till 108 — alltså betalt
-   tätheten #46 handlar om för ett märke som enligt mätningen kostar noll i vila. Den ryms i
-   rubrikens egen vänsterindragning och rör därför inte heller ordet.
-
-   Klasserna nedan bärs av två klasser och inte av städlighet: `.byd-data th button` skalar av
-   rubrikens knappar ram och botten helt, och den regeln vinner över en enda klass — utan djupet
-   ritades utfällningens två knappar som naken text. Mätt i Chromium. */
-.byd-data .byd-prose-mark { position: absolute; left: 2px; top: 50%; transform: translateY(-50%); display: block; width: 6px; height: 6px; border-radius: 50%; }
-/* Höjden föreslog: en ring som inte är ifylld. */
-.byd-data .byd-prose-mark[data-from='height'] { border: 1px dotted #7d879c; }
-.byd-data .byd-prose-mark[data-from='height'][data-prose='true'] { border-color: #9ec4e8; }
-/* Designern valde: en ifylld bricka. */
-.byd-data .byd-prose-mark[data-from='choice'] { background: #7d879c; }
-.byd-data .byd-prose-mark[data-from='choice'][data-prose='true'] { background: #9ec4e8; }
-.byd-data .byd-prose-why {
-  position: absolute;
-  /* Ur rubriken och inte i den (#394). `16px` lade utfällningen tvärs över huvudets egen rad:
-     över ordet den handlar om, över grannkolumnens rubrik — som därmed inte gick att klicka —
-     och över den egna dragkanten och den egna fokusringen, som båda bor inne i rubriken. Hela
-     kostnaden L43 accepterade är raderna under; huvudet var aldrig med i räkningen. `100%` är
-     samma kant dörren redan hänger från, och den kanten är den enda som är fri. */
-  top: 100%;
-  left: 0;
-  z-index: 8;
-  width: 268px;
-  padding: 8px 12px;
-  border: 1px solid #3b4358;
-  border-radius: 10px;
-  background: var(--byd-editor-panel-bg);
-  box-shadow: 0 12px 30px rgb(0 0 0 / 50%);
-  color: #dce3f2;
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: 0;
-  white-space: normal;
-  text-align: left;
-}
-.byd-data .byd-prose-why > b { display: block; margin-bottom: 4px; color: #e6ecfa; font-size: 12px; }
-.byd-data .byd-prose-why > p { margin: 0 0 8px; color: var(--byd-editor-quiet); font-size: 11px; line-height: 1.5; }
-.byd-data .byd-prose-turn-row { display: flex; gap: 6px; }
-/* Och här, där valet faktiskt vänds, står hela träffytan (L12). */
-.byd-data .byd-prose-turn { min-height: var(--byd-tap); box-sizing: border-box; border: 1px solid #3b414e; border-radius: 8px; padding: 0 12px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-.byd-data .byd-prose-turn:hover, .byd-data .byd-prose-turn:focus-visible { border-color: var(--byd-editor-primary-mark); }
-.byd-data .byd-prose-turn-strong { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); }
+   ¶ står **utanför knappens flöde**, förankrat i dess högerkant: rubrikens knapp är `sticky` och
+   får inte bli bredare, annars glider den in under `id` när kolumnen rullats förbi (#401) — och
+   `fitColumns` räknar en kolumns golv på flödet, vilket är tätheten #46 handlar om. Knappen är
+   redan ett innehållande block genom `sticky`, så märket följer med när rubriken glider.
+   Pilens grå när höjden föreslog, prosans blå när designern valde — samma skillnad som växeln i
+   dörren bär, och båda klarar AA mot huvudets botten. Två klasser djupt, för
+   `.byd-data th button span` färgar annars om det till pilens grå. */
+.byd-data th button .byd-prose-pilcrow { position: absolute; left: 100%; top: 50%; transform: translateY(-50%); padding-left: 4px; font-weight: 400; color: var(--byd-editor-quiet); }
+.byd-data th button .byd-prose-pilcrow[data-from='choice'] { color: #9ec4e8; }
 
 /* The head's own door (#46 on #32): the list of the table's columns, and under it the form that
    makes one. It hangs out of the head's last cell, which is the one heading deliberately not
@@ -2398,7 +2487,9 @@
   top: 100%;
   right: 0;
   z-index: 6;
-  width: 260px;
+  /* Wide enough for a row to hold the name, the prose switch and the × side by side (#615): at
+     260 px the name was left 68 px between them. */
+  width: 340px;
   padding: 8px 12px 12px;
   border: 1px solid #3b4358;
   border-radius: 10px;
@@ -2433,6 +2524,10 @@
    wide. At rest it is the word it always was; under a pointer or a focus ring it is already drawn
    as the box it becomes, so nothing about the row moves when it does become one. */
 button.byd-columns-name { padding: 0 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: inherit; font: inherit; font-size: 12px; text-align: left; cursor: text; }
+/* The door hangs inside a heading, and `.byd-data th button` sets every button there in the
+   heading's 600 — so a name that could be renamed stood bolder than «Titel» beside it, which
+   cannot. Two classes deep, the name is the weight of the list it stands in. */
+.byd-columns button.byd-columns-name { font-weight: 400; }
 button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-color: #3b414e; background: #1b1d23; }
 .byd-columns-rename { flex: 1 1 auto; min-width: 0; border: 1px solid #3b414e; border-radius: 6px; padding: 0 8px; background: #1b1d23; color: #e6ecfa; font: inherit; font-size: 12px; }
 .byd-columns-rename[aria-invalid='true'] { border-color: #f0b64a; }
@@ -2447,6 +2542,19 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
    is what a panel has room for and a heading never had (L4). It takes a line of its own: a
    sentence and a name on one row is a row where the sentence wins and the name is cut, and the
    name is the thing the designer came to the list to read. */
+/* Växeln i dörren (L43, #615): två knappar med hela träffytan, och vilken som är tryckt bär
+   upphovet i form — streckad när höjden föreslog, ifylld när designern valde. Orden står i
+   gruppens namn för den som inte ser kanten (L12). */
+.byd-columns .byd-prose-switch { flex: 0 0 auto; display: inline-flex; border-radius: 8px; background: #12141a; box-shadow: inset 0 0 0 1px #2f333d; }
+.byd-columns .byd-prose-switch > button { min-width: var(--byd-tap); min-height: var(--byd-tap); padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: var(--byd-editor-quiet); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
+.byd-columns .byd-prose-switch > button:hover { color: #dce3f2; }
+.byd-columns .byd-prose-switch > button[aria-pressed='true'] { background: #2b3446; color: #fff; box-shadow: inset 0 0 0 1px #46597a; }
+.byd-columns .byd-prose-switch[data-from='height'] > button[aria-pressed='true'] { background: transparent; color: #9ec4e8; box-shadow: none; outline: 1px dashed #46597a; outline-offset: -4px; }
+.byd-columns .byd-prose-switch > button:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 0; }
+/* Orsaken, på en egen rad under namnet och växeln, och vägen tillbaka till höjden där den finns. */
+.byd-columns .byd-prose-why { flex: 1 0 100%; box-sizing: border-box; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; padding: 0 0 4px; color: var(--byd-editor-quiet); font-size: 10px; line-height: 1.4; }
+.byd-columns .byd-prose-follow { min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: #c3cbdd; font: inherit; text-decoration: underline; cursor: pointer; }
+.byd-columns .byd-prose-follow:hover, .byd-columns .byd-prose-follow:focus-visible { color: #fff; }
 .byd-columns-system { flex: 1 0 100%; display: flex; align-items: baseline; gap: 5px; padding-bottom: 4px; color: var(--byd-editor-quiet); font-size: 10px; line-height: 1.3; }
 .byd-columns-system svg { flex: 0 0 auto; }
 .byd-newfield {
@@ -2517,7 +2625,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 
    Skriven `rgba(…)` med flit: Chromium svarar `color(srgb …)` på procentalfa, och den formen tar
    ingen av kontrastmätningarna i det här repot (#376). */
-.byd-data tbody tr:hover td { background-image: linear-gradient(rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03)); }
+.byd-data tbody tr:hover td { background-image: linear-gradient(rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03)), linear-gradient(var(--byd-data-tint, transparent), var(--byd-data-tint, transparent)); }
 
 /* Bord (#19, prototype variant A): the tables of this game, as a list of live games. The row is
    the same wherever it is shown — in the tab, and in the header's shortcut from the other tabs
@@ -2642,8 +2750,13 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-tables-menu {
   position: absolute;
   z-index: 20;
-  right: var(--byd-s2);
-  top: calc(100% - var(--byd-s2));
+  /* Over the row's own foot, from its right-hand edge whatever the room — said as lengths for
+     `placement.ts`, which lifts the menu over the page there (L55). */
+  --byd-place-gap: -8px;
+  --byd-place-inset: 8px;
+  --byd-place-x: end;
+  right: var(--byd-place-inset);
+  top: calc(100% + var(--byd-place-gap));
   min-width: 190px;
   display: grid;
   gap: 2px;
@@ -2750,17 +2863,45 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
    nobody can see must not be able to move the page. */
 .byd-offscreen { position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: -1px; /* undantag: inte ett avstånd — den negativa marginalen tar tillbaka rutan som håller raden, och 1 px är rutans mått */ padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 
-/* The symbol library (E4): the library on the left, the game's own set and the cards on the right. */
-/* The symbol surface wears the same crown (#128): search and categories at the top, one thing
-   that scrolls under it. The library used to carry its own scroll bar inside a panel that was
-   already scrolling — two bars for one gesture, which is what the audit found here. */
-.byd-symbols { height: 100%; box-sizing: border-box; display: flex; flex-direction: column; padding: var(--byd-gutter); }
-.byd-symbols-work { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: var(--byd-s5); align-items: start; }
-.byd-symbols h2 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
-.byd-symbols p { margin: 0 0 12px; color: #9aa3b8; line-height: 1.5; }
-.byd-symbols-library { padding: 16px; border-radius: 16px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
+/* Speltema (L57, #630), in Symbolers ställe: the game's typefaces, meanings and icons, each folded
+   behind a head that carries its value while closed. One column that scrolls; a sheet — the
+   symbol library or the typeface catalog — stands beside it when one is open, never over it, so
+   what is taken in can be seen arriving. */
+.byd-theme { height: 100%; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: var(--byd-s4); padding: var(--byd-gutter); }
+.byd-theme[data-sheet] { grid-template-columns: minmax(0, 1fr) minmax(320px, 440px); }
+.byd-theme-work { min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1100px); align-content: start; gap: var(--byd-s2); }
+.byd-theme-sec { border: 1px solid #2f333d; border-radius: 12px; background: var(--byd-editor-panel-bg); }
+.byd-theme-head { display: flex; align-items: center; gap: var(--byd-s2); padding: 0 var(--byd-s4); }
+.byd-theme-head h2 { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 14px; font-weight: 600; }
+/* The head is the button that folds the part, as Mall's sections are (#478): the name, a chevron
+   that says which way it stands, and — while it is closed — the part's value at the far end. */
+.byd-theme-head h2 button { display: flex; align-items: center; gap: var(--byd-s3); width: 100%; min-height: 48px; padding: 0; border: 0; background: transparent; color: #fff; font: inherit; text-align: left; cursor: pointer; }
+.byd-theme-head h2 button::before { content: ''; flex: none; width: 6px; height: 6px; border-right: 1.5px solid var(--byd-editor-quiet); border-bottom: 1.5px solid var(--byd-editor-quiet); transform: rotate(-45deg); transition: transform 120ms; }
+.byd-theme-head h2 button[aria-expanded='true']::before { transform: rotate(45deg); }
+@media (prefers-reduced-motion: reduce) { .byd-theme-head h2 button::before { transition: none; } }
+.byd-theme-name { flex: none; }
+.byd-theme-sum { flex: 0 1 auto; min-width: 0; margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--byd-editor-quiet); font-size: 12px; font-weight: 400; }
+.byd-theme-body { display: grid; gap: var(--byd-s4); padding: 0 var(--byd-s4) var(--byd-s4); }
+.byd-theme p { margin: 0; color: #9aa3b8; line-height: 1.5; }
+.byd-theme h3 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--byd-editor-quiet); }
+.byd-theme-library-open { justify-self: start; display: inline-flex; align-items: center; min-height: var(--byd-tap); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; font-size: 12px; cursor: pointer; }
+/* The fonts' shelf was drawn for Mall's narrow panel, under a rule; here it stands in its own part. */
+.byd-theme .byd-fonts { margin-top: 0; border-top: 0; padding-top: 0; }
+.byd-theme :is(.byd-fonts-catalog, .byd-fonts-upload) { min-height: var(--byd-tap); margin: 0 var(--byd-s2) 0 0; padding: 0 var(--byd-s3); box-sizing: border-box; vertical-align: middle; }
+.byd-theme .byd-fonts ul { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--byd-s3) var(--byd-s5); margin-bottom: var(--byd-s3); }
+/* The sheet beside the parts: the library, or the catalog that stood under the card in Mall. */
+.byd-theme-sheet { min-height: 0; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #2f333d; border-radius: 12px; background: var(--byd-editor-panel-bg); }
+.byd-symbols-library > header { flex: none; display: flex; align-items: center; gap: var(--byd-s2); padding: var(--byd-s2) var(--byd-s4); border-bottom: 1px solid var(--byd-editor-line-soft); }
+.byd-symbols-library > header h2 { margin: 0; font-size: 14px; font-weight: 600; color: #fff; }
+.byd-symbols-library .byd-theme-sheet-done { margin-left: auto; min-height: 32px; border: 1px solid var(--byd-editor-line); border-radius: 8px; padding: 0 var(--byd-s3); background: transparent; color: var(--byd-editor-home-ink); font: inherit; font-size: 12px; cursor: pointer; }
+.byd-theme-search { flex: none; margin: var(--byd-s3) var(--byd-s4) 0; min-height: 32px; box-sizing: border-box; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #0f1115; color: #fff; font: inherit; padding: 0 var(--byd-s3); }
+.byd-theme-kinds { flex: none; display: flex; flex-wrap: wrap; gap: var(--byd-s2); padding: var(--byd-s2) var(--byd-s4); }
+/* The categories are choices in the editor's own chosen-language (`.byd-choice`): a mark, never a
+   fill, which is the primary's alone. */
+.byd-theme-sheet-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--byd-s2) var(--byd-s4) var(--byd-s4); }
+.byd-symbols-library > footer { flex: none; padding: var(--byd-s2) var(--byd-s4); border-top: 1px solid var(--byd-editor-line-soft); font-size: 11px; color: var(--byd-editor-quiet); font-variant-numeric: tabular-nums; }
 .byd-symbols-set input { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
-.byd-symbols-work button { border: 1px solid #2f333d; border-radius: 8px; padding: 4px 12px; background: #1b1d23; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
+:is(.byd-theme-body, .byd-theme-sheet-scroll) button:where(:not(.byd-secondary)) { border: 1px solid #2f333d; border-radius: 8px; padding: 4px 12px; background: #1b1d23; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
 .byd-symbols-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
 .byd-symbols-tile { display: grid; justify-items: center; gap: 3px; padding: 8px 4px; font-weight: 400; font-size: 10px; color: #9aa3b8; }
 .byd-symbols-tile small { color: var(--byd-editor-quiet); font-size: 9px; }
@@ -2771,8 +2912,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-symbols-note { margin: var(--byd-s2) 0 0; color: var(--byd-editor-home-ink); font-size: 12px; }
 /* A symbol reaches the card as an image, so it cannot take the colour of the text around it:
    it is drawn dark, and needs a light chip to be seen against the editor's dark surfaces. */
-.byd-symbols img { width: 22px; height: 22px; padding: 4px; border-radius: 6px; background: #e8e2d4; }
-.byd-symbols-main { display: grid; gap: 16px; }
+.byd-symbols-set img, .byd-symbols-tile img { width: 22px; height: 22px; padding: 4px; border-radius: 6px; background: #e8e2d4; }
 .byd-symbols-empty { color: #9aa3b8; }
 .byd-symbols-set ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
 .byd-symbols-set li { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
@@ -2821,7 +2961,23 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
    the chosen symbol, and the foot says the string the box will write. */
 .byd-symbol-box { position: absolute; z-index: 5; display: grid; gap: var(--byd-s2); padding: var(--byd-s2); width: 320px; max-height: var(--byd-place-room, 360px); box-sizing: border-box; overflow: auto; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); }
 .byd-symbol-box .byd-pick-list { position: static; width: auto; max-height: none; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
-.byd-symbol-box .byd-symbol-box-grid { max-height: 176px; overflow: auto; }
+.byd-symbol-box .byd-symbol-box-library, .byd-symbol-box .byd-symbol-box-found { max-height: 176px; overflow: auto; }
+/* The game's own parts first (L57, #631): each under a heading that says which of the three it is,
+   the deck's tokens as pills that go in with one click, and the game's icons as tiles. */
+.byd-symbol-box-part { display: grid; gap: var(--byd-s1); }
+.byd-symbol-box-head { display: flex; align-items: baseline; gap: var(--byd-s2); margin: 0; color: var(--byd-editor-quiet); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.byd-symbol-box-head small { margin-left: auto; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.byd-symbol-box .byd-symbol-box-written { display: flex; flex-wrap: wrap; gap: var(--byd-s1); }
+.byd-symbol-box .byd-symbol-box-written > button { display: inline-flex; gap: var(--byd-s2); padding: var(--byd-s1) var(--byd-s2) var(--byd-s1) var(--byd-s1); border-radius: 999px; border-color: #3b4358; }
+.byd-symbol-box .byd-symbol-box-written code { color: #e6ecfa; font-size: 12px; }
+.byd-symbol-box .byd-symbol-box-written small { margin-left: 0; font-variant-numeric: tabular-nums; }
+.byd-symbol-box .byd-symbol-box-icons { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); max-height: 176px; overflow: auto; }
+.byd-symbol-box .byd-symbol-box-icons > button { flex-direction: column; justify-content: center; gap: var(--byd-s1); padding: var(--byd-s1); text-align: center; font-size: 11px; line-height: 1.3; border-color: #2f333d; }
+.byd-symbol-box .byd-symbol-box-icons > button > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The way into the library, and back: a quiet link at the foot, beside the string being written. */
+.byd-symbol-box .byd-symbol-box-way { display: flex; flex: none; }
+.byd-symbol-box .byd-symbol-box-way > button { padding: var(--byd-s1) var(--byd-s2); color: #8ad0ff; }
+.byd-symbol-writes p { display: flex; align-items: center; gap: var(--byd-s2); margin: 0 0 0 auto; }
 .byd-symbol-box .byd-symbol-box-meanings { display: flex; flex-wrap: wrap; gap: var(--byd-s1); padding-top: var(--byd-s2); border-top: 1px solid #2f333d; }
 .byd-symbol-box .byd-symbol-box-meanings > button { display: inline-flex; gap: var(--byd-s2); padding: var(--byd-s1) var(--byd-s2) var(--byd-s1) var(--byd-s1); border-radius: 999px; border-color: #3b4358; }
 .byd-symbol-none, .byd-symbol-writes { margin: 0; padding-top: var(--byd-s2); border-top: 1px solid #2f333d; color: var(--byd-editor-quiet); font-size: 12px; line-height: 1.4; }
@@ -2983,7 +3139,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-crop-pad { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; gap: var(--byd-s1); }
 .byd-crop-pad button { min-width: var(--byd-tap); min-height: var(--byd-tap); padding: 0 var(--byd-s3); border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .byd-crop-pad button:hover { border-color: var(--byd-editor-primary-mark); }
-.byd-symbols [role='alert'] { color: #f0b64a; }
+.byd-theme [role='alert'] { color: #f0b64a; }
 
 /* The rulebook (B7): the page itself is the editor, so it is paper, not a dark surface. */
 .byd-rules { display: flex; flex-direction: column; gap: var(--byd-s3); height: 100%; box-sizing: border-box; padding: var(--byd-gutter); }
@@ -3202,12 +3358,12 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
    sitt eget tak: den ritar inte åtta rader och är inte mätt här.
    Mätt i `packages/e2e/test/surfaces/rules-refs-height.spec.ts`. */
 .byd-rules-field { position: relative; }
-.byd-rules-refs { left: 4px; top: 100%; width: 320px; max-height: min(366px, var(--byd-place-room, 366px)); }
+.byd-rules-refs { --byd-place-inset: 4px; left: var(--byd-place-inset); top: 100%; width: 320px; max-height: min(366px, var(--byd-place-room, 366px)); }
 /* Åt vilket håll listan far (#229). En bok är lång och ett block står ofta vid dess fot: åtta
    rader är 376 px mätta i Chromium, och sidan rullar inte fram dem. Nedåt är kvar som utgångsläge
    — det är där listan står innan måttet hunnit tas — och uppåt är samma kant speglad. */
 .byd-rules-refs[data-place-y='up'] { top: auto; bottom: 100%; }
-.byd-rules-refs[data-place-x='end'] { left: auto; right: 4px; }
+.byd-rules-refs[data-place-x='end'] { left: auto; right: var(--byd-place-inset); }
 .byd-rules-refs button { align-items: baseline; font: 13px system-ui; }
 .byd-rules-refs button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-rules-refs button > small { margin-left: auto; flex: none; color: var(--byd-editor-quiet); font-size: 11px; }
@@ -3486,13 +3642,14 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
    läser rummet och sätter data-attributen; här står bara vad de två riktningarna betyder.
    Nedåt och vänsterställt är kvar som utgångsläge, för den ruta som öppnar innan måttet tagits. */
 .byd-slot-pop {
-  position: absolute; z-index: 5; top: calc(100% + 6px); inset-inline-start: 0; min-width: 210px; max-width: 320px; overflow: auto;
+  --byd-place-gap: 6px;
+  position: absolute; z-index: 5; top: calc(100% + var(--byd-place-gap)); inset-inline-start: 0; min-width: 210px; max-width: 320px; overflow: auto;
   /* Sin egen tak, och aldrig mer än rummet på den sida den öppnades åt (#229). */
   max-height: min(40vh, var(--byd-place-room, 40vh));
   display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: 10px; background: #12141a; border: 1px solid #2f333d;
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.6); line-height: 1.5;
 }
-.byd-slot-pop[data-place-y='up'] { top: auto; bottom: calc(100% + 6px); }
+.byd-slot-pop[data-place-y='up'] { top: auto; bottom: calc(100% + var(--byd-place-gap)); }
 .byd-slot-pop[data-place-x='end'] { inset-inline-start: auto; inset-inline-end: 0; }
 
 /* Vilket håll en öppnad ruta far åt (#229). `placement.ts` läser rummet och sätter attributen;
@@ -3501,6 +3658,8 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-columns[data-place-y='up'],
 .byd-newfield[data-place-y='up'],
 .byd-tables-menu[data-place-y='up'] { top: auto; bottom: 100%; }
+/* The menu overlaps its row by the same amount upward as downward, which is what a lifted one does. */
+.byd-tables-menu[data-place-y='up'] { bottom: calc(100% + var(--byd-place-gap)); }
 .byd-columns[data-place-x='start'],
 .byd-newfield[data-place-x='start'] { right: auto; inset-inline-start: 0; }
 /* Dörren tar hela rummet: den är en lista som skrollar och ett formulär som måste stå kvar under
@@ -3615,7 +3774,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-layers [role='gridcell'] > .byd-layer-inside { flex: 1 0 100%; }
 /* A count that is not one, said under the cell it is typed in, in the amber the editor says what
    wants looking at in (#479); and a card that is in the table but not in the deck, said quietly. */
-.byd-data-lane input[aria-invalid='true'], .byd-data-bulk input[aria-invalid='true'] { border-color: #f0b64a; }
+.byd-data-lane input[aria-invalid='true'], .byd-data-bulk input[aria-invalid='true'], .byd-data-set-box input[aria-invalid='true'] { border-color: #f0b64a; }
 .byd-data-says { grid-column: 1 / -1; color: #f0b64a; font-size: 11px; white-space: nowrap; }
 .byd-data-out { grid-column: 1 / -1; color: var(--byd-editor-quiet); font-size: 11px; white-space: nowrap; }
 /* A card gone since the version compared with (#479, B4): what it was, struck through and quiet. */
@@ -3632,9 +3791,9 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
   .byd-canvas-tools, .byd-backs, .byd-drag-handle, .byd-point-mid, .byd-point, .byd-point-handle, .byd-canvas-reset,
   .byd-props-picture .byd-secondary, .byd-props-straighten, .byd-fonts li[data-font] button, .byd-fonts-catalog, .byd-fonts-upload, .byd-newfield,
   .byd-data-bulk, .byd-data-tick, td.byd-data-remove button, th.byd-data-remove button, .byd-data-icon,
-  .byd-data-add, .byd-data-bodytools, .byd-prose-turn, [data-image-cell] .byd-data-file, [data-image-cell] .byd-data-drop > button:last-child,
+  .byd-data-add, .byd-data-bodytools, .byd-prose-switch, .byd-prose-follow, [data-image-cell] .byd-data-file, [data-image-cell] .byd-data-drop > button:last-child,
   .byd-columns-rename, .byd-columns-name, .byd-data-dropfield,
-  .byd-symbols-tile, .byd-symbols-add, .byd-symbols-set li[data-icon] > button, .byd-symbols-colours li[data-role] > button:last-child,
+  .byd-symbols-tile, .byd-symbols-add, .byd-theme-library-open, .byd-symbols-set li[data-icon] > button, .byd-symbols-colours li[data-role] > button:last-child,
   .byd-crop-corner, .byd-media-crop-row .byd-secondary,
   .byd-setup-tools, .byd-setup-x, .byd-setup-corner, .byd-setup-counter button, .byd-setup-counters > button, .byd-setup-props > button,
   .byd-zone-action-x, .byd-zone-action-drop, .byd-zone-step-add, .byd-zone-action-undo, .byd-zone-action-new
@@ -3655,9 +3814,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
   padding-inline: 0;
 }
 .byd-editor[data-readonly] .byd-reading-set .byd-slot:disabled { background: transparent; border-color: transparent; padding-inline: 0; color: inherit; cursor: default; }
-.byd-editor[data-readonly] .byd-setup-players button:disabled { cursor: default; }
 /* Symbols without the library: the game's own set takes the whole width. */
-.byd-editor[data-readonly] .byd-symbols-work { grid-template-columns: minmax(0, 1fr); }
 
 /* The game's own ⋯ beside its name (#542), as quiet as the revision beside it. */
 .byd-editor-more { position: relative; flex: none; }

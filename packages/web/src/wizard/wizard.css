@@ -114,9 +114,7 @@
 .byd-wizard-step { width: 24px; height: 24px; flex: 0 0 auto; display: inline-grid; place-items: center; border-radius: 999px; background: var(--ink); color: #fff; font-size: 12px; font-weight: 800; }
 .byd-wizard-label { display: grid; gap: 5px; color: #454c44; font-size: 12px; font-weight: 700; }
 .byd-wizard fieldset { margin: 4px 0 0; padding: 0; border: 0; }
-.byd-wizard legend { margin-bottom: 6px; color: #454c44; font-size: 12px; font-weight: 700; }
-.byd-wizard-players { display: flex; gap: 6px; flex-wrap: wrap; }
-.byd-wizard-players button { padding: 0; width: var(--tap); }
+.byd-wizard legend { margin-bottom: 6px; padding: 0; color: #454c44; font-size: 12px; font-weight: 700; }
 
 .byd-wizard-fields { display: grid; gap: 10px; }
 .byd-wizard-field-list { display: grid; gap: 8px; }

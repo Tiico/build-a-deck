@@ -5,6 +5,7 @@ import { CardPreview } from './CardPreview.js'
 import { CARD_PX, cornerPx } from './corner.js'
 import { Crown, CrownBox, CrownDrawer, CrownFoot } from './Crown.js'
 import { DENSITY, DENSITY_DEFAULT, heldDensity, rememberDensity } from './density.js'
+import { StepPill } from './StepPill.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 import { deckIssues, fixesFor, groupIssues, issueDetail, issueWords, type Fix } from './checks.js'
@@ -135,6 +136,13 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
     deckRef.current?.querySelector(`[data-card-ref="${CSS.escape(selectedRow)}"]`)?.scrollIntoView?.({ block: 'nearest' })
   }, [selectedRow])
   const sections = useRef(new Map<string, HTMLElement>())
+  // Where a jump from the table of contents will come to rest, for as long as it is on its way.
+  // The reader's own hand on the wall — a wheel, a finger, the scrollbar, a key — lets go of it,
+  // and so does a scroll that stops short of it.
+  const jumping = useRef<number | null>(null)
+  const letGo = () => {
+    jumping.current = null
+  }
   // A drawer hands the focus back to the box it came from when it closes (#133), so each box has
   // to be findable from the drawer it opened.
   const eyesBox = useRef<HTMLButtonElement>(null)
@@ -208,6 +216,9 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
     const deck = deckRef.current
     if (!section || !deck) return
     const top = section.offsetTop - deck.offsetTop
+    // Where the scroll will actually come to rest: a band in the tail lies beyond all the room there is.
+    const rest = Math.max(0, Math.min(top, deck.scrollHeight - deck.clientHeight))
+    jumping.current = Math.abs(deck.scrollTop - rest) < 1 ? null : rest
     if (typeof deck.scrollTo === 'function') deck.scrollTo({ top, behavior: 'smooth' })
     else deck.scrollTop = top
     setAtTop(key)
@@ -220,6 +231,13 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
     if (!deck) return
     scrolled.current = deck.scrollTop
     told.current?.({ filter, eye, scrollTop: deck.scrollTop })
+    // A jump already said where the view is going. Read per frame on the way there, the mark fell
+    // back to where the view had been and climbed through every band in between, redrawing the
+    // wall at each one — so it holds still until the scroll arrives.
+    if (jumping.current !== null) {
+      if (Math.abs(deck.scrollTop - jumping.current) < 1) letGo()
+      return
+    }
     // The room left is part of the question: the last bands' tops lie beyond everything the wall
     // can scroll, so without it the mark could never reach them (#179).
     setAtTop(bandAtTop([...sections.current].map(([key, el]) => ({ key, top: el.offsetTop - deck.offsetTop })), deck.scrollTop, deck.scrollHeight - deck.clientHeight, atTop))
@@ -330,15 +348,16 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         />
         {/* Density is two presses and no box: it is the one control on this surface that is used
             over and over while looking at something else, and a box would put a door in front of
-            every step. What it is set to is read off the wall itself, and said in the foot. */}
-        <div className="byd-crown-step" role="group" aria-label={t('wall.density')}>
-          <button type="button" onClick={() => denser(-1)} aria-label={t('wall.density.more')}>
-            <span aria-hidden="true">&#x2212;</span>
-          </button>
-          <button type="button" onClick={() => denser(1)} aria-label={t('wall.density.less')}>
-            <span aria-hidden="true">+</span>
-          </button>
-        </div>
+            every step. It is the canvas' zoom pill (#619) with the width between the two presses,
+            where the number used to be said in the foot, half a screen from the control. */}
+        <StepPill
+          label={t('wall.density')}
+          value={t('wall.density.px', { px: Math.round(px) })}
+          said={t('wall.density.said', { px: Math.round(px) })}
+          less={t('wall.density.more')}
+          more={t('wall.density.less')}
+          onStep={denser}
+        />
         <CrownBox
           name={t('wall.groupedBy')}
           state={column ?? t('wall.grouping.off')}
@@ -498,6 +517,15 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
           className="byd-wall-deck"
           ref={deckRef}
           onScroll={onDeckScroll}
+          onScrollEnd={() => {
+            if (jumping.current === null) return
+            letGo()
+            onDeckScroll()
+          }}
+          onWheel={letGo}
+          onTouchStart={letGo}
+          onPointerDown={letGo}
+          onKeyDown={letGo}
           data-wall
           data-eye={eye}
           // How wide a card is drawn, and — read off the same width — how far in the card is cut
@@ -580,15 +608,13 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
           )}
         </div>
       </div>
-      {/* What the wall adds up to, under it rather than over it (#130): the size it is drawn at,
-          which nothing else on the surface says now that density is two bare presses. */}
+      {/* What the wall adds up to, under it rather than over it (#130): how many cards, and what
+          the physical check made of them. The width is the pill's since #619. */}
       <CrownFoot>
         {/* Said as it changes, as the table's count is (#556): a search that narrows the wall
             says how many are left. */}
         <span aria-live="polite">
-          {isFiltering(filter)
-            ? t('wall.foot.found', { shown: shown.length, total: doc.rows.length, px: Math.round(px) })
-            : t('wall.foot.cards', { n: doc.rows.length, px: Math.round(px) })}
+          {isFiltering(filter) ? t('wall.foot.found', { shown: shown.length, total: doc.rows.length }) : t('wall.foot.cards', { n: doc.rows.length })}
         </span>
         {/* An empty deck is not a checked one (#476): «Inga anmärkningar» over nothing reads as
             an approval. */}

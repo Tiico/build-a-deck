@@ -4,28 +4,31 @@ import type { ProjectDoc, ProjectRow } from './types.js'
 import { copiesOf, deckKeepsFields, fieldsOf, fieldLabel, takenNames, nextCardRef } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
 import { ColumnDoor } from './ColumnDoor.js'
-import { Crown, CrownBox, CrownDrawer, CrownFoot, CrownRail } from './Crown.js'
+import { Crown, CrownBox, CrownDrawer, CrownFoot } from './Crown.js'
+import { ColumnFilter, type ColumnFilterProps } from './ColumnFilter.js'
+import { Lifted } from './Lifted.js'
+import { FilterField, type FilterToken, type TypedColumn } from './FilterField.js'
 import { DragDoor } from './DragDoor.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
 import { boxesOf, proseChoiceOf, proseFieldsOf } from './body.js'
-import { ProseMark, type ProseMarkProps } from './ProseMark.js'
 import { BodyCell, type BodyCellProps } from './BodyCell.js'
 import { DropSays, dropSurface, oneFile } from './dropping.js'
 import { PictureLibraryDialog, type LibraryPicture } from './PictureLibrary.js'
-import { searchSymbols, symbolName, type GameSymbol } from './symbols.js'
-import { RoleList, roleOptionId, symbolListKey, symbolOptionId } from './SymbolList.js'
-import { SymbolBox, meaningsOf } from './SymbolBox.js'
+import { LIBRARY, symbolName, type GameSymbol } from './symbols.js'
+import { RoleList, roleOptionId, symbolListKey } from './SymbolList.js'
+import { SymbolBox, meaningsOf, type Pickable } from './SymbolBox.js'
+import { braceSections, bracePicks, partAt, pickKeyOf, type BracePart, type BracePick } from './brace.js'
 import { SymbolSample, SymbolSheet } from './SymbolSample.js'
 import { groundOf } from './palette.js'
-import { triggerBehind } from './picking.js'
+import { pickOptionId, triggerBehind } from './picking.js'
 import { diffProjects, type RowChange } from '@byd/server/doc'
 import { Summary } from './HistoryPanel.js'
 import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
-import { keepOrder, nextSort, sortRows, type SortState } from './sorting.js'
+import { keepOrder, nextSort, sortRows, type SortState, cellOf } from './sorting.js'
 import { deckValues, dragScroll, fitColumns, markValues, widthKind, GROUP_COL } from './columns.js'
 import { TAP_FLOOR, heldWidths, rememberWidths } from './widths.js'
-import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, type FilterState } from './filtering.js'
+import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, typedColumn, type FilterState } from './filtering.js'
 import { duplicateRows, keepRows, markRows, noSelection, removeRows, selectionLabel, setColumn, toggleRow, type Selection } from './selection.js'
 import { useMarked } from './marked.js'
 import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
@@ -108,8 +111,10 @@ export function fileSafe(name: string) {
   return new TextDecoder().decode(written.slice(0, NAME_BYTES)).replace(/\uFFFD+$/, '').replace(/-+$/, '')
 }
 
-// Only one cell is ever being typed into, so the library at the brace is one list with one name.
+// Only one cell is ever being typed into, so each list at the brace has one name. The library
+// keeps the name it always had; the game's own parts are named after what they hold (L57).
 const CELL_SYMBOLS = 'byd-cell-symbols'
+const braceListId = (part: BracePart): string => (part === 'library' ? CELL_SYMBOLS : `byd-cell-brace-${part}`)
 const CELL_ROLES = 'byd-cell-roles'
 const CELL_MEANINGS = 'byd-cell-meanings'
 
@@ -201,8 +206,15 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // The symbol chosen in the box, while its meaning is still the question (L34). Null until one
   // is chosen, and null again the moment anything else is typed: what was chosen was chosen for
   // the name that stood in the brace then.
-  const [picked, setPicked] = useState<GameSymbol | null>(null)
-  const matches = brace && brace.role === null ? searchSymbols(brace.query, null, t).slice(0, 8) : []
+  const [picked, setPicked] = useState<Pickable | null>(null)
+  // Whether the second click has been taken: «Hela biblioteket» opens the library in the same box
+  // (L57), and it stays open while the name is narrowed, until the box closes or the way back is
+  // taken.
+  const [libraryOpen, setLibraryOpen] = useState(false)
+  // What the brace offers, in the order it offers it (L57): the deck's own tokens, the game's
+  // icons, and the library behind them. One run to the keys across all the parts.
+  const sections = brace && brace.role === null ? braceSections(doc, brace.query, libraryOpen, iconFieldsOf(doc), t) : []
+  const matches = bracePicks(sections)
   // The game's meanings as the box offers them, «utan betydelse» first — and none at all when the
   // game has named none, which is what makes the meaning step not exist rather than be skipped.
   const meanings = useMemo(() => meaningsOf(doc.palette), [doc.palette])
@@ -228,11 +240,13 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           .slice(0, 8)
   // The one the keys are on, which is what Enter takes and what the cell points at.
   const active = stage === 'meaning' ? picked : matches[choice]
+  const activePart = partAt(sections, choice)
   const activeRole = roleMatches[choice]
   const activeMeaning = stage === 'meaning' ? (meanings[choice] ?? null) : null
   const closeBrace = () => {
     setBrace(null)
     setPicked(null)
+    setLibraryOpen(false)
     setChoice(0)
   }
   // What a cell shows now: the row's value, unless the picker is open on it, since the cell is
@@ -285,31 +299,47 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const token = (name: string, role: string | null, bare: boolean) => (bare ? `${name}${role === null ? '' : `|${role}`}` : `{${name}${role === null ? '' : `|${role}`}}`)
   // Chosen with or without a meaning, it is one insertion (L34): the symbol is taken into the
   // game and the token written where the brace stood, exactly as typing it would have.
-  const takeSymbol = (symbol: GameSymbol, role: string | null = null) => {
+  // A library symbol is taken into the game first and written under the name it gets there; one
+  // of the game's own is written under the name it already has. Either way it is the same string
+  // typing it would have written.
+  const takeSymbol = (symbol: Pickable, role: string | null = null) => {
     const open = brace
     if (!open || !onSymbol) return
     const key = `${open.cardRef}:${open.field}`
     const current = typing.current[key] ?? String(doc.rows.find((r) => r.id === open.cardRef)?.fields[open.field] ?? '')
     closeBrace()
     const bare = iconFieldsOf(doc).includes(open.field)
-    void onSymbol(symbol).then((name) => {
+    const write = (name: string) => {
       const before = current.slice(0, open.at)
       const after = current.slice(open.at + 1 + open.query.length)
       const written = bare ? `${before.replace(/\{$/, '')}${token(name, role, true)}${after}`.trim() : `${before}${token(name, role, false)}${after}`
       caretAfter.current = { cardRef: open.cardRef, field: open.field, at: written.length - after.length }
       onCell(open.cardRef, open.field, written)
-    })
+    }
+    if (symbol.kind === 'icon') write(symbol.name)
+    else void onSymbol(symbol.symbol).then(write)
   }
-  // A symbol chosen in the grid: inserted at once when the game has no meanings, and otherwise
-  // held while the meaning is chosen — with the keys moved onto «utan betydelse», which is first.
-  const chooseSymbol = (symbol: GameSymbol) => {
-    if (meanings.length === 0) return takeSymbol(symbol)
-    setPicked(symbol)
+  // A pick in the box. A token the deck already writes carries its meaning and goes in at once. A
+  // symbol is inserted at once when the game has no meanings, and otherwise held while the meaning
+  // is chosen — with the keys moved onto «utan betydelse», which is first. The way into the
+  // library, and back out of it, changes what the box shows and writes nothing.
+  const choose = (pick: BracePick) => {
+    if (pick.kind === 'written') return takeSymbol({ kind: 'icon', name: pick.name }, pick.role)
+    if (pick.kind === 'more' || pick.kind === 'back') {
+      setLibraryOpen(pick.kind === 'more')
+      return setChoice(0)
+    }
+    if (meanings.length === 0) return takeSymbol(pick)
+    setPicked(pick)
     setChoice(0)
   }
   // What the box will write, said in the box as the product's own syntax. The name is the one
   // the symbol gets in the game, which is what `takeSymbol` writes.
-  const writes = brace && active ? token(symbolName(active, t), activeMeaning?.role ?? null, iconFieldsOf(doc).includes(brace.field)) : ''
+  const nameOf = (pick: BracePick | null | undefined): string | null =>
+    !pick ? null : pick.kind === 'written' || pick.kind === 'icon' ? pick.name : pick.kind === 'library' ? symbolName(pick.symbol, t) : null
+  const writtenName = nameOf(active)
+  const writtenRole = active?.kind === 'written' ? active.role : (activeMeaning?.role ?? null)
+  const writes = brace && writtenName !== null ? token(writtenName, writtenRole, iconFieldsOf(doc).includes(brace.field)) : ''
   // The meaning written onto the symbol already named. What stands before the bar is left exactly
   // as the designer typed it: they have already chosen the symbol, and this only says how it is
   // to be read (E4).
@@ -396,7 +426,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     if (act === 'pick') {
       if (stage === 'typed') return void (activeRole && takeRole(activeRole.role))
       if (stage === 'meaning') return void (picked && takeSymbol(picked, activeMeaning?.role ?? null))
-      return void (active && chooseSymbol(active))
+      return void (active && choose(active))
     }
     setChoice(act.active)
   }
@@ -405,7 +435,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     !cellPicking(cardRef, field)
       ? {}
       : {
-          ...(stage === 'symbol' && active ? { 'aria-controls': CELL_SYMBOLS, 'aria-activedescendant': symbolOptionId(CELL_SYMBOLS, active) } : {}),
+          ...(stage === 'symbol' && active && activePart ? { 'aria-controls': braceListId(activePart), 'aria-activedescendant': pickOptionId(braceListId(activePart), pickKeyOf(active)) } : {}),
           ...(stage === 'meaning' && activeMeaning ? { 'aria-controls': CELL_MEANINGS, 'aria-activedescendant': roleOptionId(CELL_MEANINGS, activeMeaning.role) } : {}),
           ...(stage === 'typed' && activeRole ? { 'aria-controls': CELL_ROLES, 'aria-activedescendant': roleOptionId(CELL_ROLES, activeRole.role) } : {}),
         }
@@ -434,24 +464,29 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           </>
         )}
         {stage !== 'typed' && matches.length > 0 && (
-          // The library where the cursor stands (E4): the same set the Symboler tab fills and the
-          // rail's Ikon tool opens, reached without leaving the sentence being written — and the
-          // same list component, so it cannot come to differ. The meaning is chosen in the same
-          // box (L34).
+          // The game where the cursor stands (L57), and the library behind it (E4): the same set
+          // the rail's Ikon tool opens, reached without leaving the sentence being written. The
+          // meaning is chosen in the same box (L34).
           <SymbolBox
-            symbolsId={CELL_SYMBOLS}
+            listId={braceListId}
             meaningsId={CELL_MEANINGS}
             className="byd-data-symbols"
-            symbols={matches}
-            active={picked ? matches.indexOf(picked) : choice}
+            sections={sections}
+            active={choice}
             picked={picked}
             meanings={meanings}
             meaningActive={stage === 'meaning' ? choice : null}
             paper={paper}
             palette={doc.palette}
+            icons={gameIcons}
+            libraryCount={LIBRARY.length}
             writes={writes}
-            onPickSymbol={chooseSymbol}
-            onPickMeaning={(role) => active && takeSymbol(active, role)}
+            token={(name, role) => token(name, role, iconFieldsOf(doc).includes(open.field))}
+            onPick={choose}
+            onPickMeaning={(role) => {
+              const symbol = picked ?? (active?.kind === 'icon' || active?.kind === 'library' ? active : null)
+              if (symbol) takeSymbol(symbol, role)
+            }}
           />
         )}
       </>
@@ -533,6 +568,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const [imported, setImported] = useState<string | null>(null)
   const [sort, setSort] = useState<SortState | null>(null)
   const [filter, setFilter] = useState<FilterState>(noFilter)
+  // Which column's filter door stands open, if any: one at a time, like the crown's boxes.
+  const [filterDoor, setFilterDoor] = useState<string | null>(null)
   // The marking is the deck's and not this panel's (#222): it is made here and acted on here and
   // in the media library, so it is held above both. A table mounted on its own keeps its own.
   const [selected, setSelected] = useMarked()
@@ -552,6 +589,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // is not a change worth pressing by mistake, so the button waits for one.
   const [bulkField, setBulkField] = useState<string | null>(null)
   const [bulkValue, setBulkValue] = useState('')
+  // Whether the box with the column and the value stands open over the foot (#618).
+  const [setting, setSetting] = useState(false)
+  const setBox = useRef<HTMLButtonElement>(null)
   // And what it writes when the column is a bild (E1): the image itself, since a bildfält is not a
   // sentence anyone can type. The hash is held until the button is pressed, exactly as the typed
   // value is.
@@ -983,10 +1023,27 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // order nor the filter may move or take away the row under the cursor before it is left.
   const columns = ['id', ...fields]
   const discrete = discreteColumns(doc.rows, columns)
+  // What the doors have chosen, in column order, read as tokens in the search field (#617).
+  const tokens: FilterToken[] = discrete.flatMap(({ field, values }) => values.filter((value) => (filter.values[field] ?? []).includes(value)).map((value) => ({ field, label: fieldLabel(field, t), value })))
+  // How many cards carry each word of a column, said beside the tick in the column's door.
+  const countOf = (field: string, value: string) => doc.rows.filter((row) => String(cellOf(row, field) ?? '').trim() === value).length
+  // «typ:» in the field is a way into the column's values and not a search (L23): while the text
+  // names a column, the rows are asked everything but that text.
+  const typedNow = typedColumn(filter.query, discrete.map((d) => d.field))
+  const typedIn = discrete.find((d) => d.field === typedNow?.field)
+  const typed: TypedColumn | null =
+    typedNow && typedIn
+      ? {
+          field: typedNow.field,
+          label: fieldLabel(typedNow.field, t),
+          options: typedIn.values.filter((value) => value.toLocaleLowerCase('sv').startsWith(typedNow.prefix)).map((value) => ({ value, count: countOf(typedNow.field, value) })),
+        }
+      : null
+  const asked: FilterState = typedNow ? { ...filter, query: '' } : filter
   const shownRef = useRef<ProjectDoc['rows']>([])
   const shown = held
     ? keepOrder(doc.rows.filter((row) => held.includes(row.id)), held)
-    : filterRows(sortRows(doc.rows, sort), columns, filter, pinned)
+    : filterRows(sortRows(doc.rows, sort), columns, asked, pinned)
   // The cards gone since the version compared with, asked the same filter as every card (#479).
   shownRef.current = shown
   // The row the hand stands in, which is the only row with tab stops (#575, beslut 2026-09-29):
@@ -1007,7 +1064,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const row = document.querySelector(`tr[data-card-ref="${CSS.escape(next.id)}"]`)
     if (row) of(row)?.focus()
   }
-  const goneShown = isFiltering(filter) ? filterRows(goneRows, columns, filter) : goneRows
+  const goneShown = isFiltering(asked) ? filterRows(goneRows, columns, asked) : goneRows
   // What an action is about is never more than what is on screen: a checkbox is a fact about a
   // row the designer can see, so the selection is read through `shown` (#17 on #16).
   const chosen = shown.filter((row) => selected.has(row.id))
@@ -1104,41 +1161,25 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           The same door the canvas hangs over its own drag, and it stands only while there is a
           pull to leave. */}
       {pulling !== null && <DragDoor onCancel={() => pullOf(pulling)?.onCallOff()} />}
-      {/* The crown (#128, #130, variant B). Four bands used to stack over this table and cost it
-          189 px at 1440 and 218 px at 1280 before the first card row: the import pair with its
-          warning, the search with thirteen filter chips, the count, and the sort. They are one
-          row now, with the count and the sort read under the table instead.
-          The filters keep their place in the row and get a side scroll of their own: putting
-          thirteen chips behind `Filter (13) ▾` would hide the one thing here that is a state
-          rather than an action. What falls into a box is the import and the export. */}
+      {/* The crown (#128, #130, variant B; #617, variant A). Four bands used to stack over this
+          table and cost it 189 px at 1440 and 218 px at 1280 before the first card row: the import
+          pair with its warning, the search with its filter chips, the count, and the sort. They
+          are one row now, with the count and the sort read under the table instead.
+          The chips stood in the row until #617 and took three quarters of it, with the search
+          squeezed to a sixth. The choice is made in the column's own head now (`ColumnFilter`),
+          and what is chosen is read here, as tokens in the search field — a state that is still
+          read without opening anything, which is what #130 kept the chips in the row for. What
+          falls into a box is the import and the export. */}
       <Crown>
-        <input
-          type="search"
-          className="byd-data-search"
-          aria-label={t('table.search')}
-          placeholder={t('table.search.placeholder')}
-          value={filter.query}
-          onChange={(event) => changeFilter({ ...filter, query: event.target.value })}
+        <FilterField
+          query={filter.query}
+          tokens={tokens}
+          typed={typed}
+          hint={discrete[0] ? fieldLabel(discrete[0].field, t) : null}
+          onQuery={(query) => changeFilter({ ...filter, query })}
+          onRemove={(token) => changeFilter(toggleValue(filter, token.field, token.value))}
+          onPick={(field, value) => changeFilter({ ...((filter.values[field] ?? []).includes(value) ? filter : toggleValue(filter, field, value)), query: '' })}
         />
-        {discrete.length > 0 && (
-          <CrownRail label={t('table.filters')}>
-            {discrete.map(({ field, values }) => (
-              <div key={field} className="byd-data-chips" role="group" aria-label={t('table.filterOn', { field })}>
-                {values.map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className="byd-data-chip byd-choice"
-                    aria-pressed={(filter.values[field] ?? []).includes(value)}
-                    onClick={() => changeFilter(toggleValue(filter, field, value))}
-                  >
-                    {value}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </CrownRail>
-        )}
         {isFiltering(filter) && (
           <button type="button" className="byd-data-clear" onClick={() => changeFilter(noFilter)}>
             {t('table.filter.clear')}
@@ -1236,104 +1277,6 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           )}
         </p>
       )}
-      {chosen.length > 0 &&
-        (confirming ? (
-          <Question
-            className="byd-data-bulk"
-            label={removeLabel(chosen.length, t)}
-            confirm={t('table.remove.yes')}
-            cancel={t('editor.cancel')}
-            onConfirm={() => {
-              onReplaceRows(removeRows(doc.rows, chosenIds))
-              setSelected(noSelection)
-              setConfirming(false)
-              setRefocus('all')
-            }}
-            onCancel={() => {
-              setConfirming(false)
-              setRefocus('remove')
-            }}
-          >
-            {t(chosen.length === 1 ? 'table.remove.question.one' : 'table.remove.question.other', { n: chosen.length })}
-          </Question>
-        ) : (
-          <div className="byd-data-bulk" role="toolbar" aria-label={t('table.bulk')}>
-            <label>
-              {t('table.bulk.field')}
-              <select aria-label={t('table.column')} value={field} onChange={(event) => setBulkField(event.target.value)}>
-                {fields.map((f) => (
-                  <option key={f} value={f}>
-                    {fieldLabel(f, t)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {/* A bildfält is written with an image and never with a sentence (E1). The cell
-                already knows that; the action row used to offer a text field for it, which wrote
-                prose into a column the template draws as a picture. So the value takes the shape
-                of the column: a place to drop one of the deck's images, and nothing to type. */}
-            {bulkIsImage && assetBase ? (
-              <div
-                role="group"
-                aria-label={t('table.bulk.image')}
-                {...dropSurface({
-                  className: 'byd-data-drop',
-                  over: bulkOver,
-                  onOver: setBulkOver,
-                  onFiles: (files) => void bulkUpload(files),
-                  onLibrary: setBulkImage,
-                })}
-              >
-                {bulkImage ? <img src={assetUrl(assetBase, bulkImage)} alt={t('table.bulk.image')} /> : <span>{t('table.image.drop')}</span>}
-                {bulkOver && <DropSays />}
-                {/* The library (#296): a picture the game already has, onto every marked card. */}
-                <button type="button" className="byd-data-file" aria-label={t('table.bulk.image.choose')} onClick={() => setLibrary({ kind: 'marked', field })}>
-                  {t('table.image.choose')}
-                </button>
-                <label className="byd-data-file">
-                  {t('table.image.upload')}
-                  <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('table.bulk.image.upload')} onChange={(event) => void bulkUpload([...(event.target.files ?? [])])} />
-                </label>
-              </div>
-            ) : (
-              <input
-                type={field === ANTAL ? 'number' : 'text'}
-                min={field === ANTAL ? 0 : undefined}
-                aria-label={t('table.value')}
-                value={bulkValue}
-                onChange={(event) => setBulkValue(event.target.value)}
-                // The same rule the cell holds a count to (#479), said the same way.
-                {...(bulkCountWrong ? { 'aria-invalid': true, 'aria-describedby': 'byd-bulk-antal-says' } : {})}
-              />
-            )}
-            {bulkCountWrong && (
-              <small className="byd-data-says" id="byd-bulk-antal-says">
-                {t('table.antal.invalid')}
-              </small>
-            )}
-            <button
-              type="button"
-              disabled={bulkWrites === null}
-              onClick={() => {
-                if (bulkWrites === null) return
-                onReplaceRows(setColumn(doc.rows, chosenIds, field, bulkWrites))
-                setBulkValue('')
-                setBulkImage(null)
-              }}
-            >
-              {bulkIsImage ? t('table.bulk.setImage', { n: chosen.length }) : t('table.bulk.set', { field, n: chosen.length })}
-            </button>
-            <button type="button" onClick={() => onReplaceRows(duplicateRows(doc.rows, chosenIds))}>
-              {t(chosen.length === 1 ? 'table.bulk.duplicate.one' : 'table.bulk.duplicate.other', { n: chosen.length })}
-            </button>
-            <button type="button" data-kind="danger" ref={removeRef} onClick={() => setConfirming(true)}>
-              {removeLabel(chosen.length, t)}
-            </button>
-            <button type="button" data-kind="quiet" onClick={() => setSelected(noSelection)}>
-              {t('table.bulk.unmark')}
-            </button>
-          </div>
-        ))}
       {dropping !== null && (
         <Question
           className="byd-data-bulk"
@@ -1440,13 +1383,22 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 onSort={setSort}
                 carry={pulling === null ? carryOf(f) : undefined}
                 pull={pullOf(f)}
-                // Räknekolumnen är motorns egen (L4) och skrivs aldrig som prosa, så den får
-                // inget märke: en kontroll som bara kan svara ett är ingen fråga.
-                prose={
-                  f === ANTAL
-                    ? undefined
-                    : { prose: bodyFields.includes(f), choice: proseChoiceOf(doc, f), box: boxes[f] ?? null, ...(onProse ? { onProse: (next: boolean | null) => onProse(f, next) } : {}) }
+                filter={
+                  discrete.some((d) => d.field === f)
+                    ? {
+                        field: f,
+                        label: fieldLabel(f, t),
+                        values: (discrete.find((d) => d.field === f)?.values ?? []).map((value) => ({ value, count: countOf(f, value) })),
+                        chosen: filter.values[f] ?? [],
+                        onToggle: (value: string) => changeFilter(toggleValue(filter, f, value)),
+                        open: filterDoor === f,
+                        onOpen: (open: boolean) => setFilterDoor(open ? f : null),
+                      }
+                    : undefined
                 }
+                // Bara en kolumn som skrivs som prosa får märket (#615); räknekolumnen är motorns
+                // egen (L4) och skrivs aldrig som prosa.
+                prose={f !== ANTAL && bodyFields.includes(f) ? { from: proseChoiceOf(doc, f) === null ? 'height' : 'choice' } : undefined}
               />
             ))}
             {grouping && <th data-col={GROUP_COL}>{t('table.group')}</th>}
@@ -1465,8 +1417,10 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 panel under it are one thing to a hand, and the focus the table hands back to the
                 ＋ when a column has gone is a focus that must not be pulled off it again. */}
             <th ref={doorCell} className="byd-data-remove" aria-label={t('table.remove.column')}>
+              {/* The handle says how the door shuts (#610): the × that closes it while it stands.
+                  Its name is the door's either way, and `aria-expanded` says which it is. */}
               <button type="button" ref={addRef} aria-label={t('table.columns')} aria-expanded={adding} onClick={() => setAdding(!adding)}>
-                +
+                {adding ? '×' : '+'}
               </button>
               {adding && (
                 <ColumnDoor
@@ -1482,6 +1436,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                   widths={widths}
                   onWidth={setWidth}
                   {...(onRenameField ? { onRename: renameColumn } : {})}
+                  // Vad varje kolumn skrivs som, och vägen att vända det (L43, #615): verktygets
+                  // två kolumner har ingen växel, eftersom en kontroll som bara kan svara ett är
+                  // ingen fråga.
+                  proseOf={(field) => (field === 'id' || field === ANTAL ? null : { prose: bodyFields.includes(field), choice: proseChoiceOf(doc, field), box: boxes[field] ?? null })}
+                  {...(onProse ? { onProse } : {})}
                   taken={takenNames(doc)}
                   keeps={deckKeepsFields(doc)}
                   // Yes and no leave by the same door, so they hand the focus back to the same
@@ -1802,16 +1761,18 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       </table>
       </div>
       {/* A deck with no cards at all is not a filter's doing: then the button below is the answer. */}
-      {shown.length === 0 && isFiltering(filter) && <p className="byd-data-empty">{t('table.empty')}</p>}
+      {shown.length === 0 && isFiltering(asked) && <p className="byd-data-empty">{t('table.empty')}</p>}
       <button type="button" id="byd-data-add" ref={addCardRef} className="byd-data-add" onClick={() => {
           const cardRef = nextRef()
           onAddRow(cardRef)
-          setPinned(isFiltering(filter) ? cardRef : null)
+          setPinned(isFiltering(asked) ? cardRef : null)
           setArriving(cardRef)
         }}>
         {t('table.addCard')}
       </button>
-      {/* What the table adds up to, under it rather than over it (#130). */}
+      {/* What the table adds up to, under it rather than over it (#130) — and, since #618, what
+          can be done with a marking: the actions stood in a band between the crown and the rows
+          and moved every row 80 px when a box was ticked. In the foot nothing above the rows moves. */}
       <CrownFoot>
         <p className="byd-data-count" aria-live="polite">
           <span>
@@ -1831,7 +1792,114 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             </>
           )}
         </p>
-        <p className="byd-data-sort" role="status">{sortLabel(sort, t)}</p>
+      {chosen.length > 0 &&
+        (confirming ? (
+          <Question
+            className="byd-data-bulk"
+            label={removeLabel(chosen.length, t)}
+            confirm={t('table.remove.yes')}
+            cancel={t('editor.cancel')}
+            onConfirm={() => {
+              onReplaceRows(removeRows(doc.rows, chosenIds))
+              setSelected(noSelection)
+              setConfirming(false)
+              setRefocus('all')
+            }}
+            onCancel={() => {
+              setConfirming(false)
+              setRefocus('remove')
+            }}
+          >
+            {t(chosen.length === 1 ? 'table.remove.question.one' : 'table.remove.question.other', { n: chosen.length })}
+          </Question>
+        ) : (
+          <div className="byd-data-bulk" role="toolbar" aria-label={t('table.bulk')}>
+            {/* The column and the value stand behind a box (#618): the foot is one row, and a
+                select and a field would make it two. */}
+            <button type="button" ref={setBox} className="byd-data-set" aria-expanded={setting} onClick={() => setSetting(!setting)}>
+              {t('table.bulk.set.box')} <span aria-hidden="true">▾</span>
+            </button>
+            {setting && (
+              <Lifted handle={setBox} label={t('table.bulk.set.label', { n: chosen.length })} className="byd-data-set-box" onClose={() => setSetting(false)}>
+            <label>
+              {t('table.bulk.field')}
+              <select aria-label={t('table.column')} value={field} onChange={(event) => setBulkField(event.target.value)}>
+                {fields.map((f) => (
+                  <option key={f} value={f}>
+                    {fieldLabel(f, t)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {/* A bildfält is written with an image and never with a sentence (E1). The cell
+                already knows that; the action row used to offer a text field for it, which wrote
+                prose into a column the template draws as a picture. So the value takes the shape
+                of the column: a place to drop one of the deck's images, and nothing to type. */}
+            {bulkIsImage && assetBase ? (
+              <div
+                role="group"
+                aria-label={t('table.bulk.image')}
+                {...dropSurface({
+                  className: 'byd-data-drop',
+                  over: bulkOver,
+                  onOver: setBulkOver,
+                  onFiles: (files) => void bulkUpload(files),
+                  onLibrary: setBulkImage,
+                })}
+              >
+                {bulkImage ? <img src={assetUrl(assetBase, bulkImage)} alt={t('table.bulk.image')} /> : <span>{t('table.image.drop')}</span>}
+                {bulkOver && <DropSays />}
+                {/* The library (#296): a picture the game already has, onto every marked card. */}
+                <button type="button" className="byd-data-file" aria-label={t('table.bulk.image.choose')} onClick={() => setLibrary({ kind: 'marked', field })}>
+                  {t('table.image.choose')}
+                </button>
+                <label className="byd-data-file">
+                  {t('table.image.upload')}
+                  <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('table.bulk.image.upload')} onChange={(event) => void bulkUpload([...(event.target.files ?? [])])} />
+                </label>
+              </div>
+            ) : (
+              <input
+                type={field === ANTAL ? 'number' : 'text'}
+                min={field === ANTAL ? 0 : undefined}
+                aria-label={t('table.value')}
+                value={bulkValue}
+                onChange={(event) => setBulkValue(event.target.value)}
+                // The same rule the cell holds a count to (#479), said the same way.
+                {...(bulkCountWrong ? { 'aria-invalid': true, 'aria-describedby': 'byd-bulk-antal-says' } : {})}
+              />
+            )}
+            {bulkCountWrong && (
+              <small className="byd-data-says" id="byd-bulk-antal-says">
+                {t('table.antal.invalid')}
+              </small>
+            )}
+            <button
+              type="button"
+              disabled={bulkWrites === null}
+              onClick={() => {
+                if (bulkWrites === null) return
+                onReplaceRows(setColumn(doc.rows, chosenIds, field, bulkWrites))
+                setBulkValue('')
+                setBulkImage(null)
+              }}
+            >
+              {bulkIsImage ? t('table.bulk.setImage', { n: chosen.length }) : t('table.bulk.set', { field, n: chosen.length })}
+            </button>
+              </Lifted>
+            )}
+            <button type="button" onClick={() => onReplaceRows(duplicateRows(doc.rows, chosenIds))}>
+              {t(chosen.length === 1 ? 'table.bulk.duplicate.one' : 'table.bulk.duplicate.other', { n: chosen.length })}
+            </button>
+            <button type="button" data-kind="danger" ref={removeRef} onClick={() => setConfirming(true)}>
+              {removeLabel(chosen.length, t)}
+            </button>
+            <button type="button" data-kind="quiet" onClick={() => setSelected(noSelection)}>
+              {t('table.bulk.unmark')}
+            </button>
+          </div>
+        ))}
+        <p className="byd-data-sort byd-crown-end" role="status">{sortLabel(sort, t)}</p>
       </CrownFoot>
       {library !== null && assetBase && (
         <PictureLibraryDialog
@@ -1946,57 +2014,16 @@ type Pull = {
   onStep(dir: -1 | 1): void
 }
 
-// How long a pointer rests on a head before its prose fold-out opens (#479): long enough that a
-// hand passing over the head on its way down the table opens nothing, short enough to feel at once.
-export const PROSE_HOVER_MS = 300
+// What a heading says about its column being written as prose (L43, #615): a pilcrow after the
+// name, and only on a column that is. The switch and the reason are the door's; the heading is the
+// column's name and the way it is sorted, moved and pulled, and nothing that opens.
+type ProseSign = { from: 'height' | 'choice' }
 
-function SortableHeader({ field, label, sort, onSort, carry, pull, prose }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; carry?: Carry | undefined; pull?: Pull | undefined; prose?: Omit<ProseMarkProps, 'label' | 'open'> | undefined }) {
+function SortableHeader({ field, label, sort, onSort, carry, pull, prose, filter }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; carry?: Carry | undefined; pull?: Pull | undefined; prose?: ProseSign | undefined; filter?: ColumnFilterProps | undefined }) {
   const active = sort?.field === field ? sort.dir : null
-  // Prosamärkets utfällning (L43, #362) hänger ur **rubriken** och inte ur pricken: pricken är
-  // ingen kontroll — en 8 px knapp i en kolumn som är en siffra bred är precis det som fällde
-  // variant A — så handtaget är hela rubriken. Pekaren och fokus var för sig, och utfällningen
-  // framme så länge något av dem är kvar: aldrig bara det ena (#184, och #216 som inte får ta
-  // tillbaka det). `shut` är Escape, som lägger ihop den utan att flytta handen eller fokus.
-  const [near, setNear] = useState(false)
-  const resting = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => () => {
-    if (resting.current !== null) clearTimeout(resting.current)
-  }, [])
-  const [held, setHeld] = useState(false)
-  const [shut, setShut] = useState(false)
-  const open = prose !== undefined && !shut && (near || held)
   return (
     <th
       data-col={field}
-      // Utfällningen hänger ur rubriken och ska synas utanför den; ett huvud som klipper sitt
-      // eget innehåll klipper den (#46, samma sak som `.byd-data-remove` redan säger om dörren).
-      {...(prose ? { 'data-prose': open ? 'open' : '' } : {})}
-      {...(prose
-        ? {
-            // A hand that rests, not one passing over on its way down the table (#479).
-            onPointerEnter: () => {
-              if (resting.current !== null) clearTimeout(resting.current)
-              resting.current = setTimeout(() => setNear(true), PROSE_HOVER_MS)
-            },
-            onPointerLeave: () => {
-              if (resting.current !== null) clearTimeout(resting.current)
-              resting.current = null
-              setNear(false)
-              setShut(false)
-            },
-            onFocus: () => setHeld(true),
-            onBlur: (event: FocusEvent<HTMLTableCellElement>) => {
-              if (event.currentTarget.contains(event.relatedTarget)) return
-              setHeld(false)
-              setShut(false)
-            },
-            onKeyDown: (event: KeyboardEvent<HTMLTableCellElement>) => {
-              if (event.key !== 'Escape' || !open) return
-              event.stopPropagation()
-              setShut(true)
-            },
-          }
-        : {})}
       aria-sort={active ?? 'none'}
       draggable={carry ? true : undefined}
       onDragStart={carry?.onPickUp}
@@ -2025,11 +2052,17 @@ function SortableHeader({ field, label, sort, onSort, carry, pull, prose }: { fi
         }}
       >
         {label} <span aria-hidden="true">{active === 'ascending' ? '↑' : active === 'descending' ? '↓' : '↕'}</span>
+        {/* Tyst för skärmläsaren: orden — vad kolumnen skrivs som och vem som sade det — står i
+            dörren, och ett ¶ i rubrikens namn vore en symbol utan mening (L12). */}
+        {prose && (
+          <span className="byd-prose-pilcrow" aria-hidden="true" data-from={prose.from}>
+            ¶
+          </span>
+        )}
       </button>
-      {/* Kolumnens märke (L43, #362). Pricken står efter rubrikens egen knapp, och utfällningens
-          knappar efter den: en Tabb genom huvudet möter först vad kolumnen heter och sorteras på,
-          och därefter — medan rubriken har fokus — sättet att vända vad den skrivs som. */}
-      {prose && <ProseMark label={label} open={open} {...prose} />}
+      {/* The column's filter, after its sort (#617): a Tab through the head meets what the column
+          is called and sorts on, then what it is narrowed to. */}
+      {filter && <ColumnFilter {...filter} />}
       {/* The edge the column is pulled by, and nothing a reader without a pointer has to step
           over: the keys do the same thing from the heading itself, and what a column was set to
           is read and given back in the head's own door. So it is out of the tab order and out of

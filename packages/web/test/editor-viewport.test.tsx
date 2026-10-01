@@ -54,6 +54,8 @@ async function surfaces(width: number): Promise<Record<string, string>> {
       const tab = tabs()[i]!
       const name = tab.textContent?.trim() ?? String(i)
       fireEvent.click(tab)
+      // Speltema folds its parts (L57): they are opened, so what is in them is measured too.
+      for (const head of document.querySelectorAll<HTMLElement>('[data-theme-section] h2 button[aria-expanded="false"]')) fireEvent.click(head)
       out[name] = document.querySelector('.byd-editor')!.outerHTML
     }
     return out
@@ -103,6 +105,8 @@ async function cardFiles(width: number): Promise<Record<string, string>> {
     // A marked card opens the action row, and the row draws a picker of its own the moment the
     // column it is set to is the image one (#17 on E1) — before that it offers a text field.
     fireEvent.click(screen.getByLabelText('markera dragon'))
+    // The column and the value are behind «Sätt fält» in the foot (#618).
+    fireEvent.click(await screen.findByRole('button', { name: 'Sätt fält' }))
     fireEvent.change(await screen.findByLabelText('Kolumn'), { target: { value: 'art' } })
     await screen.findByLabelText('Ladda upp bild för de markerade korten')
     return { 'Tabell · filer': document.querySelector('.byd-editor')!.outerHTML }

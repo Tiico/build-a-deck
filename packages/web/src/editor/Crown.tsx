@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useRef, type ReactNode, type RefObject } from 'react'
 import { useDoor } from '../doors.js'
 import { useT } from '../i18n/index.js'
 
-// The crown a tab panel wears (#128, #130, variant B). One mechanism on three surfaces — the card
-// wall, the symbol library and the card table — and not three fixes, because it is one question:
+// The crown a tab panel wears (#128, #130, variant B). One mechanism on several surfaces — the card
+// wall and the card table, and the symbol library until it became Speltema's sheet (L57) — and not
+// three fixes, because it is one question:
 // what does a panel own at the top, and what scrolls under it.
 //
 // The row is exactly one row at every width. What does not fit does not wrap and does not vanish:
@@ -96,70 +97,6 @@ export function CrownDrawer({ label, opener, onClose, children }: { label: strin
   return (
     <div className="byd-crown-drawer" data-crown-drawer role="group" aria-label={label}>
       {children}
-    </div>
-  )
-}
-
-// The filters do not leave the row. They keep their place in it and get a side scroll of their own
-// with a fade and a button to the rest — putting thirteen chips behind `Filter (13) ▾` would be
-// hiding the one thing on that surface that is a state rather than an action (#130). What falls
-// into a box there is the import and the export, which are done once and are not a state at all.
-export function CrownRail({ label, children }: { label: string; children: ReactNode }) {
-  const t = useT()
-  const scroll = useRef<HTMLDivElement>(null)
-  const moreButton = useRef<HTMLButtonElement>(null)
-  const [more, setMore] = useState(false)
-  useEffect(() => {
-    const el = scroll.current
-    if (!el) return
-    // Whether there is anything to the right is measured and not assumed: the arrow is a promise
-    // that something is there, and an arrow that points at nothing is worse than none.
-    const look = () => {
-      const next = el.scrollWidth - el.clientWidth - el.scrollLeft > 1
-      // The arrow goes when the row has reached its end, and the focus must not go with it to
-      // <body> (#557): it lands on the last chip, the one the roll just brought into view.
-      if (!next && moreButton.current !== null && moreButton.current === document.activeElement) {
-        const chips = el.querySelectorAll<HTMLElement>('button, [href], input, select, [tabindex]:not([tabindex="-1"])')
-        chips[chips.length - 1]?.focus({ preventScroll: true })
-      }
-      setMore(next)
-    }
-    look()
-    el.addEventListener('scroll', look)
-    const watch = typeof ResizeObserver === 'function' ? new ResizeObserver(look) : null
-    watch?.observe(el)
-    return () => {
-      el.removeEventListener('scroll', look)
-      watch?.disconnect()
-    }
-  })
-  return (
-    <div className="byd-crown-rail" {...(more ? { 'data-more': 'true' } : {})}>
-      <div
-        className="byd-crown-rail-scroll"
-        ref={scroll}
-        role="group"
-        aria-label={label}
-        // Rälsen följer tangentbordet (#396). Sidoskrollen är priset för att filterraden ska
-        // hålla sig i raden, och webbläsaren rullar inte hit av sig själv: en Tabb kunde landa på
-        // ett chip som stod utanför kanten, bakom «›», med några pixlar av fokusringen synliga.
-        // Ett mål som svarar utan att kunna ses svara har inte svarat (#235). `scrollIntoView` är
-        // webbläsarens och inte jsdoms.
-        onFocus={(event) => event.target.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })}
-      >
-        {children}
-      </div>
-      {more && (
-        <button
-          ref={moreButton}
-          type="button"
-          className="byd-crown-more"
-          aria-label={t('crown.rail.more')}
-          onClick={() => scroll.current?.scrollBy({ left: Math.round(scroll.current.clientWidth * 0.8), behavior: 'smooth' })}
-        >
-          <span aria-hidden="true">›</span>
-        </button>
-      )}
     </div>
   )
 }

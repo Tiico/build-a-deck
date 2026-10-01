@@ -5,12 +5,10 @@ import { useFocusTrap } from './focusTrap.js'
 import type { CardWords } from './fonts.js'
 
 // «Provraden» — variant C of the three rooms prototyped for #329, and the one the owner chose
-// (L27). A sheet under the card where every hit sets the card's own heading *and* its rule text,
-// in the card's own grade: a family name in nineteen points looks well in nearly anything, and
-// the hard test is twelve-point body copy on a 63 mm card.
-//
-// The price is stated in L27 and is not conjured away here: the sheet is 62 % of the canvas, the
-// card moves up when it opens, and the card's lower third is hidden while the designer chooses.
+// (L27). A sheet where every hit sets the card's own heading *and* its rule text, in the card's
+// own grade: a family name in nineteen points looks well in nearly anything, and the hard test is
+// twelve-point body copy on a 63 mm card. It stood under the card in Mall; since L57 (#630) it is
+// the sheet beside the game's typefaces in Speltema.
 //
 // Nothing about the catalog is fetched before this component mounts, and this component is
 // mounted only by the designer pressing the button. That is the measured criterion in #329 and

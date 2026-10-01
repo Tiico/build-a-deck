@@ -47,6 +47,14 @@ function renderTable(doc: ProjectDoc, handlers: Partial<DataTableProps> = {}) {
 
 const shownIds = () => screen.getAllByRole('row').slice(1).map((row) => row.getAttribute('data-card-ref'))
 
+// The way a value is chosen since #617: through the column's own door in the head. The door is
+// left standing, as a hand would leave it; a press anywhere else in the work closes it.
+async function tick(user: ReturnType<typeof userEvent.setup>, field: string, value: string) {
+  const handle = screen.getByRole('button', { name: new RegExp(`^Filtrera på ${field}`) })
+  if (handle.getAttribute('aria-expanded') !== 'true') await user.click(handle)
+  await user.click(within(screen.getByRole('group', { name: `Filtrera på ${field}` })).getByRole('checkbox', { name: value }))
+}
+
 describe('DataTable free-text search (#16)', () => {
   it('shows only the cards whose fields carry the searched text', async () => {
     const user = userEvent.setup()
@@ -71,23 +79,65 @@ describe('DataTable count of shown cards (#16)', () => {
   })
 })
 
-describe('DataTable type chips (#16)', () => {
-  it('offers a chip per value of the deck category column and shows only that type', async () => {
+// The filter of a column with a vocabulary stands in that column's head (#617, variant A): a
+// button beside the sort opens the values as ticks, and what is ticked is said as a token in the
+// search field — «typ: varelse ×» — so the state is read without opening anything.
+describe('DataTable column filter in the head (#617)', () => {
+  it('lists the column\'s values behind the head, shows only the ticked type, and says so in the field', async () => {
     const user = userEvent.setup()
     renderTable(bigDoc())
-    const chips = within(screen.getByRole('group', { name: 'Filtrera på typ' })).getAllByRole('button')
-    expect(chips.map((chip) => chip.textContent)).toEqual(['fälla', 'plats', 'varelse'])
-    expect(chips.map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'false'])
+    expect(screen.queryByRole('group', { name: 'Filtrera på typ' })).toBeNull()
 
-    await user.click(screen.getByRole('button', { name: 'varelse' }))
+    await user.click(screen.getByRole('button', { name: 'Filtrera på typ' }))
+
+    const door = screen.getByRole('group', { name: 'Filtrera på typ' })
+    const ticks = within(door).getAllByRole('checkbox')
+    expect(ticks.map((tick) => (tick as HTMLInputElement).checked)).toEqual([false, false, false])
+    expect(ticks.map((tick) => tick.getAttribute('aria-label'))).toEqual(['fälla', 'plats', 'varelse'])
+
+    await user.click(within(door).getByRole('checkbox', { name: 'varelse' }))
 
     expect(shownIds()).toEqual(['drake', 'alv', 'troll', 'orm'])
-    expect(chips.map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true'])
     expect(screen.getByText('4 av 8 kort')).toBeDefined()
+    expect(screen.getByText('typ: varelse')).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Ta bort filtret typ: varelse' })).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Filtrera på typ, 1 valt' }).getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('takes the tick away from the token in the field, and leaves the hand in the field', async () => {
+    const user = userEvent.setup()
+    renderTable(bigDoc())
+    await user.click(screen.getByRole('button', { name: 'Filtrera på typ' }))
+    await user.click(screen.getByRole('checkbox', { name: 'varelse' }))
+    expect(shownIds()).toHaveLength(4)
+
+    await user.click(screen.getByRole('button', { name: 'Ta bort filtret typ: varelse' }))
+
+    expect(shownIds()).toHaveLength(8)
+    expect(screen.queryByText('typ: varelse')).toBeNull()
+    expect(document.activeElement).toBe(screen.getByLabelText('Sök i alla fält'))
+    expect(screen.getByRole('button', { name: 'Filtrera på typ' })).toBeDefined()
+  })
+
+  it('opens on the first tick, closes on Escape back to its handle, and closes on a press in the work', async () => {
+    const user = userEvent.setup()
+    renderTable(bigDoc())
+    const handle = screen.getByRole('button', { name: 'Filtrera på typ' })
+    await user.click(handle)
+    expect(document.activeElement).toBe(screen.getByRole('checkbox', { name: 'fälla' }))
+
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('group', { name: 'Filtrera på typ' })).toBeNull()
+    expect(document.activeElement).toBe(handle)
+
+    await user.click(handle)
+    expect(screen.getByRole('group', { name: 'Filtrera på typ' })).toBeDefined()
+    await user.click(screen.getByLabelText('Sök i alla fält'))
+    expect(screen.queryByRole('group', { name: 'Filtrera på typ' })).toBeNull()
   })
 })
 
-describe('DataTable search and chips together (#16)', () => {
+describe('DataTable search and column filter together (#16, #617)', () => {
   it('narrows the search to the pressed type, and lets go of the type again', async () => {
     const user = userEvent.setup()
     renderTable(bigDoc())
@@ -95,20 +145,20 @@ describe('DataTable search and chips together (#16)', () => {
     await user.type(screen.getByLabelText('Sök i alla fält'), 'kort')
     expect(shownIds()).toEqual(['grop', 'alv'])
 
-    await user.click(screen.getByRole('button', { name: 'varelse' }))
+    await tick(user, 'typ', 'varelse')
     expect(shownIds()).toEqual(['alv'])
     expect(screen.getByText('1 av 8 kort')).toBeDefined()
 
-    await user.click(screen.getByRole('button', { name: 'varelse' }))
+    await tick(user, 'typ', 'varelse')
     expect(shownIds()).toEqual(['grop', 'alv'])
   })
 
-  it('treats two pressed chips of the same column as alternatives', async () => {
+  it('treats two ticked values of the same column as alternatives', async () => {
     const user = userEvent.setup()
     renderTable(bigDoc())
 
-    await user.click(screen.getByRole('button', { name: 'fälla' }))
-    await user.click(screen.getByRole('button', { name: 'plats' }))
+    await tick(user, 'typ', 'fälla')
+    await tick(user, 'typ', 'plats')
 
     expect(shownIds()).toEqual(['grop', 'nat', 'stock', 'grav'])
     expect(screen.getByText('4 av 8 kort')).toBeDefined()
@@ -121,7 +171,7 @@ describe('DataTable filter and sort together (#16 on #15)', () => {
     renderTable(bigDoc())
 
     await user.click(screen.getByRole('button', { name: /^kostnad/ }))
-    await user.click(screen.getByRole('button', { name: 'varelse' }))
+    await tick(user, 'typ', 'varelse')
     expect(shownIds()).toEqual(['orm', 'troll', 'alv', 'drake'])
 
     await user.click(screen.getByRole('button', { name: /^kostnad/ }))
@@ -176,7 +226,7 @@ describe('DataTable new card under an active filter (#16)', () => {
   it('keeps the new card on screen even though it matches nothing, and says so', async () => {
     const user = userEvent.setup()
     render(<AddableTable start={bigDoc()} />)
-    await user.click(screen.getByRole('button', { name: 'varelse' }))
+    await tick(user, 'typ', 'varelse')
     expect(shownIds()).toEqual(['drake', 'alv', 'troll', 'orm'])
 
     await user.click(screen.getByRole('button', { name: /Nytt kort/ }))
@@ -189,7 +239,7 @@ describe('DataTable new card under an active filter (#16)', () => {
   it('lets the new card fall behind the filter as soon as the filter is touched again', async () => {
     const user = userEvent.setup()
     render(<AddableTable start={bigDoc()} />)
-    await user.click(screen.getByRole('button', { name: 'varelse' }))
+    await tick(user, 'typ', 'varelse')
     await user.click(screen.getByRole('button', { name: /Nytt kort/ }))
 
     await user.type(screen.getByLabelText('Sök i alla fält'), 'troll')
@@ -205,7 +255,7 @@ describe('DataTable filtering as a view only (#16)', () => {
     const doc = bigDoc()
     renderTable(doc)
 
-    await user.click(screen.getByRole('button', { name: 'varelse' }))
+    await tick(user, 'typ', 'varelse')
     expect(shownIds()).toHaveLength(4)
 
     expect(doc.rows.map((row) => row.id)).toHaveLength(8)
@@ -214,7 +264,7 @@ describe('DataTable filtering as a view only (#16)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
     for (const id of ['drake', 'grop', 'alv', 'nat', 'troll', 'stock', 'orm', 'grav']) expect(csv).toContain(id)
 
-    await user.click(screen.getByRole('button', { name: 'varelse' }))
+    await tick(user, 'typ', 'varelse')
     expect(shownIds()).toHaveLength(8)
   })
 })
@@ -244,16 +294,12 @@ describe('DataTable filtering from the keyboard (#16)', () => {
   // The filter is the first thing in the tab order now (#130): it is a state the reader is
   // standing in, and the CSV pair — done once, and not a state — is behind the box at the end of
   // the crown, which is also where the keyboard reaches it.
-  it('puts the search field and the chips first in the tab order, and the CSV box after them', async () => {
+  it('puts the search field first in the tab order, the CSV box after it, and the filter in the head', async () => {
     const user = userEvent.setup()
     renderTable(bigDoc())
 
     await user.tab()
     expect(document.activeElement).toBe(screen.getByLabelText('Sök i alla fält'))
-    for (const name of ['fälla', 'plats', 'varelse']) {
-      await user.tab()
-      expect(document.activeElement).toBe(screen.getByRole('button', { name }))
-    }
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Importera' }))
     // And what the box holds is not in the tab order at all until it is opened, which is the
@@ -271,26 +317,32 @@ describe('DataTable filtering from the keyboard (#16)', () => {
     expect(document.activeElement).toBe(screen.getByLabelText('Markera alla synliga'))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: /^id/ }))
+    // The column's filter stands right after what the column is called and sorts on (#617); the
+    // columns before it are words with no vocabulary and have no filter to stop at.
+    for (let i = 0; i < 6 && document.activeElement !== screen.getByRole('button', { name: /^typ/ }); i++) await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^typ/ }))
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Filtrera på typ' }))
   })
 
-  it('presses a chip with Space and lets go of it with Enter, keeping the focus on the chip', async () => {
+  it('opens the door with Enter, ticks a value with Space, and comes back to the handle on Escape', async () => {
     const user = userEvent.setup()
     renderTable(bigDoc())
-    const falla = screen.getByRole('button', { name: 'fälla' })
+    const handle = screen.getByRole('button', { name: 'Filtrera på typ' })
 
-    for (let i = 0; i < 10 && document.activeElement !== falla; i++) await user.tab()
-    expect(document.activeElement).toBe(falla)
-
-    await user.keyboard(' ')
-    expect(falla.getAttribute('aria-pressed')).toBe('true')
-    expect(shownIds()).toEqual(['grop', 'nat'])
-    expect(screen.getByText('2 av 8 kort')).toBeDefined()
-    expect(document.activeElement).toBe(falla)
+    for (let i = 0; i < 10 && document.activeElement !== handle; i++) await user.tab()
+    expect(document.activeElement).toBe(handle)
 
     await user.keyboard('{Enter}')
-    expect(falla.getAttribute('aria-pressed')).toBe('false')
-    expect(shownIds()).toHaveLength(8)
-    expect(document.activeElement).toBe(falla)
+    expect(document.activeElement).toBe(screen.getByRole('checkbox', { name: 'fälla' }))
+    await user.keyboard(' ')
+    expect(shownIds()).toEqual(['grop', 'nat'])
+    expect(screen.getByText('2 av 8 kort')).toBeDefined()
+    expect(screen.getByText('typ: fälla')).toBeDefined()
+
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('group', { name: 'Filtrera på typ' })).toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Filtrera på typ, 1 valt' }))
   })
 
   it('searches as the designer types into the field', async () => {
@@ -310,7 +362,7 @@ describe('DataTable filtering while a cell is being edited (#16 on #15)', () => 
   it('holds the screen still: a row that stops matching stays until the field is left', async () => {
     const user = userEvent.setup()
     render(<EditedTable start={bigDoc()} />)
-    await user.click(screen.getByRole('button', { name: 'varelse' }))
+    await tick(user, 'typ', 'varelse')
     expect(shownIds()).toEqual(['drake', 'alv', 'troll', 'orm'])
 
     const typ = screen.getByLabelText('troll typ')
@@ -333,20 +385,20 @@ describe('DataTable filtering while a cell is being edited (#16 on #15)', () => 
   })
 })
 
-describe('DataTable chips for a deck that has no category column (#16)', () => {
+describe('DataTable filter for a deck that has no category column (#16)', () => {
   it('offers the search alone when no column reads as a vocabulary', () => {
     // The fields of a deck are the designer's own: this one is title, body and antal, and none of
     // them repeats. A chip row would have one chip per card, so there is none.
     renderTable(projectDoc())
 
-    expect(screen.queryByRole('group', { name: /^Filtrera på/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Filtrera på/ })).toBeNull()
     expect(screen.getByLabelText('Sök i alla fält')).toBeDefined()
     expect(screen.getByText('3 av 3 kort')).toBeDefined()
   })
 })
 
 // A picture is not a word, and the chip row is a row of words (#16 on E1).
-describe('DataTable chips for a deck with images (#16 on E1)', () => {
+describe('DataTable filter for a deck with images (#16 on E1)', () => {
   // The same deck, given a picture column: `art` is drawn by the template, so its cells hold
   // `asset:<hash>` and two images are shared across the eight cards — which counts exactly like
   // the type column does.
@@ -359,12 +411,12 @@ describe('DataTable chips for a deck with images (#16 on E1)', () => {
     return { ...doc, rows: doc.rows.map((row, i) => ({ ...row, fields: { ...row.fields, art: art(i % 2) } })) }
   }
 
-  it('does not offer the hash of a picture as a chip, and keeps the columns that are words', () => {
+  it('does not offer the hash of a picture as a filter, and keeps the columns that are words', () => {
     renderTable(withArt())
 
-    expect(screen.queryByRole('group', { name: 'Filtrera på art' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Filtrera på art/ })).toBeNull()
     expect(screen.queryByText(/^asset:/)).toBeNull()
-    expect(screen.getByRole('group', { name: 'Filtrera på typ' })).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Filtrera på typ' })).toBeDefined()
   })
 })
 
@@ -390,9 +442,50 @@ describe('DataTable row delete under a filter (#8 on #16)', () => {
     await user.click(within(grop).getByRole('button', { name: 'ta bort grop' }))
     expect(screen.getByRole('alertdialog', { name: 'Ta bort kortet grop' })).toBeDefined()
 
-    await user.click(screen.getByRole('button', { name: 'varelse' }))
+    await tick(user, 'typ', 'varelse')
 
     expect(screen.queryByRole('alertdialog')).toBeNull()
     expect(onRemoveRow).not.toHaveBeenCalled()
+  })
+})
+
+// The keyboard's way into the same filter (#617 on L23): a character opens a list. «typ:» in the
+// search field lists the column's values under it, narrowing as the designer types, and Enter takes
+// the one under the cursor as a token — the same token the column's door would have made.
+describe('DataTable typed column in the search field (#617, L23)', () => {
+  it('lists the column\'s values on «typ:», narrows them as the designer types, and takes the chosen one as a token', async () => {
+    const user = userEvent.setup()
+    renderTable(bigDoc())
+    const field = screen.getByLabelText('Sök i alla fält')
+    await user.click(field)
+    await user.keyboard('typ:')
+
+    const list = screen.getByRole('listbox', { name: 'typ' })
+    expect(within(list).getAllByRole('option').map((option) => option.getAttribute('aria-label'))).toEqual(['fälla', 'plats', 'varelse'])
+    // The text «typ:» is a way in, not a search: nothing is filtered by it.
+    expect(shownIds()).toHaveLength(8)
+
+    await user.keyboard('v')
+    expect(within(screen.getByRole('listbox', { name: 'typ' })).getAllByRole('option').map((option) => option.getAttribute('aria-label'))).toEqual(['varelse'])
+
+    await user.keyboard('{Enter}')
+    expect(shownIds()).toEqual(['drake', 'alv', 'troll', 'orm'])
+    expect(screen.getByText('typ: varelse')).toBeDefined()
+    expect((field as HTMLInputElement).value).toBe('')
+    expect(screen.queryByRole('listbox')).toBeNull()
+    expect(document.activeElement).toBe(field)
+  })
+
+  it('walks the list with the arrows and says when no value begins so', async () => {
+    const user = userEvent.setup()
+    renderTable(bigDoc())
+    await user.click(screen.getByLabelText('Sök i alla fält'))
+    await user.keyboard('typ:')
+    await user.keyboard('{ArrowDown}{ArrowDown}{Enter}')
+    expect(screen.getByText('typ: varelse')).toBeDefined()
+
+    await user.keyboard('typ:x')
+    expect(screen.getByRole('listbox', { name: 'typ' }).textContent).toContain('inget värde börjar så')
+    expect(shownIds()).toEqual(['drake', 'alv', 'troll', 'orm'])
   })
 })

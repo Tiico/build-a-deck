@@ -26,7 +26,7 @@ describe('DataTable (B as a tab)', () => {
     // bringing a column of its own to stand in, because that column had nothing under it on any
     // row (#46).
     const heads = screen.getAllByRole('columnheader')
-    const headers = heads.map((h) => (h.getAttribute('aria-label') ?? h.querySelector('button')?.textContent ?? h.textContent ?? '').replace(/\s*[↕↑↓]\s*$/, ''))
+    const headers = heads.map((h) => (h.getAttribute('aria-label') ?? h.querySelector('button')?.textContent ?? h.textContent ?? '').replace(/\s*[↕↑↓]\s*¶?\s*$/, ''))
     expect(headers).toEqual(['', 'id', 'Titel', 'body', 'antal', 'Ta bort'])
     // And nothing about which columns are the designer's is said in the head itself any more: the
     // × that took one away, and the padlock that stood in its place where one could not be taken
@@ -201,6 +201,8 @@ describe('an image on every marked card (#17, E1)', () => {
 
     // The column is the image field, so the value is not a sentence to type: it is a place to put
     // an image. The row says so by having no text field at all for it.
+    // The column and the value are behind «Sätt fält» in the foot (#618).
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt fält' }))
     fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
     expect(within(bulk()).queryByLabelText('Värde')).toBeNull()
     const slot = within(bulk()).getByLabelText('Bild för de markerade korten')
@@ -227,6 +229,8 @@ describe('an image on every marked card (#17, E1)', () => {
     render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} assetBase="http://api.local" onUpload={onUpload} />)
     mark('knight')
     mark('wizard')
+    // The column and the value are behind «Sätt fält» in the foot (#618).
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt fält' }))
     fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
 
     const file = new File(['png'], 'skog.png', { type: 'image/png' })
@@ -247,6 +251,8 @@ describe('an image on every marked card (#17, E1)', () => {
     const onReplaceRows = vi.fn()
     render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} assetBase="http://api.local" onUpload={async () => OTHER} />)
     mark('knight')
+    // The column and the value are behind «Sätt fält» in the foot (#618).
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt fält' }))
     fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
 
     // A file off the desktop is dropped on the row the same way it is dropped on a cell.
@@ -269,6 +275,8 @@ describe('an image on every marked card (#17, E1)', () => {
     const onReplaceRows = vi.fn()
     render(<DataTable doc={withArt()} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} />)
     mark('knight')
+    // The column and the value are behind «Sätt fält» in the foot (#618).
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt fält' }))
     fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
 
     expect(within(bulk()).queryByLabelText('Bild för de markerade korten')).toBeNull()
@@ -615,6 +623,140 @@ describe('the meaning chosen in the same box as the symbol (L34)', () => {
     fireEvent.change(cell, { target: { value: 'Skada {sköld|f', selectionStart: 14 } })
     fireEvent.keyDown(cell, { key: 'Enter' })
     expect(onCell).toHaveBeenCalledWith('dragon', 'title', 'Skada {sköld|fara}')
+  })
+})
+
+// The brace proposes from the game (L57, #631). The designer's own game is what she reaches for
+// nine times in ten — the tokens the deck already writes, and the icons the game already has — so
+// those stand first and the library is the second click. A game with no icons has nothing of its
+// own to propose, and opens on the library exactly as before: never an empty list.
+describe('the brace proposes from the game (L57)', () => {
+  const ICONS = { droppe: 'droppe.svg', sköld: 'skold.svg', hjärta: 'hjarta.svg' }
+  const setup = (icons: Record<string, string> = ICONS, palette: Record<string, string> = { kostnad: '#8f2d20', fara: '#2f6136' }) => {
+    const doc = { ...projectDoc(), palette, icons }
+    doc.rows = [
+      { id: 'dragon', fields: { title: 'Drake', body: 'Betala {droppe|kostnad}.', antal: 2 } },
+      { id: 'knight', fields: { title: 'Riddare', body: 'Betala {droppe|kostnad}. {sköld}', antal: 1 } },
+      { id: 'wizard', fields: { title: 'Trollkarl', body: '{droppe|kostnad} och {hjärta}, {2} gånger.', antal: 1 } },
+    ]
+    const onCell = vi.fn()
+    const onSymbol = vi.fn(async (s: GameSymbol) => symbolName(s))
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} onSymbol={onSymbol} />)
+    const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon title') as HTMLInputElement
+    return { cell, onCell, onSymbol, doc }
+  }
+  const type = (cell: HTMLInputElement, value: string) => {
+    fireEvent.change(cell, { target: { value, selectionStart: value.length } })
+  }
+  const optionsOf = (name: string) => within(screen.getByRole('listbox', { name })).getAllByRole('option')
+
+  it('offers what the deck already writes, most written first, and inserts one with a single click', async () => {
+    const { cell, onCell, onSymbol } = setup()
+    type(cell, 'Skada {')
+    // A pip is a number and no symbol, so it is not something the deck "writes" as one.
+    expect(optionsOf('Som leken skriver dem').map((o) => o.querySelector('code')?.textContent)).toEqual(['{droppe|kostnad}', '{hjärta}', '{sköld}'])
+    // No library symbol stands in the list until it is searched for or asked for.
+    expect(screen.queryByRole('listbox', { name: 'Symboler' })).toBeNull()
+
+    fireEvent.click(optionsOf('Som leken skriver dem')[0]!)
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'title', 'Skada {droppe|kostnad}'))
+    // It is already the game's: nothing is taken in.
+    expect(onSymbol).not.toHaveBeenCalled()
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('offers the game’s icons; a chosen one shows the meanings as coloured copies of itself and goes in under its own name', async () => {
+    const { cell, onCell, onSymbol, doc } = setup()
+    type(cell, 'Skada {')
+    const icons = optionsOf('Spelets ikoner')
+    expect(icons.map((o) => o.getAttribute('data-symbol'))).toEqual(['droppe', 'sköld', 'hjärta'])
+    fireEvent.click(icons[1]!)
+
+    // The meaning is the next question, in the same box, and every copy is the game's own picture.
+    const meanings = optionsOf('Betydelser')
+    expect(meanings.map((o) => o.textContent)).toEqual(['Utan betydelse', 'kostnad', 'fara'])
+    const sample = meanings[2]!.querySelector<HTMLElement>('.byd-symbol-sample')!
+    expect(sample.getAttribute('data-paper')).toBe(groundOf(doc, 'front'))
+    expect(sample.querySelector('.byd-ink')?.getAttribute('style')).toContain('skold.svg')
+    expect(sample.querySelector('.byd-ink')?.getAttribute('style')).toContain('background:#2f6136')
+    fireEvent.click(meanings[2]!)
+
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'title', 'Skada {sköld|fara}'))
+    expect(onSymbol).not.toHaveBeenCalled()
+  })
+
+  it('opens the whole library as the second click, and a symbol taken from it comes into the game as before', async () => {
+    const { cell, onCell, onSymbol } = setup()
+    type(cell, 'Skada {')
+    fireEvent.click(screen.getByRole('option', { name: /Hela biblioteket \(\d+\) ›/ }))
+
+    const library = optionsOf('Symboler')
+    expect(library.length).toBeGreaterThan(8)
+    expect(screen.queryByRole('listbox', { name: 'Som leken skriver dem' })).toBeNull()
+    // The library stays open while the name is narrowed.
+    type(cell, 'Skada {mån')
+    fireEvent.click(optionsOf('Symboler')[0]!)
+    fireEvent.click(optionsOf('Betydelser')[0]!)
+
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'title', 'Skada {måne}'))
+    expect(onSymbol).toHaveBeenCalledWith(expect.objectContaining({ id: 'mane' }))
+  })
+
+  it('walks all the parts on the keys: the deck’s tokens, the icons, the way into the library and back', async () => {
+    const { cell, onCell } = setup()
+    type(cell, 'Skada {')
+    const pointsAt = () => document.getElementById(cell.getAttribute('aria-activedescendant') ?? '')
+    expect(pointsAt()).toBe(optionsOf('Som leken skriver dem')[0])
+    expect(screen.getByText('{droppe|kostnad}', { selector: '.byd-symbol-writes code' })).toBeTruthy()
+    fireEvent.keyDown(cell, { key: 'ArrowDown' })
+    fireEvent.keyDown(cell, { key: 'ArrowDown' })
+    fireEvent.keyDown(cell, { key: 'ArrowDown' })
+    // Past the last token the keys go on into the game's icons, in one run.
+    expect(pointsAt()).toBe(optionsOf('Spelets ikoner')[0])
+    expect(cell.getAttribute('aria-controls')).toBe(screen.getByRole('listbox', { name: 'Spelets ikoner' }).id)
+    expect(optionsOf('Spelets ikoner')[0]!.getAttribute('aria-selected')).toBe('true')
+    // And the last stop is the way into the library, which Enter takes.
+    fireEvent.keyDown(cell, { key: 'End' })
+    expect(pointsAt()?.textContent).toMatch(/Hela biblioteket/)
+    fireEvent.keyDown(cell, { key: 'Enter' })
+    expect(pointsAt()).toBe(optionsOf('Symboler')[0])
+    fireEvent.keyDown(cell, { key: 'End' })
+    expect(pointsAt()?.textContent).toBe('‹ Spelets ikoner')
+    fireEvent.keyDown(cell, { key: 'Enter' })
+    expect(pointsAt()).toBe(optionsOf('Som leken skriver dem')[0])
+
+    fireEvent.keyDown(cell, { key: 'Enter' })
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'title', 'Skada {droppe|kostnad}'))
+
+    type(cell, 'Skada {')
+    fireEvent.keyDown(cell, { key: 'Escape' })
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('searches everything but shows the game’s own first, and never offers what the game already has twice', () => {
+    const { cell } = setup()
+    type(cell, 'Skada {sköl')
+    expect(screen.queryByRole('listbox', { name: 'Som leken skriver dem' })).toBeNull()
+    expect(optionsOf('Spelets ikoner').map((o) => o.getAttribute('data-symbol'))).toEqual(['sköld'])
+    // The library's shield is the game's shield: it is not offered a second time.
+    expect(screen.queryByRole('listbox', { name: 'Ur biblioteket' })).toBeNull()
+
+    type(cell, 'Skada {mån')
+    expect(screen.queryByRole('listbox', { name: 'Spelets ikoner' })).toBeNull()
+    expect(optionsOf('Ur biblioteket').map((o) => o.getAttribute('data-symbol'))).toEqual(['måne'])
+
+    type(cell, 'Skada {s')
+    const lists = screen.getAllByRole('listbox').map((l) => l.getAttribute('aria-label'))
+    expect(lists.indexOf('Spelets ikoner')).toBeLessThan(lists.indexOf('Ur biblioteket'))
+  })
+
+  it('opens on the library, as before, in a game that has no icons of its own', () => {
+    const { cell } = setup({})
+    type(cell, 'Skada {')
+    expect(optionsOf('Symboler').length).toBeGreaterThan(3)
+    expect(screen.queryByRole('listbox', { name: 'Som leken skriver dem' })).toBeNull()
+    expect(screen.queryByRole('listbox', { name: 'Spelets ikoner' })).toBeNull()
+    expect(screen.queryByRole('option', { name: /Hela biblioteket/ })).toBeNull()
   })
 })
 

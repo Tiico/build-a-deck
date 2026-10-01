@@ -1,27 +1,90 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type Ref } from 'react'
 import type { ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { CARD_PX, cornerPx } from './corner.js'
-import { Crown, CrownBox, CrownDrawer, CrownFoot } from './Crown.js'
 import { iconFieldsOf, previewIcons } from './assets.js'
-import { previewFonts } from './fonts.js'
+import { cardWords, previewFonts } from './fonts.js'
 import { CATEGORIES, INK, LIBRARY, searchSymbols, symbolName, symbolPreview, type GameSymbol } from './symbols.js'
 import { ROLE_MIN_CONTRAST, groundOf, iconsIn, iconsPainted, iconsUsed, paletteIssues, rolesUsed, type Painted } from './palette.js'
 import { SymbolSample, SymbolSheet } from './SymbolSample.js'
-import { contrastRatio, isSymbolName } from '@byd/template'
+import { FontShelf } from './FontShelf.js'
+import { FontCatalog } from './FontCatalog.js'
+import { contrastRatio, elementsFor, isSymbolName } from '@byd/template'
 import type { ProjectClient } from './ProjectClient.js'
 import { useT, type Key } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
 import { Question } from './Question.js'
 import { useSay } from '../status/StatusLive.js'
 
-// The symbol library (E4), from the prototype: the library is a surface of its own, with search,
-// categories and the licence on every symbol. Taking one in names it in the project's icon set,
-// which is what `{namn}` in card text looks up (L2). The set stands beside the library with what
-// to write, what each symbol is licensed under, and which cards use it.
-export type SymbolPanelProps = { doc: ProjectDoc; client: ProjectClient; assetBase: string }
+// Speltema (L57, #630), in Symbolers ställe. The game's identity used to stand in three places:
+// the meanings and the icon set under a library on Symboler, and the typefaces in Mall's panel,
+// and there only while no layer was chosen. Here they are one tab, and each part is folded behind
+// a head that carries its value while it is closed — as L25's panel sections do (#478) — so
+// nothing is hidden without being said. The library is no longer the tab: it opens from Spelets
+// ikoner, and a symbol taken in from it becomes one of the game's icons, its licence with it (E4).
+export type ThemePanelProps = { doc: ProjectDoc; client: ProjectClient; assetBase: string }
 
-// How large a card is drawn beside a symbol: small enough that a handful fit under the library,
+export type ThemeSectionId = 'fonts' | 'colours' | 'icons'
+const SECTION_IDS: readonly ThemeSectionId[] = ['fonts', 'colours', 'icons']
+
+// What is open belongs to this browser and not to the game (L4's pattern for a view), and every
+// part starts folded: the tab is calm for the designer who is content with her theme, and one
+// press away for the one who is not (L57). One store for the whole editor, so Mall can open the
+// typefaces before it hands the designer over (`revealThemeSection`).
+const OPEN_KEY = 'byd.theme-open'
+const listeners = new Set<() => void>()
+// Read from the browser every time and parsed only when what is kept has changed, so the snapshot
+// is the same object until it is not — and a store cleared under the editor is believed.
+let kept: { raw: string | null; open: ReadonlySet<ThemeSectionId> } | null = null
+// Where the browser keeps nothing, what is open lives here for the visit.
+let unkept: ReadonlySet<ThemeSectionId> = new Set()
+function openSections(): ReadonlySet<ThemeSectionId> {
+  let raw: string | null
+  try {
+    raw = localStorage.getItem(OPEN_KEY)
+  } catch {
+    return unkept
+  }
+  if (kept?.raw === raw) return kept.open
+  let open: ReadonlySet<ThemeSectionId> = new Set()
+  try {
+    const list = JSON.parse(raw ?? 'null') as unknown
+    if (Array.isArray(list)) open = new Set(SECTION_IDS.filter((id) => list.includes(id)))
+  } catch {
+    // Something else under the key: start folded.
+  }
+  kept = { raw, open }
+  return open
+}
+function keepOpen(next: ReadonlySet<ThemeSectionId>): void {
+  unkept = next
+  try {
+    localStorage.setItem(OPEN_KEY, JSON.stringify(SECTION_IDS.filter((id) => next.has(id))))
+  } catch {
+    // Kept for this visit only.
+  }
+  for (const listener of listeners) listener()
+}
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+// Opens one part of the theme, wherever the hand is coming from.
+export function revealThemeSection(id: ThemeSectionId): void {
+  const now = openSections()
+  if (!now.has(id)) keepOpen(new Set([...now, id]))
+}
+function toggleSection(id: ThemeSectionId): void {
+  const next = new Set(openSections())
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  keepOpen(next)
+}
+function useOpenSections(): ReadonlySet<ThemeSectionId> {
+  return useSyncExternalStore(subscribe, openSections, openSections)
+}
+
+// How large a card is drawn beside a symbol: small enough that a handful fit in the section,
 // large enough that the symbol in the text can be seen. Stated as the zoom and once more as the
 // pixels it comes to, because the tile and its corner both have to be told the same width (#332)
 // — the grid used to say 150 px while the card was drawn 131, and the two disagreeing is what
@@ -29,36 +92,127 @@ export type SymbolPanelProps = { doc: ProjectDoc; client: ProjectClient; assetBa
 const SHOWN = 0.55
 const SHOWN_PX = CARD_PX * SHOWN
 
-export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
+export function ThemePanel({ doc, client, assetBase }: ThemePanelProps) {
+  const t = useT()
+  const open = useOpenSections()
+  // What stands beside the sections: the symbol library, or the typeface catalog. One at a time,
+  // in the same place, and each hands the focus back to what opened it.
+  const [sheet, setSheet] = useState<'library' | 'catalog' | null>(null)
+  const libraryOpener = useRef<HTMLButtonElement>(null)
+  const catalogOpener = useRef<HTMLButtonElement>(null)
+  const closeSheet = () => {
+    const back = sheet === 'library' ? libraryOpener.current : catalogOpener.current
+    setSheet(null)
+    back?.focus()
+  }
+  const families = Object.keys(doc.fonts ?? {})
+  const roles = Object.keys(doc.palette ?? {})
+  const names = Object.keys(doc.icons)
+  const reading = !client.mayEdit
+  const icons = useMemo(() => previewIcons(doc, assetBase), [doc, assetBase])
+  // The catalog sets its samples in the card's own words (L27): the first card of the deck, as the
+  // wall draws it first.
+  const front = doc.template.faces['front']
+  const first = doc.rows[0]?.fields
+  const words = useMemo(() => (front && first ? cardWords(elementsFor(front, first), first) : null), [front, first])
+  return (
+    <div className="byd-theme" data-theme-panel {...(sheet ? { 'data-sheet': sheet } : {})}>
+      <div className="byd-theme-work">
+        {/* The gallery of ready themes, and the line that says what departs from the chosen one,
+            stand here above the parts a theme is made of (L57, #632). */}
+        <ThemeSection id="fonts" open={open.has('fonts')} name={t('theme.fonts')} value={families.length === 0 ? t('theme.fonts.none') : families.join(' · ')}>
+          {reading ? (
+            <fieldset className="byd-reading-set" disabled>
+              <ThemeFonts doc={doc} client={client} onOpenCatalog={() => undefined} />
+            </fieldset>
+          ) : (
+            <ThemeFonts doc={doc} client={client} catalogRef={catalogOpener} onOpenCatalog={() => setSheet('catalog')} />
+          )}
+        </ThemeSection>
+        <ThemeSection
+          id="colours"
+          open={open.has('colours')}
+          name={t('theme.colours')}
+          value={roles.length === 0 ? t('theme.none') : roles.join(' · ')}
+          help={
+            <Help topic={t('symbols.colours.help.topic')}>
+              <p>{t('symbols.colours.help')}</p>
+            </Help>
+          }
+        >
+          <GameColours doc={doc} client={client} icons={icons} />
+        </ThemeSection>
+        <ThemeSection id="icons" open={open.has('icons')} name={t('theme.icons')} value={names.length === 0 ? t('theme.none') : t(names.length === 1 ? 'theme.icons.count.one' : 'theme.icons.count.other', { n: names.length })}>
+          <ProjectSet doc={doc} client={client} assetBase={assetBase} />
+          {/* The library's only verb is taking a symbol in (#489), so a reader is not offered it. */}
+          {!reading && (
+            <button type="button" ref={libraryOpener} className="byd-theme-library-open byd-secondary" aria-expanded={sheet === 'library'} onClick={() => setSheet(sheet === 'library' ? null : 'library')}>
+              {t('theme.library.open')}
+            </button>
+          )}
+          <IconDeck doc={doc} assetBase={assetBase} icons={icons} />
+        </ThemeSection>
+      </div>
+      {sheet === 'library' && <SymbolLibrary doc={doc} client={client} onClose={closeSheet} />}
+      {sheet === 'catalog' && (
+        <div className="byd-theme-sheet">
+          <FontCatalog words={words} inGame={families} onChoose={async (family) => void (await client.useCatalogFont(family, t))} onClose={closeSheet} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// One part of the theme. The head is a disclosure button inside a heading, and while it is closed
+// it says the part's value, so the folded tab still reads as the game's theme.
+function ThemeSection({ id, open, name, value, help, children }: { id: ThemeSectionId; open: boolean; name: string; value: string; help?: ReactNode; children: ReactNode }) {
+  const body = `byd-theme-${id}`
+  return (
+    <section className="byd-theme-sec" aria-label={name} data-theme-section={id}>
+      <div className="byd-theme-head">
+        <h2>
+          <button type="button" aria-expanded={open} aria-controls={open ? body : undefined} onClick={() => toggleSection(id)}>
+            <span className="byd-theme-name">{name}</span>
+            {!open && <span className="byd-theme-sum">{value}</span>}
+          </button>
+        </h2>
+        {open && help}
+      </div>
+      {open && (
+        <div className="byd-theme-body" id={body}>
+          {children}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function ThemeFonts({ doc, client, catalogRef, onOpenCatalog }: { doc: ProjectDoc; client: ProjectClient; catalogRef?: Ref<HTMLButtonElement>; onOpenCatalog(): void }) {
+  const t = useT()
+  return (
+    <FontShelf
+      doc={doc}
+      onFontFile={(file) => client.useFont(file, t)}
+      onFontLicence={(family, licence) => client.setFontLicence(family, licence)}
+      onRemoveFont={(family) => client.removeFont(family)}
+      onOpenCatalog={onOpenCatalog}
+      {...(catalogRef ? { catalogRef } : {})}
+    />
+  )
+}
+
+// The symbol library (E4), opened from Spelets ikoner (L57): search, categories and the licence on
+// every symbol. Taking one in names it in the game's icon set, which is what `{namn}` in card text
+// looks up (L2). It stands beside the sections rather than over them, so the set can be seen
+// growing while symbols are taken in.
+function SymbolLibrary({ doc, client, onClose }: { doc: ProjectDoc; client: ProjectClient; onClose(): void }) {
   const t = useT()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<string | null>(null)
-  const [open, setOpen] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
-  // Which cards the deck below shows (#178): one symbol, or the whole deck as a choice of its own.
-  // It used to show every card in the game, always — a deck of 308 under a line saying the game
-  // had no symbols yet, each one compiled by the card renderer. The tab is about symbols and where
-  // they are said, so what it draws is what says the symbol in hand.
-  const [showing, setShowing] = useState<string | null>(null)
-  const categoryBox = useRef<HTMLButtonElement>(null)
+  const search = useRef<HTMLInputElement>(null)
+  useEffect(() => search.current?.focus(), [])
   const found = searchSymbols(query, category, t)
-  const front = doc.template.faces['front']
-  // What the deck below is compiled from, worked out once per document. Both of these build a
-  // fresh object every call, and a fresh object is a fresh compile of every card in the deck —
-  // so without this, searching the library recompiles the whole deck on every keystroke.
-  const icons = useMemo(() => previewIcons(doc, assetBase), [doc, assetBase])
-  const fonts = useMemo(() => previewFonts(doc, assetBase), [doc, assetBase])
-  // Which symbols each card says, by the same walk the set beside the library counts with, so the
-  // tally on a chip and the cards under it can never disagree.
-  const bare = useMemo(() => iconFieldsOf(doc), [doc])
-  const said = useMemo(() => doc.rows.map((r) => ({ row: r, icons: iconsIn(r.fields, bare) })), [doc.rows, bare])
-  // And which symbols no row says because the template paints them (#213).
-  const painted = useMemo(() => iconsPainted(doc), [doc])
-  const names = Object.keys(doc.icons)
-  // The symbol in hand: the first in the set until one is picked, so the tab opens on a symbol and
-  // never on the whole deck. A set that loses the symbol being shown falls back the same way.
-  const chosen = showing !== null && (showing === ALL || names.includes(showing)) ? showing : (names[0] ?? null)
-  const shown = chosen === null ? [] : chosen === ALL ? said : said.filter((c) => c.icons.has(chosen))
   // The library's symbols the game already has, by the source its credit names (#481): the name
   // in the game is the designer's and may be anything, the source is the library's own id.
   const had = new Map(Object.entries(doc.credits ?? {}).flatMap(([name, credit]) => (doc.icons[name] !== undefined && credit.source ? [[credit.source, name] as const] : [])))
@@ -75,132 +229,129 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
       .catch((err: unknown) => setNotice(err instanceof Error ? err.message : String(err)))
   }
   return (
-    <div className="byd-symbols" data-symbol-panel>
-      {/* The crown (#128, variant B). The search and the categories used to stand inside the
-          library column, which is why that column grew a scroll bar of its own inside a panel that
-          was already scrolling — two bars for one gesture. They belong to the panel, so they are
-          the panel's crown, and the library below is free to be part of the one thing that
-          scrolls here. */}
-      {/* The library's only verb is taking a symbol in (#489), so a reader is shown the game's own
-          symbols and colours and neither the library nor the search and categories that sift it. */}
-      {client.mayEdit && (
-        <Crown>
-          <input
-            className="byd-crown-search"
-            type="search"
-            aria-label={t('symbols.search')}
-            placeholder={t('symbols.search.placeholder')}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <CrownBox
-            name={t('symbols.category')}
-            state={category === null ? t('symbols.all') : t(category as Key)}
-            open={open}
-            onToggle={() => setOpen((now) => !now)}
-            boxRef={categoryBox}
-          />
-        </Crown>
-      )}
-      {open && (
-        <CrownDrawer label={t('symbols.categories')} opener={categoryBox} onClose={() => setOpen(false)}>
-          <button type="button" className="byd-choice" aria-pressed={category === null} onClick={() => setCategory(null)}>
-            {t('symbols.all')}
+    <section
+      className="byd-theme-sheet byd-symbols-library"
+      aria-label={t('symbols.library')}
+      onKeyDown={(e) => {
+        // Escape inside a help box closes the box, not the library under it.
+        if (e.key !== 'Escape' || (e.target as Element).closest('.byd-help')) return
+        e.preventDefault()
+        onClose()
+      }}
+    >
+      <header>
+        <h2>{t('symbols.library')}</h2>
+        <Help topic={t('symbols.help.topic')}>
+          <p>{t('symbols.help')}</p>
+        </Help>
+        <button type="button" className="byd-theme-sheet-done" onClick={onClose}>
+          {t('theme.library.done')}
+        </button>
+      </header>
+      <input ref={search} className="byd-theme-search" type="search" aria-label={t('symbols.search')} placeholder={t('symbols.search.placeholder')} value={query} onChange={(e) => setQuery(e.target.value)} />
+      <div className="byd-theme-kinds" role="group" aria-label={t('symbols.categories')}>
+        <button type="button" className="byd-choice" aria-pressed={category === null} onClick={() => setCategory(null)}>
+          {t('symbols.all')}
+        </button>
+        {CATEGORIES.map((c) => (
+          <button key={c} type="button" className="byd-choice" aria-pressed={category === c} onClick={() => setCategory(category === c ? null : c)}>
+            {t(c)}
           </button>
-          {CATEGORIES.map((c) => (
-            <button key={c} type="button" className="byd-choice" aria-pressed={category === c} onClick={() => setCategory(category === c ? null : c)}>
-              {t(c)}
-            </button>
-          ))}
-        </CrownDrawer>
-      )}
-      <div className="byd-symbols-work">
-        {client.mayEdit && (
-          <aside className="byd-symbols-library">
-            <div className="byd-help-row">
-              <h2>{t('symbols.library')}</h2>
-              <Help topic={t('symbols.help.topic')}>
-                <p>{t('symbols.help')}</p>
-              </Help>
-            </div>
-            {found.length === 0 ? (
-              <p className="byd-symbols-empty">{t('symbols.none')}</p>
-            ) : (
-              <div className="byd-symbols-grid">
-                {found.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    className="byd-symbols-tile"
-                    // A symbol the game has is named by what the tile shows (#558), since a press
-                    // on it no longer takes anything in: it says it is already there.
-                    aria-label={had.has(s.id) ? t('symbols.had.name', { name: symbolName(s, t) }) : t('symbols.take', { name: symbolName(s, t) })}
-                    {...(had.has(s.id) ? { 'data-had': 'true' } : {})}
-                    onClick={() => take(s)}
-                  >
-                    <img src={symbolPreview(s)} alt="" />
-                    <span>{symbolName(s, t)}</span>
-                    {/* In words and not only as a mark (L13): the game already has this one. */}
-                    {had.has(s.id) ? <small className="byd-symbols-had">{t('symbols.had')}</small> : <small>{s.licence}</small>}
-                  </button>
-                ))}
-              </div>
-            )}
-            {notice && <p role="alert">{notice}</p>}
-            <p className="byd-symbols-note" role="status">
-              {hadSaid ?? ''}
-            </p>
-          </aside>
-        )}
-        <div className="byd-symbols-main">
-          <ProjectSet doc={doc} client={client} assetBase={assetBase} />
-          <GameColours doc={doc} client={client} icons={icons} />
-          {/* The chips, and under them the cards that say what is chosen. A game with no symbol at
-              all draws neither: there is nothing to ask about, and the set above already says what
-              to do instead. */}
-          {names.length > 0 && (
-            <section className="byd-symbols-deck">
-              <h2>{t('symbols.deck')}</h2>
-              <div className="byd-symbols-chips" role="group" aria-label={t('symbols.deck')}>
-                {names.map((name) => {
-                  const n = said.filter((c) => c.icons.has(name)).length
-                  return (
-                    <button key={name} type="button" className="byd-choice" aria-pressed={chosen === name} onClick={() => setShowing(name)}>
-                      {name} <small>{n === 0 && painted[name] ? t(paintedChip(painted[name])) : n}</small>
-                    </button>
-                  )
-                })}
-                <button type="button" className="byd-choice" aria-pressed={chosen === ALL} onClick={() => setShowing(ALL)}>
-                  {t('symbols.deck.all')}
-                </button>
-              </div>
-              {shown.length === 0 && <p className="byd-symbols-empty">{t(chosen !== null && chosen !== ALL && painted[chosen] ? paintedWhy(painted[chosen]) : 'symbols.deck.unused')}</p>}
-              {/* The same wall and the same tile the deck is drawn with, so the card is cut at
-                  the same corner here as it is there (#332): the width it is actually drawn at
-                  is what both the grid and the corner are told. */}
-              <div className="byd-wall" role="list" style={{ ['--byd-wall-card' as string]: `${SHOWN_PX}px`, ['--byd-wall-radius' as string]: `${cornerPx(SHOWN_PX)}px` }}>
-                {front &&
-                  shown.map(({ row: r }) => (
-                    <div key={r.id} role="listitem" className="byd-wall-card" data-card-ref={r.id}>
-                      <div className="byd-wall-face">
-                        <CardPreview id={`sym-${r.id}`} face={front} row={r.fields} icons={icons} fonts={fonts} assetBase={assetBase} palette={doc.palette} scale={SHOWN} />
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </section>
-          )}
-        </div>
+        ))}
       </div>
-      <CrownFoot>
-        <span>{t('symbols.foot', { n: found.length, of: SYMBOL_COUNT, m: Object.keys(doc.icons).length })}</span>
-      </CrownFoot>
-    </div>
+      <div className="byd-theme-sheet-scroll">
+        {found.length === 0 ? (
+          <p className="byd-symbols-empty">{t('symbols.none')}</p>
+        ) : (
+          <div className="byd-symbols-grid">
+            {found.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className="byd-symbols-tile"
+                // A symbol the game has is named by what the tile shows (#558), since a press on it
+                // no longer takes anything in: it says it is already there.
+                aria-label={had.has(s.id) ? t('symbols.had.name', { name: symbolName(s, t) }) : t('symbols.take', { name: symbolName(s, t) })}
+                {...(had.has(s.id) ? { 'data-had': 'true' } : {})}
+                onClick={() => take(s)}
+              >
+                <img src={symbolPreview(s)} alt="" />
+                <span>{symbolName(s, t)}</span>
+                {/* In words and not only as a mark (L13): the game already has this one. */}
+                {had.has(s.id) ? <small className="byd-symbols-had">{t('symbols.had')}</small> : <small>{s.licence}</small>}
+              </button>
+            ))}
+          </div>
+        )}
+        {notice && <p role="alert">{notice}</p>}
+        <p className="byd-symbols-note" role="status">
+          {hadSaid ?? ''}
+        </p>
+      </div>
+      <footer>{t('symbols.foot', { n: found.length, of: SYMBOL_COUNT, m: Object.keys(doc.icons).length })}</footer>
+    </section>
+  )
+}
+
+// The cards that say a symbol (#178): one symbol, or the whole deck as a choice of its own. The
+// tab used to draw every card in the game, always — a deck of 308 under a line saying the game had
+// no symbols yet, each one compiled by the card renderer. What it draws is what says the symbol in
+// hand, and only while the icons are open.
+function IconDeck({ doc, assetBase, icons }: { doc: ProjectDoc; assetBase: string; icons: Record<string, string> }) {
+  const t = useT()
+  const [showing, setShowing] = useState<string | null>(null)
+  const front = doc.template.faces['front']
+  // Built once per document: a fresh object is a fresh compile of every card in the deck.
+  const fonts = useMemo(() => previewFonts(doc, assetBase), [doc, assetBase])
+  // Which symbols each card says, by the same walk the set counts with, so the tally on a chip and
+  // the cards under it can never disagree.
+  const bare = useMemo(() => iconFieldsOf(doc), [doc])
+  const said = useMemo(() => doc.rows.map((r) => ({ row: r, icons: iconsIn(r.fields, bare) })), [doc.rows, bare])
+  // And which symbols no row says because the template paints them (#213).
+  const painted = useMemo(() => iconsPainted(doc), [doc])
+  const names = Object.keys(doc.icons)
+  // The symbol in hand: the first in the set until one is picked, so the deck opens on a symbol and
+  // never on the whole deck. A set that loses the symbol being shown falls back the same way.
+  const chosen = showing !== null && (showing === ALL || names.includes(showing)) ? showing : (names[0] ?? null)
+  const shown = chosen === null ? [] : chosen === ALL ? said : said.filter((c) => c.icons.has(chosen))
+  // A game with no symbol at all draws neither chips nor cards: there is nothing to ask about, and
+  // the set above already says what to do instead.
+  if (names.length === 0) return null
+  return (
+    <section className="byd-symbols-deck">
+      <h3>{t('symbols.deck')}</h3>
+      <div className="byd-symbols-chips" role="group" aria-label={t('symbols.deck')}>
+        {names.map((name) => {
+          const n = said.filter((c) => c.icons.has(name)).length
+          return (
+            <button key={name} type="button" className="byd-choice" aria-pressed={chosen === name} onClick={() => setShowing(name)}>
+              {name} <small>{n === 0 && painted[name] ? t(paintedChip(painted[name])) : n}</small>
+            </button>
+          )
+        })}
+        <button type="button" className="byd-choice" aria-pressed={chosen === ALL} onClick={() => setShowing(ALL)}>
+          {t('symbols.deck.all')}
+        </button>
+      </div>
+      {shown.length === 0 && <p className="byd-symbols-empty">{t(chosen !== null && chosen !== ALL && painted[chosen] ? paintedWhy(painted[chosen]) : 'symbols.deck.unused')}</p>}
+      {/* The same wall and the same tile the deck is drawn with, so the card is cut at the same
+          corner here as it is there (#332). */}
+      <div className="byd-wall" role="list" style={{ ['--byd-wall-card' as string]: `${SHOWN_PX}px`, ['--byd-wall-radius' as string]: `${cornerPx(SHOWN_PX)}px` }}>
+        {front &&
+          shown.map(({ row: r }) => (
+            <div key={r.id} role="listitem" className="byd-wall-card" data-card-ref={r.id}>
+              <div className="byd-wall-face">
+                <CardPreview id={`sym-${r.id}`} face={front} row={r.fields} icons={icons} fonts={fonts} assetBase={assetBase} palette={doc.palette} scale={SHOWN} />
+              </div>
+            </div>
+          ))}
+      </div>
+    </section>
   )
 }
 
 // The game's own set: what to write, what it is licensed under, and where it is already used.
-function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
+function ProjectSet({ doc, client, assetBase }: ThemePanelProps) {
   const t = useT()
   const [error, setError] = useState<string | null>(null)
   const names = Object.keys(doc.icons)
@@ -211,10 +362,9 @@ function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
   const used = iconsUsed(doc.rows, bare)
   const painted = iconsPainted(doc)
   // Asked about first when a card says it, as Media asks about a picture (#481; L22, #318). The
-  // row goes with it, so the hand lands on the set's own heading rather than on the page.
-  const heading = useRef<HTMLHeadingElement>(null)
-  // Taken once the set has drawn itself without the symbol: the last one takes the heading with
-  // it, and the library's search is then the nearest thing standing.
+  // row goes with it, so the hand lands on the set itself rather than on the page.
+  const list = useRef<HTMLUListElement>(null)
+  // Taken once the set has drawn itself without the symbol.
   const [landing, setLanding] = useState(0)
   // The last one leaves the line that says the game has none where the list stood, and that is
   // where the hand goes (#558), rather than to the library's search at the top of the page.
@@ -222,7 +372,7 @@ function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
   const say = useSay()
   useEffect(() => {
     if (landing === 0) return
-    ;(heading.current ?? none.current)?.focus()
+    ;(list.current ?? none.current)?.focus()
   }, [landing])
   const [ask, removing] = useRemoval((name) => {
     client.removeIcon(name)
@@ -237,11 +387,8 @@ function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
     )
   return (
     <section className="byd-symbols-set">
-      <h2 ref={heading} tabIndex={-1}>
-        {t('symbols.inGame')}
-      </h2>
       {removing}
-      <ul aria-label={t('symbols.inGame')}>
+      <ul ref={list} tabIndex={-1} aria-label={t('symbols.inGame')}>
         {names.map((name) => {
           const credit = doc.credits?.[name]
           const n = used[name] ?? 0
@@ -384,12 +531,6 @@ function GameColours({ doc, client, icons }: { doc: ProjectDoc; client: ProjectC
   }, (role) => `[aria-label="${CSS.escape(t('symbols.colours.remove', { role }))}"]`)
   return (
     <section className="byd-symbols-colours">
-      <div className="byd-help-row">
-        <h2>{t('symbols.colours')}</h2>
-        <Help topic={t('symbols.colours.help.topic')}>
-          <p>{t('symbols.colours.help')}</p>
-        </Help>
-      </div>
       {roles.length === 0 ? (
         <p className="byd-symbols-empty">{t('symbols.colours.none')}</p>
       ) : (

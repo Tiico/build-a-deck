@@ -73,8 +73,8 @@ function deckDoc(): ProjectDoc {
   }
 }
 
-function Table() {
-  const [doc, setDoc] = useState(deckDoc)
+function Table({ prose }: { prose?: ProjectDoc['prose'] }) {
+  const [doc, setDoc] = useState(() => (prose ? { ...deckDoc(), prose } : deckDoc()))
   return (
     <DataTable
       doc={doc}
@@ -92,8 +92,8 @@ function Table() {
 }
 
 // The table's markup, with `body` pulled wide enough to burst the box when asked for.
-function markup(pull?: { field: string; by: number }): string {
-  const { container, unmount } = render(<Table />)
+function markup(pull?: { field: string; by: number }, prose?: ProjectDoc['prose']): string {
+  const { container, unmount } = render(<Table {...(prose ? { prose } : {})} />)
   try {
     if (pull) {
       const grip = container.querySelector(`thead th[data-col="${pull.field}"] .byd-data-pull`) as HTMLElement
@@ -296,6 +296,17 @@ describe('rubriken över den text man läser (#401)', () => {
     expect(sedd.höger).toBeLessThanOrEqual(sedd.lådan)
   }, 90_000)
 
+  // Samma sak om kolumnen skrivs som vanlig text (#615). Rubriken gled förut bara i kolumner som
+  // skrevs som prosa: prosamärkets utfällning satte deras rubrik till `overflow: visible`, och
+  // alla andra rubriker var sin egen rullbehållare, där ett `sticky` namn aldrig glider.
+  it('står kvar innanför lådan också i en kolumn som skrivs som vanlig text', async () => {
+    const sedd = await at(markup({ field: 'body', by: 1400 }, { body: false }), 'end', (page) => rubrikenOchLådan(page, 'body'))
+    expect(sedd.kolumnenSyns).toBe(true)
+    expect(sedd.text).toContain('body')
+    expect(sedd.vänster).toBeGreaterThanOrEqual(sedd.fast)
+    expect(sedd.höger).toBeLessThanOrEqual(sedd.lådan)
+  }, 90_000)
+
   // Att det verkligen är ett villkor: vid lådans början, där kolumnen börjar långt inne i bilden,
   // står namnet kvar vid sin egen kolumn och inte klistrat vid kanten. Glidningen är alltså ett
   // svar på rullningen och inte en rubrik som alltid står längst till vänster.
@@ -331,6 +342,27 @@ const kantenAvLådan = (page: import('playwright').Page) =>
       kvar: box.scrollWidth - box.clientWidth - Math.round(box.scrollLeft),
     }
   })
+
+// `id` är en del av det fastnålade, inte en kolumn som rullar förbi det (#629). #401:s glidning
+// knuffar varje rubrik fram till lanens slut — och lanen *är* bocken plus `id` — så `id`:s eget
+// namn hamnade vid sin cells högerkant, ~150 px från texten under det. Villkoret mäts mot en
+// rubrik som inte glider än: vid lådans början står varje namn lika långt in i sin cell.
+describe('rubriken «id» står över sin egen text (#629)', () => {
+  const indrag = (page: import('playwright').Page, col: string) =>
+    page.evaluate((col) => {
+      const th = document.querySelector(`.byd-data thead th[data-col="${col}"]`)!
+      return Math.round(th.querySelector('button')!.getBoundingClientRect().left - th.getBoundingClientRect().left)
+    }, col)
+
+  it('står lika långt in i sin cell som rubrikerna bredvid, i vila och utrullad', async () => {
+    const [id, typ] = await at(burst(), 'start', async (page) => [await indrag(page, 'id'), await indrag(page, 'typ')])
+    // Inte ett prov på en tom rubrik: `typ` står i sin cell med rubrikens egen indragning.
+    expect(typ).toBeGreaterThan(0)
+    expect(id).toBe(typ)
+    // Och `id` glider inte när resten rullar förbi: den är redan där lanen slutar.
+    expect(await at(burst(), 'end', (page) => indrag(page, 'id'))).toBe(id)
+  }, 90_000)
+})
 
 describe('kapet mot lådan bär samma gest som kapet mot kolumnen (#401)', () => {
   it('tonar ut vid högerkanten så länge något ligger utanför den', async () => {

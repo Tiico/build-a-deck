@@ -1,12 +1,19 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { useState } from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import type { ProjectDoc } from '@byd/server'
 import { DataTable, type DataTableProps } from '../src/editor/DataTable.js'
 import { projectDoc } from './project-doc.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
+
+// The way a value is chosen since #617: through the column's own door in the head, left standing.
+async function tick(user: ReturnType<typeof userEvent.setup>, field: string, value: string) {
+  const handle = screen.getByRole('button', { name: new RegExp(`^Filtrera på ${field}`) })
+  if (handle.getAttribute('aria-expanded') !== 'true') await user.click(handle)
+  await user.click(within(screen.getByRole('group', { name: `Filtrera på ${field}` })).getByRole('checkbox', { name: value }))
+}
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
@@ -124,7 +131,7 @@ describe('DataTable "markera alla synliga" (#17 on #16)', () => {
   it('means the rows the filter lets through, and reads as partly marked when one is let go', async () => {
     const user = userEvent.setup()
     renderTable(bigDoc())
-    await user.click(screen.getByRole('button', { name: 'varelse' }))
+    await tick(user, 'typ', 'varelse')
 
     await user.click(box('Markera alla synliga'))
     expect(screen.getByText('4 markerade kort')).toBeDefined()
@@ -195,7 +202,8 @@ describe('DataTable bulk delete from the keyboard (#17)', () => {
     await user.keyboard(' ')
     expect(grop.checked).toBe(true)
 
-    // The action row stands between the filter and the table, so it is a shift-tab away.
+    // The actions stand in the foot under the table (#618); the walk back reaches them all the
+    // same, since it goes round.
     const remove = screen.getByRole('button', { name: 'Ta bort 1 kort' })
     for (let i = 0; i < 40 && document.activeElement !== remove; i++) await user.tab({ shift: true })
     expect(document.activeElement).toBe(remove)
@@ -279,8 +287,10 @@ describe('DataTable bulk set of a column (#17)', () => {
     render(<BulkTable start={bigDoc()} onRows={onRows} />)
     await user.click(box('markera drake'))
     await user.click(box('markera orm'))
+    // The column and the value are behind «Sätt fält» in the foot (#618).
+    await user.click(screen.getByRole('button', { name: 'Sätt fält' }))
     // Nothing to write yet: the button waits for a value.
-    expect((screen.getByRole('button', { name: /^Sätt/ }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: /^Sätt .* på/ }) as HTMLButtonElement).disabled).toBe(true)
 
     await user.selectOptions(screen.getByLabelText('Kolumn'), 'typ')
     await user.type(screen.getByLabelText('Värde'), 'fälla')
@@ -297,6 +307,7 @@ describe('DataTable bulk set of a column (#17)', () => {
     const onRows = vi.fn()
     render(<BulkTable start={bigDoc()} onRows={onRows} />)
     await user.click(box('markera drake'))
+    await user.click(screen.getByRole('button', { name: 'Sätt fält' }))
 
     await user.selectOptions(screen.getByLabelText('Kolumn'), 'antal')
     await user.type(screen.getByLabelText('Värde'), '4')
@@ -334,12 +345,12 @@ describe('DataTable selection when the filter moves under it (#17 on #16)', () =
     await user.click(box('markera grop'))
     expect(screen.getByText('2 markerade kort')).toBeDefined()
 
-    await user.click(screen.getByRole('button', { name: 'varelse' }))
+    await tick(user, 'typ', 'varelse')
     expect(shownIds()).toEqual(['drake', 'alv', 'troll', 'orm'])
     expect(screen.getByText('1 markerat kort')).toBeDefined()
     expect(box('markera drake').checked).toBe(true)
 
-    await user.click(screen.getByRole('button', { name: 'varelse' }))
+    await tick(user, 'typ', 'varelse')
 
     expect(shownIds()).toHaveLength(8)
     expect(screen.getByText('1 markerat kort')).toBeDefined()
@@ -374,7 +385,7 @@ describe('DataTable a question that loses its cards (#17)', () => {
     expect(screen.getByRole('alertdialog')).toBeDefined()
 
     // The drake is a varelse: asking for traps takes it, and the question about it, off screen.
-    await user.click(screen.getByRole('button', { name: 'fälla' }))
+    await tick(user, 'typ', 'fälla')
     expect(screen.queryByRole('alertdialog')).toBeNull()
 
     await user.click(box('markera grop'))
@@ -396,5 +407,34 @@ describe('DataTable marking a row versus opening it (#17)', () => {
     await user.click(screen.getByText('drake'))
     expect(onSelectRow).toHaveBeenCalledWith('drake')
     expect(box('markera drake').checked).toBe(false)
+  })
+})
+
+// The actions for a marking stand in the foot (#618, variant A), where #130 already put the count
+// and the sort: nothing fells out between the crown and the rows, so the box the hand just ticked
+// does not slide away under it. The column and the value to set stand behind «Sätt fält», which
+// opens a box over the foot rather than a field in it.
+describe('DataTable action row in the foot (#618)', () => {
+  it('puts the actions in the foot after the count, and nothing between the crown and the rows', async () => {
+    const user = userEvent.setup()
+    renderTable(bigDoc())
+    await user.click(box('markera drake'))
+
+    const toolbar = screen.getByRole('toolbar', { name: 'Markerade kort' })
+    expect(toolbar.closest('.byd-crown-foot')).not.toBeNull()
+    expect(screen.getByText('1 markerat kort').closest('[aria-live="polite"]')).not.toBeNull()
+    // The rows come before the actions in the document, so nothing about a marking stands
+    // between the crown and the rows.
+    const scroll = document.querySelector('.byd-data-scroll')!
+    expect(Boolean(toolbar.compareDocumentPosition(scroll) & Node.DOCUMENT_POSITION_PRECEDING)).toBe(true)
+    // The column and the value are behind a box, not standing open in the foot.
+    expect(screen.queryByLabelText('Kolumn')).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Sätt fält' }))
+    expect(screen.getByLabelText('Kolumn')).toBeDefined()
+    expect(screen.getByLabelText('Värde')).toBeDefined()
+    expect(document.activeElement).toBe(screen.getByLabelText('Kolumn'))
+    await user.keyboard('{Escape}')
+    expect(screen.queryByLabelText('Kolumn')).toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Sätt fält' }))
   })
 })

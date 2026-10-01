@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 05 — Bordsbandet (#621)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     När ett bord kör ligger ett grönt band på 61 px under huvudet på varje flik, med en kantad
+     «Sparka»-knapp per plats. Åtta platser blir ~1 400 px och rinner utanför vid 1280.
+
+       Nu  bandet med en knapp per plats
+       A   platserna som brickor «Ada ×», bandet kvar
+       B   bandet blir en box i huvudet: «Bordet kör (8) ▾» öppnar en låda
+       C   bandet blir en statusrad på 32 px; «Ny kod» och sparkarna flyttar till Bord-flikens kort
+
+     Växla 3 / 8 platser i raden ovanför. Streckat rött = det som rinner utanför. ─────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .scen { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 24px 16px; display: grid; gap: 28px; align-content: start; background: #15171c; }
+  .ram { position: relative; }
+  .etikett { color: var(--quiet-2); font-size: 11px; margin-bottom: 4px; }
+  .skala { position: absolute; left: 0; top: 18px; transform-origin: 0 0; }
+  .yta { background: var(--chrome); outline: 1px solid #3a3f4b; }
+  .ed-huvud { overflow: hidden; }
+  .ed-huvud .ed-mer, .ed-huvud .ed-angra { color: var(--quiet); }
+  .ed-huvud .ed-angra .ed-knapp { padding: 0 12px; margin-right: 2px; }
+  .ed-huvud[data-smal] .ed-flikar button { padding: 0 7px; }
+  .ed-huvud[data-smal] { gap: var(--s2); }
+  .ed-huvud .bordbox { flex: none; }
+  .ed-huvud .bordbox[aria-expanded='true'] { border-color: var(--primary-mark); }
+  .ed-huvud .bordbox b { color: #7dd3a0; }
+
+  /* Bandet, ur editor.css .byd-editor-table-link. */
+  .band { display: flex; align-items: center; gap: 8px; padding: 8px 16px; row-gap: 6px; background: #1f2a1f; color: #7dd3a0; border-bottom: 1px solid #2f333d; white-space: nowrap; overflow: hidden; }
+  .band a { color: #fff; }
+  .band b { color: #fff; }
+  .band .kantad { min-height: 44px; padding: 0 12px; border: 1px solid #5f7f69; border-radius: 8px; background: transparent; color: #e3f3e8; font: inherit; font-weight: 700; cursor: pointer; }
+  .band .platser { display: inline-flex; align-items: center; gap: 6px; }
+  .band[data-vik] { flex-wrap: wrap; white-space: normal; }
+  .band .plats { display: inline-flex; align-items: center; gap: 6px; }
+  .band.smal { min-height: 32px; padding: 0 16px; font-size: 12px; }
+  .band.smal .namn { color: #e3f3e8; }
+
+  /* Brickan (A, B, C). */
+  .bricka { display: inline-flex; align-items: center; height: 44px; padding: 0 0 0 12px; border: 1px solid #5f7f69; border-radius: 999px; color: #e3f3e8; font-weight: 700; white-space: nowrap; }
+  .bricka button { width: 44px; height: 42px; margin-left: 2px; border: 0; border-radius: 0 999px 999px 0; background: transparent; color: #a9d8b8; font: inherit; font-size: 16px; cursor: pointer; }
+  .bricka button:hover { background: #2a3a2c; color: #fff; }
+  .bricka button:focus-visible { outline: 2px solid #7dd3a0; outline-offset: -3px; }
+
+  /* B: lådan under huvudet. */
+  .lada { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 16px; background: #1f2a1f; color: #7dd3a0; border-bottom: 1px solid #2f333d; }
+  .lada a { color: #fff; } .lada b { color: #fff; }
+
+  /* Fliken under, bara som mark. */
+  .flik { height: 300px; padding: 16px; color: #9aa3b8; }
+  .flik .kron { display: flex; gap: 8px; }
+  .flik .box { min-height: 44px; padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #fff; font-weight: 700; display: inline-flex; align-items: center; }
+  .flik .sok { flex: 0 1 240px; min-height: 44px; padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: #14161c; color: #9aa3b8; display: inline-flex; align-items: center; }
+
+  /* C: Bord-flikens kort. */
+  .kort { width: 320px; margin: 16px 0 0 auto; padding: 12px; border: 1px solid #5f7f69; border-radius: 12px; background: #1b1d23; color: #dce3f2; }
+  .kort h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #9aa3b8; }
+  .kort .rad { display: flex; align-items: center; gap: 10px; }
+  .kort .bild { width: 76px; height: 48px; border-radius: 6px; background: #1e5a34; }
+  .kort .rad p { margin: 0; font-size: 12px; line-height: 1.4; color: #c3cbdd; }
+  .kort .rad p b { color: #fff; font-family: ui-monospace, monospace; } .kort .rad p em { color: #7dd3a0; font-style: normal; font-weight: 700; }
+  .kort .knappar { display: flex; gap: 6px; margin-top: 10px; }
+  .kort .knappar button { flex: 1 1 auto; min-height: 44px; border: 1px solid #6f7a90; border-radius: 8px; background: transparent; color: #dce3f2; font: inherit; font-weight: 700; cursor: pointer; }
+  .kort .platser { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .kort .platser .bricka { height: 36px; } .kort .platser .bricka button { height: 34px; width: 36px; }
+  .kort .kod { display: flex; align-items: center; gap: 8px; margin-top: 10px; color: #c3cbdd; font-size: 12px; }
+  .kort .kod button { min-height: 36px; padding: 0 10px; border: 1px solid #6f7a90; border-radius: 8px; background: transparent; color: #dce3f2; font: inherit; font-weight: 700; }
+  .klippt { outline: 2px dashed #f0a58a; outline-offset: -2px; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="vaxlare storlek" role="group" aria-label="Platser">
+    <button type="button" data-act="platser" data-n="3" data-p="3">3 platser</button>
+    <button type="button" data-act="platser" data-n="8" data-p="8">8 platser</button>
+  </div>
+  <div class="fraga">
+    <p><b>#621 · Vad bandet bär när ett bord kör, och hur det växer med platserna.</b> Huvudet och bandet vid 1280 och 1024 med Kortväggens krön under; i C också Bord-flikens kort. Klicka på ×, öppna boxen.</p>
+    <p>Måtten: bandets höjd, och hur många px som rinner utanför kanten.</p>
+  </div>
+  <div class="matt" id="matt"></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="scen" id="scen"></div>
+<script>
+const NAMN = ['Ada', 'Bo', 'Cy', 'Di', 'Eva', 'Fia', 'Gun', 'Hal']
+window.PROTO = {
+  varianter: ['nu', 'a', 'b', 'c'],
+  bredder: [1280, 1024],
+  s: { v: 'a', n: 8, sparkade: [], oppen: false },
+  not: {
+    nu: '<b>Nu.</b> Ett band på 61 px under huvudet på varje flik, med en kantad «Sparka»-knapp på 112–130 px per plats. <span class="minus">− Åtta platser blir ~1 400 px och rinner utanför vid 1280; vid 1024 räcker fem. Knapparna trycks nästan aldrig men kostar mest.</span>',
+    a: '<b>A · Platserna som brickor.</b> «vid bordet: [Ada ×] [Bo ×] …» — en bricka per plats med ett × på 44 px som heter «Sparka Ada». <span class="plus">+ Åtta platser ryms på en rad vid 1280 (mot 255 px utanför i dag). Samma band, samma plats, samma ord; × är tabellens och lagerlistans tecken för «ta bort».</span> <span class="minus">− Bandet står kvar på 61 px på varje flik, och vid 1024 räcker raden till sex brickor: den åttonde och sjunde bryter till en andra rad (se måttet).</span>',
+    b: '<b>B · Bandet blir en box i huvudet.</b> Efter «rev 1 ✓» står «Bordet kör (8) ▾»; lådan under huvudet visar länken, koden, «Ny kod» och brickorna. <span class="plus">+ 61 px tillbaka på varje flik; boxen säger sitt läge (krönets regel).</span> <span class="minus">− Huvudet är redan trångt under 1440 (#566): vid 1024 rinner huvudet över — se måttet. Länken till bordet står bakom en dörr.</span>',
+    c: '<b>C · Bandet blir en rad, handlingarna flyttar.</b> En statusrad på 32 px utan knappar: «Bordet kör rev-1 · öppna bordet · UF6H2W · Ada, Bo, Cy …». «Ny kod» och sparkarna bor i Bord-flikens kort «Bord som spelas», som redan visar samma bord. <span class="plus">+ 29 px tillbaka på varje flik, och status skiljs från handling: det man läser överallt, det man gör på Bord.</span> <span class="minus">− Att sparka någon kräver ett flikbyte; åtta namn i text kan ändå klippas vid 1024 (då «… och 3 till»).</span>',
+  },
+}
+const P = window.PROTO, s = P.s
+const vid = () => NAMN.slice(0, s.n).filter((x) => !s.sparkade.includes(x))
+const brickor = (klass = '') => `<span class="platser ${klass}">${vid().map((x) => `<span class="bricka">${x}<button type="button" data-act="sparka" data-namn="${x}" aria-label="Sparka ${x}">×</button></span>`).join('')}</span>`
+const lank = `Bordet kör rev-1 — <a href="#" data-act="inget">öppna bordet</a> · rumskod <b>UF6H2W</b>`
+
+function band() {
+  if (s.v === 'nu') return `<div class="band" data-band>${lank} <button type="button" class="kantad">Ny kod</button> · vid bordet: <span class="platser">${vid().map((x) => `<span class="plats">${x} <button type="button" class="kantad" data-act="sparka" data-namn="${x}">Sparka ${x}</button></span>`).join('')}</span></div>`
+  if (s.v === 'a') return `<div class="band" data-band data-vik>${lank} <button type="button" class="kantad">Ny kod</button> · vid bordet: ${brickor()}</div>`
+  if (s.v === 'b') return s.oppen ? `<div class="lada" data-lada role="group" aria-label="Bordet som kör">${lank} <button type="button" class="kantad" style="min-height:44px;padding:0 12px;border:1px solid #5f7f69;border-radius:8px;background:transparent;color:#e3f3e8;font:inherit;font-weight:700">Ny kod</button> · vid bordet: ${brickor()}</div>` : ''
+  const namn = vid()
+  return `<div class="band smal" data-band>${lank} · vid bordet: <span class="namn">${namn.join(', ')}</span></div>`
+}
+P.skarm = (w) => {
+  const box = s.v === 'b' ? `<button type="button" class="ed-knapp kantad bordbox" data-act="lada" aria-expanded="${s.oppen}" data-box><b>●</b> Bordet kör (${vid().length}) <span aria-hidden="true">▾</span></button>` : ''
+  const kort = w < 1280
+  return `${P.huvud(w, 'Kortvägg', box)}${band()}
+  <div class="flik"><div class="kron"><span class="sok">Sök i alla fält…</span><span class="box">${kort ? '' : 'Ögon: '}Som du ser det ▾</span><span class="box">Guider (0) ▾</span><span class="box">−</span><span class="box">+</span><span class="box">${kort ? '' : 'Grupperad efter: '}typ ▾</span><span class="box" style="margin-left:auto">Fysisk kontroll (1) ▾</span></div>
+  ${s.v === 'c' ? `<div class="kort" data-kort><h3>Bord som spelas</h3><div class="rad"><div class="bild"></div><p><b>rev-1</b> <em>i spel</em><br>${vid().join(', ')} spelar<br>senaste drag i dag 23:48</p></div><div class="knappar"><button type="button">Spela härifrån</button><button type="button" style="flex:0 0 44px">▾</button></div><div class="kod">Rumskod <b style="color:#fff;font-family:ui-monospace,monospace">UF6H2W</b><button type="button">Ny kod</button></div>${brickor()}</div>` : ''}</div>`
+}
+P.matt = (root, w, f) => {
+  const ut = []
+  const b = root.querySelector('[data-band], [data-lada]')
+  ut.push(`bandet <u>${b ? b.offsetHeight + ' px' : 'borta'}</u>`)
+  if (b) { const over = b.scrollWidth - b.clientWidth; ut.push(`utanför kanten <u>${over} px</u>`); if (over > 0) b.classList.add('klippt') }
+  const h = root.querySelector('.ed-huvud')
+  const hover = h.scrollWidth - h.clientWidth
+  if (s.v === 'b') { ut.push(`huvudet utanför kanten <u>${hover} px</u>`); if (hover > 0) h.classList.add('klippt') }
+  return ut
+}
+P.act = (namn, d) => {
+  for (const b of document.querySelectorAll('[data-p]')) b.setAttribute('aria-pressed', String(Number(b.dataset.p) === s.n))
+  if (namn === 'platser') { s.n = Number(d.n); s.sparkade = []; for (const b of document.querySelectorAll('[data-p]')) b.setAttribute('aria-pressed', String(Number(b.dataset.p) === s.n)); return }
+  if (namn === 'sparka') { s.sparkade.push(d.namn); return }
+  if (namn === 'lada') { s.oppen = !s.oppen; return s.oppen ? '[data-lada] a' : '[data-box]' }
+  if (namn === 'escape') { if (s.oppen) { s.oppen = false; return '[data-box]' } }
+  if (namn === 'byt') { s.oppen = false; s.sparkade = [] }
+}
+</script>
+<script type="module" src="komp.js"></script>
+</body>
+</html>

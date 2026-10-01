@@ -414,6 +414,14 @@ export class ProjectClient {
   get canRedo(): boolean {
     return this.future.length > 0
   }
+  // What the next step back and forward would take, in the word the confirmation uses (#566): the
+  // header's buttons are named for it, so a hand without a keyboard knows before it presses.
+  get undoWhat(): Key | null {
+    return this.past.at(-1)?.what ?? null
+  }
+  get redoWhat(): Key | null {
+    return this.future.at(-1)?.what ?? null
+  }
 
   // A step back, and the word for what it took. Null when there is nothing behind: the view says
   // nothing rather than saying it undid something.

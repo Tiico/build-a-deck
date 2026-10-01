@@ -8,6 +8,7 @@ import { Survey } from './Survey.js'
 import { submitSurvey } from './surveyApi.js'
 import { useRefusal } from '../status/Refusal.js'
 import { useT, type T } from '../i18n/index.js'
+import { FlagGlyph, HookGlyph } from '../glyphs.js'
 
 // Why the server would not have us (DRIFT §9), in words for the screen.
 export function refusedText(reason: string, t: T): string {
@@ -203,9 +204,11 @@ export function SessionButtons({ client, view, sheet, onSheet }: { client: Table
   return (
     <>
       <button className="byd-undo" disabled={!view.undo || !!view.rewind || view.ended} onClick={tapUndo}>
+        <HookGlyph />
         {t('session.undo')}
       </button>
       <button className="byd-flag" disabled={view.ended} onClick={raise('flag')}>
+        <FlagGlyph />
         {t('session.flag')}
       </button>
       <button className="byd-exit" aria-label={t('session.exit.aria', { label: t('session.exit') })} disabled={view.ended} onClick={raise('exit')}>

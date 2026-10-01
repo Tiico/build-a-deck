@@ -43,9 +43,6 @@ function open(back: Element[] | null = null) {
       onGroupColumn={vi.fn()}
       onAddField={vi.fn()}
       onReset={vi.fn()}
-      onFontFile={async () => 'Typsnitt'}
-      onFontLicence={vi.fn()}
-      onRemoveFont={vi.fn()} onCatalogFont={vi.fn(async () => undefined)}
     />,
   )
   return { onReplaceFace }

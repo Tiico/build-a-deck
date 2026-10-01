@@ -294,7 +294,7 @@ describe('the guided start', () => {
 // Every mode the editor can be showing at the desk, and the two doors inside them that have to be
 // held open to be seen at all. Named here so that a walk which finds nothing fails instead of
 // agreeing with itself.
-const EDITOR_VIEWS = ['Bord', 'Kortvägg', 'Mall', 'Mall, ikonbiblioteket öppet', 'Media', 'Regler', 'Symboler', 'Tabell', 'Tabell, ett nytt fält på väg', 'Tabell, filtrerad'] as const
+const EDITOR_VIEWS = ['Bord', 'Kortvägg', 'Mall', 'Mall, ikonbiblioteket öppet', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Tabell', 'Tabell, ett nytt fält på väg', 'Tabell, filtrerad'] as const
 
 // Whichever mode is open, the blue button that puts the work on the table is the only filled thing
 // in the room.
@@ -310,16 +310,20 @@ async function editorViews(width: number): Promise<Record<string, string>> {
       const tab = tabs()[i]!
       fireEvent.click(tab)
       out[tab.textContent?.trim() ?? String(i)] = document.querySelector('.byd-editor')!.outerHTML
-      // The table's filter chips are only ever on when somebody has turned one on, so the walk
-      // would otherwise never see the one place in the editor painted in the account's green. The
-      // project below carries a column worth filtering on for exactly this reason, and a missing
-      // chip is an error rather than a view quietly skipped.
+      // The table's filter is only ever on when somebody has turned one on, so the walk would
+      // otherwise never see the token it paints in the field and the count on the column's door
+      // (#617). The project below carries a column worth filtering on for exactly this reason,
+      // and a missing door is an error rather than a view quietly skipped.
       if (tab.textContent?.trim() === 'Tabell') {
-        const chip = document.querySelector<HTMLElement>('.byd-data-chip')
-        if (!chip) throw new Error('the table offers no filter chip, so nothing here measures one')
-        fireEvent.click(chip)
+        const door = document.querySelector<HTMLElement>('.byd-column-filter')
+        if (!door) throw new Error('the table offers no column filter, so nothing here measures one')
+        fireEvent.click(door)
+        const tick = document.querySelector<HTMLElement>('.byd-column-filter-door input')
+        if (!tick) throw new Error('the column door opened on no values')
+        fireEvent.click(tick)
         out['Tabell, filtrerad'] = document.querySelector('.byd-editor')!.outerHTML
-        fireEvent.click(chip)
+        fireEvent.click(tick)
+        fireEvent.click(door)
         // A column is made in a form that only exists while its door is held open, which is how
         // the same walk could reach every checkbox in the editor and still miss the three radios
         // inside this one (L11, #50). The door is held open here for the same reason.
@@ -327,6 +331,16 @@ async function editorViews(width: number): Promise<Record<string, string>> {
         if (!document.querySelector('.byd-newfield')) throw new Error('the table never opened the form that makes a column')
         out['Tabell, ett nytt fält på väg'] = document.querySelector('.byd-editor')!.outerHTML
         fireEvent.keyDown(document.querySelector('.byd-newfield')!, { key: 'Escape' })
+      }
+      // Speltema folds its parts (L57), so the walk opens every one of them before it reads the
+      // tab, and then the library that opens from the icons.
+      if (tab.textContent?.trim() === 'Speltema') {
+        for (const head of document.querySelectorAll<HTMLElement>('[data-theme-section] h2 button[aria-expanded="false"]')) fireEvent.click(head)
+        out['Speltema'] = document.querySelector('.byd-editor')!.outerHTML
+        fireEvent.click(screen.getByRole('button', { name: /Ur biblioteket/ }))
+        if (!document.querySelector('.byd-symbols-library .byd-symbols-tile')) throw new Error('the icons never opened the symbol library')
+        out['Speltema, biblioteket öppet'] = document.querySelector('.byd-editor')!.outerHTML
+        fireEvent.click(screen.getByRole('button', { name: 'Klar' }))
       }
       // The symbol library is a door too: the rail's Ikon tool opens it, and until it is open
       // nothing in the walk has ever seen an option of it drawn.
@@ -1011,7 +1025,8 @@ describe('the buttons that stand beside the card in the template', () => {
   it('draws the way to a typeface as an outline and not as a second first action', async () => {
     await run.projects.create(run.projectId, worthFiltering())
     const views = await editorViews(1280)
-    const measured = await inChromium(read('src/editor/editor.css'), 1280, { Mall: views['Mall']! }, (page) =>
+    // The typefaces live in Speltema since L57 (#630); the way to one is drawn there.
+    const measured = await inChromium(read('src/editor/editor.css'), 1280, { Speltema: views['Speltema']! }, (page) =>
       page.evaluate(() => {
         const editor = document.querySelector('.byd-editor')!
         const probe = editor.appendChild(document.createElement('span'))
@@ -1019,12 +1034,12 @@ describe('the buttons that stand beside the card in the template', () => {
         const line = getComputedStyle(probe).color
         probe.remove()
         const upload = [...editor.querySelectorAll<HTMLElement>('button, label')].find((el) => el.textContent?.trim().startsWith('Ladda upp typsnitt'))
-        if (!upload) throw new Error('no way to a typeface in the template')
+        if (!upload) throw new Error('no way to a typeface in Speltema')
         const drawn = getComputedStyle(upload)
         return { drawn: `${drawn.backgroundColor} inside ${drawn.borderTopWidth} of ${drawn.borderTopColor}`, outlined: `rgba(0, 0, 0, 0) inside 1px of ${line}` }
       }),
     )
-    expect(measured['Mall']!.drawn).toBe(measured['Mall']!.outlined)
+    expect(measured['Speltema']!.drawn).toBe(measured['Speltema']!.outlined)
   }, 120_000)
 })
 
@@ -1254,7 +1269,6 @@ describe('every suite that measures a surface', () => {
       'data-table-drag.test.tsx',
       'data-table-hover.test.tsx',
       'data-table-layout.test.tsx',
-      'data-table-prose-place.test.tsx',
       'data-table-sideways.test.tsx',
       'data-table-widths.test.tsx',
       'editor-crown.test.tsx',

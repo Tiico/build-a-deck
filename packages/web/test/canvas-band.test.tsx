@@ -33,7 +33,7 @@ const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel),
 // style, so what the engine measures is the card React actually produced.
 function markup(): string {
   const { container, unmount } = render(
-    <TemplateCanvas doc={projectDoc()} face="front" row="dragon" selectedElement="title" onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} onFontFile={async () => 'Typsnitt'} onFontLicence={vi.fn()} onRemoveFont={vi.fn()} onCatalogFont={vi.fn(async () => undefined)} />,
+    <TemplateCanvas doc={projectDoc()} face="front" row="dragon" selectedElement="title" onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />,
   )
   const html = container.innerHTML
   unmount()
@@ -153,6 +153,17 @@ describe.each(DESKS)('the zoom band on a $width×$height desk (#146, L19)', (des
 
     const { stage, band } = seen.fitted
     expect(desk.where === 'beside the stage' ? band.left >= stage.right : band.top >= stage.bottom).toBe(true)
+  }, 60_000)
+
+  // The band is one pill (#619): `[−][164 % ▾][+]`, a target tall and its edge, where the stack
+  // of six it replaces was 269 px tall at 1280 and a row of 365 × 50 at 1024. The height is the
+  // target's and not a font's, so it is the same on every machine; the width is held loosely,
+  // since the digits are set in whatever font the machine has.
+  it('is one pill, a target tall, and no stack', async () => {
+    const seen = await measure(desk)
+
+    const { band } = seen.fitted
+    expect({ tall: band.h <= 46, wide: band.w <= 260 }).toEqual({ tall: true, wide: true })
   }, 60_000)
 })
 

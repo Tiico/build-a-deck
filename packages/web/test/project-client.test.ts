@@ -491,7 +491,7 @@ describe('symbols (E4)', () => {
 
 // The icon placed from the tool row (#33): the symbol has to be in the game before an element can
 // show it, and the designer asked for both with one press. So it is one edit — and the licence
-// travels with it exactly as it does when a symbol is taken in from the Symboler tab (E4).
+// travels with it exactly as it does when a symbol is taken in from Speltema (E4, L57).
 describe('an icon placed on the card (#33, E4)', () => {
   it('takes the symbol in and places the element as one edit, and a second placing is a second element and not a second symbol', async () => {
     const created = await run.projects.create(run.projectId, projectDoc())

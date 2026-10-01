@@ -110,6 +110,8 @@ describe('EditorPage', () => {
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
 
     await user.click(screen.getByLabelText('Markera alla synliga'))
+    // The column and the value are behind «Sätt fält» in the foot (#618).
+    await user.click(screen.getByRole('button', { name: 'Sätt fält' }))
     await user.selectOptions(screen.getByLabelText('Kolumn'), 'antal')
     await user.type(screen.getByLabelText('Värde'), '4')
     await user.click(screen.getByRole('button', { name: 'Sätt antal på 3 kort' }))
@@ -342,6 +344,27 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
   }, 20_000)
 })
 
+describe('the header steps (#566)', () => {
+  // A character is drawn by whatever font the machine has, and ↶ ↷ are a hairline hook on a Mac
+  // and something else on Linux. The steps are drawn by the editor, a mirrored pair of one hook.
+  it('draws undo and redo as one hook, mirrored, rather than as characters', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+
+    const undo = screen.getByRole('button', { name: 'Ångra: inget att ta tillbaka' })
+    const redo = screen.getByRole('button', { name: 'Gör om: inget att göra om' })
+    for (const b of [undo, redo]) {
+      expect(b.textContent).toBe('')
+      expect(b.querySelector('svg[aria-hidden="true"]')).toBeTruthy()
+    }
+    expect(redo.querySelector('svg')!.innerHTML).toBe(undo.querySelector('svg')!.innerHTML)
+    expect(redo.querySelector('svg')!.hasAttribute('data-mirrored')).toBe(true)
+    expect(undo.querySelector('svg')!.hasAttribute('data-mirrored')).toBe(false)
+  })
+})
+
 describe('the editor by keyboard alone (UX-04)', () => {
   it('switches mode from the tablist, and every tab names the panel it controls', async () => {
     const user = userEvent.setup()
@@ -360,13 +383,17 @@ describe('the editor by keyboard alone (UX-04)', () => {
 
     // "Mina spel" is the header's first stop (#8) — a way back belongs before what it leads away
     // from — then the game's own ⋯ beside its name (#542), and then the revision, which names the
-    // version and opens the history (B4). The tablist follows them, and the arrow keys move inside
-    // it as before.
+    // version and opens the history (B4). The step back and forward follow the save status they
+    // belong to (#566), and then the tablist, where the arrow keys move inside it as before.
     await user.tab()
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fler val för Skogens herrar' }))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: /rev 1/ }))
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ångra: inget att ta tillbaka' }))
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Gör om: inget att göra om' }))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Kortvägg' }))
     await user.keyboard('{ArrowRight}{Enter}')
@@ -389,8 +416,9 @@ describe('the layers of the template by keyboard (UX-04)', () => {
     history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
-    // «Mina spel», the game's ⋯ (#542) and the revision, and then the tablist.
-    for (let i = 0; i < 4; i++) await user.tab()
+    // «Mina spel», the game's ⋯ (#542), the revision, the step back and forward (#566), and then
+    // the tablist.
+    for (let i = 0; i < 6; i++) await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Kortvägg' }))
     await user.keyboard('{ArrowRight}{Enter}')
     expect(layerNames()).toEqual(['body', 'title', 'frame'])
@@ -423,11 +451,12 @@ describe('the layers of the template by keyboard (UX-04)', () => {
       await user.tab()
       expect(document.activeElement).toBe(document.querySelector(`[data-drag="${id}"]`))
     }
-    // Then the zoom's own band, in the canvas' lower corner: it is read after the card because it
-    // is about the card (#146).
-    for (const name of ['Förstora mindre', 'Förstoring i procent', 'Förstora mer', 'Passa in', '100 %']) {
+    // Then the zoom's own pill, in the canvas' lower corner: it is read after the card because it
+    // is about the card (#146). Three stops since #619 — the percentage is the one that opens
+    // «Passa in» and the rest.
+    for (const name of ['Förstora mindre', /^Förstoring: /, 'Förstora mer']) {
       await user.tab()
-      expect(document.activeElement).toBe(screen.getByRole(name === 'Förstoring i procent' ? 'slider' : 'button', { name }))
+      expect(document.activeElement).toBe(screen.getByRole('button', { name }))
     }
     // Then the row under the card that says which card it is (#478): the step back is locked on
     // the first card and is no stop, so the card's name and the step forward.

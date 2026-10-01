@@ -5,7 +5,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
-import { DataTable, PROSE_HOVER_MS } from '../src/editor/DataTable.js'
+import { DataTable } from '../src/editor/DataTable.js'
 import { projectDoc } from './project-doc.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -101,178 +101,135 @@ describe('att ändra rutans höjd i mallen ändrar inte ett uttryckligt val (L43
   })
 })
 
-// Skillnaden mellan förval och val bärs i form — prickad mot ifylld — och formen finns inte för
-// en skärmläsare. Så utfällningens *namn* bär samma skillnad i ord (L12, L43).
+// Var valet står (L43, ändrat i #615): i kolumnlistan bakom `＋`, på samma rad som namnet. Huvudet
+// bär ingen kontroll för det och fäller ingenting ut — det var en prick klistrad mot ordet och en
+// ruta med en primärknapp över raderna, och varje designerkolumn kostade ett tabbstopp i huvudet.
 const head = (field: string) => document.querySelector(`thead th[data-col="${field}"]`) as HTMLElement
-const dot = (field: string) => head(field).querySelector('.byd-prose-mark') as HTMLElement
-// A hand that rests on the head, and not one passing over it (#479): the pointer is let stay for
-// as long as the table waits before it opens anything.
-const reach = (field: string) => {
-  vi.useFakeTimers()
-  fireEvent.pointerEnter(head(field))
-  act(() => vi.advanceTimersByTime(PROSE_HOVER_MS))
-  vi.useRealTimers()
-}
+const pilcrow = (field: string) => head(field).querySelector('.byd-prose-pilcrow') as HTMLElement | null
+const door = () => fireEvent.click(screen.getByRole('button', { name: 'Kolumner' }))
+const row = (field: string) => document.querySelector(`.byd-columns li[data-col="${field}"]`) as HTMLElement
+const pressed = (name: string) => screen.getByRole('button', { name }).getAttribute('aria-pressed')
 
-// The fold-out opened 8 ms after the pointer crossed the head and covered three rows of data on
-// the way to somewhere else (#479). It waits for a hand that means it.
-describe('utfällningen väntar på en hand som stannar (#479)', () => {
-  it('öppnar inte för en pekare som passerar, och öppnar för en som stannar', () => {
-    table()
+describe('huvudet bär ingen kontroll för prosavalet (#615)', () => {
+  it('har bara rubrikens egen knapp, och fäller ingenting ut när pekaren vilar på den', () => {
     vi.useFakeTimers()
     try {
-      fireEvent.pointerEnter(head('body'))
-      act(() => vi.advanceTimersByTime(100))
-      expect(head('body').getAttribute('data-prose')).toBe('')
-      fireEvent.pointerLeave(head('body'))
-      act(() => vi.advanceTimersByTime(PROSE_HOVER_MS))
-      expect(head('body').getAttribute('data-prose')).toBe('')
-      fireEvent.pointerEnter(head('body'))
-      act(() => vi.advanceTimersByTime(PROSE_HOVER_MS))
-      expect(head('body').getAttribute('data-prose')).toBe('open')
+      table()
+      for (const field of ['title', 'body']) {
+        expect(head(field).querySelectorAll('button')).toHaveLength(1)
+        fireEvent.pointerEnter(head(field))
+        act(() => vi.advanceTimersByTime(1000))
+        expect(head(field).querySelector('[role="group"]')).toBeNull()
+        fireEvent.focusIn(head(field))
+        expect(head(field).querySelector('[role="group"]')).toBeNull()
+      }
     } finally {
       vi.useRealTimers()
     }
   })
+
+  it('sätter ett ¶ efter namnet på kolumnerna som skrivs som prosa, och bara på dem', () => {
+    table()
+    expect(pilcrow('body')?.textContent).toBe('¶')
+    expect(pilcrow('title')).toBeNull()
+    expect(pilcrow('antal')).toBeNull()
+    expect(pilcrow('id')).toBeNull()
+  })
+
+  // Märket är en signal till ögat; orden står i dörren. Ett ¶ som lästes upp i rubrikens namn
+  // vore en symbol utan mening för en skärmläsare.
+  it('låter ¶ vara tyst för skärmläsaren och rubrikens namn vara namnet', () => {
+    table()
+    expect(pilcrow('body')!.getAttribute('aria-hidden')).toBe('true')
+  })
+
+  it('bär skillnaden mellan förval och val i märkets form', () => {
+    const doc = projectDoc()
+    doc.prose = { title: true }
+    table(doc)
+    expect(pilcrow('body')!.dataset['from']).toBe('height')
+    expect(pilcrow('title')!.dataset['from']).toBe('choice')
+  })
 })
 
-describe('märket säger vad kolumnen är och vem som sade det (L43)', () => {
+describe('valet står i dörren, på kolumnens egen rad (#615)', () => {
   it('säger «höjden föreslog» om en kolumn som aldrig fått ett val', () => {
     table()
-    reach('body')
-    expect(screen.getByRole('group', { name: 'body skrivs som prosa, höjden föreslog' })).toBeTruthy()
-    fireEvent.pointerLeave(head('body'))
-    reach('title')
-    expect(screen.getByRole('group', { name: 'Titel skrivs som vanlig text, höjden föreslog' })).toBeTruthy()
+    door()
+    expect(within(row('body')).getByRole('group', { name: 'body skrivs som prosa, höjden föreslog' })).toBeTruthy()
+    expect(within(row('title')).getByRole('group', { name: 'Titel skrivs som vanlig text, höjden föreslog' })).toBeTruthy()
   })
 
   it('säger «du valde» om en kolumn designern har svarat för, åt båda hållen', () => {
     const doc = projectDoc()
     doc.prose = { body: false, title: true }
     table(doc)
-    reach('body')
-    expect(screen.getByRole('group', { name: 'body skrivs som vanlig text, du valde' })).toBeTruthy()
-    fireEvent.pointerLeave(head('body'))
-    reach('title')
-    expect(screen.getByRole('group', { name: 'Titel skrivs som prosa, du valde' })).toBeTruthy()
+    door()
+    expect(within(row('body')).getByRole('group', { name: 'body skrivs som vanlig text, du valde' })).toBeTruthy()
+    expect(within(row('title')).getByRole('group', { name: 'Titel skrivs som prosa, du valde' })).toBeTruthy()
   })
 
-  it('bär skillnaden i form också, så den syns utan att läsas', () => {
+  it('visar vad kolumnen är som en tryckt knapp av två', () => {
+    table()
+    door()
+    expect(pressed('Prosa, body')).toBe('true')
+    expect(pressed('Text, body')).toBe('false')
+    expect(pressed('Prosa, Titel')).toBe('false')
+    expect(pressed('Text, Titel')).toBe('true')
+  })
+
+  it('bär skillnaden mellan förval och val i växelns form också', () => {
     const doc = projectDoc()
-    doc.prose = { body: true }
+    doc.prose = { title: true }
     table(doc)
-    expect(dot('body').dataset['from']).toBe('choice')
-    expect(dot('body').dataset['prose']).toBe('true')
-    expect(dot('title').dataset['from']).toBe('height')
-    expect(dot('title').dataset['prose']).toBe('false')
+    door()
+    expect((within(row('body')).getByRole('group') as HTMLElement).dataset['from']).toBe('height')
+    expect((within(row('title')).getByRole('group') as HTMLElement).dataset['from']).toBe('choice')
   })
 
-  it('är ingen kontroll i vila: en prick på sex pixlar kan inte vara en träffyta (L12)', () => {
+  it('ger ingen växel åt kolumnerna verktyget äger (L4)', () => {
     table()
-    // Det är samma räkning som fällde variant A. Det som *är* kontroller — knapparna som vänder
-    // valet — finns bara när utfällningen är framme, och de når hela `--byd-tap`.
-    expect(dot('body').tagName).toBe('SPAN')
-    expect(dot('body').getAttribute('aria-hidden')).toBe('true')
-    expect(head('body').querySelectorAll('button')).toHaveLength(1)
+    door()
+    expect(within(row('antal')).queryByRole('group')).toBeNull()
+    expect(within(row('id')).queryByRole('group')).toBeNull()
   })
 
-  it('sätter inget märke på räknekolumnen, som är motorns egen (L4)', () => {
+  it('säger vad höjden föreslår, i rutans egna mått, och beskriver knapparna med det', () => {
     table()
-    expect(head('antal').querySelector('.byd-prose-mark')).toBeNull()
-    reach('antal')
-    expect(screen.queryByRole('group', { name: /^antal skrivs/ })).toBeNull()
+    door()
+    // `body` är 40 mm hög och dess rad är 9 pt i mallens förvalda radavstånd ≈ 4,0 mm.
+    const why = within(row('body')).getByText(/^Höjden föreslår prosa/)
+    expect(why.textContent).toMatch(/40,0 mm/)
+    expect(why.textContent).toMatch(/4,0 mm/)
+    expect(screen.getByRole('button', { name: 'Text, body' }).getAttribute('aria-describedby')).toBe(why.id)
   })
 })
 
-// En utfällning vid hover är ett a11y-åtagande: den ska nås med tangentbordet också (#184, #216).
-describe('utfällningen nås med pekaren och med tangentbordet (L43)', () => {
-  const turn = () => screen.queryByRole('button', { name: 'Gör vanlig text, body' })
-
-  it('står stängd i vila och kostar ingenting', () => {
-    table()
-    expect(turn()).toBeNull()
-    expect(head('body').getAttribute('data-prose')).toBe('')
-  })
-
-  it('fälls ut när pekaren vilar på rubriken, och åker in när den lämnar', () => {
-    table()
-    reach('body')
-    expect(turn()).toBeTruthy()
-    fireEvent.pointerLeave(head('body'))
-    expect(turn()).toBeNull()
-  })
-
-  // Fyra kolumner gav fyra knappar som hette likadant (#557 E-12): namnet bär kolumnen, och
-  // skälet under rubriken är knappens beskrivning.
-  it('namnger knappen med kolumnen och beskriver den med skälet', () => {
-    table()
-    reach('body')
-    const vand = turn()!
-    const why = document.getElementById(vand.getAttribute('aria-describedby') ?? '')
-    expect(why?.textContent).toMatch(/^Höjden föreslår/)
-  })
-
-  it('fälls ut av fokus ensamt, och knapparna står i tabbordningen efter rubriken', async () => {
-    table()
-    const user = userEvent.setup()
-    act(() => (screen.getByRole('button', { name: /^body$/ }) as HTMLElement).focus())
-    const vand = screen.getByRole('button', { name: 'Gör vanlig text, body' })
-    // Nästa Tabb landar i utfällningen och inte förbi den: en utfällning som inte går att tabba
-    // in i är ingen väg in alls (#216).
-    await user.tab()
-    expect(document.activeElement).toBe(vand)
-  })
-
-  it('åker in när fokus lämnar rubriken helt', () => {
-    table()
-    fireEvent.focusIn(head('body'))
-    expect(turn()).toBeTruthy()
-    fireEvent.focusOut(head('body'), { relatedTarget: document.body })
-    expect(turn()).toBeNull()
-  })
-
-  it('står kvar när fokus går från rubriken till en av utfällningens knappar', () => {
-    table()
-    fireEvent.focusIn(head('body'))
-    fireEvent.focusOut(head('body'), { relatedTarget: turn()! })
-    expect(turn()).toBeTruthy()
-  })
-
-  it('läggs ihop av Escape utan att flytta handen, och fälls ut igen nästa gång rubriken nås', () => {
-    table()
-    reach('body')
-    fireEvent.keyDown(head('body'), { key: 'Escape' })
-    expect(turn()).toBeNull()
-    fireEvent.pointerLeave(head('body'))
-    reach('body')
-    expect(turn()).toBeTruthy()
-  })
-
-  it('ger knapparna hela träffytan editorn kräver', () => {
-    table()
-    reach('body')
-    // Måttet är editorns eget och ställs till stilmallen i `editor-viewport.test.tsx`; här står
-    // att knappen är den knapp måttet gäller. En absolut pixel här vore ett prov om vilken
-    // maskin sviten kördes på.
-    expect(turn()!.className).toContain('byd-prose-turn')
-  })
-})
-
-describe('knapparna vänder valet och lämnar tillbaka det (L43)', () => {
+describe('växeln vänder valet och lämnar tillbaka det (L43, #615)', () => {
   it('skriver ett uttryckligt nej om en kolumn höjden föreslog prosa åt', () => {
     const onProse = vi.fn()
     table(projectDoc(), { onProse })
-    reach('body')
-    fireEvent.click(screen.getByRole('button', { name: 'Gör vanlig text, body' }))
+    door()
+    fireEvent.click(screen.getByRole('button', { name: 'Text, body' }))
     expect(onProse.mock.calls).toEqual([['body', false]])
   })
 
   it('skriver ett uttryckligt ja om en kolumn höjden föreslog vanlig text åt', () => {
     const onProse = vi.fn()
     table(projectDoc(), { onProse })
-    reach('title')
-    fireEvent.click(screen.getByRole('button', { name: 'Gör prosa, Titel' }))
+    door()
+    fireEvent.click(screen.getByRole('button', { name: 'Prosa, Titel' }))
     expect(onProse.mock.calls).toEqual([['title', true]])
+  })
+
+  // Att trycka den knapp som redan är tryckt på en kolumn som följer höjden gör förslaget till ett
+  // val: designern har sagt det, och då ska nästa omritning av mallen inte ta det ifrån henne.
+  it('gör förslaget till ett val när den redan tryckta knappen trycks', () => {
+    const onProse = vi.fn()
+    table(projectDoc(), { onProse })
+    door()
+    fireEvent.click(screen.getByRole('button', { name: 'Prosa, body' }))
+    expect(onProse.mock.calls).toEqual([['body', true]])
   })
 
   it('lämnar tillbaka frågan till höjden, och erbjuder det bara där det finns ett val att lämna', () => {
@@ -280,20 +237,39 @@ describe('knapparna vänder valet och lämnar tillbaka det (L43)', () => {
     const doc = projectDoc()
     doc.prose = { body: false }
     table(doc, { onProse })
-    reach('title')
-    expect(screen.queryByRole('button', { name: 'Följ höjden igen, body' })).toBeNull()
-    fireEvent.pointerLeave(head('title'))
-    reach('body')
+    door()
+    expect(screen.queryByRole('button', { name: 'Följ höjden igen, Titel' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Följ höjden igen, body' }))
     expect(onProse.mock.calls).toEqual([['body', null]])
   })
 
-  it('säger vad höjden föreslår, i rutans egna mått', () => {
+  it('står kvar öppen efter ett val, så nästa kolumn kan väljas i samma andetag', () => {
     table()
-    reach('body')
-    // `body` är 40 mm hög och dess rad är 9 pt i mallens förvalda radavstånd ≈ 4,0 mm.
-    const why = screen.getByRole('group', { name: /^body skrivs/ })
-    expect(within(why).getByText(/40,0 mm/)).toBeTruthy()
-    expect(within(why).getByText(/4,0 mm/)).toBeTruthy()
+    door()
+    fireEvent.click(screen.getByRole('button', { name: 'Text, body' }))
+    expect(document.querySelector('.byd-columns')).not.toBeNull()
+  })
+
+  it('visar ingen växel i en tabell som inte har något projekt att skriva i', () => {
+    table(projectDoc(), { onProse: undefined })
+    door()
+    expect(screen.queryByRole('button', { name: 'Prosa, body' })).toBeNull()
+  })
+})
+
+// Dörren håller tangentbordet i en lista med ett tabbstopp och pilar inom raden (#388, L45).
+// Växeln är en del av raden och nås med pilarna som namnet och ×.
+describe('växeln nås med tangentbordet i dörrens egen ordning (#388, #615)', () => {
+  it('står mellan namnet och × på samma rad', async () => {
+    table(projectDoc(), { onRenameField: () => undefined })
+    door()
+    const user = userEvent.setup()
+    act(() => screen.getByRole('button', { name: 'Byt namn på kolumnen body' }).focus())
+    await user.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Prosa, body' }))
+    await user.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Text, body' }))
+    await user.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ta bort fältet body' }))
   })
 })
