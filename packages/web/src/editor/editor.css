@@ -1363,13 +1363,17 @@
 /* The measure keeps its own width: a pill that grows a pixel between 99 and 100 % moves every
    control on it under the hand. It is a number, so the digits are the same width every time. */
 .byd-pill-value {
-  gap: var(--byd-s1);
   padding: 0 var(--byd-s2);
   border-left: 1px solid #2f333d;
   border-right: 1px solid #2f333d;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
+/* The word stands under the number and not beside it: beside, the pill was 206 px, and at 1280
+   with the properties open that made the card width-bound by 5 px — the one thing a band in the
+   spare width must never do (L19); CI's wider font makes it worse. Under, the pill is 164. */
+button.byd-pill-value { flex-direction: column; justify-content: center; line-height: 1.2; }
+.byd-pill-number { display: inline-flex; align-items: center; gap: var(--byd-s1); }
 button.byd-pill-value { cursor: pointer; }
 button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-mark); }
 .byd-pill-note, .byd-pill-caret { font-size: 10px; font-weight: 400; color: var(--byd-editor-hint-ink); }

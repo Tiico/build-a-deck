@@ -4043,10 +4043,11 @@ Handtag och punkter behåller sina millimetrar men går aldrig under 10 px på s
 Kontrollens form.
 Bandet var sex kontroller i en stapel — procenttalet, `−`, reglaget, `+`, **Passa in** och **100 %** — som mätte 94 × 269 px vid 1280 och en rad på 365 × 50 under scenen vid 1024; Kortväggens täthet var ett annat par knappar, `− +` i krönet, med bredden sagd i foten en halv skärm bort.
 Två ytor, samma fråga, två former.
-Nu är det **ett piller**, `[−][164 % ▾][+]`, 46 px högt: ett steg ned, måttet, ett steg upp.
+Nu är det **ett piller**, `[−][164 % ▾][+]`, 154 × 44 px: ett steg ned, måttet, ett steg upp.
 Procenttalet är knappen som öppnar valen — **Passa in**, **100 %**, **50 %**, **200 %** — uppåt och i toppskiktet som varje öppnad låda (L55); piltangenterna på procenttalet stegar, så reglagets tangentbord är kvar utan reglaget.
 Reglaget går.
-Medan kortet är inpassat står ordet «Passa in» vid procenttalet, och knappens namn säger det: inpassningen är annars ett val bakom en meny, och ett val ingen ser är ett läge ingen vet att kortet står i.
+Medan kortet är inpassat står ordet «Passa in» under procenttalet, och knappens namn säger det: inpassningen är annars ett val bakom en meny, och ett val ingen ser är ett läge ingen vet att kortet står i.
+Under och inte bredvid: bredvid blev pillret 206 px, och vid 1280 med egenskaperna uppfällda blev kortet breddbundet med 5 px — det enda ett band i den överblivna bredden aldrig får göra.
 Platsen är oförändrad: dukens hörn, aldrig krönet, aldrig över kortet, och raden under scenen där spalten inte finns.
 Samma komponent (`StepPill`) ritar Kortväggens täthet i krönet, `[−][150 px][+]`, där måttet läses och inte trycks eftersom väggen inget har att välja bland; foten upprepar inte längre talet.
 Variant B, allt synligt på en rad om ~270 px, valdes bort för att den ryms ännu mer sällan i hörnet; variant C, ett lodrätt reglage i scenens kant, för att formen är ovanlig och inte passar krönet.

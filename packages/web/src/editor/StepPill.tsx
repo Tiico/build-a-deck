@@ -107,15 +107,17 @@ function Measure({ value, said, note, onStep, choices }: MeasureProps) {
         onClick={() => setOpen((was) => !was)}
         onKeyDown={keys}
       >
-        <span className="byd-pill-number">{value}</span>
+        <span className="byd-pill-number">
+          {value}
+          <span className="byd-pill-caret" aria-hidden="true">
+            ▾
+          </span>
+        </span>
         {note && (
           <small className="byd-pill-note" aria-hidden="true" data-on={note.on}>
             {note.word}
           </small>
         )}
-        <span className="byd-pill-caret" aria-hidden="true">
-          ▾
-        </span>
       </button>
       {open && (
         <div
