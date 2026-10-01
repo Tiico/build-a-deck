@@ -3448,7 +3448,7 @@ Den fysiska kontrollen (E5) flaggar varje familj versionen inte bär (B3), så p
 `system-ui` var dessutom precis det felet handlar om: ett ansikte på formgivarens Mac, ett annat i renderarens Chromium och ett tredje hos tryckeriet.
 
 Beslutet är **en familj per ram**: Klassisk i **EB Garamond**, Minimal i **Inter**, Mörk i **Roboto Condensed**.
-Reviderat 2026-10-01 (L57, #612): ramen bär inget typsnitt längre; familjen kommer ur temat som väljs i samma steg, «Utseende».
+Reviderat 2026-10-01 (L57, #612): ramen bär inget typsnitt längre; familjen kommer ur temat som väljs tillsammans med ramen, «Utseende».
 
 Två kandidater valdes bort, och skälen är ramgalleriets egna.
 Att sätta alla tre i samma familj hade kostat noll nya byte och tagit bort det galleriet finns för: tre utseenden hade blivit en typografi i tre färgsättningar.
@@ -5662,8 +5662,8 @@ Stilarket visade allt men var mest skärm för den som är nöjd med sitt tema, 
 
 Sökningen söker allt men visar temat först.
 
-**I wizarden blir steget Ram «Utseende»** (L6): ramen säger var saker står och temat hur det känns, i ett steg, med ett kort som visar båda.
-Ett eget sjunde steg för temat prövades och valdes bort; wizarden behåller sex steg.
+**I wizarden blir ramvalet «Utseende»** (L6, L10): ramen säger var saker står och temat hur det känns, valda på samma ställe som ramen väljs i dag, med ett kort som visar båda.
+Ett eget steg för temat prövades och valdes bort; wizarden får inget nytt steg.
 Därmed bär ramen inget typsnitt längre — det gör temat — och #420:s «en familj per ram» blir en familj per tema.
 Kravet bakom #420 står kvar oförändrat: varje tema bär sina familjer som projektets egna filer, så den guidade starten faller aldrig på den fysiska kontrollen.
 
