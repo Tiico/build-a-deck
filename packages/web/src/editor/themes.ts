@@ -2,7 +2,8 @@ import type { EditIntent, ProjectCredit, ProjectDoc, ProjectFont } from '@byd/se
 import type { CatalogFamily } from './font-catalog.js'
 import { LANGS, possessive, translate, type Key, type Lang, type T } from '../i18n/index.js'
 import { proseFieldsOf } from './body.js'
-import { LIBRARY, freeIconName, symbolName, type GameSymbol } from './symbols.js'
+import { LIBRARY, freeIconName, svgBytes, symbolName, type GameSymbol } from './symbols.js'
+import { assetRefOf } from './assets.js'
 
 // The ready-made themes Speltema opens on (L57, #632): how the card *feels* — a family for the
 // headings and one for the text, the meanings and what they are painted in, and a set of icons
@@ -141,6 +142,30 @@ export function starterIcons(doc: Pick<ProjectDoc, 'icons'>, theme: Theme, t: T)
     return [{ name, symbol }]
   })
 }
+
+// A theme's icons as the files the service will hold, each with the name its bytes will have there
+// (E1). Hashing is a wait, so it is done before the document is read and never after (D3).
+export type IconFile = { id: string; file: ReturnType<typeof svgBytes>; ref: string }
+export function themeIconFiles(theme: Theme): Promise<IconFile[]> {
+  return Promise.all(
+    theme.icons.flatMap((id) => {
+      const symbol = LIBRARY.find((s) => s.id === id)
+      return symbol ? [(async () => ({ id, file: svgBytes(symbol), ref: await assetRefOf(svgBytes(symbol).bytes) }))()] : []
+    }),
+  )
+}
+
+/** The starter set this game is given, each icon with the file it will be: none once the game has icons of its own. */
+export function starterSet(doc: Pick<ProjectDoc, 'icons'>, theme: Theme, t: T, files: readonly IconFile[]): ({ name: string; symbol: GameSymbol } & IconFile)[] {
+  return starterIcons(doc, theme, t).flatMap(({ name, symbol }) => {
+    const hashed = files.find((f) => f.id === symbol.id)
+    return hashed ? [{ name, symbol, ...hashed }] : []
+  })
+}
+
+/** The starter set as `setTheme` writes it: the game's name for each icon, its file, and the licence it came with (E4). */
+export const iconsOf = (set: readonly ({ name: string; symbol: GameSymbol } & IconFile)[]): Record<string, { url: string; credit: ProjectCredit }> =>
+  Object.fromEntries(set.map(({ name, symbol, ref }) => [name, { url: ref, credit: { licence: symbol.licence, by: symbol.by, source: symbol.id } }]))
 
 /**
  * The one edit that lays a theme over the game (L57, #632). `fonts` are the theme's families as the
