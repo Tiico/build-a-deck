@@ -2913,8 +2913,10 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
    never on the editor's dark ground (L34). */
 .byd-theme-gallery { display: grid; gap: var(--byd-s2); }
 .byd-theme-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--byd-s3); }
-/* The tile's form is `theme-tile.css`, shared with the guided start (#633); these are its colours here. */
-.byd-theme-tile { border-color: #2f333d; background: var(--byd-editor-panel-bg); color: #fff; }
+/* The tile's form is `theme-tile.css`, shared with the guided start (#633); these are its colours here.
+   A tile is a choice, so it is chosen by its edge and never by a fill (L13, #665): it stands on the
+   editor's own ground, as the guided start's stands on the step's. */
+.byd-theme-tile { border-color: #2f333d; background: transparent; color: #fff; }
 .byd-theme-tile:hover { border-color: #4a5060; }
 .byd-theme-tile[aria-pressed='true'] { border-color: var(--byd-editor-primary-mark); box-shadow: 0 0 0 1px var(--byd-editor-primary-mark); }
 .byd-theme-card { display: block; justify-self: center; margin-bottom: var(--byd-s1); border-radius: 8px; overflow: hidden; box-shadow: 0 0 0 1px var(--byd-editor-card-edge); pointer-events: none; }
