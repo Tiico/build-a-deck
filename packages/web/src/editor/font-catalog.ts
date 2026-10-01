@@ -82,6 +82,21 @@ export function fileInSheet(css: string): string {
   return url
 }
 
+// Where a catalog family's face can be drawn from before the game carries it (#476, #632): the
+// file's own address, read out of the family's sheet. Asked for on the designer's handling and
+// never before it (L27) — a frame pressed in the guided start, or «Visa temana i sina typsnitt» in
+// Speltema. `null` when the catalog does not answer, so the caller says so instead of drawing the
+// card in a fallback face that lies about it (E2).
+export async function catalogFaceSource(catalog: CatalogFamily): Promise<{ stack: string; src: string } | null> {
+  const sheet = await fetch(fileSheetHref(catalog)).catch(() => null)
+  if (!sheet?.ok) return null
+  try {
+    return { stack: catalogStack(catalog.family, catalog.category), src: fileInSheet(await sheet.text()) }
+  } catch {
+    return null
+  }
+}
+
 // How old the list may be before the gate goes red (#370, L27). Six months, because a
 // half-year-old catalog is still ~1 800 usable families: the limit alarms on neglect, not on
 // normal operation. There is no scheduler — the stamp travels in the generated file and the

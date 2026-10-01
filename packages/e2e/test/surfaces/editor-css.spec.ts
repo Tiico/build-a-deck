@@ -108,7 +108,7 @@ const SHELL = `
       <div class="byd-table-wrap">
         <div class="byd-crown">
           <div class="byd-data-filter">
-            <span class="byd-data-token"><span>typ: fälla</span><button aria-label="Ta bort filtret typ: fälla" data-stop="a filter token's ×"><span aria-hidden="true">×</span></button></span>
+            <span class="byd-chip"><span>typ: fälla</span><button aria-label="Ta bort filtret typ: fälla" data-stop="a filter token's ×"><span aria-hidden="true">×</span></button></span>
             <input type="search" data-stop="the search field" />
           </div>
           <button class="byd-data-clear" data-stop="the clear-filter button">Rensa filter</button>

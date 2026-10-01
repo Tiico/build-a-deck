@@ -159,3 +159,43 @@
   color: var(--byd-chosen-ink);
   font-weight: 700;
 }
+
+/* ── The chip (#648, variant A): a thing with × beside it ─────────────────────────────────────
+   «typ: Playcard ×» in the card table's search field (#617) and «Ada ×» in the table strip (#621)
+   were two forms for one tecken — a 34 px box and a 44 px pill. One form now, drawn here where
+   the button language lives, and each room says only its colours: the field its marking blue as
+   a fill, the strip its green as a line. The × is the table's and the layer list's mark for
+   «take away» and a full square target, named for what it does («Ta bort filtret …», «Sparka
+   Ada»). The line is an outline inside the box, so the chip is exactly a target tall and stands
+   on the same row as the targets beside it. */
+.byd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--byd-s1);
+  height: var(--byd-tap);
+  padding-left: var(--byd-s3);
+  border-radius: 999px;
+  outline: 1px solid var(--byd-chip-line, transparent);
+  outline-offset: -1px;
+  background: var(--byd-chip-bg, transparent);
+  color: var(--byd-chip-ink, inherit);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.byd-chip > button {
+  width: var(--byd-tap);
+  height: var(--byd-tap);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0 999px 999px 0;
+  background: transparent;
+  color: var(--byd-chip-mark, inherit);
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+.byd-chip > button:hover { background: var(--byd-chip-hover, transparent); color: var(--byd-chip-ink, inherit); }
+/* The ring inside the ×, so it lies over neither the word beside it nor the next chip, and
+   follows the chip's round end. */
+.byd-chip > button:focus-visible { outline-offset: -3px; }
