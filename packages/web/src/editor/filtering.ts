@@ -90,3 +90,15 @@ export function toggleValue(filter: FilterState, field: string, value: string): 
 export function isFiltering(filter: FilterState): boolean {
   return filter.query.trim() !== '' || Object.values(filter.values).some((values) => values.length > 0)
 }
+
+// The column the search text names, if it names one (#617 on L23): «typ:» and whatever follows
+// the colon, which is the beginning of the value being looked for. The name is matched as it is
+// read — case does not count — against the columns that have a vocabulary, since those are the
+// only ones a list can be made of. A query that names no such column is a search like any other.
+export function typedColumn(query: string, fields: readonly string[]): { field: string; prefix: string } | null {
+  const m = /^(\S+):(.*)$/.exec(query)
+  const [, name, rest] = m ?? []
+  if (name === undefined || rest === undefined) return null
+  const field = fields.find((f) => f.toLocaleLowerCase('sv') === name.toLocaleLowerCase('sv'))
+  return field === undefined ? null : { field, prefix: rest.trim().toLocaleLowerCase('sv') }
+}

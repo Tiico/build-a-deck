@@ -5573,3 +5573,35 @@ Namnet det hörs under är fortfarande dörrens, och `aria-expanded` säger om d
 L45:s fokusfälla står kvar, och ett klick utanför stänger inte dörren.
 
 Prototypen låg på grenen `prototype/tabell-kontrast`, på den riktiga tabellen, och togs bort när detta byggdes.
+
+### L56. Tabellens filter står i kolumnens huvud och läses i sökfältet (prototypat och beslutat 2026-10-01, #617)
+
+Beställaren pekade på filtret på tabellsidan som exempel på ett GUI-element som tar för mycket plats, i en helhetsöverblick över sådana (`docs/ux-audits/2026-09-30-komponenter.md`).
+Mätt på Sal's Saloon: fjorton chips i två grupper tog tre fjärdedelar av krönet, 204 px av dem låg bakom «›» vid 1280 och 420 vid 1024, och sökfältet — det enda i raden som svarar på vad som helst — hade trängts ihop till 202 respektive 161 px.
+Chipsen sa inte heller vilken kolumn de hörde till: «Diamant» stod bredvid «Character» utan rubrik.
+
+#130 lät chipsen stå kvar i raden för att ett filter är ett läge och inte en handling, och ett läge ska synas utan att något öppnas.
+Det kravet står kvar.
+Det som ändras är var läget syns.
+
+**Kolumnhuvudet filtrerar** (variant A av tre: kolumnhuvudet, ett tecken i fältet, en box som säger sitt läge).
+En kolumn med ett ordförråd (`discreteColumns`, oförändrad) får ett handtag ▾ bredvid sin sortering.
+Det öppnar kolumnens värden som bockar, med hur många kort som bär vart och ett.
+Dörren lyfts till toppskiktet som varje öppnad låda (L55), tar fokus på första bocken, stängs med Escape tillbaka till handtaget och av ett tryck i arbetet.
+Handtaget bär antalet valda när något är valt, i ord («Filtrera på typ, 1 valt») och som märke.
+
+**Sökfältet bär vad som valts.**
+Varje valt värde står som en bricka i fältet, «typ: varelse ×», före det designern söker på.
+Brickans × tar bort valet och lämnar handen i fältet; Backspace i ett tomt fält tar den sista.
+Det valda syns alltså på två ställen utan att något öppnas — i fältet och i huvudet — vilket är det #128 kräver av krönet.
+Krönet är därmed sökfältet och Importera, och fältet håller minst 400 px vid 1024, 1280 och 1440 (`editor-crown.test.tsx`).
+
+**Ett tecken öppnar en lista** (variant B:s väg, som tangentbordets väg in i samma fält, L23).
+Att skriva «typ:» i fältet listar kolumnens värden under det, listan smalnar med det som skrivs, pilarna går i den och Enter tar värdet som en bricka.
+Medan texten namnger en kolumn söker den inte: raderna frågas om allt utom den.
+L23:s svaga punkt — att en väg in som bara är ett tecken inte syns — bärs av platshållaren, som säger «Sök i alla fält, eller typ: …».
+
+Variant C, en box «Filter: typ Playcard ▾» i krönet, valdes bort: den är det #130 avvisade, med etiketten som bot, och etiketten växer med varje kolumn som filtreras.
+
+`CrownRail` och dess räls är borta; väggens krön rör inte detta.
+Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/01-tabellens-filter.html`.

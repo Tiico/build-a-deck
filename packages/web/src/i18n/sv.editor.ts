@@ -170,7 +170,6 @@ export const svEditor = {
   // What stands before the choice in a box, and is what gives way below 1280 (#477).
   'crown.box.lead': '{name}: ',
   'crown.box.count': '{name} ({n})',
-  'crown.rail.more': 'Fler filter',
   // Hjälpmönstret (L32, #303): frågetecknet är namngivet efter vad det handlar om, och lådan
   // det öppnar har ett kryss. Ämnet skrivs där frågetecknet står, i sin flik.
   'help.about': 'Hjälp om {topic}',
@@ -338,6 +337,12 @@ export const svEditor = {
   'table.import.box': 'Importera',
   'table.export.box': 'Exportera',
   'table.filterOn': 'Filtrera på {field}',
+  'table.filterOn.count': 'Filtrera på {field}, {n} valt',
+  'table.filter.token': '{field}: {value}',
+  'table.filter.remove': 'Ta bort filtret {field}: {value}',
+  'table.filter.cards': '{n} kort',
+  'table.filter.none': 'inget värde börjar så',
+  'table.search.placeholder.typed': 'Sök i alla fält, eller {field}: …',
   'table.count': '{shown} av {total} kort',
   'table.selected.one': '{n} markerat kort',
   'table.selected.other': '{n} markerade kort',
