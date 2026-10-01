@@ -6,8 +6,8 @@ import { placedProps, usePlacement } from './placement.js'
 //
 // It is there only while it stands: a door that is not there cannot be walked through, and
 // `doors.ts` keeps the order between open doors by who is rendered. It lifts into the top layer
-// like every opened box (L55, #611), so nothing that scrolls can cut it and nothing is drawn over
-// it, and it is held against the element it hangs from. It closes the way every panel over the
+// like every opened box (L55, #611, #628), so nothing that scrolls can cut it and nothing is drawn
+// over it, and it is held against the element it hangs from. It closes the way every panel over the
 // work closes (#133): Escape hands the focus back to the handle it came from, a press in the work
 // leaves the focus where the pointer put it. On opening, the first control inside takes the focus,
 // so the keyboard that opened the box is already in it.
@@ -15,7 +15,8 @@ export function Lifted({ handle, label, className, onClose, children }: { handle
   const box = useRef<HTMLDivElement>(null)
   const latest = useRef({ onClose })
   latest.current = { onClose }
-  const place = usePlacement(true, box, { lift: true })
+  // Lifted into the top layer by the placement itself (#628): every positioned box is.
+  const place = usePlacement(true, box)
   useDoor('standing', () => {
     latest.current.onClose()
     handle.current?.focus()

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { liftedAt, placeBox, type Anchor } from '../src/editor/placement.js'
+import { geometryOf, liftedAt, placeBox, type Anchor } from '../src/editor/placement.js'
 
 // Where an opened box goes (#229).
 //
@@ -89,5 +89,30 @@ describe('where a lifted box stands in the window (#611)', () => {
 
   it('stands on the top of what it opens from when it opens upward, from its near edge when it fits', () => {
     expect(liftedAt(cell, { y: 'up', x: 'start', room: 150 }, VIEW_)).toEqual({ top: 'auto', bottom: '450px', left: '1220px', right: 'auto' })
+  })
+})
+
+// What the sheet says about where a box hangs (#622, L55): gap and inset along the two axes, a box
+// that opens beside its anchor, and one that always hangs from the one edge.
+describe('where a lifted box stands, by what its sheet says about it (#622)', () => {
+  const VIEW_ = { w: 1280, h: 640 }
+  const button = anchor(100, 200, 40, 30)
+
+  it('keeps the gap and the inset the sheet gives the box in place', () => {
+    const geometry = { gap: 6, inset: 4, beside: false, x: null }
+    expect(liftedAt(button, { y: 'down', x: 'start', room: 300 }, VIEW_, geometry)).toEqual({ top: '236px', bottom: 'auto', left: '104px', right: 'auto' })
+    expect(liftedAt(button, { y: 'up', x: 'end', room: 150 }, VIEW_, geometry)).toEqual({ top: 'auto', bottom: '446px', left: 'auto', right: '1144px' })
+  })
+
+  it('opens a box beside its anchor from the anchor’s own top and far side', () => {
+    const geometry = { gap: -6, inset: 6, beside: true, x: 'start' as const }
+    expect(liftedAt(button, { y: 'down', x: 'end', room: 300 }, VIEW_, geometry)).toEqual({ top: '194px', bottom: 'auto', left: '146px', right: 'auto' })
+    expect(liftedAt(button, { y: 'up', x: 'start', room: 150 }, VIEW_, geometry)).toEqual({ top: 'auto', bottom: '404px', left: '146px', right: 'auto' })
+  })
+
+  it('reads the four from the box’s own style, as lengths and words', () => {
+    const style = (values: Record<string, string>) => ({ getPropertyValue: (name: string) => values[name] ?? '' })
+    expect(geometryOf(style({}))).toEqual({ gap: 0, inset: 0, beside: false, x: null })
+    expect(geometryOf(style({ '--byd-place-gap': ' -8px', '--byd-place-inset': '8px', '--byd-place-x': ' end', '--byd-place-beside': '0' }))).toEqual({ gap: -8, inset: 8, beside: false, x: 'end' })
   })
 })

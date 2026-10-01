@@ -36,6 +36,7 @@ import { statusLinks } from '../status/links.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useLang, useT, type T } from '../i18n/index.js'
+import { HookGlyph } from '../glyphs.js'
 import './editor.css'
 
 const PlaytestPrototype = import.meta.env.DEV ? lazy(() => import('./prototype/PlaytestWorkspace.js')) : null
@@ -917,22 +918,12 @@ function StepButtons({ client, onConfirm }: { client: ProjectClient; onConfirm(t
   return (
     <span className="byd-editor-steps">
       <button type="button" aria-label={back ? t('undo.button', { what: t(back) }) : t('undo.button.none')} title={back ? t('undo.button', { what: t(back) }) : t('undo.button.none')} aria-disabled={back === null} onClick={() => back && takeStep(client, 'undo', t, onConfirm)}>
-        <StepHook />
+        <HookGlyph />
       </button>
       <button type="button" aria-label={ahead ? t('redo.button', { what: t(ahead) }) : t('redo.button.none')} title={ahead ? t('redo.button', { what: t(ahead) }) : t('redo.button.none')} aria-disabled={ahead === null} onClick={() => ahead && takeStep(client, 'redo', t, onConfirm)}>
-        <StepHook mirrored />
+        <HookGlyph mirrored />
       </button>
     </span>
-  )
-}
-
-// The one hook both steps are drawn with: a way back that turns and returns. Drawn, not typed —
-// ↶ and ↷ were whatever the machine's font made of them. Forward is the same hook seen in a mirror.
-function StepHook({ mirrored = false }: { mirrored?: boolean }) {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" data-mirrored={mirrored || undefined}>
-      <path d="M6 3.25 2.75 6.5 6 9.75M2.75 6.5h6.75a3.25 3.25 0 0 1 0 6.5H7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   )
 }
 

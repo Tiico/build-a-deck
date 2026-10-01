@@ -404,7 +404,7 @@ describe("the seat's control row at 375px (#31)", () => {
     }
     try {
       const three = await row()
-      expect(three.map((c) => c.label)).toEqual(['↶ Ångra', '⚑ Flagga', 'Ut…'])
+      expect(three.map((c) => c.label)).toEqual(['Ångra', 'Flagga', 'Ut…'])
       // One line: every control shares a top edge, and none is pushed off the screen.
       expect(new Set(three.map((c) => c.top)).size).toBe(1)
       expect(Math.max(...three.map((c) => c.right))).toBeLessThanOrEqual(375)
