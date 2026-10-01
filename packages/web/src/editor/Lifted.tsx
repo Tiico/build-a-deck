@@ -11,7 +11,30 @@ import { placedProps, usePlacement } from './placement.js'
 // work closes (#133): Escape hands the focus back to the handle it came from, a press in the work
 // leaves the focus where the pointer put it. On opening, the first control inside takes the focus,
 // so the keyboard that opened the box is already in it.
-export function Lifted({ handle, label, className, onClose, children }: { handle: RefObject<HTMLElement | null>; label: string; className: string; onClose(): void; children: ReactNode }) {
+//
+// A box is a group by default; a menu (#647) says so, walks its items with the arrows (APG) and
+// opens on the item the surface names — the choice the card already stands on — rather than on
+// the first.
+export function Lifted({
+  handle,
+  label,
+  className,
+  role = 'group',
+  id,
+  opensOn,
+  onClose,
+  children,
+}: {
+  handle: RefObject<HTMLElement | null>
+  label: string
+  className: string
+  role?: 'group' | 'menu'
+  id?: string | undefined
+  // A selector for the control that takes the focus on opening; the first control otherwise.
+  opensOn?: string | undefined
+  onClose(): void
+  children: ReactNode
+}) {
   const box = useRef<HTMLDivElement>(null)
   const latest = useRef({ onClose })
   latest.current = { onClose }
@@ -22,7 +45,8 @@ export function Lifted({ handle, label, className, onClose, children }: { handle
     handle.current?.focus()
   })
   useEffect(() => {
-    box.current?.querySelector<HTMLElement>('input, select, button, [tabindex]:not([tabindex="-1"])')?.focus()
+    const first = box.current?.querySelector<HTMLElement>('input, select, button, [tabindex]:not([tabindex="-1"])')
+    ;((opensOn && box.current?.querySelector<HTMLElement>(opensOn)) || first)?.focus()
     const onPointerDown = (event: Event) => {
       const target = event.target
       if (!(target instanceof Element)) return
@@ -35,9 +59,25 @@ export function Lifted({ handle, label, className, onClose, children }: { handle
     }
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- on opening only: the box must not take the focus back from what is done inside it
   }, [handle])
   return (
-    <div ref={box} className={className} {...placedProps(place)} role="group" aria-label={label}>
+    <div
+      ref={box}
+      id={id}
+      className={className}
+      {...placedProps(place)}
+      role={role}
+      aria-label={label}
+      onKeyDown={(event) => {
+        if (role !== 'menu' || (event.key !== 'ArrowDown' && event.key !== 'ArrowUp')) return
+        const items = [...(box.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? [])]
+        if (items.length === 0) return
+        event.preventDefault()
+        const at = items.indexOf(document.activeElement as HTMLElement)
+        items[(at + (event.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length]?.focus()
+      }}
+    >
       {children}
     </div>
   )

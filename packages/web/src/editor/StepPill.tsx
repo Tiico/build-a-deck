@@ -1,6 +1,5 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
-import { placedProps, usePlacement } from './placement.js'
-import { useRoving } from './roving.js'
+import { useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { Lifted } from './Lifted.js'
 
 // One control for «how big is the thing I am looking at drawn» (#619): `[−][164 % ▾][+]`.
 //
@@ -61,29 +60,14 @@ type MeasureProps = Pick<StepPillProps, 'value' | 'said' | 'note' | 'onStep'> & 
 function Measure({ value, said, note, onStep, choices }: MeasureProps) {
   const [open, setOpen] = useState(false)
   const button = useRef<HTMLButtonElement | null>(null)
-  const menu = useRef<HTMLDivElement | null>(null)
   const menuId = useId()
-  // Upward, since the pill stands at the foot of its surface; and lifted over the page there, so
-  // nothing the surface scrolls in cuts it (L55). Which way is the room's to say, not this file's.
-  const place = usePlacement(open, menu)
-  const ids = choices.items.map((c) => c.id)
   const checked = choices.items.find((c) => c.checked)?.id ?? null
-  const { itemProps, focus } = useRoving({ ids, selected: checked, orientation: 'vertical' })
-  // The keys land on the choice the card stands on the moment the menu opens, so the first arrow
-  // moves from where the designer already is. On opening only: the menu must not take the focus
-  // back from what the designer does inside it.
-  useEffect(() => {
-    if (open) focus(checked ?? ids[0])
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- on opening only: the menu must not take the focus back
-  }, [open])
-  // The way out, and back to the measure the menu was opened from: closing unmounts whatever had
-  // the focus, so without this a keyboard that opened the menu is dropped on `<body>`.
-  const close = () => {
+  // The menu is the editor's one lifted box (#647, `Lifted`): over the page (L55), opened on the
+  // choice the card stands on, Escape back to the measure, and closed by a press anywhere in the
+  // work with the focus left where the pointer put it (#133).
+  const pick = (choice: PillChoice) => {
     setOpen(false)
     button.current?.focus()
-  }
-  const pick = (choice: PillChoice) => {
-    close()
     choice.pick()
   }
   // The arrows on the measure step it, as they stepped the slider this pill replaces: up and right
@@ -120,33 +104,15 @@ function Measure({ value, said, note, onStep, choices }: MeasureProps) {
         )}
       </button>
       {open && (
-        <div
-          ref={menu}
-          id={menuId}
-          className="byd-pill-menu"
-          {...placedProps(place)}
-          role="menu"
-          aria-label={choices.label}
-          // The focus leaving the menu takes the menu with it. The measure it hangs from is the
-          // one place that does not count: pressing it while the menu is open moves the focus
-          // there *and* toggles, and a menu that closed on the move would open again on the toggle.
-          onBlur={(event) => {
-            if (event.relatedTarget !== button.current && !event.currentTarget.contains(event.relatedTarget)) setOpen(false)
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== 'Escape' || event.defaultPrevented) return
-            event.preventDefault()
-            close()
-          }}
-        >
+        <Lifted handle={button} id={menuId} label={choices.label} className="byd-pill-menu" role="menu" opensOn={checked ? `[data-choice="${checked}"]` : undefined} onClose={() => setOpen(false)}>
           {choices.items.map((choice) => (
-            <button key={choice.id} type="button" className="byd-pill-choice" role="menuitemradio" aria-checked={choice.checked} onClick={() => pick(choice)} {...itemProps(choice.id)}>
+            <button key={choice.id} type="button" className="byd-pill-choice" role="menuitemradio" aria-checked={choice.checked} data-choice={choice.id} onClick={() => pick(choice)}>
               {choice.label}
               {/* Said by `aria-checked`; the mark is for the eye. */}
               {choice.checked && <span aria-hidden="true">✓</span>}
             </button>
           ))}
-        </div>
+        </Lifted>
       )}
     </div>
   )

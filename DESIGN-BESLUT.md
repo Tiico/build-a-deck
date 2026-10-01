@@ -5711,6 +5711,9 @@ Frågan före en borttagning tar verktygsradens plats i foten, som förut tog he
 Foten är en rad, och en väljare och ett fält hade gjort den till två.
 Boxen lyfts till toppskiktet (L55) och öppnas uppåt ur foten; Escape stänger tillbaka till handtaget och ett tryck i arbetet stänger.
 Samma låda som kolumnfiltrets dörr (L56): `Lifted.tsx` är en komponent för en box som öppnas under en knapp och står över arbetet tills den stängs.
+*Tillagt 2026-10-01 (#647):* pillrets meny bakom procenttalet (#619) ritas också med `Lifted`, som meny: den öppnas på det val kortet står på, pilarna går i den, Escape går tillbaka till talet, och ett tryck var som helst i arbetet stänger den med handen kvar där trycket satte den (#133).
+Menyn stängdes förut bara när fokus lämnade den, så ett tryck på dukens rutmönster — som inte tar fokus — lämnade den stående.
+Editorn har därmed en lyft box och inte två.
 
 Variant B, en flytande remsa över tabellens nederkant, valdes bort för att den täcker sista raden — det L19 redan valt bort för förstoringen.
 Variant C, att krönet byter innehåll medan något är markerat, tar bort sökningen i det ögonblick man markerar.
