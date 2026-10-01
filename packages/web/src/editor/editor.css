@@ -917,7 +917,7 @@
 .byd-crown-step { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; }
 .byd-crown-step button { min-width: var(--byd-tap); min-height: var(--byd-tap); border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 15px; cursor: pointer; }
 /* What the work adds up to, under it rather than over it. */
-.byd-crown-foot { flex: none; display: flex; align-items: center; gap: var(--byd-s3); padding: var(--byd-s2) 0 0; border-top: 1px solid #2f333d; color: var(--byd-editor-quiet); font-size: 12px; }
+.byd-crown-foot { position: relative; flex: none; display: flex; align-items: center; gap: var(--byd-s3); padding: var(--byd-s2) 0 0; border-top: 1px solid #2f333d; color: var(--byd-editor-quiet); font-size: 12px; }
 .byd-crown-foot span { white-space: nowrap; }
 .byd-crown-foot p { margin: 0; }
 
@@ -2103,10 +2103,11 @@
 .byd-data input { background: transparent; border: 0; color: #ddd; padding: 8px var(--byd-data-cell-pad); width: 100%; box-sizing: border-box; font-size: 12px; }
 .byd-data button { background: transparent; border: 0; color: var(--byd-editor-quiet); cursor: pointer; padding: 4px 8px; }
 .byd-data-add { margin-top: 8px; border: 1px dashed #2f333d; background: transparent; color: #9aa3b8; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
-/* The action row (#17, prototype A): it is not there at all until a card is marked, and then it
-   stands between the filter and the rows — right where the eye goes after ticking a box. The
-   delete is the only destructive button in the editor and is the only one drawn in red; the
-   question it asks first takes the whole row, so nothing can be pressed by mistake behind it. */
+/* The action row (#17, prototype A; #618, variant A): it is not there at all until a card is
+   marked. It stood between the filter and the rows and moved every row 80 px when a box was
+   ticked; since #618 it stands in the foot, after the count, where nothing above the rows moves.
+   The delete is the only destructive button in the editor and is the only one drawn in red; the
+   question it asks first takes the toolbar's place, so nothing can be pressed by mistake behind it. */
 .byd-data-bulk {
   --byd-editor-bulk-bg: #1f2937;
   --byd-editor-bulk-ink: #e6ecfa;
@@ -2156,6 +2157,21 @@
    on the row's lighter panel the same dark box reads as a hole punched through it, while every
    other control there is drawn as an outline. So it takes the row's ground, like the rest. */
 .byd-data-bulk .byd-data-file { background: transparent; color: var(--byd-editor-bulk-ink); }
+/* In the foot the row is the foot's own: no band of its own, no margin, and buttons that keep the
+   foot one row tall. The column and the value are behind «Sätt fält», in a box that lifts into
+   the top layer (L55) and opens upward from the foot. */
+.byd-crown-foot .byd-data-bulk { flex: 0 1 auto; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; flex-wrap: nowrap; }
+.byd-crown-foot .byd-data-bulk[role='alertdialog'] { padding: 0 var(--byd-s3); border: 1px solid var(--byd-editor-bulk-danger-bg); border-radius: 8px; background: var(--byd-editor-bulk-ask-bg); }
+.byd-crown-foot .byd-data-bulk button { white-space: nowrap; }
+.byd-data-set[aria-expanded='true'] { border-color: var(--byd-editor-primary-mark); }
+.byd-data-set-box { position: absolute; z-index: 6; bottom: calc(100% + var(--byd-s1)); left: 0; display: flex; align-items: center; gap: var(--byd-s2); flex-wrap: wrap; min-width: 240px; padding: var(--byd-s2); border: 1px solid #3b4358; border-radius: 10px; background: var(--byd-editor-panel-bg); box-shadow: 0 12px 30px rgb(0 0 0 / 50%); color: var(--byd-editor-bulk-ink); }
+.byd-data-set-box[data-place-y='down'] { bottom: auto; top: calc(100% + var(--byd-s1)); }
+.byd-data-set-box[data-place-x='end'] { left: auto; right: 0; }
+.byd-data-set-box label { display: flex; align-items: center; gap: 6px; color: var(--byd-editor-bulk-quiet); }
+.byd-data-set-box select, .byd-data-set-box input { min-height: var(--byd-tap); padding: 4px 8px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: var(--byd-editor-filter-bg); color: var(--byd-editor-filter-ink); font: inherit; }
+.byd-data-set-box > button { min-height: var(--byd-tap); padding: 4px 12px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: var(--byd-editor-bulk-ink); font: inherit; font-weight: 700; cursor: pointer; }
+.byd-data-set-box > button:disabled { color: var(--byd-editor-bulk-quiet); cursor: default; }
+.byd-data-set-box .byd-data-file { background: transparent; color: var(--byd-editor-bulk-ink); }
 /* The checkbox column (#17): wide enough for a real hit target. The tick itself is the editor's
    one tick box (#45) and is drawn nowhere but there, so "marked" here and "marked" in the recipe
    are the same blue and the same square. */
@@ -3697,7 +3713,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-layers [role='gridcell'] > .byd-layer-inside { flex: 1 0 100%; }
 /* A count that is not one, said under the cell it is typed in, in the amber the editor says what
    wants looking at in (#479); and a card that is in the table but not in the deck, said quietly. */
-.byd-data-lane input[aria-invalid='true'], .byd-data-bulk input[aria-invalid='true'] { border-color: #f0b64a; }
+.byd-data-lane input[aria-invalid='true'], .byd-data-bulk input[aria-invalid='true'], .byd-data-set-box input[aria-invalid='true'] { border-color: #f0b64a; }
 .byd-data-says { grid-column: 1 / -1; color: #f0b64a; font-size: 11px; white-space: nowrap; }
 .byd-data-out { grid-column: 1 / -1; color: var(--byd-editor-quiet); font-size: 11px; white-space: nowrap; }
 /* A card gone since the version compared with (#479, B4): what it was, struck through and quiet. */

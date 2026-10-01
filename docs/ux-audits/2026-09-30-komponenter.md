@@ -88,6 +88,12 @@ Rubrikens prosautfällning öppnas inte av en hand på handtaget eller ett fokus
 
 ![A: foten som verktygsrad, «Sätt fält» öppen](2026-09-30-komponenter/02-a-satt.png)
 
+**Beslut (beställaren 2026-10-01): A.**
+**Ändrat (#618, L58):** bandet över raderna är borta.
+Foten bär handlingarna efter antalet — «Sätt fält ▾», Duplicera, Ta bort, Avmarkera alla — och frågan före en borttagning tar deras plats.
+Kolumn och värde står i en lyft box ur «Sätt fält», samma `Lifted` som kolumnfiltrets dörr.
+Första raden står kvar när ett kort markeras, och foten är en rad (`data-table-layout.test.tsx`).
+
 ### #619 · Förstoringen
 
 | | Kontrollen | Täcker kortet | Väggens täthet |

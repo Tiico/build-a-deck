@@ -84,6 +84,8 @@ describe('ett enskilt bildfält tar en bild (#291)', () => {
   it('säger samma sak i massredigeringens bildruta, som är ett fält och inte ett bibliotek', () => {
     const { onUpload } = table()
     fireEvent.click(screen.getByLabelText('markera knight'))
+    // The column and the value are behind «Sätt fält» in the foot (#618).
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt fält' }))
     fireEvent.change(within(screen.getByRole('toolbar', { name: 'Markerade kort' })).getByLabelText('Kolumn'), { target: { value: 'art' } })
     const slot = within(screen.getByRole('toolbar', { name: 'Markerade kort' })).getByLabelText('Bild för de markerade korten')
 

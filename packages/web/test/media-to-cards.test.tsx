@@ -51,6 +51,8 @@ async function putOnMarked(user: ReturnType<typeof userEvent.setup>): Promise<vo
   await user.click(await screen.findByRole('checkbox', { name: 'markera knight' }))
   await user.click(screen.getByRole('checkbox', { name: 'markera wizard' }))
   const bulk = screen.getByRole('toolbar', { name: 'Markerade kort' })
+  // The column and the value are behind «Sätt fält» in the foot (#618).
+  fireEvent.click(screen.getByRole('button', { name: 'Sätt fält' }))
   fireEvent.change(within(bulk).getByLabelText('Kolumn'), { target: { value: 'art' } })
   await user.click(within(bulk).getByRole('button', { name: 'Välj bild för de markerade korten' }))
   await user.click(within(dialog()).getByRole('button', { name: 'Bild på dragon' }))

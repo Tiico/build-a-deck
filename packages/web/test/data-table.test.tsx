@@ -201,6 +201,8 @@ describe('an image on every marked card (#17, E1)', () => {
 
     // The column is the image field, so the value is not a sentence to type: it is a place to put
     // an image. The row says so by having no text field at all for it.
+    // The column and the value are behind «Sätt fält» in the foot (#618).
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt fält' }))
     fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
     expect(within(bulk()).queryByLabelText('Värde')).toBeNull()
     const slot = within(bulk()).getByLabelText('Bild för de markerade korten')
@@ -227,6 +229,8 @@ describe('an image on every marked card (#17, E1)', () => {
     render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} assetBase="http://api.local" onUpload={onUpload} />)
     mark('knight')
     mark('wizard')
+    // The column and the value are behind «Sätt fält» in the foot (#618).
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt fält' }))
     fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
 
     const file = new File(['png'], 'skog.png', { type: 'image/png' })
@@ -247,6 +251,8 @@ describe('an image on every marked card (#17, E1)', () => {
     const onReplaceRows = vi.fn()
     render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} assetBase="http://api.local" onUpload={async () => OTHER} />)
     mark('knight')
+    // The column and the value are behind «Sätt fält» in the foot (#618).
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt fält' }))
     fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
 
     // A file off the desktop is dropped on the row the same way it is dropped on a cell.
@@ -269,6 +275,8 @@ describe('an image on every marked card (#17, E1)', () => {
     const onReplaceRows = vi.fn()
     render(<DataTable doc={withArt()} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} />)
     mark('knight')
+    // The column and the value are behind «Sätt fält» in the foot (#618).
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt fält' }))
     fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
 
     expect(within(bulk()).queryByLabelText('Bild för de markerade korten')).toBeNull()
