@@ -77,7 +77,11 @@ function deckDoc(): ProjectDoc {
 // took its place (L57, #630): the library is a sheet there now, with its search at its own head.
 const CROWNED = ['Kortvägg', 'Tabell'] as const
 
-async function surfaces(width: number): Promise<Record<string, string>> {
+// `filtered` draws the card table with a filter chosen (#648): the token it puts in the search
+// field is what the chip measurement reads. Only that measurement asks for it — a filtered deck
+// is a shorter table, and a table that no longer scrolls is not the fixture the other readings
+// are about.
+async function surfaces(width: number, filtered = false): Promise<Record<string, string>> {
   atWidth(width)
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   const { unmount } = render(<EditorPage />)
@@ -86,10 +90,9 @@ async function surfaces(width: number): Promise<Record<string, string>> {
     const out: Record<string, string> = {}
     for (const name of CROWNED) {
       fireEvent.click(screen.getByRole('tab', { name }))
-      // The card table with a filter chosen (#648): the token it puts in the search field is what
-      // the chip measurements below read, and the door that chose it is closed again so the
-      // markup carries no box but the crown's own.
-      if (name === 'Tabell') {
+      // The door that chose the filter is closed again, so the markup carries no box but the
+      // crown's own.
+      if (filtered && name === 'Tabell') {
         fireEvent.click(screen.getByRole('button', { name: 'Filtrera på typ' }))
         fireEvent.click(screen.getByRole('checkbox', { name: 'Playcard' }))
         fireEvent.keyDown(document, { key: 'Escape' })
@@ -102,8 +105,8 @@ async function surfaces(width: number): Promise<Record<string, string>> {
   }
 }
 
-async function measure<T>(width: number, height: number, read_: (page: Page) => Promise<T>): Promise<Record<string, T>> {
-  const marked = await surfaces(width)
+async function measure<T>(width: number, height: number, read_: (page: Page) => Promise<T>, filtered = false): Promise<Record<string, T>> {
+  const marked = await surfaces(width, filtered)
   const page = await browser.newPage({ viewport: { width, height } })
   try {
     const out: Record<string, T> = {}
@@ -226,6 +229,7 @@ describe.each(DESKS)('the filter token on a %ix%i desk (#648)', (width, height) 
         const round = parseFloat(getComputedStyle(chip).borderTopLeftRadius) >= tap / 2
         return `${Math.round(c.height)} tall, × ${Math.round(x.width)}×${Math.round(x.height)}, ${round ? 'a pill' : 'a box'}`
       }),
+      true,
     )
     expect(measured['Tabell']).toBe('44 tall, × 44×44, a pill')
     expect(measured['Kortvägg']).toBe('no chip in the field')
