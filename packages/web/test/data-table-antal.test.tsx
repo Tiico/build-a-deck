@@ -70,6 +70,8 @@ describe('the bulk row s count (#479)', () => {
   it('writes nothing that is not a count, and says why', () => {
     const { onReplaceRows } = table()
     fireEvent.click(screen.getByLabelText('Markera alla synliga'))
+    // The column and the value are behind «Sätt fält» in the foot (#618).
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt fält' }))
     fireEvent.change(screen.getByLabelText('Kolumn'), { target: { value: 'antal' } })
     const value = screen.getByLabelText('Värde')
     fireEvent.change(value, { target: { value: '-5' } })
