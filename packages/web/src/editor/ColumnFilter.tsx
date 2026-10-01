@@ -73,7 +73,7 @@ function Door({ field, label, handle, onClose, children }: { field: string; labe
   const door = useRef<HTMLDivElement>(null)
   const latest = useRef({ onClose })
   latest.current = { onClose }
-  const place = usePlacement(true, door, { lift: true })
+  const place = usePlacement(true, door)
   useDoor('standing', () => {
     latest.current.onClose()
     handle.current?.focus()

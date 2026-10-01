@@ -1283,6 +1283,7 @@ Spelets egen uppsättning står bredvid biblioteket med vad man skriver, vilken 
 En symbol som tas in blir ett av projektets assets (E1): bytesen laddas upp och uppsättningen pekar på `asset:<hash>`, så kortens utseende inte hänger på att biblioteket står stilla.
 Licensen lagras i dokumentets `credits` bredvid uppsättningen, så kompilatorns `icons` förblir namn → URL, och `POST /projects/:id/print` svarar med licenserna tillsammans med korten — det är följdkravet att licensmetadata når tryckunderlaget.
 Biblioteket är ritat för projektet och släppt som CC0; strukturen bär licens och upphovsman per symbol, så kurerat CC-BY-material kan läggas till utan ändring.
+Reviderat 2026-10-01 (L57, #612): fliken Symboler ersätts av Speltema, där biblioteket öppnas ur spelets ikoner; klammern i Tabell föreslår temat först.
 
 Symbolerna bär färg, och färgen hör till bruket (prototypat och byggt 2026-09-15):
 Beslutet ovan att en symbol ritas mörk och når kortet som en bild faller här: en symbol som inte kan färgas kan inte skilja kostnad från vinst, och det är vad ett effektspråk på ett kort behöver göra.
@@ -3447,6 +3448,7 @@ Den fysiska kontrollen (E5) flaggar varje familj versionen inte bär (B3), så p
 `system-ui` var dessutom precis det felet handlar om: ett ansikte på formgivarens Mac, ett annat i renderarens Chromium och ett tredje hos tryckeriet.
 
 Beslutet är **en familj per ram**: Klassisk i **EB Garamond**, Minimal i **Inter**, Mörk i **Roboto Condensed**.
+Reviderat 2026-10-01 (L57, #612): ramen bär inget typsnitt längre; familjen kommer ur temat som väljs tillsammans med ramen, «Utseende».
 
 Två kandidater valdes bort, och skälen är ramgalleriets egna.
 Att sätta alla tre i samma familj hade kostat noll nya byte och tagit bort det galleriet finns för: tre utseenden hade blivit en typografi i tre färgsättningar.
@@ -5565,11 +5567,15 @@ Det är beställarens regel, och den gäller generellt.
 Kolumndörren hängde i huvudets sista cell *inne i* lådan tabellen skrollar i, och den lådan klipper.
 I ett fönster på 640 px höjd skars «Lägg till» och «Avbryt» av vid skrolllådans kant, och «+ Nytt kort» stod där de skulle ha stått.
 `placement.ts` mätte rummet mot fönstret och trodde att dörren fick plats.
-Nu lyfts en låda till sidans toppskikt (`popover="manual"`) och hålls fast mot elementet den hänger i, med `usePlacement(…, { lift: true })`.
+Nu lyfts varje låda som `usePlacement` placerar till sidans toppskikt (`popover="manual"`) och hålls fast mot elementet den hänger i: kolumndörren, cellernas symbolruta och betydelselista, regelbokens `[[`, Ikon-verktygets bibliotek, zonernas val och bordens meny (#622).
 I toppskiktet klipper ingen låda den, och inget ritas över den.
-Den lämnar toppskiktet genom att lämna sidan, aldrig med `hidePopover`, som skulle lämna tillbaka fokus till det som hade det när lådan öppnades.
-Dörren är den första som lyfts; de andra lådor som `usePlacement` placerar flyttas över i egen takt (#622).
-En låda som står inne i en lyft låda, som formuläret i dörren, lyfts inte själv.
+Den lämnar toppskiktet genom att lämna sidan, aldrig med `hidePopover`.
+En låda som arket lägger i flödet, som formuläret i dörren och i egenskapspanelen, lyfts inte, och inte heller en låda som står inne i en lyft låda.
+
+Var lådan hänger är fortfarande arkets sak.
+Varje låda säger sitt avstånd och sin sida i fyra variabler, `--byd-place-gap`, `--byd-place-inset`, `--byd-place-beside` och `--byd-place-x`, och arkets egna regler läser samma variabler.
+Den lyfta lådan räknas från ankarets padding-box, alltså från samma kant som arkets `top: 100%`.
+`packages/e2e/test/surfaces/opened-boxes-over.spec.ts` sänker varje yta tillbaka på plats och kräver att den stod på samma bildpunkt lyft som oklippt.
 
 Samma mätning hittade ett äldre fel: namnrutans `autoFocus` fick fokus medan dörren ännu stod inne i tabellen, och tabellen skrollade flera hundra bildpunkter nedåt för att visa den.
 Namnrutan tar nu fokus med `preventScroll`, och ingenting bakom dörren flyttar sig när den öppnas.
@@ -5622,3 +5628,43 @@ Variant C, en box «Filter: typ Playcard ▾» i krönet, valdes bort: den är d
 
 `CrownRail` och dess räls är borta; väggens krön rör inte detta.
 Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/01-tabellens-filter.html`.
+
+### L57. Speltema ersätter Symboler: spelets typsnitt, färger och ikoner väljs som ett tema, och Tabell föreslår ur det (prototypat och beslutat 2026-10-01, #612)
+
+Beställaren förstod inte poängen med fliken Symboler, och det var ett riktigt fynd.
+Det vanliga flödet — `{` i en textcell i Tabell (L23) — gick aldrig genom fliken, och det fliken ensam gjorde, betydelserna och spelets uppsättning (E4, L34), stod under ett bibliotek som mest upprepade klammerns sökning.
+Spelets typsnitt stod samtidigt i Mallens panel och bara när inget lager var valt (L25), så spelets identitet låg på tre ställen och inget av dem sa att den var spelets.
+
+Beslutet är en flik **Speltema** i Symbolers ställe.
+Där bestäms spelets **typsnitt** (rubrik och brödtext), **papper**, **betydelser med sina färger** och **ikonuppsättning** en gång.
+**Tabell styr fortfarande**: temat finns för att Tabell och Mall ska kunna föreslå ur det och hålla bruset nere.
+Allt utanför temat är kvar, men får ligga två till tre klick bort.
+Ram och kortets stil ingår inte i temat.
+
+Tre former av fliken prövades: ett stilark med ett levande kort bredvid (A), kortet som karta där man klickar den del man vill ändra (B), och temat som ett val (C).
+Valet blev **C**.
+
+- **Fliken börjar med ett galleri av färdiga teman**, samma galleri som wizarden visar.
+  Ett tema är ett utgångsläge, inte ett lås.
+- **Det som avviker från det valda temat sägs på en rad**, med en väg tillbaka till temat som det var.
+- **Justeringen ligger fälld, ett klick bort per del**: Typsnitt, Färger och betydelser, Spelets ikoner.
+  Ett stängt huvud bär sitt värde, som L25:s sektioner, så inget döljs utan att sägas.
+- **Hela symbolbiblioteket öppnas ur Spelets ikoner**, och en symbol som tas in därifrån blir en av temats ikoner.
+  Licensen följer med som förut (E4).
+
+Stilarket visade allt men var mest skärm för den som är nöjd med sitt tema, och kartan var elegant men gömde vad som gick att ändra.
+
+**Klammerns lista i Tabell föreslår ur temat**, i den ordning den prototypades:
+
+1. Det leken redan skriver, ordnat efter hur ofta, som `{sköld|försvar}` — infogat med ett klick.
+2. Spelets ikoner; en vald ikon visar betydelserna som färgade kopior av sig själv (L34).
+3. «Hela biblioteket» är klick två. En ikon som infogas därifrån tas in i temat.
+
+Sökningen söker allt men visar temat först.
+
+**I wizarden blir ramvalet «Utseende»** (L6, L10): ramen säger var saker står och temat hur det känns, valda på samma ställe som ramen väljs i dag, med ett kort som visar båda.
+Ett eget steg för temat prövades och valdes bort; wizarden får inget nytt steg.
+Därmed bär ramen inget typsnitt längre — det gör temat — och #420:s «en familj per ram» blir en familj per tema.
+Kravet bakom #420 står kvar oförändrat: varje tema bär sina familjer som projektets egna filer, så den guidade starten faller aldrig på den fysiska kontrollen.
+
+Prototypen står i [`docs/ux-audits/2026-09-30-speltema/prototyper/01-speltema.html`](docs/ux-audits/2026-09-30-speltema/prototyper/01-speltema.html).
