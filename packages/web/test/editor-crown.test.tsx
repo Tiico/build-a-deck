@@ -86,6 +86,14 @@ async function surfaces(width: number): Promise<Record<string, string>> {
     const out: Record<string, string> = {}
     for (const name of CROWNED) {
       fireEvent.click(screen.getByRole('tab', { name }))
+      // The card table with a filter chosen (#648): the token it puts in the search field is what
+      // the chip measurements below read, and the door that chose it is closed again so the
+      // markup carries no box but the crown's own.
+      if (name === 'Tabell') {
+        fireEvent.click(screen.getByRole('button', { name: 'Filtrera på typ' }))
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Playcard' }))
+        fireEvent.keyDown(document, { key: 'Escape' })
+      }
       out[name] = document.querySelector('.byd-editor')!.outerHTML
     }
     return out
@@ -198,6 +206,30 @@ describe.each(DESKS)('the crown on a %ix%i desk', (width, height) => {
     }
   }, 120_000)
 
+})
+
+// The token in the search field is the editor's one chip (#648, variant A): the same pill the
+// table strip's seats are, a target tall, its × a full square target, so «a thing with × beside
+// it» is one form wherever it is met. It was a 34 px box of its own in the field; the strip's
+// chip is measured by `editor-seat-chips.spec.ts` in the built app.
+describe.each(DESKS)('the filter token on a %ix%i desk (#648)', (width, height) => {
+  it('is the editor’s chip: a pill of one target, with a full target for its ×', async () => {
+    const measured = await measure(width, height, (page) =>
+      page.evaluate(() => {
+        const chip = document.querySelector<HTMLElement>('.byd-data-filter .byd-chip')
+        if (!chip) return 'no chip in the field'
+        const cross = chip.querySelector<HTMLElement>('button')
+        if (!cross) return 'a chip with no ×'
+        const tap = parseFloat(getComputedStyle(chip).getPropertyValue('--byd-tap'))
+        const c = chip.getBoundingClientRect()
+        const x = cross.getBoundingClientRect()
+        const round = parseFloat(getComputedStyle(chip).borderTopLeftRadius) >= tap / 2
+        return `${Math.round(c.height)} tall, × ${Math.round(x.width)}×${Math.round(x.height)}, ${round ? 'a pill' : 'a box'}`
+      }),
+    )
+    expect(measured['Tabell']).toBe('44 tall, × 44×44, a pill')
+    expect(measured['Kortvägg']).toBe('no chip in the field')
+  }, 120_000)
 })
 
 // Width has nothing to do with this one: it is what the boxes say, not how they fit.

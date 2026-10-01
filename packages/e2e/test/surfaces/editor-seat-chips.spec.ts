@@ -43,7 +43,7 @@ for (const locale of ['sv-SE', 'en-GB']) {
           const outer = box(band)
           const chips = [...band.querySelectorAll('[data-host-seat]')].map((chip) => {
             const button = chip.querySelector('button')!
-            return { text: (chip.textContent ?? '').replace(/\s+/g, ''), chip: box(chip).toJSON() as DOMRect, button: box(button).toJSON() as DOMRect }
+            return { text: (chip.textContent ?? '').replace(/\s+/g, ''), chip: box(chip).toJSON() as DOMRect, button: box(button).toJSON() as DOMRect, form: chip.classList.contains('byd-chip') }
           })
           const code = box(band.querySelector('.byd-editor-room button')!)
           return {
@@ -56,7 +56,10 @@ for (const locale of ['sv-SE', 'en-GB']) {
         })
         expect({ over: drawn.over, across: drawn.across }).toEqual({ over: 0, across: 0 })
         expect(drawn.chips).toHaveLength(8)
-        for (const [i, { text, chip, button }] of drawn.chips.entries()) {
+        for (const [i, { text, chip, button, form }] of drawn.chips.entries()) {
+          // The same chip the search field's filter token is (#648): one form for «a thing with
+          // × beside it», drawn once in `buttons.css`.
+          expect(form).toBe(true)
           // The name is read on the chip, and the × beside it is a mark: the name a screen
           // reader gives the button is the sentence, the eye gets the seat and the cross.
           expect(text).toBe(`${NAMES[i]}×`)

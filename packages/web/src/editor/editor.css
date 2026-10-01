@@ -438,43 +438,12 @@
   background: var(--byd-editor-lost-button-bg);
   color: var(--byd-editor-lost-ink);
 }
-/* The seats at the table, a chip each (#621, beslut A 2026-10-01): the name, and an × that kicks
-   and is called «Sparka Ada». The × is the table's and the layer list's mark for «take away», and
-   a full target square; the chip is exactly as tall as «Ny kod» beside it, which is why its line
-   is an outline drawn inside the box and not a border around it — a border would either make
-   the chip 46 px or the × 42. The outline is painted over the ×'s own fill, so the chip keeps
-   its edge under the pointer. */
+/* The seats at the table, a chip each (#621; one form with the field's token since #648). The
+   strip says the chip's colours — its green as a line, never a fill — and its error colours when
+   it is lost or stalled. */
+.byd-editor-table-link { --byd-chip-line: #5f7f69; --byd-chip-ink: #e3f3e8; --byd-chip-mark: #a9d8b8; --byd-chip-hover: #2a3a2c; }
+.byd-editor-table-link:is([data-lost], [data-stalled]) { --byd-chip-line: var(--byd-editor-lost-button-line); --byd-chip-ink: var(--byd-editor-lost-ink); --byd-chip-mark: var(--byd-editor-lost-ink); --byd-chip-hover: var(--byd-editor-lost-button-bg); }
 .byd-editor-seats { display: flex; flex-wrap: wrap; gap: var(--byd-s2); margin: 0; padding: 0; list-style: none; }
-.byd-editor-seats > li {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--byd-s1);
-  height: var(--byd-tap);
-  padding-left: var(--byd-s3);
-  border-radius: 999px;
-  outline: 1px solid #5f7f69;
-  outline-offset: -1px;
-  color: #e3f3e8;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.byd-editor-table-link .byd-editor-seats button {
-  width: var(--byd-tap);
-  height: var(--byd-tap);
-  padding: 0;
-  border: 0;
-  border-radius: 0 999px 999px 0;
-  background: transparent;
-  color: #a9d8b8;
-  font-size: 16px;
-}
-.byd-editor-table-link .byd-editor-seats button:hover { background: #2a3a2c; color: #fff; }
-/* The editor's ring, drawn inside the × so it does not lie over the name beside it or the next
-   chip; it follows the chip's round end. */
-.byd-editor-table-link .byd-editor-seats button:focus-visible { outline-offset: -3px; }
-.byd-editor-table-link:is([data-lost], [data-stalled]) .byd-editor-seats > li { outline-color: var(--byd-editor-lost-button-line); color: var(--byd-editor-lost-ink); }
-.byd-editor-table-link:is([data-lost], [data-stalled]) .byd-editor-seats button { background: transparent; color: var(--byd-editor-lost-ink); }
-.byd-editor-table-link:is([data-lost], [data-stalled]) .byd-editor-seats button:hover { background: var(--byd-editor-lost-button-bg); }
 /* The strips above are usually absent; the open mode is the one thing that gives way, so the
    canvas reaches the bottom of the window however many of them are there.
 
@@ -2156,11 +2125,10 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-data-filter > input { flex: 1 1 160px; min-width: 0; min-height: 34px; border: 0; background: transparent; color: var(--byd-editor-filter-ink); font: inherit; }
 .byd-data-filter > input:focus { outline: none; }
 .byd-data-filter > input::placeholder { color: var(--byd-editor-filter-quiet); }
-/* A token is the chosen value with the column it was chosen from, and the way to let go of it. The
-   × is a full target in height and width; the token stands as tall as the field's inner row. */
-.byd-data-token { flex: none; display: inline-flex; align-items: center; height: 34px; padding-left: var(--byd-s2); border-radius: 6px; background: var(--byd-editor-marked-bg); color: #fff; font-weight: 600; white-space: nowrap; }
-.byd-data-token > button { min-width: 34px; height: 34px; border: 0; border-radius: 6px; background: transparent; color: #dbe4ff; font: inherit; font-size: 15px; cursor: pointer; }
-.byd-data-token > button:hover { background: #3c4a6d; }
+/* A token is the editor's chip (#648): the chosen value with the column it was chosen from, in
+   the field's own colours — the marking's blue as a fill — and the way to let go of it. */
+.byd-data-filter { --byd-chip-bg: var(--byd-editor-marked-bg); --byd-chip-ink: #fff; --byd-chip-mark: #dbe4ff; --byd-chip-hover: #3c4a6d; }
+.byd-data-filter > .byd-chip { flex: none; }
 /* The list «typ:» opens under the field (L23): the column's values that begin as typed, the one
    under the cursor marked, each with how many cards carry it. */
 .byd-data-typed { position: absolute; z-index: 6; top: calc(100% + var(--byd-s1)); left: 0; min-width: 240px; max-width: 420px; padding: var(--byd-s1); border: 1px solid #3b4358; border-radius: 10px; background: var(--byd-editor-panel-bg); box-shadow: 0 12px 30px rgb(0 0 0 / 50%); }
