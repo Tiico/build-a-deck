@@ -1327,15 +1327,17 @@
   display: inline-flex;
   align-items: stretch;
   flex: 0 0 auto;
-  border: 1px solid #2f333d;
+  /* The edge is drawn outside the box and not as a border: the pill is exactly a target tall, as
+     the crown's boxes are, so it stands on the same row as they do rather than two pixels proud. */
+  box-shadow: 0 0 0 1px #2f333d;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--byd-editor-tool-bg) 92%, transparent);
+  background: var(--byd-editor-tool-bg);
   color: var(--byd-editor-tool-ink);
   font-size: 12px;
 }
 /* In the crown it wears the crown's skin, as the two bare presses it replaces did, so the row
    reads as one row of controls. */
-.byd-crown .byd-pill { background: #1b1d23; border-color: #3b414e; color: #dce3f2; }
+.byd-crown .byd-pill { background: #1b1d23; box-shadow: 0 0 0 1px #3b414e; color: #dce3f2; }
 .byd-pill-step, .byd-pill-value {
   display: inline-flex;
   align-items: center;
