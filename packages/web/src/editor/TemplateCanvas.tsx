@@ -1388,7 +1388,7 @@ export function FaceSwitch({ faces, face, names = FACE_NAMES, onSelect }: { face
 //
 // The icon is the one tool that asks something before it places anything (#33): every other kind
 // has a default it can be given, and an icon has no default that is not somebody's guess. So the
-// library opens where the icon will stand, rather than two tabs away in the Symboler panel.
+// library opens where the icon will stand, rather than two tabs away in Speltema.
 const TOOL_SYMBOLS = 'byd-tool-symbols'
 
 function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPlaceIcon(symbol: GameSymbol): void }) {
@@ -1477,7 +1477,7 @@ function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPl
         return (
           <div key={tool.id} className="byd-canvas-tool-icon">
             {button}
-            {/* The same library the Symboler tab fills and the brace in a cell opens (E4), and
+            {/* The same library Speltema fills and the brace in a cell opens (E4), and
                 the same component: one library seen the same way wherever it is offered. Choosing
                 here is choosing an icon and placing it at once — one thing the designer did, so
                 one edit and one step back (B4, #32). */}
