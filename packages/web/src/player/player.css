@@ -65,10 +65,11 @@ html:has(.byd-player) { background: #14161c; }
 /* Every control in the head is one thumb target (44 × 44) inside the same pill. */
 .byd-player > header button {
   min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 12px;
-  display: inline-flex; align-items: center; justify-content: center; white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;
   background: var(--byd-control); color: var(--byd-ink-strong); font-size: 13px; font-weight: 700;
 }
 .byd-player > header button:disabled { opacity: 0.35; }
+.byd-player > header .byd-glyph { width: 16px; height: 16px; flex: none; }
 
 /* Counters (C4): a row of pills under the head; tap the sides to count, the number to type. */
 .byd-counters { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; padding: 10px 16px 0; }

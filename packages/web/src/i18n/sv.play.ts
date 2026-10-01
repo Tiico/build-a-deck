@@ -333,8 +333,8 @@ export const svPlay = {
   'play.target.free': 'lägg fritt',
 
   // Sessionens egna knappar och det den vägrar med.
-  'session.undo': '↶ Ångra',
-  'session.flag': '⚑ Flagga',
+  'session.undo': 'Ångra',
+  'session.flag': 'Flagga',
   'session.exit': 'Ut…',
   // Kortheten gäller radens bredd, inte det uppläsbara namnet: namnet börjar med etiketten på
   // knappen och säger sedan vart den leder (#48, WCAG 2.5.3).

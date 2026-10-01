@@ -205,7 +205,7 @@ describe('a flag the table refuses', () => {
     await mount(id)
 
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
-    const flag = await screen.findByRole('button', { name: 'Flagga' })
+    const flag = within(await screen.findByRole('dialog')).getByRole('button', { name: 'Flagga' })
     // The session is locked from another screen while this sheet stands open (C9).
     await table.send({ v: 'session.end' })
     fireEvent.click(flag)

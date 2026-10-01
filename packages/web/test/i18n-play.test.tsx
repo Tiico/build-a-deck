@@ -117,16 +117,23 @@ describe('the play surfaces in the reader\'s own language (A4)', () => {
     const sv = swedish(row)
     const svExit = screen.getByRole('button', { name: 'Ut… ur bordet' })
     expect(svExit.textContent).toBe('Ut…')
-    expect(screen.getByRole('button', { name: '↶ Ångra' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '⚑ Flagga' })).toBeTruthy()
+    drawnBeside(screen.getByRole('button', { name: 'Ångra' }), 'Ångra')
+    drawnBeside(screen.getByRole('button', { name: 'Flagga' }), 'Flagga')
     sv.unmount()
 
     english(row)
     const enExit = screen.getByRole('button', { name: 'Exit… the table' })
     expect(enExit.textContent).toBe('Exit…')
-    expect(screen.getByRole('button', { name: '↶ Undo' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '⚑ Flag' })).toBeTruthy()
+    drawnBeside(screen.getByRole('button', { name: 'Undo' }), 'Undo')
+    drawnBeside(screen.getByRole('button', { name: 'Flag' }), 'Flag')
   })
+
+  // ↶ and ⚑ were characters, drawn by whatever font the phone has. The glyph is drawn by the app
+  // now, hidden from the name, and the word is the whole of what is read out.
+  function drawnBeside(button: HTMLElement, word: string) {
+    expect(button.textContent).toBe(word)
+    expect(button.querySelector('svg[aria-hidden="true"]')).toBeTruthy()
+  }
 
   it('asks the survey in English', () => {
     english(<Survey who="Ada" version="v1" onSubmit={async () => undefined} />)

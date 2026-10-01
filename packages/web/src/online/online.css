@@ -28,8 +28,9 @@
 .byd-online-showall { min-height: 44px; min-width: 44px; margin-right: auto; padding: 0 14px; border: 1px solid #3a2f26; border-radius: 10px; background: #1d1815; color: #e8e2d8; font-size: 13px; font-weight: 700; }
 /* 44 px in both directions, which these three have never been: 76×32, 77×32 and 70×32 at every
    width, under the gate since before either issue was written (#6, L10). */
-.byd-online-tools button { min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: rgba(36, 41, 56, 0.92); color: #fff; font-size: 13px; font-weight: 700; }
+.byd-online-tools button { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: rgba(36, 41, 56, 0.92); color: #fff; font-size: 13px; font-weight: 700; }
 .byd-online-tools button:disabled { opacity: 0.35; }
+.byd-online-tools .byd-glyph { width: 16px; height: 16px; flex: none; }
 
 /* The fan's shape — how wide a card is, how far the row steps, and how far below its own box the
    turned cards paint — is written out by `fan.ts`, which is also what works out the room they
