@@ -4038,6 +4038,20 @@ Draglagret mäter fortfarande millimetrar ur kortets egen ruta och aldrig ur ska
 **Tillägg 2026-09-27 (#478, beslut av beställaren efter prototyperna 04 och 07).**
 Förstoringen växer kring något: Ctrl och hjulet kring det som står under pekaren, bandets egna kontroller kring det valda elementet eller scenens mitt när inget är valt; så länge kortet är mindre än scenen finns inget att rulla och kortet växer från mitten som förut.
 Handtag och punkter behåller sina millimetrar men går aldrig under 10 px på skärmen.
+
+**Tillägg 2026-10-01 (#619, prototypat och beslutat av beställaren, variant A av tre).**
+Kontrollens form.
+Bandet var sex kontroller i en stapel — procenttalet, `−`, reglaget, `+`, **Passa in** och **100 %** — som mätte 94 × 269 px vid 1280 och en rad på 365 × 50 under scenen vid 1024; Kortväggens täthet var ett annat par knappar, `− +` i krönet, med bredden sagd i foten en halv skärm bort.
+Två ytor, samma fråga, två former.
+Nu är det **ett piller**, `[−][164 % ▾][+]`, 154 × 44 px: ett steg ned, måttet, ett steg upp.
+Procenttalet är knappen som öppnar valen — **Passa in**, **100 %**, **50 %**, **200 %** — uppåt och i toppskiktet som varje öppnad låda (L55); piltangenterna på procenttalet stegar, så reglagets tangentbord är kvar utan reglaget.
+Reglaget går.
+Medan kortet är inpassat står ordet «Passa in» under procenttalet, och knappens namn säger det: inpassningen är annars ett val bakom en meny, och ett val ingen ser är ett läge ingen vet att kortet står i.
+Under och inte bredvid: bredvid blev pillret 206 px, och vid 1280 med egenskaperna uppfällda blev kortet breddbundet med 5 px — det enda ett band i den överblivna bredden aldrig får göra.
+Platsen är oförändrad: dukens hörn, aldrig krönet, aldrig över kortet, och raden under scenen där spalten inte finns.
+Samma komponent (`StepPill`) ritar Kortväggens täthet i krönet, `[−][150 px][+]`, där måttet läses och inte trycks eftersom väggen inget har att välja bland; foten upprepar inte längre talet.
+Variant B, allt synligt på en rad om ~270 px, valdes bort för att den ryms ännu mer sällan i hörnet; variant C, ett lodrätt reglage i scenens kant, för att formen är ovanlig och inte passar krönet.
+Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/03-forstoringen.html`.
 Ett elements mitt stannar på kortet vid drag, piltangenter och skrivet X/Y — det kan hänga halvt över en kant, aldrig mer — och en etikett säger varför det stannade.
 Vid förstoring panorerar scenen när en hand som drar hålls nära dess kant, och elementet följer med.
 Under kortet står en rad som säger vilket kort mallen visas på, med ‹ och ›, en sökbar lista (som Media, L22) och de värden på kortet som styr hur det ritas; den kostar en rad av kortets höjd, som bandet redan gjorde vid 1024.

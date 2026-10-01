@@ -106,6 +106,13 @@ Första raden står kvar när ett kort markeras, och foten är en rad (`data-tab
 ![A: pillret med menyn öppen](2026-09-30-komponenter/03-a-meny.png)
 ![C: reglaget i kanten](2026-09-30-komponenter/03-c.png)
 
+**Beslut (beställaren 2026-10-01): A, pillret, på Mall och Kortvägg.**
+**Ändrat (#619, L19 tillägg):** stapeln och reglaget är borta; `StepPill` ritar `[−][164 % ▾][+]` i dukens hörn, 154 × 44 px vid 1280, och lägger sig på raden under scenen vid 1024 med egenskaperna uppfällda.
+Procenttalet öppnar «Passa in · 100 % · 50 % · 200 %» uppåt, lyft till toppskiktet (L55), med handen på det valda och Escape tillbaka till procenttalet; pilarna på procenttalet stegar.
+Medan kortet är inpassat står «Passa in» under talet (bredvid blev pillret 206 px och kortet breddbundet vid 1280 med egenskaperna uppfällda), och talets namn säger det.
+Samma piller är väggens täthet i krönet, `[−][150 px][+]`; foten säger bara antalet.
+`canvas-zoom.test.tsx` (pillret, menyn, tangentbordet), `canvas-band.test.tsx` (en målyta högt, aldrig över kortet) och `opened-boxes-over.spec.ts` (menyn lyft) är grindarna.
+
 ### #620 · Platsväljaren
 
 | | Sektionen «Spelare» | Minsta träffyta | Guiden |

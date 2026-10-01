@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import type { ProjectDoc } from '../../../web/src/editor/types.js'
 import { logIn, makeProjectOf } from '../../support/api.js'
 import { gameDoc } from '../../support/game.js'
+import { zoomTo } from '../../support/zoom.js'
 
 // A shape of the designer's own drawing on the canvas (#478, L26, L38): a real click on one of
 // its points, on the dot between two points or on a handle deselected the shape — the points
@@ -67,10 +68,8 @@ test('keeps every handle and point at least 10 pixels wide at every zoom', async
   await page.locator('#byd-editor-tab-template').click()
   await page.locator('[data-drag="banner"]').click()
   await expect(page.locator('.byd-point[data-point="0"]')).toBeVisible()
-  const zoom = page.getByRole('slider', { name: 'Förstoring i procent' })
-  for (const percent of ['100', '50']) {
-    await zoom.fill(percent)
-    await page.waitForTimeout(100)
+  for (const percent of [100, 50]) {
+    await zoomTo(page, percent)
     const sizes = await page.evaluate(() =>
       [...document.querySelectorAll<HTMLElement>('.byd-drag-handle, .byd-point')].map((el) => {
         const r = el.getBoundingClientRect()

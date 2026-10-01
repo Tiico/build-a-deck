@@ -911,10 +911,6 @@
 .byd-crown-drawer { flex: none; display: flex; align-items: flex-start; gap: var(--byd-s2); flex-wrap: wrap; max-height: 40%; overflow: auto; padding: var(--byd-s2) 0; border-bottom: 1px solid #2f333d; background: var(--byd-editor-panel-bg); }
 .byd-crown-drawer .byd-choice { align-self: center; }
 .byd-crown-tick { display: flex; align-items: center; gap: var(--byd-s1); align-self: center; min-height: var(--byd-tap); color: #cfd5e3; font-size: 12px; }
-/* Two presses and no door: the one control here that is used over and over while looking at
-   something else. It wears the same skin as a box so the row reads as one row of controls. */
-.byd-crown-step { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; }
-.byd-crown-step button { min-width: var(--byd-tap); min-height: var(--byd-tap); border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 15px; cursor: pointer; }
 /* What the work adds up to, under it rather than over it. */
 .byd-crown-foot { position: relative; flex: none; display: flex; align-items: center; gap: var(--byd-s3); padding: var(--byd-s2) 0 0; border-top: 1px solid #2f333d; color: var(--byd-editor-quiet); font-size: 12px; }
 .byd-crown-foot span { white-space: nowrap; }
@@ -1305,53 +1301,126 @@
   align-self: end;
   margin: var(--byd-s2);
   display: flex;
-  flex-direction: column;
-  gap: var(--byd-s1);
-  padding: var(--byd-s1);
-  border: 1px solid #2f333d;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--byd-editor-tool-bg) 92%, transparent);
+}
+/* And where there is no width to stand in — a stage no wider than it is tall, which is 1024 with
+   the properties open — the band lies down under the stage instead. That row is the only thing it
+   ever costs the card, and it costs it only where the fitting had nothing spare to give.
+   It lies down too where there is no height to stand in (#550). Standing, the band was five taps,
+   the percentage, and the gaps and edges between them — some 290 px — and a room shorter than
+   that, a desk zoomed to 200 % or more, had it stand up out of the room and over the crown's
+   «Baksida». The pill is 46 px tall (#619) and would stand there, but the row is the shape #550
+   measured and approved, so the room keeps it. */
+@container (max-aspect-ratio: 1/1) or (max-height: 320px) {
+  /* Lying down it is as thin as a row can be: every pixel of it is a pixel of card height, and
+     this is the one shape where the band is not free. The pill is 46 px of it where the stack's
+     row was 50 (#619). */
+  .byd-canvas-zoom { grid-area: 2 / 1; justify-self: end; margin: var(--byd-s1) var(--byd-s2); }
+}
+/* The pill itself (#619, L19 tillägg): `[−][164 % ▾][+]`, one control for the canvas' zoom and
+   the wall's density. Three targets of a tap each in one rounded edge, the measure between the
+   two steps, and nothing else on the screen — «Passa in», «100 %», «50 %» and «200 %» are behind
+   the measure. The six controls in a stack it replaces were 94 × 269 px at 1280; this is 46 tall.
+   Never a fill on what is merely chosen (L13): the open measure is marked in ink, and the chosen
+   item in the menu by its own word. */
+.byd-pill {
+  display: inline-flex;
+  align-items: stretch;
+  flex: 0 0 auto;
+  /* The edge is drawn outside the box and not as a border: the pill is exactly a target tall, as
+     the crown's boxes are, so it stands on the same row as they do rather than two pixels proud. */
+  box-shadow: 0 0 0 1px #2f333d;
+  border-radius: 999px;
+  background: var(--byd-editor-tool-bg);
   color: var(--byd-editor-tool-ink);
   font-size: 12px;
 }
-/* The band's own controls are the crown's control with square shoulders: the same edge, the same
-   words, the same hit area (UX-KONTROLLER: träffytor). Never a fill — what is merely chosen here
-   is marked with its edge, since a fill is what a first action is drawn in (L13). */
-.byd-canvas-zoom button {
+/* In the crown it wears the crown's skin, as the two bare presses it replaces did, so the row
+   reads as one row of controls. */
+.byd-crown .byd-pill { background: #1b1d23; box-shadow: 0 0 0 1px #3b414e; color: #dce3f2; }
+.byd-pill-step, .byd-pill-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: var(--byd-tap);
   min-height: var(--byd-tap);
-  padding: 0 var(--byd-s2);
-  border: 1px solid #2f333d;
-  border-radius: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
   background: transparent;
   color: inherit;
   font: inherit;
   white-space: nowrap;
+}
+/* The two steps are a glyph each and a glyph is read at its own size: at the pill's own twelve
+   pixels a minus sign is a hairline beside a plus. The ends take the pill's own corners, so a
+   hover is drawn inside the edge and never squares it. */
+.byd-pill-step { font-size: 16px; line-height: 1; cursor: pointer; }
+.byd-pill-step:first-child { border-radius: 999px 0 0 999px; }
+.byd-pill-step:last-child { border-radius: 0 999px 999px 0; }
+.byd-pill-step:hover, button.byd-pill-value:hover { background: #262a33; }
+.byd-pill-measure { position: relative; display: flex; }
+/* The measure keeps its own width: a pill that grows a pixel between 99 and 100 % moves every
+   control on it under the hand. It is a number, so the digits are the same width every time. */
+.byd-pill-value {
+  padding: 0 var(--byd-s2);
+  border-left: 1px solid #2f333d;
+  border-right: 1px solid #2f333d;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+/* The word stands under the number and not beside it: beside, the pill was 206 px, and at 1280
+   with the properties open that made the card width-bound by 5 px — the one thing a band in the
+   spare width must never do (L19); CI's wider font makes it worse. Under, the pill is 164. */
+button.byd-pill-value { flex-direction: column; justify-content: center; line-height: 1.2; }
+.byd-pill-number { display: inline-flex; align-items: center; gap: var(--byd-s1); }
+button.byd-pill-value { cursor: pointer; }
+button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-mark); }
+.byd-pill-note, .byd-pill-caret { font-size: 10px; font-weight: 400; color: var(--byd-editor-hint-ink); }
+/* The word stands in its room while the card is not fitted, unseen: the room is what keeps the
+   steps where they were. */
+.byd-pill-note[data-on='false'] { visibility: hidden; }
+/* The choices, over the measure and never under it: the pill stands at the foot of its surface,
+   which `placement.ts` reads, and lifted over the page there like every opened box (L55). */
+.byd-pill-menu {
+  position: absolute;
+  z-index: 20;
+  --byd-place-gap: 6px;
+  --byd-place-inset: 0px;
+  --byd-place-x: end;
+  right: var(--byd-place-inset);
+  top: calc(100% + var(--byd-place-gap));
+  min-width: 150px;
+  max-height: var(--byd-place-room, none);
+  overflow: auto;
+  display: grid;
+  gap: 2px;
+  padding: var(--byd-s1);
+  border: 1px solid #3b4358;
+  border-radius: 10px;
+  background: var(--byd-editor-panel-bg);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+.byd-pill-menu[data-place-y='up'] { top: auto; bottom: calc(100% + var(--byd-place-gap)); }
+.byd-pill-choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--byd-s3);
+  min-height: var(--byd-tap);
+  padding: 0 var(--byd-s2);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--byd-editor-tool-ink);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  white-space: nowrap;
   cursor: pointer;
 }
-.byd-canvas-zoom button:hover { border-color: var(--byd-editor-primary-mark); }
-.byd-canvas-zoom button[aria-pressed='true'] { border-color: var(--byd-editor-primary-mark); color: #fff; }
-.byd-canvas-zoom input { width: 80px; height: var(--byd-tap); accent-color: var(--byd-editor-primary-mark); }
-/* The two steps are a glyph each and a glyph is read at its own size: at the band's own twelve
-   pixels a minus sign is a hairline beside a plus. */
-.byd-canvas-zoom button[data-step] { font-size: 16px; line-height: 1; }
-/* The percentage is a fact and not a control, so it is quieter than the buttons and stands apart
-   from them. It keeps its own width: a band that grows a pixel between 99 and 100 % moves every
-   control on it under the hand. */
-.byd-canvas-zoom output { min-width: 5ch; padding: 0 var(--byd-s1); color: var(--byd-editor-hint-ink); text-align: center; font-variant-numeric: tabular-nums; }
-/* And where there is no width to stand in — a stage no wider than it is tall, which is 1024 with
-   the properties open — the band lies down under the stage instead. That row is the only thing it
-   ever costs the card, and it costs it only where the fitting had nothing spare to give.
-   It lies down too where there is no height to stand in (#550). Standing, the band is five taps,
-   the percentage, and the gaps and edges between them — some 290 px — and a room shorter than
-   that, a desk zoomed to 200 % or more, had it stand up out of the room and over the crown's
-   «Baksida». */
-@container (max-aspect-ratio: 1/1) or (max-height: 320px) {
-  /* Lying down it is as thin as a row can be: every pixel of it is a pixel of card height, and
-     this is the one shape where the band is not free. Where even a row is too wide for the room —
-     320 px — it takes a second row rather than going past the edge. */
-  .byd-canvas-zoom { grid-area: 2 / 1; justify-self: end; flex-direction: row; flex-wrap: wrap; justify-content: flex-end; align-items: center; margin: var(--byd-s1) var(--byd-s2); padding: 0 var(--byd-s1); }
-}
+.byd-pill-choice:hover { background: #262a33; }
+.byd-pill-choice[aria-checked='true'] { color: var(--byd-chosen-ink); font-weight: 700; }
+.byd-pill-choice[aria-checked='true'] > span { color: var(--byd-editor-primary-mark); }
 /* The crown over the desk (#13, #129): one row, at every width and on every deck. Which column
    makes the groups, which group is open, whether the properties are folded away, and which face is
    being edited — four controls, and the last of them keeps its own right edge. It is a row and not

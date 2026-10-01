@@ -5,7 +5,8 @@ import { useNumberDraft } from './number-draft.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
-import { arrowMove, fitScale, gridStep, HANDLES, round, iconSized, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, ZOOM_MAX, ZOOM_MIN, ZOOM_NOTCH, ZOOM_STEP, zoomPercent, zoomTo, type Box, type ElementKind, type Grab, type Guides, type Handle, keptOnCard } from './canvas.js'
+import { arrowMove, fitScale, gridStep, HANDLES, round, iconSized, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, ZOOM_NOTCH, ZOOM_STEP, zoomPercent, zoomTo, type Box, type ElementKind, type Grab, type Guides, type Handle, keptOnCard } from './canvas.js'
+import { StepPill } from './StepPill.js'
 import { useGesture, type Gesture } from './gesture.js'
 import { scrubbed, SCRUB_PX } from './scrub.js'
 import { afterPruning, bendStarted, bentEdge, bentPoints, edgeAt, grownPoint, handleAt, midpoints, movedHandle, movedPoint, prunedPoint, straightAll, straightPoint, type Arm, type Point } from './points.js'
@@ -587,41 +588,38 @@ function useZoom(stage: RefObject<HTMLElement | null>, chosen: () => string | nu
 // the fitting leaves no width at all — 1024 with the properties open — the stylesheet lays it
 // down in a row under the stage instead. Which of the two is a question about boxes, so it is
 // asked and answered in the stylesheet; `canvas-band.test.tsx` measures both.
+//
+// What stands in the band is one pill (#619): `[−][164 % ▾][+]`, with «Passa in», «100 %», «50 %»
+// and «200 %» behind the percentage. The six controls in a stack it replaces were 94 × 269 px.
 function ZoomBand({ zoom }: { zoom: Zoom }) {
   const t = useT()
   const per = zoomPercent(zoom.scale)
-  const said = t('canvas.zoom.percent', { n: per })
+  const at = (per: number) => !zoom.fitting && zoomPercent(zoom.scale) === per
   return (
-    <div className="byd-canvas-zoom" role="group" aria-label={t('canvas.zoom')}>
-      {/* The percentage leads, and leads quietly: it is a fact and not a control, and standing
-          last it was a third box the same size and shape as the two buttons beside it — a reader
-          had no way to tell which of `100 %` and `228 %` could be pressed. */}
-      <output aria-label={t('canvas.zoom')}>{said}</output>
-      <button type="button" data-step aria-label={t('canvas.zoom.out')} onClick={() => zoom.by(-ZOOM_STEP)}>
-        −
-      </button>
-      <input
-        type="range"
-        min={zoomPercent(ZOOM_MIN)}
-        max={zoomPercent(ZOOM_MAX)}
-        step={1}
-        value={per}
-        aria-label={t('canvas.zoom.level')}
-        // The number alone is a number; what a reader needs is the measure it is in.
-        aria-valuetext={said}
-        onChange={(event) => zoom.to(Number(event.target.value) / 100)}
+    <div className="byd-canvas-zoom">
+      <StepPill
+        label={t('canvas.zoom')}
+        value={t('canvas.zoom.percent', { n: per })}
+        // The number alone is a number; what a reader needs is the measure it is in, and whether
+        // the card is fitted — which is said here because the fit is otherwise a choice behind a
+        // menu, and a choice nobody can see is a state nobody knows the card is in.
+        said={t(zoom.fitting ? 'canvas.zoom.said.fit' : 'canvas.zoom.said', { n: per })}
+        note={{ word: t('canvas.zoom.fit'), on: zoom.fitting }}
+        less={t('canvas.zoom.out')}
+        more={t('canvas.zoom.in')}
+        onStep={(by) => zoom.by(by * ZOOM_STEP)}
+        choices={{
+          label: t('canvas.zoom.choices'),
+          items: [
+            // Two kinds of choice and not two doings: the fit shows the whole card, and the three
+            // percentages show it at a size — 100 % the one it is printed at (L19).
+            { id: 'fit', label: t('canvas.zoom.fit'), checked: zoom.fitting, pick: zoom.fit },
+            { id: '100', label: t('canvas.zoom.actual'), checked: at(100), pick: () => zoom.to(1) },
+            { id: '50', label: t('canvas.zoom.half'), checked: at(50), pick: () => zoom.to(0.5) },
+            { id: '200', label: t('canvas.zoom.double'), checked: at(200), pick: () => zoom.to(2) },
+          ],
+        }}
       />
-      <button type="button" data-step aria-label={t('canvas.zoom.in')} onClick={() => zoom.by(ZOOM_STEP)}>
-        +
-      </button>
-      {/* Two choices and not two doings: which of them the card stands on is said, so the fit is
-          something to see rather than something to infer from a percentage. */}
-      <button type="button" aria-pressed={zoom.fitting} onClick={zoom.fit}>
-        {t('canvas.zoom.fit')}
-      </button>
-      <button type="button" aria-pressed={!zoom.fitting && per === 100} onClick={() => zoom.to(1)}>
-        {t('canvas.zoom.actual')}
-      </button>
     </div>
   )
 }

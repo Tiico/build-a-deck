@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import type { ProjectDoc } from '../../../web/src/editor/types.js'
 import { logIn, makeProject, makeProjectOf } from '../../support/api.js'
 import { gameDoc } from '../../support/game.js'
+import { zoomTo } from '../../support/zoom.js'
 
 // Where the canvas zooms to (#478, L19): it grew from its top left corner, so Ctrl and the wheel
 // over a small badge at the foot of the card put the badge a thousand pixels below the stage. It
@@ -18,9 +19,7 @@ test('keeps what is under the pointer under it while Ctrl and the wheel zoom in'
   await expect(body).toBeVisible()
   // From a card already bigger than the stage: while the card is smaller than the stage there is
   // nothing to scroll, and the card grows from the stage's middle as it always has.
-  const zoom = page.getByRole('slider', { name: 'Förstoring i procent' })
-  await zoom.fill('300')
-  await page.waitForTimeout(100)
+  await zoomTo(page, 300)
   const before = (await body.boundingBox())!
   const at = { x: before.x + before.width * 0.8, y: before.y + before.height * 0.5 }
   await page.mouse.move(at.x, at.y)

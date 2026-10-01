@@ -5,6 +5,7 @@ import { CardPreview } from './CardPreview.js'
 import { CARD_PX, cornerPx } from './corner.js'
 import { Crown, CrownBox, CrownDrawer, CrownFoot } from './Crown.js'
 import { DENSITY, DENSITY_DEFAULT, heldDensity, rememberDensity } from './density.js'
+import { StepPill } from './StepPill.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 import { deckIssues, fixesFor, groupIssues, issueDetail, issueWords, type Fix } from './checks.js'
@@ -355,15 +356,16 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         />
         {/* Density is two presses and no box: it is the one control on this surface that is used
             over and over while looking at something else, and a box would put a door in front of
-            every step. What it is set to is read off the wall itself, and said in the foot. */}
-        <div className="byd-crown-step" role="group" aria-label={t('wall.density')}>
-          <button type="button" onClick={() => denser(-1)} aria-label={t('wall.density.more')}>
-            <span aria-hidden="true">&#x2212;</span>
-          </button>
-          <button type="button" onClick={() => denser(1)} aria-label={t('wall.density.less')}>
-            <span aria-hidden="true">+</span>
-          </button>
-        </div>
+            every step. It is the canvas' zoom pill (#619) with the width between the two presses,
+            where the number used to be said in the foot, half a screen from the control. */}
+        <StepPill
+          label={t('wall.density')}
+          value={t('wall.density.px', { px: Math.round(px) })}
+          said={t('wall.density.said', { px: Math.round(px) })}
+          less={t('wall.density.more')}
+          more={t('wall.density.less')}
+          onStep={denser}
+        />
         <CrownBox
           name={t('wall.groupedBy')}
           state={column ?? t('wall.grouping.off')}
@@ -615,15 +617,13 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
           {onFraming && <Measure doc={doc} assetBase={assetBase} motifs={motifs} onFraming={onFraming} />}
         </div>
       </div>
-      {/* What the wall adds up to, under it rather than over it (#130): the size it is drawn at,
-          which nothing else on the surface says now that density is two bare presses. */}
+      {/* What the wall adds up to, under it rather than over it (#130): how many cards, and what
+          the physical check made of them. The width is the pill's since #619. */}
       <CrownFoot>
         {/* Said as it changes, as the table's count is (#556): a search that narrows the wall
             says how many are left. */}
         <span aria-live="polite">
-          {isFiltering(filter)
-            ? t('wall.foot.found', { shown: shown.length, total: doc.rows.length, px: Math.round(px) })
-            : t('wall.foot.cards', { n: doc.rows.length, px: Math.round(px) })}
+          {isFiltering(filter) ? t('wall.foot.found', { shown: shown.length, total: doc.rows.length }) : t('wall.foot.cards', { n: doc.rows.length })}
         </span>
         {/* An empty deck is not a checked one (#476): «Inga anmärkningar» over nothing reads as
             an approval. */}
