@@ -2067,7 +2067,9 @@
    (L55) and lists the values as ticks. */
 .byd-column-filter { display: inline-flex !important; align-items: center; justify-content: center; gap: var(--byd-s1); min-width: 28px; min-height: 28px; margin-left: var(--byd-s1); border: 1px solid transparent !important; border-radius: 6px !important; padding: 0 var(--byd-s1) !important; color: #6f7a90 !important; font-size: 11px; line-height: 1; }
 .byd-column-filter:hover, .byd-column-filter[aria-expanded='true'] { color: #fff !important; border-color: #3b414e !important; }
-.byd-column-filter[data-on] { color: var(--byd-editor-primary-ink) !important; background: var(--byd-editor-primary-bg) !important; border-color: var(--byd-editor-primary-bg) !important; }
+/* On, it is a mark and never a fill: the one filled thing in the room is the action that puts the
+   work on the table (L13), and a filter is a state, not that action. */
+.byd-column-filter[data-on] { color: var(--byd-editor-primary-mark) !important; border-color: var(--byd-editor-primary-mark) !important; }
 .byd-column-filter[data-on]::after { content: attr(data-on); font-size: 10px; font-weight: 700; }
 .byd-column-filter-door { position: absolute; z-index: 6; top: calc(100% + var(--byd-s1)); left: 0; min-width: 240px; max-height: var(--byd-place-room, 40vh); overflow: auto; padding: var(--byd-s1); border: 1px solid #3b4358; border-radius: 10px; background: var(--byd-editor-panel-bg); box-shadow: 0 12px 30px rgb(0 0 0 / 50%); font-weight: 400; }
 .byd-column-filter-door[data-place-y='up'] { top: auto; bottom: calc(100% + var(--byd-s1)); }

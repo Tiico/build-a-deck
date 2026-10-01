@@ -187,7 +187,7 @@ async function tabThrough(page: Page): Promise<Stop[]> {
   await standing(page, SHELL, { at: '/editor', needs: EDITOR })
   {
     const stops: Stop[] = []
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 80; i++) {
       await page.keyboard.press('Tab')
       const stop = await page.evaluate(() => {
         const el = document.activeElement
