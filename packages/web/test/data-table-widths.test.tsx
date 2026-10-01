@@ -338,13 +338,17 @@ describe('a cell keeps inside its own column (#46)', () => {
   it("is a real condition: put the twelve-character floor back and the number column runs over its neighbour", async () => {
     const over = await measure(deckDoc(), { extra: ".byd-data td input:not([type='checkbox']) { min-width: 12ch; }" })
 
-    // Named rather than counted, and by how much: the floor is 80, and four columns are under it.
+    // Named rather than counted, and by how much: the floor is 80, and three columns are under it.
     // It used to be two. Since #141 a word column is as wide as its widest word and no wider —
-    // it carries no share of the room left over — so the restored floor overruns `art` and
-    // `title` as readily as it overruns the two numbers. Same fault, two more columns.
-    expect([...new Set(over.spill.map((c) => c.col))]).toEqual(['art', 'title', 'cost', 'antal'])
+    // it carries no share of the room left over — so the restored floor overruns `title` as
+    // readily as it overruns the two numbers. `art` is a word column too, but one with a
+    // vocabulary — three words over six cards — and since #617 such a column carries its filter's
+    // handle in its head, which is what keeps it over the floor. The head is still measured, so
+    // that is said here rather than left for the next reader to rediscover.
+    expect([...new Set(over.spill.map((c) => c.col))]).toEqual(['title', 'cost', 'antal'])
+    expect(over.width.art!).toBeGreaterThanOrEqual(80)
     expect(over.spill.every((c) => c.px === 80 - over.width[c.col]!)).toBe(true)
-    expect(over.spill.length).toBe(CARDS.length * 4)
+    expect(over.spill.length).toBe(CARDS.length * 3)
   }, 60_000)
 })
 
