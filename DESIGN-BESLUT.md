@@ -1233,6 +1233,15 @@ Fönstret kläms mot filen innan det ritas, och det är inte en detalj.
 Utan klämningen får en fil som saknar luft ett fönster större än sig själv och räknas ändå som ritad i rätt storlek, medan kortet visar något helt annat; med den syns avvikelsen på kortet och räkningen säger sanningen.
 En fil som inte kan svara på regeln hur den än ställs är ett av de tre fynden prototypen gav, och listan över invändningar finns för att den ska kunna sägas rakt ut i stället för att tigas ihjäl.
 
+Reviderat 2026-09-30 (#607): **kortväggen tappar «Bildernas mått», och kortets egen avvikelse avvecklas.**
+När bilden fick bära sin egen beskärning (L22) hade rutan inget kvar att säga som en designer behövde: regeln stod redan i mallens bildelement, och utsnittet var bildens.
+Listan över filer som inte kan svara, källan med sina reglage och «Släpp alla handgrepp» försvinner, och med dem kortets zoom och förskjutning (`framing`, `setFraming`), eftersom rutan var det enda stället som satte eller släppte dem.
+Att bara ta bort rutan hade lämnat avvikelser som fortsatte att beskära kort och som ingen längre kunde se eller ångra.
+Ett kort som behöver ett annat utsnitt behöver en egen fil: samma bytes är samma bild med samma beskärning (L22, #481), så ett andra utsnitt av samma teckning får vara en annan fil.
+Det är ett medvetet pris — en lek där enstaka kort vill ha ett annat utsnitt är sällsynt, och en avvikelse som ingen yta visar var dyrare.
+`fill` står kvar i bildelementet, och fönstret kläms fortfarande mot filen — en fil utan luft ritar hela sin teckning i ramen i stället för att ta prov på det som aldrig ritades.
+Avvecklingen är en migrering som `anchor`s (L22): ett lagrat dokument lyfts ur `framing` vid dörren, så varje äldre version går att öppna (B4), och en `setFraming` i redigeringsloggen hoppas över och sägs på stderr som varje annan inaktuell redigering.
+
 Reviderat 2026-09-20 (#320): ett bildelement kan bära en fast bild ur biblioteket i stället för en kolumn — en bakgrund, en ram, en logga som är samma på alla kort — vald genom samma fönster som Data öppnar, med uppladdning som hamnar i Media; Media räknar då mallen som användare av bilden, och tas bilden bort står elementet kvar med en tom ruta, som en tömd cell.
 
 ### E2. En enda renderare: HTML/CSS via headless Chromium (fråga 9)
@@ -4218,6 +4227,11 @@ En leks historik skrivs en gång och skrivs aldrig om (B4), så varje äldre ver
 Schemat vägrar den gamla formen i stället för att tyst släppa fältet, så det finns exakt en väg in för ett dokument som ännu bär ett ankare.
 
 Prototyp och mätning: `docs/ux-audits/2026-09-18.md`.
+
+Reviderat 2026-09-30 (#607): **kortets egen rad som undantag avvecklas.**
+Undantaget sattes bara från «Bildernas mått» på kortväggen, och den rutan togs bort när beskärningen gjort den tom (E1).
+Ett kort som verkligen behöver ett annat utsnitt behöver nu en egen fil, eftersom samma bytes är samma bild med samma beskärning (#481); se E1.
+`framing` lyfts ur lagrade dokument vid dörren, precis som `anchor`.
 
 Reviderat 2026-09-20 (#318): **en bild kan tas bort ur spelet från biblioteket, och det som tas bort är projektets referens, aldrig bytesen.**
 Varje bild i Media har «Ta bort»; en bild inget kort använder går direkt, och en bild kort använder frågar först och namnger korten som förlorar den — de första fem med namn och resten räknade.

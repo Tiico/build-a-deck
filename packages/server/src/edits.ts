@@ -1,7 +1,7 @@
 import type { AssetCrop as Crop, CardQuery, FaceId, ZoneAction, ZoneBeside } from '@byd/protocol'
 import { isSymbolName, type Element, type FaceTemplate, type Variant } from '@byd/template'
 import { showsWholePicture } from '@byd/protocol'
-import { AssetCrop, PictureName, ProjectFraming } from './projects.js'
+import { AssetCrop, PictureName } from './projects.js'
 import type { Cell, Picture, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc } from './projects.js'
 import { applyRecipe, newAreaSpot, newPileSpot, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Shortcut, type Zone } from './recipe.js'
 
@@ -12,15 +12,6 @@ import { applyRecipe, newAreaSpot, newPileSpot, seatZones, type Geometry, type R
 // document out. Nothing here touches the network or the database.
 //
 // Imported by the editor as well as the server, so this module stays free of anything Node.
-// A departure is filed under the card and the column the picture sits in, and that spelling is
-// written in exactly one place so nothing can disagree about it.
-export const framingKey = (cardRef: string, field: string): string => `${cardRef}/${field}`
-const framingWithout = (doc: ProjectDoc, key: string) => (doc.framing?.[key] === undefined ? {} : { framing: without(doc.framing, key) })
-const framingOfCards = (doc: ProjectDoc, keep: (cardRef: string) => boolean) => {
-  if (!doc.framing) return {}
-  const left = Object.fromEntries(Object.entries(doc.framing).filter(([key]) => keep(key.slice(0, key.indexOf('/')))))
-  return Object.keys(left).length === Object.keys(doc.framing).length ? {} : { framing: left }
-}
 
 // Every `{namn|roll}` in a card's text that named the old meaning, named as the new one. The
 // symbol's own name is left alone: only what stands after the bar is the meaning.
@@ -165,7 +156,6 @@ export type EditIntent =
   | { v: 'removeRole'; role: string }
   // What one card asks of its template's measure (E1), under the card and the column the picture
   // sits in. `null` is the card going back to the measure the deck gave it.
-  | { v: 'setFraming'; cardRef: string; field: string; framing: ProjectFraming | null }
   // The window a picture is looked at through (#222, L22, beslut 2), under the hash of its own
   // bytes. It is said once and every card drawn from the picture obeys it — which is why the
   // intent names no card: there is no card to name. `null` is the picture going back to whole.
@@ -196,10 +186,7 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     case 'setCell': {
       if (!doc.rows.some((r) => r.id === intent.cardRef)) throw new Error(`no row ${intent.cardRef}`)
       const rows = doc.rows.map((r) => (r.id === intent.cardRef ? { ...r, fields: { ...r.fields, [intent.field]: intent.value } } : r))
-      // A departure from the measure was chosen while looking at one picture (E1). Kept across a
-      // change of picture it is a crop written by mistake — numbers picked for someone else's art
-      // framing this one — so the cell taking a new value drops it.
-      return { ...doc, rows, ...framingWithout(doc, framingKey(intent.cardRef, intent.field)) }
+      return { ...doc, rows }
     }
     // New cards go to the end of the deck, which is the order it is dealt in.
     case 'addRow': {
@@ -207,11 +194,9 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       return { ...doc, rows: [...doc.rows, { id: intent.cardRef, fields: intent.fields }] }
     }
     case 'removeRow':
-      return { ...doc, rows: doc.rows.filter((r) => r.id !== intent.cardRef), ...framingOfCards(doc, (id) => id !== intent.cardRef) }
-    case 'replaceRows': {
-      const kept = new Set(intent.rows.map((r) => r.id))
-      return { ...doc, rows: intent.rows, ...framingOfCards(doc, (id) => kept.has(id)) }
-    }
+      return { ...doc, rows: doc.rows.filter((r) => r.id !== intent.cardRef) }
+    case 'replaceRows':
+      return { ...doc, rows: intent.rows }
 
     // A column exists because the cards carry the key or because the template draws it, so a new
     // one is written onto every card, empty, and a name either of those already answers to is a
@@ -290,14 +275,6 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
           return [id, next]
         }),
       )
-      const framing = doc.framing
-        ? Object.fromEntries(
-            Object.entries(doc.framing).map(([key, value]) => {
-              const at = key.indexOf('/')
-              return key.slice(at + 1) === intent.from ? [framingKey(key.slice(0, at), intent.to), value] : [key, value]
-            }),
-          )
-        : undefined
       return {
         ...doc,
         // Nyckelns plats i kortets egen post är dess ordning, och den behålls: ett kort vars
@@ -305,7 +282,6 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
         rows: doc.rows.map((r) => ({ ...r, fields: renamedKey(r.fields, intent.from, intent.to) })),
         template: { ...doc.template, faces },
         ...(doc.columns ? { columns: doc.columns.map((f) => (f === intent.from ? intent.to : f)) } : {}),
-        ...(framing ? { framing } : {}),
         ...(doc.prose ? { prose: renamedKey(doc.prose, intent.from, intent.to) } : {}),
       }
     }
@@ -560,18 +536,9 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     }
     case 'removeRole':
       return { ...doc, palette: without(doc.palette ?? {}, intent.role) }
-    case 'setFraming': {
-      const key = framingKey(intent.cardRef, intent.field)
-      if (!doc.rows.some((r) => r.id === intent.cardRef)) throw new Error(`no row ${intent.cardRef}`)
-      if (intent.framing === null) return { ...doc, ...framingWithout(doc, key) }
-      // Checked here, where the value enters, and not only where the document is written: an
-      // intent arrives from a browser and nothing between the two reads the schema. A departure
-      // that cannot be one would otherwise crop that card on every render from now on (E1).
-      return { ...doc, framing: { ...(doc.framing ?? {}), [key]: ProjectFraming.parse(intent.framing) } }
-    }
     case 'setCrop': {
-      // Checked here, where the value enters, for the same reason a departure is (E1): an intent
-      // arrives from a browser and nothing between the two reads the schema. A window that cannot
+      // Checked here, where the value enters: an intent arrives from a browser and nothing between
+      // the two reads the schema. A window that cannot
       // be cut would otherwise crop every card drawn from this picture from now on.
       const asked = intent.crop === null ? null : AssetCrop.parse(intent.crop)
       // A window that shows all of the picture is the picture going back to whole, however the
@@ -620,6 +587,12 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       return { ...doc, fonts: without(doc.fonts ?? {}, intent.family) }
     case 'restore':
       return intent.doc
+    // The vocabulary is closed, but a stored log and an old browser both outlive it: `setFraming`
+    // was retired with each card's own departure (#607). An edit the tool no longer knows is
+    // refused rather than applied as nothing, so the log passes over it and says so, and a browser
+    // still sending it is told no.
+    default:
+      throw new Error(`an edit this version does not know: ${(intent as { v: string }).v}`)
   }
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { frameWindow, drawnAt, type Frame } from '../src/frame.js'
+import { frameWindow, type Frame } from '../src/frame.js'
 import type { Motif } from '../src/motif.js'
 
 // A file as the measurement leaves it: the file's own pixels, and the air around what is drawn.
@@ -16,7 +16,7 @@ describe('the window a deck’s measure cuts out of a file (E1)', () => {
     // A 400-tall drawing that should fill four fifths of the frame needs a 500-tall window.
     const art = file(1000, 1000, { x: 300, y: 300, w: 200, h: 400 })
 
-    expect(frameWindow(art, CENTRED, 1)).toEqual({ x: 150, y: 250, w: 500, h: 500, short: false })
+    expect(frameWindow(art, CENTRED, 1)).toEqual({ x: 150, y: 250, w: 500, h: 500 })
   })
 
   it('holds a wide drawing by its width, so it cannot run out through the sides', () => {
@@ -28,7 +28,8 @@ describe('the window a deck’s measure cuts out of a file (E1)', () => {
 
     expect(win.w).toBe(750)
     expect(win.w).toBeGreaterThanOrEqual(600)
-    expect(drawnAt(art, win)).toBeCloseTo(0.8)
+    // And the drawing fills four fifths of it across, which is the measure.
+    expect(600 / win.w).toBeCloseTo(0.8)
   })
 
   it('shapes the window like the frame, whatever the file is shaped like', () => {
@@ -55,15 +56,6 @@ describe('the window a deck’s measure cuts out of a file (E1)', () => {
     expect(around(low)).toEqual(around(high))
   })
 
-  it('says when the file does not hold what the measure asks for', () => {
-    // A file delivered cropped to the drawing has no air to give: at four fifths the window
-    // would have to be larger than the file itself.
-    const cropped = file(1000, 1000, { x: 0, y: 0, w: 1000, h: 1000 })
-
-    expect(frameWindow(cropped, CENTRED, 1).short).toBe(true)
-    expect(frameWindow(cropped, { fill: 1 }, 1).short).toBe(false)
-  })
-
   it('slides a window that has fallen off the edge back inside the file', () => {
     // The drawing sits hard against the left edge, so a centred window starts at -100.
     const edge = file(1000, 1000, { x: 0, y: 300, w: 200, h: 400 })
@@ -71,9 +63,8 @@ describe('the window a deck’s measure cuts out of a file (E1)', () => {
     const win = frameWindow(edge, CENTRED, 1)
 
     expect(win.x).toBe(0)
-    expect(win.w).toBe(500)
     // Sliding is not shrinking: the file still holds every pixel the measure asked for.
-    expect(win.short).toBe(false)
+    expect(win.w).toBe(500)
   })
 
   it('shrinks a window the file cannot hold, rather than sampling air that was never drawn', () => {
@@ -81,25 +72,6 @@ describe('the window a deck’s measure cuts out of a file (E1)', () => {
 
     const win = frameWindow(cropped, CENTRED, 1)
 
-    expect(win).toEqual({ x: 100, y: 0, w: 400, h: 400, short: true })
-    // And the drawing is then drawn larger than the measure asked for, which is the truth the
-    // card will show and what the deck's count has to be told.
-    expect(drawnAt(cropped, win)).toBeGreaterThan(0.8)
-  })
-
-  it('takes the card’s own departure from the measure, and takes it after the measure', () => {
-    const art = file(1000, 1000, { x: 300, y: 300, w: 200, h: 400 })
-
-    const closer = frameWindow(art, CENTRED, 1, { zoom: 2 })
-
-    expect(closer).toEqual({ x: 275, y: 375, w: 250, h: 250, short: false })
-    expect(drawnAt(art, closer)).toBeCloseTo(1.6)
-  })
-
-  it('moves the window by a share of itself, so a nudge means the same at every zoom', () => {
-    const art = file(1000, 1000, { x: 300, y: 300, w: 200, h: 400 })
-
-    expect(frameWindow(art, CENTRED, 1, { dx: 0.1 }).x).toBe(200)
-    expect(frameWindow(art, CENTRED, 1, { dy: -0.1 }).y).toBe(200)
+    expect(win).toEqual({ x: 100, y: 0, w: 400, h: 400 })
   })
 })

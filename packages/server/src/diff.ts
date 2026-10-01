@@ -34,10 +34,10 @@ export type DocDiff = {
 
 // What this deliberately does not look at, and what follows from that (#177).
 //
-// `ProjectDoc` also carries `palette` (E4), `framing` (E1), `fonts` (B3) and each picture's own
-// window (#222), and none of the four is compared here: they are settings a card is drawn by
+// `ProjectDoc` also carries `palette` (E4), `fonts` (B3) and each picture's own window (#222),
+// and none of the three is compared here: they are settings a card is drawn by
 // rather than something a card table can show a before and an after of, and a row of the diff is
-// a row of that table. A crop is the sharpest case of the four — it can change every card in the
+// a row of that table. A crop is the sharpest case of the three — it can change every card in the
 // deck at once and still name no card — which is precisely why it cannot be a row.
 //
 // The consequence is not that those saves are invisible — it is that they come out of here as an

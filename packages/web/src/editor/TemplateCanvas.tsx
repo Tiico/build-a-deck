@@ -23,7 +23,9 @@ import { foldedProps, rememberFoldedProps } from './panes.js'
 import { Question } from './Question.js'
 import type { CanvasStage } from './EditorStages.js'
 import { useRoving } from './roving.js'
-import { previewFonts } from './fonts.js'
+import { cardWords, familyChoices, previewFonts } from './fonts.js'
+import { FontCatalog } from './FontCatalog.js'
+import type { CatalogFamily } from './font-catalog.js'
 import { LIBRARY, type GameSymbol } from './symbols.js'
 import { SymbolList, symbolListKey, symbolOptionId } from './SymbolList.js'
 import { useT, type Key, type T, useLang } from '../i18n/index.js'
@@ -92,6 +94,10 @@ export type TemplateCanvasProps = {
   // The game's typefaces stand in Speltema (L57, #630). The panel says so where they used to
   // stand, and this takes the designer there.
   onOpenFonts?: (() => void) | undefined
+  // A family taken out of Google Fonts for the chosen text layer (#634, L27): the file is copied in
+  // as the game's own asset, and the canvas is told what the family came to be called so the
+  // layer can be set in it. Absent, the layer's list offers no way into the catalog.
+  onCatalogFont?: ((family: CatalogFamily) => Promise<string>) | undefined
   // A picture brought in from the designer's own disk for the template's own picture (#320), by
   // the very path Media takes: it lands in the library, and the element is then bound to it.
   // Uploading is the client's work, so the canvas asks and is told the hash the bytes were
@@ -105,7 +111,7 @@ export type TemplateCanvasProps = {
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, onPickRow, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onOpenFonts, onAddPicture, reading = false }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, onPickRow, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onOpenFonts, onCatalogFont, onAddPicture, reading = false }: TemplateCanvasProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
@@ -191,6 +197,31 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // What a deletion is said in when it has happened. The editor has two live regions and no
   // surface makes a third (StatusLive), so the canvas asks for the polite one by name.
   const say = useSay()
+  // The typeface catalog, opened from a text layer's «Fler typsnitt…» (L57, #634). It is the
+  // sheet under the card it stood as before Speltema took the game's typefaces (L27), because the
+  // samples are the card's own words and the card must stay in view while they are read. It is
+  // about the chosen layer, so it goes when the chosen layer is no longer a text.
+  const [catalogOpen, setCatalogOpen] = useState(false)
+  const catalogFor = catalogOpen && el?.kind === 'text' ? el : null
+  const closeCatalog = () => {
+    setCatalogOpen(false)
+    document.getElementById(PROPS_COLUMN)?.querySelector<HTMLSelectElement>('select[data-family-pick]')?.focus()
+  }
+  const catalog = catalogFor && onCatalogFont && (
+    <FontCatalog
+      words={cardWords(shown, rowData)}
+      inGame={Object.keys(doc.fonts ?? {})}
+      forLayer
+      onChoose={async (family) => {
+        // A family the game already holds is set as it is; anything else is brought home first,
+        // under whatever name the game gives it (`useCatalogFont`).
+        const name = doc.fonts?.[family.family] ? family.family : await onCatalogFont(family)
+        patch(catalogFor.id, { font: { ...catalogFor.font, family: name } })
+        closeCatalog()
+      }}
+      onClose={closeCatalog}
+    />
+  )
   const stageEl = useRef<HTMLElement | null>(null)
   // The zoom grows around the element that is chosen (#478); read at the press, not at the render.
   const chosenRef = useRef(selectedElement)
@@ -230,7 +261,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // twice and nothing a tab does not point at is left in the tab order.
   const shows = (which: CanvasStage) => stage === null || stage === which
   return (
-    <div className="byd-canvas" {...(stage ? { 'data-stage': stage } : folded ? { 'data-folded': 'props' } : {})}>
+    <div className="byd-canvas" {...(catalog && stage === null ? { 'data-catalog': 'open' } : {})} {...(stage ? { 'data-stage': stage } : folded ? { 'data-folded': 'props' } : {})}>
       {/* The crown over the whole desk and not over the card alone (#129): which column makes the
           groups, which group is open, whether the properties are folded away, and which face is
           being edited. It spans the four columns because that is the only place its four controls
@@ -389,6 +420,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             {t('canvas.layer.isLocked', { name: layerName(refusedLayer) })}
           </p>
         )}
+        {stage === null && catalog}
         {swapping && (
           <Question
             className="byd-canvas-question"
@@ -453,7 +485,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             assetBase={assetBase}
             onAddPicture={onAddPicture}
             taken={takenNames(doc)}
-            fonts={Object.keys(doc.fonts ?? {})}
+            fonts={doc}
+            onMoreFonts={onCatalogFont && !reading ? () => setCatalogOpen(true) : undefined}
             icons={Object.keys(doc.icons)}
             valuesIn={(field) => valuesIn(doc, field)}
             onPatch={(changed, gesture) => patch(el.id, changed, gesture)}
@@ -466,6 +499,9 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             {t('canvas.reset')}
           </button>
         )}
+        {/* On a stage of its own the panel is the whole screen and the card is another stage away,
+            so the catalog stands in the panel that opened it. */}
+        {stage !== null && catalog}
         {/* The game's typefaces are the game's and not a layer's (#478). They stood here while no
             layer was chosen, and stand in Speltema since L57 (#630); the panel says where. */}
         {!layer && onOpenFonts && (
@@ -1915,6 +1951,46 @@ function Scrub({
 // `fields` are the columns the picker offers; `taken` is every name a new one would collide with,
 // which is those plus the card's own id (#32). `icons` is the game's own set (E4), which is what
 // an icon placed on the card is chosen from and changed to.
+// The value «Fler typsnitt…» stands under in the list. Not a family any game can be named: a family
+// is a file's name or a catalog entry's, and neither begins with a control character.
+const MORE_FONTS = '\u0000more'
+
+// A text layer's family (L57, #634): the game's typefaces first and said to be the game's, the
+// family the layer is already set in even when the game has forgotten it — an element is never
+// moved to another type behind the designer's back — and the whole catalog behind «Fler
+// typsnitt…», two clicks away: open the list, take the last entry. The entry opens the catalog
+// and changes nothing, so the list goes on saying what the layer is set in.
+function FamilyPicker({ el, fonts, onPatch, onMoreFonts }: { el: Extract<Element, { kind: 'text' }>; fonts: Pick<ProjectDoc, 'fonts'>; onPatch(patch: Partial<Element>): void; onMoreFonts: (() => void) | undefined }) {
+  const t = useT()
+  const { game, kept } = familyChoices(fonts, el.font.family)
+  return (
+    <select
+      value={el.font.family}
+      data-family-pick=""
+      onChange={(e) => {
+        if (e.target.value === MORE_FONTS) onMoreFonts?.()
+        else onPatch({ font: { ...el.font, family: e.target.value } })
+      }}
+    >
+      {game.length > 0 && (
+        <optgroup label={t('canvas.font.game')}>
+          {game.map((f) => (
+            <option key={f} value={f}>
+              {f}
+            </option>
+          ))}
+        </optgroup>
+      )}
+      {kept !== null && (
+        <optgroup label={t('canvas.font.kept')}>
+          <option value={kept}>{kept}</option>
+        </optgroup>
+      )}
+      {onMoreFonts && <option value={MORE_FONTS}>{t('canvas.font.more')}</option>}
+    </select>
+  )
+}
+
 function Properties({
   el,
   face,
@@ -1925,6 +2001,7 @@ function Properties({
   onAddPicture,
   taken,
   fonts,
+  onMoreFonts,
   icons,
   valuesIn,
   onPatch,
@@ -1939,7 +2016,9 @@ function Properties({
   assetBase: string | undefined
   onAddPicture: ((file: File) => Promise<string>) | undefined
   taken: string[]
-  fonts: string[]
+  fonts: Pick<ProjectDoc, 'fonts'>
+  // Opens the catalog for the chosen layer (#634); absent where nothing can be brought in.
+  onMoreFonts?: (() => void) | undefined
   icons: string[]
   valuesIn(field: string): string[]
   onPatch(patch: Partial<Element>, gesture?: string): void
@@ -2155,17 +2234,8 @@ function Properties({
       {el.kind === 'text' && (
         <Section id="text" name={t('canvas.props.sec.text')}>
           <label>
-            {/* The families the project names, and the one this element is already set in even
-                when the project has forgotten it — an element is never moved to another type
-                behind the designer's back. */}
             {t('canvas.props.font')}
-            <select value={el.font.family} onChange={(e) => onPatch({ font: { ...el.font, family: e.target.value } })}>
-              {[...new Set([...fonts, el.font.family])].map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
+            <FamilyPicker el={el} fonts={fonts} onPatch={onPatch} onMoreFonts={onMoreFonts} />
           </label>
           <Scrub name={t('canvas.props.size')} icon="A" unit="pt" step={0.5} min={1} value={el.font.sizePt} gesture={typing} onWrite={(sizePt, gesture) => onPatch({ font: { ...el.font, sizePt } }, gesture)} />
           <label>

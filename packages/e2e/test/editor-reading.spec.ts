@@ -26,7 +26,9 @@ async function asRole(page: Page, browser: Browser, baseURL: string | undefined,
 // What would change the game on each tab, from the catalogue of the tab's controls (#489). None
 // of it is drawn for a role that may not change the game; the reading controls beside it are.
 const EDITS: Record<string, readonly string[]> = {
-  wall: ['.byd-wall-measure-drop'],
+  // The wall's remedies and its first card are not drawn for a reader at all (#477); the one
+  // control the list named here left with «Bildernas mått» (#607). The tab is still read.
+  wall: [],
   template: ['.byd-canvas-tools', '.byd-backs', '.byd-drag-handle', '.byd-newfield'],
   table: ['.byd-data-add', '.byd-data-tick', 'td.byd-data-remove button', 'th.byd-data-remove button', '.byd-data-icon', '.byd-data-bulk'],
   theme: ['.byd-theme-library-open', '.byd-symbols-tile', '.byd-symbols-add', '.byd-symbols-set li[data-icon] > button', '.byd-symbols-colours li[data-role] > button:last-child', '.byd-fonts-upload', '.byd-fonts-catalog'],

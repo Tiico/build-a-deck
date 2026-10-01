@@ -37,6 +37,7 @@ import { DEFAULT_TIMING } from '../status/connection.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useLang, useT, type T } from '../i18n/index.js'
 import { HookGlyph } from '../glyphs.js'
+import type { CatalogFamily } from './font-catalog.js'
 import './editor.css'
 
 const PlaytestPrototype = import.meta.env.DEV ? lazy(() => import('./prototype/PlaytestWorkspace.js')) : null
@@ -426,10 +427,6 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             setFocusNext({ layer: id })
           }
         }}
-        // The measure belongs to the template's image element and one card's departure to the
-        // deck (E1), so the wall changes two different things — but they are judged in one place,
-        // because the wall is where the whole deck is visible at once.
-        {...(client.mayEdit ? { onFraming: (cardRef: string, field: string, framing: Parameters<typeof client.setFraming>[2]) => client.setFraming(cardRef, field, framing) } : {})}
         // One check mended across the whole deck (#233). Every patch carries the same gesture, so
         // the edits land as one version and one step back: a designer who presses this once and
         // changes her mind presses undo once.
@@ -488,6 +485,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           revealThemeSection('fonts')
           setStage('theme')
         }}
+        // A text layer's «Fler typsnitt…» (#634): the family comes into the game the way Speltema
+        // brings it, and the canvas sets the layer in whatever it came to be called.
+        {...(client.mayEdit ? { onCatalogFont: (family: CatalogFamily) => client.useCatalogFont(family, t) } : {})}
         // The template's own picture is uploaded by the path Media takes (#320), so it lands there.
         onAddPicture={(file) => client.addPicture(file, t)}
         group={group}

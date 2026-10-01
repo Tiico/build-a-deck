@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
 import type { Motif } from '@byd/template'
 import { TemplateCanvas, type TemplateCanvasProps } from '../src/editor/TemplateCanvas.js'
@@ -15,8 +15,9 @@ vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 // image element, as a switch beside the other two. Where in its window the drawing stands was the
 // template answering a question about the picture, and the picture answers that itself now.
 //
-// What stays on the wall is the deck's side of the measure: the files that cannot answer it, and
-// each card's own exception. Those are about the whole deck at once, which is what a wall is.
+// The wall kept the deck's side of it for a while — the files that could not answer and each
+// card's own exception — until the picture carried its own crop and that side said nothing a
+// designer needed (#607). The switch in the element is all there is of the measure now.
 
 const HASH = 'a'.repeat(64)
 const ART = `http://test.local/assets/${HASH}`
@@ -67,13 +68,8 @@ function canvas(doc: ProjectDoc) {
   return props
 }
 
-const wall = (doc: ProjectDoc, motifs: Record<string, Motif> = { [ART]: roomy }) => {
-  const onFraming = vi.fn()
-  render(
-    <DeckWall doc={doc} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} assetBase="http://test.local" motifs={motifs} onFraming={onFraming} />,
-  )
-  return { onFraming }
-}
+const wall = (doc: ProjectDoc, motifs: Record<string, Motif> = { [ART]: roomy }) =>
+  render(<DeckWall doc={doc} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} assetBase="http://test.local" motifs={motifs} />)
 
 describe('the measure, in the element that owns the frame (#221)', () => {
   it('switches it on for the picture area, and takes it off again', () => {
@@ -95,29 +91,12 @@ describe('the measure, in the element that owns the frame (#221)', () => {
   })
 })
 
-describe('what the wall keeps of the measure (#221)', () => {
-  it('no longer sets the measure there, neither its size nor a ground line', () => {
-    wall(deck({ fill: 0.8 }))
-    const panel = screen.getByRole('group', { name: 'Bildernas mått' })
-
-    expect(within(panel).queryByLabelText(/Motivets höjd/)).toBeNull()
-    expect(within(panel).queryByRole('button', { name: 'På en gemensam marklinje' })).toBeNull()
-    expect(within(panel).queryByRole('button', { name: 'Centrerat' })).toBeNull()
-    expect(within(panel).queryByRole('button', { name: 'Jämna ut bilderna' })).toBeNull()
-  })
-
-  it('says nothing at all where the template has given no measure', () => {
-    wall(deck())
+describe('the wall says nothing about the measure (#607)', () => {
+  it('draws no panel for it, even where every file is cropped too hard to answer it', () => {
+    wall(deck({ fill: 0.8 }), { [ART]: cropped })
 
     expect(screen.queryByRole('group', { name: 'Bildernas mått' })).toBeNull()
-  })
-
-  it('still lists the files that cannot answer, and still writes one card’s exception', () => {
-    const { onFraming } = wall(deck({ fill: 0.8 }), { [ART]: cropped })
-    const list = screen.getByRole('list', { name: 'Bilder som inte kan svara' })
-
-    expect(within(list).getAllByRole('listitem')).toHaveLength(3)
-    fireEvent.click(within(list).getAllByRole('button', { name: /Rita motivet/ })[0]!)
-    expect(onFraming).toHaveBeenCalledWith('dragon', 'art', { zoom: 1.25 })
+    expect(screen.queryByRole('list', { name: 'Bilder som inte kan svara' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Öppna källan/ })).toBeNull()
   })
 })

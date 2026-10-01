@@ -90,8 +90,8 @@ function wordsOf(change: VersionChange, t: T): string {
   if (change.renamed !== undefined) said.push(t('history.diff.renamed', { name: change.renamed }))
   if (said.length > 0) return said.join(' · ')
   if (change.parts.length > 0) return ''
-  // Nothing named, and yet something happened. `diffProjects` does not look at `palette`,
-  // `framing` or `fonts` (see the note there), and a byte-identical document is refused a version
+  // Nothing named, and yet something happened. `diffProjects` does not look at `palette`
+  // or `fonts` (see the note there), and a byte-identical document is refused a version
   // — so an empty change is a save whose only difference is one this cannot name. It is never a
   // save where nothing changed, and the row must not say that it is.
   return t('history.diff.other')
