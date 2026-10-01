@@ -98,7 +98,10 @@ async function listen(env: Record<string, string>): Promise<{ origin: string; st
   for (let attempt = 0; attempt < 8; attempt++) {
     const origin = `http://127.0.0.1:${port}`
     // The links the server writes into mail are on its public origin, as they are on the box.
-    const child = spawn('pnpm', ['exec', 'tsx', SERVER_MAIN], {
+    // Node itself, with tsx as a loader, rather than through `pnpm exec`: on Windows `pnpm` is a
+    // `.cmd` shim that Node will not spawn without a shell, and a signal to that shell would not
+    // reach the server it started.
+    const child = spawn(process.execPath, ['--import', 'tsx', SERVER_MAIN], {
       cwd: join(HERE, '..'),
       env: { ...process.env, ...env, PORT: String(port), PUBLIC_ORIGIN: origin, AUTH_BYPASS: 'true', IDLE_EVICT_MS: String(24 * 3600_000), IDLE_END_MS: String(24 * 3600_000) },
       stdio: ['ignore', 'pipe', 'pipe'],
