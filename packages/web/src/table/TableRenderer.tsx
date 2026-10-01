@@ -1877,8 +1877,15 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
   // thickness, as this did, put all three a little further out the deeper the pile got: at ten
   // cards a card laid beside the deck sat 10.7 px low, at sixty 13.1 px, and the same pile that
   // looked in line at the start of a game looked as though the card had slipped by the end.
+  //
+  // A step is 1.2 px, and never more than the card can carry (#652): the whole staircase stays
+  // within a fifth of the card's own height. On a television or at a table a card is 65 px tall
+  // or more and the twelve steps are what they always were; on the Bord tab's felt it is 28 px,
+  // and twelve whole steps stood 13 px of navy above it — half a card, which read as a tab and
+  // not as a deck. Thickness is the card's measure, as the fan's turn is.
   const layers = Math.min(Math.max(count, 0), 12)
-  const thickness = Array.from({ length: layers }, (_, i) => `0 ${-i * 1.2}px 0 #1f2b4a`).join(', ')
+  const step = Math.min(1.2, (px(CARD_MM.h) * MAX_THICKNESS) / 11)
+  const thickness = Array.from({ length: layers }, (_, i) => `0 ${-i * step}px 0 #1f2b4a`).join(', ')
   // The pile's bottom card (K23, variant A): let out under the pile by its lower edge, drawn
   // before the top so the top covers all but that edge. It is the same card node as the top —
   // the same texture path, the same back, the same hue — because a second way to draw a card is
@@ -1965,6 +1972,10 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
 // How far the bottom card is let out under the pile (K23): enough to read as a card's edge and
 // to take a pointer, and short of the count pill that hangs 22 px under the pile.
 const BOTTOM_EDGE_MM = 10
+
+// How deep a pile's staircase may stand above its card, as a share of the card's height (#652).
+// Eleven steps of 1.2 px are a fifth of a 65 px card, the smallest a card is drawn at a table.
+const MAX_THICKNESS = 0.2
 
 const EDGES: Record<number, 'N' | 'E' | 'S' | 'W'> = { 0: 'S', 180: 'N', [-90]: 'E', 90: 'W' }
 

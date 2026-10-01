@@ -2658,6 +2658,15 @@ Mätt på observatörens filt, fyra platser med yta och räknare framför varje,
 De 102 scenerna i `felt-names.test.tsx` — bordsläge vid varje platsantal och varje kvartsvarv, TV:n och Bord-fliken — är oförändrade.
 Minsta etikett är 12 px, som den alltid varit.
 
+Reviderat 2026-10-02 (#652): **på en tät filt täcker brickan inte längre kortet, och en hög är aldrig tjockare än en femtedel av sitt kort.**
+Bord-flikens filt är tät vid 1024, och där är ett kort 20 × 28 px: brickan på 30 px täckte hela högen och stod en bit utanför den, så det enda som syntes av draghögen var dess tjocklek — tolv steg om 1,2 px, 13 px marinblått ovanför «12», som lästes som en flik.
+Brickan sätts därför i filtens tätaste, 12 px på en platta om 18, samma storlek som händernas antal, och den är aldrig bredare än kortet på någon filt.
+Tjockleken räknas i kortets eget mått, som solfjäderns vridning redan gör: trappan når högst en femtedel av kortets höjd, vilket är vad tolv steg om 1,2 px är på det minsta kort ett bord ritar, 65 px; TV:n och bordsläget ritar som förut.
+På Bord-fliken ritas högen dessutom över sitt handtag i stället för under det, och handtaget drar sin linje två pixlar utanför kortet, där en utpekad högs egen ring står.
+Linjen låg annars tvärs över brickan, och på en tom hög på högens egen streckade kontur — två linjer på samma pixlar.
+Pekaren går genom högen till handtaget, så att ta tag i högen är detsamma som förut.
+`packages/e2e/test/surfaces/setup-piles-drawn.spec.ts` mäter det på målade pixlar vid 1024 och 1280.
+
 **En delad zon under en plats ruta skriver sitt namn mitt över sig själv.**
 Utvidgat 2026-09-15 (#43), och det är det första i regeln som handlar om två namn som hör till olika zoner.
 
