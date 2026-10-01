@@ -5622,3 +5622,24 @@ Variant C, en box «Filter: typ Playcard ▾» i krönet, valdes bort: den är d
 
 `CrownRail` och dess räls är borta; väggens krön rör inte detta.
 Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/01-tabellens-filter.html`.
+
+### L57. Markeringens handlingar står i tabellens fot (prototypat och beslutat 2026-10-01, #618)
+
+Helhetsöverblicken (`docs/ux-audits/2026-09-30-komponenter.md`) mätte åtgärdsraden: när ett kort bockades fälldes ett band på 72 px ut mellan krönet och raderna, och raderna flyttade 80 px — bocken man just tryckt på gled iväg under fingret, och när sista bocken släpptes hoppade allt tillbaka.
+Samtidigt sa foten redan «1 markerat kort».
+
+**Handlingarna står i foten** (variant A av tre: foten, en flytande remsa, krönet som byter innehåll).
+Foten är den rad #130 gav antalet och sorteringen, och den växer till en verktygsrad — Duplicera, Ta bort, Avmarkera alla — efter antalet när något är markerat.
+Ingenting ovanför raderna flyttar sig; det som växer växer under tabellen.
+Frågan före en borttagning tar verktygsradens plats i foten, som förut tog hela bandet, så inget kan tryckas av misstag bakom den.
+
+**Kolumnen och värdet står bakom «Sätt fält ▾».**
+Foten är en rad, och en väljare och ett fält hade gjort den till två.
+Boxen lyfts till toppskiktet (L55) och öppnas uppåt ur foten; Escape stänger tillbaka till handtaget och ett tryck i arbetet stänger.
+Samma låda som kolumnfiltrets dörr (L56): `Lifted.tsx` är en komponent för en box som öppnas under en knapp och står över arbetet tills den stängs.
+
+Variant B, en flytande remsa över tabellens nederkant, valdes bort för att den täcker sista raden — det L19 redan valt bort för förstoringen.
+Variant C, att krönet byter innehåll medan något är markerat, tar bort sökningen i det ögonblick man markerar.
+
+`data-table-layout.test.tsx` mäter att första raden står kvar och att foten är en rad; `data-table-bulk.test.tsx` håller handlingarna och boxen.
+Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/02-atgardsraden.html`.

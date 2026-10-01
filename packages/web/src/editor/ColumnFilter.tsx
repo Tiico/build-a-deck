@@ -1,6 +1,5 @@
-import { useEffect, useRef, type RefObject } from 'react'
-import { useDoor } from '../doors.js'
-import { placedProps, usePlacement } from './placement.js'
+import { useRef } from 'react'
+import { Lifted } from './Lifted.js'
 import { useT } from '../i18n/index.js'
 
 // A column's filter, in the column's own head (#617, variant A).
@@ -27,7 +26,7 @@ export type ColumnFilterProps = {
   onOpen(open: boolean): void
 }
 
-export function ColumnFilter({ field, label, values, chosen, onToggle, open, onOpen }: ColumnFilterProps) {
+export function ColumnFilter({ label, values, chosen, onToggle, open, onOpen }: ColumnFilterProps) {
   const t = useT()
   const handle = useRef<HTMLButtonElement>(null)
   const name = chosen.length > 0 ? t('table.filterOn.count', { field: label, n: chosen.length }) : t('table.filterOn', { field: label })
@@ -47,7 +46,7 @@ export function ColumnFilter({ field, label, values, chosen, onToggle, open, onO
         <span aria-hidden="true">{chosen.length > 0 ? chosen.length : '▾'}</span>
       </button>
       {open && (
-        <Door field={field} label={label} handle={handle} onClose={() => onOpen(false)}>
+        <Lifted handle={handle} label={t('table.filterOn', { field: label })} className="byd-column-filter-door" onClose={() => onOpen(false)}>
           {values.map(({ value, count }) => (
             <label key={value} className="byd-column-filter-tick">
               <input type="checkbox" aria-label={value} checked={chosen.includes(value)} onChange={() => onToggle(value)} />
@@ -55,43 +54,8 @@ export function ColumnFilter({ field, label, values, chosen, onToggle, open, onO
               <small>{t('table.filter.cards', { n: count })}</small>
             </label>
           ))}
-        </Door>
+        </Lifted>
       )}
     </>
-  )
-}
-
-// The door itself, there only while it stands: a door that is not there cannot be walked through,
-// and `doors.ts` keeps the order between open doors by who is rendered, not by who is mounted.
-//
-// It lifts into the top layer like every opened box (L55, #611): it hangs from a head cell inside
-// the table's own scroll box, and a box inside something that scrolls is cut by its edge. It
-// closes the way every panel over the work closes (#133): Escape hands the focus back to the
-// handle it came from, a press in the work leaves the focus where the pointer put it.
-function Door({ field, label, handle, onClose, children }: { field: string; label: string; handle: RefObject<HTMLButtonElement | null>; onClose(): void; children: React.ReactNode }) {
-  const t = useT()
-  const door = useRef<HTMLDivElement>(null)
-  const latest = useRef({ onClose })
-  latest.current = { onClose }
-  const place = usePlacement(true, door, { lift: true })
-  useDoor('standing', () => {
-    latest.current.onClose()
-    handle.current?.focus()
-  })
-  useEffect(() => {
-    door.current?.querySelector<HTMLElement>('input')?.focus()
-    const onPointerDown = (event: Event) => {
-      const target = event.target
-      if (!(target instanceof Element)) return
-      if (handle.current?.contains(target) || door.current?.contains(target)) return
-      latest.current.onClose()
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [handle])
-  return (
-    <div ref={door} className="byd-column-filter-door" {...placedProps(place)} role="group" aria-label={t('table.filterOn', { field: label })} data-column-filter={field}>
-      {children}
-    </div>
   )
 }

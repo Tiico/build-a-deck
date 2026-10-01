@@ -308,6 +308,8 @@ export const enEditor = {
   'table.antal.out': 'not in the deck',
   'table.bulk': 'Marked cards',
   'table.bulk.field': 'Set',
+  'table.bulk.set.box': 'Set a field',
+  'table.bulk.set.label': 'Set a field on {n} cards',
   'table.column': 'Column',
   'table.value': 'Value',
   'table.bulk.set': 'Set {field} on {n} cards',

@@ -6,6 +6,7 @@ import { ANTAL, drawnBy } from '@byd/server/doc'
 import { ColumnDoor } from './ColumnDoor.js'
 import { Crown, CrownBox, CrownDrawer, CrownFoot } from './Crown.js'
 import { ColumnFilter, type ColumnFilterProps } from './ColumnFilter.js'
+import { Lifted } from './Lifted.js'
 import { FilterField, type FilterToken, type TypedColumn } from './FilterField.js'
 import { DragDoor } from './DragDoor.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
@@ -555,6 +556,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // is not a change worth pressing by mistake, so the button waits for one.
   const [bulkField, setBulkField] = useState<string | null>(null)
   const [bulkValue, setBulkValue] = useState('')
+  // Whether the box with the column and the value stands open over the foot (#618).
+  const [setting, setSetting] = useState(false)
+  const setBox = useRef<HTMLButtonElement>(null)
   // And what it writes when the column is a bild (E1): the image itself, since a bildfält is not a
   // sentence anyone can type. The hash is held until the button is pressed, exactly as the typed
   // value is.
@@ -1240,104 +1244,6 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           )}
         </p>
       )}
-      {chosen.length > 0 &&
-        (confirming ? (
-          <Question
-            className="byd-data-bulk"
-            label={removeLabel(chosen.length, t)}
-            confirm={t('table.remove.yes')}
-            cancel={t('editor.cancel')}
-            onConfirm={() => {
-              onReplaceRows(removeRows(doc.rows, chosenIds))
-              setSelected(noSelection)
-              setConfirming(false)
-              setRefocus('all')
-            }}
-            onCancel={() => {
-              setConfirming(false)
-              setRefocus('remove')
-            }}
-          >
-            {t(chosen.length === 1 ? 'table.remove.question.one' : 'table.remove.question.other', { n: chosen.length })}
-          </Question>
-        ) : (
-          <div className="byd-data-bulk" role="toolbar" aria-label={t('table.bulk')}>
-            <label>
-              {t('table.bulk.field')}
-              <select aria-label={t('table.column')} value={field} onChange={(event) => setBulkField(event.target.value)}>
-                {fields.map((f) => (
-                  <option key={f} value={f}>
-                    {fieldLabel(f, t)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {/* A bildfält is written with an image and never with a sentence (E1). The cell
-                already knows that; the action row used to offer a text field for it, which wrote
-                prose into a column the template draws as a picture. So the value takes the shape
-                of the column: a place to drop one of the deck's images, and nothing to type. */}
-            {bulkIsImage && assetBase ? (
-              <div
-                role="group"
-                aria-label={t('table.bulk.image')}
-                {...dropSurface({
-                  className: 'byd-data-drop',
-                  over: bulkOver,
-                  onOver: setBulkOver,
-                  onFiles: (files) => void bulkUpload(files),
-                  onLibrary: setBulkImage,
-                })}
-              >
-                {bulkImage ? <img src={assetUrl(assetBase, bulkImage)} alt={t('table.bulk.image')} /> : <span>{t('table.image.drop')}</span>}
-                {bulkOver && <DropSays />}
-                {/* The library (#296): a picture the game already has, onto every marked card. */}
-                <button type="button" className="byd-data-file" aria-label={t('table.bulk.image.choose')} onClick={() => setLibrary({ kind: 'marked', field })}>
-                  {t('table.image.choose')}
-                </button>
-                <label className="byd-data-file">
-                  {t('table.image.upload')}
-                  <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('table.bulk.image.upload')} onChange={(event) => void bulkUpload([...(event.target.files ?? [])])} />
-                </label>
-              </div>
-            ) : (
-              <input
-                type={field === ANTAL ? 'number' : 'text'}
-                min={field === ANTAL ? 0 : undefined}
-                aria-label={t('table.value')}
-                value={bulkValue}
-                onChange={(event) => setBulkValue(event.target.value)}
-                // The same rule the cell holds a count to (#479), said the same way.
-                {...(bulkCountWrong ? { 'aria-invalid': true, 'aria-describedby': 'byd-bulk-antal-says' } : {})}
-              />
-            )}
-            {bulkCountWrong && (
-              <small className="byd-data-says" id="byd-bulk-antal-says">
-                {t('table.antal.invalid')}
-              </small>
-            )}
-            <button
-              type="button"
-              disabled={bulkWrites === null}
-              onClick={() => {
-                if (bulkWrites === null) return
-                onReplaceRows(setColumn(doc.rows, chosenIds, field, bulkWrites))
-                setBulkValue('')
-                setBulkImage(null)
-              }}
-            >
-              {bulkIsImage ? t('table.bulk.setImage', { n: chosen.length }) : t('table.bulk.set', { field, n: chosen.length })}
-            </button>
-            <button type="button" onClick={() => onReplaceRows(duplicateRows(doc.rows, chosenIds))}>
-              {t(chosen.length === 1 ? 'table.bulk.duplicate.one' : 'table.bulk.duplicate.other', { n: chosen.length })}
-            </button>
-            <button type="button" data-kind="danger" ref={removeRef} onClick={() => setConfirming(true)}>
-              {removeLabel(chosen.length, t)}
-            </button>
-            <button type="button" data-kind="quiet" onClick={() => setSelected(noSelection)}>
-              {t('table.bulk.unmark')}
-            </button>
-          </div>
-        ))}
       {dropping !== null && (
         <Question
           className="byd-data-bulk"
@@ -1831,7 +1737,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
         }}>
         {t('table.addCard')}
       </button>
-      {/* What the table adds up to, under it rather than over it (#130). */}
+      {/* What the table adds up to, under it rather than over it (#130) — and, since #618, what
+          can be done with a marking: the actions stood in a band between the crown and the rows
+          and moved every row 80 px when a box was ticked. In the foot nothing above the rows moves. */}
       <CrownFoot>
         <p className="byd-data-count" aria-live="polite">
           <span>
@@ -1851,7 +1759,114 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             </>
           )}
         </p>
-        <p className="byd-data-sort" role="status">{sortLabel(sort, t)}</p>
+      {chosen.length > 0 &&
+        (confirming ? (
+          <Question
+            className="byd-data-bulk"
+            label={removeLabel(chosen.length, t)}
+            confirm={t('table.remove.yes')}
+            cancel={t('editor.cancel')}
+            onConfirm={() => {
+              onReplaceRows(removeRows(doc.rows, chosenIds))
+              setSelected(noSelection)
+              setConfirming(false)
+              setRefocus('all')
+            }}
+            onCancel={() => {
+              setConfirming(false)
+              setRefocus('remove')
+            }}
+          >
+            {t(chosen.length === 1 ? 'table.remove.question.one' : 'table.remove.question.other', { n: chosen.length })}
+          </Question>
+        ) : (
+          <div className="byd-data-bulk" role="toolbar" aria-label={t('table.bulk')}>
+            {/* The column and the value stand behind a box (#618): the foot is one row, and a
+                select and a field would make it two. */}
+            <button type="button" ref={setBox} className="byd-data-set" aria-expanded={setting} onClick={() => setSetting(!setting)}>
+              {t('table.bulk.set.box')} <span aria-hidden="true">▾</span>
+            </button>
+            {setting && (
+              <Lifted handle={setBox} label={t('table.bulk.set.label', { n: chosen.length })} className="byd-data-set-box" onClose={() => setSetting(false)}>
+            <label>
+              {t('table.bulk.field')}
+              <select aria-label={t('table.column')} value={field} onChange={(event) => setBulkField(event.target.value)}>
+                {fields.map((f) => (
+                  <option key={f} value={f}>
+                    {fieldLabel(f, t)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {/* A bildfält is written with an image and never with a sentence (E1). The cell
+                already knows that; the action row used to offer a text field for it, which wrote
+                prose into a column the template draws as a picture. So the value takes the shape
+                of the column: a place to drop one of the deck's images, and nothing to type. */}
+            {bulkIsImage && assetBase ? (
+              <div
+                role="group"
+                aria-label={t('table.bulk.image')}
+                {...dropSurface({
+                  className: 'byd-data-drop',
+                  over: bulkOver,
+                  onOver: setBulkOver,
+                  onFiles: (files) => void bulkUpload(files),
+                  onLibrary: setBulkImage,
+                })}
+              >
+                {bulkImage ? <img src={assetUrl(assetBase, bulkImage)} alt={t('table.bulk.image')} /> : <span>{t('table.image.drop')}</span>}
+                {bulkOver && <DropSays />}
+                {/* The library (#296): a picture the game already has, onto every marked card. */}
+                <button type="button" className="byd-data-file" aria-label={t('table.bulk.image.choose')} onClick={() => setLibrary({ kind: 'marked', field })}>
+                  {t('table.image.choose')}
+                </button>
+                <label className="byd-data-file">
+                  {t('table.image.upload')}
+                  <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('table.bulk.image.upload')} onChange={(event) => void bulkUpload([...(event.target.files ?? [])])} />
+                </label>
+              </div>
+            ) : (
+              <input
+                type={field === ANTAL ? 'number' : 'text'}
+                min={field === ANTAL ? 0 : undefined}
+                aria-label={t('table.value')}
+                value={bulkValue}
+                onChange={(event) => setBulkValue(event.target.value)}
+                // The same rule the cell holds a count to (#479), said the same way.
+                {...(bulkCountWrong ? { 'aria-invalid': true, 'aria-describedby': 'byd-bulk-antal-says' } : {})}
+              />
+            )}
+            {bulkCountWrong && (
+              <small className="byd-data-says" id="byd-bulk-antal-says">
+                {t('table.antal.invalid')}
+              </small>
+            )}
+            <button
+              type="button"
+              disabled={bulkWrites === null}
+              onClick={() => {
+                if (bulkWrites === null) return
+                onReplaceRows(setColumn(doc.rows, chosenIds, field, bulkWrites))
+                setBulkValue('')
+                setBulkImage(null)
+              }}
+            >
+              {bulkIsImage ? t('table.bulk.setImage', { n: chosen.length }) : t('table.bulk.set', { field, n: chosen.length })}
+            </button>
+              </Lifted>
+            )}
+            <button type="button" onClick={() => onReplaceRows(duplicateRows(doc.rows, chosenIds))}>
+              {t(chosen.length === 1 ? 'table.bulk.duplicate.one' : 'table.bulk.duplicate.other', { n: chosen.length })}
+            </button>
+            <button type="button" data-kind="danger" ref={removeRef} onClick={() => setConfirming(true)}>
+              {removeLabel(chosen.length, t)}
+            </button>
+            <button type="button" data-kind="quiet" onClick={() => setSelected(noSelection)}>
+              {t('table.bulk.unmark')}
+            </button>
+          </div>
+        ))}
+        <p className="byd-data-sort byd-crown-end" role="status">{sortLabel(sort, t)}</p>
       </CrownFoot>
       {library !== null && assetBase && (
         <PictureLibraryDialog

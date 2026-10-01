@@ -353,6 +353,8 @@ export const svEditor = {
   'table.antal.out': 'ingår inte i leken',
   'table.bulk': 'Markerade kort',
   'table.bulk.field': 'Sätt',
+  'table.bulk.set.box': 'Sätt fält',
+  'table.bulk.set.label': 'Sätt ett fält på {n} kort',
   'table.column': 'Kolumn',
   'table.value': 'Värde',
   'table.bulk.set': 'Sätt {field} på {n} kort',
