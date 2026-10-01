@@ -26,6 +26,10 @@ export function Lifted({ handle, label, className, onClose, children }: { handle
       const target = event.target
       if (!(target instanceof Element)) return
       if (handle.current?.contains(target) || box.current?.contains(target)) return
+      // A dialog opened from inside the box — the picture library from «Välj bild» — stands over
+      // the box, not beside it: a press in it is still the box's business, and the control that
+      // opened the dialog has to be there to take the focus back when it closes (#8).
+      if (target.closest('[role="dialog"]')) return
       latest.current.onClose()
     }
     document.addEventListener('pointerdown', onPointerDown)
