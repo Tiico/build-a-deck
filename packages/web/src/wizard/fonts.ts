@@ -1,12 +1,13 @@
-import type { ProjectFont } from '@byd/server'
-import { catalogFaceSource, catalogStack, type CatalogFamily, fileInSheet, fileSheetHref } from '../editor/font-catalog.js'
+import { catalogFaceSource, catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from '../editor/font-catalog.js'
 import { assetRef, assetRefOf } from '../editor/assets.js'
 import { withCredentials } from '../account/api.js'
 import type { T } from '../i18n/index.js'
 import { NotMade } from './not-made.js'
-import type { Frame } from './frames.js'
+import { iconsOf, starterSet, themeFamilies, themeIconFiles, type Theme } from '../editor/themes.js'
+import type { ThemeFiles } from './build.js'
 
-// Hur startramens ansikte hamnar i projektet (#420, B3, L27).
+// Hur temats ansikten hamnar i projektet (#420, B3, L27). Förut var det ramens ansikte; sedan
+// «Utseende» (L57, #633) är det temats rubrik- och brödtextfamilj, och resonemanget är detsamma.
 //
 // Ett typsnitt som bara är ett namn i mallen är inget typsnitt: renderaren, formgivarens skärm
 // och tryckeriet sätter då var sitt ansikte, och det är precis det den fysiska kontrollen (E5)
@@ -40,35 +41,53 @@ async function bytesOf(catalog: CatalogFamily, t: T, known?: string): Promise<Ui
   return new Uint8Array(await file.arrayBuffer())
 }
 
-/**
- * Ramens typsnitt som dokumentets `fonts` (B3), med filen redan uppladdad.
- *
- * `'login'` när tjänsten vill ha ett konto först, precis som bilduppladdningen svarar — den
- * guidade starten har en dörr tillbaka hit och ska inte tappa utkastet på vägen.
- */
-export async function uploadFrameFont(t: T, http: string, frame: Frame, known?: string): Promise<Record<string, ProjectFont> | 'login'> {
-  const catalog = frame.font
-  const bytes = await bytesOf(catalog, t, known)
-  const res = await fetch(`${http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': 'font/woff2' }, body: bytes }))
+// One file up to the service, and the name it is given checked against the name its bytes have.
+// Asseten heter hashen av sina bytes och ingenting annat, så namnet går att räkna ut på den här
+// sidan också. Håller de två inte med varandra pekar dokumentet på ingenting, och det ska sägas
+// här och inte vid tryck ett år senare.
+async function upload(http: string, type: string, bytes: Uint8Array<ArrayBuffer>): Promise<string | 'login'> {
+  const res = await fetch(`${http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': type }, body: bytes }))
   if (res.status === 401) return 'login'
   if (!res.ok) throw new NotMade('wizard.error.upload')
   const ref = assetRef(((await res.json()) as { hash: string }).hash)
-  // Asseten heter hashen av sina bytes och ingenting annat, så namnet går att räkna ut på den här
-  // sidan också. Håller de två inte med varandra pekar dokumentet på ingenting, och det ska sägas
-  // här och inte vid tryck ett år senare.
   const own = await assetRefOf(bytes)
-  if (ref !== own) throw new Error(`the service named the font ${ref} and its bytes say ${own}`)
-  // Katalogposten vet sin licens och fyller i den, för tryckets skull, och `source` är vad listan
-  // i editorn ska säga om posten: en familj som kom vetande svaret får inte stå med två tomma
-  // rutor formgivaren förväntas fylla i (L27).
-  return { [catalog.family]: { stack: catalogStack(catalog.family, catalog.category), asset: ref, licence: { licence: catalog.licence, by: catalog.by }, source: 'catalog' } }
+  if (ref !== own) throw new Error(`the service named the file ${ref} and its bytes say ${own}`)
+  return ref
 }
 
 /**
- * Where the frame's face can be drawn from before the game exists (#476): the file's own address
- * in the catalogue, read out of the same sheet `bytesOf` reads. Asked for when a frame is pressed
- * and not before (L27, beslut 2026-09-27), so the preview stands in the face the game will carry
- * instead of a fallback that lies about it (E2). `null` when the catalogue does not answer; the
- * preview then keeps saying the face is on its way rather than pretending.
+ * Temats filer som spelet bär dem (L57, #633): varje familj med sin fil (#420, B3) och
+ * startikonerna med sina (E1), redan uppladdade — det `buildProject` lägger temat över ramen med,
+ * precis som när temat väljs i Speltema.
+ *
+ * `known` är filadresser förhandsvisningen redan läst ur katalogens ark när temat trycktes (#476),
+ * så att arket inte frågas två gånger. `'login'` när tjänsten vill ha ett konto först, precis som
+ * bilduppladdningen svarar — den guidade starten har en dörr tillbaka hit och ska inte tappa
+ * utkastet på vägen.
  */
-export const frameFontSource = (catalog: CatalogFamily): Promise<{ stack: string; src: string } | null> => catalogFaceSource(catalog)
+export async function uploadTheme(t: T, http: string, theme: Theme, known: Record<string, string | undefined> = {}): Promise<ThemeFiles | 'login'> {
+  const fonts: ThemeFiles['fonts'] = {}
+  for (const family of themeFamilies(theme)) {
+    const ref = await upload(http, 'font/woff2', await bytesOf(family, t, known[family.family]))
+    if (ref === 'login') return 'login'
+    // Katalogposten vet sin licens och fyller i den, för tryckets skull, och `source` är vad listan
+    // i editorn ska säga om posten (L27).
+    fonts[family.family] = catalogFont(family, ref)
+  }
+  const starters = starterSet({ icons: {} }, theme, t, await themeIconFiles(theme))
+  for (const { file } of starters) if ((await upload(http, file.type, file.bytes)) === 'login') return 'login'
+  return { fonts, icons: iconsOf(starters) }
+}
+
+/**
+ * Where the theme's faces can be drawn from before the game exists (#476): each family's file
+ * address in the catalogue, read out of the same sheet `bytesOf` reads. Asked for when a theme is
+ * pressed and not before (L27, DRIFT §12), so the preview stands in the faces the game will carry
+ * instead of a fallback that lies about them (E2). `null` when the catalogue does not answer for
+ * every family; the preview then keeps saying the faces are on their way rather than pretending.
+ */
+export async function themeFaceSources(theme: Theme): Promise<Record<string, { stack: string; src: string }> | null> {
+  const found = await Promise.all(themeFamilies(theme).map(async (family) => [family.family, await catalogFaceSource(family)] as const))
+  if (found.some(([, face]) => !face)) return null
+  return Object.fromEntries(found) as Record<string, { stack: string; src: string }>
+}

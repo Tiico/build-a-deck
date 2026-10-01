@@ -1,3 +1,4 @@
+import type { ProjectFont } from '@byd/server'
 // Google Fonts as the editor's picker knows it (#329, L27).
 //
 // The list of families is data the build carries and not something fetched: the two endpoints
@@ -59,6 +60,12 @@ export function sampleSheetHref(families: CatalogFamily[]): string | null {
 // element's family and this stack's first name are one string or they are nothing (B3).
 const GENERIC: Record<string, string> = { serif: 'serif', sans: 'sans-serif', display: 'serif', handskrift: 'cursive', mono: 'monospace' }
 export const catalogStack = (name: string, category: string): string => `"${name}", ${GENERIC[category] ?? 'serif'}`
+
+// A catalog family as the game carries it once its file is the project's own (#329, #420): the stack
+// it is written as, the asset the version pins, and the licence the catalog already knows — so a
+// family that arrived knowing the answer never stands in the list with two empty boxes (L27).
+// `name` is what the game calls it, which is the catalog's own name unless the game already has one.
+export const catalogFont = (family: CatalogFamily, asset: string, name: string = family.family): ProjectFont => ({ stack: catalogStack(name, family.category), asset, licence: { licence: family.licence, by: family.by }, source: 'catalog' })
 
 export const isVariable = (family: CatalogFamily): boolean => family.weights.includes('..')
 

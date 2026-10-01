@@ -16,7 +16,7 @@ import { filePickerFaults } from './file-pickers.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
-const css = `${read('src/wizard/wizard.css')}\n${read('src/buttons.css')}\n${read('src/a11y.css')}`
+const css = `${read('src/editor/theme-tile.css')}\n${read('src/wizard/wizard.css')}\n${read('src/buttons.css')}\n${read('src/a11y.css')}`
 
 const document_ = (html: string) =>
   shell
@@ -184,5 +184,27 @@ describe.each(WIDTHS)('the wizard at %ipx', (width) => {
       ),
     )
     expect(measured).toEqual(nothing(measured, [] as string[]))
+  }, 90_000)
+})
+
+// The card's words wear the ink and the place its template gives them (#633). The wizard's own
+// paragraph rule — its muted grey and its three pixels of margin — reached into the preview, where
+// every text is a <p>: Mörk's white title stood grey on its plate, and the preview lied about the
+// card (E2). Read as each paragraph against its own text element, which carries the template's ink.
+describe('the card in the preview', () => {
+  it('keeps the ink and the place its template gives every text', async () => {
+    const measured = await measure(1280, (page) =>
+      page.$$eval('.byd-wizard-preview [data-element] > p', (ps) => ({
+        texts: ps.length,
+        off: ps.flatMap((p) => {
+          const own = getComputedStyle(p)
+          const box = getComputedStyle(p.parentElement as HTMLElement)
+          return own.color !== box.color || own.marginTop !== '0px' ? [`${(p.parentElement as HTMLElement).dataset['element']}: ${own.color} på ${box.color}, ${own.marginTop}`] : []
+        }),
+      })),
+    )
+    const all = Object.values(measured)
+    expect(all.reduce((n, m) => n + m.texts, 0), 'no text on the card was measured').toBeGreaterThan(0)
+    expect(all.flatMap((m) => m.off)).toEqual([])
   }, 90_000)
 })

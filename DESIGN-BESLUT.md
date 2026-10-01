@@ -5733,6 +5733,18 @@ B valdes bort för att det hade gjort varje besök på fliken till en förfråga
 I ett spel som utgår från ett tema står temats rubrikfamilj först i en textlagers lista och brödtextens därefter, och spelets övriga typsnitt följer i den ordning spelet har dem.
 En temafamilj spelet inte längre bär erbjuds inte, eftersom den vore ett namn utan fil (#420).
 
+**Byggt 2026-10-02 (#633): «Utseende» i den guidade starten.**
+Fältset­tet där ramen valdes heter Utseende och har två delar på var sin rad: «Ram — var saker står» med de tre ramarna, och «Tema — hur det känns» med galleriets egna brickor, två i bredd, ritade i wizardens färger.
+Brickan är en komponent (`ThemeTile`) som Speltema och wizarden delar, så ett tema ser likadant ut i båda dörrarna.
+Ramarna skriver sina texter utan familj, och `buildProject` lägger temat över ramen med samma redigering som Speltema skickar (`setTheme`), så regeln om vilken text som får vilken familj står på ett ställe.
+Spelet som skapas minns sitt tema (`theme.from`) och får temats familjer som egna filer, dess betydelser och dess startikoner — det spel ett val av temat i Speltema hade gett.
+Det första temat, Skogssaga, gäller tills ett annat trycks.
+Gränsen mot Google är #476:s, flyttad från ramen till temat: ett tryck på ett tema hämtar dess två ark och förhandsvisningen sätts i dem, ett tryck på en ram hämtar ingenting, och innan något tema tryckts säger förhandsvisningen «Temats typsnitt hämtas när du väljer tema.».
+Wizarden har ingen «Visa temana i sina typsnitt»: kortet bredvid galleriet visar redan det tryckta temat i dess typsnitt, så trycket på temat är både valet och provet.
+Temats färger når kortet genom betydelserna, eftersom papperet inte ingår i temat: en symbol skriven med betydelse, som `{mynt|kostnad}`, målas i temats färg i förhandsvisningen och byter färg med temat, och brickorna visar färgerna utan att något skrivits.
+`wizard-frame-fonts.test.tsx` skapar spelet i varje ram med varje tema och läser noll anmärkningar i den fysiska kontrollen.
+I samma veva drogs wizardens styckeregel bort från kortets text: förhandsvisningen sätter varje text i ett `<p>`, och wizardens grå och marginal hade gjort Mörks vita rubrik grå.
+
 ### L58. Markeringens handlingar står i tabellens fot (prototypat och beslutat 2026-10-01, #618)
 
 Helhetsöverblicken (`docs/ux-audits/2026-09-30-komponenter.md`) mätte åtgärdsraden: när ett kort bockades fälldes ett band på 72 px ut mellan krönet och raderna, och raderna flyttade 80 px — bocken man just tryckt på gled iväg under fingret, och när sista bocken släpptes hoppade allt tillbaka.

@@ -47,12 +47,15 @@ describe('the guided start (L6) in the reader\'s own language', () => {
   it('lays the new game\'s table out in the designer\'s own language (B5, A4)', () => {
     // A zone the recipe makes is the designer's document from the moment it exists, so it must
     // not arrive in the tool's home language and wait to be renamed.
-    const state = { name: 'Lords', players: 2, fields: defaultFields((key, params) => translate('en', key, params)), frame: 'classic', rows: [] }
+    const state = { name: 'Lords', players: 2, fields: defaultFields((key, params) => translate('en', key, params)), frame: 'classic', theme: 'skogssaga', rows: [] }
     const english = buildProject(state, (key, params) => translate('en', key, params))
     expect(english.setup.zones.map((z) => z.name)).toContain('Draw pile')
     expect(english.setup.zones.map((z) => z.name)).toContain('In front of A')
     const swedish = buildProject(state)
     expect(swedish.setup.zones.map((z) => z.name)).toContain('Draghög')
+    // And the theme's meanings, which are the designer's words from then on (A4, L57).
+    expect(Object.keys(english.palette ?? {})).toEqual(['cost', 'gain', 'defence', 'attack'])
+    expect(Object.keys(swedish.palette ?? {})).toEqual(['kostnad', 'vinst', 'försvar', 'anfall'])
   })
 
   it('speaks English about itself while leaving what the designer will write alone', () => {
@@ -63,7 +66,7 @@ describe('the guided start (L6) in the reader\'s own language', () => {
     )
     expect(screen.getByText('Guided start')).toBeTruthy()
     expect(screen.getByRole('button', { name: '+ Text field' })).toBeTruthy()
-    expect(screen.getByText('Starter frame')).toBeTruthy()
+    expect(screen.getByText('Look')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Create the game and continue in the editor/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Create an empty game in the editor' })).toBeTruthy()
     expect(screen.getByText('Without the guided start')).toBeTruthy()

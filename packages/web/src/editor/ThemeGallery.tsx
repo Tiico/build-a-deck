@@ -6,7 +6,7 @@ import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 import { catalogFaceSource } from './font-catalog.js'
 import type { ProjectClient } from './ProjectClient.js'
-import { INK, LIBRARY } from './symbols.js'
+import { ThemeTile } from './ThemeTile.js'
 import { THEMES, departures, sayDeparture, themeFamilies, themeIntent, themeOf, type Theme } from './themes.js'
 import { useLang, useT } from '../i18n/index.js'
 import { useSay } from '../status/StatusLive.js'
@@ -14,11 +14,8 @@ import { useSay } from '../status/StatusLive.js'
 // The ready-made themes, first in Speltema (L57, #632), and the line under them that says what the
 // game has made of the one it started from.
 //
-// A tile shows what a theme is without reaching Google: its meanings as the symbols they paint, on
-// the paper they were chosen against, and its two families *named*. Setting the names in their own
-// faces would need the catalog's sheet the moment the tab opened, and the catalog is reached on the
-// designer's handling and never before it (L27, DRIFT §12) — the same line the guided start draws
-// for its frames (#476). Choosing a theme is one handling; «Visa temana i sina typsnitt» is the
+// A tile (`ThemeTile`) shows what a theme is without reaching Google — the same line the guided
+// start draws for its themes (#476, #633). Choosing a theme is one handling; «Visa temana i sina typsnitt» is the
 // other (beställarens val C, 2026-10-01): it asks the catalog for each family's sheet and draws the
 // game's own first card on every tile, in the theme's faces, without choosing anything.
 export function ThemeGallery({ doc, client, assetBase }: { doc: ProjectDoc; client: ProjectClient; assetBase: string }) {
@@ -64,17 +61,9 @@ export function ThemeGallery({ doc, client, assetBase }: { doc: ProjectDoc; clie
       {client.mayEdit && (
         <div className="byd-theme-tiles" role="group" aria-label={t('theme.gallery')}>
           {THEMES.map((theme) => (
-            <button key={theme.id} type="button" className="byd-theme-tile" aria-label={t('theme.gallery.choose', { name: t(theme.name) })} aria-pressed={from?.id === theme.id} aria-busy={busy === theme} aria-disabled={busy !== null} onClick={() => choose(theme)}>
-              <span className="byd-theme-tile-paper" style={{ background: theme.paper }} aria-hidden="true">
-                {theme.meanings.map((m, i) => (
-                  <img key={m.id} src={painted(SAMPLES[i] ?? 'mynt', m.colour)} alt="" />
-                ))}
-              </span>
+            <ThemeTile key={theme.id} theme={theme} pressed={from?.id === theme.id} busy={busy === theme} waiting={busy !== null} onPress={() => choose(theme)}>
               {faces && <ThemeCard doc={doc} theme={theme} faces={faces} assetBase={assetBase} />}
-              <b>{t(theme.name)}</b>
-              <small className="byd-theme-tile-families">{themeFamilies(theme).map((f) => f.family).join(' · ')}</small>
-              <small>{t(theme.about)}</small>
-            </button>
+            </ThemeTile>
           ))}
         </div>
       )}
@@ -145,13 +134,3 @@ function ThemeCard({ doc, theme, faces, assetBase }: { doc: ProjectDoc; theme: T
 
 // How large a tile draws the card: the most four tiles in a row hold at 1024 px.
 const CARD_SCALE = 0.7
-
-// The symbols a tile paints its meanings with, in the order the meanings stand.
-const SAMPLES = ['mynt', 'skold', 'svard', 'hjarta'] as const
-
-// A library symbol in one colour, as a picture the tile can show. The symbol is drawn in the one
-// ink (E4), so painting it is that ink swapped for the meaning's.
-function painted(id: string, colour: string): string {
-  const svg = LIBRARY.find((s) => s.id === id)?.svg ?? ''
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg.replaceAll(`fill="${INK}"`, `fill="${colour}"`))}`
-}

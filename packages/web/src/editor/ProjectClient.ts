@@ -1,6 +1,6 @@
 import { assetFormatsNamed, assetTypeDeclaring, pictureNameOf, type AssetCrop, type AssetKind } from '@byd/protocol'
 import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
-import { catalogStack, type CatalogFamily, fileInSheet, fileSheetHref } from './font-catalog.js'
+import { catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from './font-catalog.js'
 import type { DocDiff, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
@@ -11,8 +11,8 @@ import type { Motif } from '@byd/template'
 import { iconElement } from './canvas.js'
 import { idsOnFace } from './groups.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
-import { LIBRARY, freeIconName, svgBytes, symbolName, type GameSymbol } from './symbols.js'
-import { starterIcons, themeFamilies, themeIntent, type Theme } from './themes.js'
+import { freeIconName, svgBytes, symbolName, type GameSymbol } from './symbols.js'
+import { iconsOf, starterSet, themeFamilies, themeIconFiles, themeIntent, type Theme } from './themes.js'
 import type { EditorMessage, Presence } from '@byd/server'
 import { canEdit, canStartTables, type Role } from '@byd/server/doc'
 import { translate, type Key, type T } from '../i18n/index.js'
@@ -969,7 +969,7 @@ export class ProjectClient {
     // The licence is written in the same edit as the family, because it is the same fact: the
     // catalog knows the answer, and a family that arrived knowing it must never stand in the
     // list with two empty boxes (L27).
-    this.edit({ v: 'setFont', family: name, font: { stack: catalogStack(name, family.category), asset: ref, licence: { licence: family.licence, by: family.by }, source: 'catalog' } }, taking)
+    this.edit({ v: 'setFont', family: name, font: catalogFont(family, ref, name) }, taking)
     await this.storeAsset(blob, 'font', ref, taking, { said: 'upload.undone.font', name, intents: [{ v: 'removeFont', family: name }] }, t)
     return name
   }
@@ -989,21 +989,12 @@ export class ProjectClient {
     const wanted = themeFamilies(theme).filter((family) => !this.doc.fonts?.[family.family]?.asset)
     const files = await Promise.all(wanted.map(async (family) => ({ family, file: await catalogFile(family, t) })))
     const fetched = await Promise.all(files.map(async ({ family, file }) => ({ family, file, ref: await assetRefOfFile(file) })))
-    const symbols = await Promise.all(
-      theme.icons.flatMap((id) => {
-        const symbol = LIBRARY.find((s) => s.id === id)
-        return symbol ? [(async () => ({ id, file: svgBytes(symbol), ref: await assetRefOf(svgBytes(symbol).bytes) }))()] : []
-      }),
-    )
+    const symbols = await themeIconFiles(theme)
     // Read after every wait and never before one (D3); nothing is awaited from here to the edit.
     const fonts: Record<string, ProjectFont> = {}
-    for (const { family, ref } of fetched)
-      if (!this.doc.fonts?.[family.family]?.asset) fonts[family.family] = { stack: catalogStack(family.family, family.category), asset: ref, licence: { licence: family.licence, by: family.by }, source: 'catalog' }
-    const starters = starterIcons(this.doc, theme, t).flatMap(({ name, symbol }) => {
-      const hashed = symbols.find((s) => s.id === symbol.id)
-      return hashed ? [{ name, symbol, ...hashed }] : []
-    })
-    const icons = Object.fromEntries(starters.map(({ name, symbol, ref }) => [name, { url: ref, credit: { licence: symbol.licence, by: symbol.by, source: symbol.id } }]))
+    for (const { family, ref } of fetched) if (!this.doc.fonts?.[family.family]?.asset) fonts[family.family] = catalogFont(family, ref)
+    const starters = starterSet(this.doc, theme, t, symbols)
+    const icons = iconsOf(starters)
     const taking = this.newGesture('theme')
     this.edit(themeIntent(this.doc, theme, fonts, t, icons), taking)
     const uploads = [

@@ -7,10 +7,13 @@ import { assetRef, bytesOfDataUrl, imageTypeOf } from '../editor/assets.js'
 import { ASSET_MAX_BYTES } from '@byd/protocol'
 import { DropSays, dropSurface, oneFile } from '../editor/dropping.js'
 import { suggestFieldKey } from '../editor/fields.js'
-import { buildBlankProject, buildProject, typedFields, type WizardState } from './build.js'
-import { frameFontSource, uploadFrameFont } from './fonts.js'
+import { buildBlankProject, buildProject, DEFAULT_THEME, themeOfState, typedFields, type WizardState } from './build.js'
+import { themeFaceSources, uploadTheme } from './fonts.js'
 import { NotMade } from './not-made.js'
-import { columnOf, defaultFields, DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
+import { columnOf, defaultFields, FRAMES, type Field } from './frames.js'
+import { previewFonts as stacksOf } from '../editor/fonts.js'
+import { THEMES } from '../editor/themes.js'
+import { ThemeTile } from '../editor/ThemeTile.js'
 import { fieldLabel } from '../editor/fields.js'
 import { ANTAL } from '@byd/server/doc'
 import { useT, type Key, type T } from '../i18n/index.js'
@@ -26,7 +29,7 @@ export type NewProjectPageProps = { onNavigate?(url: string): void }
 // The example card the wizard starts with. Its title is a word the designer reads and writes
 // over, so it is written in the language they are building the game in (A4).
 const firstRow = (t: T): Record<string, string> => ({ title: t('wizard.card.n', { n: 1 }), cost: '1', body: '', art: '' })
-const emptyState = (t: T): WizardState => ({ name: '', players: 2, fields: defaultFields(t), frame: 'classic', rows: [firstRow(t)] })
+const emptyState = (t: T): WizardState => ({ name: '', players: 2, fields: defaultFields(t), frame: 'classic', theme: DEFAULT_THEME.id, rows: [firstRow(t)] })
 // The draft, kept for the life of the tab (#476): a reload, a step back or a login round gives it
 // back as it was. It is only ever *sent* on the way back from the login it was waiting for — the
 // `resume` mark on that one address — and never because `/new` was opened again later.
@@ -53,7 +56,8 @@ function pendingWizard(server: string | null): PendingWizard | null {
       !Array.isArray(state.fields) ||
       !Array.isArray(state.rows)
     ) return null
-    return value as PendingWizard
+    // A draft begun before «Utseende» (#633) has no theme, and starts from the first one.
+    return { ...value, state: { ...state, theme: typeof state.theme === 'string' ? state.theme : DEFAULT_THEME.id } } as PendingWizard
   } catch {
     return null
   }
@@ -132,7 +136,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const [asked, setAsked] = useState(0)
   const nameField = useRef<HTMLInputElement>(null)
   const resumed = useRef(false)
-  const frame = FRAMES.find((candidate) => candidate.id === s.frame) ?? DEFAULT_FRAME
+  const theme = themeOfState(s)
   const named = s.name.trim().length > 0
   const atLimit = s.name.length >= PROJECT_NAME_MAX
   // Det namnet stänger är inte längre knappen utan bara vägen igenom den (#416). Vad som faktiskt
@@ -140,26 +144,34 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const hasCards = s.rows.length > 0 && s.fields.length > 0
   // What stands in the way of a name becoming a column (#476, L44), field by field.
   const problems = useMemo(() => fieldProblems(s.fields, t), [s.fields, t])
-  const front = useMemo(() => frame.front(s.fields), [frame, s.fields])
-  // Each frame's face, once a press on that frame has fetched it (#476, L27): the preview is drawn
-  // in it from then on, and until then it says the face comes with the choice.
+  // «Utseende» (L57, #633): the frame says where things stand and the theme how it feels, and the
+  // preview is the card the game will be — the theme laid over the frame by `buildProject`, the
+  // same edit Speltema sends, so its headings, its prose and its meanings' colours are the theme's.
+  // The cards themselves are not needed for that, so typing on one does not build it again.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- what the look depends on, and not the cards
+  const look = useMemo(() => buildProject({ ...s, rows: [] }, t), [s.fields, s.frame, s.theme, t])
+  const front = look.template.faces['front'] ?? { base: [], variants: {} }
+  // Each theme's faces, once a press on that theme has fetched them (#476, L27): the preview is drawn
+  // in them from then on, and until then it says the faces come with the choice. Nothing is asked of
+  // the catalogue before a theme is pressed — the wizard opening, and a frame pressed, ask for
+  // nothing, since a frame carries no face of its own any more.
   // The asking itself is kept too, so «Skapa» pressed before it has answered waits for the same
   // answer instead of asking the catalogue a second time.
-  const [faces, setFaces] = useState<Record<string, { stack: string; src: string }>>({})
-  const asking = useRef(new Map<string, Promise<{ stack: string; src: string } | null>>())
-  const pickFrame = (id: string) => {
-    setS((current) => ({ ...current, frame: id }))
-    const chosen = FRAMES.find((candidate) => candidate.id === id)
+  const [faces, setFaces] = useState<Record<string, Record<string, { stack: string; src: string }>>>({})
+  const asking = useRef(new Map<string, Promise<Record<string, { stack: string; src: string }> | null>>())
+  const pickTheme = (id: string) => {
+    setS((current) => ({ ...current, theme: id }))
+    const chosen = THEMES.find((candidate) => candidate.id === id)
     if (!chosen || asking.current.has(id)) return
-    const asked = frameFontSource(chosen.font)
+    const asked = themeFaceSources(chosen)
     asking.current.set(id, asked)
     void asked.then((face) => {
       if (face) setFaces((known) => ({ ...known, [id]: face }))
       else asking.current.delete(id)
     })
   }
-  const face = faces[frame.id]
-  const previewFonts = useMemo(() => (face ? { [frame.font.family]: face } : undefined), [face, frame.font.family])
+  const face = faces[theme.id]
+  const fonts = useMemo(() => ({ ...stacksOf(look, undefined), ...face }), [look, face])
   const row = s.rows[selectedRow] ?? s.rows[0] ?? firstRow(t)
   // The card as the game will hold it, under the columns the fields were named (#476).
   const card = useMemo(() => typedFields(row, s.fields), [row, s.fields])
@@ -210,11 +222,12 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         // carrying the bytes.
         const uploaded = await uploadImages(t, http, s)
         if (uploaded === 'login') throw login()
-        // And the frame's own face with them (#420): the game is set in a typeface it carries,
-        // so the first screen in the editor is a card that can be printed as it stands.
-        const fonts = await uploadFrameFont(t, http, frame, (await asking.current.get(frame.id))?.src)
-        if (fonts === 'login') throw login()
-        doc = buildProject(uploaded, t, fonts)
+        // And the theme's own faces and icons with them (#420, #633): the game is set in typefaces
+        // it carries, so the first screen in the editor is a card that can be printed as it stands.
+        const known = await asking.current.get(theme.id)
+        const files = await uploadTheme(t, http, theme, Object.fromEntries(Object.entries(known ?? {}).map(([family, at]) => [family, at.src])))
+        if (files === 'login') throw login()
+        doc = buildProject(uploaded, t, files)
       }
       const res = await fetch(`${http}/projects`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(doc) }))
       if (res.status === 401) throw login()
@@ -476,7 +489,20 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         </div>)}</div>
         <div className="byd-wizard-add-fields"><button type="button" onClick={() => addField('text')}>{t('wizard.add.text')}</button><button type="button" onClick={() => addField('number')}>{t('wizard.add.number')}</button><button type="button" onClick={() => addField('image')}>{t('wizard.add.image')}</button></div>
       </div>
-      <fieldset className="byd-wizard-frames"><legend>{t('wizard.frame')}</legend>{FRAMES.map((candidate) => <button key={candidate.id} type="button" className="byd-choice" aria-pressed={s.frame === candidate.id} onClick={() => pickFrame(candidate.id)}>{t(candidate.name)}</button>)}</fieldset>
+      {/* «Utseende» (L57, #633, prototyp B): the frame and the theme chosen where the frame always
+          was, and no step of their own. */}
+      <fieldset className="byd-wizard-look">
+        <legend>{t('wizard.look')}</legend>
+        <div className="byd-wizard-frames" role="group" aria-labelledby="byd-wizard-look-frame">
+          <p id="byd-wizard-look-frame">{t('wizard.look.frame')}</p>
+          {FRAMES.map((candidate) => <button key={candidate.id} type="button" className="byd-choice" aria-pressed={s.frame === candidate.id} onClick={() => setS((current) => ({ ...current, frame: candidate.id }))}>{t(candidate.name)}</button>)}
+        </div>
+        <div className="byd-wizard-themes" role="group" aria-labelledby="byd-wizard-look-theme">
+          <p id="byd-wizard-look-theme">{t('wizard.look.theme')}</p>
+          {THEMES.map((candidate) => <ThemeTile key={candidate.id} theme={candidate} pressed={theme.id === candidate.id} onPress={() => pickTheme(candidate.id)} />)}
+        </div>
+        <p className="byd-wizard-hint">{t('wizard.look.later')}</p>
+      </fieldset>
     </section>
   )
   const korten = (
@@ -492,7 +518,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         <span>{t(s.rows.length === 1 ? 'wizard.cards.count.one' : 'wizard.cards.count.other', { n: s.rows.length })}</span>
       </div>
       <div className="byd-wizard-card-workspace">
-        <div className="byd-wizard-preview"><div role="img" aria-label={t('wizard.preview.card', { n: selectedRow + 1, title: row['title'] || t('wizard.card.untitled') })}><CardPreview id="wizard-live" face={front} row={card} icons={{}} fonts={previewFonts} /></div><span>{t('wizard.preview')}</span>{!face && <span className="byd-wizard-preview-font">{t('wizard.preview.font')}</span>}</div>
+        <div className="byd-wizard-preview"><div role="img" aria-label={t('wizard.preview.card', { n: selectedRow + 1, title: row['title'] || t('wizard.card.untitled') })}><CardPreview id="wizard-live" face={front} row={card} icons={look.icons} fonts={fonts} palette={look.palette} /></div><span>{t('wizard.preview')}</span>{!face && <span className="byd-wizard-preview-font">{t('wizard.preview.font')}</span>}</div>
         <div className="byd-wizard-card-form">{s.fields.map((field) => field.kind === 'image' ? <div key={field.key} className="byd-wizard-image-field is-wide" data-image-field={field.key}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span><div
           role="group"
           aria-label={t('wizard.image.field', { label: field.label })}
