@@ -15,7 +15,11 @@ vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 // goes through it. What a card is compiled from has to be held by identity, because that is how
 // React holds it — a fresh object every render is a fresh compile of every card in the deck, and
 // the whole wall is rebuilt when the eye is changed or a card is clicked.
-const spy = vi.hoisted(() => ({ compiles: 0 }))
+//
+// The fitting is the other thing that costs (#661): every text on a card is shrunk half a point at
+// a time against the real DOM, and each step is a layout. Which card was fitted is kept too, so a
+// test can say that the one card that changed was fitted again and no other.
+const spy = vi.hoisted(() => ({ compiles: 0, fitted: [] as string[] }))
 vi.mock('@byd/template', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@byd/template')>()
   return {
@@ -24,11 +28,16 @@ vi.mock('@byd/template', async (importOriginal) => {
       spy.compiles++
       return actual.compile(input)
     },
+    fitInDocument: (root: ParentNode) => {
+      spy.fitted.push((root as Element).closest?.('.byd-preview')?.id ?? '')
+      return actual.fitInDocument(root)
+    },
   }
 })
 
 beforeEach(() => {
   spy.compiles = 0
+  spy.fitted = []
 })
 
 // The project's icons are resolved for the preview (E1) — `asset:<hash>` is a reference the store
@@ -161,5 +170,72 @@ describe('the deck’s back on the felt is not compiled again for nothing', () =
     const repainted = { ...moved, template: { ...moved.template, faces: { ...moved.template.faces, back: { ...back, base: [{ ...back.base[0]!, fill: '#6d2230' }] } } } }
     rerender(<SetupEditor doc={repainted} client={client} assetBase="http://api.local" />)
     expect(spy.compiles).toBe(1)
+  })
+})
+
+// The wall re-renders for things that are not about any one card: the band at the top of the view
+// changes at every band scrolled past, and the parent re-renders the wall whenever it likes. A card
+// whose content and size are what they were is fitted already, and fitting it again is a layout
+// per text per half point for every card in the deck (#661).
+describe('a card on the wall is not fitted again for nothing (#661)', () => {
+  // Three types, so the wall is grouped into bands with a jump column to move between them.
+  const banded = () => {
+    const doc = projectDoc()
+    doc.rows = ['Event', 'Location', 'Trap'].flatMap((typ) =>
+      Array.from({ length: 3 }, (_, i) => ({ id: `${typ}-${i}`, fields: { typ, title: `${typ} ${i}`, body: '', antal: 1 } })),
+    )
+    doc.template.faces['front']!.variantBy = 'typ'
+    return doc
+  }
+
+  it('leaves every card alone when the band at the top of the view changes', () => {
+    localStorage.clear()
+    const doc = banded()
+    render(<DeckWall doc={doc} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} />)
+    // The control: the spy is real, and every card on the wall was fitted to draw it.
+    expect(new Set(spy.fitted).size).toBe(doc.rows.length)
+
+    spy.fitted = []
+    const toc = document.querySelector('nav[aria-label="Grupper i leken"]') as HTMLElement
+    fireEvent.click(toc.querySelector('[data-jump="Trap"]')!)
+    // The wall did re-render: the jump column now says the reader stands in another band.
+    expect(toc.querySelector('[data-jump="Trap"]')!.getAttribute('aria-current')).toBe('true')
+    expect(spy.fitted).toEqual([])
+  })
+
+  it('fits the card whose content changed, and only it, and the wall hears what that card now says', () => {
+    localStorage.clear()
+    const doc = banded()
+    const wall = (d: typeof doc) => <DeckWall doc={d} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} />
+    const { rerender } = render(wall(doc))
+    const badge = () => document.querySelector('[data-card-ref="Location-1"] [data-warnings]')
+    // The control: the card says nothing wrong before it is edited.
+    expect(badge()).toBeNull()
+
+    // One card is given a symbol the deck does not have: the rest of the deck is the same rows.
+    spy.fitted = []
+    const edited = { ...doc, rows: doc.rows.map((r) => (r.id === 'Location-1' ? { ...r, fields: { ...r.fields, body: 'Har {magi}.' } } : r)) }
+    spy.compiles = 0
+    rerender(wall(edited))
+    // An edit is a new document that shares everything it did not change (`applyEdit`), so the
+    // other cards are the same rows over the same fonts and icons: nothing to compile or fit.
+    expect(spy.compiles).toBe(1)
+    expect(spy.fitted).toEqual(['wall-Location-1'])
+    // And what the fitting found reaches the wall through the callback the latest render handed
+    // down, not one held from the first: the card wears its badge.
+    expect(badge()!.textContent).toBe('1')
+  })
+
+  it('fits the card again when its face changes size, though no row did', () => {
+    localStorage.clear()
+    const doc = banded()
+    const wall = (d: typeof doc) => <DeckWall doc={d} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} />
+    const { rerender } = render(wall(doc))
+
+    spy.fitted = []
+    const front = doc.template.faces['front']!
+    const taller = { ...doc, template: { ...doc.template, faces: { ...doc.template.faces, front: { ...front, base: front.base.map((e) => (e.id === 'title' && e.kind === 'text' ? { ...e, h: e.h + 4 } : e)) } } } }
+    rerender(wall(taller))
+    expect(new Set(spy.fitted).size).toBe(doc.rows.length)
   })
 })

@@ -86,10 +86,13 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   // The fonts the version is pinned to (B3), worked out once per document: a fresh object every
   // render is a fresh compile of every card on the wall, and a card recompiled under the pointer
   // is a card that cannot be clicked.
-  const fonts = useMemo(() => previewFonts(doc, assetBase), [doc, assetBase])
+  // Held by what it is read from and not by the document (#661): an edit of one cell is a new
+  // document with the same fonts in it, and keyed on the document it recompiled and refitted every
+  // card on the wall to show the one that changed.
+  const fonts = useMemo(() => previewFonts({ template: doc.template, fonts: doc.fonts }, assetBase), [doc.template, doc.fonts, assetBase])
   // The project's icons, resolved once for the same reason: `previewIcons` builds a fresh object
   // every call, and a fresh object is a fresh compile of the whole wall (E1).
-  const icons = useMemo(() => previewIcons(doc, assetBase), [doc, assetBase])
+  const icons = useMemo(() => previewIcons({ icons: doc.icons }, assetBase), [doc.icons, assetBase])
   const [warnings, setWarnings] = useState<Record<string, number>>({})
   // The smallest text each card carries once E6 has fitted it, in pt (#512).
   const [smallest, setSmallest] = useState<Record<string, number>>({})
