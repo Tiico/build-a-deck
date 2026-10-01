@@ -1,5 +1,5 @@
 import type { ProjectFont } from '@byd/server'
-import { catalogStack, type CatalogFamily, fileInSheet, fileSheetHref } from '../editor/font-catalog.js'
+import { catalogFaceSource, catalogStack, type CatalogFamily, fileInSheet, fileSheetHref } from '../editor/font-catalog.js'
 import { assetRef, assetRefOf } from '../editor/assets.js'
 import { withCredentials } from '../account/api.js'
 import type { T } from '../i18n/index.js'
@@ -71,12 +71,4 @@ export async function uploadFrameFont(t: T, http: string, frame: Frame, known?: 
  * instead of a fallback that lies about it (E2). `null` when the catalogue does not answer; the
  * preview then keeps saying the face is on its way rather than pretending.
  */
-export async function frameFontSource(catalog: CatalogFamily): Promise<{ stack: string; src: string } | null> {
-  const sheet = await fetch(fileSheetHref(catalog)).catch(() => null)
-  if (!sheet?.ok) return null
-  try {
-    return { stack: catalogStack(catalog.family, catalog.category), src: fileInSheet(await sheet.text()) }
-  } catch {
-    return null
-  }
-}
+export const frameFontSource = (catalog: CatalogFamily): Promise<{ stack: string; src: string } | null> => catalogFaceSource(catalog)

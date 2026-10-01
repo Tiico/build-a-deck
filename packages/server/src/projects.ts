@@ -78,6 +78,14 @@ export { AssetCrop, Picture, PictureName } from '@byd/protocol'
 export const ProjectFont = z.object({ stack: z.string().min(1), asset: z.string().optional(), licence: ProjectCredit.optional(), source: z.literal('catalog').optional() })
 export type ProjectFont = z.infer<typeof ProjectFont>
 
+// Vilket färdigt tema spelet utgår från (L57, #632). Bara namnet: vad temat är står i editorns
+// galleri, och det spelet bär av det står där det alltid har stått — i `fonts`, `palette`,
+// `icons` och mallens text. Posten är vad som låter Speltema säga vad som avviker från temat och
+// ta spelet tillbaka till det. Ett spel som aldrig valt ett tema har ingen post, vilket är varför
+// den är valfri: varje dokument skrivet före galleriet läser tillbaka precis som det alltid gjort.
+export const ProjectTheme = z.object({ from: z.string().min(1) })
+export type ProjectTheme = z.infer<typeof ProjectTheme>
+
 export const ProjectDoc = z.object({
   name: z.string().min(1),
   template: Template,
@@ -121,6 +129,7 @@ export const ProjectDoc = z.object({
   prose: z.record(z.string(), z.boolean()).optional(),
   rules: RuleDoc.optional(),
   fonts: z.record(z.string(), ProjectFont).optional(),
+  theme: ProjectTheme.optional(),
   setup: ProjectSetup,
 })
 export type ProjectDoc = z.infer<typeof ProjectDoc>

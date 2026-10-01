@@ -5697,6 +5697,42 @@ Kravet bakom #420 står kvar oförändrat: varje tema bär sina familjer som pro
 
 Prototypen står i [`docs/ux-audits/2026-09-30-speltema/prototyper/01-speltema.html`](docs/ux-audits/2026-09-30-speltema/prototyper/01-speltema.html).
 
+**Byggt 2026-10-01 (#632): vad ett tema är i dokumentet.**
+Ett temabyte är en redigering, `setTheme`, och därmed en version och ett steg tillbaka (B4).
+Dokumentet minns bara vilket tema spelet utgår från, i den valfria posten `theme: { from }`; vad spelet har gjort av temat sedan läses ur dokumentet självt, och det är det avvikelseraden säger.
+Raden räknar exakt det «Återställ» tar tillbaka och inget annat, eftersom återställ är att välja temat igen: en betydelse eller en ikon spelet lagt till själv är spelets och ingen avvikelse.
+
+Mallen har ingen plats för «rubrik» och «brödtext», så temat skriver om familjen på varje text i mallen, på varje sida, i villkor, grupper och varianter.
+Vilken av de två en text får avgörs av kolumnens eget svar på om den är prosa (L43): prosan sätts i brödtextens familj, och allt annat — titel, kostnad, ett ord mallen skriver själv — i rubrikens.
+Grad, vikt, färg och plats står kvar, eftersom ramen säger var saker står och temat hur det känns.
+En familj bytet tog av korten tas bort ur spelet; en familj ingen text stod i är designerns egen och står kvar.
+Familjerna hämtas ur katalogen när temat trycks och blir projektets egna filer som i #420, så den fysiska kontrollen har ingenting att säga om typsnitten.
+
+**Papper ingår inte i temat än.**
+Kortets botten bor i mallen som formen som täcker kortet, och en mörk ram skriver ljus text på den; att lägga ett temas ljusa papper över Mörk hade gett vit text på gräddvitt.
+Ett temas papper är därför den botten dess färger valdes och mäts mot, och färgsektionen mäter som förut mot kortets verkliga botten.
+
+**Betydelserna** skrivs med designerns ord (A4) och känns igen under vilket språks ord som helst, så ett spel byggt på svenska och öppnat på engelska får inte en andra «kostnad».
+Tre av prototypens sexton färger klarade inte E5:s färgblindhetsmått, som är testets krav: Rens och Krönikas nattblå och lundgröna blir en färg för en tritanop, och Retros glöd och guld för en protanop.
+Försvaret blev djupblått i båda, Retros kostnad rost, och Rens anfall plommon så att Ren inte är Skogssaga ommålad.
+
+**Startikonerna ges bara ett spel som inte har några ikoner än.**
+Ett spel med en egen uppsättning får inte sex ikoner det inte bett om vid varje temabyte; det är vad «start» i startuppsättning betyder.
+
+**Galleriets brickor visar temat utan att nå Google, och kortet i temats typsnitt på begäran (beställarens val C, 2026-10-01).**
+Prototypens brickor ritade kortet i temats typsnitt, men det hade krävt katalogens ark i samma stund som fliken öppnades, och katalogen nås på designerns handling och aldrig före den (L27, DRIFT §12) — samma gräns som den guidade starten drar för sina ramar (#476).
+Tre vägar lades fram: brickorna utan typsnittsprov (A), att låta öppnandet av Speltema räknas som handlingen (B), och brickorna plus en knapp som hämtar proven först på tryck (C).
+Valet blev **C**.
+En bricka visar temats betydelser som färgade symboler på dess papper och familjerna utskrivna med namn, och under galleriet står «Visa temana i sina typsnitt».
+Trycket på den är handlingen: det hämtar ett ark per familj och ritar spelets eget första kort på varje bricka, satt i temat genom samma redigering som valet skickar, så brickan inte kan visa något valet inte gör.
+Ingenting väljs genom att titta, och ingen fil blir spelets förrän ett tema trycks.
+B valdes bort för att det hade gjort varje besök på fliken till en förfrågan till Google; A för att typsnittet är halva skälet att välja ett tema.
+`font-catalog.spec.ts` läser på trafiken att fliken öppnas utan Google och att proven hämtas först efter trycket.
+
+**Mallens typsnittslista börjar med temat (#634:s följduppgift).**
+I ett spel som utgår från ett tema står temats rubrikfamilj först i en textlagers lista och brödtextens därefter, och spelets övriga typsnitt följer i den ordning spelet har dem.
+En temafamilj spelet inte längre bär erbjuds inte, eftersom den vore ett namn utan fil (#420).
+
 ### L58. Markeringens handlingar står i tabellens fot (prototypat och beslutat 2026-10-01, #618)
 
 Helhetsöverblicken (`docs/ux-audits/2026-09-30-komponenter.md`) mätte åtgärdsraden: när ett kort bockades fälldes ett band på 72 px ut mellan krönet och raderna, och raderna flyttade 80 px — bocken man just tryckt på gled iväg under fingret, och när sista bocken släpptes hoppade allt tillbaka.
