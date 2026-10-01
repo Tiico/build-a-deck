@@ -13,6 +13,13 @@
   /* The same quiet grey on a chosen row of the table, whose ground is lighter (#557): 4.96:1 there,
      where the grey above read 3.45:1. */
   --byd-editor-quiet-chosen: #a3acc0;
+  /* The rail the table's pinned tick and id stand on (#609): a veil over the row's own ground, so a
+     marked, chosen or compared row stays what it is under it, and an edge a graphic can be read by
+     against every one of those grounds, and the ink the id is read in there, which keeps AA on the
+     lightest of them: a chosen row under the rail. */
+  --byd-editor-data-rail: rgba(160, 180, 230, 0.09);
+  --byd-editor-data-rail-edge: #7d879c;
+  --byd-editor-data-rail-ink: #b7c0d6;
   --byd-editor-home-ink: #c3cbdd;
   --byd-editor-saved-ink: #9aa3b8;
   --byd-editor-unsaved-ink: #f0b64a;
@@ -1858,8 +1865,8 @@
   /* And what a cell keeps on each side of its field. Named for the same reason: the strip a cut
      cell reserves for its cue is measured from the field's own text area, not from its border. */
   --byd-data-cell-pad: 10px; }
-.byd-data th { text-align: left; padding: 8px var(--byd-data-head-pad); color: var(--byd-editor-quiet); font-weight: 600; border-bottom: 1px solid #2f333d; position: sticky; top: 0; z-index: 1; background: #1b1d23; }
-.byd-data td { padding: 0; border-bottom: 1px solid #20232b; }
+.byd-data th { text-align: left; padding: 8px var(--byd-data-head-pad); color: var(--byd-editor-quiet); font-weight: 600; border-bottom: 1px solid #3b4358; position: sticky; top: 0; z-index: 1; background: #20232d; }
+.byd-data td { padding: 0; border-bottom: 1px solid #2a2e39; }
 /* A field takes the width of the column it stands in and no other (#46). It used to claim a floor
    of twelve characters — written when the table laid itself out on what the browser could see,
    which in an `<input>` is `size` and never the value, so the floor was the only thing keeping a
@@ -1894,8 +1901,12 @@
 .byd-data-compare { margin: 0 0 8px; color: #cfd5e3; font-size: 12px; }
 .byd-data-compare button { margin-left: 4px; border: 1px solid #3b414e; border-radius: 6px; padding: 4px 8px; background: #1b1d23; color: #dce3f2; font: inherit; cursor: pointer; }
 .byd-data-was { display: block; padding: 0 8px; color: #f0b64a; font-size: 11px; }
-.byd-data tr[data-change='added'] td { background: rgba(125, 211, 160, 0.1); }
-.byd-data tr[data-change='removed'] td { background: rgba(224, 92, 92, 0.1); }
+/* The tint is a layer over the cell's ground and not the ground itself (#609): written as the ground
+   it made the pinned tick and id translucent, so a value scrolled in under them showed through, and
+   it wiped the rail they stand on. The row names it once and every layer below reads it. */
+.byd-data tr[data-change='added'] { --byd-data-tint: rgba(125, 211, 160, 0.1); }
+.byd-data tr[data-change='removed'] { --byd-data-tint: rgba(224, 92, 92, 0.1); }
+.byd-data tr[data-change] td { background-image: linear-gradient(var(--byd-data-tint), var(--byd-data-tint)); }
 .byd-data tr[data-change='removed'] :is(input, .byd-data-gone) { color: #9aa3b8; text-decoration: line-through; }
 /* ── Body-cellen (L39, #324) ─────────────────────────────────────────────────────────────────
    Samma cell stängd och öppen. Stängd visar den formen — fet som fet, stycken som stycken,
@@ -2089,9 +2100,9 @@
 .byd-data th button[data-active='true'] { color: #dce3f2; }
 .byd-data th button[data-active='true'] span { color: #7dd3a0; }
 .byd-data tr[aria-selected='true'] { background: #2f3a55; }
-/* The quiet things on a chosen row are read on its lighter ground (#557): the id, the label over an
-   open cell and its tools. A marked row's id keeps its own ink, which is declared later. */
-.byd-data tr[aria-selected='true'] :is(.byd-data-id, .byd-data-bodyhead > b, .byd-data-bodytools button:not([aria-pressed='true'])) { color: var(--byd-editor-quiet-chosen); }
+/* The quiet things on a chosen row are read on its lighter ground (#557): the label over an open
+   cell and its tools. The id stands on the rail now (#609) and is read in the rail's own ink. */
+.byd-data tr[aria-selected='true'] :is(.byd-data-bodyhead > b, .byd-data-bodytools button:not([aria-pressed='true'])) { color: var(--byd-editor-quiet-chosen); }
 .byd-data-id { padding: 8px !important; color: var(--byd-editor-quiet); font-family: ui-monospace, monospace; font-size: 12px; }
 .byd-data input { background: transparent; border: 0; color: #ddd; padding: 8px var(--byd-data-cell-pad); width: 100%; box-sizing: border-box; font-size: 12px; }
 .byd-data button { background: transparent; border: 0; color: var(--byd-editor-quiet); cursor: pointer; padding: 4px 8px; }
@@ -2167,6 +2178,22 @@
 .byd-data tbody tr { background: #1b1d23; }
 .byd-data tbody .byd-data-check { position: sticky; left: 0; z-index: 2; background: inherit; }
 .byd-data tbody .byd-data-id { position: sticky; left: var(--byd-tap); z-index: 2; background: inherit; }
+/* And they stand on a rail of their own (#609, beställarens beslut B): inheriting the row's ground,
+   nothing but a shadow drawn once a value was already under them said they were standing still.
+   The rail is a veil laid over the inherited ground rather than a colour instead of it, so every
+   tint the row carries reaches the pinned cells too; under the pointer the row's own lift is laid
+   over it (#400). The edge against what slides in is drawn at all times, not only once something
+   has slid in, because it is what says the column stands still before anything has moved. */
+.byd-data tbody tr :is(.byd-data-check, .byd-data-id) { background-image: linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)), linear-gradient(var(--byd-data-tint, transparent), var(--byd-data-tint, transparent)); }
+.byd-data thead :is(.byd-data-check, th[data-col='id']) { background-image: linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)); }
+.byd-data tbody tr:hover :is(.byd-data-check, .byd-data-id) { background-image: linear-gradient(rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03)), linear-gradient(var(--byd-editor-data-rail), var(--byd-editor-data-rail)), linear-gradient(var(--byd-data-tint, transparent), var(--byd-data-tint, transparent)); }
+.byd-data tbody .byd-data-id, .byd-data thead th[data-col='id'] { box-shadow: inset -2px 0 0 var(--byd-editor-data-rail-edge); }
+/* The id heading is read on the head's rail in the same ink, save while it is what the table is
+   sorted by, when it is the green every sorting heading is. */
+.byd-data thead th[data-col='id'] > button:not([data-active='true'], :hover),
+.byd-data thead th[data-col='id'] > button:not([data-active='true']) span { color: var(--byd-editor-data-rail-ink); }
+/* A marked row's id keeps its own ink, which is declared later and weighs the same. */
+.byd-data tbody tr .byd-data-id { color: var(--byd-editor-data-rail-ink); }
 /* The head's own two, so the corner where the row that stands still upward crosses the columns
    that stand still sideways belongs to both. Above the body's, or a value would be drawn over the
    heading at the moment both are held. */
@@ -2183,7 +2210,7 @@
    drawn only once something is: `data-under` is set on the box by the same frame that asks
    whether a value has run under the pin. */
 .byd-data-scroll[data-under] .byd-data .byd-data-id,
-.byd-data-scroll[data-under] .byd-data thead th[data-col='id'] { box-shadow: 8px 0 12px -8px rgb(0 0 0 / 80%); }
+.byd-data-scroll[data-under] .byd-data thead th[data-col='id'] { box-shadow: inset -2px 0 0 var(--byd-editor-data-rail-edge), 8px 0 12px -8px rgb(0 0 0 / 80%); }
 /* The tick keeps the size a tick has; what a thumb hits is the label around it. */
 .byd-data-tick { display: grid; place-items: center; min-width: var(--byd-tap); min-height: var(--byd-tap); cursor: pointer; }
 /* The column that removes a card is pinned to the right edge of the scrolling box: it is the
@@ -2358,8 +2385,11 @@
    on every row. A tap-wide cell holds a `+` and nothing more, so that is what it holds; the word
    is what the button is heard by. The form it opens has to be let out of the cell, which is the
    one heading that is deliberately not clipped. */
-.byd-data thead .byd-data-remove { z-index: 4; overflow: visible; white-space: nowrap; }
+.byd-data thead .byd-data-remove { z-index: 4; overflow: visible; white-space: nowrap; background: #20232d; }
 .byd-data thead .byd-data-remove > button { display: grid; place-items: center; width: var(--byd-tap); padding: 0; color: var(--byd-editor-count-ink); font-size: 18px; line-height: 1; }
+/* And while the door stands the handle is drawn pressed, joined to the panel hanging from it, so
+   the × reads as the door's own and not as one more column to take away (#610). */
+.byd-data thead .byd-data-remove > button[aria-expanded='true'] { align-self: stretch; min-height: var(--byd-tap); border-radius: 8px; background: var(--byd-editor-panel-bg); box-shadow: inset 0 0 0 1px #6b7899; color: #e6ecfa; }
 /* ── Kolumnens märke: prosa eller vanlig text (L43, #362, variant C) ─────────────────────────
    «Höjden föreslår, designern avgör.» I vila kostar märket ingenting: en prick i huvudet, inga
    kontroller, och rubriken exakt lika hög som den var — vilket är varför varianten valdes framför
@@ -2548,7 +2578,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 
    Skriven `rgba(…)` med flit: Chromium svarar `color(srgb …)` på procentalfa, och den formen tar
    ingen av kontrastmätningarna i det här repot (#376). */
-.byd-data tbody tr:hover td { background-image: linear-gradient(rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03)); }
+.byd-data tbody tr:hover td { background-image: linear-gradient(rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03)), linear-gradient(var(--byd-data-tint, transparent), var(--byd-data-tint, transparent)); }
 
 /* Bord (#19, prototype variant A): the tables of this game, as a list of live games. The row is
    the same wherever it is shown — in the tab, and in the header's shortcut from the other tabs

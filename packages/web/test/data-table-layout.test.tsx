@@ -163,12 +163,13 @@ describe("the head's own door for its columns (#32, #46)", () => {
     expect(open.headings.map((h) => h.ink.y)).toEqual(shut.headings.map((h) => h.ink.y))
     expect(open.firstRow.y).toBe(shut.firstRow.y)
 
-    // It hangs from the cell it was opened from, over what is under it, and inside the box the
-    // table scrolls in — it is not a sheet that floats off somewhere else on the page.
+    // It hangs from the cell it was opened from, over what is under it — it is not a sheet that
+    // floats off somewhere else on the page. That it is lifted over the box the table scrolls in,
+    // rather than cut by it, is the running editor's to show (#611): this markup is static, and
+    // the lift is something the door does once it is open (`table-column-door-over.spec.ts`).
     const cell = open.headings.at(-1)!.box
     expect(Math.abs(open.door!.y - (cell.y + cell.h))).toBeLessThanOrEqual(2)
     expect(open.door!.y).toBeLessThan(open.firstRow.y + open.firstRow.h)
-    expect(open.door!.x + open.door!.w).toBeLessThanOrEqual(open.scroll.x + open.scroll.w + 1)
   }, 60_000)
 
   // Where a column is renamed (#384). The whole reason the rename went behind the door and not

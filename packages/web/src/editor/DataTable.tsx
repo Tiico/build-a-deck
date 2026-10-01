@@ -1465,8 +1465,10 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 panel under it are one thing to a hand, and the focus the table hands back to the
                 ＋ when a column has gone is a focus that must not be pulled off it again. */}
             <th ref={doorCell} className="byd-data-remove" aria-label={t('table.remove.column')}>
+              {/* The handle says how the door shuts (#610): the × that closes it while it stands.
+                  Its name is the door's either way, and `aria-expanded` says which it is. */}
               <button type="button" ref={addRef} aria-label={t('table.columns')} aria-expanded={adding} onClick={() => setAdding(!adding)}>
-                +
+                {adding ? '×' : '+'}
               </button>
               {adding && (
                 <ColumnDoor

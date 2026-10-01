@@ -172,6 +172,44 @@ async function groundsOf(page: Page, where: Record<string, string>): Promise<Rec
   )
 }
 
+/**
+ * Vad den innersta pixelkolumnen i en ruta är målad i (#609): kanten mellan det fastnålade och
+ * det som glider in under det. Samma klunga runt den vanligaste färgen som `groundsOf`, men läst
+ * på en enda kolumn, en bildpunkt innanför rutans högerkant, från topp till botten.
+ */
+async function edgesOf(page: Page, where: Record<string, string>): Promise<Record<string, string>> {
+  const shot = (await page.screenshot()).toString('base64')
+  return page.evaluate(
+    async ({ shot, where }) => {
+      const image = new Image()
+      image.src = `data:image/png;base64,${shot}`
+      await image.decode()
+      const canvas = document.createElement('canvas')
+      canvas.width = image.naturalWidth
+      canvas.height = image.naturalHeight
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(image, 0, 0)
+      const scale = image.naturalWidth / window.innerWidth
+      const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+      const out: Record<string, string> = {}
+      for (const [what, selector] of Object.entries(where)) {
+        const box = document.querySelector(selector)!.getBoundingClientRect()
+        const px = Math.round((box.right - 1) * scale)
+        const counts = new Map<string, number>()
+        for (let y = Math.ceil(box.top + 2); y < box.bottom - 2; y++) {
+          const i = (Math.round(y * scale) * canvas.width + px) * 4
+          const key = `${pixels[i]},${pixels[i + 1]},${pixels[i + 2]}`
+          counts.set(key, (counts.get(key) ?? 0) + 1)
+        }
+        const mode = [...counts].sort((a, b) => b[1] - a[1])[0]![0]
+        out[what] = `rgb(${mode.split(',').join(', ')})`
+      }
+      return out
+    },
+    { shot, where },
+  )
+}
+
 /** Var en grunds egen ruta står: en vanlig cell för raden, och de tre fastnålade. */
 const cellsOf = (ground: Ground): Record<string, string> => {
   const row = `.byd-data tbody tr[data-card-ref="${GROUNDS[ground]}"]`
@@ -186,6 +224,10 @@ type Readings = {
   hover: Record<string, string>
   /** Den text raden faktiskt bär, som motorn räknar fram den. */
   ink: Record<Ground, string>
+  /** Det `id` raden står under, som motorn räknar fram det (#609). */
+  idInk: Record<Ground, string>
+  /** Den målade kanten längst in i `id`-cellen, mot det som glider in under den (#609). */
+  edge: Record<Ground, string>
 }
 
 let browser: Browser
@@ -234,7 +276,13 @@ async function measure(): Promise<Readings> {
         ),
       GROUNDS as Record<string, string>,
     )
-    return { rest, hover, ink: ink as Record<Ground, string> }
+    const idInk = await page.evaluate(
+      (rows) => Object.fromEntries(Object.entries(rows).map(([ground, cardRef]) => [ground, getComputedStyle(document.querySelector(`.byd-data tbody tr[data-card-ref="${cardRef}"] .byd-data-id`)!).color])),
+      GROUNDS as Record<string, string>,
+    )
+    await page.mouse.move(0, 0)
+    const edge = await edgesOf(page, Object.fromEntries(Object.entries(GROUNDS).map(([ground, cardRef]) => [ground, `.byd-data tbody tr[data-card-ref="${cardRef}"] .byd-data-id`])))
+    return { rest, hover, ink: ink as Record<Ground, string>, idInk: idInk as Record<Ground, string>, edge: edge as Record<Ground, string> }
   } finally {
     await page.close()
   }
@@ -310,5 +358,43 @@ describe('hovringen över en rad i tabellen (#400)', () => {
       .filter((what) => !(lift(r, what) > VISIBLE))
       .map((what) => `${what} lyfts ${(lift(r, what) * 1000).toFixed(1)}`)
     expect(dead).toEqual([])
+  }, 120_000)
+})
+
+// Bocken och `id` står på en list av sin egen (#609, beställarens beslut B). De glider aldrig i
+// sidled, och det syntes inte: de ärvde radens grund, och det enda som skilde dem från det som
+// gled in under dem var en skugga på tolv bildpunkter som bara ritades när något redan låg under.
+// Listen är en slöja över radens egen grund och inte en färg i stället för den, så att allt raden
+// säger med sin grund — markerad, påtittad, jämförd — står kvar i den.
+const PINNED_RAIL = ['byd-data-check', 'byd-data-id'] as const
+// Det prototypen visade och beställaren valde: listen mot en vanlig rad mätte 1,19:1.
+const RAIL = 1.15
+
+describe('listen de fastnålade cellerna står på (#609)', () => {
+  it('ritar bocken och id ljusare än raden de står i, på var och en av radens fem grunder', async () => {
+    const r = await readings()
+    const flat = (Object.keys(GROUNDS) as Ground[])
+      .flatMap((g) => PINNED_RAIL.map((pin) => ({ what: `${g} · ${pin}`, ratio: contrastRatio(r.rest[`${g} · ${pin}`]!, r.rest[g]!), lighter: relativeLuminance(r.rest[`${g} · ${pin}`]!) > relativeLuminance(r.rest[g]!) })))
+      .filter(({ ratio, lighter }) => !(lighter && ratio >= RAIL))
+      .map(({ what, ratio }) => `${what}: ${ratio.toFixed(2)}:1 mot raden`)
+    expect(flat).toEqual([])
+  }, 120_000)
+
+  it('drar en kant mot det som glider under, som en grafik bär den: 3:1 mot radens grund', async () => {
+    const r = await readings()
+    const faint = (Object.keys(GROUNDS) as Ground[])
+      .map((g) => ({ g, ratio: contrastRatio(r.edge[g]!, r.rest[g]!) }))
+      .filter(({ ratio }) => ratio < 3)
+      .map(({ g, ratio }) => `${g}: ${ratio.toFixed(2)}:1`)
+    expect(faint).toEqual([])
+  }, 120_000)
+
+  it('läser id med AA på listen, på varje grund', async () => {
+    const r = await readings()
+    const under = (Object.keys(GROUNDS) as Ground[])
+      .map((g) => ({ g, ratio: contrastRatio(r.idInk[g]!, r.rest[`${g} · byd-data-id`]!) }))
+      .filter(({ ratio }) => ratio < 4.5)
+      .map(({ g, ratio }) => `${g}: ${ratio.toFixed(2)}:1`)
+    expect(under).toEqual([])
   }, 120_000)
 })

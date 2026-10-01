@@ -5535,3 +5535,41 @@ A kostade arbetsytan 48 px vid 960 × 490 för en andra rad i remsan, och C göm
 `packages/e2e/test/surfaces/editor-tablet.spec.ts` håller det vid 960 × 490, 1024 × 600, 820 × 1106 och 768 × 1024: ingen kontroll i kromen är kapad, på någon etapp.
 Den fann också att «Hjälp om borden» i Bord var kapad i alla bredder: träffytans luft hängde utanför en rullruta.
 Prototypens bilder står i [`docs/ux-audits/2026-09-29-tillganglighet/prototyper/567/`](docs/ux-audits/2026-09-29-tillganglighet/prototyper/567/).
+
+### L55. En öppnad låda ligger över allt annat, och tabellens fasta kolumner står på en list (prototypat och beslutat 2026-09-30, #609, #610, #611)
+
+Beställaren hittade tre saker i tabellen.
+Kontrasten mellan raderna gjorde den svår att titta på, och det syntes knappt att `id`-kolumnen var fast när man skrollade i sidled.
+Det var inte tydligt att man skulle trycka på ＋ igen för att stänga kolumndörren.
+Och dörren visades under «+ Nytt kort» i botten.
+
+**En öppnad låda ligger över allt annat.**
+Det är beställarens regel, och den gäller generellt.
+Kolumndörren hängde i huvudets sista cell *inne i* lådan tabellen skrollar i, och den lådan klipper.
+I ett fönster på 640 px höjd skars «Lägg till» och «Avbryt» av vid skrolllådans kant, och «+ Nytt kort» stod där de skulle ha stått.
+`placement.ts` mätte rummet mot fönstret och trodde att dörren fick plats.
+Nu lyfts en låda till sidans toppskikt (`popover="manual"`) och hålls fast mot elementet den hänger i, med `usePlacement(…, { lift: true })`.
+I toppskiktet klipper ingen låda den, och inget ritas över den.
+Den lämnar toppskiktet genom att lämna sidan, aldrig med `hidePopover`, som skulle lämna tillbaka fokus till det som hade det när lådan öppnades.
+Dörren är den första som lyfts; de andra lådor som `usePlacement` placerar flyttas över i egen takt (#622).
+En låda som står inne i en lyft låda, som formuläret i dörren, lyfts inte själv.
+
+Samma mätning hittade ett äldre fel: namnrutans `autoFocus` fick fokus medan dörren ännu stod inne i tabellen, och tabellen skrollade flera hundra bildpunkter nedåt för att visa den.
+Namnrutan tar nu fokus med `preventScroll`, och ingenting bakom dörren flyttar sig när den öppnas.
+`packages/e2e/test/surfaces/table-column-door-over.spec.ts` är grinden.
+
+**Bocken och `id` står på en list** (variant B av tre: randiga rader, fastnålad list och rutnät).
+Listen är en slöja över radens egen grund och inte en färg i stället för den, så att en markerad, påtittad eller jämförd rad förblir vad den är även under den.
+En kant på 2 px mot det som glider in under ritas hela tiden, inte bara när något redan ligger under.
+Kanten har 3:1 mot varje grund en rad kan ha, och `id` läses med AA på listen i ett eget bläck.
+Linjen mellan två kort gick från 1,07:1 till 1,24:1, och huvudet stängs av med en tyngre linje på en egen, något ljusare grund.
+Jämförelsens tinter ligger nu som ett lager över cellens grund i stället för att vara grunden.
+Som grund gjorde de de fastnålade cellerna genomskinliga, så att ett värde som skrollats in under dem syntes igenom.
+`data-table-hover.test.tsx` mäter listen, kanten och bläcket på målade bildpunkter, på alla fem grunderna.
+
+**Kolumndörrens handtag blir × medan dörren står** (variant A av tre: ＋ blir ×, en stängknapp i dörren och klick utanför stänger).
+Handtaget ritas nedtryckt, i dörrens egen grund.
+Namnet det hörs under är fortfarande dörrens, och `aria-expanded` säger om dörren står öppen, som förut.
+L45:s fokusfälla står kvar, och ett klick utanför stänger inte dörren.
+
+Prototypen låg på grenen `prototype/tabell-kontrast`, på den riktiga tabellen, och togs bort när detta byggdes.

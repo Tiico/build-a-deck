@@ -320,9 +320,11 @@ describe('the quiet things on a chosen row in the table', () => {
     expect(contrastRatio(token('--byd-editor-quiet-chosen'), ground)).toBeGreaterThanOrEqual(4.5)
   })
 
-  it('paints the id, the label over an open cell and its tools in it', () => {
+  // The id is not among them since #609: it stands on the rail, whose ink `data-table-hover`
+  // measures on every ground a row has.
+  it('paints the label over an open cell and its tools in it', () => {
     const lends = /\.byd-data tr\[aria-selected='true'\] :is\(([^)]*\))\) \{ color: var\(--byd-editor-quiet-chosen\); \}/.exec(css)?.[1] ?? ''
-    for (const what of ['.byd-data-id', '.byd-data-bodyhead > b', '.byd-data-bodytools button']) expect(lends).toContain(what)
+    for (const what of ['.byd-data-bodyhead > b', '.byd-data-bodytools button']) expect(lends).toContain(what)
   })
 })
 
@@ -345,5 +347,25 @@ describe('the focus on the crop sheet (#553)', () => {
     expect(rule).toMatch(/outline: 3px solid #9cc6ff/)
     expect(rule).toMatch(/box-shadow: 0 0 0 2px #0d0f14, 0 0 0 8px #0d0f14/)
     expect(contrastRatio('#9cc6ff', '#0d0f14')).toBeGreaterThanOrEqual(3)
+  })
+})
+
+// The line between two cards in the table (#609, beställarens beslut B). It was #20232b on a row of
+// #1b1d23 — 1.07:1, a line in name only — and a table of cards that are all the same ground and
+// nothing between them is a table the eye cannot follow a row across. The approved prototype drew
+// it at 1.24:1, a rule and not a border: the rows are the thing, the line only keeps them apart.
+describe('the line between two cards in the table', () => {
+  const colour = (rule: RegExp, prop: RegExp) => prop.exec(rule.exec(css)?.[0] ?? '')?.[1] ?? ''
+  const line = colour(/\.byd-data td \{[^}]*\}/, /border-bottom: 1px solid (#[0-9a-f]{6})/i)
+  const row = colour(/\.byd-data tbody tr \{[^}]*\}/, /background: (#[0-9a-f]{6})/i)
+  const head = colour(/\.byd-data th \{[^}]*\}/, /border-bottom: 1px solid (#[0-9a-f]{6})/i)
+
+  it('is seen against the row it is drawn under', () => {
+    expect([line, row]).toEqual([expect.stringMatching(/^#/), expect.stringMatching(/^#/)])
+    expect(contrastRatio(line, row)).toBeGreaterThanOrEqual(1.2)
+  })
+
+  it('and the head is closed off from the rows by a heavier one', () => {
+    expect(contrastRatio(head, row)).toBeGreaterThan(contrastRatio(line, row))
   })
 })

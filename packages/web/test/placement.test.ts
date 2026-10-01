@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { placeBox, type Anchor } from '../src/editor/placement.js'
+import { liftedAt, placeBox, type Anchor } from '../src/editor/placement.js'
 
 // Where an opened box goes (#229).
 //
@@ -74,5 +74,20 @@ describe('where an opened box goes (#229)', () => {
 
   it('leaves the box its full height when the room is there, so nothing scrolls inside it for nothing', () => {
     expect(placeBox(anchor(100, 100), WANTS, VIEW).room).toBeGreaterThanOrEqual(WANTS.h)
+  })
+})
+
+// Where a lifted box stands (#611, L55): in the top layer it is fixed to the window, so the edges it
+// hangs from are said in the window's own terms — and only those two, so the box keeps its own size.
+describe('where a lifted box stands in the window (#611)', () => {
+  const VIEW_ = { w: 1280, h: 640 }
+  const cell = anchor(1220, 190, 44, 60)
+
+  it('hangs from the foot of what it opens from, and from its far edge when it opens that way', () => {
+    expect(liftedAt(cell, { y: 'down', x: 'end', room: 300 }, VIEW_)).toEqual({ top: '250px', bottom: 'auto', left: 'auto', right: '16px' })
+  })
+
+  it('stands on the top of what it opens from when it opens upward, from its near edge when it fits', () => {
+    expect(liftedAt(cell, { y: 'up', x: 'start', room: 150 }, VIEW_)).toEqual({ top: 'auto', bottom: '450px', left: '1220px', right: 'auto' })
   })
 })
