@@ -155,6 +155,26 @@ describe('the keyboard on the pill (#619)', () => {
 
 // The hand that is already on the card: `Ctrl` with the wheel is the gesture every drawing tool
 // answers, and the one a designer reaches for without looking for a control.
+// A press in the work closes what stands over it (#133, #647): the pill's menu is the same lifted
+// box as the column filter's door and the foot's «Sätt fält», and it closes the way they close —
+// on the press, wherever it lands, with the focus left where the pointer put it. It used to close
+// only when the focus left it, so a press on the chequerboard, which takes no focus, left it up.
+describe('a press in the work with the choices open (#647)', () => {
+  it('closes the menu and leaves the focus where the pointer put it', async () => {
+    const user = userEvent.setup()
+    canvas()
+    await user.click(percentButton())
+    expect(screen.getByRole('menu')).toBeTruthy()
+
+    const stage = document.querySelector('.byd-canvas-stage') as HTMLElement
+    fireEvent.pointerDown(stage)
+    stage.focus()
+
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(document.activeElement).toBe(stage)
+  })
+})
+
 describe('Ctrl with the wheel over the canvas (#146)', () => {
   const stage = () => document.querySelector('.byd-canvas-stage') as HTMLElement
 
