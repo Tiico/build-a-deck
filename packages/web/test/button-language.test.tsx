@@ -310,16 +310,20 @@ async function editorViews(width: number): Promise<Record<string, string>> {
       const tab = tabs()[i]!
       fireEvent.click(tab)
       out[tab.textContent?.trim() ?? String(i)] = document.querySelector('.byd-editor')!.outerHTML
-      // The table's filter chips are only ever on when somebody has turned one on, so the walk
-      // would otherwise never see the one place in the editor painted in the account's green. The
-      // project below carries a column worth filtering on for exactly this reason, and a missing
-      // chip is an error rather than a view quietly skipped.
+      // The table's filter is only ever on when somebody has turned one on, so the walk would
+      // otherwise never see the token it paints in the field and the count on the column's door
+      // (#617). The project below carries a column worth filtering on for exactly this reason,
+      // and a missing door is an error rather than a view quietly skipped.
       if (tab.textContent?.trim() === 'Tabell') {
-        const chip = document.querySelector<HTMLElement>('.byd-data-chip')
-        if (!chip) throw new Error('the table offers no filter chip, so nothing here measures one')
-        fireEvent.click(chip)
+        const door = document.querySelector<HTMLElement>('.byd-column-filter')
+        if (!door) throw new Error('the table offers no column filter, so nothing here measures one')
+        fireEvent.click(door)
+        const tick = document.querySelector<HTMLElement>('.byd-column-filter-door input')
+        if (!tick) throw new Error('the column door opened on no values')
+        fireEvent.click(tick)
         out['Tabell, filtrerad'] = document.querySelector('.byd-editor')!.outerHTML
-        fireEvent.click(chip)
+        fireEvent.click(tick)
+        fireEvent.click(door)
         // A column is made in a form that only exists while its door is held open, which is how
         // the same walk could reach every checkbox in the editor and still miss the three radios
         // inside this one (L11, #50). The door is held open here for the same reason.

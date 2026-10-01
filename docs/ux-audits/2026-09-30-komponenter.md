@@ -69,6 +69,14 @@ verklig bredd vid 1280 och 1024 och läser sina mått ur det ritade. De öppnas 
 ![B: «raritet:g» smalnar listan](2026-09-30-komponenter/01-b-lista.png)
 ![C: boxen och lådan](2026-09-30-komponenter/01-c-lada.png)
 
+**Beslut (beställaren 2026-10-01): A, med B:s `typ:` som tangentbordets väg.**
+**Ändrat (#617, L56):** chipsrälsen och `CrownRail` är borta.
+Kolumner med ordförråd har ett handtag ▾ i huvudet som öppnar värdena som bockar med antal, lyft till toppskiktet (L55), stängt med Escape tillbaka till handtaget.
+Det valda står som brickor «typ: varelse ×» i sökfältet, som nu tar raden: 1 142 px vid 1280 och 886 vid 1024, mot 202 och 161 förut; krönet är 55 px.
+«typ:» i fältet listar kolumnens värden, pilarna går i listan och Enter tar värdet; medan texten namnger en kolumn söker den inte.
+Rubrikens prosautfällning öppnas inte av en hand på handtaget eller ett fokus i dörren.
+`data-table-filter.test.tsx` (23 fall) och `editor-crown.test.tsx` (fältet minst 400 px, ingen räls) är grindarna.
+
 ### #618 · Tabellens åtgärdsrad
 
 | | Första raden vid | Foten | Anmärkning |

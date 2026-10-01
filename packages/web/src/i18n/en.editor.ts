@@ -145,7 +145,6 @@ export const enEditor = {
   // What stands before the choice in a box, and is what gives way below 1280 (#477).
   'crown.box.lead': '{name}: ',
   'crown.box.count': '{name} ({n})',
-  'crown.rail.more': 'More filters',
   // The help pattern (L32, #303): the question mark is named by what it is about, and the box it
   // opens has a cross. The topic is written where the question mark stands, in its tab.
   'help.about': 'Help about {topic}',
@@ -289,6 +288,12 @@ export const enEditor = {
   'table.import.box': 'Import',
   'table.export.box': 'Export',
   'table.filterOn': 'Filter on {field}',
+  'table.filterOn.count': 'Filter on {field}, {n} chosen',
+  'table.filter.token': '{field}: {value}',
+  'table.filter.remove': 'Remove the filter {field}: {value}',
+  'table.filter.cards': '{n} cards',
+  'table.filter.none': 'no value begins so',
+  'table.search.placeholder.typed': 'Search every field, or {field}: …',
   'table.count': '{shown} of {total} cards',
   'table.selected.one': '{n} card marked',
   'table.selected.other': '{n} cards marked',

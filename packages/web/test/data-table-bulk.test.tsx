@@ -1,12 +1,19 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { useState } from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import type { ProjectDoc } from '@byd/server'
 import { DataTable, type DataTableProps } from '../src/editor/DataTable.js'
 import { projectDoc } from './project-doc.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
+
+// The way a value is chosen since #617: through the column's own door in the head, left standing.
+async function tick(user: ReturnType<typeof userEvent.setup>, field: string, value: string) {
+  const handle = screen.getByRole('button', { name: new RegExp(`^Filtrera på ${field}`) })
+  if (handle.getAttribute('aria-expanded') !== 'true') await user.click(handle)
+  await user.click(within(screen.getByRole('group', { name: `Filtrera på ${field}` })).getByRole('checkbox', { name: value }))
+}
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
@@ -124,7 +131,7 @@ describe('DataTable "markera alla synliga" (#17 on #16)', () => {
   it('means the rows the filter lets through, and reads as partly marked when one is let go', async () => {
     const user = userEvent.setup()
     renderTable(bigDoc())
-    await user.click(screen.getByRole('button', { name: 'varelse' }))
+    await tick(user, 'typ', 'varelse')
 
     await user.click(box('Markera alla synliga'))
     expect(screen.getByText('4 markerade kort')).toBeDefined()
@@ -334,12 +341,12 @@ describe('DataTable selection when the filter moves under it (#17 on #16)', () =
     await user.click(box('markera grop'))
     expect(screen.getByText('2 markerade kort')).toBeDefined()
 
-    await user.click(screen.getByRole('button', { name: 'varelse' }))
+    await tick(user, 'typ', 'varelse')
     expect(shownIds()).toEqual(['drake', 'alv', 'troll', 'orm'])
     expect(screen.getByText('1 markerat kort')).toBeDefined()
     expect(box('markera drake').checked).toBe(true)
 
-    await user.click(screen.getByRole('button', { name: 'varelse' }))
+    await tick(user, 'typ', 'varelse')
 
     expect(shownIds()).toHaveLength(8)
     expect(screen.getByText('1 markerat kort')).toBeDefined()
@@ -374,7 +381,7 @@ describe('DataTable a question that loses its cards (#17)', () => {
     expect(screen.getByRole('alertdialog')).toBeDefined()
 
     // The drake is a varelse: asking for traps takes it, and the question about it, off screen.
-    await user.click(screen.getByRole('button', { name: 'fälla' }))
+    await tick(user, 'typ', 'fälla')
     expect(screen.queryByRole('alertdialog')).toBeNull()
 
     await user.click(box('markera grop'))

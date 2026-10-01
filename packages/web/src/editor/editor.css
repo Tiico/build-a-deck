@@ -906,7 +906,6 @@
 @media (max-width: 1023px), (pointer: coarse) {
   .byd-crown { flex-wrap: wrap; row-gap: var(--byd-s2); }
   .byd-crown-search { min-width: 180px; }
-  .byd-crown-rail-scroll, .byd-crown-rail .byd-data-chips { flex-wrap: wrap; overflow: visible; }
 }
 /* What a box opened: a band under the row, on the panel's own ground so it reads as standing over
    the work rather than as a second crown. This one may wrap — it is what the row refused to. */
@@ -916,23 +915,7 @@
 /* Two presses and no door: the one control here that is used over and over while looking at
    something else. It wears the same skin as a box so the row reads as one row of controls. */
 .byd-crown-step { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; }
-.byd-crown-step button, .byd-crown-more { min-width: var(--byd-tap); min-height: var(--byd-tap); border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 15px; cursor: pointer; }
-/* The filters, which keep their place in the row. The fade says there is more without taking a
-   target's worth of room to say it; the arrow is drawn only when the rail has somewhere to go. */
-.byd-crown-rail { position: relative; display: flex; align-items: center; gap: var(--byd-s1); flex: 1 1 auto; min-width: 0; }
-/* Utfyllnaden uppåt och nedåt är fokusringens och ingen annans (#396): rälsen rullar och klipper
-   därför sitt innehåll, och ringen ritas utanför chipets ruta. Ett steg mot en ring som når fem
-   pixlar gav en 3 px ring ritad som 2 px upptill och nedtill — på varje chip, inte bara på det i
-   kanten. Steget tas tillbaka i marginalen åt alla håll, så kronan är exakt lika hög som den var
-   (#130) och chipsen står kvar där de stod.
-   I sidled behövs båda delarna. Mitt i rullningen räcker utfyllnad inte — `scrollIntoView` ställer
-   chipets egen kant mot rullningsrutans och bryr sig inte om vad som ligger innanför den, och
-   rummet ringen behöver där heter `scroll-padding`. I rullningens båda ändar finns ingen rullning
-   kvar att göra, och då är utfyllnaden allt rummet som finns. */
-.byd-crown-rail-scroll { display: flex; align-items: center; gap: var(--byd-s1); flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: var(--byd-s2); margin: -8px -4px; scroll-padding: var(--byd-s2); }
-.byd-crown-rail-scroll::-webkit-scrollbar { display: none; }
-.byd-crown-rail[data-more]::after { content: ''; position: absolute; right: 44px; top: 0; bottom: 0; width: 36px; pointer-events: none; background: linear-gradient(90deg, transparent, var(--byd-editor-chrome-bg)); }
-.byd-crown-more { flex: 0 0 auto; }
+.byd-crown-step button { min-width: var(--byd-tap); min-height: var(--byd-tap); border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 15px; cursor: pointer; }
 /* What the work adds up to, under it rather than over it. */
 .byd-crown-foot { flex: none; display: flex; align-items: center; gap: var(--byd-s3); padding: var(--byd-s2) 0 0; border-top: 1px solid #2f333d; color: var(--byd-editor-quiet); font-size: 12px; }
 .byd-crown-foot span { white-space: nowrap; }
@@ -2056,44 +2039,56 @@
   --byd-editor-marked-bg: #253044;
   --byd-editor-marked-ink: #c3cbdd;
 }
-/* The table's own search wears the filter's colours rather than the crown's plain one: it is the
-   head of the filter and is read with the chips beside it. Everything else about it is the row's. */
-.byd-data-search {
-  flex: 0 1 240px;
-  min-width: 0;
-  padding: 8px 12px;
-  border: 1px solid var(--byd-secondary-line);
-  border-radius: 8px;
-  background: var(--byd-editor-filter-bg);
-  color: var(--byd-editor-filter-ink);
-  font: inherit;
-}
-.byd-data-search::placeholder { color: var(--byd-editor-filter-quiet); }
-.byd-data-chips { display: flex; gap: 6px; flex-wrap: wrap; }
-/* In the crown the chips are one line that scrolls sideways, never a field that wraps: the row is
-   exactly one row, and thirteen chips do not fit on a line even at 1440 (#130). */
-.byd-crown-rail .byd-data-chips { flex-wrap: nowrap; }
-.byd-crown-rail .byd-data-chip { flex: 0 0 auto; white-space: nowrap; }
-.byd-data-chip {
-  padding: 4px 12px;
-  border: 1px solid #3b414e;
-  border-radius: 999px;
-  background: var(--byd-editor-filter-bg);
-  color: var(--byd-editor-filter-ink);
-  font: inherit;
-  cursor: pointer;
-}
+/* The search field, with the filter's tokens in it (#617, variant A). It is the one thing in the
+   crown that answers to anything, so it takes the row: what the column doors choose is read here as
+   «typ: varelse ×», and the text the designer searches with stands after the tokens. The field is
+   held to a box's height so the crown reads as one row (#130); tokens that will not fit a row wrap
+   inside it, which is the field growing and never the crown becoming two. */
+.byd-data-filter { position: relative; flex: 1 1 auto; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--byd-s1); min-height: var(--byd-tap); box-sizing: border-box; padding: 0 var(--byd-s1) 0 var(--byd-s3); border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: var(--byd-editor-filter-bg); cursor: text; }
+.byd-data-filter:focus-within { border-color: var(--byd-editor-primary-mark); }
+.byd-data-filter > input { flex: 1 1 160px; min-width: 0; min-height: 34px; border: 0; background: transparent; color: var(--byd-editor-filter-ink); font: inherit; }
+.byd-data-filter > input:focus { outline: none; }
+.byd-data-filter > input::placeholder { color: var(--byd-editor-filter-quiet); }
+/* A token is the chosen value with the column it was chosen from, and the way to let go of it. The
+   × is a full target in height and width; the token stands as tall as the field's inner row. */
+.byd-data-token { flex: none; display: inline-flex; align-items: center; height: 34px; padding-left: var(--byd-s2); border-radius: 6px; background: var(--byd-editor-marked-bg); color: #fff; font-weight: 600; white-space: nowrap; }
+.byd-data-token > button { min-width: 34px; height: 34px; border: 0; border-radius: 6px; background: transparent; color: #dbe4ff; font: inherit; font-size: 15px; cursor: pointer; }
+.byd-data-token > button:hover { background: #3c4a6d; }
+/* The list «typ:» opens under the field (L23): the column's values that begin as typed, the one
+   under the cursor marked, each with how many cards carry it. */
+.byd-data-typed { position: absolute; z-index: 6; top: calc(100% + var(--byd-s1)); left: 0; min-width: 240px; max-width: 420px; padding: var(--byd-s1); border: 1px solid #3b4358; border-radius: 10px; background: var(--byd-editor-panel-bg); box-shadow: 0 12px 30px rgb(0 0 0 / 50%); }
+.byd-data-typed > [role='option'] { display: flex; align-items: center; gap: var(--byd-s2); min-height: 40px; padding: 0 var(--byd-s2); border-radius: 6px; color: #dce3f2; cursor: pointer; }
+.byd-data-typed > [role='option'] > b { color: var(--byd-editor-filter-quiet); font-weight: 600; }
+.byd-data-typed > [role='option'] > small, .byd-column-filter-tick > small { margin-left: auto; color: var(--byd-editor-filter-quiet); font-variant-numeric: tabular-nums; }
+.byd-data-typed > [role='option'][aria-selected='true'], .byd-data-typed > [role='option']:hover { background: #232838; }
+.byd-data-typed > p { margin: 0; padding: var(--byd-s2); color: var(--byd-editor-filter-quiet); }
+/* The column's door in its head (#617): the handle beside the sort, quiet until it holds a
+   choice. It stands in the head's flow and is therefore counted by `fitColumns` as part of what
+   the heading needs, so it is kept as narrow as a target can be — 24 px, the head's own height to
+   press on — and it never changes width: a count takes the glyph's place rather than standing
+   beside it, since a column that grew when it was filtered would move every column after it.
+   The door lifts into the top layer like every opened box (L55) and lists the values as ticks. */
+.byd-column-filter { display: inline-flex !important; align-items: center; justify-content: center; width: 24px; min-width: 24px; min-height: var(--byd-tap); margin: 0; border: 1px solid transparent !important; border-radius: 6px !important; padding: 0 !important; color: #6f7a90 !important; font-size: 11px; line-height: 1; vertical-align: middle; }
+.byd-column-filter:hover, .byd-column-filter[aria-expanded='true'] { color: #fff !important; border-color: #3b414e !important; }
+/* On, it is a mark and never a fill: the one filled thing in the room is the action that puts the
+   work on the table (L13), and a filter is a state, not that action. */
+.byd-column-filter[data-on] { color: var(--byd-editor-primary-mark) !important; border-color: var(--byd-editor-primary-mark) !important; font-weight: 700; }
+/* The head's own rules for its buttons are the sort control's — the 44 px floor it needs as a
+   target and the sticky left that keeps the word in view under a sideways scroll — and they would
+   make the handle 44 px wide and glued to the word. The handle is a column's worth narrower than
+   that, and stands where it stands. */
+.byd-data thead th[data-col] > .byd-column-filter { position: static; left: auto; min-width: 24px; width: 24px; }
+.byd-column-filter-door { position: absolute; z-index: 6; top: calc(100% + var(--byd-s1)); left: 0; min-width: 240px; max-height: var(--byd-place-room, 40vh); overflow: auto; padding: var(--byd-s1); border: 1px solid #3b4358; border-radius: 10px; background: var(--byd-editor-panel-bg); box-shadow: 0 12px 30px rgb(0 0 0 / 50%); font-weight: 400; }
+.byd-column-filter-door[data-place-y='up'] { top: auto; bottom: calc(100% + var(--byd-s1)); }
+.byd-column-filter-door[data-place-x='end'] { left: auto; right: 0; }
+.byd-column-filter-tick { display: flex; align-items: center; gap: var(--byd-s2); min-height: 40px; padding: 0 var(--byd-s2); border-radius: 6px; color: #dce3f2; cursor: pointer; }
+.byd-column-filter-tick:hover { background: #232838; }
+.byd-column-filter-tick > input { width: var(--byd-tick); height: var(--byd-tick); margin: 0; accent-color: var(--byd-editor-primary-mark); color-scheme: dark; }
 .byd-data-count { margin: 0; color: var(--byd-editor-count-ink); font-variant-numeric: tabular-nums; }
 .byd-data-pinned { color: var(--byd-editor-filter-quiet); }
 .byd-data-clear { border: 1px solid #3b414e; border-radius: 8px; padding: 4px 12px; background: transparent; color: var(--byd-editor-filter-quiet); font: inherit; cursor: pointer; }
 .byd-data-clear:hover { color: var(--byd-editor-filter-ink); }
 .byd-data-empty { margin: 16px 0 0; color: var(--byd-editor-count-ink); }
-/* Below the desk the filter is a stack of single lines that scroll in their own boxes rather
-   than a field of wrapped chips: a deck with a sentence-long column would otherwise push the
-   rows — the thing the tab is for — off the bottom of the screen. */
-@media (max-width: 1023px) {
-  .byd-data-chip { flex: 0 0 auto; max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-}
 .byd-data th button { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
 .byd-data th button span { color: var(--byd-editor-quiet); }
 .byd-data th button:hover { color: #dce3f2; }
@@ -2106,7 +2101,6 @@
 .byd-data-id { padding: 8px !important; color: var(--byd-editor-quiet); font-family: ui-monospace, monospace; font-size: 12px; }
 .byd-data input { background: transparent; border: 0; color: #ddd; padding: 8px var(--byd-data-cell-pad); width: 100%; box-sizing: border-box; font-size: 12px; }
 .byd-data button { background: transparent; border: 0; color: var(--byd-editor-quiet); cursor: pointer; padding: 4px 8px; }
-.byd-data-search { min-height: var(--byd-tap); box-sizing: border-box; }
 .byd-data-add { margin-top: 8px; border: 1px dashed #2f333d; background: transparent; color: #9aa3b8; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
 /* The action row (#17, prototype A): it is not there at all until a card is marked, and then it
    stands between the filter and the rows — right where the eye goes after ticking a box. The

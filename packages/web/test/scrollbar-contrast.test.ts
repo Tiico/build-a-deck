@@ -87,7 +87,6 @@ describe('en enda definition, och den står i basarket (#321)', () => {
 // Kronan under skrivbordsbredd var den tredje (#128) tills den slutade rulla: den bryter nu till
 // fler rader (#567, L54), och en ruta som inte rullar har ingen list att gömma.
 const GÖMDA: Record<string, { selector: string; css: string }> = {
-  'filterrälsen i kronan': { selector: '.byd-crown-rail-scroll', css: read('editor/editor.css') },
   'väggens remsa': { selector: '.byd-wall-rail', css: read('editor/editor.css') },
 }
 

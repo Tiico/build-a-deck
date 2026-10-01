@@ -4,7 +4,9 @@ import type { ProjectDoc, ProjectRow } from './types.js'
 import { copiesOf, deckKeepsFields, fieldsOf, fieldLabel, takenNames, nextCardRef } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
 import { ColumnDoor } from './ColumnDoor.js'
-import { Crown, CrownBox, CrownDrawer, CrownFoot, CrownRail } from './Crown.js'
+import { Crown, CrownBox, CrownDrawer, CrownFoot } from './Crown.js'
+import { ColumnFilter, type ColumnFilterProps } from './ColumnFilter.js'
+import { FilterField, type FilterToken, type TypedColumn } from './FilterField.js'
 import { DragDoor } from './DragDoor.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
 import { boxesOf, proseChoiceOf, proseFieldsOf } from './body.js'
@@ -21,10 +23,10 @@ import { diffProjects, type RowChange } from '@byd/server/doc'
 import { Summary } from './HistoryPanel.js'
 import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
-import { keepOrder, nextSort, sortRows, type SortState } from './sorting.js'
+import { keepOrder, nextSort, sortRows, type SortState, cellOf } from './sorting.js'
 import { deckValues, dragScroll, fitColumns, markValues, widthKind, GROUP_COL } from './columns.js'
 import { TAP_FLOOR, heldWidths, rememberWidths } from './widths.js'
-import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, type FilterState } from './filtering.js'
+import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, typedColumn, type FilterState } from './filtering.js'
 import { duplicateRows, keepRows, markRows, noSelection, removeRows, selectionLabel, setColumn, toggleRow, type Selection } from './selection.js'
 import { useMarked } from './marked.js'
 import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
@@ -532,6 +534,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const [imported, setImported] = useState<string | null>(null)
   const [sort, setSort] = useState<SortState | null>(null)
   const [filter, setFilter] = useState<FilterState>(noFilter)
+  // Which column's filter door stands open, if any: one at a time, like the crown's boxes.
+  const [filterDoor, setFilterDoor] = useState<string | null>(null)
   // The marking is the deck's and not this panel's (#222): it is made here and acted on here and
   // in the media library, so it is held above both. A table mounted on its own keeps its own.
   const [selected, setSelected] = useMarked()
@@ -982,10 +986,27 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // order nor the filter may move or take away the row under the cursor before it is left.
   const columns = ['id', ...fields]
   const discrete = discreteColumns(doc.rows, columns)
+  // What the doors have chosen, in column order, read as tokens in the search field (#617).
+  const tokens: FilterToken[] = discrete.flatMap(({ field, values }) => values.filter((value) => (filter.values[field] ?? []).includes(value)).map((value) => ({ field, label: fieldLabel(field, t), value })))
+  // How many cards carry each word of a column, said beside the tick in the column's door.
+  const countOf = (field: string, value: string) => doc.rows.filter((row) => String(cellOf(row, field) ?? '').trim() === value).length
+  // «typ:» in the field is a way into the column's values and not a search (L23): while the text
+  // names a column, the rows are asked everything but that text.
+  const typedNow = typedColumn(filter.query, discrete.map((d) => d.field))
+  const typedIn = discrete.find((d) => d.field === typedNow?.field)
+  const typed: TypedColumn | null =
+    typedNow && typedIn
+      ? {
+          field: typedNow.field,
+          label: fieldLabel(typedNow.field, t),
+          options: typedIn.values.filter((value) => value.toLocaleLowerCase('sv').startsWith(typedNow.prefix)).map((value) => ({ value, count: countOf(typedNow.field, value) })),
+        }
+      : null
+  const asked: FilterState = typedNow ? { ...filter, query: '' } : filter
   const shownRef = useRef<ProjectDoc['rows']>([])
   const shown = held
     ? keepOrder(doc.rows.filter((row) => held.includes(row.id)), held)
-    : filterRows(sortRows(doc.rows, sort), columns, filter, pinned)
+    : filterRows(sortRows(doc.rows, sort), columns, asked, pinned)
   // The cards gone since the version compared with, asked the same filter as every card (#479).
   shownRef.current = shown
   // The row the hand stands in, which is the only row with tab stops (#575, beslut 2026-09-29):
@@ -1006,7 +1027,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const row = document.querySelector(`tr[data-card-ref="${CSS.escape(next.id)}"]`)
     if (row) of(row)?.focus()
   }
-  const goneShown = isFiltering(filter) ? filterRows(goneRows, columns, filter) : goneRows
+  const goneShown = isFiltering(asked) ? filterRows(goneRows, columns, asked) : goneRows
   // What an action is about is never more than what is on screen: a checkbox is a fact about a
   // row the designer can see, so the selection is read through `shown` (#17 on #16).
   const chosen = shown.filter((row) => selected.has(row.id))
@@ -1103,41 +1124,25 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           The same door the canvas hangs over its own drag, and it stands only while there is a
           pull to leave. */}
       {pulling !== null && <DragDoor onCancel={() => pullOf(pulling)?.onCallOff()} />}
-      {/* The crown (#128, #130, variant B). Four bands used to stack over this table and cost it
-          189 px at 1440 and 218 px at 1280 before the first card row: the import pair with its
-          warning, the search with thirteen filter chips, the count, and the sort. They are one
-          row now, with the count and the sort read under the table instead.
-          The filters keep their place in the row and get a side scroll of their own: putting
-          thirteen chips behind `Filter (13) ▾` would hide the one thing here that is a state
-          rather than an action. What falls into a box is the import and the export. */}
+      {/* The crown (#128, #130, variant B; #617, variant A). Four bands used to stack over this
+          table and cost it 189 px at 1440 and 218 px at 1280 before the first card row: the import
+          pair with its warning, the search with its filter chips, the count, and the sort. They
+          are one row now, with the count and the sort read under the table instead.
+          The chips stood in the row until #617 and took three quarters of it, with the search
+          squeezed to a sixth. The choice is made in the column's own head now (`ColumnFilter`),
+          and what is chosen is read here, as tokens in the search field — a state that is still
+          read without opening anything, which is what #130 kept the chips in the row for. What
+          falls into a box is the import and the export. */}
       <Crown>
-        <input
-          type="search"
-          className="byd-data-search"
-          aria-label={t('table.search')}
-          placeholder={t('table.search.placeholder')}
-          value={filter.query}
-          onChange={(event) => changeFilter({ ...filter, query: event.target.value })}
+        <FilterField
+          query={filter.query}
+          tokens={tokens}
+          typed={typed}
+          hint={discrete[0] ? fieldLabel(discrete[0].field, t) : null}
+          onQuery={(query) => changeFilter({ ...filter, query })}
+          onRemove={(token) => changeFilter(toggleValue(filter, token.field, token.value))}
+          onPick={(field, value) => changeFilter({ ...((filter.values[field] ?? []).includes(value) ? filter : toggleValue(filter, field, value)), query: '' })}
         />
-        {discrete.length > 0 && (
-          <CrownRail label={t('table.filters')}>
-            {discrete.map(({ field, values }) => (
-              <div key={field} className="byd-data-chips" role="group" aria-label={t('table.filterOn', { field })}>
-                {values.map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className="byd-data-chip byd-choice"
-                    aria-pressed={(filter.values[field] ?? []).includes(value)}
-                    onClick={() => changeFilter(toggleValue(filter, field, value))}
-                  >
-                    {value}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </CrownRail>
-        )}
         {isFiltering(filter) && (
           <button type="button" className="byd-data-clear" onClick={() => changeFilter(noFilter)}>
             {t('table.filter.clear')}
@@ -1439,6 +1444,19 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 onSort={setSort}
                 carry={pulling === null ? carryOf(f) : undefined}
                 pull={pullOf(f)}
+                filter={
+                  discrete.some((d) => d.field === f)
+                    ? {
+                        field: f,
+                        label: fieldLabel(f, t),
+                        values: (discrete.find((d) => d.field === f)?.values ?? []).map((value) => ({ value, count: countOf(f, value) })),
+                        chosen: filter.values[f] ?? [],
+                        onToggle: (value: string) => changeFilter(toggleValue(filter, f, value)),
+                        open: filterDoor === f,
+                        onOpen: (open: boolean) => setFilterDoor(open ? f : null),
+                      }
+                    : undefined
+                }
                 // Bara en kolumn som skrivs som prosa får märket (#615); räknekolumnen är motorns
                 // egen (L4) och skrivs aldrig som prosa.
                 prose={f !== ANTAL && bodyFields.includes(f) ? { from: proseChoiceOf(doc, f) === null ? 'height' : 'choice' } : undefined}
@@ -1804,11 +1822,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       </table>
       </div>
       {/* A deck with no cards at all is not a filter's doing: then the button below is the answer. */}
-      {shown.length === 0 && isFiltering(filter) && <p className="byd-data-empty">{t('table.empty')}</p>}
+      {shown.length === 0 && isFiltering(asked) && <p className="byd-data-empty">{t('table.empty')}</p>}
       <button type="button" id="byd-data-add" ref={addCardRef} className="byd-data-add" onClick={() => {
           const cardRef = nextRef()
           onAddRow(cardRef)
-          setPinned(isFiltering(filter) ? cardRef : null)
+          setPinned(isFiltering(asked) ? cardRef : null)
           setArriving(cardRef)
         }}>
         {t('table.addCard')}
@@ -1953,7 +1971,7 @@ type Pull = {
 // column's name and the way it is sorted, moved and pulled, and nothing that opens.
 type ProseSign = { from: 'height' | 'choice' }
 
-function SortableHeader({ field, label, sort, onSort, carry, pull, prose }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; carry?: Carry | undefined; pull?: Pull | undefined; prose?: ProseSign | undefined }) {
+function SortableHeader({ field, label, sort, onSort, carry, pull, prose, filter }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; carry?: Carry | undefined; pull?: Pull | undefined; prose?: ProseSign | undefined; filter?: ColumnFilterProps | undefined }) {
   const active = sort?.field === field ? sort.dir : null
   return (
     <th
@@ -1994,6 +2012,9 @@ function SortableHeader({ field, label, sort, onSort, carry, pull, prose }: { fi
           </span>
         )}
       </button>
+      {/* The column's filter, after its sort (#617): a Tab through the head meets what the column
+          is called and sorts on, then what it is narrowed to. */}
+      {filter && <ColumnFilter {...filter} />}
       {/* The edge the column is pulled by, and nothing a reader without a pointer has to step
           over: the keys do the same thing from the heading itself, and what a column was set to
           is read and given back in the head's own door. So it is out of the tab order and out of
