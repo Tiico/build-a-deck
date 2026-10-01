@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { TableClient } from '../src/client.js'
 import { OnlinePage, type OnlinePageProps } from '../src/online/OnlinePage.js'
 import { admit, asTable, createSession, roomOf, startServer, type Running } from './fixture.js'
@@ -98,7 +98,7 @@ describe('OnlinePage (C2): both roles in one window', () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada')
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Flagga' }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Flagga' }))
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'flag' } }))
     fireEvent.click(screen.getByRole('button', { name: 'Ut… ur bordet' }))
     fireEvent.click(screen.getByRole('button', { name: 'Avsluta bordet för alla' }))

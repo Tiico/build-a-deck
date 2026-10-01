@@ -275,8 +275,8 @@ export const enPlay = {
   'play.target.bottom.other': '{n} cards · at the bottom of {zone}',
   'play.target.free': 'put it anywhere',
 
-  'session.undo': '↶ Undo',
-  'session.flag': '⚑ Flag',
+  'session.undo': 'Undo',
+  'session.flag': 'Flag',
   'session.exit': 'Exit…',
   'session.exit.aria': '{label} the table',
   'session.flagged': 'The moment is flagged',

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { TableClient } from '../src/client.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
@@ -35,7 +35,7 @@ describe('ObserverPage (C8)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
     fireEvent.change(screen.getByPlaceholderText(/Vad hände/), { target: { value: 'Ada tvekade' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Flagga' }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Flagga' }))
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: null, intent: { v: 'flag', note: 'Ada tvekade', observer: 'Eva' } }))
     ada.close()
   })
@@ -311,7 +311,7 @@ describe('the observer is shown and told what the table is', () => {
     history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${token}&server=${encodeURIComponent(run.url)}`)
     render(<ObserverPage />)
     fireEvent.click(await screen.findByRole('button', { name: /Flagga/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Flagga' }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Flagga' }))
     expect((await screen.findByText('Ögonblicket är flaggat')).closest('[role="status"]')).not.toBeNull()
   })
 })

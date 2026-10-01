@@ -463,7 +463,7 @@ describe('flagging a moment (G3)', () => {
     await open(id, 'A', 'Ada')
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
     fireEvent.change(screen.getByPlaceholderText(/Vad hände/), { target: { value: 'Draken känns för stark här' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Flagga' }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Flagga' }))
     expect((await screen.findByRole('status')).textContent).toMatch(/Ögonblicket är flaggat/)
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'flag', note: 'Draken känns för stark här' } }))
     expect(screen.queryByPlaceholderText(/Vad hände/)).toBeNull()
