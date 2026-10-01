@@ -35,6 +35,7 @@ import { contrastRatio, flatten, parseColor } from '../src/player/contrast.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
+import { chooseTheme } from './choose-theme.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
@@ -254,8 +255,8 @@ async function readView(html: string, width: number): Promise<Pair[]> {
 
 // Every mode the editor can be showing, in the room being walked, named so that a walk which finds
 // nothing fails instead of agreeing with itself.
-const DESK_VIEWS = ['Bord', 'Kortvägg', 'Mall', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Tabell'] as const
-const PHONE_VIEWS = ['Bord', 'Kortvägg', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Tabell'] as const
+const DESK_VIEWS = ['Bord', 'Kortvägg', 'Mall', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Speltema, ett tema valt', 'Tabell'] as const
+const PHONE_VIEWS = ['Bord', 'Kortvägg', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Speltema, ett tema valt', 'Tabell'] as const
 
 async function editorViews(width: number): Promise<Record<string, string>> {
   atWidth(width)
@@ -277,6 +278,10 @@ async function editorViews(width: number): Promise<Record<string, string>> {
         fireEvent.click(screen.getByRole('button', { name: /Ur biblioteket/ }))
         out['Speltema, biblioteket öppet'] = document.querySelector('.byd-editor')!.outerHTML
         fireEvent.click(screen.getByRole('button', { name: 'Klar' }))
+        // The chosen tile is drawn on its own ground once it is on (#665), so its words are read
+        // there too.
+        await chooseTheme('Skogssaga')
+        out['Speltema, ett tema valt'] = document.querySelector('.byd-editor')!.outerHTML
       }
     }
     return out
