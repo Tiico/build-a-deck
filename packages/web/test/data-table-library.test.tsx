@@ -109,6 +109,8 @@ describe('the marked cards open the library (#296)', () => {
     renderTable(deckWithArt(), { onReplaceRows })
     mark('dragon')
     mark('knight')
+    // The column and the value are behind «Sätt fält» in the foot (#618).
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt fält' }))
     fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
     const opener = within(bulk()).getByRole('button', { name: 'Välj bild för de markerade korten' })
     await user.click(opener)
@@ -133,6 +135,8 @@ describe('the marked cards open the library (#296)', () => {
     const onReplaceRows = vi.fn()
     renderTable(deckWithArt(), { onReplaceRows, onUpload: async () => KARTA })
     mark('knight')
+    // The column and the value are behind «Sätt fält» in the foot (#618).
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt fält' }))
     fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
     fireEvent.change(within(bulk()).getByLabelText('Ladda upp bild för de markerade korten'), { target: { files: [new File(['png'], 'karta.png', { type: 'image/png' })] } })
     await screen.findByRole('img', { name: 'Bild för de markerade korten' })

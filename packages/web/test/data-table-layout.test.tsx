@@ -71,13 +71,15 @@ function Table({ doc: initial = projectDoc() }: { doc?: ProjectDoc }) {
 
 // The table's markup as it stands after `act`ing on it: closed, and with the form open and half a
 // name typed into it — which is the moment the prototype's head grew.
-async function markup(open: boolean): Promise<Table> {
+async function markup(open: boolean, marked = false): Promise<Table> {
   const user = userEvent.setup()
   const { container, unmount } = render(<Table />)
   if (open) {
     await user.click(screen.getByRole('button', { name: 'Kolumner' }))
     await user.type(screen.getByLabelText('Namn'), 'a')
   }
+  // A marking, for the foot that carries its actions (#618).
+  if (marked) await user.click(screen.getAllByRole('checkbox')[1]!)
   const html = container.innerHTML
   unmount()
   return { html, deck: deckValues(projectDoc(), sv) }
@@ -695,3 +697,41 @@ describe('a table that stops being the size it was (#53)', () => {
     }
   }, 60_000)
 })
+
+// The actions for a marking stand in the foot (#618, variant A). They stood in a band between
+// the crown and the rows, 72 px of it, and every row moved 80 px when a box was ticked — the box
+// the hand had just pressed slid away under it. Measured here on the page rather than asserted
+// from the markup: the rows begin where they began, and the foot is still one row.
+describe('the rows stand still when a card is marked (#618)', () => {
+  it('keeps the first row where it was, and keeps the foot one row tall', async () => {
+    const [quiet, marked] = await Promise.all([measure(await markup(false)), measure(await markup(false, true))])
+    expect(marked.scroll.y).toBe(quiet.scroll.y)
+    expect(marked.firstRow.y).toBe(quiet.firstRow.y)
+    const foot = await measureFoot(await markup(false, true))
+    // One target plus the air the foot keeps above it, read off the stylesheet's own ladder.
+    expect(foot.toolbar).not.toBeNull()
+    expect(foot.height).toBeLessThanOrEqual(foot.tap + 2 * foot.air)
+  }, 60_000)
+})
+
+async function measureFoot({ html, deck }: Table): Promise<{ height: number; toolbar: Box | null; tap: number; air: number }> {
+  const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
+  try {
+    await page.setContent(shellOf(html, ''), { waitUntil: 'load' })
+    return (await page.evaluate(({ deck, fit }) => {
+      new Function('box', 'deck', `(${fit})(box, deck)`)(document.querySelector('.byd-data-scroll'), deck)
+      const foot = document.querySelector<HTMLElement>('.byd-crown-foot')!
+      const toolbar = foot.querySelector('.byd-data-bulk')
+      const r = toolbar?.getBoundingClientRect()
+      const cs = getComputedStyle(foot)
+      return {
+        height: Math.round(foot.getBoundingClientRect().height),
+        toolbar: r ? { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) } : null,
+        tap: parseFloat(cs.getPropertyValue('--byd-tap')),
+        air: parseFloat(cs.getPropertyValue('--byd-s2')),
+      }
+    }, { deck, fit: FIT })) as { height: number; toolbar: Box | null; tap: number; air: number }
+  } finally {
+    await page.close()
+  }
+}

@@ -4,7 +4,7 @@ import type { ProjectDoc } from '../../../web/src/editor/types.js'
 import { logIn, makeProjectOf } from '../../support/api.js'
 import { gameDoc } from '../../support/game.js'
 
-// Symboler and Media at the two desk widths L12 binds (#481, fynd 13, 14 och 16): the crop sheet
+// Speltema (Symboler until L57) and Media at the two desk widths L12 binds (#481, fynd 13, 14 och 16): the crop sheet
 // holds a picture on six cards without scrolling, a meaning's row keeps its × beside its name, and
 // every ink and every corner of the crop window is a 44 px target.
 test.use({ locale: 'sv-SE' })
@@ -78,7 +78,12 @@ for (const [width, height] of WIDTHS) {
     await logIn(page.request)
     const project = await makeProjectOf(page.request, doc)
     await page.goto(project.editorUrl)
-    await page.locator('#byd-editor-tab-symbols').click()
+    await page.locator('#byd-editor-tab-theme').click()
+    // Speltema folds its parts (L57): the meanings and the icons are opened, and the library
+    // opens from the icons — beside the parts, which is the narrower room the row has to keep to.
+    await page.getByRole('button', { name: /^Färger och betydelser/ }).click()
+    await page.getByRole('button', { name: /^Spelets ikoner/ }).click()
+    await page.getByRole('button', { name: /Ur biblioteket/ }).click()
     await page.getByRole('button', { name: /Ta in sköld/ }).click()
     await expect(page.locator('.byd-symbols-set').getByText('{sköld}')).toBeVisible()
     const rows = await page.$$eval('.byd-symbols-colours li', (lis) =>

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within, fireEvent } from '@testing-library/react'
 import { JSDOM_TEST_BUDGET } from './budget.js'
-import { SymbolPanel } from '../src/editor/SymbolPanel.js'
+import { revealThemeSection, ThemePanel } from '../src/editor/ThemePanel.js'
 import { projectDoc } from './project-doc.js'
 import { groundOf } from '../src/editor/palette.js'
 
@@ -14,10 +14,19 @@ import type { ProjectClient } from '../src/editor/ProjectClient.js'
 // the card it sits on, or that two of its meanings become one for a colour-blind reader (E5).
 const client = () => ({ mayEdit: true, setRole: vi.fn(), renameRole: vi.fn(), removeRole: vi.fn(), useSymbol: vi.fn() }) as unknown as ProjectClient & { setRole: ReturnType<typeof vi.fn>; renameRole: ReturnType<typeof vi.fn>; removeRole: ReturnType<typeof vi.fn> }
 
+// The meanings are folded in Speltema (L57) until they are opened; these tests are about what is
+// in them, so they stand open.
+const openMeanings = () => {
+  localStorage.clear()
+  revealThemeSection('colours')
+  revealThemeSection('icons')
+}
+beforeEach(openMeanings)
+
 const mount = (palette: Record<string, string>, extra: Partial<ReturnType<typeof projectDoc>> = {}) => {
   const c = client()
   const doc = { ...projectDoc(), palette, ...extra }
-  render(<SymbolPanel doc={doc} client={c} assetBase="http://test.local" />)
+  render(<ThemePanel doc={doc} client={c} assetBase="http://test.local" />)
   return c
 }
 
@@ -94,9 +103,9 @@ describe('the game’s colours', () => {
   it('puts the focus in the name of the meaning it has just made', () => {
     const c = client()
     const doc = { ...projectDoc(), palette: { fara: '#8f2d20' } as Record<string, string> }
-    const { rerender } = render(<SymbolPanel doc={doc} client={c} assetBase="http://test.local" />)
+    const { rerender } = render(<ThemePanel doc={doc} client={c} assetBase="http://test.local" />)
     c.setRole.mockImplementation((role: string, hex: string) => {
-      rerender(<SymbolPanel doc={{ ...doc, palette: { ...doc.palette, [role]: hex } }} client={c} assetBase="http://test.local" />)
+      rerender(<ThemePanel doc={{ ...doc, palette: { ...doc.palette, [role]: hex } }} client={c} assetBase="http://test.local" />)
     })
     fireEvent.click(screen.getByRole('button', { name: 'Ny betydelse' }))
     const made = c.setRole.mock.calls[0]![0] as string
@@ -155,7 +164,7 @@ describe('the relation shown in the palette (L34)', () => {
 
   it('draws the game’s most written symbol once per meaning, on the card’s paper, with the string that writes it', () => {
     const doc = withSymbols({ fara: '#8f2d20', vinst: '#2f6136' })
-    render(<SymbolPanel doc={doc} client={client()} assetBase="http://test.local" />)
+    render(<ThemePanel doc={doc} client={client()} assetBase="http://test.local" />)
     const list = screen.getByRole('list', { name: 'Spelets färger' })
     const rows = within(list).getAllByRole('listitem')
     const paper = groundOf(doc, 'front')
@@ -173,10 +182,10 @@ describe('the relation shown in the palette (L34)', () => {
   })
 
   it('repaints the example when the meaning’s colour changes', () => {
-    const { rerender } = render(<SymbolPanel doc={withSymbols({ fara: '#8f2d20' })} client={client()} assetBase="http://test.local" />)
+    const { rerender } = render(<ThemePanel doc={withSymbols({ fara: '#8f2d20' })} client={client()} assetBase="http://test.local" />)
     const row = () => within(screen.getByRole('list', { name: 'Spelets färger' })).getAllByRole('listitem')[0]!
     expect(inkOf(row())).toContain('background:#8f2d20')
-    rerender(<SymbolPanel doc={withSymbols({ fara: '#2f6136' })} client={client()} assetBase="http://test.local" />)
+    rerender(<ThemePanel doc={withSymbols({ fara: '#2f6136' })} client={client()} assetBase="http://test.local" />)
     expect(inkOf(row())).toContain('background:#2f6136')
   })
 

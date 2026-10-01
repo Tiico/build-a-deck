@@ -9,6 +9,13 @@ import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
+// The game's icons, in Speltema (L57): the tab, and the part that holds them, opened if folded.
+function openThemeIcons(): void {
+  fireEvent.click(screen.getByRole('tab', { name: 'Speltema' }))
+  const head = screen.getByRole('button', { name: /^Spelets ikoner/ })
+  if (head.getAttribute('aria-expanded') === 'false') fireEvent.click(head)
+}
+
 let run: Running
 beforeEach(async () => {
   run = await startServer()
@@ -182,7 +189,7 @@ describe('the icon as a tool on the canvas (#33)', () => {
     await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeTruthy())
 
     // Both halves happened: the element is on the card, and the game's set has the symbol.
-    fireEvent.click(screen.getByRole('tab', { name: 'Symboler' }))
+    openThemeIcons()
     expect(await screen.findByText('{svärd}')).toBeTruthy()
 
     // And one press takes both back. Not the element first and the symbol on the next press.
@@ -194,7 +201,7 @@ describe('the icon as a tool on the canvas (#33)', () => {
     // The same fact from the other side: one step forward brings both halves back together.
     await press({ key: 'z', ctrlKey: true, shiftKey: true })
     await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeTruthy())
-    fireEvent.click(screen.getByRole('tab', { name: 'Symboler' }))
+    openThemeIcons()
     expect(await screen.findByText('{svärd}')).toBeTruthy()
   })
 
@@ -287,7 +294,7 @@ describe('the icon as a tool on the canvas (#33)', () => {
     fireEvent.keyDown(tool, { key: 'Enter' })
     await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeTruthy())
     expect(screen.queryByRole('listbox', { name: 'Symboler' })).toBeNull()
-    fireEvent.click(screen.getByRole('tab', { name: 'Symboler' }))
+    openThemeIcons()
     expect(await screen.findByText(`{${chosen}}`)).toBeTruthy()
   })
 

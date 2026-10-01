@@ -7,7 +7,7 @@ import type { Room } from '../room.js'
 // Below the desk the editor is a flat list of named stages, one at a time (L10, prototype C).
 // The four panels of the template mode become four stages beside the three modes, so there is one
 // tablist and never a tablist inside a tablist.
-export type Stage = 'wall' | 'tools' | 'layers' | 'canvas' | 'props' | 'table' | 'symbols' | 'media' | 'rules' | 'tables'
+export type Stage = 'wall' | 'tools' | 'layers' | 'canvas' | 'props' | 'table' | 'theme' | 'media' | 'rules' | 'tables'
 
 // The stages of the template mode — the ones that are not offered at all on a phone.
 export type CanvasStage = 'tools' | 'layers' | 'canvas' | 'props'
@@ -23,7 +23,7 @@ export const STAGES: Record<Exclude<Room, 'desk'>, readonly (readonly [Stage, Ke
   phone: [
     ['wall', 'editor.tab.wall'],
     ['table', 'editor.tab.table'],
-    ['symbols', 'editor.tab.symbols'],
+    ['theme', 'editor.tab.theme'],
     ['media', 'editor.tab.media'],
     ['rules', 'editor.tab.rules'],
     ['tables', 'editor.tab.tables'],
@@ -35,7 +35,7 @@ export const STAGES: Record<Exclude<Room, 'desk'>, readonly (readonly [Stage, Ke
     ['canvas', 'editor.stage.canvas'],
     ['props', 'editor.stage.props'],
     ['table', 'editor.tab.table'],
-    ['symbols', 'editor.tab.symbols'],
+    ['theme', 'editor.tab.theme'],
     ['media', 'editor.tab.media'],
     ['rules', 'editor.tab.rules'],
     ['tables', 'editor.tab.tables'],

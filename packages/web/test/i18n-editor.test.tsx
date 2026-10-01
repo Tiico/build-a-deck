@@ -36,7 +36,7 @@ const openTab = (name: string) => fireEvent.click(screen.getByRole('tab', { name
 describe('the editor in the reader\'s own language (A4)', () => {
   it('says the frame and the card wall in English, and leaves the deck alone', async () => {
     await openEditor()
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Card wall', 'Template', 'Data', 'Symbols', 'Media', 'Rules', 'Tables'])
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Card wall', 'Template', 'Data', 'Theme', 'Media', 'Rules', 'Tables'])
     expect(screen.getByRole('button', { name: 'Save' })).toBeTruthy()
     // The game has no table yet, so the filled action is the one that starts one (#417).
     expect(screen.getByRole('button', { name: 'Start a table' })).toBeTruthy()
@@ -105,7 +105,7 @@ describe('the editor in the reader\'s own language (A4)', () => {
     expect(screen.getByRole('button', { name: 'Yes, remove' })).toBeTruthy()
   })
 
-  it('says the template canvas, its properties and its fonts in English', async () => {
+  it('says the template canvas, its properties and where its fonts went in English', async () => {
     await openEditor()
     openTab('Template')
     expect(screen.getByRole('heading', { name: 'Layers · front' })).toBeTruthy()
@@ -115,7 +115,7 @@ describe('the editor in the reader\'s own language (A4)', () => {
     expect(screen.getByRole('radiogroup', { name: 'Card side' })).toBeTruthy()
     expect(screen.getByRole('radio', { name: 'Front' })).toBeTruthy()
     expect(screen.getByText('All 3 cards')).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Fonts in the game' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'The game’s fonts are under Theme ›' })).toBeTruthy()
 
     fireEvent.click(layerPick('title'))
     expect(screen.getByRole('heading', { name: 'Properties · title' })).toBeTruthy()
@@ -124,15 +124,20 @@ describe('the editor in the reader\'s own language (A4)', () => {
     expect(screen.getByLabelText('Typeface')).toBeTruthy()
   })
 
-  it('says the symbol library and the game\'s own set in English', async () => {
+  it('says the theme, the symbol library and the game\'s own set in English', async () => {
+    localStorage.clear()
     await openEditor()
-    openTab('Symbols')
+    openTab('Theme')
+    // Folded parts, each saying its value in the reader's language (L57).
+    expect(screen.getByRole('button', { name: /^Fonts/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Colours and meanings/ }).textContent).toContain('none yet')
+    fireEvent.click(screen.getByRole('button', { name: /^The game’s icons/ }))
+    expect(screen.getByText(/No symbols yet/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /From the library/ }))
     expect(screen.getByRole('heading', { name: 'Symbol library' })).toBeTruthy()
     expect(screen.getByPlaceholderText('Search for a symbol…')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Category: All' })).toBeTruthy()
-    expect(screen.getByText(/No symbols yet/)).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /^Category:/ }))
     expect(screen.getByRole('button', { name: 'All' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Done' })).toBeTruthy()
     // The library is the tool's own, so its symbols are named in the reader's language — and a
     // symbol taken from here is called that in the game from then on.
     expect(screen.getByRole('button', { name: 'Take in sword' })).toBeTruthy()

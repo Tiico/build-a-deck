@@ -254,8 +254,8 @@ async function readView(html: string, width: number): Promise<Pair[]> {
 
 // Every mode the editor can be showing, in the room being walked, named so that a walk which finds
 // nothing fails instead of agreeing with itself.
-const DESK_VIEWS = ['Bord', 'Kortvägg', 'Mall', 'Media', 'Regler', 'Symboler', 'Tabell'] as const
-const PHONE_VIEWS = ['Bord', 'Kortvägg', 'Media', 'Regler', 'Symboler', 'Tabell'] as const
+const DESK_VIEWS = ['Bord', 'Kortvägg', 'Mall', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Tabell'] as const
+const PHONE_VIEWS = ['Bord', 'Kortvägg', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Tabell'] as const
 
 async function editorViews(width: number): Promise<Record<string, string>> {
   atWidth(width)
@@ -269,6 +269,15 @@ async function editorViews(width: number): Promise<Record<string, string>> {
       const tab = tabs()[i]!
       fireEvent.click(tab)
       out[tab.textContent?.trim() ?? String(i)] = document.querySelector('.byd-editor')!.outerHTML
+      // Speltema folds its parts (L57): every one of them is opened before the tab is read, and
+      // the library that opens from the icons is read as a view of its own.
+      if (tab.textContent?.trim() === 'Speltema') {
+        for (const head of document.querySelectorAll<HTMLElement>('[data-theme-section] h2 button[aria-expanded="false"]')) fireEvent.click(head)
+        out['Speltema'] = document.querySelector('.byd-editor')!.outerHTML
+        fireEvent.click(screen.getByRole('button', { name: /Ur biblioteket/ }))
+        out['Speltema, biblioteket öppet'] = document.querySelector('.byd-editor')!.outerHTML
+        fireEvent.click(screen.getByRole('button', { name: 'Klar' }))
+      }
     }
     return out
   } finally {

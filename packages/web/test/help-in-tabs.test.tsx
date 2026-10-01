@@ -116,17 +116,23 @@ describe('Bord: the list and the setup', () => {
   })
 })
 
-describe('Symboler', () => {
+describe('Speltema', () => {
   it('moves the library’s and the meanings’ leads, and keeps the empty states', async () => {
-    await openEditor('Symboler')
-    await screen.findByRole('heading', { name: 'Symbolbibliotek' })
+    localStorage.clear()
+    await openEditor('Speltema')
     absent(/Fritt licensierade symboler/)
     absent(/En betydelse, en färg/)
-    expect((await opened('biblioteket')).textContent).toMatch(/Licensen följer med in i trycket/)
-    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    // The meanings' question mark stands in their head once the part is open (L57).
+    fireEvent.click(screen.getByRole('button', { name: /^Färger och betydelser/ }))
     expect((await opened('betydelserna')).textContent).toMatch(/målar om varje kort som säger den/)
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
     // Kept: an empty state that says what an unnamed meaning draws as.
     expect(screen.getByText(/En symbol utan betydelse ritas i bläck/)).toBeTruthy()
+    // And the library's, at the library's own head, which opens from the game's icons.
+    fireEvent.click(screen.getByRole('button', { name: /^Spelets ikoner/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Ur biblioteket/ }))
+    await screen.findByRole('heading', { name: 'Symbolbibliotek' })
+    expect((await opened('biblioteket')).textContent).toMatch(/Licensen följer med in i trycket/)
   })
 })
 
