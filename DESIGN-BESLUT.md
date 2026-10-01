@@ -5689,3 +5689,22 @@ Variant C, att krönet byter innehåll medan något är markerat, tar bort sökn
 
 `data-table-layout.test.tsx` mäter att första raden står kvar och att foten är en rad; `data-table-bulk.test.tsx` håller handlingarna och boxen.
 Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/02-atgardsraden.html`.
+
+### L59. Antalet spelare är en stegare, i Bord och i guidad start (prototypat och beslutat 2026-10-01, #620)
+
+Ett tal mellan 1 och 8 valdes med åtta knappar på 44 px.
+I Bords receptspalt bröt de på två rader, så sektionen «Spelare» var 124 px hög för ett enda tal, och i guidad start tog raden 445 px.
+
+Beslutet är variant A: `Spelare [−] [4] [+]` på en rad, talet skrivbart, samma kontroll i Bord och i guidad start.
+Sektionen blir 76 px hög och guidens rad omkring 150 px bred, med tre mål på 44 px i stället för åtta.
+K18:s anmärkning — vad en ny plats får och vad en plats som lämnar tar med sig — står kvar bakom `?` vid rubriken.
+
+Kontrollen är en `spinbutton` i WAI-ARIA:s mening: talet är det enda tabbstoppet, pil upp och pil ned stegar det, och knapparna är pekarens och står utanför tabbordningen.
+Det som skrivs i fältet är ett utkast tills fältet lämnas eller Enter trycks (`number-draft.ts`, #478): ett tal utanför ändarna hålls vid närmaste ände, och det som inte är ett tal skriver ingenting.
+Knappen vid en ände är släckt, och den som just nådde sin ände lämnar fokus till talet i stället för till sidan.
+Komponenten är en och står i `packages/web/src/Stepper.tsx` med sitt eget ark, så rummen säger bara sina färger.
+
+Det förkastade: **B**, åtta celler i en ram på en rad, gav celler på 37 px i spalten vid 1280 och 32 px vid 1024, under träffytans 44.
+**C**, där filten själv är väljaren med en spökplats «+» och ett × på den sista, var vackrast men lämnade guiden, som inte har någon filt, med en annan form, och tangentbordet utan väg till spökplatsen.
+
+Prototypen står i [`docs/ux-audits/2026-09-30-komponenter/prototyper/04-platsvaljaren.html`](docs/ux-audits/2026-09-30-komponenter/prototyper/04-platsvaljaren.html), och mätningen i `packages/e2e/test/surfaces/seat-stepper.spec.ts`.

@@ -9,6 +9,7 @@ import { TableRenderer, type FeltFit, type TableHandle } from '../table/TableRen
 import { previewOf } from '../setup/preview.js'
 import { MIN_MM, NUDGE_MM, onTableOf, sizedBy } from './zone-geometry.js'
 import { useNumberDraft } from './number-draft.js'
+import { Stepper } from '../Stepper.js'
 import { MAX_PLAYERS, newAreaSpot, newPileSpot, pasteSpot, titleOfRow, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
 import type { ZonePatch } from '@byd/server/doc'
@@ -425,12 +426,10 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
         <div className="byd-setup-players" role="group" aria-labelledby="byd-setup-players">
           {/* Every seat count the table can actually hold. It stopped at six while `MAX_PLAYERS`
               was eight, so the two counts a designer most needed to look at — the ones where an
-              edge first carries two seats (K18) — were the two nobody could reach. */}
-          {Array.from({ length: MAX_PLAYERS }, (_, i) => i + 1).map((n) => (
-            <button key={n} type="button" className="byd-choice" aria-pressed={recipe.players === n} disabled={!client.mayEdit} onClick={() => turn({ players: n })}>
-              {n}
-            </button>
-          ))}
+              edge first carries two seats (K18) — were the two nobody could reach. Since #620 it
+              is the guided start's stepper and not eight buttons: one row of three targets where
+              eight wrapped onto two, and the section 124 px tall became one about 80. */}
+          <Stepper value={recipe.players} min={1} max={MAX_PLAYERS} onChange={(players) => turn({ players })} label={t('players.count', { min: 1, max: MAX_PLAYERS })} fewer={t('players.fewer')} more={t('players.more')} readOnly={!client.mayEdit} />
         </div>
       </section>
       <section>

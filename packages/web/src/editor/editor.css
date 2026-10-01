@@ -661,9 +661,8 @@
 .byd-setup h2 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-setup-recipe { display: grid; gap: 18px; min-width: 0; }
 .byd-setup-recipe label { display: flex; gap: 8px; align-items: center; margin: 4px 0; color: #e6ecfa; }
-/* Eight of them, which is one more than the 300 mm column fits in a line. */
-.byd-setup-players { display: flex; flex-wrap: wrap; gap: 6px; }
-.byd-setup-players button, .byd-setup-tools button, .byd-setup-counters > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
+/* The seat count is the shared stepper (#620, `stepper.css`): one row, where eight buttons wrapped. */
+.byd-setup-tools button, .byd-setup-counters > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 .byd-setup-counters { display: grid; gap: 6px; justify-items: start; }
 /* A counter is a name, «från», a number and ×. The row wraps rather than setting the column's
    width (#480): at 1024 it was 296 px of content in a 260 px track, and the whole column scrolled
@@ -3769,7 +3768,6 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
   padding-inline: 0;
 }
 .byd-editor[data-readonly] .byd-reading-set .byd-slot:disabled { background: transparent; border-color: transparent; padding-inline: 0; color: inherit; cursor: default; }
-.byd-editor[data-readonly] .byd-setup-players button:disabled { cursor: default; }
 /* Symbols without the library: the game's own set takes the whole width. */
 
 /* The game's own ⋯ beside its name (#542), as quiet as the revision beside it. */

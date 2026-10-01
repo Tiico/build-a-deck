@@ -1,0 +1,85 @@
+/* The stepper (#620, variant A): «[−] [4] [+]» on one row, the same control on the editor's dark
+   chrome and on the guided start's paper.
+
+   One shape and the room's own colours, the way the button language does it (#44): the box wears
+   the room's secondary line, which is held to 3:1 as a graphic in both rooms, and the three values
+   below are the only thing a room says about it. Each target is 44 by 44 inside a 1 px box, so the
+   row stands 46 px tall — the line is the box's, never taken out of a target.
+
+   A room, the box and a part are three classes, (0,3,0), which out-ranks the rooms' own rules for
+   every button and field — `.byd-wizard button:disabled` and `.byd-setup input:not(…)` are both
+   (0,2,1) — so the parts are drawn here and nowhere else. */
+.byd-editor .byd-stepper {
+  --byd-stepper-ground: #1b1d23;
+  --byd-stepper-divider: #2f333d;
+  --byd-stepper-ink: #ffffff;
+}
+.byd-wizard .byd-stepper {
+  --byd-stepper-ground: var(--byd-wizard-field-bg);
+  --byd-stepper-divider: var(--line);
+  --byd-stepper-ink: var(--ink);
+}
+
+.byd-stepper-row { display: inline-flex; align-items: center; gap: 12px; max-width: 100%; }
+:is(.byd-editor, .byd-wizard) .byd-stepper-row .byd-stepper {
+  flex: none;
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--byd-secondary-line);
+  border-radius: 8px;
+  background: var(--byd-stepper-ground);
+}
+:is(.byd-editor, .byd-wizard) .byd-stepper .byd-stepper-step {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--byd-stepper-ink);
+  cursor: pointer;
+}
+/* The dividers belong to the buttons and not to the number, so a ring drawn inside the number is
+   the same 2 px on all four sides; and a pointer's ground fills a button to the box's own corners
+   and squares off at the divider. */
+:is(.byd-editor, .byd-wizard) .byd-stepper .byd-stepper-step:first-child { border-right: 1px solid var(--byd-stepper-divider); border-radius: 7px 0 0 7px; }
+:is(.byd-editor, .byd-wizard) .byd-stepper .byd-stepper-step:last-child { border-left: 1px solid var(--byd-stepper-divider); border-radius: 0 7px 7px 0; }
+:is(.byd-editor, .byd-wizard) .byd-stepper .byd-stepper-step:hover:not(:disabled) { background: color-mix(in srgb, var(--byd-stepper-ink) 8%, transparent); }
+/* An end that is reached is a dimmed glyph and nothing else: the number beside it already says why,
+   and a box or a line round a target that cannot be pressed reads as one that can. */
+:is(.byd-editor, .byd-wizard) .byd-stepper .byd-stepper-step:disabled { background: transparent; color: var(--byd-stepper-ink); cursor: default; }
+:is(.byd-editor, .byd-wizard) .byd-stepper .byd-stepper-step:disabled .byd-glyph { opacity: 0.35; }
+.byd-stepper .byd-glyph { width: 16px; height: 16px; flex: none; }
+
+:is(.byd-editor, .byd-wizard) .byd-stepper .byd-stepper-field {
+  box-sizing: border-box;
+  width: 56px;
+  height: 44px;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--byd-stepper-ink);
+  font: inherit;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+/* Where the keyboard is. The editor's own rule already draws its ring inside every field
+   (`.byd-editor input:focus-visible`), and it is the heavier selector, so it stands; the paper
+   says it on the box, with the same pair the guided start's other boxes wear. */
+.byd-wizard .byd-stepper:has(> .byd-stepper-field:focus) { border-color: var(--accent); outline: 3px solid color-mix(in srgb, var(--accent), transparent 82%); }
+.byd-wizard .byd-stepper .byd-stepper-field:focus { outline: none; }
+
+/* The two ends stand beside the box, not in it, so the room's quiet ink is named here directly. */
+.byd-stepper-ends { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.byd-editor .byd-stepper-ends { color: #9aa3b8; }
+.byd-wizard .byd-stepper-ends { color: var(--muted); }

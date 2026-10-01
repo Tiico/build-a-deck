@@ -115,6 +115,10 @@ export const svAccount = {
   // Villkoret sägs en gång per skärm, vid fältet, och först när någon trycker (variant B).
   'wizard.name.says': 'Spelet behöver ett namn först.',
   'wizard.players': 'Spelare',
+  // Stegaren för antalet spelare (#620): samma tre namn i guidad start och i Bords receptspalt.
+  'players.fewer': 'En spelare färre',
+  'players.more': 'En spelare fler',
+  'players.count': 'Antal spelare, {min} till {max}',
   // Vägen förbi den guidade starten (L42): namnet och platserna räcker, resten görs i editorn.
   'wizard.blank.title': 'Utan guidad start',
   'wizard.blank.body': 'Bygg hellre allt själv?',
