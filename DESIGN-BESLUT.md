@@ -5798,3 +5798,19 @@ Det lämnas därför vidare: till platsen som tog den sparkades plats, till den 
 Variant B, en box «Bordet kör (8) ▾» i huvudet, valdes bort: huvudet är redan fullt under 1440 (#566) och rann 73 px utanför vid 1024.
 Variant C, en statusrad på 32 px med sparkarna flyttade till Bord-flikens kort, är en större flytt som kan göras senare om bandet ändå stör.
 Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/05-bordsbandet.html`.
+
+### L61. En bricka: pillret på 44 px, i sökfältet och i bordsbandet (prototypat och beslutat 2026-10-01, #648)
+
+Granskningen av #641 fann två former för samma tecken: tabellens filterbricka «typ: Playcard ×» (#617) var en rundad ruta på 34 px i sökfältet, bordsbandets platsbricka «Ada ×» (#621) ett piller på 44 px.
+Nästa bricka — färdiga teman, taggar, kort i en markering — hade fått en tredje.
+
+**En bricka, pillret på 44 px, överallt** (variant A av tre: pillret överallt, rutan på 34 överallt, en form i två storlekar).
+Prototypen mätte att pillret i sökfältet gör fältet 46 px och krönet 55 — den höjd krönet redan har, eftersom sökrutan själv är 44 — så formen kostar ingen höjd.
+Rutan på 34 överallt hade krympt bandets × under träffytans 44, det #621 just rättat; en form i två storlekar vann två pixlar appen redan betalar och gav två storlekar att känna igen som en.
+
+`.byd-chip` ritas en gång i `buttons.css`, där knappspråket bor (L13): ett piller en målyta högt, × ett helt kvadratiskt mål med namnet på vad det gör, linjen en kontur inuti rutan så att brickan står på samma rad som målen bredvid.
+Rummet säger bara sina färger som tokens: fältet markeringens blå som fyllning, bandet sin gröna som linje, och felets färger när bandet är tappat.
+`.byd-data-token` och `.byd-editor-seats > li` är borta.
+
+`editor-crown.test.tsx` mäter fältets bricka vid 1024, 1280 och 1440: 44 hög, × 44 × 44, ett piller, och krönet en rad; `editor-seat-chips.spec.ts` mäter bandets och att det är samma klass.
+Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/06-brickan.html`.
