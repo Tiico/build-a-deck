@@ -1833,6 +1833,12 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
   min-height: 0;
   background: var(--byd-editor-panel-bg);
 }
+/* Opened from a text layer's «Fler typsnitt…» in Mall (#634), it is the sheet under the card it
+   was before (L27): 62 % of the canvas, the card moved up so the samples are read beside the card
+   they are samples of. On a stage of its own the panel is the screen, and the sheet stands in it. */
+.byd-canvas[data-catalog='open'] .byd-canvas-stage { align-items: start; padding-top: var(--byd-s2); }
+.byd-canvas-main > .byd-font-catalog { position: absolute; left: 0; right: 0; bottom: 0; z-index: 9; max-height: 62%; border: 1px solid var(--byd-editor-line); border-bottom: 0; border-radius: 14px 14px 0 0; box-shadow: 0 -24px 60px var(--byd-editor-card-shadow); }
+.byd-canvas-props > .byd-font-catalog { margin-top: var(--byd-s3); min-height: 60vh; border: 1px solid var(--byd-editor-line); border-radius: 12px; }
 .byd-font-catalog header { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: var(--byd-s2); border-bottom: 1px solid var(--byd-editor-line-soft); }
 .byd-font-catalog-search { min-width: 0; }
 .byd-font-catalog-search input { width: 100%; box-sizing: border-box; min-height: 32px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #0f1115; color: #fff; font: inherit; padding: 0 var(--byd-s3); }

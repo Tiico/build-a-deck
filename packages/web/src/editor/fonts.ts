@@ -24,6 +24,19 @@ export function familiesInUse(doc: Pick<ProjectDoc, 'template'>): string[] {
   return out
 }
 
+// What a text layer's family picker offers, in the order it offers it (L57, #634): the game's own
+// typefaces first, said to be the game's, and — when the layer is set in a family the game no
+// longer names — that family on its own, so the layer is never moved to another type behind the
+// designer's back. The rest of the catalog is behind «Fler typsnitt…», which is the picker's and
+// not this list's.
+//
+// One place that decides the order, so the theme's heading and body family (#632) can be put at
+// the head of `game` here and nowhere else.
+export function familyChoices(doc: Pick<ProjectDoc, 'fonts'>, current: string): { game: string[]; kept: string | null } {
+  const game = Object.keys(doc.fonts ?? {})
+  return { game, kept: game.includes(current) ? null : current }
+}
+
 // The project's fonts as the compiler wants them, for a preview in the browser: the file is the
 // asset the project holds. The server does the same for a render, only inlining the bytes,
 // because the render worker has no session to fetch with.

@@ -551,6 +551,11 @@ export const enEditor = {
   // choosing a column is the way there — and neither guesses on the designer's behalf (#33).
   'canvas.props.icon.fromField': 'from the column',
   'canvas.props.font': 'Typeface',
+  // A layer's family (L57, #634): the game's typefaces first and said to be the game's, a family
+  // the game no longer has on its own, and the whole catalog last.
+  'canvas.font.game': 'The game’s fonts',
+  'canvas.font.kept': 'Not in the game',
+  'canvas.font.more': 'More fonts…',
   'canvas.props.size': 'Size (pt)',
   'canvas.props.weight': 'Weight',
   'canvas.props.color': 'Colour',
@@ -709,6 +714,9 @@ export const enEditor = {
   'fonts.catalog.variable': ' · variable',
   'fonts.catalog.add': 'Add {family}',
   'fonts.catalog.taken': '{family} is in the game',
+  // From Mall the family is chosen for a layer (#634): taken into the game unless it is there
+  // already, and the layer set in it.
+  'fonts.catalog.use': 'Use {family}',
   'fonts.catalog.none': 'No family is called that. Try a shorter word.',
   'fonts.catalog.loading': 'Fetching the catalog …',
   'fonts.catalog.failed': 'The catalog is not answering. The samples cannot be drawn, and no family can be brought home until it does.',
