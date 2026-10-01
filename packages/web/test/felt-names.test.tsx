@@ -22,6 +22,7 @@ import { stepAside } from '../src/editor/grips.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
+import { chooseSeats } from './bord-tab.js'
 import { FACE, FELT_FONT, READ, expectClear, feltOf, namesOf, sceneOf, seatNameOf, sheet, type Reading } from './felt-labels.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
@@ -344,7 +345,7 @@ async function bordTab(seats: number, felt: { w: number; h: number } | null, des
     // Turned up to the table the two issues are about: every seat with a hand, an area in front
     // of it and a counter beside that, which is the recipe that puts two names in one seat's own
     // place setting.
-    fireEvent.click(screen.getByRole('button', { name: String(seats) }))
+    chooseSeats(seats)
     fireEvent.click(screen.getByRole('button', { name: /Räknare$/ }))
     fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
     fireEvent.click(screen.getByRole('button', { name: '＋ Räknarzon per plats' }))

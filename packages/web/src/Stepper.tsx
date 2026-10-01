@@ -3,7 +3,7 @@ import { settled, useNumberDraft } from './editor/number-draft.js'
 import { MinusGlyph, PlusGlyph } from './glyphs.js'
 import './stepper.css'
 
-// A whole number between two ends, chosen a step at a time or written straight in (#620, variant
+// A whole number between two ends, chosen a step at a time or written straight in (#620, L59, variant
 // A): «[−] [4] [+]» on one row of 44 px.
 //
 // It replaced a row of buttons, one per number — eight 44 px targets for the seat count, which

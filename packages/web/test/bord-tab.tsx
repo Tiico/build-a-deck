@@ -5,6 +5,14 @@ import { projectDoc } from './project-doc.js'
 import type { Running } from './fixture.js'
 import { atWidth } from './viewport.js'
 
+// The seat count in Bord's recipe column, as a designer writes it into the stepper's field (#620,
+// L59): the number, then Enter. It was a click on one of eight numbered buttons.
+export function chooseSeats(seats: number): void {
+  const field = screen.getByRole('spinbutton', { name: /Antal spelare/ })
+  fireEvent.change(field, { target: { value: String(seats) } })
+  fireEvent.keyDown(field, { key: 'Enter' })
+}
+
 // Fliken **Bord** ur ett riktigt projekt på en riktig server, monterad som den skeppas — och
 // zonernas rutor lästa av de lådor editorn faktiskt ritar.
 //
@@ -85,7 +93,7 @@ export async function bordTab(run: Running, seats: number | null, doc: ProjectDo
   await screen.findByText('Skogens herrar')
   fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
   if (seats !== null) {
-    fireEvent.click(screen.getByRole('button', { name: String(seats) }))
+    chooseSeats(seats)
     fireEvent.click(screen.getByRole('button', { name: /Räknare$/ }))
     fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
     fireEvent.click(screen.getByRole('button', { name: '＋ Räknarzon per plats' }))
