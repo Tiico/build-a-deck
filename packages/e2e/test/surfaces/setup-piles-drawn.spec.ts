@@ -125,6 +125,10 @@ for (const [width, height] of [[1024, 768], [1280, 800]] as const) {
 
     test("the handle's line crosses neither pile's badge", async ({ page }) => {
       await bord(page)
+      // The numerals are not the subject, and on CI's Linux their antialiasing is subpixel: a
+      // glyph's edge there is fringed red and blue, and it was read as amber. So the ink is made
+      // clear, and what is left inside the badge is its plate and whatever is drawn over it.
+      await page.addStyleTag({ content: '.byd-setup-felt .byd-pile-n { color: transparent !important; }' })
       for (const zone of ['draw', 'discard']) {
         const c = await card(page, zone)
         const n = await badge(page, zone)
