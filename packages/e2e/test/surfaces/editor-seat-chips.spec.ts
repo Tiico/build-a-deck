@@ -127,3 +127,24 @@ test.describe('a seat kicked from the keyboard (#621)', () => {
     await expect(strip.getByRole('button', { name: 'Ny kod' })).toBeFocused()
   })
 })
+
+test.describe('the room code in the table strip (#650)', () => {
+  test.use({ viewport: { width: 1280, height: 800 }, locale: 'sv-SE' })
+
+  // The code is what the host reads out to the table, so it is drawn white as the prototype for
+  // #621 drew it, and as the link to the table is: in the strip's own green it read as one more
+  // word of «Bordet kör» rather than the thing to say aloud.
+  test('is white on the strip, not the strip’s green', async ({ page, host }) => {
+    await eightAtTheTable(page, host)
+    const strip = page.locator('.byd-editor-table-link')
+    const code = strip.locator('[data-room-code]')
+    await expect(code).toHaveText(/^[A-Z0-9]{6}$/)
+    const ink = await code.evaluate((el) => ({
+      code: getComputedStyle(el).color,
+      strip: getComputedStyle(el.closest('.byd-editor-table-link')!).color,
+    }))
+    // Not vacuous: the strip around it is still the green the code used to inherit.
+    expect(ink.strip).not.toBe('rgb(255, 255, 255)')
+    expect(ink.code).toBe('rgb(255, 255, 255)')
+  })
+})

@@ -414,7 +414,9 @@
   color: #7dd3a0;
   border-bottom: 1px solid #2f333d;
 }
-.byd-editor-table-link a { color: #fff; }
+/* The link and the room code are the two things in the strip one acts on or reads out, so they
+   are white and the strip's sentence around them is its green (#650, as the prototype for #621). */
+.byd-editor-table-link :is(a, [data-room-code]) { color: #fff; }
 /* A blocked update is not the good news this row otherwise carries, and must not be green. */
 .byd-editor-table-link[data-lost] { background: var(--byd-editor-lost-bg); color: var(--byd-editor-lost-quiet); }
 .byd-editor-warning { color: var(--byd-editor-lost-ink); font-weight: 600; }
