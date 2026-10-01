@@ -5734,7 +5734,7 @@ I ett spel som utgår från ett tema står temats rubrikfamilj först i en textl
 En temafamilj spelet inte längre bär erbjuds inte, eftersom den vore ett namn utan fil (#420).
 
 **Byggt 2026-10-02 (#633): «Utseende» i den guidade starten.**
-Fältset­tet där ramen valdes heter Utseende och har två delar på var sin rad: «Ram — var saker står» med de tre ramarna, och «Tema — hur det känns» med galleriets egna brickor, två i bredd, ritade i wizardens färger.
+Gruppen där ramen valdes heter Utseende och har två delar på var sin rad: «Ram — var saker står» med de tre ramarna, och «Tema — hur det känns» med galleriets egna brickor, två i bredd, ritade i wizardens färger.
 Brickan är en komponent (`ThemeTile`) som Speltema och wizarden delar, så ett tema ser likadant ut i båda dörrarna.
 Ramarna skriver sina texter utan familj, och `buildProject` lägger temat över ramen med samma redigering som Speltema skickar (`setTheme`), så regeln om vilken text som får vilken familj står på ett ställe.
 Spelet som skapas minns sitt tema (`theme.from`) och får temats familjer som egna filer, dess betydelser och dess startikoner — det spel ett val av temat i Speltema hade gett.
