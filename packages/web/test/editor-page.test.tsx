@@ -110,6 +110,8 @@ describe('EditorPage', () => {
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
 
     await user.click(screen.getByLabelText('Markera alla synliga'))
+    // The column and the value are behind «Sätt fält» in the foot (#618).
+    await user.click(screen.getByRole('button', { name: 'Sätt fält' }))
     await user.selectOptions(screen.getByLabelText('Kolumn'), 'antal')
     await user.type(screen.getByLabelText('Värde'), '4')
     await user.click(screen.getByRole('button', { name: 'Sätt antal på 3 kort' }))

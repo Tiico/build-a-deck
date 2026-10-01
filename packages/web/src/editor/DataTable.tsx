@@ -6,6 +6,7 @@ import { ANTAL, drawnBy } from '@byd/server/doc'
 import { ColumnDoor } from './ColumnDoor.js'
 import { Crown, CrownBox, CrownDrawer, CrownFoot } from './Crown.js'
 import { ColumnFilter, type ColumnFilterProps } from './ColumnFilter.js'
+import { Lifted } from './Lifted.js'
 import { FilterField, type FilterToken, type TypedColumn } from './FilterField.js'
 import { DragDoor } from './DragDoor.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
@@ -13,12 +14,13 @@ import { boxesOf, proseChoiceOf, proseFieldsOf } from './body.js'
 import { BodyCell, type BodyCellProps } from './BodyCell.js'
 import { DropSays, dropSurface, oneFile } from './dropping.js'
 import { PictureLibraryDialog, type LibraryPicture } from './PictureLibrary.js'
-import { searchSymbols, symbolName, type GameSymbol } from './symbols.js'
-import { RoleList, roleOptionId, symbolListKey, symbolOptionId } from './SymbolList.js'
-import { SymbolBox, meaningsOf } from './SymbolBox.js'
+import { LIBRARY, symbolName, type GameSymbol } from './symbols.js'
+import { RoleList, roleOptionId, symbolListKey } from './SymbolList.js'
+import { SymbolBox, meaningsOf, type Pickable } from './SymbolBox.js'
+import { braceSections, bracePicks, partAt, pickKeyOf, type BracePart, type BracePick } from './brace.js'
 import { SymbolSample, SymbolSheet } from './SymbolSample.js'
 import { groundOf } from './palette.js'
-import { triggerBehind } from './picking.js'
+import { pickOptionId, triggerBehind } from './picking.js'
 import { diffProjects, type RowChange } from '@byd/server/doc'
 import { Summary } from './HistoryPanel.js'
 import type { Cell } from './ProjectClient.js'
@@ -109,8 +111,10 @@ export function fileSafe(name: string) {
   return new TextDecoder().decode(written.slice(0, NAME_BYTES)).replace(/\uFFFD+$/, '').replace(/-+$/, '')
 }
 
-// Only one cell is ever being typed into, so the library at the brace is one list with one name.
+// Only one cell is ever being typed into, so each list at the brace has one name. The library
+// keeps the name it always had; the game's own parts are named after what they hold (L57).
 const CELL_SYMBOLS = 'byd-cell-symbols'
+const braceListId = (part: BracePart): string => (part === 'library' ? CELL_SYMBOLS : `byd-cell-brace-${part}`)
 const CELL_ROLES = 'byd-cell-roles'
 const CELL_MEANINGS = 'byd-cell-meanings'
 
@@ -202,8 +206,15 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // The symbol chosen in the box, while its meaning is still the question (L34). Null until one
   // is chosen, and null again the moment anything else is typed: what was chosen was chosen for
   // the name that stood in the brace then.
-  const [picked, setPicked] = useState<GameSymbol | null>(null)
-  const matches = brace && brace.role === null ? searchSymbols(brace.query, null, t).slice(0, 8) : []
+  const [picked, setPicked] = useState<Pickable | null>(null)
+  // Whether the second click has been taken: «Hela biblioteket» opens the library in the same box
+  // (L57), and it stays open while the name is narrowed, until the box closes or the way back is
+  // taken.
+  const [libraryOpen, setLibraryOpen] = useState(false)
+  // What the brace offers, in the order it offers it (L57): the deck's own tokens, the game's
+  // icons, and the library behind them. One run to the keys across all the parts.
+  const sections = brace && brace.role === null ? braceSections(doc, brace.query, libraryOpen, iconFieldsOf(doc), t) : []
+  const matches = bracePicks(sections)
   // The game's meanings as the box offers them, «utan betydelse» first — and none at all when the
   // game has named none, which is what makes the meaning step not exist rather than be skipped.
   const meanings = useMemo(() => meaningsOf(doc.palette), [doc.palette])
@@ -229,11 +240,13 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           .slice(0, 8)
   // The one the keys are on, which is what Enter takes and what the cell points at.
   const active = stage === 'meaning' ? picked : matches[choice]
+  const activePart = partAt(sections, choice)
   const activeRole = roleMatches[choice]
   const activeMeaning = stage === 'meaning' ? (meanings[choice] ?? null) : null
   const closeBrace = () => {
     setBrace(null)
     setPicked(null)
+    setLibraryOpen(false)
     setChoice(0)
   }
   // What a cell shows now: the row's value, unless the picker is open on it, since the cell is
@@ -286,31 +299,47 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const token = (name: string, role: string | null, bare: boolean) => (bare ? `${name}${role === null ? '' : `|${role}`}` : `{${name}${role === null ? '' : `|${role}`}}`)
   // Chosen with or without a meaning, it is one insertion (L34): the symbol is taken into the
   // game and the token written where the brace stood, exactly as typing it would have.
-  const takeSymbol = (symbol: GameSymbol, role: string | null = null) => {
+  // A library symbol is taken into the game first and written under the name it gets there; one
+  // of the game's own is written under the name it already has. Either way it is the same string
+  // typing it would have written.
+  const takeSymbol = (symbol: Pickable, role: string | null = null) => {
     const open = brace
     if (!open || !onSymbol) return
     const key = `${open.cardRef}:${open.field}`
     const current = typing.current[key] ?? String(doc.rows.find((r) => r.id === open.cardRef)?.fields[open.field] ?? '')
     closeBrace()
     const bare = iconFieldsOf(doc).includes(open.field)
-    void onSymbol(symbol).then((name) => {
+    const write = (name: string) => {
       const before = current.slice(0, open.at)
       const after = current.slice(open.at + 1 + open.query.length)
       const written = bare ? `${before.replace(/\{$/, '')}${token(name, role, true)}${after}`.trim() : `${before}${token(name, role, false)}${after}`
       caretAfter.current = { cardRef: open.cardRef, field: open.field, at: written.length - after.length }
       onCell(open.cardRef, open.field, written)
-    })
+    }
+    if (symbol.kind === 'icon') write(symbol.name)
+    else void onSymbol(symbol.symbol).then(write)
   }
-  // A symbol chosen in the grid: inserted at once when the game has no meanings, and otherwise
-  // held while the meaning is chosen — with the keys moved onto «utan betydelse», which is first.
-  const chooseSymbol = (symbol: GameSymbol) => {
-    if (meanings.length === 0) return takeSymbol(symbol)
-    setPicked(symbol)
+  // A pick in the box. A token the deck already writes carries its meaning and goes in at once. A
+  // symbol is inserted at once when the game has no meanings, and otherwise held while the meaning
+  // is chosen — with the keys moved onto «utan betydelse», which is first. The way into the
+  // library, and back out of it, changes what the box shows and writes nothing.
+  const choose = (pick: BracePick) => {
+    if (pick.kind === 'written') return takeSymbol({ kind: 'icon', name: pick.name }, pick.role)
+    if (pick.kind === 'more' || pick.kind === 'back') {
+      setLibraryOpen(pick.kind === 'more')
+      return setChoice(0)
+    }
+    if (meanings.length === 0) return takeSymbol(pick)
+    setPicked(pick)
     setChoice(0)
   }
   // What the box will write, said in the box as the product's own syntax. The name is the one
   // the symbol gets in the game, which is what `takeSymbol` writes.
-  const writes = brace && active ? token(symbolName(active, t), activeMeaning?.role ?? null, iconFieldsOf(doc).includes(brace.field)) : ''
+  const nameOf = (pick: BracePick | null | undefined): string | null =>
+    !pick ? null : pick.kind === 'written' || pick.kind === 'icon' ? pick.name : pick.kind === 'library' ? symbolName(pick.symbol, t) : null
+  const writtenName = nameOf(active)
+  const writtenRole = active?.kind === 'written' ? active.role : (activeMeaning?.role ?? null)
+  const writes = brace && writtenName !== null ? token(writtenName, writtenRole, iconFieldsOf(doc).includes(brace.field)) : ''
   // The meaning written onto the symbol already named. What stands before the bar is left exactly
   // as the designer typed it: they have already chosen the symbol, and this only says how it is
   // to be read (E4).
@@ -397,7 +426,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     if (act === 'pick') {
       if (stage === 'typed') return void (activeRole && takeRole(activeRole.role))
       if (stage === 'meaning') return void (picked && takeSymbol(picked, activeMeaning?.role ?? null))
-      return void (active && chooseSymbol(active))
+      return void (active && choose(active))
     }
     setChoice(act.active)
   }
@@ -406,7 +435,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     !cellPicking(cardRef, field)
       ? {}
       : {
-          ...(stage === 'symbol' && active ? { 'aria-controls': CELL_SYMBOLS, 'aria-activedescendant': symbolOptionId(CELL_SYMBOLS, active) } : {}),
+          ...(stage === 'symbol' && active && activePart ? { 'aria-controls': braceListId(activePart), 'aria-activedescendant': pickOptionId(braceListId(activePart), pickKeyOf(active)) } : {}),
           ...(stage === 'meaning' && activeMeaning ? { 'aria-controls': CELL_MEANINGS, 'aria-activedescendant': roleOptionId(CELL_MEANINGS, activeMeaning.role) } : {}),
           ...(stage === 'typed' && activeRole ? { 'aria-controls': CELL_ROLES, 'aria-activedescendant': roleOptionId(CELL_ROLES, activeRole.role) } : {}),
         }
@@ -435,24 +464,29 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           </>
         )}
         {stage !== 'typed' && matches.length > 0 && (
-          // The library where the cursor stands (E4): the same set the Symboler tab fills and the
-          // rail's Ikon tool opens, reached without leaving the sentence being written — and the
-          // same list component, so it cannot come to differ. The meaning is chosen in the same
-          // box (L34).
+          // The game where the cursor stands (L57), and the library behind it (E4): the same set
+          // the rail's Ikon tool opens, reached without leaving the sentence being written. The
+          // meaning is chosen in the same box (L34).
           <SymbolBox
-            symbolsId={CELL_SYMBOLS}
+            listId={braceListId}
             meaningsId={CELL_MEANINGS}
             className="byd-data-symbols"
-            symbols={matches}
-            active={picked ? matches.indexOf(picked) : choice}
+            sections={sections}
+            active={choice}
             picked={picked}
             meanings={meanings}
             meaningActive={stage === 'meaning' ? choice : null}
             paper={paper}
             palette={doc.palette}
+            icons={gameIcons}
+            libraryCount={LIBRARY.length}
             writes={writes}
-            onPickSymbol={chooseSymbol}
-            onPickMeaning={(role) => active && takeSymbol(active, role)}
+            token={(name, role) => token(name, role, iconFieldsOf(doc).includes(open.field))}
+            onPick={choose}
+            onPickMeaning={(role) => {
+              const symbol = picked ?? (active?.kind === 'icon' || active?.kind === 'library' ? active : null)
+              if (symbol) takeSymbol(symbol, role)
+            }}
           />
         )}
       </>
@@ -555,6 +589,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // is not a change worth pressing by mistake, so the button waits for one.
   const [bulkField, setBulkField] = useState<string | null>(null)
   const [bulkValue, setBulkValue] = useState('')
+  // Whether the box with the column and the value stands open over the foot (#618).
+  const [setting, setSetting] = useState(false)
+  const setBox = useRef<HTMLButtonElement>(null)
   // And what it writes when the column is a bild (E1): the image itself, since a bildfält is not a
   // sentence anyone can type. The hash is held until the button is pressed, exactly as the typed
   // value is.
@@ -1240,104 +1277,6 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           )}
         </p>
       )}
-      {chosen.length > 0 &&
-        (confirming ? (
-          <Question
-            className="byd-data-bulk"
-            label={removeLabel(chosen.length, t)}
-            confirm={t('table.remove.yes')}
-            cancel={t('editor.cancel')}
-            onConfirm={() => {
-              onReplaceRows(removeRows(doc.rows, chosenIds))
-              setSelected(noSelection)
-              setConfirming(false)
-              setRefocus('all')
-            }}
-            onCancel={() => {
-              setConfirming(false)
-              setRefocus('remove')
-            }}
-          >
-            {t(chosen.length === 1 ? 'table.remove.question.one' : 'table.remove.question.other', { n: chosen.length })}
-          </Question>
-        ) : (
-          <div className="byd-data-bulk" role="toolbar" aria-label={t('table.bulk')}>
-            <label>
-              {t('table.bulk.field')}
-              <select aria-label={t('table.column')} value={field} onChange={(event) => setBulkField(event.target.value)}>
-                {fields.map((f) => (
-                  <option key={f} value={f}>
-                    {fieldLabel(f, t)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {/* A bildfält is written with an image and never with a sentence (E1). The cell
-                already knows that; the action row used to offer a text field for it, which wrote
-                prose into a column the template draws as a picture. So the value takes the shape
-                of the column: a place to drop one of the deck's images, and nothing to type. */}
-            {bulkIsImage && assetBase ? (
-              <div
-                role="group"
-                aria-label={t('table.bulk.image')}
-                {...dropSurface({
-                  className: 'byd-data-drop',
-                  over: bulkOver,
-                  onOver: setBulkOver,
-                  onFiles: (files) => void bulkUpload(files),
-                  onLibrary: setBulkImage,
-                })}
-              >
-                {bulkImage ? <img src={assetUrl(assetBase, bulkImage)} alt={t('table.bulk.image')} /> : <span>{t('table.image.drop')}</span>}
-                {bulkOver && <DropSays />}
-                {/* The library (#296): a picture the game already has, onto every marked card. */}
-                <button type="button" className="byd-data-file" aria-label={t('table.bulk.image.choose')} onClick={() => setLibrary({ kind: 'marked', field })}>
-                  {t('table.image.choose')}
-                </button>
-                <label className="byd-data-file">
-                  {t('table.image.upload')}
-                  <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('table.bulk.image.upload')} onChange={(event) => void bulkUpload([...(event.target.files ?? [])])} />
-                </label>
-              </div>
-            ) : (
-              <input
-                type={field === ANTAL ? 'number' : 'text'}
-                min={field === ANTAL ? 0 : undefined}
-                aria-label={t('table.value')}
-                value={bulkValue}
-                onChange={(event) => setBulkValue(event.target.value)}
-                // The same rule the cell holds a count to (#479), said the same way.
-                {...(bulkCountWrong ? { 'aria-invalid': true, 'aria-describedby': 'byd-bulk-antal-says' } : {})}
-              />
-            )}
-            {bulkCountWrong && (
-              <small className="byd-data-says" id="byd-bulk-antal-says">
-                {t('table.antal.invalid')}
-              </small>
-            )}
-            <button
-              type="button"
-              disabled={bulkWrites === null}
-              onClick={() => {
-                if (bulkWrites === null) return
-                onReplaceRows(setColumn(doc.rows, chosenIds, field, bulkWrites))
-                setBulkValue('')
-                setBulkImage(null)
-              }}
-            >
-              {bulkIsImage ? t('table.bulk.setImage', { n: chosen.length }) : t('table.bulk.set', { field, n: chosen.length })}
-            </button>
-            <button type="button" onClick={() => onReplaceRows(duplicateRows(doc.rows, chosenIds))}>
-              {t(chosen.length === 1 ? 'table.bulk.duplicate.one' : 'table.bulk.duplicate.other', { n: chosen.length })}
-            </button>
-            <button type="button" data-kind="danger" ref={removeRef} onClick={() => setConfirming(true)}>
-              {removeLabel(chosen.length, t)}
-            </button>
-            <button type="button" data-kind="quiet" onClick={() => setSelected(noSelection)}>
-              {t('table.bulk.unmark')}
-            </button>
-          </div>
-        ))}
       {dropping !== null && (
         <Question
           className="byd-data-bulk"
@@ -1831,7 +1770,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
         }}>
         {t('table.addCard')}
       </button>
-      {/* What the table adds up to, under it rather than over it (#130). */}
+      {/* What the table adds up to, under it rather than over it (#130) — and, since #618, what
+          can be done with a marking: the actions stood in a band between the crown and the rows
+          and moved every row 80 px when a box was ticked. In the foot nothing above the rows moves. */}
       <CrownFoot>
         <p className="byd-data-count" aria-live="polite">
           <span>
@@ -1851,7 +1792,114 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             </>
           )}
         </p>
-        <p className="byd-data-sort" role="status">{sortLabel(sort, t)}</p>
+      {chosen.length > 0 &&
+        (confirming ? (
+          <Question
+            className="byd-data-bulk"
+            label={removeLabel(chosen.length, t)}
+            confirm={t('table.remove.yes')}
+            cancel={t('editor.cancel')}
+            onConfirm={() => {
+              onReplaceRows(removeRows(doc.rows, chosenIds))
+              setSelected(noSelection)
+              setConfirming(false)
+              setRefocus('all')
+            }}
+            onCancel={() => {
+              setConfirming(false)
+              setRefocus('remove')
+            }}
+          >
+            {t(chosen.length === 1 ? 'table.remove.question.one' : 'table.remove.question.other', { n: chosen.length })}
+          </Question>
+        ) : (
+          <div className="byd-data-bulk" role="toolbar" aria-label={t('table.bulk')}>
+            {/* The column and the value stand behind a box (#618): the foot is one row, and a
+                select and a field would make it two. */}
+            <button type="button" ref={setBox} className="byd-data-set" aria-expanded={setting} onClick={() => setSetting(!setting)}>
+              {t('table.bulk.set.box')} <span aria-hidden="true">▾</span>
+            </button>
+            {setting && (
+              <Lifted handle={setBox} label={t('table.bulk.set.label', { n: chosen.length })} className="byd-data-set-box" onClose={() => setSetting(false)}>
+            <label>
+              {t('table.bulk.field')}
+              <select aria-label={t('table.column')} value={field} onChange={(event) => setBulkField(event.target.value)}>
+                {fields.map((f) => (
+                  <option key={f} value={f}>
+                    {fieldLabel(f, t)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {/* A bildfält is written with an image and never with a sentence (E1). The cell
+                already knows that; the action row used to offer a text field for it, which wrote
+                prose into a column the template draws as a picture. So the value takes the shape
+                of the column: a place to drop one of the deck's images, and nothing to type. */}
+            {bulkIsImage && assetBase ? (
+              <div
+                role="group"
+                aria-label={t('table.bulk.image')}
+                {...dropSurface({
+                  className: 'byd-data-drop',
+                  over: bulkOver,
+                  onOver: setBulkOver,
+                  onFiles: (files) => void bulkUpload(files),
+                  onLibrary: setBulkImage,
+                })}
+              >
+                {bulkImage ? <img src={assetUrl(assetBase, bulkImage)} alt={t('table.bulk.image')} /> : <span>{t('table.image.drop')}</span>}
+                {bulkOver && <DropSays />}
+                {/* The library (#296): a picture the game already has, onto every marked card. */}
+                <button type="button" className="byd-data-file" aria-label={t('table.bulk.image.choose')} onClick={() => setLibrary({ kind: 'marked', field })}>
+                  {t('table.image.choose')}
+                </button>
+                <label className="byd-data-file">
+                  {t('table.image.upload')}
+                  <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('table.bulk.image.upload')} onChange={(event) => void bulkUpload([...(event.target.files ?? [])])} />
+                </label>
+              </div>
+            ) : (
+              <input
+                type={field === ANTAL ? 'number' : 'text'}
+                min={field === ANTAL ? 0 : undefined}
+                aria-label={t('table.value')}
+                value={bulkValue}
+                onChange={(event) => setBulkValue(event.target.value)}
+                // The same rule the cell holds a count to (#479), said the same way.
+                {...(bulkCountWrong ? { 'aria-invalid': true, 'aria-describedby': 'byd-bulk-antal-says' } : {})}
+              />
+            )}
+            {bulkCountWrong && (
+              <small className="byd-data-says" id="byd-bulk-antal-says">
+                {t('table.antal.invalid')}
+              </small>
+            )}
+            <button
+              type="button"
+              disabled={bulkWrites === null}
+              onClick={() => {
+                if (bulkWrites === null) return
+                onReplaceRows(setColumn(doc.rows, chosenIds, field, bulkWrites))
+                setBulkValue('')
+                setBulkImage(null)
+              }}
+            >
+              {bulkIsImage ? t('table.bulk.setImage', { n: chosen.length }) : t('table.bulk.set', { field, n: chosen.length })}
+            </button>
+              </Lifted>
+            )}
+            <button type="button" onClick={() => onReplaceRows(duplicateRows(doc.rows, chosenIds))}>
+              {t(chosen.length === 1 ? 'table.bulk.duplicate.one' : 'table.bulk.duplicate.other', { n: chosen.length })}
+            </button>
+            <button type="button" data-kind="danger" ref={removeRef} onClick={() => setConfirming(true)}>
+              {removeLabel(chosen.length, t)}
+            </button>
+            <button type="button" data-kind="quiet" onClick={() => setSelected(noSelection)}>
+              {t('table.bulk.unmark')}
+            </button>
+          </div>
+        ))}
+        <p className="byd-data-sort byd-crown-end" role="status">{sortLabel(sort, t)}</p>
       </CrownFoot>
       {library !== null && assetBase && (
         <PictureLibraryDialog

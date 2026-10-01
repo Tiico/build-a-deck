@@ -117,19 +117,6 @@ const SHELL = `
         <div class="byd-crown-drawer" data-crown-drawer role="group">
           <div class="byd-data-tools"><label>Importera CSV…<input type="file" data-stop="the CSV import" aria-describedby="import-note" /></label><span id="import-note">Import ersätter korten i tabellen. Spara när resultatet ser rätt ut.</span><a href="#" data-stop="the CSV export">Ladda ner CSV</a></div>
         </div>
-        <div class="byd-data-bulk" role="toolbar">
-          <label>Sätt<select data-stop="the bulk column"><option>typ</option></select></label>
-          <input data-stop="the bulk value" />
-          <button data-stop="the bulk set">Sätt typ på 2 kort</button>
-          <button data-stop="the bulk duplicate">Duplicera 2 kort</button>
-          <button data-kind="danger" data-stop="the bulk delete">Ta bort 2 kort</button>
-          <button data-kind="quiet" data-stop="the unmark">Avmarkera alla</button>
-        </div>
-        <div class="byd-data-bulk" role="alertdialog">
-          <p>Ta bort kortet drake ur leken?</p>
-          <button data-kind="danger" data-stop="the yes to removing a card">Ja, ta bort</button>
-          <button data-stop="the way out of removing a card">Avbryt</button>
-        </div>
         <table class="byd-data">
           <thead><tr><th class="byd-data-check"><input type="checkbox" data-stop="the header checkbox" /></th><th data-col="typ"><button data-stop="a column heading">typ <span aria-hidden="true">↕</span></button><button class="byd-column-filter" aria-expanded="true" data-on="1" data-stop="a column's filter handle"><span aria-hidden="true">▾</span></button><div class="byd-column-filter-door" role="group" data-column-filter="typ"><label class="byd-column-filter-tick"><input type="checkbox" checked data-stop="a filter tick" /><span>fälla</span><small>8 kort</small></label></div></th></tr></thead>
           <tbody><tr aria-selected="true"><td class="byd-data-check"><input type="checkbox" data-stop="a row's checkbox" /></td><td><input data-stop="a cell" /></td><td><button data-stop="a row's delete">Ta bort</button></td></tr></tbody>
@@ -137,6 +124,18 @@ const SHELL = `
         <button class="byd-data-add" data-stop="the add-row button">Lägg till kort</button>
         <div class="byd-crown-foot">
           <p class="byd-data-count">1 av 3 kort</p>
+          <div class="byd-data-bulk" role="toolbar">
+            <button class="byd-data-set" aria-expanded="true" data-stop="the set box">Sätt fält ▾</button>
+            <div class="byd-data-set-box" role="group"><label>Sätt<select data-stop="the bulk column"><option>typ</option></select></label><input data-stop="the bulk value" /><button data-stop="the bulk set">Sätt typ på 2 kort</button></div>
+            <button data-stop="the bulk duplicate">Duplicera 2 kort</button>
+            <button data-kind="danger" data-stop="the bulk delete">Ta bort 2 kort</button>
+            <button data-kind="quiet" data-stop="the unmark">Avmarkera alla</button>
+          </div>
+          <div class="byd-data-bulk" role="alertdialog">
+            <p>Ta bort kortet drake ur leken?</p>
+            <button data-kind="danger" data-stop="the yes to removing a card">Ja, ta bort</button>
+            <button data-stop="the way out of removing a card">Avbryt</button>
+          </div>
           <p class="byd-data-sort">Osorterat: kortens ordning i spelet</p>
         </div>
       </div>
@@ -262,14 +261,6 @@ test.describe('the editor under a keyboard', () => {
       'the import box',
       'the CSV import',
       'the CSV export',
-      'the bulk column',
-      'the bulk value',
-      'the bulk set',
-      'the bulk duplicate',
-      'the bulk delete',
-      'the unmark',
-      'the yes to removing a card',
-      'the way out of removing a card',
       'the header checkbox',
       'a column heading',
       "a column's filter handle",
@@ -278,6 +269,15 @@ test.describe('the editor under a keyboard', () => {
       'a cell',
       "a row's delete",
       'the add-row button',
+      'the set box',
+      'the bulk column',
+      'the bulk value',
+      'the bulk set',
+      'the bulk duplicate',
+      'the bulk delete',
+      'the unmark',
+      'the yes to removing a card',
+      'the way out of removing a card',
       'the tables panel',
       'the new-table button',
       'playing from here',

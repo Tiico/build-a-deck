@@ -27,9 +27,9 @@ async function asRole(page: Page, browser: Browser, baseURL: string | undefined,
 // of it is drawn for a role that may not change the game; the reading controls beside it are.
 const EDITS: Record<string, readonly string[]> = {
   wall: ['.byd-wall-measure-drop'],
-  template: ['.byd-canvas-tools', '.byd-backs', '.byd-drag-handle', '.byd-fonts-upload', '.byd-fonts-catalog', '.byd-newfield'],
+  template: ['.byd-canvas-tools', '.byd-backs', '.byd-drag-handle', '.byd-newfield'],
   table: ['.byd-data-add', '.byd-data-tick', 'td.byd-data-remove button', 'th.byd-data-remove button', '.byd-data-icon', '.byd-data-bulk'],
-  symbols: ['.byd-symbols-tile', '.byd-symbols-add', '.byd-symbols-set li[data-icon] > button', '.byd-symbols-colours li[data-role] > button:last-child'],
+  theme: ['.byd-theme-library-open', '.byd-symbols-tile', '.byd-symbols-add', '.byd-symbols-set li[data-icon] > button', '.byd-symbols-colours li[data-role] > button:last-child', '.byd-fonts-upload', '.byd-fonts-catalog'],
   media: ['.byd-media-add', '.byd-media-remove'],
   rules: ['.byd-rules-ways:not(.byd-rules-tools)', '.byd-rules-tools label', '.byd-rules-add', '.byd-rules-own', '.byd-rules-block > div[role="button"]'],
   tables: ['.byd-setup-tools', '.byd-setup-x', '.byd-setup-corner', '.byd-zone-action-new'],
@@ -39,13 +39,13 @@ const READS: Record<string, string> = {
   wall: '.byd-crown-search',
   template: '[role="tabpanel"]:not([hidden]) [data-step], [role="tabpanel"]:not([hidden]) .byd-canvas-grid-toggle',
   table: '.byd-data-filter input',
-  symbols: '.byd-symbols-main',
+  theme: '[data-theme-section] h2 button',
   media: '.byd-media-grid',
   rules: '.byd-rulebook',
   tables: '.byd-setup-name',
 }
 // And what an empty tab says to a reader: what the game has, never how to add to it.
-const SAYS: Partial<Record<string, string>> = { symbols: 'Spelet har inga symboler.', media: 'Spelet har inga bilder.' }
+const SAYS: Partial<Record<string, string>> = { theme: 'Spelet har inga symboler.', media: 'Spelet har inga bilder.' }
 const TABS = Object.keys(EDITS) as (keyof typeof EDITS)[]
 
 for (const role of ['tester', 'viewer'] as const) {
@@ -63,6 +63,10 @@ for (const role of ['tester', 'viewer'] as const) {
       for (const tab of TABS) {
         await theirs.locator(`#byd-editor-tab-${tab}`).click()
         const panel = theirs.locator('[role="tabpanel"]:not([hidden])')
+        // Speltema folds its parts (L57); a reader opens them like anyone else, and what is in them
+        // is what is asked about.
+        const folded = panel.locator('[data-theme-section] h2 button[aria-expanded="false"]')
+        while (tab === 'theme' && (await folded.count()) > 0) await folded.first().click()
         await expect(panel).toHaveAttribute('aria-describedby', 'byd-editor-reading')
         // Nothing that would change the document is drawn in it, and what reads is.
         const drawn = await panel.evaluate((root, selectors) => selectors.filter((sel) => [...root.querySelectorAll<HTMLElement>(sel)].some((el) => el.checkVisibility())), [...EDITS[tab]!])

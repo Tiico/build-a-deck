@@ -1,44 +1,30 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
+import { revealThemeSection, ThemePanel } from '../src/editor/ThemePanel.js'
+import type { ProjectClient } from '../src/editor/ProjectClient.js'
+import type { CatalogFamily } from '../src/editor/font-catalog.js'
+import type { ProjectDoc } from '../src/editor/types.js'
 import { projectDoc } from './project-doc.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
-// The typeface catalog (#329, L27): variant C, «Provraden» — a sheet under the card where every
-// hit sets the card's own heading and its rule text, in the card's own grade.
-function canvas(over: Partial<React.ComponentProps<typeof TemplateCanvas>> = {}) {
-  const props = {
-    doc: projectDoc(),
-    face: 'front',
-    row: 'dragon',
-    // The game's typefaces stand in the panel while no layer is chosen (#478).
-    selectedElement: null,
-    onSelectElement: vi.fn(),
-    onPatch: vi.fn(),
-    onCallOff: vi.fn(),
-    onRemove: vi.fn(),
-    onAdd: vi.fn(),
-    onPlaceIcon: vi.fn(),
-    onReorder: vi.fn(),
-    onLock: vi.fn(),
-    onRename: vi.fn(),
-    onSelectFace: vi.fn(),
-    group: null,
-    onSelectGroup: vi.fn(),
-    onGroupColumn: vi.fn(),
-    onAddField: vi.fn(),
-    onReset: vi.fn(),
-    onReplaceFace: vi.fn(),
-    onFontFile: vi.fn(async () => 'Rubrikserif'),
-    onFontLicence: vi.fn(),
-    onRemoveFont: vi.fn(),
-    onCatalogFont: vi.fn(async () => undefined),
-    ...over,
-  }
-  render(<TemplateCanvas {...(props as React.ComponentProps<typeof TemplateCanvas>)} />)
+// The typeface catalog (#329, L27): variant C, «Provraden» — a sheet where every hit sets the
+// card's own heading and its rule text, in the card's own grade. It opened under the card in Mall
+// and opens beside the typefaces in Speltema since L57 (#630), from the same shelf.
+function canvas(over: { doc?: ProjectDoc; onCatalogFont?: (family: CatalogFamily) => Promise<void> } = {}) {
+  localStorage.clear()
+  revealThemeSection('fonts')
+  const props = { doc: projectDoc(), onCatalogFont: vi.fn<(family: CatalogFamily) => Promise<void>>(async () => undefined), ...over }
+  const client = {
+    mayEdit: true,
+    useCatalogFont: (family: CatalogFamily) => props.onCatalogFont(family),
+    useFont: vi.fn(async () => 'Rubrikserif'),
+    setFontLicence: vi.fn(),
+    removeFont: vi.fn(),
+  } as unknown as ProjectClient
+  render(<ThemePanel doc={props.doc} client={client} assetBase="http://test.local" />)
   return props
 }
 
@@ -48,7 +34,7 @@ const googleAsked = () => [...document.querySelectorAll('link[rel="stylesheet"]'
 // `packages/e2e/test/surfaces/font-catalog.spec.ts`: the catalog is never reached without an act
 // of the designer's.
 describe('the catalog is not reached until it is opened (L27)', () => {
-  it('asks Google for nothing while the canvas is merely open', () => {
+  it('asks Google for nothing while the typefaces are merely open', () => {
     canvas()
     expect(googleAsked()).toEqual([])
     expect(screen.getByRole('button', { name: /sök i google fonts/i })).toBeTruthy()
@@ -82,7 +68,7 @@ describe('a sample is the card’s own words (L27)', () => {
     const family = first.getAttribute('data-family')!
     const [heading, body] = [first.querySelector('.byd-font-catalog-heading'), first.querySelector('.byd-font-catalog-body')] as HTMLElement[]
     // The fixture's front: a title at 14 pt bound to `title`, a body at 9 pt bound to `body`,
-    // and the row on the canvas is the dragon.
+    // and the first card of the deck is the dragon.
     expect([heading!.textContent, heading!.style.fontSize]).toEqual(['Drake', '14pt'])
     expect([body!.textContent, body!.style.fontSize]).toEqual(['Flygande.', '9pt'])
     expect(heading!.style.fontFamily).toContain(family)

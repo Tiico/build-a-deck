@@ -35,7 +35,7 @@ const tabNames = () => screen.getAllByRole('tab').map((tab) => tab.textContent?.
 describe('the editor on a phone (L10)', () => {
   it('offers the deck, the data and the tables — and says in so many words what needs a wider screen', async () => {
     await editorAt(390)
-    expect(tabNames()).toEqual(['Kortvägg', 'Tabell', 'Symboler', 'Media', 'Regler', 'Bord'])
+    expect(tabNames()).toEqual(['Kortvägg', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord'])
     // Not a gap where the tools were: a sentence a designer can act on.
     const said = screen.getByText(/Mallen ritas inte på telefon/)
     expect(said.textContent).toMatch(/768/)
@@ -61,7 +61,7 @@ describe('the editor under a mouse, however narrow the window (L12)', () => {
   for (const width of [640, 320]) {
     it(`keeps the template's stages at ${width} px, and does not say it is a phone`, async () => {
       await editorAt(width, 'fine')
-      expect(tabNames()).toEqual(['Kortvägg', 'Verktyg', 'Lager', 'Duk', 'Egenskaper', 'Tabell', 'Symboler', 'Media', 'Regler', 'Bord'])
+      expect(tabNames()).toEqual(['Kortvägg', 'Verktyg', 'Lager', 'Duk', 'Egenskaper', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord'])
       expect(screen.queryByText(/Mallen ritas inte på telefon/)).toBeNull()
       expect(document.querySelector('.byd-editor')!.getAttribute('data-room')).toBe('tablet')
     })
@@ -70,7 +70,7 @@ describe('the editor under a mouse, however narrow the window (L12)', () => {
   it('leaves a phone the room it has always had', async () => {
     await editorAt(390, 'coarse')
     expect(document.querySelector('.byd-editor')!.getAttribute('data-room')).toBe('phone')
-    expect(tabNames()).toEqual(['Kortvägg', 'Tabell', 'Symboler', 'Media', 'Regler', 'Bord'])
+    expect(tabNames()).toEqual(['Kortvägg', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord'])
     expect(screen.getByText(/Mallen ritas inte på telefon/)).toBeTruthy()
   })
 })
@@ -78,7 +78,7 @@ describe('the editor under a mouse, however narrow the window (L12)', () => {
 describe('the editor on a tablet (L10)', () => {
   it('lays the template out as four stages beside the three modes, one panel at a time', async () => {
     await editorAt(800)
-    expect(tabNames()).toEqual(['Kortvägg', 'Verktyg', 'Lager', 'Duk', 'Egenskaper', 'Tabell', 'Symboler', 'Media', 'Regler', 'Bord'])
+    expect(tabNames()).toEqual(['Kortvägg', 'Verktyg', 'Lager', 'Duk', 'Egenskaper', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord'])
 
     await userEvent.click(screen.getByRole('tab', { name: 'Duk' }))
     expect(document.querySelector('.byd-canvas')!.getAttribute('data-stage')).toBe('canvas')
@@ -129,7 +129,7 @@ describe('the editor on a tablet (L10)', () => {
 describe('the editor on a desk (L10)', () => {
   it('is the editor it has always been: four modes in the header and the canvas in four columns', async () => {
     await editorAt(1280)
-    expect(tabNames()).toEqual(['Kortvägg', 'Mall', 'Tabell', 'Symboler', 'Media', 'Regler', 'Bord'])
+    expect(tabNames()).toEqual(['Kortvägg', 'Mall', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord'])
     expect(screen.queryByText(/Mallen ritas inte på telefon/)).toBeNull()
     await userEvent.click(screen.getByRole('tab', { name: 'Mall' }))
     const canvas = document.querySelector('.byd-canvas')!
