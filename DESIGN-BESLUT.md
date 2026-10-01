@@ -5003,7 +5003,40 @@ Ett uttryckligt val väger över förslaget.
 En kolumn som aldrig fått ett val följer höjden, så varje lek som fanns före det här beslutet beter sig precis som den gjorde.
 Och följden som fällde dagens regel: **att ändra rutans höjd i mallen ändrar inte ett uttryckligt val.** När valet en gång är skrivet är det designerns, inte höjdens.
 
-**Ytan är ett märke per kolumn i tabellhuvudet, och den fälls ut vid beröring.**
+**Ytan är kolumnens rad i dörren bakom `＋`, och huvudet bär bara ett ¶ (ändrat 2026-10-01, #615).**
+Det första beslutet lade valet i huvudet som en prick per kolumn och en utfällning vid beröring (variant C nedan).
+I den byggda editorn såg det trasigt ut: pricken stod utanför rubrikens flöde och hamnade klistrad mot ordet, «○typ», en vila på 300 ms på rubriken lade en ruta med en primärknapp över raderna också när handen bara skulle sortera, och varje designerkolumn kostade ett tabbstopp i huvudet.
+Prototypen (`docs/ux-audits/2026-09-30/prototyper/01-prosavalets-plats.html`) mätte tre platser mot dagens läge i Chromium, 1440 × 900, i exempelleken.
+
+| | tabbstopp i huvudet | minsta träffyta för valet | hover-utfällning |
+|---|---|---|---|
+| Nu · prick och utfällning | 11 | 44 px | ja |
+| **A · dörren** | **7** | **44 px** | **nej** |
+| B · kolumnmeny i rubriken | 11 | 44 px | nej |
+| C · cellens verktygsrad och dörren | 7 | 32 px i cellen | nej |
+
+Beställaren valde **A**.
+B lägger en knapp på 28 px i rubriken, vilket är samma räkning som fällde variant A 2026-09-21, och den river upp L44:s dörr.
+C ger vanliga textkolumner en verktygsrad de inte har, och ett kolumnval görs från en enskild cell.
+A kostar noll i huvudet och lägger valet på samma rad som namnbytet, vilket tar bort det pris L44 skrev ut.
+
+Valet är en växel **Prosa | Text** mellan kolumnens namn och ×, och orsaken står på en egen rad under, med «Följ höjden igen» där designern har valt.
+Verktygets två kolumner, `id` och `antal`, har ingen växel: en kontroll som bara kan svara ett är ingen fråga.
+Dörren blev 340 px bred för att raden ska rymma namn, växel och × utan att namnet kläms.
+
+**Skillnaden mellan förval och val bärs i form och i ord.**
+Den tryckta knappen är streckad när höjden föreslog och ifylld när designern valde, och ¶ i rubriken är dämpad respektive blå på samma sätt.
+En streckad kant finns inte för en skärmläsare och editorns a11y är inte mjukad (L12), så samma skillnad står i växelns **namn**: «Kostnad skrivs som vanlig text, du valde» mot «…, höjden föreslog».
+¶ är tyst för skärmläsaren; orden står i dörren.
+Att trycka den redan tryckta knappen på en kolumn som följer höjden gör förslaget till ett val, så att nästa omritning av mallen inte tar det.
+
+Växeln nås med dörrens egen tangentbordsordning (L45): raden är ett stopp i listan, och pilarna går namn → växel → × → «Följ höjden igen».
+¶ står utanför rubrikknappens flöde, förankrat i dess högerkant, av samma skäl som pricken gjorde: knappen är `sticky` (#401) och `fitColumns` räknar en kolumns golv på flödet (#46).
+Priset är att valet är ett klick längre bort från kolumnen det gäller.
+
+<details>
+<summary>Det första beslutet, 2026-09-21: märket i huvudet (variant C)</summary>
+
 Prototypen (`docs/ux-audits/2026-09-21/prototyper/01-prosakolumnen.html`) mätte fyra lägen i Chromium, 1440 × 900, ytan i vila.
 
 | | valkontroller | huvudets höjd | ytans höjd | rullar | minsta träffyta |
@@ -5014,27 +5047,11 @@ Prototypen (`docs/ux-audits/2026-09-21/prototyper/01-prosakolumnen.html`) mätte
 | **C · vid beröring** (vila) | **0** | **25 px** | **749 px** | **nej** | – |
 | C · vid beröring (utfälld) | 2 | 25 px | 749 px | nej | 44 px |
 
-Valet blev **C**.
-A är utesluten av träffytan: 20 px mot `--byd-tap`:s 44, och rubriken kapad till «KOST…» av sina egna två kontroller — samma räkning som #46 gjorde när × fick lämna rubriken.
-B är tydligast och den enda som kan visa förslag och val samtidigt i ord, men den rullar redan vid fyra kolumner och lägger valet en bit från kolumnen det gäller.
-C kostar ingenting i vila, når 44 px när den är öppen, och rullar inte.
-Priset är att den varaktiga signalen är en prick — och det är priset som betalas för att L36 nyss sade att ytan ska bära mindre.
+C valdes för att den kostade ingenting i vila och nådde 44 px när den var öppen.
+Pricken var ingen kontroll och rubriken var handtaget; en utfällning vid hover nåddes med pekaren och med tangentbordet (#184, #216).
+Kostnaden som mätningen inte såg var den i det byggda huvudet, och det är den #615 ersatte.
 
-**Pricken är ingen kontroll, och rubriken är handtaget.**
-Det följer av mätningen och inte av bekvämlighet: C:s rad «minsta träffyta» är tom i vila, och en knapp där hade blivit sex till åtta pixlar i en kolumn som är en siffra bred — under `--byd-tap` överallt, vilket är exakt vad som fällde A.
-Så pricken är dekor utanför rubrikens flöde — `fitColumns` räknar en kolumns golv på flödet, och sex pixlar i det hade lyft `kostnad` från 88 px till 108 — och det som fälls ut och vänder valet är kontroller som når hela 44.
-
-**Skillnaden mellan förval och val bärs i form, och i utfällningens namn.**
-Prickad ring betyder att höjden föreslog, ifylld bricka att designern valde.
-En prickad ring finns inte för en skärmläsare och editorns a11y är inte mjukad (L12), så samma skillnad står i ord som utfällningens **namn**: «Kostnad skrivs som vanlig text, du valde» mot «…, höjden föreslog».
-Den läses upp i samma ögonblick som formen visar sig för ögat, och den kostar ingen höjd i ytan.
-Utfällningen säger därutöver orsaken i rutans egna mått — «Höjden föreslår prosa: rutan är 40,0 mm och en rad av dess grad är 4,0 mm» — och det är samma mening vare sig valet är gjort eller inte, vilket är just vad som gör att den inte bär skillnaden.
-Meningen «du valde det, och höjden hade föreslagit prosa» är den som valdes bort.
-
-**En utfällning vid hover är ett a11y-åtagande.**
-Den nås med pekaren *och* med tangentbordet, aldrig bara det ena — det är felet #184 rättade i en annan kontroll och #216 fick bygga om för att inte återinföra.
-Pekaren eller fokus någonstans i rubriken fäller ut; fokus vidare till utfällningens egna knappar räknas inte som att lämna, och Escape lägger ihop den utan att flytta handen.
-Priset är att en Tabb genom huvudet passerar de knapparna på vägen till nästa kolumn, och det är priset för att de över huvud taget går att nå utan pekare.
+</details>
 
 **Följdkrav i koden.**
 Valet är dokumentdata: `prose` i `ProjectDoc`, en post per kolumnnyckel, valfri.
@@ -5080,7 +5097,7 @@ A faller på 44 tabbstopp mot 24 vid tio kolumner — knappt märkbart vid fyra,
 B:s fält är lika brett som kolumnen, 64 px vid tio, och `F2` är en väg in ingen ser.
 D gör huvudet billigast av alla (24 → 11) och är enda stället hela namnet syns vid tio kolumner, men panelen rullar redan vid tio — exakt det som fällde L43:s variant B — och den förutsätter att L43 rörs tre dagar efter att den prototypades.
 C kostar noll extra tabbstopp i huvudet, når `--byd-tap`, och lägger namnbytet där kolumnens andra verb redan bor.
-Priset är en klick längre bort från kolumnen, och att namnet och prosavalet hamnar på var sitt ställe.
+Priset är en klick längre bort från kolumnen. Att namnet och prosavalet hamnade på var sitt ställe var priset tills L43 flyttade prosavalet in i samma rad (#615).
 
 **Vägen in finns för tangentbordet, inte bara under en pekare** (#184, #216).
 Namnet i listan är en knapp och inte ett ord: den nås med Tabb, öppnas med Enter, och Enter i rutan byter namn medan Escape svarar rutan utan att stänga dörren.

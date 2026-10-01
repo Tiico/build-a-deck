@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
 import { NewField } from './NewField.js'
+import { ProseSwitch, ProseWhy } from './ProseSwitch.js'
+import type { FieldBox } from './body.js'
 import { useFocusTrap } from './focusTrap.js'
 import { useRoving } from './roving.js'
 import { fieldLabel } from './fields.js'
@@ -36,6 +38,11 @@ export type ColumnDoorProps = {
   // `fieldLabel` hands back the key unchanged for everything but `antal` — so there is one field
   // and no key field beside it, and what the designer writes is what is read out (A4).
   onRename?: ((from: string, to: string) => void) | undefined
+  // What a column is written as, and the way to turn it (L43, #615). `null` for a column that is
+  // never prose — the two the tool keeps — and absent altogether where there is no project to
+  // write in, in which case no row has a switch.
+  proseOf?: ((field: string) => { prose: boolean; choice: boolean | null; box: FieldBox | null } | null) | undefined
+  onProse?: ((field: string, next: boolean | null) => void) | undefined
   // What the form under the list needs, unchanged from when it stood here alone (#32).
   taken: readonly string[]
   keeps: boolean
@@ -71,10 +78,13 @@ const REFUSED = 'byd-column-refused'
 
 // What a row of the list can hold, in the order it holds it (#388). The name is a control only
 // where the column is the designer's own, and the width only where a hand set one.
-type Cell = 'name' | 'width' | 'remove'
+type Cell = 'name' | 'width' | 'prose' | 'plain' | 'remove' | 'follow'
 
-export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, asking, widths, onWidth, onRename, taken, keeps, onCreate, onCancel }: ColumnDoorProps) {
+export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, asking, widths, onWidth, onRename, proseOf, onProse, taken, keeps, onCreate, onCancel }: ColumnDoorProps) {
   const t = useT()
+  const doorId = useId()
+  // A column's switch, where there is one: the door has to have somewhere to write the answer.
+  const proseHere = (field: string) => (onProse ? (proseOf?.(field) ?? null) : null)
   const panel = useRef<HTMLDivElement>(null)
   // Which column is being renamed, what stands in the box, and what the surface has to say about
   // it. The draft is the door's own and never the document's: nothing reaches the actor until the
@@ -155,11 +165,18 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
   // What a row has to stand on. `id` and `antal` have neither a name that is a control nor an × —
   // they are span names with the padlock in the ×'s place — so a row with nothing to focus is no
   // row in the ring at all. A width is a control only for a column a hand has pulled (#46).
-  const cellsOf = (field: string): Cell[] => [
-    ...(canRename(field) ? (['name'] as Cell[]) : []),
-    ...(widths[field] !== undefined ? (['width'] as Cell[]) : []),
-    ...(canRemove(field) ? (['remove'] as Cell[]) : []),
-  ]
+  // The switch stands between the name and the × (#615), and the way back to the height on the
+  // line under them, so the arrows walk the row in the order it is read.
+  const cellsOf = (field: string): Cell[] => {
+    const prose = proseHere(field)
+    return [
+      ...(canRename(field) ? (['name'] as Cell[]) : []),
+      ...(widths[field] !== undefined ? (['width'] as Cell[]) : []),
+      ...(prose ? (['prose', 'plain'] as Cell[]) : []),
+      ...(canRemove(field) ? (['remove'] as Cell[]) : []),
+      ...(prose && prose.choice !== null ? (['follow'] as Cell[]) : []),
+    ]
+  }
   const rows = columns.filter((field) => cellsOf(field).length > 0)
   const roving = useRoving({ ids: rows, selected: null, orientation: 'vertical' })
   // How far along its row the hand stands. A row arrived at from another row takes the hand on its
@@ -202,8 +219,10 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
   return (
     <div ref={panel} className="byd-columns" {...placedProps(place)} role="group" aria-label={t('table.columns')} onKeyDown={(event) => event.key === 'Escape' && onCancel()}>
       <ul className="byd-columns-list">
-        {columns.map((field) => {
+        {columns.map((field, index) => {
           const keys = keysOf(field)
+          const prose = proseHere(field)
+          const whyId = `${doorId}-why-${index}`
           return (
             <li key={field} data-col={field} {...(renaming === field ? { 'data-renaming': '' } : {})}>
               {renaming === field ? (
@@ -261,6 +280,7 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
                       {t('table.column.width.px', { px: widths[field] })}
                     </button>
                   )}
+                  {prose && <ProseSwitch label={fieldLabel(field, t)} {...prose} onProse={(next) => onProse?.(field, next)} keys={keys} whyId={whyId} />}
                   {canRemove(field) ? (
                     <button
                       type="button"
@@ -282,6 +302,7 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
                       {t('table.field.system', { field })}
                     </span>
                   )}
+                  {prose && <ProseWhy label={fieldLabel(field, t)} {...prose} onProse={(next) => onProse?.(field, next)} keys={keys} whyId={whyId} />}
                 </>
               )}
               {renaming === field && refused !== null && (

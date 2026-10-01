@@ -45,7 +45,7 @@ type Column = { head: string; body: string | null; headBox: Box; bodyBox: Box | 
 // `renames` is every control in the door that renames a column (#384), and `tap` is what the page
 // itself says a target has to be — read off the editor rather than written down here, so the
 // claim is a relation between the two and not a number pinned to the machine that wrote it.
-type Head = { row: Box; headings: { name: string; box: Box; ink: Box }[]; door: Box | null; scroll: Box; firstRow: Box; columns: Column[]; renames: { field: string; box: Box }[]; tap: number }
+type Head = { row: Box; headings: { name: string; box: Box; ink: Box }[]; door: Box | null; scroll: Box; firstRow: Box; columns: Column[]; renames: { field: string; box: Box }[]; switches: { name: string; box: Box }[]; tap: number }
 
 const VIEW = { w: 1280, h: 800 }
 
@@ -64,6 +64,7 @@ function Table({ doc: initial = projectDoc() }: { doc?: ProjectDoc }) {
       onRemoveField={(field) => setDoc((current) => applyEdit(current, { v: 'removeField', field }))}
       onMoveField={() => undefined}
       onRenameField={(from, to) => setDoc((current) => applyEdit(current, { v: 'renameField', from, to }))}
+      onProse={(field, prose) => setDoc((current) => applyEdit(current, { v: 'setProse', field, prose }))}
     />
   )
 }
@@ -127,6 +128,7 @@ async function measure({ html, deck }: Table, extra = ''): Promise<Head> {
         scroll: box(document.querySelector('.byd-data-scroll'))!,
         firstRow: box(document.querySelector('.byd-data tbody tr'))!,
         renames: [...document.querySelectorAll('.byd-columns button.byd-columns-name')].map((el) => ({ field: el.closest('li')!.getAttribute('data-col')!, box: box(el)! })),
+        switches: [...document.querySelectorAll('.byd-columns .byd-prose-switch button, .byd-columns .byd-prose-follow')].map((el) => ({ name: el.getAttribute('aria-label')!, box: box(el)! })),
         tap: parseFloat(getComputedStyle(document.querySelector('.byd-data-scroll')!).getPropertyValue('--byd-tap')),
         columns: heads.map((th, i) => ({
           head: named(th),
@@ -152,7 +154,7 @@ describe("the head's own door for its columns (#32, #46)", () => {
     expect(open.door).not.toBeNull()
     expect(open.door!.h).toBeGreaterThan(open.row.h)
     expect(shut.door).toBeNull()
-    expect(shut.headings.map((h) => h.name)).toEqual(['id ↕', 'Titel ↕', 'body ↕', 'antal ↕', 'Ta bort'])
+    expect(shut.headings.map((h) => h.name)).toEqual(['id ↕', 'Titel ↕', 'body ↕¶', 'antal ↕', 'Ta bort'])
     expect(open.headings.map((h) => h.name)).toEqual(shut.headings.map((h) => h.name))
 
     // The condition itself: the head is exactly as tall as it was, every heading cell stands
@@ -191,6 +193,18 @@ describe("the head's own door for its columns (#32, #46)", () => {
     expect(open.tap).toBeGreaterThan(0)
   }, 60_000)
 
+  // What a column is written as moved out of the head and into the door (#615), and the reason it
+  // could: a row of the list has room for two whole targets beside the name and the ×, where the
+  // fold-out under a heading was the only place the old switch reached 44 px at all.
+  it('gives the prose switch in every row whole targets, and leaves the name its own', async () => {
+    const open = await measure(await markup(true))
+    expect(open.switches.map((s) => s.name)).toEqual(['Prosa, Titel', 'Text, Titel', 'Prosa, body', 'Text, body'])
+    for (const { name, box } of open.switches) {
+      expect({ name, tall: box.h >= open.tap, wide: box.w >= open.tap }).toEqual({ name, tall: true, wide: true })
+    }
+    for (const { field, box } of open.renames) expect({ field, wide: box.w >= open.tap }).toEqual({ field, wide: true })
+  }, 60_000)
+
   it('is a real condition and not a rule that cannot be broken: in the flow, the head does grow', async () => {
     // The same markup with one property taken back — the door standing in the cell instead of
     // over the rows — is the prototype that was rejected. If this passed too, the pair above
@@ -202,7 +216,7 @@ describe("the head's own door for its columns (#32, #46)", () => {
     // And that is exactly the fault the prototype had: every heading beside it is pushed down,
     // and so is the first card.
     const pushed = inFlow.headings.filter((h, i) => h.ink.y > held.headings[i]!.ink.y)
-    expect(pushed.map((h) => h.name)).toEqual(['id ↕', 'Titel ↕', 'body ↕', 'antal ↕'])
+    expect(pushed.map((h) => h.name)).toEqual(['id ↕', 'Titel ↕', 'body ↕¶', 'antal ↕'])
     expect(inFlow.firstRow.y).toBeGreaterThan(held.firstRow.y)
   }, 60_000)
 })
@@ -223,7 +237,7 @@ describe('the head and the rows are the same table (#32)', () => {
 
     // The head is the shape it is meant to be, named rather than counted, so this is not a guard
     // over a table without the cells in question.
-    expect(columns.map((c) => c.head)).toEqual(['check', 'id ↕', 'Titel ↕', 'body ↕', 'antal ↕', 'remove'])
+    expect(columns.map((c) => c.head)).toEqual(['check', 'id ↕', 'Titel ↕', 'body ↕¶', 'antal ↕', 'remove'])
 
     // Nothing in the head stands over nothing.
     expect(columns.filter((c) => c.bodyBox === null).map((c) => c.head)).toEqual([])
@@ -249,7 +263,7 @@ describe('the head and the rows are the same table (#32)', () => {
 
     // Every column from the missing cell on has drifted, and the head still has all of its own.
     const drift = short.columns.filter((c) => c.bodyBox === null || c.bodyBox.x !== c.headBox.x || c.bodyBox.w !== c.headBox.w)
-    expect(drift.map((c) => c.head)).toEqual(['id ↕', 'Titel ↕', 'body ↕', 'antal ↕', 'remove'])
+    expect(drift.map((c) => c.head)).toEqual(['id ↕', 'Titel ↕', 'body ↕¶', 'antal ↕', 'remove'])
 
     // And the drift is the one that shipped: the × has slid a whole heading to the left, onto
     // `antal`, and taken that heading's width instead of a tap target's.
