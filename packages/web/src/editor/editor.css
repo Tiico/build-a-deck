@@ -1694,15 +1694,19 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-card-row > button:disabled { color: var(--byd-editor-quiet); cursor: default; }
 /* A grid of one row and not a flex line: a flex line fills the button's 44 px, so the baseline the
    name and its count share sat at the button's top edge. One grid row is as tall as its words and
-   stands in the middle of the button, the way the steps either side of it do. */
-.byd-card-row-name { display: inline-grid; grid-template-columns: minmax(0, auto) auto; align-items: baseline; align-content: center; gap: var(--byd-s2); min-width: 0; max-width: 40%; padding: 0 var(--byd-s3); }
+   stands in the middle of the button, the way the steps either side of it do. Its width is the
+   row's and not the name's: a button as wide as the title moved the next step with every card, so
+   pressing the same place twice landed on the name. */
+.byd-card-row-name { display: inline-grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; align-content: center; gap: var(--byd-s2); flex: 0 0 40%; min-width: 0; padding: 0 var(--byd-s3); text-align: left; }
 .byd-card-row-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
 .byd-card-row-name small { color: #9aa3b8; }
 .byd-card-row-values { flex: 1 1 auto; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #9aa3b8; font-size: 12px; }
 .byd-card-row-values b { color: #c7cede; font-weight: 600; }
-.byd-card-row-list { position: absolute; left: var(--byd-s3); bottom: calc(100% + 4px); z-index: 20; display: grid; gap: var(--byd-s1); width: min(320px, calc(100% - 24px)); max-height: 50vh; padding: var(--byd-s2); border: 1px solid #3b4358; border-radius: 10px; background: #1b1f2a; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5); }
+/* The search above and the list under it; the list takes what is left of the sheet's height and
+   scrolls in it. A grid row sized to its content grew past the sheet's bottom edge instead. */
+.byd-card-row-list { position: absolute; left: var(--byd-s3); bottom: calc(100% + 4px); z-index: 20; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: var(--byd-s1); width: min(320px, calc(100% - 24px)); max-height: 50vh; padding: var(--byd-s2); border: 1px solid #3b4358; border-radius: 10px; background: #1b1f2a; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5); }
 .byd-card-row-list input { min-height: var(--byd-tap); padding: 0 var(--byd-s2); border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #0f1115; color: #fff; font: inherit; }
-.byd-card-row-list ul { margin: 0; padding: 0; list-style: none; overflow: auto; }
+.byd-card-row-list ul { min-height: 0; margin: 0; padding: 0; list-style: none; overflow: auto; overscroll-behavior: contain; }
 .byd-card-row-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--byd-s2); min-height: var(--byd-tap); padding: 0 var(--byd-s2); border-radius: 6px; color: #e6ecfa; cursor: pointer; }
 .byd-card-row-list li[data-active], .byd-card-row-list li:hover { background: #262a35; }
 .byd-card-row-list li[aria-selected='true'] { font-weight: 700; }
