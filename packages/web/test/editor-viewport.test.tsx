@@ -54,6 +54,8 @@ async function surfaces(width: number): Promise<Record<string, string>> {
       const tab = tabs()[i]!
       const name = tab.textContent?.trim() ?? String(i)
       fireEvent.click(tab)
+      // Speltema folds its parts (L57): they are opened, so what is in them is measured too.
+      for (const head of document.querySelectorAll<HTMLElement>('[data-theme-section] h2 button[aria-expanded="false"]')) fireEvent.click(head)
       out[name] = document.querySelector('.byd-editor')!.outerHTML
     }
     return out

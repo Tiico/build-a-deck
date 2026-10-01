@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 // The crown a tab panel wears (#128, #130), as the beställare decided it: variant B.
 //
-// One mechanism on three surfaces — the card wall, the symbol library and the card table — because
+// One mechanism on the surfaces that have a crown — the card wall and the card table, and the
+// symbol library until Speltema took its place (L57) and the library became a sheet — because
 // it is one question: what does a panel own at the top, and what scrolls under it. The row is
 // exactly one row at every width; what does not fit falls into a named box that opens over the
 // work. The table's filters kept their place in the row with a side scroll of their own until
@@ -57,9 +58,6 @@ function deckDoc(): ProjectDoc {
       id: `card-${i}`,
       fields: {
         title: `Kort ${i + 1}`,
-        // The deck says a symbol since #178: the Symboler tab draws the cards that say the symbol
-        // in hand, so a deck that says none gives that tab no work — and a tab with no work has
-        // nothing for the readings below to find a scroll region in.
         body: 'En mening ungefär så lång som en riktig korttext brukar bli när den fått plats. {guld}',
         typ: TYPES[i % TYPES.length]!,
         raritet: RARITIES[i % RARITIES.length]!,
@@ -75,8 +73,9 @@ function deckDoc(): ProjectDoc {
   }
 }
 
-// The three surfaces the decision names, by the tab that opens them.
-const CROWNED = ['Kortvägg', 'Symboler', 'Tabell'] as const
+// The surfaces that wear the crown, by the tab that opens them. Symboler wore it until Speltema
+// took its place (L57, #630): the library is a sheet there now, with its search at its own head.
+const CROWNED = ['Kortvägg', 'Tabell'] as const
 
 async function surfaces(width: number): Promise<Record<string, string>> {
   atWidth(width)
@@ -171,7 +170,6 @@ describe.each(DESKS)('the crown on a %ix%i desk', (width, height) => {
     // Only the card table has a filter at all; the deck's eight types and five rarities stand in
     // two column heads there.
     expect(measured['Kortvägg']).toBe('no field')
-    expect(measured['Symboler']).toBe('no field')
     expect(measured['Tabell']).toBe('a field of at least 400px')
   }, 120_000)
 

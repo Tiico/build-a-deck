@@ -14,7 +14,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { chromium, type Browser, type Page } from 'playwright'
 import { contrastRatio } from '@byd/template'
 import { DataTable } from '../src/editor/DataTable.js'
-import { SymbolPanel } from '../src/editor/SymbolPanel.js'
+import { revealThemeSection, ThemePanel } from '../src/editor/ThemePanel.js'
 import type { ProjectClient } from '../src/editor/ProjectClient.js'
 import { symbolName, type GameSymbol } from '../src/editor/symbols.js'
 import { projectDoc } from './project-doc.js'
@@ -51,7 +51,10 @@ function paletteMarkup(): string {
     rows: [{ id: 'dragon', fields: { title: 'Drake', body: 'Skada {svärd|fara} 2.', antal: 1 } }],
   }
   const client = { mayEdit: true, setRole: vi.fn(), renameRole: vi.fn(), removeRole: vi.fn(), useSymbol: vi.fn() } as unknown as ProjectClient
-  const { container, unmount } = render(<SymbolPanel doc={doc} client={client} assetBase="http://test.local" />)
+  // Folded in Speltema (L57) until opened.
+  localStorage.clear()
+  revealThemeSection('colours')
+  const { container, unmount } = render(<ThemePanel doc={doc} client={client} assetBase="http://test.local" />)
   try {
     return container.innerHTML
   } finally {
