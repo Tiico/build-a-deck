@@ -92,6 +92,6 @@ describe('dragmarkeringens token (#291)', () => {
       .filter((path) => path !== own && /\.tsx$/.test(path) && /dataTransfer[^;]*\.files/.test(read(path)))
       .map((path) => relative(SRC, path))
       .sort()
-    expect(others).toEqual(['editor/DataTable.tsx', 'editor/RulesPanel.tsx', 'editor/TemplateCanvas.tsx'])
+    expect(others).toEqual(['editor/DataTable.tsx', 'editor/FontShelf.tsx', 'editor/RulesPanel.tsx'])
   })
 })

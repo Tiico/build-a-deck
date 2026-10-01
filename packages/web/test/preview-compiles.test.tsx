@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { DeckWall } from '../src/editor/DeckWall.js'
-import { SymbolPanel } from '../src/editor/SymbolPanel.js'
+import { revealThemeSection, ThemePanel } from '../src/editor/ThemePanel.js'
 import { SetupEditor } from '../src/editor/SetupEditor.js'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import type { ProjectClient } from '../src/editor/ProjectClient.js'
@@ -73,8 +73,8 @@ describe('a card is not compiled again for nothing', () => {
   })
 })
 
-// The Symboler tab draws the cards that say the symbol in hand, and the library beside them has a
-// search box. A keystroke in it must not be a keystroke that compiles those cards.
+// Speltema's icons draw the cards that say the symbol in hand, and the library beside them has a
+// search box (L57). A keystroke in it must not be a keystroke that compiles those cards.
 //
 // The rows are given the symbol in so many words since #178. `withIcon` binds it as a literal on
 // the template — every card shows it, no row says it — and the tab lists the cards that *say* a
@@ -84,7 +84,10 @@ describe('a card is not compiled again for a keystroke in the search box', () =>
   it('leaves the deck below the library alone while a symbol is searched for', () => {
     const base = withIcon()
     const doc = { ...base, rows: base.rows.map((r) => ({ ...r, fields: { ...r.fields, body: `${String(r.fields['body'] ?? '')} {svärd}` } })) }
-    render(<SymbolPanel doc={doc} client={{ mayEdit: true } as unknown as ProjectClient} assetBase="http://api.local" />)
+    localStorage.clear()
+    revealThemeSection('icons')
+    render(<ThemePanel doc={doc} client={{ mayEdit: true } as unknown as ProjectClient} assetBase="http://api.local" />)
+    fireEvent.click(screen.getByRole('button', { name: /Ur biblioteket/ }))
 
     // The control: the spy is real, and the panel did compile each of the three cards to draw it.
     expect(spy.compiles).toBe(doc.rows.length)
@@ -121,9 +124,6 @@ describe('the card on the canvas is not compiled again for nothing', () => {
         onGroupColumn={() => undefined}
         onAddField={() => undefined}
         onReset={() => undefined}
-        onFontFile={async () => 'Typsnitt'}
-        onFontLicence={() => undefined}
-        onRemoveFont={() => undefined} onCatalogFont={async () => undefined}
       />,
     )
     // The control: the spy is real, and the canvas did compile its one card to draw it.

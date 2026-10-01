@@ -38,10 +38,12 @@ test.describe('the typeface catalog reaches Google only when the designer asks (
     await logIn(page.request)
     const project = await makeProject(page.request)
     await page.goto(project.editorUrl, { waitUntil: 'load' })
-    await page.locator('#byd-editor-tab-template').click()
+    // The typefaces are the game theme's since L57 (#630), folded until the part is opened.
+    await page.locator('#byd-editor-tab-theme').click()
+    await page.getByRole('button', { name: /^Fonts/ }).click()
     const open = page.getByRole('button', { name: /search google fonts/i })
     await expect(open).toBeVisible()
-    // The editor is up, the properties column is drawn, the way in is on the screen — and
+    // The editor is up, the typefaces are drawn, the way in is on the screen — and
     // nothing has gone to Google. Nor is the reading vacuous: the page did go to the network,
     // for its own document, its own sheet and its own project.
     await page.evaluate(() => document.fonts.ready.then(() => undefined))
@@ -73,7 +75,8 @@ test.describe('the typeface catalog reaches Google only when the designer asks (
     await logIn(page.request)
     const project = await makeProject(page.request)
     await page.goto(project.editorUrl, { waitUntil: 'load' })
-    await page.locator('#byd-editor-tab-template').click()
+    await page.locator('#byd-editor-tab-theme').click()
+    await page.getByRole('button', { name: /^Fonts/ }).click()
     await page.getByRole('button', { name: /search google fonts/i }).click()
     await page.getByRole('searchbox', { name: /search google fonts/i }).fill('cinzel')
     await page.getByRole('button', { name: /^add cinzel$/i }).click()

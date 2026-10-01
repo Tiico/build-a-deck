@@ -51,10 +51,6 @@ function open(selected: string | null = 'if-drake', row = 'knight') {
       onGroupColumn={vi.fn()}
       onAddField={vi.fn()}
       onReset={vi.fn()}
-      onFontFile={async () => 'Typsnitt'}
-      onFontLicence={vi.fn()}
-      onRemoveFont={vi.fn()}
-      onCatalogFont={vi.fn(async () => undefined)}
     />,
   )
   return { onPatch, onPickRow, onRename }

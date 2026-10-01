@@ -22,12 +22,9 @@ import { foldedProps, rememberFoldedProps } from './panes.js'
 import { Question } from './Question.js'
 import type { CanvasStage } from './EditorStages.js'
 import { useRoving } from './roving.js'
-import { cardWords, familiesInUse, previewFonts } from './fonts.js'
-import { FontCatalog } from './FontCatalog.js'
-import type { CatalogFamily } from './font-catalog.js'
+import { previewFonts } from './fonts.js'
 import { LIBRARY, type GameSymbol } from './symbols.js'
 import { SymbolList, symbolListKey, symbolOptionId } from './SymbolList.js'
-import type { ProjectCredit } from '@byd/server'
 import { useT, type Key, type T, useLang } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
 import { useSay } from '../status/StatusLive.js'
@@ -91,16 +88,9 @@ export type TemplateCanvasProps = {
   onAddField(field: string, bindTo: string): void
   // Stops the open group from overriding a layer, so it is the base's again.
   onReset(id: string): void
-  // The type the game is set in (B3). Uploading is the client's work — the file becomes one of
-  // the project's assets — so the canvas asks for it and is told what the family came to be
-  // called. What a typeface is licensed under is not in the file: only the designer knows it.
-  onFontFile(file: File): Promise<string>
-  onFontLicence(family: string, licence: ProjectCredit | null): void
-  // A family taken out of Google Fonts (#329, L27): the file is copied in as the project's own
-  // asset, and the licence comes with it because the catalog knows the answer an uploaded file
-  // cannot give.
-  onCatalogFont(family: CatalogFamily): Promise<void>
-  onRemoveFont(family: string): void
+  // The game's typefaces stand in Speltema (L57, #630). The panel says so where they used to
+  // stand, and this takes the designer there.
+  onOpenFonts?: (() => void) | undefined
   // A picture brought in from the designer's own disk for the template's own picture (#320), by
   // the very path Media takes: it lands in the library, and the element is then bound to it.
   // Uploading is the client's work, so the canvas asks and is told the hash the bytes were
@@ -114,7 +104,7 @@ export type TemplateCanvasProps = {
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, onPickRow, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont, onCatalogFont, onAddPicture, reading = false }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, onPickRow, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onOpenFonts, onAddPicture, reading = false }: TemplateCanvasProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
@@ -209,10 +199,6 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // is asked for, and it never rounds an element to itself — the guides and the arrow keys are
   // what place things, and a 1 mm grid would take the half millimetre away.
   const [grid, setGrid] = useState(false)
-  // Whether the typeface catalog's sheet stands under the card (#329, L27). Here and not in the
-  // shelf, because the sheet is drawn in the canvas and the button that opens it is in the
-  // properties: it is the canvas that the sheet takes 62 % of.
-  const [catalog, setCatalog] = useState(false)
   // Whether the properties are folded away (#129). By hand and only by hand: a column that folds
   // itself when nothing is selected changes the card's width every time the designer clicks beside
   // an element, and the card moves under the pointer that is working on it. It is a view of this
@@ -243,7 +229,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // twice and nothing a tab does not point at is left in the tab order.
   const shows = (which: CanvasStage) => stage === null || stage === which
   return (
-    <div className="byd-canvas" {...(catalog ? { 'data-catalog': 'open' } : {})} {...(stage ? { 'data-stage': stage } : folded ? { 'data-folded': 'props' } : {})}>
+    <div className="byd-canvas" {...(stage ? { 'data-stage': stage } : folded ? { 'data-folded': 'props' } : {})}>
       {/* The crown over the whole desk and not over the card alone (#129): which column makes the
           groups, which group is open, whether the properties are folded away, and which face is
           being edited. It spans the four columns because that is the only place its four controls
@@ -402,7 +388,6 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             {t('canvas.layer.isLocked', { name: layerName(refusedLayer) })}
           </p>
         )}
-        {catalog && <FontCatalog words={cardWords(shown, rowData)} inGame={Object.keys(doc.fonts ?? {})} onChoose={onCatalogFont} onClose={() => setCatalog(false)} />}
         {swapping && (
           <Question
             className="byd-canvas-question"
@@ -480,161 +465,18 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             {t('canvas.reset')}
           </button>
         )}
-        {/* The game's typefaces are the game's and not a layer's (#478): they stand here while no
-            layer is chosen, and give the chosen layer's properties the whole column. */}
-        {!layer &&
-          (reading ? (
-            <fieldset className="byd-reading-set" disabled>
-              <FontShelf doc={doc} onFontFile={onFontFile} onFontLicence={onFontLicence} onRemoveFont={onRemoveFont} onOpenCatalog={() => setCatalog(true)} />
-            </fieldset>
-          ) : (
-            <FontShelf doc={doc} onFontFile={onFontFile} onFontLicence={onFontLicence} onRemoveFont={onRemoveFont} onOpenCatalog={() => setCatalog(true)} />
-          ))}
+        {/* The game's typefaces are the game's and not a layer's (#478). They stood here while no
+            layer was chosen, and stand in Speltema since L57 (#630); the panel says where. */}
+        {!layer && onOpenFonts && (
+          <button type="button" className="byd-canvas-fonts-moved byd-secondary" onClick={onOpenFonts}>
+            {t('canvas.fonts.moved')}
+          </button>
+        )}
       </aside>
       </SectionsOpen.Provider>
       </Reading.Provider>
       )}
     </div>
-  )
-}
-
-// The fonts the game carries (B3), under the properties because that is where a family is
-// chosen. Each one says whether it travels to the printer, and under what licence it is
-// borrowed — a typeface is borrowed exactly as a symbol is (E4), and the print order carries
-// both. A family no element is set in can go; one in use has no button, so a card is never
-// left pointing at a family the game no longer has.
-function FontShelf({ doc, onFontFile, onFontLicence, onRemoveFont, onOpenCatalog }: Pick<TemplateCanvasProps, 'doc' | 'onFontFile' | 'onFontLicence' | 'onRemoveFont'> & { onOpenCatalog(): void }) {
-  const t = useT()
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  // A file is over the control. The same word the table's picture cells use for the same moment
-  // (#222), so the mark is one mark in one language wherever a file is let go in the tool.
-  const [over, setOver] = useState(false)
-  const families = Object.entries(doc.fonts ?? {})
-  const used = familiesInUse(doc)
-  const take = (file: File | undefined) => {
-    if (!file) return
-    setBusy(true)
-    setError(null)
-    void onFontFile(file)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
-      .finally(() => setBusy(false))
-  }
-  return (
-    <section className="byd-fonts">
-      <h2 id="byd-fonts-heading">{t('fonts.title')}</h2>
-      {families.length === 0 ? (
-        <p className="byd-canvas-affects">{t('fonts.none')}</p>
-      ) : (
-        <ul aria-labelledby="byd-fonts-heading">
-          {families.map(([family, font]) => (
-            <li key={family} data-font={family}>
-              {/* The name and, where there is one, where the family came from (#329, L27): one
-                  cell, so the way out of the game stays on the same line as the name it is
-                  about rather than being pushed under it. The badge is the lesser half of the
-                  difference a catalog entry makes; the greater one is under it, in the licence. */}
-              <span className="byd-fonts-head">
-                <span className="byd-fonts-name" style={{ fontFamily: font.stack }}>
-                  {family}
-                </span>
-                {font.source === 'catalog' && <span className="byd-fonts-badge">{t('fonts.catalog.badge')}</span>}
-              </span>
-              {!used.includes(family) && (
-                <button type="button" onClick={() => onRemoveFont(family)}>
-                  {t('fonts.remove')}
-                </button>
-              )}
-              <small>{t(font.asset ? 'fonts.travels' : 'fonts.staysBehind')}</small>
-              <Licence family={family} licence={font.licence} settled={font.source === 'catalog'} onFontLicence={onFontLicence} />
-            </li>
-          ))}
-        </ul>
-      )}
-      {/* The way into Google Fonts (#329, L27). It stands above the upload because it is the
-          answer for nearly everyone: the whole catalog is free, and a catalog entry arrives
-          knowing its licence, which is the one thing an uploaded file can never say.
-
-          Second and not first, for all that: the primary fill belongs to the one action that
-          puts the work on the table, and a view with two of them has none (#44). */}
-      <button type="button" className="byd-fonts-catalog byd-secondary" onClick={onOpenCatalog}>
-        {t('fonts.catalog.open')}
-      </button>
-      {/* The control is the receiver (#294, #291 variant B): a typeface is dropped on the button
-          that takes one, not on a second box beside it and not on the whole canvas. Both halves
-          of the drag are cancelled, because a file let go anywhere the page does not catch it is
-          a browser leaving the editor to open the typeface as a page of its own. */}
-      <label
-        className="byd-fonts-upload byd-secondary"
-        data-over={over ? 'true' : undefined}
-        onDragOver={(e) => {
-          e.preventDefault()
-          setOver(true)
-        }}
-        onDragLeave={() => setOver(false)}
-        onDrop={(e) => {
-          e.preventDefault()
-          setOver(false)
-          // Closed while a file is already travelling, exactly as the picker is: two typefaces
-          // out of one gesture is two families, and the second to land would say the first was
-          // done.
-          if (busy) return
-          const dropped = [...(e.dataTransfer.files ?? [])]
-          // Two files is a question this control cannot answer. Taking the first of them would
-          // have thrown the rest away without a word, which is the one thing a drop must never
-          // do: the family is named after the file, so the wrong first file is a wrong family.
-          if (dropped.length > 1) {
-            setError(t('fonts.upload.one'))
-            return
-          }
-          take(dropped[0])
-        }}
-      >
-        {t('fonts.upload')}
-        <input className="byd-offscreen" type="file" accept=".woff2,.woff,.ttf,.otf,font/woff2,font/woff,font/ttf,font/otf" disabled={busy} onChange={(e) => take(e.target.files?.[0])} />
-      </label>
-      {/* While the bytes travel, said where the control is. `disabled` on an input that stands
-          off the screen is a state only the keyboard can find, and a control that goes quiet is
-          read as a control that did nothing. */}
-      {busy && <p role="status">{t('fonts.upload.busy')}</p>}
-      {error && <p role="alert">{error}</p>}
-    </section>
-  )
-}
-
-// What a typeface is borrowed under. Both halves are needed before anything is written: a
-// licence with no holder credits no one, and a holder with no licence says nothing about what
-// may be printed. Emptying either takes the credit away again.
-//
-// A family out of the catalog is `settled`: it arrived knowing both halves, so the boxes state
-// the answer and are not open to being answered again (L27). Two boxes a designer is expected to
-// be able to fill in about a typeface she did not make is the friction the catalog exists to
-// take away, and leaving them editable here would put it back — the answer is the catalog's and
-// changing it would only make the print order wrong.
-function Licence({ family, licence, settled, onFontLicence }: { family: string; licence: ProjectCredit | undefined; settled?: boolean; onFontLicence: TemplateCanvasProps['onFontLicence'] }) {
-  const t = useT()
-  const [what, setWhat] = useState(licence?.licence ?? '')
-  const [by, setBy] = useState(licence?.by ?? '')
-  const write = (nextWhat: string, nextBy: string) => {
-    const stated = nextWhat.trim() !== '' && nextBy.trim() !== ''
-    if (stated) {
-      if (nextWhat.trim() === licence?.licence && nextBy.trim() === licence.by) return
-      onFontLicence(family, { licence: nextWhat.trim(), by: nextBy.trim() })
-      return
-    }
-    if (licence) onFontLicence(family, null)
-  }
-  if (settled)
-    return (
-      <span className="byd-fonts-licence" data-settled="true">
-        <input aria-label={t('fonts.licence.of', { family })} value={licence?.licence ?? ''} readOnly />
-        <input aria-label={t('fonts.by.of', { family })} value={licence?.by ?? ''} readOnly />
-      </span>
-    )
-  return (
-    <span className="byd-fonts-licence">
-      <input aria-label={t('fonts.licence.of', { family })} placeholder={t('fonts.licence')} value={what} onChange={(e) => setWhat(e.target.value)} onBlur={() => write(what, by)} />
-      <input aria-label={t('fonts.by.of', { family })} placeholder={t('fonts.by')} value={by} onChange={(e) => setBy(e.target.value)} onBlur={() => write(what, by)} />
-    </span>
   )
 }
 

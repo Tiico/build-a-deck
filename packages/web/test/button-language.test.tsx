@@ -294,7 +294,7 @@ describe('the guided start', () => {
 // Every mode the editor can be showing at the desk, and the two doors inside them that have to be
 // held open to be seen at all. Named here so that a walk which finds nothing fails instead of
 // agreeing with itself.
-const EDITOR_VIEWS = ['Bord', 'Kortvägg', 'Mall', 'Mall, ikonbiblioteket öppet', 'Media', 'Regler', 'Symboler', 'Tabell', 'Tabell, ett nytt fält på väg', 'Tabell, filtrerad'] as const
+const EDITOR_VIEWS = ['Bord', 'Kortvägg', 'Mall', 'Mall, ikonbiblioteket öppet', 'Media', 'Regler', 'Speltema', 'Speltema, biblioteket öppet', 'Tabell', 'Tabell, ett nytt fält på väg', 'Tabell, filtrerad'] as const
 
 // Whichever mode is open, the blue button that puts the work on the table is the only filled thing
 // in the room.
@@ -331,6 +331,16 @@ async function editorViews(width: number): Promise<Record<string, string>> {
         if (!document.querySelector('.byd-newfield')) throw new Error('the table never opened the form that makes a column')
         out['Tabell, ett nytt fält på väg'] = document.querySelector('.byd-editor')!.outerHTML
         fireEvent.keyDown(document.querySelector('.byd-newfield')!, { key: 'Escape' })
+      }
+      // Speltema folds its parts (L57), so the walk opens every one of them before it reads the
+      // tab, and then the library that opens from the icons.
+      if (tab.textContent?.trim() === 'Speltema') {
+        for (const head of document.querySelectorAll<HTMLElement>('[data-theme-section] h2 button[aria-expanded="false"]')) fireEvent.click(head)
+        out['Speltema'] = document.querySelector('.byd-editor')!.outerHTML
+        fireEvent.click(screen.getByRole('button', { name: /Ur biblioteket/ }))
+        if (!document.querySelector('.byd-symbols-library .byd-symbols-tile')) throw new Error('the icons never opened the symbol library')
+        out['Speltema, biblioteket öppet'] = document.querySelector('.byd-editor')!.outerHTML
+        fireEvent.click(screen.getByRole('button', { name: 'Klar' }))
       }
       // The symbol library is a door too: the rail's Ikon tool opens it, and until it is open
       // nothing in the walk has ever seen an option of it drawn.
@@ -1015,7 +1025,8 @@ describe('the buttons that stand beside the card in the template', () => {
   it('draws the way to a typeface as an outline and not as a second first action', async () => {
     await run.projects.create(run.projectId, worthFiltering())
     const views = await editorViews(1280)
-    const measured = await inChromium(read('src/editor/editor.css'), 1280, { Mall: views['Mall']! }, (page) =>
+    // The typefaces live in Speltema since L57 (#630); the way to one is drawn there.
+    const measured = await inChromium(read('src/editor/editor.css'), 1280, { Speltema: views['Speltema']! }, (page) =>
       page.evaluate(() => {
         const editor = document.querySelector('.byd-editor')!
         const probe = editor.appendChild(document.createElement('span'))
@@ -1023,12 +1034,12 @@ describe('the buttons that stand beside the card in the template', () => {
         const line = getComputedStyle(probe).color
         probe.remove()
         const upload = [...editor.querySelectorAll<HTMLElement>('button, label')].find((el) => el.textContent?.trim().startsWith('Ladda upp typsnitt'))
-        if (!upload) throw new Error('no way to a typeface in the template')
+        if (!upload) throw new Error('no way to a typeface in Speltema')
         const drawn = getComputedStyle(upload)
         return { drawn: `${drawn.backgroundColor} inside ${drawn.borderTopWidth} of ${drawn.borderTopColor}`, outlined: `rgba(0, 0, 0, 0) inside 1px of ${line}` }
       }),
     )
-    expect(measured['Mall']!.drawn).toBe(measured['Mall']!.outlined)
+    expect(measured['Speltema']!.drawn).toBe(measured['Speltema']!.outlined)
   }, 120_000)
 })
 

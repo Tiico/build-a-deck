@@ -1712,6 +1712,9 @@
 
 /* The fonts the game carries (B3): under the properties, because that is where a family is
    chosen. Each row says whether the file travels to the printer and under what licence. */
+/* Where the game's typefaces went (L57, #630): they stood here while no layer was chosen, and the
+   panel says where they are now with a way there. */
+.byd-canvas-fonts-moved { display: inline-flex; align-items: center; min-height: var(--byd-tap); margin-top: var(--byd-s3); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
 .byd-fonts { margin-top: 16px; border-top: 1px solid #2f333d; padding-top: 12px; }
 .byd-fonts ul { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 10px; }
 .byd-fonts li { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: baseline; }
@@ -1752,30 +1755,15 @@
 .byd-fonts-licence[data-settled='true'] input { border-style: dashed; color: var(--byd-editor-quiet); text-decoration: line-through; }
 
 /* ── The typeface catalog: «Provraden», variant C of #329 (L27) ──────────────────────────────
-   A sheet under the card, not a box over the panel and not the properties column. What settled
-   it is what a sample shows: this one sets the card's own heading and its own rule text, in the
-   card's own grade, which is where a typeface actually falls.
-
-   The price is stated in L27 and is not conjured away: the sheet is 62 % of the canvas, and the
-   card's lower third is hidden while the designer chooses. The card moves up when the sheet
-   opens — without that the sample row would be a sample of a card nobody can see, which is the
-   whole of its reason for existing. */
-.byd-canvas[data-catalog='open'] .byd-canvas-stage { align-items: start; padding-top: 8px; }
+   Every hit sets the card's own heading and its own rule text, in the card's own grade, which is
+   where a typeface actually falls. It stood as a sheet under the card in Mall; since L57 (#630)
+   the typefaces are Speltema's, and the catalog is the sheet beside them there. */
 .byd-font-catalog {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 9;
-  max-height: 62%;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
   background: var(--byd-editor-panel-bg);
-  border: 1px solid var(--byd-editor-line);
-  border-bottom: 0;
-  border-radius: 14px 14px 0 0;
-  box-shadow: 0 -24px 60px var(--byd-editor-card-shadow);
 }
 .byd-font-catalog header { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: var(--byd-s2); border-bottom: 1px solid var(--byd-editor-line-soft); }
 .byd-font-catalog-search { min-width: 0; }
@@ -2791,17 +2779,45 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
    nobody can see must not be able to move the page. */
 .byd-offscreen { position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: -1px; /* undantag: inte ett avstånd — den negativa marginalen tar tillbaka rutan som håller raden, och 1 px är rutans mått */ padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 
-/* The symbol library (E4): the library on the left, the game's own set and the cards on the right. */
-/* The symbol surface wears the same crown (#128): search and categories at the top, one thing
-   that scrolls under it. The library used to carry its own scroll bar inside a panel that was
-   already scrolling — two bars for one gesture, which is what the audit found here. */
-.byd-symbols { height: 100%; box-sizing: border-box; display: flex; flex-direction: column; padding: var(--byd-gutter); }
-.byd-symbols-work { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: var(--byd-s5); align-items: start; }
-.byd-symbols h2 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
-.byd-symbols p { margin: 0 0 12px; color: #9aa3b8; line-height: 1.5; }
-.byd-symbols-library { padding: 16px; border-radius: 16px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
+/* Speltema (L57, #630), in Symbolers ställe: the game's typefaces, meanings and icons, each folded
+   behind a head that carries its value while closed. One column that scrolls; a sheet — the
+   symbol library or the typeface catalog — stands beside it when one is open, never over it, so
+   what is taken in can be seen arriving. */
+.byd-theme { height: 100%; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: var(--byd-s4); padding: var(--byd-gutter); }
+.byd-theme[data-sheet] { grid-template-columns: minmax(0, 1fr) minmax(320px, 440px); }
+.byd-theme-work { min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1100px); align-content: start; gap: var(--byd-s2); }
+.byd-theme-sec { border: 1px solid #2f333d; border-radius: 12px; background: var(--byd-editor-panel-bg); }
+.byd-theme-head { display: flex; align-items: center; gap: var(--byd-s2); padding: 0 var(--byd-s4); }
+.byd-theme-head h2 { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 14px; font-weight: 600; }
+/* The head is the button that folds the part, as Mall's sections are (#478): the name, a chevron
+   that says which way it stands, and — while it is closed — the part's value at the far end. */
+.byd-theme-head h2 button { display: flex; align-items: center; gap: var(--byd-s3); width: 100%; min-height: 48px; padding: 0; border: 0; background: transparent; color: #fff; font: inherit; text-align: left; cursor: pointer; }
+.byd-theme-head h2 button::before { content: ''; flex: none; width: 6px; height: 6px; border-right: 1.5px solid var(--byd-editor-quiet); border-bottom: 1.5px solid var(--byd-editor-quiet); transform: rotate(-45deg); transition: transform 120ms; }
+.byd-theme-head h2 button[aria-expanded='true']::before { transform: rotate(45deg); }
+@media (prefers-reduced-motion: reduce) { .byd-theme-head h2 button::before { transition: none; } }
+.byd-theme-name { flex: none; }
+.byd-theme-sum { flex: 0 1 auto; min-width: 0; margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--byd-editor-quiet); font-size: 12px; font-weight: 400; }
+.byd-theme-body { display: grid; gap: var(--byd-s4); padding: 0 var(--byd-s4) var(--byd-s4); }
+.byd-theme p { margin: 0; color: #9aa3b8; line-height: 1.5; }
+.byd-theme h3 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--byd-editor-quiet); }
+.byd-theme-library-open { justify-self: start; display: inline-flex; align-items: center; min-height: var(--byd-tap); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; font-size: 12px; cursor: pointer; }
+/* The fonts' shelf was drawn for Mall's narrow panel, under a rule; here it stands in its own part. */
+.byd-theme .byd-fonts { margin-top: 0; border-top: 0; padding-top: 0; }
+.byd-theme :is(.byd-fonts-catalog, .byd-fonts-upload) { min-height: var(--byd-tap); margin: 0 var(--byd-s2) 0 0; padding: 0 var(--byd-s3); box-sizing: border-box; vertical-align: middle; }
+.byd-theme .byd-fonts ul { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--byd-s3) var(--byd-s5); margin-bottom: var(--byd-s3); }
+/* The sheet beside the parts: the library, or the catalog that stood under the card in Mall. */
+.byd-theme-sheet { min-height: 0; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #2f333d; border-radius: 12px; background: var(--byd-editor-panel-bg); }
+.byd-symbols-library > header { flex: none; display: flex; align-items: center; gap: var(--byd-s2); padding: var(--byd-s2) var(--byd-s4); border-bottom: 1px solid var(--byd-editor-line-soft); }
+.byd-symbols-library > header h2 { margin: 0; font-size: 14px; font-weight: 600; color: #fff; }
+.byd-symbols-library .byd-theme-sheet-done { margin-left: auto; min-height: 32px; border: 1px solid var(--byd-editor-line); border-radius: 8px; padding: 0 var(--byd-s3); background: transparent; color: var(--byd-editor-home-ink); font: inherit; font-size: 12px; cursor: pointer; }
+.byd-theme-search { flex: none; margin: var(--byd-s3) var(--byd-s4) 0; min-height: 32px; box-sizing: border-box; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #0f1115; color: #fff; font: inherit; padding: 0 var(--byd-s3); }
+.byd-theme-kinds { flex: none; display: flex; flex-wrap: wrap; gap: var(--byd-s2); padding: var(--byd-s2) var(--byd-s4); }
+/* The categories are choices in the editor's own chosen-language (`.byd-choice`): a mark, never a
+   fill, which is the primary's alone. */
+.byd-theme-sheet-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--byd-s2) var(--byd-s4) var(--byd-s4); }
+.byd-symbols-library > footer { flex: none; padding: var(--byd-s2) var(--byd-s4); border-top: 1px solid var(--byd-editor-line-soft); font-size: 11px; color: var(--byd-editor-quiet); font-variant-numeric: tabular-nums; }
 .byd-symbols-set input { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
-.byd-symbols-work button { border: 1px solid #2f333d; border-radius: 8px; padding: 4px 12px; background: #1b1d23; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
+:is(.byd-theme-body, .byd-theme-sheet-scroll) button:where(:not(.byd-secondary)) { border: 1px solid #2f333d; border-radius: 8px; padding: 4px 12px; background: #1b1d23; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
 .byd-symbols-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
 .byd-symbols-tile { display: grid; justify-items: center; gap: 3px; padding: 8px 4px; font-weight: 400; font-size: 10px; color: #9aa3b8; }
 .byd-symbols-tile small { color: var(--byd-editor-quiet); font-size: 9px; }
@@ -2812,8 +2828,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-symbols-note { margin: var(--byd-s2) 0 0; color: var(--byd-editor-home-ink); font-size: 12px; }
 /* A symbol reaches the card as an image, so it cannot take the colour of the text around it:
    it is drawn dark, and needs a light chip to be seen against the editor's dark surfaces. */
-.byd-symbols img { width: 22px; height: 22px; padding: 4px; border-radius: 6px; background: #e8e2d4; }
-.byd-symbols-main { display: grid; gap: 16px; }
+.byd-symbols-set img, .byd-symbols-tile img { width: 22px; height: 22px; padding: 4px; border-radius: 6px; background: #e8e2d4; }
 .byd-symbols-empty { color: #9aa3b8; }
 .byd-symbols-set ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
 .byd-symbols-set li { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
@@ -3062,7 +3077,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-wall-source-tools label { display: block; margin: 8px 0 4px; color: var(--byd-editor-quiet); font-size: 12px; }
 .byd-wall-source-tools input[type='range'] { display: block; width: 100%; accent-color: var(--byd-editor-primary-mark); }
 .byd-wall-source-tools button { min-height: 32px; margin: 8px 8px 0 0; border: 1px solid #3b4358; border-radius: 8px; padding: 0 12px; background: #1b1d23; color: #dfe4ef; font: 600 12px system-ui; cursor: pointer; }
-.byd-symbols [role='alert'] { color: #f0b64a; }
+.byd-theme [role='alert'] { color: #f0b64a; }
 
 /* The rulebook (B7): the page itself is the editor, so it is paper, not a dark surface. */
 .byd-rules { display: flex; flex-direction: column; gap: var(--byd-s3); height: 100%; box-sizing: border-box; padding: var(--byd-gutter); }
@@ -3717,7 +3732,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
   .byd-data-bulk, .byd-data-tick, td.byd-data-remove button, th.byd-data-remove button, .byd-data-icon,
   .byd-data-add, .byd-data-bodytools, .byd-prose-switch, .byd-prose-follow, [data-image-cell] .byd-data-file, [data-image-cell] .byd-data-drop > button:last-child,
   .byd-columns-rename, .byd-columns-name, .byd-data-dropfield,
-  .byd-symbols-tile, .byd-symbols-add, .byd-symbols-set li[data-icon] > button, .byd-symbols-colours li[data-role] > button:last-child,
+  .byd-symbols-tile, .byd-symbols-add, .byd-theme-library-open, .byd-symbols-set li[data-icon] > button, .byd-symbols-colours li[data-role] > button:last-child,
   .byd-crop-corner, .byd-media-crop-row .byd-secondary,
   .byd-setup-tools, .byd-setup-x, .byd-setup-corner, .byd-setup-counter button, .byd-setup-counters > button, .byd-setup-props > button,
   .byd-zone-action-x, .byd-zone-action-drop, .byd-zone-step-add, .byd-zone-action-undo, .byd-zone-action-new
@@ -3740,7 +3755,6 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-editor[data-readonly] .byd-reading-set .byd-slot:disabled { background: transparent; border-color: transparent; padding-inline: 0; color: inherit; cursor: default; }
 .byd-editor[data-readonly] .byd-setup-players button:disabled { cursor: default; }
 /* Symbols without the library: the game's own set takes the whole width. */
-.byd-editor[data-readonly] .byd-symbols-work { grid-template-columns: minmax(0, 1fr); }
 
 /* The game's own ⋯ beside its name (#542), as quiet as the revision beside it. */
 .byd-editor-more { position: relative; flex: none; }
