@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 06 — Brickan (#648)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan ──────────────────────────────────────────────────────────────────────────────
+     Editorn har två brickor för «en sak med × bredvid som tar bort den»: tabellens filterbricka
+     «typ: Playcard ×» (#617, en rundad ruta på 34 px i sökfältet) och bordsbandets platsbricka
+     «Ada ×» (#621, ett piller på 44 px). Samma tecken, två former. Vilken form ska en bricka ha?
+
+       Nu  två former: rutan 34 i fältet, pillret 44 i bandet
+       A   pillret på 44 px överallt — fältet växer
+       B   rutan på 34 px överallt — bandets × krymper under 44
+       C   en form, två storlekar: samma ruta och ×-plats, höjden följer raden
+
+     Två ytor vid 1280 och 1024: krönet med två filter valda, bandet med åtta vid bordet. ───── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .scen { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 24px 16px; display: grid; gap: 28px; align-content: start; background: #15171c; }
+  .ram { position: relative; }
+  .etikett { color: var(--quiet-2); font-size: 11px; margin-bottom: 4px; }
+  .skala { position: absolute; left: 0; top: 18px; transform-origin: 0 0; }
+  .yta { background: var(--chrome); outline: 1px solid #3a3f4b; }
+  .ed-huvud .ed-mer, .ed-huvud .ed-angra { color: var(--quiet); }
+  .ed-huvud .ed-angra .ed-knapp { padding: 0 12px; margin-right: 2px; }
+  .ed-huvud[data-smal] .ed-flikar button { padding: 0 7px; }
+  .ed-huvud[data-smal] { gap: var(--s2); }
+
+  /* Bandet, ur editor.css efter #621. */
+  .band { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 8px 16px; background: #1f2a1f; color: #7dd3a0; border-bottom: 1px solid #2f333d; }
+  .band a { color: #fff; } .band b { color: #fff; }
+  .band .kantad { min-height: 44px; padding: 0 12px; border: 1px solid #5f7f69; border-radius: 8px; background: transparent; color: #e3f3e8; font: inherit; font-weight: 700; }
+  .platser { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+
+  /* Krönet, ur editor.css efter #617. */
+  .t-vy { padding: 16px 16px 8px; }
+  .t-krona { display: flex; align-items: center; gap: 8px; padding: 0 0 8px; border-bottom: 1px solid var(--line); }
+  .falt { position: relative; flex: 1 1 auto; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; min-height: 44px; box-sizing: border-box; padding: 0 4px 0 12px; border: 1px solid #6f7a90; border-radius: 8px; background: #1b1d23; }
+  .falt input { flex: 1 1 160px; min-width: 0; min-height: 34px; border: 0; background: transparent; color: #dce3f2; font: inherit; }
+  .falt input::placeholder { color: #9aa3b8; }
+  .t-box { flex: none; min-height: 44px; padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; font-weight: 700; white-space: nowrap; }
+  .t-box.slut { margin-left: auto; }
+  .t-rensa { flex: none; min-height: 44px; padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: var(--quiet-2); font: inherit; }
+  .rader { padding: 8px 16px; color: #9aa3b8; font-size: 12px; }
+
+  /* Brickan, i sina former. `data-form` är variantens; `data-rum` är ytans (fältet mot bandet). */
+  .bricka { display: inline-flex; align-items: center; white-space: nowrap; font-weight: 600; }
+  .bricka i { font-style: normal; font-weight: 400; margin-right: 4px; }
+  .bricka button { border: 0; background: transparent; font: inherit; font-size: 15px; cursor: pointer; display: grid; place-items: center; }
+  /* Fältets färger: markeringens blå; bandets: gröna konturen. */
+  .bricka[data-rum='falt'] { background: #253044; color: #fff; }
+  .bricka[data-rum='falt'] button { color: #dbe4ff; }
+  .bricka[data-rum='band'] { outline: 1px solid #5f7f69; outline-offset: -1px; color: #e3f3e8; font-weight: 700; }
+  .bricka[data-rum='band'] button { color: #a9d8b8; }
+  /* Rutan: 6 px hörn, × i en ruta. Pillret: 999 px hörn, × i ett halvt piller. */
+  .bricka[data-form='ruta'] { border-radius: 6px; padding-left: 8px; }
+  .bricka[data-form='ruta'] button { border-radius: 6px; }
+  .bricka[data-form='piller'] { border-radius: 999px; padding-left: 12px; }
+  .bricka[data-form='piller'] button { border-radius: 0 999px 999px 0; }
+  /* Storleken: 34 i ett fält, 44 i en rad. */
+  .bricka[data-h='34'] { height: 34px; } .bricka[data-h='34'] button { width: 34px; height: 34px; }
+  .bricka[data-h='44'] { height: 44px; } .bricka[data-h='44'] button { width: 44px; height: 44px; }
+  .klippt { outline: 2px dashed #f0a58a; outline-offset: -2px; }
+</style>
+</head>
+<body>
+<div class="protorad">
+  <div class="vaxlare" role="group" aria-label="Variant">
+    <button type="button" data-v="nu">Nu</button>
+    <button type="button" data-v="a">A</button>
+    <button type="button" data-v="b">B</button>
+    <button type="button" data-v="c">C</button>
+  </div>
+  <div class="fraga">
+    <p><b>#648 · Vilken form en bricka har.</b> Krönet med två filter valda och bandet med åtta vid bordet, vid 1280 och 1024. Klicka på ett × för att ta bort en bricka.</p>
+    <p>Måtten: krönets och bandets höjd, brickans höjd och ×:ets ruta i vardera rummet. Streckat rött = ett × under 44 px.</p>
+  </div>
+  <div class="matt" id="matt"></div>
+  <p class="anteckning" id="anteckning"></p>
+</div>
+<div class="scen" id="scen"></div>
+<script>
+const NAMN = ['Ada', 'Bo', 'Cy', 'Di', 'Eva', 'Fia', 'Gun', 'Hal']
+window.PROTO = {
+  varianter: ['nu', 'a', 'b', 'c'],
+  bredder: [1280, 1024],
+  s: { v: 'c', filter: [['typ', 'Location'], ['typ', 'Playcard'], ['raritet', 'Guld']], platser: NAMN.slice() },
+  not: {
+    nu: '<b>Nu.</b> Två former för samma tecken: en rundad ruta på 34 px i sökfältet (blå, markeringens färg) och ett piller på 44 px i bandet (grön kontur). <span class="minus">− Nästa bricka — färdiga teman, taggar — får en tredje form om inget sägs.</span>',
+    a: '<b>A · Pillret på 44 px överallt.</b> Bandets form också i sökfältet. <span class="plus">+ En form, och × är alltid en hel träffyta på 44 × 44.</span> <span class="minus">− Fältet blir 46 px med brickor i (44 inuti kanten) och krönet 55 — mätt här, inte 54 som issuet gissade; det är den höjd krönet redan har i den riktiga appen (55 vid 1280). Priset är alltså två pixlar, och ett tyngre fält.</span>',
+    b: '<b>B · Rutan på 34 px överallt.</b> Fältets form också i bandet. <span class="plus">+ En form, och fältet håller sin höjd.</span> <span class="minus">− Bandets × krymper till 34 × 34, under träffytans 44 (UX-KONTROLLER) — det #621 just rättade. Streckat rött i bandet.</span>',
+    c: '<b>C · En form, två storlekar.</b> Samma rundade ruta, samma hörn, × alltid längst till höger i sin egen ruta; höjden följer raden brickan står i — 34 i ett fält på 44, 44 i en rad på 44. Färgen är ytans: fältets markeringsblå, bandets gröna kontur. <span class="plus">+ Fältet håller sin rad och bandets × sin träffyta; en `.byd-chip` med en storleksvariabel.</span> <span class="minus">− Två storlekar att känna igen som en form; × i fältet är 34 och inte 44, som i dag.</span>',
+  },
+}
+const P = window.PROTO, s = P.s
+const formOf = (rum) => (s.v === 'a' ? 'piller' : s.v === 'b' ? 'ruta' : s.v === 'c' ? 'ruta' : rum === 'falt' ? 'ruta' : 'piller')
+const hOf = (rum) => (s.v === 'a' ? '44' : s.v === 'b' ? '34' : rum === 'falt' ? '34' : '44')
+const bricka = (rum, text, lead, act, data) => `<span class="bricka" data-rum="${rum}" data-form="${formOf(rum)}" data-h="${hOf(rum)}">${lead ? `<i>${lead}</i>` : ''}${text}<button type="button" data-act="${act}" ${data} aria-label="${rum === 'falt' ? `Ta bort filtret ${lead} ${text}` : `Sparka ${text}`}">×</button></span>`
+
+P.skarm = (w) => `${P.huvud(w, 'Tabell')}
+  <div class="band" data-band>Bordet kör rev-1 — <a href="#" data-act="inget">öppna bordet</a> · rumskod <b>UF6H2W</b> <button type="button" class="kantad">Ny kod</button> · vid bordet: <ul class="platser">${s.platser.map((n) => `<li>${bricka('band', n, '', 'sparka', `data-namn="${n}"`)}</li>`).join('')}</ul></div>
+  <div class="t-vy"><div class="t-krona" data-krona><div class="falt" data-falt>${s.filter.map(([k, v]) => bricka('falt', v, k + ':', 'bort', `data-k="${k}" data-val="${v}"`)).join('')}<input type="search" placeholder="Sök i alla fält, eller typ: …" aria-label="Sök i alla fält"></div>${s.filter.length ? '<button type="button" class="t-rensa" data-act="rensa">Rensa filter</button>' : ''}<button type="button" class="t-box slut">Importera ▾</button></div>
+  <div class="rader">9 av 77 kort · Osorterad: kortens ordning i spelet.</div></div>`
+
+P.matt = (root, w, f) => {
+  const ut = []
+  ut.push(`krönet <u>${root.querySelector('[data-krona]').offsetHeight} px</u>, fältet <u>${root.querySelector('[data-falt]').offsetHeight} px</u>`)
+  ut.push(`bandet <u>${root.querySelector('[data-band]').offsetHeight} px</u>`)
+  for (const rum of ['falt', 'band']) {
+    const b = root.querySelector(`.bricka[data-rum="${rum}"]`)
+    if (!b) continue
+    const x = b.querySelector('button')
+    const small = x.offsetWidth < 44 || x.offsetHeight < 44
+    ut.push(`${rum === 'falt' ? 'fältets' : 'bandets'} bricka <u>${b.offsetHeight} px</u>, × ${x.offsetWidth} × ${x.offsetHeight}${small ? ' <span style="color:#f0a58a">under 44</span>' : ''}`)
+    if (small && rum === 'band') for (const el of root.querySelectorAll(`.bricka[data-rum="${rum}"] button`)) el.classList.add('klippt')
+  }
+  return ut
+}
+P.act = (namn, d) => {
+  if (namn === 'bort') { s.filter = s.filter.filter(([k, v]) => !(k === d.k && v === d.val)); return '[data-falt] input' }
+  if (namn === 'rensa') { s.filter = []; return '[data-falt] input' }
+  if (namn === 'sparka') { s.platser = s.platser.filter((n) => n !== d.namn); return }
+  if (namn === 'byt') { s.filter = [['typ', 'Location'], ['typ', 'Playcard'], ['raritet', 'Guld']]; s.platser = NAMN.slice() }
+}
+</script>
+<script type="module" src="komp.js"></script>
+</body>
+</html>
