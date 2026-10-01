@@ -26,7 +26,7 @@ describe('DataTable (B as a tab)', () => {
     // bringing a column of its own to stand in, because that column had nothing under it on any
     // row (#46).
     const heads = screen.getAllByRole('columnheader')
-    const headers = heads.map((h) => (h.getAttribute('aria-label') ?? h.querySelector('button')?.textContent ?? h.textContent ?? '').replace(/\s*[↕↑↓]\s*$/, ''))
+    const headers = heads.map((h) => (h.getAttribute('aria-label') ?? h.querySelector('button')?.textContent ?? h.textContent ?? '').replace(/\s*[↕↑↓]\s*¶?\s*$/, ''))
     expect(headers).toEqual(['', 'id', 'Titel', 'body', 'antal', 'Ta bort'])
     // And nothing about which columns are the designer's is said in the head itself any more: the
     // × that took one away, and the padlock that stood in its place where one could not be taken

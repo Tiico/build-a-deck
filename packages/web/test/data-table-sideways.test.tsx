@@ -73,8 +73,8 @@ function deckDoc(): ProjectDoc {
   }
 }
 
-function Table() {
-  const [doc, setDoc] = useState(deckDoc)
+function Table({ prose }: { prose?: ProjectDoc['prose'] }) {
+  const [doc, setDoc] = useState(() => (prose ? { ...deckDoc(), prose } : deckDoc()))
   return (
     <DataTable
       doc={doc}
@@ -92,8 +92,8 @@ function Table() {
 }
 
 // The table's markup, with `body` pulled wide enough to burst the box when asked for.
-function markup(pull?: { field: string; by: number }): string {
-  const { container, unmount } = render(<Table />)
+function markup(pull?: { field: string; by: number }, prose?: ProjectDoc['prose']): string {
+  const { container, unmount } = render(<Table {...(prose ? { prose } : {})} />)
   try {
     if (pull) {
       const grip = container.querySelector(`thead th[data-col="${pull.field}"] .byd-data-pull`) as HTMLElement
@@ -292,6 +292,17 @@ describe('rubriken över den text man läser (#401)', () => {
     expect(sedd.kolumnenSyns).toBe(true)
     expect(sedd.text).toContain('body')
     // Namnet ligger innanför lådan och inte under det som står stilla där.
+    expect(sedd.vänster).toBeGreaterThanOrEqual(sedd.fast)
+    expect(sedd.höger).toBeLessThanOrEqual(sedd.lådan)
+  }, 90_000)
+
+  // Samma sak om kolumnen skrivs som vanlig text (#615). Rubriken gled förut bara i kolumner som
+  // skrevs som prosa: prosamärkets utfällning satte deras rubrik till `overflow: visible`, och
+  // alla andra rubriker var sin egen rullbehållare, där ett `sticky` namn aldrig glider.
+  it('står kvar innanför lådan också i en kolumn som skrivs som vanlig text', async () => {
+    const sedd = await at(markup({ field: 'body', by: 1400 }, { body: false }), 'end', (page) => rubrikenOchLådan(page, 'body'))
+    expect(sedd.kolumnenSyns).toBe(true)
+    expect(sedd.text).toContain('body')
     expect(sedd.vänster).toBeGreaterThanOrEqual(sedd.fast)
     expect(sedd.höger).toBeLessThanOrEqual(sedd.lådan)
   }, 90_000)
