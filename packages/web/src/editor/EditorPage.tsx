@@ -11,7 +11,7 @@ import { TemplateCanvas } from './TemplateCanvas.js'
 import { DataTable } from './DataTable.js'
 import { TableMenu, TablesTab } from './TablesTab.js'
 import { SetupEditor } from './SetupEditor.js'
-import { SymbolPanel } from './SymbolPanel.js'
+import { revealThemeSection, ThemePanel } from './ThemePanel.js'
 import { MediaPanel } from './MediaPanel.js'
 import { MarkedProvider } from './marked.js'
 import { HistoryPanel } from './HistoryPanel.js'
@@ -482,10 +482,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           setElement(null)
         }}
         onAddField={(field, bindTo) => client.addField(field, { face, id: bindTo, group })}
-        onFontFile={(file) => client.useFont(file, t)}
-        onFontLicence={(family, licence) => client.setFontLicence(family, licence)}
-        onRemoveFont={(family) => client.removeFont(family)}
-        onCatalogFont={async (family) => void (await client.useCatalogFont(family, t))}
+        // The game's typefaces moved to Speltema (L57); the panel says so and takes the hand there,
+        // with the section that holds them open.
+        onOpenFonts={() => {
+          revealThemeSection('fonts')
+          setStage('theme')
+        }}
         // The template's own picture is uploaded by the path Media takes (#320), so it lands there.
         onAddPicture={(file) => client.addPicture(file, t)}
         group={group}
@@ -520,7 +522,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onProse={(field, prose) => client.setProse(field, prose)}
       />
     ),
-    symbols: () => <SymbolPanel doc={doc} client={client} assetBase={http} />,
+    theme: () => <ThemePanel doc={doc} client={client} assetBase={http} />,
     // The pictures the deck is drawn from, in one place (#222). The table's own image strip is
     // what is in use; this is what the game has.
     media: () => <MediaPanel doc={doc} assetBase={http} motifs={deckMotifs} onCrop={(hash, crop) => client.setCrop(hash, crop)} saving={client.cropsInFlight} {...(client.mayEdit ? { onAdd: (file: File) => client.addPicture(file, t), onRemove: (hash: string) => client.removePicture(hash) } : {})} />,

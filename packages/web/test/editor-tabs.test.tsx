@@ -87,13 +87,13 @@ describe('the editor tablist when the mode changes elsewhere', () => {
   })
 })
 
-describe('the editor tablist with the symbols (E4), the rules (B7) and the tables (#19)', () => {
-  it('carries Symboler, Regler and Bord, reached by the same keys as the others', async () => {
+describe('the editor tablist with the game theme (L57), the rules (B7) and the tables (#19)', () => {
+  it('carries Speltema, Regler and Bord, reached by the same keys as the others', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
     render(<EditorTabs mode="wall" onSelect={onSelect} />)
     const tabs = screen.getAllByRole('tab')
-    expect(tabs.map((t) => t.textContent)).toEqual(expect.arrayContaining(['Symboler', 'Regler', 'Bord']))
+    expect(tabs.map((t) => t.textContent)).toEqual(expect.arrayContaining(['Speltema', 'Regler', 'Bord']))
 
     await user.tab()
     await user.keyboard('{End}')
@@ -105,12 +105,12 @@ describe('the editor tablist with the symbols (E4), the rules (B7) and the table
 })
 
 describe('the editor tablist with the media library (#222)', () => {
-  it('carries Media beside Symboler, where the game’s pictures are found and tidied', async () => {
+  it('carries Media beside Speltema, where the game’s pictures are found and tidied', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
     render(<EditorTabs mode="wall" onSelect={onSelect} />)
     const tabs = screen.getAllByRole('tab')
-    expect(tabs.map((t) => t.textContent)).toEqual(['Kortvägg', 'Mall', 'Tabell', 'Symboler', 'Media', 'Regler', 'Bord'])
+    expect(tabs.map((t) => t.textContent)).toEqual(['Kortvägg', 'Mall', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord'])
 
     await user.tab()
     await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}')

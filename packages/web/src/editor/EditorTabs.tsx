@@ -1,19 +1,17 @@
 import { useRoving } from './roving.js'
 import { useT, type Key } from '../i18n/index.js'
 
-export type Mode = 'wall' | 'template' | 'table' | 'symbols' | 'media' | 'rules' | 'tables'
+export type Mode = 'wall' | 'template' | 'table' | 'theme' | 'media' | 'rules' | 'tables'
 
 // The editor's seven modes, in the order they are read (L, #19): the wall is home, the canvas is
-// the template, the table is the data, and then the two libraries the cards draw from — Symboler
-// for the meanings (E4) and Media for the pictures (#222) — before Regler, the rulebook (B7), and
-// Bord, where the game is played from. The pictures stand beside the symbols because they are the
-// same kind of thing to the hand that is looking for one: a library of the deck's own material,
-// with one place to find it and one place to tidy it.
+// the template, the table is the data, and then what the cards draw from — Speltema, the game's
+// typefaces, meanings and icons chosen once (L57, in Symbolers ställe), and Media for the pictures
+// (#222) — before Regler, the rulebook (B7), and Bord, where the game is played from.
 export const MODES: readonly (readonly [Mode, Key])[] = [
   ['wall', 'editor.tab.wall'],
   ['template', 'editor.tab.template'],
   ['table', 'editor.tab.table'],
-  ['symbols', 'editor.tab.symbols'],
+  ['theme', 'editor.tab.theme'],
   ['media', 'editor.tab.media'],
   ['rules', 'editor.tab.rules'],
   ['tables', 'editor.tab.tables'],

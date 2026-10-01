@@ -4,7 +4,7 @@ export const svEditor = {
   'editor.tab.wall': 'Kortvägg',
   'editor.tab.template': 'Mall',
   'editor.tab.table': 'Tabell',
-  'editor.tab.symbols': 'Symboler',
+  'editor.tab.theme': 'Speltema',
   'editor.tab.media': 'Media',
   'media.title': 'Media i spelet',
   'media.unused': 'inget kort använder den',
@@ -790,6 +790,18 @@ export const svEditor = {
   'fonts.catalog.count': '{shown} av {all}',
   'fonts.catalog.silent': 'Katalogen svarade inte. Familjen kunde inte hämtas hem.',
   'fonts.catalog.badge': 'Katalog',
+  // Speltema (L57, #630): the game's typefaces, meanings and icons, each folded behind a head
+  // that carries its value while closed.
+  'theme.fonts': 'Typsnitt',
+  'theme.fonts.none': 'inga egna',
+  'theme.colours': 'Färger och betydelser',
+  'theme.icons': 'Spelets ikoner',
+  'theme.icons.count.one': '1 st',
+  'theme.icons.count.other': '{n} st',
+  'theme.none': 'inga än',
+  'theme.library.open': '＋ Ur biblioteket',
+  'theme.library.done': 'Klar',
+  'canvas.fonts.moved': 'Spelets typsnitt finns i Speltema ›',
 
   // Symbolbiblioteket och spelets egen uppsättning.
   'symbols.colours': 'Spelets färger',
@@ -820,7 +832,6 @@ export const svEditor = {
   'symbols.help.topic': 'biblioteket',
   'symbols.search': 'Sök symbol',
   'symbols.search.placeholder': 'Sök symbol…',
-  'symbols.category': 'Kategori',
   'symbols.foot': '{n} av {of} symboler · {m} i spelet',
   'symbols.categories': 'Kategorier',
   'symbols.all': 'Alla',

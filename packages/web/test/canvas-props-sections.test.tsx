@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
@@ -16,7 +16,7 @@ vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 // remembered for the whole editor rather than per element. «Typsnitt i spelet» is the game's and
 // not a layer's, so it stands in the panel only while no layer is chosen.
 
-function open(selected: string | null = 'frame') {
+function open(selected: string | null = 'frame', onOpenFonts: () => void = vi.fn()) {
   const doc: ProjectDoc = projectDoc()
   render(
     <TemplateCanvas
@@ -40,9 +40,7 @@ function open(selected: string | null = 'frame') {
       onGroupColumn={vi.fn()}
       onAddField={vi.fn()}
       onReset={vi.fn()}
-      onFontFile={async () => 'Typsnitt'}
-      onFontLicence={vi.fn()}
-      onRemoveFont={vi.fn()} onCatalogFont={vi.fn(async () => undefined)}
+      onOpenFonts={onOpenFonts}
     />,
   )
 }
@@ -80,11 +78,16 @@ describe('the property panel folds (#478)', () => {
     expect(head(/^Fyllning/).getAttribute('aria-expanded')).toBe('true')
   })
 
-  it('shows the game s typefaces only while no layer is chosen', () => {
-    open()
-    expect(screen.queryByRole('heading', { name: 'Typsnitt i spelet' })).toBeNull()
+  // The typefaces stood here while no layer was chosen (#478); they are Speltema's since L57
+  // (#630), and the panel with no layer says where they went instead of showing them.
+  it('says where the game s typefaces are while no layer is chosen, and shows no shelf', () => {
+    const onOpenFonts = vi.fn()
+    open(null, onOpenFonts)
+    expect(screen.queryByRole('list', { name: 'Typsnitt i spelet' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Spelets typsnitt finns i Speltema/ }))
+    expect(onOpenFonts).toHaveBeenCalled()
     cleanup()
-    open(null)
-    expect(screen.getByRole('heading', { name: 'Typsnitt i spelet' })).toBeTruthy()
+    open()
+    expect(screen.queryByRole('button', { name: /Spelets typsnitt finns i Speltema/ })).toBeNull()
   })
 })

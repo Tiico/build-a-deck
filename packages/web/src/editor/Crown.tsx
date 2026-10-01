@@ -2,8 +2,9 @@ import { useEffect, useRef, type ReactNode, type RefObject } from 'react'
 import { useDoor } from '../doors.js'
 import { useT } from '../i18n/index.js'
 
-// The crown a tab panel wears (#128, #130, variant B). One mechanism on three surfaces — the card
-// wall, the symbol library and the card table — and not three fixes, because it is one question:
+// The crown a tab panel wears (#128, #130, variant B). One mechanism on several surfaces — the card
+// wall and the card table, and the symbol library until it became Speltema's sheet (L57) — and not
+// three fixes, because it is one question:
 // what does a panel own at the top, and what scrolls under it.
 //
 // The row is exactly one row at every width. What does not fit does not wrap and does not vanish:
