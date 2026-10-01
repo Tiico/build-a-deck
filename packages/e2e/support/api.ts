@@ -118,10 +118,22 @@ export async function logIn(request: APIRequestContext, email = `e2e-${crypto.ra
  * A table started from a project, the way the editor's own button starts one. Some surfaces are
  * only worth measuring in the state a running table puts them in — the Bord tab's third column is
  * a list of tables, and an empty list is not what makes it tall.
+ *
+ * It answers with the table, so a spec can seat people at it through the host's own connection.
+ * The seats are the project's and not the answer's, so a spec that needs them names them itself.
  */
-export async function startTable(request: APIRequestContext, projectId: string): Promise<void> {
+export async function startTable(request: APIRequestContext, projectId: string): Promise<Omit<Table, 'seats'>> {
   const res = await request.post(`/projects/${encodeURIComponent(projectId)}/sessions`)
   if (!res.ok()) throw new Error(`could not start a table on ${projectId}: ${res.status()} ${await res.text()}`)
+  const started = (await res.json()) as { id: string; code: string; hostKey: string }
+  const host = encodeURIComponent(started.hostKey)
+  return {
+    session: started.id,
+    code: started.code,
+    hostKey: started.hostKey,
+    tableUrl: `/table?session=${encodeURIComponent(started.id)}&host=${host}&mode=table`,
+    tvUrl: `/table?session=${encodeURIComponent(started.id)}&host=${host}&mode=tv`,
+  }
 }
 
 /** A project of one's own, owned by whoever this context is logged in as. */

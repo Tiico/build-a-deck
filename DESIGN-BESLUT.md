@@ -5736,3 +5736,26 @@ Det förkastade: **B**, åtta celler i en ram på en rad, gav celler på 37 px i
 **C**, där filten själv är väljaren med en spökplats «+» och ett × på den sista, var vackrast men lämnade guiden, som inte har någon filt, med en annan form, och tangentbordet utan väg till spökplatsen.
 
 Prototypen står i [`docs/ux-audits/2026-09-30-komponenter/prototyper/04-platsvaljaren.html`](docs/ux-audits/2026-09-30-komponenter/prototyper/04-platsvaljaren.html), och mätningen i `packages/e2e/test/surfaces/seat-stepper.spec.ts`.
+
+### L60. Bordsbandets platser är brickor med ×, och bandet bryter i stället för att rinna ut (prototypat och beslutat 2026-10-01, #621)
+
+När ett bord kör står ett grönt band under huvudet på varje flik med länken till bordet, rumskoden och «Ny kod», och värdens makt över vem som sitter vid bordet (DRIFT §9).
+Varje plats kostade en kantad «Sparka Ada» på 112–130 px bredvid sitt namn, så bandet växte med spelarna, och det som växte var knappar som nästan aldrig trycks.
+Med åtta vid bordet bröt raden mitt i platserna: ett namn på en rad och dess knapp på nästa.
+
+**En plats är en bricka**, `[Ada ×]` (variant A av tre: brickor, en box i huvudet, en statusrad).
+Namnet står på brickan och × bredvid; × är en full träffyta på 44 × 44 px som heter «Sparka Ada», så skärmläsaren får meningen och ögat platsen och tecknet.
+× är tabellens och lagerlistans tecken för «ta bort».
+Brickan är lika hög som «Ny kod» bredvid den; linjen är därför en kontur inuti rutan och inte en kant runt den, som annars hade gjort brickan 46 px eller × 42.
+
+**Bandet bryter efter vad det bär och inte efter ordet.**
+Brickorna står i en grupp som går under länken och rumskoden tillsammans när de inte ryms bredvid, vid 1024 med åtta vid bordet, och inget rinner någonsin utanför fönstret.
+Mätt i den byggda appen på båda språken vid 1024 och 1280 (`editor-seat-chips.spec.ts`), på förhållanden och inte på textbredder.
+
+**Fokus följer inte med en sparkad plats ut.**
+× som trycktes försvinner med sin bricka, och ett fokus vars element tas bort faller till sidan (#477, fynd 6).
+Det lämnas därför vidare: till platsen som tog den sparkades plats, till den före när det var den sista i raden, och till «Ny kod» när ingen är kvar.
+
+Variant B, en box «Bordet kör (8) ▾» i huvudet, valdes bort: huvudet är redan fullt under 1440 (#566) och rann 73 px utanför vid 1024.
+Variant C, en statusrad på 32 px med sparkarna flyttade till Bord-flikens kort, är en större flytt som kan göras senare om bandet ändå stör.
+Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/05-bordsbandet.html`.
