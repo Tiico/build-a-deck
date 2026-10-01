@@ -318,6 +318,10 @@
    of it is drawn through the same two variables the rim rules above use — the renderer says how
    far, because it is the only one that knows how large the zone came out. */
 .byd-table-frame[data-tight] .byd-zone > span { font-size: 12px; letter-spacing: 0; }
+/* The pile's badge is set at the same tightest, 12 px, the size the hands' counts are (#652). At
+   15 px on a 30 px plate it was larger than the card: on the Bord tab's felt at 1024 a card is
+   20 × 28 px, and the badge covered all of it, so nothing of the pile showed but its thickness. */
+.byd-table-frame[data-mode='tv'][data-tight] .byd-pile-n { min-width: min(18px, 100%); height: 18px; padding: 0 3px; font-size: 12px; }
 
 /* A pile that only exists because two cards were stacked (K1) has no name worth saying. */
 .byd-table-frame[data-mode='table'] .byd-pile[data-dynamic='true'] .byd-pile-name { display: none; }
@@ -331,9 +335,11 @@
   position: absolute; left: 50%; bottom: -24px; transform: translateX(-50%); pointer-events: auto;
   font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; color: #7d8597; white-space: nowrap;
 }
+/* The badge stands on its pile and nowhere the pile is not (K19, #76): never wider than the card,
+   which on the Bord tab's felt at 1280 is 28 px (#652). */
 .byd-table-frame[data-mode='tv'] .byd-pile-n {
   position: absolute; left: 50%; top: 0; translate: -50% 0; pointer-events: auto;
-  min-width: 30px; height: 30px; padding: 0 6px; box-sizing: border-box; border-radius: 999px;
+  min-width: min(30px, 100%); height: 30px; padding: 0 6px; box-sizing: border-box; border-radius: 999px;
   background: #e8eaf0; color: #0d0f14; display: grid; place-items: center; font-size: 15px; font-weight: 800;
 }
 
