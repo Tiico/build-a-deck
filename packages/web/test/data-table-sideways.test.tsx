@@ -343,6 +343,27 @@ const kantenAvLådan = (page: import('playwright').Page) =>
     }
   })
 
+// `id` är en del av det fastnålade, inte en kolumn som rullar förbi det (#629). #401:s glidning
+// knuffar varje rubrik fram till lanens slut — och lanen *är* bocken plus `id` — så `id`:s eget
+// namn hamnade vid sin cells högerkant, ~150 px från texten under det. Villkoret mäts mot en
+// rubrik som inte glider än: vid lådans början står varje namn lika långt in i sin cell.
+describe('rubriken «id» står över sin egen text (#629)', () => {
+  const indrag = (page: import('playwright').Page, col: string) =>
+    page.evaluate((col) => {
+      const th = document.querySelector(`.byd-data thead th[data-col="${col}"]`)!
+      return Math.round(th.querySelector('button')!.getBoundingClientRect().left - th.getBoundingClientRect().left)
+    }, col)
+
+  it('står lika långt in i sin cell som rubrikerna bredvid, i vila och utrullad', async () => {
+    const [id, typ] = await at(burst(), 'start', async (page) => [await indrag(page, 'id'), await indrag(page, 'typ')])
+    // Inte ett prov på en tom rubrik: `typ` står i sin cell med rubrikens egen indragning.
+    expect(typ).toBeGreaterThan(0)
+    expect(id).toBe(typ)
+    // Och `id` glider inte när resten rullar förbi: den är redan där lanen slutar.
+    expect(await at(burst(), 'end', (page) => indrag(page, 'id'))).toBe(id)
+  }, 90_000)
+})
+
 describe('kapet mot lådan bär samma gest som kapet mot kolumnen (#401)', () => {
   it('tonar ut vid högerkanten så länge något ligger utanför den', async () => {
     const sedd = await at(burst(), 'start', kantenAvLådan)

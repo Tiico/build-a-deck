@@ -2198,7 +2198,9 @@
    redan bär, applicerat på huvudet. `sticky` klipps av sin egen `th`, så namnet lämnar aldrig sin
    kolumn: det stannar av sig självt när kolumnens högerkant kommer. Var lanen slutar vet bara
    mätningen, som säger det i `--byd-data-lane`; före första mätningen räcker bocken. */
-.byd-data thead th[data-col] > button { position: sticky; left: var(--byd-data-lane, var(--byd-tap)); }
+/* Utom `id` (#629): den är själv en del av det fastnålade som lanen mäter, så lanens slut är dess
+   egen cells högerkant — och dit knuffades namnet, ~150 px från texten under det. */
+.byd-data thead th[data-col]:not([data-col='id']) > button { position: sticky; left: var(--byd-data-lane, var(--byd-tap)); }
 .byd-data thead .byd-data-check { position: sticky; left: 0; z-index: 3; }
 .byd-data thead th[data-col='id'] { position: sticky; left: var(--byd-tap); z-index: 3; }
 /* The edge that says there is more to the left. It is a promise that something is there, so it is
