@@ -2861,7 +2861,23 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
    the chosen symbol, and the foot says the string the box will write. */
 .byd-symbol-box { position: absolute; z-index: 5; display: grid; gap: var(--byd-s2); padding: var(--byd-s2); width: 320px; max-height: var(--byd-place-room, 360px); box-sizing: border-box; overflow: auto; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); }
 .byd-symbol-box .byd-pick-list { position: static; width: auto; max-height: none; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
-.byd-symbol-box .byd-symbol-box-grid { max-height: 176px; overflow: auto; }
+.byd-symbol-box .byd-symbol-box-library, .byd-symbol-box .byd-symbol-box-found { max-height: 176px; overflow: auto; }
+/* The game's own parts first (L57, #631): each under a heading that says which of the three it is,
+   the deck's tokens as pills that go in with one click, and the game's icons as tiles. */
+.byd-symbol-box-part { display: grid; gap: var(--byd-s1); }
+.byd-symbol-box-head { display: flex; align-items: baseline; gap: var(--byd-s2); margin: 0; color: var(--byd-editor-quiet); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.byd-symbol-box-head small { margin-left: auto; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.byd-symbol-box .byd-symbol-box-written { display: flex; flex-wrap: wrap; gap: var(--byd-s1); }
+.byd-symbol-box .byd-symbol-box-written > button { display: inline-flex; gap: var(--byd-s2); padding: var(--byd-s1) var(--byd-s2) var(--byd-s1) var(--byd-s1); border-radius: 999px; border-color: #3b4358; }
+.byd-symbol-box .byd-symbol-box-written code { color: #e6ecfa; font-size: 12px; }
+.byd-symbol-box .byd-symbol-box-written small { margin-left: 0; font-variant-numeric: tabular-nums; }
+.byd-symbol-box .byd-symbol-box-icons { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); max-height: 176px; overflow: auto; }
+.byd-symbol-box .byd-symbol-box-icons > button { flex-direction: column; justify-content: center; gap: var(--byd-s1); padding: var(--byd-s1); text-align: center; font-size: 11px; line-height: 1.3; border-color: #2f333d; }
+.byd-symbol-box .byd-symbol-box-icons > button > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The way into the library, and back: a quiet link at the foot, beside the string being written. */
+.byd-symbol-box .byd-symbol-box-way { display: flex; flex: none; }
+.byd-symbol-box .byd-symbol-box-way > button { padding: var(--byd-s1) var(--byd-s2); color: #8ad0ff; }
+.byd-symbol-writes p { display: flex; align-items: center; gap: var(--byd-s2); margin: 0 0 0 auto; }
 .byd-symbol-box .byd-symbol-box-meanings { display: flex; flex-wrap: wrap; gap: var(--byd-s1); padding-top: var(--byd-s2); border-top: 1px solid #2f333d; }
 .byd-symbol-box .byd-symbol-box-meanings > button { display: inline-flex; gap: var(--byd-s2); padding: var(--byd-s1) var(--byd-s2) var(--byd-s1) var(--byd-s1); border-radius: 999px; border-color: #3b4358; }
 .byd-symbol-none, .byd-symbol-writes { margin: 0; padding-top: var(--byd-s2); border-top: 1px solid #2f333d; color: var(--byd-editor-quiet); font-size: 12px; line-height: 1.4; }
