@@ -15,6 +15,7 @@ import { fieldLabel } from '../editor/fields.js'
 import { ANTAL } from '@byd/server/doc'
 import { useT, type Key, type T } from '../i18n/index.js'
 import { Help } from '../editor/HelpDrawer.js'
+import { Stepper } from '../Stepper.js'
 import { MAX_PLAYERS, PROJECT_NAME_MAX } from '@byd/server/doc'
 import './wizard.css'
 
@@ -427,10 +428,12 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
           {says}
         </p>
       )}
-      {/* Every seat count the table can hold, and not six of them written out: `MAX_PLAYERS` is
-          eight, so a game for seven or eight could not be started here at all — the same mismatch
-          the editor's own panel had (K18, K19). */}
-      <fieldset><legend>{t('wizard.players')}</legend><div className="byd-wizard-players">{Array.from({ length: MAX_PLAYERS }, (_, i) => i + 1).map((n) => <button key={n} type="button" className="byd-choice" aria-pressed={s.players === n} onClick={() => setS({ ...s, players: n })}>{n}</button>)}</div></fieldset>
+      {/* Every seat count the table can hold, `MAX_PLAYERS` and not six (K18, K19) — as the same
+          stepper Bord's recipe column has (#620), one row of three targets rather than eight. */}
+      <fieldset>
+        <legend>{t('wizard.players')}</legend>
+        <Stepper value={s.players} min={1} max={MAX_PLAYERS} onChange={(players) => setS({ ...s, players })} label={t('players.count', { min: 1, max: MAX_PLAYERS })} fewer={t('players.fewer')} more={t('players.more')} />
+      </fieldset>
       {/* The guided start is a door, not a gate (L42): the name and the seats above are all a
           game needs in order to exist, and whoever would rather make the cards, the fields and
           the faces in the editor goes there now, with none of them. It is the second action in

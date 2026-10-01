@@ -52,7 +52,7 @@ const SHELL = `
           <input type="search" class="byd-crown-search" aria-label="Sök i alla fält" data-stop="the wall's search" />
           <button class="byd-crown-box" aria-expanded="false" data-stop="the eyes box">Ögon: Som du ser det ▾</button>
           <button class="byd-crown-box" aria-expanded="false" data-stop="the guides box">Guider (0) ▾</button>
-          <div class="byd-crown-step" role="group"><button data-stop="packing the wall closer">−</button><button data-stop="larger cards">+</button></div>
+          <div class="byd-pill" role="group"><button class="byd-pill-step" data-stop="packing the wall closer">−</button><output class="byd-pill-value">150 px</output><button class="byd-pill-step" data-stop="larger cards">+</button></div>
           <button class="byd-crown-box" aria-expanded="false" data-stop="the grouping box">Grupperad efter: typ ▾</button>
           <button class="byd-crown-fold" aria-expanded="true" data-stop="folding the jump column"><span>⟨</span>Fäll ihop hoppspalten</button>
           <button class="byd-crown-box byd-crown-end" aria-expanded="false" data-stop="the checks box">Fysisk kontroll (1) ▾</button>
@@ -67,7 +67,7 @@ const SHELL = `
           </nav>
           <div class="byd-wall-deck"><div class="byd-wall"><div class="byd-wall-card" aria-selected="true"></div></div></div>
         </div>
-        <div class="byd-crown-foot"><span>3 kort · 150 px breda</span></div>
+        <div class="byd-crown-foot"><span>3 kort</span></div>
       </div>
     </div>
     <div role="tabpanel" tabindex="0" data-stop="the template panel">
@@ -89,6 +89,13 @@ const SHELL = `
             <div class="byd-drag-box" role="button" tabindex="0" data-moving data-stop="an element in move mode"></div>
           </div></div>
         </main>
+        <div class="byd-canvas-zoom"><div class="byd-pill" role="group">
+          <button class="byd-pill-step" data-stop="the zoom's step down">−</button>
+          <div class="byd-pill-measure"><button class="byd-pill-value" aria-haspopup="menu" aria-expanded="true" data-stop="the zoom's percentage">164 %</button>
+            <div class="byd-pill-menu" role="menu"><button class="byd-pill-choice" role="menuitemradio" aria-checked="true" data-stop="a zoom choice">Passa in</button><button class="byd-pill-choice" role="menuitemradio" aria-checked="false" tabindex="-1">100 %</button></div>
+          </div>
+          <button class="byd-pill-step" data-stop="the zoom's step up">+</button>
+        </div></div>
         <aside class="byd-canvas-props">
           <div class="byd-props">
             <label>X (mm)<input type="number" data-stop="a property field" /></label>
@@ -241,6 +248,10 @@ test.describe('the editor under a keyboard', () => {
       'the grid toggle',
       'an element on the card',
       'an element in move mode',
+      "the zoom's step down",
+      "the zoom's percentage",
+      'a zoom choice',
+      "the zoom's step up",
       'a property field',
       'a property choice',
       'the table panel',

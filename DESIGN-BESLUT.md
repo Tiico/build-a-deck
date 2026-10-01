@@ -4038,6 +4038,20 @@ Draglagret mäter fortfarande millimetrar ur kortets egen ruta och aldrig ur ska
 **Tillägg 2026-09-27 (#478, beslut av beställaren efter prototyperna 04 och 07).**
 Förstoringen växer kring något: Ctrl och hjulet kring det som står under pekaren, bandets egna kontroller kring det valda elementet eller scenens mitt när inget är valt; så länge kortet är mindre än scenen finns inget att rulla och kortet växer från mitten som förut.
 Handtag och punkter behåller sina millimetrar men går aldrig under 10 px på skärmen.
+
+**Tillägg 2026-10-01 (#619, prototypat och beslutat av beställaren, variant A av tre).**
+Kontrollens form.
+Bandet var sex kontroller i en stapel — procenttalet, `−`, reglaget, `+`, **Passa in** och **100 %** — som mätte 94 × 269 px vid 1280 och en rad på 365 × 50 under scenen vid 1024; Kortväggens täthet var ett annat par knappar, `− +` i krönet, med bredden sagd i foten en halv skärm bort.
+Två ytor, samma fråga, två former.
+Nu är det **ett piller**, `[−][164 % ▾][+]`, 154 × 44 px: ett steg ned, måttet, ett steg upp.
+Procenttalet är knappen som öppnar valen — **Passa in**, **100 %**, **50 %**, **200 %** — uppåt och i toppskiktet som varje öppnad låda (L55); piltangenterna på procenttalet stegar, så reglagets tangentbord är kvar utan reglaget.
+Reglaget går.
+Medan kortet är inpassat står ordet «Passa in» under procenttalet, och knappens namn säger det: inpassningen är annars ett val bakom en meny, och ett val ingen ser är ett läge ingen vet att kortet står i.
+Under och inte bredvid: bredvid blev pillret 206 px, och vid 1280 med egenskaperna uppfällda blev kortet breddbundet med 5 px — det enda ett band i den överblivna bredden aldrig får göra.
+Platsen är oförändrad: dukens hörn, aldrig krönet, aldrig över kortet, och raden under scenen där spalten inte finns.
+Samma komponent (`StepPill`) ritar Kortväggens täthet i krönet, `[−][150 px][+]`, där måttet läses och inte trycks eftersom väggen inget har att välja bland; foten upprepar inte längre talet.
+Variant B, allt synligt på en rad om ~270 px, valdes bort för att den ryms ännu mer sällan i hörnet; variant C, ett lodrätt reglage i scenens kant, för att formen är ovanlig och inte passar krönet.
+Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/03-forstoringen.html`.
 Ett elements mitt stannar på kortet vid drag, piltangenter och skrivet X/Y — det kan hänga halvt över en kant, aldrig mer — och en etikett säger varför det stannade.
 Vid förstoring panorerar scenen när en hand som drar hålls nära dess kant, och elementet följer med.
 Under kortet står en rad som säger vilket kort mallen visas på, med ‹ och ›, en sökbar lista (som Media, L22) och de värden på kortet som styr hur det ritas; den kostar en rad av kortets höjd, som bandet redan gjorde vid 1024.
@@ -5690,7 +5704,26 @@ Variant C, att krönet byter innehåll medan något är markerat, tar bort sökn
 `data-table-layout.test.tsx` mäter att första raden står kvar och att foten är en rad; `data-table-bulk.test.tsx` håller handlingarna och boxen.
 Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/02-atgardsraden.html`.
 
-### L59. Bordsbandets platser är brickor med ×, och bandet bryter i stället för att rinna ut (prototypat och beslutat 2026-10-01, #621)
+### L59. Antalet spelare är en stegare, i Bord och i guidad start (prototypat och beslutat 2026-10-01, #620)
+
+Ett tal mellan 1 och 8 valdes med åtta knappar på 44 px.
+I Bords receptspalt bröt de på två rader, så sektionen «Spelare» var 124 px hög för ett enda tal, och i guidad start tog raden 445 px.
+
+Beslutet är variant A: `Spelare [−] [4] [+]` på en rad, talet skrivbart, samma kontroll i Bord och i guidad start.
+Sektionen blir 76 px hög och guidens rad omkring 150 px bred, med tre mål på 44 px i stället för åtta.
+K18:s anmärkning — vad en ny plats får och vad en plats som lämnar tar med sig — står kvar bakom `?` vid rubriken.
+
+Kontrollen är en `spinbutton` i WAI-ARIA:s mening: talet är det enda tabbstoppet, pil upp och pil ned stegar det, och knapparna är pekarens och står utanför tabbordningen.
+Det som skrivs i fältet är ett utkast tills fältet lämnas eller Enter trycks (`number-draft.ts`, #478): ett tal utanför ändarna hålls vid närmaste ände, och det som inte är ett tal skriver ingenting.
+Knappen vid en ände är släckt, och den som just nådde sin ände lämnar fokus till talet i stället för till sidan.
+Komponenten är en och står i `packages/web/src/Stepper.tsx` med sitt eget ark, så rummen säger bara sina färger.
+
+Det förkastade: **B**, åtta celler i en ram på en rad, gav celler på 37 px i spalten vid 1280 och 32 px vid 1024, under träffytans 44.
+**C**, där filten själv är väljaren med en spökplats «+» och ett × på den sista, var vackrast men lämnade guiden, som inte har någon filt, med en annan form, och tangentbordet utan väg till spökplatsen.
+
+Prototypen står i [`docs/ux-audits/2026-09-30-komponenter/prototyper/04-platsvaljaren.html`](docs/ux-audits/2026-09-30-komponenter/prototyper/04-platsvaljaren.html), och mätningen i `packages/e2e/test/surfaces/seat-stepper.spec.ts`.
+
+### L60. Bordsbandets platser är brickor med ×, och bandet bryter i stället för att rinna ut (prototypat och beslutat 2026-10-01, #621)
 
 När ett bord kör står ett grönt band under huvudet på varje flik med länken till bordet, rumskoden och «Ny kod», och värdens makt över vem som sitter vid bordet (DRIFT §9).
 Varje plats kostade en kantad «Sparka Ada» på 112–130 px bredvid sitt namn, så bandet växte med spelarna, och det som växte var knappar som nästan aldrig trycks.

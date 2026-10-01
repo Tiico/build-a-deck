@@ -192,8 +192,11 @@ export const svEditor = {
   'wall.density': 'Täthet',
   'wall.density.more': 'Fler kort per rad',
   'wall.density.less': 'Färre och större kort',
-  'wall.foot.cards': '{n} kort · {px} px breda',
-  'wall.foot.found': '{shown} av {total} kort · {px} px breda',
+  // Bredden står i pillret mellan de två stegen (#619), inte i foten en halv skärm bort.
+  'wall.density.px': '{px} px',
+  'wall.density.said': 'Korten {px} px breda',
+  'wall.foot.cards': '{n} kort',
+  'wall.foot.found': '{shown} av {total} kort',
   'wall.foot.checked': 'Inga anmärkningar',
   'wall.empty.title': 'Spelet har inga kort än',
   'wall.empty.body': 'Ett kort är en rad i Tabell, och mallen i Mall ritar det. Börja var du vill.',
@@ -522,14 +525,21 @@ export const svEditor = {
   // gränssnittet alls: inget reglage, ingen procentsats, ingen Ctrl-rulle.
   'canvas.stage': 'Duken',
   'canvas.zoom': 'Förstoring',
-  'canvas.zoom.level': 'Förstoring i procent',
   'canvas.zoom.percent': '{n} %',
+  // Ett piller, [−][164 % ▾][+] (#619): procenttalet är knappen som öppnar valen, och dess namn
+  // säger måttet och om kortet är inpassat — inpassningen är annars ett val bakom en meny, och ett
+  // val ingen ser är ett läge ingen vet att kortet står i.
+  'canvas.zoom.said': 'Förstoring: {n} %',
+  'canvas.zoom.said.fit': 'Förstoring: {n} %, inpassad',
+  'canvas.zoom.choices': 'Välj förstoring',
   'canvas.zoom.in': 'Förstora mer',
   'canvas.zoom.out': 'Förstora mindre',
   'canvas.zoom.fit': 'Passa in',
-  // Kortets eget mått, som det trycks. Knappen heter det den gör: 100 % är en millimeter ritad
+  // Kortets eget mått, som det trycks. Valet heter det det gör: 100 % är en millimeter ritad
   // som en millimeter, och det betyder samma sak i varje fönster — vilket Passa in aldrig gör.
   'canvas.zoom.actual': '100 %',
+  'canvas.zoom.half': '50 %',
+  'canvas.zoom.double': '200 %',
   // Vad som går, och inte bara vad som gick (#144). Meningen var sann bara så länge elementet inte
   // gick att flytta från tangentbordet: den namngav ordningen och omdöpningen och teg om själva
   // flytten, vilket var precis den som saknades.
