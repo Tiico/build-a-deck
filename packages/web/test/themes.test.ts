@@ -8,6 +8,7 @@ import { ROLE_MIN_CONTRAST, paletteIssues } from '../src/editor/palette.js'
 import { INKS } from '../src/editor/ThemePanel.js'
 import { parseCatalog } from '../src/editor/font-catalog.js'
 import { deckIssues } from '../src/editor/checks.js'
+import { familyChoices } from '../src/editor/fonts.js'
 import { contrastRatio } from '@byd/template'
 import { projectDoc } from './project-doc.js'
 import type { ProjectDoc, ProjectFont } from '@byd/server'
@@ -114,5 +115,24 @@ describe('what departs from the chosen theme', () => {
     const moved = { ...doc, palette: { ...doc.palette, kostnad: '#1c1c1c' } }
     expect(said(moved)).toHaveLength(1)
     expect(said(chosen(moved, byId('krönika')))).toEqual([])
+  })
+})
+
+// #634 left the order of Mall's family list to one function so the theme could take its head.
+describe('the family a text layer is offered first in Mall (#634)', () => {
+  it('is the theme’s heading family, then its body family, then the game’s other typefaces', () => {
+    const doc = chosen(projectDoc(), byId('krönika'))
+    // A family of the designer's own that the game had before the theme, listed ahead of it.
+    const fonts = { Min: { stack: '"Min", serif', asset: `asset:${'c'.repeat(64)}` }, ...doc.fonts }
+    expect(familyChoices({ fonts, theme: doc.theme }, 'Lora').game).toEqual(['Lora', 'Merriweather', 'Min', 'system-ui'])
+  })
+
+  it('names a theme family only once when heading and body are the same', () => {
+    const doc = chosen(projectDoc(), byId('ren'))
+    expect(familyChoices(doc, 'Inter').game.filter((f) => f === 'Inter')).toHaveLength(1)
+  })
+
+  it('is the game’s own order for a game that started from no theme', () => {
+    expect(familyChoices(projectDoc(), 'sans-serif').game).toEqual(['sans-serif', 'system-ui'])
   })
 })

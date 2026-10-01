@@ -132,7 +132,7 @@ function ThemeCard({ doc, theme, faces, assetBase }: { doc: ProjectDoc; theme: T
     return applyEdit(doc, themeIntent(doc, theme, stacks, t))
   }, [doc, theme, faces, t])
   const icons = useMemo(() => previewIcons(themed, assetBase), [themed, assetBase])
-  const fonts = useMemo(() => ({ ...previewFonts(themed, assetBase), ...Object.fromEntries(themeFamilies(theme).flatMap((f) => (faces[f.family] ? [[f.family, faces[f.family]]] : []))) }), [themed, theme, faces, assetBase])
+  const fonts = useMemo(() => ({ ...previewFonts(themed, assetBase), ...Object.fromEntries(themeFamilies(theme).flatMap((f) => { const face = faces[f.family]; return face ? [[f.family, face] as const] : [] })) }), [themed, theme, faces, assetBase])
   const front = themed.template.faces['front']
   const row = themed.rows[0]
   if (!front || !row) return null
