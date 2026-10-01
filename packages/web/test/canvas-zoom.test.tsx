@@ -9,7 +9,7 @@
 // card is drawn at is read off the card, and what the zoom is is read off the percentage the
 // control shows.
 import { describe, expect, it, vi } from 'vitest'
-import { act, createEvent, fireEvent, render, screen } from '@testing-library/react'
+import { act, createEvent, fireEvent, render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { TemplateCanvas, type TemplateCanvasProps } from '../src/editor/TemplateCanvas.js'
 import { STAGE_SCALE } from '../src/editor/canvas.js'
@@ -85,13 +85,11 @@ describe('the zoom control on the canvas (#146, #619)', () => {
     expect([...band.querySelectorAll('button')].map((b) => b.getAttribute('aria-label'))).toEqual(['Förstora mindre', 'Förstoring: 260 %, inpassad', 'Förstora mer'])
 
     await user.click(percentButton())
-    const menu = screen.getByRole('menu', { name: 'Välj förstoring' })
-    expect([...menu.querySelectorAll('[role="menuitemradio"]')].map((b) => [b.textContent, b.getAttribute('aria-checked')])).toEqual([
-      ['Passa in', 'true'],
-      ['100 %', 'false'],
-      ['50 %', 'false'],
-      ['200 %', 'false'],
-    ])
+    const menu = within(screen.getByRole('menu', { name: 'Välj förstoring' }))
+    // Four choices in this order, heard by their names; the fit is the one the card stands on.
+    const choices = ['Passa in', '100 %', '50 %', '200 %'].map((name) => menu.getByRole('menuitemradio', { name }))
+    expect(menu.getAllByRole('menuitemradio')).toEqual(choices)
+    expect(choices.map((b) => b.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false', 'false'])
   })
 
   // A card is drawn in millimetres, so there is one zoom that means the same thing in every
