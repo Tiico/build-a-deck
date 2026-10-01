@@ -78,15 +78,6 @@ export { AssetCrop, Picture, PictureName } from '@byd/protocol'
 export const ProjectFont = z.object({ stack: z.string().min(1), asset: z.string().optional(), licence: ProjectCredit.optional(), source: z.literal('catalog').optional() })
 export type ProjectFont = z.infer<typeof ProjectFont>
 
-// What one card asks of the template's measure that the measure did not give it (E1): how much
-// closer in, and how far off centre, as shares of the window. It is checked here rather than
-// trusted, because a stored departure crops that card on every render from now on: a zoom of
-// nothing is no picture, and an offset of more than half a window pushes the drawing clean out
-// of its own frame. Nothing here rewrites the file, which may sit in ten other people's decks.
-const Share = z.number().gte(-0.5).lte(0.5)
-export const ProjectFraming = z.object({ zoom: z.number().gt(0).lte(8).optional(), dx: Share.optional(), dy: Share.optional() })
-export type ProjectFraming = z.infer<typeof ProjectFraming>
-
 export const ProjectDoc = z.object({
   name: z.string().min(1),
   template: Template,
@@ -107,10 +98,6 @@ export const ProjectDoc = z.object({
   // check the colour against the card it will sit on, and one place to find two meanings that
   // become one for a colour-blind reader (E5).
   palette: z.record(z.string(), z.string().min(1)).optional(),
-  // Each card's own departure from its template's measure (E1), keyed `<kort>/<kolumn>`: the
-  // picture belongs to a cell, so the departure does too. It is the deck's and not the file's,
-  // because a file is content-addressed and the same bytes may be someone else's art.
-  framing: z.record(z.string().regex(/^[^/]+\/[^/]+$/, 'a framing key names a card and a column'), ProjectFraming).optional(),
   // What the game knows about each of its pictures (#222, L22), under the hash of the picture's
   // own bytes. The crop lives here and not beside the cell, because it is the picture's and not
   // the card's: cropped once, it is obeyed by every card drawn from that file — which is the
@@ -129,7 +116,7 @@ export const ProjectDoc = z.object({
   // Den ligger här och inte på mallens element, fastän det är elementets höjd som föreslår, av
   // två skäl: valet är kolumnens och inte en rutas — samma kolumn kan ritas på både fram- och
   // baksida — och en kolumn som mallen inte ritar alls måste ändå gå att välja åt. Den är
-  // dokumentdata som `columns`, `palette` och `framing`: den sparas, versioneras och följer med
+  // dokumentdata som `columns` och `palette`: den sparas, versioneras och följer med
   // projektet precis som de.
   prose: z.record(z.string(), z.boolean()).optional(),
   rules: RuleDoc.optional(),
@@ -148,7 +135,17 @@ export type ProjectRecord = ProjectDoc & { id: string; rev: number; owner?: stri
 // Lifted on the way out rather than rewritten in the database, because a project's history is
 // written once and never rewritten (B4): a migration that touched only the newest row would leave
 // every older version of the same project unopenable.
-export const liftDoc = <T>(doc: T): T => liftTemplate(doc)
+//
+// Each card's own departure from the measure, `framing`, was retired the same way (#607): it was
+// set only from «Bildernas mått» on the wall, and once a picture carried its own crop (L22) that
+// surface had nothing left to say. A stored one is taken off here rather than left to crop cards
+// nobody can uncrop, and a card that wants another cut uses a picture cropped for it.
+export const liftDoc = <T>(doc: T): T => withoutFraming(liftTemplate(doc))
+const withoutFraming = <T>(doc: T): T => {
+  if (typeof doc !== 'object' || doc === null || !('framing' in doc)) return doc
+  const { framing: _framing, ...rest } = doc as Record<string, unknown>
+  return rest as T
+}
 // A game as "Mina spel" lists it (G1): what it is called, where its history stands, how many
 // tables have been started from it and when one of them was last played at. `card` is the game's
 // own first card (G1, #231) — its id and its title, which is what the list needs to know that
@@ -373,21 +370,11 @@ export function stamp(value: unknown): string {
 export function deckFromProject(doc: ProjectDoc): Deck {
   const rows: Record<string, Row> = {}
   for (const { id, fields } of doc.rows) rows[id] = fields
-  // The flat `<kort>/<kolumn>` keys the document stores are turned inside out here, once, into
-  // the shape a card is compiled with: every compile is per card, and nothing downstream should
-  // have to know how the key was spelled.
-  const framing: Record<string, Record<string, ProjectFraming>> = {}
-  for (const [key, nudge] of Object.entries(doc.framing ?? {})) {
-    const cut = key.indexOf('/')
-    const [cardRef, field] = [key.slice(0, cut), key.slice(cut + 1)]
-    framing[cardRef] = { ...framing[cardRef], [field]: nudge }
-  }
   return {
     template: doc.template,
     rows,
     icons: doc.icons,
     ...(doc.palette ? { palette: doc.palette } : {}),
-    ...(Object.keys(framing).length > 0 ? { framing } : {}),
     ...(doc.fonts ? { fonts: doc.fonts } : {}),
   }
 }

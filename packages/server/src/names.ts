@@ -1,6 +1,6 @@
 // Imported by the editor as well as the server, so this module stays free of anything Node:
 // types only from the project document, and no imports that reach the database or the network.
-import type { ProjectDoc, ProjectFont, ProjectFraming, ProjectRow } from './projects.js'
+import type { ProjectDoc, ProjectFont, ProjectRow } from './projects.js'
 import type { FaceTemplate, Names, Row, SetupArrangement, SetupSeat, SetupZone } from '@byd/template'
 
 // What the rulebook's references stand for right now (B7): zones by the name the table shows,
@@ -89,7 +89,6 @@ export type CardFace = {
   icons: Record<string, string>
   fonts?: Record<string, ProjectFont>
   palette?: Record<string, string>
-  framing?: Record<string, ProjectFraming>
 }
 
 // The front is the face a card is recognised by, and the one the editor opens on. A template that
@@ -100,13 +99,6 @@ export function peekFace(doc: ProjectDoc): CardFace | null {
   if (!row) return null
   const face = doc.template.faces['front'] ?? Object.values(doc.template.faces)[0]
   if (!face) return null
-  // This card's departure from the measure only, keyed by the column the picture sits in — the
-  // deck's whole `framing` is one entry per card per picture, and none of the rest is this card's.
-  const framing: Record<string, ProjectFraming> = {}
-  for (const [key, nudge] of Object.entries(doc.framing ?? {})) {
-    const cut = key.indexOf('/')
-    if (key.slice(0, cut) === row.id) framing[key.slice(cut + 1)] = nudge
-  }
   return {
     id: row.id,
     title: titleOfRow(row),
@@ -115,6 +107,5 @@ export function peekFace(doc: ProjectDoc): CardFace | null {
     icons: doc.icons,
     ...(doc.fonts ? { fonts: doc.fonts } : {}),
     ...(doc.palette ? { palette: doc.palette } : {}),
-    ...(Object.keys(framing).length > 0 ? { framing } : {}),
   }
 }

@@ -156,8 +156,6 @@ function richDoc(): ProjectDoc {
     ...doc,
     // Ordningen är dokumentets (#46), och `body` står sist av designerns egna.
     columns: ['title', 'body'],
-    // En beskärning hör till ett kort och en kolumn på en gång (E1), och nyckeln bär båda.
-    framing: { 'dragon/body': { zoom: 2 } },
     // Och prosavalet, som skrevs per kolumn tre dagar innan det här (L43, #362).
     prose: { body: true },
   }
@@ -207,10 +205,6 @@ describe('vad som följer med namnet (#384)', () => {
     // `#group` är inte en kolumn i dokumentet utan duken läst baklänges (#13), och den står där
     // den alltid står: sist av allt utom räknekolumnen.
     expect(Array.from(document.querySelectorAll('thead th[data-col]')).map((th) => th.getAttribute('data-col'))).toEqual(['id', 'title', 'rubrik', 'antal', '#group'])
-  })
-
-  it('tar beskärningarna med sig, kort för kort', async () => {
-    expect((await renamed()).doc.framing).toEqual({ 'dragon/rubrik': { zoom: 2 } })
   })
 
   it('tar prosavalet med sig (L43)', async () => {

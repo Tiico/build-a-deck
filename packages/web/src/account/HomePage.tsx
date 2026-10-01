@@ -406,7 +406,6 @@ function GameCard({ project, peek, face, lost, assetBase, t }: { project: string
         fonts={fonts}
         assetBase={assetBase}
         palette={face.palette}
-        framing={face.framing}
         scale={HOME_CARD_W / CARD_PX}
       />
     </div>

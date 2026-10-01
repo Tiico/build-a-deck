@@ -938,9 +938,9 @@
 @media (prefers-reduced-motion: reduce) {
   .byd-wall-work { transition: none; }
 }
-/* The deck's own box. The measure stands beside it and collapses to nothing when the template has
-   no picture to measure. */
-.byd-wall-deck { min-width: 0; min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 var(--byd-s5); align-items: start; align-content: start; }
+/* The deck's own box, one column wide: nothing stands beside the cards since «Bildernas mått» left
+   the wall (#607). */
+.byd-wall-deck { min-width: 0; min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; align-content: start; }
 /* Another eye over the real cards (E5), and the trim the knife will follow. */
 .byd-wall-deck[data-eye='deuteranopia'] { filter: url(#byd-eye-deuteranopia); }
 .byd-wall-deck[data-eye='protanopia'] { filter: url(#byd-eye-protanopia); }
@@ -3145,28 +3145,6 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-crop-pad { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; gap: var(--byd-s1); }
 .byd-crop-pad button { min-width: var(--byd-tap); min-height: var(--byd-tap); padding: 0 var(--byd-s3); border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .byd-crop-pad button:hover { border-color: var(--byd-editor-primary-mark); }
-/* The deck's measure, beside the wall where the whole deck can be seen at once (E1). */
-.byd-wall-measure { grid-column: 2; align-self: start; width: 320px; padding: 12px; border-radius: 12px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
-.byd-wall-measure h2 { margin: 0 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
-.byd-wall-measure ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
-.byd-wall-measure li { display: grid; gap: 4px; padding: 8px; border-radius: 10px; background: #1b1d23; border: 1px solid var(--byd-editor-lost-bg); }
-.byd-wall-measure li b { color: #fff; }
-.byd-wall-measure li span { color: var(--byd-editor-quiet); font-size: 12px; }
-.byd-wall-measure li button { justify-self: start; min-height: 32px; border: 1px solid var(--byd-editor-primary-bg); border-radius: 8px; padding: 0 12px; background: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); font: 700 12px system-ui; cursor: pointer; }
-.byd-wall-measure-drop { min-height: 28px; border: 1px solid #3b4358; border-radius: 8px; padding: 0 8px; background: #1b1d23; color: #dfe4ef; font: 600 11px system-ui; cursor: pointer; }
-.byd-wall-measure-open { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
-.byd-wall-measure-open button { min-height: 28px; border: 1px solid #3b4358; border-radius: 8px; padding: 0 8px; background: #1b1d23; color: #dfe4ef; font: 600 11px system-ui; cursor: pointer; }
-.byd-wall-measure-open button[aria-pressed='true'] { border-color: var(--byd-editor-primary-mark); color: #fff; }
-/* The source, opened as a drawer under the deck: the measure it is judged against stays above. */
-.byd-wall-source { grid-column: 1 / -1; display: flex; gap: 18px; margin-top: 12px; padding: 12px; border-radius: 12px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
-.byd-wall-source-file { position: relative; flex: none; border-radius: 8px; overflow: hidden; background: repeating-conic-gradient(#20242c 0 25%, #191c22 0 50%) 50% / 16px 16px; }
-.byd-wall-source-file img { display: block; max-width: none; }
-.byd-wall-source-window { position: absolute; outline: 2px solid var(--byd-editor-primary-mark); box-shadow: 0 0 0 9999px rgba(10, 12, 16, 0.62); }
-.byd-wall-source-tools { flex: 1; min-width: 0; max-width: 320px; }
-.byd-wall-source-tools b { color: #fff; }
-.byd-wall-source-tools label { display: block; margin: 8px 0 4px; color: var(--byd-editor-quiet); font-size: 12px; }
-.byd-wall-source-tools input[type='range'] { display: block; width: 100%; accent-color: var(--byd-editor-primary-mark); }
-.byd-wall-source-tools button { min-height: 32px; margin: 8px 8px 0 0; border: 1px solid #3b4358; border-radius: 8px; padding: 0 12px; background: #1b1d23; color: #dfe4ef; font: 600 12px system-ui; cursor: pointer; }
 .byd-theme [role='alert'] { color: #f0b64a; }
 
 /* The rulebook (B7): the page itself is the editor, so it is paper, not a dark surface. */
@@ -3816,7 +3794,6 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
    quiet hatched paper under the reading band. What reads — search, zoom, Ögon, the tabs, history
    and comparing, choosing a card or an element — is left exactly as it is. */
 .byd-editor[data-readonly] :is(
-  .byd-wall-measure-drop,
   .byd-canvas-tools, .byd-backs, .byd-drag-handle, .byd-point-mid, .byd-point, .byd-point-handle, .byd-canvas-reset,
   .byd-props-picture .byd-secondary, .byd-props-straighten, .byd-fonts li[data-font] button, .byd-fonts-catalog, .byd-fonts-upload, .byd-newfield,
   .byd-data-bulk, .byd-data-tick, td.byd-data-remove button, th.byd-data-remove button, .byd-data-icon,

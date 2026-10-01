@@ -1,5 +1,5 @@
 import { assetFormatsNamed, assetTypeDeclaring, pictureNameOf, type AssetCrop, type AssetKind } from '@byd/protocol'
-import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectFraming, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
+import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
 import { catalogStack, type CatalogFamily, fileInSheet, fileSheetHref } from './font-catalog.js'
 import type { DocDiff, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
@@ -906,12 +906,6 @@ export class ProjectClient {
 
   removeRole(role: string): void {
     this.edit({ v: 'removeRole', role })
-  }
-
-  // What one card asks of its template's measure (E1). `null` puts the card back on the measure
-  // the deck gave it, which is the only way back that does not require remembering a number.
-  setFraming(cardRef: string, field: string, framing: ProjectFraming | null): void {
-    this.edit({ v: 'setFraming', cardRef, field, framing })
   }
 
   // The window a picture is looked at through (#222, L22, beslut 2). It names no card because it
