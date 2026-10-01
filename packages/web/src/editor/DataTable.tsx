@@ -10,7 +10,6 @@ import { FilterField, type FilterToken, type TypedColumn } from './FilterField.j
 import { DragDoor } from './DragDoor.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
 import { boxesOf, proseChoiceOf, proseFieldsOf } from './body.js'
-import { ProseMark, type ProseMarkProps } from './ProseMark.js'
 import { BodyCell, type BodyCellProps } from './BodyCell.js'
 import { DropSays, dropSurface, oneFile } from './dropping.js'
 import { PictureLibraryDialog, type LibraryPicture } from './PictureLibrary.js'
@@ -1458,13 +1457,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       }
                     : undefined
                 }
-                // Räknekolumnen är motorns egen (L4) och skrivs aldrig som prosa, så den får
-                // inget märke: en kontroll som bara kan svara ett är ingen fråga.
-                prose={
-                  f === ANTAL
-                    ? undefined
-                    : { prose: bodyFields.includes(f), choice: proseChoiceOf(doc, f), box: boxes[f] ?? null, ...(onProse ? { onProse: (next: boolean | null) => onProse(f, next) } : {}) }
-                }
+                // Bara en kolumn som skrivs som prosa får märket (#615); räknekolumnen är motorns
+                // egen (L4) och skrivs aldrig som prosa.
+                prose={f !== ANTAL && bodyFields.includes(f) ? { from: proseChoiceOf(doc, f) === null ? 'height' : 'choice' } : undefined}
               />
             ))}
             {grouping && <th data-col={GROUP_COL}>{t('table.group')}</th>}
@@ -1502,6 +1497,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                   widths={widths}
                   onWidth={setWidth}
                   {...(onRenameField ? { onRename: renameColumn } : {})}
+                  // Vad varje kolumn skrivs som, och vägen att vända det (L43, #615): verktygets
+                  // två kolumner har ingen växel, eftersom en kontroll som bara kan svara ett är
+                  // ingen fråga.
+                  proseOf={(field) => (field === 'id' || field === ANTAL ? null : { prose: bodyFields.includes(field), choice: proseChoiceOf(doc, field), box: boxes[field] ?? null })}
+                  {...(onProse ? { onProse } : {})}
                   taken={takenNames(doc)}
                   keeps={deckKeepsFields(doc)}
                   // Yes and no leave by the same door, so they hand the focus back to the same
@@ -1966,75 +1966,16 @@ type Pull = {
   onStep(dir: -1 | 1): void
 }
 
-// How long a pointer rests on a head before its prose fold-out opens (#479): long enough that a
-// hand passing over the head on its way down the table opens nothing, short enough to feel at once.
-export const PROSE_HOVER_MS = 300
+// What a heading says about its column being written as prose (L43, #615): a pilcrow after the
+// name, and only on a column that is. The switch and the reason are the door's; the heading is the
+// column's name and the way it is sorted, moved and pulled, and nothing that opens.
+type ProseSign = { from: 'height' | 'choice' }
 
-// Whether a focus or a key belongs to the column's filter rather than to the head (#617).
-const inFilter = (target: EventTarget | null): boolean => target instanceof Element && target.closest('.byd-column-filter, [data-column-filter]') !== null
-
-function SortableHeader({ field, label, sort, onSort, carry, pull, prose, filter }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; carry?: Carry | undefined; pull?: Pull | undefined; prose?: Omit<ProseMarkProps, 'label' | 'open'> | undefined; filter?: ColumnFilterProps | undefined }) {
+function SortableHeader({ field, label, sort, onSort, carry, pull, prose, filter }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; carry?: Carry | undefined; pull?: Pull | undefined; prose?: ProseSign | undefined; filter?: ColumnFilterProps | undefined }) {
   const active = sort?.field === field ? sort.dir : null
-  // Prosamärkets utfällning (L43, #362) hänger ur **rubriken** och inte ur pricken: pricken är
-  // ingen kontroll — en 8 px knapp i en kolumn som är en siffra bred är precis det som fällde
-  // variant A — så handtaget är hela rubriken. Pekaren och fokus var för sig, och utfällningen
-  // framme så länge något av dem är kvar: aldrig bara det ena (#184, och #216 som inte får ta
-  // tillbaka det). `shut` är Escape, som lägger ihop den utan att flytta handen eller fokus.
-  const [near, setNear] = useState(false)
-  const resting = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => () => {
-    if (resting.current !== null) clearTimeout(resting.current)
-  }, [])
-  const [held, setHeld] = useState(false)
-  const [shut, setShut] = useState(false)
-  const open = prose !== undefined && !shut && (near || held)
   return (
     <th
       data-col={field}
-      // Utfällningen hänger ur rubriken och ska synas utanför den; ett huvud som klipper sitt
-      // eget innehåll klipper den (#46, samma sak som `.byd-data-remove` redan säger om dörren).
-      {...(prose ? { 'data-prose': open ? 'open' : '' } : {})}
-      {...(prose
-        ? {
-            // A hand that rests, not one passing over on its way down the table (#479).
-            onPointerEnter: () => {
-              if (resting.current !== null) clearTimeout(resting.current)
-              resting.current = setTimeout(() => setNear(true), PROSE_HOVER_MS)
-            },
-            // A hand that comes to rest on the column's filter is not resting on the heading
-            // (#617): the door it is about to open is not the fold-out, and the two would stand
-            // over each other.
-            onPointerOver: (event: ReactPointerEvent<HTMLTableCellElement>) => {
-              if (!inFilter(event.target)) return
-              if (resting.current !== null) clearTimeout(resting.current)
-              resting.current = null
-              setNear(false)
-            },
-            onPointerLeave: () => {
-              if (resting.current !== null) clearTimeout(resting.current)
-              resting.current = null
-              setNear(false)
-              setShut(false)
-            },
-            // The column's filter stands in the same cell (#617) but is not the fold-out's
-            // handle: a hand on its door is narrowing the column, not asking how it is written,
-            // and the door's own Escape is the door's (`doors.ts`), not the fold-out's.
-            onFocus: (event: FocusEvent<HTMLTableCellElement>) => {
-              if (inFilter(event.target)) return
-              setHeld(true)
-            },
-            onBlur: (event: FocusEvent<HTMLTableCellElement>) => {
-              if (event.currentTarget.contains(event.relatedTarget) && !inFilter(event.relatedTarget)) return
-              setHeld(false)
-              setShut(false)
-            },
-            onKeyDown: (event: KeyboardEvent<HTMLTableCellElement>) => {
-              if (event.key !== 'Escape' || !open || inFilter(event.target)) return
-              event.stopPropagation()
-              setShut(true)
-            },
-          }
-        : {})}
       aria-sort={active ?? 'none'}
       draggable={carry ? true : undefined}
       onDragStart={carry?.onPickUp}
@@ -2063,14 +2004,17 @@ function SortableHeader({ field, label, sort, onSort, carry, pull, prose, filter
         }}
       >
         {label} <span aria-hidden="true">{active === 'ascending' ? '↑' : active === 'descending' ? '↓' : '↕'}</span>
+        {/* Tyst för skärmläsaren: orden — vad kolumnen skrivs som och vem som sade det — står i
+            dörren, och ett ¶ i rubrikens namn vore en symbol utan mening (L12). */}
+        {prose && (
+          <span className="byd-prose-pilcrow" aria-hidden="true" data-from={prose.from}>
+            ¶
+          </span>
+        )}
       </button>
-      {/* The column's filter, after its sort and before its prose mark (#617): a Tab through the
-          head meets what the column is called and sorts on, then what it is narrowed to. */}
+      {/* The column's filter, after its sort (#617): a Tab through the head meets what the column
+          is called and sorts on, then what it is narrowed to. */}
       {filter && <ColumnFilter {...filter} />}
-      {/* Kolumnens märke (L43, #362). Pricken står efter rubrikens egen knapp, och utfällningens
-          knappar efter den: en Tabb genom huvudet möter först vad kolumnen heter och sorteras på,
-          och därefter — medan rubriken har fokus — sättet att vända vad den skrivs som. */}
-      {prose && <ProseMark label={label} open={open} {...prose} />}
       {/* The edge the column is pulled by, and nothing a reader without a pointer has to step
           over: the keys do the same thing from the heading itself, and what a column was set to
           is read and given back in the head's own door. So it is out of the tab order and out of

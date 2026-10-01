@@ -168,7 +168,7 @@ type User = ReturnType<typeof userEvent.setup>
 // Every control in the head, in the order the keyboard reaches them: each column's sort, and —
 // for a column the designer made — the × that takes it away again beside it (#32).
 const headerButtons = () => screen.getAllByRole('columnheader').flatMap((th) => within(th).queryAllByRole('button'))
-const nameOf = (button: HTMLElement) => button.getAttribute('aria-label') ?? button.textContent?.replace(/\s*[↕↑↓]\s*$/, '').trim()
+const nameOf = (button: HTMLElement) => button.getAttribute('aria-label') ?? button.textContent?.replace(/\s*[↕↑↓]\s*¶?\s*$/, '').trim()
 
 async function tabTo(user: User, target: HTMLElement) {
   for (let i = 0; i < 20 && document.activeElement !== target; i++) await user.tab()

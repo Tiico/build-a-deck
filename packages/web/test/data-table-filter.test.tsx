@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { useState } from 'react'
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import type { ProjectDoc } from '@byd/server'
-import { DataTable, PROSE_HOVER_MS, type DataTableProps } from '../src/editor/DataTable.js'
+import { DataTable, type DataTableProps } from '../src/editor/DataTable.js'
 import { projectDoc } from './project-doc.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -487,41 +487,5 @@ describe('DataTable typed column in the search field (#617, L23)', () => {
     await user.keyboard('typ:x')
     expect(screen.getByRole('listbox', { name: 'typ' }).textContent).toContain('inget värde börjar så')
     expect(shownIds()).toEqual(['drake', 'alv', 'troll', 'orm'])
-  })
-})
-
-// The column's filter stands in the head beside the sort, but the head's prose fold-out (L43) is
-// not its business: a hand resting on the door, or a focus inside it, is narrowing the column and
-// not asking how it is written. Only the heading's own word opens the fold-out.
-describe('DataTable filter handle and the prose fold-out (#617 on L43)', () => {
-  it('does not open the fold-out for a pointer resting on the handle, nor for a focus in the door', () => {
-    vi.useFakeTimers()
-    try {
-      renderTable(bigDoc())
-      const th = screen.getByRole('button', { name: /^typ/ }).closest('th') as HTMLElement
-      const handle = screen.getByRole('button', { name: 'Filtrera på typ' })
-
-      // The hand comes in over the heading and comes to rest on the door's handle. Where it came
-      // from is said, as a browser says it: without it React reads every `pointerover` as an
-      // entry from outside the cell, which no hand moving inside the cell ever is.
-      fireEvent.pointerEnter(th)
-      fireEvent.pointerOver(handle, { relatedTarget: th })
-      act(() => vi.advanceTimersByTime(PROSE_HOVER_MS))
-      expect(th.getAttribute('data-prose')).toBe('')
-
-      fireEvent.click(handle)
-      act(() => vi.runOnlyPendingTimers())
-      expect(document.activeElement).toBe(screen.getByRole('checkbox', { name: 'fälla' }))
-      expect(th.getAttribute('data-prose')).toBe('')
-
-      // And the heading's own word still opens it, as it always did.
-      fireEvent.pointerOver(screen.getByRole('button', { name: /^typ/ }), { relatedTarget: th })
-      fireEvent.pointerLeave(th)
-      fireEvent.pointerEnter(th)
-      act(() => vi.advanceTimersByTime(PROSE_HOVER_MS))
-      expect(th.getAttribute('data-prose')).toBe('open')
-    } finally {
-      vi.useRealTimers()
-    }
   })
 })
