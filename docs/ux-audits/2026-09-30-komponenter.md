@@ -100,6 +100,13 @@ Rubrikens prosautfällning öppnas inte av en hand på handtaget eller ett fokus
 ![A: pillret med menyn öppen](2026-09-30-komponenter/03-a-meny.png)
 ![C: reglaget i kanten](2026-09-30-komponenter/03-c.png)
 
+**Beslut (beställaren 2026-10-01): A, pillret, på Mall och Kortvägg.**
+**Ändrat (#619, L19 tillägg):** stapeln och reglaget är borta; `StepPill` ritar `[−][164 % ▾][+]` i dukens hörn, 199 × 46 px vid 1280, och lägger sig på raden under scenen vid 1024 med egenskaperna uppfällda.
+Procenttalet öppnar «Passa in · 100 % · 50 % · 200 %» uppåt, lyft till toppskiktet (L55), med handen på det valda och Escape tillbaka till procenttalet; pilarna på procenttalet stegar.
+Medan kortet är inpassat står «Passa in» vid talet, och talets namn säger det.
+Samma piller är väggens täthet i krönet, `[−][150 px][+]`; foten säger bara antalet.
+`canvas-zoom.test.tsx` (pillret, menyn, tangentbordet), `canvas-band.test.tsx` (en målyta högt, aldrig över kortet) och `opened-boxes-over.spec.ts` (menyn lyft) är grindarna.
+
 ### #620 · Platsväljaren
 
 | | Sektionen «Spelare» | Minsta träffyta | Guiden |
