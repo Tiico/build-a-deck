@@ -2063,14 +2063,21 @@
 .byd-data-typed > [role='option'][aria-selected='true'], .byd-data-typed > [role='option']:hover { background: #232838; }
 .byd-data-typed > p { margin: 0; padding: var(--byd-s2); color: var(--byd-editor-filter-quiet); }
 /* The column's door in its head (#617): the handle beside the sort, quiet until it holds a
-   choice, and then a mark and the count. The door lifts into the top layer like every opened box
-   (L55) and lists the values as ticks. */
-.byd-column-filter { display: inline-flex !important; align-items: center; justify-content: center; gap: var(--byd-s1); min-width: 28px; min-height: 28px; margin-left: var(--byd-s1); border: 1px solid transparent !important; border-radius: 6px !important; padding: 0 var(--byd-s1) !important; color: #6f7a90 !important; font-size: 11px; line-height: 1; }
+   choice. It stands in the head's flow and is therefore counted by `fitColumns` as part of what
+   the heading needs, so it is kept as narrow as a target can be — 24 px, the head's own height to
+   press on — and it never changes width: a count takes the glyph's place rather than standing
+   beside it, since a column that grew when it was filtered would move every column after it.
+   The door lifts into the top layer like every opened box (L55) and lists the values as ticks. */
+.byd-column-filter { display: inline-flex !important; align-items: center; justify-content: center; width: 24px; min-width: 24px; min-height: var(--byd-tap); margin: 0; border: 1px solid transparent !important; border-radius: 6px !important; padding: 0 !important; color: #6f7a90 !important; font-size: 11px; line-height: 1; vertical-align: middle; }
 .byd-column-filter:hover, .byd-column-filter[aria-expanded='true'] { color: #fff !important; border-color: #3b414e !important; }
 /* On, it is a mark and never a fill: the one filled thing in the room is the action that puts the
    work on the table (L13), and a filter is a state, not that action. */
-.byd-column-filter[data-on] { color: var(--byd-editor-primary-mark) !important; border-color: var(--byd-editor-primary-mark) !important; }
-.byd-column-filter[data-on]::after { content: attr(data-on); font-size: 10px; font-weight: 700; }
+.byd-column-filter[data-on] { color: var(--byd-editor-primary-mark) !important; border-color: var(--byd-editor-primary-mark) !important; font-weight: 700; }
+/* The head's own rules for its buttons are the sort control's — the 44 px floor it needs as a
+   target and the sticky left that keeps the word in view under a sideways scroll — and they would
+   make the handle 44 px wide and glued to the word. The handle is a column's worth narrower than
+   that, and stands where it stands. */
+.byd-data thead th[data-col] > .byd-column-filter { position: static; left: auto; min-width: 24px; width: 24px; }
 .byd-column-filter-door { position: absolute; z-index: 6; top: calc(100% + var(--byd-s1)); left: 0; min-width: 240px; max-height: var(--byd-place-room, 40vh); overflow: auto; padding: var(--byd-s1); border: 1px solid #3b4358; border-radius: 10px; background: var(--byd-editor-panel-bg); box-shadow: 0 12px 30px rgb(0 0 0 / 50%); font-weight: 400; }
 .byd-column-filter-door[data-place-y='up'] { top: auto; bottom: calc(100% + var(--byd-s1)); }
 .byd-column-filter-door[data-place-x='end'] { left: auto; right: 0; }

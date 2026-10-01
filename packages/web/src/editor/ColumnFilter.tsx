@@ -43,7 +43,8 @@ export function ColumnFilter({ field, label, values, chosen, onToggle, open, onO
         {...(chosen.length > 0 ? { 'data-on': chosen.length } : {})}
         onClick={() => onOpen(!open)}
       >
-        <span aria-hidden="true">▾</span>
+        {/* The count takes the glyph's place, so the handle never changes width (#617). */}
+        <span aria-hidden="true">{chosen.length > 0 ? chosen.length : '▾'}</span>
       </button>
       {open && (
         <Door field={field} label={label} handle={handle} onClose={() => onOpen(false)}>
