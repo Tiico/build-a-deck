@@ -142,6 +142,13 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
     deckRef.current?.querySelector(`[data-card-ref="${CSS.escape(selectedRow)}"]`)?.scrollIntoView?.({ block: 'nearest' })
   }, [selectedRow])
   const sections = useRef(new Map<string, HTMLElement>())
+  // Where a jump from the table of contents will come to rest, for as long as it is on its way.
+  // The reader's own hand on the wall — a wheel, a finger, the scrollbar, a key — lets go of it,
+  // and so does a scroll that stops short of it.
+  const jumping = useRef<number | null>(null)
+  const letGo = () => {
+    jumping.current = null
+  }
   // A drawer hands the focus back to the box it came from when it closes (#133), so each box has
   // to be findable from the drawer it opened.
   const eyesBox = useRef<HTMLButtonElement>(null)
@@ -215,6 +222,9 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
     const deck = deckRef.current
     if (!section || !deck) return
     const top = section.offsetTop - deck.offsetTop
+    // Where the scroll will actually come to rest: a band in the tail lies beyond all the room there is.
+    const rest = Math.max(0, Math.min(top, deck.scrollHeight - deck.clientHeight))
+    jumping.current = Math.abs(deck.scrollTop - rest) < 1 ? null : rest
     if (typeof deck.scrollTo === 'function') deck.scrollTo({ top, behavior: 'smooth' })
     else deck.scrollTop = top
     setAtTop(key)
@@ -227,6 +237,13 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
     if (!deck) return
     scrolled.current = deck.scrollTop
     told.current?.({ filter, eye, scrollTop: deck.scrollTop })
+    // A jump already said where the view is going. Read per frame on the way there, the mark fell
+    // back to where the view had been and climbed through every band in between, redrawing the
+    // wall at each one — so it holds still until the scroll arrives.
+    if (jumping.current !== null) {
+      if (Math.abs(deck.scrollTop - jumping.current) < 1) letGo()
+      return
+    }
     // The room left is part of the question: the last bands' tops lie beyond everything the wall
     // can scroll, so without it the mark could never reach them (#179).
     setAtTop(bandAtTop([...sections.current].map(([key, el]) => ({ key, top: el.offsetTop - deck.offsetTop })), deck.scrollTop, deck.scrollHeight - deck.clientHeight, atTop))
@@ -506,6 +523,15 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
           className="byd-wall-deck"
           ref={deckRef}
           onScroll={onDeckScroll}
+          onScrollEnd={() => {
+            if (jumping.current === null) return
+            letGo()
+            onDeckScroll()
+          }}
+          onWheel={letGo}
+          onTouchStart={letGo}
+          onPointerDown={letGo}
+          onKeyDown={letGo}
           data-wall
           data-eye={eye}
           // How wide a card is drawn, and — read off the same width — how far in the card is cut
