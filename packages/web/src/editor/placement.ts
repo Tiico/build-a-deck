@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useState, type CSSProperties, type RefObject } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 
 // Where an opened box goes (#229).
 //
@@ -38,15 +38,7 @@ export type Placement = { y: 'up' | 'down'; x: 'start' | 'end'; room: number }
 // floor of 240 because a door shorter than that has stopped being a door, and 24 px of air because
 // its shadow and its padding stand outside the height being measured. Those are that box's
 // decisions; this reading carries them rather than overruling them.
-//
-// `lift` is the third, and it says where the box is drawn rather than where it goes (#611, L55). A
-// box that stands inside something that scrolls is cut by that thing's edge, whatever room the
-// window has: the column door hung from the head of a table inside its own scroll box, and in a
-// window 640 px tall its foot — the form's two buttons — was cut off and «+ Nytt kort» stood where
-// they should have been. An opened box lies over everything else, so a lifted box is put in the
-// page's top layer, where no box clips it and nothing is drawn over it, and is held there against
-// the element it hangs from.
-export type Room = { gap?: number; least?: number; lift?: boolean }
+export type Room = { gap?: number; least?: number }
 const GAP = 6
 const LEAST = 96
 
@@ -76,18 +68,64 @@ export function placeBox(anchor: Anchor, wants: Wants, view: Viewport, room: Roo
   }
 }
 
+// An opened box lies over everything else (#611, #622, L55). A box that stands inside something
+// that scrolls is cut by that thing's edge, whatever room the window has: the column door hung from
+// the head of a table inside its own scroll box, and in a window 640 px tall its foot was cut off
+// and «+ Nytt kort» stood where its two buttons should have been; a cell's symbol box opened
+// downward into room the window had and the table did not, and was cut off in the same place.
+// So every box opened this way is put in the page's top layer, where no box clips it and nothing is
+// drawn over it, and held there against the element it hangs from.
+//
+// Where it hangs is still the sheet's to say, once, in the terms its own rules are written in, so
+// a box drawn in place — jsdom has no top layer — and a lifted one stand in the same spot:
+//
+// - `--byd-place-gap`: how far from the anchor's edge along the block axis, negative to overlap it;
+// - `--byd-place-inset`: how far in from the anchor's edge along the inline axis;
+// - `--byd-place-beside: 1` for a box that opens beside its anchor rather than under it — its gap
+//   is then measured from the anchor's own top (or foot, opening upward), and its inset from the
+//   anchor's far side;
+// - `--byd-place-x: start | end` for a box that always hangs from the one edge, whatever the room.
+//
+// All four are plain lengths and words: an unregistered custom property is handed back as the text
+// it was written in, so a `calc()` there would be read as nothing.
+export type Geometry = { gap: number; inset: number; beside: boolean; x: 'start' | 'end' | null }
+export const NO_GEOMETRY: Geometry = { gap: 0, inset: 0, beside: false, x: null }
+
+export function geometryOf(style: Pick<CSSStyleDeclaration, 'getPropertyValue'>): Geometry {
+  const read = (name: string) => style.getPropertyValue(name).trim()
+  const x = read('--byd-place-x')
+  return {
+    gap: parseFloat(read('--byd-place-gap')) || 0,
+    inset: parseFloat(read('--byd-place-inset')) || 0,
+    beside: read('--byd-place-beside') === '1',
+    x: x === 'start' || x === 'end' ? x : null,
+  }
+}
+
 // Where a lifted box stands in the window: against the edges of what it hangs from that the
 // placement chose, with the other two left to the box. Pure, like the reading, so the arithmetic is
 // asked without a browser.
 export type Lifted = { top: string; right: string; bottom: string; left: string }
-export function liftedAt(anchor: Anchor, place: Placement, view: Viewport): Lifted {
+export function liftedAt(anchor: Anchor, place: Placement, view: Viewport, geometry: Geometry = NO_GEOMETRY): Lifted {
   const px = (n: number) => `${n}px`
+  const { gap, inset, beside } = geometry
+  const x = geometry.x ?? place.x
+  const foot = anchor.y + anchor.h
+  const far = anchor.x + anchor.w
   return {
-    top: place.y === 'down' ? px(anchor.y + anchor.h) : 'auto',
-    bottom: place.y === 'up' ? px(view.h - anchor.y) : 'auto',
-    left: place.x === 'start' ? px(anchor.x) : 'auto',
-    right: place.x === 'end' ? px(view.w - (anchor.x + anchor.w)) : 'auto',
+    top: place.y === 'down' ? px((beside ? anchor.y : foot) + gap) : 'auto',
+    bottom: place.y === 'up' ? px(view.h - (beside ? foot : anchor.y) + gap) : 'auto',
+    left: x === 'start' ? px((beside ? far : anchor.x) + inset) : 'auto',
+    right: x === 'end' ? px(view.w - (beside ? anchor.x : far) + inset) : 'auto',
   }
+}
+
+// Whether a box opens over the page at all. One the sheet lays out in the flow — the form standing
+// in the column door, or in the properties column — is part of what it stands in and not a box
+// opened over it; nor is one standing inside a box that is already lifted, which carries it.
+function opensOver(b: HTMLElement): boolean {
+  const { position } = getComputedStyle(b)
+  return (position === 'absolute' || position === 'fixed') && !b.parentElement?.closest(':popover-open')
 }
 
 // A box held against the reading above for as long as it is open.
@@ -103,30 +141,40 @@ export function liftedAt(anchor: Anchor, place: Placement, view: Viewport): Lift
 // the room asks for: a box that opens downward and jumps upward on the next frame is the scroll
 // this was meant to stop, arriving a frame late.
 //
-// A lifted box hangs from its parent element and not from its `offsetParent`: once it is in the top
-// layer it is fixed to the window and has no `offsetParent` at all, and the parent is the element
-// the sheet placed it against in every box that lifts. It leaves the top layer by leaving the page
-// — every lifted box is drawn only while it is open — and never by `hidePopover`, which would
-// hand the focus back to whatever held it when the box opened.
+// A lifted box hangs from the `offsetParent` it had before it was lifted — the very box its sheet
+// measured `top: 100%` against — which is read once, as it opens: in the top layer it is fixed to
+// the window and has no `offsetParent` at all. It leaves the top layer by leaving the page — every
+// such box is drawn only while it is open — and never by `hidePopover`.
 export function usePlacement(open: boolean, box: RefObject<HTMLElement | null>, room: Room = {}): (Placement & { at?: Lifted }) | null {
   const [place, setPlace] = useState<(Placement & { at?: Lifted }) | null>(null)
+  const hangs = useRef<HTMLElement | null>(null)
   const measure = useCallback(() => {
     const b = box.current
-    const from = (room.lift ? b?.parentElement : (b?.offsetParent ?? b?.parentElement)) as HTMLElement | null | undefined
-    if (!b || !from) return
+    if (!b) return
+    const lifted = b.matches(':popover-open')
+    const from = lifted ? hangs.current : ((b.offsetParent ?? b.parentElement) as HTMLElement | null)
+    if (!from) return
     const r = from.getBoundingClientRect()
-    const anchor = { x: r.left, y: r.top, w: r.width, h: r.height }
+    // A lifted box hangs from the edges its sheet measured against, which are the padding box's:
+    // `top: 100%` is the foot inside the anchor's border, not outside it.
+    const edge = lifted ? getComputedStyle(from) : null
+    const border = (width: string | undefined) => parseFloat(width ?? '') || 0
+    const top = border(edge?.borderTopWidth)
+    const right = border(edge?.borderRightWidth)
+    const bottom = border(edge?.borderBottomWidth)
+    const left = border(edge?.borderLeftWidth)
+    const anchor = { x: r.left + left, y: r.top + top, w: r.width - left - right, h: r.height - top - bottom }
     const view = { w: window.innerWidth, h: window.innerHeight }
     // `scrollHeight` and not the drawn height: the drawn one is whatever the last placement left
     // it at, and measuring that would let the box ratchet itself smaller on every scroll.
     const at = placeBox(anchor, { w: b.offsetWidth, h: b.scrollHeight }, view, room)
     // Coordinates only for a box that really is in the top layer: one that stayed where it stands
     // — jsdom has no top layer — is still placed by its own sheet against its own parent.
-    setPlace(room.lift && b.matches(':popover-open') ? { ...at, at: liftedAt(anchor, at, view) } : at)
-    // The three values and not the record: the room a box keeps is a constant of that box, and a
-    // fresh `{}` on every render would take a new reading for values that never move.
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- the room is a constant of the box, read by its values
-  }, [box, room.gap, room.least, room.lift])
+    setPlace(lifted ? { ...at, at: liftedAt(anchor, at, view, geometryOf(getComputedStyle(b))) } : at)
+    // The two numbers and not the record: the room a box keeps is a constant of that box, and a
+    // fresh `{}` on every render would take a new reading for a pair of values that never move.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the room is a constant of the box, read by its two numbers
+  }, [box, room.gap, room.least])
   useLayoutEffect(() => {
     if (!open) {
       setPlace(null)
@@ -135,7 +183,8 @@ export function usePlacement(open: boolean, box: RefObject<HTMLElement | null>, 
     // Into the top layer before the first reading, so the box is measured as the size it is drawn
     // at there. jsdom has no top layer, and a box there simply stays where it stands.
     const b = box.current
-    if (room.lift && b && typeof b.showPopover === 'function' && !b.matches(':popover-open')) {
+    if (b && typeof b.showPopover === 'function' && !b.matches(':popover-open') && opensOver(b)) {
+      hangs.current = (b.offsetParent ?? b.parentElement) as HTMLElement | null
       b.setAttribute('popover', 'manual')
       b.showPopover()
     }
@@ -149,7 +198,7 @@ export function usePlacement(open: boolean, box: RefObject<HTMLElement | null>, 
       window.removeEventListener('resize', measure)
       window.removeEventListener('scroll', measure, true)
     }
-  }, [open, measure, box, room.lift])
+  }, [open, measure, box])
   return place
 }
 

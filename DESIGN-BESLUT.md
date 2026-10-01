@@ -5565,11 +5565,15 @@ Det är beställarens regel, och den gäller generellt.
 Kolumndörren hängde i huvudets sista cell *inne i* lådan tabellen skrollar i, och den lådan klipper.
 I ett fönster på 640 px höjd skars «Lägg till» och «Avbryt» av vid skrolllådans kant, och «+ Nytt kort» stod där de skulle ha stått.
 `placement.ts` mätte rummet mot fönstret och trodde att dörren fick plats.
-Nu lyfts en låda till sidans toppskikt (`popover="manual"`) och hålls fast mot elementet den hänger i, med `usePlacement(…, { lift: true })`.
+Nu lyfts varje låda som `usePlacement` placerar till sidans toppskikt (`popover="manual"`) och hålls fast mot elementet den hänger i: kolumndörren, cellernas symbolruta och betydelselista, regelbokens `[[`, Ikon-verktygets bibliotek, zonernas val och bordens meny (#622).
 I toppskiktet klipper ingen låda den, och inget ritas över den.
-Den lämnar toppskiktet genom att lämna sidan, aldrig med `hidePopover`, som skulle lämna tillbaka fokus till det som hade det när lådan öppnades.
-Dörren är den första som lyfts; de andra lådor som `usePlacement` placerar flyttas över i egen takt (#622).
-En låda som står inne i en lyft låda, som formuläret i dörren, lyfts inte själv.
+Den lämnar toppskiktet genom att lämna sidan, aldrig med `hidePopover`.
+En låda som arket lägger i flödet, som formuläret i dörren och i egenskapspanelen, lyfts inte, och inte heller en låda som står inne i en lyft låda.
+
+Var lådan hänger är fortfarande arkets sak.
+Varje låda säger sitt avstånd och sin sida i fyra variabler, `--byd-place-gap`, `--byd-place-inset`, `--byd-place-beside` och `--byd-place-x`, och arkets egna regler läser samma variabler.
+Den lyfta lådan räknas från ankarets padding-box, alltså från samma kant som arkets `top: 100%`.
+`packages/e2e/test/surfaces/opened-boxes-over.spec.ts` sänker varje yta tillbaka på plats och kräver att den stod på samma bildpunkt lyft som oklippt.
 
 Samma mätning hittade ett äldre fel: namnrutans `autoFocus` fick fokus medan dörren ännu stod inne i tabellen, och tabellen skrollade flera hundra bildpunkter nedåt för att visa den.
 Namnrutan tar nu fokus med `preventScroll`, och ingenting bakom dörren flyttar sig när den öppnas.
