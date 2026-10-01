@@ -449,11 +449,12 @@ describe('the layers of the template by keyboard (UX-04)', () => {
       await user.tab()
       expect(document.activeElement).toBe(document.querySelector(`[data-drag="${id}"]`))
     }
-    // Then the zoom's own band, in the canvas' lower corner: it is read after the card because it
-    // is about the card (#146).
-    for (const name of ['Förstora mindre', 'Förstoring i procent', 'Förstora mer', 'Passa in', '100 %']) {
+    // Then the zoom's own pill, in the canvas' lower corner: it is read after the card because it
+    // is about the card (#146). Three stops since #619 — the percentage is the one that opens
+    // «Passa in» and the rest.
+    for (const name of ['Förstora mindre', /^Förstoring: /, 'Förstora mer']) {
       await user.tab()
-      expect(document.activeElement).toBe(screen.getByRole(name === 'Förstoring i procent' ? 'slider' : 'button', { name }))
+      expect(document.activeElement).toBe(screen.getByRole('button', { name }))
     }
     // Then the row under the card that says which card it is (#478): the step back is locked on
     // the first card and is no stop, so the card's name and the step forward.

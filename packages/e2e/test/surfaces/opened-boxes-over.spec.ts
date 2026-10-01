@@ -140,6 +140,19 @@ test('a table’s menu of ways in opens over the list it hangs in', async ({ pag
   await liftedWhereItStood(row.locator('.byd-tables-menu'))
 })
 
+test('the zoom pill’s choices open over the canvas, upward from its corner', async ({ page }) => {
+  await logIn(page.request)
+  const project = await makeProject(page.request, { name: 'Skogens herrar', cards: 2 })
+  await page.goto(project.editorUrl)
+  await expect(page.getByText('Skogens herrar').first()).toBeVisible()
+  await page.locator('#byd-editor-tab-template').click()
+  // The pill stands at the foot of the canvas (L19, #619), so the only room its choices have is
+  // above it; a box the room put downward would hang off the window.
+  await page.getByRole('button', { name: /^Förstoring: / }).click()
+  await liftedWhereItStood(page.locator('.byd-pill-menu'))
+  await expect(page.locator('.byd-pill-menu')).toHaveAttribute('data-place-y', 'up')
+})
+
 test('the rulebook’s [[ list opens over the book it is written in', async ({ page }) => {
   const doc = gameDoc({ name: 'Skogens herrar', cards: 4 }) as unknown as ProjectDoc
   doc.rules = { title: 'Skogens herrar', blocks: [{ kind: 'heading', id: 'h1', level: 1, text: 'Så spelar ni' }, { kind: 'text', id: 't1', text: 'Dra ett kort.' }] }

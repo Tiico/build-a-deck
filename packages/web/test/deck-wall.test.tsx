@@ -275,9 +275,12 @@ describe('the reading views among the eyes (K26, #512)', () => {
     // open while an eye is chosen, so the next one is one press away.
     fireEvent.click(screen.getByRole('button', { name: /^TV:ns «Visa för alla»/ }))
     expect(readOf('dragon')?.textContent).toBe('Minsta text 22,6 px · under golvet 24 px')
-    // The foot says the width in whole pixels, as it says every other width: the television's is
-    // 671.5 px and was printed with thirteen decimals.
-    expect(screen.getByText(/px breda$/).textContent).toBe('3 kort · 672 px breda')
+    // The pill says the width in whole pixels, as every other width is said: the television's is
+    // 671.5 px and was printed with thirteen decimals. And it is said once, on the pill — the foot
+    // that used to repeat it half a screen away says only the count (#619).
+    expect(within(screen.getByRole('group', { name: 'Täthet' })).getByRole('status').textContent).toBe('672 px')
+    expect(document.querySelector('.byd-crown-foot')!.textContent).toContain('3 kort')
+    expect(document.querySelector('.byd-crown-foot')!.textContent).not.toContain('px')
     fireEvent.click(screen.getByRole('button', { name: /^Bordets lyft/ }))
     expect(readOf('dragon')?.textContent).toBe('Minsta text 11,5 px · under golvet 12 px')
   })

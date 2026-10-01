@@ -2,7 +2,8 @@
 // The zoom on the canvas (#146). The card used to be fitted into the stage's height and nothing
 // else decided how big it was drawn: a millimetre was 7,07 px at 1024 and the only way to see a
 // detail measure bigger was a taller window. So the zoom becomes its own thing, in the canvas'
-// own lower corner — a slider, `+`/`−`, **Passa in** and **100 %**, and `Ctrl` with the wheel.
+// own lower corner — and since #619 it is one pill there, `[−][164 % ▾][+]`, with **Passa in**,
+// **100 %**, **50 %** and **200 %** behind the percentage, and `Ctrl` with the wheel.
 //
 // Everything here is asked of the control a designer actually uses, never of a state: what the
 // card is drawn at is read off the card, and what the zoom is is read off the percentage the
@@ -55,31 +56,106 @@ function canvas(over: Partial<TemplateCanvasProps> = {}) {
 // hangs on: every millimetre on the card, every handle and every grid line is drawn through it.
 const drawnAt = () => Number((document.getElementById('canvas') as HTMLElement).style.zoom)
 
-// What the control says the zoom is, in the reader's own words.
-const percent = () => screen.getByRole('status', { name: 'Förstoring' }).textContent
+// What the control says the zoom is, in the reader's own words: the percentage is the button
+// that opens the choices, and its name carries the measure and whether the card is fitted.
+const percentButton = () => screen.getByRole('button', { name: /^Förstoring: / })
+const percent = () => percentButton().getAttribute('aria-label')
+// The choices behind the percentage, opened by it; «Passa in» and «100 %» are two of them.
+const choose = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+  await user.click(percentButton())
+  await user.click(screen.getByRole('menuitemradio', { name }))
+}
+// Whether the fit is the choice the card stands on, read off the choice with the menu opened and
+// closed again around it.
+const fitChoice = () => {
+  fireEvent.click(percentButton())
+  const checked = screen.getByRole('menuitemradio', { name: 'Passa in' }).getAttribute('aria-checked')
+  fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' })
+  return checked
+}
 
-describe('the zoom control on the canvas (#146)', () => {
-  it('stands beside the card with its own slider, its two steps and its two choices', () => {
+describe('the zoom control on the canvas (#146, #619)', () => {
+  it('is one pill beside the card: a step down, the percentage, a step up — and the choices behind the percentage', async () => {
+    const user = userEvent.setup()
     canvas()
 
     const band = screen.getByRole('group', { name: 'Förstoring' })
-    expect(band.querySelector('[role="slider"], input[type="range"]')).toBeTruthy()
-    for (const name of ['Förstora mindre', 'Förstora mer', 'Passa in', '100 %']) {
-      expect(screen.getByRole('button', { name })).toBeTruthy()
-    }
-    expect(percent()).toBe('260 %')
+    // Six controls in a stack were 94 × 269 px (#619); the pill is three, and the slider is gone.
+    expect(band.querySelector('[role="slider"], input[type="range"]')).toBeNull()
+    expect([...band.querySelectorAll('button')].map((b) => b.getAttribute('aria-label'))).toEqual(['Förstora mindre', 'Förstoring: 260 %, inpassad', 'Förstora mer'])
+
+    await user.click(percentButton())
+    const menu = screen.getByRole('menu', { name: 'Välj förstoring' })
+    expect([...menu.querySelectorAll('[role="menuitemradio"]')].map((b) => [b.textContent, b.getAttribute('aria-checked')])).toEqual([
+      ['Passa in', 'true'],
+      ['100 %', 'false'],
+      ['50 %', 'false'],
+      ['200 %', 'false'],
+    ])
   })
 
   // A card is drawn in millimetres, so there is one zoom that means the same thing in every
-  // window: the one where a millimetre is a millimetre. That is what the button says it is.
+  // window: the one where a millimetre is a millimetre. That is what the choice says it is.
   it('draws the card at its own measure on 100 %, whatever the window is', async () => {
     const user = userEvent.setup()
     canvas()
 
-    await user.click(screen.getByRole('button', { name: '100 %' }))
+    await choose(user, '100 %')
 
     expect(drawnAt()).toBe(1)
-    expect(percent()).toBe('100 %')
+    expect(percent()).toBe('Förstoring: 100 %')
+    // The choice made, the menu is gone and the hand is back on the percentage it opened from.
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(document.activeElement).toBe(percentButton())
+  })
+})
+
+// The slider is gone (#619), and what it gave the keyboard — a step on every arrow — is kept on
+// the percentage, which is the one control the slider stood for.
+describe('the keyboard on the pill (#619)', () => {
+  it('steps the zoom with the arrows on the percentage, up and right for more', async () => {
+    const user = userEvent.setup()
+    canvas()
+
+    percentButton().focus()
+    await user.keyboard('{ArrowUp}')
+    expect(percent()).toBe('Förstoring: 285 %')
+    await user.keyboard('{ArrowLeft}{ArrowLeft}')
+    expect(percent()).toBe('Förstoring: 235 %')
+    await user.keyboard('{ArrowRight}{ArrowDown}')
+    expect(percent()).toBe('Förstoring: 235 %')
+  })
+
+  it('opens the choices on the one the card stands on, and Escape closes them back onto the percentage', async () => {
+    const user = userEvent.setup()
+    canvas()
+
+    await user.click(percentButton())
+    expect(document.activeElement).toBe(screen.getByRole('menuitemradio', { name: 'Passa in' }))
+    await user.keyboard('{ArrowDown}')
+    expect(document.activeElement).toBe(screen.getByRole('menuitemradio', { name: '100 %' }))
+
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('menu')).toBeNull()
+    expect(document.activeElement).toBe(percentButton())
+    expect(percent()).toBe('Förstoring: 260 %, inpassad')
+  })
+
+  it('reaches every step and every choice by Tab and Enter alone', async () => {
+    const user = userEvent.setup()
+    canvas()
+
+    screen.getByRole('button', { name: 'Förstora mindre' }).focus()
+    await user.keyboard('{Enter}')
+    expect(percent()).toBe('Förstoring: 235 %')
+    await user.tab()
+    await user.keyboard('{Enter}')
+    await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}{Enter}')
+    expect(percent()).toBe('Förstoring: 200 %')
+    expect(drawnAt()).toBe(2)
+    await user.tab()
+    await user.keyboard('{Enter}')
+    expect(percent()).toBe('Förstoring: 225 %')
   })
 })
 
@@ -94,7 +170,7 @@ describe('Ctrl with the wheel over the canvas (#146)', () => {
 
     fireEvent(stage(), wheel)
 
-    expect(percent()).toBe('270 %')
+    expect(percent()).toBe('Förstoring: 270 %')
     // Without this the browser zooms the whole page instead, which is the one thing a canvas
     // that has just taken the gesture must not let happen.
     expect(wheel.defaultPrevented).toBe(true)
@@ -104,7 +180,7 @@ describe('Ctrl with the wheel over the canvas (#146)', () => {
     canvas()
     for (let i = 0; i < 40; i++) fireEvent.wheel(stage(), { ctrlKey: true, deltaY: 100 })
 
-    expect(percent()).toBe('50 %')
+    expect(percent()).toBe('Förstoring: 50 %')
   })
 
   // A wheel on its own is how the card is panned once it is bigger than the stage, so the canvas
@@ -115,7 +191,7 @@ describe('Ctrl with the wheel over the canvas (#146)', () => {
 
     fireEvent(stage(), wheel)
 
-    expect(percent()).toBe('260 %')
+    expect(percent()).toBe('Förstoring: 260 %, inpassad')
     expect(wheel.defaultPrevented).toBe(false)
   })
 })
@@ -168,20 +244,25 @@ describe('fitting the card into the stage (#146)', () => {
     stageOf({ w: 900, h: 690 }, { w: 660, h: 920 })
 
     expect(drawnAt()).toBeCloseTo(FITS, 3)
-    expect(screen.getByRole('button', { name: 'Passa in' }).getAttribute('aria-pressed')).toBe('true')
+    // Said on the percentage itself, which is the one thing of the pill always on the screen, and
+    // again on the choice that put it there.
+    expect(percent()).toMatch(/, inpassad$/)
+    expect(fitChoice()).toBe('true')
   })
 
   it('goes back to it from a zoom the designer chose, and stops saying the fit is on meanwhile', async () => {
     const user = userEvent.setup()
     stageOf({ w: 900, h: 690 }, { w: 660, h: 920 })
 
-    await user.click(screen.getByRole('button', { name: '100 %' }))
+    await choose(user, '100 %')
     expect(drawnAt()).toBe(1)
-    expect(screen.getByRole('button', { name: 'Passa in' }).getAttribute('aria-pressed')).toBe('false')
+    expect(percent()).toBe('Förstoring: 100 %')
+    expect(fitChoice()).toBe('false')
 
-    await user.click(screen.getByRole('button', { name: 'Passa in' }))
+    await choose(user, 'Passa in')
     expect(drawnAt()).toBeCloseTo(FITS, 3)
-    expect(screen.getByRole('button', { name: 'Passa in' }).getAttribute('aria-pressed')).toBe('true')
+    expect(percent()).toMatch(/, inpassad$/)
+    expect(fitChoice()).toBe('true')
   })
 
   // The complaint the whole issue is about: the window was the only thing that decided how big a
@@ -193,7 +274,7 @@ describe('fitting the card into the stage (#146)', () => {
     stage.resize({ w: 900, h: 1400 })
     expect(drawnAt()).toBeCloseTo((STAGE_SCALE * (900 - 24)) / 660, 3)
 
-    await user.click(screen.getByRole('button', { name: '100 %' }))
+    await choose(user, '100 %')
     stage.resize({ w: 900, h: 690 })
     expect(drawnAt()).toBe(1)
   })
@@ -222,7 +303,7 @@ describe('what the zoom never changes (#146, L18)', () => {
       await user.keyboard('{Enter}{ArrowRight}')
       expect({ [percent()!]: vi.mocked(props.onPatch).mock.lastCall?.[1] }).toEqual({ [percent()!]: { x: 5.5 } })
     }
-    expect(percent()).toBe('50 %')
+    expect(percent()).toBe('Förstoring: 50 %')
   })
 })
 
@@ -233,14 +314,14 @@ describe('what the zoom does not remember (#146, L19)', () => {
   it('starts every opening of the canvas on the fit, however the last one was left', async () => {
     const user = userEvent.setup()
     const first = canvas()
-    await user.click(screen.getByRole('button', { name: '100 %' }))
+    await choose(user, '100 %')
     expect(drawnAt()).toBe(1)
 
     first.unmount()
     canvas()
 
     expect(drawnAt()).toBe(STAGE_SCALE)
-    expect(screen.getByRole('button', { name: 'Passa in' }).getAttribute('aria-pressed')).toBe('true')
+    expect(percent()).toBe('Förstoring: 260 %, inpassad')
   })
 
   it('writes nothing about itself into the browser, the way a width and a fold do', async () => {
@@ -248,9 +329,9 @@ describe('what the zoom does not remember (#146, L19)', () => {
     const wrote = vi.spyOn(Storage.prototype, 'setItem')
     canvas()
 
-    await user.click(screen.getByRole('button', { name: '100 %' }))
+    await choose(user, '100 %')
     await user.click(screen.getByRole('button', { name: 'Förstora mer' }))
-    await user.click(screen.getByRole('button', { name: 'Passa in' }))
+    await choose(user, 'Passa in')
 
     expect(wrote).not.toHaveBeenCalled()
     wrote.mockRestore()
@@ -284,7 +365,7 @@ describe('the grid under the zoom (#146)', () => {
     const user = await withGrid()
 
     // 100 % is 3,78 px to the millimetre — under the floor, and five of them are 18,9.
-    await user.click(screen.getByRole('button', { name: '100 %' }))
+    await choose(user, '100 %')
 
     expect(gridStepMm()).toBe('5mm')
   })

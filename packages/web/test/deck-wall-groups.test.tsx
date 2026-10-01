@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { configure, fireEvent, render } from '@testing-library/react'
+import { configure, fireEvent, render, screen, within } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
 import { DeckWall } from '../src/editor/DeckWall.js'
 import { projectDoc } from './project-doc.js'
@@ -166,7 +166,7 @@ describe('the grouping is the crown’s to change (#179)', () => {
     expect([...document.querySelectorAll('[data-band]')].map((b) => b.getAttribute('data-band'))).toEqual(['Guld', 'Silver'])
     expect(document.querySelector('[data-band="Guld"] [data-band-head]')!.textContent).toContain('154 kort')
     // The density ladder is a separate remembered choice and the regrouping left it alone.
-    expect(document.querySelector('.byd-crown-foot')!.textContent).toContain('150 px')
+    expect(within(screen.getByRole('group', { name: 'Täthet' })).getByRole('status').textContent).toBe('150 px')
   })
 })
 
@@ -336,10 +336,13 @@ describe('the crown’s older tools over a grouped wall (E5, #128)', () => {
     fireEvent.click(document.querySelector('.byd-crown-drawer input[type="checkbox"]')!)
     expect(deck().getAttribute('data-trim')).toBe('true')
 
-    // The ladder still steps, and the foot still says where on it the wall is standing.
-    expect(document.querySelector('.byd-crown-foot')!.textContent).toContain('150 px')
+    // The ladder still steps, and the pill in the crown says where on it the wall is standing
+    // (#619): the foot used to repeat the number half a screen away, and says it no more.
+    const width = () => within(screen.getByRole('group', { name: 'Täthet' })).getByRole('status').textContent
+    expect(width()).toBe('150 px')
+    expect(document.querySelector('.byd-crown-foot')!.textContent).not.toContain('px')
     fireEvent.click(document.querySelector('[aria-label="Fler kort per rad"]')!)
-    expect(document.querySelector('.byd-crown-foot')!.textContent).toContain('130 px')
+    expect(width()).toBe('130 px')
     expect(deck().style.getPropertyValue('--byd-wall-card')).toBe('130px')
   })
 

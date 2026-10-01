@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { logIn, makeProject } from '../../support/api.js'
+import { zoomTo } from '../../support/zoom.js'
 
 // An element dragged off the card (#478, beslut 2026-09-27, variant A): it could be put at
 // x −48,5 mm, where no pointer reaches it at any zoom. Its middle now stays on the card, a word by
@@ -34,8 +35,7 @@ test('keeps the middle of a dragged element on the card, and says so', async ({ 
 
 test('pans the stage under a hand held at its edge, and the element goes with it', async ({ page }) => {
   await mall(page)
-  await page.getByRole('slider', { name: 'Förstoring i procent' }).fill('400')
-  await page.waitForTimeout(100)
+  await zoomTo(page, 400)
   const stage = page.locator('.byd-canvas-stage')
   await stage.evaluate((el) => el.scrollTo(0, 0))
   const title = page.locator('[data-drag="title"]')
