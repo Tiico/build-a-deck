@@ -100,11 +100,9 @@ const SHELL = `
     <div role="tabpanel" tabindex="0" data-stop="the table panel">
       <div class="byd-table-wrap">
         <div class="byd-crown">
-          <input type="search" class="byd-data-search" data-stop="the search field" />
-          <div class="byd-crown-rail">
-            <div class="byd-crown-rail-scroll" role="group">
-              <div class="byd-data-chips" role="group"><button class="byd-data-chip byd-choice" aria-pressed="false" data-stop="a type chip">fälla</button></div>
-            </div>
+          <div class="byd-data-filter">
+            <span class="byd-data-token"><span>typ: fälla</span><button aria-label="Ta bort filtret typ: fälla" data-stop="a filter token's ×"><span aria-hidden="true">×</span></button></span>
+            <input type="search" data-stop="the search field" />
           </div>
           <button class="byd-data-clear" data-stop="the clear-filter button">Rensa filter</button>
           <button class="byd-crown-box byd-crown-end" aria-expanded="true" data-stop="the import box">Importera ▾</button>
@@ -126,7 +124,7 @@ const SHELL = `
           <button data-stop="the way out of removing a card">Avbryt</button>
         </div>
         <table class="byd-data">
-          <thead><tr><th class="byd-data-check"><input type="checkbox" data-stop="the header checkbox" /></th></tr></thead>
+          <thead><tr><th class="byd-data-check"><input type="checkbox" data-stop="the header checkbox" /></th><th data-col="typ"><button data-stop="a column heading">typ <span aria-hidden="true">↕</span></button><button class="byd-column-filter" aria-expanded="true" data-on="1" data-stop="a column's filter handle"><span aria-hidden="true">▾</span></button><div class="byd-column-filter-door" role="group" data-column-filter="typ"><label class="byd-column-filter-tick"><input type="checkbox" checked data-stop="a filter tick" /><span>fälla</span><small>8 kort</small></label></div></th></tr></thead>
           <tbody><tr aria-selected="true"><td class="byd-data-check"><input type="checkbox" data-stop="a row's checkbox" /></td><td><input data-stop="a cell" /></td><td><button data-stop="a row's delete">Ta bort</button></td></tr></tbody>
         </table>
         <button class="byd-data-add" data-stop="the add-row button">Lägg till kort</button>

@@ -38,7 +38,7 @@ const EDITS: Record<string, readonly string[]> = {
 const READS: Record<string, string> = {
   wall: '.byd-crown-search',
   template: '[role="tabpanel"]:not([hidden]) [data-step], [role="tabpanel"]:not([hidden]) .byd-canvas-grid-toggle',
-  table: '.byd-data-search',
+  table: '.byd-data-filter input',
   symbols: '.byd-symbols-main',
   media: '.byd-media-grid',
   rules: '.byd-rulebook',
