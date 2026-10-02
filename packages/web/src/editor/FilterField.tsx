@@ -67,7 +67,7 @@ export function FilterField({
   return (
     <div className="byd-data-filter" onClick={(event) => event.target === event.currentTarget && input.current?.focus()}>
       {tokens.map((token) => (
-        <span key={`${token.field}\u0000${token.value}`} className="byd-data-token">
+        <span key={`${token.field}\u0000${token.value}`} className="byd-chip">
           <span>{t('table.filter.token', { field: token.label, value: token.value })}</span>
           <button
             type="button"

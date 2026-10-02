@@ -1,0 +1,10 @@
+/* A ready-made theme as a tile (L57, #633): the form, the same in Speltema and in the guided
+   start. Each room gives it its own colours — the edge, the ground, the ink — in its own sheet. A
+   tile's sample stands on the theme's own paper, never on the room's ground (L34). The distances
+   are the editor's ladder (#132), with the rung written beside the name for a room that has none. */
+.byd-theme-tile { display: grid; align-content: start; justify-items: start; gap: var(--byd-s1, 4px); padding: var(--byd-s3, 12px); border: 1px solid; border-radius: 12px; font: inherit; text-align: left; cursor: pointer; }
+.byd-theme-tile[aria-disabled='true'] { cursor: progress; }
+.byd-theme-tile-paper { display: flex; gap: var(--byd-s2, 8px); width: 100%; box-sizing: border-box; margin-bottom: var(--byd-s1, 4px); padding: var(--byd-s3, 12px); border-radius: 8px; }
+.byd-theme-tile-paper img { width: 22px; height: 22px; }
+.byd-theme-tile b { font-size: 14px; }
+.byd-theme-tile small { font-size: 12px; line-height: 1.4; }

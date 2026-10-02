@@ -11,9 +11,10 @@
 // det nya läget, och det är det som mäts: filen är exakt den bygget redan bär för filten (K20),
 // så sättningen kommer ur bytesen och inte ur vad maskinen råkar ha.
 //
-// Bara Mörk. De två andra ramarna hämtar sina familjer ur katalogen när ett spel skapas (L27),
-// och ingen av dem ligger som fil i repot — att mäta dem här hade betytt att skeppa dem, vilket
-// är det B3 säger nej till.
+// Bara Mörk, och sedan «Utseende» (L57, #633) i temat Retro, vars brödtext är den familj Mörk bar
+// förut: typsnittet är temats nu, och Roboto Condensed är den enda av temanas familjer som ligger
+// som fil i repot. De andra hämtas ur katalogen när ett spel skapas (L27), och att mäta dem här
+// hade betytt att skeppa dem, vilket är det B3 säger nej till.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -21,7 +22,8 @@ import { chromium, type Browser } from 'playwright'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { compile, fitInDocument, type FitReport } from '@byd/template'
 import { hostDocument } from '@byd/render'
-import { FRAMES, type Field, type Frame } from '../src/wizard/frames.js'
+import { type Field } from '../src/wizard/frames.js'
+import { buildProject, typedFields } from '../src/wizard/build.js'
 
 // Den funktion editorn importerar och renderaren bär in på sidan, körd på sidan. Transpileraren
 // lindar inre funktioner i en `__name`-hjälpare sidan inte har, så källan körs i en scope som
@@ -41,13 +43,11 @@ const KORT = [
   { title: 'Gläntans ljus', cost: 1, body: 'Lägg en markör här. Vid rundans slut flyttas den till ett annat kort du äger.' },
 ]
 
-function darkFrame(): Frame {
-  const found = FRAMES.find((frame) => frame.id === 'dark')
-  if (!found) throw new Error('the dark frame is gone')
-  return found
-}
-const dark = darkFrame()
-const FAMILY = dark.font.family
+// Mörk satt i Retro, genom samma väg den guidade starten går.
+const built = buildProject({ name: 'Mörk', players: 2, fields: FIELDS, frame: 'dark', theme: 'retro', rows: [] }).template.faces['front']
+if (!built) throw new Error('the dark frame has no front')
+const front = built
+const FAMILY = 'Roboto Condensed'
 
 // Filen som redan reser med bygget, buren in i sidan som bytes och inte som ett namn.
 const file = readFileSync(join(import.meta.dirname, '..', 'src', 'fonts', 'roboto-condensed-latin-wght-normal.woff2'))
@@ -64,7 +64,7 @@ afterAll(async () => {
 type Measured = { fit: FitReport[]; faces: string[]; asked: string[]; drawn: string }
 
 async function measure(row: Record<string, string | number>): Promise<Measured> {
-  const compiled = compile({ type: CARD_STANDARD_63x88, face: dark.front(FIELDS), row, icons: {}, fonts })
+  const compiled = compile({ type: CARD_STANDARD_63x88, face: front, row, icons: {}, fonts })
   const page = await browser.newPage({ viewport: { width: 800, height: 900 } })
   try {
     await page.setContent(hostDocument(compiled), { waitUntil: 'load' })
@@ -91,7 +91,9 @@ async function measure(row: Record<string, string | number>): Promise<Measured> 
 describe('Mörk’s body text, measured in the face the game carries (#420)', () => {
   let measured: Measured[]
   beforeAll(async () => {
-    measured = await Promise.all(KORT.map((kort) => measure({ ...kort })))
+    // Each card under the columns its fields are named (#476, L44), which is what the frame binds:
+    // a row keyed `body` would leave the body box empty, and an empty box fits in any face.
+    measured = await Promise.all(KORT.map((kort) => measure(typedFields({ title: kort.title, cost: String(kort.cost), body: kort.body }, FIELDS))))
   }, 120_000)
 
   it('is set in a face the page really holds, so what is measured is the game and not the machine', () => {

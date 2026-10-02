@@ -59,6 +59,13 @@ export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedEl
   // every render — the fitting is redone, and a card is replaced under the pointer that is
   // clicking it.
   const inner = useMemo(() => ({ __html: out.html }), [out.html])
+  // Whoever is told about the fitting is held by a ref, for the same reason (#661): a caller hands
+  // a fresh function every render — the wall says which card it is about in an arrow per card —
+  // and a fresh function in the effect's dependencies refitted every card on every render of the
+  // wall, a layout per text per half point at every band scrolled past. Being told is not a reason
+  // to measure again; a card whose markup has not changed has nothing new to say.
+  const tell = useRef({ onWarnings, onFitted })
+  tell.current = { onWarnings, onFitted }
   // The DOM measures for real; the compiler's text warnings are an estimate for headless use.
   // What the editor reports is what the browser saw: overflow after fitting, plus the
   // compiler's non-text warnings (icons and the like).
@@ -70,9 +77,9 @@ export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedEl
       // The compiler's own warnings are counted, never read out: their detail is a note for
       // whoever is debugging, in the language the rest of the compiler speaks (A4).
       .map((r) => ({ element: r.element, code: 'text-too-small', detail: `the text does not fit even at ${r.sizePt}pt` }))
-    onWarnings?.([...out.warnings.filter((w) => w.code !== 'text-too-small' && w.code !== 'text-overflow'), ...fromDom])
-    onFitted?.(report.filter((r) => !r.empty).map((r) => ({ element: r.element, sizePt: r.sizePt })))
-  }, [out.html, out.css, out.warnings, onWarnings, onFitted])
+    tell.current.onWarnings?.([...out.warnings.filter((w) => w.code !== 'text-too-small' && w.code !== 'text-overflow'), ...fromDom])
+    tell.current.onFitted?.(report.filter((r) => !r.empty).map((r) => ({ element: r.element, sizePt: r.sizePt })))
+  }, [out.html, out.css, out.warnings])
   const highlight = selectedElement ? `#${id} [data-element="${selectedElement}"]{outline:0.6mm solid var(--byd-editor-primary-mark);outline-offset:0.3mm}` : ''
   return (
     <div id={id} className="byd-preview" style={{ zoom: scale }}>

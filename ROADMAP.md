@@ -125,6 +125,7 @@ Klar 2026-09-08: varje punkt nedan är byggd, och besluten bakom dem står i DES
 - ✅ Bilder: bildceller i editorns tabell, spelets bilder en gång var, innehållsadresserad lagring i R2 via `/assets` (E1, DRIFT §4).
 - ✅ Symbolbibliotek: fliken "Symboler" med sök och kategorier, väljare vid klammern i tabellen, symboler som projektets assets och licenser hela vägen till trycket (E4).
 - ✅ Symbolerna bär färg: spelet namnger sina betydelser med var sin färg, `{namn|roll}` i korttext och i ikonraden, biblioteket omritat som en form i en färg med hålen skurna så masken kan målas, och paletten dömd med kortkontrollens egna mått för kontrast och färgblindhet (E4, E5).
+- ✅ Speltema (2026-10-02, #612): fliken "Symboler" blev "Speltema", där spelets typsnitt, betydelser med färger och ikoner väljs som ett tema ur ett galleri av färdiga teman, avvikelserna sägs på en rad, klammern i Tabell föreslår ur temat, och den guidade starten väljer ram och tema tillsammans som «Utseende» (L57).
 - ✅ Bildens källa ramas mot ett mått: bildelementet bär hur stor andel av ramen motivet fyller — filen skrivs aldrig om (E1). Kortväggens «Bildernas mått» och kortets egen avvikelse avvecklades när bilden fick bära sin beskärning (#607).
 - ✅ Fysisk validering: minsta textstorlek, kontrast, färgblindhet, utfall och linjetjocklek, som rapport på kortväggen och blockerande fel vid order (E5, E6).
 - ✅ Versionering: oföränderlig historik, namngivna milstolpar, diff i korttabellen och att ta tillbaka en äldre version (B4).

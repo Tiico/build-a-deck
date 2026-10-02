@@ -248,7 +248,79 @@ describe('the card row in the card’s column (#478)', () => {
     const seen = await cardRowAt1024()
     expect(Math.abs(seen.above - seen.below)).toBeLessThanOrEqual(1)
   }, 60_000)
+
+  // Stepping through the deck is pressing the same place again and again. A name button as wide
+  // as the name moved the step after it with every title, so the next press landed on the name.
+  it('keeps the steps where they are whatever the card is called', async () => {
+    const short = await cardRowSteps('Drake')
+    const long = await cardRowSteps('Drakens förbannade vrede över kungariket')
+    expect(long).toEqual(short)
+  }, 60_000)
+
+  // A deck of many cards is a list taller than the sheet it opens in. The sheet holds its height
+  // and the list scrolls inside it; the list ran on out of the sheet's bottom edge instead.
+  it('scrolls a long list inside the sheet rather than out of it', async () => {
+    const seen = await cardListOpen(60)
+    expect(seen.scrolls).toBe(true)
+    expect(seen.list.bottom).toBeLessThanOrEqual(seen.sheet.bottom)
+  }, 60_000)
 })
+
+// The row as the editor draws it, in a page at 1024, with the list of cards open or not.
+async function cardRowPage(doc: ReturnType<typeof projectDoc>, open: boolean) {
+  const user = userEvent.setup()
+  const { container, unmount } = render(
+    <TemplateCanvas doc={doc} face="front" row="dragon" onPickRow={vi.fn()} selectedElement={null} onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />,
+  )
+  if (open) await user.click(container.querySelector('.byd-card-row-name')!)
+  const html = container.innerHTML
+  unmount()
+  const page = await browser.newPage({ viewport: { width: 1024, height: 768 } })
+  const shell = read('index.html')
+    .replace('<script type="module" src="/src/main.tsx"></script>', '')
+    .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}</style></head>`)
+    .replace(
+      '<div id="root"></div>',
+      `<div id="root"><div class="byd-editor" data-page="editor" data-mode="template"><header></header><div></div><main><div role="tabpanel">${html}</div></main></div></div>`,
+    )
+  await page.setContent(shell, { waitUntil: 'load' })
+  return page
+}
+
+async function cardRowSteps(title: string) {
+  const doc = projectDoc()
+  doc.rows[0]!.fields['title'] = title
+  const page = await cardRowPage(doc, false)
+  try {
+    return await page.evaluate(() =>
+      [...document.querySelectorAll('.byd-card-row > button')].map((el) => {
+        const r = el.getBoundingClientRect()
+        return { left: Math.round(r.left), right: Math.round(r.right) }
+      }),
+    )
+  } finally {
+    await page.close()
+  }
+}
+
+async function cardListOpen(cards: number) {
+  const doc = projectDoc()
+  for (let i = doc.rows.length; i < cards; i++) doc.rows.push({ id: `card-${i}`, fields: { title: `Kort nummer ${i}`, body: '', antal: 1 } })
+  const page = await cardRowPage(doc, true)
+  try {
+    return await page.evaluate(() => {
+      const sheet = document.querySelector('.byd-card-row-list')!
+      const list = sheet.querySelector('ul')!
+      return {
+        sheet: { bottom: Math.round(sheet.getBoundingClientRect().bottom) },
+        list: { bottom: Math.round(list.getBoundingClientRect().bottom) },
+        scrolls: list.scrollHeight > list.clientHeight,
+      }
+    })
+  } finally {
+    await page.close()
+  }
+}
 
 // Lagerlistans villkorslager kapas i början (#569, beställarens beslut B): alla sex i Sal's Saloon
 // hette «om rarite…» vid 1024 och gick inte att skilja åt. Slutet syns nu — värdets sista tecken och

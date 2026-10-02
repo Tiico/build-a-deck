@@ -2,7 +2,7 @@ import type { AssetCrop as Crop, CardQuery, FaceId, ZoneAction, ZoneBeside } fro
 import { isSymbolName, type Element, type FaceTemplate, type Variant } from '@byd/template'
 import { showsWholePicture } from '@byd/protocol'
 import { AssetCrop, PictureName } from './projects.js'
-import type { Cell, Picture, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc } from './projects.js'
+import type { Cell, Picture, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
 import { applyRecipe, newAreaSpot, newPileSpot, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Shortcut, type Zone } from './recipe.js'
 
 // An edit is a thing that happened to a project (D3). A project is structurally the same as a
@@ -174,6 +174,26 @@ export type EditIntent =
   // from, so a version prints as it was designed rather than as the printer's machine guesses.
   | { v: 'setFont'; family: string; font: ProjectFont }
   | { v: 'removeFont'; family: string }
+  // A ready-made theme chosen (L57, #632): one thing the designer did, so one edit, one version and
+  // one step back (B4) — sent as a font, a meaning and a template patch apiece it would be a
+  // dozen steps back, with a half-themed deck standing at every one of them.
+  //
+  // `heading` and `body` are families; every text on the card is set in one of them. Which one is
+  // the column's own answer (L43): the columns written as prose — `prose`, worked out where the
+  // edit is made, so the actor applies exactly what the editor did — are set in the body family,
+  // and everything else, a title, a cost, a word the template writes itself, in the heading's.
+  // `fonts` are the families as the game will carry them, files and licences and all (#420).
+  // `palette` paints the theme's meanings and leaves the game's own; `icons` is the starter set.
+  | {
+      v: 'setTheme'
+      theme: ProjectTheme
+      heading: string
+      body: string
+      prose: string[]
+      fonts: Record<string, ProjectFont>
+      palette: Record<string, string>
+      icons?: Record<string, { url: string; credit?: ProjectCredit }>
+    }
   // Taking an older version back (B4) is an edit like any other: it lands in the log, everyone
   // with the project open sees it, and it becomes the next version when saved.
   | { v: 'restore'; doc: ProjectDoc }
@@ -585,6 +605,8 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     // written, which is what the unpinned-font warning is about (E5).
     case 'removeFont':
       return { ...doc, fonts: without(doc.fonts ?? {}, intent.family) }
+    case 'setTheme':
+      return themed(doc, intent)
     case 'restore':
       return intent.doc
     // The vocabulary is closed, but a stored log and an old browser both outlive it: `setFraming`
@@ -594,6 +616,65 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     default:
       throw new Error(`an edit this version does not know: ${(intent as { v: string }).v}`)
   }
+}
+
+// A theme laid over the document (L57, #632). The families are only *rewritten*: a text keeps its
+// size, weight, colour and place, because a theme is how the card feels and the frame is where
+// things stand (L57). A family the switch took off every card goes with it, so the game does not
+// carry a file nothing is set in; a family no text stood in before is the designer's own, and
+// stays.
+function themed(doc: ProjectDoc, intent: Extract<EditIntent, { v: 'setTheme' }>): ProjectDoc {
+  const carried = { ...(doc.fonts ?? {}), ...intent.fonts }
+  for (const family of [intent.heading, intent.body]) if (!carried[family]) throw new Error(`the theme sets text in ${family}, which the game does not carry`)
+  for (const [role, colour] of Object.entries(intent.palette)) {
+    if (!isSymbolName(role)) throw new Error(unwritable(role))
+    if (!colour.trim()) throw new Error('a meaning needs a name and a colour')
+  }
+  for (const name of Object.keys(intent.icons ?? {})) if (!isSymbolName(name)) throw new Error(unwritable(name))
+  const prose = new Set(intent.prose)
+  const set = (els: Element[]): Element[] =>
+    els.map((el) => {
+      if (el.kind === 'text') return { ...el, font: { ...el.font, family: 'field' in el.bind && prose.has(el.bind.field) ? intent.body : intent.heading } }
+      if (el.kind === 'if' || el.kind === 'group') return { ...el, children: set(el.children) }
+      return el
+    })
+  const faces = Object.fromEntries(
+    Object.entries(doc.template.faces).map(([id, face]) => [
+      id,
+      { ...face, base: set(face.base), variants: Object.fromEntries(Object.entries(face.variants).map(([g, v]) => [g, v.override ? { ...v, override: set(v.override) } : v])) },
+    ]),
+  )
+  const template = { ...doc.template, faces }
+  const before = textFamilies(doc.template)
+  const after = textFamilies(template)
+  const fonts = Object.fromEntries(Object.entries(carried).filter(([family]) => after.has(family) || !before.has(family)))
+  const icons = Object.entries(intent.icons ?? {})
+  const credits = { ...(doc.credits ?? {}), ...Object.fromEntries(icons.flatMap(([name, icon]) => (icon.credit ? [[name, icon.credit]] : []))) }
+  return {
+    ...doc,
+    template,
+    fonts,
+    palette: { ...(doc.palette ?? {}), ...intent.palette },
+    icons: { ...doc.icons, ...Object.fromEntries(icons.map(([name, icon]) => [name, icon.url])) },
+    ...(Object.keys(credits).length > 0 || doc.credits ? { credits } : {}),
+    theme: intent.theme,
+  }
+}
+
+// Every family a text on the card is set in, on every face and in every variant.
+function textFamilies(template: ProjectDoc['template']): Set<string> {
+  const out = new Set<string>()
+  const walk = (els: Element[]) => {
+    for (const el of els) {
+      if (el.kind === 'text') out.add(el.font.family)
+      if (el.kind === 'if' || el.kind === 'group') walk(el.children)
+    }
+  }
+  for (const face of Object.values(template.faces)) {
+    walk(face.base)
+    for (const v of Object.values(face.variants)) walk(v.override ?? [])
+  }
+  return out
 }
 
 function faceOf(doc: ProjectDoc, face: string): FaceTemplate {

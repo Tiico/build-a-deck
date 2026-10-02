@@ -28,6 +28,7 @@ describe('buildProject', () => {
       { key: 'body', label: 'Text', kind: 'text' },
     ],
     frame: 'classic',
+    theme: 'skogssaga',
     rows: [
       { title: 'Drake', cost: '5', body: 'Flygande.', antal: '2' },
       { title: 'Drake', cost: '1', body: 'En till med samma namn.' },
@@ -102,7 +103,7 @@ describe('buildProject', () => {
 // a game has a table whichever door it came in by; the cards, the fields and the faces are the
 // designer's to make in the editor, so there are none of them yet.
 describe('buildBlankProject', () => {
-  const state: WizardState = { name: '  Kråkkriget ', players: 4, fields: [{ key: 'title', label: 'Titel', kind: 'text' }], frame: 'dark', rows: [{ title: 'Kort 1' }] }
+  const state: WizardState = { name: '  Kråkkriget ', players: 4, fields: [{ key: 'title', label: 'Titel', kind: 'text' }], frame: 'dark', theme: 'ren', rows: [{ title: 'Kort 1' }] }
 
   it('keeps the name and the seats, and nothing the guided start would have suggested', () => {
     const doc = buildBlankProject(state)

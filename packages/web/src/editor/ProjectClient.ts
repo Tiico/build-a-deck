@@ -1,6 +1,6 @@
 import { assetFormatsNamed, assetTypeDeclaring, pictureNameOf, type AssetCrop, type AssetKind } from '@byd/protocol'
 import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
-import { catalogStack, type CatalogFamily, fileInSheet, fileSheetHref } from './font-catalog.js'
+import { catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from './font-catalog.js'
 import type { DocDiff, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
@@ -12,6 +12,7 @@ import { iconElement } from './canvas.js'
 import { idsOnFace } from './groups.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { freeIconName, svgBytes, symbolName, type GameSymbol } from './symbols.js'
+import { iconsOf, starterSet, themeFamilies, themeIconFiles, themeIntent, type Theme } from './themes.js'
 import type { EditorMessage, Presence } from '@byd/server'
 import { canEdit, canStartTables, type Role } from '@byd/server/doc'
 import { translate, type Key, type T } from '../i18n/index.js'
@@ -958,12 +959,7 @@ export class ProjectClient {
   // alternative — only the weights the template happens to use — buys bytes with a dependency the
   // project may not have: choosing a new weight a year from now would need Google again.
   async useCatalogFont(family: CatalogFamily, t: T = swedish): Promise<string> {
-    const sheet = await fetch(fileSheetHref(family)).catch(() => null)
-    if (!sheet?.ok) throw new Error(t('fonts.catalog.silent'))
-    const file = await fetch(fileInSheet(await sheet.text())).catch(() => null)
-    if (!file?.ok) throw new Error(t('fonts.catalog.silent'))
-    const bytes = new Uint8Array(await file.arrayBuffer())
-    const blob = new File([bytes], `${family.family}.woff2`, { type: 'font/woff2' })
+    const blob = await catalogFile(family, t)
     // Read after every wait and never before one (D3).
     const ref = await assetRefOfFile(blob)
     const already = Object.entries(this.doc.fonts ?? {}).find(([, f]) => f.asset === ref)
@@ -973,9 +969,57 @@ export class ProjectClient {
     // The licence is written in the same edit as the family, because it is the same fact: the
     // catalog knows the answer, and a family that arrived knowing it must never stand in the
     // list with two empty boxes (L27).
-    this.edit({ v: 'setFont', family: name, font: { stack: catalogStack(name, family.category), asset: ref, licence: { licence: family.licence, by: family.by }, source: 'catalog' } }, taking)
+    this.edit({ v: 'setFont', family: name, font: catalogFont(family, ref, name) }, taking)
     await this.storeAsset(blob, 'font', ref, taking, { said: 'upload.undone.font', name, intents: [{ v: 'removeFont', family: name }] }, t)
     return name
+  }
+
+  // A ready-made theme laid over the game (L57, #632): its two families, its meanings, and — for a
+  // game with no icons yet — its starter set. The designer did one thing, so it is one edit, one
+  // version and one step back (B4).
+  //
+  // The families the game does not already carry are brought in out of the catalog first, exactly
+  // as `useCatalogFont` brings one (L27): the press is the designer's handling, and nothing reaches
+  // Google before it. Everything waited for is waited for before the edit — the files and the
+  // hashes — and the document is read only after the last wait (D3). The bytes then follow the
+  // edit; if any of them never arrive, the theme is taken back as `storeAsset` takes back a
+  // symbol (#344, L37).
+  async useTheme(theme: Theme, t: T = swedish): Promise<void> {
+    this.mustBeAbleToEdit(t)
+    const wanted = themeFamilies(theme).filter((family) => !this.doc.fonts?.[family.family]?.asset)
+    const files = await Promise.all(wanted.map(async (family) => ({ family, file: await catalogFile(family, t) })))
+    const fetched = await Promise.all(files.map(async ({ family, file }) => ({ family, file, ref: await assetRefOfFile(file) })))
+    const symbols = await themeIconFiles(theme)
+    // Read after every wait and never before one (D3); nothing is awaited from here to the edit.
+    const fonts: Record<string, ProjectFont> = {}
+    for (const { family, ref } of fetched) if (!this.doc.fonts?.[family.family]?.asset) fonts[family.family] = catalogFont(family, ref)
+    const starters = starterSet(this.doc, theme, t, symbols)
+    const icons = iconsOf(starters)
+    const taking = this.newGesture('theme')
+    this.edit(themeIntent(this.doc, theme, fonts, t, icons), taking)
+    const uploads = [
+      ...fetched.filter(({ family }) => fonts[family.family]).map(({ family, file, ref }) => ({ file: file as Blob, kind: 'font' as const, ref, undoing: { said: 'upload.undone.font' as const, name: family.family, intents: [{ v: 'removeFont' as const, family: family.family }] } })),
+      ...starters.map(({ name, file, ref }) => ({ file: blobOf(file), kind: 'vector' as const, ref, undoing: { said: 'upload.undone.symbol' as const, name, intents: [{ v: 'removeIcon' as const, name }] } })),
+    ]
+    const landed = await Promise.allSettled(
+      uploads.map(async (u) => {
+        if (assetRef(await this.uploadAsset(u.file, u.kind, t)) !== u.ref) throw new Error(t('upload.wrongName'))
+      }),
+    )
+    const failed = uploads.flatMap((u, i) => {
+      const result = landed[i]
+      return result?.status === 'rejected' ? [{ u, why: result.reason as unknown }] : []
+    })
+    if (failed.length === 0) {
+      if (this.gesture === taking) this.gesture = null
+      return
+    }
+    // While the theme is still the open gesture, calling it off takes all of it back at once, and
+    // there is nothing left for the others to take. Once the designer has gone on, each asset that
+    // fell away is taken off whatever the stack holds, as a lone symbol's would be (L37).
+    const open = this.gesture === taking
+    const errors = (open ? failed.slice(0, 1) : failed).map(({ u, why }) => this.takeBack(taking, u.ref, u.undoing, why, t))
+    throw errors[0]
   }
 
   setFontLicence(family: string, licence: ProjectCredit | null): void {
@@ -1213,6 +1257,16 @@ export class ProjectClient {
 // off the file's own bytes.
 const blobOf = (file: ReturnType<typeof svgBytes>): Blob => new Blob([file.bytes], { type: file.type })
 const assetRefOfFile = async (file: Blob): Promise<string> => assetRefOf(new Uint8Array(await file.arrayBuffer()))
+
+// A family's file out of the catalog (L27): the sheet that says where the file is, then the file.
+// Only the designer's browser ever asks, and only when she has chosen the family (DRIFT §12).
+async function catalogFile(family: CatalogFamily, t: T): Promise<File> {
+  const sheet = await fetch(fileSheetHref(family)).catch(() => null)
+  if (!sheet?.ok) throw new Error(t('fonts.catalog.silent'))
+  const file = await fetch(fileInSheet(await sheet.text())).catch(() => null)
+  if (!file?.ok) throw new Error(t('fonts.catalog.silent'))
+  return new File([new Uint8Array(await file.arrayBuffer())], `${family.family}.woff2`, { type: 'font/woff2' })
+}
 
 // What a font file is called, as a family name: the name without its format, and without the
 // weight suffix a foundry writes into it, since that is a file's business rather than a game's.

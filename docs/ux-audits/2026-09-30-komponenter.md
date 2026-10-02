@@ -140,6 +140,20 @@ Samma piller är väggens täthet i krönet, `[−][150 px][+]`; foten säger ba
 Brickorna går under länken och rumskoden tillsammans när de inte ryms, och med åtta vid bordet rinner inget utanför vid 1024 eller 1280 (`editor-seat-chips.spec.ts`).
 En sparkad plats lämnar fokus till nästa bricka, eller till «Ny kod» när ingen är kvar.
 
+### #648 · Brickan (uppföljning)
+
+Granskningen av #641 fann två former för «en sak med × bredvid». Prototyp [`06-brickan.html`](2026-09-30-komponenter/prototyper/06-brickan.html):
+
+| | Fältets bricka / × | Bandets bricka / × | Krönet |
+| --- | --- | --- | --- |
+| Nu | 34 px / 34 × 34 | 44 px / 44 × 44 | 53 px |
+| A · pillret 44 överallt | 44 / 44 × 44 | 44 / 44 × 44 | 55 px (fältet 46) |
+| B · rutan 34 överallt | 34 / 34 × 34 | 34 / 34 × 34, under 44 | 53 px |
+| C · en form, två storlekar | 34 / 34 × 34 | 44 / 44 × 44 | 53 px |
+
+**Beslut (beställaren 2026-10-01): A.**
+**Ändrat (#648, L61):** `.byd-chip` i `buttons.css`, pillret på 44 px med × 44 × 44 i båda rummen; rummet säger bara sina färger. Krönet är 55 px, som det redan var.
+
 ## Rekommendation
 
 Ordningen är efter hur mycket yta som vinns per byggd rad, och efter vad som ger en komponent de
