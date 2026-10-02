@@ -311,3 +311,37 @@ describe('the editor when the line is gone (D3)', () => {
     await eventually(() => expect(document.querySelector('[data-status-notice]')).toBeNull())
   })
 })
+
+// The document read over HTTP is the record the store holds, and a record carries what it adds
+// around the document: its id, its revision and the account that owns it. The actor's handover
+// carries the document alone. An owner left on the document read over HTTP made the two differ by
+// that one field, so the handover replaced the document with an identical copy — every template,
+// row, font and icon a new object — and the wall compiled and fitted every card a second time, a
+// tenth of a second after it had drawn them (#667).
+describe('the handover when the editor opens', () => {
+  it('keeps the document it read over HTTP when the actor hands over the same one', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    // The record as an owned project is served (G1): this fixture runs without accounts, where a
+    // project has no owner and answers anyone, so the owner is written on as the store would.
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      const res = await real(input, init)
+      if (new URL(String(input)).pathname !== `/projects/${run.projectId}` || (init?.method ?? 'GET') !== 'GET') return res
+      return Response.json({ ...((await res.json()) as object), owner: 'ada-konto' })
+    }) as typeof fetch
+    let ada: ProjectClient
+    try {
+      ada = await open()
+    } finally {
+      globalThis.fetch = real
+    }
+    try {
+      const read = ada.doc
+      await greeted(ada)
+      expect(ada.doc).toBe(read)
+      expect(ada.dirty).toBe(false)
+    } finally {
+      ada.close()
+    }
+  })
+})
