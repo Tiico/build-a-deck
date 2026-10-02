@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 // What an L-number points at (#375).
 //
@@ -15,7 +16,8 @@ import { join } from 'node:path'
 // hour. That one was caught because somebody happened to look during a rebase; the L14 collision
 // sat on `main` for a week. So the check is a test rather than a habit.
 const root = (name: string) => readFileSync(new URL(`../../../${name}`, import.meta.url), 'utf8')
-const ROOT = new URL('../../../', import.meta.url).pathname
+// A path and not a URL's pathname: on Windows that is `/C:/…`, which no directory read can open.
+const ROOT = fileURLToPath(new URL('../../../', import.meta.url))
 
 type Entry = { number: number; title: string; line: number }
 
@@ -56,7 +58,7 @@ function references(): Reference[] {
     const text = readFileSync(path, 'utf8')
     text.split('\n').forEach((line, i) => {
       for (const m of line.matchAll(/\bL(\d{1,3})\b/g)) {
-        found.push({ number: Number(m[1]), where: `${path.slice(ROOT.length)}:${i + 1}` })
+        found.push({ number: Number(m[1]), where: `${path.slice(ROOT.length).split(sep).join('/')}:${i + 1}` })
       }
     })
   }

@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 // Dragmarkeringen är en token, och varje mottagande yta hämtar ur den (#291, L22).
@@ -16,6 +16,8 @@ import { describe, expect, it } from 'vitest'
 const SRC = join(import.meta.dirname, '..', 'src')
 const filesUnder = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? filesUnder(join(dir, e.name)) : [join(dir, e.name)]))
+// Var en fil ligger, med `/` på varje plattform, som förväntningarna nedan skriver det.
+const at = (path: string) => relative(SRC, path).split(sep).join('/')
 const sources = filesUnder(SRC)
 const read = (path: string) => readFileSync(path, 'utf8')
 // Utan kommentarerna, när det är väljare och deklarationer som läses: en kommentar över en regel
@@ -36,14 +38,14 @@ describe('dragmarkeringens token (#291)', () => {
     const declaring = sources
       .filter((path) => path.endsWith('.css') && path !== join(SRC, 'dropping.css'))
       .filter((path) => /--byd-drop-[a-z]+\s*:/.test(read(path)))
-      .map((path) => relative(SRC, path))
+      .map((path) => at(path))
     expect(declaring).toEqual([])
 
     // Och klassen som bär markeringen skrivs bara på två ställen: stilmallen som ritar den, och
     // modulen som delar ut den. Ingen yta kan bära den på egen hand och ingen kan låta bli.
     const naming = sources
       .filter((path) => /(?<!-)byd-drop\b/.test(read(path)))
-      .map((path) => relative(SRC, path))
+      .map((path) => at(path))
       .sort()
     expect(naming).toEqual(['dropping.css', 'editor/dropping.tsx'])
   })
@@ -54,7 +56,7 @@ describe('dragmarkeringens token (#291)', () => {
     // kontur där. Färgen är allas och ingens.
     const marking = sources
       .filter((path) => path.endsWith('.css'))
-      .flatMap((path) => [...rules(path).matchAll(/([^{}]*\[data-over='true'\][^{}]*)\{([^}]*)\}/g)].map((m) => ({ at: relative(SRC, path), selector: m[1]!.trim(), body: m[2]! })))
+      .flatMap((path) => [...rules(path).matchAll(/([^{}]*\[data-over='true'\][^{}]*)\{([^}]*)\}/g)].map((m) => ({ at: at(path), selector: m[1]!.trim(), body: m[2]! })))
     // Uppräknade och inte bara räknade, så att en ny yta syns i felet i stället för att bara
     // höja en siffra.
     expect(marking.map((rule) => `${rule.at}: ${rule.selector}`).sort()).toEqual([
@@ -79,7 +81,7 @@ describe('dragmarkeringens token (#291)', () => {
     // massredigeringens och guidens bildfält.
     const surfaces = sources
       .filter((path) => /\.tsx$/.test(path) && path !== own)
-      .flatMap((path) => [...read(path).matchAll(/dropSurface\(/g)].map(() => relative(SRC, path)))
+      .flatMap((path) => [...read(path).matchAll(/dropSurface\(/g)].map(() => at(path)))
     expect(surfaces.sort()).toEqual(['editor/DataTable.tsx', 'editor/DataTable.tsx', 'editor/MediaPanel.tsx', 'wizard/NewProjectPage.tsx'])
 
     // Och varje annan mottagare i trädet är uppräknad här. De tre som finns tar något annat än
@@ -90,7 +92,7 @@ describe('dragmarkeringens token (#291)', () => {
     // dyker upp fäller det här och får då frågan ställd om sig.
     const others = sources
       .filter((path) => path !== own && /\.tsx$/.test(path) && /dataTransfer[^;]*\.files/.test(read(path)))
-      .map((path) => relative(SRC, path))
+      .map((path) => at(path))
       .sort()
     expect(others).toEqual(['editor/DataTable.tsx', 'editor/FontShelf.tsx', 'editor/RulesPanel.tsx'])
   })
