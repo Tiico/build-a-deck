@@ -1,0 +1,4 @@
+# Text is LF in every checkout, whatever core.autocrlf says. Tests read sources as text — the
+# deploy file split on "\n", the greppable-sources guard — and a Windows checkout with CRLF made
+# them red for a reason that was never the code's.
+* text=auto eol=lf

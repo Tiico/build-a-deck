@@ -498,7 +498,7 @@
    the same fact seen in two shapes. */
 .byd-editor :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
 .byd-editor textarea:focus-visible,
-.byd-editor input:focus-visible:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='button']):not([type='submit']):not([type='reset']) {
+.byd-editor input:focus-visible:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='button']):not([type='submit']):not([type='reset']):not(.byd-data-filter > input) {
   outline: none;
   border-color: #9cc6ff;
   box-shadow: inset 0 0 0 2px #9cc6ff;
@@ -2140,7 +2140,11 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
    held to a box's height so the crown reads as one row (#130); tokens that will not fit a row wrap
    inside it, which is the field growing and never the crown becoming two. */
 .byd-data-filter { position: relative; flex: 1 1 auto; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--byd-s1); min-height: var(--byd-tap); box-sizing: border-box; padding: 0 var(--byd-s1) 0 var(--byd-s3); border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: var(--byd-editor-filter-bg); cursor: text; }
-.byd-data-filter:focus-within { border-color: var(--byd-editor-primary-mark); }
+/* The field is one box round its chips and its input, so the keyboard is said on the box, in the
+   ring every field in the editor draws inside itself (#34); the input draws none of its own, or the
+   field stands in a ring inside a ring (#659). Only the input lights the box: a chip's × says its
+   focus with its own ring. */
+.byd-data-filter:has(> input:focus-visible) { border-color: #9cc6ff; box-shadow: inset 0 0 0 2px #9cc6ff; }
 .byd-data-filter > input { flex: 1 1 160px; min-width: 0; min-height: 34px; border: 0; background: transparent; color: var(--byd-editor-filter-ink); font: inherit; }
 .byd-data-filter > input:focus { outline: none; }
 .byd-data-filter > input::placeholder { color: var(--byd-editor-filter-quiet); }

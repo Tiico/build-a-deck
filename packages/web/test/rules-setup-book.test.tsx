@@ -9,7 +9,7 @@
 // med pekdon och med tangentbord, att valet står kvar när bilden fälls ihop, och att bokens egen
 // sökning, läsning och stängning är orörda. Bredderna mäts i `rules-setup-widths`.
 import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, sep } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
@@ -168,7 +168,7 @@ describe('en enda väg till bokens uppställning (#270)', () => {
 
   it('ritar uppställningens zoner i en enda modul, som båda ytorna hämtar den ur', () => {
     const drawing = filesUnder(src).filter((path) => /data-setup-zone/.test(readFileSync(path, 'utf8')))
-    expect(drawing.map((p) => p.slice(src.length + 1))).toEqual(['rules/SetupOverview.tsx'])
+    expect(drawing.map((p) => p.slice(src.length + 1).split(sep).join('/'))).toEqual(['rules/SetupOverview.tsx'])
     for (const surface of ['rules/RuleDrawer.tsx', 'editor/RulesPanel.tsx'])
       expect(readFileSync(join(src, surface), 'utf8'), `${surface} ritar inte uppställningen ur den delade komponenten`).toContain('SetupOverview')
   })

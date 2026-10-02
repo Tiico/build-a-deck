@@ -16,7 +16,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
 export async function renderWorker(): Promise<{ stop: () => Promise<void> }> {
   const url = process.env['BYD_E2E_DATABASE_URL']
   if (!url) throw new Error('no database to render from: the run is on the memory store')
-  const child = spawn('pnpm', ['--filter', '@byd/render', 'worker'], { cwd: ROOT, env: { ...process.env, DATABASE_URL: url }, stdio: ['ignore', 'pipe', 'pipe'] })
+  // `@byd/render`'s `worker` script, run by Node directly for the same reason the server is (stack.ts).
+  const child = spawn(process.execPath, ['--import', 'tsx', join('src', 'main.ts')], { cwd: join(ROOT, 'packages', 'render'), env: { ...process.env, DATABASE_URL: url }, stdio: ['ignore', 'pipe', 'pipe'] })
   const said: string[] = []
   await new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`the render worker did not start:\n${said.join('')}`)), 60_000)
