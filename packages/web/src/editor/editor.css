@@ -215,6 +215,18 @@
    the same amber the editor says everything it wants looked at in. */
 .byd-editor-saved { color: var(--byd-editor-saved-ink); white-space: nowrap; }
 .byd-editor-saved[data-unsaved='true'] { color: var(--byd-editor-unsaved-ink); font-weight: 700; }
+/* Where the status is a word in both states it holds the room of the wider of the two, in the
+   weight each is drawn in and in whatever font the machine has: the tabs after it slid 12 px in
+   Swedish and 23 px in English with DejaVu each time the work went unsaved (#668). The two words
+   are laid under it as zero-height, hidden lines of a column, so the column is as wide as the
+   widest and as tall as the one that shows. Below 1440 «Sparat» is a tick (#566) and this is off. */
+@media (min-width: 1440px) {
+  .byd-editor > header > .byd-editor-saved { display: inline-flex; flex-direction: column; }
+  .byd-editor > header > .byd-editor-saved::before,
+  .byd-editor > header > .byd-editor-saved::after { height: 0; overflow: hidden; visibility: hidden; }
+  .byd-editor > header > .byd-editor-saved::before { content: attr(data-saved-word); font-weight: 400; }
+  .byd-editor > header > .byd-editor-saved::after { content: attr(data-unsaved-word); font-weight: 700; }
+}
 /* The history (B4): a panel that hangs from the revision it opened from. */
 /* The panel is a column with a fixed head and a scrolling body, and not one box that scrolls
    whole (#177). A history of five saves fits and never asked the question; a history of twenty-one
