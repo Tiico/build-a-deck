@@ -37,7 +37,10 @@
 .byd-wizard input:focus, .byd-wizard textarea:focus { border-color: var(--accent); outline: 3px solid color-mix(in srgb, var(--accent), transparent 82%); }
 .byd-wizard h1 { margin: 2px 0 0; font: 700 28px/1.15 Georgia, serif; }
 .byd-wizard h2 { margin: 0; display: flex; align-items: center; gap: 9px; font-size: 16px; }
-.byd-wizard p { margin: 3px 0; color: var(--muted); }
+/* The wizard's own paragraphs, and never a card's: the preview sets every text in a <p>, and it
+   keeps the ink and the place its template gives it (#633), as Speltema's do (#632). `:where` so
+   the exception adds no weight to the rule. */
+.byd-wizard p:where(:not(.byd-preview p)) { margin: 3px 0; color: var(--muted); }
 
 .byd-wizard > header { padding: 18px 24px; display: flex; align-items: center; justify-content: flex-start; gap: 20px; flex-wrap: wrap; border-bottom: 1px solid var(--line); background: rgb(255 255 255 / 60%); }
 .byd-wizard > header > div > span { color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
@@ -130,8 +133,25 @@
 .byd-wizard .byd-wizard-field-says { grid-column: 2 / -1; margin: 0; color: #8d3823; font-size: 12px; }
 .byd-wizard-add-fields, .byd-wizard-frames { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .byd-wizard-add-fields button { border-style: dashed; font-size: 12px; }
-.byd-wizard-frames { margin-top: 4px; }
 .byd-wizard-frames button { font-size: 12px; }
+/* «Utseende» (L57, #633, prototyp B): the frame — where things stand — over the theme — how it
+   feels — in one fieldset where the frame was always chosen. Each part says what it is on a line
+   of its own, and the themes are the gallery's own tiles (`theme-tile.css`), two to a row, drawn
+   in the wizard's colours. */
+.byd-wizard-look { display: grid; gap: 12px; }
+.byd-wizard-look > div > p { flex-basis: 100%; margin: 0; color: #454c44; font-size: 12px; }
+.byd-wizard-themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.byd-wizard-themes > p { grid-column: 1 / -1; }
+.byd-wizard .byd-wizard-look > .byd-wizard-hint { margin: 0; font-size: 12px; }
+/* A tile is a choice, so it is chosen by its edge and never by a fill (the button language, #44):
+   it stands on the step's own ground. */
+.byd-wizard .byd-theme-tile { width: 100%; height: 100%; padding: 12px; border-color: #cbcabe; border-radius: 12px; background: transparent; color: var(--ink); }
+.byd-wizard .byd-theme-tile:hover { border-color: #8d918a; }
+.byd-wizard .byd-theme-tile[aria-pressed='true'] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.byd-wizard .byd-theme-tile small { color: var(--muted); }
+.byd-wizard .byd-theme-tile .byd-theme-tile-families { color: #454c44; }
+/* The theme's paper is a ground on the wizard's own paper, so it is edged to be seen as one. */
+.byd-wizard .byd-theme-tile-paper { box-shadow: inset 0 0 0 1px var(--line); }
 
 .byd-wizard-cards-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
 .byd-wizard-cards-head > span { color: var(--muted); }

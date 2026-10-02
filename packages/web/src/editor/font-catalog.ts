@@ -1,3 +1,4 @@
+import type { ProjectFont } from '@byd/server'
 // Google Fonts as the editor's picker knows it (#329, L27).
 //
 // The list of families is data the build carries and not something fetched: the two endpoints
@@ -60,6 +61,12 @@ export function sampleSheetHref(families: CatalogFamily[]): string | null {
 const GENERIC: Record<string, string> = { serif: 'serif', sans: 'sans-serif', display: 'serif', handskrift: 'cursive', mono: 'monospace' }
 export const catalogStack = (name: string, category: string): string => `"${name}", ${GENERIC[category] ?? 'serif'}`
 
+// A catalog family as the game carries it once its file is the project's own (#329, #420): the stack
+// it is written as, the asset the version pins, and the licence the catalog already knows — so a
+// family that arrived knowing the answer never stands in the list with two empty boxes (L27).
+// `name` is what the game calls it, which is the catalog's own name unless the game already has one.
+export const catalogFont = (family: CatalogFamily, asset: string, name: string = family.family): ProjectFont => ({ stack: catalogStack(name, family.category), asset, licence: { licence: family.licence, by: family.by }, source: 'catalog' })
+
 export const isVariable = (family: CatalogFamily): boolean => family.weights.includes('..')
 
 // What the chosen family's own sheet is asked for. A variable family is asked for its whole
@@ -80,6 +87,21 @@ export function fileInSheet(css: string): string {
   const url = latin?.[2]
   if (url === undefined) throw new Error('no font file in the sheet')
   return url
+}
+
+// Where a catalog family's face can be drawn from before the game carries it (#476, #632): the
+// file's own address, read out of the family's sheet. Asked for on the designer's handling and
+// never before it (L27) — a frame pressed in the guided start, or «Visa temana i sina typsnitt» in
+// Speltema. `null` when the catalog does not answer, so the caller says so instead of drawing the
+// card in a fallback face that lies about it (E2).
+export async function catalogFaceSource(catalog: CatalogFamily): Promise<{ stack: string; src: string } | null> {
+  const sheet = await fetch(fileSheetHref(catalog)).catch(() => null)
+  if (!sheet?.ok) return null
+  try {
+    return { stack: catalogStack(catalog.family, catalog.category), src: fileInSheet(await sheet.text()) }
+  } catch {
+    return null
+  }
 }
 
 // How old the list may be before the gate goes red (#370, L27). Six months, because a

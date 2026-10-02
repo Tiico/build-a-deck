@@ -92,4 +92,31 @@ test.describe('the typeface catalog reaches Google only when the designer asks (
     await expect(row.getByLabel(/licence for cinzel/i)).toHaveValue('OFL 1.1')
     await expect(row.getByLabel(/creator of cinzel/i)).toHaveValue('Natanael Gama')
   })
+
+  // Speltema's ready-made themes (L57, #632, beställarens val C): the tiles stand without Google,
+  // and the themes are drawn in their own faces only once «Show the themes in their typefaces» is
+  // pressed. Read off the traffic, as the rest of this file is.
+  test('draws the ready-made themes in their own faces only once the designer asks', async ({ page }) => {
+    const asked: string[] = []
+    await page.route(GOOGLE, async (route) => {
+      const url = route.request().url()
+      asked.push(url)
+      const family = new URL(url).searchParams.get('family')?.split(':')[0] ?? 'Cinzel'
+      await (url.includes('googleapis.com') ? route.fulfill({ status: 200, contentType: 'text/css', body: SHEET(family) }) : route.fulfill({ status: 200, contentType: 'font/woff2', body: WOFF2 }))
+    })
+
+    await logIn(page.request)
+    const project = await makeProject(page.request)
+    await page.goto(project.editorUrl, { waitUntil: 'load' })
+    await page.locator('#byd-editor-tab-theme').click()
+    const show = page.getByRole('button', { name: 'Show the themes in their typefaces' })
+    await expect(show).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Choose the theme/ })).toHaveCount(4)
+    await page.evaluate(() => document.fonts.ready.then(() => undefined))
+    expect(asked).toEqual([])
+
+    await show.click()
+    await expect(page.locator('.byd-theme-tile [data-theme-card]')).toHaveCount(4)
+    await expect.poll(() => asked.filter((url) => url.startsWith('https://fonts.googleapis.com/css2?family=')).length).toBe(7)
+  })
 })

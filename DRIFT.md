@@ -204,7 +204,9 @@ Lådan får alltså inget nytt utgående beroende, och ett projekt renderar med 
 Byggt 2026-09-21: familjenamnen reser med webbygget och hämtas inte alls — Googles kataloglistor
 svarar utan CORS, och en proxy för dem hade varit exakt det utgående beroendet den här paragrafen
 säger nej till. Det webbläsaren hämtar är ansiktena: ett `css2`-ark när väljaren öppnas, och
-typsnittsfilen från `fonts.gstatic.com` när en familj väljs. Mätt på trafiken i
+typsnittsfilen från `fonts.gstatic.com` när en familj väljs.
+Speltemas färdiga teman (L57, #632) följer samma regel: fliken öppnas utan Google, ett ark per
+familj hämtas när «Visa temana i sina typsnitt» trycks, och filerna när ett tema väljs. Mätt på trafiken i
 `packages/e2e/test/surfaces/font-catalog.spec.ts`.
 
 ## 13. Komprimering är lådans ansvar, kanten är ett tillägg

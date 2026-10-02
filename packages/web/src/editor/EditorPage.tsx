@@ -975,7 +975,7 @@ function HostSeats({ client, sessionId, hostKey, ws, onNotice, lastStop }: { cli
         {taken.map((s, at) => {
           const name = t('editor.seats.kick', { name: s.name ?? '' })
           return (
-            <li key={s.id} data-host-seat={s.id}>
+            <li key={s.id} className="byd-chip" data-host-seat={s.id}>
               {s.name}
               <button
                 type="button"

@@ -2658,6 +2658,15 @@ Mätt på observatörens filt, fyra platser med yta och räknare framför varje,
 De 102 scenerna i `felt-names.test.tsx` — bordsläge vid varje platsantal och varje kvartsvarv, TV:n och Bord-fliken — är oförändrade.
 Minsta etikett är 12 px, som den alltid varit.
 
+Reviderat 2026-10-02 (#652): **på en tät filt täcker brickan inte längre kortet, och en hög är aldrig tjockare än en femtedel av sitt kort.**
+Bord-flikens filt är tät vid 1024, och där är ett kort 20 × 28 px: brickan på 30 px täckte hela högen och stod en bit utanför den, så det enda som syntes av draghögen var dess tjocklek — tolv steg om 1,2 px, 13 px marinblått ovanför «12», som lästes som en flik.
+Brickan sätts därför i filtens tätaste, 12 px på en platta om 18, samma storlek som händernas antal, och den är aldrig bredare än kortet på någon filt.
+Tjockleken räknas i kortets eget mått, som solfjäderns vridning redan gör: trappan når högst en femtedel av kortets höjd, vilket är vad tolv steg om 1,2 px är på det minsta kort ett bord ritar, 65 px; TV:n och bordsläget ritar som förut.
+På Bord-fliken ritas högen dessutom över sitt handtag i stället för under det, och handtaget drar sin linje två pixlar utanför kortet, där en utpekad högs egen ring står.
+Linjen låg annars tvärs över brickan, och på en tom hög på högens egen streckade kontur — två linjer på samma pixlar.
+Pekaren går genom högen till handtaget, så att ta tag i högen är detsamma som förut.
+`packages/e2e/test/surfaces/setup-piles-drawn.spec.ts` mäter det på målade pixlar vid 1024 och 1280.
+
 **En delad zon under en plats ruta skriver sitt namn mitt över sig själv.**
 Utvidgat 2026-09-15 (#43), och det är det första i regeln som handlar om två namn som hör till olika zoner.
 
@@ -5697,6 +5706,54 @@ Kravet bakom #420 står kvar oförändrat: varje tema bär sina familjer som pro
 
 Prototypen står i [`docs/ux-audits/2026-09-30-speltema/prototyper/01-speltema.html`](docs/ux-audits/2026-09-30-speltema/prototyper/01-speltema.html).
 
+**Byggt 2026-10-01 (#632): vad ett tema är i dokumentet.**
+Ett temabyte är en redigering, `setTheme`, och därmed en version och ett steg tillbaka (B4).
+Dokumentet minns bara vilket tema spelet utgår från, i den valfria posten `theme: { from }`; vad spelet har gjort av temat sedan läses ur dokumentet självt, och det är det avvikelseraden säger.
+Raden räknar exakt det «Återställ» tar tillbaka och inget annat, eftersom återställ är att välja temat igen: en betydelse eller en ikon spelet lagt till själv är spelets och ingen avvikelse.
+
+Mallen har ingen plats för «rubrik» och «brödtext», så temat skriver om familjen på varje text i mallen, på varje sida, i villkor, grupper och varianter.
+Vilken av de två en text får avgörs av kolumnens eget svar på om den är prosa (L43): prosan sätts i brödtextens familj, och allt annat — titel, kostnad, ett ord mallen skriver själv — i rubrikens.
+Grad, vikt, färg och plats står kvar, eftersom ramen säger var saker står och temat hur det känns.
+En familj bytet tog av korten tas bort ur spelet; en familj ingen text stod i är designerns egen och står kvar.
+Familjerna hämtas ur katalogen när temat trycks och blir projektets egna filer som i #420, så den fysiska kontrollen har ingenting att säga om typsnitten.
+
+**Papper ingår inte i temat än.**
+Kortets botten bor i mallen som formen som täcker kortet, och en mörk ram skriver ljus text på den; att lägga ett temas ljusa papper över Mörk hade gett vit text på gräddvitt.
+Ett temas papper är därför den botten dess färger valdes och mäts mot, och färgsektionen mäter som förut mot kortets verkliga botten.
+
+**Betydelserna** skrivs med designerns ord (A4) och känns igen under vilket språks ord som helst, så ett spel byggt på svenska och öppnat på engelska får inte en andra «kostnad».
+Tre av prototypens sexton färger klarade inte E5:s färgblindhetsmått, som är testets krav: Rens och Krönikas nattblå och lundgröna blir en färg för en tritanop, och Retros glöd och guld för en protanop.
+Försvaret blev djupblått i båda, Retros kostnad rost, och Rens anfall plommon så att Ren inte är Skogssaga ommålad.
+
+**Startikonerna ges bara ett spel som inte har några ikoner än.**
+Ett spel med en egen uppsättning får inte sex ikoner det inte bett om vid varje temabyte; det är vad «start» i startuppsättning betyder.
+
+**Galleriets brickor visar temat utan att nå Google, och kortet i temats typsnitt på begäran (beställarens val C, 2026-10-01).**
+Prototypens brickor ritade kortet i temats typsnitt, men det hade krävt katalogens ark i samma stund som fliken öppnades, och katalogen nås på designerns handling och aldrig före den (L27, DRIFT §12) — samma gräns som den guidade starten drar för sina ramar (#476).
+Tre vägar lades fram: brickorna utan typsnittsprov (A), att låta öppnandet av Speltema räknas som handlingen (B), och brickorna plus en knapp som hämtar proven först på tryck (C).
+Valet blev **C**.
+En bricka visar temats betydelser som färgade symboler på dess papper och familjerna utskrivna med namn, och under galleriet står «Visa temana i sina typsnitt».
+Trycket på den är handlingen: det hämtar ett ark per familj och ritar spelets eget första kort på varje bricka, satt i temat genom samma redigering som valet skickar, så brickan inte kan visa något valet inte gör.
+Ingenting väljs genom att titta, och ingen fil blir spelets förrän ett tema trycks.
+B valdes bort för att det hade gjort varje besök på fliken till en förfrågan till Google; A för att typsnittet är halva skälet att välja ett tema.
+`font-catalog.spec.ts` läser på trafiken att fliken öppnas utan Google och att proven hämtas först efter trycket.
+
+**Mallens typsnittslista börjar med temat (#634:s följduppgift).**
+I ett spel som utgår från ett tema står temats rubrikfamilj först i en textlagers lista och brödtextens därefter, och spelets övriga typsnitt följer i den ordning spelet har dem.
+En temafamilj spelet inte längre bär erbjuds inte, eftersom den vore ett namn utan fil (#420).
+
+**Byggt 2026-10-02 (#633): «Utseende» i den guidade starten.**
+Gruppen där ramen valdes heter Utseende och har två delar på var sin rad: «Ram — var saker står» med de tre ramarna, och «Tema — hur det känns» med galleriets egna brickor, två i bredd, ritade i wizardens färger.
+Brickan är en komponent (`ThemeTile`) som Speltema och wizarden delar, så ett tema ser likadant ut i båda dörrarna.
+Ramarna skriver sina texter utan familj, och `buildProject` lägger temat över ramen med samma redigering som Speltema skickar (`setTheme`), så regeln om vilken text som får vilken familj står på ett ställe.
+Spelet som skapas minns sitt tema (`theme.from`) och får temats familjer som egna filer, dess betydelser och dess startikoner — det spel ett val av temat i Speltema hade gett.
+Det första temat, Skogssaga, gäller tills ett annat trycks.
+Gränsen mot Google är #476:s, flyttad från ramen till temat: ett tryck på ett tema hämtar dess två ark och förhandsvisningen sätts i dem, ett tryck på en ram hämtar ingenting, och innan något tema tryckts säger förhandsvisningen «Temats typsnitt hämtas när du väljer tema.».
+Wizarden har ingen «Visa temana i sina typsnitt»: kortet bredvid galleriet visar redan det tryckta temat i dess typsnitt, så trycket på temat är både valet och provet.
+Temats färger når kortet genom betydelserna, eftersom papperet inte ingår i temat: en symbol skriven med betydelse, som `{mynt|kostnad}`, målas i temats färg i förhandsvisningen och byter färg med temat, och brickorna visar färgerna utan att något skrivits.
+`wizard-frame-fonts.test.tsx` skapar spelet i varje ram med varje tema och läser noll anmärkningar i den fysiska kontrollen.
+I samma veva drogs wizardens styckeregel bort från kortets text: förhandsvisningen sätter varje text i ett `<p>`, och wizardens grå och marginal hade gjort Mörks vita rubrik grå.
+
 ### L58. Markeringens handlingar står i tabellens fot (prototypat och beslutat 2026-10-01, #618)
 
 Helhetsöverblicken (`docs/ux-audits/2026-09-30-komponenter.md`) mätte åtgärdsraden: när ett kort bockades fälldes ett band på 72 px ut mellan krönet och raderna, och raderna flyttade 80 px — bocken man just tryckt på gled iväg under fingret, och när sista bocken släpptes hoppade allt tillbaka.
@@ -5762,3 +5819,19 @@ Det lämnas därför vidare: till platsen som tog den sparkades plats, till den 
 Variant B, en box «Bordet kör (8) ▾» i huvudet, valdes bort: huvudet är redan fullt under 1440 (#566) och rann 73 px utanför vid 1024.
 Variant C, en statusrad på 32 px med sparkarna flyttade till Bord-flikens kort, är en större flytt som kan göras senare om bandet ändå stör.
 Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/05-bordsbandet.html`.
+
+### L61. En bricka: pillret på 44 px, i sökfältet och i bordsbandet (prototypat och beslutat 2026-10-01, #648)
+
+Granskningen av #641 fann två former för samma tecken: tabellens filterbricka «typ: Playcard ×» (#617) var en rundad ruta på 34 px i sökfältet, bordsbandets platsbricka «Ada ×» (#621) ett piller på 44 px.
+Nästa bricka — färdiga teman, taggar, kort i en markering — hade fått en tredje.
+
+**En bricka, pillret på 44 px, överallt** (variant A av tre: pillret överallt, rutan på 34 överallt, en form i två storlekar).
+Prototypen mätte att pillret i sökfältet gör fältet 46 px och krönet 55 — den höjd krönet redan har, eftersom sökrutan själv är 44 — så formen kostar ingen höjd.
+Rutan på 34 överallt hade krympt bandets × under träffytans 44, det #621 just rättat; en form i två storlekar vann två pixlar appen redan betalar och gav två storlekar att känna igen som en.
+
+`.byd-chip` ritas en gång i `buttons.css`, där knappspråket bor (L13): ett piller en målyta högt, × ett helt kvadratiskt mål med namnet på vad det gör, linjen en kontur inuti rutan så att brickan står på samma rad som målen bredvid.
+Rummet säger bara sina färger som tokens: fältet markeringens blå som fyllning, bandet sin gröna som linje, och felets färger när bandet är tappat.
+`.byd-data-token` och `.byd-editor-seats > li` är borta.
+
+`editor-crown.test.tsx` mäter fältets bricka vid 1024, 1280 och 1440: 44 hög, × 44 × 44, ett piller, och krönet en rad; `editor-seat-chips.spec.ts` mäter bandets och att det är samma klass.
+Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/06-brickan.html`.

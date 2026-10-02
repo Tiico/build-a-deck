@@ -414,7 +414,9 @@
   color: #7dd3a0;
   border-bottom: 1px solid #2f333d;
 }
-.byd-editor-table-link a { color: #fff; }
+/* The link and the room code are the two things in the strip one acts on or reads out, so they
+   are white and the strip's sentence around them is its green (#650, as the prototype for #621). */
+.byd-editor-table-link :is(a, [data-room-code]) { color: #fff; }
 /* A blocked update is not the good news this row otherwise carries, and must not be green. */
 .byd-editor-table-link[data-lost] { background: var(--byd-editor-lost-bg); color: var(--byd-editor-lost-quiet); }
 .byd-editor-warning { color: var(--byd-editor-lost-ink); font-weight: 600; }
@@ -438,43 +440,12 @@
   background: var(--byd-editor-lost-button-bg);
   color: var(--byd-editor-lost-ink);
 }
-/* The seats at the table, a chip each (#621, beslut A 2026-10-01): the name, and an × that kicks
-   and is called «Sparka Ada». The × is the table's and the layer list's mark for «take away», and
-   a full target square; the chip is exactly as tall as «Ny kod» beside it, which is why its line
-   is an outline drawn inside the box and not a border around it — a border would either make
-   the chip 46 px or the × 42. The outline is painted over the ×'s own fill, so the chip keeps
-   its edge under the pointer. */
+/* The seats at the table, a chip each (#621; one form with the field's token since #648). The
+   strip says the chip's colours — its green as a line, never a fill — and its error colours when
+   it is lost or stalled. */
+.byd-editor-table-link { --byd-chip-line: #5f7f69; --byd-chip-ink: #e3f3e8; --byd-chip-mark: #a9d8b8; --byd-chip-hover: #2a3a2c; }
+.byd-editor-table-link:is([data-lost], [data-stalled]) { --byd-chip-line: var(--byd-editor-lost-button-line); --byd-chip-ink: var(--byd-editor-lost-ink); --byd-chip-mark: var(--byd-editor-lost-ink); --byd-chip-hover: var(--byd-editor-lost-button-bg); }
 .byd-editor-seats { display: flex; flex-wrap: wrap; gap: var(--byd-s2); margin: 0; padding: 0; list-style: none; }
-.byd-editor-seats > li {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--byd-s1);
-  height: var(--byd-tap);
-  padding-left: var(--byd-s3);
-  border-radius: 999px;
-  outline: 1px solid #5f7f69;
-  outline-offset: -1px;
-  color: #e3f3e8;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.byd-editor-table-link .byd-editor-seats button {
-  width: var(--byd-tap);
-  height: var(--byd-tap);
-  padding: 0;
-  border: 0;
-  border-radius: 0 999px 999px 0;
-  background: transparent;
-  color: #a9d8b8;
-  font-size: 16px;
-}
-.byd-editor-table-link .byd-editor-seats button:hover { background: #2a3a2c; color: #fff; }
-/* The editor's ring, drawn inside the × so it does not lie over the name beside it or the next
-   chip; it follows the chip's round end. */
-.byd-editor-table-link .byd-editor-seats button:focus-visible { outline-offset: -3px; }
-.byd-editor-table-link:is([data-lost], [data-stalled]) .byd-editor-seats > li { outline-color: var(--byd-editor-lost-button-line); color: var(--byd-editor-lost-ink); }
-.byd-editor-table-link:is([data-lost], [data-stalled]) .byd-editor-seats button { background: transparent; color: var(--byd-editor-lost-ink); }
-.byd-editor-table-link:is([data-lost], [data-stalled]) .byd-editor-seats button:hover { background: var(--byd-editor-lost-button-bg); }
 /* The strips above are usually absent; the open mode is the one thing that gives way, so the
    canvas reaches the bottom of the window however many of them are there.
 
@@ -810,16 +781,29 @@
 .byd-setup-felt .byd-table-frame[data-quiet] .byd-zone:not([data-lit]) > span,
 .byd-setup-felt .byd-table-frame[data-quiet] .byd-pile:not([data-lit]) .byd-pile-name { display: none; }
 .byd-setup-felt .byd-table-frame[data-quiet] .byd-zone[data-lit] { box-shadow: inset 0 0 0 2px #ffd98a; background: rgb(255 217 138 / 0.12); }
-.byd-setup-felt .byd-table-frame[data-quiet] .byd-pile[data-lit] { outline: 2px solid #ffd98a; outline-offset: 2px; }
+/* Rounded as the pile's handle is, because the ring is drawn exactly where the handle's line is
+   (#652): lit, the line turns bright, rather than a square ring standing over a round one. */
+.byd-setup-felt .byd-table-frame[data-quiet] .byd-pile[data-lit] { outline: 2px solid #ffd98a; outline-offset: 2px; border-radius: 8px; }
 .byd-setup-felt .byd-table-frame[data-quiet] .byd-zone[data-lit] > span,
 .byd-setup-felt .byd-table-frame[data-quiet] .byd-pile[data-lit] .byd-pile-name { z-index: 20; padding: 0 var(--byd-s1); border-radius: 6px; background: #0d0f14; box-shadow: 0 0 0 1px #ffd98a; }
 .byd-setup-invalid { margin: 0; padding: 24px; border-radius: 16px; background: #2a1b1b; color: #ff9a9a; line-height: 1.5; }
 /* A handle per zone, on the felt with the felt's mapping. It draws no name of its own. */
 .byd-setup-handle { position: absolute; box-sizing: border-box; border: 2px dashed rgba(255, 217, 138, 0.55); border-radius: 8px; cursor: grab; outline: none; }
-.byd-setup-handle[data-kind='pile'] { border-style: solid; }
 /* The handle on the felt says it inside its own dashes, in the felt's own amber rather than the
    editor's blue: it lies on a picture of a table, not in a panel (#34). */
 .byd-setup-handle[aria-pressed='true'], .byd-setup-handle:focus-visible { border-color: #ffd98a; border-style: solid; box-shadow: 0 0 0 3px rgba(255, 217, 138, 0.25); }
+/* A pile's handle is a line around the card and not on it (#652). On it, the line lay over the
+   pile's own: across the count's badge, which is wider than a card on a felt this small, and on
+   the dashed outline an empty pile is drawn with — two lines on the same pixels. So the pile is
+   drawn over the handles, the pointer passes through it to the handle under it, and the handle
+   draws its line two pixels out, where a pointed-at pile's own ring stands (#581). */
+.byd-setup-felt .byd-pile { z-index: 1; }
+/* Over the TV's own rule, which lets the badge and the name take the pointer: here they are the
+   handle's to have, and `.byd-table-frame[data-mode='tv'] .byd-pile-n` weighs as much as a plain
+   `.byd-setup-felt .byd-pile *` does. */
+.byd-setup-felt .byd-table-frame[data-mode] .byd-pile, .byd-setup-felt .byd-table-frame[data-mode] .byd-pile * { pointer-events: none; }
+.byd-setup-handle[data-kind='pile'] { border: 0; outline: 2px solid rgba(255, 217, 138, 0.55); outline-offset: 2px; }
+.byd-setup-handle[data-kind='pile'][aria-pressed='true'], .byd-setup-handle[data-kind='pile']:focus-visible { outline-color: #ffd98a; box-shadow: 0 0 0 7px rgba(255, 217, 138, 0.25); }
 /* The handle says no name at all (K19). The felt underneath names every area, every pile and
    every hand, so a label here was a second system writing on the same square millimetres — which
    is how `Räknare B` came to lie under `Hand · B` (#43). The name is still on the handle for
@@ -1694,15 +1678,19 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-card-row > button:disabled { color: var(--byd-editor-quiet); cursor: default; }
 /* A grid of one row and not a flex line: a flex line fills the button's 44 px, so the baseline the
    name and its count share sat at the button's top edge. One grid row is as tall as its words and
-   stands in the middle of the button, the way the steps either side of it do. */
-.byd-card-row-name { display: inline-grid; grid-template-columns: minmax(0, auto) auto; align-items: baseline; align-content: center; gap: var(--byd-s2); min-width: 0; max-width: 40%; padding: 0 var(--byd-s3); }
+   stands in the middle of the button, the way the steps either side of it do. Its width is the
+   row's and not the name's: a button as wide as the title moved the next step with every card, so
+   pressing the same place twice landed on the name. */
+.byd-card-row-name { display: inline-grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; align-content: center; gap: var(--byd-s2); flex: 0 0 40%; min-width: 0; padding: 0 var(--byd-s3); text-align: left; }
 .byd-card-row-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
 .byd-card-row-name small { color: #9aa3b8; }
 .byd-card-row-values { flex: 1 1 auto; min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #9aa3b8; font-size: 12px; }
 .byd-card-row-values b { color: #c7cede; font-weight: 600; }
-.byd-card-row-list { position: absolute; left: var(--byd-s3); bottom: calc(100% + 4px); z-index: 20; display: grid; gap: var(--byd-s1); width: min(320px, calc(100% - 24px)); max-height: 50vh; padding: var(--byd-s2); border: 1px solid #3b4358; border-radius: 10px; background: #1b1f2a; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5); }
+/* The search above and the list under it; the list takes what is left of the sheet's height and
+   scrolls in it. A grid row sized to its content grew past the sheet's bottom edge instead. */
+.byd-card-row-list { position: absolute; left: var(--byd-s3); bottom: calc(100% + 4px); z-index: 20; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: var(--byd-s1); width: min(320px, calc(100% - 24px)); max-height: 50vh; padding: var(--byd-s2); border: 1px solid #3b4358; border-radius: 10px; background: #1b1f2a; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5); }
 .byd-card-row-list input { min-height: var(--byd-tap); padding: 0 var(--byd-s2); border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #0f1115; color: #fff; font: inherit; }
-.byd-card-row-list ul { margin: 0; padding: 0; list-style: none; overflow: auto; }
+.byd-card-row-list ul { min-height: 0; margin: 0; padding: 0; list-style: none; overflow: auto; overscroll-behavior: contain; }
 .byd-card-row-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--byd-s2); min-height: var(--byd-tap); padding: 0 var(--byd-s2); border-radius: 6px; color: #e6ecfa; cursor: pointer; }
 .byd-card-row-list li[data-active], .byd-card-row-list li:hover { background: #262a35; }
 .byd-card-row-list li[aria-selected='true'] { font-weight: 700; }
@@ -2156,11 +2144,10 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-data-filter > input { flex: 1 1 160px; min-width: 0; min-height: 34px; border: 0; background: transparent; color: var(--byd-editor-filter-ink); font: inherit; }
 .byd-data-filter > input:focus { outline: none; }
 .byd-data-filter > input::placeholder { color: var(--byd-editor-filter-quiet); }
-/* A token is the chosen value with the column it was chosen from, and the way to let go of it. The
-   × is a full target in height and width; the token stands as tall as the field's inner row. */
-.byd-data-token { flex: none; display: inline-flex; align-items: center; height: 34px; padding-left: var(--byd-s2); border-radius: 6px; background: var(--byd-editor-marked-bg); color: #fff; font-weight: 600; white-space: nowrap; }
-.byd-data-token > button { min-width: 34px; height: 34px; border: 0; border-radius: 6px; background: transparent; color: #dbe4ff; font: inherit; font-size: 15px; cursor: pointer; }
-.byd-data-token > button:hover { background: #3c4a6d; }
+/* A token is the editor's chip (#648): the chosen value with the column it was chosen from, in
+   the field's own colours — the marking's blue as a fill — and the way to let go of it. */
+.byd-data-filter { --byd-chip-bg: var(--byd-editor-marked-bg); --byd-chip-ink: #fff; --byd-chip-mark: #dbe4ff; --byd-chip-hover: #3c4a6d; }
+.byd-data-filter > .byd-chip { flex: none; }
 /* The list «typ:» opens under the field (L23): the column's values that begin as typed, the one
    under the cursor marked, each with how many cards carry it. */
 .byd-data-typed { position: absolute; z-index: 6; top: calc(100% + var(--byd-s1)); left: 0; min-width: 240px; max-width: 420px; padding: var(--byd-s1); border: 1px solid #3b4358; border-radius: 10px; background: var(--byd-editor-panel-bg); box-shadow: 0 12px 30px rgb(0 0 0 / 50%); }
@@ -2921,6 +2908,28 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-theme[data-sheet] { grid-template-columns: minmax(0, 1fr) minmax(320px, 440px); }
 .byd-theme-work { min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1100px); align-content: start; gap: var(--byd-s2); }
 .byd-theme-sec { border: 1px solid #2f333d; border-radius: 12px; background: var(--byd-editor-panel-bg); }
+/* The ready-made themes (L57, #632): a row of tiles above the parts, and the line that says what
+   the game has made of the one it started from. A tile's sample stands on the theme's own paper,
+   never on the editor's dark ground (L34). */
+.byd-theme-gallery { display: grid; gap: var(--byd-s2); }
+.byd-theme-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--byd-s3); }
+/* The tile's form is `theme-tile.css`, shared with the guided start (#633); these are its colours here.
+   A tile is a choice, so it is chosen by its edge and never by a fill (L13, #665): it stands on the
+   editor's own ground, as the guided start's stands on the step's. */
+.byd-theme-tile { border-color: #2f333d; background: transparent; color: #fff; }
+.byd-theme-tile:hover { border-color: #4a5060; }
+.byd-theme-tile[aria-pressed='true'] { border-color: var(--byd-editor-primary-mark); box-shadow: 0 0 0 1px var(--byd-editor-primary-mark); }
+.byd-theme-card { display: block; justify-self: center; margin-bottom: var(--byd-s1); border-radius: 8px; overflow: hidden; box-shadow: 0 0 0 1px var(--byd-editor-card-edge); pointer-events: none; }
+.byd-theme-show { justify-self: start; min-height: var(--byd-tap); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; font-size: 12px; cursor: pointer; }
+.byd-theme-show[aria-busy='true'] { cursor: progress; }
+.byd-theme-tile small { color: #9aa3b8; }
+.byd-theme-tile .byd-theme-tile-families { color: #c3cbdd; }
+.byd-theme .byd-theme-departs { color: #c3cbdd; }
+.byd-theme-departs[data-away] b { color: #f0b64a; font-weight: 600; }
+.byd-theme-reset { min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: #c3cbdd; font: inherit; text-decoration: underline; cursor: pointer; }
+.byd-theme-reset[aria-disabled='true'] { cursor: progress; }
+.byd-theme-gallery-line { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--byd-s3); min-height: var(--byd-tap); }
+.byd-theme-gallery-said { color: #9aa3b8; }
 .byd-theme-head { display: flex; align-items: center; gap: var(--byd-s2); padding: 0 var(--byd-s4); }
 .byd-theme-head h2 { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 14px; font-weight: 600; }
 /* The head is the button that folds the part, as Mall's sections are (#478): the name, a chevron
@@ -2932,7 +2941,9 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-theme-name { flex: none; }
 .byd-theme-sum { flex: 0 1 auto; min-width: 0; margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--byd-editor-quiet); font-size: 12px; font-weight: 400; }
 .byd-theme-body { display: grid; gap: var(--byd-s4); padding: 0 var(--byd-s4) var(--byd-s4); }
-.byd-theme p { margin: 0; color: #9aa3b8; line-height: 1.5; }
+/* The tab's own paragraphs, and never a card's: a card sets its prose in <p> too, and it keeps the
+   ink its template gives it (#632). `:where` so the exception adds no weight to the rule. */
+.byd-theme p:where(:not(.byd-preview p)) { margin: 0; color: #9aa3b8; line-height: 1.5; }
 .byd-theme h3 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--byd-editor-quiet); }
 .byd-theme-library-open { justify-self: start; display: inline-flex; align-items: center; min-height: var(--byd-tap); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; font-size: 12px; cursor: pointer; }
 /* The fonts' shelf was drawn for Mall's narrow panel, under a rule; here it stands in its own part. */
@@ -3843,6 +3854,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
   .byd-data-bulk, .byd-data-tick, td.byd-data-remove button, th.byd-data-remove button, .byd-data-icon,
   .byd-data-add, .byd-data-bodytools, .byd-prose-switch, .byd-prose-follow, [data-image-cell] .byd-data-file, [data-image-cell] .byd-data-drop > button:last-child,
   .byd-columns-rename, .byd-columns-name, .byd-data-dropfield,
+  .byd-theme-tiles, .byd-theme-reset, .byd-theme-show,
   .byd-symbols-tile, .byd-symbols-add, .byd-theme-library-open, .byd-symbols-set li[data-icon] > button, .byd-symbols-colours li[data-role] > button:last-child,
   .byd-crop-corner, .byd-media-crop-row .byd-secondary,
   .byd-setup-tools, .byd-setup-x, .byd-setup-corner, .byd-setup-counter button, .byd-setup-counters > button, .byd-setup-props > button,

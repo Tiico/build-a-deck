@@ -24,12 +24,12 @@ describe('the wizard on a phone', () => {
     wizardAt(390)
     expect(tabNames()).toEqual(['1 · Spelet', '2 · Fälten', '3 · Korten'])
     expect(screen.getByLabelText('Spelets namn')).toBeTruthy()
-    expect(screen.queryByText('Startram')).toBeNull()
+    expect(screen.queryByText('Utseende')).toBeNull()
 
     await user.click(screen.getByRole('tab', { name: '2 · Fälten' }))
     expect(screen.getByLabelText('Kostnad namn')).toBeTruthy()
     // The frame belongs with the fields it frames, not in another chapter.
-    expect(screen.getByText('Startram')).toBeTruthy()
+    expect(screen.getByText('Utseende')).toBeTruthy()
 
     await user.click(screen.getByRole('tab', { name: '3 · Korten' }))
     // The card owns the top of its own step, beside nothing and under nothing.
@@ -80,7 +80,7 @@ describe('the wizard on a desk', () => {
     wizardAt(1280)
     expect(tabNames()).toEqual([])
     expect(screen.getByLabelText('Spelets namn')).toBeTruthy()
-    expect(screen.getByText('Startram')).toBeTruthy()
+    expect(screen.getByText('Utseende')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Skapa spelet/ })).toBeTruthy()
   })
 })

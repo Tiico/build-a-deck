@@ -67,6 +67,10 @@ export function whatOf(intent: EditIntent): Key {
     case 'setFont':
     case 'removeFont':
       return 'undo.what.font'
+    // A theme reaches the typefaces, the meanings and the icons at once (L57, #632), so the step
+    // back names the theme and not any one of the three.
+    case 'setTheme':
+      return 'undo.what.theme'
     // Taking a version back is an edit like any other (B4), so it can be taken back too.
     case 'restore':
       return 'undo.what.version'
