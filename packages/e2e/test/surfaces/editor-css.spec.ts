@@ -209,7 +209,10 @@ async function tabThrough(page: Page): Promise<Stop[]> {
           }
           node = node.parentElement
         }
-        const inside = /(rgba?\([^)]*\))/.exec(style.boxShadow.includes('inset') ? style.boxShadow : '')?.[1] ?? null
+        // A field that stands in a box of its own with chips beside it — the table's search — is
+        // marked on that box and not on itself, or it is a ring inside a ring (#659).
+        const box = getComputedStyle(el.closest('.byd-data-filter') ?? el)
+        const inside = /(rgba?\([^)]*\))/.exec(box.boxShadow.includes('inset') ? box.boxShadow : style.boxShadow.includes('inset') ? style.boxShadow : '')?.[1] ?? null
         const typed = el.matches('textarea, input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=button]):not([type=submit]):not([type=reset])')
         return { what: el.getAttribute('data-stop') ?? el.tagName.toLowerCase(), style: style.outlineStyle, width: parseFloat(style.outlineWidth), color: style.outlineColor, on, inside, typed }
       })
