@@ -43,8 +43,9 @@ export default function PlaytestWorkspace({ doc, revision, http }: Props) {
   const [dirty, setDirty] = useState(false)
   const [history, setHistory] = useState<TestRun[]>([])
   const [run, setRun] = useState<TestRun>({ number: 1, revision, state: 'Planerat', goal: '', flags: [], rows: [] })
-  const fonts = useMemo(() => previewFonts(doc, http), [doc, http])
-  const icons = useMemo(() => previewIcons(doc, http), [doc, http])
+  // Held by the parts they are read from, not by the document (#667).
+  const fonts = useMemo(() => previewFonts({ template: doc.template, fonts: doc.fonts }, http), [doc.template, doc.fonts, http])
+  const icons = useMemo(() => previewIcons({ icons: doc.icons }, http), [doc.icons, http])
   const filtered = rows.filter(r => (r.id + ' ' + Object.values(r.fields).join(' ')).toLowerCase().includes(query.toLowerCase()))
   const card = rows.find(r => r.id === selected) ?? rows[0]
   const count = rows.reduce((n, r) => n + Number(r.fields['antal'] ?? 1), 0)

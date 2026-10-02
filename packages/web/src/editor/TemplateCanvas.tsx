@@ -127,11 +127,12 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // The face the open tab is about (#13): with a group open, the face as it stands, so the group
   // is applied; with no group open, the face without its grouping rule, which is the base.
   const tabFace = useMemo(() => faceOfTab(faceTemplate, group), [faceTemplate, group])
-  // What the card is compiled from, worked out once per document. Both build a fresh object every
-  // call, and the compiler is memoised on identity — so without this the card is compiled again
-  // for every re-render of the canvas, which is every pointer move of a drag (E1, B3).
-  const icons = useMemo(() => previewIcons(doc, assetBase), [doc, assetBase])
-  const fonts = useMemo(() => previewFonts(doc, assetBase), [doc, assetBase])
+  // What the card is compiled from, worked out once per part of the document it is read from. Both
+  // build a fresh object every call, and the compiler is memoised on identity — so without this the
+  // card is compiled again for every re-render of the canvas, which is every pointer move of a drag
+  // (E1, B3); and held by the whole document, for every cell typed into elsewhere (#667).
+  const icons = useMemo(() => previewIcons({ icons: doc.icons }, assetBase), [doc.icons, assetBase])
+  const fonts = useMemo(() => previewFonts({ template: doc.template, fonts: doc.fonts }, assetBase), [doc.template, doc.fonts, assetBase])
   // The game's pictures as the library window lists them (#320), for the image element that is
   // bound to one of them rather than to a column.
   const pictures = useMemo<LibraryPicture[]>(() => mediaInGame(doc).map(({ hash, cards, template }) => ({ hash, name: doc.pictures?.[hash]?.name, cards, template })), [doc])

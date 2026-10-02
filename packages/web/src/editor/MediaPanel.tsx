@@ -544,7 +544,10 @@ function Cropping({
   useFocusTrap(box, { onEscape: onDone, initial: () => handle.current })
   const url = assetUrl(assetBase, hash)
   // The type the game is pinned to (B3), so the card beside the window is set the way it prints.
-  const fonts = useMemo(() => previewFonts(doc, assetBase), [doc, assetBase])
+  // Held by what they are read from (#667): a fresh object is a fresh compile and fitting of the
+  // card, and an edit elsewhere is a new document with the same fonts and icons in it.
+  const fonts = useMemo(() => previewFonts({ template: doc.template, fonts: doc.fonts }, assetBase), [doc.template, doc.fonts, assetBase])
+  const icons = useMemo(() => previewIcons({ icons: doc.icons }, assetBase), [doc.icons, assetBase])
   // A picture nothing has measured has no size here either, and the window is then laid over a
   // box of the commonest shape rather than over a claim about the file.
   const file = motifs?.[url]
@@ -655,7 +658,7 @@ function Cropping({
                 fonts={fonts}
                 face={face}
                 row={row}
-                icons={previewIcons(doc, assetBase)}
+                icons={icons}
                 assetBase={assetBase}
                 // A window that shows all of the picture is not a crop, here either: the card then
                 // gets the measurement untouched, air and all, exactly as it will when it is printed.
