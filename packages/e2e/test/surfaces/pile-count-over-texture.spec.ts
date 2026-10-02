@@ -23,13 +23,17 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
 type State = 'pending' | 'failed' | 'ready'
 
 /**
- * A screen on a table, with every card face held in the state asked for. The suite runs no render
- * worker, so a face waits by itself; a failed face is the server's 500 every time, played through
- * the client's whole ladder of retries on a fake clock; a ready face is a picture.
+ * A screen on a table, with every card face held in the state asked for, by answering `/faces` the
+ * way the server does. A waiting face is the server's 202 while the render is queued — and it has
+ * to be said here rather than left to the suite having no render worker, because the journeys that
+ * start one (an export, a print) render this same deck into the same database, and a face rendered
+ * once is a face for every table after. A failed face is the server's 500 every time, played
+ * through the client's whole ladder of retries on a fake clock; a ready face is a picture.
  */
 async function screen(browser: Browser, baseURL: string | undefined, device: Device, url: string, state: State): Promise<Page> {
   const context = await browser.newContext({ viewport: device.viewport, ...(device.hasTouch ? { hasTouch: true } : {}), ...(device.isMobile ? { isMobile: true } : {}), ...(baseURL ? { baseURL } : {}) })
   const page = await context.newPage()
+  if (state === 'pending') await page.route('**/faces/**', (r) => r.fulfill({ status: 202, body: 'queued' }))
   if (state === 'failed') {
     await page.clock.install()
     await page.route('**/faces/**', (r) => r.fulfill({ status: 500, body: 'lost' }))
