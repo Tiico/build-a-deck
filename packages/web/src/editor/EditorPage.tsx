@@ -612,8 +612,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         </button>
         {/* Whether the work is safe, in words and in colour (#8). It is a live region, so the
             change from saved to unsaved and back is spoken as it happens rather than found by
-            someone going looking for a greyed-out button. */}
-        <span className="byd-editor-saved" role="status" data-unsaved={unsaved}>
+            someone going looking for a greyed-out button. Both words ride along as attributes,
+            so the status can hold the room of the wider one and the row after it stays put (#668). */}
+        <span className="byd-editor-saved" role="status" data-unsaved={unsaved} data-saved-word={t('editor.saved')} data-unsaved-word={t('editor.unsaved')}>
           {t(unsaved ? 'editor.unsaved' : 'editor.saved')}
         </span>
         {client.mayEdit && <StepButtons client={client} onConfirm={confirmation.confirm} />}
