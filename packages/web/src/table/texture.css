@@ -5,7 +5,14 @@
 
    The same state is drawn on a 54px card in someone else's hand and on a 252px card held up on
    the phone. It is therefore sized against the card it lies on rather than against the page: the
-   state declares itself a container, and how much it says grows with the room it has. */
+   state declares itself a container, and how much it says grows with the room it has.
+
+   It has no z-index, and that is the other half of «lies exactly over the image box»: it paints
+   where the image paints, straight after it, and so above it and below everything the image is
+   below. With `z-index: 1` it left its card. A pile is turned and so a stacking context of its
+   own, and in there the top card's state stood above the pile's count (K19, #76, #652) — on the
+   TV and the observer's felt the count was gone while the deck rendered, and for good once a
+   render failed (#669). Whatever lies on a card lies on it in every state the card's face is in. */
 .byd-texture-state {
   --byd-texture-bg: #232a3a;
   --byd-texture-sweep: #2e3750;
@@ -18,7 +25,6 @@
   --byd-texture-button-line: #a2778a;
   position: absolute;
   inset: 0;
-  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
