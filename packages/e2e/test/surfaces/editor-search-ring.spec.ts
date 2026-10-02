@@ -31,8 +31,12 @@ for (const width of [1024, 1280]) {
         await page.mouse.move(0, 0)
         const box = (await page.locator('.byd-data-filter').boundingBox())!
         const shot = await page.screenshot({ clip: box })
+        // The chips' own faces are left out: their text and their × are drawn on the marking's blue,
+        // and anti-aliased in the machine's font they pass near the ring's colour on Linux. A ring
+        // round the input would lie outside them, beside the chip or at the field's padding.
+        const chips = await page.locator('.byd-data-filter > .byd-chip').evaluateAll((els, left) => els.map((el) => { const r = el.getBoundingClientRect(); return [r.left - left, r.right - left] }), box.x)
         return page.evaluate(
-          async ({ data, across, ring }) => {
+          async ({ data, across, ring, chips }) => {
             const img = new Image()
             img.src = `data:image/png;base64,${data}`
             await img.decode()
@@ -44,16 +48,17 @@ for (const width of [1024, 1280]) {
             const near = (at: number, c: number[]) => Math.abs(line[at]! - c[0]!) + Math.abs(line[at + 1]! - c[1]!) + Math.abs(line[at + 2]! - c[2]!) < 40
             // The runs of the ring's colour along it, as [first, last] in CSS px from the box's left.
             const runs: [number, number][] = []
+            const px = img.width / across
             for (let x = 0; x < img.width; x++) {
+              if (chips.some(([a, b]) => x / px >= a! && x / px <= b!)) continue
               if (!near(x * 4, ring)) continue
               const last = runs[runs.length - 1]
               if (last && last[1] === x - 1) last[1] = x
               else runs.push([x, x])
             }
-            const px = img.width / across
             return { runs: runs.map(([a, b]) => [a / px, b / px]), width: across }
           },
-          { data: shot.toString('base64'), across: box.width, ring: RING },
+          { data: shot.toString('base64'), across: box.width, ring: RING, chips },
         )
       }
 
