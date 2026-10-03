@@ -131,10 +131,15 @@
 
   /* ── Luften: radens rest går till flikarna (bara under 1440) ─────────────────────────────────── */
   @container ram (max-width: 1439px) {
-    .ram[data-luft='rest'] .hd [role='tablist'] { flex: 1 0 auto; }
+    /* Flikraden tar nästan hela radens rest, men aldrig mer luft än 1440:s 12 px per sida: taket
+       räknas i prototypen av skriptet (taket()), i en riktig regel vore det en egen sak att lösa. */
+    .ram[data-luft='rest'] .hd [role='tablist'] { flex: 1000 0 auto; }
     .ram[data-luft='rest'] .hd [role='tab'] { flex: 1 0 auto; }
-    .ram[data-luft='rest'] .hd > .spacer { display: none; }
   }
+
+  /* Fönstrets bredd styr reglerna, men en klassisk rullningslist (Linux, CI) tar 15 px av raden. */
+  .ram[data-rull='ja'] { background: linear-gradient(to left, #3a3f4b 15px, var(--chrome) 15px); }
+  .ram[data-rull='ja'] > :not(.linje) { margin-right: 15px; }
 
   /* ── Växlaren ───────────────────────────────────────────────────────────────────────────────── */
   .vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font-weight: 700; }
@@ -150,6 +155,7 @@
     <span class="grupp"><span>Språk</span><button type="button" data-lang="sv">sv</button><button type="button" data-lang="en">en</button></span>
     <span class="grupp"><span>Typsnitt</span><button type="button" data-font="system">system-ui</button><button type="button" data-font="dejavu">DejaVu (CI)</button></span>
     <span class="grupp"><span>Luft</span><button type="button" data-luft="idag">flikarnas steg i dag</button><button type="button" data-luft="rest">radens rest till flikarna</button></span>
+    <span class="grupp"><span>Rullningslist</span><button type="button" data-rull="nej">ingen (Mac)</button><button type="button" data-rull="ja">15 px (Linux)</button></span>
     <span class="grupp"><span>Läge</span><button type="button" id="vaxla">Sparat ⇄ Osparat</button><button type="button" id="auto">Auto</button></span>
     <div class="matt" id="matt"></div>
     <p class="sagt" id="sagt"></p>
@@ -184,7 +190,8 @@ const st = {
   w: ['1024', '1280', '1440'].includes(q.get('w')) ? q.get('w') : '1024',
   lang: q.get('lang') === 'en' ? 'en' : 'sv',
   font: q.get('font') === 'dejavu' ? 'dejavu' : 'system',
-  luft: q.get('luft') === 'rest' ? 'rest' : 'idag',
+  luft: q.get('luft') === 'idag' ? 'idag' : 'rest',
+  rull: q.get('rull') === 'ja' ? 'ja' : 'nej',
   unsaved: false,
   auto: null,
 }
@@ -214,12 +221,12 @@ function rita() {
   const o = ORD[st.lang]
   const w = Number(st.w)
   const skala = Math.min(1, (document.documentElement.clientWidth - 2 * 16 - 70) / w)
-  const ram = (inner) => '<div class="skala" style="width:' + w + 'px;transform:scale(' + skala + ')"><div class="ram" data-v="' + st.v + '" data-font="' + st.font + '" data-luft="' + st.luft + '" style="width:' + w + 'px">' + inner + '</div></div>'
+  const ram = (inner) => '<div class="skala" style="width:' + w + 'px;transform:scale(' + skala + ')"><div class="ram" data-v="' + st.v + '" data-font="' + st.font + '" data-luft="' + st.luft + '" data-rull="' + st.rull + '" style="width:' + w + 'px">' + inner + '</div></div>'
   document.getElementById('scen').innerHTML =
     '<p class="etikett">Levande · ' + w + ' px <b id="lageord"></b></p>'
-    + '<div class="hallare" style="padding-left:70px">' + ram(huvud(st.unsaved, 'levande') + '<div class="strip">' + o.strip + ' <a href="#">' + o.open + '</a></div><div class="arbete">Kortväggen</div><div class="linje" id="l1"><small>första flikens kant i sparat läge</small></div><div class="linje hoger" id="l2"></div>') + '</div>'
+    + '<div class="hallare" style="padding-left:70px">' + ram(huvud(st.unsaved, 'levande') + '<div class="strip">' + o.strip + ' <a href="#">' + o.open + '</a></div><div class="arbete">' + o.tabs[0] + '</div><div class="linje" id="l1"><small>första flikens kant i sparat läge</small></div><div class="linje hoger" id="l2"></div>') + '</div>'
     + '<p class="etikett" style="margin-top:24px">Sida vid sida · samma bredd, båda lägena</p>'
-    + '<div class="hallare" style="padding-left:70px">' + ram('<div style="position:relative"><span class="rad-namn">' + o.saved + '</span>' + huvud(false, 'sparat') + '</div><div style="position:relative;margin-top:44px"><span class="rad-namn">' + o.unsaved + '</span>' + huvud(true, 'osparat') + '</div><div style="height:30px"></div><div class="linje" id="l3"></div><div class="linje hoger" id="l4"></div>') + '</div>'
+    + '<div class="hallare" style="padding-left:70px">' + ram('<div style="position:relative"><span class="rad-namn">' + o.saved + '</span>' + huvud(false, 'sparat') + '</div><div style="position:relative;margin-top:16px"><span class="rad-namn">' + o.unsaved + '</span>' + huvud(true, 'osparat') + '</div><div style="height:30px"></div><div class="linje" id="l3"></div><div class="linje hoger" id="l4"></div>') + '</div>'
   // Skalan krymper inte lådan; sätt höjden efter den.
   document.querySelectorAll('.skala').forEach((s) => { s.parentElement.style.height = s.firstChild.offsetHeight * skala + 'px'; s.parentElement.style.position = 'relative' })
   document.getElementById('lageord').textContent = st.unsaved ? '— ' + o.unsaved : '— ' + o.saved
@@ -228,11 +235,12 @@ function rita() {
   for (const b of document.querySelectorAll('.protorad [data-lang]')) b.setAttribute('aria-pressed', String(b.dataset.lang === st.lang))
   for (const b of document.querySelectorAll('.protorad [data-font]')) b.setAttribute('aria-pressed', String(b.dataset.font === st.font))
   for (const b of document.querySelectorAll('.protorad [data-luft]')) b.setAttribute('aria-pressed', String(b.dataset.luft === st.luft))
+  for (const b of document.querySelectorAll('.protorad [data-rull]')) b.setAttribute('aria-pressed', String(b.dataset.rull === st.rull))
   document.getElementById('auto').setAttribute('aria-pressed', String(!!st.auto))
   document.getElementById('om').textContent = VARIANTER[st.v].om
   const ks = Object.keys(VARIANTER)
   document.getElementById('variantnamn').textContent = VARIANTER[st.v].namn + '  (' + (ks.indexOf(st.v) + 1) + '/' + ks.length + ')'
-  history.replaceState(null, '', '?variant=' + st.v + '&w=' + st.w + '&lang=' + st.lang + '&font=' + st.font + '&luft=' + st.luft)
+  history.replaceState(null, '', '?variant=' + st.v + '&w=' + st.w + '&lang=' + st.lang + '&font=' + st.font + '&luft=' + st.luft + '&rull=' + st.rull)
   document.fonts.ready.then(() => requestAnimationFrame(mat))
 }
 
@@ -276,7 +284,18 @@ function matHuvud(h, ram, skala) {
     status: h.querySelector('.saved').getBoundingClientRect().width / skala,
   }
 }
+function taket() {
+  for (const list of document.querySelectorAll('.ram[data-luft="rest"] [role=tablist]')) {
+    list.style.maxWidth = ''
+    if (Number(st.w) >= 1440) continue
+    const tabs = [...list.querySelectorAll('[role=tab]')]
+    const text = tabs.reduce((n, t) => n + textRect(t).width, 0) / (list.getBoundingClientRect().width / list.offsetWidth || 1)
+    const pad = parseFloat(getComputedStyle(list).paddingLeft) * 2
+    list.style.maxWidth = Math.ceil(text + tabs.length * 24 + pad) + 'px'
+  }
+}
 function mat() {
+  taket()
   const ramar = document.querySelectorAll('.ram')
   const skala = ramar[0].getBoundingClientRect().width / ramar[0].offsetWidth
   const s = matHuvud(document.getElementById('sparat'), ramar[1], skala)
@@ -330,7 +349,7 @@ document.addEventListener('click', (e) => {
     if (st.auto) { clearInterval(st.auto); st.auto = null } else st.auto = setInterval(vaxla, 1400)
     return document.getElementById('auto').setAttribute('aria-pressed', String(!!st.auto))
   }
-  for (const k of ['w', 'lang', 'font', 'luft']) if (d[k]) { st[k] = d[k]; return rita() }
+  for (const k of ['w', 'lang', 'font', 'luft', 'rull']) if (d[k]) { st[k] = d[k]; return rita() }
 })
 document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowLeft') byt(-1)
