@@ -15,9 +15,13 @@ import { lastMoveWords } from './when.js'
 // The Bord tab (#19): every table this game has, and the ways into it. A table is a session
 // started from the project (C9: it survives everyone disconnecting), so the list is the server's
 // answer, never a list the editor keeps of its own.
-export type TablesTabProps = { client: ProjectClient; server: string | null }
+//
+// `started` is the table the header's «Starta bord» last started (#704): the column shows it the
+// way it shows one of its own, its group open, whether the column stood open at the start or is
+// opened afterwards.
+export type TablesTabProps = { client: ProjectClient; server: string | null; started?: string | null }
 
-export function TablesTab({ client, server }: TablesTabProps) {
+export function TablesTab({ client, server, started = null }: TablesTabProps) {
   const t = useT()
   const [tables, setTables] = useState<TableSummary[] | null>(null)
   const [starting, setStarting] = useState(false)
@@ -31,7 +35,17 @@ export function TablesTab({ client, server }: TablesTabProps) {
   // The table this column just started or ended (#480): its group opens so its row is there to be
   // seen, the start is said in the status line, and an ended table's row takes the focus again
   // once the list has filed it under its new group — the row it had was taken down with the move.
-  const [revealed, setRevealed] = useState<{ id: string; why: 'started' | 'ended' } | null>(null)
+  // A table the header started (#704) only opens its group: the header's band already says it.
+  const [revealed, setRevealed] = useState<{ id: string; why: 'started' | 'ended' | 'header' } | null>(started ? { id: started, why: 'header' } : null)
+  // A start from the header while the column stands open asks the server again; one made before
+  // the column opened is already in the list it asks for when it mounts.
+  const shown = useRef(started)
+  useEffect(() => {
+    if (!started || started === shown.current) return
+    shown.current = started
+    setRevealed({ id: started, why: 'header' })
+    setAsked((n) => n + 1)
+  }, [started])
   useEffect(() => {
     let live = true
     client.tables().then(

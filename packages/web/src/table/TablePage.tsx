@@ -58,7 +58,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
     }
   }, [sessionId, url])
   // Without a code — an owner who opened their own table — the game's name names it (#759).
-  usePageTitle({ state: sessionId ? (refused ? 'forbidden' : live.state) : 'missing', room: roomCode || null, game: record?.name ?? null })
+  usePageTitle({ state: sessionId ? (refused ? 'forbidden' : live.state) : 'missing', room: roomCode || null, game: record?.name ?? null, part: view?.ended ? t('title.play.ended') : null })
 
   // What the screen is pointed at (C): only the TV has a panel to show it in.
   const [inspecting, setInspecting] = useState<VisibleComponentState | null>(null)

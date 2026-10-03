@@ -278,15 +278,19 @@ describe('the book under its tab, to a screen reader (#558)', () => {
 })
 
 describe('the rulebook as a booklet (B7)', () => {
+  // The order is a POST the press answers before it lands, so the queue is worked once there is a
+  // booklet in it. Working it at once rendered nothing, and passed only while a 202 was taken for
+  // a finished file (#678).
+  const renderBooklet = () => waitFor(async () => expect(await run.completeRenders()).toBe(1), { timeout: 3000 })
   it('is ordered from the rules and opens when it is rendered', async () => {
     await openRules()
     const order = screen.getByRole('button', { name: 'Häfte för tryck' })
     fireEvent.click(order)
     expect(await screen.findByText(/Häftet renderas/)).toBeTruthy()
 
-    await run.completeRenders()
+    await renderBooklet()
     const link = await screen.findByRole('link', { name: 'Öppna häftet' }, { timeout: 3000 })
-    expect(link.getAttribute('href')).toMatch(/\/faces\/[0-9a-f]{64}$/)
+    expect(link.getAttribute('href')).toMatch(/\/faces\/[0-9a-f]{64}\?name=/)
   })
 
   // A book written since the last save was not the one the server printed from: it read the saved
@@ -299,7 +303,7 @@ describe('the rulebook as a booklet (B7)', () => {
     order.focus()
     fireEvent.click(order)
     await waitFor(async () => expect((await run.projects.load(run.projectId))?.rules?.blocks.length).toBeGreaterThan(0))
-    await run.completeRenders()
+    await renderBooklet()
     const link = await screen.findByRole('link', { name: 'Öppna häftet' }, { timeout: 3000 })
     await waitFor(() => expect(document.activeElement).toBe(link))
     expect(screen.queryByRole('alert')).toBeNull()
@@ -318,8 +322,55 @@ describe('the rulebook as a booklet (B7)', () => {
     expect(order.getAttribute('aria-disabled')).toBe('true')
     expect((order as HTMLButtonElement).disabled).toBe(false)
     fireEvent.click(order)
-    await run.completeRenders()
+    await renderBooklet()
     await screen.findByRole('link', { name: 'Öppna häftet' }, { timeout: 3000 })
+  })
+
+  // The link came before the file (#678): the queue's 202 was read as done, so «Öppna häftet»
+  // stood there ~800 ms before there was anything behind it and opened a tab of raw JSON. The
+  // link is offered when the rendering answers 200, and not one poll before.
+  it('offers the link only once the rendering answers with the file', async () => {
+    const asked: number[] = []
+    const real = globalThis.fetch
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const res = await real(input, init)
+      if (/\/faces\/[0-9a-f]{64}$/.test(String(input instanceof Request ? input.url : input))) asked.push(res.status)
+      return res
+    })
+    try {
+      await openRules()
+      fireEvent.click(screen.getByRole('button', { name: 'Häfte för tryck' }))
+      await waitFor(() => expect(asked.filter((s) => s === 202).length).toBeGreaterThanOrEqual(2), { timeout: 3000 })
+      expect(screen.queryByRole('link', { name: 'Öppna häftet' })).toBeNull()
+      expect(screen.getByText(/Häftet renderas/)).toBeTruthy()
+      await renderBooklet()
+      await screen.findByRole('link', { name: 'Öppna häftet' }, { timeout: 3000 })
+      expect(asked.at(-1)).toBe(200)
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  // The file is opened under the game's name (#678): the tab and the saved file say what it is.
+  it('opens the booklet under the game’s own name', async () => {
+    await openRules()
+    fireEvent.click(screen.getByRole('button', { name: 'Häfte för tryck' }))
+    await renderBooklet()
+    const link = await screen.findByRole('link', { name: 'Öppna häftet' }, { timeout: 3000 })
+    expect(new URL(link.getAttribute('href')!).searchParams.get('name')).toBe('Skogens herrar – regler.pdf')
+  })
+
+  // A link to the book as it was is a link to the wrong book (#678): after a change the control
+  // is the order again, and the next booklet is the book as it now stands.
+  it('takes the link back when the book is changed after it was rendered', async () => {
+    await openRules()
+    fireEvent.click(screen.getByRole('button', { name: 'Häfte för tryck' }))
+    await renderBooklet()
+    await screen.findByRole('link', { name: 'Öppna häftet' }, { timeout: 3000 })
+    fireEvent.click(within(book()).getByText(/Dra ett kort ur/))
+    fireEvent.change(await within(book()).findByLabelText('Text under Så spelar ni'), { target: { value: 'Dra två kort ur [[zon:draw]].' } })
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'Öppna häftet' })).toBeNull())
+    expect(screen.getByRole('button', { name: 'Häfte för tryck' })).toBeTruthy()
   })
 
   it('is not offered at all before there are any rules', async () => {

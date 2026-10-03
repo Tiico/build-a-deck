@@ -25,7 +25,7 @@ export const enPlay = {
   'ended.players.other': 'players',
   'rewind.proposal': 'Proposal',
   'rewind.looked': 'this is how the table looked {where}',
-  'rewind.waiting': '· waiting for {who}',
+  'rewind.waiting': 'waiting for {who}',
   'pile.dynamic': 'pile',
 
   'tv.join': 'join with your phone',
@@ -52,6 +52,7 @@ export const enPlay = {
   'tv.seat.hand.short.one': '{n} card',
   'tv.seat.hand.short.other': '{n} cards',
   'tv.seat.none': 'Nothing yet',
+  'tv.seat.free': 'free',
   'tv.list.table': 'On the table',
   'tv.list.card': '{card}, in {where}',
   'tv.list.card.down': '{card}, face down, in {where}',

@@ -172,11 +172,13 @@ describe('the palette the Bord tab is drawn in', () => {
 })
 
 // Whether the work is saved, and the question asked before the editor is left with work that is
-// not (#8). Both are read in a hurry, on the way out of the room, so they carry the same bar.
+// not (#8). Both are read in a hurry, on the way out of the room, so they carry the same bar. Below
+// 1440 the status is the tick or the amber dot in its ink (#668); a mark needs 3:1, and the word's
+// 4.5:1 holds it with room to spare.
 describe('the palette unsaved work is drawn in', () => {
   it.each([
-    { what: 'the word for work that is saved', ink: '--byd-editor-saved-ink', on: '--byd-editor-chrome-bg' },
-    { what: 'the word for work that is not saved', ink: '--byd-editor-unsaved-ink', on: '--byd-editor-chrome-bg' },
+    { what: 'the word, or the tick, for work that is saved', ink: '--byd-editor-saved-ink', on: '--byd-editor-chrome-bg' },
+    { what: 'the word, or the dot, for work that is not saved', ink: '--byd-editor-unsaved-ink', on: '--byd-editor-chrome-bg' },
     { what: 'the way back to the games', ink: '--byd-editor-home-ink', on: '--byd-editor-chrome-bg' },
     { what: 'what a step back just took back', ink: '--byd-editor-confirm-ink', on: '--byd-editor-chrome-bg' },
     { what: 'the question asked before leaving', ink: '--byd-editor-leave-ink', on: '--byd-editor-leave-bg' },
