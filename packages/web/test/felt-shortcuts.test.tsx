@@ -7,6 +7,7 @@ import type { Intent, Snapshot } from '@byd/protocol'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { useFeltKeyboard } from '../src/table/useFeltKeyboard.js'
 import { besidePile } from '../src/table/drop.js'
+import { shortcutIntents } from '../src/table/keyboard.js'
 import { buildScene } from './scene.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -283,6 +284,21 @@ describe('the ring’s actions are still there for a keyboard (#224)', () => {
     const snapshot = view(null)
     expect(panel(snapshot, 'Dra 1')).toEqual(ring(snapshot, 'Dra 1'))
     expect(panel(snapshot, 'Blanda')).toEqual(ring(snapshot, 'Blanda'))
+  })
+
+  // On a screen with a hand of its own, «Dra 1» draws to that hand (#746, beställarens beslut
+  // 2026-10-03). It laid the card face down beside the pile, so a new player took the obvious verb
+  // and got a nameless pile and an empty hand. The ring, the panel and `D` say it one way (K16);
+  // laying a card beside the pile stays, as a drag and as its own row in the panel.
+  it('draws to the screen’s own hand on a screen that has one, from the ring, the panel and D alike', () => {
+    const { view } = buildScene()
+    const snapshot = { ...view('A'), seats: view('A').seats.map((s) => (s.id === 'A' ? { ...s, name: 'Bo' } : s)) }
+    const toHand = [{ v: 'split', pile: 'draw', at: 1, to: 'hand:A' }]
+    expect(ring(snapshot, 'Dra 1')).toEqual(toHand)
+    expect(panel(snapshot, 'Dra 1')).toEqual(toHand)
+    expect(shortcutIntents(snapshot, 'd', { kind: 'pileTop', pile: 'draw' })).toEqual(toHand)
+    const draw = snapshot.zones.find((z) => z.id === 'draw')!
+    expect(panel(snapshot, 'Lägg 1 bredvid')).toEqual([{ v: 'split', pile: 'draw', at: 1, ...besidePile(draw.geometry, 1, draw.beside) }])
   })
 })
 
