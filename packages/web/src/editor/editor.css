@@ -734,9 +734,12 @@
 .byd-setup-coords { font: 12px ui-monospace, monospace; color: #c8cfdc; }
 /* Where the chosen zone stands, as fields (#579, #554): the numbers where they already stood. */
 .byd-setup-place { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--byd-s1) var(--byd-s2); }
-.byd-setup-place b { color: #dce3f2; font: 600 12px system-ui, sans-serif; }
+/* Fyra fält, namnet och enheten ryms på en rad i mittkolumnens 420 px vid 1024 (#710, L50): ett
+   fält är så brett som fem siffror i monospace, «-1000», och namnet tar högst två rader om sex em,
+   så att en lång zon aldrig bryter fälten till en andra rad och flyttar filten. */
+.byd-setup-place b { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; max-width: 6em; overflow-wrap: anywhere; color: #dce3f2; font: 600 12px system-ui, sans-serif; }
 .byd-setup-place label { display: inline-flex; align-items: center; gap: var(--byd-s1); color: #9aa3b8; }
-.byd-setup-place input { box-sizing: border-box; width: 64px; min-height: var(--byd-tap); padding: 0 var(--byd-s2); border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #12141a; color: #dce3f2; font: inherit; font-variant-numeric: tabular-nums; text-align: right; }
+.byd-setup .byd-setup-place input { width: 48px; min-height: var(--byd-tap); padding: 0 var(--byd-s1); font-variant-numeric: tabular-nums; text-align: right; }
 .byd-setup-undo { display: flex; gap: 8px; align-items: center; color: #ffd98a; }
 .byd-setup-undo button { border: 1px solid #5c4a1f; border-radius: 8px; padding: 4px 8px; background: #241f13; color: #ffd98a; font-weight: 700; cursor: pointer; }
 /* The list of zones: every one the table has, in two groups, and the row is the way into it —
