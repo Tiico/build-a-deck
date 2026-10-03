@@ -142,7 +142,7 @@ describe('a proposed rewind on the table (C)', () => {
     // starts with «·» (#723) — a hard space ties it there.
     const parts = [...document.querySelectorAll('.byd-rewind-label > span')].map((s) => s.textContent ?? '')
     expect(parts.filter((p) => p.trimStart().startsWith('·'))).toEqual([])
-    expect(parts[1]).toMatch(/ ·$/)
+    expect(parts[1]).toMatch(/\u00a0·$/)
     expect(screen.queryByRole('button', { name: /Godkänn|Avvisa/ })).toBeNull()
 
     // The preview on the TV is the table's own socket speaking, and Bo's phone is a different
