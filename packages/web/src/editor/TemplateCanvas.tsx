@@ -344,15 +344,16 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
           </label>
           {column && <GroupRules doc={doc} column={column} groups={groups} />}
         </div>
-        {/* One line about dragging, and the keyboard behind the question mark (L32, #303). The
+        {/* Dragging and keyboard instructions behind the question mark (L32). The
             whole sentence was six lines in this 220 px column — a third of the list's height,
             two layer rows that did not fit. In a group the order is the base's and there is
             nothing to move, so the line says that and offers no help about moving. */}
         {!reading && (
         <div className="byd-canvas-hint byd-help-row">
-          <span>{t(group ? 'canvas.hint.group' : 'canvas.hint.base')}</span>
+          {group && <span>{t('canvas.hint.group')}</span>}
           {!group && (
             <Help topic={t('canvas.help.topic')}>
+              <p>{t('canvas.hint.base')}</p>
               <p>{t('canvas.help.order')}</p>
               <p>{t('canvas.help.rename')}</p>
               <p>{t('canvas.help.move')}</p>

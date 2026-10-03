@@ -164,11 +164,16 @@ describe('the guided start on a desk, where the three steps stand together', () 
     expect(box.textContent).toMatch(BLANK)
   })
 
-  it('keeps one short line under the fields and moves the rest', async () => {
+  it('uses short field headings and keeps extra guidance in the existing help', async () => {
     wizard(1280)
-    expect(screen.getByText('Fälten på varje kort.')).toBeTruthy()
+    expect(screen.queryByText('Fälten på varje kort.')).toBeNull()
+    expect(screen.queryByText('Allt går att ändra i Speltema.')).toBeNull()
+    expect(screen.getByRole('group', { name: 'Ram' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Tema' })).toBeTruthy()
     expect(screen.queryByText(FIELDS)).toBeNull()
-    expect((await askOn('fälten')).textContent).toMatch(FIELDS)
+    const help = await askOn('fälten')
+    expect(help.textContent).toMatch(FIELDS)
+    expect(help.textContent).toContain('Allt går att ändra i Speltema.')
   })
 
   it('moves what the example cards are for and what comes after behind the third step’s question mark', async () => {

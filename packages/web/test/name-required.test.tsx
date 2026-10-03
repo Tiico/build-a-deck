@@ -162,13 +162,12 @@ describe('wizarden med tomt namn (#416)', () => {
     expect(gone).toEqual([])
   })
 
-  it('håller exemplet som exempel i stället för som värde i fältet', () => {
+  it('låter etiketten förklara namnfältet utan exempel eller förifyllt värde', () => {
     guide([])
     const field = gameField() as HTMLInputElement
     expect(field.getAttribute('placeholder')).toBeNull()
     expect(field.getAttribute('aria-required')).toBe('true')
-    // Exemplet står skrivet vid fältet och når läsaren genom fältets egen beskrivning.
-    const example = screen.getByText(/Till exempel «Skogens herrar»/)
-    expect((field.getAttribute('aria-describedby') ?? '').split(/\s+/)).toContain(example.id)
+    expect(screen.queryByText(/Till exempel «Skogens herrar»/)).toBeNull()
+    expect(field.value).toBe('')
   })
 })

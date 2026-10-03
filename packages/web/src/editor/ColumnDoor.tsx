@@ -1,7 +1,7 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
 import { NewField } from './NewField.js'
-import { ProseSwitch, ProseWhy } from './ProseSwitch.js'
-import type { FieldBox } from './body.js'
+import { Help } from './HelpDrawer.js'
+import { ProseSwitch, ProseReset } from './ProseSwitch.js'
 import { useFocusTrap } from './focusTrap.js'
 import { useRoving } from './roving.js'
 import { fieldLabel } from './fields.js'
@@ -41,7 +41,7 @@ export type ColumnDoorProps = {
   // What a column is written as, and the way to turn it (L43, #615). `null` for a column that is
   // never prose — the two the tool keeps — and absent altogether where there is no project to
   // write in, in which case no row has a switch.
-  proseOf?: ((field: string) => { prose: boolean; choice: boolean | null; box: FieldBox | null } | null) | undefined
+  proseOf?: ((field: string) => { prose: boolean; choice: boolean | null } | null) | undefined
   onProse?: ((field: string, next: boolean | null) => void) | undefined
   // What the form under the list needs, unchanged from when it stood here alone (#32).
   taken: readonly string[]
@@ -61,8 +61,8 @@ export type ColumnDoorProps = {
 //
 // So it stands here. The door was already the place the table says something about its columns
 // as columns — it is where one is made (#32) — and a panel has room for what a heading never
-// had: the name, whether the column is the designer's, and the reason when it is not, in words
-// rather than as a padlock nobody asked about. What the heading keeps is its name and the way it
+// had: the name, whether the column is the designer's, and a lock when it is not.
+// Explanations are shared behind the question mark. What the heading keeps is its name and the way it
 // sorts, which is all a heading that can also be dragged and pulled has room to be.
 
 // What the door leaves below itself, and the least it will ever be. The air is the shadow's own
@@ -82,7 +82,6 @@ type Cell = 'name' | 'width' | 'prose' | 'plain' | 'remove' | 'follow'
 
 export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, asking, widths, onWidth, onRename, proseOf, onProse, taken, keeps, onCreate, onCancel }: ColumnDoorProps) {
   const t = useT()
-  const doorId = useId()
   // A column's switch, where there is one: the door has to have somewhere to write the answer.
   const proseHere = (field: string) => (onProse ? (proseOf?.(field) ?? null) : null)
   const panel = useRef<HTMLDivElement>(null)
@@ -166,7 +165,7 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
   // they are span names with the padlock in the ×'s place — so a row with nothing to focus is no
   // row in the ring at all. A width is a control only for a column a hand has pulled (#46).
   // The switch stands between the name and the × (#615), and the way back to the height on the
-  // line under them, so the arrows walk the row in the order it is read.
+  // same row, so the arrows walk the row in the order it is read.
   const cellsOf = (field: string): Cell[] => {
     const prose = proseHere(field)
     return [
@@ -217,12 +216,21 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
     }
   }
   return (
-    <div ref={panel} className="byd-columns" {...placedProps(place)} role="group" aria-label={t('table.columns')} onKeyDown={(event) => event.key === 'Escape' && onCancel()}>
+    <div ref={panel} className="byd-columns" {...placedProps(place)} role="group" aria-label={t('table.columns')} onKeyDown={(event) => {
+      if (event.key === 'Escape' && !(event.target as Element).closest('.byd-help-box')) onCancel()
+    }}>
+      <div className="byd-columns-head byd-help-row">
+        <strong>{t('table.columns')}</strong>
+        <Help topic={t('table.columns.help.topic')}>
+          <p>{t('table.columns.help.prose')}</p>
+          <p>{t('table.columns.help.auto')}</p>
+          <p>{t('table.columns.help.manage')}</p>
+        </Help>
+      </div>
       <ul className="byd-columns-list">
-        {columns.map((field, index) => {
+        {columns.map((field) => {
           const keys = keysOf(field)
           const prose = proseHere(field)
-          const whyId = `${doorId}-why-${index}`
           return (
             <li key={field} data-col={field} {...(renaming === field ? { 'data-renaming': '' } : {})}>
               {renaming === field ? (
@@ -280,7 +288,7 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
                       {t('table.column.width.px', { px: widths[field] })}
                     </button>
                   )}
-                  {prose && <ProseSwitch label={fieldLabel(field, t)} {...prose} onProse={(next) => onProse?.(field, next)} keys={keys} whyId={whyId} />}
+                  {prose && <ProseSwitch label={fieldLabel(field, t)} {...prose} onProse={(next) => onProse?.(field, next)} keys={keys} />}
                   {canRemove(field) ? (
                     <button
                       type="button"
@@ -292,17 +300,15 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
                       ×
                     </button>
                   ) : (
-                    // A hole explains nothing (L4): where a column cannot be taken away the reason
-                    // stands in the ×'s place, and here it can be read rather than hovered for.
-                    <span className="byd-columns-system">
+                    // The lock replaces an unavailable action; its accessible name explains why.
+                    <span className="byd-columns-system" role="img" aria-label={t('table.field.system', { field })} title={t('table.field.system', { field })}>
                       <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
                         <path d="M3.4 5V3.6a2.6 2.6 0 0 1 5.2 0V5" fill="none" stroke="currentColor" strokeWidth="1.2" />
                         <rect x="2.2" y="5" width="7.6" height="5.6" rx="1.2" fill="currentColor" />
                       </svg>
-                      {t('table.field.system', { field })}
                     </span>
                   )}
-                  {prose && <ProseWhy label={fieldLabel(field, t)} {...prose} onProse={(next) => onProse?.(field, next)} keys={keys} whyId={whyId} />}
+                  {prose && <ProseReset label={fieldLabel(field, t)} {...prose} onProse={(next) => onProse?.(field, next)} keys={keys} />}
                 </>
               )}
               {renaming === field && refused !== null && (

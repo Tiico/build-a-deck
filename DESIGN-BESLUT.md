@@ -4658,6 +4658,16 @@ Priset är erkänt och verkligt: krysset sitter nio procent ner i vyn, ett grepp
 
 Mönstret har alltså ingen egen telefonform. Det är samma låda, på en smalare skärm.
 
+**Tillämpning för löptext, 2026-10-03 (beställarens uttryckliga önskemål).**
+Tydliga arbetskontroller behöver inte en permanent mening som återberättar hur de används.
+Mallens draginstruktion, Bord-flikens draginstruktion och regelredigerarens skrivinstruktion
+ligger därför i sina befintliga hjälplådor. Spelarens gestinstruktion finns i handens hjälp;
+antalet valda kort står kvar vid handen. Guidens exempel på spelnamn och den upprepade
+fältbeskrivningen tas bort, «Ram» och «Tema» är rubrikerna, och fördjupningen om senare
+ändringar samlas i stegets befintliga hjälp. Fel, status, validering och konkreta följder av
+åtgärder står fortsatt där användaren behöver fatta beslut. Inventeringen och mätningarna
+finns i `docs/ux-audits/2026-10-02/copy-review.md`.
+
 ### L33. Beskärningen öppnas som ett ark med fyra grepp, och statusen står på båda ställena (prototypat 2026-09-20, #297)
 
 `Crop.tsx` ritade **ett** hörngrepp — `.byd-crop-corner` är `right: -6px; bottom: -6px` — och `.byd-crop-sheet` hade `overflow: hidden` utan luft runt bilden.
@@ -5059,7 +5069,8 @@ B lägger en knapp på 28 px i rubriken, vilket är samma räkning som fällde v
 C ger vanliga textkolumner en verktygsrad de inte har, och ett kolumnval görs från en enskild cell.
 A kostar noll i huvudet och lägger valet på samma rad som namnbytet, vilket tar bort det pris L44 skrev ut.
 
-Valet är en växel **Prosa | Text** mellan kolumnens namn och ×, och orsaken står på en egen rad under, med «Följ höjden igen» där designern har valt.
+Valet är en växel **Prosa | Text** mellan kolumnens namn och ×.
+Reviderat 2026-10-03 efter beställarens genomgång av onödig löptext: kolumnens rad bär bara namn och kontroller. Måttuträkningen under varje rad tas bort; betydelsen av Prosa/Text och automatiskt/eget val förklaras en gång bakom listans `?`, med L32:s befintliga hjälplåda. «Följ höjden igen» står kvar som en återställningsknapp `↶` med fullständigt tillgängligt namn. Verktygets låsta kolumner visar ett lås med namngiven orsak för skärmläsare. En rad behåller minst 44 px även i ett lågt fönster; listan rullar i stället för att trycka ihop träffytorna.
 Verktygets två kolumner, `id` och `antal`, har ingen växel: en kontroll som bara kan svara ett är ingen fråga.
 Dörren blev 340 px bred för att raden ska rymma namn, växel och × utan att namnet kläms.
 
@@ -5069,7 +5080,7 @@ En streckad kant finns inte för en skärmläsare och editorns a11y är inte mju
 ¶ är tyst för skärmläsaren; orden står i dörren.
 Att trycka den redan tryckta knappen på en kolumn som följer höjden gör förslaget till ett val, så att nästa omritning av mallen inte tar det.
 
-Växeln nås med dörrens egen tangentbordsordning (L45): raden är ett stopp i listan, och pilarna går namn → växel → × → «Följ höjden igen».
+Växeln nås med dörrens egen tangentbordsordning (L45): raden är ett stopp i listan, och pilarna går namn → växel → × → återställning. Listans gemensamma hjälp är ett eget tabbstopp ovanför raderna.
 ¶ står utanför rubrikknappens flöde, förankrat i dess högerkant, av samma skäl som pricken gjorde: knappen är `sticky` (#401) och `fitColumns` räknar en kolumns golv på flödet (#46).
 Priset är att valet är ett klick längre bort från kolumnen det gäller.
 

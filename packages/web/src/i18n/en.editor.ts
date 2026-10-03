@@ -235,9 +235,6 @@ export const enEditor = {
   'table.prose.is.prose.choice': '{field} is written as prose, you chose',
   'table.prose.is.plain.height': '{field} is written as plain text, the height suggested it',
   'table.prose.is.plain.choice': '{field} is written as plain text, you chose',
-  'table.prose.why.prose': 'The height suggests prose: the box is {box} mm and one line of its size is {line} mm.',
-  'table.prose.why.plain': 'The height suggests plain text: the box is {box} mm and one line of its size is {line} mm.',
-  'table.prose.why.undrawn': 'The template draws no box for the column, so the height suggests plain text.',
   'table.prose.turn.named': '{turn}, {field}',
   'table.prose.as.prose': 'Prose',
   'table.prose.as.plain': 'Text',
@@ -370,6 +367,10 @@ export const enEditor = {
 
   'editor.drag.cancelled': 'The drag was cancelled',
 
+  'table.columns.help.topic': 'columns',
+  'table.columns.help.prose': 'Prose gives you multiple lines and text formatting. Text is a plain text field.',
+  'table.columns.help.auto': 'A dashed selection follows the template’s text box. Your own choice stays until you reset it with ↶.',
+  'table.columns.help.manage': 'Press a column name to rename it. Locked columns are required by the game. Link images to columns in Template.',
   'table.columns': 'Columns',
   'table.column.moved': '{field} is column {at} of {of}',
   'table.column.width.said': '{field} is {px} px wide',
@@ -381,7 +382,6 @@ export const enEditor = {
   'table.column.renamed': '{from} is now called {to}',
   'table.field.new': 'New field',
   'table.field.name': 'Name',
-  'table.field.kindHint': 'A column becomes a picture column where the template draws it as a picture.',
   'table.field.create': 'Add',
   'table.field.needsName': 'A field needs a name.',
   'table.field.needsCards': 'A field is a column on the cards. Add a card first.',

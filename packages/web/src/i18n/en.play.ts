@@ -233,9 +233,8 @@ export const enPlay = {
   'play.help.hand.play': 'Drag a chosen card upward to play it, or use the buttons under the hand.',
   'play.help.hand.hidden': 'The others see how many cards you hold, never which.',
 
-  'player.hint': 'Tap to read · hold to select several',
-  'player.hint.selected.one': '{n} selected · drag up to play',
-  'player.hint.selected.other': '{n} selected · drag up to play',
+  'player.hint.selected.one': '{n} selected',
+  'player.hint.selected.other': '{n} selected',
   'player.counter.minus': '{name} minus',
   'player.counter.plus': '{name} plus',
   'player.counter.set': '{name}: {value}. Set value',

@@ -284,9 +284,8 @@ export const svPlay = {
   'play.help.hand.hidden': 'De andra ser hur många kort du har, aldrig vilka.',
 
   // Telefonen: handen, det som ligger framför en, och räknarna.
-  'player.hint': 'Tryck för att läsa · håll för att välja flera',
-  'player.hint.selected.one': '{n} valda · dra upp för att spela',
-  'player.hint.selected.other': '{n} valda · dra upp för att spela',
+  'player.hint.selected.one': '{n} valda',
+  'player.hint.selected.other': '{n} valda',
   'player.counter.minus': '{name} minus',
   'player.counter.plus': '{name} plus',
   'player.counter.set': '{name}: {value}. Sätt värde',

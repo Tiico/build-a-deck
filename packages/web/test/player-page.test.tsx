@@ -98,7 +98,7 @@ describe('PlayerPage', () => {
 
   // The hint describes what a finger can do to a card. With no cards it described nothing that
   // was on the screen, which is what UX-16 caught.
-  it('holds the gesture hint back until there is a card to use it on', async () => {
+  it('keeps gestures in help and leaves the hand for the cards', async () => {
     const id = await createSession(run)
     const table = TableClient.connect(await asTable(run, id))
     await table.ready()
@@ -110,7 +110,9 @@ describe('PlayerPage', () => {
 
     await table.send({ v: 'deal', from: 'draw', to: ['hand:A'], each: 1 })
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
-    expect(screen.getByText('Tryck för att läsa · håll för att välja flera')).toBeTruthy()
+    expect(screen.queryByText('Tryck för att läsa · håll för att välja flera')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Hjälp om handen' }))
+    expect((await screen.findByRole('dialog', { name: 'Hjälp om handen' })).textContent).toContain('Håll för att välja flera.')
     expect(screen.queryByText(/Tom hand/)).toBeNull()
     table.close()
   })
@@ -964,7 +966,7 @@ describe('the ended table goes quiet behind the survey (C9, D5, G3, #83)', () =>
     // the counters, the hand and the hint after it, and the counter's + is not a button to press.
     expect(screen.getByRole('button', { name: 'Guld plus' }).closest('[inert]')).not.toBeNull()
     expect(document.querySelector('[data-hand-card]')!.closest('[inert]')).not.toBeNull()
-    expect(document.querySelector('.byd-hint')!.closest('[inert]')).not.toBeNull()
+    expect(document.querySelector('.byd-hint')).toBeNull()
     expect(screen.getByRole('button', { name: 'Ut… ur bordet' }).closest('[inert]')).not.toBeNull()
     // The survey, every control in it, and the way out of an ended table are not.
     expect(screen.getByRole('heading', { name: 'Bordet är avslutat' }).closest('[inert]')).toBeNull()

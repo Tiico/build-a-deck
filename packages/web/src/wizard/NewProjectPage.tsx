@@ -81,8 +81,7 @@ function forgetWizard(): void {
 
 const mappedByStarterFrame = (key: string) => ['title', 'cost', 'body', 'art'].includes(key)
 
-// Vad fältet pekar på: exemplet alltid, beskedet när det finns (#416).
-const NAME_EXAMPLE = 'byd-wizard-name-example'
+// Fältet beskriver valideringsbeskedet och längdgränsen när de behövs.
 const NAME_SAYS = 'byd-wizard-name-says'
 const NAME_LIMIT = 'byd-wizard-name-limit'
 
@@ -401,9 +400,6 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       {/* The words over the field are its name. A second, shorter one in `aria-label` would win
           over them, and then what is written on the screen and what the field is called are two
           different things — which is the whole of WCAG 2.5.3. */}
-      {/* Exemplet står under fältet i stället för inuti det: en platshållare som lyder «Skogens
-          herrar» ser ut som ett ifyllt värde, och då är det fältet som ljuger och inte knappen
-          som tiger (#416). */}
       <label className="byd-wizard-label">{t('wizard.name')}<input
         ref={nameField}
         value={s.name}
@@ -424,9 +420,8 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         aria-required="true"
         aria-invalid={says ? 'true' : 'false'}
         maxLength={PROJECT_NAME_MAX}
-        aria-describedby={[NAME_EXAMPLE, says ? NAME_SAYS : null, atLimit ? NAME_LIMIT : null].filter(Boolean).join(' ')}
+        aria-describedby={[says ? NAME_SAYS : null, atLimit ? NAME_LIMIT : null].filter(Boolean).join(' ')}
       /></label>
-      <p className="byd-wizard-hint" id={NAME_EXAMPLE}>{t('wizard.name.example')}</p>
       {/* Villkoret, sagt en gång per skärm och vid fältet — inte en gång per utgång, fastän de två
           ligger i var sin spalt. Det föds efter trycket och föds därför som en levande region. */}
       {/* The limit is said once it is reached (#476): a name that stops growing without a word
@@ -465,9 +460,9 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         <h2 id="byd-wizard-h2"><span className="byd-wizard-step">2</span>{t('wizard.fields')}</h2>
         <Help topic={t('wizard.help.falten')}>
           <p>{t('wizard.fields.help')}</p>
+          <p>{t('wizard.look.later')}</p>
         </Help>
       </div>
-      <p>{t('wizard.fields.body')}</p>
       <div className="byd-wizard-fields">
         <div className="byd-wizard-field-list">{s.fields.map((field) => <div className="byd-wizard-field" key={field.key} data-field={field.key}>
           <span>{t(field.kind === 'image' ? 'wizard.kind.image' : field.kind === 'number' ? 'wizard.kind.number' : 'wizard.kind.text')}</span>
@@ -501,7 +496,6 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
           <p id="byd-wizard-look-theme">{t('wizard.look.theme')}</p>
           {THEMES.map((candidate) => <ThemeTile key={candidate.id} theme={candidate} pressed={theme.id === candidate.id} onPress={() => pickTheme(candidate.id)} />)}
         </div>
-        <p className="byd-wizard-hint">{t('wizard.look.later')}</p>
       </fieldset>
     </section>
   )

@@ -272,9 +272,6 @@ export const svEditor = {
   'table.prose.is.plain.choice': '{field} skrivs som vanlig text, du valde',
   // Och orsaken: rutan mallen ritar, mot en rad av dess egen grad. Två rader är vad ett stycke
   // eller en punkt behöver för att synas (L39).
-  'table.prose.why.prose': 'Höjden föreslår prosa: rutan är {box} mm och en rad av dess grad är {line} mm.',
-  'table.prose.why.plain': 'Höjden föreslår vanlig text: rutan är {box} mm och en rad av dess grad är {line} mm.',
-  'table.prose.why.undrawn': 'Mallen ritar ingen ruta för kolumnen, så höjden föreslår vanlig text.',
   // Växelns två knappar, och knappen som lämnar tillbaka frågan till höjden — den står bara där
   // det finns ett val att lämna. Var och en bär kolumnen i sitt namn (#557).
   'table.prose.turn.named': '{turn}, {field}',
@@ -426,6 +423,10 @@ export const svEditor = {
   // att säga — bara att det inte blev av.
   'editor.drag.cancelled': 'Draget avbröts',
 
+  'table.columns.help.topic': 'kolumnerna',
+  'table.columns.help.prose': 'Prosa ger flera rader och textformatering. Text är ett vanligt textfält.',
+  'table.columns.help.auto': 'En streckad markering följer mallens textruta. Ett eget val gäller tills du återställer det med ↶.',
+  'table.columns.help.manage': 'Tryck på ett kolumnnamn för att byta det. Låsta kolumner behövs av spelet. Bilder kopplas till kolumner i Mall.',
   'table.columns': 'Kolumner',
   'table.column.moved': '{field} är kolumn {at} av {of}',
   'table.column.width.said': '{field} är {px} px bred',
@@ -443,7 +444,6 @@ export const svEditor = {
   // kolumn ligger där borta.
   'table.field.new': 'Nytt fält',
   'table.field.name': 'Namn',
-  'table.field.kindHint': 'En kolumn blir en bildkolumn där mallen ritar den som bild.',
   'table.field.create': 'Lägg till',
   'table.field.needsName': 'Ett fält behöver ett namn.',
   'table.field.needsCards': 'Ett fält är en kolumn på korten. Lägg till ett kort först.',

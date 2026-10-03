@@ -10,7 +10,7 @@ import { Lifted } from './Lifted.js'
 import { FilterField, type FilterToken, type TypedColumn } from './FilterField.js'
 import { DragDoor } from './DragDoor.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
-import { boxesOf, proseChoiceOf, proseFieldsOf } from './body.js'
+import { proseChoiceOf, proseFieldsOf } from './body.js'
 import { BodyCell, type BodyCellProps } from './BodyCell.js'
 import { DropSays, dropSurface, oneFile } from './dropping.js'
 import { PictureLibraryDialog, type LibraryPicture } from './PictureLibrary.js'
@@ -507,7 +507,6 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // rutans höjd i mallen och avgörs av designern (L43, #362).
   const bodyFields = proseFieldsOf(doc)
   // Och rutan varje kolumn mäts mot, som är vad märket i huvudet säger orsaken med.
-  const boxes = boxesOf(doc)
   const images = assetsInUse(doc)
   // The library window (#296, variant B): opened from a picture cell or from the marked cards,
   // and it is one window for both. What it is about is the one thing the table has to hold —
@@ -1441,7 +1440,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                   // Vad varje kolumn skrivs som, och vägen att vända det (L43, #615): verktygets
                   // två kolumner har ingen växel, eftersom en kontroll som bara kan svara ett är
                   // ingen fråga.
-                  proseOf={(field) => (field === 'id' || field === ANTAL ? null : { prose: bodyFields.includes(field), choice: proseChoiceOf(doc, field), box: boxes[field] ?? null })}
+                  proseOf={(field) => (field === 'id' || field === ANTAL ? null : { prose: bodyFields.includes(field), choice: proseChoiceOf(doc, field) })}
                   {...(onProse ? { onProse } : {})}
                   taken={takenNames(doc)}
                   keeps={deckKeepsFields(doc)}

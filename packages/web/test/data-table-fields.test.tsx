@@ -199,7 +199,8 @@ describe('a field arrives in the editor (#32)', () => {
     // it suggested, and «Image» gave a text column. A column is a picture column where the
     // template draws it as a picture, and the door says so instead.
     expect(within(form).queryAllByRole('radio')).toEqual([])
-    expect(within(form).getByText('A column becomes a picture column where the template draws it as a picture.')).toBeTruthy()
+    expect(within(form).queryByText('A column becomes a picture column where the template draws it as a picture.')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Help about columns' })).toBeTruthy()
 
     await user.click(within(form).getByRole('button', { name: 'Add' }))
     expect(column('fält1')).toBeTruthy()
@@ -246,8 +247,8 @@ describe('the door the head keeps for its columns (#46 on #32)', () => {
     expect(within(panel).getByRole('button', { name: 'Ta bort fältet body' })).toBeTruthy()
     expect(within(panel).queryByRole('button', { name: 'Ta bort fältet antal' })).toBeNull()
     expect(within(panel).queryByRole('button', { name: 'Ta bort fältet id' })).toBeNull()
-    expect(within(panel).getByText('antal är verktygets egen kolumn och kan inte tas bort')).toBeTruthy()
-    expect(within(panel).getByText('id är verktygets egen kolumn och kan inte tas bort')).toBeTruthy()
+    expect(within(panel).getByRole('img', { name: 'antal är verktygets egen kolumn och kan inte tas bort' })).toBeTruthy()
+    expect(within(panel).getByRole('img', { name: 'id är verktygets egen kolumn och kan inte tas bort' })).toBeTruthy()
   })
 
   it('takes the height the window leaves it, so the form under the list is never off the bottom', async () => {

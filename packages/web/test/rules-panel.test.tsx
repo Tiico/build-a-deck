@@ -273,7 +273,10 @@ describe('the book under its tab, to a screen reader (#558)', () => {
     expect(screen.getByRole('heading', { level: 3, name: 'Skogens herrar' })).toBeTruthy()
     expect(screen.getByRole('heading', { level: 4, name: 'Så spelar ni' })).toBeTruthy()
     expect(screen.queryByRole('heading', { level: 1 })).toBeNull()
-    expect(screen.getByText('Välj ett block på sidan för att skriva i det.')).toBeTruthy()
+    expect(screen.queryByText('Välj ett block på sidan för att skriva i det.')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Hjälp om reglerna' }))
+    const help = await screen.findByRole('dialog', { name: 'Hjälp om reglerna' })
+    expect(help.textContent).toContain('Välj ett block på sidan för att skriva i det.')
   })
 })
 
