@@ -28,6 +28,7 @@ export const svStatus = {
   'title.play.ended': 'Bordet är avslutat',
   'title.online': 'Spela',
   'title.observe': 'Tittar på rum {code}',
+  'title.observe.game': 'Tittar på {game}',
   'title.observe.any': 'Tittar på',
   'title.prototype': 'Prototyp',
   'title.unknown': 'Sidan finns inte',
