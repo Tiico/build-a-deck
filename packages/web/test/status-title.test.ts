@@ -78,6 +78,11 @@ describe('the title of a route', () => {
     expect(documentTitle('observe', { room: '4KJ2', game: 'Skogens herrar' })).toBe('Tittar på rum 4KJ2 · build-your-deck')
   })
 
+  // D5: every state its own title; the TV kept «Bordet · Rum …» over its summary (#717).
+  it('says the table has ended on the table screen too', () => {
+    expect(documentTitle('table', { room: 'Q6RN2C', part: 'Bordet är avslutat' })).toBe('Bordet är avslutat · Rum Q6RN2C · build-your-deck')
+  })
+
   it('says the game on an ended phone without a code', () => {
     expect(documentTitle('play', { game: "Sal's Saloon", part: 'Bordet är avslutat' })).toBe("Bordet är avslutat · Sal's Saloon · build-your-deck")
   })

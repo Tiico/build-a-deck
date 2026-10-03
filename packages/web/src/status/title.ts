@@ -63,7 +63,7 @@ function nameOf(route: Route, ctx: TitleContext, t: T): string[] {
       // one editor were seven browser tabs with the same name.
       return [ctx.game ?? null, ctx.part ?? t('title.editor')].filter((s): s is string => s !== null)
     case 'table':
-      return [t('title.table'), room].filter((s): s is string => s !== null)
+      return [ctx.part ?? t('title.table'), room].filter((s): s is string => s !== null)
     case 'join':
       return [ctx.room ? t('title.join', { code: ctx.room }) : t('title.join.any')]
     case 'play':

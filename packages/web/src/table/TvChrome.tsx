@@ -149,7 +149,14 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
           {/* The rulebook, beside the game's own name rather than over the felt (#30). */}
           {rules}
         </div>
-        {(roomCode || joinUrl) && (
+        {/* An ended table takes nobody in, so its code led to «Bordet är slut» (#717): the row says
+            it has ended instead, and the help about joining goes with the code it was about. */}
+        {(roomCode || joinUrl) && view.ended && (
+          <div className="byd-tv-join" data-ended>
+            <span>{t('ended.title')}</span>
+          </div>
+        )}
+        {(roomCode || joinUrl) && !view.ended && (
           <div className="byd-tv-join byd-help-row">
             <span>{t('tv.join')}</span>
             {roomCode && <strong>{roomCode}</strong>}
