@@ -116,9 +116,12 @@ const visa = () => {
   document.querySelector('#vpris').textContent = V.pris
   const m = cell(v, yta, pl)
   const img = document.querySelector('#bild')
-  img.src = 'img/' + m.f
+  // Bilder finns för «Nu» och G på varje yta, och för de övriga på ytorna #685 börjar med; tabellen
+  // har varje cell oavsett.
+  img.hidden = !m.f
+  if (m.f) img.src = 'img/' + m.f
   img.alt = `${V.namn}, ${radnamn(yta)}, ${pl} platser`
-  document.querySelector('#bildtext').textContent = `${radnamn(yta)} · ${pl === '4' ? 'fyra' : 'åtta'} platser · skala ${m.skala} px/mm · minsta etikett ${m.px} px${yta.startsWith('editor') ? ' · alla zoner tända' : ''}`
+  document.querySelector('#bildtext').textContent = (m.f ? '' : 'Ingen bild sparad för den här cellen (repot hålls litet) — talen nedan och i tabellen är mätta. ') + `${radnamn(yta)} · ${pl === '4' ? 'fyra' : 'åtta'} platser · skala ${m.skala} px/mm · minsta etikett ${m.px} px${yta.startsWith('editor') ? ' · alla zoner tända' : ''}`
   const en = yta.startsWith('editor') ? cell(v, yta + '-en', pl) : null
   const rader = [
     ['Namn i en annan zons ruta', m.iZon.length], ['Namn på namn', m.nn.length], ['Namn på bricka eller hög', m.br.length], ['Kapade namn', m.kap.length],
