@@ -189,6 +189,7 @@ export const svPlay = {
   'kbd.verb.lookTop': 'Titta på översta',
   'kbd.verb.lookBottom': 'Titta på understa',
   'kbd.verb.toHand': 'Dra 1 till min hand',
+  'kbd.verb.beside': 'Lägg 1 bredvid',
   'kbd.hint.reveal': 'visar kortet för alla',
   'kbd.hint.look': 'bara på den här skärmen',
   'kbd.hint.half': 'ny hög bredvid',
