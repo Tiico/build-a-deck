@@ -2674,6 +2674,35 @@ Tillståndet har nu inget z-index och målas där bilden målas, strax efter den
 Tillståndets egna ord, «Kortet renderas…» och «Bilden kunde inte laddas», står mitt på kortet och bara där kortet är minst 72 px brett inuti; brickan står vid överkanten, och de två delar inga pixlar — mätt på en 4K-TV, där kortet bär orden.
 `packages/e2e/test/surfaces/pile-count-over-texture.spec.ts` träffprovar brickans mitt i alla tre tillstånden på TV:n vid 1920 × 1080, 1280 × 800 och 3840 × 2160 och på observatörens filt vid 390.
 
+Reviderat 2026-10-03 (#771, beställarens beslut C efter prototyp): **medan en högs översta kort saknar bild står kortets namn under högen och inte på kortet.**
+På filtarna i TV-läge är en högs kort litet: 28 × 39 px hos observatören vid 390, 22 × 31 vid 320 × 568 och 47 × 65 på rummets TV vid 1280.
+Tillståndets namn sattes i 8 px, eftersom `clamp(8px, 14cqw, 19px)` når golvet, och brickan täcker kortets övre halva.
+Två av tio tecken i «Grävling 1» gick att läsa vid 390 och inga vid 320, och på TV:n vid 1280 stod kasthögens namn helt under rummets bricka på 40 px.
+Kortet bär nu bara sin grund, alltså svepet eller den röda tonen, och brickan.
+Namnet står som en bildtext en rad under högens eget namn, 2 px låda mot låda, i tillståndets egen färg och högst 10 em brett.
+Hos observatören är det 12 px, filtens minsta etikett, och i rummet 24 px, K26:s golv för TV:n.
+Bildtexten står där bara medan tillståndet är framme, och det är tillståndet självt som säger det: arket ritar bildtexten när högens översta kort bär ett tillstånd med ett namn i, och kortet säger då inte namnet en gång till.
+Bildtexten är `cardWord`, samma ord som tillståndet skrev och ur samma komponent, så den namnger bara det vyn redan får veta.
+Observatören ser allt (C8) och får namnet också på draghögen; rummets TV får inget namn på den nedvända draghögen, varken på sidan eller i trådens ramar.
+
+**Varje filt i TV-läge, och därför ingen tröskel.**
+Prototypen föreslog att bildtexten bara skulle stå där namnet inte ryms på kortet, och mätningen avgjorde det.
+Namnet på kortet når 12 px först när kortet är 86 px brett, och rummets golv på 24 px når det aldrig, eftersom taket är 19 px.
+Ingen filt i TV-läge ritar en hög så stor: observatören ritar kortet 22–63 px brett från 320 till 3840 px fönster, och rummets TV 47 px vid 1280 och 79 px vid 1920.
+Bara en TV på 3840 CSS-px når 159 px, och där står namnet i 19 px, under rummets golv.
+En tröskel skulle alltså aldrig ha slagit till på ett riktigt bord, och ett namn på ett ställe är den här regelns rubrik.
+
+**Bordsläget behåller namnet på kortet.**
+Där är högen ett handtag på den gröna filten, och bildtextens färg ger 4,06:1 mot filtens mitt, under AA:s 4,5.
+En platta under texten vore en ny form som prototypas först, och det är inte det beställaren valde.
+Bordslägets namn i 8 px på ett 49 px kort står kvar som ett eget fynd, #789.
+
+**Kvar att veta för grannarna.**
+#683 gäller fortfarande: vid 1280 täcker sidoplatsernas skyltar Kasthög och dess namn, men bildtexten står under skylten och är fri, 13 px från plats A:s skylt.
+#685:s förslag G lägger Saloonens namn under Saloonen, mellan Kortlek och Kasthög vid fyra platser, i samma remsa som bildtexten; den som bygger G behöver mäta mot bildtexten också.
+Mätt i den byggda appen: «Skogens väktare» är 79 px och «Grävling 1» 48 px i 12 px, hela vid 390 och 320, och närmaste andra namn är «Räknare C» 9,7 px bort vid 320 × 568; på TV:n är «Skogens väktare» 159 px i 24 px.
+`packages/e2e/test/surfaces/pile-name-caption.spec.ts` läser bildtexten hos observatören vid 390 × 844 och 320 × 568 och på rummets TV vid 1280 × 800 och 1920 × 1080, i båda tillstånden: hel, överst längs hela sin längd, fri från varje annan etikett, bricka och kort, på skärmen och minst skärmens golv, utan namnet på kortet, borta när bilden har kommit, och på TV:n frånvarande vid den nedvända draghögen och ur både sidan och ramarna.
+
 **En delad zon under en plats ruta skriver sitt namn mitt över sig själv.**
 Utvidgat 2026-09-15 (#43), och det är det första i regeln som handlar om två namn som hör till olika zoner.
 
