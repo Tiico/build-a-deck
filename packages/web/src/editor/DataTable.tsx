@@ -227,7 +227,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const paper = useMemo(() => groundOf(doc, 'front'), [doc])
   // Projektets symboler som bilder: proven i rutan ritas av dem, och `{namn}` i en body-cell
   // ritas som symbolen och inte som sitt namn. Samma upplösning som förhandsvisningen gör (E1).
-  const gameIcons = useMemo(() => previewIcons(doc, assetBase), [doc, assetBase])
+  // Hålls av ikonerna och inte av hela dokumentet (#667): en ändrad cell är ett nytt dokument med
+  // samma ikoner i.
+  const gameIcons = useMemo(() => previewIcons({ icons: doc.icons }, assetBase), [doc.icons, assetBase])
   // The meanings the deck has named, narrowed by what has been typed after the bar. A deck that
   // has named none offers nothing rather than an empty list — there is nothing to pick.
   const namingRole = brace?.role ?? null

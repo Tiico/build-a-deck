@@ -171,10 +171,13 @@ export class ProjectClient {
     if (res.status === 403) throw new ProjectUnavailable('forbidden')
     if (res.status === 404) throw new ProjectUnavailable('missing')
     if (!res.ok) throw new ProjectUnavailable('offline')
-    const rec = (await res.json()) as ProjectDoc & { id: string; rev: number }
+    const rec = (await res.json()) as ProjectDoc & { id: string; rev: number; owner?: string }
     // Everything the document has is the document; only what the record adds around it is left
     // behind. Picking fields by name here is how a project quietly loses one it gained later.
-    const { id, rev, ...doc } = rec
+    // The owner is the record's too (G1): left on, the document differed from the actor's by that
+    // field alone, and the handover replaced it with an identical copy — every card on the wall
+    // compiled and fitted a second time as the editor opened (#667).
+    const { id, rev, owner: _owner, ...doc } = rec
     const client = new ProjectClient(opts.http, opts.id, doc, rev, opts.dropAfterMs ?? DEFAULT_TIMING.dropAfterMs)
     client.connect(opts.name ?? (opts.t ?? swedish)('editor.here.someone'))
     return client

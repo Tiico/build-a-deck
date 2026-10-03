@@ -110,7 +110,10 @@ export function ThemePanel({ doc, client, assetBase }: ThemePanelProps) {
   const roles = Object.keys(doc.palette ?? {})
   const names = Object.keys(doc.icons)
   const reading = !client.mayEdit
-  const icons = useMemo(() => previewIcons(doc, assetBase), [doc, assetBase])
+  // Held by what it is read from and not by the document (#667): an edit is a new document that
+  // shares the parts it did not touch, and keyed on the document a cell typed into recompiled and
+  // refitted every card below the symbols.
+  const icons = useMemo(() => previewIcons({ icons: doc.icons }, assetBase), [doc.icons, assetBase])
   // The catalog sets its samples in the card's own words (L27): the first card of the deck, as the
   // wall draws it first.
   const front = doc.template.faces['front']
@@ -303,8 +306,9 @@ function IconDeck({ doc, assetBase, icons }: { doc: ProjectDoc; assetBase: strin
   const t = useT()
   const [showing, setShowing] = useState<string | null>(null)
   const front = doc.template.faces['front']
-  // Built once per document: a fresh object is a fresh compile of every card in the deck.
-  const fonts = useMemo(() => previewFonts(doc, assetBase), [doc, assetBase])
+  // Built once per font set: a fresh object is a fresh compile of every card in the deck, and an
+  // edit to a cell is a new document with the same fonts in it (#667).
+  const fonts = useMemo(() => previewFonts({ template: doc.template, fonts: doc.fonts }, assetBase), [doc.template, doc.fonts, assetBase])
   // Which symbols each card says, by the same walk the set counts with, so the tally on a chip and
   // the cards under it can never disagree.
   const bare = useMemo(() => iconFieldsOf(doc), [doc])
