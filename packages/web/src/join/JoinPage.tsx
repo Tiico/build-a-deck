@@ -36,6 +36,9 @@ function along(seats: readonly SeatView[]): Map<string, Along> {
   return out
 }
 
+// A button at work is not a locked button (#476): it says it is busy and the handler refuses it.
+const working = (on: boolean) => (on ? { 'aria-disabled': true, 'aria-busy': true } : {})
+
 export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAULT_TIMING }: JoinPageProps) {
   const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
@@ -93,6 +96,22 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
   const [pick, setPick] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
+  // One way in at a time (#752, as «Starta nytt bord» in L31): from the first press until the
+  // server has answered, the pressed button says it is at work and every way out of the form is
+  // refused. `disabled` alone is not the guard — a second press or an Enter can land before the
+  // re-render — so the handler holds a ref of its own. An answer that lets her in keeps the guard
+  // up, since the page is on its way out; a page brought back from the history cache lets it go.
+  const joining = useRef(false)
+  const [busy, setBusy] = useState<'/play' | '/online' | '/observe' | null>(null)
+  useEffect(() => {
+    const back = (e: PageTransitionEvent) => {
+      if (!e.persisted) return
+      joining.current = false
+      setBusy(null)
+    }
+    addEventListener('pageshow', back)
+    return () => removeEventListener('pageshow', back)
+  }, [])
   // Namnet krävs, och villkoret sägs vid tryck (#416, variant B). Vägarna in står öppna; den som
   // trycker med tomt fält får beskedet vid fältet, fältet märkt ogiltigt och markören flyttad dit.
   // Beskedet finns inte på skärmen förrän någon tryckt, så det måste nå den som lyssnar när det
@@ -154,8 +173,21 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
       field.current?.focus()
       return
     }
-    if (page !== '/observe' && !seat) return
-    const token = await admit(seat)
+    // A seat somebody else has just taken is not bought either: the button for it is disabled,
+    // and an Enter in the field must not walk round it into a refusal.
+    if (page !== '/observe' && (!seat || lost)) return
+    if (joining.current) return
+    joining.current = true
+    setBusy(page)
+    let token: string | null = null
+    try {
+      token = await admit(seat)
+    } finally {
+      if (!token) {
+        joining.current = false
+        setBusy(null)
+      }
+    }
     if (!token) return
     // The code travels with them: it is the only way back to this picker (#12, DRIFT §9).
     const next = new URLSearchParams({ session: sessionId, code, ...(seat === null ? {} : { seat }), name: name.trim(), token })
@@ -263,13 +295,15 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
             Disabled rather than removed: the control keeps its name and its place, so nothing
             moves under a thumb already on its way down, and a reader is told it is unavailable
             instead of finding it gone. Choosing again opens them. */}
-        <button type="submit" className="byd-primary" disabled={!chosen || lost}>
-          {t('join.sit')}
+        {/* While a way in is under way the pressed button says so and is `aria-disabled`, not
+            `disabled`: it keeps its look and the focus, and the handler refuses the next press. */}
+        <button type="submit" className="byd-primary" disabled={!chosen || lost} {...working(busy === '/play')}>
+          {busy === '/play' ? t('join.sitting') : t('join.sit')}
         </button>
-        <button type="button" className="byd-join-online byd-secondary" disabled={!chosen || lost} onClick={() => void go('/online', chosen)}>
+        <button type="button" className="byd-join-online byd-secondary" disabled={!chosen || lost} {...working(busy === '/online')} onClick={() => void go('/online', chosen)}>
           {t('join.online')}
         </button>
-        <button type="button" className="byd-join-observe byd-secondary" onClick={() => void go('/observe', null)}>
+        <button type="button" className="byd-join-observe byd-secondary" {...working(busy === '/observe')} onClick={() => void go('/observe', null)}>
           {t('join.observe')}
         </button>
       </form>

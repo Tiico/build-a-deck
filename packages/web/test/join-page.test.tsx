@@ -126,6 +126,52 @@ describe('watching instead of playing (C8)', () => {
   })
 })
 
+// Tre tryck på «Sätt dig» köpte tre platser (#752): den första fick en token, de två andra 409 och
+// varsitt konsolfel. Knappen stod levande medan svaret väntade, så på ett långsamt nät trycker
+// spelaren igen. Samma vakt som «Starta nytt bord» (L31): knappen säger att den arbetar från
+// första trycket, och handlaren vägrar ett andra köp — inte bara knappen, för en tangent hinner
+// före omritningen.
+describe('one join at a time (#752)', () => {
+  it('buys one seat for three presses, and says it is sitting down while the answer is on its way', async () => {
+    const id = await createSession(run)
+    history.replaceState(null, '', `/join?code=${roomOf(id).code}&server=${encodeURIComponent(run.url)}`)
+    const gone: string[] = []
+    render(<JoinPage onSit={(url) => gone.push(url)} />)
+    const sit = await screen.findByRole('button', { name: /Sätt dig/ })
+    fireEvent.change(screen.getByLabelText('Ditt namn'), { target: { value: 'Bo' } })
+
+    // Svaret hålls kvar tills alla tre trycken är gjorda: det är det långsamma nätet.
+    const real = globalThis.fetch
+    const joins: string[] = []
+    let answer!: () => void
+    const held = new Promise<void>((resolve) => (answer = resolve))
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input instanceof Request ? input.url : input)
+      if (init?.method === 'POST' && url.endsWith('/join')) {
+        joins.push(url)
+        await held
+      }
+      return real(input, init)
+    })
+    try {
+      fireEvent.click(sit)
+      fireEvent.click(sit)
+      fireEvent.submit(document.querySelector('form')!)
+
+      expect(joins).toHaveLength(1)
+      expect(sit.getAttribute('aria-busy')).toBe('true')
+      expect(sit.textContent).toMatch(/Sätter dig/)
+
+      answer()
+      await waitFor(() => expect(gone).toHaveLength(1))
+      expect(new URL(gone[0] ?? '', 'http://x').pathname).toBe('/play')
+      expect(joins).toHaveLength(1)
+    } finally {
+      spy.mockRestore()
+    }
+  })
+})
+
 describe('playing from this screen (C2)', () => {
   it('offers to play with the table on this screen, which leads to the online view for the chosen seat', async () => {
     const id = await createSession(run)
