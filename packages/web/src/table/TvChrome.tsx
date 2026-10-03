@@ -152,7 +152,7 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
         {/* An ended table takes nobody in, so its code led to «Bordet är slut» (#717): the row says
             it has ended instead, and the help about joining goes with the code it was about. */}
         {(roomCode || joinUrl) && view.ended && (
-          <div className="byd-tv-join" data-ended>
+          <div className="byd-tv-join" data-join-ended>
             <span>{t('ended.title')}</span>
           </div>
         )}
