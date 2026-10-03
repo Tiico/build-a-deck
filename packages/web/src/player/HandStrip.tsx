@@ -198,7 +198,13 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
       })}
       {/* A hand with nothing in it (UX-16): where the cards would be, the strip says what fills
           it, in the same form as the line under what lies in front of the seat. */}
-      {hand.length === 0 && <p className="byd-strip-empty">{t('player.hand.empty')}</p>}
+      {/* And with no card in any pile it does not ask for one (#751). */}
+      {hand.length === 0 && <p className="byd-strip-empty">{t(nothingToDraw(view) ? 'player.hand.empty.none' : 'player.hand.empty')}</p>}
     </div>
   )
+}
+
+// No pile on the table holds a card, so there is nothing a hand could be filled from.
+function nothingToDraw(view: Snapshot): boolean {
+  return view.zones.filter((z) => z.kind === 'pile').every((z) => (z.mode === 'count' ? z.count : z.order.length) === 0)
 }

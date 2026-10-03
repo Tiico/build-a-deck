@@ -127,6 +127,10 @@ export function TablesTab({ client, server, started = null }: TablesTabProps) {
         </span>
         {starting ? t('tables.starting') : t('tables.new')}
       </button>
+      {/* A table started from a deck with no cards has nothing to deal and nothing to draw (#751).
+          The button stays — the deck may be filled in a minute — but the tab says so, and where
+          cards are added. */}
+      {deckIsEmpty(client.doc) && <p className="byd-tables-empty">{t('tables.noCards')}</p>}
       {revealed?.why === 'started' && failed === null && (
         <p className="byd-tables-started" role="status">
           {t('tables.started', { table: tableName(revealed.id) })}
@@ -578,3 +582,10 @@ function seated(seats: readonly { id: string; name: string | null }[] | null, ob
   return watching.length === 0 ? who : t('tables.watching', { who, names: watching.join(', ') })
 }
 
+// How many cards the deck holds: every row, as many times as its `antal` says (C7).
+function deckIsEmpty(doc: { rows: readonly { fields: Record<string, unknown> }[] }): boolean {
+  return doc.rows.every((row) => {
+    const n = Number(row.fields['antal'] ?? 1)
+    return Number.isFinite(n) && n <= 0
+  })
+}

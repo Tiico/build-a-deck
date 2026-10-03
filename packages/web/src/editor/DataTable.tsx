@@ -21,7 +21,7 @@ import { braceSections, bracePicks, partAt, pickKeyOf, type BracePart, type Brac
 import { SymbolSample, SymbolSheet } from './SymbolSample.js'
 import { groundOf } from './palette.js'
 import { pickOptionId, triggerBehind } from './picking.js'
-import { diffProjects, type RowChange } from '@byd/server/doc'
+import { DOC_PARTS, diffProjects, type DocDiff, type RowChange } from '@byd/server/doc'
 import { Summary } from './HistoryPanel.js'
 import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
@@ -89,6 +89,8 @@ export type DataTableProps = {
   // cards that came or went are shown as rows.
   compareWith?: { rev: number; label?: string | undefined; doc: ProjectDoc } | undefined
   onStopCompare?: (() => void) | undefined
+  // The way to the template tab, offered when a comparison's whole difference is in the template.
+  onOpenTemplate?: (() => void) | undefined
 }
 
 // The game's own name, folded down to something a file system will carry — and folding is all
@@ -183,7 +185,7 @@ export function markCut(box: Element): void {
 
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
 // This is where the designer already lives; a change here reaches every copy of the card.
-export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, onRenameField, onProse, assetBase, onUpload, onSymbol, compareWith, onStopCompare, reading = false }: DataTableProps) {
+export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, onRenameField, onProse, assetBase, onUpload, onSymbol, compareWith, onStopCompare, onOpenTemplate, reading = false }: DataTableProps) {
   const t = useT()
   // The one channel everything on a screen speaks in (#7): a column that moved under the focus
   // says so here rather than in a live region this table made for itself.
@@ -1308,7 +1310,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       {compareWith && diff && (
         <p ref={compareRef} className="byd-data-compare" role="status" tabIndex={-1}>
           {t('table.compare', { rev: compareWith.rev })}
-          {compareWith.label ? ` · ${compareWith.label}` : ''}: <Summary diff={diff} />{' '}
+          {compareWith.label ? ` · ${compareWith.label}` : ''}: <CompareSummary diff={diff} />{' '}
+          {onOpenTemplate && noCardDiffers(diff) && diff.template && (
+            <button type="button" onClick={onOpenTemplate}>
+              {t('table.compare.template')}
+            </button>
+          )}
           {onStopCompare && (
             <button type="button" onClick={onStopCompare}>
               {t('table.compare.stop')}
@@ -2167,4 +2174,18 @@ function importSummary(doc: ProjectDoc, rows: readonly ProjectDoc['rows'][number
   const columns = [...new Set(rows.flatMap((r) => Object.keys(r.fields)))].filter((f) => !known.has(f))
   const read = `${t('table.import.read', { n: rows.length })} ${t(fresh === 1 ? 'table.import.fresh.one' : 'table.import.fresh.other', { n: fresh })}, ${t('table.import.gone', { n: gone })}.`
   return columns.length === 0 ? read : `${read} ${t(columns.length === 1 ? 'table.import.column.one' : 'table.import.column.other', { names: columns.join(', ') })}`
+}
+
+// A comparison whose whole difference lies outside the cards (#702). The table has nothing to
+// mark then, and a band that only said «mallen ändrad.» over seventy-seven unmarked rows left the
+// designer to work out that it never could — so it says no card differs and where the difference
+// is, in the words the history's chips already use for those parts.
+const noCardDiffers = (diff: DocDiff) => diff.rows.length === 0 && !diff.reordered && !diff.columns
+
+function CompareSummary({ diff }: { diff: DocDiff }) {
+  const t = useT()
+  const parts = DOC_PARTS.filter((part) => diff[part]).map((part) => t(`history.part.${part}`))
+  if (!noCardDiffers(diff) || parts.length === 0 || diff.name) return <Summary diff={diff} />
+  const where = parts.reduce((said, part, i) => (i === 0 ? part : i === parts.length - 1 ? `${said}${t('table.compare.and')}${part}` : `${said}, ${part}`), '')
+  return <>{t('table.compare.noCards', { where })}</>
 }

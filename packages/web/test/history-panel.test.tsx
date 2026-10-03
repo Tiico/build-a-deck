@@ -62,16 +62,23 @@ describe('the project\'s history in the editor (B4)', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Historik' })).toBeNull())
   })
 
-  it('says what a version changed when it is opened, in words rather than as a patch', async () => {
-    await withHistory()
-    await openEditor()
-    fireEvent.click(screen.getByRole('button', { name: /rev 3/ }))
-    const panel = await screen.findByRole('dialog', { name: 'Historik' })
+  // The row says what its save changed (#177), so the opened row does not say it again (#702) —
+  // except when the summaries never came and the row has no line to say it with.
+  it('says what a version changed when it is opened and the row could not, in words rather than as a patch', async () => {
+    const spy = vi.spyOn(ProjectClient.prototype, 'changes').mockRejectedValue(new Error('borta'))
+    try {
+      await withHistory()
+      await openEditor()
+      fireEvent.click(screen.getByRole('button', { name: /rev 3/ }))
+      const panel = await screen.findByRole('dialog', { name: 'Historik' })
 
-    fireEvent.click(await within(panel).findByRole('button', { name: /Version 2/ }))
-    expect(await within(panel).findByText(/1 ändrade/)).toBeTruthy()
-    fireEvent.click(await within(panel).findByRole('button', { name: /Version 3/ }))
-    expect(await within(panel).findByText(/1 nya kort/)).toBeTruthy()
+      fireEvent.click(await within(panel).findByRole('button', { name: /Version 2/ }))
+      expect(await within(panel).findByText(/1 ändrade/)).toBeTruthy()
+      fireEvent.click(await within(panel).findByRole('button', { name: /Version 3/ }))
+      expect(await within(panel).findByText(/1 nya kort/)).toBeTruthy()
+    } finally {
+      spy.mockRestore()
+    }
   })
 
   it('names a version and takes the name back, without changing the game', async () => {
@@ -228,10 +235,11 @@ describe('a row in the history says what its save changed (#177)', () => {
     // And the ear hears what the eye reads, here as in every other row.
     expect(within(row).getByRole('button', { name: /Annat ändrat\./ })).toBeTruthy()
 
-    // The same is true one click in: the opened version is the one before it and the one after it,
-    // which are never the same document either.
+    // Opened, the row says it still and only once (#702): the detail does not repeat the line,
+    // and nothing in it turns the change into nothing.
     fireEvent.click(within(row).getByRole('button', { name: /Version 2/ }))
-    await waitFor(() => expect(times('Annat ändrat.')).toBe(2))
+    await within(row).findByLabelText('Namn på version 2')
+    expect(times('Annat ändrat.')).toBe(1)
     expect(panel.textContent).not.toContain('Inget ändrat')
   })
 
@@ -293,6 +301,34 @@ describe('a row in the history says what its save changed (#177)', () => {
   })
 })
 
+// An opened row that said its own line again (#702): «Spelet skapades.» under «Spelet skapades.»,
+// «mallen ändrad.» under the chip that already said it. The detail is where a version is named,
+// compared and taken back, and it does not repeat what the row it hangs off has just said.
+describe('an opened row in the history (#702)', () => {
+  it('does not repeat what the row already says', async () => {
+    await withHistory()
+    await openEditor()
+    fireEvent.click(screen.getByRole('button', { name: /rev 3/ }))
+    const panel = await screen.findByRole('dialog', { name: 'Historik' })
+    await within(panel).findAllByRole('listitem')
+    const first = panel.querySelector<HTMLElement>('[data-rev="1"]')!
+    await waitFor(() => expect(first.textContent).toContain('Spelet skapades.'))
+    const second = panel.querySelector<HTMLElement>('[data-rev="2"]')!
+    await waitFor(() => expect(second.textContent).toContain('1 ändrat'))
+
+    // Whatever the detail was waiting for has come before it is read.
+    fireEvent.click(within(first).getByRole('button', { name: /Version 1/ }))
+    await within(first).findByLabelText('Namn på version 1')
+    await waitFor(() => expect(panel.textContent).not.toContain('Läser…'))
+    expect(first.textContent!.split('Spelet skapades.')).toHaveLength(2)
+
+    fireEvent.click(within(second).getByRole('button', { name: /Version 2/ }))
+    await within(second).findByLabelText('Namn på version 2')
+    await waitFor(() => expect(panel.textContent).not.toContain('Läser…'))
+    expect(second.querySelector('.byd-history-detail')!.textContent).not.toMatch(/ändrat|ändrade/)
+  })
+})
+
 describe('holding the table against an older version (B4)', () => {
   it('starts the comparison from the history, opens the table on it, and lets it go again', async () => {
     await withHistory()
@@ -313,5 +349,25 @@ describe('holding the table against an older version (B4)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sluta jämföra' }))
     await waitFor(() => expect(screen.queryByText(/Jämför med version/)).toBeNull())
     expect(document.querySelector('[data-card-ref="dragon"]')!.getAttribute('data-change')).toBeNull()
+  })
+
+  // Taking a version back puts a new document under the table (#702). A band still saying
+  // «Jämför med version 2» over it held the table against something nobody had chosen any more.
+  it('ends the comparison when a version is taken back', async () => {
+    await withHistory()
+    await openEditor()
+    fireEvent.click(screen.getByRole('button', { name: /rev 3/ }))
+    let panel = await screen.findByRole('dialog', { name: 'Historik' })
+    fireEvent.click(await within(panel).findByRole('button', { name: /Version 2/ }))
+    fireEvent.click(await within(panel).findByRole('button', { name: 'Jämför version 2 i tabellen' }))
+    expect(await screen.findByText(/Jämför med version 2/)).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: /rev 3/ }))
+    panel = await screen.findByRole('dialog', { name: 'Historik' })
+    fireEvent.click(await within(panel).findByRole('button', { name: /Version 1/ }))
+    fireEvent.click(await within(panel).findByRole('button', { name: 'Återställ version 1' }))
+    expect(await screen.findByText(/Version 1 är tillbaka/)).toBeTruthy()
+    expect(screen.queryByText(/Jämför med version/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Sluta jämföra' })).toBeNull()
   })
 })

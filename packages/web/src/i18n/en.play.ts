@@ -264,6 +264,7 @@ export const enPlay = {
   'player.hand.left': 'Move left',
   'player.hand.right': 'Move right',
   'player.hand.empty': 'Empty hand. Draw a card from the draw pile.',
+  'player.hand.empty.none': 'Empty hand. There are no cards to draw.',
   'player.read.prev': 'Previous card',
   'player.read.next': 'Next card',
   'player.read.at': '{n} of {of}',
