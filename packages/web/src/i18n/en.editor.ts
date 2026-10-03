@@ -917,6 +917,7 @@ export const enEditor = {
   'rules.newText': 'New text.',
   'rules.booklet': 'Booklet for print',
   'rules.booklet.rendering': 'The booklet is rendering…',
+  'rules.booklet.file': '{game} – rules.pdf',
   'rules.booklet.open': 'Open the booklet',
   'rules.booklet.failed': 'The booklet was not finished. Try again.',
   'rules.booklet.noRules': 'The game has no rules to print.',

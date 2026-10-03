@@ -9,8 +9,9 @@ export type ObjectStore = {
   put(key: string, bytes: Uint8Array, contentType: string): Promise<void>
   get(key: string): Promise<Uint8Array | null>
   // A URL a browser may fetch the object from directly for `ttlSeconds`; null when the bytes
-  // have to come through the server instead.
-  link(key: string, ttlSeconds: number): Promise<string | null>
+  // have to come through the server instead. With `disposition` the store answers with that
+  // Content-Disposition, so a file opened from the link is called what it is (#678).
+  link(key: string, ttlSeconds: number, disposition?: string): Promise<string | null>
   // Throws when the store cannot be reached: what /health asks (DRIFT §2).
   check(): Promise<void>
 }
@@ -69,8 +70,11 @@ export class S3ObjectStore implements ObjectStore {
     return new Uint8Array(await res.arrayBuffer())
   }
 
-  async link(key: string, ttlSeconds: number): Promise<string | null> {
-    return signV4({ ...this.o, at: this.o.now?.() ?? new Date(), method: 'GET', url: this.url(key), headers: {}, presignSeconds: ttlSeconds }).url.toString()
+  async link(key: string, ttlSeconds: number, disposition?: string): Promise<string | null> {
+    const url = this.url(key)
+    // Signed with the rest of the link: the name cannot be changed by whoever holds it.
+    if (disposition !== undefined) url.searchParams.set('response-content-disposition', disposition)
+    return signV4({ ...this.o, at: this.o.now?.() ?? new Date(), method: 'GET', url, headers: {}, presignSeconds: ttlSeconds }).url.toString()
   }
 
   async check(): Promise<void> {

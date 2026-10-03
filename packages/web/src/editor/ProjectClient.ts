@@ -1228,13 +1228,16 @@ export class ProjectClient {
   }
 
   // Whether a rendering is finished, so a link is offered only when there is a file behind it.
+  // A 200 and nothing else: the queue's 202 is `ok` too, and read as done it put the link in
+  // front of a file that was not there yet (#678).
   async rendered(hash: string): Promise<boolean> {
     const res = await fetch(`${this.http}/faces/${hash}`, { ...withCredentials(), redirect: 'follow' })
-    return res.ok
+    return res.status === 200
   }
 
-  bookletUrl(hash: string): string {
-    return `${this.http}/faces/${hash}`
+  // The booklet under the name it is opened and saved by (#678).
+  bookletUrl(hash: string, name: string): string {
+    return `${this.http}/faces/${hash}?name=${encodeURIComponent(name)}`
   }
 
   async textures(sessionId: string): Promise<Textures> {

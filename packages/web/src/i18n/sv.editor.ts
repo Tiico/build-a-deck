@@ -1014,6 +1014,7 @@ export const svEditor = {
   'rules.newText': 'Ny text.',
   'rules.booklet': 'Häfte för tryck',
   'rules.booklet.rendering': 'Häftet renderas…',
+  'rules.booklet.file': '{game} – regler.pdf',
   'rules.booklet.open': 'Öppna häftet',
   'rules.booklet.failed': 'Häftet blev inte färdigt. Försök igen.',
   'rules.booklet.noRules': 'Spelet har inga regler att trycka.',
