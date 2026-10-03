@@ -100,6 +100,9 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   // A link with no room in it is a link to a room that does not exist.
   if (!sessionId) return <StatusNotice notice={noticeFor('missing', 'table', t)} surface="page" links={links} />
   // The host key is what opens this screen (DRIFT §9); without it the door is shut, not broken.
+  // A table whose game was taken away (#676) is gone with it: the code that stood here is spent,
+  // which is D5's «saknas», said as what happened — never «another account's», which it is not.
+  if (refused === 'the game was deleted') return <StatusNotice notice={{ ...noticeFor('missing', 'table', t), heading: t('status.deleted.table.heading'), text: t('status.deleted.table.text') }} surface="page" links={links} />
   if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'table', t), text: t('play.refused.host') }} surface="page" links={links} />
   // Nothing behind worth protecting: the message is the whole screen, in the room's own words.
   if (!view) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />

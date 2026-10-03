@@ -306,12 +306,18 @@ export class TableHost {
   async endStale(olderThan: Date): Promise<string[]> {
     const ended: string[] = []
     for (const id of await this.store.staleSessions(olderThan)) {
-      const actor = await this.get(id)
-      if (!actor) continue
-      const d = await actor.submit({ id: `end-${id}-${Date.now()}`, seat: null, intents: [{ v: 'session.end' }] })
-      if (d.ok) ended.push(id)
+      if (await this.end(id)) ended.push(id)
     }
     return ended
+  }
+
+  // Ends one table as the table itself would (C9): the log is locked and every screen at it is
+  // told. True when this call ended it; a table that had already ended is left as it is.
+  async end(id: string): Promise<boolean> {
+    const actor = await this.get(id)
+    if (!actor || actor.ended) return false
+    const d = await actor.submit({ id: `end-${id}-${Date.now()}`, seat: null, intents: [{ v: 'session.end' }] })
+    return d.ok
   }
 
   async drain(reason: string): Promise<void> {

@@ -278,6 +278,18 @@ describe('the end of a session on the table (C9)', () => {
 })
 
 describe('the host\'s screen (DRIFT §9)', () => {
+  // A game taken away takes its tables with it (#676): the owner's own screen is told that, and
+  // not that the table belongs to another account.
+  it('says the game was deleted when the owner opens a table whose game is gone', async () => {
+    const id = await createNamedSession(run, 'Sal\'s Saloon')
+    expect((await fetch(`${run.http}/projects/p-s1`, { method: 'DELETE' })).status).toBe(200)
+    history.replaceState(null, '', `/table?session=${id}&owner=1&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    expect(await screen.findByRole('heading', { name: 'Spelet är borttaget' })).toBeTruthy()
+    expect(screen.queryByText(/annat konto/)).toBeNull()
+    expect(screen.queryByText(/värdens länk/)).toBeNull()
+  })
+
   it('opens only with the host key, and shows the room code it is told rather than anything from the URL', async () => {
     const id = await createSession(run)
     history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}`)
