@@ -111,6 +111,22 @@ describe('S3ObjectStore', () => {
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]))
   })
 
+  // A booklet opened straight from R2 (#678) says what it is called: the store answers with the
+  // disposition the link asks for, and the ask is part of what is signed, so nobody can change
+  // the name on somebody else's link.
+  it('links with the disposition it is asked for, signed with the rest of the link', async () => {
+    const at = new Date('2026-10-03T12:00:00Z')
+    const fixed = new S3ObjectStore({ endpoint: 'https://acc.r2.cloudflarestorage.com', bucket: 'byd-assets', region: 'auto', accessKeyId: 'k', secretAccessKey: 's', now: () => at })
+    const disposition = `inline; filename="Skogens herrar - regler.pdf"; filename*=UTF-8''Skogens%20herrar%20%E2%80%93%20regler.pdf`
+    const url = new URL((await fixed.link('renders/abc', 600, disposition))!)
+    expect(url.searchParams.get('response-content-disposition')).toBe(disposition)
+    const unsigned = new URL('https://acc.r2.cloudflarestorage.com/byd-assets/renders/abc')
+    unsigned.searchParams.set('response-content-disposition', disposition)
+    const expected = signV4({ method: 'GET', url: unsigned, headers: {}, presignSeconds: 600, accessKeyId: 'k', secretAccessKey: 's', region: 'auto', at }).url
+    expect(url.searchParams.get('X-Amz-Signature')).toBe(expected.searchParams.get('X-Amz-Signature'))
+    expect(new URL((await fixed.link('renders/abc', 600))!).searchParams.has('response-content-disposition')).toBe(false)
+  })
+
   it('check() lists the bucket and throws when the store is unreachable', async () => {
     await expect(store.check()).resolves.toBeUndefined()
     expect(fake.requests.at(-1)).toMatch(/^GET \/byd-assets\/\?list-type=2/)

@@ -25,7 +25,7 @@ export const enPlay = {
   'ended.players.other': 'players',
   'rewind.proposal': 'Proposal',
   'rewind.looked': 'this is how the table looked {where}',
-  'rewind.waiting': '· waiting for {who}',
+  'rewind.waiting': 'waiting for {who}',
   'pile.dynamic': 'pile',
 
   'tv.join': 'join with your phone',

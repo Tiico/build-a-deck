@@ -34,7 +34,7 @@ export const svPlay = {
   'ended.players.other': 'spelare',
   'rewind.proposal': 'Förslag',
   'rewind.looked': 'så här såg bordet ut {where}',
-  'rewind.waiting': '· väntar på {who}',
+  'rewind.waiting': 'väntar på {who}',
   // En hög som bara finns för att två kort lades på varandra (K1) har inget namn från designern.
   'pile.dynamic': 'hög',
 
