@@ -188,6 +188,19 @@ describe('the seat list a lobby is told (K12, #39)', () => {
     for (const zone of ['hand:A', 'hand:B', 'draw', 'discard', 'geometry']) expect(said).not.toContain(zone)
     await Promise.all([tv.close(), lobby.close()])
   })
+
+  // That the table is over is no secret — the code answers 410 for it (#485) — and the editor's
+  // header follows its own table through a lobby (#705): told nothing of it, the band stood on
+  // after the table had ended, with kicks for seats nobody could sit in.
+  it('is told when the table ends', async () => {
+    const { id, hostKey } = await createRoom(run.http)
+    const lobby = await WireClient.connect(run.base, id, null, { role: 'lobby' })
+    expect(lobby.view?.ended).toBe(false)
+    const tv = await run.connectTable(id, hostKey)
+    expect(await tv.send(null, { v: 'session.end' })).toMatchObject({ t: 'ack' })
+    await lobby.waitFor(() => lobby.view?.ended === true)
+    await Promise.all([tv.close(), lobby.close()])
+  })
 })
 
 describe('the host', () => {
