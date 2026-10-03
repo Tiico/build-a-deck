@@ -73,7 +73,7 @@ kvar, inte enbart att strängar tagits bort.
 
 E2E skyddar kolumnradernas höjd, återställning, hjälpens träffyta och de två
 Escape-stegen vid 1280 och 1024 px. Den breda surfplattekontrollen fångade också
-att zonhjälpens negativa marginal behövde tas bort när ingen mening längre stod
-framför knappen; hela träffytan hålls nu innanför ytan.
+att zonhjälpens negativa marginal behövde kompenseras när ingen mening längre
+stod framför knappen; hela träffytan hålls nu innanför ytan.
 
 Slutresultat för kvalitetsgrinden redovisas i ändringens PR.
