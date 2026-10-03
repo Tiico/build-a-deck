@@ -54,6 +54,18 @@ describe('the room’s television gives every seat a plate (#573, beslut C)', ()
     expect(container.querySelector('.byd-token b')).toBeNull()
   })
 
+  // An empty seat was «A A»: the letter in the ball, then the letter again where the name goes
+  // (#717). The ball keeps the letter; the name's place says the seat is free.
+  it('says a seat nobody sits in is free, rather than writing its letter twice', () => {
+    const table = tableOf(felt(4))
+    const view = table.view(null)
+    expect(view.seats.every((s) => s.name === null)).toBe(true)
+    const { container } = render(<TableRenderer view={view} mode="tv" scale={1} forTheRoom />)
+    const name = container.querySelector<HTMLElement>('[data-seat-plate="A"] > b')!
+    expect(name.querySelector('i')!.textContent).toBe('A')
+    expect(name.textContent).toBe('Aledig')
+  })
+
   it('draws the plates under the cards, so a card played beside a seat is never covered', () => {
     const table = tableOf(felt(2))
     const view = table.view(null)
