@@ -15,6 +15,7 @@ import { StatusNotice } from '../status/StatusNotice.js'
 import { statusLinks, wayBack } from '../status/links.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
+import { useSessionName } from '../status/sessionName.js'
 import { useFeltKeyboard } from '../table/useFeltKeyboard.js'
 import { useActivityLive } from '../table/useActivityLive.js'
 
@@ -39,7 +40,8 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const live = useLiveStatus(conn, 'phone', timing)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
   // An ended table is not «Din hand» any more: the phone is showing the survey (#483).
-  usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code') ?? sessionId, part: view?.ended ? t('title.play.ended') : null })
+  const game = useSessionName(url.replace(/^ws/, 'http'), sessionId, !params.get('code'))
+  usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code'), game, part: view?.ended ? t('title.play.ended') : null })
   const faces = url.replace(/^ws/, 'http')
 
   const marks = useHandMarks()
