@@ -581,7 +581,10 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
   const account = opts.auth ? await accountOf(opts.auth, req) : null
   const rec = projects ? await projects.load(projectId) : null
   if (!projects || !rec) {
-    ws.close(4004, 'unknown project')
+    // Nobody logged in learns nothing of which games exist (#754): an unknown id is told to log
+    // in, the same as a game that is somebody's.
+    if (!account && opts.auth) ws.close(4401, 'log in')
+    else ws.close(4004, 'unknown project')
     return
   }
   const role = rec.owner === undefined ? 'owner' : account ? await projects.roleOf(projectId, account.id) : null
@@ -951,7 +954,11 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
   // is open to anyone, as it always was.
   const allowed = async (id: string, may: (role: Role) => boolean): Promise<{ rec: ProjectRecord; role: Role } | { status: number; error: string }> => {
     const rec = await projects.load(id)
-    if (!rec) return { status: 404, error: 'unknown project' }
+    // Whether a game exists is its owner's to know (G1, #754): ids are short readable slugs, so
+    // nobody logged in is told to log in whether the id names a game or nothing at all. Only an
+    // account learns that there is no such game. A game from before accounts is open to anyone,
+    // so its existence was never a secret.
+    if (!rec) return opts.auth && !account ? { status: 401, error: 'log in first' } : { status: 404, error: 'unknown project' }
     if (rec.owner === undefined) return { rec, role: 'owner' }
     if (!account) return { status: 401, error: 'log in first' }
     const role = await projects.roleOf(id, account.id)

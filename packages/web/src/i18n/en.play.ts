@@ -353,6 +353,7 @@ export const enPlay = {
   'join.name': 'Your name',
   'join.name.says': 'Type your name first.',
   'join.sit': 'Sit down',
+  'join.sitting': 'Sitting down…',
   'join.online': 'Play on this screen (the table and your hand here)',
   'join.observe': 'Just watch (you see everything, everyone sees you)',
 

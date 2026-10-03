@@ -122,4 +122,21 @@ describe('projects belong to accounts (G1)', () => {
     await run.projects.create('legacy', project())
     expect((await get('/projects/legacy')).status).toBe(200)
   })
+
+  // Whether a game exists is its owner's to know (G1, #754). Ids are short readable slugs, so an
+  // answer that differed between an unknown id and a real one would let anyone without an
+  // account list the games there are. Logged out, both answer «log in first», word for word;
+  // logged in, «no such game» and «someone else's» may differ, since the account is known.
+  it('answers nobody logged in the same for an unknown game as for a real one', async () => {
+    const ada = await login('ada@example.com')
+    expect((await post('/projects', { id: 'p1', ...project() }, ada)).status).toBe(201)
+    const put = (id: string) => fetch(`${run.http}/projects/${id}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...project(), rev: 1 }) })
+    for (const ask of [(id: string) => get(`/projects/${id}`), (id: string) => get(`/projects/${id}/versions`), put]) {
+      const real = await ask('p1')
+      const unknown = await ask('finns-inte')
+      expect(real.status).toBe(401)
+      expect({ status: unknown.status, body: await unknown.text() }).toEqual({ status: real.status, body: await real.text() })
+    }
+    expect((await get('/projects/finns-inte', ada)).status).toBe(404)
+  })
 })
