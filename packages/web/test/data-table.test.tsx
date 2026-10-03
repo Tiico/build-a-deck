@@ -462,6 +462,47 @@ describe('comparing with an older version in the table (B4)', () => {
     expect(within(rows[1]!).queryByText('Riddare', { selector: 's' })).toBeNull()
   })
 
+  // A version that moved only the template holds the table against itself (#702): seventy-seven
+  // rows without a mark and a band reading «mallen ändrad.» left the designer to work out that the
+  // table could never show her the difference. The band says it, and offers the tab that can.
+  it('says no card differs when only the template moved, and offers the template tab', () => {
+    const before = projectDoc()
+    before.template.faces['front']!.base.pop()
+    const opened = vi.fn()
+    render(
+      <DataTable
+        doc={projectDoc()}
+        selectedRow={null}
+        onSelectRow={() => undefined}
+        onCell={() => undefined}
+        onAddRow={() => undefined}
+        onRemoveRow={() => undefined}
+        onReplaceRows={() => undefined}
+        onAddField={() => undefined}
+        onRemoveField={() => undefined}
+        onMoveField={() => undefined}
+        compareWith={{ rev: 2, label: 'Första milstolpen', doc: before }}
+        onStopCompare={() => undefined}
+        onOpenTemplate={opened}
+      />,
+    )
+    const band = document.querySelector('.byd-data-compare')!
+    expect(band.textContent).toContain('Jämför med version 2 · Första milstolpen: Inga kort skiljer sig — skillnaden ligger i mallen.')
+    fireEvent.click(within(band as HTMLElement).getByRole('button', { name: 'Öppna Mall' }))
+    expect(opened).toHaveBeenCalledOnce()
+  })
+
+  // And where the difference is a part the table has no tab for in the band, it is still named.
+  it('names every part the difference lies in when no card differs', () => {
+    const before = projectDoc()
+    before.template.faces['front']!.base.pop()
+    before.rules = { blocks: [] } as unknown as NonNullable<typeof before.rules>
+    render(<DataTable doc={projectDoc()} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} compareWith={{ rev: 1, doc: before }} />)
+    expect(document.querySelector('.byd-data-compare')!.textContent).toContain('Inga kort skiljer sig — skillnaden ligger i mallen och reglerna.')
+    // Without a way to the template there is nothing to offer.
+    expect(screen.queryByRole('button', { name: 'Öppna Mall' })).toBeNull()
+  })
+
   it('is not in the way when nothing is being compared', () => {
     render(<DataTable doc={now()} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} />)
     expect(screen.queryByText(/Jämför med/)).toBeNull()
