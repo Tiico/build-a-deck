@@ -711,7 +711,7 @@
 .byd-setup-canvas { display: flex; flex-direction: column; gap: 8px; overflow: auto; }
 /* Without an inline instruction before it, help can be the row's first control. Keep its
    whole hit area inside the canvas instead of borrowing room from a preceding sentence. */
-.byd-setup-said > .byd-help .byd-help-ask { margin-inline: 0; }
+.byd-setup-said > .byd-help { padding-inline: calc((var(--byd-tap) - 22px) / 2); }
 .byd-setup-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: #9aa3b8; font-size: 12px; }
 /* What the surface says back: the hint, and after a removal the zone's name with the way back.
    The step back is the editor's own (B4), said here because here is where the zone went.
