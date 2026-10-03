@@ -35,6 +35,7 @@ import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
 import { Question } from './Question.js'
 import { useT, type T } from '../i18n/index.js'
 import { useGesture } from './gesture.js'
+import { lineKey } from './lineKeys.js'
 import { useSay } from '../status/StatusLive.js'
 
 export type DataTableProps = {
@@ -394,6 +395,42 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const next = shownRef.current[at + by]
     if (!next) return
     document.querySelector<HTMLElement>(`[aria-label="${CSS.escape(`${next.id} ${field}`)}"]`)?.focus()
+  }
+  // PageDown and PageUp in a cell (#692, L49): the focus goes with the page. Left to the browser
+  // they scroll the box a page and leave the cell being written in behind, out of sight — a field
+  // has no page of its own to move in. So the cell a page further down the same column takes the
+  // focus, and the box moves exactly as far as that row did, so the hand stands where it stood on
+  // the screen. A page is the box's height under its sticky head; at the table's ends it is the
+  // first or the last card.
+  const pageInColumn = (cardRef: string, field: string, by: 1 | -1) => {
+    const box = scrollRef.current
+    const rows = shownRef.current
+    const at = rows.findIndex((r) => r.id === cardRef)
+    const rowOf = (id: string) => box?.querySelector<HTMLElement>(`tr[data-card-ref="${CSS.escape(id)}"]`) ?? null
+    const from = at < 0 ? null : rowOf(cardRef)
+    if (!box || !from) return
+    const page = Math.max(box.clientHeight - (box.querySelector('thead')?.getBoundingClientRect().height ?? 0), from.getBoundingClientRect().height)
+    const top = from.getBoundingClientRect().top
+    let to: { id: string; row: HTMLElement } | null = null
+    for (let i = at + by; i >= 0 && i < rows.length; i += by) {
+      const id = rows[i]?.id
+      const row = id === undefined ? null : rowOf(id)
+      if (!id || !row) break
+      to = { id, row }
+      if (Math.abs(row.getBoundingClientRect().top - top) >= page) break
+    }
+    if (!to) return
+    box.scrollTop += to.row.getBoundingClientRect().top - top
+    to.row.querySelector<HTMLElement>(`[aria-label="${CSS.escape(`${to.id} ${field}`)}"]`)?.focus({ preventScroll: true })
+    // Where the box could not move far enough — at its ends — the row is brought into it.
+    to.row.scrollIntoView?.({ block: 'nearest' })
+  }
+  const pageKey = (cardRef: string, field: string, e: KeyboardEvent): boolean => {
+    if (e.key !== 'PageDown' && e.key !== 'PageUp') return false
+    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.nativeEvent.isComposing) return false
+    e.preventDefault()
+    pageInColumn(cardRef, field, e.key === 'PageDown' ? 1 : -1)
+    return true
   }
   // A block of cells from a paste (#479): rows by line, columns by tab, laid from this cell right
   // and down over the cards as the table shows them and the columns as it draws them. A count is
@@ -1569,6 +1606,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     onListKey={(e) => {
                       onListKey(cardRef, f, e)
                       if (e.defaultPrevented) return
+                      if (pageKey(cardRef, f, e)) return
                       // Enter is a new paragraph in prose (L39); Ctrl/Cmd+Enter goes down the
                       // column and Shift with it up, as Enter does in every other cell (#479).
                       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -1625,6 +1663,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       onListKey(cardRef, f, e)
                       if (e.defaultPrevented) return
                       if (f !== ANTAL && cellUndo(cardRef, f, e)) return
+                      if (lineKey(e) || pageKey(cardRef, f, e)) return
                       // The spreadsheet's keys (#479, beslut 2026-09-27, variant A): Enter and ↓
                       // down the column, Shift+Enter and ↑ up it.
                       const by = e.key === 'Enter' ? (e.shiftKey ? -1 : 1) : e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0
