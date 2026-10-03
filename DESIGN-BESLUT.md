@@ -3792,6 +3792,13 @@ Ett rum plus en roll är två klasser och vinner; ett rum, en roll och ett tills
 Det gäller inte bara i vila: wizardens `button:hover` är (0,2,1) och tog tillbaka linjen så fort primärknappen pekades på, och `/join`:s `form button:disabled` är (0,2,2) och tog fyllningen men inte linjen, vilket gav en grå knapp i en grön ring i det tillstånd sidan öppnar i.
 Båda mäts numera på beräknad stil, inte på att en regel finns.
 
+Tillägg 2026-10-03 (#791): **en dörr är ingen roll.**
+Editorns huvud har tre kontroller som öppnar en panel — spelets ⋯, revisionen som öppnar historiken och ansiktena som öppnar vilka som har spelet.
+Ingen av dem är en första eller andra handling, och `aria-expanded` säger att en panel hänger från dem, inte att något är valt, så de får ingen av rollernas former: ingen fyllning och ingen kant, i vila som när panelen är öppen.
+De ritas som ⋯ redan ritades: tyst bläck, editorns mörka grund under pekaren och när panelen är öppen, och fokusringen som allt annat.
+Samma läcka som ovan hade tagit två av dem: huvudets ruta `.byd-editor > header > button` (0,1,2) vann över `.byd-editor-rev` och `.byd-editor-here` (0,1,0) i varje läge.
+Rutan väljer nu bara huvudets två handlingar, med `:where()` så att rollerna väger som förut, och `button-language.test.tsx` mäter dörrarna mot ⋯ i samma läge vid 1024, 1280 och 1440.
+
 **Rummen är sju, inte fem.**
 Issuet räknade fem ytor — kontot, platsväljaren, wizarden, editorn och telefonen — men telefonens egna ark, enkäten och tillbakaspolningsfrågan öppnas också på `/online` och på `/observe`, under egna klassnamn.
 Bundna bara till `.byd-player` föll varje token tillbaka till ingenting där, och en fyllning som inte löser sig är ingen tyst knapp utan ingen deklaration alls: webbläsaren ritar sin egen gråa systemknapp på en mörk filt.
