@@ -1284,6 +1284,7 @@ export const svEditor = {
   // bordet" här, vilket var en förklaring på en annan flik av att knappen hade fel namn; knappen
   // heter numera det den gör, och meningen säger samma ord.
   'tables.none': 'Inget bord ännu. "Starta bord" startar ett från den sparade versionen.',
+  'tables.noCards': 'Leken har inga kort än. Lägg till kort i Tabell innan du startar ett bord.',
   'tables.menu.none': 'Inget bord ännu. "Starta bord" startar ett.',
   'tables.starting': 'Startar bordet…',
   'tables.started': 'Nytt bord startat: {table}.',

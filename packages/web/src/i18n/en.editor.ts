@@ -1150,6 +1150,7 @@ export const enEditor = {
   'tables.help.topic': 'the tables',
   'tables.help.life': 'A table survives everyone disconnecting. It ends when it is ended, or on its own after a day.',
   'tables.none': 'No table yet. "Start a table" starts one from the saved version.',
+  'tables.noCards': 'The deck has no cards yet. Add cards in Table before you start a table.',
   'tables.menu.none': 'No table yet. "Start a table" starts one.',
   'tables.starting': 'Starting the table…',
   'tables.started': 'New table started: {table}.',
