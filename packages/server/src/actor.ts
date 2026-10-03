@@ -117,11 +117,13 @@ export class TableActor {
   }
 
   // A tokenless lobby exists only to choose a seat. Keep the snapshot envelope so the regular
-  // client can follow seat patches, but strip the table, cards, rewind state and activity.
+  // client can follow seat patches, but strip the table, cards, rewind state and activity. That
+  // the table is over stays (#705): it is no secret — the code says 410 for it — and the editor's
+  // header follows its own table through a lobby.
   private viewFor(sub: Subscriber): Snapshot {
     const snapshot = project(this.state, this.registry, sub.seat, this.cards, this.deps.history, sub.observer !== undefined)
     if (!sub.lobby) return snapshot
-    return { ...snapshot, floor: 'lobby', zones: [], components: [], rewind: null, undo: null, ended: false }
+    return { ...snapshot, floor: 'lobby', zones: [], components: [], rewind: null, undo: null }
   }
 
   subscribe(sub: Subscriber): void {

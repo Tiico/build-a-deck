@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 01 — Namnet på små högar (#771)</title>
+<!-- PROTOTYP, #771. Kastas när en variant är vald. Observatörens draghög och kasthög vid 390 och 320 px,
+     där filten är vänd ett kvartsvarv (C8, #76) och kortet är 38 × 28 px på skärmen.
+     ?variant=nu|a|b|c|d|e&w=390|320&namn=0..4&font=roboto|dejavu
+     Måtten är avlästa ur den byggda appen (packages/e2e-stacken, observatören med `/faces` besvarat 202/500/200):
+     kortets låda, brickans plats och storlek, högnamnens och zonnamnens lådor. Högarnas lägen kommer ur
+     appens egen layout (recipe.ts via renderaren), inte ur felt.js. Reglerna för kortets tillstånd och
+     brickan är avskrivna ur packages/web/src/table/texture.css och table.css. Ingenting här importeras av appen. -->
+<link rel="stylesheet" href="proto.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400..800&display=block">
+<style>
+  /* CI:s och Linux-burkens typsnitt, för att se vad som händer om filtens eget inte når fram (K20: +12–14 %). */
+  @font-face { font-family: 'DejaVu Sans'; font-weight: 400; src: url('https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans.ttf') format('truetype'); }
+  @font-face { font-family: 'DejaVu Sans'; font-weight: 600 800; src: url('https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans-Bold.ttf') format('truetype'); }
+
+  body { overflow: auto; }
+  .sida { min-height: 100vh; display: flex; flex-direction: column; }
+  .protorad .grupp { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .protorad .grupp > span { color: #c8b98d; margin-right: 2px; }
+  .protorad button[aria-pressed='true'] { background: #ffd98a; color: #1f1b12; border-color: #ffd98a; font-weight: 700; }
+  .scen { flex: 1; padding: var(--s4) var(--s4) 120px; }
+  .rad { display: flex; flex-wrap: wrap; gap: var(--s4); align-items: flex-start; margin-bottom: var(--s5); }
+  .etikett { margin: 0 0 6px; color: var(--quiet); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; }
+  .etikett b { color: #ffd98a; letter-spacing: 0; text-transform: none; font-weight: 600; margin-left: 6px; }
+  .ruta { position: relative; overflow: hidden; background: #0d0f14; outline: 1px dashed #4a4230; }
+  .lupp { position: absolute; left: 0; top: 0; zoom: 5; }
+  table.matt { border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; margin: 0 0 var(--s5); }
+  table.matt th, table.matt td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
+  table.matt th { color: #ffd98a; font-weight: 600; background: #1f1b12; }
+  table.matt td.rod { color: #ff9a8a; }
+  table.matt td.gron { color: #7dd3a0; }
+  table.matt tr[data-aktiv] td:first-child { box-shadow: inset 3px 0 0 #ffd98a; }
+  .forklaring { max-width: 80ch; color: #c3cbdd; font-size: 13px; line-height: 1.55; margin: 0 0 var(--s4); }
+  .forklaring b { color: #fff; }
+
+  /* ── Filten, i observatörens mått ───────────────────────────────────────────────────────────── */
+  .felt { --felt-font: 'Roboto Condensed', system-ui, sans-serif; position: absolute; inset: 0; background: #151924; font-family: var(--felt-font); color: #dce3f2; }
+  .felt[data-font='dejavu'] { --felt-font: 'DejaVu Sans', sans-serif; }
+  .felt .kant { position: absolute; border: 1px solid #2a2f3d; border-radius: 14px; pointer-events: none; }
+  .felt .zon { position: absolute; font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: uppercase; color: #8b93a7; white-space: nowrap; line-height: 14.39px; }
+  /* En hög: lådan i kortets egna mått, vriden med filten. Filten vrids i appen som helhet; här vrids
+     varje hög för sig kring sin mitt, vilket ger samma pixlar för allt som ligger i högen. */
+  .byd-pile { position: absolute; box-sizing: border-box; rotate: 90deg; --unrotate: -90deg; }
+  .byd-pile .tjocklek { position: absolute; inset: 0; border-radius: 6px; border: 2px solid #1f2b4a; background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.45); }
+  .byd-pile-top { position: absolute; inset: 0; box-sizing: border-box; padding: 7px; border-radius: 6px; border: 1px solid rgba(0, 0, 0, 0.35); background: hsl(30 40% 86%); overflow: hidden; }
+  /* Den klara bilden: en liten kortframsida i stället för appens textur. */
+  .ansikte { position: absolute; inset: 0; border-radius: inherit; background: #f4ead8; }
+  .ansikte::before { content: ''; position: absolute; left: 8%; right: 8%; top: 6%; height: 12%; background: #2b2b2b; border-radius: 1px; }
+  .ansikte::after { content: ''; position: absolute; left: 8%; right: 8%; top: 34%; bottom: 20%; background: #c9b991; border-radius: 1px; }
+
+  /* ur texture.css, oförändrat */
+  .byd-texture-state { --byd-texture-bg: #232a3a; --byd-texture-sweep: #2e3750; --byd-texture-ink: #eef2fb; --byd-texture-quiet: #a7b0c4; --byd-texture-fail-bg: #3d2632; --byd-texture-fail-ink: #ffe4ea; --byd-texture-fail-quiet: #f4b9c7;
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4%; box-sizing: border-box; padding: 6%; overflow: hidden; border-radius: inherit; text-align: center; line-height: 1.25; container-type: inline-size; background: var(--byd-texture-bg); color: var(--byd-texture-quiet); }
+  .byd-texture-state > b { font-size: clamp(8px, 14cqw, 19px); font-weight: 700; color: var(--byd-texture-ink); overflow: hidden; text-overflow: ellipsis; max-width: 100%; white-space: nowrap; }
+  .byd-texture-state > i { display: none; }
+  @container (min-width: 72px) { .byd-texture-state > i { display: block; font-size: clamp(7px, 9cqw, 14px); font-style: normal; } }
+  .byd-texture-state[data-texture='pending'] { background: linear-gradient(100deg, var(--byd-texture-bg) 30%, var(--byd-texture-sweep) 50%, var(--byd-texture-bg) 70%) var(--byd-texture-bg); background-size: 300% 100%; animation: byd-texture-sweep 1.6s linear infinite; }
+  @keyframes byd-texture-sweep { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+  @media (prefers-reduced-motion: reduce) { .byd-texture-state[data-texture='pending'] { animation: none; } }
+  .byd-texture-state[data-texture='failed'] { background: var(--byd-texture-fail-bg); color: var(--byd-texture-fail-quiet); }
+  .byd-texture-state[data-texture='failed'] > b { color: var(--byd-texture-fail-ink); }
+
+  /* ur table.css: TV-lägets bricka och namn, i filtens tätaste (data-tight, #652) */
+  .byd-pile-count { position: absolute; inset: 0; rotate: var(--unrotate, 0deg); pointer-events: none; }
+  .byd-pile-name { position: absolute; left: 50%; bottom: -24px; transform: translateX(-50%); font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #7d8597; white-space: nowrap; line-height: 15.59px; }
+  .byd-pile-n { position: absolute; left: 50%; top: 0; translate: -50% 0; min-width: min(18px, 100%); height: 18px; padding: 0 3px; box-sizing: border-box; border-radius: 999px; background: #e8eaf0; color: #0d0f14; display: grid; place-items: center; font-size: 12px; font-weight: 800; }
+  .cap { display: none; }
+
+  /* ── A: på tvären som i dag, men från brickans underkant ────────────────────────────────────── */
+  .felt[data-v='a'] .byd-texture-state { container-type: size; align-items: flex-end; }
+  .felt[data-v='a'] .byd-texture-state > b { max-width: calc(100cqw - (18px - (100cqh - 100cqw) / 2 - 2.5px) - 1px); }
+
+  /* ── B: upprätt, motvriden med filtens --unrotate, i bandet under brickan ──────────────────── */
+  .felt[data-v='b'] .byd-texture-state { container-type: size; }
+  .felt[data-v='b'] .byd-texture-state > b { position: absolute; left: 50%; top: 50%; width: 100cqh; max-width: none; line-height: 10px; text-align: center;
+    transform: translate(-50%, -50%) rotate(var(--unrotate, 0deg)) translateY(calc((18px - 50cqh + 50cqw - 2.5px) / 2)); }
+
+  /* ── C: kortet bär bara sin grund; namnet står som en bildtext under högens eget namn ────────── */
+  .felt[data-v='c'] .byd-texture-state > b { display: none; }
+  .felt[data-v='c'] .cap[data-texture-caption] { display: block; position: absolute; left: 50%; bottom: -40px; translate: -50% 0; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 12px/14px var(--felt-font); color: #c9cfdc; }
+  .felt[data-v='c'] .cap[data-texture-caption='failed'] { color: #f4b9c7; }
+
+  /* ── D: under tröskeln säger kortet bara sin grund ──────────────────────────────────────────── */
+  .felt[data-v='d'] .byd-texture-state > b { display: none; }
+
+  /* ── E: en lapp på högens underkant, brickans spegelbild ──────────────────────────────────── */
+  .felt[data-v='e'] .byd-texture-state > b { display: none; }
+  .felt[data-v='e'] .byd-pile-count { container-type: size; }
+  .felt[data-v='e'] .cap[data-texture-caption] { display: block; position: absolute; left: 50%; top: calc(50cqh + 50cqw); translate: -50% -50%; max-width: 76px; box-sizing: border-box; padding: 0 4px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 11px/13px var(--felt-font); color: #eef2fb; background: #232a3a; box-shadow: 0 0 0 1px #4a5470; }
+  .felt[data-v='e'] .cap[data-texture-caption='failed'] { color: #ffe4ea; background: #3d2632; box-shadow: 0 0 0 1px #a2778a; }
+
+  /* ── Växlaren ───────────────────────────────────────────────────────────────────────────────── */
+  .vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font-weight: 700; }
+  .vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; }
+  .vaxlare .namn { padding: 0 12px; min-width: 340px; text-align: center; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="sida">
+  <div class="protorad">
+    <p><b>#771 — var kortets namn står på en liten hög när antalet täcker det.</b> <span id="om"></span></p>
+    <span class="grupp"><span>Bredd</span><button type="button" data-w="390">390</button><button type="button" data-w="320">320</button></span>
+    <span class="grupp" id="namnknappar"><span>Kortets namn</span></span>
+    <span class="grupp"><span>Typsnitt</span><button type="button" data-font="roboto">Roboto Condensed (skeppas, K20)</button><button type="button" data-font="dejavu">DejaVu (om det inte når fram)</button></span>
+  </div>
+  <div class="scen">
+    <p class="forklaring">Varje rad är ett tillstånd hos högens översta kort. Till vänster filten i <b>verklig storlek</b> (en CSS-pixel per pixel — på en telefon med 3× skärm är det vad ögat får), till höger draghögen och kasthögen <b>förstorade 5×</b>. Brickan står där #669 lämnade den, ovanpå tillståndet, och flyttas inte i någon variant.</p>
+    <div id="rader"></div>
+    <p class="etikett">Mätt här, live <b id="mattom"></b></p>
+    <table class="matt" id="live"></table>
+    <p class="etikett">Validerat i den byggda appen <b>observatören, Playwright, CSS injicerad, /faces 202 och 500</b></p>
+    <table class="matt" id="validerat"></table>
+    <p class="forklaring">«Läsbara tecken» räknar tecken som ritas (inte bortklippta, inte efter «…») och vars ruta inte skär brickans. «Tål +15 %» är K20:s grind: får namnet plats om det ritas 15 % bredare. Namnen i appens provlek är som «Björn 1» och «Grävling 1»; «Skogens väktare» och «Den gamla skogens väktare» står för ett riktigt spels längre namn.</p>
+  </div>
+</div>
+<div class="vaxlare" role="toolbar" aria-label="Prototypens växlare">
+  <button type="button" id="bak" aria-label="Föregående variant">←</button>
+  <span class="namn" id="variantnamn"></span>
+  <button type="button" id="fram" aria-label="Nästa variant">→</button>
+</div>
+<script>
+const VARIANTER = {
+  nu: { namn: 'Nu — main efter #669', om: 'Namnet står på tvären nedför kortets mitt i 8 px, och brickan på 18 px ligger över dess början. Före #669 låg namnet i stället över brickan.' },
+  a: { namn: 'A — på tvären, under brickans band', om: 'Samma riktning och storlek som i dag, men raden börjar där brickan slutar. Brickan tar mer än halva kortets höjd, så det som återstår är 11 px vid 390 och 6 px vid 320: en bokstav, eller ingen.' },
+  b: { namn: 'B — upprätt på kortet, under brickan', om: 'Namnet vrids tillbaka med filtens eget --unrotate och läggs i bandet mellan brickans underkant och kortets. Vid 390 får 33 px text plats på en rad i 8 px; vid 320 är bandet 6 px och raden går in under brickan.' },
+  c: { namn: 'C — bildtext under högens namn', om: 'Kortet bär bara sin grund (svepet medan det renderas, den röda tonen om det misslyckats) och brickan. Namnet står i 12 px under «DRAGHÖG», i tillståndets egen färg, upp till 120 px brett. Det står bara där när kortets bild inte är en bild.' },
+  d: { namn: 'D — inget namn under en storlekströskel', om: 'Jämförelsen: under tröskeln säger kortet bara sin grund. Antalet syns, namnet finns ett tryck bort (observatören håller upp kortet med ett tryck).' },
+  e: { namn: 'E — en lapp på högens underkant', om: 'Brickans spegelbild: en platta i 11 px centrerad över kortets underkant, i tillståndets färger. Den når utanför högen precis som brickan gör, och tillsammans täcker de nästan hela kortet — vid 320 syns 2 px av tillståndets grund mellan dem.' },
+}
+const NAMN = ['Lo 1', 'Björn 1', 'Grävling 1', 'Skogens väktare', 'Den gamla skogens väktare']
+// Ur den byggda appen, observatören vid 390 × 844 och 320 × 844 (getBoundingClientRect, CSS-px).
+const GEO = {
+  390: { kortW: 27.56, kortH: 38.5, filt: { x: 20, y: 105, w: 352, h: 527 }, fonster: { x: 20, y: 262, w: 352, h: 246 },
+    hogar: [{ zon: 'draw', namn: 'Draghög', n: 21, cx: 196, cy: 307.25, tjock: 7.7 }, { zon: 'discard', namn: 'Kasthög', n: 3, cx: 196, cy: 429.75, tjock: 3.6 }],
+    zoner: [['Räknare A', 66.63, 408.8], ['Räknare B', 268.53, 408.8], ['Räknare C', 103.63, 520.43], ['Framför A', 66.63, 242.73], ['Framför B', 267.86, 242.73]] },
+  320: { kortW: 22.05, kortH: 30.8, filt: { x: 20, y: 157.5, w: 282, h: 422 }, fonster: { x: 20, y: 275, w: 282, h: 226 },
+    hogar: [{ zon: 'draw', namn: 'Draghög', n: 21, cx: 161.01, cy: 319.5, tjock: 6.2 }, { zon: 'discard', namn: 'Kasthög', n: 3, cx: 161.01, cy: 417.5, tjock: 3.6 }],
+    zoner: [['Räknare A', 60.5, 397.86], ['Räknare B', 204.66, 397.86], ['Räknare C', 90.5, 482.81], ['Framför A', 60.5, 264.61], ['Framför B', 203.98, 264.61]] },
+}
+const TILLSTAND = [['pending', 'Renderas'], ['failed', 'Misslyckad'], ['ready', 'Klar']]
+
+// Mätt i appen (zz-proto-771, 2026-10-03). [variant][bredd] = { tecken per namn, överlapp, minsta px }
+const VALIDERAT = {
+  nu: { 390: ['" 1" (2/4)', '"rn 1" (4/7)', '"vl" (2/10)', '"g" (1/15)', '" g" (1/25)', 'ja, 56–100 px²', '8 px'], 320: ['"1" (1/4)', '0/7', '0/10', '0/15', '0/25', 'ja, 94–114 px²', '8 px'] },
+  a: { 390: ['"L…" (1/4)', '"B…" (1/7)', '"G…" (1/10)', '"S…" (1/15)', '"D…" (1/25)', 'nej', '8 px'], 320: ['0/4', '0/7', '0/10', '0/15', '0/25', 'nej', '8 px'] },
+  b: { 390: ['4/4', '7/7', '10/10 (tål inte +15 %)', '"Skogens…" (7/15)', '"Den gam…" (7/25)', 'nej', '8 px'], 320: ['0/4 under brickan', '0/7', '0–1/10', '1/15', '1/25', 'ja, 37 px²', '8 px'] },
+  c: { 390: ['4/4', '7/7', '10/10', '15/15 (tål +15 %)', '20/25 «…» vid 120 px', 'nej (2 px till «DRAGHÖG»)', '12 px'], 320: ['4/4', '7/7', '10/10', '15/15', '20/25', 'nej (10 px till «RÄKNARE C»)', '12 px'] },
+  d: { 390: ['0', '0', '0', '0', '0', 'nej', '— (brickan 12 px)'], 320: ['0', '0', '0', '0', '0', 'nej', '— (brickan 12 px)'] },
+  e: { 390: ['4/4', '7/7', '10/10', '"Skogens väktar…" (14/15)', '13/25', 'nej (8,5 px kort mellan)', '11 px'], 320: ['4/4', '7/7', '10/10', '14/15', '13/25', 'nej, men 1,9 px till brickan', '11 px'] },
+}
+
+const q = new URLSearchParams(location.search)
+const st = {
+  v: VARIANTER[q.get('variant')] ? q.get('variant') : 'c',
+  w: q.get('w') === '320' ? '320' : '390',
+  namn: Math.min(NAMN.length - 1, Math.max(0, Number(q.get('namn') ?? 2) || 0)),
+  font: q.get('font') === 'dejavu' ? 'dejavu' : 'roboto',
+}
+if (q.get('namn') === '0') st.namn = 0
+
+function hog(g, h, tillstand, namn) {
+  const left = h.cx - g.kortW / 2, top = h.cy - g.kortH / 2
+  const face = tillstand === 'ready'
+    ? '<span class="ansikte"></span>'
+    : '<span class="byd-texture-state" data-texture="' + tillstand + '"><b>' + namn + '</b><i>' + (tillstand === 'pending' ? 'Kortet renderas…' : 'Bilden kunde inte laddas') + '</i></span>'
+  const cap = tillstand === 'ready' ? '' : '<span class="cap" data-texture-caption="' + tillstand + '">' + namn + '</span>'
+  return '<div class="byd-pile" data-zone="' + h.zon + '" style="left:' + (left - g.fonster.x) + 'px;top:' + (top - g.fonster.y) + 'px;width:' + g.kortW + 'px;height:' + g.kortH + 'px">'
+    + '<span class="tjocklek" style="translate:0 ' + (-h.tjock) + 'px"></span>'
+    + '<div class="byd-pile-top">' + face + '</div>'
+    + '<span class="byd-pile-count"><span class="byd-pile-name">' + h.namn + '</span><b class="byd-pile-n">' + h.n + '</b>' + cap + '</span>'
+    + '</div>'
+}
+
+function filt(tillstand) {
+  const g = GEO[st.w]
+  const namn = NAMN[st.namn]
+  const f = g.filt, o = g.fonster
+  return '<div class="felt" data-v="' + st.v + '" data-font="' + st.font + '" style="width:' + o.w + 'px;height:' + o.h + 'px">'
+    + '<span class="kant" style="left:' + (f.x - o.x) + 'px;top:' + (f.y - o.y) + 'px;width:' + f.w + 'px;height:' + f.h + 'px"></span>'
+    + g.zoner.map(([t, x, y]) => '<span class="zon" style="left:' + (x - o.x) + 'px;top:' + (y - o.y) + 'px">' + t + '</span>').join('')
+    + g.hogar.map((h) => hog(g, h, tillstand, namn)).join('')
+    + '</div>'
+}
+
+function rita() {
+  const g = GEO[st.w]
+  const o = g.fonster
+  let html = ''
+  for (const [t, ord] of TILLSTAND) {
+    const lupp = (h) => {
+      const x0 = h.cx - 50 - o.x, y0 = h.cy - 30 - o.y, W = 100, H = 92
+      return '<div><p class="etikett">' + h.namn + ' ×5</p><div class="ruta" style="width:' + W * 5 + 'px;height:' + H * 5 + 'px"><div class="lupp" style="left:' + (-x0) + 'px;top:' + (-y0) + 'px;width:' + o.w + 'px;height:' + o.h + 'px">' + filt(t) + '</div></div></div>'
+    }
+    html += '<p class="etikett">' + ord + ' <b>' + t + '</b></p><div class="rad">'
+      + '<div><p class="etikett">Verklig storlek · ' + st.w + ' px</p><div class="ruta" data-skarp="' + t + '" style="width:' + o.w + 'px;height:' + o.h + 'px">' + filt(t) + '</div></div>'
+      + g.hogar.map(lupp).join('')
+      + '</div>'
+  }
+  document.getElementById('rader').innerHTML = html
+  for (const b of document.querySelectorAll('.protorad [data-w]')) b.setAttribute('aria-pressed', String(b.dataset.w === st.w))
+  for (const b of document.querySelectorAll('.protorad [data-font]')) b.setAttribute('aria-pressed', String(b.dataset.font === st.font))
+  for (const b of document.querySelectorAll('.protorad [data-namn]')) b.setAttribute('aria-pressed', String(Number(b.dataset.namn) === st.namn))
+  document.getElementById('om').textContent = VARIANTER[st.v].om
+  const ks = Object.keys(VARIANTER)
+  document.getElementById('variantnamn').textContent = VARIANTER[st.v].namn + '  (' + (ks.indexOf(st.v) + 1) + '/' + ks.length + ')'
+  history.replaceState(null, '', '?variant=' + st.v + '&w=' + st.w + '&namn=' + st.namn + '&font=' + st.font)
+  validerat()
+  document.fonts.ready.then(() => requestAnimationFrame(mat))
+}
+
+// ── Mätningen, på den skarpa (1×) filten ──────────────────────────────────────────────────────
+function lasbart(el, bricka) {
+  const cs = getComputedStyle(el)
+  if (cs.display === 'none') return null
+  const node = [...el.childNodes].find((n) => n.nodeType === 3)
+  if (!node) return null
+  let win = el.getBoundingClientRect()
+  win = { l: win.left, t: win.top, r: win.right, b: win.bottom }
+  for (let a = el.parentElement; a && !a.classList.contains('ruta'); a = a.parentElement) {
+    const s = getComputedStyle(a)
+    if (s.overflow !== 'visible') { const ar = a.getBoundingClientRect(); win = { l: Math.max(win.l, ar.left), t: Math.max(win.t, ar.top), r: Math.min(win.r, ar.right), b: Math.min(win.b, ar.bottom) } }
+  }
+  const c = document.createElement('canvas').getContext('2d'); c.font = cs.font
+  const klippt = el.scrollWidth > el.clientWidth
+  const ell = klippt ? c.measureText('…').width : 0
+  const bb = bricka.getBoundingClientRect()
+  const s = node.textContent
+  let used = 0, synligt = '', lasbara = '', under = 0
+  for (let i = 0; i < s.length; i++) {
+    const rg = document.createRange(); rg.setStart(node, i); rg.setEnd(node, i + 1)
+    const cr = rg.getBoundingClientRect()
+    used += c.measureText(s[i]).width
+    const cx = cr.left + cr.width / 2, cy = cr.top + cr.height / 2
+    const inne = cx > win.l && cx < win.r && cy > win.t && cy < win.b && (!klippt || used <= el.clientWidth - ell + 0.5)
+    if (!inne) continue
+    synligt += s[i]
+    const skar = cr.right > bb.left + 0.5 && cr.left < bb.right - 0.5 && cr.bottom > bb.top + 0.5 && cr.top < bb.bottom - 0.5
+    if (skar) under++
+    else lasbara += s[i]
+  }
+  const naturlig = c.measureText(s).width
+  const rum = el.classList.contains('cap') ? parseFloat(cs.maxWidth) - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) : el.clientWidth
+  return { text: s, synligt, lasbara, under, px: parseFloat(cs.fontSize), tal15: naturlig * 1.15 <= rum + 0.5 }
+}
+function mat() {
+  const rows = []
+  for (const [t, ord] of TILLSTAND) {
+    const ruta = document.querySelector('[data-skarp="' + t + '"]')
+    for (const pile of ruta.querySelectorAll('.byd-pile')) {
+      const bricka = pile.querySelector('.byd-pile-n')
+      const b = pile.querySelector('.byd-texture-state > b')
+      const cap = pile.querySelector('.cap')
+      const m = (cap && getComputedStyle(cap).display !== 'none' ? lasbart(cap, bricka) : null) ?? (b ? lasbart(b, bricka) : null)
+      const minsta = Math.min(parseFloat(getComputedStyle(bricka).fontSize), m ? m.px : Infinity)
+      rows.push('<tr><td>' + ord + '</td><td>' + pile.querySelector('.byd-pile-name').textContent + '</td>'
+        + (m ? '<td>' + JSON.stringify(m.synligt) + '</td><td class="' + (m.lasbara.length === m.text.length ? 'gron' : m.lasbara.length ? '' : 'rod') + '">' + m.lasbara.length + ' av ' + m.text.length + (m.lasbara ? ' — ' + JSON.stringify(m.lasbara) : '') + '</td><td class="' + (m.under ? 'rod' : 'gron') + '">' + (m.under ? 'ja, ' + m.under + ' tecken under brickan' : 'nej') + '</td><td>' + (m.tal15 ? 'ja' : 'nej') + '</td><td>' + m.px + ' px</td>'
+          : '<td colspan="5">' + (t === 'ready' ? 'bilden; inget namn ritas' : 'inget namn ritas') + '</td>')
+        + '<td>' + minsta + ' px</td></tr>')
+    }
+  }
+  document.getElementById('mattom').textContent = VARIANTER[st.v].namn + ' · ' + st.w + ' px · «' + NAMN[st.namn] + '» · ' + (st.font === 'dejavu' ? 'DejaVu' : 'Roboto Condensed')
+  document.getElementById('live').innerHTML = '<tr><th>Tillstånd</th><th>Hög</th><th>Ritas</th><th>Läsbara tecken</th><th>Överlappar brickan</th><th>Tål +15 %</th><th>Namnets px</th><th>Minsta text</th></tr>' + rows.join('')
+}
+function validerat() {
+  const head = '<tr><th>Variant</th><th>Bredd</th>' + NAMN.map((n) => '<th>«' + n + '»</th>').join('') + '<th>Överlappar brickan</th><th>Minsta text</th></tr>'
+  const rows = []
+  for (const [v, per] of Object.entries(VALIDERAT)) {
+    for (const w of ['390', '320']) {
+      rows.push('<tr' + (v === st.v && w === st.w ? ' data-aktiv' : '') + '><td>' + VARIANTER[v].namn.split(' — ')[0] + '</td><td>' + w + '</td>' + per[w].map((x) => '<td>' + x + '</td>').join('') + '</tr>')
+    }
+  }
+  document.getElementById('validerat').innerHTML = head + rows.join('')
+}
+
+const nk = document.getElementById('namnknappar')
+NAMN.forEach((n, i) => { const b = document.createElement('button'); b.type = 'button'; b.dataset.namn = String(i); b.textContent = n; nk.appendChild(b) })
+document.querySelector('.protorad').addEventListener('click', (e) => {
+  const b = e.target.closest('button')
+  if (!b) return
+  if (b.dataset.w) st.w = b.dataset.w
+  if (b.dataset.font) st.font = b.dataset.font
+  if (b.dataset.namn) st.namn = Number(b.dataset.namn)
+  rita()
+})
+const steg = (d) => { const ks = Object.keys(VARIANTER); st.v = ks[(ks.indexOf(st.v) + d + ks.length) % ks.length]; rita() }
+document.getElementById('bak').onclick = () => steg(-1)
+document.getElementById('fram').onclick = () => steg(1)
+addEventListener('keydown', (e) => {
+  if (e.target.closest && e.target.closest('input, textarea, [contenteditable]')) return
+  if (e.key === 'ArrowLeft') steg(-1)
+  if (e.key === 'ArrowRight') steg(1)
+})
+rita()
+</script>
+</body>
+</html>

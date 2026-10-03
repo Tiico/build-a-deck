@@ -52,10 +52,19 @@ const topIdOf = (z: ZoneView): string | undefined => (z.mode === 'order' ? z.ord
 export const topOf = (view: Snapshot, z: ZoneView): VisibleComponentState | undefined =>
   view.components.find((c) => c.id === topIdOf(z))
 
-// Drawing the top card off a pile onto the felt: the ring's «Dra 1». It lands beside the pile,
-// clear of its label and on the side the pile itself says (K21, #87). Written once, because the
-// ring, the panel and the `D` key all mean the same thing by it and must not drift apart (K16).
-export const drawOne = (z: ZoneView): Intent => ({ v: 'split', pile: z.id, at: 1, ...besidePile(z.geometry, 1, z.beside) })
+// Laying the top card off a pile onto the felt. It lands beside the pile, clear of its label and on
+// the side the pile itself says (K21, #87).
+export const besideOne = (z: ZoneView): Intent => ({ v: 'split', pile: z.id, at: 1, ...besidePile(z.geometry, 1, z.beside) })
+
+// The ring's «Dra 1». On a screen with a hand of its own it draws to that hand (#746, beställarens
+// beslut 2026-10-03): laid beside the pile, as it was everywhere, a new player took the obvious
+// verb and got a nameless pile and an empty hand. The table's own screen has no hand and lays the
+// card beside the pile, as before. Written once, because the ring, the panel and the `D` key all
+// mean the same thing by it and must not drift apart (K16).
+export function drawOne(view: Snapshot, z: ZoneView): Intent {
+  const hand = view.seat === null ? undefined : view.zones.find((x) => x.kind === 'hand' && x.owner === view.seat)
+  return hand ? { v: 'split', pile: z.id, at: 1, to: hand.id } : besideOne(z)
+}
 
 // A card's place on the felt, in table millimetres, for the reading order alone.
 function absolute(view: Snapshot, c: VisibleComponentState): { x: number; y: number } {
@@ -194,8 +203,10 @@ export function verbsFor(view: Snapshot, thing: Thing, t: T = swedish): Act[] {
     // a command that needs a pointer cannot be the only way to draw a card. Without this row a
     // seat with no mouse — and the table's own screen, which has no hand to draw into — had the
     // ring's four verbs and the keyboard's three.
-    { key: 'draw', label: t('ring.draw'), intents: n > 0 ? [drawOne(z)] : null },
-    ...(view.seat === null ? [] : [{ key: 'toHand', label: t('kbd.verb.toHand'), intents: n > 0 ? [{ v: 'split' as const, pile: z.id, at: 1, to: `hand:${view.seat}` }] : null }]),
+    { key: 'draw', label: t('ring.draw'), intents: n > 0 ? [drawOne(view, z)] : null },
+    // Where «Dra 1» goes to the hand, laying a card beside the pile is a row of its own, so the
+    // keyboard keeps what the hand does by dragging (#746).
+    ...(view.seat === null ? [] : [{ key: 'beside', label: t('kbd.verb.beside'), intents: n > 0 ? [besideOne(z)] : null }]),
     { key: 'half', label: t('ring.half'), hint: t('kbd.hint.half'), intents: n > 1 ? [{ v: 'split', pile: z.id, at: Math.ceil(n / 2), ...besidePile(z.geometry, Math.ceil(n / 2), z.beside) }] : null },
     // The pile's bottom card (K23), let out under the pile on the felt and held up from here so
     // the keyboard sees what the pointer sees (K16). Only a pile that has one offers it.
@@ -412,7 +423,7 @@ export function shortcutIntents(view: Snapshot, key: string, at: DragTarget | nu
   if (!z) return null
   const n = countOf(z)
   if (letter === 's') return n > 1 ? [{ v: 'shuffle', pile: z.id }] : null
-  return n > 0 ? [drawOne(z)] : null
+  return n > 0 ? [drawOne(view, z)] : null
 }
 
 // What the felt's own help says (#224). The list is the surface's and not the button's: `Esc`

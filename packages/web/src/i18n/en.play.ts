@@ -147,6 +147,7 @@ export const enPlay = {
   'kbd.verb.lookTop': 'Look at the top one',
   'kbd.verb.lookBottom': 'Look at the bottom one',
   'kbd.verb.toHand': 'Draw 1 to my hand',
+  'kbd.verb.beside': 'Lay 1 beside it',
   'kbd.hint.reveal': 'shows the card to everyone',
   'kbd.hint.look': 'only on this screen',
   'kbd.hint.half': 'a new pile beside it',
@@ -351,6 +352,7 @@ export const enPlay = {
   'join.name': 'Your name',
   'join.name.says': 'Type your name first.',
   'join.sit': 'Sit down',
+  'join.sitting': 'Sitting down…',
   'join.online': 'Play on this screen (the table and your hand here)',
   'join.observe': 'Just watch (you see everything, everyone sees you)',
 

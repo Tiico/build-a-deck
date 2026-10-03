@@ -20,6 +20,7 @@ import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ActionSheet } from './ActionSheet.js'
 import { compileStart, startsAt } from './actions.js'
 import { Question } from '../editor/Question.js'
+import { DragDoor } from '../editor/DragDoor.js'
 import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
 import { liftBox, type Edges } from './lift.js'
 import { useSmallestPt } from './smallest.js'
@@ -721,6 +722,17 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   }
   const up = (e: RPointerEvent) => release({ x: e.clientX, y: e.clientY }, edgesOf(e.currentTarget as HTMLElement))
   const cancel = () => release(null)
+  // Escape while something is carried takes the drag back (#681, K14), as the editor's (#142) and
+  // the hand's (#484) do: the thing is drawn where it lay again, nothing is sent, and the release
+  // that follows finds no drag and so neither drops nor asks. The pointer keeps its capture, so
+  // that release still comes here and not to whatever happens to be under it.
+  const callOff = () => {
+    const d = live.current
+    clearHold()
+    live.current = null
+    setDrag(null)
+    if (d?.started && d.target.kind === 'card') onPresence?.({ kind: 'drop' })
+  }
   const handlers = (target: DragTarget) => ({ onPointerDown: (e: RPointerEvent) => down(e, target), onPointerMove: move, onPointerUp: up, onPointerCancel: cancel })
   // Pointing at a card is not touching it: it only says what the screen should show large.
   const inspects = (c: VisibleComponentState | undefined) =>
@@ -1499,6 +1511,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       ) : (
         felt
       )}
+      {drag?.started && <DragDoor onCancel={callOff} />}
       {ringVerbs.length > 0 && ring && ringAt && (
         <RadialMenu
           id={ringName(ring.target)}
@@ -1713,8 +1726,9 @@ function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (in
   const flipTop = (): Intent[] => [{ v: 'flip', component: { top: z.id }, face: top?.face === 'front' ? 'back' : 'front' }]
   return [
     { label: t('ring.shuffle'), run: count > 1 ? () => act([{ v: 'shuffle', pile: z.id }]) : null },
-    // One card off the top is `drawOne`, which the panel and the `D` key send too (K16, #224).
-    { label: t('ring.draw'), run: count > 0 ? () => act([drawOne(z)]) : null },
+    // One card off the top is `drawOne`, which the panel and the `D` key send too (K16, #224): to
+    // this screen's own hand when it has one (#746), beside the pile when it has none.
+    { label: t('ring.draw'), run: count > 0 ? () => act([drawOne(view, z)]) : null },
     { label: t('ring.half'), run: count > 1 ? () => act([split(Math.ceil(count / 2))]) : null },
     { label: t('ring.flipTop'), run: count > 0 ? () => act(flipTop()) : null },
     look(top),
