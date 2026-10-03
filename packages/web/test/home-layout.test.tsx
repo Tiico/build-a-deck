@@ -87,7 +87,8 @@ describe.each([390, 320, 1280])('Mina spel at %i px (#555)', (width) => {
           lines: new Set(parts.map((part) => { const r = part.getBoundingClientRect(); return Math.round((r.top + r.bottom) / 2) })).size,
           // A part that starts a line after the first brings its dot to the front of it: «· Språk» (#728).
           starting: parts.slice(1).filter((part) => part.getBoundingClientRect().left <= parts[0]!.getBoundingClientRect().left + 1).length,
-          address: parts[0]!.getBoundingClientRect().width,
+          // In its own font's terms, since a machine's font sets how many letters a pixel holds.
+          address: parts[0]!.getBoundingClientRect().width / parseFloat(getComputedStyle(parts[0]!).fontSize),
         }
       })
       console.log(`${width} px: the account line is ${account.lines} line(s), "Öppna bordet" ${Math.round(open.width)} × ${Math.round(open.height)}`)
@@ -95,7 +96,7 @@ describe.each([390, 320, 1280])('Mina spel at %i px (#555)', (width) => {
       expect(account.parts).toBe(3)
       expect(account.starting).toBe(0)
       // The address gives way rather than the line, but stays long enough to say whose account it is.
-      expect(account.address).toBeGreaterThanOrEqual(60)
+      expect(account.address).toBeGreaterThanOrEqual(4)
       for (const content of account.led) expect(content).toMatch(/^"·"/)
     } finally {
       await page.close()
