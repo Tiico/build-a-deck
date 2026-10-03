@@ -193,18 +193,22 @@ export const svAccount = {
   // Ord guiden föreslår och som designern sedan får ändra: de skrivs på det språk spelet byggs i.
 
   // Vad som gick fel, sagt till den som läser — inte till den som skrev koden.
-  'error.members.failed': 'kunde inte läsa vilka som har spelet: {status}',
+  'error.members.failed': 'kunde inte läsa vilka som har spelet; försök igen om en stund',
   'error.invite.notOwner': 'bara ägaren kan dela spelet',
-  'error.invite.failed': 'kunde inte bjuda in: {status}',
+  'error.invite.failed': 'kunde inte bjuda in; försök igen om en stund',
   'error.invite.address': 'Det där är ingen e-postadress.',
   'error.invite.member': '{email} har redan spelet.',
   'error.invite.pending': '{email} har redan en inbjudan som väntar.',
-  'error.unshare.failed': 'kunde inte ta bort: {status}',
-  'error.invites.failed': 'kunde inte läsa inbjudningarna som väntar: {status}',
+  'error.unshare.failed': 'kunde inte ta bort; försök igen om en stund',
+  'error.unshare.notOwner': 'bara ägaren kan ta bort någon från spelet',
+  'error.invites.failed': 'kunde inte läsa inbjudningarna som väntar; försök igen om en stund',
   'error.withdraw.failed': 'Inbjudan till {email} kunde inte dras tillbaka.',
-  'error.join.failed': 'kunde inte gå med: {status}',
-  'error.startTable.failed': 'kunde inte starta ett bord: {status}',
-  'error.removeGame.failed': 'kunde inte ta bort spelet: {status}',
+  'error.join.failed': 'kunde inte gå med; försök igen om en stund',
+  'error.startTable.failed': 'kunde inte starta ett bord; försök igen om en stund',
+  'error.startTable.viewer': 'en betraktare kan inte starta bord',
+  'error.game.gone': 'spelet finns inte längre',
+  'error.removeGame.failed': 'kunde inte ta bort spelet; försök igen om en stund',
+  'error.removeGame.notOwner': 'bara ägaren kan ta bort spelet',
   'wizard.card.n': 'Kort {n}',
 
   // Att ta med sig ett spel och ta tillbaka det (G5, #529): export och import i Mina spel.
@@ -250,5 +254,5 @@ export const svAccount = {
   'home.import.problem.asset-unknown': 'Spelet använder en bild eller ett typsnitt som varken finns i zippen eller här ({hash}).',
   'home.import.problem.unplayable': 'Den senaste versionen går inte att spela: {message}',
   'home.import.problem.too-big': 'Filen är större än en import får vara.',
-  'home.import.problem.refused': 'Servern tog inte emot filen ({status}).',
+  'home.import.problem.refused': 'Servern tog inte emot filen.',
 } as const
