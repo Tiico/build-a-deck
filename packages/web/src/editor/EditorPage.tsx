@@ -522,6 +522,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onSymbol={(symbol) => client.useSymbol(symbol, undefined, t)}
         compareWith={compare ?? undefined}
         onStopCompare={() => setCompare(null)}
+        onOpenTemplate={() => setStage('canvas')}
         selectedRow={row}
         onSelectRow={setRow}
         onCell={(cardRef, field, value, gesture) => client.setCell(cardRef, field, value, gesture)}
@@ -781,8 +782,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           // Everything under the panel changed at once, and «Osparat» was the only sign of it
           // (#477). It is said in words, with the way back, and the keyboard goes back to the
           // revision it came from rather than to a button that is no longer there.
+          // A comparison held over a restore compared a document nobody had chosen any more
+          // (#702): the band stood over a table that now showed the version taken back. Taking
+          // one back ends it, and the history is where a new one starts.
           onRestored={(rev) => {
             setOver(null)
+            setCompare(null)
             confirmation.confirm(t('history.restored', { rev }))
             revRef.current?.focus()
           }}

@@ -285,3 +285,58 @@ describe('the reading views among the eyes (K26, #512)', () => {
     expect(readOf('dragon')?.textContent).toBe('Minsta text 11,5 px · under golvet 12 px')
   })
 })
+
+// Tätheten är låst medan något annat bestämmer kortets bredd (#701): guiden «på armlängds avstånd»
+// och läsvyerna ritar kortet i en bredd av sin egen. Då säger pillret varför det inte svarar, och ett
+// tryck på det får inte flytta det sparade steget — annars hoppade väggen till en annan storlek än
+// den hade när låsningen släpptes.
+describe('the density pill while a guide or a reading view holds the width (#701)', () => {
+  const wall = () => {
+    render(<DeckWall doc={projectDoc()} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} />)
+    return document.querySelector('[data-wall]') as HTMLElement
+  }
+  const pill = () => within(screen.getByRole('group', { name: 'Täthet' }))
+  const steps = () => [pill().getByRole('button', { name: /Fler kort per rad/ }), pill().getByRole('button', { name: /Färre och större kort/ })]
+  const description = (el: HTMLElement) =>
+    (el.getAttribute('aria-describedby') ?? '')
+      .split(' ')
+      .map((id) => document.getElementById(id)?.textContent ?? '')
+      .join(' ')
+      .trim()
+
+  it('is aria-disabled with the guide on, says why, and a press leaves the remembered step alone', () => {
+    localStorage.setItem('byd.wall.density', '3')
+    const el = wall()
+    for (const step of steps()) expect(step.getAttribute('aria-disabled')).toBeNull()
+    openBox(/^Guider/)
+    fireEvent.click(screen.getByLabelText(/armlängds avstånd/))
+    expect(el.style.getPropertyValue('--byd-wall-card')).toBe('90px')
+    for (const step of steps()) {
+      expect(step.getAttribute('aria-disabled')).toBe('true')
+      expect(description(step)).toBe('Bredden följer guiden')
+    }
+    fireEvent.click(steps()[1]!)
+    fireEvent.click(steps()[1]!)
+    expect(localStorage.getItem('byd.wall.density')).toBe('3')
+    // Släppt står väggen där den stod före guiden.
+    fireEvent.click(screen.getByLabelText(/armlängds avstånd/))
+    expect(el.style.getPropertyValue('--byd-wall-card')).toBe('150px')
+    for (const step of steps()) expect(step.getAttribute('aria-disabled')).toBeNull()
+  })
+
+  it('is aria-disabled in a reading view, says the view holds the width, and keeps the step', () => {
+    localStorage.setItem('byd.wall.density', '3')
+    const el = wall()
+    openBox(/^Ögon/)
+    fireEvent.click(screen.getByRole('button', { name: /^Telefonens läsvy/ }))
+    for (const step of steps()) {
+      expect(step.getAttribute('aria-disabled')).toBe('true')
+      expect(description(step)).toBe('Bredden följer läsvyn')
+    }
+    fireEvent.click(steps()[0]!)
+    fireEvent.click(steps()[0]!)
+    expect(localStorage.getItem('byd.wall.density')).toBe('3')
+    fireEvent.click(screen.getByRole('button', { name: /^Som du ser det/ }))
+    expect(el.style.getPropertyValue('--byd-wall-card')).toBe('150px')
+  })
+})
