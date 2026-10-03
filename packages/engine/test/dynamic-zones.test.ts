@@ -125,6 +125,29 @@ describe('ad hoc piles (K1)', () => {
     expect(h.zone('draw')).toHaveLength(6)
   })
 
+  // The top of a pile let go inside an area is a card in that area (K2, #680): at the point it was
+  // let go of, in the area's own coordinates as a `move` names them, and on top of what lies there.
+  it('a split into an area at a point lays the cards there, on top, in the area’s own coordinates', () => {
+    const h = new Harness()
+    h.do(null, { v: 'draw', from: 'draw', to: 'table', count: 1 })
+    const [already] = h.zone('table') as [string]
+    h.do(null, { v: 'split', pile: 'draw', at: 1, to: 'table', x: 140, y: 60 })
+    const order = h.zone('table')
+    expect(order).toHaveLength(2)
+    expect(order[0]).toBe(already)
+    expect(h.state.components[order[1]!]).toMatchObject({ zone: 'table', x: 140, y: 60 })
+    expect(h.piles()).toEqual([])
+  })
+
+  // Every log written before #680 says `to` without a point, and must replay as it was played.
+  it('a split into an area without a point keeps the old answer: the bottom of the area, where the cards were', () => {
+    const h = new Harness()
+    h.do(null, { v: 'draw', from: 'draw', to: 'table', count: 1 })
+    const [already] = h.zone('table') as [string]
+    h.do(null, { v: 'split', pile: 'draw', at: 1, to: 'table' })
+    expect(h.zone('table')[1]).toBe(already)
+  })
+
   it('rejects movePile on a non-pile and into a non-area', () => {
     const h = new Harness()
     const bad1 = h.try(null, { v: 'movePile', pile: 'table', to: 'table', x: 0, y: 0 })

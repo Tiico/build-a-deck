@@ -314,7 +314,10 @@ export function intentsForPlace(view: Snapshot, place: Place, thing: Thing, movi
   }
   if (thing.kind === 'pileTop') {
     if (place.kind === 'card' && place.anchor) return [{ v: 'stack', component: { top: thing.pile }, onto: place.anchor.id }]
-    return [{ v: 'split', pile: thing.pile, at: 1, to: place.zone }]
+    // Into an area it lies where a card moved there lies — the next place in the area's fan, and
+    // on top (#680, #461); a hand or a pile keeps its own rule and is given no place.
+    const laid = laidIn(view, place.zone)
+    return [{ v: 'split', pile: thing.pile, at: 1, to: place.zone, ...(laid ? { x: laid.x, y: laid.y } : {}) }]
   }
   // A chip stacks on nothing — the counter type is `stackable: false`, and the table says so — so
   // where a card would join the one it was sent to, a counter goes to that card's zone instead.
