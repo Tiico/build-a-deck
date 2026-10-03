@@ -1708,8 +1708,9 @@ function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (in
   const flipTop = (): Intent[] => [{ v: 'flip', component: { top: z.id }, face: top?.face === 'front' ? 'back' : 'front' }]
   return [
     { label: t('ring.shuffle'), run: count > 1 ? () => act([{ v: 'shuffle', pile: z.id }]) : null },
-    // One card off the top is `drawOne`, which the panel and the `D` key send too (K16, #224).
-    { label: t('ring.draw'), run: count > 0 ? () => act([drawOne(z)]) : null },
+    // One card off the top is `drawOne`, which the panel and the `D` key send too (K16, #224): to
+    // this screen's own hand when it has one (#746), beside the pile when it has none.
+    { label: t('ring.draw'), run: count > 0 ? () => act([drawOne(view, z)]) : null },
     { label: t('ring.half'), run: count > 1 ? () => act([split(Math.ceil(count / 2))]) : null },
     { label: t('ring.flipTop'), run: count > 0 ? () => act(flipTop()) : null },
     look(top),
