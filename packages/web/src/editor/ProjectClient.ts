@@ -71,6 +71,14 @@ export type Textures = { total: number; done: number; failed: string[]; smallest
 // A table of this game as the Bord tab lists it (#19): which session, the version it runs,
 // whether its log is locked (C9), and when it last moved.
 // `code` is the room code of a running table, given only to a role that may start one (#477).
+// A table that was ended under the editor (#705): its log is locked, so it can never take a new
+// version. The header treats it as the table going away, not as an update that failed.
+export class TableEnded extends Error {
+  constructor(readonly sessionId: string) {
+    super(`the table ${sessionId} has ended`)
+  }
+}
+
 export type TableSummary = { id: string; version: string; ended: boolean; lastAt: string | null; code?: string }
 
 // The project as the editor holds it, and its end of the actor (D3): the document, who else has
@@ -1187,6 +1195,8 @@ export class ProjectClient {
       if (!saved.ok) throw new Error(`could not save before refreshing the table: ${saved.reason}`)
     }
     const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/refresh`, withCredentials({ method: 'POST' }))
+    // The log refuses the version change once the table is over (C9): not a fault, a fact (#705).
+    if (res.status === 409) throw new TableEnded(sessionId)
     if (!res.ok) throw new Error(`could not refresh the table: ${res.status}`)
     return (await res.json()) as { version: string; seqs: number[] }
   }
