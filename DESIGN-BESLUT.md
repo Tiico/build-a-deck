@@ -997,6 +997,7 @@ Byggt 2026-09-06 (prototypat, variant "knappar i huvudet"):
 Bordsskärmen visar "Sessionen är avslutad", versionen loggen låstes på, en summering och att enkäten finns på telefonerna; bordet kan inte spelas.
 Servern avslutar bord som ingen rört på ett dygn (`IDLE_END_MS`), som bordet, en gång i timmen.
 `GET /sessions/:id` säger version och om sessionen avslutats.
+Ett spel som tas bort tar sina bord med sig (#676): `DELETE /projects/:id` avslutar varje bord som bordet självt gör, så koden slutar släppa in, telefonerna får beskedet och bordsskärmen säger att spelet är borttaget.
 
 ---
 

@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { MemoryProjectStore } from '../src/index.js'
 import { template } from './deck.js'
-import { start, twoSeatSetup, type Running } from './fixture.js'
+import WebSocket from 'ws'
+import { registerRoom, start, twoSeatSetup, type Running } from './fixture.js'
+import { WireClient } from './client.js'
 import type { ProjectDoc } from '../src/projects.js'
 
 const doc = (name = 'Skogens herrar'): ProjectDoc => {
@@ -106,6 +108,51 @@ describe('"Mina spel" over HTTP (G1)', () => {
     expect((await send('DELETE', '/projects/p1')).status).toBe(404)
     expect(((await (await send('GET', '/projects')).json()) as unknown[])).toEqual([])
   })
+
+  // «Hela historien följer med» (#676): the game's tables go with it. Each is ended as the table
+  // ends one (C9) — the log locked, every screen told — and its code stops opening a door.
+  it('ends the tables of a game that is taken away, so its code, its phones and its screen all stop', async () => {
+    await send('POST', '/projects', { id: 'p1', ...doc() })
+    const table = (await (await send('POST', '/projects/p1/sessions', {})).json()) as { id: string; code: string; hostKey: string }
+    registerRoom(table.id, table)
+    const phone = await run.connect(table.id, 'A')
+    await phone.send('A', { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    expect((await send('GET', `/rooms/${table.code}`)).status).toBe(200)
+
+    expect((await send('DELETE', '/projects/p1')).status).toBe(200)
+
+    // The phone already at the table is told it has ended, without anyone touching it.
+    await phone.waitFor(() => phone.view?.ended === true)
+    const session = (await (await send('GET', `/sessions/${table.id}`)).json()) as { ended: boolean }
+    expect(session.ended).toBe(true)
+    // The code no longer seats anyone.
+    expect((await send('GET', `/rooms/${table.code}`)).status).toBe(410)
+    expect((await send('POST', `/rooms/${table.code}/join`, { name: 'Bo', seat: 'B' })).status).toBe(410)
+    // The owner's own table screen is told the game is gone — not that it is someone else's.
+    const screen = new WebSocket(`${run.base}/sessions/${table.id}?owner=1`, { headers: { cookie, origin: 'http://test.local' } })
+    expect(await firstMessage(screen)).toEqual({ t: 'refused', reason: 'the game was deleted' })
+    screen.close()
+    await phone.close()
+  })
+
+  it('says of a table someone sat at that its game was taken away, and offers no way back to it (#676)', async () => {
+    await send('POST', '/projects', { id: 'p1', ...doc() })
+    const table = (await (await send('POST', '/projects/p1/sessions', {})).json()) as { id: string; code: string; hostKey: string }
+    registerRoom(table.id, table)
+    const token = await run.admit(table.id, 'A', 'Ada')
+    const phone = await WireClient.connect(run.base, table.id, 'A', undefined, { token })
+    await phone.send('A', { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await send('POST', '/guests/claim', { token })
+    const before = (await (await send('GET', '/me/played')).json()) as Record<string, unknown>[]
+    expect(before[0]).toMatchObject({ game: 'Skogens herrar', ended: false, code: table.code })
+    expect(before[0]).not.toHaveProperty('deleted')
+
+    await send('DELETE', '/projects/p1')
+    const after = (await (await send('GET', '/me/played')).json()) as Record<string, unknown>[]
+    expect(after[0]).toMatchObject({ game: null, deleted: true, ended: true })
+    expect(after[0]).not.toHaveProperty('code')
+    await phone.close()
+  })
 })
 
 describe('the browser is allowed to do what the API offers', () => {
@@ -127,3 +174,10 @@ describe('the browser is allowed to do what the API offers', () => {
     }
   })
 })
+
+function firstMessage(ws: WebSocket): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    ws.once('message', (raw) => resolve(JSON.parse(raw.toString())))
+    ws.once('error', reject)
+  })
+}

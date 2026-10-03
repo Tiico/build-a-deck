@@ -83,8 +83,9 @@ const ClaimBody = z.object({ token: z.string().min(1) })
 
 // The tables an account sat at (G1), newest first, each with what came of it: the game's name,
 // whether it ended, whether the survey was answered from that seat, how many moments were flagged
-// from it, and the code to come back by while the table is open and the code lives.
-export type Played = { session: string; seat: string | null; name: string; kind: 'seat' | 'observer'; at: string; game: string | null; version: string; ended: boolean; surveyed: boolean; flags: number; code?: string }
+// from it, the code to come back by while the table is open and the code lives, and whether its
+// game has been taken away since (#676).
+export type Played = { session: string; seat: string | null; name: string; kind: 'seat' | 'observer'; at: string; game: string | null; version: string; ended: boolean; surveyed: boolean; flags: number; code?: string; deleted?: true }
 async function playedBy(opts: ServerOptions, accountId: string): Promise<Played[]> {
   const out: Played[] = []
   for (const g of await opts.store.guestsOf(accountId)) {
@@ -96,7 +97,9 @@ async function playedBy(opts: ServerOptions, accountId: string): Promise<Played[
     const flags = log.filter((l) => l.intent.v === 'flag' && (g.kind === 'seat' ? l.by === g.seat : l.intent.observer === g.name)).length
     const surveyed = opts.surveys ? (await opts.surveys.list(g.sessionId)).some((s) => (g.kind === 'seat' ? s.seat === g.seat : s.observer === true && s.who === g.name)) : false
     const codeLives = session.code !== undefined && session.codeExpiresAt !== undefined && Date.parse(session.codeExpiresAt) > clock(opts).getTime()
-    out.push({ session: g.sessionId, seat: g.seat, name: g.name, kind: g.kind, at: g.issuedAt, game: project?.name ?? null, version: session.version, ended, surveyed, flags, ...(!ended && codeLives && session.code ? { code: session.code } : {}) })
+    // A table whose game was taken away (#676) says so, rather than passing for «a table».
+    const deleted = session.project !== undefined && opts.projects !== undefined && project === null
+    out.push({ session: g.sessionId, seat: g.seat, name: g.name, kind: g.kind, at: g.issuedAt, game: project?.name ?? null, version: session.version, ended, surveyed, flags, ...(!ended && codeLives && session.code ? { code: session.code } : {}), ...(deleted ? { deleted: true as const } : {}) })
   }
   return out
 }
@@ -541,6 +544,9 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
   // An editor marks its project-owner connection explicitly. Accounts verify the cookie; when
   // accounts are disabled, projects are intentionally open and the same development flow works.
   if (ask.owner) {
+    // A table whose game was taken away (#676) is not someone else's table: it is told so, and
+    // never «the host key or its owner», which sent the owner looking for another account.
+    if (session.project && opts.projects && !(await opts.projects.load(session.project))) return { refused: 'the game was deleted' }
     if (!session.project || (opts.auth && (!browserOriginAllowed(opts, req) || (await hostOf(opts, req, session)) !== 'host'))) return { refused: 'the table needs the host key or its owner' }
     if (ask.seat !== null && !session.setup.seats.includes(ask.seat)) return { refused: `unknown seat ${ask.seat}` }
     if (ask.role === 'observer') {
@@ -1368,6 +1374,10 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, gate.status, { error: gate.error })
       return true
     }
+    // And its tables go with it (#676), as the question promised: each is ended as the table ends
+    // one (C9), so its code opens no door, the phones at it are told, and no seat plays on a game
+    // that no longer exists. Ended before the game goes, so a table is never left behind.
+    for (const table of await opts.store.sessionsOf(gate.rec.id)) await opts.host.end(table.id)
     const removed = await projects.remove(gate.rec.id)
     // Everyone who has the game open is told it is gone, and the actor goes with it (#485).
     const host = editors(opts, projects)
