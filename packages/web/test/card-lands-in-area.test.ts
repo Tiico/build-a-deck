@@ -179,6 +179,31 @@ describe('samma yta nådd med tangentbordet (L47, #449)', () => {
     expect(intentsForPlace(view, place, thing, [card.id])).toEqual(playIntents(view, [card], 'mine:A'))
   })
 
+  // Och översta kortet i en hög, som raden skickade som `split` med `to` och ingen plats: kortet
+  // lade sig underst i ytan och i hörnet där det låg i högen, i stället för överst i fjädern där
+  // ett kort som flyttas dit lägger sig (#680, #461).
+  it('lägger översta kortet i en hög överst och helt innanför ytan, som ett kort', () => {
+    // Ninas två kort: ett redan i ytan framför henne, och ett i draghögen att ta därifrån.
+    const table = tableOf(felt(4, 2))
+    table.run(null, { v: 'seat.claim', seat: 'A', name: 'Nina' })
+    const [first, second] = table.view('A').components.filter((c) => c.zone === 'hand:A')
+    if (!first || !second) throw new Error('Nina har inte två kort')
+    const start = table.view('A')
+    table.run('A', ...playIntents(start, [first], 'mine:A'))
+    const deck = start.zones.find((z) => z.kind === 'pile')
+    if (!deck) throw new Error('bordet har ingen hög')
+    table.run('A', { v: 'move', component: second.id, to: deck.id })
+    const before = table.view('A')
+    const top: Thing = { key: `top:${deck.id}`, kind: 'pileTop', pile: deck.id, name: deck.name }
+    const there = placesFor(before, new Set(), deck.id).find((p) => p.zone === 'mine:A' && p.kind === 'area')
+    if (!there) throw new Error('ytan framför Nina går inte att adressera från högen')
+    table.run('A', ...intentsForPlace(before, there, top, []))
+    const after = table.view('A')
+    const zone = zoneOf(after, 'mine:A')
+    expect(zone.mode === 'order' ? zone.order : []).toEqual([first.id, second.id])
+    expect(boxes(after, 'mine:A').filter((box) => !inside(box, zone.geometry))).toEqual([])
+  })
+
   it('lägger första kortet helt innanför ytan, vilket raden aldrig gjorde', () => {
     const { table, view, card, thing, place } = onTheFelt()
     table.run('A', ...intentsForPlace(view, place, thing, [card.id]))
