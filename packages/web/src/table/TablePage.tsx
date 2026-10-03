@@ -60,7 +60,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   // Without a code — an owner who opened their own table — the game's name names it (#759).
   // A table whose game was taken away (#676) is not there, which is not the same as shut.
   const gameDeleted = refused === 'the game was deleted'
-  usePageTitle({ state: sessionId ? (gameDeleted ? 'missing' : refused ? 'forbidden' : live.state) : 'missing', room: roomCode || null, game: record?.name ?? null })
+  usePageTitle({ state: sessionId ? (gameDeleted ? 'missing' : refused ? 'forbidden' : live.state) : 'missing', room: roomCode || null, game: record?.name ?? null, part: view?.ended ? t('title.play.ended') : null })
 
   // What the screen is pointed at (C): only the TV has a panel to show it in.
   const [inspecting, setInspecting] = useState<VisibleComponentState | null>(null)
