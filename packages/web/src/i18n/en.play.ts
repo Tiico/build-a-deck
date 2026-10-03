@@ -147,6 +147,7 @@ export const enPlay = {
   'kbd.verb.lookTop': 'Look at the top one',
   'kbd.verb.lookBottom': 'Look at the bottom one',
   'kbd.verb.toHand': 'Draw 1 to my hand',
+  'kbd.verb.beside': 'Lay 1 beside it',
   'kbd.hint.reveal': 'shows the card to everyone',
   'kbd.hint.look': 'only on this screen',
   'kbd.hint.half': 'a new pile beside it',
