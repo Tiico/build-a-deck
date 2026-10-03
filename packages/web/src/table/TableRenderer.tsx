@@ -25,7 +25,7 @@ import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
 import { liftBox, type Edges } from './lift.js'
 import { useSmallestPt } from './smallest.js'
 import { Lifted } from './Lifted.js'
-import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAt, handBand, handCountAt, handExtent, handRotation, type TableMode } from './hand.js'
+import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAt, handBand, handCountAt, handRoom, handRotation, type TableMode } from './hand.js'
 import { gapAbove, nameAt, type Grow, type Rim } from './labels.js'
 import { useT, type Key, type T } from '../i18n/index.js'
 
@@ -316,7 +316,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const folded = (z: ZoneView) => foldHand !== null && z.owner === foldHand
   // What the fit has to pass into the frame is the felt *with its hands on* (#23): a hand is part
   // of the table, so a table fitted to the floor alone would clip one that reaches past the rim.
-  const felted = feltWithHands(floorRect, hands.map((z) => (folded(z) ? null : handExtent(z, floor, handRot(z)))))
+  // And a full fan's room for every hand somebody sits at (#721), so the felt stands still while
+  // hands fill and empty.
+  const seated = new Set(view.seats.filter((s) => s.name !== null).map((s) => s.id))
+  const felted = feltWithHands(floorRect, hands.map((z) => (folded(z) ? null : handRoom(z, floor, handRot(z), z.owner !== undefined && seated.has(z.owner)))))
   // A quarter turn (C5) puts the table's width where its height was, so that is the shape the
   // fit has to pass into the frame — otherwise a seat at a side edge gets a table cut off at the
   // top and bottom of its own screen.
