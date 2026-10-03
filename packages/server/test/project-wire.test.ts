@@ -106,6 +106,16 @@ describe('two people editing the same project (D3)', () => {
     await expect(Editing.open(run.base, 'p1', 'Ingen', '')).rejects.toThrow(/closed/)
     await expect(Editing.open(run.base, 'nope', 'Ada')).rejects.toThrow(/closed/)
   })
+
+  // Whether a game exists is its owner's to know (G1, #754). Nobody logged in is told to log in,
+  // the same way, whether the id names a game or nothing at all; only someone logged in learns
+  // that there is no such game.
+  it('tells nobody logged in to log in, whether or not the game exists', async () => {
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ id: 'p1', ...project() }) })
+    await expect(Editing.open(run.base, 'p1', 'Ingen', '')).rejects.toThrow('closed 4401')
+    await expect(Editing.open(run.base, 'finns-inte', 'Ingen', '')).rejects.toThrow('closed 4401')
+    await expect(Editing.open(run.base, 'finns-inte', 'Ada')).rejects.toThrow('closed 4004')
+  })
 })
 
 // A store answers in its own time: a database is a network away, and even a memory store is not
