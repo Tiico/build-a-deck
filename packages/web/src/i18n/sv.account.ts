@@ -189,6 +189,8 @@ export const svAccount = {
   'wizard.error.upload': 'En fil kunde inte laddas upp. Försök igen om en stund.',
   'wizard.error.too-big': 'En bild är för stor för att laddas upp. Välj en mindre bild.',
   'wizard.error.offline': 'Vi når inte tjänsten; kontrollera anslutningen och försök igen.',
+  'wizard.draft.unsaved': 'Utkastet sparas inte längre i den här fliken — webbläsaren har inte plats för det. Laddar du om sidan eller stänger fliken försvinner det som står här.',
+  'wizard.draft.lost-image': 'Utkastet kom tillbaka utan en eller flera bilder. Välj dem igen.',
 
   // Ord guiden föreslår och som designern sedan får ändra: de skrivs på det språk spelet byggs i.
 
