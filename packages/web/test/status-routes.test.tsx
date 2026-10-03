@@ -10,7 +10,7 @@ import { PlayerPage } from '../src/player/PlayerPage.js'
 import { JoinPage } from '../src/join/JoinPage.js'
 import { OnlinePage } from '../src/online/OnlinePage.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
-import { admit, asTable, createSession, deafServer, roomOf, startServer, type Running } from './fixture.js'
+import { admit, asTable, createNamedSession, createSession, deafServer, roomOf, startServer, type Running } from './fixture.js'
 import type { Route } from '../src/status/title.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -45,7 +45,7 @@ const LIVE: Live[] = [
 // Admission (DRIFT §9) is part of opening a route now: the table with the host key, a seat or an
 // observer with a token bought from the code, and /join with the code itself. `real` says whether
 // there is a room to be admitted to — a room that does not exist has no key to hand out.
-async function open(live: Live, opts: { session: string; url?: string; timing?: StatusTiming; real?: boolean }) {
+async function open(live: Live, opts: { session: string; url?: string; timing?: StatusTiming; real?: boolean; code?: boolean }) {
   const q = new URLSearchParams({ server: opts.url ?? run.url })
   const room = opts.real ? roomOf(opts.session) : null
   if (live.route === 'join') {
@@ -59,7 +59,7 @@ async function open(live: Live, opts: { session: string; url?: string; timing?: 
     if (live.route === 'observe') q.set('name', 'Eva')
     if (room) {
       // The code travels with everyone the join page lets in, and is what names the room.
-      q.set('code', room.code)
+      if (opts.code !== false) q.set('code', room.code)
       if (live.route === 'table') q.set('host', room.hostKey)
       else q.set('token', await admit(run, opts.session, live.seated ? 'A' : null, live.seated ? 'Ada' : 'Eva'))
     }
@@ -323,6 +323,19 @@ describe('a room that is up says which room it is in the tab', () => {
     // The room code is what a room is called out loud (DRIFT §9), so it is what the tab says.
     await waitFor(() => expect(document.title).toContain(roomOf(id).code))
     expect(document.title.endsWith('· build-your-deck')).toBe(true)
+  })
+})
+
+// A guest is never given the code (DRIFT §9), and the session's id stood in for it: the tab said
+// «Tittar på rum a25d7f3b-0c…» (#759). An id is nobody's name for a room; the game's name is.
+describe('a guest who was not given the code is told the game, never the session id', () => {
+  it.each(LIVE.filter((l) => l.route !== 'table' && l.route !== 'join'))('$path', async (live) => {
+    const id = await createNamedSession(run, "Sal's Saloon")
+    await open(live, { session: id, real: true, code: false })
+    await waitFor(() => expect(noticeState()).toBeNull())
+    await waitFor(() => expect(document.title).toContain("Sal's Saloon"))
+    expect(document.title).not.toContain(id)
+    expect(document.title).not.toMatch(/\brum\b/i)
   })
 })
 
