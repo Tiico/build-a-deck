@@ -174,6 +174,8 @@ export const enEditor = {
   'wall.density.less': 'Fewer and larger cards',
   'wall.density.px': '{px} px',
   'wall.density.said': 'Cards {px} px wide',
+  'wall.density.heldByGuide': 'The width follows the guide',
+  'wall.density.heldByReading': 'The width follows the reading view',
   'wall.foot.cards': '{n} cards',
   'wall.foot.found': '{shown} of {total} cards',
   'wall.foot.checked': 'No remarks',

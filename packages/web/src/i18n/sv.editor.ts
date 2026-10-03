@@ -201,6 +201,8 @@ export const svEditor = {
   // Bredden står i pillret mellan de två stegen (#619), inte i foten en halv skärm bort.
   'wall.density.px': '{px} px',
   'wall.density.said': 'Korten {px} px breda',
+  'wall.density.heldByGuide': 'Bredden följer guiden',
+  'wall.density.heldByReading': 'Bredden följer läsvyn',
   'wall.foot.cards': '{n} kort',
   'wall.foot.found': '{shown} av {total} kort',
   'wall.foot.checked': 'Inga anmärkningar',
