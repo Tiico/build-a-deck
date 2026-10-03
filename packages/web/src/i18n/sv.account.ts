@@ -81,7 +81,7 @@ export const svAccount = {
   'claim.failed.heading': 'Bordet kunde inte sparas',
   'claim.taken.heading': 'Bordet är redan sparat',
   'claim.error.other': 'Det här bordet är redan sparat till ett annat konto.',
-  'claim.error.unknown': 'Länken gäller inte. Gå tillbaka till telefonen och tryck på "Spara till ditt konto" igen.',
+  'claim.error.unknown': 'Länken gäller inte. Gå tillbaka till telefonen och tryck på «Spara till ditt konto» igen.',
 
   // Att följa en inbjudan till ett spel (D3).
   'invite.title': 'Inbjudan',

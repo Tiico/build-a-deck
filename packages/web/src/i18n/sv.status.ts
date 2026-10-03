@@ -71,6 +71,7 @@ export const svStatus = {
   'status.missing.mark': 'Finns inte',
   'status.missing.heading': 'Vi hittar inte det du sökte',
   'status.missing.text': 'Länken pekar på något som inte finns längre. Kontrollera adressen, eller gå till dina spel.',
+  'status.missing.text.start': 'Länken pekar på något som inte finns längre. Kontrollera adressen, eller gå till startsidan.',
   'status.missing.table.heading': 'Bordet är slut',
   'status.missing.table.text': 'Koden som stod här gäller inte längre. Starta ett nytt bord från Mina spel.',
   'status.missing.phone.heading': 'Bordet finns inte',

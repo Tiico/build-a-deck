@@ -265,7 +265,7 @@ export const svPlay = {
   // Att spola tillbaka: vart, och vem som avgör.
   'rewind.someone': 'någon annan',
   'rewind.deciders': '{others} eller {last}',
-  'rewind.before': 'före ”{what}”',
+  'rewind.before': 'före «{what}»',
   'rewind.atSeq': 'vid drag {n}',
   'rewind.mine': 'Du föreslår att spola tillbaka. Bordet visar hur det såg ut; {who} avgör.',
   'rewind.withdraw': 'Dra tillbaka förslaget',

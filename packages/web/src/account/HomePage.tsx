@@ -133,7 +133,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           {/* The dots between the parts are drawn by the stylesheet at the start of the part they
               lead, so a wrapped line never ends on one (#555). */}
           <span className="byd-who">
-            <span>{email}</span>
+            <span title={email}>{email}</span>
             <span>
               <a
                 href="/login"
