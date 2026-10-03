@@ -22,6 +22,7 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'title.play.ended': 'The table has ended',
   'title.online': 'Play',
   'title.observe': 'Watching room {code}',
+  'title.observe.game': 'Watching {game}',
   'title.observe.any': 'Watching',
   'title.prototype': 'Prototype',
   'title.unknown': 'This page is not there',

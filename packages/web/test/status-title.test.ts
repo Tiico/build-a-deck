@@ -64,6 +64,24 @@ describe('the title of a route', () => {
     expect(documentTitle('editor', { game: 'Skogens herrar', part: 'Tabell' })).toBe('Skogens herrar · Tabell · build-your-deck')
   })
 
+  // A guest is never told the code (DRIFT §9); the game's name is what they know the table by (#759).
+  it.each([
+    ['observe', 'Tittar på Skogens herrar · build-your-deck'],
+    ['play', 'Din hand · Skogens herrar · build-your-deck'],
+    ['online', 'Spela · Skogens herrar · build-your-deck'],
+    ['table', 'Bordet · Skogens herrar · build-your-deck'],
+  ] as const)('names %s by the game when there is no code', (route, expected) => {
+    expect(documentTitle(route, { game: 'Skogens herrar' })).toBe(expected)
+  })
+
+  it('names the room by its code when there is one, even with the game known', () => {
+    expect(documentTitle('observe', { room: '4KJ2', game: 'Skogens herrar' })).toBe('Tittar på rum 4KJ2 · build-your-deck')
+  })
+
+  it('says the game on an ended phone without a code', () => {
+    expect(documentTitle('play', { game: "Sal's Saloon", part: 'Bordet är avslutat' })).toBe("Bordet är avslutat · Sal's Saloon · build-your-deck")
+  })
+
   it('leaves out the room and the game rather than writing an empty gap', () => {
     expect(documentTitle('table', {})).toBe('Bordet · build-your-deck')
     expect(documentTitle('editor', {})).toBe('Editor · build-your-deck')

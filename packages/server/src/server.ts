@@ -406,7 +406,11 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const hash = face[1] ?? ''
       // In R2 (DRIFT §4): a short-lived link the browser follows and keeps for most of its
       // life, so a texture is one round trip to the house and then none.
-      const link = await opts.renders.link(hash, FACE_LINK_TTL_S)
+      // A booklet is opened by name (#678): the reader's tab and the file she saves say what it
+      // is. A face of a card is fetched by nobody's name and carries none.
+      const name = url.searchParams.get('name')
+      const disposition = name ? inlineDisposition(name) : undefined
+      const link = await opts.renders.link(hash, FACE_LINK_TTL_S, disposition)
       if (link) {
         res.writeHead(302, { location: link, 'cache-control': `private, max-age=${FACE_LINK_TTL_S - FACE_LINK_SLACK_S}` })
         res.end()
@@ -414,7 +418,13 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       }
       const bytes = await opts.renders.output(hash)
       if (bytes) {
-        res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' })
+        // The type is the file's own (#678): a booklet is a PDF, and answered as a picture it
+        // opened as a broken one.
+        res.writeHead(200, {
+          'content-type': renderedTypeOf(bytes),
+          'cache-control': 'public, max-age=31536000, immutable',
+          ...(disposition ? { 'content-disposition': disposition } : {}),
+        })
         res.end(Buffer.from(bytes))
         return
       }
@@ -436,6 +446,28 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
   } catch (err) {
     json(res, 400, { error: err instanceof Error ? err.message : String(err) })
   }
+}
+
+// What a rendering is, read off its first bytes: the queue renders PNG textures, and PDFs for
+// print and for the booklet. Anything else is bytes and is said to be.
+export function renderedTypeOf(bytes: Uint8Array): string {
+  const starts = (sig: number[]) => sig.every((b, i) => bytes[i] === b)
+  if (starts([0x25, 0x50, 0x44, 0x46, 0x2d])) return 'application/pdf'
+  if (starts([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return 'image/png'
+  return 'application/octet-stream'
+}
+
+// `inline` with the name the file is to have (RFC 6266): the name in full as UTF-8, and a plain
+// ASCII stand-in for a reader that knows only the old form. Whatever the name holds, it never
+// leaves the quoted string, so a name cannot write a header of its own.
+export function inlineDisposition(name: string): string {
+  const plain = name
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\u2010-\u2015]/g, '-')
+    .replace(/[^\x20-\x7e]|["\\]/g, '_')
+  const full = encodeURIComponent(name).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+  return `inline; filename="${plain}"; filename*=UTF-8''${full}`
 }
 
 // A face link lives an hour; the browser may reuse it for all but the last ten minutes, so a
@@ -587,7 +619,10 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
   const account = opts.auth ? await accountOf(opts.auth, req) : null
   const rec = projects ? await projects.load(projectId) : null
   if (!projects || !rec) {
-    ws.close(4004, 'unknown project')
+    // Nobody logged in learns nothing of which games exist (#754): an unknown id is told to log
+    // in, the same as a game that is somebody's.
+    if (!account && opts.auth) ws.close(4401, 'log in')
+    else ws.close(4004, 'unknown project')
     return
   }
   const role = rec.owner === undefined ? 'owner' : account ? await projects.roleOf(projectId, account.id) : null
@@ -957,7 +992,11 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
   // is open to anyone, as it always was.
   const allowed = async (id: string, may: (role: Role) => boolean): Promise<{ rec: ProjectRecord; role: Role } | { status: number; error: string }> => {
     const rec = await projects.load(id)
-    if (!rec) return { status: 404, error: 'unknown project' }
+    // Whether a game exists is its owner's to know (G1, #754): ids are short readable slugs, so
+    // nobody logged in is told to log in whether the id names a game or nothing at all. Only an
+    // account learns that there is no such game. A game from before accounts is open to anyone,
+    // so its existence was never a secret.
+    if (!rec) return opts.auth && !account ? { status: 401, error: 'log in first' } : { status: 404, error: 'unknown project' }
     if (rec.owner === undefined) return { rec, role: 'owner' }
     if (!account) return { status: 401, error: 'log in first' }
     const role = await projects.roleOf(id, account.id)
