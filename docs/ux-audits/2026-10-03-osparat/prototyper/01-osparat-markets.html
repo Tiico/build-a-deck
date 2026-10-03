@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 01 — Osparat som märke (#668)</title>
+<!-- PROTOTYP, #668 form A. Kastas när en variant är vald. Editorns huvud under 1440 px där «Osparat»
+     blir ett märke i bockens fasta ruta, så flikarna står still. ?variant=N|A1|A2|A3&w=1024|1280|1440&lang=sv|en&font=system|dejavu&luft=idag|rest.
+     Huvudets regler är avskrivna ur packages/web/src/editor/editor.css och buttons.css, med
+     @media (bredd) utbytt mot @container så att tre fönsterbredder går att visa i ett fönster.
+     Ingenting här importeras av appen. -->
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* CI:s typsnitt (fonts-dejavu-core), så att mätningen kan göras där grinden mäter. */
+  @font-face { font-family: 'DejaVu Sans'; font-weight: 400; src: url('https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans.ttf') format('truetype'); }
+  @font-face { font-family: 'DejaVu Sans'; font-weight: 600 800; src: url('https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans-Bold.ttf') format('truetype'); }
+
+  body { overflow: auto; }
+  .sida { min-height: 100vh; display: flex; flex-direction: column; }
+  .protorad .grupp { display: inline-flex; align-items: center; gap: 4px; }
+  .protorad .grupp > span { color: #c8b98d; margin-right: 2px; }
+  .protorad button[aria-pressed='true'] { background: #ffd98a; color: #1f1b12; border-color: #ffd98a; font-weight: 700; }
+  .protorad .matt { margin-left: 0; flex-wrap: wrap; }
+  .protorad .matt span { white-space: nowrap; }
+  .protorad .matt .rod u { color: #ff9a8a; }
+  .scen { flex: 1; padding: var(--s5) var(--s4) 120px; }
+  .etikett { margin: 0 0 6px; color: var(--quiet); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; }
+  .etikett b { color: #ffd98a; letter-spacing: 0; text-transform: none; font-weight: 600; margin-left: 8px; }
+  .skala { transform-origin: 0 0; }
+  .ram { position: relative; container: ram / inline-size; background: var(--chrome); outline: 1px dashed #4a4230; outline-offset: 0; }
+  .ram + .etikett { margin-top: var(--s5); }
+  .arbete { height: 120px; background: #1b1d23; display: grid; place-items: center; color: #5d6577; font-size: 12px; }
+  .rad-namn { position: absolute; right: 100%; margin-right: 8px; transform: translateY(20px); color: #c8b98d; font-size: 11px; white-space: nowrap; }
+  /* Linjen vid flikarnas kanter i sparat läge, dragen genom alla huvuden. */
+  .linje { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px dashed #ff6a5a; pointer-events: none; z-index: 5; }
+  .linje.hoger { border-left-color: #ff6a5a; }
+  .linje small { position: absolute; top: -16px; left: 3px; color: #ff9a8a; font-size: 10px; white-space: nowrap; }
+
+  /* ── Huvudet, ur editor.css ─────────────────────────────────────────────────────────────────── */
+  .ram { --tap: 44px; --quiet: #868ea3; --saved-ink: #9aa3b8; --unsaved-ink: #f0b64a; font: 13px system-ui, sans-serif; color: #ddd; }
+  .ram[data-font='dejavu'] { font-family: 'DejaVu Sans', sans-serif; }
+  .hd { min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #2f333d; background: #23262e; }
+  .hd button { white-space: nowrap; font: inherit; }
+  .hd strong { color: #fff; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 3ch; }
+  .hd .home { display: inline-flex; align-items: center; min-height: var(--tap); color: #c3cbdd; white-space: nowrap; text-decoration: none; font-weight: 600; }
+  .hd .home .pil { display: none; font-size: 18px; }
+  .hd .more { position: relative; flex: none; }
+  .hd .more > button { display: inline-grid; place-items: center; min-width: var(--tap); min-height: var(--tap); border: 0; border-radius: 6px; padding: 0; background: transparent; color: var(--quiet); cursor: pointer; }
+  .hd .rev { display: inline-flex; align-items: center; min-height: var(--tap); border: 0; background: transparent; padding: 4px; border-radius: 6px; color: var(--quiet); white-space: nowrap; cursor: pointer; }
+  .hd .saved { position: relative; color: var(--saved-ink); white-space: nowrap; }
+  .hd .saved[data-unsaved='true'] { color: var(--unsaved-ink); font-weight: 700; }
+  .hd .saved .mark { display: none; }
+  .hd .steps { display: inline-flex; gap: 2px; flex: 0 0 auto; }
+  .hd .steps button { min-width: var(--tap); min-height: var(--tap); padding: 0; border: 1px solid #2a2d36; border-radius: 8px; display: inline-grid; place-items: center; background: #0f1115; color: #dce3f2; cursor: pointer; }
+  .hd .steps button[aria-disabled='true'] { color: var(--quiet); cursor: default; }
+  .hd .steps svg { width: 20px; height: 20px; }
+  .hd .steps svg[data-mirrored] { transform: scaleX(-1); }
+  .hd [role='tablist'] { display: flex; background: #1b1d23; border-radius: 8px; padding: 4px; margin-left: 12px; }
+  .hd [role='tab'] { min-height: var(--tap); border: 0; border-radius: 6px; padding: 0 12px; background: transparent; color: #9aa3b8; font-weight: 600; cursor: pointer; }
+  .hd [role='tab'][aria-selected='true'] { border-radius: 6px 6px 0 0; box-shadow: inset 0 -3px 0 #3c8ce7; color: #fff; font-weight: 700; }
+  .hd .here { display: flex; gap: 4px; align-items: center; justify-content: center; flex: none; max-width: 140px; overflow: hidden; margin-left: 8px; border: 0; border-radius: 20px; padding: 4px 8px 4px 4px; background: transparent; cursor: pointer; }
+  .hd .here i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #e0a458; color: #10131a; font: 800 11px system-ui; font-style: normal; }
+  .hd .spacer { flex: 1; }
+  .hd > button { min-height: var(--tap); min-width: var(--tap); border-radius: 8px; padding: 0 12px; cursor: pointer; }
+  .hd > .secondary { background: transparent; border: 1px solid #6f7a90; color: #dce3f2; font-weight: 600; }
+  .hd > .secondary[aria-disabled='true'] { color: var(--quiet); cursor: default; }
+  .hd > .primary { border: 1px solid #1f6fd0; background: #1f6fd0; color: #fff; font-weight: 750; border-radius: 8px 0 0 8px; }
+  .hd .short { display: none; }
+  .hd .split { position: relative; display: inline-flex; margin-left: -12px; }
+  .hd .split > button { min-height: var(--tap); border: 1px solid #1f6fd0; background: #1f6fd0; color: #fff; border-radius: 0 8px 8px 0; padding: 8px 12px; cursor: pointer; }
+  .strip { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 8px 16px; background: #1f2a1f; color: #7dd3a0; border-bottom: 1px solid #2f333d; }
+  .strip a { color: #fff; }
+
+  @container ram (min-width: 1024px) and (max-width: 1279px) {
+    .hd { gap: 4px; padding: 0 8px; }
+    .hd [role='tablist'] { margin-left: 0; padding: 2px; }
+    .hd > .saved { font-size: 12px; }
+    .hd > .rev { padding: 4px 2px; }
+    .hd [role='tab'] { padding: 0 4px; font-size: 12px; }
+    .hd > button { padding: 0 8px; }
+    .hd > .more { margin-left: -4px; }
+    .hd > .here { max-width: var(--tap); margin-left: 0; padding: 0; }
+    .hd .split { margin-left: -4px; }
+  }
+  @container ram (max-width: 1279px) {
+    .hd .home { min-width: var(--tap); justify-content: center; }
+    .hd .home .pil { display: inline; }
+    .hd .home .ord { display: none; }
+  }
+  @container ram (min-width: 1280px) and (max-width: 1439px) {
+    .hd [role='tab'] { padding: 0 8px; }
+  }
+  @container ram (max-width: 1439px) {
+    .hd .long { display: none; }
+    .hd .short { display: inline; }
+  }
+  /* ≥1440: ordet i båda lägena, i det bredare ordets rum (#670). Samma i alla varianter. */
+  @container ram (min-width: 1440px) {
+    .hd > .saved { display: inline-flex; flex-direction: column; }
+    .hd > .saved::before, .hd > .saved::after { height: 0; overflow: hidden; visibility: hidden; }
+    .hd > .saved::before { content: attr(data-saved-word); font-weight: 400; }
+    .hd > .saved::after { content: attr(data-unsaved-word); font-weight: 700; }
+  }
+
+  /* ── Nu (i dag): bocken är ett tecken, «Osparat» ett ord (L10) ─────────────────────────────── */
+  @container ram (max-width: 1439px) {
+    .ram[data-v='N'] .hd > .saved[data-unsaved='false'] { font-size: 0; }
+    .ram[data-v='N'] .hd > .saved[data-unsaved='false']::before { content: '✓'; font-size: 16px; }
+  }
+
+  /* ── Form A: en fast ruta, bocken eller märket i den ─────────────────────────────────────────── */
+  @container ram (max-width: 1439px) {
+    .ram[data-v^='A'] .hd > .saved { display: inline-grid; place-items: center; flex: none; width: 18px; height: 18px; font-size: 16px; line-height: 1; font-weight: 400; }
+    .ram[data-v^='A'] .hd > .saved > .ord { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .ram[data-v^='A'] .hd > .saved > .mark { display: block; }
+    .ram[data-v^='A'] .hd > .saved[data-unsaved='false'] > .mark.osparat,
+    .ram[data-v^='A'] .hd > .saved[data-unsaved='true'] > .mark.sparat { display: none; }
+    .hd .mark svg { display: block; width: 16px; height: 16px; }
+    /* A3: ordet visas en gång, i en bubbla under rutan, när arbetet blir osparat — och vid pekaren. */
+    .hd .bubbla { display: none; }
+    .ram[data-v='A3'] .hd > .saved > .bubbla {
+      display: block; position: absolute; top: calc(100% + 14px); left: 50%; transform: translateX(-50%); z-index: 10;
+      padding: 4px 8px; border-radius: 6px; background: #2a2417; border: 1px solid #4a4230; color: #ffd98a;
+      font-weight: 700; font-size: 12px; line-height: 1.4; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 200ms;
+    }
+    .ram[data-v='A3'] .hd > .saved > .bubbla::before { content: ''; position: absolute; top: -5px; left: 50%; width: 8px; height: 8px; margin-left: -4px; background: #2a2417; border: 1px solid #4a4230; border-width: 1px 0 0 1px; transform: rotate(45deg); }
+    .ram[data-v='A3'] .hd > .saved[data-unsaved='true']:hover > .bubbla,
+    .ram[data-v='A3'] .hd > .saved[data-unsaved='true'][data-said] > .bubbla { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) { .hd .bubbla { transition: none; } }
+
+  /* ── Luften: radens rest går till flikarna (bara under 1440) ─────────────────────────────────── */
+  @container ram (max-width: 1439px) {
+    /* Flikraden tar nästan hela radens rest, men aldrig mer luft än 1440:s 12 px per sida: taket
+       räknas i prototypen av skriptet (taket()), i en riktig regel vore det en egen sak att lösa. */
+    .ram[data-luft='rest'] .hd [role='tablist'] { flex: 1000 0 auto; }
+    .ram[data-luft='rest'] .hd [role='tab'] { flex: 1 0 auto; }
+  }
+
+  /* Fönstrets bredd styr reglerna, men en klassisk rullningslist (Linux, CI) tar 15 px av raden. */
+  .ram[data-rull='ja'] { background: linear-gradient(to left, #3a3f4b 15px, var(--chrome) 15px); }
+  .ram[data-rull='ja'] > :not(.linje) { margin-right: 15px; }
+
+  /* ── Växlaren ───────────────────────────────────────────────────────────────────────────────── */
+  .vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font-weight: 700; }
+  .vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; }
+  .vaxlare .namn { padding: 0 12px; min-width: 320px; text-align: center; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="sida">
+  <div class="protorad">
+    <p><b>#668 form A — «Osparat» blir ett märke i bockens ruta under 1440.</b> <span id="om"></span></p>
+    <span class="grupp"><span>Bredd</span><button type="button" data-w="1024">1024</button><button type="button" data-w="1280">1280</button><button type="button" data-w="1440">1440</button></span>
+    <span class="grupp"><span>Språk</span><button type="button" data-lang="sv">sv</button><button type="button" data-lang="en">en</button></span>
+    <span class="grupp"><span>Typsnitt</span><button type="button" data-font="system">system-ui</button><button type="button" data-font="dejavu">DejaVu (CI)</button></span>
+    <span class="grupp"><span>Luft</span><button type="button" data-luft="idag">flikarnas steg i dag</button><button type="button" data-luft="rest">radens rest till flikarna</button></span>
+    <span class="grupp"><span>Rullningslist</span><button type="button" data-rull="nej">ingen (Mac)</button><button type="button" data-rull="ja">15 px (Linux)</button></span>
+    <span class="grupp"><span>Läge</span><button type="button" id="vaxla">Sparat ⇄ Osparat</button><button type="button" id="auto">Auto</button></span>
+    <div class="matt" id="matt"></div>
+    <p class="sagt" id="sagt"></p>
+  </div>
+  <div class="scen" id="scen"></div>
+</div>
+<div class="vaxlare" role="toolbar" aria-label="Prototypens växlare">
+  <button type="button" id="bak" aria-label="Föregående variant">←</button>
+  <span class="namn" id="variantnamn"></span>
+  <button type="button" id="fram" aria-label="Nästa variant">→</button>
+</div>
+<script>
+const ORD = {
+  sv: { home: 'Mina spel', saved: 'Sparat', unsaved: 'Osparat', save: 'Spara', long: 'Uppdatera bordet', short: 'Uppdatera', more: "Mer för Sal's Saloon", tabs: ['Kortvägg', 'Mall', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord'], strip: 'Bordet kör rev 1 —', open: 'öppna bordet', undo: 'Ångra', redo: 'Gör om', tablist: 'Editorlägen' },
+  en: { home: 'My games', saved: 'Saved', unsaved: 'Unsaved', save: 'Save', long: 'Update the table', short: 'Update', more: "More for Sal's Saloon", tabs: ['Card wall', 'Template', 'Data', 'Theme', 'Media', 'Rules', 'Tables'], strip: 'The table runs rev 1 —', open: 'open the table', undo: 'Undo', redo: 'Redo', tablist: 'Editor modes' },
+}
+const HOOK = (m) => '<svg viewBox="0 0 16 16" aria-hidden="true"' + (m ? ' data-mirrored' : '') + '><path d="M6 3.25 2.75 6.5 6 9.75M2.75 6.5h6.75a3.25 3.25 0 0 1 0 6.5H7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+const DOT = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="4.5" fill="currentColor"/></svg>'
+// Pennan i editorns hand: 16-rutnät, rund 1.6-linje i kontrollens färg (som glyphs.tsx).
+const PEN = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.25 2.75 13.25 5.75 5.75 13.25H2.75V10.25ZM8.5 4.5l3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+
+const VARIANTER = {
+  N: { namn: 'Nu — bock ✓ ⇄ ordet «Osparat» (i dag)', mark: null, om: 'Dagens huvud, som referens. Under 1440 är «Sparat» en bock och «Osparat» ett ord i fet amber, så flikarna hoppar och spelets namn kläms när arbetet blir osparat.' },
+  A1: { namn: 'A1 — amber punkt i bockens ruta', mark: DOT, om: 'Rutan är 18 × 18 px i båda lägena. Sparat: den grå bocken. Osparat: en fylld amber punkt, 9 px — samma tecken många redigerare använder för en osparad flik. Det tystaste märket; det sägs «Osparat» och ordet står kvar för skärmläsaren.' },
+  A2: { namn: 'A2 — amber penna i bockens ruta', mark: PEN, om: 'Samma ruta. Osparat: en penna i editorns ritsätt (16-rutnät, rund linje) i amber — «här har det skrivits». Bocken och pennan är två teckningar i samma hand, så bytet läses som ett tillstånd och inte som en ny sak. Pennan är tydligare än en punkt men kan läsas som «redigera».' },
+  A3: { namn: 'A3 — punkten, och ordet en gång i en bubbla', mark: DOT, bubbla: true, om: 'A1:s punkt, men i ögonblicket arbetet blir osparat står ordet «Osparat» i en amber bubbla under rutan i 2,5 s och tonar bort; det visas igen när pekaren vilar på punkten. Bubblan hänger under huvudet och tar ingen plats i raden. Lär ut vad punkten betyder utan att ta rummet.' },
+}
+
+const q = new URLSearchParams(location.search)
+const st = {
+  v: VARIANTER[q.get('variant')] ? q.get('variant') : 'A1',
+  w: ['1024', '1280', '1440'].includes(q.get('w')) ? q.get('w') : '1024',
+  lang: q.get('lang') === 'en' ? 'en' : 'sv',
+  font: q.get('font') === 'dejavu' ? 'dejavu' : 'system',
+  luft: q.get('luft') === 'idag' ? 'idag' : 'rest',
+  rull: q.get('rull') === 'ja' ? 'ja' : 'nej',
+  unsaved: false,
+  auto: null,
+}
+
+function huvud(unsaved, id) {
+  const o = ORD[st.lang]
+  const V = VARIANTER[st.v]
+  const mark = V.mark ? '<i class="mark sparat" aria-hidden="true" style="color:var(--saved-ink);font-style:normal">✓</i><i class="mark osparat" aria-hidden="true" style="color:var(--unsaved-ink)">' + V.mark + '</i>' : ''
+  const bubbla = V.bubbla ? '<span class="bubbla" aria-hidden="true">' + o.unsaved + '</span>' : ''
+  return '<header class="hd" id="' + id + '">'
+    + '<a class="home" href="#" aria-label="' + o.home + '"><span class="pil" aria-hidden="true">←</span><span class="ord">' + o.home + '</span></a>'
+    + "<strong>Sal's Saloon</strong>"
+    + '<span class="more"><button type="button" aria-label="' + o.more + '">⋯</button></span>'
+    + '<button type="button" class="rev" aria-expanded="false">rev 1</button>'
+    + '<span class="saved" role="status" data-unsaved="' + unsaved + '" data-saved-word="' + o.saved + '" data-unsaved-word="' + o.unsaved + '"><span class="ord">' + (unsaved ? o.unsaved : o.saved) + '</span>' + mark + bubbla + '</span>'
+    + '<span class="steps"><button type="button" aria-label="' + o.undo + '" aria-disabled="' + !unsaved + '">' + HOOK(false) + '</button><button type="button" aria-label="' + o.redo + '" aria-disabled="true">' + HOOK(true) + '</button></span>'
+    + '<nav role="tablist" aria-label="' + o.tablist + '">' + o.tabs.map((t, i) => '<button type="button" role="tab" aria-selected="' + (i === 0) + '">' + t + '</button>').join('') + '</nav>'
+    + '<button type="button" class="here" aria-label="Dela"><i>N</i></button>'
+    + '<span class="spacer"></span>'
+    + '<button type="button" class="secondary" aria-disabled="' + !unsaved + '">' + o.save + '</button>'
+    + '<button type="button" class="primary" aria-label="' + o.long + '"><span class="long">' + o.long + '</span><span class="short" aria-hidden="true">' + o.short + '</span></button>'
+    + '<span class="split"><button type="button" aria-label="Fler vägar till bordet">▾</button></span>'
+    + '</header>'
+}
+
+function rita() {
+  const o = ORD[st.lang]
+  const w = Number(st.w)
+  const skala = Math.min(1, (document.documentElement.clientWidth - 2 * 16 - 70) / w)
+  const ram = (inner) => '<div class="skala" style="width:' + w + 'px;transform:scale(' + skala + ')"><div class="ram" data-v="' + st.v + '" data-font="' + st.font + '" data-luft="' + st.luft + '" data-rull="' + st.rull + '" style="width:' + w + 'px">' + inner + '</div></div>'
+  document.getElementById('scen').innerHTML =
+    '<p class="etikett">Levande · ' + w + ' px <b id="lageord"></b></p>'
+    + '<div class="hallare" style="padding-left:70px">' + ram(huvud(st.unsaved, 'levande') + '<div class="strip">' + o.strip + ' <a href="#">' + o.open + '</a></div><div class="arbete">' + o.tabs[0] + '</div><div class="linje" id="l1"><small>första flikens kant i sparat läge</small></div><div class="linje hoger" id="l2"></div>') + '</div>'
+    + '<p class="etikett" style="margin-top:24px">Sida vid sida · samma bredd, båda lägena</p>'
+    + '<div class="hallare" style="padding-left:70px">' + ram('<div style="position:relative"><span class="rad-namn">' + o.saved + '</span>' + huvud(false, 'sparat') + '</div><div style="position:relative;margin-top:16px"><span class="rad-namn">' + o.unsaved + '</span>' + huvud(true, 'osparat') + '</div><div style="height:30px"></div><div class="linje" id="l3"></div><div class="linje hoger" id="l4"></div>') + '</div>'
+  // Skalan krymper inte lådan; sätt höjden efter den.
+  document.querySelectorAll('.skala').forEach((s) => { s.parentElement.style.height = s.firstChild.offsetHeight * skala + 'px'; s.parentElement.style.position = 'relative' })
+  document.getElementById('lageord').textContent = st.unsaved ? '— ' + o.unsaved : '— ' + o.saved
+  if (st.unsaved && VARIANTER[st.v].bubbla) said()
+  for (const b of document.querySelectorAll('.protorad [data-w]')) b.setAttribute('aria-pressed', String(b.dataset.w === st.w))
+  for (const b of document.querySelectorAll('.protorad [data-lang]')) b.setAttribute('aria-pressed', String(b.dataset.lang === st.lang))
+  for (const b of document.querySelectorAll('.protorad [data-font]')) b.setAttribute('aria-pressed', String(b.dataset.font === st.font))
+  for (const b of document.querySelectorAll('.protorad [data-luft]')) b.setAttribute('aria-pressed', String(b.dataset.luft === st.luft))
+  for (const b of document.querySelectorAll('.protorad [data-rull]')) b.setAttribute('aria-pressed', String(b.dataset.rull === st.rull))
+  document.getElementById('auto').setAttribute('aria-pressed', String(!!st.auto))
+  document.getElementById('om').textContent = VARIANTER[st.v].om
+  const ks = Object.keys(VARIANTER)
+  document.getElementById('variantnamn').textContent = VARIANTER[st.v].namn + '  (' + (ks.indexOf(st.v) + 1) + '/' + ks.length + ')'
+  history.replaceState(null, '', '?variant=' + st.v + '&w=' + st.w + '&lang=' + st.lang + '&font=' + st.font + '&luft=' + st.luft + '&rull=' + st.rull)
+  document.fonts.ready.then(() => requestAnimationFrame(mat))
+}
+
+let saidTimer = null
+function said() {
+  const s = document.querySelector('#levande .saved')
+  if (!s) return
+  requestAnimationFrame(() => s.setAttribute('data-said', ''))
+  clearTimeout(saidTimer)
+  saidTimer = setTimeout(() => s.removeAttribute('data-said'), 2500)
+}
+
+// ── Mätningen ────────────────────────────────────────────────────────────────────────────────
+function lum(hex) {
+  const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+}
+const kontrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return ((x + 0.05) / (y + 0.05)).toFixed(2) }
+
+function textRect(el) {
+  const r = document.createRange()
+  r.selectNodeContents(el)
+  return r.getBoundingClientRect()
+}
+function matHuvud(h, ram, skala) {
+  const x0 = ram.getBoundingClientRect().left
+  const tabs = [...h.querySelectorAll('[role=tab]')]
+  const tr = tabs.map(textRect)
+  let luft = Infinity
+  for (let i = 0; i + 1 < tr.length; i++) luft = Math.min(luft, tr[i + 1].left - tr[i].right)
+  const name = h.querySelector('strong')
+  const sp = h.querySelector('.spacer')
+  const list = h.querySelector('[role=tablist]')
+  return {
+    forsta: (tabs[0].getBoundingClientRect().left - x0) / skala,
+    sista: (list.getBoundingClientRect().right - x0) / skala,
+    luft: luft / skala,
+    rest: sp.offsetParent ? sp.getBoundingClientRect().width / skala : 0,
+    namn: name.clientWidth,
+    namnHel: name.scrollWidth,
+    status: h.querySelector('.saved').getBoundingClientRect().width / skala,
+  }
+}
+function taket() {
+  for (const list of document.querySelectorAll('.ram[data-luft="rest"] [role=tablist]')) {
+    list.style.maxWidth = ''
+    if (Number(st.w) >= 1440) continue
+    const tabs = [...list.querySelectorAll('[role=tab]')]
+    const text = tabs.reduce((n, t) => n + textRect(t).width, 0) / (list.getBoundingClientRect().width / list.offsetWidth || 1)
+    const pad = parseFloat(getComputedStyle(list).paddingLeft) * 2
+    list.style.maxWidth = Math.ceil(text + tabs.length * 24 + pad) + 'px'
+  }
+}
+function mat() {
+  taket()
+  const ramar = document.querySelectorAll('.ram')
+  const skala = ramar[0].getBoundingClientRect().width / ramar[0].offsetWidth
+  const s = matHuvud(document.getElementById('sparat'), ramar[1], skala)
+  const u = matHuvud(document.getElementById('osparat'), ramar[1], skala)
+  const px = (n) => Math.round(n)
+  const lagd = (id, x, text) => { const l = document.getElementById(id); l.style.left = x + 'px'; if (text != null) l.querySelector('small') && (l.querySelector('small').textContent = text) }
+  lagd('l1', s.forsta); lagd('l2', s.sista); lagd('l3', s.forsta); lagd('l4', s.sista)
+  const hopp = Math.abs(u.forsta - s.forsta)
+  const v = VARIANTER[st.v]
+  const under = Number(st.w) < 1440
+  const mark = under && v.mark ? kontrast('#f0b64a', '#23262e') + ':1 (amber mot huvudet)' : '—'
+  const cell = (rubrik, a, b, rod) => '<span' + (rod ? ' class="rod"' : '') + '>' + rubrik + ' <u>' + a + '</u> / <u>' + b + '</u></span>'
+  document.getElementById('matt').innerHTML =
+    '<span>Mätt i ' + (st.font === 'dejavu' ? 'DejaVu' : 'detta system-ui') + ', sparat / osparat:</span>'
+    + '<span' + (hopp >= 0.5 ? ' class="rod"' : '') + '>flikarna flyttar <u>' + px(hopp) + ' px</u></span>'
+    + cell('minsta luft mellan flikar', px(s.luft) + ' px', px(u.luft) + ' px')
+    + cell('radens rest', px(s.rest) + ' px', px(u.rest) + ' px')
+    + cell("namnet syns", s.namn + '/' + s.namnHel, u.namn + '/' + u.namnHel + ' px', u.namn < u.namnHel || s.namn < s.namnHel)
+    + cell('statusens bredd', px(s.status) + ' px', px(u.status) + ' px')
+    + '<span>märkets kontrast <u>' + mark + '</u> · bocken <u>' + kontrast('#9aa3b8', '#23262e') + ':1</u>' + (v.bubbla && under ? ' · bubblans ord <u>' + kontrast('#ffd98a', '#2a2417') + ':1</u>' : '') + '</span>'
+  const o = ORD[st.lang]
+  document.getElementById('sagt').innerHTML = 'Skärmläsaren: statusen är en <em>role="status"</em> och säger <em>«' + (st.unsaved ? o.unsaved : o.saved) + '»</em> när läget byts' + (under && v.mark ? '; märket och bocken är aria-hidden, ordet står kvar visuellt dolt i rutan.' : '.') + ' Ingenting i märket är en kontroll: ingen fyllning, ingen kant, inget mål (L13).'
+}
+
+function byt(steg) {
+  const ks = Object.keys(VARIANTER)
+  st.v = ks[(ks.indexOf(st.v) + steg + ks.length) % ks.length]
+  rita()
+}
+function vaxla() {
+  st.unsaved = !st.unsaved
+  const s = document.querySelector('#levande .saved')
+  const o = ORD[st.lang]
+  s.dataset.unsaved = String(st.unsaved)
+  s.querySelector('.ord').textContent = st.unsaved ? o.unsaved : o.saved
+  document.querySelectorAll('#levande .steps button')[0].setAttribute('aria-disabled', String(!st.unsaved))
+  document.querySelector('#levande .secondary').setAttribute('aria-disabled', String(!st.unsaved))
+  document.getElementById('lageord').textContent = '— ' + (st.unsaved ? o.unsaved : o.saved)
+  if (st.unsaved && VARIANTER[st.v].bubbla) said()
+  mat()
+}
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('button, a')
+  if (!t) return
+  if (t.tagName === 'A') e.preventDefault()
+  const d = t.dataset
+  if (t.id === 'bak') return byt(-1)
+  if (t.id === 'fram') return byt(1)
+  if (t.id === 'vaxla') return vaxla()
+  if (t.id === 'auto') {
+    if (st.auto) { clearInterval(st.auto); st.auto = null } else st.auto = setInterval(vaxla, 1400)
+    return document.getElementById('auto').setAttribute('aria-pressed', String(!!st.auto))
+  }
+  for (const k of ['w', 'lang', 'font', 'luft', 'rull']) if (d[k]) { st[k] = d[k]; return rita() }
+})
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft') byt(-1)
+  if (e.key === 'ArrowRight') byt(1)
+  if (e.key === ' ' && e.target === document.body) { e.preventDefault(); vaxla() }
+})
+addEventListener('resize', rita)
+rita()
+</script>
+</body>
+</html>
