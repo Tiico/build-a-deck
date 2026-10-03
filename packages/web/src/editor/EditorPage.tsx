@@ -626,9 +626,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         {/* Whether the work is safe, in words and in colour (#8). It is a live region, so the
             change from saved to unsaved and back is spoken as it happens rather than found by
             someone going looking for a greyed-out button. Both words ride along as attributes,
-            so the status can hold the room of the wider one and the row after it stays put (#668). */}
+            so the status can hold the room of the wider one and the row after it stays put (#668).
+            Below 1440 the word is read and not drawn: a tick or an amber dot is drawn instead, in
+            one fixed box, and the mark is hidden so the status says exactly the word (#668, A1). */}
         <span className="byd-editor-saved" role="status" data-unsaved={unsaved} data-saved-word={t('editor.saved')} data-unsaved-word={t('editor.unsaved')}>
-          {t(unsaved ? 'editor.unsaved' : 'editor.saved')}
+          <span className="byd-editor-saved-word">{t(unsaved ? 'editor.unsaved' : 'editor.saved')}</span>
+          <span className="byd-editor-saved-mark" aria-hidden="true" />
         </span>
         {client.mayEdit && <StepButtons client={client} onConfirm={confirmation.confirm} />}
         {/* The modes are the header's on a desk; below one they are the stage strip at the

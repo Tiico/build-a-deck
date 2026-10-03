@@ -3704,6 +3704,23 @@ Två varianter avvisades: textknappen «Ångra: …» bredvid sparstatusen, som 
 Knapparna i huvudet förutsätter att sidan inte rullar på en låg platta, vilket #567 kräver.
 Prototypen och mätningarna står i #566 och i `docs/ux-audits/2026-09-29/prototyper/566/`; grinden är `packages/e2e/test/editor-undo-buttons.spec.ts`.
 
+**Reviderat 2026-10-03: under 1440 är «Osparat» en amber prick i bockens ruta (#668, A1).**
+Meningen ovan om att «Osparat» står kvar i ord och färg gäller inte längre under 1440 px; där står det nu i färg och märke.
+Ordet tog 35–50 px som raden aldrig hade: de togs från spelets namn, som klipptes till «Sal's Sal…» (91–97 av 102 px med DejaVu), och flikraden hoppade 29–44 px i sidled varje gång arbetet växlade mellan sparat och osparat.
+Statusen är nu en fast ruta på 14 × 14 px i båda lägena: den grå bocken när arbetet är sparat, en fylld amber prick på 9 px när det inte är det.
+14 px och inte `--byd-tick`:s 18, eftersom bocken mäter 13 px i DejaVu och 13,5 px i SF Pro, och 18 hade tagit 4–5 px av raden.
+Ordet «Osparat» eller «Sparat» ligger visuellt dolt i `role="status"`, så en skärmläsare hör exakt det den hörde förut, och märket är `aria-hidden`.
+Pricken är ett märke och ingen kontroll (L13): ingen fyllning runt den, ingen kant, inget mål.
+Amber `#f0b64a` mot huvudets `#23262e` ger 8.28:1.
+Vid 1440 och bredare står ordet kvar i båda lägena, i det bredare ordets rum (#670).
+Det som blir över i raden går till flikarnas luft, upp till 1440:s 12 px per sida: flikraden växer in i radens rest innan mellanrummet får något, och aldrig in i det spelets namn behöver.
+Det är ren CSS — varje flik har två tomma kolumner bredvid sitt ord som är noll vid flikens minsta bredd och högst 8 px (1024) eller 4 px (1280) vid dess största — så det håller i vilket typsnitt och språk som helst.
+Mätt i den byggda appen med ett bord igång: flikarna flyttar 0 px mellan sparat och osparat vid 1024 och 1280 på svenska och engelska, namnet läses helt i båda lägena, och luften per sida vid 1024 gick från 4 px till 9 px (sv) och 10 px (en) med SF Pro; vid 1280 når den taket på 12 px.
+Två andra märken prototypades och valdes bort.
+En amber penna (A2) syntes tydligare än pricken, men bredvid ångra och gör om lästes den som en tredje knapp, för att redigera.
+Pricken med ordet en gång i en bubbla (A3) lärde ut tecknet, men bubblan kom tillbaka vid varje första ändring efter en sparning och täckte då bordsremsan.
+Prototypen står i `docs/ux-audits/2026-10-03-osparat/prototyper/01-osparat-markets.html`; grinden är `packages/e2e/test/surfaces/editor-header-fit.spec.ts`.
+
 **Tillägg 2026-09-30: en fin pekare är skrivbord, oavsett bredd (#550).**
 Gränsen ovan går vid vem som håller ytan, men rummet i L10 avgjordes av bredden ensam.
 Ett skrivbord zoomat till 200 % är 640 px brett och vid 400 % 320 px, och bredden kallade det en telefon: `Mall` försvann ur editorn för precis den formgivare som hade zoomat in för att kunna arbeta.
