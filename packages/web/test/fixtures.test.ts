@@ -178,9 +178,10 @@ describe('the surfaces `editor-viewport.test.tsx` builds (#149)', () => {
     //
     // Six since #184, when the written rulebook joined the sweeps and became the sixth surface the
     // note above was waiting for; seven since #193 put the card table's own file pickers on one of
-    // their own. Each new one asks the fixture the way the rest do, which is the whole point of
-    // counting them here rather than trusting that the pattern spread by itself.
-    expect(built.length).toBe(7)
+    // their own; åtta sedan #710 lade Bord-fliken med en hög och en yta valda till. Each new one
+    // asks the fixture the way the rest do, which is the whole point of counting them here rather
+    // than trusting that the pattern spread by itself.
+    expect(built.length).toBe(8)
   })
 
   it('asks the fixture whether the server answers before it waits for anything on a screen', () => {
