@@ -76,7 +76,6 @@ export function NewField({ taken, keeps = true, kind, onCreate, onCancel }: NewF
           }}
         />
       </label>
-      {kind === undefined && <p className="byd-newfield-hint">{t('table.field.kindHint')}</p>}
       {refused !== null && <p role="alert">{refused}</p>}
       <div className="byd-newfield-do">
         <button type="submit" className="byd-secondary">{t('table.field.create')}</button>

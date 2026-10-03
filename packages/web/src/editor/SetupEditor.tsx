@@ -314,8 +314,8 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
               {selectedZone.kind !== 'pile' ? ` · ${Math.round(selectedZone.geometry.w)} × ${Math.round(selectedZone.geometry.h)} mm` : ' mm'}
             </span>
           )}
-          {client.mayEdit && <span>{t('setup.hint')}</span>}
           <Help topic={t('setup.help.topic')}>
+            {client.mayEdit && <p>{t('setup.hint')}</p>}
             <p>{t('setup.help.resize')}</p>
             <p>{t('setup.help.keys')}</p>
             <p>{t('setup.help.list')}</p>

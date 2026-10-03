@@ -341,7 +341,7 @@ describe('det som läses upp är namnet (#384, A4)', () => {
     expect(door().queryByRole('button', { name: 'Byt namn på kolumnen id' })).toBeNull()
     expect(door().queryByRole('button', { name: 'Byt namn på kolumnen antal' })).toBeNull()
     // De står kvar som ord, med hänglåsets mening bredvid sig, precis som #46 lämnade dem.
-    expect(door().getByText('antal är verktygets egen kolumn och kan inte tas bort')).toBeTruthy()
+    expect(door().getByRole('img', { name: 'antal är verktygets egen kolumn och kan inte tas bort' })).toBeTruthy()
     expect(door().queryByRole('button', { name: 'Byt namn på kolumnen title' })).toBeNull()
     expect(door().getAllByRole('button', { name: /^Byt namn på kolumnen/ }).map((b) => b.textContent)).toEqual(['body'])
   })

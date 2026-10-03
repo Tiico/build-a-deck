@@ -303,8 +303,9 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
         <h2>{t('rules.title')}</h2>
         {writing && <Modes mode={mode} onMode={setMode} />}
         {/* What the rules are for, as a line above the disposition and never as a box (#131). */}
-        <span>{t(rules ? 'rules.hint' : 'rules.empty')}</span>
+        {!rules && <span>{t('rules.empty')}</span>}
         <Help topic={t('rules.help.topic')}>
+          <p>{t('rules.hint')}</p>
           <p>{t('rules.help.reach')}</p>
           <p>{t('rules.help.names')}</p>
         </Help>

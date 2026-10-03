@@ -1,6 +1,5 @@
 import type { HTMLAttributes, Ref } from 'react'
-import { BODY_LINES, type FieldBox } from './body.js'
-import { useLang, useT } from '../i18n/index.js'
+import { useT } from '../i18n/index.js'
 
 // Vad en kolumn skrivs som, där den står (L43, ändrat i #615): i kolumnlistan bakom `＋`, på samma
 // rad som kolumnens namn. «Höjden föreslår, designern avgör» — rutans höjd i mallen sätter
@@ -10,7 +9,7 @@ import { useLang, useT } from '../i18n/index.js'
 // när pekaren vilade på rubriken. Pricken hamnade klistrad mot ordet («○typ»), utfällningen lade
 // en primärknapp över raderna varje gång en hand stannade på väg att sortera, och varje
 // designerkolumn kostade ett tabbstopp i huvudet — 11 i stället för 7 i exempelleken. Dörren
-// har plats för det huvudet aldrig hade: två hela träffytor och en mening om varför, utan att
+// har plats för det huvudet aldrig hade: två hela träffytor och hjälp på begäran, utan att
 // röra en rubrik som också dras och sorteras.
 //
 // Skillnaden mellan förval och val bärs i form — en streckad markering när höjden föreslog, en
@@ -24,19 +23,13 @@ export type ProseSwitchProps = {
   // att hon inte har sagt något.
   prose: boolean
   choice: boolean | null
-  // Rutan höjden räknas på, och `null` när mallen inte ritar kolumnen alls.
-  box: FieldBox | null
   onProse(next: boolean | null): void
   // Dörrens tangentbordsordning (#388): varje knapp är en plats på radens pilväg.
   keys(one: 'prose' | 'plain' | 'follow'): HTMLAttributes<HTMLButtonElement> & { ref: Ref<HTMLButtonElement> }
 }
 
-// Ett mått i millimeter med en decimal, i läsarens egna siffror: decimaltecknet är ett komma på
-// svenska och en punkt på engelska, och ett mått skrivet med fel tecken läses som ett annat tal.
-const mm = (n: number, lang: string) => n.toLocaleString(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-
 // Växeln själv: två knappar i radens flöde, mellan namnet och ×.
-export function ProseSwitch({ label, prose, choice, onProse, keys, whyId }: ProseSwitchProps & { whyId: string }) {
+export function ProseSwitch({ label, prose, choice, onProse, keys }: ProseSwitchProps) {
   const t = useT()
   const said = t(
     prose ? (choice === null ? 'table.prose.is.prose.height' : 'table.prose.is.prose.choice') : choice === null ? 'table.prose.is.plain.height' : 'table.prose.is.plain.choice',
@@ -48,7 +41,6 @@ export function ProseSwitch({ label, prose, choice, onProse, keys, whyId }: Pros
       {...keys(as ? 'prose' : 'plain')}
       aria-pressed={prose === as}
       aria-label={t('table.prose.turn.named', { turn: t(as ? 'table.prose.as.prose' : 'table.prose.as.plain'), field: label })}
-      aria-describedby={whyId}
       // Den tryckta knappen trycks också: på en kolumn som följer höjden gör det förslaget till
       // designerns eget val, och ett val är vad nästa omritning av mallen inte får röra.
       onClick={() => onProse(as)}
@@ -64,23 +56,14 @@ export function ProseSwitch({ label, prose, choice, onProse, keys, whyId }: Pros
   )
 }
 
-// Och orsaken, på en egen rad under: rutan mallen ritar mot en rad av dess egen grad, och där
-// designern har valt, vägen tillbaka till höjden.
-export function ProseWhy({ label, choice, box, onProse, keys, whyId }: ProseSwitchProps & { whyId: string }) {
+// Reset is an action, so it stays beside the switch. The explanation is shared by the list.
+export function ProseReset({ label, choice, onProse, keys }: ProseSwitchProps) {
   const t = useT()
-  const { lang } = useLang()
   return (
-    <span className="byd-prose-why">
-      <span id={whyId}>
-        {box === null
-          ? t('table.prose.why.undrawn')
-          : t(box.h >= BODY_LINES * box.line ? 'table.prose.why.prose' : 'table.prose.why.plain', { box: mm(box.h, lang), line: mm(box.line, lang) })}
-      </span>
-      {/* Bara där det finns ett val att lämna: en knapp som lämnar tillbaka ingenting är en knapp
-          som inte gör något. */}
+    <span className="byd-prose-reset">
       {choice !== null && (
-        <button type="button" className="byd-prose-follow" {...keys('follow')} aria-label={t('table.prose.turn.named', { turn: t('table.prose.follow'), field: label })} onClick={() => onProse(null)}>
-          {t('table.prose.follow')}
+        <button type="button" className="byd-prose-follow" {...keys('follow')} aria-label={t('table.prose.turn.named', { turn: t('table.prose.follow'), field: label })} title={t('table.prose.follow')} onClick={() => onProse(null)}>
+          <span aria-hidden="true">↶</span>
         </button>
       )}
     </span>

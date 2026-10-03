@@ -49,14 +49,15 @@ const ADD_COUNTER = translate('sv', 'setup.counter.add')
 const absent = (text: RegExp) => expect(screen.queryAllByText(text).filter((el) => !el.classList.contains('byd-offscreen'))).toEqual([])
 
 describe('Mall: the layer column (L32, the surface that measured the cost)', () => {
-  it('keeps one line about dragging and moves the keyboard behind the question mark', async () => {
+  it('keeps dragging and keyboard instructions behind the question mark', async () => {
     await openEditor('Mall')
     await waitFor(() => expect(document.querySelector('.byd-canvas-layers .byd-canvas-hint')).not.toBeNull())
     const hint = document.querySelector('.byd-canvas-layers .byd-canvas-hint')!
-    expect(hint.textContent).toContain('Dra för att ändra ordningen.')
+    expect(hint.textContent).not.toContain('Dra för att ändra ordningen.')
     absent(/håll Alt/)
     absent(/F2 byter namn/)
     const box = await opened('lagerlistan')
+    expect(box.textContent).toContain('Dra för att ändra ordningen.')
     expect(box.textContent).toMatch(/Håll Alt och tryck pil upp eller ner/)
     expect(box.textContent).toMatch(/F2 byter namn på lagret/)
     expect(box.textContent).toMatch(/Enter går in i flyttläge/)
@@ -90,12 +91,14 @@ describe('Bord: the list and the setup', () => {
     expect(box.textContent).toMatch(/efter ett dygn/)
   })
 
-  it('keeps one line about dragging a zone, and moves the corner, the keys and the list', async () => {
+  it('keeps zone instructions in help and the working controls on the surface', async () => {
     await openEditor('Bord')
-    await screen.findByText('Dra en zon på filten för att flytta den.')
+    await screen.findByRole('button', { name: 'Hjälp om zonerna' })
+    expect(screen.queryByText('Dra en zon på filten för att flytta den.')).toBeNull()
     absent(/Listan är varje zon/)
     absent(/Delete tar bort den/)
     const box = await opened('zonerna')
+    expect(box.textContent).toContain('Dra en zon på filten för att flytta den.')
     expect(box.textContent).toMatch(/hörnet för att ändra storlek/)
     expect(box.textContent).toMatch(/Delete tar bort den/)
     expect(box.textContent).toMatch(/varje zon bordet har/)
@@ -103,7 +106,8 @@ describe('Bord: the list and the setup', () => {
 
   it('moves what a seat brings and what a third counter does, and keeps the chips that have nowhere to lie', async () => {
     await openEditor('Bord')
-    await screen.findByText('Dra en zon på filten för att flytta den.')
+    await screen.findByRole('button', { name: 'Hjälp om zonerna' })
+    expect(screen.queryByText('Dra en zon på filten för att flytta den.')).toBeNull()
     absent(/En ny plats får en hand/)
     absent(/En tredje staplar/)
     expect((await opened('platserna')).textContent).toMatch(/En plats som lämnar bordet tar sina zoner med sig/)

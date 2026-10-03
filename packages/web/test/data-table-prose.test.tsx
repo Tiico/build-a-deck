@@ -194,14 +194,24 @@ describe('valet står i dörren, på kolumnens egen rad (#615)', () => {
     expect(within(row('id')).queryByRole('group')).toBeNull()
   })
 
-  it('säger vad höjden föreslår, i rutans egna mått, och beskriver knapparna med det', () => {
+  it('visar kontrollerna utan måttförklaringar och öppnar gemensam hjälp på begäran', async () => {
     table()
     door()
-    // `body` är 40 mm hög och dess rad är 9 pt i mallens förvalda radavstånd ≈ 4,0 mm.
-    const why = within(row('body')).getByText(/^Höjden föreslår prosa/)
-    expect(why.textContent).toMatch(/40,0 mm/)
-    expect(why.textContent).toMatch(/4,0 mm/)
-    expect(screen.getByRole('button', { name: 'Text, body' }).getAttribute('aria-describedby')).toBe(why.id)
+    expect(screen.queryByText(/^Höjden föreslår prosa/)).toBeNull()
+    expect(screen.queryByText(/En kolumn blir en bildkolumn/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Text, body' }).hasAttribute('aria-describedby')).toBe(false)
+    const ask = screen.getByRole('button', { name: 'Hjälp om kolumnerna' })
+    fireEvent.click(ask)
+    const help = await screen.findByRole('dialog', { name: 'Hjälp om kolumnerna' })
+    expect(help.textContent).toContain('Prosa ger flera rader och textformatering.')
+    expect(help.textContent).toContain('Bilder kopplas till kolumner i Mall.')
+    const user = userEvent.setup()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: 'Hjälp om kolumnerna' })).toBeNull()
+    expect(screen.getByRole('group', { name: 'Kolumner' })).toBeTruthy()
+    expect(document.activeElement).toBe(ask)
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('group', { name: 'Kolumner' })).toBeNull()
   })
 })
 

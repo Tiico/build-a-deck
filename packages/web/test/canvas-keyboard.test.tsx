@@ -350,7 +350,7 @@ describe('the help text under the layer list (#144)', () => {
     // as long as moving the element from the keyboard was impossible. The line under the list is
     // one sentence now and the keyboard stands behind its question mark (L32, #303) — but the
     // move is still said there, which is what #144 was about.
-    expect(document.querySelector('.byd-canvas-hint')?.textContent).toContain('Dra för att ändra ordningen.')
+    expect(screen.queryByText('Dra för att ändra ordningen.')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Hjälp om lagerlistan' }))
     expect((await screen.findByRole('dialog', { name: 'Hjälp om lagerlistan' })).textContent).toContain('Elementet flyttas från duken: Enter går in i flyttläge, pilarna nudgar.')
   })

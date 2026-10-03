@@ -200,6 +200,8 @@ describe('dörren håller tangentbordet så länge den står (#388)', () => {
     // Listan ändrades under handen: raden hon stod i finns inte, och tabbstoppet står på den rad
     // som tog dess plats, på samma ställe i raden — inte på listans början, och inte på `<body>`.
     await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Hjälp om kolumnerna' }))
+    await user.tab()
     expect(document.activeElement).toBe(door().getByRole('button', { name: 'Ta bort fältet fält4' }))
   })
 

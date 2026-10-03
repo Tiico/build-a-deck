@@ -224,8 +224,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
             not beside the heading over the hand, and that is the whole of the measurement the
             decision was made on: from up here the box hangs over the top of the felt and covers
             nothing a thumb plays with, while a sheet from the bottom lay over four cards out of
-            five. The hint line under the hand says what a finger does; what it has no room for
-            is behind the question mark. */}
+            five. Gesture instructions stay here; only the selection count stands by the hand. */}
         <Help topic={t('play.help.hand.topic')}>
           <p>{t('play.help.hand.pick')}</p>
           <p>{t('play.help.hand.play')}</p>
@@ -240,7 +239,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         <h1>{t('player.hand.title')}</h1>
         <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} zones="piles" history={false} />
         <HandStrip view={view} selected={new Set(chosenCards.map(c => c.id))} faces={faces} onTap={card => hold(card, 'hand')} onHold={toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} />
-        {hand.length > 0 && <p className="byd-hint">{marks.selected.size > 0 ? t(marks.selected.size === 1 ? 'player.hint.selected.one' : 'player.hint.selected.other', { n: marks.selected.size }) : t('player.hint')}</p>}
+        {hand.length > 0 && marks.selected.size > 0 && <p className="byd-hint">{t(marks.selected.size === 1 ? 'player.hint.selected.one' : 'player.hint.selected.other', { n: marks.selected.size })}</p>}
         <HandActions refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} view={view} cards={chosenCards} pending={quickPending} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} order={chosenCards.length === 1 && chosenCards[0] ? orderOf(chosenCards[0]) : undefined} />
         {quickSource === 'hand' && <Refusal handle={quick} />}
         <details ref={personal} className="byd-personal" data-personal aria-labelledby={`${folds}-mine`}>

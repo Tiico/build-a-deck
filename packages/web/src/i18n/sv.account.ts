@@ -109,9 +109,6 @@ export const svAccount = {
   'wizard.handoff.title': 'Wizarden är startpunkten',
   'wizard.handoff.body': 'Skapa några exempelkort här. Layout, hela leken och CSV-verktyg väntar i editorn.',
   'wizard.name': 'Spelets namn',
-  // Exemplet står som exempel och inte i fältet (#416). En platshållare som lyder «Skogens
-  // herrar» läses som ett ifyllt värde, och då blir en väg framåt som inte svarar obegriplig.
-  'wizard.name.example': 'Till exempel «Skogens herrar».',
   // Villkoret sägs en gång per skärm, vid fältet, och först när någon trycker (variant B).
   'wizard.name.says': 'Spelet behöver ett namn först.',
   'wizard.players': 'Spelare',
@@ -127,7 +124,6 @@ export const svAccount = {
 
   // Fälten: vad varje kort har, och vad startramen redan visar.
   'wizard.fields': 'Fält',
-  'wizard.fields.body': 'Fälten på varje kort.',
   'wizard.fields.help': 'Varje fält blir direkt en kontroll på varje exempelkort.',
   'wizard.kind.text': 'Text',
   'wizard.kind.number': 'Tal',
@@ -150,8 +146,8 @@ export const svAccount = {
   'wizard.field.default.body': 'Text',
   'wizard.field.default.art': 'Illustration',
   'wizard.look': 'Utseende',
-  'wizard.look.frame': 'Ram — var saker står',
-  'wizard.look.theme': 'Tema — hur det känns',
+  'wizard.look.frame': 'Ram',
+  'wizard.look.theme': 'Tema',
   'wizard.look.later': 'Allt går att ändra i Speltema.',
   'wizard.frame.classic': 'Klassisk',
   'wizard.frame.minimal': 'Minimal',

@@ -638,14 +638,14 @@ describe.each([1024, 1280] as const)('the Bord tab at %ipx', (width) => {
   // nothing of it is outside its own box either. No width is written down: the sentence is drawn
   // in whatever `system-ui` the machine has, and the question is whether it fits, not how wide it
   // came out (#95).
-  it('says the whole of the instruction above the felt', async () => {
+  it('keeps help reachable above the felt without a standing instruction', async () => {
     const measured = await measure(
       width,
       (page) =>
         page.evaluate(() => {
           const said = document.querySelector('[data-setup-said]')!
           return {
-            words: said.children.length,
+            controls: [...said.querySelectorAll('button')].map((el) => el.getAttribute('aria-label')),
             cut: [...said.children]
               .filter((el) => el.scrollWidth > el.clientWidth || el.getBoundingClientRect().right > window.innerWidth)
               .map((el) => (el.textContent ?? '').trim().slice(0, 24)),
@@ -653,9 +653,8 @@ describe.each([1024, 1280] as const)('the Bord tab at %ipx', (width) => {
         }),
       bord,
     )
-    // Nothing has been removed and nothing copied, so the row holds the instruction and its
-    // question mark (L32, #303) and nothing else.
-    expect(measured).toEqual({ Bord: { words: 2, cut: [] } })
+    // With no operation to report, the row offers help without a standing instruction.
+    expect(measured).toEqual({ Bord: { controls: ['Hjälp om zonerna'], cut: [] } })
   }, 90_000)
 })
 

@@ -59,3 +59,51 @@ test('the column door opens over the table and the button under it, whole', asyn
   await expect(door.getByRole('textbox', { name: 'Namn' })).toBeFocused()
   expect(await scroll.evaluate((el) => el.scrollTop)).toBe(0)
 })
+
+for (const width of [1280, 1024]) {
+  test(`column controls stay compact and help closes back to the chooser at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 640 })
+    await logIn(page.request)
+    const doc = deck()
+    doc.prose = { body: false }
+    const project = await makeProjectOf(page.request, doc)
+    await page.goto(project.editorUrl)
+    await page.locator('#byd-editor-tab-table').click()
+    await page.getByRole('button', { name: 'Kolumner', exact: true }).click()
+    const door = page.getByRole('group', { name: 'Kolumner', exact: true })
+    const rows = door.locator('li[data-col]')
+    // Every column remains a single control row, including an explicit prose choice with its
+    // reset action. Repeated explanations used to make each of these rows over 72 px tall.
+    const heights = await rows.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height))
+    expect(heights.length).toBeGreaterThan(6)
+    expect(heights.every((height) => height === 44)).toBe(true)
+    expect(await door.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+    await expect(door.getByRole('button', { name: 'Följ höjden igen, body' })).toBeVisible()
+    await expect(door.getByText(/Höjden föreslår/)).toHaveCount(0)
+    const ask = door.getByRole('button', { name: 'Hjälp om kolumnerna' })
+    await ask.click()
+    const help = page.getByRole('dialog', { name: 'Hjälp om kolumnerna' })
+    await expect(help).toContainText('Prosa ger flera rader och textformatering.')
+    expect(await onTop(help.getByRole('button', { name: 'Stäng hjälpen' }))).toBe(true)
+    await page.keyboard.press('Escape')
+    await expect(help).toHaveCount(0)
+    await expect(ask).toBeFocused()
+    await expect(door).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(door).toHaveCount(0)
+    await page.getByRole('button', { name: 'Kolumner', exact: true }).click()
+    // Reset remains an action in the row, not a control buried in the help.
+    await door.getByRole('button', { name: 'Följ höjden igen, body' }).click()
+    await expect(door.getByRole('button', { name: 'Följ höjden igen, body' })).toHaveCount(0)
+    await expect(door.getByRole('button', { name: 'Prosa, body' })).toHaveAttribute('aria-pressed', 'true')
+    // Validation must still have room after ordinary rows become single-line controls.
+    await door.getByRole('button', { name: 'Byt namn på kolumnen body' }).click()
+    const name = door.getByRole('textbox', { name: 'Namn på kolumnen body' })
+    await name.fill('')
+    const refused = door.locator('[role="status"]')
+    await expect(refused).toBeVisible()
+    const [inputBox, refusalBox] = await Promise.all([name.boundingBox(), refused.boundingBox()])
+    expect(refusalBox!.y).toBeGreaterThanOrEqual(inputBox!.y + inputBox!.height)
+    expect(await door.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+  })
+}
