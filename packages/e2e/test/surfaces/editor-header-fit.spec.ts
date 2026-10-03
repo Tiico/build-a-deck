@@ -119,18 +119,22 @@ for (const locale of ['sv-SE', 'en-GB']) {
 // What the row has left below 1440 is the tabs' air (#668): every tab grows by the same amount into
 // the rest, up to the 12 px a side the tabs have at 1440, and the spacer after them gets only what
 // is over once they are there. Measured as the room between each tab's word and its own edges, so
-// it holds in whatever font the machine has.
+// it holds in whatever font the machine has. A tab whose word is short («Bord» and «Mall» with
+// DejaVu) can be held a whole target wide, and then has more air than the share; it is left out of
+// the comparison of how evenly the air is shared while it is held there.
 const tabAir = (page: Page) =>
   page.evaluate(() => {
     const air: number[] = []
+    const even: number[] = []
     for (const tab of document.querySelectorAll('.byd-editor > header [role=tab]')) {
       const word = document.createRange()
       word.selectNodeContents(tab)
       const w = word.getBoundingClientRect()
       const b = tab.getBoundingClientRect()
       air.push(w.left - b.left, b.right - w.right)
+      if (b.width > parseFloat(getComputedStyle(tab).minWidth) + 0.5) even.push(w.left - b.left, b.right - w.right)
     }
-    return { air, rest: document.querySelector('.byd-editor > header > .byd-editor-spacer')!.getBoundingClientRect().width }
+    return { air, even, rest: document.querySelector('.byd-editor > header > .byd-editor-spacer')!.getBoundingClientRect().width }
   })
 
 for (const locale of ['sv-SE', 'en-GB']) {
@@ -144,12 +148,13 @@ for (const locale of ['sv-SE', 'en-GB']) {
         await startTable(page.request, project.id)
         await page.goto(`${project.editorUrl}&lang=${locale.slice(0, 2)}`)
         await expect(page.locator('.byd-editor > header .byd-editor-primary:not(.byd-editor-caret)')).toHaveAttribute('data-table-kind', 'running')
-        const { air, rest } = await tabAir(page)
+        const { air, even, rest } = await tabAir(page)
         const most = Math.max(...air)
         const fewest = Math.min(...air)
         expect(fewest).toBeGreaterThanOrEqual(least - 0.5)
         expect(most).toBeLessThanOrEqual(12.5)
-        expect(most - fewest).toBeLessThanOrEqual(1)
+        expect(even.length).toBeGreaterThanOrEqual(6)
+        expect(Math.max(...even) - Math.min(...even)).toBeLessThanOrEqual(1)
         // Either the tabs are at their ceiling, or nothing is left over beside them.
         if (fewest < 11.5) expect(rest).toBeLessThan(1)
       })
