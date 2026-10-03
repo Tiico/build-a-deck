@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test'
 import type { ProjectDoc } from '@byd/server'
 import { deckFromProject } from '@byd/server'
 import { setupFromProject } from '@byd/server/doc'
-import { tableOf as tableFromSetup } from '../support/api.js'
+import { tableOf as tableFromSetup, tableWithRules } from '../support/api.js'
 import { TV } from '../support/devices.js'
 import { gameDoc } from '../support/game.js'
 import { expect, test } from '../support/test.js'
@@ -133,6 +133,16 @@ test.describe('the television chrome that opens (#684)', () => {
     await expect(page.getByRole('alertdialog')).toBeVisible()
     expect(await underFloor(page, '.byd-table-start-ask')).toEqual([])
     expect(await underTarget(page, '.byd-table-start-ask')).toEqual([])
+  })
+
+  test('names the rulebook in the header at the floor', async ({ request, open }) => {
+    const table = await tableWithRules(request, { players: 2 })
+    const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
+    // Waited for by its name: the button is drawn while the book is asked for, and stays when the
+    // table answers that it has one.
+    await expect(page.getByRole('button', { name: 'Regler', exact: true })).toBeVisible()
+    await expect(page.locator('[data-tv] .byd-tv-head h1')).toBeVisible()
+    expect(await underFloor(page, '.byd-tv-head')).toEqual([])
   })
 
   test('ends at the floor', async ({ tableOf, open, host }) => {
