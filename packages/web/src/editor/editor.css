@@ -1430,7 +1430,10 @@
 .byd-pill-step { font-size: 16px; line-height: 1; cursor: pointer; }
 .byd-pill-step:first-child { border-radius: 999px 0 0 999px; }
 .byd-pill-step:last-child { border-radius: 0 999px 999px 0; }
-.byd-pill-step:hover, button.byd-pill-value:hover { background: #262a33; }
+.byd-pill-step:hover:not([aria-disabled='true']), button.byd-pill-value:hover { background: #262a33; }
+/* A step that does not answer while a guide or a reading view holds the width (#701) goes quiet in
+   the editor's register for refused, as the undo pair does, and says why on hover and to a reader. */
+.byd-pill-step[aria-disabled='true'] { color: var(--byd-editor-quiet); cursor: default; }
 .byd-pill-measure { position: relative; display: flex; }
 /* The measure keeps its own width: a pill that grows a pixel between 99 and 100 % moves every
    control on it under the hand. It is a number, so the digits are the same width every time. */
