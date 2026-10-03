@@ -129,10 +129,10 @@ export class PostgresRenderStore implements RenderStore {
     return row ? { smallestPt: row.smallest_pt === null ? null : Number(row.smallest_pt) } : null
   }
 
-  async link(hash: string, ttlSeconds: number): Promise<string | null> {
+  async link(hash: string, ttlSeconds: number, disposition?: string): Promise<string | null> {
     if (!this.objects) return null
     const [row] = await this.sql<{ bytes: Uint8Array | null }[]>`select bytes from render_outputs where hash = ${hash}`
-    return row && row.bytes === null ? this.objects.link(outputKey(hash), ttlSeconds) : null
+    return row && row.bytes === null ? this.objects.link(outputKey(hash), ttlSeconds, disposition) : null
   }
 
   async reap(olderThanMs: number, now: number): Promise<string[]> {

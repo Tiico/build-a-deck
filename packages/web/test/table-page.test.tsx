@@ -138,6 +138,11 @@ describe('a proposed rewind on the table (C)', () => {
     expect(document.querySelector('[data-zone="discard"]')!.getAttribute('data-count')).toBe('0')
     expect(screen.getByText(/så här såg bordet ut/)).toBeTruthy()
     expect(screen.getByText(/väntar på Bo/)).toBeTruthy()
+    // The label wraps between its parts, and the separator goes with the part before it, so no line
+    // starts with «·» (#723) — a hard space ties it there.
+    const parts = [...document.querySelectorAll('.byd-rewind-label > span')].map((s) => s.textContent ?? '')
+    expect(parts.filter((p) => p.trimStart().startsWith('·'))).toEqual([])
+    expect(parts[1]).toMatch(/\u00a0·$/)
     expect(screen.queryByRole('button', { name: /Godkänn|Avvisa/ })).toBeNull()
 
     // The preview on the TV is the table's own socket speaking, and Bo's phone is a different
@@ -172,7 +177,7 @@ describe('a table that ends with a proposal still standing (C9, K13)', () => {
     await waitFor(() => expect(document.querySelector('[data-rewind-preview]')).toBeTruthy())
 
     await ada.send({ v: 'session.end' })
-    await screen.findByText(/Bordet är avslutat/)
+    await screen.findByRole('heading', { name: /Bordet är avslutat/ })
     expect(document.querySelector('[data-rewind-preview]')).toBeNull()
     expect(screen.queryByText(/väntar på/)).toBeNull()
     // And the table behind the notice is the one the log closed on, not the one the proposal
@@ -267,7 +272,7 @@ describe('the end of a session on the table (C9)', () => {
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
     await ada.send({ v: 'flag', note: 'hm' })
     await ada.send({ v: 'session.end' })
-    const over = await screen.findByText(/Bordet är avslutat/)
+    const over = await screen.findByRole('heading', { name: /Bordet är avslutat/ })
     const overlay = over.closest('[data-ended]')!
     await waitFor(() => expect(overlay.textContent).toMatch(/v1/))
     expect(overlay.textContent).toMatch(/1 flaggade ögonblick/)

@@ -43,7 +43,6 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   // card in the middle of it (#12, #7, variant C).
   const live = useLiveStatus(conn, 'table', timing)
   const links = statusLinks({ server: params.get('server'), code: roomCode })
-  usePageTitle({ state: sessionId ? (refused ? 'forbidden' : live.state) : 'missing', room: roomCode || sessionId })
   // The session record: which game this table runs and which version of it (L5, C9). The name
   // titles the screen; the version is also what the log is locked on when the session ends.
   const [record, setRecord] = useState<SessionRecord | null>(null)
@@ -58,6 +57,8 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       live = false
     }
   }, [sessionId, url])
+  // Without a code — an owner who opened their own table — the game's name names it (#759).
+  usePageTitle({ state: sessionId ? (refused ? 'forbidden' : live.state) : 'missing', room: roomCode || null, game: record?.name ?? null, part: view?.ended ? t('title.play.ended') : null })
 
   // What the screen is pointed at (C): only the TV has a panel to show it in.
   const [inspecting, setInspecting] = useState<VisibleComponentState | null>(null)

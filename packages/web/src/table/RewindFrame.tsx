@@ -16,7 +16,9 @@ export function RewindFrame({ view, activity, children }: { view: Snapshot; acti
       {children}
       <div className="byd-rewind-label">
         <span>{t('rewind.proposal')}</span>
-        <span>{t('rewind.looked', { where: whereTo(view, proposal, activity, t) })}</span>
+        {/* The label wraps between its parts, and the separator goes with the part before it,
+            tied there by a hard space, so no line starts with «·» (#723). */}
+        <span>{`${t('rewind.looked', { where: whereTo(view, proposal, activity, t) })}\u00a0·`}</span>
         <span>{t('rewind.waiting', { who: whoDecides(view, proposal, t) })}</span>
       </div>
     </div>

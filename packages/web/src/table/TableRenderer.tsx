@@ -88,7 +88,7 @@ export type FeltItemProps = {
 export type CameraDrive = 'follow' | 'hand'
 
 export type FeltKeyboard = {
-  // Every node the keyboard may stand on, keyed `card:<id>`, `top:<zone>` or `pile:<zone>`,
+  // Every node the keyboard may stand on, keyed `card:<id>`, `counter:<id>` or `pile:<zone>`,
   // with the sentence that names it. Nodes this map does not mention stay pictures.
   labels: ReadonlyMap<string, string>
   // Which node the panel currently stands open on, if any.
@@ -1663,9 +1663,10 @@ const ringName = (target: Ring['target']): string =>
   target.kind === 'card' || target.kind === 'counter' ? target.id : target.kind === 'counterPile' ? target.ids.join('+') : target.pile
 
 // The felt node a ring is opened on, keyed the way the keyboard layer knows it (`thingsOn`): where
-// focus goes back to when the ring closes (#560 P-10). A pile of chips is its first chip.
+// focus goes back to when the ring closes (#560 P-10). A pile of chips is its first chip, and a
+// pile and its top card are one stop (#572, #723).
 const ringKey = (target: Ring['target']): string =>
-  target.kind === 'card' ? `card:${target.id}` : target.kind === 'counter' ? `counter:${target.id}` : target.kind === 'counterPile' ? `counter:${target.ids[0] ?? ''}` : target.kind === 'pileTop' ? `top:${target.pile}` : `pile:${target.pile}`
+  target.kind === 'card' ? `card:${target.id}` : target.kind === 'counter' ? `counter:${target.id}` : target.kind === 'counterPile' ? `counter:${target.ids[0] ?? ''}` : `pile:${target.pile}`
 
 // What the ring is called: the sentence the keyboard reader hears on the thing it was opened on.
 function ringLabel(view: Snapshot, target: Ring['target'], t: T): string | undefined {
@@ -2037,12 +2038,13 @@ function SeatPlate({ view, seat, color, left, top, t }: { view: Snapshot; seat: 
   const held = hand ? (hand.mode === 'count' ? hand.count : hand.order.length) : null
   const owned = new Set(own.map((z) => z.id))
   const chips = view.components.filter((c) => c.counter !== null && c.counter !== undefined && owned.has(c.zone))
-  const name = seat.name ?? seat.id
+  // A seat nobody sits in keeps its letter in the ball and says it is free where the name goes; the
+  // letter written twice read «A A» (#717).
   return (
     <div className="byd-seat-plate" data-seat-plate={seat.id} data-edge={edge} style={{ ...at, ['--seat' as string]: color }}>
       <b>
-        <i aria-hidden="true">{name.slice(0, 1)}</i>
-        {name}
+        <i aria-hidden="true">{(seat.name ?? seat.id).slice(0, 1)}</i>
+        {seat.name ?? t('tv.seat.free')}
       </b>
       {held !== null && <span>{t(held === 1 ? 'tv.seat.hand.one' : 'tv.seat.hand.other', { n: held })}</span>}
       {chips.map((c) => (

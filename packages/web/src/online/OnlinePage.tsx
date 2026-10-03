@@ -30,6 +30,7 @@ import { StatusNotice } from '../status/StatusNotice.js'
 import { statusLinks, wayBack } from '../status/links.js'
 import { guestNotice, towardSeat } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
+import { useSessionName } from '../status/sessionName.js'
 import { useT } from '../i18n/index.js'
 
 // /online?session=…&seat=A&name=Ada&server=ws://…
@@ -82,7 +83,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
   // A seat whose line is gone is offered the room's seat picker before the way home (#484 fynd 14).
   const said = links.rescan && live.notice ? { ...live, notice: towardSeat(live.notice, t) } : live
-  usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code') ?? sessionId })
+  const game = useSessionName(http, sessionId, !params.get('code'))
+  usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code'), game })
   // The window this seat is playing in: it is half of which way round the felt is drawn (#77).
   const room = useRoom()
   const presence = usePresence(client, view)

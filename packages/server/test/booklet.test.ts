@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { BOOKLET_MARGIN_MM, BOOKLET_PAGE_MM, RULE_IMAGE_FRAME, imageBoxMm, renderRules, type RuleDoc } from '@byd/template'
+import { MemoryObjectStore } from '@byd/render'
 import { A5, bookletOf } from '../src/booklet.js'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 import { template } from './deck.js'
@@ -193,12 +194,15 @@ describe('the booklet in the language the game is made in (A4)', () => {
 describe('ordering the booklet (B7)', () => {
   let run: Running
   let cookie = ''
-  beforeEach(async () => {
-    run = await start()
+  const signIn = async () => {
     await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
     const link = /\/auth\/verify\?token=\S+/.exec(run.mail.sent.at(-1)?.text ?? '')?.[0] ?? ''
     const res = await fetch(`${run.http}${link}`, { redirect: 'manual' })
     cookie = (res.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
+  }
+  beforeEach(async () => {
+    run = await start()
+    await signIn()
   })
   afterEach(async () => {
     await run.stop()
@@ -247,6 +251,60 @@ describe('ordering the booklet (B7)', () => {
     expect(job?.compiled.html).toContain('data:image/png;base64,')
     expect(job?.compiled.html).toContain('alt="Bordet från ovan"')
     expect(job?.compiled.html).not.toContain(`asset:${asset}`)
+  })
+
+  // The booklet is a PDF, and was answered as image/png: Chromium opened it as a broken picture
+  // of nothing, with no title and no name to save it under (#678). The type is the file's own,
+  // and the name is the one the editor asks for, so the reader's tab and the saved file both say
+  // what it is.
+  it('answers the finished booklet as the PDF it is, under the name it was asked for', async () => {
+    await send('POST', '/projects', { id: 'p1', ...project(doc) })
+    const { hash } = (await (await send('POST', '/projects/p1/rulebook')).json()) as { hash: string }
+    await run.renders.claim(Date.now())
+    await run.renders.complete(hash, new TextEncoder().encode('%PDF-1.7\n%booklet\n'))
+
+    const name = 'Skogens herrar – regler.pdf'
+    const got = await fetch(`${run.http}/faces/${hash}?name=${encodeURIComponent(name)}`)
+    expect(got.status).toBe(200)
+    expect(got.headers.get('content-type')).toBe('application/pdf')
+    expect(got.headers.get('content-disposition')).toBe(`inline; filename="Skogens herrar - regler.pdf"; filename*=UTF-8''${encodeURIComponent(name)}`)
+    // A name is the reader's to ask for, and never a way to write a header of one's own.
+    const forged = await fetch(`${run.http}/faces/${hash}?name=${encodeURIComponent('a"\r\nset-cookie: x=1.pdf')}`)
+    expect(forged.status).toBe(200)
+    expect(forged.headers.get('set-cookie')).toBeNull()
+    expect(forged.headers.get('content-disposition')).toBe(`inline; filename="a___set-cookie: x=1.pdf"; filename*=UTF-8''${encodeURIComponent('a"\r\nset-cookie: x=1.pdf')}`)
+    // A card's face is still the picture it always was, and is named by nobody.
+    const plain = await fetch(`${run.http}/faces/${hash}`)
+    expect(plain.headers.get('content-disposition')).toBeNull()
+  })
+
+  // On the box the bytes come from R2 by a signed link (DRIFT §4), and the name has to travel in
+  // the link: the redirect carries nothing a browser would put on the file.
+  it('asks R2 for the same name when the booklet is opened from there', async () => {
+    await run.stop()
+    const objects = new MemoryObjectStore()
+    const asked: (string | undefined)[] = []
+    run = await start({
+      objects: {
+        put: objects.put.bind(objects),
+        get: objects.get.bind(objects),
+        check: objects.check.bind(objects),
+        link: async (key: string, ttl: number, disposition?: string) => {
+          asked.push(disposition)
+          return `https://r2.test/byd-assets/${key}?X-Amz-Expires=${ttl}`
+        },
+      },
+    })
+    await signIn()
+    await send('POST', '/projects', { id: 'p1', ...project(doc) })
+    const { hash } = (await (await send('POST', '/projects/p1/rulebook')).json()) as { hash: string }
+    await run.renders.claim(Date.now())
+    await run.renders.complete(hash, new TextEncoder().encode('%PDF-1.7\n%booklet\n'))
+
+    const name = 'Skogens herrar – regler.pdf'
+    const got = await fetch(`${run.http}/faces/${hash}?name=${encodeURIComponent(name)}`, { redirect: 'manual' })
+    expect(got.status).toBe(302)
+    expect(asked).toEqual([`inline; filename="Skogens herrar - regler.pdf"; filename*=UTF-8''${encodeURIComponent(name)}`])
   })
 
   it('refuses when the game has no rulebook, rather than printing an empty one', async () => {
