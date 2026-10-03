@@ -270,3 +270,40 @@ describe('a table started or ended from the column (#480)', () => {
     expect(screen.queryByRole('list', { name: 'Bord som spelas' })).toBeNull()
   })
 })
+
+// «Starta bord» i huvudet startade bordet, men kolumnen stod kvar på «Inget bord ännu» medan
+// bandet räknade spelare — och efter ett flikbyte låg bordet hopfällt (#704). Kolumnen är serverns
+// lista (L31): bordet huvudet startar visas där direkt, med sin grupp öppen, som när kolumnens egen
+// knapp startar det.
+describe('a table started from the header (#704)', () => {
+  const onlyTable = (): Promise<string> =>
+    waitFor(async () => {
+      const [only] = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`)).json()) as { id: string }[]
+      expect(only).toBeTruthy()
+      return only!.id
+    })
+
+  it('shows its row in the open column at once, with its group open', async () => {
+    const user = userEvent.setup()
+    await openTables()
+    await screen.findByText(/Inget bord ännu/)
+    await user.click(screen.getByRole('button', { name: 'Starta bord' }))
+    const id = await onlyTable()
+    await waitFor(() => expect(document.querySelector(`[data-table="${id}"]`)).not.toBeNull())
+    expect(screen.getByRole('button', { name: 'Startade, aldrig spelade · 1' }).getAttribute('aria-expanded')).toBe('true')
+    expect(screen.queryByText(/Inget bord ännu/)).toBeNull()
+  })
+
+  it('shows it with its group open when the column is opened afterwards', async () => {
+    const user = userEvent.setup()
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    await user.click(screen.getByRole('button', { name: 'Starta bord' }))
+    const id = await onlyTable()
+    await screen.findByText(/Nytt bord startat på/)
+    await user.click(screen.getByRole('tab', { name: 'Bord' }))
+    await waitFor(() => expect(document.querySelector(`[data-table="${id}"]`)).not.toBeNull())
+    expect(screen.getByRole('button', { name: 'Startade, aldrig spelade · 1' }).getAttribute('aria-expanded')).toBe('true')
+  })
+})
