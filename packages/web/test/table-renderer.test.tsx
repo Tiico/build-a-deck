@@ -691,11 +691,11 @@ describe('direct manipulation (K1, K2, C)', () => {
     // answer, read off the intent the very same gesture sends.
     fireEvent.pointerUp(top, client(-100, 100))
     const [[[landed]]] = onAct.mock.calls as [[[Extract<Intent, { v: 'split' }>]]]
-    // The ghost is placed in the felt's own pixels and the intent names a point on the table, so
-    // the floor's corner is what makes the two comparable; at scale 1 a millimetre is a pixel.
-    const floor = snapshot.zones.find((z) => z.id === snapshot.floor)!.geometry
-    expect(parseFloat(ghost.style.left)).toBeCloseTo(landed.x! - floor.x, 6)
-    expect(parseFloat(ghost.style.top)).toBeCloseTo(landed.y! - floor.y, 6)
+    // The ghost is placed in the felt's own pixels and the intent names a point in the floor's own
+    // coordinates (#680), which are the felt's; at scale 1 a millimetre is a pixel.
+    expect(landed.to).toBe(snapshot.floor)
+    expect(parseFloat(ghost.style.left)).toBeCloseTo(landed.x!, 6)
+    expect(parseFloat(ghost.style.top)).toBeCloseTo(landed.y!, 6)
   })
 
   it('dragging the top card off a pile drops it holding the point it was taken by', () => {
@@ -710,7 +710,9 @@ describe('direct manipulation (K1, K2, C)', () => {
     fireEvent.pointerDown(top, client(-200, 0))
     fireEvent.pointerMove(top, client(-100, 100))
     fireEvent.pointerUp(top, client(-100, 100))
-    expect(onAct).toHaveBeenLastCalledWith([{ v: 'split', pile: 'draw', at: 1, x: -100 - CARD_MM.w / 2, y: 100 - CARD_MM.h / 2 }])
+    // Named in the floor it lands on, in that floor's own coordinates, as a `move` is (#680).
+    const floor = view(null).zones.find((z) => z.id === 'table')!.geometry
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'split', pile: 'draw', at: 1, to: 'table', x: -100 - CARD_MM.w / 2 - floor.x, y: 100 - CARD_MM.h / 2 - floor.y }])
   })
 
   it('without onAct the table only shows: nothing moves and no ring opens', () => {
