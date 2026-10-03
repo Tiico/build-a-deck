@@ -2667,6 +2667,13 @@ Linjen låg annars tvärs över brickan, och på en tom hög på högens egen st
 Pekaren går genom högen till handtaget, så att ta tag i högen är detsamma som förut.
 `packages/e2e/test/surfaces/setup-piles-drawn.spec.ts` mäter det på målade pixlar vid 1024 och 1280.
 
+Reviderat 2026-10-02 (#669): **brickan står på sin hög i varje tillstånd kortets bild är i.**
+Medan högens översta kort renderades, och för gott om renderingen misslyckades, syntes inget antal alls på TV:n och observatörens filt.
+Kortets väntande och misslyckade tillstånd (#10) ritades med `z-index: 1`, och en hög är vriden och alltså en egen staplingskontext: där inne lämnade tillståndet sitt kort och lade sig över brickan, som inget z-index har.
+Tillståndet har nu inget z-index och målas där bilden målas, strax efter den, så det som ligger på ett kort ligger på det vare sig bilden kommit, väntar eller är förlorad.
+Tillståndets egna ord, «Kortet renderas…» och «Bilden kunde inte laddas», står mitt på kortet och bara där kortet är minst 72 px brett inuti; brickan står vid överkanten, och de två delar inga pixlar — mätt på en 4K-TV, där kortet bär orden.
+`packages/e2e/test/surfaces/pile-count-over-texture.spec.ts` träffprovar brickans mitt i alla tre tillstånden på TV:n vid 1920 × 1080, 1280 × 800 och 3840 × 2160 och på observatörens filt vid 390.
+
 **En delad zon under en plats ruta skriver sitt namn mitt över sig själv.**
 Utvidgat 2026-09-15 (#43), och det är det första i regeln som handlar om två namn som hör till olika zoner.
 
