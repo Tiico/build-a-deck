@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, renderHook, screen, within } from '@testing-library/react'
 import { project, projectActivity } from '@byd/engine'
@@ -74,6 +75,36 @@ describe('the table screen’s own help (L32, #305)', () => {
   })
 })
 
+// A table that has ended takes nobody in: the code on its screen led to «Bordet är slut» (#717).
+describe('the table screen after the end', () => {
+  it('says the table has ended where the invitation stood, and offers no code or square', () => {
+    const { view, log } = buildScene()
+    render(
+      <TvChrome view={{ ...view(null), ended: true }} activity={log.map(projectActivity)} roomCode="KX7P" joinUrl="http://example.test/join?code=KX7P">
+        <div />
+      </TvChrome>,
+    )
+    expect(screen.queryByText('KX7P')).toBeNull()
+    expect(screen.queryByRole('img', { name: /example\.test\/join/ })).toBeNull()
+    expect(screen.queryByText('anslut med telefon')).toBeNull()
+    expect(screen.getByText('Bordet är avslutat')).toBeTruthy()
+  })
+
+  it('closes the help about joining when the summary takes the screen', async () => {
+    const { view, log } = buildScene()
+    const at = (ended: boolean) => (
+      <TvChrome view={{ ...view(null), ended }} activity={log.map(projectActivity)} roomCode="KX7P">
+        <div />
+      </TvChrome>
+    )
+    const { rerender } = render(at(false))
+    fireEvent.click(screen.getByRole('button', { name: 'Hjälp om att ansluta' }))
+    await screen.findByRole('dialog', { name: 'Hjälp om att ansluta' })
+    rerender(at(true))
+    expect(screen.queryByRole('dialog', { name: 'Hjälp om att ansluta' })).toBeNull()
+  })
+})
+
 describe('QR to join', () => {
   // A reader hears what the picture is for and which room before the address (#560 P-21), and the
   // address is still there to type for someone without a camera (K9).
@@ -103,6 +134,24 @@ describe('the observer is never invisible (C8)', () => {
 })
 
 describe('the header names the game (C)', () => {
+  // «Lords of the Forest rev-» on one line and «1» alone on the next (#717): a version is one word.
+  it('never breaks the version across lines', () => {
+    const css = document.createElement('style')
+    css.textContent = readFileSync('src/table/table.css', 'utf8')
+    document.head.append(css)
+    try {
+      const { view, log } = buildScene()
+      render(
+        <TvChrome view={view(null)} activity={log.map(projectActivity)} title="Lords of the Forest" version="rev-1">
+          <div />
+        </TvChrome>,
+      )
+      expect(getComputedStyle(screen.getByRole('heading', { level: 1 }).querySelector('em')!).whiteSpace).toBe('nowrap')
+    } finally {
+      css.remove()
+    }
+  })
+
   it('titles the screen with the game and its version, and never prints the join URL as running text', async () => {
     const { view, log } = buildScene()
     render(

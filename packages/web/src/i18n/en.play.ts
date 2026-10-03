@@ -52,6 +52,7 @@ export const enPlay = {
   'tv.seat.hand.short.one': '{n} card',
   'tv.seat.hand.short.other': '{n} cards',
   'tv.seat.none': 'Nothing yet',
+  'tv.seat.free': 'free',
   'tv.list.table': 'On the table',
   'tv.list.card': '{card}, in {where}',
   'tv.list.card.down': '{card}, face down, in {where}',
