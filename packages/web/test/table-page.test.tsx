@@ -177,7 +177,7 @@ describe('a table that ends with a proposal still standing (C9, K13)', () => {
     await waitFor(() => expect(document.querySelector('[data-rewind-preview]')).toBeTruthy())
 
     await ada.send({ v: 'session.end' })
-    await screen.findByText(/Bordet är avslutat/)
+    await screen.findByRole('heading', { name: /Bordet är avslutat/ })
     expect(document.querySelector('[data-rewind-preview]')).toBeNull()
     expect(screen.queryByText(/väntar på/)).toBeNull()
     // And the table behind the notice is the one the log closed on, not the one the proposal
@@ -272,7 +272,7 @@ describe('the end of a session on the table (C9)', () => {
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
     await ada.send({ v: 'flag', note: 'hm' })
     await ada.send({ v: 'session.end' })
-    const over = await screen.findByText(/Bordet är avslutat/)
+    const over = await screen.findByRole('heading', { name: /Bordet är avslutat/ })
     const overlay = over.closest('[data-ended]')!
     await waitFor(() => expect(overlay.textContent).toMatch(/v1/))
     expect(overlay.textContent).toMatch(/1 flaggade ögonblick/)
