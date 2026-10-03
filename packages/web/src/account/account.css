@@ -25,7 +25,8 @@
 .byd-home { width: min(920px, 100%); display: grid; gap: 18px; }
 /* The account line goes under the heading when both will not fit on one line, rather than squeezing
    "Mina spel" onto two (#475). */
-.byd-home header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 16px; }
+/* min-width: 0 so the account line can give way inside it rather than widen the page (#728). */
+.byd-home header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 16px; min-width: 0; }
 .byd-home h1 { margin: 0; font-size: 28px; }
 /* One line, always: a part that wrapped brought its dot to the front of the next line, «· Språk»
    (#728). The address is what gives way, cut short with an ellipsis and whole in its title. */
