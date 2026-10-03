@@ -74,36 +74,87 @@ const headerCut = (page: Page) =>
     return cut
   })
 
+// Below 1440 «Sparat» was a tick and «Osparat» a word, and the word took 35–50 px the row did not
+// have: the tabs slid 22–44 px and the game's name was cut to «Sal's Sal…» while the work was
+// unsaved (#668). There the status is one fixed box in both states — the tick, or an amber dot —
+// and the word is still what the status says to a reader.
 for (const locale of ['sv-SE', 'en-GB']) {
-  test.describe(`the tab row at 1440 in ${locale}`, () => {
-    test.use({ viewport: { width: 1440, height: 800 }, locale })
+  for (const width of [1024, 1280, 1440]) {
+    test.describe(`the tab row at ${width} in ${locale}`, () => {
+      test.use({ viewport: { width, height: 800 }, locale })
 
-    test('stands still while the work goes unsaved and back', async ({ page }) => {
-      await logIn(page.request)
-      const project = await makeProjectOf(page.request, spelkortDoc(4))
-      await startTable(page.request, project.id)
-      await page.goto(`${project.editorUrl}&lang=${locale.slice(0, 2)}`)
-      await expect(page.locator('.byd-editor > header .byd-editor-primary:not(.byd-editor-caret)')).toHaveAttribute('data-table-kind', 'running')
-      const status = page.locator('.byd-editor > header > .byd-editor-saved')
-      await expect(status).toHaveAttribute('data-unsaved', 'false')
-      await page.locator('#byd-editor-tab-template').click()
-      const saved = await tabsAt(page)
+      test('stands still while the work goes unsaved and back', async ({ page }) => {
+        await logIn(page.request)
+        const project = await makeProjectOf(page.request, spelkortDoc(4))
+        await startTable(page.request, project.id)
+        await page.goto(`${project.editorUrl}&lang=${locale.slice(0, 2)}`)
+        await expect(page.locator('.byd-editor > header .byd-editor-primary:not(.byd-editor-caret)')).toHaveAttribute('data-table-kind', 'running')
+        const status = page.locator('.byd-editor > header > .byd-editor-saved')
+        await expect(status).toHaveAttribute('data-unsaved', 'false')
+        await page.locator('#byd-editor-tab-template').click()
+        const saved = await tabsAt(page)
+        expect(await headerCut(page)).toEqual([])
+        if (width < 1440) await expect(status).toMatchAriaSnapshot(`- status: ${locale === 'sv-SE' ? 'Sparat' : 'Saved'}`)
 
-      await page.getByRole('button', { name: /^paper\b/ }).first().click()
-      const x = page.locator('.byd-props-f input').first()
-      await x.fill('-2')
-      await x.press('Enter')
-      await expect(status).toHaveAttribute('data-unsaved', 'true')
-      expect(await tabsAt(page)).toEqual(saved)
-      expect(await headerCut(page)).toEqual([])
+        await page.getByRole('button', { name: /^paper\b/ }).first().click()
+        const x = page.locator('.byd-props-f input').first()
+        await x.fill('-2')
+        await x.press('Enter')
+        await expect(status).toHaveAttribute('data-unsaved', 'true')
+        expect(await tabsAt(page)).toEqual(saved)
+        expect(await headerCut(page)).toEqual([])
+        // The dot is drawn and the word is what a reader hears, exactly as when it was written.
+        if (width < 1440) await expect(status).toMatchAriaSnapshot(`- status: ${locale === 'sv-SE' ? 'Osparat' : 'Unsaved'}`)
 
-      // Taken back, the work is the server's again (L9), and the word goes back to its own.
-      await page.locator('.byd-editor-steps button').first().click()
-      await expect(status).toHaveAttribute('data-unsaved', 'false')
-      expect(await tabsAt(page)).toEqual(saved)
-      expect(await headerCut(page)).toEqual([])
+        // Taken back, the work is the server's again (L9), and the word goes back to its own.
+        await page.locator('.byd-editor-steps button').first().click()
+        await expect(status).toHaveAttribute('data-unsaved', 'false')
+        expect(await tabsAt(page)).toEqual(saved)
+        expect(await headerCut(page)).toEqual([])
+      })
     })
+  }
+}
+
+// What the row has left below 1440 is the tabs' air (#668): every tab grows by the same amount into
+// the rest, up to the 12 px a side the tabs have at 1440, and the spacer after them gets only what
+// is over once they are there. Measured as the room between each tab's word and its own edges, so
+// it holds in whatever font the machine has.
+const tabAir = (page: Page) =>
+  page.evaluate(() => {
+    const air: number[] = []
+    for (const tab of document.querySelectorAll('.byd-editor > header [role=tab]')) {
+      const word = document.createRange()
+      word.selectNodeContents(tab)
+      const w = word.getBoundingClientRect()
+      const b = tab.getBoundingClientRect()
+      air.push(w.left - b.left, b.right - w.right)
+    }
+    return { air, rest: document.querySelector('.byd-editor > header > .byd-editor-spacer')!.getBoundingClientRect().width }
   })
+
+for (const locale of ['sv-SE', 'en-GB']) {
+  for (const [width, least] of [[1024, 4], [1280, 8]] as const) {
+    test.describe(`the tabs' air at ${width} in ${locale}`, () => {
+      test.use({ viewport: { width, height: 800 }, locale })
+
+      test('is the row’s rest, shared evenly and never past 1440’s', async ({ page }) => {
+        await logIn(page.request)
+        const project = await makeProjectOf(page.request, spelkortDoc(4))
+        await startTable(page.request, project.id)
+        await page.goto(`${project.editorUrl}&lang=${locale.slice(0, 2)}`)
+        await expect(page.locator('.byd-editor > header .byd-editor-primary:not(.byd-editor-caret)')).toHaveAttribute('data-table-kind', 'running')
+        const { air, rest } = await tabAir(page)
+        const most = Math.max(...air)
+        const fewest = Math.min(...air)
+        expect(fewest).toBeGreaterThanOrEqual(least - 0.5)
+        expect(most).toBeLessThanOrEqual(12.5)
+        expect(most - fewest).toBeLessThanOrEqual(1)
+        // Either the tabs are at their ceiling, or nothing is left over beside them.
+        if (fewest < 11.5) expect(rest).toBeLessThan(1)
+      })
+    })
+  }
 }
 
 // The strip under the header says good news in green, and its buttons wore the pink of a card that
