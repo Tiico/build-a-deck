@@ -426,6 +426,7 @@ export const svPlay = {
   // knapp utan förklaring.
   'join.name.says': 'Skriv ditt namn först.',
   'join.sit': 'Sätt dig',
+  'join.sitting': 'Sätter dig…',
   'join.online': 'Spela på den här skärmen (bordet och handen här)',
   'join.observe': 'Bara titta (ser allt, alla ser dig)',
 
