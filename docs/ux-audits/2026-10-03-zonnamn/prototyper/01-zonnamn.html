@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 01 — Zonens namn kant i kant (#685)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan (#685) ──────────────────────────────────────────────────────────────────────
+     Var står en zons namn när grannzonen ligger kant i kant? K19 lägger namnet utanför zonen,
+     och har bara mätt namn mot namn — aldrig namn mot en annan zons ruta. Därför står «Sal's
+     Saloon» inne i Framför B på TV:n, i bordsläget och på Bord-fliken, och «Räknare A» på Framför
+     A:s nederkant hos observatören.
+
+     Varje bild är det BYGGDA appen (packages/e2e-stacken, Sal's Saloon, 77 kort, fyra och åtta
+     platser, kort i varje hand, i saloonen, i kasthögen och framför varje plats) med variantens
+     placering injicerad i sidan och mätt i Chromium. Inget är ritat för hand. Skripten ligger i
+     matning/. Bord-flikens bilder har ALLA zoner tända på en gång, som grinden i
+     felt-names.test.tsx mäter; tabellen har också raden «en åt gången», som är vad fliken visar.
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .krona { flex: none; display: grid; gap: 8px; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .krona h1 { margin: 0; color: #fff; font-size: 15px; }
+  .rad { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .rad > span { color: var(--quiet-2); font-size: 12px; min-width: 64px; }
+  .rad button { min-height: 36px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; cursor: pointer; }
+  .rad button[aria-pressed='true'] { background: #24507f; border-color: var(--primary-mark); color: #fff; }
+  .rad button.rek { border-color: #3f7a55; }
+  .rad button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .scen { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; padding: 16px; background: #15171c; }
+  @media (max-width: 900px) { .scen { grid-template-columns: minmax(0, 1fr); } }
+  .bild img { display: block; max-width: 100%; height: auto; border: 1px solid #2f333d; border-radius: 6px; }
+  .bild p { color: var(--quiet-2); font-size: 12px; margin: 6px 0 0; }
+  .sido { display: grid; gap: 12px; align-content: start; }
+  .ruta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .ruta h2 { margin: 0 0 6px; color: #fff; font-size: 14px; }
+  .ruta p { margin: 0 0 6px; line-height: 1.5; color: #c9d1e3; }
+  .tal { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 13px; }
+  .tal b { text-align: right; }
+  .noll { color: var(--good); } .fel { color: #ff8a7a; }
+  .lista { margin: 6px 0 0; padding-left: 16px; color: #c9d1e3; font-size: 12px; line-height: 1.5; }
+  .matris { grid-column: 1 / -1; overflow-x: auto; }
+  table { border-collapse: collapse; font-size: 12px; min-width: 900px; }
+  th, td { border: 1px solid #2f333d; padding: 4px 6px; text-align: center; white-space: nowrap; }
+  th { color: #fff; background: #1b1f2a; position: sticky; top: 0; }
+  td:first-child, th:first-child { text-align: left; }
+  td.valt { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  td a { color: inherit; text-decoration: none; display: block; }
+  td.ok { background: #16301f; color: #9be3b5; }
+  td.nej { background: #3a1c1c; color: #ffb3a8; }
+  tfoot td { font-weight: 700; }
+  .forkl { color: var(--quiet-2); font-size: 12px; margin: 6px 0; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="krona">
+  <h1>Prototyp 01 — var en zons namn står när zoner ligger kant i kant (#685) <small style="color:var(--quiet-2);font-weight:400">· ← → byter variant · bilderna är det byggda appen med placeringen injicerad</small></h1>
+  <div class="rad" id="varianter"><span>Variant</span></div>
+  <div class="rad" id="ytor"><span>Yta</span></div>
+  <div class="rad" id="platser"><span>Platser</span></div>
+</div>
+<div class="scen">
+  <div class="bild"><img id="bild" alt=""><p id="bildtext"></p></div>
+  <div class="sido">
+    <div class="ruta"><h2 id="vnamn"></h2><p id="vregel"></p><p id="vpris" class="forkl"></p></div>
+    <div class="ruta"><h2>Mätt på den här bilden</h2><div class="tal" id="tal"></div><ul class="lista" id="detalj"></ul></div>
+  </div>
+  <div class="matris ruta">
+    <h2>Alla ytor × alla varianter</h2>
+    <p class="forkl">Varje cell: <b>namn i en annan zons ruta</b> / namn på namn / namn på bricka eller hög / kapade namn — och inom hakparentes namn i annan zon när varje namn ritas 15 % bredare (K20:s marginal, mer än DejaVus 12–14 %). Grönt = alla fyra noll. Klicka en cell för att se den. «Bord-fliken, en åt gången» är vad fliken faktiskt visar (#581): en tänd zon i taget.</p>
+    <table id="matris"></table>
+  </div>
+</div>
+<script src="data.js"></script>
+<script>
+const VARIANTER = [
+  { id: 'nu', namn: 'Nu', regel: 'K19 som den står: utanför zonen, bort från närmaste kant, växande mot platsens mitt; en delad zon ovanför sin överkant (mitt på den om en plats ruta hänger över, #43). På en filt smalare än 460 px står ett öst- eller västnamn ovanför sin zon (#76).', pris: 'Saloonens namn ovanför sig står i Framför B, och Framför B:s namn under sig står i saloonen, på varje yta med fyra platser. Hos observatören står «Räknare A» på Framför A:s nederkant.' },
+  { id: 'under', namn: 'A · Under', regel: 'Kandidat 1 bokstavligen: på den smala filten står ett öst- eller västnamn UNDER sin egen zon i stället för ovanför, fortfarande förankrat i kantänden och växande inåt. Inget annat ändras.', pris: 'Flyttar bara krocken: nu står «Framför A» på Räknare A:s överkant i stället för tvärtom (kolumnens två zoner byter plats som syndare). TV:n, bordsläget och Bord-fliken är orörda.' },
+  { id: 'ytter', namn: 'A2 · Ytterändarna', regel: 'Kandidat 1 gjord hel: på den smala filten står en sidoplats två namn vid kolumnens två ytterändar — zonen närmast kolumnens början ovanför sig, den närmast slutet under sig — så inget av dem står i de 10 mm mellan dem.', pris: 'Löser fyra platser vid 390 för plats A men inte för plats B, där saloonen står intill kolumnen. Vid åtta platser står två kolumner över varandra med 25 px mellan sig, och där möts «Räknare A» och «Framför E»: sex namnpar.' },
+  { id: 'bredvid', namn: 'B · Bredvid', regel: 'Kandidat 2: den smala filtens undantag (#76) tas bort, så ett öst- eller västnamn står bredvid sin zon mot mitten som på varje annan filt. 12 px och ingen spärr behålls.', pris: 'Bättre än väntat: #76:s krockar med brickan och platsen mitt emot kommer inte tillbaka (brickan sitter numera på sin hög, #76/#652). Åtta platser vid 390 blir helt rena. Kvar: plats B vid fyra platser, vars namn bredvid zonen landar i saloonen, och allt på TV:n och i bordsläget.' },
+  { id: 'inuti', namn: 'C · Räknaren inuti', regel: 'Kandidat 3: en zon som bara bär brickor (Räknare) säger sitt namn inuti sin egen ruta, överst, kapat med … om det inte ryms.', pris: 'Kapar 94 namn till «RÄ…»/«RÄKN…» och lägger 43 på räknarens egen bricka — samma dom som K19 gav variant C, nu också för räknarna ensamma. Löser inte saloonen.' },
+  { id: 'glipa', namn: 'D · Glipa 40 mm', regel: 'Kandidat 4, geometri: SEAT_GAP mellan Framför och Räknare är 40 mm i stället för 10, och de 30 mm tas ur Framför (365 → 335 mm), så att inget utanför platsens 500 mm flyttas (K18, #89). Saloonen är orörd: den är spelets egen zon (B5), inte receptets.', pris: 'Hjälper nästan inte: vid 390 och åtta platser är skalan 0,24 px/mm, så 40 mm är 10 px mot ett namn på 14. Det skulle krävas ~70 mm, alltså en femtedel av Framför. Och saloonens krock är formgivarens placering, som ingen receptändring når — K2 låter zoner ligga var som helst, även på varandra.' },
+  { id: 'fri', namn: 'E · Fri sida', regel: 'Kandidat 5: sidan K19 väljer; landar namnet i en annan zons ruta, på en bricka, en hög, en hand eller ett annat namn lyfts det högst en rad längre ut på samma sida; annars motsatt sida av sin egen zon (lika lyft); annars inuti sin egen ruta. Första lediga vinner. #76:s undantag står kvar.', pris: 'Noll i zon överallt — men vid 390 och åtta platser finns ingen ledig sida för räknarna i #76:s läge, så sex namn hamnar inuti och kapas. Samma två på Bord-fliken vid 1024.' },
+  { id: 'kant', namn: 'F · På kanten', regel: 'Något annat: namnet står PÅ sin egen kantlinje, centrerat på linjen på en platta i filtens färg, som en fieldsets legend — på överkanten, eller underkanten där K19 lägger namnet under zonen.', pris: 'Snyggast av alla på TV:n och i bordsläget vid fyra platser — namnet sitter på sin ruta och kan inte läsas som grannens. Men ett halvt namn sticker alltid ut, och där glipan är 10 mm (varje plats två zoner, sex av ytorna) ligger det halvt i grannen: 57 i zon totalt, sämst av alla.' },
+  { id: 'kombi', namn: 'G · Bredvid, sedan fri sida', rek: true, regel: 'B och E tillsammans: #76:s undantag tas bort, så varje namn står där K19 lägger det på varje filt; landar det i en annan zons ruta, på en bricka, en hög, en hand eller ett namn, prövas i tur och ordning: en rad längre ut, motsatt sida, och för ett namn bredvid sin zon de två ändarna (ovanför/under, förankrat i kantänden — #76:s läge), sist inuti. Ett namn lyfts aldrig förbi en annan ruta.', pris: 'Noll i zon, noll namnpar, noll på brickor och noll kapade på TV:n, i bordsläget, /online, observatören och Bord-fliken vid 1280/1440 — också 15 % bredare. Kvar: Bord-fliken vid 1024 (filten 382 px), där «Räknare B» vid fyra platser inte ryms någonstans och kapas; med alla tända också två räknare och två namnkort vid åtta platser. Priset: placeringen mäts (som stepAside, #424) och kan alltså byta sida när kameran zoomar — saloonens namn gick från under till över vid 3,3 px/mm på TV:n. Det ska beslutas en gång i filtens inpassade skala och sedan stå still (#43:s krav).' },
+]
+const YTOR = [
+  { id: 'tv-1920', namn: 'TV 1920' }, { id: 'bord-1024', namn: 'Bordsläge 1024' }, { id: 'bord-1280', namn: 'Bordsläge 1280' }, { id: 'bord-1440', namn: 'Bordsläge 1440' },
+  { id: 'online-1280', namn: '/online 1280' }, { id: 'editor-1024', namn: 'Bord-fliken 1024' }, { id: 'editor-1280', namn: 'Bord-fliken 1280' }, { id: 'editor-1440', namn: 'Bord-fliken 1440' },
+  { id: 'obs-390', namn: 'Observatören 390' }, { id: 'obs-768', namn: 'Observatören 768' },
+]
+const RADER = [...YTOR.flatMap((y) => [y.id, ...(y.id.startsWith('editor') ? [y.id + '-en'] : [])])]
+const radnamn = (id) => id.endsWith('-en') ? YTOR.find((y) => y.id === id.slice(0, -3)).namn + ', en åt gången' : YTOR.find((y) => y.id === id).namn
+const q = new URLSearchParams(location.search)
+let v = q.get('v') ?? 'kombi', yta = q.get('yta') ?? 'obs-390', pl = q.get('platser') ?? '4'
+const cell = (vv, yy, pp) => window.MATT.find((m) => m.v === vv && m.y === yy && m.p === pp)
+const knappar = (rot, lista, nu, val) => {
+  rot.querySelectorAll('button').forEach((b) => b.remove())
+  for (const x of lista) {
+    const b = document.createElement('button')
+    b.textContent = x.namn
+    if (x.rek) b.classList.add('rek')
+    b.setAttribute('aria-pressed', String(x.id === nu))
+    b.onclick = () => val(x.id)
+    rot.append(b)
+  }
+}
+const visa = () => {
+  history.replaceState(null, '', `?v=${v}&yta=${yta}&platser=${pl}`)
+  knappar(document.querySelector('#varianter'), VARIANTER, v, (x) => { v = x; visa() })
+  knappar(document.querySelector('#ytor'), YTOR, yta, (x) => { yta = x; visa() })
+  knappar(document.querySelector('#platser'), [{ id: '4', namn: 'Fyra' }, { id: '8', namn: 'Åtta' }], pl, (x) => { pl = x; visa() })
+  const V = VARIANTER.find((x) => x.id === v)
+  document.querySelector('#vnamn').textContent = V.namn + (V.rek ? ' — rekommendationen' : '')
+  document.querySelector('#vregel').textContent = V.regel
+  document.querySelector('#vpris').textContent = V.pris
+  const m = cell(v, yta, pl)
+  const img = document.querySelector('#bild')
+  img.src = 'img/' + m.f
+  img.alt = `${V.namn}, ${radnamn(yta)}, ${pl} platser`
+  document.querySelector('#bildtext').textContent = `${radnamn(yta)} · ${pl === '4' ? 'fyra' : 'åtta'} platser · skala ${m.skala} px/mm · minsta etikett ${m.px} px${yta.startsWith('editor') ? ' · alla zoner tända' : ''}`
+  const en = yta.startsWith('editor') ? cell(v, yta + '-en', pl) : null
+  const rader = [
+    ['Namn i en annan zons ruta', m.iZon.length], ['Namn på namn', m.nn.length], ['Namn på bricka eller hög', m.br.length], ['Kapade namn', m.kap.length],
+    ['Utanför filten', m.ut.length], ['Minsta etikett (px)', m.px], ['I annan zon, 15 % bredare', m.bred.inZone], ['Kapade, 15 % bredare', m.bred.cut],
+    ...(en ? [['En åt gången: i annan zon', en.iZon.length], ['En åt gången: kapade', en.kap.length]] : []),
+  ]
+  document.querySelector('#tal').innerHTML = rader.map(([k, n]) => `<span>${k}</span><b class="${k.startsWith('Minsta') ? '' : n === 0 ? 'noll' : 'fel'}">${n}</b>`).join('')
+  const det = [...m.iZon.map((s) => 'i zon: ' + s), ...m.nn.map((s) => 'namn: ' + s), ...m.br.map((s) => 'bricka: ' + s), ...m.kap.map((s) => 'kapat: ' + s), ...m.ut.map((s) => 'utanför: ' + s)]
+  document.querySelector('#detalj').innerHTML = det.map((s) => `<li>${s.replace(/</g, '&lt;')}</li>`).join('')
+  // Matrisen.
+  const t = document.querySelector('#matris')
+  const head = '<thead><tr><th>Yta</th><th>Platser</th>' + VARIANTER.map((x) => `<th>${x.namn}</th>`).join('') + '</tr></thead>'
+  let body = '<tbody>'
+  const sum = Object.fromEntries(VARIANTER.map((x) => [x.id, [0, 0, 0, 0]]))
+  for (const p of ['4', '8']) for (const r of RADER) {
+    body += `<tr><td>${radnamn(r)}</td><td>${p}</td>`
+    for (const x of VARIANTER) {
+      const c = cell(x.id, r, p)
+      if (!c) { body += '<td>–</td>'; continue }
+      const n = [c.iZon.length, c.nn.length, c.br.length, c.kap.length]
+      if (!r.endsWith('-en')) n.forEach((k, i) => (sum[x.id][i] += k))
+      const ok = n.every((k) => k === 0) && c.bred.inZone === 0
+      const valt = x.id === v && (r === yta) && p === pl
+      const link = r.endsWith('-en') ? n.join('/') : `<a href="?v=${x.id}&yta=${r}&platser=${p}" data-v="${x.id}" data-y="${r}" data-p="${p}">${n.join('/')} [${c.bred.inZone}]</a>`
+      body += `<td class="${ok ? 'ok' : 'nej'}${valt ? ' valt' : ''}">${link}</td>`
+    }
+    body += '</tr>'
+  }
+  body += '</tbody><tfoot><tr><td>Summa (utom «en åt gången»)</td><td></td>' + VARIANTER.map((x) => `<td>${sum[x.id].join('/')}</td>`).join('') + '</tr></tfoot>'
+  t.innerHTML = head + body
+  t.querySelectorAll('a[data-v]').forEach((a) => (a.onclick = (e) => { e.preventDefault(); v = a.dataset.v; yta = a.dataset.y; pl = a.dataset.p; visa(); scrollTo(0, 0) }))
+}
+addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+  const i = VARIANTER.findIndex((x) => x.id === v)
+  v = VARIANTER[(i + (e.key === 'ArrowRight' ? 1 : VARIANTER.length - 1)) % VARIANTER.length].id
+  visa()
+})
+visa()
+</script>
+</body>
+</html>
