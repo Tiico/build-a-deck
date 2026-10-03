@@ -138,6 +138,11 @@ describe('a proposed rewind on the table (C)', () => {
     expect(document.querySelector('[data-zone="discard"]')!.getAttribute('data-count')).toBe('0')
     expect(screen.getByText(/så här såg bordet ut/)).toBeTruthy()
     expect(screen.getByText(/väntar på Bo/)).toBeTruthy()
+    // The label wraps between its parts, and the separator goes with the part before it, so no line
+    // starts with «·» (#723) — a hard space ties it there.
+    const parts = [...document.querySelectorAll('.byd-rewind-label > span')].map((s) => s.textContent ?? '')
+    expect(parts.filter((p) => p.trimStart().startsWith('·'))).toEqual([])
+    expect(parts[1]).toMatch(/ ·$/)
     expect(screen.queryByRole('button', { name: /Godkänn|Avvisa/ })).toBeNull()
 
     // The preview on the TV is the table's own socket speaking, and Bo's phone is a different
