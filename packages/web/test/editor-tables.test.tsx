@@ -257,6 +257,71 @@ describe('ending a table from the editor (#19, C9)', () => {
     await openMenu(row)
     expect(within(row).queryByRole('menuitem', { name: /Avsluta bordet/ })).toBeNull()
   })
+
+  // The band in the header is about the table the primary button works on (#705). It stood on
+  // after that table was ended — «Bordet kör …» with kicks for seats that no longer exist, and an
+  // «Uppdatera bordet» whose press came back as a raw 409. Once the table is over, the band goes,
+  // the header says what happened, and the button starts a table again.
+  it('takes the band away when its table ends, and the primary button starts a table again (#705)', async () => {
+    const user = userEvent.setup()
+    await run.projects.create(run.projectId, projectDoc())
+    const id = await startTable()
+    await openTables()
+    await screen.findByText(/Bordet kör rev-1/)
+    const ada = TableClient.connect(await asSeat(run, id, 'A', 'Ada'))
+    await ada.ready()
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await screen.findByRole('button', { name: 'Sparka Ada' })
+
+    const row = await onlyRow()
+    await openMenu(row)
+    await user.click(within(row).getByRole('menuitem', { name: /Avsluta bordet/ }))
+    await user.click(within(row).getByRole('button', { name: 'Ja, avsluta' }))
+
+    await waitFor(() => expect(document.querySelector('.byd-editor-table-link')).toBeNull())
+    expect(screen.queryByRole('button', { name: 'Sparka Ada' })).toBeNull()
+    expect(document.querySelector('[data-room-code]')).toBeNull()
+    const header = document.querySelector('header')!
+    expect(within(header).getByRole('button', { name: 'Starta bord' })).toBeTruthy()
+    expect(within(header).getByText('Bordet är avslutat.')).toBeTruthy()
+    ada.close()
+  })
+
+  // The same table, ended where the header could not see it go: the refusal of the update is the
+  // first it hears of it. That is the table going away too, never «could not refresh the table: 409».
+  it('reads a refused update as the table having ended, and says other failures in whole Swedish sentences (#705)', async () => {
+    const user = userEvent.setup()
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    await user.click(screen.getByRole('button', { name: 'Starta bord' }))
+    await run.completeRenders()
+    await screen.findByRole('link', { name: /öppna bordet/i })
+
+    let answer = 500
+    const real = globalThis.fetch
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      if (url.endsWith('/refresh')) return Promise.resolve(new Response(JSON.stringify({ error: 'nope' }), { status: answer }))
+      return real(input, init)
+    })
+    try {
+      const header = document.querySelector('header')!
+      await user.click(screen.getByRole('button', { name: 'Uppdatera bordet' }))
+      expect((await within(header).findByRole('alert')).textContent).toBe('Bordet kunde inte uppdateras. Försök igen.')
+      expect(document.querySelector('.byd-editor-table-link')).toBeTruthy()
+
+      answer = 409
+      await user.click(await screen.findByRole('button', { name: 'Uppdatera bordet' }))
+      await within(header).findByText('Bordet är avslutat.')
+      expect(document.querySelector('.byd-editor-table-link')).toBeNull()
+      expect(within(header).getByRole('button', { name: 'Starta bord' })).toBeTruthy()
+      expect(header.textContent).not.toMatch(/could not|409/)
+    } finally {
+      spy.mockRestore()
+    }
+  })
 })
 
 describe('the QR for the phones (#19, K12)', () => {

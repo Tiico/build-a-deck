@@ -71,6 +71,14 @@ export type Textures = { total: number; done: number; failed: string[]; smallest
 // A table of this game as the Bord tab lists it (#19): which session, the version it runs,
 // whether its log is locked (C9), and when it last moved.
 // `code` is the room code of a running table, given only to a role that may start one (#477).
+// A table that was ended under the editor (#705): its log is locked, so it can never take a new
+// version. The header treats it as the table going away, not as an update that failed.
+export class TableEnded extends Error {
+  constructor(readonly sessionId: string) {
+    super(`the table ${sessionId} has ended`)
+  }
+}
+
 export type TableSummary = { id: string; version: string; ended: boolean; lastAt: string | null; code?: string }
 
 // The project as the editor holds it, and its end of the actor (D3): the document, who else has
@@ -1187,6 +1195,8 @@ export class ProjectClient {
       if (!saved.ok) throw new Error(`could not save before refreshing the table: ${saved.reason}`)
     }
     const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/refresh`, withCredentials({ method: 'POST' }))
+    // The log refuses the version change once the table is over (C9): not a fault, a fact (#705).
+    if (res.status === 409) throw new TableEnded(sessionId)
     if (!res.ok) throw new Error(`could not refresh the table: ${res.status}`)
     return (await res.json()) as { version: string; seqs: number[] }
   }
@@ -1228,13 +1238,16 @@ export class ProjectClient {
   }
 
   // Whether a rendering is finished, so a link is offered only when there is a file behind it.
+  // A 200 and nothing else: the queue's 202 is `ok` too, and read as done it put the link in
+  // front of a file that was not there yet (#678).
   async rendered(hash: string): Promise<boolean> {
     const res = await fetch(`${this.http}/faces/${hash}`, { ...withCredentials(), redirect: 'follow' })
-    return res.ok
+    return res.status === 200
   }
 
-  bookletUrl(hash: string): string {
-    return `${this.http}/faces/${hash}`
+  // The booklet under the name it is opened and saved by (#678).
+  bookletUrl(hash: string, name: string): string {
+    return `${this.http}/faces/${hash}?name=${encodeURIComponent(name)}`
   }
 
   async textures(sessionId: string): Promise<Textures> {

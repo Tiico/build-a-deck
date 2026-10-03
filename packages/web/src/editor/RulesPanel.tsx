@@ -368,7 +368,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
                 onPick={pick}
               />
             )}
-            <Booklet client={client} />
+            <Booklet client={client} book={rules} game={doc.name} />
           </div>
         )}
       </div>
@@ -942,21 +942,33 @@ function Toc({
 }
 
 // The rulebook as a booklet for print (B7): one rendering of the rules as they stand, through
-// the same worker that renders every card. The link is offered only once there is a file.
-function Booklet({ client }: { client: ProjectClient }) {
+// the same worker that renders every card. The link is offered only once there is a file, and
+// only for as long as the book is the one it was made from: a change takes the control back to
+// the order (#678), and a rendering still on its way for the old book is let go.
+function Booklet({ client, book, game }: { client: ProjectClient; book: RuleDoc; game: string }) {
   const t = useT()
-  const [state, setState] = useState<'idle' | 'working' | { hash: string } | { error: string }>('idle')
+  // What the book said when the order was placed, read by value so a save that hands back the
+  // same words as a new object is not a change. Whatever the order came to belongs to that book.
+  const text = useMemo(() => JSON.stringify(book), [book])
+  const latest = useRef(text)
+  useEffect(() => {
+    latest.current = text
+  }, [text])
+  const [placed, setPlaced] = useState<{ of: string; is: 'working' | { hash: string } | { error: string } } | null>(null)
+  const state = placed && placed.of === text ? placed.is : 'idle'
   const order = async () => {
-    setState('working')
+    const of = text
+    const current = () => latest.current === of
+    setPlaced({ of, is: 'working' })
     try {
       const hash = await client.orderBooklet(t)
-      for (let i = 0; i < 120; i++) {
-        if (await client.rendered(hash)) return setState({ hash })
+      for (let i = 0; i < 120 && current(); i++) {
+        if (await client.rendered(hash)) return setPlaced({ of, is: { hash } })
         await new Promise((r) => setTimeout(r, 250))
       }
-      setState({ error: t('rules.booklet.failed') })
+      setPlaced({ of, is: { error: t('rules.booklet.failed') } })
     } catch (err) {
-      setState({ error: err instanceof Error ? err.message : String(err) })
+      setPlaced({ of, is: { error: err instanceof Error ? err.message : String(err) } })
     }
   }
   // The button the designer pressed turns into the link she came for, so the focus goes with it
@@ -968,7 +980,7 @@ function Booklet({ client }: { client: ProjectClient }) {
   }, [done])
   if (typeof state === 'object' && 'hash' in state) {
     return (
-      <a ref={ready} className="byd-rules-booklet" href={client.bookletUrl(state.hash)} target="_blank" rel="noreferrer">
+      <a ref={ready} className="byd-rules-booklet" href={client.bookletUrl(state.hash, t('rules.booklet.file', { game }))} target="_blank" rel="noreferrer">
         {t('rules.booklet.open')}
       </a>
     )

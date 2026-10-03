@@ -86,6 +86,28 @@ describe('the editor says whether the work is saved (#8)', () => {
   })
 })
 
+// Below 1440 the status draws a tick or an amber dot instead of its word (#668, A1), and the mark
+// is drawing only: what the live region says is the word, in both states, and nothing else.
+function heard(status: Element): string {
+  const copy = status.cloneNode(true) as Element
+  for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove()
+  return copy.textContent ?? ''
+}
+
+describe('the save status is a word to a reader whatever it draws (#668)', () => {
+  it('says «Sparat» and «Osparat» and nothing more, with the mark hidden from the reader', async () => {
+    await openEditor()
+    const status = document.querySelector('.byd-editor > header > [role="status"]')!
+    expect(heard(status)).toBe('Sparat')
+    expect(status.querySelector('[aria-hidden="true"]')).not.toBeNull()
+
+    fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
+    fireEvent.change(screen.getByLabelText('dragon title'), { target: { value: 'Drakhona' } })
+    expect(heard(status)).toBe('Osparat')
+    expect(status.querySelector('[aria-hidden="true"]')).not.toBeNull()
+  })
+})
+
 // An edit made while a save is travelling belongs to the next save and not to that one (#380).
 // The actor saves the document it holds when the save reaches it; an edit written a moment later
 // is not in that version, so counting it as saved is telling the designer her work is safe when

@@ -33,8 +33,9 @@ export function routeOf(pathname: string): Route {
   return PATHS[pathname] ?? 'unknown'
 }
 
-// Which room a session route is about is not always a code: only the TV is given one, so the
-// session id stands in for it everywhere else. And `route` is what the page is showing rather
+// Which room a session route is about is not always a code: only the TV is given one (DRIFT §9).
+// Without it the game's name stands in, because that is what a guest knows the table by; the
+// session id did once, and «Tittar på rum a25d7f3b-0c…» is nobody's name for anything (#759). And `route` is what the page is showing rather
 // than where it stands: `/` is the games for whoever is logged in and the login card for whoever
 // is not, and a tab that says "Mina spel" over the second one names a page that is not there.
 // Only a page with two shapes reports it, and the address decides for every other one.
@@ -44,7 +45,7 @@ export type TitleContext = { state?: StatusKey | null; room?: string | null; gam
 // The name of the page first, because a tab is clipped from the right, and `·` because that is
 // already the app's separator.
 function nameOf(route: Route, ctx: TitleContext, t: T): string[] {
-  const room = ctx.room ? t('title.room', { code: ctx.room }) : null
+  const room = ctx.room ? t('title.room', { code: ctx.room }) : (ctx.game ?? null)
   switch (route) {
     case 'home':
       return [t('title.home')]
@@ -70,7 +71,7 @@ function nameOf(route: Route, ctx: TitleContext, t: T): string[] {
     case 'online':
       return [t('title.online'), room].filter((s): s is string => s !== null)
     case 'observe':
-      return [ctx.room ? t('title.observe', { code: ctx.room }) : t('title.observe.any')]
+      return [ctx.room ? t('title.observe', { code: ctx.room }) : ctx.game ? t('title.observe.game', { game: ctx.game }) : t('title.observe.any')]
     case 'prototype':
       return [t('title.prototype')]
     case 'unknown':
