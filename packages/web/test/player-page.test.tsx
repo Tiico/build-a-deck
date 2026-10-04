@@ -152,6 +152,9 @@ describe('PlayerPage', () => {
     expect(held?.querySelector('[data-inspect]')?.getAttribute('data-inspect')).toBe(card.getAttribute('data-hand-card'))
     fireEvent.click(held!)
     expect(document.querySelector('.byd-inspect')).not.toBeNull()
+    // The hand's buttons showed through the veil and read into the card's own row (#715): what is
+    // behind the card held up is out of reach while it is held.
+    for (const part of ['header', '.byd-phone-main', '.byd-phone-foot']) expect({ [part]: document.querySelector(part)?.hasAttribute('inert') }).toEqual({ [part]: true })
     // The next touch anywhere puts it down.
     fireEvent.pointerDown(document.querySelector('.byd-inspect')!)
     expect(document.querySelector('.byd-inspect')).toBeNull()

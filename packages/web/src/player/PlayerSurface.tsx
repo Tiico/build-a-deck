@@ -84,7 +84,6 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   // Out of reach while another seat's rewind is asked of this one (#483): the question covers the
   // phone and has to be answered, so nothing behind it is a Tab stop or a press.
   const asking = standingRewind(view)
-  const behind = asking && asking.by !== seat ? { inert: true } : {}
   const personal = useRef<HTMLDetailsElement>(null)
   const [chosenId, setChosenId] = useState<string | null>(null)
   const [quickTarget, setQuickTarget] = useState<string | null>(null)
@@ -96,6 +95,9 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   // of her, or an area of the table — which is what the held card walks, and what it offers to do.
   const [held, setHeld] = useState<{ card: VisibleComponentState; row: 'hand' | 'mine' | { zone: string } } | null>(null)
   const [lifted, setLifted] = useState<VisibleComponentState | null>(null)
+  // Out of reach while another seat's rewind is asked of this one (#483), and while a card is held
+  // up (#715): the hand's buttons showed through the veil and read into the card's own row.
+  const behind = (asking && asking.by !== seat) || held !== null ? { inert: true } : {}
   const [sheet, setSheet] = useState<Sheet>(null)
   // Which target the table said no to, and why.
   const refusal = useRefusal('phone')
