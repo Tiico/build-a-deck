@@ -26,7 +26,9 @@ export function describeActivity(line: Activity, view: Snapshot, t: T): string {
     const z = view.zones.find((x) => x.id === id)
     if (!z) return id
     // A hand is the one zone the log does not call by the designer's name (K19).
-    return z.kind === 'hand' ? handName(view, z, t, 'inSentence') : z.name
+    if (z.kind === 'hand') return handName(view, z, t, 'inSentence')
+    // A pile made on the felt is named by the area it lies in (K1, #714), not by its id.
+    return z.kind === 'pile' && z.dynamic ? t('zone.pile.within', { area: z.name }) : z.name
   }
   // The card the line is about, by its title, only as the reader's own view has it (#507 fynd 6).
   // The projection has already decided what this reader is told (B6, #412): a card she may not

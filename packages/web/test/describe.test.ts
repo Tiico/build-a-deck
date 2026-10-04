@@ -192,3 +192,21 @@ describe('where a draw and a deal put the cards (#714)', () => {
     expect(describeActivity(by({ v: 'deal', from: 'draw', to: ['hand:A', 'hand:B'], each: 1 }), table(null), en)).toBe('The table dealt 1 card each to Ada’s hand and Bo’s hand')
   })
 })
+
+// A pile made on the felt has no name of its own (K1): it was «2» on the felt, «Spelyta» in the
+// panel and «z7» when read out (#714). It is «en hög i Spelyta» in a sentence, everywhere.
+describe('a pile made on the felt, in the log (#714)', () => {
+  const withPile = (): Snapshot => {
+    const v = table(null)
+    return { ...v, zones: [...v.zones, { mode: 'order', id: 'z7', kind: 'pile', name: 'Spelyta', geometry: rect(0, 0, 0, 0), dynamic: true, order: ['c1', 'c2'] }] } as unknown as Snapshot
+  }
+  it('names it by the area it lies in', () => {
+    expect(describeActivity(moveToHand('z7'), withPile(), sv)).toBe('Ada flyttade ett kort till en hög i Spelyta')
+    expect(describeActivity(moveToHand('z7'), withPile(), en)).toBe('Ada moved a card to a pile in Spelyta')
+  })
+  // And one card laid beside a pile is a card and not a pile (K1).
+  it('says one card laid beside a pile as a card', () => {
+    expect(describeActivity(splitBeside(1), table(null), sv)).toBe('Ada lade 1 kort bredvid Draghög')
+    expect(describeActivity(splitBeside(1), table(null), en)).toBe('Ada laid 1 card beside Draghög')
+  })
+})

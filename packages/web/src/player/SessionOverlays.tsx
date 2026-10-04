@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { useFocusTrap } from '../editor/focusTrap.js'
 import type { Snapshot } from '@byd/protocol'
 import type { TableClient } from '../client.js'
-import { standingRewind, whoDecides } from '../table/rewind.js'
+import { standingRewind, whereTo, whoDecides } from '../table/rewind.js'
 import { FlagSheet, EndSheet, ExitSheet } from './SessionSheets.js'
 import { Survey } from './Survey.js'
 import { submitSurvey } from './surveyApi.js'
@@ -149,7 +149,7 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
         </div>
       )}
       {proposal && proposal.by !== seat && (
-        <RewindAsk who={view.seats.find((s) => s.id === proposal.by)?.name ?? t('play.table')} pile={returnPile(view, view.seat)} onSettle={settle} />
+        <RewindAsk who={view.seats.find((s) => s.id === proposal.by)?.name ?? t('play.table')} where={whereTo(view, proposal, client.activity, t)} pile={returnPile(view, view.seat)} onSettle={settle} />
       )}
     </>
   )
@@ -230,7 +230,8 @@ export function SessionButtons({ client, view, sheet, onSheet }: { client: Table
 
 // Another seat's rewind, asked of this one (K13, #483): a dialog over the whole phone that takes the
 // focus and holds it, on the answer that changes nothing, until it is answered.
-function RewindAsk({ who, pile, onSettle }: { who: string; pile: string | null; onSettle(v: 'rewind.confirm' | 'rewind.reject'): void }) {
+// `where` is the move the table would go back to before, said as the TV's frame says it (#714).
+function RewindAsk({ who, where, pile, onSettle }: { who: string; where: string; pile: string | null; onSettle(v: 'rewind.confirm' | 'rewind.reject'): void }) {
   const t = useT()
   const id = useId()
   const box = useRef<HTMLDivElement>(null)
@@ -239,7 +240,7 @@ function RewindAsk({ who, pile, onSettle }: { who: string; pile: string | null; 
   return (
     <div className="byd-rewind-ask" data-rewind-ask ref={box} role="alertdialog" aria-modal="true" aria-labelledby={`${id}-title`} aria-describedby={`${id}-body`}>
       <h1 id={`${id}-title`}>{t('rewind.ask.title', { who })}</h1>
-      <p id={`${id}-body`}>{pile ? t('rewind.ask.body', { pile }) : t('rewind.ask.body.any')}</p>
+      <p id={`${id}-body`}>{pile ? t('rewind.ask.body', { pile, where }) : t('rewind.ask.body.any', { where })}</p>
       <button data-kind="ok" className="byd-primary" onClick={() => onSettle('rewind.confirm')}>
         {t('rewind.approve')}
       </button>

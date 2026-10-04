@@ -108,7 +108,13 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet,
         <h2>
           {what}
           {/* Whose chip it is (#67): a shared table has to say it, where a phone never does. */}
-          {thing.kind === 'counter' && thing.owner !== null && <small>{t('ring.counter.whose', { name: thing.owner })}</small>}
+          {thing.kind === 'counter' && thing.owner !== null && (
+            <>
+              {/* Kept apart from the name, in the line and to a reader: «GuldC:s räknare» read as one word (#714). */}
+              {' · '}
+              <small>{t('ring.counter.whose', { name: thing.owner })}</small>
+            </>
+          )}
         </h2>
         {verbs.length > 0 && <h3>{t('kbd.panel.do')}</h3>}
         {empty && verbs.length === 0 && <p className="byd-kbd-empty">{t('kbd.panel.empty')}</p>}
