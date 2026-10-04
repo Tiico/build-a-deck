@@ -74,6 +74,8 @@ export const svStatus = {
   'status.missing.text': 'Länken pekar på något som inte finns längre. Kontrollera adressen, eller gå till dina spel.',
   'status.missing.table.heading': 'Bordet är slut',
   'status.missing.table.text': 'Koden som stod här gäller inte längre. Starta ett nytt bord från Mina spel.',
+  'status.deleted.table.heading': 'Spelet är borttaget',
+  'status.deleted.table.text': 'Bordet avslutades när spelet togs bort. Starta ett nytt bord från Mina spel.',
   'status.missing.phone.heading': 'Bordet finns inte',
   'status.missing.phone.text': 'Bordet kan ha avslutats. Läs QR-koden på TV:n igen så kommer du in i det som pågår.',
   'status.missing.editor.heading': 'Vi hittar inte spelet',

@@ -54,6 +54,7 @@ export const enAccount = {
 
   'home.played.title': 'Tables you have played at',
   'home.played.some-table': 'A table',
+  'home.played.deleted': 'Deleted game',
   'home.played.you': '{version} · you were {name}',
   'home.played.surveyed': 'survey answered',
   'home.played.unsurveyed': 'survey unanswered',
