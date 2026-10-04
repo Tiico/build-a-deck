@@ -1055,6 +1055,7 @@ export const enEditor = {
   'setup.step.deal': 'Deal {n} {to}, {face}',
   'setup.step.take': 'Search out {which} and lay them {face} {at}',
   'setup.take.every': 'every card',
+  'setup.take.unchosen': 'which cards?',
   'setup.take.where': 'every card where {what}',
   'setup.step.shuffle': 'Shuffle the pile',
   'setup.step.flipTop': 'Turn the top card {face}',

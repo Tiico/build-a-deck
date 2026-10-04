@@ -1170,6 +1170,8 @@ export const svEditor = {
   'setup.step.deal': 'Dela ut {n} {to}, {face}',
   'setup.step.take': 'Leta fram {which} och lägg dem {face} {at}',
   'setup.take.every': 'varje kort',
+  // Ett nytt «Leta fram» innan frågan ställts (#713): steget körs inte förrän den är besvarad.
+  'setup.take.unchosen': 'vilka kort?',
   'setup.take.where': 'varje kort där {what}',
   'setup.step.shuffle': 'Blanda högen',
   'setup.step.flipTop': 'Vänd översta kortet {face}',

@@ -688,6 +688,18 @@ describe('fokus i högens panel (#480)', () => {
     await waitFor(() => expect(document.activeElement?.classList.contains('byd-slot')).toBe(true))
   })
 
+  // «Leta fram» förvaldes till «varje kort», som i praktiken flyttar hela högen kort för kort (#713).
+  // Beslut 2026-10-04, «fråga först»: steget börjar utan fråga och säger att den saknas.
+  it('börjar ett nytt «Leta fram» med frågan om vilka kort, inte med varje kort', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    newStep()
+    fireEvent.change(panel().querySelector('.byd-zone-step-add select') as HTMLSelectElement, { target: { value: 'take' } })
+    const taken = await waitFor(() => panel().querySelectorAll('ol li')[1] as HTMLElement)
+    expect(taken.textContent).toMatch(/^Leta fram vilka kort\? och lägg dem/)
+    expect(taken.textContent).not.toMatch(/varje kort/)
+  })
+
   it('lämnar tillbaka fokus till ratten när ett val tas med Enter i sökningen', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openZone('draw')

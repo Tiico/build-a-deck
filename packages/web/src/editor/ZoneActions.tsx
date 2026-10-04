@@ -84,7 +84,7 @@ const blank = (v: ActionStep['v'], pile?: string): ActionStep =>
         : v === 'deal'
           ? { v, each: { of: 'number', n: 1 }, to: { at: 'hands' }, face: 'keep' }
           : v === 'take'
-            ? { v, which: [], to: { at: 'beside' }, face: 'keep' }
+            ? { v, which: null, to: { at: 'beside' }, face: 'keep' }
             : { v, count: { of: 'number', n: 1 }, to: { at: 'beside' }, face: 'keep' }
 
 export function ZoneActions({ doc, zone, onPatch, onClose, reading = false }: ZoneActionsProps) {
@@ -356,7 +356,8 @@ function Step({ step, columns, zones, beside, noAsk, t, onChange }: { step: Acti
         {parts(t('setup.step.take'), {
           which: (
             // «varje kort» with nothing asked, rather than «varje kort där vilket kort som helst» (#480).
-            <QuerySlot key="w" query={step.which} columns={columns} label={step.which.length > 0 ? t('setup.take.where', { what: queryWords(step.which, t) }) : t('setup.take.every')} onChange={(which) => onChange({ ...step, which })} t={t} />
+            // «vilka kort?» until the question is asked (#713): a new search starts there, not at every card.
+            <QuerySlot key="w" query={step.which ?? []} columns={columns} label={step.which === null ? t('setup.take.unchosen') : step.which.length > 0 ? t('setup.take.where', { what: queryWords(step.which, t) }) : t('setup.take.every')} onChange={(which) => onChange({ ...step, which })} t={t} />
           ),
           face: side(step.face, LANDS, (face) => onChange({ ...step, face: face as typeof step.face })),
           ...place(step.to, (to) => onChange({ ...step, to })),

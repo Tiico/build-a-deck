@@ -101,6 +101,7 @@ export const svPlay = {
   'ring.action.why.nothing': 'åtgärden har inga steg',
   'ring.action.why.gone': 'högen är inte kvar',
   'ring.action.why.asks': 'ett steg frågar efter ett tal',
+  'ring.action.why.unfinished': 'ett steg har inte sagt vilka kort det letar fram',
   'start.tile': 'Starta spelet',
   'start.blocked': 'Går inte att starta just nu: {why}',
   'start.again.label': 'Starta om spelet?',
