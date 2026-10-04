@@ -1319,6 +1319,7 @@ export const enEditor = {
   // notice has to be all the clearer where the doing was done: it names which of what she did
   // went away again, and why it did, after the colon.
   'upload.undone': '{what} could not be uploaded and has been removed again: {why}',
+  'upload.refused': '{what} could not be uploaded: {why}',
   'upload.undone.symbol': 'The symbol {name}',
   'upload.undone.font': 'The typeface {name}',
   'upload.undone.picture': 'The picture {name}',

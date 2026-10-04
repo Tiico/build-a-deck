@@ -1536,16 +1536,18 @@ describe('a file the gate would refuse never leaves the browser (#742)', () => {
   const svg = (): File => new File(['<svg xmlns="http://www.w3.org/2000/svg"/>'], 'logga.svg', { type: 'image/svg+xml' })
 
   it.each([
-    ['too heavy', heavy, /^filen är för stor \(max 8 MB\)$/],
-    ['a drawing and not a picture', svg, /^filen är inte PNG, JPEG, GIF eller WebP$/],
-  ] as const)('refuses a picture that is %s without posting it or touching the game', async (_what, file, said) => {
+    ['too heavy', heavy, 'stor.png', 'filen är för stor (max 8 MB)'],
+    ['a drawing and not a picture', svg, 'logga.svg', 'filen är inte PNG, JPEG, GIF eller WebP'],
+  ] as const)('refuses a picture that is %s without posting it or touching the game', async (_what, file, name, why) => {
     const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
     const before = client.doc
     const line = sent()
     try {
-      await expect(client.addPicture(file())).rejects.toThrow(said)
-      await expect(client.uploadAsset(file(), 'image')).rejects.toThrow(said)
+      // The picture is named, as a taken-back one is (L37) — but nothing is said to be removed,
+      // because nothing was added.
+      await expect(client.addPicture(file())).rejects.toThrow(`Bilden ${name} kunde inte laddas upp: ${why}`)
+      await expect(client.uploadAsset(file(), 'image')).rejects.toThrow(why)
       // Said in the reader's words, so a surface shows the reason rather than its own «failed» (#812).
       await expect(client.addPicture(file())).rejects.toBeInstanceOf(Said)
     } finally {

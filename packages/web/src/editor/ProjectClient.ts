@@ -1078,8 +1078,12 @@ export class ProjectClient {
   async addPicture(file: File, t: T = swedish, onto?: { cardRef: string; field: string }): Promise<string> {
     this.mustBeAbleToEdit(t)
     // Before the bytes are even hashed: a file the gate is certain to refuse touches neither the
-    // document nor the wire (#742).
-    await this.mustBeTakeable(file, 'image', t)
+    // document nor the wire (#742). The refusal names the picture as a taken-back one does (L37),
+    // because in a batch it is one line among several and has to say which file it is about —
+    // but it says nothing was removed, since nothing was ever added.
+    await this.mustBeTakeable(file, 'image', t).catch((err: unknown) => {
+      throw new Said(t('upload.refused', { what: t('upload.undone.picture', { name: pictureNameOf(file.name) ?? file.name }), why: saidOr(err, t('upload.failed')) }))
+    })
     // The hash first, off the bytes themselves (#339, as #310 did for the symbol): it is the name
     // the service will give them, so whether the game already has the picture is known here.
     const ref = await assetRefOfFile(file)

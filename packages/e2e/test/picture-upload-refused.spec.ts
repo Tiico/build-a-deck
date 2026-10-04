@@ -71,10 +71,10 @@ test.describe('a picture uploaded from a card cell (#742)', () => {
     const heavy = Buffer.alloc(9 * 1024 * 1024)
     PIXEL.copy(heavy)
     await upload.setInputFiles({ name: 'stor.png', mimeType: 'image/png', buffer: heavy })
-    await expect(said).toHaveText('filen är för stor (max 8 MB)')
+    await expect(said).toHaveText('Bilden stor.png kunde inte laddas upp: filen är för stor (max 8 MB)')
 
     await upload.setInputFiles({ name: 'logga.svg', mimeType: 'image/svg+xml', buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>') })
-    await expect(said).toHaveText('filen är inte PNG, JPEG, GIF eller WebP')
+    await expect(said).toHaveText('Bilden logga.svg kunde inte laddas upp: filen är inte PNG, JPEG, GIF eller WebP')
 
     expect(seen.posts).toEqual([])
     expect(seen.errors).toEqual([])
