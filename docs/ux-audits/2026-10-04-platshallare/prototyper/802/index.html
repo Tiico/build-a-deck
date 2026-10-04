@@ -55,14 +55,14 @@
 
   /* ── A: rutan säger det ─────────────────────────────────────────────────────────────────── */
   .A.ph { border: 1.5px dashed #5b6274; box-shadow: 0 0 0 1px rgba(255,255,255,.55); background: repeating-linear-gradient(135deg, rgba(91,98,116,.10) 0 6px, transparent 6px 12px); display: grid; place-items: center; padding: 4px; }
-  .A .ord { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 8px; border-radius: 999px; background: var(--chrome); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .A .ord i { font-style: normal; color: var(--quiet-2); }
-  .A .ord span { overflow: hidden; text-overflow: ellipsis; }
-  .A.tunn .ord { padding: 2px 8px; }
+  .A .ord { display: inline-flex; align-items: flex-start; gap: 6px; max-width: 100%; padding: 4px 9px; border-radius: 10px; background: var(--chrome); color: var(--ink); text-align: left; }
+  .A .ord i { flex: none; font-style: normal; color: var(--quiet-2); }
+  .A.tunn .ord { align-items: center; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .A.tunn .ord span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
   /* ── B: flik på ramen, som villkoret ────────────────────────────────────────────────────── */
   .B.ph { border: 1.5px dashed #a86f12; display: grid; place-items: center; }
-  .B .flik { position: absolute; left: -1.5px; bottom: 100%; padding: 4px 8px; border-radius: 4px 4px 0 0; background: var(--amber); color: #1b1d23; white-space: nowrap; }
+  .B .flik { position: absolute; left: -1.5px; bottom: 100%; max-width: calc(100% + 3px); overflow: hidden; text-overflow: ellipsis; padding: 4px 8px; border-radius: 4px 4px 0 0; background: var(--amber); color: #1b1d23; white-space: nowrap; }
   .B .knapp { min-height: 26px; padding: 0 10px; border: 1px solid #a86f12; border-radius: 6px; background: rgba(255,255,255,.85); color: #3b2a07; cursor: pointer; white-space: nowrap; }
   .B .knapp:hover { background: #fff; border-color: #6e4806; }
   .B .knapp:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
@@ -91,7 +91,7 @@
 <body>
 <div class="rubrik">
   <p><b>PROTOTYP #802 · platshållaren på mallduken.</b> Duken är den byggda appen (skärmbild); det som ligger ovanpå kortet är förslaget och finns bara medan man redigerar — aldrig i tryck eller på bordet.</p>
-  <p>Tre tomma lager på samma kort: <b>image-1</b> bild utan bild · <b>image-2</b> bild bunden till textkolumnen «typ» · <b>icons-1</b> ikonrad utan ikoner. Klicka ett lager för att markera det, klicka bredvid kortet för att släppa. ← → byter variant.</p>
+  <p>Tre tomma lager på samma kort: <b>image-1</b> bild utan bild · <b>image-2</b> bild bunden till textkolumnen «typ» · <b>icons-1</b> ikonrad utan ikoner. Klicka ett lager för att markera det, klicka bredvid kortet för att släppa. ← → byter variant. «Tom cell» byter bara orden; panelen i skärmbilden visar fallet «Inget valt».</p>
 </div>
 <div class="anteckning" id="anteckning"></div>
 <div class="duk" id="duk"><div class="yta" id="yta"></div></div>
@@ -120,16 +120,16 @@ const GEO = {
 // står för fallet där lagret läser en kolumn som är tom på just det här kortet.
 const ORD = {
   'image-1': {
-    vald: { kort: 'Ingen bild vald', lang: 'Ingen bild vald', mer: 'Välj en i spelets bilder.', knapp: 'Välj bild…', glyf: '▣' },
-    cell: { kort: 'Tom här', lang: '«bild» är tom på det här kortet', mer: '4 av 77 kort saknar bild.', knapp: 'Visa i tabellen', glyf: '▣' },
+    vald: { kort: 'Ingen bild vald', flik: 'Ingen bild vald', lang: 'Ingen bild vald', mer: 'Välj en i spelets bilder.', knapp: 'Välj bild…', glyf: '▣' },
+    cell: { kort: 'Tom här', flik: '«bild» tom här', lang: '«bild» är tom på det här kortet', mer: '4 av 77 kort saknar bild.', knapp: 'Visa i tabellen', glyf: '▣' },
   },
   'image-2': {
-    vald: { kort: '«typ» är text', lang: '«typ» är text, inte bilder', mer: 'Välj en bildkolumn eller en fast bild.', knapp: 'Välj bildkälla…', glyf: '▣' },
-    cell: { kort: '«typ» är text', lang: '«typ» är text, inte bilder', mer: 'Välj en bildkolumn eller en fast bild.', knapp: 'Välj bildkälla…', glyf: '▣' },
+    vald: { kort: '«typ» är text', flik: '«typ» är text', lang: '«typ» är text, inte bilder', mer: 'Välj en bildkolumn eller en fast bild.', knapp: 'Välj bildkälla…', glyf: '▣' },
+    cell: { kort: '«typ» är text', flik: '«typ» är text', lang: '«typ» är text, inte bilder', mer: 'Välj en bildkolumn eller en fast bild.', knapp: 'Välj bildkälla…', glyf: '▣' },
   },
   'icons-1': {
-    vald: { kort: 'Inga ikoner', lang: 'Inga ikoner ännu', mer: 'Välj en ikon, eller ett fält där korten skriver {namn}.', knapp: 'Välj fält…', glyf: '●●' },
-    cell: { kort: 'Tom här', lang: '«symboler» är tom på det här kortet', mer: 'Skriv {namn} i kolumnen, t.ex. {guld}.', knapp: 'Visa i tabellen', glyf: '●●' },
+    vald: { kort: 'Inga ikoner', flik: 'Inga ikoner ännu', lang: 'Inga ikoner ännu', mer: 'Välj en ikon, eller ett fält där korten skriver {namn}.', knapp: 'Välj fält…', glyf: '●●' },
+    cell: { kort: '«symboler» tom', flik: '«symboler» tom här', lang: '«symboler» är tom på det här kortet', mer: 'Skriv {namn} i kolumnen, t.ex. {guld}.', knapp: 'Visa i tabellen', glyf: '●●' },
   },
 }
 
@@ -137,7 +137,7 @@ const VARIANTER = {
   A: { namn: 'A · Rutan säger det',
     not: '<b>A — rutan säger det.</b> Streckad ram exakt på lagret och ett kort ord i en mörk bricka mitt i, alltid synligt. <span class="plus">+ Ett tomt lager syns på hela duken utan att man letar, och brickan läses på varje papper.</span> <span class="minus">− Bara två–tre ord får plats i en ikonrad på 24 mm; vägen vidare är panelen. Täcker kortet där det är tomt, alltså precis där formgivaren ska bedöma luft.</span>' },
   B: { namn: 'B · Flik som villkoret',
-    not: '<b>B — flik på ramen, som villkoret (#478).</b> Bärnstensram, en mening på fliken och en knapp i rutan som öppnar spelets bilder eller fältväljaren. <span class="plus">+ Samma form som villkorsramen, och ett klick till svaret.</span> <span class="minus">− Mest krom: flikarna går utanför lagret och tar plats ovanför — här nästan mot brödtexten — och med villkorsramens lila flik får duken två slags flikar. Knappen är en andra väg till det panelen redan gör.</span>' },
+    not: '<b>B — flik på ramen, som villkoret (#478).</b> Bärnstensram, en mening på fliken och en knapp i rutan som öppnar spelets bilder eller fältväljaren. <span class="plus">+ Samma form som villkorsramen, och ett klick till svaret.</span> <span class="minus">− Mest krom: flikarna går utanför lagret och tar plats ovanför — här nästan mot brödtexten, och vid 1024 räcker en flik bara till två–tre ord — och med villkorsramens lila flik får duken två slags flikar. Knappen är en andra väg till det panelen redan gör.</span>' },
   C: { namn: 'C · Tyst märke, ord vid markering',
     not: '<b>C — tyst märke.</b> En svag streckad kant och ett litet märke i hörnet; hela meningen och knappen kommer i en bubbla när lagret är markerat eller pekaren står på det. <span class="plus">+ Kortet ser nästan ut som det kommer att tryckas, och meningen får plats i sin helhet med vad man ska göra.</span> <span class="minus">− Märket är lätt att missa på ett myllrigt kort, och utan pekare (surfplatta) syns orden först vid markering.</span>' },
   idag: { namn: 'I dag (utan förslag)',
@@ -166,7 +166,7 @@ function lager(id) {
   if (st.v === 'A') {
     el.innerHTML = `<span class="ord" title="${esc(o.lang)}"><i>${o.glyf}</i><span>${esc(tunn ? o.kort : o.lang)}</span></span>`
   } else if (st.v === 'B') {
-    el.innerHTML = `<span class="flik">${esc(o.lang)}</span><button type="button" class="knapp">${esc(o.knapp)}</button>`
+    el.innerHTML = `<span class="flik" title="${esc(o.lang)}">${esc(o.flik)}</span><button type="button" class="knapp">${esc(o.knapp)}</button>`
   } else {
     el.innerHTML = `<span class="bricka" aria-hidden="true">!</span><span class="bubbla"><b>${esc(o.lang)}</b>${esc(o.mer)}<br><button type="button">${esc(o.knapp)}</button></span>`
   }
@@ -185,7 +185,9 @@ function rita() {
     const g = GEO[st.w]['image-2']
     const sudd = document.createElement('div')
     sudd.className = 'sudd'
-    Object.assign(sudd.style, { left: `${g.x + 3}px`, top: `${g.y + 3}px`, width: `${g.w - 6}px`, height: `${g.h - 6}px` })
+    // Markerat ligger markeringsramen på rutans kant, så då lämnas två pixlar av den.
+    const i = st.val === 'image-2' ? 2 : 0
+    Object.assign(sudd.style, { left: `${g.x + i}px`, top: `${g.y + i}px`, width: `${g.w - 2 * i}px`, height: `${g.h - 2 * i}px` })
     yta.append(sudd)
     for (const id of ['image-1', 'image-2', 'icons-1']) yta.append(lager(id))
   }
