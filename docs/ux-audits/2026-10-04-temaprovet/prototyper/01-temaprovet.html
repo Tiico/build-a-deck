@@ -51,7 +51,7 @@
 
   /* Speltema, ur editor.css: en kolumn som rullar, högst 1100 px bred. */
   .tema { flex: 1 1 auto; min-height: 0; display: grid; padding: 16px; }
-  .arbete { min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1100px); align-content: start; gap: 8px; }
+  .arbete { position: relative; min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1100px); align-content: start; gap: 8px; }
   .galleri { display: grid; gap: 8px; }
   .brickor { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
   /* theme-tile.css + editor.css:s färger för brickan. */
@@ -179,11 +179,12 @@ const inre = (w) => (Math.min(1100, w - 32) - 3 * 12) / 4 - 26
 const VARIANTER = {
   N: { namn: 'Nu — kortet på brickan i 0,7 (main)', om: 'Som byggt: CardPreview i zoom 0,7, alltså 167 px brett. Rubriken går att skilja, brödtexten inte.',
     bricka: (tema, w) => papper(tema) + '<span class="kortlåda">' + kort(tema, KORT_B * PX_PER_MM * 0.7) + '</span>' + fot(tema) },
-  A: { namn: 'A — utsnitt i verklig storlek', om: 'Brickan ritar ett utsnitt av kortet i 4 px/mm (252 px brett, brödtexten 12 px): titelbandet och brödtextens första rader, centrerat på textspalten och tonat i nederkanten. Ingenting skalas ner; resten av kortet syns inte.',
+  A: { namn: 'A — utsnitt i verklig storlek', om: 'Brickan ritar ett utsnitt av kortet i läsbar storlek: titelbandet och brödtextens tre första rader, centrerat på textspalten och tonat i nederkanten. Skalan är 4 px/mm (brödtexten 12 px) där textspalten ryms med 8 px luft per sida, annars så stor som ryms. Resten av kortet syns inte.',
     bricka: (tema, w) => {
-      const px = 252, k = px / KORT_B, bredd = inre(w)
+      // 4 px/mm (brödtexten 12 px), men aldrig så stort att textspalten når rutans kanter: 8 px luft per sida.
+      const bredd = inre(w), k = Math.min(4, (bredd - 16) / 53), px = k * KORT_B
       const x = 5 * k - (bredd - 53 * k) / 2 // textspalten mitt i rutan
-      const h = Math.round(31 * k) // titelband + ~3 rader
+      const h = Math.round((19 + 3 * 8.5 * PT * 1.25) * k + 22 + 2) // titelbandet, tre hela rader, och en fjärde som tonas
       return papper(tema) + '<span class="utsnitt" style="height:' + h + 'px">' + kort(tema, px, 'left:' + (-x).toFixed(1) + 'px;top:0;') + '</span>' + fot(tema)
     } },
   B: { namn: 'B — kortet som nu, och en rad brödtext under', om: 'Kortet står kvar i 0,7 och visar helheten. Under det står kortets egen brödtext i brödtextens familj, 13 px, på temats papper — där brickan redan visar betydelserna. Familjens namn står ovanför raden.',
@@ -203,6 +204,8 @@ const st = {
   stangt: false,
 }
 const HOJD = { 1280: 800, 1024: 768 }
+// Ångra och gör om, i editorns hand (glyphs.tsx).
+const HOOK = (m) => '<svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true"' + (m ? ' style="transform:scaleX(-1)"' : '') + '><path d="M6 3.25 2.75 6.5 6 9.75M2.75 6.5h6.75a3.25 3.25 0 0 1 0 6.5H7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 
 function arket(w) {
   const kol = (Math.min(1100, w - 32) - 2 * 13 - 3 * 12) / 4
@@ -214,12 +217,12 @@ function arket(w) {
 function rita() {
   const w = Number(st.w), h = HOJD[st.w]
   const V = VARIANTER[st.v]
-  const efter = st.lage === 'efter' && st.hamtat
+  const efter = st.lage === 'efter' && st.hamtat && !st.stangt
   const brickor = TEMAN.map((t) => '<button type="button" class="bricka" aria-pressed="false" aria-label="Välj temat ' + t.namn + '">' + (efter ? V.bricka(t, w) : papper(t) + fot(t)) + '</button>').join('')
   const knapp = !efter ? '<button type="button" class="visa" id="visa" aria-busy="' + st.hamtar + '">' + (st.hamtar ? 'Hämtar temanas typsnitt…' : 'Visa temana i sina typsnitt') + '</button>' : ''
   const ark = efter && V.ark && !st.stangt ? arket(w) : ''
   const fonster = '<div class="fonster" data-w="' + w + '" style="width:' + w + 'px;height:' + h + 'px">'
-    + '<header class="hd"><span class="home">Mina spel</span><strong>Sal\'s Saloon</strong><span class="q">⋯</span><span class="q">rev 1</span><span class="q">✓</span><span class="steg"><i>↶</i><i>↷</i></span>'
+    + '<header class="hd"><span class="home">Mina spel</span><strong>Sal\'s Saloon</strong><span class="q">⋯</span><span class="q">rev 1</span><span class="q">✓</span><span class="steg"><i>' + HOOK(false) + '</i><i>' + HOOK(true) + '</i></span>'
     + '<nav>' + ['Kortvägg', 'Mall', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord'].map((n) => '<span' + (n === 'Speltema' ? ' aria-selected="true"' : '') + '>' + n + '</span>').join('') + '</nav>'
     + '<span class="fyll"></span><span class="sek">Spara</span><span class="pri">Starta bord ▾</span></header>'
     + '<div class="tema"><div class="arbete" id="arbete"><section class="galleri"><div class="brickor" id="brickor">' + brickor + '</div>' + knapp + ark
@@ -241,7 +244,9 @@ function rita() {
 
 // ── Google först på trycket ───────────────────────────────────────────────────────────────────
 function hamta() {
-  if (st.hamtat || st.hamtar) return Promise.resolve()
+  // Redan hämtade (provet stängt och öppnat igen): ingen ny förfrågan, bara provet.
+  if (st.hamtat) { st.lage = 'efter'; st.stangt = false; rita(); return Promise.resolve() }
+  if (st.hamtar) return Promise.resolve()
   st.hamtar = true
   rita()
   const l = document.createElement('link')
@@ -263,7 +268,7 @@ function mat() {
   const brickor = document.getElementById('brickor')
   const bricka = brickor.querySelector('.bricka')
   const yta = document.querySelector('.ark') || brickor
-  const bod = [...yta.querySelectorAll('.bod, .prov')]
+  const bod = [...yta.querySelectorAll(yta.querySelector('.prov') ? '.prov' : '.bod')]
   const titlar = [...yta.querySelectorAll('.titel')]
   const kort = yta.querySelector('.kort')
   // Vad läses: i A syns hur många rader av brödtexten?
@@ -271,9 +276,10 @@ function mat() {
   let rader = ''
   if (utsnitt) {
     const b = utsnitt.querySelector('.bod'), lh = parseFloat(getComputedStyle(b).lineHeight)
-    const syns = utsnitt.getBoundingClientRect().bottom - b.getBoundingClientRect().top
-    const s = (utsnitt.getBoundingClientRect().height / utsnitt.offsetHeight) || 1
-    rader = Math.max(0, Math.floor((syns / s - 22) / lh)) + ' hela rader + en tonad'
+    const n = Math.floor((utsnitt.offsetHeight - 22 - b.offsetTop) / lh)
+    rader = n + (n === 1 ? ' hel rad' : ' hela rader') + ' + en tonad'
+    const luft = (utsnitt.offsetWidth - b.offsetWidth) / 2
+    rader += ', ' + f1(luft) + ' px luft per sida'
   }
   const prov = brickor.querySelector('.prov')
   const brodPx = Math.min(...bod.map(px))
@@ -281,7 +287,7 @@ function mat() {
   const k = kort ? kort.offsetWidth : 0
   const golv = (v) => (v >= 12 ? 'gron' : v >= 11 ? '' : 'rod')
   const m = []
-  const efter = st.lage === 'efter' && st.hamtat
+  const efter = st.lage === 'efter' && st.hamtat && !st.stangt
   if (efter) {
     m.push('<span class="' + golv(brodPx) + '">brödtext <u>' + f1(brodPx) + ' px</u>' + (prov ? ' (raden) · i kortet ' + f1(px(brickor.querySelector('.bod'))) + ' px' : '') + '</span>')
     m.push('<span>titel <u>' + f1(Math.min(...titlar.map(px))) + ' px</u></span>')
@@ -291,8 +297,8 @@ function mat() {
   m.push('<span>bricka <u>' + bricka.offsetHeight + ' px</u> hög</span>')
   if (document.querySelector('.ark')) m.push('<span>arket <u>' + document.querySelector('.ark').offsetHeight + ' px</u></span>')
   m.push('<span>galleri + rad <u>' + document.querySelector('.galleri').offsetHeight + ' px</u></span>')
-  m.push('<span class="' + (rull > 0 ? 'rod' : 'gron') + '">' + (rull > 0 ? 'Speltema rullar <u>' + rull + ' px</u>' : 'ryms utan rullning, <u>' + (arbete.clientHeight - arbete.scrollHeight + (arbete.scrollHeight - [...arbete.children].reduce((a, c) => Math.max(a, c.offsetTop + c.offsetHeight), 0))) + ' px</u> kvar') + ' vid ' + st.w + ' × ' + HOJD[st.w] + '</span>')
-  m.push('<span>Google-förfrågningar <u>' + googleFragor() + '</u></span>')
+  m.push('<span class="' + (rull > 0 ? 'rod' : 'gron') + '">' + (rull > 0 ? 'Speltema rullar <u>' + rull + ' px</u>' : 'ryms utan rullning, <u>' + (arbete.clientHeight - [...arbete.children].reduce((a, c) => Math.max(a, c.offsetTop + c.offsetHeight), 0)) + ' px</u> kvar') + ' vid ' + st.w + ' × ' + HOJD[st.w] + '</span>')
+  m.push('<span>Google nått <u>' + (googleFragor() > 0 ? 'ja, efter trycket' : 'nej') + '</u></span>')
   document.getElementById('matt').innerHTML = m.join('')
   document.getElementById('sagt').innerHTML = efter
     ? 'K26: golvet för all text på skrivbord är <em>12 px</em>, issuets acceptans <em>≥ 11 px</em>. Grönt ≥ 12, gult 11–12, rött under 11. Kortet: 63 mm, brödtext 8,5 pt = 0,048 × kortbredden, titel 12 pt = 0,067 × kortbredden.'
@@ -305,12 +311,10 @@ document.addEventListener('click', (e) => {
   if (t.id === 'bak') return byt(-1)
   if (t.id === 'fram') return byt(1)
   if (t.id === 'visa') return void hamta()
-  if (t.id === 'stang') { st.stangt = true; st.lage = 'fore'; st.hamtat = st.hamtat; return ritaFore() }
+  if (t.id === 'stang') { st.stangt = true; st.lage = 'fore'; return rita() }
   if (t.dataset.w) { st.w = t.dataset.w; return rita() }
-  if (t.dataset.lage) { st.lage = t.dataset.lage; if (st.lage === 'efter' && !st.hamtat) return void hamta(); return rita() }
+  if (t.dataset.lage) { st.lage = t.dataset.lage; if (st.lage === 'efter' && !st.hamtat) return void hamta(); st.stangt = false; return rita() }
 })
-// Stängt prov: brickorna utan kort, och knappen igen; typsnitten är redan hämtade.
-function ritaFore() { st.hamtat = st.hamtat; rita(); const v = document.getElementById('visa'); if (v) v.onclick = (e) => { e.stopPropagation(); st.lage = 'efter'; st.stangt = false; rita() } }
 function byt(d) { const ks = Object.keys(VARIANTER); st.v = ks[(ks.indexOf(st.v) + d + ks.length) % ks.length]; st.stangt = false; rita() }
 document.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') byt(-1); if (e.key === 'ArrowRight') byt(1) })
 addEventListener('resize', rita)
