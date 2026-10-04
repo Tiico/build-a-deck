@@ -45,7 +45,6 @@ export type HandSheet = {
 export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet, intentsFor, landedKey, sheet }: ActionPanelProps) {
   const t = useT()
   const moving = cards.length > 0 ? [...cards] : isLoose(thing) ? [thing.id] : []
-  const verbs = sheet ? verbsFor(view, thing, t).filter((a) => a.look !== undefined) : verbsFor(view, thing, t)
   // A thing is never offered the place it already is: a card or a chip its own zone, a pile
   // itself — the table refuses "cannot split a pile onto itself", so the panel does not ask.
   const places: Place[] = sheet
@@ -56,16 +55,30 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet,
   // Each group is named by its heading, so the same place said twice is said under what it does.
   const pileZone = thing.kind === 'pile' ? view.zones.find((z) => z.id === thing.pile) : undefined
   const topCount = pileZone ? (pileZone.mode === 'count' ? pileZone.count : pileZone.order.length) : 0
+  // An empty pile has nothing on top to turn, nothing to shuffle, draw or halve, and nothing to
+  // move (#761): the panel shows what can be done with it, which is the game's own actions — each
+  // of them says why it cannot run, when it cannot (K14) — and none of the tool's verbs switched
+  // off in a row.
+  const empty = pileZone !== undefined && topCount === 0
+  const verbs = (sheet ? verbsFor(view, thing, t).filter((a) => a.look !== undefined) : verbsFor(view, thing, t)).filter(
+    (a) => !empty || a.intents !== null || a.key.startsWith('action:'),
+  )
   const groups: { heading: string; as?: Thing }[] =
-    thing.kind === 'pile' && !sheet
+    empty
+      ? []
+      : thing.kind === 'pile' && !sheet
       ? [
           { heading: t('kbd.panel.movePile') },
           ...(topCount > 0 ? [{ heading: t('kbd.panel.moveTop'), as: { key: thing.key, kind: 'pileTop' as const, pile: thing.pile, name: thing.name } }] : []),
         ]
       : [{ heading: t('kbd.panel.moveTo') }]
   const groupId = useId()
-  const first = useRef<HTMLButtonElement | null>(null)
-  useEffect(() => first.current?.focus(), [])
+  // The panel is answered where it is read, so it takes the focus on the way in: on its first row
+  // that can be pressed — the first verb, or the first place when the verbs are switched off or
+  // there are none — and on «Stäng» when nothing else can be. A switched-off row cannot hold the
+  // focus, and a panel that tried to give it one left the reader standing out on the felt (#761).
+  const box = useRef<HTMLDivElement | null>(null)
+  useEffect(() => box.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus(), [])
   // Several marked cards are counted; a single thing is called what it is called, which for a
   // card and a zone is the designer's word (B5).
   const what = cards.length > 1 ? t('play.cards.other', { n: cards.length }) : thing.name
@@ -79,6 +92,7 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet,
     <div className="byd-kbd-backdrop" onPointerDown={(e) => (pressed.current = e.target === e.currentTarget)} onClick={() => pressed.current && onClose()}>
       <div
         className="byd-kbd-panel"
+        ref={box}
         role="dialog"
         // Not modal: the felt behind it is what the answer is about, and it must stay readable
         // and reachable. Nothing here takes the keyboard hostage.
@@ -97,13 +111,13 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet,
           {thing.kind === 'counter' && thing.owner !== null && <small>{t('ring.counter.whose', { name: thing.owner })}</small>}
         </h2>
         {verbs.length > 0 && <h3>{t('kbd.panel.do')}</h3>}
+        {empty && verbs.length === 0 && <p className="byd-kbd-empty">{t('kbd.panel.empty')}</p>}
         <div className="byd-kbd-list">
-          {verbs.map((a, i) => (
+          {verbs.map((a) => (
             <button
               key={a.key}
               type="button"
               disabled={a.intents === null}
-              ref={i === 0 ? first : undefined}
               onClick={() => {
                 if (a.look !== undefined) {
                   const c = typeof a.look === 'string' ? view.components.find((x) => x.id === a.look) : a.look
@@ -127,15 +141,10 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet,
           <div key={group.heading} role="group" aria-labelledby={`${groupId}-${g}`}>
             <h3 id={`${groupId}-${g}`}>{group.heading}</h3>
             <div className="byd-kbd-list">
-              {places.map((p, i) => (
+              {places.map((p) => (
                 <button
                   key={p.key}
                   type="button"
-                  // The panel is answered where it is read, so it takes the focus on the way in. That
-                  // is the first verb when there is one; a thing with no verbs at all hands it to the
-                  // first place instead, rather than opening a panel and leaving the reader standing
-                  // out on the felt.
-                  ref={verbs.length === 0 && g === 0 && i === 0 ? first : undefined}
                   onClick={() => (sheet ? onRun(sheet.intentsFor(p.zone, moving)) : onRun(intentsFor(p, moving, group.as), landedKey(p, group.as)))}
                 >
                   <span>{p.label}</span>

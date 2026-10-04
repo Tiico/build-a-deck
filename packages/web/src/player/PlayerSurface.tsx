@@ -167,7 +167,8 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
     if (!gone || gone.some(id => hand.some(c => c.id === id))) return
     regain.current = null
     const stranded = document.activeElement === null || document.activeElement === document.body
-    if (stranded) document.querySelector<HTMLElement>('.byd-strip[data-hand] [data-hand-card][tabindex="0"]')?.focus()
+    // An emptied hand has no stop left, and the deck's tile is the one it wants next (#761).
+    if (stranded) (document.querySelector<HTMLElement>('.byd-strip[data-hand] [data-hand-card][tabindex="0"]') ?? document.querySelector<HTMLElement>('[data-zone-draw]'))?.focus()
   }, [hand])
   const playDirect = async (cards: VisibleComponentState[], zone: string, at: 'top' | 'bottom') => {
     const first = cards[0]

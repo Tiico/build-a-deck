@@ -177,3 +177,51 @@ describe('an edit sent the moment the socket opens (D3)', () => {
     ws.close()
   })
 })
+
+// One writer per document (D3, #768). A `PUT /projects/:id` used to write the store past the
+// actor: the actor went on holding — and handing every editor — the document and rev it had
+// before, so one screen said «rev 1 · Sparat» while the table ran rev 16, and the editor's own
+// save was refused as a conflict that no reload could clear, since the actor is only rebuilt
+// once it is forgotten.
+describe('a whole document written over HTTP while the project is open (#768)', () => {
+  const create = () => fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ id: 'p1', ...project() }) })
+  const put = (doc: object, rev: number) =>
+    fetch(`${run.http}/projects/p1`, { method: 'PUT', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ ...doc, rev }) })
+
+  it('goes through the actor: the open editor is told, the next one is handed it, and saving goes on from it', async () => {
+    await create()
+    const ada = await Editing.open(run.base, 'p1', 'Ada')
+    await ada.until('project')
+
+    const res = await put({ ...project(), name: 'Bergens herrar' }, 1)
+    expect(res.status).toBe(200)
+    expect(((await res.json()) as { rev: number }).rev).toBe(2)
+
+    // The editor that has it open sees the new document and the version it became.
+    await ada.until('edits', (m) => m.edits.some((e) => e.intent.v === 'restore'))
+    expect((await ada.until('saved')).rev).toBe(2)
+
+    // An editor that opens now is handed what was written, at the rev it was written as.
+    const bo = await Editing.open(run.base, 'p1', 'Bo')
+    const handed = await bo.until('project')
+    expect(handed.rev).toBe(2)
+    expect(handed.doc.name).toBe('Bergens herrar')
+
+    // And a save from the editor is not a conflict.
+    bo.send({ v: 'setCell', cardRef: 'dragon', field: 'title', value: 'Drakhona' })
+    bo.save()
+    expect((await bo.until('saved', (m) => m.rev === 3)).rev).toBe(3)
+    const stored = await run.projects.load('p1')
+    expect(stored?.name).toBe('Bergens herrar')
+    expect(stored?.rows[0]?.fields['title']).toBe('Drakhona')
+    ada.close()
+    bo.close()
+  })
+
+  it('is refused as a conflict when it was written against a rev the project has left', async () => {
+    await create()
+    expect((await put({ ...project(), name: 'Andra' }, 1)).status).toBe(200)
+    expect((await put({ ...project(), name: 'Tredje' }, 1)).status).toBe(409)
+    expect((await run.projects.load('p1'))?.name).toBe('Andra')
+  })
+})
