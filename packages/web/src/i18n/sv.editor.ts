@@ -1219,6 +1219,8 @@ export const svEditor = {
   'setup.group.seats': 'Vid platserna',
   'setup.remove.of': 'Ta bort {name}',
   'setup.removed': '{name} är borttagen.',
+  // Ett klipp är zonen på väg någonstans, inte en förlust (#712).
+  'setup.cut': '{name} är klippt.',
   'setup.undo': 'Ångra',
   'setup.fixed': 'fast',
   'setup.fixed.floor': 'Filten är bordet självt och kan inte tas bort.',
