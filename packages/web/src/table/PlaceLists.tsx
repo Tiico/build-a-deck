@@ -29,7 +29,9 @@ export function PlaceLists({ view, activity, dense, onRead }: { view: Snapshot; 
   const said = sayable(activity).reverse()
   const hands = view.zones.filter((z) => z.kind === 'hand')
   const lying = view.zones.filter((z) => z.kind !== 'hand').map((z) => ({ zone: z, cards: listed(view, z) })).filter((g) => g.cards.length > 0)
-  const group = (key: string, head: ReactNode, cards: VisibleComponentState[], where: string, downs: boolean) => {
+  // `said` is the row's words as one name (#745): the eye reads the row's lines as lines, but for a
+  // screen reader they were blocks side by side with nothing between them — «Draw pilepile, 3 cards».
+  const group = (key: string, head: ReactNode, said: string, cards: VisibleComponentState[], where: string, downs: boolean) => {
     const shut = !open.has(key)
     const list = `places-${key}`
     return (
@@ -37,7 +39,7 @@ export function PlaceLists({ view, activity, dense, onRead }: { view: Snapshot; 
         {cards.length === 0 || !onRead ? (
           <div className="byd-tv-place">{head}</div>
         ) : (
-          <button type="button" className="byd-tv-place" aria-expanded={!shut} aria-controls={list} onClick={() => toggle(key)}>
+          <button type="button" className="byd-tv-place" aria-label={said} aria-expanded={!shut} aria-controls={list} onClick={() => toggle(key)}>
             {head}
           </button>
         )}
@@ -65,19 +67,22 @@ export function PlaceLists({ view, activity, dense, onRead }: { view: Snapshot; 
           const last = said.find((l) => l.by === s.id)
           const hand = hands.find((z) => z.owner === s.id)
           const n = hand ? countOf(hand) : 0
+          const name = s.name ?? t('tv.seat.free')
+          const count = t(`tv.seat.hand${dense ? '.short' : ''}.${n === 1 ? 'one' : 'other'}`, { n })
+          const did = dense ? null : last ? describeActivity(last, view, t) : t('tv.seat.none')
           const head = (
             <>
               <i data-avatar>{(s.name ?? s.id).slice(0, 1)}</i>
               <div>
-                <span>{s.name ?? t('tv.seat.free')}</span>
-                <span>{t(`tv.seat.hand${dense ? '.short' : ''}.${n === 1 ? 'one' : 'other'}`, { n })}</span>
-                {!dense && <small>{last ? describeActivity(last, view, t) : t('tv.seat.none')}</small>}
+                <span>{name}</span>
+                <span>{count}</span>
+                {did !== null && <small>{did}</small>}
               </div>
             </>
           )
           return (
             <li key={s.id} style={{ ['--seat' as string]: seatColor(i) }}>
-              {group(`seat-${s.id}`, head, hand ? listed(view, hand) : [], hand ? handName(view, hand, t) : '', false)}
+              {group(`seat-${s.id}`, head, [name, count, ...(did === null ? [] : [did])].join(', '), hand ? listed(view, hand) : [], hand ? handName(view, hand, t) : '', false)}
             </li>
           )
         })}
@@ -94,6 +99,7 @@ export function PlaceLists({ view, activity, dense, onRead }: { view: Snapshot; 
                     <span>{zone.name}</span>
                     <span>{summary(zone, cards, t)}</span>
                   </div>,
+                  `${zone.name}, ${summary(zone, cards, t)}`,
                   cards,
                   zone.name,
                   true,
