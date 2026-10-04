@@ -67,7 +67,7 @@ test('fits the body text again once the theme’s face has landed, as the editor
   await page.getByRole('button', { name: 'Klassisk', exact: true }).click()
   await page.getByRole('button', { name: 'Välj temat Krönika' }).click()
   await expect(page.getByText('Temats typsnitt hämtas när du väljer tema.')).toHaveCount(0)
-  await page.getByLabel('kort 1 Text').fill(BODY)
+  await page.getByLabel('kort 1 Regeltext').fill(BODY)
 
   // Före ansiktet: texten är anpassad i reservtypsnittet, och har fått krympa under 8,5 pt.
   const merriweather = () => page.evaluate(() => [...document.fonts].filter((f) => f.family.replace(/"/g, '') === 'Merriweather').map((f) => f.status))
