@@ -294,7 +294,7 @@ export const svPlay = {
 
   // Telefonen: handen, det som ligger framför en, och räknarna.
   'player.hint': 'Tryck för att läsa · håll för att välja flera',
-  'player.hint.selected.one': '{n} valda · dra upp för att spela',
+  'player.hint.selected.one': '{n} valt · dra upp för att spela',
   'player.hint.selected.other': '{n} valda · dra upp för att spela',
   'player.counter.minus': '{name} minus',
   'player.counter.plus': '{name} plus',
