@@ -380,3 +380,37 @@ describe('the condition layers in the layer list (#569)', () => {
     }
   }, 60_000)
 })
+
+// A game with no layers led from the empty door (L42) to a stage of checks and nothing on it: the
+// card was 471 × 658 px of transparency, so a beginner could not see where or how big it was (#735).
+describe('a card with nothing on it yet (#735)', () => {
+  it('shows its edge and a light paper to draw on', async () => {
+    const doc = projectDoc()
+    doc.template.faces.front = { base: [], variants: {} }
+    const { container, unmount } = render(
+      <TemplateCanvas doc={doc} face="front" row="dragon" selectedElement={null} onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />,
+    )
+    const html = container.innerHTML
+    unmount()
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+    try {
+      const shell = read('index.html')
+        .replace('<script type="module" src="/src/main.tsx"></script>', '')
+        .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}</style></head>`)
+        .replace('<div id="root"></div>', `<div id="root"><div class="byd-editor" data-page="editor" data-mode="template"><header></header><div></div><main><div role="tabpanel">${html}</div></main></div></div>`)
+      await page.setContent(shell, { waitUntil: 'load' })
+      const card = await page.locator('#canvas [data-card]').evaluate((el) => {
+        const r = el.getBoundingClientRect()
+        const s = getComputedStyle(el)
+        return { w: r.width, paper: s.backgroundColor, edge: s.boxShadow }
+      })
+      expect(card.w).toBeGreaterThan(100)
+      // Light paper: every channel well above the stage's dark checks.
+      const [r, g, b] = card.paper.match(/[\d.]+/g)!.map(Number)
+      expect(Math.min(r!, g!, b!)).toBeGreaterThan(200)
+      expect(card.edge).not.toBe('none')
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})
