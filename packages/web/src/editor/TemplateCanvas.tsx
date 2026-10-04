@@ -5,7 +5,7 @@ import { useNumberDraft } from './number-draft.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
-import { arrowMove, fitScale, gridStep, HANDLES, round, iconSized, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, ZOOM_NOTCH, ZOOM_STEP, zoomPercent, zoomTo, type Box, type ElementKind, type Grab, type Guides, type Handle, keptOnCard } from './canvas.js'
+import { arrowMove, fitScale, gridStep, HANDLES, round, iconSized, movedTo, newElement, PX_PER_MM, resizedTo, snapped, STAGE_SCALE, TOOLS, ZOOM_NOTCH, ZOOM_STEP, zoomPercent, zoomTo, type Box, type ElementKind, type Grab, type Guides, type Handle, keptOnCard } from './canvas.js'
 import { StepPill } from './StepPill.js'
 import { useGesture, type Gesture } from './gesture.js'
 import { scrubbed, SCRUB_PX } from './scrub.js'
@@ -32,6 +32,7 @@ import { useT, type Key, type T, useLang } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
 import { useSay } from '../status/StatusLive.js'
 import { DragDoor } from './DragDoor.js'
+import { placeholderOf, PLACEHOLDER_WORDS, THIN_PX, type Placeholder, type PlaceholderCase } from './placeholder.js'
 import { PictureLibraryDialog, type LibraryPicture } from './PictureLibrary.js'
 
 export type TemplateCanvasProps = {
@@ -413,7 +414,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             motifs={motifs}
             selectedElement={selectedElement}
             onSelectElement={onSelectElement}
-            overlay={<DragLayer grid={grid ? gridStep(zoom.scale) : null} conditions={conditionFrames(shown, rowData, t)} onSelectCondition={onSelectElement} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} point={pointAt} onPoint={setPointAt} reading={reading} />}
+            overlay={<DragLayer grid={grid ? gridStep(zoom.scale) : null} scale={zoom.scale} row={rowData} conditions={conditionFrames(shown, rowData, t)} onSelectCondition={onSelectElement} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} point={pointAt} onPoint={setPointAt} reading={reading} />}
           />
         </section>
           <ZoomBand zoom={zoom} />
@@ -708,10 +709,17 @@ const ARMS: readonly Arm[] = ['in', 'out']
 // the card's own millimetres. It draws no card content — the compiler behind it is still the one
 // renderer — and it holds the pointer with pointer capture, so a fast drag or a trackpad that
 // leaves the box keeps moving the element it grabbed.
-function DragLayer({ boxes, conditions, onSelectCondition, grid, selected, onSelect, onPatch, onCallOff, onRefused, point, onPoint, reading = false }: { boxes: BoxElement[]; conditions: ConditionFrame[]; onSelectCondition(id: string): void; grid: number | null; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch']; onCallOff: TemplateCanvasProps['onCallOff']; onRefused(id: string): void; point: number | null; onPoint(at: number | null): void; reading?: boolean }) {
+function DragLayer({ boxes, row, scale, conditions, onSelectCondition, grid, selected, onSelect, onPatch, onCallOff, onRefused, point, onPoint, reading = false }: { boxes: BoxElement[]; row: Row; scale: number; conditions: ConditionFrame[]; onSelectCondition(id: string): void; grid: number | null; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch']; onCallOff: TemplateCanvasProps['onCallOff']; onRefused(id: string): void; point: number | null; onPoint(at: number | null): void; reading?: boolean }) {
   const t = useT()
   const say = useSay()
   const layer = useRef<HTMLDivElement | null>(null)
+  // What each layer that draws nothing on this card says about it (#802), and the id its tag is
+  // known by, so the layer can be described by the tag it wears.
+  const tagIds = useId()
+  const said = new Map(boxes.flatMap((box) => {
+    const placeholder = placeholderOf(box, row)
+    return placeholder ? [[box.id, placeholder] as const] : []
+  }))
   const grab = useRef<(Grab & { id: string; handle: Handle | null; gesture: string; moved: boolean; scroll: { x: number; y: number } }) | null>(null)
   // What makes one grab tell itself apart from the next one on the same element (L14). Two drags
   // of the same title are two things the designer did, and two steps back.
@@ -1060,6 +1068,7 @@ function DragLayer({ boxes, conditions, onSelectCondition, grid, selected, onSel
           aria-pressed={moving?.id === box.id}
           {...(moving?.id === box.id ? { 'data-moving': '' } : {})}
           {...hollowProps(box)}
+          {...(said.has(box.id) ? { 'aria-describedby': `${tagIds}-${box.id}` } : {})}
           onKeyDown={(event) => keys(event, box)}
           style={{ left: `${box.x}mm`, top: `${box.y}mm`, width: `${box.w}mm`, height: `${box.h}mm`, ['--byd-box-w' as string]: `${box.w}mm`, ['--byd-box-h' as string]: `${box.h}mm`, zIndex: boxes.length - 1 - fromTop, ...hollowStyle(box) }}
           // The selection follows the focus here for the same reason it does in the layer list
@@ -1079,6 +1088,7 @@ function DragLayer({ boxes, conditions, onSelectCondition, grid, selected, onSel
           onPointerCancel={callOff}
           onClick={(event) => event.stopPropagation()}
         >
+          {said.get(box.id) && <PlaceholderFrame id={`${tagIds}-${box.id}`} of={said.get(box.id) as Placeholder} thin={box.h * PX_PER_MM * scale < THIN_PX} />}
           {kept?.id === box.id && (
             <span className="byd-drag-kept" data-toward={kept.toward} role="status">
               {t('canvas.drag.kept')}
@@ -1753,6 +1763,27 @@ function useMeasure(): (n: number) => string {
   }, [lang])
 }
 
+// The placeholder on a layer that draws nothing on the card shown (#802, beställarens beslut
+// variant A, «rutan säger det»): a dashed frame exactly on the layer, and a short word in a dark
+// tag in its middle that is always there, so an empty layer is seen without being looked for. It
+// is the drag box's own child and not a layer of its own, so a press on it is a press on the
+// element; and the tag carries the whole sentence — what it is and what to do — as its title and
+// its name, which is what the layer is described by.
+function PlaceholderFrame({ id, of, thin }: { id: string; of: Placeholder; thin: boolean }) {
+  const t = useT()
+  const words = PLACEHOLDER_WORDS[`${of.kind}.${of.why}` as PlaceholderCase]
+  const field = 'field' in of ? { field: of.field } : undefined
+  const sentence = t(words.sentence, field)
+  return (
+    <span className="byd-placeholder" data-placeholder={`${of.kind}.${of.why}`} {...(thin ? { 'data-thin': '' } : {})}>
+      <span className="byd-placeholder-tag" id={id} role="img" aria-label={sentence} title={sentence}>
+        <i aria-hidden="true">{TOOLS.find((tool) => tool.id === of.kind)?.glyph}</i>
+        <span>{t(thin ? words.short : words.long, field)}</span>
+      </span>
+    </span>
+  )
+}
+
 // Where a condition layer stands on the card (#478): round what is in it that has a place, with
 // its condition in words and whether it holds for the card shown.
 type ConditionFrame = { id: string; x: number; y: number; w: number; h: number; words: string; holds: boolean }
@@ -2169,7 +2200,9 @@ function Properties({
               {t('canvas.props.icon')}
               <select value={'literal' in el.bind ? el.bind.literal : ''} onChange={(e) => e.target.value !== '' && onPatch({ bind: { literal: e.target.value } })}>
                 {'field' in el.bind && <option value="">{t('canvas.props.icon.fromField')}</option>}
-                {[...new Set([...icons, ...('literal' in el.bind ? [el.bind.literal] : [])])].map((name) => (
+                {/* A row with no name yet says so in words rather than as a blank choice (#849). */}
+                {'literal' in el.bind && el.bind.literal === '' && <option value="">{t('canvas.props.icon.none')}</option>}
+                {[...new Set([...icons, ...('literal' in el.bind && el.bind.literal !== '' ? [el.bind.literal] : [])])].map((name) => (
                   <option key={name} value={name}>
                     {name}
                   </option>

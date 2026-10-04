@@ -3,6 +3,7 @@ import type { ProjectCredit } from '@byd/server'
 import type { ProjectDoc } from './types.js'
 import { familiesInUse } from './fonts.js'
 import { useT } from '../i18n/index.js'
+import { saidOr } from '../i18n/said.js'
 
 // The fonts the game carries (B3). They stood in Mall's panel while no layer was chosen (#478),
 // and stand in Speltema since L57 (#630): a typeface is the game's and not a layer's. Each one says whether it travels to the printer, and under what licence it is
@@ -36,7 +37,7 @@ export function FontShelf({ doc, onFontFile, onFontLicence, onRemoveFont, onOpen
     setBusy(true)
     setError(null)
     void onFontFile(file)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+      .catch((err: unknown) => setError(saidOr(err, t('fonts.upload.failed'))))
       .finally(() => setBusy(false))
   }
   return (

@@ -1,6 +1,7 @@
 import type { ProjectDoc, ProjectRow } from '@byd/server'
 import { copiesOf, fieldsOf } from './fields.js'
 import { translate, type T } from '../i18n/index.js'
+import { Said } from '../i18n/said.js'
 
 // Without a catalogue of its own this module speaks Swedish, exactly as a surface mounted
 // without a language provider does: the table hands over its own `t` (A4).
@@ -58,16 +59,16 @@ export function importCardsCsv(text: string, t: T = swedish, known: readonly str
   // door into new columns too.
   raw.headers.forEach((a, i) =>
     raw.headers.slice(i + 1).forEach((b) => {
-      if (a !== b && a.toLowerCase() === b.toLowerCase() && !(names.includes(a) && names.includes(b))) throw new Error(t('table.import.twins', { a, b }))
+      if (a !== b && a.toLowerCase() === b.toLowerCase() && !(names.includes(a) && names.includes(b))) throw new Said(t('table.import.twins', { a, b }))
     }),
   )
-  if (!parsed.headers.includes('id')) throw new Error(t('table.import.needsId'))
+  if (!parsed.headers.includes('id')) throw new Said(t('table.import.needsId'))
   const fields = parsed.headers.filter((header) => header !== 'id')
   const ids = new Set<string>()
   return parsed.rows.map((record) => {
     const id = record['id']?.trim() ?? ''
-    if (!id) throw new Error(t('table.import.noId'))
-    if (ids.has(id)) throw new Error(t('table.import.duplicateId', { id }))
+    if (!id) throw new Said(t('table.import.noId'))
+    if (ids.has(id)) throw new Said(t('table.import.duplicateId', { id }))
     ids.add(id)
     return {
       id,

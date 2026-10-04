@@ -21,13 +21,15 @@ export type StatusNoticeProps = {
   surface: Surface
   links?: StatusLinks
   onRetry?: () => void
+  // Signing out so another account can sign in (#748): a button, because it changes something.
+  onSwitch?: () => void
   countdown?: Countdown | null
   // The clock the data behind this message was last true at, so that "old" is a fact and not a
   // feeling (#7).
   asOf?: string | null
 }
 
-export function StatusNotice({ notice, surface, links = {}, onRetry, countdown = null, asOf = null }: StatusNoticeProps) {
+export function StatusNotice({ notice, surface, links = {}, onRetry, onSwitch, countdown = null, asOf = null }: StatusNoticeProps) {
   const t = useT()
   // A message that replaces the view takes the focus with it. Without that a keyboard reader is
   // left standing in a document that no longer holds what she was reading.
@@ -60,7 +62,7 @@ export function StatusNotice({ notice, surface, links = {}, onRetry, countdown =
 
   const waiting = notice.state === 'loading' || notice.state === 'connecting' || notice.state === 'slow'
   const Heading = surface === 'page' ? 'h1' : 'h2'
-  const actions = notice.actions.filter((a) => a.kind === 'retry' || links[a.kind] !== undefined)
+  const actions = notice.actions.filter((a) => a.kind === 'retry' || (a.kind === 'switch' ? onSwitch !== undefined : links[a.kind] !== undefined))
   return (
     <section className="byd-status" data-status-notice={notice.state} data-surface={surface} data-tone={notice.tone}>
       <span className="byd-status-mark">{notice.mark}</span>
@@ -92,6 +94,10 @@ export function StatusNotice({ notice, surface, links = {}, onRetry, countdown =
                 }}
                 {...(action.primary === true ? { 'data-primary': '' } : {})}
               >
+                {action.label}
+              </button>
+            ) : action.kind === 'switch' ? (
+              <button key={action.kind} type="button" className="byd-status-act" onClick={onSwitch} {...(action.primary === true ? { 'data-primary': '' } : {})}>
                 {action.label}
               </button>
             ) : (

@@ -1,4 +1,4 @@
-import { BOOKLET_MARGIN_MM, BOOKLET_PAGE_MM, RULE_IMAGE_FRAME, type RenderedBlock, type RenderedNode, type RenderedRules } from '@byd/template'
+import { BOOKLET_MARGIN_MM, BOOKLET_PAGE_MM, RULE_IMAGE_FRAME, refLabel, type RenderedBlock, type RenderedNode, type RenderedRules } from '@byd/template'
 import type { ProjectCredit } from './projects.js'
 
 // The rulebook as a booklet for print (B7): the same rendering the editor and the table read,
@@ -108,7 +108,7 @@ function span(nodes: readonly RenderedNode[], icons: Record<string, string>): st
         }
         // A reference carries the name it stands for; one the game lost says what was written.
         case 'ref':
-          return escape(n.name ?? `${n.of === 'zone' ? 'zon' : 'kort'}:${n.id}`)
+          return escape(n.name ?? refLabel(n))
       }
     })
     .join('')

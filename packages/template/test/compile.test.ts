@@ -129,6 +129,19 @@ describe('image, icons and shape elements (L1)', () => {
     expect(at('cover')).toContain('object-fit:cover;}')
     expect(at(undefined)).toContain('object-fit:cover;}')
   })
+  // A picture bound to a column of words (#802): «typ» holds «Playcard», and a cell that is not a
+  // picture was drawn as `<img src="Playcard">`, which every browser shows as its broken-image
+  // glyph — on the canvas, in print and on the table alike. Such a cell is drawn as an empty one,
+  // exactly as a cell with nothing in it is; the canvas says why, and nothing else needs to.
+  it('draws a cell that is not a picture as an empty cell, and every way a picture is written as a picture', () => {
+    const f: FaceTemplate = { base: [{ kind: 'image', id: 'art', x: 3, y: 3, w: 57, h: 40, bind: { field: 'art' } }], variants: {} }
+    const drawn = (art: string) => compile({ type: CARD_STANDARD_63x88, face: f, row: { art }, icons }).html
+
+    for (const words of ['Playcard', 'Fas: 2', 'en bild här', 'svärd.png och mer']) expect(drawn(words), words).toContain('<div data-element="art"></div>')
+    for (const picture of ['https://x/a.png', 'http://api.local/assets/abc', 'data:image/png;base64,AAAA', 'blob:http://x/1', '/assets/abc', './a.webp', 'a.png', 'Skog.JPG', 'kort.svg?v=2']) {
+      expect(drawn(picture), picture).toContain(`<img class="byd-art" src="${picture}" alt="">`)
+    }
+  })
 })
 
 describe('bleed (print profile from the type, B2)', () => {

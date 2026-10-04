@@ -8,6 +8,7 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'status.act.home.start': 'To the start page',
   'status.act.rejoin': 'Go in again',
   'status.act.rescan': 'Pick a seat again',
+  'status.act.switch': 'Switch account',
   'status.act.observe': 'To the observer view',
 
   'title.home': 'My games',
@@ -86,6 +87,9 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'status.forbidden.text': 'This belongs to another account. Sign in with the right account, or ask whoever owns it to invite you.',
   'status.forbidden.table.heading': 'The table belongs to another account',
   'status.forbidden.table.text': 'Sign in to the account that owns the game to show it on this screen.',
+  'status.forbidden.table.out.heading': 'The table needs the host’s link or the owner’s sign-in',
+  'status.forbidden.table.out.text': 'Open the table view with the host’s link from the editor, or sign in to the account that owns the game.',
+  'status.forbidden.table.other.text': 'You are signed in as {email}. Switch to the account that owns the game, or open the table view with the host’s link from the editor.',
   'status.forbidden.phone.heading': 'Your seat is no longer yours',
   'status.forbidden.phone.text': 'Someone else is sitting in it. Pick a free seat again, or scan the QR code on the TV.',
   'status.forbidden.observer.heading': 'The observer’s link no longer works',
