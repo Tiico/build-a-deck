@@ -60,8 +60,10 @@ describe('DataTable (B as a tab)', () => {
     const onReplaceRows = vi.fn()
     render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} />)
 
-    // The CSV pair is what falls into a box in the crown (#130): done once, and not a state.
-    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
+    // The CSV pair is what falls into a box in the crown (#130): done once, and not a state. The box
+    // is named for both ways through it (#739): called «Importera», it hid the download behind the
+    // other way.
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
     const download = screen.getByRole('link', { name: 'Ladda ner CSV' }) as HTMLAnchorElement
     expect(download.download).toBe('skogens-herrar-kort.csv')
     expect(decodeURIComponent(download.href.split(',')[1] ?? '')).toContain('id,title,body,antal')
@@ -857,7 +859,7 @@ describe('dropping a CSV on the import (#292)', () => {
         onMoveField={() => undefined}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
     return { onReplaceRows }
   }
   const control = () => screen.getByLabelText('Importera CSV…').closest('label') as HTMLLabelElement

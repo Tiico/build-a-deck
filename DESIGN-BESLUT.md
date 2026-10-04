@@ -5819,6 +5819,7 @@ Varje valt värde står som en bricka i fältet, «typ: varelse ×», före det 
 Brickans × tar bort valet och lämnar handen i fältet; Backspace i ett tomt fält tar den sista.
 Det valda syns alltså på två ställen utan att något öppnas — i fältet och i huvudet — vilket är det #128 kräver av krönet.
 Krönet är därmed sökfältet och Importera, och fältet håller minst 400 px vid 1024, 1280 och 1440 (`editor-crown.test.tsx`).
+*Tillagt 2026-10-04 (#739):* boxen heter «CSV ▾», efter båda vägarna genom den; som «Importera» gömde den nedladdningen bakom den andra vägen.
 
 **Ett tecken öppnar en lista** (variant B:s väg, som tangentbordets väg in i samma fält, L23).
 Att skriva «typ:» i fältet listar kolumnens värden under det, listan smalnar med det som skrivs, pilarna går i den och Enter tar värdet som en bricka.
@@ -5951,6 +5952,8 @@ Samtidigt sa foten redan «1 markerat kort».
 Foten är den rad #130 gav antalet och sorteringen, och den växer till en verktygsrad — Duplicera, Ta bort, Avmarkera alla — efter antalet när något är markerat.
 Ingenting ovanför raderna flyttar sig; det som växer växer under tabellen.
 Frågan före en borttagning tar verktygsradens plats i foten, som förut tog hela bandet, så inget kan tryckas av misstag bakom den.
+*Tillagt 2026-10-04 (#739):* radens × frågar på samma plats.
+Dess fråga stod kvar i bandet över huvudet, 62 px, och flyttade huvudet 70 px under handen som just tryckt; nu tar den fotens rad medan den står, och `data-table-layout.test.tsx` mäter att första raden står kvar.
 
 **Kolumnen och värdet står bakom «Sätt fält ▾».**
 Foten är en rad, och en väljare och ett fält hade gjort den till två.
