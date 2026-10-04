@@ -154,7 +154,9 @@ describe('vad biblioteket visar efter en batch (#291, flerfilsbeslutet)', () => 
     expect(lines[0]!.textContent).toBe('skogsbryn.png är tillagd')
     // Beskedet namnger vad som försvann ur dokumentet och varför (#344, L37) — och gör det en
     // gång: raden är beskedet, inte filnamnet följt av ett besked som säger filnamnet igen.
-    expect(lines[1]!.textContent).toMatch(/^Bilden anteckningar\.png kunde inte laddas upp och har tagits bort igen: /)
+    // Sedan #742 prövas filen innan den läggs in, så ingenting tas bort igen: raden säger bara
+    // att den inte kom upp, och varför.
+    expect(lines[1]!.textContent).toBe('Bilden anteckningar.png kunde inte laddas upp: filen är inte PNG, JPEG, GIF eller WebP')
     expect(lines[1]!.textContent!.match(/anteckningar\.png/g)).toHaveLength(1)
   })
 

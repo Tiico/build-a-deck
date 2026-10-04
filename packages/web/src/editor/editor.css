@@ -3273,6 +3273,8 @@ p.byd-symbols-refused { margin: 0; color: #f0b64a; font-size: 11px; line-height:
 .byd-media-batch li[data-result='failed'] { color: #f0b64a; }
 .byd-media-batch button { align-self: stretch; border: 0; padding: 0; background: transparent; color: var(--byd-editor-home-ink); font: inherit; text-align: left; text-decoration: underline; cursor: pointer; }
 .byd-media-grid li { display: grid; justify-items: center; gap: var(--byd-s1); font-size: 11px; color: var(--byd-editor-quiet); }
+/* The file name on the tile (#742): one line, cut short rather than wrapped, so a long name never makes one tile taller than its row. */
+.byd-media-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--byd-editor-home-ink); }
 .byd-media-grid li[data-unused] small { color: #f0b64a; }
 .byd-media-tile { width: 100%; padding: var(--byd-s1); }
 .byd-media-tile-shot { position: relative; display: block; overflow: hidden; border-radius: 6px; }

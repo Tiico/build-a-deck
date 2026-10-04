@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent, type FocusEvent, type KeyboardEvent } from 'react'
+import { assetAccept } from '@byd/protocol'
 import { useWordSteps } from './word-steps.js'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { copiesOf, deckKeepsFields, fieldsOf, fieldLabel, takenNames, nextCardRef } from './fields.js'
@@ -82,7 +83,10 @@ export type DataTableProps = {
   // The project's images (E1): where they are served from, and how a chosen file becomes one.
   // Without both, image fields are edited as text.
   assetBase?: string | undefined
-  onUpload?: ((file: File) => Promise<string>) | undefined
+  // A file into the game's pictures; `onto` is the card cell it was uploaded from, which the
+  // upload writes in the same step as the picture (#742), so the picture keeps its file name the
+  // way one added in Media does (L22) and a step back takes back both.
+  onUpload?: ((file: File, onto?: { cardRef: string; field: string }) => Promise<string>) | undefined
   // Taking a symbol into the game from where it is written (E4): returns the name it got in the
   // project's icon set. Without it, a brace in a cell is just a brace.
   onSymbol?: ((symbol: GameSymbol) => Promise<string>) | undefined
@@ -592,7 +596,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       return
     }
     try {
-      onCell(cardRef, field, assetRef(await onUpload(one.file)))
+      await onUpload(one.file, { cardRef, field })
       setUploadError(null)
     } catch (err) {
       setUploadError(saidOr(err, t('picture.upload.failed')))
@@ -1592,7 +1596,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       </button>
                       <label className="byd-data-file">
                         {t('table.image.upload')}
-                        <input className="byd-offscreen" type="file" accept="image/*" {...stop(cardRef)} aria-label={t('table.image.uploadFor', { cardRef })} onChange={(e) => void upload(cardRef, f, [...(e.target.files ?? [])])} />
+                        <input className="byd-offscreen" type="file" accept={assetAccept('image')} {...stop(cardRef)} aria-label={t('table.image.uploadFor', { cardRef })} onChange={(e) => void upload(cardRef, f, [...(e.target.files ?? [])])} />
                       </label>
                       {isAssetRef(row[f]) && (
                         <button type="button" {...stop(cardRef)} aria-label={t('table.image.removeFor', { cardRef })} onClick={() => onCell(cardRef, f, '')}>
@@ -1924,7 +1928,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 </button>
                 <label className="byd-data-file">
                   {t('table.image.upload')}
-                  <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('table.bulk.image.upload')} onChange={(event) => void bulkUpload([...(event.target.files ?? [])])} />
+                  <input className="byd-offscreen" type="file" accept={assetAccept('image')} aria-label={t('table.bulk.image.upload')} onChange={(event) => void bulkUpload([...(event.target.files ?? [])])} />
                 </label>
               </div>
             ) : (

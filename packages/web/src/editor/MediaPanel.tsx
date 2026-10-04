@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react'
-import { WHOLE_PICTURE, pictureNameOf, showsWholePicture, type AssetCrop } from '@byd/protocol'
+import { WHOLE_PICTURE, assetAccept, pictureNameOf, showsWholePicture, type AssetCrop } from '@byd/protocol'
 import { croppedMotif, type Motif } from '@byd/template'
 import { titleOfRow } from '@byd/server/doc'
 import type { ProjectDoc } from './types.js'
@@ -274,7 +274,7 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
           {onAdd && (
             <label className="byd-secondary byd-media-add">
               {t('media.add')}
-              <input ref={addRef} className="byd-offscreen" type="file" accept="image/*" multiple aria-label={t('media.add')} onChange={(event) => void take([...(event.target.files ?? [])], event.target)} />
+              <input ref={addRef} className="byd-offscreen" type="file" accept={assetAccept('image')} multiple aria-label={t('media.add')} onChange={(event) => void take([...(event.target.files ?? [])], event.target)} />
             </label>
           )}
         </div>
@@ -400,6 +400,15 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
                     )}
                   </span>
                 </button>
+                {/* The name the file came with, written on the tile (#742): it is what a
+                    designer recognises a picture by, and it lived only in `alt`. It is already
+                    the button's name, so it is not read a second time. A picture from before
+                    names writes nothing here; the line below says which cards it is on. */}
+                {doc.pictures?.[hash]?.name !== undefined && (
+                  <span className="byd-media-name" aria-hidden="true" title={doc.pictures[hash].name}>
+                    {doc.pictures[hash].name}
+                  </span>
+                )}
                 {/* The mark (L33): a cropped picture says so on the tile, in words and not only
                     in the lit window, because the tile is all there is of the picture once the
                     sheet is closed — and it says «sparas» rather than «beskuren» while the actor

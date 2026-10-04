@@ -1,4 +1,5 @@
 import { useId, useRef, useState } from 'react'
+import { assetAccept } from '@byd/protocol'
 import { assetUrl } from './assets.js'
 import { useFocusTrap } from './focusTrap.js'
 import { useT } from '../i18n/index.js'
@@ -86,7 +87,7 @@ export function PictureLibraryDialog({ target, count, replacing, pictures, asset
           {onUpload && (
             <label className="byd-secondary byd-library-upload">
               {t('library.upload')}
-              <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('library.upload')} onChange={(event) => void take(event.target)} />
+              <input className="byd-offscreen" type="file" accept={assetAccept('image')} aria-label={t('library.upload')} onChange={(event) => void take(event.target)} />
             </label>
           )}
           <button type="button" className="byd-library-close" aria-label={t('library.close')} onClick={onClose}>

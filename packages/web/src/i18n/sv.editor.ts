@@ -1471,6 +1471,7 @@ export const svEditor = {
   // lek hon inte känner igen. Varför det gick fel står kvar efter kolonet: det är det hon
   // behöver för att veta om det är lönt att försöka igen.
   'upload.undone': '{what} kunde inte laddas upp och har tagits bort igen: {why}',
+  'upload.refused': '{what} kunde inte laddas upp: {why}',
   'upload.undone.symbol': 'Symbolen {name}',
   'upload.undone.font': 'Typsnittet {name}',
   'upload.undone.picture': 'Bilden {name}',

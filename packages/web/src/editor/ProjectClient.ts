@@ -1,4 +1,4 @@
-import { assetFormatsNamed, assetTypeDeclaring, pictureNameOf, type AssetCrop, type AssetKind } from '@byd/protocol'
+import { ASSET_HEAD_BYTES, assetFormatsNamed, assetRefusal, assetTypeDeclaring, pictureNameOf, type AssetCrop, type AssetKind } from '@byd/protocol'
 import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
 import { catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from './font-catalog.js'
 import type { DocDiff, VersionChange } from '@byd/server/doc'
@@ -1071,8 +1071,19 @@ export class ProjectClient {
   // and answer to a hash; what the file was called lives on the designer's disk and nowhere else,
   // so a name not taken here is a name gone for good. It is untrusted input and is made into a
   // name by `pictureNameOf`, which is where the schema that bounds it lives.
-  async addPicture(file: File, t: T = swedish): Promise<string> {
+  //
+  // `onto` is a card's image cell the picture was uploaded from (#742). It is written in the same
+  // edit as the picture, so the cell's upload is one step back like any other, and the picture
+  // comes into the library under its file name instead of as a hash nobody named.
+  async addPicture(file: File, t: T = swedish, onto?: { cardRef: string; field: string }): Promise<string> {
     this.mustBeAbleToEdit(t)
+    // Before the bytes are even hashed: a file the gate is certain to refuse touches neither the
+    // document nor the wire (#742). The refusal names the picture as a taken-back one does (L37),
+    // because in a batch it is one line among several and has to say which file it is about —
+    // but it says nothing was removed, since nothing was ever added.
+    await this.mustBeTakeable(file, 'image', t).catch((err: unknown) => {
+      throw new Said(t('upload.refused', { what: t('upload.undone.picture', { name: pictureNameOf(file.name) ?? file.name }), why: saidOr(err, t('upload.failed')) }))
+    })
     // The hash first, off the bytes themselves (#339, as #310 did for the symbol): it is the name
     // the service will give them, so whether the game already has the picture is known here.
     const ref = await assetRefOfFile(file)
@@ -1083,10 +1094,17 @@ export class ProjectClient {
     // A picture the game already has is bytes the service already holds, under the name the library
     // already calls it: nothing is edited and the wire is never touched. The second file's name
     // used to be written over the first without a word (#481, L22 beslut 6).
-    if (this.doc.pictures?.[hash] !== undefined) return hash
+    const placing: EditIntent | null = onto ? { v: 'setCell', cardRef: onto.cardRef, field: onto.field, value: ref } : null
+    if (this.doc.pictures?.[hash] !== undefined) {
+      if (placing) this.edit(placing)
+      return hash
+    }
     const name = pictureNameOf(file.name)
     const adding = this.newGesture('picture')
     this.edit({ v: 'addPicture', hash, ...(name === undefined ? {} : { name }) }, adding)
+    // Under the same gesture, so the step back takes both; and taking the picture back if its
+    // bytes never arrive empties the cell with it (#318), so the correction needs nothing more.
+    if (placing) this.edit(placing, adding)
     await this.storeAsset(file, 'image', ref, adding, { said: 'upload.undone.picture', name: name ?? file.name, intents: [{ v: 'removePicture', hash }] }, t)
     return hash
   }
@@ -1105,12 +1123,24 @@ export class ProjectClient {
   // leaves only the second, so the refusal names the formats that kind may be in.
   async uploadAsset(file: Blob, kind: AssetKind, t: T = swedish): Promise<string> {
     this.mustBeAbleToEdit(t)
+    await this.mustBeTakeable(file, kind, t)
     const res = await fetch(`${this.http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': assetTypeDeclaring(kind) }, body: file }))
     if (res.status === 401) throw new Unauthorized()
     if (res.status === 415) throw new Said(t('upload.notThisKind', { formats: assetFormatsNamed(kind, t('upload.or')) }))
     if (res.status === 413) throw new Said(t('upload.tooBig'))
     if (!res.ok) throw new Said(t('upload.failed'))
     return ((await res.json()) as { hash: string }).hash
+  }
+
+  // The gate's refusal, said before a byte travels (#742). The answer is the one the service would
+  // give — the same question out of `@byd/protocol`, in the same words — only without sending up to
+  // twenty megabytes over a home line to hear it, and without a 413 or 415 left in the console for
+  // a refusal the tool knew it would get. The service still asks it of every byte that arrives.
+  private async mustBeTakeable(file: Blob, kind: AssetKind, t: T): Promise<void> {
+    const head = new Uint8Array(await file.slice(0, ASSET_HEAD_BYTES).arrayBuffer())
+    const refused = assetRefusal(file.size, head, kind)
+    if (refused === 'tooBig') throw new Said(t('upload.tooBig'))
+    if (refused === 'notThisKind') throw new Said(t('upload.notThisKind', { formats: assetFormatsNamed(kind, t('upload.or')) }))
   }
 
   // What is drawn inside each of the deck's pictures (E1): the file's own size and the uniform
