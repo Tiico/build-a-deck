@@ -808,6 +808,11 @@ export const enEditor = {
   'symbols.deck.painted.some': 'No card says this one. The template paints it on some cards — a variant or a condition decides which — so it shows without any row naming it.',
   'symbols.rename': 'Name for {name}',
   'symbols.name.unwritable': '“{name}” cannot be written on a card: a name holds only letters, digits, _ and -.',
+  'symbols.name.taken': 'There is already an icon called {name}.',
+  'symbols.colours.taken': 'There is already a meaning called {name}.',
+  // What an edit the document refused says when nothing above foresaw it (#697): the document's own
+  // reason is in English and for the developer, never for the designer.
+  'symbols.change.refused': 'That could not be changed. Try again.',
   'symbols.own': 'your own',
   'symbols.remove': 'Remove {name}',
   'symbols.remove.question': 'Remove {name}? {n} cards write it: {cards}.',
