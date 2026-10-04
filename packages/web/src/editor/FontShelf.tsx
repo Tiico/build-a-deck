@@ -144,8 +144,8 @@ function Licence({ family, licence, settled, onFontLicence }: { family: string; 
   if (settled)
     return (
       <span className="byd-fonts-licence" data-settled="true">
-        <input aria-label={t('fonts.licence.of', { family })} value={licence?.licence ?? ''} readOnly />
-        <input aria-label={t('fonts.by.of', { family })} value={licence?.by ?? ''} readOnly />
+        <input aria-label={t('fonts.licence.of', { family })} value={licence?.licence ?? ''} title={licence?.licence} readOnly />
+        <input aria-label={t('fonts.by.of', { family })} value={licence?.by ?? ''} title={licence?.by} readOnly />
       </span>
     )
   return (
