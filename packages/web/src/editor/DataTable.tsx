@@ -201,10 +201,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // since it, and which symbol is under the arrow keys.
   // `role` is what stands after the bar, or null when no bar has been typed: the syntax itself
   // is what says whether the designer is naming a symbol or the meaning to draw it in (E4).
-  // `wrote` is true when the brace under the cursor is one the `{ }` button put there rather than
-  // one the designer typed. Only such a brace may be taken back by pressing that button again
-  // (#236): what somebody typed is theirs, and a control that eats it is a control nobody trusts.
-  const [brace, setBrace] = useState<{ cardRef: string; field: string; at: number; query: string; role: string | null; wrote: boolean } | null>(null)
+  // `typed` is false when the `{ }` button opened the library (#693): then there is no brace in
+  // the text at all, `at` is where the caret stood, and the token goes in there whole when a symbol
+  // is chosen. The button used to write the brace the key does, and a brace nobody typed stood in
+  // the value after Escape and was saved with it. Nothing is written until something is chosen.
+  const [brace, setBrace] = useState<{ cardRef: string; field: string; at: number; query: string; role: string | null; typed: boolean } | null>(null)
   const [choice, setChoice] = useState(0)
   // The symbol chosen in the box, while its meaning is still the question (L34). Null until one
   // is chosen, and null again the moment anything else is typed: what was chosen was chosen for
@@ -271,19 +272,24 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // moment to re-measure, it is the same edit going on.
   const editing = here !== null
   // Var markören ska stå efter att verktyget skrivit åt designern — en symbol tagen ur listan i
-  // en body-cell — och vilken klammer knappen `{ }` själv skrev. Båda är ett meddelande till
-  // nästa rendering och inget tillstånd att rita av, så de bor i en ref.
+  // en body-cell. Ett meddelande till nästa rendering och inget tillstånd att rita av, så det bor
+  // i en ref.
   const caretAfter = useRef<{ cardRef: string; field: string; at: number } | null>(null)
-  const braceByButton = useRef(false)
-  const openBrace = (cardRef: string, field: string, el: HTMLInputElement, wrote = false) =>
-    openBraceAt(cardRef, field, el.value, el.selectionStart ?? el.value.length, wrote)
-  const openBraceAt = (cardRef: string, field: string, value: string, caret: number, wrote = false) => {
+  const openBrace = (cardRef: string, field: string, el: HTMLInputElement) => openBraceAt(cardRef, field, el.value, el.selectionStart ?? el.value.length)
+  // The `{ }` button (#33, #693): the library a typed brace opens, at the caret, with nothing
+  // written. Pressed while the cell's library is open, whoever opened it, it closes it and leaves
+  // the text alone (#236): what somebody typed is theirs.
+  const toggleLibrary = (cardRef: string, field: string, caret: number) => {
+    if (cellPicking(cardRef, field)) return closeBrace()
+    setBrace({ cardRef, field, at: caret, query: '', role: null, typed: false })
+    setPicked(null)
+    setChoice(0)
+  }
+  const openBraceAt = (cardRef: string, field: string, value: string, caret: number) => {
     // Where the brace stands behind the caret and what has been written since it is the same
     // question the rulebook's `[[` asks, so it is asked in one place (L23, #215). A closed brace
     // is written text and stops the lookup; a bare number in braces is a pip (L2) and is this
     // surface's own exception, since only a cell has pips in it.
-    const byButton = braceByButton.current
-    braceByButton.current = false
     const found = triggerBehind(value, caret, BRACE, BRACE_STOPS)
     if (!found || /^\d+$/.test(found.query)) return closeBrace()
     // The bar is the whole of the switch: before it the designer is naming a symbol, after it the
@@ -292,8 +298,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const bar = found.query.indexOf('|')
     setBrace(
       bar < 0
-        ? { cardRef, field, at: found.at, query: found.query, role: null, wrote: wrote || byButton }
-        : { cardRef, field, at: found.at, query: found.query.slice(0, bar), role: found.query.slice(bar + 1), wrote: wrote || byButton },
+        ? { cardRef, field, at: found.at, query: found.query, role: null, typed: true }
+        : { cardRef, field, at: found.at, query: found.query.slice(0, bar), role: found.query.slice(bar + 1), typed: true },
     )
     setPicked(null)
     setChoice(0)
@@ -315,9 +321,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     closeBrace()
     const bare = iconFieldsOf(doc).includes(open.field)
     const write = (name: string) => {
+      // A typed brace and the name after it are replaced; with the button's library there is
+      // nothing in the text to replace, and the token goes in at the caret (#693).
       const before = current.slice(0, open.at)
-      const after = current.slice(open.at + 1 + open.query.length)
-      const written = bare ? `${before.replace(/\{$/, '')}${token(name, role, true)}${after}`.trim() : `${before}${token(name, role, false)}${after}`
+      const after = current.slice(open.at + (open.typed ? 1 + open.query.length : 0))
+      const written = bare ? `${open.typed ? before.replace(/\{$/, '') : before}${token(name, role, true)}${after}`.trim() : `${before}${token(name, role, false)}${after}`
       caretAfter.current = { cardRef: open.cardRef, field: open.field, at: written.length - after.length }
       onCell(open.cardRef, open.field, written)
     }
@@ -1600,16 +1608,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       setHere((at) => (at?.cardRef === cardRef && at.field === f ? null : at))
                       if (brace?.cardRef === cardRef && brace.field === f) closeBrace()
                     }}
-                    onSymbol={() => {
-                      // Ett andra tryck på `{ }` är listans eget: den stängs, och ingen ny
-                      // klammer skrivs (#236 i den form den kan ta i en skrivyta).
-                      if (!(brace?.cardRef === cardRef && brace.field === f && brace.wrote)) {
-                        braceByButton.current = true
-                        return false
-                      }
-                      closeBrace()
-                      return true
-                    }}
+                    onSymbol={(at) => toggleLibrary(cardRef, f, at)}
                     onListKey={(e) => {
                       onListKey(cardRef, f, e)
                       if (e.defaultPrevented) return
@@ -1686,6 +1685,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       e.preventDefault()
                       fillBlock(cardRef, f, text)
                     }}
+                    // The button's library has no brace in the text to hang from, only the caret
+                    // (#693): a click elsewhere in the field moves where the choice will go.
+                    onSelect={(e) => {
+                      const caret = e.currentTarget.selectionStart
+                      if (brace && !brace.typed && cellPicking(cardRef, f) && caret !== null && caret !== brace.at) setBrace({ ...brace, at: caret })
+                    }}
                     onFocus={(e) => {
                       visits.visit.onFocus()
                       setHeld(shown.map((r) => r.id))
@@ -1709,8 +1714,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                   )}
                   {f === 'antal' && antalDraft[cardRef] === undefined && Number(row[f] ?? 1) === 0 && <small className="byd-data-out">{t('table.antal.out')}</small>}
                   {/* The brace, made visible in the cell the designer is standing in (#33). It
-                      writes the brace and opens the same picker typing one does — one way in, seen
-                      rather than known. Only in the cell being worked in: one handle per cell is a
+                      opens the same picker typing one does — one way in, seen rather than known —
+                      and writes nothing until a symbol is chosen (#693). Only in the cell being worked in: one handle per cell is a
                       wall of braces on screen, and a hundred stops in the tab order.
                       It stands after the field and not before it: the field, and then the control
                       that belongs to it, which is the order they are read in (#140). On the screen
@@ -1728,29 +1733,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       onClick={(event) => {
                         const input = event.currentTarget.closest('td')?.querySelector('input')
                         if (!input) return
-                        // Pressed a second time it is the same press undone (#236): the library
-                        // goes, and so does the brace this button wrote. A brace still open is by
-                        // construction a brace with no finished symbol in it — `openBrace` closes
-                        // the moment a `}` is written — so there is nothing here to lose. Only the
-                        // brace itself is taken; letters typed after it are the designer's.
-                        const mine = brace?.cardRef === cardRef && brace.field === f && brace.wrote ? brace : null
-                        if (mine) {
-                          const undone = `${input.value.slice(0, mine.at)}${input.value.slice(mine.at + 1)}`
-                          typing.current[`${cardRef}:${f}`] = undone
-                          onCell(cardRef, f, undone, cellGesture())
-                          input.value = undone
-                          input.focus()
-                          input.setSelectionRange(mine.at, mine.at)
-                          return closeBrace()
-                        }
-                        const at = input.selectionStart ?? input.value.length
-                        const next = `${input.value.slice(0, at)}{${input.value.slice(at)}`
-                        typing.current[`${cardRef}:${f}`] = next
-                        onCell(cardRef, f, next, cellGesture())
-                        input.value = next
                         input.focus()
-                        input.setSelectionRange(at + 1, at + 1)
-                        openBrace(cardRef, f, input, true)
+                        toggleLibrary(cardRef, f, input.selectionStart ?? input.value.length)
                       }}
                     >
                       {'{ }'}
