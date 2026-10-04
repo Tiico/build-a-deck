@@ -561,6 +561,7 @@ export const enEditor = {
   // says where the icons come from instead. Naming one there is the way back from the column, as
   // choosing a column is the way there — and neither guesses on the designer's behalf (#33).
   'canvas.props.icon.fromField': 'from the column',
+  'canvas.props.icon.none': 'no icon',
   'canvas.props.font': 'Typeface',
   // A layer's family (L57, #634): the game's typefaces first and said to be the game's, a family
   // the game no longer has on its own, and the whole catalog last.

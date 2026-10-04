@@ -477,8 +477,10 @@
 .byd-editor-warning { color: var(--byd-editor-lost-ink); font-weight: 600; }
 /* The strip's buttons are the quiet outlined button of the button language (L13), and full
    targets. The pink below is a card that could not be rendered (texture.css) and belongs to the
-   strips that say so — lost and stalled — not to «Ny kod» on a table that is running well (#477). */
-.byd-editor-table-link button {
+   strips that say so — lost and stalled — not to «Ny kod» on a table that is running well (#477).
+   A seat's × is the chip's and not one of these: the outlined box drew a second line inside the
+   chip and corners out past its round end (#849), so the chip draws it from `buttons.css`. */
+.byd-editor-table-link button:not(.byd-chip > button) {
   min-height: var(--byd-tap);
   padding: 0 var(--byd-s3);
   border: 1px solid #5f7f69;
@@ -489,8 +491,8 @@
   font-weight: 700;
   cursor: pointer;
 }
-.byd-editor-table-link button:hover { border-color: #7dd3a0; }
-.byd-editor-table-link:is([data-lost], [data-stalled]) button {
+.byd-editor-table-link button:not(.byd-chip > button):hover { border-color: #7dd3a0; }
+.byd-editor-table-link:is([data-lost], [data-stalled]) button:not(.byd-chip > button) {
   border-color: var(--byd-editor-lost-button-line);
   background: var(--byd-editor-lost-button-bg);
   color: var(--byd-editor-lost-ink);

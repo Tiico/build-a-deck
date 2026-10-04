@@ -2200,7 +2200,9 @@ function Properties({
               {t('canvas.props.icon')}
               <select value={'literal' in el.bind ? el.bind.literal : ''} onChange={(e) => e.target.value !== '' && onPatch({ bind: { literal: e.target.value } })}>
                 {'field' in el.bind && <option value="">{t('canvas.props.icon.fromField')}</option>}
-                {[...new Set([...icons, ...('literal' in el.bind ? [el.bind.literal] : [])])].map((name) => (
+                {/* A row with no name yet says so in words rather than as a blank choice (#849). */}
+                {'literal' in el.bind && el.bind.literal === '' && <option value="">{t('canvas.props.icon.none')}</option>}
+                {[...new Set([...icons, ...('literal' in el.bind && el.bind.literal !== '' ? [el.bind.literal] : [])])].map((name) => (
                   <option key={name} value={name}>
                     {name}
                   </option>
