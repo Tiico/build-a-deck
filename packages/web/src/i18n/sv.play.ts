@@ -248,6 +248,7 @@ export const svPlay = {
   'activity.deal.other': '{who} delade ut {n} kort var',
   'activity.roll': '{who} slog en tärning',
   'activity.setCounter': '{who} satte en räknare till {value}',
+  'activity.setCounter.named': '{who} satte {counter} till {value}',
   'activity.peek': '{who} tittade på ett kort',
   'activity.showTo': '{who} visade ett kort för {seats}',
   'activity.reveal': '{who} avslöjade ett kort',

@@ -203,6 +203,7 @@ export const enPlay = {
   'activity.deal.other': '{who} dealt {n} cards each',
   'activity.roll': '{who} rolled a die',
   'activity.setCounter': '{who} set a counter to {value}',
+  'activity.setCounter.named': '{who} set {counter} to {value}',
   'activity.peek': '{who} looked at a card',
   'activity.showTo': '{who} showed a card to {seats}',
   'activity.reveal': '{who} revealed a card',

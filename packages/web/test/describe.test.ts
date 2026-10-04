@@ -143,3 +143,22 @@ describe('a card played somewhere is said as where it went (#560 P-12)', () => {
     expect(said).toBe('Ada flyttade Quickdraw till Framför A')
   })
 })
+
+// A counter's change says which counter (#714): «satte en räknare till 1» three times over did not
+// say what had changed, while the chip on the felt says «Guld 1».
+describe('a counter set in the log (#714)', () => {
+  const withGold = (): Snapshot => {
+    const v = table(null)
+    return { ...v, components: [{ id: 'k1', zone: 'table', cardRef: 'Guld', counter: 1, face: 'front', x: 0, y: 0, rot: 0 }] } as unknown as Snapshot
+  }
+  const set = (component: string): Activity => ({ seq: 8, by: 'A', at: '2026-10-04T00:00:00.000Z', intent: { v: 'setCounter', component, value: 1 } } as Activity)
+
+  it('names the counter by the name the designer gave it', () => {
+    expect(describeActivity(set('k1'), withGold(), sv)).toBe('Ada satte Guld till 1')
+    expect(describeActivity(set('k1'), withGold(), en)).toBe('Ada set Guld to 1')
+  })
+
+  it('still says «en räknare» for one it cannot name', () => {
+    expect(describeActivity(set('k9'), withGold(), sv)).toBe('Ada satte en räknare till 1')
+  })
+})

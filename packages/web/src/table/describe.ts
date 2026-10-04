@@ -55,8 +55,11 @@ export function describeActivity(line: Activity, view: Snapshot, t: T): string {
       return t(it.each === 1 ? 'activity.deal.one' : 'activity.deal.other', { who, n: it.each })
     case 'roll':
       return t('activity.roll', { who })
-    case 'setCounter':
-      return t('activity.setCounter', { who, value: it.value })
+    case 'setCounter': {
+      // By the counter's own name, as its chip on the felt says it (#714).
+      const named = view.components.find((c) => c.id === it.component)?.cardRef
+      return named ? t('activity.setCounter.named', { who, counter: named, value: it.value }) : t('activity.setCounter', { who, value: it.value })
+    }
     case 'peek':
       return t('activity.peek', { who })
     case 'showTo':
