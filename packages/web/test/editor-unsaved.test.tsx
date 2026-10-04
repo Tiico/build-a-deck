@@ -86,6 +86,27 @@ describe('the editor says whether the work is saved (#8)', () => {
   })
 })
 
+// «Starta bord» over unsaved work saves first and starts the table on what was saved (L5, #764) —
+// and says so (#737): the band said only «Nytt bord startat på rev-2», and a version the designer
+// never asked for had been written without a word.
+describe('starting a table over unsaved work (#737)', () => {
+  it('says the version it saved as well as the table it started', async () => {
+    await openEditor()
+    fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
+    fireEvent.change(screen.getByLabelText('dragon title'), { target: { value: 'Drakhona' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Starta bord' }))
+    await screen.findByText(/Sparade rev-2 och startade ett nytt bord/)
+    expect((await run.projects.load(run.projectId))?.rev).toBe(2)
+  })
+
+  it('says only that a table started when there was nothing to save', async () => {
+    await openEditor()
+    fireEvent.click(screen.getByRole('button', { name: 'Starta bord' }))
+    await screen.findByText(/Nytt bord startat på rev-1/)
+    expect(screen.queryByText(/Sparade/)).toBeNull()
+  })
+})
+
 // Below 1440 the status draws a tick or an amber dot instead of its word (#668, A1), and the mark
 // is drawing only: what the live region says is the word, in both states, and nothing else.
 function heard(status: Element): string {

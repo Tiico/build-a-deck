@@ -118,7 +118,9 @@ export function FontCatalog({ words, inGame, forLayer = false, onChoose, onClose
       )}
       <footer>
         <span>{t('fonts.catalog.foot')}</span>
-        <span className="byd-font-catalog-count">{all === null ? '' : t('fonts.catalog.count', { shown: String(shown.length), all: String(hits.length) })}</span>
+        {/* The foot counts the rows the sheet shows, so it says nothing while it shows none (#737):
+            «2 av 2» under a catalog that did not answer was a count of something nobody could see. */}
+        <span className="byd-font-catalog-count">{all === null || failed || shown.length === 0 ? '' : t('fonts.catalog.count', { shown: String(shown.length), all: String(hits.length) })}</span>
       </footer>
     </div>
   )
