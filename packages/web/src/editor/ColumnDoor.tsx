@@ -299,7 +299,7 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
                         <path d="M3.4 5V3.6a2.6 2.6 0 0 1 5.2 0V5" fill="none" stroke="currentColor" strokeWidth="1.2" />
                         <rect x="2.2" y="5" width="7.6" height="5.6" rx="1.2" fill="currentColor" />
                       </svg>
-                      {t('table.field.system', { field })}
+                      {t('table.field.system', { field: fieldLabel(field, t) })}
                     </span>
                   )}
                   {prose && <ProseWhy label={fieldLabel(field, t)} {...prose} onProse={(next) => onProse?.(field, next)} keys={keys} whyId={whyId} />}

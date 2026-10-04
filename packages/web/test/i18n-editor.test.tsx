@@ -88,7 +88,7 @@ describe('the editor in the reader\'s own language (A4)', () => {
     // is what every card is called (#476).
     expect(screen.getByRole('button', { name: /^body/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /^Title/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /^copies/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Copies/ })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^antal/ })).toBeNull()
   })
 

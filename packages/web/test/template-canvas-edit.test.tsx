@@ -471,7 +471,7 @@ describe('the second door into a new field (#32)', () => {
     const { onPatch } = canvas({ onAddField })
 
     const field = screen.getByLabelText('Fält') as HTMLSelectElement
-    expect([...field.options].map((o) => o.textContent)).toEqual(['title', 'body', 'antal', 'nytt fält…'])
+    expect([...field.options].map((o) => o.textContent)).toEqual(['Titel', 'body', 'Antal', 'nytt fält…'])
     await user.selectOptions(field, within(field).getByRole('option', { name: 'nytt fält…' }))
 
     const form = screen.getByRole('form', { name: 'Nytt fält' })

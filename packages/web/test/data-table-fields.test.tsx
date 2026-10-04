@@ -132,7 +132,7 @@ describe('a field arrives in the editor (#32)', () => {
     // the card's id. Both are columns; neither has an ×.
     expect(screen.queryByRole('button', { name: 'Ta bort fältet antal' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Ta bort fältet id' })).toBeNull()
-    expect(column('antal')).toBeTruthy()
+    expect(column('Antal')).toBeTruthy()
   })
 
   it('counts an empty column as what it is: nothing to lose', async () => {
