@@ -6,7 +6,7 @@ import { StatusLive } from '../src/status/StatusLive.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { projectDoc } from './project-doc.js'
-import { admit, createSession, startServer, type Running } from './fixture.js'
+import { admit, createSession, registerRoom, startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 import { watchFontNet, type FontNet } from './font-net.js'
 
@@ -198,6 +198,28 @@ describe('the tables the account sat at (G1)', () => {
     // Said once (#475): the address no longer carries it, so a reload does not say it again.
     expect(new URLSearchParams(location.search).get('claimed')).toBeNull()
     expect(new URLSearchParams(location.search).get('server')).toBe(run.http)
+  })
+
+  // A game taken away takes its tables with it (#676): the row says so, and offers no way back.
+  it('says a table\'s game was deleted, and offers no way back to it', async () => {
+    await run.stop()
+    run = await startServer({ auth: true, authBypass: true })
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com' }) })
+    const json = { 'content-type': 'application/json' }
+    expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: json, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })).status).toBe(201)
+    const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST', headers: json, body: '{}' })).json()) as { id: string; code: string; hostKey: string }
+    registerRoom(made.id, made)
+    const token = await admit(run, made.id, 'A', 'Ada')
+    expect((await fetch(`${run.http}/guests/claim`, { method: 'POST', headers: json, body: JSON.stringify({ token }) })).status).toBe(200)
+    expect((await fetch(`${run.http}/projects/${run.projectId}`, { method: 'DELETE' })).status).toBe(200)
+
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    render(<HomePage onNavigate={() => undefined} />)
+    expect(await screen.findByText('Bord du spelat vid')).toBeTruthy()
+    const card = await waitFor(() => document.querySelector(`[data-played="${made.id}"]`)!)
+    expect(card.textContent).toContain('Borttaget spel')
+    expect(card.textContent).not.toContain('pågår')
+    expect(within(card as HTMLElement).queryByRole('link', { name: 'Tillbaka till bordet' })).toBeNull()
   })
 })
 

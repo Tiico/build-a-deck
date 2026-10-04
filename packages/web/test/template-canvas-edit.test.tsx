@@ -110,7 +110,7 @@ describe('the keyboard when it is not about the card (#18)', () => {
 })
 
 describe('adding an element from the canvas (#18)', () => {
-  it('has a tool for each kind, and a new element lands on the card, is bound to a field and is selected', async () => {
+  it('has a tool for each kind, and a new element lands on the card, is bound to what it can show and is selected', async () => {
     const user = userEvent.setup()
     const { onAdd, onSelectElement } = canvas()
     const tools = within(screen.getByRole('toolbar', { name: /verktyg/i }))
@@ -131,9 +131,11 @@ describe('adding an element from the canvas (#18)', () => {
     expect(onSelectElement).toHaveBeenLastCalledWith('text-1')
 
     await user.click(tools.getByRole('button', { name: 'Bild' }))
-    expect(onAdd).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'image', id: 'image-1', bind: { field: 'title' } }))
+    // A picture and a row of icons read a column that holds what they draw, and this deck has
+    // neither, so they read none (#700).
+    expect(onAdd).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'image', id: 'image-1', bind: { literal: '' } }))
     await user.click(tools.getByRole('button', { name: 'Ikonrad' }))
-    expect(onAdd).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'icons', id: 'icons-1', iconMm: 5 }))
+    expect(onAdd).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'icons', id: 'icons-1', iconMm: 5, bind: { literal: '' } }))
     await user.click(tools.getByRole('button', { name: 'Form' }))
     expect(onAdd).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'shape', id: 'shape-1', shape: 'rect' }))
   })

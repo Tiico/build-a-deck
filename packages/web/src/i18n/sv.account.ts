@@ -64,6 +64,7 @@ export const svAccount = {
   // Borden kontot suttit vid (G1): det andra rutnätet.
   'home.played.title': 'Bord du spelat vid',
   'home.played.some-table': 'Ett bord',
+  'home.played.deleted': 'Borttaget spel',
   'home.played.you': '{version} · du var {name}',
   'home.played.surveyed': 'enkät besvarad',
   'home.played.unsurveyed': 'enkät obesvarad',
