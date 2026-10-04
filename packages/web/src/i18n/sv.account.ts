@@ -157,6 +157,19 @@ export const svAccount = {
   'wizard.frame.classic': 'Klassisk',
   'wizard.frame.minimal': 'Minimal',
   'wizard.frame.dark': 'Mörk',
+  // Startramarnas lager, som designern får med sig in i Mall (#730): på spelets språk, inte ramens id:n.
+  'wizard.layer.paper': 'Papper',
+  'wizard.layer.frame': 'Ram',
+  'wizard.layer.art': 'Illustration',
+  'wizard.layer.artbg': 'Bildplats',
+  'wizard.layer.title': 'Titel',
+  'wizard.layer.body': 'Brödtext',
+  'wizard.layer.cost': 'Kostnad',
+  'wizard.layer.costbg': 'Kostnadsbricka',
+  'wizard.layer.rule': 'Linje',
+  'wizard.layer.plate': 'Textplatta',
+  'wizard.layer.background': 'Bakgrund',
+  'wizard.layer.inner': 'Inre fält',
 
   // Exempelkorten och den levande förhandsvisningen bredvid dem.
   'wizard.cards.title': 'Gör några exempelkort',
