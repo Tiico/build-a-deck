@@ -53,7 +53,7 @@ async function madeWith(frame: string, theme?: string): Promise<ProjectDoc> {
   for (const [i, kort] of KORT.entries()) {
     if (i > 0) fireEvent.click(screen.getByRole('button', { name: '+ Nytt kort' }))
     fireEvent.change(screen.getByLabelText(`kort ${i + 1} Titel`), { target: { value: kort.title } })
-    fireEvent.change(screen.getByLabelText(`kort ${i + 1} Text`), { target: { value: kort.body } })
+    fireEvent.change(screen.getByLabelText(`kort ${i + 1} Regeltext`), { target: { value: kort.body } })
   }
   fireEvent.click(screen.getByRole('button', { name: /skapa spelet och fortsätt i editorn/i }))
   await waitFor(() => expect(gone).toHaveLength(1))
@@ -186,7 +186,7 @@ describe('the preview in the theme s own faces (#476, #633)', () => {
   it('paints a meaning in the pressed theme s colour, and changes it when the theme changes', async () => {
     history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
     render(<NewProjectPage onNavigate={() => undefined} />)
-    fireEvent.change(screen.getByLabelText('kort 1 Text'), { target: { value: 'Betala {mynt|kostnad}.' } })
+    fireEvent.change(screen.getByLabelText('kort 1 Regeltext'), { target: { value: 'Betala {mynt|kostnad}.' } })
     const ink = () => (preview().querySelector('.byd-ink') as HTMLElement | null)?.style.background
     await waitFor(() => expect(ink()).toBe('rgb(143, 45, 32)'))
     fireEvent.click(screen.getByRole('button', { name: 'Välj temat Krönika' }))

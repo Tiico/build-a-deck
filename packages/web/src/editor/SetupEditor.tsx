@@ -76,6 +76,9 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
   // What the last step back would take back, said where the removal happened rather than only in
   // the header: a zone that went by mistake is one press from standing again.
   const [undoable, setUndoable] = useState<string | null>(null)
+  // Whether what can be undone was a cut rather than a removal: the same zone gone, said as what it
+  // is (#712) — «Yta 1 är borttagen.» over a zone that was on its way to be pasted read as a loss.
+  const [wasCut, setWasCut] = useState(false)
   // Which zone the way back would restore, and whether the way back should take the focus: the ×
   // or the handle that had it is gone with the zone (#480).
   const [removedId, setRemovedId] = useState<string | null>(null)
@@ -134,9 +137,10 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
     opener.current = null
     back?.focus()
   }
-  const remove = (zone: Zone) => {
+  const remove = (zone: Zone, cut = false) => {
     client.removeZone(zone.id)
     setUndoable(zone.name)
+    setWasCut(cut)
     setRemovedId(zone.id)
     setFocusUndo((n) => n + 1)
     setSaid(null)
@@ -201,10 +205,15 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
         setSelected(now.client.insertZone({ ...held.zone, name: held.cut ? held.zone.name : now.t('zone.copy', { name: held.zone.name }), geometry }))
         // Pasted once, a cut is placed; the next paste is a copy of it.
         if (held.cut) clipboard.current = { zone: held.zone, cut: false }
+        // The cut is placed, so what it said about the zone being gone is over too (#712).
+        setUndoable(null)
         setSaid(null)
         return
       }
-      const zone = now.setup.zones.find((z) => z.id === now.selected)
+      // The zone chosen, or else the one whose row has the focus — the list is where a keyboard stands
+      // on a zone, and a Ctrl+C there did nothing at all (#712).
+      const row = document.activeElement instanceof Element ? document.activeElement.closest('[data-zone-row]')?.getAttribute('data-zone-row') : null
+      const zone = now.setup.zones.find((z) => z.id === (now.selected ?? row))
       if (!zone) return
       e.preventDefault()
       // A hand is its seat's (C3), so it is never something to lay down a second copy of.
@@ -219,7 +228,7 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
           return
         }
         clipboard.current = { zone, cut: true }
-        now.remove(zone)
+        now.remove(zone, true)
         return
       }
       clipboard.current = { zone, cut: false }
@@ -280,7 +289,7 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
         <div className="byd-setup-said" data-setup-said>
           {undoable && (
             <span className="byd-setup-undo" role="status">
-              {t('setup.removed', { name: undoable })}
+              {t(wasCut ? 'setup.cut' : 'setup.removed', { name: undoable })}
               <button
                 ref={undoButton}
                 type="button"

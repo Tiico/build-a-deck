@@ -182,10 +182,10 @@ describe('the names of the fields (#476)', () => {
     const cost = screen.getByLabelText('Kostnad namn')
 
     await user.clear(cost)
-    await user.type(cost, 'Text')
+    await user.type(cost, 'Regeltext')
     expect(cost.getAttribute('aria-invalid')).toBe('true')
     const said = document.getElementById(cost.getAttribute('aria-describedby') ?? '')
-    expect(said?.textContent).toBe('Två fält kan inte heta «Text».')
+    expect(said?.textContent).toBe('Två fält kan inte heta «Regeltext».')
 
     await user.clear(cost)
     expect(document.getElementById(cost.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Fältet behöver ett namn.')
