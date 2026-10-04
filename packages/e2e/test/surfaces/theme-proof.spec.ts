@@ -98,7 +98,7 @@ test.describe('the theme proof sets the body text in a size it can be read at (#
           expect(tile.lines).toBeGreaterThanOrEqual(3)
           expect(tile.lines).toBeLessThan(4.5)
         }
-      }, 60_000)
+      })
     }
   }
 
@@ -111,7 +111,7 @@ test.describe('the theme proof sets the body text in a size it can be read at (#
     const work = await page.locator('.byd-theme-work').evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight }))
     expect(work.scroll).toBeLessThanOrEqual(work.client)
     expect(await page.evaluate(() => document.scrollingElement!.scrollHeight - innerHeight)).toBeLessThanOrEqual(0)
-  }, 60_000)
+  })
 })
 
 // Found during #740: with the typeface catalog open beside it at 1024, four tiles in a row are
@@ -148,6 +148,6 @@ test.describe('the gallery beside the catalog sheet at 1024 × 768 (#741, found 
       expect(await measure()).toEqual({ overlaps: [], spills: [], cut: [], n: 4 })
       await showFaces(page)
       expect(await measure()).toEqual({ overlaps: [], spills: [], cut: [], n: 4 })
-    }, 60_000)
+    })
   }
 })
