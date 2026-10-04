@@ -19,11 +19,12 @@ import { TableRenderer } from '../src/table/TableRenderer.js'
 import { TvChrome } from '../src/table/TvChrome.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { stepAside } from '../src/editor/grips.js'
+import { placeNames } from '../src/table/freeSide.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
 import { chooseSeats } from './bord-tab.js'
-import { FACE, FELT_FONT, READ, expectClear, feltOf, namesOf, sceneOf, seatNameOf, sheet, type Reading } from './felt-labels.js'
+import { FACE, FELT_FONT, READ, READ_AS_LAID, expectClear, feltOf, namesOf, sceneOf, seatNameOf, sheet, type Reading } from './felt-labels.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const FRAME = { w: 1280, h: 800 }
@@ -74,11 +75,13 @@ const readNames = (html: string, size: { w: number; h: number }): Promise<Readin
 // Samma läsning, men med `stepAside` körd först — det editorn gör när ett grepp ritas. Den körs
 // som en sträng i sidan och inte via React, eftersom markup lagd på en sida aldrig kör en effekt:
 // en regel som bara bodde i en effekt vore omätbar här, och det är hela skälet till att den är en
-// exporterad funktion.
+// exporterad funktion. Namnen läggs ut först (`placeNames`, #685), som renderaren gör innan
+// editorn ritar sitt grepp.
 const readHeld = (html: string, size: { w: number; h: number }): Promise<Reading & { sent: Record<string, number> }> =>
   onPage(html, size, async (page) => {
+    await page.evaluate(`(${String(placeNames)})(document)`)
     const sent = (await page.evaluate(`(${String(stepAside)})(document)`)) as Record<string, number>
-    return { ...((await page.evaluate(READ)) as Reading), sent }
+    return { ...((await page.evaluate(READ_AS_LAID)) as Reading), sent }
   })
 
 // Which real face drew the glyphs, asked of the browser rather than of the cascade. A computed

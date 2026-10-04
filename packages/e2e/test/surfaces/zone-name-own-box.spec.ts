@@ -216,15 +216,44 @@ test.describe('Bord-flikens namn står aldrig i en annan zons ruta (#685, #581)'
         expect({ width, seats, inZone }).toEqual({ width, seats, inZone: [] })
       })
 
-      if (width >= 1280)
-        test(`alla tända, ${width} × ${height}, ${seats} platser`, async ({ page }) => {
-          await bord(page, width, height, seats)
-          await lightAll(page)
-          const at = await settled(page)
-          expect(at.names).toContain("Sal's Saloon")
-          expect({ width, seats, inZone: at.inZone }).toEqual({ width, seats, inZone: [] })
-          const wide = await readWide(page)
-          expect({ width, seats, wide: wide.inZone }).toEqual({ width, seats, wide: [] })
+      test(`alla tända, ${width} × ${height}, ${seats} platser`, async ({ page }) => {
+        await bord(page, width, height, seats)
+        await lightAll(page)
+        const at = await settled(page)
+        expect(at.names).toContain("Sal's Saloon")
+        expect({ width, seats, inZone: at.inZone }).toEqual({ width, seats, inZone: [] })
+        // Undantaget vid 1024, skrivet uttryckligen (beslutet 2026-10-03). Filten är där 382 px
+        // bred, och med alla zoner tända finns inte plats för varje namn utanför varje annat: några
+        // av räknarnamnen och «Framför»-namnen får ingen fri plats alls. Fliken visar ett namn i
+        // taget (#581), på en egen platta som ritas över allt annat, så en sådan platta får stå på
+        // ett annat namn eller en plats namnkort — men aldrig i en annan zons ruta, och namnet kapas
+        // aldrig. Det som står på ett annat namn här är alltså ett namn appen själv har lagt på sin
+        // platta (`plate-…`), och inget annat; vid 1280 och 1440 finns inget sådant alls.
+        const plates = await page.evaluate(() => {
+          const shown = [...document.querySelectorAll<HTMLElement>('.byd-setup-felt [data-table] > .byd-zone > span, .byd-setup-felt .byd-seat-name')].filter(
+            (el) => getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().width > 0,
+          )
+          const hits = (p: DOMRect, q: DOMRect) => p.left < q.right - 0.5 && q.left < p.right - 0.5 && p.top < q.bottom - 0.5 && q.top < p.bottom - 0.5
+          const plate = (el: HTMLElement) => (el.dataset['nameAt'] ?? '').startsWith('plate-')
+          const on: string[] = []
+          const unplated: string[] = []
+          const cut: string[] = []
+          for (const el of shown) {
+            if (!el.matches('.byd-zone > span')) continue
+            if (el.scrollWidth > el.clientWidth + 1) cut.push((el.textContent ?? '').trim())
+            for (const o of shown) {
+              if (o === el || !hits(el.getBoundingClientRect(), o.getBoundingClientRect())) continue
+              const pair = `${(el.textContent ?? '').trim()} × ${(o.textContent ?? '').trim()}`
+              on.push(pair)
+              if (!plate(el) && !plate(o)) unplated.push(pair)
+            }
+          }
+          return { on, unplated, cut }
         })
+        expect({ width, seats, cut: plates.cut }).toEqual({ width, seats, cut: [] })
+        expect({ width, seats, on: width >= 1280 ? plates.on : plates.unplated }).toEqual({ width, seats, on: [] })
+        const wide = await readWide(page)
+        expect({ width, seats, wide: wide.inZone }).toEqual({ width, seats, wide: [] })
+      })
     }
 })

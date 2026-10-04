@@ -8,6 +8,7 @@ import { expect } from 'vitest'
 import { CARD_STANDARD_63x88, STANDARD_TYPES, TOKEN_COUNTER, TypeRegistry, initialState, project, type SetupDef } from '@byd/engine'
 import type { Snapshot } from '@byd/protocol'
 import { SWEDISH_WORDS, openingSetup, type Setup } from '@byd/server/doc'
+import { placeNames } from '../src/table/freeSide.js'
 
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
@@ -19,7 +20,9 @@ export const sheet = (rel: string): string =>
 // The face the felt is written in (K20), first in every cascade the readings are taken against.
 export const FELT_FONT = 'src/fonts/felt-font.css'
 
-export type Crowding = { pairs: string[]; clipped: string[]; outside: string[]; grips: string[] }
+// `placed` is where #685's rule put each zone's name (`placeNames`): `k19` where K19's own place was
+// free, and otherwise the place it found.
+export type Crowding = { pairs: string[]; clipped: string[]; outside: string[]; grips: string[]; placed: Record<string, string> }
 export type Reading = Crowding & { names: string[]; wrapped: string[]; smallest: number; cardPx: number; gripCount: number; wider: Crowding }
 
 // How much wider than the shipped face every name has to survive being drawn (#95). "No overlap"
@@ -44,7 +47,7 @@ export const NAME_MARGIN = 1.15
 // n-character name of width w adds n·Δ to that width, so Δ = (k−1)·w/n scales the drawn text by k
 // while the fixed insets — `--name-in`, the pill's padding — stay fixed, as they would under a
 // wider face.
-export const READ = `((margin) => {
+const READ_OF = `((margin, laid) => {
   const sel = ['.byd-zone > span', '.byd-seat-name', '.byd-setup-handle > span', '.byd-pile-name', '.byd-pile-n', '.byd-hand-count'].join(', ')
   const seen = (el) => {
     const s = getComputedStyle(el)
@@ -129,12 +132,23 @@ export const READ = `((margin) => {
       cardPx: card ? Math.round(card.getBoundingClientRect().width) : 0,
     }
   }
+  // Where the names stand is K19 and then a free side (#685), laid out by the renderer once the
+  // felt is drawn. Markup put on a page runs no effect, so the same exported function is run here,
+  // and run again when every name has grown, as a wider face makes the app do. \`laid\` is a page
+  // where it has already been run, with something done after it (\`stepAside\`) that is to be read.
+  const place = (${String(placeNames)})
+  const placed = laid ? Object.fromEntries([...document.querySelectorAll('[data-name-at]')].map((el) => [(el.textContent || '').trim(), el.dataset.nameAt])) : place(document)
   const at = readAt()
   widen(margin)
+  const placedWide = place(document)
   const wide = readAt()
   widen(1)
-  return { ...at, wider: { pairs: wide.pairs, clipped: wide.clipped, outside: wide.outside, grips: wide.grips } }
-})(${NAME_MARGIN})`
+  place(document)
+  return { ...at, placed, wider: { pairs: wide.pairs, clipped: wide.clipped, outside: wide.outside, grips: wide.grips, placed: placedWide } }
+})`
+export const READ = `${READ_OF}(${NAME_MARGIN}, false)`
+// The same reading of a page whose names are already laid out, without laying them out again first.
+export const READ_AS_LAID = `${READ_OF}(${NAME_MARGIN}, true)`
 
 // Everything the two issues ask of one reading, said once: the names are all there, none of them
 // lies on another, none was cut short, and none was drawn off the felt — and the same is still
@@ -146,16 +160,49 @@ export const READ = `((margin) => {
 export function expectClear(reading: Reading, wanted: string[], where: string, known: string[] = []): void {
   expect({ where, names: reading.names.length > 0 }).toEqual({ where, names: true })
   expect({ where, missing: wanted.filter((n) => !reading.names.includes(n)) }).toEqual({ where, missing: [] })
-  expect({ where, pairs: reading.pairs }).toEqual({ where, pairs: [] })
-  expect({ where, clipped: reading.clipped }).toEqual({ where, clipped: [] })
+  const ruled = RULED[where] ?? {}
+  expect({ where, pairs: reading.pairs }).toEqual({ where, pairs: ruled.pairs ?? [] })
+  expect({ where, clipped: reading.clipped }).toEqual({ where, clipped: ruled.clipped ?? [] })
   expect({ where, outside: reading.outside }).toEqual({ where, outside: [] })
   expect({ where, wrapped: reading.wrapped }).toEqual({ where, wrapped: [] })
   expect({ where, grips: reading.grips }).toEqual({ where, grips: known })
+  expectRuled(reading, ruled, where)
   const wide = `${where}, every name drawn ${Math.round((NAME_MARGIN - 1) * 100)} % wider`
-  expect({ where: wide, pairs: reading.wider.pairs }).toEqual({ where: wide, pairs: [] })
-  expect({ where: wide, clipped: reading.wider.clipped }).toEqual({ where: wide, clipped: [] })
+  const wider = ruled.wider ?? {}
+  expect({ where: wide, pairs: reading.wider.pairs }).toEqual({ where: wide, pairs: wider.pairs ?? [] })
+  expect({ where: wide, clipped: reading.wider.clipped }).toEqual({ where: wide, clipped: wider.clipped ?? [] })
   expect({ where: wide, outside: reading.wider.outside }).toEqual({ where: wide, outside: [] })
   expect({ where: wide, grips: reading.wider.grips }).toEqual({ where: wide, grips: known })
+  expectRuled(reading.wider, wider, wide)
+}
+
+// Where #685's rule had nowhere free to put a name (beslut G, 2026-10-03), written down scene by
+// scene rather than swept up. The rule is K19's place first, then a line further out, the opposite
+// side, the zone's ends — and last inside the zone, cut short if it must be; on the Bord tab, which
+// shows one name at a time (#581), the lit name's plate may stand on a seat's card instead of being
+// cut. Before #685 every name below stood in a neighbour's box, which no reading here looked at.
+// All of them are the market laid where `feltOf` lays it, at five and six seats on a quarter-turned
+// felt or on the Bord tab at 1280 × 800, and the observer's narrowest phone with every name drawn
+// wider. The Sal's Saloon table measured in `packages/e2e` (zone-name-own-box.spec.ts) has none on
+// any surface. A scene where one appears or disappears fells this, as does a cut name the rule did
+// not put inside or a pair that is not a lit plate.
+type Ruled = { pairs?: string[]; clipped?: string[] }
+const RULED: Record<string, Ruled & { wider?: Ruled }> = {
+  'table mode, 5 seats, turned 270°, market true': { wider: { clipped: ['Räknare B'] } },
+  'table mode, 6 seats, turned 90°, market true': { clipped: ['Räknare B'], wider: { clipped: ['Räknare B', 'Marknad'] } },
+  'table mode, 6 seats, turned 270°, market true': { clipped: ['Räknare B'], wider: { clipped: ['Räknare B'] } },
+  'the Bord tab at 1280 × 800, 5 seats, market true': { wider: { pairs: ['Räknare A × A'] } },
+  'the Bord tab at 1280 × 800, 6 seats, market true': { wider: { pairs: ['Räknare A × A'] } },
+  'the observer at 320 × 568': { wider: { clipped: ['Räknare A'] } },
+}
+
+function expectRuled(reading: Crowding, ruled: Ruled, where: string): void {
+  for (const name of ruled.clipped ?? []) expect({ where, name, placed: reading.placed[name] }).toEqual({ where, name, placed: 'inside' })
+  for (const pair of ruled.pairs ?? []) {
+    const name = pair.split(' × ')[0]!
+    const placed = reading.placed[name] ?? ''
+    expect({ where, name, placed, plate: /^plate-/.test(placed) }).toEqual({ where, name, placed, plate: true })
+  }
 }
 
 const registry = new TypeRegistry(STANDARD_TYPES)

@@ -302,21 +302,16 @@
    that gets there: the played felt above has hidden its names, and the table's own screen is a
    television. `data-tight` is the renderer's answer, because the felt's own box keeps the floor's
    shape and is then turned — a container query on it measures the other side of the picture.
-   Two things give, and both are the felt's own measure rather than the screen's.
 
    The type is set at the felt's tightest: a name at 13 px with 1.5 px of tracking is 76 px of a
    331 px felt, and its tracking alone is a sixth of that — the same fifth K19 took out of table
    mode. At 12 px and no tracking it is 62, which is what lets two seats facing each other across
    a phone both say their names.
 
-   And a name at a side rim stands above its own zone rather than beside it, anchored at the end
-   nearest the rim and growing inward, so that it stays in its own half of the felt. Beside its
-   zone it grows from the zone's inner edge toward the middle, where the shared piles and their
-   count badges stand (K19, extended); on a felt this small that reach crosses the middle and
-   meets both the badge and the name of the seat opposite. Above its own zone it reaches only
-   half as far in, and the two seats facing each other no longer share a line at all. That half
-   of it is drawn through the same two variables the rim rules above use — the renderer says how
-   far, because it is the only one that knows how large the zone came out. */
+   Where a name stands is no longer this felt's own (#685, which replaced #76's exception): it is
+   K19 on every felt, beside its zone at a side rim, and then a free side when that is another
+   zone's — `placeNames` in `freeSide.ts`, which hangs the name from a corner of its zone with
+   inline `left`, `top` and `transform` and marks it `data-name-at`. */
 .byd-table-frame[data-tight] .byd-zone > span { font-size: 12px; letter-spacing: 0; }
 /* The pile's badge is set at the same tightest, 12 px, the size the hands' counts are (#652). At
    15 px on a 30 px plate it was larger than the card: on the Bord tab's felt at 1024 a card is
