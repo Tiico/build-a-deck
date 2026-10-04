@@ -98,7 +98,7 @@ describe('the play surfaces in the reader\'s own language (A4)', () => {
 
     // The way out (#31), in English: both exits named, and both consequences said — including the
     // one the whole wording exists for, that losing the connection is not this.
-    english(<ExitSheet onLeave={() => undefined} onEnd={() => undefined} onClose={() => undefined} />)
+    english(<ExitSheet pile="Draghög" onLeave={() => undefined} onEnd={() => undefined} onClose={() => undefined} />)
     const exit = screen.getByRole('dialog', { name: 'On your way out?' })
     expect(within(exit).getAllByRole('button').map((b) => b.textContent)).toEqual(['Leave the table', 'End the table for everyone', 'Stay'])
     expect(exit.textContent).toMatch(/Lose the connection instead and your seat stands/)

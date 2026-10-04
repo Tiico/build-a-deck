@@ -40,7 +40,8 @@ export function FlagSheet({ onFlag, onClose, refusal }: { onFlag(note: string | 
 // way out is meant. The two are told apart by what they cost, written under each of them: your
 // seat, or everyone's table. Ending still asks its own question afterwards, so it is one press
 // further away than it was rather than one nearer.
-export function ExitSheet({ onLeave, onEnd, onClose, refusal }: { onLeave(): void; onEnd(): void; onClose(): void; refusal?: RefusalHandle }) {
+// `pile` is where the hand goes back to, by its own name (#714); null says «leken».
+export function ExitSheet({ pile, onLeave, onEnd, onClose, refusal }: { pile: string | null; onLeave(): void; onEnd(): void; onClose(): void; refusal?: RefusalHandle }) {
   const t = useT()
   const box = useSheet(onClose)
   return (
@@ -58,7 +59,7 @@ export function ExitSheet({ onLeave, onEnd, onClose, refusal }: { onLeave(): voi
           <button type="button" data-kind="leave" onClick={onLeave} className={refusal?.notice ? 'byd-status-refused-control' : undefined} {...(refusal?.control ?? {})}>
             {t('exit.sheet.leave')}
           </button>
-          <p>{t('exit.sheet.leave.body')}</p>
+          <p>{pile ? t('exit.sheet.leave.body', { pile }) : t('exit.sheet.leave.body.any')}</p>
         </div>
         <div className="byd-exit-choice">
           <button type="button" data-kind="no" onClick={onEnd}>

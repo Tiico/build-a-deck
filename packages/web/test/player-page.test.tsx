@@ -546,7 +546,7 @@ describe('leaving the table (#31)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ut… ur bordet' }))
     const sheet = screen.getByRole('dialog', { name: 'På väg ut?' })
     // Both exits stand in it, each under what it costs; asking is not yet answering.
-    expect(sheet.textContent).toMatch(/Din plats blir ledig och korten i din hand går tillbaka i draghögen/)
+    expect(sheet.textContent).toMatch(/Din plats blir ledig och korten i din hand går tillbaka till Draghög\./)
     expect(sheet.textContent).toMatch(/Tappar du nätet i stället står platsen kvar/)
     expect((await run.store.read(id)).some((l) => ['seat.release', 'session.end'].includes(l.intent.v))).toBe(false)
 

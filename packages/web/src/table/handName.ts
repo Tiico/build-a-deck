@@ -12,3 +12,15 @@ export function handName(view: Snapshot, z: ZoneView, t: T, form: 'label' | 'inS
   if (form === 'label') return mine ? t('kbd.hand.my') : t('kbd.hand.other', { name })
   return mine ? t('activity.hand.my') : t('activity.hand.other', { name })
 }
+
+// The pile a hand goes back to (C4), by the name its designer gave it (B5, #714): the seat's own
+// hand's, or — for a reader with no hand — the one pile every hand goes back to. Null when there is
+// no such pile to name, and the sentence then says «leken».
+export function returnPile(view: Snapshot, seat: string | null): string | null {
+  const hands = view.zones.filter((z) => z.kind === 'hand' && z.returnTo !== undefined)
+  const own = seat === null ? undefined : hands.find((z) => z.owner === seat)
+  const targets = new Set((own ? [own] : hands).map((z) => z.returnTo))
+  if (targets.size !== 1) return null
+  const [id] = [...targets]
+  return view.zones.find((z) => z.id === id)?.name ?? null
+}

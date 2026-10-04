@@ -22,7 +22,7 @@ function Opener({ sheet }: { sheet: 'flag' | 'exit' | 'end' }) {
       </button>
       <button type="button">Bakom</button>
       {open && sheet === 'flag' && <FlagSheet onFlag={close} onClose={close} />}
-      {open && sheet === 'exit' && <ExitSheet onLeave={close} onEnd={close} onClose={close} />}
+      {open && sheet === 'exit' && <ExitSheet pile="Draghög" onLeave={close} onEnd={close} onClose={close} />}
       {open && sheet === 'end' && <EndSheet version="v1" onEnd={close} onClose={close} />}
     </>
   )

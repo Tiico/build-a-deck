@@ -116,6 +116,7 @@ function zoneBase(z: Zone) {
     dynamic: z.dynamic,
     visibility: z.visibility,
     ...(z.owner !== undefined ? { owner: z.owner } : {}),
+    ...(z.returnTo !== undefined ? { returnTo: z.returnTo } : {}),
     ...(z.shortcut !== undefined ? { shortcut: { ...z.shortcut } } : {}),
     ...(z.beside !== undefined ? { beside: z.beside } : {}),
     ...(z.actions !== undefined && z.actions.length > 0 ? { actions: z.actions } : {}),

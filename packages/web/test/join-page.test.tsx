@@ -199,7 +199,7 @@ describe('coming back to the picker after leaving (#31)', () => {
     history.replaceState(null, '', `/join?code=${roomOf(id).code}&left=1&server=${encodeURIComponent(run.url)}`)
     render(<JoinPage />)
     await screen.findByRole('button', { name: /Sätt dig/ })
-    expect(screen.getByText(/Din plats är ledig och handen ligger tillbaka i draghögen/)).toBeTruthy()
+    expect(screen.getByText(/Din plats är ledig och handen ligger tillbaka i leken\./)).toBeTruthy()
     expect(document.querySelector('[data-seat="A"]')!.getAttribute('aria-pressed')).toBe('true')
   })
 

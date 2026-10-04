@@ -9,6 +9,7 @@ import { submitSurvey } from './surveyApi.js'
 import { useHasRulebook } from '../rules/sessionRules.js'
 import { useRefusal } from '../status/Refusal.js'
 import { useT, type T } from '../i18n/index.js'
+import { returnPile } from '../table/handName.js'
 import { FlagGlyph, HookGlyph } from '../glyphs.js'
 
 // Why the server would not have us (DRIFT §9), in words for the screen.
@@ -109,6 +110,7 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
       )}
       {sheet === 'exit' && (
         <ExitSheet
+          pile={returnPile(view, seat)}
           refusal={gone}
           onLeave={() => {
             void gone.watch(client.send({ v: 'seat.release', seat })).then((result) => {
@@ -147,7 +149,7 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
         </div>
       )}
       {proposal && proposal.by !== seat && (
-        <RewindAsk who={view.seats.find((s) => s.id === proposal.by)?.name ?? t('play.table')} onSettle={settle} />
+        <RewindAsk who={view.seats.find((s) => s.id === proposal.by)?.name ?? t('play.table')} pile={returnPile(view, view.seat)} onSettle={settle} />
       )}
     </>
   )
@@ -228,7 +230,7 @@ export function SessionButtons({ client, view, sheet, onSheet }: { client: Table
 
 // Another seat's rewind, asked of this one (K13, #483): a dialog over the whole phone that takes the
 // focus and holds it, on the answer that changes nothing, until it is answered.
-function RewindAsk({ who, onSettle }: { who: string; onSettle(v: 'rewind.confirm' | 'rewind.reject'): void }) {
+function RewindAsk({ who, pile, onSettle }: { who: string; pile: string | null; onSettle(v: 'rewind.confirm' | 'rewind.reject'): void }) {
   const t = useT()
   const id = useId()
   const box = useRef<HTMLDivElement>(null)
@@ -237,7 +239,7 @@ function RewindAsk({ who, onSettle }: { who: string; onSettle(v: 'rewind.confirm
   return (
     <div className="byd-rewind-ask" data-rewind-ask ref={box} role="alertdialog" aria-modal="true" aria-labelledby={`${id}-title`} aria-describedby={`${id}-body`}>
       <h1 id={`${id}-title`}>{t('rewind.ask.title', { who })}</h1>
-      <p id={`${id}-body`}>{t('rewind.ask.body')}</p>
+      <p id={`${id}-body`}>{pile ? t('rewind.ask.body', { pile }) : t('rewind.ask.body.any')}</p>
       <button data-kind="ok" className="byd-primary" onClick={() => onSettle('rewind.confirm')}>
         {t('rewind.approve')}
       </button>

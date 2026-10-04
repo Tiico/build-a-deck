@@ -175,7 +175,7 @@ function surfaces(view: Snapshot) {
     ),
     exit: (
       <div className="byd-player">
-        <ExitSheet onLeave={noop} onEnd={noop} onClose={noop} />
+        <ExitSheet pile="Draghög" onLeave={noop} onEnd={noop} onClose={noop} />
       </div>
     ),
     survey: (
