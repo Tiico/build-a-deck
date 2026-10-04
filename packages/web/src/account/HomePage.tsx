@@ -207,7 +207,8 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             in the catalogue. It waits until the games are actually known, so it never flashes
             past a slow answer. */}
         {projects !== null && projects.length === 0 && (
-          <div className="byd-home-empty byd-help-row">
+          // «＋ Nytt spel» stands under this line, and the box never lands on it (#726).
+          <div className="byd-home-empty byd-help-row" data-help-explains="[data-new]">
             <span>{t('home.empty')}</span>
             <Help topic={t('home.help.topic')}>
               <p>{t('home.help.game')}</p>
