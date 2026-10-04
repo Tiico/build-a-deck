@@ -17,7 +17,7 @@ import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { statusLinks } from '../status/links.js'
-import { noticeFor } from '../status/notice.js'
+import { noticeFor, unlinked } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT, type Key } from '../i18n/index.js'
 import { takeHostKey } from './hostKey.js'
@@ -103,7 +103,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   }, [params, roomCode])
 
   // A link with no room in it is a link to a room that does not exist.
-  if (!sessionId) return <StatusNotice notice={noticeFor('missing', 'table', t)} surface="page" links={links} />
+  if (!sessionId) return <StatusNotice notice={unlinked('table', t)} surface="page" links={links} />
   // The host key is what opens this screen (DRIFT §9); without it the door is shut, not broken.
   // A table whose game was taken away (#676) is gone with it: the code that stood here is spent,
   // which is D5's «saknas», said as what happened — never «another account's», which it is not.
