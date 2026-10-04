@@ -15,7 +15,7 @@ import { ActionPanel } from '../src/table/ActionPanel.js'
 import { RadialMenu } from '../src/table/RadialMenu.js'
 import { RING_AIR, RING_REACH, ringCentre } from '../src/table/ring.js'
 import { feltLabels, intentsForPlace, landedKeyFor, type Thing } from '../src/table/keyboard.js'
-import { edgeRotation, feltWithHands, handExtent } from '../src/table/hand.js'
+import { edgeRotation, feltWithHands, handRoom } from '../src/table/hand.js'
 import { feltScale, TOUCH_PX } from '../src/table/fit.js'
 import { Language } from '../src/i18n/index.js'
 import { RuleShelf } from '../src/rules/RuleDrawer.js'
@@ -585,6 +585,19 @@ describe('pile names on a turned felt (K9, #26)', () => {
   }
 })
 
+// The table stands still while hands fill and empty (#721). The fit counts the fans (#23), and a
+// fan reaches further past the rim with every card, so the first card into a hand rescaled the whole
+// felt by some 4 % in the middle of play, and every card after it a little more. The fit now keeps
+// a full fan's room for every hand somebody sits at, from the start.
+describe('the felt holds its size as a seated hand fills (#721)', () => {
+  for (const size of [{ w: 1280, h: 800 }, { w: 1024, h: 768 }] as const) {
+    it(`is drawn at one scale with 0, 1 and 12 cards in a hand at ${size.w}`, async () => {
+      const scales = [await scaleAt(onlineScene(0), size), await scaleAt(onlineScene(1), size), await scaleAt(onlineScene(12), size)]
+      expect(scales.map((x) => Math.round(x * 10000))).toEqual([scales[0], scales[0], scales[0]].map((x) => Math.round(x! * 10000)))
+    }, 60_000)
+  }
+})
+
 describe('a hand is never wider than the table it sits at (#23)', () => {
   for (const size of [{ w: 390, h: 780 }, { w: 768, h: 900 }] as const) {
     it(`keeps a full fan of twelve inside the table's own width at ${size.w}`, async () => {
@@ -651,7 +664,8 @@ function feltedOf(view: Snapshot, rotate: number): Size {
   if (!floor) throw new Error('no floor')
   const rect_ = { x: floor.geometry.x, y: floor.geometry.y, w: floor.geometry.w, h: floor.geometry.h }
   const hands = view.zones.filter((z) => z.kind === 'hand')
-  const felted = feltWithHands(rect_, hands.map((z) => handExtent(z, floor, edgeRotation(z, floor))))
+  const seated = new Set(view.seats.filter((s) => s.name !== null).map((s) => s.id))
+  const felted = feltWithHands(rect_, hands.map((z) => handRoom(z, floor, edgeRotation(z, floor), z.owner !== undefined && seated.has(z.owner))))
   return rotate % 180 === 0 ? felted : { w: felted.h, h: felted.w }
 }
 
