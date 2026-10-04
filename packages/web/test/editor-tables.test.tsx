@@ -97,7 +97,7 @@ describe('the Bord tab (#19)', () => {
     // Meningen citerar knappen i huvudet, och den knappen heter «Starta bord» så länge spelet
     // saknar bord (#417). Meningen förklarade förut att «Uppdatera bordet» startade ett — en
     // förklaring på fel flik av ett namn som var fel från början.
-    expect(said.textContent).toContain('"Starta bord"')
+    expect(said.textContent).toContain('«Starta bord»')
     expect(said.textContent).not.toContain('Uppdatera bordet')
     // Utan bord finns ingen lista alls, bara meningen om att det inte finns något.
     expect(document.querySelector('.byd-table-row, .byd-tables-fold')).toBeNull()

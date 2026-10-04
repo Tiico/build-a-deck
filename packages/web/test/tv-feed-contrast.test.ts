@@ -10,7 +10,7 @@ const css = readFileSync(join(import.meta.dirname, '..', 'src/table/table.css'),
 // What the stylesheet declares for a selector written as a rule of its own; a selector may have
 // several such rules, and the one that says the property is the one that counts.
 const declared = (selector: string, property: string): string => {
-  const rules = css.matchAll(new RegExp(`(?:^|\\n)${selector.replace(/[[\]]/g, '\\$&')}\\s*\\{([^}]*)\\}`, 'g'))
+  const rules = css.matchAll(new RegExp(`(?:^|\\n)${selector.replace(/[[\]().*:]/g, '\\$&')}\\s*\\{([^}]*)\\}`, 'g'))
   for (const rule of rules) {
     const value = new RegExp(`(?:^|[;{\\s])${property}:\\s*([^;]+)`).exec(rule[1]!.replace(/\/\*[\s\S]*?\*\//g, ''))
     if (value) return value[1]!.trim()
@@ -21,7 +21,8 @@ const declared = (selector: string, property: string): string => {
 describe('the rows’ numbers under «Senast» (#560 P-14)', () => {
   it('read against the chrome they stand on', () => {
     const ground = declared('[data-tv]', 'background')
-    const ink = declared('[data-tv] ol li b', 'color')
+    // Kolumnens listor och inte regelbokens, som hänger i samma kolumn (#709).
+    const ink = declared('[data-tv] ol:where(:not(.byd-rules-panel *)) li b', 'color')
     expect(contrastRatio(ink, ground)).toBeGreaterThanOrEqual(4.5)
   })
 })
