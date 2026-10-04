@@ -70,7 +70,20 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     expect(screen.getByLabelText('kort 1 Titel')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '+ Textfält' }))
     expect(screen.getByLabelText('kort 1 Nytt textfält')).toBeTruthy()
-    expect(screen.getByText('Placeras på mallen i editorn')).toBeTruthy()
+    expect(screen.getByText('Placeras i editorn')).toBeTruthy()
+  })
+
+  // Words a beginner has before the step that introduces them (#731): the prose field was «Text»
+  // beside the type «Text», and every field said «startramen» before any frame had been shown.
+  it('names the prose its own word and says where a field shows in words the beginner already has', async () => {
+    open(() => undefined)
+    expect(screen.getByLabelText('kort 1 Regeltext')).toBeTruthy()
+    expect(screen.getAllByText('Visas på kortet').length).toBeGreaterThan(0)
+    expect(document.body.textContent).not.toMatch(/startram/i)
+    // One door per paragraph in the help, each led by its own name.
+    fireEvent.click(screen.getByRole('button', { name: 'Hjälp om spelet' }))
+    const box = await screen.findByRole('dialog', { name: 'Hjälp om spelet' })
+    expect([...box.querySelectorAll('p')].map((p) => p.textContent!.split(':')[0])).toEqual(['Guidad start', 'Utan guidad start'])
   })
 
   it('lets the designer choose an image for an image field and previews it', async () => {
@@ -422,7 +435,7 @@ describe('the live card after the fields are named (#476)', () => {
     open(() => undefined)
     fireEvent.change(screen.getByLabelText('Kostnad namn'), { target: { value: 'Pris' } })
     fireEvent.change(screen.getByLabelText('kort 1 Pris'), { target: { value: '7' } })
-    fireEvent.change(screen.getByLabelText('kort 1 Text'), { target: { value: 'Flygande drake.' } })
+    fireEvent.change(screen.getByLabelText('kort 1 Regeltext'), { target: { value: 'Flygande drake.' } })
     const preview = document.querySelector('.byd-wizard-preview [data-card]') as HTMLElement
     await waitFor(() => expect(preview.textContent).toContain('Flygande drake.'))
     expect(preview.textContent).toContain('7')

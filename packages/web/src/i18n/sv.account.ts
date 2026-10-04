@@ -108,7 +108,8 @@ export const svAccount = {
   'wizard.prev': '← Föregående',
   'wizard.next': 'Nästa →',
   'wizard.handoff.title': 'Wizarden är startpunkten',
-  'wizard.handoff.body': 'Skapa några exempelkort här. Layout, hela leken och CSV-verktyg väntar i editorn.',
+  // Ett ledord per stycke, så att hjälpen inte blandar de två dörrarna i ett (#731).
+  'wizard.handoff.body': 'Guidad start: skapa några exempelkort här. Layout, hela leken och CSV-verktyg väntar i editorn.',
   'wizard.name': 'Spelets namn',
   // Exemplet står som exempel och inte i fältet (#416). En platshållare som lyder «Skogens
   // herrar» läses som ett ifyllt värde, och då blir en väg framåt som inte svarar obegriplig.
@@ -123,10 +124,11 @@ export const svAccount = {
   // Vägen förbi den guidade starten (L42): namnet och platserna räcker, resten görs i editorn.
   'wizard.blank.title': 'Utan guidad start',
   'wizard.blank.body': 'Bygg hellre allt själv?',
-  'wizard.blank.help': 'Spelet skapas med namnet och platserna ovanför, utan kort, fält eller mall.',
+  'wizard.blank.help': 'Utan guidad start: «Skapa ett tomt spel i editorn» skapar spelet med namnet och platserna ovanför, utan kort, fält eller mall.',
   'wizard.blank.create': 'Skapa ett tomt spel i editorn',
 
-  // Fälten: vad varje kort har, och vad startramen redan visar.
+  // Fälten: vad varje kort har, och om det syns på kortet. Med ord nybörjaren redan har: ramen
+  // presenteras först under Utseende, längre ner (#731).
   'wizard.fields': 'Fält',
   'wizard.fields.body': 'Fälten på varje kort.',
   'wizard.fields.help': 'Varje fält blir direkt en kontroll på varje exempelkort.',
@@ -134,8 +136,8 @@ export const svAccount = {
   'wizard.kind.number': 'Tal',
   'wizard.kind.image': 'Bild',
   'wizard.field.name': '{label} namn',
-  'wizard.field.in-frame': 'Visas i startramen',
-  'wizard.field.in-editor': 'Placeras på mallen i editorn',
+  'wizard.field.in-frame': 'Visas på kortet',
+  'wizard.field.in-editor': 'Placeras i editorn',
   'wizard.field.place': 'placera i editorn',
   'wizard.field.remove': 'Ta bort {label}',
   'wizard.field.new.text': 'Nytt textfält',
@@ -148,7 +150,8 @@ export const svAccount = {
   // De fält varje nytt spel börjar med, och de ramar det kan börja i.
   'wizard.field.default.title': 'Titel',
   'wizard.field.default.cost': 'Kostnad',
-  'wizard.field.default.body': 'Text',
+  // Inte «Text», som är typen bredvid den: raden lästes «Text · Text» (#731).
+  'wizard.field.default.body': 'Regeltext',
   'wizard.field.default.art': 'Illustration',
   'wizard.look': 'Utseende',
   'wizard.look.frame': 'Ram — var saker står',
