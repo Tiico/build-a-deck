@@ -3066,11 +3066,17 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-theme-tile[aria-pressed='true'] { border-color: var(--byd-editor-primary-mark); box-shadow: 0 0 0 1px var(--byd-editor-primary-mark); }
 /* The theme proof (#741, beställarens val A): a crop of the game's first card — its top and the
    first lines of its prose at a size they can be read at — centred in the tile. The crop's size and
-   the card's place in it are worked out from the template (`theme-crop.ts`); the last line fades
-   out over one line's height, so the crop reads as part of a card and not as a card cut short. */
+   the card's place in it are worked out from the template (`theme-crop.ts`); when the prose has
+   more lines than are shown, the last fades out over one line's height, so the crop reads as part
+   of a card and not as a card cut short. Where the template leaves a gap of paper between the
+   title band and the prose, the crop is two pieces of the card on one paper, and a thin dashed
+   line in the prose's ink stands where the gap was taken away (#830, beställarens val C). */
 .byd-theme-card { display: flex; justify-content: center; width: 100%; margin-bottom: var(--byd-s1); pointer-events: none; }
-.byd-theme-crop { position: relative; flex: none; border-radius: 8px; overflow: hidden; box-shadow: 0 0 0 1px var(--byd-editor-card-edge); -webkit-mask-image: linear-gradient(#000 calc(100% - var(--byd-theme-fade)), transparent); mask-image: linear-gradient(#000 calc(100% - var(--byd-theme-fade)), transparent); }
-.byd-theme-card-at { position: absolute; top: 0; }
+.byd-theme-crop { position: relative; flex: none; border-radius: 8px; overflow: hidden; box-shadow: 0 0 0 1px var(--byd-editor-card-edge); }
+.byd-theme-crop[data-fade] { -webkit-mask-image: linear-gradient(#000 calc(100% - var(--byd-theme-fade)), transparent); mask-image: linear-gradient(#000 calc(100% - var(--byd-theme-fade)), transparent); }
+.byd-theme-piece { position: relative; display: block; overflow: hidden; }
+.byd-theme-card-at { position: absolute; }
+.byd-theme-cut { position: absolute; left: var(--byd-s2); right: var(--byd-s2); height: 0; border-top: 1px dashed var(--byd-theme-ink); opacity: 0.47; transform: translateY(-0.5px); }
 .byd-theme-show { justify-self: start; min-height: var(--byd-tap); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; font-size: 12px; cursor: pointer; }
 .byd-theme-show[aria-busy='true'] { cursor: progress; }
 .byd-theme-tile small { color: #9aa3b8; }
