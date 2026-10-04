@@ -1171,10 +1171,9 @@
 /* A plate is only as wide as the renderer gives it room (#750), and the name is what gives way: it
    sits in a span of its own so that the cut can reach it — a flex container's own text takes no
    ellipsis — and is cut at its end, whole in the page for whoever reads it out. Along the top or
-   the bottom, what the seat holds wraps under the name before the name is cut, so an ordinary
-   name is worn whole on a plate that is narrower than its row; on a side plate, where every line
-   stands on its own, each is held to the plate and cut the same way. */
-.byd-seat-plate { flex-wrap: wrap; }
+   the bottom the plate stays one row, and what the seat holds keeps its width beside the name; on
+   a side plate, where every line stands on its own, each is held to the plate and cut the same
+   way. */
 .byd-seat-plate > * { flex: none; max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; }
 .byd-seat-plate > b { flex: 0 1 auto; min-width: 0; }
 .byd-seat-plate > b > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }

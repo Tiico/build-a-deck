@@ -2070,15 +2070,16 @@ const PLATE_AIR_PX = 8
 // How tall a plate is drawn, in screen pixels, from the stylesheet's own numbers: the row with the
 // seat's ball (6 + 36 + 8 of padding), and a 24 px line at 1.2 plus the 2 px gap for each line
 // under it. A side plate stands every line under the one before; a plate along the top or the
-// bottom lays its words in a row and lets them wrap onto one more. Heights are line boxes, not
-// glyphs, so no typeface changes them.
+// bottom lays its words in one row (#573), reckoned here with one line spare. Heights are line
+// boxes, not glyphs, so no typeface changes them.
 const PLATE_ROW_PX = 6 + 36 + 8
 const PLATE_LINE_PX = Math.ceil(24 * 1.2) + 2
-// Where a pile's name stands on the room's television: under the card, its foot 38 px below the
-// card's edge (table.css). Its width is the one measure here that depends on the typeface, so it
+// Where a pile's words stand on the room's television: under the card, the name's foot 38 px
+// below the card's edge and, under it, the top card's caption (#771) at 40 px plus its 28 px
+// line (table.css). Its width is the one measure here that depends on the typeface, so it
 // is reckoned at 0.7 em a letter of its 24 px — wider than any face draws an average letter — and
 // never narrower than the card it is centred under.
-const PILE_NAME_BELOW_PX = 38
+const PILE_WORDS_BELOW_PX = 40 + 28
 const PILE_NAME_EM = 24 * 0.7
 type Box = { left: number; right: number; top: number; bottom: number }
 // How wide a seat's plate may grow (#750). A name is whatever the player typed, and a plate that
@@ -2104,17 +2105,13 @@ function plateRoom(view: Snapshot, seat: Snapshot['seats'][number], edge: 'N' | 
     const centre = (rim.left + rim.right) / 2
     room = edge === 'E' ? start - Math.max(rim.left, centre) : edge === 'W' ? Math.min(rim.right, centre) - start : rim.right - start
   }
-  // Along the top or the bottom the plate also keeps to its own seat's width: empty felt beside a
-  // seat is still the room's to look across, and a plate as wide as the table read as the table's
-  // title rather than a seat's name.
-  if (edge === 'N' || edge === 'S') room = Math.min(room, own.right - own.left + PLATE_AIR_PX)
   const obstacles: Box[] = []
   for (const z of view.zones) {
     if (z.id === view.floor || z.owner === seat.id) continue
     const g = z.geometry
     if (z.kind === 'pile') {
       const half = Math.max(left(CARD_MM.w / 2) - left(0), ((z.dynamic ? t('pile.dynamic') : z.name).length * PILE_NAME_EM) / 2)
-      obstacles.push({ left: left(g.x) - half, right: left(g.x) + half, top: top(g.y - CARD_MM.h / 2), bottom: top(g.y + CARD_MM.h / 2) + PILE_NAME_BELOW_PX })
+      obstacles.push({ left: left(g.x) - half, right: left(g.x) + half, top: top(g.y - CARD_MM.h / 2), bottom: top(g.y + CARD_MM.h / 2) + PILE_WORDS_BELOW_PX })
     } else {
       obstacles.push({ left: left(g.x), right: left(g.x + g.w), top: top(g.y), bottom: top(g.y + g.h) })
     }
