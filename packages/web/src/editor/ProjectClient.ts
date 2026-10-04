@@ -16,6 +16,7 @@ import { iconsOf, starterSet, themeFamilies, themeIconFiles, themeIntent, type T
 import type { EditorMessage, Presence } from '@byd/server'
 import { canEdit, canStartTables, type Role } from '@byd/server/doc'
 import { translate, type Key, type T } from '../i18n/index.js'
+import { Said, saidOr } from '../i18n/said.js'
 import { UNDO_STEPS, whatOf } from './undo.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 
@@ -381,7 +382,7 @@ export class ProjectClient {
   // may not change the game is never uploaded, because the edit after it would be refused with
   // the bytes already stored.
   private mustBeAbleToEdit(t: T): void {
-    if (!this.mayEdit) throw new Error(t('editor.readonly.refused'))
+    if (!this.mayEdit) throw new Said(t('editor.readonly.refused'))
   }
 
   // `gesture` names the one thing the designer is doing, when what she is doing arrives in
@@ -657,7 +658,10 @@ export class ProjectClient {
     this.mustBeAbleToEdit(t)
     this.edit({ v: 'setRules', rules: { ...rules, source: { file, at: new Date().toISOString() } } })
     const saved = await this.save()
-    if (!saved.ok) throw new Error(saved.reason)
+    // `conflict` is the protocol's word for a collision and nobody can act on it, so what is said
+    // is the state the designer is in and the one way out of it (#131); any other refusal is said
+    // as the import not being saved, never in the server's words (#812).
+    if (!saved.ok) throw new Said(t(saved.reason === 'conflict' ? 'rules.import.conflict' : 'rules.import.failed'))
     await this.nameVersion(saved.rev, t('rules.import.version', { file }))
   }
 
@@ -833,7 +837,7 @@ export class ProjectClient {
       if (this.gesture === gesture) this.gesture = null
       return
     }
-    throw this.takeBack(gesture, ref, undoing, new Error(t('upload.wrongName')), t)
+    throw this.takeBack(gesture, ref, undoing, new Said(t('upload.wrongName')), t)
   }
 
   // What never arrived, taken back out of the document (#344, L37).
@@ -875,7 +879,7 @@ export class ProjectClient {
       this.future = rebased(this.future)
       this.futureBeforeGesture = rebased(this.futureBeforeGesture)
     }
-    return new Error(t('upload.undone', { what: t(undoing.said, { name: undoing.name }), why: why instanceof Error ? why.message : String(why) }))
+    return new Said(t('upload.undone', { what: t(undoing.said, { name: undoing.name }), why: saidOr(why, t('upload.failed')) }))
   }
 
   // One step with the correction laid on it (#358). Only the document changes: what the step is
@@ -1018,7 +1022,7 @@ export class ProjectClient {
     ]
     const landed = await Promise.allSettled(
       uploads.map(async (u) => {
-        if (assetRef(await this.uploadAsset(u.file, u.kind, t)) !== u.ref) throw new Error(t('upload.wrongName'))
+        if (assetRef(await this.uploadAsset(u.file, u.kind, t)) !== u.ref) throw new Said(t('upload.wrongName'))
       }),
     )
     const failed = uploads.flatMap((u, i) => {
@@ -1097,9 +1101,9 @@ export class ProjectClient {
     this.mustBeAbleToEdit(t)
     const res = await fetch(`${this.http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': assetTypeDeclaring(kind) }, body: file }))
     if (res.status === 401) throw new Unauthorized()
-    if (res.status === 415) throw new Error(t('upload.notThisKind', { formats: assetFormatsNamed(kind, t('upload.or')) }))
-    if (res.status === 413) throw new Error(t('upload.tooBig'))
-    if (!res.ok) throw new Error(t('upload.failed'))
+    if (res.status === 415) throw new Said(t('upload.notThisKind', { formats: assetFormatsNamed(kind, t('upload.or')) }))
+    if (res.status === 413) throw new Said(t('upload.tooBig'))
+    if (!res.ok) throw new Said(t('upload.failed'))
     return ((await res.json()) as { hash: string }).hash
   }
 
@@ -1234,14 +1238,14 @@ export class ProjectClient {
     // way every table path does — rather than printed as the book it used to be (#481).
     if (this.dirty) {
       const saved = await this.save()
-      if (!saved.ok) throw new Error(t('rules.booklet.notSaved'))
+      if (!saved.ok) throw new Said(t('rules.booklet.notSaved'))
     }
     const lang = typeof document === 'undefined' ? '' : document.documentElement.lang
     const where = `${this.http}/projects/${encodeURIComponent(this.id)}/rulebook${lang ? `?lang=${encodeURIComponent(lang)}` : ''}`
     const res = await fetch(where, withCredentials({ method: 'POST' }))
     if (res.status === 401) throw new Unauthorized()
-    if (res.status === 404) throw new Error(t('rules.booklet.noRules'))
-    if (!res.ok) throw new Error(t('rules.booklet.orderFailed'))
+    if (res.status === 404) throw new Said(t('rules.booklet.noRules'))
+    if (!res.ok) throw new Said(t('rules.booklet.orderFailed'))
     return ((await res.json()) as { hash: string }).hash
   }
 
@@ -1286,9 +1290,9 @@ const assetRefOfFile = async (file: Blob): Promise<string> => assetRefOf(new Uin
 // Only the designer's browser ever asks, and only when she has chosen the family (DRIFT §12).
 async function catalogFile(family: CatalogFamily, t: T): Promise<File> {
   const sheet = await fetch(fileSheetHref(family)).catch(() => null)
-  if (!sheet?.ok) throw new Error(t('fonts.catalog.silent'))
+  if (!sheet?.ok) throw new Said(t('fonts.catalog.silent'))
   const file = await fetch(fileInSheet(await sheet.text())).catch(() => null)
-  if (!file?.ok) throw new Error(t('fonts.catalog.silent'))
+  if (!file?.ok) throw new Said(t('fonts.catalog.silent'))
   return new File([new Uint8Array(await file.arrayBuffer())], `${family.family}.woff2`, { type: 'font/woff2' })
 }
 
