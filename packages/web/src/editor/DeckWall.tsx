@@ -360,6 +360,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
           less={t('wall.density.more')}
           more={t('wall.density.less')}
           onStep={denser}
+          held={reading ? t('wall.density.heldByReading') : arm ? t('wall.density.heldByGuide') : undefined}
         />
         <CrownBox
           name={t('wall.groupedBy')}

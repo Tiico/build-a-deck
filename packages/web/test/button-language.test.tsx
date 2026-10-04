@@ -1025,6 +1025,117 @@ describe('the editor', () => {
   }, 120_000)
 })
 
+// The header holds three doors beside its two actions: the game's ⋯, the revision that opens the
+// history (B4), and the faces that open who has the game (D3). A door is neither a first nor a
+// second action, and nothing it opens is *chosen*: `aria-expanded` says a panel hangs from it, not
+// that it is on. So it has no role in L13 and takes none of a role's shapes — no fill, no edge —
+// and the three are drawn alike, the way the ⋯ already was.
+//
+// The revision and the faces declared exactly that and lost (#791): `.byd-editor > header > button`
+// is (0,1,2) and `.byd-editor-rev` and `.byd-editor-here` are (0,1,0), so both came out in the
+// header's own box — an edge, a fill and a bold white word — in every state, the very leak L13
+// names. Each state is a rule of its own that can lose on its own, so each is read: at rest, under a
+// real pointer, with the ring a real keypress draws, and with its panel open. Nothing is written as
+// a colour: the ⋯ is the measure, read off the same page in the same state.
+async function headerDoors(): Promise<Record<string, string>> {
+  await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com', next: '/' }) })
+  atWidth(1280)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+  const { unmount } = render(<EditorPage />)
+  try {
+    await screen.findByText('Skogens herrar')
+    const header = () => document.querySelector('.byd-editor')!.outerHTML
+    const out: Record<string, string> = { stängda: header() }
+    for (const [name, door] of [['⋯', '.byd-editor-more > button'], ['rev', '.byd-editor-rev'], ['ansiktena', '.byd-editor-here']] as const) {
+      const el = document.querySelector<HTMLElement>(door)
+      if (!el) throw new Error(`no ${door} in the header`)
+      fireEvent.click(el)
+      if (el.getAttribute('aria-expanded') !== 'true') throw new Error(`${door} opened nothing`)
+      out[`${name} öppen`] = header()
+      fireEvent.click(el)
+    }
+    return out
+  } finally {
+    unmount()
+  }
+}
+
+const DOORS = { '⋯': '.byd-editor-more > button', rev: '.byd-editor-rev', ansiktena: '.byd-editor-here' } as const
+type Drawn = { kant: string; grund: string; bläck: string; vikt: string; ring: string }
+
+const drawnDoor = (page: Page, selector: string): Promise<Drawn> =>
+  page.$eval(selector, (el) => {
+    const s = getComputedStyle(el)
+    return {
+      kant: `${s.borderTopWidth} ${s.borderTopStyle} ${s.borderRightWidth} ${s.borderBottomWidth} ${s.borderLeftWidth}`,
+      grund: s.backgroundColor,
+      bläck: s.color,
+      vikt: s.fontWeight,
+      // An outline that is not drawn still has a colour (its element's ink), which says nothing.
+      ring: s.outlineStyle === 'none' ? 'none' : `${s.outlineStyle} ${s.outlineWidth} ${s.outlineColor} ${s.outlineOffset}`,
+    }
+  })
+
+describe('the doors in the editor’s header', () => {
+  it('draws the revision and the faces as the ⋯ is drawn, in every state, at every desk width', async () => {
+    await run.projects.create(run.projectId, worthFiltering())
+    const views = await headerDoors()
+    expect(Object.keys(views).sort()).toEqual(['ansiktena öppen', 'rev öppen', 'stängda', '⋯ öppen'])
+    const measured: Record<string, Drawn> = {}
+    for (const width of [1024, 1280, 1440]) {
+      const page = await browser.newPage({ viewport: { width, height: 900 } })
+      try {
+        await page.setContent(document_(read('src/editor/editor.css'), views['stängda']!), { waitUntil: 'load' })
+        for (const [name, selector] of Object.entries(DOORS)) {
+          await page.mouse.move(width - 1, 899)
+          measured[`${width} ${name} i vila`] = await drawnDoor(page, selector)
+          await page.hover(selector)
+          measured[`${width} ${name} under pekaren`] = await drawnDoor(page, selector)
+          await page.mouse.move(width - 1, 899)
+          // A ring is only drawn after a real keypress (focus-visible); `focus()` would draw none.
+          await page.mouse.click(width - 1, 899)
+          let reached = false
+          for (let i = 0; i < 30 && !reached; i++) {
+            await page.keyboard.press('Tab')
+            reached = await page.$eval(selector, (el) => el === document.activeElement)
+          }
+          if (!reached) throw new Error(`Tab never reached ${selector}`)
+          measured[`${width} ${name} i fokus`] = await drawnDoor(page, selector)
+        }
+        for (const [name, selector] of Object.entries(DOORS)) {
+          await page.setContent(document_(read('src/editor/editor.css'), views[`${name} öppen`]!), { waitUntil: 'load' })
+          await page.mouse.move(width - 1, 899)
+          measured[`${width} ${name} öppen`] = await drawnDoor(page, selector)
+        }
+      } finally {
+        await page.close()
+      }
+    }
+    // The control case: the ⋯ is itself what L13 asks of a door, so the measure is not vacuous.
+    for (const width of [1024, 1280, 1440]) {
+      const rest = measured[`${width} ⋯ i vila`]!
+      expect(rest.kant).toBe('0px none 0px 0px 0px')
+      expect(rest.grund).toBe('rgba(0, 0, 0, 0)')
+      expect(measured[`${width} ⋯ under pekaren`]!.grund).not.toBe(rest.grund)
+      expect(measured[`${width} ⋯ i fokus`]!.ring).not.toMatch(/^none/)
+    }
+    // Each door, in each state, against the ⋯ in the same state. The faces carry no words of their
+    // own beyond a count, so only the revision is held to the ⋯'s ink and weight.
+    const differ: string[] = []
+    for (const width of [1024, 1280, 1440]) {
+      for (const state of ['i vila', 'under pekaren', 'i fokus', 'öppen']) {
+        const measure = measured[`${width} ⋯ ${state}`]!
+        for (const door of ['rev', 'ansiktena'] as const) {
+          const drawn = measured[`${width} ${door} ${state}`]!
+          const keys = door === 'rev' ? (['kant', 'grund', 'bläck', 'vikt', 'ring'] as const) : (['kant', 'grund', 'ring'] as const)
+          for (const key of keys) if (drawn[key] !== measure[key]) differ.push(`${width} ${door} ${state}: ${key} ${drawn[key]} där ⋯ har ${measure[key]}`)
+        }
+      }
+    }
+    expect(differ).toEqual([])
+  }, 180_000)
+})
+
 // The second finding the audit wrote down (UX-13): beside the card in the editor's template stood
 // two buttons filled at the weight of a first action, where neither was the page's. One of them
 // has since moved to the wizard and been dealt with; this is the other. What a second action looks
