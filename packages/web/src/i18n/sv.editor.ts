@@ -637,6 +637,7 @@ export const svEditor = {
   // varifrån ikonerna kommer i stället. Att namnge en ikon där är vägen tillbaka från kolumnen,
   // precis som att välja en kolumn är vägen dit — ingen av dem gissar åt formgivaren (#33).
   'canvas.props.icon.fromField': 'från kolumnen',
+  'canvas.props.icon.none': 'ingen ikon',
   'canvas.props.font': 'Typsnitt',
   // Lagrets familj (L57, #634): spelets typsnitt först och sagda vara spelets, en familj spelet
   // inte längre har för sig, och hela katalogen sist.
