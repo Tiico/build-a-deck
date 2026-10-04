@@ -937,7 +937,7 @@ export const enEditor = {
   'rules.booklet.open': 'Open the booklet',
   'rules.booklet.failed': 'The booklet was not finished. Try again.',
   'rules.booklet.noRules': 'The game has no rules to print.',
-  'rules.booklet.orderFailed': 'The booklet could not be ordered ({status}).',
+  'rules.booklet.orderFailed': 'The booklet could not be ordered. Try again in a moment.',
   'rules.booklet.notSaved': 'The book could not be saved, so no booklet was ordered. Save and try again.',
   'rules.block.edit': 'Edit {block}',
   'rules.block.text': 'Text {nth}{where}',
@@ -1254,7 +1254,7 @@ export const enEditor = {
   'upload.or': ' or ',
   'upload.notThisKind': 'the file is not {formats}',
   'upload.tooBig': 'the file is too large (8 MB at most)',
-  'upload.failed': 'the service answered {status}',
+  'upload.failed': 'the service did not take the file',
   // An upload that fell away (#344, L37). The correction is silent in the history, so the
   // notice has to be all the clearer where the doing was done: it names which of what she did
   // went away again, and why it did, after the colon.
@@ -1288,6 +1288,7 @@ export const enEditor = {
   'share.email.placeholder': 'name@example.com',
   'share.role': 'Role',
   'share.invite': 'Invite',
+  'share.ownerOnly': 'Only the owner can invite more people or remove anyone.',
   'share.sent': 'The invitation has been sent to {email}. It lives for a week and can be used once.',
 
   'symbols.cat.resource': 'Resources',
