@@ -636,6 +636,20 @@
    820 px the ten stages fit once «Spara» and «Uppdatera bordet» stand in the header, and at 960 ×
    490, where the two stay here, they fit beside them. */
 .byd-editor-stagebar [role='tab'] { flex: 1 0 auto; padding-inline: var(--byd-s1); white-space: nowrap; border-radius: 9px; }
+/* Where the strip cuts a label (#763). At 400 % the stages do not fit, and the label cut at the
+   strip's end stopped mid-word right against «Spara», so it read as lying under the button. The
+   tool's one gesture for cut text is a fade to nothing at the edge, never a hard stop (#46, #53):
+   at an end the strip really cuts — `data-cut-start`, `data-cut-end`, set as it scrolls — the
+   last 24 px dissolve into the strip's ground, and a label is either readable or plainly going.
+   The scroll padding is the same 24 px, so a tab the arrows bring into view stops clear of the
+   fade and is never the one dissolving. */
+.byd-editor-stagebar [role='tablist'] { --byd-stage-fade: 24px; scroll-padding-inline: var(--byd-stage-fade); }
+.byd-editor-stagebar [role='tablist'][data-cut-end] { -webkit-mask-image: linear-gradient(to left, rgb(0 0 0 / 0%), #000 var(--byd-stage-fade)); mask-image: linear-gradient(to left, rgb(0 0 0 / 0%), #000 var(--byd-stage-fade)); }
+.byd-editor-stagebar [role='tablist'][data-cut-start] { -webkit-mask-image: linear-gradient(to right, rgb(0 0 0 / 0%), #000 var(--byd-stage-fade)); mask-image: linear-gradient(to right, rgb(0 0 0 / 0%), #000 var(--byd-stage-fade)); }
+.byd-editor-stagebar [role='tablist'][data-cut-start][data-cut-end] {
+  -webkit-mask-image: linear-gradient(to right, rgb(0 0 0 / 0%), #000 var(--byd-stage-fade), #000 calc(100% - var(--byd-stage-fade)), rgb(0 0 0 / 0%));
+  mask-image: linear-gradient(to right, rgb(0 0 0 / 0%), #000 var(--byd-stage-fade), #000 calc(100% - var(--byd-stage-fade)), rgb(0 0 0 / 0%));
+}
 .byd-editor-stagebar-actions:empty { display: none; }
 .byd-editor-stagebar-actions {
   display: flex;
@@ -644,7 +658,6 @@
   margin-left: auto;
   padding-left: 8px;
   background: var(--byd-editor-stage-bg);
-  box-shadow: -14px 0 14px -8px rgb(0 0 0 / 95%);
 }
 .byd-editor-stagebar-actions button {
   min-height: var(--byd-tap);
