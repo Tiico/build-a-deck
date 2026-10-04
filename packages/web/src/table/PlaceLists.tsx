@@ -69,7 +69,7 @@ export function PlaceLists({ view, activity, dense, onRead }: { view: Snapshot; 
             <>
               <i data-avatar>{(s.name ?? s.id).slice(0, 1)}</i>
               <div>
-                <span>{s.name ?? s.id}</span>
+                <span>{s.name ?? t('tv.seat.free')}</span>
                 <span>{t(`tv.seat.hand${dense ? '.short' : ''}.${n === 1 ? 'one' : 'other'}`, { n })}</span>
                 {!dense && <small>{last ? describeActivity(last, view, t) : t('tv.seat.none')}</small>}
               </div>

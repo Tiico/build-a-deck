@@ -25,10 +25,14 @@
 .byd-home { width: min(920px, 100%); display: grid; gap: 18px; }
 /* The account line goes under the heading when both will not fit on one line, rather than squeezing
    "Mina spel" onto two (#475). */
-.byd-home header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 16px; }
+/* min-width: 0 so the account line can give way inside it rather than widen the page (#728). */
+.byd-home header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 16px; min-width: 0; }
 .byd-home h1 { margin: 0; font-size: 28px; }
-.byd-who { color: #9aa3b8; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-.byd-who > span { display: inline-flex; align-items: center; gap: 4px; }
+/* One line, always: a part that wrapped brought its dot to the front of the next line, «· Språk»
+   (#728). The address is what gives way, cut short with an ellipsis and whole in its title. */
+.byd-who { color: #9aa3b8; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-width: 0; }
+.byd-who > span { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.byd-who > span:first-child { display: block; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* A dot leads each part after the first, so it wraps with the part and never ends a line (#555). */
 .byd-who > span + span::before { content: '·' / ''; }
 /* The way out is a word in a sentence, and a word in a sentence is 16 px tall. It keeps the look

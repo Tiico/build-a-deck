@@ -67,6 +67,8 @@ export const svPlay = {
   'tv.seat.hand.short.other': '{n} kort',
   // Platsens tredje rad innan platsen gjort något (UX-41): ett ord, inte ett streck.
   'tv.seat.none': 'Inget ännu',
+  // Where the name of a seat nobody sits in stands; the ball beside it keeps the letter (#717).
+  'tv.seat.free': 'ledig',
   // Observatörens platser som listor att fälla ut (#551, beslut A): ett kort per rad, och raden
   // säger var kortet ligger. Handen heter som på filten, «Adas hand» (K19).
   'tv.list.table': 'På bordet',
@@ -265,7 +267,7 @@ export const svPlay = {
   // Att spola tillbaka: vart, och vem som avgör.
   'rewind.someone': 'någon annan',
   'rewind.deciders': '{others} eller {last}',
-  'rewind.before': 'före ”{what}”',
+  'rewind.before': 'före «{what}»',
   'rewind.atSeq': 'vid drag {n}',
   'rewind.mine': 'Du föreslår att spola tillbaka. Bordet visar hur det såg ut; {who} avgör.',
   'rewind.withdraw': 'Dra tillbaka förslaget',
@@ -317,6 +319,7 @@ export const svPlay = {
   'player.hand.left': 'Flytta vänster',
   'player.hand.right': 'Flytta höger',
   'player.hand.empty': 'Tom hand. Dra ett kort ur draghögen.',
+  'player.hand.empty.none': 'Tom hand. Det finns inga kort att dra.',
   // Läsvyn går igenom raden kortet lyftes ur (#507): handen, ytan framför dig, eller en annan yta.
   'player.read.prev': 'Föregående kort',
   'player.read.next': 'Nästa kort',

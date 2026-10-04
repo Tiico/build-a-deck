@@ -64,6 +64,7 @@ export const svAccount = {
   // Borden kontot suttit vid (G1): det andra rutnätet.
   'home.played.title': 'Bord du spelat vid',
   'home.played.some-table': 'Ett bord',
+  'home.played.deleted': 'Borttaget spel',
   'home.played.you': '{version} · du var {name}',
   'home.played.surveyed': 'enkät besvarad',
   'home.played.unsurveyed': 'enkät obesvarad',
@@ -81,7 +82,7 @@ export const svAccount = {
   'claim.failed.heading': 'Bordet kunde inte sparas',
   'claim.taken.heading': 'Bordet är redan sparat',
   'claim.error.other': 'Det här bordet är redan sparat till ett annat konto.',
-  'claim.error.unknown': 'Länken gäller inte. Gå tillbaka till telefonen och tryck på "Spara till ditt konto" igen.',
+  'claim.error.unknown': 'Länken gäller inte. Gå tillbaka till telefonen och tryck på «Spara till ditt konto» igen.',
 
   // Att följa en inbjudan till ett spel (D3).
   'invite.title': 'Inbjudan',
@@ -189,6 +190,8 @@ export const svAccount = {
   'wizard.error.upload': 'En fil kunde inte laddas upp. Försök igen om en stund.',
   'wizard.error.too-big': 'En bild är för stor för att laddas upp. Välj en mindre bild.',
   'wizard.error.offline': 'Vi når inte tjänsten; kontrollera anslutningen och försök igen.',
+  'wizard.draft.unsaved': 'Utkastet sparas inte längre i den här fliken — webbläsaren har inte plats för det. Laddar du om sidan eller stänger fliken försvinner det som står här.',
+  'wizard.draft.lost-image': 'Utkastet kom tillbaka utan en eller flera bilder. Välj dem igen.',
 
   // Ord guiden föreslår och som designern sedan får ändra: de skrivs på det språk spelet byggs i.
 

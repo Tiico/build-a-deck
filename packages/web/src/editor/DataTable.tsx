@@ -21,7 +21,7 @@ import { braceSections, bracePicks, partAt, pickKeyOf, type BracePart, type Brac
 import { SymbolSample, SymbolSheet } from './SymbolSample.js'
 import { groundOf } from './palette.js'
 import { pickOptionId, triggerBehind } from './picking.js'
-import { diffProjects, type RowChange } from '@byd/server/doc'
+import { DOC_PARTS, diffProjects, type DocDiff, type RowChange } from '@byd/server/doc'
 import { Summary } from './HistoryPanel.js'
 import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
@@ -35,6 +35,7 @@ import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
 import { Question } from './Question.js'
 import { useT, type T } from '../i18n/index.js'
 import { useGesture } from './gesture.js'
+import { lineKey } from './lineKeys.js'
 import { useSay } from '../status/StatusLive.js'
 
 export type DataTableProps = {
@@ -88,6 +89,8 @@ export type DataTableProps = {
   // cards that came or went are shown as rows.
   compareWith?: { rev: number; label?: string | undefined; doc: ProjectDoc } | undefined
   onStopCompare?: (() => void) | undefined
+  // The way to the template tab, offered when a comparison's whole difference is in the template.
+  onOpenTemplate?: (() => void) | undefined
 }
 
 // The game's own name, folded down to something a file system will carry — and folding is all
@@ -182,7 +185,7 @@ export function markCut(box: Element): void {
 
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
 // This is where the designer already lives; a change here reaches every copy of the card.
-export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, onRenameField, onProse, assetBase, onUpload, onSymbol, compareWith, onStopCompare, reading = false }: DataTableProps) {
+export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, onRenameField, onProse, assetBase, onUpload, onSymbol, compareWith, onStopCompare, onOpenTemplate, reading = false }: DataTableProps) {
   const t = useT()
   // The one channel everything on a screen speaks in (#7): a column that moved under the focus
   // says so here rather than in a live region this table made for itself.
@@ -394,6 +397,42 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const next = shownRef.current[at + by]
     if (!next) return
     document.querySelector<HTMLElement>(`[aria-label="${CSS.escape(`${next.id} ${field}`)}"]`)?.focus()
+  }
+  // PageDown and PageUp in a cell (#692, L49): the focus goes with the page. Left to the browser
+  // they scroll the box a page and leave the cell being written in behind, out of sight — a field
+  // has no page of its own to move in. So the cell a page further down the same column takes the
+  // focus, and the box moves exactly as far as that row did, so the hand stands where it stood on
+  // the screen. A page is the box's height under its sticky head; at the table's ends it is the
+  // first or the last card.
+  const pageInColumn = (cardRef: string, field: string, by: 1 | -1) => {
+    const box = scrollRef.current
+    const rows = shownRef.current
+    const at = rows.findIndex((r) => r.id === cardRef)
+    const rowOf = (id: string) => box?.querySelector<HTMLElement>(`tr[data-card-ref="${CSS.escape(id)}"]`) ?? null
+    const from = at < 0 ? null : rowOf(cardRef)
+    if (!box || !from) return
+    const page = Math.max(box.clientHeight - (box.querySelector('thead')?.getBoundingClientRect().height ?? 0), from.getBoundingClientRect().height)
+    const top = from.getBoundingClientRect().top
+    let to: { id: string; row: HTMLElement } | null = null
+    for (let i = at + by; i >= 0 && i < rows.length; i += by) {
+      const id = rows[i]?.id
+      const row = id === undefined ? null : rowOf(id)
+      if (!id || !row) break
+      to = { id, row }
+      if (Math.abs(row.getBoundingClientRect().top - top) >= page) break
+    }
+    if (!to) return
+    box.scrollTop += to.row.getBoundingClientRect().top - top
+    to.row.querySelector<HTMLElement>(`[aria-label="${CSS.escape(`${to.id} ${field}`)}"]`)?.focus({ preventScroll: true })
+    // Where the box could not move far enough — at its ends — the row is brought into it.
+    to.row.scrollIntoView?.({ block: 'nearest' })
+  }
+  const pageKey = (cardRef: string, field: string, e: KeyboardEvent): boolean => {
+    if (e.key !== 'PageDown' && e.key !== 'PageUp') return false
+    if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.nativeEvent.isComposing) return false
+    e.preventDefault()
+    pageInColumn(cardRef, field, e.key === 'PageDown' ? 1 : -1)
+    return true
   }
   // A block of cells from a paste (#479): rows by line, columns by tab, laid from this cell right
   // and down over the cards as the table shows them and the columns as it draws them. A count is
@@ -1271,7 +1310,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       {compareWith && diff && (
         <p ref={compareRef} className="byd-data-compare" role="status" tabIndex={-1}>
           {t('table.compare', { rev: compareWith.rev })}
-          {compareWith.label ? ` · ${compareWith.label}` : ''}: <Summary diff={diff} />{' '}
+          {compareWith.label ? ` · ${compareWith.label}` : ''}: <CompareSummary diff={diff} />{' '}
+          {onOpenTemplate && noCardDiffers(diff) && diff.template && (
+            <button type="button" onClick={onOpenTemplate}>
+              {t('table.compare.template')}
+            </button>
+          )}
           {onStopCompare && (
             <button type="button" onClick={onStopCompare}>
               {t('table.compare.stop')}
@@ -1569,6 +1613,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     onListKey={(e) => {
                       onListKey(cardRef, f, e)
                       if (e.defaultPrevented) return
+                      if (pageKey(cardRef, f, e)) return
                       // Enter is a new paragraph in prose (L39); Ctrl/Cmd+Enter goes down the
                       // column and Shift with it up, as Enter does in every other cell (#479).
                       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -1625,6 +1670,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       onListKey(cardRef, f, e)
                       if (e.defaultPrevented) return
                       if (f !== ANTAL && cellUndo(cardRef, f, e)) return
+                      if (lineKey(e) || pageKey(cardRef, f, e)) return
                       // The spreadsheet's keys (#479, beslut 2026-09-27, variant A): Enter and ↓
                       // down the column, Shift+Enter and ↑ up it.
                       const by = e.key === 'Enter' ? (e.shiftKey ? -1 : 1) : e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0
@@ -2128,4 +2174,18 @@ function importSummary(doc: ProjectDoc, rows: readonly ProjectDoc['rows'][number
   const columns = [...new Set(rows.flatMap((r) => Object.keys(r.fields)))].filter((f) => !known.has(f))
   const read = `${t('table.import.read', { n: rows.length })} ${t(fresh === 1 ? 'table.import.fresh.one' : 'table.import.fresh.other', { n: fresh })}, ${t('table.import.gone', { n: gone })}.`
   return columns.length === 0 ? read : `${read} ${t(columns.length === 1 ? 'table.import.column.one' : 'table.import.column.other', { names: columns.join(', ') })}`
+}
+
+// A comparison whose whole difference lies outside the cards (#702). The table has nothing to
+// mark then, and a band that only said «mallen ändrad.» over seventy-seven unmarked rows left the
+// designer to work out that it never could — so it says no card differs and where the difference
+// is, in the words the history's chips already use for those parts.
+const noCardDiffers = (diff: DocDiff) => diff.rows.length === 0 && !diff.reordered && !diff.columns
+
+function CompareSummary({ diff }: { diff: DocDiff }) {
+  const t = useT()
+  const parts = DOC_PARTS.filter((part) => diff[part]).map((part) => t(`history.part.${part}`))
+  if (!noCardDiffers(diff) || parts.length === 0 || diff.name) return <Summary diff={diff} />
+  const where = parts.reduce((said, part, i) => (i === 0 ? part : i === parts.length - 1 ? `${said}${t('table.compare.and')}${part}` : `${said}, ${part}`), '')
+  return <>{t('table.compare.noCards', { where })}</>
 }

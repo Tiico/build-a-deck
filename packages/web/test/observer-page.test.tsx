@@ -204,8 +204,10 @@ describe('the observer has no seat to leave (#31)', () => {
     expect(screen.queryByRole('button', { name: 'Ut…' })).toBeNull()
     expect(screen.queryByText(/Lämna bordet/)).toBeNull()
     // The question mark is one of them since #305: the help is a control she keeps, not a way out.
-    // The rows of «Platser» open lists to read (#551) and are no way out either.
-    expect(screen.getAllByRole('button').filter((b) => !b.closest('.byd-tv-seats')).map((b) => b.textContent)).toEqual(['?', expect.stringMatching(/Senast och platser/), expect.stringMatching(/Flagga/)])
+    // The rows of «Platser» open lists to read (#551) and are no way out either. Nor is the
+    // rulebook in the column's head (#709), which arrives once the table has said whether it has one.
+    await screen.findByRole('button', { name: 'Regler' })
+    expect(screen.getAllByRole('button').filter((b) => !b.closest('.byd-tv-seats')).map((b) => b.textContent)).toEqual(['Regler', '?', expect.stringMatching(/Senast och platser/), expect.stringMatching(/Flagga/)])
   })
 })
 
