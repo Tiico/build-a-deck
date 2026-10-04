@@ -442,6 +442,26 @@ export function printedText(input: Pick<CompileInput, 'face' | 'row'>): string[]
   return lines
 }
 
+// Where each text this row prints stands on the card (#741): exactly the texts `compile` draws —
+// the same variant, the same conditions — in the template's order, with a group's offset added as
+// `render` adds it. A view that shows part of a card finds the part here, so it can never point at
+// a text the card does not draw.
+export type PlacedText = { el: Extract<Element, { kind: 'text' }>; x: number; y: number }
+
+export function placedTexts(face: FaceTemplate, row: Row): PlacedText[] {
+  const out: PlacedText[] = []
+  const walk = (els: readonly Element[], dx: number, dy: number): void => {
+    for (const el of els) {
+      if (el.kind === 'text') out.push({ el, x: el.x + dx, y: el.y + dy })
+      else if (el.kind === 'if') {
+        if (holds(el.when, row)) walk(el.children, dx, dy)
+      } else if (el.kind === 'group') walk(el.children, dx + el.x, dy + el.y)
+    }
+  }
+  walk(elementsFor(face, row), 0, 0)
+  return out
+}
+
 // The column a card's name is read from (#412): the same one `titleOfFields` reads on the server.
 const TITLE_FIELD = 'title'
 
