@@ -72,7 +72,7 @@ export type Member = { email: string; role: Role }
 export async function projectMembers(http: string, project: string, t: T = swedish): Promise<Member[]> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/members`, withCredentials())
   if (res.status === 401) throw new Unauthorized()
-  if (!res.ok) throw new Error(t('error.members.failed', { status: res.status }))
+  if (!res.ok) throw new Error(t('error.members.failed'))
   return (await res.json()) as Member[]
 }
 
@@ -86,7 +86,7 @@ export async function inviteToProject(http: string, project: string, email: stri
     const { why } = (await res.json().catch(() => ({}))) as { why?: string }
     throw new Error(t(why === 'invited' ? 'error.invite.pending' : 'error.invite.member', { email }))
   }
-  if (!res.ok) throw new Error(t('error.invite.failed', { status: res.status }))
+  if (!res.ok) throw new Error(t('error.invite.failed'))
 }
 
 // The invitations nobody has followed yet (#477), for whoever may share; and taking one back.
@@ -96,7 +96,7 @@ export async function waitingInvites(http: string, project: string, t: T = swedi
   if (res.status === 401) throw new Unauthorized()
   // A role that may not share has nothing waiting to see; that is an answer, not a fault.
   if (res.status === 403) return []
-  if (!res.ok) throw new Error(t('error.invites.failed', { status: res.status }))
+  if (!res.ok) throw new Error(t('error.invites.failed'))
   return (await res.json()) as WaitingInvite[]
 }
 
@@ -110,7 +110,8 @@ export async function withdrawInvite(http: string, project: string, email: strin
 export async function unshareProject(http: string, project: string, email: string, t: T = swedish): Promise<void> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/members/${encodeURIComponent(email)}`, withCredentials({ method: 'DELETE' }))
   if (res.status === 401) throw new Unauthorized()
-  if (!res.ok) throw new Error(t('error.unshare.failed', { status: res.status }))
+  if (res.status === 403) throw new Error(t('error.unshare.notOwner'))
+  if (!res.ok) throw new Error(t('error.unshare.failed'))
 }
 
 // Following an invitation: 'not-logged-in' asks for a login first, 'spent' means it is gone.
@@ -118,7 +119,7 @@ export async function acceptInvite(http: string, token: string, t: T = swedish):
   const res = await fetch(`${http}/invites/${encodeURIComponent(token)}`, withCredentials({ method: 'POST' }))
   if (res.status === 401) return 'not-logged-in'
   if (res.status === 404) return 'spent'
-  if (!res.ok) throw new Error(t('error.join.failed', { status: res.status }))
+  if (!res.ok) throw new Error(t('error.join.failed'))
   return (await res.json()) as { project: string; role: Role }
 }
 
@@ -127,7 +128,11 @@ export async function acceptInvite(http: string, token: string, t: T = swedish):
 export async function startTable(http: string, project: string, t: T = swedish): Promise<{ id: string; code: string; hostKey: string }> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/sessions`, withCredentials({ method: 'POST' }))
   if (res.status === 401) throw new Unauthorized()
-  if (!res.ok) throw new Error(t('error.startTable.failed', { status: res.status }))
+  // Every role but a viewer may start one (D3); the page does not offer it to a viewer (#689),
+  // so a refusal is an answer that changed under the page, said as what it means.
+  if (res.status === 403) throw new Error(t('error.startTable.viewer'))
+  if (res.status === 404) throw new Error(t('error.game.gone'))
+  if (!res.ok) throw new Error(t('error.startTable.failed'))
   return (await res.json()) as { id: string; code: string; hostKey: string }
 }
 
@@ -135,7 +140,9 @@ export async function startTable(http: string, project: string, t: T = swedish):
 export async function removeProject(http: string, project: string, t: T = swedish): Promise<void> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}`, withCredentials({ method: 'DELETE' }))
   if (res.status === 401) throw new Unauthorized()
-  if (!res.ok) throw new Error(t('error.removeGame.failed', { status: res.status }))
+  if (res.status === 403) throw new Error(t('error.removeGame.notOwner'))
+  if (res.status === 404) throw new Error(t('error.game.gone'))
+  if (!res.ok) throw new Error(t('error.removeGame.failed'))
 }
 
 // A guest session claimed to the account afterwards (G1), and the tables the account sat at.
@@ -209,5 +216,5 @@ export async function importGame(http: string, file: Blob): Promise<{ ok: true; 
   if (res.status === 201) return { ok: true, id: ((await res.json()) as { id: string }).id }
   if (res.status === 413) return { ok: false, problems: [{ code: 'too-big' }] }
   const body = (await res.json().catch(() => ({}))) as { problems?: ImportProblem[] }
-  return { ok: false, problems: body.problems ?? [{ code: 'refused', values: { status: res.status } }] }
+  return { ok: false, problems: body.problems ?? [{ code: 'refused' }] }
 }

@@ -774,7 +774,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         </div>
       )}
       {over && <PanelDoor opener={over === 'history' ? revRef : hereRef} onClose={() => setOver(null)} />}
-      {shareOpen && projectId && <SharePanel http={http} project={projectId} here={client.here} onClose={() => setOver(null)} draft={shareDraft} onDraft={setShareDraft} />}
+      {shareOpen && projectId && <SharePanel http={http} project={projectId} here={client.here} role={client.role} onClose={() => setOver(null)} draft={shareDraft} onDraft={setShareDraft} />}
       {historyOpen && (
         <HistoryPanel
           client={client}

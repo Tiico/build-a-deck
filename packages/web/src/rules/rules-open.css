@@ -61,6 +61,9 @@
    mest. Luckans egna mått på de två ytorna står kvar hos luckan. */
 .byd-rules-drawer[data-placement='tv'] { display: contents; }
 .byd-rules-drawer[data-placement='phone'] { display: contents; }
+/* On the room's own television the word is read from the sofa, at K26's floor for all text (#684).
+   The observer's screen shares the header and is read at a desk, so this hangs on `data-room`. */
+[data-tv][data-room] .byd-rules-open { padding: 8px 16px; font-size: 24px; }
 .byd-rules-drawer[data-placement='phone'] .byd-rules-open { border-radius: 8px; padding: 6px 10px; font-size: 12px; }
 /* The word and the book are the button's picture; a press on them is the button's (#484). */
 .byd-rules-word, .byd-rules-book { pointer-events: none; }

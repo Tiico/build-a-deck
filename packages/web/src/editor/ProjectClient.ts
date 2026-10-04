@@ -1095,7 +1095,7 @@ export class ProjectClient {
     if (res.status === 401) throw new Unauthorized()
     if (res.status === 415) throw new Error(t('upload.notThisKind', { formats: assetFormatsNamed(kind, t('upload.or')) }))
     if (res.status === 413) throw new Error(t('upload.tooBig'))
-    if (!res.ok) throw new Error(t('upload.failed', { status: res.status }))
+    if (!res.ok) throw new Error(t('upload.failed'))
     return ((await res.json()) as { hash: string }).hash
   }
 
@@ -1233,7 +1233,7 @@ export class ProjectClient {
     const res = await fetch(where, withCredentials({ method: 'POST' }))
     if (res.status === 401) throw new Unauthorized()
     if (res.status === 404) throw new Error(t('rules.booklet.noRules'))
-    if (!res.ok) throw new Error(t('rules.booklet.orderFailed', { status: res.status }))
+    if (!res.ok) throw new Error(t('rules.booklet.orderFailed'))
     return ((await res.json()) as { hash: string }).hash
   }
 

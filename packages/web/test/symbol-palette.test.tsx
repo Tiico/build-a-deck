@@ -72,6 +72,76 @@ describe('the game’s colours', () => {
     expect(screen.getByRole('alert').textContent).toBe('«mitt hot» går inte att skriva på ett kort: ett namn har bara bokstäver, siffror, _ och -.')
   })
 
+  // A name another meaning already has is refused at the field while it is written (#697; L44's
+  // rule, as the column door does it): the verb's English throw is no answer, and an edit that
+  // reaches the actor is a version even when it changes nothing.
+  it('refuses a meaning’s name another meaning has, at the field and while it is written', () => {
+    const c = mount({ fara: '#8f2d20', vinst: '#2f6136' })
+
+    const name = screen.getByLabelText('Namn på vinst') as HTMLInputElement
+    name.focus()
+    fireEvent.change(name, { target: { value: 'fara' } })
+
+    expect(name.getAttribute('aria-invalid')).toBe('true')
+    const said = document.getElementById(name.getAttribute('aria-describedby') ?? '')
+    expect(said?.textContent).toBe('Det finns redan en betydelse som heter fara.')
+
+    fireEvent.keyDown(name, { key: 'Enter' })
+    fireEvent.blur(name)
+    expect(c.renameRole).not.toHaveBeenCalled()
+    expect(name.value).toBe('vinst')
+    expect(screen.getByRole('alert').textContent).toBe('Det finns redan en betydelse som heter fara.')
+    expect(document.body.textContent).not.toContain('already exists')
+  })
+
+  // The refusal is an answer to one attempt, and the next thing done takes it away (#697): it used
+  // to stand through every undo until the theme itself was gone.
+  it('takes the refusal away with the next thing done', () => {
+    const c = client()
+    const doc = { ...projectDoc(), palette: { fara: '#8f2d20', vinst: '#2f6136' } }
+    const { rerender } = render(<ThemePanel doc={doc} client={c} assetBase="http://test.local" />)
+
+    const name = screen.getByLabelText('Namn på vinst')
+    fireEvent.change(name, { target: { value: 'fara' } })
+    fireEvent.blur(name)
+    expect(screen.getByRole('alert')).toBeTruthy()
+
+    rerender(<ThemePanel doc={{ ...doc, palette: { fara: '#8f2d20', vinst: '#155e75' } }} client={c} assetBase="http://test.local" />)
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  // Enter is how a name is said done, as in the column door: it used to do nothing, and the name
+  // stood in the field as though it had been taken.
+  it('renames a meaning on Enter', () => {
+    const c = mount({ fara: '#8f2d20' })
+
+    const name = screen.getByLabelText('Namn på fara')
+    name.focus()
+    fireEvent.change(name, { target: { value: 'hot' } })
+    fireEvent.keyDown(name, { key: 'Enter' })
+
+    expect(c.renameRole).toHaveBeenCalledWith('fara', 'hot')
+  })
+
+  // The same rule for the game's icons (#697): the rename used to be thrown back in English, or
+  // not answered at all, with the field left standing on a name the icon did not have.
+  it('refuses an icon’s name another icon has, at the field and while it is written', () => {
+    const c = Object.assign(client(), { renameIcon: vi.fn() })
+    render(<ThemePanel doc={{ ...projectDoc(), icons: { skold: 'data:,', mynt: 'data:,' } }} client={c} assetBase="http://test.local" />)
+
+    const name = screen.getByLabelText('Namn för skold') as HTMLInputElement
+    name.focus()
+    fireEvent.change(name, { target: { value: 'mynt' } })
+
+    expect(name.getAttribute('aria-invalid')).toBe('true')
+    expect(document.getElementById(name.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Det finns redan en ikon som heter mynt.')
+
+    fireEvent.keyDown(name, { key: 'Enter' })
+    expect(c.renameIcon).not.toHaveBeenCalled()
+    expect(name.value).toBe('skold')
+    expect(screen.getByRole('alert').textContent).toBe('Det finns redan en ikon som heter mynt.')
+  })
+
   // A meaning the cards write is asked about before it goes, the way Media asks about a picture
   // (#481, fynd 11; L22, #318); one nothing writes goes at once.
   it('asks before taking away a meaning the cards write, and names the cards', () => {
