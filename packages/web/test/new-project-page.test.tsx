@@ -293,6 +293,34 @@ describe('the draft in the wizard (#476)', () => {
     expect(leave()).toBe(true)
   })
 
+  // A draft the browser will not keep (#686) was dropped without a word, and a reload gave back
+  // whatever older draft the tab still held. It is now said at the head of the page, and the older
+  // draft is not left standing to come back in its place.
+  it('says at the head of the page when the browser will not keep it', async () => {
+    open(() => undefined)
+    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
+    await waitFor(() => expect(sessionStorage.getItem('byd.pending-wizard')).toContain('Skogens herrar'))
+    // On the tab's own storage, whichever runtime put it there.
+    const proto = Object.getPrototypeOf(sessionStorage) as Storage
+    const real = proto.setItem
+    const full = vi.spyOn(proto, 'setItem').mockImplementation(function (this: Storage, key: string, value: string) {
+      if (key === 'byd.pending-wizard') throw new DOMException('full', 'QuotaExceededError')
+      real.call(this, key, value)
+    })
+    try {
+      fireEvent.change(screen.getByLabelText('kort 1 Titel'), { target: { value: 'Drake' } })
+      const header = document.querySelector('.byd-wizard > header') as HTMLElement
+      expect((await within(header).findByRole('alert')).textContent).toBe('Utkastet sparas inte längre i den här fliken — webbläsaren har inte plats för det. Laddar du om sidan eller stänger fliken försvinner det som står här.')
+      expect(sessionStorage.getItem('byd.pending-wizard')).toBeNull()
+    } finally {
+      full.mockRestore()
+    }
+    // And once it is kept again, the page stops saying it is not.
+    fireEvent.change(screen.getByLabelText('kort 1 Titel'), { target: { value: 'Drakar' } })
+    await waitFor(() => expect(within(document.querySelector('.byd-wizard > header') as HTMLElement).queryByRole('alert')).toBeNull())
+    expect(sessionStorage.getItem('byd.pending-wizard')).toContain('Drakar')
+  })
+
   it('is never sent by itself when the page is opened again later', async () => {
     sessionStorage.setItem('byd.pending-wizard', JSON.stringify({ state: { name: 'Övergivet', players: 2, frame: 'classic', fields: [], rows: [] }, server: run.http, blank: true }))
     const gone: string[] = []
