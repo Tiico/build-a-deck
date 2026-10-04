@@ -38,9 +38,9 @@ export async function requestLink(http: string, email: string, next: string): Pr
 
 export async function whoAmI(http: string): Promise<string | null> {
   const res = await fetch(`${http}/auth/me`, withCredentials())
-  if (res.status === 401) return null
   if (!res.ok) throw new Error(`could not read the account: ${res.status}`)
-  return ((await res.json()) as { email: string }).email
+  // Nobody logged in is `null` in a 200 (#744), never a 401 the browser would log as an error.
+  return ((await res.json()) as { email: string | null }).email
 }
 
 export async function logout(http: string): Promise<void> {

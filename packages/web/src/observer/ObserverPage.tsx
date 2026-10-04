@@ -27,6 +27,7 @@ import { usePageTitle } from '../status/DocumentTitle.js'
 import { useRefusal } from '../status/Refusal.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
+import { useHasRulebook } from '../rules/sessionRules.js'
 import { useT } from '../i18n/index.js'
 
 // /observe?session=…&name=Eva&server=ws://…
@@ -102,6 +103,8 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   // The window she is holding, watched rather than read once (K9, #75): `useRoom`.
   const room = useRoom()
   const [version, setVersion] = useState<string | null>(null)
+  // Whether the table had a rulebook, which is what the survey's second question asks about (#744).
+  const rulebook = useHasRulebook(http, sessionId ?? '', !!sessionId && !!view?.ended)
   useEffect(() => {
     if (!toast) return
     const timer = setTimeout(() => setToast(null), 2000)
@@ -208,7 +211,7 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
         />
       )}
       </div>
-      {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} who={name} version={version ?? '…'} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat: null, observer: true, answers })} />}
+      {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} who={name} version={version ?? '…'} rulebook={rulebook} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat: null, observer: true, answers })} />}
       <RouteStatus status={live.state === 'missing' ? { ...live, notice: asObserver(guestNotice('missing', t), t) } : live} over="card" links={links} onRetry={conn.retry} />
     </>
   )

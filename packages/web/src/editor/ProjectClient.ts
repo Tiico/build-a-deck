@@ -1215,14 +1215,17 @@ export class ProjectClient {
 
   // "Starta bord" (L5, #417): a table from the saved project, with the room code guests join by
   // and the host key that opens its screen (DRIFT §9). Unsaved edits are saved first.
-  async startTable(): Promise<{ id: string; version: string; code: string; hostKey: string }> {
-    if (this.dirty) {
+  // Unsaved work is saved first, and the table starts on the version that wrote (L5, #764).
+  // `saved` says whether a version was written on the way, so the editor can say so (#737).
+  async startTable(): Promise<{ id: string; version: string; code: string; hostKey: string; saved: boolean }> {
+    const saving = this.dirty
+    if (saving) {
       const saved = await this.save()
       if (!saved.ok) throw new Error(`could not save before starting a table: ${saved.reason}`)
     }
     const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/sessions`, withCredentials({ method: 'POST' }))
     if (!res.ok) throw new Error(`could not start a table: ${res.status}`)
-    return (await res.json()) as { id: string; version: string; code: string; hostKey: string }
+    return { ...((await res.json()) as { id: string; version: string; code: string; hostKey: string }), saved: saving }
   }
 
   // The host's controls (DRIFT §9): a new code, so those who have the old one can no longer

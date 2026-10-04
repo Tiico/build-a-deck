@@ -176,6 +176,9 @@ describe('a catalog that does not answer (L27)', () => {
     })
     fireEvent.error(link)
     expect((await screen.findByRole('alert')).textContent).toMatch(/katalogen svarar inte/i)
+    // The foot counts what the sheet shows, and it shows nothing (#737): «2 av 2» under no row
+    // at all was a count of something the reader could not see.
+    expect(document.querySelector('.byd-font-catalog-count')?.textContent ?? '').toBe('')
   })
 
   it('says why the family she pressed is not in the project', async () => {

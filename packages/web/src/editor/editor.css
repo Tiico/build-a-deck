@@ -1883,6 +1883,12 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 /* The grip is a 44 by 44 target (#570): three dots and the field's letter, drawn as before, in a
    square a finger or a pointer can take hold of. */
 .byd-props-f { display: grid; grid-template-columns: var(--byd-tap) minmax(0, 1fr) 20px; align-items: center; gap: 3px; min-height: var(--byd-tap); }
+/* A measure is a half millimetre more often than not, written with a comma in Swedish, and a
+   position can be negative: «-11,5» has to fit the half-column field (#737). The browser's spin
+   buttons took the room it needed — the grip and the arrow keys are this field's steppers — and
+   the padding is the ladder's smallest rung rather than the column's eight. */
+.byd-props .byd-props-f input { padding-inline: var(--byd-s1); appearance: textfield; -moz-appearance: textfield; }
+.byd-props-f input::-webkit-inner-spin-button, .byd-props-f input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .byd-props-grip {
   display: grid;
   grid-template-columns: 3px auto;

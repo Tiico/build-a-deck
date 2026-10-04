@@ -6,6 +6,7 @@ import { standingRewind, whoDecides } from '../table/rewind.js'
 import { FlagSheet, EndSheet, ExitSheet } from './SessionSheets.js'
 import { Survey } from './Survey.js'
 import { submitSurvey } from './surveyApi.js'
+import { useHasRulebook } from '../rules/sessionRules.js'
 import { useRefusal } from '../status/Refusal.js'
 import { useT, type T } from '../i18n/index.js'
 import { FlagGlyph, HookGlyph } from '../glyphs.js'
@@ -166,8 +167,9 @@ export type SeatSurveyProps = {
 }
 
 export function SeatSurvey({ view, seat, name, http, sessionId, version, saveUrl }: SeatSurveyProps) {
+  const rulebook = useHasRulebook(http, sessionId, view.ended)
   if (!view.ended) return null
-  return <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} remember={`${sessionId}:${seat}`} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat, answers })} />
+  return <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} remember={`${sessionId}:${seat}`} rulebook={rulebook} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat, answers })} />
 }
 
 // The three buttons every seat has, and three is the number (#31): the row is full at 375 px,

@@ -616,3 +616,35 @@ describe('the game menu follows the role (D3, #689)', () => {
     expect(choices()).toEqual(offered)
   })
 })
+
+// An imported game stood with its card shimmering until the page was reloaded (#725): the import
+// read the list again but not the cards. The import call is answered here by making the game the
+// ordinary way, because jsdom sends a Blob body as "[object Blob]".
+describe('a game imported from the start page', () => {
+  it('draws its card at once, without a reload', async () => {
+    await run.stop()
+    run = await startServer({ auth: true, authBypass: true })
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    const real = globalThis.fetch
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      if (url.includes('/projects/import')) {
+        const made = await real(`${run.http}/projects`, { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'importerat', ...projectDoc() }) })
+        return new Response(JSON.stringify({ id: 'importerat', rev: 1 }), { status: made.ok ? 201 : made.status, headers: { 'content-type': 'application/json' } })
+      }
+      return real(input, init)
+    })
+    try {
+      render(<HomePage onNavigate={() => undefined} />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Importera spel…' }))
+      const dialog = screen.getByRole('dialog')
+      fireEvent.change(dialog.querySelector('input[type="file"]')!, { target: { files: [new File(['PK'], 'Skogens herrar rev-1.zip', { type: 'application/zip' })] } })
+      expect(await within(dialog).findByText(/är importerat/)).toBeTruthy()
+      await waitFor(() => expect(document.querySelector('#home-importerat-card[role="img"]')).not.toBeNull())
+      expect(document.querySelector('#home-importerat-card[data-waiting]')).toBeNull()
+    } finally {
+      spy.mockRestore()
+    }
+  })
+})

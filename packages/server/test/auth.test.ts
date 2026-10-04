@@ -73,13 +73,17 @@ describe('logging in with a magic link', () => {
   it('mails a link, which sets a session cookie once; /auth/me then knows who you are, and logout forgets', async () => {
     const cookie = await login('ada@example.com')
     expect(await (await get('/auth/me', cookie)).json()).toEqual({ email: 'ada@example.com' })
-    expect((await get('/auth/me')).status).toBe(401)
+    // Not being logged in is an answer and not a failure (#744): every guest page asks, and a 401
+    // is written in the browser's console as an error on each of them.
+    const nobody = await get('/auth/me')
+    expect(nobody.status).toBe(200)
+    expect(await nobody.json()).toEqual({ email: null })
     // The same link a second time is refused.
     const mail = run.mail.sent.at(-1)
     const link = /\/auth\/verify\?token=\S+/.exec(mail?.text ?? '')?.[0] ?? ''
     expect((await get(link)).status).toBe(400)
     expect((await post('/auth/logout', {}, cookie)).status).toBe(200)
-    expect((await get('/auth/me', cookie)).status).toBe(401)
+    expect(await (await get('/auth/me', cookie)).json()).toEqual({ email: null })
   })
 
   it('lands the browser on the web app after the link when that is another origin (development)', async () => {
