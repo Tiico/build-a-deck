@@ -652,16 +652,19 @@
 /* Two levels, read from the sofa (#482 fynd 6, beslut B, prototyp 21): what the room looks up for —
    who sits where, how much each holds, the line that just happened — at 20–24 px; the headings and
    the history under it at 15–16. At 1920 × 1080 on a 55-inch set a pixel is about 0.63 mm. */
-[data-tv] h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; margin: 0 0 10px; }
-[data-tv] ol { list-style: none; margin: 0; padding: 0; }
-[data-tv] ol li { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #1a1e29; font-size: 16px; }
-[data-tv] ol li:first-child { font-size: 20px; }
+/* Kolumnens egna rubriker och listor, inte bokens: luckan hänger i kolumnens huvud och skulle annars
+   få versaler på sin titel och tappa siffrorna i sina listor (#709). `:where` lägger ingen vikt på
+   reglerna, så allt som redan slog dem gör det fortfarande. */
+[data-tv] h2:where(:not(.byd-rules-panel *)) { font-size: 15px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; margin: 0 0 10px; }
+[data-tv] ol:where(:not(.byd-rules-panel *)) { list-style: none; margin: 0; padding: 0; }
+[data-tv] ol:where(:not(.byd-rules-panel *)) li { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #1a1e29; font-size: 16px; }
+[data-tv] ol:where(:not(.byd-rules-panel *)) li:first-child { font-size: 20px; }
 /* A line that does not fit whole is not drawn (#482); the list says which with `hidden`. */
 [data-tv] ol li[hidden] { display: none; }
 /* The row's number is the chrome's quiet grey, as the zone names are: quieter than the names beside
    it and still text that reads, 5.18:1 on the chrome where #4c5468 was 2.53 (#560 P-14). */
-[data-tv] ol li b { flex: 0 0 30px; font-family: ui-monospace, monospace; font-weight: 400; color: #7d8597; }
-[data-tv] ol li span { color: var(--seat, #9aa3b8); }
+[data-tv] ol:where(:not(.byd-rules-panel *)) li b { flex: 0 0 30px; font-family: ui-monospace, monospace; font-weight: 400; color: #7d8597; }
+[data-tv] ol:where(:not(.byd-rules-panel *)) li span { color: var(--seat, #9aa3b8); }
 /* The seats, stacked down the column rather than laid along the bottom of the screen. A seat is
    still a card of its own with the seat's colour down its left edge, so what a reader learned to
    find in the dock is where it was; it is the axis that turned. */
@@ -929,6 +932,9 @@
 }
 .byd-observer-handle .byd-observer-flag { margin-left: auto; background: #ffd98a; border-color: #ffd98a; color: #2a2417; }
 .byd-observer-handle button:disabled { opacity: 0.35; cursor: default; }
+/* Regelboken i kolumnens huvud är TV:ns knapp (#709), men TV:n pekas inte på och hennes skärm gör
+   det: på skrivbordet och telefonen är den en tumme stor som allt annat hon trycker på (L12). */
+.byd-observer .byd-rules-open { min-height: var(--byd-tap); min-width: var(--byd-tap); }
 /* Which way the drawer goes, said on the button rather than only in its colour. */
 .byd-observer-more::after { content: ' ▲'; }
 [data-drawer='open'] .byd-observer-more::after { content: ' ▼'; }
@@ -1111,12 +1117,12 @@
    2026-09-29): every word is at least 24 px, since the room reads it from three metres. The
    observer's screen shares this chrome and is read at a desk, so all of it hangs on `data-room`,
    which only the table screen sets. */
-[data-tv][data-room] aside h2 { font-size: 24px; letter-spacing: 1px; margin-bottom: 8px; }
+[data-tv][data-room] aside h2:where(:not(.byd-rules-panel *)) { font-size: 24px; letter-spacing: 1px; margin-bottom: 8px; }
 [data-tv][data-room] .byd-tv-head h1 { font-size: 28px; }
 [data-tv][data-room] .byd-tv-join > span { font-size: 24px; }
 [data-tv][data-room] .byd-tv-inspect [data-empty] span { font-size: 24px; line-height: 1.2; }
-[data-tv][data-room] ol li, [data-tv][data-room] ol li:first-child { font-size: 24px; }
-[data-tv][data-room] ol li b { flex-basis: 36px; }
+[data-tv][data-room] ol:where(:not(.byd-rules-panel *)) li { font-size: 24px; }
+[data-tv][data-room] ol:where(:not(.byd-rules-panel *)) li b { flex-basis: 36px; }
 [data-tv][data-room] .byd-tv-feed > p[data-empty] { font-size: 24px; }
 [data-tv][data-room] .byd-tv-observers { font-size: 24px; }
 [data-tv][data-room] .byd-table-restart { font-size: 24px; min-height: 56px; padding: 0 20px; }

@@ -32,6 +32,7 @@ import { guestNotice, towardSeat } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useSessionName } from '../status/sessionName.js'
 import { useT } from '../i18n/index.js'
+import { RuleDrawer } from '../rules/RuleDrawer.js'
 
 // /online?session=…&seat=A&name=Ada&server=ws://…
 // Fully online (C2): both roles in one window. The table, the way round the window and the seat
@@ -181,6 +182,10 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
         )}
         <LastMove view={view} activity={activity} seat={seat} />
         <div className="byd-online-tools">
+          {/* Regelboken bland sätets verktyg (B7, #709), som på telefonen där den rider i raden vid
+              handen: en distansspelare vid en laptop har varken TV eller telefon att läsa den på.
+              Raden lägger ut knappen och ger den sina grannars form; boken hänger i fönstrets kant. */}
+          {!view.ended && !view.rewind && <RuleDrawer http={http} sessionId={sessionId} placement="tv" live={view} />}
           <SessionButtons client={client} view={view} sheet={sheet} onSheet={setSheet} />
         </div>
       </div>

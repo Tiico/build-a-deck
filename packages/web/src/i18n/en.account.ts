@@ -168,6 +168,8 @@ export const enAccount = {
   'wizard.error.upload': 'A file could not be uploaded. Try again in a moment.',
   'wizard.error.too-big': 'A picture is too large to upload. Choose a smaller one.',
   'wizard.error.offline': 'We cannot reach the service; check the connection and try again.',
+  'wizard.draft.unsaved': 'The draft is no longer kept in this tab — the browser has no room for it. Reloading the page or closing the tab loses what is written here.',
+  'wizard.draft.lost-image': 'The draft came back without one or more pictures. Choose them again.',
 
 
   'error.members.failed': 'the list of who has the game could not be read: {status}',

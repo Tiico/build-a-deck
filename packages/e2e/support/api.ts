@@ -187,7 +187,7 @@ export async function mailTo(to: string): Promise<{ subject: string; text: strin
 export async function tableWithRules(request: APIRequestContext, game: Game = {}): Promise<Table> {
   await logIn(request)
   const doc = gameDoc({ name: 'Skogens herrar', ...game }) as ReturnType<typeof gameDoc> & { rules?: unknown }
-  doc.rules = { title: 'Skogens herrar', blocks: [{ kind: 'heading', id: 'h1', level: 1, text: 'Så spelar ni' }, { kind: 'text', id: 't1', text: 'Dra ett kort.' }] }
+  doc.rules = { title: 'Skogens herrar', blocks: [{ kind: 'heading', id: 'h1', level: 1, text: 'Så spelar ni' }, { kind: 'text', id: 't1', text: 'Dra ett kort.' }, { kind: 'list', id: 'l1', ordered: true, items: ['Dra.', 'Lägg.'] }] }
   const project = await makeProjectOf(request, doc)
   const res = await request.post(`/projects/${encodeURIComponent(project.id)}/sessions`)
   if (!res.ok()) throw new Error(`could not start a table on ${project.id}: ${res.status()} ${await res.text()}`)
