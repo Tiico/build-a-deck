@@ -239,7 +239,9 @@ const VARIANTER = {
       if (!g.skar) return bit(tema, kortet, g, 0, (g.prosa.y + 4 * g.rad) * g.k, tonad, 'tona kant ett')
       const a = 4
       const ovre = bit(tema, kortet, g, 0, g.bandSlut * g.k + a)
-      const nedre = bit(tema, kortet, g, g.kroppStart, (g.prosa.y - g.kroppStart + 4 * g.rad) * g.k, tonad + ';clip-path:' + sagtand(g.bredd, a), 'tona')
+      // Tänderna tar sitt djup ur prosans luft, så biten börjar så mycket tidigare.
+      const fran = g.kroppStart - a / g.k
+      const nedre = bit(tema, kortet, g, fran, (g.prosa.y - fran + 4 * g.rad) * g.k, tonad + ';clip-path:' + sagtand(g.bredd, a), 'tona')
       return '<span class="riv kant" style="width:' + g.bredd.toFixed(1) + 'px">' + ovre + '<span class="skugga" style="margin-top:-' + a + 'px">' + nedre + '</span></span>'
     } },
   B: { namn: 'B — två remsor', om: 'Två remsor av kortet med redigerarens grund emellan (8 px): rubrikbandet för sig, prosans första rader för sig, var och en med kortets kant. Prosan visar tre rader och en fjärde tonad. Skärs bara när luckan är minst 3 mm.',
@@ -254,7 +256,8 @@ const VARIANTER = {
     prov: (tema, kortet, g, n) => {
       const mer = n > 3, rader = Math.min(n, 3)
       const tonad = mer ? '--tona:' + (g.rad * g.k).toFixed(1) + 'px' : ''
-      const slut = g.prosa.y + (rader + (mer ? 1 : 0)) * g.rad + (mer ? 0 : LUFT_MM)
+      // Under sista raden dubbel luft, så att underhängen inte når kanten.
+      const slut = g.prosa.y + (rader + (mer ? 1 : 0)) * g.rad + (mer ? 0 : 2 * LUFT_MM)
       if (!g.skar) return bit(tema, kortet, g, 0, slut * g.k, tonad, (mer ? 'tona ' : '') + 'kant ett')
       const ovre = bit(tema, kortet, g, 0, g.bandSlut * g.k)
       const nedre = bit(tema, kortet, g, g.kroppStart, (slut - g.kroppStart) * g.k, tonad, mer ? 'tona' : '')
@@ -391,7 +394,7 @@ function allaMatt() {
   const pct = (x) => Math.round(x * 100) + ' %'
   const cell = (m, w) => '<td class="' + (m.brodPx >= (w === '1280' ? 12 : 11) ? 'gron' : 'rod') + '">' + f1(m.brodPx) + '</td><td>' + pct(m.tomt) + '</td><td>' + [...new Set(m.provH)].join('/') + '</td><td>' + m.bricka + '</td><td class="' + (m.rull > 0 ? 'rod' : 'gron') + '">' + (m.rull > 0 ? 'rullar ' + m.rull : m.kvar + ' kvar') + '</td>'
   const html = '<h2>Alla mått, de fyra temana, värsta temat per cell</h2>'
-    + '<p>Brödtext i px på skärmen (minsta över temana) · tomt papper i provet (största) · provets höjd i px (per tema när de skiljer) · brickans höjd · vad som återstår i Speltemas kolumn utan rullning. Mätt i den här sidan, med temanas typsnitt från Google.</p>'
+    + '<p>Brödtext i px på skärmen (minsta över temana) · tomt papper i provet (största) · provets höjd i px (per tema när de skiljer) · brickans höjd · vad som återstår i Speltemas kolumn utan rullning. Mätt i den här sidan, med temanas typsnitt från Google. Provleken skärs inte i A, B eller C: mellan rubrikbandet och prosan är det 2 mm, under snittets 3. Tomt papper räknar också radavstånd och luften kring texten, så ett utsnitt utan någon lucka alls landar kring 30 %.</p>'
     + '<table><thead><tr><th>Kort</th><th>Variant</th><th>1280: brödtext</th><th>tomt</th><th>prov</th><th>bricka</th><th>rullning</th><th>1024: brödtext</th><th>tomt</th><th>prov</th><th>bricka</th><th>rullning</th></tr></thead><tbody>'
     + rader.map((r, i) => '<tr' + (i % 4 === 0 ? ' class="ny"' : '') + '><td>' + (i % 4 === 0 ? KORTEN[r.kort].namn : '') + '</td><td>' + r.v + '</td>' + cell(r['1280'], '1280') + cell(r['1024'], '1024') + '</tr>').join('')
     + '</tbody></table>'
