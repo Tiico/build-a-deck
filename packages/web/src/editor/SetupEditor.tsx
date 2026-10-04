@@ -460,7 +460,7 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
               </button>
             </div>
           ))}
-          <button type="button" onClick={() => turn({ counters: [...recipe.counters, recipe.counters.length === 0 ? { name: t('counter.score'), start: 0 } : { name: t('counter.life'), start: 20 }] })}>
+          <button type="button" onClick={() => turn({ counters: [...recipe.counters, newCounter(recipe.counters, t)] })}>
             {t('setup.counter.add')}
           </button>
           {homeless && <p className="byd-setup-note" role="status">{t('setup.counters.homeless')}</p>}
@@ -468,6 +468,16 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
       </section>
     </aside>
   )
+}
+
+// A new counter: the first is the score, the rest are lives — under a name no counter has yet, the
+// way new piles get one (#480). Two «Liv» were two «LIV» on the phone and the TV (#713).
+function newCounter(counters: readonly Counter[], t: T): Counter {
+  const [base, start] = counters.length === 0 ? [t('counter.score'), 0] : [t('counter.life'), 20]
+  const taken = new Set(counters.map((c) => c.name))
+  let name = base
+  for (let n = 2; taken.has(name); n++) name = `${base} ${n}`
+  return { name, start }
 }
 
 // Vilken zonfamilj en zon hör till, eller ingen (#175). En zon är per plats när dess id är rollen

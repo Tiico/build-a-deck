@@ -1165,6 +1165,8 @@ export const svEditor = {
   'setup.verb.flipTop': 'Vänd översta',
   'setup.verb.movePile': 'Flytta hela högen',
   'setup.step.split': 'Ta {n} från högen och lägg dem {face} {at}',
+  // Ett kort är «det» och inte «dem» (#713): meningen följer talet när talet är ett.
+  'setup.step.split.one': 'Ta {n} från högen och lägg det {face} {at}',
   'setup.step.deal': 'Dela ut {n} {to}, {face}',
   'setup.step.take': 'Leta fram {which} och lägg dem {face} {at}',
   'setup.take.every': 'varje kort',
@@ -1180,6 +1182,10 @@ export const svEditor = {
   'setup.face.front': 'uppvända',
   'setup.face.back': 'nedvända',
   'setup.face.toggle': 'åt andra hållet',
+  'setup.face.keep.one': 'som det ligger',
+  'setup.face.front.one': 'uppvänt',
+  'setup.face.back.one': 'nedvänt',
+  'setup.face.toggle.one': 'åt andra hållet',
   // Platsen i två former, och prepositionen i platsen och aldrig i steget (#285).
   //
   // «Flytta hela högen till» plus «i Draghög» gav «Flytta hela högen till i Draghög»: var nyckel
