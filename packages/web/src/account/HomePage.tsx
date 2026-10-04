@@ -318,7 +318,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                     <i className="byd-home-seat" role="img" aria-label={p.seat === null ? t('home.played.watched') : t('home.played.seat', { seat: p.seat })} style={{ ['--seat' as string]: p.seat === null ? '#7d8597' : seatColor(seatIndexOf(p.seat)) }}><span aria-hidden="true">{p.seat ?? '👁'}</span></i>
                     <span className="byd-muted">{when(t, lang, p.at)}</span>
                   </div>
-                  <strong>{p.game ?? t('home.played.some-table')}</strong>
+                  <strong>{p.deleted ? t('home.played.deleted') : (p.game ?? t('home.played.some-table'))}</strong>
                   <span className="byd-muted">{t('home.played.you', { version: p.version, name: p.name })}</span>
                   <span className="byd-home-facts">
                     {p.ended ? (p.surveyed ? t('home.played.surveyed') : t('home.played.unsurveyed')) : t('home.played.running')}

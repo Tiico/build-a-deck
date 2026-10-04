@@ -319,6 +319,7 @@ export const svPlay = {
   'player.hand.left': 'Flytta vänster',
   'player.hand.right': 'Flytta höger',
   'player.hand.empty': 'Tom hand. Dra ett kort ur draghögen.',
+  'player.hand.empty.none': 'Tom hand. Det finns inga kort att dra.',
   // Läsvyn går igenom raden kortet lyftes ur (#507): handen, ytan framför dig, eller en annan yta.
   'player.read.prev': 'Föregående kort',
   'player.read.next': 'Nästa kort',

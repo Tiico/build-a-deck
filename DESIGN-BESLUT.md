@@ -997,6 +997,7 @@ Byggt 2026-09-06 (prototypat, variant "knappar i huvudet"):
 Bordsskärmen visar "Sessionen är avslutad", versionen loggen låstes på, en summering och att enkäten finns på telefonerna; bordet kan inte spelas.
 Servern avslutar bord som ingen rört på ett dygn (`IDLE_END_MS`), som bordet, en gång i timmen.
 `GET /sessions/:id` säger version och om sessionen avslutats.
+Ett spel som tas bort tar sina bord med sig (#676): `DELETE /projects/:id` avslutar varje bord som bordet självt gör, så koden slutar släppa in, telefonerna får beskedet och bordsskärmen säger att spelet är borttaget.
 
 ---
 
@@ -3253,6 +3254,11 @@ Rutnätet från variant C finns som ett valfritt lager, av som standard, och är
 Duken renderar fortfarande genom `CardPreview` och kompilatorn (E2): lagret som tar pekaren ligger ovanpå kortet i kortets egna millimeter och ritar inget kortinnehåll.
 Lagerordningen ändras genom att dra en rad i panelen och, eftersom en lista som bara kan dras är en lista tangentbordet har förlorat, med Alt och piltangent.
 Prototypen `packages/web/src/prototype/canvas` togs bort när den hade svarat.
+*Tillagt 2026-10-03 (#700):* lekens första fält gäller bara text.
+En ny bild binds till den första kolumn mallen redan ritar som bild, och en ny ikonrad till den första kolumn en ikonrad redan läser namn ur.
+Finns ingen sådan kolumn läser elementet ingen kolumn alls: bilden blir en fast bild utan vald bild och spelets bilder öppnas direkt, och ikonraden står tom.
+Skälet är speltestet 2026-10-02: en bild bunden till «typ» ritade en trasig bild med src «Playcard», och en ikonrad bunden till den skrev «{Playcard}» i varningsrött — en gissning som passar en textruta och inget annat.
+Varningen för ett okänt ikonnamn (L2) står kvar; det som ändrats är att verktyget inte längre skapar den själv.
 
 Byggt 2026-09-07 (prototypat i tre varianter, godkänd variant A med variant B:s regellista som sammanfattning — #13):
 En grupp är en regel på en kolumn, aldrig en lista med kort-id:n.
@@ -3762,6 +3768,13 @@ Det som såg ut som en var, mätt, en knapp utan kant: editorns `#3b414e` mot kr
 Ett rum plus en roll är två klasser och vinner; ett rum, en roll och ett tillstånd är tre och vinner över ytans `:hover` och ytans `:disabled`.
 Det gäller inte bara i vila: wizardens `button:hover` är (0,2,1) och tog tillbaka linjen så fort primärknappen pekades på, och `/join`:s `form button:disabled` är (0,2,2) och tog fyllningen men inte linjen, vilket gav en grå knapp i en grön ring i det tillstånd sidan öppnar i.
 Båda mäts numera på beräknad stil, inte på att en regel finns.
+
+Tillägg 2026-10-03 (#791): **en dörr är ingen roll.**
+Editorns huvud har tre kontroller som öppnar en panel — spelets ⋯, revisionen som öppnar historiken och ansiktena som öppnar vilka som har spelet.
+Ingen av dem är en första eller andra handling, och `aria-expanded` säger att en panel hänger från dem, inte att något är valt, så de får ingen av rollernas former: ingen fyllning och ingen kant, i vila som när panelen är öppen.
+De ritas som ⋯ redan ritades: tyst bläck, editorns mörka grund under pekaren och när panelen är öppen, och fokusringen som allt annat.
+Samma läcka som ovan hade tagit två av dem: huvudets ruta `.byd-editor > header > button` (0,1,2) vann över `.byd-editor-rev` och `.byd-editor-here` (0,1,0) i varje läge.
+Rutan väljer nu bara huvudets två handlingar, med `:where()` så att rollerna väger som förut, och `button-language.test.tsx` mäter dörrarna mot ⋯ i samma läge vid 1024, 1280 och 1440.
 
 **Rummen är sju, inte fem.**
 Issuet räknade fem ytor — kontot, platsväljaren, wizarden, editorn och telefonen — men telefonens egna ark, enkäten och tillbakaspolningsfrågan öppnas också på `/online` och på `/observe`, under egna klassnamn.

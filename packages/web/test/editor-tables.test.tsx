@@ -71,7 +71,7 @@ describe('when the tables cannot be listed', () => {
     // The list is the server's; a server that cannot answer must not leave the tab pretending
     // to be busy, because nothing will ever arrive to end it.
     const { TablesTab } = await import('../src/editor/TablesTab.js')
-    const client = { rev: 1, tables: () => Promise.reject(new Error('kunde inte hämta borden')), startTable: () => Promise.reject(new Error('nej')) }
+    const client = { rev: 1, doc: projectDoc(), tables: () => Promise.reject(new Error('kunde inte hämta borden')), startTable: () => Promise.reject(new Error('nej')) }
     render(<TablesTab client={client as unknown as Parameters<typeof TablesTab>[0]['client']} server={run.http} />)
     expect((await screen.findByRole('alert')).textContent).toBe('kunde inte hämta borden')
     expect(screen.queryByText(/laddar bord/i)).toBeNull()
@@ -101,6 +101,24 @@ describe('the Bord tab (#19)', () => {
     expect(said.textContent).not.toContain('Uppdatera bordet')
     // Utan bord finns ingen lista alls, bara meningen om att det inte finns något.
     expect(document.querySelector('.byd-table-row, .byd-tables-fold')).toBeNull()
+  })
+
+  // A game with no cards started a table without a word, and the phone then asked for a card out
+  // of an empty draw pile (#751). The button stays — the deck may be filled in a minute — but the
+  // tab says what the table would hold, and where cards are added.
+  it('says the deck has no cards yet, and where they are added, when the game has none', async () => {
+    await run.projects.create(run.projectId, { ...projectDoc(), rows: [] })
+    await openTables()
+    const said = await screen.findByText(/Leken har inga kort än/)
+    expect(said.textContent).toBe('Leken har inga kort än. Lägg till kort i Tabell innan du startar ett bord.')
+    expect(screen.getByRole('button', { name: 'Starta nytt bord' })).toBeTruthy()
+  })
+
+  it('says nothing about the deck when the game has cards', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openTables()
+    await screen.findByText(/Inget bord ännu/)
+    expect(screen.queryByText(/Leken har inga kort än/)).toBeNull()
   })
 })
 
@@ -405,6 +423,7 @@ describe('the wait, the second press and the failure of «Starta nytt bord» (#2
     let finish = (): void => undefined
     const client = {
       rev: 1,
+      doc: projectDoc(),
       tables: () => Promise.resolve(done ? [one] : []),
       startTable: () => {
         started += 1
@@ -447,6 +466,7 @@ describe('the wait, the second press and the failure of «Starta nytt bord» (#2
     let attempts = 0
     const client = {
       rev: 1,
+      doc: projectDoc(),
       tables: () => Promise.resolve(done ? [one] : []),
       startTable: () => {
         attempts += 1
