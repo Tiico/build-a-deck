@@ -38,16 +38,19 @@ describe('the log names a hand by whoever sits there (K19, #86)', () => {
     expect(describeActivity(moveToHand('hand:A'), table(null), en)).toBe('Ada moved a card to Ada’s hand')
   })
 
-  it('says "min hand" on the phone of the seat that owns it, and lowercase mid-sentence', () => {
-    expect(describeActivity(moveToHand('hand:A'), table('A'), sv)).toBe('Ada flyttade ett kort till min hand')
-    expect(describeActivity(moveToHand('hand:A'), table('A'), en)).toBe('Ada moved a card to my hand')
-    // Another seat's hand is still named by its owner on my phone.
-    expect(describeActivity(moveToHand('hand:B'), table('A'), sv)).toBe('Ada flyttade ett kort till Bos hand')
+  // On the seat's own phone the line speaks to its reader, in one person (#714): «Ada drog 1 … till
+  // min hand» was the third person and the first in one sentence.
+  it('says «du» and «din hand» on the phone of the seat that owns it, lowercase mid-sentence', () => {
+    expect(describeActivity(moveToHand('hand:A'), table('A'), sv)).toBe('Du flyttade ett kort till din hand')
+    expect(describeActivity(moveToHand('hand:A'), table('A'), en)).toBe('You moved a card to your hand')
+    // Another seat's hand is still named by its owner on my phone, and another's move by its name.
+    expect(describeActivity(moveToHand('hand:B'), table('A'), sv)).toBe('Du flyttade ett kort till Bos hand')
+    expect(describeActivity(moveToHand('hand:A'), table('B'), sv)).toBe('Ada flyttade ett kort till Adas hand')
   })
 
   it('leaves every other zone with the name its designer gave it, untranslated', () => {
-    expect(describeActivity(moveToHand('front:A'), table('A'), sv)).toBe('Ada flyttade ett kort till Framför A')
-    expect(describeActivity(moveToHand('front:A'), table('A'), en)).toBe('Ada moved a card to Framför A')
+    expect(describeActivity(moveToHand('front:A'), table('A'), sv)).toBe('Du flyttade ett kort till Framför A')
+    expect(describeActivity(moveToHand('front:A'), table('A'), en)).toBe('You moved a card to Framför A')
     const shuffle: Activity = { seq: 8, by: 'A', at: '2026-09-13T00:00:00.000Z', intent: { v: 'shuffle', pile: 'draw' } } as Activity
     expect(describeActivity(shuffle, table(null), en)).toBe('Ada shuffled Draghög')
   })
@@ -81,13 +84,12 @@ describe('the log tells a drawn card from a cut pile (#421)', () => {
       const lines = [describeActivity(drawn, table('A'), t), describeActivity(cut, table('A'), t)]
       expect(lines[0]).not.toBe(lines[1])
       for (const line of lines) {
-        expect(line).toContain('Ada')
         expect(line).toContain('Draghög')
         expect(line).not.toContain('Drake')
         expect(line).not.toContain('Typ')
       }
     }
-    expect(describeActivity(drawn, table('A'), sv)).toBe('Ada drog 3 kort från Draghög till min hand')
+    expect(describeActivity(drawn, table('A'), sv)).toBe('Du drog 3 kort från Draghög till din hand')
   })
 })
 

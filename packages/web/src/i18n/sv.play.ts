@@ -231,7 +231,8 @@ export const svPlay = {
   // Med kortets namn när läsaren får se kortet (#507 fynd 6); annars raden ovan.
   'activity.move.named': '{who} flyttade {card} till {zone}',
   // En hand namnges av den som sitter där (K19), mitt i meningen: "till Adas hand", "till min hand".
-  'activity.hand.my': 'min hand',
+  'activity.hand.my': 'din hand',
+  'activity.you': 'Du',
   'activity.hand.other': '{name:s} hand',
   'activity.rotate': '{who} vred ett kort',
   'activity.flip': '{who} vände ett kort',

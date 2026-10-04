@@ -16,7 +16,9 @@ export function sayable(lines: readonly Activity[]): Activity[] {
 // Names come from the view; zone names too, so "Draghög" rather than "draw" — a zone's name is
 // the designer's word and is never translated — except a hand, which is named by whoever sits there.
 export function describeActivity(line: Activity, view: Snapshot, t: T): string {
-  const who = line.by === null ? t('play.table') : view.seats.find((s) => s.id === line.by)?.name ?? line.by
+  // The reader's own move is said to the reader (#714): «Du drog 1 … till din hand», in one person,
+  // where it was «Ada drog 1 … till min hand».
+  const who = line.by === null ? t('play.table') : line.by === view.seat ? t('activity.you') : view.seats.find((s) => s.id === line.by)?.name ?? line.by
   const zone = (id: string) => {
     const z = view.zones.find((x) => x.id === id)
     if (!z) return id

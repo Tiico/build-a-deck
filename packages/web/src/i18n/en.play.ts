@@ -186,7 +186,8 @@ export const enPlay = {
 
   'activity.move': '{who} moved a card to {zone}',
   'activity.move.named': '{who} moved {card} to {zone}',
-  'activity.hand.my': 'my hand',
+  'activity.hand.my': 'your hand',
+  'activity.you': 'You',
   'activity.hand.other': '{name:s} hand',
   'activity.rotate': '{who} turned a card',
   'activity.flip': '{who} flipped a card',
