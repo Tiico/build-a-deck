@@ -22,11 +22,12 @@ const RulePanel = lazy(() => import('./RulePanel.js').then((m) => ({ default: m.
 // It travels as a context rather than down every block and every span, because the one place
 // that reads it is the innermost one, and a prop through six components is six chances for a
 // surface to pass a table the reader is not sitting at.
-export type LiveTable = { zones: readonly ZoneView[] }
+// `version` is the version the table plays (C7): when «Uppdatera» moves it, the book is read again.
+export type LiveTable = { zones: readonly ZoneView[]; version?: string }
 const LiveTableContext = createContext<LiveTable | null>(null)
 
 // The rules at the table (B7): the rulebook a session hands out, rendered against the version it
-// was locked to at start. From the prototype: a drawer from the edge holding the whole book for
+// is locked to (B4, C7). From the prototype: a drawer from the edge holding the whole book for
 // whoever has never played, with the question on top for whoever is mid-turn and wants one rule.
 // A game with no rulebook offers nothing at all.
 // Where the press lives: over the felt, in a header (a TV's, #30), or in the phone's own row.
@@ -43,7 +44,10 @@ export type RuleDrawerProps = {
 
 export function RuleDrawer({ http, sessionId, placement, live: table }: RuleDrawerProps) {
   const [rules, setRules] = useState<RenderedRules | null | 'none'>(null)
-  // The rules of a running table never change under the players, so they are read once.
+  // The rules of a running table never change under the players: they are read once per version
+  // the table plays. «Uppdatera» moves the table to the next rev (C7), and a book written for that
+  // rev reaches the table in the patch that says so, without a reload (#677).
+  const version = table?.version
   useEffect(() => {
     let live = true
     // 204 is the table saying it has no rulebook, which is an answer and not a failure.
@@ -54,7 +58,7 @@ export function RuleDrawer({ http, sessionId, placement, live: table }: RuleDraw
     return () => {
       live = false
     }
-  }, [http, sessionId])
+  }, [http, sessionId, version])
   if (rules === 'none') return null
   return <RuleShelf rules={rules} assets={http} placement={placement} live={table} />
 }

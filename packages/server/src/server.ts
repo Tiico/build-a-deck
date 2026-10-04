@@ -1565,13 +1565,17 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     json(res, 200, { id: sessionId, version: actor.version, ended: actor.ended, ...(session.project ? { project: session.project } : {}), ...(named ? { name: named.name } : {}) })
     return true
   }
-    // The rules a table plays by (B7): rendered against the very version the session was locked
-  // to at start (B4), so a game in progress is never rewritten under the players. References are
-  // resolved here — the table and the phone read names, never ids.
+  // The rules a table plays by (B7): rendered against the very version the session is locked to
+  // (B4), so a game in progress is never rewritten under the players by an edit. «Uppdatera»
+  // moves that lock (C7), and the version it moved to is the log's, which the actor holds: the
+  // session row keeps the version the table *started* on, because that is where replay begins
+  // (#677). References are resolved here — the table and the phone read names, never ids.
   const sessionRules = /^\/sessions\/([^/]+)\/rules$/.exec(url.pathname)
   if (sessionRules && req.method === 'GET') {
-    const session = await opts.store.loadSession(decodeURIComponent(sessionRules[1] ?? ''))
-    const rev = Number(/^rev-(\d+)$/.exec(session?.version ?? '')?.[1])
+    const sessionId = decodeURIComponent(sessionRules[1] ?? '')
+    const session = await opts.store.loadSession(sessionId)
+    const actor = session ? await opts.host.get(sessionId) : null
+    const rev = Number(/^rev-(\d+)$/.exec(actor?.version ?? '')?.[1])
     const rec = session?.project && Number.isFinite(rev) ? await projects.at(session.project, rev) : null
     // A table nobody has written rules for is most tables, and every phone at one asks this on
     // the way in: the answer is nothing, not an error, or every ordinary session leaves a red
