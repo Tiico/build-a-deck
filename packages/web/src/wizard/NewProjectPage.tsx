@@ -10,6 +10,7 @@ import { suggestFieldKey } from '../editor/fields.js'
 import { buildBlankProject, buildProject, DEFAULT_THEME, themeOfState, typedFields, type WizardState } from './build.js'
 import { themeFaceSources, uploadTheme } from './fonts.js'
 import { NotMade } from './not-made.js'
+import { forgetDraft, isImageRef, keepDraft, readDraft, restoreImages } from './draft.js'
 import { columnOf, defaultFields, FRAMES, type Field } from './frames.js'
 import { previewFonts as stacksOf } from '../editor/fonts.js'
 import { THEMES } from '../editor/themes.js'
@@ -30,54 +31,20 @@ export type NewProjectPageProps = { onNavigate?(url: string): void }
 // over, so it is written in the language they are building the game in (A4).
 const firstRow = (t: T): Record<string, string> => ({ title: t('wizard.card.n', { n: 1 }), cost: '1', body: '', art: '' })
 const emptyState = (t: T): WizardState => ({ name: '', players: 2, fields: defaultFields(t), frame: 'classic', theme: DEFAULT_THEME.id, rows: [firstRow(t)] })
-// The draft, kept for the life of the tab (#476): a reload, a step back or a login round gives it
-// back as it was. It is only ever *sent* on the way back from the login it was waiting for — the
-// `resume` mark on that one address — and never because `/new` was opened again later.
-const PENDING_KEY = 'byd.pending-wizard'
+// The draft (`draft.ts`) is only ever *sent* on the way back from the login it was waiting for —
+// the `resume` mark on that one address — and never because `/new` was opened again later.
 const RESUME = 'resume'
-// `blank` is the door the draft was on its way through (L42), so a login asked for on the way
-// past the guided start resumes past it, not through it.
-type PendingWizard = { state: WizardState; server: string | null; blank?: boolean }
 // The two doors out of the wizard: through its three steps, or past them with a blank game.
 type Via = 'guided' | 'blank'
+// What the page says at its head about the draft (#686), when a reload would not give it back.
+type DraftSays = 'wizard.draft.unsaved' | 'wizard.draft.lost-image'
 
-function pendingWizard(server: string | null): PendingWizard | null {
-  try {
-    const raw = sessionStorage.getItem(PENDING_KEY)
-    if (!raw) return null
-    const value = JSON.parse(raw) as Partial<PendingWizard>
-    const state = value.state
-    if (
-      value.server !== server ||
-      !state ||
-      typeof state.name !== 'string' ||
-      typeof state.players !== 'number' ||
-      typeof state.frame !== 'string' ||
-      !Array.isArray(state.fields) ||
-      !Array.isArray(state.rows)
-    ) return null
-    // A draft begun before «Utseende» (#633) has no theme, and starts from the first one.
-    return { ...value, state: { ...state, theme: typeof state.theme === 'string' ? state.theme : DEFAULT_THEME.id } } as PendingWizard
-  } catch {
-    return null
-  }
-}
-
-function rememberWizard(pending: PendingWizard): void {
-  try {
-    sessionStorage.setItem(PENDING_KEY, JSON.stringify(pending))
-  } catch {
-    // Login still works if storage is unavailable; only automatic resume is lost.
-  }
-}
-
-function forgetWizard(): void {
-  try {
-    sessionStorage.removeItem(PENDING_KEY)
-  } catch {
-    // Nothing else depends on cleanup succeeding.
-  }
-}
+// The draft as the page starts on it: words at once, and every picture empty until the store has
+// given it back — never the reference standing in for it.
+const withoutImageRefs = (state: WizardState): WizardState => ({
+  ...state,
+  rows: state.rows.map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, isImageRef(value) ? '' : value]))),
+})
 
 const mappedByStarterFrame = (key: string) => ['title', 'cost', 'body', 'art'].includes(key)
 
@@ -102,12 +69,18 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const server = params.get('server')
   const http = server ?? location.origin
-  const pending = useMemo(() => pendingWizard(server), [server])
+  const pending = useMemo(() => readDraft(server), [server])
   const resuming = useMemo(() => params.get(RESUME) === '1', [params])
   // What an untouched wizard holds, so a draft is only a draft once something has been written.
   // eslint-disable-next-line react-hooks/exhaustive-deps -- what an untouched wizard holds is taken once, in the language `s` was begun in
   const pristine = useMemo(() => JSON.stringify(emptyState(t)), [])
-  const [s, setS] = useState<WizardState>(pending?.state ?? emptyState(t))
+  const [s, setS] = useState<WizardState>(pending ? withoutImageRefs(pending.state) : emptyState(t))
+  // The draft's pictures come back from their store after the words (#686), and nothing is kept
+  // until they have — a save before that would keep the draft without them.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- asked once, of the draft the page started on
+  const restoring = useMemo(() => pending && pending.state.rows.some((row) => Object.values(row).some(isImageRef)) ? restoreImages(pending.state) : null, [])
+  const [restored, setRestored] = useState(restoring === null)
+  const [draftSays, setDraftSays] = useState<DraftSays | null>(null)
   const dirty = JSON.stringify(s) !== pristine
   // Set on the way out through one of the page's own doors, so the question below is not asked
   // about a leaving the page itself asked for.
@@ -180,7 +153,10 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     if (server) q.set('server', server)
     return q.toString()
   }
-  const toEditor = async (door: Via = 'guided') => {
+  // `state` is what is made: the page's own, or — on the way back from a login — the draft as its
+  // store gave it back, pictures and all (#686), since the page's own may not have them yet.
+  const toEditor = async (door: Via = 'guided', state: WizardState = s) => {
+    const s = state
     // A second press while the first is on its way is not a second game.
     if (busy) return
     // Den utgång som trycks utan namn går ingenstans — den säger vad som saknas, vid fältet, och
@@ -204,8 +180,9 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     setError(null)
     // A login asked for here is the same login the project needs; the draft waits for it in
     // this tab and comes back through the same door.
-    const login = () => {
-      rememberWizard({ state: s, server, blank: door === 'blank' })
+    const login = async () => {
+      // Kept before the page is left, pictures and all, or the way back finds the draft without them.
+      await keepDraft({ state: s, server, blank: door === 'blank' })
       const back = new URLSearchParams(location.search)
       back.set(RESUME, '1')
       leaving.current = true
@@ -221,18 +198,18 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         // The chosen images go up first (E1): the project's rows point at them by hash, not by
         // carrying the bytes.
         const uploaded = await uploadImages(t, http, s)
-        if (uploaded === 'login') throw login()
+        if (uploaded === 'login') throw await login()
         // And the theme's own faces and icons with them (#420, #633): the game is set in typefaces
         // it carries, so the first screen in the editor is a card that can be printed as it stands.
         const known = await asking.current.get(theme.id)
         const files = await uploadTheme(t, http, theme, Object.fromEntries(Object.entries(known ?? {}).map(([family, at]) => [family, at.src])))
-        if (files === 'login') throw login()
+        if (files === 'login') throw await login()
         doc = buildProject(uploaded, t, files)
       }
       const res = await fetch(`${http}/projects`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(doc) }))
-      if (res.status === 401) throw login()
+      if (res.status === 401) throw await login()
       if (!res.ok) throw new NotMade('wizard.error.create')
-      forgetWizard()
+      forgetDraft()
       const { id } = (await res.json()) as { id: string }
       leaving.current = true
       onNavigate(`/editor?${suffix(new URLSearchParams({ project: id }))}`)
@@ -272,14 +249,49 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     const rest = new URLSearchParams(location.search)
     rest.delete(RESUME)
     history.replaceState(history.state, '', `${location.pathname}${rest.toString() ? `?${rest.toString()}` : ''}`)
-    void toEditor(pending.blank ? 'blank' : 'guided')
+    const door = pending.blank ? 'blank' : 'guided'
+    if (restoring) void restoring.then((back) => toEditor(door, back.state))
+    else void toEditor(door)
   // eslint-disable-next-line react-hooks/exhaustive-deps -- said once, on arrival: the mark leaves the address as it is read
   }, [])
-  // The draft follows every keystroke into the tab's storage, and an untouched wizard keeps nothing.
   useEffect(() => {
-    if (dirty) rememberWizard({ state: s, server })
-    else forgetWizard()
-  }, [s, dirty, server])
+    if (!restoring) return
+    let live = true
+    void restoring.then((back) => {
+      if (!live) return
+      // Every picture goes back where it stood, unless something was written there meanwhile.
+      setS((current) => ({
+        ...current,
+        rows: current.rows.map((row, index) => ({
+          ...row,
+          ...Object.fromEntries(Object.entries(back.state.rows[index] ?? {}).filter(([key, value]) => value.startsWith('data:') && key in row && !row[key])),
+        })),
+      }))
+      if (back.lost > 0) setDraftSays('wizard.draft.lost-image')
+      setRestored(true)
+    })
+    return () => {
+      live = false
+    }
+  }, [restoring])
+  // The draft follows every keystroke into the tab's storage, and an untouched wizard keeps nothing.
+  // A draft the browser would not keep is said at the head of the page (#686): a reload would not
+  // give it back, and the page must not let it look as if it would.
+  useEffect(() => {
+    if (!restored) return
+    if (!dirty) {
+      forgetDraft()
+      setDraftSays((said) => (said === 'wizard.draft.unsaved' ? null : said))
+      return
+    }
+    let live = true
+    void keepDraft({ state: s, server }).then((kept) => {
+      if (live) setDraftSays((said) => (kept ? (said === 'wizard.draft.unsaved' ? null : said) : 'wizard.draft.unsaved'))
+    })
+    return () => {
+      live = false
+    }
+  }, [s, dirty, server, restored])
   // And the browser asks before a reload or a closed tab takes it, as the editor does.
   useEffect(() => {
     if (!dirty) return
@@ -549,6 +561,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         </a>
         <div><span>{t('wizard.eyebrow')}</span><h1>{t('wizard.title')}</h1></div>
         <span>{t('wizard.steps')}</span>
+        {draftSays && <p className="byd-wizard-draft-says" role="alert">{t(draftSays)}</p>}
       </header>
       {desk ? (
         // All three steps are the page's main content (#555): the first two are the form as much
