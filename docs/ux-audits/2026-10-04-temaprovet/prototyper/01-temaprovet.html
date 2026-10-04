@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 01 — Temaprovet (#741)</title>
+<!-- PROTOTYP, #741. Kastas när en variant är vald. Speltemas galleri efter «Visa temana i sina typsnitt»:
+     brödtexten på provet ska renderas i minst 11 px (K26:s skrivbordsgolv är 12).
+     ?variant=N|A|B|C&w=1280|1024&lage=fore|efter
+     Teman (familjer, papper, betydelsernas färger) ur packages/web/src/editor/themes.ts, kortet ur
+     packages/server/scripts/spelkort.ts (63 × 88 mm, titel 12 pt, brödtext 8,5 pt, 96/25,4 px per mm),
+     galleriets regler ur editor.css och theme-tile.css. Kortet ritas här i sin verkliga storlek utan
+     zoom, så en texts beräknade storlek är dess storlek på skärmen.
+     Google nås först när knappen trycks, som i appen (L27, DRIFT §12): länken till css2 läggs in då.
+     Ingenting här importeras av appen. -->
+<link rel="stylesheet" href="proto.css">
+<style>
+  body { overflow: auto; }
+  .sida { min-height: 100vh; display: flex; flex-direction: column; }
+  .protorad .grupp { display: inline-flex; align-items: center; gap: 4px; }
+  .protorad .grupp > span { color: #c8b98d; margin-right: 2px; }
+  .protorad button[aria-pressed='true'] { background: #ffd98a; color: #1f1b12; border-color: #ffd98a; font-weight: 700; }
+  .protorad .matt { margin-left: 0; flex-wrap: wrap; flex: 1 1 100%; }
+  .protorad .matt span { white-space: nowrap; }
+  .protorad .matt .rod u { color: #ff9a8a; }
+  .protorad .matt .gron u { color: #9be0b4; }
+  .scen { flex: 1; padding: var(--s4) var(--s4) 90px; }
+  .etikett { margin: 0 0 6px; color: var(--quiet); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; }
+  .skala { transform-origin: 0 0; }
+  .vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font-weight: 700; }
+  .vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; }
+  .vaxlare .namn { padding: 0 12px; min-width: 360px; text-align: center; font-size: 12.5px; }
+
+  /* ── Fönstret: huvudet och Speltema, fönstrets höjd och aldrig högre ─────────────────────────── */
+  .fonster { position: relative; display: flex; flex-direction: column; overflow: hidden; background: #23262e; color: #ddd; font: 13px system-ui, sans-serif; outline: 1px dashed #4a4230; }
+  .fonster .vik { position: absolute; left: 0; right: 0; border-top: 1px dashed #ff6a5a; pointer-events: none; z-index: 4; }
+  .hd { flex: none; height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #2f333d; white-space: nowrap; overflow: hidden; }
+  .hd .home { color: #c3cbdd; font-weight: 600; }
+  .hd strong { color: #fff; font-size: 15px; }
+  .hd .q { color: #868ea3; }
+  .hd .steg { display: inline-flex; gap: 2px; }
+  .hd .steg i { display: inline-grid; place-items: center; width: 44px; height: 44px; border: 1px solid #2a2d36; border-radius: 8px; background: #0f1115; color: #dce3f2; font-style: normal; }
+  .hd nav { display: flex; background: #1b1d23; border-radius: 8px; padding: 4px; margin-left: 12px; }
+  .hd nav span { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; color: #9aa3b8; font-weight: 600; }
+  .hd nav span[aria-selected='true'] { color: #fff; font-weight: 700; box-shadow: inset 0 -3px 0 #3c8ce7; border-radius: 6px 6px 0 0; }
+  .hd .fyll { flex: 1; }
+  .hd .sek { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border: 1px solid #6f7a90; border-radius: 8px; color: #868ea3; font-weight: 600; }
+  .hd .pri { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 8px; background: #1f6fd0; color: #fff; font-weight: 750; }
+  .fonster[data-w='1024'] .hd nav span { padding: 0 8px; }
+  .fonster[data-w='1024'] .hd .home, .fonster[data-w='1024'] .hd .q { display: none; }
+
+  /* Speltema, ur editor.css: en kolumn som rullar, högst 1100 px bred. */
+  .tema { flex: 1 1 auto; min-height: 0; display: grid; padding: 16px; }
+  .arbete { position: relative; min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1100px); align-content: start; gap: 8px; }
+  .galleri { display: grid; gap: 8px; }
+  .brickor { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  /* theme-tile.css + editor.css:s färger för brickan. */
+  .bricka { display: grid; align-content: start; justify-items: start; gap: 4px; padding: 12px; border: 1px solid #2f333d; border-radius: 12px; background: transparent; color: #fff; font: inherit; text-align: left; cursor: pointer; min-width: 0; }
+  .bricka:hover { border-color: #4a5060; }
+  .bricka[aria-pressed='true'] { border-color: #3c8ce7; box-shadow: 0 0 0 1px #3c8ce7; }
+  .bricka .papper { display: flex; gap: 8px; width: 100%; margin-bottom: 4px; padding: 12px; border-radius: 8px; }
+  .bricka .papper img { width: 22px; height: 22px; }
+  .bricka b { font-size: 14px; }
+  .bricka small { font-size: 12px; line-height: 1.4; color: #9aa3b8; }
+  .bricka small.fam { color: #c3cbdd; }
+  .visa { justify-self: start; min-height: 44px; padding: 0 12px; border-radius: 8px; border: 1px solid #6f7a90; background: transparent; color: #dce3f2; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .visa[aria-busy='true'] { cursor: progress; }
+  .rad { display: flex; align-items: center; min-height: 44px; color: #c3cbdd; }
+  .sek-del { border: 1px solid #2f333d; border-radius: 12px; background: #171a23; }
+  .sek-del h2 { display: flex; align-items: center; gap: 12px; min-height: 48px; margin: 0; padding: 0 16px; font-size: 14px; font-weight: 600; color: #fff; }
+  .sek-del h2::before { content: ''; width: 6px; height: 6px; border-right: 1.5px solid #868ea3; border-bottom: 1.5px solid #868ea3; transform: rotate(-45deg); }
+  .sek-del h2 em { margin-left: auto; font-style: normal; font-weight: 400; font-size: 12px; color: #9aa3b8; }
+
+  /* ── Kortet: spelkort.ts:s mall, i millimeter gånger --k (px per mm) ─────────────────────────── */
+  .kort { position: relative; flex: none; overflow: hidden; background: #f6efe0; border-radius: calc(3 * var(--k)); }
+  .kort > * { position: absolute; box-sizing: border-box; }
+  .kort .band { background: #6b4a2b; border-radius: calc(2.5 * var(--k)); }
+  .kort .ram { border: calc(0.5 * var(--k)) solid #3b2a1a; border-radius: calc(3 * var(--k)); }
+  .kort .t { margin: 0; color: #fff8e7; white-space: nowrap; overflow: hidden; line-height: 1.15; }
+  .kort .bod { margin: 0; color: #2b2118; line-height: 1.25; overflow-wrap: break-word; }
+  .kort .bod img, .prov img.sym { width: 1em; height: 1em; vertical-align: -0.14em; }
+  .kort .pill { background: #6D9EEB; border-radius: calc(3 * var(--k)); }
+  .kort .pilltext { margin: 0; color: #000; text-align: center; line-height: 1.15; }
+  /* Kortet på brickan i dag: kantlinjen ur editor.css. */
+  .kortlåda { display: block; justify-self: center; margin-bottom: 4px; border-radius: 8px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,.55); }
+
+  /* A: ett utsnitt i kortets egen storlek — titelbandet och brödtextens första rader, utan nedskalning. */
+  .utsnitt { position: relative; width: 100%; margin-bottom: 4px; border-radius: 8px; overflow: hidden; box-shadow: 0 0 0 1px rgba(0,0,0,.55); background: #f6efe0;
+    -webkit-mask-image: linear-gradient(#000 calc(100% - 22px), transparent); mask-image: linear-gradient(#000 calc(100% - 22px), transparent); }
+  .utsnitt .kort { position: absolute; border-radius: 0; }
+
+  /* B: kortet som i dag, och en rad ur kortets brödtext under det, i brödtextens familj. */
+  .prov { width: 100%; margin: 0 0 4px; padding: 8px 12px; border-radius: 8px; color: #2b2118; line-height: 1.35; }
+  .prov-namn { display: block; margin-bottom: 2px; font: 600 11px system-ui, sans-serif; letter-spacing: .5px; color: #6b5d4c; }
+
+  /* C: ett provark under galleriet, kort vid kort i läsbar storlek. */
+  .ark { border: 1px solid #2f333d; border-radius: 12px; background: #171a23; padding: 12px; display: grid; gap: 8px; }
+  .ark-hd { display: flex; align-items: center; gap: 12px; }
+  .ark-hd h2 { margin: 0; font-size: 14px; font-weight: 600; color: #fff; }
+  .ark-hd span { color: #9aa3b8; font-size: 12px; }
+  .ark-hd button { margin-left: auto; min-height: 44px; padding: 0 12px; border: 1px solid #6f7a90; border-radius: 8px; background: transparent; color: #dce3f2; font: inherit; font-size: 12px; cursor: pointer; }
+  .ark-rad { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .ark-rad figure { margin: 0; display: grid; gap: 6px; justify-items: center; }
+  .ark-rad figcaption { font-size: 12px; color: #c3cbdd; }
+  .ark-rad figcaption b { color: #fff; font-size: 13px; margin-right: 6px; }
+  .ark-rad .kort { box-shadow: 0 0 0 1px rgba(0,0,0,.55); border-radius: 8px; }
+</style>
+</head>
+<body>
+<div class="sida">
+  <div class="protorad">
+    <p><b>#741 — temaprovets brödtext.</b> <span id="om"></span></p>
+    <span class="grupp"><span>Fönster</span><button type="button" data-w="1280">1280 × 800</button><button type="button" data-w="1024">1024 × 768</button></span>
+    <span class="grupp"><span>Läge</span><button type="button" data-lage="fore">före trycket</button><button type="button" data-lage="efter">efter «Visa temana i sina typsnitt»</button></span>
+    <div class="matt" id="matt"></div>
+    <p class="sagt" id="sagt"></p>
+  </div>
+  <div class="scen" id="scen"></div>
+</div>
+<div class="vaxlare" role="toolbar" aria-label="Prototypens växlare">
+  <button type="button" id="bak" aria-label="Föregående variant">←</button>
+  <span class="namn" id="variantnamn"></span>
+  <button type="button" id="fram" aria-label="Nästa variant">→</button>
+</div>
+<script>
+// ── Temana, ur themes.ts ───────────────────────────────────────────────────────────────────────
+const TEMAN = [
+  { id: 'skogssaga', namn: 'Skogssaga', om: 'Graverad rubrik, klassisk brödtext, jordfärger', rubrik: 'Cinzel', brod: 'EB Garamond', papper: '#f4efe4', farg: { kostnad: '#8f2d20', vinst: '#2f6136', forsvar: '#155e75', anfall: '#a8410c' } },
+  { id: 'ren', namn: 'Ren', om: 'En sans rakt igenom, klara färger', rubrik: 'Inter', brod: 'Inter', papper: '#ffffff', farg: { kostnad: '#8f2d20', vinst: '#2f6136', forsvar: '#155e75', anfall: '#6b2d5c' } },
+  { id: 'retro', namn: 'Retro', om: 'Smal versal rubrik, kondenserad text', rubrik: 'Oswald', brod: 'Roboto Condensed', papper: '#fbf1d6', farg: { kostnad: '#8f2d20', vinst: '#7a5c00', forsvar: '#155e75', anfall: '#6b2d5c' } },
+  { id: 'kronika', namn: 'Krönika', om: 'Bokserif, varm läsbarhet, dämpade färger', rubrik: 'Lora', brod: 'Merriweather', papper: '#f7f2ea', farg: { kostnad: '#6b2d5c', vinst: '#2f6136', forsvar: '#155e75', anfall: '#8f2d20' } },
+]
+const GOOGLE = 'https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=EB+Garamond:wght@400..800&family=Inter:wght@100..900&family=Oswald:wght@200..700&family=Roboto+Condensed:wght@100..900&family=Lora:wght@400..700&family=Merriweather:wght@300..900&display=block'
+
+// Bibliotekets symboler (symbols.ts), i ett bläck som byts mot betydelsens färg.
+const SYM = {
+  mynt: '<path fill-rule="evenodd" d="M12 3a9 9 0 100 18 9 9 0 000-18zm0 4a5 5 0 110 10 5 5 0 010-10z"/>',
+  skold: '<path d="M12 2l8 3v7c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5z"/>',
+  svard: '<path d="M4 20l3-1 10-10 2-6-6 2L3 15l-1 3z"/>',
+  hjarta: '<path d="M12 21C6 16.5 3 13.5 3 9.5 3 6.5 5.2 4.5 8 4.5c1.7 0 3.2.9 4 2.2.8-1.3 2.3-2.2 4-2.2 2.8 0 5 2 5 5 0 4-3 7-9 11.5z"/>',
+}
+const malad = (id, farg) => 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="' + farg + '">' + SYM[id] + '</svg>')
+const BETYDELSER = ['kostnad', 'vinst', 'forsvar', 'anfall']
+const PROVSYM = ['mynt', 'skold', 'svard', 'hjarta']
+
+// ── Spelets första kort: Sal's Saloon, rad 1 i spelkort.csv, med två symboler skrivna med betydelse ──
+const KORT = { titel: "Juice em' up!", typ: 'Playcard', rar: 'Diamant',
+  brod: 'Betala {mynt|kostnad}. Välj två andra spelare. De blandar en shot till varann. Den som har {skold|forsvar} får tacka nej.' }
+const brodHtml = (tema) => KORT.brod.replace(/\{(\w+)\|(\w+)\}/g, (_, s, b) => '<img class="sym" alt="" src="' + malad(s, tema.farg[b]) + '">')
+
+const PX_PER_MM = 96 / 25.4
+const PT = 0.3528 // mm per punkt
+const KORT_B = 63, KORT_H = 88
+
+// Kortet i bredden `px`, varje del på sin millimeter (spelkort.ts). Ingen zoom: storleken är storleken.
+function kort(tema, px, pos = '') {
+  const k = px / KORT_B
+  const mm = (v) => (v * k).toFixed(2) + 'px'
+  const pt = (v) => (v * PT * k).toFixed(3) + 'px'
+  const box = (x, y, w, h) => 'left:' + mm(x) + ';top:' + mm(y) + ';width:' + mm(w) + ';height:' + mm(h) + ';'
+  return '<div class="kort" style="' + pos + '--k:' + k + 'px;width:' + mm(KORT_B) + ';height:' + mm(KORT_H) + '">'
+    + '<span class="band" style="' + box(3, 3, 57, 13) + '"></span>'
+    + '<span class="ram" style="' + box(3, 3, 57, 82) + '"></span>'
+    + '<p class="t titel" style="' + box(5, 4.5, 53, 7) + 'font:800 ' + pt(12) + '/1.15 \'' + tema.rubrik + '\', serif">' + KORT.titel + '</p>'
+    + '<p class="t" style="' + box(5, 11.5, 40, 4) + 'font:700 ' + pt(8.5) + '/1.15 \'' + tema.rubrik + '\', serif">' + KORT.typ + '</p>'
+    + '<p class="bod" style="' + box(5, 19, 53, 55) + 'font:400 ' + pt(8.5) + '/1.25 \'' + tema.brod + '\', serif">' + brodHtml(tema) + '</p>'
+    + '<span class="pill" style="' + box(5, 77, 26, 6) + '"></span>'
+    + '<p class="pilltext" style="' + box(5, 77.3, 26, 5.4) + 'font:700 ' + pt(8.5) + '/1.15 \'' + tema.rubrik + '\', serif;padding-top:' + mm(0.8) + '">' + KORT.rar + '</p>'
+    + '</div>'
+}
+
+const papper = (tema) => '<span class="papper" style="background:' + tema.papper + '" aria-hidden="true">' + BETYDELSER.map((b, i) => '<img alt="" src="' + malad(PROVSYM[i], tema.farg[b]) + '">').join('') + '</span>'
+const fot = (tema) => '<b>' + tema.namn + '</b><small class="fam">' + (tema.rubrik === tema.brod ? tema.rubrik : tema.rubrik + ' · ' + tema.brod) + '</small><small>' + tema.om + '</small>'
+
+// Brickans inre bredd vid fönstrets bredd: 1100-kolumnen, eller fönstret minus 2 × 16, i fyra med 12 emellan, minus 2 × 12 + 2 × 1.
+const inre = (w) => (Math.min(1100, w - 32) - 3 * 12) / 4 - 26
+
+// ── Varianterna ───────────────────────────────────────────────────────────────────────────────
+const VARIANTER = {
+  N: { namn: 'Nu — kortet på brickan i 0,7 (main)', om: 'Som byggt: CardPreview i zoom 0,7, alltså 167 px brett. Rubriken går att skilja, brödtexten inte.',
+    bricka: (tema, w) => papper(tema) + '<span class="kortlåda">' + kort(tema, KORT_B * PX_PER_MM * 0.7) + '</span>' + fot(tema) },
+  A: { namn: 'A — utsnitt i verklig storlek', om: 'Brickan ritar ett utsnitt av kortet i läsbar storlek: titelbandet och brödtextens tre första rader, centrerat på textspalten och tonat i nederkanten. Skalan är 4 px/mm (brödtexten 12 px) där textspalten ryms med 8 px luft per sida, annars så stor som ryms. Resten av kortet syns inte.',
+    bricka: (tema, w) => {
+      // 4 px/mm (brödtexten 12 px), men aldrig så stort att textspalten når rutans kanter: 8 px luft per sida.
+      const bredd = inre(w), k = Math.min(4, (bredd - 16) / 53), px = k * KORT_B
+      const x = 5 * k - (bredd - 53 * k) / 2 // textspalten mitt i rutan
+      const h = Math.round((19 + 3 * 8.5 * PT * 1.25) * k + 22 + 2) // titelbandet, tre hela rader, och en fjärde som tonas
+      return papper(tema) + '<span class="utsnitt" style="height:' + h + 'px">' + kort(tema, px, 'left:' + (-x).toFixed(1) + 'px;top:0;') + '</span>' + fot(tema)
+    } },
+  B: { namn: 'B — kortet som nu, och en rad brödtext under', om: 'Kortet står kvar i 0,7 och visar helheten. Under det står kortets egen brödtext i brödtextens familj, 13 px, på temats papper — där brickan redan visar betydelserna. Familjens namn står ovanför raden.',
+    bricka: (tema, w) => '<span class="kortlåda">' + kort(tema, KORT_B * PX_PER_MM * 0.7) + '</span>'
+      + '<p class="prov" style="background:' + tema.papper + ';font:400 13px/1.35 \'' + tema.brod + '\', serif"><span class="prov-namn">' + tema.brod + '</span>' + brodHtml(tema) + '</p>' + fot(tema) },
+  C: { namn: 'C — provark under galleriet', om: 'Brickorna står kvar som före trycket. Trycket öppnar ett ark under dem: de fyra korten sida vid sida, hela, i den bredd raden rymmer upp till 252 px (brödtexten 12 px). «Stäng provet» tar bort arket.',
+    bricka: (tema, w) => papper(tema) + fot(tema), ark: true },
+}
+
+const q = new URLSearchParams(location.search)
+const st = {
+  v: VARIANTER[q.get('variant')] ? q.get('variant') : 'A',
+  w: q.get('w') === '1024' ? '1024' : '1280',
+  lage: q.get('lage') === 'fore' ? 'fore' : 'efter',
+  hamtat: false,
+  hamtar: false,
+  stangt: false,
+}
+const HOJD = { 1280: 800, 1024: 768 }
+// Ångra och gör om, i editorns hand (glyphs.tsx).
+const HOOK = (m) => '<svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true"' + (m ? ' style="transform:scaleX(-1)"' : '') + '><path d="M6 3.25 2.75 6.5 6 9.75M2.75 6.5h6.75a3.25 3.25 0 0 1 0 6.5H7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+
+function arket(w) {
+  const kol = (Math.min(1100, w - 32) - 2 * 13 - 3 * 12) / 4
+  const px = Math.min(252, Math.floor(kol))
+  return '<section class="ark" aria-label="Temana i sina typsnitt"><div class="ark-hd"><h2>Temana i sina typsnitt</h2><span>spelets första kort, satt i varje tema</span><button type="button" id="stang">Stäng provet</button></div>'
+    + '<div class="ark-rad">' + TEMAN.map((t) => '<figure>' + kort(t, px) + '<figcaption><b>' + t.namn + '</b>' + (t.rubrik === t.brod ? t.rubrik : t.rubrik + ' · ' + t.brod) + '</figcaption></figure>').join('') + '</div></section>'
+}
+
+function rita() {
+  const w = Number(st.w), h = HOJD[st.w]
+  const V = VARIANTER[st.v]
+  const efter = st.lage === 'efter' && st.hamtat && !st.stangt
+  const brickor = TEMAN.map((t) => '<button type="button" class="bricka" aria-pressed="false" aria-label="Välj temat ' + t.namn + '">' + (efter ? V.bricka(t, w) : papper(t) + fot(t)) + '</button>').join('')
+  const knapp = !efter ? '<button type="button" class="visa" id="visa" aria-busy="' + st.hamtar + '">' + (st.hamtar ? 'Hämtar temanas typsnitt…' : 'Visa temana i sina typsnitt') + '</button>' : ''
+  const ark = efter && V.ark && !st.stangt ? arket(w) : ''
+  const fonster = '<div class="fonster" data-w="' + w + '" style="width:' + w + 'px;height:' + h + 'px">'
+    + '<header class="hd"><span class="home">Mina spel</span><strong>Sal\'s Saloon</strong><span class="q">⋯</span><span class="q">rev 1</span><span class="q">✓</span><span class="steg"><i>' + HOOK(false) + '</i><i>' + HOOK(true) + '</i></span>'
+    + '<nav>' + ['Kortvägg', 'Mall', 'Tabell', 'Speltema', 'Media', 'Regler', 'Bord'].map((n) => '<span' + (n === 'Speltema' ? ' aria-selected="true"' : '') + '>' + n + '</span>').join('') + '</nav>'
+    + '<span class="fyll"></span><span class="sek">Spara</span><span class="pri">Starta bord ▾</span></header>'
+    + '<div class="tema"><div class="arbete" id="arbete"><section class="galleri"><div class="brickor" id="brickor">' + brickor + '</div>' + knapp + ark
+    + '<div class="rad">Spelet utgår inte från något av temana.</div></section>'
+    + ['Typsnitt|inga egna', 'Färger och betydelser|inga än', 'Spelets ikoner|inga än'].map((s) => { const [a, b] = s.split('|'); return '<section class="sek-del"><h2>' + a + '<em>' + b + '</em></h2></section>' }).join('')
+    + '</div></div></div>'
+  const plats = document.documentElement.clientWidth - 32
+  const skala = Math.min(1, plats / w)
+  document.getElementById('scen').innerHTML = '<p class="etikett">Speltema · ' + w + ' × ' + h + (skala < 1 ? ' · visas i ' + Math.round(skala * 100) + ' % för att rymmas; måtten är i fönstrets egna px' : '') + '</p>'
+    + '<div class="hallare" style="position:relative;height:' + h * skala + 'px"><div class="skala" style="width:' + w + 'px;transform:scale(' + skala + ')">' + fonster + '</div></div>'
+  for (const b of document.querySelectorAll('.protorad [data-w]')) b.setAttribute('aria-pressed', String(b.dataset.w === st.w))
+  for (const b of document.querySelectorAll('.protorad [data-lage]')) b.setAttribute('aria-pressed', String(b.dataset.lage === st.lage))
+  document.getElementById('om').textContent = V.om
+  const ks = Object.keys(VARIANTER)
+  document.getElementById('variantnamn').textContent = V.namn + '  (' + (ks.indexOf(st.v) + 1) + '/' + ks.length + ')'
+  history.replaceState(null, '', '?variant=' + st.v + '&w=' + st.w + '&lage=' + st.lage)
+  requestAnimationFrame(mat)
+}
+
+// ── Google först på trycket ───────────────────────────────────────────────────────────────────
+function hamta() {
+  // Redan hämtade (provet stängt och öppnat igen): ingen ny förfrågan, bara provet.
+  if (st.hamtat) { st.lage = 'efter'; st.stangt = false; rita(); return Promise.resolve() }
+  if (st.hamtar) return Promise.resolve()
+  st.hamtar = true
+  rita()
+  const l = document.createElement('link')
+  l.rel = 'stylesheet'
+  l.href = GOOGLE
+  const klar = new Promise((r) => { l.onload = r; l.onerror = r })
+  document.head.appendChild(l)
+  return klar
+    .then(() => Promise.all(TEMAN.flatMap((t) => [document.fonts.load('800 16px "' + t.rubrik + '"'), document.fonts.load('700 11px "' + t.rubrik + '"'), document.fonts.load('400 12px "' + t.brod + '"')])))
+    .then(() => { st.hamtar = false; st.hamtat = true; st.lage = 'efter'; st.stangt = false; rita() })
+}
+const googleFragor = () => performance.getEntriesByType('resource').filter((e) => /fonts\.(googleapis|gstatic)\.com/.test(e.name)).length
+
+// ── Mätningen ─────────────────────────────────────────────────────────────────────────────────
+const px = (el) => el ? parseFloat(getComputedStyle(el).fontSize) : NaN
+const f1 = (n) => (Number.isFinite(n) ? n.toFixed(1).replace('.', ',') : '—')
+function mat() {
+  const arbete = document.getElementById('arbete')
+  const brickor = document.getElementById('brickor')
+  const bricka = brickor.querySelector('.bricka')
+  const yta = document.querySelector('.ark') || brickor
+  const bod = [...yta.querySelectorAll(yta.querySelector('.prov') ? '.prov' : '.bod')]
+  const titlar = [...yta.querySelectorAll('.titel')]
+  const kort = yta.querySelector('.kort')
+  // Vad läses: i A syns hur många rader av brödtexten?
+  const utsnitt = brickor.querySelector('.utsnitt')
+  let rader = ''
+  if (utsnitt) {
+    const b = utsnitt.querySelector('.bod'), lh = parseFloat(getComputedStyle(b).lineHeight)
+    const n = Math.floor((utsnitt.offsetHeight - 22 - b.offsetTop) / lh)
+    rader = n + (n === 1 ? ' hel rad' : ' hela rader') + ' + en tonad'
+    const luft = (utsnitt.offsetWidth - b.offsetWidth) / 2
+    rader += ', ' + f1(luft) + ' px luft per sida'
+  }
+  const prov = brickor.querySelector('.prov')
+  const brodPx = Math.min(...bod.map(px))
+  const rull = arbete.scrollHeight - arbete.clientHeight
+  const k = kort ? kort.offsetWidth : 0
+  const golv = (v) => (v >= 12 ? 'gron' : v >= 11 ? '' : 'rod')
+  const m = []
+  const efter = st.lage === 'efter' && st.hamtat && !st.stangt
+  if (efter) {
+    m.push('<span class="' + golv(brodPx) + '">brödtext <u>' + f1(brodPx) + ' px</u>' + (prov ? ' (raden) · i kortet ' + f1(px(brickor.querySelector('.bod'))) + ' px' : '') + '</span>')
+    m.push('<span>titel <u>' + f1(Math.min(...titlar.map(px))) + ' px</u></span>')
+    m.push('<span>kortet <u>' + k + ' px</u> brett' + (utsnitt ? ', utsnittet ' + utsnitt.offsetWidth + ' × ' + utsnitt.offsetHeight : '') + '</span>')
+    if (rader) m.push('<span>syns <u>' + rader + '</u></span>')
+  }
+  m.push('<span>bricka <u>' + bricka.offsetHeight + ' px</u> hög</span>')
+  if (document.querySelector('.ark')) m.push('<span>arket <u>' + document.querySelector('.ark').offsetHeight + ' px</u></span>')
+  m.push('<span>galleri + rad <u>' + document.querySelector('.galleri').offsetHeight + ' px</u></span>')
+  m.push('<span class="' + (rull > 0 ? 'rod' : 'gron') + '">' + (rull > 0 ? 'Speltema rullar <u>' + rull + ' px</u>' : 'ryms utan rullning, <u>' + (arbete.clientHeight - [...arbete.children].reduce((a, c) => Math.max(a, c.offsetTop + c.offsetHeight), 0)) + ' px</u> kvar') + ' vid ' + st.w + ' × ' + HOJD[st.w] + '</span>')
+  m.push('<span>Google nått <u>' + (googleFragor() > 0 ? 'ja, efter trycket' : 'nej') + '</u></span>')
+  document.getElementById('matt').innerHTML = m.join('')
+  document.getElementById('sagt').innerHTML = efter
+    ? 'K26: golvet för all text på skrivbord är <em>12 px</em>, issuets acceptans <em>≥ 11 px</em>. Grönt ≥ 12, gult 11–12, rött under 11. Kortet: 63 mm, brödtext 8,5 pt = 0,048 × kortbredden, titel 12 pt = 0,067 × kortbredden.'
+    : 'Före trycket: brickorna visar betydelserna och familjerna med namn, och Google har inte nåtts. Tryck på knappen i galleriet.'
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('button')
+  if (!t) return
+  if (t.id === 'bak') return byt(-1)
+  if (t.id === 'fram') return byt(1)
+  if (t.id === 'visa') return void hamta()
+  if (t.id === 'stang') { st.stangt = true; st.lage = 'fore'; return rita() }
+  if (t.dataset.w) { st.w = t.dataset.w; return rita() }
+  if (t.dataset.lage) { st.lage = t.dataset.lage; if (st.lage === 'efter' && !st.hamtat) return void hamta(); st.stangt = false; return rita() }
+})
+function byt(d) { const ks = Object.keys(VARIANTER); st.v = ks[(ks.indexOf(st.v) + d + ks.length) % ks.length]; st.stangt = false; rita() }
+document.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') byt(-1); if (e.key === 'ArrowRight') byt(1) })
+addEventListener('resize', rita)
+// ?lage=efter (förvalt) hämtar som om knappen tryckts, så en länk till en variant visar den.
+if (st.lage === 'efter') { st.lage = 'fore'; rita(); hamta() } else rita()
+</script>
+</body>
+</html>
