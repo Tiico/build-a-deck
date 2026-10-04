@@ -2070,8 +2070,9 @@ const PLATE_AIR_PX = 8
 // How tall a plate is drawn, in screen pixels, from the stylesheet's own numbers: the row with the
 // seat's ball (6 + 36 + 8 of padding), and a 24 px line at 1.2 plus the 2 px gap for each line
 // under it. A side plate stands every line under the one before; a plate along the top or the
-// bottom lays its words in one row (#573), and on a second when the row has no room for them. Heights are line
-// boxes, not glyphs, so no typeface changes them.
+// bottom lays its words in one row (#573), and its room is reckoned for that row — a second line
+// is what it falls back on when the row does not fit, not what it is laid out for. Heights are
+// line boxes, not glyphs, so no typeface changes them.
 const PLATE_ROW_PX = 6 + 36 + 8
 const PLATE_LINE_PX = Math.ceil(24 * 1.2) + 2
 // Where a pile's words stand on the room's television: under the card, the name's foot 38 px
@@ -2089,7 +2090,7 @@ type Box = { left: number; right: number; top: number; bottom: number }
 // it by the same air it keeps from its own zones. A plate at the side grows toward the middle, and
 // stops at the middle, where the plate of the seat opposite comes the other way.
 function plateRoom(view: Snapshot, seat: Snapshot['seats'][number], edge: 'N' | 'E' | 'S' | 'W', own: Box, rows: number, left: (mm: number) => number, top: (mm: number) => number, t: T): number {
-  const height = edge === 'E' || edge === 'W' ? PLATE_ROW_PX + rows * PLATE_LINE_PX : PLATE_ROW_PX + PLATE_LINE_PX
+  const height = edge === 'E' || edge === 'W' ? PLATE_ROW_PX + rows * PLATE_LINE_PX : PLATE_ROW_PX
   const middle = (own.top + own.bottom) / 2
   const band =
     edge === 'N' ? { top: own.bottom, bottom: own.bottom + PLATE_AIR_PX + height } :
