@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 802 — Platshållaren på mallduken</title>
+<!-- PROTOTYP, #802. Kastas när en variant är vald.
+     Beställarens beslut (2026-10-04): platshållaren ligger bara på mallduken, som ett lager ovanpå
+     kortet likt villkorsramen (#478), och kommer aldrig in i kompilatorns utdata. Frågan här är hur
+     den ser ut och vad den säger.
+     ?variant=A|B|C|idag&w=1280|1024&tom=vald|cell&val=ingen|image-1|image-2|icons-1
+     Duken under är skärmbilder av den byggda appen (Sal's Saloon, Mall, Bas, kort 1 av 77), tagna
+     med Playwright mot servern och Vite ur den här grenen: image-1 är «Fast bild» utan vald bild,
+     image-2 är bunden till textkolumnen «typ» och icons-1 är en ny ikonrad i förvald storlek
+     (24 × 6 mm) utan fält. En skärmbild per markering, så markeringsramen och panelen är appens egna.
+     Rutornas lägen är uppmätta i appen (getBoundingClientRect på [data-drag]).
+     Det som ritas ovanpå är förslaget. Editorn har bara mörkt läge (color-scheme: dark i editor.css),
+     så det finns inget ljust att visa.
+     Ingenting här importeras av appen. -->
+<style>
+  :root {
+    /* Ur packages/web/src/editor/editor.css */
+    --chrome: #23262e;
+    --panel: #171a23;
+    --line: #2f333d;
+    --ink: #e6ecfa;
+    --quiet: #868ea3;
+    --quiet-2: #9aa3b8;
+    --primary-mark: #3c8ce7;
+    --amber: #f0b64a;
+    --amber-ink: #ffd98a;
+    --condition: #c9a2ff;
+    --paper: #f6efe0;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #14161c; color: var(--ink); font: 13px system-ui, sans-serif; }
+  body { padding: 16px 16px 120px; }
+  .rubrik { max-width: 1280px; margin: 0 0 12px; color: #ffd98a; font-size: 12px; line-height: 1.5; }
+  .rubrik b { color: #ffe9b8; }
+  .rubrik p { margin: 0; }
+  .anteckning { max-width: 1280px; min-height: calc(3 * 1.5em + 14px); margin: 8px 0 12px; padding: 6px 10px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; font-size: 12px; line-height: 1.5; }
+  .anteckning b { color: #ffe9b8; }
+  .anteckning .plus { color: #b7dca0; }
+  .anteckning .minus { color: #f0a58a; }
+
+  /* Duken: appens skärmbild i full storlek, och förslaget ovanpå i samma pixlar. */
+  .duk { position: relative; height: 800px; background: no-repeat 0 0; outline: 1px dashed #4a4230; overflow: hidden; }
+  .duk .yta { position: absolute; inset: 0; }
+  /* Det som kompilatorn ritar i dag för en bild på en textkolumn — en trasig <img> — tas bort i
+     förslaget: en cell som inte är en bild ritas som en tom cell, och duken säger varför. */
+  .sudd { position: absolute; background: var(--paper); }
+
+  .ph { position: absolute; cursor: pointer; }
+  .ph .ord, .ph .flik, .ph .knapp, .ph .bricka, .ph .bubbla { font: 600 11px/1.25 system-ui, sans-serif; }
+
+  /* ── A: rutan säger det ─────────────────────────────────────────────────────────────────── */
+  .A.ph { border: 1.5px dashed #5b6274; box-shadow: 0 0 0 1px rgba(255,255,255,.55); background: repeating-linear-gradient(135deg, rgba(91,98,116,.10) 0 6px, transparent 6px 12px); display: grid; place-items: center; padding: 4px; }
+  .A .ord { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 8px; border-radius: 999px; background: var(--chrome); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .A .ord i { font-style: normal; color: var(--quiet-2); }
+  .A .ord span { overflow: hidden; text-overflow: ellipsis; }
+  .A.tunn .ord { padding: 2px 8px; }
+
+  /* ── B: flik på ramen, som villkoret ────────────────────────────────────────────────────── */
+  .B.ph { border: 1.5px dashed #a86f12; display: grid; place-items: center; }
+  .B .flik { position: absolute; left: -1.5px; bottom: 100%; padding: 4px 8px; border-radius: 4px 4px 0 0; background: var(--amber); color: #1b1d23; white-space: nowrap; }
+  .B .knapp { min-height: 26px; padding: 0 10px; border: 1px solid #a86f12; border-radius: 6px; background: rgba(255,255,255,.85); color: #3b2a07; cursor: pointer; white-space: nowrap; }
+  .B .knapp:hover { background: #fff; border-color: #6e4806; }
+  .B .knapp:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .B.tunn .knapp { min-height: 22px; padding: 0 8px; }
+
+  /* ── C: tyst märke, orden vid markering eller pekare ───────────────────────────────────── */
+  .C.ph { border: 1px dashed rgba(91,98,116,.55); }
+  .C .bricka { position: absolute; left: 4px; top: 4px; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 999px; background: var(--chrome); color: var(--amber-ink); box-shadow: 0 0 0 1.5px var(--amber); font-size: 11px; }
+  .C.tunn .bricka { top: 50%; transform: translateY(-50%); }
+  .C .bubbla { display: none; position: absolute; left: -1px; top: calc(100% + 8px); z-index: 3; width: max-content; max-width: 300px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); box-shadow: 0 8px 24px rgba(0,0,0,.45); line-height: 1.4; font-weight: 500; font-size: 12px; }
+  .C .bubbla::before { content: ''; position: absolute; left: 12px; top: -6px; width: 10px; height: 10px; background: var(--panel); border-left: 1px solid var(--line); border-top: 1px solid var(--line); transform: rotate(45deg); }
+  .C .bubbla b { display: block; margin-bottom: 2px; font-weight: 700; }
+  .C .bubbla button { margin-top: 6px; min-height: 28px; padding: 0 10px; border: 1px solid #4b5266; border-radius: 6px; background: transparent; color: var(--ink); font: 600 12px system-ui; cursor: pointer; }
+  .C.ph:hover .bubbla, .C.ph.vald .bubbla { display: block; }
+  .C.ph:hover, .C.ph.vald { border-color: transparent; }
+
+  /* ── Växlaren, flytande längst ned ──────────────────────────────────────────────────────── */
+  .vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font-weight: 700; white-space: nowrap; }
+  .vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; padding: 0 10px; }
+  .vaxlare button[aria-pressed='true'] { background: #fff4d6; color: #1f1b12; box-shadow: inset 0 0 0 2px #1f1b12; }
+  .vaxlare button:focus-visible { outline: 2px solid #1f1b12; outline-offset: 2px; }
+  .vaxlare .namn { padding: 0 10px; min-width: 250px; text-align: center; font-size: 12.5px; }
+  .vaxlare .skilj { width: 1px; height: 24px; background: rgba(31,27,18,.3); margin: 0 4px; }
+</style>
+</head>
+<body>
+<div class="rubrik">
+  <p><b>PROTOTYP #802 · platshållaren på mallduken.</b> Duken är den byggda appen (skärmbild); det som ligger ovanpå kortet är förslaget och finns bara medan man redigerar — aldrig i tryck eller på bordet.</p>
+  <p>Tre tomma lager på samma kort: <b>image-1</b> bild utan bild · <b>image-2</b> bild bunden till textkolumnen «typ» · <b>icons-1</b> ikonrad utan ikoner. Klicka ett lager för att markera det, klicka bredvid kortet för att släppa. ← → byter variant.</p>
+</div>
+<div class="anteckning" id="anteckning"></div>
+<div class="duk" id="duk"><div class="yta" id="yta"></div></div>
+
+<div class="vaxlare" role="group" aria-label="Prototypens växlare">
+  <button type="button" id="bak" aria-label="Föregående variant">‹</button>
+  <span class="namn" id="namn"></span>
+  <button type="button" id="fram" aria-label="Nästa variant">›</button>
+  <span class="skilj"></span>
+  <button type="button" data-w="1280">1280</button>
+  <button type="button" data-w="1024">1024</button>
+  <span class="skilj"></span>
+  <button type="button" data-tom="vald" title="Inget är valt i panelen: Fast bild utan bild, ikonrad utan fält">Inget valt</button>
+  <button type="button" data-tom="cell" title="Lagret läser en kolumn som är tom på kortet som visas">Tom cell</button>
+</div>
+
+<script>
+// Uppmätt i appen: rutornas lägen i sidans pixlar, per bredd (geometry.json).
+const GEO = {
+  1280: { layer: { x: 364.4, y: 191, w: 389.5, h: 544 }, 'image-1': { x: 395.3, y: 376.5, w: 154.5, h: 154.5 }, 'image-2': { x: 571.5, y: 376.5, w: 154.5, h: 154.5 }, 'icons-1': { x: 395.3, y: 561.9, w: 148.4, h: 37.1 } },
+  1024: { layer: { x: 339.9, y: 191, w: 352.2, h: 492 }, 'image-1': { x: 367.8, y: 358.7, w: 139.8, h: 139.8 }, 'image-2': { x: 527.2, y: 358.7, w: 139.8, h: 139.8 }, 'icons-1': { x: 367.8, y: 526.5, w: 134.2, h: 33.5 } },
+}
+
+// Orden. Verktygets ord följer läsaren; det som står inom «» är formgivarens egna kolumnnamn.
+// «bild» och «symboler» finns inte i Sal's Saloon — leken har ingen bild- eller ikonkolumn — och
+// står för fallet där lagret läser en kolumn som är tom på just det här kortet.
+const ORD = {
+  'image-1': {
+    vald: { kort: 'Ingen bild vald', lang: 'Ingen bild vald', mer: 'Välj en i spelets bilder.', knapp: 'Välj bild…', glyf: '▣' },
+    cell: { kort: 'Tom här', lang: '«bild» är tom på det här kortet', mer: '4 av 77 kort saknar bild.', knapp: 'Visa i tabellen', glyf: '▣' },
+  },
+  'image-2': {
+    vald: { kort: '«typ» är text', lang: '«typ» är text, inte bilder', mer: 'Välj en bildkolumn eller en fast bild.', knapp: 'Välj bildkälla…', glyf: '▣' },
+    cell: { kort: '«typ» är text', lang: '«typ» är text, inte bilder', mer: 'Välj en bildkolumn eller en fast bild.', knapp: 'Välj bildkälla…', glyf: '▣' },
+  },
+  'icons-1': {
+    vald: { kort: 'Inga ikoner', lang: 'Inga ikoner ännu', mer: 'Välj en ikon, eller ett fält där korten skriver {namn}.', knapp: 'Välj fält…', glyf: '●●' },
+    cell: { kort: 'Tom här', lang: '«symboler» är tom på det här kortet', mer: 'Skriv {namn} i kolumnen, t.ex. {guld}.', knapp: 'Visa i tabellen', glyf: '●●' },
+  },
+}
+
+const VARIANTER = {
+  A: { namn: 'A · Rutan säger det',
+    not: '<b>A — rutan säger det.</b> Streckad ram exakt på lagret och ett kort ord i en mörk bricka mitt i, alltid synligt. <span class="plus">+ Ett tomt lager syns på hela duken utan att man letar, och brickan läses på varje papper.</span> <span class="minus">− Bara två–tre ord får plats i en ikonrad på 24 mm; vägen vidare är panelen. Täcker kortet där det är tomt, alltså precis där formgivaren ska bedöma luft.</span>' },
+  B: { namn: 'B · Flik som villkoret',
+    not: '<b>B — flik på ramen, som villkoret (#478).</b> Bärnstensram, en mening på fliken och en knapp i rutan som öppnar spelets bilder eller fältväljaren. <span class="plus">+ Samma form som villkorsramen, och ett klick till svaret.</span> <span class="minus">− Mest krom: flikarna går utanför lagret och tar plats ovanför — här nästan mot brödtexten — och med villkorsramens lila flik får duken två slags flikar. Knappen är en andra väg till det panelen redan gör.</span>' },
+  C: { namn: 'C · Tyst märke, ord vid markering',
+    not: '<b>C — tyst märke.</b> En svag streckad kant och ett litet märke i hörnet; hela meningen och knappen kommer i en bubbla när lagret är markerat eller pekaren står på det. <span class="plus">+ Kortet ser nästan ut som det kommer att tryckas, och meningen får plats i sin helhet med vad man ska göra.</span> <span class="minus">− Märket är lätt att missa på ett myllrigt kort, och utan pekare (surfplatta) syns orden först vid markering.</span>' },
+  idag: { namn: 'I dag (utan förslag)',
+    not: '<b>I dag.</b> Den byggda appen utan förslag: image-1 syns inte alls när den inte är markerad, image-2 ritar webbläsarens trasiga bild, och icons-1 är osynlig. Bara panelen säger «Ingen bild vald» respektive «inget fält».' },
+}
+
+const p = new URLSearchParams(location.search)
+const st = {
+  v: VARIANTER[p.get('variant')] ? p.get('variant') : 'A',
+  w: p.get('w') === '1024' ? 1024 : 1280,
+  tom: p.get('tom') === 'cell' ? 'cell' : 'vald',
+  val: ['image-1', 'image-2', 'icons-1'].includes(p.get('val')) ? p.get('val') : 'ingen',
+}
+
+const $ = (id) => document.getElementById(id)
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+
+function lager(id) {
+  const g = GEO[st.w][id]
+  const o = ORD[id][st.tom]
+  const tunn = g.h < 60
+  const el = document.createElement('div')
+  el.className = `ph ${st.v}${tunn ? ' tunn' : ''}${st.val === id ? ' vald' : ''}`
+  el.dataset.id = id
+  Object.assign(el.style, { left: `${g.x}px`, top: `${g.y}px`, width: `${g.w}px`, height: `${g.h}px` })
+  if (st.v === 'A') {
+    el.innerHTML = `<span class="ord" title="${esc(o.lang)}"><i>${o.glyf}</i><span>${esc(tunn ? o.kort : o.lang)}</span></span>`
+  } else if (st.v === 'B') {
+    el.innerHTML = `<span class="flik">${esc(o.lang)}</span><button type="button" class="knapp">${esc(o.knapp)}</button>`
+  } else {
+    el.innerHTML = `<span class="bricka" aria-hidden="true">!</span><span class="bubbla"><b>${esc(o.lang)}</b>${esc(o.mer)}<br><button type="button">${esc(o.knapp)}</button></span>`
+  }
+  el.setAttribute('aria-label', `${id}: ${o.lang}`)
+  el.addEventListener('click', (e) => { e.stopPropagation(); st.val = id; rita() })
+  return el
+}
+
+function rita() {
+  const duk = $('duk'), yta = $('yta')
+  duk.style.width = `${st.w}px`
+  duk.style.backgroundImage = `url("duk/${st.val}-${st.w}.png")`
+  yta.innerHTML = ''
+  if (st.v !== 'idag') {
+    // Kompilatorn ritar ingen <img> för en cell som inte är en bild — se kommentaren vid .sudd.
+    const g = GEO[st.w]['image-2']
+    const sudd = document.createElement('div')
+    sudd.className = 'sudd'
+    Object.assign(sudd.style, { left: `${g.x + 3}px`, top: `${g.y + 3}px`, width: `${g.w - 6}px`, height: `${g.h - 6}px` })
+    yta.append(sudd)
+    for (const id of ['image-1', 'image-2', 'icons-1']) yta.append(lager(id))
+  }
+  $('namn').textContent = VARIANTER[st.v].namn
+  $('anteckning').innerHTML = VARIANTER[st.v].not
+  for (const b of document.querySelectorAll('[data-w]')) b.setAttribute('aria-pressed', String(Number(b.dataset.w) === st.w))
+  for (const b of document.querySelectorAll('[data-tom]')) b.setAttribute('aria-pressed', String(b.dataset.tom === st.tom))
+  const q = new URLSearchParams({ variant: st.v, w: st.w, tom: st.tom, val: st.val })
+  history.replaceState(null, '', `?${q}`)
+}
+
+function byt(d) { const ks = Object.keys(VARIANTER); st.v = ks[(ks.indexOf(st.v) + d + ks.length) % ks.length]; rita() }
+$('bak').onclick = () => byt(-1)
+$('fram').onclick = () => byt(1)
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('button')
+  if (t?.dataset.w) { st.w = Number(t.dataset.w); return rita() }
+  if (t?.dataset.tom) { st.tom = t.dataset.tom; return rita() }
+})
+// Ett klick på duken bredvid lagren släpper markeringen, som i appen.
+$('duk').addEventListener('click', (e) => { if (e.target.closest('.ph')) return; st.val = 'ingen'; rita() })
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest?.('input, textarea, select')) return
+  if (e.key === 'ArrowLeft') byt(-1)
+  if (e.key === 'ArrowRight') byt(1)
+})
+rita()
+</script>
+</body>
+</html>
