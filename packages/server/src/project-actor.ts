@@ -1,4 +1,4 @@
-import { applyEdit, type EditIntent } from './edits.js'
+import { applyEdit, checkNewName, type EditIntent } from './edits.js'
 import type { ProjectDoc, ProjectStore } from './projects.js'
 import type { Role } from './roles.js'
 
@@ -109,6 +109,9 @@ export class ProjectActor {
   // for real, then everyone is told. An edit that makes no sense moves neither log nor document.
   async edit(intent: EditIntent, by?: string, from?: string): Promise<AppliedEdit> {
     return this.serial(async () => {
+      // What may be made now is asked here as well as by the verb (#694); the log's replay asks
+      // only the verb, so a stricter rule about new names never makes an old log read differently.
+      checkNewName(this.current, intent)
       const next = applyEdit(this.current, intent)
       const entry: AppliedEdit = { seq: this.at + 1, at: new Date().toISOString(), ...(by ? { by } : {}), ...(from ? { from } : {}), intent }
       await this.store.appendEdits(this.id, [entry])

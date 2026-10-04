@@ -5181,6 +5181,8 @@ Alternativet — en etikett vid sidan av nyckeln — hade gjort namnbytet gratis
 `title` är vad ett kort heter överallt där det nämns — regelbokens referenser, bordets upplysningar, startsidans kort — så nyckeln står kvar som `title`, visas som «Titel» i designerns språk i både den guidade starten och editorns tabell, och döps inte om: `renameField` vägrar den.
 Alla andra fält blir exakt det namn som skrivs, också i den guidade starten, där namnen i steg 2 förut stannade i formuläret och spelet fick `cost`, `fält1` och `värde1`; startramarna binder fälten efter deras plats på kortet, så «Pris» hamnar i hörnet ändå.
 Tomma namn, två fält med samma namn och verktygets egna namn stoppas vid fältet.
+Samma namn betyder samma namn utan hänsyn till versaler, och verktygets egna namn är också orden de visas med (#694): importen parar redan en rubrik som bara skiljer i versaler med kolumnen (L4), så «TYP» bredvid «typ» eller en andra «Titel» bredvid titeln var kolumner som en export och import slog ihop.
+Regeln gäller det som skapas — dörrarna, importen och aktörens levande dörr — och inte `applyEdit`, så en lek som fick sådana kolumner innan regeln behåller båda och dess logg spelas upp rad för rad som förut.
 
 **Priset är taget medvetet: CSV-rubrikerna byter namn med kolumnen.**
 En lek som exporterats tidigare får en annan rubrikrad, så ett kalkylark eller en import som designern håller utanför verktyget slutar matcha tills hon byter namnet där också.
