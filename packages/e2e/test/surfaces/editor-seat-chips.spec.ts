@@ -84,6 +84,83 @@ for (const locale of ['sv-SE', 'en-GB']) {
   }
 }
 
+// The × inside its chip, as painted (#849). The strip's own rule for its buttons — an outlined
+// box with an 8 px corner — matched the × as well, so it drew a square with its own line inside
+// the chip's: a stroke between the name and the ×, and corners that stood out past the chip's
+// round end. The boxes' rectangles said nothing was wrong, since the square's box is the chip's
+// end; only the paint shows it.
+//
+// So this reads the pixels: around each chip, everything outside its pill is the strip's ground,
+// and inside it, above and below the name and the ×, nothing is drawn in the chip's line. The
+// colours are read off the page, not written here, and the glyphs are left out, so the machine's
+// font moves nothing.
+test.describe('the × of a seat, as painted (#849)', () => {
+  test.use({ viewport: { width: 1280, height: 800 }, locale: 'sv-SE' })
+
+  test('lies wholly inside its chip, with no line of its own', async ({ page, host }) => {
+    await eightAtTheTable(page, host)
+    const strip = page.locator('.byd-editor-table-link')
+    await expect(strip.getByRole('button', { name: 'Sparka Hal', exact: true })).toBeVisible()
+    await page.mouse.move(0, 0)
+    const chips = strip.locator('[data-host-seat]')
+    const colours = await chips.first().evaluate((chip) => ({
+      ground: getComputedStyle(chip.closest('.byd-editor-table-link')!).backgroundColor,
+      line: getComputedStyle(chip).outlineColor,
+    }))
+    const rgb = (c: string) => (c.match(/\d+/g) ?? []).slice(0, 3).map(Number)
+    for (let i = 0; i < (await chips.count()); i++) {
+      const chip = chips.nth(i)
+      const box = (await chip.boundingBox())!
+      const pad = 6
+      const clip = { x: box.x - pad, y: box.y - pad, width: box.width + 2 * pad, height: box.height + 2 * pad }
+      const shot = await page.screenshot({ clip })
+      const drawn = await page.evaluate(
+        async ({ data, clip, box, pad, ground, line }) => {
+          const img = new Image()
+          img.src = `data:image/png;base64,${data}`
+          await img.decode()
+          const canvas = new OffscreenCanvas(img.width, img.height)
+          const ctx = canvas.getContext('2d')!
+          ctx.drawImage(img, 0, 0)
+          const px = img.width / clip.width
+          const all = ctx.getImageData(0, 0, img.width, img.height).data
+          const near = (at: number, c: number[], by: number) => Math.abs(all[at]! - c[0]!) + Math.abs(all[at + 1]! - c[1]!) + Math.abs(all[at + 2]! - c[2]!) <= by
+          // How far a point lies outside the chip's pill (negative inside), in CSS px.
+          const r = box.height / 2
+          const outside = (x: number, y: number) => {
+            const dx = Math.max(Math.abs(x - box.width / 2) - (box.width / 2 - r), 0)
+            const dy = Math.abs(y - r)
+            return dx > 0 ? Math.hypot(dx, dy) - r : dy - r
+          }
+          let past = 0
+          let stroke = 0
+          let edge = 0
+          for (let py = 0; py < img.height; py++) {
+            for (let qx = 0; qx < img.width; qx++) {
+              const x = (qx + 0.5) / px - pad
+              const y = (py + 0.5) / px - pad
+              const at = (py * img.width + qx) * 4
+              const d = outside(x, y)
+              // Outside the pill, past the edge's own anti-aliasing: the strip's ground only.
+              if (d > 1.5 && !near(at, ground, 6)) past++
+              // The chip's own line on its edge: the guard that the colours read are the ones drawn.
+              if (Math.abs(d + 0.5) <= 0.5 && near(at, line, 24)) edge++
+              // Inside, clear of the edge and of the row the name and the × are written on.
+              const written = y > box.height * 0.25 && y < box.height * 0.75
+              if (d < -2.5 && !written && near(at, line, 24)) stroke++
+            }
+          }
+          return { past, stroke, edge }
+        },
+        { data: shot.toString('base64'), clip, box, pad, ground: rgb(colours.ground), line: rgb(colours.line) },
+      )
+      const name = await chip.evaluate((el) => el.firstChild?.textContent ?? '')
+      expect(drawn.edge, name).toBeGreaterThan(20)
+      expect({ past: drawn.past, stroke: drawn.stroke }, name).toEqual({ past: 0, stroke: 0 })
+    }
+  })
+})
+
 test.describe('a seat kicked from the keyboard (#621)', () => {
   test.use({ viewport: { width: 1280, height: 800 }, locale: 'sv-SE' })
 

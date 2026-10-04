@@ -323,6 +323,7 @@ export const svEditor = {
   // Vad ett släpp får höra när det inte går vidare (#292). Filerna nämns vid namn: en import
   // byter ut hela tabellen, så den som släppte har rätt att se vad verktyget höll i handen.
   'table.import.one': 'En fil i taget: importen byter ut hela tabellen. Det som släpptes var {files}.',
+  'table.import.empty': '{file} är tom. Importen behöver en rad med kolumnernas namn och ett kort per rad.',
   'table.import.wrongType': '{file} är ingen datafil. Importen tar CSV eller tabbavgränsad text.',
   'table.images': 'Bilder i spelet',
   'table.images.none': 'inga ännu — välj en bild i tabellen',
@@ -335,7 +336,7 @@ export const svEditor = {
   'table.search': 'Sök i alla fält',
   'table.search.placeholder': 'Sök i alla fält…',
   'table.filters': 'Filter',
-  'table.import.box': 'Importera',
+  'table.import.box': 'CSV',
   'table.export.box': 'Exportera',
   'table.filterOn': 'Filtrera på {field}',
   'table.filterOn.count': 'Filtrera på {field}, {n} valt',
@@ -637,6 +638,7 @@ export const svEditor = {
   // varifrån ikonerna kommer i stället. Att namnge en ikon där är vägen tillbaka från kolumnen,
   // precis som att välja en kolumn är vägen dit — ingen av dem gissar åt formgivaren (#33).
   'canvas.props.icon.fromField': 'från kolumnen',
+  'canvas.props.icon.none': 'ingen ikon',
   'canvas.props.font': 'Typsnitt',
   // Lagrets familj (L57, #634): spelets typsnitt först och sagda vara spelets, en familj spelet
   // inte längre har för sig, och hela katalogen sist.

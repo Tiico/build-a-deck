@@ -627,6 +627,14 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const [replacing, setReplacing] = useState<{ rows: ProjectDoc['rows']; file: string } | null>(null)
   // What the last import did, said where it was asked for (#479).
   const [imported, setImported] = useState<string | null>(null)
+  // The line is about the rows the import landed and nothing after them (#739): the first change to
+  // the rows is the import arriving, and the next — an undo, an edit — makes the line a report on a
+  // table that is no longer there.
+  const importLanding = useRef(false)
+  useEffect(() => {
+    if (importLanding.current) importLanding.current = false
+    else setImported(null)
+  }, [doc.rows])
   const [sort, setSort] = useState<SortState | null>(null)
   const [filter, setFilter] = useState<FilterState>(noFilter)
   // Which column's filter door stands open, if any: one at a time, like the crown's boxes.
@@ -1176,15 +1184,32 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   }
   const nextRef = () => nextCardRef(doc)
   const land = (rows: ProjectDoc['rows']) => {
+    importLanding.current = true
     onReplaceRows(rows)
     setImported(importSummary(doc, rows, t))
   }
   const importFile = (file: File | undefined) => {
     if (!file) return
+    // A new file is a new answer (#739): what the last one did gives way to what this one does,
+    // rather than standing beside its refusal.
+    setImported(null)
+    setImportError(null)
+    // The picker's `accept` is a suggestion a file dialog lets the designer step past, so the type
+    // is the import's to say and not only the drop's.
+    if (!isDataFile(file)) {
+      setImportError(t('table.import.wrongType', { file: file.name }))
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => {
       try {
-        const rows = importCardsCsv(String(reader.result ?? ''), t, fieldsOf(doc))
+        const text = String(reader.result ?? '')
+        // A file with nothing in it has no id column either, but that is not what is wrong with it.
+        if (text.replace(/^\uFEFF/, '').trim() === '') {
+          setImportError(t('table.import.empty', { file: file.name }))
+          return
+        }
+        const rows = importCardsCsv(text, t, fieldsOf(doc))
         setImportError(null)
         // An import that takes cards away asks first (#479, beslut 2026-09-27; L9): the question
         // before a deletion stands although there is an undo. One that only adds and changes
@@ -1207,11 +1232,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const [file, ...rest] = dropped
     if (!file) return
     if (rest.length > 0) {
+      setImported(null)
       setImportError(t('table.import.one', { files: dropped.map((f) => f.name).join(', ') }))
-      return
-    }
-    if (!isDataFile(file)) {
-      setImportError(t('table.import.wrongType', { file: file.name }))
       return
     }
     importFile(file)
@@ -1368,25 +1390,6 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           }}
         >
           {dropLabel(doc, dropping, t)}
-        </Question>
-      )}
-      {removing !== null && (
-        <Question
-          className="byd-data-bulk"
-          label={t('table.remove.card', { cardRef: removing })}
-          confirm={t('table.remove.yes')}
-          cancel={t('editor.cancel')}
-          onConfirm={() => {
-            onRemoveRow(removing)
-            setRemoving(null)
-            setRefocus('all')
-          }}
-          onCancel={() => {
-            setRemoving(null)
-            setRefocus({ cardRef: removing })
-          }}
-        >
-          {t('table.remove.card.question', { cardRef: removing })}
         </Question>
       )}
       {/* A wide table on a narrow screen has one honest answer: the table scrolls inside its own
@@ -1837,7 +1840,28 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             </>
           )}
         </p>
-      {chosen.length > 0 &&
+      {/* One row's × asks the same kind of question the marking does, and in the same place
+          (#739, L58): it stood in a band over the head and moved the table 70 px under the hand
+          that had just pressed it. In the foot it takes the toolbar's place while it stands. */}
+      {removing !== null ? (
+        <Question
+          className="byd-data-bulk"
+          label={t('table.remove.card', { cardRef: removing })}
+          confirm={t('table.remove.yes')}
+          cancel={t('editor.cancel')}
+          onConfirm={() => {
+            onRemoveRow(removing)
+            setRemoving(null)
+            setRefocus('all')
+          }}
+          onCancel={() => {
+            setRemoving(null)
+            setRefocus({ cardRef: removing })
+          }}
+        >
+          {t('table.remove.card.question', { cardRef: removing })}
+        </Question>
+      ) : chosen.length > 0 &&
         (confirming ? (
           <Question
             className="byd-data-bulk"

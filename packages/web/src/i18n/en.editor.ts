@@ -277,6 +277,7 @@ export const enEditor = {
   'table.import.duplicateId': 'Card id {id} appears more than once',
   'table.import.twins': 'The CSV file has both {a} and {b}, and column names may not differ only in capitals',
   'table.import.one': 'One file at a time: an import replaces the whole table. What was dropped was {files}.',
+  'table.import.empty': '{file} is empty. The import needs a row of column names and one card per row.',
   'table.import.wrongType': '{file} is not a data file. The import takes CSV or tab-separated text.',
   'table.images': 'Images in the game',
   'table.images.none': 'none yet — choose an image in the table',
@@ -289,7 +290,7 @@ export const enEditor = {
   'table.search': 'Search every field',
   'table.search.placeholder': 'Search every field…',
   'table.filters': 'Filters',
-  'table.import.box': 'Import',
+  'table.import.box': 'CSV',
   'table.export.box': 'Export',
   'table.filterOn': 'Filter on {field}',
   'table.filterOn.count': 'Filter on {field}, {n} chosen',
@@ -561,6 +562,7 @@ export const enEditor = {
   // says where the icons come from instead. Naming one there is the way back from the column, as
   // choosing a column is the way there — and neither guesses on the designer's behalf (#33).
   'canvas.props.icon.fromField': 'from the column',
+  'canvas.props.icon.none': 'no icon',
   'canvas.props.font': 'Typeface',
   // A layer's family (L57, #634): the game's typefaces first and said to be the game's, a family
   // the game no longer has on its own, and the whole catalog last.

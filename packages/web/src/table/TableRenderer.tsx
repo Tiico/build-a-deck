@@ -1,4 +1,4 @@
-import { Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent, type CSSProperties } from 'react'
+import { Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent, type CSSProperties } from 'react'
 import { BackTexture, Texture } from './Texture.js'
 import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import type { Peer, Pulse, Recent } from './presence.js'
@@ -26,7 +26,8 @@ import { liftBox, type Edges } from './lift.js'
 import { useSmallestPt } from './smallest.js'
 import { Lifted } from './Lifted.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAt, handBand, handCountAt, handRoom, handRotation, type TableMode } from './hand.js'
-import { gapAbove, nameAt, type Grow, type Rim } from './labels.js'
+import { gapAbove, nameAt } from './labels.js'
+import { placeNames } from './freeSide.js'
 import { useT, type Key, type T } from '../i18n/index.js'
 
 // Startbrickans mått och plats i filtens egna millimeter (#451). Den skalar med filten som en
@@ -261,14 +262,12 @@ const TOKEN_FIGURE_EM = 0.62
 const tokenInkPx = (chipPx: number, value: string, named: boolean): number =>
   Math.min(chipPx * (named ? TOKEN_NAMED_INK_TALL : TOKEN_INK_TALL), (chipPx * (named ? TOKEN_NAMED_INK_WIDE : TOKEN_INK_WIDE)) / (Math.max(1, value.length) * TOKEN_FIGURE_EM))
 // The camera: room around what is in play, how close it may come, and how long a zoom holds.
-// The felt's width across the reader's view under which its names no longer fit beside the zones
-// they name (K19, #76). Two seats facing each other across the felt each want about 76 px for a
-// name, and the shared piles and their count badges stand between them; below this the two reaches
-// meet in the middle. It is the same number `table.css` hides the played felt's names at.
+// The felt's width across the reader's view under which its names are set at the felt's tightest
+// (K19, #76): two seats facing each other across the felt each want about 76 px for a name, and the
+// shared piles and their count badges stand between them. It is the same number `table.css` hides
+// the played felt's names at. Where a name stands is the same rule on every felt (#685): beside its
+// zone as K19 says, then a free side (`placeNames`).
 const TIGHT_FELT_PX = 460
-// How far a name above its own zone stands off it, there. One pixel, because the room it is
-// standing in is the room the seat at the next rim has already been given.
-const NAME_RIM_PX = 1
 const CAMERA_PAD_MM = 60
 const GLIDE_MS = 700
 // Vad en piltangent flyttar kameran, i skärmens egna pixlar (#325): samma steg prototypen mättes
@@ -433,8 +432,52 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const lensHandOver = useRef(false)
   const lensOn = lens && mode === 'table' && fixedScale === undefined && fitted !== null && size !== null && size.w > 0 && size.h > 0
   const zoomed = lensOn ? lensAt.k : 1
-  const scale = (fixedScale ?? placed?.scale ?? fitted ?? 1) * zoomed
+  // The felt as it is fitted to its frame, before any camera or lens: the scale the zones' names
+  // choose their sides at (#685).
+  const fit = fixedScale ?? fitted ?? 1
   const measured = fixedScale !== undefined || (size !== null && (!following || placed !== null))
+  // Where the zones' names stand is decided once, at the fitted scale, and then stays put while the
+  // camera or the lens moves (#43, #685): a name is hung from a corner of its own zone, which the
+  // felt scales, and stepped off it in screen pixels, which it does not. `namesAt` is the felt the
+  // names were last laid out for; a felt that differs from it — another table, another window,
+  // another zone lit on the Bord tab, a name that changed its size — is drawn once at its fitted
+  // scale, the names are laid out on it (`placeNames`), and the next drawing, still before
+  // anything is painted, is the camera's again.
+  // A ref and not state: laying the names out is no reason to draw the felt again, and a state set
+  // in a layout effect flushes every passive effect above it early — which moved when the page said
+  // a reconnection out loud. Only a felt drawn at its fitted scale for the decision is drawn again.
+  const namesAt = useRef<string | null>(null)
+  const [, redrawNames] = useState(0)
+  const [namesResized, setNamesResized] = useState(0)
+  const namesKey = measured
+    ? JSON.stringify([namesResized, mode, rotate, Math.round(fit * 1e4), forTheRoom, [...(lit ?? [])].sort(), view.zones.map((z) => [z.id, z.kind, z.name, z.geometry.x, z.geometry.y, z.geometry.w, z.geometry.h]), view.seats.map((s) => s.name)])
+    : null
+  const liveScale = (fixedScale ?? placed?.scale ?? fitted ?? 1) * zoomed
+  const deciding = namesKey !== null && namesAt.current !== namesKey && liveScale !== fit
+  const scale = deciding ? fit : liveScale
+  // What the names were measured by when they were last laid out, so that a name that changes its
+  // size afterwards — a face arriving, a wider one on another machine — is laid out again.
+  const namesWatch = useRef<ResizeObserver | null>(null)
+  useLayoutEffect(() => {
+    const felt = table.current
+    if (!felt || namesKey === null || namesAt.current === namesKey) return
+    placeNames(felt)
+    const spans = [...felt.querySelectorAll<HTMLElement>(':scope > .byd-zone > span')]
+    const measure = () => spans.map((el) => `${el.scrollWidth}x${el.offsetHeight}`).join()
+    const laidOutFor = measure()
+    namesWatch.current?.disconnect()
+    namesWatch.current = null
+    if (typeof ResizeObserver !== 'undefined') {
+      const watch = new ResizeObserver(() => {
+        if (measure() !== laidOutFor) setNamesResized((n) => n + 1)
+      })
+      for (const el of spans) watch.observe(el)
+      namesWatch.current = watch
+    }
+    namesAt.current = namesKey
+    if (deciding) redrawNames((n) => n + 1)
+  }, [namesKey, deciding])
+  useEffect(() => () => namesWatch.current?.disconnect(), [])
   const live = useRef<Live | null>(null)
   const toTable = useRef<((cx: number, cy: number) => Point) | null>(null)
   // Opening the ring is one act however it was asked for, so both ways in pull it inside the
@@ -528,7 +571,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // keeps the floor's shape and is then turned, so a container query on it measures the other
   // side. Under `TIGHT_FELT_PX` the felt is smaller than the names it carries and draws them at
   // its own tightest (K19, #76) — which in practice is the observer on a phone (C8, L12).
-  const feltWidePx = px(rotate % 180 === 0 ? floor.geometry.w : floor.geometry.h)
+  // It is the felt as fitted that is tight, and not the picture a camera has zoomed: a name that
+  // changed its size when the camera moved would change its side with it (#43, #685).
+  const feltWidePx = fit * (rotate % 180 === 0 ? floor.geometry.w : floor.geometry.h)
   const tight = mode === 'tv' && measured && feltWidePx > 0 && feltWidePx < TIGHT_FELT_PX
   const left = (mmX: number) => px(mmX - floor.geometry.x)
   const top = (mmY: number) => px(mmY - floor.geometry.y)
@@ -583,18 +628,6 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     const a = (rotate * Math.PI) / 180
     const onWood = { x: dx * Math.cos(a) - dy * Math.sin(a), y: dx * Math.sin(a) + dy * Math.cos(a) }
     return Math.max(px(TOKEN_MM), leaningSquare(leaning, onWood, TOUCH_PX))
-  }
-  // K19 on a felt too small to hold its own names beside the zones they name (#76). At the side
-  // rims a name stands above its zone instead, anchored at the end nearest the rim and growing
-  // inward, so that it keeps to its own half of the felt rather than reaching across it — where
-  // the shared piles and their count badges stand, and the opposite seat's name comes the other
-  // way. It is said through the same two variables the stylesheet's rim rules use, because the
-  // only thing the sheet cannot work out for itself is how large the zone came out in pixels.
-  const overRim = (z: ZoneView, rim: Rim, grow: Grow): Record<string, string> => {
-    if (!tight || (rim !== 'E' && rim !== 'W')) return {}
-    const turnedZone = rotate % 180 === 0 ? { w: z.geometry.w, h: z.geometry.h } : { w: z.geometry.h, h: z.geometry.w }
-    const side = rim === 'E' ? `${px(turnedZone.w)}px - 100% - var(--name-in)` : `var(--name-in) - ${px(turnedZone.w)}px`
-    return { '--name-side': `calc(${side})`, '--name-end': `calc(-100% - ${NAME_RIM_PX}px${grow === 'back' ? ` - ${px(turnedZone.h)}px` : ''})` }
   }
   const seatIndex = (id: string | undefined) => Math.max(0, view.seats.findIndex((s) => s.id === id))
   const ownedBySeat = (zone: string) => view.zones.find((z) => z.id === zone)?.owner !== undefined
@@ -1280,7 +1313,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 {...(crowded ? { 'data-mid': '' } : {})}
                 style={{ left: left(z.geometry.x), top: top(z.geometry.y), width: px(z.geometry.w), height: px(z.geometry.h), ['--name-x' as string]: `${anchor.x}%`, ['--name-y' as string]: `${anchor.y}%` }}
               >
-                {!(forTheRoom && z.owner !== undefined) && <span style={overRim(z, rim, grow)}>{z.name}</span>}
+                {!(forTheRoom && z.owner !== undefined) && <span>{z.name}</span>}
                 {/* How much lies in an area this screen may not look into (#414, decision B of
                     2026-09-22). `count` is already on the wire and was being thrown away, so a
                     seat with three cards in front of it drew the same empty box as a seat with
