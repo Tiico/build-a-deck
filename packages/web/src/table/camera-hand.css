@@ -48,3 +48,10 @@
 .byd-camera-controls button { position: relative; }
 .byd-camera-controls button::before { content: ''; position: absolute; inset: -3px; }
 .byd-camera-controls .byd-camera-fold::before { inset: -3px -6px; }
+/* On the room's television the corner is read from the sofa (#684, K26): every word at 24 px and
+   every button drawn at 56, the size «Starta om» and the «?» beside it are drawn at there. */
+[data-tv][data-room] .byd-camera-controls { gap: 12px; padding: 8px; font-size: 24px; }
+[data-tv][data-room] .byd-camera-controls button { min-width: 56px; min-height: 56px; padding: 0 16px; }
+[data-tv][data-room] .byd-camera-controls .byd-camera-level { min-width: 72px; font-size: 24px; }
+[data-tv][data-room] .byd-camera-controls .byd-camera-whole, [data-tv][data-room] .byd-camera-controls .byd-camera-fold { font-size: 24px; }
+[data-tv][data-room] .byd-camera-controls .byd-camera-fold { min-width: 56px; }
