@@ -1,0 +1,74 @@
+# BENCH ONLY (#533): reproduce Chromium's «Unable to capture screenshot» on the runner CI uses.
+# Lives on a throwaway branch and a draft PR; never merged.
+name: bench-533
+
+on:
+  pull_request:
+    branches: [main]
+    paths: [".github/workflows/bench-533.yml", "packages/render/src/probe533.ts"]
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        kind: [fits, fits, fits, web, web, server, server, render]
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: byd
+          POSTGRES_USER: byd
+          POSTGRES_PASSWORD: byd
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U byd -d byd"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://byd:byd@127.0.0.1:5432/byd
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.24.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+        working-directory: packages/render
+      - name: fits, alone, many times
+        if: matrix.kind == 'fits'
+        working-directory: packages/web
+        run: FITS_REPEATS=150 pnpm exec vitest run test/data-table-layout.test.tsx -t "a table that fits" > /tmp/bench.log 2>&1 || true
+      - name: whole web suite
+        if: matrix.kind == 'web'
+        working-directory: packages/web
+        run: for i in 1 2; do pnpm exec vitest run >> /tmp/bench.log 2>&1 || true; done
+      - name: whole server suite
+        if: matrix.kind == 'server'
+        working-directory: packages/server
+        run: for i in $(seq 1 10); do pnpm exec vitest run >> /tmp/bench.log 2>&1 || true; done
+      - name: renderer stress beside busy loops
+        if: matrix.kind == 'render'
+        working-directory: packages/render
+        run: |
+          for i in 1 2; do timeout 560 node -e 'const e=Date.now()+540000;while(Date.now()<e){}' & done
+          for i in 1 2 3 4 5 6; do timeout 600 pnpm exec tsx scripts/stress533.ts 540 p$i >> /tmp/bench.log 2>&1 & done
+          wait || true
+      - name: what was seen
+        if: always()
+        run: |
+          echo "refusals: $(grep -c 'Unable to capture screenshot' /tmp/bench.log || true)"
+          grep '\[probe533\]' /tmp/bench.log || echo "no probe lines"
+          grep -E 'Tests +[0-9]|"tag"' /tmp/bench.log || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-${{ strategy.job-index }}
+          path: /tmp/bench.log

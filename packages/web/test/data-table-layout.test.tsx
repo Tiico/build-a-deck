@@ -87,6 +87,7 @@ async function markup(open: boolean, marked = false, removing = false): Promise<
   return { html, deck: deckValues(projectDoc(), sv) }
 }
 
+import { probedShot } from '../../render/src/probe533.js'
 let browser: Browser
 beforeAll(async () => {
   browser = await chromium.launch()
@@ -425,9 +426,9 @@ async function pinned({ html, deck }: Table, extra = ''): Promise<Record<Place, 
       const { clip, headClip, bodyClip, ...rest } = facts
       out[where] = {
         ...rest,
-        strip: await page.screenshot({ clip }),
-        headStrip: await page.screenshot({ clip: headClip }),
-        bodyStrip: await page.screenshot({ clip: bodyClip }),
+        strip: await probedShot(page, 'dtl-strip', { clip }),
+        headStrip: await probedShot(page, 'dtl-head', { clip: headClip }),
+        bodyStrip: await probedShot(page, 'dtl-body', { clip: bodyClip }),
       }
     }
     return out
@@ -577,7 +578,7 @@ describe('what says a value is still going under the pinned × (#53)', () => {
     expect(shown.mid.bodyStrip.equals(off.mid.bodyStrip)).toBe(false)
   }, 60_000)
 
-  it('says nothing about a table that fits: with four fields the ground in front of the pin is the bare ground', async () => {
+  it('says nothing about a table that fits: with four fields the ground in front of the pin is the bare ground', { repeats: Number(process.env.FITS_REPEATS ?? 0) }, async () => {
     const [shown, off] = await Promise.all([pinned(await markupOf(projectDoc())), pinned(await markupOf(projectDoc()), FORCED.off)])
 
     expect(WHERE.map((w) => shown[w]!.strip.equals(off[w]!.strip))).toEqual([true, true, true])
