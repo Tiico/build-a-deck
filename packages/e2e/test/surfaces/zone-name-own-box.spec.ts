@@ -30,7 +30,8 @@ type Seen = { names: string[]; inZone: string[] }
 // halv pixel tas av för rundningen av en ruta, så att två rutor som bara möts inte räknas.
 const read = (page: Page): Promise<Seen> =>
   page.evaluate(() => {
-    const felt = document.querySelector('[data-table]')
+    // The Bord tab's own felt where there is one: the tab also draws the tables' small felts.
+    const felt = document.querySelector('.byd-setup-felt [data-table]') ?? document.querySelector('[data-table]')
     if (!felt) throw new Error('ingen filt att mäta på')
     const zones = [...felt.querySelectorAll<HTMLElement>(':scope > .byd-zone')]
     const shown = (el: HTMLElement): DOMRect | null => {
@@ -172,6 +173,8 @@ test.describe('ett zonnamn står aldrig i en annan zons ruta (#685)', () => {
     // Icke-vakuitet: kameran kom verkligen närmare, mer än dubbelt så nära.
     expect(after.card / before.card).toBeGreaterThan(2)
     expect(Object.keys(before.sides)).toContain("Sal's Saloon")
+    // Och det är ett namn regeln har flyttat: K19:s egen plats för saloonens namn är i Framför B.
+    await expect(page.locator('[data-table] > .byd-zone[data-area="market"] > span')).not.toHaveAttribute('data-name-at', 'k19')
     expect(after.sides).toEqual(before.sides)
   })
 })
@@ -210,7 +213,8 @@ test.describe('Bord-flikens namn står aldrig i en annan zons ruta (#685, #581)'
           await page.locator(`.byd-setup-felt [data-zone-handle="${area}"]`).hover({ force: true })
           await expect(page.locator(`.byd-setup-felt [data-area="${area}"]`)).toHaveAttribute('data-lit', '')
           const at = await settled(page)
-          expect(at.names).toHaveLength(1)
+          const lit = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>('.byd-setup-felt [data-lit]')].map((z) => z.dataset['area'] ?? z.dataset['zone'] ?? '?'))
+          expect({ area, lit, names: at.names.length }).toEqual({ area, lit, names: 1 })
           inZone.push(...at.inZone)
         }
         expect({ width, seats, inZone }).toEqual({ width, seats, inZone: [] })
