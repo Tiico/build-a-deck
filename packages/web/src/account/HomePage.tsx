@@ -363,7 +363,14 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
         <ImportDialog
           http={http}
           onClose={() => setImporting(false)}
-          onImported={async () => setProjects(await myProjects(http))}
+          // The cards with the list (#725): read alone, the list put the new game's card place up and
+          // nothing ever came to fill it, so it shimmered until the page was reloaded.
+          onImported={async () => {
+            const [projects, cards] = await Promise.all([myProjects(http), myCards(http)])
+            setProjects(projects)
+            setCards(cards)
+            setCardsLost(false)
+          }}
           nameOf={(id) => listed.current?.find((p) => p.id === id)?.name}
           onOpen={(id) => onNavigate(`/editor?${suffix(new URLSearchParams({ project: id }))}`)}
         />

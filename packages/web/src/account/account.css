@@ -6,6 +6,9 @@
      contrast test can name. */
   --byd-account-bg: #0f1117;
   --byd-account-card-bg: #171a23;
+  /* A game tile under the pointer (#725): its ground and its edge a step lighter. */
+  --byd-account-card-bg-hover: #1d212b;
+  --byd-account-card-edge-hover: #3a4152;
   /* The darker well a field or a picker is sunk into, which is the seat picker's own ground. */
   --byd-account-field-bg: #14161c;
   min-height: 100vh; display: grid; place-items: center; padding: 40px 20px; box-sizing: border-box; background: var(--byd-account-bg); color: #e6e6e6; font-family: system-ui, sans-serif;
@@ -56,6 +59,9 @@
 /* The place drawing itself while the second answer is in the air. `a11y.css` cuts every animation
    to 0.01 ms under `prefers-reduced-motion`, and this one carries no meaning and has no `forwards`
    to land on, so it simply stands still on its first frame — no rule of its own needed. */
+/* The edge is inside the reserved height, as a drawn card has none outside it: the waiting place
+   stood 2 px taller and moved the name under it (#725). */
+.byd-home-card[data-waiting], .byd-home-card[data-lost] { box-sizing: border-box; }
 .byd-home-card[data-waiting] { border: 1px solid #262a35; border-radius: 6px; background: linear-gradient(100deg, #1b1f2a 30%, #232836 50%, #1b1f2a 70%) 0 0 / 300% 100%; animation: byd-home-drawing 1.5s linear infinite; }
 .byd-home-card[data-lost] { border: 1px solid #262a35; border-radius: 6px; background: #1b1f2a; }
 .byd-home-card[data-empty] { display: grid; place-items: center; box-sizing: border-box; padding: 6px; border: 1px dashed #2c3242; border-radius: 6px; color: #9aa3b8; font-size: 11px; text-align: center; line-height: 1.35; }
@@ -80,6 +86,14 @@
 /* A game's own actions on the home page (G1): the card opens the editor, the menu does the rest. */
 .byd-home-game { position: relative; padding: 0; }
 .byd-home-open { display: grid; gap: 8px; padding: 16px; color: #fff; text-decoration: none; }
+/* What is in a tile stands from the top: a row made tall by a neighbour's long name stretched these
+   rows instead, and the card and the name drifted apart by the difference (#725). */
+.byd-home-game, .byd-home-open { align-content: start; }
+/* The tile answers the pointer before it is pressed, as a card on the deck wall does (L28, #725):
+   its edge and its ground lift a step. Only where there is a pointer to answer. */
+@media (hover: hover) {
+  .byd-home-game:has(.byd-home-open:hover), .byd-home-game[data-new]:hover { border-color: var(--byd-account-card-edge-hover); background: var(--byd-account-card-bg-hover); }
+}
 /* A game's own menu sits in the corner of its card and is reached with a thumb like everything
    else (UX-KONTROLLER: träffytor); the dots stay the same size, the button around them grows. */
 .byd-home-more { position: absolute; right: 4px; top: 4px; display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; border: 0; border-radius: 8px; padding: 0 8px; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
