@@ -34,6 +34,7 @@ import { useMarked } from './marked.js'
 import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
 import { Question } from './Question.js'
 import { useT, type T } from '../i18n/index.js'
+import { saidOr } from '../i18n/said.js'
 import { useGesture } from './gesture.js'
 import { lineKey } from './lineKeys.js'
 import { useSay } from '../status/StatusLive.js'
@@ -583,7 +584,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       onCell(cardRef, field, assetRef(await onUpload(one.file)))
       setUploadError(null)
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : String(err))
+      setUploadError(saidOr(err, t('picture.upload.failed')))
     }
   }
   // The same upload, for the action row rather than for a cell: the file becomes one asset and the
@@ -599,7 +600,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       setBulkImage(await onUpload(one.file))
       setUploadError(null)
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : String(err))
+      setUploadError(saidOr(err, t('picture.upload.failed')))
     }
   }
   // What is being typed in an `antal` cell that is not (yet) a count (#479), by card.
@@ -1175,7 +1176,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
         if (doc.rows.some((r) => !now.has(r.id))) setReplacing({ rows, file: file.name })
         else land(rows)
       } catch (err) {
-        setImportError(err instanceof Error ? err.message : String(err))
+        setImportError(saidOr(err, t('table.import.failed')))
       }
     }
     reader.readAsText(file)

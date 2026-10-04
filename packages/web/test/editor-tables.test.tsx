@@ -71,9 +71,10 @@ describe('when the tables cannot be listed', () => {
     // The list is the server's; a server that cannot answer must not leave the tab pretending
     // to be busy, because nothing will ever arrive to end it.
     const { TablesTab } = await import('../src/editor/TablesTab.js')
-    const client = { rev: 1, doc: projectDoc(), tables: () => Promise.reject(new Error('kunde inte hämta borden')), startTable: () => Promise.reject(new Error('nej')) }
+    const client = { rev: 1, doc: projectDoc(), tables: () => Promise.reject(new Error('could not list the tables: 500')), startTable: () => Promise.reject(new Error('nej')) }
     render(<TablesTab client={client as unknown as Parameters<typeof TablesTab>[0]['client']} server={run.http} />)
-    expect((await screen.findByRole('alert')).textContent).toBe('kunde inte hämta borden')
+    // In a sentence of the tab's own, never in the server's words (#812).
+    expect((await screen.findByRole('alert')).textContent).toBe('Borden kunde inte läsas. Försök igen om en stund.')
     expect(screen.queryByText(/laddar bord/i)).toBeNull()
   })
 })
@@ -474,7 +475,7 @@ describe('the wait, the second press and the failure of «Starta nytt bord» (#2
       tables: () => Promise.resolve(done ? [one] : []),
       startTable: () => {
         attempts += 1
-        if (attempts === 1) return Promise.reject(new Error('servern svarade inte'))
+        if (attempts === 1) return Promise.reject(new Error('could not start a table: 500'))
         done = true
         return Promise.resolve(one)
       },
@@ -484,7 +485,9 @@ describe('the wait, the second press and the failure of «Starta nytt bord» (#2
     await user.click(await screen.findByRole('button', { name: 'Starta nytt bord' }))
 
     const alert = await screen.findByRole('alert')
-    expect(alert.textContent).toContain('Bordet kunde inte startas: servern svarade inte. Spelet och dess bord är orörda.')
+    // The server's own words are the developer's; the strip says it in a sentence of its own (#812).
+    expect(alert.textContent).toContain('Bordet kunde inte startas. Spelet och dess bord är orörda.')
+    expect(alert.textContent).not.toMatch(/could not|500/)
     const retry = within(alert).getByRole('button', { name: 'Försök igen' })
     await waitFor(() => expect(document.activeElement).toBe(retry))
     expect(document.querySelectorAll('.byd-table-row')).toHaveLength(0)

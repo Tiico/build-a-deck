@@ -25,6 +25,7 @@ import type { ProjectClient } from './ProjectClient.js'
 import { useT, type T } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
 import type { Key } from '../i18n/sv.js'
+import { saidOr } from '../i18n/said.js'
 import { useGesture } from './gesture.js'
 import { useWordSteps } from './word-steps.js'
 import { ASSET_PREFIX, RULE_IMAGE_MAX_BYTES, assetUrl, imageSizeOf, imageTypeOf } from './assets.js'
@@ -687,11 +688,10 @@ const fileOf = (address: string): string => {
 // `conflict` is the protocol's word for that and nobody can act on it, so what goes on the screen
 // is the state she is actually in — the book is in front of her and it is not on the server —
 // together with the one way out of it, which is the editor's own answer to every collision:
-// reload, and do it again. Nothing is lost by that; the file is still on her disk.
-const whyNotSaved = (err: unknown, t: T): string => {
-  const why = err instanceof Error ? err.message : String(err)
-  return why === 'conflict' ? t('rules.import.conflict') : t('rules.import.failed', { why })
-}
+// reload, and do it again. Nothing is lost by that; the file is still on her disk. The client says
+// that sentence itself, since it is the one that knows the save collided; anything nobody put in
+// words is said as the import not being saved (#812).
+const whyNotSaved = (err: unknown, t: T): string => saidOr(err, t('rules.import.failed'))
 
 // What the import does with the file, read before the book is made and never after it (#131).
 // The rule behind the map is that nothing disappears silently, and this is where it is said: what
@@ -968,7 +968,7 @@ function Booklet({ client, book, game }: { client: ProjectClient; book: RuleDoc;
       }
       setPlaced({ of, is: { error: t('rules.booklet.failed') } })
     } catch (err) {
-      setPlaced({ of, is: { error: err instanceof Error ? err.message : String(err) } })
+      setPlaced({ of, is: { error: saidOr(err, t('rules.booklet.orderFailed')) } })
     }
   }
   // The button the designer pressed turns into the link she came for, so the focus goes with it

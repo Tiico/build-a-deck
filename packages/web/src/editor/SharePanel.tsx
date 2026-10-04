@@ -3,6 +3,7 @@ import { canShare, ROLES, roleWord, type Role } from '@byd/server/doc'
 import { inviteToProject, projectMembers, unshareProject, waitingInvites, withdrawInvite, type Member, type WaitingInvite } from '../account/api.js'
 import type { Presence } from '@byd/server'
 import { useLang, useT } from '../i18n/index.js'
+import { saidOr } from '../i18n/said.js'
 import { Help } from './HelpDrawer.js'
 import { Question } from './Question.js'
 
@@ -63,7 +64,9 @@ export function SharePanel({ http, project, here, onClose, draft = '', onDraft, 
     let live = true
     projectMembers(http, project, t).then(
       (m) => live && setMembers(m),
-      (err: unknown) => live && setError(err instanceof Error ? err.message : String(err)),
+      // Said in a sentence for what was tried, never in the network's or the server's own words
+      // (#812, A4); a reason the client knew is said as it said it.
+      (err: unknown) => live && setError(saidOr(err, t('error.members.failed'))),
     )
     return () => {
       live = false
@@ -89,7 +92,7 @@ export function SharePanel({ http, project, here, onClose, draft = '', onDraft, 
       setWaited((n) => n + 1)
     } catch (err) {
       setSent(null)
-      setError(err instanceof Error ? err.message : String(err))
+      setError(saidOr(err, t('error.invite.failed')))
     }
   }
   const withdraw = async (who: string) => {
@@ -101,7 +104,7 @@ export function SharePanel({ http, project, here, onClose, draft = '', onDraft, 
       // The row and its button are gone; the keyboard goes back to the line it was opened from.
       ;(waitingRef.current ?? field.current)?.focus()
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(saidOr(err, t('error.withdraw.failed', { email: who })))
     }
   }
   const drop = async (who: string) => {
@@ -112,7 +115,7 @@ export function SharePanel({ http, project, here, onClose, draft = '', onDraft, 
       // The row and its button are gone; the keyboard goes on to the address field.
       field.current?.focus()
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(saidOr(err, t('error.unshare.failed', { email: who })))
     }
   }
   return (

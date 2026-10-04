@@ -288,3 +288,19 @@ describe('the share panel follows the role (D3, #689)', () => {
     expect(panel.textContent).not.toContain('Bara ägaren')
   })
 })
+
+// What a server that cannot be reached says is the network's English, and the panel says it in a
+// whole sentence of its own instead, one for each thing that was tried (#812, A4).
+describe('the share panel says its failures in the reader’s language (#812)', () => {
+  it('says the list and the invitation did not work, without the network’s own words', async () => {
+    const { SharePanel } = await import('../src/editor/SharePanel.js')
+    render(<SharePanel http="http://127.0.0.1:1" project="nowhere" here={[]} onClose={() => undefined} />)
+    const panel = await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
+    await waitFor(() => expect(within(panel).getByRole('alert').textContent).toBe('Listan över vilka som har spelet kunde inte läsas. Försök igen om en stund.'))
+
+    fireEvent.change(within(panel).getByLabelText('Adress att bjuda in'), { target: { value: 'bo@example.com' } })
+    fireEvent.click(within(panel).getByRole('button', { name: 'Bjud in' }))
+    await waitFor(() => expect(within(panel).getByRole('alert').textContent).toBe('Inbjudan kunde inte skickas. Försök igen om en stund.'))
+    expect(panel.textContent).not.toMatch(/fetch|failed|ECONNREFUSED/i)
+  })
+})

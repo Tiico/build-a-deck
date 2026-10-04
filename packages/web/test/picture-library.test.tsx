@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { PictureLibraryDialog, type LibraryPicture } from '../src/editor/PictureLibrary.js'
+import { Said } from '../src/i18n/said.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -171,9 +172,19 @@ describe('uploading from the library window (#320)', () => {
 
   it('says why when the upload is refused, and holds nothing', async () => {
     const user = userEvent.setup()
-    open({ onUpload: vi.fn(async () => { throw new Error('Filen är för stor.') }) })
+    open({ onUpload: vi.fn(async () => { throw new Said('Filen är för stor.') }) })
     await user.upload(within(dialog()).getByLabelText('Ladda upp'), new File(['x'], 'stor.png', { type: 'image/png' }))
     expect(within(dialog()).getByRole('status').textContent).toContain('Filen är för stor.')
     expect(apply().disabled).toBe(true)
+  })
+
+  // What nobody put in words — the network, the service's status — is English for the developer
+  // (#812, A4): the library says the upload failed in a sentence of its own instead.
+  it('says a refusal nobody put in words as a sentence of its own', async () => {
+    const user = userEvent.setup()
+    open({ onUpload: vi.fn(async () => { throw new TypeError('Failed to fetch') }) })
+    await user.upload(within(dialog()).getByLabelText('Ladda upp'), new File(['x'], 'skog.png', { type: 'image/png' }))
+    expect(within(dialog()).getByRole('status').textContent).toContain('Bilden kunde inte laddas upp. Försök igen.')
+    expect(dialog().textContent).not.toContain('Failed to fetch')
   })
 })
