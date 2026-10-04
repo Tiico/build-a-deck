@@ -5304,7 +5304,7 @@ Kolumnen är borta, så en textkolumn mäts efter sitt innehåll och inget annat
 Två alternativ prototypades och avvisades: knappen i tabellens krona, som står långt från markören och bryter ordningen fält → knapp, och en ram som går 44 px ut åt höger, som täcker texten bredvid den man skriver i.
 Tabbordningen ovan står kvar: knappen nås framåt från fältet.
 
-*Tillagt 2026-10-04 (#693, beställarens beslut A efter [prototypen](https://github.com/Tiico/build-a-deck/blob/04a113e31e53634d00b85058061d01295a52f291/docs/ux-audits/2026-10-04-ikonfliken/prototyper/693/index.html), som också ligger i `docs/ux-audits/2026-10-04-ikonfliken/prototyper/693/`):* när raden ovanför cellen är tabellens huvud hänger fliken under fältets högra hörn i stället, över raden under.
+*Tillagt 2026-10-04 (#693, beställarens beslut A efter [prototypen](https://github.com/Tiico/build-a-deck/blob/efc45c7ad641c77e737048b61fd2d6b62dbd94db/docs/ux-audits/2026-10-04-ikonfliken/prototyper/693/index.html), som också ligger i `docs/ux-audits/2026-10-04-ikonfliken/prototyper/693/`):* när raden ovanför cellen är tabellens huvud hänger fliken under fältets högra hörn i stället, över raden under.
 Över huvudet låg den på kolumnens filterhandtag ▾ i en kolumn så smal som `typ`, och någon placering som höll både fliken över huvudet och handtaget nåbart fanns inte utan att huvudet eller fliken ändrade form.
 Det är samma hörn och samma ram, speglad i höjd och i inget annat, så ögat hittar fliken vid samma kant som i övriga rader.
 Vilken rad det gäller mäts och räknas inte: radens överkant minus flikens höjd ovanför huvudets nederkant.
