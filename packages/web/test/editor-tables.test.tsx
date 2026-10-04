@@ -314,8 +314,12 @@ describe('ending a table from the editor (#19, C9)', () => {
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     await user.click(screen.getByRole('button', { name: 'Starta bord' }))
-    await run.completeRenders()
-    await screen.findByRole('link', { name: /öppna bordet/i })
+    // The renders the start queues are finished until the link stands, not once: a start that had
+    // not reached the server yet left nothing to finish, and the link never came (a flake under load).
+    await waitFor(async () => {
+      await run.completeRenders()
+      expect(screen.getByRole('link', { name: /öppna bordet/i })).toBeTruthy()
+    })
 
     let answer = 500
     const real = globalThis.fetch
