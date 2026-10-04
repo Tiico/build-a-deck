@@ -1135,8 +1135,8 @@ export class ProjectClient {
   private async mustBeTakeable(file: Blob, kind: AssetKind, t: T): Promise<void> {
     const head = new Uint8Array(await file.slice(0, ASSET_HEAD_BYTES).arrayBuffer())
     const refused = assetRefusal(file.size, head, kind)
-    if (refused === 'tooBig') throw new Error(t('upload.tooBig'))
-    if (refused === 'notThisKind') throw new Error(t('upload.notThisKind', { formats: assetFormatsNamed(kind, t('upload.or')) }))
+    if (refused === 'tooBig') throw new Said(t('upload.tooBig'))
+    if (refused === 'notThisKind') throw new Said(t('upload.notThisKind', { formats: assetFormatsNamed(kind, t('upload.or')) }))
   }
 
   // What is drawn inside each of the deck's pictures (E1): the file's own size and the uniform

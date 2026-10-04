@@ -6,6 +6,7 @@ import { LIBRARY } from '../src/editor/symbols.js'
 import { startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 import { assetTypeDeclaring } from '@byd/protocol'
+import { Said } from '../src/i18n/said.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
@@ -1545,6 +1546,8 @@ describe('a file the gate would refuse never leaves the browser (#742)', () => {
     try {
       await expect(client.addPicture(file())).rejects.toThrow(said)
       await expect(client.uploadAsset(file(), 'image')).rejects.toThrow(said)
+      // Said in the reader's words, so a surface shows the reason rather than its own «failed» (#812).
+      await expect(client.addPicture(file())).rejects.toBeInstanceOf(Said)
     } finally {
       line.hangUp()
     }
