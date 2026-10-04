@@ -29,7 +29,7 @@ for (const locale of ['sv-SE', 'en-GB']) {
           const cut = (el: Element | null) => (el instanceof HTMLElement && el.scrollWidth > el.clientWidth ? `${el.clientWidth}/${el.scrollWidth}` : null)
           const buttons = [...header.querySelectorAll(':scope > button, :scope > .byd-editor-split > button')]
           const out: Record<string, string> = {}
-          const name = cut(header.querySelector(':scope > strong'))
+          const name = cut(header.querySelector(':scope > .byd-editor-name'))
           if (name) out['name'] = name
           for (const b of buttons) {
             const c = cut(b)
@@ -67,7 +67,7 @@ const tabsAt = (page: Page) =>
 const headerCut = (page: Page) =>
   page.evaluate(() => {
     const header = document.querySelector('.byd-editor > header')!
-    const cut = [...header.querySelectorAll<HTMLElement>(':scope > strong, :scope :is(button, a)')]
+    const cut = [...header.querySelectorAll<HTMLElement>(':scope > .byd-editor-name, :scope :is(button, a)')]
       .filter((el) => el.getClientRects().length > 0 && el.scrollWidth > el.clientWidth + 1)
       .map((el) => (el.getAttribute('aria-label') ?? el.textContent ?? '').trim())
     if (document.documentElement.scrollWidth > document.documentElement.clientWidth) cut.push('page')
@@ -157,6 +157,70 @@ for (const locale of ['sv-SE', 'en-GB']) {
         expect(Math.max(...even) - Math.min(...even)).toBeLessThanOrEqual(1)
         // Either the tabs are at their ceiling, or nothing is left over beside them.
         if (fewest < 11.5) expect(rest).toBeLessThan(1)
+      })
+    })
+  }
+}
+
+// The game's name is the one thing in the header that can be any length, so it is the one thing
+// that gives way (#824). With a long one at the desk's widths the name was cut, as it should be,
+// but the buttons at the end of the row gave way with it: «Starta bordet» was cut to «Starta» and
+// its box lay over «Spara».
+//
+// Measured as geometry and not as pixels of a font, so it holds with SF Pro and with DejaVu: no
+// control is narrower than what it says, no two things in the row lie over each other, and the
+// name really is cut — or the row was never squeezed and the test says nothing.
+const LONG = 'Skogens herrar och de långa namnens förbannelse över hela raden'
+
+const squeeze = (page: Page) =>
+  page.evaluate(() => {
+    const header = document.querySelector('.byd-editor > header')!
+    const shown = (el: Element) => el.getClientRects().length > 0 && el.getBoundingClientRect().width > 0
+    const said = (el: Element) => (el.getAttribute('aria-label') ?? el.textContent ?? '').trim() || el.className
+    const cut = [...header.querySelectorAll<HTMLElement>(':scope :is(button, a)')]
+      .filter((el) => shown(el) && el.scrollWidth > el.clientWidth + 1)
+      .map(said)
+    // The row's own pieces, with the split button's two halves as two pieces of it.
+    const pieces = [...header.children].flatMap((el) => (el.classList.contains('byd-editor-split') ? [...el.children] : [el])).filter(shown)
+    const over: string[] = []
+    for (let i = 0; i < pieces.length; i++) {
+      for (let j = i + 1; j < pieces.length; j++) {
+        const a = pieces[i]!.getBoundingClientRect()
+        const b = pieces[j]!.getBoundingClientRect()
+        const across = Math.min(a.right, b.right) - Math.max(a.left, b.left)
+        const down = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)
+        if (across > 0.5 && down > 0.5) over.push(`${said(pieces[i]!)} × ${said(pieces[j]!)}`)
+      }
+    }
+    const name = header.querySelector<HTMLElement>(':scope > .byd-editor-name')!
+    return {
+      cut,
+      over,
+      nameCut: name.scrollWidth > name.clientWidth + 1,
+      across: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    }
+  })
+
+for (const locale of ['sv-SE', 'en-GB']) {
+  for (const width of [1024, 1280, 1440]) {
+    test.describe(`a long game name at ${width} in ${locale}`, () => {
+      test.use({ viewport: { width, height: 800 }, locale })
+
+      test('is cut by itself, and every button keeps its whole word', async ({ page }) => {
+        await logIn(page.request)
+        const project = await makeProject(page.request, { name: LONG, players: 4, cards: 8 })
+        const primary = page.locator('.byd-editor > header .byd-editor-primary:not(.byd-editor-caret)')
+
+        // Without a table the primary says «Starta bordet», the case #824 was found in.
+        await page.goto(`${project.editorUrl}&lang=${locale.slice(0, 2)}`)
+        await expect(primary).toHaveAttribute('data-table-kind', 'none')
+        expect(await squeeze(page)).toEqual({ cut: [], over: [], nameCut: true, across: 0 })
+
+        // And with one running, when it says «Uppdatera bordet» and the caret stands beside it.
+        await startTable(page.request, project.id)
+        await page.reload()
+        await expect(primary).toHaveAttribute('data-table-kind', 'running')
+        expect(await squeeze(page)).toEqual({ cut: [], over: [], nameCut: true, across: 0 })
       })
     })
   }

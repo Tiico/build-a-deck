@@ -428,8 +428,11 @@
    panel and are no action (L13), so the box is not theirs: drawn on every header button at (0,1,2)
    it beat their own (0,1,0) rules in every state and gave them an edge, a fill and a bold white
    word (#791). `:where()` names the roles without weighing anything, so a role at (0,2,0) still
-   draws the line and the fill over this. */
-.byd-editor > header > button:where(.byd-primary, .byd-secondary) { min-height: var(--byd-tap); min-width: var(--byd-tap); border: 1px solid #2f333d; border-radius: 8px; padding: 0 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
+   draws the line and the fill over this.
+   Neither action gives way to the row (#824): the target's minimum width took the place of the
+   word's own as the floor, so a long game name squeezed «Starta bordet» to «Starta» over «Spara».
+   The name is the one thing that gives way, and these are laid out whole beside it. */
+.byd-editor > header > button:where(.byd-primary, .byd-secondary) { flex: none; min-height: var(--byd-tap); min-width: var(--byd-tap); border: 1px solid #2f333d; border-radius: 8px; padding: 0 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 /* A control that cannot be pressed goes quiet — but the quiet is for a button drawn on the
    header's own ground, and a first action is not drawn on it: it is filled. Laid over that fill
    the grey measures 1.20:1, so an update that says «Uppdaterar bordet…» would say it in a word
@@ -3012,7 +3015,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
    it opens the newest table wherever the designer is standing. */
 /* The caret is the other half of "Uppdatera bordet", so it sits against it: the header's own
    12 px gap is taken back, leaving the 1 px seam a split button has. */
-.byd-editor-split { position: relative; display: inline-flex; margin-left: -12px; }
+.byd-editor-split { position: relative; display: inline-flex; flex: none; margin-left: -12px; }
 .byd-editor > header > .byd-editor-primary:has(+ .byd-editor-split) { border-radius: 8px 0 0 8px; }
 .byd-editor-split > .byd-editor-caret { border-radius: 0 8px 8px 0; margin-left: 0; padding: 8px 12px; font: inherit; cursor: pointer; }
 @media (min-width: 1024px) and (max-width: 1279px) {
