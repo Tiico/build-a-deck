@@ -402,48 +402,76 @@ const dynamicEdges = (file: string): string[] =>
         .filter((p): p is string => p !== null)
 
 const modules = filesUnder(SRC).filter((f) => /\.(tsx?|css)$/.test(f))
-// Every module anywhere under `src` that something reaches with `import()`. These are the cuts:
-// what lies beyond one is not on the first frame, whoever else happens to point at it.
-const deferred = new Set(modules.flatMap(dynamicEdges))
 
-// What the first painting carries: the entry, and everything a plain `import` chain reaches from
-// it, stopping dead at every cut. Not the bundler's answer read back — the bundler would happily
-// walk straight through a cut that somebody had punctured with a second, static import, and that
-// puncture is exactly the regression this is here to name.
-const firstFrame = ((): Set<string> => {
-  const seen = new Set<string>()
-  const walk = (file: string): void => {
-    if (seen.has(file)) return
-    seen.add(file)
-    for (const next of staticEdges(file)) if (!deferred.has(next)) walk(next)
-  }
-  walk(join(SRC, 'main.tsx'))
-  return seen
-})()
-
-// The route table in `App.tsx`, as a pair of sets: the paths it answers, and the module each one
-// is drawn from. Read rather than described, so that emptying `App.tsx` empties this too instead
-// of quietly passing.
-const routeTable = (): { path: string; component: string; module: string | null; lazy: boolean }[] => {
+// The route table in `App.tsx`: the paths it answers, the module each one is drawn from, and how
+// that module reaches the screen. Read rather than described, so that emptying `App.tsx` empties
+// this too instead of quietly passing.
+//
+// There are three ways since #760. A route `fetchPage` answers with `import(…)` is *fetched*: its
+// script travels in a chunk of its own, but what it draws first is on the first frame all the
+// same, so its sheets ride on the entry (`first-frame-sheets.ts`). A route answered with
+// `Promise.resolve(…)` is drawn by the entry itself. And the editor's wrapper waits behind a
+// `lazy()` with a page of its own — the one route whose sheet is fetched with it (#186).
+type Route = { path: string; component: string; module: string | null; how: 'fetched' | 'entry' | 'lazy' }
+const routeTable = (): Route[] => {
   const app = join(SRC, 'App.tsx')
   const text = sourceOf(app)
-  const importedFrom = (name: string): { module: string | null; lazy: boolean } | null => {
+  const fetched = [...text.matchAll(/path(?:\.startsWith\()?\s*===?\s*'([^']+)'\)?\)\s*return\s+import\('([^']+)'\)\.then\(\(m\)\s*=>\s*m\.([A-Z][A-Za-z0-9]*)\)/g)].map(
+    (m): Route => ({ path: m[1]!, component: m[3]!, module: resolveSpec(app, m[2]!), how: 'fetched' }),
+  )
+  const importedFrom = (name: string): { module: string | null; how: Route['how'] } | null => {
     const asLazy = new RegExp(`\\b${name}\\s*=[^\\n]*\\blazy\\(\\s*\\(\\)\\s*=>\\s*import\\(\\s*['"]([^'"]+)['"]`).exec(text)
-    if (asLazy) return { module: resolveSpec(app, asLazy[1]!), lazy: true }
+    if (asLazy) return { module: resolveSpec(app, asLazy[1]!), how: 'lazy' }
     const asStatic = new RegExp(`(?:^|\\n)\\s*import\\s*\\{[^}]*\\b${name}\\b[^}]*\\}\\s*from\\s*['"]([^'"]+)['"]`).exec(text)
-    if (asStatic) return { module: resolveSpec(app, asStatic[1]!), lazy: false }
+    if (asStatic) return { module: resolveSpec(app, asStatic[1]!), how: 'entry' }
     // A route drawn by a wrapper declared in `App.tsx` itself — the editor's `Suspense` — answers
     // for whatever that wrapper renders.
     const wrapper = new RegExp(`function ${name}\\(\\)[\\s\\S]*?\\n\\}`).exec(text)
     const inner = wrapper && /<([A-Z][A-Za-z0-9]*)\s*\/>/.exec(wrapper[0])
     return inner ? importedFrom(inner[1]!) : null
   }
-  return [...text.matchAll(/location\.pathname(?:\.startsWith\()?\s*===?\s*'([^']+)'\)?\)\s*return\s*<([A-Z][A-Za-z0-9]*)\s*\/>/g)].map((m) => ({
-    path: m[1]!,
-    component: m[2]!,
-    ...(importedFrom(m[2]!) ?? { module: null, lazy: false }),
-  }))
+  const resolved = [...text.matchAll(/path(?:\.startsWith\()?\s*===?\s*'([^']+)'\)?\)\s*return\s+Promise\.resolve\(([A-Z][A-Za-z0-9]*)\)/g)].map(
+    (m): Route => ({ path: m[1]!, component: m[2]!, ...(importedFrom(m[2]!) ?? { module: null, how: 'entry' }) }),
+  )
+  return [...fetched, ...resolved]
 }
+
+// The modules a fetched route is drawn from. Reached with `import()`, but not cuts in the sense
+// below: what they draw first is drawn on the first frame of their own address.
+const fetchedRoutes = new Set(routeTable().filter((r) => r.how === 'fetched').map((r) => r.module!))
+
+// Every other module anywhere under `src` that something reaches with `import()`. These are the
+// cuts: what lies beyond one is not on the first frame, whoever else happens to point at it.
+const deferred = new Set(modules.flatMap(dynamicEdges).filter((f) => !fetchedRoutes.has(f)))
+
+// Everything a plain `import` chain reaches from a module, stopping dead at every cut. Not the
+// bundler's answer read back — the bundler would happily walk straight through a cut that somebody
+// had punctured with a second, static import, and that puncture is exactly the regression this is
+// here to name.
+const reachedFrom = (start: string): Set<string> => {
+  const seen = new Set<string>()
+  const walk = (file: string): void => {
+    if (seen.has(file)) return
+    seen.add(file)
+    for (const next of staticEdges(file)) if (!deferred.has(next)) walk(next)
+  }
+  walk(start)
+  return seen
+}
+
+// What the first painting carries: the entry and what it reaches. Since #760 that is the shell and
+// the sheets of every surface, and not the surfaces' script.
+const firstFrame = reachedFrom(join(SRC, 'main.tsx'))
+
+// What the routes themselves draw first: each route's module and what it reaches, plus the shell
+// they are all drawn in. The sheets in the entry are held to this set from both sides.
+// The sheets `main.tsx` names itself — the accessibility floor, the button language, the felt's
+// face — belong to every surface and count as drawn by all of them.
+const drawnFirst = new Set([
+  ...staticEdges(join(SRC, 'main.tsx')).filter((f) => f.endsWith('.css')),
+  ...reachedFrom(join(SRC, 'App.tsx')),
+  ...[...fetchedRoutes].flatMap((m) => [...reachedFrom(m)]),
+])
 
 // The classes a stylesheet is the only one to declare, read off the sources so that a renamed
 // panel does not turn the reading into a no-op (`editorsOwnClasses`' trick, generalised).
@@ -462,12 +490,29 @@ test.describe('only what the first frame draws rides in the sheet it blocks on (
     // reading below would be a reading of nothing, and this is where that is caught.
     expect(table.length).toBeGreaterThanOrEqual(8)
     expect(table.filter((r) => r.module === null)).toEqual([])
-    expect(table.filter((r) => r.lazy).map((r) => r.component)).toEqual(['EditorRoute'])
-    // And every route the app draws without fetching anything is in the set the entry carries.
-    expect(table.filter((r) => !r.lazy && !firstFrame.has(r.module!)).map((r) => r.component)).toEqual([])
+    expect(table.filter((r) => r.how === 'lazy').map((r) => r.component)).toEqual(['EditorRoute'])
+    // The phone and the felt are fetched surfaces (#760), and the reading found them.
+    expect(table.filter((r) => r.how === 'fetched').map((r) => r.path)).toEqual(expect.arrayContaining(['/play', '/join', '/table', '/observe']))
+    // And every route the entry draws itself is in the set the entry carries.
+    expect(table.filter((r) => r.how === 'entry' && !firstFrame.has(r.module!)).map((r) => r.component)).toEqual([])
     // The cuts exist and the editor's is one of them.
     expect(deferred.size).toBeGreaterThan(0)
     expect([...deferred].some((f) => f.endsWith(join('editor', 'EditorPage.tsx')))).toBe(true)
+  })
+
+  // The half of #760 that keeps L20 whole. A fetched route's script waits for its address, but its
+  // sheets may not: what the phone and the felt draw first must be in the document before the
+  // first pixel. So every sheet a fetched route reaches is on the entry — and, the other way round,
+  // the entry carries no sheet that no route draws first.
+  test('carries the sheets of every fetched surface on the entry, and only those', () => {
+    const missing = [...fetchedRoutes].flatMap((route) =>
+      [...reachedFrom(route)]
+        .filter((f) => f.endsWith('.css') && !firstFrame.has(f))
+        .map((f) => `${relative(WEB, f)} is drawn first by ${relative(WEB, route)} but would be fetched with its chunk — import it from first-frame-sheets.ts (#760, L20)`),
+    )
+    expect(missing).toEqual([])
+    const unasked = [...firstFrame].filter((f) => f.endsWith('.css') && !drawnFirst.has(f))
+    expect(unasked.map((f) => `${relative(WEB, f)} rides on the entry, but no route draws it first`)).toEqual([])
   })
 
   test('names any surface in the blocking sheet that the first frame does not draw', () => {

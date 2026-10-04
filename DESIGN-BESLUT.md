@@ -4198,6 +4198,27 @@ Det som måste vara kvar i det blockerande arket är allt en spelare eller ett b
 `packages/web/src/App.tsx` håller den dynamiska importen och Suspense-gränsen.
 `packages/web/test/felt-font.test.ts` är grinden: den bygger appen, läser det blockerande arket, öppnar `/editor` i Chromium och kontrollerar att editorns ark hämtas och verkligen gäller.
 
+**Tillägg 2026-10-04 (#760): varje yta har sitt eget skript, men arken blockerar som förut.**
+Speltestet 2026-10-02 mätte att `/play` laddade samma entré som alla andra ytor: 822 kB avkodat, 259 kB gzip, med guiden, kontosidorna, filtens renderare och observatören i en remsa kort.
+Nu hämtas varje rutts skript när dess adress öppnas: `fetchPage` i `App.tsx` svarar med en dynamisk import per yta, och Rollup delar det de har gemensamt i egna chunkar.
+Mätt i det byggda bygget: entrén går från 847 kB till 421 kB (259 → 124 kB gzip), `/play` hämtar 197 kB gzip och `/join` 161 kB, och ingen av dem hämtar filtens, observatörens, guidens eller editorns chunk.
+
+Det är skriptet som delas, inte arken.
+Det här tillägget ändrar inte gränsen ovan: allt en spelare eller ett bord möter vid första målningen ligger kvar i entréns blockerande ark, importerat från `first-frame-sheets.ts` i den ordning kaskaden hade, och arket är byte för byte detsamma som före delningen.
+Meningen «en rutt som delas av får aldrig vara en av dem» gäller arket: editorn är fortfarande den enda rutt vars ark hämtas med rutten.
+
+Ingen ny väntan och inget nytt utseende.
+Till skillnad från editorns väntar `main.tsx` på ytans skript *innan* React ritar något, så det första på skärmen är ytan själv — ingen reservyta och inget skal som blinkar bort, bara samma vita sida som före delningen, kortare.
+Delningen kostar heller ingen extra rundtur: det byggda `index.html` läser adressen och ber om ruttens chunkar bredvid entrén (`vite.config.ts`), i stället för att entrén först ska komma fram och köras.
+Når en ytas chunk inte fram visas läget `offline` i ytans egen röst, och «Försök igen» är här en omladdning — den enda platsen där det är så, eftersom sidan aldrig ritats och Chromium minns en modul som inte gick att ladda.
+
+Riktmärket i #760 — telefonens första målning under 100 kB gzip — nås inte av ruttdelningen ensam, och det sägs rakt ut.
+Det som återstår är inte ruttkod utan tre saker alla ytor delar: Reacts DOM (~57 kB, golvet), språkkatalogerna — båda språken och varje ytas ord, editorns och kontosidornas medräknade (~42 kB av telefonens last) — och zod, som validerar varje ram servern skickar (~30 kB).
+De två sista är beslut om i18n-arkitekturen och om validering på tråden, och tas för sig.
+
+Grindarna: `packages/e2e/test/surfaces/phone-bundle.spec.ts` öppnar `/play` och `/join` som en telefon, väger varje skript sidan ber om och nekar filtens och observatörens chunkar; den håller också inne entrén på tråden och ser att handens chunk efterfrågas ändå.
+`felt-font.spec.ts` läser nu tre slags rutter ur `App.tsx` — hämtade, ritade av entrén och editorns lata — och kräver att varje ark en hämtad yta når statiskt ligger på entrén, och att entrén inte bär något ark som ingen yta ritar först.
+
 ### L21. Kortväggen står i band, och leken har en innehållsförteckning (prototypat och byggt 2026-09-17, #179)
 
 Beslutet, i en mening:
