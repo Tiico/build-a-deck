@@ -185,3 +185,23 @@ describe('the chosen card in the table (#479)', () => {
     expect(onSelectRow).toHaveBeenLastCalledWith('knight')
   })
 })
+
+// «antal är ett heltal från 0» was one 123 px line in a 65 px column, running on under «grupp»
+// (#728). The message breaks inside the column it is about.
+describe('the count message stays in its column', () => {
+  it('lets the message wrap rather than holding it to one line', async () => {
+    const { readFileSync } = await import('node:fs')
+    const css = document.createElement('style')
+    css.textContent = readFileSync('src/editor/editor.css', 'utf8')
+    document.head.append(css)
+    try {
+      const says = document.createElement('small')
+      says.className = 'byd-data-says'
+      document.body.append(says)
+      expect(getComputedStyle(says).whiteSpace).not.toBe('nowrap')
+      says.remove()
+    } finally {
+      css.remove()
+    }
+  })
+})
