@@ -65,14 +65,16 @@ test.describe('a picture uploaded from a card cell (#742)', () => {
   test('refuses a 9 MB file and an SVG at once, without a POST and without a console error', async ({ page }) => {
     const upload = await openTable(page)
     const seen = watch(page)
+    // Where the table says what became of an upload: the strip above it, where the pictures are.
+    const said = page.locator('.byd-data-images [role="alert"]')
 
     const heavy = Buffer.alloc(9 * 1024 * 1024)
     PIXEL.copy(heavy)
     await upload.setInputFiles({ name: 'stor.png', mimeType: 'image/png', buffer: heavy })
-    await expect(page.getByRole('alert').filter({ hasText: 'filen är för stor (max 8 MB)' })).toBeVisible()
+    await expect(said).toHaveText('filen är för stor (max 8 MB)')
 
     await upload.setInputFiles({ name: 'logga.svg', mimeType: 'image/svg+xml', buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>') })
-    await expect(page.getByRole('alert').filter({ hasText: 'filen är inte PNG, JPEG, GIF eller WebP' })).toBeVisible()
+    await expect(said).toHaveText('filen är inte PNG, JPEG, GIF eller WebP')
 
     expect(seen.posts).toEqual([])
     expect(seen.errors).toEqual([])
