@@ -5303,6 +5303,17 @@ Kolumnen är borta, så en textkolumn mäts efter sitt innehåll och inget annat
 Två alternativ prototypades och avvisades: knappen i tabellens krona, som står långt från markören och bryter ordningen fält → knapp, och en ram som går 44 px ut åt höger, som täcker texten bredvid den man skriver i.
 Tabbordningen ovan står kvar: knappen nås framåt från fältet.
 
+*Tillagt 2026-10-04 (#693, beställarens beslut A efter [prototypen](https://github.com/Tiico/build-a-deck/blob/04a113e31e53634d00b85058061d01295a52f291/docs/ux-audits/2026-10-04-ikonfliken/prototyper/693/index.html), som också ligger i `docs/ux-audits/2026-10-04-ikonfliken/prototyper/693/`):* när raden ovanför cellen är tabellens huvud hänger fliken under fältets högra hörn i stället, över raden under.
+Över huvudet låg den på kolumnens filterhandtag ▾ i en kolumn så smal som `typ`, och någon placering som höll både fliken över huvudet och handtaget nåbart fanns inte utan att huvudet eller fliken ändrade form.
+Det är samma hörn och samma ram, speglad i höjd och i inget annat, så ögat hittar fliken vid samma kant som i övriga rader.
+Vilken rad det gäller mäts och räknas inte: radens överkant minus flikens höjd ovanför huvudets nederkant.
+Det är alltså den första raden, och i en rullad tabell den rad som står närmast det fastnålade huvudet.
+Mätningen görs av lådans egen läsning av sig själv (`markCut`), när cellen man står i byter och när lådan rullas.
+Biblioteket som öppnas från en sådan cell börjar 4 px under fliken.
+Cellen med biblioteket öppet lyfts inte längre till en egen nivå: biblioteket står i sidans översta lager, och lyftet drog med sig fliken in under huvudet.
+Priset är känt och taget: fliken byter sida i höjdled när man går ned från raden mot huvudet, och den täcker slutet av värdet i raden under.
+Två alternativ prototypades och avvisades: fliken under fältets vänstra hörn med biblioteket hängande i den (B), som byter både höjd och sida och krockar med den fastnålade rälsen, och fliken under fältet i alla rader (C), som täcker raden man är på väg till i varje rad och ger upp skälet bakom #593.
+
 ### L47. En yta lägger själv ut kortet den fått utan punkt: fjädrat, med det nyaste överst (prototypat och beslutat 2026-09-22, #449; ordningen utvidgad till dragvägen 2026-09-24, #461)
 
 Telefonen skickar ingen position.

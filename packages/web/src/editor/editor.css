@@ -2160,9 +2160,8 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 
 /* The symbol picker at the brace (E4): it opens under the cell being typed in. */
 .byd-data td { position: relative; }
-.byd-data-picking { z-index: 1; }
-.byd-data-symbols { --byd-place-inset: 4px; left: var(--byd-place-inset); top: 100%; max-height: min(230px, var(--byd-place-room, 230px)); }
-.byd-data-symbols[data-place-y='up'] { top: auto; bottom: 100%; }
+.byd-data-symbols { --byd-place-gap: 0px; --byd-place-inset: 4px; left: var(--byd-place-inset); top: calc(100% + var(--byd-place-gap)); max-height: min(230px, var(--byd-place-room, 230px)); }
+.byd-data-symbols[data-place-y='up'] { top: auto; bottom: calc(100% + var(--byd-place-gap)); }
 .byd-data-symbols[data-place-x='end'] { left: auto; right: var(--byd-place-inset); }
 /* One library, one look, wherever it is opened (E4): the rail's Ikon tool and the brace in a cell
    draw the same component, so what an option is and which one the keys are on is written once.
@@ -2500,9 +2499,11 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
    the box rolled, the open `body` cell covered the card's id and the column's name (L55 says the
    two stand over everything that scrolls). So the cell lifts nothing, and only what it carries is
    placed on the ladder:
-     1  the open body cell, and the cell whose symbol box is open, over the rows beside and below;
+     1  the open body cell, over the rows beside and below;
      2  the head's names;
-     3  the icon tab (#593), which stands over the row above — in the first row, over the head;
+     3  the icon tab (#593), which stands over the row above, or against the head over the row
+        below (#693) — with the symbol box open too: that box stands in the page's top layer, so
+        its cell lifts nothing, and lifting it once took the tab down under the head with it;
      4  the rail (tick, `id`) and the pinned ×, which nothing that scrolls may cover;
      5  the head's corner over the rail, and 6 the head's last cell, whose door hangs out of it. */
 .byd-data-bodycell[data-open] { z-index: 1; }
@@ -3602,6 +3603,21 @@ p.byd-symbols-refused { margin: 0; color: #f0b64a; font-size: 11px; line-height:
   font: 700 13px ui-monospace, monospace;
   cursor: pointer;
 }
+/* Against the head the tab hangs under the field's top right corner instead (#693, beställarens
+   beslut A): there is no row above, and over the head it lay on the column's ▾. The same corner and
+   the same frame, mirrored in height and in nothing else. Which row that is the box measures and
+   writes down (`markCut`) — the first, or in a rolled table whichever row stands against the head.
+   The library opened from that cell starts 4 px under the tab rather than on it: the field ends
+   where the cell does, so that is the tab's 44 and the 4, from the cell's foot. */
+.byd-data-scroll[data-tab='under'] .byd-data .byd-data-icon {
+  top: 100%;
+  bottom: auto;
+  border-top: 0;
+  border-bottom: 2px solid #9cc6ff;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 45%);
+}
+.byd-data-scroll[data-tab='under'] .byd-data-symbols { --byd-place-gap: 48px; }
 
 
 /* What a shape is (L17). The gallery, the tiles and the shadow's presets are three grids of
