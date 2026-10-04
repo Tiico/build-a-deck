@@ -22,7 +22,7 @@ import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT, type Key } from '../i18n/index.js'
 import { takeHostKey } from './hostKey.js'
 
-type SessionRecord = { name?: string; version?: string }
+type SessionRecord = { name?: string }
 
 // /table?session=…&host=…&mode=table|tv&server=ws://…
 // The `table` role: no seat, sees only what is public, acts for the group (K14). It is the
@@ -45,8 +45,9 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   // card in the middle of it (#12, #7, variant C).
   const live = useLiveStatus(conn, 'table', timing)
   const links = statusLinks({ server: params.get('server'), code: roomCode })
-  // The session record: which game this table runs and which version of it (L5, C9). The name
-  // titles the screen; the version is also what the log is locked on when the session ends.
+  // The session record: which game this table runs (L5). The name titles the screen. Which version
+  // it runs is the view's (C7, #677): «Uppdatera» moves it mid-game, and the title, the book and
+  // the ended screen follow it in the patch that carries the line.
   const [record, setRecord] = useState<SessionRecord | null>(null)
   useEffect(() => {
     if (!sessionId) return
@@ -136,13 +137,14 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       onShow={mode === 'tv' ? shown.show : undefined}
     />
   )
+  const version = view.version
   const flags = activity.filter((l) => l.intent.v === 'flag').length
   const players = view.seats.filter((s) => s.name !== null).length
   const ended = view.ended && (
     <div className="byd-ended" data-ended>
       <div>
         <h1>{t('ended.title')}</h1>
-        <p>{t('ended.locked', { version: record === null ? '…' : (record.version ?? '?') })}</p>
+        <p>{t('ended.locked', { version })}</p>
         <div className="byd-ended-summary">
           <Count n={view.seq} one="ended.rows.one" other="ended.rows.other" />
           <Count n={flags} one="ended.flags.one" other="ended.flags.other" />
@@ -174,12 +176,12 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       >
       {mode === 'table' && (
         // The felt is the whole screen (B); a quiet line along its top says which game this is.
-        <h1 className="byd-table-plate">{[record?.name ?? t('play.table'), record?.version, roomCode].filter(Boolean).join(' · ')}</h1>
+        <h1 className="byd-table-plate">{[record?.name ?? t('play.table'), version, roomCode].filter(Boolean).join(' · ')}</h1>
       )}
       {mode === 'tv' ? (
         // On a TV the rulebook goes into the header, where the way in already is: the two wanted
         // the same corner, and only the header can lay both out (#30).
-        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} title={record?.name} version={record?.version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} showing={showing} onDismiss={dismiss} observers={observers} rules={rules('tv')} room>
+        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} title={record?.name} version={version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} showing={showing} onDismiss={dismiss} observers={observers} rules={rules('tv')} room>
           {table}
         </TvChrome>
       ) : (

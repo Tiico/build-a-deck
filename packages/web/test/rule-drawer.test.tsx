@@ -238,3 +238,35 @@ describe('the rules at the table (B7)', () => {
     }
   })
 })
+
+// «Uppdatera» moves a running table to the project's current rev (C7), and a rulebook written
+// for that rev has to reach the table without anyone reloading (#677). The drawer reads the book
+// again when the view it is handed says the table now plays another version.
+describe('a table updated to a version with rules (#677)', () => {
+  it('offers «Regler» once the table it reads has moved to the version that has them', async () => {
+    const id = await table(false)
+    const asked: Promise<Response>[] = []
+    const real = globalThis.fetch
+    globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+      const answer = real(input, init)
+      if (String(input).endsWith('/rules')) asked.push(answer)
+      return answer
+    }) as typeof fetch
+    try {
+      const { rerender } = render(<RuleDrawer http={run.http} sessionId={id} placement="table" live={{ zones: [], version: 'rev-1' }} />)
+      // The table at rev-1 has answered that it has no book, and there is no knob.
+      await waitFor(() => expect(asked).toHaveLength(1))
+      await act(async () => {
+        await Promise.all(asked)
+      })
+      expect(screen.queryByRole('button', { name: 'Regler' })).toBeNull()
+
+      expect(await run.projects.replace(run.projectId, 1, { ...projectDoc(), rules })).not.toBe('conflict')
+      expect((await real(`${run.http}/sessions/${id}/refresh`, { method: 'POST' })).status).toBe(200)
+      rerender(<RuleDrawer http={run.http} sessionId={id} placement="table" live={{ zones: [], version: 'rev-2' }} />)
+      expect(await screen.findByRole('button', { name: 'Regler' })).toBeTruthy()
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+})
