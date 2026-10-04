@@ -122,17 +122,26 @@ export class PostgresLogStore implements LogStore {
     `
   }
 
+  async addDeck(sessionId: string, version: string, deck: Deck): Promise<void> {
+    await this.sql`
+      insert into session_decks (session_id, version, deck) values (${sessionId}, ${version}, ${this.sql.json(deck as never)})
+      on conflict (session_id, version) do update set deck = excluded.deck
+    `
+  }
+
   async loadSession(id: string): Promise<SessionRecord | null> {
     const rows = await this.sql<{ id: string; version: string; setup: SetupDef; deck: Deck | null; project: string | null; code: string | null; code_expires_at: Date | null; host_key_hash: string | null }[]>`
       select id, version, setup, deck, project, code, code_expires_at, host_key_hash from sessions where id = ${id}
     `
     const row = rows[0]
     if (!row) return null
+    const refreshed = await this.sql<{ version: string; deck: Deck }[]>`select version, deck from session_decks where session_id = ${id}`
     return {
       id: row.id,
       version: row.version,
       setup: row.setup,
       ...(row.deck ? { deck: row.deck } : {}),
+      ...(refreshed.length > 0 ? { decks: Object.fromEntries(refreshed.map((r) => [r.version, r.deck])) } : {}),
       ...(row.project ? { project: row.project } : {}),
       ...(row.code ? { code: row.code } : {}),
       ...(row.code_expires_at ? { codeExpiresAt: row.code_expires_at.toISOString() } : {}),

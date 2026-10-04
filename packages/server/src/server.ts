@@ -1688,8 +1688,14 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const setup = setupFromProject(rec)
-    await actor.refreshDeck(await deckOf(opts, rec), setup)
+    const deck = await deckOf(opts, rec)
     const version = `rev-${rec.rev}`
+    // The deck is kept under its version before the line that moves the table there is committed
+    // (#677): the session row keeps the start deck, and an actor reloaded after a restart takes
+    // its faces from the version its log says it plays. A refusal below leaves a deck no line
+    // names, which is never read.
+    await opts.store.addDeck(sessionId, version, deck)
+    await actor.refreshDeck(deck, setup)
     const decision = await actor.submit({ id: randomUUID(), seat: null, intents: [{ v: 'version.change', to: version, components: setup.components, ...(setup.cards ? { cards: setup.cards } : {}) }] })
     if (!decision.ok) json(res, 409, { error: decision.reason })
     else json(res, 200, { version, seqs: decision.applied.map((l) => l.seq) })

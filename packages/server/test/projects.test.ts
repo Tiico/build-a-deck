@@ -151,6 +151,44 @@ describe('refreshing a running table from its project (C7, L5)', () => {
     await table.close()
   })
 
+  // The faces a refreshed table deals are the version it now runs, also after the server has
+  // forgotten the table: the session row keeps the deck the table *started* with, because that is
+  // where replay begins (#677), so the actor that reloads it must not take its faces from there.
+  it('keeps dealing the refreshed version\'s faces after a restart', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+
+    const next = project()
+    next.rows[0] = { id: 'dragon', fields: { title: 'Drakhona', antal: 3 } }
+    next.rows.push({ id: 'phoenix', fields: { title: 'Fenix', antal: 1 } })
+    expect((await json('PUT', `/projects/${id}`, { ...next, rev: 1 })).status).toBe(200)
+    expect((await json('POST', `/sessions/${sessionId}/refresh`, {})).status).toBe(200)
+
+    // Every card face up on the table, so each one says what it is and which front it shows.
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
+    await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 6 })
+    await table.synced(2)
+    await table.send(null, ...table.view!.components.map((c) => ({ v: 'flip' as const, component: c.id, face: 'front' })))
+    await table.synced(8)
+    await table.close()
+    const fronts = async (): Promise<Record<string, string | undefined>> => {
+      const looking = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
+      const out = Object.fromEntries(looking.view!.components.map((c) => [c.cardRef ?? '?', c.faces?.['front']]))
+      await looking.close()
+      return out
+    }
+    const textures = async () => (await (await fetch(`${run.http}/sessions/${sessionId}/textures`)).json()) as { total: number }
+    const before = await fronts()
+    expect(Object.keys(before).sort()).toEqual(['dragon', 'knight', 'phoenix', 'wizard'])
+    expect(Object.values(before).every((h) => h !== undefined)).toBe(true)
+    // Four fronts — the dragon's new one and the phoenix among them — and the one shared back.
+    expect((await textures()).total).toBe(5)
+
+    await run.restart()
+    expect(await fronts()).toEqual(before)
+    expect((await textures()).total).toBe(5)
+  })
+
   it('refuses to refresh a session that was not started from a project', async () => {
     await run.store.createSession({ id: 'loose', version: 'v1', setup: twoSeatSetup() })
     expect((await json('POST', '/sessions/loose/refresh', {})).status).toBe(409)
