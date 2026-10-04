@@ -5929,6 +5929,19 @@ Prövat i [`docs/ux-audits/2026-10-04-temaprovet/prototyper/01-temaprovet.html`]
 Galleriet står fyra i bredd så länge varje bricka har sitt rum, och två och två när katalogen eller biblioteket står bredvid, aldrig tre och en.
 `theme-proof.spec.ts` mäter brödtextens storlek gånger zoom (≥ 12 px vid 1280, ≥ 11 vid 1024), att Speltema inte rullar vid 1280 × 800, och att brickorna inte går in i varandra med katalogen öppen vid 1024.
 
+Reviderat 2026-10-04 (#830, beställarens val C efter prototyp): **utsnittet skär bort luckan mellan rubrikbandet och prosan, och prosans bit är så hög som prosan har rader.**
+På en mall med brödtexten långt ner var utsnittet mest tomt papper: e2e-mallen, med brödtexten 30 mm ner, visade 78 % tomt.
+Rubrikbandet slutar nu under det nedersta som kortet ritar ovanför prosan, en text i sin första rad och allt annat i sin höjd, plus 1,5 mm luft; det som ligger bakom prosans låda, som en ram, är papper och inte band.
+Prosans bit börjar 1,5 mm ovanför prosans låda.
+När luckan mellan dem är minst 3 mm skärs den bort: ett papper, och där luckan togs bort en tunn streckad linje i prosans bläck med 47 % opacitet.
+En lucka under 3 mm skärs inte, så provleken, där prosan står direkt under bandet, är ett stycke som förut.
+Prosans bit är så hög som prosan har rader, högst tre, med 3 mm luft under den sista, och en fjärde rad tonas bara när det finns fler än tre.
+Raderna räknas ur den renderade texten efter E6:s anpassning, inte ur en uppskattning.
+Båda bitarna är samma `CardPreview`-kort, ritat av den enda renderaren och visat från var sin höjd (E2); ingen annan väg ritar dem.
+Prövat i [`docs/ux-audits/2026-10-04-temaprovet/prototyper/02-tva-utsnitt.html`](docs/ux-audits/2026-10-04-temaprovet/prototyper/02-tva-utsnitt.html) mot rivet papper (A) och två remsor med redigerarens grund emellan (B); A var den mest dekorativa formen i fliken, och B lästes som två saker på en bricka som är ett val.
+Vid 1280 × 800 är provet 80 px högt på e2e-mallen och 118 px på provleken, mot 173 och 136 px när det var ett stycke med tre rader och en tonad.
+`theme-proof.spec.ts` mäter att e2e-mallen skärs och provleken inte, att rubrikens rad och prosans första står mindre än en och en halv rad isär, att utsnittet är under 65 % tomt, att prosans bit är så hög som raderna och tonas bara när de är fler än tre, och att Speltema inte rullar vid 1280 × 800 med någon av mallarna.
+
 ### L58. Markeringens handlingar står i tabellens fot (prototypat och beslutat 2026-10-01, #618)
 
 Helhetsöverblicken (`docs/ux-audits/2026-09-30-komponenter.md`) mätte åtgärdsraden: när ett kort bockades fälldes ett band på 72 px ut mellan krönet och raderna, och raderna flyttade 80 px — bocken man just tryckt på gled iväg under fingret, och när sista bocken släpptes hoppade allt tillbaka.
