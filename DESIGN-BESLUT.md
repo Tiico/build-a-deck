@@ -3295,6 +3295,7 @@ En ny bild binds till den första kolumn mallen redan ritar som bild, och en ny 
 Finns ingen sådan kolumn läser elementet ingen kolumn alls: bilden blir en fast bild utan vald bild och spelets bilder öppnas direkt, och ikonraden står tom.
 Skälet är speltestet 2026-10-02: en bild bunden till «typ» ritade en trasig bild med src «Playcard», och en ikonrad bunden till den skrev «{Playcard}» i varningsrött — en gissning som passar en textruta och inget annat.
 Varningen för ett okänt ikonnamn (L2) står kvar; det som ändrats är att verktyget inte längre skapar den själv.
+*Tillagt 2026-10-04 (#802, beställarens beslut variant A, [prototypen](https://github.com/Tiico/build-a-deck/blob/594ef3f0d30e47d1118517fbb504e3432b1718ac/docs/ux-audits/2026-10-04-platshallare/prototyper/802/index.html)):* ett lager som inte ritar något på kortet som visas — en fast bild utan vald bild, en ikonrad utan namn, en kolumn som är tom på kortet eller en bild bunden till en kolumn med ord — får på mallduken en streckad ram med ett kort ord i en mörk bricka, alltid synlig, och hela meningen i brickans `title` och tillgängliga namn; platshållaren kommer aldrig in i kompilatorns utdata, men kompilatorn ritar en cell som inte är en bild som en tom cell i stället för `<img src="Playcard">`, i tryck och på bordet också.
 
 Byggt 2026-09-07 (prototypat i tre varianter, godkänd variant A med variant B:s regellista som sammanfattning — #13):
 En grupp är en regel på en kolumn, aldrig en lista med kort-id:n.

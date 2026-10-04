@@ -78,6 +78,12 @@
   --byd-editor-card-shadow: rgba(0, 0, 0, 0.5);
   /* The paper a card with nothing on it yet is drawn on (#735). */
   --byd-editor-blank-paper: #f4f1ea;
+  /* The placeholder on a layer that draws nothing on the card shown (#802, variant A): the dashed
+     edge it is framed in, a light ring round that so it reads on a dark card as on a light one,
+     and the ink its word is written in on the room's own chrome. */
+  --byd-editor-placeholder-edge: #5b6274;
+  --byd-editor-placeholder-ring: rgba(255, 255, 255, 0.55);
+  --byd-editor-placeholder-ink: #e6ecfa;
   /* The parts of the game that are not cards — the template, the table, the rules, the symbols —
      as a chip on a row in the history (#177). The hue is the second reading and never the only
      one: every chip carries its own word, and the row's name spells that word out as a sentence,
@@ -1205,6 +1211,48 @@
 .byd-condition[data-off] { border-color: var(--byd-editor-quiet); background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--byd-editor-quiet) 18%, transparent) 0 1mm, transparent 1mm 2mm); }
 .byd-condition > .byd-condition-tab { position: absolute; left: 0; bottom: 100%; transform: scale(calc(1 / var(--byd-canvas-scale, 1))); transform-origin: bottom left; min-height: 0; min-width: 0; margin: 0; padding: var(--byd-s1) var(--byd-s2); border: 0; border-radius: 4px 4px 0 0; background: #c9a2ff; color: #1b1d23; font: 600 11px system-ui; white-space: nowrap; pointer-events: auto; cursor: pointer; }
 .byd-condition[data-off] > .byd-condition-tab { background: var(--byd-editor-quiet); }
+/* The placeholder on a layer that draws nothing on the card shown (#802, beställarens beslut
+   variant A, «rutan säger det»): a dashed frame exactly on the layer, faintly hatched, with a short
+   word in a dark tag in its middle. It is a child of the layer's drag box, so it is the canvas's and
+   never the card's, and a press on it is a press on the element. The card is drawn through a zoom,
+   so every measure here is divided by it, and the tag is drawn at the screen's own size: the word
+   is as legible at 50 % as at 400 %, and on a layer too thin for two lines it is one, in its short
+   form, cut with an ellipsis rather than spilling over its neighbours. */
+.byd-placeholder {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: calc(1.5px / var(--byd-canvas-scale, 1)) dashed var(--byd-editor-placeholder-edge);
+  box-shadow: 0 0 0 calc(1px / var(--byd-canvas-scale, 1)) var(--byd-editor-placeholder-ring);
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--byd-editor-placeholder-edge) 10%, transparent) 0 calc(6px / var(--byd-canvas-scale, 1)), transparent calc(6px / var(--byd-canvas-scale, 1)) calc(12px / var(--byd-canvas-scale, 1)));
+  pointer-events: none;
+}
+/* Centred on the layer, as wide as its words and never wider than the layer less a gap of
+   `--byd-s1` on either side. The width is the tag's own and not the layer's, because the layer is
+   zoomed and the tag is not: the room it has is the layer's width at the screen's size. */
+.byd-placeholder-tag {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: calc(100% * var(--byd-canvas-scale, 1) - 2 * var(--byd-s1));
+  padding: var(--byd-s1) var(--byd-s2);
+  border-radius: 10px;
+  background: var(--byd-editor-chrome-bg);
+  color: var(--byd-editor-placeholder-ink);
+  font: 600 11px/1.25 system-ui, sans-serif;
+  text-align: left;
+  transform: translate(-50%, -50%) scale(calc(1 / var(--byd-canvas-scale, 1)));
+  /* The title is the whole sentence, and a title is read off the pointer. */
+  pointer-events: auto;
+}
+.byd-placeholder-tag > i { flex: none; font-style: normal; color: var(--byd-editor-stage-ink); }
+.byd-placeholder[data-thin] > .byd-placeholder-tag { align-items: center; padding: 0 var(--byd-s2); border-radius: 999px; line-height: 18px; white-space: nowrap; }
+.byd-placeholder[data-thin] > .byd-placeholder-tag > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* The one way on from a condition's panel, in the panel's own button shape. */
 .byd-props .byd-props-show { min-height: var(--byd-tap); border-radius: 8px; padding: 0 var(--byd-s3); font-weight: 700; cursor: pointer; }
 /* Why the element stopped at the card's edge (#478): a word by it, in the screen's own size
