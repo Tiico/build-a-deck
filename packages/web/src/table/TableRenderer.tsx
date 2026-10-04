@@ -432,20 +432,24 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // another zone lit on the Bord tab, a name that changed its size — is drawn once at its fitted
   // scale, the names are laid out on it (`placeNames`), and the next drawing, still before
   // anything is painted, is the camera's again.
-  const [namesAt, setNamesAt] = useState<string | null>(null)
+  // A ref and not state: laying the names out is no reason to draw the felt again, and a state set
+  // in a layout effect flushes every passive effect above it early — which moved when the page said
+  // a reconnection out loud. Only a felt drawn at its fitted scale for the decision is drawn again.
+  const namesAt = useRef<string | null>(null)
+  const [, redrawNames] = useState(0)
   const [namesResized, setNamesResized] = useState(0)
   const namesKey = measured
     ? JSON.stringify([namesResized, mode, rotate, Math.round(fit * 1e4), forTheRoom, [...(lit ?? [])].sort(), view.zones.map((z) => [z.id, z.kind, z.name, z.geometry.x, z.geometry.y, z.geometry.w, z.geometry.h]), view.seats.map((s) => s.name)])
     : null
   const liveScale = (fixedScale ?? placed?.scale ?? fitted ?? 1) * zoomed
-  const deciding = namesKey !== null && namesAt !== namesKey && liveScale !== fit
+  const deciding = namesKey !== null && namesAt.current !== namesKey && liveScale !== fit
   const scale = deciding ? fit : liveScale
   // What the names were measured by when they were last laid out, so that a name that changes its
   // size afterwards — a face arriving, a wider one on another machine — is laid out again.
   const namesWatch = useRef<ResizeObserver | null>(null)
   useLayoutEffect(() => {
     const felt = table.current
-    if (!felt || namesKey === null || namesAt === namesKey) return
+    if (!felt || namesKey === null || namesAt.current === namesKey) return
     placeNames(felt)
     const spans = [...felt.querySelectorAll<HTMLElement>(':scope > .byd-zone > span')]
     const measure = () => spans.map((el) => `${el.scrollWidth}x${el.offsetHeight}`).join()
@@ -459,8 +463,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       for (const el of spans) watch.observe(el)
       namesWatch.current = watch
     }
-    setNamesAt(namesKey)
-  }, [namesKey, namesAt])
+    namesAt.current = namesKey
+    if (deciding) redrawNames((n) => n + 1)
+  }, [namesKey, deciding])
   useEffect(() => () => namesWatch.current?.disconnect(), [])
   const live = useRef<Live | null>(null)
   const toTable = useRef<((cx: number, cy: number) => Point) | null>(null)
