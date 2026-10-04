@@ -259,9 +259,9 @@ describe('DataTable filtering as a view only (#16)', () => {
     expect(shownIds()).toHaveLength(4)
 
     expect(doc.rows.map((row) => row.id)).toHaveLength(8)
-    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
     const csv = decodeURIComponent((screen.getByRole('link', { name: 'Ladda ner CSV' }) as HTMLAnchorElement).href)
-    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
     for (const id of ['drake', 'grop', 'alv', 'nat', 'troll', 'stock', 'orm', 'grav']) expect(csv).toContain(id)
 
     await tick(user, 'typ', 'varelse')
@@ -301,7 +301,7 @@ describe('DataTable filtering from the keyboard (#16)', () => {
     await user.tab()
     expect(document.activeElement).toBe(screen.getByLabelText('Sök i alla fält'))
     await user.tab()
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Importera' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'CSV' }))
     // And what the box holds is not in the tab order at all until it is opened, which is the
     // whole of what a box costs and what it buys.
     expect(screen.queryByLabelText('Importera CSV…')).toBeNull()

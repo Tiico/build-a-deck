@@ -71,7 +71,7 @@ function Table({ doc: initial = projectDoc() }: { doc?: ProjectDoc }) {
 
 // The table's markup as it stands after `act`ing on it: closed, and with the form open and half a
 // name typed into it — which is the moment the prototype's head grew.
-async function markup(open: boolean, marked = false): Promise<Table> {
+async function markup(open: boolean, marked = false, removing = false): Promise<Table> {
   const user = userEvent.setup()
   const { container, unmount } = render(<Table />)
   if (open) {
@@ -80,6 +80,8 @@ async function markup(open: boolean, marked = false): Promise<Table> {
   }
   // A marking, for the foot that carries its actions (#618).
   if (marked) await user.click(screen.getAllByRole('checkbox')[1]!)
+  // One row's own ×, for the question it asks (#739).
+  if (removing) await user.click(screen.getAllByRole('button', { name: /^ta bort / })[0]!)
   const html = container.innerHTML
   unmount()
   return { html, deck: deckValues(projectDoc(), sv) }
@@ -714,6 +716,21 @@ describe('the rows stand still when a card is marked (#618)', () => {
   }, 60_000)
 })
 
+// The question one row's × asks (#739) is the same question the marking asks, and it stood where
+// the marking's actions used to: in a band over the head, 62 px of it, which moved the head from
+// y 128 to 198 under the hand that had just pressed the ×. It takes the foot's place as the marking's
+// question does (L58).
+describe("the rows stand still when one row's × asks (#739)", () => {
+  it('keeps the first row where it was, and asks in the foot, one row tall', async () => {
+    const [quiet, asking] = await Promise.all([measure(await markup(false)), measure(await markup(false, false, true))])
+    expect(asking.scroll.y).toBe(quiet.scroll.y)
+    expect(asking.firstRow.y).toBe(quiet.firstRow.y)
+    const foot = await measureFoot(await markup(false, false, true))
+    expect(foot.toolbar).not.toBeNull()
+    expect(foot.height).toBeLessThanOrEqual(foot.tap + 2 * foot.air)
+  }, 60_000)
+})
+
 async function measureFoot({ html, deck }: Table): Promise<{ height: number; toolbar: Box | null; tap: number; air: number }> {
   const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
   try {
@@ -735,3 +752,41 @@ async function measureFoot({ html, deck }: Table): Promise<{ height: number; too
     await page.close()
   }
 }
+
+// «Följ höjden igen» in the column door (#739): a 44 px target whose words were 10 px, underlined,
+// 6 px over the next column's name, in a door whose other small text — the prose switch beside
+// it — is 11. The words are read at least at the door's small size, and the next row starts a step
+// of the ladder further down.
+describe('the way back to the height in the column door (#739)', () => {
+  it("is written at least as large as the door's other small text, with air before the next column", async () => {
+    const user = userEvent.setup()
+    const doc = projectDoc()
+    doc.prose = { title: true }
+    const { container, unmount } = render(<Table doc={doc} />)
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
+    const html = container.innerHTML
+    unmount()
+    const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
+    try {
+      await page.setContent(shellOf(html, ''), { waitUntil: 'load' })
+      const read = await page.evaluate(() => {
+        const follow = document.querySelector<HTMLElement>('.byd-columns .byd-prose-follow')!
+        const next = follow.closest('li')!.nextElementSibling!.querySelector('.byd-columns-name')!
+        return {
+          named: follow.getAttribute('aria-label'),
+          size: parseFloat(getComputedStyle(follow).fontSize),
+          small: parseFloat(getComputedStyle(document.querySelector('.byd-columns .byd-prose-switch > button')!).fontSize),
+          air: next.getBoundingClientRect().top - follow.getBoundingClientRect().bottom,
+          step: parseFloat(getComputedStyle(document.querySelector('.byd-columns')!).getPropertyValue('--byd-s2')),
+        }
+      })
+      expect(read.named).toBe('Följ höjden igen, Titel')
+      expect(read.small).toBeGreaterThan(0)
+      expect(read.size).toBeGreaterThanOrEqual(read.small)
+      expect(read.step).toBeGreaterThan(0)
+      expect(read.air).toBeGreaterThanOrEqual(read.step)
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})

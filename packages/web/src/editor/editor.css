@@ -875,6 +875,11 @@
    handle's to have, and `.byd-table-frame[data-mode='tv'] .byd-pile-n` weighs as much as a plain
    `.byd-setup-felt .byd-pile *` does. */
 .byd-setup-felt .byd-table-frame[data-mode] .byd-pile, .byd-setup-felt .byd-table-frame[data-mode] .byd-pile * { pointer-events: none; }
+/* A zone's lit name is a label on the handle's behalf and takes no pointer either (#685). Where no
+   free side is left it stands inside its own zone, under the very pointer that lit it, and as a
+   target it took the hover from the handle: the zone went dark, the name went with it, the handle
+   was pointed at again, and the name flickered. */
+.byd-setup-felt .byd-zone > span { pointer-events: none; }
 .byd-setup-handle[data-kind='pile'] { border: 0; outline: 2px solid rgba(255, 217, 138, 0.55); outline-offset: 2px; }
 .byd-setup-handle[data-kind='pile'][aria-pressed='true'], .byd-setup-handle[data-kind='pile']:focus-visible { outline-color: #ffd98a; box-shadow: 0 0 0 7px rgba(255, 217, 138, 0.25); }
 /* The handle says no name at all (K19). The felt underneath names every area, every pile and
@@ -2729,8 +2734,10 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-columns .byd-prose-switch > button[aria-pressed='true'] { background: #2b3446; color: #fff; box-shadow: inset 0 0 0 1px #46597a; }
 .byd-columns .byd-prose-switch[data-from='height'] > button[aria-pressed='true'] { background: transparent; color: #9ec4e8; box-shadow: none; outline: 1px dashed #46597a; outline-offset: -4px; }
 .byd-columns .byd-prose-switch > button:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 0; }
-/* Orsaken, på en egen rad under namnet och växeln, och vägen tillbaka till höjden där den finns. */
-.byd-columns .byd-prose-why { flex: 1 0 100%; box-sizing: border-box; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; padding: 0 0 4px; color: var(--byd-editor-quiet); font-size: 10px; line-height: 1.4; }
+/* Orsaken, på en egen rad under namnet och växeln, och vägen tillbaka till höjden där den finns.
+   I dörrens småtext på 11 px och med ett steg luft till nästa kolumns namn (#739): på 10 px och
+   6 px därifrån lästes «Följ höjden igen» som en del av raden under. */
+.byd-columns .byd-prose-why { flex: 1 0 100%; box-sizing: border-box; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; padding: 0 0 var(--byd-s2); color: var(--byd-editor-quiet); font-size: 11px; line-height: 1.4; }
 .byd-columns .byd-prose-follow { min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: #c3cbdd; font: inherit; text-decoration: underline; cursor: pointer; }
 .byd-columns .byd-prose-follow:hover, .byd-columns .byd-prose-follow:focus-visible { color: #fff; }
 .byd-columns-system { flex: 1 0 100%; display: flex; align-items: baseline; gap: 5px; padding-bottom: 4px; color: var(--byd-editor-quiet); font-size: 10px; line-height: 1.3; }
