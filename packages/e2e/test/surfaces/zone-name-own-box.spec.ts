@@ -113,6 +113,7 @@ const device = (name: string, width: number, height: number, touch = false): Dev
 type Surface = { name: string; device: Device; url: (table: Table, request: APIRequestContext) => Promise<string> }
 const SURFACES: Surface[] = [
   { name: 'TV:n 1920', device: device('tv', 1920, 1080), url: async (t) => t.tvUrl },
+  { name: 'TV:n 1280', device: device('tv-1280', 1280, 800), url: async (t) => t.tvUrl },
   { name: 'bordsläget 1024', device: device('bord-1024', 1024, 768), url: async (t) => t.tableUrl },
   { name: 'bordsläget 1280', device: device('bord-1280', 1280, 800), url: async (t) => t.tableUrl },
   { name: 'bordsläget 1440', device: device('bord-1440', 1440, 900), url: async (t) => t.tableUrl },
@@ -123,6 +124,11 @@ const SURFACES: Surface[] = [
 
 async function opened(open: Fixtures['open'], surface: Surface, table: Table, request: APIRequestContext): Promise<Client> {
   const client = await open(surface.device, `${await surface.url(table, request)}&lang=sv`)
+  // Every card's picture held on its way, as `/faces` answers while the render farm works (#669): a
+  // felt whose cards have no picture yet draws the most words, among them the top card's name under
+  // the discard pile (#771) — which is the state a zone's name has to stand clear of.
+  await client.page.route('**/faces/**', (r) => r.fulfill({ status: 202, body: 'queued' }))
+  await client.page.reload()
   await expect(client.page.locator('[data-table] > .byd-zone').first()).toBeAttached({ timeout: 20_000 })
   return client
 }
@@ -143,6 +149,28 @@ test.describe('ett zonnamn står aldrig i en annan zons ruta (#685)', () => {
         const wide = await readWide(page)
         expect({ where: `${surface.name}, 15 % bredare`, seats, inZone: wide.inZone }).toEqual({ where: `${surface.name}, 15 % bredare`, seats, inZone: [] })
       })
+
+  // Kortets namn under kasthögen (#771) är ett av filtens ord, och ett zonnamn står aldrig på det.
+  // Det är den här regeln som flyttar saloonens namn ner under saloonen med fyra platser, mellan
+  // Kortlek och Kasthög — just där bildtexten hänger — så de två mäts tillsammans, med bildtexten
+  // synlig: leken har ingen bild ännu.
+  for (const surface of SURFACES.filter((s) => ['TV:n 1920', 'TV:n 1280', 'observatören 390'].includes(s.name)))
+    test(`${surface.name}: inget zonnamn på kortets namn under högen (#771)`, async ({ request, open, host }) => {
+      const table = await dealt(request, host, 4)
+      const { page } = await opened(open, surface, table, request)
+      await settled(page)
+      const seen = await page.evaluate(() => {
+        const captions = [...document.querySelectorAll<HTMLElement>('[data-table] .byd-pile-caption')].filter((el) => el.getBoundingClientRect().width > 0)
+        const names = [...document.querySelectorAll<HTMLElement>('[data-table] > .byd-zone > span')].filter((el) => getComputedStyle(el).display !== 'none')
+        const hits = (p: DOMRect, q: DOMRect) => p.left < q.right && q.left < p.right && p.top < q.bottom && q.top < p.bottom
+        const on = names.flatMap((n) => captions.filter((c) => hits(n.getBoundingClientRect(), c.getBoundingClientRect())).map((c) => `${(n.textContent ?? '').trim()} × ${(c.textContent ?? '').trim()}`))
+        return { captions: captions.length, saloon: names.find((n) => n.closest('[data-area="market"]'))?.dataset['nameAt'] ?? null, on }
+      })
+      // Icke-vakuitet: bildtexten står där, och saloonens namn är ett regeln har flyttat.
+      expect(seen.captions).toBeGreaterThan(0)
+      expect(seen.saloon).not.toBe('k19')
+      expect({ where: surface.name, on: seen.on }).toEqual({ where: surface.name, on: [] })
+    })
 
   // Sidan avgörs en gång, i filtens inpassade skala, och står sedan still (#43). Mätt live bytte
   // saloonens namn sida från under till över när kameran zoomade till 3,3 px/mm — det får inte ske.
