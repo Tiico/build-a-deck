@@ -62,6 +62,7 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'status.missing.mark': 'Not found',
   'status.missing.heading': 'We cannot find what you asked for',
   'status.missing.text': 'The link points at something that is no longer there. Check the address, or go to your games.',
+  'status.missing.text.start': 'The link points at something that is no longer there. Check the address, or go to the start page.',
   'status.missing.table.heading': 'The table is over',
   'status.missing.table.text': 'The code that stood here is no longer valid. Start a new table from My games.',
   'status.deleted.table.heading': 'The game was deleted',
