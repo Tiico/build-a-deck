@@ -3,6 +3,7 @@ import { ruleEm, type RenderedBlock, type RenderedNode, type RenderedRules } fro
 import { zoneTally, type ZoneTally } from '@byd/engine'
 import type { ZoneView } from '@byd/protocol'
 import { SetupOverview } from './SetupOverview.js'
+import { sessionRules } from './sessionRules.js'
 import { useT } from '../i18n/index.js'
 import type { Key } from '../i18n/sv.js'
 import './rules-open.css'
@@ -50,11 +51,7 @@ export function RuleDrawer({ http, sessionId, placement, live: table }: RuleDraw
   const version = table?.version
   useEffect(() => {
     let live = true
-    // 204 is the table saying it has no rulebook, which is an answer and not a failure.
-    fetch(`${http}/sessions/${encodeURIComponent(sessionId)}/rules`)
-      .then(async (res) => (res.ok && res.status !== 204 ? ((await res.json()) as RenderedRules) : 'none'))
-      .then((r) => live && setRules(r))
-      .catch(() => live && setRules('none'))
+    void sessionRules(http, sessionId).then((r) => live && setRules(r))
     return () => {
       live = false
     }
