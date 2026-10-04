@@ -1069,9 +1069,11 @@ export const enEditor = {
   'setup.verb.flipTop': 'Flip the top',
   'setup.verb.movePile': 'Move the whole pile',
   'setup.step.split': 'Take {n} off the pile and lay them {face} {at}',
+  'setup.step.split.one': 'Take {n} off the pile and lay it {face} {at}',
   'setup.step.deal': 'Deal {n} {to}, {face}',
   'setup.step.take': 'Search out {which} and lay them {face} {at}',
   'setup.take.every': 'every card',
+  'setup.take.unchosen': 'which cards?',
   'setup.take.where': 'every card where {what}',
   'setup.step.shuffle': 'Shuffle the pile',
   'setup.step.flipTop': 'Turn the top card {face}',
@@ -1084,6 +1086,10 @@ export const enEditor = {
   'setup.face.front': 'face up',
   'setup.face.back': 'face down',
   'setup.face.toggle': 'the other way up',
+  'setup.face.keep.one': 'as it lies',
+  'setup.face.front.one': 'face up',
+  'setup.face.back.one': 'face down',
+  'setup.face.toggle.one': 'the other way up',
   // The place in two forms: `at` is where they lie, `to` is where they go. The preposition belongs
   // to the place and never to the step (#285), and which form a sentence wants is written in the
   // sentence, as the name of its hole.

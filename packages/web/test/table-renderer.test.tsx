@@ -9,7 +9,7 @@ import { buildScene, tableOf } from './scene.js'
 import { recipeSetup, twoSeatSetup } from './fixture.js'
 import { activeBounds, cameraOf, frameRect, overscanPx, pad, reachOf, union, type Rect } from '../src/table/camera.js'
 import { feltScale, fitScale, TV_AIR_PX } from '../src/table/fit.js'
-import { feltWithHands, handCountAt, handExtent, handRotation, type TableMode } from '../src/table/hand.js'
+import { feltWithHands, handCountAt, handRoom, handRotation, type TableMode } from '../src/table/hand.js'
 import { DEFAULT_TIMING } from '../src/status/connection.js'
 import { RING_MARGIN } from '../src/table/ring.js'
 import { CARD_MM } from '../src/table/drop.js'
@@ -412,7 +412,8 @@ describe('the camera (C5)', () => {
     // fitted to the frame with the TV's own air and nothing more. The phone's table mode (K9)
     // lies on wood that is fitted by its own rule. Neither knows the overscan margin.
     const drawn = (mode: TableMode) =>
-      feltWithHands(floor, snapshot.zones.filter((z) => z.kind === 'hand').map((z) => handExtent(z, floorZone, handRotation(z, floorZone, mode))))
+      // With the room the fit keeps for a hand somebody sits at (#721).
+      feltWithHands(floor, snapshot.zones.filter((z) => z.kind === 'hand').map((z) => handRoom(z, floorZone, handRotation(z, floorZone, mode), snapshot.seats.some((s) => s.id === z.owner && s.name !== null))))
     const observer = render(<TableRenderer view={snapshot} mode="tv" size={size} />)
     expect(document.querySelector('.byd-camera-world')).toBeNull()
     expect((document.querySelector('[data-table]') as HTMLElement).style.width).toBe(`${floor.w * fitScale(drawn('tv'), size, TV_AIR_PX)}px`)

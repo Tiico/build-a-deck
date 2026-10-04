@@ -129,26 +129,41 @@ describe('Dela ut', () => {
 describe('Ta av högen', () => {
   describe('på svenska', () => {
     each('split', 'sv', {
-      'bredvid vänster': 'Ta 1 från högen och lägg dem uppvända till vänster om högen',
-      'bredvid höger': 'Ta 1 från högen och lägg dem uppvända till höger om högen',
-      'bredvid ovanför': 'Ta 1 från högen och lägg dem uppvända ovanför högen',
-      'bredvid under': 'Ta 1 från högen och lägg dem uppvända under högen',
-      'varje hand': 'Ta 1 från högen och lägg dem uppvända i varje hand',
-      'min hand': 'Ta 1 från högen och lägg dem uppvända i min hand',
-      'en zon': 'Ta 1 från högen och lägg dem uppvända i Kasthög',
+      'bredvid vänster': 'Ta 1 från högen och lägg det uppvänt till vänster om högen',
+      'bredvid höger': 'Ta 1 från högen och lägg det uppvänt till höger om högen',
+      'bredvid ovanför': 'Ta 1 från högen och lägg det uppvänt ovanför högen',
+      'bredvid under': 'Ta 1 från högen och lägg det uppvänt under högen',
+      'varje hand': 'Ta 1 från högen och lägg det uppvänt i varje hand',
+      'min hand': 'Ta 1 från högen och lägg det uppvänt i min hand',
+      'en zon': 'Ta 1 från högen och lägg det uppvänt i Kasthög',
     })
   })
 
   describe('på engelska', () => {
     each('split', 'en', {
-      'bredvid vänster': "Take 1 off the pile and lay them face up to the pile's left",
-      'bredvid höger': "Take 1 off the pile and lay them face up to the pile's right",
-      'bredvid ovanför': 'Take 1 off the pile and lay them face up above the pile',
-      'bredvid under': 'Take 1 off the pile and lay them face up below the pile',
-      'varje hand': 'Take 1 off the pile and lay them face up in every hand',
-      'min hand': 'Take 1 off the pile and lay them face up in my hand',
-      'en zon': 'Take 1 off the pile and lay them face up in Kasthög',
+      'bredvid vänster': "Take 1 off the pile and lay it face up to the pile's left",
+      'bredvid höger': "Take 1 off the pile and lay it face up to the pile's right",
+      'bredvid ovanför': 'Take 1 off the pile and lay it face up above the pile',
+      'bredvid under': 'Take 1 off the pile and lay it face up below the pile',
+      'varje hand': 'Take 1 off the pile and lay it face up in every hand',
+      'min hand': 'Take 1 off the pile and lay it face up in my hand',
+      'en zon': 'Take 1 off the pile and lay it face up in Kasthög',
     })
+  })
+})
+
+// «Ta 1 … och lägg dem» böjde fel tills talet blev 2 (#713): ett kort är «det», och två är «dem».
+describe('Ta av högen med fler än ett', () => {
+  it.each([
+    ['sv', 'Ta 2 från högen och lägg dem uppvända i Kasthög'],
+    ['en', 'Take 2 off the pile and lay them face up in Kasthög'],
+  ] as const)('%s', (lang, expected) => {
+    const doc = projectDoc()
+    const draw = doc.setup.zones.find((z) => z.id === 'draw')!
+    const zone: Zone = { ...draw, actions: [{ id: 'a1', label: 'Åtgärd', steps: [{ v: 'split', count: { of: 'number', n: 2 }, to: { at: 'zone', zone: 'discard' }, face: 'front' }] }] }
+    const view = render(<Language lang={lang}><ZoneActions doc={doc} zone={zone} onPatch={() => undefined} onClose={() => undefined} /></Language>)
+    expect((view.container.querySelector('ol li .byd-sentence') as HTMLElement).textContent).toBe(expected)
+    view.unmount()
   })
 })
 
@@ -224,7 +239,8 @@ describe('matrisen täcker katalogen', () => {
 
   it('läser varje steg i vokabuläret — de två utan plats står utanför, och säger själva varför', () => {
     const placeless = ['setup.step.shuffle', 'setup.step.flipTop']
-    expect(keysUnder('setup.step.')).toEqual([...Object.keys(STEPS).map((v) => `setup.step.${v}`), ...placeless].sort())
+    // `split.one` is the matrix's own split, whose count is 1 (#713); the plural is read beside it.
+    expect(keysUnder('setup.step.')).toEqual([...Object.keys(STEPS).map((v) => `setup.step.${v}`), 'setup.step.split.one', ...placeless].sort())
     // Och de två står utanför för att de inte har något hål att sätta en plats i, inte för att
     // någon glömde dem.
     for (const key of placeless) for (const lang of ['sv', 'en'] as const) expect(translate(lang, key as Key)).not.toMatch(/\{(at|to)\}/)
