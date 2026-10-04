@@ -215,6 +215,7 @@ export const svPlay = {
   'kbd.panel.moveTop': 'Flytta översta kortet till',
   'kbd.panel.free': 'Fri placering — en punkt på filten',
   'kbd.panel.free.hint': 'kräver pekdon; med tangentbord finns bara platser med namn',
+  'kbd.panel.empty': 'Högen är tom. Det finns inget att göra med den.',
   'kbd.panel.close': 'Stäng',
 
   // "Sätt värde…" på en skärm utan tangentbord (#67): talet skrivs på verktygets egna knappar.

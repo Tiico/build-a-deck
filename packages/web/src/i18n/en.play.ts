@@ -174,6 +174,7 @@ export const enPlay = {
   'kbd.panel.moveTop': 'Move the top card to',
   'kbd.panel.free': 'Free placement — a point on the felt',
   'kbd.panel.free.hint': 'needs a pointer; with a keyboard there are only places with names',
+  'kbd.panel.empty': 'The pile is empty. There is nothing to do with it.',
   'kbd.panel.close': 'Close',
 
   'counter.entry.label': 'Set the value of {what}',

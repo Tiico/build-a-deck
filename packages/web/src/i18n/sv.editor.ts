@@ -319,6 +319,7 @@ export const svEditor = {
   'table.import.needsId': 'CSV-filen behöver en id-kolumn',
   'table.import.noId': 'Alla kort behöver ett id',
   'table.import.duplicateId': 'Kort-id {id} förekommer flera gånger',
+  'table.import.twins': 'CSV-filen har både {a} och {b}, och kolumnernas namn får inte skilja sig bara i versaler',
   // Vad ett släpp får höra när det inte går vidare (#292). Filerna nämns vid namn: en import
   // byter ut hela tabellen, så den som släppte har rätt att se vad verktyget höll i handen.
   'table.import.one': 'En fil i taget: importen byter ut hela tabellen. Det som släpptes var {files}.',
@@ -1237,6 +1238,8 @@ export const svEditor = {
   'setup.group.seats': 'Vid platserna',
   'setup.remove.of': 'Ta bort {name}',
   'setup.removed': '{name} är borttagen.',
+  // Ett klipp är zonen på väg någonstans, inte en förlust (#712).
+  'setup.cut': '{name} är klippt.',
   'setup.undo': 'Ångra',
   'setup.fixed': 'fast',
   'setup.fixed.floor': 'Filten är bordet självt och kan inte tas bort.',

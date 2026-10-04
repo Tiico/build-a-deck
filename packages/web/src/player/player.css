@@ -68,7 +68,7 @@ html:has(.byd-player) { background: #14161c; }
   display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;
   background: var(--byd-control); color: var(--byd-ink-strong); font-size: 13px; font-weight: 700;
 }
-.byd-player > header button:disabled { opacity: 0.35; }
+.byd-player > header button:disabled, .byd-player > header button[aria-disabled='true'] { opacity: 0.35; }
 .byd-player > header .byd-glyph { width: 16px; height: 16px; flex: none; }
 
 /* Counters (C4): a row of pills under the head; tap the sides to count, the number to type. */

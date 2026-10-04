@@ -4,7 +4,7 @@ import { ProseSwitch, ProseWhy } from './ProseSwitch.js'
 import type { FieldBox } from './body.js'
 import { useFocusTrap } from './focusTrap.js'
 import { useRoving } from './roving.js'
-import { fieldLabel } from './fields.js'
+import { clashOf, fieldLabel } from './fields.js'
 import { placedProps, usePlacement } from './placement.js'
 import { useT } from '../i18n/index.js'
 
@@ -112,7 +112,8 @@ export function ColumnDoor({ cell, columns, canRemove, onRemove, removeRef, aski
     const name = to.trim()
     if (name === '') return t('table.field.needsName')
     if (name === from) return null
-    if (taken.includes(name)) return t('table.field.taken', { field: name })
+    const clash = clashOf(name, taken, t, from)
+    if (clash !== null) return t('table.field.taken', { field: clash })
     return null
   }
   const refused = renaming === null ? null : trouble(renaming, draft)

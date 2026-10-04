@@ -56,6 +56,29 @@ describe('a field arrives in the editor (#32)', () => {
     expect(column('fält1')).toBeTruthy()
   })
 
+  // The import pairs a header that differs only in its capitals with the column (#479), so the form
+  // must not make the column the import would fold into it (#694); and the title is the tool's own
+  // in the word it is shown with, as the guided start has said since #476.
+  it('refuses a name that differs from a column, or from «Titel», only in its capitals (#694)', async () => {
+    const user = userEvent.setup()
+    render(<Editing />)
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
+    const name = screen.getByLabelText('Namn')
+
+    await user.clear(name)
+    await user.type(name, 'BODY')
+    await user.click(screen.getByRole('button', { name: 'Lägg till' }))
+    expect(screen.getByRole('alert').textContent).toBe('Det finns redan ett fält som heter body.')
+
+    await user.clear(name)
+    await user.type(name, 'Titel')
+    await user.click(screen.getByRole('button', { name: 'Lägg till' }))
+    expect(screen.getByRole('alert').textContent).toBe('Det finns redan ett fält som heter Titel.')
+    // Nothing reached the deck: one «Titel», and no `BODY` beside `body`.
+    expect(screen.getAllByRole('columnheader').filter((h) => /^Titel/.test(h.textContent ?? ''))).toHaveLength(1)
+    expect(column('BODY')).toBeNull()
+  })
+
   it('refuses a name the table already answers to, and says which one it is', async () => {
     const user = userEvent.setup()
     render(<Editing />)

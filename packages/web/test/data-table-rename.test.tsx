@@ -135,6 +135,43 @@ describe('vad ytan svarar innan verbet hinner kasta (#384)', () => {
     expect(asked).toEqual([{ v: 'renameField', from: 'body', to: 'rubrik' }])
     expect(column('rubrik')).toBeTruthy()
   })
+
+  // Importen parar redan en rubrik som bara skiljer i versaler med kolumnen (L4, #479), så dörren
+  // får inte släppa in det som importen sedan slår ihop (#694): «TYP» bredvid «typ», eller en
+  // andra «Titel» bredvid titeln, som visas med just det ordet. Guiden har ställt samma fråga
+  // utan hänsyn till versaler sedan #476.
+  it('avvisar ett namn som bara skiljer i versaler från en kolumn eller från «Titel» (#694)', async () => {
+    const user = userEvent.setup()
+    const asked: EditIntent[] = []
+    const doc = projectDoc()
+    const typed: ProjectDoc = { ...doc, rows: doc.rows.map((r) => ({ ...r, fields: { ...r.fields, typ: 'varelse' } })) }
+    render(<Editing doc={typed} asked={asked} />)
+
+    await reachByKeyboard(user, 'body')
+    const name = screen.getByLabelText('Namn på kolumnen body')
+    await user.clear(name)
+    await user.type(name, 'TYP')
+    expect(door().getByRole('status').textContent).toBe('Det finns redan ett fält som heter typ.')
+    await user.keyboard('{Enter}')
+    expect(asked).toEqual([])
+
+    await user.clear(name)
+    await user.type(name, 'Titel')
+    expect(door().getByRole('status').textContent).toBe('Det finns redan ett fält som heter Titel.')
+    await user.clear(name)
+    await user.type(name, 'ANTAL')
+    expect(door().getByRole('status').textContent).toBe('Det finns redan ett fält som heter antal.')
+    await user.clear(name)
+    await user.type(name, 'Id')
+    expect(door().getByRole('status').textContent).toBe('Det finns redan ett fält som heter id.')
+
+    // Kolumnens eget namn med andra versaler är ingen kollision: det är samma kolumn.
+    await user.clear(name)
+    await user.type(name, 'Body')
+    expect(door().queryByRole('status')).toBeNull()
+    await user.keyboard('{Enter}')
+    expect(asked).toEqual([{ v: 'renameField', from: 'body', to: 'Body' }])
+  })
 })
 
 // Allt dokumentet skriver kolumnen med följer med namnet. `renameField` gör redan hela det

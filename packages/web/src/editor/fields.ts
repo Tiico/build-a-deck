@@ -33,6 +33,19 @@ export const fieldsOf = (doc: ProjectDoc): string[] => [...columnsOf(doc).filter
 // back by. Both doors into a new field ask the same question of the same list.
 export const takenNames = (doc: ProjectDoc): string[] => ['id', ...fieldsOf(doc)]
 
+// The name `name` would collide with, as the table spells it, or null when it is free (#694). The
+// comparison is the one a reader makes, without regard to case — the import pairs `TYP` with
+// `typ` (#479), so a door that let `TYP` in beside it made a deck the import folds into one — and
+// it is the guided start's question too (#476): the title is the tool's own in each of its words,
+// so «Titel» is refused beside `title`. `self` is the column being renamed, whose own name in
+// other capitals is no collision.
+export function clashOf(name: string, taken: readonly string[], t: T, self?: string): string | null {
+  const lower = name.toLowerCase()
+  const keys = [...taken, 'title'].filter((key) => key !== self)
+  const words = [ANTAL, 'title'].filter((key) => key !== self).map((key) => fieldLabel(key, t))
+  return [...keys, ...words].find((known) => known.toLowerCase() === lower) ?? null
+}
+
 // Whether a column made from the table's head would have anywhere to be kept (#32). A column is a
 // key written onto every card, so on a deck with no cards `addField` hands back the document it
 // was given: the form would close, a version would be written and a step would go on the undo
