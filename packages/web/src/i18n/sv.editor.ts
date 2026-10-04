@@ -116,6 +116,8 @@ export const svEditor = {
   'editor.updatingTable.short': 'Uppdaterar…',
   'editor.updatingTable': 'Uppdaterar bordet…',
   'editor.table.started': 'Nytt bord startat på {version} —',
+  // Osparat arbete sparas först (L5); att en version skrevs sägs, inte bara att bordet startade (#737).
+  'editor.table.savedAndStarted': 'Sparade {version} och startade ett nytt bord på den —',
   'editor.table.refreshed': 'Bordet uppdaterat på {version} —',
   'editor.table.running': 'Bordet kör {version} —',
   'editor.table.lost.one': '{n} kort kunde inte renderas. Bordet står kvar på sin gamla version.',
@@ -229,7 +231,8 @@ export const svEditor = {
   'wall.checks.help.topic': 'anmärkningarna',
   'wall.checks.fix': 'Rätta i mallen',
   'wall.checks.fix.said': '{what} rättad i mallen.',
-  'wall.checks.fix.none': 'Den här behöver ett formval och kan inte rättas åt dig.',
+  'wall.checks.fix.none': 'Den här är ett val du gör själv, så den kan inte rättas åt dig.',
+  'wall.checks.fix.fonts': 'Lägg till typsnittet i Speltema ›',
   'wall.checks.fix.readOnly': 'Den som får ändra spelet kan rätta det här i mallen.',
   'wall.severity.error': 'fel',
   'wall.severity.warning': 'varning',

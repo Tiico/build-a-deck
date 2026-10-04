@@ -11,7 +11,7 @@ import { previewFonts } from './fonts.js'
 import { deckIssues, fixesFor, groupIssues, issueDetail, issueWords, type Fix } from './checks.js'
 import { useSay } from '../status/StatusLive.js'
 import { groupColumn } from './groups.js'
-import { bandAtTop, bandPaints, bandsOf, tileColours } from './bands.js'
+import { bandAtTop, bandPaints, bandsOf, groupableColumns, tileColours } from './bands.js'
 import { filterRows, isFiltering, noFilter, type FilterState } from './filtering.js'
 import { fieldsOf } from './fields.js'
 import { heldGrouped, heldJumpOpen, rememberGrouped, rememberJumpOpen } from './grouping.js'
@@ -37,6 +37,9 @@ export type DeckWallProps = {
   // that draws it, which is drawn in Mall.
   onAddCard?(): void
   onOpenTemplate?(): void
+  // Where a font nothing pins is mended (#737): the game's typefaces, which stand in Speltema (L57).
+  // A remark that cannot be mended for the reader still says where it is mended.
+  onOpenFonts?(): void
   // Where the wall was left (#477): the search, the eye and how far down it stood. The editor
   // holds it for as long as the project is open, so a tab switch does not throw it away.
   view?: WallView | undefined
@@ -77,7 +80,7 @@ type Box = 'eyes' | 'guides' | 'grouping' | 'checks'
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
 // the physical checks (E5), gathered by kind, and the eyes to read the deck with.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, view, onView, readOnly = false }: DeckWallProps) {
+export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFixChecks, onAddCard, onOpenTemplate, onOpenFonts, view, onView, readOnly = false }: DeckWallProps) {
   const t = useT()
   // What was mended is said out loud: an edit that changes the template under a deck of forty
   // cards and says nothing is the silence #32 forbids.
@@ -427,7 +430,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
           >
             {t('wall.grouping.off')}
           </button>
-          {fieldsOf(doc).map((field) => (
+          {groupableColumns(doc, fieldsOf(doc), groupColumn(doc)).map((field) => (
             <button
               key={field}
               type="button"
@@ -453,6 +456,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             openGroup={openGroup}
             onOpenGroup={setOpenGroup}
             readOnly={readOnly}
+            onOpenFonts={onOpenFonts}
             fixes={(code) => (onFixChecks ? fixesFor(doc, { code: code as (typeof groups)[number]['code'] }, found) : [])}
             onFix={(code, what) => {
               onFixChecks?.(fixesFor(doc, { code: code as (typeof groups)[number]['code'] }, found))
@@ -646,6 +650,7 @@ function Checks({
   fixes,
   onFix,
   readOnly,
+  onOpenFonts,
   t,
 }: {
   groups: ReturnType<typeof groupIssues>
@@ -656,6 +661,7 @@ function Checks({
   fixes(code: string): Fix[]
   onFix(code: string, what: string): void
   readOnly: boolean
+  onOpenFonts: (() => void) | undefined
   t: ReturnType<typeof useT>
 }) {
   return (
@@ -682,7 +688,7 @@ function Checks({
                   <div className="byd-wall-check-detail">
                     <p>{issueDetail(g, t)}</p>
                     <span>
-                      {g.elements.join(', ')} · {g.faces.join(', ')}
+                      {g.elements.join(', ')} · {g.faces.map((face) => faceName(face, t)).join(', ')}
                     </span>
                     {/* The remedy, where the check has one (#233). It is one edit on the template
                         and not one per card — the fault is the template's, which is the whole
@@ -697,6 +703,10 @@ function Checks({
                       <button type="button" className="byd-secondary" onClick={() => onFix(g.code, words[g.code] ?? g.code)}>
                         {t('wall.checks.fix')}
                       </button>
+                    ) : g.code === 'unpinned-font' && onOpenFonts ? (
+                      <button type="button" className="byd-secondary" onClick={onOpenFonts}>
+                        {t('wall.checks.fix.fonts')}
+                      </button>
                     ) : (
                       <small>{t('wall.checks.fix.none')}</small>
                     )}
@@ -709,6 +719,12 @@ function Checks({
       )}
     </div>
   )
+}
+
+// A side of the card in the reader's language (A4): `front` and `back` are the document's keys,
+// and the remark said them as they are stored (#737). Any other face is the designer's own name.
+function faceName(face: string, t: T): string {
+  return face === 'front' ? t('canvas.face.front') : face === 'back' ? t('canvas.face.back') : face
 }
 
 // A tile's two grounds and its ink, as the three custom properties the strip is drawn from. A band

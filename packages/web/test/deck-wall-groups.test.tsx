@@ -169,6 +169,40 @@ describe('the grouping is the crown’s to change (#179)', () => {
     // The density ladder is a separate remembered choice and the regrouping left it alone.
     expect(within(screen.getByRole('group', { name: 'Täthet' })).getByRole('status').textContent).toBe('150 px')
   })
+
+  // A column of prose is not a grouping (#737): grouped by `body`, 77 cards were 76 bands of one
+  // card each and a jump column of the same sentence 76 times.
+  it('offers only the columns whose answers the cards share, never one written card by card', () => {
+    const doc = bigDeck()
+    for (const [i, row] of doc.rows.entries()) {
+      row.fields['body'] = `Välj två andra spelare och byt kort nummer ${i}.`
+      row.fields['sällsynthet'] = i % 2 === 0 ? 'Guld' : 'Silver'
+    }
+    wall(doc)
+    fireEvent.click(box(/^Grupperad efter/))
+    const offered = [...document.querySelectorAll('.byd-crown-drawer button')].map((b) => b.textContent)
+    expect(offered).toEqual(['Ingen gruppering', 'typ', 'sällsynthet', 'antal'])
+  })
+
+  it('keeps offering the template’s own column, however many answers it has', () => {
+    const doc = bigDeck()
+    doc.template.faces['front']!.variantBy = 'title'
+    wall(doc)
+    fireEvent.click(box(/^Grupperad efter/))
+    expect(choice('title')).toBeDefined()
+  })
+
+  // Numbers stand in the order numbers have (#737): `antal` read 1, 2, 4, 3 — the order the
+  // values first appeared in the deck.
+  it('stands numeric answers in numeric order, not in the order the deck first met them', () => {
+    const doc = bigDeck()
+    const copies = [1, 2, 4, 3, 10]
+    for (const [i, row] of doc.rows.entries()) row.fields['antal'] = copies[i % copies.length]!
+    wall(doc)
+    fireEvent.click(box(/^Grupperad efter/))
+    fireEvent.click(choice('antal'))
+    expect([...document.querySelectorAll('[data-band]')].map((b) => b.getAttribute('data-band'))).toEqual(['1', '2', '3', '4', '10'])
+  })
 })
 
 describe('the jump column folds to a strip (#179)', () => {
