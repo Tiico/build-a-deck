@@ -27,7 +27,7 @@ import { TableEnded, type ProjectClient, type Textures } from './ProjectClient.j
 import { loginUrl } from '../account/api.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
-import { noticeFor, refusalText, loggedOutNotice, asOf } from '../status/notice.js'
+import { noticeFor, refusalText, loggedOutNotice, asOf, unlinked } from '../status/notice.js'
 import { chordOf, isTyping, passedToEditor } from './keys.js'
 import { mediaInGame } from './assets.js'
 import { previewMotifs } from './motifs.js'
@@ -296,7 +296,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     return () => clearTimeout(timer)
   }, [readingSaid])
   const sayReading = (text: string) => setReadingSaid(text)
-  if (!projectId) return <StatusNotice notice={noticeFor('missing', 'editor', t)} surface="page" links={links} />
+  if (!projectId) return <StatusNotice notice={unlinked('editor', t)} surface="page" links={links} />
   if (fault === 'unauthorized') {
     // Not logged in (G1): to the login card and back here after.
     onNavigate(loginUrl(location.pathname + location.search, params.get('server')))

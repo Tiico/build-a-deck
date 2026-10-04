@@ -25,7 +25,7 @@ import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
 import { liftBox, type Edges } from './lift.js'
 import { useSmallestPt } from './smallest.js'
 import { Lifted } from './Lifted.js'
-import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAt, handBand, handCountAt, handExtent, handRotation, type TableMode } from './hand.js'
+import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAt, handBand, handCountAt, handRoom, handRotation, type TableMode } from './hand.js'
 import { gapAbove, nameAt } from './labels.js'
 import { placeNames } from './freeSide.js'
 import { useT, type Key, type T } from '../i18n/index.js'
@@ -42,6 +42,14 @@ import { useT, type Key, type T } from '../i18n/index.js'
 // från mitten, och närmaste zon någon plats äger — ytan framför den — börjar 230 mm ut. Brickan
 // ligger mitt i det bandet, alltså 101 mm ned, och tar 72 mm av de 186 som finns.
 const START_MM = { w: 260, h: 72, below: 101 }
+// Men pillren under högarna — namnet och antalet, och på en spelbar filt högens enda handtag —
+// hänger i pixlar och krymper inte med filten (`.byd-pile-count[data-handle]`: 52 px under kortet,
+// 44 px hög). Vid 1024 låg brickan därför 10 px över dem (#721). Så brickan står där bandet säger,
+// men aldrig närmare än pillrets underkant och luften under det; och aldrig längre ned än att den
+// ryms i bandet, som slutar där ytan framför en plats börjar, 230 mm ut.
+const PILL_BELOW_PX = 52
+const PILL_AIR_PX = 12
+const BAND_END_MM = 230
 
 // Varför starten inte går att köra, i ringens egna ord: det är samma maskin som svarar, så det
 // ska vara samma mening. Ett steg som frågar efter ett tal har ingen att fråga i det ögonblick
@@ -315,7 +323,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const folded = (z: ZoneView) => foldHand !== null && z.owner === foldHand
   // What the fit has to pass into the frame is the felt *with its hands on* (#23): a hand is part
   // of the table, so a table fitted to the floor alone would clip one that reaches past the rim.
-  const felted = feltWithHands(floorRect, hands.map((z) => (folded(z) ? null : handExtent(z, floor, handRot(z)))))
+  // And a full fan's room for every hand somebody sits at (#721), so the felt stands still while
+  // hands fill and empty.
+  const seated = new Set(view.seats.filter((s) => s.name !== null).map((s) => s.id))
+  const felted = feltWithHands(floorRect, hands.map((z) => (folded(z) ? null : handRoom(z, floor, handRot(z), z.owner !== undefined && seated.has(z.owner)))))
   // A quarter turn (C5) puts the table's width where its height was, so that is the shape the
   // fit has to pass into the frame — otherwise a seat at a side edge gets a table cut off at the
   // top and bottom of its own screen.
@@ -574,6 +585,17 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // En filt där ingen hög bär en startåtgärd ritar ingen bricka alls — samma regel som K14 ger
   // ringen: en ring utan verb öppnas inte, och ett kommando utan något att göra är samma fel.
   const start = onAct && startsAt(view).length > 0 ? compileStart(view) : null
+  // Where the start tile's top edge stands, in the felt's pixels (K25, #721).
+  const startTop = (): number => {
+    const middle = floor.geometry.y + floor.geometry.h / 2
+    const across = floor.geometry.x + floor.geometry.w / 2
+    // The piles the tile lies under, across: their pills are what it must not cover.
+    const under = view.zones.filter((z) => z.kind === 'pile' && Math.abs(z.geometry.x - across) < START_MM.w / 2 + CARD_MM.w / 2)
+    const pills = under.map((z) => top(z.geometry.y + CARD_MM.h / 2) + PILL_BELOW_PX + PILL_AIR_PX)
+    const wanted = top(middle + START_MM.below)
+    const last = top(middle + BAND_END_MM - START_MM.h)
+    return Math.min(Math.max(wanted, ...pills), last)
+  }
   // Ett andra tryck mitt i spelet är hur en ny giv ges, och det ska gå (K23) — men inte av
   // misstag, eftersom det drar tillbaka varje hand och blandar om leken. Frågan ställs bara när
   // något faktiskt hänt vid bordet; `view.played` är den uppgiften, och den räknar inte den som
@@ -1513,7 +1535,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               data-table-start={start.ok ? 'ready' : 'why'}
               disabled={!start.ok}
               title={start.ok ? undefined : t('start.blocked', { why: t(whyKey(start)) })}
-              style={{ left: left(floor.geometry.x + floor.geometry.w / 2 - START_MM.w / 2), top: top(floor.geometry.y + floor.geometry.h / 2 + START_MM.below), width: px(START_MM.w), height: px(START_MM.h), fontSize: `${Math.max(9, px(START_MM.h) * 0.36)}px` }}
+              style={{ left: left(floor.geometry.x + floor.geometry.w / 2 - START_MM.w / 2), top: startTop(), width: px(START_MM.w), height: px(START_MM.h), fontSize: `${Math.max(9, px(START_MM.h) * 0.36)}px` }}
               onClick={(e) => {
                 if (!start.ok) return
                 if (view.played) setAskingStart(true)
