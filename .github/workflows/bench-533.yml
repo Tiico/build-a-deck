@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        kind: [fits, fits, fits, web, web, server, server, render]
+        kind: [fits, fits, fits, fits, fits, fits, render, render]
     services:
       postgres:
         image: postgres:17-alpine
@@ -45,7 +45,7 @@ jobs:
       - name: fits, alone, many times
         if: matrix.kind == 'fits'
         working-directory: packages/web
-        run: FITS_REPEATS=150 pnpm exec vitest run test/data-table-layout.test.tsx -t "a table that fits" > /tmp/bench.log 2>&1 || true
+        run: DEBUG=pw:browser FITS_REPEATS=300 pnpm exec vitest run test/data-table-layout.test.tsx -t "a table that fits" > /tmp/bench.log 2>&1 || true
       - name: whole web suite
         if: matrix.kind == 'web'
         working-directory: packages/web
@@ -59,13 +59,14 @@ jobs:
         working-directory: packages/render
         run: |
           for i in 1 2; do timeout 560 node -e 'const e=Date.now()+540000;while(Date.now()<e){}' & done
-          for i in 1 2 3 4 5 6; do timeout 600 pnpm exec tsx scripts/stress533.ts 540 p$i >> /tmp/bench.log 2>&1 & done
+          for i in 1 2 3 4 5 6; do DEBUG=pw:browser timeout 600 pnpm exec tsx scripts/stress533.ts 540 p$i >> /tmp/bench.log 2>&1 & done
           wait || true
       - name: what was seen
         if: always()
         run: |
           echo "refusals: $(grep -c 'Unable to capture screenshot' /tmp/bench.log || true)"
           grep '\[probe533\]' /tmp/bench.log || echo "no probe lines"
+          grep -iE 'gpu|viz|watchdog|crash|lost|LOG\(|ERROR:|WARNING:' /tmp/bench.log | grep -v probe533 | sort | uniq -c | sort -rn | head -60 || true
           grep -E 'Tests +[0-9]|"tag"' /tmp/bench.log || true
       - uses: actions/upload-artifact@v4
         if: always()

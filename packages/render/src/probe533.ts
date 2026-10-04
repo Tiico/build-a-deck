@@ -4,12 +4,30 @@ import type { Page } from 'playwright'
 
 type Clip = { x: number; y: number; width: number; height: number }
 
+const gpuAt = new WeakMap<object, string>()
+async function procs(page: Page): Promise<string> {
+  const browser = page.context().browser()
+  if (!browser) return 'no-browser'
+  try {
+    const cdp = await browser.newBrowserCDPSession()
+    const info = (await cdp.send('SystemInfo.getProcessInfo')) as { processInfo: { type: string; id: number; cpuTime: number }[] }
+    await cdp.detach()
+    return info.processInfo.map((p) => `${p.type}:${p.id}:${Math.round(p.cpuTime * 10) / 10}`).join(',')
+  } catch (e) {
+    return `err ${String(e).split('\n')[0]}`
+  }
+}
+
 export async function probedShot(page: Page, where: string, opts: Parameters<Page['screenshot']>[0] & { clip?: Clip }): Promise<Buffer> {
+  const b = page.context().browser()
+  if (b && !gpuAt.has(b)) gpuAt.set(b, await procs(page))
   const t0 = Date.now()
   try {
     return await page.screenshot(opts)
   } catch (err) {
     const failedAfter = Date.now() - t0
+    const before = b ? gpuAt.get(b) : ''
+    const after = await procs(page)
     const state = await page
       .evaluate(() => ({ vis: document.visibilityState, w: innerWidth, h: innerHeight, dpr: devicePixelRatio, focus: document.hasFocus(), sx: scrollX, sy: scrollY }))
       .catch((e: unknown) => ({ evalError: String(e) }))
@@ -28,7 +46,7 @@ export async function probedShot(page: Page, where: string, opts: Parameters<Pag
         await new Promise((r) => setTimeout(r, 25 * (i + 1)))
       }
     }
-    console.error(`[probe533] ${where} ${JSON.stringify({ failedAfter, clip: opts.clip, state, rafMs: raf, attempts, at: new Date(t0).toISOString(), pid: process.pid })}`)
+    console.error(`[probe533] ${where} ${JSON.stringify({ before, after, failedAfter, clip: opts.clip, state, rafMs: raf, attempts, at: new Date(t0).toISOString(), pid: process.pid })}`)
     if (!shot) throw err
     return shot
   }
