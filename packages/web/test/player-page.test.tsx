@@ -155,6 +155,17 @@ describe('PlayerPage', () => {
     // The hand's buttons showed through the veil and read into the card's own row (#715): what is
     // behind the card held up is out of reach while it is held.
     for (const part of ['header', '.byd-phone-main', '.byd-phone-foot']) expect({ [part]: document.querySelector(part)?.hasAttribute('inert') }).toEqual({ [part]: true })
+    // And the veil is dense enough that the hand behind it is not read through it.
+    const { readFileSync } = await import('node:fs')
+    const css = document.createElement('style')
+    css.textContent = readFileSync('src/player/player.css', 'utf8')
+    document.head.append(css)
+    try {
+      const alpha = Number(/rgba?\([^)]*,\s*([\d.]+)\)/.exec(getComputedStyle(held!).backgroundColor)?.[1] ?? 1)
+      expect(alpha).toBeGreaterThanOrEqual(0.85)
+    } finally {
+      css.remove()
+    }
     // The next touch anywhere puts it down.
     fireEvent.pointerDown(document.querySelector('.byd-inspect')!)
     expect(document.querySelector('.byd-inspect')).toBeNull()
@@ -468,7 +479,14 @@ describe('flagging a moment (G3)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
     fireEvent.change(screen.getByPlaceholderText(/Vad hände/), { target: { value: 'Draken känns för stark här' } })
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Flagga' }))
-    expect((await screen.findByRole('status')).textContent).toMatch(/Ögonblicket är flaggat/)
+    const said = await screen.findByRole('status')
+    expect(said.textContent).toMatch(/Ögonblicket är flaggat/)
+    // In the page's own flow under the piles, not fixed over the counters (#715, beslut 2026-10-04):
+    // the pill at the top hid a counter's name and value while it stood there.
+    expect(said.closest('.byd-phone-main')).not.toBeNull()
+    expect(said.classList.contains('byd-toast')).toBe(false)
+    const piles = document.querySelector('.byd-phone-main .byd-summary')!
+    expect(piles.compareDocumentPosition(said) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'flag', note: 'Draken känns för stark här' } }))
     expect(screen.queryByPlaceholderText(/Vad hände/)).toBeNull()
   })
