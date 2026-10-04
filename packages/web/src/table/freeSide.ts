@@ -139,7 +139,8 @@ export function placeNames(root: ParentNode): Record<string, string> {
     })
     const onName = (l: Label) => {
       const r = l.el.getBoundingClientRect()
-      return labels.some((o) => o !== l && hits(r, o.el.getBoundingClientRect())) || words.some((q) => hits(r, q))
+      const meets = (q: DOMRect) => r.left < q.right && q.left < r.right && r.top < q.bottom && q.top < r.bottom
+      return labels.some((o) => o !== l && meets(o.el.getBoundingClientRect())) || words.some(meets)
     }
     const onFurniture = (l: Label) => {
       const r = l.el.getBoundingClientRect()

@@ -460,7 +460,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       namesWatch.current = watch
     }
     setNamesAt(namesKey)
-  })
+  }, [namesKey, namesAt])
   useEffect(() => () => namesWatch.current?.disconnect(), [])
   const live = useRef<Live | null>(null)
   const toTable = useRef<((cx: number, cy: number) => Point) | null>(null)

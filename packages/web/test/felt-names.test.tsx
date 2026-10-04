@@ -530,11 +530,14 @@ describe('the Bord tab gives the felt the room its names need (#43)', () => {
     expect({ where, over: reading.grips }).toEqual({ where, over: [] })
     expect({ where, over: reading.wider.grips }).toEqual({ where, over: [] })
     // Och att det rena svaret ovan är förtjänat och inte gratis. Vid två, tre och fyra platser
-    // ligger `Räknare A` på marknadens grepp och måste vika undan; vid fem har bordet krympt
-    // undan och ingen behöver röra sig. Utan de här två raderna skulle ett undanvikande som inte
-    // gjorde någonting alls läsa grönt vid varje platsantal.
-    expect({ where, sent: Object.keys(reading.sent).sort() }).toEqual({ where, sent: seats <= 4 ? ['Räknare A'] : [] })
-    if (seats <= 4) expect({ where, far: reading.sent['Räknare A']! > 0 }).toEqual({ where, far: true })
+    // ligger `Räknare A`:s K19-plats på marknadens ruta och därmed på dess grepp; vid fem har
+    // bordet krympt undan. Sedan #685 står ett namn aldrig i en annan zons ruta, så det är regeln
+    // som flyttar `Räknare A` därifrån redan innan greppet ritas, och `stepAside` behöver inte
+    // skicka någon. Ändrat medvetet 2026-10-04: förr väntades `sent` vara `['Räknare A']` vid två
+    // till fyra platser. Utan raden om `placed` skulle en regel som inte gjorde någonting alls
+    // läsa grönt här, eftersom `stepAside` då hade tagit hand om det.
+    expect({ where, sent: Object.keys(reading.sent).sort() }).toEqual({ where, sent: [] })
+    if (seats <= 4) expect({ where, moved: reading.placed['Räknare A'] }).not.toEqual({ where, moved: 'k19' })
   }, 60_000)
 })
 
