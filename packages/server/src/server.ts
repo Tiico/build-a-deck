@@ -555,7 +555,18 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
     }
     return { seat: ask.seat }
   }
-  if (ask.host !== null) return session.hostKeyHash && hash(ask.host) === session.hostKeyHash ? { seat: null } : { refused: 'the table needs the host key' }
+  // The table's own view (DRIFT §9): the host key opens it, and so does the login of whoever may
+  // open the game's tables (#748) — the server already knows who she is, so an owner who arrives
+  // without the key is not sent to log in to the account she is already in. A key that does not
+  // fit is no reason to shut her out either. The cookie is believed only from the app's own pages.
+  if (ask.host !== null || (ask.seat === null && ask.role === null && ask.token === null)) {
+    if (ask.host !== null && session.hostKeyHash && hash(ask.host) === session.hostKeyHash) return { seat: null }
+    if (opts.auth && session.project && opts.projects) {
+      if (!(await opts.projects.load(session.project))) return { refused: 'the game was deleted' }
+      if (browserOriginAllowed(opts, req) && (await hostOf(opts, req, session)) === 'host') return { seat: null }
+    }
+    return { refused: 'the table needs the host key' }
+  }
   const now = clock(opts)
   const live = ask.token !== null
     ? await opts.store.activateGuest(session.id, hash(ask.token), now.toISOString(), new Date(now.getTime() + CODE_TTL_MS).toISOString())
