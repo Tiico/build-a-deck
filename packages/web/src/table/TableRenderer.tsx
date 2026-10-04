@@ -1928,6 +1928,12 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
   const fanned = playing && !still
   const fanHash = ownBack ?? topCard?.faces?.['back']
   const fanBack = fanHash ? <BackTexture faces={faces} hash={fanHash} /> : back
+  // The top card's name as a caption under the pile's own name (#771, K19). On a TV-mode felt a
+  // pile's card is too small to carry its name: the waiting or failed state set it at 8 px under
+  // the count badge. The caption is the same word the state would have written — `cardWord`, so
+  // it names exactly what this view may already know, and a face-down pile hidden from it names
+  // nothing — and `table.css` draws it only while the top card's state is on show.
+  const caption = count > 0 ? cardWord(topCard) : null
   return (
     <div
       className="byd-pile"
@@ -1979,6 +1985,7 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
       <span className="byd-pile-count" data-handle={labelHandlers ? 'true' : undefined} {...labelHandlers}>
         <span className="byd-pile-name">{zone.dynamic ? t('pile.dynamic') : zone.name}</span>
         <b className="byd-pile-n">{count}</b>
+        {caption !== null && <span className="byd-pile-caption">{caption}</span>}
       </span>
     </div>
   )
