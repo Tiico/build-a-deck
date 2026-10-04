@@ -173,7 +173,10 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
           at 390 the band is 358 px, which holds eight forty-four pixel targets and no more, so
           the hand and the tools cannot both live there. C4's thumb pays for it; see C4's own
           revision of 2026-09-08. */}
-      <div className="byd-online-top">
+      <header className="byd-online-top">
+        {/* The page's heading, for a screen reader (#560 P-20): the seat's line says who, the felt says
+            what, and neither is a heading. It opens the banner, so the landmarks hold everything (#762). */}
+        <h1 className="byd-offscreen">{t('play.table')}</h1>
         <SeatLine name={me?.name ?? seat} hand={hand.length} observers={observers.map((o) => o.name)} t={t} />
         {hand.length > 0 && (
           <button type="button" className="byd-online-showall" ref={showAll} aria-expanded={spread ? 'true' : 'false'} onClick={() => setSpread(!spread)}>
@@ -188,10 +191,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
           {!view.ended && !view.rewind && <RuleDrawer http={http} sessionId={sessionId} placement="tv" live={view} />}
           <SessionButtons client={client} view={view} sheet={sheet} onSheet={setSheet} />
         </div>
-      </div>
-      {/* The page's heading, for a screen reader (#560 P-20): the seat's line says who, the felt says
-          what, and neither is a heading. */}
-      <h1 className="byd-offscreen">{t('play.table')}</h1>
+      </header>
       <main className="byd-online-play" data-hand={column ? 'column' : 'band'}>
         <div className="byd-online-felt">
           <TableRenderer
