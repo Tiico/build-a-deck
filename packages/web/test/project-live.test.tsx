@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ProjectClient } from '../src/editor/ProjectClient.js'
+import { ProjectClient, setEditSocketImplementation, type EditSocketCtor, type WebSocketLike } from '../src/editor/ProjectClient.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { LIBRARY } from '../src/editor/symbols.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
+import { EditSocket } from './setup.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
@@ -342,6 +343,84 @@ describe('the handover when the editor opens', () => {
       expect(ada.dirty).toBe(false)
     } finally {
       ada.close()
+    }
+  })
+})
+
+// The actor carries the tail of edits nobody saved (D3), and keeps it when the tab that wrote
+// it is closed. An editor opened on it afterwards used to take the actor's document as the saved
+// one, so the header said «Sparat» over seven seats the store had never held — and «Starta nytt
+// bord», which saves first only what is unsaved (L5), started the table from rev 1 (#764).
+describe('an editor opened on edits nobody saved (#764, L9)', () => {
+  it('says they are unsaved, and starting a table saves them first', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    const ada = await open()
+    await greeted(ada)
+    ada.setCell('dragon', 'title', 'Osparad')
+    // In the actor's log, and the tab closed without saving.
+    const logged = async () => {
+      for (let i = 0; i < 200 && (await run.projects.readEdits(run.projectId, 0)).length === 0; i++) await new Promise((r) => setTimeout(r, 10))
+    }
+    await logged()
+    ada.close()
+
+    const bo = await open()
+    await greeted(bo)
+    try {
+      expect(title(bo)).toBe('Osparad')
+      expect(bo.dirty).toBe(true)
+
+      const table = await bo.startTable()
+      expect(table.version).toBe('rev-2')
+      expect((await run.projects.load(run.projectId))?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Osparad')
+      expect(bo.dirty).toBe(false)
+    } finally {
+      bo.close()
+    }
+  })
+})
+
+// An editor whose line is down saves the old way, over HTTP, and that save now goes through the
+// actor like every other write (#768). What it wrote in the dark is in the document it saved, so
+// it is not sent again when the line comes back: the actor would lay it on top of itself.
+describe('a save made while the line is down (#768, D3)', () => {
+  it('is the version, and what was written in the dark is not sent a second time', async () => {
+    // A line that can be cut: while it is, every socket the editor opens falls at once.
+    let cut = false
+    const Line = function (url: string): WebSocketLike {
+      if (!cut) return new EditSocket(url) as unknown as WebSocketLike
+      const dead: WebSocketLike = { send: () => undefined, close: () => undefined, readyState: 3, onopen: null, onmessage: null, onclose: null, onerror: null }
+      setTimeout(() => dead.onclose?.({ code: 1006 }), 0)
+      return dead
+    } as unknown as EditSocketCtor
+    setEditSocketImplementation(Line)
+    try {
+      await run.projects.create(run.projectId, projectDoc())
+      const ada = await open()
+      await greeted(ada)
+      cut = true
+      await run.restart()
+      await eventually(() => expect(ada.connected).toBe(false))
+      ada.setCell('dragon', 'title', 'Skrivet i mörkret')
+      expect(await ada.save()).toEqual({ ok: true, rev: 2 })
+      expect(ada.dirty).toBe(false)
+
+      cut = false
+      await eventually(() => expect(ada.connected).toBe(true))
+      const bo = await open()
+      await greeted(bo)
+      try {
+        expect(title(bo)).toBe('Skrivet i mörkret')
+        expect(bo.rev).toBe(2)
+        expect(bo.dirty).toBe(false)
+        // The save is the only thing in the log: the edit it already held was not sent again.
+        expect((await run.projects.readEdits(run.projectId, 0)).map((e) => e.intent.v)).toEqual(['restore'])
+      } finally {
+        bo.close()
+        ada.close()
+      }
+    } finally {
+      setEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
     }
   })
 })
