@@ -449,13 +449,21 @@ export function printedText(input: Pick<CompileInput, 'face' | 'row'>): string[]
 export type PlacedText = { el: Extract<Element, { kind: 'text' }>; x: number; y: number }
 
 export function placedTexts(face: FaceTemplate, row: Row): PlacedText[] {
-  const out: PlacedText[] = []
+  return placedElements(face, row).flatMap((p) => (p.el.kind === 'text' ? [{ ...p, el: p.el }] : []))
+}
+
+// The same for everything the row draws (#830): every text, picture, row of icons and shape, with
+// groups and conditions opened as `render` opens them.
+export type PlacedElement = { el: Exclude<Element, { kind: 'group' | 'if' }>; x: number; y: number }
+
+export function placedElements(face: FaceTemplate, row: Row): PlacedElement[] {
+  const out: PlacedElement[] = []
   const walk = (els: readonly Element[], dx: number, dy: number): void => {
     for (const el of els) {
-      if (el.kind === 'text') out.push({ el, x: el.x + dx, y: el.y + dy })
-      else if (el.kind === 'if') {
+      if (el.kind === 'if') {
         if (holds(el.when, row)) walk(el.children, dx, dy)
       } else if (el.kind === 'group') walk(el.children, dx + el.x, dy + el.y)
+      else out.push({ el, x: el.x + dx, y: el.y + dy })
     }
   }
   walk(elementsFor(face, row), 0, 0)
