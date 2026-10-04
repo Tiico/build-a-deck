@@ -178,6 +178,21 @@ function standing(valign: 'top' | 'middle' | 'bottom' | undefined): string {
   return `display:flex;flex-direction:column;justify-content:safe ${valign === 'middle' ? 'center' : 'flex-end'};`
 }
 
+// Whether a cell is a picture the card can draw (#802). A picture reaches the compiler as an
+// address — a URL with its scheme, a data URL, a path, a file name with a picture's ending, or
+// the `asset:` reference the editor and the server resolve before compiling — and an address has
+// no spaces in it. Anything else is words: a picture bound to a column of words met «Playcard»
+// there and drew `<img src="Playcard">`, the browser's broken-image glyph, in print and on the
+// table as much as on the canvas. The canvas asks the same question to say why the cell is empty,
+// so there is one answer to it and not two.
+const SCHEME = /^(?:https?|data|blob|file|asset):/i
+const PATH = /^\.{0,2}\//
+const PICTURE_FILE = /\.(?:png|jpe?g|gif|webp|avif|svg|bmp)(?:[?#]|$)/i
+export function isPictureSource(value: string): boolean {
+  if (value === '' || /\s/.test(value)) return false
+  return SCHEME.test(value) || PATH.test(value) || PICTURE_FILE.test(value)
+}
+
 function render(el: Element, dx: number, dy: number, input: CompileInput, html: string[], css: Css, warnings: Warning[]): void {
   switch (el.kind) {
     case 'text': {
@@ -219,7 +234,8 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
       const laid = motif && (el.frame ? throughWindow(el, el.frame, motif) : aroundMotif(el, motif))
       css.push(`[data-element="${attr(el.id)}"]{left:${el.x + dx}mm;top:${el.y + dy}mm;width:${el.w}mm;height:${el.h}mm;}`)
       css.push(`[data-element="${attr(el.id)}"] .byd-art{${laid ?? `width:100%;height:100%;object-fit:${el.fit ?? 'cover'};`}}`)
-      html.push(src ? `<div data-element="${attr(el.id)}"><img class="byd-art" src="${attr(src)}" alt=""></div>` : `<div data-element="${attr(el.id)}"></div>`)
+      // A cell with no picture in it is an empty cell, whether it is blank or holds words (#802).
+      html.push(isPictureSource(src) ? `<div data-element="${attr(el.id)}"><img class="byd-art" src="${attr(src)}" alt=""></div>` : `<div data-element="${attr(el.id)}"></div>`)
       break
     }
     case 'icons': {

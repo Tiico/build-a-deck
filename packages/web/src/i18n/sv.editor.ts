@@ -680,6 +680,21 @@ export const svEditor = {
   'canvas.props.picture.choose': 'Välj bild…',
   'canvas.props.picture.none': 'Ingen bild vald',
   'canvas.props.picture.unnamed': 'Bild utan namn',
+  // Platshållaren på mallduken (#802, variant A): ett kort ord på lagret, och hela meningen i
+  // brickans title och namn. Det inom «» är formgivarens kolumnnamn.
+  'canvas.placeholder.image.none': 'Ingen bild vald',
+  'canvas.placeholder.image.none.sentence': 'Ingen bild vald — välj en i spelets bilder.',
+  'canvas.placeholder.empty': '«{field}» är tom på det här kortet',
+  'canvas.placeholder.empty.short': 'Tom här',
+  'canvas.placeholder.image.empty.sentence': '«{field}» är tom på det här kortet.',
+  'canvas.placeholder.image.words': '«{field}» är text, inte bilder',
+  'canvas.placeholder.image.words.short': '«{field}» är text',
+  'canvas.placeholder.image.words.sentence': '«{field}» är text, inte bilder — välj en bildkolumn eller en fast bild.',
+  'canvas.placeholder.icons.none': 'Inga ikoner ännu',
+  'canvas.placeholder.icons.none.short': 'Inga ikoner',
+  'canvas.placeholder.icons.none.sentence': 'Inga ikoner ännu — välj en ikon, eller ett fält där korten skriver {namn}.',
+  'canvas.placeholder.icons.empty.short': '«{field}» tom',
+  'canvas.placeholder.icons.empty.sentence': '«{field}» är tom på det här kortet — skriv {namn} i kolumnen.',
   'canvas.props.keepRatio': 'Behåll proportioner',
   // Passa in det som är ritat i filen i stället för filen (E1): bildernas storlek jämnas ut när
   // källfilerna bär olika mycket tomrum runt motivet.
