@@ -69,16 +69,29 @@ export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedEl
   // The DOM measures for real; the compiler's text warnings are an estimate for headless use.
   // What the editor reports is what the browser saw: overflow after fitting, plus the
   // compiler's non-text warnings (icons and the like).
+  //
+  // And it measures again whenever a face lands (#688). A family starts loading only once a text
+  // stands in it, so the first fitting of a new text is of the fallback's measurements: the
+  // guided start set nine lines of Krönika in 8.5 pt by the fallback and clipped the ninth when
+  // Merriweather arrived, where the editor and the print — which waits for its faces — set them in
+  // 7.5 pt and whole. The renderer waits; a live preview cannot, so it answers the arrival instead.
   useLayoutEffect(() => {
-    if (!ref.current) return
-    const report = fitInDocument(ref.current)
-    const fromDom: Warning[] = report
-      .filter((r) => r.overflow)
-      // The compiler's own warnings are counted, never read out: their detail is a note for
-      // whoever is debugging, in the language the rest of the compiler speaks (A4).
-      .map((r) => ({ element: r.element, code: 'text-too-small', detail: `the text does not fit even at ${r.sizePt}pt` }))
-    tell.current.onWarnings?.([...out.warnings.filter((w) => w.code !== 'text-too-small' && w.code !== 'text-overflow'), ...fromDom])
-    tell.current.onFitted?.(report.filter((r) => !r.empty).map((r) => ({ element: r.element, sizePt: r.sizePt })))
+    const fit = () => {
+      if (!ref.current) return
+      const report = fitInDocument(ref.current)
+      const fromDom: Warning[] = report
+        .filter((r) => r.overflow)
+        // The compiler's own warnings are counted, never read out: their detail is a note for
+        // whoever is debugging, in the language the rest of the compiler speaks (A4).
+        .map((r) => ({ element: r.element, code: 'text-too-small', detail: `the text does not fit even at ${r.sizePt}pt` }))
+      tell.current.onWarnings?.([...out.warnings.filter((w) => w.code !== 'text-too-small' && w.code !== 'text-overflow'), ...fromDom])
+      tell.current.onFitted?.(report.filter((r) => !r.empty).map((r) => ({ element: r.element, sizePt: r.sizePt })))
+    }
+    fit()
+    // jsdom has no font set, and lays nothing out to measure again.
+    const faces = typeof document === 'undefined' ? undefined : (document.fonts as FontFaceSet | undefined)
+    faces?.addEventListener('loadingdone', fit)
+    return () => faces?.removeEventListener('loadingdone', fit)
   }, [out.html, out.css, out.warnings])
   const highlight = selectedElement ? `#${id} [data-element="${selectedElement}"]{outline:0.6mm solid var(--byd-editor-primary-mark);outline-offset:0.3mm}` : ''
   return (
