@@ -224,6 +224,8 @@
    that reach the table (#19). Nothing in it may wrap there — the row would only get cramped — so
    the controls stay on one line and the game's name, the one thing that can be any length, is the
    one thing that gives way. */
+/* The name is the page's heading (#762), and the heading is what gives way: it holds the cut. */
+.byd-editor-name { margin: 0; color: #fff; font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 3ch; }
 .byd-editor > header strong { color: #fff; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 3ch; }
 .byd-editor > header button { white-space: nowrap; }
 /* The revision is a button now: it opens the history (B4). It is a target like any other in the

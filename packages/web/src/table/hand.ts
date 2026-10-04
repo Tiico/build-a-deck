@@ -174,6 +174,20 @@ export function handCountAt(hand: ZoneView, floor: ZoneView, rot: number, folded
 // name, and rides in the air the frame already leaves around the table.
 export function handExtent(hand: ZoneView, floor: ZoneView, rot: number): Rect | null {
   const { count, spread } = fanned(hand)
+  return extentOf(hand, floor, rot, count, spread)
+}
+
+// The room the fit keeps for a hand (#721): for a hand somebody sits at, a full fan's, whatever it
+// holds now. A fan reaches further past the rim with every card it holds — 20 mm at one card, 51
+// at twelve — and the fit counts the fans (#23), so fitted to the hand as it is, the whole felt was
+// rescaled each time a card came or went, and by some 4 % the moment the first one landed. A hand
+// nobody sits at keeps the fan it has, which is usually none.
+export function handRoom(hand: ZoneView, floor: ZoneView, rot: number, seated: boolean): Rect | null {
+  const { count, spread } = fanned(hand)
+  return extentOf(hand, floor, rot, seated ? FAN_MAX : count, spread)
+}
+
+function extentOf(hand: ZoneView, floor: ZoneView, rot: number, count: number, spread: boolean): Rect | null {
   const local = fanExtent(count, spread)
   if (!local) return null
   const fan = turn(local, rot)

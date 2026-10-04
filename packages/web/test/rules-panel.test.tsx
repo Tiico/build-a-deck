@@ -272,7 +272,10 @@ describe('the book under its tab, to a screen reader (#558)', () => {
     expect(levels[0]).toBe(2)
     expect(screen.getByRole('heading', { level: 3, name: 'Skogens herrar' })).toBeTruthy()
     expect(screen.getByRole('heading', { level: 4, name: 'Så spelar ni' })).toBeTruthy()
-    expect(screen.queryByRole('heading', { level: 1 })).toBeNull()
+    // The page's one h1 is the game's name in the editor's header (#762), over the tab; the book
+    // has none of its own.
+    expect(within(document.querySelector('.byd-rules') as HTMLElement).queryByRole('heading', { level: 1 })).toBeNull()
+    expect(screen.getByRole('heading', { level: 1 }).closest('header')).toBeTruthy()
     expect(screen.getByText('Välj ett block på sidan för att skriva i det.')).toBeTruthy()
   })
 })

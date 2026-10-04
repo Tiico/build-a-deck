@@ -165,7 +165,7 @@ describe('en egen åtgärd på en hög, skriven som meningar', () => {
     fireEvent.click(within(panel()).getByRole('button', { name: '＋ Åtgärd' }))
     fireEvent.change(within(panel()).getByLabelText(/Namn för/), { target: { value: 'Vänd upp ett per spelare' } })
     // Sidan står utskriven och inte som ordet "bredvid": meningen säger vad som kommer att hända (K21).
-    expect(panel().textContent).toMatch(/Ta 1 från högen och lägg dem som de ligger till vänster om högen/)
+    expect(panel().textContent).toMatch(/Ta 1 från högen och lägg det som det ligger till vänster om högen/)
 
     // Antalet är en källa och inte ett tal: "ett per spelare" väljs inne i meningen.
     const step = panel().querySelector('ol li') as HTMLElement
@@ -315,7 +315,7 @@ describe('vems zon den färdiga meningen talar om', () => {
 
     fireEvent.click(rowNamed(open(step, 'till vänster om högen'), 'Hand A'))
 
-    expect(step.textContent).toContain('Ta 1 från högen och lägg dem som de ligger i Hand A')
+    expect(step.textContent).toContain('Ta 1 från högen och lägg det som det ligger i Hand A')
     expect(slotShowing(step, 'i Hand A').querySelector('em')?.textContent).toBe('A')
   })
 
@@ -358,7 +358,7 @@ describe('vems zon den färdiga meningen talar om', () => {
 
     fireEvent.click(rowNamed(open(step, 'till vänster om högen'), 'Framför A'))
 
-    expect(step.textContent).toContain('lägg dem som de ligger i Framför A')
+    expect(step.textContent).toContain('lägg det som det ligger i Framför A')
     expect(step.textContent).not.toContain('Framför A A')
     expect(slotShowing(step, 'i Framför A').querySelector('em')).toBeNull()
     // Och det `A` som står inuti `Askhögen` är inget ord, så den zonen bär sin bricka i meningen.
@@ -375,7 +375,7 @@ describe('vems zon den färdiga meningen talar om', () => {
 
     fireEvent.click(rowNamed(open(step, 'till vänster om högen'), 'Kasthög'))
 
-    expect(step.textContent).toContain('lägg dem som de ligger i Kasthög')
+    expect(step.textContent).toContain('lägg det som det ligger i Kasthög')
     expect(slotShowing(step, 'i Kasthög').querySelector('em')).toBeNull()
     expect(within(step).getByRole('button', { name: 'i Kasthög' })).toBe(slotShowing(step, 'i Kasthög'))
   })
@@ -672,6 +672,34 @@ describe('fokus i högens panel (#480)', () => {
     await waitFor(() => expect(document.activeElement).toBe(within(panel()).getByRole('button', { name: 'Ångra' })))
   })
 
+  // Enter i talfältet tog värdet men lämnade rutan öppen och fokus kvar i fältet (#713), fast
+  // stegaren för spelare (L59) tar Enter som «klart».
+  it('tar talet och stänger ratten när Enter trycks i talfältet', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+    const box = open(step, '1')
+    const field = box.querySelector('input[type="number"]') as HTMLInputElement
+    field.focus()
+    fireEvent.change(field, { target: { value: '3' } })
+    fireEvent.keyDown(field, { key: 'Enter' })
+    await waitFor(() => expect(step.querySelector('.byd-slot-pop')).toBeNull())
+    expect(step.textContent).toMatch(/^Ta 3 från högen/)
+    await waitFor(() => expect(document.activeElement?.classList.contains('byd-slot')).toBe(true))
+  })
+
+  // «Leta fram» förvaldes till «varje kort», som i praktiken flyttar hela högen kort för kort (#713).
+  // Beslut 2026-10-04, «fråga först»: steget börjar utan fråga och säger att den saknas.
+  it('börjar ett nytt «Leta fram» med frågan om vilka kort, inte med varje kort', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    newStep()
+    fireEvent.change(panel().querySelector('.byd-zone-step-add select') as HTMLSelectElement, { target: { value: 'take' } })
+    const taken = await waitFor(() => panel().querySelectorAll('ol li')[1] as HTMLElement)
+    expect(taken.textContent).toMatch(/^Leta fram vilka kort\? och lägg dem/)
+    expect(taken.textContent).not.toMatch(/varje kort/)
+  })
+
   it('lämnar tillbaka fokus till ratten när ett val tas med Enter i sökningen', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openZone('draw')
@@ -721,7 +749,8 @@ describe('talet i antalsratten (#480)', () => {
     fireEvent.change(field, { target: { value: '2.5' } })
     fireEvent.keyDown(field, { key: 'Enter' })
     await waitFor(() => expect(knob()).toBe('3'))
-    expect(field.value).toBe('3')
+    // Enter is done with the number, so the box has closed with it (#713).
+    expect(step.querySelector('.byd-slot-pop')).toBeNull()
   })
 })
 

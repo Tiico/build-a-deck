@@ -189,9 +189,14 @@ async function database(): Promise<{ url: string; stop: () => Promise<void> } | 
   }
   try {
     const deadline = Date.now() + 60_000
+    // Asked over TCP and not the socket (#831). The image's first start runs a temporary server
+    // for its init scripts that listens on the socket alone, stops it, and starts the real one; a
+    // `pg_isready` over the socket says yes to the temporary one, and the server that connects over
+    // the port then meets «the database system is starting up». Measured on fresh containers: five
+    // in six over the socket, none in six over TCP. Only the real server listens on the port.
     for (;;) {
       try {
-        await run('docker', ['exec', name, 'pg_isready', '-U', 'byd', '-d', 'byd'])
+        await run('docker', ['exec', name, 'pg_isready', '-h', '127.0.0.1', '-U', 'byd', '-d', 'byd'])
         break
       } catch (cause) {
         if (Date.now() > deadline) throw cause
