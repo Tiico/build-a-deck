@@ -14,7 +14,6 @@ export const enPlay = {
   'texture.lost.one': '{n} card could not be rendered',
   'texture.lost.other': '{n} cards could not be rendered',
 
-  'play.refused.host': 'The table view opens with the host’s link from the editor.',
   'ended.title': 'This table has ended',
   'ended.locked': 'The log is locked to {version}. The survey is on the phones.',
   'ended.rows.one': 'row',

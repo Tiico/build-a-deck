@@ -345,6 +345,30 @@ describe('the tables a project has (#19)', () => {
     foreign.close()
   })
 
+  // The owner who opens her table's screen without its key (#748) is known by her login: the
+  // server already knows who she is, so the address need not say `owner=1` for the table to open.
+  // She gets the table's own view — what the host key gives — and nobody else's cookie does.
+  it('opens the table view to the signed-in owner without the host key, and to no other account', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+
+    const own = new WebSocket(`${run.base}/sessions/${sessionId}`, { headers: { cookie, origin: 'http://test.local' } })
+    expect(await firstMessage(own)).toMatchObject({ t: 'snapshot' })
+    own.close()
+
+    const other = await login('bo@example.com')
+    for (const headers of [{ cookie: other, origin: 'http://test.local' }, { origin: 'http://test.local' }, { cookie, origin: 'https://foreign.example' }]) {
+      const shut = new WebSocket(`${run.base}/sessions/${sessionId}`, { headers })
+      expect(await firstMessage(shut)).toEqual({ t: 'refused', reason: 'the table needs the host key' })
+      shut.close()
+    }
+
+    // A key that does not open it is not the last word for whoever may open it anyway.
+    const stale = new WebSocket(`${run.base}/sessions/${sessionId}?host=nope`, { headers: { cookie, origin: 'http://test.local' } })
+    expect(await firstMessage(stale)).toMatchObject({ t: 'snapshot' })
+    stale.close()
+  })
+
   // Every way into a table other than the host key asks `owner=1` (DRIFT §9), and that question
   // has to be answered by the same gate the editor itself uses (D3): the role, not the owner
   // field. Otherwise a game is editable while its own table is shut.
