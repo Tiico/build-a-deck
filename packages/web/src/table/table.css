@@ -1181,7 +1181,19 @@
   background: rgb(13 15 20 / 0.88); color: #e8eaf0; font: 24px/1.2 system-ui, sans-serif; white-space: nowrap; pointer-events: none;
 }
 .byd-seat-plate > b { display: inline-flex; align-items: center; gap: 10px; color: #fff; }
-.byd-seat-plate > b > i { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: var(--seat); color: #0d0f14; font-style: normal; font-weight: 700; }
+/* A plate is only as wide as the renderer gives it room (#750), and the name is what gives way: it
+   sits in a span of its own so that the cut can reach it — a flex container's own text takes no
+   ellipsis — and is cut at its end, whole in the page for whoever reads it out. Along the top or
+   the bottom the plate is one row while the row has room. Where it has not — eight seats, or a
+   typeface wider than this one — what the seat holds goes onto a second line before the name is
+   cut, because a flex row breaks its line before it shrinks anything on it: the name is cut only
+   when the name alone is wider than the plate. On a side plate, where every line stands on its
+   own, each is held to the plate and cut the same way. */
+.byd-seat-plate { flex-wrap: wrap; }
+.byd-seat-plate > * { flex: none; max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; }
+.byd-seat-plate > b { flex: 0 1 auto; min-width: 0; }
+.byd-seat-plate > b > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.byd-seat-plate > b > i { flex: none; display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: var(--seat); color: #0d0f14; font-style: normal; font-weight: 700; }
 /* A seat at the side stands its words one under the other: a wide plate there reached the piles. */
 .byd-seat-plate[data-edge='E'], .byd-seat-plate[data-edge='W'] { flex-direction: column; align-items: flex-start; gap: 2px; padding-bottom: 8px; }
 .byd-seat-plate[data-edge='E'] > span, .byd-seat-plate[data-edge='W'] > span { padding-left: 46px; }

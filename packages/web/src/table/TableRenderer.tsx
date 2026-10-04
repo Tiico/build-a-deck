@@ -2100,6 +2100,69 @@ function SeatName({ zone, floor, name, color, mine, taking, read, left, top }: {
 // (measured at four seats). It is drawn before the piles and the cards, so a card played
 // beside a seat lies over the plate and never under it.
 const PLATE_AIR_PX = 8
+// How tall a plate is drawn, in screen pixels, from the stylesheet's own numbers: the row with the
+// seat's ball (6 + 36 + 8 of padding), and a 24 px line at 1.2 plus the 2 px gap for each line
+// under it. A side plate stands every line under the one before; a plate along the top or the
+// bottom lays its words in one row (#573), and its room is reckoned for that row — a second line
+// is what it falls back on when the row does not fit, not what it is laid out for. Heights are
+// line boxes, not glyphs, so no typeface changes them.
+const PLATE_ROW_PX = 6 + 36 + 8
+const PLATE_LINE_PX = Math.ceil(24 * 1.2) + 2
+// Where a pile's words stand on the room's television: under the card, the name's foot 38 px
+// below the card's edge and, under it, the top card's caption (#771) at 40 px plus its 28 px
+// line (table.css). Its width is the one measure here that depends on the typeface, so it
+// is reckoned at 0.7 em a letter of its 24 px — wider than any face draws an average letter — and
+// never narrower than the card it is centred under.
+const PILE_WORDS_BELOW_PX = 40 + 28
+const PILE_NAME_EM = 24 * 0.7
+type Box = { left: number; right: number; top: number; bottom: number }
+// How wide a seat's plate may grow (#750). A name is whatever the player typed, and a plate that
+// grew with it lay over the draw pile, the discard pile and the next seat's zones. So a plate
+// grows from where it starts until the first thing level with it — a pile and its name, another
+// seat's zone, the start of the next plate along the same edge, or the rim — and stops short of
+// it by the same air it keeps from its own zones. A plate at the side grows toward the middle, and
+// stops at the middle, where the plate of the seat opposite comes the other way.
+function plateRoom(view: Snapshot, seat: Snapshot['seats'][number], edge: 'N' | 'E' | 'S' | 'W', own: Box, rows: number, left: (mm: number) => number, top: (mm: number) => number, t: T): number {
+  const height = edge === 'E' || edge === 'W' ? PLATE_ROW_PX + rows * PLATE_LINE_PX : PLATE_ROW_PX
+  const middle = (own.top + own.bottom) / 2
+  const band =
+    edge === 'N' ? { top: own.bottom, bottom: own.bottom + PLATE_AIR_PX + height } :
+    edge === 'S' ? { top: own.top - PLATE_AIR_PX - height, bottom: own.top } :
+    { top: middle - height / 2, bottom: middle + height / 2 }
+  // The plate grows rightward from its left edge, except at the east, where it grows leftward.
+  const start = edge === 'E' ? own.left - PLATE_AIR_PX : edge === 'W' ? own.right + PLATE_AIR_PX : own.left
+  const toward = (b: Box): number => (edge === 'E' ? start - b.right : b.left - start)
+  const floor = view.zones.find((z) => z.id === view.floor)
+  let room = Infinity
+  if (floor) {
+    const rim = { left: left(floor.geometry.x), right: left(floor.geometry.x + floor.geometry.w) }
+    const centre = (rim.left + rim.right) / 2
+    room = edge === 'E' ? start - Math.max(rim.left, centre) : edge === 'W' ? Math.min(rim.right, centre) - start : rim.right - start
+  }
+  const obstacles: Box[] = []
+  for (const z of view.zones) {
+    if (z.id === view.floor || z.owner === seat.id) continue
+    const g = z.geometry
+    if (z.kind === 'pile') {
+      const half = Math.max(left(CARD_MM.w / 2) - left(0), ((z.dynamic ? t('pile.dynamic') : z.name).length * PILE_NAME_EM) / 2)
+      obstacles.push({ left: left(g.x) - half, right: left(g.x) + half, top: top(g.y - CARD_MM.h / 2), bottom: top(g.y + CARD_MM.h / 2) + PILE_WORDS_BELOW_PX })
+    } else {
+      obstacles.push({ left: left(g.x), right: left(g.x + g.w), top: top(g.y), bottom: top(g.y + g.h) })
+    }
+  }
+  // The next seat along the same edge: its plate starts where its zones do, level with this one.
+  for (const other of view.seats) {
+    if (other.id === seat.id || (other.edge ?? 'S') !== edge || edge === 'E' || edge === 'W') continue
+    const theirs = view.zones.filter((z) => z.owner === other.id && z.kind === 'area')
+    if (theirs.length > 0) obstacles.push({ ...band, left: left(Math.min(...theirs.map((z) => z.geometry.x))), right: left(Math.min(...theirs.map((z) => z.geometry.x))) })
+  }
+  for (const b of obstacles) {
+    if (b.bottom <= band.top || b.top >= band.bottom) continue
+    const near = toward(b)
+    if (near >= 0) room = Math.min(room, near)
+  }
+  return room - PLATE_AIR_PX
+}
 function SeatPlate({ view, seat, color, left, top, t }: { view: Snapshot; seat: Snapshot['seats'][number]; color: string; left: (mm: number) => number; top: (mm: number) => number; t: T }) {
   const own = view.zones.filter((z) => z.owner === seat.id && z.kind === 'area')
   const hand = view.zones.find((z) => z.owner === seat.id && z.kind === 'hand')
@@ -2118,13 +2181,14 @@ function SeatPlate({ view, seat, color, left, top, t }: { view: Snapshot; seat: 
   const held = hand ? (hand.mode === 'count' ? hand.count : hand.order.length) : null
   const owned = new Set(own.map((z) => z.id))
   const chips = view.components.filter((c) => c.counter !== null && c.counter !== undefined && owned.has(c.zone))
+  const maxWidth = plateRoom(view, seat, edge, { left: left(x0), right: left(x1), top: top(y0), bottom: top(y1) }, (held !== null ? 1 : 0) + chips.length, left, top, t)
   // A seat nobody sits in keeps its letter in the ball and says it is free where the name goes; the
   // letter written twice read «A A» (#717).
   return (
-    <div className="byd-seat-plate" data-seat-plate={seat.id} data-edge={edge} style={{ ...at, ['--seat' as string]: color }}>
+    <div className="byd-seat-plate" data-seat-plate={seat.id} data-edge={edge} style={{ ...at, ...(Number.isFinite(maxWidth) ? { maxWidth: Math.max(0, maxWidth) } : {}), ['--seat' as string]: color }}>
       <b>
         <i aria-hidden="true">{(seat.name ?? seat.id).slice(0, 1)}</i>
-        {seat.name ?? t('tv.seat.free')}
+        <span>{seat.name ?? t('tv.seat.free')}</span>
       </b>
       {held !== null && <span>{t(held === 1 ? 'tv.seat.hand.one' : 'tv.seat.hand.other', { n: held })}</span>}
       {chips.map((c) => (
