@@ -144,7 +144,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
   const { rescan: _again, ...away } = links
   if (!code) return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), text: t('join.code.missing') }} surface="page" links={away} />
   if (lookup === 'gone') return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), text: t('join.code.gone', { code: code.toUpperCase() }) }} surface="page" links={away} />
-  if (lookup === 'ended') return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), heading: t('status.missing.table.heading'), text: t('join.ended') }} surface="page" links={away} />
+  if (lookup === 'ended') return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), heading: t('status.ended.table.heading'), text: t('join.ended') }} surface="page" links={away} />
   if (lookup === 'offline') return <StatusNotice notice={noticeFor('offline', 'phone', t)} surface="page" links={links} onRetry={retry} />
   if (!view || !sessionId) return <RouteStatus status={live} over="sheet" links={links} onRetry={retry} />
 

@@ -31,7 +31,7 @@ export type Tone = 'wait' | 'gone' | 'shut' | 'broken' | 'ok'
 
 // Recovery is either a retry or a decision, never a reload: a reload throws away the very state
 // the reader is trying to keep, and two of them in a row is a loop.
-export type ActionKind = 'retry' | 'login' | 'home' | 'rescan'
+export type ActionKind = 'retry' | 'login' | 'home' | 'rescan' | 'observe'
 export type Action = { kind: ActionKind; label: string; primary?: boolean }
 
 export type Notice = {
@@ -191,6 +191,28 @@ export function refusalText(reason: string, t: T = swedish): string {
 // everything else — only smaller and standing somewhere different.
 export function refusal(reason: string, voice: Voice, t: T = swedish): Notice {
   return { ...noticeFor('refused', voice, t), text: refusalText(reason, t) }
+}
+
+// An address with nothing in it (#753): `/editor` with no project, `/table` with no session. It is
+// D5's «saknas» — there is nothing to show and waiting will not bring it — but nothing has gone
+// missing either, so the words say the link holds nothing rather than guess at a typo or an end.
+export function unlinked(voice: 'table' | 'editor', t: T = swedish): Notice {
+  const said = noticeFor('missing', voice, t)
+  return voice === 'table'
+    ? { ...said, heading: t('status.unlinked.table.heading'), text: t('status.unlinked.table.text') }
+    : { ...said, heading: t('status.unlinked.editor.heading'), text: t('status.unlinked.editor.text') }
+}
+
+// A viewer's link opened on the phone's page (#753): the table is up and the token is good, it
+// only has no seat to show a hand from. The way on is the observer's page with the same link.
+export function watchingNotice(t: T = swedish): Notice {
+  return {
+    ...noticeFor('missing', 'phone', t),
+    mark: t('status.watching.phone.mark'),
+    heading: t('status.watching.phone.heading'),
+    text: t('status.watching.phone.text'),
+    actions: [{ kind: 'observe', label: t('status.act.observe'), primary: true }, home(t, 'status.act.home.start')],
+  }
 }
 
 // What a guest's route says when it cannot show a table at all (#485): the phone's words and ways

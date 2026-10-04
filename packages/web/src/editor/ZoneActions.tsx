@@ -84,7 +84,7 @@ const blank = (v: ActionStep['v'], pile?: string): ActionStep =>
         : v === 'deal'
           ? { v, each: { of: 'number', n: 1 }, to: { at: 'hands' }, face: 'keep' }
           : v === 'take'
-            ? { v, which: [], to: { at: 'beside' }, face: 'keep' }
+            ? { v, which: null, to: { at: 'beside' }, face: 'keep' }
             : { v, count: { of: 'number', n: 1 }, to: { at: 'beside' }, face: 'keep' }
 
 export function ZoneActions({ doc, zone, onPatch, onClose, reading = false }: ZoneActionsProps) {
@@ -335,19 +335,20 @@ function Step({ step, columns, zones, beside, noAsk, t, onChange }: { step: Acti
     at: <TargetSlot key="at" form="at" target={to} zones={zones} beside={beside} t={t} onChange={set} />,
     to: <TargetSlot key="to" form="to" target={to} zones={zones} beside={beside} t={t} onChange={set} />,
   })
-  const side = (f: string, opts: readonly string[], set: (next: string) => void) => (
-    <Slot key="f" label={t(`setup.face.${f}` as Key)}>
+  // `one` is a single card, which Swedish says in the singular: «uppvänt», «som det ligger» (#713).
+  const side = (f: string, opts: readonly string[], set: (next: string) => void, one = false) => (
+    <Slot key="f" label={t(`setup.face.${f}${one ? '.one' : ''}` as Key)}>
       {(close) =>
         opts.map((o) => (
           <button key={o} type="button" onClick={() => { set(o); close() }}>
-            {t(`setup.face.${o}` as Key)}
+            {t(`setup.face.${o}${one ? '.one' : ''}` as Key)}
           </button>
         ))
       }
     </Slot>
   )
   if (step.v === 'shuffle') return <>{t('setup.step.shuffle')}</>
-  if (step.v === 'flipTop') return <>{parts(t('setup.step.flipTop'), { face: side(step.face, TURNS, (face) => onChange({ ...step, face: face as typeof step.face })) })}</>
+  if (step.v === 'flipTop') return <>{parts(t('setup.step.flipTop'), { face: side(step.face, TURNS, (face) => onChange({ ...step, face: face as typeof step.face }), true) })}</>
   if (step.v === 'movePile') return <>{parts(t('setup.step.movePile'), place(step.to, (to) => onChange({ ...step, to })))}</>
   if (step.v === 'take')
     return (
@@ -355,7 +356,8 @@ function Step({ step, columns, zones, beside, noAsk, t, onChange }: { step: Acti
         {parts(t('setup.step.take'), {
           which: (
             // «varje kort» with nothing asked, rather than «varje kort där vilket kort som helst» (#480).
-            <QuerySlot key="w" query={step.which} columns={columns} label={step.which.length > 0 ? t('setup.take.where', { what: queryWords(step.which, t) }) : t('setup.take.every')} onChange={(which) => onChange({ ...step, which })} t={t} />
+            // «vilka kort?» until the question is asked (#713): a new search starts there, not at every card.
+            <QuerySlot key="w" query={step.which ?? []} columns={columns} label={step.which === null ? t('setup.take.unchosen') : step.which.length > 0 ? t('setup.take.where', { what: queryWords(step.which, t) }) : t('setup.take.every')} onChange={(which) => onChange({ ...step, which })} t={t} />
           ),
           face: side(step.face, LANDS, (face) => onChange({ ...step, face: face as typeof step.face })),
           ...place(step.to, (to) => onChange({ ...step, to })),
@@ -372,11 +374,12 @@ function Step({ step, columns, zones, beside, noAsk, t, onChange }: { step: Acti
         })}
       </>
     )
+  const one = step.count.of === 'number' && step.count.n === 1
   return (
     <>
-      {parts(t('setup.step.split'), {
+      {parts(t(one ? 'setup.step.split.one' : 'setup.step.split'), {
         n: amount(step.count, (count) => onChange({ ...step, count })),
-        face: side(step.face, LANDS, (face) => onChange({ ...step, face: face as typeof step.face })),
+        face: side(step.face, LANDS, (face) => onChange({ ...step, face: face as typeof step.face }), one),
         ...place(step.to, (to) => onChange({ ...step, to })),
       })}
     </>
@@ -476,7 +479,9 @@ type Words = { words: string; said?: string | undefined; label?: ReactNode | und
 // `off` är en rad som står kvar och inte går att välja. Den tas inte bort ur rutan: en rad som
 // försvinner säger att valet aldrig funnits, och det som ska sägas är att det inte går just nu —
 // vilket panelen säger i ord på raden under ratten (#454).
-type Choice = Words & { key: string; group: string; node?: ReactNode; off?: boolean | undefined; pick?(): void }
+// `node` is a row that is a control of its own; given as a function it is handed the box's close, so
+// a field in the box can finish the way a picked row does (#713).
+type Choice = Words & { key: string; group: string; node?: ReactNode | ((close: () => void) => ReactNode); off?: boolean | undefined; pick?(): void }
 
 // A box of choices, searched rather than scrolled (#230). In a game of twenty zones it holds
 // forty-seven of them in four blocks nobody can see, and the last is six scrolls away. The
@@ -525,7 +530,7 @@ function Choices({ choices, close, t }: { choices: readonly Choice[]; close(): v
   const blocks = [...new Set(shown.map((c) => c.group))]
   const one = (c: Choice & { was?: string }) =>
     c.node !== undefined ? (
-      <Fragment key={c.key}>{c.node}</Fragment>
+      <Fragment key={c.key}>{typeof c.node === 'function' ? c.node(close) : c.node}</Fragment>
     ) : (
       <button
         key={c.key}
@@ -602,9 +607,24 @@ function Choices({ choices, close, t }: { choices: readonly Choice[]; close(): v
 // #480): the digits are a draft until the field is left or Enter is pressed, then one whole number
 // from 1 up is written and shown. 0 and 2,5 were refused without a word, and the field kept
 // showing what had never been written.
-function AmountField({ n, onCommit }: { n: number; onCommit(n: number): void }) {
+// Enter takes the number and is done, as the seat stepper's Enter is (L59): the box closes and the
+// focus goes back to its knob. It took the number and left both open (#713).
+function AmountField({ n, onCommit, onDone }: { n: number; onCommit(n: number): void; onDone(): void }) {
   const draft = useNumberDraft({ value: n, min: 1, onCommit: (next) => onCommit(Math.max(1, Math.round(next))) })
-  return <input type="number" min="1" step="1" value={draft.value} onChange={draft.onChange} onBlur={draft.onBlur} onKeyDown={(e) => void draft.onKey(e)} />
+  return (
+    <input
+      type="number"
+      min="1"
+      step="1"
+      value={draft.value}
+      onChange={draft.onChange}
+      onBlur={draft.onBlur}
+      onKeyDown={(e) => {
+        const spent = draft.onKey(e)
+        if (e.key === 'Enter' && spent) onDone()
+      }}
+    />
+  )
 }
 
 function AmountSlot({ amount, zones, noAsk, t, onChange }: { amount: ActionAmount; zones: readonly Zone[]; noAsk: boolean; t: T; onChange(next: ActionAmount): void }) {
@@ -613,10 +633,10 @@ function AmountSlot({ amount, zones, noAsk, t, onChange }: { amount: ActionAmoun
       key: 'amount:number',
       words: t('setup.amount.number'),
       group: t('setup.slot.group.amount'),
-      node: (
+      node: (close: () => void) => (
         <label key="amount:number">
           {t('setup.amount.number')}
-          <AmountField n={amount.of === 'number' ? amount.n : 1} onCommit={(n) => onChange({ of: 'number', n })} />
+          <AmountField n={amount.of === 'number' ? amount.n : 1} onCommit={(n) => onChange({ of: 'number', n })} onDone={close} />
         </label>
       ),
     },

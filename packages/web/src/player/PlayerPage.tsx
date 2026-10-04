@@ -13,7 +13,7 @@ import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { statusLinks, wayBack } from '../status/links.js'
-import { noticeFor } from '../status/notice.js'
+import { noticeFor, watchingNotice } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useSessionName } from '../status/sessionName.js'
 import { useFeltKeyboard } from '../table/useFeltKeyboard.js'
@@ -41,7 +41,10 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
   // An ended table is not «Din hand» any more: the phone is showing the survey (#483).
   const game = useSessionName(url.replace(/^ws/, 'http'), sessionId, !params.get('code'))
-  usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code'), game, part: view?.ended ? t('title.play.ended') : null })
+  // A viewer's link opened here (#753): a token with no seat is someone who came in to watch, and
+  // the table behind it is up. The way on is the observer's page, with the link exactly as it is.
+  const watching = sessionId !== null && !seat && token !== undefined
+  usePageTitle({ state: watching ? null : sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code'), game, part: watching ? t('status.watching.phone.heading') : view?.ended ? t('title.play.ended') : null })
   const faces = url.replace(/^ws/, 'http')
 
   const marks = useHandMarks()
@@ -73,6 +76,7 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   // link, if it is still free.
   useSitDown(client, view, seat, name)
 
+  if (watching) return <StatusNotice notice={watchingNotice(t)} surface="page" links={{ ...links, observe: `/observe${location.search}` }} />
   if (!sessionId || !seat) return <StatusNotice notice={noticeFor('missing', 'phone', t)} surface="page" links={links} />
   // Not admitted, or kicked (DRIFT §9). The door is shut, so it is the `forbidden` state — said
   // in the model's form, with the server's own reason for the sentence.

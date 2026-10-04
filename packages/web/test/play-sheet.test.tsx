@@ -74,4 +74,16 @@ describe('what is not a target (C4, #414)', () => {
     expect(ids).not.toContain('mine:B')
     expect(ids).not.toContain('counters:B')
   })
+
+  // A game with no counters still has the seat's counter zone, empty, and the sheet offered it
+  // («Räknare A · lägg fritt», #713): the zone is left out for what it is, not for what is in it.
+  it('leaves out a seat\'s own counter zone when it holds nothing', () => {
+    const { view } = buildScene()
+    const v = view('A')
+    const zone = (id: string, owner: string) => ({ mode: 'order' as const, id, kind: 'area' as const, name: id, visibility: 'all' as const, geometry: { x: 0, y: 0, w: 10, h: 10, rot: 0 }, dynamic: false, owner, order: [] as string[] })
+    const more = { ...v, zones: [...v.zones, zone('mine:A', 'A'), zone('counters:A', 'A')] }
+    const ids = targetsOf(more).map((t) => t.id)
+    expect(ids).toContain('mine:A')
+    expect(ids).not.toContain('counters:A')
+  })
 })
