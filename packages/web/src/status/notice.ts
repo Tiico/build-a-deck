@@ -148,9 +148,10 @@ export function towardSeat(notice: Notice, t: T = swedish): Notice {
 
 // The way home from a page read by someone who is not signed in (#475). `/` is the login card for
 // them, and "Till mina spel" over it is a promise the page does not keep; "Till startsidan" is true
-// of both shapes the start page has.
+// of both shapes the start page has. The sentence over the button goes with it (#728).
 export function signedOut(notice: Notice, t: T = swedish): Notice {
-  return { ...notice, actions: notice.actions.map((a) => (a.kind === 'home' ? { ...a, label: t('status.act.home.start') } : a)) }
+  const text = notice.text === t('status.missing.text') ? t('status.missing.text.start') : notice.text
+  return { ...notice, text, actions: notice.actions.map((a) => (a.kind === 'home' ? { ...a, label: t('status.act.home.start') } : a)) }
 }
 
 // When old data is left on the screen the reader has to be told how old it is, or the picture
