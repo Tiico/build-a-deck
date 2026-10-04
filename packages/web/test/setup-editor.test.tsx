@@ -646,3 +646,20 @@ describe('läge och storlek utan att dra (#579, #554)', () => {
     expect(await geometryOf('discard')).toMatchObject({ x: 200, y: 0 })
   })
 })
+
+// Two new counters were both «Liv», which the phone and the TV drew as two «LIV» (#713). A new
+// counter takes a free name, the way new piles do since #480.
+describe('a new counter in the recipe', () => {
+  it('takes a name no other counter has', async () => {
+    const doc = projectDoc()
+    doc.setup.counters = [{ name: 'Guld', start: 0 }]
+    await run.projects.create(run.projectId, doc)
+    await openBord()
+    const add = await screen.findByRole('button', { name: '＋ Räknare' })
+    fireEvent.click(add)
+    fireEvent.click(add)
+    fireEvent.click(add)
+    const names = [1, 2, 3, 4].map((n) => (screen.getByLabelText(`Namn för räknare ${n}`) as HTMLInputElement).value)
+    expect(names).toEqual(['Guld', 'Liv', 'Liv 2', 'Liv 3'])
+  })
+})
