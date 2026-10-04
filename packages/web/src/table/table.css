@@ -343,6 +343,26 @@
   background: #e8eaf0; color: #0d0f14; display: grid; place-items: center; font-size: 15px; font-weight: 800;
 }
 
+/* The top card's name, under the pile's own name, while the card has no picture (#771, K19).
+   A TV-mode felt draws a pile's card too small to carry its name: 28 × 39 px on the observer's
+   phone, 47 × 65 on the room's television at 1280, and nowhere large enough for the waiting or
+   failed state's name to reach its screen's floor (12 px, and 24 in the room; K26). There the
+   name was set at 8 px under the count badge, and two letters of «Grävling 1» could be read.
+   So the card keeps only its ground and its badge, and the name stands one line under the pile's
+   name, in the state's own colours, for exactly as long as the state is on show — which the
+   state itself says, by being on the card with a name in it. The card says it once and not
+   twice. Table mode is not this: its pile is a handle on the green felt, where these colours do
+   not read, and it keeps the name on the card as before. */
+.byd-pile-caption { display: none; }
+.byd-table-frame[data-mode='tv'] .byd-pile-top > .byd-texture-state > b { display: none; }
+.byd-table-frame[data-mode='tv'] .byd-pile-caption {
+  position: absolute; left: 50%; top: calc(100% + 26px); translate: -50% 0;
+  max-width: 10em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;
+  font-size: 12px; line-height: 14px; font-weight: 600; color: #c9cfdc;
+}
+.byd-table-frame[data-mode='tv'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-caption { display: block; }
+.byd-table-frame[data-mode='tv'] .byd-pile:has(> .byd-pile-top > [data-texture='failed'] > b) .byd-pile-caption { color: #f4b9c7; }
+
 /* Hands: a fan of backs and a count, oriented toward the seat's edge. */
 .byd-hand { position: absolute; width: 0; height: 0; }
 .byd-hand-fan { position: absolute; left: 0; top: 0; }
@@ -1134,6 +1154,7 @@
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-zone > span { font-size: 24px; letter-spacing: 0; text-transform: none; color: #9aa3b8; }
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-pile-name { bottom: -38px; font-size: 24px; letter-spacing: 0; text-transform: none; color: #9aa3b8; }
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-pile-n { min-width: 40px; height: 40px; font-size: 24px; }
+[data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-pile-caption { top: calc(100% + 40px); font-size: 24px; line-height: 28px; }
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-area-count { font-size: 24px; }
 /* A chip no seat owns keeps its figure, on a badge the figure's own size rather than inside a disc
    a third of it. */
