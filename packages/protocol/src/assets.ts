@@ -97,6 +97,28 @@ export function assetTypeDeclaring(kind: AssetKind): string {
   return first.type
 }
 
+// What a file picker offers for a kind (#742): the kind's own types, read off the same list the
+// gate decides by. `image/*` offered an SVG that the picture gate then refused, so the picker held
+// out a choice the tool had already said no to.
+export function assetAccept(kind: AssetKind): string {
+  return ASSET_FORMATS.filter((format) => format.kind === kind)
+    .map((format) => format.type)
+    .join(',')
+}
+
+// Whether the gate would refuse a file, asked of its weight and its first bytes alone (#742). It is
+// the gate's own question, so a client can ask it before a single byte travels: a file the service
+// is certain to refuse is no reason to send 20 MB over a home line. It is never what protects the
+// service — the server asks it again of every byte that arrives.
+export function assetRefusal(size: number, head: Uint8Array, kind: AssetKind): 'tooBig' | 'notThisKind' | null {
+  if (size > ASSET_MAX_BYTES) return 'tooBig'
+  return sniffAsset(head)?.kind === kind ? null : 'notThisKind'
+}
+
+// How much of a file `assetRefusal` needs to read: enough for every format's mark, an SVG's
+// prologue included.
+export const ASSET_HEAD_BYTES = PROLOGUE_BYTES
+
 // What a refusal has to be able to say: the formats of the kind that was asked for, named the way
 // a person names them. It is read off the list itself, so a format added above is a format the
 // refusal offers without anyone remembering to say so.

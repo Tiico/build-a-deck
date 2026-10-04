@@ -39,6 +39,27 @@ describe('a picture is called what its file was called (#222, beslut 6)', () => 
     expect(screen.getByRole('button', { name: 'skogsbryn.jpg' })).toBeTruthy()
   })
 
+  // And in writing on the tile itself (#742): the name lived only in `alt` and in the sheet's
+  // heading, so a designer looking over the library saw three hundred pictures and no names. It is
+  // the button's name already, so the words beside it are not read a second time.
+  it('writes the name on the tile, once for a screen reader', () => {
+    const doc = deckWithArt()
+    doc.pictures = { [SKOG]: { name: 'skogsbryn.jpg' } }
+    render(<MediaPanel doc={doc} assetBase={BASE} />)
+
+    const written = within(tiles()[0]!).getByText('skogsbryn.jpg')
+    expect(written.tagName).not.toBe('IMG')
+    expect(written.getAttribute('aria-hidden')).toBe('true')
+    expect(screen.getByRole('button', { name: 'skogsbryn.jpg' })).toBeTruthy()
+  })
+
+  // A picture from before names has no name to write, and the tile does not invent one: the line
+  // under it already says which cards it is on.
+  it('writes no name on a tile whose picture has none', () => {
+    render(<MediaPanel doc={deckWithArt()} assetBase={BASE} />)
+    expect(within(tiles()[0]!).queryByText('Bild på dragon, knight')).toBeNull()
+  })
+
   // The fallback beslut 6 names out loud. A deck made before there were names must read exactly as
   // it did, so a picture with no name of its own is still named by the cards drawn from it — and
   // one no card uses still says that instead.
