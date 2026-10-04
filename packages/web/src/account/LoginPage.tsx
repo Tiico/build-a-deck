@@ -38,8 +38,8 @@ export function LoginPage({ onNavigate = go }: LoginPageProps) {
   }, [http, next, onNavigate])
   if (!known) return <StatusNotice notice={noticeFor('loading', 'app', t)} surface="page" />
   return (
-    <div className="byd-account" data-page="login">
+    <main className="byd-account" data-page="login">
       <LoginCard http={http} next={next} />
-    </div>
+    </main>
   )
 }

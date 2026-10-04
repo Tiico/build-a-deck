@@ -111,13 +111,13 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   if (email === undefined) return <StatusNotice notice={noticeFor('loading', 'app', t)} surface="page" />
   if (email === null) {
     return (
-      <div className="byd-account" data-page="home">
+      <main className="byd-account" data-page="home">
         <LoginCard http={http} next={location.pathname + location.search} onNavigate={onNavigate} />
-      </div>
+      </main>
     )
   }
   return (
-    <div className="byd-account byd-account-wide" data-page="home">
+    <main className="byd-account byd-account-wide" data-page="home">
       <div className="byd-home">
         {justSaved && (
           <div className="byd-home-claimed">
@@ -369,7 +369,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           onOpen={(id) => onNavigate(`/editor?${suffix(new URLSearchParams({ project: id }))}`)}
         />
       )}
-    </div>
+    </main>
   )
 }
 
