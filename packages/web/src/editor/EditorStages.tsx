@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { panelId, tabId, type Mode } from './EditorTabs.js'
 import { useRoving } from './roving.js'
 import { useT, type Key } from '../i18n/index.js'
@@ -62,11 +62,34 @@ export type EditorStagesProps = {
 export function EditorStages({ stages, stage, onSelect, children }: EditorStagesProps) {
   const t = useT()
   const { itemProps } = useRoving({ ids: stages.map(([s]) => s), selected: stage, orientation: 'horizontal' })
+  const list = useRef<HTMLDivElement>(null)
+  // Which ends of the strip cut a label (#763). The stylesheet fades a cut label out before the
+  // edge, and only there: a strip that fits, or the end it is scrolled all the way to, is drawn
+  // exactly as before. Written on the element rather than kept in state, since it changes with
+  // every frame of a scroll and nothing React draws depends on it.
+  useEffect(() => {
+    const el = list.current
+    if (!el) return
+    const mark = () => {
+      const max = el.scrollWidth - el.clientWidth
+      el.toggleAttribute('data-cut-start', el.scrollLeft > 1)
+      el.toggleAttribute('data-cut-end', el.scrollLeft < max - 1)
+    }
+    mark()
+    el.addEventListener('scroll', mark, { passive: true })
+    const watch = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(mark)
+    watch?.observe(el)
+    for (const tab of el.children) watch?.observe(tab)
+    return () => {
+      el.removeEventListener('scroll', mark)
+      watch?.disconnect()
+    }
+  }, [stages])
   return (
     // A landmark of its own (#762): on a desk the modes stand in the header, and down here they
     // would otherwise be the one part of the page a reader could not jump to.
     <nav className="byd-editor-stagebar">
-      <div role="tablist" aria-label={t('editor.stages')}>
+      <div ref={list} role="tablist" aria-label={t('editor.stages')}>
         {stages.map(([s, label]) => {
           const roving = itemProps(s)
           return (

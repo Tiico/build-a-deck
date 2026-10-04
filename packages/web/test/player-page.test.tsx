@@ -330,13 +330,14 @@ describe('undo and rewind on the phone (B, C)', () => {
     const id = await createSession(run)
     const token = await open(id, 'A', 'Ada')
     const undo = () => screen.getByRole('button', { name: /Ångra/ }) as HTMLButtonElement
-    expect(undo().disabled).toBe(true)
+    // Off by `aria-disabled` and not `disabled`, so the focus that pressed it is not dropped (#761).
+    expect(undo().getAttribute('aria-disabled')).toBe('true')
 
     const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', token })
     await me.ready()
     await me.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(2))
-    await waitFor(() => expect(undo().disabled).toBe(false))
+    await waitFor(() => expect(undo().getAttribute('aria-disabled')).toBe('false'))
 
     fireEvent.click(undo())
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(0))
@@ -358,7 +359,7 @@ describe('undo and rewind on the phone (B, C)', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Ångra/ }))
     expect(await screen.findByText(/Du föreslår att spola tillbaka/)).toBeTruthy()
     expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'rewind.propose', toSeq: 1 } })
-    expect((screen.getByRole('button', { name: /Ångra/ }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole('button', { name: /Ångra/ }).getAttribute('aria-disabled')).toBe('true')
 
     fireEvent.click(screen.getByRole('button', { name: /Dra tillbaka/ }))
     await waitFor(() => expect(screen.queryByText(/Du föreslår/)).toBeNull())

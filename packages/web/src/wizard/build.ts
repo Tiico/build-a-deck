@@ -56,7 +56,7 @@ export function buildProject(state: WizardState, t: T = swedish, files: ThemeFil
   })
   const framed: ProjectDoc = {
     name: state.name.trim(),
-    template: { faces: { front: frame.front(state.fields), back: frame.back } },
+    template: { faces: { front: frame.front(state.fields, t), back: frame.back(t) } },
     rows,
     icons: {},
     setup: tableOf(state, t),

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { Element } from '@byd/template'
 import { parseCsv } from '../src/editor/csv.js'
 import { buildBlankProject, buildProject, type WizardState } from '../src/wizard/build.js'
 import { translate } from '../src/i18n/index.js'
@@ -17,6 +18,9 @@ describe('parseCsv', () => {
     expect(parseCsv('')).toEqual({ headers: [], rows: [] })
   })
 })
+
+// Every layer, the ones inside a condition included: the cost circle is drawn only for a cost (#730).
+const all = (els: readonly Element[]): Element[] => els.flatMap((el) => ('children' in el ? [el, ...all(el.children)] : [el]))
 
 describe('buildProject', () => {
   const state: WizardState = {
@@ -60,7 +64,7 @@ describe('buildProject', () => {
     expect(buildProject(state, (key, params) => translate('en', key, params)).setup.counters).toEqual([{ name: 'Score', start: 0 }])
 
     const front = doc.template.faces['front']!
-    const bound = front.base.flatMap((e) => ('bind' in e && 'field' in e.bind ? [e.bind.field] : []))
+    const bound = all(front.base).flatMap((e) => ('bind' in e && 'field' in e.bind ? [e.bind.field] : []))
     // The names written in step 2 are the columns (#476, L44), and the frame binds them by their
     // place on the card; the title is the one column the tool owns, as `antal` is.
     expect(bound).toEqual(expect.arrayContaining(['title', 'Kostnad', 'Text']))
@@ -86,7 +90,7 @@ describe('buildProject', () => {
       rows: [{ title: 'Drake', cost: '5', body: 'Flygande.', fält1: '7' }],
     })
     expect(named.rows[0]?.fields).toEqual({ title: 'Drake', Pris: 5, Text: 'Flygande.', Styrka: 7, antal: 1 })
-    const cost = named.template.faces['front']!.base.find((e) => e.id === 'cost')
+    const cost = all(named.template.faces['front']!.base).find((e) => e.id === 'cost')
     expect(cost && 'bind' in cost ? cost.bind : null).toEqual({ field: 'Pris' })
   })
 

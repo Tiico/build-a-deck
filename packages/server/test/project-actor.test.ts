@@ -101,6 +101,43 @@ describe('one actor owns one project (D3)', () => {
     expect((await store.at('p1', 2))?.name).toBe('Skogens andar')
   })
 
+  // What is saved is not what is held when the log has a tail nobody saved (#764): an editor
+  // that joins is handed both, so «Osparat» is a comparison it can make (L9), and not only the
+  // held one, which it would have to take for saved.
+  it('hands a joining editor the saved document beside the held one while the tail is unsaved', async () => {
+    const store = new MemoryProjectStore()
+    await store.create('p1', doc())
+    await (await ProjectActor.load('p1', store))!.edit({ v: 'rename', name: 'Osparad svans' })
+    const actor = (await ProjectActor.load('p1', store))!
+    const handed: EditorMessage[] = []
+    actor.subscribe({ id: 'w', name: 'Ada', send: (m: EditorMessage) => handed.push(m) })
+    const first = handed.find((m) => m.v === 'project')
+    expect(first?.v === 'project' && first.doc.name).toBe('Osparad svans')
+    expect(first?.v === 'project' && first.saved?.name).toBe('Skogens herrar')
+
+    // Once saved, the held document is the saved one and nothing beside it is sent.
+    await actor.save()
+    const later: EditorMessage[] = []
+    actor.subscribe({ id: 'b', name: 'Bo', send: (m: EditorMessage) => later.push(m) })
+    const second = later.find((m) => m.v === 'project')
+    expect(second?.v === 'project' && second.saved).toBeUndefined()
+  })
+
+  // A whole document written over HTTP is a version like any other (#768): it says how far the
+  // log had come, so a fresh actor does not replay the tail before it over the top of it.
+  it('makes a whole document written to it a version that a fresh actor starts from', async () => {
+    const store = new MemoryProjectStore()
+    await store.create('p1', doc())
+    const actor = (await ProjectActor.load('p1', store))!
+    await actor.edit({ v: 'rename', name: 'Osparad svans' })
+    expect(await actor.put(1, { ...doc(), name: 'Skrivet över HTTP' })).toEqual({ ok: true, rev: 2 })
+    expect(actor.doc.name).toBe('Skrivet över HTTP')
+    expect(await actor.put(1, doc())).toEqual({ ok: false, reason: 'conflict' })
+
+    const again = (await ProjectActor.load('p1', store))!
+    expect(again.doc.name).toBe('Skrivet över HTTP')
+  })
+
   it('says who else is here, and stops saying so when they leave', async () => {
     const store = new MemoryProjectStore()
     await store.create('p1', doc())
@@ -154,6 +191,53 @@ describe('a log written before the rules changed still opens (#41, DRIFT §7)', 
 
     // And the tolerance is the log's alone: the same intent arriving live is still refused (#41).
     await expect(actor.edit(gone)).rejects.toThrow(/borta/)
+  })
+})
+
+// A column whose name differs from another only in its capitals is one the CSV import folds into
+// the other (#479), so the actor no longer lets one be made (#694). That is a rule about what may
+// be made now, not about what a log already says: a deck that got `typ` and `TYP` before the rule
+// keeps both, line for line, and replays without a single skipped entry.
+describe('a column name that differs only in its capitals (#694)', () => {
+  const before = [
+    { seq: 1, at: '2026-10-01T10:00:00.000Z', intent: { v: 'addField', field: 'typ' } },
+    { seq: 2, at: '2026-10-01T10:01:00.000Z', intent: { v: 'addField', field: 'TYP' } },
+    { seq: 3, at: '2026-10-01T10:02:00.000Z', intent: { v: 'addField', field: 'kraft' } },
+    { seq: 4, at: '2026-10-01T10:03:00.000Z', intent: { v: 'renameField', from: 'kraft', to: 'Typ' } },
+  ] satisfies { seq: number; at: string; intent: EditIntent }[]
+
+  it('still replays from a log written before the rule, identically and with nothing skipped', async () => {
+    const store = new MemoryProjectStore()
+    await store.create('p1', doc())
+    await store.appendEdits('p1', before)
+    const said: string[] = []
+    const quiet = vi.spyOn(console, 'error').mockImplementation((line: string) => void said.push(line))
+    const actor = (await ProjectActor.load('p1', store))!
+    quiet.mockRestore()
+
+    expect(said).toEqual([])
+    expect(Object.keys(actor.doc.rows[0]!.fields)).toEqual(['title', 'antal', 'typ', 'TYP', 'Typ'])
+    expect(actor.seq).toBe(4)
+  })
+
+  it('refuses one arriving live, made or renamed onto, against a column, `id` or `antal`', async () => {
+    const store = new MemoryProjectStore()
+    await store.create('p1', doc())
+    const actor = (await ProjectActor.load('p1', store))!
+    await actor.edit({ v: 'addField', field: 'typ' })
+    await actor.edit({ v: 'addField', field: 'kraft' })
+
+    await expect(actor.edit({ v: 'addField', field: 'TYP' })).rejects.toThrow(/typ/)
+    await expect(actor.edit({ v: 'addField', field: 'Title' })).rejects.toThrow(/title/)
+    await expect(actor.edit({ v: 'addField', field: 'ID' })).rejects.toThrow(/id/)
+    await expect(actor.edit({ v: 'addField', field: 'Antal' })).rejects.toThrow(/antal/)
+    await expect(actor.edit({ v: 'renameField', from: 'kraft', to: 'Typ' })).rejects.toThrow(/typ/)
+    await expect(actor.edit({ v: 'renameField', from: 'kraft', to: 'ANTAL' })).rejects.toThrow(/antal/)
+    expect(actor.seq).toBe(2)
+
+    // A column's own name in other capitals is the same column, and is a rename like any other.
+    await actor.edit({ v: 'renameField', from: 'kraft', to: 'Kraft' })
+    expect(Object.keys(actor.doc.rows[0]!.fields)).toEqual(['title', 'antal', 'typ', 'Kraft'])
   })
 })
 

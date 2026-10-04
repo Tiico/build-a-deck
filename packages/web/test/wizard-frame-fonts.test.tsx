@@ -10,6 +10,7 @@
 // Vägen mäts hela vägen: sidan trycks, dokumentet går till `POST /projects`, och kontrollen körs
 // på det som ligger kvar på servern — inte på det som byggdes i minnet.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Element } from '@byd/template'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { FRAMES } from '../src/wizard/frames.js'
@@ -105,7 +106,9 @@ describe('the theme a guided start is made in (#633, #420, B3, L27)', () => {
   // Samma regel som `setTheme` (L57): prosan i brödtextens familj, allt annat i rubrikens.
   it('sets the prose in the theme s body family and everything else in its heading family', async () => {
     const doc = await madeWith('Klassisk', 'Krönika')
-    const texts = Object.fromEntries((doc.template.faces['front']?.base ?? []).flatMap((el) => (el.kind === 'text' ? [[el.id, el.font.family]] : [])))
+    // Into the frame's conditions too: the cost stands inside the one that draws it only when there is one (#730).
+    const all = (els: readonly Element[]): Element[] => els.flatMap((el) => ('children' in el ? [el, ...all(el.children)] : [el]))
+    const texts = Object.fromEntries(all(doc.template.faces['front']?.base ?? []).flatMap((el) => (el.kind === 'text' ? [[el.id, el.font.family]] : [])))
     expect(texts).toEqual({ title: 'Lora', body: 'Merriweather', cost: 'Lora' })
   })
 

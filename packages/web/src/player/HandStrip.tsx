@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
@@ -58,6 +58,27 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
     const card = el.querySelector<HTMLElement>(`[data-hand-card="${CSS.escape(markedId)}"]`)
     if (card) keepInView(el, card)
   }, [markedId, hand.length])
+
+  // A card that leaves the hand while it holds the focus — played from the address panel, which
+  // hands the focus back to the card it was opened on just before the table takes that card away —
+  // took the focus with it to nothing (#761, K16). The focus goes to the card that now stands where
+  // it stood, or the one before it at the end of the strip, and to the deck's tile when the hand is
+  // empty: the first stop that is left, and the one a hand that was just emptied wants next.
+  const focused = useRef<{ id: string; at: number } | null>(null)
+  const ids = hand.map((c) => c.id).join(' ')
+  useLayoutEffect(() => {
+    const was = focused.current
+    if (!was || hand.some((c) => c.id === was.id)) return
+    focused.current = null
+    const now = document.activeElement
+    if (now !== null && now !== document.body) return
+    const next = hand[Math.min(was.at, hand.length - 1)]
+    const to = next
+      ? strip.current?.querySelector<HTMLElement>(`[data-hand-card="${CSS.escape(next.id)}"]`)
+      : document.querySelector<HTMLElement>('[data-zone-draw]')
+    to?.focus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the hand's ids are what this answers
+  }, [ids])
 
   // The card a resting thumb has lifted, and the one being carried along the strip and how far the
   // thumb has gone with it (K4, #483). Where it would land is the gesture's, in `tracking`.
@@ -153,7 +174,14 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
             style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ...(carrying?.id === c.id ? { translate: `${carrying.dx}px 0` } : {}) }}
             tabIndex={item.tabIndex}
             ref={item.ref}
-            onFocus={item.onFocus}
+            onFocus={() => {
+              focused.current = { id: c.id, at: hand.findIndex((x) => x.id === c.id) }
+              item.onFocus()
+            }}
+            onBlur={(e) => {
+              // Focus that went somewhere else on purpose is not this strip's to bring back.
+              if (e.relatedTarget !== null) focused.current = null
+            }}
             onKeyDown={(e) => {
               // Alt and an arrow carry the card one place along the strip (K4, #483), as Alt and an
               // arrow move a layer or a column everywhere else in this tool.

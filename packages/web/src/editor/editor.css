@@ -640,6 +640,20 @@
    820 px the ten stages fit once «Spara» and «Uppdatera bordet» stand in the header, and at 960 ×
    490, where the two stay here, they fit beside them. */
 .byd-editor-stagebar [role='tab'] { flex: 1 0 auto; padding-inline: var(--byd-s1); white-space: nowrap; border-radius: 9px; }
+/* Where the strip cuts a label (#763). At 400 % the stages do not fit, and the label cut at the
+   strip's end stopped mid-word right against «Spara», so it read as lying under the button. The
+   tool's one gesture for cut text is a fade to nothing at the edge, never a hard stop (#46, #53):
+   at an end the strip really cuts — `data-cut-start`, `data-cut-end`, set as it scrolls — the
+   last 24 px dissolve into the strip's ground, and a label is either readable or plainly going.
+   The scroll padding is the same 24 px, so a tab the arrows bring into view stops clear of the
+   fade and is never the one dissolving. */
+.byd-editor-stagebar [role='tablist'] { --byd-stage-fade: 24px; scroll-padding-inline: var(--byd-stage-fade); }
+.byd-editor-stagebar [role='tablist'][data-cut-end] { -webkit-mask-image: linear-gradient(to left, rgb(0 0 0 / 0%), #000 var(--byd-stage-fade)); mask-image: linear-gradient(to left, rgb(0 0 0 / 0%), #000 var(--byd-stage-fade)); }
+.byd-editor-stagebar [role='tablist'][data-cut-start] { -webkit-mask-image: linear-gradient(to right, rgb(0 0 0 / 0%), #000 var(--byd-stage-fade)); mask-image: linear-gradient(to right, rgb(0 0 0 / 0%), #000 var(--byd-stage-fade)); }
+.byd-editor-stagebar [role='tablist'][data-cut-start][data-cut-end] {
+  -webkit-mask-image: linear-gradient(to right, rgb(0 0 0 / 0%), #000 var(--byd-stage-fade), #000 calc(100% - var(--byd-stage-fade)), rgb(0 0 0 / 0%));
+  mask-image: linear-gradient(to right, rgb(0 0 0 / 0%), #000 var(--byd-stage-fade), #000 calc(100% - var(--byd-stage-fade)), rgb(0 0 0 / 0%));
+}
 .byd-editor-stagebar-actions:empty { display: none; }
 .byd-editor-stagebar-actions {
   display: flex;
@@ -648,7 +662,6 @@
   margin-left: auto;
   padding-left: 8px;
   background: var(--byd-editor-stage-bg);
-  box-shadow: -14px 0 14px -8px rgb(0 0 0 / 95%);
 }
 .byd-editor-stagebar-actions button {
   min-height: var(--byd-tap);
@@ -2988,15 +3001,27 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 /* The ready-made themes (L57, #632): a row of tiles above the parts, and the line that says what
    the game has made of the one it started from. A tile's sample stands on the theme's own paper,
    never on the editor's dark ground (L34). */
-.byd-theme-gallery { display: grid; gap: var(--byd-s2); }
+.byd-theme-gallery { display: grid; gap: var(--byd-s2); container-type: inline-size; }
 .byd-theme-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--byd-s3); }
+/* Four in a row as long as each tile has the room a tile draws; two by two when the catalog or the
+   library stands beside the gallery and the column is narrower (#741, found in #740) — never three
+   and one, which reads as a theme left over. */
+@container (width < 840px) {
+  .byd-theme-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 /* The tile's form is `theme-tile.css`, shared with the guided start (#633); these are its colours here.
    A tile is a choice, so it is chosen by its edge and never by a fill (L13, #665): it stands on the
    editor's own ground, as the guided start's stands on the step's. */
 .byd-theme-tile { border-color: #2f333d; background: transparent; color: #fff; }
 .byd-theme-tile:hover { border-color: #4a5060; }
 .byd-theme-tile[aria-pressed='true'] { border-color: var(--byd-editor-primary-mark); box-shadow: 0 0 0 1px var(--byd-editor-primary-mark); }
-.byd-theme-card { display: block; justify-self: center; margin-bottom: var(--byd-s1); border-radius: 8px; overflow: hidden; box-shadow: 0 0 0 1px var(--byd-editor-card-edge); pointer-events: none; }
+/* The theme proof (#741, beställarens val A): a crop of the game's first card — its top and the
+   first lines of its prose at a size they can be read at — centred in the tile. The crop's size and
+   the card's place in it are worked out from the template (`theme-crop.ts`); the last line fades
+   out over one line's height, so the crop reads as part of a card and not as a card cut short. */
+.byd-theme-card { display: flex; justify-content: center; width: 100%; margin-bottom: var(--byd-s1); pointer-events: none; }
+.byd-theme-crop { position: relative; flex: none; border-radius: 8px; overflow: hidden; box-shadow: 0 0 0 1px var(--byd-editor-card-edge); -webkit-mask-image: linear-gradient(#000 calc(100% - var(--byd-theme-fade)), transparent); mask-image: linear-gradient(#000 calc(100% - var(--byd-theme-fade)), transparent); }
+.byd-theme-card-at { position: absolute; top: 0; }
 .byd-theme-show { justify-self: start; min-height: var(--byd-tap); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; font-size: 12px; cursor: pointer; }
 .byd-theme-show[aria-busy='true'] { cursor: progress; }
 .byd-theme-tile small { color: #9aa3b8; }
