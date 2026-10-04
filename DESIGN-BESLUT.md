@@ -2791,6 +2791,7 @@ Regeln är en exporterad funktion, `placeNames` i `freeSide.ts`, av samma skäl 
 **Bord-fliken visar ett namn i taget (#581), och där får den tända plattan täcka.**
 Vid 1024 är filten 382 px bred.
 Där kapas ett namn aldrig: får det inte plats inuti sin zon står plattan där den första platsen är fri från andra zoners rutor, också om det är över en plats namnkort, och i sista hand över grannen.
+Plattan tar ingen pekare: ett namn som står inuti sin zon står under just den pekare som tände det, och som mål tog det hovringen från handtaget, så att zonen släcktes och namnet flimrade.
 Med Sal's Saloon och fyra platser är det «Räknare B», vars platta står på plats B:s namnkort; ingen annan zons ruta.
 Med alla zoner tända på en gång — vilket fliken aldrig visar, men som grindarna läser — står vid åtta platser två plattor på andra namn.
 `zone-name-own-box.spec.ts` skriver det undantaget uttryckligen: vid 1024 får bara ett namn som appen själv lagt på sin platta stå på ett annat namn, och vid 1280 och 1440 inget alls.
