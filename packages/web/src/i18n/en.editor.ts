@@ -267,6 +267,7 @@ export const enEditor = {
   'table.import.needsId': 'The CSV file needs an id column',
   'table.import.noId': 'Every card needs an id',
   'table.import.duplicateId': 'Card id {id} appears more than once',
+  'table.import.twins': 'The CSV file has both {a} and {b}, and column names may not differ only in capitals',
   'table.import.one': 'One file at a time: an import replaces the whole table. What was dropped was {files}.',
   'table.import.wrongType': '{file} is not a data file. The import takes CSV or tab-separated text.',
   'table.images': 'Images in the game',

@@ -718,6 +718,22 @@ function without<T>(record: Record<string, T>, key: string): Record<string, T> {
 // the designer's to make or to take away, in the wizard or in the editor.
 export const ANTAL = 'antal'
 
+// Whether an edit arriving live may make the column it names (#694). A name that differs from a
+// column, from the card's `id` or from `antal` only in its capitals is one the CSV import folds
+// into that column (#479), so it is no new column. The rule is the live door's and not
+// `applyEdit`'s: a log is replayed through `applyEdit`, and a deck that got `TYP` beside `typ`
+// before the rule must read back with both, line for line, rather than lose one to a skipped
+// entry (DRIFT §7). The words the title and `antal` are shown with are the editor's question,
+// asked in the designer's language; the document has only the keys.
+export function checkNewName(doc: ProjectDoc, intent: EditIntent): void {
+  const name = intent.v === 'addField' ? intent.field : intent.v === 'renameField' ? intent.to : null
+  if (name === null) return
+  const self = intent.v === 'renameField' ? intent.from : null
+  const lower = name.toLowerCase()
+  const clash = ['id', ANTAL, ...columnsOf(doc)].find((known) => known !== self && known.toLowerCase() === lower)
+  if (clash !== undefined) throw new Error(`field ${clash} already exists`)
+}
+
 // Every name the deck answers to, in the order a table shows them: what the template draws,
 // face by face, then whatever else the cards carry. This is the truth about which columns a
 // project has — there is no list of fields in the document, and there is deliberately none:

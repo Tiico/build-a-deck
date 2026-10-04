@@ -28,4 +28,4 @@ export const bodyPtOf = (face: FaceTemplate): number => {
 
 // Wizardens förvalda ram (L6), som varje nytt spel börjar i: brödtexten ytorna mäts mot när
 // ingen annan mall är given.
-export const DEFAULT_BODY_PT = bodyPtOf(DEFAULT_FRAME.front(defaultFields((key, params) => translate('sv', key, params))))
+export const DEFAULT_BODY_PT = bodyPtOf(DEFAULT_FRAME.front(defaultFields((key, params) => translate('sv', key, params)), (key, params) => translate('sv', key, params)))

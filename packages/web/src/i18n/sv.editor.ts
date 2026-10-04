@@ -311,6 +311,7 @@ export const svEditor = {
   'table.import.needsId': 'CSV-filen behöver en id-kolumn',
   'table.import.noId': 'Alla kort behöver ett id',
   'table.import.duplicateId': 'Kort-id {id} förekommer flera gånger',
+  'table.import.twins': 'CSV-filen har både {a} och {b}, och kolumnernas namn får inte skilja sig bara i versaler',
   // Vad ett släpp får höra när det inte går vidare (#292). Filerna nämns vid namn: en import
   // byter ut hela tabellen, så den som släppte har rätt att se vad verktyget höll i handen.
   'table.import.one': 'En fil i taget: importen byter ut hela tabellen. Det som släpptes var {files}.',
