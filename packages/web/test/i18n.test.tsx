@@ -9,7 +9,7 @@ import { svEditor } from '../src/i18n/sv.editor.js'
 import { svPlay } from '../src/i18n/sv.play.js'
 import { svAccount } from '../src/i18n/sv.account.js'
 import { svStatus } from '../src/i18n/sv.status.js'
-import { inviteToProject, requestLink } from '../src/account/api.js'
+import { acceptInvite, inviteToProject, projectMembers, removeProject, requestLink, startTable, unshareProject } from '../src/account/api.js'
 import { ProjectClient } from '../src/editor/ProjectClient.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -225,6 +225,44 @@ describe('the tool in the reader\'s own language (A4)', () => {
     try {
       await expect(inviteToProject('http://server.test', 'p1', 'bo@example.com', 'editor', english)).rejects.toThrow('only the owner can share the game')
       await expect(inviteToProject('http://server.test', 'p1', 'bo@example.com', 'editor')).rejects.toThrow('bara ägaren kan dela spelet')
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+
+  // A status code is said to the one who wrote the code, not to the one reading (A4, #689): what
+  // the service refused is said as the reason, and anything else as words that say what to do.
+  it('never puts the service\'s status number into what the reader is told', async () => {
+    for (const catalogue of [sv, en]) expect(Object.entries(catalogue).filter(([, m]) => m.includes('{status}'))).toEqual([])
+
+    const real = globalThis.fetch
+    try {
+      for (const status of [403, 404, 500, 503]) {
+        globalThis.fetch = (async () => new Response('{}', { status })) as typeof fetch
+        const said = await Promise.all(
+          [
+            () => projectMembers('http://server.test', 'p1'),
+            () => inviteToProject('http://server.test', 'p1', 'bo@example.com', 'editor'),
+            () => unshareProject('http://server.test', 'p1', 'bo@example.com'),
+            () => acceptInvite('http://server.test', 'token'),
+            () => startTable('http://server.test', 'p1'),
+            () => removeProject('http://server.test', 'p1'),
+          ].map((call) => call().then(() => '', (err: Error) => err.message)),
+        )
+        expect(said.filter((m) => /\d{3}/.test(m))).toEqual([])
+      }
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+
+  it('says why the owner\'s choices were refused to someone who is not the owner', async () => {
+    const real = globalThis.fetch
+    globalThis.fetch = (async () => new Response('{}', { status: 403 })) as typeof fetch
+    try {
+      await expect(removeProject('http://server.test', 'p1')).rejects.toThrow('bara ägaren kan ta bort spelet')
+      await expect(unshareProject('http://server.test', 'p1', 'bo@example.com')).rejects.toThrow('bara ägaren kan ta bort någon från spelet')
+      await expect(startTable('http://server.test', 'p1')).rejects.toThrow('en betraktare kan inte starta bord')
     } finally {
       globalThis.fetch = real
     }

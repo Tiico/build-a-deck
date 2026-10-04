@@ -254,3 +254,37 @@ describe('a role that may not edit (D3)', () => {
     await waitFor(() => expect(document.querySelector('[data-role-note]')).toBeNull())
   })
 })
+
+// Sharing a game and taking it back are the owner's alone (D3, #689): anyone else sees who has
+// the game, and is told in words who can share it, instead of a form the server refuses.
+describe('the share panel follows the role (D3, #689)', () => {
+  it.each(['editor', 'tester', 'viewer'] as const)('shows the %s who has the game, with no invitation and no removal to try', async (role) => {
+    await signIn('ada@example.com')
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    await fetch(`${run.http}/projects/${run.projectId}/invites`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com', role }) })
+    const token = inviteLink()
+    await signIn('bo@example.com')
+    expect((await fetch(`${run.http}/invites/${token}`, { method: 'POST' })).status).toBe(200)
+
+    await openEditor()
+    fireEvent.click(await screen.findByRole('button', { name: 'Vilka som har spelet' }))
+    const panel = await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
+    await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(2))
+    expect(within(panel).queryByRole('button', { name: /^Ta bort/ })).toBeNull()
+    expect(within(panel).queryByLabelText('Adress att bjuda in')).toBeNull()
+    expect(within(panel).queryByRole('button', { name: 'Bjud in' })).toBeNull()
+    expect(panel.textContent).toContain('Bara ägaren kan bjuda in fler eller ta bort någon.')
+    // The keys still have somewhere to stand in the panel.
+    await waitFor(() => expect(panel.contains(document.activeElement)).toBe(true))
+  })
+
+  it('keeps the form and the removals for the owner, without the line meant for the others', async () => {
+    await signIn('ada@example.com')
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    await openEditor()
+    fireEvent.click(await screen.findByRole('button', { name: 'Vilka som har spelet' }))
+    const panel = await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
+    expect(within(panel).getByRole('button', { name: 'Bjud in' })).toBeTruthy()
+    expect(panel.textContent).not.toContain('Bara ägaren')
+  })
+})
