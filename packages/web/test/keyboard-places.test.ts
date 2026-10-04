@@ -34,6 +34,7 @@ function table(seat: string | null): Snapshot {
     undo: null,
     ended: false,
     played: false,
+    version: 'v1',
   }
 }
 

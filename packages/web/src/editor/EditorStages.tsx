@@ -86,7 +86,9 @@ export function EditorStages({ stages, stage, onSelect, children }: EditorStages
     }
   }, [stages])
   return (
-    <div className="byd-editor-stagebar">
+    // A landmark of its own (#762): on a desk the modes stand in the header, and down here they
+    // would otherwise be the one part of the page a reader could not jump to.
+    <nav className="byd-editor-stagebar">
       <div ref={list} role="tablist" aria-label={t('editor.stages')}>
         {stages.map(([s, label]) => {
           const roving = itemProps(s)
@@ -115,6 +117,6 @@ export function EditorStages({ stages, stage, onSelect, children }: EditorStages
         })}
       </div>
       <div className="byd-editor-stagebar-actions">{children}</div>
-    </div>
+    </nav>
   )
 }

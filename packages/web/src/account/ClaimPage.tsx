@@ -67,9 +67,9 @@ export function ClaimPage({ onNavigate = go }: ClaimPageProps) {
   if (email === undefined) return status(noticeFor('loading', 'app', t))
   if (email === null) {
     return (
-      <div className="byd-account" data-page="claim">
+      <main className="byd-account" data-page="claim">
         <LoginCard http={http} next={location.pathname + location.search} onNavigate={onNavigate} lead={t('claim.lead')} help={t('claim.help')} />
-      </div>
+      </main>
     )
   }
   return status(waiting(t('claim.saving'), t))

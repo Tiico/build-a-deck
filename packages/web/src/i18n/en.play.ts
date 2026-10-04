@@ -81,6 +81,7 @@ export const enPlay = {
   'ring.action.why.nothing': 'the action has no steps',
   'ring.action.why.gone': 'the pile is no longer here',
   'ring.action.why.asks': 'a step asks for a number',
+  'ring.action.why.unfinished': 'a step has not said which cards it searches out',
   'start.tile': 'Start the game',
   'start.blocked': 'Cannot start right now: {why}',
   'start.again.label': 'Start the game over?',

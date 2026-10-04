@@ -14,6 +14,7 @@ export const svStatus = {
   'status.act.rescan': 'Välj plats igen',
   'status.act.rejoin': 'Gå in igen',
   'status.act.switch': 'Byt konto',
+  'status.act.observe': 'Till observatören',
 
   // Flikens namn per rutt (#12). Namnet står först, för en flik klipps från höger.
   'title.home': 'Mina spel',
@@ -74,14 +75,27 @@ export const svStatus = {
   'status.missing.heading': 'Vi hittar inte det du sökte',
   'status.missing.text': 'Länken pekar på något som inte finns längre. Kontrollera adressen, eller gå till dina spel.',
   'status.missing.text.start': 'Länken pekar på något som inte finns längre. Kontrollera adressen, eller gå till startsidan.',
-  'status.missing.table.heading': 'Bordet är slut',
-  'status.missing.table.text': 'Koden som stod här gäller inte längre. Starta ett nytt bord från Mina spel.',
+  // «Finns inte» är inte «avslutat» (#753): ett bord servern aldrig hört talas om har inte tagit
+  // slut, och en adress utan bord i sig pekar inte på något alls. «Bordet är slut» är reserverat
+  // för ett bord som faktiskt avslutats (`session.end`).
+  'status.missing.table.heading': 'Vi hittar inte bordet',
+  'status.missing.table.text': 'Länken pekar på ett bord som inte finns. Starta ett nytt bord från Mina spel.',
+  'status.unlinked.table.heading': 'Ingen länk till ett bord',
+  'status.unlinked.table.text': 'Adressen pekar inte på något bord. Starta ett bord från Mina spel.',
+  'status.ended.table.heading': 'Bordet är slut',
   'status.deleted.table.heading': 'Spelet är borttaget',
   'status.deleted.table.text': 'Bordet avslutades när spelet togs bort. Starta ett nytt bord från Mina spel.',
   'status.missing.phone.heading': 'Bordet finns inte',
   'status.missing.phone.text': 'Bordet kan ha avslutats. Läs QR-koden på TV:n igen så kommer du in i det som pågår.',
+  // En tittarlänk öppnad på telefonens sida (#753): bordet lever och länken gäller, den har bara
+  // ingen plats att visa en hand ur.
+  'status.watching.phone.mark': 'Tittare',
+  'status.watching.phone.heading': 'Du tittar bara',
+  'status.watching.phone.text': 'Länken är till för att titta och har ingen plats vid bordet. Öppna den som observatör.',
   'status.missing.editor.heading': 'Vi hittar inte spelet',
   'status.missing.editor.text': 'Spelet kan vara borttaget, eller så blev det ett tecken fel i länken.',
+  'status.unlinked.editor.heading': 'Ingen länk till ett spel',
+  'status.unlinked.editor.text': 'Adressen pekar inte på något spel. Välj ett i Mina spel.',
 
   'status.forbidden.mark': 'Stängt',
   'status.forbidden.heading': 'Du har inte tillgång',
