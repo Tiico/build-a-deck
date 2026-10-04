@@ -45,12 +45,22 @@ export function exportCardsCsv(doc: ProjectDoc): string {
 
 // `known` is the columns the deck already has. A header that differs from one of them, or from `id`
 // or `antal`, only in its capitals is that column (#479): `Title` from a spreadsheet stood as a new
-// column beside `title`.
+// column beside `title`. A header that is a column word for word is that column, though: a deck
+// made before the doors refused `TYP` beside `typ` (#694) has both, and its own export must read
+// back as the two columns it came from rather than fold one into the other.
 export function importCardsCsv(text: string, t: T = swedish, known: readonly string[] = []): ProjectRow[] {
   const raw = parseCsv(text)
   const names = ['id', 'antal', ...known]
-  const paired = (header: string) => names.find((name) => name !== header && name.toLowerCase() === header.toLowerCase()) ?? header
+  const paired = (header: string) => (names.includes(header) ? header : (names.find((name) => name.toLowerCase() === header.toLowerCase()) ?? header))
   const parsed = { headers: raw.headers.map(paired), rows: raw.rows.map((row) => Object.fromEntries(Object.entries(row).map(([k, v]) => [paired(k), v]))) }
+  // Two headers that differ only in their capitals are one column read twice, unless the deck
+  // already has both word for word (#694): the table's door refuses such twins, and a file is a
+  // door into new columns too.
+  raw.headers.forEach((a, i) =>
+    raw.headers.slice(i + 1).forEach((b) => {
+      if (a !== b && a.toLowerCase() === b.toLowerCase() && !(names.includes(a) && names.includes(b))) throw new Error(t('table.import.twins', { a, b }))
+    }),
+  )
   if (!parsed.headers.includes('id')) throw new Error(t('table.import.needsId'))
   const fields = parsed.headers.filter((header) => header !== 'id')
   const ids = new Set<string>()
