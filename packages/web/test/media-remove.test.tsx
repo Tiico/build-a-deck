@@ -161,12 +161,14 @@ describe('a picture the template carries is taken out and put back (#320)', () =
     await user.click(within(asked).getByRole('button', { name: 'Ja, ta bort' }))
     await waitFor(() => expect(tile(LOGO)).toBeNull())
 
-    // The element is still there, bound to nothing: the panel says so.
+    // The element is still there, bound to nothing: the panel says so, and so does the canvas,
+    // on the layer itself (#802).
     await user.click(screen.getByRole('tab', { name: 'Mall' }))
     fireEvent.click(await screen.findByRole('radio', { name: 'Baksida' }))
     fireEvent.click(layerPick('logo'))
     expect((screen.getByRole('radio', { name: 'Fast bild' }) as HTMLInputElement).checked).toBe(true)
-    expect(screen.getByText('Ingen bild vald')).toBeTruthy()
+    expect(within(document.querySelector('.byd-props-picture') as HTMLElement).getByText('Ingen bild vald')).toBeTruthy()
+    expect(document.querySelector('[data-drag="logo"] .byd-placeholder-tag')?.textContent).toContain('Ingen bild vald')
     expect(document.querySelector('#canvas [data-element="logo"] img.byd-art')).toBeNull()
 
     fireEvent.keyDown(document, { key: 'z', ctrlKey: true })

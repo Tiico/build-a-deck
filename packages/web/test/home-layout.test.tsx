@@ -11,6 +11,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
 import { HomePage } from '../src/account/HomePage.js'
+import { ROW, helpAnchor, helpPlacement } from '../src/editor/HelpDrawer.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
@@ -20,7 +21,7 @@ vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
-const css = ['src/account/account.css', 'src/account/game-menu.css', 'src/buttons.css', 'src/a11y.css'].map(read).join('\n')
+const css = ['src/account/account.css', 'src/account/game-menu.css', 'src/buttons.css', 'src/a11y.css', 'src/help.css', 'src/help-box.css'].map(read).join('\n')
 const document_ = (html: string) =>
   shell
     .replace('<script type="module" src="/src/main.tsx"></script>', '')
@@ -98,6 +99,47 @@ describe.each([390, 320, 1280])('Mina spel at %i px (#555)', (width) => {
       // The address gives way rather than the line, but stays long enough to say whose account it is.
       expect(account.address).toBeGreaterThanOrEqual(4)
       for (const content of account.led) expect(content).toMatch(/^"·"/)
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})
+
+// The help on an empty account was laid straight over «＋ Nytt spel», the one thing it explains
+// (#726, L32). With room over its line it opens there instead.
+describe.each([390, 768, 1280])('an empty account at %i px (#726)', (width) => {
+  it('opens the help over its line and leaves «＋ Nytt spel» in view', async () => {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'tom@example.com' }) })
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    const { container } = render(
+      <StatusLive>
+        <HomePage />
+      </StatusLive>,
+    )
+    fireEvent.click(await screen.findByRole('button', { name: 'Hjälp om spel' }))
+    await screen.findByRole('dialog')
+    const html = container.innerHTML
+    const height = 800
+    const page = await browser.newPage({ viewport: { width, height } })
+    try {
+      await page.setContent(document_(html), { waitUntil: 'load' })
+      const raw = await page.evaluate((ROW) => {
+        const rect = (el: Element) => { const r = el.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height } }
+        const ask = document.querySelector('.byd-home-empty .byd-help-ask')!
+        const box = document.querySelector('.byd-help-box') as HTMLElement
+        return { ask: rect(ask), row: rect(ask.closest(ROW)!), wants: { w: box.offsetWidth, h: box.scrollHeight }, tile: rect(document.querySelector(ask.closest(ROW)!.getAttribute('data-help-explains')!)!) }
+      }, ROW)
+      const placed = helpPlacement(helpAnchor(raw.ask, raw.row), raw.wants, { w: width, h: height }, raw.tile)
+      const box = await page.evaluate((style) => {
+        const b = document.querySelector('.byd-help-box') as HTMLElement
+        b.style.cssText = ''
+        for (const [k, v] of Object.entries(style)) b.style.setProperty(k.startsWith('--') ? k : k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`), String(v))
+        const r = b.getBoundingClientRect()
+        return { x: r.left, y: r.top, w: r.width, h: r.height }
+      }, placed.style as Record<string, string>)
+      const overlaps = (a: typeof box, b: typeof box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+      expect(overlaps(box, raw.tile)).toBe(false)
+      expect(box.y).toBeGreaterThanOrEqual(0)
     } finally {
       await page.close()
     }

@@ -2,6 +2,7 @@ import { useId, useRef, useState } from 'react'
 import { assetUrl } from './assets.js'
 import { useFocusTrap } from './focusTrap.js'
 import { useT } from '../i18n/index.js'
+import { saidOr } from '../i18n/said.js'
 
 // The library dialog (#296, variant B, chosen by the requester 2026-09-20). The game's pictures
 // in one large, centred window, opened from a picture cell or from the marked cards in Data, so
@@ -72,7 +73,7 @@ export function PictureLibraryDialog({ target, count, replacing, pictures, asset
     try {
       setPicked(await onUpload(file))
     } catch (err) {
-      setRefused(err instanceof Error ? err.message : String(err))
+      setRefused(saidOr(err, t('picture.upload.failed')))
     }
   }
   return (

@@ -1,5 +1,5 @@
 import type { ComponentTypeDef } from '@byd/engine'
-import { parseBody, parseInline, type InlineNode } from './inline.js'
+import { REF_WORD, parseBody, parseInline, type InlineNode } from './inline.js'
 import { BLOCK_GAP_EM, DEFAULT_LINE_HEIGHT, INDENT_EM, ITEM_GAP_EM, detectScript, estimateHeight, fitText, type Measure } from './fit.js'
 import { paintOf, shadowCss, type Condition, type Element, type FaceTemplate, type Pattern, type Row, type Template } from './model.js'
 import type { Motif } from './motif.js'
@@ -178,6 +178,21 @@ function standing(valign: 'top' | 'middle' | 'bottom' | undefined): string {
   return `display:flex;flex-direction:column;justify-content:safe ${valign === 'middle' ? 'center' : 'flex-end'};`
 }
 
+// Whether a cell is a picture the card can draw (#802). A picture reaches the compiler as an
+// address — a URL with its scheme, a data URL, a path, a file name with a picture's ending, or
+// the `asset:` reference the editor and the server resolve before compiling — and an address has
+// no spaces in it. Anything else is words: a picture bound to a column of words met «Playcard»
+// there and drew `<img src="Playcard">`, the browser's broken-image glyph, in print and on the
+// table as much as on the canvas. The canvas asks the same question to say why the cell is empty,
+// so there is one answer to it and not two.
+const SCHEME = /^(?:https?|data|blob|file|asset):/i
+const PATH = /^\.{0,2}\//
+const PICTURE_FILE = /\.(?:png|jpe?g|gif|webp|avif|svg|bmp)(?:[?#]|$)/i
+export function isPictureSource(value: string): boolean {
+  if (value === '' || /\s/.test(value)) return false
+  return SCHEME.test(value) || PATH.test(value) || PICTURE_FILE.test(value)
+}
+
 function render(el: Element, dx: number, dy: number, input: CompileInput, html: string[], css: Css, warnings: Warning[]): void {
   switch (el.kind) {
     case 'text': {
@@ -219,7 +234,8 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
       const laid = motif && (el.frame ? throughWindow(el, el.frame, motif) : aroundMotif(el, motif))
       css.push(`[data-element="${attr(el.id)}"]{left:${el.x + dx}mm;top:${el.y + dy}mm;width:${el.w}mm;height:${el.h}mm;}`)
       css.push(`[data-element="${attr(el.id)}"] .byd-art{${laid ?? `width:100%;height:100%;object-fit:${el.fit ?? 'cover'};`}}`)
-      html.push(src ? `<div data-element="${attr(el.id)}"><img class="byd-art" src="${attr(src)}" alt=""></div>` : `<div data-element="${attr(el.id)}"></div>`)
+      // A cell with no picture in it is an empty cell, whether it is blank or holds words (#802).
+      html.push(isPictureSource(src) ? `<div data-element="${attr(el.id)}"><img class="byd-art" src="${attr(src)}" alt=""></div>` : `<div data-element="${attr(el.id)}"></div>`)
       break
     }
     case 'icons': {
@@ -375,7 +391,7 @@ function renderNode(n: InlineNode, element: string, icons: Symbols, warnings: Wa
     // A reference (B7) is the rulebook's, not a card's: card text is parsed without them, so
     // this can only be reached by handing the compiler a rulebook tree. It says what it is.
     case 'ref':
-      return escape(`[[${n.of === 'zone' ? 'zon' : 'kort'}:${n.id}]]`)
+      return escape(`[[${REF_WORD[n.of]}:${n.id}]]`)
     case 'icon': {
       const src = icons.icons[n.name]
       // A bare number is a pip (L2 addendum) unless the icon set names it.
@@ -449,13 +465,21 @@ export function printedText(input: Pick<CompileInput, 'face' | 'row'>): string[]
 export type PlacedText = { el: Extract<Element, { kind: 'text' }>; x: number; y: number }
 
 export function placedTexts(face: FaceTemplate, row: Row): PlacedText[] {
-  const out: PlacedText[] = []
+  return placedElements(face, row).flatMap((p) => (p.el.kind === 'text' ? [{ ...p, el: p.el }] : []))
+}
+
+// The same for everything the row draws (#830): every text, picture, row of icons and shape, with
+// groups and conditions opened as `render` opens them.
+export type PlacedElement = { el: Exclude<Element, { kind: 'group' | 'if' }>; x: number; y: number }
+
+export function placedElements(face: FaceTemplate, row: Row): PlacedElement[] {
+  const out: PlacedElement[] = []
   const walk = (els: readonly Element[], dx: number, dy: number): void => {
     for (const el of els) {
-      if (el.kind === 'text') out.push({ el, x: el.x + dx, y: el.y + dy })
-      else if (el.kind === 'if') {
+      if (el.kind === 'if') {
         if (holds(el.when, row)) walk(el.children, dx, dy)
       } else if (el.kind === 'group') walk(el.children, dx + el.x, dy + el.y)
+      else out.push({ el, x: el.x + dx, y: el.y + dy })
     }
   }
   walk(elementsFor(face, row), 0, 0)

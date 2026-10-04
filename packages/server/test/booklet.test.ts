@@ -5,7 +5,7 @@ import { A5, bookletOf } from '../src/booklet.js'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 import { template } from './deck.js'
 
-const names = { zones: { draw: 'Draghög', discard: 'Kasthög', 'hand:A': 'Hand' }, cards: { drake: 'Drake' } }
+const names = { zones: { draw: 'Draghög', discard: 'Kasthög', 'hand:A': 'Hand' }, cards: { drake: 'Drake' }, counters: {} }
 const doc: RuleDoc = {
   title: 'Skogens herrar',
   blocks: [
