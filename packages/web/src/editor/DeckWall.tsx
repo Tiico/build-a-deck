@@ -479,8 +479,8 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
                   data-tile={key}
                   {...roving.itemProps(key)}
                   aria-current={here === key}
-                  aria-label={t('wall.tile', { group: band.name, n: band.cards.length })}
-                  title={t('wall.tile', { group: band.name, n: band.cards.length })}
+                  aria-label={t(band.cards.length === 1 ? 'wall.tile.one' : 'wall.tile.other', { group: band.name, n: band.cards.length })}
+                  title={t(band.cards.length === 1 ? 'wall.tile.one' : 'wall.tile.other', { group: band.name, n: band.cards.length })}
                   // The tile's height is the group's share of the deck, so the strip reads as a
                   // cross-section rather than a menu. `--tap` floors it in CSS: the tail is
                   // pressed flat so it stays hittable, and the top of the strip stays true.
@@ -506,7 +506,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
                     data-jump={key}
                     {...roving.itemProps(key)}
                     aria-current={here === key}
-                    aria-label={t('wall.tile', { group: band.name, n: band.cards.length })}
+                    aria-label={t(band.cards.length === 1 ? 'wall.tile.one' : 'wall.tile.other', { group: band.name, n: band.cards.length })}
                     onClick={() => jumpTo(key)}
                   >
                     <span>{band.name}</span>
@@ -547,7 +547,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
           {doc.rows.length === 0 && !isFiltering(filter) && (
             <div className="byd-wall-empty">
               <h2>{t(frontless ? 'wall.empty.title' : 'wall.empty.drawn.title')}</h2>
-              <p>{frontless ? t('wall.empty.body') : t('wall.empty.drawn.body', { n: frontElements })}</p>
+              <p>{frontless ? t('wall.empty.body') : t(frontElements === 1 ? 'wall.empty.drawn.body.one' : 'wall.empty.drawn.body.other', { n: frontElements })}</p>
               <div className="byd-wall-empty-doors">
                 {onAddCard && (
                   <button type="button" className="byd-secondary" onClick={onAddCard}>
@@ -618,7 +618,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         {/* Said as it changes, as the table's count is (#556): a search that narrows the wall
             says how many are left. */}
         <span aria-live="polite">
-          {isFiltering(filter) ? t('wall.foot.found', { shown: shown.length, total: doc.rows.length }) : t('wall.foot.cards', { n: doc.rows.length })}
+          {isFiltering(filter) ? t(doc.rows.length === 1 ? 'wall.foot.found.one' : 'wall.foot.found.other', { shown: shown.length, total: doc.rows.length }) : t(doc.rows.length === 1 ? 'wall.foot.cards.one' : 'wall.foot.cards.other', { n: doc.rows.length })}
         </span>
         {/* An empty deck is not a checked one (#476): «Inga anmärkningar» over nothing reads as
             an approval. */}

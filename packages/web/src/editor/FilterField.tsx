@@ -109,7 +109,7 @@ export function FilterField({
                 }}
               >
                 <b>{t('table.filter.token', { field: typed.label, value: '' }).trim()}</b> {value}
-                <small>{t('table.filter.cards', { n: count })}</small>
+                <small>{t(count === 1 ? 'table.filter.cards.one' : 'table.filter.cards.other', { n: count })}</small>
               </div>
             ))
           )}

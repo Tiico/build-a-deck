@@ -55,7 +55,7 @@ describe('the play surfaces in the reader\'s own language (A4)', () => {
     // Named, because the card lies face up where the television sees it (#507 fynd 6).
     expect(lines).toContainEqual(expect.stringMatching(/The table flipped (?!a card)\S/))
     // The zone is the designer's word and stays theirs, in either language.
-    expect(lines).toContainEqual(expect.stringMatching(/The table drew 2 from Draghög/))
+    expect(lines).toContainEqual(expect.stringMatching(/The table drew 2 cards from Draghög/))
   })
 
   it('says the phone in English, and leaves the designer\'s zone names and shortcuts alone', () => {

@@ -93,7 +93,7 @@ describe('DataTable sorting (a view, #15)', () => {
     fireEvent.click(screen.getByRole('button', { name: /^kostnad/ }))
     expect(shownOrder()).toEqual(['knight', 'wizard', 'dragon'])
 
-    fireEvent.click(screen.getByRole('button', { name: /^antal/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Antal/ }))
     expect(shownOrder()).toEqual(['knight', 'dragon', 'wizard'])
   })
 

@@ -246,7 +246,7 @@ describe('the door the head keeps for its columns (#46 on #32)', () => {
     expect(within(panel).getByRole('button', { name: 'Ta bort fältet body' })).toBeTruthy()
     expect(within(panel).queryByRole('button', { name: 'Ta bort fältet antal' })).toBeNull()
     expect(within(panel).queryByRole('button', { name: 'Ta bort fältet id' })).toBeNull()
-    expect(within(panel).getByText('antal är verktygets egen kolumn och kan inte tas bort')).toBeTruthy()
+    expect(within(panel).getByText('Antal är verktygets egen kolumn och kan inte tas bort')).toBeTruthy()
     expect(within(panel).getByText('id är verktygets egen kolumn och kan inte tas bort')).toBeTruthy()
   })
 

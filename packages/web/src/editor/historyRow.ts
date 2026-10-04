@@ -107,7 +107,7 @@ export function byDay(versions: readonly VersionSummary[], { now, lang, t }: Rea
     if (last?.key === key) last.versions.push(v)
     else days.push({ key, day: dayName(v.at, now, lang, t), count: '', versions: [v] })
   }
-  for (const day of days) day.count = t(day.versions.length === 1 ? 'history.day.version' : 'history.day.versions', { n: day.versions.length })
+  for (const day of days) day.count = t(day.versions.length === 1 ? 'history.day.versions.one' : 'history.day.versions.other', { n: day.versions.length })
   return days
 }
 

@@ -63,13 +63,13 @@ const splitBeside = (at: number): Activity =>
 
 describe('the log tells a drawn card from a cut pile (#421)', () => {
   it('gives a card drawn to a hand the verb the button and the ring use', () => {
-    expect(describeActivity(splitTo('hand:A'), table(null), sv)).toBe('Ada drog 1 från Draghög till Adas hand')
-    expect(describeActivity(splitTo('hand:A'), table(null), en)).toBe('Ada drew 1 from Draghög to Ada’s hand')
+    expect(describeActivity(splitTo('hand:A'), table(null), sv)).toBe('Ada drog 1 kort från Draghög till Adas hand')
+    expect(describeActivity(splitTo('hand:A'), table(null), en)).toBe('Ada drew 1 card from Draghög to Ada’s hand')
   })
 
   it('says a pile cut in half became a new pile, not a drawn card', () => {
-    expect(describeActivity(splitBeside(3), table(null), sv)).toBe('Ada delade av 3 från Draghög till en ny hög')
-    expect(describeActivity(splitBeside(3), table(null), en)).toBe('Ada split 3 off Draghög into a new pile')
+    expect(describeActivity(splitBeside(3), table(null), sv)).toBe('Ada delade av 3 kort från Draghög till en ny hög')
+    expect(describeActivity(splitBeside(3), table(null), en)).toBe('Ada split 3 cards off Draghög into a new pile')
   })
 
   it('gives the two moves two lines, and neither says which card it was', () => {
@@ -87,7 +87,7 @@ describe('the log tells a drawn card from a cut pile (#421)', () => {
         expect(line).not.toContain('Typ')
       }
     }
-    expect(describeActivity(drawn, table('A'), sv)).toBe('Ada drog 3 från Draghög till min hand')
+    expect(describeActivity(drawn, table('A'), sv)).toBe('Ada drog 3 kort från Draghög till min hand')
   })
 })
 

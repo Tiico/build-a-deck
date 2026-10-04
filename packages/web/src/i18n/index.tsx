@@ -140,5 +140,14 @@ export function detectLang(): Lang {
   return (navigator.languages ?? [navigator.language]).some((l) => l.toLowerCase().startsWith('sv')) ? 'sv' : 'en'
 }
 
+// Which variety of the tool's language the reader reads a clock and a date in (#755). The
+// catalogue is `en`, but `en` alone is the American reading, so a reader in en-GB was told
+// «10:53 AM». The browser's own languages say which English it is; one of another language says
+// nothing about this one, and then the catalogue's own code stands.
+export function readerLocale(lang: Lang): string {
+  const asked = typeof navigator === 'undefined' ? [] : (navigator.languages ?? [navigator.language])
+  return asked.find((l) => typeof l === 'string' && l.toLowerCase().split('-')[0] === lang) ?? lang
+}
+
 export const isLang = (value: unknown): value is Lang => LANGS.includes(value as Lang)
 export type { Key, Messages }
