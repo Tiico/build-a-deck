@@ -28,8 +28,26 @@ export function helpAnchor(ask: Anchor, row: Anchor | null): Anchor {
   return { x: ask.x, y: top, w: ask.w, h: Math.max(ask.y + ask.h, row.y + row.h) - top }
 }
 
-export function helpPlacement(anchor: Anchor, wants: Wants, view: Viewport): HelpPlacement {
-  const at = placeBox(anchor, { w: wants.w || HELP_WIDTH, h: wants.h }, view, { gap: GAP })
+// `explains` is what a row's help is about when it stands under the row — the login card's field
+// and button, the empty start page's «＋ Nytt spel» (L32, #726). The box never lands on it: over the
+// row while there is room there, and otherwise under what it explains rather than straight on it.
+export const EXPLAINS = 'data-help-explains'
+// The rectangle round everything a row's `data-help-explains` selector names, or null for a row
+// that names nothing.
+export function explainsOf(row: Element | null): Anchor | null {
+  const selector = row?.getAttribute(EXPLAINS)
+  if (!selector) return null
+  const rects = [...document.querySelectorAll(selector)].map((el) => el.getBoundingClientRect())
+  if (rects.length === 0) return null
+  const x = Math.min(...rects.map((r) => r.left))
+  const y = Math.min(...rects.map((r) => r.top))
+  return { x, y, w: Math.max(...rects.map((r) => r.right)) - x, h: Math.max(...rects.map((r) => r.bottom)) - y }
+}
+export function helpPlacement(anchor: Anchor, wants: Wants, view: Viewport, explains: Anchor | null = null): HelpPlacement {
+  const want = { w: wants.w || HELP_WIDTH, h: wants.h }
+  const over = explains !== null && anchor.y - GAP >= wants.h
+  if (explains !== null && !over) anchor = { ...anchor, h: Math.max(anchor.y + anchor.h, explains.y + explains.h) - anchor.y }
+  const at = over ? { ...placeBox(anchor, want, view, { gap: GAP }), y: 'up' as const, room: anchor.y - GAP } : placeBox(anchor, want, view, { gap: GAP })
   const style: CSSProperties = { ['--byd-place-room' as string]: `${at.room}px` }
   if (at.y === 'down') style.top = `${anchor.y + anchor.h + GAP}px`
   else style.bottom = `${view.h - anchor.y + GAP}px`

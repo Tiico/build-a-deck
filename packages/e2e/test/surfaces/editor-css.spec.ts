@@ -112,7 +112,7 @@ const SHELL = `
             <input type="search" data-stop="the search field" />
           </div>
           <button class="byd-data-clear" data-stop="the clear-filter button">Rensa filter</button>
-          <button class="byd-crown-box byd-crown-end" aria-expanded="true" data-stop="the import box">Importera ▾</button>
+          <button class="byd-crown-box byd-crown-end" aria-expanded="true" data-stop="the import box">CSV ▾</button>
         </div>
         <div class="byd-crown-drawer" data-crown-drawer role="group">
           <div class="byd-data-tools"><label>Importera CSV…<input type="file" data-stop="the CSV import" aria-describedby="import-note" /></label><span id="import-note">Import ersätter korten i tabellen. Spara när resultatet ser rätt ut.</span><a href="#" data-stop="the CSV export">Ladda ner CSV</a></div>
