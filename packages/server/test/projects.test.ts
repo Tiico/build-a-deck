@@ -711,6 +711,22 @@ describe('the rulebook in the project (B7)', () => {
     // A card with no title falls back to its id, so a reference is never empty.
     expect(namesOfProject({ ...doc, rows: [{ id: 'namnlöst', fields: {} }] }).cards['namnlöst']).toBe('namnlöst')
   })
+
+  // A counter is the third thing a rule can name (#708), and it is named by an id like the other
+  // two, so a rule follows the counter when it is renamed. A counter written before it had an id is
+  // known by its name, spelled the way a reference's id may be spelled.
+  it('names the counters by their id, and a counter without one by its own name', async () => {
+    const { namesOfProject } = await import('../src/doc.js')
+    const doc = { ...project(), setup: { ...project().setup, counters: [{ id: 'guld', name: 'Dukater', start: 0 }, { name: 'Liv 2', start: 20 }] } }
+    expect(namesOfProject(doc).counters).toEqual({ guld: 'Dukater', 'Liv-2': 'Liv 2' })
+  })
+
+  it('keeps a counter’s id through the document, so a reference to it is still standing after a save (#708)', async () => {
+    const setup = { ...project().setup, counters: [{ id: 'guld', name: 'Guld', start: 0 }] }
+    const { id } = (await (await json('POST', '/projects', { ...project(), setup })).json()) as { id: string }
+    const read = (await (await json('GET', `/projects/${id}`)).json()) as { setup: { counters: unknown } }
+    expect(read.setup.counters).toEqual([{ id: 'guld', name: 'Guld', start: 0 }])
+  })
 })
 
 // A picture in the book has to come out the other end as the picture that went in (#173): the

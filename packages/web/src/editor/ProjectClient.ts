@@ -42,6 +42,9 @@ let editSocket: EditSocketCtor | null = null
 export function setEditSocketImplementation(ctor: EditSocketCtor | null): void {
   editSocket = ctor
 }
+// How long a save over a live line may go unanswered before it is called failed (#708): the same
+// wait a connection is given before it is called down, and never a race against the answer.
+const SAVE_BACKSTOP_MS = DEFAULT_TIMING.connectTimeoutMs
 const makeEditSocket = (url: string): WebSocketLike => new (editSocket ?? (globalThis.WebSocket as unknown as EditSocketCtor))(url)
 
 export type ProjectListener = (client: ProjectClient) => void
@@ -220,6 +223,8 @@ export class ProjectClient {
       if (this.socket !== socket) return
       this.socket = null
       this.connected = false
+      // A save asked for over this line is answered over this line or not at all, so it is over.
+      this.finishSave({ ok: false, reason: 'line down' })
       if (!this.lineDown && this.falling === null) {
         this.falling = setTimeout(() => {
           this.falling = null
@@ -236,6 +241,7 @@ export class ProjectClient {
         this.socket = null
         this.connected = false
         this.shut = code === 4003 ? 'forbidden' : code === 4401 ? 'loggedOut' : 'missing'
+        this.finishSave({ ok: false, reason: 'line down' })
         this.close()
         this.notify()
         return
@@ -1143,8 +1149,12 @@ export class ProjectClient {
       })
       this.asked = asked
       this.post(JSON.stringify({ t: 'save' }))
-      const timeout = new Promise<SaveResult>((resolve) => setTimeout(() => resolve({ ok: false, reason: 'save failed' }), 2000))
-      return Promise.race([answered, timeout])
+      // The save is over when the actor answers or the line goes (`dropped`). The clock is only the
+      // backstop for an actor that never answers: as a race of its own at two seconds it lost to
+      // answers already on their way whenever the page was held up for longer than that, and a
+      // version that was made was reported as one that was not (#708).
+      const backstop = new Promise<SaveResult>((resolve) => setTimeout(() => resolve({ ok: false, reason: 'save failed' }), SAVE_BACKSTOP_MS))
+      return Promise.race([answered, backstop])
     }
     const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}`, withCredentials({
       method: 'PUT',

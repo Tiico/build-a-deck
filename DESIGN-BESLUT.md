@@ -402,6 +402,7 @@ Kartan från fil till block är ett produktbeslut och står därför skriven som
 Ett stycke blir text med **fet** och *kursiv* kvar, `-` och `*` blir lista, `1.` blir numrerad lista.
 Ett citat blir text med markören struken, en tabell blir text med en rad per rad, ett kodblock blir text ordagrant, en länk blir sina egna ord utan adressen, och en avdelare stryks.
 `[[zon:x]]` och `[[kort:y]]` blir referenser, precis som i en bok man skrivit själv.
+*Utökat 2026-10-04 (#708):* `[[Namn]]` blir också en referens, och en tabells celler skiljs med `·` i stället för lodstreck; se «Referenser vid namn och räknare» nedan.
 Regeln bakom kartan är att ingenting försvinner tyst: det som inte kan bli ett block blir vanlig text, och det som ändrar form eller inte kommer med räknas upp i en rapport före importen.
 Rapporten är inte en dialog utan ett band, med boken filen skulle bli under sig i bokens egen läsbredd och `Avbryt` bredvid `Gör boken` (prototyp 8, variant B).
 Adressen stryks därför att boken läses vid bordet, på telefonen och i det tryckta häftet, där ingen adress går att följa.
@@ -544,6 +545,17 @@ Att fälla ut bilden i editorn öppnar alltså inget fält: det är att läsa oc
 `GET /sessions/:id/rules` renderar mot den revision sessionen låstes till vid start, och uppställningen följer med den: ett pågående bord får aldrig en senare utkasts zoner.
 Det som färdas är zonens id och namn, ingenting annat. Var den ligger, vem som ser in i den och vad den fylls med är bordets sak (B6, K15), och regelboken delas ut till varje plats och till den som bara tittar — allt i den är alltså publikt för alla.
 Zonlistan står utanför bokens egen `text` och därmed utanför sökningen: `plainOf` är vad frågerutan läser, och en lista av zonnamn i den hade svarat på varje fråga som råkade nämna en hög.
+
+Referenser vid namn och räknare, byggt 2026-10-04 (#708):
+En fil skriven utanför appen namnger saker som en människa gör, med vad de heter: `[[Kortlek]]`.
+Id:n syns inte i editorn, så `[[zon:draw]]` är en form ingen skriver i en fil, och i speltestet 2026-10-02 kom `[[Kortlek]]` in som text med klamrarna kvar — i boken, vid bordet och på telefonen — utan ett ord i rapporten.
+Importen läser därför `[[Namn]]` mot spelets zon-, kort- och räknarnamn, utan hänsyn till versaler och mellanrum, och skriver referensen med id:t, så regeln fortfarande aldrig håller namnet.
+Zoner går före kort och kort före räknare när samma namn finns hos flera, och av två kort med samma titel namnges det som står först i leken.
+Ett namn spelet inte har blir sina egna ord utan klamrar, eftersom klamrar vid bordet bara är klamrar, och rapporten säger hur många som hittades och hur många som blev text.
+I ett kodblock rörs klamrarna inte, eftersom det som skrevs där är allt det betyder.
+Räknare är den tredje sorten en regel kan namnge, `[[räknare:id]]`, och referenslistan i editorn visar dem med ordet «räknare».
+En räknare fick därför ett `id` i dokumentet: en räknare skriven före #708 har inget och är känd under sitt namn, och behåller det som id första gången den döps om, så att en regel som namnger den står kvar.
+En tabell blir fortfarande text med en rad per rad, men cellerna skiljs med `·` och inte med filens lodstreck, som är ritning; raden ovanför linjalraden är tabellens huvud och blir fet.
 
 Motivering:
 Trycket kräver en regelbok för att ordern ska kunna läggas.

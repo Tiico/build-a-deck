@@ -1,11 +1,14 @@
 import { Suspense, createContext, lazy, useContext, useEffect, useRef, useState, type Ref } from 'react'
-import { ruleEm, type RenderedBlock, type RenderedNode, type RenderedRules } from '@byd/template'
+import { ruleEm, type RefKind, type RenderedBlock, type RenderedNode, type RenderedRules } from '@byd/template'
 import { zoneTally, type ZoneTally } from '@byd/engine'
 import type { ZoneView } from '@byd/protocol'
 import { SetupOverview } from './SetupOverview.js'
 import { useT } from '../i18n/index.js'
 import type { Key } from '../i18n/sv.js'
 import './rules-open.css'
+
+// What a reference the game lost is said as, in the reader's language (#708 added counters).
+const DRAWER_REF_WORD = { zone: 'rules.drawer.ref.zone', card: 'rules.drawer.ref.card', counter: 'rules.drawer.ref.counter' } as const satisfies Record<RefKind, Key>
 
 // Luckans insida kommer när den efterfrågas (#346, #186:s väg). Boken är tre och ett halvt
 // kilobyte stilmall bakom en knapp ingen har tryckt på när sidan målas första gången, så den
@@ -226,7 +229,7 @@ export function RuleSpan({ nodes }: { nodes: readonly RenderedNode[] }) {
           // A reference arrives carrying the name it stands for; one the game no longer has
           // says what was written instead of quietly saying nothing.
           case 'ref': {
-            const stands = n.name ?? `${t(n.of === 'zone' ? 'rules.drawer.ref.zone' : 'rules.drawer.ref.card')}:${n.id}`
+            const stands = n.name ?? `${t(DRAWER_REF_WORD[n.of])}:${n.id}`
             // The living number the reader's own projection allows beside this tag (#226).
             const tally = n.of === 'zone' ? zoneTally(live, n.id) : null
             return (

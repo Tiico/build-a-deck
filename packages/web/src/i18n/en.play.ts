@@ -374,6 +374,7 @@ export const enPlay = {
   'rules.drawer.none': 'No rule mentions that. Ask whoever made the game.',
   'rules.drawer.ref.zone': 'zone',
   'rules.drawer.ref.card': 'card',
+  'rules.drawer.ref.counter': 'counter',
   'rules.tally.read.one': '{name}, {n} card',
   'rules.tally.read.other': '{name}, {n} cards',
   'rules.tally.counted.one': '{name}, {n} card, order hidden',

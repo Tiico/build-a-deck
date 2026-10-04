@@ -42,7 +42,9 @@ export const ProjectSetup = z.object({
   // Where every card starts, face down.
   deckZone: z.string().min(1),
   // What every seat keeps count of (C4): one counter token per entry in the seat's counters zone.
-  counters: z.array(z.object({ name: z.string().min(1).max(24), start: z.number().int() })).optional(),
+  // `id` is what a rule names it by (#708, B7), so a rule follows the counter when it is renamed.
+  // A counter written before it had one is known by its name (`counterId`).
+  counters: z.array(z.object({ id: z.string().regex(/^[\p{L}\p{N}_:-]{1,64}$/u).optional(), name: z.string().min(1).max(24), start: z.number().int() })).optional(),
 })
 const Cell = z.union([z.string(), z.number(), z.boolean(), z.null()])
 export type Cell = z.infer<typeof Cell>
