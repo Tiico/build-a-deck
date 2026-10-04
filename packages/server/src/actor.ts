@@ -7,7 +7,8 @@ import {
   diff,
   initialState,
   project,
-  projectActivity,
+  activityOf,
+  tellAfter,
   replay,
   uuidIds,
   type DecideDeps,
@@ -40,6 +41,9 @@ export class TableActor {
   private lastActivity = Date.now()
 
   private readonly deps: DecideDeps
+  // Each seat's name as the log has it so far, so a new line is told by the name its seat sits under
+  // as it is written (#714), and the history keeps it after the seat is left.
+  private readonly names = new Map<string, string>()
 
   private constructor(
     readonly id: string,
@@ -62,6 +66,7 @@ export class TableActor {
         lines: () => this.log,
       },
     }
+    for (const line of log) tellAfter(this.names, line)
   }
 
   static async load(id: string, registry: TypeRegistry, store: LogStore, sources?: Sources, renders?: RenderStore): Promise<TableActor | null> {
@@ -132,7 +137,7 @@ export class TableActor {
   subscribe(sub: Subscriber): void {
     const snapshot = this.viewFor(sub)
     this.subscribers.set(sub, snapshot)
-    sub.send({ t: 'snapshot', snapshot, activity: sub.lobby ? [] : this.log.slice(-SNAPSHOT_ACTIVITY).map(projectActivity) })
+    sub.send({ t: 'snapshot', snapshot, activity: sub.lobby ? [] : activityOf(this.log, SNAPSHOT_ACTIVITY) })
     if (sub.observer !== undefined) this.broadcastRoster()
     else if (!sub.lobby) sub.send({ t: 'roster', observers: this.observers() })
     this.lastActivity = Date.now()
@@ -237,12 +242,14 @@ export class TableActor {
     if (!decision.ok) return decision
 
     await this.store.append(this.id, decision.applied)
+    const told = []
     for (const line of decision.applied) {
       this.state = apply(this.state, this.registry, line)
       this.log.push(line)
+      told.push(tellAfter(this.names, line))
     }
 
-    const activity = decision.applied.map(projectActivity)
+    const activity = told
     for (const [sub, previous] of this.subscribers) {
       const next = this.viewFor(sub)
       const patch = diff(previous, next)

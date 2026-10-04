@@ -164,3 +164,31 @@ describe('a counter set in the log (#714)', () => {
     expect(describeActivity(set('k9'), withGold(), sv)).toBe('Ada satte en räknare till 1')
   })
 })
+
+// A line keeps the name its seat had when it was written (#714): after Di left, her rows read
+// «D drog …» under «Di satte sig på plats D».
+describe('a line told by the name it was written under (#714)', () => {
+  it('says the name the line carries, though the seat is empty or taken by someone else now', () => {
+    const empty = { ...table(null), seats: [{ id: 'A', name: null, edge: 'S' }, { id: 'B', name: 'Bo', edge: 'N' }] } as unknown as Snapshot
+    const line = { ...moveToHand('front:A'), name: 'Di' } as Activity
+    expect(describeActivity(line, empty, sv)).toBe('Di flyttade ett kort till Framför A')
+    const retaken = { ...table(null), seats: [{ id: 'A', name: 'Eva', edge: 'S' }, { id: 'B', name: 'Bo', edge: 'N' }] } as unknown as Snapshot
+    expect(describeActivity(line, retaken, sv)).toBe('Di flyttade ett kort till Framför A')
+    // And on Eva's own phone, at the seat Di left, Di's line is still Di's and not «Du».
+    expect(describeActivity(line, { ...retaken, seat: 'A' } as Snapshot, sv)).toBe('Di flyttade ett kort till Framför A')
+    expect(describeActivity({ ...line, name: 'Eva' } as Activity, { ...retaken, seat: 'A' } as Snapshot, sv)).toBe('Du flyttade ett kort till Framför A')
+  })
+})
+
+// A draw and a deal say where the cards went (#714): «Bordet drog 5 från Kortlek» three times
+// over could not be told apart, while a player's own draw already said «… till Adas hand».
+describe('where a draw and a deal put the cards (#714)', () => {
+  const by = (intent: unknown): Activity => ({ seq: 11, by: null, at: '2026-10-04T00:00:00.000Z', intent } as Activity)
+  it('names the hand a draw went to, as a drawn card already does', () => {
+    expect(describeActivity(by({ v: 'draw', from: 'draw', to: 'hand:A', count: 5 }), table(null), sv)).toBe('Bordet drog 5 kort från Draghög till Adas hand')
+  })
+  it('names every hand a deal went to', () => {
+    expect(describeActivity(by({ v: 'deal', from: 'draw', to: ['hand:A', 'hand:B'], each: 2 }), table(null), sv)).toBe('Bordet delade ut 2 kort var till Adas hand och Bos hand')
+    expect(describeActivity(by({ v: 'deal', from: 'draw', to: ['hand:A', 'hand:B'], each: 1 }), table(null), en)).toBe('The table dealt 1 card each to Ada’s hand and Bo’s hand')
+  })
+})

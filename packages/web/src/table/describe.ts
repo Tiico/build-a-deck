@@ -18,7 +18,10 @@ export function sayable(lines: readonly Activity[]): Activity[] {
 export function describeActivity(line: Activity, view: Snapshot, t: T): string {
   // The reader's own move is said to the reader (#714): «Du drog 1 … till din hand», in one person,
   // where it was «Ada drog 1 … till min hand».
-  const who = line.by === null ? t('play.table') : line.by === view.seat ? t('activity.you') : view.seats.find((s) => s.id === line.by)?.name ?? line.by
+  // And by the name the line was written under (#714), which outlives the seat being left.
+  const now = view.seats.find((s) => s.id === line.by)?.name ?? null
+  const mine = line.by !== null && line.by === view.seat && (line.name === undefined || line.name === now)
+  const who = line.by === null ? t('play.table') : mine ? t('activity.you') : line.name ?? now ?? line.by
   const zone = (id: string) => {
     const z = view.zones.find((x) => x.id === id)
     if (!z) return id
@@ -51,10 +54,15 @@ export function describeActivity(line: Activity, view: Snapshot, t: T): string {
         : t(it.at === 1 ? 'activity.split.beside.one' : 'activity.split.beside.other', { who, n: it.at, zone: zone(it.pile) })
     case 'shuffle':
       return t('activity.shuffle', { who, zone: zone(it.pile) })
+    // Where the cards went, as a drawn card already says it (#714): three «drog 5 från Kortlek» in a
+    // row could not be told apart.
     case 'draw':
-      return t(it.count === 1 ? 'activity.draw.one' : 'activity.draw.other', { who, n: it.count, zone: zone(it.from) })
-    case 'deal':
-      return t(it.each === 1 ? 'activity.deal.one' : 'activity.deal.other', { who, n: it.each })
+      return t(it.count === 1 ? 'activity.split.to.one' : 'activity.split.to.other', { who, n: it.count, zone: zone(it.from), to: zone(it.to) })
+    case 'deal': {
+      const to = it.to.map(zone)
+      const listed = to.length < 2 ? to.join('') : `${to.slice(0, -1).join(', ')} ${t('activity.and')} ${to[to.length - 1]}`
+      return t(it.each === 1 ? 'activity.deal.one' : 'activity.deal.other', { who, n: it.each, to: listed })
+    }
     case 'roll':
       return t('activity.roll', { who })
     case 'setCounter': {

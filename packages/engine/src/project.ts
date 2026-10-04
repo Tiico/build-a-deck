@@ -12,6 +12,24 @@ export function projectActivity(line: Applied): Activity {
   return { schemaVersion, seq, batch, at, by, intent }
 }
 
+// The log as every view may see it, each line told by the name its seat sat under when the line was
+// written (#714) — read off the log itself, so a replay tells it the same way. `tail` keeps the last
+// lines only; the names still come from the whole log, since the claim may lie far before them.
+export function activityOf(log: readonly Applied[], tail?: number): Activity[] {
+  const names = new Map<string, string>()
+  const told = log.map((line) => tellAfter(names, line))
+  return tail === undefined ? told : told.slice(-tail)
+}
+
+// The names the log's next lines will be told by, carried forward as lines are applied (#714).
+export function tellAfter(names: Map<string, string>, line: Applied): Activity {
+  const name = line.by === null ? undefined : names.get(line.by)
+  const told: Activity = { ...projectActivity(line), ...(name !== undefined ? { name } : {}) }
+  if (line.intent.v === 'seat.claim') names.set(line.intent.seat, line.intent.name)
+  if (line.intent.v === 'seat.release') names.delete(line.intent.seat)
+  return told
+}
+
 // Projects the authoritative state into what one seat is allowed to know.
 // This is the only path from state to wire. Nothing else may serialise components.
 
