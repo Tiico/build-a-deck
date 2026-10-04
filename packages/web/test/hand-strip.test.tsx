@@ -169,6 +169,23 @@ describe('a hand with nothing in it (UX-16)', () => {
     expect(screen.queryByText(/Tom hand/)).toBeNull()
     expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(2)
   })
+
+  // And with no card left to draw it does not ask for one (#751): an empty draw pile beside an
+  // empty hand is a table where nothing can be drawn, and saying «Dra ett kort» there sends the
+  // player looking for a verb that is not on the pile.
+  it('does not ask for a card when no pile holds one', () => {
+    const { view } = buildScene()
+    const dealt = view('A')
+    const piles = new Set(dealt.zones.filter((z) => z.kind === 'pile').map((z) => z.id))
+    const nothing = {
+      ...dealt,
+      components: dealt.components.filter((c) => c.zone !== 'hand:A' && !piles.has(c.zone)),
+      zones: dealt.zones.map((z) => (z.kind !== 'pile' ? z : z.mode === 'count' ? { ...z, count: 0 } : { ...z, order: [] })),
+    }
+    const props = { selected: new Set<string>(), onTap: () => undefined, onHold: () => undefined, onLift: () => undefined, onOpen: () => undefined }
+    render(<HandStrip view={nothing} {...props} />)
+    expect(screen.getByText(/Tom hand/).textContent).toBe('Tom hand. Det finns inga kort att dra.')
+  })
 })
 
 // The hand grows towards the reading direction (#415, decision B of 2026-09-22). A drawn card

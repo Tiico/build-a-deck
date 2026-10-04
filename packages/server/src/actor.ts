@@ -117,11 +117,13 @@ export class TableActor {
   }
 
   // A tokenless lobby exists only to choose a seat. Keep the snapshot envelope so the regular
-  // client can follow seat patches, but strip the table, cards, rewind state and activity.
+  // client can follow seat patches, but strip the table, cards, rewind state and activity. That
+  // the table is over stays (#705): it is no secret — the code says 410 for it — and the editor's
+  // header follows its own table through a lobby.
   private viewFor(sub: Subscriber): Snapshot {
     const snapshot = project(this.state, this.registry, sub.seat, this.cards, this.deps.history, sub.observer !== undefined)
     if (!sub.lobby) return snapshot
-    return { ...snapshot, floor: 'lobby', zones: [], components: [], rewind: null, undo: null, ended: false }
+    return { ...snapshot, floor: 'lobby', zones: [], components: [], rewind: null, undo: null }
   }
 
   subscribe(sub: Subscriber): void {
@@ -306,12 +308,18 @@ export class TableHost {
   async endStale(olderThan: Date): Promise<string[]> {
     const ended: string[] = []
     for (const id of await this.store.staleSessions(olderThan)) {
-      const actor = await this.get(id)
-      if (!actor) continue
-      const d = await actor.submit({ id: `end-${id}-${Date.now()}`, seat: null, intents: [{ v: 'session.end' }] })
-      if (d.ok) ended.push(id)
+      if (await this.end(id)) ended.push(id)
     }
     return ended
+  }
+
+  // Ends one table as the table itself would (C9): the log is locked and every screen at it is
+  // told. True when this call ended it; a table that had already ended is left as it is.
+  async end(id: string): Promise<boolean> {
+    const actor = await this.get(id)
+    if (!actor || actor.ended) return false
+    const d = await actor.submit({ id: `end-${id}-${Date.now()}`, seat: null, intents: [{ v: 'session.end' }] })
+    return d.ok
   }
 
   async drain(reason: string): Promise<void> {

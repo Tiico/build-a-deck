@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { TableClient } from '../src/client.js'
 import { TablePage } from '../src/table/TablePage.js'
+import { DocumentTitle } from '../src/status/DocumentTitle.js'
 import { asSeat, asTable, createNamedSession, createSession, roomOf, startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -138,6 +139,11 @@ describe('a proposed rewind on the table (C)', () => {
     expect(document.querySelector('[data-zone="discard"]')!.getAttribute('data-count')).toBe('0')
     expect(screen.getByText(/så här såg bordet ut/)).toBeTruthy()
     expect(screen.getByText(/väntar på Bo/)).toBeTruthy()
+    // The label wraps between its parts, and the separator goes with the part before it, so no line
+    // starts with «·» (#723) — a hard space ties it there.
+    const parts = [...document.querySelectorAll('.byd-rewind-label > span')].map((s) => s.textContent ?? '')
+    expect(parts.filter((p) => p.trimStart().startsWith('·'))).toEqual([])
+    expect(parts[1]).toMatch(/\u00a0·$/)
     expect(screen.queryByRole('button', { name: /Godkänn|Avvisa/ })).toBeNull()
 
     // The preview on the TV is the table's own socket speaking, and Bo's phone is a different
@@ -172,7 +178,7 @@ describe('a table that ends with a proposal still standing (C9, K13)', () => {
     await waitFor(() => expect(document.querySelector('[data-rewind-preview]')).toBeTruthy())
 
     await ada.send({ v: 'session.end' })
-    await screen.findByText(/Bordet är avslutat/)
+    await screen.findByRole('heading', { name: /Bordet är avslutat/ })
     expect(document.querySelector('[data-rewind-preview]')).toBeNull()
     expect(screen.queryByText(/väntar på/)).toBeNull()
     // And the table behind the notice is the one the log closed on, not the one the proposal
@@ -267,7 +273,7 @@ describe('the end of a session on the table (C9)', () => {
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
     await ada.send({ v: 'flag', note: 'hm' })
     await ada.send({ v: 'session.end' })
-    const over = await screen.findByText(/Bordet är avslutat/)
+    const over = await screen.findByRole('heading', { name: /Bordet är avslutat/ })
     const overlay = over.closest('[data-ended]')!
     await waitFor(() => expect(overlay.textContent).toMatch(/v1/))
     expect(overlay.textContent).toMatch(/1 flaggade ögonblick/)
@@ -278,6 +284,24 @@ describe('the end of a session on the table (C9)', () => {
 })
 
 describe('the host\'s screen (DRIFT §9)', () => {
+  // A game taken away takes its tables with it (#676): the owner's own screen is told that, and
+  // not that the table belongs to another account.
+  it('says the game was deleted when the owner opens a table whose game is gone', async () => {
+    const id = await createNamedSession(run, 'Sal\'s Saloon')
+    expect((await fetch(`${run.http}/projects/p-s1`, { method: 'DELETE' })).status).toBe(200)
+    history.replaceState(null, '', `/table?session=${id}&owner=1&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(
+      <DocumentTitle route="table">
+        <TablePage />
+      </DocumentTitle>,
+    )
+    expect(await screen.findByRole('heading', { name: 'Spelet är borttaget' })).toBeTruthy()
+    expect(screen.queryByText(/annat konto/)).toBeNull()
+    expect(screen.queryByText(/värdens länk/)).toBeNull()
+    // The tab says what happened too: the table is not there, not «Ingen tillgång».
+    await waitFor(() => expect(document.title).toMatch(/^Bordet finns inte/))
+  })
+
   it('opens only with the host key, and shows the room code it is told rather than anything from the URL', async () => {
     const id = await createSession(run)
     history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}`)

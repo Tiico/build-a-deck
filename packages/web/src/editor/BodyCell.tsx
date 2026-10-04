@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { fillBody, marksAt, openBullet, placeCaret, runCommand, tillStrang, NO_MARKS, type BodyMarks } from './body.js'
 import { useRoving } from './roving.js'
+import { lineKey } from './lineKeys.js'
 import { useT } from '../i18n/index.js'
 
 // Body-cellen (L39, #324). Samma cell stängd och öppen, och samma element: markören sätts i det
@@ -174,6 +175,9 @@ export function BodyCell({ label, head, value, open, icons, onWrite, onOpen, onC
             return command(event.key === 'b' ? 'bold' : 'italic')
           }
           onListKey?.(event)
+          // Home and End within the line and never the table's box (#692), once the symbol list
+          // — which has its own Home and End while it is open — has had them.
+          if (!event.defaultPrevented) lineKey(event)
         }}
         {...aria}
         {...(tabIndex !== undefined ? { tabIndex } : {})}

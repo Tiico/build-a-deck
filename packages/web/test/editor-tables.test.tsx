@@ -71,7 +71,7 @@ describe('when the tables cannot be listed', () => {
     // The list is the server's; a server that cannot answer must not leave the tab pretending
     // to be busy, because nothing will ever arrive to end it.
     const { TablesTab } = await import('../src/editor/TablesTab.js')
-    const client = { rev: 1, tables: () => Promise.reject(new Error('kunde inte hämta borden')), startTable: () => Promise.reject(new Error('nej')) }
+    const client = { rev: 1, doc: projectDoc(), tables: () => Promise.reject(new Error('kunde inte hämta borden')), startTable: () => Promise.reject(new Error('nej')) }
     render(<TablesTab client={client as unknown as Parameters<typeof TablesTab>[0]['client']} server={run.http} />)
     expect((await screen.findByRole('alert')).textContent).toBe('kunde inte hämta borden')
     expect(screen.queryByText(/laddar bord/i)).toBeNull()
@@ -101,6 +101,24 @@ describe('the Bord tab (#19)', () => {
     expect(said.textContent).not.toContain('Uppdatera bordet')
     // Utan bord finns ingen lista alls, bara meningen om att det inte finns något.
     expect(document.querySelector('.byd-table-row, .byd-tables-fold')).toBeNull()
+  })
+
+  // A game with no cards started a table without a word, and the phone then asked for a card out
+  // of an empty draw pile (#751). The button stays — the deck may be filled in a minute — but the
+  // tab says what the table would hold, and where cards are added.
+  it('says the deck has no cards yet, and where they are added, when the game has none', async () => {
+    await run.projects.create(run.projectId, { ...projectDoc(), rows: [] })
+    await openTables()
+    const said = await screen.findByText(/Leken har inga kort än/)
+    expect(said.textContent).toBe('Leken har inga kort än. Lägg till kort i Tabell innan du startar ett bord.')
+    expect(screen.getByRole('button', { name: 'Starta nytt bord' })).toBeTruthy()
+  })
+
+  it('says nothing about the deck when the game has cards', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openTables()
+    await screen.findByText(/Inget bord ännu/)
+    expect(screen.queryByText(/Leken har inga kort än/)).toBeNull()
   })
 })
 
@@ -257,6 +275,71 @@ describe('ending a table from the editor (#19, C9)', () => {
     await openMenu(row)
     expect(within(row).queryByRole('menuitem', { name: /Avsluta bordet/ })).toBeNull()
   })
+
+  // The band in the header is about the table the primary button works on (#705). It stood on
+  // after that table was ended — «Bordet kör …» with kicks for seats that no longer exist, and an
+  // «Uppdatera bordet» whose press came back as a raw 409. Once the table is over, the band goes,
+  // the header says what happened, and the button starts a table again.
+  it('takes the band away when its table ends, and the primary button starts a table again (#705)', async () => {
+    const user = userEvent.setup()
+    await run.projects.create(run.projectId, projectDoc())
+    const id = await startTable()
+    await openTables()
+    await screen.findByText(/Bordet kör rev-1/)
+    const ada = TableClient.connect(await asSeat(run, id, 'A', 'Ada'))
+    await ada.ready()
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await screen.findByRole('button', { name: 'Sparka Ada' })
+
+    const row = await onlyRow()
+    await openMenu(row)
+    await user.click(within(row).getByRole('menuitem', { name: /Avsluta bordet/ }))
+    await user.click(within(row).getByRole('button', { name: 'Ja, avsluta' }))
+
+    await waitFor(() => expect(document.querySelector('.byd-editor-table-link')).toBeNull())
+    expect(screen.queryByRole('button', { name: 'Sparka Ada' })).toBeNull()
+    expect(document.querySelector('[data-room-code]')).toBeNull()
+    const header = document.querySelector('header')!
+    expect(within(header).getByRole('button', { name: 'Starta bord' })).toBeTruthy()
+    expect(within(header).getByText('Bordet är avslutat.')).toBeTruthy()
+    ada.close()
+  })
+
+  // The same table, ended where the header could not see it go: the refusal of the update is the
+  // first it hears of it. That is the table going away too, never «could not refresh the table: 409».
+  it('reads a refused update as the table having ended, and says other failures in whole Swedish sentences (#705)', async () => {
+    const user = userEvent.setup()
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    await user.click(screen.getByRole('button', { name: 'Starta bord' }))
+    await run.completeRenders()
+    await screen.findByRole('link', { name: /öppna bordet/i })
+
+    let answer = 500
+    const real = globalThis.fetch
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      if (url.endsWith('/refresh')) return Promise.resolve(new Response(JSON.stringify({ error: 'nope' }), { status: answer }))
+      return real(input, init)
+    })
+    try {
+      const header = document.querySelector('header')!
+      await user.click(screen.getByRole('button', { name: 'Uppdatera bordet' }))
+      expect((await within(header).findByRole('alert')).textContent).toBe('Bordet kunde inte uppdateras. Försök igen.')
+      expect(document.querySelector('.byd-editor-table-link')).toBeTruthy()
+
+      answer = 409
+      await user.click(await screen.findByRole('button', { name: 'Uppdatera bordet' }))
+      await within(header).findByText('Bordet är avslutat.')
+      expect(document.querySelector('.byd-editor-table-link')).toBeNull()
+      expect(within(header).getByRole('button', { name: 'Starta bord' })).toBeTruthy()
+      expect(header.textContent).not.toMatch(/could not|409/)
+    } finally {
+      spy.mockRestore()
+    }
+  })
 })
 
 describe('the QR for the phones (#19, K12)', () => {
@@ -340,6 +423,7 @@ describe('the wait, the second press and the failure of «Starta nytt bord» (#2
     let finish = (): void => undefined
     const client = {
       rev: 1,
+      doc: projectDoc(),
       tables: () => Promise.resolve(done ? [one] : []),
       startTable: () => {
         started += 1
@@ -382,6 +466,7 @@ describe('the wait, the second press and the failure of «Starta nytt bord» (#2
     let attempts = 0
     const client = {
       rev: 1,
+      doc: projectDoc(),
       tables: () => Promise.resolve(done ? [one] : []),
       startTable: () => {
         attempts += 1

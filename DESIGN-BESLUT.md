@@ -997,6 +997,7 @@ Byggt 2026-09-06 (prototypat, variant "knappar i huvudet"):
 Bordsskärmen visar "Sessionen är avslutad", versionen loggen låstes på, en summering och att enkäten finns på telefonerna; bordet kan inte spelas.
 Servern avslutar bord som ingen rört på ett dygn (`IDLE_END_MS`), som bordet, en gång i timmen.
 `GET /sessions/:id` säger version och om sessionen avslutats.
+Ett spel som tas bort tar sina bord med sig (#676): `DELETE /projects/:id` avslutar varje bord som bordet självt gör, så koden slutar släppa in, telefonerna får beskedet och bordsskärmen säger att spelet är borttaget.
 
 ---
 
@@ -3253,6 +3254,11 @@ Rutnätet från variant C finns som ett valfritt lager, av som standard, och är
 Duken renderar fortfarande genom `CardPreview` och kompilatorn (E2): lagret som tar pekaren ligger ovanpå kortet i kortets egna millimeter och ritar inget kortinnehåll.
 Lagerordningen ändras genom att dra en rad i panelen och, eftersom en lista som bara kan dras är en lista tangentbordet har förlorat, med Alt och piltangent.
 Prototypen `packages/web/src/prototype/canvas` togs bort när den hade svarat.
+*Tillagt 2026-10-03 (#700):* lekens första fält gäller bara text.
+En ny bild binds till den första kolumn mallen redan ritar som bild, och en ny ikonrad till den första kolumn en ikonrad redan läser namn ur.
+Finns ingen sådan kolumn läser elementet ingen kolumn alls: bilden blir en fast bild utan vald bild och spelets bilder öppnas direkt, och ikonraden står tom.
+Skälet är speltestet 2026-10-02: en bild bunden till «typ» ritade en trasig bild med src «Playcard», och en ikonrad bunden till den skrev «{Playcard}» i varningsrött — en gissning som passar en textruta och inget annat.
+Varningen för ett okänt ikonnamn (L2) står kvar; det som ändrats är att verktyget inte längre skapar den själv.
 
 Byggt 2026-09-07 (prototypat i tre varianter, godkänd variant A med variant B:s regellista som sammanfattning — #13):
 En grupp är en regel på en kolumn, aldrig en lista med kort-id:n.
@@ -3703,6 +3709,23 @@ Två varianter avvisades: textknappen «Ångra: …» bredvid sparstatusen, som 
 Knapparna i huvudet förutsätter att sidan inte rullar på en låg platta, vilket #567 kräver.
 Prototypen och mätningarna står i #566 och i `docs/ux-audits/2026-09-29/prototyper/566/`; grinden är `packages/e2e/test/editor-undo-buttons.spec.ts`.
 
+**Reviderat 2026-10-03: under 1440 är «Osparat» en amber prick i bockens ruta (#668, A1).**
+Meningen ovan om att «Osparat» står kvar i ord och färg gäller inte längre under 1440 px; där står det nu i färg och märke.
+Ordet tog 35–50 px som raden aldrig hade: de togs från spelets namn, som klipptes till «Sal's Sal…» (91–97 av 102 px med DejaVu), och flikraden hoppade 29–44 px i sidled varje gång arbetet växlade mellan sparat och osparat.
+Statusen är nu en fast ruta på 14 × 14 px i båda lägena: den grå bocken när arbetet är sparat, en fylld amber prick på 9 px när det inte är det.
+14 px och inte `--byd-tick`:s 18, eftersom bocken mäter 13 px i DejaVu och 13,5 px i SF Pro, och 18 hade tagit 4–5 px av raden.
+Ordet «Osparat» eller «Sparat» ligger visuellt dolt i `role="status"`, så en skärmläsare hör exakt det den hörde förut, och märket är `aria-hidden`.
+Pricken är ett märke och ingen kontroll (L13): ingen fyllning runt den, ingen kant, inget mål.
+Amber `#f0b64a` mot huvudets `#23262e` ger 8.28:1.
+Vid 1440 och bredare står ordet kvar i båda lägena, i det bredare ordets rum (#670).
+Det som blir över i raden går till flikarnas luft, upp till 1440:s 12 px per sida: flikraden växer in i radens rest innan mellanrummet får något, och aldrig in i det spelets namn behöver.
+Det är ren CSS — varje flik har två tomma kolumner bredvid sitt ord som är noll vid flikens minsta bredd och högst 8 px (1024) eller 4 px (1280) vid dess största — så det håller i vilket typsnitt och språk som helst.
+Mätt i den byggda appen med ett bord igång: flikarna flyttar 0 px mellan sparat och osparat vid 1024 och 1280 på svenska och engelska, namnet läses helt i båda lägena, och luften per sida vid 1024 gick från 4 px till 9 px (sv) och 10 px (en) med SF Pro; vid 1280 når den taket på 12 px.
+Två andra märken prototypades och valdes bort.
+En amber penna (A2) syntes tydligare än pricken, men bredvid ångra och gör om lästes den som en tredje knapp, för att redigera.
+Pricken med ordet en gång i en bubbla (A3) lärde ut tecknet, men bubblan kom tillbaka vid varje första ändring efter en sparning och täckte då bordsremsan.
+Prototypen står i `docs/ux-audits/2026-10-03-osparat/prototyper/01-osparat-markets.html`; grinden är `packages/e2e/test/surfaces/editor-header-fit.spec.ts`.
+
 **Tillägg 2026-09-30: en fin pekare är skrivbord, oavsett bredd (#550).**
 Gränsen ovan går vid vem som håller ytan, men rummet i L10 avgjordes av bredden ensam.
 Ett skrivbord zoomat till 200 % är 640 px brett och vid 400 % 320 px, och bredden kallade det en telefon: `Mall` försvann ur editorn för precis den formgivare som hade zoomat in för att kunna arbeta.
@@ -3745,6 +3768,13 @@ Det som såg ut som en var, mätt, en knapp utan kant: editorns `#3b414e` mot kr
 Ett rum plus en roll är två klasser och vinner; ett rum, en roll och ett tillstånd är tre och vinner över ytans `:hover` och ytans `:disabled`.
 Det gäller inte bara i vila: wizardens `button:hover` är (0,2,1) och tog tillbaka linjen så fort primärknappen pekades på, och `/join`:s `form button:disabled` är (0,2,2) och tog fyllningen men inte linjen, vilket gav en grå knapp i en grön ring i det tillstånd sidan öppnar i.
 Båda mäts numera på beräknad stil, inte på att en regel finns.
+
+Tillägg 2026-10-03 (#791): **en dörr är ingen roll.**
+Editorns huvud har tre kontroller som öppnar en panel — spelets ⋯, revisionen som öppnar historiken och ansiktena som öppnar vilka som har spelet.
+Ingen av dem är en första eller andra handling, och `aria-expanded` säger att en panel hänger från dem, inte att något är valt, så de får ingen av rollernas former: ingen fyllning och ingen kant, i vila som när panelen är öppen.
+De ritas som ⋯ redan ritades: tyst bläck, editorns mörka grund under pekaren och när panelen är öppen, och fokusringen som allt annat.
+Samma läcka som ovan hade tagit två av dem: huvudets ruta `.byd-editor > header > button` (0,1,2) vann över `.byd-editor-rev` och `.byd-editor-here` (0,1,0) i varje läge.
+Rutan väljer nu bara huvudets två handlingar, med `:where()` så att rollerna väger som förut, och `button-language.test.tsx` mäter dörrarna mot ⋯ i samma läge vid 1024, 1280 och 1440.
 
 **Rummen är sju, inte fem.**
 Issuet räknade fem ytor — kontot, platsväljaren, wizarden, editorn och telefonen — men telefonens egna ark, enkäten och tillbakaspolningsfrågan öppnas också på `/online` och på `/observe`, under egna klassnamn.

@@ -526,7 +526,7 @@
 /* The game's own name, and the rulebook beside it rather than over the felt (#30). */
 [data-tv] .byd-tv-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 [data-tv] .byd-tv-head h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
-[data-tv] .byd-tv-head h1 em { color: #7d8597; font-weight: 400; font-style: normal; }
+[data-tv] .byd-tv-head h1 em { color: #7d8597; font-weight: 400; font-style: normal; white-space: nowrap; }
 /* The way in: the label above, the code and the QR on one line under it. A 360 px column is not
    a 1920 px header, and a label that wraps between two words reads as a mistake. */
 [data-tv] .byd-tv-join { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }

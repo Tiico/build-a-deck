@@ -404,6 +404,25 @@ describe('«Titta» on the TV shows the card to the room (#508)', () => {
   })
 })
 
+// The ring on a pile is named for the pile, as the ring on a card is named for the card (#560,
+// #723). It looked the pile up by a stop called `top:<pile>`, which has not existed since a pile and
+// its top card became one stop (#572): the ring went unnamed, and Escape gave the focus to nothing.
+describe('the ring on a pile (#723)', () => {
+  it('is named as the pile’s stop is, and gives the focus back to that stop', async () => {
+    const { other } = await tableWithTwoCards()
+    const user = userEvent.setup()
+    const stop = screen.getByRole('button', { name: /^Draghög,/ })
+    await user.click(document.querySelector('[data-zone="draw"] .byd-pile-top') as HTMLElement)
+    const ring = document.querySelector('[data-radial]')!
+    expect(ring).toBeTruthy()
+    expect(`${ring.getAttribute('aria-label')}`).toBe(stop.getAttribute('aria-label')?.replace(/\. Enter öppnar handlingar\.$/, ''))
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(document.querySelector('[data-radial]')).toBeNull())
+    expect(document.activeElement).toBe(stop)
+    other.close()
+  })
+})
+
 // A pointer with no drag reaches a move too (#552, WCAG 2.5.7): the ring on a card on the felt
 // offers «Flytta…», which opens the keyboard's own panel on that card rather than a second list
 // of places, so the hand and the keys are offered the same «Flytta till».

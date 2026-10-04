@@ -22,6 +22,7 @@ import { RouteStatus } from '../status/RouteStatus.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { statusLinks } from '../status/links.js'
 import { asObserver, guestNotice, observerNotice } from '../status/notice.js'
+import { useSessionName } from '../status/sessionName.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useRefusal } from '../status/Refusal.js'
 import { Help } from '../editor/HelpDrawer.js'
@@ -49,7 +50,9 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   // hers were silent the whole session. She sits at no seat, so nothing is said as «du».
   useActivityLive(conn.activity, conn.view, null)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
-  usePageTitle({ state: sessionId ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code') ?? sessionId })
+  const code = params.get('code')
+  const game = useSessionName(http, sessionId, !code)
+  usePageTitle({ state: sessionId ? (refused ? 'forbidden' : live.state) : 'missing', room: code, game })
   // The shuffle, fanned for the observer as for the room (L35).
   const shuffles = useShuffles(activity, view !== null)
   const [sheet, setSheet] = useState(false)

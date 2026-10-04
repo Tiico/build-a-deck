@@ -23,7 +23,7 @@ import { Question } from './Question.js'
 import { useProjectClient } from './useProjectClient.js'
 import type { ProjectDoc } from '@byd/server'
 import { useTableClient } from '../table/useTableClient.js'
-import type { ProjectClient, Textures } from './ProjectClient.js'
+import { TableEnded, type ProjectClient, type Textures } from './ProjectClient.js'
 import { loginUrl } from '../account/api.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
@@ -346,9 +346,19 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       const started = await client.startTable()
       setTable({ ...started, kind: 'new' })
       setNotice(null)
-    } catch (err) {
-      setNotice(err instanceof Error ? err.message : String(err))
+    } catch {
+      setNotice(t('editor.table.error.start'))
     }
+  }
+  // The header's table was ended — from the Bord tab, from the TV, or from another tab (#705). Its
+  // band was about a table that no longer runs: the kicks pointed at seats that were gone, and
+  // «Uppdatera bordet» could only be refused. So the band goes, the primary button starts a table
+  // again, and what happened is said once, in the channel routine news belongs in.
+  const tableEnded = () => {
+    setTable(null)
+    setLost(null)
+    setTextures(null)
+    confirmation.confirm(t('editor.table.ended'))
   }
   // Once a table exists, the primary button pushes the current rev to it (C7, L5) — but only
   // after the new textures are rendered, so the switch is atomic for the players: prepare,
@@ -376,7 +386,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       const { version } = await client.refreshTable(table.id)
       setTable({ ...table, version, kind: 'refreshed' })
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : String(err))
+      // What the server says in its own words is the developer's; the header says it in the
+      // designer's language, in a whole sentence (#705, A4).
+      if (err instanceof TableEnded) tableEnded()
+      else setNotice(t('editor.table.error.update'))
     } finally {
       setPreparing(null)
       setUpdating(false)
@@ -390,8 +403,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     setAsked((n) => n + 1)
     try {
       await client.prepareTable(table.id, true)
-    } catch (err) {
-      setNotice(err instanceof Error ? err.message : String(err))
+    } catch {
+      setNotice(t('editor.table.error.render'))
     }
   }
   // The cards a phone cannot read once they are rendered (#523, beslut C), said after the table is
@@ -509,6 +522,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onSymbol={(symbol) => client.useSymbol(symbol, undefined, t)}
         compareWith={compare ?? undefined}
         onStopCompare={() => setCompare(null)}
+        onOpenTemplate={() => setStage('canvas')}
         selectedRow={row}
         onSelectRow={setRow}
         onCell={(cardRef, field, value, gesture) => client.setCell(cardRef, field, value, gesture)}
@@ -530,7 +544,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     // Bord is the home for both the game's board vocabulary and its running tables (#19, C4).
     // One panel and not two stacked (#126): the list of running tables stands in the setup's third
     // column, beside the felt, so the whole tab is one screen and the header stays where it was.
-    tables: () => <SetupEditor doc={doc} client={client} assetBase={http} motifs={deckMotifs} beside={<TablesTab client={client} server={params.get('server')} />} />,
+    tables: () => <SetupEditor doc={doc} client={client} assetBase={http} motifs={deckMotifs} beside={<TablesTab client={client} server={params.get('server')} started={table?.kind === 'new' ? table.id : null} />} />,
   }
 
   const wsUrl = (params.get('server') ?? location.origin).replace(/^http/, 'ws')
@@ -539,8 +553,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     try {
       const { code } = await client.rotateCode(table.id, table.hostKey)
       setTable({ ...table, code })
-    } catch (err) {
-      setNotice(err instanceof Error ? err.message : String(err))
+    } catch {
+      setNotice(t('editor.table.error.code'))
     }
   }
 
@@ -613,9 +627,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         {/* Whether the work is safe, in words and in colour (#8). It is a live region, so the
             change from saved to unsaved and back is spoken as it happens rather than found by
             someone going looking for a greyed-out button. Both words ride along as attributes,
-            so the status can hold the room of the wider one and the row after it stays put (#668). */}
+            so the status can hold the room of the wider one and the row after it stays put (#668).
+            Below 1440 the word is read and not drawn: a tick or an amber dot is drawn instead, in
+            one fixed box, and the mark is hidden so the status says exactly the word (#668, A1). */}
         <span className="byd-editor-saved" role="status" data-unsaved={unsaved} data-saved-word={t('editor.saved')} data-unsaved-word={t('editor.unsaved')}>
-          {t(unsaved ? 'editor.unsaved' : 'editor.saved')}
+          <span className="byd-editor-saved-word">{t(unsaved ? 'editor.unsaved' : 'editor.saved')}</span>
+          <span className="byd-editor-saved-mark" aria-hidden="true" />
         </span>
         {client.mayEdit && <StepButtons client={client} onConfirm={confirmation.confirm} />}
         {/* The modes are the header's on a desk; below one they are the stage strip at the
@@ -721,7 +738,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             {' '}· {t('editor.table.roomCode')} <strong data-room-code>{table.code}</strong>{' '}
             <button type="button" ref={newCodeRef} onClick={() => void rotate()}>{t('editor.table.newCode')}</button>
           </span>
-          <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={setNotice} lastStop={newCodeRef} />
+          <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={setNotice} onEnded={tableEnded} lastStop={newCodeRef} />
         </div>
       )}
       {/* The line to the project, in D5's own states (#485, fynd 8): gone, with how old the
@@ -765,8 +782,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           // Everything under the panel changed at once, and «Osparat» was the only sign of it
           // (#477). It is said in words, with the way back, and the keyboard goes back to the
           // revision it came from rather than to a button that is no longer there.
+          // A comparison held over a restore compared a document nobody had chosen any more
+          // (#702): the band stood over a table that now showed the version taken back. Taking
+          // one back ends it, and the history is where a new one starts.
           onRestored={(rev) => {
             setOver(null)
+            setCompare(null)
             confirmation.confirm(t('history.restored', { rev }))
             revRef.current?.focus()
           }}
@@ -948,10 +969,18 @@ function homeUrl(server: string | null): string {
 // where the next Tab starts over from the top (#477, fynd 6). So it is handed on: to the seat
 // that took the kicked one's place, the one before it at the end of the row, and «Ny kod» when
 // nobody is left.
-function HostSeats({ client, sessionId, hostKey, ws, onNotice, lastStop }: { client: ProjectClient; sessionId: string; hostKey: string | undefined; ws: string; onNotice(text: string | null): void; lastStop: RefObject<HTMLButtonElement | null> }) {
+function HostSeats({ client, sessionId, hostKey, ws, onNotice, onEnded, lastStop }: { client: ProjectClient; sessionId: string; hostKey: string | undefined; ws: string; onNotice(text: string | null): void; onEnded(): void; lastStop: RefObject<HTMLButtonElement | null> }) {
   const t = useT()
   const labelId = useId()
   const { view } = useTableClient({ url: ws, sessionId, seat: null, lobby: true })
+  // The table says so itself the moment it is ended (#705), whoever ended it; this is the line the
+  // header already has open to it.
+  const ended = view?.ended === true
+  const latestEnded = useRef(onEnded)
+  latestEnded.current = onEnded
+  useEffect(() => {
+    if (ended) latestEnded.current()
+  }, [ended])
   const list = useRef<HTMLUListElement>(null)
   const kicked = useRef<{ seat: string; at: number } | null>(null)
   const taken = view ? view.seats.filter((s) => s.name !== null) : []
@@ -984,9 +1013,9 @@ function HostSeats({ client, sessionId, hostKey, ws, onNotice, lastStop }: { cli
                 title={name}
                 onClick={() => {
                   kicked.current = { seat: s.id, at }
-                  void client.kick(sessionId, hostKey, s.id).catch((err: unknown) => {
+                  void client.kick(sessionId, hostKey, s.id).catch(() => {
                     kicked.current = null
-                    onNotice(err instanceof Error ? err.message : String(err))
+                    onNotice(t('editor.table.error.kick', { name: s.name ?? '' }))
                   })
                 }}
               >
