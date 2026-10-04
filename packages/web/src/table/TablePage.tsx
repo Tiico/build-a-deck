@@ -20,6 +20,7 @@ import { statusLinks } from '../status/links.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT, type Key } from '../i18n/index.js'
+import { takeHostKey } from './hostKey.js'
 
 type SessionRecord = { name?: string }
 
@@ -33,7 +34,8 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
   const mode: TableMode = params.get('mode') === 'tv' ? 'tv' : 'table'
-  const host = params.get('host') ?? undefined
+  // Read once and out of the address at once (#758): the key never stands in the address bar.
+  const [host] = useState(() => takeHostKey(sessionId))
   const owner = params.get('owner') === '1'
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const conn = useTableClient(sessionId ? { url, sessionId, seat: null, ...(host ? { host } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)

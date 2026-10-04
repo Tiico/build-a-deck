@@ -335,39 +335,59 @@ describe('the symbol picker at the brace (E4)', () => {
     expect(screen.queryByRole('listbox')).toBeNull()
   })
 
-  it('takes the brace back when the brace button is pressed a second time (#236)', () => {
+  // The button opens the library and writes nothing (#693). It used to write the brace typing one
+  // does, so the library had something to stand on; a brace the designer never typed then stood in
+  // the value after Escape, and Tab saved it — `Pla{ycard` instead of `Playcard`, and the column
+  // that groups on the value no longer found the card. Only a choice writes, and it writes the
+  // whole token where the caret stood.
+  it('opens the library from the button without writing anything, and Escape leaves the value as it was (#693)', () => {
+    const { cell, onCell } = setup()
+    fireEvent.focus(cell)
+    cell.setSelectionRange(3, 3)
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt in en ikon' }))
+    expect(screen.getByRole('listbox', { name: 'Symboler' })).toBeTruthy()
+    expect(onCell).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(cell, { key: 'Escape' })
+    expect(screen.queryByRole('listbox')).toBeNull()
+    expect(onCell).not.toHaveBeenCalled()
+    expect(cell.value).toBe('Drake')
+  })
+
+  it('writes the chosen symbol, braces and all, where the caret stood when the button was pressed (#693)', async () => {
+    const { cell, onCell } = setup()
+    fireEvent.focus(cell)
+    cell.setSelectionRange(3, 3)
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt in en ikon' }))
+    const list = screen.getByRole('listbox', { name: 'Symboler' })
+    const name = within(list).getAllByRole('option')[0]!.getAttribute('data-symbol')
+
+    fireEvent.click(within(list).getAllByRole('option')[0]!)
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'title', `Dra{${name}}ke`))
+    expect(onCell).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes the library on a second press, and writes nothing either way (#236, #693)', () => {
     const { cell, onCell } = setup()
     fireEvent.focus(cell)
     const brace = screen.getByRole('button', { name: 'Sätt in en ikon' })
-    // The cell already reads `Drake`, so the brace lands at the end of it.
     fireEvent.click(brace)
-    expect(onCell).toHaveBeenLastCalledWith('dragon', 'title', 'Drake{', expect.anything())
     expect(screen.getByRole('listbox', { name: 'Symboler' })).toBeTruthy()
-
-    // A second press is the same press undone: the list goes, and so does the brace it wrote. A
-    // brace standing alone with no finished symbol in it is not something anybody typed — it is a
-    // step that was begun and taken back.
     fireEvent.click(brace)
-    expect(onCell).toHaveBeenLastCalledWith('dragon', 'title', 'Drake', expect.anything())
     expect(screen.queryByRole('listbox')).toBeNull()
+    expect(onCell).not.toHaveBeenCalled()
   })
 
-  it('only ever takes back a brace it wrote itself, never one that was typed (#236)', () => {
+  it('closes a library a typed brace opened, and leaves that brace where the designer put it (#236)', () => {
     const { cell, onCell } = setup()
-    // A brace the designer typed herself. The button has no claim on it: pressing it writes a
-    // second brace rather than eating the first, because what somebody typed is theirs.
     fireEvent.focus(cell)
     type(cell, 'Flygande. {')
+    const typed = onCell.mock.calls.length
     expect(screen.getByRole('listbox', { name: 'Symboler' })).toBeTruthy()
+    // What somebody typed is theirs: the press is the list's, and the text is not touched.
     fireEvent.click(screen.getByRole('button', { name: 'Sätt in en ikon' }))
-    // A brace was written, not taken away: the value the cell is asked to hold is one character
-    // longer than what it held and ends in the new brace. (The cell is controlled by the document,
-    // and this test's `onCell` is a spy that does not write one, so the text it starts from is the
-    // row's own `Drake` rather than what was typed over it.)
-    const [, , written] = onCell.mock.calls.at(-1) as [string, string, string, unknown]
-    expect(written.endsWith('{')).toBe(true)
-    expect(written.length).toBeGreaterThan('Drake'.length)
-    expect(screen.getByRole('listbox', { name: 'Symboler' })).toBeTruthy()
+    expect(screen.queryByRole('listbox')).toBeNull()
+    expect(onCell).toHaveBeenCalledTimes(typed)
   })
 
   it('moves through the list with the arrow keys, takes one with Enter, and closes on Escape', async () => {

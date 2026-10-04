@@ -5824,6 +5824,17 @@ Temats färger når kortet genom betydelserna, eftersom papperet inte ingår i t
 `wizard-frame-fonts.test.tsx` skapar spelet i varje ram med varje tema och läser noll anmärkningar i den fysiska kontrollen.
 I samma veva drogs wizardens styckeregel bort från kortets text: förhandsvisningen sätter varje text i ett `<p>`, och wizardens grå och marginal hade gjort Mörks vita rubrik grå.
 
+Reviderat 2026-10-04 (#741, beställarens val A efter prototyp): **temaprovet visar ett utsnitt av kortet, inte hela kortet.**
+Hela kortet i fyra brickor ritade brödtexten i 7,9 px, så brödtextens familj — halva temat — gick inte att bedöma.
+Efter «Visa temana i sina typsnitt» ritar varje bricka kortets överdel: titelbandet och prosans tre första rader, den fjärde tonad.
+Skalan räknas ur mallens egen brödtextgrad, så som E6 passade in den, med K26:s `readingWidth`: brödtexten till 12 px, och mindre bara när prosans låda med 8 px luft per sida inte ryms i brickan.
+Utsnittet centreras på prosans låda (L43) och inte på fasta millimeter, så en mall med texten någon annanstans skärs på sin egen text.
+Kortet är fortfarande den enda renderarens hela kort (E2); utsnittet bara klipper det.
+Gränsen mot Google står kvar: ingenting hämtas före trycket.
+Prövat i [`docs/ux-audits/2026-10-04-temaprovet/prototyper/01-temaprovet.html`](docs/ux-audits/2026-10-04-temaprovet/prototyper/01-temaprovet.html) mot att ha kvar kortet med en provrad under (B) och ett provark under galleriet (C); B satte samma text två gånger i två storlekar, och C fick Speltema att rulla.
+Galleriet står fyra i bredd så länge varje bricka har sitt rum, och två och två när katalogen eller biblioteket står bredvid, aldrig tre och en.
+`theme-proof.spec.ts` mäter brödtextens storlek gånger zoom (≥ 12 px vid 1280, ≥ 11 vid 1024), att Speltema inte rullar vid 1280 × 800, och att brickorna inte går in i varandra med katalogen öppen vid 1024.
+
 ### L58. Markeringens handlingar står i tabellens fot (prototypat och beslutat 2026-10-01, #618)
 
 Helhetsöverblicken (`docs/ux-audits/2026-09-30-komponenter.md`) mätte åtgärdsraden: när ett kort bockades fälldes ett band på 72 px ut mellan krönet och raderna, och raderna flyttade 80 px — bocken man just tryckt på gled iväg under fingret, och när sista bocken släpptes hoppade allt tillbaka.

@@ -169,6 +169,36 @@ describe('symbollistan i body-cellen (E4)', () => {
     expect(screen.queryByRole('listbox')).toBeNull()
   })
 
+  // Knappen öppnar listan och skriver ingenting (#693): en klammer ingen skrivit stod annars kvar i
+  // texten efter Escape. Bara ett val skriver, och där markören stod.
+  it('öppnas av knappen utan att något skrivs, och Escape lämnar texten orörd (#693)', async () => {
+    const onCell = vi.fn()
+    table(withBody('Flygande.'), { onCell, onSymbol: vi.fn(async (s: GameSymbol) => symbolName(s)) })
+    const cell = screen.getByLabelText('dragon body')
+    fireEvent.focusIn(cell)
+    const knapp = within(screen.getByRole('toolbar', { name: 'Formatera' })).getByRole('button', { name: 'Sätt in en ikon' })
+
+    fireEvent.click(knapp)
+    expect(screen.getByRole('listbox', { name: 'Symboler' })).toBeTruthy()
+    fireEvent.keyDown(cell, { key: 'Escape' })
+    expect(screen.queryByRole('listbox')).toBeNull()
+    expect(onCell).not.toHaveBeenCalled()
+    expect(cell.textContent).toBe('Flygande.')
+
+    // Markören mitt i texten, efter «Flyg».
+    const range = document.createRange()
+    range.setStart(cell.querySelector('p')!.firstChild!, 4)
+    range.collapse(true)
+    document.getSelection()!.removeAllRanges()
+    document.getSelection()!.addRange(range)
+    fireEvent.click(knapp)
+    const list = screen.getByRole('listbox', { name: 'Symboler' })
+    const namn = within(list).getAllByRole('option')[0]!.getAttribute('data-symbol')
+    fireEvent.click(within(list).getAllByRole('option')[0]!)
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'body', `Flyg{${namn}}ande.`))
+    expect(onCell).toHaveBeenCalledTimes(1)
+  })
+
   it('lämnar en stängd klammer och en siffra i klammer i fred', () => {
     table(withBody('Flygande.'), { onSymbol: vi.fn(async (s: GameSymbol) => symbolName(s)) })
     const cell = screen.getByLabelText('dragon body')

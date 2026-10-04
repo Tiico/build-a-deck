@@ -79,14 +79,18 @@ describe('en Tabb ur en cell landar aldrig utanför dokumentet (#395)', () => {
   })
 
   // Att nå knappen är ingenting värt om den inte går att trycka på därifrån.
-  it('skriver klammern när knappen trycks med tangentbordet, precis som när den klickas', async () => {
+  // Den skriver ingenting själv (#693): biblioteket öppnas, och fokus går tillbaka till fältet,
+  // som är där listan styrs ifrån.
+  it('öppnar biblioteket när knappen trycks med tangentbordet, precis som när den klickas', async () => {
     const user = userEvent.setup()
     const wrote: string[] = []
     table({ onCell: (_cardRef, _field, value) => wrote.push(String(value)) })
     await user.click(screen.getByLabelText('dragon title'))
     await user.tab()
     await user.keyboard('{Enter}')
-    expect(wrote).toEqual(['Drake{'])
+    expect(screen.getByRole('listbox', { name: 'Symboler' })).toBeTruthy()
+    expect(document.activeElement).toBe(screen.getByLabelText('dragon title'))
+    expect(wrote).toEqual([])
   })
 
   // Och hela vandringen: inget steg genom en rad får lämna dokumentet.
