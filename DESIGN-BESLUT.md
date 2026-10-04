@@ -1052,6 +1052,8 @@ Byggt 2026-09-08:
 Redigeringarna är en sluten vokabulär av intents som en enda ren funktion applicerar. Editorn kör den på det den håller, aktören på sanningen, och båda får samma dokument.
 En aktör per projekt, med samma ordning som bordets: den måste gå att applicera, den committas i loggen, den appliceras, och alla får veta. En aktör byggs om från den sparade versionen plus de redigeringar som skett sedan; inget i minnet är sanningen.
 Sparandet är fortfarande det som gör en version (B4). Loggen bär svansen mellan sparningar och varje version noterar hur långt den kommit, så två redigerare ser varandras arbete utan att någon behöver spara. Sparkonflikten är därmed borta: aktören är den enda som skriver.
+Det gäller också `PUT /projects/:id` (#768): ett helt dokument skrivet över HTTP, av ett skript eller av en editor vars linje är nere, blir en `restore` i loggen och en version i samma tur av aktörens kö, så att aktören aldrig håller en annan rev än lagret.
+En editor som öppnas på en svans ingen sparat får den sparade versionen bredvid det aktören håller (#764), så att «Osparat» är en jämförelse den kan göra (L9) och «Starta bord» sparar svansen först (L5).
 `/projects/:id/edit` är tråden: dokumentet vid uppkoppling, varje redigering när den landar, vilka som är inne, och varför en redigering avvisades. En avvisad redigerare får dokumentet med avslaget och kan fortsätta från det som är verkligt.
 Editorn applicerar sin egen redigering direkt och skickar den; ekot säger bara att den landade. Det som skrevs innan socketen hann öppna skickas när den öppnar och läggs tillbaka ovanpå om aktören lämnar över sitt dokument.
 Att ta tillbaka en äldre version är en redigering som vilken annan och går samma väg.

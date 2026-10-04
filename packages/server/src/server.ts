@@ -1122,10 +1122,14 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     if (body.name !== gate.rec.name) checkedName(body.name)
     const { rev, ...doc } = body
     validateSetup(setupFromProject(doc), opts.registry)
-    const result = await projects.replace(decodeURIComponent(one[1] ?? ''), rev, doc)
-    if (result === 'missing') json(res, 404, { error: 'unknown project' })
-    else if (result === 'conflict') json(res, 409, { error: 'project changed since rev ' + rev })
-    else json(res, 200, { id: result.id, rev: result.rev })
+    // Through the project's actor and never past it (D3, #768): the actor is the one writer, so
+    // a document written here is in its log, on every open editor's screen, and in the rev the
+    // next editor is handed — not only in the store, behind an actor that goes on saying rev 1.
+    const actor = await editors(opts, projects).get(gate.rec.id)
+    const result = actor ? await actor.put(rev, doc, account?.id) : ({ ok: false, reason: 'unknown project' } as const)
+    if (!result.ok && result.reason === 'conflict') json(res, 409, { error: 'project changed since rev ' + rev })
+    else if (!result.ok) json(res, 404, { error: 'unknown project' })
+    else json(res, 200, { id: gate.rec.id, rev: result.rev })
     return true
   }
   // The history (B4): every save is a version, none of them is ever rewritten. It is presented

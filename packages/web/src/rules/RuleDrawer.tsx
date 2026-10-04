@@ -59,7 +59,9 @@ export function RuleDrawer({ http, sessionId, placement, live: table }: RuleDraw
       live = false
     }
   }, [http, sessionId, version])
-  if (rules === 'none') return null
+  // The knob comes with the book: drawn while the table was still being asked, it went again for
+  // every table without one, a «Regler» that flashed and was gone (#709).
+  if (rules === null || rules === 'none') return null
   return <RuleShelf rules={rules} assets={http} placement={placement} live={table} />
 }
 
