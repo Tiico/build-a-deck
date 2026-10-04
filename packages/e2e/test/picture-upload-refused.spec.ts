@@ -15,7 +15,8 @@ import { expect, test } from '../support/test.js'
 // the whole way to the server before the 413 came back — tens of seconds over a home line for a
 // certain no — and every refusal left resource errors in the console. The gate's rules are the
 // protocol's, so the browser asks them first and nothing that is certain to be refused leaves it.
-test.use({ viewport: DESK.viewport })
+// In Swedish, because the refusals are matched in the words the playtest read them in.
+test.use({ viewport: DESK.viewport, locale: 'sv-SE' })
 
 // The smallest real PNG: one transparent pixel, so the library can draw what it holds.
 const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64')
