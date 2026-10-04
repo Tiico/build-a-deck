@@ -65,6 +65,26 @@ describe('the overview offers the draw per pile (C4, K14, #79)', () => {
     expect(document.querySelector('[data-zone-summary="discard"]')?.tagName).toBe('DIV')
   })
 
+  // An empty Kasthög stood as «KASTHÖG · 0 kort» in spaced capitals beside «Kortlek · 146 kort» in
+  // the tile's own bold (#715): the section heading's rule reached into the tile. A pile is one form
+  // whether or not it can be drawn from; the emptiness is said in its words.
+  it('draws a pile that cannot be drawn from in the same type as one that can', async () => {
+    const { readFileSync } = await import('node:fs')
+    const css = document.createElement('style')
+    css.textContent = readFileSync('src/player/player.css', 'utf8')
+    document.head.append(css)
+    try {
+      const table = wizardTable()
+      render(<div className="byd-player"><TableSummary view={emptied(table.view('A'), 'discard')} activity={[]} onDraw={noop} /></div>)
+      const look = (el: Element) => { const s = getComputedStyle(el); return [s.textTransform, s.letterSpacing, s.fontWeight].join(' ') }
+      const name = document.querySelector('[data-zone-summary="discard"] h2')!
+      const drawn = document.querySelector('[data-zone-summary="draw"] strong')!
+      expect(look(name)).toBe(look(drawn))
+    } finally {
+      css.remove()
+    }
+  })
+
   it('offers it to nobody without a seat to draw into', () => {
     const table = wizardTable()
     render(<TableSummary view={table.view(null)} activity={[]} onDraw={noop} />)
