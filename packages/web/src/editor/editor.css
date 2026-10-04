@@ -76,6 +76,8 @@
   --byd-editor-card-edge: rgba(0, 0, 0, 0.55);
   --byd-editor-card-sheen: rgba(255, 255, 255, 0.07);
   --byd-editor-card-shadow: rgba(0, 0, 0, 0.5);
+  /* The paper a card with nothing on it yet is drawn on (#735). */
+  --byd-editor-blank-paper: #f4f1ea;
   /* The parts of the game that are not cards — the template, the table, the rules, the symbols —
      as a chip on a row in the history (#177). The hue is the second reading and never the only
      one: every chip carries its own word, and the row's name spells that word out as a sentence,
@@ -767,9 +769,12 @@
 .byd-setup-coords { font: 12px ui-monospace, monospace; color: #c8cfdc; }
 /* Where the chosen zone stands, as fields (#579, #554): the numbers where they already stood. */
 .byd-setup-place { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--byd-s1) var(--byd-s2); }
-.byd-setup-place b { color: #dce3f2; font: 600 12px system-ui, sans-serif; }
+/* Fyra fält, namnet och enheten ryms på en rad i mittkolumnens 420 px vid 1024 (#710, L50): ett
+   fält är så brett som fem siffror i monospace, «-1000», och namnet tar högst två rader om sex em,
+   så att en lång zon aldrig bryter fälten till en andra rad och flyttar filten. */
+.byd-setup-place b { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; max-width: 6em; overflow-wrap: anywhere; color: #dce3f2; font: 600 12px system-ui, sans-serif; }
 .byd-setup-place label { display: inline-flex; align-items: center; gap: var(--byd-s1); color: #9aa3b8; }
-.byd-setup-place input { box-sizing: border-box; width: 64px; min-height: var(--byd-tap); padding: 0 var(--byd-s2); border: 1px solid var(--byd-secondary-line); border-radius: 8px; background: #12141a; color: #dce3f2; font: inherit; font-variant-numeric: tabular-nums; text-align: right; }
+.byd-setup .byd-setup-place input { width: 48px; min-height: var(--byd-tap); padding: 0 var(--byd-s1); font-variant-numeric: tabular-nums; text-align: right; }
 .byd-setup-undo { display: flex; gap: 8px; align-items: center; color: #ffd98a; }
 .byd-setup-undo button { border: 1px solid #5c4a1f; border-radius: 8px; padding: 4px 8px; background: #241f13; color: #ffd98a; font-weight: 700; cursor: pointer; }
 /* The list of zones: every one the table has, in two groups, and the row is the way into it —
@@ -1775,6 +1780,9 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
    what keeps a wheel that has reached the card's edge from carrying on into the page behind it:
    the work must not slide away under a hand that is still on the card. */
 .byd-canvas-stage { display: grid; place-items: center; overflow: auto; overscroll-behavior: contain; }
+/* A face with no layers is transparent, and on the stage's checks a transparent card is nowhere
+   (#735): until something is drawn it is blank paper with the card's own edge round it. */
+.byd-canvas-stage[data-blank] [data-card] { background: var(--byd-editor-blank-paper); box-shadow: 0 0 0 1px var(--byd-editor-card-edge); }
 .byd-canvas-props { border-left: 1px solid #2f333d; padding: var(--byd-s3); overflow: auto; }
 /* The panel L25 rebuilt: sections stacked under each other, each one open, and inside each a
    two-column grid of rows. The row is 28 px — a little air for the grip's sake, which is the

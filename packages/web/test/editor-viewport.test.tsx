@@ -598,6 +598,33 @@ async function bord(width: number): Promise<Record<string, string>> {
   }
 }
 
+// Bord-fliken i vila, med en hög vald och med en zon med storlek vald (#710). Valet görs som en
+// tangentbordsanvändare gör det, med Enter på zonens handtag på filten, och det som fångas är raden
+// över filten med fälten i: två för högen, fyra för zonen. Handen vid A är zonen med det längsta
+// namnet bordet har, «Hand · A».
+async function bordChosen(width: number): Promise<Record<string, string>> {
+  atWidth(width)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+  await run.answering()
+  const { unmount } = render(<EditorPage />)
+  try {
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
+    await screen.findAllByText('Draghög')
+    const out: Record<string, string> = { vila: document.querySelector('.byd-editor')!.outerHTML }
+    const choose = async (id: string, fields: number) => {
+      fireEvent.keyDown(document.querySelector(`[data-zone-handle="${id}"]`)!, { key: 'Enter' })
+      await waitFor(() => expect(document.querySelectorAll('[data-setup-said] [data-setup-coords] input')).toHaveLength(fields))
+      return document.querySelector('.byd-editor')!.outerHTML
+    }
+    out['hög'] = await choose('discard', 2)
+    out['yta'] = await choose('hand:A', 4)
+    return out
+  } finally {
+    unmount()
+  }
+}
+
 // The two widths the editor is held to (UX-KONTROLLER, L12). Both are asked, and the narrow one is
 // where the answer was no: a surface as wide as its own longest sentence looks perfectly well
 // behaved right up until the window stops being wider than the sentence (#127).
@@ -656,6 +683,25 @@ describe.each([1024, 1280] as const)('the Bord tab at %ipx', (width) => {
     // Nothing has been removed and nothing copied, so the row holds the instruction and its
     // question mark (L32, #303) and nothing else.
     expect(measured).toEqual({ Bord: { words: 2, cut: [] } })
+  }, 90_000)
+
+  // L50: raden är alltid 44 px hög, så att filten inte flyttar sig under handen när en zon väljs
+  // (#710). Fälten för en zons x, y, b och h bröt till en andra rad vid 1280, och vid 1024 också
+  // högens två, och filten föll 48 px. Höjden och filtens överkant är det som frågas, inte någon
+  // bredd: de är desamma i vilket typsnitt maskinen än har, så länge fälten ryms på raden.
+  it('keeps the row over the felt one tap tall whatever is chosen, so the felt never moves', async () => {
+    const measured = await measure(
+      width,
+      (page) =>
+        page.evaluate(() => ({
+          fields: document.querySelectorAll('[data-setup-said] [data-setup-coords] input').length,
+          row: Math.round(document.querySelector('[data-setup-said]')!.getBoundingClientRect().height),
+          felt: Math.round(document.querySelector('.byd-setup-felt')!.getBoundingClientRect().top),
+        })),
+      bordChosen,
+    )
+    const felt = measured['vila']!.felt
+    expect(measured).toEqual({ vila: { fields: 0, row: 44, felt }, hög: { fields: 2, row: 44, felt }, yta: { fields: 4, row: 44, felt } })
   }, 90_000)
 })
 
