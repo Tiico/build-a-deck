@@ -100,7 +100,7 @@ async function cardFiles(width: number): Promise<Record<string, string>> {
   try {
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
     await screen.findByLabelText('Importera CSV…')
     // A marked card opens the action row, and the row draws a picker of its own the moment the
     // column it is set to is the image one (#17 on E1) — before that it offers a text field.

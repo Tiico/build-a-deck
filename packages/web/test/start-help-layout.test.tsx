@@ -31,8 +31,9 @@ const document_ = (html: string) =>
     .replace('<div id="root"></div>', `<div id="root">${html}</div>`)
 
 type Rect = { x: number; y: number; w: number; h: number }
-type Reading = { surface: Rect; ask: Rect | null; row: Rect | null; box: Rect | null; boxWants: { w: number; h: number } | null; sideways: number }
-type Surface = { name: string; root: string; card: string; topic: string; mount(): void; width: number; height: number }
+type Reading = { surface: Rect; ask: Rect | null; row: Rect | null; explains: Rect | null; box: Rect | null; boxWants: { w: number; h: number } | null; sideways: number; explained: Rect[] }
+// `explained` is what the help is about, which the box must leave in view while it is read (L32).
+type Surface = { name: string; root: string; card: string; topic: string; mount(): void; width: number; height: number; explained?: string }
 
 let browser: Browser
 beforeAll(async () => {
@@ -66,7 +67,7 @@ async function measure(surface: Surface): Promise<{ closed: Reading; open: Readi
   const page = await browser.newPage({ viewport: { width: surface.width, height: surface.height } })
   const readSurface = (placed: HelpPlacement | null): Promise<Reading> =>
     page.evaluate(
-      ({ card, topic, placed, rectOf, ROW }) => {
+      ({ card, topic, placed, rectOf, ROW, explained }) => {
         const rect = new Function('el', `return (${rectOf})(el)`) as (el: Element) => Rect
         // The ring by its name: on a desk the wizard has three, one per step.
         const ask = document.querySelector(`.byd-help-ask[aria-label="Hjälp om ${topic}"]`)
@@ -79,19 +80,27 @@ async function measure(surface: Surface): Promise<{ closed: Reading; open: Readi
           surface: rect(document.querySelector(card)!),
           ask: ask ? rect(ask) : null,
           row: ask?.closest(ROW) ? rect(ask.closest(ROW)!) : null,
+          explains: (() => {
+            const sel = ask?.closest(ROW)?.getAttribute('data-help-explains')
+            if (!sel) return null
+            const rs = [...document.querySelectorAll(sel)].map(rect)
+            const x = Math.min(...rs.map((r) => r.x)), y = Math.min(...rs.map((r) => r.y))
+            return { x, y, w: Math.max(...rs.map((r) => r.x + r.w)) - x, h: Math.max(...rs.map((r) => r.y + r.h)) - y }
+          })(),
+          explained: explained ? [...document.querySelectorAll(explained)].map(rect) : [],
           box: box ? rect(box) : null,
           boxWants: box ? { w: box.offsetWidth, h: box.scrollHeight } : null,
           sideways: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         }
       },
-      { card: surface.card, topic: surface.topic, placed, rectOf, ROW },
+      { card: surface.card, topic: surface.topic, placed, rectOf, ROW, explained: surface.explained ?? null },
     )
   try {
     await page.setContent(document_(closed), { waitUntil: 'load' })
     const before = await readSurface(null)
     await page.setContent(document_(open), { waitUntil: 'load' })
     const raw = await readSurface(null)
-    const placed = helpPlacement(helpAnchor(raw.ask!, raw.row), raw.boxWants!, { w: surface.width, h: surface.height })
+    const placed = helpPlacement(helpAnchor(raw.ask!, raw.row), raw.boxWants!, { w: surface.width, h: surface.height }, raw.explains)
     const after = await readSurface(placed)
     return { closed: before, open: after }
   } finally {
@@ -106,6 +115,7 @@ const login = (width: number, height: number): Surface => ({
   name: `the login card at ${width}`,
   root: '.byd-account',
   card: '.byd-login',
+  explained: '.byd-login form input, .byd-login form button[type="submit"]',
   topic: 'inloggningen',
   width,
   height,
@@ -130,7 +140,7 @@ const wizard = (width: number, height: number): Surface => ({
   },
 })
 
-describe.each([login(390, 844), login(1280, 800), wizard(1280, 800), wizard(390, 844)])('$name', (surface) => {
+describe.each([login(390, 844), login(768, 1024), login(1280, 800), wizard(1280, 800), wizard(390, 844)])('$name', (surface) => {
   it('is the same height with the help open, the question mark is a target, and the box stands inside the window', async () => {
     const { closed, open } = await measure(surface)
     console.log(`${surface.name}: card ${Math.round(closed.surface.h)} px closed, ${Math.round(open.surface.h)} px open`)
@@ -148,6 +158,9 @@ describe.each([login(390, 844), login(1280, 800), wizard(1280, 800), wizard(390,
     expect(hangs).toBe(true)
     expect(closed.sideways).toBe(0)
     expect(open.sideways).toBe(0)
+    // Never over what it explains (L32, #726): the address field and its button stay in view.
+    for (const r of open.explained) expect(overlaps(open.box!, r)).toBe(false)
+    if (surface.explained) expect(open.explained.length).toBeGreaterThanOrEqual(2)
   }, 90_000)
 })
 

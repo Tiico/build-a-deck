@@ -5,6 +5,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
+import { ProjectClient } from '../src/editor/ProjectClient.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -131,6 +132,20 @@ describe('the icon as a tool on the canvas (#33)', () => {
     fireEvent.click(within(tools).getByRole('combobox', { name: 'Ikon' }))
     const list = await screen.findByRole('listbox', { name: 'Symboler' })
     expect(within(list).getAllByRole('option').length).toBeGreaterThan(0)
+  })
+
+  // What the template throws when a placement is refused is English for the developer (#812, A4):
+  // the header says the icon did not go on the card in a sentence of its own.
+  it('says an icon that could not be placed in words, and not in the template’s', async () => {
+    const spy = vi.spyOn(ProjectClient.prototype, 'placeIcon').mockRejectedValue(new Error('template has no face front'))
+    try {
+      const tools = await openTemplate()
+      fireEvent.click(within(tools).getByRole('combobox', { name: 'Ikon' }))
+      fireEvent.click(within(await screen.findByRole('listbox', { name: 'Symboler' })).getByRole('option', { name: /svärd/ }))
+      await waitFor(() => expect(document.querySelector('.byd-editor-notice')?.textContent).toBe('Ikonen svärd kunde inte läggas på kortet. Försök igen.'))
+    } finally {
+      spy.mockRestore()
+    }
   })
 
   // `aria-activedescendant` is not read on a button (#556 E-4): the arrows moved the live symbol
@@ -336,6 +351,32 @@ describe('the icon as a tool on the canvas (#33)', () => {
     await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeTruthy())
     expect((screen.getByLabelText('Fält') as HTMLSelectElement).value).toBe('')
     expect((screen.getByLabelText('Ikon', { selector: 'select' }) as HTMLSelectElement).value).toBe('svärd')
+  })
+
+  // A row of icons placed where the game has no column of names reads none and draws nothing
+  // until the designer says what (#700). Its picker stood blank, an option with no words in it
+  // chosen, so the panel said nothing at all about the one thing the layer lacks (#849). It says
+  // it in words now, the way the field picker beside it says «inget fält».
+  it('says in words that a row of icons has no icon yet', async () => {
+    const tools = await openTemplate()
+    // The game holds one icon first, so the picker has a name to offer beside the blank.
+    fireEvent.click(within(tools).getByRole('combobox', { name: 'Ikon' }))
+    fireEvent.click(within(await screen.findByRole('listbox', { name: 'Symboler' })).getByRole('option', { name: /svärd/ }))
+    await screen.findByRole('heading', { name: /icon-1/ })
+    fireEvent.click(within(tools).getByRole('button', { name: 'Ikonrad' }))
+    await screen.findByRole('heading', { name: /icons-1/ })
+
+    const icon = screen.getByLabelText('Ikon', { selector: 'select' }) as HTMLSelectElement
+    expect(icon.value).toBe('')
+    expect(icon.selectedOptions[0]?.textContent).toBe('ingen ikon')
+    // One empty option and not two: the blank the layer carries is the one that is named.
+    expect([...icon.options].filter((o) => o.value === '')).toHaveLength(1)
+    expect([...icon.options].every((o) => (o.textContent ?? '').trim() !== '')).toBe(true)
+
+    // And naming one is still how the row gets its icon.
+    fireEvent.change(icon, { target: { value: 'svärd' } })
+    await waitFor(() => expect((screen.getByLabelText('Ikon', { selector: 'select' }) as HTMLSelectElement).value).toBe('svärd'))
+    expect(within(screen.getByLabelText('Ikon', { selector: 'select' })).queryByRole('option', { name: 'ingen ikon' })).toBeNull()
   })
 
   it('closes when the focus leaves the rail, instead of hanging over the canvas', async () => {

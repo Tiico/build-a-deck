@@ -8,6 +8,7 @@ import { StatusLive } from '../src/status/StatusLive.js'
 import { projectDoc } from './project-doc.js'
 import type { ProjectDoc } from '@byd/server'
 import { startServer, type Running } from './fixture.js'
+import { ProjectClient } from '../src/editor/ProjectClient.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -128,6 +129,24 @@ describe('the library, opened from Spelets ikoner (L57, E4)', () => {
     fireEvent.keyDown(within(library).getByRole('searchbox', { name: 'Sök symbol' }), { key: 'Escape' })
     expect(screen.queryByRole('region', { name: 'Symbolbibliotek' })).toBeNull()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: /Ur biblioteket/ }))
+  })
+
+  // What the document throws is English for the developer (#812, A4): taking a symbol in that
+  // fails is said in a sentence of the library's own.
+  it('says a symbol could not be taken in, in words and not in the document’s', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    const spy = vi.spyOn(ProjectClient.prototype, 'useSymbol').mockRejectedValue(new Error('icon sköld already exists'))
+    try {
+      await openTheme()
+      fireEvent.click(head(/^Spelets ikoner/))
+      fireEvent.click(screen.getByRole('button', { name: /Ur biblioteket/ }))
+      const library = await screen.findByRole('region', { name: 'Symbolbibliotek' })
+      fireEvent.click(within(library).getByRole('button', { name: 'Ta in sköld' }))
+      const alert = await within(library).findByRole('alert')
+      expect(alert.textContent).toBe('Symbolen sköld kunde inte tas in. Försök igen.')
+    } finally {
+      spy.mockRestore()
+    }
   })
 })
 

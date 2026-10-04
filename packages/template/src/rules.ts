@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { parseInline, type InlineNode } from './inline.js'
+import { REF_WORD, parseInline, type InlineNode, type RefKind } from './inline.js'
 
 // The rulebook (B7): a document that lives in the project, is versioned in the same history as
 // the cards (B4) and locked into a session at start like everything else, and that knows the game
@@ -128,8 +128,8 @@ export type RuleDoc = z.infer<typeof RuleDoc>
 export type RuleBlock = RuleDoc['blocks'][number]
 
 // What the names of things are right now. The rulebook asks for them at render time; it never
-// stores them.
-export type Names = { zones: Record<string, string>; cards: Record<string, string> }
+// stores them. Counters joined zones and cards in #708.
+export type Names = { zones: Record<string, string>; cards: Record<string, string>; counters: Record<string, string> }
 
 // How the table is laid out, as the setup block draws it (B5's follow-on, #270). It is the game's
 // own zones grouped once — what stands on the table for everybody, and then what belongs to each
@@ -146,7 +146,7 @@ export type SetupArrangement = { common: SetupZone[]; seats: SetupSeat[] }
 // show. The block keeps its shape all the same, so that a surface has one thing to draw and never
 // two: an arrangement with nothing in it, rather than a block missing half its fields.
 export const NO_ARRANGEMENT: SetupArrangement = { common: [], seats: [] }
-export type RuleWarning = { block: string; of: 'zone' | 'card'; id: string }
+export type RuleWarning = { block: string; of: RefKind; id: string }
 
 // What a rendered rule is made of. A reference arrives carrying the name it stands for, so
 // whatever draws it — the editor, the table, the printed booklet — needs nothing but this.
@@ -155,7 +155,7 @@ export type RenderedNode =
   | { type: 'icon'; name: string }
   | { type: 'bold'; children: RenderedNode[] }
   | { type: 'italic'; children: RenderedNode[] }
-  | { type: 'ref'; of: 'zone' | 'card'; id: string; name: string | null }
+  | { type: 'ref'; of: RefKind; id: string; name: string | null }
 export type RenderedParagraph = { children: RenderedNode[] }
 export type RenderedBlock =
   // A heading is one line and carries its children rather than its letters (#272): a reference
@@ -261,10 +261,13 @@ export function plainOf(nodes: readonly RenderedNode[]): string {
 // What a reference stands for right now. A rule that names something the game no longer has says
 // so where it stands, rather than quietly saying nothing — the same choice as an unknown icon (L2).
 export function nameOf(node: Extract<InlineNode, { type: 'ref' }>, names: Names): string | null {
-  const table = node.of === 'zone' ? names.zones : names.cards
+  const table = node.of === 'zone' ? names.zones : node.of === 'card' ? names.cards : names.counters
   return table[node.id] ?? null
 }
-export const refText = (node: Extract<InlineNode, { type: 'ref' }>): string => `[[${node.of === 'zone' ? 'zon' : 'kort'}:${node.id}]]`
+// A reference spelled as it is written, `[[zon:draw]]`, and the same without its brackets, which is
+// what a surface shows for a reference the game lost (L2's answer for an unknown icon).
+export const refText = (node: { of: RefKind; id: string }): string => `[[${refLabel(node)}]]`
+export const refLabel = (node: { of: RefKind; id: string }): string => `${REF_WORD[node.of]}:${node.id}`
 
 // The parse tree with every reference carrying the name it stands for right now. `lost` is told
 // about each reference the game no longer has, in the order they are written: the book's warnings

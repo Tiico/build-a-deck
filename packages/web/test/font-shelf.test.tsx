@@ -6,6 +6,7 @@ import { FontShelf, type FontShelfProps } from '../src/editor/FontShelf.js'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import type { ProjectDoc } from '../src/editor/types.js'
+import { Said } from '../src/i18n/said.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -142,10 +143,19 @@ describe('dropping a typeface on the upload (#294)', () => {
     // While the bytes travel the control says so out loud, rather than going quietly dead: an
     // off-screen `disabled` is a state nobody can see.
     await screen.findByText(/laddar upp/i)
-    refuse(new Error('Filen är inget typsnitt: WOFF2, WOFF, TTF eller OTF'))
+    refuse(new Said('Filen är inget typsnitt: WOFF2, WOFF, TTF eller OTF'))
     const said = await screen.findByRole('alert')
     expect(said.textContent).toMatch(/WOFF2, WOFF, TTF eller OTF/)
     expect(screen.queryByText(/laddar upp/i)).toBeNull()
+  })
+
+  // What the document or the network throws is English for the developer (#812, A4): the shelf
+  // says the upload failed in a sentence of its own, and never in those words.
+  it('says a failure nobody put in words as a sentence of its own', async () => {
+    shelf({ onFontFile: vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))) })
+    fireEvent.drop(upload(), files([new File([WOFF2], 'Rubrikserif.woff2', { type: 'font/woff2' })]))
+    const said = await screen.findByRole('alert')
+    expect(said.textContent).toBe('Typsnittet kunde inte laddas upp. Försök igen.')
   })
 
   // Two files is a question the control cannot answer, and a control that answered it by taking

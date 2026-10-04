@@ -154,7 +154,7 @@ describe('DataTable sorting (a view, #15)', () => {
     expect(onRemoveRow).toHaveBeenCalledWith('knight')
 
     expect(doc.rows.map((row) => row.id)).toEqual(['dragon', 'knight', 'wizard'])
-    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
     const csv = screen.getByRole('link', { name: 'Ladda ner CSV' }) as HTMLAnchorElement
     expect(decodeURIComponent(csv.href).indexOf('dragon')).toBeLessThan(decodeURIComponent(csv.href).indexOf('knight'))
   })
@@ -185,7 +185,7 @@ describe('DataTable sorting from the keyboard (#15)', () => {
     await user.tab()
     expect(document.activeElement).toBe(screen.getByLabelText('Sök i alla fält'))
     await user.tab()
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Importera' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'CSV' }))
     // First in the table, the way past it (#575).
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('link', { name: /^Hoppa förbi tabellen/ }))

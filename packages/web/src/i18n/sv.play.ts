@@ -453,6 +453,7 @@ export const svPlay = {
   // En referens till något spelet inte längre har säger vad som stod skrivet.
   'rules.drawer.ref.zone': 'zon',
   'rules.drawer.ref.card': 'kort',
+  'rules.drawer.ref.counter': 'räknare',
   // Den levande siffran (#226). Brickan visar talet; örat får formen A:s hela mening, som är vad
   // beslutet gav B i utbyte mot att inte skriva ut den. «Ordningen dold» är skillnaden mellan
   // «18 kort, och jag vet vilka» och «18 kort, och det är allt som går att veta» — antalet i sig

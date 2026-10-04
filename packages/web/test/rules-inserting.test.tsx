@@ -146,6 +146,28 @@ describe('the way a reference is put into a rule (#215)', () => {
     expect(within(list()!).queryAllByRole('option')).toHaveLength(0)
   })
 
+  // A game about gold says «guld» on every other line (#708). The list found zones and cards and
+  // answered «Inget med det namnet» for the counter, so the book could only say it as text that
+  // did not follow the counter when it was renamed.
+  it('finds a counter too, says it is one, and puts in a reference that follows it when it is renamed (#708)', async () => {
+    const game = bigGame()
+    await run.projects.create(run.projectId, { ...game, setup: { ...game.setup, counters: [{ id: 'guld', name: 'Guld', start: 0 }] }, rules })
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
+    const field = await openBlock('t1', 'Text 1 under Så spelar ni')
+    field.focus()
+    typeInto(field, 'Ta ett [[Gul')
+    await waitFor(() => expect(optionNames()).toEqual(['Guld']))
+    expect(within(list()!).getByRole('option').querySelector('small')!.textContent).toBe('räknare')
+    fireEvent.keyDown(field, { key: 'Enter' })
+    const written = () => within(book()).getByLabelText('Text 1 under Så spelar ni') as HTMLTextAreaElement
+    await waitFor(() => expect(written().value).toBe('Ta ett [[räknare:guld]]'))
+    fireEvent.blur(written())
+    await waitFor(() => expect(within(book()).getByText('Guld')).toBeTruthy())
+  })
+
   it('puts the reference where the designer is writing, not at the end of the field, and keeps the focus', async () => {
     await openBook()
     const field = await openBlock('t1', 'Text 1 under Så spelar ni')

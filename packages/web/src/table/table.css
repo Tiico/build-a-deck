@@ -302,21 +302,16 @@
    that gets there: the played felt above has hidden its names, and the table's own screen is a
    television. `data-tight` is the renderer's answer, because the felt's own box keeps the floor's
    shape and is then turned — a container query on it measures the other side of the picture.
-   Two things give, and both are the felt's own measure rather than the screen's.
 
    The type is set at the felt's tightest: a name at 13 px with 1.5 px of tracking is 76 px of a
    331 px felt, and its tracking alone is a sixth of that — the same fifth K19 took out of table
    mode. At 12 px and no tracking it is 62, which is what lets two seats facing each other across
    a phone both say their names.
 
-   And a name at a side rim stands above its own zone rather than beside it, anchored at the end
-   nearest the rim and growing inward, so that it stays in its own half of the felt. Beside its
-   zone it grows from the zone's inner edge toward the middle, where the shared piles and their
-   count badges stand (K19, extended); on a felt this small that reach crosses the middle and
-   meets both the badge and the name of the seat opposite. Above its own zone it reaches only
-   half as far in, and the two seats facing each other no longer share a line at all. That half
-   of it is drawn through the same two variables the rim rules above use — the renderer says how
-   far, because it is the only one that knows how large the zone came out. */
+   Where a name stands is no longer this felt's own (#685, which replaced #76's exception): it is
+   K19 on every felt, beside its zone at a side rim, and then a free side when that is another
+   zone's — `placeNames` in `freeSide.ts`, which hangs the name from a corner of its zone with
+   inline `left`, `top` and `transform` and marks it `data-name-at`. */
 .byd-table-frame[data-tight] .byd-zone > span { font-size: 12px; letter-spacing: 0; }
 /* The pile's badge is set at the same tightest, 12 px, the size the hands' counts are (#652). At
    15 px on a 30 px plate it was larger than the card: on the Bord tab's felt at 1024 a card is
@@ -577,13 +572,26 @@
    at 1 it took its share of every shortfall beside the card and scrolled while the card still
    had room to give). The feed takes whatever is left and scrolls
    inside it, because it is the one thing here that is endless by nature. */
-[data-tv] .byd-tv-inspect { min-height: 0; flex: 0 20 auto; display: flex; flex-direction: column; }
+/* It gives down to its floor and no further (#745): its heading and a card of 110 px. With a floor
+   of nothing the section shrank to 0 px while the card in it kept its own 110, and the waiting card
+   «peka på ett kort» was drawn over the seats' heading and the first seat. The heading's line is
+   pinned, so the floor is a sum of lengths and not of whatever the machine's font measures. */
+[data-tv] .byd-tv-inspect {
+  --byd-inspect-head: 20px; --byd-inspect-gap: 10px;
+  min-height: calc(var(--byd-inspect-head) + var(--byd-inspect-gap) + 110px); flex: 0 20 auto; display: flex; flex-direction: column;
+}
+[data-tv] .byd-tv-inspect > h2 { line-height: var(--byd-inspect-head); }
 [data-tv] .byd-tv-seats { min-height: 0; overflow: auto; flex: 0 0.01 auto; }
 /* The observer's desk with a hand or a zone open (#551): the list is as long as the hand, and a
    column that shared the shortfall squeezed the card under its own floor and drew it over the list.
    Her screen is read at a desk and not from a sofa, so the column scrolls as a whole instead, and
    nothing in it gives up its size. */
 .byd-observer [data-tv] > aside:has(.byd-tv-seats [aria-expanded='true']) { overflow: auto; }
+/* In rest too (#745): her column holds the table's zones as well as its seats (#551), and at a desk
+   it is longer than the window. What the card cannot give scrolls with the column rather than being
+   cut off at its foot or squeezed out of sight. The seats stay whole: they are what she came for. */
+.byd-observer [data-tv] > aside { overflow: auto; }
+.byd-observer [data-tv] .byd-tv-seats { flex-shrink: 0; overflow: visible; }
 .byd-observer [data-tv] > aside:has(.byd-tv-seats [aria-expanded='true']) > * { flex-shrink: 0; }
 .byd-observer [data-tv] > aside:has(.byd-tv-seats [aria-expanded='true']) .byd-tv-seats { overflow: visible; }
 /* Its heading and its three lines, always (#482 fynd 6 B): a feed cut to nothing is a feed that
@@ -732,6 +740,10 @@
   [data-tv] .byd-tv-seats li [data-avatar] { width: 30px; height: 30px; font-size: 15px; }
   [data-tv] .byd-tv-seats li span { font-size: 15px; }
   [data-tv] .byd-tv-seats li span + span { font-size: 12px; }
+  /* Not on her screen (#745): her rows are buttons with an arrow to open them, and two abreast left
+     «4 kort på hand» some 70 px, which broke it over two lines and cut the second off. Her column
+     scrolls as a whole, so the reason for two abreast — a dock that never scrolls — is not hers. */
+  .byd-observer [data-tv] .byd-tv-seats ul { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* Textures: the image fills the card; the name stays underneath for cards without one. */
@@ -1125,6 +1137,7 @@
 [data-tv][data-room] aside h2:where(:not(.byd-rules-panel *)) { font-size: 24px; letter-spacing: 1px; margin-bottom: 8px; }
 [data-tv][data-room] .byd-tv-head h1 { font-size: 28px; }
 [data-tv][data-room] .byd-tv-join > span { font-size: 24px; }
+[data-tv][data-room] .byd-tv-inspect { --byd-inspect-head: 30px; --byd-inspect-gap: 8px; }
 [data-tv][data-room] .byd-tv-inspect [data-empty] span { font-size: 24px; line-height: 1.2; }
 [data-tv][data-room] ol:where(:not(.byd-rules-panel *)) li { font-size: 24px; }
 [data-tv][data-room] ol:where(:not(.byd-rules-panel *)) li b { flex-basis: 36px; }

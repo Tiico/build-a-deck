@@ -35,6 +35,7 @@ import { useMarked } from './marked.js'
 import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
 import { Question } from './Question.js'
 import { useT, type T } from '../i18n/index.js'
+import { saidOr } from '../i18n/said.js'
 import { useGesture } from './gesture.js'
 import { lineKey } from './lineKeys.js'
 import { useSay } from '../status/StatusLive.js'
@@ -164,6 +165,17 @@ const isDataFile = (file: File) => /\.(csv|tsv)$/i.test(file.name) || file.type 
 // Deliberately one self-contained function with no imports: the browser test runs this very
 // function inside the page, so what is measured there is what ships.
 export function markCut(box: Element): void {
+  // Och var ikonfliken hänger (#693, beställarens beslut A). Den står på fältets övre högra hörn,
+  // över raden ovanför (#593) — men när det som står ovanför är tabellens huvud låg den på
+  // kolumnens ▾, och den hänger då i stället under hörnet. Det är en fråga om läge och inte om
+  // ordning: i en rullad tabell är det någon annan rad än den första som står mot huvudet, så det
+  // mäts, och samma bildruta som rullningen frågar. Mot en av huvudets celler och inte mot
+  // `<thead>`: det är cellerna som står fast när lådan rullas, raden under dem följer med.
+  const tab = box.querySelector<HTMLElement>('tbody .byd-data-icon')
+  const head = box.querySelector('thead > tr > th')
+  const field = tab?.parentElement
+  if (tab && head && field && field.getBoundingClientRect().top - tab.offsetHeight < head.getBoundingClientRect().bottom - 0.5) box.setAttribute('data-tab', 'under')
+  else box.removeAttribute('data-tab')
   const pin = box.querySelector('thead .byd-data-remove')
   if (!pin) return
   const over = pin.getBoundingClientRect()
@@ -587,7 +599,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       await onUpload(one.file, { cardRef, field })
       setUploadError(null)
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : String(err))
+      setUploadError(saidOr(err, t('picture.upload.failed')))
     }
   }
   // The same upload, for the action row rather than for a cell: the file becomes one asset and the
@@ -603,7 +615,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       setBulkImage(await onUpload(one.file))
       setUploadError(null)
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : String(err))
+      setUploadError(saidOr(err, t('picture.upload.failed')))
     }
   }
   // What is being typed in an `antal` cell that is not (yet) a count (#479), by card.
@@ -619,6 +631,14 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const [replacing, setReplacing] = useState<{ rows: ProjectDoc['rows']; file: string } | null>(null)
   // What the last import did, said where it was asked for (#479).
   const [imported, setImported] = useState<string | null>(null)
+  // The line is about the rows the import landed and nothing after them (#739): the first change to
+  // the rows is the import arriving, and the next — an undo, an edit — makes the line a report on a
+  // table that is no longer there.
+  const importLanding = useRef(false)
+  useEffect(() => {
+    if (importLanding.current) importLanding.current = false
+    else setImported(null)
+  }, [doc.rows])
   const [sort, setSort] = useState<SortState | null>(null)
   const [filter, setFilter] = useState<FilterState>(noFilter)
   // Which column's filter door stands open, if any: one at a time, like the crown's boxes.
@@ -766,6 +786,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     // the caret arriving in a cell or leaving one, which is what decides whether the widths are
     // being held; leaving one is therefore also when they settle on what was written.
   }, [deck, editing, widths])
+  // Ikonfliken följer med cellen man står i (#693), och vilken sida av fältet den hänger på är
+  // lådans egen läsning (`markCut`). Den läses alltså om när fliken flyttar, inte bara när lådan
+  // rullas: Enter och ↓ går från raden mot huvudet till raden under utan att något annat ändras.
+  useLayoutEffect(() => {
+    if (scrollRef.current) markCut(scrollRef.current)
+  }, [here])
   useEffect(() => {
     if (!refocus) return
     if (typeof refocus === 'object') {
@@ -1162,15 +1188,32 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   }
   const nextRef = () => nextCardRef(doc)
   const land = (rows: ProjectDoc['rows']) => {
+    importLanding.current = true
     onReplaceRows(rows)
     setImported(importSummary(doc, rows, t))
   }
   const importFile = (file: File | undefined) => {
     if (!file) return
+    // A new file is a new answer (#739): what the last one did gives way to what this one does,
+    // rather than standing beside its refusal.
+    setImported(null)
+    setImportError(null)
+    // The picker's `accept` is a suggestion a file dialog lets the designer step past, so the type
+    // is the import's to say and not only the drop's.
+    if (!isDataFile(file)) {
+      setImportError(t('table.import.wrongType', { file: file.name }))
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => {
       try {
-        const rows = importCardsCsv(String(reader.result ?? ''), t, fieldsOf(doc))
+        const text = String(reader.result ?? '')
+        // A file with nothing in it has no id column either, but that is not what is wrong with it.
+        if (text.replace(/^\uFEFF/, '').trim() === '') {
+          setImportError(t('table.import.empty', { file: file.name }))
+          return
+        }
+        const rows = importCardsCsv(text, t, fieldsOf(doc))
         setImportError(null)
         // An import that takes cards away asks first (#479, beslut 2026-09-27; L9): the question
         // before a deletion stands although there is an undo. One that only adds and changes
@@ -1179,7 +1222,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
         if (doc.rows.some((r) => !now.has(r.id))) setReplacing({ rows, file: file.name })
         else land(rows)
       } catch (err) {
-        setImportError(err instanceof Error ? err.message : String(err))
+        setImportError(saidOr(err, t('table.import.failed')))
       }
     }
     reader.readAsText(file)
@@ -1193,11 +1236,8 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const [file, ...rest] = dropped
     if (!file) return
     if (rest.length > 0) {
+      setImported(null)
       setImportError(t('table.import.one', { files: dropped.map((f) => f.name).join(', ') }))
-      return
-    }
-    if (!isDataFile(file)) {
-      setImportError(t('table.import.wrongType', { file: file.name }))
       return
     }
     importFile(file)
@@ -1354,25 +1394,6 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           }}
         >
           {dropLabel(doc, dropping, t)}
-        </Question>
-      )}
-      {removing !== null && (
-        <Question
-          className="byd-data-bulk"
-          label={t('table.remove.card', { cardRef: removing })}
-          confirm={t('table.remove.yes')}
-          cancel={t('editor.cancel')}
-          onConfirm={() => {
-            onRemoveRow(removing)
-            setRemoving(null)
-            setRefocus('all')
-          }}
-          onCancel={() => {
-            setRemoving(null)
-            setRefocus({ cardRef: removing })
-          }}
-        >
-          {t('table.remove.card.question', { cardRef: removing })}
         </Question>
       )}
       {/* A wide table on a narrow screen has one honest answer: the table scrolls inside its own
@@ -1594,7 +1615,6 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     t={t}
                     icons={gameIcons}
                     was={moved(changeOf(cardRef), f) ? String(wasCell(cardRef, f) ?? '') : null}
-                    picking={brace?.cardRef === cardRef && brace.field === f}
                     open={here?.cardRef === cardRef && here.field === f}
                     caretAt={caretAfter.current?.cardRef === cardRef && caretAfter.current.field === f ? caretAfter.current.at : null}
                     onWrite={(text, at) => {
@@ -1630,11 +1650,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     {cellPicker(cardRef, f)}
                   </BodyTd>
                 ) : (
-                <td
-                  key={f}
-                  data-col={f}
-                  className={brace?.cardRef === cardRef && brace.field === f ? 'byd-data-picking' : undefined}
-                >
+                <td key={f} data-col={f}>
                   {moved(changeOf(cardRef), f) && <s className="byd-data-was">{String(wasCell(cardRef, f) ?? '')}</s>}
                   {/* The field and the tab its icon control hangs from (#593). It is a box inside
                       the cell and not the cell itself, so the tab can stand on the field's own
@@ -1828,7 +1844,28 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             </>
           )}
         </p>
-      {chosen.length > 0 &&
+      {/* One row's × asks the same kind of question the marking does, and in the same place
+          (#739, L58): it stood in a band over the head and moved the table 70 px under the hand
+          that had just pressed it. In the foot it takes the toolbar's place while it stands. */}
+      {removing !== null ? (
+        <Question
+          className="byd-data-bulk"
+          label={t('table.remove.card', { cardRef: removing })}
+          confirm={t('table.remove.yes')}
+          cancel={t('editor.cancel')}
+          onConfirm={() => {
+            onRemoveRow(removing)
+            setRemoving(null)
+            setRefocus('all')
+          }}
+          onCancel={() => {
+            setRemoving(null)
+            setRefocus({ cardRef: removing })
+          }}
+        >
+          {t('table.remove.card.question', { cardRef: removing })}
+        </Question>
+      ) : chosen.length > 0 &&
         (confirming ? (
           <Question
             className="byd-data-bulk"
@@ -1976,7 +2013,6 @@ function BodyTd({
   row,
   t,
   was,
-  picking,
   children,
   ...cell
 }: Omit<BodyCellProps, 'label' | 'head' | 'value'> & {
@@ -1986,11 +2022,10 @@ function BodyTd({
   row: ProjectRow['fields']
   t: T
   was: string | null
-  picking: boolean
 }) {
   const value = row[field]
   return (
-    <td data-col={field} className={picking ? 'byd-data-picking' : undefined}>
+    <td data-col={field}>
       {was !== null && <s className="byd-data-was">{was}</s>}
       <BodyCell
         {...cell}

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ProjectClient } from '../src/editor/ProjectClient.js'
+import { ProjectClient, setEditSocketImplementation, type EditSocketCtor } from '../src/editor/ProjectClient.js'
+import { EditSocket } from './setup.js'
 import { projectDoc } from './project-doc.js'
 import { LIBRARY } from '../src/editor/symbols.js'
 import { startServer, type Running } from './fixture.js'
@@ -105,6 +106,58 @@ describe('ProjectClient', () => {
     expect(session.id).toMatch(/[0-9a-f-]{36}/)
     expect(session.version).toBe('rev-1')
     expect((await run.store.loadSession(session.id))?.setup.components).toHaveLength(4)
+  })
+})
+
+// A save over the actor's line is over when the actor answers or the line goes (#708's flake). It
+// had a two-second clock of its own besides, and a page held up for longer than that — a busy
+// machine, a long task — let the clock win against an answer already on its way: the version was
+// made, and the booklet said «Boken kunde inte sparas». The clock is now only the backstop for an
+// actor that never answers, and a line that goes ends the save at once.
+describe('the end of a save over the line', () => {
+  afterEach(() => setEditSocketImplementation(EditSocket as unknown as EditSocketCtor))
+
+  it('reports a save as made when the page was held up past two seconds before the answer was read', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    client.setCell('dragon', 'title', 'Drakhona')
+    const saving = client.save()
+    const until = Date.now() + 2_100
+    while (Date.now() < until) {
+      // The page is busy: nothing else runs, the answer included.
+    }
+    expect(await saving).toEqual({ ok: true, rev: 2 })
+    expect(client.dirty).toBe(false)
+  })
+
+  it('ends a save as not made the moment the line goes under it, without waiting for a clock', async () => {
+    // A line that opens, takes the save and goes, as a socket does when the network drops.
+    setEditSocketImplementation(class {
+      readyState = 1
+      onopen: (() => void) | null = null
+      onmessage: ((event: { data: unknown }) => void) | null = null
+      onclose: (() => void) | null = null
+      onerror: (() => void) | null = null
+      constructor() {
+        queueMicrotask(() => this.onopen?.())
+      }
+      send(data: string): void {
+        if ((JSON.parse(data) as { t: string }).t !== 'save') return
+        this.readyState = 3
+        queueMicrotask(() => this.onclose?.())
+      }
+      close(): void {
+        this.readyState = 3
+      }
+    } as unknown as EditSocketCtor)
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    await vi.waitFor(() => expect(client.connected).toBe(true))
+    client.setCell('dragon', 'title', 'Drakhona')
+    const began = performance.now()
+    expect(await client.save()).toMatchObject({ ok: false })
+    expect(performance.now() - began).toBeLessThan(1_000)
+    expect(client.dirty).toBe(true)
   })
 })
 
