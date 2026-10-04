@@ -73,6 +73,38 @@ describe('att kopiera en zon i fliken Bord', () => {
     expect(document.body.textContent).toMatch(/Kasthög/)
   })
 
+  // Ett klipp är ingen borttagning, och beskedet om det hör inte till inklistringen (#712): «Yta 1 är
+  // borttagen.» med Ångra stod kvar genom två inklistringar till och tog en rad i koordinatraden.
+  it('säger att zonen är klippt, och tar bort beskedet när den klistras in', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+
+    select('discard')
+    press('x')
+    expect(document.body.textContent).toMatch(/Kasthög är klippt\./)
+    // Not vacuous: the strip does hold its undo while the cut stands.
+    expect(document.querySelector('.byd-setup-undo button')).not.toBeNull()
+    expect(document.body.textContent).not.toMatch(/är borttagen/)
+
+    press('v')
+    expect(document.body.textContent).not.toMatch(/är klippt/)
+    expect(document.querySelector('.byd-setup-undo')).toBeNull()
+  })
+
+  // Fokus på en rad i listan är att stå på zonen, som när Delete läser den (#712): Ctrl+C där gav
+  // varken kopia eller ord, och nästa Ctrl+V klistrade det gamla urklippet.
+  it('kopierar zonen vars rad har fokus', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+
+    const name = row('draw').querySelector<HTMLElement>('.byd-setup-name')!
+    name.focus()
+    fireEvent.keyDown(name, { key: 'c', ctrlKey: true })
+    expect((document.querySelector('[data-setup-said]') as HTMLElement | null)?.textContent).toMatch(/kopierad/)
+    press('v')
+    expect(rows().length).toBe(5)
+  })
+
   it('vägrar klippa en zon bordet inte kan vara utan, och säger varför', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openBord()

@@ -122,6 +122,9 @@ test.describe('a seat kicked from the keyboard (#621)', () => {
     await page.goto(project.editorUrl)
     const strip = page.locator('.byd-editor-table-link')
     const ada = strip.getByRole('button', { name: 'Sparka Ada', exact: true })
+    // Ada's chip first: the seat arrives on the line after the page, and a Tab pressed before it
+    // stood went past where it was about to be (a flake under load).
+    await expect(ada).toBeVisible()
     await strip.getByRole('button', { name: 'Ny kod' }).focus()
     await page.keyboard.press('Tab')
     await expect(ada).toBeFocused()

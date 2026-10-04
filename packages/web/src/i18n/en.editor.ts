@@ -1095,6 +1095,7 @@ export const enEditor = {
   'setup.group.seats': 'At the seats',
   'setup.remove.of': 'Remove {name}',
   'setup.removed': '{name} has been removed.',
+  'setup.cut': '{name} has been cut.',
   'setup.undo': 'Undo',
   'setup.fixed': 'fixed',
   'setup.fixed.floor': 'The felt is the table itself and cannot be removed.',
