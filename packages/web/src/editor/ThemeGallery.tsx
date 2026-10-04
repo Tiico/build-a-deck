@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useLayoutEffect, useMemo, useState } from 'react'
 import { applyEdit } from '@byd/server/doc'
 import type { ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
+import { proseFieldsOf } from './body.js'
+import { CARD_TOP, cropOf, proseBoxOf } from './theme-crop.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 import { catalogFaceSource } from './font-catalog.js'
@@ -114,6 +116,10 @@ function Departures({ doc, client, lang, busy, onReset }: { doc: ProjectDoc; cli
 
 // The game's own first card as the theme would set it: the theme laid over a copy of the document
 // by the very edit that choosing it sends, so the tile cannot show what the choice would not do.
+//
+// The tile draws a crop of it (#741, beställarens val A 2026-10-04): the title band and the first
+// lines of the prose, at the size the prose can be read at, centred on the prose box. The card is
+// still the one renderer's whole card (E2); the crop only clips it.
 function ThemeCard({ doc, theme, faces, assetBase }: { doc: ProjectDoc; theme: Theme; faces: Record<string, { stack: string; src?: string }>; assetBase: string }) {
   const t = useT()
   const themed = useMemo(() => {
@@ -124,13 +130,48 @@ function ThemeCard({ doc, theme, faces, assetBase }: { doc: ProjectDoc; theme: T
   const fonts = useMemo(() => ({ ...previewFonts(themed, assetBase), ...Object.fromEntries(themeFamilies(theme).flatMap((f) => { const face = faces[f.family]; return face ? [[f.family, face] as const] : [] })) }), [themed, theme, faces, assetBase])
   const front = themed.template.faces['front']
   const row = themed.rows[0]
+  const box = useMemo(() => (front && row ? proseBoxOf(front, row.fields, proseFieldsOf(themed)) : null) ?? CARD_TOP, [front, row, themed])
+  // The size the prose was fitted to (E6), which is the size the reader sees: the template's own
+  // until the card has been fitted.
+  const [fitted, setFitted] = useState<{ element: string; sizePt: number } | null>(null)
+  const room = useWidth()
   if (!front || !row) return null
+  const crop = cropOf(box, fitted?.element === box.element ? fitted.sizePt : box.sizePt, room.width)
   return (
-    <span className="byd-theme-card" data-theme-card aria-hidden="true">
-      <CardPreview id={`theme-${theme.id}`} face={front} row={row.fields} icons={icons} fonts={fonts} assetBase={assetBase} palette={themed.palette} scale={CARD_SCALE} />
+    <span ref={room.ref} className="byd-theme-card" data-theme-card data-prose={box.element} aria-hidden="true">
+      <span className="byd-theme-crop" style={{ width: crop.width, height: crop.height, ['--byd-theme-fade' as string]: `${crop.fade}px` }}>
+        <span className="byd-theme-card-at" style={{ left: crop.left }}>
+          <CardPreview
+            id={`theme-${theme.id}`}
+            face={front}
+            row={row.fields}
+            icons={icons}
+            fonts={fonts}
+            assetBase={assetBase}
+            palette={themed.palette}
+            scale={crop.zoom}
+            onFitted={(sizes) => {
+              const found = sizes.find((s) => s.element === box.element)
+              if (found) setFitted({ element: found.element, sizePt: found.sizePt })
+            }}
+          />
+        </span>
+      </span>
     </span>
   )
 }
 
-// How large a tile draws the card: the most four tiles in a row hold at 1024 px.
-const CARD_SCALE = 0.7
+// How wide an element is: measured once it is drawn, and again whenever its width changes.
+function useWidth(): { ref: (el: HTMLElement | null) => void; width: number } {
+  const [el, setEl] = useState<HTMLElement | null>(null)
+  const [width, setWidth] = useState(0)
+  useLayoutEffect(() => {
+    if (!el) return
+    setWidth(el.clientWidth)
+    if (typeof ResizeObserver === 'undefined') return
+    const watch = new ResizeObserver(() => setWidth(el.clientWidth))
+    watch.observe(el)
+    return () => watch.disconnect()
+  }, [el])
+  return { ref: setEl, width }
+}

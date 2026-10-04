@@ -316,6 +316,35 @@ describe('the host\'s screen (DRIFT §9)', () => {
     const qr = await screen.findByAltText(new RegExp(`join\\?code=${roomOf(id).code}`))
     expect(qr.getAttribute('alt')).toContain(`join?code=${roomOf(id).code}`)
   })
+
+  // DRIFT §9 shows the key once (#758): a screen share or a photo of the TV must not carry it.
+  it('takes the host key out of the address, and opens again from the tab without it', async () => {
+    const id = await createSession(run)
+    const server = encodeURIComponent(run.url)
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${server}`)
+    const { unmount } = render(<TablePage />)
+    expect(await screen.findByText(roomOf(id).code)).toBeTruthy()
+    expect(location.search).toBe(`?session=${id}&mode=tv&server=${server}`)
+    expect(location.href).not.toContain(roomOf(id).hostKey)
+    unmount()
+
+    // A reload: the same tab, the cleaned address.
+    render(<TablePage />)
+    expect(await screen.findByText(roomOf(id).code)).toBeTruthy()
+  })
+
+  it('keeps one table’s key to that table', async () => {
+    const first = await createSession(run)
+    history.replaceState(null, '', `/table?session=${first}&host=${roomOf(first).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    const { unmount } = render(<TablePage />)
+    expect(await screen.findByText(roomOf(first).code)).toBeTruthy()
+    unmount()
+
+    const second = await createSession(run, 's2')
+    history.replaceState(null, '', `/table?session=${second}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    expect(await screen.findByText(/värdens länk/)).toBeTruthy()
+  })
 })
 
 // «Visa för alla» (#508, beslut B): a phone holds a public card up on the room's screen. It goes
