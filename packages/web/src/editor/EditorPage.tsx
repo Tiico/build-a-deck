@@ -27,7 +27,7 @@ import { TableEnded, type ProjectClient, type Textures } from './ProjectClient.j
 import { loginUrl } from '../account/api.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
-import { noticeFor, refusalText, loggedOutNotice, asOf } from '../status/notice.js'
+import { noticeFor, refusalText, loggedOutNotice, asOf, unlinked } from '../status/notice.js'
 import { chordOf, isTyping, passedToEditor } from './keys.js'
 import { mediaInGame } from './assets.js'
 import { previewMotifs } from './motifs.js'
@@ -36,6 +36,8 @@ import { statusLinks } from '../status/links.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useLang, useT, type T } from '../i18n/index.js'
+import { saidOr } from '../i18n/said.js'
+import { symbolName } from './symbols.js'
 import { HookGlyph } from '../glyphs.js'
 import type { CatalogFamily } from './font-catalog.js'
 import './editor.css'
@@ -296,7 +298,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     return () => clearTimeout(timer)
   }, [readingSaid])
   const sayReading = (text: string) => setReadingSaid(text)
-  if (!projectId) return <StatusNotice notice={noticeFor('missing', 'editor', t)} surface="page" links={links} />
+  if (!projectId) return <StatusNotice notice={unlinked('editor', t)} surface="page" links={links} />
   if (fault === 'unauthorized') {
     // Not logged in (G1): to the login card and back here after.
     onNavigate(loginUrl(location.pathname + location.search, params.get('server')))
@@ -480,7 +482,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onAdd={(el) => client.addElement(face, el, group)}
         // The symbol's bytes travel before anything is placed (E1), so this is the one tool in the
         // rail that can fail on the way. It says so where the editor says everything else.
-        onPlaceIcon={(symbol) => void client.placeIcon(symbol, face, group, t).then(setElement, (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)))}
+        onPlaceIcon={(symbol) => void client.placeIcon(symbol, face, group, t).then(setElement, (err: unknown) => setNotice(saidOr(err, t('symbols.place.failed', { name: symbolName(symbol, t) }))))}
         onReorder={(id, to) => client.moveElement(face, id, to)}
         // Locking a layer and naming it are edits to the element (L15), so they go the way every
         // other change to an element goes — through the base, which is where the layer lives even

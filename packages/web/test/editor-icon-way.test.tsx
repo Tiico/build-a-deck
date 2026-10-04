@@ -5,6 +5,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
+import { ProjectClient } from '../src/editor/ProjectClient.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -131,6 +132,20 @@ describe('the icon as a tool on the canvas (#33)', () => {
     fireEvent.click(within(tools).getByRole('combobox', { name: 'Ikon' }))
     const list = await screen.findByRole('listbox', { name: 'Symboler' })
     expect(within(list).getAllByRole('option').length).toBeGreaterThan(0)
+  })
+
+  // What the template throws when a placement is refused is English for the developer (#812, A4):
+  // the header says the icon did not go on the card in a sentence of its own.
+  it('says an icon that could not be placed in words, and not in the template’s', async () => {
+    const spy = vi.spyOn(ProjectClient.prototype, 'placeIcon').mockRejectedValue(new Error('template has no face front'))
+    try {
+      const tools = await openTemplate()
+      fireEvent.click(within(tools).getByRole('combobox', { name: 'Ikon' }))
+      fireEvent.click(within(await screen.findByRole('listbox', { name: 'Symboler' })).getByRole('option', { name: /svärd/ }))
+      await waitFor(() => expect(document.querySelector('.byd-editor-notice')?.textContent).toBe('Ikonen svärd kunde inte läggas på kortet. Försök igen.'))
+    } finally {
+      spy.mockRestore()
+    }
   })
 
   // `aria-activedescendant` is not read on a button (#556 E-4): the arrows moved the live symbol

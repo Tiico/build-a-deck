@@ -1,4 +1,5 @@
-import type { RuleBlock, RuleDoc } from './rules.js'
+import { REF_WORD, type RefKind } from './inline.js'
+import type { Names, RuleBlock, RuleDoc } from './rules.js'
 
 // The import (#131): a Markdown file a designer wrote somewhere else, read into the kinds of block
 // the book has. The map is the product owner's and every line of it is a decision, so it is
@@ -22,6 +23,9 @@ export type RuleImportKind =
   | 'list'
   | 'ref'
   | 'image'
+  // A reference written by a name the game does not have (#708). It comes in as its own words
+  // without the brackets, and the report says how many — nothing disappears silently.
+  | 'unknownRef'
   // What changed shape on the way in, `title` being the file's own title, which the book already
   // has one of (#191).
   | 'title'
@@ -58,7 +62,7 @@ export type RuleImport = { doc: RuleDoc; notes: RuleImportNote[]; problems: Rule
 // shape on the way, and what came in saying less about itself than it could have. The file's own
 // title heads the middle group, because it is the first line of the file and the first thing the
 // import did.
-const ORDER: readonly RuleImportKind[] = ['heading', 'subheading', 'text', 'list', 'ref', 'image', 'title', 'raised', 'folded', 'quote', 'table', 'code', 'link', 'break', 'decorative']
+const ORDER: readonly RuleImportKind[] = ['heading', 'subheading', 'text', 'list', 'ref', 'image', 'unknownRef', 'title', 'raised', 'folded', 'quote', 'table', 'code', 'link', 'break', 'decorative']
 
 const HEADING = /^[ \t]*(#{1,6})[ \t]+(.*)$/
 // A list item: a bullet, or a number the file counted with. Which of the two it is decides the
@@ -82,9 +86,35 @@ const INSIDE = '(?:[^()]|\\([^()]*\\))*'
 // file it names. Both are read here and nowhere else.
 const IMAGE = new RegExp(`!\\[([^\\]]*)\\]\\((${INSIDE})\\)`, 'g')
 const LINK = new RegExp(`\\[([^\\]]+)\\]\\(${INSIDE}\\)`, 'g')
-// What a book written by hand already writes (B7). It is kept exactly as it stands: the renderer
-// is what makes it the name the thing has right now, and the import decides nothing about it.
-const REF = /\[\[(?:zon|kort):[\p{L}\p{N}_:-]+\]\]/gu
+// Anything a file writes between double brackets. What a book written by hand already writes (B7),
+// `[[zon:id]]`, is kept exactly as it stands: the renderer is what makes it the name the thing has
+// right now. Anything else is a name, which is how a person writing outside the app names a thing
+// (#708), and it is read against what the game calls its zones, cards and counters.
+const BRACKETED = /\[\[([^[\]\n]+)\]\]/g
+const WRITTEN_REF = new RegExp(`^(?:${Object.values(REF_WORD).join('|')}):[\\p{L}\\p{N}_:-]+$`, 'u')
+const REF_ID = /^[\p{L}\p{N}_:-]+$/u
+// A book read with no game behind it — a test, a fragment — knows no names, so every name in it is
+// one the game does not have.
+const NO_NAMES: Names = { zones: {}, cards: {}, counters: {} }
+// How a name is compared: regardless of case and of the space around and inside it, since neither
+// is something a person writing «Kortlek» in a file means as part of the name.
+const spoken = (name: string): string => name.normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase()
+// Every name the game has, to the reference that stands for it. Zones first, then cards, then
+// counters, and the first of each name wins: a deck with two rows called «Quickdraw» is named by
+// the one it lists first, which is the card a reader finds first too.
+function referencesByName(names: Names): Map<string, string> {
+  const found = new Map<string, string>()
+  const add = (of: RefKind, table: Record<string, string>) => {
+    for (const [id, name] of Object.entries(table)) {
+      const key = spoken(name)
+      if (key && REF_ID.test(id) && !found.has(key)) found.set(key, `[[${REF_WORD[of]}:${id}]]`)
+    }
+  }
+  add('zone', names.zones)
+  add('card', names.cards)
+  add('counter', names.counters)
+  return found
+}
 
 // The addresses the file points a picture at, in the order they stand and once each. It is read
 // before the book is made, because the bytes behind them have to be fetched, checked and stored
@@ -98,7 +128,7 @@ export function imagesIn(markdown: string): string[] {
   return found
 }
 
-export function importRules(markdown: string, title: string, images: RuleImages = {}): RuleImport {
+export function importRules(markdown: string, title: string, images: RuleImages = {}, names: Names = NO_NAMES): RuleImport {
   const lines = markdown.replace(/\r\n?/g, '\n').split('\n')
   const blocks: RuleBlock[] = []
   const problems: RuleImportProblem[] = []
@@ -140,8 +170,18 @@ export function importRules(markdown: string, title: string, images: RuleImages 
   // written with and loses the address, because the book is read at a table, on a phone and in a
   // printed booklet, where no address can be followed. Code is never read this way: there, what
   // was written is the whole of what it means.
-  const inline = (line: string): string => {
-    count('ref', (line.match(REF) ?? []).length)
+  // What a line says about the things the game has (#708): a reference written the book's own way
+  // stays as written, a name the game has becomes the reference that stands for it, and a name it
+  // does not have becomes its own words — at the table and on the phone brackets were brackets.
+  const known = referencesByName(names)
+  const named = (line: string): string =>
+    line.replace(BRACKETED, (whole, inside: string) => {
+      const ref = WRITTEN_REF.test(inside) ? whole : known.get(spoken(inside))
+      count(ref ? 'ref' : 'unknownRef')
+      return ref ?? inside.trim()
+    })
+  const inline = (written: string): string => {
+    const line = named(written)
     let took = false
     for (const [, alt, address] of line.matchAll(IMAGE)) {
       took = true
@@ -210,7 +250,7 @@ export function importRules(markdown: string, title: string, images: RuleImages 
       if (hashes > (lifted ? 3 : 2)) count('folded')
       const level = levelOf(hashes, raised || lifted)
       count(level === 1 ? 'heading' : 'subheading')
-      blocks.push({ kind: 'heading', id: id(), level, text: (heading[2] ?? '').trim() })
+      blocks.push({ kind: 'heading', id: id(), level, text: named((heading[2] ?? '').trim()) })
       i++
       continue
     }
@@ -253,7 +293,16 @@ export function importRules(markdown: string, title: string, images: RuleImages 
         const row = peek(i)
         i++
         if (RULED.test(row)) continue
-        rows.push(cellsOf(row).map(inline).join(' | '))
+        // The cells are set apart by a mark a reader reads as a pause, never by the file's bars:
+        // those are drawing, and at the table and on the phone they stood as bars (#708). An empty
+        // cell is no word, so it leaves no second mark beside the first.
+        const said = cellsOf(row)
+          .map(inline)
+          .filter((cell) => cell.length > 0)
+          .join(CELL)
+        // The row a ruled line stands under is the table's head, and it stays the head by being
+        // bold — the one way a line of text can say so.
+        rows.push(said && RULED.test(peek(i)) ? `**${said}**` : said)
       }
       count('table')
       text(rows)
@@ -310,6 +359,8 @@ function topRankOf(lines: readonly string[], opening: number): number {
   return top
 }
 
+// What stands between two cells of a row once the row is a line of text (#708).
+const CELL = ' · '
 const numbered = (marker: string | undefined): boolean => /\d/.test(marker ?? '')
 const cellsOf = (row: string): string[] =>
   row

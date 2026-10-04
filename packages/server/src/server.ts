@@ -555,7 +555,18 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
     }
     return { seat: ask.seat }
   }
-  if (ask.host !== null) return session.hostKeyHash && hash(ask.host) === session.hostKeyHash ? { seat: null } : { refused: 'the table needs the host key' }
+  // The table's own view (DRIFT §9): the host key opens it, and so does the login of whoever may
+  // open the game's tables (#748) — the server already knows who she is, so an owner who arrives
+  // without the key is not sent to log in to the account she is already in. A key that does not
+  // fit is no reason to shut her out either. The cookie is believed only from the app's own pages.
+  if (ask.host !== null || (ask.seat === null && ask.role === null && ask.token === null)) {
+    if (ask.host !== null && session.hostKeyHash && hash(ask.host) === session.hostKeyHash) return { seat: null }
+    if (opts.auth && session.project && opts.projects) {
+      if (!(await opts.projects.load(session.project))) return { refused: 'the game was deleted' }
+      if (browserOriginAllowed(opts, req) && (await hostOf(opts, req, session)) === 'host') return { seat: null }
+    }
+    return { refused: 'the table needs the host key' }
+  }
   const now = clock(opts)
   const live = ask.token !== null
     ? await opts.store.activateGuest(session.id, hash(ask.token), now.toISOString(), new Date(now.getTime() + CODE_TTL_MS).toISOString())
@@ -1688,8 +1699,14 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const setup = setupFromProject(rec)
-    await actor.refreshDeck(await deckOf(opts, rec), setup)
+    const deck = await deckOf(opts, rec)
     const version = `rev-${rec.rev}`
+    // The deck is kept under its version before the line that moves the table there is committed
+    // (#677): the session row keeps the start deck, and an actor reloaded after a restart takes
+    // its faces from the version its log says it plays. A refusal below leaves a deck no line
+    // names, which is never read.
+    await opts.store.addDeck(sessionId, version, deck)
+    await actor.refreshDeck(deck, setup)
     const decision = await actor.submit({ id: randomUUID(), seat: null, intents: [{ v: 'version.change', to: version, components: setup.components, ...(setup.cards ? { cards: setup.cards } : {}) }] })
     if (!decision.ok) json(res, 409, { error: decision.reason })
     else json(res, 200, { version, seqs: decision.applied.map((l) => l.seq) })

@@ -113,6 +113,8 @@ function compileStep(view: Snapshot, zone: ZoneView, pile: string, step: ActionS
     return { intents: [{ v: 'movePile', pile, to, x: 0, y: 0 }] }
   }
   if (step.v === 'take') {
+    // A search nobody has finished asking is a step to finish, not every card (#713).
+    if (step.which === null) return { why: 'unfinished' }
     const to = step.to.at === 'beside' ? undefined : targets[0]
     if (step.to.at !== 'beside' && to === undefined) return { why: 'nowhere' }
     // Searching a pile is a split that names which cards instead of how many; `at` is then only

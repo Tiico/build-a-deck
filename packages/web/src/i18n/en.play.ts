@@ -14,7 +14,6 @@ export const enPlay = {
   'texture.lost.one': '{n} card could not be rendered',
   'texture.lost.other': '{n} cards could not be rendered',
 
-  'play.refused.host': 'The table view opens with the host’s link from the editor.',
   'ended.title': 'This table has ended',
   'ended.locked': 'The log is locked to {version}. The survey is on the phones.',
   'ended.rows.one': 'row',
@@ -82,6 +81,7 @@ export const enPlay = {
   'ring.action.why.nothing': 'the action has no steps',
   'ring.action.why.gone': 'the pile is no longer here',
   'ring.action.why.asks': 'a step asks for a number',
+  'ring.action.why.unfinished': 'a step has not said which cards it searches out',
   'start.tile': 'Start the game',
   'start.blocked': 'Cannot start right now: {why}',
   'start.again.label': 'Start the game over?',
@@ -374,6 +374,7 @@ export const enPlay = {
   'rules.drawer.none': 'No rule mentions that. Ask whoever made the game.',
   'rules.drawer.ref.zone': 'zone',
   'rules.drawer.ref.card': 'card',
+  'rules.drawer.ref.counter': 'counter',
   'rules.tally.read.one': '{name}, {n} card',
   'rules.tally.read.other': '{name}, {n} cards',
   'rules.tally.counted.one': '{name}, {n} card, order hidden',

@@ -23,7 +23,6 @@ export const svPlay = {
   'texture.lost.other': '{n} kort kunde inte renderas',
 
   // Bordsskärmen.
-  'play.refused.host': 'Bordsvyn öppnas med värdens länk från editorn.',
   'ended.title': 'Bordet är avslutat',
   'ended.locked': 'Loggen är låst på {version}. Enkäten finns på telefonerna.',
   'ended.rows.one': 'rader',
@@ -101,6 +100,7 @@ export const svPlay = {
   'ring.action.why.nothing': 'åtgärden har inga steg',
   'ring.action.why.gone': 'högen är inte kvar',
   'ring.action.why.asks': 'ett steg frågar efter ett tal',
+  'ring.action.why.unfinished': 'ett steg har inte sagt vilka kort det letar fram',
   'start.tile': 'Starta spelet',
   'start.blocked': 'Går inte att starta just nu: {why}',
   'start.again.label': 'Starta om spelet?',
@@ -453,6 +453,7 @@ export const svPlay = {
   // En referens till något spelet inte längre har säger vad som stod skrivet.
   'rules.drawer.ref.zone': 'zon',
   'rules.drawer.ref.card': 'kort',
+  'rules.drawer.ref.counter': 'räknare',
   // Den levande siffran (#226). Brickan visar talet; örat får formen A:s hela mening, som är vad
   // beslutet gav B i utbyte mot att inte skriva ut den. «Ordningen dold» är skillnaden mellan
   // «18 kort, och jag vet vilka» och «18 kort, och det är allt som går att veta» — antalet i sig

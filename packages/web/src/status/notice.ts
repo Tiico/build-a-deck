@@ -31,7 +31,8 @@ export type Tone = 'wait' | 'gone' | 'shut' | 'broken' | 'ok'
 
 // Recovery is either a retry or a decision, never a reload: a reload throws away the very state
 // the reader is trying to keep, and two of them in a row is a loop.
-export type ActionKind = 'retry' | 'login' | 'home' | 'rescan'
+// `switch` signs out and then in again (#748): a page that offers it has the button that does it.
+export type ActionKind = 'retry' | 'login' | 'home' | 'rescan' | 'observe' | 'switch'
 export type Action = { kind: ActionKind; label: string; primary?: boolean }
 
 export type Notice = {
@@ -193,6 +194,28 @@ export function refusal(reason: string, voice: Voice, t: T = swedish): Notice {
   return { ...noticeFor('refused', voice, t), text: refusalText(reason, t) }
 }
 
+// An address with nothing in it (#753): `/editor` with no project, `/table` with no session. It is
+// D5's «saknas» — there is nothing to show and waiting will not bring it — but nothing has gone
+// missing either, so the words say the link holds nothing rather than guess at a typo or an end.
+export function unlinked(voice: 'table' | 'editor', t: T = swedish): Notice {
+  const said = noticeFor('missing', voice, t)
+  return voice === 'table'
+    ? { ...said, heading: t('status.unlinked.table.heading'), text: t('status.unlinked.table.text') }
+    : { ...said, heading: t('status.unlinked.editor.heading'), text: t('status.unlinked.editor.text') }
+}
+
+// A viewer's link opened on the phone's page (#753): the table is up and the token is good, it
+// only has no seat to show a hand from. The way on is the observer's page with the same link.
+export function watchingNotice(t: T = swedish): Notice {
+  return {
+    ...noticeFor('missing', 'phone', t),
+    mark: t('status.watching.phone.mark'),
+    heading: t('status.watching.phone.heading'),
+    text: t('status.watching.phone.text'),
+    actions: [{ kind: 'observe', label: t('status.act.observe'), primary: true }, home(t, 'status.act.home.start')],
+  }
+}
+
 // What a guest's route says when it cannot show a table at all (#485): the phone's words and ways
 // out, on every route a guest reaches through the seat picker — /play, /online, /observe — whatever
 // voice the rest of that route speaks in. A guest told «Starta ett nytt bord från Mina spel», or
@@ -217,6 +240,18 @@ export function observerNotice(refused: string, t: T = swedish): Notice {
     },
     t,
   )
+}
+
+// The table screen shut for want of its key (#748), said to whoever stands at it. Signed out, it
+// needs the host's link or the owner's login — never «another account's», when there is no account
+// in the reader at all. Signed in, it is another account's, and which one she is in is the first
+// thing she needs to know: «Logga in» would send her straight back here as the same account, so
+// the way on is to switch. `undefined` is not known yet, and nothing is promised until it is.
+export function tableShut(account: string | null | undefined, t: T = swedish): Notice {
+  if (account === undefined) return noticeFor('loading', 'table', t)
+  const shut = noticeFor('forbidden', 'table', t)
+  if (account === null) return signedOut({ ...shut, heading: t('status.forbidden.table.out.heading'), text: t('status.forbidden.table.out.text') }, t)
+  return { ...shut, text: t('status.forbidden.table.other.text', { email: account }), actions: [{ kind: 'switch', label: t('status.act.switch'), primary: true }, home(t)] }
 }
 
 // An editor whose reader was logged out while it was open (#485, fynd 7): not «someone else's

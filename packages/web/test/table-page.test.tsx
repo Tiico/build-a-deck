@@ -320,7 +320,7 @@ describe('the host\'s screen (DRIFT §9)', () => {
     const id = await createSession(run)
     history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}`)
     const { unmount } = render(<TablePage />)
-    expect(await screen.findByText(/värdens länk/)).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Bordet behöver värdens länk eller ägarens inloggning' })).toBeTruthy()
     expect(document.querySelector('[data-table]')).toBeNull()
     unmount()
 
@@ -357,7 +357,7 @@ describe('the host\'s screen (DRIFT §9)', () => {
     const second = await createSession(run, 's2')
     history.replaceState(null, '', `/table?session=${second}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
-    expect(await screen.findByText(/värdens länk/)).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Bordet behöver värdens länk eller ägarens inloggning' })).toBeTruthy()
   })
 })
 

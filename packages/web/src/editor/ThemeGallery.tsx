@@ -11,6 +11,7 @@ import type { ProjectClient } from './ProjectClient.js'
 import { ThemeTile } from './ThemeTile.js'
 import { THEMES, departures, sayDeparture, themeFamilies, themeIntent, themeOf, type Theme } from './themes.js'
 import { useLang, useT } from '../i18n/index.js'
+import { Said, saidOr } from '../i18n/said.js'
 import { useSay } from '../status/StatusLive.js'
 
 // The ready-made themes, first in Speltema (L57, #632), and the line under them that says what the
@@ -40,10 +41,10 @@ export function ThemeGallery({ doc, client, assetBase }: { doc: ProjectDoc; clie
     const wanted = [...new Map(THEMES.flatMap(themeFamilies).map((f) => [f.family, f])).values()]
     void Promise.all(wanted.map(async (family) => [family.family, carried[family.family]?.src ? carried[family.family] : await catalogFaceSource(family)] as const))
       .then((found) => {
-        if (found.some(([, face]) => !face)) throw new Error(t('fonts.catalog.silent'))
+        if (found.some(([, face]) => !face)) throw new Said(t('fonts.catalog.silent'))
         setFaces(Object.fromEntries(found) as Record<string, { stack: string; src?: string }>)
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+      .catch((err: unknown) => setError(saidOr(err, t('fonts.catalog.silent'))))
       .finally(() => setLooking(false))
   }
   // One theme at a time: a press while one is on its way is not a second theme, and the status line
@@ -55,7 +56,7 @@ export function ThemeGallery({ doc, client, assetBase }: { doc: ProjectDoc; clie
     void client
       .useTheme(theme, t)
       .then(() => say?.('polite', t('theme.gallery.chosen', { name: t(theme.name) })))
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+      .catch((err: unknown) => setError(saidOr(err, t('theme.gallery.failed', { name: t(theme.name) }))))
       .finally(() => setBusy(null))
   }
   return (

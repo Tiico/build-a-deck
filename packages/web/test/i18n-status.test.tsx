@@ -117,7 +117,7 @@ describe('the nine states in the reader\'s own language (A4)', () => {
   // Swedish however well the state is written. Every route that can reach one without a table
   // behind it is opened here with nothing in its address.
   it.each([
-    ['/table', () => <TablePage />, 'The table is over'],
+    ['/table', () => <TablePage />, 'No link to a table'],
     // A guest's routes say it in the guest's words (#485): the host's «start a new table» is not hers.
     ['/observe', () => <ObserverPage />, 'The table is not there'],
     ['/online', () => <OnlinePage />, 'The table is not there'],

@@ -11,7 +11,7 @@ import type { ProjectDoc } from './projects.js'
 export type Setup = ProjectDoc['setup']
 export type Zone = Setup['zones'][number]
 export type Geometry = Zone['geometry']
-export type Counter = { name: string; start: number }
+export type Counter = NonNullable<Setup['counters']>[number]
 export type Recipe = { players: number; counters: Counter[] }
 
 export const SEAT_IDS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as const

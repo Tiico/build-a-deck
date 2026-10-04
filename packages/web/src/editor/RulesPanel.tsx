@@ -7,6 +7,8 @@ import {
   importRules,
   planImport,
   plainOf,
+  refLabel,
+  refText,
   renderRules,
   ruleEm,
   type Names,
@@ -16,6 +18,7 @@ import {
   type RuleImages,
   type RuleImport,
   type RuleImportKind,
+  type RefKind,
   type RulePlan,
   type RulePlanSection,
   type RuleRun,
@@ -25,6 +28,7 @@ import type { ProjectClient } from './ProjectClient.js'
 import { useT, type T } from '../i18n/index.js'
 import { Help } from './HelpDrawer.js'
 import type { Key } from '../i18n/sv.js'
+import { saidOr } from '../i18n/said.js'
 import { useGesture } from './gesture.js'
 import { useWordSteps } from './word-steps.js'
 import { ASSET_PREFIX, RULE_IMAGE_MAX_BYTES, assetUrl, imageSizeOf, imageTypeOf } from './assets.js'
@@ -254,7 +258,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
       return
     }
     const text = await md.text()
-    const read = importRules(text, doc.name, await pictures(text, files.filter((f) => f !== md), client, t))
+    const read = importRules(text, doc.name, await pictures(text, files.filter((f) => f !== md), client, t), names)
     // A file with nothing in it to make a book of says so, rather than looking as though the
     // press did nothing at all — and it says why, when there is a why. A file whose content was
     // its pictures, and whose own title became nothing because the book is called what the game
@@ -687,11 +691,10 @@ const fileOf = (address: string): string => {
 // `conflict` is the protocol's word for that and nobody can act on it, so what goes on the screen
 // is the state she is actually in — the book is in front of her and it is not on the server —
 // together with the one way out of it, which is the editor's own answer to every collision:
-// reload, and do it again. Nothing is lost by that; the file is still on her disk.
-const whyNotSaved = (err: unknown, t: T): string => {
-  const why = err instanceof Error ? err.message : String(err)
-  return why === 'conflict' ? t('rules.import.conflict') : t('rules.import.failed', { why })
-}
+// reload, and do it again. Nothing is lost by that; the file is still on her disk. The client says
+// that sentence itself, since it is the one that knows the save collided; anything nobody put in
+// words is said as the import not being saved (#812).
+const whyNotSaved = (err: unknown, t: T): string => saidOr(err, t('rules.import.failed'))
 
 // What the import does with the file, read before the book is made and never after it (#131).
 // The rule behind the map is that nothing disappears silently, and this is where it is said: what
@@ -783,6 +786,7 @@ const WEIGHT: Record<RuleImportKind, 'kept' | 'changed'> = {
   list: 'kept',
   ref: 'kept',
   image: 'kept',
+  unknownRef: 'changed',
   title: 'changed',
   raised: 'changed',
   folded: 'changed',
@@ -968,7 +972,7 @@ function Booklet({ client, book, game }: { client: ProjectClient; book: RuleDoc;
       }
       setPlaced({ of, is: { error: t('rules.booklet.failed') } })
     } catch (err) {
-      setPlaced({ of, is: { error: err instanceof Error ? err.message : String(err) } })
+      setPlaced({ of, is: { error: saidOr(err, t('rules.booklet.orderFailed')) } })
     }
   }
   // The button the designer pressed turns into the link she came for, so the focus goes with it
@@ -1112,7 +1116,7 @@ function Editing({
         {(r) => (
           <>
             <span>{r.name}</span>
-            <small>{t(r.of === 'zone' ? 'rules.ref.zone' : 'rules.ref.card')}</small>
+            <small>{t(REF_KIND_WORD[r.of])}</small>
           </>
         )}
       </PickList>
@@ -1421,7 +1425,7 @@ function Span({ nodes }: { nodes: readonly RenderedNode[] }) {
           case 'ref':
             return (
               <i key={i} className="byd-rules-ref" data-ref={n.id} {...(n.name ? {} : { 'data-missing': 'true' })}>
-                {n.name ?? `${n.of === 'zone' ? 'zon' : 'kort'}:${n.id}`}
+                {n.name ?? refLabel(n)}
               </i>
             )
         }
@@ -1430,15 +1434,18 @@ function Span({ nodes }: { nodes: readonly RenderedNode[] }) {
   )
 }
 
-// What a rule can name: everything the game has, by what it is called.
-export type Referable = { of: 'zone' | 'card'; id: string; name: string }
+// What a rule can name: everything the game has, by what it is called — its counters too (#708).
+export type Referable = { of: RefKind; id: string; name: string }
 export function referables(names: Names): Referable[] {
   return [
     ...Object.entries(names.zones).map(([id, name]) => ({ of: 'zone' as const, id, name })),
     ...Object.entries(names.cards).map(([id, name]) => ({ of: 'card' as const, id, name })),
+    ...Object.entries(names.counters).map(([id, name]) => ({ of: 'counter' as const, id, name })),
   ]
 }
-export const refFor = (of: 'zone' | 'card', id: string): string => `[[${of === 'zone' ? 'zon' : 'kort'}:${id}]]`
+export const refFor = (of: RefKind, id: string): string => refText({ of, id })
+// The word the list says beside a name, so a counter called «Guld» is told apart from a card.
+const REF_KIND_WORD = { zone: 'rules.ref.zone', card: 'rules.ref.card', counter: 'rules.ref.counter' } as const satisfies Record<RefKind, Key>
 const refKey = (r: Referable): string => `${r.of}-${r.id}`
 
 // What opens the lookup in a rule, and what says it is over rather than unfinished (#215). The

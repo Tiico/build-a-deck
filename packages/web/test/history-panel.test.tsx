@@ -371,3 +371,44 @@ describe('holding the table against an older version (B4)', () => {
     expect(screen.queryByRole('button', { name: 'Sluta jämföra' })).toBeNull()
   })
 })
+
+// What the client throws when the server says no is English with a status number in it, for the
+// developer. The panel says each failure in a whole sentence of its own (#812, A4).
+describe('the history says its failures in the reader’s language (#812)', () => {
+  const refused = (what: string) => () => Promise.reject(new Error(`could not ${what}: 500`))
+
+  it('says the history could not be read', async () => {
+    const { HistoryPanel } = await import('../src/editor/HistoryPanel.js')
+    const client = { rev: 2, mayEdit: true, versions: refused('read the history'), changes: () => Promise.resolve([]) }
+    render(<HistoryPanel client={client as unknown as ProjectClient} onClose={() => undefined} onRestored={() => undefined} onCompare={() => undefined} />)
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toBe('Historiken kunde inte läsas. Försök igen om en stund.')
+  })
+
+  it('says what a version changed, its name and bringing it back each failed, in words', async () => {
+    const { HistoryPanel } = await import('../src/editor/HistoryPanel.js')
+    const at = new Date().toISOString()
+    const client = {
+      rev: 2,
+      mayEdit: true,
+      versions: () => Promise.resolve([{ rev: 2, at }, { rev: 1, at }]),
+      changes: () => Promise.resolve([]),
+      diff: refused('read what version 1 changed'),
+      nameVersion: refused('name version 1'),
+      restore: refused('open version 1'),
+    }
+    render(<HistoryPanel client={client as unknown as ProjectClient} onClose={() => undefined} onRestored={() => undefined} onCompare={() => undefined} />)
+    const panel = await screen.findByRole('dialog', { name: 'Historik' })
+    fireEvent.click((await within(panel).findAllByRole('button', { expanded: false })).at(-1)!)
+    await waitFor(() => expect(within(panel).getByRole('alert').textContent).toBe('Det gick inte att läsa vad version 1 ändrade. Försök igen.'))
+
+    const field = within(panel).getByLabelText('Namn på version 1')
+    fireEvent.change(field, { target: { value: 'Första' } })
+    fireEvent.blur(field)
+    await waitFor(() => expect(within(panel).getByRole('alert').textContent).toBe('Version 1 kunde inte få sitt namn. Försök igen.'))
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'Återställ version 1' }))
+    await waitFor(() => expect(within(panel).getByRole('alert').textContent).toBe('Version 1 kunde inte tas tillbaka. Försök igen.'))
+    expect(panel.textContent).not.toMatch(/could not|500/)
+  })
+})

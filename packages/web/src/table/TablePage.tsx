@@ -17,7 +17,8 @@ import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { statusLinks } from '../status/links.js'
-import { noticeFor } from '../status/notice.js'
+import { noticeFor, tableShut, unlinked } from '../status/notice.js'
+import { logout, whoAmI } from '../account/api.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT, type Key } from '../i18n/index.js'
 import { takeHostKey } from './hostKey.js'
@@ -63,6 +64,28 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   // Without a code — an owner who opened their own table — the game's name names it (#759).
   // A table whose game was taken away (#676) is not there, which is not the same as shut.
   const gameDeleted = refused === 'the game was deleted'
+  // Who stands at a shut table (#748): signed out, or in an account that may not open it. The
+  // server would have let the owner in, so a signed-in reader here is someone else's account.
+  const http = url.replace(/^ws/, 'http')
+  const [account, setAccount] = useState<string | null | undefined>(undefined)
+  const shut = refused !== null && !gameDeleted
+  useEffect(() => {
+    if (!shut) return
+    let live = true
+    // A service that cannot say who is here has nobody signed in to name.
+    void whoAmI(http).then(
+      (email) => live && setAccount(email),
+      () => live && setAccount(null),
+    )
+    return () => {
+      live = false
+    }
+  }, [shut, http])
+  const switchAccount = () => {
+    if (links.login === undefined) return
+    const login = links.login
+    void logout(http).then(() => location.assign(login))
+  }
   usePageTitle({ state: sessionId ? (gameDeleted ? 'missing' : refused ? 'forbidden' : live.state) : 'missing', room: roomCode || null, game: record?.name ?? null, part: view?.ended ? t('title.play.ended') : null })
 
   // What the screen is pointed at (C): only the TV has a panel to show it in.
@@ -104,12 +127,12 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   }, [params, roomCode])
 
   // A link with no room in it is a link to a room that does not exist.
-  if (!sessionId) return <StatusNotice notice={noticeFor('missing', 'table', t)} surface="page" links={links} />
+  if (!sessionId) return <StatusNotice notice={unlinked('table', t)} surface="page" links={links} />
   // The host key is what opens this screen (DRIFT §9); without it the door is shut, not broken.
   // A table whose game was taken away (#676) is gone with it: the code that stood here is spent,
   // which is D5's «saknas», said as what happened — never «another account's», which it is not.
   if (gameDeleted) return <StatusNotice notice={{ ...noticeFor('missing', 'table', t), heading: t('status.deleted.table.heading'), text: t('status.deleted.table.text') }} surface="page" links={links} />
-  if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'table', t), text: t('play.refused.host') }} surface="page" links={links} />
+  if (refused) return <StatusNotice notice={tableShut(account, t)} surface="page" links={links} onSwitch={switchAccount} />
   // Nothing behind worth protecting: the message is the whole screen, in the room's own words.
   if (!view) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
 

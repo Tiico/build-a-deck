@@ -95,6 +95,18 @@ describe('ett enskilt bildfält tar en bild (#291)', () => {
     expect(screen.queryByRole('img', { name: 'Bild för de markerade korten' })).toBeNull()
     expect(screen.getByRole('alert').textContent).toBe('Ett bildfält tar en bild i taget. 2 filer släpptes, och fältet står kvar som det var.')
   })
+
+  // Det nätverket eller tjänsten kastar är utvecklarens engelska (#812, A4): cellen säger att
+  // bilden inte kom upp med en mening på läsarens språk, och aldrig med de orden.
+  it('säger en uppladdning som inte gick med en egen mening, inte med nätverkets ord', async () => {
+    const { onCell } = table({ onUpload: vi.fn(async () => Promise.reject(new TypeError('Failed to fetch'))) })
+    const cell = within(screen.getAllByRole('row')[2]!).getByLabelText('Bild för knight')
+
+    fireEvent.drop(cell, { dataTransfer: dropping({ files: [png('skog.png', [1])] }) })
+
+    expect((await screen.findByRole('alert')).textContent).toBe('Bilden kunde inte laddas upp. Försök igen.')
+    expect(onCell).not.toHaveBeenCalled()
+  })
 })
 
 describe('guidens bildfält tar emot ett släpp (#291)', () => {
