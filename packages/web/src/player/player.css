@@ -107,9 +107,13 @@ html:has(.byd-player) { background: #14161c; }
 .byd-summary { padding: 14px 18px; overflow: auto; font-size: 13px; color: var(--byd-ink-muted); }
 .byd-summary-zones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
 .byd-summary-zones > * { background: var(--byd-surface); border-radius: 10px; padding: 10px; min-height: 48px; display: grid; align-content: start; gap: 2px; }
-.byd-summary-zones strong { color: var(--byd-ink-strong); }
+.byd-summary-zones strong { color: var(--byd-ink-strong); font-weight: 700; }
 /* A zone's name as the heading of what it holds (#560 P-20), drawn as the name always was. */
 .byd-summary-zones h2 { margin: 0; font: inherit; font-weight: 700; color: var(--byd-ink-strong); }
+/* A tile's heading is the tile's name and not a section's: the summary's own heading rule below
+   reached into it, and a pile nobody could draw from stood in spaced capitals beside one that
+   could (#715). One form for a pile, whatever it holds. */
+.byd-summary .byd-summary-zones h2 { font-size: inherit; text-transform: none; letter-spacing: normal; margin: 0; font-weight: 700; }
 /* A pile that has a card in it is a control, and the whole tile is that control (#79): the verb
    is read inside it at the tile's own width, so nothing sits inside it that a finger has to find
    (UX-37, #82). It is drawn as the sheet's targets are — the phone's pressable surface with a
@@ -178,7 +182,9 @@ html:has(.byd-player) { background: #14161c; }
   --byd-read-w: max(clamp(294px, calc(100vw - 26px), 336px), min(var(--byd-read-need, 0px), calc(100vw - 16px)));
   position: fixed; inset: 0; z-index: 10; box-sizing: border-box;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 12px; padding: 12px 12px 16px; background: rgba(0, 0, 0, 0.7);
+  /* Dense enough that the hand behind is not read through it (#715): its buttons showed through
+     at 0.7 and read into the card's own row. */
+  gap: 12px; padding: 12px 12px 16px; background: rgba(0, 0, 0, 0.88);
 }
 .byd-player .byd-inspect > [data-inspect] {
   position: relative; overflow: hidden;
@@ -232,6 +238,7 @@ html:has(.byd-player) { background: #14161c; }
 /* Flagging, the way out, ending, the survey (G3, C9, #31, prototype A). The way out is a plain
    control like the other two: the row holds no red one any more, because the difference between
    leaving your seat and ending everyone's table is a decision and not a colour (#31, variant C). */
+.byd-phone-said { margin: 0 0 12px; padding: 8px 14px; border-radius: 10px; background: var(--byd-warn); color: var(--byd-warn-bg); font-size: 13px; font-weight: 700; }
 .byd-toast { position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 40; background: var(--byd-warn); color: var(--byd-warn-bg); padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; }
 .byd-sheet-title { font-size: 16px; color: var(--byd-ink-strong); margin: 0 0 10px; }
 .byd-session-sheet textarea { width: 100%; box-sizing: border-box; min-height: 70px; border-radius: 12px; border: 1px solid var(--byd-line); background: var(--byd-bg); color: var(--byd-ink-strong); padding: 10px; font: 14px system-ui; }
