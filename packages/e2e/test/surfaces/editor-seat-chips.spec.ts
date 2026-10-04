@@ -114,8 +114,23 @@ test.describe('the × of a seat, as painted (#849)', () => {
       const pad = 6
       const clip = { x: box.x - pad, y: box.y - pad, width: box.width + 2 * pad, height: box.height + 2 * pad }
       const shot = await page.screenshot({ clip })
+      // What else the strip draws within `pad` of this chip — the next chip, «Ny kod», the words
+      // «vid bordet:» — is somebody else's paint and not this ×'s. Where the strip wraps
+      // depends on the machine's font, so which neighbour lies that close is the machine's too:
+      // on CI's Linux, «Eva» came to stand under the row above and was charged for its pixels.
+      const others = await chip.evaluate((me) => {
+        const strip = me.closest('.byd-editor-table-link')!
+        const rects = [...strip.querySelectorAll('*')].filter((el) => !el.contains(me) && !me.contains(el)).map((el) => el.getBoundingClientRect())
+        for (const node of [...strip.querySelectorAll('*')].flatMap((el) => [...el.childNodes])) {
+          if (node.nodeType !== Node.TEXT_NODE || me.contains(node)) continue
+          const range = document.createRange()
+          range.selectNodeContents(node)
+          rects.push(...range.getClientRects())
+        }
+        return rects.filter((r) => r.width > 0 && r.height > 0).map((r) => ({ x: r.left, y: r.top, w: r.width, h: r.height }))
+      })
       const drawn = await page.evaluate(
-        async ({ data, clip, box, pad, ground, line }) => {
+        async ({ data, clip, box, pad, ground, line, others }) => {
           const img = new Image()
           img.src = `data:image/png;base64,${data}`
           await img.decode()
@@ -132,6 +147,8 @@ test.describe('the × of a seat, as painted (#849)', () => {
             const dy = Math.abs(y - r)
             return dx > 0 ? Math.hypot(dx, dy) - r : dy - r
           }
+          // Within a pixel of somebody else's box, at the page's own coordinates.
+          const theirs = (x: number, y: number) => others.some((o) => x + box.x >= o.x - 1 && x + box.x <= o.x + o.w + 1 && y + box.y >= o.y - 1 && y + box.y <= o.y + o.h + 1)
           let past = 0
           let stroke = 0
           let edge = 0
@@ -142,7 +159,7 @@ test.describe('the × of a seat, as painted (#849)', () => {
               const at = (py * img.width + qx) * 4
               const d = outside(x, y)
               // Outside the pill, past the edge's own anti-aliasing: the strip's ground only.
-              if (d > 1.5 && !near(at, ground, 6)) past++
+              if (d > 1.5 && !near(at, ground, 6) && !theirs(x, y)) past++
               // The chip's own line on its edge: the guard that the colours read are the ones drawn.
               if (Math.abs(d + 0.5) <= 0.5 && near(at, line, 24)) edge++
               // Inside, clear of the edge and of the row the name and the × are written on.
@@ -152,7 +169,7 @@ test.describe('the × of a seat, as painted (#849)', () => {
           }
           return { past, stroke, edge }
         },
-        { data: shot.toString('base64'), clip, box, pad, ground: rgb(colours.ground), line: rgb(colours.line) },
+        { data: shot.toString('base64'), clip, box, pad, ground: rgb(colours.ground), line: rgb(colours.line), others },
       )
       const name = await chip.evaluate((el) => el.firstChild?.textContent ?? '')
       expect(drawn.edge, name).toBeGreaterThan(20)
