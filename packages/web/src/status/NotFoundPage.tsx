@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useT } from '../i18n/index.js'
-import { whoAmI } from '../account/api.js'
+import { whoAmI } from '../account/session.js'
 import { noticeFor, signedOut } from './notice.js'
 import { StatusNotice } from './StatusNotice.js'
 

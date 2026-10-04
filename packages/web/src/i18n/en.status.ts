@@ -162,4 +162,12 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'refusal.unknown': 'The card or the zone is no longer on the table.',
   'refusal.projectGone': 'The game is no longer there. What you changed is still here.',
   'refusal.other': 'The table did not take the move. Try again in a moment.',
+
+  'texture.lost.one': '{n} card could not be rendered',
+  'texture.lost.other': '{n} cards could not be rendered',
+  'session.refused.kicked': 'The host has removed you from the table.',
+  'canvas.hint.base': 'Drag to change the order.',
+  'help.about': 'Help about {topic}',
+  'help.close': 'Close the help',
+  'editor.cancel': 'Cancel',
 }

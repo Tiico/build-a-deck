@@ -182,4 +182,14 @@ export const svStatus = {
   // Ett skäl den här klienten aldrig hört talas om får en mening av sin egen i stället för att
   // utvecklarens engelska ord skrivs ut på skärmen.
   'refusal.other': 'Bordet tog inte emot draget. Försök igen om en stund.',
+
+  // Ord som skalet runt varje yta säger, och som därför måste finnas var sidan än öppnas (#760):
+  // kort som inte gick att rendera, en spelare som tagits bort från bordet, hjälprutornas knappar och «Avbryt».
+  'texture.lost.one': '{n} kort kunde inte renderas',
+  'texture.lost.other': '{n} kort kunde inte renderas',
+  'session.refused.kicked': 'Värden har tagit bort dig från bordet.',
+  'canvas.hint.base': 'Dra för att ändra ordningen.',
+  'help.about': 'Hjälp om {topic}',
+  'help.close': 'Stäng hjälpen',
+  'editor.cancel': 'Avbryt',
 } as const

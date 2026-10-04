@@ -416,7 +416,7 @@ type Route = { path: string; component: string; module: string | null; how: 'fet
 const routeTable = (): Route[] => {
   const app = join(SRC, 'App.tsx')
   const text = sourceOf(app)
-  const fetched = [...text.matchAll(/path(?:\.startsWith\()?\s*===?\s*'([^']+)'\)?\)\s*return\s+import\('([^']+)'\)\.then\(\(m\)\s*=>\s*m\.([A-Z][A-Za-z0-9]*)\)/g)].map(
+  const fetched = [...text.matchAll(/path(?:\.startsWith\(|\s*===\s*)'([^']+)'\)?\)\s*return\s+surface\(import\('([^']+)'\)\.then\(\(m\)\s*=>\s*m\.([A-Z][A-Za-z0-9]*)\)/g)].map(
     (m): Route => ({ path: m[1]!, component: m[3]!, module: resolveSpec(app, m[2]!), how: 'fetched' }),
   )
   const importedFrom = (name: string): { module: string | null; how: Route['how'] } | null => {
@@ -430,7 +430,7 @@ const routeTable = (): Route[] => {
     const inner = wrapper && /<([A-Z][A-Za-z0-9]*)\s*\/>/.exec(wrapper[0])
     return inner ? importedFrom(inner[1]!) : null
   }
-  const resolved = [...text.matchAll(/path(?:\.startsWith\()?\s*===?\s*'([^']+)'\)?\)\s*return\s+Promise\.resolve\(([A-Z][A-Za-z0-9]*)\)/g)].map(
+  const resolved = [...text.matchAll(/path(?:\.startsWith\(|\s*===\s*)'([^']+)'\)?\)\s*return\s+surface\(Promise\.resolve\(([A-Z][A-Za-z0-9]*)\)/g)].map(
     (m): Route => ({ path: m[1]!, component: m[2]!, ...(importedFrom(m[2]!) ?? { module: null, how: 'entry' }) }),
   )
   return [...fetched, ...resolved]

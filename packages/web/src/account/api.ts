@@ -4,48 +4,12 @@
 import type { CardFace, CardPeek, Role } from '@byd/server/doc'
 import { translate, type T } from '../i18n/index.js'
 import { Said } from '../i18n/said.js'
+import { Unauthorized, pageLang, withCredentials } from './session.js'
+export { Unauthorized, claimGuest, claimUrl, loginUrl, logout, requestLink, whoAmI, withCredentials } from './session.js'
 
 // What went wrong is said to the reader, in their language (A4). A caller that has no `t` — a
 // test, a surface mounted on its own — gets Swedish, the catalogue's own language.
 const swedish: T = (key, params) => translate('sv', key, params)
-
-export class Unauthorized extends Error {
-  constructor() {
-    super('not logged in')
-    this.name = 'Unauthorized'
-  }
-}
-
-export const withCredentials = (init: RequestInit = {}): RequestInit => ({ ...init, credentials: 'include' })
-
-// What the tool writes back — a sign-in link, an invitation — should reach the reader in the
-// language they are reading in (A4). The page already says which language it is in, because
-// assistive technology needs that; asking the page is one source rather than a second one
-// threaded through every call.
-const pageLang = (): { lang?: string } => {
-  const lang = typeof document === 'undefined' ? '' : document.documentElement.lang
-  return lang ? { lang } : {}
-}
-
-export async function requestLink(http: string, email: string, next: string): Promise<'sent' | 'logged-in' | 'too-many' | 'invalid'> {
-  const res = await fetch(`${http}/auth/login`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, next, ...pageLang() }) }))
-  if (res.status === 429) return 'too-many'
-  if (res.status === 400) return 'invalid'
-  if (!res.ok) throw new Error(`could not ask for a link: ${res.status}`)
-  const body = (await res.json()) as { loggedIn?: boolean }
-  return body.loggedIn ? 'logged-in' : 'sent'
-}
-
-export async function whoAmI(http: string): Promise<string | null> {
-  const res = await fetch(`${http}/auth/me`, withCredentials())
-  if (res.status === 401) return null
-  if (!res.ok) throw new Error(`could not read the account: ${res.status}`)
-  return ((await res.json()) as { email: string }).email
-}
-
-export async function logout(http: string): Promise<void> {
-  await fetch(`${http}/auth/logout`, withCredentials({ method: 'POST' }))
-}
 
 // A game as "Mina spel" lists it (G1): where its history stands, how many tables it has, when one
 // of them was last played at, and which of its own cards stands on it (#231) — `null` for a game
@@ -148,34 +112,11 @@ export async function removeProject(http: string, project: string, t: T = swedis
 
 // A guest session claimed to the account afterwards (G1), and the tables the account sat at.
 export type Played = { session: string; seat: string | null; name: string; kind: 'seat' | 'observer'; at: string; game: string | null; version: string; ended: boolean; surveyed: boolean; flags: number; code?: string; deleted?: true }
-export async function claimGuest(http: string, token: string): Promise<{ ok: true; session: string; seat: string | null; name: string } | { ok: false; reason: 'not-logged-in' | 'unknown' | 'other' }> {
-  const res = await fetch(`${http}/guests/claim`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) }))
-  if (res.status === 401) return { ok: false, reason: 'not-logged-in' }
-  if (res.status === 404) return { ok: false, reason: 'unknown' }
-  if (res.status === 409) return { ok: false, reason: 'other' }
-  if (!res.ok) throw new Error(`could not claim: ${res.status}`)
-  return { ok: true, ...((await res.json()) as { session: string; seat: string | null; name: string }) }
-}
 export async function myPlayed(http: string): Promise<Played[]> {
   const res = await fetch(`${http}/me/played`, withCredentials())
   if (res.status === 401) throw new Unauthorized()
   if (!res.ok) throw new Error(`could not list played tables: ${res.status}`)
   return (await res.json()) as Played[]
-}
-
-// The phone's way to save a session (G1): the claim page, which asks for a login first when
-// there is none. The phone names its server as a WebSocket origin; the account pages speak HTTP.
-export function claimUrl(token: string, server: string | null): string {
-  const claim = new URLSearchParams({ token })
-  if (server) claim.set('server', server.replace(/^ws/, 'http'))
-  return `/claim?${claim.toString()}`
-}
-
-// Where to log in from a page, and come back to it after.
-export function loginUrl(next: string, server: string | null): string {
-  const q = new URLSearchParams({ next })
-  if (server) q.set('server', server)
-  return `/login?${q.toString()}`
 }
 
 // A whole game to keep (G5, #527, #529). Asking starts the print files; reading says how far they
