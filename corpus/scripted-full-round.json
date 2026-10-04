@@ -1256,7 +1256,8 @@
         "contested": true
       },
       "ended": true,
-      "played": true
+      "played": true,
+      "version": "v1"
     },
     "B": {
       "seq": 26,
@@ -1362,7 +1363,8 @@
       "rewind": null,
       "undo": null,
       "ended": true,
-      "played": true
+      "played": true,
+      "version": "v1"
     },
     "table": {
       "seq": 26,
@@ -1468,7 +1470,8 @@
       "rewind": null,
       "undo": null,
       "ended": true,
-      "played": true
+      "played": true,
+      "version": "v1"
     },
     "observer": {
       "seq": 26,
@@ -1716,7 +1719,8 @@
       "rewind": null,
       "undo": null,
       "ended": true,
-      "played": true
+      "played": true,
+      "version": "v1"
     }
   }
 }

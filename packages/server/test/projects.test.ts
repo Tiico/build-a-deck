@@ -728,6 +728,25 @@ describe('the rules a table plays by (B7)', () => {
     expect(body.text).not.toContain('Helt andra regler')
   })
 
+  // «Uppdatera» moves the table to the project's current rev (C7), and the book moves with it
+  // (#677): the version a table is locked to is the one it now runs, not the one it was started
+  // on. The session's start record stays what it was — it is where the log's replay begins.
+  it('hands a refreshed table the rules of the version it now runs, and keeps the start record', async () => {
+    await json('POST', '/projects', { id: 'p-refreshed', ...project() })
+    const started = await json('POST', '/projects/p-refreshed/sessions', {})
+    const { id } = (await started.json()) as { id: string }
+    expect((await fetch(`${run.http}/sessions/${id}/rules`)).status).toBe(204)
+
+    expect((await json('PUT', '/projects/p-refreshed', { rev: 1, ...project(), rules: rulesDoc })).status).toBe(200)
+    expect((await json('POST', `/sessions/${id}/refresh`, {})).status).toBe(200)
+
+    const res = await fetch(`${run.http}/sessions/${id}/rules`)
+    expect(res.status).toBe(200)
+    expect(((await res.json()) as { text: string }).text).toContain('Dra ur Draghög')
+    const exported = (await (await json('GET', `/sessions/${id}/export`)).json()) as { version: string }
+    expect(exported.version).toBe('rev-1')
+  })
+
   // A table without a rulebook is not a mistake — most tables are that, and every phone at one
   // asks this route on the way in. Answering 404 made every one of them log an error in its
   // console over a game that is working exactly as intended, which is how a real error gets lost
