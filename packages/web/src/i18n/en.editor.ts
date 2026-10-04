@@ -89,7 +89,6 @@ export const enEditor = {
   'editor.unsaved': 'Unsaved',
   'editor.save': 'Save',
   'editor.saving': 'Saving…',
-  'editor.cancel': 'Cancel',
   'editor.newTable': 'New table',
   'editor.startTable': 'Start a table',
   'editor.startingTable': 'Starting the table…',
@@ -156,8 +155,6 @@ export const enEditor = {
   'crown.box.count': '{name} ({n})',
   // The help pattern (L32, #303): the question mark is named by what it is about, and the box it
   // opens has a cross. The topic is written where the question mark stands, in its tab.
-  'help.about': 'Help about {topic}',
-  'help.close': 'Close the help',
   'wall.eyes': 'Eyes',
   'wall.eye.normal': 'As you see it',
   'wall.eye.deuteranopia': 'Deuteranopia',
@@ -479,7 +476,6 @@ export const enEditor = {
   'canvas.zoom.actual': '100 %',
   'canvas.zoom.half': '50 %',
   'canvas.zoom.double': '200 %',
-  'canvas.hint.base': 'Drag to change the order.',
   'canvas.help.topic': 'the layer list',
   'canvas.help.order': 'Hold Alt and press arrow up or down to move the layer without dragging.',
   'canvas.help.rename': 'F2 renames the layer.',
@@ -1000,7 +996,6 @@ export const enEditor = {
   'rules.block.alt': 'Alt text for {block}',
   'rules.alt.placeholder': 'What does the picture show?',
   'rules.alt.missing': 'No alt text: hidden from screen readers',
-  'rules.caption.placeholder': 'Caption…',
   'rules.level.1': 'Heading',
   'rules.level.2': 'Subheading',
   'rules.addItem': '＋ Item',

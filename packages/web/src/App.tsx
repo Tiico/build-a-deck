@@ -3,7 +3,7 @@ import { TextureFailures } from './table/TextureFailures.js'
 import { NotFoundPage } from './status/NotFoundPage.js'
 import { DocumentTitle } from './status/DocumentTitle.js'
 import { StatusLive } from './status/StatusLive.js'
-import { Language, detectLang, useT } from './i18n/index.js'
+import { Language, detectLang, loadWords, useT, type Part } from './i18n/index.js'
 import { StatusNotice } from './status/StatusNotice.js'
 import { noticeFor, type Voice } from './status/notice.js'
 import { statusLinks } from './status/links.js'
@@ -42,9 +42,10 @@ function EditorRoute() {
 // the built `index.html` names each route's chunks and asks for them beside the entry
 // (`vite.config.ts`), so splitting the script costs the first painting no extra round trip.
 //
-// Only the script travels apart. Each surface's stylesheet still rides in the sheet the first
-// painting blocks on, imported from `first-frame-sheets.ts`, so what the felt and the phone draw
-// first is in the document before the first pixel whichever chunk the code arrives in (L20).
+// The script travels apart, and so do the words (`surface` below); the stylesheets do not. Each
+// surface's stylesheet still rides in the sheet the first painting blocks on, imported from
+// `first-frame-sheets.ts`, so what the felt and the phone draw first is in the document before the
+// first pixel whichever chunk the code arrives in (L20).
 //
 // Routing is a path check for now; a router arrives with the first real page.
 export function loadPage(path: string = location.pathname): Promise<ComponentType> {
@@ -52,19 +53,27 @@ export function loadPage(path: string = location.pathname): Promise<ComponentTyp
 }
 
 function fetchPage(path: string): Promise<ComponentType> {
-  if (path === '/table') return import('./table/TablePage.js').then((m) => m.TablePage)
-  if (path === '/play') return import('./player/PlayerPage.js').then((m) => m.PlayerPage)
-  if (path === '/join') return import('./join/JoinPage.js').then((m) => m.JoinPage)
-  if (path === '/observe') return import('./observer/ObserverPage.js').then((m) => m.ObserverPage)
-  if (path === '/online') return import('./online/OnlinePage.js').then((m) => m.OnlinePage)
-  if (path === '/editor') return Promise.resolve(EditorRoute)
-  if (path === '/new') return import('./wizard/NewProjectPage.js').then((m) => m.NewProjectPage)
-  if (path === '/login') return import('./account/LoginPage.js').then((m) => m.LoginPage)
-  if (path === '/claim') return import('./account/ClaimPage.js').then((m) => m.ClaimPage)
-  if (path.startsWith('/invites/')) return import('./account/InvitePage.js').then((m) => m.InvitePage)
-  if (path === '/') return import('./account/HomePage.js').then((m) => m.HomePage)
+  if (path === '/table') return surface(import('./table/TablePage.js').then((m) => m.TablePage), ['play'])
+  if (path === '/play') return surface(import('./player/PlayerPage.js').then((m) => m.PlayerPage), ['play'])
+  if (path === '/join') return surface(import('./join/JoinPage.js').then((m) => m.JoinPage), ['play'])
+  if (path === '/observe') return surface(import('./observer/ObserverPage.js').then((m) => m.ObserverPage), ['play'])
+  if (path === '/online') return surface(import('./online/OnlinePage.js').then((m) => m.OnlinePage), ['play'])
+  if (path === '/editor') return surface(Promise.resolve(EditorRoute), ['play', 'account', 'editor'])
+  if (path === '/new') return surface(import('./wizard/NewProjectPage.js').then((m) => m.NewProjectPage), ['account', 'editor'])
+  if (path === '/login') return surface(import('./account/LoginPage.js').then((m) => m.LoginPage), ['account'])
+  if (path === '/claim') return surface(import('./account/ClaimPage.js').then((m) => m.ClaimPage), ['account'])
+  if (path.startsWith('/invites/')) return surface(import('./account/InvitePage.js').then((m) => m.InvitePage), ['account'])
+  if (path === '/') return surface(import('./account/HomePage.js').then((m) => m.HomePage), ['account', 'editor'])
   // Anything else is a page that does not exist, and says so.
-  return Promise.resolve(NotFoundPage)
+  return surface(Promise.resolve(NotFoundPage), [])
+}
+
+// A surface is its script and its words, fetched side by side: the parts of the catalogue it
+// speaks, in the reader's language only, plus the shell's (`status`) whatever it is (#760). The
+// built `index.html` asks for both beside the entry, and `language-parts.test.ts` holds each list
+// above to the keys that surface's modules reach.
+function surface(page: Promise<ComponentType>, parts: Part[]): Promise<ComponentType> {
+  return Promise.all([page, loadWords(detectLang(), ['status', ...parts])]).then(([Page]) => Page)
 }
 
 // Which words a surface's own failure is said in: a phone that could not fetch its hand is told

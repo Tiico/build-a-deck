@@ -19,8 +19,6 @@ export const svPlay = {
   'texture.pending': 'Kortet renderas…',
   'texture.failed': 'Bilden kunde inte laddas',
   'texture.retry': 'Försök igen',
-  'texture.lost.one': '{n} kort kunde inte renderas',
-  'texture.lost.other': '{n} kort kunde inte renderas',
 
   // Bordsskärmen.
   'ended.title': 'Bordet är avslutat',
@@ -350,7 +348,6 @@ export const svPlay = {
   'session.exit.aria': '{label} ur bordet',
   'session.flagged': 'Ögonblicket är flaggat',
   'session.version.this': 'den här versionen',
-  'session.refused.kicked': 'Värden har tagit bort dig från bordet.',
   'session.refused.gone': 'Länken gäller inte längre. Gå med igen med rumskoden.',
 
   // Att flagga ett ögonblick (G3) och att avsluta sessionen (C9).
@@ -476,4 +473,7 @@ export const svPlay = {
   'rules.setup.seat': 'Plats {seat}',
   'rules.setup.seat.zones': 'Zoner vid plats {seat}',
   'rules.setup.seat.empty': 'Inga egna zoner vid den här platsen.',
+
+  // Lånat från editorn men sagt på spelytorna också, och därför i den katalog de hämtar (#760).
+  'rules.caption.placeholder': 'Bildtext…',
 } as const

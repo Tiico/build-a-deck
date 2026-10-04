@@ -1,5 +1,14 @@
 import { afterEach } from 'vitest'
 import { cleanup, configure } from '@testing-library/react'
+import { holdWords } from '../src/i18n/index.js'
+import { en } from '../src/i18n/en.js'
+import { sv } from '../src/i18n/sv.js'
+
+// The app fetches its words per surface and language before it draws (#760). A test mounts a
+// surface on its own, without the route that would have fetched them, so every test holds the
+// whole catalogue in both languages — what the app said before the split, from the first line.
+holdWords('sv', sv)
+holdWords('en', en)
 
 // Testing Library only cleans up on its own with vitest globals; do it explicitly.
 afterEach(cleanup)

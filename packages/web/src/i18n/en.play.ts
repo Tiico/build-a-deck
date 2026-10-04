@@ -11,8 +11,6 @@ export const enPlay = {
   'texture.pending': 'The card is rendering…',
   'texture.failed': 'The image could not be loaded',
   'texture.retry': 'Try again',
-  'texture.lost.one': '{n} card could not be rendered',
-  'texture.lost.other': '{n} cards could not be rendered',
 
   'ended.title': 'This table has ended',
   'ended.locked': 'The log is locked to {version}. The survey is on the phones.',
@@ -289,7 +287,6 @@ export const enPlay = {
   'session.exit.aria': '{label} the table',
   'session.flagged': 'The moment is flagged',
   'session.version.this': 'this version',
-  'session.refused.kicked': 'The host has removed you from the table.',
   'session.refused.gone': 'The link is no longer valid. Join again with the room code.',
 
   'flag.sheet.title': 'Flag this moment',
@@ -391,4 +388,6 @@ export const enPlay = {
   'rules.setup.seat': 'Seat {seat}',
   'rules.setup.seat.zones': 'Zones at seat {seat}',
   'rules.setup.seat.empty': 'No zones of its own at this seat.',
+
+  'rules.caption.placeholder': 'Caption…',
 } as const

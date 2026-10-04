@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { LoginCard } from './LoginCard.js'
-import { claimGuest, whoAmI } from './api.js'
+import { claimGuest, whoAmI } from './session.js'
 import { useT } from '../i18n/index.js'
 import { noticeFor } from '../status/notice.js'
 import { AccountStatus, spent, waiting } from './AccountStatus.js'

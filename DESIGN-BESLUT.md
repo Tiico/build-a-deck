@@ -4268,12 +4268,33 @@ Till skillnad från editorns väntar `main.tsx` på ytans skript *innan* React r
 Delningen kostar heller ingen extra rundtur: det byggda `index.html` läser adressen och ber om ruttens chunkar bredvid entrén (`vite.config.ts`), i stället för att entrén först ska komma fram och köras.
 Når en ytas chunk inte fram visas läget `offline` i ytans egen röst, och «Försök igen» är här en omladdning — den enda platsen där det är så, eftersom sidan aldrig ritats och Chromium minns en modul som inte gick att ladda.
 
-Riktmärket i #760 — telefonens första målning under 100 kB gzip — nås inte av ruttdelningen ensam, och det sägs rakt ut.
-Det som återstår är inte ruttkod utan tre saker alla ytor delar: Reacts DOM (~57 kB, golvet), språkkatalogerna — båda språken och varje ytas ord, editorns och kontosidornas medräknade (~42 kB av telefonens last) — och zod, som validerar varje ram servern skickar (~30 kB).
-De två sista är beslut om i18n-arkitekturen och om validering på tråden, och tas för sig.
+**Orden reser som skriptet (beställarens beslut 2026-10-04).**
+Katalogen delas per yta och språk: `status` är skalets och hämtas alltid, `play` är telefonens och filtens, `account` kontosidornas och `editor` editorns.
+En sida hämtar bara sin ytas delar och bara på läsarens språk — `/play` och `/join` hämtar `status` och `play`, aldrig editorns sexhundra meddelanden och aldrig det andra språkets version av sina egna.
+`fetchPage` i `App.tsx` säger vilka delar varje rutt talar, och det byggda `index.html` ber om dem bredvid entrén med samma `detectLang` som appen själv använder, så orden kostar heller ingen extra rundtur.
+`sv.ts` och `en.ts` slår fortfarande ihop hela katalogen, men bara för nyckelns typ och för löftet att båda språken har samma nycklar; ingenting vid körning importerar dem.
+Ett språkbyte hämtar det andra språkets delar för det sidan redan håller innan något ändras: sidan står kvar hel på det gamla språket tills orden är framme och byter sedan i en enda rendering, utan vit ram och utan nycklar.
+Ett ord som ingen hämtad del har ritas som sin nyckel och sägs på konsolen, och det är en bugg som grindarna nedan finns för att fälla.
+
+**Riktmärket är det som nåddes, inte 100 kB.**
+Issuet satte telefonens första målning under 100 kB gzip; det nås inte, och skälet är beslutat och inte ett förbiseende.
+Mätt i det byggda bygget, gzip av filerna:
+
+| | före #760 | ruttdelning | + katalog per yta och språk |
+|---|---:|---:|---:|
+| `/play` | 259 kB | 199,6 kB | **151,0 kB** |
+| `/join` | 259 kB | 161,0 kB | **112,4 kB** |
+| `/login` | 259 kB | 126,9 kB | **77,4 kB** |
+| `/table` | 259 kB | 220,1 kB | **171,5 kB** |
+| entrén | 259 kB | 124,8 kB | **68,2 kB** |
+
+Det som står kvar på telefonen är Reacts DOM (~57 kB, golvet) och zod (~30 kB), som validerar varje ram servern skickar och som står kvar på klienten enligt beslutet.
+Telefonens riktmärke är alltså 151 kB för `/play` och 112 kB för `/join`, och grinden larmar strax ovanför: 160 respektive 120 kB, marginal för att telefonen ska kunna växa en funktion men inte för att ta tillbaka det som togs bort.
 
 Grindarna: `packages/e2e/test/surfaces/phone-bundle.spec.ts` öppnar `/play` och `/join` som en telefon, väger varje skript sidan ber om och nekar filtens och observatörens chunkar; den håller också inne entrén på tråden och ser att handens chunk efterfrågas ändå.
 `felt-font.spec.ts` läser nu tre slags rutter ur `App.tsx` — hämtade, ritade av entrén och editorns lata — och kräver att varje ark en hämtad yta når statiskt ligger på entrén, och att entrén inte bär något ark som ingen yta ritar först.
+Samma spec öppnar telefonen på båda språken och kräver att den hämtar exakt `play` och `status` på läsarens språk, öppnar varje adress på båda språken utan att ett enda ord saknas, och byter språk på `/login` med orden fördröjda på tråden utan att någon bildruta är tom eller halv.
+`packages/web/test/language-parts.test.ts` läser varje rutts moduler och kräver att varje nyckel de når finns i en del rutten hämtar — skalets nycklar i `status` — och att båda språken har samma nycklar del för del.
 
 ### L21. Kortväggen står i band, och leken har en innehållsförteckning (prototypat och byggt 2026-09-17, #179)
 
