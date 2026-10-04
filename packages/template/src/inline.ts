@@ -2,8 +2,8 @@
 // paragraphs. Nothing else. The parser is small on purpose and can never produce HTML —
 // it produces a tree the compiler renders and the validator measures.
 //
-// The rulebook (B7) asks for one construction more: [[zon:id]] and [[kort:id]], which stand for
-// what the thing is called right now. Card text never asks for it, so L2's four constructions
+// The rulebook (B7) asks for one construction more: [[zon:id]], [[kort:id]] and, since #708,
+// [[räknare:id]], which stand for what the thing is called right now. Card text never asks for it, so L2's four constructions
 // are still all a card has.
 
 export type InlineNode =
@@ -13,7 +13,14 @@ export type InlineNode =
   | { type: 'icon'; name: string; role?: string }
   | { type: 'bold'; children: InlineNode[] }
   | { type: 'italic'; children: InlineNode[] }
-  | { type: 'ref'; of: 'zone' | 'card'; id: string }
+  | { type: 'ref'; of: RefKind; id: string }
+
+// The kinds of thing a rule can name, and the word each is written with inside the brackets. One
+// table, so the parser, the renderer and every surface that writes a reference back out spell it
+// the same way.
+export type RefKind = 'zone' | 'card' | 'counter'
+export const REF_WORD: Record<RefKind, string> = { zone: 'zon', card: 'kort', counter: 'räknare' }
+const REF_KIND: Record<string, RefKind> = Object.fromEntries(Object.entries(REF_WORD).map(([kind, word]) => [word, kind as RefKind]))
 
 export type Paragraph = { type: 'paragraph'; children: InlineNode[] }
 // A bullet list, the one construction a card body has that a rulebook paragraph does not (#308).
@@ -110,7 +117,7 @@ function parseSpan(s: string, options: InlineOptions = {}): InlineNode[] {
       const ref = end > i + 2 ? REF.exec(s.slice(i + 2, end)) : null
       if (ref) {
         flush()
-        out.push({ type: 'ref', of: ref[1] === 'zon' ? 'zone' : 'card', id: ref[2] ?? '' })
+        out.push({ type: 'ref', of: REF_KIND[ref[1] ?? ''] ?? 'card', id: ref[2] ?? '' })
         i = end + 2
         continue
       }
@@ -145,5 +152,5 @@ export function isSymbolName(name: string): boolean {
   return NAME.test(name)
 }
 
-// A reference names one of two kinds of thing, by the id it has in the project.
-const REF = /^(zon|kort):([\p{L}\p{N}_:-]+)$/u
+// A reference names one of three kinds of thing, by the id it has in the project.
+const REF = /^(zon|kort|räknare):([\p{L}\p{N}_:-]+)$/u

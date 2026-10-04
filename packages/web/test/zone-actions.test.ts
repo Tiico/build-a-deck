@@ -68,6 +68,14 @@ describe('att kompilera en åtgärd till intents', () => {
     expect(landsAt([{ v: 'take', which: [{ field: 'rarity', is: ['Diamant'] }], to: { at: 'beside' }, face: 'front' }])).toBeGreaterThan(draw.geometry.x)
   })
 
+  // Ett nytt «Leta fram» börjar utan fråga (#713, beslut 2026-10-04: «fråga först»): steget gör
+  // ingenting förrän designern sagt vilka kort, och åtgärden säger varför i stället för att flytta
+  // hela högen kort för kort.
+  it('kör inte ett «Leta fram» som ännu inte sagt vilka kort', () => {
+    const { view } = buildScene()
+    expect(compile(view(null), [{ v: 'shuffle' }, { v: 'take', which: null, to: { at: 'beside' }, face: 'keep' }])).toEqual({ ok: false, why: 'unfinished' })
+  })
+
   it('bär frågan vidare orörd när steget letar fram kort', () => {
     const { view } = buildScene()
     expect(compile(view(null), [{ v: 'take', which: [{ field: 'rarity', is: ['Diamant'] }], to: { at: 'beside' }, face: 'front' }])).toMatchObject({

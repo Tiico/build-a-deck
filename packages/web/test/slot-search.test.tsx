@@ -172,8 +172,8 @@ describe('rutan som öppnas ur en slot (#230)', () => {
   // Ändringen gäller rutorna som växer med spelet. Tre sidor är ingen lista att söka i, och den
   // rutan står kvar som den var.
   it('lämnar den korta rutan i fred: tre sidor söks inte igenom', () => {
-    const box = openSlot('som de ligger')
-    expect(words(box)).toEqual(['som de ligger', 'uppvända', 'nedvända'])
+    const box = openSlot('som det ligger')
+    expect(words(box)).toEqual(['som det ligger', 'uppvänt', 'nedvänt'])
     expect(within(box).queryByLabelText('Sök bland valen')).toBeNull()
   })
 

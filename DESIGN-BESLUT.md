@@ -402,6 +402,7 @@ Kartan från fil till block är ett produktbeslut och står därför skriven som
 Ett stycke blir text med **fet** och *kursiv* kvar, `-` och `*` blir lista, `1.` blir numrerad lista.
 Ett citat blir text med markören struken, en tabell blir text med en rad per rad, ett kodblock blir text ordagrant, en länk blir sina egna ord utan adressen, och en avdelare stryks.
 `[[zon:x]]` och `[[kort:y]]` blir referenser, precis som i en bok man skrivit själv.
+*Utökat 2026-10-04 (#708):* `[[Namn]]` blir också en referens, och en tabells celler skiljs med `·` i stället för lodstreck; se «Referenser vid namn och räknare» nedan.
 Regeln bakom kartan är att ingenting försvinner tyst: det som inte kan bli ett block blir vanlig text, och det som ändrar form eller inte kommer med räknas upp i en rapport före importen.
 Rapporten är inte en dialog utan ett band, med boken filen skulle bli under sig i bokens egen läsbredd och `Avbryt` bredvid `Gör boken` (prototyp 8, variant B).
 Adressen stryks därför att boken läses vid bordet, på telefonen och i det tryckta häftet, där ingen adress går att följa.
@@ -544,6 +545,17 @@ Att fälla ut bilden i editorn öppnar alltså inget fält: det är att läsa oc
 `GET /sessions/:id/rules` renderar mot den revision sessionen låstes till vid start, och uppställningen följer med den: ett pågående bord får aldrig en senare utkasts zoner.
 Det som färdas är zonens id och namn, ingenting annat. Var den ligger, vem som ser in i den och vad den fylls med är bordets sak (B6, K15), och regelboken delas ut till varje plats och till den som bara tittar — allt i den är alltså publikt för alla.
 Zonlistan står utanför bokens egen `text` och därmed utanför sökningen: `plainOf` är vad frågerutan läser, och en lista av zonnamn i den hade svarat på varje fråga som råkade nämna en hög.
+
+Referenser vid namn och räknare, byggt 2026-10-04 (#708):
+En fil skriven utanför appen namnger saker som en människa gör, med vad de heter: `[[Kortlek]]`.
+Id:n syns inte i editorn, så `[[zon:draw]]` är en form ingen skriver i en fil, och i speltestet 2026-10-02 kom `[[Kortlek]]` in som text med klamrarna kvar — i boken, vid bordet och på telefonen — utan ett ord i rapporten.
+Importen läser därför `[[Namn]]` mot spelets zon-, kort- och räknarnamn, utan hänsyn till versaler och mellanrum, och skriver referensen med id:t, så regeln fortfarande aldrig håller namnet.
+Zoner går före kort och kort före räknare när samma namn finns hos flera, och av två kort med samma titel namnges det som står först i leken.
+Ett namn spelet inte har blir sina egna ord utan klamrar, eftersom klamrar vid bordet bara är klamrar, och rapporten säger hur många som hittades och hur många som blev text.
+I ett kodblock rörs klamrarna inte, eftersom det som skrevs där är allt det betyder.
+Räknare är den tredje sorten en regel kan namnge, `[[räknare:id]]`, och referenslistan i editorn visar dem med ordet «räknare».
+En räknare fick därför ett `id` i dokumentet: en räknare skriven före #708 har inget och är känd under sitt namn, och behåller det som id första gången den döps om, så att en regel som namnger den står kvar.
+En tabell blir fortfarande text med en rad per rad, men cellerna skiljs med `·` och inte med filens lodstreck, som är ritning; raden ovanför linjalraden är tabellens huvud och blir fet.
 
 Motivering:
 Trycket kräver en regelbok för att ordern ska kunna läggas.
@@ -3295,6 +3307,7 @@ En ny bild binds till den första kolumn mallen redan ritar som bild, och en ny 
 Finns ingen sådan kolumn läser elementet ingen kolumn alls: bilden blir en fast bild utan vald bild och spelets bilder öppnas direkt, och ikonraden står tom.
 Skälet är speltestet 2026-10-02: en bild bunden till «typ» ritade en trasig bild med src «Playcard», och en ikonrad bunden till den skrev «{Playcard}» i varningsrött — en gissning som passar en textruta och inget annat.
 Varningen för ett okänt ikonnamn (L2) står kvar; det som ändrats är att verktyget inte längre skapar den själv.
+*Tillagt 2026-10-04 (#802, beställarens beslut variant A, [prototypen](https://github.com/Tiico/build-a-deck/blob/594ef3f0d30e47d1118517fbb504e3432b1718ac/docs/ux-audits/2026-10-04-platshallare/prototyper/802/index.html)):* ett lager som inte ritar något på kortet som visas — en fast bild utan vald bild, en ikonrad utan namn, en kolumn som är tom på kortet eller en bild bunden till en kolumn med ord — får på mallduken en streckad ram med ett kort ord i en mörk bricka, alltid synlig, och hela meningen i brickans `title` och tillgängliga namn; platshållaren kommer aldrig in i kompilatorns utdata, men kompilatorn ritar en cell som inte är en bild som en tom cell i stället för `<img src="Playcard">`, i tryck och på bordet också.
 
 Byggt 2026-09-07 (prototypat i tre varianter, godkänd variant A med variant B:s regellista som sammanfattning — #13):
 En grupp är en regel på en kolumn, aldrig en lista med kort-id:n.
@@ -4196,6 +4209,27 @@ Det som måste vara kvar i det blockerande arket är allt en spelare eller ett b
 **Var det bor.**
 `packages/web/src/App.tsx` håller den dynamiska importen och Suspense-gränsen.
 `packages/web/test/felt-font.test.ts` är grinden: den bygger appen, läser det blockerande arket, öppnar `/editor` i Chromium och kontrollerar att editorns ark hämtas och verkligen gäller.
+
+**Tillägg 2026-10-04 (#760): varje yta har sitt eget skript, men arken blockerar som förut.**
+Speltestet 2026-10-02 mätte att `/play` laddade samma entré som alla andra ytor: 822 kB avkodat, 259 kB gzip, med guiden, kontosidorna, filtens renderare och observatören i en remsa kort.
+Nu hämtas varje rutts skript när dess adress öppnas: `fetchPage` i `App.tsx` svarar med en dynamisk import per yta, och Rollup delar det de har gemensamt i egna chunkar.
+Mätt i det byggda bygget: entrén går från 847 kB till 421 kB (259 → 124 kB gzip), `/play` hämtar 197 kB gzip och `/join` 161 kB, och ingen av dem hämtar filtens, observatörens, guidens eller editorns chunk.
+
+Det är skriptet som delas, inte arken.
+Det här tillägget ändrar inte gränsen ovan: allt en spelare eller ett bord möter vid första målningen ligger kvar i entréns blockerande ark, importerat från `first-frame-sheets.ts` i den ordning kaskaden hade, och arket är byte för byte detsamma som före delningen.
+Meningen «en rutt som delas av får aldrig vara en av dem» gäller arket: editorn är fortfarande den enda rutt vars ark hämtas med rutten.
+
+Ingen ny väntan och inget nytt utseende.
+Till skillnad från editorns väntar `main.tsx` på ytans skript *innan* React ritar något, så det första på skärmen är ytan själv — ingen reservyta och inget skal som blinkar bort, bara samma vita sida som före delningen, kortare.
+Delningen kostar heller ingen extra rundtur: det byggda `index.html` läser adressen och ber om ruttens chunkar bredvid entrén (`vite.config.ts`), i stället för att entrén först ska komma fram och köras.
+Når en ytas chunk inte fram visas läget `offline` i ytans egen röst, och «Försök igen» är här en omladdning — den enda platsen där det är så, eftersom sidan aldrig ritats och Chromium minns en modul som inte gick att ladda.
+
+Riktmärket i #760 — telefonens första målning under 100 kB gzip — nås inte av ruttdelningen ensam, och det sägs rakt ut.
+Det som återstår är inte ruttkod utan tre saker alla ytor delar: Reacts DOM (~57 kB, golvet), språkkatalogerna — båda språken och varje ytas ord, editorns och kontosidornas medräknade (~42 kB av telefonens last) — och zod, som validerar varje ram servern skickar (~30 kB).
+De två sista är beslut om i18n-arkitekturen och om validering på tråden, och tas för sig.
+
+Grindarna: `packages/e2e/test/surfaces/phone-bundle.spec.ts` öppnar `/play` och `/join` som en telefon, väger varje skript sidan ber om och nekar filtens och observatörens chunkar; den håller också inne entrén på tråden och ser att handens chunk efterfrågas ändå.
+`felt-font.spec.ts` läser nu tre slags rutter ur `App.tsx` — hämtade, ritade av entrén och editorns lata — och kräver att varje ark en hämtad yta når statiskt ligger på entrén, och att entrén inte bär något ark som ingen yta ritar först.
 
 ### L21. Kortväggen står i band, och leken har en innehållsförteckning (prototypat och byggt 2026-09-17, #179)
 
@@ -5303,6 +5337,17 @@ Kolumnen är borta, så en textkolumn mäts efter sitt innehåll och inget annat
 Två alternativ prototypades och avvisades: knappen i tabellens krona, som står långt från markören och bryter ordningen fält → knapp, och en ram som går 44 px ut åt höger, som täcker texten bredvid den man skriver i.
 Tabbordningen ovan står kvar: knappen nås framåt från fältet.
 
+*Tillagt 2026-10-04 (#693, beställarens beslut A efter [prototypen](https://github.com/Tiico/build-a-deck/blob/efc45c7ad641c77e737048b61fd2d6b62dbd94db/docs/ux-audits/2026-10-04-ikonfliken/prototyper/693/index.html), som också ligger i `docs/ux-audits/2026-10-04-ikonfliken/prototyper/693/`):* när raden ovanför cellen är tabellens huvud hänger fliken under fältets högra hörn i stället, över raden under.
+Över huvudet låg den på kolumnens filterhandtag ▾ i en kolumn så smal som `typ`, och någon placering som höll både fliken över huvudet och handtaget nåbart fanns inte utan att huvudet eller fliken ändrade form.
+Det är samma hörn och samma ram, speglad i höjd och i inget annat, så ögat hittar fliken vid samma kant som i övriga rader.
+Vilken rad det gäller mäts och räknas inte: radens överkant minus flikens höjd ovanför huvudets nederkant.
+Det är alltså den första raden, och i en rullad tabell den rad som står närmast det fastnålade huvudet.
+Mätningen görs av lådans egen läsning av sig själv (`markCut`), när cellen man står i byter och när lådan rullas.
+Biblioteket som öppnas från en sådan cell börjar 4 px under fliken.
+Cellen med biblioteket öppet lyfts inte längre till en egen nivå: biblioteket står i sidans översta lager, och lyftet drog med sig fliken in under huvudet.
+Priset är känt och taget: fliken byter sida i höjdled när man går ned från raden mot huvudet, och den täcker slutet av värdet i raden under.
+Två alternativ prototypades och avvisades: fliken under fältets vänstra hörn med biblioteket hängande i den (B), som byter både höjd och sida och krockar med den fastnålade rälsen, och fliken under fältet i alla rader (C), som täcker raden man är på väg till i varje rad och ger upp skälet bakom #593.
+
 ### L47. En yta lägger själv ut kortet den fått utan punkt: fjädrat, med det nyaste överst (prototypat och beslutat 2026-09-22, #449; ordningen utvidgad till dragvägen 2026-09-24, #461)
 
 Telefonen skickar ingen position.
@@ -5839,6 +5884,19 @@ Gränsen mot Google står kvar: ingenting hämtas före trycket.
 Prövat i [`docs/ux-audits/2026-10-04-temaprovet/prototyper/01-temaprovet.html`](docs/ux-audits/2026-10-04-temaprovet/prototyper/01-temaprovet.html) mot att ha kvar kortet med en provrad under (B) och ett provark under galleriet (C); B satte samma text två gånger i två storlekar, och C fick Speltema att rulla.
 Galleriet står fyra i bredd så länge varje bricka har sitt rum, och två och två när katalogen eller biblioteket står bredvid, aldrig tre och en.
 `theme-proof.spec.ts` mäter brödtextens storlek gånger zoom (≥ 12 px vid 1280, ≥ 11 vid 1024), att Speltema inte rullar vid 1280 × 800, och att brickorna inte går in i varandra med katalogen öppen vid 1024.
+
+Reviderat 2026-10-04 (#830, beställarens val C efter prototyp): **utsnittet skär bort luckan mellan rubrikbandet och prosan, och prosans bit är så hög som prosan har rader.**
+På en mall med brödtexten långt ner var utsnittet mest tomt papper: e2e-mallen, med brödtexten 30 mm ner, visade 78 % tomt.
+Rubrikbandet slutar nu under det nedersta som kortet ritar ovanför prosan, en text i sin första rad och allt annat i sin höjd, plus 1,5 mm luft; det som ligger bakom prosans låda, som en ram, är papper och inte band.
+Prosans bit börjar 1,5 mm ovanför prosans låda.
+När luckan mellan dem är minst 3 mm skärs den bort: ett papper, och där luckan togs bort en tunn streckad linje i prosans bläck med 47 % opacitet.
+En lucka under 3 mm skärs inte, så provleken, där prosan står direkt under bandet, är ett stycke som förut.
+Prosans bit är så hög som prosan har rader, högst tre, med 3 mm luft under den sista, och en fjärde rad tonas bara när det finns fler än tre.
+Raderna räknas ur den renderade texten efter E6:s anpassning, inte ur en uppskattning.
+Båda bitarna är samma `CardPreview`-kort, ritat av den enda renderaren och visat från var sin höjd (E2); ingen annan väg ritar dem.
+Prövat i [`docs/ux-audits/2026-10-04-temaprovet/prototyper/02-tva-utsnitt.html`](docs/ux-audits/2026-10-04-temaprovet/prototyper/02-tva-utsnitt.html) mot rivet papper (A) och två remsor med redigerarens grund emellan (B); A var den mest dekorativa formen i fliken, och B lästes som två saker på en bricka som är ett val.
+Vid 1280 × 800 är provet 80 px högt på e2e-mallen och 118 px på provleken, mot 173 och 136 px när det var ett stycke med tre rader och en tonad.
+`theme-proof.spec.ts` mäter att e2e-mallen skärs och provleken inte, att rubrikens rad och prosans första står mindre än en och en halv rad isär, att utsnittet är under 65 % tomt, att prosans bit är så hög som raderna och tonas bara när de är fler än tre, och att Speltema inte rullar vid 1280 × 800 med någon av mallarna.
 
 ### L58. Markeringens handlingar står i tabellens fot (prototypat och beslutat 2026-10-01, #618)
 

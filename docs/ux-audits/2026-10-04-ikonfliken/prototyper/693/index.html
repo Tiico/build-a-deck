@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 693 — Ikonfliken under fältet</title>
+<!-- PROTOTYP, #693 (andra halvan). Kastas när en variant är vald.
+     Beställarens riktning (2026-10-04): alternativ 1 — i första raden hänger ikonfliken «{ }» under
+     fältet, över rad två, så att huvudets namn, ↕ och filterhandtaget ▾ alltid är fria. Frågan här är
+     hur det ser ut och känns, och vilken av de tre formerna.
+     ?variant=idag|A|B|C&w=1280|1024&scen=<namn>&vy=en|jamfor
+     Varje bild är den byggda appen (Sal's Saloon, Tabell), tagen med Playwright mot servern och Vite
+     ur den här grenen. Varianterna är appens egen editor.css plus några rader CSS ovanpå (se
+     VARIANT_CSS nedan), så flikens, fältets och bibliotekets mått, ringar och lager är appens egna —
+     även det att biblioteket ligger i sidans top layer och att rälsen (nivå 4) står över fliken.
+     Regeln i A och B, «raden ovanför är huvudet», sattes av skriptet med samma mätning som en
+     implementation skulle göra: radens överkant minus 44 px ligger ovanför huvudets nederkant.
+     Editorn har bara mörkt läge, så det finns inget ljust att visa. Ingenting här importeras av appen. -->
+<style>
+  :root { --ink: #e6ecfa; --quiet: #868ea3; --amber: #ffd98a; --ring: #9cc6ff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #14161c; color: var(--ink); font: 13px system-ui, sans-serif; }
+  body { padding: 16px 16px 120px; }
+  .rubrik { max-width: 1280px; margin: 0 0 12px; color: var(--amber); font-size: 12px; line-height: 1.5; }
+  .rubrik b { color: #ffe9b8; }
+  .rubrik p { margin: 0; }
+  .anteckning { max-width: 1280px; min-height: calc(4 * 1.5em + 14px); margin: 8px 0 12px; padding: 6px 10px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; font-size: 12px; line-height: 1.5; }
+  .anteckning b { color: #ffe9b8; }
+  .anteckning .plus { color: #b7dca0; }
+  .anteckning .minus { color: #f0a58a; }
+  .scen { margin: 0 0 6px; color: var(--quiet); font-size: 12px; }
+  .scen b { color: var(--ink); }
+
+  .duk { position: relative; height: 800px; background: no-repeat 0 0; outline: 1px dashed #4a4230; }
+  /* Jämförelsen: samma utsnitt ur fyra skärmbilder, i appens egna pixlar. */
+  .rutnat { display: grid; grid-template-columns: repeat(2, 620px); gap: 12px; }
+  .ruta { margin: 0; }
+  .ruta figcaption { margin: 0 0 4px; color: var(--quiet); font-size: 12px; }
+  .ruta figcaption b { color: var(--ink); }
+  .ruta div { width: 620px; height: 420px; background-repeat: no-repeat; background-position: -8px -180px; outline: 1px dashed #4a4230; }
+
+  .vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font-weight: 700; white-space: nowrap; }
+  .vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; padding: 0 10px; }
+  .vaxlare button[aria-pressed='true'] { background: #fff4d6; color: #1f1b12; box-shadow: inset 0 0 0 2px #1f1b12; }
+  .vaxlare button:focus-visible { outline: 2px solid #1f1b12; outline-offset: 2px; }
+  .vaxlare .namn { padding: 0 10px; min-width: 230px; text-align: center; font-size: 12.5px; }
+  .vaxlare .skilj { width: 1px; height: 24px; background: rgba(31,27,18,.3); margin: 0 4px; }
+  .vaxlare select { min-height: 36px; border: 0; border-radius: 999px; padding: 0 10px; background: #1f1b12; color: #ffd98a; font: inherit; }
+</style>
+</head>
+<body>
+<div class="rubrik">
+  <p><b>PROTOTYP #693 · ikonfliken «{ }» under fältet.</b> I dag står fliken över raden ovanför (L46, #593) — i första raden alltså över huvudet, där den i en smal kolumn som <b>typ</b> täcker filterhandtaget ▾.</p>
+  <p>Bilderna är den byggda appen. ‹ › eller ← → byter variant, 1–8 byter scen, J växlar till jämförelsen (rad 1 smal, rad 1 bred, rad 2, biblioteket öppet).</p>
+</div>
+<div class="anteckning" id="anteckning"></div>
+<p class="scen" id="scen"></p>
+<div id="yta"></div>
+
+<div class="vaxlare" role="group" aria-label="Prototypens växlare">
+  <button type="button" id="bak" aria-label="Föregående variant">‹</button>
+  <span class="namn" id="namn"></span>
+  <button type="button" id="fram" aria-label="Nästa variant">›</button>
+  <span class="skilj"></span>
+  <button type="button" data-w="1280">1280</button>
+  <button type="button" data-w="1024">1024</button>
+  <span class="skilj"></span>
+  <select id="scenval" aria-label="Scen"></select>
+  <button type="button" id="jamfor" title="Fyra scener bredvid varandra (J)">Jämför</button>
+</div>
+
+<script>
+// Det som lades ovanpå appens editor.css för varje variant (variants.json i fångstskriptet).
+// `tr[data-proto-under]` är regeln «raden ovanför är huvudet», mätt i sidan.
+const VARIANT_CSS = {
+  A: `.byd-data tbody tr[data-proto-under] .byd-data-icon { top: 100%; bottom: auto; border-top: 0; border-bottom: 2px solid #9cc6ff; border-radius: 0 0 8px 8px; box-shadow: 0 4px 12px rgb(0 0 0 / 45%); }
+.byd-data tbody tr[data-proto-under] .byd-data-symbols { --byd-place-gap: 47px; }`,
+  B: `.byd-data tbody tr[data-proto-under] .byd-data-icon { top: 100%; bottom: auto; right: auto; left: 0; border-top: 0; border-bottom: 2px solid #9cc6ff; border-radius: 0 0 8px 8px; box-shadow: 0 4px 12px rgb(0 0 0 / 45%); }
+.byd-data tbody tr[data-proto-under] .byd-data-picking .byd-data-icon { border-bottom: 0; border-radius: 0; box-shadow: none; background: var(--byd-editor-panel-bg); }
+.byd-data tbody tr[data-proto-under] .byd-data-symbols { --byd-place-gap: 43px; --byd-place-inset: 0px; border-top-left-radius: 0; border-color: #9cc6ff; border-width: 2px; }`,
+  C: `.byd-data tbody tr .byd-data-icon { top: 100%; bottom: auto; border-top: 0; border-bottom: 2px solid #9cc6ff; border-radius: 0 0 8px 8px; box-shadow: 0 4px 12px rgb(0 0 0 / 45%); }
+.byd-data tbody tr .byd-data-symbols { --byd-place-gap: 47px; }`,
+}
+
+const SCENER = {
+  'r1-smal': { kort: 'Rad 1 · typ', lang: '<b>Första raden, smal kolumn</b> — <code>typ</code> (88 px) på <code>juice-em-up</code>, markören i fältet.' },
+  'r1-bred': { kort: 'Rad 1 · Titel', lang: '<b>Första raden, bred kolumn</b> — <code>Titel</code> (190 px).' },
+  'r2-smal': { kort: 'Rad 2 · typ', lang: '<b>Rad 2</b> — <code>typ</code> på <code>sals-saloon</code>. Raden ovanför är en rad, inte huvudet.' },
+  'bib-smal': { kort: 'Bibliotek · rad 1 · typ', lang: '<b>Biblioteket öppet från fliken</b>, första raden, <code>typ</code>.' },
+  'bib-bred': { kort: 'Bibliotek · rad 1 · Titel', lang: '<b>Biblioteket öppet</b>, första raden, <code>Titel</code>.' },
+  'bib-r2': { kort: 'Bibliotek · rad 2', lang: '<b>Biblioteket öppet</b> i rad 2, <code>typ</code>.' },
+  'rullad-smal': { kort: 'Rullad · typ', lang: '<b>Tabellen rullad</b> så att <code>duel-koppar</code> står närmast huvudet. Det är samma krock som i första raden: raden ovanför är huvudet.' },
+  'rullad-bib': { kort: 'Rullad · bibliotek', lang: '<b>Rullad, biblioteket öppet</b> i raden närmast huvudet.' },
+}
+const JAMFOR = ['r1-smal', 'r1-bred', 'r2-smal', 'bib-smal']
+
+const VARIANTER = {
+  A: { namn: 'A · Under, höger kant, bara mot huvudet',
+    not: '<b>A — under fältets högra hörn, bara när raden ovanför är huvudet</b> (första raden, och den rad som står överst när tabellen är rullad). I alla andra rader står fliken kvar ovanför, som i dag. Biblioteket börjar 4 px under fliken. <span class="plus">+ Huvudet är alltid fritt. Fliken står vid samma kant som i rad 2+, så ögat hittar den på samma plats i sidled och det är bara höjden som speglas. Fliken och biblioteket krockar aldrig, och fliken syns medan biblioteket är öppet (i dag hamnar den under huvudet då).</span> <span class="minus">− Fliken byter sida i höjdled: Enter ned från rad 1 flyttar den från under till över. Den täcker slutet av värdet i raden under («Locatio|n» i typ), och biblioteket hänger 44 px längre ned i första raden.</span>' },
+  B: { namn: 'B · Under, vänster kant, biblioteket hänger i fliken',
+    not: '<b>B — under fältets vänstra hörn, bara mot huvudet, och biblioteket hänger direkt i fliken</b> som en dörr i sitt handtag (samma form som kolumndörren, #610). <span class="plus">+ Med biblioteket öppet syns det vad som öppnade det. Fliken och listan börjar i samma kant.</span> <span class="minus">− Fliken byter både höjd och sida mot rad 2+, två saker i stället för en. I kolumnen närmast id står den mot den fastnålade rälsen, som ritas över flikens vänsterkant (nivå 4 över 3, L55). Och den täcker början av värdet under, där ordet läses («{ }on»). Den blå dörren är tyngre än bibliotekets vanliga ram, och bara här.</span>' },
+  C: { namn: 'C · Under i alla rader',
+    not: '<b>C — fliken hänger under fältet i varje rad</b>, och biblioteket börjar under fliken överallt. <span class="plus">+ En form överallt: ingen regel om huvudet, ingen mätning, inget hopp när man går mellan rader eller rullar.</span> <span class="minus">− Fliken täcker raden man är på väg till: Enter och ↓ går nedåt i kolumnen (#479), och det var skälet till att #593 valde raden ovanför, «som formgivaren redan har lämnat». Det ändrar ett fattat beslut (tillägget till L46) för alla rader och inte bara för den första, och biblioteket hänger 44 px längre ned i varje rad.</span>' },
+  idag: { namn: 'I dag (main)',
+    not: '<b>I dag.</b> Fliken står över raden ovanför i alla rader (L46, #593), på nivå 3 över huvudets namn. I första raden, och i den rad som står överst när tabellen är rullad, täcker den därför huvudet: i <code>typ</code> ligger den rakt på ▾. Med biblioteket öppet försvinner fliken helt under huvudet, eftersom cellen då lyfts till nivå 1 och fliken följer med (se «Bibliotek · rad 1»).' },
+}
+
+const p = new URLSearchParams(location.search)
+const st = {
+  v: VARIANTER[p.get('variant')] ? p.get('variant') : 'A',
+  w: p.get('w') === '1024' ? 1024 : 1280,
+  scen: SCENER[p.get('scen')] ? p.get('scen') : 'r1-smal',
+  vy: p.get('vy') === 'jamfor' ? 'jamfor' : 'en',
+}
+const $ = (id) => document.getElementById(id)
+const bild = (scen) => `duk/${st.v}-${scen}-${st.w}.png`
+
+for (const [k, s] of Object.entries(SCENER)) {
+  const o = document.createElement('option')
+  o.value = k
+  o.textContent = s.kort
+  $('scenval').append(o)
+}
+
+function rita() {
+  const yta = $('yta')
+  yta.innerHTML = ''
+  if (st.vy === 'en') {
+    const duk = document.createElement('div')
+    duk.className = 'duk'
+    duk.style.width = `${st.w}px`
+    duk.style.backgroundImage = `url("${bild(st.scen)}")`
+    duk.setAttribute('role', 'img')
+    duk.setAttribute('aria-label', `${VARIANTER[st.v].namn}: ${SCENER[st.scen].kort}, ${st.w} px`)
+    yta.append(duk)
+    $('scen').innerHTML = SCENER[st.scen].lang + ` Fönstret är ${st.w} px.`
+  } else {
+    const g = document.createElement('div')
+    g.className = 'rutnat'
+    for (const s of JAMFOR) {
+      const f = document.createElement('figure')
+      f.className = 'ruta'
+      f.innerHTML = `<figcaption><b>${SCENER[s].kort}</b></figcaption><div role="img" aria-label="${SCENER[s].kort}" style="background-image:url('${bild(s)}')"></div>`
+      g.append(f)
+    }
+    yta.append(g)
+    $('scen').innerHTML = `<b>Jämförelse</b> — samma utsnitt ur fyra skärmbilder, ${st.w} px.`
+  }
+  $('namn').textContent = VARIANTER[st.v].namn
+  $('anteckning').innerHTML = VARIANTER[st.v].not
+  $('scenval').value = st.scen
+  $('scenval').disabled = st.vy === 'jamfor'
+  $('jamfor').setAttribute('aria-pressed', String(st.vy === 'jamfor'))
+  for (const b of document.querySelectorAll('[data-w]')) b.setAttribute('aria-pressed', String(Number(b.dataset.w) === st.w))
+  history.replaceState(null, '', `?${new URLSearchParams({ variant: st.v, w: st.w, scen: st.scen, vy: st.vy })}`)
+}
+
+const ORDNING = ['A', 'B', 'C', 'idag']
+function byt(d) { st.v = ORDNING[(ORDNING.indexOf(st.v) + d + ORDNING.length) % ORDNING.length]; rita() }
+$('bak').onclick = () => byt(-1)
+$('fram').onclick = () => byt(1)
+$('jamfor').onclick = () => { st.vy = st.vy === 'jamfor' ? 'en' : 'jamfor'; rita() }
+$('scenval').onchange = (e) => { st.scen = e.target.value; rita() }
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('button')
+  if (t?.dataset.w) { st.w = Number(t.dataset.w); rita() }
+})
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest?.('input, textarea, select')) return
+  if (e.key === 'ArrowLeft') byt(-1)
+  if (e.key === 'ArrowRight') byt(1)
+  if (e.key === 'j' || e.key === 'J') { st.vy = st.vy === 'jamfor' ? 'en' : 'jamfor'; rita() }
+  const n = Number(e.key)
+  if (n >= 1 && n <= 8) { st.vy = 'en'; st.scen = Object.keys(SCENER)[n - 1]; rita() }
+})
+rita()
+</script>
+</body>
+</html>

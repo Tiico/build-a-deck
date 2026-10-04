@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { PT_TO_MM, type FaceTemplate } from '@byd/template'
-import { CROP_AIR_PX, CROP_LINES, cropOf, proseBoxOf } from '../src/editor/theme-crop.js'
+import { CROP_AIR_PX, CROP_LINES, CUT_AIR_MM, CUT_MIN_MM, bandEndOf, cropOf, proseBoxOf } from '../src/editor/theme-crop.js'
 
 // The theme proof's crop (#741, beställarens val A 2026-10-04): the card from its top down to the
 // first lines of its prose, at a size where that prose reaches K26's floor, centred on the prose
@@ -13,7 +13,7 @@ const face = (base: FaceTemplate['base']): FaceTemplate => ({ base, variants: {}
 describe('proseBoxOf (#741)', () => {
   it('is the first prose text the row prints, not the title nor an empty one', () => {
     const f = face([text('title', 'title', 5, 5, 53, 12), text('flav', 'flavour', 5, 15, 53, 8), text('rules', 'body', 5, 30, 40, 9), text('more', 'extra', 5, 60, 53, 9)])
-    expect(proseBoxOf(f, { title: 'Drake', flavour: 'Doft', body: 'Gör något.', extra: 'Mer' }, ['body', 'extra'])).toMatchObject({ element: 'rules', x: 5, y: 30, w: 40, sizePt: 9, lineHeight: 1.25 })
+    expect(proseBoxOf(f, { title: 'Drake', flavour: 'Doft', body: 'Gör något.', extra: 'Mer' }, ['body', 'extra'])).toMatchObject({ element: 'rules', x: 5, y: 30, w: 40, sizePt: 9, lineHeight: 1.25, color: '#111' })
     expect(proseBoxOf(f, { title: 'Drake', body: '', extra: 'Mer' }, ['body', 'extra'])?.element).toBe('more')
   })
 
@@ -23,7 +23,7 @@ describe('proseBoxOf (#741)', () => {
 })
 
 describe('cropOf (#741)', () => {
-  const box = { element: 'rules', x: 5, y: 19, w: 53, h: 55, sizePt: 8.5, lineHeight: 1.25 }
+  const box = { element: 'rules', x: 5, y: 19, w: 53, h: 55, sizePt: 8.5, lineHeight: 1.25, color: '#111' }
   const bodyPx = (zoom: number, sizePt = box.sizePt) => sizePt * PT_TO_MM * PX_PER_MM * zoom
 
   it('sets the prose at 12 px when the tile has the room, centred on the prose box', () => {
@@ -64,5 +64,91 @@ describe('cropOf (#741)', () => {
 
   it('draws at the reading size when the tile has not been measured yet', () => {
     expect(bodyPx(cropOf(box, box.sizePt, 0).zoom)).toBeCloseTo(12, 1)
+  })
+
+  it('is one piece from the card’s top while the prose’s lines are not yet counted', () => {
+    const crop = cropOf(box, box.sizePt, 400)
+    expect(crop.pieces).toEqual([{ from: 0, height: crop.height }])
+    expect(crop.cut).toBeNull()
+  })
+})
+
+// The cut (#830, beställarens val C 2026-10-04): one paper, and where the gap between the title band
+// and the prose was taken away a thin dashed line. The title band ends under the lowest thing drawn
+// above the prose — a text in its own line, anything else in its height — plus 1.5 mm of air; the
+// prose's piece starts 1.5 mm above the prose box. A gap under 3 mm is no gap and is not cut.
+describe('bandEndOf (#830)', () => {
+  const lineMm = (sizePt: number, lh: number) => sizePt * PT_TO_MM * lh
+  const frame = { kind: 'shape' as const, id: 'frame', x: 1, y: 1, w: 61, h: 86, shape: 'rect' as const, fill: '#f4ead8' }
+  const title = (y: number, sizePt: number) => ({ ...text('title', 'title', 5, y, 53, sizePt), h: 10, font: { family: 'Inter', sizePt, lineHeight: 1.25 } })
+  const prose = text('body', 'body', 5, 30, 53, 9)
+  const boxOf = (f: FaceTemplate, row: Record<string, string>) => proseBoxOf(f, row, ['body'])!
+
+  it('ends one line of the title below its top, plus the air — the frame behind the prose is the ground, not the band', () => {
+    const f = face([frame, title(5, 14), prose])
+    const row = { title: 'Björn 1', body: 'Rad 1.' }
+    expect(bandEndOf(f, row, boxOf(f, row))).toBeCloseTo(5 + lineMm(14, 1.25) + CUT_AIR_MM, 6)
+  })
+
+  it('takes a shape above the prose in its whole height, whichever is lowest', () => {
+    const band = { kind: 'shape' as const, id: 'band', x: 3, y: 3, w: 57, h: 20, shape: 'rect' as const, fill: '#6b4a2b' }
+    const f = face([frame, band, title(5, 14), prose])
+    const row = { title: 'Björn 1', body: 'Rad 1.' }
+    expect(bandEndOf(f, row, boxOf(f, row))).toBeCloseTo(23 + CUT_AIR_MM, 6)
+  })
+
+  it('never ends below the prose box: a picture that reaches down beside the prose holds the band there', () => {
+    const art = { kind: 'image' as const, id: 'art', x: 40, y: 10, w: 20, h: 30, bind: { field: 'art' } }
+    const f = face([frame, title(5, 14), art, prose])
+    const row = { title: 'Björn 1', body: 'Rad 1.', art: 'asset:x' }
+    expect(bandEndOf(f, row, boxOf(f, row))).toBe(30)
+  })
+
+  it('passes over a text the row leaves empty, as the card draws nothing there', () => {
+    const flav = { ...text('flav', 'flavour', 5, 20, 53, 9), h: 6 }
+    const f = face([frame, title(5, 14), flav, prose])
+    const row = { title: 'Björn 1', body: 'Rad 1.', flavour: '' }
+    expect(bandEndOf(f, row, boxOf(f, row))).toBeCloseTo(5 + lineMm(14, 1.25) + CUT_AIR_MM, 6)
+  })
+})
+
+describe('cropOf with the prose’s lines counted and the band known (#830)', () => {
+  const box = { element: 'body', x: 5, y: 30, w: 53, h: 40, sizePt: 9, lineHeight: 1.25, color: '#222' }
+  const lineMm = box.sizePt * PT_TO_MM * box.lineHeight
+  const bandEnd = 5 + 14 * PT_TO_MM * 1.25 + CUT_AIR_MM
+  const kOf = (zoom: number) => PX_PER_MM * zoom
+
+  it('cuts the gap away: the band from the card’s top, then the prose from 1.5 mm above its box, the line where they meet', () => {
+    const crop = cropOf(box, box.sizePt, 400, { lines: 1, bandEnd })
+    const k = kOf(crop.zoom)
+    const bodyFrom = (box.y - CUT_AIR_MM) * k
+    const end = (box.y + lineMm + 2 * CUT_AIR_MM) * k
+    expect(crop.pieces[0]).toEqual({ from: 0, height: expect.closeTo(bandEnd * k, 6) })
+    expect(crop.pieces[1]).toEqual({ from: expect.closeTo(bodyFrom, 6), height: expect.closeTo(end - bodyFrom, 6) })
+    expect(crop.pieces).toHaveLength(2)
+    expect(crop.cut).toBeCloseTo(bandEnd * k, 6)
+    expect(crop.height).toBeCloseTo(crop.pieces[0]!.height + crop.pieces[1]!.height, 6)
+  })
+
+  it('is as tall as the prose has lines, up to three, and fades only when there are more', () => {
+    for (const lines of [1, 2, 3]) {
+      const crop = cropOf(box, box.sizePt, 400, { lines, bandEnd })
+      const k = kOf(crop.zoom)
+      expect(crop.pieces[1]!.from + crop.pieces[1]!.height).toBeCloseTo((box.y + lines * lineMm + 2 * CUT_AIR_MM) * k, 6)
+      expect(crop.fade).toBe(0)
+    }
+    const more = cropOf(box, box.sizePt, 400, { lines: 7, bandEnd })
+    const k = kOf(more.zoom)
+    expect(more.pieces[1]!.from + more.pieces[1]!.height).toBeCloseTo((box.y + (CROP_LINES + 1) * lineMm) * k, 6)
+    expect(more.fade).toBeCloseTo(lineMm * k, 6)
+  })
+
+  it('does not cut a gap under 3 mm: one piece from the card’s top', () => {
+    const near = box.y - CUT_AIR_MM - (CUT_MIN_MM - 0.1)
+    const crop = cropOf(box, box.sizePt, 400, { lines: 2, bandEnd: near })
+    const k = kOf(crop.zoom)
+    expect(crop.cut).toBeNull()
+    expect(crop.pieces).toEqual([{ from: 0, height: expect.closeTo((box.y + 2 * lineMm + 2 * CUT_AIR_MM) * k, 6) }])
+    expect(cropOf(box, box.sizePt, 400, { lines: 2, bandEnd: near - 0.2 }).cut).not.toBeNull()
   })
 })

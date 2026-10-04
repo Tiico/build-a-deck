@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { placedTexts, type FaceTemplate } from '../src/index.js'
+import { placedElements, placedTexts, type FaceTemplate } from '../src/index.js'
 
 // Where each text this row prints stands on the card (#741): the elements `compile` draws — the
 // same variant, the same conditions — with a group's offset added, in the template's order. The
@@ -25,6 +25,21 @@ describe('placedTexts (#741)', () => {
     expect(ids(f, { body: 'x', typ: 'Trap', flavour: 'Doft' })).toEqual([
       ['rules', 7, 9],
       ['flav', 0, 40],
+    ])
+  })
+})
+
+// Everything this row draws, not only its texts (#830): the theme proof cuts away the paper between
+// the title band and the prose, and the band is whatever the card draws above the prose — a shape,
+// a picture or a row of icons as much as a text.
+describe('placedElements (#830)', () => {
+  const shape = (id: string, x: number, y: number) => ({ kind: 'shape' as const, id, x, y, w: 10, h: 5, shape: 'rect' as const, fill: '#000' })
+  it('is every element the row draws, where it is drawn, in the template’s order — groups and conditions opened', () => {
+    const f = face([shape('band', 1, 2), { kind: 'group', id: 'g', x: 3, y: 20, children: [text('rules', 'body', 2, 1), shape('pip', 4, 4)] }, { kind: 'if', id: 'maybe', when: { field: 'flavour', nonEmpty: true }, children: [shape('flav', 0, 40)] }])
+    expect(placedElements(f, { body: 'x', flavour: '' }).map((p) => [p.el.id, p.x, p.y])).toEqual([
+      ['band', 1, 2],
+      ['rules', 5, 21],
+      ['pip', 7, 24],
     ])
   })
 })

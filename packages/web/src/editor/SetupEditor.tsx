@@ -10,7 +10,7 @@ import { previewOf } from '../setup/preview.js'
 import { MIN_MM, NUDGE_MM, onTableOf, sizedBy } from './zone-geometry.js'
 import { useNumberDraft } from './number-draft.js'
 import { Stepper } from '../Stepper.js'
-import { MAX_PLAYERS, newAreaSpot, newPileSpot, pasteSpot, titleOfRow, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
+import { MAX_PLAYERS, counterId, newAreaSpot, newPileSpot, pasteSpot, titleOfRow, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
 import type { ZonePatch } from '@byd/server/doc'
 import { useT, type Key, type T } from '../i18n/index.js'
@@ -421,7 +421,10 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
   // are a step back each, as they always were (L14).
   const typing = useGesture('counter-field')
   const turn = (patch: Partial<typeof recipe>, gesture?: string) => client.setRecipe({ ...recipe, ...patch }, recipeWords(t), gesture)
-  const setCounter = (i: number, patch: Partial<Counter>) => turn({ counters: recipe.counters.map((c, j) => (j === i ? { ...c, ...patch } : c)) }, typing.token())
+  // A counter is named in the rules by its id (#708), so the id is written down before the name
+  // changes: one made before counters had ids is known by its name, and would otherwise lose every
+  // rule that names it at the first letter typed.
+  const setCounter = (i: number, patch: Partial<Counter>) => turn({ counters: recipe.counters.map((c, j) => (j === i ? { ...c, id: counterId(c), ...patch } : c)) }, typing.token())
   // Counters lie in the seats' counters zones (C4). A game whose seats have none draws no chips,
   // however long the list is, so the panel says so where the list is rather than leaving the
   // designer to wonder why the table looks the same.
@@ -469,7 +472,7 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
               </button>
             </div>
           ))}
-          <button type="button" onClick={() => turn({ counters: [...recipe.counters, recipe.counters.length === 0 ? { name: t('counter.score'), start: 0 } : { name: t('counter.life'), start: 20 }] })}>
+          <button type="button" onClick={() => turn({ counters: [...recipe.counters, newCounter(recipe.counters, t)] })}>
             {t('setup.counter.add')}
           </button>
           {homeless && <p className="byd-setup-note" role="status">{t('setup.counters.homeless')}</p>}
@@ -477,6 +480,20 @@ function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) 
       </section>
     </aside>
   )
+}
+
+// A new counter: the first is the score, the rest are lives — under a name no counter has yet, the
+// way new piles get one (#480). Two «Liv» were two «LIV» on the phone and the TV (#713).
+function newCounter(counters: readonly Counter[], t: T): Counter {
+  const [base, start] = counters.length === 0 ? [t('counter.score'), 0] : [t('counter.life'), 20]
+  const taken = new Set(counters.map((c) => c.name))
+  let name = base
+  for (let n = 2; taken.has(name); n++) name = `${base} ${n}`
+  // And an id no counter has, which the rules name it by however it is renamed later (#708).
+  const ids = new Set(counters.map(counterId))
+  let id = counterId({ name })
+  for (let n = 2; ids.has(id); n++) id = `${counterId({ name })}-${n}`
+  return { id, name, start }
 }
 
 // Vilken zonfamilj en zon hör till, eller ingen (#175). En zon är per plats när dess id är rollen

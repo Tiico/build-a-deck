@@ -39,6 +39,9 @@ function tilesOf(view: Snapshot, keep: (z: Snapshot['zones'][number]) => boolean
   for (const c of view.components) byZone.set(c.zone, [...(byZone.get(c.zone) ?? []), c])
   const kept = view.zones.filter((z) => {
     if (!keep(z)) return false
+    // A seat's counter zone is left out for what it is (L48, C4): the recipe names it `counters:<seat>`,
+    // and in a game without counters it is empty and was offered as a place to play a card (#713).
+    if (z.owner !== undefined && z.id === `counters:${z.owner}`) return false
     const inside = byZone.get(z.id) ?? []
     return !(inside.length > 0 && inside.every(isCounter))
   })
