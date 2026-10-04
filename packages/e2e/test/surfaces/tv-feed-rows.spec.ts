@@ -64,6 +64,10 @@ test.describe('the latest lines on a television (#482)', () => {
 
   // A full table: every seat's plate stands whole on the felt, and a seat at the side stacks its
   // words so that its plate does not reach the piles (#573, beslut C, measured at four seats).
+  // Along the top and the bottom a plate is one row while it has room, and at eight seats in a
+  // typeface wider than the Mac's it has not: the row was laid over the next seat's plate instead
+  // (#750). So what holds on every machine is that the name is whole, that what the seat holds
+  // goes onto a line of its own rather than over a neighbour, and that no two plates meet.
   for (const players of [6, 8] as const) {
     test(`stands every one of ${players} seats whole on its plate`, async ({ tableOf, open, host }) => {
       const table = await tableOf({ players, cards: 12, copies: 2 })
@@ -74,15 +78,19 @@ test.describe('the latest lines on a television (#482)', () => {
       const plates = await tv.page.evaluate(async () => {
         await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))
         const felt = document.querySelector('[data-table]')!.getBoundingClientRect()
-        return [...document.querySelectorAll<HTMLElement>('[data-seat-plate]')].map((p) => {
-          const r = p.getBoundingClientRect()
+        const all = [...document.querySelectorAll<HTMLElement>('[data-seat-plate]')]
+        const boxes = all.map((p) => p.getBoundingClientRect())
+        return all.map((p, at) => {
+          const r = boxes[at]!
           const parts = [...p.children].map((c) => c.getBoundingClientRect())
           const lines = parts.filter((b, i) => i === 0 || b.top >= parts[i - 1]!.bottom - 1).length
           const side = p.dataset['edge'] === 'E' || p.dataset['edge'] === 'W'
-          return { seat: p.dataset['seatPlate'], inside: r.left >= felt.left && r.right <= felt.right && r.top >= felt.top && r.bottom <= felt.bottom, stacked: side ? lines > 1 : lines === 1 }
+          const name = p.querySelector(':scope > b > span')!
+          const meets = boxes.filter((o, i) => i !== at && r.left < o.right - 1 && o.left < r.right - 1 && r.top < o.bottom - 1 && o.top < r.bottom - 1).length
+          return { seat: p.dataset['seatPlate'], inside: r.left >= felt.left && r.right <= felt.right && r.top >= felt.top && r.bottom <= felt.bottom, stacked: side ? lines > 1 : lines <= 2, whole: name.scrollWidth <= name.clientWidth, meets }
         })
       })
-      for (const p of plates) expect(p).toEqual({ seat: p.seat, inside: true, stacked: true })
+      for (const p of plates) expect(p).toEqual({ seat: p.seat, inside: true, stacked: true, whole: true, meets: 0 })
     })
   }
 })

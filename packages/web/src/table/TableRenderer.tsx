@@ -2070,7 +2070,7 @@ const PLATE_AIR_PX = 8
 // How tall a plate is drawn, in screen pixels, from the stylesheet's own numbers: the row with the
 // seat's ball (6 + 36 + 8 of padding), and a 24 px line at 1.2 plus the 2 px gap for each line
 // under it. A side plate stands every line under the one before; a plate along the top or the
-// bottom lays its words in one row (#573), reckoned here with one line spare. Heights are line
+// bottom lays its words in one row (#573), and on a second when the row has no room for them. Heights are line
 // boxes, not glyphs, so no typeface changes them.
 const PLATE_ROW_PX = 6 + 36 + 8
 const PLATE_LINE_PX = Math.ceil(24 * 1.2) + 2
