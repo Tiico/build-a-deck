@@ -194,6 +194,53 @@ describe('a log written before the rules changed still opens (#41, DRIFT §7)', 
   })
 })
 
+// A column whose name differs from another only in its capitals is one the CSV import folds into
+// the other (#479), so the actor no longer lets one be made (#694). That is a rule about what may
+// be made now, not about what a log already says: a deck that got `typ` and `TYP` before the rule
+// keeps both, line for line, and replays without a single skipped entry.
+describe('a column name that differs only in its capitals (#694)', () => {
+  const before = [
+    { seq: 1, at: '2026-10-01T10:00:00.000Z', intent: { v: 'addField', field: 'typ' } },
+    { seq: 2, at: '2026-10-01T10:01:00.000Z', intent: { v: 'addField', field: 'TYP' } },
+    { seq: 3, at: '2026-10-01T10:02:00.000Z', intent: { v: 'addField', field: 'kraft' } },
+    { seq: 4, at: '2026-10-01T10:03:00.000Z', intent: { v: 'renameField', from: 'kraft', to: 'Typ' } },
+  ] satisfies { seq: number; at: string; intent: EditIntent }[]
+
+  it('still replays from a log written before the rule, identically and with nothing skipped', async () => {
+    const store = new MemoryProjectStore()
+    await store.create('p1', doc())
+    await store.appendEdits('p1', before)
+    const said: string[] = []
+    const quiet = vi.spyOn(console, 'error').mockImplementation((line: string) => void said.push(line))
+    const actor = (await ProjectActor.load('p1', store))!
+    quiet.mockRestore()
+
+    expect(said).toEqual([])
+    expect(Object.keys(actor.doc.rows[0]!.fields)).toEqual(['title', 'antal', 'typ', 'TYP', 'Typ'])
+    expect(actor.seq).toBe(4)
+  })
+
+  it('refuses one arriving live, made or renamed onto, against a column, `id` or `antal`', async () => {
+    const store = new MemoryProjectStore()
+    await store.create('p1', doc())
+    const actor = (await ProjectActor.load('p1', store))!
+    await actor.edit({ v: 'addField', field: 'typ' })
+    await actor.edit({ v: 'addField', field: 'kraft' })
+
+    await expect(actor.edit({ v: 'addField', field: 'TYP' })).rejects.toThrow(/typ/)
+    await expect(actor.edit({ v: 'addField', field: 'Title' })).rejects.toThrow(/title/)
+    await expect(actor.edit({ v: 'addField', field: 'ID' })).rejects.toThrow(/id/)
+    await expect(actor.edit({ v: 'addField', field: 'Antal' })).rejects.toThrow(/antal/)
+    await expect(actor.edit({ v: 'renameField', from: 'kraft', to: 'Typ' })).rejects.toThrow(/typ/)
+    await expect(actor.edit({ v: 'renameField', from: 'kraft', to: 'ANTAL' })).rejects.toThrow(/antal/)
+    expect(actor.seq).toBe(2)
+
+    // A column's own name in other capitals is the same column, and is a rename like any other.
+    await actor.edit({ v: 'renameField', from: 'kraft', to: 'Kraft' })
+    expect(Object.keys(actor.doc.rows[0]!.fields)).toEqual(['title', 'antal', 'typ', 'Kraft'])
+  })
+})
+
 describe('the host keeps one actor per project (D3)', () => {
   it('hands the same actor to everyone who asks, and nothing for a project that is not there', async () => {
     const store = new MemoryProjectStore()
