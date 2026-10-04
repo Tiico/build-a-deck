@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import type { CardFace } from '@byd/server/doc'
+import { canDelete, canEdit, canStartTables, type CardFace, type Role } from '@byd/server/doc'
 import { LoginCard } from './LoginCard.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { Question } from '../editor/Question.js'
@@ -21,6 +21,12 @@ import './account.css'
 // /  — "Mina spel" (G1, prototype A): the account's projects as a grid of game cards, and a new
 // one as a dashed card. Not logged in, the login card stands here instead.
 export type HomePageProps = { onNavigate?(url: string): void }
+
+// What a game's ⋯ offers is asked of the same rules the server keeps (roles.ts, D3, #689), so the
+// menu cannot offer what the server would refuse. A list that names no role is from a server that
+// listed only the account's own games.
+const roleOf = (p: ProjectSummary): Role => p.role ?? 'owner'
+const mayDoAny = (role: Role): boolean => canStartTables(role) || canEdit(role) || canDelete(role)
 
 export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePageProps) {
   const t = useT()
@@ -238,19 +244,23 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                     {t('home.card.line', { rev: p.rev, played: playedLine(t, lang, p) })}
                   </span>
                 </a>
-                <button
-                  ref={(el) => {
-                    if (el) mores.current.set(p.id, el)
-                    else mores.current.delete(p.id)
-                  }}
-                  type="button"
-                  className="byd-home-more"
-                  aria-label={t('home.menu.more', { name: p.name })}
-                  aria-expanded={menu === p.id}
-                  onClick={() => setMenu(menu === p.id ? null : p.id)}
-                >
-                  ⋯
-                </button>
+                {/* What the ⋯ offers is what the role may do (D3, #689), and a role that may do
+                    none of it has no ⋯ to open. */}
+                {mayDoAny(roleOf(p)) && (
+                  <button
+                    ref={(el) => {
+                      if (el) mores.current.set(p.id, el)
+                      else mores.current.delete(p.id)
+                    }}
+                    type="button"
+                    className="byd-home-more"
+                    aria-label={t('home.menu.more', { name: p.name })}
+                    aria-expanded={menu === p.id}
+                    onClick={() => setMenu(menu === p.id ? null : p.id)}
+                  >
+                    ⋯
+                  </button>
+                )}
                 {menu === p.id && (
                   <GameMenu
                     label={t('home.menu.label', { name: p.name })}
@@ -260,26 +270,28 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                       if (back) setRefocus({ to: p.id })
                     }}
                   >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMenu(null)
-                        setRefocus({ to: p.id })
-                        void startTable(http, p.id, t).then(
-                          (table) => {
-                            setStarted({ project: p.id, ...table })
-                            say?.('polite', t('home.started', { code: table.code }))
-                            setProjects((list) => (list ?? []).map((x) => (x.id === p.id ? { ...x, tables: (x.tables ?? 0) + 1 } : x)))
-                          },
-                          (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
-                        )
-                      }}
-                    >
-                      {t('home.menu.start')}
-                    </button>
+                    {canStartTables(roleOf(p)) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenu(null)
+                          setRefocus({ to: p.id })
+                          void startTable(http, p.id, t).then(
+                            (table) => {
+                              setStarted({ project: p.id, ...table })
+                              say?.('polite', t('home.started', { code: table.code }))
+                              setProjects((list) => (list ?? []).map((x) => (x.id === p.id ? { ...x, tables: (x.tables ?? 0) + 1 } : x)))
+                            },
+                            (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
+                          )
+                        }}
+                      >
+                        {t('home.menu.start')}
+                      </button>
+                    )}
                     {/* A game is the owner's and the co-editors' to take away with them (G5, #527);
                         the others see no control the server would refuse them. */}
-                    {(p.role === undefined || p.role === 'owner' || p.role === 'editor') && (
+                    {canEdit(roleOf(p)) && (
                       <button
                         type="button"
                         onClick={() => {
@@ -290,15 +302,17 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                         {t('home.menu.export')}
                       </button>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMenu(null)
-                        setAsking(p)
-                      }}
-                    >
-                      {t('home.menu.remove')}
-                    </button>
+                    {canDelete(roleOf(p)) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenu(null)
+                          setAsking(p)
+                        }}
+                      >
+                        {t('home.menu.remove')}
+                      </button>
+                    )}
                   </GameMenu>
                 )}
               </div>

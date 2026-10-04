@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type Ref } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type Ref } from 'react'
 import type { ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { CARD_PX, cornerPx } from './corner.js'
@@ -360,6 +360,8 @@ function IconDeck({ doc, assetBase, icons }: { doc: ProjectDoc; assetBase: strin
 function ProjectSet({ doc, client, assetBase }: ThemePanelProps) {
   const t = useT()
   const [error, setError] = useState<string | null>(null)
+  // A refusal answers one attempt, and the next thing done to the game takes it away (#697).
+  useEffect(() => setError(null), [doc])
   const names = Object.keys(doc.icons)
   // Counted by the same walk the palette uses, so a symbol written in a meaning still counts. The
   // old check looked for `{namn}` exactly and told a deck that had painted every one of its
@@ -402,26 +404,12 @@ function ProjectSet({ doc, client, assetBase }: ThemePanelProps) {
             <li key={name} data-icon={name}>
               <img src={iconSrc(doc.icons[name] ?? '', assetBase)} alt="" />
               <code>{`{${name}}`}</code>
-              <input
-                aria-label={t('symbols.rename', { name })}
-                defaultValue={name}
-                onBlur={(e) => {
-                  const next = e.target.value.trim()
-                  if (!next || next === name) return
-                  // A name the card text would not read as a symbol is refused here with the rule it
-                  // broke, before the cards that say the old one are rewritten into letters (#481).
-                  if (!isSymbolName(next)) {
-                    e.target.value = name
-                    return setError(t('symbols.name.unwritable', { name: next }))
-                  }
-                  try {
-                    client.renameIcon(name, next)
-                    setError(null)
-                  } catch (err) {
-                    e.target.value = name
-                    setError(err instanceof Error ? err.message : String(err))
-                  }
-                }}
+              <NameField
+                name={name}
+                label={t('symbols.rename', { name })}
+                taken={(next) => (doc.icons[next] !== undefined ? t('symbols.name.taken', { name: next }) : null)}
+                onRename={(next) => client.renameIcon(name, next)}
+                onSaid={setError}
               />
               <small>{credit ? `${credit.licence} · ${credit.by}` : t('symbols.own')}</small>
               <small>{n === 0 && painted[name] ? t(paintedSaid(painted[name])) : t(n === 1 ? 'wall.cards.one' : 'wall.cards.other', { n })}</small>
@@ -434,6 +422,66 @@ function ProjectSet({ doc, client, assetBase }: ThemePanelProps) {
       </ul>
       {error && <p role="alert">{error}</p>}
     </section>
+  )
+}
+
+// The name of an icon or a meaning, which is what card text writes between its braces. Every
+// refusal the verb would throw is asked here first (#697), as the column door asks its own (L44):
+// a name another one has is said at the field while it is written, and a name a card could not
+// write is said when the field is left. Nothing refused reaches the actor, because an edit that
+// does is a version and a step back even when it changes nothing — and what the document would
+// have said is English for the developer. A refused name goes back to the one that stands.
+function NameField({ name, label, taken, onRename, onSaid }: { name: string; label: string; taken(next: string): string | null; onRename(next: string): void; onSaid(said: string | null): void }) {
+  const t = useT()
+  const id = useId()
+  const [refused, setRefused] = useState<string | null>(null)
+  const trouble = (next: string): string | null => (next === name ? null : taken(next))
+  const done = (field: HTMLInputElement) => {
+    setRefused(null)
+    const next = field.value.trim()
+    if (!next || next === name) {
+      field.value = name
+      return
+    }
+    const said = isSymbolName(next) ? trouble(next) : t('symbols.name.unwritable', { name: next })
+    if (said !== null) {
+      field.value = name
+      return onSaid(said)
+    }
+    try {
+      onRename(next)
+      onSaid(null)
+    } catch {
+      field.value = name
+      onSaid(t('symbols.change.refused'))
+    }
+  }
+  return (
+    <>
+      <input
+        aria-label={label}
+        defaultValue={name}
+        {...(refused === null ? {} : { 'aria-invalid': true, 'aria-describedby': id })}
+        onChange={(e) => {
+          onSaid(null)
+          setRefused(trouble(e.target.value.trim()))
+        }}
+        // Enter says the name is done, as it does in the column door; leaving the field does too.
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter') return
+          e.preventDefault()
+          e.currentTarget.blur()
+        }}
+        onBlur={(e) => done(e.currentTarget)}
+      />
+      {refused !== null && (
+        // Said politely, as the door says it: a sentence shouted over every keystroke is a sentence
+        // nobody can type through.
+        <p className="byd-symbols-refused" id={id} role="status">
+          {refused}
+        </p>
+      )}
+    </>
   )
 }
 
@@ -491,6 +539,7 @@ export const INKS: readonly { hex: string; name: Key }[] = [
 function GameColours({ doc, client, icons }: { doc: ProjectDoc; client: ProjectClient; icons: Record<string, string> }) {
   const t = useT()
   const [error, setError] = useState<string | null>(null)
+  useEffect(() => setError(null), [doc])
   const palette = doc.palette ?? {}
   const roles = Object.entries(palette)
   const ground = groundOf(doc, 'front')
@@ -524,8 +573,8 @@ function GameColours({ doc, client, icons }: { doc: ProjectDoc; client: ProjectC
     try {
       change()
       setError(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+    } catch {
+      setError(t('symbols.change.refused'))
     }
   }
   // Taken away at once when nothing writes it, and asked about first when a card does (#481). The
@@ -556,24 +605,12 @@ function GameColours({ doc, client, icons }: { doc: ProjectDoc; client: ProjectC
             return (
               <li key={role} data-role={role} data-faint={ratio < ROLE_MIN_CONTRAST}>
                 {shown === null ? <span className="byd-symbols-swatch" style={{ background: hex }} /> : <SymbolSample written={example(role)} symbols={symbols} paper={ground} />}
-                <input
-                  aria-label={t('symbols.colours.rename', { role })}
-                  defaultValue={role}
-                  onBlur={(e) => {
-                    const next = e.target.value.trim()
-                    if (!next || next === role) return
-                    if (!isSymbolName(next)) {
-                      e.target.value = role
-                      return setError(t('symbols.name.unwritable', { name: next }))
-                    }
-                    try {
-                      client.renameRole(role, next)
-                      setError(null)
-                    } catch (err) {
-                      e.target.value = role
-                      setError(err instanceof Error ? err.message : String(err))
-                    }
-                  }}
+                <NameField
+                  name={role}
+                  label={t('symbols.colours.rename', { role })}
+                  taken={(next) => (palette[next] !== undefined ? t('symbols.colours.taken', { name: next }) : null)}
+                  onRename={(next) => client.renameRole(role, next)}
+                  onSaid={setError}
                 />
                 <div className="byd-symbols-inks" role="group" aria-label={t('symbols.colours.inks', { role })}>
                   {INKS.map((ink) => (

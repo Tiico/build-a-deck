@@ -31,3 +31,8 @@
 /* The cross stands in the box's top right corner and the box scrolls, so a ring drawn outside it
    was clipped by the box on two sides (#558). It is drawn inside the cross's own 44 px instead. */
 .byd-help-box .byd-help-close:focus-visible { outline-offset: -5px; }
+/* On the room's television the box is read from the sofa, at K26's floor for all text (#684). It
+   is wider than the column it opens from, since 24 px in 260 is four words a line. */
+[data-tv][data-room] .byd-help-box.byd-help-box { width: 480px; padding: 12px 56px 12px 16px; font-size: 24px; line-height: 1.35; }
+[data-tv][data-room] .byd-help-box .byd-help-topic { font-size: 24px; }
+[data-tv][data-room] .byd-help-box .byd-help-close { width: 56px; height: 56px; font-size: 32px; }

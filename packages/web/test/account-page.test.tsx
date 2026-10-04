@@ -574,3 +574,45 @@ describe('exporting and importing a game (G5, #529)', () => {
     expect(gone.at(-1)).toMatch(/^\/editor\?project=/)
   })
 })
+
+// What a game's ⋯ offers follows what the role may do (D3, #689): taking the game away is the
+// owner's, taking it with you the owner's and the co-editors', and starting a table everyone's
+// but a viewer's. A choice the server would refuse is not drawn, and a role with none gets no ⋯.
+describe('the game menu follows the role (D3, #689)', () => {
+  async function signIn(email: string): Promise<void> {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) })
+    await followMailedLink()
+  }
+  // Ada makes the game and shares it with Bo in `role`; the page is then Bo's.
+  async function homeAs(role: 'owner' | 'editor' | 'tester' | 'viewer'): Promise<void> {
+    await signIn('ada@example.com')
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    if (role !== 'owner') {
+      await fetch(`${run.http}/projects/${run.projectId}/invites`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com', role }) })
+      const token = /\/invites\/([A-Za-z0-9_-]+)/.exec(run.mail.sent.at(-1)?.text ?? '')?.[1] ?? ''
+      await signIn('bo@example.com')
+      expect((await fetch(`${run.http}/invites/${token}`, { method: 'POST' })).status).toBe(200)
+    }
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    render(<HomePage />)
+    await screen.findByText('Skogens herrar')
+  }
+  const choices = (): string[] => {
+    const more = screen.queryByRole('button', { name: 'Fler val för Skogens herrar' })
+    if (!more) return []
+    fireEvent.click(more)
+    return within(screen.getByRole('group', { name: 'Val för Skogens herrar' }))
+      .getAllByRole('button')
+      .map((b) => b.textContent ?? '')
+  }
+
+  it.each([
+    ['owner', ['Starta bord', 'Exportera…', 'Ta bort spelet']],
+    ['editor', ['Starta bord', 'Exportera…']],
+    ['tester', ['Starta bord']],
+    ['viewer', []],
+  ] as const)('offers the %s only what the role may do', async (role, offered) => {
+    await homeAs(role)
+    expect(choices()).toEqual(offered)
+  })
+})
