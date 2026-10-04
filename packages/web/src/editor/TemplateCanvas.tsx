@@ -13,7 +13,7 @@ import { afterPruning, bendStarted, bentEdge, bentPoints, edgeAt, grownPoint, ha
 import { DEFAULT_FILL, DEFAULT_LINE_HEIGHT, elementsFor, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
 import { galleryIdOf, glyphGeometry, newPattern, ownPoints, PATTERNS, shadowIdOf, shapeChoice, SHADOWS, SHAPE_GALLERY, type Geometry, type Shape } from './shapes.js'
 import { BACKS } from './backs.js'
-import { assetRef, assetUrl, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
+import { assetRef, assetUrl, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
 import { fieldsOf, takenNames } from './fields.js'
 import { NewField } from './NewField.js'
 import { isTyping } from './keys.js'
@@ -237,6 +237,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // an element, and the card moves under the pointer that is working on it. It is a view of this
   // desk and not of the game, so it is remembered in the browser and never in the document.
   const [folded, setFolded] = useState(foldedProps)
+  // The new picture whose library opens the moment its panel does (#700).
+  const [choosingFor, setChoosingFor] = useState<string | null>(null)
   const fold = (away: boolean) => {
     setFolded(away)
     rememberFoldedProps(away)
@@ -252,10 +254,20 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   const goesOn = goes?.kind === 'if' ? shownCards.filter((r) => holds(goes.when, r.fields)).length : drawnOn
   // A new element is added where it can be seen and is selected at once, so the next thing the
   // designer does — drag it, nudge it, bind it — is about the element they just asked for.
+  //
+  // It reads a column that already holds what it draws (#700). The deck's first column suits a
+  // text box and nothing else: a picture bound to «typ» drew a broken image with src «Playcard»,
+  // and a row of icons wrote «{Playcard}» in the warning red. A picture takes the first column the
+  // template already draws as one, a row of icons the first it already reads names from, and
+  // where there is none it reads no column and draws nothing until the designer says what.
   const add = (kind: ElementKind) => {
-    const element = newElement(kind, { taken: idsOnFace(faceTemplate), field: fields[0], card: CARD_STANDARD_63x88.physical })
+    const field = kind === 'image' ? imageFieldsOf(doc)[0] : kind === 'icons' ? iconFieldsOf(doc)[0] : fields[0]
+    const element = newElement(kind, { taken: idsOnFace(faceTemplate), field, card: CARD_STANDARD_63x88.physical })
     onAdd(element)
     onSelectElement(element.id)
+    // A picture that reads no column is a fixed picture with none chosen yet, so the game's
+    // pictures open at once: choosing one is the next thing the designer does with it.
+    if (kind === 'image' && field === undefined) setChoosingFor(element.id)
   }
 
   // One panel or all four: a stage draws exactly what it is named after, so nothing is mounted
@@ -493,6 +505,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             onPatch={(changed, gesture) => patch(el.id, changed, gesture)}
             onAddField={onAddField}
             point={pointAt}
+            chooseNow={choosingFor === el.id}
+            onChoosing={() => setChoosingFor(null)}
           />
         )}
         {layer && group && overridden.has(layer.element.id) && (
@@ -2008,6 +2022,8 @@ function Properties({
   onPatch,
   onAddField,
   point,
+  chooseNow = false,
+  onChoosing,
 }: {
   el: Element
   face: string
@@ -2027,6 +2043,10 @@ function Properties({
   // Which point of an own shape the canvas is standing on (L38), for the one command that is
   // about a point rather than about the whole shape.
   point: number | null
+  // Whether the game's pictures open as the panel does — a new picture with none chosen (#700) —
+  // and the word back that they have.
+  chooseNow?: boolean
+  onChoosing?(): void
 }) {
   const t = useT()
   // A picture of the template's own (#320): whether the window over the game's pictures is open
@@ -2035,6 +2055,11 @@ function Properties({
   // first column the template draws as a picture. Held here and not in the element: the model
   // carries what the card is, not what it used to be.
   const [choosing, setChoosing] = useState(false)
+  useEffect(() => {
+    if (!chooseNow) return
+    setChoosing(true)
+    onChoosing?.()
+  }, [chooseNow, onChoosing])
   const wasFrom = useRef(new Map<string, string>())
   const fixedRef = useRef<HTMLInputElement>(null)
   const [backToSwitch, setBackToSwitch] = useState(false)

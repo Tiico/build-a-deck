@@ -63,8 +63,9 @@ const SIZES: Record<ElementKind, { w: number; h: number }> = {
 }
 
 // A new element of a kind: in the middle of the card, so it is seen the moment it is there, with
-// a free id and the deck's first field to show. Everything else is a default the property panel
-// can change; nothing here is a decision the designer cannot take back.
+// a free id and the field the caller chose for it to show — or, with none, a value that draws
+// nothing (#700). Everything else is a default the property panel can change; nothing here is a
+// decision the designer cannot take back.
 export function newElement(kind: ElementKind, opts: { taken: readonly string[]; field?: string | undefined; card: CardSize }): Element {
   const { w, h } = SIZES[kind]
   const box = { id: freeId(kind, opts.taken), x: round((opts.card.widthMm - w) / 2), y: round((opts.card.heightMm - h) / 2), w, h }

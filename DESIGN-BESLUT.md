@@ -3254,6 +3254,11 @@ Rutnätet från variant C finns som ett valfritt lager, av som standard, och är
 Duken renderar fortfarande genom `CardPreview` och kompilatorn (E2): lagret som tar pekaren ligger ovanpå kortet i kortets egna millimeter och ritar inget kortinnehåll.
 Lagerordningen ändras genom att dra en rad i panelen och, eftersom en lista som bara kan dras är en lista tangentbordet har förlorat, med Alt och piltangent.
 Prototypen `packages/web/src/prototype/canvas` togs bort när den hade svarat.
+*Tillagt 2026-10-03 (#700):* lekens första fält gäller bara text.
+En ny bild binds till den första kolumn mallen redan ritar som bild, och en ny ikonrad till den första kolumn en ikonrad redan läser namn ur.
+Finns ingen sådan kolumn läser elementet ingen kolumn alls: bilden blir en fast bild utan vald bild och spelets bilder öppnas direkt, och ikonraden står tom.
+Skälet är speltestet 2026-10-02: en bild bunden till «typ» ritade en trasig bild med src «Playcard», och en ikonrad bunden till den skrev «{Playcard}» i varningsrött — en gissning som passar en textruta och inget annat.
+Varningen för ett okänt ikonnamn (L2) står kvar; det som ändrats är att verktyget inte längre skapar den själv.
 
 Byggt 2026-09-07 (prototypat i tre varianter, godkänd variant A med variant B:s regellista som sammanfattning — #13):
 En grupp är en regel på en kolumn, aldrig en lista med kort-id:n.
