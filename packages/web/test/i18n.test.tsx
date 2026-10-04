@@ -295,3 +295,15 @@ describe('the tool in the reader\'s own language (A4)', () => {
     history.replaceState(null, '', '/')
   })
 })
+
+// One quotation style per language (#728): «…» in Swedish, “…” in English, and never the typewriter's
+// straight mark, which the catalogue had in five places and which reads as a slip in either.
+describe('the catalogues quote the way their language does', () => {
+  it.each([
+    ['sv', sv, /["“”]/],
+    ['en', en, /["«»]/],
+  ] as const)('%s', (_, catalogue, wrong) => {
+    const off = Object.entries(catalogue).filter(([, text]) => wrong.test(text))
+    expect(off).toEqual([])
+  })
+})

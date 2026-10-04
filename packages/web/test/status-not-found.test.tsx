@@ -24,6 +24,9 @@ describe('the way out of a page that does not exist (#475)', () => {
     render(<NotFoundPage />)
     expect(await screen.findByRole('link', { name: 'Till startsidan' })).toBeTruthy()
     expect(screen.queryByRole('link', { name: 'Till mina spel' })).toBeNull()
+    // The sentence over the button says the same place the button goes (#728).
+    expect(document.body.textContent).not.toMatch(/dina spel/)
+    expect(document.body.textContent).toMatch(/gå till startsidan/)
   })
 
   it('leads to the reader s games once the reader is known to be signed in', async () => {

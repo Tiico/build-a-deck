@@ -874,7 +874,7 @@ export const svEditor = {
   'symbols.foot': '{n} av {of} symboler · {m} i spelet',
   'symbols.categories': 'Kategorier',
   'symbols.all': 'Alla',
-  'symbols.none': 'Inget med det namnet. Sök på vad symbolen är till för, som "försvar" eller "skörd".',
+  'symbols.none': 'Inget med det namnet. Sök på vad symbolen är till för, som «försvar» eller «skörd».',
   'symbols.taken': '{name} är i spelet.',
   'symbols.had.name': '{name}, i spelet',
   'symbols.removed': '{name} är borttagen.',
@@ -1205,7 +1205,7 @@ export const svEditor = {
   'setup.place.to.zone': 'till {zone}',
   'setup.seats.help': 'En ny plats får en hand och det platserna redan har. En plats som lämnar bordet tar sina zoner med sig.',
   'setup.seats.help.topic': 'platserna',
-  'setup.counters.homeless': 'Ingen plats har någon räknarzon, så inga brickor läggs på bordet. Ge platserna en med "Räknarzon per plats".',
+  'setup.counters.homeless': 'Ingen plats har någon räknarzon, så inga brickor läggs på bordet. Ge platserna en med «Räknarzon per plats».',
   // En zonfamilj (#175): samma zon vid var sin plats, som en rad med hur många platser som har den.
   // Antalet är upplysningen — den dagen en plats saknar sin hand är det listan som ska visa det.
   'setup.family.seats.one': '1 plats',
@@ -1288,9 +1288,9 @@ export const svEditor = {
   // Meningen citerar knappen i huvudet som den står just nu (#417). Den hette förut "Uppdatera
   // bordet" här, vilket var en förklaring på en annan flik av att knappen hade fel namn; knappen
   // heter numera det den gör, och meningen säger samma ord.
-  'tables.none': 'Inget bord ännu. "Starta bord" startar ett från den sparade versionen.',
+  'tables.none': 'Inget bord ännu. «Starta bord» startar ett från den sparade versionen.',
   'tables.noCards': 'Leken har inga kort än. Lägg till kort i Tabell innan du startar ett bord.',
-  'tables.menu.none': 'Inget bord ännu. "Starta bord" startar ett.',
+  'tables.menu.none': 'Inget bord ännu. «Starta bord» startar ett.',
   'tables.starting': 'Startar bordet…',
   'tables.started': 'Nytt bord startat: {table}.',
   'tables.new': 'Starta nytt bord',
