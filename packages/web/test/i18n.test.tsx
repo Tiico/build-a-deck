@@ -307,3 +307,35 @@ describe('the catalogues quote the way their language does', () => {
     expect(off).toEqual([])
   })
 })
+
+// A count is grammar in English and not in Swedish (#755): «1 kort» hides a missing singular that
+// «1 cards» does not. So every English message that puts a count in front of a plural noun is one
+// half of a `.one`/`.other` pair, and the call site picks by that count. A message whose count can
+// never be one is let through only by name, with the reason it cannot.
+describe('every count in front of a noun has a singular to be chosen', () => {
+  const neverOne: Record<string, string> = {
+    'media.add.batch': 'a batch is two files or more; one file says media.add.done',
+    'history.daysAgo': 'today and yesterday have words of their own; this is two to six days',
+    'home.when.days': 'today and yesterday have words of their own; this is two to six days',
+    'upload.one.only': 'said only when more than one file was dropped',
+    'wizard.name.max': 'the count is the name limit, a constant',
+    'library.use.many': 'one card says library.use',
+    'symbols.foot': 'the noun counts the whole library, a constant',
+    'setup.family.some': 'some of the seats, and not all of them, is two seats or more',
+    'fonts.catalog.search': 'the count is the whole font catalogue, hundreds of families',
+  }
+
+  it('pairs each one', () => {
+    // A count, by the names the catalogue gives one, in front of a word in the plural.
+    const counted = /\{(?:n|m|of|total|had|shown|ok|count)\} [a-z]+s\b/
+    const unpaired = Object.entries(en)
+      .filter(([key, text]) => counted.test(text) && !(key in neverOne))
+      .map(([key]) => key)
+      .filter((key) => !(/\.other(?=\.|$)/.test(key) && key.replace(/\.other(?=\.|$)/, '.one') in en))
+    expect(unpaired).toEqual([])
+  })
+
+  it('lets nothing through by name that is not in the catalogue', () => {
+    expect(Object.keys(neverOne).filter((key) => !(key in en))).toEqual([])
+  })
+})

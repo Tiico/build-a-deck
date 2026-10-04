@@ -38,7 +38,7 @@ describe('the last move somebody else made (#484)', () => {
     vi.useFakeTimers({ now: NOW })
     const { container } = render(<LastMove view={view} activity={[line(1, 'B', 40), line(2, 'A', 5)]} seat="A" />)
     const el = container.querySelector('[data-last-move]') as HTMLElement
-    expect(el.textContent).toBe('Senast: Bo drog 1 från Draghög · för 40 s sedan')
+    expect(el.textContent).toBe('Senast: Bo drog 1 kort från Draghög · för 40 s sedan')
     expect(el.style.getPropertyValue('--seat')).toBe(seatColor(1))
     act(() => vi.advanceTimersByTime(60_000))
     expect(el.textContent).toMatch(/· för 1 min sedan$/)
