@@ -37,7 +37,7 @@ describe('how many copies a card has (#479)', () => {
     fireEvent.change(cell, { target: { value: '-2' } })
     expect(onCell).not.toHaveBeenCalled()
     expect(cell.getAttribute('aria-invalid')).toBe('true')
-    expect(document.getElementById(cell.getAttribute('aria-describedby') ?? '')?.textContent).toBe('antal är ett heltal från 0')
+    expect(document.getElementById(cell.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Antal är ett heltal från 0')
     fireEvent.change(cell, { target: { value: '4' } })
     expect(onCell).toHaveBeenLastCalledWith('dragon', 'antal', 4, expect.any(String))
     expect(cell.getAttribute('aria-invalid')).not.toBe('true')

@@ -93,7 +93,7 @@ describe('DataTable sorting (a view, #15)', () => {
     fireEvent.click(screen.getByRole('button', { name: /^kostnad/ }))
     expect(shownOrder()).toEqual(['knight', 'wizard', 'dragon'])
 
-    fireEvent.click(screen.getByRole('button', { name: /^antal/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Antal/ }))
     expect(shownOrder()).toEqual(['knight', 'dragon', 'wizard'])
   })
 
@@ -198,7 +198,7 @@ describe('DataTable sorting from the keyboard (#15)', () => {
     // the × that took the column away — so a designer tabbing to the column she wanted passed
     // through a control that removes one on the way to each. They are behind the head's own door
     // now (#46 on #32), which is one stop rather than one per column.
-    expect(buttons.map(nameOf)).toEqual(['id', 'Titel', 'body', 'kostnad', 'antal', 'Kolumner'])
+    expect(buttons.map(nameOf)).toEqual(['id', 'Titel', 'body', 'kostnad', 'Antal', 'Kolumner'])
     for (const button of buttons) {
       await user.tab()
       expect(document.activeElement).toBe(button)

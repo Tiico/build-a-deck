@@ -14,7 +14,7 @@ import { DEFAULT_FILL, DEFAULT_LINE_HEIGHT, elementsFor, pathFor, shapeTakes, ti
 import { galleryIdOf, glyphGeometry, newPattern, ownPoints, PATTERNS, shadowIdOf, shapeChoice, SHADOWS, SHAPE_GALLERY, type Geometry, type Shape } from './shapes.js'
 import { BACKS } from './backs.js'
 import { assetRef, assetUrl, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
-import { fieldsOf, takenNames } from './fields.js'
+import { fieldLabel, fieldsOf, takenNames } from './fields.js'
 import { NewField } from './NewField.js'
 import { isTyping } from './keys.js'
 import { cardsInGroup, groupColumn, groupsOf, idsOnFace, layersOf, overriddenIds, ruleLabel, valuesIn, type Layer } from './groups.js'
@@ -289,7 +289,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
               <option value="">{t('canvas.groupBy.none')}</option>
               {fields.map((f) => (
                 <option key={f} value={f}>
-                  {f}
+                  {fieldLabel(f, t)}
                 </option>
               ))}
             </select>
@@ -346,7 +346,11 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
                   onRename,
                 })}
             markOf={(id) => markOf(panel, column, group, id, t)}
-            conditionOf={(one) => (one.kind === 'if' ? t('canvas.if.row', { condition: conditionWords(one.when, t), n: shownCards.filter((r) => holds(one.when, r.fields)).length }) : null)}
+            conditionOf={(one) => {
+              if (one.kind !== 'if') return null
+              const n = shownCards.filter((r) => holds(one.when, r.fields)).length
+              return t(n === 1 ? 'canvas.if.row.one' : 'canvas.if.row.other', { condition: conditionWords(one.when, t), n })
+            }}
             pictureName={(hash) => doc.pictures?.[hash]?.name ?? t('canvas.props.picture.unnamed')}
             removed={new Set(panel.filter((l) => l.source === 'removed').map((l) => l.element.id))}
             labelledBy="layers-heading"
@@ -440,7 +444,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
         {swapping && (
           <Question
             className="byd-canvas-question"
-            label={t('canvas.back.swap.ask', { name: swapping.name, n: doc.template.faces['back']?.base.length ?? 0 })}
+            label={backSwapAsk(swapping.name, doc.template.faces['back']?.base.length ?? 0, t)}
             confirm={t('canvas.back.swap.yes')}
             onConfirm={() => {
               onReplaceFace(swapping.base)
@@ -448,7 +452,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             }}
             onCancel={swapBack}
           >
-            {t('canvas.back.swap.ask', { name: swapping.name, n: doc.template.faces['back']?.base.length ?? 0 })}
+            {backSwapAsk(swapping.name, doc.template.faces['back']?.base.length ?? 0, t)}
           </Question>
         )}
         {goes && (
@@ -1619,7 +1623,7 @@ function Fill({ fill, fields, valuesIn, onPatch }: { fill: Paint | undefined; fi
             <select value={rule.field} onChange={(e) => onPatch({ fill: { ...rule, field: e.target.value } })}>
               {[...new Set([...fields, rule.field])].map((f) => (
                 <option key={f} value={f}>
-                  {f}
+                  {fieldLabel(f, t)}
                 </option>
               ))}
             </select>
@@ -1783,7 +1787,7 @@ function ConditionProps({ el, fields, valuesIn, cards, onPatch, onShow }: { el: 
           <select value={el.when.field} onChange={(e) => write(equals ? { field: e.target.value, equals: (el.when as { equals: string }).equals } : { field: e.target.value, nonEmpty: true })}>
             {[...new Set([...fields, el.when.field])].map((f) => (
               <option key={f} value={f}>
-                {f}
+                {fieldLabel(f, t)}
               </option>
             ))}
           </select>
@@ -1806,7 +1810,7 @@ function ConditionProps({ el, fields, valuesIn, cards, onPatch, onShow }: { el: 
             </datalist>
           </label>
         )}
-        <p className="byd-props-wide byd-canvas-affects">{t('canvas.if.count', { n: on.length, of: cards.length })}</p>
+        <p className="byd-props-wide byd-canvas-affects">{t(cards.length === 1 ? 'canvas.if.count.one' : 'canvas.if.count.other', { n: on.length, of: cards.length })}</p>
         {onShow && first && (
           <button type="button" className="byd-props-wide byd-props-show byd-secondary" onClick={() => onShow(first.id)}>
             {t('canvas.if.show')}
@@ -2220,7 +2224,7 @@ function Properties({
                 {!('field' in el.bind) && <option value="">{t('canvas.props.field.none')}</option>}
                 {fields.map((f) => (
                   <option key={f} value={f}>
-                    {f}
+                    {fieldLabel(f, t)}
                   </option>
                 ))}
                 {/* The second door (#32): the designer noticed the column was missing here, so this
@@ -2392,7 +2396,7 @@ function ShapeProps({ el, point, fields, valuesIn, onPatch }: { el: Shape; point
         {el.pattern ? ` · ${t('canvas.props.sum.pattern')}` : ''}
       </>
     ) : (
-      t('canvas.props.sum.byField', { field: el.fill.field })
+      t('canvas.props.sum.byField', { field: fieldLabel(el.fill.field, t) })
     )
   return (
     <>
@@ -2733,3 +2737,6 @@ function BackGallery({ onPick }: { onPick(back: { name: string; base: Element[] 
     </div>
   )
 }
+
+// What replacing the back throws away, counted in the reader's grammar (#755).
+const backSwapAsk = (name: string, n: number, t: T): string => t(n === 1 ? 'canvas.back.swap.ask.one' : 'canvas.back.swap.ask.other', { name, n })

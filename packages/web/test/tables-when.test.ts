@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { lastMoveWords } from '../src/editor/when.js'
 import { translate, type Lang, type T } from '../src/i18n/index.js'
 
@@ -23,6 +23,10 @@ beforeAll(() => {
 afterAll(() => {
   if (zoneWas === undefined) delete process.env['TZ']
   else process.env['TZ'] = zoneWas
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 const t = (lang: Lang): T => (key, params) => translate(lang, key, params)
@@ -50,11 +54,27 @@ describe('when a table last moved (#228)', () => {
   })
 
   it('speaks the reader’s language and not sv-SE', () => {
+    vi.stubGlobal('navigator', { language: 'en-US', languages: ['en-US'] })
     // Which is more than a translated word: the English reader gets the English order of a date
     // and the twelve-hour clock she reads by, from the same instant the Swedish reading above
     // calls `4 september 14:02`.
     expect(lastMoveWords(at('2026-09-04T14:02:00'), NOW, 'en', en)).toBe('last move September 4 02:02 PM')
     expect(lastMoveWords(at('2026-09-16T00:10:00'), NOW, 'en', en)).toBe('last move Yesterday 12:10 AM')
+  })
+
+  // English is one catalogue and many clocks (#755). `en` on its own is the American reading, so
+  // every English reader was told the twelve-hour clock; the browser says which English it is.
+  it('reads the clock and the date the way the reader’s own English does', () => {
+    vi.stubGlobal('navigator', { language: 'en-GB', languages: ['en-GB', 'en'] })
+    expect(lastMoveWords(at('2026-09-17T10:53:00'), NOW, 'en', en)).toBe('last move Today 10:53')
+    expect(lastMoveWords(at('2026-09-04T14:02:00'), NOW, 'en', en)).toBe('last move 4 September 14:02')
+  })
+
+  it('keeps to the catalogue’s language when the browser speaks another', () => {
+    vi.stubGlobal('navigator', { language: 'sv-SE', languages: ['sv-SE'] })
+    expect(lastMoveWords(at('2026-09-04T14:02:00'), NOW, 'en', en)).toBe('last move September 4 02:02 PM')
+    vi.stubGlobal('navigator', { language: 'en-GB', languages: ['en-GB'] })
+    expect(lastMoveWords(at('2026-09-04T14:02:00'), NOW, 'sv', sv)).toBe('senaste drag 4 september 14:02')
   })
 
   it('says a table has not moved at all rather than inventing a moment', () => {

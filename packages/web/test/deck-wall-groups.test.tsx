@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { configure, fireEvent, render, screen, within } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
 import { DeckWall } from '../src/editor/DeckWall.js'
+import { Language } from '../src/i18n/index.js'
 import { projectDoc } from './project-doc.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -435,5 +436,21 @@ describe('a search that finds nothing (#477)', () => {
     const id = fold.getAttribute('aria-controls')
     expect(fold.getAttribute('aria-expanded')).not.toBeNull()
     expect(id && document.getElementById(id)).toBeTruthy()
+  })
+})
+
+// English counts in grammar where Swedish does not (#755): «1 kort» hid that the foot always took
+// the plural, and an English one-card game said «1 cards · No remarks».
+describe('the wall’s foot in English', () => {
+  it('says one card in the singular', () => {
+    const doc = projectDoc()
+    doc.rows = doc.rows.slice(0, 1)
+    render(
+      <Language lang="en">
+        <DeckWall doc={doc} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} />
+      </Language>,
+    )
+    const foot = document.querySelector('.byd-crown-foot')!
+    expect(foot.querySelector('[aria-live]')?.textContent).toBe('1 card')
   })
 })
