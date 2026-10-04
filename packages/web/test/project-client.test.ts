@@ -6,6 +6,7 @@ import { LIBRARY } from '../src/editor/symbols.js'
 import { startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 import { assetTypeDeclaring } from '@byd/protocol'
+import { Said } from '../src/i18n/said.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
@@ -1501,5 +1502,93 @@ describe('an editor whose role may not change the game', () => {
     expect(client.doc).toBe(before)
     expect(client.dirty).toBe(false)
     expect(client.canUndo).toBe(false)
+  })
+})
+
+// A file the service is certain to refuse is refused here, before a byte of it leaves (#742). The
+// gate's own rules — the four picture formats, read out of the bytes, and the 8 MB a file may
+// weigh — are the protocol's and not the server's alone, so asking them in the browser is the same
+// question asked where the answer is free: a 19.6 MB photo used to travel the whole way over a home
+// line before the 413 came back, and every refusal left a resource error in the console. The
+// document is not touched either, so nothing is drawn from bytes that are never coming.
+describe('a file the gate would refuse never leaves the browser (#742)', () => {
+  const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3])
+  const sent = (): { posts: string[]; hangUp: () => void } => {
+    const real = globalThis.fetch
+    const posts: string[] = []
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      if ((init?.method ?? 'GET') === 'POST') posts.push(new URL(String(input)).pathname)
+      return real(input, init)
+    }) as typeof fetch
+    return {
+      posts,
+      hangUp: () => {
+        globalThis.fetch = real
+      },
+    }
+  }
+  // A PNG that weighs more than the gate takes: the signature first, so only its size is wrong.
+  const heavy = (): File => {
+    const bytes = new Uint8Array(9 * 1024 * 1024)
+    bytes.set(PNG)
+    return new File([bytes], 'stor.png', { type: 'image/png' })
+  }
+  const svg = (): File => new File(['<svg xmlns="http://www.w3.org/2000/svg"/>'], 'logga.svg', { type: 'image/svg+xml' })
+
+  it.each([
+    ['too heavy', heavy, 'stor.png', 'filen är för stor (max 8 MB)'],
+    ['a drawing and not a picture', svg, 'logga.svg', 'filen är inte PNG, JPEG, GIF eller WebP'],
+  ] as const)('refuses a picture that is %s without posting it or touching the game', async (_what, file, name, why) => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const before = client.doc
+    const line = sent()
+    try {
+      // The picture is named, as a taken-back one is (L37) — but nothing is said to be removed,
+      // because nothing was added.
+      await expect(client.addPicture(file())).rejects.toThrow(`Bilden ${name} kunde inte laddas upp: ${why}`)
+      await expect(client.uploadAsset(file(), 'image')).rejects.toThrow(why)
+      // Said in the reader's words, so a surface shows the reason rather than its own «failed» (#812).
+      await expect(client.addPicture(file())).rejects.toBeInstanceOf(Said)
+    } finally {
+      line.hangUp()
+    }
+    expect(line.posts).toEqual([])
+    expect(client.doc).toBe(before)
+    expect(client.undo()).toBeNull()
+  })
+})
+
+// A picture uploaded from a card's own image cell is a picture brought into the game like any
+// other (#742, L22 beslut 6): it keeps its file name, and the cell is written in the same step, so
+// one step back takes back the one thing the designer did.
+describe("a picture uploaded from a card's cell (#742, L22)", () => {
+  const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 4, 5, 6])
+
+  it('keeps the file name and writes the cell, as one step back', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const cardRef = client.doc.rows[0]!.id
+    const before = client.doc
+
+    const hash = await client.addPicture(new File([PNG], 'drake.png', { type: 'image/png' }), undefined, { cardRef, field: 'art' })
+
+    expect(client.doc.pictures?.[hash]).toEqual({ name: 'drake.png' })
+    expect(client.doc.rows[0]!.fields['art']).toBe(`asset:${hash}`)
+    client.undo()
+    expect(client.doc.pictures?.[hash]).toBeUndefined()
+    expect(client.doc.rows[0]!.fields['art']).toBe(before.rows[0]!.fields['art'])
+  })
+
+  it('writes the cell from a picture the game already has, under the name it already has', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const cardRef = client.doc.rows[1]!.id
+    const hash = await client.addPicture(new File([PNG], 'drake.png', { type: 'image/png' }))
+
+    expect(await client.addPicture(new File([PNG], 'kopia.png', { type: 'image/png' }), undefined, { cardRef, field: 'art' })).toBe(hash)
+
+    expect(client.doc.pictures?.[hash]).toEqual({ name: 'drake.png' })
+    expect(client.doc.rows[1]!.fields['art']).toBe(`asset:${hash}`)
   })
 })

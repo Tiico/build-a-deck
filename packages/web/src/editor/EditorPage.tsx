@@ -150,7 +150,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // A running table (L5) with what admits people to it (DRIFT §9): the code and the host key.
   // A table picked up after a reload (`running`) has no key in the page; the account is the
   // authority for it instead.
-  const [table, setTable] = useState<{ id: string; version: string; code: string; hostKey?: string; kind: 'new' | 'refreshed' | 'running' } | null>(null)
+  const [table, setTable] = useState<{ id: string; version: string; code: string; hostKey?: string; kind: 'new' | 'refreshed' | 'running'; saved?: boolean } | null>(null)
   // The table outlives the page (#477). Without this a reload put «Starta bord» back in the header
   // while the table was still running, and the press that followed started a second table with a
   // new code — the guests at the first never saw the update. The newest table that still runs and
@@ -345,8 +345,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   }
   const startTable = async () => {
     try {
-      const started = await client.startTable()
-      setTable({ ...started, kind: 'new' })
+      const { saved, ...started } = await client.startTable()
+      setTable({ ...started, kind: 'new', saved })
       setNotice(null)
     } catch {
       setNotice(t('editor.table.error.start'))
@@ -461,6 +461,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             }
           : {})}
         onOpenTemplate={() => setStage('canvas')}
+        // A font nothing pins is mended where the game's typefaces are (L57, #737).
+        onOpenFonts={() => {
+          revealThemeSection('fonts')
+          setStage('theme')
+        }}
       />
     ),
     template: () => (
@@ -520,7 +525,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         reading={!client.mayEdit}
         project={projectId ?? undefined}
         assetBase={http}
-        onUpload={(file) => client.uploadAsset(file, 'image', t)}
+        onUpload={(file, onto) => client.addPicture(file, t, onto)}
         onSymbol={(symbol) => client.useSymbol(symbol, undefined, t)}
         compareWith={compare ?? undefined}
         onStopCompare={() => setCompare(null)}
@@ -707,7 +712,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       )}
       {table && (
         <div className="byd-editor-table-link" role="status" {...(lost !== null ? { 'data-lost': '' } : {})} {...(stalled ? { 'data-stalled': '' } : {})}>
-          {t(table.kind === 'new' ? 'editor.table.started' : table.kind === 'running' ? 'editor.table.running' : 'editor.table.refreshed', { version: table.version })}{' '}
+          {t(table.kind === 'new' ? (table.saved ? 'editor.table.savedAndStarted' : 'editor.table.started') : table.kind === 'running' ? 'editor.table.running' : 'editor.table.refreshed', { version: table.version })}{' '}
           {lost !== null ? (
             <>
               <span className="byd-editor-warning">{t(lost === 1 ? 'editor.table.lost.one' : 'editor.table.lost.other', { n: lost })}</span>{' '}

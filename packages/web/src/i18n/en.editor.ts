@@ -98,6 +98,7 @@ export const enEditor = {
   'editor.updatingTable.short': 'Updating…',
   'editor.updatingTable': 'Updating the table…',
   'editor.table.started': 'New table started on {version} —',
+  'editor.table.savedAndStarted': 'Saved {version} and started a new table on it —',
   'editor.table.refreshed': 'Table updated to {version} —',
   'editor.table.running': 'The table runs {version} —',
   'editor.table.lost.one': '{n} card could not be rendered. The table stays on its old version.',
@@ -203,6 +204,7 @@ export const enEditor = {
   'wall.checks.fix': 'Mend it in the template',
   'wall.checks.fix.said': '{what} mended in the template.',
   'wall.checks.fix.none': 'This one needs a choice of yours; it cannot be mended for you.',
+  'wall.checks.fix.fonts': 'Add the font under Theme ›',
   'wall.checks.fix.readOnly': 'Whoever may change the game can fix this in the template.',
   'wall.severity.error': 'error',
   'wall.severity.warning': 'warning',
@@ -1319,6 +1321,7 @@ export const enEditor = {
   // notice has to be all the clearer where the doing was done: it names which of what she did
   // went away again, and why it did, after the colon.
   'upload.undone': '{what} could not be uploaded and has been removed again: {why}',
+  'upload.refused': '{what} could not be uploaded: {why}',
   'upload.undone.symbol': 'The symbol {name}',
   'upload.undone.font': 'The typeface {name}',
   'upload.undone.picture': 'The picture {name}',

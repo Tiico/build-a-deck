@@ -189,8 +189,12 @@
 .byd-join-table button { max-width: min(var(--seat-room-along, var(--byd-seat-unbounded)), var(--seat-room-across, var(--byd-seat-unbounded))); overflow: hidden; }
 .byd-join-table button > span { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .byd-join-table button[data-shares] { --seat-room-along: calc(var(--byd-seat-pitch-x) - var(--byd-seat-gap)); }
-.byd-join-table button[data-edge='E'],
-.byd-join-table button[data-edge='W'] { --seat-room-across: calc((var(--byd-felt-w) + 2 * var(--byd-seat-hang-x) - var(--byd-seat-gap)) / 2); }
+/* North and south are not bounded across, and #42 left them unbounded along when alone — but
+   empty felt beside a pill is not endless felt. A 59-letter name grew the north pill to 398 px on
+   a 390 px phone, off the screen at both ends, while east and west beside it were cut at 133
+   (#750). So every pill takes the east-west cap: one name tag, cut at one width on every edge,
+   and on the smallest felt that still leaves a north pill well inside the felt's own width. */
+.byd-join-table button { --seat-room-across: calc((var(--byd-felt-w) + 2 * var(--byd-seat-hang-x) - var(--byd-seat-gap)) / 2); }
 /* A seat with an edge is hung off that edge of the felt. A seat without one — a table that gives
    it no hand says nothing about which side it is on — keeps its place in the row above, because
    a picker that guesses a side is how every seat once ended up on the same one (#39).

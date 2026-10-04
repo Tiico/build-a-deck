@@ -154,8 +154,10 @@ describe('image cells (E1)', () => {
 
     const file = new File(['png'], 'riddare.png', { type: 'image/png' })
     fireEvent.change(within(rows[1]!).getByLabelText('Ladda upp bild för knight'), { target: { files: [file] } })
-    await waitFor(() => expect(onCell).toHaveBeenCalledWith('knight', 'art', `asset:${'d'.repeat(64)}`))
-    expect(onUpload).toHaveBeenCalledWith(file)
+    // The upload is handed the cell it came from, and writes it in the same step as the picture
+    // it brings into the game, under the file's name (#742) — so the table writes nothing itself.
+    await waitFor(() => expect(onUpload).toHaveBeenCalledWith(file, { cardRef: 'knight', field: 'art' }))
+    expect(onCell).not.toHaveBeenCalled()
 
     fireEvent.click(within(rows[0]!).getByRole('button', { name: 'Ta bort bild för dragon' }))
     expect(onCell).toHaveBeenCalledWith('dragon', 'art', '')
