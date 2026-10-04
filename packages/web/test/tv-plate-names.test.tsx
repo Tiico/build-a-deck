@@ -172,15 +172,20 @@ describe('a long name on the room’s television stays on its own seat’s plate
   }, 120_000)
 
   // Cut, not renamed: the plate says the beginning of the name and marks that the rest is
-  // missing, and the whole name is still in the page for whoever reads it out.
+  // missing, and the whole name is still in the page for whoever reads it out. A plate along the
+  // top or the bottom of a four-seat table has room for most of sixty letters, and whether the
+  // last few fit is the typeface's business — so what holds there on every machine is that a cut
+  // is marked. A plate at the side has a third of that, which no face fits sixty letters into.
   it('cuts the name with an ellipsis and keeps the whole of it in the page', async () => {
     const scene = sceneOf(feltOf(4))
     const reading = await onPage(await roomMarkup(scene), (page) => page.evaluate(READ) as Promise<Reading>)
+    const sides = scene.seats.filter((s) => s.edge === 'E' || s.edge === 'W').map((s) => s.id)
+    expect(sides).toHaveLength(2)
     for (const plate of reading.plates) {
       const name = scene.seats.find((s) => s.id === plate.seat)!.name!
       expect(plate.text).toContain(name)
-      expect(plate.cut).toBe(true)
       expect(plate.marked).toBe(true)
+      if (sides.includes(plate.seat)) expect(plate.cut).toBe(true)
     }
   }, 120_000)
 })
