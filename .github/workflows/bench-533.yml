@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        kind: [fits, fits, fits, fits, fits, fits, render, render]
+        kind: [base, fit, base, fit, base, fit, base, fit]
     services:
       postgres:
         image: postgres:17-alpine
@@ -55,11 +55,12 @@ jobs:
         working-directory: packages/server
         run: for i in $(seq 1 10); do pnpm exec vitest run >> /tmp/bench.log 2>&1 || true; done
       - name: renderer stress beside busy loops
-        if: matrix.kind == 'render'
+        if: matrix.kind == 'base' || matrix.kind == 'fit'
         working-directory: packages/render
         run: |
-          for i in 1 2; do timeout 560 node -e 'const e=Date.now()+540000;while(Date.now()<e){}' & done
-          for i in 1 2 3 4 5 6; do DEBUG=pw:browser timeout 600 pnpm exec tsx scripts/stress533.ts 540 p$i >> /tmp/bench.log 2>&1 & done
+          # Churn: busy loops that come and go every few seconds, and browsers launched for one card each.
+          ( end=$((SECONDS + 600)); while [ $SECONDS -lt $end ]; do for i in 1 2 3; do timeout 4 node -e 'while(true){}' & done; wait; sleep 3; done ) &
+          for i in $(seq 1 10); do BENCH_VARIANT=${{ matrix.kind }} PER_BROWSER=1 timeout 660 pnpm exec tsx scripts/stress533.ts 600 p$i >> /tmp/bench.log 2>&1 & done
           wait || true
       - name: what was seen
         if: always()

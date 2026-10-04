@@ -73,7 +73,12 @@ export class Renderer {
       const box = await cardBox(page)
       if (!box) throw new Error('compiled output has no [data-card]')
       const clip = { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) }
-      const png = await probedShot(page, 'renderer', { type: 'png', clip, animations: 'disabled', caret: 'hide' })
+      if (process.env.BENCH_VARIANT === 'fit') {
+        // BENCH: the view is the card, so the capture is the view as it stands and Chromium never resizes it.
+        await page.setViewportSize({ width: clip.x + clip.width, height: clip.y + clip.height })
+        await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+      }
+      const png = await probedShot(page, `renderer-${process.env.BENCH_VARIANT ?? 'base'}`, { type: 'png', clip, animations: 'disabled', caret: 'hide' })
       return { png, smallestPt: fitted.length > 0 ? Math.min(...fitted.map((f) => f.sizePt)) : null }
     } finally {
       await context.close()

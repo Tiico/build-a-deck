@@ -13,7 +13,7 @@ while (Date.now() < until) {
   // A fresh browser per batch, as the server fixture's renderAll does.
   const r = await Renderer.launch()
   try {
-    for (let i = 0; i < 4 && Date.now() < until; i++) {
+    for (let i = 0; i < Number(process.env.PER_BROWSER ?? 4) && Date.now() < until; i++) {
       const t0 = Date.now()
       try {
         await r.renderTexture(compiled({ title: `Drake ${tag} ${ok + fail}`, body: 'Gör 2 skada. '.repeat(i + 1) }), { dpi: 150 })
