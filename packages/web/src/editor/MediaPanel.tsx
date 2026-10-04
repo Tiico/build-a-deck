@@ -468,9 +468,9 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
 
 // Which question is asked when a picture goes (#318, #320): the cards that lose it, the template
 // that loses it, or both — each said as a sentence rather than as a count of things.
-function removeQuestion(asked: { cards: readonly string[]; template: boolean }): 'media.remove.question' | 'media.remove.question.one' | 'media.remove.question.template' | 'media.remove.question.template.one' | 'media.remove.question.template.cards' {
-  if (asked.template) return asked.cards.length === 0 ? 'media.remove.question.template' : asked.cards.length === 1 ? 'media.remove.question.template.one' : 'media.remove.question.template.cards'
-  return asked.cards.length === 1 ? 'media.remove.question.one' : 'media.remove.question'
+function removeQuestion(asked: { cards: readonly string[]; template: boolean }): 'media.remove.question.other' | 'media.remove.question.one' | 'media.remove.question.template' | 'media.remove.question.template.one' | 'media.remove.question.template.other' {
+  if (asked.template) return asked.cards.length === 0 ? 'media.remove.question.template' : asked.cards.length === 1 ? 'media.remove.question.template.one' : 'media.remove.question.template.other'
+  return asked.cards.length === 1 ? 'media.remove.question.one' : 'media.remove.question.other'
 }
 
 // The cards a question names: the first few by name, and the rest counted. A game of real size

@@ -1276,7 +1276,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             {replacing && (
               <Question
                 className="byd-data-bulk"
-                label={t('table.import.ask', { had: doc.rows.length, n: replacing.rows.length, file: replacing.file })}
+                label={t(doc.rows.length === 1 ? 'table.import.ask.one' : 'table.import.ask.other', { had: doc.rows.length, n: replacing.rows.length, file: replacing.file })}
                 confirm={t('table.import.yes')}
                 cancel={t('editor.cancel')}
                 onConfirm={() => {
@@ -1285,7 +1285,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 }}
                 onCancel={() => setReplacing(null)}
               >
-                {t('table.import.ask', { had: doc.rows.length, n: replacing.rows.length, file: replacing.file })}
+                {t(doc.rows.length === 1 ? 'table.import.ask.one' : 'table.import.ask.other', { had: doc.rows.length, n: replacing.rows.length, file: replacing.file })}
               </Question>
             )}
             {imported && <span role="status">{imported}</span>}
@@ -1385,7 +1385,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           addCardRef.current?.focus()
         }}
       >
-        {t('table.skip', { n: shown.length })}
+        {t(shown.length === 1 ? 'table.skip.one' : 'table.skip.other', { n: shown.length })}
       </a>
       <div className="byd-data-scroll" ref={scrollRef}>
       <table className="byd-data">
@@ -1852,7 +1852,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
               {t('table.bulk.set.box')} <span aria-hidden="true">▾</span>
             </button>
             {setting && (
-              <Lifted handle={setBox} label={t('table.bulk.set.label', { n: chosen.length })} className="byd-data-set-box" onClose={() => setSetting(false)}>
+              <Lifted handle={setBox} label={t(chosen.length === 1 ? 'table.bulk.set.label.one' : 'table.bulk.set.label.other', { n: chosen.length })} className="byd-data-set-box" onClose={() => setSetting(false)}>
             <label>
               {t('table.bulk.field')}
               <select aria-label={t('table.column')} value={field} onChange={(event) => setBulkField(event.target.value)}>
@@ -1916,7 +1916,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 setBulkImage(null)
               }}
             >
-              {bulkIsImage ? t('table.bulk.setImage', { n: chosen.length }) : t('table.bulk.set', { field, n: chosen.length })}
+              {bulkIsImage ? t(chosen.length === 1 ? 'table.bulk.setImage.one' : 'table.bulk.setImage.other', { n: chosen.length }) : t(chosen.length === 1 ? 'table.bulk.set.one' : 'table.bulk.set.other', { field, n: chosen.length })}
             </button>
               </Lifted>
             )}
@@ -2156,7 +2156,7 @@ function importSummary(doc: ProjectDoc, rows: readonly ProjectDoc['rows'][number
   const gone = doc.rows.filter((r) => !now.has(r.id)).length
   const known = new Set(['id', ...fieldsOf(doc)])
   const columns = [...new Set(rows.flatMap((r) => Object.keys(r.fields)))].filter((f) => !known.has(f))
-  const read = `${t('table.import.read', { n: rows.length })} ${t(fresh === 1 ? 'table.import.fresh.one' : 'table.import.fresh.other', { n: fresh })}, ${t('table.import.gone', { n: gone })}.`
+  const read = `${t(rows.length === 1 ? 'table.import.read.one' : 'table.import.read.other', { n: rows.length })} ${t(fresh === 1 ? 'table.import.fresh.one' : 'table.import.fresh.other', { n: fresh })}, ${t('table.import.gone', { n: gone })}.`
   return columns.length === 0 ? read : `${read} ${t(columns.length === 1 ? 'table.import.column.one' : 'table.import.column.other', { names: columns.join(', ') })}`
 }
 
