@@ -2646,6 +2646,7 @@ Talet är `table.css`:s eget, det som redan döljer den spelade filtens namn, me
 Därför är det renderaren som svarar och inte arket.
 Typen sätts i filtens tätaste: 12 px och ingen spärr, i stället för 13 px och 1,5.
 Spärren ensam är en sjättedel av namnets bredd — samma femtedel K19 tog ur bordsläget ovan — och utan den är `Räknare A` 62 px i stället för 76, vilket är vad som gör att två platser mitt emot varandra på en telefon båda får säga sina namn.
+*Ersatt 2026-10-04 (#685): stycket nedan om att stå ovanför zonen gäller inte längre; ett namn står bredvid sin zon på varje filt, och sedan på en fri sida — se revisionen längst ner i K19.*
 Och vid öst- och västkanten står namnet **ovanför sin egen zon i stället för bredvid den**, förankrat i den ände som vetter mot kanten och växande inåt, så att det stannar i sin egen halva av filten.
 Bredvid zonen växer det från zonens inre kant mot mitten, där de delade högarna står; på en filt så här liten når den räckvidden förbi mitten och möter både brickan och namnet från platsen mitt emot, som kommer andra vägen.
 Ovanför sin egen zon når det bara halva den sträckan, och de två platserna mitt emot varandra delar inte längre rad alls.
@@ -2728,6 +2729,48 @@ Namnen ritas fortfarande och döljs bara, så ett tänt namn står där regeln o
 Det gäller Bord-fliken och ingen annan filt; spelets filter säger sina namn som förut.
 De två avvisade varianterna — namnet inne i zonen, som vid 1024 kortades till «Rä…», och en filt som vändes ett kvarts varv och ändå krockade — står med mätningar och skärmbilder i #581 och i `docs/ux-audits/2026-09-29/prototyper/581/`.
 Samma beslut: under 1280 är huvudets väg hem en pil (←) med namnet «Mina spel», så att «Sparat» får luft mellan revisionen och flikarna.
+
+Reviderat 2026-10-04 (#685, beställarens beslut G 2026-10-03 efter prototyp): **ett zonnamn står aldrig i en annan zons ruta, och regeln är densamma på varje filt.**
+
+K19 säger vilken sida av sin egen zon ett namn står på, men ingenting om vad som finns där.
+Zonerna är formgivarens (K2, B5) och får ligga var som helst, så den sidan kan vara grannens.
+Med fyra platser ligger Sal's Saloon 30 mm under «Framför B», och saloonens namn stod i Framför B och Framför B:s i saloonen — på TV:n, i bordsläget, på /online, på Bord-fliken och hos observatören.
+Med åtta platser hos observatören vid 390 stod fyra räknarnamn i sina grannzoner.
+Prototypen mätte nio varianter på den byggda appen; bara E och G nådde noll namn i en annan zons ruta, och G var ensam om att också vara ren hos observatören vid 390 med åtta platser.
+
+**#76:s undantag för den smala filten är borta.**
+Ett namn vid öst- eller västkanten står bredvid sin zon på varje filt, som K19 säger, och inte längre ovanför den under `TIGHT_FELT_PX`.
+Det som står kvar av #76 är typen: under 460 px sätts namnen i 12 px utan spärr.
+Tröskeln mäts numera på filten som den passats in och inte på den bild en kamera zoomat, så att ett namn inte byter storlek när kameran rör sig.
+
+**Och en följdregel: landar namnet i en annan zons ruta, på ett annat namn eller utanför filten, prövas i tur och ordning:**
+1. en rad längre ut på samma sida — så långt som behövs för att gå fri från rutan, aldrig mer än en rad, eftersom ett namn som lyfts förbi en annan ruta läses som grannens;
+2. motsatt sida, och en rad längre ut där;
+3. för ett namn bredvid sin zon, zonens två ändar — ovanför och under, förankrat i änden mot kanten och växande inåt, som #76 placerade det; för ett namn längs en kant, kantens andra ände;
+4. sist inuti zonen, längs den kant det stod vid, kapat om det måste.
+
+Det första stället som är fritt vinner.
+Fritt betyder fritt från andra zoners rutor, andra namn, filtens övriga ord (högarnas namn, antal och bildtext, händernas och ytornas antal, platsernas namnkort och skyltar) och filtens kant.
+En hög, en bricka eller en hands kort undviks också, men ett namn får hellre stå på en sådan än kapas.
+
+**Sidan avgörs en gång, i filtens inpassade skala, och står sedan still (#43).**
+Mätt live bytte saloonens namn sida från under till över när TV:ns kamera zoomade till 3,3 px/mm.
+Därför hängs ett flyttat namn upp i ett hörn av sin egen zon — som filten skalar — och stegas därifrån i skärmens pixlar, som den inte skalar.
+Renderaren ritar filten en gång i dess inpassade skala när något som avgör placeringen har ändrats (bordet, fönstret, vad som är tänt på Bord-fliken, ett namn som bytt storlek), lägger ut namnen och ritar sedan kamerans bild igen, innan något målats.
+Regeln är en exporterad funktion, `placeNames` i `freeSide.ts`, av samma skäl som `stepAside` (#424): filtens grindar lägger renderarens markup på en sida där ingen effekt körs, och kör funktionen som en sträng där.
+
+**Bord-fliken visar ett namn i taget (#581), och där får den tända plattan täcka.**
+Vid 1024 är filten 382 px bred.
+Där kapas ett namn aldrig: får det inte plats inuti sin zon står plattan där den första platsen är fri från andra zoners rutor, också om det är över en plats namnkort, och i sista hand över grannen.
+Med Sal's Saloon och fyra platser är det «Räknare B», vars platta står på plats B:s namnkort; ingen annan zons ruta.
+Med alla zoner tända på en gång — vilket fliken aldrig visar, men som grindarna läser — står vid åtta platser två plattor på andra namn.
+`zone-name-own-box.spec.ts` skriver det undantaget uttryckligen: vid 1024 får bara ett namn som appen själv lagt på sin platta stå på ett annat namn, och vid 1280 och 1440 inget alls.
+
+Mätt på den byggda appen med Sal's Saloon, fem kort i varje hand, tre i saloonen, två i kasthögen och ett framför varje plats, vid fyra och åtta platser: noll namn i en annan zons ruta på TV:n vid 1920, i bordsläget vid 1024, 1280 och 1440, på /online vid 1280, på Bord-fliken vid 1024, 1280 och 1440 (en i taget och alla tända) och hos observatören vid 390 och 768 — också med varje namn ritat 15 % bredare.
+Före var det 37.
+De krockar G lämnade kvar i prototypen — 2 namn på namn, 5 på bricka eller hög och 5 kapade, alla på Bord-fliken vid 1024 med allt tänt — är nu 3 plattor på namn eller namnkort, 0 på bricka eller hög och 0 kapade.
+I `felt-names.test.tsx`, vars syntetiska bord har marknaden där `feltOf` lägger den, finns sex scener där regeln inte hittar en fri plats, och de är inpinnade en och en i `felt-labels.ts`: «Räknare B» kapad inuti sin zon på ett kvartsvridet bord med fem och sex platser, «Räknare A» på sitt namnkort på Bord-fliken vid 1280 × 800 med fem och sex platser när namnen ritas 15 % bredare, och «Räknare A» kapad hos observatören vid 320 när namnen ritas 15 % bredare.
+I alla sex stod namnet tidigare i en grannes ruta, vilket ingen mätning där läste.
 
 ---
 
