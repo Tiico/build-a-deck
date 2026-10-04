@@ -84,7 +84,6 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   // Out of reach while another seat's rewind is asked of this one (#483): the question covers the
   // phone and has to be answered, so nothing behind it is a Tab stop or a press.
   const asking = standingRewind(view)
-  const behind = asking && asking.by !== seat ? { inert: true } : {}
   const personal = useRef<HTMLDetailsElement>(null)
   const [chosenId, setChosenId] = useState<string | null>(null)
   const [quickTarget, setQuickTarget] = useState<string | null>(null)
@@ -96,6 +95,9 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   // of her, or an area of the table — which is what the held card walks, and what it offers to do.
   const [held, setHeld] = useState<{ card: VisibleComponentState; row: 'hand' | 'mine' | { zone: string } } | null>(null)
   const [lifted, setLifted] = useState<VisibleComponentState | null>(null)
+  // Out of reach while another seat's rewind is asked of this one (#483), and while a card is held
+  // up (#715): the hand's buttons showed through the veil and read into the card's own row.
+  const behind = (asking && asking.by !== seat) || held !== null ? { inert: true } : {}
   const [sheet, setSheet] = useState<Sheet>(null)
   // Which target the table said no to, and why.
   const refusal = useRefusal('phone')
@@ -240,6 +242,9 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
       <main className="byd-phone-main" {...behind}>
         <h1>{t('player.hand.title')}</h1>
         <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} zones="piles" history={false} />
+        {/* What the table just said to this seat, in the page's flow under the piles (#715, beslut
+            2026-10-04): fixed at the top it hid a counter's name and value while it stood. */}
+        {toast && <p className="byd-phone-said" role="status">{toast}</p>}
         <HandStrip view={view} selected={new Set(chosenCards.map(c => c.id))} faces={faces} onTap={card => hold(card, 'hand')} onHold={toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} />
         {hand.length > 0 && <p className="byd-hint">{marks.selected.size > 0 ? t(marks.selected.size === 1 ? 'player.hint.selected.one' : 'player.hint.selected.other', { n: marks.selected.size }) : t('player.hint')}</p>}
         <HandActions refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} view={view} cards={chosenCards} pending={quickPending} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} order={chosenCards.length === 1 && chosenCards[0] ? orderOf(chosenCards[0]) : undefined} />
@@ -347,7 +352,7 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           refusedZone={refusedZone}
         />
       )}
-      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={onLeft} toast={toast} onToast={setToast} version={version} />
+      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={onLeft} toast={null} onToast={setToast} version={version} />
     </>
   )
 }
