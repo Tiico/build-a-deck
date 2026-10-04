@@ -49,6 +49,6 @@ test.describe('a table opened without its key (#748)', () => {
     // her straight back here as the account she was already in.
     await notice.getByRole('button', { name: 'Switch account' }).click()
     await expect(other.page.getByLabel('Email')).toBeVisible()
-    expect((await other.page.request.get('/auth/me')).status()).toBe(401)
+    expect(await (await other.page.request.get('/auth/me')).json()).toEqual({ email: null })
   })
 })

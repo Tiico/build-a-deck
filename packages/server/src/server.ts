@@ -1738,7 +1738,7 @@ const frontsOf = (faces: Record<string, Record<string, string>>): Record<string,
 
 // Magic links (G1, DRIFT §11). POST /auth/login mails a link and always answers 200 — never a
 // word about whether the address is known. GET /auth/verify redeems it once, sets the session
-// cookie and sends the browser on. GET /auth/me says who you are; POST /auth/logout forgets.
+// cookie and sends the browser on. GET /auth/me says who you are, or `null`; POST /auth/logout forgets.
 async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
   const now = () => new Date()
   if (req.method === 'POST' && url.pathname === '/auth/login') {
@@ -1775,7 +1775,9 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
   }
   if (req.method === 'GET' && url.pathname === '/auth/me') {
     const account = await accountOf(auth, req)
-    return account ? json(res, 200, { email: account.email }) : json(res, 401, { error: 'not logged in' })
+    // Nobody is an answer and not a failure (#744): every guest page asks, a guest is never logged
+    // in (G1), and a 401 is written in the browser's console as an error on each of those pages.
+    return json(res, 200, { email: account?.email ?? null })
   }
   if (req.method === 'POST' && url.pathname === '/auth/logout') {
     const sid = req.headers.cookie?.match(new RegExp(`${COOKIE}=([^;]+)`))?.[1]
