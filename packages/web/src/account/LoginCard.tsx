@@ -53,7 +53,8 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
     <div className="byd-login" data-login>
       <h1>build-your-deck</h1>
       {pitch && <p className="byd-muted" data-pitch>{t('login.pitch')}</p>}
-      <div className="byd-muted byd-help-row">
+      {/* The field and its button are under this row, and the box never lands on them (#726). */}
+      <div className="byd-muted byd-help-row" data-help-explains=".byd-login form">
         <span>{lead ?? t('login.lead')}</span>
         <Help topic={t('login.help.topic')}>
           {help && <p>{help}</p>}
