@@ -998,8 +998,8 @@ describe('a typeface and a picture do not wait for the network either (#339)', (
   // entry is taken back exactly as a placement is (#310): nothing that happened, no row in the
   // history — and the caller is told, in words that name what went and why (L37).
   it.each([
-    ['a picture', (client: ProjectClient) => client.addPicture(new File([PNG], 'drake.png', { type: 'image/png' })), /^Bilden drake\.png kunde inte laddas upp och har tagits bort igen: tjänsten svarade 500$/],
-    ['a typeface', (client: ProjectClient) => client.useFont(new File([WOFF2], 'Rubrikserif.woff2', { type: '' })), /^Typsnittet Rubrikserif kunde inte laddas upp och har tagits bort igen: tjänsten svarade 500$/],
+    ['a picture', (client: ProjectClient) => client.addPicture(new File([PNG], 'drake.png', { type: 'image/png' })), /^Bilden drake\.png kunde inte laddas upp och har tagits bort igen: tjänsten tog inte emot filen$/],
+    ['a typeface', (client: ProjectClient) => client.useFont(new File([WOFF2], 'Rubrikserif.woff2', { type: '' })), /^Typsnittet Rubrikserif kunde inte laddas upp och har tagits bort igen: tjänsten tog inte emot filen$/],
   ])('leaves the document exactly as it was when the bytes of %s never arrive, and says so', async (_what, take, said) => {
     const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
@@ -1102,28 +1102,28 @@ describe('an upload that falls away after the designer has gone on (#344, L37, #
       take: (client: ProjectClient) => client.useSymbol(skold),
       holds: (client: ProjectClient) => client.doc.icons['sköld'] !== undefined,
       then: (client: ProjectClient) => client.addPicture(picture()),
-      said: 'Symbolen sköld kunde inte laddas upp och har tagits bort igen: tjänsten svarade 500',
+      said: 'Symbolen sköld kunde inte laddas upp och har tagits bort igen: tjänsten tog inte emot filen',
     },
     {
       what: 'a symbol placed on a card',
       take: (client: ProjectClient) => client.placeIcon(skold, 'front', null),
       holds: (client: ProjectClient) => client.doc.icons['sköld'] !== undefined || (client.doc.template.faces['front']?.base ?? []).some((e) => e.kind === 'icons'),
       then: (client: ProjectClient) => client.addPicture(picture()),
-      said: 'Symbolen sköld kunde inte laddas upp och har tagits bort igen: tjänsten svarade 500',
+      said: 'Symbolen sköld kunde inte laddas upp och har tagits bort igen: tjänsten tog inte emot filen',
     },
     {
       what: 'a typeface',
       take: (client: ProjectClient) => client.useFont(typeface()),
       holds: (client: ProjectClient) => client.doc.fonts?.['Rubrikserif'] !== undefined,
       then: (client: ProjectClient) => client.addPicture(picture()),
-      said: 'Typsnittet Rubrikserif kunde inte laddas upp och har tagits bort igen: tjänsten svarade 500',
+      said: 'Typsnittet Rubrikserif kunde inte laddas upp och har tagits bort igen: tjänsten tog inte emot filen',
     },
     {
       what: 'a picture',
       take: (client: ProjectClient) => client.addPicture(picture()),
       holds: (client: ProjectClient) => Object.keys(client.doc.pictures ?? {}).length > 0,
       then: (client: ProjectClient) => client.useFont(typeface()),
-      said: 'Bilden drake.png kunde inte laddas upp och har tagits bort igen: tjänsten svarade 500',
+      said: 'Bilden drake.png kunde inte laddas upp och har tagits bort igen: tjänsten tog inte emot filen',
     },
   ] as const
 
