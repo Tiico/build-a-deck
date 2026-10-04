@@ -341,7 +341,9 @@ Renderaren returnerar block, inte HTML, eftersom samma rendering ska till tre st
 Ytan prototypades i tre former: block bredvid boken, ett fält i stenografi, och sidan själv som redigerare. Valet blev sidan själv: ett stycke öppnas där det står och stängs när det lämnas, så det man skriver alltid är det läsaren möter.
 Fliken "Regler" i editorn är boken. Referenser sätts in ur en lista över vad spelet har. Uppställningsbilden är spelets egna zoner (B5), inte en teckning bredvid dem.
 Reglerna vid bordet, byggt 2026-09-08:
-`GET /sessions/:id/rules` renderar regelboken mot just den version sessionen låstes till vid start, så ett pågående spel aldrig skrivs om under spelarna.
+`GET /sessions/:id/rules` renderar regelboken mot just den version bordet spelar, så ett pågående spel aldrig skrivs om under spelarna av en ändring i editorn.
+Det är startversionen tills «Uppdatera» flyttar låsningen med en `version.change`-rad (C7); då följer boken med, och versionen läses ur loggen och inte ur sessionens startrad, som står kvar som uppspelningens början (#677).
+Versionen bordet spelar står i projektionen, så TV:ns rubrik och varje skärms regelbok byter i samma patch som skriver raden.
 Ytan prototypades i tre former: en lucka från kanten, boken som föremål på bordet, och en fråga som ger de stycken som svarar. Valet blev luckan med frågan överst.
 Luckan finns på både bordets skärm och telefonen, ett tryck bort. Är frågerutan tom står hela boken där, för den som aldrig spelat; skrivs något i den svarar den med de stycken som nämner ordet, under den rubrik de står. En lista är ett stycke: dess steg går inte att dela.
 Sökningen läser den renderade texten, alltså de namn läsaren ser, aldrig id:n bakom dem. Ett spel utan regelbok erbjuder ingenting alls.
