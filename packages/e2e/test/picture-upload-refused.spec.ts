@@ -91,7 +91,7 @@ test.describe('a picture uploaded from a card cell (#742)', () => {
     await page.locator('#byd-editor-tab-media').click()
     const tile = page.locator('[data-media-panel] li[data-asset]')
     await expect(tile).toHaveCount(1)
-    await expect(tile.getByRole('button', { name: 'drake.png' })).toBeVisible()
+    await expect(tile.getByRole('button', { name: 'drake.png', exact: true })).toBeVisible()
     await expect(tile.locator('.byd-media-name')).toHaveText('drake.png')
     await expect(tile.locator('.byd-media-name')).toBeVisible()
   })
