@@ -22,8 +22,6 @@ const TOOLS: readonly BodyTool[] = ['bold', 'italic', 'list', 'symbol']
 const PRESSED: Record<BodyTool, keyof BodyMarks | null> = { bold: 'bold', italic: 'italic', list: 'list', symbol: null }
 const LABEL = { bold: 'table.body.bold', italic: 'table.body.italic', list: 'table.body.list', symbol: 'table.icon.insert' } as const
 const GLYPH: Record<BodyTool, string> = { bold: 'F', italic: 'K', list: '•—', symbol: '{ }' }
-// Tecknet som öppnar symbollistan (L2, E4). Det är ett och samma vare sig det skrivs eller trycks.
-const BRACE = '{'
 
 export type BodyCellProps = {
   // Vad cellen heter för den som inte ser den: samma namn en vanlig cell bär, `<kort> <fält>`.
@@ -42,15 +40,10 @@ export type BodyCellProps = {
   // Tangenterna symbollistan hör när den är öppen (E4) — samma lista och samma svar som i en
   // vanlig cell, hörd här av samma skäl: fokus stannar i meningen som skrivs.
   onListKey?: ((event: KeyboardEvent) => void) | undefined
-  // Vad `{ }`-knappen gör. Svarar den `true` var trycket listans eget — den stod öppen och
-  // stängdes — och ingen klammer skrivs. Annars skriver knappen en klammer där markören står,
-  // vilket är exakt vad tangenten `{` gör (E4, #33): en klammer, och listan öppen.
-  //
-  // Det rail-knappen i en vanlig cell gör som den här inte gör är att ta tillbaka sin egen
-  // klammer vid ett andra tryck (#236). I en skrivyta med stycken och punkter är Backsteg redan
-  // det självklara sättet att ta bort ett tecken, och en knapp som raderar i texten under handen
-  // är mer överraskande där än i ett enradigt fält.
-  onSymbol?: (() => boolean) | undefined
+  // `{ }`-knappen, med var markören står räknat i strängens tecken. Den öppnar listan som
+  // tangenten `{` öppnar (E4, #33), eller stänger den om den stod öppen, och skriver ingenting:
+  // det är först ett val i listan som skriver, där markören stod (#693).
+  onSymbol?: ((at: number) => void) | undefined
   // Var markören ska stå efter en skrivning verktyget gjorde åt designern — en symbol tagen ur
   // listan. `null` när ingen sådan står på tur.
   caretAt?: number | null | undefined
@@ -96,13 +89,19 @@ export function BodyCell({ label, head, value, open, icons, onWrite, onOpen, onC
     return () => doc.removeEventListener('selectionchange', read)
   }, [open])
 
-  const said = () => {
-    const el = write.current
-    if (!el) return
+  // Strängen och var markören står i den.
+  const read = (el: HTMLElement) => {
     const caret = el.ownerDocument.getSelection()
     const at = caret && caret.anchorNode && el.contains(caret.anchorNode) ? { node: caret.anchorNode, offset: caret.anchorOffset } : null
     const { text, at: where } = tillStrang(el, at)
-    onWrite(text, where ?? text.length)
+    return { text, at: where ?? text.length }
+  }
+
+  const said = () => {
+    const el = write.current
+    if (!el) return
+    const { text, at } = read(el)
+    onWrite(text, at)
   }
 
   const run = (command: string) => {
@@ -117,12 +116,10 @@ export function BodyCell({ label, head, value, open, icons, onWrite, onOpen, onC
 
   const command = (tool: BodyTool) => {
     if (tool === 'symbol') {
-      if (onSymbol?.()) return
       const el = write.current
       if (!el) return
       el.focus()
-      el.ownerDocument.execCommand?.('insertText', false, BRACE)
-      return said()
+      return onSymbol?.(read(el).at)
     }
     run(tool === 'bold' ? 'bold' : tool === 'italic' ? 'italic' : 'insertUnorderedList')
     said()

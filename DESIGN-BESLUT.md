@@ -1050,6 +1050,8 @@ Byggt 2026-09-08:
 Redigeringarna är en sluten vokabulär av intents som en enda ren funktion applicerar. Editorn kör den på det den håller, aktören på sanningen, och båda får samma dokument.
 En aktör per projekt, med samma ordning som bordets: den måste gå att applicera, den committas i loggen, den appliceras, och alla får veta. En aktör byggs om från den sparade versionen plus de redigeringar som skett sedan; inget i minnet är sanningen.
 Sparandet är fortfarande det som gör en version (B4). Loggen bär svansen mellan sparningar och varje version noterar hur långt den kommit, så två redigerare ser varandras arbete utan att någon behöver spara. Sparkonflikten är därmed borta: aktören är den enda som skriver.
+Det gäller också `PUT /projects/:id` (#768): ett helt dokument skrivet över HTTP, av ett skript eller av en editor vars linje är nere, blir en `restore` i loggen och en version i samma tur av aktörens kö, så att aktören aldrig håller en annan rev än lagret.
+En editor som öppnas på en svans ingen sparat får den sparade versionen bredvid det aktören håller (#764), så att «Osparat» är en jämförelse den kan göra (L9) och «Starta bord» sparar svansen först (L5).
 `/projects/:id/edit` är tråden: dokumentet vid uppkoppling, varje redigering när den landar, vilka som är inne, och varför en redigering avvisades. En avvisad redigerare får dokumentet med avslaget och kan fortsätta från det som är verkligt.
 Editorn applicerar sin egen redigering direkt och skickar den; ekot säger bara att den landade. Det som skrevs innan socketen hann öppna skickas när den öppnar och läggs tillbaka ovanpå om aktören lämnar över sitt dokument.
 Att ta tillbaka en äldre version är en redigering som vilken annan och går samma väg.
@@ -5819,6 +5821,17 @@ Wizarden har ingen «Visa temana i sina typsnitt»: kortet bredvid galleriet vis
 Temats färger når kortet genom betydelserna, eftersom papperet inte ingår i temat: en symbol skriven med betydelse, som `{mynt|kostnad}`, målas i temats färg i förhandsvisningen och byter färg med temat, och brickorna visar färgerna utan att något skrivits.
 `wizard-frame-fonts.test.tsx` skapar spelet i varje ram med varje tema och läser noll anmärkningar i den fysiska kontrollen.
 I samma veva drogs wizardens styckeregel bort från kortets text: förhandsvisningen sätter varje text i ett `<p>`, och wizardens grå och marginal hade gjort Mörks vita rubrik grå.
+
+Reviderat 2026-10-04 (#741, beställarens val A efter prototyp): **temaprovet visar ett utsnitt av kortet, inte hela kortet.**
+Hela kortet i fyra brickor ritade brödtexten i 7,9 px, så brödtextens familj — halva temat — gick inte att bedöma.
+Efter «Visa temana i sina typsnitt» ritar varje bricka kortets överdel: titelbandet och prosans tre första rader, den fjärde tonad.
+Skalan räknas ur mallens egen brödtextgrad, så som E6 passade in den, med K26:s `readingWidth`: brödtexten till 12 px, och mindre bara när prosans låda med 8 px luft per sida inte ryms i brickan.
+Utsnittet centreras på prosans låda (L43) och inte på fasta millimeter, så en mall med texten någon annanstans skärs på sin egen text.
+Kortet är fortfarande den enda renderarens hela kort (E2); utsnittet bara klipper det.
+Gränsen mot Google står kvar: ingenting hämtas före trycket.
+Prövat i [`docs/ux-audits/2026-10-04-temaprovet/prototyper/01-temaprovet.html`](docs/ux-audits/2026-10-04-temaprovet/prototyper/01-temaprovet.html) mot att ha kvar kortet med en provrad under (B) och ett provark under galleriet (C); B satte samma text två gånger i två storlekar, och C fick Speltema att rulla.
+Galleriet står fyra i bredd så länge varje bricka har sitt rum, och två och två när katalogen eller biblioteket står bredvid, aldrig tre och en.
+`theme-proof.spec.ts` mäter brödtextens storlek gånger zoom (≥ 12 px vid 1280, ≥ 11 vid 1024), att Speltema inte rullar vid 1280 × 800, och att brickorna inte går in i varandra med katalogen öppen vid 1024.
 
 ### L58. Markeringens handlingar står i tabellens fot (prototypat och beslutat 2026-10-01, #618)
 
