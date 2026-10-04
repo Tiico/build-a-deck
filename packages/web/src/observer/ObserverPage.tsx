@@ -26,6 +26,7 @@ import { useSessionName } from '../status/sessionName.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useRefusal } from '../status/Refusal.js'
 import { Help } from '../editor/HelpDrawer.js'
+import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { useT } from '../i18n/index.js'
 
 // /observe?session=…&name=Eva&server=ws://…
@@ -140,6 +141,10 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
         observers={observers}
         note={<p className="byd-observer-note">{t('observer.banner')}</p>}
         onRead={read}
+        // Regelboken där TV:n har den, bredvid spelets namn i kolumnens huvud (B7, #709): hjälpen
+        // lovar den åt observatören, och hon läser bordet som TV:n gör. Under skrivbordet står
+        // huvudet i den kolumn «Senast och platser» kallar fram.
+        rules={<RuleDrawer http={http} sessionId={sessionId} placement="tv" live={view} />}
       >
         {/* A proposed rewind as the table screen shows it (#485, K13): the table it would bring back,
             in the same frame and with the same words. */}
