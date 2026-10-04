@@ -37,7 +37,7 @@ describe('TvChrome (C as the TV surroundings)', () => {
     expect(lines[0]).toMatch(/Bordet vände (?!ett kort)\S/)
     expect(lines).toHaveLength(3)
     expect(lines).not.toContainEqual(expect.stringMatching(/satte sig/))
-    expect(lines).not.toContainEqual(expect.stringMatching(/Bordet drog 2 från Draghög/))
+    expect(lines).not.toContainEqual(expect.stringMatching(/Bordet drog 2 kort från Draghög/))
   })
 })
 
@@ -312,7 +312,7 @@ describe('the seat dock (C)', () => {
     const [ada, free] = seats as [HTMLElement, HTMLElement]
     expect(ada.querySelector('[data-avatar]')!.textContent).toBe('A')
     expect(ada.textContent).toMatch(/2 kort på hand/)
-    expect(ada.textContent).toMatch(/Ada drog 2 från Draghög/)
+    expect(ada.textContent).toMatch(/Ada drog 2 kort från Draghög/)
     // A seat that has done nothing says so in words, never with a dash (UX-41, #86): from across
     // a room "—" reads as a missing value, "Inget ännu" as a state.
     expect(free.textContent).toMatch(/Inget ännu/)

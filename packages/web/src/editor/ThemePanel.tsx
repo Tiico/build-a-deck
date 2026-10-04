@@ -677,7 +677,7 @@ function useRemoval(remove: (name: string) => void, opener: (name: string) => st
   const [asked, setAsked] = useState<{ name: string; cards: readonly string[] } | null>(null)
   const ask = (name: string, cards: readonly string[]) => (cards.length === 0 ? remove(name) : setAsked({ name, cards }))
   const named = asked ? (asked.cards.length > NAMED ? t('media.remove.more', { cards: asked.cards.slice(0, NAMED).join(', '), n: asked.cards.length - NAMED }) : asked.cards.join(', ')) : ''
-  const sentence = asked ? t(asked.cards.length === 1 ? 'symbols.remove.question.one' : 'symbols.remove.question', { name: asked.name, n: asked.cards.length, cards: named }) : ''
+  const sentence = asked ? t(asked.cards.length === 1 ? 'symbols.remove.question.one' : 'symbols.remove.question.other', { name: asked.name, n: asked.cards.length, cards: named }) : ''
   const question = asked && (
     <Question
       className="byd-symbols-question"

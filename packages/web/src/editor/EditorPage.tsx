@@ -705,7 +705,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           {t(table.kind === 'new' ? 'editor.table.started' : table.kind === 'running' ? 'editor.table.running' : 'editor.table.refreshed', { version: table.version })}{' '}
           {lost !== null ? (
             <>
-              <span className="byd-editor-warning">{t('editor.table.lost', { n: lost })}</span>{' '}
+              <span className="byd-editor-warning">{t(lost === 1 ? 'editor.table.lost.one' : 'editor.table.lost.other', { n: lost })}</span>{' '}
               <button type="button" onClick={() => void updateTable(true)}>
                 {t('editor.table.retry')}
               </button>
@@ -727,7 +727,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
               </button>
             </>
           )}
-          {textures && textures.failed.length > 0 && <span className="byd-editor-warning"> · {t('editor.table.failed', { n: textures.failed.length })}</span>}
+          {textures && textures.failed.length > 0 && <span className="byd-editor-warning"> · {t(textures.failed.length === 1 ? 'editor.table.failed.one' : 'editor.table.failed.other', { n: textures.failed.length })}</span>}
           {unreadable > 0 && (
             <>
               {' '}· <span className="byd-editor-warning" data-unreadable>{t(unreadable === 1 ? 'editor.table.unreadable.one' : 'editor.table.unreadable.other', { n: unreadable, pt: minPtIn(phone).toLocaleString(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 }), width: phone.window.w, floor: SCREENS[phone.screen].floorPx })}</span>{' '}

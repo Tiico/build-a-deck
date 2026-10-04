@@ -75,7 +75,7 @@ describe('a screen that joins mid-game (#20)', () => {
     const feed = screen.getByRole('list', { name: /senast/i })
     await waitFor(() => expect(within(feed).getAllByRole('listitem')).toHaveLength(2))
     expect(within(feed).getAllByRole('listitem').map((l) => l.textContent)).toEqual([
-      expect.stringMatching(/^2.*Bordet drog 2 från Draghög/),
+      expect.stringMatching(/^2.*Bordet drog 2 kort från Draghög/),
       expect.stringMatching(/^1.*Ada satte sig/),
     ])
   })
@@ -115,7 +115,7 @@ describe('a screen that joins mid-game', () => {
     history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
     expect(await screen.findByText(/Ada satte sig/)).toBeTruthy()
-    expect(screen.getByText(/drog 2 från Draghög/)).toBeTruthy()
+    expect(screen.getByText(/drog 2 kort från Draghög/)).toBeTruthy()
   })
 })
 
