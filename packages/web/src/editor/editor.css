@@ -3057,6 +3057,14 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-symbols-set input { width: 120px; padding: 4px 8px; }
 .byd-symbols-set small { color: var(--byd-editor-quiet); font-size: 11px; }
 .byd-symbols-set button { padding: 0 8px; font-size: 15px; color: #9aa3b8; }
+.byd-symbols-set li { flex-wrap: wrap; }
+/* A name another icon or meaning has, refused at the field while it is written (#697), in the
+   column door's words and colour (L44): on a line of its own under a chip, and in place of what the row
+   says about a meaning, which is not what she is reading while she types. */
+p.byd-symbols-refused { margin: 0; color: #f0b64a; font-size: 11px; line-height: 1.35; }
+.byd-symbols-set .byd-symbols-refused { flex: 1 0 100%; order: 1; }
+.byd-symbols-colours li > .byd-symbols-refused { grid-area: said; }
+.byd-symbols-colours li:has(> .byd-symbols-refused) > .byd-symbols-said { display: none; }
 /* The game's own colours (E4). A meaning reads as a row and not as a swatch grid: what a designer
    changes here is a word and a colour together, and the two must stay one thing on screen. */
 .byd-symbols-colours ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }

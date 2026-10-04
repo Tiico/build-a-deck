@@ -148,7 +148,7 @@ export function ImportDialog({ http, onClose, onImported, onOpen, nameOf }: { ht
   }
   const said = (p: ImportProblem) => {
     const key = problemKey(p.code)
-    return key ? t(key, p.values ?? {}) : t('home.import.problem.refused', { status: p.code })
+    return key ? t(key, p.values ?? {}) : t('home.import.problem.refused')
   }
   return (
     <div className="byd-game-scrim" role="presentation">
