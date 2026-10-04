@@ -166,9 +166,10 @@ test.describe('ett zonnamn står aldrig i en annan zons ruta (#685)', () => {
         const on = names.flatMap((n) => captions.filter((c) => hits(n.getBoundingClientRect(), c.getBoundingClientRect())).map((c) => `${(n.textContent ?? '').trim()} × ${(c.textContent ?? '').trim()}`))
         return { captions: captions.length, saloon: names.find((n) => n.closest('[data-area="market"]'))?.dataset['nameAt'] ?? null, on }
       })
-      // Icke-vakuitet: bildtexten står där, och saloonens namn är ett regeln har flyttat.
+      // Icke-vakuitet: bildtexten står där, och på TV:n är saloonens namn ett regeln har flyttat (hos
+      // observatören är filten vriden, och där är K19:s egen plats fri).
       expect(seen.captions).toBeGreaterThan(0)
-      expect(seen.saloon).not.toBe('k19')
+      if (surface.name.startsWith('TV')) expect(seen.saloon).not.toBe('k19')
       expect({ where: surface.name, on: seen.on }).toEqual({ where: surface.name, on: [] })
     })
 
