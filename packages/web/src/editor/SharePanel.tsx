@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { ROLES, roleWord, type Role } from '@byd/server/doc'
+import { canShare, ROLES, roleWord, type Role } from '@byd/server/doc'
 import { inviteToProject, projectMembers, unshareProject, waitingInvites, withdrawInvite, type Member, type WaitingInvite } from '../account/api.js'
 import type { Presence } from '@byd/server'
 import { useLang, useT } from '../i18n/index.js'
@@ -12,10 +12,15 @@ import { Question } from './Question.js'
 //
 // The address being written is the editor's to hold (`draft`), so a panel closed with Escape half
 // way through an address gives it back when it opens again (#477).
-export type SharePanelProps = { http: string; project: string; here: readonly Presence[]; onClose(): void; draft?: string; onDraft?(email: string): void }
+//
+// `role` is what the one looking may do (D3, #689): inviting and taking the game back are the
+// owner's, so anyone else is shown who has it and told who can share it, not offered a form the
+// server would refuse. A panel that is not told is the owner's, as the editor was before roles.
+export type SharePanelProps = { http: string; project: string; here: readonly Presence[]; onClose(): void; draft?: string; onDraft?(email: string): void; role?: Role | null }
 
-export function SharePanel({ http, project, here, onClose, draft = '', onDraft }: SharePanelProps) {
+export function SharePanel({ http, project, here, onClose, draft = '', onDraft, role: mine = null }: SharePanelProps) {
   const t = useT()
+  const sharing = mine === null || canShare(mine)
   // What a role is called is the tool's word, and the server keeps that word — it is the same
   // one an invitation is written with (A4).
   const { lang } = useLang()
@@ -136,7 +141,7 @@ export function SharePanel({ http, project, here, onClose, draft = '', onDraft }
                   {present.has(m.email) ? ` · ${t('share.hereNow')}` : ''}
                 </small>
               </span>
-              {m.role !== 'owner' && (
+              {sharing && m.role !== 'owner' && (
                 <button type="button" aria-label={t('share.remove.of', { email: m.email })} onClick={() => setAsking(m.email)}>
                   {t('share.remove')}
                 </button>
@@ -162,22 +167,25 @@ export function SharePanel({ http, project, here, onClose, draft = '', onDraft }
           {t('share.remove.ask', { email: asking })}
         </Question>
       )}
-      <form noValidate onSubmit={(e) => void invite(e)}>
-        <input ref={field} type="email" aria-label={t('share.email')} placeholder={t('share.email.placeholder')} value={email} onChange={(e) => setEmail(e.target.value)} />
-        <select aria-label={t('share.role')} value={role} onChange={(e) => setRole(e.target.value as Role)}>
-          {ROLES.filter((r) => r !== 'owner').map((r) => (
-            <option key={r} value={r}>
-              {roleWord(r, lang)}
-            </option>
-          ))}
-        </select>
-        <button type="submit">{t('share.invite')}</button>
-        {sent && (
-          <p role="status" onAnimationEnd={() => setAsked((n) => n + 1)}>
-            {t('share.sent', { email: sent })}
-          </p>
-        )}
-      </form>
+      {!sharing && <p>{t('share.ownerOnly')}</p>}
+      {sharing && (
+        <form noValidate onSubmit={(e) => void invite(e)}>
+          <input ref={field} type="email" aria-label={t('share.email')} placeholder={t('share.email.placeholder')} value={email} onChange={(e) => setEmail(e.target.value)} />
+          <select aria-label={t('share.role')} value={role} onChange={(e) => setRole(e.target.value as Role)}>
+            {ROLES.filter((r) => r !== 'owner').map((r) => (
+              <option key={r} value={r}>
+                {roleWord(r, lang)}
+              </option>
+            ))}
+          </select>
+          <button type="submit">{t('share.invite')}</button>
+          {sent && (
+            <p role="status" onAnimationEnd={() => setAsked((n) => n + 1)}>
+              {t('share.sent', { email: sent })}
+            </p>
+          )}
+        </form>
+      )}
       {waiting.length > 0 && (
         <div className="byd-share-waiting">
           <button ref={waitingRef} type="button" aria-expanded={showWaiting} onClick={() => setShowWaiting((on) => !on)}>

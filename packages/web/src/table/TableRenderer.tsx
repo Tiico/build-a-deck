@@ -1614,19 +1614,24 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           })}
         </Question>
       )}
-      {start && view.played && (
-        <button
-          type="button"
-          className="byd-table-restart"
-          data-table-start={start.ok ? 'ready' : 'why'}
-          disabled={!start.ok}
-          title={start.ok ? undefined : t('start.blocked', { why: t(whyKey(start)) })}
-          onClick={() => start.ok && setAskingStart(true)}
-        >
-          {t('start.again.tile')}
-        </button>
-      )}
-      {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable)} />}
+      {/* The corner beside the felt's rim: «Starta om» and the help's disc on one row (#482, #684),
+          so a disc that says its name on the room's television pushes the tile aside rather than
+          lying over it. */}
+      <div className="byd-felt-corner">
+        {start && view.played && (
+          <button
+            type="button"
+            className="byd-table-restart"
+            data-table-start={start.ok ? 'ready' : 'why'}
+            disabled={!start.ok}
+            title={start.ok ? undefined : t('start.blocked', { why: t(whyKey(start)) })}
+            onClick={() => start.ok && setAskingStart(true)}
+          >
+            {t('start.again.tile')}
+          </button>
+        )}
+        {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable)} named={forTheRoom} />}
+      </div>
       {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => onAct([{ v: 'setCounter', component: entry.id, value }])} onClose={() => setEntry(null)} />}
       {reading && (
         <Lifted

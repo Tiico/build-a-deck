@@ -447,8 +447,12 @@
    något designern ska kunna se skälet till, inte något som ska gömma sig. */
 /* «Starta om» once the game is under way (#482 fynd 3 C): off the felt, in the corner beside «?»,
    in the felt's quiet chrome — a restart is a deliberate act and not the table's next step. */
+/* The corner holds it and the help's disc on one row (#684): the gap is what put the tile 64 px in
+   when both were placed on their own, and a disc that says its name pushes the tile aside. */
+.byd-felt-corner { position: absolute; right: 16px; bottom: 16px; z-index: 30; display: flex; align-items: flex-end; gap: 14px; pointer-events: none; }
+.byd-felt-corner > * { pointer-events: auto; }
 .byd-table-restart {
-  position: absolute; right: 64px; bottom: 16px; z-index: 30; min-height: 44px; padding: 0 14px;
+  min-height: 44px; padding: 0 14px;
   border: 1px solid var(--byd-felt-chalk-off); border-radius: 999px; background: var(--byd-felt-plate);
   color: var(--byd-felt-chalk); font: 700 14px/1 var(--byd-felt-font, system-ui, sans-serif); cursor: pointer;
 }
@@ -872,7 +876,8 @@
 .byd-ended { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(5, 7, 12, 0.8); color: #eee; text-align: center; }
 .byd-ended h1 { margin: 0; font-size: clamp(28px, 4vw, 56px); }
 .byd-ended p { margin: 8px 0 0; font-size: clamp(15px, 1.8vw, 26px); color: #9aa3b8; }
-.byd-ended-summary { margin-top: 28px; display: flex; gap: 28px; justify-content: center; font-size: clamp(13px, 1.5vw, 22px); color: #ddd; }
+/* The words under the figures reach 24 px at 1920, which is K26's floor on a television (#684). */
+.byd-ended-summary { margin-top: 28px; display: flex; gap: 28px; justify-content: center; font-size: clamp(13px, 1.5vw, 24px); color: #ddd; }
 .byd-ended-summary b { display: block; font-size: clamp(24px, 3vw, 40px); color: #ffd98a; }
 
 /* The observer's own view (C8, #6, prototype B). She watches rather than works: the table takes
@@ -1041,7 +1046,7 @@
    den öppnar. Den tar ingen plats från bordet och ligger aldrig över något som spelas. Färgerna
    är filtens egna (L13): den dämpade krita som en avstängd skiva i ringen redan bär, och full
    krita så fort den pekas på eller står öppen. */
-.byd-shortcut-help { position: absolute; right: 16px; bottom: 16px; z-index: 30; }
+.byd-shortcut-help { position: relative; }
 /* Skivan är 34 px och träffytan 44 (C4, #25): den negativa marginalen låter knappen växa utåt
    runt skivan, så att `/online` — som hålls i en hand — har en fingertopp att sikta på utan att
    skivan flyttar sig från hörnet eller ritas större än beslutet säger. */
@@ -1103,6 +1108,22 @@
 [data-tv][data-room] .byd-table-restart { font-size: 24px; min-height: 56px; padding: 0 20px; }
 [data-tv][data-room] .byd-shortcut-open { width: 56px; height: 56px; }
 [data-tv][data-room] .byd-shortcut-open > span { width: 40px; height: 40px; font-size: 24px; }
+/* The room's television has a second «?», under the room code, so this one says its name (#684). */
+[data-tv][data-room] .byd-shortcut-open { width: auto; grid-auto-flow: column; gap: 12px; padding: 0 16px 0 8px; }
+[data-tv][data-room] .byd-shortcut-open > b { color: var(--byd-felt-chalk-off); font: 700 24px/1 var(--byd-felt-font, system-ui, sans-serif); }
+[data-tv][data-room] .byd-shortcut-open:hover > b, [data-tv][data-room] .byd-shortcut-open:focus-visible > b, [data-tv][data-room] .byd-shortcut-open[aria-expanded='true'] > b { color: var(--byd-felt-chalk); }
+/* The shortcuts behind it, at the floor too (#684). The keys get two fifths of the row and wrap
+   inside it, and the sentence the rest: an `auto` column handed the widest row of keys 334 px and
+   the sentences 14. The panel is as tall as the felt allows, so the last row is not scrolled away. */
+[data-tv][data-room] .byd-shortcut-panel { bottom: 56px; width: 880px; max-width: calc(100vw - 480px); max-height: calc(100vh - 120px); padding: 16px 24px 24px; }
+[data-tv][data-room] .byd-shortcut-panel h2, [data-tv][data-room] .byd-shortcut-panel p, [data-tv][data-room] .byd-shortcut-panel dd { font-size: 24px; line-height: 1.3; }
+[data-tv][data-room] .byd-shortcut-panel p { margin-bottom: 16px; }
+[data-tv][data-room] .byd-shortcut-panel dl { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 12px 24px; }
+[data-tv][data-room] .byd-shortcut-panel dt { gap: 8px; }
+[data-tv][data-room] .byd-shortcut-panel kbd { padding: 2px 8px; font-size: 24px; }
+/* The question before a restart in the size of the tile it is about (#684). */
+[data-tv][data-room] .byd-table-start-ask { max-width: min(720px, 90%); gap: 12px; padding: 16px 24px; font-size: 24px; }
+[data-tv][data-room] .byd-table-start-ask button { min-height: 56px; padding: 0 20px; }
 /* The felt's own words: a zone nobody owns keeps its name, now in the room's size, and the piles
    say their names and counts as large. A seat's zones are named on its plate instead. */
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-zone > span { font-size: 24px; letter-spacing: 0; text-transform: none; color: #9aa3b8; }

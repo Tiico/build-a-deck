@@ -899,6 +899,9 @@ export const svEditor = {
   'symbols.deck.painted.some': 'Inget kort säger den här. Mallen målar den på vissa kort — en variant eller ett villkor avgör vilka — så den syns utan att någon rad nämner den.',
   'symbols.rename': 'Namn för {name}',
   'symbols.name.unwritable': '«{name}» går inte att skriva på ett kort: ett namn har bara bokstäver, siffror, _ och -.',
+  'symbols.name.taken': 'Det finns redan en ikon som heter {name}.',
+  'symbols.colours.taken': 'Det finns redan en betydelse som heter {name}.',
+  'symbols.change.refused': 'Det gick inte att ändra. Försök igen.',
   'symbols.own': 'egen',
   'symbols.remove': 'Ta bort {name}',
   'symbols.remove.question': 'Ta bort {name}? {n} kort skriver den: {cards}.',
@@ -1029,7 +1032,7 @@ export const svEditor = {
   'rules.booklet.open': 'Öppna häftet',
   'rules.booklet.failed': 'Häftet blev inte färdigt. Försök igen.',
   'rules.booklet.noRules': 'Spelet har inga regler att trycka.',
-  'rules.booklet.orderFailed': 'Häftet kunde inte beställas ({status}).',
+  'rules.booklet.orderFailed': 'Häftet kunde inte beställas. Försök igen om en stund.',
   'rules.booklet.notSaved': 'Boken kunde inte sparas, så häftet beställdes inte. Spara och försök igen.',
   'rules.block.edit': 'Redigera {block}',
   'rules.block.text': 'Text {nth}{where}',
@@ -1393,7 +1396,7 @@ export const svEditor = {
   'upload.or': ' eller ',
   'upload.notThisKind': 'filen är inte {formats}',
   'upload.tooBig': 'filen är för stor (max 8 MB)',
-  'upload.failed': 'tjänsten svarade {status}',
+  'upload.failed': 'tjänsten tog inte emot filen',
   // En uppladdning som föll bort (#344, L37). Rättelsen är tyst i historiken — den lägger inget
   // steg, för ett steg som gick att ångra hade lagt tillbaka byte som inte finns — så beskedet
   // måste vara desto tydligare där handlingen gjordes: dokumentet ändrades bakom formgivaren,
@@ -1437,6 +1440,7 @@ export const svEditor = {
   'share.email.placeholder': 'namn@exempel.se',
   'share.role': 'Roll',
   'share.invite': 'Bjud in',
+  'share.ownerOnly': 'Bara ägaren kan bjuda in fler eller ta bort någon.',
   'share.sent': 'Inbjudan är skickad till {email}. Den lever en vecka och går att använda en gång.',
 
   // Symbolbiblioteket (E4): verktygets egna symboler, så de talar verktygets språk. Namnet blir

@@ -172,18 +172,22 @@ export const enAccount = {
   'wizard.draft.lost-image': 'The draft came back without one or more pictures. Choose them again.',
 
 
-  'error.members.failed': 'the list of who has the game could not be read: {status}',
+  'error.members.failed': 'the list of who has the game could not be read; try again in a moment',
   'error.invite.notOwner': 'only the owner can share the game',
-  'error.invite.failed': 'the invitation could not be sent: {status}',
+  'error.invite.failed': 'the invitation could not be sent; try again in a moment',
   'error.invite.address': 'That is not an email address.',
   'error.invite.member': '{email} already has the game.',
   'error.invite.pending': '{email} already has an invitation waiting.',
-  'error.unshare.failed': 'they could not be removed: {status}',
-  'error.invites.failed': 'the waiting invitations could not be read: {status}',
+  'error.unshare.failed': 'they could not be removed; try again in a moment',
+  'error.unshare.notOwner': 'only the owner can remove anyone from the game',
+  'error.invites.failed': 'the waiting invitations could not be read; try again in a moment',
   'error.withdraw.failed': 'The invitation to {email} could not be withdrawn.',
-  'error.join.failed': 'you could not be let in: {status}',
-  'error.startTable.failed': 'a table could not be started: {status}',
-  'error.removeGame.failed': 'the game could not be deleted: {status}',
+  'error.join.failed': 'you could not be let in; try again in a moment',
+  'error.startTable.failed': 'a table could not be started; try again in a moment',
+  'error.startTable.viewer': 'a viewer cannot start tables',
+  'error.game.gone': 'the game no longer exists',
+  'error.removeGame.failed': 'the game could not be deleted; try again in a moment',
+  'error.removeGame.notOwner': 'only the owner can delete the game',
   'wizard.card.n': 'Card {n}',
 
   // Taking a game out and bringing it back (G5, #529): export and import on the home page.
@@ -229,5 +233,5 @@ export const enAccount = {
   'home.import.problem.asset-unknown': 'The game uses a picture or typeface that is neither in the zip nor here ({hash}).',
   'home.import.problem.unplayable': 'The latest version cannot be played: {message}',
   'home.import.problem.too-big': 'The file is larger than an import may be.',
-  'home.import.problem.refused': 'The server did not take the file ({status}).',
+  'home.import.problem.refused': 'The server did not take the file.',
 } as const
