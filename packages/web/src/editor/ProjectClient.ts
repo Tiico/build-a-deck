@@ -272,7 +272,11 @@ export class ProjectClient {
         // rebuilds every card on the screen — under the pointer, and under whoever is reading it.
         const fresh = stamp(doc)
         if (fresh !== stamp(this.doc)) this.doc = doc
-        this.saved = stamp(held)
+        // What is saved is the version `rev` names, which is not what the actor holds while its
+        // log has a tail nobody saved — a tab closed over unsaved work leaves one (#764). Taking
+        // the held document for saved said «Sparat» over that work, and «Starta bord» then
+        // started the table from the version without it.
+        this.saved = stamp(message.saved ?? held)
         this.notify()
         return
       }
@@ -1149,6 +1153,10 @@ export class ProjectClient {
     const { rev } = (await res.json()) as { rev: number }
     this.rev = rev
     this.saved = asked
+    // The whole document went to the actor (#768), with every edit written in the dark already
+    // in it. Sent again when the line is back, they would be laid on top of themselves.
+    this.pending = []
+    this.outbox = []
     this.notify()
     return { ok: true, rev }
   }

@@ -22,7 +22,7 @@ import { PlaySheet } from '../src/player/PlaySheet.js'
 import { TableSummary } from '../src/player/TableSummary.js'
 import { SessionButtons, SessionOverlays } from '../src/player/SessionOverlays.js'
 import { EndSheet, ExitSheet, FlagSheet } from '../src/player/SessionSheets.js'
-import { RuleDrawer } from '../src/rules/RuleDrawer.js'
+import { RuleShelf } from '../src/rules/RuleDrawer.js'
 import { Help } from '../src/editor/HelpDrawer.js'
 import { Survey } from '../src/player/Survey.js'
 import { ActionPanel } from '../src/table/ActionPanel.js'
@@ -413,7 +413,7 @@ describe("the seat's control row at 375px (#31)", () => {
       // here the rulebook's own button, which every game with rules brings (B7) — lands on a
       // second line. The single line above is therefore a row that fits, not a measurement that
       // cannot tell the difference.
-      const four = await row(<RuleDrawer http="http://rules.invalid" sessionId="s1" placement="phone" />)
+      const four = await row(<RuleShelf rules={null} placement="phone" />)
       expect(four).toHaveLength(4)
       expect(new Set(four.map((c) => c.top)).size).toBe(2)
     } finally {
