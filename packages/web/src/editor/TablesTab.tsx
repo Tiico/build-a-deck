@@ -9,6 +9,7 @@ import { useRoving } from './roving.js'
 import type { ProjectClient, TableSummary } from './ProjectClient.js'
 import { Question } from './Question.js'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
+import { saidOr } from '../i18n/said.js'
 import { Help } from './HelpDrawer.js'
 import { lastMoveWords } from './when.js'
 
@@ -50,11 +51,12 @@ export function TablesTab({ client, server, started = null }: TablesTabProps) {
     let live = true
     client.tables().then(
       (t) => live && setTables(t),
-      (err: unknown) => live && setNotice(err instanceof Error ? err.message : String(err)),
+      (err: unknown) => live && setNotice(saidOr(err, t('tables.error.list'))),
     )
     return () => {
       live = false
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- a new language is no reason to ask for the tables again
   }, [client, asked])
   // After the list has come back and the group has opened — a frame later, because the group opens
   // in an effect of its own — the ended table's row takes the focus again.
@@ -86,7 +88,7 @@ export function TablesTab({ client, server, started = null }: TablesTabProps) {
       setRevealed({ id: made.id, why: 'started' })
       setAsked((n) => n + 1)
     } catch (err) {
-      setFailed(err instanceof Error ? err.message : String(err))
+      setFailed(saidOr(err, t('tables.failed')))
     } finally {
       inFlight.current = false
       setStarting(false)

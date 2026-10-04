@@ -42,6 +42,20 @@ describe.skipIf(!url)('PostgresLogStore', () => {
     expect((await store.read(id)).map((l) => l.seq)).toEqual([1, 2])
   })
 
+  // The deck of each version a table was refreshed to (C7, #677), beside the start record it
+  // leaves alone; writing one version twice keeps the last.
+  it('keeps a refreshed deck under its version, and the start deck where it was', async () => {
+    const deck = { template, rows: {}, icons: {} }
+    const refreshed = `r-${Date.now()}`
+    await store.createSession({ id: refreshed, version: 'rev-1', setup: twoSeatSetup(), deck })
+    expect((await store.loadSession(refreshed))?.decks).toBeUndefined()
+    await store.addDeck(refreshed, 'rev-2', { ...deck, rows: { a: { title: 'Ett' } } })
+    await store.addDeck(refreshed, 'rev-2', { ...deck, rows: { a: { title: 'Två' } } })
+    const loaded = await store.loadSession(refreshed)
+    expect(loaded).toMatchObject({ version: 'rev-1', deck })
+    expect(loaded?.decks).toEqual({ 'rev-2': { ...deck, rows: { a: { title: 'Två' } } } })
+  })
+
   it('refuses a gap or an overlap', async () => {
     await expect(store.append(id, [line(4)])).rejects.toBeInstanceOf(SeqConflictError)
     await expect(store.append(id, [line(2)])).rejects.toBeInstanceOf(SeqConflictError)

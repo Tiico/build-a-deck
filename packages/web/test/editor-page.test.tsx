@@ -85,7 +85,7 @@ describe('EditorPage', () => {
 
     const file = new File(['id,title,body,antal\nphoenix,Fenix,Återföds,3'], 'kort.csv', { type: 'text/csv' })
     // The CSV pair is behind the box at the end of the table's crown (#130).
-    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
+    fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
     fireEvent.change(screen.getByLabelText('Importera CSV…'), { target: { files: [file] } })
     // The file leaves out cards the deck has, so the import asks before it removes them (#479).
     fireEvent.click(await screen.findByRole('button', { name: 'Ja, ersätt korten' }))

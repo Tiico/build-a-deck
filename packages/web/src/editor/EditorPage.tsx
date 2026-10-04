@@ -36,6 +36,8 @@ import { statusLinks } from '../status/links.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useLang, useT, type T } from '../i18n/index.js'
+import { saidOr } from '../i18n/said.js'
+import { symbolName } from './symbols.js'
 import { HookGlyph } from '../glyphs.js'
 import type { CatalogFamily } from './font-catalog.js'
 import './editor.css'
@@ -480,7 +482,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onAdd={(el) => client.addElement(face, el, group)}
         // The symbol's bytes travel before anything is placed (E1), so this is the one tool in the
         // rail that can fail on the way. It says so where the editor says everything else.
-        onPlaceIcon={(symbol) => void client.placeIcon(symbol, face, group, t).then(setElement, (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)))}
+        onPlaceIcon={(symbol) => void client.placeIcon(symbol, face, group, t).then(setElement, (err: unknown) => setNotice(saidOr(err, t('symbols.place.failed', { name: symbolName(symbol, t) }))))}
         onReorder={(id, to) => client.moveElement(face, id, to)}
         // Locking a layer and naming it are edits to the element (L15), so they go the way every
         // other change to an element goes — through the base, which is where the layer lives even

@@ -13,6 +13,7 @@ export const svStatus = {
   'status.act.home.start': 'Till startsidan',
   'status.act.rescan': 'Välj plats igen',
   'status.act.rejoin': 'Gå in igen',
+  'status.act.switch': 'Byt konto',
   'status.act.observe': 'Till observatören',
 
   // Flikens namn per rutt (#12). Namnet står först, för en flik klipps från höger.
@@ -101,6 +102,9 @@ export const svStatus = {
   'status.forbidden.text': 'Det här hör till ett annat konto. Logga in med rätt konto, eller be den som äger det att bjuda in dig.',
   'status.forbidden.table.heading': 'Bordet hör till ett annat konto',
   'status.forbidden.table.text': 'Logga in på kontot som äger spelet för att visa det på den här skärmen.',
+  'status.forbidden.table.out.heading': 'Bordet behöver värdens länk eller ägarens inloggning',
+  'status.forbidden.table.out.text': 'Öppna bordsvyn med värdens länk från editorn, eller logga in på kontot som äger spelet.',
+  'status.forbidden.table.other.text': 'Du är inloggad som {email}. Byt till kontot som äger spelet, eller öppna bordsvyn med värdens länk från editorn.',
   'status.forbidden.phone.heading': 'Din plats är inte längre din',
   'status.forbidden.phone.text': 'Någon annan sitter på platsen. Välj en ledig plats igen, eller läs QR-koden på TV:n.',
   'status.forbidden.observer.heading': 'Länken till observatören gäller inte längre',

@@ -158,3 +158,13 @@ create table if not exists project_invites (
   accepted_at timestamptz,
   created_at  timestamptz not null default now()
 );
+
+-- The deck of each version «Uppdatera» moved a table to (C7, #677). The session row keeps the deck
+-- the table started with; a table reloaded after a refresh takes its faces from the version its
+-- log says it plays.
+create table if not exists session_decks (
+  session_id  text not null references sessions(id) on delete cascade,
+  version     text not null,
+  deck        jsonb not null,
+  primary key (session_id, version)
+);

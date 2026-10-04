@@ -134,11 +134,11 @@ describe('the report, which is the last thing read before the book (#131)', () =
       '1 rubrik blir en underrubrik',
       '3 stycken blir text',
       '1 lista blir en lista',
-      '1 referens känns igen, som i en bok du skrivit själv',
+      '1 referens hittades i spelet och följer med när det döps om',
       '1 bild blir en bild i boken',
       '1 rubrik på filens första rad blir ingenting: boken heter vad spelet heter',
       '1 rubriknivå djupare än två viks upp till underrubrik',
-      '1 tabell blir text, en rad per rad',
+      '1 tabell blir text, en rad per rad med cellerna åtskilda av ·',
       '1 länk blir sin egen text; adressen stryks',
     ])
   })
@@ -267,6 +267,57 @@ describe('the two answers the report stands beside (#131)', () => {
     expect(written.querySelector('ol')).not.toBeNull()
     expect(within(written).getByText('Draghög')).toBeTruthy()
     await gone()
+  })
+})
+
+// The play test of 2026-10-02 (#708): a file written outside the app names things the way a person
+// does. `[[Kortlek]]` came in as text with its brackets on — in the book, at the table and on the
+// phone — the report said nothing about it, and a table kept its bars.
+describe('a file that names things by what they are called (#708)', () => {
+  const NAMED = [
+    '## Uppställning',
+    '',
+    'Blanda [[draghög]] och ge varje spelare fem kort. Välkommen till [[Sal’s Saloon]]!',
+    '',
+    'Ta ett [[Guld]] när du spelar [[Drake]].',
+    '',
+    '| Kort | Kostnad |',
+    '| --- | --- |',
+    '| Drake | 2 |',
+  ].join('\n')
+
+  async function openGoldRules(): Promise<void> {
+    const game = projectDoc()
+    await run.projects.create(run.projectId, { ...game, setup: { ...game.setup, counters: [{ id: 'guld', name: 'Guld', start: 0 }] } })
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    await run.answering()
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
+  }
+
+  it('says in the report how many names were found in the game and how many became text', async () => {
+    await openGoldRules()
+    const lines = within(await pick(NAMED, 'regler.md', [])).getAllByRole('listitem').map((li) => li.textContent)
+    expect(lines).toContain('3 referenser hittades i spelet och följer med när det döps om')
+    expect(lines).toContain('1 referens hittades inte i spelet och blir text, utan klamrar')
+  })
+
+  it('makes a book where a found name is a reference, a lost one is words, and a table has no bars', async () => {
+    await openGoldRules()
+    fireEvent.click(within(await pick(NAMED, 'regler.md', [])).getByRole('button', { name: 'Gör boken' }))
+    const written = await waitFor(() => document.querySelector('[data-rulebook]') as HTMLElement)
+    // The pile, the counter and the card stand as references to what the game has, drawn by the
+    // names they have now.
+    await waitFor(() => expect([...written.querySelectorAll('.byd-rules-ref')].map((r) => [r.getAttribute('data-ref'), r.textContent])).toEqual([
+      ['draw', 'Draghög'],
+      ['guld', 'Guld'],
+      ['dragon', 'Drake'],
+    ]))
+    expect(written.textContent).toContain('Välkommen till Sal’s Saloon!')
+    expect(written.textContent).toContain('Drake · 2')
+    expect(written.querySelector('strong')?.textContent).toBe('Kort · Kostnad')
+    expect(written.textContent).not.toMatch(/\[\[|\]\]|\|/)
   })
 })
 
@@ -436,11 +487,11 @@ describe('dropping the book and its pictures on the import (#293)', () => {
       '1 rubrik blir en underrubrik',
       '3 stycken blir text',
       '1 lista blir en lista',
-      '1 referens känns igen, som i en bok du skrivit själv',
+      '1 referens hittades i spelet och följer med när det döps om',
       '1 bild blir en bild i boken',
       '1 rubrik på filens första rad blir ingenting: boken heter vad spelet heter',
       '1 rubriknivå djupare än två viks upp till underrubrik',
-      '1 tabell blir text, en rad per rad',
+      '1 tabell blir text, en rad per rad med cellerna åtskilda av ·',
       '1 länk blir sin egen text; adressen stryks',
     ])
     // The picture came with the drop: the line above says so, and the report would say

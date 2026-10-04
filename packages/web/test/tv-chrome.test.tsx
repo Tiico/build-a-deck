@@ -380,6 +380,16 @@ describe('the observer’s seats open into lists of cards (#551)', () => {
     expect(onRead).toHaveBeenCalledWith(hand[1], hand)
   })
 
+  // Two lines for the eye are two blocks side by side for a screen reader, and nothing stood between
+  // them: «Draw pilepile, 3 cards» (#745). The row's name says its parts with a comma between.
+  it('names a row by its parts with a separator between them, and not its avatar’s initial', () => {
+    const { view } = mount()
+    const discard = view.zones.find((z) => z.id === 'discard')!
+    const top = view.components.find((c) => discard.mode === 'order' && c.id === discard.order[0])!
+    expect(screen.getByRole('button', { name: /^Ada, 2 kort på hand, \S/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: `Kasthög, hög, 3 kort, överst ${top.title}` })).toBeTruthy()
+  })
+
   it('lists what lies on the table, zone by zone: a pile by its top, a face-down card said as such', async () => {
     const { view } = mount()
     const onTable = screen.getByRole('list', { name: 'På bordet' })

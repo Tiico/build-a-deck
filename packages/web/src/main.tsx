@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client'
-import { App } from './App.js'
+import './first-frame-sheets.js'
+import { App, loadPage } from './App.js'
 import './a11y.css'
 import './buttons.css'
 import './dropping.css'
@@ -11,4 +12,6 @@ import './fonts/felt-font.css'
 
 const root = document.getElementById('root')
 if (!root) throw new Error('index.html has no #root')
-createRoot(root).render(<App />)
+// The surface's own script first, then the first painting (#760): what the screen shows first is
+// the page that was asked for, never a fallback that gives way to it a moment later.
+void loadPage().then((Page) => createRoot(root).render(<App Page={Page} />))

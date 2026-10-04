@@ -10,9 +10,12 @@ export type { Deck }
 
 // `deck` is what the table's textures are compiled from; a session without one plays with blank cards.
 // `project` is the project a table was started from, so it can be refreshed to a newer rev (C7).
+// `decks` is the deck of every version «Uppdatera» moved the table to, by version: `version` and
+// `deck` stay the start record, because that is where replay begins (#677), so a table reloaded
+// after a refresh takes its faces from the version its log says it plays.
 // Admission (DRIFT §9): `code` is what guests reach the table by, alive until `codeExpiresAt`,
 // and `hostKeyHash` is the hash of the key that opens the table's own view.
-export type SessionRecord = { id: string; version: GameVersionId; setup: SetupDef; deck?: Deck; project?: string; code?: string; codeExpiresAt?: string; hostKeyHash?: string }
+export type SessionRecord = { id: string; version: GameVersionId; setup: SetupDef; deck?: Deck; decks?: Record<GameVersionId, Deck>; project?: string; code?: string; codeExpiresAt?: string; hostKeyHash?: string }
 
 // A guest's admission (DRIFT §9): the hash of the token a phone or an observer connects with,
 // what it admits to, and the name it was bought under. A pending admission expires unless it
@@ -24,6 +27,9 @@ export type PlayedRecord = GuestRecord & { sessionId: string }
 export type LogStore = {
   createSession(record: SessionRecord): Promise<void>
   loadSession(id: string): Promise<SessionRecord | null>
+  // The deck a table is refreshed to (C7), kept under the version it is for. Written before the
+  // version.change line is committed, so a log that says a version always has its deck.
+  addDeck(sessionId: string, version: GameVersionId, deck: Deck): Promise<void>
   append(sessionId: string, lines: readonly Applied[]): Promise<void>
   read(sessionId: string): Promise<Applied[]>
   // Sessions whose latest line (or creation, if none) is older than `olderThan` and that have
@@ -78,6 +84,12 @@ export class MemoryLogStore implements LogStore {
   async loadSession(id: string): Promise<SessionRecord | null> {
     const r = this.sessions.get(id)
     return r ? structuredClone(r) : null
+  }
+
+  async addDeck(sessionId: string, version: GameVersionId, deck: Deck): Promise<void> {
+    const r = this.sessions.get(sessionId)
+    if (!r) throw new Error(`unknown session ${sessionId}`)
+    r.decks = { ...r.decks, [version]: structuredClone(deck) }
   }
 
   async append(sessionId: string, lines: readonly Applied[]): Promise<void> {
