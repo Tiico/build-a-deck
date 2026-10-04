@@ -579,6 +579,16 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // något faktiskt hänt vid bordet; `view.played` är den uppgiften, och den räknar inte den som
   // bara satt sig (#452).
   const [askingStart, setAskingStart] = useState(false)
+  // «Starta spelet» gives way to «Starta om» in the corner once the start has run, and the tile that
+  // was pressed is gone from under the focus (#761, K16: the first stop that is left, never
+  // nothing). The focus is carried to the tile that took its place, the same control by another name.
+  const startHadFocus = useRef(false)
+  useEffect(() => {
+    if (!view.played || !startHadFocus.current) return
+    startHadFocus.current = false
+    const at = document.activeElement
+    if (at === null || at === document.body) document.querySelector<HTMLElement>('.byd-table-restart')?.focus()
+  }, [view.played])
   // The box a back is drawn in: the card's own, so the supplier only has to draw a card. A
   // surface that supplies none keeps the stand-in weave `table.css` draws.
   const backAt = (at: string): ReactNode => back && <span className="byd-card-back">{back({ px, left, top, scale }, at)}</span>
@@ -1504,10 +1514,13 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               disabled={!start.ok}
               title={start.ok ? undefined : t('start.blocked', { why: t(whyKey(start)) })}
               style={{ left: left(floor.geometry.x + floor.geometry.w / 2 - START_MM.w / 2), top: top(floor.geometry.y + floor.geometry.h / 2 + START_MM.below), width: px(START_MM.w), height: px(START_MM.h), fontSize: `${Math.max(9, px(START_MM.h) * 0.36)}px` }}
-              onClick={() => {
+              onClick={(e) => {
                 if (!start.ok) return
                 if (view.played) setAskingStart(true)
-                else onAct?.(start.intents)
+                else {
+                  startHadFocus.current = e.currentTarget === document.activeElement
+                  onAct?.(start.intents)
+                }
               }}
             >
               {t('start.tile')}
