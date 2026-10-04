@@ -301,7 +301,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       )}
       {shows('tools') && <ToolRail onAdd={add} onPlaceIcon={onPlaceIcon} />}
       {shows('layers') && (
-      <aside className="byd-canvas-layers">
+      // Two columns stand beside the canvas, so each says which it is (#762).
+      <aside className="byd-canvas-layers" aria-label={t('editor.stage.layers')}>
         {/* The column is a frame and not a scroller (#129): a crown that says which face is being
             listed and how many cards the panel is about, the list itself, and a foot with the line
             about dragging. All three used to scroll together — at 1024 the list ran 690 px past the
@@ -476,7 +477,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       {shows('props') && !(stage === null && folded) && (
       <Reading.Provider value={reading}>
       <SectionsOpen.Provider value={sections}>
-      <aside className="byd-canvas-props" id={PROPS_COLUMN}>
+      <aside className="byd-canvas-props" id={PROPS_COLUMN} aria-label={t('canvas.props')}>
         <h2>{layer ? t('canvas.props.of', { id: layer.element.id }) : t('canvas.props')}</h2>
         {layer?.source === 'removed' && <p className="byd-canvas-affects">{t('canvas.removedIn', { rule: ruleLabel(column ?? '', group ?? '') })}</p>}
         {/* A panel with nothing in it says why rather than looking broken — and on a small screen
@@ -1470,7 +1471,8 @@ function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPl
     onPlaceIcon(symbol)
   }
   return (
-    <aside
+    // A toolbar, not a column beside the work: an aside's own role may not be overridden (#762).
+    <div
       className="byd-canvas-tools"
       role="toolbar"
       aria-label={t('canvas.tools')}
@@ -1540,7 +1542,7 @@ function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPl
           </div>
         )
       })}
-    </aside>
+    </div>
   )
 }
 

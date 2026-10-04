@@ -618,7 +618,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           <span className="byd-editor-home-arrow" aria-hidden="true">←</span>
           <span className="byd-editor-home-word">{t('editor.home')}</span>
         </a>
-        <strong>{doc.name}</strong>
+        {/* The game's name is the page's heading (#762): one copy, the one that is drawn. */}
+        <h1 className="byd-editor-name">
+          <strong>{doc.name}</strong>
+        </h1>
         {client.mayEdit && projectId && <GameMore http={http} game={{ id: projectId, name: doc.name, rev: client.rev }} />}
         {/* The revision is also the way into the history (B4): the version is already named here. */}
         <button ref={revRef} type="button" className="byd-editor-rev" aria-expanded={historyOpen} onClick={() => setOver((on) => (on === 'history' ? null : 'history'))}>
