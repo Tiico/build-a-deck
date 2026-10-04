@@ -1,5 +1,5 @@
 import type { ComponentTypeDef } from '@byd/engine'
-import { parseBody, parseInline, type InlineNode } from './inline.js'
+import { REF_WORD, parseBody, parseInline, type InlineNode } from './inline.js'
 import { BLOCK_GAP_EM, DEFAULT_LINE_HEIGHT, INDENT_EM, ITEM_GAP_EM, detectScript, estimateHeight, fitText, type Measure } from './fit.js'
 import { paintOf, shadowCss, type Condition, type Element, type FaceTemplate, type Pattern, type Row, type Template } from './model.js'
 import type { Motif } from './motif.js'
@@ -391,7 +391,7 @@ function renderNode(n: InlineNode, element: string, icons: Symbols, warnings: Wa
     // A reference (B7) is the rulebook's, not a card's: card text is parsed without them, so
     // this can only be reached by handing the compiler a rulebook tree. It says what it is.
     case 'ref':
-      return escape(`[[${n.of === 'zone' ? 'zon' : 'kort'}:${n.id}]]`)
+      return escape(`[[${REF_WORD[n.of]}:${n.id}]]`)
     case 'icon': {
       const src = icons.icons[n.name]
       // A bare number is a pip (L2 addendum) unless the icon set names it.
