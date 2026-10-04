@@ -55,6 +55,7 @@ function scene(): Snapshot {
     undo: null,
     ended: false,
     played: false,
+    version: 'v1',
   }
 }
 

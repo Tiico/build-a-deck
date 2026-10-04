@@ -45,14 +45,14 @@ export function describeActivity(line: Activity, view: Snapshot, t: T): string {
     // so a hidden pile stays hidden — `which` never reaches the line.
     case 'split':
       return it.to
-        ? t('activity.split.to', { who, n: it.at, zone: zone(it.pile), to: zone(it.to) })
-        : t('activity.split.beside', { who, n: it.at, zone: zone(it.pile) })
+        ? t(it.at === 1 ? 'activity.split.to.one' : 'activity.split.to.other', { who, n: it.at, zone: zone(it.pile), to: zone(it.to) })
+        : t(it.at === 1 ? 'activity.split.beside.one' : 'activity.split.beside.other', { who, n: it.at, zone: zone(it.pile) })
     case 'shuffle':
       return t('activity.shuffle', { who, zone: zone(it.pile) })
     case 'draw':
-      return t('activity.draw', { who, n: it.count, zone: zone(it.from) })
+      return t(it.count === 1 ? 'activity.draw.one' : 'activity.draw.other', { who, n: it.count, zone: zone(it.from) })
     case 'deal':
-      return t('activity.deal', { who, n: it.each })
+      return t(it.each === 1 ? 'activity.deal.one' : 'activity.deal.other', { who, n: it.each })
     case 'roll':
       return t('activity.roll', { who })
     case 'setCounter':

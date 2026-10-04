@@ -46,6 +46,20 @@ describe('the screen says which game it runs (C)', () => {
     render(<TablePage />)
     await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar rev-1'))
   })
+
+  // «Uppdatera» (C7) moves the table to the next rev while the TV stands there (#677): the title
+  // follows the very patch that writes «Spelet uppdaterades till rev-2» in SENAST, not a reload.
+  it('follows a version change live, as the log line arrives', async () => {
+    const id = await createNamedSession(run, 'Skogens herrar')
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar rev-1'))
+    const doc = (await run.projects.load('p-s1'))!
+    expect(await run.projects.replace('p-s1', 1, { name: doc.name, template: doc.template, rows: [...doc.rows, { id: 'ny', fields: { title: 'Nytt kort' } }], icons: doc.icons, setup: doc.setup })).not.toBe('conflict')
+    expect((await fetch(`${run.http}/sessions/${id}/refresh`, { method: 'POST' })).status).toBe(200)
+    expect(await screen.findByText(/Spelet uppdaterades till rev-2/)).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar rev-2')
+  })
 })
 
 describe('the table mode names the game too (B)', () => {
@@ -75,7 +89,7 @@ describe('a screen that joins mid-game (#20)', () => {
     const feed = screen.getByRole('list', { name: /senast/i })
     await waitFor(() => expect(within(feed).getAllByRole('listitem')).toHaveLength(2))
     expect(within(feed).getAllByRole('listitem').map((l) => l.textContent)).toEqual([
-      expect.stringMatching(/^2.*Bordet drog 2 från Draghög/),
+      expect.stringMatching(/^2.*Bordet drog 2 kort från Draghög/),
       expect.stringMatching(/^1.*Ada satte sig/),
     ])
   })
@@ -115,7 +129,7 @@ describe('a screen that joins mid-game', () => {
     history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
     expect(await screen.findByText(/Ada satte sig/)).toBeTruthy()
-    expect(screen.getByText(/drog 2 från Draghög/)).toBeTruthy()
+    expect(screen.getByText(/drog 2 kort från Draghög/)).toBeTruthy()
   })
 })
 
