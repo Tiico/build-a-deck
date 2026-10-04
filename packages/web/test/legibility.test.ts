@@ -56,7 +56,7 @@ describe('each starter frame says how wide its card must be drawn to be read (K2
   const fields = defaultFields((key, params) => translate('sv', key, params))
   const needs = Object.fromEntries(
     FRAMES.map((frame) => {
-      const pt = bodyPtOf(frame.front(fields))
+      const pt = bodyPtOf(frame.front(fields, (key, params) => translate('sv', key, params)))
       const at = (screen: keyof typeof SCREENS) => ({ floor: cardPxForText(pt, SCREENS[screen].floorPx), body: cardPxForText(pt, SCREENS[screen].bodyPx.min) })
       return [frame.id, { pt, phone: at('phone'), desk: at('desk'), tv: at('tv') }]
     }),
