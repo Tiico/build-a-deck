@@ -31,7 +31,8 @@ export type Tone = 'wait' | 'gone' | 'shut' | 'broken' | 'ok'
 
 // Recovery is either a retry or a decision, never a reload: a reload throws away the very state
 // the reader is trying to keep, and two of them in a row is a loop.
-export type ActionKind = 'retry' | 'login' | 'home' | 'rescan' | 'observe'
+// `switch` signs out and then in again (#748): a page that offers it has the button that does it.
+export type ActionKind = 'retry' | 'login' | 'home' | 'rescan' | 'observe' | 'switch'
 export type Action = { kind: ActionKind; label: string; primary?: boolean }
 
 export type Notice = {
@@ -239,6 +240,18 @@ export function observerNotice(refused: string, t: T = swedish): Notice {
     },
     t,
   )
+}
+
+// The table screen shut for want of its key (#748), said to whoever stands at it. Signed out, it
+// needs the host's link or the owner's login — never «another account's», when there is no account
+// in the reader at all. Signed in, it is another account's, and which one she is in is the first
+// thing she needs to know: «Logga in» would send her straight back here as the same account, so
+// the way on is to switch. `undefined` is not known yet, and nothing is promised until it is.
+export function tableShut(account: string | null | undefined, t: T = swedish): Notice {
+  if (account === undefined) return noticeFor('loading', 'table', t)
+  const shut = noticeFor('forbidden', 'table', t)
+  if (account === null) return signedOut({ ...shut, heading: t('status.forbidden.table.out.heading'), text: t('status.forbidden.table.out.text') }, t)
+  return { ...shut, text: t('status.forbidden.table.other.text', { email: account }), actions: [{ kind: 'switch', label: t('status.act.switch'), primary: true }, home(t)] }
 }
 
 // An editor whose reader was logged out while it was open (#485, fynd 7): not «someone else's

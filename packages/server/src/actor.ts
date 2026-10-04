@@ -71,9 +71,12 @@ export class TableActor {
     const log = await store.read(id)
     const state = replay(initial, registry, log)
     let cards: DeckFacts | undefined
-    if (record.deck) {
+    // The deck of the version the log says the table plays (C7, #677): a refreshed table's, not
+    // the one it started with, over the cards that version deals — the replayed setup, not the start record's.
+    const deck = record.decks?.[state.version] ?? record.deck
+    if (deck) {
       // Enqueue is idempotent by hash, so loading a table twice costs nothing the second time.
-      const compiled = facesOf(record.deck, record.setup, registry, TEXTURE_DPI, Date.now())
+      const compiled = facesOf(deck, state.setup, registry, TEXTURE_DPI, Date.now())
       cards = { faces: compiled.faces, titles: compiled.titles, texts: compiled.texts }
       if (renders) for (const job of compiled.jobs) await renders.enqueue(job)
     }

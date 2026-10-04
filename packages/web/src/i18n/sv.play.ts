@@ -23,7 +23,6 @@ export const svPlay = {
   'texture.lost.other': '{n} kort kunde inte renderas',
 
   // Bordsskärmen.
-  'play.refused.host': 'Bordsvyn öppnas med värdens länk från editorn.',
   'ended.title': 'Bordet är avslutat',
   'ended.locked': 'Loggen är låst på {version}. Enkäten finns på telefonerna.',
   'ended.rows.one': 'rader',
