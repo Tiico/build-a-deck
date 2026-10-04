@@ -392,6 +392,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
           tabIndex={0}
           // The zoom the card is drawn at, for the marks on it that must not shrink with it (#478).
           style={{ ['--byd-canvas-scale' as string]: String(zoom.scale) }}
+          // A face with nothing on it yet is drawn as blank paper, so there is a card to draw on (#735).
+          {...(tabFace.base.length === 0 ? { 'data-blank': '' } : {})}
           onClick={() => onSelectElement(null)}
           {...(column ? { id: GROUP_PANEL, 'aria-labelledby': GROUP_BUTTON } : { 'aria-label': t('canvas.stage') })}
         >
