@@ -161,9 +161,21 @@ describe('the import from Markdown (#131)', () => {
   it('makes a table text with one line per row, and leaves the ruled line out', () => {
     const { doc, notes } = importRules('| Kort | Antal |\n| --- | --- |\n| Drake | 2 |', 'Skogens herrar')
     // A line of the book is a paragraph of its own: a single newline inside a text block is read
-    // as a wrap, so rows written that way would run together into one line.
-    expect(doc.blocks).toEqual([{ kind: 'text', id: 'b1', text: 'Kort | Antal\n\nDrake | 2' }])
+    // as a wrap, so rows written that way would run together into one line. The cells are set
+    // apart by a mark a reader reads as a pause and not by the file's bars, which are drawing
+    // (#708), and the head row the ruled line marks stays the head by being bold.
+    expect(doc.blocks).toEqual([{ kind: 'text', id: 'b1', text: '**Kort · Antal**\n\nDrake · 2' }])
     expect(notes).toContainEqual({ of: 'table', n: 1 })
+  })
+
+  it('leaves a table without a ruled line all rows alike, since it has said nothing about a head (#708)', () => {
+    const { doc } = importRules('| Quickdraw | 2 |\n| Bullseye | 3 |', 'Skogens herrar')
+    expect(doc.blocks).toEqual([{ kind: 'text', id: 'b1', text: 'Quickdraw · 2\n\nBullseye · 3' }])
+  })
+
+  it('leaves an empty cell out rather than standing two marks side by side (#708)', () => {
+    const { doc } = importRules('| Drake |  | 2 |', 'Skogens herrar')
+    expect(doc.blocks).toEqual([{ kind: 'text', id: 'b1', text: 'Drake · 2' }])
   })
 
   it('keeps a fenced code block as text, word for word and line for line', () => {
@@ -199,6 +211,49 @@ describe('the import from Markdown (#131)', () => {
     // has right now (B7), and the import has no business deciding that here.
     expect(doc.blocks).toEqual([{ kind: 'text', id: 'b1', text: 'Lägg i [[zon:discard]] och spela [[kort:drake]].' }])
     expect(notes).toContainEqual({ of: 'ref', n: 2 })
+  })
+
+  // A file written outside the app names things the way a person does, by what they are called
+  // (#708). The ids behind them are nothing a designer can see in the editor, so `[[kort:id]]` is
+  // a form nobody writes in a file — and `[[Kortlek]]` came in as text with its brackets on, at the
+  // table and on the phone, without a word in the report.
+  describe('a reference written by name (#708)', () => {
+    const names = { zones: { draw: 'Kortlek', discard: 'Kasthög' }, cards: { qd: 'Quickdraw', qd2: 'Quickdraw' }, counters: { guld: 'Guld' } }
+
+    it('becomes a reference to what the game calls that, zone, card or counter alike', () => {
+      const { doc, notes } = importRules('Blanda [[Kortlek]], lägg i [[kasthög]], spela [[Quickdraw]] och ta ett [[ Guld ]].', 'S', {}, names)
+      // Read regardless of case and of the space around the name; a card with two rows of the
+      // same title is named by the first of them, which is the one the deck lists first.
+      expect(doc.blocks).toEqual([{ kind: 'text', id: 'b1', text: 'Blanda [[zon:draw]], lägg i [[zon:discard]], spela [[kort:qd]] och ta ett [[räknare:guld]].' }])
+      expect(notes).toContainEqual({ of: 'ref', n: 4 })
+    })
+
+    it('leaves a name the game does not have as its own words, and says how many in the report', () => {
+      const { doc, notes } = importRules('Välkommen till [[Sal’s Saloon]] och [[Kortlek]].', 'S', {}, names)
+      // Brackets would reach the table and the phone as brackets; the words are what was meant.
+      expect(doc.blocks).toEqual([{ kind: 'text', id: 'b1', text: 'Välkommen till Sal’s Saloon och [[zon:draw]].' }])
+      expect(notes).toContainEqual({ of: 'ref', n: 1 })
+      expect(notes).toContainEqual({ of: 'unknownRef', n: 1 })
+    })
+
+    it('resolves a name in a list item and a table cell as it does in a paragraph', () => {
+      const { doc } = importRules('- Dra ur [[Kortlek]]\n\n| [[Quickdraw]] | 2 |', 'S', {}, names)
+      expect(doc.blocks).toEqual([
+        { kind: 'list', id: 'b1', items: ['Dra ur [[zon:draw]]'] },
+        { kind: 'text', id: 'b2', text: '[[kort:qd]] · 2' },
+      ])
+    })
+
+    it('leaves the brackets of a code block alone, where what was written is the whole of what it means', () => {
+      const { doc, notes } = importRules('```\n[[Kortlek]]\n```', 'S', {}, names)
+      expect(doc.blocks).toEqual([{ kind: 'text', id: 'b1', text: '[[Kortlek]]' }])
+      expect(notes).not.toContainEqual(expect.objectContaining({ of: 'ref' }))
+    })
+
+    it('reads a name in a heading too, so a section called after the pile follows the pile (#272)', () => {
+      const { doc } = importRules('# S\n\n# Ur [[Kortlek]]', 'S', {}, names)
+      expect(doc.blocks).toEqual([{ kind: 'heading', id: 'b1', level: 1, text: 'Ur [[zon:draw]]' }])
+    })
   })
 
   it('has no answer for raw HTML, so it becomes the plain text it reads as', () => {

@@ -212,15 +212,15 @@ export const svAccount = {
   // Ord guiden föreslår och som designern sedan får ändra: de skrivs på det språk spelet byggs i.
 
   // Vad som gick fel, sagt till den som läser — inte till den som skrev koden.
-  'error.members.failed': 'kunde inte läsa vilka som har spelet; försök igen om en stund',
-  'error.invite.notOwner': 'bara ägaren kan dela spelet',
-  'error.invite.failed': 'kunde inte bjuda in; försök igen om en stund',
+  'error.members.failed': 'Listan över vilka som har spelet kunde inte läsas. Försök igen om en stund.',
+  'error.invite.notOwner': 'Bara ägaren kan dela spelet.',
+  'error.invite.failed': 'Inbjudan kunde inte skickas. Försök igen om en stund.',
   'error.invite.address': 'Det där är ingen e-postadress.',
   'error.invite.member': '{email} har redan spelet.',
   'error.invite.pending': '{email} har redan en inbjudan som väntar.',
-  'error.unshare.failed': 'kunde inte ta bort; försök igen om en stund',
-  'error.unshare.notOwner': 'bara ägaren kan ta bort någon från spelet',
-  'error.invites.failed': 'kunde inte läsa inbjudningarna som väntar; försök igen om en stund',
+  'error.unshare.failed': '{email} kunde inte tas bort från spelet. Försök igen om en stund.',
+  'error.unshare.notOwner': 'Bara ägaren kan ta bort någon från spelet.',
+  'error.invites.failed': 'Inbjudningarna som väntar kunde inte läsas. Försök igen om en stund.',
   'error.withdraw.failed': 'Inbjudan till {email} kunde inte dras tillbaka.',
   'error.join.failed': 'kunde inte gå med; försök igen om en stund',
   'error.startTable.failed': 'kunde inte starta ett bord; försök igen om en stund',

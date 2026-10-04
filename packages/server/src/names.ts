@@ -11,7 +11,18 @@ export function namesOfProject(doc: ProjectDoc): Names {
   for (const zone of doc.setup.zones) zones[zone.id] = zone.name
   const cards: Record<string, string> = {}
   for (const row of doc.rows) cards[row.id] = titleOfRow(row)
-  return { zones, cards }
+  // Counters since #708. The first of two counters known by the same id is the one a rule names.
+  const counters: Record<string, string> = {}
+  for (const counter of doc.setup.counters ?? []) counters[counterId(counter)] ??= counter.name
+  return { zones, cards, counters }
+}
+
+// What a rule names a counter by (#708). A counter made since then carries an id of its own, so a
+// rename leaves every rule that names it standing; one written before is known by its name, spelled
+// the way a reference's id may be spelled, and keeps that as its id from the first time it is
+// renamed (see the setup editor).
+export function counterId(counter: { id?: string | undefined; name: string }): string {
+  return counter.id ?? (counter.name.trim().replace(/[^\p{L}\p{N}_:-]+/gu, '-') || '-')
 }
 
 // How this game's table is laid out, as the book's setup block draws it (B5, #270).

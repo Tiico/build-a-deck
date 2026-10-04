@@ -34,6 +34,7 @@ import { useMarked } from './marked.js'
 import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
 import { Question } from './Question.js'
 import { useT, type T } from '../i18n/index.js'
+import { saidOr } from '../i18n/said.js'
 import { useGesture } from './gesture.js'
 import { lineKey } from './lineKeys.js'
 import { useSay } from '../status/StatusLive.js'
@@ -160,6 +161,17 @@ const isDataFile = (file: File) => /\.(csv|tsv)$/i.test(file.name) || file.type 
 // Deliberately one self-contained function with no imports: the browser test runs this very
 // function inside the page, so what is measured there is what ships.
 export function markCut(box: Element): void {
+  // Och var ikonfliken hänger (#693, beställarens beslut A). Den står på fältets övre högra hörn,
+  // över raden ovanför (#593) — men när det som står ovanför är tabellens huvud låg den på
+  // kolumnens ▾, och den hänger då i stället under hörnet. Det är en fråga om läge och inte om
+  // ordning: i en rullad tabell är det någon annan rad än den första som står mot huvudet, så det
+  // mäts, och samma bildruta som rullningen frågar. Mot en av huvudets celler och inte mot
+  // `<thead>`: det är cellerna som står fast när lådan rullas, raden under dem följer med.
+  const tab = box.querySelector<HTMLElement>('tbody .byd-data-icon')
+  const head = box.querySelector('thead > tr > th')
+  const field = tab?.parentElement
+  if (tab && head && field && field.getBoundingClientRect().top - tab.offsetHeight < head.getBoundingClientRect().bottom - 0.5) box.setAttribute('data-tab', 'under')
+  else box.removeAttribute('data-tab')
   const pin = box.querySelector('thead .byd-data-remove')
   if (!pin) return
   const over = pin.getBoundingClientRect()
@@ -583,7 +595,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       onCell(cardRef, field, assetRef(await onUpload(one.file)))
       setUploadError(null)
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : String(err))
+      setUploadError(saidOr(err, t('picture.upload.failed')))
     }
   }
   // The same upload, for the action row rather than for a cell: the file becomes one asset and the
@@ -599,7 +611,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       setBulkImage(await onUpload(one.file))
       setUploadError(null)
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : String(err))
+      setUploadError(saidOr(err, t('picture.upload.failed')))
     }
   }
   // What is being typed in an `antal` cell that is not (yet) a count (#479), by card.
@@ -762,6 +774,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     // the caret arriving in a cell or leaving one, which is what decides whether the widths are
     // being held; leaving one is therefore also when they settle on what was written.
   }, [deck, editing, widths])
+  // Ikonfliken följer med cellen man står i (#693), och vilken sida av fältet den hänger på är
+  // lådans egen läsning (`markCut`). Den läses alltså om när fliken flyttar, inte bara när lådan
+  // rullas: Enter och ↓ går från raden mot huvudet till raden under utan att något annat ändras.
+  useLayoutEffect(() => {
+    if (scrollRef.current) markCut(scrollRef.current)
+  }, [here])
   useEffect(() => {
     if (!refocus) return
     if (typeof refocus === 'object') {
@@ -1175,7 +1193,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
         if (doc.rows.some((r) => !now.has(r.id))) setReplacing({ rows, file: file.name })
         else land(rows)
       } catch (err) {
-        setImportError(err instanceof Error ? err.message : String(err))
+        setImportError(saidOr(err, t('table.import.failed')))
       }
     }
     reader.readAsText(file)
@@ -1590,7 +1608,6 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     t={t}
                     icons={gameIcons}
                     was={moved(changeOf(cardRef), f) ? String(wasCell(cardRef, f) ?? '') : null}
-                    picking={brace?.cardRef === cardRef && brace.field === f}
                     open={here?.cardRef === cardRef && here.field === f}
                     caretAt={caretAfter.current?.cardRef === cardRef && caretAfter.current.field === f ? caretAfter.current.at : null}
                     onWrite={(text, at) => {
@@ -1626,11 +1643,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     {cellPicker(cardRef, f)}
                   </BodyTd>
                 ) : (
-                <td
-                  key={f}
-                  data-col={f}
-                  className={brace?.cardRef === cardRef && brace.field === f ? 'byd-data-picking' : undefined}
-                >
+                <td key={f} data-col={f}>
                   {moved(changeOf(cardRef), f) && <s className="byd-data-was">{String(wasCell(cardRef, f) ?? '')}</s>}
                   {/* The field and the tab its icon control hangs from (#593). It is a box inside
                       the cell and not the cell itself, so the tab can stand on the field's own
@@ -1972,7 +1985,6 @@ function BodyTd({
   row,
   t,
   was,
-  picking,
   children,
   ...cell
 }: Omit<BodyCellProps, 'label' | 'head' | 'value'> & {
@@ -1982,11 +1994,10 @@ function BodyTd({
   row: ProjectRow['fields']
   t: T
   was: string | null
-  picking: boolean
 }) {
   const value = row[field]
   return (
-    <td data-col={field} className={picking ? 'byd-data-picking' : undefined}>
+    <td data-col={field}>
       {was !== null && <s className="byd-data-was">{was}</s>}
       <BodyCell
         {...cell}

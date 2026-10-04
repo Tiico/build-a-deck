@@ -17,7 +17,7 @@ vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 // the proof that the hidden case leaks nothing is on the wire (`packages/server/test/rules-live.test.ts`),
 // never here. This file is about what the book draws once the projection has answered.
 
-const names: Names = { zones: { draw: 'Draghög', discard: 'Kasthög', 'hand:B': 'Annas hand' }, cards: { vargen: 'Vargen' } }
+const names: Names = { zones: { draw: 'Draghög', discard: 'Kasthög', 'hand:B': 'Annas hand' }, cards: { vargen: 'Vargen' }, counters: {} }
 const doc: RuleDoc = {
   title: 'Skogens herrar',
   blocks: [

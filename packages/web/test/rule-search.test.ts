@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { renderRules, type RuleDoc } from '@byd/template'
 import { findRules } from '../src/rules/search.js'
 
-const names = { zones: { draw: 'Draghög', discard: 'Kasthög' }, cards: { drake: 'Drake' } }
+const names = { zones: { draw: 'Draghög', discard: 'Kasthög' }, cards: { drake: 'Drake' }, counters: {} }
 const doc: RuleDoc = {
   title: 'Skogens herrar',
   blocks: [

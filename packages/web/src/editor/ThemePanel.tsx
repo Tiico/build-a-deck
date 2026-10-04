@@ -13,6 +13,7 @@ import { FontCatalog } from './FontCatalog.js'
 import { contrastRatio, elementsFor, isSymbolName } from '@byd/template'
 import type { ProjectClient } from './ProjectClient.js'
 import { useT, type Key } from '../i18n/index.js'
+import { saidOr } from '../i18n/said.js'
 import { Help } from './HelpDrawer.js'
 import { Question } from './Question.js'
 import { useSay } from '../status/StatusLive.js'
@@ -231,7 +232,7 @@ function SymbolLibrary({ doc, client, onClose }: { doc: ProjectDoc; client: Proj
       .useSymbol(symbol, undefined, t)
       // Taking it in is said where a second press is (#558): the tile changed and nothing read it.
       .then(() => setHadSaid(t('symbols.taken', { name: symbolName(symbol, t) })))
-      .catch((err: unknown) => setNotice(err instanceof Error ? err.message : String(err)))
+      .catch((err: unknown) => setNotice(saidOr(err, t('symbols.take.failed', { name: symbolName(symbol, t) }))))
   }
   return (
     <section

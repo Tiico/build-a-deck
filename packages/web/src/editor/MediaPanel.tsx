@@ -14,6 +14,7 @@ import { facesDrawing, faceOrder } from './media-faces.js'
 import { useFocusTrap } from './focusTrap.js'
 import type { Key } from '../i18n/index.js'
 import { useT } from '../i18n/index.js'
+import { saidOr } from '../i18n/said.js'
 
 // The media library (#222, L22, prototype A · egen flik). Every picture the game holds, in one
 // place, so that finding one and tidying one are the same errand. The card table shows the
@@ -226,7 +227,7 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove, sa
         // said rather than thrown: an upload can fail on a dropped line or a file the gate
         // refuses, and an unhandled rejection is not a way to tell a designer that her picture
         // is too big.
-        landed.push({ ...said, why: err instanceof Error ? err.message : String(err) })
+        landed.push({ ...said, why: saidOr(err, t('media.add.failed', { name: said.name })) })
       }
     }
     setUploading(false)

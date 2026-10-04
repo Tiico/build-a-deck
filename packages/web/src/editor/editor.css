@@ -78,6 +78,12 @@
   --byd-editor-card-shadow: rgba(0, 0, 0, 0.5);
   /* The paper a card with nothing on it yet is drawn on (#735). */
   --byd-editor-blank-paper: #f4f1ea;
+  /* The placeholder on a layer that draws nothing on the card shown (#802, variant A): the dashed
+     edge it is framed in, a light ring round that so it reads on a dark card as on a light one,
+     and the ink its word is written in on the room's own chrome. */
+  --byd-editor-placeholder-edge: #5b6274;
+  --byd-editor-placeholder-ring: rgba(255, 255, 255, 0.55);
+  --byd-editor-placeholder-ink: #e6ecfa;
   /* The parts of the game that are not cards — the template, the table, the rules, the symbols —
      as a chip on a row in the history (#177). The hue is the second reading and never the only
      one: every chip carries its own word, and the row's name spells that word out as a sentence,
@@ -1210,6 +1216,48 @@
 .byd-condition[data-off] { border-color: var(--byd-editor-quiet); background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--byd-editor-quiet) 18%, transparent) 0 1mm, transparent 1mm 2mm); }
 .byd-condition > .byd-condition-tab { position: absolute; left: 0; bottom: 100%; transform: scale(calc(1 / var(--byd-canvas-scale, 1))); transform-origin: bottom left; min-height: 0; min-width: 0; margin: 0; padding: var(--byd-s1) var(--byd-s2); border: 0; border-radius: 4px 4px 0 0; background: #c9a2ff; color: #1b1d23; font: 600 11px system-ui; white-space: nowrap; pointer-events: auto; cursor: pointer; }
 .byd-condition[data-off] > .byd-condition-tab { background: var(--byd-editor-quiet); }
+/* The placeholder on a layer that draws nothing on the card shown (#802, beställarens beslut
+   variant A, «rutan säger det»): a dashed frame exactly on the layer, faintly hatched, with a short
+   word in a dark tag in its middle. It is a child of the layer's drag box, so it is the canvas's and
+   never the card's, and a press on it is a press on the element. The card is drawn through a zoom,
+   so every measure here is divided by it, and the tag is drawn at the screen's own size: the word
+   is as legible at 50 % as at 400 %, and on a layer too thin for two lines it is one, in its short
+   form, cut with an ellipsis rather than spilling over its neighbours. */
+.byd-placeholder {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: calc(1.5px / var(--byd-canvas-scale, 1)) dashed var(--byd-editor-placeholder-edge);
+  box-shadow: 0 0 0 calc(1px / var(--byd-canvas-scale, 1)) var(--byd-editor-placeholder-ring);
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--byd-editor-placeholder-edge) 10%, transparent) 0 calc(6px / var(--byd-canvas-scale, 1)), transparent calc(6px / var(--byd-canvas-scale, 1)) calc(12px / var(--byd-canvas-scale, 1)));
+  pointer-events: none;
+}
+/* Centred on the layer, as wide as its words and never wider than the layer less a gap of
+   `--byd-s1` on either side. The width is the tag's own and not the layer's, because the layer is
+   zoomed and the tag is not: the room it has is the layer's width at the screen's size. */
+.byd-placeholder-tag {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: calc(100% * var(--byd-canvas-scale, 1) - 2 * var(--byd-s1));
+  padding: var(--byd-s1) var(--byd-s2);
+  border-radius: 10px;
+  background: var(--byd-editor-chrome-bg);
+  color: var(--byd-editor-placeholder-ink);
+  font: 600 11px/1.25 system-ui, sans-serif;
+  text-align: left;
+  transform: translate(-50%, -50%) scale(calc(1 / var(--byd-canvas-scale, 1)));
+  /* The title is the whole sentence, and a title is read off the pointer. */
+  pointer-events: auto;
+}
+.byd-placeholder-tag > i { flex: none; font-style: normal; color: var(--byd-editor-stage-ink); }
+.byd-placeholder[data-thin] > .byd-placeholder-tag { align-items: center; padding: 0 var(--byd-s2); border-radius: 999px; line-height: 18px; white-space: nowrap; }
+.byd-placeholder[data-thin] > .byd-placeholder-tag > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* The one way on from a condition's panel, in the panel's own button shape. */
 .byd-props .byd-props-show { min-height: var(--byd-tap); border-radius: 8px; padding: 0 var(--byd-s3); font-weight: 700; cursor: pointer; }
 /* Why the element stopped at the card's edge (#478): a word by it, in the screen's own size
@@ -2165,9 +2213,8 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 
 /* The symbol picker at the brace (E4): it opens under the cell being typed in. */
 .byd-data td { position: relative; }
-.byd-data-picking { z-index: 1; }
-.byd-data-symbols { --byd-place-inset: 4px; left: var(--byd-place-inset); top: 100%; max-height: min(230px, var(--byd-place-room, 230px)); }
-.byd-data-symbols[data-place-y='up'] { top: auto; bottom: 100%; }
+.byd-data-symbols { --byd-place-gap: 0px; --byd-place-inset: 4px; left: var(--byd-place-inset); top: calc(100% + var(--byd-place-gap)); max-height: min(230px, var(--byd-place-room, 230px)); }
+.byd-data-symbols[data-place-y='up'] { top: auto; bottom: calc(100% + var(--byd-place-gap)); }
 .byd-data-symbols[data-place-x='end'] { left: auto; right: var(--byd-place-inset); }
 /* One library, one look, wherever it is opened (E4): the rail's Ikon tool and the brace in a cell
    draw the same component, so what an option is and which one the keys are on is written once.
@@ -2505,9 +2552,11 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
    the box rolled, the open `body` cell covered the card's id and the column's name (L55 says the
    two stand over everything that scrolls). So the cell lifts nothing, and only what it carries is
    placed on the ladder:
-     1  the open body cell, and the cell whose symbol box is open, over the rows beside and below;
+     1  the open body cell, over the rows beside and below;
      2  the head's names;
-     3  the icon tab (#593), which stands over the row above — in the first row, over the head;
+     3  the icon tab (#593), which stands over the row above, or against the head over the row
+        below (#693) — with the symbol box open too: that box stands in the page's top layer, so
+        its cell lifts nothing, and lifting it once took the tab down under the head with it;
      4  the rail (tick, `id`) and the pinned ×, which nothing that scrolls may cover;
      5  the head's corner over the rail, and 6 the head's last cell, whose door hangs out of it. */
 .byd-data-bodycell[data-open] { z-index: 1; }
@@ -3607,6 +3656,21 @@ p.byd-symbols-refused { margin: 0; color: #f0b64a; font-size: 11px; line-height:
   font: 700 13px ui-monospace, monospace;
   cursor: pointer;
 }
+/* Against the head the tab hangs under the field's top right corner instead (#693, beställarens
+   beslut A): there is no row above, and over the head it lay on the column's ▾. The same corner and
+   the same frame, mirrored in height and in nothing else. Which row that is the box measures and
+   writes down (`markCut`) — the first, or in a rolled table whichever row stands against the head.
+   The library opened from that cell starts 4 px under the tab rather than on it: the field ends
+   where the cell does, so that is the tab's 44 and the 4, from the cell's foot. */
+.byd-data-scroll[data-tab='under'] .byd-data .byd-data-icon {
+  top: 100%;
+  bottom: auto;
+  border-top: 0;
+  border-bottom: 2px solid #9cc6ff;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 45%);
+}
+.byd-data-scroll[data-tab='under'] .byd-data-symbols { --byd-place-gap: 48px; }
 
 
 /* What a shape is (L17). The gallery, the tiles and the shadow's presets are three grids of

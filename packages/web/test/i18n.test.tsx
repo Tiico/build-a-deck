@@ -223,8 +223,8 @@ describe('the tool in the reader\'s own language (A4)', () => {
     globalThis.fetch = (async () => new Response('{}', { status: 403 })) as typeof fetch
     const english: T = (key, params) => translate('en', key, params)
     try {
-      await expect(inviteToProject('http://server.test', 'p1', 'bo@example.com', 'editor', english)).rejects.toThrow('only the owner can share the game')
-      await expect(inviteToProject('http://server.test', 'p1', 'bo@example.com', 'editor')).rejects.toThrow('bara ägaren kan dela spelet')
+      await expect(inviteToProject('http://server.test', 'p1', 'bo@example.com', 'editor', english)).rejects.toThrow('Only the owner can share the game.')
+      await expect(inviteToProject('http://server.test', 'p1', 'bo@example.com', 'editor')).rejects.toThrow('Bara ägaren kan dela spelet.')
     } finally {
       globalThis.fetch = real
     }
@@ -261,7 +261,7 @@ describe('the tool in the reader\'s own language (A4)', () => {
     globalThis.fetch = (async () => new Response('{}', { status: 403 })) as typeof fetch
     try {
       await expect(removeProject('http://server.test', 'p1')).rejects.toThrow('bara ägaren kan ta bort spelet')
-      await expect(unshareProject('http://server.test', 'p1', 'bo@example.com')).rejects.toThrow('bara ägaren kan ta bort någon från spelet')
+      await expect(unshareProject('http://server.test', 'p1', 'bo@example.com')).rejects.toThrow('Bara ägaren kan ta bort någon från spelet.')
       await expect(startTable('http://server.test', 'p1')).rejects.toThrow('en betraktare kan inte starta bord')
     } finally {
       globalThis.fetch = real
