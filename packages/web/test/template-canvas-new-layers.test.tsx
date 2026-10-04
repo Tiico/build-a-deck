@@ -5,7 +5,7 @@
 // «{Playcard}» in the warning red. A new layer reads a column that already holds what it draws,
 // and otherwise draws nothing until the designer says what it should.
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { useState } from 'react'
 import type { ProjectDoc } from '@byd/server'
@@ -30,7 +30,7 @@ function deck(): ProjectDoc {
 
 // The canvas with the document held the way the editor holds it, so a placed element is drawn
 // on the card by the one compiler and its panel opens beside it.
-function Desk({ start, onAdd }: { start: ProjectDoc; onAdd(el: Element): void }) {
+function Desk({ start, onAdd, onPatch = vi.fn() }: { start: ProjectDoc; onAdd(el: Element): void; onPatch?: TemplateCanvasProps['onPatch'] | undefined }) {
   const [doc, setDoc] = useState(start)
   const [selected, setSelected] = useState<string | null>(null)
   const props: TemplateCanvasProps = {
@@ -47,7 +47,7 @@ function Desk({ start, onAdd }: { start: ProjectDoc; onAdd(el: Element): void })
     row: 'dragon',
     selectedElement: selected,
     onSelectElement: setSelected,
-    onPatch: vi.fn(),
+    onPatch,
     onCallOff: vi.fn(),
     onRemove: vi.fn(),
     onAdd: (el) => {
@@ -66,10 +66,10 @@ function Desk({ start, onAdd }: { start: ProjectDoc; onAdd(el: Element): void })
   return <TemplateCanvas {...props} />
 }
 
-async function place(doc: ProjectDoc, tool: string): Promise<Element> {
+async function place(doc: ProjectDoc, tool: string, onPatch?: TemplateCanvasProps['onPatch']): Promise<Element> {
   const user = userEvent.setup()
   const onAdd = vi.fn()
-  render(<Desk start={doc} onAdd={onAdd} />)
+  render(<Desk start={doc} onAdd={onAdd} onPatch={onPatch} />)
   await user.click(within(screen.getByRole('toolbar', { name: /verktyg/i })).getByRole('button', { name: tool }))
   expect(onAdd).toHaveBeenCalledTimes(1)
   return onAdd.mock.calls[0]![0] as Element
@@ -120,5 +120,17 @@ describe('a new row of icons (#700)', () => {
     const el = await place(doc, 'Ikonrad')
     expect(el).toMatchObject({ kind: 'icons', bind: { field: 'tecken' } })
     expect(onCard('icons-1')!.querySelector('img.byd-icon')?.getAttribute('alt')).toBe('svärd')
+  })
+
+  // A row that reads no column is still a row (#829). Before #700 the only icons element bound to
+  // a value was the single icon, and resizing squared it off; the new row is bound to a value too,
+  // and a 24 × 6 mm strip became a square the moment its width was typed.
+  it('in a game without an icon column keeps its proportions when its width is changed', async () => {
+    const onPatch = vi.fn()
+    await place(deck(), 'Ikonrad', onPatch)
+    fireEvent.change(screen.getByLabelText('Bredd (mm)'), { target: { value: '30' } })
+    // A typed number is written when the field is left (#478).
+    fireEvent.blur(screen.getByLabelText('Bredd (mm)'))
+    expect(onPatch).toHaveBeenCalledWith('icons-1', { w: 30 }, expect.anything())
   })
 })
