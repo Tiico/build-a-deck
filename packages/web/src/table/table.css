@@ -585,6 +585,10 @@
 [data-tv] .byd-tv-head h1 em { color: #7d8597; font-weight: 400; font-style: normal; white-space: nowrap; }
 /* The way in: the label above, the code and the QR on one line under it. A 360 px column is not
    a 1920 px header, and a label that wraps between two words reads as a mistake. */
+/* «Starta om» and the help's disc in the room's column (#875): under the code, on a row of their
+   own, where nothing on the felt lies under them. */
+[data-tv] .byd-tv-corner { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+[data-tv] .byd-tv-corner:empty { display: none; }
 [data-tv] .byd-tv-join { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
 [data-tv] .byd-tv-join > span { color: #7d8597; font-size: 14px; flex: 1 0 100%; }
 [data-tv] .byd-qr { border-radius: 6px; background: #fff; }
@@ -1193,6 +1197,10 @@
    inside it, and the sentence the rest: an `auto` column handed the widest row of keys 334 px and
    the sentences 14. The panel is as tall as the felt allows, so the last row is not scrolled away. */
 [data-tv][data-room] .byd-shortcut-panel { bottom: 56px; width: 880px; max-width: calc(100vw - 480px); max-height: calc(100vh - 120px); padding: 16px 24px 24px; }
+/* In the room's column (#875) the help no longer stands in the felt's bottom corner, and opened
+   upward from the column's top it ran off the screen. The column also clips what it holds, so the
+   panel stands outside it: beside the column, over the felt as before, from the screen's top. */
+[data-tv] .byd-tv-corner .byd-shortcut-panel { position: fixed; top: 16px; bottom: auto; right: calc(360px + 16px); max-height: calc(100vh - 32px); }
 [data-tv][data-room] .byd-shortcut-panel h2, [data-tv][data-room] .byd-shortcut-panel p, [data-tv][data-room] .byd-shortcut-panel dd { font-size: 24px; line-height: 1.3; }
 [data-tv][data-room] .byd-shortcut-panel p { margin-bottom: 16px; }
 [data-tv][data-room] .byd-shortcut-panel dl { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 12px 24px; }
