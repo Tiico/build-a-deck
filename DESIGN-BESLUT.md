@@ -2725,16 +2725,28 @@ Ingen filt i TV-läge ritar en hög så stor: observatören ritar kortet 22–63
 Bara en TV på 3840 CSS-px når 159 px, och där står namnet i 19 px, under rummets golv.
 En tröskel skulle alltså aldrig ha slagit till på ett riktigt bord, och ett namn på ett ställe är den här regelns rubrik.
 
-**Bordsläget behåller namnet på kortet.**
+**Bordsläget fick samma bildtext på en egen platta.**
+*Reviderat 2026-10-05 (#789, beställarens beslut C efter prototypen i #879).*
 Där är högen ett handtag på den gröna filten, och bildtextens färg ger 4,06:1 mot filtens mitt, under AA:s 4,5.
-En platta under texten vore en ny form som prototypas först, och det är inte det beställaren valde.
-Bordslägets namn i 8 px på ett 49 px kort står kvar som ett eget fynd, #789.
+Revisionen ovan sa därför att en platta under texten vore en ny form som först skulle prototypas och beslutas, och att bordslägets namn i 8 px på ett 49 px kort stod kvar som ett eget fynd.
+Nu har den båda.
+Prototypen ställde C, bildtexten på en egen platta, mot D, namnet kvar på kortet i 12 px med ellips, i det byggda appen vid 1280 × 800 och 1920 × 1080, med fyra och åtta platser och sett från plats B.
+D klarade golvet men inte syftet: bordsläget ritar kortet 44–65 px brett vid fyra platser och 26–40 px vid åtta, så i 12 px rymdes fyra eller fem tecken, och vid åtta platser ett.
+C säger namnet i 12 px oberoende av hur litet kortet ritas.
+Bildtexten är densamma som i TV-läget, `cardWord` i samma `.byd-pile-caption`, och står bara medan tillståndet är framme.
+Den står på filtens egen platta (`--byd-felt-plate`, ringens och åtgärdsarkets), ogenomskinlig, i kritan som handtaget redan skriver i: 14:1, och tillståndets rosa för en förlorad bild 10:1, var plattan än hamnar.
+Den hänger i handtaget, 2 px från det, 12 px och högst 10 em bred, på den sida av handtaget som vetter bort från kortet.
+Handtaget vrids tillbaka upprätt på en vriden filt, så på en filt vriden ett halvt varv — plats B som ser bordet från andra sidan — pekar handtagets eget «under» mot kortet, och bildtexten står ovanför handtaget i stället; vid ett kvartsvarv står kortet bredvid handtaget, och under är fritt.
+Under 460 px döljer bordsläget högarnas namn (ovan), och där finns inte heller plats för en platta mellan två högar: där står namnet kvar på kortet som förut.
+Under bygget visade det sig att handtaget självt stod en hel handtagsbredd bredvid sin hög på en filt vriden ett halvt varv, eftersom dess halva bredds förskjutning låg i `transform` och vreds med av `rotate`; det centreras nu med `translate`.
+Krocken mellan bildtexten och de tätt lagda extra högarna (`newPileSpot` räknar namnbandet för TV:ns namn) är densamma som handtagen redan har utan bildtext, och den är #881.
 
 **Kvar att veta för grannarna.**
 #683 gäller fortfarande: vid 1280 täcker sidoplatsernas skyltar Kasthög och dess namn, men bildtexten står under skylten och är fri, 13 px från plats A:s skylt.
 #685:s förslag G lägger Saloonens namn under Saloonen, mellan Kortlek och Kasthög vid fyra platser, i samma remsa som bildtexten; den som bygger G behöver mäta mot bildtexten också.
 Mätt i den byggda appen: «Skogens väktare» är 79 px och «Grävling 1» 48 px i 12 px, hela vid 390 och 320, och närmaste andra namn är «Räknare C» 9,7 px bort vid 320 × 568; på TV:n är «Skogens väktare» 159 px i 24 px.
 `packages/e2e/test/surfaces/pile-name-caption.spec.ts` läser bildtexten hos observatören vid 390 × 844 och 320 × 568 och på rummets TV vid 1280 × 800 och 1920 × 1080, i båda tillstånden: hel, överst längs hela sin längd, fri från varje annan etikett, bricka och kort, på skärmen och minst skärmens golv, utan namnet på kortet, borta när bilden har kommit, och på TV:n frånvarande vid den nedvända draghögen och ur både sidan och ramarna.
+I bordsläget läser den bildtexten på samma sätt hos en spelare på `/online` vid 1280 × 800 och 1920 × 1080, från plats B med filten vriden ett halvt varv, och på bordets skärm vid 1280 × 800, och dessutom: på en ogenomskinlig platta med minst 4,5:1, i kritan eller den förlorade bildens rosa, på handtagets sida bort från kortet, och med handtaget i linje med sitt kort; på en filt under 460 px står namnet kvar på kortet.
 
 **En delad zon under en plats ruta skriver sitt namn mitt över sig själv.**
 Utvidgat 2026-09-15 (#43), och det är det första i regeln som handlar om två namn som hör till olika zoner.
