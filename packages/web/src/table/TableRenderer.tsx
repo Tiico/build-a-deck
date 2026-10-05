@@ -27,7 +27,7 @@ import { useSmallestPt } from './smallest.js'
 import { Lifted } from './Lifted.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAt, handBand, handCountAt, handRoom, handRotation, type TableMode } from './hand.js'
 import { gapAbove, nameAt } from './labels.js'
-import { placeNames } from './freeSide.js'
+import { placeNames, placePlates, type PlateAt } from './freeSide.js'
 import { useT, type Key, type T } from '../i18n/index.js'
 
 // Startbrickans mått och plats i filtens egna millimeter (#451). Den skalar med filten som en
@@ -447,6 +447,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // in a layout effect flushes every passive effect above it early — which moved when the page said
   // a reconnection out loud. Only a felt drawn at its fitted scale for the decision is drawn again.
   const namesAt = useRef<string | null>(null)
+  // Where each seat's plate was laid out on the room's television (#683), by seat: decided with the
+  // names, at the fitted scale, and drawn from at every scale after.
+  const platesAt = useRef<Record<string, PlateAt>>({})
   const [, redrawNames] = useState(0)
   const [namesResized, setNamesResized] = useState(0)
   const namesKey = measured
@@ -461,8 +464,16 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   useLayoutEffect(() => {
     const felt = table.current
     if (!felt || namesKey === null || namesAt.current === namesKey) return
+    // On the room's television the seats' plates are laid out too (#683): the names first against
+    // every plate at its own place, then the plates on a free place clear of those names, and the
+    // names once more against where the plates went.
+    if (forTheRoom) placePlates(felt, true)
     placeNames(felt)
-    const spans = [...felt.querySelectorAll<HTMLElement>(':scope > .byd-zone > span')]
+    if (forTheRoom) {
+      platesAt.current = placePlates(felt)
+      placeNames(felt)
+    }
+    const spans = [...felt.querySelectorAll<HTMLElement>(':scope > .byd-zone > span, :scope > [data-seat-plate] > b > span, :scope > [data-seat-plate] > span')]
     const measure = () => spans.map((el) => `${el.scrollWidth}x${el.offsetHeight}`).join()
     const laidOutFor = measure()
     namesWatch.current?.disconnect()
@@ -476,7 +487,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     }
     namesAt.current = namesKey
     if (deciding) redrawNames((n) => n + 1)
-  }, [namesKey, deciding])
+  }, [namesKey, deciding, forTheRoom])
   useEffect(() => () => namesWatch.current?.disconnect(), [])
   const live = useRef<Live | null>(null)
   const toTable = useRef<((cx: number, cy: number) => Point) | null>(null)
@@ -630,7 +641,6 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     return Math.max(px(TOKEN_MM), leaningSquare(leaning, onWood, TOUCH_PX))
   }
   const seatIndex = (id: string | undefined) => Math.max(0, view.seats.findIndex((s) => s.id === id))
-  const ownedBySeat = (zone: string) => view.zones.find((z) => z.id === zone)?.owner !== undefined
   const seatName = (id: string | undefined) => view.seats.find((s) => s.id === id)?.name ?? id ?? ''
   const colourOf = (seat: string | null) => (seat === null ? TABLE_GREY : seatColor(seatIndex(seat)))
   const carried = new Map(peers.filter((p) => p.drag).map((p) => [p.drag?.component ?? '', p]))
@@ -1329,7 +1339,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               </div>
             )
           })}
-          {forTheRoom && view.seats.map((seat, i) => <SeatPlate key={seat.id} view={view} seat={seat} color={seatColor(i)} left={left} top={top} t={t} />)}
+          {forTheRoom && view.seats.map((seat, i) => <SeatPlate key={seat.id} view={view} seat={seat} color={seatColor(i)} left={left} top={top} t={t} at={platesAt.current[seat.id]} />)}
           {/* Platsen tänds medan ett kort är på väg in i dess hand (#444, K24): platsens egna
               millimeter av kanten, i platsens färg. Den ligger vid kanten och inte kring
               fläkten, eftersom kanten är den enda ytan kring en hand som kortet man bär aldrig
@@ -1451,9 +1461,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                   {...keys(`counter:${c.id}`)}
                   style={{ position: 'absolute', left: left(a.x + (m ? dx : 0)), top: top(a.y + (m ? dy : 0)) + peek, width: px(TOKEN_MM), height: px(TOKEN_MM) }}
                 >
-                  {/* On the room's television a seat's chip is said on its plate (#573). */}
-                  {!(forTheRoom && ownedBySeat(c.zone)) && <b style={{ fontSize: tokenInkPx(px(TOKEN_MM), String(c.counter ?? 0), wide) }}>{c.counter ?? 0}</b>}
-                  {wide && <span>{c.cardRef ?? ''}</span>}
+                  {/* Every chip says its own figure, a seat's too (#683, beslut E): on the room's
+                      television in the room's 24 px pill, and without its name, which the felt
+                      there no longer writes. */}
+                  <b style={{ fontSize: tokenInkPx(px(TOKEN_MM), String(c.counter ?? 0), wide) }}>{c.counter ?? 0}</b>
+                  {wide && !forTheRoom && <span>{c.cardRef ?? ''}</span>}
                   {hit > 0 && <i className="byd-token-hit" data-counter-hit={c.id} style={{ width: hit, height: hit, left: (px(TOKEN_MM) - hit) / 2, top: (px(TOKEN_MM) - hit) / 2 }} />}
                 </div>
               )
@@ -2090,114 +2102,64 @@ function SeatName({ zone, floor, name, color, mine, taking, read, left, top }: {
   )
 }
 
-// Other seats' hands are a fan of backs and a count; the owner reads theirs on the phone. A hand
-// whose order this view may see (the observer, C8) fans the cards themselves. Every measure in
-// the fan is a millimetre on the felt, so it shrinks with the table rather than swamping it (#23).
-// A seat's words on the room's television, on one plate beside the seat's own zones (#573,
-// beslut C efter prototyp): its letter and name in its colour, what its hand holds, and its
-// counters by name and value. It stands on the side of the zones that faces the middle of the
-// table, and a seat at the side stacks its words, since a wide plate there reached the piles
-// (measured at four seats). It is drawn before the piles and the cards, so a card played
-// beside a seat lies over the plate and never under it.
+// A seat's words on the room's television, on one plate on the felt (#573, beslut C; #683, beslut E):
+// its letter and name in its colour and what its hand holds — «(B) ledig 5 kort». A counter's
+// figure is on the seat's own chip. Where the plate stands is `placePlates`'s, decided with the
+// zones' names at the felt's fitted scale (`at`); until it has been, the plate stands at its own
+// place, beside the seat's zones on the side that faces the middle of the table, and a seat at the
+// side stacks its words. It is drawn before the piles and the cards, so a card played beside a seat
+// lies over the plate and never under it. No plate is cut short: one that fits nowhere is drawn as
+// a badge with the seat's mark (`data-form="badge"`), its words still in the page.
 const PLATE_AIR_PX = 8
-// How tall a plate is drawn, in screen pixels, from the stylesheet's own numbers: the row with the
-// seat's ball (6 + 36 + 8 of padding), and a 24 px line at 1.2 plus the 2 px gap for each line
-// under it. A side plate stands every line under the one before; a plate along the top or the
-// bottom lays its words in one row (#573), and its room is reckoned for that row — a second line
-// is what it falls back on when the row does not fit, not what it is laid out for. Heights are
-// line boxes, not glyphs, so no typeface changes them.
-const PLATE_ROW_PX = 6 + 36 + 8
-const PLATE_LINE_PX = Math.ceil(24 * 1.2) + 2
-// Where a pile's words stand on the room's television: under the card, the name's foot 38 px
-// below the card's edge and, under it, the top card's caption (#771) at 40 px plus its 28 px
-// line (table.css). Its width is the one measure here that depends on the typeface, so it
-// is reckoned at 0.7 em a letter of its 24 px — wider than any face draws an average letter — and
-// never narrower than the card it is centred under.
-const PILE_WORDS_BELOW_PX = 40 + 28
-const PILE_NAME_EM = 24 * 0.7
-type Box = { left: number; right: number; top: number; bottom: number }
-// How wide a seat's plate may grow (#750). A name is whatever the player typed, and a plate that
-// grew with it lay over the draw pile, the discard pile and the next seat's zones. So a plate
-// grows from where it starts until the first thing level with it — a pile and its name, another
-// seat's zone, the start of the next plate along the same edge, or the rim — and stops short of
-// it by the same air it keeps from its own zones. A plate at the side grows toward the middle, and
-// stops at the middle, where the plate of the seat opposite comes the other way.
-function plateRoom(view: Snapshot, seat: Snapshot['seats'][number], edge: 'N' | 'E' | 'S' | 'W', own: Box, rows: number, left: (mm: number) => number, top: (mm: number) => number, t: T): number {
-  const height = edge === 'E' || edge === 'W' ? PLATE_ROW_PX + rows * PLATE_LINE_PX : PLATE_ROW_PX
-  const middle = (own.top + own.bottom) / 2
-  const band =
-    edge === 'N' ? { top: own.bottom, bottom: own.bottom + PLATE_AIR_PX + height } :
-    edge === 'S' ? { top: own.top - PLATE_AIR_PX - height, bottom: own.top } :
-    { top: middle - height / 2, bottom: middle + height / 2 }
-  // The plate grows rightward from its left edge, except at the east, where it grows leftward.
-  const start = edge === 'E' ? own.left - PLATE_AIR_PX : edge === 'W' ? own.right + PLATE_AIR_PX : own.left
-  const toward = (b: Box): number => (edge === 'E' ? start - b.right : b.left - start)
-  const floor = view.zones.find((z) => z.id === view.floor)
-  let room = Infinity
-  if (floor) {
-    const rim = { left: left(floor.geometry.x), right: left(floor.geometry.x + floor.geometry.w) }
-    const centre = (rim.left + rim.right) / 2
-    room = edge === 'E' ? start - Math.max(rim.left, centre) : edge === 'W' ? Math.min(rim.right, centre) - start : rim.right - start
-  }
-  const obstacles: Box[] = []
-  for (const z of view.zones) {
-    if (z.id === view.floor || z.owner === seat.id) continue
-    const g = z.geometry
-    if (z.kind === 'pile') {
-      const half = Math.max(left(CARD_MM.w / 2) - left(0), ((z.dynamic ? t('pile.dynamic') : z.name).length * PILE_NAME_EM) / 2)
-      obstacles.push({ left: left(g.x) - half, right: left(g.x) + half, top: top(g.y - CARD_MM.h / 2), bottom: top(g.y + CARD_MM.h / 2) + PILE_WORDS_BELOW_PX })
-    } else {
-      obstacles.push({ left: left(g.x), right: left(g.x + g.w), top: top(g.y), bottom: top(g.y + g.h) })
-    }
-  }
-  // The next seat along the same edge: its plate starts where its zones do, level with this one.
-  for (const other of view.seats) {
-    if (other.id === seat.id || (other.edge ?? 'S') !== edge || edge === 'E' || edge === 'W') continue
-    const theirs = view.zones.filter((z) => z.owner === other.id && z.kind === 'area')
-    if (theirs.length > 0) obstacles.push({ ...band, left: left(Math.min(...theirs.map((z) => z.geometry.x))), right: left(Math.min(...theirs.map((z) => z.geometry.x))) })
-  }
-  for (const b of obstacles) {
-    if (b.bottom <= band.top || b.top >= band.bottom) continue
-    const near = toward(b)
-    if (near >= 0) room = Math.min(room, near)
-  }
-  return room - PLATE_AIR_PX
-}
-function SeatPlate({ view, seat, color, left, top, t }: { view: Snapshot; seat: Snapshot['seats'][number]; color: string; left: (mm: number) => number; top: (mm: number) => number; t: T }) {
+function SeatPlate({ view, seat, color, left, top, t, at }: { view: Snapshot; seat: Snapshot['seats'][number]; color: string; left: (mm: number) => number; top: (mm: number) => number; t: T; at: PlateAt | undefined }) {
   const own = view.zones.filter((z) => z.owner === seat.id && z.kind === 'area')
   const hand = view.zones.find((z) => z.owner === seat.id && z.kind === 'hand')
   const around = own.length > 0 ? own : hand ? [hand] : []
   if (around.length === 0) return null
-  const x0 = Math.min(...around.map((z) => z.geometry.x))
-  const y0 = Math.min(...around.map((z) => z.geometry.y))
-  const x1 = Math.max(...around.map((z) => z.geometry.x + z.geometry.w))
-  const y1 = Math.max(...around.map((z) => z.geometry.y + z.geometry.h))
+  // The seat's own zones on the felt, in pixels: what `placePlates` reads, and what `at` hangs from.
+  const box = {
+    l: left(Math.min(...around.map((z) => z.geometry.x))),
+    t: top(Math.min(...around.map((z) => z.geometry.y))),
+    r: left(Math.max(...around.map((z) => z.geometry.x + z.geometry.w))),
+    b: top(Math.max(...around.map((z) => z.geometry.y + z.geometry.h))),
+  }
   const edge = seat.edge ?? 'S'
-  const at: CSSProperties =
-    edge === 'N' ? { left: left(x0), top: top(y1) + PLATE_AIR_PX } :
-    edge === 'S' ? { left: left(x0), top: top(y0) - PLATE_AIR_PX, transform: 'translateY(-100%)' } :
-    edge === 'W' ? { left: left(x1) + PLATE_AIR_PX, top: top((y0 + y1) / 2), transform: 'translateY(-50%)' } :
-    { left: left(x0) - PLATE_AIR_PX, top: top((y0 + y1) / 2), transform: 'translate(-100%, -50%)' }
+  const placed: CSSProperties | null = at
+    ? {
+        left: (at.x === 'l' ? box.l : at.x === 'r' ? box.r : (box.l + box.r) / 2) + at.dx,
+        top: (at.y === 't' ? box.t : at.y === 'b' ? box.b : (box.t + box.b) / 2) + at.dy,
+        ...(edge === 'E' ? { transform: 'translateX(-100%)' } : {}),
+      }
+    : null
+  const home: CSSProperties =
+    edge === 'N' ? { left: box.l, top: box.b + PLATE_AIR_PX } :
+    edge === 'S' ? { left: box.l, top: box.t - PLATE_AIR_PX, transform: 'translateY(-100%)' } :
+    edge === 'W' ? { left: box.r + PLATE_AIR_PX, top: (box.t + box.b) / 2, transform: 'translateY(-50%)' } :
+    { left: box.l - PLATE_AIR_PX, top: (box.t + box.b) / 2, transform: 'translate(-100%, -50%)' }
   const held = hand ? (hand.mode === 'count' ? hand.count : hand.order.length) : null
-  const owned = new Set(own.map((z) => z.id))
-  const chips = view.components.filter((c) => c.counter !== null && c.counter !== undefined && owned.has(c.zone))
-  const maxWidth = plateRoom(view, seat, edge, { left: left(x0), right: left(x1), top: top(y0), bottom: top(y1) }, (held !== null ? 1 : 0) + chips.length, left, top, t)
   // A seat nobody sits in keeps its letter in the ball and says it is free where the name goes; the
   // letter written twice read «A A» (#717).
   return (
-    <div className="byd-seat-plate" data-seat-plate={seat.id} data-edge={edge} style={{ ...at, ...(Number.isFinite(maxWidth) ? { maxWidth: Math.max(0, maxWidth) } : {}), ['--seat' as string]: color }}>
+    <div
+      className="byd-seat-plate"
+      data-seat-plate={seat.id}
+      data-edge={edge}
+      data-box={`${box.l} ${box.t} ${box.r} ${box.b}`}
+      {...(at?.form === 'badge' ? { 'data-form': 'badge' } : {})}
+      style={{ ...(placed ?? home), ['--seat' as string]: color }}
+    >
       <b>
         <i aria-hidden="true">{(seat.name ?? seat.id).slice(0, 1)}</i>
         <span>{seat.name ?? t('tv.seat.free')}</span>
       </b>
-      {held !== null && <span>{t(held === 1 ? 'tv.seat.hand.one' : 'tv.seat.hand.other', { n: held })}</span>}
-      {chips.map((c) => (
-        <span key={c.id}>{c.cardRef ? `${c.cardRef} ${c.counter ?? 0}` : String(c.counter ?? 0)}</span>
-      ))}
+      {held !== null && <span>{t(held === 1 ? 'tv.seat.hand.short.one' : 'tv.seat.hand.short.other', { n: held })}</span>}
     </div>
   )
 }
 
+// Other seats' hands are a fan of backs and a count; the owner reads theirs on the phone. A hand
+// whose order this view may see (the observer, C8) fans the cards themselves. Every measure in
+// the fan is a millimetre on the felt, so it shrinks with the table rather than swamping it (#23).
 function Hand({ zone, color, rot, countAt, countIn = false, counted = true, folded = false, taking = 0, left, top, px, cards, faces, reach }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; countIn?: boolean; counted?: boolean; folded?: boolean; taking?: number; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined; reach?: ((c: VisibleComponentState) => Partial<Pointing & Handlers>) | undefined }) {
   const count = zone.mode === 'count' ? zone.count : zone.order.length
   const fan = folded ? 0 : Math.min(count, FAN_MAX)
