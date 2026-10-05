@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { DocumentTitle } from '../src/status/DocumentTitle.js'
 import { StatusLive } from '../src/status/StatusLive.js'
-import { EditorPage } from '../src/editor/EditorPage.js'
+import { DEFAULT_EDITOR_TIMING, EditorPage, type EditorTiming } from '../src/editor/EditorPage.js'
 import { requestLink } from '../src/account/api.js'
 import { projectDoc } from './project-doc.js'
-import { startServer, type Running } from './fixture.js'
+import { deafServer, goingDeafProxy, startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -20,12 +20,12 @@ afterEach(async () => {
   await run.stop()
 })
 
-function open(query: string) {
+function open(query: string, timing?: EditorTiming) {
   history.replaceState(null, '', `/editor?${query}`)
   render(
     <DocumentTitle route="editor">
       <StatusLive>
-        <EditorPage />
+        <EditorPage {...(timing ? { timing } : {})} />
       </StatusLive>
     </DocumentTitle>,
   )
@@ -126,6 +126,92 @@ describe('a server the editor cannot reach', () => {
   })
 })
 
+// A server that takes the call and never answers (#876): «Öppnar spelet…» stood for ever, because
+// opening the project had no deadline. D5's first connection has one everywhere else: the wait is
+// said to be long, and then it is called off as no contact, with a retry and the way home.
+describe('a server that takes the call and never answers', () => {
+  // The two are an order of magnitude apart, as on the live routes (status-routes.test.tsx).
+  const HELD: EditorTiming = { ...DEFAULT_EDITOR_TIMING, slowAfterMs: 80, connectTimeoutMs: 1_200 }
+
+  // On a clock the test drives: a held answer sends nothing, so the only things that can move the
+  // page are the wait's own timers, and on the wall clock a stalled machine lets both come due in
+  // one turn and `slow` is never painted (the race #265 found on the live routes).
+  it('says it is taking long before it says there is no contact', async () => {
+    const deaf = await deafServer()
+    vi.useFakeTimers()
+    try {
+      open(`project=p1&server=${encodeURIComponent(deaf.url.replace(/^ws/, 'http'))}`, HELD)
+      expect(noticeState()).toBe('loading')
+      await act(() => vi.advanceTimersByTimeAsync(600))
+      expect(noticeState()).toBe('slow')
+      expect(notice()!.textContent).toMatch(/spelet dröjer/i)
+      expect(within(notice() as HTMLElement).getByRole('button', { name: /försök igen/i })).toBeTruthy()
+      expect(within(notice() as HTMLElement).getByRole('link', { name: /mina spel/i })).toBeTruthy()
+      expect(document.title).toBe('Laddar · build-your-deck')
+      await act(() => vi.advanceTimersByTimeAsync(HELD.connectTimeoutMs))
+      expect(noticeState()).toBe('offline')
+      expect(document.title).toBe('Ingen kontakt · build-your-deck')
+    } finally {
+      vi.useRealTimers()
+    }
+    expect(deaf.stayedDeaf()).toBe(true)
+    await deaf.stop()
+  })
+
+  // Asking again is a new call on the same page, not a reload, and it is what opens the game once
+  // the server answers — the call that was held is never the one that brings it.
+  it('asks again in place from the long wait, and opens the game when the server answers', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    const line = await goingDeafProxy(run.http)
+    line.deafen()
+    try {
+      open(`project=${run.projectId}&server=${encodeURIComponent(line.url.replace(/^ws/, 'http'))}`, { ...HELD, connectTimeoutMs: 60_000 })
+      await waitFor(() => expect(noticeState()).toBe('slow'))
+      expect(line.held()).toBeGreaterThan(0)
+      line.hear()
+      await userEvent.click(within(notice() as HTMLElement).getByRole('button', { name: /försök igen/i }))
+      expect(await screen.findByText('Skogens herrar')).toBeTruthy()
+      expect(noticeState()).toBeNull()
+    } finally {
+      await line.stop()
+    }
+  })
+
+  it('asks again in place after giving up, and opens the game when the server answers', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    const line = await goingDeafProxy(run.http)
+    line.deafen()
+    try {
+      open(`project=${run.projectId}&server=${encodeURIComponent(line.url.replace(/^ws/, 'http'))}`, { ...HELD, connectTimeoutMs: 300 })
+      await waitFor(() => expect(noticeState()).toBe('offline'))
+      line.hear()
+      await userEvent.click(within(notice() as HTMLElement).getByRole('button', { name: /försök igen/i }))
+      expect(await screen.findByText('Skogens herrar')).toBeTruthy()
+    } finally {
+      await line.stop()
+    }
+  })
+
+  // A server that answers in time is never said to be slow: the timers die with the answer.
+  it('never says the wait is long when the answer comes in time', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    const seen = new Set<string | null>()
+    const watch = new MutationObserver(() => seen.add(noticeState()))
+    watch.observe(document.body, { subtree: true, childList: true, attributes: true })
+    try {
+      open(`project=${run.projectId}&server=${encodeURIComponent(run.http)}`, { ...DEFAULT_EDITOR_TIMING, slowAfterMs: 1_000, connectTimeoutMs: 1_500 })
+      await screen.findByText('Skogens herrar')
+      // Past both timers: an answer that left them armed would put a notice over the open game.
+      await new Promise((r) => setTimeout(r, 1_700))
+      expect(noticeState()).toBeNull()
+      expect(seen.has('slow')).toBe(false)
+      expect(seen.has('offline')).toBe(false)
+    } finally {
+      watch.disconnect()
+    }
+  })
+})
+
 describe('a project on its way in', () => {
   it('says it is loading, in the editor s own words', async () => {
     await run.projects.create(run.projectId, projectDoc())
@@ -137,7 +223,6 @@ describe('a project on its way in', () => {
 
   it('names the game in the tab once it is open', async () => {
     await run.projects.create(run.projectId, projectDoc())
-    console.log('DBG', (await fetch(`${run.http}/projects/${run.projectId}`)).status)
     open(`project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     await screen.findByText('Skogens herrar')
     // The wall is where the editor opens, and the tab says so (#477).

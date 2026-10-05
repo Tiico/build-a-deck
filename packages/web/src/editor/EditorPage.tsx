@@ -20,7 +20,7 @@ import { RulesPanel } from './RulesPanel.js'
 import { SharePanel, colourOf } from './SharePanel.js'
 import { tvUrl } from './tableLinks.js'
 import { Question } from './Question.js'
-import { useProjectClient } from './useProjectClient.js'
+import { useProjectClient, type ProjectTiming } from './useProjectClient.js'
 import type { ProjectDoc } from '@byd/server'
 import { useTableClient } from '../table/useTableClient.js'
 import { TableEnded, type ProjectClient, type Textures } from './ProjectClient.js'
@@ -50,8 +50,8 @@ const PlaytestPrototype = import.meta.env.DEV ? lazy(() => import('./prototype/P
 // The count itself is what is watched, not the polling: a poll that answers the same number is
 // no progress.
 export const RENDER_STALLED_AFTER_MS = 30_000
-export type EditorTiming = { renderStalledAfterMs: number; dropAfterMs: number }
-export const DEFAULT_EDITOR_TIMING: EditorTiming = { renderStalledAfterMs: RENDER_STALLED_AFTER_MS, dropAfterMs: DEFAULT_TIMING.dropAfterMs }
+export type EditorTiming = { renderStalledAfterMs: number } & ProjectTiming
+export const DEFAULT_EDITOR_TIMING: EditorTiming = { renderStalledAfterMs: RENDER_STALLED_AFTER_MS, slowAfterMs: DEFAULT_TIMING.slowAfterMs, dropAfterMs: DEFAULT_TIMING.dropAfterMs, connectTimeoutMs: DEFAULT_TIMING.connectTimeoutMs }
 // A count under watch: which table's, where it stands, and how many times the designer has asked
 // for it to move. A stall is that same triple seen again when the patience ran out.
 type Watched = { table: string; done: number; asked: number }
@@ -69,7 +69,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const projectId = params.get('project')
   const http = params.get('server') ?? location.origin
-  const { client, fault, retry } = useProjectClient(http, projectId, timing.dropAfterMs)
+  const { client, fault, slow, retry } = useProjectClient(http, projectId, timing)
   // How much room there is (L10), and where the designer is standing. One state answers both:
   // the desk shows a mode, a smaller screen shows the stage that mode is made of.
   const room = useRoom()
@@ -124,7 +124,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // The tab says which game is open, and what is wrong with it while something is (#12).
   // Which tab is open is part of where the designer is (#477), so the browser's tab says it too.
   const part = MODES.find(([m]) => m === mode)?.[1]
-  usePageTitle({ state: projectId ? (fault === 'unauthorized' ? null : fault === 'loggedOut' ? 'forbidden' : fault ?? (client ? null : 'loading')) : 'missing', game: client?.doc.name ?? null, part: part ? t(part) : null })
+  usePageTitle({ state: projectId ? (fault === 'unauthorized' ? null : fault === 'loggedOut' ? 'forbidden' : fault ?? (client ? null : slow ? 'slow' : 'loading')) : 'missing', game: client?.doc.name ?? null, part: part ? t(part) : null })
   // What the header has standing over the work: the history (B4), which opens from the revision
   // where the version is already named, or who has the game (D3), which opens from the faces. One
   // state rather than two, because two panels over each other cover the work and each other — on
@@ -307,7 +307,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // A project that is missing, shut or out of reach says so in the editor's own words, with a
   // way back and — where waiting can help — a way to ask again (#12, UX-07).
   if (fault && fault !== 'loggedOut' && !client) return <StatusNotice notice={noticeFor(fault, 'editor', t)} surface="page" links={links} onRetry={retry} />
-  if (!client) return <StatusNotice notice={noticeFor('loading', 'editor', t)} surface="page" links={links} />
+  if (!client) return <StatusNotice notice={noticeFor(slow ? 'slow' : 'loading', 'editor', t)} surface="page" links={links} onRetry={retry} />
   const doc = client.doc
   if (PlaytestPrototype && params.has('variant')) return <Suspense fallback={<p>Laddar prototyp…</p>}><PlaytestPrototype doc={doc} revision={client.rev} http={http} /></Suspense>
 

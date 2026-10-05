@@ -456,7 +456,9 @@ export async function createNamedSession(run: Running, name: string, id = 's1'):
 // through to `target` until `deafen()`, which drops the live ones and from then on accepts new
 // connections and says nothing on them — an attempt that is neither refused nor answered, which is
 // what left a reconnect standing at «försök 1 av 4» for ever.
-export type GoingDeaf = { url: string; deafen(): void; held(): number; stop(): Promise<void> }
+// `hear()` is the way back (#876): new connections go through again, while the ones it took when
+// deaf stay held, so a client is only ever answered on a call it placed after the line came back.
+export type GoingDeaf = { url: string; deafen(): void; hear(): void; held(): number; stop(): Promise<void> }
 export async function goingDeafProxy(target: string): Promise<GoingDeaf> {
   const { hostname, port: to } = new URL(target.replace(/^ws/, 'http'))
   const piped: Socket[] = []
@@ -480,6 +482,9 @@ export async function goingDeafProxy(target: string): Promise<GoingDeaf> {
     deafen: () => {
       deaf = true
       for (const s of piped.splice(0)) s.destroy()
+    },
+    hear: () => {
+      deaf = false
     },
     held: () => hanging.length,
     stop: () =>
