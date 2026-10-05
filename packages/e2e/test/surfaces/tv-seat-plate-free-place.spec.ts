@@ -147,6 +147,24 @@ async function television(open: Fixtures['open'], device: Device, table: Table):
   return page
 }
 
+// Det typsnitt Chromium ritade varje nods glyfer med, och om det kom från sidan själv: en familj per
+// nod, eller en lista där en nod ritades med mer än ett.
+async function drawnWith(page: Page, selector: string): Promise<{ family: string; custom: boolean }[]> {
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('DOM.enable')
+  await cdp.send('CSS.enable')
+  const { root } = (await cdp.send('DOM.getDocument', { depth: -1 })) as { root: { nodeId: number } }
+  const { nodeIds } = (await cdp.send('DOM.querySelectorAll', { nodeId: root.nodeId, selector })) as { nodeIds: number[] }
+  const out: { family: string; custom: boolean }[] = []
+  for (const nodeId of nodeIds) {
+    const { fonts } = (await cdp.send('CSS.getPlatformFontsForNode', { nodeId })) as { fonts: { familyName: string; isCustomFont: boolean; glyphCount: number }[] }
+    const used = fonts.filter((f) => f.glyphCount > 0)
+    out.push({ family: used.map((f) => f.familyName).join(' + '), custom: used.length > 0 && used.every((f) => f.isCustomFont) })
+  }
+  await cdp.detach()
+  return out
+}
+
 const CELLS = [
   { device: { name: 'tv-1280', viewport: { width: 1280, height: 800 } }, seats: 4, card: 46 },
   { device: { name: 'tv-1280', viewport: { width: 1280, height: 800 } }, seats: 8, card: 31 },
@@ -182,11 +200,13 @@ test.describe('platsens skylt på rummets TV står fritt och säger bokstav, nam
       expect(now.smallest).toBeGreaterThanOrEqual(24)
       expect(now.card).toBeGreaterThanOrEqual(cell.card - 1)
 
-      // Och med texten 15 % bredare, utlagd på nytt: fortfarande ren och ingenting kapat. En skylt får
-      // där bli en bricka, vilket är vad sista utvägen är till för: på CI:s Linux, vars systemtypsnitt
-      // redan är bredare än en Macs, blir B det vid 1280 med fyra platser.
+      // Och med texten 15 % bredare, utlagd på nytt: fortfarande ren, ingenting kapat och ingen skylt
+      // en bricka. #880 släppte det sista kravet när skylten skrev i `system-ui`, som på CI:s Linux är
+      // bredare än en Macs, och B där blev en bricka vid 1280 med fyra platser; sedan #887 skriver
+      // skylten i filtens skeppade typsnitt (K20), och bredden är densamma på båda maskinerna.
       const wide = await widen(page)
       expect({ where: `${where}, 15 % bredare`, ...clean(wide) }).toEqual({ where: `${where}, 15 % bredare`, ...CLEAN })
+      expect({ where: `${where}, 15 % bredare`, badges: wide.plates.filter((p) => p.form !== 'plate').map((p) => p.seat) }).toEqual({ where: `${where}, 15 % bredare`, badges: [] })
     })
 
   // Räknarens tal står på platsens egen mark igen, i rummets 24 px-pill, som en mark utan ägare
@@ -216,6 +236,25 @@ test.describe('platsens skylt på rummets TV står fritt och säger bokstav, nam
     expect(chips).toHaveLength(4)
     for (const c of chips) expect(c).toEqual({ strip: c.strip, figure: '0', px: 24, seen: true, named: false })
     await expect(page.locator('[data-table]')).not.toContainText('Guld')
+  })
+
+  // Skylten skriver i filtens skeppade typsnitt, som högnamnen bredvid den (K20, #887). Den satte en
+  // egen `font:` med `system-ui`, så dess bredd var maskinens: på CI:s Linux blev B en bricka i
+  // 15 %-passet där en Mac fick plats (#880).
+  //
+  // Det som läses är vilket typsnitt Chromium ritade glyferna med, inte vad kaskaden bad om: en
+  // regel står kvar även när ansiktet inte kommer fram. Högens namn är kontrollen — det ritas i det
+  // skeppade ansiktet på samma filt — så att ett namn som läses fel inte kan bli grönt av sig självt.
+  test('skylten skriver i filtens skeppade typsnitt (K20)', async ({ request, open, host, player }) => {
+    const table = await dealt(request, host, player, 4)
+    const page = await television(open, CELLS[0].device, table)
+    await settled(page)
+    const felt = await drawnWith(page, '[data-table] .byd-pile-name')
+    expect(felt.length).toBeGreaterThan(0)
+    for (const f of felt) expect(f).toEqual({ family: 'Roboto Condensed', custom: true })
+    const plates = await drawnWith(page, '[data-seat-plate] > b > i, [data-seat-plate] > b > span, [data-seat-plate] > span')
+    expect(plates).toHaveLength(table.seats.length * 3)
+    for (const f of plates) expect(f).toEqual(felt[0])
   })
 
   // Sidan avgörs en gång, i filtens inpassade skala, och står still när kameran zoomar (#43, #685).

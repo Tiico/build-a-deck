@@ -82,8 +82,9 @@
   /* The felt writes in the face that ships with it and not in whatever the machine calls
      `system-ui` (K19, #95). Everything drawn on the felt inherits from here — zone names, a pile's
      name and its count, a hand's count — so there is one declaration to read and one to change.
-     The two that set a `font:` of their own say the same thing in their own shorthand, and all
-     three carry the same fallback: `fonts/felt-font.css` is what defines the variable, and a felt
+     Those that set a `font:` of their own — a seat's name card, a chip, and on the room's
+     television a seat's plate (#887) — say the same thing in their own shorthand, and all of them
+     carry the same fallback: `fonts/felt-font.css` is what defines the variable, and a felt
      drawn without it should go back to what it drew before rather than lose its size as well. */
   font: 600 11px/1.2 var(--byd-felt-font, system-ui, sans-serif);
   user-select: none;
@@ -190,6 +191,16 @@
 .byd-zone[data-rim='E'] > span, .byd-zone[data-rim='W'] > span { --name-off: 3px; transform: translate(var(--name-side), var(--name-end, 0)); }
 .byd-zone[data-rim='E'] > span { --name-side: calc(-100% - var(--name-off)); }
 .byd-zone[data-rim='W'] > span { --name-side: var(--name-off); }
+
+/* The last place #685 has for a name is inside its own zone, along the edge it stood off — and
+   there the zone's own cards and tokens, drawn after it, lay over it (#874: «Räknare B» under its
+   own counter at six seats turned a quarter). So a name inside its zone is drawn over what the
+   zone holds, on the plate #789 gave the pile's caption: the felt's own, opaque, in chalk, which
+   reads at 14:1 whatever lies under it. `placeNames` measures the name with the plate on. */
+.byd-zone > span[data-name-at='inside'] {
+  z-index: 2; box-sizing: border-box; padding: 0 6px; border-radius: 6px;
+  background: var(--byd-felt-plate); color: var(--byd-felt-chalk); box-shadow: 0 0 0 1px var(--byd-felt-edge);
+}
 
 /* Cards, loose or on a pile: a coloured face or a striped back. The two were written out twice
    over, down to the same stripes; they are one card drawn in two places and are said once.
@@ -371,7 +382,9 @@
    card. The handle is turned back upright on a turned felt (`--unrotate`), so on a felt turned
    half a turn — seat B looking from the far side — its own «under» points at the card, and the
    caption goes over it instead. A quarter turn puts the card beside the handle, and under is
-   still clear of it.
+   still clear of it as long as the caption reaches no further toward the card than the handle
+   does: a caption wider than its handle, centred, reached past the handle's near end and over
+   the card. So it is set flush with the handle's far end, and grows away from the card (#899).
 
    On a felt of 460 px or less the piles' own names are gone (K19, below), and so is this: there
    is no room between two piles for a plate, and the name stays on the card as it was. The query
@@ -387,6 +400,8 @@
   }
   .byd-table-frame[data-mode='table'] .byd-pile:has(> .byd-pile-top > [data-texture='failed'] > b) .byd-pile-caption { color: #f4b9c7; }
   .byd-table-frame[data-mode='table'] [data-table][data-rotate='180'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-caption { top: auto; bottom: calc(100% + 2px); }
+  .byd-table-frame[data-mode='table'] [data-table][data-rotate='90'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-caption { left: auto; right: 0; translate: none; }
+  .byd-table-frame[data-mode='table'] [data-table][data-rotate='270'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-caption { left: 0; translate: none; }
 }
 
 /* Hands: a fan of backs and a count, oriented toward the seat's edge. */
@@ -1063,6 +1078,18 @@
 
 /* On a turned table (C5) the cards turn with it, but labels are interface and stay readable. */
 [data-table] .byd-pile-count, [data-table] .byd-area-count, [data-table] .byd-seat-name[data-read], [data-table] .byd-token, [data-table] .byd-zone > span, [data-table] .byd-peer-cursor span, [data-table] .byd-peer-tag, [data-table] .byd-peer-pulse span { rotate: var(--unrotate, 0deg); }
+/* The pile's pill and the carried card's tag hang under what they label by their top edge, and
+   the turn back upright is about their own middle. Half a turn leaves that middle where it was.
+   A quarter turn lays the label's width along the felt's «down»: hung by its middle, a pill a
+   hundred pixels wide reached half of that back over its own card (#899). So on a quarter turn the
+   middle is moved further down by half the width less half the height, and the label's near edge
+   keeps the gap its top edge keeps on an unturned felt. The height half is in `translate`, which
+   is the felt's own axes; the width half has to be measured along the label's width, so it is in
+   `transform`, which the turn turns onto the felt's «down». */
+.byd-table-frame[data-mode='table'] [data-table][data-rotate='90'] .byd-pile-count,
+[data-table][data-rotate='90'] .byd-peer-tag { translate: -50% -50%; transform: translateX(-50%); }
+.byd-table-frame[data-mode='table'] [data-table][data-rotate='270'] .byd-pile-count,
+[data-table][data-rotate='270'] .byd-peer-tag { translate: -50% -50%; transform: translateX(50%); }
 /* A seat's own name and its hand count are not interface but furniture: they lie on the table
    turned toward that seat (B), so they turn with it rather than against it. */
 
@@ -1227,7 +1254,7 @@
 .byd-seat-plate {
   position: absolute; z-index: 1; display: flex; align-items: center; gap: 0 10px; box-sizing: border-box; width: max-content;
   padding: 6px 12px 6px 6px; border-left: 4px solid var(--seat); border-radius: 12px;
-  background: rgb(13 15 20 / 0.88); color: #e8eaf0; font: 24px/1.2 system-ui, sans-serif; white-space: nowrap; pointer-events: none;
+  background: rgb(13 15 20 / 0.88); color: #e8eaf0; font: 24px/1.2 var(--byd-felt-font, system-ui, sans-serif); white-space: nowrap; pointer-events: none;
 }
 .byd-seat-plate > b { display: inline-flex; align-items: center; gap: 10px; color: #fff; }
 .byd-seat-plate > b > i { flex: none; display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: var(--seat); color: #0d0f14; font-style: normal; font-weight: 700; }
