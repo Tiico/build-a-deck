@@ -26,6 +26,7 @@ export async function probedShot(page: Page, where: string, opts: Parameters<Pag
     return await page.screenshot(opts)
   } catch (err) {
     const failedAfter = Date.now() - t0
+    ;(globalThis as { __probe533Hit?: boolean }).__probe533Hit = true
     const before = b ? gpuAt.get(b) : ''
     const after = await procs(page)
     const state = await page

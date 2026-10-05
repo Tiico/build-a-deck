@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        kind: [base, fit, base, fit, base, fit, base, fit]
+        kind: [base, base, base, base, base, base, base, base]
     services:
       postgres:
         image: postgres:17-alpine
@@ -59,8 +59,8 @@ jobs:
         working-directory: packages/render
         run: |
           # Churn: busy loops that come and go every few seconds, and browsers launched for one card each.
-          ( end=$((SECONDS + 600)); while [ $SECONDS -lt $end ]; do for i in 1 2 3; do timeout 4 node -e 'while(true){}' & done; wait; sleep 3; done ) &
-          for i in $(seq 1 10); do BENCH_VARIANT=${{ matrix.kind }} PER_BROWSER=1 timeout 660 pnpm exec tsx scripts/stress533.ts 600 p$i >> /tmp/bench.log 2>&1 & done
+          for i in 1 2; do timeout 620 node -e 'const e=Date.now()+600000;while(Date.now()<e){}' & done
+          for i in 1 2 3 4 5 6; do TRACE=1 timeout 660 pnpm exec tsx scripts/stress533.ts 600 p$i >> /tmp/bench.log 2>&1 & done
           wait || true
       - name: what was seen
         if: always()
@@ -73,4 +73,6 @@ jobs:
         if: always()
         with:
           name: bench-${{ strategy.job-index }}
-          path: /tmp/bench.log
+          path: |
+            /tmp/bench.log
+            /tmp/traces
