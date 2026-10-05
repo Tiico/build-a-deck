@@ -22,6 +22,7 @@
 // not a ground.
 
 import type { Page } from 'playwright'
+import { capture } from '@byd/render'
 
 /** A patch of the painted page, named so a failure says where it was. */
 export type Spot = {
@@ -73,7 +74,7 @@ const hex = ([r, g, b]: number[]) => `#${[r, g, b].map((v) => v!.toString(16).pa
 
 /** The three shades at each named spot. */
 export async function painted(page: Page, spots: readonly Spot[]): Promise<Record<string, Ground>> {
-  const shot = (await page.screenshot()).toString('base64')
+  const shot = (await capture(page, {})).toString('base64')
   const read = await page.evaluate(
     async ({ shot, spots }) => {
       const image = new Image()
