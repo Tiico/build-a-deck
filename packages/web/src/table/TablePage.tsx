@@ -12,7 +12,7 @@ import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { useFeltKeyboard } from './useFeltKeyboard.js'
 import { useActivityLive } from './useActivityLive.js'
 import { RewindFrame } from './RewindFrame.js'
-import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
+import { KEEP_TRYING_MS, DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
 import { StatusNotice } from '../status/StatusNotice.js'
@@ -39,7 +39,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   const [host] = useState(() => takeHostKey(sessionId))
   const owner = params.get('owner') === '1'
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
-  const conn = useTableClient(sessionId ? { url, sessionId, seat: null, ...(host ? { host } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
+  const conn = useTableClient(sessionId ? { url, sessionId, seat: null, ...(host ? { host } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs, keepTryingMs: timing.keepTryingMs ?? KEEP_TRYING_MS } : null)
   const { client, view, status, activity, observers, room, refused } = conn
   // «Ny kod» changes the key too (#820), and the key this tab was opened with opens nothing after
   // it: the one the rotation handed the screen is what a reload must find.

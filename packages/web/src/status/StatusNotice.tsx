@@ -14,7 +14,7 @@ export type Surface = 'page' | 'card' | 'sheet' | 'bar'
 export type StatusLinks = Partial<Record<ActionKind, string>>
 
 // What the transport is doing while nobody presses anything: which attempt is coming and when.
-export type Countdown = { seconds: number; attempt: number; attempts: number }
+export type Countdown = { seconds: number; attempt: number; attempts: number | null }
 
 export type StatusNoticeProps = {
   notice: Notice
@@ -77,7 +77,7 @@ export function StatusNotice({ notice, surface, links = {}, onRetry, onSwitch, c
       {countdown && (
         <p className="byd-status-countdown">
           <span className="byd-status-spin" aria-hidden="true" />
-          {t('status.countdown', { seconds: countdown.seconds, attempt: countdown.attempt, attempts: countdown.attempts })}
+          {countdown.attempts === null ? t('status.countdown.ongoing', { seconds: countdown.seconds }) : t('status.countdown', { seconds: countdown.seconds, attempt: countdown.attempt, attempts: countdown.attempts })}
         </p>
       )}
       {actions.length > 0 && (

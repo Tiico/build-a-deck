@@ -42,6 +42,7 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
 
   'status.asOf': 'What you see is from {at} and may have changed since.',
   'status.countdown': 'Trying again in {seconds} s · attempt {attempt} of {attempts}',
+  'status.countdown.ongoing': 'Trying again in {seconds} s',
 
   'status.loading.mark': 'Loading',
   'status.loading.heading': 'Fetching…',

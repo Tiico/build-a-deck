@@ -63,6 +63,33 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     expect(field.getAttribute('aria-valuemax')).toBe(String(MAX_PLAYERS))
   })
 
+  // The guide opened on one card «Kort 1», cost 1 and no text (#733): a game made from the defaults
+  // was one card in the draw pile and showed nothing of what a field does. Decided 2026-10-04: three
+  // example cards, two of each, in the game's language, every field filled and one meaning each.
+  it('opens on three example cards that fill every field, and makes a table of six cards', async () => {
+    const gone: string[] = []
+    open((url) => gone.push(url))
+    // One card at a time behind its tab, as the guide shows them.
+    const tabs = [...document.querySelectorAll('.byd-wizard-card-tabs > button[aria-pressed]')] as HTMLElement[]
+    expect(tabs.map((b) => b.textContent)).toEqual(['1Skogsvandring', '2Guldfynd', '3Björnen'])
+    const card = (n: number) => {
+      fireEvent.click(tabs[n - 1]!)
+      const value = (label: string) => (screen.getByLabelText(`kort ${n} ${label}`) as HTMLInputElement).value
+      return [value('Titel'), value('Kostnad'), value('Regeltext')]
+    }
+    expect([1, 2, 3].map(card)).toEqual([
+      ['Skogsvandring', '1', 'Dra ett kort.'],
+      ['Guldfynd', '2', 'Få 2 {mynt|vinst}.'],
+      ['Björnen', '3', 'Gör 3 {svärd|anfall}.'],
+    ])
+
+    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Exempel' } })
+    fireEvent.click(screen.getByRole('button', { name: /skapa spelet och fortsätt i editorn/i }))
+    await waitFor(() => expect(gone).toHaveLength(1))
+    const stored = await run.projects.load(new URL(gone[0]!, 'http://x').searchParams.get('project')!)
+    expect(stored?.rows.map((r) => r.fields['antal'])).toEqual([2, 2, 2])
+  })
+
   it('builds starter cards graphically and shows a newly added field on every card', () => {
     open(() => undefined)
 
@@ -100,7 +127,8 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     const gone: string[] = []
     open((url) => gone.push(url))
     const live = () => within(document.querySelector('.byd-wizard-preview') as HTMLElement)
-    expect(live().getByText('Kort 1')).toBeTruthy()
+    // The first of the example cards the guide opens on (#733).
+    expect(live().getByText('Skogsvandring')).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
     // The number written straight into the stepper's field, and kept when the field is left.
@@ -112,7 +140,7 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     fireEvent.change(screen.getByLabelText('kort 1 Illustration'), { target: { files: [file] } })
     await screen.findByRole('img', { name: 'Förhandsvisning av Illustration' })
     fireEvent.click(screen.getByRole('button', { name: '+ Nytt kort' }))
-    fireEvent.change(screen.getByLabelText('kort 2 Titel'), { target: { value: 'Riddare' } })
+    fireEvent.change(screen.getByLabelText('kort 4 Titel'), { target: { value: 'Riddare' } })
 
     fireEvent.click(screen.getByRole('button', { name: /skapa spelet och fortsätt i editorn/i }))
     await waitFor(() => expect(gone).toHaveLength(1))
@@ -122,7 +150,7 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     expect(url.searchParams.get('server')).toBe(run.http)
     const stored = await run.projects.load(id)
     expect(stored?.name).toBe('Skogens herrar')
-    expect(stored?.rows.map((r) => r.id)).toEqual(['drake', 'riddare'])
+    expect(stored?.rows.map((r) => r.id)).toEqual(['drake', 'guldfynd', 'bjornen', 'riddare'])
     // The image went up as an asset (E1): the row points at it by hash, and the server serves it.
     // The column is the field's name as written in step 2 (#476, L44).
     const art = String(stored?.rows[0]?.fields['Illustration'])

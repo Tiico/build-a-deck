@@ -53,6 +53,8 @@ export const svStatus = {
   // det som ligger kvar bakom har blivit (#7), och när nästa försök kommer.
   'status.asOf': 'Det du ser är från {at} och kan ha ändrats sedan dess.',
   'status.countdown': 'Nytt försök om {seconds} s · försök {attempt} av {attempts}',
+  // En skärm ingen rör som fortsätter försöka efter planen (#722): inget «av», för det tar inte slut.
+  'status.countdown.ongoing': 'Nytt försök om {seconds} s',
 
   'status.loading.mark': 'Laddar',
   'status.loading.heading': 'Hämtar…',
