@@ -2143,6 +2143,14 @@ Kuvert-id blir loggens batch och måste vara unikt per session, inte per anslutn
 Aktören håller sin logg i minnet för att kunna se bakåt.
 Utan andra sittande kan ett kontesterat förslag bara dras tillbaka; bordsskärmen får aldrig bekräfta.
 
+Reviderat 2026-10-05 (#747, beställarens beslut A efter prototyp 02): **ett förslag föregås av en fråga.**
+Har någon annan spelat sedan platsens senaste drag skickades förslaget på trycket, utan ett ord, och de andra fick avgöra en tillbakaspolning den som tryckte kanske aldrig menade.
+Nu öppnar trycket ett ark, «Senaste draget är inte ditt», som säger var bordet skulle hamna (före vilket drag) och vem som avgör, och som öppnar på «Avbryt».
+Först «Föreslå att spola tillbaka» skickar `rewind.propose`; ett eget drag ångras fortfarande på ett tryck.
+När ett förslag står stängs distansvyns «Visa alla», som annars täckte just det bord förslaget visar, och förslagsställarens rad namnger draget.
+Bortvalda varianter: B, en knapp som byter namn men inte frågar, och C, där Ångra bara ångrar egna drag och tillbakaspolningen flyttar till ⋯-menyn.
+Prototypen: `docs/ux-audits/2026-10-05-sparka-och-angra/prototyper/02-angra.html`.
+
 ### K14. Bordet spelas direkt: dra, släpp, klicka för en ring med verb (prototypat 2026-09-06, utvidgad 2026-09-12)
 
 K1 och K2 gav reglerna; det här är hur handen gör dem.

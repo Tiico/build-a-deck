@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Intent, VisibleComponentState } from '@byd/protocol'
 import '../table/table.css'
 import '../player/player.css'
@@ -120,6 +120,12 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
     faces: http,
   })
   useActivityLive(activity, view, seat)
+  // A proposed rewind shows the table as it was (C, K13), and «Visa alla» stood over exactly that
+  // table (#747): the grid closes the moment a proposal stands, whoever made it.
+  const proposing = view?.rewind != null
+  useEffect(() => {
+    if (proposing) setSpread(false)
+  }, [proposing])
 
   // Distance mode has a seat like any other screen with one, and sits down the same way.
   useSitDown(client, view, seat, name)
