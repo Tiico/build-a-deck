@@ -73,7 +73,7 @@ describe('the guided start (L6) in the reader\'s own language', () => {
     expect(screen.getByRole('button', { name: 'Classic' })).toBeTruthy()
     // The example card the wizard seeds is a word the designer reads and writes over, like the
     // field names it suggests, so it starts in the language they are building the game in.
-    expect(screen.getByRole('button', { name: /Card 1/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Forest walk/ })).toBeTruthy()
     cleanup()
 
     render(<NewProjectPage onNavigate={() => undefined} />)

@@ -141,7 +141,8 @@ describe('the focus in the wizard (#476)', () => {
     await user.click(screen.getByRole('button', { name: '+ Textfält' }))
     expect(document.activeElement).toBe(screen.getByLabelText('Nytt textfält namn'))
     await user.click(screen.getByRole('button', { name: '+ Nytt kort' }))
-    expect(document.activeElement).toBe(screen.getByLabelText('kort 2 Titel'))
+    // After the three example cards the guide opens on (#733).
+    expect(document.activeElement).toBe(screen.getByLabelText('kort 4 Titel'))
   })
 
   it('never leaves the focus on nothing when a card is taken away or a step button locks', async () => {
