@@ -64,10 +64,9 @@ test.describe('the latest lines on a television (#482)', () => {
 
   // A full table: every seat's plate stands whole on the felt, and a seat at the side stacks its
   // words so that its plate does not reach the piles (#573, beslut C, measured at four seats).
-  // Along the top and the bottom a plate is one row while it has room, and at eight seats in a
-  // typeface wider than the Mac's it has not: the row was laid over the next seat's plate instead
-  // (#750). So what holds on every machine is that the name is whole, that what the seat holds
-  // goes onto a line of its own rather than over a neighbour, and that no two plates meet.
+  // Along the top and the bottom a plate is one row. A plate is never cut and never laid over
+  // another: it is placed on a free place (#683), so what holds on every machine is that the name
+  // is whole and that no two plates meet.
   for (const players of [6, 8] as const) {
     test(`stands every one of ${players} seats whole on its plate`, async ({ tableOf, open, host }) => {
       const table = await tableOf({ players, cards: 12, copies: 2 })

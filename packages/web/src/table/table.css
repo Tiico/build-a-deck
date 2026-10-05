@@ -1169,8 +1169,8 @@
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-pile-n { min-width: 40px; height: 40px; font-size: 24px; }
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-pile-caption { top: calc(100% + 40px); font-size: 24px; line-height: 28px; }
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-area-count { font-size: 24px; }
-/* A chip no seat owns keeps its figure, on a badge the figure's own size rather than inside a disc
-   a third of it. */
+/* A chip says its figure on a badge the figure's own size rather than inside a disc a third of it:
+   one no seat owns, and since #683 (beslut E) a seat's own too. */
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-token { display: grid; place-items: center; overflow: visible; }
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-token b { padding: 0 8px; border-radius: 999px; background: #0d0f14; color: #fff; font-size: 24px !important; line-height: 32px; }
 
