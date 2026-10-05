@@ -100,7 +100,7 @@ function lost(html: string): string {
 }
 
 // The client is only ever a click target in these surfaces; nothing is sent.
-const idle = { send: async () => undefined } as unknown as Parameters<typeof SessionButtons>[0]['client']
+const idle = { send: async () => undefined, activity: [] } as unknown as Parameters<typeof SessionButtons>[0]['client']
 
 // PlayerPage itself needs a live socket, so its head is repeated here; everything below it is the
 // real component. Keep the two in step when the head changes.
