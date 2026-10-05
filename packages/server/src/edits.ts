@@ -125,7 +125,12 @@ export type EditIntent =
   // The words come with the edit, so the actor writes the same zone names the editor showed the
   // designer — their own language, not the tool's home one (A4).
   | { v: 'setRecipe'; recipe: Recipe; words?: RecipeWords }
-  | { v: 'addZone'; id: string; kind: 'area' | 'pile'; name: string }
+  // `geometry` is where the zone was born, decided once when the edit is made (`decideEdit`) and
+  // written into the log with it (#894). Where a new zone goes is a rule that changes with a
+  // deploy (#443, #480, #881), and a line that asked the rule again on replay would put the zone
+  // somewhere nobody saw it. A line written before the place was stored carries none, and is
+  // replayed by the rule of the day, as it always was.
+  | { v: 'addZone'; id: string; kind: 'area' | 'pile'; name: string; geometry?: Geometry }
   | { v: 'removeZone'; id: string }
   // The same zone for every seat (B5, reviderat): an area in front of each player, or the strip
   // its counters lie on. One thing the designer did, so one edit and one step back (B4) — eight
@@ -197,6 +202,17 @@ export type EditIntent =
   // Taking an older version back (B4) is an edit like any other: it lands in the log, everyone
   // with the project open sees it, and it becomes the next version when saved.
   | { v: 'restore'; doc: ProjectDoc }
+
+// What an edit decides when it is made, written into it before it is committed (#894, D3). The
+// log stores results and never a question to be asked again: replay applies the line as it was
+// written, so a rule that changes with a deploy cannot move what a line already did. The editor
+// decides before it applies its own edit, so the place the designer sees is the place it sends;
+// the actor decides as well, for a caller that sent none. Everything else passes through as it is.
+export function decideEdit(doc: ProjectDoc, intent: EditIntent): EditIntent {
+  if (intent.v !== 'addZone' || intent.geometry || doc.setup.zones.some((z) => z.id === intent.id)) return intent
+  const geometry = intent.kind === 'pile' ? newPileSpot(doc.setup) : newAreaSpot(doc.setup)
+  return geometry === null ? intent : { ...intent, geometry }
+}
 
 export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
   switch (intent.v) {
@@ -424,6 +440,7 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       // stället för att stapla tyst. Panelen frågar med samma funktion innan den trycker, så
       // formgivaren får orden och aldrig det här kastet.
       const made = (): Zone => {
+        if (intent.geometry) return { id: intent.id, kind: intent.kind, name: intent.name, visibility: 'all', geometry: intent.geometry }
         if (intent.kind === 'pile') {
           const spot = newPileSpot(doc.setup)
           if (spot === null) throw new Error('no free felt for a new pile; move or remove a zone first')
