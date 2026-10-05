@@ -40,7 +40,7 @@ const read = (page: Page): Promise<Reading> =>
       const r = el.getBoundingClientRect()
       return {
         zone: `hand:${el.dataset['seatPlate'] ?? '?'}`,
-        count: (/(\d+) kort på hand/.exec(el.textContent ?? '')?.[1] ?? '').trim(),
+        count: (/(\d+) kort$/.exec(el.textContent ?? '')?.[1] ?? '').trim(),
         left: Math.round(r.left * 10) / 10,
         top: Math.round(r.top * 10) / 10,
         right: Math.round(r.right * 10) / 10,

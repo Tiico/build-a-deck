@@ -1,0 +1,128 @@
+{
+ "liggande-idag": {
+  "header": 57,
+  "whole": 0,
+  "card": [
+   200,
+   279
+  ],
+  "page": 1033
+ },
+ "liggande-A": {
+  "header": 49,
+  "whole": 4,
+  "card": [
+   170,
+   238
+  ],
+  "page": 760
+ },
+ "liggande-B": {
+  "header": 49,
+  "whole": 0,
+  "card": [
+   170,
+   238
+  ],
+  "page": 904
+ },
+ "liggande-C": {
+  "header": 49,
+  "whole": 4,
+  "card": [
+   139,
+   194
+  ],
+  "page": 804
+ },
+ "liggande-liten-idag": {
+  "header": 57,
+  "whole": 0,
+  "card": [
+   200,
+   279
+  ],
+  "page": 1033
+ },
+ "liggande-liten-A": {
+  "header": 49,
+  "whole": 4,
+  "card": [
+   149,
+   208
+  ],
+  "page": 730
+ },
+ "liggande-liten-B": {
+  "header": 49,
+  "whole": 0,
+  "card": [
+   149,
+   208
+  ],
+  "page": 874
+ },
+ "liggande-liten-C": {
+  "header": 49,
+  "whole": 4,
+  "card": [
+   117,
+   164
+  ],
+  "page": 780
+ },
+ "huvud-320-idag": {
+  "header": 107,
+  "whole": 2,
+  "card": [
+   112,
+   156
+  ],
+  "page": 960
+ },
+ "huvud-320-H1": {
+  "header": 57,
+  "whole": 2,
+  "card": [
+   112,
+   156
+  ],
+  "page": 910
+ },
+ "huvud-320-H2": {
+  "header": 57,
+  "whole": 2,
+  "card": [
+   112,
+   156
+  ],
+  "page": 910
+ },
+ "huvud-320-25-idag": {
+  "header": 107,
+  "whole": 2,
+  "card": [
+   112,
+   156
+  ],
+  "page": 960
+ },
+ "huvud-320-25-H1": {
+  "header": 57,
+  "whole": 2,
+  "card": [
+   112,
+   156
+  ],
+  "page": 910
+ },
+ "huvud-320-25-H2": {
+  "header": 57,
+  "whole": 2,
+  "card": [
+   112,
+   156
+  ],
+  "page": 910
+ }
+}
