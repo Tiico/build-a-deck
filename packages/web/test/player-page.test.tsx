@@ -400,6 +400,9 @@ describe('undo and rewind on the phone (B, C)', () => {
     await waitFor(() => expect(ask.contains(document.activeElement)).toBe(true))
     // Everything else on the phone is out of reach while it stands.
     expect(document.querySelector('.byd-flag')?.closest('[inert]')).not.toBeNull()
+    // And it says which move the table would go back to before, as the TV's frame does (#714): the
+    // one who sits with their back to the TV cannot otherwise tell what they are approving.
+    expect(ask.textContent).toContain('Bordet visar hur det såg ut före «Ada drog 1 kort från Draghög till Adas hand». Draghög blandas om.')
     ada.close()
     bo.close()
   })
@@ -546,7 +549,7 @@ describe('leaving the table (#31)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ut… ur bordet' }))
     const sheet = screen.getByRole('dialog', { name: 'På väg ut?' })
     // Both exits stand in it, each under what it costs; asking is not yet answering.
-    expect(sheet.textContent).toMatch(/Din plats blir ledig och korten i din hand går tillbaka i draghögen/)
+    expect(sheet.textContent).toMatch(/Din plats blir ledig och korten i din hand går tillbaka till Draghög\./)
     expect(sheet.textContent).toMatch(/Tappar du nätet i stället står platsen kvar/)
     expect((await run.store.read(id)).some((l) => ['seat.release', 'session.end'].includes(l.intent.v))).toBe(false)
 

@@ -349,6 +349,8 @@ describe.each<Lang>(['sv', 'en'])('the ring and the keyboard panel read one list
     expect(panel).toEqual(ring)
     // And the panel says whose chip it is, as the ring's hub does.
     expect(document.querySelector('.byd-kbd-panel h2')!.textContent).toContain(lang === 'sv' ? 'Adas räknare' : 'Ada’s counter')
+    // Apart from the counter's own name, and not run into it: «LivAdas räknare» read as one word (#714).
+    expect(document.querySelector('.byd-kbd-panel h2')!.textContent).toBe(lang === 'sv' ? 'Liv · Adas räknare' : 'Liv · Ada’s counter')
   })
 })
 

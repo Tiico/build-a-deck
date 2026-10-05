@@ -231,7 +231,8 @@ export const svPlay = {
   // Med kortets namn när läsaren får se kortet (#507 fynd 6); annars raden ovan.
   'activity.move.named': '{who} flyttade {card} till {zone}',
   // En hand namnges av den som sitter där (K19), mitt i meningen: "till Adas hand", "till min hand".
-  'activity.hand.my': 'min hand',
+  'activity.hand.my': 'din hand',
+  'activity.you': 'Du',
   'activity.hand.other': '{name:s} hand',
   'activity.rotate': '{who} vred ett kort',
   'activity.flip': '{who} vände ett kort',
@@ -239,15 +240,19 @@ export const svPlay = {
   'activity.stack': '{who} lade ett kort på ett annat',
   'activity.split.to.one': '{who} drog {n} kort från {zone} till {to}',
   'activity.split.to.other': '{who} drog {n} kort från {zone} till {to}',
-  'activity.split.beside.one': '{who} delade av {n} kort från {zone} till en ny hög',
+  'activity.split.beside.one': '{who} lade {n} kort bredvid {zone}',
+  // A pile made on the felt has no name of its own (K1); it is named by the area it lies in (#714).
+  'zone.pile.within': 'en hög i {area}',
+  'zone.pile.title': 'Hög i {area}',
   'activity.split.beside.other': '{who} delade av {n} kort från {zone} till en ny hög',
   'activity.shuffle': '{who} blandade {zone}',
-  'activity.draw.one': '{who} drog {n} kort från {zone}',
-  'activity.draw.other': '{who} drog {n} kort från {zone}',
-  'activity.deal.one': '{who} delade ut {n} kort var',
-  'activity.deal.other': '{who} delade ut {n} kort var',
+  'activity.deal.one': '{who} delade ut {n} kort var till {to}',
+  'activity.deal.other': '{who} delade ut {n} kort var till {to}',
+  // How a list of places is said: «Adas hand, Bos hand och Cys hand».
+  'activity.and': 'och',
   'activity.roll': '{who} slog en tärning',
   'activity.setCounter': '{who} satte en räknare till {value}',
+  'activity.setCounter.named': '{who} satte {counter} till {value}',
   'activity.peek': '{who} tittade på ett kort',
   'activity.showTo': '{who} visade ett kort för {seats}',
   'activity.reveal': '{who} avslöjade ett kort',
@@ -277,7 +282,8 @@ export const svPlay = {
   'rewind.mine': 'Du föreslår att spola tillbaka. Bordet visar hur det såg ut; {who} avgör.',
   'rewind.withdraw': 'Dra tillbaka förslaget',
   'rewind.ask.title': '{who} vill spola tillbaka',
-  'rewind.ask.body': 'Bordet visar hur det såg ut. Draghögen blandas om.',
+  'rewind.ask.body': 'Bordet visar hur det såg ut {where}. {pile} blandas om.',
+  'rewind.ask.body.any': 'Bordet visar hur det såg ut {where}. Leken blandas om.',
   'rewind.approve': 'Godkänn',
   'rewind.decline': 'Neka',
   'rewind.declined': '{who} sa nej till att spola tillbaka.',
@@ -293,7 +299,7 @@ export const svPlay = {
 
   // Telefonen: handen, det som ligger framför en, och räknarna.
   'player.hint': 'Tryck för att läsa · håll för att välja flera',
-  'player.hint.selected.one': '{n} valda · dra upp för att spela',
+  'player.hint.selected.one': '{n} valt · dra upp för att spela',
   'player.hint.selected.other': '{n} valda · dra upp för att spela',
   'player.counter.minus': '{name} minus',
   'player.counter.plus': '{name} plus',
@@ -323,7 +329,8 @@ export const svPlay = {
   'player.hand.none': 'Inget kort valt',
   'player.hand.left': 'Flytta vänster',
   'player.hand.right': 'Flytta höger',
-  'player.hand.empty': 'Tom hand. Dra ett kort ur draghögen.',
+  'player.hand.empty': 'Tom hand. Dra ett kort ur {pile}.',
+  'player.hand.empty.any': 'Tom hand. Dra ett kort ur en hög.',
   'player.hand.empty.none': 'Tom hand. Det finns inga kort att dra.',
   // Läsvyn går igenom raden kortet lyftes ur (#507): handen, ytan framför dig, eller en annan yta.
   'player.read.prev': 'Föregående kort',
@@ -371,7 +378,9 @@ export const svPlay = {
   'exit.sheet.title': 'På väg ut?',
   'exit.sheet.leave': 'Lämna bordet',
   'exit.sheet.leave.body':
-    'Din plats blir ledig och korten i din hand går tillbaka i draghögen. De andra spelar vidare. Tappar du nätet i stället står platsen kvar och du kommer tillbaka till din hand.',
+    'Din plats blir ledig och korten i din hand går tillbaka till {pile}. De andra spelar vidare. Tappar du nätet i stället står platsen kvar och du kommer tillbaka till din hand.',
+  'exit.sheet.leave.body.any':
+    'Din plats blir ledig och korten i din hand går tillbaka till leken. De andra spelar vidare. Tappar du nätet i stället står platsen kvar och du kommer tillbaka till din hand.',
   'exit.sheet.end': 'Avsluta bordet för alla',
   'exit.sheet.end.body': 'Ingen kan spela vidare, och alla får enkäten på sin telefon. Vi frågar en gång till innan det sker.',
   'exit.sheet.stay': 'Stanna kvar',
@@ -420,7 +429,9 @@ export const svPlay = {
   'join.seat.taken': 'Platsen togs precis av någon annan. Välj en annan.',
   // Kvitteringen för den som just lämnat: hon kommer tillbaka hit, och får veta vad som hände
   // med platsen och handen hon lämnade (#31).
-  'join.left': 'Din plats är ledig och handen ligger tillbaka i draghögen. De andra spelar vidare.',
+  // The picker's lobby carries no zones (DRIFT §9), so it cannot name the pile; «leken» is the
+  // game's own word for all of it, and not a pile's name it would get wrong (#714).
+  'join.left': 'Din plats är ledig och handen ligger tillbaka i leken. De andra spelar vidare.',
   'join.into': 'Du är på väg in i',
   'join.room': 'Rum {code}',
   'join.seat.chosen': 'Plats {seat} vald',

@@ -394,6 +394,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "A",
+          "returnTo": "draw",
           "order": [
             "r3"
           ]
@@ -413,6 +414,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "B",
+          "returnTo": "draw",
           "count": 0
         },
         {
@@ -579,6 +581,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "A",
+          "returnTo": "draw",
           "count": 1
         },
         {
@@ -596,6 +599,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "B",
+          "returnTo": "draw",
           "order": []
         },
         {
@@ -746,6 +750,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "A",
+          "returnTo": "draw",
           "count": 1
         },
         {
@@ -763,6 +768,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "B",
+          "returnTo": "draw",
           "count": 0
         },
         {
@@ -920,6 +926,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "A",
+          "returnTo": "draw",
           "order": [
             "r3"
           ]
@@ -939,6 +946,7 @@
           "dynamic": false,
           "visibility": "owner",
           "owner": "B",
+          "returnTo": "draw",
           "order": []
         },
         {

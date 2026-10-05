@@ -163,7 +163,7 @@ describe('a hand with nothing in it (UX-16)', () => {
     const props = { selected: new Set<string>(), onTap: () => undefined, onHold: () => undefined, onLift: () => undefined, onOpen: () => undefined }
     const { rerender } = render(<HandStrip view={empty} {...props} />)
     expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(0)
-    expect(screen.getByText(/Tom hand/).textContent).toBe('Tom hand. Dra ett kort ur draghögen.')
+    expect(screen.getByText(/Tom hand/).textContent).toBe('Tom hand. Dra ett kort ur Draghög.')
 
     rerender(<HandStrip view={dealt} {...props} />)
     expect(screen.queryByText(/Tom hand/)).toBeNull()

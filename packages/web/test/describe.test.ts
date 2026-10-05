@@ -38,16 +38,19 @@ describe('the log names a hand by whoever sits there (K19, #86)', () => {
     expect(describeActivity(moveToHand('hand:A'), table(null), en)).toBe('Ada moved a card to Ada’s hand')
   })
 
-  it('says "min hand" on the phone of the seat that owns it, and lowercase mid-sentence', () => {
-    expect(describeActivity(moveToHand('hand:A'), table('A'), sv)).toBe('Ada flyttade ett kort till min hand')
-    expect(describeActivity(moveToHand('hand:A'), table('A'), en)).toBe('Ada moved a card to my hand')
-    // Another seat's hand is still named by its owner on my phone.
-    expect(describeActivity(moveToHand('hand:B'), table('A'), sv)).toBe('Ada flyttade ett kort till Bos hand')
+  // On the seat's own phone the line speaks to its reader, in one person (#714): «Ada drog 1 … till
+  // min hand» was the third person and the first in one sentence.
+  it('says «du» and «din hand» on the phone of the seat that owns it, lowercase mid-sentence', () => {
+    expect(describeActivity(moveToHand('hand:A'), table('A'), sv)).toBe('Du flyttade ett kort till din hand')
+    expect(describeActivity(moveToHand('hand:A'), table('A'), en)).toBe('You moved a card to your hand')
+    // Another seat's hand is still named by its owner on my phone, and another's move by its name.
+    expect(describeActivity(moveToHand('hand:B'), table('A'), sv)).toBe('Du flyttade ett kort till Bos hand')
+    expect(describeActivity(moveToHand('hand:A'), table('B'), sv)).toBe('Ada flyttade ett kort till Adas hand')
   })
 
   it('leaves every other zone with the name its designer gave it, untranslated', () => {
-    expect(describeActivity(moveToHand('front:A'), table('A'), sv)).toBe('Ada flyttade ett kort till Framför A')
-    expect(describeActivity(moveToHand('front:A'), table('A'), en)).toBe('Ada moved a card to Framför A')
+    expect(describeActivity(moveToHand('front:A'), table('A'), sv)).toBe('Du flyttade ett kort till Framför A')
+    expect(describeActivity(moveToHand('front:A'), table('A'), en)).toBe('You moved a card to Framför A')
     const shuffle: Activity = { seq: 8, by: 'A', at: '2026-09-13T00:00:00.000Z', intent: { v: 'shuffle', pile: 'draw' } } as Activity
     expect(describeActivity(shuffle, table(null), en)).toBe('Ada shuffled Draghög')
   })
@@ -81,13 +84,12 @@ describe('the log tells a drawn card from a cut pile (#421)', () => {
       const lines = [describeActivity(drawn, table('A'), t), describeActivity(cut, table('A'), t)]
       expect(lines[0]).not.toBe(lines[1])
       for (const line of lines) {
-        expect(line).toContain('Ada')
         expect(line).toContain('Draghög')
         expect(line).not.toContain('Drake')
         expect(line).not.toContain('Typ')
       }
     }
-    expect(describeActivity(drawn, table('A'), sv)).toBe('Ada drog 3 kort från Draghög till min hand')
+    expect(describeActivity(drawn, table('A'), sv)).toBe('Du drog 3 kort från Draghög till din hand')
   })
 })
 
@@ -141,5 +143,70 @@ describe('a card played somewhere is said as where it went (#560 P-12)', () => {
     const view = { ...table(null), components: [{ id: 'c1', type: { id: 'card.standard.63x88', version: 1 }, zone: 'front:A', face: 'front', x: 0, y: 0, rot: 0, cardRef: 'quickdraw', title: 'Quickdraw' }] } as unknown as Snapshot
     const [said] = sayable(played('b1')).map((l) => describeActivity(l, view, sv))
     expect(said).toBe('Ada flyttade Quickdraw till Framför A')
+  })
+})
+
+// A counter's change says which counter (#714): «satte en räknare till 1» three times over did not
+// say what had changed, while the chip on the felt says «Guld 1».
+describe('a counter set in the log (#714)', () => {
+  const withGold = (): Snapshot => {
+    const v = table(null)
+    return { ...v, components: [{ id: 'k1', zone: 'table', cardRef: 'Guld', counter: 1, face: 'front', x: 0, y: 0, rot: 0 }] } as unknown as Snapshot
+  }
+  const set = (component: string): Activity => ({ seq: 8, by: 'A', at: '2026-10-04T00:00:00.000Z', intent: { v: 'setCounter', component, value: 1 } } as Activity)
+
+  it('names the counter by the name the designer gave it', () => {
+    expect(describeActivity(set('k1'), withGold(), sv)).toBe('Ada satte Guld till 1')
+    expect(describeActivity(set('k1'), withGold(), en)).toBe('Ada set Guld to 1')
+  })
+
+  it('still says «en räknare» for one it cannot name', () => {
+    expect(describeActivity(set('k9'), withGold(), sv)).toBe('Ada satte en räknare till 1')
+  })
+})
+
+// A line keeps the name its seat had when it was written (#714): after Di left, her rows read
+// «D drog …» under «Di satte sig på plats D».
+describe('a line told by the name it was written under (#714)', () => {
+  it('says the name the line carries, though the seat is empty or taken by someone else now', () => {
+    const empty = { ...table(null), seats: [{ id: 'A', name: null, edge: 'S' }, { id: 'B', name: 'Bo', edge: 'N' }] } as unknown as Snapshot
+    const line = { ...moveToHand('front:A'), name: 'Di' } as Activity
+    expect(describeActivity(line, empty, sv)).toBe('Di flyttade ett kort till Framför A')
+    const retaken = { ...table(null), seats: [{ id: 'A', name: 'Eva', edge: 'S' }, { id: 'B', name: 'Bo', edge: 'N' }] } as unknown as Snapshot
+    expect(describeActivity(line, retaken, sv)).toBe('Di flyttade ett kort till Framför A')
+    // And on Eva's own phone, at the seat Di left, Di's line is still Di's and not «Du».
+    expect(describeActivity(line, { ...retaken, seat: 'A' } as Snapshot, sv)).toBe('Di flyttade ett kort till Framför A')
+    expect(describeActivity({ ...line, name: 'Eva' } as Activity, { ...retaken, seat: 'A' } as Snapshot, sv)).toBe('Du flyttade ett kort till Framför A')
+  })
+})
+
+// A draw and a deal say where the cards went (#714): «Bordet drog 5 från Kortlek» three times
+// over could not be told apart, while a player's own draw already said «… till Adas hand».
+describe('where a draw and a deal put the cards (#714)', () => {
+  const by = (intent: unknown): Activity => ({ seq: 11, by: null, at: '2026-10-04T00:00:00.000Z', intent } as Activity)
+  it('names the hand a draw went to, as a drawn card already does', () => {
+    expect(describeActivity(by({ v: 'draw', from: 'draw', to: 'hand:A', count: 5 }), table(null), sv)).toBe('Bordet drog 5 kort från Draghög till Adas hand')
+  })
+  it('names every hand a deal went to', () => {
+    expect(describeActivity(by({ v: 'deal', from: 'draw', to: ['hand:A', 'hand:B'], each: 2 }), table(null), sv)).toBe('Bordet delade ut 2 kort var till Adas hand och Bos hand')
+    expect(describeActivity(by({ v: 'deal', from: 'draw', to: ['hand:A', 'hand:B'], each: 1 }), table(null), en)).toBe('The table dealt 1 card each to Ada’s hand and Bo’s hand')
+  })
+})
+
+// A pile made on the felt has no name of its own (K1): it was «2» on the felt, «Spelyta» in the
+// panel and «z7» when read out (#714). It is «en hög i Spelyta» in a sentence, everywhere.
+describe('a pile made on the felt, in the log (#714)', () => {
+  const withPile = (): Snapshot => {
+    const v = table(null)
+    return { ...v, zones: [...v.zones, { mode: 'order', id: 'z7', kind: 'pile', name: 'Spelyta', geometry: rect(0, 0, 0, 0), dynamic: true, order: ['c1', 'c2'] }] } as unknown as Snapshot
+  }
+  it('names it by the area it lies in', () => {
+    expect(describeActivity(moveToHand('z7'), withPile(), sv)).toBe('Ada flyttade ett kort till en hög i Spelyta')
+    expect(describeActivity(moveToHand('z7'), withPile(), en)).toBe('Ada moved a card to a pile in Spelyta')
+  })
+  // And one card laid beside a pile is a card and not a pile (K1).
+  it('says one card laid beside a pile as a card', () => {
+    expect(describeActivity(splitBeside(1), table(null), sv)).toBe('Ada lade 1 kort bredvid Draghög')
+    expect(describeActivity(splitBeside(1), table(null), en)).toBe('Ada laid 1 card beside Draghög')
   })
 })

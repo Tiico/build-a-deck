@@ -4,7 +4,8 @@ import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
 import { useRoving } from '../editor/roving.js'
 import { cardWord, handLabel } from '../table/keyboard.js'
-import { useT } from '../i18n/index.js'
+import { useT, type T } from '../i18n/index.js'
+import { returnPile } from '../table/handName.js'
 import { HOLD_MS, begin, cancel, end, move, timeout, type Tracking } from './gesture.js'
 import { keepInView } from './strip.js'
 
@@ -227,7 +228,7 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
       {/* A hand with nothing in it (UX-16): where the cards would be, the strip says what fills
           it, in the same form as the line under what lies in front of the seat. */}
       {/* And with no card in any pile it does not ask for one (#751). */}
-      {hand.length === 0 && <p className="byd-strip-empty">{t(nothingToDraw(view) ? 'player.hand.empty.none' : 'player.hand.empty')}</p>}
+      {hand.length === 0 && <p className="byd-strip-empty">{nothingToDraw(view) ? t('player.hand.empty.none') : emptyHand(view, t)}</p>}
     </div>
   )
 }
@@ -235,4 +236,10 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
 // No pile on the table holds a card, so there is nothing a hand could be filled from.
 function nothingToDraw(view: Snapshot): boolean {
   return view.zones.filter((z) => z.kind === 'pile').every((z) => (z.mode === 'count' ? z.count : z.order.length) === 0)
+}
+
+// What an empty hand says, naming the pile it fills from (#714).
+function emptyHand(view: Snapshot, t: T): string {
+  const pile = returnPile(view, view.seat)
+  return pile ? t('player.hand.empty', { pile }) : t('player.hand.empty.any')
 }

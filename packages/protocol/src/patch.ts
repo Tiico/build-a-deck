@@ -70,6 +70,9 @@ const zoneBase = {
   // they are in the rulebook — so every view gets them as they stand.
   actions: z.array(ZoneAction).optional(),
   owner: SeatId.optional(),
+  // Where a hand's cards go when its seat is left (C4): the setup's and no secret, and what lets a
+  // phone say the pile by its own name — «Dra ett kort ur Kortlek», not «ur draghögen» (B5, #714).
+  returnTo: ZoneId.optional(),
   // Who the zone shows its cards to (B6): everyone, its owner, or nobody. It is the setup's and no
   // secret, so every view carries it; what it decides about a face is still the face's rule. A
   // phone reads it to tell a card the table sees — one it may hold up for the room (#518) — from

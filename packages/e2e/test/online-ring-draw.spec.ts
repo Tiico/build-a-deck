@@ -21,7 +21,7 @@ test.describe('the deck’s «Dra 1» on the distance view (#746)', () => {
 
     await expect(page.locator('[data-hand-card]')).toHaveCount(1)
     await expect(page.locator('.byd-pile[data-zone="draw"]')).toHaveAttribute('data-count', '3')
-    // Said on Bo's own screen as «min hand»; the others read «till Bos hand».
-    await expect(page.getByRole('status').filter({ hasText: /drog 1 kort från/ })).toHaveText('Bo drog 1 kort från Draghög till min hand')
+    // Said to Bo on Bo's own screen (#714); the others read «Bo drog … till Bos hand».
+    await expect(page.getByRole('status').filter({ hasText: /drog 1 kort från/ })).toHaveText('Du drog 1 kort från Draghög till din hand')
   })
 })

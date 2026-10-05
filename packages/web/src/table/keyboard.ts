@@ -46,7 +46,18 @@ export const cardWord = (c: VisibleComponentState | undefined): string | null =>
 // A card's own name is the designer's and is never translated (B5); the words for a card this
 // view may not see are the tool's.
 export const cardName = (c: VisibleComponentState | undefined, t: T = swedish): string => cardWord(c) ?? t('kbd.hidden')
-export const zoneName = (view: Snapshot, id: string): string => view.zones.find((z) => z.id === id)?.name ?? id
+// A zone in a sentence: its designer's name, or — for a pile made on the felt, which has none of its
+// own (K1) — the area it lies in (#714). `pileTitle` is the same at the head of a label.
+export const zoneName = (view: Snapshot, id: string, t: T): string => {
+  const z = view.zones.find((x) => x.id === id)
+  if (!z) return id
+  return z.kind === 'pile' && z.dynamic ? t('zone.pile.within', { area: z.name }) : z.name
+}
+export const pileTitle = (z: ZoneView, t: T): string => (z.dynamic ? t('zone.pile.title', { area: z.name }) : z.name)
+const pileTitleOf = (view: Snapshot, id: string, t: T): string => {
+  const z = view.zones.find((x) => x.id === id)
+  return z ? pileTitle(z, t) : id
+}
 export const countOf = (z: ZoneView): number => (z.mode === 'count' ? z.count : z.order.length)
 const topIdOf = (z: ZoneView): string | undefined => (z.mode === 'order' ? z.order[0] : z.top)
 export const topOf = (view: Snapshot, z: ZoneView): VisibleComponentState | undefined =>
@@ -101,7 +112,7 @@ export function thingsOn(view: Snapshot, t: T = swedish): Thing[] {
       // One stop per pile (#572): a pile and the card on top of it stand on one spot and are one
       // thing to the eye, and an arrow that follows the screen can only land on one of them. The
       // stop says what is on top, and its panel carries the top card's verbs beside the pile's.
-      return [{ at, thing: { key: `pile:${z.id}`, kind: 'pile' as const, pile: z.id, name: z.name, count: countOf(z) } }]
+      return [{ at, thing: { key: `pile:${z.id}`, kind: 'pile' as const, pile: z.id, name: pileTitle(z, t), count: countOf(z) } }]
     })
   return [...placed, ...piles]
     .sort((a, b) => (Math.abs(a.at.y - b.at.y) > 45 ? a.at.y - b.at.y : a.at.x - b.at.x))
@@ -111,21 +122,21 @@ export function thingsOn(view: Snapshot, t: T = swedish): Thing[] {
 // The sentence a reader hears when focus lands on a thing.
 export function labelOf(view: Snapshot, thing: Thing, t: T = swedish): string {
   if (thing.kind === 'counter') {
-    const said = { zone: zoneName(view, thing.zone), n: thing.value }
+    const said = { zone: zoneName(view, thing.zone, t), n: thing.value }
     return thing.name === '' ? t('kbd.counter.unnamed', said) : t('kbd.counter', { name: thing.name, ...said })
   }
   if (thing.kind === 'card') {
     const c = view.components.find((x) => x.id === thing.id)
     const turned = c !== undefined && c.rot % 360 !== 0
-    return t(turned ? 'kbd.card.rotated' : 'kbd.card', { name: thing.name, zone: zoneName(view, thing.zone) })
+    return t(turned ? 'kbd.card.rotated' : 'kbd.card', { name: thing.name, zone: zoneName(view, thing.zone, t) })
   }
   if (thing.kind === 'pileTop') {
     const z = view.zones.find((x) => x.id === thing.pile)
-    const zone = zoneName(view, thing.pile)
+    const zone = pileTitleOf(view, thing.pile, t)
     return z && countOf(z) === 0 ? t('kbd.pile.empty', { zone }) : t('kbd.pile.top', { zone, name: thing.name })
   }
   const z = view.zones.find((x) => x.id === thing.pile)
-  const zone = zoneName(view, thing.pile)
+  const zone = pileTitleOf(view, thing.pile, t)
   if (!z || countOf(z) === 0) return t('kbd.pile.empty', { zone })
   return t(thing.count === 1 ? 'kbd.pile.one' : 'kbd.pile.other', { zone, n: thing.count, top: cardName(topOf(view, z), t) })
 }
@@ -279,7 +290,7 @@ export function placesFor(view: Snapshot, moving: ReadonlySet<string>, sourceZon
     .map((c): Place => ({
       key: `c:${c.id}`,
       label: t('kbd.place.onCard', { name: cardName(c, t) }),
-      hint: t('kbd.place.onCard.hint', { zone: zoneName(view, c.zone) }),
+      hint: t('kbd.place.onCard.hint', { zone: zoneName(view, c.zone, t) }),
       zone: c.zone,
       kind: 'card',
       anchor: c,
