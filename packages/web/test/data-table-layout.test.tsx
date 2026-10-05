@@ -13,6 +13,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { chromium, type Browser } from 'playwright'
+import { capture } from '@byd/render'
 import { applyEdit } from '@byd/server/doc'
 import { DataTable, markCut } from '../src/editor/DataTable.js'
 import { deckValues, fitColumns, markValues } from '../src/editor/columns.js'
@@ -425,9 +426,9 @@ async function pinned({ html, deck }: Table, extra = ''): Promise<Record<Place, 
       const { clip, headClip, bodyClip, ...rest } = facts
       out[where] = {
         ...rest,
-        strip: await page.screenshot({ clip }),
-        headStrip: await page.screenshot({ clip: headClip }),
-        bodyStrip: await page.screenshot({ clip: bodyClip }),
+        strip: await capture(page, { clip }),
+        headStrip: await capture(page, { clip: headClip }),
+        bodyStrip: await capture(page, { clip: bodyClip }),
       }
     }
     return out

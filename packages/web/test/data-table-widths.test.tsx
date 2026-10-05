@@ -17,6 +17,7 @@ import { useState } from 'react'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
+import { capture } from '@byd/render'
 import { applyEdit } from '@byd/server/doc'
 import { DataTable } from '../src/editor/DataTable.js'
 import { deckValues, fitColumns, markValues } from '../src/editor/columns.js'
@@ -952,7 +953,7 @@ async function cue(doc: ProjectDoc, extra = '', html = ''): Promise<Cue> {
       },
       { deck: deckValues(doc, sv), decide: String(fitColumns), mark: String(markValues), col: CUT_COL },
     )
-    const atRest = await page.screenshot({ clip: facts.clip })
+    const atRest = await capture(page, { clip: facts.clip })
     // The caret put in the very cell being read, and sent to the end of the value — which is where
     // an input scrolls to, and the moment `text-overflow` on an input has nothing left to say.
     await page.evaluate((col) => {
@@ -960,12 +961,12 @@ async function cue(doc: ProjectDoc, extra = '', html = ''): Promise<Cue> {
       field.focus()
       field.setSelectionRange(field.value.length, field.value.length)
     }, CUT_COL)
-    const focused = await page.screenshot({ clip: facts.clip })
+    const focused = await capture(page, { clip: facts.clip })
     // And one more character written at that caret, which is the moment the question is really
     // about: an input scrolls to the cursor, so what has just been typed is what stands nearest
     // the edge of the cell — under whatever the cell has drawn there.
     await page.keyboard.type('M')
-    return { cut: facts.cut, atRest, focused, written: await page.screenshot({ clip: facts.ink }) }
+    return { cut: facts.cut, atRest, focused, written: await capture(page, { clip: facts.ink }) }
   } finally {
     await page.close()
   }

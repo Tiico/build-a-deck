@@ -25,6 +25,7 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { fireEvent, render } from '@testing-library/react'
 import { chromium, type Browser, type Page } from 'playwright'
+import { capture } from '@byd/render'
 import { DataTable } from '../src/editor/DataTable.js'
 import { deckValues, fitColumns, markValues } from '../src/editor/columns.js'
 import { contrastRatio, cssDeclaredUnder, parseColor, relativeLuminance } from '../src/player/contrast.js'
@@ -125,7 +126,7 @@ const WIDTH = 1280
  * vara (#325). Grunden är därför klungan runt det vanligaste värdet, vägt medelvärde och allt.
  */
 async function groundsOf(page: Page, where: Record<string, string>): Promise<Record<string, string>> {
-  const shot = (await page.screenshot()).toString('base64')
+  const shot = (await capture(page, {})).toString('base64')
   return page.evaluate(
     async ({ shot, where }) => {
       const image = new Image()
@@ -178,7 +179,7 @@ async function groundsOf(page: Page, where: Record<string, string>): Promise<Rec
  * på en enda kolumn, en bildpunkt innanför rutans högerkant, från topp till botten.
  */
 async function edgesOf(page: Page, where: Record<string, string>): Promise<Record<string, string>> {
-  const shot = (await page.screenshot()).toString('base64')
+  const shot = (await capture(page, {})).toString('base64')
   return page.evaluate(
     async ({ shot, where }) => {
       const image = new Image()
