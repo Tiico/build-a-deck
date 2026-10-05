@@ -58,7 +58,7 @@ async function started(): Promise<string> {
   const card = document.querySelector(`[data-project="${run.projectId}"]`) as HTMLElement
   fireEvent.click(within(card).getByRole('button', { name: 'Fler val för Skogens herrar' }))
   fireEvent.click(await screen.findByRole('button', { name: 'Starta bord' }))
-  await screen.findByRole('link', { name: /^Öppna bordet/ })
+  await screen.findByRole('link', { name: /^Öppna bordet [A-Z2-9]{6} i/ })
   return container.innerHTML
 }
 
@@ -68,12 +68,13 @@ describe.each([390, 320, 1280])('Mina spel at %i px (#555)', (width) => {
     const page = await browser.newPage({ viewport: { width, height: 800 } })
     try {
       await page.setContent(document_(html), { waitUntil: 'load' })
-      const open = (await page.locator('.byd-home-started a').boundingBox())!
+      // The way to the table is the band in «Pågår nu» since #724, and it is a whole target.
+      const open = (await page.locator('.byd-home-running a').boundingBox())!
       expect(open.height).toBeGreaterThanOrEqual(44)
-      // The sentence is one piece: the full stop after the code is not a flex gap away from it.
-      // The code is inside the sentence, not a flex item of its own beside the words round it.
-      expect(await page.locator('.byd-home-started > strong').count()).toBe(0)
-      expect(await page.locator('.byd-home-started strong').count()).toBe(1)
+      // And the band stays inside the window, its code whole, at every width.
+      const band = (await page.locator('.byd-home-running-row').boundingBox())!
+      expect(band.x + band.width).toBeLessThanOrEqual(width)
+      expect(await page.evaluate(`(() => { const c = document.querySelector('.byd-home-running-row strong'); return c.scrollWidth <= c.clientWidth })()`)).toBe(true)
 
       const account = await page.evaluate(() => {
         const who = document.querySelector('.byd-who')!

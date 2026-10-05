@@ -148,7 +148,7 @@ describe('Historik and Delning', () => {
 
   it('moves the sharing lead behind the question mark', async () => {
     await openEditor()
-    fireEvent.click(screen.getByRole('button', { name: 'Vilka som har spelet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Dela · vilka som har spelet' }))
     await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
     absent(/De som är inne nu står överst/)
     expect((await opened('delningen')).textContent).toMatch(/Samma lista säger vem som får vara med/)

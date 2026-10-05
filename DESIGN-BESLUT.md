@@ -2906,6 +2906,13 @@ Minsta skylttext är 24 px (K26), och kortets kortsida är 46, 31, 77 och 45 px 
 Vid 1280 med fyra platser står B vid änden av sin rad, och A gör det också när kasthögens bildtext är så lång att den når A:s egen plats; vid 1920 står B på kantsidan av sina zoner; med åtta platser står varje skylt på sin egen plats.
 Grind: `packages/e2e/test/surfaces/tv-seat-plate-free-place.spec.ts` (de fyra cellerna, också 15 % bredare; markens tal; sidan när kameran zoomar; brickan när filten saknar plats) och `packages/web/test/tv-plate-names.test.tsx` (sextio bokstäver: sidoplatserna blir brickor, ingenting kapas).
 
+Tillagt 2026-10-05 (#886): **namnen och skyltarna läggs ut igen när en högs bildtext byter storlek, dyker upp eller försvinner.**
+Bildtexten (#771) är ett av de ord namn och skyltar går fria från, men renderaren lade bara ut dem igen när ett namn eller en skylt bytte storlek.
+Ett kort med längre namn överst på kasthögen gjorde bildtexten bredare, och ett namn som stått fritt bredvid den korta stod då under den långa; likaså stod ett namn kvar där bildtexten trängt undan det, när kortets bild kom och bildtexten gick.
+Nu bevakas bildtexten som namnen och skyltarna: elementet finns alltid och är tomt när högen inget har att säga, så det finns något att bevaka också innan den första bildtexten.
+Bildtexten byter inte storlek när kameran zoomar, så bevakningen avgör aldrig om en sida kameran flyttat (#43).
+Grind: `packages/e2e/test/surfaces/pile-caption-replaces.spec.ts` (rummets TV vid 1280 och observatören vid 390 med fyra platser, en egen yta intill kasthögen; att ingenting byter sida eller läggs ut gång på gång när kameran zoomar; och att namnet går tillbaka när bilden kommer).
+
 ---
 
 ### K20. Filten skriver i ett eget typsnitt: Roboto Condensed, skeppat med appen (prototypat och byggt 2026-09-13, #95, #94)
@@ -6160,3 +6167,37 @@ Vid 375 ryms orden och står kvar (`player-viewport.test.tsx`); vid 360 gjorde d
 `phone-landscape.spec.ts` mäter `/play` och `/online` vid 844 × 390 och 740 × 360: minst ett helt kort ovanför foten, ingen rullning och ingen sidledsrullning.
 Den mäter också huvudet vid 360 och 320 med 25 kort och ett långt namn: högst 60 px, och båda ikonknapparna 44 × 44.
 Prototypen: `docs/ux-audits/2026-10-05-telefonen/prototyper/716/`.
+
+### L63. Delningen säger «Dela», i huvudet och i spelets ⋯ (prototypat och beslutat 2026-10-05, #727)
+
+Speltestet 2026-10-02 fann att den enda vägen till «Vilka som har spelet» var en rund bricka med ägarens initial i huvudet.
+Den hade ett namn för skärmläsaren men inget synligt ord, inget plus och ingenting i någon ⋯-meny, så den som ville bjuda in någon fick gissa att trycka på sin egen initial.
+
+**A och C tillsammans** (av fyra: ordet «Dela» i knappen, en «+»-bricka, «Dela spelet…» i ⋯, eller båda de första och sista).
+Knappen med ansiktena säger «Dela» bredvid dem.
+Prototypen ritade den med en tunn kant; den står utan, eftersom huvudets dörrar — versionen, ansiktena och ⋯ — ritas likadant i varje läge (`button-language.test.tsx`), och det är ordet och inte kanten som gör dörren synlig.
+Ordet står först i knappens namn, «Dela · vilka som har spelet», som det står på knappen (WCAG 2.5.3).
+Spelets ⋯-meny i editorn har «Dela spelet…» före «Exportera…» och öppnar samma panel; menyn har därmed två val och inte ett.
+
+Bredden får inte växa med antalet som är inne: vid 1280 och bredare står högst tre ansikten, antalet och ordet.
+Mellan 1024 och 1279 är dörren ett ansikte, en tummyta bred, som förut, och «Dela spelet…» i ⋯ är vägen i ord där.
+Prototypen mätte en rad vid 1024 med Macens typsnitt, men med CI:s bredare klipptes spelets namn (`editor-header-fit.spec.ts`), och huvudet har ingen luft vid 1024 (#668).
+`share-panel.test.tsx` öppnar panelen från både knappen och menyn.
+Prototypen: `docs/ux-audits/2026-10-05-delningen/prototyper/727/`.
+
+### L64. Startsidan visar bord som pågår, och menyn öppnar dem före ett nytt (prototypat och beslutat 2026-10-05, #724)
+
+Speltestet 2026-10-02 fann att den enda vägen från startsidan till ett pågående bord var bannern som sade rumskoden direkt efter starten.
+Efter en omladdning var den borta.
+Och ett andra tryck på «Starta bord» för att se koden igen startade ett andra bord.
+
+**C och B tillsammans** (av tre: en rad på brickan, en uppdelad ⋯-meny, och en egen sektion överst).
+Överst på «Mina spel» står **«Pågår nu»**, med ett band per bord som pågår: spelets namn, rumskoden i kodens egen typ och «Öppna bordet».
+Länken öppnar bordets skärm som ägare (`owner=1`) i en ny flik, så den fungerar efter en omladdning, när värdnyckeln inte längre finns i sidan.
+Bandet ersätter bannern, och tillkännagivandet «Bordet är igång. Rumskoden är …» står kvar i sidans levande region.
+Spelets **⋯-meny** listar «Öppna bordet KOD» för varje bord som pågår, före en linje, och «Starta bord» blir då «Starta nytt bord».
+Menyn öppnar på sitt första val, länk eller knapp.
+
+Startsidan frågar `GET /projects/:id/sessions` för varje spel som har bord och vars roll får starta bord; bara ett bord med en giltig kod räknas som pågående.
+`account-page.test.tsx` visar bandet efter en omladdning, länkens adress och menyns ordning; `home-layout.test.tsx` mäter bandets länk till 44 px vid 320, 390 och 1280.
+Prototypen: `docs/ux-audits/2026-10-05-pagaende-bord/prototyper/724/`.

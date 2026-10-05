@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 724 — Pågående bord på startsidan</title>
+<!-- PROTOTYP, #724. Kastas när en variant är vald.
+     Frågan: hur startsidan visar pågående bord efter en omladdning, och hur menyn skiljer «Starta
+     nytt bord» från att öppna det som redan pågår. Bilderna är den byggda appen vid 1280 × 800 med
+     två spel, varav Sal's Saloon har två startade bord, med variantens DOM ovanpå
+     (packages/e2e/test/zz-proto-724.spec.ts på grenen proto/724-pagaende-bord). ?v=idag|A|B|C -->
+<style>
+  :root { --ink: #e6ecfa; --quiet: #868ea3; --amber: #ffd98a; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #14161c; color: var(--ink); font: 13px system-ui, sans-serif; }
+  body { padding: 16px 16px 120px; }
+  .rubrik { max-width: 1280px; margin: 0 0 12px; color: var(--amber); font-size: 12px; line-height: 1.5; }
+  .rubrik b { color: #ffe9b8; } .rubrik p { margin: 0 0 4px; }
+  .anteckning { max-width: 1280px; margin: 8px 0 12px; padding: 8px 12px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; font-size: 12.5px; line-height: 1.55; }
+  .anteckning b { color: #ffe9b8; } .anteckning .plus { color: #b7dca0; } .anteckning .minus { color: #f0a58a; }
+  img { display: block; outline: 1px dashed #4a4230; max-width: 100%; }
+  .vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font-weight: 700; white-space: nowrap; }
+  .vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; padding: 0 12px; }
+  .vaxlare .namn { padding: 0 10px; min-width: 300px; text-align: center; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="rubrik">
+  <p><b>PROTOTYP #724 · pågående bord på startsidan.</b> I dag försvinner bannern med rumskoden vid omladdning, och sedan finns ingen väg från startsidan till ett bord som pågår. Ett andra tryck på «Starta bord» för att se koden igen startar ett andra bord.</p>
+  <p>Bilderna är den byggda appen. ‹ › eller ← → byter variant.</p>
+</div>
+<div class="anteckning" id="anteckning"></div>
+<img id="bild" alt="">
+<div class="vaxlare" role="group" aria-label="Prototypens växlare">
+  <button type="button" id="bak" aria-label="Föregående variant">‹</button>
+  <span class="namn" id="namn"></span>
+  <button type="button" id="fram" aria-label="Nästa variant">›</button>
+</div>
+<script>
+const V = {
+  idag: ['I dag', '<b>I dag.</b> Brickan säger «2 bord · inget spelat än», men inget bord går att nå härifrån efter en omladdning.'],
+  A: ['A — En rad på brickan', '<b>A — en grön rad på brickan</b>: «2 bord kör · KOD · +1 · Öppna bordet ↗» (det senaste, de andra i Bord-fliken). <span class="plus">+ Där spelet redan står; syns utan att man letar.</span> <span class="minus">− Brickan blir högre än grannarna (raderna sträcks, jfr #725); med flera bord syns bara ett.</span>'],
+  B: ['B — I ⋯-menyn', '<b>B — ⋯-menyn listar pågående bord</b> («Öppna bordet KOD») över en linje, och «Starta bord» blir «Starta nytt bord» (jfr L31). <span class="plus">+ Löser dubbelstarten: menyn skiljer öppna från nytt; brickorna oförändrade.</span> <span class="minus">− Gömt bakom ⋯: den som inte öppnar menyn ser inte att ett bord pågår.</span>'],
+  C: ['C — «Pågår nu» överst', '<b>C — en sektion «Pågår nu» överst</b>, ett band per pågående bord med spel, kod, läge och «Öppna bordet ↗». <span class="plus">+ Mest synligt; varje bord för sig; brickorna oförändrade.</span> <span class="minus">− Ny yta på startsidan som tar höjd så länge bord står startade och orörda.</span>'],
+}
+const q = new URLSearchParams(location.search)
+let v = V[q.get('v')] ? q.get('v') : 'C'
+function rita() {
+  const k = Object.keys(V)
+  document.getElementById('namn').textContent = `${k.indexOf(v) + 1}/${k.length} · ${V[v][0]}`
+  document.getElementById('anteckning').innerHTML = V[v][1]
+  const img = document.getElementById('bild'); img.src = `bilder/${v}.png`; img.alt = V[v][0]
+  history.replaceState(null, '', `?v=${v}`)
+}
+const steg = (d) => { const k = Object.keys(V); v = k[(k.indexOf(v) + d + k.length) % k.length]; rita() }
+document.getElementById('bak').onclick = () => steg(-1)
+document.getElementById('fram').onclick = () => steg(1)
+addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') steg(-1); if (e.key === 'ArrowRight') steg(1) })
+rita()
+</script>
+</body>
+</html>

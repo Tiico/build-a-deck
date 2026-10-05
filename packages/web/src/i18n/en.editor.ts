@@ -79,7 +79,7 @@ export const enEditor = {
   'editor.loading': 'Loading the game…',
   'editor.conflict': 'Someone else has saved since you loaded this. Reload and make the change again.',
   'editor.rev': 'rev {n}',
-  'editor.here.name': 'Who has the game, {n} here',
+  'editor.here.name': 'Share · who has the game, {n} here',
   'editor.here.count': '{n} here',
   'editor.here.someone': 'Someone',
   'editor.saved': 'Saved',
@@ -1340,6 +1340,9 @@ export const enEditor = {
   'upload.wrongName': 'the file arrived under a name that is not its own',
 
   'share.title': 'Who has the game',
+  'share.door': 'Share · who has the game',
+  'share.word': 'Share',
+  'share.menu': 'Share the game…',
   'share.close': 'Close',
   'share.help': 'Those who are here now come first. The same list says who may join at all.',
   'share.help.topic': 'sharing',
