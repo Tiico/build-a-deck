@@ -278,3 +278,200 @@ export function placeNames(root: ParentNode): Record<string, string> {
   }
   return placed
 }
+
+// A seat's plate on the room's television stands on a free place too (#683, beslut E 2026-10-05).
+//
+// K26 put the plate beside the seat's own zones, on the side that faces the middle of the table.
+// The zones are the designer's, and that side can be a neighbour's: with four seats Sal's Saloon
+// lies 30 mm under seat B's zones, so B's plate stood in the saloon's box at 1280 and at 1920.
+// #750 then capped how far a plate could grow, and the cap cut the plates at the sides to «5 kor…»
+// and «Guld…».
+//
+// So a plate says the seat's letter, name and hand and nothing more — a counter's figure is on its
+// own chip again — and is placed in #685's order: its own place, the other end of its zones, a
+// line further out, the opposite side, and the two ends of the seat's row. It may leave its own
+// place. The first place that is free of every pile and its words, every zone's box, every zone's
+// name, every hand, every chip, the television's chrome and every plate already placed wins. The
+// seats at the sides go first, since they have least room. A plate that fits nowhere becomes a
+// badge with the seat's mark, the ball and its letter, and is placed by the same order; it is never
+// cut short. Its name and hand stay in the page, for whoever reads it out.
+//
+// Like the names, a plate is measured as this machine draws it, and laid out again when its words
+// change their size (a name, a hand, a wider typeface): K20's 15 % is what the gates draw it wider
+// by and let the app lay out again, not a margin kept around every plate.
+//
+// Like the names, the place is decided once, at the felt's fitted scale (#43): it is said as a
+// corner, an edge's middle or the middle of the seat's zones — which the felt scales — and a step
+// in screen pixels from it, which it does not. The renderer draws the plate from that, so a camera
+// that zooms carries every plate on its side. A plate at the east hangs from its right edge, as K26
+// hung it, so that its words grow away from its zones.
+//
+// Self-contained, like `placeNames`, so a test can run it as a string inside the page.
+
+/** Where a seat's plate stands: a point the felt carries and a step off it in screen pixels. */
+export type PlateAt = {
+  /** `badge`: the seat's mark alone, where the whole plate fits nowhere. */
+  form: 'plate' | 'badge'
+  /** The point of the seat's zones the plate hangs from: left, middle or right; top, middle or bottom. */
+  x: 'l' | 'm' | 'r'
+  y: 't' | 'm' | 'b'
+  /** The step from that point to the plate's top-left corner — its top-right at the east — in pixels. */
+  dx: number
+  dy: number
+  /** Which place in the order it found. */
+  tag: string
+}
+
+/**
+ * Lays every seat plate on the felts under `root` out on a free place, and answers where each one
+ * went, by seat. With `home`, every plate is only put back at its own place, as a whole plate, and
+ * nothing is answered: what the zones' names are laid out against before the plates move.
+ */
+export function placePlates(root: ParentNode, home = false): Record<string, PlateAt> {
+  // The air between a plate and its zones, the same as K26's own place keeps, and a line further
+  // out: about a plate's row of 24 px text.
+  const GAP = 8
+  const LINE = 30
+  const SLACK = 0.5
+  // What a plate stands clear of on the felt: a pile and its words, a zone's box and name, an area's
+  // count, a hand, a chip and its figure, a seat's name card.
+  const FELT = '.byd-pile, .byd-pile-n, .byd-pile-name, .byd-pile-caption, .byd-zone, .byd-zone > span, .byd-area-count, .byd-hand-fan > i, .byd-hand-count, .byd-token, .byd-token > b, .byd-seat-name'
+  // And the television's own chrome where it stands over the felt.
+  const CHROME = '.byd-table-restart, .byd-shortcut-open, [data-tv] > aside'
+
+  type Box = { l: number; t: number; r: number; b: number }
+  type Found = { tag: string; x: number; y: number; w: number; h: number; form: PlateAt['form'] }
+  const placed: Record<string, PlateAt> = {}
+  const felts = [...((root as Element).matches?.('[data-table]') ? [root as HTMLElement] : []), ...root.querySelectorAll<HTMLElement>('[data-table]')]
+  for (const felt of felts) {
+    const plates = [...felt.querySelectorAll<HTMLElement>(':scope > [data-seat-plate]')]
+    if (plates.length === 0) continue
+    const fb = felt.getBoundingClientRect()
+    const k = felt.offsetWidth > 0 ? fb.width / felt.offsetWidth : 0
+    // Nothing is laid out (jsdom, or a felt not on the page): the plates stay where they are drawn.
+    if (!(k > 0)) continue
+    const toFelt = (r: DOMRect): Box => ({ l: (r.left - fb.left) / k, t: (r.top - fb.top) / k, r: (r.right - fb.left) / k, b: (r.bottom - fb.top) / k })
+    // The seat's own zones, as the renderer drew them: felt pixels at the fitted scale.
+    const zonesOf = (p: HTMLElement): Box | null => {
+      const n = (p.dataset['box'] ?? '').split(' ').map(Number)
+      const [l = NaN, t = NaN, r = NaN, b = NaN] = n
+      return n.length === 4 && [l, t, r, b].every(Number.isFinite) ? { l, t, r, b } : null
+    }
+    const east = (p: HTMLElement) => p.dataset['edge'] === 'E'
+    const size = (p: HTMLElement) => {
+      const r = p.getBoundingClientRect()
+      return { w: r.width / k, h: r.height / k }
+    }
+    // Puts the plate's top-left — its top-right at the east — at (x, y), in felt pixels.
+    const put = (p: HTMLElement, x: number, y: number) => {
+      p.style.left = `${x}px`
+      p.style.top = `${y}px`
+      p.style.transform = east(p) ? 'translateX(-100%)' : 'none'
+    }
+    const form = (p: HTMLElement, f: PlateAt['form']) => {
+      if (f === 'badge') p.setAttribute('data-form', 'badge')
+      else p.removeAttribute('data-form')
+    }
+    // K26's own place, as a top-left corner: under the zones at the top rim, above them at the
+    // bottom, and beside them, level with their middle, at the sides.
+    const own = (p: HTMLElement, z: Box, w: number, h: number) => {
+      const e = p.dataset['edge']
+      return e === 'N' ? { x: z.l, y: z.b + GAP } : e === 'S' ? { x: z.l, y: z.t - GAP - h } : e === 'W' ? { x: z.r + GAP, y: (z.t + z.b) / 2 - h / 2 } : { x: z.l - GAP - w, y: (z.t + z.b) / 2 - h / 2 }
+    }
+    for (const p of plates) {
+      form(p, 'plate')
+      p.removeAttribute('data-plate-at')
+      const z = zonesOf(p)
+      if (!z) continue
+      const { w, h } = size(p)
+      const at = own(p, z, w, h)
+      put(p, east(p) ? at.x + w : at.x, at.y)
+    }
+    if (home) continue
+
+    const shown = (el: Element): DOMRect | null => {
+      const s = getComputedStyle(el)
+      if (s.display === 'none' || s.visibility === 'hidden') return null
+      const r = el.getBoundingClientRect()
+      return r.width > 0 && r.height > 0 ? r : null
+    }
+    const fixed: Box[] = [...felt.querySelectorAll(FELT), ...(felt.ownerDocument?.querySelectorAll(CHROME) ?? [])].flatMap((el) => {
+      const r = shown(el)
+      return r ? [toFelt(r)] : []
+    })
+    // The felt, and of it what its frame shows.
+    const frame = felt.closest('.byd-table-frame')
+    const fr = frame ? toFelt(frame.getBoundingClientRect()) : null
+    const W = felt.offsetWidth
+    const H = felt.offsetHeight
+    const bounds: Box = fr ? { l: Math.max(0, fr.l), t: Math.max(0, fr.t), r: Math.min(W, fr.r), b: Math.min(H, fr.b) } : { l: 0, t: 0, r: W, b: H }
+    const meet = (a: Box, b: Box) => a.l < b.r - SLACK && b.l < a.r - SLACK && a.t < b.b - SLACK && b.t < a.b - SLACK
+    // The plates already placed.
+    const taken: Box[] = []
+    const clear = (r: Box) => {
+      if (r.l < bounds.l - SLACK || r.r > bounds.r + SLACK || r.t < bounds.t - SLACK || r.b > bounds.b + SLACK) return false
+      return ![...fixed, ...taken].some((o) => meet(r, o))
+    }
+    // #685's order from the plate's own place, as top-left corners.
+    const places = (p: HTMLElement, z: Box, w: number, h: number): [string, number, number][] => {
+      const e = p.dataset['edge']
+      const at = own(p, z, w, h)
+      const c: [string, number, number][] = [['own', at.x, at.y]]
+      if (e === 'N' || e === 'S') {
+        const out = e === 'N' ? LINE : -LINE
+        c.push(['other-end', z.r - w, at.y], ['out', at.x, at.y + out], ['other-end-out', z.r - w, at.y + out])
+        c.push(['opposite', at.x, e === 'N' ? z.t - GAP - h : z.b + GAP])
+        // The two ends of the seat's row, level with it: at the rim side, the middle, the inner side.
+        const ys = e === 'N' ? [z.t, (z.t + z.b) / 2 - h / 2, z.b - h] : [z.b - h, (z.t + z.b) / 2 - h / 2, z.t]
+        ys.forEach((y, i) => c.push([`end-before-${i}`, z.l - GAP - w, y]))
+        ys.forEach((y, i) => c.push([`end-after-${i}`, z.r + GAP, y]))
+      } else {
+        c.push(['upper-end', at.x, z.t], ['lower-end', at.x, z.b - h])
+        c.push(['out', at.x + (e === 'W' ? LINE : -LINE), at.y])
+        c.push(['opposite', e === 'W' ? z.l - GAP - w : z.r + GAP, at.y])
+        c.push(['above', e === 'W' ? z.l : z.r - w, z.t - GAP - h], ['below', e === 'W' ? z.l : z.r - w, z.b + GAP])
+      }
+      return c
+    }
+    // The point of the zones nearest the plate's hanging corner, and the step off it.
+    const hang = (z: Box, x: number, y: number): Omit<PlateAt, 'form' | 'tag'> => {
+      const xs: [PlateAt['x'], number][] = [['l', z.l], ['m', (z.l + z.r) / 2], ['r', z.r]]
+      const ys: [PlateAt['y'], number][] = [['t', z.t], ['m', (z.t + z.b) / 2], ['b', z.b]]
+      const nx = xs.reduce((a, b) => (Math.abs(b[1] - x) < Math.abs(a[1] - x) ? b : a))
+      const ny = ys.reduce((a, b) => (Math.abs(b[1] - y) < Math.abs(a[1] - y) ? b : a))
+      return { x: nx[0], y: ny[0], dx: x - nx[1], dy: y - ny[1] }
+    }
+    // The seats at the sides first: they have the least room.
+    const side = (p: HTMLElement) => (p.dataset['edge'] === 'E' || p.dataset['edge'] === 'W' ? 0 : 1)
+    const order = [...plates].sort((a, b) => side(a) - side(b))
+    for (const p of order) {
+      const seat = p.dataset['seatPlate'] ?? ''
+      const z = zonesOf(p)
+      if (!z) continue
+      const toLeft = east(p)
+      let found: Found | null = null
+      for (const f of ['plate', 'badge'] as const) {
+        form(p, f)
+        const { w, h } = size(p)
+        for (const [tag, x, y] of places(p, z, w, h))
+          if (clear({ l: x, t: y, r: x + w, b: y + h })) {
+            found = { tag: f === 'badge' ? `badge-${tag}` : tag, x, y, w, h, form: f }
+            break
+          }
+        if (found) break
+      }
+      if (!found) {
+        // Nowhere free even for the badge: it stands at its own place, where it covers least.
+        const { w, h } = size(p)
+        const at = own(p, z, w, h)
+        found = { tag: 'badge-covers', x: at.x, y: at.y, w, h, form: 'badge' }
+      }
+      const hx = toLeft ? found.x + found.w : found.x
+      put(p, hx, found.y)
+      taken.push({ l: found.x, t: found.y, r: found.x + found.w, b: found.y + found.h })
+      p.setAttribute('data-plate-at', found.tag)
+      placed[seat] = { form: found.form, ...hang(z, hx, found.y), tag: found.tag }
+    }
+  }
+  return placed
+}

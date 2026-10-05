@@ -2827,6 +2827,42 @@ De krockar G lämnade kvar i prototypen — 2 namn på namn, 5 på bricka eller 
 I `felt-names.test.tsx`, vars syntetiska bord har marknaden där `feltOf` lägger den, finns sex scener där regeln inte hittar en fri plats, och de är inpinnade en och en i `felt-labels.ts`: «Räknare B» kapad inuti sin zon på ett kvartsvridet bord med fem och sex platser, «Räknare A» på sitt namnkort på Bord-fliken vid 1280 × 800 med fem och sex platser när namnen ritas 15 % bredare, och «Räknare A» kapad hos observatören vid 320 när namnen ritas 15 % bredare.
 I alla sex stod namnet tidigare i en grannes ruta, vilket ingen mätning där läste.
 
+Reviderat 2026-10-05 (#683, beställarens beslut E efter prototyp): **platsens skylt på rummets TV följer samma ordning som zonnamnen, och blir hellre en bricka än kapas.**
+
+K26 ställde skylten intill platsens egna zoner, på den sida som vetter mot bordets mitt, och #750 gav den sedan ett tak: den växte till första hinder och kapade resten.
+Den sidan kan vara grannens, precis som för ett namn.
+Med fyra platser stod B:s skylt i Sal's Saloons ruta vid både 1280 och 1920, vid 1280 kapades C och D till «5 kor…» och «Guld…», och med åtta platser vid 1280 bröts fyra skyltar till två rader och låg på grannens skylt.
+Prototypen mätte nio varianter på den byggda appen ([`01-skyltarna.html`](https://github.com/Tiico/build-a-deck/blob/f85869cc5ec3e42a1d32f86d2e0f5508e550ccf6/docs/ux-audits/2026-10-05-skyltarna/prototyper/01-skyltarna.html), mätriggen i `matning/` bredvid); bara E var ren i alla fyra cellerna — TV:n vid 1280 och 1920 med fyra och åtta platser, också med texten 15 % bredare — utan att något kapades och utan att kortet krympte.
+
+**Skylten placeras i #685:s ordning, och det första stället som är fritt vinner:**
+1. sin egen plats, som K26 säger;
+2. zonernas andra ände, en rad ut, och den andra änden en rad ut;
+3. motsatt sida av zonerna;
+4. ändarna av platsens rad, i höjd med raden: vid kanten, mitt för och mot mitten.
+
+En plats vid sidan prövar i stället zonernas övre och nedre ände, en rad ut, motsatt sida, och ovanför och under zonerna.
+Skylten får alltså lämna sin egen plats: det är skillnaden mot K26:s «intill platsens egna zoner, mot mitten».
+Fritt betyder fritt från högarna och deras namn, antal och bildtext (#771), varje zons ruta (också platsens egen), zonnamnen, händerna, markerna och deras tal, TV:ns krom över filten och de skyltar som redan står.
+Sidoplatserna placeras först, eftersom de har minst plats.
+Skyltarna placeras före zonnamnen, som räknar skyltarna som ord att undvika: namnen läggs först ut mot skyltarna på deras egna platser, sedan skyltarna mot namnen, och sist namnen en gång till.
+
+**Ryms skylten ingenstans blir den en bricka med platsens mark, (B), och placeras i samma ordning.**
+Den kapas aldrig; namnet och handen står kvar i sidan för den som läser upp den.
+#750:s tak och kapning är därmed borta från skylten; #750:s andra halva, taket på väljarens namnpiller i `join.css`, gäller telefonen och står kvar.
+Bordsläget och /online har inga skyltar, och deras namnkort (K9) är orörda.
+
+**Sidan avgörs i filtens inpassade skala och står still när kameran zoomar (#43)**, som för namnen: skylten hängs upp i ett hörn, en kants mitt eller mitten av platsens zoner, och stegas därifrån i skärmens pixlar.
+En skylt vid östkanten hänger i sin högra kant, som K26 hängde den.
+Regeln är `placePlates` i `freeSide.ts`, exporterad och fristående av samma skäl som `placeNames`.
+Skylten mäts som maskinen ritar den och läggs ut igen när dess ord byter storlek (ett namn, en hand, ett bredare typsnitt); K20:s 15 % är vad grindarna ritar den bredare med och låter appen lägga ut på nytt, inte en marginal kring varje skylt — samma sätt som #685 läser namnen.
+
+Mätt på den byggda appen med Sal's Saloon, fem kort i varje hand, tre i saloonen, två i kasthögen och ett framför varje plats, Ada på plats A och bildtexten synlig: noll skyltar över hög, bricka, högnamn eller bildtext, i en zons ruta, på en annan skylt, på ett zonnamn eller på en hand, och ingen kapad, vid 1280 och 1920 med fyra och åtta platser, också med skylttexten 15 % bredare.
+Ingen skylt är en bricka i maskinens eget typsnitt, varken på en Mac eller på CI:s Linux; med texten dessutom 15 % bredare blir B en bricka vid 1280 med fyra platser på Linux, vars systemtypsnitt redan är bredare, och står då fritt.
+Före var det, i samma celler, en skylt i en annan zons ruta vid 1280 och vid 1920 med fyra platser, två kapade vid 1280 med fyra, och fyra skyltar på skylt och två kapade vid 1280 med åtta.
+Minsta skylttext är 24 px (K26), och kortets kortsida är 46, 31, 77 och 45 px som förut.
+Vid 1280 med fyra platser står B vid änden av sin rad, och A gör det också när kasthögens bildtext är så lång att den når A:s egen plats; vid 1920 står B på kantsidan av sina zoner; med åtta platser står varje skylt på sin egen plats.
+Grind: `packages/e2e/test/surfaces/tv-seat-plate-free-place.spec.ts` (de fyra cellerna, också 15 % bredare; markens tal; sidan när kameran zoomar; brickan när filten saknar plats) och `packages/web/test/tv-plate-names.test.tsx` (sextio bokstäver: sidoplatserna blir brickor, ingenting kapas).
+
 ---
 
 ### K20. Filten skriver i ett eget typsnitt: Roboto Condensed, skeppat med appen (prototypat och byggt 2026-09-13, #95, #94)
@@ -3218,6 +3254,8 @@ Tabellens kolumn heter «golv för all text», och det är så den ska läsas: z
 Granskningen 2026-09-29 mätte kromet till 13–16 px.
 Eftersom TV:ns filt är höjdbunden och varje etikett i 24 px kostar plats prototypas kromet i #573 innan det byggs.
 
+*Ändrat 2026-10-05 (#683): skylten bär inte längre räknarna, och räknarbrickans siffra ritas igen — se tillägget efter grindarna nedan. Var skylten står avgörs av K19:s revision 2026-10-05.*
+
 Beslutat 2026-09-29 efter prototyp (#573, beslut C): **varje plats ord står på en skylt på filten, intill platsens egna zoner, och spalten släpper PLATSER.**
 Skylten bär platsens bokstav och namn i platsens färg, antalet kort på hand och platsens räknare med namn och värde, i 24 px.
 Den står på den sida av zonerna som vetter mot bordets mitt; en plats vid sidan staplar sina ord, eftersom en bred skylt där nådde högarna vid fyra platser.
@@ -3232,6 +3270,14 @@ De två avvisade varianterna och mätningen vid 2, 4 och 8 platser står i #573,
 A lade varje ord där det står, i 24 px: etiketterna trängdes vid hörnen vid åtta platser, och INSPEKTION krympte till ungefär 80 px.
 B flyttade platsernas ord till spalten: filten blev lugnast, men vid åtta platser trycktes INSPEKTION ihop till nästan ingenting.
 Grindar: `packages/e2e/test/tv-text-floor.spec.ts` (ingen text på TV:n under 24 px vid 2, 4 och 8 platser; skyltarna täcker varken högarna eller varandra; K9:s kort håller) och `packages/web/test/tv-seat-plates.test.tsx`.
+
+Ändrat 2026-10-05 (#683, beställarens beslut E efter prototyp): **skylten säger platsens bokstav, namn och hand — «(B) ledig 5 kort» — och inte längre räknarna.**
+Raden ovan om att räknarbrickans siffra inte ritas en gång till är vänd: räknarens tal står på platsens egen mark igen, i rummets 24 px-piller som en mark utan ägare redan bar på TV:n.
+Räknarens namn («Guld») skrivs inte längre på TV:ns filt.
+Med två räknare per plats står två namnlösa tal i platsens remsa; det är priset för en skylt som ryms.
+Handen sägs kort, «5 kort» och inte «5 kort på hand», med samma ord som spalten använder när den är tät.
+Var skylten står, och brickan som sista utväg i stället för #750:s kapning, står i K19:s revision 2026-10-05.
+Inget nytt går på tråden: skylten och marken visar det TV:n redan fick.
 
 ### K27. Kortets tryck hörs i läsvyn, och observatörens platser är listor (prototypat 2026-09-29, beslutat 2026-09-30, #551)
 
