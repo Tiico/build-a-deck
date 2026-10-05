@@ -74,7 +74,7 @@
 [data-table] {
   /* The felt is the measure for what fits on it: a label under a pile has only the room
      between one pile and the next, and that shrinks with the screen, not with the window. */
-  container-type: inline-size;
+  container: byd-felt / inline-size;
   border-radius: 16px;
   background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26);
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.45);
@@ -261,9 +261,13 @@
   0%, 100% { opacity: 0; }
   50% { opacity: 0.55; }
 }
-/* On the felt (B) the name and the count are one pill under the pile. */
+/* On the felt (B) the name and the count are one pill under the pile. It is centred with
+   `translate` and not `transform`, because a turned felt turns the pill back upright with
+   `rotate` (C5, below), and `rotate` turns what `transform` has moved but not what `translate`
+   has: a half-width shift written in `transform` was turned with the pill, and on a felt turned
+   half a turn the handle stood a whole pill's width beside its pile (#789). */
 .byd-pile-count {
-  position: absolute; left: 50%; bottom: -22px; transform: translateX(-50%);
+  position: absolute; left: 50%; bottom: -22px; translate: -50% 0;
   background: rgba(0, 0, 0, 0.55); color: #f3e9d6;
   border-radius: 999px; padding: 2px 8px; font-size: 12px; white-space: nowrap;
 }
@@ -323,7 +327,7 @@
 
 /* On the TV (C) the count is a badge on the pile and the name stands in caps beneath it. */
 .byd-table-frame[data-mode='tv'] .byd-pile-count {
-  inset: 0; transform: none;
+  inset: 0; translate: none;
   background: none; padding: 0; pointer-events: none;
 }
 .byd-table-frame[data-mode='tv'] .byd-pile-name {
@@ -346,8 +350,7 @@
    So the card keeps only its ground and its badge, and the name stands one line under the pile's
    name, in the state's own colours, for exactly as long as the state is on show — which the
    state itself says, by being on the card with a name in it. The card says it once and not
-   twice. Table mode is not this: its pile is a handle on the green felt, where these colours do
-   not read, and it keeps the name on the card as before. */
+   twice. Table mode has the same caption on a plate of its own; see below (#789). */
 .byd-pile-caption { display: none; }
 .byd-table-frame[data-mode='tv'] .byd-pile-top > .byd-texture-state > b { display: none; }
 .byd-table-frame[data-mode='tv'] .byd-pile-caption {
@@ -357,6 +360,34 @@
 }
 .byd-table-frame[data-mode='tv'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-caption { display: block; }
 .byd-table-frame[data-mode='tv'] .byd-pile:has(> .byd-pile-top > [data-texture='failed'] > b) .byd-pile-caption { color: #f4b9c7; }
+
+/* Table mode has the same caption, on a plate of its own (#789, K19, beställarens beslut C after
+   the prototype in #879). The pile is a handle on the green felt there, and the card is 44–65 px
+   wide at four seats, so the state's name stood on it in 8 px; the TV's ink above reads 4.06:1
+   against the green. On the plate — the felt's own, the ring's and the action sheet's, opaque —
+   in the chalk the handle already writes in, the ink's contrast is the plate's (14:1, the failed
+   state's rose 10:1) wherever the caption lands. It hangs from the handle, 2 px from it, so it
+   turns with the handle and stands wherever the handle stands; and on the side away from the
+   card. The handle is turned back upright on a turned felt (`--unrotate`), so on a felt turned
+   half a turn — seat B looking from the far side — its own «under» points at the card, and the
+   caption goes over it instead. A quarter turn puts the card beside the handle, and under is
+   still clear of it.
+
+   On a felt of 460 px or less the piles' own names are gone (K19, below), and so is this: there
+   is no room between two piles for a plate, and the name stays on the card as it was. The query
+   names the felt, because the state's name is itself inside a container — the card's. */
+@container byd-felt not (max-width: 460px) {
+  .byd-table-frame[data-mode='table'] .byd-pile-top > .byd-texture-state > b { display: none; }
+  .byd-table-frame[data-mode='table'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-caption {
+    display: block; position: absolute; left: 50%; top: calc(100% + 2px); translate: -50% 0;
+    max-width: 10em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none;
+    box-sizing: border-box; padding: 1px 8px; border-radius: 6px;
+    background: var(--byd-felt-plate); color: var(--byd-felt-chalk); box-shadow: 0 0 0 1px var(--byd-felt-edge);
+    font-size: 12px; line-height: 14px; font-weight: 600; letter-spacing: 0;
+  }
+  .byd-table-frame[data-mode='table'] .byd-pile:has(> .byd-pile-top > [data-texture='failed'] > b) .byd-pile-caption { color: #f4b9c7; }
+  .byd-table-frame[data-mode='table'] [data-table][data-rotate='180'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-caption { top: auto; bottom: calc(100% + 2px); }
+}
 
 /* Hands: a fan of backs and a count, oriented toward the seat's edge. */
 .byd-hand { position: absolute; width: 0; height: 0; }
