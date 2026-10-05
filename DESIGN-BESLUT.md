@@ -1069,6 +1069,12 @@ En editor som öppnas på en svans ingen sparat får den sparade versionen bredv
 `/projects/:id/edit` är tråden: dokumentet vid uppkoppling, varje redigering när den landar, vilka som är inne, och varför en redigering avvisades. En avvisad redigerare får dokumentet med avslaget och kan fortsätta från det som är verkligt.
 Editorn applicerar sin egen redigering direkt och skickar den; ekot säger bara att den landade. Det som skrevs innan socketen hann öppna skickas när den öppnar och läggs tillbaka ovanpå om aktören lämnar över sitt dokument.
 Att ta tillbaka en äldre version är en redigering som vilken annan och går samma väg.
+En redigering som avgör något lagrar svaret i loggen, aldrig frågan (2026-10-05, #894), av samma skäl som bordets slump lagras som resultat (D4).
+Var en ny zon föds (`addZone`) är en regel som ändras med en driftsättning (#443, #480, #881), så platsen väljs en gång när redigeringen avgörs och står i raden som `geometry`; uppspelning lägger zonen där och frågar aldrig regeln igen.
+Editorn avgör mot det formgivaren ser och skickar svaret, och aktören avgör för en avsändare som inte skickade något, innan raden committas.
+En äldre rad utan plats spelas upp efter dagens regel, som förut.
+Redigeringarna är editorns vokabulär och inte bordets slutna intents i `packages/protocol`, så ett tillagt fält i en befintlig redigering är ingen protokollmigrering.
+`addSeatZone` och `setRecipe` räknar fortfarande ut geometri vid uppspelning; det är #895.
 Huvudet visar vilka andra som har spelet öppet, med kontots adress som namn.
 Roller och inbjudningar, byggt 2026-09-08:
 Behörigheter är en modell, inte ett fält: ägare, medredigerare, testledare, betraktare, och varje väg frågar vad rollen får göra i stället för att minnas reglerna.
