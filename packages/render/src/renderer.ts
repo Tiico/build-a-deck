@@ -73,6 +73,10 @@ export class Renderer {
       const box = await cardBox(page)
       if (!box) throw new Error('compiled output has no [data-card]')
       const clip = { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) }
+      if (process.env.BENCH_VARIANT === 'raf') {
+        // BENCH: the page has drawn, so its frame sink exists in viz before the capture is asked for.
+        await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))))
+      }
       if (process.env.BENCH_VARIANT === 'fit') {
         // BENCH: the view is the card, so the capture is the view as it stands and Chromium never resizes it.
         await page.setViewportSize({ width: clip.x + clip.width, height: clip.y + clip.height })
