@@ -1,0 +1,4 @@
+node_modules
+links.json
+shots/
+*.log
