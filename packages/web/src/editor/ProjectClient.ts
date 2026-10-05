@@ -4,7 +4,7 @@ import { catalogFont, type CatalogFamily, fileInSheet, fileSheetHref } from './f
 import type { DocDiff, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
-import { applyEdit, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
+import { applyEdit, decideEdit, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX, assetBytesUrl, assetRef, assetRefOf } from './assets.js'
 import { measureAsset } from './motifs.js'
 import type { Motif } from '@byd/template'
@@ -396,11 +396,14 @@ export class ProjectClient {
   // token that is already on top of the stack joins that step instead of making its own, so the
   // way back from a move is one press and not sixty. Everything else leaves it out and is its own
   // step, as it always was.
-  edit(intent: EditIntent, gesture?: string): void {
+  edit(asked: EditIntent, gesture?: string): void {
     // A role that may not change the game changes nothing here either (#489; läsläge, decided in
     // #477): the actor would refuse the save, so an edit is never applied, never sent and never a
     // step back — and «Osparat» can never stand for something this reader cannot keep.
     if (!this.mayEdit) return
+    // What the edit decides is decided here, against what the designer sees, and sent as the
+    // answer (#894): where a new zone lies is then the place she saw, in the log and on replay.
+    const intent = decideEdit(this.doc, asked)
     // It applies before anything is recorded, and that order is the whole of it: an edit the
     // document refuses never happened, so it must cost neither a version nor a step back (#41,
     // B4). `applyEdit` throws from here, with the stack untouched and nothing sent.
