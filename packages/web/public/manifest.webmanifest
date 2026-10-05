@@ -1,0 +1,14 @@
+{
+  "name": "build-your-deck",
+  "short_name": "build-your-deck",
+  "description": "Bygg ett kortspel, spela det runt en TV med telefoner som händer, och se vad som behöver ändras.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#14161c",
+  "theme_color": "#14161c",
+  "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any" },
+    { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" }
+  ]
+}
