@@ -34,7 +34,7 @@ describe('TablePage', () => {
     expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('7')
     expect(document.querySelector('[data-zone="hand:A"]')!.getAttribute('data-count')).toBe('3')
     // The seat's words stand on its plate on the felt (#573, beslut C), not in the column.
-    await waitFor(() => expect(document.querySelector('[data-seat-plate="A"]')?.textContent).toMatch(/Ada.*3 kort på hand/))
+    await waitFor(() => expect(document.querySelector('[data-seat-plate="A"]')?.textContent).toMatch(/Ada.*3 kort$/))
     other.close()
   })
 })
