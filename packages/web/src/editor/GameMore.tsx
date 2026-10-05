@@ -7,7 +7,7 @@ import { useT } from '../i18n/index.js'
 // «Mina spel», holding what is done to the whole game rather than to its cards — today the export,
 // and the place the next such thing goes, so the header does not grow a button for each of them.
 // It is there only for those the server lets export: the owner and the co-editors.
-export function GameMore({ http, game }: { http: string; game: { id: string; name: string; rev: number } }) {
+export function GameMore({ http, game, onShare }: { http: string; game: { id: string; name: string; rev: number }; onShare?: () => void }) {
   const t = useT()
   const more = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)
@@ -34,6 +34,18 @@ export function GameMore({ http, game }: { http: string; game: { id: string; nam
             if (back) more.current?.focus()
           }}
         >
+          {/* The same door as «Dela» in the header (#727, beslut C): where the game's own actions are. */}
+          {onShare && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                onShare()
+              }}
+            >
+              {t('share.menu')}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {

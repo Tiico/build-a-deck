@@ -353,14 +353,19 @@
    are here must not change how wide the header is — someone arriving would otherwise push the
    row, and at 1024 there is nothing to push into. So the faces overlap and the button is capped:
    it is the same size alone as in a crowd. */
-.byd-editor-here { display: flex; gap: 4px; align-items: center; justify-content: center; flex: none; max-width: 140px; overflow: hidden; margin-left: 8px; border: 0; border-radius: 20px; padding: 4px 8px 4px 4px; background: transparent; cursor: pointer; }
+.byd-editor-here { display: flex; gap: 4px; align-items: center; justify-content: center; flex: none; overflow: hidden; margin-left: 8px; border: 1px solid var(--byd-secondary-line); border-radius: 20px; padding: 4px 12px 4px 4px; background: transparent; cursor: pointer; }
 .byd-editor-here i + i { margin-left: -8px; }
+/* At most three faces, so a crowd never widens the row; the count says the rest. */
+.byd-editor-here i:nth-of-type(n + 4) { display: none; }
+/* The door says what it is (#727, beslut A): «Dela» beside the faces, so an invitation can be found
+   without knowing that one's own initial is a button. */
+.byd-editor-here-word { margin-left: 4px; color: #e6ecfa; font: 700 13px system-ui; white-space: nowrap; }
 /* At the width the desk begins the row has no air to give (UX-KONTROLLER: 1024), so here the
    button is exactly one target wide whoever is here: the faces overlap under it and the count
    goes, because pressing it opens the list that says all of it anyway. */
 @media (min-width: 1024px) and (max-width: 1279px) {
-  .byd-editor > header > .byd-editor-here { max-width: var(--byd-tap); margin-left: 0; padding: 0; }
-  .byd-editor > header > .byd-editor-here b { display: none; }
+  .byd-editor > header > .byd-editor-here { margin-left: 0; }
+  .byd-editor > header > .byd-editor-here b, .byd-editor > header > .byd-editor-here i + i { display: none; }
 }
 .byd-editor-here:hover, .byd-editor-here[aria-expanded='true'] { background: #1b1d23; }
 .byd-editor-here i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--who); color: #10131a; font: 800 11px system-ui; font-style: normal; }
