@@ -402,7 +402,7 @@ describe('undo and rewind on the phone (B, C)', () => {
     expect(document.querySelector('.byd-flag')?.closest('[inert]')).not.toBeNull()
     // And it says which move the table would go back to before, as the TV's frame does (#714): the
     // one who sits with their back to the TV cannot otherwise tell what they are approving.
-    expect(ask.textContent).toContain('Bordet visar hur det såg ut före «Du drog 1 kort från Draghög till din hand».')
+    expect(ask.textContent).toContain('Bordet visar hur det såg ut före «Ada drog 1 kort från Draghög till Adas hand». Draghög blandas om.')
     ada.close()
     bo.close()
   })
