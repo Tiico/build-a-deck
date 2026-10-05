@@ -12,10 +12,11 @@ vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 afterEach(cleanup)
 
 // The room's television says each seat's words on one plate beside the seat's own zones (#573,
-// beslut C, K26): its name, what its hand holds and its counters, at the floor's 24 px. The zone
-// names a seat owns, the hand's badge at the rim and the counter's figure inside its chip were each
-// drawn at 9–15 px; the plate says them once, where the room looks for the seat. The observer's
-// screen is not the room's and keeps what it has.
+// beslut C, K26): its name and what its hand holds, at the floor's 24 px. The zone names a seat
+// owns and the hand's badge at the rim were each drawn at 9–15 px; the plate says them once, where
+// the room looks for the seat. A counter's figure is on the seat's own chip, in the room's pill, and
+// no longer on the plate (#683, beslut E 2026-10-05). The observer's screen is not the room's and
+// keeps what it has.
 function felt(players: number, handCards = 0): SetupDef {
   const base = recipeSetup(players, [{ name: 'Poäng', start: 3 }])
   const seats = base.seats.map((s) => (typeof s === 'string' ? s : (s as { id: string }).id))
@@ -31,18 +32,29 @@ function felt(players: number, handCards = 0): SetupDef {
 }
 
 describe('the room’s television gives every seat a plate (#573, beslut C)', () => {
-  it('draws one plate per seat with its name, its hand and its counter', () => {
+  it('draws one plate per seat with its name and its hand, and not its counter', () => {
     const table = tableOf(felt(4, 2))
     const view = table.view(null)
     const { container } = render(<TableRenderer view={view} mode="tv" scale={1} forTheRoom />)
     const plates = [...container.querySelectorAll<HTMLElement>('[data-seat-plate]')]
     expect(plates.map((p) => p.dataset['seatPlate'])).toEqual(view.seats.map((s) => s.id))
-    const b = within(container.querySelector<HTMLElement>('[data-seat-plate="B"]')!)
-    expect(b.getByText('2 kort på hand')).toBeTruthy()
-    expect(b.getByText('Poäng 3')).toBeTruthy()
+    const plate = container.querySelector<HTMLElement>('[data-seat-plate="B"]')!
+    expect(within(plate).getByText('2 kort')).toBeTruthy()
+    expect(plate.textContent).toBe('Bledig2 kort')
   })
 
-  it('leaves off the words the plate says: the seat’s zone names, the hand’s badge and the chip’s figure', () => {
+  // The reverse of a line of #573 (#683, beslut E): the chip's figure is drawn again, on every chip,
+  // and the counter's name is not written on the room's felt.
+  it('draws each seat’s chip with its figure and without its name', () => {
+    const table = tableOf(felt(4, 2))
+    const view = table.view(null)
+    const { container } = render(<TableRenderer view={view} mode="tv" scale={3} forTheRoom />)
+    const chips = [...container.querySelectorAll<HTMLElement>('.byd-token')]
+    expect(chips).toHaveLength(4)
+    for (const chip of chips) expect(chip.textContent).toBe('3')
+  })
+
+  it('leaves off the words the plate says: the seat’s zone names and the hand’s badge', () => {
     const table = tableOf(felt(4, 2))
     const view = table.view(null)
     const { container } = render(<TableRenderer view={view} mode="tv" scale={1} forTheRoom />)
@@ -50,8 +62,6 @@ describe('the room’s television gives every seat a plate (#573, beslut C)', ()
     expect(owned.length).toBeGreaterThan(0)
     for (const z of owned) expect(container.querySelector(`[data-area="${CSS.escape(z.id)}"] > span`)).toBeNull()
     expect(container.querySelector('.byd-hand-count')).toBeNull()
-    expect(container.querySelectorAll('.byd-token').length).toBeGreaterThan(0)
-    expect(container.querySelector('.byd-token b')).toBeNull()
   })
 
   // An empty seat was «A A»: the letter in the ball, then the letter again where the name goes
