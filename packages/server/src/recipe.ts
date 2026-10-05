@@ -351,8 +351,15 @@ const CARD = { w: CARD_STANDARD_63x88.physical.widthMm, h: CARD_STANDARD_63x88.p
 // felt as the setup draws it at the desk's narrow end, where a millimetre is fewest pixels.
 const NAME_SIDE_MM = 50
 const NAME_BELOW_MM = 30
-const pileRoom = (x: number, y: number): Geometry => rect(x - CARD.w / 2 - NAME_SIDE_MM, y - CARD.h / 2, CARD.w + 2 * NAME_SIDE_MM, CARD.h + NAME_BELOW_MM)
-const boxOf = (zone: Zone): Geometry => (zone.kind === 'pile' ? pileRoom(zone.geometry.x, zone.geometry.y) : zone.geometry)
+// Where a new pile goes, the band below the card is sized for table mode instead (#881, K2): there
+// the pile's handle hangs 8–52 px under the card (K14), and #789's caption another 16 px under the
+// handle. At 1280 × 800 with four seats — the commonest table — a millimetre is 0.70 px, so the
+// 68 px are about 97 mm. At seven and eight seats the felt draws smaller and the handle still
+// reaches some 9 px onto a neighbour below; that was accepted, since the band that clears it there
+// (118 mm) fills a four-seat felt after six piles. Only a new pile is placed by it: the decision
+// was about where ＋ Hög lays a pile, and a new area keeps the room #440 and #480 gave it.
+const HANDLE_BELOW_MM = 97
+const pileRoom = (x: number, y: number, below: number): Geometry => rect(x - CARD.w / 2 - NAME_SIDE_MM, y - CARD.h / 2, CARD.w + 2 * NAME_SIDE_MM, CARD.h + below)
 const shares = (a: Geometry, b: Geometry): boolean => Math.min(a.x + a.w, b.x + b.w) > Math.max(a.x, b.x) && Math.min(a.y + a.h, b.y + b.h) > Math.max(a.y, b.y)
 
 /**
@@ -364,7 +371,7 @@ const shares = (a: Geometry, b: Geometry): boolean => Math.min(a.x + a.w, b.x + 
  * antingen på önskekoordinaten eller mot en kant — filtens egen eller en grannes. Kandidaterna
  * nedan är precis de koordinaterna, så den bästa lediga rutan finns bland dem om någon finns.
  */
-export function freeSpot(setup: Setup, want: { w: number; h: number }, wish: { x: number; y: number }): Geometry | null {
+export function freeSpot(setup: Setup, want: { w: number; h: number }, wish: { x: number; y: number }, below = NAME_BELOW_MM): Geometry | null {
   const floor = setup.zones.find((z) => z.id === setup.floor)?.geometry
   // Ett bord utan filt är inget bord; då finns ingen golvyta att söka i och önskeplatsen är allt
   // som finns att säga.
@@ -378,7 +385,9 @@ export function freeSpot(setup: Setup, want: { w: number; h: number }, wish: { x
     const edges = [Math.min(Math.max(at, first), last), first, last, ...after.map((v) => Math.ceil(v)), ...before.map((v) => Math.floor(v))]
     return [...new Set(edges)].filter((v) => v >= first && v <= last).sort((a, b) => a - b)
   }
-  const taken = setup.zones.filter((z) => z.id !== setup.floor).map(boxOf)
+  // A pile is the card back it is drawn as and the band under it (`pileRoom`); `below` is how
+  // deep that band is for what is being placed.
+  const taken = setup.zones.filter((z) => z.id !== setup.floor).map((z) => (z.kind === 'pile' ? pileRoom(z.geometry.x, z.geometry.y, below) : z.geometry))
   const xs = along(floor.x, floor.x + floor.w - want.w, wish.x, taken.map((t) => t.x + t.w), taken.map((t) => t.x - want.w))
   const ys = along(floor.y, floor.y + floor.h - want.h, wish.y, taken.map((t) => t.y + t.h), taken.map((t) => t.y - want.h))
   if (xs.length === 0 || ys.length === 0) return null
@@ -406,10 +415,12 @@ export const newAreaSpot = (setup: Setup): Geometry | null => freeSpot(setup, NE
 // Var en ny hög föds (#443, K2, B5).
 //
 // Samma regel som ytans, och samma funktion bakom den: önskeplatsen om den är ledig, annars den
-// lediga ruta som ligger närmast den. Önskeplatsen är punkten ＋ Hög alltid har lagt högen på, så
-// den första högen på ett färskt bord hamnar där den alltid har hamnat — den krockar med
-// ingenting, vid varje platsantal bordet rymmer. Felet var aldrig var den första högen hamnar,
-// utan att platsen var en konstant och att varje hög därefter föddes ovanpå den förra.
+// lediga ruta som ligger närmast den. Önskeplatsen är punkten ＋ Hög alltid har lagt högen på.
+// Det som ska vara ledigt är högens hela rum, kortet och bandet under det där bordsläget ritar
+// handtaget och namnet (#881). Från `(0, 150)` når det bandet ytan framför den södra platsen vid
+// 2–6 platser, så den första högen på ett färskt bord hamnar numera ute vid sidan — #443:s löfte
+// om den gamla punkten är reviderat i K2. En hög som redan ligger behåller sin punkt: den står i
+// dokumentet och loggen, och regeln gäller bara högar som föds.
 //
 // Två saker skiljer högen från ytan. Den ena är att en hög i dokumentet är en punkt utan area och
 // på filten är en kortrygg: det är kortryggen som ska ha plats, så svaret måste omvandlas tillbaka
@@ -435,13 +446,14 @@ export function newPileSpot(setup: Setup): Geometry | null {
   return pileSpotNear(setup, NEW_PILE_WISH)
 }
 
-// The window a new pile is looked for in: its card back and its name's band, the same room an
-// existing pile takes (`pileRoom`), so two new piles leave each other's names whole (#480).
-const PILE_ROOM_WINDOW = { w: PILE_WINDOW.w + 2 * NAME_SIDE_MM, h: PILE_WINDOW.h + NAME_BELOW_MM }
+// The window a new pile is looked for in: its card back and the band under it, the same room every
+// existing pile is given (`pileRoom`), so two new piles leave each other's names and handles whole
+// (#480, #881).
+const PILE_ROOM_WINDOW = { w: PILE_WINDOW.w + 2 * NAME_SIDE_MM, h: PILE_WINDOW.h + HANDLE_BELOW_MM }
 function pileSpotNear(setup: Setup, wish: { x: number; y: number }): Geometry | null {
   // The card sits at the top of the window, centred across it; the name's band is under it.
   const at = { x: PILE_ROOM_WINDOW.w / 2, y: PILE_WINDOW.h / 2 }
-  const spot = freeSpot(setup, PILE_ROOM_WINDOW, { x: wish.x - at.x, y: wish.y - at.y })
+  const spot = freeSpot(setup, PILE_ROOM_WINDOW, { x: wish.x - at.x, y: wish.y - at.y }, HANDLE_BELOW_MM)
   return spot === null ? null : point(spot.x + at.x, spot.y + at.y)
 }
 
