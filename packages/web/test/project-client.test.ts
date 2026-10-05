@@ -472,6 +472,40 @@ describe('the setup in the editor (B5, K2)', () => {
     }
   })
 
+  // Samma sak för platsernas zoner och receptets uppställning (#895): det designern såg, filten
+  // med, är det som skickas och det loggen spelar upp.
+  it('sends a recipe and a seat zone with the places it showed, so the log holds that table', async () => {
+    const sent: unknown[] = []
+    setEditSocketImplementation(class extends EditSocket {
+      override send(data: string): void {
+        const message = JSON.parse(data) as { t: string; intent?: unknown }
+        if (message.t === 'edit') sent.push(message.intent)
+        super.send(data)
+      }
+    } as unknown as EditSocketCtor)
+    try {
+      const created = await run.projects.create(run.projectId, projectDoc())
+      const client = await openClient(created.id)
+      await vi.waitFor(() => expect(client.connected).toBe(true))
+
+      client.setRecipe({ ...client.recipe, players: 3 })
+      const afterRecipe = client.doc.setup
+      client.addSeatZone('counters')
+      const shown = (ids: string[]) => Object.fromEntries(ids.map((id) => [id, client.doc.setup.zones.find((z) => z.id === id)?.geometry]))
+      const counters = client.doc.setup.zones.filter((z) => z.id.startsWith('counters:')).map((z) => z.id)
+      expect(counters).toHaveLength(3)
+      const expected = [
+        expect.objectContaining({ v: 'setRecipe', places: expect.objectContaining(shown(['hand:C', afterRecipe.floor])) }),
+        expect.objectContaining({ v: 'addSeatZone', role: 'counters', places: shown(counters) }),
+      ]
+      expect(sent).toEqual(expected)
+      await vi.waitFor(async () => expect(await run.projects.readEdits(created.id, 0)).toHaveLength(2))
+      expect((await run.projects.readEdits(created.id, 0)).map((e) => e.intent)).toEqual(expected)
+    } finally {
+      setEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
+    }
+  })
+
   it('turns the recipe, adds and removes free zones, moves and reshapes a zone, and saves it all', async () => {
     const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
