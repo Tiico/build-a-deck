@@ -1232,10 +1232,11 @@ export class ProjectClient {
   // come in; and a kick, which frees the seat and ends its connections. The host key the table
   // was started with is the authority, with or without an account; a table picked up again after
   // a reload has no key in the page, and the account that may start tables is the authority then.
-  async rotateCode(sessionId: string, hostKey?: string): Promise<{ code: string; expiresAt: string }> {
+  // The new code comes with a new host key (#820), and the old key opens nothing after it.
+  async rotateCode(sessionId: string, hostKey?: string): Promise<{ code: string; expiresAt: string; hostKey: string }> {
     const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/code`, hostAuthority(hostKey, { method: 'POST' }))
     if (!res.ok) throw new Error(`could not rotate the code: ${res.status}`)
-    return (await res.json()) as { code: string; expiresAt: string }
+    return (await res.json()) as { code: string; expiresAt: string; hostKey: string }
   }
   async kick(sessionId: string, hostKey: string | undefined, seat: string): Promise<void> {
     const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/kick`, hostAuthority(hostKey, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ seat }) }))

@@ -167,6 +167,11 @@ Allt annat får `refused` och stängs; klienten återansluter aldrig efter det.
 Värdnyckeln skapas med sessionen, visas en gång för den som startar bordet och lagras hashad, som tokens.
 `POST /sessions/:id/code` roterar koden och `POST /sessions/:id/kick` sparkar en plats: tokens ogiltigförklaras, anslutningarna stängs med `refused: kicked`, platsen släpps. Värdnyckeln som bearer eller ägarens kaka är behörigheten.
 Bordsskärmen får koden i ett `room`-meddelande, vid anslutning och vid rotation; gäster får den aldrig.
+Rotationen byter också värdnyckeln (#820, beställarens beslut 2026-10-05): en nyckel som läckt tillsammans med koden — en skärmdelning, en vidarebefordrad länk — dras tillbaka med samma «Ny kod», och den gamla öppnar varken bordet eller värdens kontroller efteråt.
+Den nya nyckeln står i svaret till den som roterade och i `room`-meddelandet vid rotationen, bara till bordets egna anslutningar, så att en TV som står öppen inte stängs ute av bytet; den sparar nyckeln i fliken och återansluter med den.
+Telefoner, observatörer och lobbyn får den aldrig, vilket ett test på de råa ramarna visar.
+Det som inte dras tillbaka är en bordsvy som just då står öppen med den läckta nyckeln: den räknas som en av bordets skärmar och får den nya.
+Den som vill stänga också den startar ett nytt bord.
 Sessioner från före koder saknar kod och nyckel: de kan inte nås med kod eller öppnas som bordet.
 
 ## 10. Administration: Tailscale

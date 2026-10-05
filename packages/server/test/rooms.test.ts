@@ -227,6 +227,44 @@ describe('the host', () => {
     await Promise.all([tv.close(), a.close()])
   })
 
+  // A leaked host key is taken back the way a leaked code is (#820): «Ny kod» changes both. The
+  // screen that is already open is handed the new key over its own connection, so it is not shut
+  // out by its own rotation; a phone or an observer never sees it, on the wire or anywhere else.
+  it('rotates the host key with the code: the old key opens nothing, the table screen is handed the new one, guests are not', async () => {
+    const { id, hostKey } = await createRoom(run.http)
+    const tv = await run.connectTable(id, hostKey)
+    await tv.waitFor((m) => m.t === 'room')
+    const a = await run.connect(id, 'A')
+    const eva = await run.connect(id, null, { role: 'observer', name: 'Eva' })
+
+    const rotated = await post(run.http, `/sessions/${id}/code`, {}, { authorization: `Bearer ${hostKey}` })
+    expect(rotated.status).toBe(200)
+    const next = (await rotated.json()) as { code: string; hostKey: string }
+    expect(next.hostKey.length).toBeGreaterThanOrEqual(32)
+    expect(next.hostKey).not.toBe(hostKey)
+
+    // The screen that was open hears the new key with the new code, and only it.
+    const told = await tv.waitFor((m) => m.t === 'room' && m.code === next.code)
+    expect(told).toMatchObject({ t: 'room', code: next.code, hostKey: next.hostKey })
+    await new Promise((r) => setTimeout(r, 30))
+    for (const guest of [a, eva]) {
+      expect(guest.frames.join('\n')).not.toContain(next.hostKey)
+      expect(guest.frames.join('\n')).not.toContain(hostKey)
+    }
+
+    // The old key is dead everywhere it worked: the table's door and the host's controls.
+    const stale = await run.connectTable(id, hostKey)
+    expect(stale.messages[0]).toEqual({ t: 'refused', reason: 'the table needs the host key' })
+    await stale.close()
+    expect((await post(run.http, `/sessions/${id}/code`, {}, { authorization: `Bearer ${hostKey}` })).status).toBe(403)
+    expect((await post(run.http, `/sessions/${id}/kick`, { seat: 'A' }, { authorization: `Bearer ${hostKey}` })).status).toBe(403)
+
+    // The new one opens the table again, as a reload of the same screen would.
+    const reloaded = await run.connectTable(id, next.hostKey)
+    expect(await reloaded.waitFor((m) => m.t === 'room')).toMatchObject({ t: 'room', code: next.code })
+    await Promise.all([tv.close(), a.close(), eva.close(), reloaded.close()])
+  })
+
   it('kicks a guest: the connection is refused and closed, the seat is freed, the token is dead, and the seat can be taken again', async () => {
     const { id, code, hostKey } = await createRoom(run.http)
     const tv = await run.connectTable(id, hostKey)

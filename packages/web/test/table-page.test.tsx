@@ -347,6 +347,28 @@ describe('the host\'s screen (DRIFT §9)', () => {
     expect(await screen.findByText(roomOf(id).code)).toBeTruthy()
   })
 
+  // «Ny kod» takes back a leaked key (#820): the screen that is open is handed the new one, keeps
+  // it in the tab instead of the old, and a reload opens the table with it.
+  it('keeps the key a rotation hands it, so a reload after «Ny kod» still opens the table', async () => {
+    const id = await createSession(run)
+    const old = roomOf(id).hostKey
+    history.replaceState(null, '', `/table?session=${id}&host=${old}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    const { unmount } = render(<TablePage />)
+    expect(await screen.findByText(roomOf(id).code)).toBeTruthy()
+
+    const rotated = await fetch(`${run.http}/sessions/${id}/code`, { method: 'POST', headers: { authorization: `Bearer ${old}` } })
+    const { code, hostKey } = (await rotated.json()) as { code: string; hostKey: string }
+    expect(await screen.findByText(code)).toBeTruthy()
+    await waitFor(() => expect(JSON.stringify({ ...sessionStorage })).toContain(hostKey))
+    expect(JSON.stringify({ ...sessionStorage })).not.toContain(old)
+    unmount()
+
+    // A reload: the same tab, the cleaned address, and only the new key to open it with.
+    render(<TablePage />)
+    expect(await screen.findByText(code)).toBeTruthy()
+    expect(location.href).not.toContain(hostKey)
+  })
+
   it('keeps one table’s key to that table', async () => {
     const first = await createSession(run)
     history.replaceState(null, '', `/table?session=${first}&host=${roomOf(first).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)

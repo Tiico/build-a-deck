@@ -141,6 +141,7 @@ describe('the nine states in the reader\'s own language (A4)', () => {
       activity: [],
       observers: [],
       room: null,
+      hostKey: null,
       refused: null,
       trouble: null,
       unansweredSince: null,

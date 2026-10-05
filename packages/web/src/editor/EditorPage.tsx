@@ -558,8 +558,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const rotate = async () => {
     if (!table) return
     try {
-      const { code } = await client.rotateCode(table.id, table.hostKey)
-      setTable({ ...table, code })
+      // The key changes with the code (#820). A table picked up again after a reload had no key in
+      // the page and is reached by the owner's login; it is not handed one now either.
+      const { code, hostKey } = await client.rotateCode(table.id, table.hostKey)
+      setTable({ ...table, code, ...(table.hostKey !== undefined ? { hostKey } : {}) })
     } catch {
       setNotice(t('editor.table.error.code'))
     }

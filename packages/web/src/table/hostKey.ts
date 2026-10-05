@@ -11,11 +11,7 @@ export function takeHostKey(sessionId: string | null): string | undefined {
   const url = new URL(location.href)
   const given = url.searchParams.get('host')
   if (given !== null) {
-    try {
-      sessionStorage.setItem(STORE + sessionId, given)
-    } catch {
-      // A tab that cannot keep it still opens the table now; a reload will ask for the link again.
-    }
+    keepHostKey(sessionId, given)
     url.searchParams.delete('host')
     history.replaceState(history.state, '', url.pathname + url.search + url.hash)
     return given || undefined
@@ -24,5 +20,15 @@ export function takeHostKey(sessionId: string | null): string | undefined {
     return sessionStorage.getItem(STORE + sessionId) ?? undefined
   } catch {
     return undefined
+  }
+}
+
+// The key the tab opens this table with from now on: the one in the address, or the one a rotation
+// handed the open screen (#820), which replaces the old one since that no longer opens anything.
+export function keepHostKey(sessionId: string, key: string): void {
+  try {
+    sessionStorage.setItem(STORE + sessionId, key)
+  } catch {
+    // A tab that cannot keep it still opens the table now; a reload will ask for the link again.
   }
 }

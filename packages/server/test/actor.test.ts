@@ -105,6 +105,7 @@ function bind(store: MemoryLogStore): LogStore {
     sessionsOf: (project) => store.sessionsOf(project),
     sessionByCode: (code) => store.sessionByCode(code),
     setCode: (id, code, at) => store.setCode(id, code, at),
+    rotateAdmission: (id, code, at, key) => store.rotateAdmission(id, code, at, key),
     issueGuest: (id, g) => store.issueGuest(id, g),
     activateGuest: (id, token, now, expires) => store.activateGuest(id, token, now, expires),
     guestByToken: (id, h) => store.guestByToken(id, h),

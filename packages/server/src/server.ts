@@ -341,7 +341,7 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       if (!account) return json(res, 401, { error: 'log in first' })
       return json(res, 200, await playedBy(opts, account.id))
     }
-    // The host's controls (DRIFT §9): a new code, and a kick. With the host key, or the owner's cookie.
+    // The host's controls (DRIFT §9): a new code (and with it a new host key, #820), and a kick. With the host key, or the owner's cookie.
     const control = /^\/sessions\/([^/]+)\/(code|kick)$/.exec(url.pathname)
     if (req.method === 'POST' && control) {
       const sessionId = decodeURIComponent(control[1] ?? '')
@@ -354,9 +354,12 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
         const expiresAt = codeExpiry(clock(opts))
         let code = newCode()
         for (let tries = 0; (await opts.store.sessionByCode(code)) !== null && tries < 5; tries++) code = newCode()
-        await opts.store.setCode(sessionId, code, expiresAt)
-        actor?.tellTable({ t: 'room', code, expiresAt })
-        return json(res, 200, { code, expiresAt })
+        // The host key goes with the code (#820): whoever saw the screen saw both. The screens that
+        // are open are handed the new key over their own connection — the table's, never a guest's.
+        const hostKey = newSecret()
+        await opts.store.rotateAdmission(sessionId, code, expiresAt, hash(hostKey))
+        actor?.tellTable({ t: 'room', code, expiresAt, hostKey })
+        return json(res, 200, { code, expiresAt, hostKey })
       }
       const { seat } = KickBody.parse(JSON.parse(await readBody(req)))
       if (!session.setup.seats.includes(seat)) return json(res, 404, { error: `unknown seat ${seat}` })

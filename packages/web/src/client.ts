@@ -74,6 +74,10 @@ export class TableClient {
   observers: { id: string; name: string }[] = []
   // The room code (DRIFT §9), told to the host's screens only; null for everyone else.
   room: { code: string; expiresAt: string } | null = null
+  // The host key a rotation handed this screen (#820), or null while it has been handed none.
+  // «Ny kod» changes the key along with the code; the screen that is open reconnects with this
+  // one from then on, since the key it was opened with no longer opens anything.
+  hostKey: string | null = null
   // Why the server would not have this connection (DRIFT §9): no reconnecting after that.
   refused: string | null = null
   private ws: WebSocketLike
@@ -256,7 +260,8 @@ export class TableClient {
       q.set('name', observer)
     } else if (seat !== null) q.set('seat', seat)
     if (token !== undefined) q.set('token', token)
-    if (host !== undefined) q.set('host', host)
+    const key = this.hostKey ?? host
+    if (key !== undefined) q.set('host', key)
     if (owner) q.set('owner', '1')
     const ws = makeSocket(`${url}/sessions/${encodeURIComponent(sessionId)}${q.size > 0 ? `?${q.toString()}` : ''}`)
     ws.addEventListener('message', (ev) => this.receive(ServerMessage.parse(JSON.parse(String(ev.data)))))
@@ -342,6 +347,7 @@ export class TableClient {
         break
       case 'room':
         this.room = { code: msg.code, expiresAt: msg.expiresAt }
+        if (msg.hostKey !== undefined) this.hostKey = msg.hostKey
         this.notify()
         break
       case 'presence':
