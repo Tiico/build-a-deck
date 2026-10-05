@@ -344,3 +344,85 @@ test("table mode: a felt too narrow for the piles' names keeps the name on the c
   expect(now.onCard).toBe(LONG)
   await page.context().close()
 })
+
+// A turned felt turns the handle back upright about its own middle (C5, `--unrotate`), and the
+// caption with it (#899). Half a turn leaves the handle where it hung, so #789 only had to put the
+// caption over it. A quarter turn lays the handle's width along the felt's «down»: hung by its
+// middle, a pill a hundred pixels wide reached half of that back over its own card, and so could a
+// caption wider than the pill. At every turn the handle hangs under its card in the felt's own
+// «down», on the card's axis, and neither it nor the caption is drawn over the card.
+//
+// A side seat's quarter turn is kept only where the window is standing up (C5, C8); 960 is the
+// narrowest upright window that gets a board at all (#484).
+const UPRIGHT: Device = { name: 'upright', viewport: { width: 1080, height: 1440 } }
+
+const turns = [
+  { seat: 'A', device: SMALL_TV, rotate: '0' },
+  { seat: 'B', device: SMALL_TV, rotate: '180' },
+  { seat: 'C', device: UPRIGHT, rotate: '90' },
+  { seat: 'D', device: UPRIGHT, rotate: '270' },
+] as const
+
+type Clearance = {
+  /** Which of the pile's own labels have a box that meets its card's. */
+  over: string[]
+  /** Where the handle's centre stands from the card's, along and across the felt's «down». */
+  handle: { along: number; across: number }
+  /** How far the handle's and the caption's nearest edges stand past the card, along the «down». */
+  gap: { handle: number; caption: number | null }
+}
+
+const clearance = (page: Page, zone: string, rotate: string): Promise<Clearance> =>
+  page.evaluate(
+    ({ zone, rotate }) => {
+      const pile = document.querySelector(`.byd-pile[data-zone="${zone}"]`)!
+      const card = pile.querySelector(':scope > .byd-pile-top')!.getBoundingClientRect()
+      const handle = pile.querySelector(':scope > .byd-pile-count')!.getBoundingClientRect()
+      const capEl = pile.querySelector('.byd-pile-caption')
+      const caption = capEl && getComputedStyle(capEl).display !== 'none' ? capEl.getBoundingClientRect() : null
+      const meet = (o: DOMRect) => o.left < card.right - 0.5 && card.left < o.right - 0.5 && o.top < card.bottom - 0.5 && card.top < o.bottom - 0.5
+      const over = [...(meet(handle) ? ['handle'] : []), ...(caption && meet(caption) ? ['caption'] : [])]
+      // The felt's «down» on the screen: half a turn points it up, a quarter (clockwise) left.
+      const a = (Number(rotate) * Math.PI) / 180
+      const [downX, downY] = [Math.round(-Math.sin(a)), Math.round(Math.cos(a))]
+      const mid = (o: DOMRect) => [o.left + o.width / 2, o.top + o.height / 2] as const
+      const [cx, cy] = mid(card)
+      const [hx, hy] = mid(handle)
+      const along = (hx - cx) * downX + (hy - cy) * downY
+      const across = (hx - cx) * downY - (hy - cy) * downX
+      // A box's nearest edge along the «down», less the card's farthest edge along it.
+      const near = (o: DOMRect) => (downX > 0 ? o.left : downX < 0 ? -o.right : downY > 0 ? o.top : -o.bottom)
+      const far = downX > 0 ? card.right : downX < 0 ? -card.left : downY > 0 ? card.bottom : -card.top
+      return { over, handle: { along, across }, gap: { handle: near(handle) - far, caption: caption ? near(caption) - far : null } }
+    },
+    { zone, rotate },
+  )
+
+for (const t of turns) {
+  test.describe(`table mode: seat ${t.seat} on /online, the felt turned ${t.rotate}° (#899)`, () => {
+    test("each pile's handle and caption hang under its card and never over it", async ({ browser, baseURL, request }) => {
+      const { table } = await tableWithNames(request)
+      await deal(baseURL!, table)
+      const player = await join(request, table, { name: 'Bo', seat: t.seat })
+      const { page } = await screen(browser, baseURL, t.device, `${player.onlineUrl}&lang=sv`, 'pending')
+      // Non-vacuity: the felt is turned the way this reading is about, and the discard pile is
+      // named in a caption, so the caption is measured and not skipped.
+      await expect(page.locator('.byd-table-frame')).toHaveAttribute('data-mode', 'table')
+      await expect(page.locator('[data-table]')).toHaveAttribute('data-rotate', t.rotate)
+      await expect(page.locator('.byd-pile[data-zone="discard"] .byd-pile-caption')).toBeVisible()
+      for (const zone of ['draw', 'discard']) {
+        const now = await clearance(page, zone, t.rotate)
+        const said = `${zone}: ${JSON.stringify(now)}`
+        expect(now.over, `none of the ${zone} pile's labels lies over its card — ${said}`).toEqual([])
+        expect(now.handle.along, `the handle hangs under the card — ${said}`).toBeGreaterThan(0)
+        // The felt's tilt bends a pixel or two; a handle turned off its axis is half a pill.
+        expect(Math.abs(now.handle.across), `the handle stands on the card's axis — ${said}`).toBeLessThan(4)
+        // The handle keeps the gap from its card it keeps on a felt that is not turned (8 px,
+        // K14), and the caption hangs at least as far off.
+        expect(now.gap.handle, `the handle keeps its gap — ${said}`).toBeGreaterThanOrEqual(4)
+        if (zone === 'discard') expect(now.gap.caption, `the caption keeps clear of the card — ${said}`).toBeGreaterThanOrEqual(4)
+      }
+      await page.context().close()
+    })
+  })
+}
