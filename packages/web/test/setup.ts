@@ -1,5 +1,5 @@
 import { afterEach } from 'vitest'
-import { cleanup, configure } from '@testing-library/react'
+import { cleanup, configure, getConfig } from '@testing-library/react'
 
 // Testing Library only cleans up on its own with vitest globals; do it explicitly.
 afterEach(cleanup)
@@ -26,6 +26,74 @@ afterEach(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
 // one place. Nothing is weakened by it: a wait that resolves still resolves at once, and a thing
 // that never happens still fails, four seconds later and inside vitest's own five.
 configure({ asyncUtilTimeout: 4000 })
+
+// Those four seconds are the worker's own, not the wall clock's (#867).
+//
+// On a loaded machine the operating system can leave a worker unrun for longer than a wait's
+// patience. When it runs it again, Node takes the timers that fell due before it reads the
+// sockets — and a wait's deadline is such a timer, while the server's answer, in this very
+// process, sits written and unread on a socket. So the deadline won by the order of a loop's
+// phases: `setup-new-pile` read «Öppnar spelet…» where an editor that opens in 15 ms was waiting
+// to be read. No number fixes that, since any deadline is shorter than some stall.
+//
+// So a wait that gave up is asked again when time it was counting was time the worker did not
+// run: wall time that went by without the process spending CPU. Ordinary slowness — a render
+// that took a second of its own work — is the worker's own time and counts as it always did, and
+// so does a wait for something that never comes, which fails once its four seconds of running
+// time are spent. Only a stall long enough to be one is subtracted, never the jitter of a busy
+// scheduler. `test/waits-outlast-a-held-worker.test.tsx` holds the worker with SIGSTOP to show
+// both halves.
+//
+// The wrapper is Testing Library's own seam around every wait. user-event goes through it too;
+// an action is asked again only if it rejected *and* the worker was held while it ran, and an
+// action that rejects is a failing test either way.
+const TICK_MS = 50
+const HELD_AT_LEAST_MS = 250
+const realSetInterval = setInterval
+const realClearInterval = clearInterval
+// Read off the real clock even where a test fakes it: a faked clock that jumps is not a stall.
+const now = performance.now.bind(performance)
+function watchHolds(): () => { took: number; held: number } {
+  const started = now()
+  let last = started
+  let cpu = process.cpuUsage()
+  let held = 0
+  const look = () => {
+    const at = now()
+    const used = process.cpuUsage(cpu)
+    cpu = process.cpuUsage()
+    const idle = at - last - TICK_MS - (used.user + used.system) / 1000
+    if (idle >= HELD_AT_LEAST_MS) held += idle
+    last = at
+  }
+  const timer = realSetInterval(look, TICK_MS)
+  return () => {
+    realClearInterval(timer)
+    look()
+    return { took: now() - started, held }
+  }
+}
+const inner = getConfig().asyncWrapper
+configure({
+  asyncWrapper: (cb) =>
+    inner(async () => {
+      let own = 0
+      for (;;) {
+        const stop = watchHolds()
+        let result: Awaited<ReturnType<typeof cb>>
+        try {
+          result = await cb()
+        } catch (err) {
+          const { took, held } = stop()
+          own += took - held
+          if (held === 0 || own >= getConfig().asyncUtilTimeout) throw err
+          continue
+        }
+        stop()
+        return result
+      }
+    }),
+})
 
 // jsdom 30 keeps the style sheet of a <style> that leaves the document along with an ancestor
 // (#538): removing the element itself lets its sheet go, removing the element round it does not.
