@@ -8,7 +8,9 @@
      den sparkade telefonen erbjuda? Tre varianter, ?variant=A|B|C eller pilarna längst ned. -->
 <link rel="stylesheet" href="proto.css">
 <style>
-  body { overflow: auto; }
+  body { overflow: auto; padding-bottom: 80px; }
+  .note { position: static !important; inset: auto !important; transform: none !important; width: auto !important; box-shadow: none !important; background: transparent !important; border: 0 !important; }
+  @media (max-width: 1100px) { .stage { grid-template-columns: minmax(0, 1fr); } }
   .stage { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: var(--s5); padding: var(--s5); align-items: start; }
   .note { margin: 0 0 var(--s3); color: var(--quiet-2); max-width: 70ch; line-height: 1.5; }
   .note b { color: #fff; }

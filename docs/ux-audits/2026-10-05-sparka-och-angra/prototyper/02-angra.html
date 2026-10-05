@@ -9,7 +9,9 @@
      över bordet som ska visa hur det såg ut. Tre varianter, ?variant=A|B|C eller pilarna. -->
 <link rel="stylesheet" href="proto.css">
 <style>
-  body { overflow: auto; }
+  body { overflow: auto; padding-bottom: 80px; }
+  .note { position: static !important; inset: auto !important; transform: none !important; width: auto !important; box-shadow: none !important; background: transparent !important; border: 0 !important; }
+  @media (max-width: 1100px) { .stage { grid-template-columns: minmax(0, 1fr); } }
   .online { display: grid; grid-template-rows: auto auto 1fr; height: calc(100vh - 57px); }
   .top { display: flex; align-items: center; gap: var(--s2); padding: 8px 16px; border-bottom: 1px solid var(--line); }
   .top .who { color: #fff; font-weight: 700; }
