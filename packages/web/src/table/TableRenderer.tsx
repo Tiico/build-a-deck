@@ -2076,8 +2076,8 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
         <b className="byd-pile-n">{count}</b>
         {/* Always there, and empty when there is nothing to say: the felt's names and plates are laid
             out again when it changes size (#886), and only an element that is there can be watched.
-            Empty, it is drawn no wider than nothing, which is how every reader of the felt's words
-            tells it is not there. */}
+            Empty, it is never drawn: `table.css` shows it only beside the card state's own name,
+            and the state names the card exactly when `cardWord` has a word for it. */}
         <span className="byd-pile-caption">{caption ?? ''}</span>
       </span>
     </div>
