@@ -585,6 +585,10 @@
 [data-tv] .byd-tv-head h1 em { color: #7d8597; font-weight: 400; font-style: normal; white-space: nowrap; }
 /* The way in: the label above, the code and the QR on one line under it. A 360 px column is not
    a 1920 px header, and a label that wraps between two words reads as a mistake. */
+/* «Starta om» and the help's disc in the room's column (#875): under the code, on a row of their
+   own, where nothing on the felt lies under them. */
+[data-tv] .byd-tv-corner { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+[data-tv] .byd-tv-corner:empty { display: none; }
 [data-tv] .byd-tv-join { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
 [data-tv] .byd-tv-join > span { color: #7d8597; font-size: 14px; flex: 1 0 100%; }
 [data-tv] .byd-qr { border-radius: 6px; background: #fff; }

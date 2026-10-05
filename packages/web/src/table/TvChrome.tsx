@@ -50,6 +50,9 @@ export type TvChromeProps = {
   // The room's own television (#573): the seats are on the felt's plates, and every word is at
   // K26's 24 px. The observer's screen is not the room's and leaves it off.
   room?: boolean | undefined
+  // The column's place for what the felt's corner holds on other screens (#875): the table's
+  // renderer draws «Starta om» and the help's disc into it.
+  corner?: ((el: HTMLElement | null) => void) | undefined
   // What a card opened from the seats' lists does (#551): the observer holds it up to be read. A
   // screen that passes nothing keeps its seats as rows that open nothing.
   onRead?: ReadCard | undefined
@@ -68,7 +71,7 @@ export type TvChromeProps = {
 // at 1920 x 1080 measured 68 px across for it. The same card is 82 px with the rows gone and
 // their contents moved into the column, which is the difference between a card that has to be
 // pointed at to be told apart and one that does not (`tv-card-size.test.ts`, K8).
-export function TvChrome({ view, activity, roomCode, joinUrl, title, version, inspecting, faces, showing, onDismiss, observers = [], note, rules, room = false, onRead, children }: TvChromeProps) {
+export function TvChrome({ view, activity, roomCode, joinUrl, title, version, inspecting, faces, showing, onDismiss, observers = [], note, rules, room = false, onRead, corner, children }: TvChromeProps) {
   // A card whose words are smaller than the wizard's frame is shown taller (#523), into the felt's
   // height, until they read from the sofa: the height its width needs, which the stylesheet lets past
   // the 938 px the frame's own card stops at.
@@ -174,6 +177,7 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
             </Help>
           </div>
         )}
+        {corner && <div className="byd-tv-corner" ref={corner} />}
         <section className="byd-tv-inspect" aria-labelledby="tv-inspect">
           <h2 id="tv-inspect">{t('tv.inspect')}</h2>
           {shown ? (

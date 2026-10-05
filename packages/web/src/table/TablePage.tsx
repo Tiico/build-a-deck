@@ -95,6 +95,8 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
 
   // What the screen is pointed at (C): only the TV has a panel to show it in.
   const [inspecting, setInspecting] = useState<VisibleComponentState | null>(null)
+  // The TV's column holds what the felt's corner holds on the other screens (#875).
+  const [corner, setCorner] = useState<HTMLElement | null>(null)
   const presence = usePresence(client, view)
   const recent = useRecent(activity)
   // Which piles are being shuffled right now (L35): played by the line, on this screen as on
@@ -160,6 +162,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       onPresence={client ? (p) => client.sendPresence(p) : undefined}
       camera={mode === 'tv' ? 'follow' : undefined}
       forTheRoom={mode === 'tv'}
+      cornerIn={mode === 'tv' ? corner : undefined}
       {...(sessionId ? { remember: `table:${sessionId}` } : {})}
       onInspect={mode === 'tv' ? setInspecting : undefined}
       onShow={mode === 'tv' ? shown.show : undefined}
@@ -209,7 +212,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       {mode === 'tv' ? (
         // On a TV the rulebook goes into the header, where the way in already is: the two wanted
         // the same corner, and only the header can lay both out (#30).
-        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} title={record?.name} version={version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} showing={showing} onDismiss={dismiss} observers={observers} rules={rules('tv')} room>
+        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} title={record?.name} version={version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} showing={showing} onDismiss={dismiss} observers={observers} rules={rules('tv')} room corner={setCorner}>
           {table}
         </TvChrome>
       ) : (
