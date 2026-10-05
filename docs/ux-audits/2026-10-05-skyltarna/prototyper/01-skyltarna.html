@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 01 — Platsernas skyltar på rummets TV (#683)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan (#683) ──────────────────────────────────────────────────────────────────────
+     Var står en plats skylt på rummets TV så att den inte täcker någon hög, bricka, hög-
+     namn, bildtext eller annan zon — vid 1280 × 800 och 1920 × 1080, med fyra och åtta
+     platser? K26 (#573) ställer skylten på zonernas mittsida, och ingen regel flyttar den.
+
+     Varje bild är det BYGGDA appen (packages/e2e-stacken, Sal's Saloon, fem kort i varje
+     hand, tre i saloonen, två i kasthögen och ett framför varje plats; plats A heter Ada, de
+     andra är lediga) med variantens placering injicerad i sidan och mätt i Chromium. /faces
+     svarar 202 hela passet, så att kasthögens bildtext (#771) står där. Inget är ritat för
+     hand. Skripten ligger i matning/.
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .krona { flex: none; display: grid; gap: 8px; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .krona h1 { margin: 0; color: #fff; font-size: 15px; }
+  .rad { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .rad > span { color: var(--quiet-2); font-size: 12px; min-width: 64px; }
+  .rad button { min-height: 36px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; cursor: pointer; }
+  .rad button[aria-pressed='true'] { background: #24507f; border-color: var(--primary-mark); color: #fff; }
+  .rad button.rek { border-color: #3f7a55; }
+  .rad button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .scen { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; padding: 16px; background: #15171c; }
+  @media (max-width: 900px) { .scen { grid-template-columns: minmax(0, 1fr); } }
+  .bild img { display: block; max-width: 100%; height: auto; border: 1px solid #2f333d; border-radius: 6px; }
+  .bild p { color: var(--quiet-2); font-size: 12px; margin: 6px 0 0; }
+  .sido { display: grid; gap: 12px; align-content: start; }
+  .ruta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .ruta h2 { margin: 0 0 6px; color: #fff; font-size: 14px; }
+  .ruta p { margin: 0 0 6px; line-height: 1.5; color: #c9d1e3; }
+  .tal { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 13px; }
+  .tal b { text-align: right; }
+  .noll { color: var(--good); } .fel { color: #ff8a7a; }
+  .lista { margin: 6px 0 0; padding-left: 16px; color: #c9d1e3; font-size: 12px; line-height: 1.5; }
+  .matris { grid-column: 1 / -1; overflow-x: auto; }
+  table { border-collapse: collapse; font-size: 12px; min-width: 900px; }
+  th, td { border: 1px solid #2f333d; padding: 4px 6px; text-align: center; white-space: nowrap; }
+  th { color: #fff; background: #1b1f2a; }
+  td:first-child, th:first-child { text-align: left; }
+  td.valt { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  td a { color: inherit; text-decoration: none; display: block; }
+  td.ok { background: #16301f; color: #9be3b5; }
+  td.nej { background: #3a1c1c; color: #ffb3a8; }
+  .forkl { color: var(--quiet-2); font-size: 12px; margin: 6px 0; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="krona">
+  <h1>Prototyp 01 — var en plats skylt står på rummets TV (#683) <small style="color:var(--quiet-2);font-weight:400">· ← → byter variant · bilderna är det byggda appen med placeringen injicerad</small></h1>
+  <div class="rad" id="varianter"><span>Variant</span></div>
+  <div class="rad" id="ytor"><span>Yta</span></div>
+  <div class="rad" id="platser"><span>Platser</span></div>
+</div>
+<div class="scen">
+  <div class="bild"><img id="bild" alt=""><p id="bildtext"></p></div>
+  <div class="sido">
+    <div class="ruta"><h2 id="vnamn"></h2><p id="vregel"></p><p id="vpris" class="forkl"></p></div>
+    <div class="ruta"><h2>Mätt på den här bilden</h2><div class="tal" id="tal"></div><ul class="lista" id="detalj"></ul></div>
+  </div>
+  <div class="matris ruta">
+    <h2>Alla ytor × alla varianter</h2>
+    <p class="forkl">Varje cell: <b>skylt över hög, bricka, högnamn eller bildtext</b> / skylt i en annan zons ruta / skylt på skylt / skylt på zonnamn / kapad skylttext — och inom hakparentes samma fyra krockar summerade när varje skylt ritas 15 % bredare (K20:s marginal). Därefter kortets kortsida i px. Grönt = allt noll, också 15 % bredare, och kortet lika stort som i «Nu». Klicka en cell för att se den.</p>
+    <table id="matris"></table>
+    <p class="forkl">Bordsläget och /online vid 1280 har inga skyltar — där står platsens namnkort vid kanten (K9) och räknarna säger sina tal själva. Mätt med samma läsning på «Nu»: noll namnkort över högar, i andra zoner eller på varandra, vid fyra och åtta platser (yta «Bordsläge 1280» och «/online 1280» ovan).</p>
+  </div>
+</div>
+<script src="data.js"></script>
+<script>
+const VARIANTER = [
+  { id: 'nu', namn: 'Nu', regel: 'K26 (#573): skylten står på den sida av platsens zoner som vetter mot bordets mitt, 8 px ifrån; en sidoplats staplar sina ord. Sedan #750 är skylten högst så bred som rummet fram till första hinder i höjd med den (hög och högnamn räknat med 0,7 em per bokstav, en annan zon, nästa skylt, filtens mitt), och det som inte ryms kapas.', pris: 'Det issuet beskriver är borta sedan #750: vid 1280 och fyra platser täcker ingen skylt längre Kortlek eller Kasthög. I stället kapas C och D till «5 kor…» och «Guld…». B står i Sal\'s Saloons ruta vid båda TV-måtten — saloonen ligger 30 mm (22 px vid 1280) under B:s zoner, och ingen skylt ryms där. Vid 1280 och åtta platser bryts B, F, A och E till två rader och ligger på D, C, H och G: fyra skyltpar, tio när skyltarna ritas 15 % bredare. 1920 med åtta platser är rent.' },
+  { id: 'a', namn: 'A · #685:s ordning', regel: 'Skylten följer zonnamnens regel (K19, #685): egen plats; zonernas andra ände; en rad längre ut; motsatt sida (mot kanten); ändarna av platsens rad. Första platsen som är fri från högar, brickor, högnamn, bildtexter, andra zoner, zonnamn, andra skyltar, händer, marker och krom — också med skylten 15 % bredare — vinner. Skylten har full bredd (#750:s tak gäller bara egen plats).', pris: 'Löser 1920 (B flyttar till änden av sin rad) men inte 1280: en hel skylt ryms ingenstans vid sidoplatserna — 190 px mellan zonerna och Kortlek mot en skylt på 218 — så tre av fyra och sex av åtta skyltar har ingen fri plats och står kvar där de stod, nu över högarna igen.' },
+  { id: 'c', namn: 'C · Smal skylt', regel: 'Samma plats som nu, men handen sägs «5 kort» i stället för «5 kort på hand» (orden finns redan: tv.seat.hand.short) och skylten är tätare. #750:s tak står kvar.', pris: 'Sidoplatsernas skyltar ryms nu hela mellan zonerna och högarna vid 1280 — inget kapat. Kvar: B står i saloonens ruta vid båda TV-måtten, och vid 1280 med åtta platser ligger B:s och F:s skyltar (och A:s och E:s) 22 px isär på samma rad, så de möts när texten ritas 15 % bredare.' },
+  { id: 'c2', namn: 'C2 · Bricka', regel: 'Skylten fälls ihop till kulan och handen, «(D) 5 kort»; namnet och räknarna står först när skylten fälls ut — på platsens tur eller vid ett tryck.', pris: 'Noll på högarna, men B står fortfarande i saloonen (brickan är 44 px hög i en glipa på 22). Och rummet ser varken vem som sitter var eller guldet i vila. «På platsens tur» finns inte att hänga upp det på: bordet känner inga turer (K21), bara vem som rörde något senast.' },
+  { id: 'ac', namn: 'A+C · Smal skylt i #685:s ordning', regel: 'Den smala skylten (C) placerad med A:s ordning; finns ingen fri plats prövas samma ordning med skylten som bricka (C2), innan den får stå på något.', pris: 'Noll överallt, också 15 % bredare, och kortet orört. Men tre skyltar blir brickor vid 1280: B vid fyra platser (vid änden av sin rad, intill Räknare B) och E och F vid åtta. Där säger TV:n alltså inte platsens namn eller guld, och skyltarna på samma TV har två former.' },
+  { id: 'e', namn: 'E · Skylten utan räknare', rek: true, regel: 'Nytt förslag: skylten säger platsens namn och hand, «(B) ledig 5 kort», och platsens mark säger sitt tal själv igen — i rummets 24 px-pill, den som en mark utan ägare redan bär på TV:n. Skylten placeras med A:s ordning, och brickan (C2) är sista utvägen.', pris: 'Noll överallt, också 15 % bredare: ingen hög, bricka, högnamn, bildtext, zon, skylt eller zonnamn täcks, inget kapas, och kortet är 46/77/31/45 px som nu. Ingen skylt behöver bli bricka. B går till änden av sin rad vid 1280 och till kantsidan av sina zoner vid 1920. Priset: en rad ur #573 vänds — «räknarbrickans siffra ritas inte en gång till» — och räknarens namn («Guld») skrivs inte längre på TV:ns filt. Med två räknare per plats står två namnlösa tal i platsens remsa; markens färg och form får skilja dem, som i bordsläget.' },
+  { id: 'b', namn: 'B · Utanför filten', regel: 'Skylten står utanför filtens kant på en rad, i bandet ovanför eller under filten: plats vid överkanten ovanför, vid nederkanten under, en sidoplats i bandet närmast sina zoner. Räcker bandet inte ger ramen upp höjden och filten passas in igen, mindre.', pris: 'Vid 1280 är TV:ns filt breddbunden, inte höjdbunden som vid 1920: band ovanför och under är gratis upp till ~107 px vid fyra platser — men fyra skyltar och två händer ryms inte på en rad. Kortet krymper 46→44 vid 1280/4, 77→67 vid 1920/4, 31→20 vid 1280/8 och 45→33 vid 1920/8, under K9:s 45. Och en sidoplats skylt står långt från platsen.' },
+  { id: 'bc', namn: 'B+C · Utanför, smal', regel: 'B med den smala skylten.', pris: 'Billigare än B vid fyra platser (46→46, 77→75), men vid åtta platser krymper kortet ändå till 20 och 38 px — under K9:s 45 på 1920 — och en skylt per bord möts när den ritas 15 % bredare.' },
+  { id: 'd', namn: 'D · Högarna in mot mitten', regel: 'Receptets två högar står på ±70 mm i stället för ±140 (recipe.ts, C5, K2), så sidoplatsernas skyltar får rummet mellan zonerna och högarna. Skyltarna står som nu, med #750:s tak.', pris: 'Hjälper inte: #750:s tak räknar högnamnet med 0,7 em per bokstav, så C och D kapas lika mycket; B står kvar i saloonen; åttaplatsbordets krockar är skylt mot skylt och rörs inte; och saloonens namn hamnar under B:s skylt. Kostnaden: receptet gäller bara nya spel — Sal\'s Saloon och varje spel som redan finns behåller sina högar (K2, B5), så ingen befintlig TV blir bättre.' },
+]
+const YTOR = [
+  { id: 'tv-1280', namn: 'TV 1280 × 800' }, { id: 'tv-1920', namn: 'TV 1920 × 1080' },
+  { id: 'bord-1280', namn: 'Bordsläge 1280' }, { id: 'online-1280', namn: '/online 1280' },
+]
+const q = new URLSearchParams(location.search)
+let v = q.get('v') ?? 'e', yta = q.get('yta') ?? 'tv-1280', pl = q.get('platser') ?? '4'
+const cell = (vv, yy, pp) => window.MATT.find((m) => m.v === vv && m.y === yy && m.p === pp)
+const knappar = (rot, lista, nu, val) => {
+  rot.querySelectorAll('button').forEach((b) => b.remove())
+  for (const x of lista) {
+    const b = document.createElement('button')
+    b.textContent = x.namn
+    if (x.rek) b.classList.add('rek')
+    b.setAttribute('aria-pressed', String(x.id === nu))
+    b.onclick = () => val(x.id)
+    rot.append(b)
+  }
+}
+const kostnad = (c) => [c.over.length, c.inZone.length, c.onPlate.length, c.onZoneName.length, c.cut.length]
+const bred = (c) => c.wide.over + c.wide.inZone + c.wide.onPlate + c.wide.onZoneName
+const visa = () => {
+  history.replaceState(null, '', `?v=${v}&yta=${yta}&platser=${pl}`)
+  knappar(document.querySelector('#varianter'), VARIANTER, v, (x) => { v = x; visa() })
+  knappar(document.querySelector('#ytor'), YTOR, yta, (x) => { yta = x; visa() })
+  knappar(document.querySelector('#platser'), [{ id: '4', namn: 'Fyra' }, { id: '8', namn: 'Åtta' }], pl, (x) => { pl = x; visa() })
+  const V = VARIANTER.find((x) => x.id === v)
+  document.querySelector('#vnamn').textContent = V.namn + (V.rek ? ' — rekommendationen' : '')
+  document.querySelector('#vregel').textContent = V.regel
+  document.querySelector('#vpris').textContent = V.pris
+  // Bordsläget och /online har inga skyltar: där finns bara «Nu».
+  const m = cell(v, yta, pl) ?? cell('nu', yta, pl)
+  const img = document.querySelector('#bild')
+  img.src = 'img/' + m.f
+  img.alt = `${m.v === v ? V.namn : 'Nu'}, ${YTOR.find((y) => y.id === yta).namn}, ${pl} platser`
+  const nu = cell('nu', yta, pl)
+  document.querySelector('#bildtext').textContent = (m.v !== v ? 'Ytan har inga skyltar — bilden är «Nu». ' : '') + `${YTOR.find((y) => y.id === yta).namn} · ${pl === '4' ? 'fyra' : 'åtta'} platser · ${m.plates} skyltar · minsta skylttext ${m.px ?? '–'} px · kortets kortsida ${m.card} px${m.shrink ? ` (filten krympt ${m.shrink} px upptill och nedtill)` : ''}`
+  const rader = [
+    ['Skylt över hög, bricka, högnamn, bildtext', m.over.length], ['Skylt i en annan zons ruta', m.inZone.length], ['Skylt på skylt', m.onPlate.length], ['Skylt på zonnamn', m.onZoneName.length],
+    ['Skylt på hand', m.onHand.length], ['Skylt på krom', m.onChrome.length], ['Kapad skylttext', m.cut.length], ['Krockar, 15 % bredare', bred(m)],
+    ['Minsta skylttext (px, golv 24)', m.px ?? '–'], ['Kortets kortsida (px)', `${m.card}${nu && m.card !== nu.card ? ` (nu ${nu.card})` : ''}`],
+  ]
+  document.querySelector('#tal').innerHTML = rader.map(([k, n]) => `<span>${k}</span><b class="${typeof n !== 'number' ? '' : n === 0 ? 'noll' : 'fel'}">${n}</b>`).join('')
+  const det = [...m.over.map((s) => 'över: ' + s), ...m.inZone.map((s) => 'i zon: ' + s), ...m.onPlate.map((s) => 'på skylt: ' + s), ...m.onZoneName.map((s) => 'på zonnamn: ' + s), ...m.onHand.map((s) => 'på hand: ' + s), ...m.onChrome.map((s) => 'på krom: ' + s), ...m.cut.map((s) => 'kapad: ' + s), ...Object.entries(m.said ?? {}).map(([k, s]) => `skylt ${k}: ${s}`)]
+  document.querySelector('#detalj').innerHTML = det.map((s) => `<li>${s.replace(/</g, '&lt;')}</li>`).join('')
+  const t = document.querySelector('#matris')
+  const head = '<thead><tr><th>Yta</th><th>Platser</th>' + VARIANTER.map((x) => `<th>${x.namn}</th>`).join('') + '</tr></thead>'
+  let body = '<tbody>'
+  for (const r of YTOR) for (const p of ['4', '8']) {
+    body += `<tr><td>${r.namn}</td><td>${p}</td>`
+    const ref = cell('nu', r.id, p)
+    for (const x of VARIANTER) {
+      const c = cell(x.id, r.id, p)
+      if (!c) { body += '<td>–</td>'; continue }
+      const n = kostnad(c)
+      const ok = n.every((k) => k === 0) && bred(c) === 0 && c.card === ref.card
+      const valt = x.id === v && r.id === yta && p === pl
+      body += `<td class="${ok ? 'ok' : 'nej'}${valt ? ' valt' : ''}"><a href="?v=${x.id}&yta=${r.id}&platser=${p}" data-v="${x.id}" data-y="${r.id}" data-p="${p}">${n.join('/')} [${bred(c)}] · ${c.card}</a></td>`
+    }
+    body += '</tr>'
+  }
+  t.innerHTML = head + body + '</tbody>'
+  t.querySelectorAll('a[data-v]').forEach((a) => (a.onclick = (e) => { e.preventDefault(); v = a.dataset.v; yta = a.dataset.y; pl = a.dataset.p; visa(); scrollTo(0, 0) }))
+}
+addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+  const i = VARIANTER.findIndex((x) => x.id === v)
+  v = VARIANTER[(i + (e.key === 'ArrowRight' ? 1 : VARIANTER.length - 1)) % VARIANTER.length].id
+  visa()
+})
+visa()
+</script>
+</body>
+</html>
