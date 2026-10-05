@@ -2901,6 +2901,7 @@ Skylten mäts som maskinen ritar den och läggs ut igen när dess ord byter stor
 
 Mätt på den byggda appen med Sal's Saloon, fem kort i varje hand, tre i saloonen, två i kasthögen och ett framför varje plats, Ada på plats A och bildtexten synlig: noll skyltar över hög, bricka, högnamn eller bildtext, i en zons ruta, på en annan skylt, på ett zonnamn eller på en hand, och ingen kapad, vid 1280 och 1920 med fyra och åtta platser, också med skylttexten 15 % bredare.
 Ingen skylt är en bricka i maskinens eget typsnitt, varken på en Mac eller på CI:s Linux; med texten dessutom 15 % bredare blir B en bricka vid 1280 med fyra platser på Linux, vars systemtypsnitt redan är bredare, och står då fritt.
+*Ändrat 2026-10-05 (#887): skylten skriver sedan dess i filtens skeppade typsnitt (K20), och ingen skylt är en bricka heller i 15 %-passet, på någon av maskinerna — se tillägget i K20.*
 Före var det, i samma celler, en skylt i en annan zons ruta vid 1280 och vid 1920 med fyra platser, två kapade vid 1280 med fyra, och fyra skyltar på skylt och två kapade vid 1280 med åtta.
 Minsta skylttext är 24 px (K26), och kortets kortsida är 46, 31, 77 och 45 px som förut.
 Vid 1280 med fyra platser står B vid änden av sin rad, och A gör det också när kasthögens bildtext är så lång att den når A:s egen plats; vid 1920 står B på kantsidan av sina zoner; med åtta platser står varje skylt på sin egen plats.
@@ -2988,6 +2989,14 @@ K19:s regel om var ett namn ligger är orörd; det här beslutet rör vad namnet
 `packages/web/src/fonts/felt-font.css` deklarerar ansiktet och `--byd-felt-font`, och importeras av `main.tsx` så att det hamnar i entréns ark och inte i en rutt som kan delas av.
 `table.css` läser variabeln på ett ställe — `[data-table]`, som allt filten ritar ärver från — plus de två som sätter en egen `font:`-kortform, platskortet och räknarbrickan.
 Grinden är `packages/web/test/felt-names.test.tsx` (marginalen, det skeppade ansiktet, och att ansiktet finns före målningen) och `packages/web/test/felt-font.test.ts` (bygget: arket blockerar, bytesen ligger i det, ingen fontfil att hämta, licensen kvar).
+
+Tillagt 2026-10-05 (#887): **platsernas skyltar på rummets TV skriver också i Roboto Condensed.**
+Skylten (#573, #683) är filtens ord men satte en egen `font:`-kortform med `system-ui`, och ärvde därför inte ansiktet från `[data-table]`.
+Den ritades i SF Pro på en Mac och i DejaVu på CI:s Linux, och det var precis K20:s fel en gång till: i 15 %-passet blev B en bricka på Linux där en Mac fick plats (#880).
+Nu säger skylten samma sak som platskortet och räknarbrickan, `var(--byd-felt-font, system-ui, sans-serif)`, i 24 px som förut (K26).
+Skylten blev ungefär 6 % smalare: 171, 181 och 123 px mot 182, 193 och 128.
+Mätt på den byggda appen i #683:s fyra celler — rummets TV vid 1280 och 1920 med fyra och åtta platser, också med skylttexten 15 % bredare — är varje skylt fri och hel, ingen är en bricka, och kortets kortsida är 46, 31, 77 och 45 px som förut.
+Grind: `packages/e2e/test/surfaces/tv-seat-plate-free-place.spec.ts`, som frågar Chromium vilket typsnitt det ritade skyltens glyfer med och jämför med högnamnen på samma filt, och som åter kräver att ingen skylt är en bricka i 15 %-passet.
 
 ### K21. En hög kan ha egna åtgärder, och en zon kan säga vilka kort som börjar i den (prototypat och byggt 2026-09-15)
 

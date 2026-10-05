@@ -82,8 +82,9 @@
   /* The felt writes in the face that ships with it and not in whatever the machine calls
      `system-ui` (K19, #95). Everything drawn on the felt inherits from here — zone names, a pile's
      name and its count, a hand's count — so there is one declaration to read and one to change.
-     The two that set a `font:` of their own say the same thing in their own shorthand, and all
-     three carry the same fallback: `fonts/felt-font.css` is what defines the variable, and a felt
+     Those that set a `font:` of their own — a seat's name card, a chip, and on the room's
+     television a seat's plate (#887) — say the same thing in their own shorthand, and all of them
+     carry the same fallback: `fonts/felt-font.css` is what defines the variable, and a felt
      drawn without it should go back to what it drew before rather than lose its size as well. */
   font: 600 11px/1.2 var(--byd-felt-font, system-ui, sans-serif);
   user-select: none;
@@ -1219,7 +1220,7 @@
 .byd-seat-plate {
   position: absolute; z-index: 1; display: flex; align-items: center; gap: 0 10px; box-sizing: border-box; width: max-content;
   padding: 6px 12px 6px 6px; border-left: 4px solid var(--seat); border-radius: 12px;
-  background: rgb(13 15 20 / 0.88); color: #e8eaf0; font: 24px/1.2 system-ui, sans-serif; white-space: nowrap; pointer-events: none;
+  background: rgb(13 15 20 / 0.88); color: #e8eaf0; font: 24px/1.2 var(--byd-felt-font, system-ui, sans-serif); white-space: nowrap; pointer-events: none;
 }
 .byd-seat-plate > b { display: inline-flex; align-items: center; gap: 10px; color: #fff; }
 .byd-seat-plate > b > i { flex: none; display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: var(--seat); color: #0d0f14; font-style: normal; font-weight: 700; }
