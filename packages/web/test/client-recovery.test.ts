@@ -176,3 +176,47 @@ describe('what a reconnect writes to the log', () => {
     c.close()
   })
 })
+
+// A screen nobody touches (#722, D5 reviderat 2026-10-05): the TV and the felt's own screen gave up
+// after the plan like every other, and a quarter-minute of bad wifi froze the shared table until
+// somebody got up to press «Försök nu». Such a screen goes on trying after the plan — every
+// `keepTrying` and at once when the browser says the network is back — and never stops by itself.
+describe('a screen nobody touches, after the plan', () => {
+  it('goes on trying on its own and comes back when the line does', async () => {
+    const id = await createSession(run)
+    const c = TableClient.connect({ ...(await asTable(run, id)), retryPlanMs: [20, 20], keepTryingMs: 150 })
+    await c.ready()
+    await run.stop()
+    // Past the plan, and still not given up.
+    await new Promise((r) => setTimeout(r, 400))
+    expect(c.trouble).toBeNull()
+    expect(c.status).toBe('reconnecting')
+    await run.restart()
+    expect(await settles(() => c.status === 'open', 3000)).toBe(true)
+    c.close()
+  })
+
+  it('tries at once when the browser says the network is back', async () => {
+    const id = await createSession(run)
+    const c = TableClient.connect({ ...(await asTable(run, id)), retryPlanMs: [20, 20], keepTryingMs: 60_000 })
+    await c.ready()
+    await run.stop()
+    await new Promise((r) => setTimeout(r, 300))
+    await run.restart()
+    // The next try is a minute away; the `online` event is what brings it back.
+    window.dispatchEvent(new Event('online'))
+    expect(await settles(() => c.status === 'open', 3000)).toBe(true)
+    c.close()
+  })
+
+  it('says how long until the next try, without counting past the plan', async () => {
+    const id = await createSession(run)
+    const c = TableClient.connect({ ...(await asTable(run, id)), retryPlanMs: [20, 20], keepTryingMs: 5_000 })
+    await c.ready()
+    await run.stop()
+    expect(await settles(() => c.attempts.made === 2 && c.nextRetryAt !== null && c.nextRetryAt - Date.now() > 1_000, 3000)).toBe(true)
+    // Beyond the plan the count has no «of»: «försök 3 av 2» would be a promise the screen does not keep.
+    expect(c.attempts.of).toBeNull()
+    c.close()
+  })
+})

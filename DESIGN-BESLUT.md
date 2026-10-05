@@ -1181,6 +1181,12 @@ Fem frågor från prototypen är fortfarande obesvarade och står kvar i avsnitt
 Orden ska stämma med adressen (#753): «saknas» skiljs från «avslutat», så ett bord servern aldrig hört talas om säger «Vi hittar inte bordet» och «Bordet är slut» står bara för ett bord som avslutats med `session.end`.
 En adress utan något i sig — `/editor` utan projekt, `/table` utan bord — säger att länken inte pekar på något, i stället för att gissa på ett felskrivet tecken.
 En tittarlänk öppnad på telefonens sida är varken saknad eller stängd: den säger «Du tittar bara» och leder till observatören med samma länk.
+Reviderat 2026-10-05 (#722): **en skärm som ingen rör ger inte upp.**
+TV:n och bordsläget slutade försöka efter planen som alla andra, och ett wifi-hack på en kvarts minut i ett vardagsrum frös det delade bordet tills någon reste sig och tryckte «Försök nu».
+Efter planen försöker de två skärmarna igen var 30:e sekund, utan slut, och direkt när webbläsaren säger att nätet är tillbaka (`online`).
+Beskedet räknar ned till nästa försök utan «av», och «Försök nu» står kvar som genväg.
+Telefoner och editorn behåller planen och överlämnar beslutet till den som håller dem.
+`TableClient` tar det som `keepTryingMs`, och bordets sida sätter det; `reconnect.spec.ts` klipper TV:ns lina förbi planen och ser den komma tillbaka på `online`.
 
 ---
 

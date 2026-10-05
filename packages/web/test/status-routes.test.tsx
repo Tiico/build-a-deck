@@ -244,9 +244,10 @@ describe.each(GUESTS)('$path for a guest who cannot get in', (live) => {
 })
 
 describe('the wait for the next automatic attempt', () => {
+  // A phone stops when its plan is spent: there is a person holding it to press «Försök nu».
   it('is counted down in seconds, and stops counting once the plan is spent', async () => {
     const id = await createSession(run)
-    await open(LIVE[0]!, { session: id, timing: { ...FAST, retryPlanMs: [1_500] }, real: true })
+    await open(LIVE[2]!, { session: id, timing: { ...FAST, retryPlanMs: [1_500] }, real: true })
     await waitFor(() => expect(noticeState()).toBeNull())
     await run.stop()
 
@@ -256,6 +257,23 @@ describe('the wait for the next automatic attempt', () => {
     // pretends to still be trying.
     await waitFor(() => expect(notice()!.textContent).not.toMatch(/Nytt försök/), { timeout: 4000 })
     expect(within(notice() as HTMLElement).getByRole('button', { name: /försök nu/i })).toBeTruthy()
+  })
+})
+
+// The table's own screen is not held by anybody (#722, D5 reviderat 2026-10-05): past the plan it
+// goes on counting down to its next try, says nothing about having stopped, and comes back by itself.
+describe('the table screen once its plan is spent', () => {
+  it('goes on counting down without an «of», and comes back when the line does', async () => {
+    const id = await createSession(run)
+    await open(LIVE[0]!, { session: id, timing: { ...FAST, retryPlanMs: [200], keepTryingMs: 1_500 }, real: true })
+    await waitFor(() => expect(noticeState()).toBeNull())
+    await run.stop()
+    await waitFor(() => expect(noticeState()).toBe('dropped'))
+    await waitFor(() => expect(notice()!.textContent).toMatch(/Nytt försök om \d s(?! · försök)/), { timeout: 4000 })
+    expect(notice()!.textContent).not.toMatch(/slutat försöka/)
+    expect(within(notice() as HTMLElement).getByRole('button', { name: /försök nu/i })).toBeTruthy()
+    await run.restart()
+    await waitFor(() => expect(noticeState()).not.toBe('dropped'), { timeout: 5000 })
   })
 })
 
