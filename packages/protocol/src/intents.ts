@@ -91,6 +91,9 @@ export const PhysicalIntent = z.discriminatedUnion('v', [
   }),
 ])
 export type PhysicalIntent = z.infer<typeof PhysicalIntent>
+// The physical verbs by name, read off the union so that the set cannot drift from it: a move on
+// the table is one of these, and a seat taken, a version changed or a table ended is not (#706).
+export const PHYSICAL_VERBS: readonly string[] = PhysicalIntent.options.map((o) => o.shape.v.value)
 
 // Session verbs are not physical and are kept apart so the physical set stays honest.
 export const SessionIntent = z.discriminatedUnion('v', [

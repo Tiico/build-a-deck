@@ -150,11 +150,12 @@ const SHELL = `
             <li class="byd-table-row" data-state="played" data-stale="true">
               <div class="byd-tables-mini"></div>
               <div class="byd-tables-info">
-                <p class="byd-tables-head"><strong>rev-2</strong><span class="byd-tables-state" data-state="played">i spel</span><em class="byd-tables-stale">ligger efter rev-3</em></p>
+                <p class="byd-tables-head"><strong class="byd-tables-name">K7QX2P</strong><span class="byd-tables-version">rev-2</span><span class="byd-tables-state" data-state="played">i spel</span><em class="byd-tables-stale">rev-2, spelet är på rev-3</em></p>
                 <p class="byd-tables-line">Ada spelar</p>
                 <p class="byd-tables-line">senaste drag 19:41</p>
               </div>
               <div class="byd-tables-go">
+                <button class="byd-secondary byd-tables-update" data-stop="updating the table">Uppdatera till rev-3</button>
                 <a class="byd-secondary" href="#" data-stop="playing from here">Spela härifrån</a>
                 <button class="byd-tables-more" aria-haspopup="menu" aria-expanded="true" data-stop="the row's menu">▾</button>
                 <div class="byd-tables-menu" role="menu">
@@ -168,7 +169,7 @@ const SHELL = `
               </div>
               <div class="byd-tables-qr"><a href="#" data-stop="the join link">Anslutningssidan</a></div>
               <div class="byd-tables-question" role="alertdialog">
-                <p>Avsluta bordet 1a2b3c4d?</p>
+                <p>Avsluta bordet K7QX2P?</p>
                 <button data-kind="danger" data-stop="the yes to ending">Ja, avsluta</button>
                 <button data-stop="the way out of ending">Avbryt</button>
               </div>
@@ -283,6 +284,7 @@ test.describe('the editor under a keyboard', () => {
       'the way out of removing a card',
       'the tables panel',
       'the new-table button',
+      'updating the table',
       'playing from here',
       "the row's menu",
       'the TV view',

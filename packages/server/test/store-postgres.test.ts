@@ -85,6 +85,23 @@ describe.skipIf(!url)('PostgresLogStore', () => {
       await sql.end()
     }
   })
+
+  // A table's last move is the last physical line, not the last line (#706): a seat taken after
+  // the last draw is not a move, and a table where only a seat was taken has none.
+  it("says a table's last move is its last move on the table, not a seat taken", async () => {
+    const game = `p-${Date.now()}`
+    const { zones, seats, floor } = twoSeatSetup()
+    await store.projects().create(game, { name: 'Drag', template, rows: [], icons: {}, setup: { zones, seats, floor, deckZone: 'draw' } })
+    const played = `played-${Date.now()}`
+    const seated = `seated-${Date.now()}`
+    await store.createSession({ id: played, version: 'v1', setup: twoSeatSetup(), project: game })
+    await store.createSession({ id: seated, version: 'v1', setup: twoSeatSetup(), project: game })
+    const claim = (seq: number, at: string): Applied => ({ ...line(seq), at, intent: { v: 'seat.claim', seat: 'A', name: 'Ada' } })
+    await store.append(played, [{ ...line(1), at: '2026-09-06T10:00:00.000Z' }, claim(2, '2026-09-06T11:00:00.000Z')])
+    await store.append(seated, [claim(1, '2026-09-06T12:00:00.000Z')])
+    const listed = Object.fromEntries((await store.sessionsOf(game)).map((s) => [s.id, s.lastAt]))
+    expect(listed).toEqual({ [played]: '2026-09-06T10:00:00.000Z', [seated]: null })
+  })
 })
 
 describe.skipIf(!url)('PostgresProjectStore', () => {

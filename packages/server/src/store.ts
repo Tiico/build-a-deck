@@ -1,4 +1,4 @@
-import type { Applied, GameVersionId } from '@byd/protocol'
+import { PHYSICAL_VERBS, type Applied, type GameVersionId } from '@byd/protocol'
 import type { SetupDef } from '@byd/engine'
 import type { Deck } from './faces.js'
 
@@ -118,7 +118,7 @@ export class MemoryLogStore implements LogStore {
     const out: SessionSummary[] = []
     for (const [id, record] of this.sessions) {
       if (record.project !== project) continue
-      out.push({ id, lastAt: this.logs.get(id)?.at(-1)?.at ?? null })
+      out.push({ id, lastAt: this.logs.get(id)?.findLast((l) => PHYSICAL_VERBS.includes(l.intent.v))?.at ?? null })
     }
     // Insertion order is the order they were started; the newest table is the one being played.
     return out.reverse()

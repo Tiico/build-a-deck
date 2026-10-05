@@ -11,7 +11,7 @@ import { WebSocket as WsClient } from 'ws'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { TableClient, setWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
 import { projectDoc } from './project-doc.js'
-import { asSeat, asTable, registerRoom, startServer, type Running } from './fixture.js'
+import { asSeat, asTable, registerRoom, roomOf, startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -135,7 +135,7 @@ describe('the one way that stands ready and the five in the row’s menu (#176)'
     const id = await played()
     await openTables()
     const row = await playingRow()
-    const name = id.slice(0, 8)
+    const name = roomOf(id).code
 
     // The seat comes from the table itself (K12), so the ready way is complete once it answers.
     const ready = await within(row).findByRole('link', { name: `Spela härifrån för bordet ${name} (öppnas i ny flik)` })
@@ -148,7 +148,7 @@ describe('the one way that stands ready and the five in the row’s menu (#176)'
     const id = await played()
     await openTables()
     const row = await playingRow()
-    const name = id.slice(0, 8)
+    const name = roomOf(id).code
     await within(row).findByRole('link', { name: /Spela härifrån/ })
 
     const more = within(row).getByRole('button', { name: `Fler vägar in till bordet ${name}` })
@@ -228,13 +228,14 @@ describe('the one way that stands ready and the five in the row’s menu (#176)'
     await openTables()
     await user.click(await screen.findByRole('button', { name: 'Avslutade bord · 1' }))
     const row = within(screen.getByRole('list', { name: 'Avslutade bord · 1' })).getByRole('listitem')
-    const name = id.slice(0, 8)
+    // Called by its room code like any table (#706): the table's own connection still says it.
+    const name = roomOf(id).code
 
     expect(within(row).getByRole('link', { name: `Öppna TV-vyn för bordet ${name} (öppnas i ny flik)` })).toBeTruthy()
     expect(within(row).queryByRole('link', { name: /Spela härifrån/ })).toBeNull()
     // And its menu has neither of the two an ended table has no use for.
     await user.click(within(row).getByRole('button', { name: `Fler vägar in till bordet ${name}` }))
-    expect(within(row).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Bordsläge', 'Titta på', `QR för telefoner ${name}`])
+    expect(within(row).getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Bordsläge', 'Titta på'])
   })
 })
 
@@ -248,12 +249,13 @@ describe('a table started or ended from the column (#480)', () => {
     await user.click(await screen.findByRole('button', { name: 'Starta nytt bord' }))
     const said = await screen.findByText(/Nytt bord startat:/)
     expect(said.closest('[role="status"]')).not.toBeNull()
-    const id = await waitFor(async () => {
-      const [only] = await (await fetch(`${run.http}/projects/${run.projectId}/sessions`)).json() as { id: string }[]
+    const { id, code } = await waitFor(async () => {
+      const [only] = await (await fetch(`${run.http}/projects/${run.projectId}/sessions`)).json() as { id: string; code: string }[]
       expect(only).toBeTruthy()
-      return only!.id
+      return only!
     })
-    expect(said.textContent).toContain(id.slice(0, 8))
+    // The table is said by its room code, the name its row and the band give it (#706).
+    expect(said.textContent).toBe(`Nytt bord startat: ${code}.`)
     await waitFor(() => expect(document.querySelector(`[data-table="${id}"]`)).not.toBeNull())
   })
 
@@ -263,8 +265,8 @@ describe('a table started or ended from the column (#480)', () => {
     await openTables()
     const row = await playingRow()
     await within(row).findByRole('link', { name: /Spela härifrån/ })
-    await user.click(within(row).getByRole('button', { name: `Fler vägar in till bordet ${id.slice(0, 8)}` }))
-    await user.click(within(row).getByRole('menuitem', { name: `Avsluta bordet ${id.slice(0, 8)}` }))
+    await user.click(within(row).getByRole('button', { name: `Fler vägar in till bordet ${roomOf(id).code}` }))
+    await user.click(within(row).getByRole('menuitem', { name: `Avsluta bordet ${roomOf(id).code}` }))
     await user.click(await screen.findByRole('button', { name: 'Ja, avsluta' }))
     expect(await screen.findByRole('button', { name: 'Avslutade bord · 1' })).toBeTruthy()
     expect(screen.queryByRole('list', { name: 'Bord som spelas' })).toBeNull()

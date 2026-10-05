@@ -2,11 +2,11 @@ import { Fragment, useEffect, useId, useRef, useState, type KeyboardEvent as Rea
 import { QrCode } from '../table/QrCode.js'
 import { TableRenderer } from '../table/TableRenderer.js'
 import { useTableClient } from '../table/useTableClient.js'
-import { joinUrl, observeUrl, onlineUrl, tableModeUrl, tableName, tvUrl } from './tableLinks.js'
+import { joinUrl, observeUrl, onlineUrl, tableModeUrl, tvUrl } from './tableLinks.js'
 import { groupOf, tableGroups, type TableGroup, type TableGroupId } from './tableRows.js'
 import { placedProps, usePlacement } from './placement.js'
 import { useRoving } from './roving.js'
-import type { ProjectClient, TableSummary } from './ProjectClient.js'
+import { TableEnded, type ProjectClient, type TableSummary } from './ProjectClient.js'
 import { Question } from './Question.js'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
@@ -37,7 +37,7 @@ export function TablesTab({ client, server, started = null }: TablesTabProps) {
   // seen, the start is said in the status line, and an ended table's row takes the focus again
   // once the list has filed it under its new group — the row it had was taken down with the move.
   // A table the header started (#704) only opens its group: the header's band already says it.
-  const [revealed, setRevealed] = useState<{ id: string; why: 'started' | 'ended' | 'header' } | null>(started ? { id: started, why: 'header' } : null)
+  const [revealed, setRevealed] = useState<{ id: string; why: 'started' | 'ended' | 'header'; code?: string } | null>(started ? { id: started, why: 'header' } : null)
   // A start from the header while the column stands open asks the server again; one made before
   // the column opened is already in the list it asks for when it mounts.
   const shown = useRef(started)
@@ -85,7 +85,7 @@ export function TablesTab({ client, server, started = null }: TablesTabProps) {
     try {
       const made = await client.startTable()
       setFailed(null)
-      setRevealed({ id: made.id, why: 'started' })
+      setRevealed({ id: made.id, why: 'started', code: made.code })
       setAsked((n) => n + 1)
     } catch (err) {
       setFailed(saidOr(err, t('tables.failed')))
@@ -135,7 +135,7 @@ export function TablesTab({ client, server, started = null }: TablesTabProps) {
       {deckIsEmpty(client.doc) && <p className="byd-tables-empty">{t('tables.noCards')}</p>}
       {revealed?.why === 'started' && failed === null && (
         <p className="byd-tables-started" role="status">
-          {t('tables.started', { table: tableName(revealed.id) })}
+          {t('tables.started', { table: revealed.code ?? '' })}
         </p>
       )}
       {failed !== null && (
@@ -162,6 +162,17 @@ export function TablesTab({ client, server, started = null }: TablesTabProps) {
               setRevealed({ id, why: 'ended' })
               setAsked((n) => n + 1)
             }}
+            onUpdate={async (id) => {
+              // An update the log refuses is a table that has ended meanwhile (#705): the list is
+              // asked again either way, and files it where it now belongs.
+              try {
+                await client.refreshTable(id)
+              } catch (err) {
+                if (!(err instanceof TableEnded)) throw err
+              } finally {
+                setAsked((n) => n + 1)
+              }
+            }}
           />
         ))
       )}
@@ -178,7 +189,7 @@ export function TablesTab({ client, server, started = null }: TablesTabProps) {
 // A folded group draws nothing at all, which is the whole point: a row that is not drawn opens no
 // WebSocket and renders no thumbnail, so what the list costs follows what is on the screen rather
 // than what the game has ever started.
-function TableGroupView({ group, server, rev, qrFor, onQr, revealed, onEnded }: { group: TableGroup; server: string | null; rev: number; qrFor: string | null; onQr(id: string | null): void; revealed: string | null; onEnded(id: string): void }) {
+function TableGroupView({ group, server, rev, qrFor, onQr, revealed, onEnded, onUpdate }: { group: TableGroup; server: string | null; rev: number; qrFor: string | null; onQr(id: string | null): void; revealed: string | null; onEnded(id: string): void; onUpdate(id: string): Promise<void> }) {
   const [chosen, setChosen] = useState(group.id === 'played')
   // A table this column just started or ended opens the group it is filed under (#480) — in the
   // same render that first draws it, so there is no folded frame for a click to land in, and a
@@ -196,7 +207,7 @@ function TableGroupView({ group, server, rev, qrFor, onQr, revealed, onEnded }: 
   const rows = (
     <ul id={listId} className="byd-tables-list" aria-labelledby={headingId}>
       {group.tables.map((table) => (
-        <TableRow key={table.id} table={table} server={server} rev={rev} qrOpen={qrFor === table.id} onQr={(open) => onQr(open ? table.id : null)} onEnded={() => onEnded(table.id)} />
+        <TableRow key={table.id} table={table} server={server} rev={rev} qrOpen={qrFor === table.id} onQr={(open) => onQr(open ? table.id : null)} onEnded={() => onEnded(table.id)} onUpdate={() => onUpdate(table.id)} />
       ))}
     </ul>
   )
@@ -314,7 +325,7 @@ const THUMBNAIL = { w: 640, h: 384 }
 // Live, as before: the same connection the TV makes (seatless, sees only what is public), so what
 // the row says about the table is what the table itself says. A row that is not drawn — a folded
 // group — makes no connection at all, which is what keeps the cost with what is on the screen.
-function TableRow({ table, server, rev, qrOpen, onQr, onEnded }: { table: TableSummary; server: string | null; rev: number; qrOpen: boolean; onQr(open: boolean): void; onEnded?: () => void }) {
+function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate }: { table: TableSummary; server: string | null; rev: number; qrOpen: boolean; onQr(open: boolean): void; onEnded?: () => void; onUpdate?: () => Promise<void> }) {
   const t = useT()
   // The day and the clock a last move is said in are the reader's, not `sv-SE`'s (#228).
   const { lang } = useLang()
@@ -331,7 +342,27 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded }: { table: TableS
     moreRef.current?.focus()
     setRefocus(false)
   }, [refocus])
-  const name = tableName(table.id)
+  // A table is called by its room code, as the band and the TV call it (#706, beslut A): the list
+  // has it for whoever may start tables while it still admits, and the table's own connection
+  // says it too, also once it has ended. Until either has answered it is called by its version.
+  const code = table.code ?? room?.code ?? null
+  const name = code ?? table.version
+  // The update of a row behind the project, from the row itself (#706): a press that takes a
+  // moment says so, and one that fails says so in a sentence of the tab's own.
+  const [updating, setUpdating] = useState(false)
+  const [updateFailed, setUpdateFailed] = useState(false)
+  const update = async () => {
+    if (!onUpdate || updating) return
+    setUpdating(true)
+    setUpdateFailed(false)
+    try {
+      await onUpdate()
+    } catch {
+      setUpdateFailed(true)
+    } finally {
+      setUpdating(false)
+    }
+  }
   // Sitting down from the editor takes the next free seat, as the phone's seat picker does (K12).
   const free = view?.seats.find((s) => s.name === null)?.id ?? null
   // A table the log has been locked on (C9) is over: it is still here to be read, never played.
@@ -374,7 +405,8 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded }: { table: TableS
     ...(ended ? [] : [{ id: 'tv', href: tvUrl(table.id, server, undefined, true), label: 'tables.way.tv' as Key }]),
     { id: 'table', href: tableModeUrl(table.id, server, true), label: 'tables.way.tableMode' as Key },
     { id: 'watch', href: observeUrl(table.id, server, true, t), label: 'tables.way.watch' as Key },
-    { id: 'qr', label: 'tables.qr' as Key, expanded: qrOpen, press: () => onQr(!qrOpen) },
+    // A table that has ended lets nobody in, so it has no code to hold up (#706).
+    ...(ended ? [] : [{ id: 'qr', label: 'tables.qr' as Key, expanded: qrOpen, press: () => onQr(!qrOpen) }]),
     ...(ended ? [] : [{ id: 'end', label: 'tables.end' as Key, apart: true, press: () => setAsking(true) }]),
   ]
 
@@ -390,11 +422,12 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded }: { table: TableS
       </div>
       <div className="byd-tables-info">
         <p className="byd-tables-head">
-          <strong>{table.version}</strong>
+          {code && <strong className="byd-tables-name">{code}</strong>}
+          <span className="byd-tables-version">{table.version}</span>
           <span className="byd-tables-state" data-state={state}>
             {t(STATE_WORD[state])}
           </span>
-          {stale && <em className="byd-tables-stale">{t('tables.stale', { rev })}</em>}
+          {stale && <em className="byd-tables-stale">{t('tables.stale', { version: table.version, rev })}</em>}
         </p>
         {!ended && <p className="byd-tables-line">{seated(view?.seats ?? null, observers, t)}</p>}
         <p className="byd-tables-line">
@@ -403,9 +436,19 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded }: { table: TableS
         </p>
       </div>
       <div className="byd-tables-go">
+        {stale && onUpdate && (
+          <button type="button" className="byd-secondary byd-tables-update" aria-busy={updating} aria-label={t('tables.update.of', { table: name, rev })} onClick={() => void update()}>
+            {updating ? t('tables.update.busy') : t('tables.update', { rev })}
+          </button>
+        )}
         {ready}
         <RowWays table={name} ways={ways} button={moreRef} />
       </div>
+      {updateFailed && (
+        <p className="byd-tables-failed" role="alert">
+          {t('tables.update.failed')}
+        </p>
+      )}
       {/* The QR belongs beside the table it lets a phone into, and only when it is wanted: a wall
           of codes in a list is unreadable, and the code is meant to be held up to a camera. */}
       {qrOpen && room && (
