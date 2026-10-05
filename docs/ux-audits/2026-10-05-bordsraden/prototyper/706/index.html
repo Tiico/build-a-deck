@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bordsraden #706</title>
+<style>
+:root { --bg: #f6f6f4; --ink: #1c1d21; --quiet: #5b5f6a; --line: #d9d9d4; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #14161c; --ink: #e8eaf0; --quiet: #9aa3b8; --line: #2c3242; } }
+:root[data-theme="dark"] { --bg: #14161c; --ink: #e8eaf0; --quiet: #9aa3b8; --line: #2c3242; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, sans-serif; }
+main { max-width: 1320px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 22px; margin: 0 0 4px; } p { max-width: 70ch; color: var(--quiet); }
+section { margin: 32px 0; } h2 { font-size: 17px; margin: 0 0 4px; }
+img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; }
+</style></head><body><main>
+<h1>Bord-flikens rad: namnet och uppdateringen (#706)</h1>
+<p>Den byggda appen vid 1280 × 800, Sal's Saloon. Tre bord: Adas (rev-1, i spel), ett startat från huvudet (rev-2) och ett startat från kolumnen (rev-1); spelet har sparats till rev-2, så två rader ligger efter. I alla tre varianter är namnet rumskoden, «i dag» skrivs gement och statusraden säger koden i stället för uuid-prefixet.</p>
+<section><h2>I dag</h2><p>«Nytt bord startat: 3c27…» med ett uuid-prefix som inte står på raden; «ligger efter rev-2» utan väg att uppdatera just det bordet.</p><img src="bilder/idag.png" alt="Bord-fliken i dag"></section>
+<section><h2>A — Koden först, uppdateringen bredvid «Spela härifrån» (rekommenderad)</h2><p>Rumskoden är radens namn, versionen står efter. En rad som ligger efter säger «rev-1, spelet är på rev-2» och får en andra konturknapp, «Uppdatera till rev-2», bredvid den som står redo. Syns direkt, och kostar ingen höjd.</p><img src="bilder/A.png" alt="Variant A"></section>
+<section><h2>B — Vem som sitter som namn, remsa under raden</h2><p>Namnet är «Adas bord» när någon sitter, annars «Bord KOD». Att raden ligger efter är en egen remsa under den, med en mindre «Uppdatera». Tydligast, men det kostar en rad, och namnet byter när någon sätter sig.</p><img src="bilder/B.png" alt="Variant B"></section>
+<section><h2>C — Koden som etikett, uppdateringen först i menyn</h2><p>Koden i en liten etikett före versionen; «ligger efter rev-2» står kvar, och «Uppdatera till rev-2» är menyns första val. Lugnast, men uppdateringen syns först när menyn öppnas.</p><img src="bilder/C.png" alt="Variant C"></section>
+</main></body></html>
