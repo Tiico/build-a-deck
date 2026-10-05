@@ -1176,6 +1176,7 @@ Priset är fler formuleringar att hålla i sär: rutterna kan glida isär i ton 
 Byggt 2026-09-07 (prototypat i tre varianter, godkänd variant C — #12 och #7).
 Planen 2, 4, 8 sekunder fick ett snabbt första försök på 500 ms före sig, så att en blink läker innan någon hinner läsa ett besked om den.
 Fristen som gör det där till mer än en avsikt byggdes 2026-09-15: den ligger i `connectionState` för de fem live-rutterna och i `ProjectClient` för editorns egen lina, med samma tal från `DEFAULT_TIMING`.
+Editorns öppning fick tidsgränsen 2026-10-05 (#876): en server som tog emot anropet och aldrig svarade lämnade «Öppnar spelet…» stående för alltid; nu blir den `laddar länge` efter `slowAfterMs` och `nät-/serverfel` efter `connectTimeoutMs`, i editorns befintliga ord.
 Fem frågor från prototypen är fortfarande obesvarade och står kvar i avsnitt I.
 Orden ska stämma med adressen (#753): «saknas» skiljs från «avslutat», så ett bord servern aldrig hört talas om säger «Vi hittar inte bordet» och «Bordet är slut» står bara för ett bord som avslutats med `session.end`.
 En adress utan något i sig — `/editor` utan projekt, `/table` utan bord — säger att länken inte pekar på något, i stället för att gissa på ett felskrivet tecken.
