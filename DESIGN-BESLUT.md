@@ -6154,3 +6154,20 @@ Vid 375 ryms orden och står kvar (`player-viewport.test.tsx`); vid 360 gjorde d
 `phone-landscape.spec.ts` mäter `/play` och `/online` vid 844 × 390 och 740 × 360: minst ett helt kort ovanför foten, ingen rullning och ingen sidledsrullning.
 Den mäter också huvudet vid 360 och 320 med 25 kort och ett långt namn: högst 60 px, och båda ikonknapparna 44 × 44.
 Prototypen: `docs/ux-audits/2026-10-05-telefonen/prototyper/716/`.
+
+### L64. Startsidan visar bord som pågår, och menyn öppnar dem före ett nytt (prototypat och beslutat 2026-10-05, #724)
+
+Speltestet 2026-10-02 fann att den enda vägen från startsidan till ett pågående bord var bannern som sade rumskoden direkt efter starten.
+Efter en omladdning var den borta.
+Och ett andra tryck på «Starta bord» för att se koden igen startade ett andra bord.
+
+**C och B tillsammans** (av tre: en rad på brickan, en uppdelad ⋯-meny, och en egen sektion överst).
+Överst på «Mina spel» står **«Pågår nu»**, med ett band per bord som pågår: spelets namn, rumskoden i kodens egen typ och «Öppna bordet».
+Länken öppnar bordets skärm som ägare (`owner=1`) i en ny flik, så den fungerar efter en omladdning, när värdnyckeln inte längre finns i sidan.
+Bandet ersätter bannern, och tillkännagivandet «Bordet är igång. Rumskoden är …» står kvar i sidans levande region.
+Spelets **⋯-meny** listar «Öppna bordet KOD» för varje bord som pågår, före en linje, och «Starta bord» blir då «Starta nytt bord».
+Menyn öppnar på sitt första val, länk eller knapp.
+
+Startsidan frågar `GET /projects/:id/sessions` för varje spel som har bord och vars roll får starta bord; bara ett bord med en giltig kod räknas som pågående.
+`account-page.test.tsx` visar bandet efter en omladdning, länkens adress och menyns ordning; `home-layout.test.tsx` mäter bandets länk till 44 px vid 320, 390 och 1280.
+Prototypen: `docs/ux-audits/2026-10-05-pagaende-bord/prototyper/724/`.
