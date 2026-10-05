@@ -29,8 +29,13 @@ export type NewProjectPageProps = { onNavigate?(url: string): void }
 // game's language and not the tool's; the fields around it are the tool's suggestion.
 // The example card the wizard starts with. Its title is a word the designer reads and writes
 // over, so it is written in the language they are building the game in (A4).
-const firstRow = (t: T): Record<string, string> => ({ title: t('wizard.card.n', { n: 1 }), cost: '1', body: '', art: '' })
-const emptyState = (t: T): WizardState => ({ name: '', players: 2, fields: defaultFields(t), frame: 'classic', theme: DEFAULT_THEME.id, rows: [firstRow(t)] })
+// The example cards the guide opens on (#733, beslut 2026-10-04): three, two of each, so a table made
+// from the defaults has six cards to draw from, and every field shows what it does — a cost, a line
+// of text, and a meaning written the way the deck writes one. In the designer's language, and theirs
+// to write over or take away like any card they add.
+const exampleRows = (t: T): Record<string, string>[] =>
+  ([1, 2, 3] as const).map((n) => ({ title: t(`wizard.example.${n}.title`), cost: String(n), body: t(`wizard.example.${n}.body`), art: '', antal: '2' }))
+const emptyState = (t: T): WizardState => ({ name: '', players: 2, fields: defaultFields(t), frame: 'classic', theme: DEFAULT_THEME.id, rows: exampleRows(t) })
 // The draft (`draft.ts`) is only ever *sent* on the way back from the login it was waiting for —
 // the `resume` mark on that one address — and never because `/new` was opened again later.
 const RESUME = 'resume'
@@ -145,7 +150,9 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   }
   const face = faces[theme.id]
   const fonts = useMemo(() => ({ ...stacksOf(look, undefined), ...face }), [look, face])
-  const row = s.rows[selectedRow] ?? s.rows[0] ?? firstRow(t)
+  // With every card taken away the preview still draws one, blank under its tool name.
+  const blank = useMemo((): Record<string, string> => ({ title: t('wizard.card.n', { n: 1 }), cost: '', body: '', art: '' }), [t])
+  const row = s.rows[selectedRow] ?? s.rows[0] ?? blank
   // The card as the game will hold it, under the columns the fields were named (#476).
   const card = useMemo(() => typedFields(row, s.fields), [row, s.fields])
 

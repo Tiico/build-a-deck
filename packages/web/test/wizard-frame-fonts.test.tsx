@@ -51,7 +51,10 @@ async function madeWith(frame: string, theme?: string): Promise<ProjectDoc> {
   fireEvent.click(screen.getByRole('button', { name: frame }))
   if (theme) fireEvent.click(screen.getByRole('button', { name: `Välj temat ${theme}` }))
   for (const [i, kort] of KORT.entries()) {
-    if (i > 0) fireEvent.click(screen.getByRole('button', { name: '+ Nytt kort' }))
+    // The guide opens on example cards (#733): write over those first, then add.
+    const tabs = [...document.querySelectorAll<HTMLElement>('.byd-wizard-card-tabs > button[aria-pressed]')]
+    if (i < tabs.length) fireEvent.click(tabs[i]!)
+    else fireEvent.click(screen.getByRole('button', { name: '+ Nytt kort' }))
     fireEvent.change(screen.getByLabelText(`kort ${i + 1} Titel`), { target: { value: kort.title } })
     fireEvent.change(screen.getByLabelText(`kort ${i + 1} Regeltext`), { target: { value: kort.body } })
   }

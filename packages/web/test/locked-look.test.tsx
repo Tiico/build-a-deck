@@ -197,6 +197,8 @@ async function openPicker(): Promise<string> {
 function guide(): string {
   history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
   const { container, unmount } = render(<NewProjectPage />)
+  // «Ta bort valt kort» locks on the last card, and the guide opens on three example cards (#733).
+  for (let i = 0; i < 2; i++) fireEvent.click(screen.getByRole('button', { name: 'Ta bort valt kort' }))
   const html = container.innerHTML
   unmount()
   return html
