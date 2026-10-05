@@ -473,7 +473,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       platesAt.current = placePlates(felt)
       placeNames(felt)
     }
-    const spans = [...felt.querySelectorAll<HTMLElement>(':scope > .byd-zone > span, :scope > [data-seat-plate] > b > span, :scope > [data-seat-plate] > span')]
+    // The words they were laid out against are watched as well: a pile's caption (#771) changes its
+    // width when the pile's top card changes, and comes and goes with the card's picture (#886).
+    // None of them changes its size when the camera zooms, so watching them never re-decides a side
+    // the camera moved (#43).
+    const spans = [...felt.querySelectorAll<HTMLElement>(':scope > .byd-zone > span, :scope > [data-seat-plate] > b > span, :scope > [data-seat-plate] > span, .byd-pile-caption')]
     const measure = () => spans.map((el) => `${el.scrollWidth}x${el.offsetHeight}`).join()
     const laidOutFor = measure()
     namesWatch.current?.disconnect()
@@ -2070,7 +2074,11 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
       <span className="byd-pile-count" data-handle={labelHandlers ? 'true' : undefined} {...labelHandlers}>
         <span className="byd-pile-name">{zone.dynamic ? t('pile.dynamic') : zone.name}</span>
         <b className="byd-pile-n">{count}</b>
-        {caption !== null && <span className="byd-pile-caption">{caption}</span>}
+        {/* Always there, and empty when there is nothing to say: the felt's names and plates are laid
+            out again when it changes size (#886), and only an element that is there can be watched.
+            Empty, it is never drawn: `table.css` shows it only beside the card state's own name,
+            and the state names the card exactly when `cardWord` has a word for it. */}
+        <span className="byd-pile-caption">{caption ?? ''}</span>
       </span>
     </div>
   )

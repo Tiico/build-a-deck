@@ -2906,6 +2906,13 @@ Minsta skylttext är 24 px (K26), och kortets kortsida är 46, 31, 77 och 45 px 
 Vid 1280 med fyra platser står B vid änden av sin rad, och A gör det också när kasthögens bildtext är så lång att den når A:s egen plats; vid 1920 står B på kantsidan av sina zoner; med åtta platser står varje skylt på sin egen plats.
 Grind: `packages/e2e/test/surfaces/tv-seat-plate-free-place.spec.ts` (de fyra cellerna, också 15 % bredare; markens tal; sidan när kameran zoomar; brickan när filten saknar plats) och `packages/web/test/tv-plate-names.test.tsx` (sextio bokstäver: sidoplatserna blir brickor, ingenting kapas).
 
+Tillagt 2026-10-05 (#886): **namnen och skyltarna läggs ut igen när en högs bildtext byter storlek, dyker upp eller försvinner.**
+Bildtexten (#771) är ett av de ord namn och skyltar går fria från, men renderaren lade bara ut dem igen när ett namn eller en skylt bytte storlek.
+Ett kort med längre namn överst på kasthögen gjorde bildtexten bredare, och ett namn som stått fritt bredvid den korta stod då under den långa; likaså stod ett namn kvar där bildtexten trängt undan det, när kortets bild kom och bildtexten gick.
+Nu bevakas bildtexten som namnen och skyltarna: elementet finns alltid och är tomt när högen inget har att säga, så det finns något att bevaka också innan den första bildtexten.
+Bildtexten byter inte storlek när kameran zoomar, så bevakningen avgör aldrig om en sida kameran flyttat (#43).
+Grind: `packages/e2e/test/surfaces/pile-caption-replaces.spec.ts` (rummets TV vid 1280 och observatören vid 390 med fyra platser, en egen yta intill kasthögen; att ingenting byter sida eller läggs ut gång på gång när kameran zoomar; och att namnet går tillbaka när bilden kommer).
+
 ---
 
 ### K20. Filten skriver i ett eget typsnitt: Roboto Condensed, skeppat med appen (prototypat och byggt 2026-09-13, #95, #94)
