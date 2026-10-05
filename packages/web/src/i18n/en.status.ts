@@ -8,6 +8,9 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'status.act.home.start': 'To the start page',
   'status.act.rejoin': 'Go in again',
   'status.act.rescan': 'Pick a seat again',
+  'status.kicked.heading': 'You are no longer at the table',
+  'status.kicked.text': 'The host took you away from the table. The cards you had are back in the deck.',
+  'status.kicked.closed': 'The table has a new room code. To come back, ask the host for it.',
   'status.act.switch': 'Switch account',
   'status.act.observe': 'To the observer view',
 
