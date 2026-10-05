@@ -6150,7 +6150,8 @@ Speltestet 2026-10-02 fann att den enda vägen till «Vilka som har spelet» var
 Den hade ett namn för skärmläsaren men inget synligt ord, inget plus och ingenting i någon ⋯-meny, så den som ville bjuda in någon fick gissa att trycka på sin egen initial.
 
 **A och C tillsammans** (av fyra: ordet «Dela» i knappen, en «+»-bricka, «Dela spelet…» i ⋯, eller båda de första och sista).
-Knappen med ansiktena säger «Dela» bredvid dem och har en kant, så att den läses som den sekundärknapp den är (L13).
+Knappen med ansiktena säger «Dela» bredvid dem.
+Prototypen ritade den med en tunn kant; den står utan, eftersom huvudets dörrar — versionen, ansiktena och ⋯ — ritas likadant i varje läge (`button-language.test.tsx`), och det är ordet och inte kanten som gör dörren synlig.
 Ordet står först i knappens namn, «Dela · vilka som har spelet», som det står på knappen (WCAG 2.5.3).
 Spelets ⋯-meny i editorn har «Dela spelet…» före «Exportera…» och öppnar samma panel; menyn har därmed två val och inte ett.
 
