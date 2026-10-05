@@ -1,12 +1,14 @@
 // Gathers the driver's results into ../data.js, the one file the prototype page reads.
 //   node mk-data.mjs <katalog med results-*.json>
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const DIR = process.argv[2]
 const rows = new Map()
-for (const f of readdirSync(DIR).filter((f) => f.startsWith('results-')).sort()) {
+// Oldest first, so that a later run of a variant replaces an earlier one.
+const byAge = (f) => statSync(join(DIR, f)).mtimeMs
+for (const f of readdirSync(DIR).filter((f) => f.startsWith('results-')).sort((a, b) => byAge(a) - byAge(b))) {
   for (const r of JSON.parse(readFileSync(join(DIR, f), 'utf8'))) rows.set(`${r.v}|${r.s}|${r.seats}`, r)
 }
 const out = [...rows.values()].map((r) => ({
