@@ -503,6 +503,15 @@
 /* The seats at the table, a chip each (#621; one form with the field's token since #648). The
    strip says the chip's colours — its green as a line, never a fill — and its error colours when
    it is lost or stalled. */
+/* The band's questions and what it says after them (#679): a row of their own under the band's
+   first row, in the band's own quiet buttons, and the answer that cannot be undone in the lost
+   strip's pink, as «Avsluta bordet» says it. */
+.byd-editor-table-ask, .byd-editor-table-said { flex-basis: 100%; margin: 0; color: #e3f3e8; }
+.byd-editor-table-ask { display: flex; flex-wrap: wrap; align-items: center; gap: var(--byd-s2); padding-top: var(--byd-s1); }
+.byd-editor-table-ask > p { flex: 1 1 260px; margin: 0; }
+.byd-editor-table-ask > p > b { color: #fff; }
+.byd-editor-table-link .byd-editor-table-ask button[data-kind='danger'] { border-color: #e2725b; color: #ffd9cf; }
+.byd-editor-table-link .byd-editor-table-ask button[data-kind='danger']:hover { border-color: #ff9a85; }
 .byd-editor-table-link { --byd-chip-line: #5f7f69; --byd-chip-ink: #e3f3e8; --byd-chip-mark: #a9d8b8; --byd-chip-hover: #2a3a2c; }
 .byd-editor-table-link:is([data-lost], [data-stalled]) { --byd-chip-line: var(--byd-editor-lost-button-line); --byd-chip-ink: var(--byd-editor-lost-ink); --byd-chip-mark: var(--byd-editor-lost-ink); --byd-chip-hover: var(--byd-editor-lost-button-bg); }
 .byd-editor-seats { display: flex; flex-wrap: wrap; gap: var(--byd-s2); margin: 0; padding: 0; list-style: none; }

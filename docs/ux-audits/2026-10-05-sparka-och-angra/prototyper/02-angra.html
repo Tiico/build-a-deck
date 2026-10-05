@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 02 — Ångra efter någon annans drag (#747)</title>
+<!-- PROTOTYP, slängkod. Frågan: vad ska «Ångra» på /online göra när senaste draget inte är ens
+     eget? I dag skickas ett tillbakaspolningsförslag direkt, utan fråga, och «Visa alla» står kvar
+     över bordet som ska visa hur det såg ut. Tre varianter, ?variant=A|B|C eller pilarna. -->
+<link rel="stylesheet" href="proto.css">
+<style>
+  body { overflow: auto; padding-bottom: 80px; }
+  .note { position: static !important; inset: auto !important; transform: none !important; width: auto !important; box-shadow: none !important; background: transparent !important; border: 0 !important; }
+  @media (max-width: 1100px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+  .online { display: grid; grid-template-rows: auto auto 1fr; height: calc(100vh - 57px); }
+  .top { display: flex; align-items: center; gap: var(--s2); padding: 8px 16px; border-bottom: 1px solid var(--line); }
+  .top .who { color: #fff; font-weight: 700; }
+  .top .btn[aria-disabled='true'] { opacity: 1; color: var(--quiet); border-color: var(--line); cursor: default; }
+  .last { padding: 6px 16px; color: #c3cbdd; border-bottom: 1px solid var(--line-soft); }
+  .last b { color: #fff; font-weight: 600; }
+  .room { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 220px; min-height: 0; }
+  .felt { position: relative; margin: 16px; border-radius: 22px; background: radial-gradient(#2e6a46, #1f4a31); box-shadow: inset 0 0 0 10px #5a3a22; }
+  .felt.rewind::after { content: ''; position: absolute; inset: 0; border-radius: 22px; box-shadow: inset 0 0 0 6px #ffd98a; }
+  .pile { position: absolute; top: 40%; width: 63px; height: 88px; border-radius: 6px; background: #1b2a4a; border: 1px solid #0f1830; }
+  .pile.a { left: 38%; } .pile.b { left: 54%; background: transparent; border-style: dashed; border-color: #8fb79c; }
+  .pile span { position: absolute; bottom: -26px; left: 50%; transform: translateX(-50%); white-space: nowrap; background: rgba(0,0,0,.55); color: #f3e9d6; border-radius: 999px; padding: 2px 8px; font-size: 12px; }
+  .hand { border-left: 1px solid var(--line); padding: 12px; display: grid; gap: 8px; align-content: start; }
+  .hand h3 { margin: 0; color: #fff; font-size: 13px; }
+  .card { height: 60px; border-radius: 6px; background: #f4ead8; color: #222; padding: 6px 8px; font-weight: 700; }
+  .all { position: absolute; left: 16px; right: 236px; top: 16px; bottom: 16px; border-radius: 16px; background: rgba(16,20,28,.94); border: 1px solid #3b4358; padding: 16px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; align-content: start; }
+  .all .card { height: 150px; }
+  .all header { grid-column: 1 / -1; display: flex; justify-content: space-between; color: #fff; font-weight: 700; }
+  .banner { position: absolute; left: 50%; top: 40px; transform: translateX(-50%); z-index: 5; max-width: 560px; padding: 12px 24px; border-radius: 22px; background: rgba(23,26,35,.96); border: 1px solid #3b4358; color: #eee; text-align: center; }
+  .banner small { display: block; color: #ffd98a; letter-spacing: 2px; text-transform: uppercase; font-size: 11px; margin-bottom: 4px; }
+  .dialog { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.45); z-index: 8; }
+  .dialog > div { width: 420px; border-radius: 14px; background: var(--panel); border: 1px solid #3b4358; padding: 20px; display: grid; gap: 12px; }
+  .dialog h2 { margin: 0; color: #fff; font-size: 17px; }
+  .dialog p { margin: 0; color: #c3cbdd; line-height: 1.5; }
+  .dialog .row { display: flex; gap: 8px; justify-content: flex-end; }
+  .menu { position: absolute; right: 16px; top: 52px; z-index: 6; background: var(--panel); border: 1px solid #3b4358; border-radius: 10px; padding: 6px; display: grid; min-width: 240px; }
+  .menu button { text-align: left; }
+  .tip { color: var(--quiet-2); font-size: 12px; }
+  .note { margin: 0; padding: 8px 16px; color: var(--quiet-2); line-height: 1.5; border-bottom: 1px solid var(--line-soft); }
+  .note b { color: #fff; }
+  .vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font-weight: 700; }
+  .vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; }
+  .vaxlare .namn { padding: 0 12px; min-width: 320px; text-align: center; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header><strong>Sal's Saloon</strong><span class="spacer"></span><span class="saved">Ada · plats A</span></header>
+  <p class="note" id="om"></p>
+  <div class="online" id="online"></div>
+</div>
+<div class="vaxlare" role="group" aria-label="Variant">
+  <button type="button" id="prev" aria-label="Föregående variant">‹</button>
+  <span class="namn" id="namn"></span>
+  <button type="button" id="next" aria-label="Nästa variant">›</button>
+</div>
+<script>
+const VARIANTER = {
+  A: { namn: 'A — Fråga först', om: '<b>Ångra frågar när draget inte är ditt.</b> Ett eget drag ångras som i dag. Är det senaste någon annans, här Bordets utdelning, ställer Ångra frågan först och säger vems drag det är och vem som avgör. «Visa alla» stängs när förslaget läggs, och bannern namnger draget. <b>+</b> Inget går iväg av misstag. <b>−</b> Ett tryck till, och telefonen måste få samma fråga.' },
+  B: { namn: 'B — Knappen säger vad den gör', om: '<b>Ingen fråga, men knappen byter namn.</b> När senaste draget inte är ditt heter knappen «Föreslå att spola tillbaka…» och raden under den säger vems drag det gäller. Trycket lägger förslaget, «Visa alla» stängs och bannern namnger draget. <b>+</b> Inget extra steg, och inget hemligt. <b>−</b> En knapp som byter ord läses lätt förbi; den som trycker av vana får ändå ett förslag.' },
+  C: { namn: 'C — Ångra bara ditt eget', om: '<b>Ångra ångrar bara egna drag.</b> När senaste draget är någon annans är Ångra avstängd med skälet bredvid, och att spola tillbaka bordet är ett eget val i ⋯-menyn som frågar. <b>+</b> Ångra betyder alltid samma sak. <b>−</b> Tillbakaspolningen hamnar ett klick längre bort, och reglerna (K13, C6) ändras: Ångra slutar vara vägen in till ett förslag.' },
+}
+const KEYS = Object.keys(VARIANTER)
+const q = new URLSearchParams(location.search)
+let v = KEYS.includes(q.get('variant')) ? q.get('variant') : 'A'
+const LAST = 'Bordet delade ut 5 kort var till Adas hand och Bos hand'
+const start = () => ({ all: true, asking: false, proposed: false, menu: false })
+let s = start()
+function propose() { s.proposed = true; s.asking = false; s.all = false; s.menu = false }
+function draw() {
+  document.getElementById('namn').textContent = VARIANTER[v].namn
+  document.getElementById('om').innerHTML = VARIANTER[v].om
+  let undo
+  if (s.proposed) undo = `<button class="btn" aria-disabled="true">Ångra</button>`
+  else if (v === 'A') undo = `<button class="btn" data-undo>Ångra</button>`
+  else if (v === 'B') undo = `<button class="btn" data-undo>Föreslå att spola tillbaka…</button><span class="tip">Senaste draget är Bordets — Bo avgör.</span>`
+  else undo = `<button class="btn" aria-disabled="true" title="Senaste draget är Bordets">Ångra</button><span class="tip">Senaste draget är Bordets.</span><button class="btn quiet" data-menu aria-expanded="${s.menu}">⋯</button>`
+  const menu = v === 'C' && s.menu ? `<div class="menu" role="menu"><button class="btn quiet" role="menuitem" data-ask>Spola tillbaka bordet…</button><button class="btn quiet" role="menuitem">Flagga ögonblicket</button></div>` : ''
+  const dialog = s.asking ? `<div class="dialog"><div role="alertdialog" aria-labelledby="dt"><h2 id="dt">${v === 'C' ? 'Spola tillbaka bordet?' : 'Senaste draget är inte ditt'}</h2><p>«${LAST}». Bordet visar hur det såg ut före det, och Bo avgör om det blir så.</p><div class="row"><button class="btn" data-no>Avbryt</button><button class="btn primary" data-yes>Föreslå att spola tillbaka</button></div></div></div>` : ''
+  const banner = s.proposed ? `<div class="banner" role="status"><small>Förslag</small>Du föreslår att spola tillbaka till före «${LAST}». Bo avgör.</div>` : ''
+  const all = s.all ? `<div class="all" aria-label="Alla kort i handen"><header>Visa alla · 5 kort <button class="btn quiet" data-close>Stäng</button></header>${'<div class="card">Kort</div>'.repeat(5)}</div>` : ''
+  document.getElementById('online').innerHTML =
+    `<div class="top"><span class="who">Ada</span><span class="spacer"></span>${undo}<button class="btn" data-all>${s.all ? 'Visa handen' : 'Visa alla'}</button>${menu}</div>`
+    + `<div class="last">Senast: <b>${LAST}</b> · för 6 s sedan</div>`
+    + `<div class="room"><div class="felt ${s.proposed ? 'rewind' : ''}">${banner}<div class="pile a"><span>Kortlek · 136</span></div><div class="pile b"><span>Kasthög · 0</span></div></div><div class="hand"><h3>Min hand · 5</h3>${'<div class="card">Kort</div>'.repeat(5)}</div>${all}</div>${dialog}`
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.undo !== undefined) { if (v === 'A') { s.asking = true } else propose(); draw() }
+  else if (b.dataset.menu !== undefined) { s.menu = !s.menu; draw() }
+  else if (b.dataset.ask !== undefined) { s.menu = false; s.asking = true; draw() }
+  else if (b.dataset.yes !== undefined) { propose(); draw() }
+  else if (b.dataset.no !== undefined) { s.asking = false; draw() }
+  else if (b.dataset.all !== undefined || b.dataset.close !== undefined) { s.all = !s.all; draw() }
+})
+function go(d) { const i = (KEYS.indexOf(v) + d + KEYS.length) % KEYS.length; v = KEYS[i]; q.set('variant', v); history.replaceState(null, '', '?' + q); s = start(); draw() }
+document.getElementById('prev').onclick = () => go(-1)
+document.getElementById('next').onclick = () => go(1)
+addEventListener('keydown', (e) => { if (e.target.closest('input,textarea,[contenteditable]')) return; if (e.key === 'ArrowLeft') go(-1); if (e.key === 'ArrowRight') go(1) })
+draw()
+</script>
+</body>
+</html>

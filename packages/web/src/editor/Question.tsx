@@ -33,6 +33,9 @@ export type QuestionProps = {
   // An answer that loses nothing and does the work anyway ("Spara och lämna"). When there is one
   // it comes first and is the safe answer the question opens on.
   keep?: { label: string; disabled?: boolean; onChoose(): void }
+  // A second answer that cannot be undone, which goes further than `confirm` ("Sparka och byt kod",
+  // #679). It stands after `confirm`, in the same red, and the question never opens on it.
+  further?: { label: string; onChoose(): void }
 }
 
 type Answer = {
@@ -46,11 +49,12 @@ type Answer = {
   onChoose(): void
 }
 
-export function Question({ label, className, children, confirm, onConfirm, onCancel, cancel, keep }: QuestionProps) {
+export function Question({ label, className, children, confirm, onConfirm, onCancel, cancel, keep, further }: QuestionProps) {
   const t = useT()
   const answers: Answer[] = [
     ...(keep ? [{ key: 'keep', kind: 'keep' as const, label: keep.label, disabled: keep.disabled === true, safe: true, onChoose: keep.onChoose }] : []),
     { key: 'confirm', kind: 'danger', label: confirm, disabled: false, safe: false, onChoose: onConfirm },
+    ...(further ? [{ key: 'further', kind: 'danger' as const, label: further.label, disabled: false, safe: false, onChoose: further.onChoose }] : []),
     { key: 'cancel', kind: undefined, label: cancel ?? t('editor.cancel'), disabled: false, safe: true, onChoose: onCancel },
   ]
   // The first answer that loses nothing and can actually be given. Not an index the call sites

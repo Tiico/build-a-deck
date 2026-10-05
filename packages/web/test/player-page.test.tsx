@@ -618,11 +618,24 @@ describe('being kicked (DRIFT §9)', () => {
     await open(id, 'A', 'Ada')
     const kicked = await fetch(`${run.http}/sessions/${id}/kick`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${roomOf(id).hostKey}` }, body: JSON.stringify({ seat: 'A' }) })
     expect(kicked.status).toBe(200)
-    expect(await screen.findByText(/Värden har tagit bort dig/)).toBeTruthy()
+    expect(await screen.findByText(/Värden tog bort dig från bordet/)).toBeTruthy()
     await new Promise((r) => setTimeout(r, 200))
     // A shut door is one of the nine states (#12): the phone says it as `forbidden` and stays
     // there, rather than reconnecting into the same answer.
     expect(document.querySelector('[data-status-notice]')?.getAttribute('data-status-notice')).toBe('forbidden')
+  })
+
+  // The way on is away from the table (#679, beställarens beslut C): «Välj plats igen» was the green
+  // first button, and two presses later the kicked player sat at the table again.
+  it('offers the start page first, and sitting down again only as a link while the code still opens the room', async () => {
+    const id = await createSession(run)
+    await open(id, 'A', 'Ada')
+    await fetch(`${run.http}/sessions/${id}/kick`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${roomOf(id).hostKey}` }, body: JSON.stringify({ seat: 'A' }) })
+    expect(await screen.findByRole('heading', { name: 'Du är inte längre vid bordet' })).toBeTruthy()
+    const actions = () => [...document.querySelectorAll('[data-status-notice] a, [data-status-notice] button')].map((el) => ({ label: el.textContent, primary: el.hasAttribute('data-primary') }))
+    expect(actions()[0]).toEqual({ label: 'Till startsidan', primary: true })
+    // The code still opens the room, so the way back is there — as a link, not the first button.
+    await waitFor(() => expect(actions().filter((a) => a.label === 'Välj plats igen')).toEqual([{ label: 'Välj plats igen', primary: false }]))
   })
 })
 
