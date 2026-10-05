@@ -553,11 +553,49 @@ describe('the host\'s controls (DRIFT §9)', () => {
     const ada = TableClient.connect(await asSeat(run, sessionId, 'A', 'Ada'))
     await ada.ready()
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    // × asks first (#679, beställarens beslut C): a kick costs a player's hand mid-game, and a
+    // miss on the chip beside it cost another's. The question opens on «Avbryt».
     fireEvent.click(await screen.findByRole('button', { name: 'Sparka Ada' }))
+    const ask = await screen.findByRole('alertdialog', { name: 'Sparka Ada?' })
+    expect(ask.textContent).toContain('Korten i Adas hand går tillbaka i leken, och telefonen lämnar bordet.')
+    expect(document.activeElement).toBe(within(ask).getByRole('button', { name: 'Avbryt' }))
+    fireEvent.click(within(ask).getByRole('button', { name: 'Avbryt' }))
+    expect(ada.refused).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Sparka Ada' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog', { name: 'Sparka Ada?' })).getByRole('button', { name: 'Sparka Ada' }))
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Sparka Ada' })).toBeNull())
     await waitFor(() => expect(ada.refused).toBe('kicked'))
+    // The code stays: a plain kick does not close the door, and the question said so by offering both.
+    expect(screen.getByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' }).textContent).toBe(first)
 
+    // «Ny kod» asks too, and says what stops working; the answer is said in the band.
     fireEvent.click(screen.getByRole('button', { name: 'Ny kod' }))
+    const swap = await screen.findByRole('alertdialog', { name: 'Byt rumskod?' })
+    expect(swap.textContent).toContain(`${first} på TV:n och i det du skickat slutar gälla`)
+    fireEvent.click(within(swap).getByRole('button', { name: 'Byt kod' }))
+    await waitFor(() => expect(screen.getByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' }).textContent).not.toBe(first))
+    expect(document.querySelector('[data-code-said]')?.textContent).toMatch(new RegExp(`^Ny rumskod [A-Z2-9]{6}\\. ${first} gäller inte längre\\.$`))
+  })
+
+  // And the kick can close the door in the same breath (#679 C): the kicked phone could sit down
+  // again two presses later with the code it already had.
+  it('kicks and changes the code at once, from the question, when asked to', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
+    const first = (await screen.findByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' })).textContent ?? ''
+    await run.completeRenders()
+    const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
+    const sessionId = new URL(link.href).searchParams.get('session') ?? ''
+    registerRoom(sessionId, { code: first, hostKey: new URL(link.href).searchParams.get('host') ?? '' })
+    const ada = TableClient.connect(await asSeat(run, sessionId, 'A', 'Ada'))
+    await ada.ready()
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Sparka Ada' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog', { name: 'Sparka Ada?' })).getByRole('button', { name: 'Sparka och byt kod' }))
+    await waitFor(() => expect(ada.refused).toBe('kicked'))
     await waitFor(() => expect(screen.getByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' }).textContent).not.toBe(first))
   })
 
@@ -576,6 +614,7 @@ describe('the host\'s controls (DRIFT §9)', () => {
     const old = new URL(link.href).searchParams.get('host') ?? ''
 
     fireEvent.click(screen.getByRole('button', { name: 'Ny kod' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog', { name: 'Byt rumskod?' })).getByRole('button', { name: 'Byt kod' }))
     const code = await waitFor(() => {
       const shown = screen.getByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' }).textContent ?? ''
       expect(shown).not.toBe(first)
@@ -597,6 +636,7 @@ describe('the host\'s controls (DRIFT §9)', () => {
     await ada.ready()
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
     fireEvent.click(await screen.findByRole('button', { name: 'Sparka Ada' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog', { name: 'Sparka Ada?' })).getByRole('button', { name: 'Sparka Ada' }))
     await waitFor(() => expect(ada.refused).toBe('kicked'))
   })
 })

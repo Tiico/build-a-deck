@@ -6067,6 +6067,18 @@ Variant B, en box «Bordet kör (8) ▾» i huvudet, valdes bort: huvudet är re
 Variant C, en statusrad på 32 px med sparkarna flyttade till Bord-flikens kort, är en större flytt som kan göras senare om bandet ändå stör.
 Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/05-bordsbandet.html`.
 
+Tillagt 2026-10-05 (#679, beställarens beslut C efter prototyp 01): **× och «Ny kod» frågar först.**
+Ett tryck på × sparkade direkt, och brickorna står 8 px isär, så en felträff kostade en annan spelares hand mitt i spelet.
+«Ny kod» bytte koden på TV:n och i det värden just skickat utan ett ord.
+Båda går nu genom editorns fråga (`Question`), i en egen rad under bandets första rad, och frågan öppnar på «Avbryt».
+Frågan om sparken har två röda svar: «Sparka Bo» och «Sparka och byt kod».
+Det andra stänger dörren i samma andetag, eftersom en sparkad telefon annars satt vid bordet igen två tryck senare med koden den redan hade.
+När koden har bytts säger bandet det: «Ny rumskod SAFYX3. UF6H2W gäller inte längre.»
+Den sparkades telefon heter «Du är inte längre vid bordet», och dess primära väg är «Till startsidan».
+«Välj plats igen» står kvar som en andra väg bara så länge koden fortfarande öppnar rummet.
+Bortvalda varianter: A, frågan utan kodbytet, som lämnade det åt värden att komma på; och B, en ångra-stund på fem sekunder, som kräver att en felträff ses i tid.
+Prototypen: `docs/ux-audits/2026-10-05-sparka-och-angra/prototyper/01-sparka.html`.
+
 ### L61. En bricka: pillret på 44 px, i sökfältet och i bordsbandet (prototypat och beslutat 2026-10-01, #648)
 
 Granskningen av #641 fann två former för samma tecken: tabellens filterbricka «typ: Playcard ×» (#617) var en rundad ruta på 34 px i sökfältet, bordsbandets platsbricka «Ada ×» (#621) ett piller på 44 px.

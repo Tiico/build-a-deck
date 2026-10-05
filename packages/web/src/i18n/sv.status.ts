@@ -12,6 +12,10 @@ export const svStatus = {
   'status.act.home': 'Till mina spel',
   'status.act.home.start': 'Till startsidan',
   'status.act.rescan': 'Välj plats igen',
+  // Den som värden tog bort (#679, beslut C).
+  'status.kicked.heading': 'Du är inte längre vid bordet',
+  'status.kicked.text': 'Värden tog bort dig från bordet. Korten du hade ligger tillbaka i leken.',
+  'status.kicked.closed': 'Bordet har fått en ny rumskod. Vill du tillbaka får du be värden om den.',
   'status.act.rejoin': 'Gå in igen',
   'status.act.switch': 'Byt konto',
   'status.act.observe': 'Till observatören',

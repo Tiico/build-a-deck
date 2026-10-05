@@ -81,6 +81,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const headerStands = useHeaderStands()
   const actionsInHeader = room === 'desk' || headerStands
   const [stage, setStage] = useState<Stage>('wall')
+  // «Ny kod» asks before the code changes, and the band says what changed once it has (#679,
+  // beställarens beslut C): the code on the TV and the one just sent stop working on one press.
+  const [askingCode, setAskingCode] = useState(false)
+  const [codeSaid, setCodeSaid] = useState<string | null>(null)
   // A room that does not offer the stage that was open — a phone has no canvas — puts the
   // designer on the deck wall rather than on a panel that is not there.
   const here: Stage = stages && !stages.some(([s]) => s === stage) ? 'wall' : stage
@@ -557,11 +561,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const wsUrl = (params.get('server') ?? location.origin).replace(/^http/, 'ws')
   const rotate = async () => {
     if (!table) return
+    setAskingCode(false)
     try {
       // The key changes with the code (#820). A table picked up again after a reload had no key in
       // the page and is reached by the owner's login; it is not handed one now either.
+      const old = table.code
       const { code, hostKey } = await client.rotateCode(table.id, table.hostKey)
-      setTable({ ...table, code, ...(table.hostKey !== undefined ? { hostKey } : {}) })
+      setTable((now) => (now ? { ...now, code, ...(now.hostKey !== undefined ? { hostKey } : {}) } : now))
+      setCodeSaid(t('editor.table.newCode.said', { code, old }))
     } catch {
       setNotice(t('editor.table.error.code'))
     }
@@ -748,9 +755,28 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           )}
           <span className="byd-editor-room">
             {' '}· {t('editor.table.roomCode')} <strong data-room-code>{table.code}</strong>{' '}
-            <button type="button" ref={newCodeRef} onClick={() => void rotate()}>{t('editor.table.newCode')}</button>
+            <button type="button" ref={newCodeRef} aria-expanded={askingCode} onClick={() => setAskingCode(true)}>{t('editor.table.newCode')}</button>
           </span>
-          <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={setNotice} onEnded={tableEnded} lastStop={newCodeRef} />
+          <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={setNotice} onEnded={tableEnded} lastStop={newCodeRef} onRotate={rotate} />
+          {askingCode && (
+            <Question
+              className="byd-editor-table-ask"
+              label={t('editor.table.newCode.ask')}
+              confirm={t('editor.table.newCode.ask.yes')}
+              onConfirm={() => void rotate()}
+              onCancel={() => {
+                setAskingCode(false)
+                newCodeRef.current?.focus()
+              }}
+            >
+              <b>{t('editor.table.newCode.ask')}</b> {t('editor.table.newCode.ask.body', { code: table.code })}
+            </Question>
+          )}
+          {codeSaid !== null && !askingCode && (
+            <p className="byd-editor-table-said" role="status" data-code-said>
+              {codeSaid}
+            </p>
+          )}
         </div>
       )}
       {/* The line to the project, in D5's own states (#485, fynd 8): gone, with how old the
@@ -981,7 +1007,7 @@ function homeUrl(server: string | null): string {
 // where the next Tab starts over from the top (#477, fynd 6). So it is handed on: to the seat
 // that took the kicked one's place, the one before it at the end of the row, and «Ny kod» when
 // nobody is left.
-function HostSeats({ client, sessionId, hostKey, ws, onNotice, onEnded, lastStop }: { client: ProjectClient; sessionId: string; hostKey: string | undefined; ws: string; onNotice(text: string | null): void; onEnded(): void; lastStop: RefObject<HTMLButtonElement | null> }) {
+function HostSeats({ client, sessionId, hostKey, ws, onNotice, onEnded, lastStop, onRotate }: { client: ProjectClient; sessionId: string; hostKey: string | undefined; ws: string; onNotice(text: string | null): void; onEnded(): void; lastStop: RefObject<HTMLButtonElement | null>; onRotate(): Promise<void> }) {
   const t = useT()
   const labelId = useId()
   const { view } = useTableClient({ url: ws, sessionId, seat: null, lobby: true })
@@ -995,6 +1021,21 @@ function HostSeats({ client, sessionId, hostKey, ws, onNotice, onEnded, lastStop
   }, [ended])
   const list = useRef<HTMLUListElement>(null)
   const kicked = useRef<{ seat: string; at: number } | null>(null)
+  // The seat × is asking about (#679, beställarens beslut C): a kick costs a player's hand mid-game,
+  // and the chips stand 8 px apart. The question offers to change the code in the same breath,
+  // since a kicked phone could otherwise sit down again with the code it already had.
+  const [asking, setAsking] = useState<{ seat: string; name: string; at: number } | null>(null)
+  const kick = (seat: string, name: string, at: number, rotate: boolean) => {
+    setAsking(null)
+    kicked.current = { seat, at }
+    void client
+      .kick(sessionId, hostKey, seat)
+      .then(() => (rotate ? onRotate() : undefined))
+      .catch(() => {
+        kicked.current = null
+        onNotice(t('editor.table.error.kick', { name }))
+      })
+  }
   const taken = view ? view.seats.filter((s) => s.name !== null) : []
   const seated = taken.map((s) => s.id).join(' ')
   useEffect(() => {
@@ -1023,13 +1064,8 @@ function HostSeats({ client, sessionId, hostKey, ws, onNotice, onEnded, lastStop
                 type="button"
                 aria-label={name}
                 title={name}
-                onClick={() => {
-                  kicked.current = { seat: s.id, at }
-                  void client.kick(sessionId, hostKey, s.id).catch(() => {
-                    kicked.current = null
-                    onNotice(t('editor.table.error.kick', { name: s.name ?? '' }))
-                  })
-                }}
+                aria-expanded={asking?.seat === s.id}
+                onClick={() => setAsking({ seat: s.id, name: s.name ?? '', at })}
               >
                 <span aria-hidden="true">×</span>
               </button>
@@ -1037,6 +1073,22 @@ function HostSeats({ client, sessionId, hostKey, ws, onNotice, onEnded, lastStop
           )
         })}
       </ul>
+      {asking && (
+        <Question
+          className="byd-editor-table-ask"
+          label={t('editor.seats.ask', { name: asking.name })}
+          confirm={t('editor.seats.kick', { name: asking.name })}
+          onConfirm={() => kick(asking.seat, asking.name, asking.at, false)}
+          further={{ label: t('editor.seats.ask.rotate'), onChoose: () => kick(asking.seat, asking.name, asking.at, true) }}
+          onCancel={() => {
+            const back = asking
+            setAsking(null)
+            list.current?.querySelector<HTMLButtonElement>(`[data-host-seat="${CSS.escape(back.seat)}"] button`)?.focus()
+          }}
+        >
+          <b>{t('editor.seats.ask', { name: asking.name })}</b> {t('editor.seats.ask.body', { name: asking.name })}
+        </Question>
+      )}
     </>
   )
 }
