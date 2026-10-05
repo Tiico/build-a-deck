@@ -3,7 +3,7 @@ import { isSymbolName, type Element, type FaceTemplate, type Variant } from '@by
 import { showsWholePicture } from '@byd/protocol'
 import { AssetCrop, PictureName } from './projects.js'
 import type { Cell, Picture, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, ProjectTheme, RuleDoc } from './projects.js'
-import { applyRecipe, newAreaSpot, newPileSpot, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Shortcut, type Zone } from './recipe.js'
+import { applyRecipe, newAreaSpot, newPileSpot, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Setup, type Shortcut, type Zone } from './recipe.js'
 
 // An edit is a thing that happened to a project (D3). A project is structurally the same as a
 // table — shared state several people change at once, which belongs in the history — so it gets
@@ -124,7 +124,11 @@ export type EditIntent =
   // The table (B5, K2)
   // The words come with the edit, so the actor writes the same zone names the editor showed the
   // designer — their own language, not the tool's home one (A4).
-  | { v: 'setRecipe'; recipe: Recipe; words?: RecipeWords }
+  // `places` is where the recipe laid what it laid — every zone it moved or made, by id, the felt
+  // among them (K18) — decided once when the edit is made (`decideEdit`, #895), for the same
+  // reason `addZone` carries its `geometry`. Only what the recipe touched is in it, so a line
+  // applied on a document a co-editor has changed since never takes their zones back.
+  | { v: 'setRecipe'; recipe: Recipe; words?: RecipeWords; places?: Places }
   // `geometry` is where the zone was born, decided once when the edit is made (`decideEdit`) and
   // written into the log with it (#894). Where a new zone goes is a rule that changes with a
   // deploy (#443, #480, #881), and a line that asked the rule again on replay would put the zone
@@ -137,7 +141,8 @@ export type EditIntent =
   // separate additions would be eight versions, with a half-laid table at every one of them.
   // `name` may carry `{seat}`, which becomes the seat's letter, and it is written in the language
   // the designer is building the game in (A4), like every other word the tool suggests.
-  | { v: 'addSeatZone'; role: SeatRole; name: string; shortcut?: Shortcut }
+  // `places` is where each seat's zone was laid, by id, decided once when the edit is made (#895).
+  | { v: 'addSeatZone'; role: SeatRole; name: string; shortcut?: Shortcut; places?: Places }
   // A whole zone laid down as it stands: what a paste is. `addZone` makes a blank one, which a
   // copy is not — the copy carries the question it asks, what it can be asked for, its shortcut,
   // its owner and its size, and those are the whole reason to copy a zone rather than build a
@@ -209,9 +214,41 @@ export type EditIntent =
 // decides before it applies its own edit, so the place the designer sees is the place it sends;
 // the actor decides as well, for a caller that sent none. Everything else passes through as it is.
 export function decideEdit(doc: ProjectDoc, intent: EditIntent): EditIntent {
+  if ((intent.v === 'setRecipe' || intent.v === 'addSeatZone') && !intent.places) {
+    // The answer is what applying the edit by today's rule moved or made. An edit the document
+    // refuses has no answer, and passes on as it is for `applyEdit` to say why.
+    let next: ProjectDoc
+    try {
+      next = applyEdit(doc, intent)
+    } catch {
+      return intent
+    }
+    const before = new Map(doc.setup.zones.map((z) => [z.id, z.geometry]))
+    const places: Places = {}
+    for (const z of next.setup.zones) if (!sameGeometry(before.get(z.id), z.geometry)) places[z.id] = z.geometry
+    return { ...intent, places }
+  }
   if (intent.v !== 'addZone' || intent.geometry || doc.setup.zones.some((z) => z.id === intent.id)) return intent
   const geometry = intent.kind === 'pile' ? newPileSpot(doc.setup) : newAreaSpot(doc.setup)
   return geometry === null ? intent : { ...intent, geometry }
+}
+
+// Where an edit laid the zones it moved or made, by id (#895).
+export type Places = Record<string, Geometry>
+const sameGeometry = (a: Geometry | undefined, b: Geometry): boolean => a !== undefined && a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h && a.rot === b.rot
+// A line that carries its answer is laid out by it. A zone the line placed lies where it was
+// placed; one it found on the table stays where it stood, whatever today's rule would do with
+// it; and one that today's rule adds but the line never knew of is laid by the rule, since the
+// line has nothing to say about it. A line without an answer is laid out by today's rule, as it
+// always was.
+function placed(before: Setup, after: Setup, places: Places | undefined): Setup {
+  if (!places) return after
+  const stood = new Map(before.zones.map((z) => [z.id, z.geometry]))
+  const zones = after.zones.map((z) => {
+    const geometry = places[z.id] ?? stood.get(z.id)
+    return geometry ? { ...z, geometry } : z
+  })
+  return { ...after, zones }
 }
 
 export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
@@ -431,7 +468,7 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     }
 
     case 'setRecipe':
-      return { ...doc, setup: applyRecipe(doc.setup, intent.recipe, intent.words) }
+      return { ...doc, setup: placed(doc.setup, applyRecipe(doc.setup, intent.recipe, intent.words), intent.places) }
     case 'addZone': {
       if (doc.setup.zones.some((z) => z.id === intent.id)) throw new Error(`zone ${intent.id} already exists`)
       // En ny zon föds på ledig filt (#440 för ytan, #443 för högen). Var det är är
@@ -467,7 +504,7 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     case 'addSeatZone': {
       const made = seatZones(doc.setup, intent.role, intent.name, intent.shortcut)
       if (made.length === 0) return doc
-      return { ...doc, setup: { ...doc.setup, zones: [...doc.setup.zones, ...made] } }
+      return { ...doc, setup: placed(doc.setup, { ...doc.setup, zones: [...doc.setup.zones, ...made] }, intent.places) }
     }
 
     // The deck moves to another pile, and the hands with it: a hand returns its cards to the deck,

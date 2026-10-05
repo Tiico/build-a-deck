@@ -1074,7 +1074,8 @@ Var en ny zon föds (`addZone`) är en regel som ändras med en driftsättning (
 Editorn avgör mot det formgivaren ser och skickar svaret, och aktören avgör för en avsändare som inte skickade något, innan raden committas.
 En äldre rad utan plats spelas upp efter dagens regel, som förut.
 Redigeringarna är editorns vokabulär och inte bordets slutna intents i `packages/protocol`, så ett tillagt fält i en befintlig redigering är ingen protokollmigrering.
-`addSeatZone` och `setRecipe` räknar fortfarande ut geometri vid uppspelning; det är #895.
+Platsernas zoner (`addSeatZone`) och receptets uppställning (`setRecipe`) lagrar sitt svar på samma sätt (#895), som `places`: geometrin för varje zon redigeringen flyttade eller lade, filten med (K18), efter id.
+Bara det redigeringen rörde står i svaret, så en rad som landar på ett dokument en medredigerare hunnit ändra tar aldrig tillbaka hennes zoner; en zon raden fann på bordet står kvar där den stod, vad dagens regel än säger om den.
 Huvudet visar vilka andra som har spelet öppet, med kontots adress som namn.
 Roller och inbjudningar, byggt 2026-09-08:
 Behörigheter är en modell, inte ett fält: ägare, medredigerare, testledare, betraktare, och varje väg frågar vad rollen får göra i stället för att minnas reglerna.
