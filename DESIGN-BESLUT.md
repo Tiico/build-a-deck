@@ -2744,7 +2744,7 @@ Den hänger i handtaget, 2 px från det, 12 px och högst 10 em bred, på den si
 Handtaget vrids tillbaka upprätt på en vriden filt, så på en filt vriden ett halvt varv — plats B som ser bordet från andra sidan — pekar handtagets eget «under» mot kortet, och bildtexten står ovanför handtaget i stället; vid ett kvartsvarv står kortet bredvid handtaget, och under är fritt.
 Under 460 px döljer bordsläget högarnas namn (ovan), och där finns inte heller plats för en platta mellan två högar: där står namnet kvar på kortet som förut.
 Under bygget visade det sig att handtaget självt stod en hel handtagsbredd bredvid sin hög på en filt vriden ett halvt varv, eftersom dess halva bredds förskjutning låg i `transform` och vreds med av `rotate`; det centreras nu med `translate`.
-Krocken mellan bildtexten och de tätt lagda extra högarna (`newPileSpot` räknar namnbandet för TV:ns namn) är densamma som handtagen redan har utan bildtext, och den är #881.
+Krocken mellan bildtexten och de tätt lagda extra högarna (`newPileSpot` räknade namnbandet för TV:ns namn) är densamma som handtagen redan har utan bildtext, och den är #881: en ny hög räknar sedan dess ett band på 97 mm under kortet, för handtaget och bildtexten tillsammans (K2).
 
 **Kvar att veta för grannarna.**
 #683 gäller fortfarande: vid 1280 täcker sidoplatsernas skyltar Kasthög och dess namn, men bildtexten står under skylten och är fri, 13 px från plats A:s skylt.
