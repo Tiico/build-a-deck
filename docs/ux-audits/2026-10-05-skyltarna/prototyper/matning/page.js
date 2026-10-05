@@ -44,13 +44,14 @@ window.__p683 = (() => {
       p.style.paddingBottom = '6px'
     }
   }
-  // C2, the badge: the ball and the hand's count, «(D) 5».
+  // C2, the badge: the ball and what the hand holds, «(D) 5 kort» — the name and the counters
+  // wait until the plate is opened (on the seat's turn, or on a press).
   const badge = (p) => {
     const hand = handSpan(p)
     const name = p.querySelector(':scope > b')
-    for (const n of [...name.childNodes]) if (n.nodeType === 3) n.remove()
+    for (const n of [...name.childNodes]) if (n.nodeType === 3 || n.tagName === 'SPAN') n.remove()
     for (const s of [...p.querySelectorAll(':scope > span')]) if (s !== hand) s.remove()
-    if (hand) { hand.textContent = hand.textContent.replace(/ kort( på hand)?$/, ''); hand.style.paddingLeft = '0'; hand.style.fontWeight = '700' }
+    if (hand) { hand.textContent = hand.textContent.replace(/ kort( på hand)?$/, ' kort'); hand.style.paddingLeft = '0'; hand.style.fontWeight = '700' }
     p.dataset.form = 'badge'
     p.style.flexDirection = 'row'
     p.style.alignItems = 'center'
@@ -94,7 +95,7 @@ window.__p683 = (() => {
     for (const { el, r } of all('.byd-pile-caption')) o.push({ k: 'bildtext', what: el.textContent, r })
     for (const { el, r } of all('.byd-zone')) o.push({ k: el.dataset.area.endsWith(`:${seat}`) ? 'egen zon' : 'zon', what: el.dataset.area, r })
     for (const { el, r } of all('.byd-zone > span')) o.push({ k: 'zonnamn', what: el.textContent, r })
-    for (const { el, r } of all('[data-seat-plate]')) if (el !== own) o.push({ k: 'skylt', what: el.dataset.seatPlate, r })
+    for (const { el, r } of all('[data-seat-plate]')) if (el !== own) o.push({ k: 'skylt', what: el.dataset.seatPlate, r, el })
     for (const { el, r } of all('.byd-hand-fan > i')) o.push({ k: 'hand', what: el.closest('.byd-hand').dataset.zone, r })
     for (const { el, r } of all('.byd-token')) o.push({ k: 'räknare', what: el.dataset.counterToken, r })
     for (const { el, r } of all('.byd-table-restart, .byd-shortcut-open, [data-tv] > aside')) o.push({ k: 'krom', what: el.className || el.tagName, r })
@@ -105,7 +106,9 @@ window.__p683 = (() => {
     const f = R(felt())
     const w = widen(r, p.dataset.edge === 'E')
     const onFelt = w.left >= f.left - 0.5 && w.right <= f.right + 0.5 && r.top >= f.top - 0.5 && r.bottom <= f.bottom + 0.5
-    return onFelt && !obstacles(p).some((o) => meet(r, o.r, 0.5) || meet(w, o.r, 0.5))
+    // Another plate is read 15 % wider too, the way it would grow.
+    const theirs = (o) => (o.k === 'skylt' ? widen(o.r, o.el.dataset.edge === 'E') : o.r)
+    return onFelt && !obstacles(p).some((o) => meet(r, theirs(o), 0.5) || meet(w, theirs(o), 0.5))
   }
 
   // A: the plate obeys #685's order — own place, the zones' other end, a line further out, the
