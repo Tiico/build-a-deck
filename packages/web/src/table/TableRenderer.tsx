@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent, type CSSProperties } from 'react'
 import { BackTexture, Texture } from './Texture.js'
 import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
@@ -203,6 +204,11 @@ export type TableRendererProps = {
   // it is the legend for the rest. The names are still drawn and only hidden, so a name that is lit
   // stands where K19 puts it.
   lit?: ReadonlySet<string> | undefined
+  // Where «Starta om» and the help's disc stand instead of the felt's corner (#875, beställarens
+  // beslut 2026-10-05): the room's television gives them its side column, where nothing is drawn
+  // under them, because the corner lay over a seat's hand at eight seats. Without it they keep the
+  // corner beside the felt's rim.
+  cornerIn?: HTMLElement | null | undefined
 }
 
 // The short side a card on the felt is brought to by the lens's first step in (K9).
@@ -291,7 +297,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -473,7 +479,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       platesAt.current = placePlates(felt)
       placeNames(felt)
     }
-    const spans = [...felt.querySelectorAll<HTMLElement>(':scope > .byd-zone > span, :scope > [data-seat-plate] > b > span, :scope > [data-seat-plate] > span')]
+    // The words they were laid out against are watched as well: a pile's caption (#771) changes its
+    // width when the pile's top card changes, and comes and goes with the card's picture (#886).
+    // None of them changes its size when the camera zooms, so watching them never re-decides a side
+    // the camera moved (#43).
+    const spans = [...felt.querySelectorAll<HTMLElement>(':scope > .byd-zone > span, :scope > [data-seat-plate] > b > span, :scope > [data-seat-plate] > span, .byd-pile-caption')]
     const measure = () => spans.map((el) => `${el.scrollWidth}x${el.offsetHeight}`).join()
     const laidOutFor = measure()
     namesWatch.current?.disconnect()
@@ -1664,7 +1674,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       {/* The corner beside the felt's rim: «Starta om» and the help's disc on one row (#482, #684),
           so a disc that says its name on the room's television pushes the tile aside rather than
           lying over it. */}
-      <div className="byd-felt-corner">
+      {((corner) => (cornerIn ? createPortal(corner, cornerIn) : <div className="byd-felt-corner">{corner}</div>))(
+        <>
         {start && view.played && (
           <button
             type="button"
@@ -1678,7 +1689,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           </button>
         )}
         {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable)} named={forTheRoom} />}
-      </div>
+        </>,
+      )}
       {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => onAct([{ v: 'setCounter', component: entry.id, value }])} onClose={() => setEntry(null)} />}
       {reading && (
         <Lifted
@@ -2070,7 +2082,11 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
       <span className="byd-pile-count" data-handle={labelHandlers ? 'true' : undefined} {...labelHandlers}>
         <span className="byd-pile-name">{zone.dynamic ? t('pile.dynamic') : zone.name}</span>
         <b className="byd-pile-n">{count}</b>
-        {caption !== null && <span className="byd-pile-caption">{caption}</span>}
+        {/* Always there, and empty when there is nothing to say: the felt's names and plates are laid
+            out again when it changes size (#886), and only an element that is there can be watched.
+            Empty, it is never drawn: `table.css` shows it only beside the card state's own name,
+            and the state names the card exactly when `cardWord` has a word for it. */}
+        <span className="byd-pile-caption">{caption ?? ''}</span>
       </span>
     </div>
   )

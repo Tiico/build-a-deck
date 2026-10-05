@@ -30,6 +30,12 @@ export const svAccount = {
   'home.claimed': 'Sparat: du spelade {game} som {name}. Enkäten och flaggorna hör nu till ditt konto.',
   'home.claimed.some-table': 'ett bord',
   'home.started': 'Bordet är igång. Rumskoden är {code}.',
+  // Pågående bord på startsidan (#724): spel, rumskod och vägen till bordets skärm.
+  'home.running.title': 'Pågår nu',
+  'home.running.open': 'Öppna bordet',
+  'home.running.open.aria': 'Öppna bordet {code} i {name} (öppnas i ny flik)',
+  'home.menu.open': 'Öppna bordet {code}',
+  'home.menu.start.new': 'Starta nytt bord',
   'home.started.open': 'Öppna bordet',
   'home.started.open.aria': 'Öppna bordet (öppnas i ny flik)',
   'home.remove.title': 'Ta bort spelet',

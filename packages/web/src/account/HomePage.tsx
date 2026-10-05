@@ -7,7 +7,8 @@ import { CardPreview } from '../editor/CardPreview.js'
 import { CARD_PX } from '../editor/corner.js'
 import { previewIcons } from '../editor/assets.js'
 import { previewFonts } from '../editor/fonts.js'
-import { logout, myCards, myPlayed, myProjects, removeProject, startTable, whoAmI, type Played, type ProjectSummary } from './api.js'
+import { logout, myCards, myPlayed, myProjects, removeProject, runningTables, startTable, whoAmI, type Played, type ProjectSummary, type RunningTable } from './api.js'
+import { tvUrl } from '../editor/tableLinks.js'
 import { ExportDialog, ImportDialog } from './GameDialogs.js'
 import { GameMenu } from './GameMenu.js'
 import { seatColor } from '../table/seatColor.js'
@@ -48,6 +49,23 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const [cards, setCards] = useState<Record<string, CardFace | null> | null>(null)
   // The cards could not be had (#475): the places stop promising one rather than shimmer for ever.
   const [cardsLost, setCardsLost] = useState(false)
+  // The tables that are running, game by game (#724, beslut C + B): asked for every game that has
+  // tables and whose role may start one, and asked again whenever a game's count of tables changes,
+  // so a table started from here is in the list the moment the server has it.
+  const [running, setRunning] = useState<Record<string, RunningTable[]>>({})
+  const askedAbout = (projects ?? []).filter((p) => (p.tables ?? 0) > 0 && canStartTables(roleOf(p))).map((p) => `${p.id}:${p.tables}`).join(',')
+  useEffect(() => {
+    if (!askedAbout) return
+    let live = true
+    const ids = askedAbout.split(',').map((one) => one.slice(0, one.lastIndexOf(':')))
+    void Promise.all(ids.map(async (id) => [id, await runningTables(http, id).catch(() => [])] as const)).then((all) => {
+      if (live) setRunning(Object.fromEntries(all))
+    })
+    return () => {
+      live = false
+    }
+  }, [askedAbout, http])
+  const runningList = (projects ?? []).flatMap((p) => (running[p.id] ?? []).map((table) => ({ ...table, name: p.name })))
   // Landing here from the claim page (G1): which session was just saved. Said once (#475): the
   // address stops carrying it as soon as it has been read, so a reload does not say it again.
   const claimed = params.get('claimed')
@@ -69,7 +87,6 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   // last table started from here was, so the code can be read off.
   const [menu, setMenu] = useState<string | null>(null)
   const [asking, setAsking] = useState<ProjectSummary | null>(null)
-  const [started, setStarted] = useState<{ project: string; code: string; id: string; hostKey: string } | null>(null)
   // Where the focus goes once whatever had it has gone away (#475): back to a game's ⋯ when its
   // menu or its question closes, or to the heading once the game itself is gone — never to
   // <body>, which is where a keyboard is left with no idea where it is.
@@ -164,14 +181,22 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             {notice}
           </p>
         )}
-        {started && (
-          <div className="byd-home-started">
-            {/* One flex item, so the gap between the banner's parts never opens inside the sentence. */}
-            <span>{marked(t('home.started'), { code: <strong>{started.code}</strong> })}</span>
-            <a href={tableUrl(started.id, started.hostKey, server)} target="_blank" rel="noreferrer" aria-label={t('home.started.open.aria')}>
-              {t('home.started.open')}
-            </a>
-          </div>
+        {/* «Pågår nu» (#724, beslut C): every table that is running, by its game and its room code,
+            with the way to its screen as the game's own — and still there after a reload, which the
+            banner that said a table had started was not. */}
+        {runningList.length > 0 && (
+          <section className="byd-home-running" aria-labelledby="byd-home-running">
+            <h2 id="byd-home-running" className="byd-home-h2">{t('home.running.title')}</h2>
+            {runningList.map((table) => (
+              <div key={table.id} className="byd-home-running-row" data-running={table.id}>
+                <b>{table.name}</b>
+                <strong>{table.code}</strong>
+                <a href={tvUrl(table.id, server, undefined, true)} target="_blank" rel="noreferrer" aria-label={t('home.running.open.aria', { code: table.code, name: table.name })}>
+                  {t('home.running.open')}
+                </a>
+              </div>
+            ))}
+          </section>
         )}
         {asking && (
           <Question
@@ -271,6 +296,13 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                       if (back) setRefocus({ to: p.id })
                     }}
                   >
+                    {/* The tables already running come first (#724, beslut B), so a second press to see the
+                        code again opens the table it was for rather than starting another. */}
+                    {(running[p.id] ?? []).map((table) => (
+                      <a key={table.id} href={tvUrl(table.id, server, undefined, true)} target="_blank" rel="noreferrer" onClick={() => setMenu(null)}>
+                        {t('home.menu.open', { code: table.code })}
+                      </a>
+                    ))}
                     {canStartTables(roleOf(p)) && (
                       <button
                         type="button"
@@ -279,7 +311,6 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                           setRefocus({ to: p.id })
                           void startTable(http, p.id, t).then(
                             (table) => {
-                              setStarted({ project: p.id, ...table })
                               say?.('polite', t('home.started', { code: table.code }))
                               setProjects((list) => (list ?? []).map((x) => (x.id === p.id ? { ...x, tables: (x.tables ?? 0) + 1 } : x)))
                             },
@@ -287,7 +318,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                           )
                         }}
                       >
-                        {t('home.menu.start')}
+                        {t((running[p.id] ?? []).length > 0 ? 'home.menu.start.new' : 'home.menu.start')}
                       </button>
                     )}
                     {/* A game is the owner's and the co-editors' to take away with them (G5, #527);
@@ -441,13 +472,6 @@ function playedLine(t: T, lang: Lang, p: ProjectSummary): string {
   if (tables === 0) return t('home.card.never')
   const at = p.lastPlayed ? t('home.card.last', { when: when(t, lang, p.lastPlayed) }) : t('home.card.nothing')
   return t(tables === 1 ? 'home.card.tables.one' : 'home.card.tables.other', { n: tables, at })
-}
-
-// The table's own screen, opened with the host key it was just handed (DRIFT §9).
-function tableUrl(session: string, hostKey: string, server: string | null): string {
-  const q = new URLSearchParams({ session, mode: 'tv', host: hostKey })
-  if (server) q.set('server', server.replace(/^http/, 'ws'))
-  return `/table?${q.toString()}`
 }
 
 // Seats are lettered from A; the colour follows the letter, as it does on the table.
