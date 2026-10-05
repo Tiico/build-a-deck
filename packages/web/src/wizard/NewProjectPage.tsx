@@ -151,7 +151,8 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const face = faces[theme.id]
   const fonts = useMemo(() => ({ ...stacksOf(look, undefined), ...face }), [look, face])
   // With every card taken away the preview still draws one, blank under its tool name.
-  const row = s.rows[selectedRow] ?? s.rows[0] ?? { title: t('wizard.card.n', { n: 1 }), cost: '', body: '', art: '' }
+  const blank = useMemo((): Record<string, string> => ({ title: t('wizard.card.n', { n: 1 }), cost: '', body: '', art: '' }), [t])
+  const row = s.rows[selectedRow] ?? s.rows[0] ?? blank
   // The card as the game will hold it, under the columns the fields were named (#476).
   const card = useMemo(() => typedFields(row, s.fields), [row, s.fields])
 
