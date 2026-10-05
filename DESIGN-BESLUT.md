@@ -6155,7 +6155,8 @@ Prototypen ritade den med en tunn kant; den står utan, eftersom huvudets dörra
 Ordet står först i knappens namn, «Dela · vilka som har spelet», som det står på knappen (WCAG 2.5.3).
 Spelets ⋯-meny i editorn har «Dela spelet…» före «Exportera…» och öppnar samma panel; menyn har därmed två val och inte ett.
 
-Bredden får inte växa med antalet som är inne: vid 1280 och bredare står högst tre ansikten och antalet, och mellan 1024 och 1279 ett ansikte och ordet.
-Prototypen mätte huvudet till en rad (57 px) i alla varianter vid både 1280 och 1024.
+Bredden får inte växa med antalet som är inne: vid 1280 och bredare står högst tre ansikten, antalet och ordet.
+Mellan 1024 och 1279 är dörren ett ansikte, en tummyta bred, som förut, och «Dela spelet…» i ⋯ är vägen i ord där.
+Prototypen mätte en rad vid 1024 med Macens typsnitt, men med CI:s bredare klipptes spelets namn (`editor-header-fit.spec.ts`), och huvudet har ingen luft vid 1024 (#668).
 `share-panel.test.tsx` öppnar panelen från både knappen och menyn.
 Prototypen: `docs/ux-audits/2026-10-05-delningen/prototyper/727/`.
