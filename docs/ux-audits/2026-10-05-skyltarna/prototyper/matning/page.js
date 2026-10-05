@@ -58,6 +58,24 @@ window.__p683 = (() => {
     p.style.padding = '4px 12px 4px 4px'
   }
 
+  // E: the counters leave the plate and the seat's chip says its own figure again, in the room's
+  // 24 px pill (the one an unowned chip already wears on the TV).
+  const chipsSay = (p) => {
+    const hand = handSpan(p)
+    const counters = [...p.querySelectorAll(':scope > span')].filter((s) => s !== hand)
+    const strip = seatZones(p.dataset.seatPlate).find((z) => z.el.dataset.area.startsWith('counters:'))
+    const tokens = strip ? all('.byd-token').filter(({ r }) => r.left >= strip.r.left - 1 && r.right <= strip.r.right + 1 && r.top >= strip.r.top - 1 && r.bottom <= strip.r.bottom + 1) : []
+    counters.forEach((s, i) => {
+      const t = tokens[i]
+      if (t && !t.el.querySelector('b')) {
+        const b = document.createElement('b')
+        b.textContent = (s.textContent.match(/-?\d+$/) ?? ['0'])[0]
+        t.el.prepend(b)
+      }
+      s.remove()
+    })
+  }
+
   // K26's own place, as SeatPlate computes it, in viewport pixels.
   const home = (p) => {
     const z = union(seatZones(p.dataset.seatPlate).map((x) => x.r))
@@ -190,20 +208,24 @@ window.__p683 = (() => {
     const said = {}
     const ps = plates()
     if (v === 'nu') return said
-    if (v === 'c' || v === 'ac' || v === 'bc') ps.forEach(narrow)
+    // A plate that is placed by a rule is laid out at its own width; #750's max-width is the room
+    // at K26's own place, which the rule leaves. C, C2 and D stay where K26 puts them, and keep it.
+    if (['a', 'ac', 'b', 'bc', 'e'].includes(v)) for (const p of ps) p.style.maxWidth = 'none'
+    if (v === 'c' || v === 'ac' || v === 'bc' || v === 'e') ps.forEach(narrow)
+    if (v === 'e') ps.forEach(chipsSay)
     if (v === 'c2') ps.forEach(badge)
     if (v === 'c' || v === 'c2' || v === 'd') {
       for (const p of ps) { const at = home(p); putAt(p, at.x, at.y); said[p.dataset.seatPlate] = 'egen plats' }
       return said
     }
-    if (v === 'a' || v === 'ac') {
+    if (v === 'a' || v === 'ac' || v === 'e') {
       // Side seats first: they have the least room. Only the plates already placed count.
       const order = [...ps].sort((a, b) => ('EW'.includes(b.dataset.edge) ? 1 : 0) - ('EW'.includes(a.dataset.edge) ? 1 : 0))
       for (const p of ps) { const at = home(p); putAt(p, at.x, at.y); p.style.visibility = 'hidden' }
       for (const p of order) {
         p.style.visibility = ''
         let tag = tryRule(p)
-        if (tag === null && v === 'ac') {
+        if (tag === null && (v === 'ac' || v === 'e')) {
           // The last step before standing on something: the plate as its badge.
           badge(p)
           tag = tryRule(p)
