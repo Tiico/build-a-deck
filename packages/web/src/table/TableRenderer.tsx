@@ -487,7 +487,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     }
     namesAt.current = namesKey
     if (deciding) redrawNames((n) => n + 1)
-  }, [namesKey, deciding])
+  }, [namesKey, deciding, forTheRoom])
   useEffect(() => () => namesWatch.current?.disconnect(), [])
   const live = useRef<Live | null>(null)
   const toTable = useRef<((cx: number, cy: number) => Point) | null>(null)

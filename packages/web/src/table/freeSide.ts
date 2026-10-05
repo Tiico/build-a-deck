@@ -354,7 +354,8 @@ export function placePlates(root: ParentNode, home = false): Record<string, Plat
     // The seat's own zones, as the renderer drew them: felt pixels at the fitted scale.
     const zonesOf = (p: HTMLElement): Box | null => {
       const n = (p.dataset['box'] ?? '').split(' ').map(Number)
-      return n.length === 4 && n.every(Number.isFinite) ? { l: n[0]!, t: n[1]!, r: n[2]!, b: n[3]! } : null
+      const [l = NaN, t = NaN, r = NaN, b = NaN] = n
+      return n.length === 4 && [l, t, r, b].every(Number.isFinite) ? { l, t, r, b } : null
     }
     const east = (p: HTMLElement) => p.dataset['edge'] === 'E'
     const size = (p: HTMLElement) => {
