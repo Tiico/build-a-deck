@@ -38,7 +38,7 @@ describe('who has the game, from the editor (D3)', () => {
     await openEditor()
 
     // Alone, the door is still there: it is how one shares the game.
-    const door = await screen.findByRole('button', { name: 'Vilka som har spelet' })
+    const door = await screen.findByRole('button', { name: 'Dela · vilka som har spelet' })
     fireEvent.click(door)
     const panel = await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
     expect((await within(panel).findAllByRole('listitem')).map((l) => l.textContent)).toEqual([expect.stringContaining('ada@example.com')])
@@ -63,7 +63,7 @@ describe('who has the game, from the editor (D3)', () => {
     await signIn('ada@example.com')
 
     await openEditor()
-    fireEvent.click(await screen.findByRole('button', { name: 'Vilka som har spelet' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Dela · vilka som har spelet' }))
     const panel = await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
     await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(2))
     expect(panel.textContent).toContain('bo@example.com')
@@ -78,12 +78,28 @@ describe('who has the game, from the editor (D3)', () => {
 })
 
 // Sharing as something that answers in words and asks before it takes (#477).
+// A way in that can be found without knowing the pattern (#727, beslut A + C, 2026-10-05): the
+// door to who has the game says «Dela» beside the faces, and the game's own ⋯ offers the same.
+describe('the way to sharing is in words (#727)', () => {
+  it('says «Dela» beside the faces, and offers «Dela spelet…» in the game s ⋯', async () => {
+    await signIn('ada@example.com')
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    await openEditor()
+    const door = await screen.findByRole('button', { name: /^Dela/ })
+    expect(door.textContent).toContain('Dela')
+
+    fireEvent.click(screen.getByRole('button', { name: /^Fler val för/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Dela spelet…' }))
+    expect(await screen.findByRole('dialog', { name: 'Vilka som har spelet' })).toBeTruthy()
+  })
+})
+
 describe('the share panel says what happened (#477)', () => {
   const owning = async () => {
     await signIn('ada@example.com')
     await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
     await openEditor()
-    fireEvent.click(await screen.findByRole('button', { name: 'Vilka som har spelet' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Dela · vilka som har spelet' }))
     return screen.findByRole('dialog', { name: 'Vilka som har spelet' })
   }
   const invite = (panel: HTMLElement, email: string) => {
@@ -121,7 +137,7 @@ describe('the share panel says what happened (#477)', () => {
     await fetch(`${run.http}/invites/${token}`, { method: 'POST' })
     await signIn('ada@example.com')
     await openEditor()
-    fireEvent.click(await screen.findByRole('button', { name: 'Vilka som har spelet' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Dela · vilka som har spelet' }))
     const panel = await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
     await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(2))
 
@@ -143,7 +159,7 @@ describe('the share panel says what happened (#477)', () => {
     await signIn('bo@example.com')
     await fetch(`${run.http}/invites/${token}`, { method: 'POST' })
     await openEditor()
-    await screen.findByRole('button', { name: 'Vilka som har spelet' })
+    await screen.findByRole('button', { name: 'Dela · vilka som har spelet' })
 
     // Ada takes it back. The jar is shared, so Bo's editor would reconnect as Ada if it tried:
     // what is asserted is that it does not try.
@@ -161,7 +177,7 @@ describe('the share panel says what happened (#477)', () => {
     await fetch(`${run.http}/projects/${run.projectId}/invites`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com', role: 'tester' }) })
     await fetch(`${run.http}/projects/${run.projectId}/invites`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'cee@example.com', role: 'viewer' }) })
     await openEditor()
-    fireEvent.click(await screen.findByRole('button', { name: 'Vilka som har spelet' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Dela · vilka som har spelet' }))
     const panel = await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
 
     const waiting = await within(panel).findByRole('button', { name: /2 inbjudningar väntar/ })
@@ -189,7 +205,7 @@ describe('the share panel says what happened (#477)', () => {
     field.focus()
     fireEvent.keyDown(field, { key: 'Escape' })
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Vilka som har spelet' })).toBeNull())
-    fireEvent.click(screen.getByRole('button', { name: 'Vilka som har spelet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Dela · vilka som har spelet' }))
     const again = await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
     expect((within(again).getByLabelText('Adress att bjuda in') as HTMLInputElement).value).toBe('cilla@exa')
   })
@@ -250,7 +266,7 @@ describe('a role that may not edit (D3)', () => {
     await signIn('ada@example.com')
     await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
     await openEditor()
-    await screen.findByRole('button', { name: 'Vilka som har spelet' })
+    await screen.findByRole('button', { name: 'Dela · vilka som har spelet' })
     await waitFor(() => expect(document.querySelector('[data-role-note]')).toBeNull())
   })
 })
@@ -267,7 +283,7 @@ describe('the share panel follows the role (D3, #689)', () => {
     expect((await fetch(`${run.http}/invites/${token}`, { method: 'POST' })).status).toBe(200)
 
     await openEditor()
-    fireEvent.click(await screen.findByRole('button', { name: 'Vilka som har spelet' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Dela · vilka som har spelet' }))
     const panel = await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
     await waitFor(() => expect(within(panel).getAllByRole('listitem')).toHaveLength(2))
     expect(within(panel).queryByRole('button', { name: /^Ta bort/ })).toBeNull()
@@ -282,7 +298,7 @@ describe('the share panel follows the role (D3, #689)', () => {
     await signIn('ada@example.com')
     await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
     await openEditor()
-    fireEvent.click(await screen.findByRole('button', { name: 'Vilka som har spelet' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Dela · vilka som har spelet' }))
     const panel = await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
     expect(within(panel).getByRole('button', { name: 'Bjud in' })).toBeTruthy()
     expect(panel.textContent).not.toContain('Bara ägaren')

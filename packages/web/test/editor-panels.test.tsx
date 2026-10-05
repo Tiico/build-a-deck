@@ -75,12 +75,12 @@ describe('the faces in the header, to a screen reader (#556)', () => {
     await openEditor()
     const other = await ProjectClient.open({ http: run.http, id: run.projectId, name: 'Lo' })
     try {
-      const here = await screen.findByRole('button', { name: 'Vilka som har spelet, 2 inne' })
+      const here = await screen.findByRole('button', { name: 'Dela · vilka som har spelet, 2 inne' })
       expect(here.textContent).toContain('2 inne')
     } finally {
       other.close()
     }
-    await screen.findByRole('button', { name: 'Vilka som har spelet' })
+    await screen.findByRole('button', { name: 'Dela · vilka som har spelet' })
   })
 })
 
@@ -88,7 +88,7 @@ describe('who has the game, over the editor’s work (D3)', () => {
   it('closes on Escape and hands the focus back to the faces in the header', async () => {
     const user = userEvent.setup()
     await openEditor()
-    const here = screen.getByRole('button', { name: 'Vilka som har spelet' })
+    const here = screen.getByRole('button', { name: 'Dela · vilka som har spelet' })
     await user.click(here)
     await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
 
@@ -100,7 +100,7 @@ describe('who has the game, over the editor’s work (D3)', () => {
   it('closes when the designer clicks back into the work', async () => {
     const user = userEvent.setup()
     await openEditor()
-    await user.click(screen.getByRole('button', { name: 'Vilka som har spelet' }))
+    await user.click(screen.getByRole('button', { name: 'Dela · vilka som har spelet' }))
     await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
 
     await user.click(screen.getByRole('tabpanel', { name: 'Kortvägg' }))
@@ -117,7 +117,7 @@ describe('the two panels together', () => {
     await user.click(screen.getByRole('button', { name: /rev 1/ }))
     await screen.findByRole('dialog', { name: 'Historik' })
 
-    await user.click(screen.getByRole('button', { name: 'Vilka som har spelet' }))
+    await user.click(screen.getByRole('button', { name: 'Dela · vilka som har spelet' }))
     await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
     expect(screen.queryByRole('dialog', { name: 'Historik' })).toBeNull()
 

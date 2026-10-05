@@ -1,4 +1,4 @@
-import { applyEdit, checkNewName, type EditIntent } from './edits.js'
+import { applyEdit, checkNewName, decideEdit, type EditIntent } from './edits.js'
 import { stamp, type ProjectDoc, type ProjectStore } from './projects.js'
 import type { Role } from './roles.js'
 
@@ -115,7 +115,9 @@ export class ProjectActor {
   async edit(intent: EditIntent, by?: string, from?: string): Promise<AppliedEdit> {
     return this.serial(() => this.commit(intent, by, from))
   }
-  private async commit(intent: EditIntent, by?: string, from?: string): Promise<AppliedEdit> {
+  private async commit(asked: EditIntent, by?: string, from?: string): Promise<AppliedEdit> {
+    // Decided first, so what is committed is the answer and not the question (#894).
+    const intent = decideEdit(this.current, asked)
     // What may be made now is asked here as well as by the verb (#694); the log's replay asks
     // only the verb, so a stricter rule about new names never makes an old log read differently.
     checkNewName(this.current, intent)

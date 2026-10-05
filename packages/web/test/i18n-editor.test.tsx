@@ -212,7 +212,7 @@ describe('the editor in the reader\'s own language (A4)', () => {
     expect(within(history).getByRole('button', { name: 'Close the history' })).toBeTruthy()
     fireEvent.click(within(history).getByRole('button', { name: 'Close the history' }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Who has the game' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Share · who has the game' }))
     const share = await screen.findByRole('dialog', { name: 'Who has the game' })
     expect(within(share).getByPlaceholderText('name@example.com')).toBeTruthy()
     expect(within(share).getByRole('button', { name: 'Invite' })).toBeTruthy()
