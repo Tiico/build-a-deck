@@ -13,7 +13,8 @@ import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { statusLinks, wayBack } from '../status/links.js'
-import { noticeFor, watchingNotice } from '../status/notice.js'
+import { kickedNotice, noticeFor, watchingNotice } from '../status/notice.js'
+import { useRoomOpen } from '../status/useRoomOpen.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useSessionName } from '../status/sessionName.js'
 import { useFeltKeyboard } from '../table/useFeltKeyboard.js'
@@ -39,6 +40,7 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const { client, view, status, activity, refused } = conn
   const live = useLiveStatus(conn, 'phone', timing)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
+  const roomOpen = useRoomOpen(url.replace(/^ws/, 'http'), params.get('code'), refused === 'kicked')
   // An ended table is not «Din hand» any more: the phone is showing the survey (#483).
   const game = useSessionName(url.replace(/^ws/, 'http'), sessionId, !params.get('code'))
   // A viewer's link opened here (#753): a token with no seat is someone who came in to watch, and
@@ -80,6 +82,7 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   if (!sessionId || !seat) return <StatusNotice notice={noticeFor('missing', 'phone', t)} surface="page" links={links} />
   // Not admitted, or kicked (DRIFT §9). The door is shut, so it is the `forbidden` state — said
   // in the model's form, with the server's own reason for the sentence.
+  if (refused === 'kicked') return <StatusNotice notice={kickedNotice(roomOpen === true, t)} surface="page" links={links} />
   if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'phone', t), text: refusedText(refused, t) }} surface="page" links={links} />
   if (!view || !client) return <RouteStatus status={live} over="sheet" links={links} onRetry={conn.retry} />
 

@@ -201,6 +201,12 @@ export const enAccount = {
   'error.removeGame.failed': 'the game could not be deleted; try again in a moment',
   'error.removeGame.notOwner': 'only the owner can delete the game',
   'wizard.card.n': 'Card {n}',
+  'wizard.example.1.title': 'Forest walk',
+  'wizard.example.1.body': 'Draw a card.',
+  'wizard.example.2.title': 'Gold find',
+  'wizard.example.2.body': 'Gain 2 {coin|gain}.',
+  'wizard.example.3.title': 'The bear',
+  'wizard.example.3.body': 'Deal 3 {sword|attack}.',
 
   // Taking a game out and bringing it back (G5, #529): export and import on the home page.
   'home.menu.export': 'Export…',

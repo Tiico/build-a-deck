@@ -452,10 +452,13 @@ describe('en ny hög föds på ledig filt (#443, K2)', () => {
   const table = (): ProjectDoc => ({ ...base(), setup: openingSetup({ players: 2, counters: [{ name: 'Poäng', start: 0 }] }) })
   const pile = (doc: ProjectDoc, id: string) => doc.setup.zones.find((z) => z.id === id)!.geometry
 
-  it('lägger den första där den alltid har legat, och den andra på sin egen kortrygg', () => {
+  it('lägger den första med handtagets band fritt, och den andra på sin egen kortrygg', () => {
     const two = after(table(), { v: 'addZone', id: 'hog-1', kind: 'pile', name: 'Hög 1' }, { v: 'addZone', id: 'hog-2', kind: 'pile', name: 'Hög 2' })
-    // Den första högen krockar med ingenting, så inget recepbord ritas om.
-    expect(pile(two, 'hog-1')).toEqual({ x: 0, y: 150, w: 0, h: 0, rot: 0 })
+    // Under kortet hänger handtaget och namnet i bordsläget, 97 mm i filtens mått (#881, K2). Från
+    // den gamla punkten `(0, 150)` nådde det bandet ytan framför den södra platsen.
+    const band = { ...cardBack(pile(two, 'hog-1')), h: CARD.h + 97 }
+    const others = two.setup.zones.filter((z) => z.id !== two.setup.floor && z.id !== 'hog-1' && z.kind !== 'pile')
+    expect(others.filter((z) => shares(z.geometry, band)).map((z) => z.id)).toEqual([])
     expect(shares(cardBack(pile(two, 'hog-1')), cardBack(pile(two, 'hog-2')))).toBe(false)
     // Och punkten är hela millimetrar, som allt annat bordet bär: kortryggen är 63 bred kring en
     // mittpunkt, så en ruta ur en sökning i hela millimetrar skulle annars ge en halv.

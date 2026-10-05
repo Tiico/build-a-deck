@@ -231,6 +231,19 @@ export function guestNotice(state: 'missing' | 'forbidden', t: T = swedish): Not
 export function asObserver(notice: Notice, t: T = swedish): Notice {
   return { ...notice, actions: notice.actions.map((a) => (a.kind === 'rescan' ? { ...a, label: t('status.act.rejoin') } : a)) }
 }
+// A seat the host took away (DRIFT §9, #679, beställarens beslut C). The way on is away from the
+// table — «Välj plats igen» was the green first button, and two presses later the kicked player sat
+// at the same table again — and back to it only as a second way, while the code still opens the room.
+export function kickedNotice(open: boolean, t: T = swedish): Notice {
+  const shut = noticeFor('forbidden', 'phone', t)
+  return {
+    ...shut,
+    heading: t('status.kicked.heading'),
+    text: open ? t('status.kicked.text') : `${t('status.kicked.text')} ${t('status.kicked.closed')}`,
+    actions: [{ ...home(t, 'status.act.home.start'), primary: true }, ...(open ? [{ kind: 'rescan' as const, label: t('status.act.rescan') }] : [])],
+  }
+}
+
 export function observerNotice(refused: string, t: T = swedish): Notice {
   return asObserver(
     {

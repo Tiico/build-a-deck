@@ -41,7 +41,8 @@ test('gives back a draft with a 5 MB picture and six cards after a reload (#686)
   await page.getByLabel('Spelets namn').fill('Skogens herrar')
   await page.getByLabel('kort 1 Illustration').setInputFiles({ name: 'drake.png', mimeType: 'image/png', buffer: BIG })
   await expect(page.getByRole('img', { name: 'Förhandsvisning av Illustration' })).toBeVisible()
-  for (let n = 2; n <= 6; n++) {
+  // Six cards: the three examples the guide opens on (#733), and three more.
+  for (let n = 4; n <= 6; n++) {
     await page.getByRole('button', { name: '+ Nytt kort' }).click()
     await page.getByLabel(`kort ${n} Titel`).fill(`Drake ${n}`)
   }
@@ -74,7 +75,7 @@ test('makes the game with its 5 MB picture on the way back from a login (#686)',
   await page.getByLabel('kort 1 Illustration').setInputFiles({ name: 'drake.png', mimeType: 'image/png', buffer: BIG })
   await expect(page.getByRole('img', { name: 'Förhandsvisning av Illustration' })).toBeVisible()
   await page.getByRole('button', { name: '+ Nytt kort' }).click()
-  await page.getByLabel('kort 2 Titel').fill('Drake 2')
+  await page.getByLabel('kort 4 Titel').fill('Drake 4')
   await page.getByRole('button', { name: /Skapa spelet och fortsätt i editorn/ }).click()
   await expect(page).toHaveURL(/\/login\?/)
   expect(new URL(page.url()).searchParams.get('next') ?? '').toContain('resume=1')

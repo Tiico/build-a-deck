@@ -61,27 +61,33 @@ describe('en ny hög föds på ledig filt (#443)', () => {
     }
   })
 
-  // Den första högen på ett färskt bord hamnar där den alltid har hamnat, så inget recepbord
-  // ritas om — sagt om den byggda fliken och inte bara om dokumentet.
+  // Under kortet hänger högens handtag i bordsläget, och under handtaget högens namn (K14, #789).
+  // Bandet för dem är 97 mm i filtens mått (#881, K2), och det ska vara den nya högens eget —
+  // sagt om den byggda fliken och inte bara om dokumentet. Från den gamla punkten `(0, 150)` nådde
+  // det ytan framför den södra platsen.
   //
   // Mätt utan att pinna en enda bildpunkt. Bordets två högar står kvar där uppställningen lade
   // dem, för platsantalet flyttar bara filten, händerna och platsernas egna zoner; deras avstånd
-  // på skärmen är därmed deras avstånd i millimeter, och det är den linjalen resten läses med.
+  // på skärmen är därmed deras avstånd i millimeter, och det är den linjalen bandet ritas med.
   // Talen hämtas ur uppställningen själv, så provet följer fixturen i stället för att pinna den.
-  it('lägger den första högen där den alltid har legat, mätt mot bordets egna högar', async () => {
-    const close = await bordTab(run, 2)
+  it.each(seatCounts)('håller handtagets band under de två nya högarna fritt vid %i platser', async (seats) => {
+    const close = await bordTab(run, seats)
     try {
-      const made = await addZone('pile', 1)
-      const at = (id: string) => centre(drawn().find((b) => b.id === id)!.box)
-      const [draw, discard, mine] = [at('draw'), at('discard'), at(made)]
+      const made = [await addZone('pile', 1), await addZone('pile', 2)]
+      const boxes = drawn()
+      const at = (id: string) => centre(boxes.find((b) => b.id === id)!.box)
       const mmOf = (id: string) => twoSeatSetup().zones.find((z) => z.id === id)!.geometry
-      const apart = mmOf('discard').x - mmOf('draw').x
-      const perMm = (discard.x - draw.x) / apart
+      const perMm = (at('discard').x - at('draw').x) / (mmOf('discard').x - mmOf('draw').x)
       // Icke-vakuitet: det finns en linjal att mäta med. En filt som inte ritades alls ger noll
-      // bildpunkter mellan högarna, och varje mätning nedan skulle bli oändlig eller noll.
-      expect({ ruler: apart !== 0, drawn: perMm > 0 }).toEqual({ ruler: true, drawn: true })
-      const mm = { x: mmOf('draw').x + (mine.x - draw.x) / perMm, y: mmOf('draw').y + (mine.y - draw.y) / perMm }
-      expect({ x: Math.round(mm.x), y: Math.round(mm.y) }).toEqual({ x: 0, y: 150 })
+      // bildpunkter mellan högarna, och bandet nedan skulle bli noll högt och fritt av det.
+      expect({ seats, drawn: perMm > 0 }).toEqual({ seats, drawn: true })
+      const where = `vid ${seats} platser`
+      for (const id of made) {
+        const card = boxes.find((b) => b.id === id)!.box
+        const band: Box = { x: card.x, y: card.y + card.h, w: card.w, h: 97 * perMm }
+        const over = boxes.filter((b) => b.id !== id && b.id !== 'table' && shares(b.box, band)).map((b) => b.id)
+        expect({ where, zone: id, over }).toEqual({ where, zone: id, over: [] })
+      }
     } finally {
       close()
     }

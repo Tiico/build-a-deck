@@ -60,3 +60,21 @@ test.describe('a connection that goes away', () => {
     await expect(tv.page.locator('[data-seat-plate="A"]')).toContainText('Ada')
   })
 })
+
+// A screen nobody touches (#722, D5 reviderat 2026-10-05). The television gave up after the plan
+// like a phone, and a quarter-minute of bad wifi left the room's screen disconnected until somebody
+// got up to press «Försök nu». Past the plan it counts down to its next try, and when the browser
+// says the network is back it tries at once.
+test('the TV goes on trying after its plan, and comes back when the network does (#722)', async ({ table, open }) => {
+  test.setTimeout(90_000)
+  const tv = await open(TV, `${table.tvUrl}&lang=sv`)
+  await expect(tv.page.locator('[data-seat-plate]').first()).toBeVisible()
+  await tv.line.cut()
+  await expect(tv.page.locator('.byd-status-stale')).toBeVisible({ timeout: 30_000 })
+  // Past the plan's four tries (0,5 + 2 + 4 + 8 s): still counting down, and not «slutat försöka».
+  await expect(tv.page.getByText(/Nytt försök om \d+ s$/)).toBeVisible({ timeout: 40_000 })
+  await expect(tv.page.getByText(/slutat försöka/)).toHaveCount(0)
+  tv.line.restore()
+  await tv.page.evaluate("window.dispatchEvent(new Event('online'))")
+  await expect(tv.page.locator('.byd-status-stale')).toHaveCount(0, { timeout: 10_000 })
+})

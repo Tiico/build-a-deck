@@ -229,6 +229,13 @@ export const svAccount = {
   'error.removeGame.failed': 'kunde inte ta bort spelet; försök igen om en stund',
   'error.removeGame.notOwner': 'bara ägaren kan ta bort spelet',
   'wizard.card.n': 'Kort {n}',
+  // Exempelkorten guiden öppnar med (#733): spelets egna ord, och betydelserna med startikonernas namn.
+  'wizard.example.1.title': 'Skogsvandring',
+  'wizard.example.1.body': 'Dra ett kort.',
+  'wizard.example.2.title': 'Guldfynd',
+  'wizard.example.2.body': 'Få 2 {mynt|vinst}.',
+  'wizard.example.3.title': 'Björnen',
+  'wizard.example.3.body': 'Gör 3 {svärd|anfall}.',
 
   // Att ta med sig ett spel och ta tillbaka det (G5, #529): export och import i Mina spel.
   'home.menu.export': 'Exportera…',

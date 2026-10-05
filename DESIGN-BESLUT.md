@@ -1181,6 +1181,12 @@ Fem frågor från prototypen är fortfarande obesvarade och står kvar i avsnitt
 Orden ska stämma med adressen (#753): «saknas» skiljs från «avslutat», så ett bord servern aldrig hört talas om säger «Vi hittar inte bordet» och «Bordet är slut» står bara för ett bord som avslutats med `session.end`.
 En adress utan något i sig — `/editor` utan projekt, `/table` utan bord — säger att länken inte pekar på något, i stället för att gissa på ett felskrivet tecken.
 En tittarlänk öppnad på telefonens sida är varken saknad eller stängd: den säger «Du tittar bara» och leder till observatören med samma länk.
+Reviderat 2026-10-05 (#722): **en skärm som ingen rör ger inte upp.**
+TV:n och bordsläget slutade försöka efter planen som alla andra, och ett wifi-hack på en kvarts minut i ett vardagsrum frös det delade bordet tills någon reste sig och tryckte «Försök nu».
+Efter planen försöker de två skärmarna igen var 30:e sekund, utan slut, och direkt när webbläsaren säger att nätet är tillbaka (`online`).
+Beskedet räknar ned till nästa försök utan «av», och «Försök nu» står kvar som genväg.
+Telefoner och editorn behåller planen och överlämnar beslutet till den som håller dem.
+`TableClient` tar det som `keepTryingMs`, och bordets sida sätter det; `reconnect.spec.ts` klipper TV:ns lina förbi planen och ser den komma tillbaka på `online`.
 
 ---
 
@@ -1676,6 +1682,17 @@ Och kortryggen är 63 millimeter bred — ett udda tal kring en mittpunkt — s�
 Att filten är full är dessutom två olika påståenden för de två zonerna, eftersom en ruta på 300 × 120 mm och en kortrygg på 63 × 88 mm slutar få plats vid olika tillfällen, så högen säger det med egna ord på samma rad.
 Grinden är `recipe-geometry.test.ts` och `edits.test.ts` för regeln, och `setup-new-pile.test.tsx`, som läser zonernas rutor ur den byggda fliken vid varje platsantal 2–`MAX_PLAYERS`.
 
+Reviderat 2026-10-05 (#881, beställarens beslut A med 97 mm): en ny hög har plats för sitt handtag, och den första hamnar inte längre på `(0, 150)`.
+I bordsläget hänger högens handtag 8–52 px under kortet (K14), och #789 lägger högens namn 16 px under handtaget.
+Det smala namnbandet på 30 mm under kortet var måttat för TV-lägets namn, så en ny hög föddes med handtaget på grannens kort eller på ytan framför en spelare.
+Bandet under kortet räknas därför för bordsläget i 1280 × 800 med fyra platser, det vanligaste spelfallet: 68 px vid 0,70 px/mm, alltså 97 mm.
+Det gäller rummet den nya högen söks i och rummet varje befintlig hög räknas som när en ny hög placeras; en ny delad yta mäter fortfarande högarna med namnbandet på 30 mm (#440, #480).
+#443:s löfte om den gamla punkten och ett fritt handtag gick inte att hålla samtidigt, eftersom det bara är 36 mm mellan den punktens kortkant och ytan framför den södra platsen.
+Den första nya högen på receptets bord hamnar nu på `(−304, 89)` vid 2–6 platser och på `(0, 185)` vid 7–8, och åtta högar i rad får fortfarande plats vid varje platsantal.
+Vid sju och åtta platser ritas filten mindre, och handtaget når fortfarande omkring 9 px in på grannen under; det är accepterat, eftersom ett band som räcker även där (118 mm) gör en filt med fyra platser full efter sex nya högar.
+Bara högar som skapas efteråt påverkas: en hög som redan ligger har sin punkt i dokumentet.
+Grinden är densamma som ovan, och `setup-new-pile.test.tsx` mäter bandet under de två nya högarna i den byggda fliken med bordets egna högar som linjal.
+
 ### K3. Flera kort på en gång: atomisk batch i kuvertet
 
 `Envelope` bär `intents: Intent[]`.
@@ -2136,6 +2153,14 @@ Ett nytt sessionsverb, `rewind.reject`, för att avvisa eller dra tillbaka ett f
 Kuvert-id blir loggens batch och måste vara unikt per session, inte per anslutning; motorn avvisar ett återanvänt id.
 Aktören håller sin logg i minnet för att kunna se bakåt.
 Utan andra sittande kan ett kontesterat förslag bara dras tillbaka; bordsskärmen får aldrig bekräfta.
+
+Reviderat 2026-10-05 (#747, beställarens beslut A efter prototyp 02): **ett förslag föregås av en fråga.**
+Har någon annan spelat sedan platsens senaste drag skickades förslaget på trycket, utan ett ord, och de andra fick avgöra en tillbakaspolning den som tryckte kanske aldrig menade.
+Nu öppnar trycket ett ark, «Senaste draget är inte ditt», som säger var bordet skulle hamna (före vilket drag) och vem som avgör, och som öppnar på «Avbryt».
+Först «Föreslå att spola tillbaka» skickar `rewind.propose`; ett eget drag ångras fortfarande på ett tryck.
+När ett förslag står stängs distansvyns «Visa alla», som annars täckte just det bord förslaget visar, och förslagsställarens rad namnger draget.
+Bortvalda varianter: B, en knapp som byter namn men inte frågar, och C, där Ångra bara ångrar egna drag och tillbakaspolningen flyttar till ⋯-menyn.
+Prototypen: `docs/ux-audits/2026-10-05-sparka-och-angra/prototyper/02-angra.html`.
 
 ### K14. Bordet spelas direkt: dra, släpp, klicka för en ring med verb (prototypat 2026-09-06, utvidgad 2026-09-12)
 
@@ -2719,16 +2744,28 @@ Ingen filt i TV-läge ritar en hög så stor: observatören ritar kortet 22–63
 Bara en TV på 3840 CSS-px når 159 px, och där står namnet i 19 px, under rummets golv.
 En tröskel skulle alltså aldrig ha slagit till på ett riktigt bord, och ett namn på ett ställe är den här regelns rubrik.
 
-**Bordsläget behåller namnet på kortet.**
+**Bordsläget fick samma bildtext på en egen platta.**
+*Reviderat 2026-10-05 (#789, beställarens beslut C efter prototypen i #879).*
 Där är högen ett handtag på den gröna filten, och bildtextens färg ger 4,06:1 mot filtens mitt, under AA:s 4,5.
-En platta under texten vore en ny form som prototypas först, och det är inte det beställaren valde.
-Bordslägets namn i 8 px på ett 49 px kort står kvar som ett eget fynd, #789.
+Revisionen ovan sa därför att en platta under texten vore en ny form som först skulle prototypas och beslutas, och att bordslägets namn i 8 px på ett 49 px kort stod kvar som ett eget fynd.
+Nu har den båda.
+Prototypen ställde C, bildtexten på en egen platta, mot D, namnet kvar på kortet i 12 px med ellips, i det byggda appen vid 1280 × 800 och 1920 × 1080, med fyra och åtta platser och sett från plats B.
+D klarade golvet men inte syftet: bordsläget ritar kortet 44–65 px brett vid fyra platser och 26–40 px vid åtta, så i 12 px rymdes fyra eller fem tecken, och vid åtta platser ett.
+C säger namnet i 12 px oberoende av hur litet kortet ritas.
+Bildtexten är densamma som i TV-läget, `cardWord` i samma `.byd-pile-caption`, och står bara medan tillståndet är framme.
+Den står på filtens egen platta (`--byd-felt-plate`, ringens och åtgärdsarkets), ogenomskinlig, i kritan som handtaget redan skriver i: 14:1, och tillståndets rosa för en förlorad bild 10:1, var plattan än hamnar.
+Den hänger i handtaget, 2 px från det, 12 px och högst 10 em bred, på den sida av handtaget som vetter bort från kortet.
+Handtaget vrids tillbaka upprätt på en vriden filt, så på en filt vriden ett halvt varv — plats B som ser bordet från andra sidan — pekar handtagets eget «under» mot kortet, och bildtexten står ovanför handtaget i stället; vid ett kvartsvarv står kortet bredvid handtaget, och under är fritt.
+Under 460 px döljer bordsläget högarnas namn (ovan), och där finns inte heller plats för en platta mellan två högar: där står namnet kvar på kortet som förut.
+Under bygget visade det sig att handtaget självt stod en hel handtagsbredd bredvid sin hög på en filt vriden ett halvt varv, eftersom dess halva bredds förskjutning låg i `transform` och vreds med av `rotate`; det centreras nu med `translate`.
+Krocken mellan bildtexten och de tätt lagda extra högarna (`newPileSpot` räknade namnbandet för TV:ns namn) är densamma som handtagen redan har utan bildtext, och den är #881: en ny hög räknar sedan dess ett band på 97 mm under kortet, för handtaget och bildtexten tillsammans (K2).
 
 **Kvar att veta för grannarna.**
 #683 gäller fortfarande: vid 1280 täcker sidoplatsernas skyltar Kasthög och dess namn, men bildtexten står under skylten och är fri, 13 px från plats A:s skylt.
 #685:s förslag G lägger Saloonens namn under Saloonen, mellan Kortlek och Kasthög vid fyra platser, i samma remsa som bildtexten; den som bygger G behöver mäta mot bildtexten också.
 Mätt i den byggda appen: «Skogens väktare» är 79 px och «Grävling 1» 48 px i 12 px, hela vid 390 och 320, och närmaste andra namn är «Räknare C» 9,7 px bort vid 320 × 568; på TV:n är «Skogens väktare» 159 px i 24 px.
 `packages/e2e/test/surfaces/pile-name-caption.spec.ts` läser bildtexten hos observatören vid 390 × 844 och 320 × 568 och på rummets TV vid 1280 × 800 och 1920 × 1080, i båda tillstånden: hel, överst längs hela sin längd, fri från varje annan etikett, bricka och kort, på skärmen och minst skärmens golv, utan namnet på kortet, borta när bilden har kommit, och på TV:n frånvarande vid den nedvända draghögen och ur både sidan och ramarna.
+I bordsläget läser den bildtexten på samma sätt hos en spelare på `/online` vid 1280 × 800 och 1920 × 1080, från plats B med filten vriden ett halvt varv, och på bordets skärm vid 1280 × 800, och dessutom: på en ogenomskinlig platta med minst 4,5:1, i kritan eller den förlorade bildens rosa, på handtagets sida bort från kortet, och med handtaget i linje med sitt kort; på en filt under 460 px står namnet kvar på kortet.
 
 **En delad zon under en plats ruta skriver sitt namn mitt över sig själv.**
 Utvidgat 2026-09-15 (#43), och det är det första i regeln som handlar om två namn som hör till olika zoner.
@@ -6073,6 +6110,18 @@ Det lämnas därför vidare: till platsen som tog den sparkades plats, till den 
 Variant B, en box «Bordet kör (8) ▾» i huvudet, valdes bort: huvudet är redan fullt under 1440 (#566) och rann 73 px utanför vid 1024.
 Variant C, en statusrad på 32 px med sparkarna flyttade till Bord-flikens kort, är en större flytt som kan göras senare om bandet ändå stör.
 Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/05-bordsbandet.html`.
+
+Tillagt 2026-10-05 (#679, beställarens beslut C efter prototyp 01): **× och «Ny kod» frågar först.**
+Ett tryck på × sparkade direkt, och brickorna står 8 px isär, så en felträff kostade en annan spelares hand mitt i spelet.
+«Ny kod» bytte koden på TV:n och i det värden just skickat utan ett ord.
+Båda går nu genom editorns fråga (`Question`), i en egen rad under bandets första rad, och frågan öppnar på «Avbryt».
+Frågan om sparken har två röda svar: «Sparka Bo» och «Sparka och byt kod».
+Det andra stänger dörren i samma andetag, eftersom en sparkad telefon annars satt vid bordet igen två tryck senare med koden den redan hade.
+När koden har bytts säger bandet det: «Ny rumskod SAFYX3. UF6H2W gäller inte längre.»
+Den sparkades telefon heter «Du är inte längre vid bordet», och dess primära väg är «Till startsidan».
+«Välj plats igen» står kvar som en andra väg bara så länge koden fortfarande öppnar rummet.
+Bortvalda varianter: A, frågan utan kodbytet, som lämnade det åt värden att komma på; och B, en ångra-stund på fem sekunder, som kräver att en felträff ses i tid.
+Prototypen: `docs/ux-audits/2026-10-05-sparka-och-angra/prototyper/01-sparka.html`.
 
 ### L61. En bricka: pillret på 44 px, i sökfältet och i bordsbandet (prototypat och beslutat 2026-10-01, #648)
 

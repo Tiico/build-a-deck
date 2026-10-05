@@ -12,6 +12,10 @@ export const svStatus = {
   'status.act.home': 'Till mina spel',
   'status.act.home.start': 'Till startsidan',
   'status.act.rescan': 'Välj plats igen',
+  // Den som värden tog bort (#679, beslut C).
+  'status.kicked.heading': 'Du är inte längre vid bordet',
+  'status.kicked.text': 'Värden tog bort dig från bordet. Korten du hade ligger tillbaka i leken.',
+  'status.kicked.closed': 'Bordet har fått en ny rumskod. Vill du tillbaka får du be värden om den.',
   'status.act.rejoin': 'Gå in igen',
   'status.act.switch': 'Byt konto',
   'status.act.observe': 'Till observatören',
@@ -49,6 +53,8 @@ export const svStatus = {
   // det som ligger kvar bakom har blivit (#7), och när nästa försök kommer.
   'status.asOf': 'Det du ser är från {at} och kan ha ändrats sedan dess.',
   'status.countdown': 'Nytt försök om {seconds} s · försök {attempt} av {attempts}',
+  // En skärm ingen rör som fortsätter försöka efter planen (#722): inget «av», för det tar inte slut.
+  'status.countdown.ongoing': 'Nytt försök om {seconds} s',
 
   'status.loading.mark': 'Laddar',
   'status.loading.heading': 'Hämtar…',
