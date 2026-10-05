@@ -191,6 +191,16 @@
 .byd-zone[data-rim='E'] > span { --name-side: calc(-100% - var(--name-off)); }
 .byd-zone[data-rim='W'] > span { --name-side: var(--name-off); }
 
+/* The last place #685 has for a name is inside its own zone, along the edge it stood off — and
+   there the zone's own cards and tokens, drawn after it, lay over it (#874: «Räknare B» under its
+   own counter at six seats turned a quarter). So a name inside its zone is drawn over what the
+   zone holds, on the plate #789 gave the pile's caption: the felt's own, opaque, in chalk, which
+   reads at 14:1 whatever lies under it. `placeNames` measures the name with the plate on. */
+.byd-zone > span[data-name-at='inside'] {
+  z-index: 2; box-sizing: border-box; padding: 0 6px; border-radius: 6px;
+  background: var(--byd-felt-plate); color: var(--byd-felt-chalk); box-shadow: 0 0 0 1px var(--byd-felt-edge);
+}
+
 /* Cards, loose or on a pile: a coloured face or a striped back. The two were written out twice
    over, down to the same stripes; they are one card drawn in two places and are said once.
    The padding and the border are screen pixels inside millimetres, which is a card's own floor:
