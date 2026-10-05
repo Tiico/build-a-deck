@@ -134,6 +134,11 @@ export const svEditor = {
   'editor.table.unreadable.show': 'Visa på kortväggen',
   'editor.table.roomCode': 'rumskod',
   'editor.table.newCode': 'Ny kod',
+  // «Ny kod» frågar först och säger sedan vad som ändrades (#679, beslut C).
+  'editor.table.newCode.ask': 'Byt rumskod?',
+  'editor.table.newCode.ask.body': '{code} på TV:n och i det du skickat slutar gälla. De som sitter vid bordet sitter kvar.',
+  'editor.table.newCode.ask.yes': 'Byt kod',
+  'editor.table.newCode.said': 'Ny rumskod {code}. {old} gäller inte längre.',
   'editor.table.ended': 'Bordet är avslutat.',
   'editor.table.error.start': 'Bordet kunde inte startas. Försök igen.',
   'editor.table.error.update': 'Bordet kunde inte uppdateras. Försök igen.',
@@ -148,6 +153,11 @@ export const svEditor = {
   'editor.readonly.refused': 'Läsläge: du kan läsa spelet men inte ändra det.',
   'editor.seats.at': 'vid bordet:',
   'editor.seats.kick': 'Sparka {name}',
+  // × frågar först, och erbjuder att stänga dörren i samma andetag (#679, beslut C). Bandets vy är
+  // lobbyns och bär inga zoner, så högen heter «leken» här.
+  'editor.seats.ask': 'Sparka {name}?',
+  'editor.seats.ask.body': 'Korten i {name:s} hand går tillbaka i leken, och telefonen lämnar bordet.',
+  'editor.seats.ask.rotate': 'Sparka och byt kod',
   // Vägen hem, och det telefonen inte får plats med.
   'editor.home': 'Mina spel',
   'editor.narrow':

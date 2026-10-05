@@ -28,7 +28,8 @@ import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { statusLinks, wayBack } from '../status/links.js'
-import { guestNotice, towardSeat } from '../status/notice.js'
+import { guestNotice, kickedNotice, towardSeat } from '../status/notice.js'
+import { useRoomOpen } from '../status/useRoomOpen.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useSessionName } from '../status/sessionName.js'
 import { useT } from '../i18n/index.js'
@@ -82,6 +83,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   // A whole table on a whole screen: the message stands on the felt, like the TV's.
   const live = useLiveStatus(conn, 'table', timing)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
+  const roomOpen = useRoomOpen(http, params.get('code'), refused === 'kicked')
   // A seat whose line is gone is offered the room's seat picker before the way home (#484 fynd 14).
   const said = links.rescan && live.notice ? { ...live, notice: towardSeat(live.notice, t) } : live
   const game = useSessionName(http, sessionId, !params.get('code'))
@@ -124,6 +126,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
 
   if (!sessionId || !seat) return <StatusNotice notice={guestNotice('missing', t)} surface="page" links={links} />
   // Not admitted, or kicked (DRIFT §9): a shut door rather than a broken line.
+  if (refused === 'kicked') return <StatusNotice notice={kickedNotice(roomOpen === true, t)} surface="page" links={links} />
   if (refused) return <StatusNotice notice={{ ...guestNotice('forbidden', t), text: refusedText(refused, t) }} surface="page" links={links} />
   if (!view || !client) return <RouteStatus status={live.state === 'missing' ? { ...live, notice: guestNotice('missing', t) } : said} over="card" links={links} onRetry={conn.retry} />
 
