@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TableClient } from '../src/client.js'
-import { asObserver, asSeat, asTable, createSession, roomOf, startServer, type Running } from './fixture.js'
+import { asObserver, asSeat, asTable, createSession, registerRoom, roomOf, startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -215,5 +215,24 @@ describe('admission (DRIFT §9)', () => {
     const { code } = (await rotated.json()) as { code: string }
     await until(() => tv.room?.code === code)
     expect(tv.room?.code).toBe(code)
+  })
+
+  // «Ny kod» changes the host key too (#820): the screen that is open is handed the new one, and
+  // the next time it has to reconnect it comes back with that, not with the key that is now dead.
+  it('the host\'s screen reconnects with the key a rotation handed it', async () => {
+    const id = await createSession(run)
+    const tv = await connect(id, null)
+    await until(() => tv.room?.code === roomOf(id).code)
+    const rotated = await fetch(`${run.http}/sessions/${id}/code`, { method: 'POST', headers: { authorization: `Bearer ${roomOf(id).hostKey}` } })
+    const { code, hostKey } = (await rotated.json()) as { code: string; hostKey: string }
+    await until(() => tv.hostKey === hostKey)
+    registerRoom(id, { code, hostKey })
+
+    await run.restart()
+    const b = await connect(id, 'B')
+    await b.send({ v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
+    await tv.synced(1)
+    expect(tv.refused).toBeNull()
+    expect(tv.status).toBe('open')
   })
 })

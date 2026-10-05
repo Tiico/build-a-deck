@@ -21,7 +21,7 @@ import { noticeFor, tableShut, unlinked } from '../status/notice.js'
 import { logout, whoAmI } from '../account/api.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT, type Key } from '../i18n/index.js'
-import { takeHostKey } from './hostKey.js'
+import { keepHostKey, takeHostKey } from './hostKey.js'
 
 type SessionRecord = { name?: string }
 
@@ -41,6 +41,11 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const conn = useTableClient(sessionId ? { url, sessionId, seat: null, ...(host ? { host } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
   const { client, view, status, activity, observers, room, refused } = conn
+  // «Ny kod» changes the key too (#820), and the key this tab was opened with opens nothing after
+  // it: the one the rotation handed the screen is what a reload must find.
+  useEffect(() => {
+    if (sessionId && conn.hostKey) keepHostKey(sessionId, conn.hostKey)
+  }, [sessionId, conn.hostKey])
   const roomCode = room?.code ?? params.get('code') ?? ''
   // The room reads its own state across a room, so a message that lands on top of the felt is a
   // card in the middle of it (#12, #7, variant C).

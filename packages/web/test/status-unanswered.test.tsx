@@ -17,6 +17,7 @@ const conn = (unansweredSince: number | null): TableConnection => ({
   activity: [],
   observers: [],
   room: null,
+  hostKey: null,
   refused: null,
   trouble: null,
   schedule: { nextRetryAt: null, made: 0, of: 0 },

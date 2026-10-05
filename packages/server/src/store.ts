@@ -41,6 +41,9 @@ export type LogStore = {
   // Admission (DRIFT §9): the session behind a code, and giving a session its (next) code.
   sessionByCode(code: string): Promise<{ id: string; codeExpiresAt: string } | null>
   setCode(sessionId: string, code: string, expiresAt: string): Promise<void>
+  // «Ny kod» (#820): a new code and a new host key in one write, so a leaked key is taken back
+  // with the code it was leaked beside, and there is never a moment when only one of them is new.
+  rotateAdmission(sessionId: string, code: string, expiresAt: string, hostKeyHash: string): Promise<void>
   // Atomically reserves a live seat. False means another live guest already holds it.
   // Observer admissions do not reserve a seat.
   issueGuest(sessionId: string, guest: GuestRecord): Promise<boolean>
@@ -136,6 +139,12 @@ export class MemoryLogStore implements LogStore {
     }
     r.code = code
     r.codeExpiresAt = expiresAt
+  }
+
+  async rotateAdmission(sessionId: string, code: string, expiresAt: string, hostKeyHash: string): Promise<void> {
+    await this.setCode(sessionId, code, expiresAt)
+    const r = this.sessions.get(sessionId)
+    if (r) r.hostKeyHash = hostKeyHash
   }
 
   async issueGuest(sessionId: string, guest: GuestRecord): Promise<boolean> {

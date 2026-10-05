@@ -1451,6 +1451,11 @@ Följdkrav:
 QR-knappen i `table`-vyn är produktens viktigaste knapp.
 Feedback från gäster är svagt attribuerad.
 Missbruk av öppna rumskoder hanteras i DRIFT §9 (byggt 2026-09-07): koden köper en token, går ut och kan roteras, och värden kan sparka.
+«Ny kod» byter också värdnyckeln (beställarens beslut 2026-10-05, #820): den som har delat skärmen trycker «Ny kod», och då stängs både den gamla koden och den gamla nyckeln.
+Ingen egen knapp för nyckeln.
+En TV som redan är öppen får den nya nyckeln i `room`-meddelandet över sin anslutning och behåller bordet; editorn byter till den nya i sin länk till bordet och i sina sparkar.
+Nyckeln går bara till bordets egna anslutningar, aldrig till en telefon eller en observatör (DRIFT §9).
+`room` är ett servermeddelande och inget intent, så intent-vokabuläret är orört.
 
 Byggt 2026-09-06 (prototypat, variant "kort i mitten"):
 Skaparen loggar in med en magisk länk (DRIFT §11): `POST /auth/login` mejlar en engångslänk som gäller i 15 minuter och svarar alltid 200, `GET /auth/verify` löser in den, skapar kontot första gången och sätter en HttpOnly-kaka i 30 dagar.

@@ -6,7 +6,7 @@ import { EditorPage } from '../src/editor/EditorPage.js'
 import { TableClient } from '../src/client.js'
 import { projectDoc } from './project-doc.js'
 import { buildBlankProject } from '../src/wizard/build.js'
-import { asSeat, registerRoom, startServer, type Running } from './fixture.js'
+import { asSeat, asTable, registerRoom, startServer, type Running } from './fixture.js'
 import { layerNames, layerPick, layerRow, layerRows } from './layers.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 import { openAllSections } from './sections.js'
@@ -559,6 +559,45 @@ describe('the host\'s controls (DRIFT §9)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Ny kod' }))
     await waitFor(() => expect(screen.getByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' }).textContent).not.toBe(first))
+  })
+
+  // «Ny kod» changes the host key too (#820): the editor's own link to the table and its kick go on
+  // with the new key, since the one the table was started with opens nothing any more.
+  it('carries the new host key after «Ny kod», in the link to the table and in a kick', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('button', { name: /starta bord/i }))
+    const first = (await screen.findByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' })).textContent ?? ''
+    await run.completeRenders()
+    const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
+    const sessionId = new URL(link.href).searchParams.get('session') ?? ''
+    const old = new URL(link.href).searchParams.get('host') ?? ''
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ny kod' }))
+    const code = await waitFor(() => {
+      const shown = screen.getByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' }).textContent ?? ''
+      expect(shown).not.toBe(first)
+      return shown
+    })
+    const hostKey = await waitFor(() => {
+      const now = new URL((screen.getByRole('link', { name: /öppna bordet/i }) as HTMLAnchorElement).href).searchParams.get('host') ?? ''
+      expect(now).not.toBe(old)
+      return now
+    })
+    expect(hostKey).not.toBe('')
+    registerRoom(sessionId, { code, hostKey })
+    const table = TableClient.connect(await asTable(run, sessionId))
+    await table.ready()
+    expect(table.refused).toBeNull()
+    table.close()
+
+    const ada = TableClient.connect(await asSeat(run, sessionId, 'A', 'Ada'))
+    await ada.ready()
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Sparka Ada' }))
+    await waitFor(() => expect(ada.refused).toBe('kicked'))
   })
 })
 

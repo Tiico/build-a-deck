@@ -158,6 +158,10 @@ export class PostgresLogStore implements LogStore {
     await this.sql`update sessions set code = ${code}, code_expires_at = ${expiresAt} where id = ${sessionId}`
   }
 
+  async rotateAdmission(sessionId: string, code: string, expiresAt: string, hostKeyHash: string): Promise<void> {
+    await this.sql`update sessions set code = ${code}, code_expires_at = ${expiresAt}, host_key_hash = ${hostKeyHash} where id = ${sessionId}`
+  }
+
   async issueGuest(sessionId: string, g: GuestRecord): Promise<boolean> {
     return this.sql.begin(async (tx) => {
       await tx`

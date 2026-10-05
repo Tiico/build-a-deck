@@ -56,6 +56,15 @@ describe.skipIf(!url)('PostgresLogStore', () => {
     expect(loaded?.decks).toEqual({ 'rev-2': { ...deck, rows: { a: { title: 'Två' } } } })
   })
 
+  // «Ny kod» (#820): the code and the host key are rotated together, in one write.
+  it('rotates the code and the host key together', async () => {
+    const rotating = `k-${Date.now()}`
+    await store.createSession({ id: rotating, version: 'v1', setup: twoSeatSetup(), code: 'ABCDEF', codeExpiresAt: '2026-09-07T13:00:00.000Z', hostKeyHash: 'old' })
+    await store.rotateAdmission(rotating, 'GHJKMN', '2026-09-07T14:00:00.000Z', 'new')
+    expect(await store.loadSession(rotating)).toMatchObject({ code: 'GHJKMN', codeExpiresAt: '2026-09-07T14:00:00.000Z', hostKeyHash: 'new' })
+    expect(await store.sessionByCode('ABCDEF')).toBeNull()
+  })
+
   it('refuses a gap or an overlap', async () => {
     await expect(store.append(id, [line(4)])).rejects.toBeInstanceOf(SeqConflictError)
     await expect(store.append(id, [line(2)])).rejects.toBeInstanceOf(SeqConflictError)
