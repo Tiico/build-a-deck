@@ -131,6 +131,14 @@ for (const v of VIEWS) {
       expect(at.along, `along: ${JSON.stringify(at)}`).toBeGreaterThan(0)
       // …and on its axis rather than a tag's width beside it.
       expect(Math.abs(at.across), `across: ${JSON.stringify(at)}`).toBeLessThan(TOLERANCE)
+      // …and clear of it. A quarter turn lays the tag's width along the felt's «down», and a tag
+      // hung by its middle reached half its width back over the card it names (#899).
+      const over = await page.evaluate(() => {
+        const card = document.querySelector('.byd-peer-ghost')!.getBoundingClientRect()
+        const tag = document.querySelector('.byd-peer-ghost .byd-peer-tag')!.getBoundingClientRect()
+        return Math.max(0, Math.min(card.right, tag.right) - Math.max(card.left, tag.left)) * Math.max(0, Math.min(card.bottom, tag.bottom) - Math.max(card.top, tag.top))
+      })
+      expect(over, 'the tag lies over none of the card it names').toBeLessThan(1)
     })
 
     test("every seat's name stands along its edge where that seat's hand is", async ({ request, open }) => {
