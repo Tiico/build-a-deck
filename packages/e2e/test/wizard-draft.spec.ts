@@ -62,6 +62,12 @@ test('gives back a draft with a 5 MB picture and six cards after a reload (#686)
 
 // The same draft through the login round (#686): «Skapa» without an account keeps the draft and
 // goes to log in, and the way back makes the game — with the picture, not the draft from before it.
+//
+// The login is made on the login page's own card, the way a person makes it (#866). Logging in
+// behind the page's back raced the page: `/login` asks who is here as it opens, and under load that
+// question could leave after the login, so the page went on to the wizard by itself and made the
+// game — and a second visit to the same address found the draft already spent and stayed on /new.
+// The card is only drawn once the page has heard that nobody is here, so it cannot go on twice.
 test('makes the game with its 5 MB picture on the way back from a login (#686)', async ({ page }) => {
   await page.goto('/new')
   await page.getByLabel('Spelets namn').fill('Skogens herrar')
@@ -71,15 +77,14 @@ test('makes the game with its 5 MB picture on the way back from a login (#686)',
   await page.getByLabel('kort 2 Titel').fill('Drake 2')
   await page.getByRole('button', { name: /Skapa spelet och fortsätt i editorn/ }).click()
   await expect(page).toHaveURL(/\/login\?/)
+  expect(new URL(page.url()).searchParams.get('next') ?? '').toContain('resume=1')
 
-  await logIn(page.request)
   const sent: number[] = []
   page.on('request', (request) => {
     if (request.method() === 'POST' && new URL(request.url()).pathname === '/assets') sent.push(request.postDataBuffer()?.length ?? 0)
   })
-  const next = new URL(page.url()).searchParams.get('next') ?? ''
-  expect(next).toContain('resume=1')
-  await page.goto(next)
+  await page.getByLabel('E-post').fill(`e2e-${crypto.randomUUID()}@example.com`)
+  await page.getByRole('button', { name: 'Skicka inloggningslänk' }).click()
   await expect(page).toHaveURL(/\/editor\?/)
   expect(sent, 'the picture went up with the game').toContain(BIG.length)
   const games = (await (await page.request.get('/projects')).json()) as unknown[]
