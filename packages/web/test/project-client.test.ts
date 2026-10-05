@@ -439,6 +439,39 @@ describe('what counts as unsaved (#8)', () => {
 })
 
 describe('the setup in the editor (B5, K2)', () => {
+  // Var en ny zon föds är en regel som ändras med en driftsättning (#443, #480, #881). Platsen
+  // designern såg är den som skickas och den loggen spelar upp, inte en ny fråga till regeln (#894).
+  it('sends a new zone with the place it showed, so the log holds that place', async () => {
+    // What leaves the editor is read off the socket itself: the actor answers the same rule
+    // today, so only the frame says whether the editor sent the place or the question.
+    const sent: unknown[] = []
+    setEditSocketImplementation(class extends EditSocket {
+      override send(data: string): void {
+        const message = JSON.parse(data) as { t: string; intent?: unknown }
+        if (message.t === 'edit') sent.push(message.intent)
+        super.send(data)
+      }
+    } as unknown as EditSocketCtor)
+    try {
+      const created = await run.projects.create(run.projectId, projectDoc())
+      const client = await openClient(created.id)
+      await vi.waitFor(() => expect(client.connected).toBe(true))
+
+      const pile = client.addZone('pile')
+      const area = client.addZone('area')
+      const shown = (id: string) => client.doc.setup.zones.find((z) => z.id === id)?.geometry
+      const expected = [
+        expect.objectContaining({ v: 'addZone', id: pile, geometry: shown(pile) }),
+        expect.objectContaining({ v: 'addZone', id: area, geometry: shown(area) }),
+      ]
+      expect(sent).toEqual(expected)
+      await vi.waitFor(async () => expect(await run.projects.readEdits(created.id, 0)).toHaveLength(2))
+      expect((await run.projects.readEdits(created.id, 0)).map((e) => e.intent)).toEqual(expected)
+    } finally {
+      setEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
+    }
+  })
+
   it('turns the recipe, adds and removes free zones, moves and reshapes a zone, and saves it all', async () => {
     const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)

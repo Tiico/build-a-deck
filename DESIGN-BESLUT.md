@@ -1069,6 +1069,12 @@ En editor som öppnas på en svans ingen sparat får den sparade versionen bredv
 `/projects/:id/edit` är tråden: dokumentet vid uppkoppling, varje redigering när den landar, vilka som är inne, och varför en redigering avvisades. En avvisad redigerare får dokumentet med avslaget och kan fortsätta från det som är verkligt.
 Editorn applicerar sin egen redigering direkt och skickar den; ekot säger bara att den landade. Det som skrevs innan socketen hann öppna skickas när den öppnar och läggs tillbaka ovanpå om aktören lämnar över sitt dokument.
 Att ta tillbaka en äldre version är en redigering som vilken annan och går samma väg.
+En redigering som avgör något lagrar svaret i loggen, aldrig frågan (2026-10-05, #894), av samma skäl som bordets slump lagras som resultat (D4).
+Var en ny zon föds (`addZone`) är en regel som ändras med en driftsättning (#443, #480, #881), så platsen väljs en gång när redigeringen avgörs och står i raden som `geometry`; uppspelning lägger zonen där och frågar aldrig regeln igen.
+Editorn avgör mot det formgivaren ser och skickar svaret, och aktören avgör för en avsändare som inte skickade något, innan raden committas.
+En äldre rad utan plats spelas upp efter dagens regel, som förut.
+Redigeringarna är editorns vokabulär och inte bordets slutna intents i `packages/protocol`, så ett tillagt fält i en befintlig redigering är ingen protokollmigrering.
+`addSeatZone` och `setRecipe` räknar fortfarande ut geometri vid uppspelning; det är #895.
 Huvudet visar vilka andra som har spelet öppet, med kontots adress som namn.
 Roller och inbjudningar, byggt 2026-09-08:
 Behörigheter är en modell, inte ett fält: ägare, medredigerare, testledare, betraktare, och varje väg frågar vad rollen får göra i stället för att minnas reglerna.
@@ -6154,3 +6160,37 @@ Vid 375 ryms orden och står kvar (`player-viewport.test.tsx`); vid 360 gjorde d
 `phone-landscape.spec.ts` mäter `/play` och `/online` vid 844 × 390 och 740 × 360: minst ett helt kort ovanför foten, ingen rullning och ingen sidledsrullning.
 Den mäter också huvudet vid 360 och 320 med 25 kort och ett långt namn: högst 60 px, och båda ikonknapparna 44 × 44.
 Prototypen: `docs/ux-audits/2026-10-05-telefonen/prototyper/716/`.
+
+### L63. Delningen säger «Dela», i huvudet och i spelets ⋯ (prototypat och beslutat 2026-10-05, #727)
+
+Speltestet 2026-10-02 fann att den enda vägen till «Vilka som har spelet» var en rund bricka med ägarens initial i huvudet.
+Den hade ett namn för skärmläsaren men inget synligt ord, inget plus och ingenting i någon ⋯-meny, så den som ville bjuda in någon fick gissa att trycka på sin egen initial.
+
+**A och C tillsammans** (av fyra: ordet «Dela» i knappen, en «+»-bricka, «Dela spelet…» i ⋯, eller båda de första och sista).
+Knappen med ansiktena säger «Dela» bredvid dem.
+Prototypen ritade den med en tunn kant; den står utan, eftersom huvudets dörrar — versionen, ansiktena och ⋯ — ritas likadant i varje läge (`button-language.test.tsx`), och det är ordet och inte kanten som gör dörren synlig.
+Ordet står först i knappens namn, «Dela · vilka som har spelet», som det står på knappen (WCAG 2.5.3).
+Spelets ⋯-meny i editorn har «Dela spelet…» före «Exportera…» och öppnar samma panel; menyn har därmed två val och inte ett.
+
+Bredden får inte växa med antalet som är inne: vid 1280 och bredare står högst tre ansikten, antalet och ordet.
+Mellan 1024 och 1279 är dörren ett ansikte, en tummyta bred, som förut, och «Dela spelet…» i ⋯ är vägen i ord där.
+Prototypen mätte en rad vid 1024 med Macens typsnitt, men med CI:s bredare klipptes spelets namn (`editor-header-fit.spec.ts`), och huvudet har ingen luft vid 1024 (#668).
+`share-panel.test.tsx` öppnar panelen från både knappen och menyn.
+Prototypen: `docs/ux-audits/2026-10-05-delningen/prototyper/727/`.
+
+### L64. Startsidan visar bord som pågår, och menyn öppnar dem före ett nytt (prototypat och beslutat 2026-10-05, #724)
+
+Speltestet 2026-10-02 fann att den enda vägen från startsidan till ett pågående bord var bannern som sade rumskoden direkt efter starten.
+Efter en omladdning var den borta.
+Och ett andra tryck på «Starta bord» för att se koden igen startade ett andra bord.
+
+**C och B tillsammans** (av tre: en rad på brickan, en uppdelad ⋯-meny, och en egen sektion överst).
+Överst på «Mina spel» står **«Pågår nu»**, med ett band per bord som pågår: spelets namn, rumskoden i kodens egen typ och «Öppna bordet».
+Länken öppnar bordets skärm som ägare (`owner=1`) i en ny flik, så den fungerar efter en omladdning, när värdnyckeln inte längre finns i sidan.
+Bandet ersätter bannern, och tillkännagivandet «Bordet är igång. Rumskoden är …» står kvar i sidans levande region.
+Spelets **⋯-meny** listar «Öppna bordet KOD» för varje bord som pågår, före en linje, och «Starta bord» blir då «Starta nytt bord».
+Menyn öppnar på sitt första val, länk eller knapp.
+
+Startsidan frågar `GET /projects/:id/sessions` för varje spel som har bord och vars roll får starta bord; bara ett bord med en giltig kod räknas som pågående.
+`account-page.test.tsx` visar bandet efter en omladdning, länkens adress och menyns ordning; `home-layout.test.tsx` mäter bandets länk till 44 px vid 320, 390 och 1280.
+Prototypen: `docs/ux-audits/2026-10-05-pagaende-bord/prototyper/724/`.

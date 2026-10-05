@@ -168,7 +168,7 @@ describe('who else is in the editor (D3)', () => {
     await screen.findByText('Skogens herrar')
 
     // Alone, the door still stands there: it is how the game is shared at all (D3).
-    const door = await screen.findByRole('button', { name: 'Vilka som har spelet' })
+    const door = await screen.findByRole('button', { name: 'Dela · vilka som har spelet' })
     await waitFor(() => expect(door.querySelectorAll('i')).toHaveLength(1))
     expect(door.textContent).not.toMatch(/inne/)
 

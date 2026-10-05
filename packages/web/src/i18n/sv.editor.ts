@@ -89,7 +89,8 @@ export const svEditor = {
   'editor.loading': 'Laddar spelet…',
   'editor.conflict': 'Någon annan har sparat sedan du laddade. Ladda om och gör om ändringen.',
   'editor.rev': 'rev {n}',
-  'editor.here.name': 'Vilka som har spelet, {n} inne',
+  // Dörren säger «Dela» (#727), och ordet står först i namnet, som det står på knappen.
+  'editor.here.name': 'Dela · vilka som har spelet, {n} inne',
   'editor.here.count': '{n} inne',
   // Namnet en redigerare utan konto visas som för de andra (D3). Se A4:s gräns: ett namn tillhör
   // den det namnger, så ordet skrivs på det språk den som kommer in läser verktyget i och blir
@@ -1500,6 +1501,9 @@ export const svEditor = {
 
   // Vilka som har spelet: de som är inne nu, och de som får vara med.
   'share.title': 'Vilka som har spelet',
+  'share.door': 'Dela · vilka som har spelet',
+  'share.word': 'Dela',
+  'share.menu': 'Dela spelet…',
   'share.close': 'Stäng',
   'share.help': 'De som är inne nu står överst. Samma lista säger vem som får vara med.',
   'share.help.topic': 'delningen',

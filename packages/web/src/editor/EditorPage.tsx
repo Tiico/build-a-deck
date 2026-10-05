@@ -638,7 +638,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         <h1 className="byd-editor-name">
           <strong>{doc.name}</strong>
         </h1>
-        {client.mayEdit && projectId && <GameMore http={http} game={{ id: projectId, name: doc.name, rev: client.rev }} />}
+        {client.mayEdit && projectId && <GameMore http={http} game={{ id: projectId, name: doc.name, rev: client.rev }} onShare={() => setOver('share')} />}
         {/* The revision is also the way into the history (B4): the version is already named here. */}
         <button ref={revRef} type="button" className="byd-editor-rev" aria-expanded={historyOpen} onClick={() => setOver((on) => (on === 'history' ? null : 'history'))}>
           {t('editor.rev', { n: client.rev })}
@@ -660,13 +660,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         {/* The people in the header are the door to who has the game at all (D3): who is here
             now and who may be here is one question. The name carries the count the button shows,
             so it can be spoken to by what it says (#556). */}
-        <button ref={hereRef} type="button" className="byd-editor-here" data-here aria-label={client.here.length > 1 ? t('editor.here.name', { n: client.here.length }) : t('share.title')} aria-expanded={shareOpen} onClick={() => setOver((on) => (on === 'share' ? null : 'share'))}>
+        <button ref={hereRef} type="button" className="byd-editor-here" data-here aria-label={client.here.length > 1 ? t('editor.here.name', { n: client.here.length }) : t('share.door')} aria-expanded={shareOpen} onClick={() => setOver((on) => (on === 'share' ? null : 'share'))}>
           {client.here.map((p) => (
             <i key={p.id} title={p.name} style={{ ['--who' as string]: colourOf(p.name) }}>
               {p.name.slice(0, 1).toUpperCase()}
             </i>
           ))}
           {client.here.length > 1 && <b>{t('editor.here.count', { n: client.here.length })}</b>}
+          <span className="byd-editor-here-word" aria-hidden="true">{t('share.word')}</span>
         </button>
         <span className="byd-editor-spacer" />
         {/* A save that could not happen is not a passing remark: it is spoken at once, because

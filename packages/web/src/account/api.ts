@@ -137,6 +137,16 @@ export async function startTable(http: string, project: string, t: T = swedish):
   return (await res.json()) as { id: string; code: string; hostKey: string }
 }
 
+// The tables of a game that are running and can still be joined (#724): the ones with a room code.
+// Only a role that may start tables is told the code, so only such a role is asked.
+export type RunningTable = { id: string; code: string; lastAt: string | null }
+export async function runningTables(http: string, project: string): Promise<RunningTable[]> {
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/sessions`, withCredentials())
+  if (!res.ok) return []
+  const tables = (await res.json()) as { id: string; ended: boolean; lastAt: string | null; code?: string }[]
+  return tables.flatMap((x) => (!x.ended && x.code ? [{ id: x.id, code: x.code, lastAt: x.lastAt }] : []))
+}
+
 // Taking a game away (G1): its whole history goes with it, so the page asks first.
 export async function removeProject(http: string, project: string, t: T = swedish): Promise<void> {
   const res = await fetch(`${http}/projects/${encodeURIComponent(project)}`, withCredentials({ method: 'DELETE' }))

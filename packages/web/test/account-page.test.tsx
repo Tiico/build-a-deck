@@ -359,19 +359,55 @@ describe('a game on the home page (G1)', () => {
     expect(card().textContent).toContain('1 bord')
   })
 
+  // The table started is the first of «Pågår nu» (#724, beslut C + B): the room's code and the way
+  // to its screen, where they stay after a reload — the banner that said it went with the page.
+  const running = () => screen.queryByRole('region', { name: 'Pågår nu' })
   it('starts a table from the card and hands over the room code', async () => {
     await home()
     fireEvent.click(within(card()).getByRole('button', { name: 'Fler val för Skogens herrar' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Starta bord' }))
     const said = await waitFor(() => {
-      const banner = document.querySelector('.byd-home-started')
-      expect(banner).not.toBeNull()
-      return banner!
+      expect(running()).not.toBeNull()
+      return running()!
     })
     expect(said.textContent).toMatch(/[A-Z2-9]{6}/)
     // The table is the server's, not something the page made up.
     const tables = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`)).json()) as unknown[]
     expect(tables).toHaveLength(1)
+  })
+
+  it('shows the tables that are running after a reload, each by its code, and opens one as its owner', async () => {
+    await home()
+    const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })).json()) as { id: string; code: string }
+    cleanup()
+    render(<HomePage />)
+    await screen.findByText('Skogens herrar')
+    const now = await waitFor(() => {
+      expect(running()).not.toBeNull()
+      return running()!
+    })
+    expect(now.textContent).toContain('Skogens herrar')
+    expect(now.textContent).toContain(made.code)
+    const open = within(now).getByRole('link', { name: new RegExp(`Öppna bordet ${made.code}`) })
+    const url = new URL(open.getAttribute('href')!, 'http://x')
+    expect(url.pathname).toBe('/table')
+    expect(url.searchParams.get('session')).toBe(made.id)
+    expect(url.searchParams.get('owner')).toBe('1')
+  })
+
+  it('offers the running table before a new one, so a second press does not start a second table', async () => {
+    await home()
+    const made = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })).json()) as { id: string; code: string }
+    cleanup()
+    render(<HomePage />)
+    await screen.findByText('Skogens herrar')
+    await waitFor(() => expect(running()).not.toBeNull())
+    fireEvent.click(within(card()).getByRole('button', { name: 'Fler val för Skogens herrar' }))
+    const open = await screen.findByRole('link', { name: `Öppna bordet ${made.code}` })
+    // The menu opens on its first choice, which is now the running table.
+    await waitFor(() => expect(document.activeElement).toBe(open))
+    expect(screen.getByRole('button', { name: 'Starta nytt bord' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Starta bord' })).toBeNull()
   })
 
   it('asks before taking a game away, and takes it away when the answer is yes', async () => {
@@ -449,11 +485,13 @@ describe('the game menu and the question on the home page (#475)', () => {
     fireEvent.click(more())
     fireEvent.click(await screen.findByRole('button', { name: 'Starta bord' }))
     await waitFor(() => expect(document.activeElement).toBe(more()))
-    const open = await screen.findByRole('link', { name: 'Öppna bordet (öppnas i ny flik)' })
-    expect(open.getAttribute('target')).toBe('_blank')    // Said in the page's own live region rather than by a region born with the words in it, which
+    // The way to it is the band in «Pågår nu» (#724), and says it opens a new tab.
+    const open = await screen.findByRole('link', { name: /^Öppna bordet [A-Z2-9]{6} i Skogens herrar \(öppnas i ny flik\)$/ })
+    expect(open.getAttribute('target')).toBe('_blank')
+    // Said in the page's own live region rather than by a region born with the words in it, which
     // screen readers do not reliably read (#555 A-8, WCAG 4.1.3).
     await waitFor(() => expect(document.querySelector('[data-status-live="polite"]')?.textContent).toMatch(/^Bordet är igång\. Rumskoden är [A-Z0-9]{6}\.$/))
-    expect(document.querySelector('.byd-home-started')?.getAttribute('role')).toBeNull()
+    expect(document.querySelector('.byd-home-running')?.getAttribute('role')).toBeNull()
   })
 
   it('says the game is gone once it is, and leaves the focus on the heading rather than on nothing', async () => {
