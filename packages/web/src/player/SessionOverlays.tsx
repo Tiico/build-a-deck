@@ -3,7 +3,7 @@ import { useFocusTrap } from '../editor/focusTrap.js'
 import type { Snapshot } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { standingRewind, whereTo, whoDecides } from '../table/rewind.js'
-import { FlagSheet, EndSheet, ExitSheet } from './SessionSheets.js'
+import { FlagSheet, EndSheet, ExitSheet, ProposeSheet } from './SessionSheets.js'
 import { Survey } from './Survey.js'
 import { submitSurvey } from './surveyApi.js'
 import { useHasRulebook } from '../rules/sessionRules.js'
@@ -24,7 +24,7 @@ export function refusedText(reason: string, t: T): string {
 
 // Which sheet the seat's screen has raised. `exit` is the way out asking which way out (#31); it
 // is the only one that opens another, and the one it opens is `end`, unchanged.
-export type Sheet = 'flag' | 'exit' | 'end' | null
+export type Sheet = 'flag' | 'exit' | 'end' | 'propose' | null
 
 // The version the session runs on, from the session record; the survey and the end sheet say it.
 export function useSessionVersion(http: string, sessionId: string | null, when: boolean): string | null {
@@ -108,6 +108,18 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
           }}
         />
       )}
+      {sheet === 'propose' && view.undo?.contested && (
+        <ProposeSheet
+          where={whereTo(view, { id: '', toSeq: view.undo.toSeq, by: seat }, client.activity, t)}
+          who={whoDecides(view, { id: '', toSeq: view.undo.toSeq, by: seat }, t)}
+          onPropose={() => {
+            const toSeq = view.undo?.toSeq
+            onSheet(null)
+            if (toSeq !== undefined) void client.send({ v: 'rewind.propose', toSeq })
+          }}
+          onClose={() => onSheet(null)}
+        />
+      )}
       {sheet === 'exit' && (
         <ExitSheet
           pile={returnPile(view, seat)}
@@ -144,7 +156,7 @@ export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, to
       )}
       {proposal && proposal.by === seat && (
         <div className="byd-rewind-mine" data-rewind-mine>
-          <span>{t('rewind.mine', { who: whoDecides(view, proposal, t) })}</span>
+          <span>{t('rewind.mine', { who: whoDecides(view, proposal, t), where: whereTo(view, proposal, client.activity, t) })}</span>
           <button onClick={() => settle('rewind.reject')}>{t('rewind.withdraw')}</button>
         </div>
       )}
@@ -207,9 +219,11 @@ export function SessionButtons({ client, view, sheet, onSheet }: { client: Table
   // «Flytta vänster» is at the end of the hand (L53): said to be off, kept in the tab order, and
   // doing nothing when pressed.
   const off = !view.undo || !!view.rewind || view.ended
-  const tapUndo = () => {
+  const tapUndo = (event: { currentTarget: HTMLButtonElement }) => {
     if (off || !view.undo) return
-    void client.send(view.undo.contested ? { v: 'rewind.propose', toSeq: view.undo.toSeq } : { v: 'undo.self' })
+    // Someone else's move is asked about first (#747, beställarens beslut A); one's own is undone.
+    if (view.undo.contested) raise('propose')(event)
+    else void client.send({ v: 'undo.self' })
   }
   return (
     <>

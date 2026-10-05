@@ -370,8 +370,18 @@ describe('undo and rewind on the phone (B, C)', () => {
     await other.send({ v: 'seat.claim', seat: 'B', name: 'Bo' }, { v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
 
+    // Someone else's move is not one's own to take back (#747, beställarens beslut A): Ångra asks
+    // first, names the move and who decides, and «Avbryt» sends nothing.
     fireEvent.click(await screen.findByRole('button', { name: /Ångra/ }))
-    expect(await screen.findByText(/Du föreslår att spola tillbaka/)).toBeTruthy()
+    const ask = await screen.findByRole('dialog', { name: 'Senaste draget är inte ditt' })
+    expect(ask.textContent).toContain('Bordet visar hur det såg ut före «Du drog 1 kort från Draghög till din hand», och Bo avgör.')
+    fireEvent.click(within(ask).getByRole('button', { name: 'Avbryt' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Senaste draget är inte ditt' })).toBeNull())
+    expect((await run.store.read(id)).some((l) => l.intent.v === 'rewind.propose')).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: /Ångra/ }))
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Senaste draget är inte ditt' })).getByRole('button', { name: 'Föreslå att spola tillbaka' }))
+    // And the banner names the move it would go back before.
+    expect(await screen.findByText('Du föreslår att spola tillbaka till hur bordet såg ut före «Du drog 1 kort från Draghög till din hand». Bo avgör.')).toBeTruthy()
     expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'rewind.propose', toSeq: 1 } })
     expect(screen.getByRole('button', { name: /Ångra/ }).getAttribute('aria-disabled')).toBe('true')
 
@@ -419,6 +429,7 @@ describe('undo and rewind on the phone (B, C)', () => {
     await other.send({ v: 'seat.claim', seat: 'B', name: 'Bo' }, { v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
     fireEvent.click(await screen.findByRole('button', { name: /Ångra/ }))
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Senaste draget är inte ditt' })).getByRole('button', { name: 'Föreslå att spola tillbaka' }))
     expect(await screen.findByText(/Du föreslår att spola tillbaka/)).toBeTruthy()
 
     await waitFor(() => expect(other.view?.rewind).not.toBeNull())

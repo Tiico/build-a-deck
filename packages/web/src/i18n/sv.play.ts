@@ -279,7 +279,12 @@ export const svPlay = {
   'rewind.deciders': '{others} eller {last}',
   'rewind.before': 'före «{what}»',
   'rewind.atSeq': 'vid drag {n}',
-  'rewind.mine': 'Du föreslår att spola tillbaka. Bordet visar hur det såg ut; {who} avgör.',
+  'rewind.mine': 'Du föreslår att spola tillbaka till hur bordet såg ut {where}. {who} avgör.',
+  // Ångra efter någon annans drag frågar först (#747, beslut A).
+  'rewind.propose.ask.title': 'Senaste draget är inte ditt',
+  'rewind.propose.ask.body': 'Bordet visar hur det såg ut {where}, och {who} avgör.',
+  'rewind.propose.ask.yes': 'Föreslå att spola tillbaka',
+  'rewind.propose.ask.no': 'Avbryt',
   'rewind.withdraw': 'Dra tillbaka förslaget',
   'rewind.ask.title': '{who} vill spola tillbaka',
   'rewind.ask.body': 'Bordet visar hur det såg ut {where}. {pile} blandas om.',

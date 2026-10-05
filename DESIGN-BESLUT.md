@@ -1682,6 +1682,17 @@ Och kortryggen är 63 millimeter bred — ett udda tal kring en mittpunkt — s�
 Att filten är full är dessutom två olika påståenden för de två zonerna, eftersom en ruta på 300 × 120 mm och en kortrygg på 63 × 88 mm slutar få plats vid olika tillfällen, så högen säger det med egna ord på samma rad.
 Grinden är `recipe-geometry.test.ts` och `edits.test.ts` för regeln, och `setup-new-pile.test.tsx`, som läser zonernas rutor ur den byggda fliken vid varje platsantal 2–`MAX_PLAYERS`.
 
+Reviderat 2026-10-05 (#881, beställarens beslut A med 97 mm): en ny hög har plats för sitt handtag, och den första hamnar inte längre på `(0, 150)`.
+I bordsläget hänger högens handtag 8–52 px under kortet (K14), och #789 lägger högens namn 16 px under handtaget.
+Det smala namnbandet på 30 mm under kortet var måttat för TV-lägets namn, så en ny hög föddes med handtaget på grannens kort eller på ytan framför en spelare.
+Bandet under kortet räknas därför för bordsläget i 1280 × 800 med fyra platser, det vanligaste spelfallet: 68 px vid 0,70 px/mm, alltså 97 mm.
+Det gäller rummet den nya högen söks i och rummet varje befintlig hög räknas som när en ny hög placeras; en ny delad yta mäter fortfarande högarna med namnbandet på 30 mm (#440, #480).
+#443:s löfte om den gamla punkten och ett fritt handtag gick inte att hålla samtidigt, eftersom det bara är 36 mm mellan den punktens kortkant och ytan framför den södra platsen.
+Den första nya högen på receptets bord hamnar nu på `(−304, 89)` vid 2–6 platser och på `(0, 185)` vid 7–8, och åtta högar i rad får fortfarande plats vid varje platsantal.
+Vid sju och åtta platser ritas filten mindre, och handtaget når fortfarande omkring 9 px in på grannen under; det är accepterat, eftersom ett band som räcker även där (118 mm) gör en filt med fyra platser full efter sex nya högar.
+Bara högar som skapas efteråt påverkas: en hög som redan ligger har sin punkt i dokumentet.
+Grinden är densamma som ovan, och `setup-new-pile.test.tsx` mäter bandet under de två nya högarna i den byggda fliken med bordets egna högar som linjal.
+
 ### K3. Flera kort på en gång: atomisk batch i kuvertet
 
 `Envelope` bär `intents: Intent[]`.
@@ -2142,6 +2153,14 @@ Ett nytt sessionsverb, `rewind.reject`, för att avvisa eller dra tillbaka ett f
 Kuvert-id blir loggens batch och måste vara unikt per session, inte per anslutning; motorn avvisar ett återanvänt id.
 Aktören håller sin logg i minnet för att kunna se bakåt.
 Utan andra sittande kan ett kontesterat förslag bara dras tillbaka; bordsskärmen får aldrig bekräfta.
+
+Reviderat 2026-10-05 (#747, beställarens beslut A efter prototyp 02): **ett förslag föregås av en fråga.**
+Har någon annan spelat sedan platsens senaste drag skickades förslaget på trycket, utan ett ord, och de andra fick avgöra en tillbakaspolning den som tryckte kanske aldrig menade.
+Nu öppnar trycket ett ark, «Senaste draget är inte ditt», som säger var bordet skulle hamna (före vilket drag) och vem som avgör, och som öppnar på «Avbryt».
+Först «Föreslå att spola tillbaka» skickar `rewind.propose`; ett eget drag ångras fortfarande på ett tryck.
+När ett förslag står stängs distansvyns «Visa alla», som annars täckte just det bord förslaget visar, och förslagsställarens rad namnger draget.
+Bortvalda varianter: B, en knapp som byter namn men inte frågar, och C, där Ångra bara ångrar egna drag och tillbakaspolningen flyttar till ⋯-menyn.
+Prototypen: `docs/ux-audits/2026-10-05-sparka-och-angra/prototyper/02-angra.html`.
 
 ### K14. Bordet spelas direkt: dra, släpp, klicka för en ring med verb (prototypat 2026-09-06, utvidgad 2026-09-12)
 
@@ -2739,7 +2758,7 @@ Den hänger i handtaget, 2 px från det, 12 px och högst 10 em bred, på den si
 Handtaget vrids tillbaka upprätt på en vriden filt, så på en filt vriden ett halvt varv — plats B som ser bordet från andra sidan — pekar handtagets eget «under» mot kortet, och bildtexten står ovanför handtaget i stället; vid ett kvartsvarv står kortet bredvid handtaget, och under är fritt.
 Under 460 px döljer bordsläget högarnas namn (ovan), och där finns inte heller plats för en platta mellan två högar: där står namnet kvar på kortet som förut.
 Under bygget visade det sig att handtaget självt stod en hel handtagsbredd bredvid sin hög på en filt vriden ett halvt varv, eftersom dess halva bredds förskjutning låg i `transform` och vreds med av `rotate`; det centreras nu med `translate`.
-Krocken mellan bildtexten och de tätt lagda extra högarna (`newPileSpot` räknar namnbandet för TV:ns namn) är densamma som handtagen redan har utan bildtext, och den är #881.
+Krocken mellan bildtexten och de tätt lagda extra högarna (`newPileSpot` räknade namnbandet för TV:ns namn) är densamma som handtagen redan har utan bildtext, och den är #881: en ny hög räknar sedan dess ett band på 97 mm under kortet, för handtaget och bildtexten tillsammans (K2).
 
 **Kvar att veta för grannarna.**
 #683 gäller fortfarande: vid 1280 täcker sidoplatsernas skyltar Kasthög och dess namn, men bildtexten står under skylten och är fri, 13 px från plats A:s skylt.
