@@ -358,3 +358,31 @@ html:has(.byd-phone-foot:not(:empty)) { scroll-padding-bottom: 73px; }
 @media (max-width: 359px) {
   .byd-phone-foot:has(.byd-foot-more) .byd-rules-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
+
+/* The head at 320 keeps one row (#716, L62, beslut H1): «Ångra» and «Flagga» are drawn as their
+   icons, each still a whole thumb target and still named by its word (the button's text and its
+   title), so «Ut…» no longer falls to a row of its own. Below 375, where the words stop fitting: at
+   375 the row holds them (`player-viewport.test.tsx`), at 360 it already did not. */
+@media (max-width: 374px) {
+  .byd-player > header .byd-undo, .byd-player > header .byd-flag { font-size: 0; gap: 0; padding: 0; width: 44px; }
+  .byd-player > header .byd-undo .byd-glyph, .byd-player > header .byd-flag .byd-glyph { width: 18px; height: 18px; }
+}
+
+/* A phone on its side (#716, L62, beslut A, prototyp 716): the portrait column stretched out showed
+   no whole card of the hand without scrolling. In a low, wide window the head runs over two
+   columns; the counters and the piles stand in a narrow one on the left and the hand with its verbs
+   has the rest, its cards sized by the window's height so that a whole one stands above the foot. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .byd-player { max-width: none; display: grid; grid-template-columns: 300px minmax(0, 1fr); grid-template-rows: auto auto 1fr; column-gap: 12px; row-gap: 8px; align-items: start; }
+  .byd-player > * { grid-column: 1 / -1; }
+  .byd-player > header { min-height: 48px; padding: 2px 16px; }
+  .byd-player > .byd-behind { grid-column: 1; grid-row: 2; }
+  .byd-player > .byd-phone-main { display: contents; }
+  .byd-phone-main > h1 { display: none; }
+  .byd-phone-main > * { grid-column: 2; }
+  .byd-phone-main > .byd-summary { grid-column: 1; grid-row: 3; padding: 0 0 0 16px; }
+  .byd-phone-main .byd-summary-zones { grid-template-columns: minmax(0, 1fr); }
+  .byd-phone-main > .byd-strip { grid-row: 2 / span 2; }
+  .byd-player .byd-strip-card { flex-basis: calc((100svh - 48px - 64px - 40px) * 63 / 88); }
+}
+

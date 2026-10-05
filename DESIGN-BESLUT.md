@@ -6082,3 +6082,26 @@ Rummet säger bara sina färger som tokens: fältet markeringens blå som fyllni
 
 `editor-crown.test.tsx` mäter fältets bricka vid 1024, 1280 och 1440: 44 hög, × 44 × 44, ett piller, och krönet en rad; `editor-seat-chips.spec.ts` mäter bandets och att det är samma klass.
 Prototypen: `docs/ux-audits/2026-09-30-komponenter/prototyper/06-brickan.html`.
+
+### L62. Telefonen på sidan står i två spalter, och huvudet vid 320 håller en rad med ikoner (prototypat och beslutat 2026-10-05, #716)
+
+Speltestet 2026-10-02 fann att en telefon som läggs på sidan (844 × 390) ritade porträttspalten utsträckt: räknaren 1 100 px bred, högarna över hela skärmen och handen under den fasta foten, så att inget kort i handen syntes helt utan rullning.
+`/online` på samma telefon ritar samma yta och hade samma fel.
+Vid 320 fick «?», «Ångra», «Flagga» och «Ut…» inte plats bredvid namnet, och «Ut…» föll ned på en egen rad; huvudet blev 107 px.
+
+**Liggande: två spalter** (variant A av tre: två spalter, handen överst, verben i en spalt till höger).
+I ett lågt och brett fönster (`orientation: landscape` och högst 500 px högt) löper huvudet över båda spalterna.
+Räknaren och högarna står i en smal spalt till vänster, och handen med sina verb har resten.
+Korten storleksätts efter fönstrets höjd, så att ett helt kort står ovanför foten.
+Prototypen mätte fyra hela kort vid 844 × 390, med kort på 170 × 238 px.
+Handen överst gav fem, men lade högarna och «Dra 1» under vecket.
+Verben i en spalt gav samma antal, men gav foten en annan form liggande än stående.
+
+**Huvudet vid 320: ikoner** (variant H1 av två: ikoner, eller Flagga och Ut… i en ⋯-meny).
+Under 375 px ritas «Ångra» och «Flagga» som sina ikoner, var och en fortfarande en hel tummyta på 44 × 44.
+Ordet står kvar som knappens namn och som `title`, så huvudet håller en rad (57 px) och alla fyra kontroller är kvar ett tryck bort.
+Vid 375 ryms orden och står kvar (`player-viewport.test.tsx`); vid 360 gjorde de det inte, med ett långt namn blev huvudet 107 px där också. Prototypen satte gränsen vid 380.
+
+`phone-landscape.spec.ts` mäter `/play` och `/online` vid 844 × 390 och 740 × 360: minst ett helt kort ovanför foten, ingen rullning och ingen sidledsrullning.
+Den mäter också huvudet vid 360 och 320 med 25 kort och ett långt namn: högst 60 px, och båda ikonknapparna 44 × 44.
+Prototypen: `docs/ux-audits/2026-10-05-telefonen/prototyper/716/`.

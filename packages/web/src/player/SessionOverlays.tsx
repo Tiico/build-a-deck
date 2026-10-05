@@ -213,11 +213,12 @@ export function SessionButtons({ client, view, sheet, onSheet }: { client: Table
   }
   return (
     <>
-      <button className="byd-undo" aria-disabled={off} onClick={tapUndo}>
+      {/* The word stays the button's name and its title: under 375 px only the icon is drawn (#716, L62). */}
+      <button className="byd-undo" aria-disabled={off} onClick={tapUndo} title={t('session.undo')}>
         <HookGlyph />
         {t('session.undo')}
       </button>
-      <button className="byd-flag" disabled={view.ended} onClick={raise('flag')}>
+      <button className="byd-flag" disabled={view.ended} onClick={raise('flag')} title={t('session.flag')}>
         <FlagGlyph />
         {t('session.flag')}
       </button>
