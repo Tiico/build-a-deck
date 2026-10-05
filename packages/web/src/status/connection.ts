@@ -5,7 +5,11 @@ import type { Countdown } from './StatusNotice.js'
 // How long a wait may go unremarked, how long a line that broke may be gone before that is worth
 // saying, and how long the first connection may take at all. The first two are matters of words;
 // the third is the deadline that #7 was missing, and it belongs to the client.
-export type StatusTiming = { slowAfterMs: number; dropAfterMs: number; connectTimeoutMs: number; retryPlanMs: readonly number[] }
+// `keepTryingMs`: how often a screen nobody touches tries again once its plan is spent (#722); a route
+// that does not use it hands the decision to a person.
+export type StatusTiming = { slowAfterMs: number; dropAfterMs: number; connectTimeoutMs: number; retryPlanMs: readonly number[]; keepTryingMs?: number }
+// The TV and the felt's own screen (D5 reviderat 2026-10-05).
+export const KEEP_TRYING_MS = 30_000
 export const DEFAULT_TIMING: StatusTiming = { slowAfterMs: 4_000, dropAfterMs: 4_000, connectTimeoutMs: 10_000, retryPlanMs: [500, 2_000, 4_000, 8_000] }
 
 // Everything a route needs to know about its connection, and nothing about the route itself.
@@ -58,7 +62,8 @@ export function isStale(state: StatusKey | null): boolean {
 
 // `made` is how many attempts the plan has committed to. The one being counted down to is the
 // last of those, so it is the `made`th of `of` and never one beyond it.
-export type RetrySchedule = { nextRetryAt: number | null; made: number; of: number }
+// `of` is null past the plan, on a screen that goes on trying (#722).
+export type RetrySchedule = { nextRetryAt: number | null; made: number; of: number | null }
 
 // The wait made visible, so that a connection trying again is something the reader can see
 // happening instead of a screen that blinks for reasons nobody is told.
