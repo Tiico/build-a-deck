@@ -381,7 +381,9 @@
    card. The handle is turned back upright on a turned felt (`--unrotate`), so on a felt turned
    half a turn — seat B looking from the far side — its own «under» points at the card, and the
    caption goes over it instead. A quarter turn puts the card beside the handle, and under is
-   still clear of it.
+   still clear of it as long as the caption reaches no further toward the card than the handle
+   does: a caption wider than its handle, centred, reached past the handle's near end and over
+   the card. So it is set flush with the handle's far end, and grows away from the card (#899).
 
    On a felt of 460 px or less the piles' own names are gone (K19, below), and so is this: there
    is no room between two piles for a plate, and the name stays on the card as it was. The query
@@ -397,6 +399,8 @@
   }
   .byd-table-frame[data-mode='table'] .byd-pile:has(> .byd-pile-top > [data-texture='failed'] > b) .byd-pile-caption { color: #f4b9c7; }
   .byd-table-frame[data-mode='table'] [data-table][data-rotate='180'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-caption { top: auto; bottom: calc(100% + 2px); }
+  .byd-table-frame[data-mode='table'] [data-table][data-rotate='90'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-caption { left: auto; right: 0; translate: none; }
+  .byd-table-frame[data-mode='table'] [data-table][data-rotate='270'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-caption { left: 0; translate: none; }
 }
 
 /* Hands: a fan of backs and a count, oriented toward the seat's edge. */
@@ -1073,6 +1077,18 @@
 
 /* On a turned table (C5) the cards turn with it, but labels are interface and stay readable. */
 [data-table] .byd-pile-count, [data-table] .byd-area-count, [data-table] .byd-seat-name[data-read], [data-table] .byd-token, [data-table] .byd-zone > span, [data-table] .byd-peer-cursor span, [data-table] .byd-peer-tag, [data-table] .byd-peer-pulse span { rotate: var(--unrotate, 0deg); }
+/* The pile's pill and the carried card's tag hang under what they label by their top edge, and
+   the turn back upright is about their own middle. Half a turn leaves that middle where it was.
+   A quarter turn lays the label's width along the felt's «down»: hung by its middle, a pill a
+   hundred pixels wide reached half of that back over its own card (#899). So on a quarter turn the
+   middle is moved further down by half the width less half the height, and the label's near edge
+   keeps the gap its top edge keeps on an unturned felt. The height half is in `translate`, which
+   is the felt's own axes; the width half has to be measured along the label's width, so it is in
+   `transform`, which the turn turns onto the felt's «down». */
+.byd-table-frame[data-mode='table'] [data-table][data-rotate='90'] .byd-pile-count,
+[data-table][data-rotate='90'] .byd-peer-tag { translate: -50% -50%; transform: translateX(-50%); }
+.byd-table-frame[data-mode='table'] [data-table][data-rotate='270'] .byd-pile-count,
+[data-table][data-rotate='270'] .byd-peer-tag { translate: -50% -50%; transform: translateX(50%); }
 /* A seat's own name and its hand count are not interface but furniture: they lie on the table
    turned toward that seat (B), so they turn with it rather than against it. */
 
