@@ -233,17 +233,28 @@ export function placeNames(root: ParentNode): Record<string, string> {
         }
         return null
       }
-      // Inside its own box, along the edge it stood off, cut short if it must be.
+      // Inside its own box, along the edge it stood off, cut short if it must be. There it lies on
+      // what the zone holds, so it is drawn over it on a plate of its own (#874), and the plate is
+      // part of how wide it is: `table.css` gives it to the name marked inside, which is measured
+      // marked.
       const room = Z.r - Z.l - 12
+      const plated = (): { w: number; h: number } => {
+        l.el.setAttribute('data-name-at', 'inside')
+        const size = { w: l.el.offsetWidth, h: l.el.offsetHeight }
+        l.el.removeAttribute('data-name-at')
+        return size
+      }
       const inside = () => {
         home(l.el)
-        if (w > room) {
+        l.el.setAttribute('data-name-at', 'inside')
+        const at = { w: l.el.offsetWidth, h: l.el.offsetHeight }
+        if (at.w > room) {
           l.el.style.maxWidth = `${Math.max(0, room)}px`
           l.el.style.overflow = 'hidden'
           l.el.style.textOverflow = 'ellipsis'
         }
         const low = side === 'below'
-        hang(l.z, l.el, { x: Z.l, y: low ? Z.b : Z.t }, { x: 6, y: low ? -3 - h : 3 })
+        hang(l.z, l.el, { x: Z.l, y: low ? Z.b : Z.t }, { x: 6, y: low ? -3 - at.h : 3 })
         return 'inside'
       }
       // The first place that is free of everything. Then inside, where the whole name fits. Then
@@ -251,7 +262,7 @@ export function placeNames(root: ParentNode): Record<string, string> {
       // better than a name cut short; and last inside, cut short, except on a felt that shows one
       // name at a time.
       let found = first((o) => !lands(o) && !onFurniture(o))
-      if (found === null && w <= room) found = inside()
+      if (found === null && plated().w <= room) found = inside()
       if (found === null) found = first((o) => !lands(o))
       if (found === null && !oneAtATime) found = inside()
       if (found === null) {

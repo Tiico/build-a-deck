@@ -2851,6 +2851,12 @@ Det första stället som är fritt vinner.
 Fritt betyder fritt från andra zoners rutor, andra namn, filtens övriga ord (högarnas namn, antal och bildtext, händernas och ytornas antal, platsernas namnkort och skyltar) och filtens kant.
 En hög, en bricka eller en hands kort undviks också, men ett namn får hellre stå på en sådan än kapas.
 
+**Ett namn inuti sin zon ritas över det zonen håller, på en platta (#874).**
+Zonens kort och brickor ritas efter zonen, så ett namn som hamnat inuti låg under dem: «Räknare B» försvann under sin egen räknare på ett kvartsvridet bord med sex platser.
+Namnet står därför på samma platta som högens bildtext i bordsläget (#789) — filtens egen, ogenomskinlig, med kritfärgad text — och ovanpå zonens innehåll; `placeNames` mäter namnet med plattan på när det avgör om det får plats.
+`felt-names.test.tsx` läser varje namn som står inuti sin zon vid fem och sex platser, vid alla fyra vridningar, och kräver att varje punkt av det är namnets egen.
+På TV:n med Sal's Saloon vid 1280 och 1920 och fyra och åtta platser står inget namn inuti efter #683, så där finns inget att täcka.
+
 **Sidan avgörs en gång, i filtens inpassade skala, och står sedan still (#43).**
 Mätt live bytte saloonens namn sida från under till över när TV:ns kamera zoomade till 3,3 px/mm.
 Därför hängs ett flyttat namn upp i ett hörn av sin egen zon — som filten skalar — och stegas därifrån i skärmens pixlar, som den inte skalar.

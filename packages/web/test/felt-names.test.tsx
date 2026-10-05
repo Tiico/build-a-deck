@@ -640,3 +640,41 @@ describe('a zone nobody owns keeps the name where it was (K19)', () => {
     expect(at.fromLeft).toBeGreaterThan(0)
   }, 60_000)
 })
+
+// #685's last resort hangs a name inside its own zone, along the edge it stood off, when no place
+// outside is free — and the zone's own cards and tokens are drawn after the zone, so they lay over
+// the name (#874: «Räknare B» under its own counter at six seats turned a quarter). A name inside
+// its zone is therefore drawn over what the zone holds, on the plate #789 gave the pile's caption,
+// and every point of it is the name's own. Read where the felt actually puts a name inside, and
+// counted, so that a layout that stops doing it says so instead of passing on nothing.
+const COVERED = `(() => {
+  const place = (${String(placeNames)})
+  place(document)
+  const inside = [...document.querySelectorAll('[data-name-at="inside"]')]
+  const covered = []
+  for (const el of inside) {
+    const r = el.getBoundingClientRect()
+    for (const fx of [0.1, 0.3, 0.5, 0.7, 0.9]) for (const fy of [0.25, 0.5, 0.75]) {
+      const t = document.elementFromPoint(r.left + fx * r.width, r.top + fy * r.height)
+      if (!el.contains(t)) covered.push((el.textContent || '').trim() + ' × ' + (t ? t.className || t.tagName : 'ingenting'))
+    }
+  }
+  return { inside: inside.length, covered: [...new Set(covered)] }
+})()`
+
+describe('a name inside its own zone lies over what the zone holds (#874)', () => {
+  it('is covered by nothing, at five and six seats at every turn with the market', async () => {
+    let inside = 0
+    const covered: string[] = []
+    for (const seats of [5, 6])
+      for (const rotate of TURNS) {
+        const setup = feltOf(seats, true)
+        const html = markupOf(<TableRenderer view={sceneOf(setup)} mode="table" rotate={rotate} size={FRAME} />)
+        const seen = await onPage(html, FRAME, (page) => page.evaluate(COVERED) as Promise<{ inside: number; covered: string[] }>)
+        inside += seen.inside
+        covered.push(...seen.covered.map((c) => `${seats} platser, ${rotate}°: ${c}`))
+      }
+    expect(inside).toBeGreaterThan(0)
+    expect(covered).toEqual([])
+  }, 120_000)
+})
