@@ -6160,3 +6160,20 @@ Vid 375 ryms orden och står kvar (`player-viewport.test.tsx`); vid 360 gjorde d
 `phone-landscape.spec.ts` mäter `/play` och `/online` vid 844 × 390 och 740 × 360: minst ett helt kort ovanför foten, ingen rullning och ingen sidledsrullning.
 Den mäter också huvudet vid 360 och 320 med 25 kort och ett långt namn: högst 60 px, och båda ikonknapparna 44 × 44.
 Prototypen: `docs/ux-audits/2026-10-05-telefonen/prototyper/716/`.
+
+### L63. Delningen säger «Dela», i huvudet och i spelets ⋯ (prototypat och beslutat 2026-10-05, #727)
+
+Speltestet 2026-10-02 fann att den enda vägen till «Vilka som har spelet» var en rund bricka med ägarens initial i huvudet.
+Den hade ett namn för skärmläsaren men inget synligt ord, inget plus och ingenting i någon ⋯-meny, så den som ville bjuda in någon fick gissa att trycka på sin egen initial.
+
+**A och C tillsammans** (av fyra: ordet «Dela» i knappen, en «+»-bricka, «Dela spelet…» i ⋯, eller båda de första och sista).
+Knappen med ansiktena säger «Dela» bredvid dem.
+Prototypen ritade den med en tunn kant; den står utan, eftersom huvudets dörrar — versionen, ansiktena och ⋯ — ritas likadant i varje läge (`button-language.test.tsx`), och det är ordet och inte kanten som gör dörren synlig.
+Ordet står först i knappens namn, «Dela · vilka som har spelet», som det står på knappen (WCAG 2.5.3).
+Spelets ⋯-meny i editorn har «Dela spelet…» före «Exportera…» och öppnar samma panel; menyn har därmed två val och inte ett.
+
+Bredden får inte växa med antalet som är inne: vid 1280 och bredare står högst tre ansikten, antalet och ordet.
+Mellan 1024 och 1279 är dörren ett ansikte, en tummyta bred, som förut, och «Dela spelet…» i ⋯ är vägen i ord där.
+Prototypen mätte en rad vid 1024 med Macens typsnitt, men med CI:s bredare klipptes spelets namn (`editor-header-fit.spec.ts`), och huvudet har ingen luft vid 1024 (#668).
+`share-panel.test.tsx` öppnar panelen från både knappen och menyn.
+Prototypen: `docs/ux-audits/2026-10-05-delningen/prototyper/727/`.

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 727 — Delningen i editorns huvud</title>
+<!-- PROTOTYP, #727. Kastas när en variant är vald.
+     Frågan: var och hur delningen syns i editorn, så att en inbjudan går att hitta utan att veta att
+     ens egen initial är en knapp. Bilderna är den byggda appen (Sal's Saloon, Kortvägg), tagna med
+     Playwright vid 1280 och 1024, med variantens CSS och DOM ovanpå (packages/e2e/test/zz-proto-727.spec.ts
+     på grenen proto/727-delningen). ?v=idag|A|B|C -->
+<style>
+  :root { --ink: #e6ecfa; --quiet: #868ea3; --amber: #ffd98a; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #14161c; color: var(--ink); font: 13px system-ui, sans-serif; }
+  body { padding: 16px 16px 120px; }
+  .rubrik { max-width: 1280px; margin: 0 0 12px; color: var(--amber); font-size: 12px; line-height: 1.5; }
+  .rubrik b { color: #ffe9b8; } .rubrik p { margin: 0 0 4px; }
+  .anteckning { max-width: 1280px; margin: 8px 0 12px; padding: 8px 12px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; font-size: 12.5px; line-height: 1.55; }
+  .anteckning b { color: #ffe9b8; } .anteckning .plus { color: #b7dca0; } .anteckning .minus { color: #f0a58a; }
+  figure { margin: 0 0 16px; } figcaption { color: var(--quiet); font-size: 12px; margin-bottom: 4px; }
+  img { display: block; outline: 1px dashed #4a4230; max-width: 100%; }
+  .vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font-weight: 700; white-space: nowrap; }
+  .vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; padding: 0 12px; }
+  .vaxlare .namn { padding: 0 10px; min-width: 300px; text-align: center; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="rubrik">
+  <p><b>PROTOTYP #727 · delningen i editorns huvud.</b> I dag är vägen till «Vilka som har spelet» en rund bricka med ens egen initial, utan ord och utan plus, och inget i spelets ⋯-meny.</p>
+  <p>Bilderna är den byggda appen. ‹ › eller ← → byter variant; 1280 överst, 1024 under.</p>
+</div>
+<div class="anteckning" id="anteckning"></div>
+<div id="bild"></div>
+<div class="vaxlare" role="group" aria-label="Prototypens växlare">
+  <button type="button" id="bak" aria-label="Föregående variant">‹</button>
+  <span class="namn" id="namn"></span>
+  <button type="button" id="fram" aria-label="Nästa variant">›</button>
+</div>
+<script>
+const V = {
+  idag: ['I dag', '<b>I dag.</b> Initialen är knappen. Den har ett namn för skärmläsaren, men inget synligt ord.'],
+  A: ['A — Ordet «Dela»', '<b>A — ordet «Dela» i samma knapp som ansiktena</b>, som ett piller med kant. <span class="plus">+ Den synliga vägen säger vad den gör; ansiktena och ordet är en och samma dörr (D3); huvudet håller en rad även vid 1024.</span> <span class="minus">− 37 px bredare i ett huvud som redan är trångt vid 1024 (#668).</span>'],
+  B: ['B — En «+»-bricka', '<b>B — en streckad «+»-bricka efter ansiktena</b>, samma storlek som en initial. <span class="plus">+ Nästan ingen bredd (+2 till 14 px); «lägg till en person» är vad plus betyder bredvid ansikten.</span> <span class="minus">− Fortfarande ett tecken utan ord; den som inte läser plus som «bjud in» ser det inte.</span>'],
+  C: ['C — «Dela spelet…» i ⋯', '<b>C — «Dela spelet…» i spelets ⋯-meny</b>, och huvudet som i dag. <span class="plus">+ Huvudet oförändrat; ⋯-menyn får sitt andra val (jfr #738, «en meny med ett enda val»).</span> <span class="minus">− Två tryck och fortfarande gömt bakom ⋯; den som inte öppnar menyn hittar det inte.</span>'],
+}
+const q = new URLSearchParams(location.search)
+let v = V[q.get('v')] ? q.get('v') : 'A'
+function rita() {
+  const k = Object.keys(V)
+  document.getElementById('namn').textContent = `${k.indexOf(v) + 1}/${k.length} · ${V[v][0]}`
+  document.getElementById('anteckning').innerHTML = V[v][1]
+  document.getElementById('bild').innerHTML = [1280, 1024].map((w) => `<figure><figcaption>${w} px</figcaption><img src="bilder/${w}-${v}.png" alt="${V[v][0]}, ${w} px"></figure>`).join('')
+  history.replaceState(null, '', `?v=${v}`)
+}
+const steg = (d) => { const k = Object.keys(V); v = k[(k.indexOf(v) + d + k.length) % k.length]; rita() }
+document.getElementById('bak').onclick = () => steg(-1)
+document.getElementById('fram').onclick = () => steg(1)
+addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') steg(-1); if (e.key === 'ArrowRight') steg(1) })
+rita()
+</script>
+</body>
+</html>
