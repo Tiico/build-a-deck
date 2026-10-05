@@ -37,6 +37,38 @@ export function FlagSheet({ onFlag, onClose, refusal }: { onFlag(note: string | 
 
 // The way out (#31, prototype variant C). The phone's control row is full at 375 px, so the exit
 // is not a fourth control beside the red one — it replaces it, and the sheet behind it asks which
+// Ångra after a move that is not this seat's own (#747, beställarens beslut A). It is a proposal
+// to the table, which the others decide, and it used to go on the press without a word: the sheet
+// says whose move it is, where the table would go back to and who decides, and opens on «Avbryt»,
+// so the reflex that answers without reading sends nothing.
+export function ProposeSheet({ where, who, onPropose, onClose }: { where: string; who: string; onPropose(): void; onClose(): void }) {
+  const t = useT()
+  const box = useSheet(onClose)
+  return (
+    <div className="byd-sheet-backdrop" onClick={onClose}>
+      <div
+        className="byd-sheet byd-session-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="propose-sheet-title"
+        onClick={(e) => e.stopPropagation()}
+        ref={box}
+      >
+        <p className="byd-sheet-title" id="propose-sheet-title">{t('rewind.propose.ask.title')}</p>
+        <p>{t('rewind.propose.ask.body', { where, who })}</p>
+        <div className="byd-sheet-actions">
+          <button type="button" data-kind="quiet" onClick={onClose} data-first>
+            {t('rewind.propose.ask.no')}
+          </button>
+          <button type="button" className="byd-primary" onClick={onPropose}>
+            {t('rewind.propose.ask.yes')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // way out is meant. The two are told apart by what they cost, written under each of them: your
 // seat, or everyone's table. Ending still asks its own question afterwards, so it is one press
 // further away than it was rather than one nearer.
