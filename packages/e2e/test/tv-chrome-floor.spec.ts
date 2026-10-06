@@ -75,6 +75,20 @@ test.describe('the television chrome that opens (#684)', () => {
     expect(fits.box.bottom).toBeLessThanOrEqual(TV.viewport.height)
   })
 
+  // The suite runs no renderer, so every card is still queued: the table the room sees before the
+  // renderer has caught up (#765, beslut B).
+  test('says the cards still being drawn at the floor, and the start waits for them', async ({ request, open, player }) => {
+    const doc = gameThatStarts()
+    const table = await tableFromSetup(request, setupFromProject(doc), deckFromProject(doc))
+    await player(table, { name: 'Ada', seat: 'A' })
+    const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
+    const line = page.locator('.byd-tv-render')
+    await expect(line).toHaveText(/^Korten ritas0 av \d+$/)
+    expect(await underFloor(page, '.byd-tv-render')).toEqual([])
+    await expect(page.locator('[data-table-start]')).toBeDisabled()
+    await expect(page.locator('[data-table-start]')).toHaveText(/^Starta speletkorten ritas · 0\/\d+$/)
+  })
+
   test('opens the way in’s help at the floor', async ({ tableOf, open }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 4 })
     const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
@@ -125,7 +139,7 @@ test.describe('the television chrome that opens (#684)', () => {
     const table = await tableFromSetup(request, setupFromProject(doc), deckFromProject(doc))
     await player(table, { name: 'Ada', seat: 'A' })
     await player(table, { name: 'Bo', seat: 'B' })
-    const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
+    const { page } = await open(TV, `${table.tvUrl}&lang=sv`, { facesReady: true })
     const tile = page.locator('[data-table-start]')
     await tile.click()
     await expect(tile).toHaveText('Starta om')

@@ -55,7 +55,7 @@ test.describe('spelstarten vid ett riktigt bord', () => {
     // `&lang=sv`, som resten av sviten gör det: språket följer annars webbläsarens, och
     // Playwrights är engelska. Meningarna som läses här är designerns språk och inte verktygets
     // (A4), så det ska stå vilket språk de läses i.
-    const screen = await open(TV, `${table.tvUrl}&lang=sv`)
+    const screen = await open(TV, `${table.tvUrl}&lang=sv`, { facesReady: true })
     const tile = screen.page.locator('[data-table-start]')
     await expect(tile).toBeVisible()
     await expect(tile).toHaveText(/Starta spelet/)
@@ -110,7 +110,7 @@ test.describe('bordet ett nytt spel föds med', () => {
     const table = await tableFromSetup(request, setupFromProject(doc), deckFromProject(doc))
     await player(table, { name: 'Ada', seat: 'A' })
 
-    const screen = await open(TV, `${table.tvUrl}&lang=sv`)
+    const screen = await open(TV, `${table.tvUrl}&lang=sv`, { facesReady: true })
     const tile = screen.page.locator('[data-table-start]')
     await expect(tile).toBeVisible()
 
