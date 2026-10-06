@@ -29,7 +29,8 @@ describe('the room’s own address (#675)', () => {
     at(`/${roomOf(id).code.toLowerCase()}`)
     render(<JoinPage />)
     expect(await screen.findByRole('button', { name: /Plats A/ })).toBeTruthy()
-    expect(screen.getByText(`Rum ${roomOf(id).code} · Plats A vald`)).toBeTruthy()
+    // A table started without a game is known by its room.
+    expect(screen.getByRole('heading', { level: 1, name: `Rum ${roomOf(id).code}` })).toBeTruthy()
   })
 
   it('is headed with the game’s name when the table was started from one', async () => {
@@ -38,6 +39,7 @@ describe('the room’s own address (#675)', () => {
     render(<JoinPage />)
     expect(await screen.findByRole('heading', { level: 1, name: "Sal's Saloon" })).toBeTruthy()
     expect(screen.getByText('Du är på väg in i')).toBeTruthy()
+    expect(screen.getByText(`Rum ${roomOf(id).code} · Plats A vald`)).toBeTruthy()
   })
 })
 
@@ -76,7 +78,7 @@ describe('a code that names nothing (#675)', () => {
     const field = (await screen.findByLabelText('Rumskod')) as HTMLInputElement
     expect(field.value).toBe('ZZZZZZ')
     expect(field.getAttribute('aria-invalid')).toBe('true')
-    expect((await screen.findByRole('alert')).textContent).toBe(SAYS)
+    expect(document.getElementById(field.getAttribute('aria-describedby') ?? '')?.textContent).toBe(SAYS)
     expect(document.querySelector('[data-seat]')).toBeNull()
   })
 
@@ -101,7 +103,7 @@ describe('a code that names nothing (#675)', () => {
 
 describe('on a laptop (#675)', () => {
   const wide = (matches: boolean) =>
-    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('min-width: 1024px') ? matches : false, media: query, addEventListener() {}, removeEventListener() {} }))
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query.includes('min-width: 1024px') ? matches : false, media: query, addEventListener: () => undefined, removeEventListener: () => undefined }))
 
   it('suggests playing on this screen from 1024 px, and keeps the phone’s way as the second button', async () => {
     wide(true)
@@ -113,7 +115,7 @@ describe('on a laptop (#675)', () => {
     const buttons = [...document.querySelectorAll<HTMLButtonElement>('form button')]
     expect(buttons[0]).toBe(here)
     expect(here.classList.contains('byd-primary')).toBe(true)
-    expect(here.type).toBe('submit')
+    expect((here as HTMLButtonElement).type).toBe('submit')
     expect(buttons[1]?.textContent).toMatch(/Sätt dig/)
     expect(buttons[1]?.classList.contains('byd-secondary')).toBe(true)
     // Enter in the name field does what the suggested button does.

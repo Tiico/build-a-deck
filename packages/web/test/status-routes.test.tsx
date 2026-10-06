@@ -75,7 +75,8 @@ async function open(live: Live, opts: { session: string; url?: string; timing?: 
 const notice = () => document.querySelector('[data-status-notice]')
 const noticeState = () => notice()?.getAttribute('data-status-notice') ?? null
 
-describe.each(LIVE)('$path when the room does not exist', (live) => {
+// `/join` asks for the code again instead (#675), and is held to the same three things below.
+describe.each(LIVE.filter((live) => live.route !== 'join'))('$path when the room does not exist', (live) => {
   it('says so in Swedish, never in the server s own words', async () => {
     await open(live, { session: 'no-such-room' })
     await waitFor(() => expect(noticeState()).toBe('missing'))
@@ -103,6 +104,33 @@ describe.each(LIVE)('$path when the room does not exist', (live) => {
     await waitFor(() => expect(noticeState()).toBe('missing'))
     const text = notice()!.querySelector('p')!.textContent!
     await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toBe(text))
+    expect(document.querySelector('[data-status-live="polite"]')!.textContent).toBe('')
+  })
+})
+
+// A code that names nothing is not a page of its own on `/join` (#675, beslut C): it is the form
+// for the code, with the code left in the field and one sentence for a code that never was and one
+// that has gone out. What D5 asks of a 404 still holds — the reader's words and never the
+// server's, the tab, and an assertive answer.
+describe('/join when the room does not exist (#675)', () => {
+  const join = LIVE.find((live) => live.route === 'join')!
+  it('asks for the code again, with the code kept and said in the reader’s words', async () => {
+    await open(join, { session: 'no-such-room' })
+    const field = (await screen.findByLabelText('Rumskod')) as HTMLInputElement
+    expect(field.value).toBe('NOSUCH')
+    const said = (await waitFor(() => document.getElementById(field.getAttribute('aria-describedby') ?? '')))?.textContent ?? ''
+    expect(said).toBe('Koden finns inte eller har gått ut — fråga värden efter den nya.')
+    expect(said).not.toMatch(/unknown|expired|Error/)
+  })
+
+  it('says it in the tab as well', async () => {
+    await open(join, { session: 'no-such-room' })
+    await waitFor(() => expect(document.title).toBe('Bordet finns inte · build-your-deck'))
+  })
+
+  it('announces it assertively, because it is an answer to something someone asked for', async () => {
+    await open(join, { session: 'no-such-room' })
+    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toBe('Koden finns inte eller har gått ut — fråga värden efter den nya.'))
     expect(document.querySelector('[data-status-live="polite"]')!.textContent).toBe('')
   })
 })

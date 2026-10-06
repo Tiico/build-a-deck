@@ -75,7 +75,7 @@ function fetchPage(path: string): Promise<ComponentType> {
 // Which words a surface's own failure is said in: a phone that could not fetch its hand is told
 // what a phone is told when it cannot reach the table.
 const voiceOf = (path: string): Voice =>
-  path === '/play' || path === '/join' ? 'phone' : path === '/table' || path === '/observe' || path === '/online' ? 'table' : 'app'
+  path === '/play' || path === '/join' || codeOfAddress(path) ? 'phone' : path === '/table' || path === '/observe' || path === '/online' ? 'table' : 'app'
 
 // A surface whose script did not arrive. Not a white page: the state the line is in, said the way
 // every route says it (#12).

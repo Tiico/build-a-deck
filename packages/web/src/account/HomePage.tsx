@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { canDelete, canEdit, canStartTables, type CardFace, type Role } from '@byd/server/doc'
 import { LoginCard } from './LoginCard.js'
+import { CodeRow } from './CodeRow.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { Question } from '../editor/Question.js'
 import { CardPreview } from '../editor/CardPreview.js'
@@ -129,8 +130,10 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   if (email === undefined) return <StatusNotice notice={noticeFor('loading', 'app', t)} surface="page" />
   if (email === null) {
     return (
-      <main className="byd-account" data-page="home">
+      <main className="byd-account byd-account-door" data-page="home">
         <LoginCard http={http} next={location.pathname + location.search} onNavigate={onNavigate} />
+        {/* Under the card and not in it (#675): the card is the maker's, the row the player's. */}
+        <CodeRow server={server} onNavigate={onNavigate} />
       </main>
     )
   }

@@ -24,6 +24,8 @@ export const enAccount = {
   'home.loading': 'Fetching your games…',
   'home.title': 'My games',
   'home.logout': 'log out',
+  'home.code.ask': 'Here to play? Type the room code',
+  'home.code.go': 'Go in',
   'home.claimed': 'Saved: you played {game} as {name}. The survey and the flags now belong to your account.',
   'home.claimed.some-table': 'a table',
   'home.started': 'The table is running. The room code is {code}.',

@@ -1,3 +1,4 @@
+import { codeOfAddress } from '@byd/protocol'
 import { translate, type T } from '../i18n/index.js'
 import type { StatusKey } from './notice.js'
 
@@ -30,6 +31,8 @@ const PATHS: Record<string, Route> = {
 export function routeOf(pathname: string): Route {
   if (pathname.startsWith('/prototype/')) return 'prototype'
   if (/^\/invites\/[^/]+$/.test(pathname)) return 'invite'
+  // A room's own address is the seat picker's (#675).
+  if (codeOfAddress(pathname)) return 'join'
   return PATHS[pathname] ?? 'unknown'
 }
 

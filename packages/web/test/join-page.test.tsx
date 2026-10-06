@@ -48,10 +48,12 @@ describe('JoinPage', () => {
     host.close()
   })
 
-  it('says that no code was given when there is none, rather than that a table has ended', async () => {
+  // Without a code the page asks for one (#675), rather than saying a table has ended.
+  it('asks for the code when there is none, rather than saying a table has ended', async () => {
     history.replaceState(null, '', `/join?server=${encodeURIComponent(run.url)}`)
     render(<JoinPage />)
-    expect(await screen.findByText('Ingen rumskod angiven.')).toBeTruthy()
+    expect(await screen.findByLabelText('Rumskod')).toBeTruthy()
+    expect(screen.queryByText(/avslutat|slut/)).toBeNull()
   })
 
   it('shows every seat live with who sits there, and preselects the next free one', async () => {
@@ -211,23 +213,24 @@ describe('coming back to the picker after leaving (#31)', () => {
 })
 
 describe('a code that does not resolve (DRIFT §9)', () => {
-  it('says the code no longer applies instead of connecting', async () => {
+  it('asks for the code again instead of connecting, and says why once (#675)', async () => {
     history.replaceState(null, '', `/join?code=ZZZZZZ&server=${encodeURIComponent(run.url)}`)
     // The page says it where every state is said (#7): the one assertive live region the app
-    // mounts, rather than a `role="alert"` of its own invention.
+    // mounts, rather than a `role="alert"` of its own invention that would say it a second time.
     render(
       <StatusLive>
         <JoinPage />
       </StatusLive>,
     )
-    const said = await screen.findByText(/gäller inte längre/)
-    expect(said.textContent).toContain('ZZZZZZ')
-    // The heading is read where the focus lands, and the live region says the rest (#555).
-    await waitFor(() => expect(document.activeElement?.textContent).toMatch(/bordet finns inte/i))
-    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toMatch(/ZZZZZZ gäller inte längre/))
+    const field = (await screen.findByLabelText('Rumskod')) as HTMLInputElement
+    // The focus is in the field, which carries the code and is described by why it led nowhere.
+    await waitFor(() => expect(document.activeElement).toBe(field))
+    expect(field.value).toBe('ZZZZZZ')
+    expect(document.getElementById(field.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Koden finns inte eller har gått ut — fråga värden efter den nya.')
+    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toBe('Koden finns inte eller har gått ut — fråga värden efter den nya.'))
+    expect(document.querySelector('.byd-code-says[role="alert"]')).toBeNull()
     // Choosing a seat again at the same code leads back to this very page (#555 A-14).
     expect(screen.queryByRole('link', { name: 'Välj plats igen' })).toBeNull()
-    expect(screen.getByRole('link', { name: 'Till startsidan' })).toBeTruthy()
   })
 })
 

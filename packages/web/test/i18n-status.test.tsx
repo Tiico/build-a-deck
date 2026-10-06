@@ -122,7 +122,8 @@ describe('the nine states in the reader\'s own language (A4)', () => {
     ['/observe', () => <ObserverPage />, 'The table is not there'],
     ['/online', () => <OnlinePage />, 'The table is not there'],
     ['/play', () => <PlayerPage />, 'The table is not there'],
-    ['/join', () => <JoinPage />, 'The table is not there'],
+    // Without a code `/join` asks for one (#675), in the reader's language.
+    ['/join', () => <JoinPage />, 'Join a table'],
   ])('opens %s with nothing in its address and says so in English', (path, page, heading) => {
     history.replaceState(null, '', path)
     render(<Language lang="en">{page()}</Language>)

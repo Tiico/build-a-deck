@@ -63,11 +63,13 @@ describe('the screen says which game it runs (C)', () => {
 })
 
 describe('the table mode names the game too (B)', () => {
-  it('writes the game, its version and the room code along the top of the felt', async () => {
+  it('writes the game, its version and the room’s address along the top of the felt', async () => {
     const id = await createNamedSession(run, 'Skogens herrar')
     history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=table&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
-    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(`Skogens herrar · rev-1 · ${roomOf(id).code}`))
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar · rev-1'))
+    // The code is the address (#675, beslut C): the plate says where to go, and that is the way in.
+    expect(document.querySelector('.byd-table-plate [data-address]')?.textContent).toBe(`${location.host}/${roomOf(id).code}`)
     // The felt is the whole screen in table mode: no TV chrome around it.
     expect(document.querySelector('[data-tv]')).toBeNull()
   })
@@ -327,8 +329,10 @@ describe('the host\'s screen (DRIFT §9)', () => {
     history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
     expect(await screen.findByText(roomOf(id).code)).toBeTruthy()
-    const qr = await screen.findByAltText(new RegExp(`join\\?code=${roomOf(id).code}`))
-    expect(qr.getAttribute('alt')).toContain(`join?code=${roomOf(id).code}`)
+    // The square carries the room's own address, the same one the words beside it say (#675).
+    const qr = await screen.findByAltText(new RegExp(`/${roomOf(id).code}\\?server=`))
+    expect(qr.getAttribute('alt')).toContain(`${location.origin}/${roomOf(id).code}?server=`)
+    expect(document.querySelector('[data-address]')?.textContent).toBe(location.host)
   })
 
   // DRIFT §9 shows the key once (#758): a screen share or a photo of the TV must not carry it.

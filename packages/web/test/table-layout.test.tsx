@@ -457,7 +457,7 @@ describe('the taller rules button hangs clear of the felt (#30, #348)', () => {
   // and the drawer over it — the drawer being the real component, since where its button lands is
   // the whole question.
   const room = (size: Size) =>
-    `<div class="byd-fit byd-table"><h1 class="byd-table-plate">Spelet · v3 · KX7P</h1>${markupOf(<TableRenderer view={scene()} mode="table" scale={feltScale(feltedOf(scene(), 0), size)} />)}${markupOf(
+    `<div class="byd-fit byd-table"><div class="byd-table-plate"><h1>Spelet · v3</h1><p data-address>deck.ockelberg.com/<b>KX7P2M</b></p></div>${markupOf(<TableRenderer view={scene()} mode="table" scale={feltScale(feltedOf(scene(), 0), size)} />)}${markupOf(
       <Language lang="sv">
         <RuleShelf rules={null} placement="table" />
       </Language>,

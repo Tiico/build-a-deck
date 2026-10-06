@@ -125,13 +125,14 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   // The table screen acts as the table itself, so a line with no seat on it is its own (K14).
   useActivityLive(activity, view, null)
 
+  // The code is the address (#675, beslut C): the room's own address is the screen's origin and
+  // the code, and the square carries the very same one as the words beside it.
   const joinUrl = useMemo(() => {
     if (!roomCode) return undefined
-    const q = new URLSearchParams({ code: roomCode })
     const server = params.get('server')
-    if (server) q.set('server', server)
-    return `${location.origin}/join?${q.toString()}`
+    return `${location.origin}/${roomCode}${server ? `?${new URLSearchParams({ server }).toString()}` : ''}`
   }, [params, roomCode])
+  const site = location.host
 
   // A link with no room in it is a link to a room that does not exist.
   if (!sessionId) return <StatusNotice notice={unlinked('table', t)} surface="page" links={links} />
@@ -206,13 +207,22 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
         {...(live.stale ? { inert: true } : {})}
       >
       {mode === 'table' && (
-        // The felt is the whole screen (B); a quiet line along its top says which game this is.
-        <h1 className="byd-table-plate">{[record?.name ?? t('play.table'), version, roomCode].filter(Boolean).join(' · ')}</h1>
+        // The felt is the whole screen (B); a quiet line along its top says which game this is, and
+        // beside it the room's address, which is the way in (#675, beslut C): no square here, the
+        // address is enough for a table everyone is sitting at.
+        <div className="byd-table-plate">
+          <h1>{[record?.name ?? t('play.table'), version].filter(Boolean).join(' · ')}</h1>
+          {roomCode && !view.ended && (
+            <p data-address>
+              {site}/<b>{roomCode}</b>
+            </p>
+          )}
+        </div>
       )}
       {mode === 'tv' ? (
         // On a TV the rulebook goes into the header, where the way in already is: the two wanted
         // the same corner, and only the header can lay both out (#30).
-        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} title={record?.name} version={version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} showing={showing} onDismiss={dismiss} observers={observers} rules={rules('tv')} room corner={setCorner}>
+        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} host={site} title={record?.name} version={version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} showing={showing} onDismiss={dismiss} observers={observers} rules={rules('tv')} room corner={setCorner}>
           {table}
         </TvChrome>
       ) : (

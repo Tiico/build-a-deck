@@ -42,7 +42,7 @@ export const enPlay = {
   'tv.latest.empty': 'Nothing has happened yet. What is played at the table turns up here.',
   // The box behind the question mark (L32's addendum, #305).
   'tv.join.help.topic': 'joining',
-  'tv.join.help.how': 'The players open the address on their phone, code and all, or scan the square.',
+  'tv.join.help.how': 'The players open the address on their phone — the room code is its last part — or scan the square.',
   'tv.join.help.phone': 'The phone becomes the hand: the cards are there, and the table stays here.',
   'tv.seats': 'Seats',
   'tv.seat.hand.one': '{n} card in hand',

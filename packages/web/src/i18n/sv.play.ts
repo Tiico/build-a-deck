@@ -58,7 +58,7 @@ export const svPlay = {
   // Fördjupningen bakom frågetecknet (L32:s tillägg, #305). Raden vid koden är fyra ord; vad
   // telefonen blir när den ansluter står i lådan.
   'tv.join.help.topic': 'att ansluta',
-  'tv.join.help.how': 'Spelarna öppnar adressen på sin telefon, koden och allt, eller läser av rutan.',
+  'tv.join.help.how': 'Spelarna öppnar adressen på sin telefon — rumskoden är adressens sista del — eller läser av rutan.',
   'tv.join.help.phone': 'Telefonen blir handen: korten ligger där, och bordet står kvar här.',
   'tv.seats': 'Platser',
   'tv.seat.hand.one': '{n} kort på hand',

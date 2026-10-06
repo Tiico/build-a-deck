@@ -563,8 +563,13 @@
 /* The felt has no chrome (B): the game, its version and the room code, quietly along the top. */
 .byd-table-plate {
   position: fixed; top: 14px; left: 18px; z-index: 3; margin: 0;
-  font-size: 13px; font-weight: 400; color: #f3e9d6; opacity: 0.7;
+  display: flex; gap: 18px; align-items: baseline; color: #f3e9d6;
 }
+.byd-table-plate > h1 { margin: 0; font-size: 13px; font-weight: 400; opacity: 0.7; }
+/* The room's address (#675, beslut C): read from across the table, so larger than the game's name
+   and at full ink, with the code in figures that cannot be mistaken for one another. */
+.byd-table-plate > p { margin: 0; font-size: 20px; }
+.byd-table-plate > p b { font-family: ui-monospace, monospace; letter-spacing: 2px; }
 
 /* Hold to inspect: private, large, flat. */
 .byd-inspect {
@@ -611,6 +616,12 @@
   font-family: ui-monospace, monospace; font-size: 26px; letter-spacing: 6px;
   background: #1a1e29; padding: 4px 14px; border-radius: 8px;
 }
+/* The code is the address (#675, beslut C): the host on a line of its own, and the code under it
+   as the address's last step — the slash in front of it is the stylesheet's, so what is read off
+   the screen as the code is the code. The host is never broken inside itself; a host too long for
+   the column is the box's name, and it is measured against the column at both TV sizes. */
+[data-tv] .byd-tv-address { flex: 1 0 100%; margin: -10px 0 0; font-size: 18px; font-weight: 700; color: #e6ecfa; white-space: nowrap; }
+[data-tv] .byd-tv-address + strong::before { content: '/'; color: #7d8597; margin-right: 4px; letter-spacing: 0; }
 [data-tv] > main { display: grid; place-items: center; padding: 16px; min-width: 0; min-height: 0; overflow: hidden; }
 [data-tv] > aside {
   border-left: 1px solid #232733; min-height: 0; overflow: hidden;
@@ -1207,6 +1218,9 @@
 [data-tv][data-room] aside h2:where(:not(.byd-rules-panel *)) { font-size: 24px; letter-spacing: 1px; margin-bottom: 8px; }
 [data-tv][data-room] .byd-tv-head h1 { font-size: 28px; }
 [data-tv][data-room] .byd-tv-join > span { font-size: 24px; }
+/* The room's address at the sizes beslut C set (#675): the host at K26's 24 px, the code at 40. */
+[data-tv][data-room] .byd-tv-address { font-size: 24px; }
+[data-tv][data-room] .byd-tv-join strong { font-size: 40px; letter-spacing: 6px; }
 [data-tv][data-room] .byd-tv-inspect { --byd-inspect-head: 30px; --byd-inspect-gap: 8px; }
 [data-tv][data-room] .byd-tv-inspect [data-empty] span { font-size: 24px; line-height: 1.2; }
 [data-tv][data-room] ol:where(:not(.byd-rules-panel *)) li { font-size: 24px; }
