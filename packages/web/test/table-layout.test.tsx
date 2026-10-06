@@ -4,9 +4,9 @@
 // stylesheet — the same way the texture fallback is measured (#10, #20).
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { ReactElement } from 'react'
+import { useState, type ReactElement } from 'react'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
 import type { Intent, Snapshot, VisibleComponentState } from '@byd/protocol'
 import { TableRenderer, type TableMode } from '../src/table/TableRenderer.js'
@@ -25,7 +25,7 @@ import { recipeSetup } from './fixture.js'
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 // The felt is a room of the button language (L13, #90), so the shared sheet goes over the felt's
 // own the way it does on the page itself.
-const SHEETS = ['src/table/table.css', 'src/table/texture.css', 'src/table/keyboard.css', 'src/rules/rules-open.css', 'src/rules/rules.css', 'src/buttons.css']
+const SHEETS = ['src/help.css', 'src/table/table.css', 'src/table/texture.css', 'src/table/keyboard.css', 'src/rules/rules-open.css', 'src/rules/rules.css', 'src/buttons.css']
 
 const CARD = { id: 'card.standard.63x88', version: 1 }
 const card = (id: string, zone: string, x: number, y: number, cardRef: string | null): VisibleComponentState => ({ id, type: CARD, zone, face: cardRef === null ? 'back' : 'front', x, y, rot: 0, cardRef })
@@ -447,6 +447,49 @@ describe('the rules button and the way in share the TV head (#30)', () => {
 //
 // Measured at the three widths #30 was checked in, because a felt fitted to its window leaves a
 // different amount of air in each.
+// The room's television puts two «?» under its code: the help about joining, and the felt's
+// shortcuts in the corner the column holds for the felt (#875). Both stood off the column's edge
+// that everything else in it starts on — the help's disc 7 px outside it, because its button
+// shrinks to a 22 px ring's footprint while the room draws a 36 px ring, and the shortcuts' 3 px
+// inside it, from the felt's −5 px margin against the room's 8 px of padding (#921). Read against
+// the column's content box, so neither the font nor the column's width moves the answer.
+describe('the room television’s «?» discs stand on the column’s edge (#921)', () => {
+  function Room() {
+    const [corner, setCorner] = useState<HTMLElement | null>(null)
+    return (
+      <TvChrome view={scene()} activity={[]} roomCode="KX7P" joinUrl="https://byd.example/join?code=KX7P" title="Spel" room corner={setCorner}>
+        <TableRenderer view={scene()} mode="tv" size={{ w: 1560, h: 1080 }} glideMs={0} onAct={() => undefined} forTheRoom cornerIn={corner} />
+      </TvChrome>
+    )
+  }
+
+  it('lines both discs up with the code and the heading above them', async () => {
+    const { container, unmount } = render(<Room />)
+    // The corner is a node the chrome hands the felt after its first render.
+    await waitFor(() => expect(container.querySelector('.byd-tv-corner .byd-shortcut-open')).not.toBeNull())
+    const html = container.innerHTML
+    unmount()
+    const seen = await onPage(html, { w: 1920, h: 1080 }, (page) =>
+      page.evaluate(() => {
+        const aside = document.querySelector('[data-tv] > aside')!
+        const style = getComputedStyle(aside)
+        const edge = aside.getBoundingClientRect().left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft)
+        const at = (sel: string) => Math.round((document.querySelector(sel)!.getBoundingClientRect().left - edge) * 2) / 2
+        const target = (sel: string) => {
+          const r = document.querySelector(sel)!.getBoundingClientRect()
+          return Math.min(r.width, r.height)
+        }
+        return {
+          left: { heading: at('.byd-tv-head h1'), code: at('.byd-tv-join strong'), help: at('.byd-tv-join .byd-help-ask > span'), shortcuts: at('.byd-tv-corner .byd-shortcut-open > span') },
+          targets: { help: target('.byd-tv-join .byd-help-ask') >= 44, shortcuts: target('.byd-tv-corner .byd-shortcut-open') >= 44 },
+        }
+      }),
+    )
+    expect(seen.left).toEqual({ heading: 0, code: 0, help: 0, shortcuts: 0 })
+    expect(seen.targets).toEqual({ help: true, shortcuts: true })
+  }, 60_000)
+})
+
 describe('the taller rules button hangs clear of the felt (#30, #348)', () => {
   const SCREENS: readonly Size[] = [
     { w: 1024, h: 768 },

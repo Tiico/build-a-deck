@@ -36,6 +36,8 @@ export const svPlay = {
   'rewind.waiting': 'väntar på {who}',
   // En hög som bara finns för att två kort lades på varandra (K1) har inget namn från designern.
   'pile.dynamic': 'hög',
+  // Under högen på TV:n i tre sekunder efter en blandning (#718).
+  'pile.shuffled': '{pile} blandad',
 
   // TV-läget runt filten.
   // Ovanför adressen, som är värden och sedan /KOD (#675): orden följer värdens språk, adressen

@@ -26,6 +26,7 @@ export const enPlay = {
   'rewind.looked': 'this is how the table looked {where}',
   'rewind.waiting': 'waiting for {who}',
   'pile.dynamic': 'pile',
+  'pile.shuffled': '{pile} shuffled',
 
   'tv.join': 'open on your phone',
   'qr.enlarge': 'Show the code larger',
