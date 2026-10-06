@@ -54,7 +54,12 @@ export function readDraft(server: string | null): Draft | null {
     ) return null
     if (typeof value.id === 'string') draftId = value.id
     // A draft begun before «Utseende» (#633) has no theme, and starts from the first one.
-    const draft: Draft = { state: { ...state, theme: typeof state.theme === 'string' ? state.theme : DEFAULT_THEME.id }, server: value.server ?? null }
+    const theme = typeof state.theme === 'string' ? state.theme : DEFAULT_THEME.id
+    // One kept before the preselection (#687) does not say whether its theme was pressed; any theme
+    // but the preselection was, and the preselection is taken as kept, so nothing is asked of the
+    // catalogue on the strength of a press nobody can vouch for (L27).
+    const themePressed = typeof state.themePressed === 'boolean' ? state.themePressed : theme !== DEFAULT_THEME.id
+    const draft: Draft = { state: { ...state, theme, themePressed }, server: value.server ?? null }
     if (value.blank !== undefined) draft.blank = value.blank
     return draft
   } catch {

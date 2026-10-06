@@ -91,3 +91,29 @@ export async function themeFaceSources(theme: Theme): Promise<Record<string, { s
   if (found.some(([, face]) => !face)) return null
   return Object.fromEntries(found) as Record<string, { stack: string; src: string }>
 }
+
+/**
+ * Whether the page has every one of `families` loaded and ready to draw (#687): the browser's own
+ * font set says so, and not the catalogue's sheet. The sheet answers long before the file has
+ * travelled, and the card's faces are declared `font-display: block` — so a preview that took the
+ * sheet for the face stood blank for up to three seconds and then in the fallback, with nothing
+ * said. Asked once the faces are declared in the page; `false` when a file did not come.
+ *
+ * A page without a font set (jsdom) has nothing to wait for.
+ */
+export async function facesLoaded(families: readonly string[]): Promise<boolean> {
+  const set = typeof document === 'undefined' ? undefined : (document.fonts as FontFaceSet | undefined)
+  if (!set) return true
+  const ours = (family: string) => [...set].filter((face) => face.family.replace(/^["']|["']$/g, '') === family)
+  try {
+    for (const family of families) {
+      // The declaration is drawn into the page by the same render that asked, so it may be a frame
+      // away from the font set.
+      for (let frame = 0; ours(family).length === 0 && frame < 20; frame++) await new Promise((resolve) => requestAnimationFrame(resolve))
+      await Promise.all(ours(family).map((face) => face.load()))
+    }
+  } catch {
+    return false
+  }
+  return families.every((family) => ours(family).some((face) => face.status === 'loaded'))
+}
