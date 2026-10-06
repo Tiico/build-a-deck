@@ -1081,7 +1081,9 @@ Roller och inbjudningar, byggt 2026-09-08:
 Behörigheter är en modell, inte ett fält: ägare, medredigerare, testledare, betraktare, och varje väg frågar vad rollen får göra i stället för att minnas reglerna.
 Ägaren delar spelet och tar bort det. En medredigerare ändrar det. En testledare startar bord och kör speltest utan att röra leken. En betraktare ser projektet ändras på tråden utan att kunna ändra det, och får veta det i huvudet i stället för att varje ändring avvisas.
 Speltestens data — ett bords hela logg (`GET /sessions/:id/export`) och dess enkätsvar — läses av den som får öppna projektets bord som värd, alltså ägare, medredigerare och testledare, och av ingen annan (2026-09-28): loggen bär varje hand, gästernas namn och flaggornas text, och ett bords id står i varje spelares länk. Bordsskärmens värdnyckel räcker inte, eftersom bordet bara ser det publika.
-En inbjudan mejlas till en adress, lever en vecka och går att använda en gång. Den säger ingenting om spelet förrän den använts, så en vilsen länk berättar inget för en främling. Den som följer den medan hen är inloggad går med i den roll den nämner och landar i editorn.
+En inbjudan mejlas till en adress, lever en vecka och går att använda en gång. Den som följer den medan hen är inloggad går med i den roll den nämner och landar i editorn.
+Reviderat 2026-10-06 (#691, beställarens beslut): medan länken kan följas säger den spelets namn, och inget mer, till inloggningskortet den landar på — «Logga in för att öppna spelet du bjudits in till: …».
+Namnet stod redan i mejlet, och den som har en levande länk kan logga in och öppna hela spelet med den; det som skyddas är att en använd, återkallad eller påhittad länk fortfarande inte berättar något alls.
 Ytan prototypades i tre former: en panel från editorns huvud, ett ark på spelets kort, och de som är inne som dörren. Valet blev det sista: vilka som är inne nu och vilka som får vara med är samma fråga, så en lista svarar på den, med de närvarande överst.
 Ett projekt från före konton tillhör fortfarande ingen och är öppet för alla, som det alltid varit.
 Läsläget, prototypat och beslutat 2026-09-28 (#489, beslut C efter prototyp 35):
@@ -5028,6 +5030,12 @@ Det kräver ett tillstånd på en sida som i dag inte har något, och tillstånd
 **Går lagringen inte att läsa visas säljtexten.**
 Ett privat fönster, en rensad webbläsare eller en blockerad lagring ska ge den som kanske aldrig varit här sammanhanget, inte ta bort det: felet åt det hållet kostar en mening, felet åt andra hållet kostar en förklaring till den som behövde den.
 Frågetecknet står kvar bredvid i båda fallen, så vägen till resten finns oavsett.
+
+**Raden under säljtexten följer vägen in** (beställarens beslut 2026-10-06, #691).
+Den enda mening L36 lämnade kvar — «Logga in för att komma till dina spel» — talade bara till den som redan har konto.
+Första besöket säger «Logga in eller skapa konto med din e-post — länken i mejlet räcker», en inbjudan «Logga in för att öppna spelet du bjudits in till» med spelets namn (D3), och guidens utkast «Ditt spel skapas när du loggat in»; claim har sin egen sedan tidigare.
+Utloggad säger guiden tidigt, i rutan som säger att den är startpunkten, att spelet sparas på ett konto.
+Det är samma rad på samma plats, inte en ny form.
 
 
 ### L37. En uppladdning som misslyckas för sent rättas i dokumentet och i historikens bilder, aldrig som ett eget steg (2026-09-20, #344; reviderat 2026-09-21, #358)

@@ -9,6 +9,13 @@ export const svAccount = {
   // fungerar, och den som redan har konto ska slippa läsa den varje gång.
   'login.pitch': 'Skapa ditt kortspel, speltesta det på skärmen, beställ hem det.',
   'login.lead': 'Logga in för att komma till dina spel.',
+  // En lead per väg in (#691, beslut 2026-10-06), som claim har sin: första besöket säger att samma
+  // länk både loggar in och skapar kontot, inbjudan säger vilket spel den leder till, och guidens
+  // utkast att spelet skapas på andra sidan inloggningen.
+  'login.lead.first': 'Logga in eller skapa konto med din e-post — länken i mejlet räcker.',
+  'login.lead.invite': 'Logga in för att öppna spelet du bjudits in till.',
+  'login.lead.invite.named': 'Logga in för att öppna spelet du bjudits in till: {game}.',
+  'login.lead.resume': 'Ditt spel skapas när du loggat in.',
   'login.help.topic': 'inloggningen',
   'login.sent.title': 'Kolla mejlen.',
   'login.sent.body': 'Vi skickade en länk till {email}. Den fungerar i 15 minuter och bara en gång. Inget lösenord att komma ihåg.',
@@ -114,6 +121,7 @@ export const svAccount = {
   'wizard.prev': '← Föregående',
   'wizard.next': 'Nästa →',
   'wizard.handoff.title': 'Wizarden är startpunkten',
+  'wizard.handoff.account': 'Spelet sparas på ett konto — du loggar in när du skapar det.',
   // Ett ledord per stycke, så att hjälpen inte blandar de två dörrarna i ett (#731).
   'wizard.handoff.body': 'Guidad start: skapa några exempelkort här. Layout, hela leken och CSV-verktyg väntar i editorn.',
   'wizard.name': 'Spelets namn',

@@ -219,6 +219,8 @@ export type ProjectStore = {
   // Takes back every open invitation to an address (#477): its link opens nothing after this.
   withdrawInvites(project: string, email: string): Promise<number>
   acceptInvite(tokenHash: string, now: string): Promise<{ project: string; email: string; role: Role } | null>
+  // The project an invitation that can still be followed at `now` leads to (#691), without using it.
+  inviteTo(tokenHash: string, now: string): Promise<string | null>
 }
 
 export class MemoryProjectStore implements ProjectStore {
@@ -308,6 +310,11 @@ export class MemoryProjectStore implements ProjectStore {
       n++
     }
     return n
+  }
+
+  async inviteTo(tokenHash: string, now: string): Promise<string | null> {
+    const found = this.invites.get(tokenHash)
+    return !found || found.used || found.expiresAt < now ? null : found.project
   }
 
   async acceptInvite(tokenHash: string, now: string): Promise<{ project: string; email: string; role: Role } | null> {

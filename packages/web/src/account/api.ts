@@ -115,6 +115,18 @@ export async function unshareProject(http: string, project: string, email: strin
   if (!res.ok) throw new Said(t('error.unshare.failed', { email }))
 }
 
+// The name of the game an invitation leads to, for the login card it lands on (#691): null when the
+// link cannot be followed any more, or the service could not say — the card then says it is an
+// invitation without naming one.
+export async function invitedTo(http: string, token: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${http}/invites/${encodeURIComponent(token)}`, withCredentials())
+    return res.ok ? ((await res.json()) as { name: string }).name : null
+  } catch {
+    return null
+  }
+}
+
 // Following an invitation: 'not-logged-in' asks for a login first, 'spent' means it is gone.
 export async function acceptInvite(http: string, token: string, t: T = swedish): Promise<{ project: string; role: Role } | 'not-logged-in' | 'spent'> {
   const res = await fetch(`${http}/invites/${encodeURIComponent(token)}`, withCredentials({ method: 'POST' }))
