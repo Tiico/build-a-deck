@@ -447,6 +447,27 @@ test.describe('the stylesheet no longer holds the first painting, and still hold
     expect(index.indexOf(`href="${SHEET}"`)).toBeGreaterThan(index.indexOf('<div id="root">'))
   })
 
+  // The cascade breaks ties by document order, and every sheet fetched later — the editor's, the
+  // rulebook drawer's, the help box's (L20) — was written to come after the entry's and win them.
+  // Vite links those sheets at the end of <head>, which with the entry's sheet in <body> put them
+  // *before* it: the editor's own rules lost to the entry's, and its header's tabs and the Bord
+  // tab's names were laid out by the wrong ones. So they follow the entry's sheet into <body>.
+  test('keeps every sheet fetched later after the entry’s, so the cascade reads as it did', async ({ browser, baseURL }) => {
+    const { context, page } = await screen(browser, baseURL, DESK)
+    try {
+      await logIn(page.request)
+      const { editorUrl } = await makeProject(page.request, { name: 'Skogens herrar' })
+      await page.goto(editorUrl)
+      await expect(page.locator('[data-page="editor"]')).toBeVisible()
+      const sheets = await page.evaluate(() => [...document.querySelectorAll('link[rel="stylesheet"]')].map((l) => new URL((l as HTMLLinkElement).href).pathname).filter((p) => p.startsWith('/assets/')))
+      // Not vacuous: the editor's own sheet was fetched, and it is not the entry's.
+      expect(sheets.length).toBeGreaterThan(1)
+      expect(sheets[0]).toBe(SHEET)
+    } finally {
+      await context.close()
+    }
+  })
+
   test('paints the shell before the sheet has come, and draws the app’s first frame only once the felt’s face is in the document', async ({ browser, baseURL }) => {
     const { context, page } = await screen(browser, baseURL, TV)
     try {

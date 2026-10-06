@@ -427,9 +427,9 @@ const routeTable = (): Route[] => {
     const asStatic = new RegExp(`(?:^|\\n)\\s*import\\s*\\{[^}]*\\b${name}\\b[^}]*\\}\\s*from\\s*['"]([^'"]+)['"]`).exec(text)
     if (asStatic) return { module: resolveSpec(app, asStatic[1]!), how: 'entry' }
     // A route drawn by a wrapper declared in `App.tsx` itself — the editor's `Suspense` — answers
-    // for whatever that wrapper renders.
+    // for whatever that wrapper renders, and not for what stands in while it waits (#749).
     const wrapper = new RegExp(`function ${name}\\(\\)[\\s\\S]*?\\n\\}`).exec(text)
-    const inner = wrapper && /<([A-Z][A-Za-z0-9]*)\s*\/>/.exec(wrapper[0])
+    const inner = wrapper && /<([A-Z][A-Za-z0-9]*)\s*\/>/.exec(wrapper[0].replace(/fallback=\{<[^}]*\}/g, ''))
     return inner ? importedFrom(inner[1]!) : null
   }
   const resolved = [...text.matchAll(/path(?:\.startsWith\()?\s*===?\s*'([^']+)'\)?\)\s*return\s+Promise\.resolve\(([A-Z][A-Za-z0-9]*)\)/g)].map(

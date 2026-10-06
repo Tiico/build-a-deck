@@ -68,11 +68,26 @@ function routePreload(): Plugin {
 // script does not run while a stylesheet the parser has met is still loading. So the felt's face
 // is in the document before the app's first frame (K20) — which `shell.spec.ts` measures with the
 // sheet held on the wire rather than takes on trust.
+//
+// Moving it has one consequence the cascade cares about. Every sheet fetched later — the editor's,
+// the rulebook drawer's, the help box's (L20) — is linked by Vite's preload helper at the end of
+// <head>, which with the entry's sheet in <body> stands *before* it, and a tie between two rules
+// then goes to the entry's instead of to the sheet written to override it. So the helper links a
+// stylesheet at the end of <body>, after the entry's, where the order is again the order they come
+// in. The helper is Vite's own module and the line is matched exactly, so a Vite that writes it
+// differently fails the build here rather than quietly reordering the cascade.
+const VITE_PRELOAD_HELPER = '\0vite/preload-helper.js'
+const LINKS_IN_HEAD = 'document.head.appendChild(link);'
 function shell(): Plugin {
   const minify = async (code: string) => (await transformWithEsbuild(code, 'shell.js', { minify: true, target: 'es2020', charset: 'utf8' })).code.trim().replace(/<\//g, '<\\/')
   const text = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   return {
     name: 'byd-shell',
+    transform(code, id) {
+      if (id !== VITE_PRELOAD_HELPER) return
+      if (!code.includes(LINKS_IN_HEAD)) throw new Error(`Vite's preload helper no longer says ${LINKS_IN_HEAD}; the sheets it links would stand before the entry's (vite.config.ts, shell)`)
+      return { code: code.replace(LINKS_IN_HEAD, '(isCss ? document.body : document.head).appendChild(link);'), map: null }
+    },
     transformIndexHtml: {
       order: 'post',
       async handler(html, { bundle }) {

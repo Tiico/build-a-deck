@@ -4448,6 +4448,9 @@ Appens första bild ritas därför fortfarande med arket på plats och filtens t
 
 Det är mätt och inte antaget: `packages/e2e/test/surfaces/shell.spec.ts` håller arket en och en halv sekund på tråden medan entrén går fritt, och kräver att skalet målas innan arket kommit, att appens första bild ritas först efter det, och att arket då gäller och ansiktena är deklarerade.
 Flytten görs av bygget (`vite.config.ts`), så den källa som `index.html` är förblir läsbar och utvecklingsservern, som inte länkar något ark alls, är orörd.
+Den har en följd för kaskaden: varje ark som hämtas senare — editorns, regelbokens låda, hjälprutan — länkas av Vites förladdning sist i `<head>`, alltså före entréns ark i `<body>`, och en regel som skrivits för att vinna på ordningen förlorade då mot entréns.
+Editorns flikar och Bord-flikens namn lades ut av fel regler, vilket `editor-header-fit.spec.ts` och `zone-name-own-box.spec.ts` fällde.
+Bygget låter därför förladdningen länka ett ark sist i `<body>`, efter entréns, så att ordningen åter är den ordning arken kommer i; raden i Vites hjälpare matchas exakt, så en Vite som skriver den annorlunda fäller bygget i stället för att tyst kasta om kaskaden.
 Meningen i tillägget 2026-10-04 om att det första på skärmen är ytan själv, «samma vita sida som före delningen, bara kortare», gäller inte längre: det första på skärmen är skalet, och det som ersätter det är ytan.
 
 ### L21. Kortväggen står i band, och leken har en innehållsförteckning (prototypat och byggt 2026-09-17, #179)
