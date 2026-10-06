@@ -1624,6 +1624,14 @@ Tillägg 2026-09-28 (#542, uppföljning av #529):
 - **En server som inte går att nå sägs, och ingenting fryser.** En import som lyckats står som lyckad även om listan inte går att läsa om direkt efteråt.
 - Grindarna är `packages/web/test/game-dialogs.test.tsx` och `packages/web/test/editor-export.test.tsx`.
 
+Tillägg 2026-10-06 (#909, beställarens beslut C, efter #738):
+- **Startsidans ⋯ bär samma val som editorns**: «Byt namn…», «Dubblera», «Exportera…» och «Ta bort spelet», styrda av rollen som i #689. De tre första är ägarens och medredigerarnas, att ta bort spelet bara ägarens.
+- **Ett namnbyte från Mina spel är en vanlig redigering i projektaktören**, samma `rename` som editorn skickar (`PUT /projects/:id/name`). Det hamnar i loggen, syns direkt i varje öppen editor och går att ångra där.
+- **Inget sparas åt någon annan.** Namnbytet gör ingen ny version, så andras osparade ändringar förblir osparade och spelets rev står still.
+- **Mina spel läser namnet ur det levande dokumentet** (D3: loggen är sanningen): aktörens dokument om spelet är öppet, annars den sparade versionen med loggens svans efter den uppspelad. Listan stämmer alltså direkt, och även efter en omstart av servern.
+- **«Dubblera» kopierar samma levande dokument** genom `POST /projects/:id/duplicate`, och listan läses om med korten så att kopians ruta ritas direkt.
+- Grindarna är `packages/server/test/rename-from-home.test.ts` och `packages/web/test/account-page.test.tsx`.
+
 ---
 
 ## H. Sekvensering
@@ -2264,6 +2272,14 @@ Det som stänger ringen är allt som inte är ett verb: ryggen täcker skärmen,
 Escape är samma väg för en hand på ett tangentbord, vilket den inte hade medan knappen var det enda uttalade sättet att ångra sig.
 Fyra verb i stället för fem lägger dem dessutom i väderstrecken kring fingret.
 En ring utan verb öppnas inte alls: ett kort som hunnit lämna bordet medan fingret var på väg till det hade annars gett en tom cirkel.
+
+Reviderat 2026-10-06 (#719, beställarens beslut): **en skiva som aldrig kan gå på ytan ritas inte, filtens hjälp börjar med gesterna, och ringen heter ringen.**
+
+Speltestet 2026-10-02 fann två döda skivor av fem: «Titta» på en dold hög, där ingen topp syns, och «Avslöja» på ett uppvänt kort, där det inte finns något att avslöja.
+De utelämnas nu; en skiva som bara inte går just nu — «Blanda» på en hög med ett kort — står kvar, nedtonad, där handen väntar sig den.
+Hjälpen («?») listade snabbkommandona men inte filtens egen regel; nu börjar den med tre rader: en dragning flyttar, ett klick läser och ett klick till frågar, och Tabb, pilarna och Enter når samma saker (K16).
+Esc-raden sa «Stäng hjulet»; ringen har ett namn, och det är ringen.
+Kontrastgrinden i `button-language.test.tsx` mätte den otillgängliga skivan på ett uppvänt korts «Avslöja»; den mäter nu den tomma kasthögens ring, lagd över samma kort.
 
 ### K15. Högens topp som adress: `stack` och `flip` tar `{ top: hög }` (2026-09-06)
 
@@ -3114,6 +3130,15 @@ Ett framletat kortknippe placeras efter en högs regel och inte ett ensamt korts
 Arkets CSS-budget är höjd till 139 kB med skälet skrivet i `felt-font.test.ts`.
 `version.change` bär kolumnindexet bredvid komponenterna (C7): en fråga som ställs efter ett versionsbyte måste ställas till den lek som spelas, och inte till den som spelades — utan det svarar den fel utan att säga något.
 Grindarna: `packages/engine/test/reach-by-query.test.ts` och `dealt-face.test.ts` (motorn och projektionen), `shortcuts.test.ts` (sidan i projektionen), `packages/server/test/setup-fill.test.ts` (startinnehållet, kolumnerna och sidan som följer med), `zone-fill-and-actions.test.ts` (greppet), `packages/web/test/zone-actions.test.ts` (kompilatorn och tangentbordets paritet), `drop.test.ts` (var sidan landar), `table-renderer.test.tsx` (ringens verb), `pile-actions-at-the-table.test.tsx` (arket), `setup-actions.test.tsx` (meningarna) och `setup-sentence-matrix.test.tsx` (varje steg gånger varje platsform, på båda språken).
+
+Reviderat 2026-10-06 (#719, beställarens beslut): **arket utelämnar en startåtgärd som bara gör det ringen redan gör, och ett kort som dras vid den delade skärmen landar uppvänt.**
+
+Receptets «Blanda» (`when: both`) stod i arket under ringen bredvid ringens eget «Blanda» — två knappar för samma handling.
+En åtgärd med `when: both` vars enda steg är `shuffle`, eller `flipTop` med `toggle`, står därför inte i arket; den finns kvar som start, och ringen bär verbet.
+En åtgärd som bara gäller på begäran står kvar, eftersom designern då bett om den i egna ord.
+«Dra 1» och D på en skärm utan egen hand — bordets skärm — lade kortet nedvänt bredvid högen, och det enda sättet att se det var ett klick till och «Vänd».
+Där landar kortet nu uppvänt (`face: 'front'` på `split`): ingen enskild spelare ska läsa det i hemlighet där, så bordet läser det, och en dragning är en handling.
+`felt-shortcuts.test.tsx` och `table-renderer.test.tsx` håller båda.
 
 ### K22. En zon går att klippa, kopiera och klistra i fliken Bord (byggt 2026-09-15)
 

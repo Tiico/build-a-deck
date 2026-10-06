@@ -103,7 +103,9 @@ describe('D and S act on the pile under the pointer (#224)', () => {
     fireEvent.keyDown(window, { key: 'd' })
 
     const draw = snapshot.zones.find((z) => z.id === 'draw')!
-    expect(sent).toEqual([[{ v: 'split', pile: 'draw', at: 1, ...besidePile(draw.geometry, 1, draw.beside) }]])
+    // The shared screen has no hand to draw to and nobody's eyes alone to read it with, so the card
+    // lands face up beside the pile (#719): before, every draw at the table was two actions.
+    expect(sent).toEqual([[{ v: 'split', pile: 'draw', at: 1, ...besidePile(draw.geometry, 1, draw.beside), face: 'front' }]])
   })
 
   it('S shuffles that same pile, and neither of them does anything when the pointer is on no pile', () => {
@@ -317,7 +319,12 @@ describe('the discreet help (#224)', () => {
     const help = screen.getByRole('dialog', { name: 'Snabbkommandon på bordet' })
     // `F` stands with the two grips that mean the same thing (#258): one action, three ways to
     // ask for it, and one sentence — not the same sentence read three times.
-    expect([...help.querySelectorAll('kbd')].map((k) => k.textContent)).toEqual(['Cmd + klick', 'Dubbelklick', 'F', 'D', 'S', 'Esc', '?'])
+    // It begins with the felt's own rule — a drag moves, a click asks — and with the way a
+    // keyboard reaches it (K16), before the shortcuts (#719).
+    expect([...help.querySelectorAll('kbd')].map((k) => k.textContent)).toEqual(['Dra', 'Klick', 'Tabb', 'Pilar', 'Enter', 'Cmd + klick', 'Dubbelklick', 'F', 'D', 'S', 'Esc', '?'])
+    // The ring has one name, and it is «ringen» (#719).
+    expect(help.textContent).toContain('Stäng ringen')
+    expect(help.textContent).not.toContain('hjulet')
     // And says what all three of them act on. A key has no target of its own the way a click has,
     // so the row that carries one has to name the pointer, as «Dra» and «Blanda» already do.
     expect(help.textContent).toContain('Vänd kortet, eller högens översta, under pekaren')
@@ -334,6 +341,11 @@ describe('the discreet help (#224)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Snabbkommandon på bordet' }))
     const help = screen.getByRole('dialog', { name: 'Snabbkommandon på bordet' })
     expect([...help.querySelectorAll('kbd')].map((k) => k.textContent)).toEqual([
+      'Dra',
+      'Klick',
+      'Tabb',
+      'Pilar',
+      'Enter',
       'Cmd + klick',
       'Dubbelklick',
       'F',
@@ -365,7 +377,7 @@ describe('the discreet help (#224)', () => {
     const { view } = buildScene()
     render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={vi.fn()} />)
     fireEvent.click(screen.getByRole('button', { name: 'Snabbkommandon på bordet' }))
-    expect(screen.getByRole('dialog').querySelector('kbd')!.textContent).toBe('Ctrl + klick')
+    expect([...screen.getByRole('dialog').querySelectorAll('kbd')].map((k) => k.textContent)).toContain('Ctrl + klick')
   })
 
   it('is not on a felt that is only shown: a button promising commands where there are none promises nothing', () => {

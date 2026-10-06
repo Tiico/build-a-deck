@@ -432,7 +432,7 @@ describe('the ring on a card on the felt offers «Flytta…» (#552)', () => {
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /^dragon, kort i Spelyta/ }))
     const ring = document.querySelector('[data-radial]')!
-    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Vänd', 'Vrid', 'Titta', 'Avslöja', 'Flytta…'])
+    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Vänd', 'Vrid', 'Titta', 'Flytta…'])
 
     await user.click(within(ring as HTMLElement).getByRole('button', { name: 'Flytta…' }))
     const panel = await screen.findByRole('dialog', { name: 'Handlingar för dragon' })
