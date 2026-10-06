@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { LoginPage } from '../src/account/LoginPage.js'
 import { startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
+import { projectDoc } from './project-doc.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
@@ -84,5 +85,48 @@ describe('an address that is not one yet (#475)', () => {
     expect(field.getAttribute('aria-invalid')).toBe('true')
     expect(field.getAttribute('aria-describedby')).toBe(said.id)
     expect(run.mail.sent).toHaveLength(0)
+  })
+})
+
+// One lead per way in, as the claim already has its own (#691, beslut 2026-10-06). The one line the
+// card kept after L36 spoke to whoever already had games; the invited, the new and the one whose
+// game is waiting on the other side of the login were each told something that was not theirs.
+describe('the line the card leads with, chosen by the way in (#691)', () => {
+  const card = async (next: string) => {
+    history.replaceState(null, '', `/login?next=${encodeURIComponent(next)}&server=${encodeURIComponent(run.http)}`)
+    render(<LoginPage onNavigate={() => undefined} />)
+    await screen.findByLabelText('E-post')
+  }
+  // Ada shares the game with Bo and logs out again: the page is a stranger's until Bo logs in.
+  const invited = async (): Promise<string> => {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    await fetch(`${run.http}/projects/${run.projectId}/invites`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com', role: 'editor' }) })
+    await fetch(`${run.http}/auth/logout`, { method: 'POST' })
+    return /\/invites\/([A-Za-z0-9_-]+)/.exec(run.mail.sent.at(-1)?.text ?? '')?.[1] ?? ''
+  }
+
+  it('names the game an invitation leads to, and shows no sales line', async () => {
+    const token = await invited()
+    await card(`/invites/${token}`)
+    expect(screen.getByText('Logga in för att öppna spelet du bjudits in till: Skogens herrar.')).toBeTruthy()
+    expect(screen.queryByText(/Skapa ditt kortspel/)).toBeNull()
+  })
+
+  it('still says it is an invitation when the link no longer names a game', async () => {
+    await card('/invites/made-up-token')
+    expect(screen.getByText('Logga in för att öppna spelet du bjudits in till.')).toBeTruthy()
+  })
+
+  it('says the guide’s game is made once the login is done', async () => {
+    await card('/new?resume=1')
+    expect(screen.getByText('Ditt spel skapas när du loggat in.')).toBeTruthy()
+    expect(screen.queryByText(/Skapa ditt kortspel/)).toBeNull()
+  })
+
+  it('tells a first visit that the link in the mail makes the account', async () => {
+    localStorage.clear()
+    await card('/')
+    expect(screen.getByText('Logga in eller skapa konto med din e-post — länken i mejlet räcker.')).toBeTruthy()
   })
 })

@@ -1056,6 +1056,8 @@ export const enEditor = {
   'setup.counters.help.topic': 'the counters',
   'setup.addSeatArea': '＋ Area per seat',
   'setup.addSeatCounters': '＋ Counters zone per seat',
+  'setup.addSeatArea.short': '＋ Area',
+  'setup.addSeatCounters.short': '＋ Counters zone',
   'zone.copy': 'Copy of {name}',
   'setup.copied': '{name} copied',
   // What a zone asks for and what it can do (B5, K14), written as sentences: the knobs sit inside

@@ -277,13 +277,26 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
           onPatch={(id, patch, gesture) => client.patchZone(id, patch, gesture)}
           onDeck={(id) => client.setDeck(id)}
           onHold={setHeld}
+          adds={{
+            table: (
+              <>
+                <button type="button" onClick={() => add('area')}>{t('setup.addArea')}</button>
+                <button type="button" onClick={() => add('pile')}>{t('setup.addPile')}</button>
+              </>
+            ),
+            seats: (
+              <>
+                {/* The heading says «per seat»; the name read out says it whole. */}
+                <button type="button" aria-label={t('setup.addSeatArea')} onClick={() => addSeat('mine')}>
+                  {t('setup.addSeatArea.short')}
+                </button>
+                <button type="button" aria-label={t('setup.addSeatCounters')} onClick={() => addSeat('counters')}>
+                  {t('setup.addSeatCounters.short')}
+                </button>
+              </>
+            ),
+          }}
         />
-        <div className="byd-setup-tools">
-          <button type="button" onClick={() => add('area')}>{t('setup.addArea')}</button>
-          <button type="button" onClick={() => add('pile')}>{t('setup.addPile')}</button>
-          <button type="button" onClick={() => addSeat('mine')}>{t('setup.addSeatArea')}</button>
-          <button type="button" onClick={() => addSeat('counters')}>{t('setup.addSeatCounters')}</button>
-        </div>
       </div>
       <div className="byd-setup-canvas">
         <div className="byd-setup-said" data-setup-said>
@@ -558,6 +571,10 @@ function settle(family: Family): Family {
 // opening one shows what the zone is, and the × takes it away — or says, where the × would be, why
 // this one stays.
 //
+// Each group carries the ways to add to it under its heading (#711, beställarens beslut B): they
+// stood last in the column, and at 1024 × 640 none of them showed without scrolling it. Under the
+// heading they say what they add to, and a group is drawn for them even when it holds no zone.
+//
 // Vid platserna är raden familjens och inte zonens (#175): «Hand · 8 platser» är en rad, inte åtta,
 // och trekanten fäller ut platserna när en enskild zon ska nås.
 function ZoneList({
@@ -571,6 +588,7 @@ function ZoneList({
   onPatch,
   onDeck,
   onHold,
+  adds,
 }: {
   setup: Setup
   rows: ProjectDoc['rows']
@@ -582,19 +600,21 @@ function ZoneList({
   onPatch(id: string, patch: ZonePatch, gesture?: string): void
   onDeck(id: string): void
   onHold(id: string | null): void
+  adds: { table: ReactNode; seats: ReactNode }
 }) {
   const t = useT()
-  const groups: [string, Row[]][] = [
-    [t('setup.group.table'), setup.zones.filter((z) => z.owner === undefined).map((zone) => ({ kind: 'zone', zone }))],
-    [t('setup.group.seats'), rowsOf(setup.zones.filter((z) => z.owner !== undefined))],
+  const groups: [string, Row[], ReactNode][] = [
+    [t('setup.group.table'), setup.zones.filter((z) => z.owner === undefined).map((zone) => ({ kind: 'zone', zone })), adds.table],
+    [t('setup.group.seats'), rowsOf(setup.zones.filter((z) => z.owner !== undefined)), adds.seats],
   ]
   const row = (zone: Zone) => <ZoneRow key={zone.id} zone={zone} setup={setup} rows={deck} selected={selected} onSelect={onSelect} onRemove={onRemove} onPatch={onPatch} onDeck={onDeck} onHold={onHold} />
   return (
     <div className="byd-setup-zones" data-zone-list>
-      {groups.map(([title, rows]) =>
-        rows.length === 0 ? null : (
-          <section key={title}>
-            <h2>{title}</h2>
+      {groups.map(([title, rows, add]) => (
+        <section key={title}>
+          <h2>{title}</h2>
+          <div className="byd-setup-tools">{add}</div>
+          {rows.length > 0 && (
             <ul aria-label={title}>
               {rows.map((it) =>
                 it.kind === 'zone' ? (
@@ -606,9 +626,9 @@ function ZoneList({
                 ),
               )}
             </ul>
-          </section>
-        ),
-      )}
+          )}
+        </section>
+      ))}
     </div>
   )
 }

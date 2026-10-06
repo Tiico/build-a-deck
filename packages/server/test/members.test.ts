@@ -118,6 +118,27 @@ describe('an invitation to a project (D3)', () => {
     expect((await send('POST', `/invites/${link}`, bo)).status).toBe(404)
   })
 
+  // The login card the link lands on names the game (#691, beslut 2026-10-06): the one following it
+  // came for that game and has no other. It is the name the mail already carried, told to whoever
+  // holds the live link — who could log in and open the whole game with it anyway — and to nobody
+  // else: a used, withdrawn or made-up link still says nothing.
+  it('tells whoever holds a live link the name of the game, without using it up', async () => {
+    const ada = await login('ada@example.com')
+    await send('POST', '/projects', ada, { id: 'p1', ...doc() })
+    await send('POST', '/projects/p1/invites', ada, { email: 'bo@example.com', role: 'editor' })
+    const link = /\/invites\/([A-Za-z0-9_-]+)/.exec(run.mail.sent.at(-1)?.text ?? '')?.[1] ?? ''
+
+    const peek = await fetch(`${run.http}/invites/${link}`)
+    expect(peek.status).toBe(200)
+    expect(await peek.json()).toEqual({ name: 'Skogens herrar' })
+    expect((await fetch(`${run.http}/invites/made-up-token`)).status).toBe(404)
+
+    // Looking is not following: the link still joins Bo, and after that it names nothing.
+    const bo = await login('bo@example.com')
+    expect((await send('POST', `/invites/${link}`, bo)).status).toBe(200)
+    expect((await fetch(`${run.http}/invites/${link}`)).status).toBe(404)
+  })
+
   it("is the owner's to send, and only to a role that exists", async () => {
     const ada = await login('ada@example.com')
     await send('POST', '/projects', ada, { id: 'p1', ...doc() })
