@@ -1,4 +1,5 @@
 import { lazy, Suspense, type ComponentType } from 'react'
+import { codeOfAddress } from '@byd/protocol'
 import { TextureFailures } from './table/TextureFailures.js'
 import { NotFoundPage } from './status/NotFoundPage.js'
 import { DocumentTitle } from './status/DocumentTitle.js'
@@ -63,6 +64,10 @@ function fetchPage(path: string): Promise<ComponentType> {
   if (path === '/claim') return import('./account/ClaimPage.js').then((m) => m.ClaimPage)
   if (path.startsWith('/invites/')) return import('./account/InvitePage.js').then((m) => m.InvitePage)
   if (path === '/') return import('./account/HomePage.js').then((m) => m.HomePage)
+  // A room's own address (#675): the code is what the television says after the host, and the
+  // phone that opens it is in the seat picker. Last, so no word of the app's can be read as one —
+  // and the server never mints a code that is one (`ROUTE_WORDS`).
+  if (codeOfAddress(path)) return import('./join/JoinPage.js').then((m) => m.JoinPage)
   // Anything else is a page that does not exist, and says so.
   return Promise.resolve(NotFoundPage)
 }

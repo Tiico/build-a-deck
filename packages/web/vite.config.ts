@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { defineConfig, type Plugin, type Rollup } from 'vite'
 import react from '@vitejs/plugin-react'
+import { CODE_ALPHABET, CODE_LENGTH, ROUTE_WORDS } from '../protocol/src/rooms.js'
+import { routesOf } from './scripts/route-table.js'
 import { reporting } from '../../test-support/report.js'
 
 // Each route's script is fetched when its address is opened (#760), and this keeps that from
@@ -25,7 +27,7 @@ function routePreload(): Plugin {
         const entry = chunks.find((c) => c.isEntry)
         const onEntry = new Set([entry?.fileName, ...(entry?.imports ?? [])])
         const routes: Record<string, string[]> = {}
-        for (const [, test = '', path = '', spec = ''] of app.matchAll(/path(\.startsWith\(|\s*===\s*)'([^']+)'\)?\)\s*return\s+import\('([^']+)'\)/g)) {
+        for (const { kind, path, spec } of routesOf(app)) {
           const facade = fileURLToPath(new URL(`./src/${spec.replace(/^\.\//, '').replace(/\.js$/, '.tsx')}`, import.meta.url))
           const chunk = chunks.find((c) => c.facadeModuleId === facade)
           if (!chunk) throw new Error(`route ${path} imports ${spec}, and the build has no chunk for it`)
@@ -36,11 +38,15 @@ function routePreload(): Plugin {
             for (const next of chunks.find((c) => c.fileName === name)?.imports ?? []) walk(next)
           }
           walk(chunk.fileName)
-          // A route that answers for everything under a prefix is written with a trailing `*`.
-          routes[test.startsWith('.') ? `${path}*` : path] = [...files].map((f) => `/${f}`)
+          // A route that answers for everything under a prefix is written with a trailing `*`, and a
+          // room's own address (#675) as `?`: one path step of the code's length and alphabet.
+          routes[kind === 'prefix' ? `${path}*` : kind === 'code' ? '?' : path] = [...files].map((f) => `/${f}`)
         }
         if (Object.keys(routes).length === 0) throw new Error('read no routes out of App.tsx; the route preload would silently do nothing')
-        const script = `(function(r,p){for(var k in r)if(k.slice(-1)==='*'?p.indexOf(k.slice(0,-1))===0:p===k)r[k].forEach(function(h){var l=document.createElement('link');l.rel='modulepreload';l.crossOrigin='';l.href=h;document.head.appendChild(l)})})(${JSON.stringify(routes)},location.pathname)`
+        // A room's address is asked of the same rule the router asks it of — the code's alphabet and
+        // length, and none of the app's own words — written out here as data for the few lines.
+        const code = { re: `^/[${CODE_ALPHABET}]{${CODE_LENGTH}}$`, not: ROUTE_WORDS }
+        const script = `(function(r,p,c){var q=new RegExp(c.re,'i').test(p)&&c.not.indexOf(p.slice(1).toLowerCase())<0;for(var k in r)if(k==='?'?q:k.slice(-1)==='*'?p.indexOf(k.slice(0,-1))===0:p===k)r[k].forEach(function(h){var l=document.createElement('link');l.rel='modulepreload';l.crossOrigin='';l.href=h;document.head.appendChild(l)})})(${JSON.stringify(routes)},location.pathname,${JSON.stringify(code)})`
         // Before the stylesheet and not after it: a classic script waits for every sheet above it, and
         // the blocking sheet is the largest thing the page fetches.
         const at = html.indexOf('<script type="module"')

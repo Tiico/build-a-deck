@@ -38,7 +38,9 @@ export const svPlay = {
   'pile.dynamic': 'hög',
 
   // TV-läget runt filten.
-  'tv.join': 'anslut med telefon',
+  // Ovanför adressen, som är värden och sedan /KOD (#675): orden följer värdens språk, adressen
+  // är densamma på alla.
+  'tv.join': 'öppna på telefonen',
   'qr.enlarge': 'Visa koden större',
   'qr.title': 'Anslut med telefonen',
   'qr.close': 'Stäng',
@@ -56,7 +58,7 @@ export const svPlay = {
   // Fördjupningen bakom frågetecknet (L32:s tillägg, #305). Raden vid koden är fyra ord; vad
   // telefonen blir när den ansluter står i lådan.
   'tv.join.help.topic': 'att ansluta',
-  'tv.join.help.how': 'Spelarna öppnar adressen på sin telefon och skriver rumskoden, eller läser av rutan.',
+  'tv.join.help.how': 'Spelarna öppnar adressen på sin telefon, koden och allt, eller läser av rutan.',
   'tv.join.help.phone': 'Telefonen blir handen: korten ligger där, och bordet står kvar här.',
   'tv.seats': 'Platser',
   'tv.seat.hand.one': '{n} kort på hand',
@@ -427,10 +429,16 @@ export const svPlay = {
   'observer.more': 'Senast och platser',
 
   // Att sätta sig vid bordet (K12).
-  'join.code.missing': 'Ingen rumskod angiven.',
-  'join.code.gone': 'Rumskoden {code} gäller inte längre. Be värden om en ny.',
+  // Koden är adressen (#675, beslut C): /join utan kod frågar efter den, och en kod som inte leder
+  // någonstans sägs på ett enda sätt — okänd och utgången likadant, så att inget avslöjar om en
+  // kod en gång funnits.
+  'join.code.title': 'Gå in vid ett bord',
+  'join.code.lead': 'Skriv rumskoden som står på bordets skärm.',
+  'join.code.label': 'Rumskod',
+  'join.code.go': 'Fortsätt',
+  'join.code.empty': 'Skriv rumskoden först.',
+  'join.code.unknown': 'Koden finns inte eller har gått ut — fråga värden efter den nya.',
   'join.ended': 'Det här bordet är avslutat. Be värden starta ett nytt.',
-  'join.code.expired': 'Rumskoden gäller inte längre. Be värden om en ny.',
   'join.seat.taken': 'Platsen togs precis av någon annan. Välj en annan.',
   // Kvitteringen för den som just lämnat: hon kommer tillbaka hit, och får veta vad som hände
   // med platsen och handen hon lämnade (#31).
