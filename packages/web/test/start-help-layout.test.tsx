@@ -254,3 +254,56 @@ describe.each(ROOMS)('the help box in $what', ({ root }) => {
     }
   }, 90_000)
 })
+
+// «e-post» broken at its hyphen (#920): at 390 px the first visit's line ended on «e-» and began
+// the next on «post», which reads as two words. The word is measured as Chromium lays it out, and
+// at every width of the card from a phone's down to the narrowest, so whichever machine's face
+// sets the line, some width puts the end of a line inside the word. The same sentence with a plain
+// hyphen put back is laid beside it and has to break there somewhere — the proof that the sweep
+// reaches the word at all, and not a green that only says this machine's line ended elsewhere.
+describe('the first visit’s line on a phone', () => {
+  it('never breaks «e-post» at its hyphen', async () => {
+    atWidth(390)
+    localStorage.clear()
+    sessionStorage.clear()
+    const { unmount } = render(
+      <div className="byd-account" data-page="login">
+        <LoginCard http="http://server.local" next="/" onNavigate={() => undefined} />
+      </div>,
+    )
+    const html = document.querySelector('.byd-account')!.outerHTML
+    unmount()
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+    try {
+      await page.setContent(document_(html), { waitUntil: 'load' })
+      const seen = await page.evaluate(() => {
+        const lead = document.querySelector('.byd-login .byd-help-row > span') as HTMLElement
+        const plain = lead.cloneNode(true) as HTMLElement
+        plain.textContent = lead.textContent!.replace(/e\u2011post/g, 'e-post')
+        lead.after(plain)
+        const card = document.querySelector('.byd-login') as HTMLElement
+        // The lines the word stands on: one top per line its rectangles start on.
+        const linesOf = (el: HTMLElement) => {
+          const text = el.firstChild as Text
+          const at = text.data.search(/e[-\u2011]post/)
+          if (at < 0) return -1
+          const range = document.createRange()
+          range.setStart(text, at)
+          range.setEnd(text, at + 6)
+          return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size
+        }
+        const widths: { width: number; word: number; plain: number }[] = []
+        for (let w = 390; w >= 200; w--) {
+          card.style.width = `${w}px`
+          widths.push({ width: w, word: linesOf(lead), plain: linesOf(plain) })
+        }
+        return widths
+      })
+      expect(seen.every((s) => s.word !== -1)).toBe(true)
+      expect(seen.some((s) => s.plain > 1)).toBe(true)
+      expect(seen.filter((s) => s.word !== 1).map((s) => s.width)).toEqual([])
+    } finally {
+      await page.close()
+    }
+  }, 90_000)
+})
