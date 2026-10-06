@@ -4,8 +4,9 @@ import { join } from 'node:path'
 import { brotliDecompressSync, gunzipSync } from 'node:zlib'
 import { expect, test } from '@playwright/test'
 
-// The sheet the first painting waits for travels compressed, and the box is what compresses it
-// (#372, #366's measurement).
+// The sheet the app's first frame waits for travels compressed, and the box is what compresses it
+// (#372, #366's measurement). Since #749 it stands after `#root` and the shell is painted before it
+// arrives, but every surface still waits for it before it draws, so its weight is still the app's.
 //
 // The measurement behind this is `docs/ux-audits/2026-09-21/366-css-budget-matning.md`: the
 // blocking sheet served without `Content-Encoding` costs **+2 692 ms** of first paint on Slow 4G
@@ -26,7 +27,7 @@ import { expect, test } from '@playwright/test'
 const OUT = process.env['BYD_E2E_WEB_DIST']
 if (!OUT) throw new Error('the stack did not say where the built web app is (BYD_E2E_WEB_DIST); nothing here can be measured')
 
-// Every `<link rel="stylesheet">` the head carries with nothing that would take it off the
+// Every `<link rel="stylesheet">` the document carries with nothing that would take it off the
 // critical path: a `media` that does not apply, or a `rel` that only hints.
 const blockingSheets = (html: string): string[] =>
   [...html.matchAll(/<link\b[^>]*>/g)]

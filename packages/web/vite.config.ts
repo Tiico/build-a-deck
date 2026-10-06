@@ -1,9 +1,11 @@
 /// <reference types="vitest/config" />
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { defineConfig, type Plugin, type Rollup } from 'vite'
+import { defineConfig, transformWithEsbuild, type Plugin, type Rollup } from 'vite'
 import react from '@vitejs/plugin-react'
 import { reporting } from '../../test-support/report.js'
+import { detectLang } from './src/i18n/detect.js'
+import { fillShell, shellNoscript, shellTimes, shellWords, SHELL_VOICES } from './src/shell.js'
 
 // Each route's script is fetched when its address is opened (#760), and this keeps that from
 // costing a round trip. Left to itself the entry would have to arrive and run before it could ask
@@ -41,8 +43,9 @@ function routePreload(): Plugin {
         }
         if (Object.keys(routes).length === 0) throw new Error('read no routes out of App.tsx; the route preload would silently do nothing')
         const script = `(function(r,p){for(var k in r)if(k.slice(-1)==='*'?p.indexOf(k.slice(0,-1))===0:p===k)r[k].forEach(function(h){var l=document.createElement('link');l.rel='modulepreload';l.crossOrigin='';l.href=h;document.head.appendChild(l)})})(${JSON.stringify(routes)},location.pathname)`
-        // Before the stylesheet and not after it: a classic script waits for every sheet above it, and
-        // the blocking sheet is the largest thing the page fetches.
+        // Before the entry, in the head. A classic script waits for every sheet above it, and the
+        // entry's sheet is the largest thing the page fetches; it stands after #root now (`shell`
+        // below), so nothing above this line is a sheet to wait for.
         const at = html.indexOf('<script type="module"')
         if (at < 0) throw new Error('the built index.html has no entry script to put the route preload before')
         return `${html.slice(0, at)}<script>${script}</script>\n    ${html.slice(at)}`
@@ -51,8 +54,51 @@ function routePreload(): Plugin {
   }
 }
 
+// The shell (#749): what `index.html` says before the app has arrived, and the stylesheet moved out
+// of its way. `src/shell.ts` says why the shell is what it is; this writes it into the document.
+//
+// Its words come from the catalogue's `status` part, written in here and nowhere else, so the shell
+// cannot say a state in other words than the app says it in. The language is chosen by the app's
+// own `detectLang` and the words filled in by `fillShell`, both inlined by their source.
+//
+// And the entry's stylesheet leaves `<head>` for the end of `<body>`, after `#root` (L20, tillägg
+// #749). In the head it held every painting, the shell's included — 105 kB brotli with the felt's
+// face inside, five to seven seconds on the speltest's line. After `#root` it holds nothing the
+// shell needs; and it still holds the app, because the entry is a module script, and a module
+// script does not run while a stylesheet the parser has met is still loading. So the felt's face
+// is in the document before the app's first frame (K20) — which `shell.spec.ts` measures with the
+// sheet held on the wire rather than takes on trust.
+function shell(): Plugin {
+  const minify = async (code: string) => (await transformWithEsbuild(code, 'shell.js', { minify: true, target: 'es2020', charset: 'utf8' })).code.trim().replace(/<\//g, '<\\/')
+  const text = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return {
+    name: 'byd-shell',
+    transformIndexHtml: {
+      order: 'post',
+      async handler(html, { bundle }) {
+        const fill = (tag: string, id: string, inner: string) => {
+          const empty = `<${tag} id="${id}"></${tag}>`
+          if (!html.includes(empty)) throw new Error(`index.html has no empty ${empty} for the shell to fill`)
+          html = html.replace(empty, () => `<${tag} id="${id}">${inner}</${tag}>`)
+        }
+        fill('script', 'byd-shell-lang', await minify(`document.documentElement.lang=(${detectLang.toString()})();document.documentElement.classList.add('js')`))
+        fill('script', 'byd-shell-fill', await minify(`(${fillShell.toString()})(document,${JSON.stringify(shellWords())},${JSON.stringify(SHELL_VOICES)},${JSON.stringify(shellTimes())})`))
+        const { sv, en } = shellNoscript()
+        fill('noscript', 'byd-shell-noscript', `<p>${text(sv)}</p><p lang="en">${text(en)}</p>`)
+        // Only the build links a stylesheet; the development server injects its CSS from script.
+        if (!bundle) return html
+        const head = html.slice(0, html.indexOf('</head>'))
+        const sheets = [...head.matchAll(/\s*<link rel="stylesheet"[^>]*>/g)].map((m) => m[0])
+        if (sheets.length === 0) throw new Error('the built index.html has no stylesheet in its head to move after #root')
+        for (const sheet of sheets) html = html.replace(sheet, '')
+        return html.replace('</body>', () => `${sheets.map((s) => `  ${s.trim()}\n`).join('')}  </body>`)
+      },
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), routePreload()],
+  plugins: [react(), routePreload(), shell()],
   // PORT lets a preview pick a free port when 5173 is taken; the default stays 5173.
   server: { port: Number(process.env['PORT'] ?? 5173), strictPort: true },
   // A licence is not a comment to be tidied away. The felt's face is baked into the stylesheet as
