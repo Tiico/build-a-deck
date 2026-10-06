@@ -1217,7 +1217,9 @@ Det gäller ytans första väntan; ett nytt försök som en människa bett om ä
 Bordsläget fick samtidigt sin mark under filten: `/table?mode=table` ritade efter «Ansluter» en helvit sida med bara rubrikraden, ungefär 0,7 sekunder på strypt nät, medan filten mätte sin ram.
 Ramen är dold tills den vet sin storlek, och den döljer sin egen mark med sig; samma mark ligger nu också under den.
 
-Uppmätt på den byggda appen med speltestets nät (400 ms latens, 400 kbit/s): första målning 0,5 sekunder på varje rutt mot 5,1–7,3 förut; bildändringen vid övertagandet 0–2,2 % i mörkt läge; inga vita ramar från startsidan till editorn, från `/join` till `/play` eller in i bordsläget; textens kontrast minst 7:1; skalet kostar `index.html` cirka 1,7 kB gzip.
+Uppmätt på den byggda appen med speltestets nät (400 ms latens, 400 kbit/s): första målning 0,5 sekunder på varje rutt mot 5,1–7,3 förut; inga vita ramar från startsidan till editorn, från `/join` till `/play` eller in i bordsläget, där det förut var en per byte; textens kontrast minst 7:1; skalet kostar `index.html` cirka 1,7 kB gzip.
+Bildändringen vid övertagandet är 0–1,1 % i mörkt läge när appen tar över medan beskedet ännu är laddar.
+När det redan dröjer är den 0–4,5 %: appens dröjer-besked har sina två vägar ut, «Försök igen» och hemvägen, där skalet bara har orden — rubriken står kvar och blocket flyttar sig så mycket som knapparna tar.
 Grind: `packages/e2e/test/surfaces/shell.spec.ts`.
 TV:ns rubrik på 26 px, som skalet ärver från sidformen, är en egen fråga (#925).
 
