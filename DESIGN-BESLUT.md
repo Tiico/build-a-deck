@@ -6244,3 +6244,17 @@ Ett avslutat bord erbjuder ingen QR, eftersom koden leder till ett låst bord.
 
 `editor-tables.test.tsx` uppdaterar en rad från raden och läser namnet; `projects.test.ts` och `store-postgres.test.ts` håller «senaste drag» och den tomma uppdateringen.
 Prototypen: `docs/ux-audits/2026-10-05-bordsraden/prototyper/706/`.
+
+### L66. Bord-flikens knappar för nya zoner står under sin grupps rubrik (prototypat och beslutat 2026-10-06, #711)
+
+Speltestet 2026-10-02 fann att «＋ Yta», «＋ Hög», «＋ Yta per plats» och «＋ Räknarzon per plats» stod sist i vänsterkolumnen.
+Vid 1024 × 640 syns ingen av dem utan att kolumnen rullas, och inget säger att den rullar.
+
+**B** (av tre: fast i kolumnens fot, under sin grupps rubrik, en knapp med en meny).
+«＋ Yta» och «＋ Hög» står under «På bordet», och platsernas två under «Vid platserna» — knappen står där det den skapar hamnar, och kostar ingen höjd.
+Under «Vid platserna» säger rubriken redan «per plats», så de två heter «＋ Yta» och «＋ Räknarzon» på skärmen och ryms på en rad med 44 px höga knappar; namnet som läses upp säger det hela.
+En grupp ritas för sina knappar också när den inte har någon zon.
+
+Priset är valt: ett spel med fler räknare eller fler zoner på bordet skjuter platsgruppens knappar längre ned.
+`setup-side-fit.spec.ts` mäter i den byggda appen att alla fyra syns orullade vid 1024 × 640 i spelet där fyndet gjordes, fyra platser och en räknare, på svenska och engelska, och att varje grupps knappar står mellan rubriken och raderna.
+Prototypen: `docs/ux-audits/2026-10-06-kolumnknappar/prototyper/711/`.
