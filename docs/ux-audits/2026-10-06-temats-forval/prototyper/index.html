@@ -5,8 +5,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Prototyper 2026-10-06 — temats förval i guidad start</title>
 <link rel="stylesheet" href="proto.css">
+<style>
+  body { overflow: auto; }
+  .sida { max-width: 760px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { color: #fff; font-size: 20px; margin: 0 0 6px; }
+  .under { color: var(--quiet-2); font-size: 13px; line-height: 1.6; margin: 0 0 24px; }
+  a.rad { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; gap: 14px; align-items: center; padding: 14px 16px; margin-bottom: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: #e6ecfa; text-decoration: none; }
+  a.rad:hover { border-color: var(--primary-mark); background: #1b2030; }
+  a.rad:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  a.rad b { display: block; font-size: 14px; margin-bottom: 2px; }
+  a.rad small { color: var(--quiet-2); font-size: 12px; line-height: 1.45; }
+  a.rad .nr { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 999px; background: #24507f; color: #fff; font-weight: 700; font-size: 13px; }
+  a.rad em { font-style: normal; color: var(--quiet); font-size: 11px; white-space: nowrap; }
+</style>
 </head>
 <body>
-<p style="padding:24px">Under arbete (#687): förvalets form och den gula rutans öde. Bilderna kommer.</p>
+<div class="sida">
+  <h1>Prototyper 2026-10-06 — temats förval i guidad start</h1>
+  <p class="under">
+    Guidad start öppnar med Skogssaga tryckt men kortet i reservtypsnitt, och överst står en gul ruta med bara
+    etiketten «Wizarden är startpunkten» (#687). Bilderna är det byggda appen på e2e-stacken med varje variant
+    injicerad och mätt i Chromium; Google nås på riktigt, så bytena är äkta. Skripten ligger i
+    <code>matning/</code> (<code>sh matning/run.sh logg</code>, sedan <code>node matning/mk-data.mjs</code>).
+    Öppna över http (<code>python3 -m http.server</code> i mappen), inte som fil.
+  </p>
+  <a class="rad" href="01-forvalet.html?v=d&amp;yta=1280&amp;lage=oppnad"><span class="nr">01</span><span><b>Förvalets form</b><small>Nu och fyra varianter — hämtat när sidan öppnas, inget förval, hämtat när man pekar, förval med provet på kortet — vid 1280, 1024 och 768, öppnad, efter tryck, under hämtning och som utkast efter omladdning.</small></span><em>#687</em></a>
+  <a class="rad" href="02-rutan.html?v=konto&amp;yta=1280"><span class="nr">02</span><span><b>Rutans öde</b><small>Nu, borta, en mening, och kontoraden #691 beslutade — bara för den som är utloggad.</small></span><em>#687 · #691</em></a>
+</div>
 </body>
 </html>

@@ -28,12 +28,16 @@ async function open({ w = 1280, h = 800, loggedIn = true, hold = false } = {}) {
   let release
   const held = new Promise((r) => (release = r))
   await ctx.route(GOOGLE, async (route) => {
-    const url = route.request().url()
-    const res = await route.fetch()
-    const body = await res.body()
-    google.push({ url, bytes: body.length, at: Date.now() })
-    if (hold && url.includes('gstatic')) await held
-    await route.fulfill({ response: res, body })
+    try {
+      const url = route.request().url()
+      const res = await route.fetch()
+      const body = await res.body()
+      google.push({ url, bytes: body.length, at: Date.now() })
+      if (hold && url.includes('gstatic')) await held
+      await route.fulfill({ response: res, body })
+    } catch {
+      // The context closed with the file still on its way.
+    }
   })
   const page = await ctx.newPage()
   return { ctx, page, google, release: () => release() }
@@ -41,10 +45,12 @@ async function open({ w = 1280, h = 800, loggedIn = true, hold = false } = {}) {
 
 async function go(page, v, opts = {}) {
   await page.goto(links.origin + '/new', { waitUntil: 'load' })
-  await page.locator('.byd-theme-tile').first().waitFor()
+  await page.locator('.byd-wizard-handoff').waitFor()
+  await page.waitForTimeout(300)
   await page.mouse.move(2, 2)
   await page.evaluate(PAGE)
   await page.evaluate(`window.__p687.install(${JSON.stringify(v)}, ${JSON.stringify(opts)})`)
+  await page.waitForTimeout(300)
 }
 
 // Which faces actually draw the card's title and body: Chromium's answer, as #887's test asks it.
@@ -83,6 +89,14 @@ const honest = (m) => !(m.pressed && !correct(m)) && !(m.says && /när du välje
 
 const shot = async (page, file, clip) => {
   await page.screenshot({ path: join(OUT, file), clip })
+  return file
+}
+// Playwright's screenshot waits for the faces to load, which is the very state this one is of.
+const rawShot = async (page, file, clip) => {
+  const cdp = await page.context().newCDPSession(page)
+  const { data } = await cdp.send('Page.captureScreenshot', { format: 'png', clip: { ...clip, scale: 1 } })
+  writeFileSync(join(OUT, file), Buffer.from(data, 'base64'))
+  await cdp.detach()
   return file
 }
 const cropOf = async (page, sel, pad = 12) => page.evaluate(([sel, pad]) => {
@@ -168,10 +182,10 @@ if (PASS === 'loading') {
     await page.mouse.move(2, 2)
     await page.waitForTimeout(500)
     const m1 = await measure(page, google)
-    const f1 = await shot(page, `${v}-kort-hamtas-${1280}.png`, await cropOf(page, '.byd-wizard-preview'))
+    const f1 = await rawShot(page, `${v}-kort-hamtas-${1280}.png`, await cropOf(page, '.byd-wizard-preview'))
     await page.waitForTimeout(3200)
     const m2 = await measure(page, google)
-    const f2 = await shot(page, `${v}-kort-hamtas3s-${1280}.png`, await cropOf(page, '.byd-wizard-preview'))
+    const f2 = await rawShot(page, `${v}-kort-hamtas3s-${1280}.png`, await cropOf(page, '.byd-wizard-preview'))
     release()
     const ms = await waitCorrect(page)
     const m3 = await measure(page, google)
@@ -193,7 +207,8 @@ if (PASS === 'resume') {
     await page.waitForTimeout(600)
     const n0 = google.length
     await page.reload({ waitUntil: 'load' })
-    await page.locator('.byd-theme-tile').first().waitFor()
+    await page.locator('.byd-wizard-handoff').waitFor()
+    await page.waitForTimeout(300)
     await page.mouse.move(2, 2)
     await page.evaluate(PAGE)
     await page.evaluate(`window.__p687.install(${JSON.stringify(v)}, { resumed: true })`)
@@ -257,6 +272,7 @@ if (PASS === 'steps') {
   for (const v of VARIANTS) {
     const { ctx, page, google } = await open({ w: 768, h: 1024 })
     await go(page, v)
+    await page.waitForTimeout(400)
     await page.getByRole('tab', { name: '3 · Korten' }).click()
     await page.waitForTimeout(1500)
     const m0 = await measure(page, google)
