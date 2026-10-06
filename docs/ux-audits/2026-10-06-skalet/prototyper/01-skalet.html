@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 01 — Skalet före appen (#749)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan (#749) ──────────────────────────────────────────────────────────────────────
+     Vad står på skärmen innan appens skript har kommit fram? I dag ingenting: index.html har
+     bara en typsnittsregel, så på ett långsamt nät är varje route en vit (eller tom) sida i
+     fem–sju sekunder. Varje variant är ett skal — statisk markup och CSS i det byggda
+     index.html, som React tömmer vid sin första ritning — mätt på det BYGGDA appen
+     (rig.mts: en server per variant) under strypt nät (CDP: 400 ms latens, 400 kbit/s,
+     speltestets profil), med screencast av varje ram. Inget är ritat för hand. Skripten
+     ligger i matning/.
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .krona { flex: none; display: grid; gap: 8px; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .krona h1 { margin: 0; color: #fff; font-size: 15px; }
+  .rad { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .rad > span { color: var(--quiet-2); font-size: 12px; min-width: 72px; }
+  .rad button { min-height: 36px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; cursor: pointer; }
+  .rad button[aria-pressed='true'] { background: #24507f; border-color: var(--primary-mark); color: #fff; }
+  .rad button.rek { border-color: #3f7a55; }
+  .rad button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .scen { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; padding: 16px; background: #15171c; align-content: start; }
+  @media (max-width: 960px) { .scen { grid-template-columns: minmax(0, 1fr); } }
+  .bild { display: grid; gap: 6px; align-content: start; justify-items: start; }
+  .bild img { display: block; max-width: 100%; max-height: 70vh; height: auto; border: 1px solid #2f333d; border-radius: 6px; }
+  .bild p { color: var(--quiet-2); font-size: 12px; margin: 0; }
+  .par { display: flex; gap: 12px; flex-wrap: wrap; align-items: start; }
+  .par figure { margin: 0; display: grid; gap: 4px; }
+  .par figcaption { color: var(--quiet-2); font-size: 12px; }
+  .sido { display: grid; gap: 12px; align-content: start; }
+  .ruta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .ruta h2 { margin: 0 0 6px; color: #fff; font-size: 14px; }
+  .ruta p { margin: 0 0 6px; line-height: 1.5; color: #c9d1e3; }
+  .tal { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 13px; }
+  .tal b { text-align: right; font-variant-numeric: tabular-nums; }
+  .bra { color: var(--good); } .fel { color: #ff8a7a; } .mitt { color: #f0c36a; }
+  .forkl { color: var(--quiet-2); font-size: 12px; margin: 6px 0; line-height: 1.5; }
+  .matris { grid-column: 1 / -1; overflow-x: auto; }
+  table { border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid #2f333d; padding: 4px 6px; text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  th { color: #fff; background: #1b1f2a; }
+  td:first-child, th:first-child { text-align: left; }
+  td.valt { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  td a { color: inherit; text-decoration: none; display: block; }
+  td.ok { background: #16301f; color: #9be3b5; }
+  td.nej { background: #3a1c1c; color: #ffb3a8; }
+  td.halv { background: #33301a; color: #f3e3a0; }
+</style>
+</head>
+<body>
+<div class="krona">
+  <h1>Prototyp 01 — skalet före appen (#749) <small style="color:var(--quiet-2);font-weight:400">· ← → byter variant · varje bild är en ram ur det byggda appen på strypt nät</small></h1>
+  <div class="rad" id="varianter"><span>Variant</span></div>
+  <div class="rad" id="ytor"><span>Route</span></div>
+  <div class="rad" id="lagen"><span>Systemläge</span></div>
+  <div class="rad" id="stunder"><span>Ögonblick</span></div>
+</div>
+<div class="scen">
+  <div class="bild" id="bild"></div>
+  <div class="sido">
+    <div class="ruta"><h2 id="vnamn"></h2><p id="vregel"></p><p id="vpris" class="forkl"></p></div>
+    <div class="ruta"><h2>Mätt på den här routen</h2><div class="tal" id="tal"></div><p class="forkl" id="sagt"></p></div>
+  </div>
+  <div class="matris ruta">
+    <h2>Alla routes × alla varianter, mörkt systemläge</h2>
+    <p class="forkl">Varje cell: <b>första målning</b> (s, appens bakgrund eller skalet) / <b>appen tar över</b> (s) / <b>5 s-raden</b> (✓ står där vid 5,5 s, – appen hade redan tagit över, ✗ saknas) / <b>bildändring vid övertagandet</b> (andel bildpunkter som byter färg mellan skalets sista ram och appens första). Grönt = målat före 1 s och raden på plats. Klicka en cell för att se den.</p>
+    <table id="matris"></table>
+  </div>
+  <div class="matris ruta">
+    <h2>Per variant</h2>
+    <table id="summa"></table>
+    <p class="forkl" id="summaforkl"></p>
+  </div>
+</div>
+<script src="data.js"></script>
+<script>
+const VARIANTER = [
+  { id: 'nu', namn: 'Nu', regel: 'index.html har en typsnittsregel och en tom #root. Ingenting målas förrän det blockerande arket (105 kB brotli, filtens ansikte inbakat) och appens skript har kommit fram och React har ritat.', pris: 'På speltestets nät 5–7 s tom sida på varje route — vit i ljust systemläge, Chromiums mörka tomma duk i mörkt. Och en vit ram också i mörkt läge: dokumentet målas en gång när arket är nere, utan bakgrund, innan React hinner rita (raden «vit fram till» nedan).' },
+  { id: 'a', namn: 'A · Grunden och en rad', regel: 'Samma skal på varje route: appens mörka grund (#14161c) och «Laddar …» mitt på. «Det tar längre tid än vanligt.» kommer efter 4 s som ren CSS (en animation med fördröjning), så raden behöver inget skript. Bara språket väljs (?lang=, byd.lang, webbläsaren).', pris: 'Billigast (+0,8 kB gzip). Säger inte vad som laddas, och raden står kvar orörd tills appen byter till sitt eget «Ansluter»-kort på en annan grund — hela bilden byter.' },
+  { id: 'b', namn: 'B · Ruttens eget besked', rek: true, regel: 'D5:s laddar-läge i sidformen, med StatusNotice-måtten (status.css: väntans ton #1f2637, märket, ringen, rubrik och text) och ruttens ord: «Dukar bordet…» på TV:n och bordet, «Hämtar din hand…» på telefonen, «Öppnar spelet…» i editorn, «Hämtar…» annars. Efter 4 s ruttens dröjer-ord (katalogens status.slow-rubriker). Orden står i skalet, inte i katalogen.', pris: '+1,6 kB gzip. Appens första ram är samma form — editorns Suspense-reserv är ordagrant den, bordet och telefonen visar «Ansluter» — så övertagandet byter ord och inte bild. Kräver skript för rösten; utan skript står noscript-raden.' },
+  { id: 'c', namn: 'C · Ruttens silhuett', regel: 'Ytans form i grått — TV:ns filt och sidokolumn, bordets filt, telefonens rad, högar och kortremsa, rumsvalets bord och formulär, editorns krom och kortvägg, startsidans rader — med ruttens rad i mitten och dröjer-raden under efter 4 s.', pris: 'Dyrast (+1,7 kB gzip) och känsligast: varje silhuett är en kopia av en layout som ändras, och appens första ram är inte ytan utan «Ansluter»-kortet — så silhuetten byts mot ett kort, och kortet mot ytan. Två bildbyten i stället för ett.' },
+  { id: 'd', namn: 'D · Märket och en rad', regel: 'Produktens ansikte — de två korten ur favicon (#729) — mitt på grunden, «build-your-deck» och ruttens rad under, och dröjer-raden efter 4 s. Samma bild på varje route, större på en stor skärm.', pris: '+1,4 kB gzip. Läses som en startskärm, vilket passar startsidan och inte ett bord mitt i ett spel: en TV som laddar om visar produktens namn i stället för spelets.' },
+  { id: 'b0', namn: 'B0 · B med arket kvar i <head>', regel: 'Teknisk jämförelse: B:s skal, men det blockerande arket står kvar i <head> som i dag. I alla andra varianter är arket flyttat till slutet av <body>, efter #root.', pris: 'Visar varför arket måste flyttas: ett ark i <head> blockerar varje målning, också skalets. Första målning blir 5–6 s, nästan samma som Nu — skalet syns bara den stund som skiljer arket från skriptet.' },
+]
+const YTOR = [
+  { id: 'start', namn: '/ (inloggad)', vp: '1440' }, { id: 'login', namn: '/login', vp: '1440' }, { id: 'editor', namn: 'Editorn', vp: '1440' },
+  { id: 'tv', namn: 'TV', vp: '1920' }, { id: 'bord', namn: 'Bordsläge', vp: '1280' }, { id: 'join', namn: '/join', vp: '390' },
+  { id: 'play', namn: '/play', vp: '390' }, { id: 'observe', namn: '/observe', vp: '390' },
+]
+const STUNDER = [
+  { id: '1s', namn: 'Vid 1 s' }, { id: '55s', namn: 'Vid 5,5 s' }, { id: 'over', namn: 'Övertagandet' }, { id: 'nojs', namn: 'Utan JS' },
+]
+const D = window.SKAL
+const q = new URLSearchParams(location.search)
+let v = q.get('v') ?? 'b', yta = q.get('yta') ?? 'tv', lage = q.get('lage') ?? 'dark', stund = q.get('stund') ?? '1s'
+const rad = (vv, yy, ll) => D.rows.find((r) => r.v === vv && r.route === yy && r.scheme === ll)
+const s = (ms) => (ms == null ? '–' : (ms / 1000).toFixed(1).replace('.', ','))
+const knappar = (rot, lista, nu, val) => {
+  rot.querySelectorAll('button').forEach((b) => b.remove())
+  for (const x of lista) {
+    const b = document.createElement('button')
+    b.textContent = x.namn
+    if (x.rek) b.classList.add('rek')
+    b.setAttribute('aria-pressed', String(x.id === nu))
+    b.onclick = () => val(x.id)
+    rot.append(b)
+  }
+}
+const raden = (r) => (r.at55takeover != null && r.at55takeover < 5500 ? '–' : /längre|dröjer|longer|taking its time/i.test(r.at55) ? '✓' : '✗')
+const img = (src, alt) => (src ? `<img src="img/${src}" alt="${alt}">` : '<p>Ingen bild (variant och läge har ingen egen ram här).</p>')
+const visa = () => {
+  history.replaceState(null, '', `?v=${v}&yta=${yta}&lage=${lage}&stund=${stund}`)
+  knappar(document.querySelector('#varianter'), VARIANTER, v, (x) => { v = x; visa() })
+  knappar(document.querySelector('#ytor'), YTOR, yta, (x) => { yta = x; visa() })
+  knappar(document.querySelector('#lagen'), [{ id: 'dark', namn: 'Mörkt' }, { id: 'light', namn: 'Ljust' }], lage, (x) => { lage = x; visa() })
+  knappar(document.querySelector('#stunder'), STUNDER, stund, (x) => { stund = x; visa() })
+  const V = VARIANTER.find((x) => x.id === v), Y = YTOR.find((x) => x.id === yta)
+  document.querySelector('#vnamn').textContent = V.namn + (V.rek ? ' — rekommendationen' : '')
+  document.querySelector('#vregel').textContent = V.regel
+  document.querySelector('#vpris').textContent = V.pris
+  const r = rad(v, yta, lage) ?? rad(v, yta, 'dark')
+  const bildrot = document.querySelector('#bild')
+  // Skalen är mörka i båda systemlägena; ljust läge har bara egna bilder för Nu och B.
+  const ri = r.img['1s'] || stund === 'nojs' ? r : rad(v, yta, 'dark')
+  const ytext = `${Y.namn} · ${Y.vp} px bred · ${lage === 'dark' ? 'mörkt' : 'ljust'} systemläge`
+  if (stund === 'over') {
+    bildrot.innerHTML = `<div class="par"><figure>${img(ri.img.fore, 'skalets sista ram')}<figcaption>Sista ramen före övertagandet</figcaption></figure><figure>${img(ri.img.efter, 'appens första ram')}<figcaption>Appens första ram, ${s(r.takeover)} s — ${r.takeoverDiff ?? '–'} % av bildpunkterna byter</figcaption></figure></div><p>${ytext}</p>`
+  } else if (stund === 'nojs') {
+    bildrot.innerHTML = `${img(rad(v, yta, 'dark').img.nojs, 'utan JavaScript')}<p>${ytext} · JavaScript avslaget · ${(rad(v, yta, 'dark').nojs || '(ingen text)').replace(/</g, '&lt;')}</p>`
+  } else {
+    const at = stund === '1s' ? '1 s' : '5,5 s'
+    bildrot.innerHTML = `${img(ri.img[stund], at)}<p>${ytext} · ${at} efter navigeringens start, strypt nät${ri !== r ? ' (bilden är mörkt läges; skalet ser likadant ut i ljust)' : ''}</p>`
+  }
+  const nu = rad('nu', yta, lage) ?? rad('nu', yta, 'dark')
+  const cls = (ok, mid) => (ok ? 'bra' : mid ? 'mitt' : 'fel')
+  const sz = D.sizes.find((x) => x.v === v)
+  const rader = [
+    ['Första målning (s)', s(r.fp), cls(r.fp != null && r.fp < 1000)],
+    ['Dokumentet framme (s)', s(r.responseEnd), ''],
+    ['Arket framme (s)', s(r.cssEnd), ''],
+    ['Appen tar över #root (s)', s(r.takeover), ''],
+    ['Vit eller tom till (s)', r.whiteUntil == null ? 'aldrig' : s(r.whiteUntil), cls(r.whiteUntil == null || r.whiteUntil < 200)],
+    ['5 s-raden vid 5,5 s', raden(r), cls(raden(r) !== '✗', raden(r) === '–')],
+    ['Bildändring vid övertagandet', r.takeoverDiff == null ? '–' : r.takeoverDiff + ' %', cls(r.takeoverDiff != null && r.takeoverDiff < 15, r.takeoverDiff != null && r.takeoverDiff < 60)],
+    ['Layoutskift (CLS)', r.cls ?? '–', cls((r.cls ?? 0) < 0.05)],
+    ['Lägsta kontrast, text', r.contrast == null ? '–' : `${String(r.contrast).replace('.', ',')}:1`, cls(r.contrast == null || r.contrast >= 4.5)],
+    ['Lägsta kontrast, 5 s-raden', r.contrastSlow == null ? '–' : `${String(r.contrastSlow).replace('.', ',')}:1`, cls(r.contrastSlow == null || r.contrastSlow >= 4.5)],
+    ['index.html, + gzip (byte)', sz ? `+${sz.plus.gzip}` : '–', ''],
+  ]
+  document.querySelector('#tal').innerHTML = rader.map(([k, n, c]) => `<span>${k}</span><b class="${c}">${n}</b>`).join('')
+  document.querySelector('#sagt').textContent = v === 'nu' ? `Nu: tom sida till ${s(nu.fp)} s.` : `Skalet säger: «${r.text1 ?? '–'}» — efter 4 s: «${r.text5 ?? '–'}». Vid 5,5 s på strypt nät: «${r.at55 || '(appen har tagit över)'}».`
+  const t = document.querySelector('#matris')
+  let html = '<thead><tr><th>Route</th>' + VARIANTER.map((x) => `<th>${x.namn.split(' · ')[0]}</th>`).join('') + '</tr></thead><tbody>'
+  for (const y of YTOR) {
+    html += `<tr><td>${y.namn}</td>`
+    for (const x of VARIANTER) {
+      const c = rad(x.id, y.id, 'dark')
+      if (!c) { html += '<td>–</td>'; continue }
+      const ok = c.fp != null && c.fp < 1000 && raden(c) !== '✗'
+      const valt = x.id === v && y.id === yta
+      html += `<td class="${ok ? 'ok' : 'nej'}${valt ? ' valt' : ''}"><a href="?v=${x.id}&yta=${y.id}&lage=dark&stund=${stund}" data-v="${x.id}" data-y="${y.id}">${s(c.fp)} / ${s(c.takeover)} / ${raden(c)} / ${c.takeoverDiff ?? '–'} %</a></td>`
+    }
+    html += '</tr>'
+  }
+  t.innerHTML = html + '</tbody>'
+  t.querySelectorAll('a[data-v]').forEach((a) => (a.onclick = (e) => { e.preventDefault(); v = a.dataset.v; yta = a.dataset.y; lage = 'dark'; visa(); scrollTo(0, 0) }))
+  const S = document.querySelector('#summa')
+  const per = (x, f) => D.rows.filter((r) => r.v === x.id).map(f).filter((n) => n != null)
+  let sh = '<thead><tr><th>Variant</th><th>+ index.html rått / gzip / br</th><th>Första målning, median (s)</th><th>Vit/tom till, värst (s)</th><th>5 s-raden</th><th>Bildändring vid övertagandet, median</th><th>Lägsta kontrast</th><th>Utan JS</th><th>Vita ramar vid navigering (ljust)</th></tr></thead><tbody>'
+  const median = (xs) => { const a = [...xs].sort((p, q) => p - q); return a.length ? a[a.length >> 1] : null }
+  for (const x of VARIANTER) {
+    const z = D.sizes.find((y) => y.v === x.id)
+    const fps = per(x, (r) => r.fp), wu = per(x, (r) => r.whiteUntil ?? 0), dif = per(x, (r) => r.takeoverDiff)
+    const rr = D.rows.filter((r) => r.v === x.id)
+    const lines = rr.filter((r) => raden(r) === '✓').length, missing = rr.filter((r) => raden(r) === '✗').length
+    const con = Math.min(...per(x, (r) => r.contrast).concat(per(x, (r) => r.contrastSlow)))
+    const nj = rr.find((r) => r.route === 'play' && r.scheme === 'dark')?.nojs
+    const nv = D.nav.filter((n) => n.v === x.id).map((n) => `${n.path.replace('>', '→')} ${n.whiteFrames}`).join(', ')
+    sh += `<tr><td>${x.namn}</td><td>${z ? `+${z.plus.raw} / +${z.plus.gzip} / +${z.plus.br}` : '–'}</td><td>${s(median(fps))}</td><td>${s(Math.max(...wu))}</td><td>${lines} ✓ · ${missing} ✗</td><td>${median(dif) ?? '–'} %</td><td>${isFinite(con) ? String(con).replace('.', ',') + ':1' : '–'}</td><td>${nj ? nj.slice(0, 40).replace(/</g, '&lt;') + '…' : '(tom sida)'}</td><td>${nv || '–'}</td></tr>`
+  }
+  S.innerHTML = sh + '</tbody>'
+  document.querySelector('#summaforkl').textContent = 'Första målning och vit till är mätta i båda systemlägena på alla åtta routes. «Vit/tom till» räknar ramar där mer än halva bilden är nästan vit; i mörkt systemläge är Chromiums tomma duk mörk, så där fångas bara den vita ram dokumentet målar utan bakgrund. Kontrast mätt mot den färg texten faktiskt står på, i skalet stillastående (entrén stoppad på tråden). Navigering: startsidan → editorn och /join → /play, strypt nät, ljust systemläge (nav.mjs).'
+}
+addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+  const i = VARIANTER.findIndex((x) => x.id === v)
+  v = VARIANTER[(i + (e.key === 'ArrowRight' ? 1 : VARIANTER.length - 1)) % VARIANTER.length].id
+  visa()
+})
+visa()
+</script>
+</body>
+</html>
