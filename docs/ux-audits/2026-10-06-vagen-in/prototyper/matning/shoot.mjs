@@ -48,14 +48,13 @@ const qr = `data:image/svg+xml;utf8,${encodeURIComponent(await QR.toString(`${li
 // Ada sits down at A from her phone, so that the picker and the TV show one taken seat.
 {
   const j = await fetch(`${links.origin}/rooms/${links.code}/join`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Ada', seat: 'A' }) })
-  if (j.ok) {
-    const { token } = await j.json()
-    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
-    const page = await ctx.newPage()
-    await page.goto(`${links.origin}/play?${new URLSearchParams({ session: links.session, code: links.code, seat: 'A', name: 'Ada', token })}`)
-    await page.waitForTimeout(2500)
-    await ctx.close()
-  } else console.log('Ada sitter redan', j.status)
+  // A 409 is the rig's own reservation for her, still pending: her phone claims it with that token.
+  const url = j.ok ? `/play?${new URLSearchParams({ session: links.session, code: links.code, seat: 'A', name: 'Ada', token: (await j.json()).token })}` : links.playUrl
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+  const page = await ctx.newPage()
+  await page.goto(links.origin + url)
+  await page.waitForTimeout(3000)
+  await ctx.close()
 }
 const results = []
 for (const s of SURF) for (const v of VARIANTS) {

@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 01 — Vägen in med rumskoden (#675)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan (#675) ──────────────────────────────────────────────────────────────────────
+     En spelare som inte kan eller vill läsa av QR-rutan har ingen väg in i ett bord. Var står
+     kodfältet (startsidan, /join utan kod, en okänd kod), hur säger TV:n och bordsläget adressen
+     på en filt utan krom, och vilken form har anslutningssidan på en laptop?
+
+     Varje bild är det BYGGDA appen (packages/e2e-stacken, Sal's Saloon med fyra platser; Ada
+     sitter på A, B–D är lediga; fem kort i varje hand och tre i saloonen) med variantens yta
+     injicerad i sidan och mätt i Chromium. Adressen som visas är lådans, deck.ockelberg.com,
+     inte stackens 127.0.0.1. Stegen till en plats är körda: matning/flow.mjs skriver koden och
+     namnet i varje variants formulär på en telefon på 390 och landar på /play. Inget är ritat
+     för hand. Skripten ligger i matning/.
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .krona { flex: none; display: grid; gap: 8px; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .krona h1 { margin: 0; color: #fff; font-size: 15px; }
+  .rad { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .rad > span { color: var(--quiet-2); font-size: 12px; min-width: 64px; }
+  .rad button { min-height: 36px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; cursor: pointer; }
+  .rad button[aria-pressed='true'] { background: #24507f; border-color: var(--primary-mark); color: #fff; }
+  .rad button.rek { border-color: #3f7a55; }
+  .rad button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .scen { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; padding: 16px; background: #15171c; align-content: start; }
+  @media (max-width: 900px) { .scen { grid-template-columns: minmax(0, 1fr); } }
+  .bild { min-width: 0; }
+  .bild img { display: block; max-width: 100%; height: auto; border: 1px solid #2f333d; border-radius: 6px; }
+  .bild img.smal { max-width: min(100%, 420px); }
+  .bild p { color: var(--quiet-2); font-size: 12px; margin: 6px 0 0; }
+  .sido { display: grid; gap: 12px; align-content: start; }
+  .ruta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .ruta h2 { margin: 0 0 6px; color: #fff; font-size: 14px; }
+  .ruta p { margin: 0 0 6px; line-height: 1.5; color: #c9d1e3; }
+  .ruta ul { margin: 4px 0 0; padding-left: 18px; color: #c9d1e3; line-height: 1.5; }
+  .tal { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 13px; }
+  .tal b { text-align: right; }
+  .ok { color: var(--good); } .nej { color: #ff8a7a; }
+  .forkl { color: var(--quiet-2); font-size: 12px; margin: 6px 0; line-height: 1.5; }
+  .matris { grid-column: 1 / -1; overflow-x: auto; }
+  table { border-collapse: collapse; font-size: 12px; min-width: 980px; }
+  th, td { border: 1px solid #2f333d; padding: 5px 7px; text-align: left; vertical-align: top; }
+  th { color: #fff; background: #1b1f2a; }
+  th.valt, td.valt { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  td.ok { background: #16301f; color: #9be3b5; }
+  td.nej { background: #3a1c1c; color: #ffb3a8; }
+  td.mitt { color: #f0d7a0; background: #2e2716; }
+</style>
+</head>
+<body>
+<div class="krona">
+  <h1>Prototyp 01 — vägen in med rumskoden (#675) <small style="color:var(--quiet-2);font-weight:400">· ← → byter variant · bilderna är det byggda appen med varianten injicerad</small></h1>
+  <div class="rad" id="varianter"><span>Variant</span></div>
+  <div class="rad" id="ytor"><span>Yta</span></div>
+</div>
+<div class="scen">
+  <div class="bild"><img id="bild" alt=""><p id="bildtext"></p></div>
+  <div class="sido">
+    <div class="ruta"><h2 id="vnamn"></h2><p id="vregel"></p><p id="vpris" class="forkl"></p></div>
+    <div class="ruta"><h2>Mätt på den här bilden</h2><div class="tal" id="tal"></div><p class="forkl" id="tunder"></p></div>
+  </div>
+  <div class="matris ruta">
+    <h2>Alla varianter mot issuets acceptans</h2>
+    <p class="forkl">Grönt håller, rött håller inte, gult är ett pris. «Ryms +15 %» betyder att adressen står kvar på en rad när texten ritas 15 % bredare, som DejaVu på Linux. QR-rutans storlek i cm gäller en 55-tums TV; en telefon läser en kod av den här tätheten på ungefär 10–20 gånger rutans sida. Stegen är körda i appen (matning/flow.mjs): tecken räknar adressen, koden och namnet «Bea»; tryck räknar «Gå» i adressfältet, formulärets knapp och «Sätt dig». Klicka en kolumnrubrik för att visa varianten.</p>
+    <table id="matris"></table>
+  </div>
+</div>
+<script src="data.js"></script>
+<script>
+const VARIANTER = [
+  { id: 'nu', namn: 'Nu', regel: 'TV:n säger «anslut med telefon», koden i 26 px och en QR på 52 px — ingen adress. Startsidan är bara inloggningskortet. /join utan kod säger «Bordet finns inte», och en felskriven kod sägs ha «gått ut»; båda leder till en startsida utan kodfält. Bordsläget har koden i plåten i 13 px utan ord för vad den är. Anslutningssidan säger «Rum KOD», inte spelet, och på en laptop är namnfält och knappar 1 240 px breda.', pris: 'Det issuet beskriver. Utan QR finns ingen väg in alls.' },
+  { id: 'a', namn: 'A · /join är dörren', regel: 'Kodfältet bor på /join: utan kod ett formulär («Gå in vid ett bord», Rumskod, Fortsätt), och en okänd kod står kvar i fältet med «Det finns inget bord med koden ZZZZZZ». Startsidan får en rad under inloggningskortet, «Ska du spela? Skriv rumskoden →», till /join. TV:n säger «anslut med telefonen på deck.ockelberg.com/join» i 24 px ovanför koden; QR-rutan är som nu. Bordsläget säger «Anslut på deck.ockelberg.com/join med koden KOD» i 18 px i plåten. Anslutningssidan är en spalt på 520 px med spelets namn som rubrik.', pris: 'Minst ändring, och inloggningskortet är orört. Men det är tre saker att skriva (adress, kod, namn) över två sidladdningar, och QR-rutan är fortfarande 52 px. TV:ns INSPEKTION vid 1280 krymper 265 → 229 px.' },
+  { id: 'b', namn: 'B · Två dörrar på startsidan', regel: 'Startsidan har två kort: «Spela vid ett bord» med kodfältet först, och inloggningen («Gör ett eget spel») bredvid vid 1280 och under på en telefon. TV:n säger bara deck.ockelberg.com — kortast att skriva — och QR-rutan växer till 128 px i spalten. /join utan kod visar samma spelkort. Bordsläget får ett eget hörn med en tryckbar QR, adressen och koden. Anslutningssidan på en laptop har två spalter: bordet till vänster, namnet och vägarna in till höger.', pris: 'Designerns inloggning flyttas: på 320 hamnar e-postfältet under vikningen (topp 621 px på en 568 px skärm), och kortet byter rubrik — det krockar med #691:s leads och #757:s sidfot på kortet. TV:ns INSPEKTION vid 1280 krymper 265 → 148 px för den större rutan. Bordslägets hörn ligger på träkanten och filtens hörn (ingen zon).' },
+  { id: 'c', namn: 'C · Koden är adressen', rek: true, regel: 'TV:n säger adressen som en sträng: «deck.ockelberg.com» i 24 px och, på raden under, «/KOD» i 40 px som fortsättningen. Telefonen landar direkt i platsväljaren — ingen sida däremellan och inget kodfält att leta efter. Startsidan får en rad under inloggningskortet: «Ska du spela? Skriv rumskoden [____] Gå in». /join utan kod och med en okänd kod är A:s formulär. Bordsläget: plåten säger «deck.ockelberg.com/KOD» i 20 px. Anslutningssidan är ett kort på 520 px, samma form som inloggningskortet, med spelets namn som rubrik.', pris: 'Kräver en ny väg på servern, /<KOD>, som löser upp koden som /join?code= gör (#483 tar redan /join?KOD). Kodens alfabet saknar I, L och O, så ingen av appens vägar kan vara en kod — utom ASSETS och GUESTS, som generatorn måste hoppa över. Adressen byter med varje «Ny kod», men det gör koden redan. Ett skal (#749) måste täcka den nya vägen.' },
+  { id: 'd', namn: 'D · Inbjudan på filten', regel: 'I vila — före första draget, medan en plats är ledig — står en inbjudan mitt på filten: QR-rutan i 300 px vid 1920 (≈19 cm på en 55-tummare), adressen i 36 px och koden i 56 px. Vid första draget fälls den in i spalten som A:s rad. Bordsläget har samma inbjudan med «Stäng». Startsidan är ett kort med två flikar, «Spela | Logga in», öppet på Spela på en telefon och på Logga in vid ett skrivbord. /join utan kod tar koden i sex rutor. På en laptop är «Spela på den här skärmen» förslaget och «Sätt dig vid TV:n» det andra valet.', pris: 'Inbjudan täcker saloonen och dess tre kort så länge den står (det är vila, men det är bordet). De sex rutorna är exakt 44 px breda på 320 — golvet utan marginal. Fliken döljer säljraden på telefonen och gör kortet till två kort i ett, vilket krockar med #691. Laptopens förslag är ett produktbeslut (distans-04), inte bara en layout.' },
+]
+const YTOR = [
+  { id: 'start-390', namn: 'Start 390', smal: true }, { id: 'start-320', namn: 'Start 320', smal: true }, { id: 'start-1280', namn: 'Start 1280' },
+  { id: 'nokod-390', namn: '/join utan kod 390', smal: true }, { id: 'nokod-320', namn: '/join utan kod 320', smal: true }, { id: 'nokod-1280', namn: '/join utan kod 1280' },
+  { id: 'okand-390', namn: 'Okänd kod 390', smal: true },
+  { id: 'join-390', namn: '/join 390', smal: true }, { id: 'join-320', namn: '/join 320', smal: true }, { id: 'join-1280', namn: '/join laptop 1280' },
+  { id: 'tv-1280', namn: 'TV 1280' }, { id: 'tv-1920', namn: 'TV 1920' }, { id: 'bord-1280', namn: 'Bordsläge 1280' },
+]
+const q = new URLSearchParams(location.search)
+let v = q.get('v') ?? 'c', yta = q.get('yta') ?? 'tv-1920'
+const cell = (vv, yy) => window.MATT.find((m) => m.v === vv && m.s === yy)
+const knappar = (rot, lista, nu, val) => {
+  rot.querySelectorAll('button').forEach((b) => b.remove())
+  for (const x of lista) {
+    const b = document.createElement('button')
+    b.textContent = x.namn
+    if (x.rek) b.classList.add('rek')
+    b.setAttribute('aria-pressed', String(x.id === nu))
+    b.onclick = () => val(x.id)
+    rot.append(b)
+  }
+}
+// A 55-inch 16:9 panel is 121.8 cm wide, whatever the CSS width the TV renders at.
+const cm = (px, w) => (px * 121.8 / w).toFixed(1).replace('.', ',')
+const PHONES = ['start-390', 'start-320', 'nokod-390', 'nokod-320', 'okand-390', 'join-390', 'join-320']
+function rows() {
+  const r = []
+  const per = (f) => VARIANTER.map((x) => f(x.id))
+  r.push(['Steg från adressen på TV:n till en plats (telefon 390)', per((id) => {
+    const f = window.FLOW[id]
+    if (!f) return { t: 'ingen väg: TV:n säger ingen adress, och inget fält tar en kod', c: 'nej' }
+    return { t: `skriver «${f.typed}» · ${f.loadsToPicker} sidladdning${f.loadsToPicker === 1 ? '' : 'ar'} före väljaren · ${f.chars} tecken · ${f.presses} tryck`, c: f.loadsToPicker === 1 ? 'ok' : 'mitt' }
+  })])
+  for (const s of ['tv-1920', 'tv-1280']) r.push([`TV ${s.slice(3)}: adressen`, per((id) => {
+    const m = cell(id, s)
+    if (!m.address) return { t: 'ingen adress', c: 'nej' }
+    return { t: `«${m.address}${id === 'c' ? '/' + 'KOD' : ''}» ${m.addrPx} px · ${m.addrLines} rad · ${m.addrFits15 ? 'ryms +15 %' : 'ryms inte +15 %'} · koden ${m.codePx} px`, c: m.addrPx >= 24 && m.addrFits15 ? 'ok' : 'nej' }
+  })])
+  r.push(['TV: minsta text i vägen in (golv 24 px, K26)', per((id) => { const m = cell(id, 'tv-1920'); return { t: `${m.joinMinPx} px`, c: m.joinMinPx >= 24 ? 'ok' : 'nej' } })])
+  r.push(['TV 1920: QR-rutan', per((id) => { const m = cell(id, 'tv-1920'); return { t: `${m.qrPx} px ≈ ${cm(m.qrPx, 1920)} cm · läses på ~${(m.qrPx * 121.8 / 1920 / 10).toFixed(1).replace('.', ',')}–${(m.qrPx * 121.8 / 1920 / 5).toFixed(1).replace('.', ',')} m`, c: m.qrPx >= 200 ? 'ok' : m.qrPx >= 100 ? 'mitt' : 'nej' } })])
+  r.push(['TV 1280: INSPEKTION:s höjd (nu 265 px)', per((id) => { const m = cell(id, 'tv-1280'); return { t: `${m.inspectH} px`, c: m.inspectH >= 260 ? 'ok' : m.inspectH >= 200 ? 'mitt' : 'nej' } })])
+  r.push(['TV i vila: vägen in över zoner och kort', per((id) => { const m = cell(id, 'tv-1920'); return { t: m.over ? `${m.over} (saloonen och dess kort, tills första draget)` : '0', c: m.over ? 'mitt' : 'ok' } })])
+  r.push(['Bordsläge 1280: adressen', per((id) => {
+    const m = cell(id, 'bord-1280')
+    if (!m.address) return { t: 'ingen adress; koden i 13 px utan ord', c: 'nej' }
+    return { t: `«${m.address}» ${m.addrPx} px${m.qrPx ? ` · QR ${m.qrPx} px` : ''} · över zoner/kort: ${m.over}`, c: m.over ? 'mitt' : 'ok' }
+  })])
+  r.push(['Startsidan 320: kodfältet / e-postfältet i första vyn', per((id) => {
+    const m = cell(id, 'start-320')
+    const code = m.codeField ? (m.codeField.inView ? 'kodfält i bild' : 'kodfält under vikningen') : id === 'a' ? 'länk till /join i bild' : 'inget kodfält'
+    const login = m.loginField ? (m.loginField.inView ? 'e-post i bild' : `e-post under vikningen (${m.loginField.top} px)`) : 'e-post bakom fliken'
+    return { t: `${code} · ${login}`, c: id === 'nu' ? 'nej' : m.loginField && !m.loginField.inView ? 'nej' : !m.loginField ? 'mitt' : 'ok' }
+  })])
+  r.push(['Telefon 390 och 320: minsta träffyta (golv 44 px)', per((id) => {
+    const all = PHONES.map((s) => cell(id, s))
+    const min = Math.min(...all.map((m) => m.minTap))
+    const under = all.flatMap((m) => m.under44.map((u) => `${m.s}: ${u}`))
+    return { t: `${min} px${under.length ? ` (${under.length} under 44, t.ex. ${under[0]})` : ''}`, c: min >= 44 && !under.length ? 'ok' : min >= 44 ? 'mitt' : 'nej' }
+  })])
+  r.push(['Okänd kod: sägs som okänd, fältet kvar', per((id) => ({ t: id === 'nu' ? '«gäller inte längre», inget fält' : '«Det finns inget bord med koden ZZZZZZ», koden kvar i fältet', c: id === 'nu' ? 'nej' : 'ok' }))])
+  r.push(['/join på laptop 1280: formulärets bredd · spelets namn · förslaget', per((id) => {
+    const m = cell(id, 'join-1280')
+    return { t: `${m.formW} px · ${m.gameShown ? 'Sal\'s Saloon' : 'bara «Rum KOD»'} · «${m.primary}»`, c: m.formW <= 560 && m.gameShown ? 'ok' : 'nej' }
+  })])
+  r.push(['Behöver något nytt på servern', per((id) => ({ t: { nu: '–', a: 'skilja okänd kod (404) från utgången (410)', b: 'samma som A', c: 'som A, plus vägen /<KOD>', d: 'samma som A' }[id], c: id === 'c' ? 'mitt' : '' }))])
+  return r
+}
+const visa = () => {
+  history.replaceState(null, '', `?v=${v}&yta=${yta}`)
+  knappar(document.querySelector('#varianter'), VARIANTER, v, (x) => { v = x; visa() })
+  knappar(document.querySelector('#ytor'), YTOR, yta, (x) => { yta = x; visa() })
+  const V = VARIANTER.find((x) => x.id === v)
+  const Y = YTOR.find((x) => x.id === yta)
+  document.querySelector('#vnamn').textContent = V.namn + (V.rek ? ' — rekommendationen' : '')
+  document.querySelector('#vregel').textContent = V.regel
+  document.querySelector('#vpris').textContent = V.pris
+  const m = cell(v, yta)
+  const img = document.querySelector('#bild')
+  img.src = 'img/' + m.f
+  img.className = Y.smal ? 'smal' : ''
+  img.alt = `${V.namn}, ${Y.namn}`
+  document.querySelector('#bildtext').textContent = `${V.namn} · ${Y.namn}${yta === 'tv-1920' ? ' · bilden nedskalad till 1440 bred' : ''}`
+  const t = []
+  if (m.address !== undefined && m.address !== null) t.push(['Adressen', `«${m.address}»`], ['Adressens storlek', `${m.addrPx} px`], ['Ryms på en rad +15 %', m.addrFits15 ? 'ja' : 'nej'])
+  if (m.codePx) t.push(['Koden', `${m.codePx} px`])
+  if (m.qrPx) t.push(['QR-rutan', `${m.qrPx} px`])
+  if (m.inspectH) t.push(['INSPEKTION:s höjd', `${m.inspectH} px`])
+  if (m.joinMinPx) t.push(['Minsta text i vägen in', `${m.joinMinPx} px`])
+  if (m.over !== undefined) t.push(['Över zoner och kort', m.over])
+  if (m.minTap !== undefined) t.push(['Minsta träffyta', `${m.minTap} px`])
+  if (m.codeField) t.push(['Kodfältet', `${m.codeField.h} px högt, topp ${m.codeField.top} px, ${m.codeField.inView ? 'i bild' : 'under vikningen'}`])
+  if (m.loginField) t.push(['E-postfältet', `topp ${m.loginField.top} px, ${m.loginField.inView ? 'i bild' : 'under vikningen'}`])
+  if (m.formW) t.push(['Formulärets bredd', `${m.formW} px`], ['Spelets namn syns', m.gameShown ? 'ja' : 'nej'], ['Förslaget', `«${m.primary}»`])
+  document.querySelector('#tal').innerHTML = t.map(([k, n]) => `<span>${k}</span><b>${String(n).replace(/</g, '&lt;')}</b>`).join('') || '<span>Inget att mäta på den här ytan.</span><b></b>'
+  document.querySelector('#tunder').textContent = m.under44?.length ? 'Under 44 px: ' + m.under44.join(', ') : ''
+  const tab = document.querySelector('#matris')
+  const head = '<thead><tr><th>Fråga</th>' + VARIANTER.map((x) => `<th class="${x.id === v ? 'valt' : ''}"><a href="?v=${x.id}&yta=${yta}" data-v="${x.id}" style="color:inherit">${x.namn}</a></th>`).join('') + '</tr></thead>'
+  tab.innerHTML = head + '<tbody>' + rows().map(([q, cells]) => `<tr><td>${q}</td>${cells.map((c, i) => `<td class="${c.c}${VARIANTER[i].id === v ? ' valt' : ''}">${c.t}</td>`).join('')}</tr>`).join('') + '</tbody>'
+  tab.querySelectorAll('a[data-v]').forEach((a) => (a.onclick = (e) => { e.preventDefault(); v = a.dataset.v; visa(); scrollTo(0, 0) }))
+}
+addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+  const i = VARIANTER.findIndex((x) => x.id === v)
+  v = VARIANTER[(i + (e.key === 'ArrowRight' ? 1 : VARIANTER.length - 1)) % VARIANTER.length].id
+  visa()
+})
+visa()
+</script>
+</body>
+</html>

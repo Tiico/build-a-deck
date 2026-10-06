@@ -36,7 +36,7 @@
     return `
       <main class="byd-join p675-nocode" data-page="join" data-p675>
         <header><h1>${heading}</h1></header>
-        <form class="p675-code" onsubmit="event.preventDefault(); location.assign('/join?code=' + encodeURIComponent(this.querySelector('input').value))">
+        <form class="p675-code" onsubmit="event.preventDefault(); location.assign('/join?code=' + encodeURIComponent([...this.querySelectorAll('input')].map((i) => i.value).join('')))">
           <p class="p675-lead">Skriv rumskoden som står på bordets skärm.</p>
           <label class="byd-join-name"><span>Rumskod</span>${field}</label>
           ${error ? `<p class="p675-alert" id="p675-err" role="alert">${error}</p>` : ''}
@@ -59,6 +59,8 @@
   // ── /join with a live code ──────────────────────────────────────────────────────────────────
   // Every variant says the game's name: the session record carries it (GET /sessions/:id).
   function joinHead(game, code) {
+    // The page's own dark behind a column narrower than the window.
+    style(`html, body { background: #14161c; }`)
     const head = document.querySelector('.byd-join > header')
     const seat = head.querySelector('span:last-of-type')?.textContent ?? ''
     head.querySelector('h1').textContent = game
@@ -149,7 +151,7 @@
       // the right — the form no longer 1 240 px wide, the picker no longer floating in a void.
       style(`
         @media (min-width: 900px) {
-          .byd-join { max-width: 960px; margin: 0 auto; grid-template-columns: minmax(0, 1fr) 400px; grid-template-rows: auto 1fr; column-gap: 48px; align-content: center; }
+          .byd-join { max-width: 960px; margin: 0 auto; grid-template-columns: minmax(0, 1fr) 400px; grid-template-rows: auto auto; row-gap: 32px; column-gap: 48px; align-content: center; }
           .byd-join > header { grid-column: 1 / -1; }
           .byd-join-table { grid-column: 1; grid-row: 2; transform: scale(1.25); }
           .byd-join > form { grid-column: 2; grid-row: 2; align-self: center; }
@@ -179,7 +181,7 @@
         .p675-corner .p675-a { font-size: 16px; }
         .p675-corner .p675-k { font: 700 22px ui-monospace, monospace; letter-spacing: 3px; }
       `)
-      const src = document.querySelector('img.byd-qr')?.src ?? ''
+      const src = qrSrc
       document.body.append(html(`<div class="p675-corner" data-m="chip"><button type="button" aria-label="Förstora QR-koden"><img alt="" src="${src}" data-m="qr"></button><span class="p675-a" data-m="address">${HOST}</span><span class="p675-k" data-m="code">${c.code}</span></div>`))
     },
   }
@@ -231,7 +233,7 @@
       `)
       const row = document.querySelector('.byd-tv-join')
       row.querySelector('span').textContent = 'öppna på telefonen'
-      row.querySelector('span').after(html(`<p class="p675-addr" data-m="address">${HOST}/</p>`))
+      row.querySelector('span').after(html(`<p class="p675-addr" data-m="address">${HOST}</p>`))
       const code = row.querySelector('strong')
       code.classList.add('p675-addr-code')
       code.dataset.m = 'code'
@@ -276,7 +278,7 @@
       `)
       const card = document.querySelector('.byd-login')
       const phone = innerWidth < 768
-      card.querySelector('h1').after(html(`<div class="p675-tabs" role="tablist"><button role="tab" data-m="tab" aria-selected="${phone}">Spela vid ett bord</button><button role="tab" data-m="tab" aria-selected="${!phone}">Logga in</button></div>`))
+      card.querySelector('h1').after(html(`<div class="p675-tabs" role="tablist"><button role="tab" data-m="tab" aria-selected="${phone}">Spela</button><button role="tab" data-m="tab" aria-selected="${!phone}">Logga in</button></div>`))
       if (phone) {
         for (const el of card.querySelectorAll(':scope > p[data-pitch], :scope > .byd-help-row, :scope > form')) el.style.display = 'none'
         card.querySelector('.p675-tabs').after(html(`<form class="p675-code" style="display:grid;gap:10px" onsubmit="event.preventDefault(); location.assign('/join?code=' + encodeURIComponent(this.querySelector('input').value))"><p class="byd-muted">Skriv rumskoden som står på bordets skärm.</p><label class="byd-login-email"><span>Rumskod</span><input data-m="field" maxlength="8" autocapitalize="characters" autocomplete="off"></label><button type="submit" class="byd-primary" data-m="go">Gå in</button></form>`))
@@ -299,13 +301,15 @@
         here.textContent = 'Spela på den här skärmen'
         here.dataset.m = 'go'
         f.insertBefore(here, sit)
+        // The first way in in the size the first way in has, the second in the size a second has.
+        style(`.byd-join form .byd-join-online { font-size: 18px !important; } .byd-join form button[type=submit] { font-size: 15px !important; }`)
       }
     },
     tv(s, c) {
       const src = document.querySelector('img.byd-qr')?.src ?? ''
       V.a.tv(s, c)
       style(`
-        .p675-invite { position: absolute; z-index: 5; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; gap: 32px; align-items: center; padding: 28px 36px; border-radius: 24px; background: rgba(13, 15, 20, 0.94); border: 1px solid #2f3646; box-shadow: 0 24px 60px rgba(0,0,0,.55); color: #e6ecfa; white-space: nowrap; }
+        .p675-invite { position: absolute; z-index: 5; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; gap: 32px; align-items: center; padding: 28px 36px; border-radius: 24px; background: #0d0f14; border: 1px solid #2f3646; box-shadow: 0 24px 60px rgba(0,0,0,.55); color: #e6ecfa; white-space: nowrap; }
         .p675-invite img { background: #fff; border-radius: 12px; padding: 0; }
         .p675-invite p { margin: 0; }
         .p675-i-lead { font-size: 28px; color: #9aa3b8; }
@@ -323,7 +327,7 @@
       V.a.bord(s, c)
       const src = qrSrc
       style(`
-        .p675-invite { position: fixed; z-index: 5; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; gap: 24px; align-items: center; padding: 22px 26px; border-radius: 20px; background: rgba(13, 15, 20, 0.94); border: 1px solid #3a3226; box-shadow: 0 24px 60px rgba(0,0,0,.55); color: #f3e9d6; white-space: nowrap; font-family: 'Roboto Condensed', system-ui, sans-serif; }
+        .p675-invite { position: fixed; z-index: 5; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; gap: 24px; align-items: center; padding: 22px 26px; border-radius: 20px; background: #0d0f14; border: 1px solid #3a3226; box-shadow: 0 24px 60px rgba(0,0,0,.55); color: #f3e9d6; white-space: nowrap; font-family: 'Roboto Condensed', system-ui, sans-serif; }
         .p675-invite img { background: #fff; border-radius: 10px; }
         .p675-invite p { margin: 0; }
         .p675-i-lead { font-size: 18px; opacity: .8; }
@@ -372,10 +376,13 @@
         const host = addr.parentElement
         const cs = getComputedStyle(host)
         const room = host.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
-        const lines = new Set(rects.map((x) => Math.round(x.top))).size
+        const lines = rects.reduce((n, x, i) => n + (i > 0 && x.top - rects[i - 1].top > parseFloat(getComputedStyle(addr).fontSize) * 0.6 ? 1 : 0), 1)
         out.addrLines = lines
         out.addrW = Math.round(Math.max(...rects.map((x) => x.width)))
-        out.addrRoom = Math.round(kind === 'bord' ? innerWidth - r(addr).left - 12 : room)
+        const invite = addr.closest('[data-m=invite]')
+        // In the invitation the box grows with its text, so the room is what the felt leaves it;
+        // in table mode's top line it is the window to the right of where the address starts.
+        out.addrRoom = Math.round(invite ? invite.parentElement.clientWidth - (r(invite).width - out.addrW) - 32 : kind === 'bord' ? innerWidth - r(addr).left - 12 : room)
         out.addrFits15 = lines === 1 && wide <= out.addrRoom
       }
       out.codePx = code ? Math.round(px(code)) : null

@@ -5,8 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Prototyper 2026-10-06 — vägen in med rumskoden</title>
 <link rel="stylesheet" href="proto.css">
+<style>
+  body { overflow: auto; }
+  .sida { max-width: 760px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { color: #fff; font-size: 20px; margin: 0 0 6px; }
+  .under { color: var(--quiet-2); font-size: 13px; line-height: 1.6; margin: 0 0 24px; }
+  a.rad { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; gap: 14px; align-items: center; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: #e6ecfa; text-decoration: none; }
+  a.rad:hover { border-color: var(--primary-mark); background: #1b2030; }
+  a.rad:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  a.rad b { display: block; font-size: 14px; margin-bottom: 2px; }
+  a.rad small { color: var(--quiet-2); font-size: 12px; line-height: 1.45; }
+  a.rad .nr { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 999px; background: #24507f; color: #fff; font-weight: 700; font-size: 13px; }
+  a.rad em { font-style: normal; color: var(--quiet); font-size: 11px; white-space: nowrap; }
+</style>
 </head>
 <body>
-<p>Prototypen till #675 byggs. Öppna över http (<code>python3 -m http.server</code> i mappen).</p>
+<div class="sida">
+  <h1>Prototyper 2026-10-06 — vägen in med rumskoden</h1>
+  <p class="under">
+    Var en spelare skriver rumskoden utan QR, hur TV:n och bordsläget säger adressen, och hur
+    anslutningssidan ser ut på en laptop (#675). Bilderna är det byggda appen på e2e-stacken med
+    Sal's Saloon, varje variant injicerad och mätt i Chromium, och stegen till en plats är körda;
+    skripten ligger i <code>matning/</code>. Öppna över http (<code>python3 -m http.server</code> i
+    mappen), inte som fil.
+  </p>
+  <a class="rad" href="01-vagen-in.html?v=c&amp;yta=tv-1920"><span class="nr">01</span><span><b>Vägen in med rumskoden</b><small>Nu och fyra varianter — /join är dörren, två dörrar på startsidan, koden är adressen och inbjudan på filten — på startsidan, /join utan kod och med en okänd kod, platsväljaren på telefon och laptop, TV:n vid 1280 och 1920 och bordsläget.</small></span><em>#675</em></a>
+</div>
 </body>
 </html>
