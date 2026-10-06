@@ -114,7 +114,7 @@ function rows() {
   for (const s of ['tv-1920', 'tv-1280']) r.push([`TV ${s.slice(3)}: adressen`, per((id) => {
     const m = cell(id, s)
     if (!m.address) return { t: 'ingen adress', c: 'nej' }
-    return { t: `«${m.address}${id === 'c' ? '/' + 'KOD' : ''}» ${m.addrPx} px · ${m.addrLines} rad · ${m.addrFits15 ? 'ryms +15 %' : 'ryms inte +15 %'} · koden ${m.codePx} px`, c: m.addrPx >= 24 && m.addrFits15 ? 'ok' : 'nej' }
+    return { t: id === 'c' ? `två rader som läses som en adress: «${m.address}» ${m.addrPx} px, «/KOD» ${m.codePx} px · ${m.addrFits15 ? 'ryms +15 %' : 'ryms inte +15 %'}` : `«${m.address}» ${m.addrPx} px · ${m.addrLines} rad · ${m.addrFits15 ? 'ryms +15 %' : 'ryms inte +15 %'} · koden ${m.codePx} px`, c: m.addrPx >= 24 && m.addrFits15 ? 'ok' : 'nej' }
   })])
   r.push(['TV: minsta text i vägen in (golv 24 px, K26)', per((id) => { const m = cell(id, 'tv-1920'); return { t: `${m.joinMinPx} px`, c: m.joinMinPx >= 24 ? 'ok' : 'nej' } })])
   r.push(['TV 1920: QR-rutan', per((id) => { const m = cell(id, 'tv-1920'); return { t: `${m.qrPx} px ≈ ${cm(m.qrPx, 1920)} cm · läses på ~${(m.qrPx * 121.8 / 1920 / 10).toFixed(1).replace('.', ',')}–${(m.qrPx * 121.8 / 1920 / 5).toFixed(1).replace('.', ',')} m`, c: m.qrPx >= 200 ? 'ok' : m.qrPx >= 100 ? 'mitt' : 'nej' } })])
@@ -142,7 +142,7 @@ function rows() {
     const m = cell(id, 'join-1280')
     return { t: `${m.formW} px · ${m.gameShown ? 'Sal\'s Saloon' : 'bara «Rum KOD»'} · «${m.primary}»`, c: m.formW <= 560 && m.gameShown ? 'ok' : 'nej' }
   })])
-  r.push(['Behöver något nytt på servern', per((id) => ({ t: { nu: '–', a: 'skilja okänd kod (404) från utgången (410)', b: 'samma som A', c: 'som A, plus vägen /<KOD>', d: 'samma som A' }[id], c: id === 'c' ? 'mitt' : '' }))])
+  r.push(['Behöver något nytt på servern', per((id) => ({ t: { nu: '–', a: 'skilja okänd kod (404) från utgången (410)', b: 'samma som A', c: 'som A, plus vägen /&lt;KOD&gt;', d: 'samma som A' }[id], c: id === 'c' ? 'mitt' : '' }))])
   return r
 }
 const visa = () => {
