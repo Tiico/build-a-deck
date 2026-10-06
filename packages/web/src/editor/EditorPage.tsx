@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { nextCardRef } from './fields.js'
 import { DeckWall, type WallView } from './DeckWall.js'
 import { EditorTabs, MODES, panelId, tabId, type Mode } from './EditorTabs.js'
@@ -20,7 +20,7 @@ import { marked } from '../account/marked.js'
 import { RulesPanel } from './RulesPanel.js'
 import { SharePanel, colourOf } from './SharePanel.js'
 import { tvUrl } from './tableLinks.js'
-import { Question } from './Question.js'
+import { Asking, Question } from './Question.js'
 import { useProjectClient, type ProjectTiming } from './useProjectClient.js'
 import type { ProjectDoc } from '@byd/server'
 import { useTableClient } from '../table/useTableClient.js'
@@ -104,6 +104,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // of news and one slot could only ever hold the later of them (#35).
   const [notice, setNotice] = useState<string | null>(null)
   const confirmation = useConfirmation()
+  // How many questions stand right now (#698). While one does, what just happened is not drawn:
+  // it stood over «Ja, ta bort» and «Avbryt», and a step taken while the question stands would
+  // have been drawn there again. It is still said, and the question is what is on the screen.
+  const [questions, setQuestions] = useState(0)
+  const asking = useCallback(() => {
+    setQuestions((n) => n + 1)
+    return () => setQuestions((n) => n - 1)
+  }, [])
   // The question asked before the editor is left with work that is not saved (#8), and the way
   // back to the link that asked it: a question that takes the focus has to give it back.
   const [leaving, setLeaving] = useState(false)
@@ -627,7 +635,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   )
 
   return (
-    <>
+    <Asking.Provider value={asking}>
     <div className="byd-editor" data-page="editor" data-mode={mode} data-room={room} {...(!client.mayEdit ? { 'data-readonly': '' } : {})} {...(shownFault ? { inert: true } : {})}>
       <header>
         <a
@@ -698,7 +706,15 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         {notice && <span role="alert" className="byd-editor-notice">{notice}</span>}
         {/* What just happened, in the channel routine news belongs in. It is read out politely by
             `useConfirmation` and stands here only while it is still what just happened. */}
-        {confirmation.text && <span className="byd-editor-confirm">{confirmation.text}</span>}
+        {/* It lies over the work for the moment it stands, so a press on it is a press on it and
+            nothing under it (#698): it let presses through, and one on the line over the question
+            pressed the «Ja, ta bort» hidden beneath. The press takes it away instead, and leaves
+            whatever it covered one press away. The keyboard never meets it, so it has no key. */}
+        {confirmation.text && questions === 0 && (
+          <span className="byd-editor-confirm" onClick={confirmation.dismiss}>
+            {confirmation.text}
+          </span>
+        )}
         <EditorChords client={client} onSave={() => void save()} onConfirm={confirmation.confirm} onReading={() => sayReading(t('editor.reading.nothing'))} />
         {/* "Nytt bord" and the shortcut beside "Uppdatera bordet" are two ways to the tables that
             the Bord stage also holds, so below the desk they leave the header rather than being
@@ -910,7 +926,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     {/* A game deleted while it was open (#485): said over the work, which stays on the page and
         out of reach, rather than in place of it. */}
     {shownFault && <StatusNotice notice={shownFault === 'loggedOut' ? loggedOutNotice(t) : noticeFor(shownFault, 'editor', t)} surface="card" links={links} onRetry={retry} />}
-    </>
+    </Asking.Provider>
   )
 }
 
@@ -958,7 +974,7 @@ const CONFIRM_MS = 6000
 // and it takes itself back instead of standing in the header for the rest of the session. The
 // amber slot beside it is left to what could not happen, which is the only thing worth cutting a
 // reader off for and the only thing worth leaving on the screen until it stops being true.
-function useConfirmation(): { text: string | null; confirm(text: string): void } {
+function useConfirmation(): { text: string | null; confirm(text: string): void; dismiss(): void } {
   const say = useSay()
   const [text, setText] = useState<string | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -978,7 +994,13 @@ function useConfirmation(): { text: string | null; confirm(text: string): void }
       say?.('polite', '')
     }, CONFIRM_MS)
   }
-  return { text, confirm }
+  // Taken back by hand: it has been read, and what it lay over is wanted. What was said stays said.
+  const dismiss = () => {
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = null
+    setText(null)
+  }
+  return { text, confirm, dismiss }
 }
 
 // The way back to "Mina spel", keeping the server the editor was opened against.
