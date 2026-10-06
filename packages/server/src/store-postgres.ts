@@ -394,6 +394,14 @@ export class PostgresProjectStore implements ProjectStore {
     return rows.length
   }
 
+  async inviteTo(tokenHash: string, now: string): Promise<string | null> {
+    const [row] = await this.sql<{ project_id: string }[]>`
+      select project_id from project_invites
+      where token_hash = ${tokenHash} and accepted_at is null and expires_at > ${now}
+    `
+    return row?.project_id ?? null
+  }
+
   async acceptInvite(tokenHash: string, now: string): Promise<{ project: string; email: string; role: Role } | null> {
     const [row] = await this.sql<{ project_id: string; email: string; role: string }[]>`
       update project_invites set accepted_at = now()

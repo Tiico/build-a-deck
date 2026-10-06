@@ -132,7 +132,11 @@ describe.skipIf(!url)('PostgresProjectStore', () => {
     await projects.invite({ tokenHash: `${id}-a`, project: id, email: 'bo@example.com', role: 'editor', expiresAt: later })
     await projects.invite({ tokenHash: `${id}-b`, project: id, email: 'cee@example.com', role: 'viewer', expiresAt: later })
     await projects.invite({ tokenHash: `${id}-c`, project: id, email: 'dee@example.com', role: 'viewer', expiresAt: '2000-01-01T00:00:00.000Z' })
+    // Which game a link leads to is told while it can be followed, and not after (#691).
+    expect(await projects.inviteTo(`${id}-b`, new Date().toISOString())).toBe(id)
+    expect(await projects.inviteTo(`${id}-c`, new Date().toISOString())).toBeNull()
     await projects.acceptInvite(`${id}-b`, new Date().toISOString())
+    expect(await projects.inviteTo(`${id}-b`, new Date().toISOString())).toBeNull()
     expect(await projects.openInvites(id, new Date().toISOString())).toEqual([{ email: 'bo@example.com', role: 'editor', expiresAt: later }])
     // Withdrawn, whatever case the address is written in, and only what was still waiting.
     expect(await projects.withdrawInvites(id, 'BO@example.com')).toBe(1)

@@ -1166,6 +1166,9 @@ export const svEditor = {
   'setup.counters.help.topic': 'räknarna',
   'setup.addSeatArea': '＋ Yta per plats',
   'setup.addSeatCounters': '＋ Räknarzon per plats',
+  // Under rubriken «Vid platserna» säger rubriken redan «per plats» (#711), och de två ryms då på en rad.
+  'setup.addSeatArea.short': '＋ Yta',
+  'setup.addSeatCounters.short': '＋ Räknarzon',
   'zone.copy': 'Kopia av {name}',
   'setup.copied': '{name} kopierad',
   // Vad en zon frågar efter och vad den kan (B5, K14), skrivet som meningar: rattarna sitter inne

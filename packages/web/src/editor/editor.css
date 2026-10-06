@@ -792,6 +792,8 @@
    sedan #330 (L29), och mittkolumnen är filtens och bara filtens. */
 .byd-setup-canvas { display: flex; flex-direction: column; gap: 8px; overflow: auto; }
 .byd-setup-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: #9aa3b8; font-size: 12px; }
+/* Under the heading of the group it adds to (#711, beslut B), between the heading and the rows. */
+.byd-setup-zones section > .byd-setup-tools { margin: var(--byd-s1) 0 var(--byd-s2); }
 /* What the surface says back: the hint, and after a removal the zone's name with the way back.
    The step back is the editor's own (B4), said here because here is where the zone went.
 
