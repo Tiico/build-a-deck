@@ -31,7 +31,7 @@ type Google = { asked: string[]; release(): void }
 // `hold` the files wait at the door until `release`, so the page can be read while they travel.
 async function google(page: Page, { hold = false } = {}): Promise<Google> {
   const asked: string[] = []
-  let release = () => undefined as void
+  let release: () => void = () => undefined
   const held = hold ? new Promise<void>((resolve) => (release = resolve)) : Promise.resolve()
   await page.route(GOOGLE, async (route) => {
     const url = route.request().url()
