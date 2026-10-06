@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 01 — temats förval i guidad start (#687)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan (#687) ──────────────────────────────────────────────────────────────────────
+     Guidad start öppnar med Skogssaga tryckt, men katalogen frågas först när en bricka trycks
+     (#476, L27, L57 #633). Kortet står därför i reservtypsnitt med «Temats typsnitt hämtas när
+     du väljer tema.» bredvid en bricka som ser vald ut. Vilken form ska förvalet ha?
+
+     Varje bild är det BYGGDA appen (packages/e2e-stacken, inloggad, /new) med variantens
+     beteende injicerat i sidan (matning/page.js) och mätt i Chromium. Google nås på riktigt,
+     genom Playwrights route, så bytena är äkta och filerna kan hållas inne för läget «under
+     hämtning». Vilket typsnitt som ritar kortet är Chromiums svar (CSS.getPlatformFontsForNode),
+     som #887:s test frågar. Inget är ritat för hand.
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; min-height: 100vh; overflow: auto; }
+  .krona { flex: none; display: grid; gap: 8px; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; }
+  .krona h1 { margin: 0; color: #fff; font-size: 15px; }
+  .rad { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .rad > span { color: var(--quiet-2); font-size: 12px; min-width: 64px; }
+  .rad button { min-height: 36px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; cursor: pointer; }
+  .rad button[aria-pressed='true'] { background: #24507f; border-color: var(--primary-mark); color: #fff; }
+  .rad button.rek { border-color: #3f7a55; }
+  .rad button:disabled { opacity: .4; cursor: default; }
+  .rad button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .scen { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; padding: 16px; background: #15171c; }
+  @media (max-width: 1000px) { .scen { grid-template-columns: minmax(0, 1fr); } }
+  .bilder { display: flex; flex-wrap: wrap; gap: 12px; align-items: start; }
+  .bild img { display: block; max-width: 100%; height: auto; border: 1px solid #2f333d; border-radius: 6px; }
+  .bild p { color: var(--quiet-2); font-size: 12px; margin: 6px 0 0; }
+  .sido { display: grid; gap: 12px; align-content: start; }
+  .ruta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .ruta h2 { margin: 0 0 6px; color: #fff; font-size: 14px; }
+  .ruta p { margin: 0 0 6px; line-height: 1.5; color: #c9d1e3; }
+  .tal { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 13px; }
+  .tal b { text-align: right; }
+  .ja { color: var(--good); } .nej { color: #ff8a7a; }
+  .matris { grid-column: 1 / -1; overflow-x: auto; }
+  table { border-collapse: collapse; font-size: 12px; min-width: 900px; }
+  th, td { border: 1px solid #2f333d; padding: 5px 7px; text-align: center; }
+  th { color: #fff; background: #1b1f2a; font-weight: 600; }
+  td:first-child, th:first-child { text-align: left; white-space: nowrap; }
+  td.ok { background: #16301f; color: #9be3b5; }
+  td.no { background: #3a1c1c; color: #ffb3a8; }
+  tr.valt td:first-child { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  .forkl { color: var(--quiet-2); font-size: 12px; margin: 6px 0; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="krona">
+  <h1>Prototyp 01 — temats förval i guidad start (#687) <small style="color:var(--quiet-2);font-weight:400">· ← → byter variant · bilderna är det byggda appen med varianten injicerad</small></h1>
+  <div class="rad" id="varianter"><span>Variant</span></div>
+  <div class="rad" id="ytor"><span>Yta</span></div>
+  <div class="rad" id="lagen"><span>Läge</span></div>
+</div>
+<div class="scen">
+  <div><div class="bilder" id="bilder"></div></div>
+  <div class="sido">
+    <div class="ruta"><h2 id="vnamn"></h2><p id="vregel"></p><p id="vpris" class="forkl"></p></div>
+    <div class="ruta"><h2>Mätt på den här bilden</h2><div class="tal" id="tal"></div></div>
+  </div>
+  <div class="matris ruta">
+    <h2>Varianterna mot varandra</h2>
+    <p class="forkl">Den som behåller förvalet: hur många tryck till ett kort i temats typsnitt, vad som hämtas från Google innan formgivaren gjort något, om sidan någon gång visar en tryckt bricka bredvid ett kort i reservtypsnitt, och vad «Skapa» gör utan ett tryck på temat. Grönt = det issuets acceptans kräver eller bättre än nu. Klicka en rad för att se varianten.</p>
+    <table id="matris"></table>
+    <p class="forkl" id="fot"></p>
+  </div>
+</div>
+<script src="data.js"></script>
+<script>
+const VARIANTER = [
+  { id: 'nu', namn: 'Nu', regel: 'Skogssaga är tryckt från början (aria-pressed, accentkant), men katalogen frågas först när en bricka trycks (#476; L57, #633). Kortet ritas i reservtypsnittet med «Temats typsnitt hämtas när du väljer tema.» bredvid en bricka som ser vald ut. Ett tryck på den redan tryckta brickan hämtar Cinzel och EB Garamond.', pris: 'Den som behåller förvalet ser aldrig spelets utseende, men spelet skapas ändå i Skogssaga. Vid 1280 och 1024 står galleriet runt 900 px ner i vänsterspalten, utom synhåll när sidan öppnas; vid 768 står det i steg 2 och kortet i steg 3, så trycket kostar tre. Samma efter omladdning av ett utkast.' },
+  { id: 'a', namn: 'A · Hämtat när sidan öppnas', regel: 'Att öppna guidad start räknas som handlingen: det förvalda temats två ark och två filer hämtas direkt, och ett återupptaget utkasts tema likaså. Brickan är tryckt och sann. Medan filerna reser säger kortet «Hämtar Skogssagas typsnitt …».', pris: 'Noll tryck och kortet rätt från början, men 73 kB från Google vid varje öppning av /new — också för den som aldrig rör temat, och utloggad. Det är det L57 valde bort för Speltema («att låta öppnandet räknas som handlingen», väg B: «varje besök på fliken en förfrågan till Google») och det L27 förbjuder: «ingen förhämtning vid sidladdning». Kräver att L27 och L57 ändras.' },
+  { id: 'b', namn: 'B · Inget förval', regel: 'Ingen bricka är tryckt förrän formgivaren trycker. Kortet står gråat med «Tryck på ett tema för att se kortet i dess typsnitt.» (issuets egna ord). «Skapa» utan tema säger «Välj ett tema först» vid galleriet. Ett utkasts tema trycktes av formgivaren förra gången och räknas som valt: det hämtas när sidan öppnas igen.', pris: 'Ett tryck till för alla, också den som var nöjd, och «Skapa» nekar den som inte valt — ett villkor guiden inte har i dag. Vid 1280 och 1024 ligger galleriet under vecket, så uppmaningen under kortet pekar på något man inte ser; vid 768 kostar det tre tryck. Utkastet hämtas utan tryck vid omladdning, vilket är L27:s gräns tolkad: handlingen gjordes, men vid ett tidigare besök.' },
+  { id: 'c', namn: 'C · Hämtat när man pekar', regel: 'Skogssaga är tryckt, och temat hämtas första gången pekaren går in över kortet eller Utseende, eller fokus hamnar där. Ingen ny knapp; texten under kortet säger «Skogssaga är valt. Kortet sätts i dess typsnitt när du pekar på kortet eller temana.»', pris: 'Pekaren passerar kortet på väg från namnet till kortets titel, så musanvändaren får typsnittet utan att veta varför — och kortet byter ansikte under pekaren utan att något tryckts: en layoutförskjutning som räknas (CLS). Med tangentbordet först efter fjorton tab. Fram till dess står en tryckt bricka bredvid reservtypsnitt, som nu. En hovring är en svagare handling än L27:s, och på en surfplatta finns ingen.' },
+  { id: 'd', namn: 'D · Förval, provet på kortet', rek: true, regel: 'Skogssaga står som förval: streckad kant och märket «Förval», inte tryckt (aria-pressed=false). Kortet står gråat och bär knappen «Visa kortet i Skogssaga»; trycket är handlingen (L27) och gör brickan tryckt. «Skapa» utan tryck ger Skogssaga, som märket sa. Samma form som Speltemas «Visa temana i sina typsnitt» (L57, beställarens val C). Ett utkasts tema står som «Valt förut» med samma knapp.', pris: 'Ett tryck för att se kortet, men knappen står där ögat redan är när sidan öppnas, vid alla tre måtten — inget letande i galleriet, och ett tryck också vid 768. Inget hämtas före trycket, så L27 och L57 står orörda. Priset är en knapp till på sidan och ett grått kort tills den trycks.' },
+]
+const YTOR = [{ id: 1280, namn: '1280 × 800' }, { id: 1024, namn: '1024 × 768' }, { id: 768, namn: '768 × 1024 (steg)' }]
+const LAGEN = [{ id: 'oppnad', namn: 'Öppnad' }, { id: 'efter', namn: 'Efter tryck' }, { id: 'hamtas', namn: 'Under hämtning' }, { id: 'utkast', namn: 'Utkast efter omladdning' }]
+const M = window.MATT
+const q = new URLSearchParams(location.search)
+let v = q.get('v') ?? 'd', yta = Number(q.get('yta') ?? 1280), lage = q.get('lage') ?? 'oppnad'
+const ok = (b) => `<b class="${b ? 'ja' : 'nej'}">${b ? 'ja' : 'nej'}</b>`
+const kb = (n) => (n / 1000).toFixed(0) + ' kB'
+const knappar = (rot, lista, nu, val, av = () => false) => {
+  rot.querySelectorAll('button').forEach((b) => b.remove())
+  for (const x of lista) {
+    const b = document.createElement('button')
+    b.textContent = x.namn
+    if (x.rek) b.classList.add('rek')
+    b.setAttribute('aria-pressed', String(x.id === nu))
+    b.disabled = av(x.id)
+    b.onclick = () => val(x.id)
+    rot.append(b)
+  }
+}
+const bild = (f, text) => f ? `<div class="bild"><img src="img/${f}" alt="${text}"><p>${text}</p></div>` : ''
+const visa = () => {
+  if (yta === 768 && (lage === 'hamtas' || lage === 'utkast')) lage = 'oppnad'
+  history.replaceState(null, '', `?v=${v}&yta=${yta}&lage=${lage}`)
+  knappar(document.querySelector('#varianter'), VARIANTER, v, (x) => { v = x; visa() })
+  knappar(document.querySelector('#ytor'), YTOR, yta, (x) => { yta = x; visa() })
+  knappar(document.querySelector('#lagen'), LAGEN, lage, (x) => { lage = x; visa() }, (x) => yta === 768 && (x === 'hamtas' || x === 'utkast'))
+  const V = VARIANTER.find((x) => x.id === v)
+  document.querySelector('#vnamn').textContent = V.namn + (V.rek ? ' — rekommendationen' : '')
+  document.querySelector('#vregel').textContent = V.regel
+  document.querySelector('#vpris').textContent = V.pris
+  let html = '', rader = []
+  const fonts = (f) => [['Kortets titel ritas i', f.title], ['Kortets brödtext ritas i', f.body]]
+  if (yta === 768) {
+    const s = M.steps.find((x) => x.v === v)
+    const st = lage === 'efter' ? s.after : s.opened
+    html = bild(st.file, `${V.namn}, steg 3 vid 768 × 1024, ${lage === 'efter' ? 'efter ' + s.after.clicks + ' tryck' : 'öppnad'}`)
+    rader = [...fonts(st.fonts), ['Rätt typsnitt', ok(st.correct)], ...(lage === 'efter' ? [['Tryck från steg 3', s.after.clicks], ['Tid till rätt kort', s.after.ms == null ? '–' : s.after.ms + ' ms']] : [['Tryckt bricka', st.pressed ?? '–'], ['Texten under kortet', st.says ?? '–']])]
+  } else if (lage === 'hamtas') {
+    const s = M.loading.find((x) => x.v === v)
+    html = bild(s.half.file, 'Filerna hålls inne: 0,5 s efter handlingen') + bild(s.three.file, '3,7 s efter handlingen, filerna fortfarande på väg')
+    rader = [['0,5 s: titeln ritas i', s.half.fonts.title], ['0,5 s: texten under kortet', s.half.says ?? '–'], ['3,7 s: titeln ritas i', s.three.fonts.title], ['Efter släppt: rätt kort efter', s.done.ms == null ? '–' : s.done.ms + ' ms']]
+  } else if (lage === 'utkast') {
+    const s = M.resume.find((x) => x.v === v)
+    html = bild(s.file, `${V.namn}: utkast med Krönika, sidan omladdad, 1280 × 800`)
+    rader = [...fonts(s.fonts), ['Tryckt bricka', s.pressed ?? '–'], ['Förval', s.forval ?? '–'], ['Texten under kortet', s.says ?? '–'], ['Rätt typsnitt', ok(s.correct)], ['Ärligt valläge', ok(s.honest)], ['Frågor till Google vid omladdningen', s.googleAfterReload]]
+  } else {
+    const s = M.open.find((x) => x.v === v && x.w === yta)
+    const st = lage === 'efter' ? s.after : s.opened
+    const f = lage === 'efter' ? [s.files.kortAfter, s.files.temanAfter] : [s.files.kortOpen, s.files.temanOpen]
+    html = bild(f[0], `Kortet, ${yta}, ${lage === 'efter' ? `efter ${s.after.clicks} tryck` : 'öppnad'}`) + bild(f[1], `Utseende, samma läge (vänsterspalten rullad dit)`)
+    if (lage === 'efter' && s.refusal) html += bild(s.refusal.file, '«Skapa» utan valt tema')
+    rader = [...fonts(st.fonts), ['Tryckt bricka', st.pressed ?? '–'], ['Förval', st.forval ?? '–'], ['Texten under kortet', st.says ?? '–'], ['Rätt typsnitt', ok(st.correct)], ['Ärligt valläge', ok(st.honest)], ['Hämtat från Google', `${st.google ?? '–'} filer, ${kb(st.bytes)}`]]
+    if (lage === 'efter') rader.push(['Tryck', s.after.clicks], ['Tid till rätt kort', s.after.ms == null ? '–' : s.after.ms + ' ms'], ['Förskjutning utan input (CLS)', s.after.clsNoInput], ['Förskjutning efter tryck', s.after.clsInput])
+  }
+  document.querySelector('#bilder').innerHTML = html
+  document.querySelector('#tal').innerHTML = rader.map(([k, n]) => `<span>${k}</span><b>${n}</b>`).join('')
+  // The matrix.
+  const t = document.querySelector('#matris')
+  const head = '<thead><tr><th>Variant</th><th>Tryck till rätt kort 1280 / 1024 / 768</th><th>Hämtat före en handling</th><th>Tryckt bricka + reservtypsnitt någon gång</th><th>Utkast efter omladdning</th><th>«Skapa» utan tryck på temat</th><th>Förskjutning (CLS) när typsnittet kommer</th><th>Rör L27 / L57</th></tr></thead>'
+  let body = '<tbody>'
+  for (const x of VARIANTER) {
+    const o = (w) => M.open.find((r) => r.v === x.id && r.w === w)
+    const s = M.steps.find((r) => r.v === x.id)
+    const r = M.resume.find((r) => r.v === x.id)
+    const k = M.keyboard
+    const scroll = x.id === 'nu' || x.id === 'b' ? ' — galleriet under vecket' : ''
+    const clicks = x.id === 'c' ? `0 med mus · ${(k.find((j) => j.journey === 'tangentbord' && j.w === 1280)?.fired ?? '–').replace(/ \(.*/, '')} med tangentbord` : `${o(1280).after.clicks} / ${o(1024).after.clicks} / ${s.after.clicks}${scroll}`
+    const pre = o(1280).opened.bytes
+    const dishonest = !o(1280).opened.honest || !o(1024).opened.honest || !r.honest
+    const create = { nu: 'Skogssaga, osedd', a: 'Skogssaga, sedd', b: 'nekas: «Välj ett tema först»', c: 'Skogssaga, oftast sedd', d: 'Skogssaga, som märket sa' }[x.id]
+    const cls = x.id === 'a' ? Math.max(o(1280).opened.cls, o(1024).opened.cls) : Math.max(o(1280).after.clsNoInput, o(1024).after.clsNoInput)
+    const clsIn = Math.max(o(1280).after.clsInput, o(1024).after.clsInput)
+    const rules = { nu: 'nej', a: 'ja — ändras', b: 'nej (utkastet tolkat)', c: 'tänjs', d: 'nej' }[x.id]
+    body += `<tr class="${x.id === v ? 'valt' : ''}" data-v="${x.id}" style="cursor:pointer"><td>${x.namn}</td>`
+      + `<td class="${x.id === 'a' || x.id === 'd' ? 'ok' : x.id === 'nu' ? 'no' : ''}">${clicks}</td>`
+      + `<td class="${pre === 0 ? 'ok' : 'no'}">${pre === 0 ? 'inget' : kb(pre) + ' (' + o(1280).opened.google + ' filer)'}</td>`
+      + `<td class="${dishonest ? 'no' : 'ok'}">${dishonest ? 'ja' : 'nej'}</td>`
+      + `<td class="${r.correct ? 'ok' : r.honest ? '' : 'no'}">${r.correct ? 'rätt typsnitt' : r.honest ? 'ärligt, ett tryck' : 'tryckt + reserv'}</td>`
+      + `<td class="${x.id === 'b' ? 'no' : x.id === 'nu' ? 'no' : 'ok'}">${create}</td>`
+      + `<td class="${cls > 0 ? 'no' : 'ok'}">${cls > 0 ? cls + ' utan input' + (x.id === 'a' ? ' (vid öppning)' : ' (under pekaren)') : clsIn + ', direkt efter trycket'}</td>`
+      + `<td class="${rules.startsWith('nej') ? 'ok' : 'no'}">${rules}</td></tr>`
+  }
+  t.innerHTML = head + body + '</tbody>'
+  t.querySelectorAll('tr[data-v]').forEach((tr) => (tr.onclick = () => { v = tr.dataset.v; visa(); scrollTo(0, 0) }))
+  const half = M.loading.find((x) => x.v === 'nu')
+  document.querySelector('#fot').textContent = `Under hämtning: kortets typsnitt deklareras med font-display: block, så titeln och brödtexten är osynliga medan filerna reser (upp till tre sekunder) och står sedan i reservtypsnittet tills de kommer — i alla varianter, så länge filerna hämtas efter att kortet ritats. Texten under kortet försvinner redan när katalogens ark svarat, inte när filen kommit, så under hämtningen står kortet tomt och sedan i reservtypsnitt utan ett ord — också i dag; den bör stå tills document.fonts säger att filerna laddats. Alla förskjutningar är under 0,01, långt under 0,1 som räknas som bra. Över riktig uppkoppling tog det ${M.open.filter((x) => x.after.ms != null && x.after.clicks > 0).map((x) => x.after.ms).sort((a, b) => a - b).join('–').replace(/–.*–/, '–')} ms från tryck till rätt kort.`
+}
+addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+  const i = VARIANTER.findIndex((x) => x.id === v)
+  v = VARIANTER[(i + (e.key === 'ArrowRight' ? 1 : VARIANTER.length - 1)) % VARIANTER.length].id
+  visa()
+})
+visa()
+</script>
+</body>
+</html>
