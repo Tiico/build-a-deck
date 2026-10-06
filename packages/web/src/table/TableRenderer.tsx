@@ -124,6 +124,9 @@ export type TableRendererProps = {
   // Which piles are being shuffled right now (L35): the fan is played on each, by the log line
   // that says so and never by a difference between two snapshots. `useShuffles` derives it.
   shuffles?: readonly Shuffle[] | undefined
+  // Which piles say, under themselves, that they were just shuffled (#718): the room's television
+  // only, for three seconds a line. Played by the same lines as the fan.
+  said?: readonly Shuffle[] | undefined
   onPresence?: ((p: Presence) => void) | undefined
   // Vem som får köra kameran på den här ytan (C5, #325). `follow` är TV:n: den ramar in det som
   // är i spel av sig själv, och vem som helst kan ta över vyn. `hand` är observatören: ingen
@@ -297,7 +300,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -656,6 +659,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const carried = new Map(peers.filter((p) => p.drag).map((p) => [p.drag?.component ?? '', p]))
   const movedBy = new Map(recent.map((r) => [r.component, r.seat]))
   const shuffling = new Map(shuffles.map((s) => [s.pile, s.seq]))
+  const told = new Map(said.map((s) => [s.pile, s.seq]))
 
   // Pointer → table millimetres, fixed when a drag begins (the layout does not change under it).
   const mapper = (): ((cx: number, cy: number) => Point) | null => {
@@ -1384,6 +1388,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 px={px}
                 lifted={whole}
                 shuffle={shuffling.get(z.id)}
+                said={told.get(z.id)}
                 still={still}
                 topInspects={bothPointing(inspects(lifting ? topOf(z, 1) : topOf(z)), reads({ kind: 'pileTop', pile: z.id }))}
                 bottomCard={bottomOf(z, byId)}
@@ -1964,7 +1969,7 @@ function topIdOf(z: ZoneView, skip = 0): string | undefined {
 
 // A pile is a point; the stack is centred on it. A hidden pile has a count and nothing else,
 // unless its top lies face-up.
-function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, lifted, aimed = false, lit = false, shuffle, still = false, topHandlers, topInspects, bottomInspects, labelHandlers, pileKeys, points }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; bottomCard?: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; aimed?: boolean | undefined; lit?: boolean | undefined; shuffle?: number | undefined; still?: boolean | undefined; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; bottomInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; pileKeys?: FeltNodeProps | undefined; points?: Pointing | undefined }) {
+function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, lifted, aimed = false, lit = false, shuffle, said, still = false, topHandlers, topInspects, bottomInspects, labelHandlers, pileKeys, points }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; bottomCard?: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; aimed?: boolean | undefined; lit?: boolean | undefined; shuffle?: number | undefined; said?: number | undefined; still?: boolean | undefined; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; bottomInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; pileKeys?: FeltNodeProps | undefined; points?: Pointing | undefined }) {
   const t = useT()
   // What a face-down pile wears. Its top card's own back first, which is the one thing about a
   // hidden pile that is public in the room (#313): a deck whose cards carry their own back (#14)
@@ -2088,6 +2093,14 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
             and the state names the card exactly when `cardWord` has a word for it. */}
         <span className="byd-pile-caption">{caption ?? ''}</span>
       </span>
+      {/* That the pile was just shuffled, in words, under it (#718). The activity list says the
+          same line for whoever reads it out, so this is for the eye only. Keyed by the line, so a
+          second shuffle starts it over. */}
+      {said !== undefined && count > 0 && (
+        <span className="byd-pile-said" key={said} aria-hidden="true">
+          {t('pile.shuffled', { pile: zone.dynamic ? t('pile.dynamic') : zone.name })}
+        </span>
+      )}
     </div>
   )
 }

@@ -9,7 +9,7 @@ import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-li
 import { project, projectActivity } from '@byd/engine'
 import type { Activity } from '@byd/protocol'
 import { TableRenderer } from '../src/table/TableRenderer.js'
-import { SHUFFLE_MS, SHUFFLE_PULSE_MS, STILL, useShuffles } from '../src/table/shuffle.js'
+import { SAID_MS, SHUFFLE_MS, SHUFFLE_PULSE_MS, SHUFFLE_TV_MS, STILL, useShuffles } from '../src/table/shuffle.js'
 import { TableClient } from '../src/client.js'
 import { TablePage } from '../src/table/TablePage.js'
 import { OnlinePage } from '../src/online/OnlinePage.js'
@@ -129,6 +129,50 @@ describe('useShuffles: which piles are being shuffled right now', () => {
       vi.advanceTimersByTime(200)
     })
     expect(result.current).toEqual([])
+  })
+})
+
+// On the television the fan is held for 1.2 s and the words under the pile for three seconds, the
+// latter also under `prefers-reduced-motion`, since words are not motion (#718).
+describe('how long a shuffle is held on the television (#718)', () => {
+  it('holds the fan as long as it is asked to', () => {
+    vi.useFakeTimers()
+    const { before, after } = shuffled()
+    const { result, rerender } = renderHook(({ activity }) => useShuffles(activity, true, SHUFFLE_TV_MS), { initialProps: { activity: before } })
+    rerender({ activity: after })
+    act(() => {
+      vi.advanceTimersByTime(SHUFFLE_TV_MS - 1)
+    })
+    expect(result.current).toHaveLength(1)
+    act(() => {
+      vi.advanceTimersByTime(1)
+    })
+    expect(result.current).toEqual([])
+  })
+
+  it('holds the words for three seconds also for a reader who asked for no motion', () => {
+    vi.useFakeTimers()
+    askedForStillness(true)
+    const { before, after } = shuffled()
+    const { result, rerender } = renderHook(({ activity }) => useShuffles(activity, true, SAID_MS, SAID_MS), { initialProps: { activity: before } })
+    rerender({ activity: after })
+    act(() => {
+      vi.advanceTimersByTime(SAID_MS - 1)
+    })
+    expect(result.current).toHaveLength(1)
+    act(() => {
+      vi.advanceTimersByTime(1)
+    })
+    expect(result.current).toEqual([])
+  })
+
+  it('says the pile was shuffled under it, by name, and only for a pile that holds cards', () => {
+    const { view } = buildScene()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} faces="http://faces.test" said={[{ pile: 'draw', seq: 12 }]} />)
+    const said = document.querySelector('[data-zone="draw"] .byd-pile-said')
+    expect(said?.textContent).toMatch(/blandad$|shuffled$/)
+    expect(said?.getAttribute('aria-hidden')).toBe('true')
+    expect(document.querySelector('[data-zone="discard"] .byd-pile-said')).toBeNull()
   })
 })
 
@@ -340,7 +384,8 @@ describe('the screens that see the pile play the shuffle (L35)', () => {
     await waitFor(() => expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-shuffling')).toBe('fan'))
     expect(document.querySelectorAll('[data-zone="draw"] .byd-pile-fan-card')).toHaveLength(4)
     expect(document.querySelector('[data-zone="discard"]')!.hasAttribute('data-shuffling')).toBe(false)
-    await waitFor(() => expect(document.querySelector('[data-shuffling]')).toBeNull(), { timeout: SHUFFLE_MS + 500 })
+    // The television holds its fan longer than the other screens (#718).
+    await waitFor(() => expect(document.querySelector('[data-shuffling]')).toBeNull(), { timeout: SHUFFLE_TV_MS + 500 })
     host.close()
   })
 
