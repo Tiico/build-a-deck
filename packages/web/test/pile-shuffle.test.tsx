@@ -382,7 +382,11 @@ describe('the screens that see the pile play the shuffle (L35)', () => {
     await host.ready()
     await host.send({ v: 'shuffle', pile: 'draw' })
     await waitFor(() => expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-shuffling')).toBe('fan'))
-    expect(document.querySelectorAll('[data-zone="draw"] .byd-pile-fan-card')).toHaveLength(4)
+    // Where every fanned back stands, said when there are more than four: CI once counted eight
+    // here, which no run on a desk has (#718).
+    const fanned = [...document.querySelectorAll('[data-zone="draw"] .byd-pile-fan-card')]
+    const where = fanned.map((c) => { const out: string[] = []; for (let e: Element | null = c.parentElement; e && out.length < 6; e = e.parentElement) out.push(`${e.tagName.toLowerCase()}.${[...e.classList].join('.')}${e.getAttribute('data-zone') ? `[${e.getAttribute('data-zone')}]` : ''}${e.getAttribute('data-shuffling') ? `{${e.getAttribute('data-shuffling')}}` : ''}`); return out.join(' < ') })
+    expect(fanned, where.join('\n')).toHaveLength(4)
     expect(document.querySelector('[data-zone="discard"]')!.hasAttribute('data-shuffling')).toBe(false)
     // The television holds its fan longer than the other screens (#718).
     await waitFor(() => expect(document.querySelector('[data-shuffling]')).toBeNull(), { timeout: SHUFFLE_TV_MS + 500 })
