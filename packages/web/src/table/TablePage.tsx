@@ -164,6 +164,9 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       pulses={presence.pulses}
       recent={recent}
       shuffles={shuffles}
+      // The lens /online has had since #502, on the table's own screen too (#720, C5): the wheel,
+      // a pinch, a double press on the bare felt and the corner's buttons. The TV has a camera.
+      lens={mode === 'table'}
       onPresence={client ? (p) => client.sendPresence(p) : undefined}
       camera={mode === 'tv' ? 'follow' : undefined}
       forTheRoom={mode === 'tv'}

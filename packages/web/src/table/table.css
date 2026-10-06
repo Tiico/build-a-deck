@@ -571,6 +571,11 @@
   position: fixed; top: 14px; left: 18px; z-index: 3; margin: 0;
   font-size: 13px; font-weight: 400; color: #f3e9d6; opacity: 0.7;
 }
+/* An enlarged felt runs under the plate (#720), and the words would then lie on the wood: while the
+   lens is in, they stand on the felt's own plate, as the corner's buttons do. */
+[data-page='table']:has(.byd-table-frame[data-lens]:not([data-lens='100'])) .byd-table-plate {
+  padding: 4px 8px; margin: -4px -8px; border-radius: 8px; background: var(--byd-felt-plate); opacity: 0.9;
+}
 
 /* Hold to inspect: private, large, flat. */
 .byd-inspect {
@@ -1210,6 +1215,13 @@
 
 /* The felt as the table screen's main content (#560 P-20), as large as the page it fills. */
 .byd-table-main { width: 100%; height: 100%; }
+/* The lens in table mode (#720), as on /online (#502, #504): an enlarged wood is clipped by the page
+   rather than growing it, and is centred in its frame so a step in lands where it was asked. */
+.byd-table-main:has(> .byd-table-frame[data-lens]) { overflow: hidden; }
+.byd-table-main > .byd-table-frame[data-lens] { place-content: center; }
+/* Two fingers over a lens felt are the lens's (#720): the frame takes the gesture, and the page is
+   never zoomed by a pinch that began on the table. A pinch anywhere else zooms the page as ever. */
+.byd-table-frame[data-lens] { touch-action: none; }
 
 /* The room's own television at K26's floor (#573, beslut C efter prototyp; K26 förtydligad
    2026-09-29): every word is at least 24 px, since the room reads it from three metres. The
