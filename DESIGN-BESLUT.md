@@ -5043,6 +5043,16 @@ En hög på TV:n är så stor som kameran gör den, så en rörelse i bildpunkte
 `prefers-reduced-motion` stänger av rörelsen helt, inte dämpar den.
 Kvar blir en kort bärnstensfärgad puls på högen i 420 ms: något hände, utan att något rörde sig.
 
+Reviderat 2026-10-06 (#718, beställarens beslut C efter prototyp): **på rummets TV fläktas högen längre och längre tid, och högen säger att den blandades.**
+
+Speltestet 2026-10-02 tryckte «Starta spelet» på en start som bara blandar, och från soffan hände ingenting: vid 1920 var fläkten några pixlar kortkant bakom en hög på 80 px i en halv sekund, och en ny värd tryckte igen.
+På TV:n når fläktens kort därför 2,6 gånger så långt och vrids dubbelt så mycket, på 1,2 s; samma fyra baksidor, samma form på rörelsen, i kortets eget mått.
+Under högen står «Draghög blandad» i tre sekunder, på badgens ljusa platta, under högens namn och under det översta kortets namn när det står där; ordet står kvar också under `prefers-reduced-motion`, eftersom ord inte är rörelse.
+Andra skärmar behåller fläkten på 560 ms; de står på armlängds avstånd.
+Fläktens kort ritade dessutom webbläsarens trasiga bild så länge baksidan inte var renderad, eftersom täcket över en bild som väntar var dolt på dem; nu döljs bara orden på täcket.
+`game-start.spec.ts` mäter i den byggda appen att raden står inom en sekund, att fläkten når mer än en halv kortbredd utanför högen, att ingen fläktbild ligger otäckt och att raden går efter tre sekunder.
+Prototypen: `docs/ux-audits/2026-10-06-starten/prototyper/718/`.
+
 ### L36. Start-, konto- och guideflödena kortas bakom L32:s frågetecken, och säljtexten står bara första gången (prototypat 2026-09-20, #304)
 
 Inventeringen av `sv.account.ts`: 128 nycklar, 92 av dem under 25 tecken.
