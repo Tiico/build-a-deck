@@ -39,6 +39,8 @@ afterEach(() => {
 describe('the login card', () => {
   it('keeps one line about what logging in is for, and moves the password and the guest behind the question mark', async () => {
     login()
+    cleanup()
+    login()
     expect(screen.getByText('Logga in för att komma till dina spel.')).toBeTruthy()
     expect(screen.queryByText(NO_PASSWORD)).toBeNull()
     expect(screen.queryByText(GUEST)).toBeNull()
@@ -55,6 +57,18 @@ describe('the login card', () => {
     expect(screen.getByText(PITCH)).toBeTruthy()
     expect(ask()).toBeTruthy()
     expect((await opened()).textContent).toMatch(PITCH)
+  })
+
+  // The one line under the pitch spoke only to whoever already had an account (#691, beslut
+  // 2026-10-06): the first visit says that the same address both logs in and makes the account.
+  it('tells the first visit that the link in the mail makes the account too', () => {
+    login()
+    expect(screen.getByText('Logga in eller skapa konto med din e-post — länken i mejlet räcker.')).toBeTruthy()
+    expect(screen.queryByText('Logga in för att komma till dina spel.')).toBeNull()
+    cleanup()
+    login()
+    expect(screen.queryByText(/skapa konto med din e-post/)).toBeNull()
+    expect(screen.getByText('Logga in för att komma till dina spel.')).toBeTruthy()
   })
 
   it('drops the sales line for whoever comes back, and keeps it behind the question mark', async () => {

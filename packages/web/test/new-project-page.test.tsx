@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MAX_PLAYERS } from '@byd/server/doc'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { startServer, type Running } from './fixture.js'
@@ -467,5 +467,35 @@ describe('the live card after the fields are named (#476)', () => {
     const preview = document.querySelector('.byd-wizard-preview [data-card]') as HTMLElement
     await waitFor(() => expect(preview.textContent).toContain('Flygande drake.'))
     expect(preview.textContent).toContain('7')
+  })
+})
+
+// A logged-out guide said nothing about an account until «Skapa spelet» sent the designer to a login
+// after three minutes of filling in (#691, beslut 2026-10-06). It says so early, where the guide
+// already says what it is the start of, and says nothing of the kind to whoever is logged in.
+describe('the account the game is kept on (#691)', () => {
+  const SAVED = 'Spelet sparas på ett konto — du loggar in när du skapar det.'
+  beforeEach(async () => {
+    await run.stop()
+    run = await startServer({ auth: true, authBypass: true })
+  })
+
+  it('says early, to whoever is logged out, that the game is kept on an account', async () => {
+    open(() => undefined)
+    expect(await screen.findByText(SAVED)).toBeTruthy()
+  })
+
+  it('says nothing about it to whoever is logged in', async () => {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    const asked = vi.spyOn(globalThis, 'fetch')
+    open(() => undefined)
+    // The answer to who is here has come back and been drawn before the page is read.
+    await waitFor(() => expect(asked.mock.calls.findIndex(([input]) => String(input).endsWith('/auth/me'))).toBeGreaterThanOrEqual(0))
+    const at = asked.mock.calls.findIndex(([input]) => String(input).endsWith('/auth/me'))
+    expect((await asked.mock.results[at]?.value)?.status).toBe(200)
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+    })
+    expect(screen.queryByText(SAVED)).toBeNull()
   })
 })

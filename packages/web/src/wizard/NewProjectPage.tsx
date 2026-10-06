@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { CardPreview } from '../editor/CardPreview.js'
 import { useRoving } from '../editor/roving.js'
 import { useRoom } from '../room.js'
-import { loginUrl, withCredentials } from '../account/api.js'
+import { loginUrl, whoAmI, withCredentials } from '../account/api.js'
 import { assetRef, bytesOfDataUrl, imageTypeOf } from '../editor/assets.js'
 import { ASSET_MAX_BYTES, assetAccept } from '@byd/protocol'
 import { DropSays, dropSurface, oneFile } from '../editor/dropping.js'
@@ -96,6 +96,20 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const at = STEPS.findIndex(([key]) => key === step)
   const { itemProps } = useRoving({ ids: STEPS.map(([key]) => key), selected: step, orientation: 'horizontal' })
   const [busy, setBusy] = useState(false)
+  // Whoever is not logged in is told early that the game is kept on an account (#691), rather than
+  // finding out from a login after the guide has been filled in. A service that cannot say who is
+  // here says nothing, and neither does the page.
+  const [loggedOut, setLoggedOut] = useState(false)
+  useEffect(() => {
+    let live = true
+    void whoAmI(http).then(
+      (email) => live && setLoggedOut(email === null),
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [http])
   // Which door the game is being made through, so the wait and the error stand at that door.
   const [via, setVia] = useState<Via>('guided')
   const [error, setError] = useState<string | null>(null)
@@ -555,7 +569,14 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     </section>
   )
   // The handoff's body is said behind the first step's question mark (L36); the title stays.
-  const handoff = <div className="byd-wizard-handoff"><strong>{t('wizard.handoff.title')}</strong></div>
+  // Logged out, it also says the game is kept on an account (#691): early, and in the box that
+  // already says what the guide is the start of.
+  const handoff = (
+    <div className="byd-wizard-handoff">
+      <strong>{t('wizard.handoff.title')}</strong>
+      {loggedOut && <p>{t('wizard.handoff.account')}</p>}
+    </div>
+  )
   const panels: Record<Step, ReactNode> = { spelet, falten: <>{falten}</>, korten }
 
   return (

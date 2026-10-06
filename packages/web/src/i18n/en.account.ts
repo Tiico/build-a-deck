@@ -3,6 +3,10 @@ export const enAccount = {
 
   'login.pitch': 'Build your own card game, playtest it on screen, order it printed.',
   'login.lead': 'Log in to get to your games.',
+  'login.lead.first': 'Log in or create an account with your email — the link in the mail is all it takes.',
+  'login.lead.invite': 'Log in to open the game you were invited to.',
+  'login.lead.invite.named': 'Log in to open the game you were invited to: {game}.',
+  'login.lead.resume': 'Your game is created once you have logged in.',
   'login.help.topic': 'logging in',
   'login.sent.title': 'Check your mail.',
   'login.sent.body': 'We sent a link to {email}. It works for 15 minutes, and only once. No password to remember.',
@@ -99,6 +103,7 @@ export const enAccount = {
   'wizard.prev': '← Previous',
   'wizard.next': 'Next →',
   'wizard.handoff.title': 'The wizard is the starting point',
+  'wizard.handoff.account': 'The game is kept on an account — you log in when you create it.',
   'wizard.handoff.body': 'Guided start: make a few example cards here. Layout, the whole deck and CSV tools wait in the editor.',
   'wizard.name': 'The name of the game',
   'wizard.name.example': 'For example “Lords of the Forest”.',

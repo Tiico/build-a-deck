@@ -368,9 +368,16 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       return json(res, 200, { ok: true, revoked })
     }
     // Following an invitation (D3): whoever is signed in when they follow it joins the project
-    // with the role it names. The link is good once, and says nothing about the project until it
-    // has been used, so a stray link tells a stranger nothing.
+    // with the role it names. The link is good once. While it can still be followed it names the
+    // game it leads to (#691) — the name the mail already carried, for the login card the link
+    // lands on — and nothing more; a used, withdrawn or made-up link says nothing at all.
     const invite = /^\/invites\/([A-Za-z0-9_-]+)$/.exec(url.pathname)
+    if (invite && req.method === 'GET' && opts.projects) {
+      const project = await opts.projects.inviteTo(hash(decodeURIComponent(invite[1] ?? '')), clock(opts).toISOString())
+      const rec = project ? await opts.projects.load(project) : null
+      if (!rec) return json(res, 404, { error: 'unknown or spent invitation' })
+      return json(res, 200, { name: rec.name })
+    }
     if (invite && req.method === 'POST' && opts.projects) {
       const account = opts.auth ? await accountOf(opts.auth, req) : null
       if (!account) return json(res, 401, { error: 'log in first' })

@@ -27,7 +27,8 @@ describe('the login card (G1) in the reader\'s own language', () => {
     )
     expect(screen.getByRole('button', { name: 'Send sign-in link' })).toBeTruthy()
     expect(screen.getByLabelText('Email')).toBeTruthy()
-    expect(screen.getByText(/Log in to get to your games/)).toBeTruthy()
+    // A first visit (#691): the same link logs in and makes the account.
+    expect(screen.getByText(/Log in or create an account with your email/)).toBeTruthy()
     // The guest's way in is behind the question mark (L36), in the same language.
     fireEvent.click(screen.getByRole('button', { name: 'Help about logging in' }))
     expect((await screen.findByRole('dialog', { name: 'Help about logging in' })).textContent).toMatch(/no account needed/)
