@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useStat
 import { nextCardRef } from './fields.js'
 import { DeckWall, type WallView } from './DeckWall.js'
 import { EditorTabs, MODES, panelId, tabId, type Mode } from './EditorTabs.js'
+import { Footed, SaidProvider } from './said.js'
 import { EditorStages, isCanvasStage, modeOf, STAGES, type Stage } from './EditorStages.js'
 import { PHONE_READING, SCREENS, minPtIn } from '../legibility.js'
 import { noFilter } from './filtering.js'
@@ -566,15 +567,17 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onProse={(field, prose) => client.setProse(field, prose)}
       />
     ),
-    theme: () => <ThemePanel doc={doc} client={client} assetBase={http} />,
+    // The four tabs whose work has no foot of its own are given one (#698, beslut B): the line
+    // what just happened is said in, under the work, where Kortvägg, Mall and Tabell say it.
+    theme: () => <Footed><ThemePanel doc={doc} client={client} assetBase={http} /></Footed>,
     // The pictures the deck is drawn from, in one place (#222). The table's own image strip is
     // what is in use; this is what the game has.
-    media: () => <MediaPanel doc={doc} assetBase={http} motifs={deckMotifs} onCrop={(hash, crop) => client.setCrop(hash, crop)} saving={client.cropsInFlight} {...(client.mayEdit ? { onAdd: (file: File) => client.addPicture(file, t), onRemove: (hash: string) => client.removePicture(hash) } : {})} />,
-    rules: () => <RulesPanel doc={doc} client={client} assetBase={http} />,
+    media: () => <Footed><MediaPanel doc={doc} assetBase={http} motifs={deckMotifs} onCrop={(hash, crop) => client.setCrop(hash, crop)} saving={client.cropsInFlight} {...(client.mayEdit ? { onAdd: (file: File) => client.addPicture(file, t), onRemove: (hash: string) => client.removePicture(hash) } : {})} /></Footed>,
+    rules: () => <Footed><RulesPanel doc={doc} client={client} assetBase={http} /></Footed>,
     // Bord is the home for both the game's board vocabulary and its running tables (#19, C4).
     // One panel and not two stacked (#126): the list of running tables stands in the setup's third
     // column, beside the felt, so the whole tab is one screen and the header stays where it was.
-    tables: () => <SetupEditor doc={doc} client={client} assetBase={http} motifs={deckMotifs} beside={<TablesTab client={client} server={params.get('server')} started={table?.kind === 'new' ? table.id : null} />} />,
+    tables: () => <Footed><SetupEditor doc={doc} client={client} assetBase={http} motifs={deckMotifs} beside={<TablesTab client={client} server={params.get('server')} started={table?.kind === 'new' ? table.id : null} />} /></Footed>,
   }
 
   const wsUrl = (params.get('server') ?? location.origin).replace(/^http/, 'ws')
@@ -704,17 +707,6 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             the work it was about is still only in this tab. It stands until it stops being true,
             and nothing routine may push it out of the way. */}
         {notice && <span role="alert" className="byd-editor-notice">{notice}</span>}
-        {/* What just happened, in the channel routine news belongs in. It is read out politely by
-            `useConfirmation` and stands here only while it is still what just happened. */}
-        {/* It lies over the work for the moment it stands, so a press on it is a press on it and
-            nothing under it (#698): it let presses through, and one on the line over the question
-            pressed the «Ja, ta bort» hidden beneath. The press takes it away instead, and leaves
-            whatever it covered one press away. The keyboard never meets it, so it has no key. */}
-        {confirmation.text && questions === 0 && (
-          <span className="byd-editor-confirm" onClick={confirmation.dismiss}>
-            {confirmation.text}
-          </span>
-        )}
         <EditorChords client={client} onSave={() => void save()} onConfirm={confirmation.confirm} onReading={() => sayReading(t('editor.reading.nothing'))} />
         {/* "Nytt bord" and the shortcut beside "Uppdatera bordet" are two ways to the tables that
             the Bord stage also holds, so below the desk they leave the header rather than being
@@ -909,6 +901,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       {/* The marking the bulk editor works on stands above the panels (#222, L22): it is made in
           Tabell and acted on there and in Media, and only one of the two is ever mounted. */}
       <MarkedProvider>
+      {/* What just happened is drawn in the open tab's foot (#698, beslut B), and not while a
+          question stands: it stood over «Ja, ta bort» once, and the question is the present. */}
+      <SaidProvider text={questions === 0 ? confirmation.text : null}>
       <main>
         {(stages ?? MODES).map(([key]) => (
           // One panel per tab, so every tab's `aria-controls` names a panel that exists; only the
@@ -918,6 +913,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           </div>
         ))}
       </main>
+      </SaidProvider>
       </MarkedProvider>
       {stages && (
         <EditorStages stages={stages} stage={here} onSelect={setStage}>
@@ -977,7 +973,7 @@ const CONFIRM_MS = 6000
 // and it takes itself back instead of standing in the header for the rest of the session. The
 // amber slot beside it is left to what could not happen, which is the only thing worth cutting a
 // reader off for and the only thing worth leaving on the screen until it stops being true.
-function useConfirmation(): { text: string | null; confirm(text: string): void; dismiss(): void } {
+function useConfirmation(): { text: string | null; confirm(text: string): void } {
   const say = useSay()
   const [text, setText] = useState<string | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -997,13 +993,7 @@ function useConfirmation(): { text: string | null; confirm(text: string): void; 
       say?.('polite', '')
     }, CONFIRM_MS)
   }
-  // Taken back by hand: it has been read, and what it lay over is wanted. What was said stays said.
-  const dismiss = () => {
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = null
-    setText(null)
-  }
-  return { text, confirm, dismiss }
+  return { text, confirm }
 }
 
 // The way back to "Mina spel", keeping the server the editor was opened against.

@@ -73,36 +73,73 @@ async function confirmationStanding(page: Page) {
   return said
 }
 
-for (const [width, height] of [[1280, 800], [1024, 768]] as const) {
-  test(`a press on what just happened presses nothing under it, at ${width} × ${height}`, async ({ page }) => {
-    await openTemplate(page, width, height)
-    const said = await confirmationStanding(page)
-    // Not vacuous: the line lies over a control here — the card row's step or its name.
-    const under = await said.evaluate((el) => {
-      const r = el.getBoundingClientRect()
-      const at = document.elementsFromPoint(r.x + r.width / 2, r.y + r.height / 2).filter((e) => !el.contains(e))
-      return at[0]?.closest('button, a, input, select')?.textContent?.trim() ?? null
-    })
-    expect(under).not.toBeNull()
-    await page.evaluate(() => {
-      const w = window as unknown as { pressed: string[] }
-      w.pressed = []
-      document.addEventListener('click', (e) => {
-        const hit = (e.target as Element).closest('button, a, input, select')
-        if (hit) w.pressed.push(hit.textContent?.trim() ?? '')
-      }, true)
-    })
-    const box = (await said.boundingBox())!
-    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
-    expect(await page.evaluate(() => (window as unknown as { pressed: string[] }).pressed)).toEqual([])
-    await expect(page.getByRole('listbox')).toHaveCount(0)
-    // The line steps aside for the press, so the control under it is one press away and not none.
-    await expect(said).toBeHidden({ timeout: 1000 })
-  })
-}
-
 type Box = { x: number; y: number; width: number; height: number }
 const overlaps = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
+
+// Every control drawn on the screen, as rectangles: what a line about the past must never lie on.
+const controls = (page: Page) =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('button, a[href], input, select, textarea, label, summary, [role="tab"], [role="button"], [tabindex="0"]:not([role="tabpanel"], section)')]
+      .filter((el) => !el.closest('.byd-editor-confirm'))
+      .map((el) => {
+        // What shows of it: a cell scrolled half under the table's edge is cut by the box that
+        // scrolls, and the part that is cut is not on the screen to be covered.
+        const r = el.getBoundingClientRect()
+        let [left, top, right, bottom] = [r.left, r.top, r.right, r.bottom]
+        for (let up = el.parentElement; up; up = up.parentElement) {
+          const style = getComputedStyle(up)
+          if (style.overflowX === 'visible' && style.overflowY === 'visible') continue
+          const box = up.getBoundingClientRect()
+          ;[left, top, right, bottom] = [Math.max(left, box.left), Math.max(top, box.top), Math.min(right, box.right), Math.min(bottom, box.bottom)]
+        }
+        // What is drawn on the card moves with the step itself, and the card is held still above.
+        const onCard = el.closest('.byd-canvas-stage') !== null
+        // The header answers the step itself (saved, unsaved, the step buttons' names); the tab's
+        // work is what must not move for the line.
+        const inWork = el.closest('[role="tabpanel"]') !== null
+        return { name: (el.getAttribute('aria-label') ?? el.textContent ?? '').trim().slice(0, 40), onCard, inWork, x: left, y: top, width: right - left, height: bottom - top }
+      })
+      .filter((b) => b.width > 0 && b.height > 0),
+  )
+
+const TABS = ['wall', 'template', 'table', 'theme', 'media', 'rules', 'tables'] as const
+
+// Where what just happened is said (#698, beslut B 2026-10-06): in the foot's status place on every
+// tab, in the stead of the foot's quiet line. It lies over nothing and takes no height from the work.
+for (const [width, height] of [[1280, 800], [1024, 768]] as const) {
+  test(`what just happened stands in every tab's foot and over no control, at ${width} × ${height}`, async ({ page }) => {
+    test.setTimeout(180_000)
+    await openTemplate(page, width, height)
+    for (const tab of TABS) {
+      // A change in the template, and the step back taken on the tab under test: the same news
+      // wherever the designer happens to be standing when she takes it back.
+      await page.locator('#byd-editor-tab-template').click()
+      await page.locator('[data-layer="body"] .byd-layer-pick').click()
+      const x = page.locator('.byd-props-f input').first()
+      await x.fill(String(TABS.indexOf(tab) + 10))
+      await x.press('Enter')
+      await page.locator(`#byd-editor-tab-${tab}`).click()
+      const panel = page.locator(`#byd-editor-panel-${tab}`)
+      await expect(panel).toBeVisible()
+      await page.getByRole('button', { name: /^Ångra/ }).first().click()
+      const said = panel.locator('.byd-editor-confirm')
+      await expect(said, tab).toHaveText('Tog tillbaka: en ändring i mallen')
+      await expect(said, tab).toBeInViewport({ ratio: 1 })
+      const box = (await said.boundingBox())!
+      const now = await controls(page)
+      expect(now.filter((c) => overlaps(c, box)).map((c) => c.name), tab).toEqual([])
+      // It is still said to a reader who does not see it.
+      await expect(page.locator('[data-status-live="polite"]')).toHaveText('Tog tillbaka: en ändring i mallen')
+      // Only one of it on the screen.
+      await expect(page.locator('.byd-editor-confirm:visible')).toHaveCount(1)
+      // It costs no height: nothing on the tab moves when it takes itself back after its six seconds.
+      await expect(said).toBeHidden({ timeout: 8000 })
+      const after = await controls(page)
+      const placed = (all: typeof now) => all.filter((c) => c.inWork && !c.onCard).map(({ x, y, width, height }) => [Math.round(x), Math.round(y), Math.round(width), Math.round(height)])
+      expect(placed(now), tab).toEqual(placed(after))
+    }
+  })
+}
 
 for (const [width, height] of [[1280, 800], [1024, 768]] as const) {
   test(`what just happened gives way to a question, at ${width} × ${height}`, async ({ page }) => {

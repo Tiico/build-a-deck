@@ -23,9 +23,12 @@
   --byd-editor-home-ink: #c3cbdd;
   --byd-editor-saved-ink: #9aa3b8;
   --byd-editor-unsaved-ink: #f0b64a;
-  /* What just happened is read in the same quiet register as whether the work is safe: the amber
-     in this header means something wants looking at, and a step back does not. */
-  --byd-editor-confirm-ink: #9aa3b8;
+  /* What just happened, in the green a done thing is said in elsewhere in the tool: the amber
+     means something wants looking at, and a step back does not (#698). Measured on the grounds the
+     feet are drawn on in editor-contrast.test.ts. */
+  --byd-editor-confirm-ink: #7dd3a0;
+  /* The canvas' foot, the card row, where the template's confirmation is said. */
+  --byd-editor-card-row-bg: #14161c;
   /* What a phone cannot hold, said in the amber the editor says everything it wants looked at in
      (L10) — and the strip of stages under it: the open one, the rest, and the two actions. */
   --byd-editor-narrow-bg: #2a2417;
@@ -408,19 +411,23 @@
 /* A save that could not happen has to be readable, so it wraps rather than pushing the header
    sideways; on a desk the header has a whole row of its own for it. */
 .byd-editor-notice { min-width: 0; color: #f0b64a; }
-/* What just happened, beside it and quieter: nothing is wrong, so nothing is amber, and it wraps
-   for the same reason the amber one does. */
-/* What just happened stands at the bottom of the screen and not in the header (#566, beslut D): said
-   in the header it squeezed the game's name and, beside the step buttons, took «Spara» and «Starta
-   bord» off their own width. It is transient and read out politely, so it lies over the work for
-   the moment it stands, and the header keeps every control whole. A press on it takes it away and
-   reaches nothing under it (#698). */
-.byd-editor-confirm {
-  position: fixed; left: 50%; bottom: var(--byd-s4, 16px); transform: translateX(-50%); z-index: 60;
-  max-width: calc(100vw - 32px); padding: var(--byd-s2) var(--byd-s4, 16px); box-sizing: border-box;
-  border: 1px solid #3a4152; border-radius: 10px; background: #1b1f29; box-shadow: 0 10px 30px rgb(0 0 0 / 0.5);
-  color: #dce3f2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default;
-}
+/* What just happened stands in the open tab's foot, in the stead of the foot's quiet line (#698,
+   beslut B 2026-10-06). It floated at the bottom of the screen (#566, beslut D) and lay over «Nästa
+   kort», over the table's «Ta bort 1 kort» and once over «Ja, ta bort». In the foot it lies over
+   nothing and takes no height from the work: it is one line of the foot's own size, and the quiet
+   line it stands in for is not drawn while it stands. Green and ticked, because nothing is wrong. */
+.byd-editor-confirm { flex: 0 1 auto; min-width: 0; color: var(--byd-editor-confirm-ink); font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.byd-editor-confirm::before { content: '✓ ' / ''; }
+.byd-card-row .byd-editor-confirm { flex: 1 1 auto; }
+.byd-foot-quiet { display: contents; }
+.byd-foot-quiet[hidden] { display: none; }
+/* The foot of a tab whose work has none of its own (Speltema, Media, Regler, Bord): the work keeps
+   its frame and its scroll above it, and gives the foot the gutter it had under it. The foot holds a
+   line even when it says nothing, so what is said into it moves nothing. */
+.byd-footed { height: 100%; display: flex; flex-direction: column; }
+.byd-footed-work { flex: 1 1 0; min-height: 0; overflow: auto; }
+.byd-footed > .byd-footed-work > * { padding-bottom: var(--byd-s2); }
+.byd-footed-foot { margin: 0 var(--byd-gutter) var(--byd-gutter); min-height: 1.5em; line-height: 1.5; }
 /* Undo and redo for a hand without a keyboard (#566): two 44 px steps beside the save status. */
 .byd-editor-steps { display: inline-flex; gap: 2px; flex: 0 0 auto; }
 .byd-editor-steps button {
@@ -1830,7 +1837,7 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 }
 .byd-canvas-question button[data-kind='danger'] { background: var(--byd-editor-ask-danger-bg); }
 /* Which card the template is drawn on (#478, variant B), in a row under the card. */
-.byd-card-row { position: relative; display: flex; align-items: center; gap: var(--byd-s2); padding: var(--byd-s1) var(--byd-s3); border-top: 1px solid #2f333d; background: #14161c; }
+.byd-card-row { position: relative; display: flex; align-items: center; gap: var(--byd-s2); padding: var(--byd-s1) var(--byd-s3); border-top: 1px solid #2f333d; background: var(--byd-editor-card-row-bg); }
 .byd-card-row > button { border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; cursor: pointer; }
 .byd-card-row > button:disabled { color: var(--byd-editor-quiet); cursor: default; }
 /* A grid of one row and not a flex line: a flex line fills the button's 44 px, so the baseline the
