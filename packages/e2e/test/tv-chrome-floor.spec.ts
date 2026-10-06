@@ -78,7 +78,11 @@ test.describe('the television chrome that opens (#684)', () => {
   // The suite runs no renderer, so every card is still queued: the table the room sees before the
   // renderer has caught up (#765, beslut B).
   test('says the cards still being drawn at the floor, and the start waits for them', async ({ request, open, player }) => {
-    const doc = gameThatStarts()
+    // Faces nothing else in the run has: a texture is addressed by what it draws, and a journey
+    // that starts a renderer (`render.ts`) leaves the recipe's cards rendered in a shared database.
+    const nonce = crypto.randomUUID()
+    const recipe = gameThatStarts()
+    const doc = { ...recipe, rows: recipe.rows.map((r) => ({ ...r, fields: { ...r.fields, body: `${String(r.fields['body'])} ${nonce}` } })) }
     const table = await tableFromSetup(request, setupFromProject(doc), deckFromProject(doc))
     await player(table, { name: 'Ada', seat: 'A' })
     const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
