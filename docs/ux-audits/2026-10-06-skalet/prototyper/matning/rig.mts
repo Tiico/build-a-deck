@@ -35,22 +35,24 @@ writeFileSync(join(OUT, 'index-nu.html'), html)
 // försvinner i samma ram som appens första ram — det är hela övertagandet.
 function inject(v: string): string {
   if (v === 'nu') return html
-  const src = readFileSync(join(HERE, 'skal', `${v}.html`), 'utf8')
+  // «b0» är b:s skal med arket kvar i <head>, där det blockerar varje målning som i dag.
+  const blocking = v.endsWith('0')
+  const src = readFileSync(join(HERE, 'skal', `${v.replace(/0$/, '')}.html`), 'utf8')
   const [, head = '', body = ''] = src.match(/<!--head-->([\s\S]*?)<!--body-->([\s\S]*)$/) ?? []
   const at = html.indexOf('<script>')
   if (at < 0) throw new Error('det byggda index.html har ingen förladdning att ställa skalet före')
   let out = `${html.slice(0, at)}${head.trim()}\n    ${html.slice(at)}`
-  // Variant med ark som inte blockerar: arket hämtas som förut men väntas in av ett skript
-  // i stället för av målningen. Entrén hämtas direkt (modulepreload) och körs när arket är på plats,
-  // så att filten aldrig ritas utan sitt ansikte (K20, L20).
-  if (src.includes('data-ark="fritt"')) {
-    const css = out.match(/<link rel="stylesheet" crossorigin href="([^"]+)">/)
-    const js = out.match(/<script type="module" crossorigin src="([^"]+)"><\/script>/)
-    if (!css || !js) throw new Error('hittar inte arket eller entrén')
-    out = out.replace(css[0], `<link rel="preload" as="style" crossorigin href="${css[1]}"><link rel="stylesheet" crossorigin href="${css[1]}" media="print" onload="this.media='all';window.__bydArk&&window.__bydArk()">`)
-    out = out.replace(js[0], `<link rel="modulepreload" crossorigin href="${js[1]}"><script>(function(){var go=function(){var s=document.createElement('script');s.type='module';s.crossOrigin='';s.src=${JSON.stringify(js[1])};document.head.appendChild(s)};var l=document.querySelector('link[media=print][rel=stylesheet]');if(!l||l.sheet&&l.media==='all')go();else window.__bydArk=go})()</script>`)
-  }
-  return out.replace('<div id="root"></div>', `<div id="root">${body.trim()}</div>`)
+  out = out.replace('<div id="root"></div>', `<div id="root">${body.trim()}</div>`)
+  if (blocking) return out
+  // Arket flyttas från <head> till efter #root. Ett ark i <head> blockerar all målning tills det
+  // är nere — 105 kB brotli med filtens ansikte i, sekunder på ett långsamt nät — medan ett ark i
+  // <body> bara blockerar det som står efter det. Skalet står före och målas direkt. Entrén är ett
+  // modulskript och väntar ändå in arket innan det körs (ett ark som blockerar skript), så appens
+  // första ram ritas fortfarande med arket på plats: filtens ansikte före första pixeln (K20, L20).
+  const css = out.match(/\s*<link rel="stylesheet" crossorigin href="[^"]+">/)
+  if (!css) throw new Error('hittar inte det blockerande arket')
+  out = out.replace(css[0], '')
+  return out.replace('</body>', `  ${css[0].trim()}\n  </body>`)
 }
 
 const servers: { kill: () => void }[] = []

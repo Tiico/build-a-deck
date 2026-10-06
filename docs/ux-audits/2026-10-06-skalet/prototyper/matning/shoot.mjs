@@ -42,13 +42,13 @@ const PROFILE = { offline: false, latency: 400, downloadThroughput: 50_000, uplo
 mkdirSync(join(OUT, 'img'), { recursive: true })
 
 // Det sidan själv vet: målningar, layoutskiften och när appen tog över #root (React tömmer #root
-// vid sin första ritning; allt i skalet bär data-byd-shell).
+// vid sin första ritning; allt i skalet bär data-byd-shell, utom skalets eget ifyllnadsskript).
 const INIT = `
 window.__m = { shifts: [], takeover: null };
 try { new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) window.__m.shifts.push({ t: e.startTime, v: e.value }) }).observe({ type: 'layout-shift', buffered: true }) } catch {}
 new MutationObserver((_, self) => {
   const r = document.getElementById('root'); if (!r) return; self.disconnect();
-  const look = () => { if (window.__m.takeover == null && [...r.children].some((c) => !c.hasAttribute('data-byd-shell'))) window.__m.takeover = performance.now() };
+  const look = () => { if (window.__m.takeover == null && [...r.children].some((c) => !c.hasAttribute('data-byd-shell') && c.tagName !== 'SCRIPT')) window.__m.takeover = performance.now() };
   new MutationObserver(look).observe(r, { childList: true }); look();
 }).observe(document, { childList: true, subtree: true });
 `
@@ -98,6 +98,31 @@ function diff(a, b) {
   return changed / n
 }
 
+// En plats- eller observatörstoken som aldrig anslutit löper ut efter två minuter (DRIFT §9);
+// en första anslutning förlänger den till tre timmar. Så varje körning tar en färsk plats och en
+// färsk observatör, och öppnar dem en gång innan något mäts.
+for (const v of VARIANTS) {
+  if (!WHICH.includes('play') && !WHICH.includes('observe')) continue
+  const L = links[v]
+  const join = async (body) => {
+    const r = await fetch(`${L.origin}/rooms/${L.code}/join`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+    return r.status === 201 ? (await r.json()).token : null
+  }
+  for (const seat of ['A', 'B', 'C', 'D']) {
+    const token = await join({ name: 'Ada', seat })
+    if (token) { L.urls.play = `/play?${new URLSearchParams({ session: L.session, name: 'Ada', token, seat })}`; break }
+  }
+  L.urls.observe = `/observe?${new URLSearchParams({ session: L.session, name: 'Olle', token: await join({ name: 'Olle' }) })}`
+  for (const route of ['play', 'observe']) {
+    const ctx = await browser.newContext()
+    const page = await ctx.newPage()
+    await page.goto(L.origin + L.urls[route])
+    await page.waitForTimeout(2500)
+    await ctx.close()
+  }
+}
+writeFileSync(join(OUT, 'links.json'), JSON.stringify(links, null, 2))
+
 const results = []
 const save = () => writeFileSync(join(OUT, `results-${VARIANTS.join('_')}-${WHICH.join('_')}-${SCHEMES.join('_')}.json`), JSON.stringify(results, null, 2))
 for (const v of VARIANTS) for (const route of WHICH) for (const scheme of SCHEMES) {
@@ -124,7 +149,7 @@ for (const v of VARIANTS) for (const route of WHICH) for (const scheme of SCHEME
     const deadline = Date.now() + 60_000
     while (Date.now() < deadline && (await page.evaluate('window.__m.takeover')) == null) await page.waitForTimeout(250)
     await page.waitForTimeout(2500)
-    const m = await page.evaluate(`({ timeOrigin: performance.timeOrigin, takeover: window.__m.takeover, shifts: window.__m.shifts, paint: Object.fromEntries(performance.getEntriesByType('paint').map((e) => [e.name, Math.round(e.startTime)])), nav: performance.getEntriesByType('navigation')[0]?.responseEnd })`)
+    const m = await page.evaluate(`({ timeOrigin: performance.timeOrigin, takeover: window.__m.takeover, shifts: window.__m.shifts, paint: Object.fromEntries(performance.getEntriesByType('paint').map((e) => [e.name, Math.round(e.startTime)])), nav: performance.getEntriesByType('navigation')[0]?.responseEnd, css: performance.getEntriesByType('resource').find((e) => e.name.includes('/assets/index-') && e.name.endsWith('.css'))?.responseEnd, entry: performance.getEntriesByType('resource').find((e) => e.name.includes('/assets/index-') && e.name.endsWith('.js'))?.responseEnd })`)
     await cdp.send('Page.stopScreencast')
     const fs = frames.map((f) => ({ t: f.ts - m.timeOrigin, data: f.data })).sort((a, b) => a.t - b.t)
     for (const f of fs) Object.assign(f, stats(f.img = decode(f.data)))
@@ -136,7 +161,7 @@ for (const v of VARIANTS) for (const route of WHICH) for (const scheme of SCHEME
     const before = [...ff].reverse().find((f) => f.t < m.takeover)
     const after = ff.find((f) => f.t >= m.takeover)
     res.throttled = {
-      responseEnd: Math.round(m.nav ?? 0), paint: m.paint, takeover: m.takeover && Math.round(m.takeover),
+      responseEnd: Math.round(m.nav ?? 0), cssEnd: Math.round(m.css ?? 0), entryEnd: Math.round(m.entry ?? 0), paint: m.paint, takeover: m.takeover && Math.round(m.takeover),
       firstFrame: firstPainted && Math.round(firstPainted.t), firstNonWhite: firstNonWhite && Math.round(firstNonWhite.t),
       whiteFrames: whiteFrames.length, whiteUntil: whiteFrames.length ? Math.round(whiteFrames.at(-1).t) : null,
       cls: Math.round(m.shifts.reduce((s, x) => s + x.v, 0) * 1000) / 1000,
@@ -167,6 +192,15 @@ for (const v of VARIANTS) for (const route of WHICH) for (const scheme of SCHEME
     res.contrastSlow = await page.evaluate(CONTRAST)
     res.text5 = await page.evaluate(TEXT)
     await page.screenshot({ path: join(OUT, 'img', `${v}-${route}-${scheme}-skal5.png`) })
+    await ctx.close()
+  }
+
+  // Appen färdig, onstrypt: vad skalet till sist lämnar över till.
+  if (ONLY.includes('final') && scheme === SCHEMES[0]) {
+    const { ctx, page, url } = await open(v, route, scheme)
+    await page.goto(url, { waitUntil: 'load' })
+    await page.waitForTimeout(5000)
+    await page.screenshot({ path: join(OUT, 'img', `${v}-${route}-${scheme}-app.png`) })
     await ctx.close()
   }
 
