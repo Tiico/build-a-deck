@@ -235,6 +235,41 @@ describe('a table opens only once its cards can be seen (L5)', () => {
     expect(await screen.findByRole('link', { name: /öppna bordet/i })).toBeTruthy()
     expect(screen.queryByText(/renderar kort/i)).toBeNull()
   })
+  // Opening the editor on a table whose cards were rendered long ago (#765): the band stood on
+  // «renderar kort 0/…» — three dots for a number — until the first answer came. What the page
+  // does not know yet it does not say; once it knows, it says what is true.
+  it('says nothing about rendering on a table it has not heard from yet, and never «0/…» (#765)', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    const res = await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })
+    expect(res.ok).toBe(true)
+    expect(await run.completeRenders()).toBe(4)
+
+    // The first answer about the textures is held back, so the moment before it can be looked at.
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    const real = globalThis.fetch
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      if (url.endsWith('/textures')) await held
+      return real(input, init)
+    })
+    try {
+      history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+      render(<EditorPage />)
+      await screen.findByText(/Bordet kör rev-1/)
+      const band = document.querySelector('.byd-editor-table-link')!
+      expect(band.textContent).not.toMatch(/renderar kort/i)
+      expect(band.textContent).not.toContain('…')
+      // Nor a dash that points at nothing.
+      expect(band.textContent).not.toMatch(/—\s*·/)
+      release()
+      expect(await screen.findByRole('link', { name: /öppna bordet/i })).toBeTruthy()
+      expect(screen.queryByText(/renderar kort/i)).toBeNull()
+    } finally {
+      release()
+      spy.mockRestore()
+    }
+  })
 })
 
 // Every hook of the page is called on every render, loading or loaded: a hook placed after the
