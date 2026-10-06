@@ -7,6 +7,7 @@ import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { buildProject } from '../src/wizard/build.js'
 import { defaultFields } from '../src/wizard/frames.js'
 import { translate } from '../src/i18n/index.js'
+import { sv } from '../src/i18n/sv.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -41,6 +42,20 @@ describe('the login card (G1) in the reader\'s own language', () => {
     render(<LoginCard http="http://server.local" next="/" onNavigate={() => undefined} />)
     expect(screen.getByRole('button', { name: 'Skicka inloggningslänk' })).toBeTruthy()
     expect(screen.getByLabelText('E-post')).toBeTruthy()
+  })
+})
+
+// «e-post» in a sentence is one word and never two lines (#920): a plain hyphen is a place the
+// browser may end a line, and on a phone the first visit's line ended on «e-» and went on with
+// «post». The sentences carry a non-breaking hyphen instead. The field's own name stays «E-post»:
+// it is one word on a line of its own and never wraps, and it is the name a screen reader and
+// voice control are asked for.
+describe('«e-post» in Swedish copy', () => {
+  it('is joined by a non-breaking hyphen wherever it stands in a sentence', () => {
+    const sentences = Object.entries(sv).filter(([, text]) => /\s/.test(text.trim()))
+    expect(sentences.filter(([, text]) => /e-post/i.test(text)).map(([key]) => key)).toEqual([])
+    // And the rule is about something: the sentences that say it are still there.
+    expect(sentences.filter(([, text]) => /e\u2011post/i.test(text)).length).toBeGreaterThanOrEqual(4)
   })
 })
 

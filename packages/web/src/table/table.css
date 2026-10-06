@@ -252,9 +252,21 @@
   34% { transform: translateX(var(--fan-out)) rotate(var(--fan-turn)); }
   100% { transform: none; }
 }
+/* On a television the fan is the start's one answer from the couch, and at 560 ms and a quarter
+   of a card it was a few pixels of card edge behind the pile (#718, beställarens beslut C): there
+   it reaches 2.6 times as far, turns twice as much, and takes 1.2 s (`SHUFFLE_TV_MS`). The same
+   four backs and the same keyframes' shape, in the same measure — only further and slower. */
+.byd-table-frame[data-mode='tv'] .byd-pile .byd-pile-fan-card { animation: byd-pile-fan-tv 1200ms cubic-bezier(0.32, 0.72, 0.3, 1) both; }
+@keyframes byd-pile-fan-tv {
+  0% { transform: none; }
+  35% { transform: translateX(calc(var(--fan-out) * 2.6)) rotate(calc(var(--fan-turn) * 2)); }
+  100% { transform: none; }
+}
 /* A back still on its way from the render farm says so once, on the pile's top; four more copies
-   of «väntar» over the fan would say nothing new. */
-.byd-pile-fan-card .byd-texture-state { display: none; }
+   of «väntar» over the fan would say nothing new. The ground the state is drawn on stays, though:
+   it is what covers the picture that has not come, and without it the fan drew the browser's
+   broken-image mark on every card (#718). */
+.byd-pile-fan-card .byd-texture-state > * { display: none; }
 /* Under `prefers-reduced-motion` the motion is off and not damped (L35): no fan plays, and the
    pile pulses amber for 420 ms instead — something happened, without anything moving. The pulse
    is a wash over the top card in the felt's own amber, fading in and out by opacity alone.
@@ -371,6 +383,25 @@
 }
 .byd-table-frame[data-mode='tv'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-caption { display: block; }
 .byd-table-frame[data-mode='tv'] .byd-pile:has(> .byd-pile-top > [data-texture='failed'] > b) .byd-pile-caption { color: #f4b9c7; }
+
+/* That the pile was just shuffled, under it, on the television (#718, beslut C): «Draghög blandad»
+   for three seconds, on the badge's own light plate so it reads from the couch, below the pile's
+   name and below the top card's name when that is on show. It fades in and out by opacity; under
+   `prefers-reduced-motion` it simply stands there for its three seconds. */
+.byd-pile-said { display: none; }
+.byd-table-frame[data-mode='tv'] .byd-pile-said {
+  display: block; position: absolute; left: 50%; top: calc(100% + 28px); translate: -50% 0; z-index: 3;
+  white-space: nowrap; pointer-events: none; padding: 2px 10px; border-radius: 999px;
+  background: #e8eaf0; color: #0d0f14; font-size: 12px; line-height: 16px; font-weight: 800;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  animation: byd-pile-said 3000ms ease both;
+}
+.byd-table-frame[data-mode='tv'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-said { top: calc(100% + 44px); }
+@keyframes byd-pile-said {
+  0% { opacity: 0; }
+  6%, 85% { opacity: 1; }
+  100% { opacity: 0; }
+}
 
 /* Table mode has the same caption, on a plate of its own (#789, K19, beställarens beslut C after
    the prototype in #879). The pile is a handle on the green felt there, and the card is 44–65 px
@@ -564,6 +595,11 @@
 .byd-table-plate {
   position: fixed; top: 14px; left: 18px; z-index: 3; margin: 0;
   font-size: 13px; font-weight: 400; color: #f3e9d6; opacity: 0.7;
+}
+/* An enlarged felt runs under the plate (#720), and the words would then lie on the wood: while the
+   lens is in, they stand on the felt's own plate, as the corner's buttons do. */
+[data-page='table']:has(.byd-table-frame[data-lens]:not([data-lens='100'])) .byd-table-plate {
+  padding: 4px 8px; margin: -4px -8px; border-radius: 8px; background: var(--byd-felt-plate); opacity: 0.9;
 }
 
 /* Hold to inspect: private, large, flat. */
@@ -1204,6 +1240,13 @@
    the speltest's line. The ground the frame paints, painted once more under it, is what the
    screen shows until then — and the frame then lands on exactly the same colours. */
 .byd-table-main { width: 100%; height: 100%; background: radial-gradient(ellipse at center, #2b2420 0%, #17120f 100%); }
+/* The lens in table mode (#720), as on /online (#502, #504): an enlarged wood is clipped by the page
+   rather than growing it, and is centred in its frame so a step in lands where it was asked. */
+.byd-table-main:has(> .byd-table-frame[data-lens]) { overflow: hidden; }
+.byd-table-main > .byd-table-frame[data-lens] { place-content: center; }
+/* Two fingers over a lens felt are the lens's (#720): the frame takes the gesture, and the page is
+   never zoomed by a pinch that began on the table. A pinch anywhere else zooms the page as ever. */
+.byd-table-frame[data-lens] { touch-action: none; }
 
 /* The room's own television at K26's floor (#573, beslut C efter prototyp; K26 förtydligad
    2026-09-29): every word is at least 24 px, since the room reads it from three metres. The
@@ -1223,6 +1266,9 @@
 [data-tv][data-room] .byd-shortcut-open > span { width: 40px; height: 40px; font-size: 24px; }
 /* The room's television has a second «?», under the room code, so this one says its name (#684). */
 [data-tv][data-room] .byd-shortcut-open { width: auto; grid-auto-flow: column; gap: 12px; padding: 0 16px 0 8px; }
+/* In the column (#875) the disc stands on the column's edge like the help's above it (#921): the
+   button reaches out by its own left padding, not by the felt corner's 5 px. */
+[data-tv][data-room] .byd-tv-corner .byd-shortcut-open { margin-left: -8px; }
 [data-tv][data-room] .byd-shortcut-open > b { color: var(--byd-felt-chalk-off); font: 700 24px/1 var(--byd-felt-font, system-ui, sans-serif); }
 [data-tv][data-room] .byd-shortcut-open:hover > b, [data-tv][data-room] .byd-shortcut-open:focus-visible > b, [data-tv][data-room] .byd-shortcut-open[aria-expanded='true'] > b { color: var(--byd-felt-chalk); }
 /* The shortcuts behind it, at the floor too (#684). The keys get two fifths of the row and wrap
@@ -1247,6 +1293,8 @@
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-pile-name { bottom: -38px; font-size: 24px; letter-spacing: 0; text-transform: none; color: #9aa3b8; }
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-pile-n { min-width: 40px; height: 40px; font-size: 24px; }
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-pile-caption { top: calc(100% + 40px); font-size: 24px; line-height: 28px; }
+[data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-pile-said { top: calc(100% + 46px); padding: 6px 14px; font-size: 18px; line-height: 22px; }
+[data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-pile:has(> .byd-pile-top > .byd-texture-state > b) .byd-pile-said { top: calc(100% + 74px); }
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-area-count { font-size: 24px; }
 /* A chip says its figure on a badge the figure's own size rather than inside a disc a third of it:
    one no seat owns, and since #683 (beslut E) a seat's own too. */

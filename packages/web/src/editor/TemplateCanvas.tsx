@@ -433,7 +433,9 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             question standing inside it would lose the layer the moment the answer that keeps it
             was pressed — which is the one answer that must cost nothing. It is otherwise the same
             strip the table asks its own two questions in, in the colours a deletion is asked in
-            there, and in the column where the card it draws on is. */}
+            there, and in the column where the card it draws on is. It lies over the canvas' foot
+            rather than taking a row from the stage, so the card stands still while it is asked
+            (#698): the fit follows the window, not a strip. */}
         {/* Why a locked layer did not move (L15), under the card where the canvas's question
             stands (#478): at the stage's foot it was cut by the stage it stood in. */}
         {refusedLayer && (

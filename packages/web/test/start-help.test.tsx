@@ -63,11 +63,11 @@ describe('the login card', () => {
   // 2026-10-06): the first visit says that the same address both logs in and makes the account.
   it('tells the first visit that the link in the mail makes the account too', () => {
     login()
-    expect(screen.getByText('Logga in eller skapa konto med din e-post — länken i mejlet räcker.')).toBeTruthy()
+    expect(screen.getByText('Logga in eller skapa konto med din e\u2011post — länken i mejlet räcker.')).toBeTruthy()
     expect(screen.queryByText('Logga in för att komma till dina spel.')).toBeNull()
     cleanup()
     login()
-    expect(screen.queryByText(/skapa konto med din e-post/)).toBeNull()
+    expect(screen.queryByText(/skapa konto med din e\u2011post/)).toBeNull()
     expect(screen.getByText('Logga in för att komma till dina spel.')).toBeTruthy()
   })
 
