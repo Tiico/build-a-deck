@@ -124,7 +124,7 @@ describe('the share panel says what happened (#477)', () => {
 
     const asked = run.mail.sent.length
     invite(panel, 'bo')
-    await waitFor(() => expect(within(panel).getByRole('alert').textContent).toBe('Det där är ingen e-postadress.'))
+    await waitFor(() => expect(within(panel).getByRole('alert').textContent).toBe('Det där är ingen e\u2011postadress.'))
     expect(run.mail.sent.length).toBe(asked)
   })
 
