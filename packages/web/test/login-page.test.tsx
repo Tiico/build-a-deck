@@ -51,7 +51,7 @@ describe('an address the server would not take (#475)', () => {
     fireEvent.change(field, { target: { value: 'ada@nowhere' } })
     fireEvent.click(screen.getByRole('button', { name: /Skicka inloggningslänk/ }))
     const said = await screen.findByRole('alert')
-    expect(said.textContent).toMatch(/inte ut som en e-postadress/)
+    expect(said.textContent).toMatch(/inte ut som en e\u2011postadress/)
     expect(field.getAttribute('aria-invalid')).toBe('true')
     expect(field.getAttribute('aria-describedby')).toBe(said.id)
 
@@ -75,7 +75,7 @@ describe('an address that is not one yet (#475)', () => {
     expect(button.hasAttribute('disabled')).toBe(false)
 
     fireEvent.click(button)
-    expect((await screen.findByRole('alert')).textContent).toBe('Skriv in din e-postadress först.')
+    expect((await screen.findByRole('alert')).textContent).toBe('Skriv in din e\u2011postadress först.')
     expect(document.activeElement).toBe(field)
 
     fireEvent.change(field, { target: { value: 'ada' } })
@@ -127,6 +127,6 @@ describe('the line the card leads with, chosen by the way in (#691)', () => {
   it('tells a first visit that the link in the mail makes the account', async () => {
     localStorage.clear()
     await card('/')
-    expect(screen.getByText('Logga in eller skapa konto med din e-post — länken i mejlet räcker.')).toBeTruthy()
+    expect(screen.getByText('Logga in eller skapa konto med din e\u2011post — länken i mejlet räcker.')).toBeTruthy()
   })
 })
