@@ -214,6 +214,15 @@ export const enAccount = {
   'wizard.example.3.body': 'Deal 3 {sword|attack}.',
 
   // Taking a game out and bringing it back (G5, #529): export and import on the home page.
+  'error.duplicateGame.failed': 'the game could not be duplicated; try again in a moment',
+  // The game's own choices in the editor's ⋯ (#738): its name, and a second game made of it.
+  'home.menu.rename': 'Rename…',
+  'home.menu.duplicate': 'Duplicate',
+  'home.rename.title': 'Rename “{name}”',
+  'home.rename.field': 'The game’s name',
+  'home.rename.confirm': 'Rename',
+  'home.rename.cancel': 'Cancel',
+  'home.duplicated': '“{name}” is now in My games.',
   'home.menu.export': 'Export…',
   'home.dialog.close': 'Close',
   'home.export.title': 'Export “{name}”',

@@ -3,6 +3,7 @@ import { strFromU8, strToU8, unzipSync, zipSync, type Zippable } from 'fflate'
 import { ASSET_MAX_BYTES, sniffAsset } from '@byd/protocol'
 import { ProjectDoc, checkedHistory, liftDoc } from './projects.js'
 import { assetHash } from './assets.js'
+import { PROJECT_NAME_MAX } from './edits.js'
 
 // Full export of a game (G5, #527): the designer's data, whole, in a format they can open without
 // the tool. A game is two to four years of work before it reaches a printer, and "what happens to
@@ -268,4 +269,17 @@ export function readExport(zip: Uint8Array): ReadExport {
 export function importedName(name: string, taken: readonly string[], lang: 'sv' | 'en'): string {
   if (!taken.includes(name)) return name
   return `${name} ${lang === 'en' ? '(imported)' : '(importerad)'}`
+}
+
+// What a duplicated game is called (#738): the name with a word saying it is a copy, in the reader's
+// language (A4), and a number from the second on, so the account never has two games of one name to
+// tell apart. It is held to a name's length (#476) by shortening the original's part: the word that
+// says it is a copy is what tells the two tiles apart.
+export function duplicatedName(name: string, taken: readonly string[], lang: 'sv' | 'en'): string {
+  const word = lang === 'en' ? 'copy' : 'kopia'
+  for (let n = 1; ; n++) {
+    const tail = ` (${word}${n === 1 ? '' : ` ${n}`})`
+    const candidate = `${name.slice(0, PROJECT_NAME_MAX - tail.length).trimEnd()}${tail}`
+    if (!taken.includes(candidate)) return candidate
+  }
 }

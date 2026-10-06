@@ -24,7 +24,7 @@ import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountO
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
 import { facesOf, printExportOf } from './faces.js'
-import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, exportDisposition, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
+import { EXPORT_FORMAT, EXPORT_FORMAT_VERSION, ProjectExport, RULEBOOK_FILE, assetFileOf, assetHashesOf, duplicatedName, exportDisposition, importedName, packExport, printFileOf, readExport, readmeOf, type ImportProblem } from './export.js'
 import { MotifBody, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, resolveTemplate, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
 
@@ -1510,6 +1510,26 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const zip = packExport({ manifest, readme: readmeOf(lang, manifest), assets: assetFiles, prints })
     res.writeHead(200, { 'content-type': 'application/zip', 'content-length': String(zip.length), 'content-disposition': exportDisposition(rec.name, rec.rev), 'cache-control': 'no-store' })
     res.end(zip)
+    return true
+  }
+  // «Dubblera» (#738): a second game made of the first, the duplicating account's own. It is taken by
+  // those who may take the game with them (G5), as an export is. What is copied is the game as it
+  // stands in the editor, saved or not — the copy is of what the designer is looking at — and it
+  // starts a history of its own: the versions are the first game's story, not the copy's.
+  const duplicating = /^\/projects\/([^/]+)\/duplicate$/.exec(url.pathname)
+  if (duplicating && req.method === 'POST') {
+    const gate = await allowed(decodeURIComponent(duplicating[1] ?? ''), canEdit)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    const live = await editors(opts, projects).running(gate.rec.id)
+    const { id: _id, rev: _rev, owner: _owner, ...saved } = gate.rec
+    const doc = live ? live.doc : saved
+    const taken = account ? (await projects.list(account.id)).map((p) => p.name) : []
+    const name = duplicatedName(doc.name, taken, langOf(url.searchParams.get('lang')))
+    const rec = await projects.create(randomUUID(), { ...structuredClone(doc), name }, account?.id)
+    json(res, 201, { id: rec.id, rev: rec.rev, name })
     return true
   }
   const start = /^\/projects\/([^/]+)\/sessions$/.exec(url.pathname)

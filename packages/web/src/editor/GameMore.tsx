@@ -1,25 +1,56 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { GameMenu } from '../account/GameMenu.js'
-import { ExportDialog } from '../account/GameDialogs.js'
+import { ExportDialog, RenameDialog } from '../account/GameDialogs.js'
+import { duplicateProject } from '../account/api.js'
 import { useT } from '../i18n/index.js'
+import { saidOr } from '../i18n/said.js'
+
+export type GameMoreProps = {
+  http: string
+  game: { id: string; name: string; rev: number }
+  // The ⋯ itself, for the page that asks a question of its own and gives the keys back here after it.
+  more?: RefObject<HTMLButtonElement | null>
+  onShare?: () => void
+  onRename(name: string): void
+  // What happened, said in the editor's own channels: routine news, and a failure that stands.
+  onSaid(text: string): void
+  onFailed(text: string): void
+  // Taking the game away is the owner's alone (D3, #689): without it the choice is not offered.
+  onRemove?: () => void
+}
 
 // The game's own ⋯ in the editor, beside its name (#542, #529 beslut B): the same menu a game has in
-// «Mina spel», holding what is done to the whole game rather than to its cards — today the export,
-// and the place the next such thing goes, so the header does not grow a button for each of them.
-// It is there only for those the server lets export: the owner and the co-editors.
-export function GameMore({ http, game, onShare }: { http: string; game: { id: string; name: string; rev: number }; onShare?: () => void }) {
+// «Mina spel», holding what is done to the whole game rather than to its cards (#738, beställarens
+// beslut 2026-10-06) — its name, a copy of it, the export and taking it away — so the header does
+// not grow a button for each of them. It is there only for those who may change the game: the owner
+// and the co-editors.
+export function GameMore({ http, game, more: given, onShare, onRename, onSaid, onFailed, onRemove }: GameMoreProps) {
   const t = useT()
-  const more = useRef<HTMLButtonElement>(null)
+  const own = useRef<HTMLButtonElement>(null)
+  const more = given ?? own
   const [open, setOpen] = useState(false)
-  const [exporting, setExporting] = useState(false)
-  // The keys go back to the ⋯ once the window has closed. The window's own trap hands the focus
-  // back to what had it when it opened — the menu's item, which is gone by then — so the ⋯ takes it
+  const [dialog, setDialog] = useState<'export' | 'rename' | null>(null)
+  // The keys go back to the ⋯ once a window has closed. The window's own trap hands the focus back
+  // to what had it when it opened — the menu's item, which is gone by then — so the ⋯ takes it
   // after the trap has let go, and not before.
-  const wasExporting = useRef(false)
+  const wasOpen = useRef(false)
   useEffect(() => {
-    if (wasExporting.current && !exporting) more.current?.focus()
-    wasExporting.current = exporting
-  }, [exporting])
+    if (wasOpen.current && !dialog) more.current?.focus()
+    wasOpen.current = dialog !== null
+  }, [dialog, more])
+  const choose = (then: () => void) => () => {
+    setOpen(false)
+    then()
+  }
+  const duplicate = async () => {
+    more.current?.focus()
+    try {
+      const copy = await duplicateProject(http, game.id, t)
+      onSaid(t('home.duplicated', { name: copy.name }))
+    } catch (err) {
+      onFailed(saidOr(err, t('error.duplicateGame.failed')))
+    }
+  }
   return (
     <span className="byd-editor-more">
       <button ref={more} type="button" aria-label={t('home.menu.more', { name: game.name })} aria-expanded={open} onClick={() => setOpen(!open)}>
@@ -36,32 +67,35 @@ export function GameMore({ http, game, onShare }: { http: string; game: { id: st
         >
           {/* The same door as «Dela» in the header (#727, beslut C): where the game's own actions are. */}
           {onShare && (
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false)
-                onShare()
-              }}
-            >
+            <button type="button" onClick={choose(onShare)}>
               {t('share.menu')}
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false)
-              setExporting(true)
-            }}
-          >
+          <button type="button" onClick={choose(() => setDialog('rename'))}>
+            {t('home.menu.rename')}
+          </button>
+          <button type="button" onClick={choose(() => void duplicate())}>
+            {t('home.menu.duplicate')}
+          </button>
+          <button type="button" onClick={choose(() => setDialog('export'))}>
             {t('home.menu.export')}
           </button>
+          {onRemove && (
+            <button type="button" onClick={choose(onRemove)}>
+              {t('home.menu.remove')}
+            </button>
+          )}
         </GameMenu>
       )}
-      {exporting && (
-        <ExportDialog
-          http={http}
+      {dialog === 'export' && <ExportDialog http={http} game={game} onClose={() => setDialog(null)} />}
+      {dialog === 'rename' && (
+        <RenameDialog
           game={game}
-          onClose={() => setExporting(false)}
+          onRename={(name) => {
+            onRename(name)
+            setDialog(null)
+          }}
+          onClose={() => setDialog(null)}
         />
       )}
     </span>
