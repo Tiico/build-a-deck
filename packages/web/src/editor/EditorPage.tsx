@@ -768,7 +768,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       )}
       {table && (
         <div className="byd-editor-table-link" role="status" {...(lost !== null ? { 'data-lost': '' } : {})} {...(stalled ? { 'data-stalled': '' } : {})}>
-          {t(table.kind === 'new' ? (table.saved ? 'editor.table.savedAndStarted' : 'editor.table.started') : table.kind === 'running' ? 'editor.table.running' : table.kind === 'already' ? 'editor.table.already' : 'editor.table.refreshed', { version: table.version })}{' '}
+          {t(table.kind === 'new' ? (table.saved ? 'editor.table.savedAndStarted' : 'editor.table.started') : table.kind === 'running' ? 'editor.table.running' : table.kind === 'already' ? 'editor.table.already' : 'editor.table.refreshed', { version: table.version })}
+          {/* The lead's dash points at what follows it; before the first answer about the textures
+              nothing does, and the band says nothing about rendering rather than «0/…» (#765). */}
+          {(lost !== null || preparing || textures) && ' — '}
           {lost !== null ? (
             <>
               <span className="byd-editor-warning">{t(lost === 1 ? 'editor.table.lost.one' : 'editor.table.lost.other', { n: lost })}</span>{' '}
@@ -782,9 +785,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             <a href={tvUrl(table.id, params.get('server'), table.hostKey, table.hostKey === undefined)} target="_blank" rel="noreferrer">
               {t('editor.table.open')}
             </a>
-          ) : (
-            <span className="byd-editor-rendering">{t('editor.table.rendering', { done: textures?.done ?? 0, total: textures?.total ?? '…' })}</span>
-          )}
+          ) : textures ? (
+            <span className="byd-editor-rendering">{t('editor.table.rendering', { done: textures.done, total: textures.total })}</span>
+          ) : null}
           {stalled && (
             <>
               {' '}· <span className="byd-editor-warning">{t('editor.table.stalled')}</span>{' '}

@@ -116,13 +116,13 @@ export const svEditor = {
   'editor.updateTable.short': 'Uppdatera',
   'editor.updatingTable.short': 'Uppdaterar…',
   'editor.updatingTable': 'Uppdaterar bordet…',
-  'editor.table.started': 'Nytt bord startat på {version} —',
+  'editor.table.started': 'Nytt bord startat på {version}',
   // Osparat arbete sparas först (L5); att en version skrevs sägs, inte bara att bordet startade (#737).
-  'editor.table.savedAndStarted': 'Sparade {version} och startade ett nytt bord på den —',
-  'editor.table.refreshed': 'Bordet uppdaterat på {version} —',
-  'editor.table.running': 'Bordet kör {version} —',
+  'editor.table.savedAndStarted': 'Sparade {version} och startade ett nytt bord på den',
+  'editor.table.refreshed': 'Bordet uppdaterat på {version}',
+  'editor.table.running': 'Bordet kör {version}',
   // «Uppdatera» på ett bord som redan kör den sparade versionen ändrar ingenting och skriver ingen rad (#706).
-  'editor.table.already': 'Bordet kör redan {version} —',
+  'editor.table.already': 'Bordet kör redan {version}',
   'editor.table.lost.one': '{n} kort kunde inte renderas. Bordet står kvar på sin gamla version.',
   'editor.table.lost.other': '{n} kort kunde inte renderas. Bordet står kvar på sin gamla version.',
   'editor.table.retry': 'Försök igen',
