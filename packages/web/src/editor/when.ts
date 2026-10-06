@@ -34,5 +34,9 @@ export const clockWord = (iso: string, lang: Lang): string => new Date(iso).toLo
 // no moment at all, and saying "inga drag än" is truer than showing when it was started.
 export function lastMoveWords(at: string | null, now: number, lang: Lang, t: T): string {
   if (at === null) return t('tables.noMoves')
-  return t('tables.lastMove', { at: `${dayWord(at, now, lang, t)} ${clockWord(at, lang)}` })
+  // The history heads a group with its day, «I dag»; here the day stands inside a sentence, where
+  // it is written small (#706). A date keeps its own case — «October 5» is a name.
+  const day = dayWord(at, now, lang, t)
+  const word = day === t('history.day.today') || day === t('history.day.yesterday') ? day.toLocaleLowerCase(readerLocale(lang)) : day
+  return t('tables.lastMove', { at: `${word} ${clockWord(at, lang)}` })
 }

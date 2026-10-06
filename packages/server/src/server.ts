@@ -1705,6 +1705,12 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const setup = setupFromProject(rec)
     const deck = await deckOf(opts, rec)
     const version = `rev-${rec.rev}`
+    // A table already on this version has nothing to move to, and a line saying it moved would
+    // tell every phone «Spelet uppdaterades» about no change at all (#706).
+    if (actor.version === version) {
+      json(res, 200, { version, seqs: [] })
+      return true
+    }
     // The deck is kept under its version before the line that moves the table there is committed
     // (#677): the session row keeps the start deck, and an actor reloaded after a restart takes
     // its faces from the version its log says it plays. A refusal below leaves a deck no line

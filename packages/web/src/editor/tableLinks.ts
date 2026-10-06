@@ -24,7 +24,3 @@ export const observeUrl = (session: string, server: string | null, owner = false
   to('/observe', new URLSearchParams({ session, name: designerName(t), ...(owner ? { owner: '1' } : {}) }), server)
 // What the QR on the TV encodes (K12): the room code opens the phone's live seat picker.
 export const joinUrl = (code: string, server: string | null): string => `${location.origin}${to('/join', new URLSearchParams({ code }), server)}`
-
-// What a table is called where a person has to tell two of them apart. The session id is a
-// UUID; its head is enough to match the code the TV shows.
-export const tableName = (session: string): string => session.slice(0, 8)

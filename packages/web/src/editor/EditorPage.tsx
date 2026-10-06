@@ -154,7 +154,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // A running table (L5) with what admits people to it (DRIFT §9): the code and the host key.
   // A table picked up after a reload (`running`) has no key in the page; the account is the
   // authority for it instead.
-  const [table, setTable] = useState<{ id: string; version: string; code: string; hostKey?: string; kind: 'new' | 'refreshed' | 'running'; saved?: boolean } | null>(null)
+  const [table, setTable] = useState<{ id: string; version: string; code: string; hostKey?: string; kind: 'new' | 'refreshed' | 'running' | 'already'; saved?: boolean } | null>(null)
   // The table outlives the page (#477). Without this a reload put «Starta bord» back in the header
   // while the table was still running, and the press that followed started a second table with a
   // new code — the guests at the first never saw the update. The newest table that still runs and
@@ -219,8 +219,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         delay = Math.min(1000, delay * 2)
       }
     }
-    // A refreshed table keeps what is known until the next answer; another table starts over.
-    setTextures((t) => (t && table.kind === 'refreshed' ? t : null))
+    // A refreshed table keeps what is known until the next answer — so does one that already ran
+    // the version (#706); another table starts over.
+    setTextures((t) => (t && (table.kind === 'refreshed' || table.kind === 'already') ? t : null))
     void poll()
     return () => {
       stop = true
@@ -389,8 +390,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         await new Promise((r) => setTimeout(r, delay))
         delay = Math.min(1000, delay * 2)
       }
-      const { version } = await client.refreshTable(table.id)
-      setTable({ ...table, version, kind: 'refreshed' })
+      // No line at all is the server saying the table already ran this version (#706).
+      const { version, seqs } = await client.refreshTable(table.id)
+      setTable({ ...table, version, kind: seqs.length === 0 ? 'already' : 'refreshed' })
     } catch (err) {
       // What the server says in its own words is the developer's; the header says it in the
       // designer's language, in a whole sentence (#705, A4).
@@ -722,7 +724,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       )}
       {table && (
         <div className="byd-editor-table-link" role="status" {...(lost !== null ? { 'data-lost': '' } : {})} {...(stalled ? { 'data-stalled': '' } : {})}>
-          {t(table.kind === 'new' ? (table.saved ? 'editor.table.savedAndStarted' : 'editor.table.started') : table.kind === 'running' ? 'editor.table.running' : 'editor.table.refreshed', { version: table.version })}{' '}
+          {t(table.kind === 'new' ? (table.saved ? 'editor.table.savedAndStarted' : 'editor.table.started') : table.kind === 'running' ? 'editor.table.running' : table.kind === 'already' ? 'editor.table.already' : 'editor.table.refreshed', { version: table.version })}{' '}
           {lost !== null ? (
             <>
               <span className="byd-editor-warning">{t(lost === 1 ? 'editor.table.lost.one' : 'editor.table.lost.other', { n: lost })}</span>{' '}

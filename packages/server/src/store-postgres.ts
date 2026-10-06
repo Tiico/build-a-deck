@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import postgres from 'postgres'
 import type { ObjectStore } from '@byd/render'
-import type { Applied } from '@byd/protocol'
+import { PHYSICAL_VERBS, type Applied } from '@byd/protocol'
 import { liftLine, type SetupDef } from '@byd/engine'
 import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionRecord, type SessionSummary, type PlayedRecord } from './store.js'
 import { checkedHistory, liftDoc, stamp, type ProjectDoc, type ProjectRecord, type ProjectRow, type ProjectStore, type ProjectSummary, type RestoredVersion, type VersionSummary } from './projects.js'
@@ -255,7 +255,7 @@ export class PostgresLogStore implements LogStore {
   async sessionsOf(project: string): Promise<SessionSummary[]> {
     const rows = await this.sql<{ id: string; last_at: Date | null }[]>`
       select s.id, last.at as last_at from sessions s
-      left join lateral (select at from events e where e.session_id = s.id order by seq desc limit 1) last on true
+      left join lateral (select at from events e where e.session_id = s.id and e.intent->>'v' = any(${PHYSICAL_VERBS as string[]}) order by seq desc limit 1) last on true
       where s.project = ${project}
       order by s.created_at desc, s.id desc
     `

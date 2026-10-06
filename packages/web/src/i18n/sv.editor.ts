@@ -121,6 +121,8 @@ export const svEditor = {
   'editor.table.savedAndStarted': 'Sparade {version} och startade ett nytt bord på den —',
   'editor.table.refreshed': 'Bordet uppdaterat på {version} —',
   'editor.table.running': 'Bordet kör {version} —',
+  // «Uppdatera» på ett bord som redan kör den sparade versionen ändrar ingenting och skriver ingen rad (#706).
+  'editor.table.already': 'Bordet kör redan {version} —',
   'editor.table.lost.one': '{n} kort kunde inte renderas. Bordet står kvar på sin gamla version.',
   'editor.table.lost.other': '{n} kort kunde inte renderas. Bordet står kvar på sin gamla version.',
   'editor.table.retry': 'Försök igen',
@@ -1380,7 +1382,12 @@ export const svEditor = {
   'tables.more': 'Fler vägar till bordet',
   'tables.group': 'Bordet',
   'tables.all': 'Alla bord',
-  'tables.stale': 'ligger efter rev-{rev}',
+  'tables.stale': '{version}, spelet är på rev-{rev}',
+  // Uppdateringen står på raden som ligger efter, bredvid vägen in (#706, beslut A).
+  'tables.update': 'Uppdatera till rev-{rev}',
+  'tables.update.of': 'Uppdatera bordet {table} till rev-{rev}',
+  'tables.update.busy': 'Uppdaterar…',
+  'tables.update.failed': 'Bordet kunde inte uppdateras. Försök igen om en stund.',
   'tables.ended': 'avslutat',
   'tables.connecting': 'ansluter…',
   'tables.nobody': 'ingen sitter än',

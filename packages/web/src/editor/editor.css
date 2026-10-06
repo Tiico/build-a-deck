@@ -2915,16 +2915,20 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-tables-info { display: grid; gap: 2px; align-content: start; min-width: 0; }
 .byd-tables-head { display: flex; align-items: baseline; gap: var(--byd-s2); flex-wrap: wrap; margin: 0; color: var(--byd-tables-quiet); font-size: 12px; }
 .byd-tables-head strong { color: var(--byd-tables-ink); font-family: ui-monospace, monospace; font-size: 12px; }
+/* The table's name is its room code, as the band and the TV say it (#706, beslut A); the version
+   it runs stands after it, quieter, because two tables of one game usually run the same one. */
+.byd-tables-head .byd-tables-name { font-size: 13px; font-weight: 700; letter-spacing: 1.5px; }
+.byd-tables-version { font-family: ui-monospace, monospace; }
 .byd-tables-state { color: var(--byd-tables-quiet); }
 .byd-table-row[data-state='played'] .byd-tables-state { color: var(--byd-tables-live-ink); font-weight: 700; }
-.byd-tables-stale { color: var(--byd-tables-stale-ink); font-style: normal; font-weight: 600; }
+.byd-tables-stale { flex-basis: 100%; color: var(--byd-tables-stale-ink); font-style: normal; font-weight: 600; }
 /* Who is at the table and when it last moved: one line each, and a name too long for the column
    is cut rather than allowed to push the row into a third and a fourth line. */
 .byd-tables-line { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--byd-tables-quiet); font-size: 12px; }
 
 /* The one way that stands ready, and the button that opens the other five. */
 .byd-tables-go { grid-column: 1 / -1; display: flex; gap: var(--byd-s1); align-items: center; }
-.byd-tables-go > a.byd-secondary, .byd-tables-ready {
+.byd-tables-go > a.byd-secondary, .byd-tables-ready, .byd-tables-update {
   flex: 1 1 auto;
   min-width: 0;
   min-height: var(--byd-tap);
@@ -3033,6 +3037,7 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-tables-started { margin: 0; color: #7dd3a0; font-size: 12px; line-height: 1.5; }
 .byd-tables-failed { margin: 0; display: flex; flex-wrap: wrap; gap: var(--byd-s1) var(--byd-s2); align-items: center; max-width: 62ch; font-size: 12px; line-height: 1.5; }
 .byd-tables-failed > .byd-secondary { min-height: var(--byd-tap); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; cursor: pointer; }
+.byd-table-row > .byd-tables-failed { grid-column: 1 / -1; }
 /* The shortcut in the header (variant B): "Uppdatera bordet" keeps its job, and the caret beside
    it opens the newest table wherever the designer is standing. */
 /* The caret is the other half of "Uppdatera bordet", so it sits against it: the header's own

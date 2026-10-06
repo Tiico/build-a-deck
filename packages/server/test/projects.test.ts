@@ -342,6 +342,38 @@ describe('the tables a project has (#19)', () => {
     expect(Date.parse(tables[1]!.lastAt!)).toBeGreaterThan(0)
   })
 
+  // «Senaste drag» is a player's move and nothing else (#706): a seat taken, a table refreshed or
+  // ended is the table being looked after, and a list that counted them called a table nobody had
+  // touched a card on «played», with the time someone sat down as its last move.
+  it('counts only a move on the table as its last move, not a seat taken or a version changed (#706)', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
+    await table.send(null, { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await table.synced(1)
+    expect((await json('PUT', `/projects/${id}`, { ...project(), name: 'Skogens herrar v2', rev: 1 })).status).toBe(200)
+    expect((await json('POST', `/sessions/${sessionId}/refresh`, {})).status).toBe(200)
+    const before = (await (await json('GET', `/projects/${id}/sessions`)).json()) as { lastAt: string | null }[]
+    expect(before).toEqual([expect.objectContaining({ lastAt: null })])
+
+    await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 1 })
+    await table.synced(3)
+    await table.close()
+    const after = (await (await json('GET', `/projects/${id}/sessions`)).json()) as { lastAt: string | null }[]
+    expect(Date.parse(after[0]!.lastAt!)).toBeGreaterThan(0)
+  })
+
+  // A refresh to the version the table already runs changes nothing, so it writes nothing (#706):
+  // the line it used to write told every phone «Spelet uppdaterades till rev-1» about no change.
+  it('writes no line when a table is refreshed to the version it already runs (#706)', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    const same = await json('POST', `/sessions/${sessionId}/refresh`, {})
+    expect(same.status).toBe(200)
+    expect(await same.json()).toEqual({ version: 'rev-1', seqs: [] })
+    expect(await run.store.read(sessionId)).toEqual([])
+  })
+
   it('says which version a refreshed table runs and which table has ended, and shows nothing of another account\'s game', async () => {
     const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
     const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }

@@ -6217,3 +6217,22 @@ Menyn öppnar på sitt första val, länk eller knapp.
 Startsidan frågar `GET /projects/:id/sessions` för varje spel som har bord och vars roll får starta bord; bara ett bord med en giltig kod räknas som pågående.
 `account-page.test.tsx` visar bandet efter en omladdning, länkens adress och menyns ordning; `home-layout.test.tsx` mäter bandets länk till 44 px vid 320, 390 och 1280.
 Prototypen: `docs/ux-audits/2026-10-05-pagaende-bord/prototyper/724/`.
+
+### L65. Bord-flikens rad heter rumskoden och uppdateras där den står (prototypat och beslutat 2026-10-05, #706)
+
+Speltestet 2026-10-02 fann att en rad som «ligger efter» inte kunde uppdateras: «Uppdatera» i huvudet flyttade bara huvudets bord, och ett bord startat från kolumnen stod kvar på den gamla versionen.
+Statusraden och menyn namngav bordet med ett uuid-prefix som inte stod på raden, så med två bord gick menyn inte att para med rätt rad.
+
+**A** (av tre: koden först och uppdateringen bredvid vägen in, vem som sitter och en remsa under raden, koden som etikett och uppdateringen i menyn).
+Raden heter bordets **rumskod**, samma namn som bandet och TV:n ger det, och versionen står efter, tystare.
+Koden kommer ur listan för den som får starta bord, och ur bordets egen anslutning, också när bordet är avslutat; till dess heter raden sin version.
+En rad som ligger efter säger «rev-1, spelet är på rev-2» och får en konturknapp, «Uppdatera till rev-2», bredvid den väg som står redo.
+Statusraden säger «Nytt bord startat: KOD.», och inget uuid-prefix står kvar i det som visas eller läses upp.
+
+Tre följdändringar som inte var visuella:
+«senaste drag» räknar bara fysiska drag (`PHYSICAL_VERBS` i protokollet) — att sätta sig, uppdatera eller avsluta är att sköta bordet, inte att spela på det; dagen skrivs gement inne i meningen.
+«Uppdatera» till den version bordet redan kör skriver ingen rad, och huvudet säger «Bordet kör redan rev-1».
+Ett avslutat bord erbjuder ingen QR, eftersom koden leder till ett låst bord.
+
+`editor-tables.test.tsx` uppdaterar en rad från raden och läser namnet; `projects.test.ts` och `store-postgres.test.ts` håller «senaste drag» och den tomma uppdateringen.
+Prototypen: `docs/ux-audits/2026-10-05-bordsraden/prototyper/706/`.
