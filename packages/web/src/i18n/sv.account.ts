@@ -124,7 +124,7 @@ export const svAccount = {
   'wizard.next': 'Nästa →',
   // Rutan överst i guidad start, bara utloggad (#687, #691): ledet i fetstil och resten efter det.
   'wizard.handoff.account.lead': 'Spelet sparas på ett konto.',
-  'wizard.handoff.account': 'Du loggar in med e-post när du skapar det, och det du skrivit här följer med.',
+  'wizard.handoff.account': 'Du loggar in med e\u2011post när du skapar det, och det du skrivit här följer med.',
   // Ett ledord per stycke, så att hjälpen inte blandar de två dörrarna i ett (#731).
   'wizard.handoff.body': 'Guidad start: skapa några exempelkort här. Layout, hela leken och CSV-verktyg väntar i editorn.',
   'wizard.name': 'Spelets namn',

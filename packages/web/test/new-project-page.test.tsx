@@ -478,7 +478,7 @@ describe('the live card after the fields are named (#476)', () => {
 // after three minutes of filling in (#691, beslut 2026-10-06). It says so early, in the box at the
 // top that once said «Wizarden är startpunkten» (#687), and whoever is logged in gets no box at all.
 describe('the account the game is kept on (#691, #687)', () => {
-  const SAVED = 'Du loggar in med e-post när du skapar det, och det du skrivit här följer med.'
+  const SAVED = 'Du loggar in med e\u2011post när du skapar det, och det du skrivit här följer med.'
   beforeEach(async () => {
     await run.stop()
     run = await startServer({ auth: true, authBypass: true })

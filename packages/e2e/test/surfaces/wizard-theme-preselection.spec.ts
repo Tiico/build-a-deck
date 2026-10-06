@@ -200,7 +200,7 @@ test.describe('the box over step 1', () => {
   test('says the game is kept on an account when logged out', async ({ page }) => {
     await page.goto('/new', { waitUntil: 'load' })
     const box = page.locator('.byd-wizard-handoff')
-    await expect(box).toHaveText('Spelet sparas på ett konto. Du loggar in med e-post när du skapar det, och det du skrivit här följer med.')
+    await expect(box).toHaveText('Spelet sparas på ett konto. Du loggar in med e\u2011post när du skapar det, och det du skrivit här följer med.')
     await expect(box.locator('strong')).toHaveText('Spelet sparas på ett konto.')
     expect(await page.locator('.byd-wizard').innerText()).not.toMatch(/wizard/i)
   })
