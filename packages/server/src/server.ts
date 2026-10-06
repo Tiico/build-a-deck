@@ -372,7 +372,9 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
     // game it leads to (#691) — the name the mail already carried, for the login card the link
     // lands on — and nothing more; a used, withdrawn or made-up link says nothing at all.
     const invite = /^\/invites\/([A-Za-z0-9_-]+)$/.exec(url.pathname)
-    if (invite && req.method === 'GET' && opts.projects) {
+    // A browser following the link asks for the page, and gets the app (`PAGE_PATHS`), not this.
+    const pageWanted = Boolean(opts.staticDir) && (req.headers['accept'] ?? '').includes('text/html')
+    if (invite && req.method === 'GET' && opts.projects && !pageWanted) {
       const project = await opts.projects.inviteTo(hash(decodeURIComponent(invite[1] ?? '')), clock(opts).toISOString())
       const rec = project ? await opts.projects.load(project) : null
       if (!rec) return json(res, 404, { error: 'unknown or spent invitation' })
