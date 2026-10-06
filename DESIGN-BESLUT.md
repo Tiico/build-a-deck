@@ -894,6 +894,15 @@ Varje mätning ovan, och varje grind i `online-felt.test.tsx`, läses därför a
 **13°-lutningen rördes inte.**
 Prissatt för sig kostar den omkring en pixel skala, och `feltScale` är redan lutningsmedveten och nära optimal; att spendera K9:s bord för att köpa pixlar köper inga.
 
+Reviderat 2026-10-06 (#720, beställarens beslut): **bordsläget har samma lins som `/online`, och ett nyp över filten är linsens och aldrig sidans.**
+
+Speltestet 2026-10-02 rullade hjulet över filten på `/table?mode=table` och ingenting hände — ett kort är 48 × 65 px vid 1024, och linsen fanns redan på samma renderare sedan #502.
+Två fingrar isär över filten på en pekskärm förstorade i stället hela sidan tre gånger, och hjälpen och hörnknapparna hamnade utanför bilden.
+Bordsskärmen får därför linsen: hjulet, dubbeltrycket på den tomma filten, en dragning som flyttar ett förstorat bord och hörnets knappar, som på `/online`.
+«Det lutade bordsläget har ingen kamera» står kvar: linsen är ingen kamera, den förstorar bordet om en punkt och följer ingenting.
+Ett nyp över en filt med lins förstorar filten om punkten mellan fingrarna, på båda ytorna, och filten tar gesten (`touch-action: none`), så sidan står kvar; ett nyp någon annanstans zoomar sidan som förut, och sidzoomen spärras inte.
+`table-lens.spec.ts` mäter hjulet i bordsläget och nypet med CDP-touch i bordsläget och på `/online`: linsen går över 150 % och `visualViewport.scale` står på 1 (1,15 utan `touch-action`).
+
 ### C6. Ångra: personlig ångra plus gruppens tillbakaspolning (fråga 18)
 
 Din egen senaste handling ångras direkt och tyst om ingen hunnit röra samma objekt.
