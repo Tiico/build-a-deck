@@ -115,9 +115,9 @@ for (const [width, height] of [[1280, 800], [1024, 768]] as const) {
     await expect(asked).toBeVisible()
     // The question is the present: the line about the past is not drawn over its answers — and
     // a step taken while it stands is not drawn there either.
-    // Asked at once: the confirmation takes itself back after six seconds anyway, and a wait
+    // Within a second: the confirmation takes itself back after six anyway, and a wait that long
     // for it to go would pass on that alone.
-    expect(await said.isVisible()).toBe(false)
+    await expect(said).toBeHidden({ timeout: 1000 })
     await page.keyboard.press('ControlOrMeta+Shift+z')
     // The step was taken and said: the change is made again.
     await expect(page.locator('.byd-props-f input').first()).toHaveValue('3')

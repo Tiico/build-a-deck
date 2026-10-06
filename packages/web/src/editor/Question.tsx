@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useLayoutEffect, type ReactNode } from 'react'
 import { useT } from '../i18n/index.js'
 
 // The one question the editor asks before something cannot be looked at afterwards: taking cards
@@ -59,7 +59,8 @@ type Answer = {
 export function Question({ label, className, children, confirm, onConfirm, onCancel, cancel, keep, further }: QuestionProps) {
   const t = useT()
   const asking = useContext(Asking)
-  useEffect(() => asking(), [asking])
+  // Before the paint, so the question is never drawn with the line still over its answers.
+  useLayoutEffect(() => asking(), [asking])
   const answers: Answer[] = [
     ...(keep ? [{ key: 'keep', kind: 'keep' as const, label: keep.label, disabled: keep.disabled === true, safe: true, onChoose: keep.onChoose }] : []),
     { key: 'confirm', kind: 'danger', label: confirm, disabled: false, safe: false, onChoose: onConfirm },
