@@ -292,7 +292,12 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       // A table that has ended is locked (C9), and the picker is told so rather than shown a table
       // it can no longer sit down at (#485).
       if ((await opts.host.get(found.id))?.ended) return json(res, 410, { error: 'session ended', session: found.id })
-      return json(res, 200, { session: found.id })
+      // The game's name, which the join card is headed with (#675). It is what `GET /sessions/:id`
+      // already says to whoever holds the id this answer hands out, so it tells nobody anything
+      // new — and the project it came from stays out of it.
+      const session = await opts.store.loadSession(found.id)
+      const named = session?.project && opts.projects ? await opts.projects.load(session.project) : null
+      return json(res, 200, { session: found.id, ...(named ? { name: named.name } : {}) })
     }
     // A code and a name buy a token (DRIFT §9): for a free seat, or for watching (C8).
     const join = /^\/rooms\/([^/]+)\/join$/.exec(url.pathname)
