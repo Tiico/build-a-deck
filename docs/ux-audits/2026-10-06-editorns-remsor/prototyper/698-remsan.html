@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 698 — Var bekräftelsen står</title>
+<link rel="stylesheet" href="proto.css">
+<!-- PROTOTYP, #698. Kastas när en variant är vald.
+     Frågan: var editorns bekräftelse («Tog tillbaka: …») står, så att den aldrig ligger över en kontroll.
+     Bilderna är den riktiga appen (packages/server/scripts/prototype/run.ts: 77 kort, ett bord som kör)
+     vid 1280 × 800 och 1024 × 768, med variantens DOM och CSS ditlagda av en Playwright-drivare.
+     «Täcker» är uppmätt: varje knapp, länk och fält vars yta remsan ligger över och som syns där.
+     ?v=idag|A|B|C&s=1280x800|1024x768&y=mall|tabell -->
+</head>
+<body>
+<div class="rubrik">
+  <p><b>PROTOTYP #698 · var bekräftelsen står.</b> I dag ligger «Tog tillbaka: en ändring i mallen» mitt på skärmens nederkant i sex sekunder — över kortradens «Nästa kort» i Mall och över fotens «Ta bort 1 kort» och «Avmarkera alla» i Tabell.</p>
+  <p>Redan byggt i #916 och inte en del av valet: ett tryck på remsan når aldrig det den ligger över, remsan viker undan medan en fråga står, och frågan ändrar inte kortets skala. ‹ › eller ← → byter variant; storlek och yta i växlaren.</p>
+</div>
+<div class="anteckning" id="anteckning"></div>
+<img id="bild" alt="">
+<div class="vaxlare" role="group" aria-label="Prototypens växlare">
+  <button type="button" id="bak" aria-label="Föregående variant">‹</button>
+  <span class="namn" id="namn"></span>
+  <button type="button" id="fram" aria-label="Nästa variant">›</button>
+  <span class="sep"></span>
+  <button type="button" data-y="mall">Mall</button>
+  <button type="button" data-y="tabell">Tabell</button>
+  <span class="sep"></span>
+  <button type="button" data-s="1280x800">1280</button>
+  <button type="button" data-s="1024x768">1024</button>
+</div>
+<script>
+window.PROTO = {
+  prefix: '698',
+  ytor: ['mall', 'tabell'],
+  start: 'B',
+  varianter: {
+    idag: ['I dag', '<b>I dag.</b> Mitt på nederkanten, över arbetet. <span class="minus">Täcker i Mall: kortnamnet och «Nästa kort» (båda storlekarna). I Tabell: «Ta bort 1 kort» och «Avmarkera alla», vid 1024 även «Duplicera 1 kort».</span>'],
+    A: ['A — Ovanför foten', '<b>A — ovanför foten</b>: samma remsa, men 8 px ovanför kortraden respektive tabellens fot, centrerad över arbetsytan. <span class="plus">+ Nära där man arbetar; ingen ny yta; skalan oförändrad.</span> <span class="minus">− Ligger fortfarande över arbetet. Täcker vid 1024 förstoringsbandets «−» och procenttalet i Mall, och «+ Nytt kort» i Tabell i båda storlekarna. En flytande remsa över tabellens nederkant är just det L58 valde bort.</span>'],
+    B: ['B — I fotens statusplats', '<b>B — i fotens statusplats</b>: bekräftelsen tar i sex sekunder platsen där ytan redan säger sitt tysta läge — kortradens värden i Mall, «Osorterad: …» i Tabell — i grönt med ✓. <span class="plus">+ Täcker ingenting i någon storlek (uppmätt); kostar ingen höjd; sägs där ögat redan är efter en handling i foten.</span> <span class="minus">− Varje yta behöver en sådan plats: Kortvägg, Speltema, Media, Regler och Bord har ingen fot i dag. Det tysta läget är borta medan bekräftelsen står. Vid 1024 är kortradens plats ~160 px, så en lång bekräftelse kortas med «…».</span>'],
+    C: ['C — Statusrad', '<b>C — en statusrad</b> om 28 px längst ner i hela editorn, alltid där; bekräftelsen står till vänster och kortkommandona till höger. <span class="plus">+ Täcker ingenting; samma plats på varje flik; plats för fler sorters besked.</span> <span class="minus">− Kostar 28 px höjd på varje flik hela tiden: kortet i Mall går från 164 % till 155 % vid 1280 och från 138 % till 130 % vid 1024.</span>'],
+  },
+}
+</script>
+<script src="visare.js"></script>
+</body>
+</html>

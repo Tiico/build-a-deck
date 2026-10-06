@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 736 — Textlagrets panel</title>
+<link rel="stylesheet" href="proto.css">
+<!-- PROTOTYP, #736 (del 1). Kastas när en variant är vald.
+     Frågan: hur egenskapspanelen för ett textlager ryms i de två skrivbordsstorlekarna (L25), eller visar
+     att den rullar. Bilderna är den riktiga appen (scripts/prototype/run.ts, ett bord som kör, så bandet
+     «Bordet kör» tar 62 px av höjden) med variantens CSS och DOM ditlagda av en Playwright-drivare.
+     Måtten är uppmätta i samma körning. ?v=idag|A|B|C&s=1280x800|1024x768 -->
+</head>
+<body>
+<div class="rubrik">
+  <p><b>PROTOTYP #736 · textlagrets panel.</b> Med Layout, Innehåll och Text öppna är panelen 751 px hög i en spalt om 621 px vid 1280 och 589 px vid 1024 (med ett bord som kör; 650 utan). «Anpassning» slutar 869 px ner och «Finjustering» 918 px ner, och rullisten ritas inte på en Mac.</p>
+  <p>‹ › eller ← → byter variant; storleken i växlaren.</p>
+</div>
+<div class="anteckning" id="anteckning"></div>
+<table>
+  <tr><th></th><th>innehåll</th><th>dolt vid 1280 (spalt 621)</th><th>dolt vid 1024 (spalt 589)</th><th>«Anpassning» slutar</th><th>sista kontrollen slutar</th></tr>
+  <tr><td>I dag</td><td>751 px</td><td>130 px</td><td>162 px</td><td>869</td><td>918</td></tr>
+  <tr><td>A</td><td>637 px</td><td>16 px</td><td>48 px</td><td>726</td><td>790</td></tr>
+  <tr><td>B</td><td>751 px + ledtråd</td><td>130 px, sagt</td><td>162 px, sagt</td><td>869</td><td>918</td></tr>
+  <tr><td>C</td><td>589–621 px</td><td>0</td><td>0</td><td>665</td><td>729</td></tr>
+</table>
+<img id="bild" alt="">
+<div class="vaxlare" role="group" aria-label="Prototypens växlare">
+  <button type="button" id="bak" aria-label="Föregående variant">‹</button>
+  <span class="namn" id="namn"></span>
+  <button type="button" id="fram" aria-label="Nästa variant">›</button>
+  <span class="sep"></span>
+  <button type="button" data-s="1280x800">1280</button>
+  <button type="button" data-s="1024x768">1024</button>
+</div>
+<script>
+window.PROTO = {
+  prefix: '736-panel',
+  start: 'C',
+  varianter: {
+    idag: ['I dag', '<b>I dag.</b> Placeringens nio rutor står på tre rader i hela bredden, «Anpassning» och «Finjustering» under dem — under fönstrets kant i båda storlekarna.'],
+    A: ['A — Placeringen bredvid', '<b>A — placeringen i en egen spalt</b>: de nio rutorna (44 px, golvet står kvar) till vänster, «Anpassning» och «Finjustering» staplade till höger om dem. <span class="plus">+ Sparar 114 px utan att något fälls eller flyttar ut ur Text; «Anpassning» syns i båda storlekarna.</span> <span class="minus">− Rullar fortfarande 16 px vid 1280 och 48 px vid 1024 med ett bord som kör; Typsnitt-väljaren blir 140 px.</span>'],
+    B: ['B — Synlig ledtråd', '<b>B — panelen som i dag, men den säger att den rullar</b>: en fast rad längst ner i spalten, «↓ Mer: Anpassning · Finjustering», som namnger det som står under kanten och rullar dit; rullisten ritas alltid. <span class="plus">+ Ingen kontroll flyttar; fungerar för varje lager, även formlagret som är 933 px.</span> <span class="minus">− Panelen rullar lika mycket som förut (raden tar dessutom 70 px); kravet att textpanelen ryms (L25) uppfylls inte.</span>'],
+    C: ['C — A och fältet i huvudet', '<b>C — som A, och «Visar fältet [Titel ▾]» överst</b> direkt under panelens rubrik, så att Innehåll inte behöver en egen sektion för ett textlager. <span class="plus">+ Ryms utan rullning i båda storlekarna, även med ett bord som kör (uppmätt: 0 px dolt); sista kontrollen slutar på y 729. Bindningen står först, där lagret namnges.</span> <span class="minus">− Innehåll-sektionen försvinner för text men står kvar för bild (som har fler val där); «Anpassning»-väljaren blir smal vid 1024 («krymp till grä…») och behöver kortare ord eller hela bredden.</span>'],
+  },
+}
+</script>
+<script src="visare.js"></script>
+</body>
+</html>
