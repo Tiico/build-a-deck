@@ -261,6 +261,7 @@ export const svAccount = {
 
   // Att ta med sig ett spel och ta tillbaka det (G5, #529): export och import i Mina spel.
   'error.duplicateGame.failed': 'kunde inte dubblera spelet; försök igen om en stund',
+  'error.renameGame.failed': 'kunde inte byta namn på spelet; försök igen om en stund',
   // The game's own choices in the editor's ⋯ (#738): its name, and a second game made of it.
   'home.menu.rename': 'Byt namn…',
   'home.menu.duplicate': 'Dubblera',
