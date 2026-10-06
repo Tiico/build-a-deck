@@ -565,6 +565,10 @@
 }
 .byd-editor-leave button[data-kind='keep'] { background: var(--byd-editor-leave-save-bg); border-color: var(--byd-editor-leave-save-bg); color: var(--byd-editor-leave-save-ink); }
 .byd-editor-leave button[data-kind='danger'] { background: var(--byd-editor-leave-danger-bg); border-color: var(--byd-editor-leave-danger-bg); color: var(--byd-editor-leave-danger-ink); }
+/* Taking the game away from its ⋯ (#738): the same strip, in the colours «Mina spel» asks the same
+   question in, because this one is about a deletion and not about unsaved work. */
+.byd-editor-remove { --byd-editor-leave-bg: #2a1b1b; --byd-editor-leave-ink: #ffd8d8; --byd-editor-leave-danger-bg: #a12b2b; --byd-editor-leave-danger-ink: #ffffff; }
+.byd-editor-remove button { border-color: #4a3232; }
 .byd-editor > main > [role='tabpanel'] { height: 100%; min-height: 0; }
 /* A keyboard has to be able to see where it is, in every mode: one ring for every stop in the
    editor, light enough to carry 3:1 against each of the surfaces it lands on. */

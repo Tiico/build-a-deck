@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { canDelete, canEdit, canStartTables, type CardFace, type Role } from '@byd/server/doc'
 import { LoginCard } from './LoginCard.js'
 import { Help } from '../editor/HelpDrawer.js'
@@ -11,6 +11,7 @@ import { logout, myCards, myPlayed, myProjects, removeProject, runningTables, st
 import { tvUrl } from '../editor/tableLinks.js'
 import { ExportDialog, ImportDialog } from './GameDialogs.js'
 import { GameMenu } from './GameMenu.js'
+import { marked } from './marked.js'
 import { seatColor } from '../table/seatColor.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
@@ -420,15 +421,6 @@ const HEADING = '#heading'
 export const HOME_CARD_H = 132
 export const HOME_CARD_W = (HOME_CARD_H * 63) / 88
 
-// A sentence stays one sentence in the catalogue even when part of it is the reader's own — a
-// game, a person, a room code. The catalogue holds the whole message; only the parts it names
-// are handed over as nodes, so no language has to be glued together from halves.
-function marked(message: string, parts: Record<string, ReactNode>): ReactNode[] {
-  return message.split(/(\{\w+\})/).map((piece, i) => {
-    const name = /^\{(\w+)\}$/.exec(piece)?.[1]
-    return name && name in parts ? <Fragment key={i}>{parts[name]}</Fragment> : piece
-  })
-}
 
 // The card on a game's tile (G1, #231, variant B): the game's own first card, over the name and
 // drawn by the one `CardPreview` that draws a card anywhere in the tool — so what the shelf shows

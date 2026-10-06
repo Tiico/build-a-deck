@@ -14,7 +14,7 @@ import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { freeIconName, svgBytes, symbolName, type GameSymbol } from './symbols.js'
 import { iconsOf, starterSet, themeFamilies, themeIconFiles, themeIntent, type Theme } from './themes.js'
 import type { EditorMessage, Presence } from '@byd/server'
-import { canEdit, canStartTables, type Role } from '@byd/server/doc'
+import { canDelete, canEdit, canStartTables, type Role } from '@byd/server/doc'
 import { translate, type Key, type T } from '../i18n/index.js'
 import { Said, saidOr } from '../i18n/said.js'
 import { UNDO_STEPS, whatOf } from './undo.js'
@@ -377,6 +377,11 @@ export class ProjectClient {
   // editor assumes it may: a project without accounts is everyone's.
   get mayEdit(): boolean {
     return this.role === null || canEdit(this.role)
+  }
+
+  // Whether this account may take the game away (D3, #738): the owner alone.
+  get mayDelete(): boolean {
+    return this.role === null || canDelete(this.role)
   }
 
   // Whether this account may start and run tables (D3): a tester may, a viewer may not (#489).

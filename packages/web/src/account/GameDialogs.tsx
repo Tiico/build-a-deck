@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { PROJECT_NAME_MAX } from '@byd/server/doc'
 import { useFocusTrap } from '../editor/focusTrap.js'
 import { useT, type Key } from '../i18n/index.js'
 import { importGame, readExport, startExport, type ImportProblem } from './api.js'
@@ -109,7 +110,48 @@ export function ExportDialog({ http, game, onClose }: { http: string; game: Game
   )
 }
 
-type Importing = { state: 'idle' } | { state: 'reading'; name: string } | { state: 'failed'; name: string; problems: ImportProblem[] } | { state: 'done'; id: string; name: string }
+// A game's name, changed from its ⋯ (#738). The same window as the export's, holding one field: the
+// name as it stands, chosen whole so that typing replaces it. A name of nothing but spaces is no
+// name (#476), so the answer that would give it stands still; the limit is the one every door a
+// name comes in by keeps.
+export function RenameDialog({ game, onRename, onClose }: { game: { name: string }; onRename(name: string): void; onClose(): void }) {
+  const t = useT()
+  const box = useRef<HTMLDivElement>(null)
+  const field = useRef<HTMLInputElement>(null)
+  useFocusTrap(box, { onEscape: onClose, initial: () => field.current })
+  const [name, setName] = useState(game.name)
+  useEffect(() => field.current?.select(), [])
+  const wanted = name.trim()
+  return (
+    <div className="byd-game-scrim" role="presentation">
+      <div ref={box} className="byd-game-dialog" role="dialog" aria-modal="true" aria-label={t('home.rename.title', { name: game.name })}>
+        <h2>{t('home.rename.title', { name: game.name })}</h2>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (wanted && wanted !== game.name) onRename(wanted)
+            else if (wanted) onClose()
+          }}
+        >
+          <label className="byd-game-field">
+            {t('home.rename.field')}
+            <input ref={field} type="text" value={name} maxLength={PROJECT_NAME_MAX} aria-required="true" onChange={(event) => setName(event.target.value)} />
+          </label>
+          <div className="byd-game-dialog-actions">
+            <button type="submit" className="byd-primary" disabled={!wanted}>
+              {t('home.rename.confirm')}
+            </button>
+            <button type="button" className="byd-secondary" onClick={onClose}>
+              {t('home.rename.cancel')}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+type Importing ={ state: 'idle' } | { state: 'reading'; name: string } | { state: 'failed'; name: string; problems: ImportProblem[] } | { state: 'done'; id: string; name: string }
 
 // A refusal said in the reader's words (A4): the server names what is wrong, the catalogue says it.
 // A code this page does not know yet — a newer server — is said as a refusal with its code.

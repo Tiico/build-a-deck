@@ -229,9 +229,11 @@ describe('the one way that stands ready and the five in the row’s menu (#176)'
     await user.click(await screen.findByRole('button', { name: 'Avslutade bord · 1' }))
     const row = within(screen.getByRole('list', { name: 'Avslutade bord · 1' })).getByRole('listitem')
     // Called by its room code like any table (#706): the table's own connection still says it.
+    // Until that connection has answered, the row goes by its version (rev-1): on a loaded machine
+    // the list is drawn first, so the row is waited for under its code rather than read at once.
     const name = roomOf(id).code
 
-    expect(within(row).getByRole('link', { name: `Öppna TV-vyn för bordet ${name} (öppnas i ny flik)` })).toBeTruthy()
+    expect(await within(row).findByRole('link', { name: `Öppna TV-vyn för bordet ${name} (öppnas i ny flik)` })).toBeTruthy()
     expect(within(row).queryByRole('link', { name: /Spela härifrån/ })).toBeNull()
     // And its menu has neither of the two an ended table has no use for.
     await user.click(within(row).getByRole('button', { name: `Fler vägar in till bordet ${name}` }))
