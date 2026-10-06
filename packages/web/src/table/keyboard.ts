@@ -65,7 +65,7 @@ export const topOf = (view: Snapshot, z: ZoneView): VisibleComponentState | unde
 
 // Laying the top card off a pile onto the felt. It lands beside the pile, clear of its label and on
 // the side the pile itself says (K21, #87).
-export const besideOne = (z: ZoneView): Intent => ({ v: 'split', pile: z.id, at: 1, ...besidePile(z.geometry, 1, z.beside) })
+export const besideOne = (z: ZoneView): Extract<Intent, { v: 'split' }> => ({ v: 'split', pile: z.id, at: 1, ...besidePile(z.geometry, 1, z.beside) })
 
 // The ring's «Dra 1». On a screen with a hand of its own it draws to that hand (#746, beställarens
 // beslut 2026-10-03): laid beside the pile, as it was everywhere, a new player took the obvious
@@ -74,7 +74,10 @@ export const besideOne = (z: ZoneView): Intent => ({ v: 'split', pile: z.id, at:
 // mean the same thing by it and must not drift apart (K16).
 export function drawOne(view: Snapshot, z: ZoneView): Intent {
   const hand = view.seat === null ? undefined : view.zones.find((x) => x.kind === 'hand' && x.owner === view.seat)
-  return hand ? { v: 'split', pile: z.id, at: 1, to: hand.id } : besideOne(z)
+  // Without a hand of its own — the shared screen — the card lands face up beside the pile
+  // (#719, K21): nobody's eyes alone may read it there, so the table reads it, and a draw is one
+  // action rather than a draw and then a turn.
+  return hand ? { v: 'split', pile: z.id, at: 1, to: hand.id } : { ...besideOne(z), face: 'front' as const }
 }
 
 // A card's place on the felt, in table millimetres, for the reading order alone.
@@ -443,6 +446,12 @@ export function shortcutIntents(view: Snapshot, key: string, at: DragTarget | nu
 // truth is the only thing worth opening.
 export function feltShortcuts(t: T = swedish, platform: string = thisPlatform(), camera = false): Shortcut[] {
   return [
+    // The felt's own rule first, and the keyboard's way in (#719, K16): a drag moves, a click reads
+    // and then asks, and Tab, the arrows and Enter reach the same things. A list of shortcuts that
+    // left out the gestures was a list for someone who already knew them.
+    { press: [t('felt.press.drag')], what: t('felt.key.drag') },
+    { press: [t('felt.press.click')], what: t('felt.key.click') },
+    { press: [t('felt.press.tab'), t('felt.press.arrowKeys'), t('felt.press.enter')], what: t('felt.key.keyboard') },
     // Turning a card over has three grips and is one action: the modifier click, the double click
     // for a hand that cannot hold two keys down, and the bare `F` (#258). They share a row,
     // because they say the same thing, and three rows carrying one sentence is that sentence read
