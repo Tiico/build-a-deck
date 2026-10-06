@@ -1598,6 +1598,14 @@ Tillägg 2026-09-28 (#542, uppföljning av #529):
 - **En server som inte går att nå sägs, och ingenting fryser.** En import som lyckats står som lyckad även om listan inte går att läsa om direkt efteråt.
 - Grindarna är `packages/web/test/game-dialogs.test.tsx` och `packages/web/test/editor-export.test.tsx`.
 
+Tillägg 2026-10-06 (#909, beställarens beslut C, efter #738):
+- **Startsidans ⋯ bär samma val som editorns**: «Byt namn…», «Dubblera», «Exportera…» och «Ta bort spelet», styrda av rollen som i #689. De tre första är ägarens och medredigerarnas, att ta bort spelet bara ägarens.
+- **Ett namnbyte från Mina spel är en vanlig redigering i projektaktören**, samma `rename` som editorn skickar (`PUT /projects/:id/name`). Det hamnar i loggen, syns direkt i varje öppen editor och går att ångra där.
+- **Inget sparas åt någon annan.** Namnbytet gör ingen ny version, så andras osparade ändringar förblir osparade och spelets rev står still.
+- **Mina spel läser namnet ur det levande dokumentet** (D3: loggen är sanningen): aktörens dokument om spelet är öppet, annars den sparade versionen med loggens svans efter den uppspelad. Listan stämmer alltså direkt, och även efter en omstart av servern.
+- **«Dubblera» kopierar samma levande dokument** genom `POST /projects/:id/duplicate`, och listan läses om med korten så att kopians ruta ritas direkt.
+- Grindarna är `packages/server/test/rename-from-home.test.ts` och `packages/web/test/account-page.test.tsx`.
+
 ---
 
 ## H. Sekvensering
