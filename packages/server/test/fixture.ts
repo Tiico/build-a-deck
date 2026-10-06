@@ -158,7 +158,7 @@ const rooms = new Map<string, { code: string; hostKey: string }>()
 // `assets` is for a test about the gate in front of a particular store (#204): the route is the
 // same route whether the bytes end up in memory or in Postgres, and a test that only ever sees one
 // of them cannot say so.
-export async function start(opts: { appOrigin?: string; authBypass?: boolean; objects?: ObjectStore; now?: () => Date; release?: string; projects?: MemoryProjectStore; store?: MemoryLogStore; assets?: AssetStore } = {}): Promise<Running> {
+export async function start(opts: { appOrigin?: string; authBypass?: boolean; objects?: ObjectStore; now?: () => Date; release?: string; projects?: MemoryProjectStore; store?: MemoryLogStore; assets?: AssetStore; auth?: MemoryAuthStore } = {}): Promise<Running> {
   const store = opts.store ?? new MemoryLogStore()
   const renders = new MemoryRenderStore(opts.objects)
   // A store of the test's own, for a test about what the server does while the store is answering.
@@ -166,7 +166,7 @@ export async function start(opts: { appOrigin?: string; authBypass?: boolean; ob
   const host = new TableHost(registry, store, undefined, renders)
   const mail = new MemoryMailer()
   const authBypass = opts.authBypass ? { authBypass: true } : {}
-  const server = createServer({ host, store, registry, renders, projects, assets: opts.assets ?? new MemoryAssetStore(opts.objects), surveys: new MemorySurveyStore(), auth: new MemoryAuthStore(), mailer: mail, publicOrigin: 'http://test.local', ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(opts.objects ? { objects: opts.objects } : {}), ...(opts.now ? { now: opts.now } : {}), ...(opts.release ? { release: opts.release } : {}), ...authBypass })
+  const server = createServer({ host, store, registry, renders, projects, assets: opts.assets ?? new MemoryAssetStore(opts.objects), surveys: new MemorySurveyStore(), auth: opts.auth ?? new MemoryAuthStore(), mailer: mail, publicOrigin: 'http://test.local', ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(opts.objects ? { objects: opts.objects } : {}), ...(opts.now ? { now: opts.now } : {}), ...(opts.release ? { release: opts.release } : {}), ...authBypass })
   const port = await listenInBand(server)
   const run: Running = {
     server,

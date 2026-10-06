@@ -7,9 +7,9 @@ import { CardPreview } from '../editor/CardPreview.js'
 import { CARD_PX } from '../editor/corner.js'
 import { previewIcons } from '../editor/assets.js'
 import { previewFonts } from '../editor/fonts.js'
-import { logout, myCards, myPlayed, myProjects, removeProject, runningTables, startTable, whoAmI, type Played, type ProjectSummary, type RunningTable } from './api.js'
+import { duplicateProject, logout, myCards, myPlayed, myProjects, removeProject, renameProject, runningTables, startTable, whoAmI, type Played, type ProjectSummary, type RunningTable } from './api.js'
 import { tvUrl } from '../editor/tableLinks.js'
-import { ExportDialog, ImportDialog } from './GameDialogs.js'
+import { ExportDialog, ImportDialog, RenameDialog } from './GameDialogs.js'
 import { GameMenu } from './GameMenu.js'
 import { marked } from './marked.js'
 import { seatColor } from '../table/seatColor.js'
@@ -41,6 +41,8 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   // The game being exported, and whether a game is being brought in (G5, #529).
   const [exporting, setExporting] = useState<ProjectSummary | null>(null)
   const [importing, setImporting] = useState(false)
+  // The game being renamed (#909): its name is changed in its log, as the editor changes it.
+  const [renaming, setRenaming] = useState<ProjectSummary | null>(null)
   const listed = useRef<ProjectSummary[] | null>(null)
   listed.current = projects
   const [played, setPlayed] = useState<Played[] | null>(null)
@@ -322,18 +324,50 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                         {t((running[p.id] ?? []).length > 0 ? 'home.menu.start.new' : 'home.menu.start')}
                       </button>
                     )}
-                    {/* A game is the owner's and the co-editors' to take away with them (G5, #527);
+                    {/* The editor's own choices for the whole game (#738, #909): its name, a copy of
+                        it and taking it with you are the owner's and the co-editors' (G5, #527);
                         the others see no control the server would refuse them. */}
                     {canEdit(roleOf(p)) && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMenu(null)
-                          setExporting(p)
-                        }}
-                      >
-                        {t('home.menu.export')}
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMenu(null)
+                            setRenaming(p)
+                          }}
+                        >
+                          {t('home.menu.rename')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMenu(null)
+                            setRefocus({ to: p.id })
+                            void duplicateProject(http, p.id, t).then(
+                              async (copy) => {
+                                // The cards with the list, as after an import (#725), so the copy's
+                                // tile is drawn whole and not left waiting for its card.
+                                const [projects, cards] = await Promise.all([myProjects(http), myCards(http)])
+                                setProjects(projects)
+                                setCards(cards)
+                                say?.('polite', t('home.duplicated', { name: copy.name }))
+                              },
+                              (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
+                            )
+                          }}
+                        >
+                          {t('home.menu.duplicate')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMenu(null)
+                            setExporting(p)
+                          }}
+                        >
+                          {t('home.menu.export')}
+                        </button>
+                      </>
                     )}
                     {canDelete(roleOf(p)) && (
                       <button
@@ -389,6 +423,24 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           onClose={() => {
             setRefocus({ to: exporting.id })
             setExporting(null)
+          }}
+        />
+      )}
+      {renaming && (
+        <RenameDialog
+          game={renaming}
+          onRename={(name) => {
+            const game = renaming
+            setRenaming(null)
+            setRefocus({ to: game.id })
+            void renameProject(http, game.id, name, t).then(
+              () => setProjects((list) => (list ?? []).map((x) => (x.id === game.id ? { ...x, name } : x))),
+              (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
+            )
+          }}
+          onClose={() => {
+            setRefocus({ to: renaming.id })
+            setRenaming(null)
           }}
         />
       )}
