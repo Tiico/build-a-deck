@@ -30,6 +30,11 @@ const out = []
 for (const v of VARIANTS) for (const path of ['start>editor', 'join>play']) {
   const L = links[v]
   const [from, to] = path.split('>')
+  // En färsk plats, som rumsvalet själv skulle ha gett (en oanvänd token löper ut efter två minuter).
+  if (to === 'play') for (const seat of ['A', 'B', 'C', 'D']) {
+    const r = await fetch(`${L.origin}/rooms/${L.code}/join`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Ada', seat }) })
+    if (r.status === 201) { L.urls.play = `/play?${new URLSearchParams({ session: L.session, name: 'Ada', token: (await r.json()).token, seat })}`; break }
+  }
   const phone = from === 'join'
   const ctx = await browser.newContext({ viewport: phone ? { width: 390, height: 844 } : { width: 1440, height: 900 }, deviceScaleFactor: 1, colorScheme: SCHEME, locale: 'sv-SE', hasTouch: phone, isMobile: phone })
   await ctx.addCookies([{ name: L.cookie.split('=')[0], value: L.cookie.split('=').slice(1).join('='), url: L.origin }])
@@ -51,12 +56,14 @@ for (const v of VARIANTS) for (const path of ['start>editor', 'join>play']) {
   await page.evaluate(`location.href = ${JSON.stringify(L.urls[to])}`)
   await page.waitForTimeout(9000)
   await cdp.send('Page.stopScreencast')
-  const after = frames.filter((f) => f.ts >= t0 - 50)
-  const ws = after.map((f) => white(f.data))
-  const whites = ws.filter((x) => x >= 0.5).length
-  const firstNew = after.findIndex((f, i) => i > 0 && f.data !== after[0].data)
-  const r = { v, path, frames: after.length, whiteFrames: whites, firstChange: firstNew > 0 ? Math.round(after[firstNew].ts - t0) : null }
-  if (firstNew > 0) writeFileSync(join(OUT, 'img', `nav-${v}-${from}-${to}-${SCHEME}.jpg`), Buffer.from(after[firstNew].data, 'base64'))
+  // Den gamla sidan är den sista ramen före bytet; den första ram som skiljer sig från den är
+  // nästa sidas första målning (Chromium håller kvar den gamla tills dess).
+  const old = [...frames].reverse().find((f) => f.ts < t0)
+  const after = frames.filter((f) => f.ts >= t0)
+  const whites = after.filter((f) => white(f.data) >= 0.5).length
+  const first = after.find((f) => f.data !== old?.data)
+  const r = { v, path, frames: after.length, whiteFrames: whites, firstChange: first ? Math.round(first.ts - t0) : null, firstWhite: first ? Math.round(white(first.data) * 100) : null }
+  if (first) writeFileSync(join(OUT, 'img', `nav-${v}-${from}-${to}-${SCHEME}.jpg`), Buffer.from(first.data, 'base64'))
   out.push(r)
   console.log(JSON.stringify(r))
   await ctx.close()

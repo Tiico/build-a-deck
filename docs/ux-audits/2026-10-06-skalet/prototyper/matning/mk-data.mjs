@@ -2,6 +2,7 @@
 // Bilderna kodas om till JPEG (kvalitet 72) så att mappen håller sig liten.
 //
 //   node mk-data.mjs <ut-katalog> <results-fil> [fler results-filer…]
+import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -14,11 +15,19 @@ const files = process.argv.slice(3)
 const IMG = join(HERE, '..', 'img')
 mkdirSync(IMG, { recursive: true })
 
-const rows = files.flatMap((f) => JSON.parse(readFileSync(join(OUT, f), 'utf8')))
+// En senare fil vinner över en tidigare för samma variant, route och läge (en ommätning av bara
+// det strypta passet behåller kontrasten och utan-JS-raden från det första).
+const merged = new Map()
+for (const r of files.flatMap((f) => JSON.parse(readFileSync(join(OUT, f), 'utf8')))) {
+  const k = `${r.v}/${r.route}/${r.scheme}`
+  merged.set(k, { ...merged.get(k), ...r })
+}
+const rows = [...merged.values()]
 const sizes = JSON.parse(readFileSync(join(OUT, 'sizes.json'), 'utf8'))
 const nav = existsSync(join(OUT, 'nav-nu_a_b_c_d_b0-light.json')) ? JSON.parse(readFileSync(join(OUT, 'nav-nu_a_b_c_d_b0-light.json'), 'utf8')) : []
 
 // Bilden i den storlek den visas i: en TV halveras, telefonen står kvar.
+const seen = new Map()
 function copy(src, dst) {
   const from = join(OUT, 'img', src)
   if (!existsSync(from)) return null
@@ -28,7 +37,12 @@ function copy(src, dst) {
     img = { width: p.width, height: p.height, data: p.data }
     if (img.width > 1000) img = half(img)
   } else img = jpegjs.decode(readFileSync(from), { useTArray: true })
-  writeFileSync(join(IMG, dst), jpegjs.encode(img, 72).data)
+  // En ram som redan finns (ett skal som stod still mellan 5,5 s och övertagandet) sparas en gång.
+  const bytes = jpegjs.encode(img, 72).data
+  const key = createHash('sha1').update(bytes).digest('hex')
+  if (seen.has(key)) return seen.get(key)
+  seen.set(key, dst)
+  writeFileSync(join(IMG, dst), bytes)
   return dst
 }
 function half(img) {
@@ -43,10 +57,13 @@ function half(img) {
 const MOMENTS = { '1s': '1s', '55s': '55s', fore: 'fore', efter: 'efter' }
 const data = rows.map((r) => {
   const t = r.throttled ?? {}
-  const keep = r.scheme === 'dark' || r.v === 'nu' || r.v === 'b'
+  // Mappen ska hålla sig under ~2,5 MB. Skalen är mörka i båda systemlägena, så ljust läge får
+  // bara vid 1 s, och bara för Nu och B. B0 är en teknisk jämförelse och får bara 1 s och 5,5 s.
+  // Utan JS ser varje route likadan ut, så den bilden tas på TV:n, telefonen och editorn.
+  const want = (k) => (r.scheme === 'light' ? k === '1s' && (r.v === 'nu' || r.v === 'b') : r.v !== 'b0' || k === '1s' || k === '55s')
   const img = {}
-  if (keep) for (const [k, m] of Object.entries(MOMENTS)) img[k] = copy(`${r.v}-${r.route}-${r.scheme}-${m}.jpg`, `${r.v}-${r.route}-${r.scheme}-${k}.jpg`)
-  if (r.scheme === 'dark') img.nojs = copy(`${r.v}-${r.route}-dark-nojs.png`, `${r.v}-${r.route}-nojs.jpg`)
+  for (const [k, m] of Object.entries(MOMENTS)) if (want(k)) img[k] = copy(`${r.v}-${r.route}-${r.scheme}-${m}.jpg`, `${r.v}-${r.route}-${r.scheme}-${k}.jpg`)
+  if (r.scheme === 'dark' && r.v !== 'b0' && ['tv', 'play', 'editor'].includes(r.route)) img.nojs = copy(`${r.v}-${r.route}-dark-nojs.png`, `${r.v}-${r.route}-nojs.jpg`)
   const min = (xs) => (xs && xs.length ? Math.min(...xs.map((c) => c.ratio)) : null)
   return {
     v: r.v, route: r.route, scheme: r.scheme, img,

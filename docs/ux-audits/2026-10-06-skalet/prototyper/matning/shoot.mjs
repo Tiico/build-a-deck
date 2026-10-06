@@ -14,7 +14,7 @@
 //  3. Utan JavaScript.
 import { chromium } from '@playwright/test'
 import { createRequire } from 'node:module'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -123,9 +123,12 @@ for (const v of VARIANTS) {
 }
 writeFileSync(join(OUT, 'links.json'), JSON.stringify(links, null, 2))
 
-const results = []
-const save = () => writeFileSync(join(OUT, `results-${VARIANTS.join('_')}-${WHICH.join('_')}-${SCHEMES.join('_')}.json`), JSON.stringify(results, null, 2))
+// En körning som avbryts tar vid där den slutade: det som redan är mätt står kvar i filen.
+const FILE = join(OUT, `results-${VARIANTS.join('_')}-${WHICH.join('_')}-${SCHEMES.join('_')}.json`)
+const results = existsSync(FILE) && !process.env['FRESH'] ? JSON.parse(readFileSync(FILE, 'utf8')) : []
+const save = () => writeFileSync(FILE, JSON.stringify(results, null, 2))
 for (const v of VARIANTS) for (const route of WHICH) for (const scheme of SCHEMES) {
+  if (results.some((r) => r.v === v && r.route === route && r.scheme === scheme)) continue
   const res = { v, route, scheme }
   const R = ROUTES[route]
   const scale = R.vp[0] > 1000 ? 0.5 : 1
@@ -159,7 +162,9 @@ for (const v of VARIANTS) for (const route of WHICH) for (const scheme of SCHEME
     const firstNonWhite = ff.find((f) => f.white < 0.5)
     const whiteFrames = ff.filter((f) => f.white >= 0.5 && (m.takeover == null || f.t < m.takeover + 3000))
     const before = [...ff].reverse().find((f) => f.t < m.takeover)
-    const after = ff.find((f) => f.t >= m.takeover)
+    // Appens första ram: den första efter övertagandet som inte är skalets sista (screencastens
+    // tidsstämpel och sidans klocka kan skilja några millisekunder).
+    const after = ff.find((f) => f.t >= m.takeover && (!before || f.data !== before.data))
     res.throttled = {
       responseEnd: Math.round(m.nav ?? 0), cssEnd: Math.round(m.css ?? 0), entryEnd: Math.round(m.entry ?? 0), paint: m.paint, takeover: m.takeover && Math.round(m.takeover),
       firstFrame: firstPainted && Math.round(firstPainted.t), firstNonWhite: firstNonWhite && Math.round(firstNonWhite.t),
@@ -169,7 +174,8 @@ for (const v of VARIANTS) for (const route of WHICH) for (const scheme of SCHEME
       frames: ff.length, wall: Date.now() - t0,
     }
     for (const [name, ms] of [['1s', 1000], ['3s', 3000], ['55s', 5500]]) {
-      const f = [...ff].reverse().find((x) => x.t <= ms)
+      // Den ram som stod på skärmen då: också en från före navigeringen, om inget nytt målats sedan.
+      const f = [...fs].reverse().find((x) => x.t <= ms)
       const file = `${v}-${route}-${scheme}-${name}.jpg`
       if (f) writeFileSync(join(OUT, 'img', file), Buffer.from(f.data, 'base64'))
       res.throttled[`f${name}`] = f ? { file, white: Math.round(f.white * 100), mean: f.mean } : null
