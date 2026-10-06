@@ -759,7 +759,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             moreRef.current?.focus()
             void removeProject(http, projectId, t).then(goHome, (err: unknown) => {
               setRemoving(null)
-              setNotice(err instanceof Error ? err.message : String(err))
+              setNotice(saidOr(err, t('error.removeGame.failed')))
             })
           }}
         >

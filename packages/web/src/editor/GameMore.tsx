@@ -3,6 +3,7 @@ import { GameMenu } from '../account/GameMenu.js'
 import { ExportDialog, RenameDialog } from '../account/GameDialogs.js'
 import { duplicateProject } from '../account/api.js'
 import { useT } from '../i18n/index.js'
+import { saidOr } from '../i18n/said.js'
 
 export type GameMoreProps = {
   http: string
@@ -47,7 +48,7 @@ export function GameMore({ http, game, more: given, onShare, onRename, onSaid, o
       const copy = await duplicateProject(http, game.id, t)
       onSaid(t('home.duplicated', { name: copy.name }))
     } catch (err) {
-      onFailed(err instanceof Error ? err.message : String(err))
+      onFailed(saidOr(err, t('error.duplicateGame.failed')))
     }
   }
   return (
