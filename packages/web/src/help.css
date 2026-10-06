@@ -38,3 +38,6 @@
 
 /* On the room's own television the question mark is at K26's floor too (#573): read from the sofa. */
 [data-tv][data-room] .byd-help-ask > span { width: 36px; height: 36px; font-size: 24px; }
+/* And the target shrinks to that ring's footprint, not to the 22 px one's: drawn to 22 px the 36 px
+   ring hung 7 px outside the edge of the column it stands in (#921). */
+[data-tv][data-room] .byd-help .byd-help-ask { margin: calc((36px - var(--byd-tap, 44px)) / 2); }

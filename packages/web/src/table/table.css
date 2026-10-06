@@ -1218,6 +1218,9 @@
 [data-tv][data-room] .byd-shortcut-open > span { width: 40px; height: 40px; font-size: 24px; }
 /* The room's television has a second «?», under the room code, so this one says its name (#684). */
 [data-tv][data-room] .byd-shortcut-open { width: auto; grid-auto-flow: column; gap: 12px; padding: 0 16px 0 8px; }
+/* In the column (#875) the disc stands on the column's edge like the help's above it (#921): the
+   button reaches out by its own left padding, not by the felt corner's 5 px. */
+[data-tv][data-room] .byd-tv-corner .byd-shortcut-open { margin-left: -8px; }
 [data-tv][data-room] .byd-shortcut-open > b { color: var(--byd-felt-chalk-off); font: 700 24px/1 var(--byd-felt-font, system-ui, sans-serif); }
 [data-tv][data-room] .byd-shortcut-open:hover > b, [data-tv][data-room] .byd-shortcut-open:focus-visible > b, [data-tv][data-room] .byd-shortcut-open[aria-expanded='true'] > b { color: var(--byd-felt-chalk); }
 /* The shortcuts behind it, at the floor too (#684). The keys get two fifths of the row and wrap
