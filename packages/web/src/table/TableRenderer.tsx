@@ -1775,7 +1775,10 @@ function ringLabel(view: Snapshot, target: Ring['target'], t: T): string | undef
 
 // The verbs a drag cannot say (C): for a card, for a pile, for a chip, and for a pile of chips.
 // Whether an action does nothing but what one of the ring's own verbs does (#719).
-const echoesRing = (a: ZoneAction): boolean => a.steps.length === 1 && (a.steps[0]!.v === 'shuffle' || (a.steps[0]!.v === 'flipTop' && a.steps[0]!.face === 'toggle'))
+const echoesRing = (a: ZoneAction): boolean => {
+  const [only, ...more] = a.steps
+  return only !== undefined && more.length === 0 && (only.v === 'shuffle' || (only.v === 'flipTop' && only.face === 'toggle'))
+}
 
 function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void, enter: (c: VisibleComponentState) => void, move: (() => void) | undefined, t: T): RadialItem[] {
   const target = ring.target
