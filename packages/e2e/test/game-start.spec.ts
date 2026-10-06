@@ -124,3 +124,59 @@ test.describe('bordet ett nytt spel föds med', () => {
     expect(await screen.page.locator(`[data-zone="${doc.setup.deckZone}"]`).first().getAttribute('data-count')).toBe('8')
   })
 })
+
+// Vad TV:n visar när starten bara blandar (#718, beställarens beslut C). En blandning ändrar
+// ingenting man ser efteråt, och fläkten (L35) var några pixlar kortkant bakom en hög på 80 px i en
+// halv sekund: från soffan hände ingenting, och en ny värd tryckte igen. På TV:n fläktas korten
+// därför ut mycket längre och längre tid, och «Draghög blandad» står under högen i tre sekunder.
+// Fläktens kort ritade dessutom en trasig bild så länge baksidan inte var renderad.
+test.describe('starten på TV:n syns från soffan (#718)', () => {
+  test('fläktar högen långt ut och säger att den blandades, och ritar ingen trasig bild', async ({ request, open, player }) => {
+    const doc = gameDoc({ players: 2, counters: [], cards: 8 })
+    const table = await tableFromSetup(request, setupFromProject(doc), deckFromProject(doc))
+    await player(table, { name: 'Ada', seat: 'A' })
+    const screen = await open(TV, `${table.tvUrl}&lang=sv`)
+    const page = screen.page
+    const tile = page.locator('[data-table-start]')
+    await expect(tile).toBeVisible()
+    const pile = page.locator(`.byd-pile[data-zone="${doc.setup.deckZone}"]`)
+
+    await tile.click()
+    const pressed = Date.now()
+    // Sagt på filten inom en sekund, under högen den gäller.
+    const said = pile.locator('.byd-pile-said')
+    await expect(said).toHaveText('Draghög blandad', { timeout: 1000 })
+    expect(Date.now() - pressed).toBeLessThan(1000)
+
+    // Hur långt fläktens kort når utanför högen, i högens bredd, under fläktens första sekund.
+    let widest = 0
+    let broken = 0
+    while (Date.now() - pressed < 1000) {
+      const seen = await pile.evaluate((el) => {
+        const box = el.getBoundingClientRect()
+        const cards = [...el.querySelectorAll<HTMLElement>('.byd-pile-fan-card')]
+        const out = Math.max(0, ...cards.map((c) => { const r = c.getBoundingClientRect(); return Math.max(box.left - r.left, r.right - box.right) / box.width }))
+        // En bild som inte laddats är webbläsarens trasiga bild, om inget täcker den: varje sådan
+        // ska ligga under ett ritat täcke lika stort som den. (Fläkten tar ingen pekare, så
+        // `elementFromPoint` ser den aldrig och kan inte svara på det.)
+        const torn = [...el.querySelectorAll<HTMLImageElement>('.byd-pile-fan-card img')].filter((img) => {
+          if (img.naturalWidth > 0) return false
+          const cover = img.nextElementSibling as HTMLElement | null
+          if (!cover || getComputedStyle(cover).display === 'none' || getComputedStyle(cover).visibility === 'hidden') return true
+          const a = img.getBoundingClientRect()
+          const b = cover.getBoundingClientRect()
+          return b.left > a.left + 1 || b.top > a.top + 1 || b.right < a.right - 1 || b.bottom < a.bottom - 1
+        }).length
+        return { out, torn }
+      })
+      widest = Math.max(widest, seen.out)
+      broken = Math.max(broken, seen.torn)
+      await page.waitForTimeout(40)
+    }
+    expect(widest, 'the fan reaches well beyond the pile').toBeGreaterThan(0.5)
+    expect(broken).toBe(0)
+
+    // Och raden går när den sagt sitt.
+    await expect(said).toHaveCount(0, { timeout: 4000 })
+  })
+})

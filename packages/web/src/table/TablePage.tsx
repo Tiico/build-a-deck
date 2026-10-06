@@ -7,7 +7,7 @@ import { useTableClient } from './useTableClient.js'
 import { previewOf, standingRewind } from './rewind.js'
 import { usePresence, useRecent } from './usePresence.js'
 import { useShowing } from './useShowing.js'
-import { useShuffles } from './shuffle.js'
+import { SAID_MS, SHUFFLE_MS, SHUFFLE_TV_MS, useShuffles } from './shuffle.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { useFeltKeyboard } from './useFeltKeyboard.js'
 import { useActivityLive } from './useActivityLive.js'
@@ -101,7 +101,9 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   const recent = useRecent(activity)
   // Which piles are being shuffled right now (L35): played by the line, on this screen as on
   // every other that sees the pile, and never for the lines the snapshot brought.
-  const shuffles = useShuffles(activity, view !== null)
+  const shuffles = useShuffles(activity, view !== null, mode === 'tv' ? SHUFFLE_TV_MS : SHUFFLE_MS)
+  // And on the television, the words under the pile (#718).
+  const said = useShuffles(activity, view !== null && mode === 'tv', SAID_MS, SAID_MS)
   // The felt as controls (#2): the table screen plays as the table itself, so what it can reach
   // is what a table may see.
   const playable = view !== null && !view.rewind && !view.ended && client !== null
@@ -159,6 +161,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       pulses={presence.pulses}
       recent={recent}
       shuffles={shuffles}
+      said={said}
       // The lens /online has had since #502, on the table's own screen too (#720, C5): the wheel,
       // a pinch, a double press on the bare felt and the corner's buttons. The TV has a camera.
       lens={mode === 'table'}
