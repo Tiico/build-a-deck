@@ -80,6 +80,7 @@ test.describe('the television chrome that opens (#684)', () => {
   test('says the cards still being drawn at the floor, and the start waits for them', async ({ request, open, player }) => {
     // Faces nothing else in the run has: a texture is addressed by what it draws, and a journey
     // that starts a renderer (`render.ts`) leaves the recipe's cards rendered in a shared database.
+    // The back is the recipe's and may already be done, so the count is read as a count, not as 0.
     const nonce = crypto.randomUUID()
     const recipe = gameThatStarts()
     const doc = { ...recipe, rows: recipe.rows.map((r) => ({ ...r, fields: { ...r.fields, body: `${String(r.fields['body'])} ${nonce}` } })) }
@@ -87,10 +88,10 @@ test.describe('the television chrome that opens (#684)', () => {
     await player(table, { name: 'Ada', seat: 'A' })
     const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
     const line = page.locator('.byd-tv-render')
-    await expect(line).toHaveText(/^Korten ritas0 av \d+$/)
+    await expect(line).toHaveText(/^Korten ritas\d+ av \d+$/)
     expect(await underFloor(page, '.byd-tv-render')).toEqual([])
     await expect(page.locator('[data-table-start]')).toBeDisabled()
-    await expect(page.locator('[data-table-start]')).toHaveText(/^Starta speletkorten ritas · 0\/\d+$/)
+    await expect(page.locator('[data-table-start]')).toHaveText(/^Starta speletkorten ritas · \d+\/\d+$/)
   })
 
   test('opens the way in’s help at the floor', async ({ tableOf, open }) => {
