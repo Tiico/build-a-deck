@@ -1,0 +1,14 @@
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Starten på TV:n #718</title><style>
+:root { --bg: #f6f6f4; --ink: #1c1d21; --quiet: #5b5f6a; --line: #d9d9d4; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #14161c; --ink: #e8eaf0; --quiet: #9aa3b8; --line: #2c3242; } }
+:root[data-theme="dark"] { --bg: #14161c; --ink: #e8eaf0; --quiet: #9aa3b8; --line: #2c3242; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, sans-serif; } main { max-width: 1320px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 22px; margin: 0 0 4px; } p { max-width: 70ch; color: var(--quiet); } section { margin: 32px 0; } h2 { font-size: 17px; margin: 0 0 4px; }
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr); gap: 12px; align-items: start; } @media (max-width: 700px) { .pair { grid-template-columns: 1fr; } }
+img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; }
+</style></head><body><main><h1>Vad TV:n visar när «Starta spelet» trycks (#718)</h1><p>Den byggda appen vid 1920 × 1080, fyra platser, en start som blandar draghögen. Bilderna är fläktens topp, ungefär 200 ms efter trycket; vänster närbild, höger hela TV:n.</p>
+<section><h2>I dag</h2><p>Fläkten (L35) spelas på TV:n, men vid 1920 är den några pixlar kortkant bakom en 80 px hög hög i en halv sekund — från soffan syns ingenting. (Fläktens kort ritar dessutom en trasig bild när baksidan inte är renderad än; det rättas oavsett variant.)</p><div class="pair"><img src="bilder/idag-nara.png" alt="I dag, närbild"><img src="bilder/idag.png" alt="I dag, hela TV:n"></div></section>
+<section><h2>A — större och längre fläkt på TV:n</h2><p>Samma rörelse, men på TV:n fläktas korten ut 2,6 gånger så långt och vrids dubbelt, på 1,2 s. Inga ord; rörelsen är beskedet.</p><div class="pair"><img src="bilder/A-nara.png" alt="A — större och längre fläkt på TV:n, närbild"><img src="bilder/A.png" alt="A — större och längre fläkt på TV:n, hela TV:n"></div></section>
+<section><h2>B — fläkten som i dag, och en rad på filten</h2><p>«Draghög blandad» står under högen i tre sekunder och tonar bort. Säger vad som hände, även för den som tittade bort under halvsekunden.</p><div class="pair"><img src="bilder/B-nara.png" alt="B — fläkten som i dag, och en rad på filten, närbild"><img src="bilder/B.png" alt="B — fläkten som i dag, och en rad på filten, hela TV:n"></div></section>
+<section><h2>C — båda (rekommenderad)</h2><p>Den större fläkten drar blicken dit, och raden säger vad den såg. Raden står kvar efter rörelsen, så den som tittar upp en sekund för sent ser också att starten tog.</p><div class="pair"><img src="bilder/C-nara.png" alt="C — båda (rekommenderad), närbild"><img src="bilder/C.png" alt="C — båda (rekommenderad), hela TV:n"></div></section>
+</main></body></html>
