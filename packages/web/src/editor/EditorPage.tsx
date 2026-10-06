@@ -16,6 +16,7 @@ import { MediaPanel } from './MediaPanel.js'
 import { MarkedProvider } from './marked.js'
 import { HistoryPanel } from './HistoryPanel.js'
 import { GameMore } from './GameMore.js'
+import { marked } from '../account/marked.js'
 import { RulesPanel } from './RulesPanel.js'
 import { SharePanel, colourOf } from './SharePanel.js'
 import { tvUrl } from './tableLinks.js'
@@ -24,7 +25,7 @@ import { useProjectClient, type ProjectTiming } from './useProjectClient.js'
 import type { ProjectDoc } from '@byd/server'
 import { useTableClient } from '../table/useTableClient.js'
 import { TableEnded, type ProjectClient, type Textures } from './ProjectClient.js'
-import { loginUrl } from '../account/api.js'
+import { loginUrl, removeProject } from '../account/api.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
 import { noticeFor, refusalText, loggedOutNotice, asOf, unlinked } from '../status/notice.js'
@@ -108,6 +109,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const [leaving, setLeaving] = useState(false)
   const [refocusLeave, setRefocusLeave] = useState(false)
   const leaveRef = useRef<HTMLAnchorElement>(null)
+  // The question asked before the game is taken away from its ⋯ (#738), the ⋯ the keys go back to
+  // when it is answered «Behåll», and whether the game is on its way out: the server tells every
+  // open editor that a deleted game is gone, and this one is leaving for «Mina spel», not lost.
+  const [removing, setRemoving] = useState<'asking' | 'gone' | null>(null)
+  const moreRef = useRef<HTMLButtonElement>(null)
   // Where the keyboard goes once a press has taken away what it was standing on (#477): the
   // comparison a version was compared from, or the element that was chosen on a card on the wall.
   // Moved after the render that draws it, because it is not there until then.
@@ -314,6 +320,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   if (fault && fault !== 'loggedOut' && !client) return <StatusNotice notice={noticeFor(fault, 'editor', t)} surface="page" links={links} onRetry={retry} />
   if (!client) return <StatusNotice notice={noticeFor(slow ? 'slow' : 'loading', 'editor', t)} surface="page" links={links} onRetry={retry} />
   const doc = client.doc
+  // A game this editor has just taken away is not a game that was lost (#738): it is on its way to
+  // «Mina spel», and the server's word that it is gone is not said over it.
+  const shownFault = removing === 'gone' ? null : fault
   if (PlaytestPrototype && params.has('variant')) return <Suspense fallback={<p>Laddar prototyp…</p>}><PlaytestPrototype doc={doc} revision={client.rev} http={http} /></Suspense>
 
   // The one guard, so the button's greyed-out look and the chord's answer are the same rule said
@@ -619,7 +628,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
 
   return (
     <>
-    <div className="byd-editor" data-page="editor" data-mode={mode} data-room={room} {...(!client.mayEdit ? { 'data-readonly': '' } : {})} {...(fault ? { inert: true } : {})}>
+    <div className="byd-editor" data-page="editor" data-mode={mode} data-room={room} {...(!client.mayEdit ? { 'data-readonly': '' } : {})} {...(shownFault ? { inert: true } : {})}>
       <header>
         <a
           ref={leaveRef}
@@ -640,7 +649,18 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         <h1 className="byd-editor-name">
           <strong>{doc.name}</strong>
         </h1>
-        {client.mayEdit && projectId && <GameMore http={http} game={{ id: projectId, name: doc.name, rev: client.rev }} onShare={() => setOver('share')} />}
+        {client.mayEdit && projectId && (
+          <GameMore
+            http={http}
+            game={{ id: projectId, name: doc.name, rev: client.rev }}
+            more={moreRef}
+            onShare={() => setOver('share')}
+            onRename={(name) => client.rename(name)}
+            onSaid={confirmation.confirm}
+            onFailed={setNotice}
+            {...(client.mayDelete ? { onRemove: () => setRemoving('asking') } : {})}
+          />
+        )}
         {/* The revision is also the way into the history (B4): the version is already named here. */}
         <button ref={revRef} type="button" className="byd-editor-rev" aria-expanded={historyOpen} onClick={() => setOver((on) => (on === 'history' ? null : 'history'))}>
           {t('editor.rev', { n: client.rev })}
@@ -720,6 +740,30 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           {/* The game's own name goes into the sentence rather than beside it: what a designer
               named her game is hers and is never translated (A4, B5). */}
           {t('editor.leave.body', { game: doc.name })}
+        </Question>
+      )}
+      {/* The same question «Mina spel» asks (G1, #738), in the same words, standing where the
+          leave question stands: across the way out. Its tables end with it (#676). */}
+      {removing === 'asking' && projectId && (
+        <Question
+          className="byd-editor-leave byd-editor-remove"
+          label={t('home.remove.title')}
+          confirm={t('home.remove.confirm')}
+          cancel={t('home.remove.keep')}
+          onCancel={() => {
+            setRemoving(null)
+            moreRef.current?.focus()
+          }}
+          onConfirm={() => {
+            setRemoving('gone')
+            moreRef.current?.focus()
+            void removeProject(http, projectId, t).then(goHome, (err: unknown) => {
+              setRemoving(null)
+              setNotice(err instanceof Error ? err.message : String(err))
+            })
+          }}
+        >
+          {marked(t('home.remove.ask'), { name: <b>{doc.name}</b> })}
         </Question>
       )}
       {table && (
@@ -865,7 +909,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     </div>
     {/* A game deleted while it was open (#485): said over the work, which stays on the page and
         out of reach, rather than in place of it. */}
-    {fault && <StatusNotice notice={fault === 'loggedOut' ? loggedOutNotice(t) : noticeFor(fault, 'editor', t)} surface="card" links={links} onRetry={retry} />}
+    {shownFault && <StatusNotice notice={shownFault === 'loggedOut' ? loggedOutNotice(t) : noticeFor(shownFault, 'editor', t)} surface="card" links={links} onRetry={retry} />}
     </>
   )
 }

@@ -244,6 +244,15 @@ export const svAccount = {
   'wizard.example.3.body': 'Gör 3 {svärd|anfall}.',
 
   // Att ta med sig ett spel och ta tillbaka det (G5, #529): export och import i Mina spel.
+  'error.duplicateGame.failed': 'kunde inte dubblera spelet; försök igen om en stund',
+  // The game's own choices in the editor's ⋯ (#738): its name, and a second game made of it.
+  'home.menu.rename': 'Byt namn…',
+  'home.menu.duplicate': 'Dubblera',
+  'home.rename.title': 'Byt namn på «{name}»',
+  'home.rename.field': 'Spelets namn',
+  'home.rename.confirm': 'Byt namn',
+  'home.rename.cancel': 'Avbryt',
+  'home.duplicated': '«{name}» ligger nu i Mina spel.',
   'home.menu.export': 'Exportera…',
   'home.dialog.close': 'Stäng',
   'home.export.title': 'Exportera «{name}»',
