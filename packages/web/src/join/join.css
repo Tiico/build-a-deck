@@ -263,29 +263,20 @@
    names nothing, is a form for the code: the same page and the same field as the name on the
    picker, with the code read as a code — wide-set, upper case, monospaced. */
 .byd-join-code { grid-template-rows: auto auto; align-content: start; }
-.byd-join-code > header h1 { font-size: 26px; }
-.byd-join-code form { gap: 14px; }
 .byd-join-lead { margin: 0; color: #9aa3b8; font-size: 15px; line-height: 1.5; }
-/* Said at the field whether it came with the page or from a press, in the alert's own tone. */
-.byd-join .byd-code-says { margin: 0; color: #ffb3ad; font-size: 13px; font-weight: 700; }
-.byd-join-code input {
-  min-height: 56px; box-sizing: border-box; text-align: center; text-transform: uppercase;
-  font: 700 24px/1 ui-monospace, 'SF Mono', Menlo, monospace; letter-spacing: 0.3em;
-}
+.byd-join-code input { text-align: center; text-transform: uppercase; font: 700 24px/1 ui-monospace, Menlo, monospace; letter-spacing: 0.3em; }
 
 /* A laptop opening the address sees a card and not a phone stretched across the screen (#675): the
    page as one column of 520 px, in the login card's form, on the account's darker ground. The card
    is the seat picker's own ground, so every contrast measured on the phone holds on it unchanged.
    From 700 px, where the column stops filling the window. */
-.byd-join-page { --byd-join-page-bg: #0f1117; }
 @media (min-width: 700px) {
-  .byd-join-page { min-height: 100vh; box-sizing: border-box; display: grid; place-items: center; padding: 32px 20px; background: var(--byd-join-page-bg); }
+  .byd-join-page { min-height: 100vh; box-sizing: border-box; display: grid; place-items: center; padding: 32px 20px; background: #0f1117; }
   .byd-join-page > .byd-join {
     width: min(520px, 100%); min-height: 0; grid-template-rows: auto auto auto;
     padding: 28px 32px; border: 1px solid #262a35; border-radius: 20px;
   }
-  .byd-join-page > .byd-join > header { text-align: center; }
-  .byd-join-page > .byd-join-code > header { text-align: start; }
+  .byd-join-page > :not(.byd-join-code) > header { text-align: center; }
 }
 /* On a laptop the suggestion is to play on this screen (#675, beslut 3): the sentence is the first
    action, so it is read larger than the sentences under it, and «Sätt dig» beside it at the same
