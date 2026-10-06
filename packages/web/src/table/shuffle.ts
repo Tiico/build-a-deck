@@ -13,6 +13,12 @@ export type Shuffle = { pile: string; seq: number }
 // motion is off — not damped — and what is left is an amber pulse on the pile, 420 ms.
 export const SHUFFLE_MS = 560
 export const SHUFFLE_PULSE_MS = 420
+// On the room's television the fan is the start's only answer from the couch (#718, beslut C):
+// there it reaches 2.6 times as far, turns twice as much, and takes 1.2 s — `table.css` says the
+// motion, this says how long the fan is mounted. And «Draghög blandad» stands under the pile for
+// three seconds, so that whoever looks up a moment late still sees that the start took.
+export const SHUFFLE_TV_MS = 1200
+export const SAID_MS = 3000
 // Where each of the four fanned backs reaches at the fan's widest: how far out along the card's
 // own width, in per cent of it, and how far it turns. In the card's measure and never in pixels
 // (L35): a pile on the TV is as large as the camera makes it, and a fan written in pixels would be
@@ -63,7 +69,9 @@ const lastSeqOf = (activity: readonly Activity[]): number => activity.reduce((ma
 // just shuffled. So nothing plays until `ready` — the screen has its snapshot — and the lines
 // standing then are the baseline. Only lines newer than the newest seen are events, which also
 // holds across a reconnect, when the client's remembered log is handed over whole.
-export function useShuffles(activity: readonly Activity[], ready: boolean): Shuffle[] {
+// `ms` is how long a shuffle stays, and `stillMs` how long under `prefers-reduced-motion`; the
+// line under the pile asks for the same three seconds either way, since words are not motion.
+export function useShuffles(activity: readonly Activity[], ready: boolean, ms = SHUFFLE_MS, stillMs = SHUFFLE_PULSE_MS): Shuffle[] {
   const [shuffles, setShuffles] = useState<Shuffle[]>([])
   const lastSeq = useRef<number | null>(null)
   const timers = useRef(new Set<ReturnType<typeof setTimeout>>())
@@ -84,9 +92,9 @@ export function useShuffles(activity: readonly Activity[], ready: boolean): Shuf
     const timer = setTimeout(() => {
       timers.current.delete(timer)
       setShuffles((s) => s.filter((x) => !seqs.has(x.seq)))
-    }, isStill() ? SHUFFLE_PULSE_MS : SHUFFLE_MS)
+    }, isStill() ? stillMs : ms)
     timers.current.add(timer)
-  }, [activity, ready])
+  }, [activity, ready, ms, stillMs])
   useEffect(() => {
     const pending = timers.current
     return () => {
