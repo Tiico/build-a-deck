@@ -1108,6 +1108,37 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const lensUp = () => {
     lensPan.current = null
   }
+  // Two fingers over the felt are the lens too (#720): spread, it enlarges about the point between
+  // them, and the page stays as it is — the frame takes the gesture (`touch-action` in `table.css`)
+  // rather than the browser zooming the whole page, the help and the corner with it. Read in the
+  // capture phase, so a finger that lands on a card counts as much as one on the bare felt.
+  const touches = useRef(new Map<number, { x: number; y: number }>())
+  const pinch = useRef<{ d: number; k: number } | null>(null)
+  const spread = () => {
+    const [a, b] = [...touches.current.values()]
+    return a && b ? { d: Math.hypot(a.x - b.x, a.y - b.y), mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } } : null
+  }
+  const pinchDown = (e: RPointerEvent) => {
+    if (!lensOn || e.pointerType !== 'touch') return
+    touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    const now = spread()
+    if (touches.current.size === 2 && now && now.d > 0) {
+      pinch.current = { d: now.d, k: lensAt.k }
+      lensPan.current = null
+    }
+  }
+  const pinchMove = (e: RPointerEvent) => {
+    if (!touches.current.has(e.pointerId)) return
+    touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    const held = pinch.current
+    const now = spread()
+    if (!held || !now) return
+    lensTo(Math.min(lensFloor * LENS_MAX, Math.max(1, (held.k * now.d) / held.d)), now.mid)
+  }
+  const pinchUp = (e: RPointerEvent) => {
+    touches.current.delete(e.pointerId)
+    if (touches.current.size < 2) pinch.current = null
+  }
 
   const doubled = (e: RMouseEvent) => {
     if (turnAgain()) return
@@ -1593,6 +1624,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       onPointerMove={drivable ? panMove : lensOn ? lensMove : undefined}
       onPointerUp={drivable ? panUp : lensOn ? lensUp : undefined}
       onPointerCancel={drivable ? panUp : lensOn ? lensUp : undefined}
+      onPointerDownCapture={lensOn ? pinchDown : undefined}
+      onPointerMoveCapture={lensOn ? pinchMove : undefined}
+      onPointerUpCapture={lensOn ? pinchUp : undefined}
+      onPointerCancelCapture={lensOn ? pinchUp : undefined}
     >
       {placed ? (
         <div className="byd-camera-world" style={{ left: placed.left, top: placed.top, width: px(floorRect.w), height: px(floorRect.h) }}>

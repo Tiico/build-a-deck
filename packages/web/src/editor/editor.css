@@ -413,12 +413,13 @@
 /* What just happened stands at the bottom of the screen and not in the header (#566, beslut D): said
    in the header it squeezed the game's name and, beside the step buttons, took «Spara» and «Starta
    bord» off their own width. It is transient and read out politely, so it lies over the work for
-   the moment it stands, and the header keeps every control whole. */
+   the moment it stands, and the header keeps every control whole. A press on it takes it away and
+   reaches nothing under it (#698). */
 .byd-editor-confirm {
   position: fixed; left: 50%; bottom: var(--byd-s4, 16px); transform: translateX(-50%); z-index: 60;
   max-width: calc(100vw - 32px); padding: var(--byd-s2) var(--byd-s4, 16px); box-sizing: border-box;
   border: 1px solid #3a4152; border-radius: 10px; background: #1b1f29; box-shadow: 0 10px 30px rgb(0 0 0 / 0.5);
-  color: #dce3f2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;
+  color: #dce3f2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default;
 }
 /* Undo and redo for a hand without a keyboard (#566): two 44 px steps beside the save status. */
 .byd-editor-steps { display: inline-flex; gap: 2px; flex: 0 0 auto; }
@@ -1791,9 +1792,12 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 /* Why nothing moved (L15), read beside the card that did not move. */
 /* The question a layer is given before it goes (#143, L9), under the card it draws on. Red and
    not amber: leaving work unsaved is one thing and a deletion another, and this is the second —
-   so it is the palette the table's own delete question is asked in, held to the same bar. It is
-   the third row of a column laid out as `auto 1fr`, and therefore takes only the height it needs
-   while the card goes on filling what is left. */
+   so it is the palette the table's own delete question is asked in, held to the same bar.
+   It lies over the canvas' foot — the card row, and the stage's edge when it needs more than the
+   row (#698) — rather than taking a row of its own: a row took its height from the stage, the fit
+   followed, and the card shrank from 182 % to 164 % in the middle of the act the question was
+   about, and grew back when it was answered. The fit follows the window (L19); a strip is not the
+   window. */
 .byd-canvas-question {
   --byd-editor-ask-bg: #3d2632;
   --byd-editor-ask-ink: #ffe4ea;
@@ -1807,6 +1811,11 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
   background: var(--byd-editor-ask-bg);
   color: var(--byd-editor-ask-ink);
   font-size: 12px;
+}
+/* The locked layer's note stands in the same place for the same reason. */
+.byd-canvas-main > :is(.byd-canvas-question, .byd-canvas-locked) {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 10;
+  box-shadow: 0 -12px 28px rgb(0 0 0 / 0.45);
 }
 .byd-canvas-question p { margin: 0; font-weight: 700; }
 .byd-canvas-question button {

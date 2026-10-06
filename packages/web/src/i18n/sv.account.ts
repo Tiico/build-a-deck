@@ -12,7 +12,9 @@ export const svAccount = {
   // En lead per väg in (#691, beslut 2026-10-06), som claim har sin: första besöket säger att samma
   // länk både loggar in och skapar kontot, inbjudan säger vilket spel den leder till, och guidens
   // utkast att spelet skapas på andra sidan inloggningen.
-  'login.lead.first': 'Logga in eller skapa konto med din e-post — länken i mejlet räcker.',
+  // «e‑post» i en mening skrivs med hårt bindestreck (U+2011, #920): ett vanligt bindestreck är en plats
+  // där raden får brytas, och på en telefon slutade raden på «e-» och fortsatte med «post».
+  'login.lead.first': 'Logga in eller skapa konto med din e\u2011post — länken i mejlet räcker.',
   'login.lead.invite': 'Logga in för att öppna spelet du bjudits in till.',
   'login.lead.invite.named': 'Logga in för att öppna spelet du bjudits in till: {game}.',
   'login.lead.resume': 'Ditt spel skapas när du loggat in.',
@@ -23,9 +25,9 @@ export const svAccount = {
   'login.email.placeholder': 'din@epost.se',
   'login.submit': 'Skicka inloggningslänk',
   'login.error.too-many': 'Vi har redan skickat flera länkar till den adressen. Kolla mejlen, eller vänta en stund.',
-  'login.error.empty': 'Skriv in din e-postadress först.',
+  'login.error.empty': 'Skriv in din e\u2011postadress först.',
   'login.error.at': 'Adressen behöver ett @.',
-  'login.error.invalid': 'Det där ser inte ut som en e-postadress.',
+  'login.error.invalid': 'Det där ser inte ut som en e\u2011postadress.',
   'login.error.failed': 'Det gick inte att skicka. Försök igen.',
   'login.no-password': 'Inget lösenord. Länken i mejlet loggar in dig; första gången skapar den ditt konto.',
   'login.guest': 'Ska du bara spela? Skanna QR-koden på bordet — inget konto behövs.',
@@ -235,7 +237,7 @@ export const svAccount = {
   'error.members.failed': 'Listan över vilka som har spelet kunde inte läsas. Försök igen om en stund.',
   'error.invite.notOwner': 'Bara ägaren kan dela spelet.',
   'error.invite.failed': 'Inbjudan kunde inte skickas. Försök igen om en stund.',
-  'error.invite.address': 'Det där är ingen e-postadress.',
+  'error.invite.address': 'Det där är ingen e\u2011postadress.',
   'error.invite.member': '{email} har redan spelet.',
   'error.invite.pending': '{email} har redan en inbjudan som väntar.',
   'error.unshare.failed': '{email} kunde inte tas bort från spelet. Försök igen om en stund.',
