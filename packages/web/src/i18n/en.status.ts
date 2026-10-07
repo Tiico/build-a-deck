@@ -64,6 +64,13 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'status.slow.editor.heading': 'The game is taking its time',
   'status.slow.editor.text': 'We are still waiting for the server.',
 
+  'status.shell.slow.text': 'We are still fetching the page. It will appear by itself.',
+  'status.shell.slow.table.text': 'We are still fetching the page. Nobody has to do anything yet.',
+  'status.shell.slow.phone.text': 'We are still fetching the page. Your seat is kept.',
+  'status.shell.slow.editor.text': 'We are still fetching the page.',
+  'status.shell.reload': 'Reload the page',
+  'status.shell.noscript': 'build-your-deck needs JavaScript. Turn it on and reload the page.',
+
   'status.spent.mark': 'No longer valid',
   'status.missing.mark': 'Not found',
   'status.missing.heading': 'We cannot find what you asked for',
