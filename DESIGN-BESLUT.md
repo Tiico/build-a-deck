@@ -3371,6 +3371,8 @@ Spalten är gratis på en höjdbunden TV, så raden kostar inte en bildpunkt kor
 Samma väntan gäller på varje yta som ritar brickan på ett levande bord — bordsläget och distansvyn delar ut samma ansiktslösa kort — men bara TV:n har en spalt att säga det i.
 Ett kort som slutligt misslyckats väntas inte på: det sägs av `TextureFailures` (#10), och brickan tänds när resten är klart.
 
+Bord-flikens grupp «Startade, aldrig spelade» fälls ut av sig själv medan ett bord i den renderar kort, så att radens «renderar kort n/m» syns utan klick, och ihop igen när korten är klara — utom om designern själv fällt ut den (beställaren 2026-10-07, #939; grind `packages/web/test/editor-tables-groups.test.tsx`).
+
 **En kö som står still håller inte bordet stängt.**
 När räkningen inte rört sig på #88:s tid (30 s) blir brickan «Starta ändå» med «korten står stilla · 70/323» under, och går att trycka på; spaltens rad säger «Korten står stilla».
 Före det finns ingen väg förbi: en väg förbi från början hade varit A igen.
