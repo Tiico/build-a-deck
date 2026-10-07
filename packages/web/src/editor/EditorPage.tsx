@@ -46,6 +46,9 @@ import type { CatalogFamily } from './font-catalog.js'
 import './editor.css'
 
 const PlaytestPrototype = import.meta.env.DEV ? lazy(() => import('./prototype/PlaytestWorkspace.js')) : null
+// PROTOTYP — kastas (#940): AI-ytan i tre varianter (?ai=A|B|C) och kontots nyckelruta (?ai=nyckel).
+const AiPrototype = import.meta.env.DEV ? lazy(() => import('./prototype/ai/AiPrototype.js')) : null
+const AiAccountPrototype = import.meta.env.DEV ? lazy(() => import('./prototype/ai/AccountKey.js')) : null
 
 // How long the render count may stand still before the line says so (#88, UX-43): the table's own
 // patience, which the TV's start waits by too (#765).
@@ -64,6 +67,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // Before every early return below: a hook after them is called only once the project has come.
   const { lang } = useLang()
   const params = useMemo(() => new URLSearchParams(location.search), [])
+  const ai = AiPrototype ? params.get('ai') : null
   const projectId = params.get('project')
   const http = params.get('server') ?? location.origin
   const { client, fault, slow, retry } = useProjectClient(http, projectId, timing)
@@ -78,6 +82,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const headerStands = useHeaderStands()
   const actionsInHeader = room === 'desk' || headerStands
   const [stage, setStage] = useState<Stage>('wall')
+  // PROTOTYP — kastas (#940): det AI-prototypen vill att editorn ritar i stället för projektet.
+  const [aiView, setAiView] = useState<import('./prototype/ai/session.js').AiView | null>(null)
   // «Ny kod» asks before the code changes, and the band says what changed once it has (#679,
   // beställarens beslut C): the code on the TV and the one just sent stop working on one press.
   const [askingCode, setAskingCode] = useState(false)
@@ -304,6 +310,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     return () => clearTimeout(timer)
   }, [readingSaid])
   const sayReading = (text: string) => setReadingSaid(text)
+  if (AiAccountPrototype && ai === 'nyckel') return <Suspense fallback={null}><AiAccountPrototype /></Suspense>
   if (!projectId) return <StatusNotice notice={unlinked('editor', t)} surface="page" links={links} />
   if (fault === 'unauthorized') {
     // Not logged in (G1): to the login card and back here after.
@@ -314,7 +321,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // way back and — where waiting can help — a way to ask again (#12, UX-07).
   if (fault && fault !== 'loggedOut' && !client) return <StatusNotice notice={noticeFor(fault, 'editor', t)} surface="page" links={links} onRetry={retry} />
   if (!client) return <StatusNotice notice={noticeFor(slow ? 'slow' : 'loading', 'editor', t)} surface="page" links={links} onRetry={retry} />
-  const doc = client.doc
+  const doc = (ai && aiView?.doc) || client.doc
   // A game this editor has just taken away is not a game that was lost (#738): it is on its way to
   // «Mina spel», and the server's word that it is gone is not said over it.
   const shownFault = removing === 'gone' ? null : fault
@@ -537,7 +544,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         assetBase={http}
         onUpload={(file, onto) => client.addPicture(file, t, onto)}
         onSymbol={(symbol) => client.useSymbol(symbol, undefined, t)}
-        compareWith={compare ?? undefined}
+        compareWith={(ai && aiView?.compare) || (compare ?? undefined)}
         onStopCompare={() => setCompare(null)}
         onOpenTemplate={() => setStage('canvas')}
         selectedRow={row}
@@ -899,6 +906,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             {(stages ? here === key : mode === key) && panel[modeOf(key as Stage)]()}
           </div>
         ))}
+        {AiPrototype && ai && <Suspense fallback={null}><AiPrototype doc={client.doc} http={http} rev={client.rev} mode={mode} row={row} onRow={setRow} onStage={setStage} onView={setAiView} /></Suspense>}
       </main>
       </SaidProvider>
       </MarkedProvider>
