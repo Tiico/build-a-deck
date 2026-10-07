@@ -3340,6 +3340,8 @@ p.byd-symbols-refused { margin: 0; color: #f0b64a; font-size: 11px; line-height:
 /* A picture the browser could not fetch, or one still on its way (#481): the glyph goes and the
    words stand in the picture's own frame. */
 .byd-media-tile img[data-missing] { visibility: hidden; }
+/* A picture whose bytes are still on their way (#907) has no source yet: it draws nothing, neither its alt text nor a broken-picture glyph, and keeps its place and its name. */
+img[data-arriving] { opacity: 0; }
 .byd-media-tile-missing { position: absolute; inset: 0; display: grid; place-items: center; padding: var(--byd-s2); color: var(--byd-editor-home-ink); font-size: 12px; text-align: center; }
 /* Ta bort (#318): en liten kontroll under brickan, bredvid vad brickan redan säger om bilden. */
 .byd-media-remove { min-height: 28px; padding: 0 8px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: var(--byd-editor-quiet); font: inherit; font-size: 11px; cursor: pointer; }

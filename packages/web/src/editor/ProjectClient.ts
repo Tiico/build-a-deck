@@ -118,6 +118,9 @@ export class ProjectClient {
   // Edits made before the socket was open, or made and not yet echoed back. They are sent when
   // the socket opens, and laid on top again whenever the actor hands over its document.
   private pending: EditIntent[] = []
+  // The hashes of the bytes this client has put into the document and is still sending (#907).
+  // A new set on every change, so a view can tell it changed by its identity.
+  private arriving: ReadonlySet<string> = new Set()
   // The steps the designer took in this tab, each kept as the document it was taken from, and the
   // ones taken back and waiting to come forward again (#35).
   private past: Step[] = []
@@ -752,6 +755,7 @@ export class ProjectClient {
     // theirs from here on, and card text writes it between braces (L2, A4).
     const name = freeIconName(as ?? symbolName(symbol, t), this.doc.icons)
     const taking = this.newGesture('symbol')
+    this.onTheirWay(ref)
     this.edit({ v: 'setIcon', name, url: ref, credit: { licence: symbol.licence, by: symbol.by, source: symbol.id } }, taking)
     await this.storeAsset(blobOf(file), 'vector', ref, taking, { said: 'upload.undone.symbol', name, intents: [{ v: 'removeIcon', name }] }, t)
     return name
@@ -786,6 +790,7 @@ export class ProjectClient {
     const name = already ?? freeIconName(symbolName(symbol, t), this.doc.icons)
     const element = iconElement(name, { taken: idsOnFace(faceTemplate), card: CARD_STANDARD_63x88.physical })
     const placing = this.newGesture('symbol')
+    if (!already) this.onTheirWay(ref)
     this.edit(
       {
         v: 'addElement',
@@ -840,10 +845,15 @@ export class ProjectClient {
   // A hash that comes back different from the one worked out here is the same fault as no
   // upload at all — the document would be pointing somewhere the bytes are not — so it is
   // handled as one rather than papered over.
+  //
+  // The caller has said the bytes are on their way (`onTheirWay`) before the edit that placed them,
+  // and they stop being so here, whichever way the sending ends.
   private async storeAsset(file: Blob, kind: AssetKind, ref: string, gesture: string, undoing: Undoing, t: T): Promise<void> {
-    const landed = await this.uploadAsset(file, kind, t).catch((err: unknown) => {
-      throw this.takeBack(gesture, ref, undoing, err, t)
-    })
+    const landed = await this.uploadAsset(file, kind, t)
+      .catch((err: unknown) => {
+        throw this.takeBack(gesture, ref, undoing, err, t)
+      })
+      .finally(() => this.landed(ref))
     if (assetRef(landed) === ref) {
       // Arrived, so there is nothing left to take back: the placement stops being callable off
       // rather than staying open for the rest of the session. Only if it is still the open one —
@@ -953,6 +963,24 @@ export class ProjectClient {
   // The pictures whose crop the actor has not yet confirmed (#297, L33): sent, or waiting for the
   // line, and not echoed back. The status under the window may say «sparad» only once a picture
   // has left this list.
+  // The assets whose bytes are on their way to the service, by hash (#907). They are in the document
+  // already (#310, #339), and a surface that asks the service for them now gets a 404 and keeps it:
+  // a picture opened in Media while it was still being sent from its card cell stood there as one
+  // that could not be fetched after it had arrived. A surface waits for a hash to leave this set
+  // before it asks, so it asks once and gets the bytes. Said from the very edit that placed them,
+  // never a notice later, so no render ever sees such a reference without knowing it is early.
+  get assetsArriving(): ReadonlySet<string> {
+    return this.arriving
+  }
+  private onTheirWay(ref: string): void {
+    this.arriving = new Set(this.arriving).add(ref.slice(ASSET_PREFIX.length))
+  }
+  private landed(ref: string): void {
+    const hash = ref.slice(ASSET_PREFIX.length)
+    if (!this.arriving.has(hash)) return
+    this.arriving = new Set([...this.arriving].filter((one) => one !== hash))
+    this.notify()
+  }
   get cropsInFlight(): string[] {
     return [...new Set(this.pending.flatMap((intent) => (intent.v === 'setCrop' ? [intent.hash] : [])))]
   }
@@ -977,6 +1005,7 @@ export class ProjectClient {
     if (already) return already[0]
     const family = freeFamily(familyFromFile(file.name), this.doc.fonts ?? {})
     const taking = this.newGesture('font')
+    this.onTheirWay(ref)
     this.edit({ v: 'setFont', family, font: { stack: `"${family}", sans-serif`, asset: ref } }, taking)
     await this.storeAsset(file, 'font', ref, taking, { said: 'upload.undone.font', name: family, intents: [{ v: 'removeFont', family }] }, t)
     return family
@@ -1003,6 +1032,7 @@ export class ProjectClient {
     // The licence is written in the same edit as the family, because it is the same fact: the
     // catalog knows the answer, and a family that arrived knowing it must never stand in the
     // list with two empty boxes (L27).
+    this.onTheirWay(ref)
     this.edit({ v: 'setFont', family: name, font: catalogFont(family, ref, name) }, taking)
     await this.storeAsset(blob, 'font', ref, taking, { said: 'upload.undone.font', name, intents: [{ v: 'removeFont', family: name }] }, t)
     return name
@@ -1110,6 +1140,7 @@ export class ProjectClient {
     }
     const name = pictureNameOf(file.name)
     const adding = this.newGesture('picture')
+    this.onTheirWay(ref)
     this.edit({ v: 'addPicture', hash, ...(name === undefined ? {} : { name }) }, adding)
     // Under the same gesture, so the step back takes both; and taking the picture back if its
     // bytes never arrive empties the cell with it (#318), so the correction needs nothing more.

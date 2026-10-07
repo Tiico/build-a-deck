@@ -1071,6 +1071,51 @@ describe('a typeface and a picture do not wait for the network either (#339)', (
     }
   })
 
+  // The picture is in the game before its bytes are, so whatever draws it would ask the service
+  // for bytes it does not hold yet, get a 404, and go on showing a broken picture after they came
+  // (#907). The client says which bytes are still on their way — from the very edit that put the
+  // picture in, never a notice later — so a surface can wait for them instead of asking early.
+  it('says which bytes are on their way from the edit that placed them until they land, or fail', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    // Every hash the document held, on every notice, that was neither said to be on its way nor
+    // yet held by the service.
+    const early: string[] = []
+    const held = new Set<string>()
+    client.subscribe((c) => {
+      for (const hash of Object.keys(c.doc.pictures ?? {})) if (!c.assetsArriving.has(hash) && !held.has(hash)) early.push(hash)
+    })
+
+    const { land, landed } = holding()
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      if (new URL(String(input)).pathname === '/assets') {
+        await landed
+        if (new Uint8Array(await (init?.body as Blob).arrayBuffer())[10] === 0) return new Response('nope', { status: 500 })
+        const res = await real(input, init)
+        held.add(((await res.clone().json()) as { hash: string }).hash)
+        return res
+      }
+      return real(input, init)
+    }) as typeof fetch
+    try {
+      const adding = client.addPicture(new File([PNG], 'drake.png', { type: 'image/png' }))
+      await vi.waitFor(() => expect(client.assetsArriving.size).toBe(1))
+      land()
+      const hash = await adding
+      expect(client.doc.pictures?.[hash]).toEqual({ name: 'drake.png' })
+      expect(client.assetsArriving.size).toBe(0)
+      expect(early).toEqual([])
+
+      // And a picture whose bytes never arrive is not left waiting for them.
+      const failed = new Uint8Array([...PNG.slice(0, 10), 0])
+      await expect(client.addPicture(new File([failed], 'aldrig.png', { type: 'image/png' }))).rejects.toThrow()
+      expect(client.assetsArriving.size).toBe(0)
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+
   it('costs nothing on the wire for a typeface the game already has', async () => {
     const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)

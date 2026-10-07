@@ -10,7 +10,8 @@ import { ColumnFilter, type ColumnFilterProps } from './ColumnFilter.js'
 import { Lifted } from './Lifted.js'
 import { FilterField, type FilterToken, type TypedColumn } from './FilterField.js'
 import { DragDoor } from './DragDoor.js'
-import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
+import { AssetImage } from './AssetImage.js'
+import { ASSET_DRAG_TYPE, assetRef, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
 import { boxesOf, proseChoiceOf, proseFieldsOf } from './body.js'
 import { BodyCell, type BodyCellProps } from './BodyCell.js'
 import { DropSays, dropSurface, oneFile } from './dropping.js'
@@ -1348,7 +1349,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             <ul aria-label={t('table.images')}>
               {images.map(({ hash, cards }) => (
                 <li key={hash} data-asset={hash}>
-                  <img src={assetUrl(assetBase, hash)} alt={t('table.image.alt', { cards: cards.join(', ') })} draggable onDragStart={(e) => e.dataTransfer.setData(ASSET_DRAG_TYPE, hash)} />
+                  <AssetImage base={assetBase} hash={hash} alt={t('table.image.alt', { cards: cards.join(', ') })} draggable onDragStart={(e) => e.dataTransfer.setData(ASSET_DRAG_TYPE, hash)} />
                   <small>{t(cards.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: cards.length })}</small>
                 </li>
               ))}
@@ -1587,7 +1588,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                         onLibrary: (hash) => onCell(cardRef, f, assetRef(hash)),
                       })}
                     >
-                      {isAssetRef(row[f]) ? <img src={assetUrl(assetBase, String(row[f]).slice(ASSET_PREFIX.length))} alt={`${cardRef} ${f}`} /> : <span>{t('table.image.drop')}</span>}
+                      {isAssetRef(row[f]) ? <AssetImage base={assetBase} hash={String(row[f]).slice(ASSET_PREFIX.length)} alt={`${cardRef} ${f}`} /> : <span>{t('table.image.drop')}</span>}
                       {over === `${cardRef}:${f}` && <DropSays />}
                       {/* The library (#296): a picture the game already has, into this cell.
                           The upload beside it stays as it was — a file off the disk is the
@@ -1921,7 +1922,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                   onLibrary: setBulkImage,
                 })}
               >
-                {bulkImage ? <img src={assetUrl(assetBase, bulkImage)} alt={t('table.bulk.image')} /> : <span>{t('table.image.drop')}</span>}
+                {bulkImage ? <AssetImage base={assetBase} hash={bulkImage} alt={t('table.bulk.image')} /> : <span>{t('table.image.drop')}</span>}
                 {bulkOver && <DropSays />}
                 {/* The library (#296): a picture the game already has, onto every marked card. */}
                 <button type="button" className="byd-data-file" aria-label={t('table.bulk.image.choose')} onClick={() => setLibrary({ kind: 'marked', field })}>

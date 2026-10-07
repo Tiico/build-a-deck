@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { newElement } from '../../web/src/editor/canvas.js'
@@ -96,5 +97,44 @@ test.describe('a picture uploaded from a card cell (#742)', () => {
     await expect(tile.getByRole('button', { name: 'drake.png', exact: true })).toBeVisible()
     await expect(tile.locator('.byd-media-name')).toHaveText('drake.png')
     await expect(tile.locator('.byd-media-name')).toBeVisible()
+  })
+
+  // The picture is in the game before its bytes are (#339), so whatever draws it while they are
+  // still on their way has nothing yet to draw. The cell, the card and the Media tile all asked for
+  // them anyway, got a 404, and went on showing a broken picture after the bytes came (#907) — the
+  // tile saying the picture could not be fetched. Held on the wire here, so the order is certain.
+  test('draws a picture uploaded from a cell once its bytes arrive, wherever it was looked at before they did', async ({ page }) => {
+    const upload = await openTable(page)
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    await page.route(
+      (url) => url.pathname === '/assets',
+      async (route) => {
+        if (route.request().method() === 'POST') await held
+        await route.continue()
+      },
+    )
+    // Bytes of this test's own: the store is content-addressed and shared by the whole run, so the
+    // pixel another test already sent would be there to fetch however long these are held.
+    const own = Buffer.concat([PIXEL, Buffer.from(randomUUID())])
+    await upload.setInputFiles({ name: 'drake.png', mimeType: 'image/png', buffer: own })
+    await expect(page.getByRole('button', { name: 'Ta bort bild för kort-1' })).toBeVisible()
+    const cell = page.getByRole('img', { name: 'kort-1 bild' })
+    await expect(cell).toBeAttached()
+
+    await page.locator('#byd-editor-tab-media').click()
+    const tile = page.locator('[data-media-panel] li[data-asset]')
+    await expect(tile).toHaveCount(1)
+    // Not broken but early, while the bytes are held.
+    await expect(tile.locator('.byd-media-tile-missing')).toHaveText('Laddas upp…')
+
+    release()
+    await expect(tile.locator('img')).toHaveJSProperty('naturalWidth', 1)
+    await expect(tile.locator('.byd-media-tile-missing')).toHaveCount(0)
+    await expect(tile.getByRole('button', { name: 'drake.png', exact: true })).toBeVisible()
+
+    // And the cell it came from draws it too.
+    await page.locator('#byd-editor-tab-table').click()
+    await expect(cell).toHaveJSProperty('naturalWidth', 1)
   })
 })
