@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom'
 import { Suspense, forwardRef, lazy, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent, type CSSProperties } from 'react'
 import { BackTexture, Texture } from './Texture.js'
-import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
+import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneAction, ZoneView } from '@byd/protocol'
 import type { Peer, Pulse, Recent } from './presence.js'
 import { FAN, useStill, type Shuffle } from './shuffle.js'
 import { hue } from './hue.js'
@@ -1272,7 +1272,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // ring as a list, because a designer's sentence does not fit in a circle's button; a pile with
   // none opens no sheet, for the same reason a ring with no verbs does not open.
   const ringZone = ringOn && (ringOn.kind === 'pile' || ringOn.kind === 'pileTop') ? view.zones.find((z) => z.id === ringOn.pile) : undefined
-  const ringActions = ringZone?.actions ?? []
+  // A start action whose only step is a verb the ring already shows is left out (#719): the
+  // recipe's «Blanda» (when: both) stood beside the ring's own «Blanda», two buttons for one thing.
+  const ringActions = (ringZone?.actions ?? []).filter((a) => !(a.when === 'both' && echoesRing(a)))
   const ringPile = ringOn?.kind === 'counterPile' ? ringOn.ids.flatMap((id) => view.components.find((c) => c.id === id) ?? []) : undefined
 
   const areas = view.zones.filter((z) => z.kind === 'area' && z.id !== floor.id)
@@ -1824,6 +1826,12 @@ function ringLabel(view: Snapshot, target: Ring['target'], t: T): string | undef
 }
 
 // The verbs a drag cannot say (C): for a card, for a pile, for a chip, and for a pile of chips.
+// Whether an action does nothing but what one of the ring's own verbs does (#719).
+const echoesRing = (a: ZoneAction): boolean => {
+  const [only, ...more] = a.steps
+  return only !== undefined && more.length === 0 && (only.v === 'shuffle' || (only.v === 'flipTop' && only.face === 'toggle'))
+}
+
 function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void, enter: (c: VisibleComponentState) => void, move: (() => void) | undefined, t: T): RadialItem[] {
   const target = ring.target
   const flip = (c: VisibleComponentState): RadialItem => ({ label: t('ring.flip'), run: () => act([{ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' }]) })
@@ -1855,7 +1863,9 @@ function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (in
       flip(c),
       { label: t('ring.rotate'), run: () => act([{ v: 'rotate', component: c.id, rot: (c.rot + 90) % 360 }]) },
       look(c),
-      { label: t('ring.reveal'), run: c.cardRef === null ? () => act([{ v: 'reveal', components: [c.id] }]) : null },
+      // A slice that can never go is not drawn (#719): a card this screen already reads has nothing
+      // left to reveal. A verb that only cannot go right now stays, greyed, where the hand expects it.
+      ...(c.cardRef === null ? [{ label: t('ring.reveal'), run: () => act([{ v: 'reveal', components: [c.id] }]) }] : []),
       ...(move ? [{ label: t('ring.move'), run: move }] : []),
     ]
   }
@@ -1876,7 +1886,8 @@ function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (in
     { label: t('ring.draw'), run: count > 0 ? () => act([drawOne(view, z)]) : null },
     { label: t('ring.half'), run: count > 1 ? () => act([split(Math.ceil(count / 2))]) : null },
     { label: t('ring.flipTop'), run: count > 0 ? () => act(flipTop()) : null },
-    look(top),
+    // A hidden pile shows no top, so there is nothing to hold up (#719).
+    ...(top ? [look(top)] : []),
   ]
 }
 
