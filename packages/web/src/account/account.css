@@ -19,9 +19,10 @@
 .byd-login h1 { margin: 0; font-size: 26px; }
 .byd-login form { display: grid; gap: 10px; }
 .byd-login-email { display: grid; gap: 6px; }
-.byd-login-email > span { color: #cdd4e4; font-size: 13px; font-weight: 700; }
-.byd-login input { width: 100%; box-sizing: border-box; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--byd-secondary-line); background: var(--byd-account-field-bg); color: #fff; font-size: 16px; }
-.byd-login button { padding: 14px 18px; border-radius: 12px; font-size: 16px; cursor: pointer; }
+/* The code row under the card (#675) wears the card's own label, field and button. */
+.byd-login-email > span, .byd-code-row > label { color: #cdd4e4; font-size: 13px; font-weight: 700; }
+.byd-login input, .byd-code-row > input { width: 100%; box-sizing: border-box; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--byd-secondary-line); background: var(--byd-account-field-bg); color: #fff; font-size: 16px; }
+.byd-login button, .byd-code-row > button { padding: 14px 18px; border-radius: 12px; font-size: 16px; cursor: pointer; }
 .byd-login button:disabled { opacity: 0.4; cursor: default; }
 .byd-login-sent { padding: 18px; border-radius: 14px; background: #1b2a22; color: #d8ffe8; display: grid; gap: 6px; font-size: 14px; line-height: 1.5; }
 .byd-login-error { color: #ff9a9a; font-size: 13px; margin: 0; }
@@ -29,19 +30,12 @@
    a row with the room's code. The two stand together in the middle of the page rather than each in
    half of it. */
 .byd-account-door { align-content: center; gap: 14px; }
-.byd-code-row { width: min(420px, 100%); box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; padding: 0 4px; }
-.byd-code-row > label { grid-column: 1 / -1; color: #cdd4e4; font-size: 13px; font-weight: 700; }
-.byd-code-row > input {
-  min-width: 0; height: 52px; box-sizing: border-box; padding: 0 12px; border-radius: 12px;
-  border: 1px solid var(--byd-secondary-line); background: var(--byd-account-field-bg); color: #fff;
-  font: 700 20px/1 ui-monospace, Menlo, monospace; letter-spacing: 0.25em; text-transform: uppercase;
-}
-.byd-code-row > input[aria-invalid='true'] { border-color: #e05a4f; }
-.byd-code-row > button { height: 52px; padding: 0 18px; border-radius: 12px; font-size: 16px; cursor: pointer; }
-/* What a code field says, on the start page and on `/join` alike: at the field, whether it came with
-   the page or from a press, in the alert's own tone. One rule for both, since both sheets ride in
-   the sheet the first painting blocks on. */
-.byd-code-says { grid-column: 1 / -1; margin: 0; color: #ffb3ad; font-size: 13px; font-weight: 700; }
+.byd-code-row { width: min(420px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; }
+.byd-code-row > :is(label, p) { grid-column: 1 / -1; }
+.byd-code-row > input { min-width: 0; }
+/* A room's code, read as a code wherever it is typed (#675): wide-set, upper case, monospaced. Here,
+   after the card's and the picker's fields, so that it wins over both. */
+input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-spacing: 0.25em; text-transform: uppercase; }
 /* A short phone, 320 × 568, holds the card and the row only when the page and the card give up some
    of their air: the e-mail field and the code field are both on the first screen, on a Linux face as
    on this Mac's, where the card's sentences wrap a line sooner. Only the air: what the card says
@@ -50,7 +44,6 @@
   .byd-account-door { padding-block: 6px; gap: 8px; }
   .byd-account-door > .byd-login { padding: 24px; gap: 8px; }
   .byd-code-row { row-gap: 6px; }
-  .byd-code-row > :is(input, button) { height: 48px; }
 }
 .byd-home { width: min(920px, 100%); display: grid; gap: 18px; }
 /* The account line goes under the heading when both will not fit on one line, rather than squeezing

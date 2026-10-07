@@ -37,6 +37,7 @@ export function useCodeField({ id, server, onOpen, typed = '', unknown = false }
     onOpen(`/${code}${server ? `?${new URLSearchParams({ server }).toString()}` : ''}`)
   }
   const input: InputHTMLAttributes<HTMLInputElement> = {
+    className: 'byd-code-field',
     value,
     onChange: (e) => {
       setValue(e.target.value)
