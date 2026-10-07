@@ -217,6 +217,19 @@ export class PostgresLogStore implements LogStore {
     return rows.map(played)
   }
 
+  async returnGuest(sessionId: string, accountId: string, tokenHash: string, now: string): Promise<GuestRecord | null> {
+    const [row] = await this.sql<GuestRow[]>`
+      update guest_tokens set token_hash = ${tokenHash}
+      where token_hash = (
+        select token_hash from guest_tokens
+        where session_id = ${sessionId} and account_id = ${accountId} and revoked_at is null and expires_at > ${now}
+        order by issued_at desc limit 1
+      )
+      returning session_id, token_hash, kind, seat, name, issued_at, expires_at, revoked_at, account_id
+    `
+    return row ? played(row) : null
+  }
+
   async revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number> {
     const rows = await this.sql`
       update guest_tokens set revoked_at = ${at}

@@ -109,7 +109,7 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
         />
         {kbd.panel}
       </div>
-      <SeatSurvey view={view} seat={seat} name={me?.name ?? seat} http={faces} sessionId={sessionId} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
+      <SeatSurvey view={view} seat={seat} name={me?.name ?? seat} http={faces} sessionId={sessionId} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} saved={params.get('saved') === '1'} />
       <RouteStatus status={live} over="sheet" links={links} onRetry={conn.retry} />
     </>
   )

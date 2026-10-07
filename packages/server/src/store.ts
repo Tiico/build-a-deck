@@ -57,6 +57,9 @@ export type LogStore = {
   claimGuest(tokenHash: string, accountId: string): Promise<PlayedRecord | 'other' | null>
   // Every admission an account has claimed, newest first.
   guestsOf(accountId: string): Promise<PlayedRecord[]>
+  // «Tillbaka till bordet» (#690): the account's newest live admission at a table is given a new
+  // token in place of its old one, keeping its seat, name and account; null when there is none.
+  returnGuest(sessionId: string, accountId: string, tokenHash: string, now: string): Promise<GuestRecord | null>
 }
 
 // A table as a list can show it before anyone opens it: which session, and the moment of its
@@ -188,6 +191,15 @@ export class MemoryLogStore implements LogStore {
       for (const g of guests) if (g.accountId === accountId) out.push({ ...structuredClone(g), sessionId })
     }
     return out.sort((a, b) => b.issuedAt.localeCompare(a.issuedAt))
+  }
+
+  async returnGuest(sessionId: string, accountId: string, tokenHash: string, now: string): Promise<GuestRecord | null> {
+    const live = (this.guests.get(sessionId) ?? [])
+      .filter((g) => g.accountId === accountId && g.revokedAt === undefined && Date.parse(g.expiresAt) > Date.parse(now))
+      .sort((a, b) => b.issuedAt.localeCompare(a.issuedAt))[0]
+    if (!live) return null
+    live.tokenHash = tokenHash
+    return structuredClone(live)
   }
 
   async revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number> {
