@@ -644,6 +644,11 @@ export const svEditor = {
   'canvas.props.y': 'Y (mm)',
   'canvas.props.w': 'Bredd (mm)',
   'canvas.props.h': 'Höjd (mm)',
+  // Bokstaven på greppet bredvid måttet är ett verktygsord och följer läsaren (#933).
+  'canvas.props.grip.x': 'X',
+  'canvas.props.grip.y': 'Y',
+  'canvas.props.grip.w': 'B',
+  'canvas.props.grip.h': 'H',
   'canvas.props.field': 'Fält',
   'canvas.props.shows': 'Visar fältet',
   'canvas.props.field.new': 'nytt fält…',
