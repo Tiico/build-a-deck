@@ -1,9 +1,13 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState, type RefObject } from 'react'
 import { GameMenu } from '../account/GameMenu.js'
-import { ExportDialog, RenameDialog } from '../account/GameDialogs.js'
 import { duplicateProject } from '../account/api.js'
 import { useT } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
+
+// The dialogs are drawn on a press, so they are fetched on one (#366, L40), as on the start page:
+// the editor's route asks for its own sheet and the book's, and the dialogs' only when one opens.
+const ExportDialog = lazy(() => import('../account/GameDialogs.js').then((m) => ({ default: m.ExportDialog })))
+const RenameDialog = lazy(() => import('../account/GameDialogs.js').then((m) => ({ default: m.RenameDialog })))
 
 export type GameMoreProps = {
   http: string
@@ -87,6 +91,7 @@ export function GameMore({ http, game, more: given, onShare, onRename, onSaid, o
           )}
         </GameMenu>
       )}
+      <Suspense fallback={null}>
       {dialog === 'export' && <ExportDialog http={http} game={game} onClose={() => setDialog(null)} />}
       {dialog === 'rename' && (
         <RenameDialog
@@ -98,6 +103,7 @@ export function GameMore({ http, game, more: given, onShare, onRename, onSaid, o
           onClose={() => setDialog(null)}
         />
       )}
+      </Suspense>
     </span>
   )
 }

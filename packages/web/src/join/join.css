@@ -226,8 +226,10 @@
 /* What the page answers with, said at the field and in a tone of its own: a refusal written in the
    ink the prose around it uses is a caption, and the eye sorts it away. The wizard already says
    this of every `[role='alert']` on paper; this is the same sentence in the phone's own colour. */
-.byd-join [role='alert'] { margin: 0; color: #ffb3ad; font-size: 13px; font-weight: 700; }
-.byd-join input[aria-invalid='true'] { border-color: #e05a4f; }
+/* What a code field says (#675), on `/join` and on the start page's row alike, whether it came
+   with the page or from a press. */
+.byd-join [role='alert'], .byd-code-says { margin: 0; color: #ffb3ad; font-size: 13px; font-weight: 700; }
+.byd-join input[aria-invalid='true'], .byd-code-row > input[aria-invalid='true'] { border-color: #e05a4f; }
 .byd-join form button { padding: 18px; border-radius: 12px; border: 1px solid transparent; font-size: 18px; font-weight: 800; }
 /* Refused is a state of a role and not a role of its own. The page no longer opens in it — a way
    on that waits for a name stands open and answers when it is pressed (#416, variant B) — but a
@@ -258,3 +260,28 @@
    line and one ink for the whole tool. */
 .byd-join .byd-join-online,
 .byd-join .byd-join-observe { font-size: 14px; }
+
+/* The code is the address (#675, beslut C 2026-10-06). `/join` without a code, and with one that
+   names nothing, is a form for the code: the same page and the same field as the name on the
+   picker, with the code read as a code — wide-set, upper case, monospaced. */
+.byd-join-code { grid-template-rows: auto auto; align-content: start; }
+.byd-join-lead { margin: 0; color: #9aa3b8; font-size: 15px; line-height: 1.5; }
+.byd-join-code input { text-align: center; }
+
+/* A laptop opening the address sees a card and not a phone stretched across the screen (#675): the
+   page as one column of 520 px, in the login card's form, on the account's darker ground. The card
+   is the seat picker's own ground, so every contrast measured on the phone holds on it unchanged.
+   From 700 px, where the column stops filling the window. */
+@media (min-width: 700px) {
+  .byd-join-page { min-height: 100vh; box-sizing: border-box; display: grid; place-items: center; padding: 32px 20px; background: #0f1117; }
+  .byd-join-page > main {
+    width: min(520px, 100%); min-height: 0;
+    padding: 28px 32px; border: 1px solid #262a35; border-radius: 20px;
+  }
+  .byd-join-page > :not(.byd-join-code) > header { text-align: center; }
+}
+/* On a laptop the suggestion is to play on this screen (#675, beslut 3): the sentence is the first
+   action, so it is read larger than the sentences under it, and «Sätt dig» beside it at the same
+   size, so the two ways to play read as a pair and «Bara titta» as the third. */
+.byd-join .byd-join-online.byd-primary,
+.byd-join .byd-join-sit { font-size: 16px; }

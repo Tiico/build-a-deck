@@ -150,7 +150,7 @@ describe('the observer screen is not a screen to join from (K12)', () => {
     render(<ObserverPage />)
     await screen.findByText(/Du är observatör/)
     expect(screen.queryByText(id)).toBeNull()
-    expect(screen.queryByText(/anslut med telefon/)).toBeNull()
+    expect(screen.queryByText(/öppna på telefonen/)).toBeNull()
   })
 })
 

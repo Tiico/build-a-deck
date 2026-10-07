@@ -107,6 +107,30 @@ test.describe('the phone fetches the phone and not the whole app (#760)', () => 
     await expect(page.locator('[data-page="player"]')).toBeVisible()
   })
 
+  // The room's own address (#675) is the address the television says, so it is the one a phone
+  // most often opens cold: the picker's chunk is asked for beside the entry there too.
+  test('asks for the picker’s chunk at /KOD while the entry is still on its way', async ({ table, open }) => {
+    const { page } = await open(PHONE, 'about:blank')
+    const entry = /\/assets\/index-[^/]+\.js$/
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    await page.route(entry, async (route) => {
+      await held
+      await route.continue()
+    })
+    const asked = scriptsAskedFor(page)
+    const opened = page.goto(`/${table.code}`)
+    try {
+      await expect.poll(() => asked.some((p) => entry.test(p))).toBe(true)
+      await expect.poll(() => asked.includes(chunkOf('JoinPage'))).toBe(true)
+    } finally {
+      release()
+    }
+    await opened
+    await expect(page.locator('[data-page="join"]')).toBeVisible()
+    expect(asked.filter((p) => NEVER_ON_A_PHONE.some((name) => p === chunkOf(name)))).toEqual([])
+  })
+
   // A chunk that does not arrive is a new way for a page to fail, and it must not fail as a white
   // page. It is said the way a phone says it cannot reach the table, and «Try again» fetches the
   // document anew — the only retry Chromium honours for a module it once failed to load.

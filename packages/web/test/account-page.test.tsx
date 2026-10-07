@@ -677,7 +677,7 @@ describe('renaming and duplicating from «Mina spel» (#909)', () => {
     await home()
     fireEvent.click(screen.getByRole('button', { name: 'Fler val för Skogens herrar' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Byt namn…' }))
-    const dialog = screen.getByRole('dialog', { name: 'Byt namn på «Skogens herrar»' })
+    const dialog = await screen.findByRole('dialog', { name: 'Byt namn på «Skogens herrar»' })
     fireEvent.change(within(dialog).getByRole('textbox', { name: 'Spelets namn' }), { target: { value: 'Skogens andar' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Byt namn' }))
     await waitFor(() => expect(tileName(run.projectId)).toBe('Skogens andar'))

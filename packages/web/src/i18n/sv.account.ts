@@ -36,6 +36,9 @@ export const svAccount = {
   'home.loading': 'Hämtar dina spel…',
   'home.title': 'Mina spel',
   'home.logout': 'logga ut',
+  // Raden under inloggningskortet för den som kom för att spela (#675, beslut C).
+  'home.code.ask': 'Ska du spela? Skriv rumskoden',
+  'home.code.go': 'Gå in',
   'home.claimed': 'Sparat: du spelade {game} som {name}. Enkäten och flaggorna hör nu till ditt konto.',
   'home.claimed.some-table': 'ett bord',
   'home.started': 'Bordet är igång. Rumskoden är {code}.',

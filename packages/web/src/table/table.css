@@ -600,8 +600,12 @@
 /* The felt has no chrome (B): the game, its version and the room code, quietly along the top. */
 .byd-table-plate {
   position: fixed; top: 14px; left: 18px; z-index: 3; margin: 0;
-  font-size: 13px; font-weight: 400; color: #f3e9d6; opacity: 0.7;
+  display: flex; gap: 18px; align-items: baseline; color: #f3e9d6;
 }
+.byd-table-plate > h1 { margin: 0; font-size: 13px; font-weight: 400; opacity: 0.7; }
+/* The room's address (#675, beslut C): read from across the table, so larger than the game's name
+   and at full ink. */
+.byd-table-plate > p { margin: 0; font-size: 20px; }
 /* An enlarged felt runs under the plate (#720), and the words would then lie on the wood: while the
    lens is in, they stand on the felt's own plate, as the corner's buttons do. */
 [data-page='table']:has(.byd-table-frame[data-lens]:not([data-lens='100'])) .byd-table-plate {
@@ -651,13 +655,21 @@
 [data-tv] .byd-tv-render { display: grid; grid-template-columns: 1fr auto; align-items: baseline; row-gap: 8px; color: #c9cfdd; }
 [data-tv] .byd-tv-render b { color: #ffd98a; font-variant-numeric: tabular-nums; }
 [data-tv] .byd-tv-render i { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #ffd98a var(--byd-render-done, 0%), #232733 0); }
-[data-tv] .byd-tv-join { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+[data-tv] .byd-tv-join { display: flex; align-items: center; gap: 8px 18px; flex-wrap: wrap; }
 [data-tv] .byd-tv-join > span { color: #7d8597; font-size: 14px; flex: 1 0 100%; }
 [data-tv] .byd-qr { border-radius: 6px; background: #fff; }
 [data-tv] .byd-tv-join strong {
   font-family: ui-monospace, monospace; font-size: 26px; letter-spacing: 6px;
   background: #1a1e29; padding: 4px 14px; border-radius: 8px;
 }
+/* The code is the address (#675, beslut C): the host on a line of its own, and the code under it
+   as the address's last step — the slash in front of it is the stylesheet's, so what is read off
+   the screen as the code is the code. A host has nowhere to break, and the box's name is measured
+   against the column at both TV sizes. The row's
+   lines stand 8 px apart rather than 18: the address is a line taller than the code was, and every
+   pixel the row grows moves «Starta om» and its help down beside the felt's east hand (#875). */
+[data-tv] .byd-tv-address { flex: 1 0 100%; margin: 0; font-size: 24px; font-weight: 700; }
+[data-tv] .byd-tv-address + strong::before { content: '/'; color: #7d8597; margin-right: 4px; letter-spacing: 0; }
 [data-tv] > main { display: grid; place-items: center; padding: 16px; min-width: 0; min-height: 0; overflow: hidden; }
 [data-tv] > aside {
   border-left: 1px solid #232733; min-height: 0; overflow: hidden;
@@ -1266,6 +1278,8 @@
 [data-tv][data-room] aside h2:where(:not(.byd-rules-panel *)) { font-size: 24px; letter-spacing: 1px; margin-bottom: 8px; }
 [data-tv][data-room] .byd-tv-head h1 { font-size: 28px; }
 [data-tv][data-room] .byd-tv-join > span { font-size: 24px; }
+/* The room's code at the size beslut C set (#675): 40 px, under the host at K26's 24. */
+[data-tv][data-room] .byd-tv-join strong { font-size: 40px; line-height: 1.1; }
 [data-tv][data-room] .byd-tv-render { font-size: 24px; }
 [data-tv][data-room] .byd-tv-inspect { --byd-inspect-head: 30px; --byd-inspect-gap: 8px; }
 [data-tv][data-room] .byd-tv-inspect [data-empty] span { font-size: 24px; line-height: 1.2; }

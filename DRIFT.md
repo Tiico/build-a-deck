@@ -174,6 +174,15 @@ Det som inte dras tillbaka är en bordsvy som just då står öppen med den läc
 Den som vill stänga också den startar ett nytt bord.
 Sessioner från före koder saknar kod och nyckel: de kan inte nås med kod eller öppnas som bordet.
 
+Byggt 2026-10-06 (#675, beställarens beslut C): koden är också rummets adress.
+`/<KOD>` är appen, i vilken bokstavsstorlek som helst, och landar i platsväljaren; TV:n säger värden ur sitt eget origin, på lådan `PUBLIC_ORIGIN`:s värd.
+Sidan på adressen frågar aldrig efter koden: varje kod, känd, okänd eller utgången, får samma bytes, och lagret tillfrågas inte.
+Den enda vägen att pröva en kod är därmed fortfarande `GET /rooms/:kod`, som appen frågar precis som `/join?code=` alltid har gjort, så adressen är ingen andra dörr förbi rate limiting ovan, och proxyns gräns gäller hela värden och därmed `/<KOD>` också.
+En okänd, en utgången och en roterad kod får samma 404 med samma kropp, och telefonen säger dem likadant: inget avslöjar om en kod en gång funnits.
+Ett avslutat bord svarar fortfarande 410 (C9, #485), eftersom koden då leder till ett bord som finns men är slut.
+`GET /rooms/:kod` säger också spelets namn när bordet startades ur ett spel — det `GET /sessions/:id` redan sa till den som har id:t svaret lämnar ut — och aldrig projektet.
+Generatorn drar om en kod som stavar ett av appens egna vägord (`ROUTE_WORDS` i `packages/protocol`): `ASSETS` och `GUESTS` är de enda sex tecknen ur alfabetet som redan är en adress.
+
 ## 10. Administration: Tailscale
 
 Lådan och administratörens enheter i samma privata nät.
