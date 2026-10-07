@@ -4822,6 +4822,8 @@ Katalogposten vet svaret och fyller i det, för tryckets skull.
 
 Katalogen nås aldrig utan handling från designern: ingen förhämtning vid sidladdning.
 Att katalogen inte svarar sägs i panelen, inte tyst.
+Tillägg 2026-10-06 (#687): en handling räknas också när den gjordes vid ett tidigare besök och står i ett utkast designern kommer tillbaka till.
+Den guidade startens tema som tryckts före en omladdning hämtas därför när sidan öppnas igen; ett förval som ingen tryckt hämtas inte (L57).
 
 **Byggt 2026-09-21 (#329). Ett led i beslutet behövde en form det inte hade fått.**
 
@@ -5130,6 +5132,10 @@ Den enda mening L36 lämnade kvar — «Logga in för att komma till dina spel»
 Första besöket säger «Logga in eller skapa konto med din e-post — länken i mejlet räcker», en inbjudan «Logga in för att öppna spelet du bjudits in till» med spelets namn (D3), och guidens utkast «Ditt spel skapas när du loggat in»; claim har sin egen sedan tidigare.
 Utloggad säger guiden tidigt, i rutan som säger att den är startpunkten, att spelet sparas på ett konto.
 Det är samma rad på samma plats, inte en ny form.
+Reviderat 2026-10-06 (#687, beställarens beslut efter prototyp): rutan bär nu bara den meningen — «**Spelet sparas på ett konto.** Du loggar in med e-post när du skapar det, och det du skrivit här följer med.» — och finns inte alls för den som är inloggad.
+Etiketten «Wizarden är startpunkten» är borta, och med den ordet «wizard» från ytan: den heter «guidad start» överallt.
+Meningen står här och bara här; inloggningskortets leads är #691:s.
+Vid 1280 × 800 är rutan 445 × 70 px, mot 445 × 52 när den bara bar etiketten.
 
 
 ### L37. En uppladdning som misslyckas för sent rättas i dokumentet och i historikens bilder, aldrig som ett eget steg (2026-09-20, #344; reviderat 2026-09-21, #358)
@@ -6166,6 +6172,26 @@ Båda bitarna är samma `CardPreview`-kort, ritat av den enda renderaren och vis
 Prövat i [`docs/ux-audits/2026-10-04-temaprovet/prototyper/02-tva-utsnitt.html`](docs/ux-audits/2026-10-04-temaprovet/prototyper/02-tva-utsnitt.html) mot rivet papper (A) och två remsor med redigerarens grund emellan (B); A var den mest dekorativa formen i fliken, och B lästes som två saker på en bricka som är ett val.
 Vid 1280 × 800 är provet 80 px högt på e2e-mallen och 118 px på provleken, mot 173 och 136 px när det var ett stycke med tre rader och en tonad.
 `theme-proof.spec.ts` mäter att e2e-mallen skärs och provleken inte, att rubrikens rad och prosans första står mindre än en och en halv rad isär, att utsnittet är under 65 % tomt, att prosans bit är så hög som raderna och tonas bara när de är fler än tre, och att Speltema inte rullar vid 1280 × 800 med någon av mallarna.
+
+Reviderat 2026-10-06 (#687, beställarens val D efter prototyp): **förvalet i den guidade starten är märkt, inte nedtryckt, och kortet visas i det på begäran.**
+«Skogssaga gäller tills ett annat trycks» stod kvar, men brickan stod nedtryckt från början medan katalogen ännu inte frågats, så kortet bredvid en bricka som såg vald ut stod i ett reservtypsnitt — och den som behöll förvalet såg aldrig spelets utseende.
+Skogssaga står nu som **«Förval»**: streckad kant i accenten och märket under namnet, `aria-pressed="false"`, och märket är brickans beskrivning så att det hörs med namnet.
+Kortet står gråat och bär knappen **«Visa kortet i Skogssaga»**; trycket är handlingen i L27:s mening, hämtar temats ark och filer och trycker ned brickan.
+«Skapa» utan något tryck ger fortfarande Skogssaga, som märket sa.
+Formen är Speltemas «Visa temana i sina typsnitt» (val C ovan), på kortet där ögat redan är: ett tryck till rätt kort vid 1280, 1024 och 768, där galleriet vid de två första står under vecket och vid 768 i ett annat steg.
+Tre vägar till valdes bort.
+Att låta öppnandet räknas som handlingen (A) gav noll tryck men 73 kB från Google vid varje öppning av `/new`, också för den som aldrig rör temat — det L27 och väg B ovan säger nej till.
+Inget förval alls (B) lade ett tryck på alla och ett villkor på «Skapa».
+Att hämta när pekaren når kortet (C) behöll den tryckta brickan bredvid reservtypsnittet tills dess, och en surfplatta har ingen hovring.
+**Ett återupptaget utkast**: ett tryck på temat vid ett tidigare besök räknas som handlingen, så temat står nedtryckt och hämtas vid omladdningen och kortet stämmer direkt.
+Ett utkast där inget tema tryckts står kvar på förvalet och frågar Google om ingenting; ett utkast från före beslutet, som inte säger om temat trycktes, räknas som tryckt bara när temat är ett annat än förvalet.
+**Beskedet om hämtningen står tills filerna laddats, inte tills arket svarat.**
+Kortets typsnitt deklareras med `font-display: block`, och texten under kortet försvann när katalogens ark svarat, så medan filen reste stod kortet tomt i upp till tre sekunder och sedan i reservtypsnitt utan ett ord.
+Nu står kortet gråat med «Hämtar typsnitten för Skogssaga …» över sig tills `document.fonts` säger att temats filer laddats; svarar katalogen inte står det på kortet, med samma knapp för att fråga igen.
+Ordet och knappen ligger över kortets överdel och aldrig under det, så att ingenting bredvid eller nedanför flyttar sig när de kommer och går.
+Därmed står aldrig en nedtryckt bricka bredvid ett kort som ser ut att vara temat men står i reservtypsnittet.
+`wizard-theme-preselection.spec.ts` läser på det byggda `/new` vilket ansikte som ritar kortet (`CSS.getPlatformFontsForNode`, som i #887), att inget går till Google före en handling, att beskedet står kvar medan filen hålls inne längre än blockperioden, och utkastet efter omladdning.
+Prototypen står i [`docs/ux-audits/2026-10-06-temats-forval/prototyper/`](https://github.com/Tiico/build-a-deck/tree/97d14dc9f3ce75c7b26b3333c0782388ea897073/docs/ux-audits/2026-10-06-temats-forval/prototyper) i merge `97d14dc9` och togs bort när beslutet byggdes.
 
 ### L58. Markeringens handlingar står i tabellens fot (prototypat och beslutat 2026-10-01, #618)
 

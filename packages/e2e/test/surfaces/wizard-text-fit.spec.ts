@@ -66,7 +66,8 @@ test('fits the body text again once the theme’s face has landed, as the editor
   await page.goto('/new', { waitUntil: 'load' })
   await page.getByRole('button', { name: 'Klassisk', exact: true }).click()
   await page.getByRole('button', { name: 'Välj temat Krönika' }).click()
-  await expect(page.getByText('Temats typsnitt hämtas när du väljer tema.')).toHaveCount(0)
+  // The sheet has answered once the file is asked for, and the file is held: the card says so (#687).
+  await expect(page.locator('.byd-wizard-preview').getByText('Hämtar typsnitten för Krönika …')).toBeVisible()
   await page.getByLabel('kort 1 Regeltext').fill(BODY)
 
   // Före ansiktet: texten är anpassad i reservtypsnittet, och har fått krympa under 8,5 pt.
