@@ -122,8 +122,9 @@ export const svAccount = {
   'wizard.stepnav': 'Stegnavigering',
   'wizard.prev': '← Föregående',
   'wizard.next': 'Nästa →',
-  'wizard.handoff.title': 'Wizarden är startpunkten',
-  'wizard.handoff.account': 'Spelet sparas på ett konto — du loggar in när du skapar det.',
+  // Rutan överst i guidad start, bara utloggad (#687, #691): ledet i fetstil och resten efter det.
+  'wizard.handoff.account.lead': 'Spelet sparas på ett konto.',
+  'wizard.handoff.account': 'Du loggar in med e\u2011post när du skapar det, och det du skrivit här följer med.',
   // Ett ledord per stycke, så att hjälpen inte blandar de två dörrarna i ett (#731).
   'wizard.handoff.body': 'Guidad start: skapa några exempelkort här. Layout, hela leken och CSV-verktyg väntar i editorn.',
   'wizard.name': 'Spelets namn',
@@ -173,6 +174,8 @@ export const svAccount = {
   'wizard.look.frame': 'Ram — var saker står',
   'wizard.look.theme': 'Tema — hur det känns',
   'wizard.look.later': 'Allt går att ändra i Speltema.',
+  // Temat spelet får om inget annat trycks (#687): märkt, inte nedtryckt.
+  'wizard.look.preselected': 'Förval',
   'wizard.frame.classic': 'Klassisk',
   'wizard.frame.minimal': 'Minimal',
   'wizard.frame.dark': 'Mörk',
@@ -195,7 +198,10 @@ export const svAccount = {
   'wizard.cards.body': 'Exempelkorten hjälper editorn att visa hur fälten faktiskt används.',
   'wizard.cards.count.one': '{n} kort',
   'wizard.cards.count.other': '{n} kort',
-  'wizard.preview.font': 'Temats typsnitt hämtas när du väljer tema.',
+  // Kortet i temats typsnitt på begäran, och vad som händer medan filerna reser (#687).
+  'wizard.preview.show': 'Visa kortet i {theme}',
+  'wizard.preview.fetching': 'Hämtar typsnitten för {theme} …',
+  'wizard.preview.silent': 'Katalogen svarade inte, så kortet står inte i temats typsnitt.',
   'wizard.preview.card': 'Förhandsvisning av kort {n}: {title}',
   'wizard.preview': 'Levande förhandsvisning',
   'wizard.image.field': 'Bild för {label}',
