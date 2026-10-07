@@ -51,7 +51,7 @@ export const enAccount = {
   'home.help.game': 'A game is a deck with its template, its rules and its table.',
   'home.help.new': '“+ New game” asks for a name and the number of players and does the rest for you.',
 
-  'home.card.line': 'rev {rev} · {played}',
+  'home.card.line': 'v{rev} · {played}',
   'home.card.never': 'never played',
   'home.card.nocards': 'no cards yet',
   'home.card.first': 'First card: {title}',

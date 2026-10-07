@@ -44,6 +44,7 @@ import { symbolName } from './symbols.js'
 import { HookGlyph } from '../glyphs.js'
 import type { CatalogFamily } from './font-catalog.js'
 import './editor.css'
+import { versionWord } from '../i18n/version.js'
 
 const PlaytestPrototype = import.meta.env.DEV ? lazy(() => import('./prototype/PlaytestWorkspace.js')) : null
 
@@ -763,7 +764,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       )}
       {table && (
         <div className="byd-editor-table-link" role="status" {...(lost !== null ? { 'data-lost': '' } : {})} {...(stalled ? { 'data-stalled': '' } : {})}>
-          {t(table.kind === 'new' ? (table.saved ? 'editor.table.savedAndStarted' : 'editor.table.started') : table.kind === 'running' ? 'editor.table.running' : table.kind === 'already' ? 'editor.table.already' : 'editor.table.refreshed', { version: table.version })}
+          {t(table.kind === 'new' ? (table.saved ? 'editor.table.savedAndStarted' : 'editor.table.started') : table.kind === 'running' ? 'editor.table.running' : table.kind === 'already' ? 'editor.table.already' : 'editor.table.refreshed', { version: versionWord(table.version, t) })}
           {/* The lead's dash points at what follows it; before the first answer about the textures
               nothing does, and the band says nothing about rendering rather than «0/…» (#765). */}
           {(lost !== null || preparing || textures) && ' — '}
