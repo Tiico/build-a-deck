@@ -61,8 +61,8 @@
     /* The canvas tab and the properties heading say the layer's one name. */
     html[data-p699] .byd-condition-tab[data-p699-name] { font-size: 0; }
     html[data-p699] .byd-condition-tab[data-p699-name]::after { content: attr(data-p699-name); font-size: 11px; }
-    html[data-p699] .byd-canvas-props > h2[data-p699-name] { font-size: 0; }
-    html[data-p699] .byd-canvas-props > h2[data-p699-name]::before { content: attr(data-p699-head) ' · '; font-size: 11px; }
+    html[data-p699] .byd-canvas-props > h2[data-p699-name] { font-size: 0; letter-spacing: 0; }
+    html[data-p699] .byd-canvas-props > h2[data-p699-name]::before { content: attr(data-p699-head) ' · '; font-size: 11px; letter-spacing: 1.5px; }
     html[data-p699] .byd-canvas-props > h2[data-p699-name]::after { content: attr(data-p699-name); font-size: 12px; text-transform: none; letter-spacing: 0; color: #e6ecfa; }
     /* The group list in words. */
     html[data-p699] .byd-canvas-rules li[data-p699-words] { font-size: 0; }
