@@ -1,7 +1,8 @@
-import { useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useContext, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { compile, fitInDocument, type FaceTemplate, type Motif, type Row, type Warning } from '@byd/template'
-import { resolveAssetFace, resolveAssetRow } from './assets.js'
+import { ASSET_PREFIX, isAssetRef, resolveAssetFace, resolveAssetRow } from './assets.js'
+import { Arriving } from './AssetImage.js'
 
 export type CardPreviewProps = {
   face: FaceTemplate
@@ -39,19 +40,27 @@ export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedEl
   // The face's own pictures resolved once per face (#320), for the same reason the icons are
   // resolved once per document: a fresh face every render is a fresh compile every render.
   const drawnFace = useMemo(() => (assetBase ? resolveAssetFace(face, assetBase) : face), [face, assetBase])
+  // This card's own pictures whose bytes are still on their way (#907), drawn as empty cells until
+  // they land. Held as words, so only a card that holds such a picture is compiled again when it
+  // does, and not every card on the wall.
+  const arriving = useContext(Arriving)
+  const early = Object.values(row)
+    .flatMap((v) => (isAssetRef(v) && arriving.has(v.slice(ASSET_PREFIX.length)) ? [v.slice(ASSET_PREFIX.length)] : []))
+    .join(' ')
+  const drawnRow = useMemo(() => (assetBase ? resolveAssetRow(row, assetBase, new Set(early.split(' '))) : row), [row, assetBase, early])
   const out = useMemo(
     () =>
       compile({
         type: CARD_STANDARD_63x88,
         face: drawnFace,
-        row: assetBase ? resolveAssetRow(row, assetBase) : row,
+        row: drawnRow,
         icons,
         scope: `#${id}`,
         ...(fonts ? { fonts } : {}),
         ...(motifs ? { motifs } : {}),
         ...(palette ? { palette } : {}),
       }),
-    [drawnFace, row, icons, fonts, id, assetBase, motifs, palette],
+    [drawnFace, drawnRow, icons, fonts, id, motifs, palette],
   )
   const ref = useRef<HTMLDivElement | null>(null)
   // Held by identity, not just by value: React writes `innerHTML` again whenever this object is a

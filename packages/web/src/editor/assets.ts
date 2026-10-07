@@ -35,9 +35,12 @@ export async function assetRefOf(bytes: Uint8Array<ArrayBuffer>): Promise<string
   return assetRef([...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join(''))
 }
 
-export function resolveAssetRow(row: Row, base: string): Row {
+// `early` are the hashes whose bytes are still on their way (#907): such a cell is drawn empty, as a
+// cell with no picture is, rather than as a URL the service does not answer yet — a card drawn from
+// that URL kept the broken picture after the bytes came.
+export function resolveAssetRow(row: Row, base: string, early: ReadonlySet<string> = new Set()): Row {
   const out: Row = {}
-  for (const [k, v] of Object.entries(row)) out[k] = isAssetRef(v) ? assetUrl(base, v.slice(ASSET_PREFIX.length)) : v
+  for (const [k, v] of Object.entries(row)) out[k] = isAssetRef(v) ? (early.has(v.slice(ASSET_PREFIX.length)) ? '' : assetUrl(base, v.slice(ASSET_PREFIX.length))) : v
   return out
 }
 
