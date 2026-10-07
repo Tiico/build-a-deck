@@ -138,6 +138,7 @@ Klar 2026-09-08: varje punkt nedan är byggd, och besluten bakom dem står i DES
 - ✅ Typsnittskatalogen: hela Google Fonts söks från Template-sidan i ett ark under kortet, där varje träff sätter kortets egen rubrik och dess regeltext i kortets egen grad; den valda familjen kopieras in som projektets egen asset med licensen ifylld, och Google nås bara av designerns webbläsare och bara när väljaren öppnas (L27, #329).
 - ✅ Flerspråkighet i verktyget: en katalog per språk och yta, en språkväljare, och hela editorn, bordet, telefonen, kontot och guiden på svenska eller engelska; mejlen och regelhäftets enda verktygsrubrik följer med, och ett spel som skapas på engelska får engelska zoner, räknare och kolumnnamn (A4).
 - ✅ "Mina spel" med senast spelat, starta bord direkt från kortet och ta bort spel med hela dess historia (G1).
+- ⬜ AI-stöd i editorn med designerns egen nyckel hos Anthropic eller OpenAI (2026-10-07, #940): förslag på mall, fält, kort och regeltext, aldrig bild; nyckeln krypterad på kontot och anropet förmedlat av servern; ytan prototypas först (E4). Blockerar inte release.
 
 ## Fas 3 — Konton, betalning och data
 
