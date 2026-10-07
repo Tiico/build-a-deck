@@ -177,8 +177,12 @@
       bare()
       const g = heads()[gi]
       g.textContent = ''
-      g.append(document.createTextNode('kortgrupp'))
-      g.append(ask('kortgrupp'))
+      const word = document.createElement('span')
+      word.className = 'p695-word'
+      word.textContent = 'kortgrupp'
+      word.append(ask('kortgrupp'))
+      g.append(word)
+      style(`.byd-data thead .p695-word { display: inline-flex; align-items: center; min-height: var(--byd-tap); }`)
       helpFor = { topic: 'kortgrupp', anchor: g, lines: ['Vilket utseende kortet får. Mallen grupperas av kolumnen typ: kort med samma typ delar utseende, och Bas är mallens eget.', 'Gruppen byts genom att ändra kortets typ. Hur en grupp ser ut ändras i Mall, under Kortgrupper.'] }
       // The group's width as its longest label now needs, measured the way fitColumns measures a
       // key: the widest cell's own content plus its padding.
@@ -253,7 +257,8 @@
       `)
       // typ's head is two lines now; the column takes what the tag needs.
       const ti = index('typ')
-      const need = Math.ceil(tag.getBoundingClientRect().width) + 24
+      // The ring stands 11 px outside its own box (L32's margin), so that is counted too.
+      const need = Math.ceil(tag.getBoundingClientRect().width) + 24 + 12
       if (parseFloat(colEl(ti).style.width) < need) colEl(ti).style.width = px(need)
       reclamp(0)
     },
@@ -326,6 +331,12 @@
         pinnedLeft,
         pinnedRight,
         bodyW: of('body')?.w ?? null,
+        bodySeen: (() => {
+          const th = heads().find((h) => h.getAttribute('data-col') === 'body')
+          if (!th) return null
+          const r = th.getBoundingClientRect()
+          return Math.round(Math.max(0, Math.min(r.right, lane.right) - Math.max(r.left, lane.left)))
+        })(),
         tableW: Math.round(table().getBoundingClientRect().width),
         scrollW: b.scrollWidth,
         clientW: b.clientWidth,

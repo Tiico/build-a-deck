@@ -1,4 +1,4 @@
-/* PROTOTYP (#698, #736). Kastas när varianterna är valda. */
+/* PROTOTYP (#695; kopierad från 2026-10-06-editorns-remsor). Kastas när varianten är vald. */
 :root { --ink: #e6ecfa; --quiet: #868ea3; --amber: #ffd98a; }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: #14161c; color: var(--ink); font: 13px system-ui, sans-serif; }
