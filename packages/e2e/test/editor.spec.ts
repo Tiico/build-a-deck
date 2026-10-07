@@ -98,7 +98,7 @@ test.describe('the header remembers the table (#477)', () => {
     // The table outlived the page; the header knows it without being asked.
     await expect(primary).toHaveAccessibleName('Update the table')
     await expect(page.locator('[data-room-code]')).toHaveText(/\S+/)
-    await expect(page.locator('.byd-editor-table-link')).toContainText('The table runs rev-1')
+    await expect(page.locator('.byd-editor-table-link')).toContainText('The table runs version 1')
     // What matters is which errand the press went on, and that no second table was born. How long
     // the update then takes is the renderer's business, and not this test's to time (#949): the
     // card faces are shared by every table of the same deck, so when a journey with a render

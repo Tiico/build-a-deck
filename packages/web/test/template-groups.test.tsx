@@ -84,7 +84,7 @@ describe('the two faces of the template (#13, L7)', () => {
     await user.click(pick(0))
     await nudge(user, '{ArrowRight}')
     await user.click(screen.getByRole('button', { name: /spara/i }))
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     expect((await stored())['back']?.base).toMatchObject([{ id: 'bg', x: 0.5 }])
     expect((await stored())['front']?.base.find((e) => e.id === 'frame')).toMatchObject({ x: 1 })
   })
@@ -129,7 +129,7 @@ describe('grouping the deck by a column (#13)', () => {
 
     // The rule is the group: it lives on the template, not on a list of cards.
     await user.click(screen.getByRole('button', { name: /spara/i }))
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     expect((await stored())['front']?.variantBy).toBe('typ')
     expect((await stored())['back']?.variantBy).toBe('typ')
   })
@@ -144,7 +144,7 @@ describe('grouping the deck by a column (#13)', () => {
     await user.click(pick(1))
     await nudge(user, '{ArrowRight}')
     await user.click(screen.getByRole('button', { name: /spara/i }))
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     const front = (await stored())['front']!
     expect(front.base.find((e) => e.id === 'title')).toMatchObject({ x: 5 })
     expect(front.variants['fälla']?.override).toMatchObject([{ id: 'title', x: 5.5 }])
@@ -158,7 +158,7 @@ describe('grouping the deck by a column (#13)', () => {
     await user.click(pick(0))
     await nudge(user, '{Shift>}{ArrowRight}{/Shift}')
     await user.click(screen.getByRole('button', { name: /spara/i }))
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     expect((await stored())['back']?.base).toMatchObject([{ id: 'bg', x: 0 }])
     expect((await stored())['back']?.variants['fälla']?.override).toMatchObject([{ id: 'bg', x: 5 }])
   })
@@ -187,7 +187,7 @@ describe('grouping the deck by a column (#13)', () => {
     await nudge(user, '{ArrowRight}')
     await user.click(screen.getByRole('button', { name: /återgå till basen/i }))
     await user.click(screen.getByRole('button', { name: /spara/i }))
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     expect((await stored())['front']?.variants['fälla']?.override).toEqual([])
   })
 
@@ -310,7 +310,7 @@ describe('the base tab draws the base and nothing else (#13, #41)', () => {
     laidOut()
     drag(target('title')!, [100, 100], [160, 120])
     await user.click(screen.getByRole('button', { name: /spara/i }))
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     const front = (await stored())['front']!
     expect(front.base.find((e) => e.id === 'title')).toMatchObject({ x: 15, y: 8.3 })
     expect(front.variants['varelse']?.override?.map((e) => e.id)).toEqual([mine])
@@ -328,7 +328,7 @@ describe('the base tab draws the base and nothing else (#13, #41)', () => {
     await chooseGroup(user, 0)
     await user.click(screen.getByRole('button', { name: 'Form' }))
     await user.click(screen.getByRole('button', { name: /spara/i }))
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     const front = (await stored())['front']!
     expect(front.base.map((e) => e.id)).toEqual(['frame', 'title', 'body', 'shape-2'])
     expect(front.variants['varelse']?.override?.map((e) => e.id)).toEqual(['shape-1'])

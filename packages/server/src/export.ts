@@ -121,10 +121,11 @@ export const printFileOf = (cardRef: string, face: string, nth = 1): string => `
 export const RULEBOOK_FILE = 'tryck/regelhafte.pdf'
 const safe = (s: string): string => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9_-]+/g, '_')
 
-// What the zip is called when it is saved: the game and its version. A header value is ASCII, so
-// the name the browser shows travels beside it, encoded (RFC 6266).
+// What the zip is called when it is saved: the game and its version, said as people read it, «v3»
+// and never the id «rev-3» (#703). A header value is ASCII, so the name the browser shows travels
+// beside it, encoded (RFC 6266).
 export function exportDisposition(name: string, rev: number): string {
-  const file = `${name} rev-${rev}.zip`
+  const file = `${name} v${rev}.zip`
   const ascii = file.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_')
   return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(file)}`
 }
