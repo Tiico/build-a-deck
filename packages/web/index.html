@@ -14,26 +14,9 @@
     <style>
       html, body, #root { margin: 0; height: 100%; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; }
     </style>
-    <!-- The shell (#749, src/shell.ts) -->
-    <style id="byd-shell-style">
-      html:has(#byd-shell) { background: #1f2637; }
-      #byd-shell { position: fixed; inset: 0; display: grid; place-content: center; justify-items: start; gap: 14px; box-sizing: border-box; padding: 28px; background: #1f2637; color: #dfe7f7; font: 14px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif; }
-      #byd-shell * { box-sizing: border-box; margin: 0; }
-      html:not(.js) #byd-shell > :not(noscript) { display: none; }
-      #byd-shell .m { font-size: 12px; font-weight: 800; letter-spacing: 1.6px; text-transform: uppercase; }
-      #byd-shell h1 { display: flex; gap: 10px; align-items: center; font-size: 26px; line-height: 1.25; }
-      #byd-shell p { max-width: 46ch; }
-      #byd-shell .r { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 3px solid; border-top-color: transparent; animation: byd-shell 900ms linear infinite; }
-      @keyframes byd-shell { to { transform: rotate(360deg); } }
-      #byd-shell button { min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid #7d879f; background: #242938; color: #eef1f8; font: inherit; font-weight: 600; cursor: pointer; }
-      #byd-shell button:focus-visible { outline: 3px solid #7dd3a0; outline-offset: 2px; }
-      @media (prefers-reduced-motion: reduce) { #byd-shell .r { animation: none; border-style: dashed; border-top-color: currentcolor; opacity: 0.75; } }
-      @media (max-width: 700px) { #byd-shell { padding: 20px; } #byd-shell h1 { font-size: 22px; } }
-    </style>
-    <script id="byd-shell-lang"></script>
   </head>
   <body>
-    <div id="root"><div id="byd-shell" role="status"><span class="m" data-k="m"></span><h1><span class="r"></span><span data-k="h"></span></h1><p data-k="t"></p><button type="button" hidden onclick="location.reload()"></button><noscript id="byd-shell-noscript"></noscript></div><script id="byd-shell-fill"></script></div>
+    <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

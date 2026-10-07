@@ -5,7 +5,7 @@ import { defineConfig, transformWithEsbuild, type Plugin, type Rollup } from 'vi
 import react from '@vitejs/plugin-react'
 import { reporting } from '../../test-support/report.js'
 import { detectLang } from './src/i18n/detect.js'
-import { fillShell, shellNoscript, shellTimes, shellWords, SHELL_VOICES } from './src/shell.js'
+import { fillShell, shellMarkup, shellNoscript, shellTimes, shellWords, SHELL_STYLE, SHELL_VOICES } from './src/shell.js'
 
 // Each route's script is fetched when its address is opened (#760), and this keeps that from
 // costing a round trip. Left to itself the entry would have to arrive and run before it could ask
@@ -80,7 +80,6 @@ const VITE_PRELOAD_HELPER = '\0vite/preload-helper.js'
 const LINKS_IN_HEAD = 'document.head.appendChild(link);'
 function shell(): Plugin {
   const minify = async (code: string) => (await transformWithEsbuild(code, 'shell.js', { minify: true, target: 'es2020', charset: 'utf8' })).code.trim().replace(/<\//g, '<\\/')
-  const text = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   return {
     name: 'byd-shell',
     transform(code, id) {
@@ -91,15 +90,12 @@ function shell(): Plugin {
     transformIndexHtml: {
       order: 'post',
       async handler(html, { bundle }) {
-        const fill = (tag: string, id: string, inner: string) => {
-          const empty = `<${tag} id="${id}"></${tag}>`
-          if (!html.includes(empty)) throw new Error(`index.html has no empty ${empty} for the shell to fill`)
-          html = html.replace(empty, () => `<${tag} id="${id}">${inner}</${tag}>`)
-        }
-        fill('script', 'byd-shell-lang', await minify(`document.documentElement.lang=(${detectLang.toString()})();document.documentElement.classList.add('js')`))
-        fill('script', 'byd-shell-fill', await minify(`(${fillShell.toString()})(document,${JSON.stringify(shellWords())},${JSON.stringify(SHELL_VOICES)},${JSON.stringify(shellTimes())})`))
-        const { sv, en } = shellNoscript()
-        fill('noscript', 'byd-shell-noscript', `<p>${text(sv)}</p><p lang="en">${text(en)}</p>`)
+        const root = '<div id="root"></div>'
+        if (!html.includes(root) || !html.includes('</head>')) throw new Error(`index.html has no empty ${root} or no </head> for the shell to stand in`)
+        const lang = await minify(`document.documentElement.lang=(${detectLang.toString()})();document.documentElement.classList.add('js')`)
+        const fill = await minify(`(${fillShell.toString()})(document,${JSON.stringify(shellWords())},${JSON.stringify(SHELL_VOICES)},${JSON.stringify(shellTimes())})`)
+        html = html.replace('</head>', () => `  <style id="byd-shell-style">${SHELL_STYLE}</style>\n    <script id="byd-shell-lang">${lang}</script>\n  </head>`)
+        html = html.replace(root, () => `<div id="root">${shellMarkup(shellNoscript())}<script id="byd-shell-fill">${fill}</script></div>`)
         // Only the build links a stylesheet; the development server injects its CSS from script.
         if (!bundle) return html
         const head = html.slice(0, html.indexOf('</head>'))

@@ -1209,7 +1209,8 @@ Telefoner och editorn behåller planen och överlämnar beslutet till den som h�
 Tillägg 2026-10-06 (#749, beställarens beslut efter prototyp, variant B av fem): **laddar-läget står i sidan innan appen har kommit fram.**
 Speltestet 2026-10-02 öppnade varje rutt på ett långsamt mobilnät och fick en vit sida i fem till sju sekunder, i ljust systemläge, och i mörkt en tom duk som ändå blinkade vit precis innan appen ritade.
 Ingen kunde skilja en långsam sida från en död.
-Nu står D5:s laddar-läge i sidformen i `index.html`, inuti `#root`, som statisk markup och CSS som React ersätter vid sin första ritning: skalet.
+Nu står D5:s laddar-läge i sidformen i det `index.html` som skeppas, inuti `#root`, som statisk markup och CSS som React ersätter vid sin första ritning: skalet.
+Bygget skriver in det (`src/shell.ts`, `vite.config.ts`); källans `index.html` behåller ett tomt `#root`, som webbsvitens mätningar klistrar in sin egen markup i.
 Det säger ruttens egna ord ur katalogen — «Dukar bordet…» på `/table` i båda lägena och på skärmarna som tittar på bordet, «Hämtar din hand…» på `/play`, «Öppnar spelet…» i editorn och «Hämtar…» överallt annars, också på `/join`, där det ännu inte finns någon hand att hämta, och på en rumskod skriven som adress (#675).
 Efter `slowAfterMs` byter det till ruttens dröjer-rubrik, med en mening som är skalets egen: katalogens ber läsaren trycka «försök igen», och skalet har inget att trycka på.
 Efter 20 sekunder står «Ladda om sidan» under raden.

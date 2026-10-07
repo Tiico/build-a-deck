@@ -13,10 +13,12 @@ import type { Voice } from './status/notice.js'
 // editor's Suspense reserve, the table's and the phone's «Ansluter» — so the handover changes the
 // words and not the picture.
 //
-// The markup and its rules stand in `index.html` itself. The rules name `#byd-shell`, so the app's
-// stylesheet cannot restyle the shell when it lands, and the shell's ground is on `html` only while
-// the shell stands, so nothing of it lingers under the app. Without JavaScript the loading words
-// are hidden — they would be a promise nothing keeps — and a `<noscript>` line says why.
+// The markup and its rules are below, and the build writes them into the document it ships: the
+// rules into `<head>`, the markup into `#root`. The source `index.html` keeps an empty `#root`, which
+// the web suite's measurements paste their own markup into. The rules name `#byd-shell`, so the
+// app's stylesheet cannot restyle the shell when it lands, and the shell's ground is on `html` only
+// while the shell stands, so nothing of it lingers under the app. Without JavaScript the loading
+// words are hidden — they would be a promise nothing keeps — and a `<noscript>` line says why.
 //
 // Nothing here is part of the app's bundle. `vite.config.ts` reads it when it builds `index.html`:
 // the words are written in from the catalogue's `status` part, so the shell and the app cannot say
@@ -38,6 +40,31 @@ export const SHELL_VOICES: Record<string, Exclude<Voice, 'app'>> = {
   '/online': 'table',
   '/play': 'phone',
   '/editor': 'editor',
+}
+
+// D5's page form in `status.css`, with the wait's tone, at the same measures: the mark, the heading
+// with its ring, the line under it, and a button in the status buttons' dress.
+export const SHELL_STYLE = [
+  'html:has(#byd-shell){background:#1f2637}',
+  "#byd-shell{position:fixed;inset:0;display:grid;place-content:center;justify-items:start;gap:14px;box-sizing:border-box;padding:28px;background:#1f2637;color:#dfe7f7;font:14px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif}",
+  '#byd-shell *{box-sizing:border-box;margin:0}',
+  'html:not(.js) #byd-shell>:not(noscript){display:none}',
+  '#byd-shell .m{font-size:12px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase}',
+  '#byd-shell h1{display:flex;gap:10px;align-items:center;font-size:26px;line-height:1.25}',
+  '#byd-shell p{max-width:46ch}',
+  '#byd-shell .r{flex:none;width:22px;height:22px;border-radius:50%;border:3px solid;border-top-color:transparent;animation:byd-shell 900ms linear infinite}',
+  '@keyframes byd-shell{to{transform:rotate(360deg)}}',
+  '#byd-shell button{min-height:44px;padding:0 16px;border-radius:10px;border:1px solid #7d879f;background:#242938;color:#eef1f8;font:inherit;font-weight:600;cursor:pointer}',
+  '#byd-shell button:focus-visible{outline:3px solid #7dd3a0;outline-offset:2px}',
+  '@media (prefers-reduced-motion:reduce){#byd-shell .r{animation:none;border-style:dashed;border-top-color:currentcolor;opacity:.75}}',
+  '@media (max-width:700px){#byd-shell{padding:20px}#byd-shell h1{font-size:22px}}',
+].join('')
+
+// The markup, empty of words: `fillShell` writes them in for the address and the language before the
+// first painting. The `<noscript>` lines are the exception, since nothing runs to write them.
+export const shellMarkup = (noscript: { sv: string; en: string }): string => {
+  const text = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return `<div id="byd-shell" role="status"><span class="m" data-k="m"></span><h1><span class="r"></span><span data-k="h"></span></h1><p data-k="t"></p><button type="button" hidden onclick="location.reload()"></button><noscript><p>${text(noscript.sv)}</p><p lang="en">${text(noscript.en)}</p></noscript></div>`
 }
 
 // One language's words: the mark while loading and while slow, the reload button, and per voice
