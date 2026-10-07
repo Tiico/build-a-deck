@@ -346,6 +346,24 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       if (!account) return json(res, 401, { error: 'log in first' })
       return json(res, 200, await playedBy(opts, account.id))
     }
+    // «Tillbaka till bordet» (#690, beslut 2026-10-06): the guest goes back to her own seat and
+    // hand, not to the picker as a newcomer. The server keeps only a token's hash, so the account's
+    // admission is handed a new token in place of the old one — the seat, the name and the history
+    // stay as they were. An ended table hands out nothing, as its door does not (#485).
+    const back = /^\/me\/played\/([^/]+)\/return$/.exec(url.pathname)
+    if (req.method === 'POST' && back) {
+      if (!opts.auth) return json(res, 404, { error: 'accounts are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      const sessionId = decodeURIComponent(back[1] ?? '')
+      const actor = (await opts.store.loadSession(sessionId)) ? await opts.host.get(sessionId) : null
+      if (!actor) return json(res, 404, { error: 'unknown session' })
+      if (actor.ended) return json(res, 410, { error: 'session ended', session: sessionId })
+      const guestToken = newSecret()
+      const guest = await opts.store.returnGuest(sessionId, account.id, hash(guestToken), clock(opts).toISOString())
+      if (!guest) return json(res, 404, { error: 'no seat of yours at this table' })
+      return json(res, 200, { session: sessionId, token: guestToken, kind: guest.kind, seat: guest.seat, name: guest.name })
+    }
     // The host's controls (DRIFT §9): a new code (and with it a new host key, #820), and a kick. With the host key, or the owner's cookie.
     const control = /^\/sessions\/([^/]+)\/(code|kick)$/.exec(url.pathname)
     if (req.method === 'POST' && control) {

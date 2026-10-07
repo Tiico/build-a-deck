@@ -435,6 +435,7 @@ export const svPlay = {
   'survey.thanks': 'Tack, {who}.',
   'survey.tied': 'Dina svar är knutna till {version}.',
   'survey.save': 'Spara till ditt konto',
+  'survey.saved': 'Sparat till ditt konto.',
 
   // Åskådaren (C8).
   'observer.name': 'observatör',

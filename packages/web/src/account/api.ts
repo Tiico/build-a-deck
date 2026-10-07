@@ -205,10 +205,20 @@ export async function myPlayed(http: string): Promise<Played[]> {
   return (await res.json()) as Played[]
 }
 
+// «Tillbaka till bordet» (#690): a fresh token for the account's own seat at a running table, or
+// null when there is none to go back to — the seat was left or kicked, or the table has ended.
+export async function returnToTable(http: string, session: string): Promise<{ token: string; kind: 'seat' | 'observer'; seat: string | null; name: string } | null> {
+  const res = await fetch(`${http}/me/played/${encodeURIComponent(session)}/return`, withCredentials({ method: 'POST' }))
+  if (res.status === 401) throw new Unauthorized()
+  if (!res.ok) return null
+  return (await res.json()) as { token: string; kind: 'seat' | 'observer'; seat: string | null; name: string }
+}
+
 // The phone's way to save a session (G1): the claim page, which asks for a login first when
 // there is none. The phone names its server as a WebSocket origin; the account pages speak HTTP.
-export function claimUrl(token: string, server: string | null): string {
-  const claim = new URLSearchParams({ token })
+// `next` is the page the guest came from, which the claim goes back to once it is made (#690).
+export function claimUrl(token: string, server: string | null, next: string = location.pathname + location.search): string {
+  const claim = new URLSearchParams({ token, next })
   if (server) claim.set('server', server.replace(/^ws/, 'http'))
   return `/claim?${claim.toString()}`
 }
