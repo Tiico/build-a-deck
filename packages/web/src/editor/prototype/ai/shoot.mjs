@@ -27,7 +27,7 @@ const SHOTS = [
   ['B-utan-nyckel', '&ai=B&nyckel=0', [['click', '.ux-ai-act'], ['wait', 400]]],
   ['C-vilar', '&ai=C', []],
   ['C-strommar', '&ai=C', [['click', go], ['wait', 3300]]],
-  ['C-forslag', '&ai=C', [['click', go], ['wait', 7600], ['click', '.ux-ai-bar .ux-ai-link'], ['wait', 1400], ['click', '.ux-ai-ghost-keep >> nth=1'], ['wait', 300]]],
+  ['C-forslag', '&ai=C', [['click', go], ['wait', 7600], ['click', '.ux-ai-bar .ux-ai-link'], ['wait', 1400], ['click', '.byd-wall-card[data-card-ref="los-planka"] .ux-ai-ghost-keep'], ['wait', 300]]],
   ['C-utan-nyckel', '&ai=C&nyckel=0', []],
   ['nyckel-tom', '&ai=nyckel&nyckel=0', []],
   ['nyckel-sparad', '&ai=nyckel', []],

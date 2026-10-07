@@ -1,0 +1,52 @@
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AI-ytan #940</title><style>
+:root { --bg: #f6f6f4; --ink: #1c1d21; --quiet: #5b5f6a; --line: #d9d9d4; --mark: #6b3fc9; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #14161c; --ink: #e8eaf0; --quiet: #9aa3b8; --line: #2c3242; --mark: #c9a7ff; } }
+:root[data-theme="dark"] { --bg: #14161c; --ink: #e8eaf0; --quiet: #9aa3b8; --line: #2c3242; --mark: #c9a7ff; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, sans-serif; } main { max-width: 1320px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 22px; margin: 0 0 4px; } p { max-width: 75ch; color: var(--quiet); } section { margin: 32px 0; } h2 { font-size: 17px; margin: 0 0 4px; } h3 { font-size: 14px; margin: 20px 0 6px; color: var(--quiet); font-weight: 600; }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; } img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; }
+.rec { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--mark); color: var(--mark); font-size: 12px; font-weight: 700; vertical-align: 2px; }
+code { font-size: 13px; }
+</style></head><body><main>
+<h1>Hur arbetar en designer med AI-hjälp i editorn? (#940)</h1>
+<p>Tre strukturellt olika svar, monterade i den riktiga editorn med Sal's Saloon (77 kort), och kontots nyckelruta. Varje förslagskort ritas av den riktiga kompilatorn (E2); leverantören är ett deterministiskt manus. Vänster 1440 × 900, höger 1280 × 800. Prototypen ligger på grenen <code>proto/940-ai-ytan</code> under <code>packages/web/src/editor/prototype/ai/</code>, med <code>NOTES.md</code> bredvid.</p>
+
+<section><h2>A — Samtalspanel</h2><p>En dockad panel bredvid arbetsytan med ett fritt samtal som känner spelet, och förslaget som ett kompakt kort i samtalet («Visa på väggen», «Godta», «Kasta»). Rymmer frågor om spelet och förfining naturligt, men kostar 380 px i varje flik: vid 1280 krymper kortväggens sökfält till en stump och «Fysisk kontroll» klipps bort. Förslaget bedöms i miniatyr tills man ber om väggen.</p>
+<h3>Vilar</h3><div class="pair"><img src="bilder/A-vilar-1440x900.png" alt="A vilar, 1440 × 900"><img src="bilder/A-vilar-1280x800.png" alt="A vilar, 1280 × 800"></div>
+<h3>Svaret strömmar</h3><div class="pair"><img src="bilder/A-strommar-1440x900.png" alt="A strömmar, 1440 × 900"><img src="bilder/A-strommar-1280x800.png" alt="A strömmar, 1280 × 800"></div>
+<h3>Förslaget, visat på väggen</h3><div class="pair"><img src="bilder/A-forslag-1440x900.png" alt="A förslag, 1440 × 900"><img src="bilder/A-forslag-1280x800.png" alt="A förslag, 1280 × 800"></div>
+<h3>En mall, och godtaget med «Ångra»</h3><div class="pair"><img src="bilder/A-mall-1440x900.png" alt="A mallförslag på väggen, 1440 × 900"><img src="bilder/A-godtaget-1440x900.png" alt="A godtaget, 1440 × 900"></div>
+</section>
+
+<section><h2>B — Riktade handlingar</h2><p>Inget samtal: «✦ Föreslå kort…» i kronan och tabellens verktygsrad, «✦ Ändra kortet…» när något är valt, en ✦ i varje kolumnhuvud och «✦ Föreslå mall…» på duken. Rutan säger vad som skickas och svarar där den öppnades. Tydligast om var hjälpen finns, men rutan täcker det den handlar om — i tabellen kolumnen den fyller — frågor om spelet har ingen plats, och kronan och kolumnhuvudena var redan fulla.</p>
+<h3>Vilar</h3><div class="pair"><img src="bilder/B-vilar-1440x900.png" alt="B vilar, 1440 × 900"><img src="bilder/B-vilar-1280x800.png" alt="B vilar, 1280 × 800"></div>
+<h3>Svaret strömmar</h3><div class="pair"><img src="bilder/B-strommar-1440x900.png" alt="B strömmar, 1440 × 900"><img src="bilder/B-strommar-1280x800.png" alt="B strömmar, 1280 × 800"></div>
+<h3>Förslaget</h3><div class="pair"><img src="bilder/B-forslag-1440x900.png" alt="B förslag, 1440 × 900"><img src="bilder/B-forslag-1280x800.png" alt="B förslag, 1280 × 800"></div>
+<h3>Fyll kolumnen antal, och en mall på duken</h3><div class="pair"><img src="bilder/B-kolumn-1440x900.png" alt="B fyll kolumnen, 1440 × 900"><img src="bilder/B-mall-1440x900.png" alt="B mallförslag, 1440 × 900"></div>
+</section>
+
+<section><h2>C — Spöken på väggen <span class="rec">rekommenderas</span></h2><p>Förslaget läggs i den riktiga kortväggen som spöken, i lekens egna band och i full storlek; ändrade kort får en hel kant, och tabellens egen jämförelse visar gammalt → nytt. En fast rad längst ner bär instruktionen, strömmen och «Godta alla · Godta markerade · Kasta · Förfina…»; pillen på varje spöke tar med eller lämnar kortet. Den enda varianten där förslaget bedöms som eget arbete, med den fysiska kontrollen räknad på det, och den håller på 308 kort. Priset: spöken kan hamna utanför bild (därav «Gå till nästa ↓»), raden tar 60 px i höjd, och ett svar utan förslag behöver en låda ovanför raden. Rekommendationen lånar B:s riktade ingångar som genvägar som fyller i raden.</p>
+<h3>Vilar</h3><div class="pair"><img src="bilder/C-vilar-1440x900.png" alt="C vilar, 1440 × 900"><img src="bilder/C-vilar-1280x800.png" alt="C vilar, 1280 × 800"></div>
+<h3>Svaret strömmar — spökena kommer ett i taget</h3><div class="pair"><img src="bilder/C-strommar-1440x900.png" alt="C strömmar, 1440 × 900"><img src="bilder/C-strommar-1280x800.png" alt="C strömmar, 1280 × 800"></div>
+<h3>Förslaget, ett kort lämnat</h3><div class="pair"><img src="bilder/C-forslag-1440x900.png" alt="C förslag, 1440 × 900"><img src="bilder/C-forslag-1280x800.png" alt="C förslag, 1280 × 800"></div>
+<h3>Tabellens gammalt → nytt, och 308 kort</h3><div class="pair"><img src="bilder/C-tabell-1440x900.png" alt="C i tabellen, 1440 × 900"><img src="bilder/C-308-kort-1440x900.png" alt="C på 308 kort, 1440 × 900"></div>
+<h3>Förfinas</h3><div class="pair"><img src="bilder/C-forfina-1440x900.png" alt="C förfinas, 1440 × 900"></div>
+</section>
+
+<section><h2>Utan nyckel</h2><p>A är en smal flik i kanten som öppnas till nyckelrutan; B behåller knapparna och rutan de öppnar är nyckelrutan; C:s rad är en mening och «Lägg in nyckel…». Berättelse 9 säger att editorn ska se ut som förut — det gör bara B.</p>
+<h3>A, stängd och öppnad</h3><div class="pair"><img src="bilder/A-utan-nyckel-1440x900.png" alt="A utan nyckel, 1440 × 900"><img src="bilder/A-utan-nyckel-oppen-1280x800.png" alt="A utan nyckel, öppnad, 1280 × 800"></div>
+<h3>B</h3><div class="pair"><img src="bilder/B-utan-nyckel-1440x900.png" alt="B utan nyckel, 1440 × 900"><img src="bilder/B-utan-nyckel-1280x800.png" alt="B utan nyckel, 1280 × 800"></div>
+<h3>C</h3><div class="pair"><img src="bilder/C-utan-nyckel-1440x900.png" alt="C utan nyckel, 1440 × 900"><img src="bilder/C-utan-nyckel-1280x800.png" alt="C utan nyckel, 1280 × 800"></div>
+</section>
+
+<section><h2>Kontots nyckelruta</h2><p>Ingen kontosida finns, så rutan hänger på «Mina spel» bakom «AI-nyckel» i raden med e-posten och språket. Leverantör, nyckel, «Prövar nyckeln…», sparad med bara leverantören och de fyra sista tecknen, modell med standardval, «Byt nyckel» och «Ta bort», och meningen om vad som skickas vart — alltid synlig, eftersom den säger följden av en handling.</p>
+<h3>Tom</h3><div class="pair"><img src="bilder/nyckel-tom-1440x900.png" alt="Nyckelrutan tom, 1440 × 900"><img src="bilder/nyckel-tom-1280x800.png" alt="Nyckelrutan tom, 1280 × 800"></div>
+<h3>Sparad</h3><div class="pair"><img src="bilder/nyckel-sparad-1440x900.png" alt="Nyckelrutan sparad, 1440 × 900"><img src="bilder/nyckel-sparad-1280x800.png" alt="Nyckelrutan sparad, 1280 × 800"></div>
+<h3>Prövas, och avvisas</h3><div class="pair"><img src="bilder/nyckel-provar-1440x900.png" alt="Nyckeln prövas, 1440 × 900"><img src="bilder/nyckel-fel-1440x900.png" alt="Nyckeln avvisas, 1440 × 900"></div>
+</section>
+
+<section><h2>Fel och avbrott</h2><p>Leverantören säger nej (A), förslaget går inte att använda (C), och en förfrågan avbruten mitt i strömmen (B, med Escape). Inget av dem ändrar något, och vart och ett säger det.</p>
+<div class="pair"><img src="bilder/A-fel-nyckel-1440x900.png" alt="Nyckeln godtogs inte, 1440 × 900"><img src="bilder/C-oanvandbart-1440x900.png" alt="Förslaget gick inte att använda, 1440 × 900"></div>
+<div class="pair" style="margin-top:12px"><img src="bilder/B-avbrutet-1440x900.png" alt="Avbrutet, 1440 × 900"></div>
+</section>
+</main></body></html>
