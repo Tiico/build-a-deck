@@ -166,6 +166,14 @@ En ram är dessutom det enda sättet att säga *vems* ordet är utan att böja n
 
 ---
 
+Reviderat 2026-10-06 (#756, beställarens beslut): **bordets skärm är värdens och talar värdens språk.**
+
+TV:n öppnades från editorn utan språk och följde den webbläsare som visade den; `?lang=` gällde en sidvisning och glömdes vid nästa.
+Editorns länkar till bordet — TV:n, bordsläget, «Spela härifrån», «Titta på» och startsidans «Öppna bordet» — bär nu värdens språk som `?lang=`, och bordets skärm minns ett språk den öppnats med (`rememberTableLang`), så att en omladdning eller nästa bord på samma skärm talar det.
+Det finns ingen språkväljare på filten: språket väljs där värden arbetar och följer med länken.
+Telefonernas väg in, koden och QR:en, bär inget språk; en spelare följer sin egen webbläsare.
+`table-lang.test.tsx` håller länkarna och minnet, och `table-lang.spec.ts` visar en TV som öppnats på svenska tala svenska också utan `?lang=` i en engelsk webbläsare.
+
 ## B. Domänmodellen
 
 ### B1. Full typad komponentmodell (fråga 2)

@@ -777,7 +777,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           ) : preparing ? (
             <span className="byd-editor-rendering">{t('editor.table.rendering', { done: preparing.done, total: preparing.total })}</span>
           ) : textures && textures.done + textures.failed.length >= textures.total ? (
-            <a href={tvUrl(table.id, params.get('server'), table.hostKey, table.hostKey === undefined)} target="_blank" rel="noreferrer">
+            <a href={tvUrl(table.id, params.get('server'), table.hostKey, table.hostKey === undefined, lang)} target="_blank" rel="noreferrer">
               {t('editor.table.open')}
             </a>
           ) : textures ? (
