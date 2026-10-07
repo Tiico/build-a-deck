@@ -3,6 +3,7 @@ import { ProjectClient, ProjectUnavailable, type ProjectFault } from './ProjectC
 import { Unauthorized, whoAmI } from '../account/api.js'
 import { useT } from '../i18n/index.js'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
+import { waitBegan } from '../status/waitClock.js'
 
 // Which of the shared states (#12) the project is in, plus the one that is not a message but a
 // redirect: not logged in sends the designer to the login card and back.
@@ -24,8 +25,11 @@ export type ProjectTiming = Pick<StatusTiming, 'slowAfterMs' | 'dropAfterMs' | '
 // that the page stops waiting, and an answer that comes after it is closed unseen.
 export function useProjectClient(http: string | null, id: string | null, timing: ProjectTiming = DEFAULT_TIMING): ProjectState {
   const { slowAfterMs, dropAfterMs, connectTimeoutMs } = timing
-  const [state, setState] = useState<{ client: ProjectClient | null; fault: ProjectTrouble | null; slow: boolean; tick: number }>({ client: null, fault: null, slow: false, tick: 0 })
+  const [state, setState] = useState<{ client: ProjectClient | null; fault: ProjectTrouble | null; slow: boolean; tick: number }>(() => ({ client: null, fault: null, slow: Date.now() - waitBegan() > slowAfterMs, tick: 0 }))
   const [attempt, setAttempt] = useState(0)
+  // The first opening on the page goes on from the shell's wait (#749, `waitClock.ts`); a retry, or
+  // another project, is a wait of its own.
+  const first = useRef(true)
   // Read through a ref, not a dependency: the word for somebody is settled once, when this
   // editor arrives. Switching language later renames nobody who is already in the project.
   const t = useT()
@@ -39,8 +43,10 @@ export function useProjectClient(http: string | null, id: string | null, timing:
     // Set once the wait has an answer, either the server's or the deadline's; nothing after it
     // may change what the page says about opening.
     let settled = false
-    setState({ client: null, fault: null, slow: false, tick: 0 })
-    const slow = setTimeout(() => live && !settled && setState((s) => ({ ...s, slow: true })), slowAfterMs)
+    const began = first.current ? waitBegan() : Date.now()
+    first.current = false
+    setState({ client: null, fault: null, slow: Date.now() - began > slowAfterMs, tick: 0 })
+    const slow = setTimeout(() => live && !settled && setState((s) => ({ ...s, slow: true })), Math.max(0, slowAfterMs - (Date.now() - began)))
     const deadline = setTimeout(() => {
       if (!live || settled) return
       settled = true

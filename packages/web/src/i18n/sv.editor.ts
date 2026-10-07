@@ -645,6 +645,7 @@ export const svEditor = {
   'canvas.props.w': 'Bredd (mm)',
   'canvas.props.h': 'Höjd (mm)',
   'canvas.props.field': 'Fält',
+  'canvas.props.shows': 'Visar fältet',
   'canvas.props.field.new': 'nytt fält…',
   // Ett element bundet till ett värde i stället för en kolumn visar inget fält, och väljaren
   // säger det i stället för att peka på lekens första kolumn som om den vore vald (#33).
@@ -665,8 +666,10 @@ export const svEditor = {
   'canvas.props.weight': 'Vikt',
   'canvas.props.color': 'Färg',
   'canvas.props.fit': 'Anpassning',
-  'canvas.fit.shrink': 'krymp till gräns',
-  'canvas.fit.fixed': 'fast storlek',
+  // Ett ord var (#736): väljaren står bredvid placeringens nio rutor, ungefär 110 px bred, och
+  // «krymp till gräns» klipptes till «krymp till grä…».
+  'canvas.fit.shrink': 'krymp',
+  'canvas.fit.fixed': 'fast',
   // Niopunktsplattan (L41): ett grepp som svarar på båda leden, och varje rutas namn är de två
   // orden i den ordning plattan läses — i sidled först, som texten själv.
   'canvas.props.place': 'Placering i rutan',
@@ -795,6 +798,7 @@ export const svEditor = {
   // Färdiga baksidor (L17). De står framme när baksidan är öppen, inte bakom en knapp: den som
   // landar på en tom baksida ska se vägen vidare utan att leta efter den.
   'canvas.backs': 'Färdiga baksidor',
+  'canvas.backs.n': 'Färdiga baksidor ({n})',
   'canvas.back.swap.ask.one': 'Byt baksidan mot «{name}»? Baksidans {n} lager ersätts.',
   'canvas.back.swap.ask.other': 'Byt baksidan mot «{name}»? Baksidans {n} lager ersätts.',
   'canvas.back.swap.yes': 'Ja, byt baksida',

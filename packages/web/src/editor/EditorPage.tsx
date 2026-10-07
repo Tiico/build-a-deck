@@ -25,7 +25,8 @@ import { Asking, Question } from './Question.js'
 import { useProjectClient, type ProjectTiming } from './useProjectClient.js'
 import type { ProjectDoc } from '@byd/server'
 import { useTableClient } from '../table/useTableClient.js'
-import { TableEnded, type ProjectClient, type Textures } from './ProjectClient.js'
+import { TableEnded, type ProjectClient } from './ProjectClient.js'
+import { RENDER_STALLED_AFTER_MS, stillRendering, useStalled, type Textures } from '../table/textures.js'
 import { loginUrl, removeProject } from '../account/api.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
@@ -46,17 +47,11 @@ import './editor.css'
 
 const PlaytestPrototype = import.meta.env.DEV ? lazy(() => import('./prototype/PlaytestWorkspace.js')) : null
 
-// How long the render count may stand still before the line says so (#88, UX-43). A texture is a
-// page in Chromium and takes seconds, not minutes, so thirty seconds without a single card landing
-// is a queue that is not moving — a worker that is down, or none at all — and not a slow one.
-// The count itself is what is watched, not the polling: a poll that answers the same number is
-// no progress.
-export const RENDER_STALLED_AFTER_MS = 30_000
+// How long the render count may stand still before the line says so (#88, UX-43): the table's own
+// patience, which the TV's start waits by too (#765).
+export { RENDER_STALLED_AFTER_MS }
 export type EditorTiming = { renderStalledAfterMs: number } & ProjectTiming
 export const DEFAULT_EDITOR_TIMING: EditorTiming = { renderStalledAfterMs: RENDER_STALLED_AFTER_MS, slowAfterMs: DEFAULT_TIMING.slowAfterMs, dropAfterMs: DEFAULT_TIMING.dropAfterMs, connectTimeoutMs: DEFAULT_TIMING.connectTimeoutMs }
-// A count under watch: which table's, where it stands, and how many times the designer has asked
-// for it to move. A stall is that same triple seen again when the patience ran out.
-type Watched = { table: string; done: number; asked: number }
 
 // /editor?project=…&server=http://…
 // The editor (L, prototype answer): the deck wall as home, the template canvas for the template,
@@ -205,21 +200,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const [lost, setLost] = useState<number | null>(null)
   // What the line counts: the update's own poll while one runs, otherwise the table's textures.
   const progress = preparing ?? textures
-  const rendering = progress !== null && progress.done + progress.failed.length < progress.total
+  const rendering = stillRendering(progress)
   // The count has not moved for as long as the timing allows (#88). What is remembered is the
   // count the stall was seen at, so a count that moves on takes the message with it in the same
   // render; another table and the designer asking again start the wait over too.
   const [asked, setAsked] = useState(0)
-  const watching: Watched | null = rendering && table ? { table: table.id, done: progress.done, asked } : null
-  const [stalledAt, setStalledAt] = useState<Watched | null>(null)
-  const stalled = watching !== null && stalledAt !== null && stalledAt.table === watching.table && stalledAt.done === watching.done && stalledAt.asked === watching.asked
-  useEffect(() => {
-    if (!watching) return
-    const seen = watching
-    const timer = setTimeout(() => setStalledAt(seen), timing.renderStalledAfterMs)
-    return () => clearTimeout(timer)
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- the watched record is new every render; its three values are what is watched
-  }, [watching?.table, watching?.done, watching?.asked, timing.renderStalledAfterMs])
+  const stalled = useStalled(rendering && table ? `${table.id}:${progress.done}:${asked}` : null, timing.renderStalledAfterMs)
   useEffect(() => {
     if (!client || !table) return
     let stop = false

@@ -13,7 +13,8 @@ import { expect, test } from '@playwright/test'
 // therefore not a flash to look at but a stretch of time when the table is wrong.
 //
 // So the bytes travel inside the stylesheet the browser already blocks on. What is checked here is
-// the built app and not the intention: the entry's sheet is a render-blocking `<link>` in the head,
+// the built app and not the intention: the entry's sheet is a `<link>` the entry waits for — after
+// `#root` since #749, so the shell paints first and the app's first frame still waits for it (L20) —
 // the face is inside it as a `data:` URL, and nothing in the build asks the network for a woff2.
 //
 // Migrated from `packages/web/test/felt-font.test.ts`, which built the app and served it over http
@@ -29,8 +30,9 @@ const filesUnder = (dir: string): string[] =>
 
 const index = readFileSync(join(OUT, 'index.html'), 'utf8')
 
-// Every `<link rel="stylesheet">` the head carries with nothing that would take it off the
-// critical path: a `media` that does not apply, or a `rel` that only hints.
+// Every `<link rel="stylesheet">` the document carries with nothing that would take it off the
+// critical path: a `media` that does not apply, or a `rel` that only hints. It stands after `#root`
+// since #749, where it no longer holds the shell's painting but still holds the entry.
 const blockingSheets = (html: string): string[] =>
   [...html.matchAll(/<link\b[^>]*>/g)]
     .map((m) => m[0])
@@ -425,9 +427,9 @@ const routeTable = (): Route[] => {
     const asStatic = new RegExp(`(?:^|\\n)\\s*import\\s*\\{[^}]*\\b${name}\\b[^}]*\\}\\s*from\\s*['"]([^'"]+)['"]`).exec(text)
     if (asStatic) return { module: resolveSpec(app, asStatic[1]!), how: 'entry' }
     // A route drawn by a wrapper declared in `App.tsx` itself — the editor's `Suspense` — answers
-    // for whatever that wrapper renders.
+    // for whatever that wrapper renders, and not for what stands in while it waits (#749).
     const wrapper = new RegExp(`function ${name}\\(\\)[\\s\\S]*?\\n\\}`).exec(text)
-    const inner = wrapper && /<([A-Z][A-Za-z0-9]*)\s*\/>/.exec(wrapper[0])
+    const inner = wrapper && /<([A-Z][A-Za-z0-9]*)\s*\/>/.exec(wrapper[0].replace(/fallback=\{<[^}]*\}/g, ''))
     return inner ? importedFrom(inner[1]!) : null
   }
   const resolved = [...text.matchAll(/path(?:\.startsWith\()?\s*===?\s*'([^']+)'\)?\)\s*return\s+Promise\.resolve\(([A-Z][A-Za-z0-9]*)\)/g)].map(

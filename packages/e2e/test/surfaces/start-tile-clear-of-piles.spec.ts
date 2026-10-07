@@ -29,7 +29,7 @@ for (const width of [1024, 1280, 1440]) {
     test('leaves at least 8 px to every pile’s pill above it', async ({ request, open }) => {
       const doc = gameWithAStart()
       const table = await tableFromSetup(request, setupFromProject(doc), deckFromProject(doc))
-      const { page } = await open({ name: `desk-${width}`, viewport: { width, height: width === 1024 ? 768 : 800 } }, `${table.tableUrl}&lang=sv`)
+      const { page } = await open({ name: `desk-${width}`, viewport: { width, height: width === 1024 ? 768 : 800 } }, `${table.tableUrl}&lang=sv`, { facesReady: true })
       const tile = page.locator('[data-table-start]')
       await expect(tile).toBeVisible()
       const drawn = await page.evaluate(() => {

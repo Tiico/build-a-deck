@@ -1980,6 +1980,12 @@ button.byd-pill-value[aria-expanded='true'] { color: var(--byd-editor-primary-ma
 .byd-props-picture span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-props-picture button { min-height: var(--byd-tap); padding: 0 12px; border-radius: 6px; font: inherit; cursor: pointer; }
 .byd-props-field:has(.byd-newfield) { grid-column: 1 / -1; }
+/* A text layer's column, on a line of its own under the panel's heading (#736): «Visar fältet»
+   and the picker beside it, which is where the layer is named. A new field's form opens under
+   the line rather than beside it. */
+.byd-props label.byd-props-bind { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--byd-s2); font-size: 12px; }
+.byd-props-bind select { min-height: var(--byd-tap); }
+.byd-props-bind .byd-newfield { grid-column: 1 / -1; }
 .byd-props-field .byd-newfield { position: static; width: auto; margin-top: 4px; }
 /* The kinds used to be given their width back here, and again in the form's own rules, because
    `.byd-props input` makes every box in this column as wide as the column. The tick box (#45,
@@ -2947,6 +2953,9 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-tables-state { color: var(--byd-tables-quiet); }
 .byd-table-row[data-state='played'] .byd-tables-state { color: var(--byd-tables-live-ink); font-weight: 700; }
 .byd-tables-stale { flex-basis: 100%; color: var(--byd-tables-stale-ink); font-style: normal; font-weight: 600; }
+/* Kort som fortfarande ritas (#765, beslut B), i bandets ord och på en egen rad som prototypen
+   visade den: också det ett läge som väntar på något, och därför inte grått. */
+.byd-tables-render { flex-basis: 100%; color: var(--byd-tables-stale-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 /* Who is at the table and when it last moved: one line each, and a name too long for the column
    is cut rather than allowed to push the row into a third and a fourth line. */
 .byd-tables-line { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--byd-tables-quiet); font-size: 12px; }
@@ -3814,6 +3823,13 @@ p.byd-symbols-refused { margin: 0; color: #f0b64a; font-size: 11px; line-height:
    three strokes that already differ from square to square, so it cannot carry the state as well. */
 .byd-props-pad button[aria-checked='true'] { border-color: var(--byd-editor-primary-mark); background: #2f3a55; color: #ffffff; }
 
+/* The text section's lower half (#736, beslut C 2026-10-06): the nine squares in a column of their
+   own, exactly as wide as they are, and «Anpassning» and «Finjustering» stacked beside them. Under
+   each other they made the text panel 751 px in a column of 589–621. The column's width is the
+   pad's, so every row of the section shares it. */
+.byd-props-sec[data-section='text'] > .byd-props-rows { grid-template-columns: calc(3 * var(--byd-tap) + 6px) minmax(0, 1fr); }
+.byd-props-sec[data-section='text'] .byd-props-pad { grid-column: 1; grid-row: span 2; align-self: start; }
+.byd-props-sec[data-section='text'] :is(.byd-props-fit, .byd-props-disclose) { grid-column: 2; align-self: start; }
 .byd-props-disclose {
   grid-column: 1 / -1;
   justify-self: start;
@@ -3828,9 +3844,38 @@ p.byd-symbols-refused { margin: 0; color: #f0b64a; font-size: 11px; line-height:
 }
 .byd-props-disclose span { text-decoration: none; }
 
-/* The ready-made backs (L17), over the layers they are made of. Two to a row: the 220 px panel
-   holds two card thumbnails at a size where a lattice is still a lattice. */
-.byd-backs { margin: 0 0 16px; }
+/* The ready-made backs (L17), under the layers they are made of and folded while the back has
+   some (#736, beslut A). The head is the gallery's door: a box the column's width with the fold's
+   chevron, so a folded gallery still reads as something there rather than as a caption. Two to a
+   row when open: the 220 px panel holds two card thumbnails at a size where a lattice is still a
+   lattice. */
+.byd-backs { display: grid; gap: var(--byd-s2); margin: var(--byd-s3) 0 0; }
+.byd-canvas .byd-backs h2 { margin: 0; }
+.byd-backs h2 button {
+  display: flex;
+  align-items: center;
+  gap: var(--byd-s2);
+  width: 100%;
+  min-height: var(--byd-tap);
+  padding: 0 var(--byd-s3);
+  border: 1px solid #2f333d;
+  border-radius: 8px;
+  background: transparent;
+  color: #e6ecfa;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  /* A door and not a caption: in the column's capitals and tracking «Färdiga baksidor (7)» broke
+     onto two lines in the 195 px it has. */
+  letter-spacing: 0;
+  text-align: left;
+  text-transform: none;
+  cursor: pointer;
+}
+.byd-backs h2 button:hover { border-color: var(--byd-editor-primary-mark); }
+.byd-backs h2 button::before { content: ''; flex: none; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 120ms; }
+.byd-backs h2 button[aria-expanded='true']::before { transform: rotate(45deg); }
+@media (prefers-reduced-motion: reduce) { .byd-backs h2 button::before { transition: none; } }
 .byd-backs-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .byd-backs-list button {
   display: grid;

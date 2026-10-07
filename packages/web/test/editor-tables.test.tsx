@@ -91,6 +91,20 @@ describe('the Bord tab (#19)', () => {
     expect(table.textContent).toContain('inga drag än')
   })
 
+  // The row says what the band says while the cards are still on their way (#765, beslut B): the
+  // same words, so a designer who reads either reads one state.
+  it('says «renderar kort» with the count while the table’s cards are rendering, and nothing once they are done', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await startTable()
+    await openTables()
+    const table = await onlyRow()
+    await waitFor(() => expect(table.querySelector('.byd-tables-render')?.textContent).toBe('renderar kort 0/4'))
+    expect(await run.completeRenders(3)).toBe(3)
+    await waitFor(() => expect(table.querySelector('.byd-tables-render')?.textContent).toBe('renderar kort 3/4'))
+    expect(await run.completeRenders()).toBe(1)
+    await waitFor(() => expect(table.querySelector('.byd-tables-render')).toBeNull())
+  })
+
   it('says so when the game has no table at all', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openTables()

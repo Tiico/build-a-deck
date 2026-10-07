@@ -18,6 +18,7 @@ import { canDelete, canEdit, canStartTables, type Role } from '@byd/server/doc'
 import { translate, type Key, type T } from '../i18n/index.js'
 import { Said, saidOr } from '../i18n/said.js'
 import { UNDO_STEPS, whatOf } from './undo.js'
+import { readTextures, type Textures } from '../table/textures.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 
 // Without a catalogue of its own this module speaks Swedish, exactly as a surface mounted
@@ -71,7 +72,7 @@ export type SaveResult = { ok: true; rev: number } | { ok: false; reason: 'confl
 export type Cell = string | number | boolean | null
 // `smallest`: what each card's rendered front was fitted to, by row (#523) — a card whose front is
 // not rendered yet, or was rendered before this was kept, is not in it.
-export type Textures = { total: number; done: number; failed: string[]; smallest?: Record<string, number> }
+export type { Textures }
 // A table of this game as the Bord tab lists it (#19): which session, the version it runs,
 // whether its log is locked (C9), and when it last moved.
 // `code` is the room code of a running table, given only to a role that may start one (#477).
@@ -1314,10 +1315,8 @@ export class ProjectClient {
     return `${this.http}/faces/${hash}?name=${encodeURIComponent(name)}`
   }
 
-  async textures(sessionId: string): Promise<Textures> {
-    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/textures`, withCredentials())
-    if (!res.ok) throw new Error(`could not read texture status: ${res.status}`)
-    return (await res.json()) as Textures
+  textures(sessionId: string): Promise<Textures> {
+    return readTextures(this.http, sessionId)
   }
 
   private commit(doc: ProjectDoc): void {

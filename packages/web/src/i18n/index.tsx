@@ -109,6 +109,7 @@ export function LanguagePicker() {
   )
 }
 
+// Written out again in `detect.ts`, which may not reach for this one (it runs before the entry).
 const REMEMBERED = 'byd.lang'
 
 // What the reader chose, if they ever chose: a browser that refuses storage simply has no
@@ -130,15 +131,7 @@ export function rememberLang(lang: Lang | null): void {
   }
 }
 
-// The reader's own choice first, then the address they followed, then what their browser asks
-// for. Nothing else: the tool never guesses from where someone is.
-export function detectLang(): Lang {
-  const asked = new URLSearchParams(location.search).get('lang')
-  if (isLang(asked)) return asked
-  const chosen = chosenLang()
-  if (chosen) return chosen
-  return (navigator.languages ?? [navigator.language]).some((l) => l.toLowerCase().startsWith('sv')) ? 'sv' : 'en'
-}
+export { detectLang } from './detect.js'
 
 // Which variety of the tool's language the reader reads a clock and a date in (#755). The
 // catalogue is `en`, but `en` alone is the American reading, so a reader in en-GB was told
