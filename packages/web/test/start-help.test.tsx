@@ -17,7 +17,9 @@ import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
-const PITCH = /Skapa ditt kortspel, speltesta det på skärmen, beställ hem det/
+// What the product does during the beta, and that print is on its way (#743): ordering is phase 5,
+// and a line that promised it sent a beta tester looking for something that was not there.
+const PITCH = /Skapa ditt kortspel och speltesta det på skärmen — tryck kommer\./
 const NO_PASSWORD = /Länken i mejlet loggar in dig/
 const GUEST = /Skanna QR-koden på bordet/
 
@@ -208,5 +210,15 @@ describe('the guided start on a phone, one step at a time', () => {
     fireEvent.click(screen.getByRole('tab', { name: '3 · Korten' }))
     expect(asks()).toHaveLength(1)
     expect((await askOn('korten')).textContent).toMatch(FOOTER)
+  })
+})
+
+// Neither language promises an order the product cannot take yet (#743).
+describe('the pitch during the beta', () => {
+  it('promises no ordering in Swedish or English', async () => {
+    const { translate } = await import('../src/i18n/index.js')
+    expect(translate('sv', 'login.pitch')).toBe('Skapa ditt kortspel och speltesta det på skärmen — tryck kommer.')
+    expect(translate('en', 'login.pitch')).toBe('Build your own card game and playtest it on screen — print is coming.')
+    for (const lang of ['sv', 'en'] as const) expect(translate(lang, 'login.pitch')).not.toMatch(/beställ|order/i)
   })
 })
