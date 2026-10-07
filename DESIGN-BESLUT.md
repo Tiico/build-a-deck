@@ -1351,7 +1351,7 @@ CSV-steget togs bort eftersom det gjorde onboarding beroende av ett externt kalk
 ### E4. Assets: kurerat CC0- och CC-BY-bibliotek för symboler (fråga 23)
 
 Inbyggt sökbart bibliotek med fritt licensierade ikoner och symboler, plus platshållarramar och färgblock för illustrationsytor.
-Ingen inbyggd AI-generering.
+Ingen inbyggd AI-generering av bilder (preciserat 2026-10-07, se nedan: text och struktur får föreslås).
 
 Motivering:
 Prototyper som ser färdiga ut får fel feedback — testare kritiserar konsten och blir artiga om mekaniken.
@@ -1360,6 +1360,20 @@ Fritt licensierat material ger noll rättslig risk vid tryck.
 Följdkrav:
 Licensmetadata per asset måste följa med hela vägen in i tryckunderlaget.
 Kuratering och licensbokföring blir ett löpande arbete.
+
+Preciserat 2026-10-07 av beställaren (#940): **AI får föreslå text och struktur, aldrig bild.**
+Förbudet ovan gällde konsten, och dess motivering gör det fortfarande: en illustration som ser färdig ut drar testarnas blick från mekaniken.
+En mall, ett fält, en kortrad eller ett stycke i regelboken är inte konst utan designerns eget arbetsmaterial, och det är där en designer med en lek på hundratals kort behöver hjälp.
+Hjälpen drivs av användarens egen nyckel hos Anthropic eller OpenAI; tjänsten står aldrig för en token och kör aldrig en modell.
+Nyckeln sparas krypterad på kontot med en huvudnyckel som inte ligger i databasen och därför inte i dess backup (DRIFT §5), visas aldrig igen, och ingår aldrig i en export (G5).
+Servern gör anropet åt användaren och strömmar svaret vidare, så att nyckeln aldrig lämnar servern; den förmedlar men tänker inte.
+Det AI:n svarar är ett förslag i editorns egen elementmodell (L1) och i editorns egna redigeringar, förhandsvisat med den enda renderaren (E2) och skrivet i dokumentet först när designern godtar det — som en redigering, i ett steg, med vanlig historik och ångra (B4, D3).
+
+Följdkrav:
+Modellen skriver aldrig HTML eller CSS, och ett förslag som inte går att tillämpa på dokumentet avvisas innan det når det.
+Det som skickas till leverantören sägs med vanliga ord innan nyckeln sparas.
+Servern loggar aldrig en nyckel, en kontext eller ett svar.
+Hur ytan ser ut prototypas innan den byggs (#940).
 
 Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
 Tre sätt prövades: en bibliotekspanel, en väljare som öppnas vid klammern medan man skriver, och en bricka att dra symboler från till kortet.
