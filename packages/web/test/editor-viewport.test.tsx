@@ -179,6 +179,9 @@ async function tablesTab(width: number): Promise<Record<string, string>> {
   const started = await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })
   if (!started.ok) throw new Error(`could not start a table: ${started.status}`)
   const table = ((await started.json()) as { id: string }).id
+  // Its cards done, so its group lies folded until the press below: a group whose table still
+  // draws them opens by itself (#939), and the press would then fold it.
+  await run.completeRenders()
   atWidth(width)
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   // The table's own door and not the server's, because that is what this surface waits on below:
