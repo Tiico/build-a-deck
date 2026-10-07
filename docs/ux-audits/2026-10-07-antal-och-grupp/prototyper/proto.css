@@ -1,0 +1,18 @@
+/* PROTOTYP (#695; kopierad från 2026-10-06-editorns-remsor). Kastas när varianten är vald. */
+:root { --ink: #e6ecfa; --quiet: #868ea3; --amber: #ffd98a; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #14161c; color: var(--ink); font: 13px system-ui, sans-serif; }
+body { padding: 16px 16px 120px; }
+a { color: #9cc3ff; }
+.rubrik { max-width: 1280px; margin: 0 0 12px; color: var(--amber); font-size: 12px; line-height: 1.5; }
+.rubrik b { color: #ffe9b8; } .rubrik p { margin: 0 0 4px; }
+.anteckning { max-width: 1280px; margin: 8px 0 12px; padding: 8px 12px; border-radius: 8px; background: #1f1b12; border: 1px solid #4a4230; color: #e9d7a8; font-size: 12.5px; line-height: 1.55; }
+.anteckning b { color: #ffe9b8; } .anteckning .plus { color: #b7dca0; } .anteckning .minus { color: #f0a58a; }
+img { display: block; outline: 1px dashed #4a4230; max-width: 100%; }
+.vaxlare { position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #ffd98a; color: #1f1b12; box-shadow: 0 10px 30px rgba(0,0,0,.6); font-weight: 700; white-space: nowrap; max-width: calc(100vw - 16px); overflow-x: auto; }
+.vaxlare button { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; padding: 0 12px; }
+.vaxlare button[aria-pressed='false'] { background: transparent; color: #1f1b12; }
+.vaxlare .namn { padding: 0 10px; min-width: 260px; text-align: center; font-size: 12.5px; }
+.vaxlare .sep { width: 1px; align-self: stretch; background: #1f1b1240; margin: 4px; }
+table { border-collapse: collapse; margin: 8px 0; font-size: 12px; }
+th, td { border: 1px solid #3a3426; padding: 4px 8px; text-align: left; }

@@ -424,9 +424,9 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate, texture
   // not answered yet there is no seat to take; the word stays where it is rather than swapping
   // under the pointer, and the row's own lines say why it cannot be had.
   const ready = ended ? (
-    <Way href={tvUrl(table.id, server, undefined, true)} label="tables.way.tv" table={name} ready />
+    <Way href={tvUrl(table.id, server, undefined, true, lang)} label="tables.way.tv" table={name} ready />
   ) : free ? (
-    <Way href={onlineUrl(table.id, server, free, true, t)} label="tables.way.play" table={name} ready />
+    <Way href={onlineUrl(table.id, server, free, true, t, lang)} label="tables.way.play" table={name} ready />
   ) : (
     <button type="button" className="byd-tables-ready" disabled>
       {t('tables.way.play')} <span className="byd-offscreen">{name}</span>
@@ -437,9 +437,9 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate, texture
   // no seat to take and nothing left to end, so its menu is the three that are still about
   // something.
   const ways: WayItem[] = [
-    ...(ended ? [] : [{ id: 'tv', href: tvUrl(table.id, server, undefined, true), label: 'tables.way.tv' as Key }]),
-    { id: 'table', href: tableModeUrl(table.id, server, true), label: 'tables.way.tableMode' as Key },
-    { id: 'watch', href: observeUrl(table.id, server, true, t), label: 'tables.way.watch' as Key },
+    ...(ended ? [] : [{ id: 'tv', href: tvUrl(table.id, server, undefined, true, lang), label: 'tables.way.tv' as Key }]),
+    { id: 'table', href: tableModeUrl(table.id, server, true, lang), label: 'tables.way.tableMode' as Key },
+    { id: 'watch', href: observeUrl(table.id, server, true, t, lang), label: 'tables.way.watch' as Key },
     // A table that has ended lets nobody in, so it has no code to hold up (#706).
     ...(ended ? [] : [{ id: 'qr', label: 'tables.qr' as Key, expanded: qrOpen, press: () => onQr(!qrOpen) }]),
     ...(ended ? [] : [{ id: 'end', label: 'tables.end' as Key, apart: true, press: () => setAsking(true) }]),

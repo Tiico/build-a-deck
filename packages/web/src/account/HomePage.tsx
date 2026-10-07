@@ -205,7 +205,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               <div key={table.id} className="byd-home-running-row" data-running={table.id}>
                 <b>{table.name}</b>
                 <strong>{table.code}</strong>
-                <a href={tvUrl(table.id, server, undefined, true)} target="_blank" rel="noreferrer" aria-label={t('home.running.open.aria', { code: table.code, name: table.name })}>
+                <a href={tvUrl(table.id, server, undefined, true, lang)} target="_blank" rel="noreferrer" aria-label={t('home.running.open.aria', { code: table.code, name: table.name })}>
                   {t('home.running.open')}
                 </a>
               </div>
@@ -313,7 +313,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                     {/* The tables already running come first (#724, beslut B), so a second press to see the
                         code again opens the table it was for rather than starting another. */}
                     {(running[p.id] ?? []).map((table) => (
-                      <a key={table.id} href={tvUrl(table.id, server, undefined, true)} target="_blank" rel="noreferrer" onClick={() => setMenu(null)}>
+                      <a key={table.id} href={tvUrl(table.id, server, undefined, true, lang)} target="_blank" rel="noreferrer" onClick={() => setMenu(null)}>
                         {t('home.menu.open', { code: table.code })}
                       </a>
                     ))}

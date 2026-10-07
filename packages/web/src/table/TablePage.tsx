@@ -24,6 +24,7 @@ import { useT, type Key } from '../i18n/index.js'
 import { keepHostKey, takeHostKey } from './hostKey.js'
 import { useCardsPending } from './textures.js'
 import { versionWord } from '../i18n/version.js'
+import { rememberTableLang } from './tableLang.js'
 
 type SessionRecord = { name?: string }
 
@@ -35,6 +36,8 @@ export type TablePageProps = { timing?: StatusTiming & { renderStalledAfterMs?: 
 export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
+  // The host's language, carried here by the editor's link, is this screen's from now on (#756).
+  useEffect(() => rememberTableLang(), [])
   const sessionId = params.get('session')
   const mode: TableMode = params.get('mode') === 'tv' ? 'tv' : 'table'
   // Read once and out of the address at once (#758): the key never stands in the address bar.

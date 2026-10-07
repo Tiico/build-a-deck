@@ -166,6 +166,14 @@ En ram är dessutom det enda sättet att säga *vems* ordet är utan att böja n
 
 ---
 
+Reviderat 2026-10-06 (#756, beställarens beslut): **bordets skärm är värdens och talar värdens språk.**
+
+TV:n öppnades från editorn utan språk och följde den webbläsare som visade den; `?lang=` gällde en sidvisning och glömdes vid nästa.
+Editorns länkar till bordet — TV:n, bordsläget, «Spela härifrån», «Titta på» och startsidans «Öppna bordet» — bär nu värdens språk som `?lang=`, och bordets skärm minns ett språk den öppnats med (`rememberTableLang`), så att en omladdning eller nästa bord på samma skärm talar det.
+Det finns ingen språkväljare på filten: språket väljs där värden arbetar och följer med länken.
+Telefonernas väg in, koden och QR:en, bär inget språk; en spelare följer sin egen webbläsare.
+`table-lang.test.tsx` håller länkarna och minnet, och `table-lang.spec.ts` visar en TV som öppnats på svenska tala svenska också utan `?lang=` i en engelsk webbläsare.
+
 ## B. Domänmodellen
 
 ### B1. Full typad komponentmodell (fråga 2)
@@ -5210,6 +5218,9 @@ Inloggningssidan är det första någon ser, och ett e-postfält utan sammanhang
 Det kräver ett tillstånd på en sida som i dag inte har något, och tillståndet är en vy och inte ett faktum om någon (L4): det ligger i webbläsaren, per skärm, aldrig i ett konto — sidan får inte veta vem som tittar innan hon loggat in.
 **Går lagringen inte att läsa visas säljtexten.**
 Ett privat fönster, en rensad webbläsare eller en blockerad lagring ska ge den som kanske aldrig varit här sammanhanget, inte ta bort det: felet åt det hållet kostar en mening, felet åt andra hållet kostar en förklaring till den som behövde den.
+
+*Reviderat 2026-10-06 (#743, beställarens beslut):* under betan säger säljtexten «Skapa ditt kortspel och speltesta det på skärmen — tryck kommer.» (engelska: «Build your own card game and playtest it on screen — print is coming.»).
+«Beställ hem det» lovade något som är fas 5, och en betatestare som kom för att beställa hittade ingenting; ingen beställning utlovas som något som finns i dag.
 Frågetecknet står kvar bredvid i båda fallen, så vägen till resten finns oavsett.
 
 **Raden under säljtexten följer vägen in** (beställarens beslut 2026-10-06, #691).

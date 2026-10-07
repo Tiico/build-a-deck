@@ -58,7 +58,9 @@ describe('the editor’s ⋯ (#738)', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Byt namn på «Skogens herrar»' })
     const field = within(dialog).getByRole('textbox', { name: 'Spelets namn' })
     expect((field as HTMLInputElement).value).toBe('Skogens herrar')
-    expect(document.activeElement).toBe(field)
+    // The focus is moved by an effect after the dialog is drawn, so it is waited for and not read in
+    // the same breath: CI's slower runner read it before the effect ran (#945).
+    await waitFor(() => expect(document.activeElement).toBe(field))
     fireEvent.change(field, { target: { value: '   ' } })
     expect((within(dialog).getByRole('button', { name: 'Byt namn' }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.change(field, { target: { value: '  Skogens drottningar ' } })
@@ -66,7 +68,7 @@ describe('the editor’s ⋯ (#738)', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens drottningar')
     await waitFor(() => expect(document.title).toMatch(/^Skogens drottningar · /))
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fler val för Skogens drottningar' }))
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fler val för Skogens drottningar' })))
   })
 
   it('leaves the name as it was when the window is closed', async () => {
@@ -97,7 +99,7 @@ describe('the editor’s ⋯ (#738)', () => {
     const question = await screen.findByRole('alertdialog', { name: 'Ta bort spelet' })
     expect(question.textContent).toMatch(/Ta bort Skogens herrar\? Hela historien följer med/)
     // The question opens on the answer that loses nothing.
-    expect(document.activeElement).toBe(within(question).getByRole('button', { name: 'Behåll' }))
+    await waitFor(() => expect(document.activeElement).toBe(within(question).getByRole('button', { name: 'Behåll' })))
     fireEvent.click(within(question).getByRole('button', { name: 'Ta bort' }))
     await waitFor(() => expect(went).toHaveBeenCalledWith(`/?server=${encodeURIComponent(run.http)}`))
     expect((await fetch(`${run.http}/projects/${run.projectId}`, { credentials: 'include' })).status).toBe(404)
@@ -116,7 +118,7 @@ describe('the editor’s ⋯ (#738)', () => {
     fireEvent.click(within(question).getByRole('button', { name: 'Behåll' }))
     expect(screen.queryByRole('alertdialog', { name: 'Ta bort spelet' })).toBeNull()
     expect(went).not.toHaveBeenCalled()
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fler val för Skogens herrar' }))
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fler val för Skogens herrar' })))
   })
 
   it('offers a co-editor everything but taking the game away, which is the owner’s alone', async () => {

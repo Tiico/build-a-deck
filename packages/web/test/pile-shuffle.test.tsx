@@ -194,6 +194,44 @@ describe('the fan on the felt (L35)', () => {
     expect(fanOf('discard')).toHaveLength(0)
   })
 
+  // The television fans a line and says it under the pile, and both are keyed by that line's
+  // `seq` so a second shuffle starts each over (#718). As siblings in one pile they shared a key,
+  // and React, told two children were one, left the old fan behind whenever the pile was drawn
+  // again: CI and a full gate counted eight fanned backs where there are four (#936), and a fan
+  // that ended was never taken off the felt. Each step a television goes through — the words and
+  // the fan arriving together or apart, the felt drawn again while both play, the fan ending
+  // before the words, the next shuffle — must hold exactly one fan, and React must not have had to
+  // say anything about keys.
+  it('holds exactly one fan through every step a shuffle takes on the television, beside its words (#936)', () => {
+    const { view } = buildScene()
+    const spoke = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      const at = (shuffles: { pile: string; seq: number }[], said: { pile: string; seq: number }[]) => <TableRenderer view={view(null)} mode="tv" scale={1} faces={FACES} shuffles={shuffles} said={said} />
+      const first = [{ pile: 'draw', seq: 12 }]
+      const second = [{ pile: 'draw', seq: 13 }]
+      const steps: [string, ReturnType<typeof at>, number][] = [
+        ['the words alone', at([], first), 0],
+        ['the fan joins the words', at(first, first), 4],
+        ['the felt drawn again while both play', at(first, first), 4],
+        ['the fan ends before the words', at([], first), 0],
+        ['a second shuffle, fan and words together', at(second, second), 4],
+        ['its words end with the fan still playing', at(second, []), 4],
+        ['and its fan ends', at([], []), 0],
+        ['a third, the fan before its words', at(first, []), 4],
+        ['and its words after', at(first, first), 4],
+      ]
+      const { rerender } = render(steps[0]![1])
+      for (const [step, element, fan] of steps) {
+        rerender(element)
+        expect(fanOf('draw'), step).toHaveLength(fan)
+        expect(document.querySelectorAll('[data-zone="draw"] .byd-pile-fan').length, step).toBe(fan > 0 ? 1 : 0)
+      }
+      expect(spoke.mock.calls.map((c) => String(c[0])).filter((m) => /same key/.test(m))).toEqual([])
+    } finally {
+      spoke.mockRestore()
+    }
+  })
+
   it('fans nothing while no shuffle is playing', () => {
     const { view } = buildScene()
     render(<TableRenderer view={view(null)} mode="tv" scale={1} />)

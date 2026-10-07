@@ -7,7 +7,8 @@ export const svAccount = {
   // Inloggningskortet (G1): ett fält, en knapp och en mening om gäster. Aldrig ett lösenord.
   // Säljtexten står bara första gången (L36): den säger vad produkten är, inte hur verktyget
   // fungerar, och den som redan har konto ska slippa läsa den varje gång.
-  'login.pitch': 'Skapa ditt kortspel, speltesta det på skärmen, beställ hem det.',
+  // Det produkten gör under betan, och att trycket är på väg (#743): beställningen är fas 5.
+  'login.pitch': 'Skapa ditt kortspel och speltesta det på skärmen — tryck kommer.',
   'login.lead': 'Logga in för att komma till dina spel.',
   // En lead per väg in (#691, beslut 2026-10-06), som claim har sin: första besöket säger att samma
   // länk både loggar in och skapar kontot, inbjudan säger vilket spel den leder till, och guidens

@@ -162,10 +162,11 @@ describe('the ways into a table (#19)', () => {
     // links, which is what a menu item made of an anchor is.
     const ways = [within(row).getByRole('link', { name: /Spela härifrån/ }), ...within(menu).getAllByRole('menuitem')].filter((el) => el.hasAttribute('href'))
     expect(ways.map((a) => a.getAttribute('href'))).toEqual([
-      `/online?session=${id}&seat=A&name=Designern&owner=1&server=${encodeURIComponent(ws)}`,
-      `/table?session=${id}&mode=tv&owner=1&server=${encodeURIComponent(ws)}`,
-      `/table?session=${id}&mode=table&owner=1&server=${encodeURIComponent(ws)}`,
-      `/observe?session=${id}&name=Designern&owner=1&server=${encodeURIComponent(ws)}`,
+      // Every way to the table carries the designer's language, so the table speaks it (#756, A4).
+      `/online?session=${id}&seat=A&name=Designern&owner=1&lang=sv&server=${encodeURIComponent(ws)}`,
+      `/table?session=${id}&mode=tv&owner=1&lang=sv&server=${encodeURIComponent(ws)}`,
+      `/table?session=${id}&mode=table&owner=1&lang=sv&server=${encodeURIComponent(ws)}`,
+      `/observe?session=${id}&name=Designern&owner=1&lang=sv&server=${encodeURIComponent(ws)}`,
     ])
     // A link that leaves the editor behind says so, and says which table it is about: four
     // identical rows of links are otherwise four times the same word to a screen reader.
