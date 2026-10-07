@@ -1212,6 +1212,33 @@ Beskedet räknar ned till nästa försök utan «av», och «Försök nu» står
 Telefoner och editorn behåller planen och överlämnar beslutet till den som håller dem.
 `TableClient` tar det som `keepTryingMs`, och bordets sida sätter det; `reconnect.spec.ts` klipper TV:ns lina förbi planen och ser den komma tillbaka på `online`.
 
+Tillägg 2026-10-06 (#749, beställarens beslut efter prototyp, variant B av fem): **laddar-läget står i sidan innan appen har kommit fram.**
+Speltestet 2026-10-02 öppnade varje rutt på ett långsamt mobilnät och fick en vit sida i fem till sju sekunder, i ljust systemläge, och i mörkt en tom duk som ändå blinkade vit precis innan appen ritade.
+Ingen kunde skilja en långsam sida från en död.
+Nu står D5:s laddar-läge i sidformen i det `index.html` som skeppas, inuti `#root`, som statisk markup och CSS som React ersätter vid sin första ritning: skalet.
+Bygget skriver in det (`src/shell.ts`, `vite.config.ts`); källans `index.html` behåller ett tomt `#root`, som webbsvitens mätningar klistrar in sin egen markup i.
+Det säger ruttens egna ord ur katalogen — «Dukar bordet…» på `/table` i båda lägena och på skärmarna som tittar på bordet, «Hämtar din hand…» på `/play`, «Öppnar spelet…» i editorn och «Hämtar…» överallt annars, också på `/join`, där det ännu inte finns någon hand att hämta, och på en rumskod skriven som adress (#675).
+Efter `slowAfterMs` byter det till ruttens dröjer-rubrik, med en mening som är skalets egen: katalogens ber läsaren trycka «försök igen», och skalet har inget att trycka på.
+Efter 20 sekunder står «Ladda om sidan» under raden.
+Det är en omladdning och avsiktligt så, av samma skäl som för en chunk som inte nådde fram: ingenting står ännu på sidan som en omladdning kan kasta bort.
+Språket väljs med appens egen `detectLang` — adressens `?lang=`, sedan det valda `byd.lang`, sedan webbläsaren — inlinad i dokumentet, och orden skrivs in ur katalogens `status`-del när appen byggs, så skalet och appen kan inte säga samma läge med två formuleringar.
+Utan JavaScript döljs laddar-orden, som annars vore ett löfte ingen håller, och en `<noscript>`-rad på båda språken säger att sidan behöver JavaScript.
+Skalet är mörkt i båda systemlägena, som appens besked.
+
+Övertagandet byter ord och inte bild, eftersom appens första ram på en väntande rutt har samma form: editorns Suspense-reserv är samma besked, och bordet och telefonen visar «Ansluter».
+Förloppet läses som D5:s egen följd — laddar, ansluter, vyn — och inte som tre olika skärmar.
+Därför räknar appens långsamhetsklocka från navigeringens start och inte från monteringen (`status/waitClock.ts`): annars sa ett långsamt nät «det tar längre tid» i skalet, «ansluter» när appen tog över och «det tar längre tid» igen fyra sekunder senare.
+Det gäller ytans första väntan; ett nytt försök som en människa bett om är en ny väntan och räknar från då.
+
+Bordsläget fick samtidigt sin mark under filten: `/table?mode=table` ritade efter «Ansluter» en helvit sida med bara rubrikraden, ungefär 0,7 sekunder på strypt nät, medan filten mätte sin ram.
+Ramen är dold tills den vet sin storlek, och den döljer sin egen mark med sig; samma mark ligger nu också under den.
+
+Uppmätt på den byggda appen med speltestets nät (400 ms latens, 400 kbit/s): första målning 0,5 sekunder på varje rutt mot 5,1–7,3 förut; inga vita ramar från startsidan till editorn, från `/join` till `/play` eller in i bordsläget, där det förut var en per byte; textens kontrast minst 7:1; skalet kostar `index.html` cirka 1,7 kB gzip.
+Bildändringen vid övertagandet är 0–1,1 % i mörkt läge när appen tar över medan beskedet ännu är laddar.
+När det redan dröjer är den 0–4,5 %: appens dröjer-besked har sina två vägar ut, «Försök igen» och hemvägen, där skalet bara har orden — rubriken står kvar och blocket flyttar sig så mycket som knapparna tar.
+Grind: `packages/e2e/test/surfaces/shell.spec.ts`.
+TV:ns rubrik på 26 px, som skalet ärver från sidformen, är en egen fråga (#925).
+
 ---
 
 ## E. Editorn
@@ -3063,6 +3090,11 @@ Skylten blev ungefär 6 % smalare: 171, 181 och 123 px mot 182, 193 och 128.
 Mätt på den byggda appen i #683:s fyra celler — rummets TV vid 1280 och 1920 med fyra och åtta platser, också med skylttexten 15 % bredare — är varje skylt fri och hel, ingen är en bricka, och kortets kortsida är 46, 31, 77 och 45 px som förut.
 Grind: `packages/e2e/test/surfaces/tv-seat-plate-free-place.spec.ts`, som frågar Chromium vilket typsnitt det ritade skyltens glyfer med och jämför med högnamnen på samma filt, och som åter kräver att ingen skylt är en bricka i 15 %-passet.
 
+Tillägg 2026-10-06 (#749): **«innan något målas» betyder nu innan appens första bild.**
+Arket med ansiktet står efter `#root` (L20, tillägg samma dag), så sidans laddar-besked målas innan arket är framme.
+Beskedet ritar ingenting i filtens typsnitt; entrén körs först när arket gäller, och därför finns ansiktet i dokumentet innan filten lägger ut ett enda namn.
+`shell.spec.ts` håller arket på tråden och mäter det.
+
 ### K21. En hög kan ha egna åtgärder, och en zon kan säga vilka kort som börjar i den (prototypat och byggt 2026-09-15)
 
 Två saker som ser ut som två frågor och är en: **vad som är designerns att bestämma om en zon, utöver var den ligger och vad den heter.**
@@ -4492,6 +4524,24 @@ De två sista är beslut om i18n-arkitekturen och om validering på tråden, och
 
 Grindarna: `packages/e2e/test/surfaces/phone-bundle.spec.ts` öppnar `/play` och `/join` som en telefon, väger varje skript sidan ber om och nekar filtens och observatörens chunkar; den håller också inne entrén på tråden och ser att handens chunk efterfrågas ändå.
 `felt-font.spec.ts` läser nu tre slags rutter ur `App.tsx` — hämtade, ritade av entrén och editorns lata — och kräver att varje ark en hämtad yta når statiskt ligger på entrén, och att entrén inte bär något ark som ingen yta ritar först.
+
+**Tillägg 2026-10-06 (#749): arket står efter `#root`, och garantin mäts i stället för att antas.**
+Så länge entréns ark stod i `<head>` blockerade det varje målning, också av något som inte behöver ett enda ord ur det.
+Det är 105 kB brotli med filtens ansikte i, och på speltestets mobilnät var det fem till sju sekunder av vit sida på varje rutt, fast dokumentet var framme efter en halv.
+Beslutet (beställaren 2026-10-06) flyttar arket till slutet av `<body>`, efter `#root`, och ställer D5:s laddar-besked i `#root` som skal (D5, tillägg samma dag).
+
+Vad arket innehåller ändras inte, och inte heller gränsen ovan: allt filten och telefonen ritar vid sin första bild ligger kvar i entréns ark.
+Det som ändras är vad arket håller.
+Ett ark efter `#root` håller inte målningen av det som står före det, så skalet målas när dokumentet är framme: 0,5 sekunder på varje rutt.
+Entrén är ett modulskript, och ett modulskript körs inte medan ett ark som parsern redan mött fortfarande laddas.
+Appens första bild ritas därför fortfarande med arket på plats och filtens två ansikten i dokumentet, och K20:s krav håller.
+
+Det är mätt och inte antaget: `packages/e2e/test/surfaces/shell.spec.ts` håller arket en och en halv sekund på tråden medan entrén går fritt, och kräver att skalet målas innan arket kommit, att appens första bild ritas först efter det, och att arket då gäller och ansiktena är deklarerade.
+Flytten görs av bygget (`vite.config.ts`), så den källa som `index.html` är förblir läsbar och utvecklingsservern, som inte länkar något ark alls, är orörd.
+Den har en följd för kaskaden: varje ark som hämtas senare — editorns, regelbokens låda, hjälprutan — länkas av Vites förladdning sist i `<head>`, alltså före entréns ark i `<body>`, och en regel som skrivits för att vinna på ordningen förlorade då mot entréns.
+Editorns flikar och Bord-flikens namn lades ut av fel regler, vilket `editor-header-fit.spec.ts` och `zone-name-own-box.spec.ts` fällde.
+Bygget låter därför förladdningen länka ett ark sist i `<body>`, efter entréns, så att ordningen åter är den ordning arken kommer i; raden i Vites hjälpare matchas exakt, så en Vite som skriver den annorlunda fäller bygget i stället för att tyst kasta om kaskaden.
+Meningen i tillägget 2026-10-04 om att det första på skärmen är ytan själv, «samma vita sida som före delningen, bara kortare», gäller inte längre: det första på skärmen är skalet, och det som ersätter det är ytan.
 
 ### L21. Kortväggen står i band, och leken har en innehållsförteckning (prototypat och byggt 2026-09-17, #179)
 

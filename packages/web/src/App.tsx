@@ -1,4 +1,4 @@
-import { lazy, Suspense, type ComponentType } from 'react'
+import { lazy, Suspense, useState, type ComponentType } from 'react'
 import { codeOfAddress } from '@byd/protocol'
 import { TextureFailures } from './table/TextureFailures.js'
 import { NotFoundPage } from './status/NotFoundPage.js'
@@ -8,6 +8,8 @@ import { Language, detectLang, useT } from './i18n/index.js'
 import { StatusNotice } from './status/StatusNotice.js'
 import { noticeFor, type Voice } from './status/notice.js'
 import { statusLinks } from './status/links.js'
+import { DEFAULT_TIMING } from './status/connection.js'
+import { useWaitedLong, waitBegan } from './status/waitClock.js'
 
 // The editor is fetched behind its own loading page. Its stylesheet is the biggest the app has,
 // and while it travelled in the entry's sheet the browser blocked the felt's first painting on it
@@ -23,13 +25,23 @@ const EditorPage = lazy(() => import('./editor/EditorPage.js').then((m) => ({ de
 // (UX-07), drawn from the sheet that does block the first painting. So the wait reads as one
 // state that lasts a moment longer rather than as two different screens in a row.
 function EditorRoute() {
-  const t = useT()
-  const links = statusLinks({ server: new URLSearchParams(location.search).get('server') })
   return (
-    <Suspense fallback={<StatusNotice notice={noticeFor('loading', 'editor', t)} surface="page" links={links} />}>
+    <Suspense fallback={<EditorOnItsWay />}>
       <EditorPage />
     </Suspense>
   )
+}
+
+// The wait for the editor's chunk is the shell's wait going on (#749): past `slowAfterMs` from the
+// navigation it says the game is taking its time, as the shell already did, instead of starting
+// over at «Öppnar spelet…». Its retry is a reload, as for a chunk that never came (`unreached`):
+// nothing is on the page yet that a reload could throw away.
+function EditorOnItsWay() {
+  const t = useT()
+  const links = statusLinks({ server: new URLSearchParams(location.search).get('server') })
+  const [began] = useState(waitBegan)
+  const slow = useWaitedLong(began, DEFAULT_TIMING.slowAfterMs)
+  return <StatusNotice notice={noticeFor(slow ? 'slow' : 'loading', 'editor', t)} surface="page" links={links} onRetry={() => location.reload()} />
 }
 
 // Every other surface is fetched when its address is opened, and only that one (#760). Until then
@@ -37,15 +49,16 @@ function EditorRoute() {
 // the felt's renderer and the observer — 822 kB of script for a strip of cards — and on a slow
 // line every one of those kilobytes is a moment longer of white page (#749).
 //
-// Unlike the editor's, these are waited for *before* React draws anything (`main.tsx`), so the
-// first thing on the screen is the surface itself: no fallback, no shell that blinks away — the
-// same white page as before the split, only shorter. Nor is the fetch held up behind the entry:
-// the built `index.html` names each route's chunks and asks for them beside the entry
-// (`vite.config.ts`), so splitting the script costs the first painting no extra round trip.
+// Unlike the editor's, these are waited for *before* React draws anything (`main.tsx`), so what
+// replaces the shell — the route's own «laddar» written into `index.html` (#749) — is the surface
+// itself, and no fallback of a second kind stands between them. Nor is the fetch held up behind the
+// entry: the built `index.html` names each route's chunks and asks for them beside the entry
+// (`vite.config.ts`), so splitting the script costs the app's first frame no extra round trip.
 //
-// Only the script travels apart. Each surface's stylesheet still rides in the sheet the first
-// painting blocks on, imported from `first-frame-sheets.ts`, so what the felt and the phone draw
-// first is in the document before the first pixel whichever chunk the code arrives in (L20).
+// Only the script travels apart. Each surface's stylesheet still rides in the entry's sheet, which
+// the entry waits for before it runs, imported from `first-frame-sheets.ts`, so what the felt and
+// the phone draw first is in the document before their first frame whichever chunk the code
+// arrives in (L20).
 //
 // Routing is a path check for now; a router arrives with the first real page.
 export function loadPage(path: string = location.pathname): Promise<ComponentType> {
