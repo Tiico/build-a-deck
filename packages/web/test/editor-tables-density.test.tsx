@@ -85,6 +85,9 @@ async function twelveTables(): Promise<number> {
   for (let i = 0; i < 6; i++) await startTable()
   await endedTable()
   await endedTable()
+  // Every card done: the column measured is the one a designer comes back to, and a group whose
+  // table still draws its cards stands open by itself (#939).
+  await run.completeRenders()
   return PLAYERS.length
 }
 
@@ -93,6 +96,7 @@ async function twelveTables(): Promise<number> {
 async function fiveTables(): Promise<number> {
   await playedTable(PLAYERS[0]!)
   for (let i = 0; i < 4; i++) await startTable()
+  await run.completeRenders()
   return 1
 }
 
