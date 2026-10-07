@@ -50,6 +50,20 @@ function losesTheFirstClaim(): WebSocketCtor {
   } as unknown as WebSocketCtor
 }
 
+// A socket on which the table's answer to an envelope arrives a while after the patches it
+// answers for, the way two frames on a phone's line do, with renders in between (#958).
+function answersLate(): WebSocketCtor {
+  return class extends WsClient {
+    override emit(event: string | symbol, ...args: unknown[]): boolean {
+      if (event === 'message' && String(args[0]).includes('"t":"ack"')) {
+        setTimeout(() => super.emit(event, ...args), 50)
+        return true
+      }
+      return super.emit(event, ...args)
+    }
+  } as unknown as WebSocketCtor
+}
+
 describe('PlayerPage', () => {
   it('claims its seat by name on connect and shows the hand it is dealt', async () => {
     const id = await createSession(run)
@@ -879,6 +893,35 @@ describe('counters and the area in front of you (C4)', () => {
     expect(document.querySelector('[data-personal]')?.hasAttribute('open')).toBe(true)
     expect(document.querySelector('[data-hand]')!.compareDocumentPosition(document.querySelector('[data-mine]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1)
+    me.close()
+  })
+
+  // The table's answer to a play is its own frame after the card's patch, and on a phone's line a
+  // render falls between the two (#958). The area opened on the answer, so the card first landed in
+  // a closed fold — and with the line lost between the frames, the fold never opened at all. It
+  // opens on the card arriving in front of her, in the same commit that draws it there.
+  it('opens the private area in the same render the played card lands in, before the table answers', async () => {
+    setWebSocketImplementation(answersLate())
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    const token = await open(id, 'A', 'Ada')
+    const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', token })
+    await me.ready()
+    await me.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
+    const idOfCard = document.querySelector('[data-hand-card]')!.getAttribute('data-hand-card')!
+    const personal = document.querySelector('[data-personal]') as HTMLDetailsElement
+    expect(personal.open).toBe(false)
+    // Every commit that draws the card in front of her is checked as it lands, not afterwards.
+    const closedWithCard: boolean[] = []
+    const watch = new MutationObserver(() => {
+      if (personal.querySelector(`[data-mine-card="${idOfCard}"]`)) closedWithCard.push(!personal.open)
+    })
+    watch.observe(personal, { subtree: true, childList: true })
+    fireEvent.click(within(document.querySelector('.byd-hand-actions') as HTMLElement).getByRole('button', { name: 'Framför mig' }))
+    await waitFor(() => expect(document.querySelector('[data-mine-card]')?.getAttribute('data-mine-card')).toBe(idOfCard))
+    expect(personal.open).toBe(true)
+    expect(closedWithCard).not.toContain(true)
+    watch.disconnect()
     me.close()
   })
 
