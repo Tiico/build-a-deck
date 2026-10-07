@@ -7,6 +7,7 @@
 // The library now says which of the two it is, in words (L13): a line while a file is on its way,
 // «Laddas upp…» on a tile whose bytes have not arrived yet, and «Bilden gick inte att hämta» on a
 // tile and in a sheet whose picture did not come.
+import { createHash } from 'node:crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
@@ -87,5 +88,45 @@ describe('the library says what became of a picture (#481)', () => {
     // Asked for again once the bytes are there, so the tile is a picture and not a message.
     await waitFor(() => expect(within(screen.getByRole('img', { name: 'skogsbryn.png' }).closest('li')!).queryByText('Laddas upp…')).toBeNull())
     expect(within(screen.getByRole('img', { name: 'skogsbryn.png' }).closest('li')!).queryByText('Bilden gick inte att hämta.')).toBeNull()
+  })
+
+  // A picture uploaded from a card cell is just as early (#907), and Media had no way to know: it
+  // only knew of the uploads made in it. Opened while the bytes were still on their way, the tile
+  // asked for them, got a 404, and went on saying the picture could not be fetched after it came.
+  // Now nothing asks before the bytes are there — not the tile, not the cell — and both ask once
+  // they are.
+  it('waits for the bytes of a picture uploaded from a card cell, and draws it once they come', async () => {
+    const user = userEvent.setup()
+    await openMedia(user)
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    const real = globalThis.fetch
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (init?.method === 'POST' && String(input).endsWith('/assets')) await held
+      return real(input, init)
+    })
+
+    await user.click(screen.getByRole('tab', { name: 'Tabell' }))
+    fireEvent.change(await screen.findByLabelText('Ladda upp bild för knight'), { target: { files: [new File([SKOGSBRYN], 'skogsbryn.png', { type: 'image/png' })] } })
+    const cell = await screen.findByRole('img', { name: 'knight art' })
+    expect(cell.getAttribute('src')).toBeNull()
+    // Nor the card drawn from the cell, nor anything else on the page.
+    const bytes = `/assets/${createHash('sha256').update(SKOGSBRYN).digest('hex')}`
+    const asked = () => [...document.querySelectorAll('img')].filter((img) => img.getAttribute('src')?.endsWith(bytes))
+    expect(asked()).toEqual([])
+    await user.click(screen.getByRole('tab', { name: 'Kortvägg' }))
+    await waitFor(() => expect(document.querySelectorAll('[data-element="art"]').length).toBeGreaterThan(0))
+    expect(asked()).toEqual([])
+
+    await user.click(screen.getByRole('tab', { name: 'Media' }))
+    const tile = (await screen.findByRole('img', { name: 'skogsbryn.png' })).closest('li')!
+    expect(within(tile).getByRole('img').getAttribute('src')).toBeNull()
+    expect(within(tile).getByText('Laddas upp…')).toBeTruthy()
+    expect(asked()).toEqual([])
+
+    release()
+    await waitFor(() => expect(within(tile).getByRole('img').getAttribute('src')).toMatch(/\/assets\/[0-9a-f]{64}$/))
+    expect(within(tile).queryByText('Laddas upp…')).toBeNull()
+    expect(within(tile).queryByText('Bilden gick inte att hämta.')).toBeNull()
   })
 })

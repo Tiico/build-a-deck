@@ -23,6 +23,7 @@ import { SharePanel, colourOf } from './SharePanel.js'
 import { tvUrl } from './tableLinks.js'
 import { Asking, Question } from './Question.js'
 import { useProjectClient, type ProjectTiming } from './useProjectClient.js'
+import { Arriving } from './AssetImage.js'
 import type { ProjectDoc } from '@byd/server'
 import { useTableClient } from '../table/useTableClient.js'
 import { TableEnded, type ProjectClient } from './ProjectClient.js'
@@ -892,6 +893,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       {/* What just happened is drawn in the open tab's foot (#698, beslut B), and not while a
           question stands: it stood over «Ja, ta bort» once, and the question is the present. */}
       <SaidProvider text={questions === 0 ? confirmation.text : null}>
+      {/* Which pictures every surface is to wait for before asking for them (#907). */}
+      <Arriving.Provider value={client.assetsArriving}>
       <main>
         {(stages ?? MODES).map(([key]) => (
           // One panel per tab, so every tab's `aria-controls` names a panel that exists; only the
@@ -901,6 +904,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           </div>
         ))}
       </main>
+      </Arriving.Provider>
       </SaidProvider>
       </MarkedProvider>
       {stages && (
