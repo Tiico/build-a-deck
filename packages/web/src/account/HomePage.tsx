@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { canDelete, canEdit, canStartTables, type CardFace, type Role } from '@byd/server/doc'
 import { LoginCard } from './LoginCard.js'
 import { CodeRow } from './CodeRow.js'
@@ -10,7 +10,6 @@ import { previewIcons } from '../editor/assets.js'
 import { previewFonts } from '../editor/fonts.js'
 import { duplicateProject, logout, myCards, myPlayed, myProjects, removeProject, renameProject, runningTables, startTable, whoAmI, type Played, type ProjectSummary, type RunningTable } from './api.js'
 import { tvUrl } from '../editor/tableLinks.js'
-import { ExportDialog, ImportDialog, RenameDialog } from './GameDialogs.js'
 import { GameMenu } from './GameMenu.js'
 import { marked } from './marked.js'
 import { seatColor } from '../table/seatColor.js'
@@ -20,6 +19,14 @@ import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { LanguagePicker, useLang, useT, type Lang, type T } from '../i18n/index.js'
 import './account.css'
+
+// The three dialogs a game's ⋯ and «Importera» open are drawn on a press and never on the first
+// frame, so they are fetched when one is opened, with their own sheet, and not carried in the sheet
+// every first painting blocks on (#366, L40). That sheet's alarm in `felt-font.spec.ts` bound when
+// the start page grew its code row (#675); this is the answer the alarm asks for.
+const ExportDialog = lazy(() => import('./GameDialogs.js').then((m) => ({ default: m.ExportDialog })))
+const RenameDialog = lazy(() => import('./GameDialogs.js').then((m) => ({ default: m.RenameDialog })))
+const ImportDialog = lazy(() => import('./GameDialogs.js').then((m) => ({ default: m.ImportDialog })))
 
 // /  — "Mina spel" (G1, prototype A): the account's projects as a grid of game cards, and a new
 // one as a dashed card. Not logged in, the login card stands here instead.
@@ -419,6 +426,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           </>
         )}
       </div>
+      <Suspense fallback={null}>
       {exporting && (
         <ExportDialog
           http={http}
@@ -463,6 +471,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
           onOpen={(id) => onNavigate(`/editor?${suffix(new URLSearchParams({ project: id }))}`)}
         />
       )}
+      </Suspense>
     </main>
   )
 }
