@@ -86,7 +86,7 @@ describe('the table screen after the end', () => {
     )
     expect(screen.queryByText('KX7P')).toBeNull()
     expect(screen.queryByRole('img', { name: /example\.test\/join/ })).toBeNull()
-    expect(screen.queryByText('anslut med telefon')).toBeNull()
+    expect(screen.queryByText('öppna på telefonen')).toBeNull()
     expect(screen.getByText('Bordet är avslutat')).toBeTruthy()
   })
 

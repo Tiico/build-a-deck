@@ -1182,6 +1182,12 @@ Dokumenttiteln sätts på ett ställe, av routen, med lägets överskrivning: `B
 Namnet ligger först eftersom en flik klipps från höger, och titeln är inte ett meddelande: den som behöver ordet "fel" får det i vyn och i live-regionen, inte i fliken.
 En okänd sökväg är en egen route som säger att sidan inte finns; förut föll den igenom till startsidan, så en felstavad länk visade tyst någon annans spel.
 
+Tillägg 2026-10-06 (#675, beslut C): telefonens 404 på `/join` och på rummets adress `/KOD` är inte längre en sida för sig utan formuläret för koden, med koden kvar i fältet och markören i det.
+Meningen är en och densamma för en kod som aldrig funnits och en som gått ut eller roterats, «Koden finns inte eller har gått ut — fråga värden efter den nya.», så att inget avslöjar om en kod en gång funnits.
+Resten av modellen gäller: fliken säger «Bordet finns inte», och meningen sägs assertivt i appens egen region och inte en andra gång i en egen `alert`; den står vid fältet och fältet pekar på den.
+`/join` utan kod är samma formulär utan besked.
+Sex tecken som kan vara en kod läses som en; en sökväg som inte kan det är fortfarande sidan som inte finns.
+
 Motivering:
 Ett bord på en TV och en telefon i en hand är inte samma yta.
 En enda helsidesmall river ner bordet för att sätta upp det igen när fyra personer tappar nätet i två sekunder; en enda statusremsa går inte att läsa från en soffa, och lämnar vid ett 404 kvar en kuliss av ett rum som inte finns.
@@ -1526,6 +1532,11 @@ Varje spel säger hur många bord det har och när ett av dem senast spelades vi
 Kortets ansikte öppnar editorn. Menyn bredvid startar ett bord och lämnar rumskoden på plats med en väg till bordets skärm, eller tar bort spelet efter en fråga; hela historien följer med och det går inte att ångra.
 Ett fel i en åtgärd tar aldrig spelen från skärmen; bara en sida som inte gick att läsa alls ersätter dem.
 CORS-svaret tillät inte DELETE, så borttagningen stoppades i webbläsaren utan att servern märkte något. Ett test på preflight-svaret täcker nu varje metod API:et faktiskt betjänar.
+
+Kodraden 2026-10-06 (#675, beställarens beslut C): under inloggningskortet, och aldrig i det, står en rad för den som kom för att spela — «Ska du spela? Skriv rumskoden», ett fält och «Gå in».
+Koden tas till rummets egen adress `/KOD` och landar i platsväljaren; ett tomt fält och något som inte kan vara en kod sägs vid fältet utan att sidan lämnas.
+Kortet står orört, så dess rader (#691) och sidfoten under raden (#757) hamnar där de var tänkta.
+Vid 320 × 568 står både kodfältet och e-postfältet på första skärmen.
 
 Solfjädern på spelkortet 2026-09-14 (prototypat, variant D av sex) — **ersatt 2026-09-19, se nedan**:
 De fyra korten på spelets kort är spelets egna kort, inte fyra rektanglar färgade ur spelets id.
@@ -2074,7 +2085,7 @@ Spel med "spela nedvänt" som mekanik behöver ett andra val i arket.
 
 ### K12. Anslutningsflödet: bordet som platsväljare med nästa lediga förvald (prototypat 2026-09-06, utvidgad 2026-09-11)
 
-QR-koden i TV-läget pekar på `/join?code=…` (från 2026-09-07 en rumskod, DRIFT §9).
+QR-koden i TV-läget pekar på `/join?code=…` (från 2026-09-07 en rumskod, DRIFT §9; från 2026-10-06 rummets egen adress `/KOD`, se revideringen nedan).
 Telefonen ser platserna live genom lobbyrollen — upptagna med namn, lediga tryckbara — runt ett litet bord vars kanter följer setupens handzoner, med nästa lediga plats förvald.
 Namn plus "Sätt dig" köper en token för platsen och leder till `/play`, som claimar platsen.
 
@@ -2183,6 +2194,26 @@ Det är dessutom rätt väg: ordet på ett ledigt piller är "ledig" och är utf
 
 `join-layout.test.tsx` läser bokstaven ur det som verkligen ritas inuti pillret på två-, fyra-, sex- och åttaplatsbord, och mäter att bokstavens rad ligger över ordets och på samma höjd oavsett om platsen är ledig eller tagen.
 Samma fil mäter blandningen varje rad verkligen ritas i — färgen lagd över pillret med sin egen genomskinlighet — mot pillrets botten, och håller båda raderna vid AA på både en ledig och en tagen plats.
+
+**Reviderat 2026-10-06 (#675, beställarens beslut C): koden är adressen.**
+Den som satt i soffan hade ingen väg in utan kameran: TV:n sa koden men inte var den skulle skrivas, och startsidan hade inget fält för den.
+Fyra varianter prototypades och mättes i det byggda appen (`docs/ux-audits/2026-10-06-vagen-in/`, borttagen när den hade svarat; mätningarna står i #675).
+Valet blev **C**.
+TV:n säger appens egen värd på en rad, 24 px, och `/KOD` på raden under, 40 px, med snedstrecket ritat av stilmallen så att det som läses av som koden är koden.
+Värden är skärmens eget origin (`location.host`): på lådan `PUBLIC_ORIGIN`:s värd, `deck.ockelberg.com`, och i en utvecklingsstack dess egen, så att ingen domän är inskriven i koden.
+`/<KOD>` är en ny toppnivåväg, på servern och i appens router, och den landar direkt i platsväljaren: från det TV:n säger till en plats är det en sidladdning och två tryck — «Gå» på tangentbordet och «Sätt dig».
+QR-rutan bär samma adress som orden bredvid den.
+Bordsläget säger `värd/KOD` på sin skylt, 20 px, och ritar ingen QR-ruta: ett bord alla sitter runt behöver bara adressen.
+Spelets namn står överst på väljaren när bordet startades ur ett spel, och rummets kod på raden under; `GET /rooms/:kod` säger namnet, som `GET /sessions/:id` redan sa till den som har id:t.
+Från 1024 px är «Spela på den här skärmen» förslaget — den första knappen och den Enter tar — och «Sätt dig» står kvar som andra knapp; under 1024 är det telefonens sida som förut.
+Från 700 px är sidan ett kort på 520 px på kontosidornas mörkare botten; kortets egen botten är väljarens `--byd-join-bg`, så varje kontrast som mätts på telefonen gäller oförändrad.
+
+Följdkrav:
+En kod får aldrig vara ett av appens egna vägord, eftersom adressen då vore två saker; kodens alfabet saknar I, L och O, så bara `ASSETS` och `GUESTS` kunde krocka.
+Vägorden står som `ROUTE_WORDS` i `packages/protocol` bredvid kodens alfabet, och de hålls inte för hand: `code-address.test.ts` i servern läser serverns rutter ur källan och `code-address-routes.test.ts` i webben läser appens router och filerna bygget lägger på roten, och båda faller den dag ett ord saknas.
+Generatorn drar om en kod som stavar ett vägord, i vilken bokstavsstorlek ordet än står.
+Routern läser `/KOD` sist, efter alla appens egna vägar, och bygget ber om väljarens bit bredvid ingången även där, så att adressen TV:n säger inte kostar en rundresa till (#760).
+En okänd, en utgången och en roterad kod sägs likadant, «Koden finns inte eller har gått ut — fråga värden efter den nya.», med koden kvar i fältet; servern svarar samma 404 med samma kropp för alla tre (DRIFT §9).
 
 ### K13. Ångra och tillbakaspolning: förhandsvisning på bordet, beslut på telefonerna (prototypat 2026-09-06)
 

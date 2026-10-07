@@ -24,6 +24,8 @@ export type TvChromeProps = {
   // that is not joined from — the observer's — says nothing rather than spelling out an id.
   roomCode?: string | undefined
   joinUrl?: string | undefined
+  // The host the room's address starts with (#675): the code is said as `host/KOD`.
+  host?: string | undefined
   // The game this table runs, and which version of it (B4): the screen's title.
   title?: string | undefined
   version?: string | undefined
@@ -75,7 +77,7 @@ export type TvChromeProps = {
 // at 1920 x 1080 measured 68 px across for it. The same card is 82 px with the rows gone and
 // their contents moved into the column, which is the difference between a card that has to be
 // pointed at to be told apart and one that does not (`tv-card-size.test.ts`, K8).
-export function TvChrome({ view, activity, roomCode, joinUrl, title, version, inspecting, faces, showing, onDismiss, observers = [], note, rules, room = false, onRead, corner, rendering = null, children }: TvChromeProps) {
+export function TvChrome({ view, activity, roomCode, joinUrl, host, title, version, inspecting, faces, showing, onDismiss, observers = [], note, rules, room = false, onRead, corner, rendering = null, children }: TvChromeProps) {
   // A card whose words are smaller than the wizard's frame is shown taller (#523), into the felt's
   // height, until they read from the sofa: the height its width needs, which the stylesheet lets past
   // the 938 px the frame's own card stops at.
@@ -166,6 +168,16 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
         {(roomCode || joinUrl) && !view.ended && (
           <div className="byd-tv-join byd-help-row">
             <span>{t('tv.join')}</span>
+            {/* The code is the address (#675, beslut C): the host on its own line, and `/KOD` on the
+                line under it, large, as the rest of one address — what a phone types is what the
+                room reads, and it lands in the seat picker. The host is the screen's own origin, so
+                the box says its own name and a development stack says its own. The slash is drawn
+                by the stylesheet, so the code read off the screen is the code. */}
+            {roomCode && host && (
+              <p className="byd-tv-address" data-address>
+                {host}
+              </p>
+            )}
             {roomCode && <strong>{roomCode}</strong>}
             {/* One line of the TV's own heading, and nobody presses a television: the code stays a
                 picture there (#225). The room's code stands beside it in plain figures anyway. */}

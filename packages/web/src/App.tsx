@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, type ComponentType } from 'react'
+import { codeOfAddress } from '@byd/protocol'
 import { TextureFailures } from './table/TextureFailures.js'
 import { NotFoundPage } from './status/NotFoundPage.js'
 import { DocumentTitle } from './status/DocumentTitle.js'
@@ -76,6 +77,10 @@ function fetchPage(path: string): Promise<ComponentType> {
   if (path === '/claim') return import('./account/ClaimPage.js').then((m) => m.ClaimPage)
   if (path.startsWith('/invites/')) return import('./account/InvitePage.js').then((m) => m.InvitePage)
   if (path === '/') return import('./account/HomePage.js').then((m) => m.HomePage)
+  // A room's own address (#675): the code is what the television says after the host, and the
+  // phone that opens it is in the seat picker. Last, so no word of the app's can be read as one —
+  // and the server never mints a code that is one (`ROUTE_WORDS`).
+  if (codeOfAddress(path)) return import('./join/JoinPage.js').then((m) => m.JoinPage)
   // Anything else is a page that does not exist, and says so.
   return Promise.resolve(NotFoundPage)
 }
@@ -83,7 +88,7 @@ function fetchPage(path: string): Promise<ComponentType> {
 // Which words a surface's own failure is said in: a phone that could not fetch its hand is told
 // what a phone is told when it cannot reach the table.
 const voiceOf = (path: string): Voice =>
-  path === '/play' || path === '/join' ? 'phone' : path === '/table' || path === '/observe' || path === '/online' ? 'table' : 'app'
+  path === '/play' || path === '/join' || codeOfAddress(path) ? 'phone' : path === '/table' || path === '/observe' || path === '/online' ? 'table' : 'app'
 
 // A surface whose script did not arrive. Not a white page: the state the line is in, said the way
 // every route says it (#12).

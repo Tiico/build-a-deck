@@ -1,22 +1,47 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { SeatView } from '@byd/protocol'
+import { codeOfAddress, type SeatView } from '@byd/protocol'
 import { useTableClient } from '../table/useTableClient.js'
 import { seatColor } from '../table/seatColor.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
+import { useSay } from '../status/StatusLive.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { statusLinks } from '../status/links.js'
 import { noticeFor } from '../status/notice.js'
 import { useT } from '../i18n/index.js'
+import { useCodeField } from './codeField.js'
 import './join.css'
 
-// /join?code=…&server=ws://…  — what the QR on the TV points at, and what a typed code leads to.
-// Sits down at the table (A with C's preselection, K12): the table as a seat picker with the
-// next free seat chosen already, so the indifferent just type a name and go. The code buys a
-// token for the seat (DRIFT §9); the token is what the phone connects with.
-export type JoinPageProps = { onSit?(url: string): void; timing?: StatusTiming }
+// /KOD and /join?code=…&server=ws://…  — what the TV says and what its QR points at, and what a
+// typed code leads to. Sits down at the table (A with C's preselection, K12): the table as a seat
+// picker with the next free seat chosen already, so the indifferent just type a name and go. The
+// code buys a token for the seat (DRIFT §9); the token is what the phone connects with.
+//
+// The code is the address (#675, beslut C 2026-10-06): the television says `värd/KOD`, and the
+// phone that opens it is here, one page load from what it read. `/join` without a code asks for
+// one, and a code that names nothing is asked for again with the code left in the field.
+// `onSit` is where a way in leads, `onOpen` where a typed code does.
+export type JoinPageProps = { onSit?(url: string): void; onOpen?(url: string): void; timing?: StatusTiming }
+
+// From where a laptop is the screen being joined from (#675, beslut 3): there, playing on this
+// screen is the suggestion, and the phone's way stays as the second button. Where there is no
+// window to ask, the page is the phone's, which is who opens it nearly always.
+const WIDE = '(min-width: 1024px)'
+function useWide(): boolean {
+  const ask = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(WIDE).matches
+  const [wide, setWide] = useState(ask)
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const query = window.matchMedia(WIDE)
+    const answer = () => setWide(query.matches)
+    query.addEventListener('change', answer)
+    answer()
+    return () => query.removeEventListener('change', answer)
+  }, [])
+  return wide
+}
 
 // A table has four sides and may seat eight, so past four players two seats share a side (#42).
 // Where along that side each of them stands is not a fact about the table — it is how the picker
@@ -39,13 +64,15 @@ function along(seats: readonly SeatView[]): Map<string, Along> {
 // A button at work is not a locked button (#476): it says it is busy and the handler refuses it.
 const working = (on: boolean) => (on ? { 'aria-disabled': true, 'aria-busy': true } : {})
 
-export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAULT_TIMING }: JoinPageProps) {
+export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url) => location.assign(url), timing = DEFAULT_TIMING }: JoinPageProps) {
   const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
-  // `?code=KOD`, or the code on its own after the question mark, the way a person types an address
-  // off the TV (#483): the first key with no value that looks like a room code is the code.
-  const code = params.get('code') ?? [...params.entries()].find(([key, value]) => value === '' && /^[A-Za-z0-9]{4,8}$/.test(key))?.[0] ?? null
+  // The room's own address `/KOD` (#675); else `?code=KOD`, or the code on its own after the
+  // question mark, the way a person types an address off the TV (#483): the first key with no
+  // value that looks like a room code is the code.
+  const code = codeOfAddress(location.pathname) ?? params.get('code') ?? [...params.entries()].find(([key, value]) => value === '' && /^[A-Za-z0-9]{4,8}$/.test(key))?.[0] ?? null
   const server = params.get('server')
+  const wide = useWide()
   const url = server ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const http = url.replace(/^ws/, 'http')
   // The code resolves to a session while it lives. Looking it up is a hop like any other, so it
@@ -53,6 +80,8 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
   // And the two ways it can fail are two different states — a code the server will not honour is
   // a room that is gone, a line that answers nothing is the service being unreachable.
   const [sessionId, setSessionId] = useState<string | null>(null)
+  // The game the code leads into (#675), when the table was started from one.
+  const [game, setGame] = useState<string | null>(null)
   const [lookup, setLookup] = useState<'gone' | 'ended' | 'offline' | null>(null)
   const [attempt, setAttempt] = useState(0)
   useEffect(() => {
@@ -65,7 +94,11 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
       .then(async (r) => {
         if (!alive) return
         clearTimeout(deadline)
-        if (r.ok) setSessionId(((await r.json()) as { session: string }).session)
+        if (r.ok) {
+          const found = (await r.json()) as { session: string; name?: string }
+          setGame(found.name ?? null)
+          setSessionId(found.session)
+        }
         // A code the server has heard of and will not honour is a room that is gone; anything
         // else it answers, or does not answer, is the service.
         // A table that has ended is locked (C9, #485): its code still names it, but it is over.
@@ -121,7 +154,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
   const saysId = 'byd-join-name-says'
   // The room is the tab's name here (#12): a phone with three tabs open has to be able to tell
   // which room each of them is waiting to get into.
-  usePageTitle({ state: !code ? 'missing' : lookup === 'gone' || lookup === 'ended' ? 'missing' : lookup ?? live.state, room: code?.toUpperCase() ?? null })
+  usePageTitle({ state: !code ? null : lookup === 'gone' || lookup === 'ended' ? 'missing' : lookup ?? live.state, room: code?.toUpperCase() ?? null })
 
   const free = view?.seats.filter((s) => s.name === null) ?? []
   const spread = along(view?.seats ?? [])
@@ -136,14 +169,15 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
   const chosen = pick ?? free[0]?.id ?? null
   const lost = pick !== null && !free.some((s) => s.id === pick)
 
-  // A code that names nothing — never issued, or lapsed — is the phone's 404. It is one of the
-  // nine states like any other, said in the words the room it failed to reach would have used.
-  // No code at all is not a table that ended: it is an address without the one thing it needs.
-  // A code that names nothing, or a table that is over, has no seat to choose again: the picker
-  // at the same code is this very page, so it is not offered as a way out (#555).
+  // No code at all is an address without the one thing it needs, so it asks for it (#675). A code
+  // that names nothing — never issued, or lapsed, or rotated away — is asked for again, with the
+  // code left in the field to be put right and one sentence for all three: whether a code once
+  // existed is nobody's business (beslut 2026-10-06).
+  // A table that is over has no seat to choose again: the picker at the same code is this very
+  // page, so it is not offered as a way out (#555).
   const { rescan: _again, ...away } = links
-  if (!code) return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), text: t('join.code.missing') }} surface="page" links={away} />
-  if (lookup === 'gone') return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), text: t('join.code.gone', { code: code.toUpperCase() }) }} surface="page" links={away} />
+  if (!code) return <CodeForm server={server} onOpen={onOpen} />
+  if (lookup === 'gone') return <CodeForm server={server} onOpen={onOpen} typed={code.toUpperCase()} unknown />
   if (lookup === 'ended') return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), heading: t('status.ended.table.heading'), text: t('join.ended') }} surface="page" links={away} />
   if (lookup === 'offline') return <StatusNotice notice={noticeFor('offline', 'phone', t)} surface="page" links={links} onRetry={retry} />
   if (!view || !sessionId) return <RouteStatus status={live} over="sheet" links={links} onRetry={retry} />
@@ -159,8 +193,10 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
       setProblem(t('join.seat.taken'))
       return null
     }
+    // The code went out, or was rotated, between the picker and the seat: said as it is said at
+    // the door, because it is the same thing (#675).
     if (!res.ok) {
-      setProblem(t('join.code.expired'))
+      setProblem(t('join.code.unknown'))
       return null
     }
     return ((await res.json()) as { token: string }).token
@@ -195,13 +231,31 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
     onSit(`${page}?${next.toString()}`)
   }
 
+  // The suggested way in is the first button and the one Enter takes: «Sätt dig» on a phone, and
+  // playing on this screen on a laptop (#675, beslut 3), with the other as the second button.
+  const suggested = wide ? '/online' : '/play'
+  const room = t('join.room', { code: code.toUpperCase() })
+  const seatLine = chosen ? t('join.seat.chosen', { seat: chosen }) : t(free.length === 0 ? 'join.seats.full' : 'join.seat.pick')
+  const sit = (
+    <button key="sit" type={wide ? 'button' : 'submit'} className={wide ? 'byd-join-sit byd-secondary' : 'byd-primary'} disabled={!chosen || lost} {...working(busy === '/play')} onClick={wide ? () => void go('/play', chosen) : undefined}>
+      {busy === '/play' ? t('join.sitting') : t('join.sit')}
+    </button>
+  )
+  const here = (
+    <button key="here" type={wide ? 'submit' : 'button'} className={`byd-join-online ${wide ? 'byd-primary' : 'byd-secondary'}`} disabled={!chosen || lost} {...working(busy === '/online')} onClick={wide ? undefined : () => void go('/online', chosen)}>
+      {t('join.online')}
+    </button>
+  )
+
   return (
-    <>
+    <div className="byd-join-page">
       <main className={`byd-join${live.stale ? ' byd-status-stale' : ''}`} data-page="join" {...(live.stale ? { inert: true } : {})}>
       <header>
         <span>{t('join.into')}</span>
-        <h1>{t('join.room', { code: code.toUpperCase() })}</h1>
-        <span>{chosen ? t('join.seat.chosen', { seat: chosen }) : t(free.length === 0 ? 'join.seats.full' : 'join.seat.pick')}</span>
+        {/* The game's name, when the table has one (#675): it is what the guest came to play, and
+            the room's code is the line under it. */}
+        <h1>{game ?? room}</h1>
+        <span>{game ? `${room} · ${seatLine}` : seatLine}</span>
         {/* Whoever just left a seat comes back here (#31). The picker looks exactly as it did on
             the way in, so the acknowledgement is the only thing saying the leaving happened —
             and what became of the seat and of the hand that was on it. */}
@@ -257,7 +311,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
       <form
         onSubmit={(e) => {
           e.preventDefault()
-          void go('/play', chosen)
+          void go(suggested, chosen)
         }}
       >
         {/* Etiketten står över fältet i stället för inuti det. En platshållare som lyder «Ditt
@@ -297,18 +351,61 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
             instead of finding it gone. Choosing again opens them. */}
         {/* While a way in is under way the pressed button says so and is `aria-disabled`, not
             `disabled`: it keeps its look and the focus, and the handler refuses the next press. */}
-        <button type="submit" className="byd-primary" disabled={!chosen || lost} {...working(busy === '/play')}>
-          {busy === '/play' ? t('join.sitting') : t('join.sit')}
-        </button>
-        <button type="button" className="byd-join-online byd-secondary" disabled={!chosen || lost} {...working(busy === '/online')} onClick={() => void go('/online', chosen)}>
-          {t('join.online')}
-        </button>
+        {wide ? [here, sit] : [sit, here]}
         <button type="button" className="byd-join-observe byd-secondary" {...working(busy === '/observe')} onClick={() => void go('/observe', null)}>
           {t('join.observe')}
         </button>
       </form>
       </main>
       <RouteStatus status={live} over="sheet" links={links} onRetry={retry} />
-    </>
+    </div>
+  )
+}
+
+// The form `/join` is without a code, and with one that names nothing (#675, A's form, which C
+// took over): one field for the code, read as a code, and one button.
+function CodeForm({ server, onOpen, typed, unknown }: { server: string | null; onOpen(url: string): void; typed?: string; unknown?: boolean }) {
+  const t = useT()
+  const { field, says, pressed, saysId, input, submit } = useCodeField({ id: 'byd-join-code', server, onOpen, ...(typed ? { typed } : {}), ...(unknown ? { unknown } : {}) })
+  // The field is the whole of the page, so it has the focus from the start — and when the code in
+  // it named nothing, the reader hears the field, the code and why, in that order.
+  useEffect(() => field.current?.focus(), [field])
+  // A code that names nothing is the phone's 404, an answer to something she asked for, so it is
+  // said assertively in the page's own region (D5): the alert beside the field is drawn with the
+  // page, and a region born with its text is a region nobody was listening to.
+  const say = useSay()
+  const sentence = unknown ? t('join.code.unknown') : null
+  useEffect(() => {
+    if (sentence) say?.('assertive', sentence)
+  }, [say, sentence])
+  return (
+    <div className="byd-join-page">
+      <main className="byd-join byd-join-code" data-page="join">
+        <header>
+          <h1>{t('join.code.title')}</h1>
+        </header>
+        <form
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault()
+            submit()
+          }}
+        >
+          <p className="byd-join-lead">{t('join.code.lead')}</p>
+          <label className="byd-join-name">
+            <span>{t('join.code.label')}</span>
+            <input ref={field} {...input} />
+          </label>
+          {says && (
+            <p className="byd-code-says" id={saysId} {...(pressed ? { role: 'alert' } : {})}>
+              {says}
+            </p>
+          )}
+          <button type="submit" className="byd-primary">
+            {t('join.code.go')}
+          </button>
+        </form>
+      </main>
+    </div>
   )
 }
