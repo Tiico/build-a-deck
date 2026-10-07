@@ -30,7 +30,7 @@ export function FootSaid({ children }: { children?: ReactNode }) {
   )
 }
 
-// A foot for a tab whose work has none of its own (Speltema, Media, Regler, Bord): the work above,
+// A foot for a tab whose work has none of its own (Speltema, Media, Regler): the work above,
 // and under it the line the tab says what just happened in. The work keeps its own frame and its
 // own scroll; the foot is a row of the tab and not of the work.
 export function Footed({ children }: { children: ReactNode }) {

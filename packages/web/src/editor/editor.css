@@ -421,7 +421,7 @@
 .byd-card-row .byd-editor-confirm { flex: 1 1 auto; }
 .byd-foot-quiet { display: contents; }
 .byd-foot-quiet[hidden] { display: none; }
-/* The foot of a tab whose work has none of its own (Speltema, Media, Regler, Bord): the work keeps
+/* The foot of a tab whose work has none of its own (Speltema, Media, Regler): the work keeps
    its frame and its scroll above it, and gives the foot the gutter it had under it. The foot holds a
    line even when it says nothing, so what is said into it moves nothing. */
 .byd-footed { height: 100%; display: flex; flex-direction: column; }

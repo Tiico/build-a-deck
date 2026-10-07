@@ -6312,7 +6312,8 @@ I Mall täckte den kortradens «Nästa kort» och kortnamnet, i Tabell fotens «
 
 **B** (av tre: ovanför foten, i fotens statusplats, en statusrad om 28 px).
 Bekräftelsen står i den öppna flikens fot och ersätter fotens tysta rad medan den står: kortradens värden i Mall, sorteringen i Tabell, och efter antalet och anmärkningarna i Kortvägg.
-Speltema, Media, Regler och Bord hade ingen fot och får en: en rad under arbetet, med samma linje och textstorlek som Kortväggens, som håller en rads höjd också när den inte säger något, så att det som sägs i den inte flyttar något.
+Speltema, Media och Regler hade ingen fot och får en: en rad under arbetet, med samma linje och textstorlek som Kortväggens, som håller en rads höjd också när den inte säger något, så att det som sägs i den inte flyttar något.
+Bord säger det i raden ovanför filten, efter hjälptexten och dess «?»: där säger fliken redan sitt tysta läge, och en fot hade tagit den höjd från vänsterkolumnen som L66 mäter att knapparna för nya zoner behöver vid 1024 × 640.
 Den är grön med en bock, eftersom inget är fel; det amberfärgade i huvudet är fortfarande det som inte kunde hända.
 Den sägs till skärmläsaren som förut genom appens artiga kanal, och ritas utan att läsas upp en gång till; en tyst rad som är en levande region döljs medan bekräftelsen står och tas inte bort.
 Medan en fråga står ritas den inte (#916).

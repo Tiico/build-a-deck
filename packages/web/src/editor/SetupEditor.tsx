@@ -24,6 +24,7 @@ import { landingOf } from './landing.js'
 import { CARD_MM } from '../table/drop.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
+import { FootSaid } from './said.js'
 
 // The setup editor (B5, K2). The table is the designer's: the recipe laid the first one out and
 // then let go, so what stands here stands here because they left it standing. The list on the left
@@ -345,6 +346,9 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
             <p>{t('setup.help.keys')}</p>
             <p>{t('setup.help.list')}</p>
           </Help>
+          {/* What just happened, after what the row already says (#698, L67): this row is where Bord
+              says its quiet line, and a foot would have cost the columns their height (L66). */}
+          <FootSaid />
         </div>
         {view ? (
           <Felt

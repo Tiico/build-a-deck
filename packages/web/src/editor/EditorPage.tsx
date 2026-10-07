@@ -567,8 +567,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onProse={(field, prose) => client.setProse(field, prose)}
       />
     ),
-    // The four tabs whose work has no foot of its own are given one (#698, beslut B): the line
-    // what just happened is said in, under the work, where Kortvägg, Mall and Tabell say it.
+    // The three tabs whose work has no foot of its own are given one (#698, L67): the line what
+    // just happened is said in, under the work, where Kortvägg, Mall and Tabell say it. Bord says
+    // it in the row over its felt, which a foot would have taken height from (L66).
     theme: () => <Footed><ThemePanel doc={doc} client={client} assetBase={http} /></Footed>,
     // The pictures the deck is drawn from, in one place (#222). The table's own image strip is
     // what is in use; this is what the game has.
@@ -577,7 +578,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     // Bord is the home for both the game's board vocabulary and its running tables (#19, C4).
     // One panel and not two stacked (#126): the list of running tables stands in the setup's third
     // column, beside the felt, so the whole tab is one screen and the header stays where it was.
-    tables: () => <Footed><SetupEditor doc={doc} client={client} assetBase={http} motifs={deckMotifs} beside={<TablesTab client={client} server={params.get('server')} started={table?.kind === 'new' ? table.id : null} />} /></Footed>,
+    tables: () => <SetupEditor doc={doc} client={client} assetBase={http} motifs={deckMotifs} beside={<TablesTab client={client} server={params.get('server')} started={table?.kind === 'new' ? table.id : null} />} />,
   }
 
   const wsUrl = (params.get('server') ?? location.origin).replace(/^http/, 'ws')
