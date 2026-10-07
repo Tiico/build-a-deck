@@ -83,7 +83,7 @@ describe('Bord: the list and the setup', () => {
     await openEditor('Bord')
     await waitFor(() => expect(document.querySelector('.byd-tables > .byd-tables-lead')).not.toBeNull())
     const lead = document.querySelector('.byd-tables > .byd-tables-lead')!
-    expect(lead.textContent).toContain('rev 1')
+    expect(lead.textContent).toContain('version 1')
     absent(/överlever att alla kopplar ner/)
     const box = await opened('borden')
     expect(box.textContent).toMatch(/överlever att alla kopplar ner/)
@@ -139,7 +139,7 @@ describe('Speltema', () => {
 describe('Historik and Delning', () => {
   it('keeps what bringing a version back does, and moves the rest', async () => {
     await openEditor()
-    fireEvent.click(screen.getByRole('button', { name: /rev 1/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^v1$/ }))
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
     expect(within(panel).getByText('Den du tar tillbaka blir nästa version.')).toBeTruthy()
     absent(/Varje sparning är en version/)

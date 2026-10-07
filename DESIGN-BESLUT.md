@@ -256,6 +256,14 @@ Att ta tillbaka en äldre version är en redigering som vilken annan: den blir n
 "Jämför med den här i tabellen" öppnar Tabell-fliken hållen mot den versionen: det gamla värdet överstruket i cellen, tillagda och borttagna rader tonade, och de borttagna korten kvar sist så att de går att se alls.
 Revisionsknappen blev editorns första tabbstopp, före fliklistan. Det är avsiktligt: den står där versionen står, och tangentbordstesterna dokumenterar ordningen.
 
+Reviderat 2026-10-06 (#703, beställarens beslut): **en version heter «Version 3» / «version 3» överallt där människor läser, och «v3» där det är trångt.**
+
+Speltestet 2026-10-02 fann tre stavningar av samma begrepp: «rev 3» i huvudet, «Version 3» i historiken och «rev-5» på TV:n, bandet, telefonen och enkäten.
+«rev» är verktygets ord; versionens id (`rev-5`) står kvar i protokollet och loggen men visas aldrig.
+`versionWord` i `i18n/version.ts` är enda vägen från id eller nummer till ord, i tre former: `word` («version 3») inne i en mening, `name` («Version 3») först i en rad, och `short` («v3») i huvudets knapp, bordsradens versionsfält, startsidans kort och exportens filnamn («Skogens herrar v3.zip»; importen känner igen både «v3» och det gamla «rev-3»).
+Slutskärmen talar spelets språk: «Bordet stannade på version 1. Enkäten finns hos varje spelare.», drag räknas som fysiska drag och inte loggrader, och de som satt kallas «vid bordet».
+`version-word.test.ts` håller formerna och läser båda katalogerna efter «rev» med platshållarnas namn bortskalade.
+
 ### B5. Logikgräns: affordances plus deklarativ setup (fråga 5)
 
 Systemet kan manipulera — blanda, dra, vända, rotera, stapla, räkna, slå — och känner till spelets struktur: namngivna zoner, per-spelare-områden, startuppställning, drag- och kasthögar.

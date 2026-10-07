@@ -38,7 +38,7 @@ test.describe('taking a game out and bringing it back', () => {
     const download = page.waitForEvent('download')
     await exporting.getByRole('button', { name: 'Ladda ner' }).click({ timeout: 120_000 })
     const saved = await download
-    expect(saved.suggestedFilename()).toBe('Skogens herrar rev-1.zip')
+    expect(saved.suggestedFilename()).toBe('Skogens herrar v1.zip')
     const zip = readFileSync((await saved.path())!)
     // A zip, and one with print files in it: the renderer made them.
     expect(zip.subarray(0, 2).toString()).toBe('PK')

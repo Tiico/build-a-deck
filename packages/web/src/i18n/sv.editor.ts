@@ -88,7 +88,11 @@ export const svEditor = {
   'editor.loggingIn': 'Loggar in…',
   'editor.loading': 'Laddar spelet…',
   'editor.conflict': 'Någon annan har sparat sedan du laddade. Ladda om och gör om ändringen.',
-  'editor.rev': 'rev {n}',
+  // Ett ord för en sparad version överallt där människor läser (#703): «Version 3», «version 3» och «v3» där det är trångt.
+  'version.word': 'version {n}',
+  'version.name': 'Version {n}',
+  'version.short': 'v{n}',
+  'editor.rev': 'v{n}',
   // Dörren säger «Dela» (#727), och ordet står först i namnet, som det står på knappen.
   'editor.here.name': 'Dela · vilka som har spelet, {n} inne',
   'editor.here.count': '{n} inne',
@@ -1377,7 +1381,7 @@ export const svEditor = {
   'tables.loading': 'Laddar bord…',
   // Versionen ett nytt bord låser står här och inte i knappen (L31): en etikett som ska säga
   // både vad som händer och på vilken version slutar med att säga versionen högst.
-  'tables.lead': 'Bord på det här spelet. Ett nytt startar från den sparade versionen, rev {n}.',
+  'tables.lead': 'Bord på det här spelet. Ett nytt startar från den sparade versionen, version {n}.',
   'tables.help.topic': 'borden',
   'tables.help.life': 'Ett bord överlever att alla kopplar ner. Det avslutas uttryckligen, eller av sig självt efter ett dygn.',
   // Meningen citerar knappen i huvudet som den står just nu (#417). Den hette förut "Uppdatera
@@ -1394,10 +1398,10 @@ export const svEditor = {
   'tables.more': 'Fler vägar till bordet',
   'tables.group': 'Bordet',
   'tables.all': 'Alla bord',
-  'tables.stale': '{version}, spelet är på rev-{rev}',
+  'tables.stale': '{version}, spelet är på version {rev}',
   // Uppdateringen står på raden som ligger efter, bredvid vägen in (#706, beslut A).
-  'tables.update': 'Uppdatera till rev-{rev}',
-  'tables.update.of': 'Uppdatera bordet {table} till rev-{rev}',
+  'tables.update': 'Uppdatera till version {rev}',
+  'tables.update.of': 'Uppdatera bordet {table} till version {rev}',
   'tables.update.busy': 'Uppdaterar…',
   'tables.update.failed': 'Bordet kunde inte uppdateras. Försök igen om en stund.',
   'tables.ended': 'avslutat',

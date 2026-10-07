@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { questions, type SurveyAnswers } from './surveyApi.js'
 import { useT } from '../i18n/index.js'
+import { versionWord } from '../i18n/version.js'
 
 // `saveUrl` (G1): where the guest goes to keep this session on an account; absent without a token.
 // `remember`: the seat and session the answers are for, so a reload after sending shows the thanks
@@ -39,7 +40,7 @@ export function Survey({ who, version, onSubmit, saveUrl, remember, rulebook }: 
         <div />
         <div className="byd-survey-thanks">
           <strong>{t('survey.thanks', { who })}</strong>
-          <span>{t('survey.tied', { version })}</span>
+          <span>{t('survey.tied', { version: versionWord(version, t) })}</span>
           {saveUrl && <a className="byd-survey-save" href={saveUrl}>{t('survey.save')}</a>}
         </div>
         <div />
@@ -50,7 +51,7 @@ export function Survey({ who, version, onSubmit, saveUrl, remember, rulebook }: 
     <div className="byd-survey" data-survey={q ? q.key : 'change'} ref={here} tabIndex={-1}>
       <div>
         <h1>{t('survey.title')}</h1>
-        <div className="byd-survey-sub">{t('survey.sub', { version })}</div>
+        <div className="byd-survey-sub">{t('survey.sub', { version: versionWord(version, t) })}</div>
       </div>
       <div className="byd-survey-q">
         {q ? (

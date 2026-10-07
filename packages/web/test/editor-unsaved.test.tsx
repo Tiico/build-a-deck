@@ -45,7 +45,7 @@ describe('closing the tab with unsaved work (#8)', () => {
     expect(closingTheTab()).toBe(true)
 
     fireEvent.click(screen.getByRole('button', { name: /spara/i }))
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     // The listener is taken off in an effect, and an effect runs after the commit that the new
     // version number is painted in — so the tab lets go a beat after the number appears rather
     // than with it. Waiting for the number and then asking the question in the same breath is
@@ -81,7 +81,7 @@ describe('the editor says whether the work is saved (#8)', () => {
     expect(screen.queryByText('Sparat')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: /spara/i }))
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     expect(screen.getByText('Sparat').closest('[role="status"]')).not.toBeNull()
   })
 })
@@ -95,14 +95,14 @@ describe('starting a table over unsaved work (#737)', () => {
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
     fireEvent.change(screen.getByLabelText('dragon title'), { target: { value: 'Drakhona' } })
     fireEvent.click(screen.getByRole('button', { name: 'Starta bord' }))
-    await screen.findByText(/Sparade rev-2 och startade ett nytt bord/)
+    await screen.findByText(/Sparade version 2 och startade ett nytt bord/)
     expect((await run.projects.load(run.projectId))?.rev).toBe(2)
   })
 
   it('says only that a table started when there was nothing to save', async () => {
     await openEditor()
     fireEvent.click(screen.getByRole('button', { name: 'Starta bord' }))
-    await screen.findByText(/Nytt bord startat på rev-1/)
+    await screen.findByText(/Nytt bord startat på version 1/)
     expect(screen.queryByText(/Sparade/)).toBeNull()
   })
 })
@@ -146,7 +146,7 @@ describe('an edit made while the save is travelling (#380)', () => {
     fireEvent.click(screen.getByRole('button', { name: /spara/i }))
     fireEvent.change(screen.getByLabelText('dragon title'), { target: { value: 'Drakfrun' } })
 
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     expect((await run.projects.load(run.projectId))?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
 
     // The version that was made is not the document on the screen, so the work is unsaved and
@@ -157,7 +157,7 @@ describe('an edit made while the save is travelling (#380)', () => {
     expect(again.getAttribute('aria-disabled')).toBe('false')
 
     fireEvent.click(again)
-    await screen.findByText('rev 3')
+    await screen.findByText('v3')
     expect((await run.projects.load(run.projectId))?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakfrun')
   })
 })
