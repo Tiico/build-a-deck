@@ -1244,8 +1244,13 @@
 .byd-lift[data-face='back'] { background: #33405a; color: #ddd; text-align: center; }
 .byd-lift img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
 
-/* The felt as the table screen's main content (#560 P-20), as large as the page it fills. */
-.byd-table-main { width: 100%; height: 100%; }
+/* The felt as the table screen's main content (#560 P-20), as large as the page it fills.
+   And it keeps the felt's ground while the felt is still being measured (#749). The frame
+   is `visibility: hidden` until it knows its size, and that hides its ground with it: for a moment
+   after «Ansluter» the screen was a white page with only the plate along its top, about 0.7 s on
+   the speltest's line. The ground the frame paints, painted once more under it, is what the
+   screen shows until then — and the frame then lands on exactly the same colours. */
+.byd-table-main { width: 100%; height: 100%; background: radial-gradient(ellipse at center, #2b2420 0%, #17120f 100%); }
 /* The lens in table mode (#720), as on /online (#502, #504): an enlarged wood is clipped by the page
    rather than growing it, and is centred in its frame so a step in lands where it was asked. */
 .byd-table-main:has(> .byd-table-frame[data-lens]) { overflow: hidden; }

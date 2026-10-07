@@ -76,6 +76,18 @@ export const svStatus = {
   'status.slow.editor.heading': 'Spelet dröjer',
   'status.slow.editor.text': 'Vi väntar fortfarande på servern.',
 
+  // Skalet (#749): det `index.html` säger innan appen har kommit fram, skrivet in ur den här delen
+  // när appen byggs (`shell.ts`). Laddar- och dröjer-rubrikerna är rösternas egna ovan; texten när
+  // det dröjer är skalets egen, eftersom skalet inte har något «försök igen» att peka på — bara en
+  // omladdning, och den först efter `SHELL_RELOAD_AFTER_MS`. Utan JavaScript säger skalet bara
+  // `noscript`, på båda språken, eftersom inget har körts som kan välja ett.
+  'status.shell.slow.text': 'Vi hämtar fortfarande sidan. Den kommer av sig själv.',
+  'status.shell.slow.table.text': 'Vi hämtar fortfarande sidan. Ingen behöver göra något än.',
+  'status.shell.slow.phone.text': 'Vi hämtar fortfarande sidan. Din plats står kvar.',
+  'status.shell.slow.editor.text': 'Vi hämtar fortfarande sidan.',
+  'status.shell.reload': 'Ladda om sidan',
+  'status.shell.noscript': 'build-your-deck behöver JavaScript. Slå på det och ladda om sidan.',
+
   'status.spent.mark': 'Gäller inte',
   'status.missing.mark': 'Finns inte',
   'status.missing.heading': 'Vi hittar inte det du sökte',
