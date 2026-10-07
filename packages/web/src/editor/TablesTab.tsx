@@ -2,7 +2,7 @@ import { Fragment, useEffect, useId, useRef, useState, type KeyboardEvent as Rea
 import { QrCode } from '../table/QrCode.js'
 import { TableRenderer } from '../table/TableRenderer.js'
 import { useTableClient } from '../table/useTableClient.js'
-import { stillRendering, useTextures } from '../table/textures.js'
+import { stillRendering, useTextures, type Textures } from '../table/textures.js'
 import { joinUrl, observeUrl, onlineUrl, tableModeUrl, tvUrl } from './tableLinks.js'
 import { groupOf, tableGroups, type TableGroup, type TableGroupId } from './tableRows.js'
 import { placedProps, usePlacement } from './placement.js'
@@ -198,21 +198,34 @@ function TableGroupView({ group, server, rev, qrFor, onQr, revealed, onEnded, on
   // designer who folds it again has folded it until the next table is revealed.
   const holds = revealed !== null && group.tables.some((table) => table.id === revealed)
   const [foldedFor, setFoldedFor] = useState<string | null>(null)
-  const open = chosen || (holds && foldedFor !== revealed)
+  // A table that was started and never played may still be drawing its cards, and the count that
+  // says so is on its row (#765) — which a folded group does not draw. So the group asks after the
+  // cards of its tables itself, and stands open while any of them is still on its way (#939,
+  // beslut 2026-10-07): the count is there without a click, and the group folds again when the
+  // cards are done, unless the designer opened it herself. One who folds it while it renders has
+  // folded it for those tables; another table that starts rendering opens it again.
+  const watches = group.id === 'untouched'
+  const [textures, setTextures] = useState<Record<string, Textures>>({})
+  const rendering = watches ? group.tables.filter((table) => stillRendering(textures[table.id] ?? null)).map((table) => table.id) : []
+  const [foldedWhile, setFoldedWhile] = useState<readonly string[]>([])
+  const drawing = rendering.some((id) => !foldedWhile.includes(id))
+  const open = chosen || (holds && foldedFor !== revealed) || drawing
   const setOpen = (next: (was: boolean) => boolean) => {
     const now = next(open)
     setChosen(now)
     if (!now && holds) setFoldedFor(revealed)
+    if (!now) setFoldedWhile((was) => [...was, ...rendering])
   }
   const headingId = `byd-tables-group-${group.id}`
   const listId = `byd-tables-list-${group.id}`
   const rows = (
     <ul id={listId} className="byd-tables-list" aria-labelledby={headingId}>
       {group.tables.map((table) => (
-        <TableRow key={table.id} table={table} server={server} rev={rev} qrOpen={qrFor === table.id} onQr={(open) => onQr(open ? table.id : null)} onEnded={() => onEnded(table.id)} onUpdate={() => onUpdate(table.id)} />
+        <TableRow key={table.id} table={table} server={server} rev={rev} qrOpen={qrFor === table.id} onQr={(open) => onQr(open ? table.id : null)} onEnded={() => onEnded(table.id)} onUpdate={() => onUpdate(table.id)} {...(watches ? { textures: textures[table.id] ?? null } : {})} />
       ))}
     </ul>
   )
+  const watchers = watches && group.tables.map((table) => <TexturesWatch key={table.id} http={httpOf(server)} sessionId={table.ended ? null : table.id} onTextures={(t) => setTextures((was) => ({ ...was, [table.id]: t }))} />)
   if (group.id === 'played')
     return (
       <section className="byd-tables-group" data-group={group.id}>
@@ -230,9 +243,24 @@ function TableGroupView({ group, server, rev, qrFor, onQr, revealed, onEnded, on
         </span>
         {group.heading}
       </button>
+      {watchers}
       {open && rows}
     </section>
   )
+}
+
+// The server a table's HTTP questions go to: the one named, or the page's own.
+const httpOf = (server: string | null): string => server ?? location.origin
+
+// One table's cards, asked after by its group whether or not its row is drawn (#939). It draws
+// nothing; the polling stops by itself once every card is done (#765).
+function TexturesWatch({ http, sessionId, onTextures }: { http: string; sessionId: string | null; onTextures(t: Textures): void }) {
+  const textures = useTextures(sessionId ? http : null, sessionId)
+  useEffect(() => {
+    if (textures) onTextures(textures)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- a new callback each render is no new answer
+  }, [textures])
+  return null
 }
 
 // Variant B, the shortcut: the newest table of this game, from the header, on whichever tab the
@@ -327,7 +355,7 @@ const THUMBNAIL = { w: 640, h: 384 }
 // Live, as before: the same connection the TV makes (seatless, sees only what is public), so what
 // the row says about the table is what the table itself says. A row that is not drawn — a folded
 // group — makes no connection at all, which is what keeps the cost with what is on the screen.
-function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate }: { table: TableSummary; server: string | null; rev: number; qrOpen: boolean; onQr(open: boolean): void; onEnded?: () => void; onUpdate?: () => Promise<void> }) {
+function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate, textures: watched }: { table: TableSummary; server: string | null; rev: number; qrOpen: boolean; onQr(open: boolean): void; onEnded?: () => void; onUpdate?: () => Promise<void>; textures?: Textures | null }) {
   const t = useT()
   // The day and the clock a last move is said in are the reader's, not `sv-SE`'s (#228).
   const { lang } = useLang()
@@ -380,7 +408,9 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate }: { tab
   const stale = !ended && table.version !== `rev-${rev}`
   // The cards still on their way, in the band's own words (#765, beslut B): the row says what the
   // band says, so one state reads the same wherever the designer looks. An ended table is not asked.
-  const textures = useTextures(ended ? null : url.replace(/^ws/, 'http'), table.id)
+  // A row whose group already asks after its cards (#939) is told them rather than asking twice.
+  const own = useTextures(ended || watched !== undefined ? null : url.replace(/^ws/, 'http'), table.id)
+  const textures = ended ? null : watched === undefined ? own : watched
   // Every seat taken is not a reason to hide the way in; it is a reason to say why it is shut.
   const full = !ended && view !== null && free === null
 

@@ -37,8 +37,14 @@ async function rows(): Promise<HTMLElement[]> {
   const user = userEvent.setup()
   // Listan är serverns svar, så den kommer efter fliken.
   await waitFor(() => expect(document.querySelectorAll('.byd-table-row, .byd-tables-fold').length).toBeGreaterThan(0))
+  // A group whose table is still drawing its cards opens by itself and folds again when they are
+  // done (#939); one the designer opened herself stays open. So every fold is opened by a press —
+  // folded first if it stands open of itself — and a press that lands just as the group opens on
+  // its own folds it, which the next press answers.
   for (const fold of [...document.querySelectorAll<HTMLElement>('.byd-tables-fold')]) {
-    if (fold.getAttribute('aria-expanded') === 'false') await user.click(fold)
+    if (fold.getAttribute('aria-expanded') === 'true') await user.click(fold)
+    for (let press = 0; press < 3 && fold.getAttribute('aria-expanded') !== 'true'; press++) await user.click(fold)
+    expect(fold.getAttribute('aria-expanded')).toBe('true')
   }
   return [...document.querySelectorAll<HTMLElement>('.byd-table-row')]
 }
