@@ -249,7 +249,8 @@ describe('the ended table goes quiet behind the survey (C9, D5, G3, #83)', () =>
     const stops = tabStops()
     expect(stops.length).toBeGreaterThan(1)
     expect(stops.every((el) => survey.contains(el))).toBe(true)
-    const last = screen.getByRole('link', { name: /Spara till ditt konto/ })
+    // The last answer while «Nästa» waits for one: the save is offered on the thanks only (#690).
+    const last = screen.getByRole('button', { name: '5' })
     expect(stops.at(-1)).toBe(last)
     expect(tabFrom(last)).toBe(screen.getByRole('button', { name: '1' }))
     table.close()

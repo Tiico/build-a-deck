@@ -559,6 +559,50 @@ describe('ending the session and the survey after it (C9, G3)', () => {
   })
 })
 
+// «Spara till ditt konto» is offered once the answers are sent (#690, beslut 2026-10-06): a guest
+// who saved first logged in, landed elsewhere and never found the survey again. The link carries
+// this play address as `next`, so the login comes back to the phone and not to a start page.
+describe('saving the session to an account after the survey (G1, #690)', () => {
+  it('offers the save only on the thanks, with the way back to this phone in it', async () => {
+    const id = await createSession(run)
+    await open(id, 'A', 'Ada')
+    fireEvent.click(screen.getByRole('button', { name: 'Ut… ur bordet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Avsluta bordet för alla' }))
+    fireEvent.click(screen.getByRole('button', { name: /Avsluta för alla/ }))
+    await screen.findByText(/Bordet är avslutat/)
+    expect(screen.queryByRole('link', { name: 'Spara till ditt konto' })).toBeNull()
+    for (const n of ['4', '3', '2']) {
+      fireEvent.click(screen.getByRole('button', { name: n }))
+      fireEvent.click(screen.getByRole('button', { name: 'Nästa' }))
+      expect(screen.queryByRole('link', { name: 'Spara till ditt konto' })).toBeNull()
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
+    const save = await screen.findByRole('link', { name: 'Spara till ditt konto' })
+    const href = new URL(save.getAttribute('href')!, 'http://app.invalid')
+    expect(href.pathname).toBe('/claim')
+    expect(href.searchParams.get('next')).toBe(location.pathname + location.search)
+  })
+
+  // The claim comes back here with `saved=1`, often in a tab of its own (the login link opens from
+  // the mail), where the tab's memory of the answers is not. Saving is only offered once they are
+  // sent, so the mark is that too: the thanks, saying it is saved, and not the first question.
+  it('comes back from the claim to the thanks, which say it is saved', async () => {
+    const id = await createSession(run)
+    const token = await open(id, 'A', 'Ada')
+    cleanup()
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await table.send({ v: 'session.end' })
+    history.replaceState(null, '', `/play?session=${id}&seat=A&name=Ada&token=${token}&server=${encodeURIComponent(run.url)}&saved=1`)
+    render(<PlayerPage />)
+    expect(await screen.findByText(/Tack, Ada/)).toBeTruthy()
+    expect(screen.getByText('Sparat till ditt konto.')).toBeTruthy()
+    expect(screen.queryByRole('link', { name: 'Spara till ditt konto' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Nästa' })).toBeNull()
+    table.close()
+  })
+})
+
 // The way out (#31, prototype variant C). The row is already full at 375 px, so the exit is not a
 // fourth control beside the red one: `Avsluta` becomes `Ut…`, and the sheet behind it asks which
 // way out is meant with both consequences written out.
@@ -665,13 +709,19 @@ describe('being kicked (DRIFT §9)', () => {
 })
 
 describe('saving the session to an account (G1)', () => {
-  it('once the session has ended, the phone offers to save it, through the claim page with its token', async () => {
+  it('once the session has ended and the survey is sent, the phone offers to save it, through the claim page with its token', async () => {
     const id = await createSession(run)
     const token = await open(id, 'A', 'Ada')
     expect(screen.queryByText(/Spara till ditt konto/)).toBeNull()
     const table = TableClient.connect(await asTable(run, id))
     await table.ready()
     await table.send({ v: 'session.end' })
+    await screen.findByText(/Bordet är avslutat/)
+    for (const n of ['4', '3', '2']) {
+      fireEvent.click(screen.getByRole('button', { name: n }))
+      fireEvent.click(screen.getByRole('button', { name: 'Nästa' }))
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
     const link = (await screen.findByRole('link', { name: /Spara till ditt konto/ })) as HTMLAnchorElement
     const url = new URL(link.href, 'http://x')
     expect(url.pathname).toBe('/claim')
@@ -1062,7 +1112,6 @@ describe('the ended table goes quiet behind the survey (C9, D5, G3, #83)', () =>
     expect(screen.getByRole('heading', { name: 'Bordet är avslutat' }).closest('[inert]')).toBeNull()
     expect(screen.getByRole('button', { name: '4' }).closest('[inert]')).toBeNull()
     expect(screen.getByRole('button', { name: 'Nästa' }).closest('[inert]')).toBeNull()
-    expect(screen.getByRole('link', { name: /Spara till ditt konto/ }).closest('[inert]')).toBeNull()
     me.close()
   })
 
@@ -1077,8 +1126,9 @@ describe('the ended table goes quiet behind the survey (C9, D5, G3, #83)', () =>
     const stops = tabStops()
     expect(stops.length).toBeGreaterThan(1)
     expect(stops.every((el) => survey.contains(el))).toBe(true)
-    // The last control is the way out (G1); Tab from it wraps to the survey's first control.
-    const last = screen.getByRole('link', { name: /Spara till ditt konto/ })
+    // The last control is the last answer while «Nästa» waits for one (the save is offered on the
+    // thanks only, #690); Tab from it wraps to the survey's first control.
+    const last = screen.getByRole('button', { name: '5' })
     expect(stops.at(-1)).toBe(last)
     expect(tabFrom(last)).toBe(screen.getByRole('button', { name: '1' }))
     me.close()

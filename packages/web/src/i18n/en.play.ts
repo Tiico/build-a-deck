@@ -360,6 +360,7 @@ export const enPlay = {
   'survey.thanks': 'Thank you, {who}.',
   'survey.tied': 'Your answers are tied to {version}.',
   'survey.save': 'Save to your account',
+  'survey.saved': 'Saved to your account.',
 
   'observer.name': 'spectator',
   'observer.banner': 'You are a spectator: you see everyone’s hands and every pile. Everyone knows you are here.',

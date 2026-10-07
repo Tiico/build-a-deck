@@ -359,4 +359,56 @@ describe('claiming a guest session to an account (G1)', () => {
     expect((await fetch(`${run.http}/me/played`)).status).toBe(401)
     await ada.close()
   })
+
+  // «Tillbaka till bordet» takes the guest to her own seat and hand (#690, beslut 2026-10-06), not
+  // to the picker as a newcomer: the account that claimed the admission is handed a fresh token for
+  // the same seat. Only the token is new, so the seat, the name and the history stay hers; the old
+  // token is the one it replaces, as a bearer secret should be when it moves to another screen.
+  it('hands the account a fresh token for its own seat while the table runs', async () => {
+    const { id } = await createRoom(run.http)
+    const token = await run.admit(id, 'A', 'Ada')
+    const ada = await WireClient.connect(run.base, id, 'A', undefined, { token })
+    await ada.send('A', { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await ada.close()
+    const back = (cookie?: string) => post(run.http, `/me/played/${encodeURIComponent(id)}/return`, {}, cookie ? { cookie } : {})
+    expect((await back()).status).toBe(401)
+    const bo = await login('bo@example.com')
+    expect((await back(bo)).status).toBe(404)
+    await post(run.http, '/guests/claim', { token }, { cookie: bo })
+
+    const answer = await back(bo)
+    expect(answer.status).toBe(200)
+    const again = (await answer.json()) as { token: string; seat: string | null; name: string; kind: string }
+    expect(again).toMatchObject({ seat: 'A', name: 'Ada', kind: 'seat' })
+    expect(again.token).not.toBe(token)
+    const seated = await WireClient.connect(run.base, id, 'A', undefined, { token: again.token })
+    expect(seated.messages[0]?.t).toBe('snapshot')
+    expect(seated.view?.seats.find((s) => s.id === 'A')?.name).toBe('Ada')
+    await seated.close()
+    const old = await WireClient.connect(run.base, id, 'A', undefined, { token })
+    expect(old.messages[0]).toMatchObject({ t: 'refused' })
+    await old.close()
+    // The table is still the account's to list, under the seat it sat at.
+    expect(await (await fetch(`${run.http}/me/played`, { headers: { cookie: bo } })).json()).toEqual([expect.objectContaining({ session: id, seat: 'A', name: 'Ada' })])
+    // Another account has nothing to come back to.
+    expect((await back(await login('cy@example.com'))).status).toBe(404)
+
+    const tv = await WireClient.connect(run.base, id, 'A', undefined, { token: again.token })
+    await tv.send('A', { v: 'session.end' })
+    await tv.close()
+    expect((await back(bo)).status).toBe(410)
+  })
+
+  it('has nothing to hand back once the guest has left the seat', async () => {
+    const { id } = await createRoom(run.http)
+    const token = await run.admit(id, 'A', 'Ada')
+    const ada = await WireClient.connect(run.base, id, 'A', undefined, { token })
+    await ada.send('A', { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    const bo = await login('bo@example.com')
+    await post(run.http, '/guests/claim', { token }, { cookie: bo })
+    await ada.send('A', { v: 'seat.release', seat: 'A' })
+    await ada.close()
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect((await post(run.http, `/me/played/${encodeURIComponent(id)}/return`, {}, { cookie: bo })).status).toBe(404)
+  })
 })
