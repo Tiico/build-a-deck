@@ -154,7 +154,7 @@ describe('ett namnbyte går att ångra (#384)', () => {
 // header that says a save could not happen, spoken assertively and then left standing until the
 // next save or the next error, whichever came first.
 describe('what a step back is announced as (#35)', () => {
-  it('is said politely, and takes itself back rather than standing in the header', async () => {
+  it('is said politely, and takes itself back rather than standing in the open tab\'s foot', async () => {
     await openEditor({ live: true })
     fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
     fireEvent.change(await screen.findByLabelText('dragon title'), { target: { value: 'Drakhona' } })
@@ -167,11 +167,13 @@ describe('what a step back is announced as (#35)', () => {
     expect(saidIn('polite')).toMatch(/Tog tillbaka: en ändring i kortleken/)
     expect(saidIn('assertive')).not.toMatch(/Tog tillbaka/)
     expect([...document.querySelectorAll('[role="alert"]')].map((el) => el.textContent).join('\n')).not.toMatch(/Tog tillbaka/)
-    // And what she sees: it is still read where it happened.
-    expect(header().getByText(/Tog tillbaka: en ändring i kortleken/)).toBeTruthy()
+    // And what she sees: it is drawn in the open tab's foot, in the stead of its quiet line (#698).
+    const foot = () => within(document.querySelector('#byd-editor-panel-table .byd-crown-foot') as HTMLElement)
+    expect(foot().getByText(/Tog tillbaka: en ändring i kortleken/)).toBeTruthy()
+    expect(header().queryByText(/Tog tillbaka/)).toBeNull()
 
     act(() => vi.advanceTimersByTime(30_000))
-    expect(header().queryByText(/Tog tillbaka/)).toBeNull()
+    expect(foot().queryByText(/Tog tillbaka/)).toBeNull()
   })
 })
 

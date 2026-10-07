@@ -19,6 +19,7 @@ import { useRoving } from './roving.js'
 import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { READING_VIEWS, SCREENS, textPxOnCard, type ReadingView } from '../legibility.js'
 import { Help } from './HelpDrawer.js'
+import { FootSaid } from './said.js'
 
 export type DeckWallProps = {
   doc: ProjectDoc
@@ -633,6 +634,8 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             ? t('wall.foot.checked')
             : t(groups.length === 1 ? 'wall.foot.remarks.one' : 'wall.foot.remarks.other', { n: groups.length })}
         </span>
+        {/* What just happened, after what the wall adds up to (#698, beslut B). */}
+        <FootSaid />
       </CrownFoot>
     </div>
   )

@@ -4044,6 +4044,8 @@ Två varianter avvisades: textknappen «Ångra: …» bredvid sparstatusen, som 
 Knapparna i huvudet förutsätter att sidan inte rullar på en låg platta, vilket #567 kräver.
 Prototypen och mätningarna står i #566 och i `docs/ux-audits/2026-09-29/prototyper/566/`; grinden är `packages/e2e/test/editor-undo-buttons.spec.ts`.
 
+**Reviderat 2026-10-06: bekräftelserna står i den öppna flikens fot, inte längst ner på skärmen (L67, #698).**
+
 **Reviderat 2026-10-03: under 1440 är «Osparat» en amber prick i bockens ruta (#668, A1).**
 Meningen ovan om att «Osparat» står kvar i ord och färg gäller inte längre under 1440 px; där står det nu i färg och märke.
 Ordet tog 35–50 px som raden aldrig hade: de togs från spelets namn, som klipptes till «Sal's Sal…» (91–97 av 102 px med DejaVu), och flikraden hoppade 29–44 px i sidled varje gång arbetet växlade mellan sparat och osparat.
@@ -6451,3 +6453,23 @@ En grupp ritas för sina knappar också när den inte har någon zon.
 Priset är valt: ett spel med fler räknare eller fler zoner på bordet skjuter platsgruppens knappar längre ned.
 `setup-side-fit.spec.ts` mäter i den byggda appen att alla fyra syns orullade vid 1024 × 640 i spelet där fyndet gjordes, fyra platser och en räknare, på svenska och engelska, och att varje grupps knappar står mellan rubriken och raderna.
 Prototypen: `docs/ux-audits/2026-10-06-kolumnknappar/prototyper/711/`.
+
+### L67. Det som hänt sägs i flikens fot, i stället för fotens tysta rad (prototypat och beslutat 2026-10-06, #698)
+
+Speltestet 2026-10-02 fann att bekräftelsen «Tog tillbaka: …», som sedan #566 låg som en remsa längst ner på skärmen, låg över kontroller i sex sekunder.
+I Mall täckte den kortradens «Nästa kort» och kortnamnet, i Tabell fotens «Ta bort 1 kort» och «Avmarkera alla», och en gång «Ja, ta bort» i frågan om ett lager.
+
+**B** (av tre: ovanför foten, i fotens statusplats, en statusrad om 28 px).
+Bekräftelsen står i den öppna flikens fot och ersätter fotens tysta rad medan den står: kortradens värden i Mall, sorteringen i Tabell, och efter antalet och anmärkningarna i Kortvägg.
+Speltema, Media och Regler hade ingen fot och får en: en rad under arbetet, med samma linje och textstorlek som Kortväggens, som håller en rads höjd också när den inte säger något, så att det som sägs i den inte flyttar något.
+Bord säger det i raden ovanför filten, efter hjälptexten och dess «?»: där säger fliken redan sitt tysta läge, och en fot hade tagit den höjd från vänsterkolumnen som L66 mäter att knapparna för nya zoner behöver vid 1024 × 640.
+Den är grön med en bock, eftersom inget är fel; det amberfärgade i huvudet är fortfarande det som inte kunde hända.
+Den sägs till skärmläsaren som förut genom appens artiga kanal, och ritas utan att läsas upp en gång till; en tyst rad som är en levande region döljs medan bekräftelsen står och tas inte bort.
+Medan en fråga står ritas den inte (#916).
+
+Priset är valt: vid 1024 är kortradens plats i Mall ungefär 160 px, så en lång bekräftelse kortas med «…» där; hela meningen har redan sagts.
+A, samma remsa ovanför foten, låg fortfarande över arbetet vid 1024 och var den flytande remsa L58 valde bort.
+C, en statusrad, kostade 28 px korthöjd på varje flik för en sällsynt händelse.
+Meningen i #566-beslutet om att bekräftelserna står som en rad längst ner på skärmen gäller inte längre.
+`editor-confirm-strip.spec.ts` mäter i den byggda appen vid 1024 × 768 och 1280 × 800, på varje flik, att bekräftelsen står i flikens panel, helt på skärmen, inte överlappar någon synlig kontroll, och att ingen kontroll i fliken flyttar när den försvinner.
+Prototypen: `docs/ux-audits/2026-10-06-editorns-remsor/prototyper/698-remsan.html`.

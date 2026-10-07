@@ -39,6 +39,7 @@ import { saidOr } from '../i18n/said.js'
 import { useGesture } from './gesture.js'
 import { lineKey } from './lineKeys.js'
 import { useSay } from '../status/StatusLive.js'
+import { FootSaid } from './said.js'
 
 export type DataTableProps = {
   doc: ProjectDoc
@@ -1972,7 +1973,10 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             </button>
           </div>
         ))}
-        <p className="byd-data-sort byd-crown-end" role="status">{sortLabel(sort, t)}</p>
+        {/* What just happened stands in the sort's place for its moment (#698, beslut B). */}
+        <FootSaid>
+          <p className="byd-data-sort byd-crown-end" role="status">{sortLabel(sort, t)}</p>
+        </FootSaid>
       </CrownFoot>
       {library !== null && assetBase && (
         <PictureLibraryDialog

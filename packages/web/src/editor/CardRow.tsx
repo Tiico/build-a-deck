@@ -3,6 +3,7 @@ import type { Element, FaceTemplate, ProjectDoc } from './types.js'
 import { useT, type T } from '../i18n/index.js'
 import { ANTAL, titleOfRow } from '@byd/server/doc'
 import { fieldLabel } from './fields.js'
+import { FootSaid } from './said.js'
 
 type Card = ProjectDoc['rows'][number]
 
@@ -75,16 +76,20 @@ export function CardRow({ cards, current, face, onPick }: { cards: readonly Card
       <button type="button" aria-label={t('canvas.card.next')} disabled={at < 0 || at >= cards.length - 1} onClick={() => step(1)}>
         ›
       </button>
-      {values.length > 0 && (
-        <p className="byd-card-row-values">
-          {values.map(([column, value], i) => (
-            <span key={column}>
-              {i > 0 && ' · '}
-              <b>{column}</b> {value}
-            </span>
-          ))}
-        </p>
-      )}
+      {/* What just happened stands in the values' place for its moment (#698, beslut B): the
+          canvas' foot is the template's, and the values are its quiet line. */}
+      <FootSaid>
+        {values.length > 0 && (
+          <p className="byd-card-row-values">
+            {values.map(([column, value], i) => (
+              <span key={column}>
+                {i > 0 && ' · '}
+                <b>{column}</b> {value}
+              </span>
+            ))}
+          </p>
+        )}
+      </FootSaid>
       {open && (
         <div className="byd-card-row-list">
           <input
