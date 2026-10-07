@@ -19,6 +19,7 @@ import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { LanguagePicker, useLang, useT, type Lang, type T } from '../i18n/index.js'
 import './account.css'
+import { AboutLine } from './AboutLine.js'
 
 // The three dialogs a game's ⋯ and «Importera» open are drawn on a press and never on the first
 // frame, so they are fetched when one is opened, with their own sheet, and not carried in the sheet
@@ -425,6 +426,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             </div>
           </>
         )}
+        <AboutLine http={http} />
       </div>
       <Suspense fallback={null}>
       {exporting && (

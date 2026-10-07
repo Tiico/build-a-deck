@@ -386,3 +386,6 @@ html:has(.byd-phone-foot:not(:empty)) { scroll-padding-bottom: 73px; }
   .byd-player .byd-strip-card { flex-basis: calc((100svh - 48px - 64px - 40px) * 63 / 88); }
 }
 
+
+/* What a guest leaves behind, beside «Spara till ditt konto» (#757). */
+.byd-guest-kept { margin: 8px 0 0; max-width: 36ch; font-size: 12px; line-height: 1.5; color: #9aa3b8; }

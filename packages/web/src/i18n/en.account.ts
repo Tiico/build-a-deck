@@ -2,6 +2,8 @@ export const enAccount = {
   'account.language': 'Language',
 
   'login.pitch': 'Build your own card game, playtest it on screen, order it printed.',
+  'about.contact': 'Contact',
+  'about.version': 'build-your-deck {release}',
   'login.lead': 'Log in to get to your games.',
   'login.lead.first': 'Log in or create an account with your email — the link in the mail is all it takes.',
   'login.lead.invite': 'Log in to open the game you were invited to.',

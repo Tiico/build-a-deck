@@ -41,6 +41,8 @@ export function Survey({ who, version, onSubmit, saveUrl, remember, rulebook }: 
           <strong>{t('survey.thanks', { who })}</strong>
           <span>{t('survey.tied', { version })}</span>
           {saveUrl && <a className="byd-survey-save" href={saveUrl}>{t('survey.save')}</a>}
+          {/* What a guest leaves behind, said where she saves it (#757). */}
+          {saveUrl && <p className="byd-guest-kept">{t('guest.kept')}</p>}
         </div>
         <div />
       </div>
@@ -93,6 +95,7 @@ export function Survey({ who, version, onSubmit, saveUrl, remember, rulebook }: 
         )}
       </div>
       {saveUrl && <a className="byd-survey-save" href={saveUrl}>{t('survey.save')}</a>}
+      {saveUrl && <p className="byd-guest-kept">{t('guest.kept')}</p>}
     </div>
   )
 }

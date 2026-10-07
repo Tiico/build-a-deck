@@ -142,17 +142,21 @@ export function safeNext(next: string | undefined): string {
   return next && next.startsWith('/') && !next.startsWith('//') ? next : '/'
 }
 
-export function loginMail(to: string, link: string, lang: Lang = 'sv'): Mail {
+// The mail's foot says who sent it (#757): the service, the site the link leads to, and the
+// contact when the box was given one.
+const mailFoot = (link: string, contact: string | undefined, label: string): string => `\n\n— \nbuild-your-deck · ${new URL(link).origin}${contact ? `\n${label}: ${contact}` : ''}`
+
+export function loginMail(to: string, link: string, lang: Lang = 'sv', contact?: string): Mail {
   if (lang === 'en') {
     return {
       to,
       subject: 'Sign in to build-your-deck',
-      text: `Hello!\n\nClick to sign in: ${link}\n\nThe link works for 15 minutes and only once. If you did not ask for it, you can ignore this mail.`,
+      text: `Hello!\n\nClick to sign in: ${link}\n\nThe link works for 15 minutes and only once. If you did not ask for it, you can ignore this mail.${mailFoot(link, contact, 'Contact')}`,
     }
   }
   return {
     to,
     subject: 'Logga in på build-your-deck',
-    text: `Hej!\n\nKlicka för att logga in: ${link}\n\nLänken fungerar i 15 minuter och bara en gång. Har du inte bett om den kan du ignorera det här mejlet.`,
+    text: `Hej!\n\nKlicka för att logga in: ${link}\n\nLänken fungerar i 15 minuter och bara en gång. Har du inte bett om den kan du ignorera det här mejlet.${mailFoot(link, contact, 'Kontakt')}`,
   }
 }

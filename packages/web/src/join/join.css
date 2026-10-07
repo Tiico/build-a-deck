@@ -285,3 +285,6 @@
    size, so the two ways to play read as a pair and «Bara titta» as the third. */
 .byd-join .byd-join-online.byd-primary,
 .byd-join .byd-join-sit { font-size: 16px; }
+
+/* What a guest leaves behind, under the field where she gives her name (#757). */
+.byd-guest-kept { margin: 8px 0 0; max-width: 36ch; font-size: 12px; line-height: 1.5; color: #9aa3b8; }

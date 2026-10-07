@@ -8,6 +8,9 @@ export const svAccount = {
   // Säljtexten står bara första gången (L36): den säger vad produkten är, inte hur verktyget
   // fungerar, och den som redan har konto ska slippa läsa den varje gång.
   'login.pitch': 'Skapa ditt kortspel, speltesta det på skärmen, beställ hem det.',
+  // Den tysta raden sist i inloggningskortet och på Mina spel (#757).
+  'about.contact': 'Kontakt',
+  'about.version': 'build-your-deck {release}',
   'login.lead': 'Logga in för att komma till dina spel.',
   // En lead per väg in (#691, beslut 2026-10-06), som claim har sin: första besöket säger att samma
   // länk både loggar in och skapar kontot, inbjudan säger vilket spel den leder till, och guidens

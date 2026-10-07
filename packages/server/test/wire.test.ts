@@ -239,6 +239,17 @@ describe('connections', () => {
     expect(await res.json()).toEqual({ ok: true, release: 'v0.8.0', tables: 0, store: 'ok' })
   })
 
+  // Where a beta tester turns, and what she quotes back (#757): the contact the box was given
+  // (`BYD_CONTACT`) stands beside the release, and nothing is said when none was given.
+  it('health names the contact the box was given, and none when it was given none (#757)', async () => {
+    await run.stop()
+    run = await start({ release: 'v0.9.3', contact: 'beta@example.com' })
+    expect(await (await fetch(`${run.http}/health`)).json()).toEqual({ ok: true, release: 'v0.9.3', contact: 'beta@example.com', tables: 0, store: 'ok' })
+    await run.stop()
+    run = await start({ release: 'v0.9.3' })
+    expect(await (await fetch(`${run.http}/health`)).json()).not.toHaveProperty('contact')
+  })
+
   // A 503 is when the question is asked in earnest, and "which version is broken" is the first
   // thing asked back. A marker that only the healthy answer carries is missing where it counts.
   it('names it in the answer that says something is wrong, too', async () => {
