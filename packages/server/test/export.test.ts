@@ -82,7 +82,7 @@ describe('exporting a whole game (G5, #527)', () => {
     const res = await owner('GET', '/projects/p1/export?lang=sv')
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toBe('application/zip')
-    expect(res.headers.get('content-disposition')).toMatch(/attachment; filename="Skogens herrar rev-2\.zip"/)
+    expect(res.headers.get('content-disposition')).toMatch(/attachment; filename="Skogens herrar v2\.zip"/)
     const files = unzipSync(new Uint8Array(await res.arrayBuffer()))
 
     // The manifest, valid against the schema that documents it, which travels in the zip too.
