@@ -35,7 +35,18 @@ const covered = (page: Page): Promise<{ drawn: number; covered: string[] }> =>
     // Wherever they stand: the felt's corner on other screens, the TV's column since #875.
     const corner = [...document.querySelectorAll<HTMLElement>('.byd-felt-corner > *, .byd-tv-corner > *')].filter(shown)
     const things = [...document.querySelectorAll<HTMLElement>('.byd-hand-fan > i, .byd-pile, .byd-pile-count, [data-seat-plate], [data-table] > .byd-zone')].filter(shown)
-    return { drawn: corner.length, covered: corner.flatMap((c) => things.filter((x) => meet(c.getBoundingClientRect(), x.getBoundingClientRect())).map((x) => `${c.className.split(' ')[0]} × ${what(x)}`)) }
+    // What the felt's frame clips is not drawn: a hand fanned past the felt's edge reaches under the
+    // TV's column in its rectangle and nowhere on the screen (#765, where the column's render line
+    // moved the corner down beside seat C's fan). Each thing is measured as much of it as shows.
+    const drawnPart = (el: HTMLElement): DOMRect => {
+      const r = el.getBoundingClientRect()
+      const frame = el.closest('[data-tv] > main')?.getBoundingClientRect()
+      if (!frame) return r
+      const left = Math.max(r.left, frame.left)
+      const top = Math.max(r.top, frame.top)
+      return new DOMRect(left, top, Math.max(0, Math.min(r.right, frame.right) - left), Math.max(0, Math.min(r.bottom, frame.bottom) - top))
+    }
+    return { drawn: corner.length, covered: corner.flatMap((c) => things.filter((x) => meet(c.getBoundingClientRect(), drawnPart(x))).map((x) => `${c.className.split(' ')[0]} × ${what(x)}`)) }
   })
 
 const CELLS = [

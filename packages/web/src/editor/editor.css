@@ -2943,6 +2943,9 @@ button.byd-columns-name:hover, button.byd-columns-name:focus-visible { border-co
 .byd-tables-state { color: var(--byd-tables-quiet); }
 .byd-table-row[data-state='played'] .byd-tables-state { color: var(--byd-tables-live-ink); font-weight: 700; }
 .byd-tables-stale { flex-basis: 100%; color: var(--byd-tables-stale-ink); font-style: normal; font-weight: 600; }
+/* Kort som fortfarande ritas (#765, beslut B), i bandets ord och på en egen rad som prototypen
+   visade den: också det ett läge som väntar på något, och därför inte grått. */
+.byd-tables-render { flex-basis: 100%; color: var(--byd-tables-stale-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 /* Who is at the table and when it last moved: one line each, and a name too long for the column
    is cut rather than allowed to push the row into a third and a fourth line. */
 .byd-tables-line { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--byd-tables-quiet); font-size: 12px; }

@@ -138,7 +138,7 @@ test('TV: focus stays with «Starta om» once «Starta spelet» has started the 
   const doc = gameWithAStart()
   const table = await tableFromSetup(request, setupFromProject(doc), deckFromProject(doc))
   await player(table, { name: 'Ada', seat: 'A' })
-  const page = (await open(TV, `${table.tvUrl}&lang=sv`)).page
+  const page = (await open(TV, `${table.tvUrl}&lang=sv`, { facesReady: true })).page
   const start = page.locator('.byd-table-start')
   await expect(start).toBeEnabled()
   await tabTo(page, () => start.evaluate((el) => el === document.activeElement))

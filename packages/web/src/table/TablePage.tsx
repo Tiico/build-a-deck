@@ -22,13 +22,14 @@ import { logout, whoAmI } from '../account/api.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT, type Key } from '../i18n/index.js'
 import { keepHostKey, takeHostKey } from './hostKey.js'
+import { useCardsPending } from './textures.js'
 
 type SessionRecord = { name?: string }
 
 // /table?session=…&host=…&mode=table|tv&server=ws://…
 // The `table` role: no seat, sees only what is public, acts for the group (K14). It is the
 // host's screen (DRIFT §9): the host key opens it, and it is told the room code to show.
-export type TablePageProps = { timing?: StatusTiming }
+export type TablePageProps = { timing?: StatusTiming & { renderStalledAfterMs?: number } }
 
 export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   const t = useT()
@@ -91,6 +92,10 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
     const login = links.login
     void logout(http).then(() => location.assign(login))
   }
+  // The cards still on their way (#765, beslut B): the start waits for them on the host's screens,
+  // and the TV says how far they have come for as long as any are missing — also after a start
+  // that went ahead anyway.
+  const rendering = useCardsPending(http, sessionId, view, timing.renderStalledAfterMs)
   usePageTitle({ state: sessionId ? (gameDeleted ? 'missing' : refused ? 'forbidden' : live.state) : 'missing', room: roomCode || null, game: record?.name ?? null, part: view?.ended ? t('title.play.ended') : null })
 
   // What the screen is pointed at (C): only the TV has a panel to show it in.
@@ -169,6 +174,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       camera={mode === 'tv' ? 'follow' : undefined}
       forTheRoom={mode === 'tv'}
       cornerIn={mode === 'tv' ? corner : undefined}
+      startWait={rendering}
       {...(sessionId ? { remember: `table:${sessionId}` } : {})}
       onInspect={mode === 'tv' ? setInspecting : undefined}
       onShow={mode === 'tv' ? shown.show : undefined}
@@ -218,7 +224,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       {mode === 'tv' ? (
         // On a TV the rulebook goes into the header, where the way in already is: the two wanted
         // the same corner, and only the header can lay both out (#30).
-        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} title={record?.name} version={version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} showing={showing} onDismiss={dismiss} observers={observers} rules={rules('tv')} room corner={setCorner}>
+        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} title={record?.name} version={version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} showing={showing} onDismiss={dismiss} observers={observers} rules={rules('tv')} room corner={setCorner} rendering={rendering}>
           {table}
         </TvChrome>
       ) : (

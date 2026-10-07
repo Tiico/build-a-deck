@@ -212,6 +212,11 @@ export type TableRendererProps = {
   // under them, because the corner lay over a seat's hand at eight seats. Without it they keep the
   // corner beside the felt's rim.
   cornerIn?: HTMLElement | null | undefined
+  // The cards still on their way when the game is about to start (#765, beslut B 2026-10-06): the
+  // tile stays dark in its own form, with the count under the word, until the last card can be
+  // seen — dealing cards without faces is what it waits against, as the editor's link does (L5).
+  // A queue that stands still (#88) opens it again as «Starta ändå». Null when nothing is pending.
+  startWait?: { done: number; total: number; stalled: boolean } | null | undefined
 }
 
 // The short side a card on the felt is brought to by the lens's first step in (K9).
@@ -300,7 +305,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn, startWait = null }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -1592,12 +1597,12 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
             <button
               type="button"
               className="byd-table-start"
-              data-table-start={start.ok ? 'ready' : 'why'}
-              disabled={!start.ok}
-              title={start.ok ? undefined : t('start.blocked', { why: t(whyKey(start)) })}
+              data-table-start={!start.ok ? 'why' : startWait === null ? 'ready' : startWait.stalled ? 'anyway' : 'wait'}
+              disabled={!start.ok || (startWait !== null && !startWait.stalled)}
+              title={!start.ok ? t('start.blocked', { why: t(whyKey(start)) }) : startWait !== null && !startWait.stalled ? t('start.blocked', { why: t('start.wait.why') }) : undefined}
               style={{ left: left(floor.geometry.x + floor.geometry.w / 2 - START_MM.w / 2), top: startTop(), width: px(START_MM.w), height: px(START_MM.h), fontSize: `${Math.max(9, px(START_MM.h) * 0.36)}px` }}
               onClick={(e) => {
-                if (!start.ok) return
+                if (!start.ok || (startWait !== null && !startWait.stalled)) return
                 if (view.played) setAskingStart(true)
                 else {
                   startHadFocus.current = e.currentTarget === document.activeElement
@@ -1605,7 +1610,14 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 }
               }}
             >
-              {t('start.tile')}
+              {startWait === null ? (
+                t('start.tile')
+              ) : (
+                <>
+                  {t(startWait.stalled ? 'start.anyway' : 'start.tile')}
+                  <small>{t(startWait.stalled ? 'start.stalled' : 'start.wait', { done: startWait.done, total: startWait.total })}</small>
+                </>
+              )}
             </button>
           )}
           {overlay?.({ px, left, top, scale })}

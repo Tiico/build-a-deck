@@ -2,6 +2,7 @@ import { Fragment, useEffect, useId, useRef, useState, type KeyboardEvent as Rea
 import { QrCode } from '../table/QrCode.js'
 import { TableRenderer } from '../table/TableRenderer.js'
 import { useTableClient } from '../table/useTableClient.js'
+import { stillRendering, useTextures } from '../table/textures.js'
 import { joinUrl, observeUrl, onlineUrl, tableModeUrl, tvUrl } from './tableLinks.js'
 import { groupOf, tableGroups, type TableGroup, type TableGroupId } from './tableRows.js'
 import { placedProps, usePlacement } from './placement.js'
@@ -376,6 +377,9 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate }: { tab
   // then the cards on the table are not the cards in the editor. The row has to say so — but not
   // about a table that has ended, which can never be updated again and is not behind anything.
   const stale = !ended && table.version !== `rev-${rev}`
+  // The cards still on their way, in the band's own words (#765, beslut B): the row says what the
+  // band says, so one state reads the same wherever the designer looks. An ended table is not asked.
+  const textures = useTextures(ended ? null : url.replace(/^ws/, 'http'), table.id)
   // Every seat taken is not a reason to hide the way in; it is a reason to say why it is shut.
   const full = !ended && view !== null && free === null
 
@@ -427,6 +431,7 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate }: { tab
           <span className="byd-tables-state" data-state={state}>
             {t(STATE_WORD[state])}
           </span>
+          {stillRendering(textures) && <span className="byd-tables-render">{t('editor.table.rendering', { done: textures.done, total: textures.total })}</span>}
           {stale && <em className="byd-tables-stale">{t('tables.stale', { version: table.version, rev })}</em>}
         </p>
         {!ended && <p className="byd-tables-line">{seated(view?.seats ?? null, observers, t)}</p>}
