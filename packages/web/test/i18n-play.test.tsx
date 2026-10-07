@@ -30,7 +30,8 @@ describe('the play surfaces in the reader\'s own language (A4)', () => {
         <div data-testid="table" />
       </TvChrome>,
     )
-    expect(screen.getByText(/join with your phone/i)).toBeTruthy()
+    // Above the room's address (#675): the words follow the reader, the address does not.
+    expect(screen.getByText(/open on your phone/i)).toBeTruthy()
     expect(screen.getByRole('region', { name: /inspection/i })).toBeTruthy()
 
     // The panel holds the card the last line was about (K8), so its waiting words are read where
