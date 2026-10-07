@@ -2170,11 +2170,12 @@ function Properties({
   // it is set in, what colour it is and which column it draws stay open — locking a layer is not
   // freezing its design.
   const measure = useMeasure()
-  const num = (label: Key, key: 'x' | 'y' | 'w' | 'h', icon: string) =>
+  const num = (label: Key, key: 'x' | 'y' | 'w' | 'h') =>
     key in el ? (
       <Scrub
         name={t(label)}
-        icon={icon}
+        // The grip's letter is the measure's initial in the reader's language (#933).
+        icon={t(`canvas.props.grip.${key}`)}
         unit="mm"
         step={0.5}
         // A box is never typed or pulled down to nothing (#478): an emptied Bredd used to be 0 mm
@@ -2248,10 +2249,10 @@ function Properties({
           fieldPicker
         ))}
       <Section id="layout" name={t('canvas.props.sec.layout')} summary={'w' in el ? `${measure(el.x)}, ${measure(el.y)} · ${measure(el.w)} × ${measure(el.h)} mm` : undefined}>
-        {num('canvas.props.x', 'x', 'X')}
-        {num('canvas.props.y', 'y', 'Y')}
-        {num('canvas.props.w', 'w', 'B')}
-        {num('canvas.props.h', 'h', 'H')}
+        {num('canvas.props.x', 'x')}
+        {num('canvas.props.y', 'y')}
+        {num('canvas.props.w', 'w')}
+        {num('canvas.props.h', 'h')}
       </Section>
       {/* What the element shows (#32, #320, #33): the column it draws, or the one picture or
           icon it carries itself. Every element that shows data says which column it shows. */}
