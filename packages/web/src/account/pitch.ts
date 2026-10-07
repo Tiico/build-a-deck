@@ -1,6 +1,6 @@
 // Whether this browser has seen the login's sales line (L36, #304).
 //
-// «Skapa ditt kortspel, speltesta det på skärmen, beställ hem det» says what the product is, not
+// «Skapa ditt kortspel och speltesta det på skärmen — tryck kommer» says what the product is, not
 // how the tool works, and it stands the first time only. The state is a view and not a fact about
 // anyone (L4): it lives in the browser, per screen, never in an account — the page may not know
 // who is looking before she has logged in.

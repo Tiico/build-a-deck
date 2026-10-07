@@ -38,7 +38,7 @@ async function openEditor(): Promise<void> {
   await run.answering()
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(<EditorPage />)
-  await screen.findByRole('button', { name: /rev \d/ })
+  await screen.findByRole('button', { name: /^v\d+$/ })
 }
 
 describe('the project\'s history in the editor (B4)', () => {
@@ -47,7 +47,7 @@ describe('the project\'s history in the editor (B4)', () => {
     await openEditor()
     expect(screen.queryByRole('dialog', { name: 'Historik' })).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: /rev 3/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^v3$/ }))
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
     const rows = await within(panel).findAllByRole('listitem')
     expect(rows).toHaveLength(3)
@@ -69,7 +69,7 @@ describe('the project\'s history in the editor (B4)', () => {
     try {
       await withHistory()
       await openEditor()
-      fireEvent.click(screen.getByRole('button', { name: /rev 3/ }))
+      fireEvent.click(screen.getByRole('button', { name: /^v3$/ }))
       const panel = await screen.findByRole('dialog', { name: 'Historik' })
 
       fireEvent.click(await within(panel).findByRole('button', { name: /Version 2/ }))
@@ -84,7 +84,7 @@ describe('the project\'s history in the editor (B4)', () => {
   it('names a version and takes the name back, without changing the game', async () => {
     await withHistory()
     await openEditor()
-    fireEvent.click(screen.getByRole('button', { name: /rev 3/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^v3$/ }))
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
 
     fireEvent.click(await within(panel).findByRole('button', { name: /Version 2/ }))
@@ -100,7 +100,7 @@ describe('the project\'s history in the editor (B4)', () => {
   it('brings an older version back as an edit, which becomes the next version when saved', async () => {
     await withHistory()
     await openEditor()
-    fireEvent.click(screen.getByRole('button', { name: /rev 3/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^v3$/ }))
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
 
     fireEvent.click(await within(panel).findByRole('button', { name: /Version 1/ }))
@@ -122,7 +122,7 @@ describe('the history and the keyboard (#477)', () => {
   it('takes the focus when it opens, so the next Tab is inside it and not in the header', async () => {
     await withHistory()
     await openEditor()
-    const rev = screen.getByRole('button', { name: /rev 3/ })
+    const rev = screen.getByRole('button', { name: /^v3$/ })
     rev.focus()
     fireEvent.click(rev)
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
@@ -138,7 +138,7 @@ describe('the history and the keyboard (#477)', () => {
         <EditorPage />
       </DocumentTitle>,
     )
-    await screen.findByRole('button', { name: /rev \d/ })
+    await screen.findByRole('button', { name: /^v\d+$/ })
     await waitFor(() => expect(document.title).toMatch(/ · Kortvägg · build-your-deck$/))
     fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
     await waitFor(() => expect(document.title).toMatch(/ · Tabell · build-your-deck$/))
@@ -147,7 +147,7 @@ describe('the history and the keyboard (#477)', () => {
   it('saves a version\'s name on Enter, not only when the field is left', async () => {
     await withHistory()
     await openEditor()
-    fireEvent.click(screen.getByRole('button', { name: /rev 3/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^v3$/ }))
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
     fireEvent.click(await within(panel).findByRole('button', { name: /Version 2/ }))
     const field = await within(panel).findByLabelText('Namn på version 2')
@@ -159,7 +159,7 @@ describe('the history and the keyboard (#477)', () => {
   it('says in words that a version came back, and hands the focus back to the revision', async () => {
     await withHistory()
     await openEditor()
-    fireEvent.click(screen.getByRole('button', { name: /rev 3/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^v3$/ }))
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
     fireEvent.click(await within(panel).findByRole('button', { name: /Version 1/ }))
     const restore = await within(panel).findByRole('button', { name: 'Återställ version 1' })
@@ -167,7 +167,7 @@ describe('the history and the keyboard (#477)', () => {
     fireEvent.click(restore)
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Historik' })).toBeNull())
     expect(await screen.findByText(/Version 1 är tillbaka/)).toBeTruthy()
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: /rev 3/ }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^v3$/ }))
   })
 })
 
@@ -198,7 +198,7 @@ describe('a row in the history says what its save changed (#177)', () => {
   it('says how many cards moved and which parts were touched, without a row being opened', async () => {
     await threeKindsOfWork()
     await openEditor()
-    fireEvent.click(screen.getByRole('button', { name: /rev 4/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^v4$/ }))
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
 
     const row = (rev: number) => panel.querySelector(`[data-rev="${rev}"]`) as HTMLElement
@@ -225,7 +225,7 @@ describe('a row in the history says what its save changed (#177)', () => {
     expect(await run.projects.replace(run.projectId, 1, repainted)).toMatchObject({ rev: 2 })
     await openEditor()
 
-    fireEvent.click(screen.getByRole('button', { name: /rev 2/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^v2$/ }))
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
     await within(panel).findAllByRole('listitem')
     const row = panel.querySelector('[data-rev="2"]') as HTMLElement
@@ -246,7 +246,7 @@ describe('a row in the history says what its save changed (#177)', () => {
   it('groups the versions under the day they were made, and never says "i dag" as the whole time', async () => {
     await threeKindsOfWork()
     await openEditor()
-    fireEvent.click(screen.getByRole('button', { name: /rev 4/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^v4$/ }))
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
 
     expect(await within(panel).findByRole('heading', { name: 'I dag', level: 3 })).toBeTruthy()
@@ -261,7 +261,7 @@ describe('a row in the history says what its save changed (#177)', () => {
   it('names the whole row for a reader who hears it, chips spelled out', async () => {
     await threeKindsOfWork()
     await openEditor()
-    fireEvent.click(screen.getByRole('button', { name: /rev 4/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^v4$/ }))
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
 
     await waitFor(() => expect(within(panel).getByRole('button', { name: /mallen ändrad/ })).toBeTruthy())
@@ -280,7 +280,7 @@ describe('a row in the history says what its save changed (#177)', () => {
     const spy = vi.spyOn(ProjectClient.prototype, 'changes').mockReturnValue(new Promise<VersionChange[]>((resolve) => (land = resolve)))
     try {
       await openEditor()
-      fireEvent.click(screen.getByRole('button', { name: /rev 4/ }))
+      fireEvent.click(screen.getByRole('button', { name: /^v4$/ }))
       const panel = await screen.findByRole('dialog', { name: 'Historik' })
       const waiting = await within(panel).findAllByRole('listitem')
       expect(waiting.map((r) => r.getAttribute('data-rev'))).toEqual(['4', '3', '2', '1'])
@@ -308,7 +308,7 @@ describe('an opened row in the history (#702)', () => {
   it('does not repeat what the row already says', async () => {
     await withHistory()
     await openEditor()
-    fireEvent.click(screen.getByRole('button', { name: /rev 3/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^v3$/ }))
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
     await within(panel).findAllByRole('listitem')
     const first = panel.querySelector<HTMLElement>('[data-rev="1"]')!
@@ -333,7 +333,7 @@ describe('holding the table against an older version (B4)', () => {
   it('starts the comparison from the history, opens the table on it, and lets it go again', async () => {
     await withHistory()
     await openEditor()
-    fireEvent.click(screen.getByRole('button', { name: /rev 3/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^v3$/ }))
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
     fireEvent.click(await within(panel).findByRole('button', { name: /Version 1/ }))
     fireEvent.click(await within(panel).findByRole('button', { name: 'Jämför version 1 i tabellen' }))
@@ -356,13 +356,13 @@ describe('holding the table against an older version (B4)', () => {
   it('ends the comparison when a version is taken back', async () => {
     await withHistory()
     await openEditor()
-    fireEvent.click(screen.getByRole('button', { name: /rev 3/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^v3$/ }))
     let panel = await screen.findByRole('dialog', { name: 'Historik' })
     fireEvent.click(await within(panel).findByRole('button', { name: /Version 2/ }))
     fireEvent.click(await within(panel).findByRole('button', { name: 'Jämför version 2 i tabellen' }))
     expect(await screen.findByText(/Jämför med version 2/)).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: /rev 3/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^v3$/ }))
     panel = await screen.findByRole('dialog', { name: 'Historik' })
     fireEvent.click(await within(panel).findByRole('button', { name: /Version 1/ }))
     fireEvent.click(await within(panel).findByRole('button', { name: 'Återställ version 1' }))

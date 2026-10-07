@@ -93,7 +93,7 @@ describe('the Bord tab (#19)', () => {
 
     const table = await onlyRow()
     expect(table.getAttribute('data-table')).toBe(id)
-    expect(table.textContent).toContain('rev-1')
+    expect(table.textContent).toContain('v1')
     expect(table.textContent).toContain('inga drag än')
   })
 
@@ -162,10 +162,11 @@ describe('the ways into a table (#19)', () => {
     // links, which is what a menu item made of an anchor is.
     const ways = [within(row).getByRole('link', { name: /Spela härifrån/ }), ...within(menu).getAllByRole('menuitem')].filter((el) => el.hasAttribute('href'))
     expect(ways.map((a) => a.getAttribute('href'))).toEqual([
-      `/online?session=${id}&seat=A&name=Designern&owner=1&server=${encodeURIComponent(ws)}`,
-      `/table?session=${id}&mode=tv&owner=1&server=${encodeURIComponent(ws)}`,
-      `/table?session=${id}&mode=table&owner=1&server=${encodeURIComponent(ws)}`,
-      `/observe?session=${id}&name=Designern&owner=1&server=${encodeURIComponent(ws)}`,
+      // Every way to the table carries the designer's language, so the table speaks it (#756, A4).
+      `/online?session=${id}&seat=A&name=Designern&owner=1&lang=sv&server=${encodeURIComponent(ws)}`,
+      `/table?session=${id}&mode=tv&owner=1&lang=sv&server=${encodeURIComponent(ws)}`,
+      `/table?session=${id}&mode=table&owner=1&lang=sv&server=${encodeURIComponent(ws)}`,
+      `/observe?session=${id}&name=Designern&owner=1&lang=sv&server=${encodeURIComponent(ws)}`,
     ])
     // A link that leaves the editor behind says so, and says which table it is about: four
     // identical rows of links are otherwise four times the same word to a screen reader.
@@ -198,8 +199,8 @@ describe('what the Bord tab says about a running table (#19, C7)', () => {
     // are possible; both are waited for rather than read off whichever arrived first.
     expect(await within(row).findByText(/Ada spelar/)).toBeTruthy()
     expect(await within(row).findByText(/Eva tittar på/)).toBeTruthy()
-    expect(row.textContent).toContain('rev-1')
-    expect(within(row).getByText('rev-1, spelet är på rev-2')).toBeTruthy()
+    expect(row.textContent).toContain('v1')
+    expect(within(row).getByText('Version 1, spelet är på version 2')).toBeTruthy()
     expect(row.getAttribute('data-stale')).toBe('true')
 
     ada.close()
@@ -272,13 +273,13 @@ describe('the name and the update of a row (#706)', () => {
     await openTables()
     const row = await onlyRow()
     expect(row.getAttribute('data-stale')).toBe('true')
-    expect(within(row).getByText('rev-1, spelet är på rev-2')).toBeTruthy()
-    const update = within(row).getByRole('button', { name: `Uppdatera bordet ${roomOf(id).code} till rev-2` })
-    expect(update.textContent).toBe('Uppdatera till rev-2')
+    expect(within(row).getByText('Version 1, spelet är på version 2')).toBeTruthy()
+    const update = within(row).getByRole('button', { name: `Uppdatera bordet ${roomOf(id).code} till version 2` })
+    expect(update.textContent).toBe('Uppdatera till version 2')
     await user.click(update)
     await waitFor(() => expect(document.querySelector(`[data-table="${id}"]`)!.getAttribute('data-stale')).toBe('false'))
     const after = document.querySelector<HTMLElement>(`[data-table="${id}"]`)!
-    expect(after.textContent).toContain('rev-2')
+    expect(after.textContent).toContain('v2')
     expect(within(after).queryByRole('button', { name: /Uppdatera/ })).toBeNull()
   })
 
@@ -371,7 +372,7 @@ describe('ending a table from the editor (#19, C9)', () => {
     await run.projects.create(run.projectId, projectDoc())
     const id = await startTable()
     await openTables()
-    await screen.findByText(/Bordet kör rev-1/)
+    await screen.findByText(/Bordet kör version 1/)
     const ada = TableClient.connect(await asSeat(run, id, 'A', 'Ada'))
     await ada.ready()
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
@@ -479,7 +480,7 @@ describe('starting a table from the Bord tab (#19, L5, #299, L31)', () => {
     expect(button.textContent).not.toMatch(/rev/i)
     // Först i kolumnen: den inledande meningen, sedan knappen, sedan allt som redan finns.
     const lead = document.querySelector('.byd-tables > .byd-tables-lead')!
-    expect(lead.textContent).toContain('rev 1')
+    expect(lead.textContent).toContain('version 1')
     expect(lead.nextElementSibling).toBe(button)
   })
 
@@ -493,7 +494,7 @@ describe('starting a table from the Bord tab (#19, L5, #299, L31)', () => {
     const row = await onlyRow()
     const started = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'GET' })).json()) as { id: string }[]
     expect(started.map((t) => t.id)).toEqual([row.getAttribute('data-table')])
-    expect(row.textContent).toContain('rev-1')
+    expect(row.textContent).toContain('v1')
     // Ingen navigering: designern står kvar i Bord och ser bordet dyka upp (L31).
     expect(screen.getByRole('tab', { name: 'Bord' }).getAttribute('aria-selected')).toBe('true')
   })
@@ -681,7 +682,7 @@ describe('«Uppdatera bordet» answers the press before the table does (#315)', 
       // The cards land, the table switches, and it switched once.
       expect(await run.completeRenders()).toBe(4)
       // Nothing was changed, so the table already ran this version and says so (#706).
-      expect(await screen.findByText(/Bordet kör redan rev-1/)).toBeTruthy()
+      expect(await screen.findByText(/Bordet kör redan version 1/)).toBeTruthy()
       expect(refreshes).toHaveLength(1)
 
       // And the button is itself again, ready for the next change.
@@ -766,7 +767,7 @@ describe('a rendering that stands still says so (#88, UX-43, L5)', () => {
     await run.completeRenders()
     await within(line).findByRole('link', { name: 'öppna bordet' })
     await user.click(screen.getByRole('button', { name: 'Uppdatera bordet' }))
-    await screen.findByText(/Bordet kör redan rev-1/)
+    await screen.findByText(/Bordet kör redan version 1/)
     expect(screen.queryByText(/Bordet uppdaterat/)).toBeNull()
   })
 
@@ -785,7 +786,7 @@ describe('a rendering that stands still says so (#88, UX-43, L5)', () => {
     expect(screen.getByRole('button', { name: 'Försök igen' })).toBeTruthy()
     // The last one lands: the table switches and the warning goes with the count.
     expect(await run.completeRenders()).toBe(1)
-    await screen.findByText(/Bordet uppdaterat på rev-2/)
+    await screen.findByText(/Bordet uppdaterat på version 2/)
     expect(screen.queryByText(/renderingen står stilla/)).toBeNull()
   })
 })

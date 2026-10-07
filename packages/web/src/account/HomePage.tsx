@@ -20,6 +20,7 @@ import { usePageTitle } from '../status/DocumentTitle.js'
 import { LanguagePicker, useLang, useT, type Lang, type T } from '../i18n/index.js'
 import './account.css'
 import { AboutLine } from './AboutLine.js'
+import { versionWord } from '../i18n/version.js'
 
 // The three dialogs a game's ⋯ and «Importera» open are drawn on a press and never on the first
 // frame, so they are fetched when one is opened, with their own sheet, and not carried in the sheet
@@ -205,7 +206,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
               <div key={table.id} className="byd-home-running-row" data-running={table.id}>
                 <b>{table.name}</b>
                 <strong>{table.code}</strong>
-                <a href={tvUrl(table.id, server, undefined, true)} target="_blank" rel="noreferrer" aria-label={t('home.running.open.aria', { code: table.code, name: table.name })}>
+                <a href={tvUrl(table.id, server, undefined, true, lang)} target="_blank" rel="noreferrer" aria-label={t('home.running.open.aria', { code: table.code, name: table.name })}>
                   {t('home.running.open')}
                 </a>
               </div>
@@ -313,7 +314,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                     {/* The tables already running come first (#724, beslut B), so a second press to see the
                         code again opens the table it was for rather than starting another. */}
                     {(running[p.id] ?? []).map((table) => (
-                      <a key={table.id} href={tvUrl(table.id, server, undefined, true)} target="_blank" rel="noreferrer" onClick={() => setMenu(null)}>
+                      <a key={table.id} href={tvUrl(table.id, server, undefined, true, lang)} target="_blank" rel="noreferrer" onClick={() => setMenu(null)}>
                         {t('home.menu.open', { code: table.code })}
                       </a>
                     ))}
@@ -411,7 +412,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                     <span className="byd-muted">{when(t, lang, p.at)}</span>
                   </div>
                   <strong>{p.deleted ? t('home.played.deleted') : (p.game ?? t('home.played.some-table'))}</strong>
-                  <span className="byd-muted">{t('home.played.you', { version: p.version, name: p.name })}</span>
+                  <span className="byd-muted">{t('home.played.you', { version: versionWord(p.version, t, 'short'), name: p.name })}</span>
                   <span className="byd-home-facts">
                     {p.ended ? (p.surveyed ? t('home.played.surveyed') : t('home.played.unsurveyed')) : t('home.played.running')}
                     {p.flags > 0 && ` · ${t('home.played.flags', { n: p.flags })}`}

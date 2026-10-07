@@ -7,7 +7,8 @@ export const svAccount = {
   // Inloggningskortet (G1): ett fält, en knapp och en mening om gäster. Aldrig ett lösenord.
   // Säljtexten står bara första gången (L36): den säger vad produkten är, inte hur verktyget
   // fungerar, och den som redan har konto ska slippa läsa den varje gång.
-  'login.pitch': 'Skapa ditt kortspel, speltesta det på skärmen, beställ hem det.',
+  // Det produkten gör under betan, och att trycket är på väg (#743): beställningen är fas 5.
+  'login.pitch': 'Skapa ditt kortspel och speltesta det på skärmen — tryck kommer.',
   // Den tysta raden sist i inloggningskortet och på Mina spel (#757).
   'about.contact': 'Kontakt',
   'about.version': 'build-your-deck {release}',
@@ -70,7 +71,7 @@ export const svAccount = {
   'home.help.new': '«+ Nytt spel» frågar efter namn och antal spelare och gör resten åt dig.',
 
   // Vad ett spel säger om sig självt innan det öppnas: revision, bord och senaste gången.
-  'home.card.line': 'rev {rev} · {played}',
+  'home.card.line': 'v{rev} · {played}',
   'home.card.never': 'aldrig spelat',
   'home.card.nocards': 'inga kort än',
   'home.card.first': 'Första kortet: {title}',

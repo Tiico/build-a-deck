@@ -13,6 +13,7 @@ import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
 import { Help } from './HelpDrawer.js'
 import { lastMoveWords } from './when.js'
+import { versionWord } from '../i18n/version.js'
 
 // The Bord tab (#19): every table this game has, and the ways into it. A table is a session
 // started from the project (C9: it survives everyone disconnecting), so the list is the server's
@@ -375,7 +376,7 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate, texture
   // has it for whoever may start tables while it still admits, and the table's own connection
   // says it too, also once it has ended. Until either has answered it is called by its version.
   const code = table.code ?? room?.code ?? null
-  const name = code ?? table.version
+  const name = code ?? versionWord(table.version, t, 'short')
   // The update of a row behind the project, from the row itself (#706): a press that takes a
   // moment says so, and one that fails says so in a sentence of the tab's own.
   const [updating, setUpdating] = useState(false)
@@ -423,9 +424,9 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate, texture
   // not answered yet there is no seat to take; the word stays where it is rather than swapping
   // under the pointer, and the row's own lines say why it cannot be had.
   const ready = ended ? (
-    <Way href={tvUrl(table.id, server, undefined, true)} label="tables.way.tv" table={name} ready />
+    <Way href={tvUrl(table.id, server, undefined, true, lang)} label="tables.way.tv" table={name} ready />
   ) : free ? (
-    <Way href={onlineUrl(table.id, server, free, true, t)} label="tables.way.play" table={name} ready />
+    <Way href={onlineUrl(table.id, server, free, true, t, lang)} label="tables.way.play" table={name} ready />
   ) : (
     <button type="button" className="byd-tables-ready" disabled>
       {t('tables.way.play')} <span className="byd-offscreen">{name}</span>
@@ -436,9 +437,9 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate, texture
   // no seat to take and nothing left to end, so its menu is the three that are still about
   // something.
   const ways: WayItem[] = [
-    ...(ended ? [] : [{ id: 'tv', href: tvUrl(table.id, server, undefined, true), label: 'tables.way.tv' as Key }]),
-    { id: 'table', href: tableModeUrl(table.id, server, true), label: 'tables.way.tableMode' as Key },
-    { id: 'watch', href: observeUrl(table.id, server, true, t), label: 'tables.way.watch' as Key },
+    ...(ended ? [] : [{ id: 'tv', href: tvUrl(table.id, server, undefined, true, lang), label: 'tables.way.tv' as Key }]),
+    { id: 'table', href: tableModeUrl(table.id, server, true, lang), label: 'tables.way.tableMode' as Key },
+    { id: 'watch', href: observeUrl(table.id, server, true, t, lang), label: 'tables.way.watch' as Key },
     // A table that has ended lets nobody in, so it has no code to hold up (#706).
     ...(ended ? [] : [{ id: 'qr', label: 'tables.qr' as Key, expanded: qrOpen, press: () => onQr(!qrOpen) }]),
     ...(ended ? [] : [{ id: 'end', label: 'tables.end' as Key, apart: true, press: () => setAsking(true) }]),
@@ -457,12 +458,12 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate, texture
       <div className="byd-tables-info">
         <p className="byd-tables-head">
           {code && <strong className="byd-tables-name">{code}</strong>}
-          <span className="byd-tables-version">{table.version}</span>
+          <span className="byd-tables-version">{versionWord(table.version, t, 'short')}</span>
           <span className="byd-tables-state" data-state={state}>
             {t(STATE_WORD[state])}
           </span>
           {stillRendering(textures) && <span className="byd-tables-render">{t('editor.table.rendering', { done: textures.done, total: textures.total })}</span>}
-          {stale && <em className="byd-tables-stale">{t('tables.stale', { version: table.version, rev })}</em>}
+          {stale && <em className="byd-tables-stale">{t('tables.stale', { version: versionWord(table.version, t, 'name'), rev })}</em>}
         </p>
         {!ended && <p className="byd-tables-line">{seated(view?.seats ?? null, observers, t)}</p>}
         <p className="byd-tables-line">

@@ -58,7 +58,7 @@ describe('the editor’s two doors on one press of Escape (#152)', () => {
 
   // The panel over the work: the project's history, opened from the revision in the header.
   async function openPanel(): Promise<void> {
-    fireEvent.click(screen.getByRole('button', { name: /rev 1/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^v1$/ }))
     await screen.findByRole('dialog', { name: 'Historik' })
   }
 

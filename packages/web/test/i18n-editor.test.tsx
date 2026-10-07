@@ -206,7 +206,7 @@ describe('the editor in the reader\'s own language (A4)', () => {
 
   it('says the history and who has the game in English', async () => {
     await openEditor()
-    fireEvent.click(screen.getByRole('button', { name: /^rev / }))
+    fireEvent.click(screen.getByRole('button', { name: /^v\d/ }))
     const history = await screen.findByRole('dialog', { name: 'History' })
     expect(within(history).getByRole('heading', { name: 'History' })).toBeTruthy()
     expect(within(history).getByRole('button', { name: 'Close the history' })).toBeTruthy()

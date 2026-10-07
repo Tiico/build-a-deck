@@ -24,13 +24,14 @@ export const svPlay = {
 
   // Bordsskärmen.
   'ended.title': 'Bordet är avslutat',
-  'ended.locked': 'Loggen är låst på {version}. Enkäten finns på telefonerna.',
-  'ended.rows.one': 'rader',
-  'ended.rows.other': 'rader',
+  // Slutskärmen talar spelets språk (#703): drag och de som satt vid bordet, inte loggens rader.
+  'ended.locked': 'Bordet stannade på {version}. Enkäten finns hos varje spelare.',
+  'ended.rows.one': 'drag',
+  'ended.rows.other': 'drag',
   'ended.flags.one': 'flaggade ögonblick',
   'ended.flags.other': 'flaggade ögonblick',
-  'ended.players.one': 'spelare',
-  'ended.players.other': 'spelare',
+  'ended.players.one': 'vid bordet',
+  'ended.players.other': 'vid bordet',
   'rewind.proposal': 'Förslag',
   'rewind.looked': 'så här såg bordet ut {where}',
   'rewind.waiting': 'väntar på {who}',
@@ -394,7 +395,7 @@ export const svPlay = {
   'flag.sheet.cancel': 'Avbryt',
   'end.sheet.title': 'Avsluta bordet?',
   'end.sheet.body':
-    'Loggen låses på {version}, bordet kan inte spelas vidare, och alla får enkäten på sin telefon. Att bara lägga ifrån sig telefonen avslutar inget: bordet väntar.',
+    'Bordet stannar på {version} och kan inte spelas vidare, och alla får enkäten på sin telefon. Att bara lägga ifrån sig telefonen avslutar inget: bordet väntar.',
   'end.sheet.end': 'Avsluta för alla',
   'end.sheet.not': 'Inte än',
 
@@ -413,7 +414,7 @@ export const svPlay = {
 
   // Enkäten efter sessionen (G3).
   'survey.title': 'Bordet är avslutat',
-  'survey.sub': 'Fyra frågor, en minut. Svaren knyts till version {version}.',
+  'survey.sub': 'Fyra frågor, en minut. Svaren knyts till {version}.',
   'survey.q.fun': 'Hur kul var det?',
   'survey.q.fun.low': 'segt',
   'survey.q.fun.high': 'jättekul',

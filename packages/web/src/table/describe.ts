@@ -3,6 +3,7 @@ import type { T } from '../i18n/index.js'
 import { handName } from './handName.js'
 import { cardWord } from './keyboard.js'
 import { componentOf } from './presence.js'
+import { versionWord } from '../i18n/version.js'
 
 // The lines worth saying. A card played to a public zone is one envelope with a move and a flip,
 // and said as its flip it never said where the card went (#560 P-12): the flip of a card the same
@@ -89,7 +90,7 @@ export function describeActivity(line: Activity, view: Snapshot, t: T): string {
     case 'session.end':
       return t('activity.session.end')
     case 'version.change':
-      return t('activity.version.change', { to: it.to })
+      return t('activity.version.change', { to: versionWord(it.to, t) })
     case 'undo.self':
       return t('activity.undo.self', { who })
     case 'rewind.propose':

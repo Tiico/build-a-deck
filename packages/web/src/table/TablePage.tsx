@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { Intent, VisibleComponentState } from '@byd/protocol'
+import { PHYSICAL_VERBS, type Intent, type VisibleComponentState } from '@byd/protocol'
 import './table.css'
 import { TableRenderer, type TableMode } from './TableRenderer.js'
 import { TvChrome } from './TvChrome.js'
@@ -23,6 +23,8 @@ import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT, type Key } from '../i18n/index.js'
 import { keepHostKey, takeHostKey } from './hostKey.js'
 import { useCardsPending } from './textures.js'
+import { versionWord } from '../i18n/version.js'
+import { rememberTableLang } from './tableLang.js'
 
 type SessionRecord = { name?: string }
 
@@ -34,6 +36,8 @@ export type TablePageProps = { timing?: StatusTiming & { renderStalledAfterMs?: 
 export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
+  // The host's language, carried here by the editor's link, is this screen's from now on (#756).
+  useEffect(() => rememberTableLang(), [])
   const sessionId = params.get('session')
   const mode: TableMode = params.get('mode') === 'tv' ? 'tv' : 'table'
   // Read once and out of the address at once (#758): the key never stands in the address bar.
@@ -181,7 +185,10 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       onShow={mode === 'tv' ? shown.show : undefined}
     />
   )
-  const version = view.version
+  // The version as people read it (#703), never the id «rev-5».
+  const version = versionWord(view.version, t)
+  // What the end screen counts are the game's moves, not the log's lines (#703).
+  const moves = activity.filter((l) => PHYSICAL_VERBS.includes(l.intent.v)).length
   const flags = activity.filter((l) => l.intent.v === 'flag').length
   const players = view.seats.filter((s) => s.name !== null).length
   const ended = view.ended && (
@@ -190,7 +197,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
         <h1>{t('ended.title')}</h1>
         <p>{t('ended.locked', { version })}</p>
         <div className="byd-ended-summary">
-          <Count n={view.seq} one="ended.rows.one" other="ended.rows.other" />
+          <Count n={moves} one="ended.rows.one" other="ended.rows.other" />
           <Count n={flags} one="ended.flags.one" other="ended.flags.other" />
           <Count n={players} one="ended.players.one" other="ended.players.other" />
         </div>

@@ -15,13 +15,13 @@ export const enPlay = {
   'texture.lost.other': '{n} cards could not be rendered',
 
   'ended.title': 'This table has ended',
-  'ended.locked': 'The log is locked to {version}. The survey is on the phones.',
-  'ended.rows.one': 'row',
-  'ended.rows.other': 'rows',
+  'ended.locked': 'The table stopped at {version}. Every player has the survey.',
+  'ended.rows.one': 'move',
+  'ended.rows.other': 'moves',
   'ended.flags.one': 'flagged moment',
   'ended.flags.other': 'flagged moments',
-  'ended.players.one': 'player',
-  'ended.players.other': 'players',
+  'ended.players.one': 'at the table',
+  'ended.players.other': 'at the table',
   'rewind.proposal': 'Proposal',
   'rewind.looked': 'this is how the table looked {where}',
   'rewind.waiting': 'waiting for {who}',
@@ -324,7 +324,7 @@ export const enPlay = {
   'flag.sheet.cancel': 'Cancel',
   'end.sheet.title': 'End the table?',
   'end.sheet.body':
-    'The log is locked to {version}, the table cannot be played on, and everyone gets the survey on their phone. Just putting the phone down ends nothing: the table waits.',
+    'The table stops at {version} and cannot be played on, and everyone gets the survey on their phone. Just putting the phone down ends nothing: the table waits.',
   'end.sheet.end': 'End it for everyone',
   'end.sheet.not': 'Not yet',
 
@@ -339,7 +339,7 @@ export const enPlay = {
   'exit.sheet.stay': 'Stay',
 
   'survey.title': 'This table has ended',
-  'survey.sub': 'Four questions, one minute. The answers are tied to version {version}.',
+  'survey.sub': 'Four questions, one minute. The answers are tied to {version}.',
   'survey.q.fun': 'How much fun was it?',
   'survey.q.fun.low': 'a slog',
   'survey.q.fun.high': 'great fun',

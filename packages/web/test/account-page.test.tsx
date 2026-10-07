@@ -345,7 +345,7 @@ describe('a game on the home page (G1)', () => {
     await waitFor(() => within(card()).getByRole('img', { name: 'Första kortet: Drake' }))
     const open = within(card()).getAllByRole('link')[0]!
     expect(open.getAttribute('href')).toMatch(/^\/editor\?/)
-    expect(screen.getByRole('link', { name: /^Skogens herrar rev 1 · aldrig spelat Första kortet: Drake$/ })).toBe(open)
+    expect(screen.getByRole('link', { name: /^Skogens herrar v1 · aldrig spelat Första kortet: Drake$/ })).toBe(open)
   })
 
   it('says it has never been played, and afterwards when it last was', async () => {
@@ -574,7 +574,7 @@ describe('exporting and importing a game (G5, #529)', () => {
     // What the waiting was for is where the keys are.
     await waitFor(() => expect(document.activeElement).toBe(download))
     fireEvent.click(download)
-    expect(saved.map((s) => s.name)).toEqual(['Skogens herrar rev-1.zip'])
+    expect(saved.map((s) => s.name)).toEqual(['Skogens herrar v1.zip'])
 
     // Escape closes it and gives the keys back to the ⋯ it was opened from.
     fireEvent.keyDown(dialog, { key: 'Escape' })
