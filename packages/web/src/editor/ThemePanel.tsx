@@ -2,7 +2,8 @@ import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type
 import type { ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { CARD_PX, cornerPx } from './corner.js'
-import { iconFieldsOf, previewIcons } from './assets.js'
+import { ASSET_PREFIX, iconFieldsOf, isAssetRef, previewIcons } from './assets.js'
+import { AssetImage } from './AssetImage.js'
 import { cardWords, previewFonts } from './fonts.js'
 import { CATEGORIES, INK, LIBRARY, searchSymbols, symbolName, symbolPreview, type GameSymbol } from './symbols.js'
 import { ROLE_MIN_CONTRAST, groundOf, iconsIn, iconsPainted, iconsUsed, paletteIssues, rolesUsed, type Painted } from './palette.js'
@@ -403,7 +404,7 @@ function ProjectSet({ doc, client, assetBase }: ThemePanelProps) {
           const n = used[name] ?? 0
           return (
             <li key={name} data-icon={name}>
-              <img src={iconSrc(doc.icons[name] ?? '', assetBase)} alt="" />
+              {isAssetRef(doc.icons[name]) ? <AssetImage base={assetBase} hash={doc.icons[name].slice(ASSET_PREFIX.length)} alt="" /> : <img src={doc.icons[name] ?? ''} alt="" />}
               <code>{`{${name}}`}</code>
               <NameField
                 name={name}
@@ -504,9 +505,6 @@ const paintedSaid = (how: Painted | undefined): Key => (how === 'some' ? 'symbol
 // *whether* it says the template paints the symbol, and that is the one walk above.
 const paintedChip = (how: Painted | undefined): Key => (how === 'some' ? 'symbols.painted.chip.some' : 'symbols.painted.chip')
 const paintedWhy = (how: Painted | undefined): Key => (how === 'some' ? 'symbols.deck.painted.some' : 'symbols.deck.painted')
-
-// A symbol in the set is one of the project's assets; anything else is a URL as it stands.
-const iconSrc = (url: string, assetBase: string): string => (url.startsWith('asset:') ? `${assetBase}/assets/${url.slice('asset:'.length)}` : url)
 
 // The whole deck, as a choice beside the symbols. A name no symbol can have, because a symbol's
 // name is what goes between the braces in card text and a space cannot.
