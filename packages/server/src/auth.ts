@@ -144,7 +144,13 @@ export function safeNext(next: string | undefined): string {
 
 // The mail's foot says who sent it (#757): the service, the site the link leads to, and the
 // contact when the box was given one.
-const mailFoot = (link: string, contact: string | undefined, label: string): string => `\n\n— \nbuild-your-deck · ${new URL(link).origin}${contact ? `\n${label}: ${contact}` : ''}`
+// A link that is a path on this site (no public origin was set) names no site, and the foot then
+// says the service alone rather than failing the login.
+const siteOf = (link: string): string | null => (URL.canParse(link) ? new URL(link).origin : null)
+const mailFoot = (link: string, contact: string | undefined, label: string): string => {
+  const site = siteOf(link)
+  return `\n\n— \nbuild-your-deck${site ? ` · ${site}` : ''}${contact ? `\n${label}: ${contact}` : ''}`
+}
 
 export function loginMail(to: string, link: string, lang: Lang = 'sv', contact?: string): Mail {
   if (lang === 'en') {

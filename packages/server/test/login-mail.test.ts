@@ -17,4 +17,9 @@ describe('the foot of the login mail (#757)', () => {
     expect(text).toMatch(/build-your-deck · https:\/\/byd\.example\.com$/)
     expect(text).not.toMatch(/Kontakt/)
   })
+
+  it('leaves the site out, rather than failing, when the link is a path on this site', () => {
+    const text = loginMail('a@b.se', '/auth/verify?token=abc', 'sv', 'beta@example.com').text
+    expect(text).toMatch(/\n\n— \nbuild-your-deck\nKontakt: beta@example\.com$/)
+  })
 })
