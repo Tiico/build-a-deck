@@ -104,8 +104,8 @@ export const enAccount = {
   'wizard.stepnav': 'Step navigation',
   'wizard.prev': '← Previous',
   'wizard.next': 'Next →',
-  'wizard.handoff.title': 'The wizard is the starting point',
-  'wizard.handoff.account': 'The game is kept on an account — you log in when you create it.',
+  'wizard.handoff.account.lead': 'The game is kept on an account.',
+  'wizard.handoff.account': 'You log in with your email when you create it, and what you have written here comes along.',
   'wizard.handoff.body': 'Guided start: make a few example cards here. Layout, the whole deck and CSV tools wait in the editor.',
   'wizard.name': 'The name of the game',
   'wizard.name.example': 'For example “Lords of the Forest”.',
@@ -145,6 +145,7 @@ export const enAccount = {
   'wizard.look.frame': 'Frame — where things stand',
   'wizard.look.theme': 'Theme — how it feels',
   'wizard.look.later': 'Everything can be changed under Theme.',
+  'wizard.look.preselected': 'Default',
   'wizard.frame.classic': 'Classic',
   'wizard.frame.minimal': 'Minimal',
   'wizard.frame.dark': 'Dark',
@@ -165,7 +166,9 @@ export const enAccount = {
   'wizard.cards.body': 'The example cards help the editor show how the fields are really used.',
   'wizard.cards.count.one': '{n} card',
   'wizard.cards.count.other': '{n} cards',
-  'wizard.preview.font': 'The theme’s typefaces are fetched when you choose a theme.',
+  'wizard.preview.show': 'Show the card in {theme}',
+  'wizard.preview.fetching': 'Fetching the typefaces for {theme} …',
+  'wizard.preview.silent': 'The catalog did not answer, so the card is not in the theme’s typefaces.',
   'wizard.preview.card': 'Preview of card {n}: {title}',
   'wizard.preview': 'Live preview',
   'wizard.image.field': 'Image for {label}',
@@ -222,6 +225,7 @@ export const enAccount = {
 
   // Taking a game out and bringing it back (G5, #529): export and import on the home page.
   'error.duplicateGame.failed': 'the game could not be duplicated; try again in a moment',
+  'error.renameGame.failed': 'the game could not be renamed; try again in a moment',
   // The game's own choices in the editor's ⋯ (#738): its name, and a second game made of it.
   'home.menu.rename': 'Rename…',
   'home.menu.duplicate': 'Duplicate',

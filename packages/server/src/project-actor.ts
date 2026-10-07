@@ -60,21 +60,8 @@ export class ProjectActor {
   // Passed over, never swallowed: the seq is named on stderr, which is the whole of what the box
   // can be asked (DRIFT §8), and it is the seq a bug report already carries.
   static async load(id: string, store: ProjectStore): Promise<ProjectActor | null> {
-    const rec = await store.load(id)
-    if (!rec) return null
-    const versions = await store.versions(id)
-    const from = versions.find((v) => v.rev === rec.rev)?.atSeq ?? 0
-    const tail = await store.readEdits(id, from)
-    const saved = stripped(rec)
-    let doc = saved
-    for (const entry of tail) {
-      try {
-        doc = applyEdit(doc, entry.intent)
-      } catch (err) {
-        console.error(JSON.stringify({ msg: 'edit-skipped', project: id, seq: entry.seq, intent: entry.intent.v, error: err instanceof Error ? err.message : String(err) }))
-      }
-    }
-    return new ProjectActor(id, doc, saved, rec.rev, tail.at(-1)?.seq ?? from, store)
+    const got = await replayed(id, store)
+    return got && new ProjectActor(id, got.doc, got.saved, got.rev, got.seq, store)
   }
 
   get doc(): ProjectDoc {
@@ -182,6 +169,27 @@ export class ProjectActor {
   }
 }
 
+// What the log says the project is (D3): the saved version, then every edit since it. It is what
+// an actor is built from, and what is read of a project nobody has open (#909) — the log is the
+// truth, and a saved version is only how far it had come when someone last saved.
+async function replayed(id: string, store: ProjectStore): Promise<{ doc: ProjectDoc; saved: ProjectDoc; rev: number; seq: number } | null> {
+  const rec = await store.load(id)
+  if (!rec) return null
+  const versions = await store.versions(id)
+  const from = versions.find((v) => v.rev === rec.rev)?.atSeq ?? 0
+  const tail = await store.readEdits(id, from)
+  const saved = stripped(rec)
+  let doc = saved
+  for (const entry of tail) {
+    try {
+      doc = applyEdit(doc, entry.intent)
+    } catch (err) {
+      console.error(JSON.stringify({ msg: 'edit-skipped', project: id, seq: entry.seq, intent: entry.intent.v, error: err instanceof Error ? err.message : String(err) }))
+    }
+  }
+  return { doc, saved, rev: rec.rev, seq: tail.at(-1)?.seq ?? from }
+}
+
 // The document without the record's own fields: what an editor holds and an edit applies to.
 // Everything else is the document, whatever it has come to hold — naming the fields here is how
 // a project would quietly lose one that the schema gained later.
@@ -220,6 +228,14 @@ export class ProjectHost {
   // The actor if one is running, without loading one: nobody has a project open that has no actor.
   async running(id: string): Promise<ProjectActor | null> {
     return (await this.actors.get(id)?.catch(() => null)) ?? null
+  }
+
+  // The project as it stands (D3, #909): the running actor's document, or — when nobody has it open —
+  // what the log replays to, read without starting an actor that nobody would ever let go of.
+  async live(id: string): Promise<ProjectDoc | null> {
+    const actor = await this.running(id)
+    if (actor) return actor.doc
+    return (await replayed(id, this.store))?.doc ?? null
   }
 
   // A project that is gone has no actor: the next asker gets a fresh answer.

@@ -1609,6 +1609,14 @@ Tillägg 2026-09-28 (#542, uppföljning av #529):
 - **En server som inte går att nå sägs, och ingenting fryser.** En import som lyckats står som lyckad även om listan inte går att läsa om direkt efteråt.
 - Grindarna är `packages/web/test/game-dialogs.test.tsx` och `packages/web/test/editor-export.test.tsx`.
 
+Tillägg 2026-10-06 (#909, beställarens beslut C, efter #738):
+- **Startsidans ⋯ bär samma val som editorns**: «Byt namn…», «Dubblera», «Exportera…» och «Ta bort spelet», styrda av rollen som i #689. De tre första är ägarens och medredigerarnas, att ta bort spelet bara ägarens.
+- **Ett namnbyte från Mina spel är en vanlig redigering i projektaktören**, samma `rename` som editorn skickar (`PUT /projects/:id/name`). Det hamnar i loggen, syns direkt i varje öppen editor och går att ångra där.
+- **Inget sparas åt någon annan.** Namnbytet gör ingen ny version, så andras osparade ändringar förblir osparade och spelets rev står still.
+- **Mina spel läser namnet ur det levande dokumentet** (D3: loggen är sanningen): aktörens dokument om spelet är öppet, annars den sparade versionen med loggens svans efter den uppspelad. Listan stämmer alltså direkt, och även efter en omstart av servern.
+- **«Dubblera» kopierar samma levande dokument** genom `POST /projects/:id/duplicate`, och listan läses om med korten så att kopians ruta ritas direkt.
+- Grindarna är `packages/server/test/rename-from-home.test.ts` och `packages/web/test/account-page.test.tsx`.
+
 ---
 
 ## H. Sekvensering
@@ -2269,6 +2277,14 @@ Det som stänger ringen är allt som inte är ett verb: ryggen täcker skärmen,
 Escape är samma väg för en hand på ett tangentbord, vilket den inte hade medan knappen var det enda uttalade sättet att ångra sig.
 Fyra verb i stället för fem lägger dem dessutom i väderstrecken kring fingret.
 En ring utan verb öppnas inte alls: ett kort som hunnit lämna bordet medan fingret var på väg till det hade annars gett en tom cirkel.
+
+Reviderat 2026-10-06 (#719, beställarens beslut): **en skiva som aldrig kan gå på ytan ritas inte, filtens hjälp börjar med gesterna, och ringen heter ringen.**
+
+Speltestet 2026-10-02 fann två döda skivor av fem: «Titta» på en dold hög, där ingen topp syns, och «Avslöja» på ett uppvänt kort, där det inte finns något att avslöja.
+De utelämnas nu; en skiva som bara inte går just nu — «Blanda» på en hög med ett kort — står kvar, nedtonad, där handen väntar sig den.
+Hjälpen («?») listade snabbkommandona men inte filtens egen regel; nu börjar den med tre rader: en dragning flyttar, ett klick läser och ett klick till frågar, och Tabb, pilarna och Enter når samma saker (K16).
+Esc-raden sa «Stäng hjulet»; ringen har ett namn, och det är ringen.
+Kontrastgrinden i `button-language.test.tsx` mätte den otillgängliga skivan på ett uppvänt korts «Avslöja»; den mäter nu den tomma kasthögens ring, lagd över samma kort.
 
 ### K15. Högens topp som adress: `stack` och `flip` tar `{ top: hög }` (2026-09-06)
 
@@ -3114,6 +3130,15 @@ Ett framletat kortknippe placeras efter en högs regel och inte ett ensamt korts
 Arkets CSS-budget är höjd till 139 kB med skälet skrivet i `felt-font.test.ts`.
 `version.change` bär kolumnindexet bredvid komponenterna (C7): en fråga som ställs efter ett versionsbyte måste ställas till den lek som spelas, och inte till den som spelades — utan det svarar den fel utan att säga något.
 Grindarna: `packages/engine/test/reach-by-query.test.ts` och `dealt-face.test.ts` (motorn och projektionen), `shortcuts.test.ts` (sidan i projektionen), `packages/server/test/setup-fill.test.ts` (startinnehållet, kolumnerna och sidan som följer med), `zone-fill-and-actions.test.ts` (greppet), `packages/web/test/zone-actions.test.ts` (kompilatorn och tangentbordets paritet), `drop.test.ts` (var sidan landar), `table-renderer.test.tsx` (ringens verb), `pile-actions-at-the-table.test.tsx` (arket), `setup-actions.test.tsx` (meningarna) och `setup-sentence-matrix.test.tsx` (varje steg gånger varje platsform, på båda språken).
+
+Reviderat 2026-10-06 (#719, beställarens beslut): **arket utelämnar en startåtgärd som bara gör det ringen redan gör, och ett kort som dras vid den delade skärmen landar uppvänt.**
+
+Receptets «Blanda» (`when: both`) stod i arket under ringen bredvid ringens eget «Blanda» — två knappar för samma handling.
+En åtgärd med `when: both` vars enda steg är `shuffle`, eller `flipTop` med `toggle`, står därför inte i arket; den finns kvar som start, och ringen bär verbet.
+En åtgärd som bara gäller på begäran står kvar, eftersom designern då bett om den i egna ord.
+«Dra 1» och D på en skärm utan egen hand — bordets skärm — lade kortet nedvänt bredvid högen, och det enda sättet att se det var ett klick till och «Vänd».
+Där landar kortet nu uppvänt (`face: 'front'` på `split`): ingen enskild spelare ska läsa det i hemlighet där, så bordet läser det, och en dragning är en handling.
+`felt-shortcuts.test.tsx` och `table-renderer.test.tsx` håller båda.
 
 ### K22. En zon går att klippa, kopiera och klistra i fliken Bord (byggt 2026-09-15)
 
@@ -4778,6 +4803,8 @@ Katalogposten vet svaret och fyller i det, för tryckets skull.
 
 Katalogen nås aldrig utan handling från designern: ingen förhämtning vid sidladdning.
 Att katalogen inte svarar sägs i panelen, inte tyst.
+Tillägg 2026-10-06 (#687): en handling räknas också när den gjordes vid ett tidigare besök och står i ett utkast designern kommer tillbaka till.
+Den guidade startens tema som tryckts före en omladdning hämtas därför när sidan öppnas igen; ett förval som ingen tryckt hämtas inte (L57).
 
 **Byggt 2026-09-21 (#329). Ett led i beslutet behövde en form det inte hade fått.**
 
@@ -5086,6 +5113,10 @@ Den enda mening L36 lämnade kvar — «Logga in för att komma till dina spel»
 Första besöket säger «Logga in eller skapa konto med din e-post — länken i mejlet räcker», en inbjudan «Logga in för att öppna spelet du bjudits in till» med spelets namn (D3), och guidens utkast «Ditt spel skapas när du loggat in»; claim har sin egen sedan tidigare.
 Utloggad säger guiden tidigt, i rutan som säger att den är startpunkten, att spelet sparas på ett konto.
 Det är samma rad på samma plats, inte en ny form.
+Reviderat 2026-10-06 (#687, beställarens beslut efter prototyp): rutan bär nu bara den meningen — «**Spelet sparas på ett konto.** Du loggar in med e-post när du skapar det, och det du skrivit här följer med.» — och finns inte alls för den som är inloggad.
+Etiketten «Wizarden är startpunkten» är borta, och med den ordet «wizard» från ytan: den heter «guidad start» överallt.
+Meningen står här och bara här; inloggningskortets leads är #691:s.
+Vid 1280 × 800 är rutan 445 × 70 px, mot 445 × 52 när den bara bar etiketten.
 
 
 ### L37. En uppladdning som misslyckas för sent rättas i dokumentet och i historikens bilder, aldrig som ett eget steg (2026-09-20, #344; reviderat 2026-09-21, #358)
@@ -6122,6 +6153,26 @@ Båda bitarna är samma `CardPreview`-kort, ritat av den enda renderaren och vis
 Prövat i [`docs/ux-audits/2026-10-04-temaprovet/prototyper/02-tva-utsnitt.html`](docs/ux-audits/2026-10-04-temaprovet/prototyper/02-tva-utsnitt.html) mot rivet papper (A) och två remsor med redigerarens grund emellan (B); A var den mest dekorativa formen i fliken, och B lästes som två saker på en bricka som är ett val.
 Vid 1280 × 800 är provet 80 px högt på e2e-mallen och 118 px på provleken, mot 173 och 136 px när det var ett stycke med tre rader och en tonad.
 `theme-proof.spec.ts` mäter att e2e-mallen skärs och provleken inte, att rubrikens rad och prosans första står mindre än en och en halv rad isär, att utsnittet är under 65 % tomt, att prosans bit är så hög som raderna och tonas bara när de är fler än tre, och att Speltema inte rullar vid 1280 × 800 med någon av mallarna.
+
+Reviderat 2026-10-06 (#687, beställarens val D efter prototyp): **förvalet i den guidade starten är märkt, inte nedtryckt, och kortet visas i det på begäran.**
+«Skogssaga gäller tills ett annat trycks» stod kvar, men brickan stod nedtryckt från början medan katalogen ännu inte frågats, så kortet bredvid en bricka som såg vald ut stod i ett reservtypsnitt — och den som behöll förvalet såg aldrig spelets utseende.
+Skogssaga står nu som **«Förval»**: streckad kant i accenten och märket under namnet, `aria-pressed="false"`, och märket är brickans beskrivning så att det hörs med namnet.
+Kortet står gråat och bär knappen **«Visa kortet i Skogssaga»**; trycket är handlingen i L27:s mening, hämtar temats ark och filer och trycker ned brickan.
+«Skapa» utan något tryck ger fortfarande Skogssaga, som märket sa.
+Formen är Speltemas «Visa temana i sina typsnitt» (val C ovan), på kortet där ögat redan är: ett tryck till rätt kort vid 1280, 1024 och 768, där galleriet vid de två första står under vecket och vid 768 i ett annat steg.
+Tre vägar till valdes bort.
+Att låta öppnandet räknas som handlingen (A) gav noll tryck men 73 kB från Google vid varje öppning av `/new`, också för den som aldrig rör temat — det L27 och väg B ovan säger nej till.
+Inget förval alls (B) lade ett tryck på alla och ett villkor på «Skapa».
+Att hämta när pekaren når kortet (C) behöll den tryckta brickan bredvid reservtypsnittet tills dess, och en surfplatta har ingen hovring.
+**Ett återupptaget utkast**: ett tryck på temat vid ett tidigare besök räknas som handlingen, så temat står nedtryckt och hämtas vid omladdningen och kortet stämmer direkt.
+Ett utkast där inget tema tryckts står kvar på förvalet och frågar Google om ingenting; ett utkast från före beslutet, som inte säger om temat trycktes, räknas som tryckt bara när temat är ett annat än förvalet.
+**Beskedet om hämtningen står tills filerna laddats, inte tills arket svarat.**
+Kortets typsnitt deklareras med `font-display: block`, och texten under kortet försvann när katalogens ark svarat, så medan filen reste stod kortet tomt i upp till tre sekunder och sedan i reservtypsnitt utan ett ord.
+Nu står kortet gråat med «Hämtar typsnitten för Skogssaga …» över sig tills `document.fonts` säger att temats filer laddats; svarar katalogen inte står det på kortet, med samma knapp för att fråga igen.
+Ordet och knappen ligger över kortets överdel och aldrig under det, så att ingenting bredvid eller nedanför flyttar sig när de kommer och går.
+Därmed står aldrig en nedtryckt bricka bredvid ett kort som ser ut att vara temat men står i reservtypsnittet.
+`wizard-theme-preselection.spec.ts` läser på det byggda `/new` vilket ansikte som ritar kortet (`CSS.getPlatformFontsForNode`, som i #887), att inget går till Google före en handling, att beskedet står kvar medan filen hålls inne längre än blockperioden, och utkastet efter omladdning.
+Prototypen står i [`docs/ux-audits/2026-10-06-temats-forval/prototyper/`](https://github.com/Tiico/build-a-deck/tree/97d14dc9f3ce75c7b26b3333c0782388ea897073/docs/ux-audits/2026-10-06-temats-forval/prototyper) i merge `97d14dc9` och togs bort när beslutet byggdes.
 
 ### L58. Markeringens handlingar står i tabellens fot (prototypat och beslutat 2026-10-01, #618)
 

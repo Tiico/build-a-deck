@@ -625,8 +625,8 @@ const theRingsDiscs = (mode: 'table' | 'tv') => async (page: Page): Promise<stri
 const openTheRingOnACard = (page: Page) =>
   page.evaluate(() => {
     const ring = document.querySelector<HTMLElement>('.byd-radial')
-    const id = ring?.getAttribute('data-radial')
-    const card = id ? document.querySelector<HTMLElement>(`.byd-card[data-component="${id}"]`) : null
+    // The ring is a pile's, and is laid over the second face-up card, the one well inside the green.
+    const card = document.querySelectorAll<HTMLElement>(".byd-card[data-face='front']")[1] ?? null
     if (!ring || !card) throw new Error('no ring on a card in this view, so nothing here measures one')
     card.setAttribute('data-ringed', '')
     const box = card.getBoundingClientRect()
@@ -654,8 +654,9 @@ const openTheRingOnACard = (page: Page) =>
     return { bredd: Math.round(w), höjd: Math.round(h) }
   })
 
-// The two things only a card's ring has: a verb that is not available — `Avslöja`, on a card that
-// is already face up — and a centre with no hub under it, lying on the card the ring is about.
+// The two things only a ring over a card has: a verb that is not available — the empty discard
+// pile's own verbs, laid over the card (#719 took the dead `Avslöja` off a face-up card's ring) —
+// and a centre with no hub under it, lying on the card the ring stands over.
 const theCardsRing = (mode: 'table' | 'tv') => async (page: Page): Promise<string[]> => {
   const patch = await openTheRingOnACard(page)
   const CENTRE = 'kortet under ringens mitt'
@@ -752,11 +753,10 @@ async function feltView(mode: 'table' | 'tv', width = 1280): Promise<Record<stri
   }
 }
 
-// The felt with a ring open on a card, in the mode named. This is the ring's normal case — a
-// card's ring opens *on a card* — and it is the only view that has the two things a chip's ring
-// hides: a verb that is not available (`Avslöja`, on a card that is already face up, the one
-// entry of the four whose `run` is null) and a centre with no hub in it, lying on the card the
-// player is choosing a verb for.
+// The felt with a ring open and laid over a card, in the mode named — the two things a chip's ring
+// hides: a verb that is not available and a centre with no hub in it, lying on a card. A card's own
+// ring has no unavailable verb since #719 left out the ones that can never go, so the ring is the
+// empty discard pile's, whose every verb waits for a card; it is the same ring, drawn the same way.
 async function feltCardView(mode: 'table' | 'tv', width = 1280): Promise<Record<string, string>> {
   atWidth(width)
   const id = await createSession(run, `felt-card-${mode}-${width}`, undefined, feltSetup(2))
@@ -768,17 +768,15 @@ async function feltCardView(mode: 'table' | 'tv', width = 1280): Promise<Record<
       if (found.length < 2) throw new Error(`${found.length} face-up cards on the felt, so the ring has no card of its own`)
       return found
     })
-    const card = cards[1]!
-    // On the table screen the first press reads the card and the second asks (K26, #509); the TV
-    // asks on the first.
-    for (let press = 0; press < (mode === 'table' ? 2 : 1); press++) {
-      fireEvent.pointerDown(card, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
-      fireEvent.pointerUp(card, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
-    }
-    const reveal = await screen.findByRole('button', { name: 'Avslöja' })
+    if (cards.length < 2) throw new Error('no card of its own for the ring to lie over')
+    const pile = container.querySelector<HTMLElement>('[data-zone="discard"] .byd-pile-count')
+    if (!pile) throw new Error('no discard pile on this felt to open a ring on')
+    fireEvent.pointerDown(pile, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
+    fireEvent.pointerUp(pile, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
+    const shuffle = await screen.findByRole('button', { name: 'Blanda' })
     // The disabled disc is the subject, so a view that came back with it live would be measuring
     // the wrong button and passing.
-    if (!(reveal as HTMLButtonElement).disabled) throw new Error('`Avslöja` is live on a card that is already face up, so this view has no unavailable disc')
+    if (!(shuffle as HTMLButtonElement).disabled) throw new Error('`Blanda` is live on the empty discard pile, so this view has no unavailable disc')
     return { [mode === 'table' ? 'bordsläge' : 'tv-läge']: container.innerHTML }
   } finally {
     unmount()

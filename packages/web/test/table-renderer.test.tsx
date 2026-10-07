@@ -594,7 +594,8 @@ describe('direct manipulation (K1, K2, C)', () => {
     fireEvent.pointerDown(card, client(-390, -240))
     fireEvent.pointerUp(card, client(-390, -240))
     const ring = document.querySelector('[data-radial]')!
-    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Vänd', 'Vrid', 'Titta', 'Avslöja'])
+    // A face-up card has nothing left to reveal, so the ring does not offer it (#719).
+    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Vänd', 'Vrid', 'Titta'])
     fireEvent.pointerUp(document.querySelector('.byd-radial-backdrop')!)
     expect(document.querySelector('[data-radial]')).toBeNull()
   })
@@ -609,6 +610,45 @@ describe('direct manipulation (K1, K2, C)', () => {
     expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Blanda', 'Dra 1', 'Dela på hälften', 'Vänd översta', 'Titta'])
     fireEvent.pointerUp(document.querySelector('.byd-radial-backdrop')!)
     expect(document.querySelector('[data-radial]')).toBeNull()
+  })
+
+  // A slice that can never go on this surface is not drawn (#719, beställarens beslut 2026-10-06):
+  // «Titta» on a hidden pile has no top to hold up, and «Avslöja» on a face-up card nothing to
+  // reveal. Two of five dead slices was what the shared screen showed. A verb that only cannot go
+  // right now — a shuffle of a single card — stays, greyed, where the hand expects it.
+  it('leaves out the slices that can never go: «Titta» on a hidden pile, «Avslöja» on a face-up card (#719)', () => {
+    const { view, faceDown } = buildScene()
+    render(<TableRenderer view={view(null)} mode="table" scale={1} onAct={vi.fn()} />)
+    const label = document.querySelector('[data-zone="draw"] .byd-pile-count')!
+    fireEvent.pointerDown(label, client(-100, 100))
+    fireEvent.pointerUp(label, client(-100, 100))
+    let ring = document.querySelector('[data-radial]')!
+    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Blanda', 'Dra 1', 'Dela på hälften', 'Vänd översta'])
+    fireEvent.pointerUp(document.querySelector('.byd-radial-backdrop')!)
+
+    const card = document.querySelector(`[data-component="${faceDown}"]`)!
+    fireEvent.pointerDown(card, client(300, 200))
+    fireEvent.pointerUp(card, client(300, 200))
+    ring = document.querySelector('[data-radial]')!
+    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toContain('Avslöja')
+  })
+
+  // The sheet under the ring leaves out a start action whose only step is a verb the ring already
+  // shows (#719): the recipe's «Blanda» (when: both) stood there beside the ring's own «Blanda».
+  it('leaves a start action that only shuffles out of the sheet, and keeps one that does more (#719)', () => {
+    const { view } = buildScene()
+    const base = view(null)
+    const actions = [
+      { id: 'mix', label: 'Blanda leken', when: 'both' as const, steps: [{ v: 'shuffle' as const }] },
+      { id: 'deal', label: 'Ge alla tre', when: 'both' as const, steps: [{ v: 'shuffle' as const }, { v: 'deal' as const, each: { of: 'number' as const, n: 3 }, to: { at: 'hands' as const }, face: 'keep' as const }] },
+    ]
+    const v = { ...base, zones: base.zones.map((z) => (z.id === 'discard' ? { ...z, actions } : z)) }
+    render(<TableRenderer view={v} mode="table" scale={1} onAct={vi.fn()} />)
+    const label = document.querySelector('[data-zone="discard"] .byd-pile-count')!
+    fireEvent.pointerDown(label, client(100, 100))
+    fireEvent.pointerUp(label, client(100, 100))
+    expect(screen.queryByRole('button', { name: /Blanda leken/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /Ge alla tre/ })).toBeTruthy()
   })
 
   // Vilken sida av högen som är "bredvid den" är högens egen sak (K21): den som lägger leken vid

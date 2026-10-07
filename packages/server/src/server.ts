@@ -1041,12 +1041,16 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     }
     // Every game with how many tables it has and when one was last played at (G1). The tables
     // are the log's, not something the list keeps of its own.
+    // The name is the live document's (#909, beslut C): a game renamed from here or from an editor
+    // is an edit in the log and not yet a version, and the list says what the log says (D3).
     const mine = await projects.list(account.id)
+    const host = editors(opts, projects)
     const played = await Promise.all(
       mine.map(async (p) => {
         const sessions = await opts.store.sessionsOf(p.id)
         const last = sessions.map((s) => s.lastAt).filter((at): at is string => at !== null)
-        return { ...p, tables: sessions.length, lastPlayed: last.sort().at(-1) ?? null }
+        const name = (await host.live(p.id))?.name ?? p.name
+        return { ...p, name, tables: sessions.length, lastPlayed: last.sort().at(-1) ?? null }
       }),
     )
     json(res, 200, played)
@@ -1159,6 +1163,26 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     if (!result.ok && result.reason === 'conflict') json(res, 409, { error: 'project changed since rev ' + rev })
     else if (!result.ok) json(res, 404, { error: 'unknown project' })
     else json(res, 200, { id: gate.rec.id, rev: result.rev })
+    return true
+  }
+  // «Byt namn» from the start page's ⋯ (#909, beställarens beslut C): the same `rename` edit the
+  // editor sends (#738), through the same actor, so it is in the log, on every open editor's screen
+  // and undoable — and no version is made of it, so nobody's unsaved work is saved for them.
+  const renaming = /^\/projects\/([^/]+)\/name$/.exec(url.pathname)
+  if (renaming && req.method === 'PUT') {
+    const gate = await allowed(decodeURIComponent(renaming[1] ?? ''), canEdit)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    const { name } = z.object({ name: z.string() }).parse(JSON.parse(await readBody(req)))
+    const actor = await editors(opts, projects).get(gate.rec.id)
+    if (!actor) {
+      json(res, 404, { error: 'unknown project' })
+      return true
+    }
+    const entry = await actor.edit({ v: 'rename', name }, account?.id)
+    json(res, 200, { id: gate.rec.id, name: actor.doc.name, seq: entry.seq })
     return true
   }
   // The history (B4): every save is a version, none of them is ever rewritten. It is presented
@@ -1537,9 +1561,9 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, gate.status, { error: gate.error })
       return true
     }
-    const live = await editors(opts, projects).running(gate.rec.id)
+    // What the log says, whether or not anyone has the game open now (D3, #909).
     const { id: _id, rev: _rev, owner: _owner, ...saved } = gate.rec
-    const doc = live ? live.doc : saved
+    const doc = (await editors(opts, projects).live(gate.rec.id)) ?? saved
     const taken = account ? (await projects.list(account.id)).map((p) => p.name) : []
     const name = duplicatedName(doc.name, taken, langOf(url.searchParams.get('lang')))
     const rec = await projects.create(randomUUID(), { ...structuredClone(doc), name }, account?.id)
