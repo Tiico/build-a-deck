@@ -166,13 +166,32 @@ describe('the preview in the theme s own faces (#476, #633)', () => {
   const preview = () => document.querySelector('.byd-wizard-preview') as HTMLElement
   const drawn = () => [...preview().querySelectorAll('style')].map((s) => s.textContent ?? '').join('\n')
 
-  it('asks the catalogue for nothing until a theme is pressed, a frame included, and says the faces come with it', async () => {
+  // The preselection is not a press (#687, variant D): Skogssaga is marked «Förval» and the card
+  // stands greyed with the way to see it, and nothing is asked for until that way is taken.
+  it('asks the catalogue for nothing until a theme is pressed, a frame included, and offers to show the card in the preselection', async () => {
     history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
     render(<NewProjectPage onNavigate={() => undefined} />)
     fireEvent.click(screen.getByRole('button', { name: 'Minimal' }))
     await new Promise((r) => setTimeout(r, 50))
     expect(net.asked).toEqual([])
-    expect(preview().textContent).toContain('Temats typsnitt hämtas när du väljer tema.')
+    const skog = screen.getByRole('button', { name: 'Välj temat Skogssaga' })
+    expect(skog.getAttribute('aria-pressed')).toBe('false')
+    expect(document.getElementById(skog.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Förval')
+    expect(preview().hasAttribute('data-unseen')).toBe(true)
+    expect(screen.getByRole('button', { name: 'Visa kortet i Skogssaga' })).toBeTruthy()
+  })
+
+  it('presses the preselection from the card, fetches its faces, and shows the card', async () => {
+    history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
+    render(<NewProjectPage onNavigate={() => undefined} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Visa kortet i Skogssaga' }))
+    await waitFor(() => expect(drawn()).toMatch(/@font-face\{font-family:"Cinzel"/))
+    await waitFor(() => expect(preview().hasAttribute('data-unseen')).toBe(false))
+    const skog = screen.getByRole('button', { name: 'Välj temat Skogssaga' })
+    expect(skog.getAttribute('aria-pressed')).toBe('true')
+    expect(skog.hasAttribute('aria-describedby')).toBe(false)
+    expect(screen.queryByRole('button', { name: 'Visa kortet i Skogssaga' })).toBeNull()
+    expect(document.activeElement?.getAttribute('role')).toBe('img')
   })
 
   it('draws the preview in the pressed theme s heading and body faces once they have been fetched', async () => {
@@ -181,7 +200,30 @@ describe('the preview in the theme s own faces (#476, #633)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Välj temat Retro' }))
     await waitFor(() => expect(drawn()).toMatch(/@font-face\{font-family:"Oswald";src:url\("https:\/\/fonts\.gstatic\.com\/s\/oswald\/latin\.woff2"\)/))
     expect(drawn()).toMatch(/@font-face\{font-family:"Roboto Condensed";src:url\("https:\/\/fonts\.gstatic\.com\/s\/roboto-condensed\/latin\.woff2"\)/)
-    expect(preview().textContent).not.toContain('Temats typsnitt hämtas när du väljer tema.')
+    await waitFor(() => expect(preview().hasAttribute('data-unseen')).toBe(false))
+    expect(preview().textContent).not.toContain('Hämtar typsnitten')
+  })
+
+  // A catalogue that does not answer is said on the card, with the way to ask again — never a
+  // pressed tile beside a card that looks like the theme and is not.
+  it('says on the card when the catalogue does not answer, and asks again from there', async () => {
+    net.undo()
+    const real = globalThis.fetch
+    const failing = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (String(input).startsWith('https://fonts.')) throw new TypeError('offline')
+      return real(input, init)
+    })
+    try {
+      history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
+      render(<NewProjectPage onNavigate={() => undefined} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Välj temat Krönika' }))
+      expect(await screen.findByText('Katalogen svarade inte, så kortet står inte i temats typsnitt.')).toBeTruthy()
+      expect(preview().hasAttribute('data-unseen')).toBe(true)
+      expect(screen.getByRole('button', { name: 'Visa kortet i Krönika' })).toBeTruthy()
+    } finally {
+      failing.mockRestore()
+      net = watchFontNet()
+    }
   })
 
   // The theme's colours reach the card through its meanings (E4): a symbol written with a meaning is

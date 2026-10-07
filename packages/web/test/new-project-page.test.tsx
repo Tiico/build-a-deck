@@ -164,8 +164,12 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
 
   it('makes the editor the clear next step instead of offering a direct table', async () => {
     open(() => undefined)
-    expect(screen.getByText('Wizarden är startpunkten')).toBeTruthy()
-    // What waits in the editor is said behind the first step's question mark (L36).
+    // What waits in the editor is said behind the first step's question mark (L36), and the word
+    // «wizard» is not on the surface at all (#687): it is «guidad start» everywhere.
+    // The words on the page, not the card's own scoped style sheet (`#wizard-live …`).
+    const page = document.querySelector('.byd-wizard')!.cloneNode(true) as HTMLElement
+    for (const sheet of page.querySelectorAll('style')) sheet.remove()
+    expect(page.textContent).not.toMatch(/wizard/i)
     fireEvent.click(screen.getByRole('button', { name: 'Hjälp om spelet' }))
     expect((await screen.findByRole('dialog', { name: 'Hjälp om spelet' })).textContent).toMatch(/csv-verktyg väntar i editorn/i)
     expect(screen.queryByRole('button', { name: /öppna bordet/i })).toBeNull()
@@ -471,10 +475,10 @@ describe('the live card after the fields are named (#476)', () => {
 })
 
 // A logged-out guide said nothing about an account until «Skapa spelet» sent the designer to a login
-// after three minutes of filling in (#691, beslut 2026-10-06). It says so early, where the guide
-// already says what it is the start of, and says nothing of the kind to whoever is logged in.
-describe('the account the game is kept on (#691)', () => {
-  const SAVED = 'Spelet sparas på ett konto — du loggar in när du skapar det.'
+// after three minutes of filling in (#691, beslut 2026-10-06). It says so early, in the box at the
+// top that once said «Wizarden är startpunkten» (#687), and whoever is logged in gets no box at all.
+describe('the account the game is kept on (#691, #687)', () => {
+  const SAVED = 'Du loggar in med e\u2011post när du skapar det, och det du skrivit här följer med.'
   beforeEach(async () => {
     await run.stop()
     run = await startServer({ auth: true, authBypass: true })
@@ -482,7 +486,9 @@ describe('the account the game is kept on (#691)', () => {
 
   it('says early, to whoever is logged out, that the game is kept on an account', async () => {
     open(() => undefined)
-    expect(await screen.findByText(SAVED)).toBeTruthy()
+    const box = (await screen.findByText(SAVED, { exact: false })).closest('.byd-wizard-handoff')
+    expect(box?.textContent).toBe(`Spelet sparas på ett konto. ${SAVED}`)
+    expect(box?.querySelector('strong')?.textContent).toBe('Spelet sparas på ett konto.')
   })
 
   it('says nothing about it to whoever is logged in', async () => {
@@ -496,6 +502,7 @@ describe('the account the game is kept on (#691)', () => {
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 20))
     })
-    expect(screen.queryByText(SAVED)).toBeNull()
+    expect(screen.queryByText(SAVED, { exact: false })).toBeNull()
+    expect(document.querySelector('.byd-wizard-handoff')).toBeNull()
   })
 })
