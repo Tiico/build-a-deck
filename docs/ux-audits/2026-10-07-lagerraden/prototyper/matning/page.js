@@ -90,6 +90,8 @@
       html[data-p699=d] [role='row'][data-p699-cond] .byd-layer-fold { display: none; }
       html[data-p699=d] [role='row'][data-p699-cond] .byd-layer-pick { padding: 4px 0; }
       html[data-p699=d] .p699-wrap { flex: 1 1 auto; min-width: 0; line-height: 1.25; overflow-wrap: anywhere; color: #e6ecfa; }
+      /* The column's name is hyphenated where it has to break; the value breaks only between words. */
+      html[data-p699=d] .p699-wrap > .p699-fd { hyphens: auto; }
       html[data-p699=d] .p699-wrap > .p699-nw { white-space: nowrap; font-size: 11px; color: var(--byd-editor-source-ink, #9aa3b8); }
       /* The folder's arrow, drawn where the grip is, and only a sign: choosing the layer opens it. */
       html[data-p699=d] [role='row'][data-p699-cond] .byd-layer-grip { font-size: 0; }
@@ -147,7 +149,7 @@
       if (v === 'a') span.innerHTML = `<span class="p699-val">${esc(NAME.a(c))}</span>${ownChip}<span class="p699-n">${c.n}</span>`
       if (v === 'b') span.innerHTML = `<span class="p699-two"><span class="p699-val" data-full="${esc(c.value ?? `${c.field} ${W.filled}`)}"></span><span class="p699-sub"><span class="p699-nn">${esc(countWords(c.n))} ·</span><span class="p699-f">${esc(c.value === null ? W.cond : `${W.om} ${c.field}`)}</span></span></span>${ownChip}`
       if (v === 'c') span.innerHTML = `<span class="p699-val">${esc(c.value === null ? c.full : c.value)}</span>${ownChip}<span class="p699-n">${c.n}</span>`
-      if (v === 'd') span.innerHTML = `<span class="p699-wrap">${esc(c.full)} <span class="p699-nw">· ${esc(countWords(c.n))}</span></span>${ownChip}`
+      if (v === 'd') span.innerHTML = `<span class="p699-wrap"><span class="p699-fd">${esc(c.value === null ? c.full : `${W.om} ${c.field} =`)}</span>${c.value === null ? '' : ` ${esc(c.value)}`} <span class="p699-nw">· ${esc(countWords(c.n))}</span></span>${ownChip}`
       pick.append(span)
       pick.setAttribute('aria-label', SAID[v](c, mark && !own ? null : own ? `${W.own}: ${mark}` : null))
       // Runs of conditions on the same column, next to each other, for C's heading.
@@ -303,6 +305,10 @@
   function measure(wide = 1) {
     const v = document.documentElement.dataset.p699 ?? 'nu'
     if (wide !== 1) fitB(wide)
+    // +15 % for real where a row wraps: the words spaced out until they are that much wider, for
+    // the whole list at once so that its height is measured too, and put back afterwards.
+    const wraps = [...document.querySelectorAll('.p699-wrap')]
+    if (wide !== 1) for (const wrap of wraps) wrap.style.letterSpacing = `${((wide - 1) * widthOf(wrap.textContent ?? '', wrap)) / Math.max(1, (wrap.textContent ?? '').length)}px`
     const out = []
     for (const { row, c } of condRows()) {
       const pick = row.querySelector('.byd-layer-pick')
@@ -324,10 +330,8 @@
       const wrap = row.querySelector('.p699-wrap')
       if (wrap) {
         // +15 % for real: the words spaced out until they are that much wider, then put back.
-        if (wide !== 1) wrap.style.letterSpacing = `${((wide - 1) * widthOf(wrap.textContent ?? '', wrap)) / Math.max(1, (wrap.textContent ?? '').length)}px`
         lines = Math.round(wrap.getBoundingClientRect().height / parseFloat(getComputedStyle(wrap).lineHeight))
         hWide = Math.round(row.getBoundingClientRect().height)
-        wrap.style.letterSpacing = ''
       }
       const folded = row.querySelector('.byd-layer-inside') === null
       const valueSeen = c.value === null ? visible.toLowerCase().includes(c.field.toLowerCase()) : visible.includes(c.value)
@@ -364,13 +368,15 @@
       }
       names = { id: sel.dataset.layer, row: rowSeen.trim(), rowWritten: rowWritten.trim(), tab: tabName, props: propsShown, count: count([rowSeen, tabName, propsName]), written: count([rowWritten, tabName, propsName]), title: c?.title ?? null }
     }
+    const listH = list ? Math.round(list.getBoundingClientRect().height) : null
+    for (const wrap of wraps) wrap.style.letterSpacing = ''
     return {
       rows: out,
       distinct, conds: out.length,
       valuesSeen: out.filter((r) => r.valueSeen).length,
       rowH: Math.max(0, ...out.filter((r) => r.folded).map((r) => r.h)),
       rowHmin: Math.min(...out.filter((r) => r.folded).map((r) => r.h)),
-      listH: list ? Math.round(list.getBoundingClientRect().height) : null,
+      listH,
       rulesH: rules ? Math.round(rules.getBoundingClientRect().height) : null,
       rules: rules ? [...rules.querySelectorAll('li')].map((li) => li.dataset.p699Words ?? li.textContent) : [],
       scrollOver: scroll ? scroll.scrollHeight - scroll.clientHeight : null,
