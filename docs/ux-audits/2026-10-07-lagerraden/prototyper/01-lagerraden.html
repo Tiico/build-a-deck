@@ -32,16 +32,17 @@
   .bild { min-width: 0; }
   .bild img { display: block; max-width: 100%; height: auto; border: 1px solid #2f333d; border-radius: 6px; }
   .bild p { color: var(--quiet-2); font-size: 12px; margin: 6px 0 0; line-height: 1.45; }
-  .sido { display: grid; gap: 12px; align-content: start; }
+  .sido { display: grid; gap: 12px; align-content: start; min-width: 0; }
   .ruta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
   .ruta h2 { margin: 0 0 6px; color: #fff; font-size: 14px; }
   .ruta p { margin: 0 0 6px; line-height: 1.5; color: #c9d1e3; }
-  .tal { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 13px; }
-  .tal b { text-align: right; font-weight: 600; }
+  .tal { display: grid; grid-template-columns: minmax(0, 11em) minmax(0, 1fr); gap: 4px 12px; font-size: 13px; }
+  .tal b { text-align: right; font-weight: 600; overflow-wrap: anywhere; }
   .forkl { color: var(--quiet-2); font-size: 12px; margin: 6px 0; line-height: 1.5; }
   .rader { font-size: 12px; border-collapse: collapse; width: 100%; }
-  .rader td { border-top: 1px solid #2f333d; padding: 3px 4px; vertical-align: top; color: #c9d1e3; }
-  .rader td:first-child { color: var(--quiet-2); white-space: nowrap; }
+  .rader { table-layout: fixed; }
+  .rader td { border-top: 1px solid #2f333d; padding: 3px 4px; vertical-align: top; color: #c9d1e3; overflow-wrap: anywhere; }
+  .rader td:first-child { color: #e6ecfa; }
   .matris { grid-column: 1 / -1; overflow-x: auto; }
   table.m { border-collapse: collapse; font-size: 12px; min-width: 1100px; }
   table.m th, table.m td { border: 1px solid #2f333d; padding: 5px 7px; text-align: left; vertical-align: top; }
@@ -80,7 +81,7 @@
 const VARIANTER = [
   { id: 'nu', namn: 'Nu', regel: 'Ett villkor ingen döpt heter «om raritet = Karaktär · 10 kort» och kapas i början (#569, beslut B), så raden visar «…r · 10 kort». Namnfältet är ungefär 69 px: låset (44), villkorsglyfen (24) och mappilen (44) tar resten av kolumnens 220. Duken skriver «om raritet = Karaktär», egenskapsrubriken lagrets id, «IF-KARAKTAR». I en grupp står «· bas» på varje rad och bryts till två rader; Grupper-listan räknar upp råa id:n.', pris: 'Det issuet beskriver. Värdet syns aldrig; Koppar och Diamant (12 kort var) skiljs av en bokstav på Mac och inte alls på Linux.' },
   { id: 'a', namn: 'A · Värdet är namnet', regel: 'Ett villkor ingen döpt heter sitt värde: «Karaktär» — i raden, på dukens flik och i egenskapsrubriken. «om raritet» står i panelens villkorssektion och i knappens tillgängliga namn («Karaktär, om raritet, 10 kort»). Raden är värdet, kapat i slutet, och antalet som ett tal längst till höger. Villkorsglyfen går, eftersom mappilen redan säger att lagret är en mapp, och ger värdet 24 px. Ett villkor «finns» heter «Bildtext finns».', pris: 'Kortast och lugnast för Sal\'s Saloon. Men ett långt värde kapas i slutet, så värden som bara skiljer sig i slutet («Legendarisk artefakt (förbannad)» / «(välsignad)») blir likadana rader. Kolumnen syns inte i listan eller på duken: två villkor på olika kolumner med samma värde heter samma sak.' },
-  { id: 'b', namn: 'B · Två rader: värdet över villkoret', regel: 'Raden har två textrader inom sina 44 px: värdet överst över hela radens bredd, kapat i mitten så att både början och slut syns, och under det «10 kort · om raritet» i 11 px. Namnet är villkoret som duken redan skriver det, «om raritet = Karaktär», och egenskapsrubriken säger samma sak. Villkorsglyfen går som i A.', pris: 'Ingen CSS kapar i mitten; det är en mätning i JS per rad och per breddändring. Mitten kan träffa där värdena är lika: «Legen…nad)» för både förbannad och välsignad med +15 %, och bara två av sex långa värden står hela. Andraraden kapar kolumnens namn («om Utru…»), även «om rar…» i Sal's Saloon. Raden läser namnets delar i en annan ordning än duken.' },
+  { id: 'b', namn: 'B · Två rader: värdet över villkoret', regel: 'Raden har två textrader inom sina 44 px: värdet överst över hela radens bredd, kapat i mitten så att både början och slut syns, och under det «10 kort · om raritet» i 11 px. Namnet är villkoret som duken redan skriver det, «om raritet = Karaktär», och egenskapsrubriken säger samma sak. Villkorsglyfen går som i A.', pris: 'Ingen CSS kapar i mitten; det är en mätning i JS per rad och per breddändring. Mitten kan träffa där värdena är lika: «Legen…nad)» för både förbannad och välsignad med +15 %, och bara två av sex långa värden står hela. Andraraden kapar kolumnens namn («om Utru…»), även «om rar…» i Sal\'s Saloon. Raden läser namnets delar i en annan ordning än duken.' },
   { id: 'c', namn: 'C · Det gemensamma en gång', regel: 'Villkor på samma kolumn som står i följd samlas under en rubrikrad, «om raritet =», och varje rad visar det som skiljer den från grannarna: värdet, och när grannarnas värden delar ord bara orden som skiljer («… (förbannad)», «Förbannad …»), plus antalet. Ett ensamt villkor står med hela namnet. Utanför listan heter lagret «om raritet = Karaktär», på duken och i egenskapsrubriken; skärmläsaren hör hela namnet på varje rad, och rubrikraden är dold för den.', pris: 'Rubrikraden kostar 22 px per följd. Den följer ordningen, så ett villkor som dras ur följden byter utseende. Elisionen beror på grannarna: ett nytt värde kan ändra hur de andra raderna läses. Det som står kvar kapas fortfarande i slutet i 70 px: «… (välsig…», «Förbanna…»; raderna skiljs åt, men bara ett av sex långa värden står helt.' },
   { id: 'd', namn: 'D · Raden bryter, mappilen går', rek: true, regel: 'Mappknappen (44 px) tas ur raden: ett villkor öppnas när det väljs, som i dag, och pilen ritas som ett tecken där greppet står. Namnet får då 114 px och bryts medvetet över så många rader det behöver: «om raritet = / Karaktär · 10 kort». Ett namn överallt, ordagrant — raden, duken och egenskapsrubriken skriver samma sträng.', pris: 'Raden växer med namnet: 44 px för Sal\'s Saloon, men upp till 89 px (sv) och 73 px (en) för de långa villkoren och 106 px med +15 %; den svenska lekens lista blir 178 px längre (226 px med +15 %). Kolumnens namn avstavas där det måste brytas («Utrustningska-tegori»), värdet bryts bara mellan ord. Att titta i en mapp utan att välja den går inte längre med pekaren (tangentbordet nådde aldrig mappknappen, tabIndex −1).' },
 ]
@@ -173,7 +174,7 @@ const visa = () => {
     ['Dukens flik', m.names?.tab ? `«${m.names.tab}»` : '–'],
     ['Egenskapsrubriken', m.names?.props ? `«${m.names.props}»` : '–'],
   ]
-  if (m.rulesH) t.push(['Grupper-listan', `${m.rulesH} px`])
+  if (m.rules.length) t.push(['Grupper-listan', `${m.rulesH} px`])
   document.querySelector('#tal').innerHTML = t.map(([k, n]) => `<span>${k}</span><b>${esc(n)}</b>`).join('')
   document.querySelector('#rader').innerHTML = m.rows.map((r, i) => `<tr><td>${esc(r.head ? r.head + ' ' : '')}${esc(r.visible)}</td><td>${esc(m.wide.rows[i]?.visible)}</td></tr>`).join('')
   document.querySelector('#aria').textContent = m.aria
