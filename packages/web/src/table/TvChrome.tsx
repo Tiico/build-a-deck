@@ -58,6 +58,10 @@ export type TvChromeProps = {
   // What a card opened from the seats' lists does (#551): the observer holds it up to be read. A
   // screen that passes nothing keeps its seats as rows that open nothing.
   onRead?: ReadCard | undefined
+  // The cards still on their way to the table (#765, beslut B 2026-10-06): one line under the way
+  // in, at K26's floor, with a thin bar, gone once every card can be seen. The column is free on a
+  // television bound by its height, so the line costs the felt nothing.
+  rendering?: { done: number; total: number; stalled: boolean } | null | undefined
   children: ReactNode
 }
 
@@ -73,7 +77,7 @@ export type TvChromeProps = {
 // at 1920 x 1080 measured 68 px across for it. The same card is 82 px with the rows gone and
 // their contents moved into the column, which is the difference between a card that has to be
 // pointed at to be told apart and one that does not (`tv-card-size.test.ts`, K8).
-export function TvChrome({ view, activity, roomCode, joinUrl, host, title, version, inspecting, faces, showing, onDismiss, observers = [], note, rules, room = false, onRead, corner, children }: TvChromeProps) {
+export function TvChrome({ view, activity, roomCode, joinUrl, host, title, version, inspecting, faces, showing, onDismiss, observers = [], note, rules, room = false, onRead, corner, rendering = null, children }: TvChromeProps) {
   // A card whose words are smaller than the wizard's frame is shown taller (#523), into the felt's
   // height, until they read from the sofa: the height its width needs, which the stylesheet lets past
   // the 938 px the frame's own card stops at.
@@ -187,6 +191,13 @@ export function TvChrome({ view, activity, roomCode, joinUrl, host, title, versi
               <p>{t('tv.join.help.how')}</p>
               <p>{t('tv.join.help.phone')}</p>
             </Help>
+          </div>
+        )}
+        {rendering && (
+          <div className="byd-tv-render" role="status" {...(rendering.stalled ? { 'data-stalled': '' } : {})}>
+            <span>{t(rendering.stalled ? 'tv.render.stalled' : 'tv.render')}</span>
+            <b>{t('tv.render.count', { done: rendering.done, total: rendering.total })}</b>
+            <i aria-hidden="true" style={{ ['--byd-render-done' as string]: `${(100 * rendering.done) / Math.max(1, rendering.total)}%` }} />
           </div>
         )}
         {corner && <div className="byd-tv-corner" ref={corner} />}

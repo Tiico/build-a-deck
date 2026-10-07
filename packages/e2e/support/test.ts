@@ -20,8 +20,13 @@ export type Fixtures = {
    * tidiness: a context is the storage boundary, so two telephones sharing one would share the
    * login cookie and any storage the surfaces keep — and a suite about several people at one
    * table would quietly be a suite about one person with several windows.
+   *
+   * `facesReady` answers the table's texture count as finished. The suite runs no renderer
+   * (`render.ts`), so every card stays queued, and the start waits for the cards (#765): a journey
+   * whose question is the start and not the rendering says outright that it stands where the box
+   * would be once the renderer had done its work.
    */
-  open: (device: Device, url: string) => Promise<Client>
+  open: (device: Device, url: string, opts?: { facesReady?: boolean }) => Promise<Client>
   /** Somebody at the table: admitted through the room code, with their phone already open. */
   player: (table: Table, who: { name: string; seat?: string; device?: Device }) => Promise<Client & { admission: Admission }>
   /**
@@ -42,10 +47,11 @@ export const test = base.extend<Fixtures>({
 
   open: async ({ browser, baseURL }, use) => {
     const opened: BrowserContext[] = []
-    await use(async (device, url) => {
+    await use(async (device, url, opts = {}) => {
       const context = await newContext(browser, device, baseURL)
       opened.push(context)
       const page = await context.newPage()
+      if (opts.facesReady) await page.route('**/sessions/*/textures', (route) => route.fulfill({ json: { total: 0, done: 0, failed: [] } }))
       // The wire is watched, and made breakable, before the address is opened — never after. A
       // socket the listener missed the opening of is a socket whose first frames (the snapshot,
       // which is where a leak would be) were never seen at all, and one opened before the route

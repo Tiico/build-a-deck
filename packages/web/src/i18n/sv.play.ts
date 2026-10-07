@@ -43,6 +43,9 @@ export const svPlay = {
   // Ovanför adressen, som är värden och sedan /KOD (#675): orden följer värdens språk, adressen
   // är densamma på alla.
   'tv.join': 'öppna på telefonen',
+  'tv.render': 'Korten ritas',
+  'tv.render.stalled': 'Korten står stilla',
+  'tv.render.count': '{done} av {total}',
   'qr.enlarge': 'Visa koden större',
   'qr.title': 'Anslut med telefonen',
   'qr.close': 'Stäng',
@@ -107,6 +110,10 @@ export const svPlay = {
   'ring.action.why.unfinished': 'ett steg har inte sagt vilka kort det letar fram',
   'start.tile': 'Starta spelet',
   'start.blocked': 'Går inte att starta just nu: {why}',
+  'start.wait': 'korten ritas · {done}/{total}',
+  'start.wait.why': 'korten ritas fortfarande',
+  'start.anyway': 'Starta ändå',
+  'start.stalled': 'korten står stilla · {done}/{total}',
   'start.again.label': 'Starta om spelet?',
   'start.again.tile': 'Starta om',
   'drop.unanswered': 'Bordet har inte svarat på draget än.',

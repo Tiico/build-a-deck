@@ -563,6 +563,7 @@ export const enEditor = {
   'canvas.props.w': 'Width (mm)',
   'canvas.props.h': 'Height (mm)',
   'canvas.props.field': 'Field',
+  'canvas.props.shows': 'Shows field',
   'canvas.props.field.new': 'new field…',
   // An element bound to a value rather than to a column shows no field, and the picker says so
   // instead of pointing at the deck's first column as though it were chosen (#33).
@@ -583,8 +584,9 @@ export const enEditor = {
   'canvas.props.weight': 'Weight',
   'canvas.props.color': 'Colour',
   'canvas.props.fit': 'Fitting',
-  'canvas.fit.shrink': 'shrink to fit',
-  'canvas.fit.fixed': 'fixed size',
+  // One word each (#736): the picker stands beside the placement's nine squares, about 110 px wide.
+  'canvas.fit.shrink': 'shrink',
+  'canvas.fit.fixed': 'fixed',
   'canvas.props.place': 'Placement in the box',
   'canvas.place.at': '{x}, {y}',
   'canvas.place.left': 'left',
@@ -705,6 +707,7 @@ export const enEditor = {
   // The ready-made backs (L17). They stand in the open while the back is being edited rather
   // than behind a button: whoever lands on an empty back should see the way on without hunting.
   'canvas.backs': 'Ready-made backs',
+  'canvas.backs.n': 'Ready-made backs ({n})',
   'canvas.back.swap.ask.one': 'Replace the back with “{name}”? The back’s {n} layer is replaced.',
   'canvas.back.swap.ask.other': 'Replace the back with “{name}”? The back’s {n} layers are replaced.',
   'canvas.back.swap.yes': 'Yes, replace the back',

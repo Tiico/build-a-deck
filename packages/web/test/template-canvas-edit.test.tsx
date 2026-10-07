@@ -470,7 +470,7 @@ describe('the second door into a new field (#32)', () => {
     const onAddField = vi.fn()
     const { onPatch } = canvas({ onAddField })
 
-    const field = screen.getByLabelText('Fält') as HTMLSelectElement
+    const field = screen.getByLabelText('Visar fältet') as HTMLSelectElement
     expect([...field.options].map((o) => o.textContent)).toEqual(['Titel', 'body', 'Antal', 'nytt fält…'])
     await user.selectOptions(field, within(field).getByRole('option', { name: 'nytt fält…' }))
 
@@ -494,7 +494,7 @@ describe('the second door into a new field (#32)', () => {
     const user = userEvent.setup()
     const onAddField = vi.fn()
     canvas({ onAddField })
-    const field = screen.getByLabelText('Fält') as HTMLSelectElement
+    const field = screen.getByLabelText('Visar fältet') as HTMLSelectElement
 
     await user.selectOptions(field, within(field).getByRole('option', { name: 'nytt fält…' }))
     const form = screen.getByRole('form', { name: 'Nytt fält' })
@@ -523,7 +523,7 @@ describe('the second door into a new field (#32)', () => {
   it('gives the focus back to the picker it was opened from, whichever way the form is left', async () => {
     const user = userEvent.setup()
     canvas()
-    const field = () => screen.getByLabelText('Fält') as HTMLSelectElement
+    const field = () => screen.getByLabelText('Visar fältet') as HTMLSelectElement
     const open = async () => user.selectOptions(field(), within(field()).getByRole('option', { name: 'nytt fält…' }))
 
     await open()

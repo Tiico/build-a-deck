@@ -75,6 +75,25 @@ test.describe('the television chrome that opens (#684)', () => {
     expect(fits.box.bottom).toBeLessThanOrEqual(TV.viewport.height)
   })
 
+  // The suite runs no renderer, so every card is still queued: the table the room sees before the
+  // renderer has caught up (#765, beslut B).
+  test('says the cards still being drawn at the floor, and the start waits for them', async ({ request, open, player }) => {
+    // Faces nothing else in the run has: a texture is addressed by what it draws, and a journey
+    // that starts a renderer (`render.ts`) leaves the recipe's cards rendered in a shared database.
+    // The back is the recipe's and may already be done, so the count is read as a count, not as 0.
+    const nonce = crypto.randomUUID()
+    const recipe = gameThatStarts()
+    const doc = { ...recipe, rows: recipe.rows.map((r) => ({ ...r, fields: { ...r.fields, body: `${String(r.fields['body'])} ${nonce}` } })) }
+    const table = await tableFromSetup(request, setupFromProject(doc), deckFromProject(doc))
+    await player(table, { name: 'Ada', seat: 'A' })
+    const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
+    const line = page.locator('.byd-tv-render')
+    await expect(line).toHaveText(/^Korten ritas\d+ av \d+$/)
+    expect(await underFloor(page, '.byd-tv-render')).toEqual([])
+    await expect(page.locator('[data-table-start]')).toBeDisabled()
+    await expect(page.locator('[data-table-start]')).toHaveText(/^Starta speletkorten ritas · \d+\/\d+$/)
+  })
+
   test('opens the way in’s help at the floor', async ({ tableOf, open }) => {
     const table = await tableOf({ players: 2, counters: [], cards: 4 })
     const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
@@ -125,7 +144,7 @@ test.describe('the television chrome that opens (#684)', () => {
     const table = await tableFromSetup(request, setupFromProject(doc), deckFromProject(doc))
     await player(table, { name: 'Ada', seat: 'A' })
     await player(table, { name: 'Bo', seat: 'B' })
-    const { page } = await open(TV, `${table.tvUrl}&lang=sv`)
+    const { page } = await open(TV, `${table.tvUrl}&lang=sv`, { facesReady: true })
     const tile = page.locator('[data-table-start]')
     await tile.click()
     await expect(tile).toHaveText('Starta om')
