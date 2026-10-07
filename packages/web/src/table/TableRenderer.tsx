@@ -2134,7 +2134,7 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
         <span>{count > 0 ? topCard?.cardRef ?? '' : ''}</span>
       </div>
       {fanned && (
-        <div className="byd-pile-fan" key={shuffle} aria-hidden="true">
+        <div className="byd-pile-fan" key={`fan-${shuffle}`} aria-hidden="true">
           {FAN.map(([out, turn], i) => (
             <i key={i} className="byd-pile-fan-card" data-face="back" data-back={fanBack ? 'own' : undefined} style={{ ['--fan-out' as string]: `${out}%`, ['--fan-turn' as string]: `${turn}deg` }}>
               {fanBack}
@@ -2153,9 +2153,11 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
       </span>
       {/* That the pile was just shuffled, in words, under it (#718). The activity list says the
           same line for whoever reads it out, so this is for the eye only. Keyed by the line, so a
-          second shuffle starts it over. */}
+          second shuffle starts it over. The fan above is keyed by the very same line, and the two are
+          siblings: each key says what it is the line *of*, or React takes the two for one child and
+          keeps a fan that ended — the television counted eight backs where there are four (#936). */}
       {said !== undefined && count > 0 && (
-        <span className="byd-pile-said" key={said} aria-hidden="true">
+        <span className="byd-pile-said" key={`said-${said}`} aria-hidden="true">
           {t('pile.shuffled', { pile: zone.dynamic ? t('pile.dynamic') : zone.name })}
         </span>
       )}
