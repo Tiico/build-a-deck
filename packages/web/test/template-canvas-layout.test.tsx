@@ -31,7 +31,7 @@ async function markupWithForm(): Promise<string> {
   const { container, unmount } = render(
     <TemplateCanvas doc={projectDoc()} face="front" row="dragon" selectedElement="title" onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} />,
   )
-  const select = screen.getByLabelText('Fält') as HTMLSelectElement
+  const select = screen.getByLabelText('Visar fältet') as HTMLSelectElement
   await user.selectOptions(select, within(select).getByRole('option', { name: 'nytt fält…' }))
   const html = container.innerHTML
   unmount()

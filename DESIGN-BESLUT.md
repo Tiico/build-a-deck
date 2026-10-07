@@ -3324,6 +3324,30 @@ Ratten pekar på raden med `aria-describedby`, eftersom den som tabbar till ratt
 
 Grindarna för tillägget: `packages/web/test/setup-actions.test.tsx` (rattens lägen, rutans rad och att ratten pekar på texten), `packages/web/test/setup-sentence-matrix.test.tsx` (raden ordagrant i båda språken, och att den uteblir när de två inte möts), `packages/web/test/slot-badge-contrast.test.ts` (att både den avstängda raden och raden under ratten går att läsa på sin egen botten) samt `packages/web/test/game-start.test.ts` och `packages/web/test/table-renderer.test.tsx` för bordshalvan.
 
+**Tillägg 2026-10-06 (#765): starten väntar på korten.**
+Ett nystartat bord med 323 kort behövde i speltestet en halv minut innan texturerna var klara, och under den tiden stod brickan tänd.
+En värd som tryckte delade ut kort utan ansikte — namnet på färg i varje hand — och TV:n sade ingenting om varför.
+Tre former prototypades i den byggda appen (#911, `docs/ux-audits/2026-10-06-renderkon/prototyper/765/`). **A** — en rad i TV:ns spalt som bara säger det. **B** — A:s rad, och brickan väntar. **C** — en skylt mitt på filten.
+
+**Valet blev B, av beställaren 2026-10-06.**
+A informerar men stänger inte risken: en värd som inte tittar åt höger delar ut ändå.
+C täcker filtens mitt, draghögen och brickan i upp till en halv minut, och D5 reserverar mittkortet för det som har slutat vara sant, inte för väntan.
+B stoppar själva utdelningen med en form bordet redan har — den avstängda brickan med skälet i ord — och är samma princip som att editorns länk väntar på texturerna (L5).
+
+Brickan står släckt i sin befintliga form med «korten ritas · 70/323» under ordet, och `title` bär `start.blocked` med skälet «korten ritas fortfarande».
+TV:ns spalt har under vägen in raden «Korten ritas · 70 av 323» i 24 px (K26) med en tunn stapel, polite som D5:s «laddar», och den är borta när sista kortet är klart.
+Spalten är gratis på en höjdbunden TV, så raden kostar inte en bildpunkt kort.
+Samma väntan gäller på varje yta som ritar brickan på ett levande bord — bordsläget och distansvyn delar ut samma ansiktslösa kort — men bara TV:n har en spalt att säga det i.
+Ett kort som slutligt misslyckats väntas inte på: det sägs av `TextureFailures` (#10), och brickan tänds när resten är klart.
+
+**En kö som står still håller inte bordet stängt.**
+När räkningen inte rört sig på #88:s tid (30 s) blir brickan «Starta ändå» med «korten står stilla · 70/323» under, och går att trycka på; spaltens rad säger «Korten står stilla».
+Före det finns ingen väg förbi: en väg förbi från början hade varit A igen.
+Priset är erkänt: brickans text är filtskalad och ligger under 24 px på TV:n, och det är därför raden i spalten bär talet i golvets storlek.
+
+Grindarna: `packages/web/test/start-waits-for-textures.test.tsx` (spaltens rad, den släckta brickan, att den tänds när sista kortet landar, «Starta ändå» vid stillastående kö och distansvyns bricka) och `packages/e2e/test/tv-chrome-floor.spec.ts` (raden vid golvet i den byggda produkten, där sviten inte kör någon renderare).
+Sviter vars fråga är starten och inte renderingen öppnar TV:n med `facesReady`, som svarar att korten är klara.
+
 ### K26. Läsbar korttext på skärm: ett golv per skärm, och en handling dit (beslutat 2026-09-28, #505, #506)
 
 E5 och E6 sätter golvet för text **i tryck**, K9 sätter kortets storlek som kontroll på filten och K18 räknar läsbarhet i kortsida på tre meter — men inget beslut sa vad **texten på kortet** blir när kortet ritas på en skärm.
@@ -3716,6 +3740,7 @@ Den hette "Uppdatera bordet" i båda lägena, vilket gjorde att ett spel utan bo
 Meningen citerar numera det namn knappen bär.
 Bytet är atomiskt för spelarna: knappen köar först den nya revisionens texturer (`POST /sessions/:id/prepare`), visar "renderar kort n/m", och skickar bytet först när alla är renderade (byggt 2026-09-06).
 Ett nystartat bord får sin länk först när dess texturer är klara (`GET /sessions/:id/textures`).
+Startbrickan vid bordet väntar på samma texturer, och Bord-flikens rad säger «renderar kort n/m» i bandets egna ord medan de ritas (#765, se K25:s tillägg 2026-10-06).
 Telefonens hand och inspektion visar samma texturer som bordet; saknas en texturs hash visas namnet på färg.
 Bordet visar att en nyare version finns.
 
@@ -4266,6 +4291,14 @@ Baksidan erbjuder färdiga ryggar.
 Var och en är en vanlig elementlista — botten med mönster, en inre kant, ibland en medaljong — så den går att ta isär och ändra efteråt; det är en utgångspunkt och inte en låst bild.
 Galleriet står framme i lagerpanelen så snart baksidan är öppen, inte bakom en knapp: den som landar på en tom baksida ska se vägen vidare utan att leta efter den.
 
+Reviderat 2026-10-06 (#736, beslut A av beställaren efter prototyp i #917): **galleriet ligger hopfällt under baksidans lager, och är öppet bara när baksidan saknar egna lager.**
+Öppet ovanför lagren tog det 506 px av lagerkolumnens 483–515, så inget av en baksidas lager syntes utan rullning, och rullisten ritades inte.
+Huvudet «Färdiga baksidor (7)» är en knapp med fällningens chevron och står direkt efter lagerraderna; ett tryck öppnar galleriet på plats.
+Skälet till galleriets plats står kvar: en tom baksida visar det öppet, och när en rygg läggs på en tom baksida fälls det med fokus på huvudet.
+Läget följer baksidan och inte designern: det sätts om varje gång baksidan går från tom till lagd eller tillbaka, och står däremellan som designern lämnade det.
+Två varianter avvisades: galleriet öppet under lagren (B), som tryckte «Rutnät 1 mm» och Grupper ~500 px ner, och en dörr i kolumnens krona som öppnar galleriet som en lyft box (C), som tog bort galleriet från den tomma baksidan.
+Grinden är `packages/e2e/test/surfaces/template-text-and-back-fit.spec.ts`, vid 1280 × 800 och 1024 × 768 med ett bord som kör.
+
 Bordet i fliken "Bord" visar lekens egen rygg (reviderat 2026-09-15).
 Filten ritade varje kort som låg med baksidan upp som en och samma blå väv ur `table.css`, vilken rygg leken än hade: den enda yta där designern ser leken som en lek visade en rygg som inte hörde till något spel, och en vald rygg nådde bordet först när spelet hade publicerats.
 Ryggen kompileras i webbläsaren av `compile` — samma renderare som duken och kortväggen, alltså ingen andra kodväg (K9) — eftersom den här ytan varken har en renderfarm bakom sig eller en sparad version att rendera.
@@ -4775,6 +4808,15 @@ Alla sjutton i 44 px provades och avvisades: 104 px mer, och panelen började ru
 Greppen bredvid talen är 44 × 44 px med samma ritning.
 «Sätt in en ikon» i Tabell lyftes ut till #593, eftersom dess kolumn reserveras i varje textcell (#140) och 44 px där kostar varje cell 18 px hela tiden.
 Mätningarna och skärmbilderna står i #570 och i `docs/ux-audits/2026-09-29/prototyper/570/`; grindarna är `packages/web/test/editor-props-density.test.tsx` och svepet i `packages/web/test/editor-viewport.test.tsx`, som inte längre undantar galleriet.
+
+Reviderat 2026-10-06 (#736, beslut C av beställaren efter prototyp i #917): **textlagrets panel ryms utan rullning vid 1024 × 768 och 1280 × 800, även med bandet «Bordet kör».**
+Med Layout, Innehåll och Text öppna var den 751 px i en spalt om 589–621, och «Anpassning» och «Finjustering» stod under kanten.
+Placeringens nio rutor står i en egen kolumn, exakt så bred som rutorna, med «Anpassning» och «Finjustering» staplade bredvid; golvet om 44 px står kvar.
+Fältet lagret visar står på en rad direkt under panelens rubrik, «Visar fältet [Titel ▾]», där lagret namnges, och textlagret har ingen sektion Innehåll längre — bild och ikon har kvar sin, eftersom de har fler val där.
+«Anpassning»-väljaren är ungefär 110 px bred bredvid rutorna och klippte «krymp till gräns»; valen heter nu ett ord var, «krymp» och «fast» («shrink» och «fixed»).
+Två varianter avvisades: rutorna bredvid utan att flytta fältet (A), som fortfarande rullade 16–48 px, och panelen oförändrad med en fast ledtråd om det som står under kanten (B), som inte uppfyller kravet att panelen ryms.
+Formlagret rullar fortfarande; det är inte en del av beslutet.
+Grinden är `packages/e2e/test/surfaces/template-text-and-back-fit.spec.ts`, som mäter rektanglar i båda språken.
 
 ### L26. En egen form är en punktlista, och punkten läggs till där kanten redan bär en (prototypat 2026-09-20, #309)
 

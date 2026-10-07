@@ -562,6 +562,12 @@
 .byd-table-restart:hover, .byd-table-restart:focus-visible { border-color: var(--byd-felt-accent); color: var(--byd-felt-accent); }
 .byd-table-restart:disabled { color: var(--byd-felt-chalk-off); cursor: not-allowed; }
 .byd-table-start:disabled { background: #46506b; color: #d3d8e6; cursor: not-allowed; box-shadow: none; }
+/* Brickan som väntar på korten (#765, beslut B): samma form, och skälet under ordet i stället för
+   bara i `title`. Talet står guld på den avstängda brickan och i brickans eget vita när kön står
+   still och brickan går att trycka på som «Starta ändå» — guld på blått når inte 4.5:1. */
+.byd-table-start:has(> small) { flex-direction: column; gap: 0.1em; line-height: 1.05; }
+.byd-table-start > small { font-size: 0.72em; font-weight: 600; font-variant-numeric: tabular-nums; }
+.byd-table-start:disabled > small { color: #ffd98a; }
 
 /* Frågan före ett omtryck (#452). Den står utanför filten och inte på den: en vriden filt får
    inte vrida en mening. Formen är produktens enda fråga — `Question` — på bordets egen yta, med
@@ -640,6 +646,11 @@
    own, where nothing on the felt lies under them. */
 [data-tv] .byd-tv-corner { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 [data-tv] .byd-tv-corner:empty { display: none; }
+/* Korten som fortfarande ritas (#765, beslut B): en rad under vägen in, med talet till höger och en
+   tunn stapel under, borta när sista kortet är klart. */
+[data-tv] .byd-tv-render { display: grid; grid-template-columns: 1fr auto; align-items: baseline; row-gap: 8px; color: #c9cfdd; }
+[data-tv] .byd-tv-render b { color: #ffd98a; font-variant-numeric: tabular-nums; }
+[data-tv] .byd-tv-render i { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #ffd98a var(--byd-render-done, 0%), #232733 0); }
 [data-tv] .byd-tv-join { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
 [data-tv] .byd-tv-join > span { color: #7d8597; font-size: 14px; flex: 1 0 100%; }
 [data-tv] .byd-qr { border-radius: 6px; background: #fff; }
@@ -1255,6 +1266,7 @@
 [data-tv][data-room] aside h2:where(:not(.byd-rules-panel *)) { font-size: 24px; letter-spacing: 1px; margin-bottom: 8px; }
 [data-tv][data-room] .byd-tv-head h1 { font-size: 28px; }
 [data-tv][data-room] .byd-tv-join > span { font-size: 24px; }
+[data-tv][data-room] .byd-tv-render { font-size: 24px; }
 [data-tv][data-room] .byd-tv-inspect { --byd-inspect-head: 30px; --byd-inspect-gap: 8px; }
 [data-tv][data-room] .byd-tv-inspect [data-empty] span { font-size: 24px; line-height: 1.2; }
 [data-tv][data-room] ol:where(:not(.byd-rules-panel *)) li { font-size: 24px; }

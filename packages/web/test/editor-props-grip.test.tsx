@@ -159,7 +159,7 @@ describe('the sections of the panel (L25)', () => {
     open({}, 'title')
     expect(within(panel())
       .getAllByRole('heading')
-      .map((h) => h.textContent)).toEqual(['Layout', 'Innehåll', 'Text'])
+      .map((h) => h.textContent)).toEqual(['Layout', 'Text'])
   })
 })
 

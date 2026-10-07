@@ -4,6 +4,7 @@ import '../table/table.css'
 import '../player/player.css'
 import './online.css'
 import { TableRenderer, type TableHandle } from '../table/TableRenderer.js'
+import { useCardsPending } from '../table/textures.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { usePresence, useRecent } from '../table/usePresence.js'
 import { useShuffles } from '../table/shuffle.js'
@@ -45,7 +46,7 @@ import { RuleDrawer } from '../rules/RuleDrawer.js'
 // hand drawn twice in one window is not a picture, it is a second thing for the fit to make room
 // for on the axis that binds it (K9, K17, #77).
 // `onLeave` is where the way out (#31) sends the browser; a test hands it somewhere it can read.
-export type OnlinePageProps = { timing?: StatusTiming; onLeave?(url: string): void }
+export type OnlinePageProps = { timing?: StatusTiming & { renderStalledAfterMs?: number }; onLeave?(url: string): void }
 
 // The shortest side a window must have before a board is drawn in it at all (C2's revision of
 // 2026-09-16, #99).
@@ -120,6 +121,9 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
     faces: http,
   })
   useActivityLive(activity, view, seat)
+  // The start waits for the cards here too (#765, beslut B): a seat at a distance deals the same
+  // faceless cards a TV would.
+  const startWait = useCardsPending(http, sessionId, view, timing.renderStalledAfterMs)
   // A proposed rewind shows the table as it was (C, K13), and «Visa alla» stood over exactly that
   // table (#747): the grid closes the moment a proposal stands, whoever made it.
   const proposing = view?.rewind != null
@@ -221,6 +225,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             recent={recent}
             shuffles={shuffles}
             onPresence={(p) => client.sendPresence(p)}
+            startWait={startWait}
           />
         </div>
         {/* One hand, one copy of it. While the grid stands the band is still drawn — dimmed,
