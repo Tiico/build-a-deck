@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 01 — Lagerradens form (#699)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan (#699) ──────────────────────────────────────────────────────────────────────
+     Sal's Saloons sex villkorslager läses som «…r · 10 kort», «…r · 14 kort» … i Mall-flikens
+     lagerlista: värdet som skiljer dem åt syns aldrig, och samma lager heter tre saker — «…r · 10
+     kort» i listan, «om raritet = Karaktär» på duken och «IF-KARAKTAR» i egenskapsrubriken. Vilken
+     form ska raden ha, och vilket är lagrets enda namn?
+
+     Varje bild är det BYGGDA appen (packages/e2e-stacken) med variantens rad injicerad i den
+     riktiga lagerlistan och mätt i Chromium: Sal's Saloon i basen och i gruppen «typ = Effect»,
+     och två lekar vars villkor bara skiljer sig i ett långt värde, på svenska och engelska. Inget
+     är ritat för hand. Skripten ligger i matning/.
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  body { display: flex; flex-direction: column; height: 100vh; }
+  .krona { flex: none; display: grid; gap: 8px; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .krona h1 { margin: 0; color: #fff; font-size: 15px; }
+  .rad { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .rad > span { color: var(--quiet-2); font-size: 12px; min-width: 64px; }
+  .rad button { min-height: 36px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; cursor: pointer; }
+  .rad button[aria-pressed='true'] { background: #24507f; border-color: var(--primary-mark); color: #fff; }
+  .rad button.rek { border-color: #3f7a55; }
+  .rad button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .scen { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; grid-template-columns: 340px minmax(0, 1fr) 380px; gap: 16px; padding: 16px; background: #15171c; align-content: start; }
+  @media (max-width: 1100px) { .scen { grid-template-columns: 340px minmax(0, 1fr); } .sido { grid-column: 1 / -1; } }
+  @media (max-width: 760px) { .scen { grid-template-columns: minmax(0, 1fr); } }
+  .bild { min-width: 0; }
+  .bild img { display: block; max-width: 100%; height: auto; border: 1px solid #2f333d; border-radius: 6px; }
+  .bild p { color: var(--quiet-2); font-size: 12px; margin: 6px 0 0; line-height: 1.45; }
+  .sido { display: grid; gap: 12px; align-content: start; }
+  .ruta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .ruta h2 { margin: 0 0 6px; color: #fff; font-size: 14px; }
+  .ruta p { margin: 0 0 6px; line-height: 1.5; color: #c9d1e3; }
+  .tal { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 13px; }
+  .tal b { text-align: right; font-weight: 600; }
+  .forkl { color: var(--quiet-2); font-size: 12px; margin: 6px 0; line-height: 1.5; }
+  .rader { font-size: 12px; border-collapse: collapse; width: 100%; }
+  .rader td { border-top: 1px solid #2f333d; padding: 3px 4px; vertical-align: top; color: #c9d1e3; }
+  .rader td:first-child { color: var(--quiet-2); white-space: nowrap; }
+  .matris { grid-column: 1 / -1; overflow-x: auto; }
+  table.m { border-collapse: collapse; font-size: 12px; min-width: 1100px; }
+  table.m th, table.m td { border: 1px solid #2f333d; padding: 5px 7px; text-align: left; vertical-align: top; }
+  table.m th { color: #fff; background: #1b1f2a; }
+  table.m th.valt, table.m td.valt { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  table.m td.ok { background: #16301f; color: #9be3b5; }
+  table.m td.nej { background: #3a1c1c; color: #ffb3a8; }
+  table.m td.mitt { color: #f0d7a0; background: #2e2716; }
+  pre.aria { white-space: pre-wrap; font-size: 11px; color: #c9d1e3; margin: 0; max-height: 220px; overflow: auto; }
+</style>
+</head>
+<body>
+<div class="krona">
+  <h1>Prototyp 01 — lagerradens form och lagrets enda namn (#699) <small style="color:var(--quiet-2);font-weight:400">· ← → byter variant · bilderna är det byggda appen med varianten injicerad</small></h1>
+  <div class="rad" id="varianter"><span>Variant</span></div>
+  <div class="rad" id="ytor"><span>Lek</span></div>
+  <div class="rad" id="bredder"><span>Bredd</span></div>
+</div>
+<div class="scen">
+  <div class="bild"><img id="kol" alt=""><p id="koltext"></p></div>
+  <div class="bild" id="ram"><img id="ramimg" alt=""><p id="ramtext"></p></div>
+  <div class="sido">
+    <div class="ruta"><h2 id="vnamn"></h2><p id="vregel"></p><p id="vpris" class="forkl"></p></div>
+    <div class="ruta"><h2>Mätt på den här bilden</h2><div class="tal" id="tal"></div></div>
+    <div class="ruta"><h2>Villkorsraderna, som ögat ser dem</h2><table class="rader" id="rader"></table><p class="forkl">Vänster: Macens typsnitt. Höger: samma rad med texten 15 % bredare, som DejaVu på Linux.</p></div>
+    <div class="ruta"><h2>Vad skärmläsaren hör (tillgänglighetsträdet)</h2><pre class="aria" id="aria"></pre></div>
+  </div>
+  <div class="matris ruta">
+    <h2>Alla varianter mot issuets acceptans</h2>
+    <p class="forkl">Grönt håller, rött håller inte, gult är ett pris. Lagerkolumnen är 220 px vid alla tre bredderna (L7, L25, L15), och mätningarna var desamma vid 1440, 1280 och 1024 — där en cell skiljer sig mellan bredderna står det. «+15 %» är samma rad med texten ritad 15 % bredare, som DejaVu på Linux (#569). «Hela värdet» betyder att värdet står utan «…»; «skiljs åt» att de synliga raderna är parvis olika. Klicka en kolumnrubrik för att visa varianten.</p>
+    <table class="m" id="matris"></table>
+  </div>
+</div>
+<script src="data.js"></script>
+<script>
+const VARIANTER = [
+  { id: 'nu', namn: 'Nu', regel: 'Ett villkor ingen döpt heter «om raritet = Karaktär · 10 kort» och kapas i början (#569, beslut B), så raden visar «…r · 10 kort». Namnfältet är ungefär 69 px: låset (44), villkorsglyfen (24) och mappilen (44) tar resten av kolumnens 220. Duken skriver «om raritet = Karaktär», egenskapsrubriken lagrets id, «IF-KARAKTAR». I en grupp står «· bas» på varje rad och bryts till två rader; Grupper-listan räknar upp råa id:n.', pris: 'Det issuet beskriver. Värdet syns aldrig; Koppar och Diamant (12 kort var) skiljs av en bokstav på Mac och inte alls på Linux.' },
+  { id: 'a', namn: 'A · Värdet är namnet', regel: 'Ett villkor ingen döpt heter sitt värde: «Karaktär» — i raden, på dukens flik och i egenskapsrubriken. «om raritet» står i panelens villkorssektion och i knappens tillgängliga namn («Karaktär, om raritet, 10 kort»). Raden är värdet, kapat i slutet, och antalet som ett tal längst till höger. Villkorsglyfen går, eftersom mappilen redan säger att lagret är en mapp, och ger värdet 24 px. Ett villkor «finns» heter «Bildtext finns».', pris: 'Kortast och lugnast för Sal\'s Saloon. Men ett långt värde kapas i slutet, så värden som bara skiljer sig i slutet («Legendarisk artefakt (förbannad)» / «(välsignad)») blir likadana rader. Kolumnen syns inte i listan eller på duken: två villkor på olika kolumner med samma värde heter samma sak.' },
+  { id: 'b', namn: 'B · Två rader: värdet över villkoret', regel: 'Raden har två textrader inom sina 44 px: värdet överst över hela radens bredd, kapat i mitten så att både början och slut syns, och under det «10 kort · om raritet» i 11 px. Namnet är villkoret som duken redan skriver det, «om raritet = Karaktär», och egenskapsrubriken säger samma sak. Villkorsglyfen går som i A.', pris: 'Ingen CSS kapar i mitten; det är en mätning i JS per rad och per breddändring. Mitten kan träffa där värdena är lika: «Lege…nad)» för både förbannad och välsignad vid 1×. Andraraden kapar kolumnens namn («om Utrustn…»). Raden läser namnets delar i en annan ordning än duken.' },
+  { id: 'c', namn: 'C · Det gemensamma en gång', rek: true, regel: 'Villkor på samma kolumn som står i följd samlas under en rubrikrad, «om raritet =», och varje rad visar det som skiljer den från grannarna: värdet, och när grannarnas värden delar ord bara orden som skiljer («… (förbannad)», «Förbannad …»), plus antalet. Ett ensamt villkor står med hela namnet. Utanför listan heter lagret «om raritet = Karaktär», på duken och i egenskapsrubriken; skärmläsaren hör hela namnet på varje rad, och rubrikraden är dold för den.', pris: 'Rubrikraden kostar 22 px per följd. Den följer ordningen, så ett villkor som dras ur följden byter utseende. Elisionen beror på grannarna: ett nytt värde kan ändra hur de andra raderna läses. Ett långt värde utan gemensamma ord kapas fortfarande i slutet.' },
+  { id: 'd', namn: 'D · Raden bryter, mappilen går', regel: 'Mappknappen (44 px) tas ur raden: ett villkor öppnas när det väljs, som i dag, och pilen ritas som ett tecken där greppet står. Namnet får då 114 px och bryts medvetet över så många rader det behöver: «om raritet = / Karaktär · 10 kort». Ett namn överallt, ordagrant — raden, duken och egenskapsrubriken skriver samma sträng.', pris: 'Raden växer med namnet: 44 px för Sal\'s Saloon, men 89–109 px för de långa villkoren och upp till 142 px med +15 %, så listan blir lång. Att titta i en mapp utan att välja den går inte längre med pekaren (tangentbordet nådde aldrig mappknappen, tabIndex −1).' },
+]
+const YTOR = [
+  { id: 'sal', namn: "Sal's Saloon · basen" },
+  { id: 'grupp', namn: "Sal's Saloon · typ = Effect" },
+  { id: 'langa', namn: 'Långa villkor (sv)' },
+  { id: 'long', namn: 'Long conditions (en)' },
+]
+const BREDDER = [1440, 1280, 1024]
+const q = new URLSearchParams(location.search)
+let v = q.get('v') ?? 'c', yta = q.get('yta') ?? 'sal', w = Number(q.get('w') ?? 1280)
+const cell = (vv, ss, ww) => window.MATT.find((m) => m.v === vv && m.s === ss && m.w === ww)
+const knappar = (rot, lista, nu, val) => {
+  rot.querySelectorAll('button').forEach((b) => b.remove())
+  for (const x of lista) {
+    const b = document.createElement('button')
+    b.textContent = x.namn
+    if (x.rek) b.classList.add('rek')
+    b.setAttribute('aria-pressed', String(x.id === nu))
+    b.onclick = () => val(x.id)
+    rot.append(b)
+  }
+}
+const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])
+// The same question at every width: one answer if they agree, each width's if they do not.
+function perWidth(id, s, f) {
+  const got = BREDDER.map((ww) => [ww, f(cell(id, s, ww))])
+  const same = got.every(([, x]) => x.t === got[0][1].t)
+  if (same) return got[0][1]
+  return { t: got.map(([ww, x]) => `${ww}: ${x.t}`).join('<br>'), c: got.some(([, x]) => x.c === 'nej') ? 'nej' : got.some(([, x]) => x.c === 'mitt') ? 'mitt' : 'ok' }
+}
+function rows() {
+  const r = []
+  const per = (f) => VARIANTER.map((x) => f(x.id))
+  const sw = (s, f) => per((id) => perWidth(id, s, f))
+  for (const [s, namn] of [['sal', "Sal's Saloon, sex villkor"], ['langa', 'Långa villkor (sv), sex villkor'], ['long', 'Long conditions (en), sex villkor']]) {
+    r.push([`${namn}: hela värdet syns utan hover (Mac / +15 %)`, sw(s, (m) => ({ t: `${m.valuesSeen} av ${m.conds} / ${m.wide.valuesSeen} av ${m.conds}`, c: m.valuesSeen === m.conds && m.wide.valuesSeen === m.conds ? 'ok' : m.valuesSeen === m.conds ? 'mitt' : 'nej' }))])
+    r.push([`${namn}: raderna skiljs åt med ögat (Mac / +15 %)`, sw(s, (m) => ({ t: `${m.distinct} av ${m.conds} / ${m.wide.distinct} av ${m.conds}`, c: m.distinct === m.conds && m.wide.distinct === m.conds ? 'ok' : 'nej' }))])
+  }
+  r.push(['Var ellipsen faller (långa villkor, sv)', sw('langa', (m) => {
+    const cuts = [...new Set(m.rows.map((x) => x.cut))].filter((c) => c !== 'ingen')
+    const ex = m.rows.find((x) => x.cut !== 'ingen')
+    return { t: cuts.length ? `${cuts.join(', ')} · t.ex. «${esc(ex.visible)}»` : 'ingen ellips', c: cuts.length ? (cuts.includes('början') ? 'nej' : 'mitt') : 'ok' }
+  })])
+  r.push(['Villkorsradens höjd, hopfälld: Sal\'s Saloon · långa (sv) · långa +15 %', per((id) => {
+    const a = cell(id, 'sal', 1280), b = cell(id, 'langa', 1280)
+    return { t: `${a.rowH} px · ${b.rowHmin}–${b.rowH} px · ${b.wide.rowH} px`, c: b.wide.rowH > 60 ? 'nej' : 'ok' }
+  })])
+  r.push(['Lagerlistans höjd, Sal\'s Saloon (basen, ett villkor valt och utfällt)', per((id) => { const m = cell(id, 'sal', 1280); const nu = cell('nu', 'sal', 1280); return { t: `${m.listH} px${id === 'nu' ? '' : ` (${m.listH - nu.listH >= 0 ? '+' : ''}${m.listH - nu.listH})`}`, c: m.listH - nu.listH > 40 ? 'mitt' : 'ok' } })])
+  r.push(['Lagerlistans höjd, långa villkor (sv)', per((id) => { const m = cell(id, 'langa', 1280); const nu = cell('nu', 'langa', 1280); return { t: `${m.listH} px${id === 'nu' ? '' : ` (${m.listH - nu.listH >= 0 ? '+' : ''}${m.listH - nu.listH})`} · +15 %: ${m.wide.listH} px`, c: m.wide.listH - nu.listH > 100 ? 'nej' : m.listH - nu.listH > 40 ? 'mitt' : 'ok' } })])
+  r.push(['Namn på samma lager i raden, på duken och i egenskapsrubriken (Karaktär): som skrivna / som synliga', sw('sal', (m) => ({ t: `${m.names.written} / ${m.names.count} · rad «${esc(m.names.row)}» · duk «${esc(m.names.tab)}» · rubrik «${esc(m.names.props)}»`, c: m.names.written === 1 && m.names.count === 1 ? 'ok' : m.names.written === 1 ? 'mitt' : 'nej' }))])
+  r.push(['Samma fråga, långa villkor (Legendarisk artefakt (förbannad))', sw('langa', (m) => ({ t: `${m.names.written} / ${m.names.count} · rad «${esc(m.names.row)}»`, c: m.names.written === 1 && m.names.count === 1 ? 'ok' : m.names.written === 1 ? 'mitt' : 'nej' }))])
+  r.push(['Skärmläsaren hör på raden (Karaktär)', per((id) => { const m = cell(id, 'sal', 1280); const x = m.rows.find((y) => y.id === 'if-karaktar'); return { t: `«${esc(x.said)}»`, c: '' } })])
+  r.push(['Tangentbordet: ↓ från Karaktär landar på', per((id) => { const m = cell(id, 'sal', 1280); return { t: `${m.down.layer} · «${esc(m.down.said)}»`, c: m.down.layer ? 'ok' : 'nej' } })])
+  r.push(['I gruppen «typ = Effect»: villkorsradens höjd · märket', per((id) => { const m = cell(id, 'grupp', 1280); return { t: `${m.rowH} px · ${id === 'nu' ? '«· bas» på varje rad, bryts' : 'inget på basens lager; «gruppens» på gruppens egna'}`, c: id === 'nu' ? 'nej' : 'ok' } })])
+  r.push(['Grupper-listan (Sal\'s Saloon, basen): höjd · Trap+', per((id) => { const m = cell(id, 'sal', 1280); const t = m.rules.find((x) => /Trap\+/.test(x)) ?? ''; return { t: `${m.rulesH} px · «${esc(t)}»`, c: id === 'nu' ? 'nej' : 'ok' } })])
+  return r
+}
+const visa = () => {
+  history.replaceState(null, '', `?v=${v}&yta=${yta}&w=${w}`)
+  knappar(document.querySelector('#varianter'), VARIANTER, v, (x) => { v = x; visa() })
+  knappar(document.querySelector('#ytor'), YTOR, yta, (x) => { yta = x; visa() })
+  knappar(document.querySelector('#bredder'), BREDDER.map((b) => ({ id: b, namn: `${b} px` })), w, (x) => { w = x; visa() })
+  const V = VARIANTER.find((x) => x.id === v)
+  const Y = YTOR.find((x) => x.id === yta)
+  document.querySelector('#vnamn').textContent = V.namn + (V.rek ? ' — rekommendationen' : '')
+  document.querySelector('#vregel').textContent = V.regel
+  document.querySelector('#vpris').textContent = V.pris + (v === 'nu' ? '' : ' Gemensamt för A–D: egenskapsrubriken säger lagrets namn och inte dess id; i en grupp står inget märke på basens lager (skärmläsaren hör «från basen») och gruppens egna lager får brickan «gruppens»; Grupper-listan skrivs i ord.')
+  const m = cell(v, yta, w)
+  const kol = document.querySelector('#kol')
+  kol.src = 'img/' + m.col
+  kol.alt = `Lagerkolumnen, ${V.namn}, ${Y.namn}, ${w} px`
+  document.querySelector('#koltext').textContent = `${V.namn} · ${Y.namn} · ${w} px · lagerkolumnen (220 px), bilden i 1,5×${w === 1440 ? ' — samma bild som vid 1280: kolumnen och mätningarna är desamma' : ''}`
+  const ram = m.frame ?? cell(v, yta, 1280)?.frame
+  document.querySelector('#ram').hidden = !ram
+  if (ram) {
+    document.querySelector('#ramimg').src = 'img/' + ram
+    document.querySelector('#ramimg').alt = `Listan, duken och egenskaperna, ${V.namn}, ${Y.namn}, 1280 px`
+    document.querySelector('#ramtext').textContent = `${V.namn} · ${Y.namn} · listan, dukens flik och egenskapsrubriken vid 1280 × 800${w !== 1280 ? ' (helbilden finns bara vid 1280)' : ''}`
+  }
+  const t = [
+    ['Hela värdet syns, Mac', `${m.valuesSeen} av ${m.conds}`],
+    ['Hela värdet syns, +15 %', `${m.wide.valuesSeen} av ${m.conds}`],
+    ['Raderna skiljs åt, Mac', `${m.distinct} av ${m.conds}`],
+    ['Raderna skiljs åt, +15 %', `${m.wide.distinct} av ${m.conds}`],
+    ['Villkorsrad, hopfälld', `${m.rowHmin === m.rowH ? m.rowH : `${m.rowHmin}–${m.rowH}`} px (+15 %: ${m.wide.rowH} px)`],
+    ['Lagerlistan', `${m.listH} px`],
+    ['Namn: som skrivna / synliga', m.names ? `${m.names.written} / ${m.names.count}` : '–'],
+    ['Dukens flik', m.names?.tab ? `«${m.names.tab}»` : '–'],
+    ['Egenskapsrubriken', m.names?.props ? `«${m.names.props}»` : '–'],
+  ]
+  if (m.rulesH) t.push(['Grupper-listan', `${m.rulesH} px`])
+  document.querySelector('#tal').innerHTML = t.map(([k, n]) => `<span>${k}</span><b>${esc(n)}</b>`).join('')
+  document.querySelector('#rader').innerHTML = m.rows.map((r, i) => `<tr><td>${esc(r.head ? r.head + ' ' : '')}${esc(r.visible)}</td><td>${esc(m.wide.rows[i]?.visible)}</td></tr>`).join('')
+  document.querySelector('#aria').textContent = m.aria
+  const tab = document.querySelector('#matris')
+  const head = '<thead><tr><th>Fråga</th>' + VARIANTER.map((x) => `<th class="${x.id === v ? 'valt' : ''}"><a href="?v=${x.id}&yta=${yta}&w=${w}" data-v="${x.id}" style="color:inherit">${x.namn}</a></th>`).join('') + '</tr></thead>'
+  tab.innerHTML = head + '<tbody>' + rows().map(([q, cells]) => `<tr><td>${q}</td>${cells.map((c, i) => `<td class="${c.c}${VARIANTER[i].id === v ? ' valt' : ''}">${c.t}</td>`).join('')}</tr>`).join('') + '</tbody>'
+  tab.querySelectorAll('a[data-v]').forEach((a) => (a.onclick = (e) => { e.preventDefault(); v = a.dataset.v; visa(); scrollTo(0, 0) }))
+}
+addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+  const i = VARIANTER.findIndex((x) => x.id === v)
+  v = VARIANTER[(i + (e.key === 'ArrowRight' ? 1 : VARIANTER.length - 1)) % VARIANTER.length].id
+  visa()
+})
+visa()
+</script>
+</body>
+</html>
