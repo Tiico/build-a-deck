@@ -190,7 +190,8 @@ describe('what the export collects and what it names things (#527)', () => {
     expect(printFileOf('Häxan / den svarta', 'back')).toBe('tryck/Haxan_den_svarta-back.pdf')
     expect(printFileOf('龍', 'front')).toBe('tryck/_-front.pdf')
     expect(printFileOf('鳳', 'front', 2)).toBe('tryck/_-2-front.pdf')
-    expect(exportDisposition('Skogens härskare', 3)).toBe(`attachment; filename="Skogens h_rskare rev-3.zip"; filename*=UTF-8''${encodeURIComponent('Skogens härskare rev-3.zip')}`)
+    // The version by the word people read, «v3», never the id «rev-3» (#703).
+    expect(exportDisposition('Skogens härskare', 3)).toBe(`attachment; filename="Skogens h_rskare v3.zip"; filename*=UTF-8''${encodeURIComponent('Skogens härskare v3.zip')}`)
   })
 })
 

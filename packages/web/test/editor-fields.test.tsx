@@ -56,7 +56,7 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
     await user.type(screen.getByLabelText('dragon styrka'), '7')
 
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
 
     // What the server kept, not what the page remembers.
     const saved = await run.projects.load(run.projectId)
@@ -104,7 +104,7 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
     await waitFor(() => expect(column('styrka')).toBeNull())
 
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     const saved = await run.projects.load(run.projectId)
     expect(saved?.rows.every((r) => !('styrka' in r.fields))).toBe(true)
     expect(saved?.template.faces['front']?.base.map((e) => e.id)).toEqual(['frame', 'body'])
@@ -179,7 +179,7 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
     await user.keyboard('{Alt>}{ArrowLeft}{/Alt}')
     await waitFor(() => expect(order()).toEqual(['id', 'body', 'title', 'antal']))
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    await screen.findByText(/rev [23]/)
+    await screen.findByText(/v[23]/)
     // What the server kept, and in the form the document keeps it in: an order, not a list.
     expect((await run.projects.load(run.projectId))?.columns).toEqual(['body', 'title', 'antal'])
 

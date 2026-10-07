@@ -48,7 +48,7 @@ describe('EditorPage', () => {
     const save = screen.getByRole('button', { name: /spara/i }) as HTMLButtonElement
     expect(save.getAttribute('aria-disabled')).toBe('false')
     fireEvent.click(save)
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     expect(screen.getByRole('button', { name: /spara/i }).getAttribute('aria-disabled')).toBe('true')
     const stored = await run.projects.load(run.projectId)
     expect(stored?.rev).toBe(2)
@@ -95,7 +95,7 @@ describe('EditorPage', () => {
     expect(save.getAttribute('aria-disabled')).toBe('false')
 
     fireEvent.click(save)
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     expect((await run.projects.load(run.projectId))?.rows).toEqual([
       { id: 'phoenix', fields: { title: 'Fenix', body: 'Återföds', antal: 3 } },
     ])
@@ -124,7 +124,7 @@ describe('EditorPage', () => {
     const save = screen.getByRole('button', { name: /spara/i }) as HTMLButtonElement
     expect(save.getAttribute('aria-disabled')).toBe('false')
     fireEvent.click(save)
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     expect((await run.projects.load(run.projectId))?.rows).toEqual([
       { id: 'dragon', fields: { title: 'Drake', body: 'Flygande.', antal: 4 } },
       { id: 'knight', fields: { title: 'Riddare', body: 'Sköld 1.', antal: 4 } },
@@ -209,7 +209,7 @@ describe('the table follows the editor (C7, L5)', () => {
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
     fireEvent.change(screen.getByLabelText('dragon antal'), { target: { value: '4' } })
     fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
-    await screen.findByText(/rev-2/)
+    await screen.findByText(/version 2/)
     expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual(['version.change'])
     expect(screen.getAllByRole('link', { name: /öppna bordet/i })).toHaveLength(1)
 
@@ -256,7 +256,7 @@ describe('a table opens only once its cards can be seen (L5)', () => {
     try {
       history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
       render(<EditorPage />)
-      await screen.findByText(/Bordet kör rev-1/)
+      await screen.findByText(/Bordet kör version 1/)
       const band = document.querySelector('.byd-editor-table-link')!
       expect(band.textContent).not.toMatch(/renderar kort/i)
       expect(band.textContent).not.toContain('…')
@@ -340,7 +340,7 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
     expect(await screen.findByText(/renderar kort 3\/4/i)).toBeTruthy()
     expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual([])
     expect(await run.completeRenders()).toBe(1)
-    await screen.findByText(/bordet uppdaterat på rev-2/i)
+    await screen.findByText(/bordet uppdaterat på version 2/i)
     expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual(['version.change'])
     expect(screen.getByRole('link', { name: /öppna bordet/i })).toBeTruthy()
   })
@@ -373,7 +373,7 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
     fireEvent.click(screen.getByRole('button', { name: 'Försök igen' }))
     await screen.findByText(/renderar kort 3\/4/i)
     await run.completeRenders()
-    await screen.findByText(/bordet uppdaterat på rev-2/i)
+    await screen.findByText(/bordet uppdaterat på version 2/i)
     expect(document.querySelector('.byd-editor-table-link')!.hasAttribute('data-lost')).toBe(false)
     expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual(['version.change'])
   }, 20_000)
@@ -424,7 +424,7 @@ describe('the editor by keyboard alone (UX-04)', () => {
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fler val för Skogens herrar' }))
     await user.tab()
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: /rev 1/ }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^v1$/ }))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ångra: inget att ta tillbaka' }))
     await user.tab()
@@ -533,7 +533,7 @@ describe('editing the template on the canvas (#18)', () => {
 
     // It lands in the saved project through the same path every other editor change takes.
     fireEvent.click(screen.getByRole('button', { name: /spara/i }))
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     const stored = await run.projects.load(run.projectId)
     expect(stored?.template.faces['front']?.base.map((e) => e.id)).toEqual(['frame', 'title', 'body', 'text-1'])
 
@@ -566,7 +566,7 @@ describe('the order of the layers (#18)', () => {
     expect(drawn()).toEqual(['frame', 'body', 'title'])
 
     fireEvent.click(screen.getByRole('button', { name: /spara/i }))
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     expect((await run.projects.load(run.projectId))?.template.faces['front']?.base.map((e) => e.id)).toEqual(['frame', 'body', 'title'])
   }, 20_000)
 })
@@ -697,7 +697,7 @@ describe('a game made without the guided start (L42)', () => {
     fireEvent.click(screen.getByRole('button', { name: '+ Nytt kort' }))
 
     fireEvent.click(screen.getByRole('button', { name: /spara/i }))
-    await screen.findByText('rev 2')
+    await screen.findByText('v2')
     const stored = await run.projects.load(run.projectId)
     expect(stored?.template.faces['front']?.base.map((e) => e.id)).toEqual(['text-1'])
     expect(stored?.rows).toHaveLength(1)

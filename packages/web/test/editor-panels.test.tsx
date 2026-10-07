@@ -38,7 +38,7 @@ describe('the history over the editor’s work (B4)', () => {
   it('closes on Escape and hands the focus back to the revision', async () => {
     const user = userEvent.setup()
     await openEditor()
-    const rev = screen.getByRole('button', { name: /rev 1/ })
+    const rev = screen.getByRole('button', { name: /^v1$/ })
     await user.click(rev)
     await screen.findByRole('dialog', { name: 'Historik' })
 
@@ -50,7 +50,7 @@ describe('the history over the editor’s work (B4)', () => {
   it('closes when the designer clicks back into the work', async () => {
     const user = userEvent.setup()
     await openEditor()
-    await user.click(screen.getByRole('button', { name: /rev 1/ }))
+    await user.click(screen.getByRole('button', { name: /^v1$/ }))
     await screen.findByRole('dialog', { name: 'Historik' })
 
     await user.click(screen.getByRole('tabpanel', { name: 'Kortvägg' }))
@@ -60,7 +60,7 @@ describe('the history over the editor’s work (B4)', () => {
   it('stays open while the designer works inside it', async () => {
     const user = userEvent.setup()
     await openEditor()
-    await user.click(screen.getByRole('button', { name: /rev 1/ }))
+    await user.click(screen.getByRole('button', { name: /^v1$/ }))
     const panel = await screen.findByRole('dialog', { name: 'Historik' })
 
     await user.click(await within(panel).findByRole('button', { name: /Version 1/ }))
@@ -114,14 +114,14 @@ describe('the two panels together', () => {
   it('closes the one that was standing when the other opens', async () => {
     const user = userEvent.setup()
     await openEditor()
-    await user.click(screen.getByRole('button', { name: /rev 1/ }))
+    await user.click(screen.getByRole('button', { name: /^v1$/ }))
     await screen.findByRole('dialog', { name: 'Historik' })
 
     await user.click(screen.getByRole('button', { name: 'Dela · vilka som har spelet' }))
     await screen.findByRole('dialog', { name: 'Vilka som har spelet' })
     expect(screen.queryByRole('dialog', { name: 'Historik' })).toBeNull()
 
-    await user.click(screen.getByRole('button', { name: /rev 1/ }))
+    await user.click(screen.getByRole('button', { name: /^v1$/ }))
     await screen.findByRole('dialog', { name: 'Historik' })
     expect(screen.queryByRole('dialog', { name: 'Vilka som har spelet' })).toBeNull()
   })

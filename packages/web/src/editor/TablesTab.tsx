@@ -13,6 +13,7 @@ import { useLang, useT, type Key, type T } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
 import { Help } from './HelpDrawer.js'
 import { lastMoveWords } from './when.js'
+import { versionWord } from '../i18n/version.js'
 
 // The Bord tab (#19): every table this game has, and the ways into it. A table is a session
 // started from the project (C9: it survives everyone disconnecting), so the list is the server's
@@ -347,7 +348,7 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate }: { tab
   // has it for whoever may start tables while it still admits, and the table's own connection
   // says it too, also once it has ended. Until either has answered it is called by its version.
   const code = table.code ?? room?.code ?? null
-  const name = code ?? table.version
+  const name = code ?? versionWord(table.version, t, 'short')
   // The update of a row behind the project, from the row itself (#706): a press that takes a
   // moment says so, and one that fails says so in a sentence of the tab's own.
   const [updating, setUpdating] = useState(false)
@@ -427,12 +428,12 @@ function TableRow({ table, server, rev, qrOpen, onQr, onEnded, onUpdate }: { tab
       <div className="byd-tables-info">
         <p className="byd-tables-head">
           {code && <strong className="byd-tables-name">{code}</strong>}
-          <span className="byd-tables-version">{table.version}</span>
+          <span className="byd-tables-version">{versionWord(table.version, t, 'short')}</span>
           <span className="byd-tables-state" data-state={state}>
             {t(STATE_WORD[state])}
           </span>
           {stillRendering(textures) && <span className="byd-tables-render">{t('editor.table.rendering', { done: textures.done, total: textures.total })}</span>}
-          {stale && <em className="byd-tables-stale">{t('tables.stale', { version: table.version, rev })}</em>}
+          {stale && <em className="byd-tables-stale">{t('tables.stale', { version: versionWord(table.version, t, 'name'), rev })}</em>}
         </p>
         {!ended && <p className="byd-tables-line">{seated(view?.seats ?? null, observers, t)}</p>}
         <p className="byd-tables-line">

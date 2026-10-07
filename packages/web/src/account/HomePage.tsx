@@ -19,6 +19,7 @@ import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { LanguagePicker, useLang, useT, type Lang, type T } from '../i18n/index.js'
 import './account.css'
+import { versionWord } from '../i18n/version.js'
 
 // The three dialogs a game's ⋯ and «Importera» open are drawn on a press and never on the first
 // frame, so they are fetched when one is opened, with their own sheet, and not carried in the sheet
@@ -410,7 +411,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                     <span className="byd-muted">{when(t, lang, p.at)}</span>
                   </div>
                   <strong>{p.deleted ? t('home.played.deleted') : (p.game ?? t('home.played.some-table'))}</strong>
-                  <span className="byd-muted">{t('home.played.you', { version: p.version, name: p.name })}</span>
+                  <span className="byd-muted">{t('home.played.you', { version: versionWord(p.version, t, 'short'), name: p.name })}</span>
                   <span className="byd-home-facts">
                     {p.ended ? (p.surveyed ? t('home.played.surveyed') : t('home.played.unsurveyed')) : t('home.played.running')}
                     {p.flags > 0 && ` · ${t('home.played.flags', { n: p.flags })}`}

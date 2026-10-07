@@ -67,7 +67,7 @@ export const svAccount = {
   'home.help.new': '«+ Nytt spel» frågar efter namn och antal spelare och gör resten åt dig.',
 
   // Vad ett spel säger om sig självt innan det öppnas: revision, bord och senaste gången.
-  'home.card.line': 'rev {rev} · {played}',
+  'home.card.line': 'v{rev} · {played}',
   'home.card.never': 'aldrig spelat',
   'home.card.nocards': 'inga kort än',
   'home.card.first': 'Första kortet: {title}',

@@ -15,7 +15,7 @@ test('a table updated to a version with rules hands out the book and names the v
   const seats = gameDoc({ players: 2 }).setup.seats
   const tv = await open(TV, `${table.tvUrl}&lang=sv`)
   const ada = await player({ ...table, seats }, { name: 'Ada', seat: seats[0]! })
-  await expect(tv.page.getByRole('heading', { level: 1 })).toHaveText('Skogens herrar rev-1')
+  await expect(tv.page.getByRole('heading', { level: 1 })).toHaveText('Skogens herrar version 1')
   await expect(ada.page.locator('.byd-player > header')).toBeVisible()
   await expect(ada.page.getByRole('button', { name: 'Rules', exact: true })).toHaveCount(0)
   await expect(tv.page.getByRole('button', { name: 'Regler', exact: true })).toHaveCount(0)
@@ -27,8 +27,8 @@ test('a table updated to a version with rules hands out the book and names the v
   expect((await request.post(`/sessions/${encodeURIComponent(table.session)}/refresh`)).status()).toBe(200)
 
   // The title changes with the line that says so, not after a reload.
-  await expect(tv.page.getByText('Spelet uppdaterades till rev-2').first()).toBeVisible()
-  await expect(tv.page.getByRole('heading', { level: 1 })).toHaveText('Skogens herrar rev-2')
+  await expect(tv.page.getByText('Spelet uppdaterades till version 2').first()).toBeVisible()
+  await expect(tv.page.getByRole('heading', { level: 1 })).toHaveText('Skogens herrar version 2')
   await tv.page.getByRole('button', { name: 'Regler', exact: true }).click()
   await expect(tv.page.locator('.byd-rules-panel').getByRole('heading', { name: 'Så spelar ni' })).toBeVisible()
   await expect(ada.page.getByRole('button', { name: 'Rules', exact: true })).toBeVisible()

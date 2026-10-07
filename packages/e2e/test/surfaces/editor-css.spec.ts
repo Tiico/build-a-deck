@@ -25,7 +25,7 @@ const SHELL = `
   <header>
     <a class="byd-editor-home" href="#" data-stop="the way out of the editor">Mina spel</a>
     <strong>Skogens herrar</strong>
-    <span class="byd-editor-rev">rev 12</span>
+    <span class="byd-editor-rev">v12</span>
     <span class="byd-editor-saved" data-unsaved="true">Osparat</span>
     <nav role="tablist" aria-label="Editorlägen">
       <button role="tab" aria-selected="true" data-stop="the open tab">Kortvägg</button>
@@ -150,12 +150,12 @@ const SHELL = `
             <li class="byd-table-row" data-state="played" data-stale="true">
               <div class="byd-tables-mini"></div>
               <div class="byd-tables-info">
-                <p class="byd-tables-head"><strong class="byd-tables-name">K7QX2P</strong><span class="byd-tables-version">rev-2</span><span class="byd-tables-state" data-state="played">i spel</span><em class="byd-tables-stale">rev-2, spelet är på rev-3</em></p>
+                <p class="byd-tables-head"><strong class="byd-tables-name">K7QX2P</strong><span class="byd-tables-version">v2</span><span class="byd-tables-state" data-state="played">i spel</span><em class="byd-tables-stale">Version 2, spelet är på version 3</em></p>
                 <p class="byd-tables-line">Ada spelar</p>
                 <p class="byd-tables-line">senaste drag 19:41</p>
               </div>
               <div class="byd-tables-go">
-                <button class="byd-secondary byd-tables-update" data-stop="updating the table">Uppdatera till rev-3</button>
+                <button class="byd-secondary byd-tables-update" data-stop="updating the table">Uppdatera till version 3</button>
                 <a class="byd-secondary" href="#" data-stop="playing from here">Spela härifrån</a>
                 <button class="byd-tables-more" aria-haspopup="menu" aria-expanded="true" data-stop="the row's menu">▾</button>
                 <div class="byd-tables-menu" role="menu">

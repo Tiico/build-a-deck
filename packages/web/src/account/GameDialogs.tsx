@@ -175,7 +175,8 @@ export function ImportDialog({ http, onClose, onImported, onOpen, nameOf }: { ht
     if (now.state === 'done') open.current?.focus()
   }, [now.state])
   const bring = async (file: File) => {
-    const name = file.name.replace(/\.zip$/i, '').replace(/ rev-\d+$/, '')
+    // The version the export's name ends with, as it is written now («v3», #703) and as it was («rev-3»).
+    const name = file.name.replace(/\.zip$/i, '').replace(/ (?:v|rev-)\d+$/, '')
     setNow({ state: 'reading', name })
     let got: Awaited<ReturnType<typeof importGame>>
     try {

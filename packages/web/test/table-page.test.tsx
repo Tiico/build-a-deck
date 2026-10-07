@@ -44,21 +44,21 @@ describe('the screen says which game it runs (C)', () => {
     const id = await createNamedSession(run, 'Skogens herrar')
     history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
-    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar rev-1'))
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar version 1'))
   })
 
   // «Uppdatera» (C7) moves the table to the next rev while the TV stands there (#677): the title
-  // follows the very patch that writes «Spelet uppdaterades till rev-2» in SENAST, not a reload.
+  // follows the very patch that writes «Spelet uppdaterades till version 2» in SENAST, not a reload.
   it('follows a version change live, as the log line arrives', async () => {
     const id = await createNamedSession(run, 'Skogens herrar')
     history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
-    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar rev-1'))
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar version 1'))
     const doc = (await run.projects.load('p-s1'))!
     expect(await run.projects.replace('p-s1', 1, { name: doc.name, template: doc.template, rows: [...doc.rows, { id: 'ny', fields: { title: 'Nytt kort' } }], icons: doc.icons, setup: doc.setup })).not.toBe('conflict')
     expect((await fetch(`${run.http}/sessions/${id}/refresh`, { method: 'POST' })).status).toBe(200)
-    expect(await screen.findByText(/Spelet uppdaterades till rev-2/)).toBeTruthy()
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar rev-2')
+    expect(await screen.findByText(/Spelet uppdaterades till version 2/)).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar version 2')
   })
 })
 
@@ -67,7 +67,7 @@ describe('the table mode names the game too (B)', () => {
     const id = await createNamedSession(run, 'Skogens herrar')
     history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=table&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
-    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar · rev-1'))
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar · version 1'))
     // The code is the address (#675, beslut C): the plate says where to go, and that is the way in.
     expect(document.querySelector('.byd-table-plate [data-address]')?.textContent).toBe(`${location.host}/${roomOf(id).code}`)
     // The felt is the whole screen in table mode: no TV chrome around it.
@@ -291,10 +291,16 @@ describe('the end of a session on the table (C9)', () => {
     await ada.send({ v: 'session.end' })
     const over = await screen.findByRole('heading', { name: /Bordet är avslutat/ })
     const overlay = over.closest('[data-ended]')!
-    await waitFor(() => expect(overlay.textContent).toMatch(/v1/))
+    // In the game's own words (#703): the version by its name, the moves that were made — the seat
+    // taken and the flag are not moves — those who sat at the table, and a survey line that holds
+    // for a table played without phones too.
+    // The fixture's session is version «v1», which the name of a version leaves as it is.
+    await waitFor(() => expect(overlay.textContent).toMatch(/Bordet stannade på v1\./))
+    expect(overlay.textContent).toMatch(/1 drag/)
     expect(overlay.textContent).toMatch(/1 flaggade ögonblick/)
-    expect(overlay.textContent).toMatch(/1 spelare/)
-    expect(overlay.textContent).toMatch(/telefonerna/)
+    expect(overlay.textContent).toMatch(/1 vid bordet/)
+    expect(overlay.textContent).toMatch(/Enkäten finns hos varje spelare/)
+    expect(overlay.textContent).not.toMatch(/rev|rader|Loggen/)
     ada.close()
   })
 })
