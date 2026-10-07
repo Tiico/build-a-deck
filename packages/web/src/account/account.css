@@ -150,3 +150,8 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
    what it is about first, and the way to it in the header beside the account. */
 .byd-home-import { margin-left: auto; min-height: 44px; border-radius: 12px; padding: 8px 16px; font-family: inherit; font-size: 15px; cursor: pointer; }
 .byd-home-game > .byd-game-menu { right: 8px; top: 34px; }
+
+/* Where a beta tester turns, and the version she quotes back (#757, prototyp A): a quiet line last
+   in the login card and last on Mina spel, in the muted ink that already reads on this ground. */
+.byd-about { margin: 24px 0 0; text-align: center; font-size: 12px; line-height: 1.5; color: #9aa3b8; }
+.byd-about a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }

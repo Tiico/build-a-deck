@@ -435,6 +435,8 @@ export const svPlay = {
   'survey.thanks': 'Tack, {who}.',
   'survey.tied': 'Dina svar är knutna till {version}.',
   'survey.save': 'Spara till ditt konto',
+  // Vad som lagras om en gäst, där hon ansluter eller sparar (#757): knutet till bordet, inte till en person.
+  'guest.kept': 'Vi sparar ditt namn, platsens drag och dina enkätsvar — knutna till bordet, inte till dig.',
 
   // Åskådaren (C8).
   'observer.name': 'observatör',

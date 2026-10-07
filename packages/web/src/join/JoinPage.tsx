@@ -333,6 +333,8 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
             {...(says ? { 'aria-describedby': saysId } : {})}
           />
         </label>
+        {/* What a guest leaves behind, said where she sits down (#757): tied to the table, not to her. */}
+        <p className="byd-guest-kept">{t('guest.kept')}</p>
         {/* Villkoret, sagt en gång per skärm och vid fältet — inte en gång per knapp. Det föds
             efter trycket, så det föds som en levande region: en `alert` som kommer till
             dokumentet läses upp när den kommer, och fältet pekar på den. */}

@@ -59,6 +59,10 @@ export type ServerOptions = {
   // The release this process is running, named in /health so the box can be asked what it is
   // (DRIFT §7, §8): the box is otherwise mute about its own version.
   release?: string
+  // Where a beta tester turns (#757, DRIFT): the box's own setting (`BYD_CONTACT`), named in
+  // /health so the login card and Mina spel can say it, and in the foot of the login mail. Never an
+  // address in the code; nothing is said when the box was given none.
+  contact?: string
 }
 const BOOKLET: RenderKind = { kind: 'booklet' }
 const clock = (opts: ServerOptions): Date => (opts.now ?? (() => new Date()))()
@@ -257,7 +261,7 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const loaded = await opts.host.loaded()
       // Every answer carries it, the 503s included: which version is broken is the first thing
       // asked back, and the box has nowhere else to say it (DRIFT §8).
-      const who = { ...(opts.release ? { release: opts.release } : {}), tables: loaded.length }
+      const who = { ...(opts.release ? { release: opts.release } : {}), ...(opts.contact ? { contact: opts.contact } : {}), tables: loaded.length }
       try {
         await opts.store.staleSessions(new Date(0))
       } catch (err) {
@@ -1827,7 +1831,7 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     // The link must come back to this API, where the cookie lives: never the page's origin.
     const base = opts.publicOrigin ?? `http://${req.headers.host ?? 'localhost'}`
     const link = `${base}/auth/verify?token=${t}&next=${encodeURIComponent(safeNext(parsed.data.next))}`
-    await opts.mailer?.send(loginMail(email, link, langOf(parsed.data.lang)))
+    await opts.mailer?.send(loginMail(email, link, langOf(parsed.data.lang), opts.contact))
     return json(res, 200, { ok: true })
   }
   if (req.method === 'GET' && url.pathname === '/auth/verify') {

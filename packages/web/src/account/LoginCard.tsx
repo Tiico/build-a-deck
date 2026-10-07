@@ -3,6 +3,7 @@ import { requestLink } from './api.js'
 import { markPitchSeen, pitchSeen } from './pitch.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { LanguagePicker, useT, type Key } from '../i18n/index.js'
+import { AboutLine } from './AboutLine.js'
 
 // Logging in (G1, prototype A): one field, one button, one line about what logging in is for.
 // Never a password, never a word about whether the address is known. The password-less link and
@@ -110,6 +111,7 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
         {t('account.language')}
         <LanguagePicker />
       </label>
+      <AboutLine http={http} />
     </div>
   )
 }
