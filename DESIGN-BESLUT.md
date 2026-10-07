@@ -5202,6 +5202,9 @@ Inloggningssidan är det första någon ser, och ett e-postfält utan sammanhang
 Det kräver ett tillstånd på en sida som i dag inte har något, och tillståndet är en vy och inte ett faktum om någon (L4): det ligger i webbläsaren, per skärm, aldrig i ett konto — sidan får inte veta vem som tittar innan hon loggat in.
 **Går lagringen inte att läsa visas säljtexten.**
 Ett privat fönster, en rensad webbläsare eller en blockerad lagring ska ge den som kanske aldrig varit här sammanhanget, inte ta bort det: felet åt det hållet kostar en mening, felet åt andra hållet kostar en förklaring till den som behövde den.
+
+*Reviderat 2026-10-06 (#743, beställarens beslut):* under betan säger säljtexten «Skapa ditt kortspel och speltesta det på skärmen — tryck kommer.» (engelska: «Build your own card game and playtest it on screen — print is coming.»).
+«Beställ hem det» lovade något som är fas 5, och en betatestare som kom för att beställa hittade ingenting; ingen beställning utlovas som något som finns i dag.
 Frågetecknet står kvar bredvid i båda fallen, så vägen till resten finns oavsett.
 
 **Raden under säljtexten följer vägen in** (beställarens beslut 2026-10-06, #691).
