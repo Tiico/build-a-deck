@@ -12,6 +12,7 @@ import { statusLinks } from '../status/links.js'
 import { noticeFor } from '../status/notice.js'
 import { useT } from '../i18n/index.js'
 import { useCodeField } from './codeField.js'
+import { useWide } from './wide.js'
 import './join.css'
 
 // /KOD and /join?code=…&server=ws://…  — what the TV says and what its QR points at, and what a
@@ -24,24 +25,6 @@ import './join.css'
 // one, and a code that names nothing is asked for again with the code left in the field.
 // `onSit` is where a way in leads, `onOpen` where a typed code does.
 export type JoinPageProps = { onSit?(url: string): void; onOpen?(url: string): void; timing?: StatusTiming }
-
-// From where a laptop is the screen being joined from (#675, beslut 3): there, playing on this
-// screen is the suggestion, and the phone's way stays as the second button. Where there is no
-// window to ask, the page is the phone's, which is who opens it nearly always.
-const WIDE = '(min-width: 1024px)'
-function useWide(): boolean {
-  const ask = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(WIDE).matches
-  const [wide, setWide] = useState(ask)
-  useEffect(() => {
-    if (typeof window.matchMedia !== 'function') return
-    const query = window.matchMedia(WIDE)
-    const answer = () => setWide(query.matches)
-    query.addEventListener('change', answer)
-    answer()
-    return () => query.removeEventListener('change', answer)
-  }, [])
-  return wide
-}
 
 // A table has four sides and may seat eight, so past four players two seats share a side (#42).
 // Where along that side each of them stands is not a fact about the table — it is how the picker

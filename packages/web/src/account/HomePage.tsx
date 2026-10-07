@@ -8,9 +8,10 @@ import { CardPreview } from '../editor/CardPreview.js'
 import { CARD_PX } from '../editor/corner.js'
 import { previewIcons } from '../editor/assets.js'
 import { previewFonts } from '../editor/fonts.js'
-import { duplicateProject, logout, myCards, myPlayed, myProjects, removeProject, renameProject, runningTables, startTable, whoAmI, type Played, type ProjectSummary, type RunningTable } from './api.js'
+import { duplicateProject, logout, myCards, myPlayed, myProjects, removeProject, renameProject, returnToTable, runningTables, startTable, whoAmI, type Played, type ProjectSummary, type RunningTable } from './api.js'
 import { tvUrl } from '../editor/tableLinks.js'
 import { GameMenu } from './GameMenu.js'
+import { useWide } from '../join/wide.js'
 import { marked } from './marked.js'
 import { seatColor } from '../table/seatColor.js'
 import { StatusNotice } from '../status/StatusNotice.js'
@@ -129,6 +130,19 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const suffix = (q: URLSearchParams) => {
     if (server) q.set('server', server)
     return q.toString()
+  }
+  // «Tillbaka till bordet» (#690, beslut 2026-10-06): to her own seat and hand, with a token the
+  // server hands the account for it, on the screen the picker would have suggested (#675). The
+  // picker is where it goes only when there is no seat left to go back to, and the link's own
+  // address stays the picker's for a press that never runs this.
+  const wide = useWide()
+  const backTo = async (p: Played) => {
+    const picker = `/join?${suffix(new URLSearchParams({ code: p.code ?? '' }))}`
+    const seat = await returnToTable(http, p.session).catch(() => null)
+    if (!seat) return onNavigate(picker)
+    const q = new URLSearchParams({ session: p.session, code: p.code ?? '', ...(seat.seat === null ? {} : { seat: seat.seat }), name: seat.name, token: seat.token })
+    if (server) q.set('server', server.replace(/^http/, 'ws'))
+    onNavigate(`${seat.kind === 'observer' ? '/observe' : wide ? '/online' : '/play'}?${q.toString()}`)
   }
   const justSaved = claimed ? played?.find((p) => p.session === claimed) : undefined
   // The banner is drawn with its text, so it is said once in the page's live region (4.1.3, #555).
@@ -417,7 +431,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                     {p.flags > 0 && ` · ${t('home.played.flags', { n: p.flags })}`}
                   </span>
                   {p.code && (
-                    <a className="byd-home-action" href={`/join?${suffix(new URLSearchParams({ code: p.code }))}`} onClick={(e) => { e.preventDefault(); onNavigate(`/join?${suffix(new URLSearchParams({ code: p.code ?? '' }))}`) }}>
+                    <a className="byd-home-action" href={`/join?${suffix(new URLSearchParams({ code: p.code }))}`} onClick={(e) => { e.preventDefault(); void backTo(p) }}>
                       {t('home.played.back')}
                     </a>
                   )}
