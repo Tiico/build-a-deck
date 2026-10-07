@@ -176,6 +176,23 @@ describe('how long a shuffle is held on the television (#718)', () => {
   })
 })
 
+// The fan and the words under the pile are played by the same line, and were keyed by the same
+// `seq` — two siblings with one key, which React reconciles as it likes: CI twice drew a second fan
+// beside the first, eight backs on one pile (#718). Each now has a key of its own.
+describe('the fan and the words of one shuffle are two things (#718)', () => {
+  it('draws one fan of four for a shuffle that is also said, and keeps one when the next shuffle comes', () => {
+    const { view } = buildScene()
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const { rerender } = render(<TableRenderer view={view(null)} mode="tv" scale={1} faces="http://faces.test" shuffles={[{ pile: 'draw', seq: 12 }]} said={[{ pile: 'draw', seq: 12 }]} />)
+    expect(document.querySelectorAll('[data-zone="draw"] .byd-pile-fan-card')).toHaveLength(4)
+    rerender(<TableRenderer view={view(null)} mode="tv" scale={1} faces="http://faces.test" shuffles={[{ pile: 'draw', seq: 13 }]} said={[{ pile: 'draw', seq: 13 }]} />)
+    expect(document.querySelectorAll('[data-zone="draw"] .byd-pile-fan')).toHaveLength(1)
+    expect(document.querySelectorAll('[data-zone="draw"] .byd-pile-fan-card')).toHaveLength(4)
+    expect(errors.mock.calls.map((c) => String(c[0])).filter((m) => /same key/.test(m))).toEqual([])
+    errors.mockRestore()
+  })
+})
+
 describe('the fan on the felt (L35)', () => {
   const fanOf = (pile: string) => Array.from(document.querySelectorAll(`[data-zone="${pile}"] .byd-pile-fan-card`))
 
