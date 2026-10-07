@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prototyp 695 — var antal och grupp står (#695)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* ── Frågan (#695) ──────────────────────────────────────────────────────────────────────
+     I Tabell ligger «antal» och «grupp» helt utanför lådan vid 1280 och 1024, och ingenting
+     säger det. Var ska antal stå — fastnålad, fotens knapp eller en annan ordning — och hur
+     förklarar grupp sig?
+
+     Varje bild är den BYGGDA editorn (packages/e2e-stacken, ett origin som på lådan), Tabell-
+     fliken, med varianten injicerad i den riktiga tabellen av matning/page.js: samma celler,
+     samma stilmall, samma mätta bredder. Två lekar: provleken Sal's Saloon (77 rader) och samma
+     lek skalad genom API:t till 308 rader och sju kolumner till. «+15 %» ritar tabellens text
+     15 % större, som DejaVu på Linux. Tangenttrycken är riktiga Tab-tryck i Chromium.
+     Skripten ligger i matning/. Inget är ritat för hand.
+     ──────────────────────────────────────────────────────────────────────────────────────── */
+  :root { --panel: #1b1d23; --line: #2f333d; --quiet-2: #9aa3b8; --primary-mark: #6ea8ff; --good: #9be3b5; }
+  body { display: flex; flex-direction: column; height: 100vh; padding: 0; }
+  .krona { flex: none; display: grid; gap: 8px; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .krona h1 { margin: 0; color: #fff; font-size: 15px; }
+  .rad { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .rad > span { color: var(--quiet-2); font-size: 12px; min-width: 64px; }
+  .rad button { min-height: 36px; padding: 0 10px; border: 1px solid #3b414e; border-radius: 8px; background: #14161c; color: #dce3f2; font: inherit; cursor: pointer; }
+  .rad button[aria-pressed='true'] { background: #24507f; border-color: var(--primary-mark); color: #fff; }
+  .rad button.rek { border-color: #3f7a55; }
+  .rad button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .scen { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; padding: 16px; align-content: start; }
+  @media (max-width: 1000px) { .scen { grid-template-columns: minmax(0, 1fr); } }
+  .bild { min-width: 0; }
+  .bild img { border: 1px solid #2f333d; border-radius: 6px; outline: 0; height: auto; }
+  .bild p { color: var(--quiet-2); font-size: 12px; margin: 6px 0 0; }
+  .sido { display: grid; gap: 12px; align-content: start; }
+  .ruta { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .ruta h2 { margin: 0 0 6px; color: #fff; font-size: 14px; }
+  .ruta p { margin: 0 0 6px; line-height: 1.5; color: #c9d1e3; }
+  .tal { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 13px; }
+  .tal b { text-align: right; }
+  .forkl { color: var(--quiet-2); font-size: 12px; margin: 6px 0; line-height: 1.5; }
+  .matris { grid-column: 1 / -1; overflow-x: auto; }
+  #matris { border-collapse: collapse; font-size: 12px; min-width: 1100px; }
+  #matris th, #matris td { border: 1px solid #2f333d; padding: 5px 7px; text-align: left; vertical-align: top; }
+  #matris th { color: #fff; background: #1b1f2a; }
+  #matris .valt { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  #matris td.ok { background: #16301f; color: #9be3b5; }
+  #matris td.nej { background: #3a1c1c; color: #ffb3a8; }
+  #matris td.mitt { color: #f0d7a0; background: #2e2716; }
+</style>
+</head>
+<body>
+<div class="krona">
+  <h1>Prototyp 695 — var antal och grupp står i Tabell (#695) <small style="color:var(--quiet-2);font-weight:400">· ← → byter variant · bilderna är den byggda editorn med varianten injicerad</small></h1>
+  <div class="rad" id="varianter"><span>Variant</span></div>
+  <div class="rad" id="ytor"><span>Yta</span></div>
+</div>
+<div class="scen">
+  <div class="bild"><a id="bildlank" target="_blank" title="Öppna bilden i full storlek"><img id="bild" alt=""></a><p id="bildtext"></p></div>
+  <div class="sido">
+    <div class="ruta"><h2 id="vnamn"></h2><p id="vregel"></p><p id="vpris" class="forkl"></p></div>
+    <div class="ruta"><h2>Mätt på den här bilden</h2><div class="tal" id="tal"></div></div>
+  </div>
+  <div class="matris ruta">
+    <h2>Alla varianter mot issuets acceptans</h2>
+    <p class="forkl">Grönt håller, rött håller inte, gult är ett pris. «Syns» betyder att kolumnens rubrik ligger helt i det rum som går att läsa — mellan det som är fastnålat till vänster och det som är fastnålat till höger — utan sidrullning; «fast» att den står på en list och syns hur man än rullar. Sex ytor: provleken och den täta leken vid 1440, 1280 och 1024. Tab räknas från radens bock till radens antal med riktiga tryck. Klicka en kolumnrubrik för att visa varianten.</p>
+    <table id="matris"></table>
+  </div>
+</div>
+<script src="data.js"></script>
+<script>
+const VARIANTER = [
+  { id: 'nu', namn: 'Nu', regel: 'Kolumnerna står i lekens ordning, antal sist och grupp efter det. body tar hela det rum som syns (L46:s tak räknas mot lådan minus listen och ×), så varje kolumn efter body börjar utanför lådan vid varje bredd — också vid 1440. Lådans högerkant tonar ut (#401) och foten säger bara antalet kort. grupp har ingen sortering, titel eller rad i dörren, och cellerna säger «typ = Playcard».', pris: 'Det issuet beskriver. I den täta leken ligger nio kolumner utanför och ingenting säger att de finns.' },
+  { id: 'a', namn: 'A · Foten säger vilka', regel: 'L4:s variant C tillbaka, som #170 tog bort tillsammans med chipset till vänster: efter «77 av 77 kort» står «2 kolumner till höger: Antal, grupp ›» som en knapp som rullar fyra femtedelar av lådan; rullad står «‹ 3 kolumner till vänster» bredvid. Namnen kortas bakifrån när de skulle göra foten en rad högre — ett smalt fönster, markeringens verktyg, en bekräftelse (L67) — och talet står kvar; hela meningen är knappens namn. Träffytan är 44 px men tar 15 px av fotens höjd, som frågetecknet (L32). grupp får ett ? vid rubriken.', pris: 'antal syns fortfarande inte förrän man trycker; tabellen säger bara var den står. grupp:s ? står också utanför tills man rullat dit. Ingen bredd och ingen höjd kostar något.' },
+  { id: 'b', namn: 'B · En list till höger', regel: 'antal och grupp står fastnålade vid ×, på en list som speglar bockens och id:s (L55): samma slöja, samma kant mot det som glider in under. body:s tak räknas mot det fastnålade på båda sidor. grupp heter «kortgrupp», som i Mall, med ett ?, och cellerna säger bara gruppens namn.', pris: 'Listen till höger tar 189 px (antal 67, kortgrupp 122) av det rum som går att läsa, och body:s tak krymper lika mycket: body syns 382 px i stället för 571 vid 1280, och 126 i stället för 315 vid 1024. Tab når antal först efter hela raden, som nu (8 tryck, 22 i den täta leken). grupp står kvar och säger samma ord som typ.' },
+  { id: 'c', namn: 'C · Först, efter id', regel: 'En annan ordning och ingenting mer fastnålat: antal och grupp står direkt efter id. grupp-rubriken blir två rader inom huvudets höjd, «kortgrupp» och «följer typ · Mall», med ett ?.', pris: 'Ingenting fastnålat, men det som flyttar fram trycker body bakåt: body syns 309 px i stället för 571 vid 1280, 53 i stället för 315 vid 1024 — och 0 vid 1024 med Linux-text, där skrivkolumnen ligger helt utanför och ingenting säger det. När man rullat åt höger är antal borta igen. Bredvid typ blir grupp samma ord två gånger på varje rad («Playcard  Playcard»), vilket visar att kolumnen är typ en gång till.' },
+  { id: 'd', namn: 'D · antal på listen, grupp är typ', regel: 'antal står på den vänstra listen bredvid id och syns hur långt man än rullar. grupp är ingen kolumn: den är alltid exakt kortets typ (groupOfRow läser mallens variantBy-kolumn, och varje värde i den är en grupp), så typ:s rubrik får märket «kortgrupp» med ett ? som säger att kolumnen styr kortets utseende i Mall.', pris: 'Listen blir 67 px bredare (antal:s rubrik, «Antal ↕») och typ 22 px för märket: body syns 482 px i stället för 571 vid 1280 och 226 i stället för 315 vid 1024. Huvudet blir 16 px högre (63 → 79) för märket på andra raden. L55:s list blir tre kolumner. En kolumn som #13 (variant C) lade till tas bort — det är ett beslut att ändra — och ett kort utan typ syns som en tom typ och inte som «Bas».' },
+  { id: 'da', namn: 'D + A · listen och foten', rek: true, regel: 'D, och dessutom A:s mening i foten för det som fortfarande ligger utanför. antal och grupp är lösta av D; foten svarar på den andra halvan av issuets rubrik — att tabellen inte säger när kolumner står utanför — som i den täta leken gäller sju kolumner vid varje bredd.', pris: 'D:s pris, och fotens knapp konkurrerar om radens bredd med markeringens verktyg och L67:s bekräftelse; där kortas namnen och talet står kvar.' },
+]
+const YTOR = [
+  { id: 'prov-1440', namn: 'Provleken 1440' }, { id: 'prov-1280', namn: 'Provleken 1280' }, { id: 'prov-1024', namn: 'Provleken 1024' },
+  { id: 'tat-1440', namn: 'Tät 1440' }, { id: 'tat-1280', namn: 'Tät 1280' }, { id: 'tat-1024', namn: 'Tät 1024' },
+  { id: 'prov-1024-linux', namn: 'Provleken 1024, +15 % text' },
+  { id: 'prov-1024-markerat', namn: '1024 med två markerade' },
+  { id: 'prov-1280-hjalp', namn: 'grupp:s ? öppet' },
+  { id: 'prov-1280-tryckt', namn: 'Ett steg åt höger' }, { id: 'tat-1280-tryckt', namn: 'Tät, ett steg åt höger' },
+]
+const SEX = ['prov-1440', 'prov-1280', 'prov-1024', 'tat-1440', 'tat-1280', 'tat-1024']
+const LINUX = ['prov-1280-linux', 'prov-1024-linux', 'tat-1280-linux', 'tat-1024-linux']
+const q = new URLSearchParams(location.search)
+let v = q.get('v') ?? 'da', yta = q.get('yta') ?? 'prov-1280'
+const cell = (vv, yy) => window.MATT.find((m) => m.v === vv && m.s === yy)
+const knappar = (rot, lista, nu, val) => {
+  rot.querySelectorAll('button').forEach((b) => b.remove())
+  for (const x of lista) {
+    const b = document.createElement('button')
+    b.textContent = x.namn
+    if (x.rek) b.classList.add('rek')
+    b.setAttribute('aria-pressed', String(x.id === nu))
+    b.onclick = () => val(x.id)
+    rot.append(b)
+  }
+}
+const syns = (st) => st === 'hel' || st === 'fast' || /i typ \((hel|fast)\)/.test(st)
+const kort = (s) => s.replace('prov-', 'prov ').replace('tat-', 'tät ').replace('-linux', ' +15 %')
+const FORKLARAR = {
+  nu: { t: 'nej — «grupp» utan titel, sortering eller dörrens rad; cellerna «typ = Playcard»', c: 'nej' },
+  a: { t: 'efter ett tryck — ? vid «grupp» öppnar L32:s låda; rubriken själv säger inget mer', c: 'mitt' },
+  b: { t: 'delvis — «kortgrupp» är Malls ord; vad den följer står först bakom ?', c: 'mitt' },
+  c: { t: 'ja — «kortgrupp / följer typ · Mall» i rubriken, ? för resten', c: 'ok' },
+  d: { t: 'ja — typ:s rubrik bär «kortgrupp»: kolumnen som avgör är förklaringen, ? för resten', c: 'ok' },
+  da: { t: 'ja — som D', c: 'ok' },
+}
+function rows() {
+  const r = []
+  const per = (f) => VARIANTER.map((x) => f(x.id))
+  r.push(['antal syns utan sidrullning (sex ytor)', per((id) => {
+    const miss = SEX.filter((s) => !syns(cell(id, s)?.antal ?? ''))
+    const how = cell(id, 'prov-1280')?.antal
+    return miss.length ? { t: `utanför vid ${miss.length === 6 ? 'alla sex' : miss.map(kort).join(', ')}`, c: 'nej' } : { t: `ja, alla sex (${how})`, c: 'ok' }
+  })])
+  r.push(['grupp syns utan sidrullning (sex ytor)', per((id) => {
+    const miss = SEX.filter((s) => !syns(cell(id, s)?.grupp ?? ''))
+    const how = cell(id, 'prov-1280')?.grupp
+    return miss.length ? { t: `utanför vid ${miss.length === 6 ? 'alla sex' : miss.map(kort).join(', ')}`, c: 'nej' } : { t: `ja, alla sex (${how})`, c: 'ok' }
+  })])
+  r.push(['… med text 15 % bredare (Linux)', per((id) => {
+    const miss = LINUX.filter((s) => { const m = cell(id, s); return m && (!syns(m.antal) || !syns(m.grupp)) })
+    return miss.length ? { t: `antal eller grupp utanför vid ${miss.length === 4 ? 'alla fyra' : miss.map(kort).join(', ')}`, c: 'nej' } : { t: 'ja, 1280 och 1024 i båda lekarna', c: 'ok' }
+  })])
+  r.push(['Tabellen säger att något står utanför', per((id) => {
+    const m = cell(id, 'tat-1024'), p = cell(id, 'prov-1280')
+    if (m.said.length) return { t: `ja — prov 1280: ${p.said.length ? `«${p.said.join(' · ')}»` : 'inget står utanför, och foten är tyst'} · tät 1024: «${m.said.join(' · ')}»`, c: 'ok' }
+    const ute = m.outside + (syns(m.antal) ? 0 : 1) + (syns(m.grupp) || m.grupp === '—' ? 0 : 1)
+    return { t: `nej — bara lådans uttoning; tät 1024: ${ute} kolumner utanför utan ord`, c: 'nej' }
+  })])
+  r.push(['Andra kolumner utanför / delvis (prov 1280 · tät 1024 · prov 1024 +15 %)', per((id) => {
+    const p = cell(id, 'prov-1280'), t = cell(id, 'tat-1024'), l = cell(id, 'prov-1024-linux'), n = cell('nu', 'prov-1024-linux')
+    const ute = l.others.filter((o) => o.endsWith(':utanför')).map((o) => o.split(':')[0])
+    return { t: `${p.outside} / ${p.partial} · ${t.outside} / ${t.partial} · ${l.outside} / ${l.partial}${ute.length ? ` (${ute.join(', ')} utanför)` : ''}`, c: l.outside > n.outside ? 'nej' : t.outside ? 'mitt' : 'ok' }
+  })])
+  r.push(['Bredd: fastnålat vänster + höger, rum att läsa, body (prov 1280)', per((id) => {
+    const m = cell(id, 'prov-1280'), n = cell('nu', 'prov-1280')
+    const d = m.lane - n.lane
+    return { t: `${m.pinnedLeft} + ${m.pinnedRight} px · rum ${m.lane} px${d ? ` (${d > 0 ? '+' : ''}${d})` : ''} · body ${m.bodyW} px`, c: d < -100 ? 'nej' : d < 0 ? 'mitt' : 'ok' }
+  })])
+  r.push(['… samma vid 1024', per((id) => {
+    const m = cell(id, 'prov-1024'), n = cell('nu', 'prov-1024')
+    const d = m.lane - n.lane
+    return { t: `${m.pinnedLeft} + ${m.pinnedRight} px · rum ${m.lane} px${d ? ` (${d > 0 ? '+' : ''}${d})` : ''} · body ${m.bodyW} px`, c: d < -100 ? 'nej' : d < 0 ? 'mitt' : 'ok' }
+  })])
+  r.push(['body i bild utan rullning (prov 1280 · 1024 · 1024 +15 %)', per((id) => {
+    const a = cell(id, 'prov-1280').bodySeen, b = cell(id, 'prov-1024').bodySeen, c = cell(id, 'prov-1024-linux').bodySeen
+    const n = cell('nu', 'prov-1024').bodySeen
+    return { t: `${a} · ${b} · ${c} px`, c: c === 0 ? 'nej' : b < n * 0.6 ? 'nej' : b < n ? 'mitt' : 'ok' }
+  })])
+  r.push(['Höjd: huvud · median rad · fot (prov 1280)', per((id) => {
+    const m = cell(id, 'prov-1280'), n = cell('nu', 'prov-1280')
+    return { t: `${m.headH} · ${m.rowMedian} · ${m.footH} px`, c: m.headH > n.headH || m.footH > n.footH ? 'mitt' : 'ok' }
+  })])
+  r.push(['Fot med två markerade vid 1024 (plats för #698/L67)', per((id) => {
+    const m = cell(id, 'prov-1024-markerat'), n = cell('nu', 'prov-1024-markerat')
+    return { t: `${m.footH} px (nu ${n.footH})${m.footOverflow ? ', rinner över' : ''}${m.said.length ? ` · «${m.said.join(' · ')}»` : ''}`, c: m.footH > n.footH || m.footOverflow ? 'nej' : 'ok' }
+  })])
+  r.push(['Tangentbord: Tab från radens bock till antal (prov · tät)', per((id) => {
+    const p = cell(id, 'prov-1280').reach, t = cell(id, 'tat-1280').reach
+    return { t: `${p.tabs} · ${t.tabs} tryck${p.onTop && t.onTop ? '' : ' · hamnar under en list'}`, c: p.tabs <= 2 ? 'ok' : t.tabs > 10 ? 'nej' : 'mitt' }
+  })])
+  r.push(['grupp förklarar sig i en blick', per((id) => FORKLARAR[id])])
+  return r
+}
+const visa = () => {
+  history.replaceState(null, '', `?v=${v}&yta=${yta}`)
+  knappar(document.querySelector('#varianter'), VARIANTER, v, (x) => { v = x; visa() })
+  knappar(document.querySelector('#ytor'), YTOR, yta, (x) => { yta = x; visa() })
+  const V = VARIANTER.find((x) => x.id === v)
+  const Y = YTOR.find((x) => x.id === yta)
+  document.querySelector('#vnamn').textContent = V.namn + (V.rek ? ' — rekommendationen' : '')
+  document.querySelector('#vregel').textContent = V.regel
+  document.querySelector('#vpris').textContent = V.pris
+  const m = cell(v, yta)
+  const img = document.querySelector('#bild')
+  if (m?.f) { img.src = 'img/' + m.f; img.alt = `${V.namn}, ${Y.namn}`; img.hidden = false; document.querySelector('#bildlank').href = 'img/' + m.f } else { img.hidden = true }
+  document.querySelector('#bildtext').textContent = m?.f ? `${V.namn} · ${Y.namn} · ${m.winW} px bred` : `${V.namn} har ingen bild på ytan «${Y.namn}»${yta.endsWith('tryckt') ? ' — bara A har en knapp att trycka på; Nu visar samma steg rullat för hand.' : yta.endsWith('hjalp') ? ' — det finns inget ? i dag.' : '.'}`
+  const t = []
+  if (m) {
+    t.push(['antal', m.antal], ['grupp', m.grupp])
+    t.push(['Andra kolumner utanför', m.outside], ['… delvis i bild', m.partial])
+    t.push(['Fastnålat vänster / höger', `${m.pinnedLeft} / ${m.pinnedRight} px`], ['Rum att läsa', `${m.lane} px`], ['body bred / i bild', `${m.bodyW} / ${m.bodySeen ?? '–'} px`])
+    t.push(['Tabellens bredd / lådans', `${m.tableW} / ${m.clientW} px`])
+    t.push(['Huvud / median rad / fot', `${m.headH} / ${m.rowMedian} / ${m.footH} px`])
+    if (m.said.length) t.push(['Foten säger', m.said.join(' · ')])
+    if (m.reach) t.push(['Tab bock → antal', `${m.reach.tabs}`])
+    if (m.help) t.push(['Lådans höjd', `${m.help.h} px`])
+  }
+  document.querySelector('#tal').innerHTML = t.map(([k, n]) => `<span>${k}</span><b>${String(n).replace(/</g, '&lt;')}</b>`).join('')
+  const tab = document.querySelector('#matris')
+  const head = '<thead><tr><th>Fråga</th>' + VARIANTER.map((x) => `<th class="${x.id === v ? 'valt' : ''}"><a href="?v=${x.id}&yta=${yta}" data-v="${x.id}" style="color:inherit">${x.namn}</a></th>`).join('') + '</tr></thead>'
+  tab.innerHTML = head + '<tbody>' + rows().map(([q, cells]) => `<tr><td>${q}</td>${cells.map((c, i) => `<td class="${c.c}${VARIANTER[i].id === v ? ' valt' : ''}">${c.t}</td>`).join('')}</tr>`).join('') + '</tbody>'
+  tab.querySelectorAll('a[data-v]').forEach((a) => (a.onclick = (e) => { e.preventDefault(); v = a.dataset.v; visa(); scrollTo(0, 0) }))
+}
+addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return
+  const i = VARIANTER.findIndex((x) => x.id === v)
+  v = VARIANTER[(i + (e.key === 'ArrowRight' ? 1 : VARIANTER.length - 1)) % VARIANTER.length].id
+  visa()
+})
+visa()
+</script>
+</body>
+</html>
