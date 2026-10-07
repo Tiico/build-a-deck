@@ -24,6 +24,7 @@
     document.head.append(s)
   }
   let variant = 'nu'
+  let lastExtra = null
   let groupCol = null
 
   // The fact a grupp cell says, taken from the cell itself: «typ = Playcard» or «Bas».
@@ -51,11 +52,14 @@
     const cols = [...table().querySelectorAll('colgroup > col')]
     const room = box().clientWidth
     const tap = 44
+    // What is pinned on the left, read off the columns' own widths: the cells' rectangles are
+    // stale until the table's width is said again below.
     let pinned = 0
-    for (const th of heads()) {
+    heads().forEach((th, i) => {
       const how = getComputedStyle(th)
-      if (how.position === 'sticky' && how.left !== 'auto') pinned += th.getBoundingClientRect().width
-    }
+      if (how.position === 'sticky' && how.left !== 'auto') pinned += parseFloat(colEl(i).style.width) || th.getBoundingClientRect().width
+    })
+    lastExtra = extraPinned
     const ceiling = room - pinned - tap - extraPinned
     let total = 0
     for (const col of cols) {
@@ -113,7 +117,7 @@
         const out = { left: [], right: [] }
         for (const th of heads()) {
           const name = th.getAttribute('data-col')
-          if (!name || name === 'id') continue
+          if (!name || name === 'id' || th.classList.contains('p695-pin')) continue
           const r = th.getBoundingClientRect()
           const word = (name === groupCol ? 'grupp' : th.querySelector('button')?.textContent || name).replace(/[↕↑↓▾¶?]/g, '').trim()
           if (r.right <= lane.left + 0.5) out.left.push(word)
@@ -160,6 +164,7 @@
       `)
       box().addEventListener('scroll', () => requestAnimationFrame(say))
       say()
+      if (variant !== 'a') return
       const g = heads()[index(groupCol)]
       g.append(ask('grupp'))
       helpFor = { topic: 'grupp', anchor: g, lines: ['Vilket utseende kortet får. Mallen grupperas av kolumnen typ: kort med samma typ delar utseende, och Bas är mallens eget.', 'Gruppen byts genom att ändra kortets typ. Hur en grupp ser ut ändras i Mall, under Kortgrupper.'] }
@@ -254,12 +259,21 @@
     },
   }
 
+  // D and A together: antal on the left list, grupp in typ, and the foot says what is still
+  // outside — which in a dense deck is most of it.
+  VARIANTS.da = () => {
+    VARIANTS.d()
+    const keep = helpFor
+    VARIANTS.a()
+    helpFor = keep
+  }
+
   // The room that can be read: between what is pinned on the left and what is pinned on the right.
   function laneOf() {
     const b = box().getBoundingClientRect()
     let left = b.left
     let right = b.left + box().clientWidth
-    const leftPins = variant === 'd' ? '.byd-data-check, [data-col="id"], .p695-pin' : '.byd-data-check, [data-col="id"]'
+    const leftPins = variant === 'd' || variant === 'da' ? '.byd-data-check, [data-col="id"], .p695-pin' : '.byd-data-check, [data-col="id"]'
     const rightPins = variant === 'b' ? '.byd-data-remove, .p695-pin' : '.byd-data-remove'
     for (const th of heads()) {
       const r = th.getBoundingClientRect()
@@ -303,7 +317,7 @@
       const pinnedRight = Math.round(b.getBoundingClientRect().left + b.clientWidth - lane.right)
       return {
         antal: of('antal')?.state ?? '—',
-        grupp: of('grupp')?.state ?? (variant === 'd' ? `i typ (${of('typ')?.state})` : '—'),
+        grupp: of('grupp')?.state ?? (variant === 'd' || variant === 'da' ? `i typ (${of('typ')?.state})` : '—'),
         others: cols.filter((c) => c.name !== 'antal' && c.name !== 'grupp' && c.name !== 'id'),
         outside: cols.filter((c) => c.name !== 'antal' && c.name !== 'grupp' && c.state === 'utanför').length,
         partial: cols.filter((c) => c.name !== 'antal' && c.name !== 'grupp' && c.state === 'delvis').length,
@@ -328,7 +342,7 @@
       if (!helpFor) return null
       // A question mark outside the box is first scrolled to, as a hand would have to.
       const a0 = helpFor.anchor.getBoundingClientRect(), b0 = laneOf()
-      if (a0.right > b0.right || a0.left < b0.left) box().scrollLeft = box().scrollWidth
+      if (!helpFor.anchor.classList.contains("p695-pin") && (a0.right > b0.right || a0.left < b0.left)) box().scrollLeft = box().scrollWidth
       const btn = helpFor.anchor.querySelector('.byd-help-ask')
       btn.setAttribute('aria-expanded', 'true')
       const a = btn.getBoundingClientRect()
@@ -346,6 +360,10 @@
         .p695-box button { position: absolute; top: 0; right: 0; width: 44px; height: 44px; border: 0; background: transparent; color: inherit; font-size: 16px; }
       `)
       return { w: 260, h: Math.round(d.getBoundingClientRect().height) }
+    },
+    // The table measures itself again when a row is marked; the variant's ceiling is said again.
+    refit() {
+      if (lastExtra !== null) reclamp(lastExtra)
     },
     // Presses the foot's «till höger» once, as a hand would (variant A).
     stepRight() {

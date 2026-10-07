@@ -28,7 +28,7 @@ for (const s of SURF) for (const v of VARIANTS) {
   const w = Number(ws)
   const linux = rest.includes('linux')
   const extra = rest.find((x) => x !== 'linux')
-  if (extra === 'tryckt' && v !== 'a' && v !== 'nu') continue
+  if (extra === 'tryckt' && !['a', 'nu', 'da'].includes(v)) continue
   if (extra === 'hjalp' && v === 'nu') continue
   const ctx = await browser.newContext({ viewport: { width: w, height: H[w] }, deviceScaleFactor: 1, locale: 'sv-SE' })
   await ctx.addCookies([{ name: 'byd_session', value: links.cookie.split('=')[1], url: links.origin }])
@@ -59,10 +59,12 @@ for (const s of SURF) for (const v of VARIANTS) {
     await ticks.nth(1).check()
     await page.mouse.move(w / 2, 20)
     await page.waitForTimeout(300)
+    await page.evaluate('window.__p695.refit()')
+    await page.waitForTimeout(100)
   }
   if (extra === 'hjalp') help = await page.evaluate('window.__p695.help()')
   if (extra === 'tryckt') {
-    if (v === 'a') await page.evaluate('window.__p695.stepRight()')
+    if (v === 'a' || v === 'da') await page.evaluate('window.__p695.stepRight()')
     else await page.evaluate(`document.querySelector('.byd-data-scroll').scrollBy({ left: document.querySelector('.byd-data-scroll').clientWidth * 0.8 })`)
     await page.waitForTimeout(900)
   }
