@@ -179,6 +179,15 @@ export async function duplicateProject(http: string, project: string, t: T = swe
   return (await res.json()) as { id: string; name: string }
 }
 
+// A game renamed from «Mina spel» (#909, beslut C): the same `rename` edit the editor sends, into
+// the game's log through its actor. No version is made of it; the list reads the live name.
+export async function renameProject(http: string, project: string, name: string, t: T = swedish): Promise<void> {
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/name`, withCredentials({ method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) }))
+  if (res.status === 401) throw new Unauthorized()
+  if (res.status === 404) throw new Said(t('error.game.gone'))
+  if (!res.ok) throw new Said(t('error.renameGame.failed'))
+}
+
 // A guest session claimed to the account afterwards (G1), and the tables the account sat at.
 export type Played = { session: string; seat: string | null; name: string; kind: 'seat' | 'observer'; at: string; game: string | null; version: string; ended: boolean; surveyed: boolean; flags: number; code?: string; deleted?: true }
 export async function claimGuest(http: string, token: string): Promise<{ ok: true; session: string; seat: string | null; name: string } | { ok: false; reason: 'not-logged-in' | 'unknown' | 'other' }> {

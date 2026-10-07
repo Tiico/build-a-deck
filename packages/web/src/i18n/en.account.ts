@@ -220,6 +220,7 @@ export const enAccount = {
 
   // Taking a game out and bringing it back (G5, #529): export and import on the home page.
   'error.duplicateGame.failed': 'the game could not be duplicated; try again in a moment',
+  'error.renameGame.failed': 'the game could not be renamed; try again in a moment',
   // The game's own choices in the editor's ⋯ (#738): its name, and a second game made of it.
   'home.menu.rename': 'Rename…',
   'home.menu.duplicate': 'Duplicate',

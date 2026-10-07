@@ -136,12 +136,22 @@ export const svPlay = {
   'help.where.felt': 'på bordet',
   // Tangenten som betyder «gör det med det jag pekar på» heter olika på olika maskiner: Ctrl +
   // klick är systemets sekundärklick på en Mac, och sidan får då aldrig något `click`.
+  // Filtens egen regel och tangentbordets väg in står först i hjälpen (#719): en dragning flyttar,
+  // ett klick läser och frågar, och Tabb, pilarna och Enter når samma saker (K16).
+  'felt.press.drag': 'Dra',
+  'felt.key.drag': 'Flytta kortet eller högen dit du släpper den',
+  'felt.press.click': 'Klick',
+  'felt.key.click': 'Läs det du klickar på; ett klick till frågar vad som går att göra',
+  'felt.press.tab': 'Tabb',
+  'felt.press.arrowKeys': 'Pilar',
+  'felt.press.enter': 'Enter',
+  'felt.key.keyboard': 'Tabb till bordet, pilarna mellan sakerna på det, Enter för vad som går att göra',
   'felt.press.modClick': '{mod} + klick',
   'felt.press.doubleClick': 'Dubbelklick',
   'felt.key.flip': 'Vänd kortet, eller högens översta, under pekaren',
   'felt.key.draw': 'Dra översta kortet från högen under pekaren',
   'felt.key.shuffle': 'Blanda högen under pekaren',
-  'felt.key.escape': 'Stäng hjulet · avbryt draget',
+  'felt.key.escape': 'Stäng ringen · avbryt draget',
   'felt.key.help': 'Visa den här listan',
 
   // Kameran på live-bordet (C5, #325). Vyn står kvar tills den återställs, så varje väg tillbaka
@@ -160,7 +170,7 @@ export const svPlay = {
   'felt.press.arrows': 'Skift + piltangent',
   'felt.key.zoom': 'Zooma in och ut kring pekaren; vyn står kvar',
   'felt.key.pan': 'Panorera vyn',
-  'felt.key.escape.camera': 'Stäng hjulet · avbryt draget · visa hela bordet',
+  'felt.key.escape.camera': 'Stäng ringen · avbryt draget · visa hela bordet',
 
   // Tangentbordet på filten (#1, #2, variant C "adressen"). Zonnamn och kortnamn kommer från
   // spelet och står i meningarna som designern skrev dem; allt runt dem är verktygets.

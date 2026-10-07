@@ -645,13 +645,59 @@ describe('the game menu follows the role (D3, #689)', () => {
   }
 
   it.each([
-    ['owner', ['Starta bord', 'Exportera…', 'Ta bort spelet']],
-    ['editor', ['Starta bord', 'Exportera…']],
+    ['owner', ['Starta bord', 'Byt namn…', 'Dubblera', 'Exportera…', 'Ta bort spelet']],
+    ['editor', ['Starta bord', 'Byt namn…', 'Dubblera', 'Exportera…']],
     ['tester', ['Starta bord']],
     ['viewer', []],
   ] as const)('offers the %s only what the role may do', async (role, offered) => {
     await homeAs(role)
     expect(choices()).toEqual(offered)
+  })
+})
+
+// The start page's ⋯ carries the editor's four choices (#909, beställarens beslut C): a name changed
+// here is an edit in the game's log, as in the editor, and the list reads the name from the live
+// document — so the tile says it at once, and after a reload, without a version being made of it.
+describe('renaming and duplicating from «Mina spel» (#909)', () => {
+  async function home(): Promise<void> {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    await followMailedLink()
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    render(
+      <StatusLive>
+        <HomePage />
+      </StatusLive>,
+    )
+    await screen.findByText('Skogens herrar')
+  }
+  const tileName = (id: string) => document.querySelector(`#home-${id}-name`)?.textContent
+
+  it('renames the game in its log, says the new name on the tile at once and after a reload, and makes no version', async () => {
+    await home()
+    fireEvent.click(screen.getByRole('button', { name: 'Fler val för Skogens herrar' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Byt namn…' }))
+    const dialog = screen.getByRole('dialog', { name: 'Byt namn på «Skogens herrar»' })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Spelets namn' }), { target: { value: 'Skogens andar' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Byt namn' }))
+    await waitFor(() => expect(tileName(run.projectId)).toBe('Skogens andar'))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    // The keys go back to the game's ⋯, which now bears the new name.
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fler val för Skogens andar' })))
+    expect((await (await fetch(`${run.http}/projects/${run.projectId}/versions`)).json()) as unknown[]).toHaveLength(1)
+
+    cleanup()
+    render(<HomePage />)
+    await waitFor(() => expect(tileName(run.projectId)).toBe('Skogens andar'))
+  })
+
+  it('duplicates the game into a tile of its own, named as a copy, and says so', async () => {
+    await home()
+    fireEvent.click(screen.getByRole('button', { name: 'Fler val för Skogens herrar' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Dubblera' }))
+    await screen.findByText('Skogens herrar (kopia)', { selector: '.byd-home-game strong' })
+    await waitFor(() => expect(document.body.textContent).toContain('«Skogens herrar (kopia)» ligger nu i Mina spel.'))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fler val för Skogens herrar' }))
   })
 })
 
