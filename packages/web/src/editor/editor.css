@@ -421,13 +421,16 @@
 .byd-card-row .byd-editor-confirm { flex: 1 1 auto; }
 .byd-foot-quiet { display: contents; }
 .byd-foot-quiet[hidden] { display: none; }
-/* The foot of a tab whose work has none of its own (Speltema, Media, Regler): the work keeps
-   its frame and its scroll above it, and gives the foot the gutter it had under it. The foot holds a
-   line even when it says nothing, so what is said into it moves nothing. */
-.byd-footed { height: 100%; display: flex; flex-direction: column; }
-.byd-footed-work { flex: 1 1 0; min-height: 0; overflow: auto; }
-.byd-footed > .byd-footed-work > * { padding-bottom: var(--byd-s2); }
-.byd-footed-foot { margin: 0 var(--byd-gutter) var(--byd-gutter); min-height: 1.5em; line-height: 1.5; }
+/* The foot of a tab whose work has none of its own (Speltema, Media, Regler). The tab's edge is
+   the gutter every tab is framed with, and it is the footed box that carries it now, so the work and
+   its foot stand inside one frame; the work keeps its own scroll. The foot holds a line even when it
+   says nothing, so what is said into it moves nothing. A sheet the work opens over itself (the crop
+   in Media) still covers the whole tab, foot and all, as it covered the whole panel before. */
+.byd-footed { position: relative; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: var(--byd-s2); padding: var(--byd-gutter); }
+.byd-footed-work { flex: 1 1 0; min-height: 0; }
+.byd-footed > .byd-footed-work > * { padding: 0; }
+.byd-footed > .byd-footed-work > .byd-media { position: static; }
+.byd-footed-foot { min-height: 1.5em; line-height: 1.5; }
 /* Undo and redo for a hand without a keyboard (#566): two 44 px steps beside the save status. */
 .byd-editor-steps { display: inline-flex; gap: 2px; flex: 0 0 auto; }
 .byd-editor-steps button {

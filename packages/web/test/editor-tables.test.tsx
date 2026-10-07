@@ -367,7 +367,8 @@ describe('ending a table from the editor (#19, C9)', () => {
     expect(document.querySelector('[data-room-code]')).toBeNull()
     const header = document.querySelector('header')!
     expect(within(header).getByRole('button', { name: 'Starta bord' })).toBeTruthy()
-    expect(within(header).getByText('Bordet är avslutat.')).toBeTruthy()
+    // Said where every tab says what just happened: in its foot (#698, L67).
+    expect(within(document.querySelector('.byd-editor-confirm') as HTMLElement).getByText('Bordet är avslutat.')).toBeTruthy()
     ada.close()
   })
 
@@ -402,7 +403,7 @@ describe('ending a table from the editor (#19, C9)', () => {
 
       answer = 409
       await user.click(await screen.findByRole('button', { name: 'Uppdatera bordet' }))
-      await within(header).findByText('Bordet är avslutat.')
+      await waitFor(() => expect(document.querySelector('.byd-editor-confirm')?.textContent).toBe('Bordet är avslutat.'))
       expect(document.querySelector('.byd-editor-table-link')).toBeNull()
       expect(within(header).getByRole('button', { name: 'Starta bord' })).toBeTruthy()
       expect(header.textContent).not.toMatch(/could not|409/)
