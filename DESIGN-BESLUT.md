@@ -4234,6 +4234,14 @@ Baksidan erbjuder färdiga ryggar.
 Var och en är en vanlig elementlista — botten med mönster, en inre kant, ibland en medaljong — så den går att ta isär och ändra efteråt; det är en utgångspunkt och inte en låst bild.
 Galleriet står framme i lagerpanelen så snart baksidan är öppen, inte bakom en knapp: den som landar på en tom baksida ska se vägen vidare utan att leta efter den.
 
+Reviderat 2026-10-06 (#736, beslut A av beställaren efter prototyp i #917): **galleriet ligger hopfällt under baksidans lager, och är öppet bara när baksidan saknar egna lager.**
+Öppet ovanför lagren tog det 506 px av lagerkolumnens 483–515, så inget av en baksidas lager syntes utan rullning, och rullisten ritades inte.
+Huvudet «Färdiga baksidor (7)» är en knapp med fällningens chevron och står direkt efter lagerraderna; ett tryck öppnar galleriet på plats.
+Skälet till galleriets plats står kvar: en tom baksida visar det öppet, och när en rygg läggs på en tom baksida fälls det med fokus på huvudet.
+Läget följer baksidan och inte designern: det sätts om varje gång baksidan går från tom till lagd eller tillbaka, och står däremellan som designern lämnade det.
+Två varianter avvisades: galleriet öppet under lagren (B), som tryckte «Rutnät 1 mm» och Grupper ~500 px ner, och en dörr i kolumnens krona som öppnar galleriet som en lyft box (C), som tog bort galleriet från den tomma baksidan.
+Grinden är `packages/e2e/test/surfaces/template-text-and-back-fit.spec.ts`, vid 1280 × 800 och 1024 × 768 med ett bord som kör.
+
 Bordet i fliken "Bord" visar lekens egen rygg (reviderat 2026-09-15).
 Filten ritade varje kort som låg med baksidan upp som en och samma blå väv ur `table.css`, vilken rygg leken än hade: den enda yta där designern ser leken som en lek visade en rygg som inte hörde till något spel, och en vald rygg nådde bordet först när spelet hade publicerats.
 Ryggen kompileras i webbläsaren av `compile` — samma renderare som duken och kortväggen, alltså ingen andra kodväg (K9) — eftersom den här ytan varken har en renderfarm bakom sig eller en sparad version att rendera.
@@ -4725,6 +4733,15 @@ Alla sjutton i 44 px provades och avvisades: 104 px mer, och panelen började ru
 Greppen bredvid talen är 44 × 44 px med samma ritning.
 «Sätt in en ikon» i Tabell lyftes ut till #593, eftersom dess kolumn reserveras i varje textcell (#140) och 44 px där kostar varje cell 18 px hela tiden.
 Mätningarna och skärmbilderna står i #570 och i `docs/ux-audits/2026-09-29/prototyper/570/`; grindarna är `packages/web/test/editor-props-density.test.tsx` och svepet i `packages/web/test/editor-viewport.test.tsx`, som inte längre undantar galleriet.
+
+Reviderat 2026-10-06 (#736, beslut C av beställaren efter prototyp i #917): **textlagrets panel ryms utan rullning vid 1024 × 768 och 1280 × 800, även med bandet «Bordet kör».**
+Med Layout, Innehåll och Text öppna var den 751 px i en spalt om 589–621, och «Anpassning» och «Finjustering» stod under kanten.
+Placeringens nio rutor står i en egen kolumn, exakt så bred som rutorna, med «Anpassning» och «Finjustering» staplade bredvid; golvet om 44 px står kvar.
+Fältet lagret visar står på en rad direkt under panelens rubrik, «Visar fältet [Titel ▾]», där lagret namnges, och textlagret har ingen sektion Innehåll längre — bild och ikon har kvar sin, eftersom de har fler val där.
+«Anpassning»-väljaren är ungefär 110 px bred bredvid rutorna och klippte «krymp till gräns»; valen heter nu ett ord var, «krymp» och «fast» («shrink» och «fixed»).
+Två varianter avvisades: rutorna bredvid utan att flytta fältet (A), som fortfarande rullade 16–48 px, och panelen oförändrad med en fast ledtråd om det som står under kanten (B), som inte uppfyller kravet att panelen ryms.
+Formlagret rullar fortfarande; det är inte en del av beslutet.
+Grinden är `packages/e2e/test/surfaces/template-text-and-back-fit.spec.ts`, som mäter rektanglar i båda språken.
 
 ### L26. En egen form är en punktlista, och punkten läggs till där kanten redan bär en (prototypat 2026-09-20, #309)
 

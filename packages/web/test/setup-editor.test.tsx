@@ -259,6 +259,8 @@ describe('the setup editor (B5, L17): the deck\'s own back', () => {
     // Pick a ready-made back on the canvas, and come back to the table.
     fireEvent.click(screen.getByRole('tab', { name: 'Mall' }))
     fireEvent.click(screen.getByRole('radio', { name: 'Baksida' }))
+    // Folded under a back that has layers (#736).
+    fireEvent.click(screen.getByRole('button', { name: /^Färdiga baksidor/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Medaljong' }))
     // The back has layers, so the gallery asks first (#478).
     fireEvent.click(screen.getByRole('button', { name: 'Ja, byt baksida' }))

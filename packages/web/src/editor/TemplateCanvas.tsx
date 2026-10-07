@@ -182,6 +182,11 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // A ready-made back waiting for its answer (#478), and the gallery button it came from, which is
   // where the focus goes back to whatever the answer.
   const [swapping, setSwapping] = useState<{ name: string; base: Element[]; from: HTMLElement } | null>(null)
+  // Whether the back has layers of its own, which is what the gallery's fold follows (#736). A back
+  // laid down on an empty one folds the gallery under the button that laid it, so the hand is given
+  // to the gallery's head rather than dropped on the page.
+  const backIsEmpty = (doc.template.faces['back']?.base.length ?? 0) === 0
+  const [backLaid, setBackLaid] = useState(false)
   const swapBack = () => {
     const from = swapping?.from
     setSwapping(null)
@@ -314,21 +319,6 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
           <p className="byd-canvas-affects">{affectsLabel(doc, column, group, t)}</p>
         </div>
         <div className="byd-canvas-scroll">
-          {/* The ready-made backs (L17) stand in the open while the back is being edited, above the
-              layers that make it up, rather than behind a button: whoever lands on an empty back
-              should see the way on without hunting for it. Not inside a group — a group's back is
-              an override of the base's (#14), and laying a whole face down there would quietly
-              make every layer of it the group's own. */}
-          {face === 'back' && !group && (
-            <BackGallery
-              onPick={(back, from) => {
-                // A back with layers on it is asked about first (#478), as one layer is (#143);
-                // a back with nothing on it is simply laid down.
-                if ((doc.template.faces['back']?.base.length ?? 0) === 0) onReplaceFace(back.base)
-                else setSwapping({ ...back, from })
-              }}
-            />
-          )}
           <LayerList
             layers={[...panel].reverse().map((l) => l.element)}
             selected={selectedElement}
@@ -356,6 +346,30 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             removed={new Set(panel.filter((l) => l.source === 'removed').map((l) => l.element.id))}
             labelledBy="layers-heading"
           />
+          {/* The ready-made backs (L17), folded under the layers that make the back up (#736,
+              beslut A 2026-10-06). Open while the back has no layers of its own — whoever lands on
+              an empty back should see the way on without hunting for it — and folded as soon as
+              it has some, because open above them it took 506 px of the column and hid every one.
+              Not inside a group — a group's back is an override of the base's (#14), and laying a
+              whole face down there would quietly make every layer of it the group's own. */}
+          {face === 'back' && !group && (
+            <BackGallery
+              // Whether the back has layers decides how the gallery stands, each time that changes;
+              // between those moments it stands as the designer left it.
+              key={backIsEmpty ? 'empty' : 'own'}
+              open={backIsEmpty}
+              takeFocus={backLaid}
+              onFocused={() => setBackLaid(false)}
+              onPick={(back, from) => {
+                // A back with layers on it is asked about first (#478), as one layer is (#143);
+                // a back with nothing on it is simply laid down.
+                if (backIsEmpty) {
+                  onReplaceFace(back.base)
+                  if (back.base.length > 0) setBackLaid(true)
+                } else setSwapping({ ...back, from })
+              }}
+            />
+          )}
           <label className="byd-canvas-grid-toggle">
             <input type="checkbox" checked={grid} onChange={(event) => setGrid(event.target.checked)} />
             {t('canvas.grid')}
@@ -2113,7 +2127,14 @@ function Properties({
   // Whether this element has anything to say about what it shows. A shape shows nothing but
   // itself, so it is given no section about it — a heading over an empty section is a promise
   // the panel does not keep.
-  const content = el.kind === 'icons' || el.kind === 'image' || ('bind' in el && !isFixed)
+  //
+  // A text layer is the exception (#736, beslut C 2026-10-06): the column it shows is all it has to
+  // say about what it shows, so that one line stands under the panel's heading — where the layer
+  // is named — and no section is drawn round it. That section's heading and its 44 px were part of
+  // what put «Anpassning» under the fold.
+  const bindsAbove = el.kind === 'text'
+  const reading = useContext(Reading)
+  const content = el.kind === 'icons' || el.kind === 'image' || ('bind' in el && !isFixed && !bindsAbove)
   const closeLibrary = () => {
     setChoosing(false)
     setBackToSwitch(true)
@@ -2169,6 +2190,46 @@ function Properties({
         onWrite={(value, gesture) => onPatch({ [key]: value } as Partial<Element>, gesture)}
       />
     ) : null
+  // Every element that shows data says which column it shows — a picture and a row of icons as much
+  // as a text box, or one added from the tool rail could never be bound. A text layer says it on a
+  // line of its own under the heading (#736), the others inside Innehåll.
+  const fieldPicker = 'bind' in el && !isFixed && (
+    <label className={bindsAbove ? 'byd-props-field byd-props-bind' : 'byd-props-field'}>
+      {t(bindsAbove ? 'canvas.props.shows' : 'canvas.props.field')}
+      <select
+        ref={fieldRef}
+        value={'field' in el.bind ? el.bind.field : ''}
+        onChange={(e) => (e.target.value === NEW_FIELD ? setMaking(true) : e.target.value !== '' && onPatch({ bind: { field: e.target.value } }))}
+      >
+        {/* An element bound to a value shows no column, and the picker says so. Without this
+            the browser draws the first column as the chosen one and the panel states a
+            binding the element does not have. */}
+        {!('field' in el.bind) && <option value="">{t('canvas.props.field.none')}</option>}
+        {fields.map((f) => (
+          <option key={f} value={f}>
+            {fieldLabel(f, t)}
+          </option>
+        ))}
+        {/* The second door (#32): the designer noticed the column was missing here, so this
+            is where she is allowed to make it — and the element is bound to it at once. */}
+        <option value={NEW_FIELD}>{t('canvas.props.field.new')}</option>
+      </select>
+      {making && (
+        <NewField
+          taken={taken}
+          kind={el.kind === 'image' ? 'image' : 'text'}
+          onCreate={(field) => {
+            // One call, because it is one thing: the column and this element's binding to it
+            // arrive together or the first Ctrl+Z leaves the column standing with the element
+            // bound back to whatever it showed before.
+            onAddField(field, el.id)
+            closeForm()
+          }}
+          onCancel={closeForm}
+        />
+      )}
+    </label>
+  )
   return (
     <div className="byd-props">
       {el.locked && (
@@ -2176,6 +2237,16 @@ function Properties({
           {t('canvas.props.locked')}
         </p>
       )}
+      {/* Outside every section, so it is read rather than written by itself where a section's
+          rows would be (#489). */}
+      {bindsAbove &&
+        (reading ? (
+          <fieldset className="byd-reading-set" disabled>
+            {fieldPicker}
+          </fieldset>
+        ) : (
+          fieldPicker
+        ))}
       <Section id="layout" name={t('canvas.props.sec.layout')} summary={'w' in el ? `${measure(el.x)}, ${measure(el.y)} · ${measure(el.w)} × ${measure(el.h)} mm` : undefined}>
         {num('canvas.props.x', 'x', 'X')}
         {num('canvas.props.y', 'y', 'Y')}
@@ -2243,45 +2314,7 @@ function Properties({
               onCancel={closeForm}
             />
           )}
-          {'bind' in el && !isFixed && (
-            // Every element that shows data says which column it shows — a picture and a row of
-            // icons as much as a text box, or one added from the tool rail could never be bound.
-            <label className="byd-props-field">
-              {t('canvas.props.field')}
-              <select
-                ref={fieldRef}
-                value={'field' in el.bind ? el.bind.field : ''}
-                onChange={(e) => (e.target.value === NEW_FIELD ? setMaking(true) : e.target.value !== '' && onPatch({ bind: { field: e.target.value } }))}
-              >
-                {/* An element bound to a value shows no column, and the picker says so. Without this
-                    the browser draws the first column as the chosen one and the panel states a
-                    binding the element does not have. */}
-                {!('field' in el.bind) && <option value="">{t('canvas.props.field.none')}</option>}
-                {fields.map((f) => (
-                  <option key={f} value={f}>
-                    {fieldLabel(f, t)}
-                  </option>
-                ))}
-                {/* The second door (#32): the designer noticed the column was missing here, so this
-                    is where she is allowed to make it — and the element is bound to it at once. */}
-                <option value={NEW_FIELD}>{t('canvas.props.field.new')}</option>
-              </select>
-              {making && (
-                <NewField
-                  taken={taken}
-                  kind={el.kind === 'image' ? 'image' : 'text'}
-                  onCreate={(field) => {
-                    // One call, because it is one thing: the column and this element's binding to it
-                    // arrive together or the first Ctrl+Z leaves the column standing with the element
-                    // bound back to whatever it showed before.
-                    onAddField(field, el.id)
-                    closeForm()
-                  }}
-                  onCancel={closeForm}
-                />
-              )}
-            </label>
-          )}
+          {!bindsAbove && fieldPicker}
         </Section>
       )}
       {choosing && assetBase && (
@@ -2322,7 +2355,7 @@ function Properties({
             <input type="color" value={el.color} {...typing.visit} onChange={(e) => onPatch({ color: e.target.value }, typing.token())} />
           </label>
           <PlacePad el={el} onPatch={onPatch} />
-          <label>
+          <label className="byd-props-fit">
             {t('canvas.props.fit')}
             <select value={el.fit ?? 'shrink'} onChange={(e) => onPatch({ fit: e.target.value as 'shrink' | 'fixed' })}>
               <option value="shrink">{t('canvas.fit.shrink')}</option>
@@ -2754,12 +2787,28 @@ function PatternGlyph({ kind }: { kind: Pattern['kind'] }) {
 // The ready-made backs (L17), each drawn by the one renderer at thumbnail size — a picture of a
 // card is a compiled card here as everywhere else (E2), so a back can never look like one thing
 // in the gallery and another once it is laid down.
-function BackGallery({ onPick }: { onPick(back: { name: string; base: Element[] }, from: HTMLElement): void }) {
+//
+// Folded under its head while the back has layers of its own (#736): the head is a disclosure that
+// says how many there are, and stands where the list would.
+function BackGallery({ open: openFromStart, takeFocus, onFocused, onPick }: { open: boolean; takeFocus: boolean; onFocused(): void; onPick(back: { name: string; base: Element[] }, from: HTMLElement): void }) {
   const t = useT()
+  const [open, setOpen] = useState(openFromStart)
+  const list = useId()
+  const head = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (!takeFocus) return
+    head.current?.focus()
+    onFocused()
+  }, [takeFocus, onFocused])
   return (
     <div className="byd-backs" role="group" aria-label={t('canvas.backs')}>
-      <h2>{t('canvas.backs')}</h2>
-      <div className="byd-backs-list">
+      <h2>
+        <button ref={head} type="button" aria-expanded={open} aria-controls={list} onClick={() => setOpen(!open)}>
+          {t('canvas.backs.n', { n: BACKS.length })}
+        </button>
+      </h2>
+      {open && (
+      <div className="byd-backs-list" id={list}>
         {BACKS.map((back) => (
           <button key={back.id} type="button" onClick={(event) => onPick({ name: t(back.name), base: back.base(t) }, event.currentTarget)}>
             <span className="byd-backs-card">
@@ -2769,6 +2818,7 @@ function BackGallery({ onPick }: { onPick(back: { name: string; base: Element[] 
           </button>
         ))}
       </div>
+      )}
     </div>
   )
 }
