@@ -51,7 +51,9 @@
 
 /* Förslagets kort, ritade av kompilatorn. */
 .ux-ai-cards { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 12px 10px; }
-.ux-ai-cards > li { display: grid; gap: 4px; align-content: start; width: min-content; }
+.ux-ai-cards > li { flex: none; display: grid; gap: 4px; align-content: start; }
+.ux-ai-cards > li[data-wide] { grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; }
+.ux-ai-cards > li[data-wide] > .ux-ai-diff { grid-column: 2; grid-row: 1; align-self: start; }
 .ux-ai-cards > li[data-left] .ux-ai-mini { opacity: 0.35; filter: grayscale(0.6); }
 .ux-ai-mini { position: relative; overflow: hidden; border-radius: 4px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5); flex: none; }
 .ux-ai-mini > * { transform-origin: 0 0; }
@@ -62,6 +64,15 @@
 .ux-ai-diff { font-size: 11px; line-height: 1.35; color: var(--ux-ai-quiet); overflow-wrap: anywhere; }
 .ux-ai-more { align-self: center; color: var(--ux-ai-quiet); font-size: 12px; width: auto !important; }
 .ux-ai-decide { display: grid; gap: 8px; }
+.ux-ai-list { list-style: none; margin: 0; padding: 0; display: grid; font-size: 12px; }
+.ux-ai-list li > label, .ux-ai-list li:not(:has(> label)) { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto auto; align-items: center; column-gap: 8px; min-height: 36px; border-bottom: 1px solid var(--ux-ai-line); cursor: pointer; }
+.ux-ai-list li:not(:has(> label)) { grid-template-columns: minmax(0, 1fr) auto auto auto auto; }
+.ux-ai-list input { width: 16px; height: 16px; margin: 0; accent-color: var(--byd-editor-primary-mark, #3c8ce7); }
+.ux-ai-list-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.ux-ai-list-id { color: var(--ux-ai-quiet); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+.ux-ai-list-was { color: #f0b64a; text-decoration: line-through; }
+.ux-ai-list-now { color: var(--ux-ai-ok); font-weight: 700; }
+.ux-ai-list li[data-left] { opacity: 0.5; }
 .ux-ai-refine, .ux-ai-ask { display: flex; gap: 8px; align-items: center; min-width: 0; }
 .ux-ai-refine input, .ux-ai-ask input, .ux-ai-compose textarea, .ux-ai-field input, .ux-ai-field select {
   flex: 1 1 auto; min-width: 0; min-height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 8px; border: 1px solid var(--byd-secondary-line, #6f7a90); background: var(--ux-ai-field); color: #fff; font: inherit; font-size: 13px;
@@ -114,7 +125,9 @@
 .ux-ai-bar .ux-ai-ask { flex: 1 1 auto; flex-wrap: nowrap; }
 .ux-ai-bar .ux-ai-ask .ux-ai-context { flex: none; }
 .ux-ai-bar .ux-ai-refine { flex: 1 1 auto; }
-.ux-ai-bar .ux-ai-fail { flex: 0 1 auto; display: flex; align-items: center; gap: 10px; padding: 6px 10px; }
+.ux-ai-bar .ux-ai-fail { flex: 1 1 auto; display: flex; align-items: center; gap: 12px; padding: 8px 12px; }
+.ux-ai-bar .ux-ai-fail strong { flex: none; }
+.ux-ai-bar button { white-space: nowrap; flex: none; }
 .ux-ai-bar .ux-ai-fail button { margin: 0; }
 .ux-ai-bar-last { flex: 0 1 40%; min-width: 0; }
 .ux-ai-bar-last .ux-ai-stream { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--ux-ai-quiet); }

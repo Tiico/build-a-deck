@@ -151,7 +151,9 @@ export function useAiSession({ base, outcome, provider }: { base: ProjectDoc; ou
   )
   const marks = useMemo(() => {
     if (!showing) return null
-    return { added: showing.newRows.map((r) => r.id), changed: [...new Set(showing.changes.map((c) => c.id))], face: showing.face !== undefined, left: open ? partsOf(open).filter((p) => !picked.has(p)) : [] }
+    const left = open ? partsOf(open).filter((p) => !picked.has(p)) : []
+    const changed = [...new Set(showing.changes.map((c) => c.id))]
+    return { added: showing.newRows.map((r) => r.id), changed, face: showing.face !== undefined, left: showing.face && left.includes('mall') ? [...left, ...changed] : left }
   }, [showing, open, picked])
 
   return { turns, current, open, streaming, showing, picked, accepted, past, ask, cancel, accept, discard, refine, undo, toggle, reset, view, marks }

@@ -4,7 +4,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { contextOf, type Ask } from './fake.js'
 import { KeyBox } from './KeyBox.js'
-import { Context, Decide, FailureNote, Into, ProposalCards, Stream, Verdict, useSlots } from './parts.js'
+import { Context, Decide, FailureNote, Into, ProposalCards, ProposalList, Stream, Verdict, useSlots } from './parts.js'
 import type { Shared } from './AiPrototype.js'
 
 type Errand = { kind: 'kort' } | { kind: 'urval'; ids: string[] } | { kind: 'kolumn'; field: string } | { kind: 'mall' }
@@ -19,7 +19,7 @@ export function VariantB(p: Shared) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const crown = useSlots('.byd-wall-view > .byd-crown', 'before-end')
   const tools = useSlots('.byd-data-tools')
-  const heads = useSlots('.byd-data-scroll thead th[data-col]:not([data-col="id"])')
+  const heads = useSlots('.byd-data-scroll thead th[data-col]:not([data-col="id"]):not([data-col="#group"])')
   const strip = useSlots('.byd-canvas-strip')
   const chosen = [...new Set([...(p.row ? [p.row] : []), ...p.marked])]
   const open = (e: Errand, from: HTMLElement) => {
@@ -148,7 +148,11 @@ function Pop({ p, errand, anchor, onClose }: { p: Shared; errand: Errand; anchor
                 {shown && turn.state !== 'avbruten' && !turn.verdict && (
                   <>
                     {errand.kind === 'mall' && <p className="ux-ai-quiet">Förslaget ritas på duken bakom rutan.</p>}
-                    <ProposalCards doc={p.doc} http={p.http} proposal={shown} session={s} choose={turn.proposal !== null} width={errand.kind === 'mall' ? 104 : 76} />
+                    {errand.kind === 'kolumn' ? (
+                      <ProposalList doc={p.doc} proposal={shown} session={s} choose={turn.proposal !== null} />
+                    ) : (
+                      <ProposalCards doc={p.doc} http={p.http} proposal={shown} session={s} choose={turn.proposal !== null} width={errand.kind === 'mall' ? 104 : 76} />
+                    )}
                   </>
                 )}
               </div>

@@ -137,9 +137,10 @@ export function proposedFace(doc: ProjectDoc, coinMm = 11): FaceTemplate {
   }
   const variants: FaceTemplate['variants'] = {}
   for (const [name, v] of Object.entries(now?.variants ?? {})) variants[name] = { ...v, override: [...(v.override ?? [])] }
-  // Butikskorten bär en kostnad, så där flyttar namnet åt sidan för myntet.
+  // Butikskorten bär en kostnad: myntet läggs till i deras variant och namnet flyttar åt sidan för
+  // det. Basen — det duken visar under «Bas (alla)» — har inget mynt.
   const shop = variants['Shopcard'] ?? { override: [] }
-  variants['Shopcard'] = { ...shop, override: [...(shop.override ?? []).filter((e) => e.id !== 'title' && e.id !== 'typ'), titleAt(inset), typAt(inset)] }
+  variants['Shopcard'] = { ...shop, override: [...(shop.override ?? []).filter((e) => e.id !== 'title' && e.id !== 'typ'), titleAt(inset), typAt(inset), coin] }
   return {
     ...(now?.variantBy ? { variantBy: now.variantBy } : {}),
     base: [
@@ -149,7 +150,6 @@ export function proposedFace(doc: ProjectDoc, coinMm = 11): FaceTemplate {
       rect('bildyta', 5, 18, 53, 25, { name: 'Bildyta', fill: '#e8dcc3', radiusMm: 2, pattern: { kind: 'stripes', color: '#d8c8a8', scaleMm: 3, angleDeg: 45, weight: 0.35 } }),
       titleAt(5),
       typAt(5),
-      coin,
       { kind: 'text', id: 'body', x: 5, y: 45.5, w: 53, h: 29, bind: { field: 'body' }, font: { family: 'system-ui, sans-serif', sizePt: 8.5, lineHeight: 1.25 }, color: INK, fit: 'shrink' },
       ...kept,
     ],
@@ -160,7 +160,10 @@ export function proposedFace(doc: ProjectDoc, coinMm = 11): FaceTemplate {
 const say = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 export function summarize(p: Pick<Proposal, 'newRows' | 'changes' | 'face' | 'newFields'>): string {
   const parts: string[] = []
-  if (p.face) parts.push('ny mall för framsidan')
+  if (p.face) {
+    const cards = new Set(p.changes.map((c) => c.id)).size
+    return `Ny mall för framsidan${p.newFields.length ? `, och fältet ${p.newFields.join(', ')} på ${cards} kort` : ''}`
+  }
   if (p.newFields.length) parts.push(say(p.newFields.length, 'nytt fält', 'nya fält'))
   if (p.newRows.length) parts.push(say(p.newRows.length, 'nytt kort', 'nya kort'))
   const changedCards = new Set(p.changes.map((c) => c.id)).size
@@ -302,8 +305,9 @@ export function script(doc: ProjectDoc, ask: Ask, outcome: Outcome, provider: Pr
 // Förslaget lagt på en kopia av dokumentet: bara de delar som är valda.
 export function applied(doc: ProjectDoc, p: Proposal, picked: ReadonlySet<string> | null): ProjectDoc {
   const keep = (key: string) => picked === null || picked.has(key)
+  // En mall och fälten den kräver är en del: kostnaden på butikskorten hör till myntet.
   const rows = doc.rows.map((r) => {
-    const mine = p.changes.filter((c) => c.id === r.id && keep(r.id))
+    const mine = p.changes.filter((c) => c.id === r.id && keep(p.face ? 'mall' : r.id))
     if (!mine.length) return r
     const fields = { ...r.fields }
     for (const c of mine) fields[c.field] = c.field === 'antal' || c.field === 'kostnad' ? Number(c.to) : c.to
@@ -317,7 +321,7 @@ export function applied(doc: ProjectDoc, p: Proposal, picked: ReadonlySet<string
 
 // Förslagets delar, som designern väljer bland: nya kort och ändrade kort per id, och mallen.
 export function partsOf(p: Proposal): string[] {
-  return [...(p.face ? ['mall'] : []), ...p.newRows.map((r) => r.id), ...new Set(p.changes.map((c) => c.id))]
+  return [...(p.face ? ['mall'] : []), ...p.newRows.map((r) => r.id), ...(p.face ? [] : new Set(p.changes.map((c) => c.id)))]
 }
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI']

@@ -51,8 +51,42 @@ export function snippet(from: string, to: string): [string, string] {
 
 // Förslagets delar som kort: mallen på tre kort ur leken, nya kort och ändrade kort med sitt
 // gamla → nya. `choose` ger varje del en kryssruta (att godta en del av förslaget).
+// Ett förslag som bara ändrar ett fält på många kort läses bättre som en lista än som kort: det är
+// värdet som granskas, inte kortet.
+export function ProposalList({ doc, proposal, session, choose }: { doc: ProjectDoc; proposal: Proposal; session: Session; choose: boolean }) {
+  return (
+    <ul className="ux-ai-list" role="list">
+      {proposal.changes.map((c) => {
+        const row = doc.rows.find((r) => r.id === c.id)
+        const name = String(row?.fields['title'] ?? c.id)
+        const body = (
+          <>
+            <span className="ux-ai-list-name">{name}</span>
+            <span className="ux-ai-list-id">{c.id}</span>
+            <span className="ux-ai-list-was">{c.from || '—'}</span>
+            <span aria-hidden="true">→</span>
+            <span className="ux-ai-list-now">{c.to}</span>
+          </>
+        )
+        return (
+          <li key={`${c.id}-${c.field}`} data-left={choose && !session.picked.has(c.id) ? '' : undefined}>
+            {choose ? (
+              <label>
+                <input type="checkbox" checked={session.picked.has(c.id)} onChange={() => session.toggle(c.id)} aria-label={`Ta med ${name}: ${c.field} ${c.from || 'tomt'} till ${c.to}`} />
+                {body}
+              </label>
+            ) : (
+              body
+            )}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 export function ProposalCards({ doc, http, proposal, session, choose, width = 104, limit }: { doc: ProjectDoc; http: string; proposal: Proposal; session: Session; choose: boolean; width?: number; limit?: number }) {
-  const items: { key: string; label: string; card: ReactNode; diff?: string[] }[] = []
+  const items: { key: string; label: string; card: ReactNode; diff?: string[]; wide?: boolean }[] = []
   if (proposal.face) {
     const types = ['Shopcard', 'Playcard', 'Location']
     const samples = types.map((typ) => doc.rows.find((r) => r.fields['typ'] === typ)).filter((r): r is ProjectRow => r !== undefined)
@@ -83,14 +117,14 @@ export function ProposalCards({ doc, http, proposal, session, choose, width = 10
       const mine = proposal.changes.filter((c) => c.id === id)
       const after = { ...row.fields }
       for (const c of mine) after[c.field] = c.to
-      items.push({ key: id, label: String(row.fields['title'] ?? id), card: <MiniCard doc={doc} http={http} row={after} id={`${proposal.id}-${id}`} width={width} />, diff: mine.map((c) => `${c.field}: ${snippet(String(c.from), String(c.to)).join(' → ')}`) })
+      items.push({ key: id, label: String(row.fields['title'] ?? id), card: <MiniCard doc={doc} http={http} row={after} id={`${proposal.id}-${id}`} width={width} />, diff: mine.map((c) => `${c.field}: ${snippet(String(c.from), String(c.to)).join(' → ')}`), wide: true })
     }
   }
   const shown = limit ? items.slice(0, limit) : items
   return (
     <ul className="ux-ai-cards" role="list">
       {shown.map((item) => (
-        <li key={item.key} data-left={choose && !session.picked.has(item.key) ? '' : undefined}>
+        <li key={item.key} data-left={choose && !session.picked.has(item.key) ? '' : undefined} data-wide={item.wide ? '' : undefined} style={{ width: item.key === 'mall' ? undefined : item.wide ? width * 2 + 8 : width }}>
           {choose ? (
             <label className="ux-ai-pick">
               <input type="checkbox" aria-label={`Ta med: ${item.label}`} checked={session.picked.has(item.key)} onChange={() => session.toggle(item.key)} />

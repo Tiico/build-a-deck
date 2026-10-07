@@ -162,10 +162,10 @@ function TurnView({ turn, p, latest, choosing, setChoosing }: { turn: Turn; p: S
                     aria-pressed={p.preview}
                     onClick={() => {
                       p.setPreview(!p.preview)
-                      if (!p.preview) p.onStage(turn.proposal?.face ? 'canvas' : 'wall')
+                      if (!p.preview && p.mode !== 'table' && p.mode !== 'template') p.onStage('wall')
                     }}
                   >
-                    {p.preview ? 'Visas på väggen' : turn.proposal.face ? 'Visa på duken' : 'Visa på väggen'}
+                    {p.preview ? (p.mode === 'table' ? 'Visas i tabellen' : p.mode === 'template' ? 'Visas på duken' : 'Visas på väggen') : 'Visa på väggen'}
                   </button>
                   {!choosing && (
                     <button type="button" className="ux-ai-link" onClick={() => setChoosing(true)}>

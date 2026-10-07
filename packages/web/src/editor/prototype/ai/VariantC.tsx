@@ -22,6 +22,7 @@ export function VariantC(p: Shared) {
   const [refining, setRefining] = useState(false)
   const [refineText, setRefineText] = useState('')
   const [next, setNext] = useState(0)
+  const [dismissed, setDismissed] = useState<number | null>(null)
   const refineRef = useRef<HTMLInputElement>(null)
   const chosen = [...new Set([...(p.row ? [p.row] : []), ...p.marked])]
   const turn = s.current
@@ -31,8 +32,7 @@ export function VariantC(p: Shared) {
   useEffect(() => setRefining(false), [s.open])
   // En mall ses på duken; kort ses på väggen eller i tabellen.
   useEffect(() => {
-    if (s.showing?.face && p.mode !== 'template') p.onStage('canvas')
-    else if (s.showing && !s.showing.face && p.mode !== 'wall' && p.mode !== 'table') p.onStage('wall')
+    if (s.showing && p.mode !== 'wall' && p.mode !== 'table' && p.mode !== 'template') p.onStage('wall')
   }, [s.showing !== null, s.showing?.face !== undefined])
 
   const go = () => {
@@ -130,7 +130,26 @@ export function VariantC(p: Shared) {
           )}
         </>
       )}
-      {!s.streaming && !pending && (
+      {!s.streaming && !pending && turn?.failure && dismissed !== turn.id && (
+        <>
+          <div className="ux-ai-bar-text">
+            <FailureNote failure={turn.failure} />
+          </div>
+          {turn.failure.action === 'byt-nyckel' ? (
+            <button type="button" className="byd-secondary" onClick={p.openKey}>
+              Byt nyckel…
+            </button>
+          ) : (
+            <button type="button" className="byd-secondary" onClick={() => s.ask(turn.said, turn.ask)}>
+              Försök igen
+            </button>
+          )}
+          <button type="button" className="byd-secondary" onClick={() => setDismissed(turn.id)}>
+            Ändra frågan
+          </button>
+        </>
+      )}
+      {!s.streaming && !pending && !(turn?.failure && dismissed !== turn.id) && (
         <form
           className="ux-ai-ask"
           onSubmit={(e) => {
@@ -139,9 +158,7 @@ export function VariantC(p: Shared) {
             s.ask(text.trim(), classify(text.trim(), chosen))
           }}
         >
-          {turn?.failure ? (
-            <FailureNote failure={turn.failure} onKey={p.openKey} onAgain={() => s.ask(turn.said, turn.ask)} />
-          ) : turn?.verdict || turn?.state === 'avbruten' || (turn && turn.state === 'klar' && !turn.proposal) ? (
+          {turn?.failure ? null : turn?.verdict || turn?.state === 'avbruten' || (turn && turn.state === 'klar' && !turn.proposal) ? (
             <div className="ux-ai-bar-last">{turn.verdict ? <Verdict turn={turn} session={s} /> : <Stream turn={turn} compact />}</div>
           ) : null}
           <input aria-label="Be om ett förslag" placeholder="Be om förslag som läggs på väggen — «sju nya fällkort», «fyll antal»…" value={text} onChange={(e) => setText(e.target.value)} />

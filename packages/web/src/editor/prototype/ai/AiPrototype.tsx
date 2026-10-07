@@ -91,9 +91,15 @@ export default function AiPrototype({ doc, http, rev, mode, row, onRow, onStage,
   useEffect(() => {
     if (variant !== 'C' && !s.showing) setPreview(false)
   }, [s.showing, variant])
+  // En föreslagen mall ses bäst på ett kort som bär allt den ritar: duken visar ett butikskort.
+  const showsFace = s.showing?.face !== undefined
+  useEffect(() => {
+    if (!showsFace) return
+    const shop = s.accepted.rows.find((r) => r.fields['typ'] === 'Shopcard')
+    if (shop) onRow(shop.id)
+  }, [showsFace])
 
   const shared: Shared = { s, doc: s.accepted, http, mode, row, marked: markedIds, saved, openKey: () => setKeyOpen(true), onStage, preview, setPreview, setSaved }
-  void onRow
   return (
     <>
       {variant === 'A' && <VariantA {...shared} />}
