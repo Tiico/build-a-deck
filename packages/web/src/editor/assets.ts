@@ -50,13 +50,17 @@ export function resolveAssetRow(row: Row, base: string, early: ReadonlySet<strin
 // resolved here, the same way and to the same URL a cell is, and the one compiler draws it. A
 // face with no such element comes back as the very object it was, so nothing recompiles for it.
 type Elements = FaceTemplate['base']
-export function resolveAssetFace(face: FaceTemplate, base: string): FaceTemplate {
+//
+// `early` are the hashes whose bytes are still on their way (#907, #959), drawn as an element with
+// no picture, exactly as `resolveAssetRow` draws such a cell.
+export function resolveAssetFace(face: FaceTemplate, base: string, early: ReadonlySet<string> = new Set()): FaceTemplate {
   let changed = false
   const walk = (els: Elements): Elements =>
     els.map((el): Elements[number] => {
       if (el.kind === 'image' && 'literal' in el.bind && isAssetRef(el.bind.literal)) {
         changed = true
-        return { ...el, bind: { literal: assetUrl(base, el.bind.literal.slice(ASSET_PREFIX.length)) } }
+        const hash = el.bind.literal.slice(ASSET_PREFIX.length)
+        return { ...el, bind: { literal: early.has(hash) ? '' : assetUrl(base, hash) } }
       }
       return el.kind === 'if' || el.kind === 'group' ? { ...el, children: walk(el.children) } : el
     })
@@ -78,6 +82,33 @@ export function previewIcons(doc: Pick<ProjectDoc, 'icons'>, assetBase: string |
   const out: Record<string, string> = {}
   for (const [name, url] of Object.entries(doc.icons)) out[name] = isAssetRef(url) ? assetUrl(assetBase, url.slice(ASSET_PREFIX.length)) : url
   return out
+}
+
+// The assets whose bytes are still on their way (#959) that a compiled card asks for: every hash in
+// `arriving` that its markup or its style sheet names by address — a picture, a symbol, a mask, a
+// face. Said as words, sorted, so a view can hold on to it by value and a card that names none of
+// them is never compiled again when they land.
+const ADDRESSED = /\/assets\/([0-9a-f]{64})/g
+export function arrivingIn(compiled: string, arriving: ReadonlySet<string>): string {
+  if (arriving.size === 0) return ''
+  return [...new Set([...compiled.matchAll(ADDRESSED)].flatMap((m) => m[1] ?? []))].filter((hash) => arriving.has(hash)).sort().join(' ')
+}
+
+// Whether an address the editor resolved (`assetUrl`, `assetBytesUrl`) is one of `early`'s.
+export function isEarly(url: string, early: ReadonlySet<string>): boolean {
+  const hash = /\/assets\/([0-9a-f]{64})(?:\/bytes)?$/.exec(url)?.[1]
+  return hash !== undefined && early.has(hash)
+}
+
+// A symbol that draws nothing, standing in for one whose bytes are still on their way (#959). The
+// card keeps the symbol's place and its name, and asks the service for nothing until the bytes are
+// there: drawn from its address any earlier, it got a 404 and kept the broken picture after they
+// came. Square, as a symbol is, so the text around it does not move when the real one lands.
+export const NOTHING_YET = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%201%201%22%2F%3E'
+
+// The resolved icon set with the symbols whose bytes are still on their way drawn as nothing yet.
+export function holdIcons(icons: Record<string, string>, early: ReadonlySet<string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(icons).map(([name, url]) => [name, isEarly(url, early) ? NOTHING_YET : url]))
 }
 
 // The fields the template draws as images, in template order.

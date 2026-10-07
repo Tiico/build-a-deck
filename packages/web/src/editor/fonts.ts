@@ -1,6 +1,6 @@
 import type { Row } from '@byd/template'
 import type { ProjectDoc } from './types.js'
-import { ASSET_PREFIX, assetBytesUrl, isAssetRef } from './assets.js'
+import { ASSET_PREFIX, assetBytesUrl, isAssetRef, isEarly } from './assets.js'
 import { themeFamilies, themeOf } from './themes.js'
 
 // The type a game is set in (B3). A family the project names carries the file it is drawn from,
@@ -58,6 +58,14 @@ export function previewFonts(doc: Pick<ProjectDoc, 'template' | 'fonts'>, assetB
     out[family] = assetBase && isAssetRef(font.asset) ? { stack: font.stack, src: assetBytesUrl(assetBase, font.asset.slice(ASSET_PREFIX.length)) } : { stack: font.stack }
   }
   return out
+}
+
+// The resolved faces with the files whose bytes are still on their way left out (#959): such a
+// family is a stack and no `@font-face` until they land, so the card is set in the fallback
+// meanwhile. Declared any earlier, the face was fetched, got a 404, and stayed in error — the
+// card in the fallback until the page was loaded again.
+export function holdFonts(fonts: Record<string, { stack: string; src?: string }>, early: ReadonlySet<string>): Record<string, { stack: string; src?: string }> {
+  return Object.fromEntries(Object.entries(fonts).map(([family, font]) => [family, font.src !== undefined && isEarly(font.src, early) ? { stack: font.stack } : font]))
 }
 
 // The two words a typeface is tried on (#329, L27): the card's own heading and its own rule

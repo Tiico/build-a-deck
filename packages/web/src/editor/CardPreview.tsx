@@ -1,7 +1,8 @@
-import { useContext, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useCallback, useContext, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { compile, fitInDocument, type FaceTemplate, type Motif, type Row, type Warning } from '@byd/template'
-import { ASSET_PREFIX, isAssetRef, resolveAssetFace, resolveAssetRow } from './assets.js'
+import { arrivingIn, holdIcons, resolveAssetFace, resolveAssetRow } from './assets.js'
+import { holdFonts } from './fonts.js'
 import { Arriving } from './AssetImage.js'
 
 export type CardPreviewProps = {
@@ -40,28 +41,41 @@ export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedEl
   // The face's own pictures resolved once per face (#320), for the same reason the icons are
   // resolved once per document: a fresh face every render is a fresh compile every render.
   const drawnFace = useMemo(() => (assetBase ? resolveAssetFace(face, assetBase) : face), [face, assetBase])
-  // This card's own pictures whose bytes are still on their way (#907), drawn as empty cells until
-  // they land. Held as words, so only a card that holds such a picture is compiled again when it
-  // does, and not every card on the wall.
-  const arriving = useContext(Arriving)
-  const early = Object.values(row)
-    .flatMap((v) => (isAssetRef(v) && arriving.has(v.slice(ASSET_PREFIX.length)) ? [v.slice(ASSET_PREFIX.length)] : []))
-    .join(' ')
-  const drawnRow = useMemo(() => (assetBase ? resolveAssetRow(row, assetBase, new Set(early.split(' '))) : row), [row, assetBase, early])
-  const out = useMemo(
-    () =>
+  const drawnRow = useMemo(() => (assetBase ? resolveAssetRow(row, assetBase) : row), [row, assetBase])
+  const draw = useCallback(
+    (f: FaceTemplate, r: Row, i: Record<string, string>, fs: CardPreviewProps['fonts']) =>
       compile({
         type: CARD_STANDARD_63x88,
-        face: drawnFace,
-        row: drawnRow,
-        icons,
+        face: f,
+        row: r,
+        icons: i,
         scope: `#${id}`,
-        ...(fonts ? { fonts } : {}),
+        ...(fs ? { fonts: fs } : {}),
         ...(motifs ? { motifs } : {}),
         ...(palette ? { palette } : {}),
       }),
-    [drawnFace, drawnRow, icons, fonts, id, motifs, palette],
+    [id, motifs, palette],
   )
+  // The card as it is once every byte it names has landed. Compiling is pure and asks nothing of
+  // the service; only the markup put into the page does.
+  const whole = useMemo(() => draw(drawnFace, drawnRow, icons, fonts), [draw, drawnFace, drawnRow, icons, fonts])
+  // What this card names whose bytes are still on their way (#907, #959): a picture in a cell or
+  // on the face, a symbol, a face's file. Such a card is drawn without them — an empty picture, a
+  // symbol that draws nothing, the fallback type — because a browser that asks early gets a 404
+  // and keeps it. Held as words, so only a card that names such an asset is compiled again, and
+  // when they land it goes back to the card above without compiling at all.
+  const arriving = useContext(Arriving)
+  const held = arriving.size === 0 ? '' : arrivingIn(whole.html + whole.css, arriving)
+  const out = useMemo(() => {
+    if (held === '') return whole
+    const early = new Set(held.split(' '))
+    return draw(
+      assetBase ? resolveAssetFace(face, assetBase, early) : face,
+      assetBase ? resolveAssetRow(row, assetBase, early) : row,
+      holdIcons(icons, early),
+      fonts && holdFonts(fonts, early),
+    )
+  }, [draw, whole, held, face, row, assetBase, icons, fonts])
   const ref = useRef<HTMLDivElement | null>(null)
   // Held by identity, not just by value: React writes `innerHTML` again whenever this object is a
   // new one, whatever it holds. A fresh object every render rebuilds every card in the DOM on
