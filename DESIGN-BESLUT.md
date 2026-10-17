@@ -2267,6 +2267,14 @@ Routern läser `/KOD` sist, efter alla appens egna vägar, och bygget ber om vä
 En okänd, en utgången och en roterad kod sägs likadant, «Koden finns inte eller har gått ut — fråga värden efter den nya.», med koden kvar i fältet; servern svarar samma 404 med samma kropp för alla tre (DRIFT §9).
 Tillägg 2026-10-07 (#938, beställarens beslut): ett avslutat bords kod sägs likadant som de tre, på telefonen och på tråden; «Bordet är slut» på `/join` är borta, och dörren lämnar fortfarande ingen token (C9, #485).
 
+Tillägg 2026-10-17 (#937): koden ritas i ett riktigt fastbreddstypsnitt, och filten hänger under huvudet.
+Stacken `ui-monospace, monospace` blev Courier i Chrome på Mac, som inte känner `ui-monospace` och ritar `monospace` i Courier; Menlo står nu mellan dem överallt där stacken fanns, och bordslägets skylt ritar koden i samma stack som TV:n.
+`room-code-face.spec.ts` frågar Chromium vilket typsnitt som faktiskt ritades (`CSS.getPlatformFontsForNode`) och håller att det inte är Courier eller Times och att det har fast bredd, utan att låsa en familj, eftersom den är Menlo på Mac och DejaVu Sans Mono eller Liberation Mono på CI:s Linux.
+Filtens rad i väljaren tar den höjd telefonen har över, och en filt centrerad i den stod mitt i ett tomt band: 83 px under huvudet vid 390 × 844 med fyra platser.
+Filten hänger nu från radens topp och centreras bara i sidled, så sidan läses uppifrån — vem du ansluter till och bordet direkt under — och höjden över hamnar mellan bordet och formuläret.
+Formuläret står kvar vid foten, där tummen är och där #42 lämnade «Sätt dig» oavsett filtens storlek; att packa hela sidan uppåt hade flyttat knappen med antalet platser.
+`picker-band.spec.ts` mäter luften mellan huvudets sista rad och det första filten ritar, pillret eller träkanten, i det byggda appen vid 390 × 844 och 320 × 568 med fyra och sex platser: 30 px överallt.
+
 ### K13. Ångra och tillbakaspolning: förhandsvisning på bordet, beslut på telefonerna (prototypat 2026-09-06)
 
 C6 gav principen; det här är hur den blir konkret.
