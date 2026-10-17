@@ -199,4 +199,21 @@ export const svStatus = {
   // Ett skäl den här klienten aldrig hört talas om får en mening av sin egen i stället för att
   // utvecklarens engelska ord skrivs ut på skärmen.
   'refusal.other': 'Bordet tog inte emot draget. Försök igen om en stund.',
+
+  // Ord som skalet runt varje yta säger, och som därför måste finnas var sidan än öppnas (#760):
+  // kort som inte gick att rendera, en spelare som tagits bort från bordet, hjälprutornas knappar och «Avbryt».
+  'texture.lost.one': '{n} kort kunde inte renderas',
+  'texture.lost.other': '{n} kort kunde inte renderas',
+  'session.refused.kicked': 'Värden har tagit bort dig från bordet.',
+  'canvas.hint.base': 'Dra för att ändra ordningen.',
+  'help.about': 'Hjälp om {topic}',
+  'help.close': 'Stäng hjälpen',
+  'editor.cancel': 'Avbryt',
+  // Rumskodens fält står både i platsväljaren och på startsidan (`join/codeField.ts`).
+  'join.code.empty': 'Skriv rumskoden först.',
+  'join.code.unknown': 'Koden finns inte eller har gått ut — fråga värden efter den nya.',
+  // Ett ord för en sparad version överallt där människor läser (#703) — bordet, telefonen, startsidan och editorn: «Version 3», «version 3» och «v3» där det är trångt.
+  'version.word': 'version {n}',
+  'version.name': 'Version {n}',
+  'version.short': 'v{n}',
 } as const
