@@ -1,5 +1,5 @@
 import { CARD_STANDARD_63x88 } from '@byd/engine'
-import { remedyFor, validateCard, type Issue, type IssueCode, type IssueValues, type Remedy, type Severity } from '@byd/template'
+import { remedyFor, validateCard, type FitReport, type Issue, type IssueCode, type IssueValues, type Remedy, type Severity } from '@byd/template'
 import type { ProjectDoc } from './types.js'
 import type { Key, T } from '../i18n/index.js'
 
@@ -37,11 +37,17 @@ export function fixesFor(doc: ProjectDoc, group: Pick<Group, 'code'>, found: rea
   return [...fixes.values()]
 }
 
-export function deckIssues(doc: ProjectDoc): Found[] {
+// What the one renderer measured when it fitted the cards a surface drew (E2, #808), by face and
+// card: whether a text fits is a question about a laid-out page, so the wall hands over what its
+// own cards said, and the check reads it. A card that has not been drawn is said nothing about.
+export type Measured = Record<string, Record<string, readonly FitReport[]>>
+
+export function deckIssues(doc: ProjectDoc, measured: Measured = {}): Found[] {
   const found: Found[] = []
   for (const row of doc.rows) {
     for (const [face, template] of Object.entries(doc.template.faces)) {
-      for (const issue of validateCard({ type: CARD_STANDARD_63x88, face: template, row: row.fields, ...(doc.fonts ? { fonts: doc.fonts } : {}) })) found.push({ ...issue, cardRef: row.id, face })
+      const fitted = measured[face]?.[row.id]
+      for (const issue of validateCard({ type: CARD_STANDARD_63x88, face: template, row: row.fields, ...(doc.fonts ? { fonts: doc.fonts } : {}), ...(fitted ? { fitted } : {}) })) found.push({ ...issue, cardRef: row.id, face })
     }
   }
   return found
@@ -77,6 +83,8 @@ export function issueDetail(group: Pick<Group, 'code' | 'severity' | 'values'>, 
   switch (group.code) {
     case 'text-too-small':
       return group.severity === 'error' ? t('wall.detail.text-too-small.error', v) : t('wall.detail.text-too-small.warning', v)
+    case 'text-overflow':
+      return t('wall.detail.text-overflow.warning', v)
     case 'low-contrast':
       return group.severity === 'error' ? t('wall.detail.low-contrast.error', v) : t('wall.detail.low-contrast.warning', v)
     case 'outside-safe-area':
@@ -102,6 +110,7 @@ const BLINDNESS_WORDS: Record<string, Key> = {
 export function issueWords(t: T): Record<IssueCode, string> {
   return {
     'text-too-small': t('wall.issue.text-too-small'),
+    'text-overflow': t('wall.issue.text-overflow'),
     'low-contrast': t('wall.issue.low-contrast'),
     'outside-safe-area': t('wall.issue.outside-safe-area'),
     'short-of-bleed': t('wall.issue.short-of-bleed'),

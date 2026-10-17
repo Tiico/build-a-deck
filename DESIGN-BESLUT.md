@@ -1474,6 +1474,8 @@ Följdkrav:
 Varningen måste länka direkt till raden i tabellen.
 Textstorleken varierar mellan kort, vilket är estetiskt ojämnt jämfört med hur förlag gör.
 
+Byggt 2026-10-17 (L69, #808): en text som inte ryms ens i minsta graden ramas in vid rutan i guiden, i Mall och på väggen, och Fysisk kontroll ger en varning per fält som leder till kortets rad i Tabell.
+
 ---
 
 ## F. Tryck
@@ -6067,6 +6069,8 @@ Beställaren valde den sista.
 
 Mätt i prototypen: fem rubriker hittas i stället för en, med lika många tabbstopp och lika många tryck in till ett block.
 
+En lista skapas sedan #707 i redigeringsläget och inte bara genom import: det öppna blocket väljer slag, och rader som börjar med «- » eller «1. » blir en lista (L68).
+
 ### L52. Fälten har knappspråkets kant, och en zon ritas i två band (prototypat och beslutat 2026-09-30, #553)
 
 Textfältens kanter mätte 1,41–1,48:1 mot sin grund och zonernas kontur på den gröna filten 1,5:1, mot WCAG:s 3:1 för annat än text (1.4.11).
@@ -6542,3 +6546,64 @@ C, en statusrad, kostade 28 px korthöjd på varje flik för en sällsynt hände
 Meningen i #566-beslutet om att bekräftelserna står som en rad längst ner på skärmen gäller inte längre.
 `editor-confirm-strip.spec.ts` mäter i den byggda appen vid 1024 × 768 och 1280 × 800, på varje flik, att bekräftelsen står i flikens panel, helt på skärmen, inte överlappar någon synlig kontroll, och att ingen kontroll i fliken flyttar när den försvinner.
 Prototypen: `docs/ux-audits/2026-10-06-editorns-remsor/prototyper/698-remsan.html`.
+
+### L68. Det öppna blocket väljer slag, och en rad som börjar med «- » eller «1. » blir en lista (prototypat och beslutat 2026-10-06, #707)
+
+Speltestet 2026-10-02 fann att en lista inte gick att skapa i regelbokens redigeringsläge.
+＋ gav bara ett stycke, och «- Dra ett kort.⏎- Spela ett kort.» skrivet i det stängdes till en enda rad, «- Dra ett kort. - Spela ett kort.», utan att något sade varför.
+Enda vägen till en lista var import från fil, och hjälpen sade ingenting om listor.
+
+Tre varianter prövades i en prototyp: inga nya knappar där raderna läses (A), två ＋ i marginalen (B) och det öppna blocket som väljer sitt slag (C).
+Beställaren valde **C med A:s genväg**.
+
+- **Det öppna blocket väljer slag: Stycke · Punktlista · Numrerad lista.**
+  Raden står överst i blocket, bara på stycket och listan och bara medan de skrivs i, så boken får inga nya knappar i marginalen och ＋ ger ett stycke som förut.
+  Det är `.byd-choice` med `aria-pressed`, som bokens växel mellan lägena (L13), i verktygets typsnitt och inte bokens.
+  Ett stycke som blir en lista behåller sina rader som punkter, och en lista som blir ett stycke behåller sina punkter som rader, så inget skrivet går förlorat av att pröva det andra slaget.
+  Ett block som just lagts till säger «Ny text.», som är verktygets ord och inte designerns, så en lista av det börjar med en tom punkt.
+- **En rad som börjar med «- » eller «1. » blir en lista när blocket stängs.**
+  Det är importens tecken, utom `*`, som en rad i ett stycke kan börja med som kursiv.
+  Rader av samma slag i följd är en lista, och det som står före och efter blir egna stycken, i den ordning det skrevs; det första blocket behåller blockets id.
+  Det görs när blocket skrivs och aldrig när det ritas: ett stycke blir inte tyst en lista på bordet, det blir en när designern stänger det, så boken håller det läsaren får.
+- **Fältet säger det, i ord, medan det gäller** (A:s «fältet säger det»).
+  Under ett stycke med sådana rader står att de blir en lista när blocket stängs.
+  En ensam radbrytning läses fortfarande som ett mellanslag, som i korttexten och i importen, men inte längre utan ord: under ett stycke med en sådan står att den läses som ett mellanslag och att en tom rad börjar ett nytt stycke.
+  Raden är fältets beskrivning för en skärmläsare och står i editorns tysta färg, 4,6:1 mot blocket.
+- **Hjälpen («?») nämner listor** och båda vägarna till en.
+
+Att i stället behålla radbrytningen i stycket vägdes bort: en importerad bok lagrar en Markdown-fils mjuka radbrytningar som radbrytningar, så alla redan importerade böcker hade fått hårda brytningar där källfilen råkade radbrytas.
+
+Följdkrav:
+`rule-runs.test.ts` håller hur ett styckes rader läses som stycken och listor.
+`rules-lists.test.tsx` håller genvägen, valet av slag och vad fältet och hjälpen säger.
+`rules-list-written.spec.ts` skriver en punktlista med genvägen och en numrerad lista med valet i den byggda editorn, startar ett bord och läser dem som två listor på telefonen.
+Prototypen och dess bilder låg på grenen `proto/707-regellistor` och finns i issuet.
+
+### L69. En text som inte ryms ens krympt sägs vid rutan och i Fysisk kontroll (prototypat och beslutat 2026-10-17, #808)
+
+E6 krymper en text till minsta graden och klippte den sedan tyst: guiden och Mall visade en halv sista rad, väggen bara en bärnstensbricka «1», och Fysisk kontroll stod på (0) och «Inga anmärkningar» för samma kort.
+Fyra former prototypades i det byggda appen: kanten och brickan (A), en toning i nederkant (B), en rad under kortet (C) och InDesigns port i hörnet (D).
+
+**A, Kanten och brickan, i guiden, i Mall och på väggen.**
+Rutan ramas in med en streckad bärnstensram över en mörk ring, 4 px utanför rutan så att ramen aldrig rör en bokstav.
+Under ramen hänger en mörk bricka: «▲ Ryms inte · 4 rader till», och under en ruta smalare än 160 px på skärmen den korta formen «▲ +4 rader», vilket är vad väggens små kort får.
+Det är #802:s form, den streckade ramen och ordet i en mörk bricka, i varningens bärnsten, och de två delar stilmall (`mark.css`) i stället för att kopiera den.
+Det mörka bandet bär ramen mot ljust papper och det bärnstensfärgade mot Mörk; ensam ger bärnsten 1,5:1 mot Krönikas papper.
+Kortets tillgängliga namn bär hela meningen: «Förhandsvisning av kort 1: Skogsvandring. «Regeltext» ryms inte ens i 6 pt: 4 rader syns inte på kortet.»
+På väggen ligger ramens hörn under «×2», och brickan skärs ut ur ramen med en ring i väggens egen botten i stället för att korsas av den.
+
+**Markeringen ligger utanpå kortet och aldrig i det** (E2).
+Kompilatorn tillfrågas inte; ramen ritas i kortets egna millimetrar från mallens ruta, och det enda som mäts är vad `fitInDocument` redan mäter.
+På väggen står den i kortets ruta utanför kortets papper, som är skuret efter hörnen och annars skulle klippa en ram nära kanten.
+
+**Fysisk kontroll räknar det.**
+`fitInDocument` säger nu också hur många rader rutan skär bort, och `validateCard` tar emot vad renderaren mätte (`fitted`) och ger en varning, `text-overflow`, per fält som inte ryms ens i minsta graden.
+Varningen är kortets och inte mallens, så anmärkningen räknar upp korten och leder var för sig till kortets rad i Tabell, som E6 kräver.
+Väggens bricka, markeringen och listan är samma mätning, så de kan inte säga olika saker.
+
+Följdkrav:
+Om en text ryms är en fråga om en utlagd sida, så kontrollen säger ingenting om ett kort ingen har mätt.
+I editorn mäts det kortväggen ritar, alltså den sida väggen visar; ordern på servern mäter inte ännu, och eftersom anmärkningen är en varning stoppar den ingen order.
+Den förkastade B täckte bokstäver och bars mot ljust papper bara av linjen, C pekade inte ut rutan och flyttade layouten, och D krävde hover för att säga något.
+Prototypen: [`docs/ux-audits/2026-10-17-texten-ryms-inte/prototyper/01-texten-ryms-inte.html`](docs/ux-audits/2026-10-17-texten-ryms-inte/prototyper/01-texten-ryms-inte.html) (`?v=a`), med mätskripten i `matning/`.
+`text-overset.spec.ts` mäter ramen och brickan i det byggda appen i guiden vid 1280 och 390, i Mall och på väggen, och att anmärkningen leder till raden; `overset-contrast.test.ts` mäter banden mot varje startkort.

@@ -251,11 +251,15 @@ export const svEditor = {
   'wall.checks.fix.none': 'Den här är ett val du gör själv, så den kan inte rättas åt dig.',
   'wall.checks.fix.fonts': 'Lägg till typsnittet i Speltema ›',
   'wall.checks.fix.readOnly': 'Den som får ändra spelet kan rätta det här i mallen.',
+  'wall.checks.rows': 'Korten den gäller',
+  'wall.checks.row': '{card}: {sentence} Till raden i Tabell ›',
+  'wall.checks.row.read': '{card}: {sentence}',
   'wall.severity.error': 'fel',
   'wall.severity.warning': 'varning',
 
   // Anmärkningarna vid namn, i tryckeriets ord.
   'wall.issue.text-too-small': 'för liten text',
+  'wall.issue.text-overflow': 'text som inte ryms',
   'wall.issue.low-contrast': 'för svag kontrast',
   'wall.issue.outside-safe-area': 'för nära kanten',
   'wall.issue.short-of-bleed': 'når inte utfallet',
@@ -725,6 +729,18 @@ export const svEditor = {
   'canvas.placeholder.icons.none.sentence': 'Inga ikoner ännu — välj en ikon, eller ett fält där korten skriver {namn}.',
   'canvas.placeholder.icons.empty.short': '«{field}» tom',
   'canvas.placeholder.icons.empty.sentence': '«{field}» är tom på det här kortet — skriv {namn} i kolumnen.',
+  // A text that does not fit even shrunk, said at its box (#808).
+  'overset.tag.plain': 'Ryms inte',
+  'overset.tag.long.one': 'Ryms inte · {n} rad till',
+  'overset.tag.long.other': 'Ryms inte · {n} rader till',
+  'overset.tag.short.one': '+{n} rad',
+  'overset.tag.short.other': '+{n} rader',
+  'overset.sentence.shrink.one': '«{field}» ryms inte ens i {pt} pt: {n} rad syns inte på kortet.',
+  'overset.sentence.shrink.other': '«{field}» ryms inte ens i {pt} pt: {n} rader syns inte på kortet.',
+  'overset.sentence.shrink.plain': '«{field}» ryms inte ens i {pt} pt.',
+  'overset.sentence.fixed.one': '«{field}» ryms inte i {pt} pt: {n} rad syns inte på kortet.',
+  'overset.sentence.fixed.other': '«{field}» ryms inte i {pt} pt: {n} rader syns inte på kortet.',
+  'overset.sentence.fixed.plain': '«{field}» ryms inte i {pt} pt.',
   'canvas.props.keepRatio': 'Behåll proportioner',
   // Passa in det som är ritat i filen i stället för filen (E1): bildernas storlek jämnas ut när
   // källfilerna bär olika mycket tomrum runt motivet.
@@ -1092,6 +1108,7 @@ export const svEditor = {
   'rules.help.topic': 'reglerna',
   'rules.help.reach': 'Reglerna versioneras med korten, och spelarna når dem från telefonen, TV:n och observatören.',
   'rules.help.names': 'En regel som nämner en zon eller ett kort följer med när det byter namn.',
+  'rules.help.lists': 'Ett öppet stycke kan bli en punktlista eller en numrerad lista. Rader som börjar med «- » eller «1. » blir också en lista när blocket stängs.',
   'rules.warnings.one': '{n} referens pekar på något spelet inte har',
   'rules.warnings.other': '{n} referenser pekar på något spelet inte har',
   'rules.where.top': 'i början av boken',
@@ -1129,6 +1146,15 @@ export const svEditor = {
   'rules.level.1': 'Rubrik',
   'rules.level.2': 'Underrubrik',
   'rules.addItem': '＋ Punkt',
+  // Vilket slag det öppna blocket är (#707, beslut 2026-10-06: C med A:s genväg). Bara stycket och
+  // listan har dem, och bara medan blocket skrivs i.
+  'rules.kind': 'Blockets slag, {block}',
+  'rules.kind.text': 'Stycke',
+  'rules.kind.bullets': 'Punktlista',
+  'rules.kind.numbers': 'Numrerad lista',
+  // Vad fältet säger när det som skrivits kommer att läsas annorlunda än det står (#707).
+  'rules.field.lists': 'Rader som börjar med «- » blir en punktlista och rader med «1. » en numrerad, när blocket stängs.',
+  'rules.field.wrap': 'En ensam radbrytning läses som ett mellanslag. En tom rad börjar ett nytt stycke.',
   // Listan `[[` öppnar, och vad som står i den (#215, L23). Sorten står efter namnet, eftersom
   // två saker i ett spel mycket väl kan heta samma sak och sorten är det som skiljer dem åt.
   'rules.refs': 'Referenser',
@@ -1598,6 +1624,7 @@ export const svEditor = {
   // Vad en anmärkning betyder, skriven där läsaren är: kontrollen mäter, orden sätts här.
   'wall.detail.text-too-small.error': '{sizePt} pt är under {floor} pt, som är minsta läsbara storlek för skriften',
   'wall.detail.text-too-small.warning': '{sizePt} pt är nära gränsen {floor} pt; i handen blir det litet',
+  'wall.detail.text-overflow.warning': 'Texten ryms inte i sin ruta ens i minsta graden, och det som inte ryms syns inte på kortet. Korta texten, eller gör rutan större i Mall.',
   'wall.detail.low-contrast.error': 'kontrasten mot bakgrunden är {ratio}:1, under {limit}:1',
   'wall.detail.low-contrast.warning': 'kontrasten mot bakgrunden är {ratio}:1, under {limit}:1',
   'wall.detail.short-of-bleed.error': 'når kanten men inte ut till utfallet {bleedMm} mm; snittet kan lämna en vit kant',
