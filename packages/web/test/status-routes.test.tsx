@@ -12,9 +12,6 @@ import { OnlinePage } from '../src/online/OnlinePage.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
 import { admit, asTable, createNamedSession, createSession, deafServer, roomOf, startServer, type Running } from './fixture.js'
 import type { Route } from '../src/status/title.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {

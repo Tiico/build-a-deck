@@ -1,13 +1,10 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { configure, fireEvent, render, screen, within } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
 import { DeckWall } from '../src/editor/DeckWall.js'
 import { Language } from '../src/i18n/index.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // A wall of 308 cards printed into a failure message is a megabyte nobody reads and a minute
 // nobody has: what a query could not find is the whole of what this suite needs to be told.

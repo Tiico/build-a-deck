@@ -9,14 +9,11 @@
 //
 // Två krav, och det är samma fix som bär båda: knappen ska gå att nå med tangentbordet, och en
 // vandring genom en rad ska aldrig landa på `<body>`. Editorns a11y är inte mjukad (L12).
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { DataTable } from '../src/editor/DataTable.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Vägen till en ikon finns bara när projektet kan ta emot en (E4); utan `onSymbol` är en klammer
 // i en cell bara en klammer, och då finns ingen knapp att nå.

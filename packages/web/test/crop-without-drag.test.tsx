@@ -8,9 +8,6 @@ import { render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { Crop } from '../src/editor/Crop.js'
 import type { AssetCrop } from '@byd/protocol'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 function crop(start: AssetCrop) {
   const onChange = vi.fn()

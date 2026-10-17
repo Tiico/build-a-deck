@@ -6,16 +6,13 @@
 // taken away with a pointer, and Tab from the field landed on <body>. The line the block keeps is
 // now the block's own edge — everything inside it, the foot included, is staying — and a list
 // block, which had no way out at all, answers to the same edge and to Escape like the others.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import type { RuleDoc } from '@byd/server'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {

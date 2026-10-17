@@ -4,11 +4,8 @@ import { EditSocket } from './setup.js'
 import { projectDoc } from './project-doc.js'
 import { LIBRARY } from '../src/editor/symbols.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { assetTypeDeclaring } from '@byd/protocol'
 import { Said } from '../src/i18n/said.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 // Every client this file opens, shut when its test ends.

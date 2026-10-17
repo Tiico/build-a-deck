@@ -6,9 +6,6 @@ import { HandColumn } from '../src/online/HandColumn.js'
 import { liftBox } from '../src/table/lift.js'
 import { READ_CARD_MIN_PX } from '../src/online/fan.js'
 import { DEFAULT_BODY_PT, SCREENS, textPxOnCard } from './legibility.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // A card in the hand's column, read (K26, #510 beslut B). The column's 112 px card carries its body
 // at 5 px, and the 180 px peek it used to draw on hover at 8.6 (#484 fynd 15). Now hover, keyboard

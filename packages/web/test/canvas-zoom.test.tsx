@@ -15,9 +15,6 @@ import { TemplateCanvas, type TemplateCanvasProps } from '../src/editor/Template
 import { STAGE_SCALE } from '../src/editor/canvas.js'
 import { projectDoc } from './project-doc.js'
 import { target } from './drag.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The canvas as the editor mounts it. Nothing here is about an edit, so every hand-back is a spy
 // that is never looked at.

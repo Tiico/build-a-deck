@@ -9,9 +9,6 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { useFocusTrap } from '../src/editor/focusTrap.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 function Window({ onEscape, initial }: { onEscape(): void; initial?: boolean | undefined }) {
   const box = useRef<HTMLDivElement>(null)

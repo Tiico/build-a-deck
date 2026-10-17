@@ -5,15 +5,12 @@
 // in its own order and leaves the table after its last stop; Enter and ↑/↓ change rows in the
 // column (L4), from the checkbox and the × too; and a link first in the table goes past it.
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { DataTable } from '../src/editor/DataTable.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 function Table({ doc = projectDoc() }: { doc?: ProjectDoc }) {
   const [selected, setSelected] = useState<string | null>(null)

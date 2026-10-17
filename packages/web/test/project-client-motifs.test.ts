@@ -5,13 +5,10 @@
 // half is what lets a deck made before there was anything to measure catch up by being opened.
 // The measuring itself needs real pixels and is tested where there are some; what is asked here
 // is who asks whom, and how often.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ProjectClient } from '../src/editor/ProjectClient.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3])
 const MOTIF = { w: 40, h: 40, trim: { left: 8, top: 8, right: 8, bottom: 8 } }

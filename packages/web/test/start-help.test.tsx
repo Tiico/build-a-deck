@@ -13,9 +13,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { LoginCard } from '../src/account/LoginCard.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // What the product does during the beta, and that print is on its way (#743): ordering is phase 5,
 // and a line that promised it sent a beta tester looking for something that was not there.

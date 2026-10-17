@@ -1,14 +1,11 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
 import { MAX_PLAYERS } from '@byd/server/doc'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { addZone, bordTab, drawn, shares } from './bord-tab.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Var en ny delad yta föds (#440, K2, B5). En zon som läggs rakt ovanpå en annan är ingen
 // placering formgivaren har gjort: hon måste dra undan den innan hon ser vad hon gjort, och tills

@@ -11,9 +11,6 @@ import { MediaPanel } from '../src/editor/MediaPanel.js'
 import type { ProjectDoc } from '@byd/server'
 import { facesDrawing } from '../src/editor/media-faces.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const SKOG = '1'.repeat(64)
 const MOSSA = '2'.repeat(64)

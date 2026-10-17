@@ -5,9 +5,6 @@ import { userEvent } from '@testing-library/user-event'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import type { ProjectDoc } from '../src/editor/types.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The property panel folds (#478, beslut 2026-09-27, variant A, revising L25): a plain rectangle
 // was 907 px in a column of 683, with all of Effekter under the fold. Every section's head is a

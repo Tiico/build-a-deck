@@ -3,6 +3,9 @@ import { cleanup, configure, getConfig } from '@testing-library/react'
 import { holdWords } from '../src/i18n/index.js'
 import { en } from '../src/i18n/en.js'
 import { sv } from '../src/i18n/sv.js'
+import { watchHolds } from '../../../test-support/own-time.js'
+import { holdTestsToOwnTime } from '../../../test-support/own-time-guard.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
 
 // The app fetches its words per surface and language before it draws (#760). A test mounts a
 // surface on its own, without the route that would have fetched them, so every test holds the
@@ -26,6 +29,11 @@ afterEach(() => {
 // One macrotask per test costs a millisecond and lets every answer through between them.
 afterEach(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
 
+// Every test in the package is held to its budget in the worker's own time (#848): twenty
+// seconds of the time the worker actually ran, under a ceiling vitest is given in `vite.config.ts`.
+// `budget.ts` says why twenty, and `test-support/own-time.ts` why own time.
+holdTestsToOwnTime(JSDOM_TEST_BUDGET)
+
 // How long a `waitFor` or a `findBy` waits before it calls the thing it is waiting for a failure.
 // Testing Library's own default is one second, and this suite does not run in one second's worth
 // of quiet: a file starts a real server, opens real sockets, and half a dozen of them drive
@@ -33,7 +41,7 @@ afterEach(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
 // race on a busy one, and then a passing test reports a wrong value — which is how eleven waits
 // in this suite came to carry a longer timeout written out one at a time. The patience belongs in
 // one place. Nothing is weakened by it: a wait that resolves still resolves at once, and a thing
-// that never happens still fails, four seconds later and inside vitest's own five.
+// that never happens still fails, four seconds later and well inside the test's own twenty.
 configure({ asyncUtilTimeout: 4000 })
 
 // Those four seconds are the worker's own, not the wall clock's (#867).
@@ -46,59 +54,32 @@ configure({ asyncUtilTimeout: 4000 })
 // to be read. No number fixes that, since any deadline is shorter than some stall.
 //
 // So a wait that gave up is asked again when time it was counting was time the worker did not
-// run: wall time that went by without the process spending CPU. Ordinary slowness — a render
-// that took a second of its own work — is the worker's own time and counts as it always did, and
-// so does a wait for something that never comes, which fails once its four seconds of running
-// time are spent. Only a stall long enough to be one is subtracted, never the jitter of a busy
-// scheduler. `test/waits-outlast-a-held-worker.test.tsx` holds the worker with SIGSTOP to show
-// both halves.
+// run, measured the way the test's own budget is (`watchHolds`, `test-support/own-time.ts`).
+// Ordinary slowness — a render that took a second of its own work — is the worker's own time and
+// counts as it always did, and so does a wait for something that never comes, which fails once its
+// four seconds of running time are spent. `test/waits-outlast-a-held-worker.test.tsx` holds the
+// worker with SIGSTOP to show both halves.
 //
 // The wrapper is Testing Library's own seam around every wait. user-event goes through it too;
 // an action is asked again only if it rejected *and* the worker was held while it ran, and an
 // action that rejects is a failing test either way.
-const TICK_MS = 50
-const HELD_AT_LEAST_MS = 250
-const realSetInterval = setInterval
-const realClearInterval = clearInterval
-// Read off the real clock even where a test fakes it: a faked clock that jumps is not a stall.
-const now = performance.now.bind(performance)
-function watchHolds(): () => { took: number; held: number } {
-  const started = now()
-  let last = started
-  let cpu = process.cpuUsage()
-  let held = 0
-  const look = () => {
-    const at = now()
-    const used = process.cpuUsage(cpu)
-    cpu = process.cpuUsage()
-    const idle = at - last - TICK_MS - (used.user + used.system) / 1000
-    if (idle >= HELD_AT_LEAST_MS) held += idle
-    last = at
-  }
-  const timer = realSetInterval(look, TICK_MS)
-  return () => {
-    realClearInterval(timer)
-    look()
-    return { took: now() - started, held }
-  }
-}
 const inner = getConfig().asyncWrapper
 configure({
   asyncWrapper: (cb) =>
     inner(async () => {
       let own = 0
       for (;;) {
-        const stop = watchHolds()
+        const watch = watchHolds()
         let result: Awaited<ReturnType<typeof cb>>
         try {
           result = await cb()
         } catch (err) {
-          const { took, held } = stop()
+          const { took, held } = watch.stop()
           own += took - held
           if (held === 0 || own >= getConfig().asyncUtilTimeout) throw err
           continue
         }
-        stop()
+        watch.stop()
         return result
       }
     }),

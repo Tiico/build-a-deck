@@ -9,9 +9,6 @@ import { seatColor } from '../src/table/seatColor.js'
 import { SHOW_MS, type Shown } from '../src/table/presence.js'
 import { useShowing } from '../src/table/useShowing.js'
 import { buildScene, registry } from './scene.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 describe('TvChrome (C as the TV surroundings)', () => {
   it('shows the room code, a dock with every seat and its hand count, and the recent activity in words', () => {

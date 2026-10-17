@@ -8,10 +8,7 @@ import { projectDoc } from './project-doc.js'
 import { buildBlankProject } from '../src/wizard/build.js'
 import { asSeat, asTable, registerRoom, startServer, type Running } from './fixture.js'
 import { layerNames, layerPick, layerRow, layerRows } from './layers.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { openAllSections } from './sections.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The panel folds (#478); this file is about the controls in it, so every section stands open.
 beforeEach(openAllSections)
@@ -64,7 +61,7 @@ describe('EditorPage', () => {
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
     expect(link.href).toMatch(/\/table\?session=[0-9a-f-]{36}&host=[A-Za-z0-9_-]{20,}&mode=tv/)
     expect((await run.store.loadSession(new URL(link.href).searchParams.get('session')!))?.version).toBe('rev-2')
-  }, 20_000)
+  })
 
   it('shows on the Bord tab the deck a started table would get, rows times antal (L4, #85)', async () => {
     await run.projects.create(run.projectId, projectDoc())
@@ -219,7 +216,7 @@ describe('the table follows the editor (C7, L5)', () => {
     await screen.findByText(/nytt bord startat/i)
     const second = ((await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement).href
     expect(new URL(second).searchParams.get('session')).not.toBe(sessionId)
-  }, 20_000)
+  })
 })
 
 describe('a table opens only once its cards can be seen (L5)', () => {
@@ -376,7 +373,7 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
     await screen.findByText(/bordet uppdaterat på version 2/i)
     expect(document.querySelector('.byd-editor-table-link')!.hasAttribute('data-lost')).toBe(false)
     expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual(['version.change'])
-  }, 20_000)
+  })
 })
 
 describe('the header steps (#566)', () => {
@@ -544,7 +541,7 @@ describe('editing the template on the canvas (#18)', () => {
     await user.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
     expect(layers()).toEqual(['body', 'title', 'frame'])
     expect(document.querySelector('[data-element="text-1"]')).toBeNull()
-  }, 20_000)
+  })
 })
 
 describe('the order of the layers (#18)', () => {
@@ -568,7 +565,7 @@ describe('the order of the layers (#18)', () => {
     fireEvent.click(screen.getByRole('button', { name: /spara/i }))
     await screen.findByText('v2')
     expect((await run.projects.load(run.projectId))?.template.faces['front']?.base.map((e) => e.id)).toEqual(['frame', 'body', 'title'])
-  }, 20_000)
+  })
 })
 
 describe('the host\'s controls (DRIFT §9)', () => {
@@ -701,7 +698,7 @@ describe('a game made without the guided start (L42)', () => {
     const stored = await run.projects.load(run.projectId)
     expect(stored?.template.faces['front']?.base.map((e) => e.id)).toEqual(['text-1'])
     expect(stored?.rows).toHaveLength(1)
-  }, 20_000)
+  })
 })
 
 // The empty game on the wall (#476, beslut 2026-09-27, variant A): a black wall and «0 kort · Inga

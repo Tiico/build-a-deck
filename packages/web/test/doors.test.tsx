@@ -25,9 +25,6 @@ import { StatusLive } from '../src/status/StatusLive.js'
 import { useDoor, type Doorway } from '../src/doors.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 describe('the editor’s two doors on one press of Escape (#152)', () => {
   let run: Running

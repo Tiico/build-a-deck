@@ -1,14 +1,11 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { TableClient } from '../src/client.js'
 import { TablePage } from '../src/table/TablePage.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { asSeat, asTable, createSession, roomOf, seatSetup, startServer, twoSeatSetup, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The same table with one more public area to play into, so the landing rule has somewhere to
 // land: `twoSeatSetup` has only the floor.
@@ -239,7 +236,7 @@ describe('what happens on the table reaches a reader (#1, #2, D5)', () => {
     bo.close()
     other.close()
     expect((await run.store.read(id)).at(-1)?.intent.v).toBe('session.end')
-  }, 20_000)
+  })
 })
 
 describe('the panel never offers a place that is where the thing already is', () => {
@@ -326,7 +323,7 @@ describe('the panel a counter opens (C4, #73, #67)', () => {
     const stepped = await screen.findByRole('button', { name: /^Liv, räknare i Räknare A, värde 21/ })
     // And the focus comes back to the chip, as it does after a card's verb.
     await waitFor(() => expect(document.activeElement).toBe(stepped))
-  }, 20_000)
+  })
 
   // "Sätt värde…" opens the same sheet the ring opens, and the number said there is what goes out.
   it('says a value outright on the sheet, and hands the focus back to the chip', async () => {
@@ -339,7 +336,7 @@ describe('the panel a counter opens (C4, #73, #67)', () => {
     const set = await screen.findByRole('button', { name: /^Liv, räknare i Räknare A, värde 7/ })
     expect(screen.queryByRole('dialog')).toBeNull()
     await waitFor(() => expect(document.activeElement).toBe(set))
-  }, 20_000)
+  })
 
   it('moves a chip where it is sent, and the focus goes with it', async () => {
     const { user, panel } = await openOnLiv()
@@ -350,7 +347,7 @@ describe('the panel a counter opens (C4, #73, #67)', () => {
     // And the focus goes with it, as it does for a card: a keyboard that loses the thing it just
     // moved has to start the walk down the felt again.
     await waitFor(() => expect(document.activeElement).toBe(moved))
-  }, 20_000)
+  })
 })
 
 // Högens bottenkort från tangentbordet (K23, K16): det pekaren kan hålla upp från kanten under

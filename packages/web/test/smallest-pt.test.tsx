@@ -6,9 +6,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, render } from '@testing-library/react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { useSmallestPt, forgetFits } from '../src/table/smallest.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const FACES = 'http://faces.test'
 const card = (front: string, cardRef: string | null = 'dragon'): VisibleComponentState => ({ id: 'c1', type: { id: 'card.standard.63x88', version: 1 }, zone: 'table', face: 'front', x: 0, y: 0, rot: 0, cardRef, faces: { front, back: 'b'.repeat(64) } })

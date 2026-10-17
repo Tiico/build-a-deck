@@ -5,9 +5,6 @@ import { EditorPage } from '../src/editor/EditorPage.js'
 import { InvitePage } from '../src/account/InvitePage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {

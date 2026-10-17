@@ -13,9 +13,6 @@ import { feltWithHands, handCountAt, handRoom, handRotation, type TableMode } fr
 import { DEFAULT_TIMING } from '../src/status/connection.js'
 import { RING_MARGIN } from '../src/table/ring.js'
 import { CARD_MM } from '../src/table/drop.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Linjerna handarnas antalsbrickor hänger från, som en ruta (#413). Kameran ramar in spelet, och
 // brickorna står utanför det vid kanten; det här är vad bilden måste hålla utöver spelet, och

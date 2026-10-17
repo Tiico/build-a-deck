@@ -9,9 +9,6 @@ import { ActionPanel } from '../src/table/ActionPanel.js'
 import { Language, translate, type Lang, type T } from '../src/i18n/index.js'
 import { openingSetup, setupFromProject } from '@byd/server/doc'
 import { seatSetup } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const registry = new TypeRegistry(STANDARD_TYPES)
 const table = () => project(initialState('v1', seatSetup(), registry), registry, null)

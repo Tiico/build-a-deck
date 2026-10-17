@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react'
 import { CODE_ALPHABET, CODE_LENGTH, ROUTE_WORDS } from '../protocol/src/rooms.js'
 import { routesOf } from './scripts/route-table.js'
 import { reporting } from '../../test-support/report.js'
+import { TEST_CEILING } from '../../test-support/own-time.js'
 import { detectLang } from './src/i18n/detect.js'
 import { fillShell, shellMarkup, shellNoscript, shellTimes, shellWords, SHELL_ROOM_PATH, SHELL_STYLE, SHELL_VOICES } from './src/shell.js'
 
@@ -159,5 +160,9 @@ export default defineConfig({
   // And the run leaves its own account on disk beside the one it prints, so a failure survives
   // whatever anyone pipes the output through (#111): that is the whole of what that issue is
   // about, and it has now happened twice.
-  test: { setupFiles: ['./test/setup.ts'], globalSetup: ['../../test-support/one-suite-at-a-time.ts'], ...reporting() },
+  //
+  // vitest's own timeout is a ceiling and not the budget (#848): `test/setup.ts` holds every test
+  // to `JSDOM_TEST_BUDGET` of the worker's own time, which a machine that stops running the
+  // worker cannot spend for it. `test-support/own-time.ts` has what was measured.
+  test: { testTimeout: TEST_CEILING, setupFiles: ['./test/setup.ts'], globalSetup: ['../../test-support/one-suite-at-a-time.ts'], ...reporting() },
 })

@@ -17,12 +17,9 @@
 // på det byggda arket i `felt-font.spec.ts`.
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { Language } from '../src/i18n/index.js'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { feltOf, sceneOf } from './felt-labels.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Klungans modul hålls i handen, så att «medan den hämtas» blir ett tillstånd provet kan mäta i
 // stället för ett ögonblick det får hoppas på. Grinden öppnas först när påståendet om den tomma

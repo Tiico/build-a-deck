@@ -1,11 +1,8 @@
-import { afterAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, describe, expect, it } from 'vitest'
 import { MemoryProjectStore, PostgresLogStore } from '../src/index.js'
 import type { ProjectDoc, ProjectStore } from '../src/projects.js'
 import { template } from './deck.js'
 import { twoSeatSetup } from './fixture.js'
-import { PG_TEST_BUDGET } from '../../../test-support/pg-budget.js'
-
-vi.setConfig({ testTimeout: PG_TEST_BUDGET })
 
 // A game brought back from an export (G5, #528): a new project with the history it had — every
 // version at its own revision, with the date it was saved and the name it was given — so the

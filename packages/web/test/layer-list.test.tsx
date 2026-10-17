@@ -6,9 +6,6 @@ import { userEvent } from '@testing-library/user-event'
 import { LayerList } from '../src/editor/LayerList.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { template } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const base = template().faces['front']!.base
 // The layers a test wants, by id, in the order the list shows them.

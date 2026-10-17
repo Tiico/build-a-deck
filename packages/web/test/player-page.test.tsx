@@ -6,10 +6,7 @@ import { TableClient, setWebSocketImplementation, type WebSocketCtor } from '../
 import { PlayerPage, type PlayerPageProps } from '../src/player/PlayerPage.js'
 import { DEFAULT_TIMING } from '../src/status/connection.js'
 import { admit, asSeat, asTable, createSession, roomOf, seatSetup, startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { tabFrom, tabStops } from './tabs.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {

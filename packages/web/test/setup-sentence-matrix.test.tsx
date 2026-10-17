@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
 import type { ActionStep, ActionTarget, ZoneAction, ZoneBeside } from '@byd/protocol'
 import type { Zone } from '@byd/server/doc'
@@ -8,9 +8,6 @@ import { Language, translate, type Lang } from '../src/i18n/index.js'
 import { sv, type Key } from '../src/i18n/sv.js'
 import { en } from '../src/i18n/en.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Meningen designern verkligen läser, för varje steg gånger varje platsform (#285).
 //

@@ -4,9 +4,6 @@ import { act, render } from '@testing-library/react'
 import type { Activity, Snapshot } from '@byd/protocol'
 import { LastMove } from '../src/online/LastMove.js'
 import { seatColor } from '../src/table/seatColor.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // What somebody else just did, still said in the top bar after its 1.6 s ring has gone (#484 fynd 12,
 // beslut A, prototyp 26): the same sentence the screen reader is given, in the seat's colour, with

@@ -5,9 +5,6 @@ import { StatusLive } from '../src/status/StatusLive.js'
 import { TableClient } from '../src/client.js'
 import { JoinPage } from '../src/join/JoinPage.js'
 import { admit, asSeat, asTable, createSession, recipeSetup, roomOf, startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {

@@ -1,14 +1,12 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render, within } from '@testing-library/react'
 import { CARD_STANDARD_63x88, TOKEN_COUNTER, type SetupDef } from '@byd/engine'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { TvChrome } from '../src/table/TvChrome.js'
 import { tableOf } from './scene.js'
 import { recipeSetup } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 afterEach(cleanup)
 
 // The room's television says each seat's words on one plate beside the seat's own zones (#573,
