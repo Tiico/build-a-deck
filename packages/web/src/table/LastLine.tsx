@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Activity, Snapshot } from '@byd/protocol'
 import { describeActivity, sayable } from './describe.js'
 import { useT, type T } from '../i18n/index.js'
+import { useAfterSheet } from './after.js'
 
 // The corner of the felt's own screen (#682, beställarens beslut: raden E). The table screen had
 // no feed — the TV's SENAST is the TV's — so what had just happened at the table, a shuffle or a
@@ -19,6 +20,7 @@ const AIR = 16
 
 export function LastLine({ activity, view }: { activity: readonly Activity[]; view: Snapshot }) {
   const t = useT()
+  const dressed = useAfterSheet()
   // When this screen first heard each line. A line that arrives while it watches happened just
   // now by this screen's own clock; one the snapshot brought is as old as the server wrote.
   const heard = useRef<Map<number, number> | null>(null)
@@ -48,7 +50,7 @@ export function LastLine({ activity, view }: { activity: readonly Activity[]; vi
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
   }, [last?.seq, view.seats.length])
-  if (!last || at === null) return null
+  if (!last || at === null || !dressed) return null
   return (
     <p className="byd-table-last" data-table-last="" style={room === null ? undefined : { maxWidth: room }}>
       <b>{t('table.last')}</b> {describeActivity(last, view, t)} <span>· {ago(now - at, t)}</span>

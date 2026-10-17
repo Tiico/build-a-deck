@@ -20,6 +20,7 @@ import { DEFAULT_TIMING } from '../status/connection.js'
 import { refusalText } from '../status/notice.js'
 import type { SendResult } from '../client.js'
 import { besideDrop, type Box } from './besideDrop.js'
+import { loadAfterSheet } from './after.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ActionSheet } from './ActionSheet.js'
 import { compileStart, startsAt } from './actions.js'
@@ -396,6 +397,12 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // the one the live region says, in the region D5 gives a refusal; the plate is for whoever stands
   // at the felt and hears nothing, so it is hidden from the reader who already heard it. It stands
   // TOLD_MS, fades, and is gone.
+  // The plate's own sheet is not in the blocking one (L40): it is asked for as soon as the felt can be
+  // played, which is long before anything can be refused.
+  const playing = onAct !== undefined
+  useEffect(() => {
+    if (playing) void loadAfterSheet()
+  }, [playing])
   const [answer, setAnswer] = useState<{ text: string; at: Point | null; n: number; gone: boolean } | null>(null)
   const answerN = useRef(0)
   const dropAt = useRef<Point | null>(null)

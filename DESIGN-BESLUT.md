@@ -5495,6 +5495,12 @@ Att behålla 83,5 kB och bara ändra vad ett överskridande *betyder* lämnar li
 Att dela ut designerytorna (guide, konto, hjälpring — 14 073 B rått men bara 2 750 B gzip) kostar en riktig Suspense-yta för `/` och `/login` och ger 2,7 kB luft åt nästa yta; sju åttondelar av de −96 ms experimentet gav var dessutom JavaScript och inte CSS.
 Att budgetera brotli i stället för råa byte avvisas som *ersättning* — det säger ingenting om vems CSS det är — men frågan om det som faktiskt reser lever vidare i #372, tillsammans med att ingenting i repot konfigurerar komprimering och att arket okomprimerat kostar +2 692 ms.
 
+Tillägg 2026-10-17 (#682): taket band, och svaret blev frågan och inte en höjning.
+Bordslägets platta vid ett avvisat drag, hörnets rad och ⋯-menyn låg 2,3 kB över larmet i `table.css`.
+Ingen av dem ritas på första bilden, och inte heller «Starta om spelet?», som låg där sedan #452: de reser nu i `table/felt-after.css`, som `after.ts` hämtar med `import()` när en spelbar filt monteras.
+Hörnets rad väntar på arket innan den ritas; plattan och frågorna kan inte visas förrän någon har släppt eller tryckt, och då är arket framme.
+Bara «⋯» själv, som står i hörnet från första bilden, ligger kvar i det blockerande arket.
+
 ### L41. Textens placering är en niopunktsplatta, och avstånden ligger bakom «Finjustering» (prototypat 2026-09-18, beslutat 2026-09-21, #219)
 
 Mallsidans egenskapskolumn kunde inte centrera en text i sitt block.
