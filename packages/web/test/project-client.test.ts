@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ProjectClient, setEditSocketImplementation, type EditSocketCtor } from '../src/editor/ProjectClient.js'
+import { ProjectClient, setEditSocketImplementation, type EditSocketCtor, type WebSocketLike } from '../src/editor/ProjectClient.js'
 import { EditSocket } from './setup.js'
+import { SavedHeldBack } from './saved-held-back.js'
+import type { RuleDoc } from '@byd/server'
 import { projectDoc } from './project-doc.js'
 import { LIBRARY } from '../src/editor/symbols.js'
 import { startServer, type Running } from './fixture.js'
@@ -819,6 +821,83 @@ describe('the history (B4)', () => {
     expect((await client.versions()).map((v) => v.rev)).toEqual([3, 2, 1])
     // And the version it came from is untouched.
     expect((await client.at(2))?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
+  })
+})
+
+// A save is answered by the version it made, and by no other (#988). The answer used to be
+// whichever «saved» came next on the line: a second save asked while the first was in the air took
+// the first one's answer and left the first to the backstop, and a version somebody else made
+// answered a save of one's own. Either way an import named the wrong version, and the book she
+// wrote by hand lost the name that was its only way back (B4).
+describe('which version answers a save (#988)', () => {
+  afterEach(() => setEditSocketImplementation(EditSocket as unknown as EditSocketCtor))
+
+  const book = (text: string): RuleDoc => ({ title: 'Skogens herrar', blocks: [{ kind: 'text', id: 't1', text }] })
+  // Which file the book of the version a name sits on came out of: the name and the book have to
+  // be the same version, or the name is pointing somewhere else.
+  const namedFiles = async (id: string): Promise<Record<string, string | undefined>> => {
+    const versions = await run.projects.versions(id)
+    const named = versions.filter((v) => v.label !== undefined)
+    return Object.fromEntries(await Promise.all(named.map(async (v) => [v.label, (await run.projects.at(id, v.rev))?.rules?.source?.file])))
+  }
+
+  it('names each of two imports pressed one after the other on the version that holds its own book', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    await vi.waitFor(() => expect(client.connected).toBe(true))
+    // The second is asked before the first is answered: nothing is awaited between them.
+    const first = client.importRules(book('Skrivet för hand.'), 'skrivet.md')
+    const second = client.importRules(book('Ur filen.'), 'regler-v4.md')
+    await Promise.all([first, second])
+    expect(await namedFiles(created.id)).toEqual({ 'Importerad: skrivet.md': 'skrivet.md', 'Importerad: regler-v4.md': 'regler-v4.md' })
+    expect(client.dirty).toBe(false)
+  })
+
+  // With the line down a save is written over HTTP against the rev the editor holds, and two in the
+  // air at once wrote against the same one: the second was a conflict with the first, and an
+  // import that was never in anybody's way said it could not be saved.
+  it('names both of two imports pressed one after the other while the line is down', async () => {
+    // Every line falls the moment it is opened, before anything else can run, so no save ever
+    // finds one standing: each goes over HTTP, retries included.
+    let fell = 0
+    setEditSocketImplementation(function (): WebSocketLike {
+      const dead: WebSocketLike = { send: () => undefined, close: () => undefined, readyState: 3, onopen: null, onmessage: null, onclose: null, onerror: null }
+      queueMicrotask(() => {
+        dead.onclose?.({ code: 1006 })
+        fell += 1
+      })
+      return dead
+    } as unknown as EditSocketCtor)
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    await vi.waitFor(() => expect(fell).toBeGreaterThan(0))
+    const first = client.importRules(book('Skrivet för hand.'), 'skrivet.md')
+    const second = client.importRules(book('Ur filen.'), 'regler-v4.md')
+    await Promise.all([first, second])
+    expect(await namedFiles(created.id)).toEqual({ 'Importerad: skrivet.md': 'skrivet.md', 'Importerad: regler-v4.md': 'regler-v4.md' })
+  })
+
+  it('does not take a version somebody else made for the answer to its own save', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    // Bo's line holds every «saved» it is told, so Ada's version reaches him while his own save
+    // is in the air — the order two editors fall into when they save in the same moment.
+    const line = new SavedHeldBack()
+    setEditSocketImplementation(line.Line)
+    const bo = await openClient(created.id)
+    await vi.waitFor(() => expect(bo.connected).toBe(true))
+    setEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
+    const ada = await openClient(created.id)
+    await vi.waitFor(() => expect(ada.connected).toBe(true))
+
+    ada.rename('Skogens herrar II')
+    expect(await ada.save()).toEqual({ ok: true, rev: 2 })
+    await vi.waitFor(() => expect(line.waiting).toBe(1))
+    const importing = bo.importRules(book('Bos bok.'), 'bo.md')
+    // Ada's version is told first and Bo's own after it, both the actor's real answers.
+    await vi.waitFor(() => expect(line.waiting).toBe(2))
+    line.release()
+    await importing
+    expect(await namedFiles(created.id)).toEqual({ 'Importerad: bo.md': 'bo.md' })
   })
 })
 

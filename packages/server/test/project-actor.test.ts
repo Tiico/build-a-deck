@@ -101,6 +101,30 @@ describe('one actor owns one project (D3)', () => {
     expect((await store.at('p1', 2))?.name).toBe('Skogens andar')
   })
 
+  // Everyone is told a version was made, and told whose save made it (#988): the editor that asked
+  // takes it for its answer, and an editor whose own save is still in the air does not.
+  it('tells everyone of a version, naming the editor whose save made it', async () => {
+    const store = new MemoryProjectStore()
+    await store.create('p1', doc())
+    const actor = (await ProjectActor.load('p1', store))!
+    const told: { to: string; m: EditorMessage }[] = []
+    for (const id of ['ada', 'bo']) actor.subscribe({ id, name: id, send: (m: EditorMessage) => told.push({ to: id, m }) })
+    await actor.edit({ v: 'rename', name: 'Skogens andar' }, undefined, 'ada')
+    await actor.save('ada')
+    await actor.edit({ v: 'rename', name: 'Skogens herrar igen' }, undefined, 'bo')
+    await actor.save('bo')
+    // A whole document over HTTP is nobody's line, so no editor takes it for its own answer.
+    await actor.put(3, { ...doc(), name: 'Skrivet över HTTP' })
+    expect(told.filter(({ m }) => m.v === 'saved')).toEqual([
+      { to: 'ada', m: { v: 'saved', rev: 2, from: 'ada' } },
+      { to: 'bo', m: { v: 'saved', rev: 2, from: 'ada' } },
+      { to: 'ada', m: { v: 'saved', rev: 3, from: 'bo' } },
+      { to: 'bo', m: { v: 'saved', rev: 3, from: 'bo' } },
+      { to: 'ada', m: { v: 'saved', rev: 4 } },
+      { to: 'bo', m: { v: 'saved', rev: 4 } },
+    ])
+  })
+
   // What is saved is not what is held when the log has a tail nobody saved (#764): an editor
   // that joins is handed both, so «Osparat» is a comparison it can make (L9), and not only the
   // held one, which it would have to take for saved.

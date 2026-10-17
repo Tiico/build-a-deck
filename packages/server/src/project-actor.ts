@@ -22,7 +22,9 @@ export type EditorMessage =
   | { v: 'project'; doc: ProjectDoc; saved?: ProjectDoc; rev: number; seq: number; here: Presence[]; you: Presence }
   | { v: 'edits'; edits: AppliedEdit[] }
   | { v: 'here'; here: Presence[] }
-  | { v: 'saved'; rev: number }
+  // `from` is the editor whose save made the version (#988), so that one takes it for its answer
+  // and nobody else does; a version written over HTTP is nobody's line and names none.
+  | { v: 'saved'; rev: number; from?: string }
   | { v: 'refused'; why: string }
 export type Presence = { id: string; name: string; role?: Role }
 
@@ -118,17 +120,17 @@ export class ProjectActor {
   }
 
   // Saving makes a version of what stands now (B4), and marks how far the log had come, so a
-  // fresh actor knows which edits are already in it.
-  async save(): Promise<{ ok: true; rev: number } | { ok: false; reason: string }> {
-    return this.serial(() => this.makeVersion())
+  // fresh actor knows which edits are already in it. `from` is the editor that asked.
+  async save(from?: string): Promise<{ ok: true; rev: number } | { ok: false; reason: string }> {
+    return this.serial(() => this.makeVersion(from))
   }
-  private async makeVersion(): Promise<{ ok: true; rev: number } | { ok: false; reason: string }> {
+  private async makeVersion(from?: string): Promise<{ ok: true; rev: number } | { ok: false; reason: string }> {
     const result = await this.store.replace(this.id, this.rev, this.current, this.at)
     if (result === 'missing') return { ok: false as const, reason: 'unknown project' }
     if (result === 'conflict') return { ok: false as const, reason: 'conflict' }
     this.rev = result.rev
     this.saved = this.current
-    this.tell({ v: 'saved', rev: result.rev })
+    this.tell({ v: 'saved', rev: result.rev, ...(from ? { from } : {}) })
     return { ok: true as const, rev: result.rev }
   }
 
