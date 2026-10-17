@@ -4636,6 +4636,7 @@ Når en ytas chunk inte fram visas läget `offline` i ytans egen röst, och «F�
 Riktmärket i #760 — telefonens första målning under 100 kB gzip — nås inte av ruttdelningen ensam, och det sägs rakt ut.
 Det som återstår är inte ruttkod utan tre saker alla ytor delar: Reacts DOM (~57 kB, golvet), språkkatalogerna — båda språken och varje ytas ord, editorns och kontosidornas medräknade (~42 kB av telefonens last) — och zod, som validerar varje ram servern skickar (~30 kB).
 De två sista är beslut om i18n-arkitekturen och om validering på tråden, och tas för sig.
+De avgjordes samma dag, och vad som byggdes av dem står i tillägget 2026-10-17 nedan.
 
 Grindarna: `packages/e2e/test/surfaces/phone-bundle.spec.ts` öppnar `/play` och `/join` som en telefon, väger varje skript sidan ber om och nekar filtens och observatörens chunkar; den håller också inne entrén på tråden och ser att handens chunk efterfrågas ändå.
 `felt-font.spec.ts` läser nu tre slags rutter ur `App.tsx` — hämtade, ritade av entrén och editorns lata — och kräver att varje ark en hämtad yta når statiskt ligger på entrén, och att entrén inte bär något ark som ingen yta ritar först.
@@ -4657,6 +4658,40 @@ Den har en följd för kaskaden: varje ark som hämtas senare — editorns, rege
 Editorns flikar och Bord-flikens namn lades ut av fel regler, vilket `editor-header-fit.spec.ts` och `zone-name-own-box.spec.ts` fällde.
 Bygget låter därför förladdningen länka ett ark sist i `<body>`, efter entréns, så att ordningen åter är den ordning arken kommer i; raden i Vites hjälpare matchas exakt, så en Vite som skriver den annorlunda fäller bygget i stället för att tyst kasta om kaskaden.
 Meningen i tillägget 2026-10-04 om att det första på skärmen är ytan själv, «samma vita sida som före delningen, bara kortare», gäller inte längre: det första på skärmen är skalet, och det som ersätter det är ytan.
+
+**Tillägg 2026-10-17 (#760): orden reser som skriptet, och riktmärket är det som nåddes (beställarens beslut 2026-10-04).**
+Ruttdelningen ovan lämnade hela katalogen i entrén: båda språken och varje ytas ord, editorns sexhundra meddelanden medräknade, också på en telefon som visar en remsa kort.
+Beställaren beslutade 2026-10-04 att katalogen delas per yta och språk, och att zod som validerar serverns ramar står kvar på klienten.
+
+Katalogen reser i fyra delar: `status` är skalets och hämtas alltid, `play` är telefonens och filtens, `account` kontosidornas och `editor` editorns.
+En sida hämtar bara sin ytas delar och bara på läsarens språk — `/play`, `/join` och rummets adress `/KOD` hämtar `status` och `play`, aldrig editorns meddelanden och aldrig det andra språkets version av sina egna.
+`fetchPage` i `App.tsx` säger vilka delar varje rutt talar, med `surface(sida, delar)`, och `scripts/route-table.ts` läser det därifrån åt både bygget och grindarna.
+Det byggda `index.html` ber om ruttens delar bredvid entrén på det språk skalet redan satt på dokumentet med appens egen `detectLang` (tillägget 2026-10-06 ovan), så orden kostar ingen extra rundtur och skalet och orden kan inte välja olika språk.
+Ett ord som flera ytor säger och som inte är en ytas eget ligger i `status`: rumskodens fält, som står både i platsväljaren och på startsidan, och vad en sparad version heter (#703), som bordet, telefonen, startsidan och editorn alla säger.
+`sv.ts` och `en.ts` slår fortfarande ihop hela katalogen, men bara för nyckelns typ och för löftet att båda språken har samma nycklar; ingenting vid körning importerar dem.
+
+Ett språkbyte hämtar det andra språkets delar för det sidan redan håller innan något ändras: sidan står kvar hel på det gamla språket tills orden är framme och byter sedan i en enda rendering, utan vit ram och utan nycklar.
+Ett ord som ingen hämtad del har ritas som sin nyckel och sägs på konsolen, och det är en bugg som grindarna nedan finns för att fälla.
+Når en ytas chunk inte fram väntar läget `offline` på skalets ord innan det ritas, eftersom de reser för sig och kan komma efter felet.
+Kommer inte heller orden fram står skalet kvar: det säger redan att sidan väntar, och erbjuder själv omladdningen efter en stund.
+
+**Riktmärket är det som nåddes, inte 100 kB.**
+Issuet satte telefonens första målning under 100 kB gzip; det nås inte, och skälet är beslutat och inte ett förbiseende.
+Mätt i det byggda bygget, gzip av varje skript sidan ber om innan ytan är ritad, som `phone-bundle.spec.ts` väger dem:
+
+| | före #760 | ruttdelning (2026-10-04) | main 2026-10-17 | + katalog per yta och språk |
+|---|---:|---:|---:|---:|
+| `/play` | 259 kB | 197 kB | 209,0 kB | **156,7 kB** |
+| `/join` | 259 kB | 161 kB | 167,8 kB | **115,4 kB** |
+| entrén | 259 kB | 124 kB | 159,0 kB | **98,2 kB** |
+
+Mellan ruttdelningen och katalogdelningen växte telefonen med tolv kilobyte av nya ytor och nya ord, och det mesta av det låg i entrén; delningen tog bort 52 kB från `/play`.
+Det som står kvar på telefonen är Reacts DOM (~57 kB, golvet) och zod (~30 kB), som validerar varje ram servern skickar och som står kvar på klienten enligt beslutet.
+Telefonens riktmärke är alltså 157 kB för `/play` och 115 kB för `/join`, och grinden larmar omkring fem procent ovanför: 165 respektive 122 kB, marginal för att telefonen ska kunna växa en funktion men inte för att ta tillbaka det som togs bort.
+
+Grindarna: `phone-bundle.spec.ts` öppnar telefonen på båda språken och kräver att den hämtar exakt `play` och `status` på läsarens språk, även medan entrén hålls inne på tråden.
+Den öppnar varje adress på båda språken utan att ett enda ord saknas, byter språk på `/login` med orden fördröjda på tråden utan att någon bildruta är tom eller halv, och kräver att en telefon som varken fick handens chunk eller skalets ord står kvar i skalet i stället för att rita nycklar.
+`packages/web/test/language-parts.test.ts` läser varje rutts moduler och kräver att varje nyckel de når finns i en del rutten hämtar — skalets nycklar i `status` — och att båda språken har samma nycklar del för del.
 
 ### L21. Kortväggen står i band, och leken har en innehållsförteckning (prototypat och byggt 2026-09-17, #179)
 
@@ -5604,6 +5639,18 @@ En platshållare som läses som ett ifyllt värde är halva felet: fältet ser b
 `opacity: .4` gav «Ta bort valt kort» kant 1,16:1 och bläck 2,38:1 — den försvann i stället för att låsas — och den tonade dessutom lika hårt på en knapp som väntade på ett namn som på en som verkligen var låst.
 Det som står kvar låst bär nu guidens låsta form: fyllningen tas bort, för fyllningen är affordansen, och rummets egen sekundärlinje står kvar så att kontrollen fortfarande är ett piller.
 Mätt efter rättelsen: kant 3,78:1 mot papperet och bläck 5,52:1.
+
+**Tillägg 2026-10-17 (#732): dörren frågar innan den lämnar något, och den låsta formen mäts även mot remsan.**
+Speltestet 2026-10-02 skrev en titel på kort 1 och tryckte «Skapa ett tomt spel i editorn»: spelet skapades utan kort och fält, utan ett ord.
+Dörren ställer nu verktygets enda fråga (`Question`, L9) där den trycktes, men bara när guiden håller kort eller fält som designern har ändrat: «Ett tomt spel får bara namnet och platserna. Korten och fälten du har gjort här följer inte med.»
+Frågan öppnar på «Avbryt», och «Ja, skapa ett tomt spel» står ett tabbsteg bort, i guidens röda.
+En orörd guide frågar ingenting, eftersom ingenting går förlorat; ett namn som saknas sägs fortfarande vid fältet först.
+Ett utkast som återupptas efter en inloggning frågar inte igen, eftersom frågan redan är besvarad.
+
+Den låsta formen tar bort fyllningen, och det syns bara på en grund som fyllningen skiljer sig från.
+Remsan under stegen, där «Föregående» och «Nästa» står, var vit till 70 %: samma färg som en knapps fyllning, så den låsta «Föregående» i steg 1 såg ut som en aktiv sekundärknapp.
+Remsan har nu stegremsans grund (`--byd-wizard-panel-bg`), och kravet är mätt på det målade: en aktiv knapps fyllning ska skilja sig från remsan minst lika mycket som ett fälts vita från papperet.
+En riktig pekare över den låsta knappen ändrar ingenting den målar.
 
 ### L43. Höjden föreslår, designern avgör: vilken kolumn som skrivs som prosa står skrivet i Data (prototypat 2026-09-21, #362)
 

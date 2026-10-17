@@ -11,8 +11,6 @@ export const enPlay = {
   'texture.pending': 'The card is rendering…',
   'texture.failed': 'The image could not be loaded',
   'texture.retry': 'Try again',
-  'texture.lost.one': '{n} card could not be rendered',
-  'texture.lost.other': '{n} cards could not be rendered',
 
   'ended.title': 'This table has ended',
   'ended.locked': 'The table stopped at {version}. Every player has the survey.',
@@ -333,7 +331,6 @@ export const enPlay = {
   'session.exit.aria': '{label} the table',
   'session.flagged': 'The moment is flagged',
   'session.version.this': 'this version',
-  'session.refused.kicked': 'The host has removed you from the table.',
   'session.refused.gone': 'The link is no longer valid. Join again with the room code.',
 
   'flag.sheet.title': 'Flag this moment',
@@ -396,8 +393,6 @@ export const enPlay = {
   'join.code.lead': 'Type the room code shown on the table’s screen.',
   'join.code.label': 'Room code',
   'join.code.go': 'Continue',
-  'join.code.empty': 'Type the room code first.',
-  'join.code.unknown': 'That code does not exist or has run out — ask the host for the new one.',
   'join.seat.taken': 'That seat was just taken by someone else. Choose another.',
   'join.left': 'Your seat is open and your hand is back in the deck. The others play on.',
   'join.into': 'You are on your way into',
@@ -444,4 +439,6 @@ export const enPlay = {
   'rules.setup.seat': 'Seat {seat}',
   'rules.setup.seat.zones': 'Zones at seat {seat}',
   'rules.setup.seat.empty': 'No zones of its own at this seat.',
+
+  'rules.caption.placeholder': 'Caption…',
 } as const

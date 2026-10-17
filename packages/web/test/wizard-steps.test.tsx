@@ -75,6 +75,43 @@ describe('the wizard on a phone', () => {
   })
 })
 
+// A step opens at its top (#732). The steps share one scrolling body, so a step left scrolled to
+// its bottom handed the next one the same distance: at 768 «Nästa» opened step 3 101 px down, its
+// heading above the edge and the card's top cut off — and «Föregående» back did the same.
+describe('a step that opens (#732)', () => {
+  it('starts at its top, whichever way it was walked to', async () => {
+    const user = userEvent.setup()
+    wizardAt(768)
+    const body = document.querySelector('.byd-wizard-body') as HTMLElement
+    // jsdom lays nothing out and keeps no scroll of its own, so the body is given one to keep.
+    let top = 0
+    Object.defineProperty(body, 'scrollTop', { configurable: true, get: () => top, set: (v: number) => { top = v } })
+    const scrolled = () => { top = 101 }
+
+    scrolled()
+    await user.click(screen.getByRole('button', { name: 'Nästa →' }))
+    expect(screen.getByRole('tab', { selected: true }).textContent).toContain('Fälten')
+    expect(top).toBe(0)
+
+    scrolled()
+    await user.click(screen.getByRole('button', { name: 'Nästa →' }))
+    expect(top).toBe(0)
+
+    scrolled()
+    await user.click(screen.getByRole('button', { name: /Föregående/ }))
+    expect(top).toBe(0)
+
+    scrolled()
+    await user.click(screen.getByRole('tab', { name: '1 · Spelet' }))
+    expect(top).toBe(0)
+
+    // And a step that does not change leaves the scroll where the reader put it.
+    scrolled()
+    await user.click(screen.getByRole('tab', { name: '1 · Spelet' }))
+    expect(top).toBe(101)
+  })
+})
+
 describe('the wizard on a desk', () => {
   it('is the one page it has always been, with no steps to walk', () => {
     wizardAt(1280)

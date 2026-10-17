@@ -3,8 +3,9 @@
 //
 // One function with nothing outside it, on purpose. The built `index.html` runs this very function
 // before the entry has arrived — the shell says «Hämtar…» in the language it answers (#749,
-// `shell.ts` inlines its source) — so it may not reach for a constant or a helper the page does
-// not have yet.
+// `shell.ts` inlines its source), and the route preload asks for the reader's words beside the
+// entry in it (#760, `vite.config.ts`) — so it may not reach for a constant or a helper the page
+// does not have yet.
 // That is why the storage key is written out here rather than shared with `rememberLang`, and why
 // `i18n.test.tsx` asks this function what a remembered choice gives.
 export function detectLang(): 'sv' | 'en' {
