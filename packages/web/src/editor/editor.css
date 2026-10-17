@@ -3651,6 +3651,14 @@ img[data-arriving] { opacity: 0; }
    Kvar är blockets egen kontroll, längst ut åt det håll läsningen slutar — där raden redan lade
    den, så ingen hand behöver leta upp den på ett nytt ställe. */
 .byd-rules-foot { display: flex; }
+/* Det öppna blockets slag: Stycke · Punktlista · Numrerad lista (#707, beslut 2026-10-06: C med
+   A:s genväg). Ett val bland tre och därför `.byd-choice`, som bokens växel (#227), först i blocket
+   där prototypen ritade det. Bara stycket och listan har raden, och bara medan de skrivs i.
+   Typsnittet är verktygets och inte bokens: `.byd-choice` ärver, och blocket står i Georgia. */
+.byd-rules-kinds { display: flex; flex-wrap: wrap; gap: var(--byd-s1); font: 13px system-ui, sans-serif; }
+/* Vad fältet säger om hur dess rader läses (#707, A:s «fältet säger det»): en rad under fältet i
+   editorns tysta färg och aldrig en ruta, och bara medan det som står läses annorlunda än det står. */
+.byd-rules-note { margin: var(--byd-s1) 0 0; color: var(--byd-editor-quiet); font: 12px/1.5 system-ui, sans-serif; }
 /* Fältet och listan som `[[` öppnar under det (#215). Rutan hänger på omslaget och inte på
    blocket, för ett listblock är flera fält och listan hör under det markören står i. Bredden är
    inte symbollistans 230 px: där är namnen bibliotekets egna och korta, här är de designerns, och

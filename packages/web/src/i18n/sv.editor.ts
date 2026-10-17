@@ -1108,6 +1108,7 @@ export const svEditor = {
   'rules.help.topic': 'reglerna',
   'rules.help.reach': 'Reglerna versioneras med korten, och spelarna når dem från telefonen, TV:n och observatören.',
   'rules.help.names': 'En regel som nämner en zon eller ett kort följer med när det byter namn.',
+  'rules.help.lists': 'Ett öppet stycke kan bli en punktlista eller en numrerad lista. Rader som börjar med «- » eller «1. » blir också en lista när blocket stängs.',
   'rules.warnings.one': '{n} referens pekar på något spelet inte har',
   'rules.warnings.other': '{n} referenser pekar på något spelet inte har',
   'rules.where.top': 'i början av boken',
@@ -1145,6 +1146,15 @@ export const svEditor = {
   'rules.level.1': 'Rubrik',
   'rules.level.2': 'Underrubrik',
   'rules.addItem': '＋ Punkt',
+  // Vilket slag det öppna blocket är (#707, beslut 2026-10-06: C med A:s genväg). Bara stycket och
+  // listan har dem, och bara medan blocket skrivs i.
+  'rules.kind': 'Blockets slag, {block}',
+  'rules.kind.text': 'Stycke',
+  'rules.kind.bullets': 'Punktlista',
+  'rules.kind.numbers': 'Numrerad lista',
+  // Vad fältet säger när det som skrivits kommer att läsas annorlunda än det står (#707).
+  'rules.field.lists': 'Rader som börjar med «- » blir en punktlista och rader med «1. » en numrerad, när blocket stängs.',
+  'rules.field.wrap': 'En ensam radbrytning läses som ett mellanslag. En tom rad börjar ett nytt stycke.',
   // Listan `[[` öppnar, och vad som står i den (#215, L23). Sorten står efter namnet, eftersom
   // två saker i ett spel mycket väl kan heta samma sak och sorten är det som skiljer dem åt.
   'rules.refs': 'Referenser',

@@ -104,8 +104,8 @@ describe('the way a reference is put into a rule (#215)', () => {
     const names = within(blockOf('t1'))
       .getAllByRole('button')
       .map((b) => b.getAttribute('aria-label') ?? b.textContent)
-    // What is left is the block's own two controls: take it away, and add one after it.
-    expect(names).toEqual(['Ta bort blocket', 'Lägg till efter texten 1 under Så spelar ni'])
+    // What is left is the block's own controls: its kind (#707), take it away, and add one after it.
+    expect(names).toEqual(['Stycke', 'Punktlista', 'Numrerad lista', 'Ta bort blocket', 'Lägg till efter texten 1 under Så spelar ni'])
   })
 
   it('opens a list of what the game has when [[ is written, and adds no stop to the tab order', async () => {
