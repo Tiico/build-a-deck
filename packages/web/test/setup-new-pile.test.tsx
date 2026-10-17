@@ -1,14 +1,11 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
 import { MAX_PLAYERS } from '@byd/server/doc'
 import { projectDoc } from './project-doc.js'
 import { startServer, twoSeatSetup, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { addZone, bordTab, drawn, shares, type Box } from './bord-tab.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Var en ny hög föds (#443, K2, B5). ＋ Hög la varje hög på konstanten `point(0, 150)`, så ett
 // andra tryck la den nya högen på millimetern ovanpå den förra — och vald direkt, så det första

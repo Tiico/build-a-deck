@@ -1,10 +1,7 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { App, loadPage } from '../src/App.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The address asks for Swedish, because that is what these expectations are written in. Before
 // #27 it made no difference: the tab and the 404 were Swedish whoever was reading. Now they are

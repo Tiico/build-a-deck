@@ -4,9 +4,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { DataTable } from '../src/editor/DataTable.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The table is the spreadsheet L4 chose (#479, beslut 2026-09-27, variant A): Enter and ↓ go down
 // the column, Shift+Enter and ↑ go up, and a paste of several cells — tabs between them, lines

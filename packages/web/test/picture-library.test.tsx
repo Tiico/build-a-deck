@@ -10,9 +10,6 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { PictureLibraryDialog, type LibraryPicture } from '../src/editor/PictureLibrary.js'
 import { Said } from '../src/i18n/said.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const SKOG = '1'.repeat(64)
 const BORG = '2'.repeat(64)

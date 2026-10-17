@@ -1,12 +1,10 @@
 // @vitest-environment jsdom
 import { spawnSync } from 'node:child_process'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import { startServer, type Running } from './fixture.js'
 import { bordTab } from './bord-tab.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // A wait's patience is the worker's own time, not the wall clock's (#867).
 //

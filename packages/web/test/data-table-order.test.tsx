@@ -10,16 +10,13 @@
 // Every edit here is applied by the one pure function the actor applies it with, so what is
 // asserted is the head the designer would be looking at and not a spy's log.
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { fireEvent, render } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { applyEdit } from '@byd/server/doc'
 import { DataTable } from '../src/editor/DataTable.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // A deck with four columns of the designer's own, so a move has somewhere to go on either side.
 function wideDoc(): ProjectDoc {

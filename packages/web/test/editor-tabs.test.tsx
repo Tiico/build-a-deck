@@ -3,9 +3,6 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { EditorTabs } from '../src/editor/EditorTabs.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // A roving tabindex is one stop wherever it stands, and a tablist has exactly one selected tab.
 // How many tabs there are is the subject of one test in this file and of none of the others, so

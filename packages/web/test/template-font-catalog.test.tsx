@@ -7,9 +7,6 @@ import type { CatalogFamily } from '../src/editor/font-catalog.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { projectDoc } from './project-doc.js'
 import { Said } from '../src/i18n/said.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The typeface catalog (#329, L27): variant C, «Provraden» — a sheet where every hit sets the
 // card's own heading and its rule text, in the card's own grade. It opened under the card in Mall

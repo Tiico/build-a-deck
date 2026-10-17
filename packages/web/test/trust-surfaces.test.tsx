@@ -7,9 +7,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { LoginCard } from '../src/account/LoginCard.js'
 import { Survey } from '../src/player/Survey.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const health = (body: unknown, ok = true) =>
   vi.stubGlobal('fetch', vi.fn(async (url: string) => (String(url).endsWith('/health') ? new Response(JSON.stringify(body), { status: ok ? 200 : 503 }) : new Response('{}', { status: 404 }))))

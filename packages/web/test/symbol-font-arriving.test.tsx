@@ -15,9 +15,6 @@ import type { ProjectDoc } from '@byd/server'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const FAMILY = 'Kortets typsnitt'
 const WOFF2 = readFileSync(join(import.meta.dirname, '..', 'src', 'fonts', 'roboto-condensed-latin-wght-normal.woff2'))

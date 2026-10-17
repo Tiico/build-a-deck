@@ -5,9 +5,6 @@ import { EditorPage } from '../src/editor/EditorPage.js'
 import { DocumentTitle } from '../src/status/DocumentTitle.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The editor's ⋯ carries the same choices as the game's ⋯ in «Mina spel» (#738, beställarens beslut
 // 2026-10-06): rename, duplicate, export and delete, each where the role allows it (#689).

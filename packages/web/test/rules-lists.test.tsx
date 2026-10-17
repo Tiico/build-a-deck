@@ -7,16 +7,13 @@
 // import from a file. What was decided: the open block chooses its kind — Stycke · Punktlista ·
 // Numrerad lista — on the block being written and nowhere else, and a line that opens with «- » or
 // «1. » becomes a list as well. No new buttons in the margin.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import type { RuleDoc } from '@byd/server'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {

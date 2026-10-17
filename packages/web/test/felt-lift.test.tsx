@@ -10,9 +10,6 @@ import { liftBox } from '../src/table/lift.js'
 import { forgetFits } from '../src/table/smallest.js'
 import { buildScene } from './scene.js'
 import { DEFAULT_BODY_PT, SCREENS, textPxOnCard } from './legibility.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const at = (x: number, y: number, pointerType = 'mouse') => ({ clientX: x, clientY: y, pointerId: 1, isPrimary: true, button: 0, pointerType })
 const tap = (el: Element, x = 200, y = 200, pointerType = 'mouse') => {

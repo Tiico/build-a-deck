@@ -6,7 +6,7 @@
 // prose; what stays is a short line the surface still reads by, and everything that was excluded.
 // Every tab below asks the same two things: the moved text is gone from the surface and present in
 // the box once it is opened, and what was kept is still where it was.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { translate } from '../src/i18n/index.js'
@@ -15,9 +15,6 @@ import type { ProjectDoc } from '../src/editor/types.js'
 import type { Element } from '@byd/template'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {

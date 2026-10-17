@@ -5,13 +5,10 @@
 //
 // Hover does not open it. The way in is click and focus, nothing else: a box that opens on hover
 // vanishes when the pointer moves to reach it, and the phone has no hover at all (L32).
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { Help } from '../src/editor/HelpDrawer.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const mount = () =>
   render(

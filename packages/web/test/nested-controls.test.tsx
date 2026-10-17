@@ -16,9 +16,6 @@ import { HandSpread } from '../src/online/HandSpread.js'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { feltLabels } from '../src/table/keyboard.js'
 import { buildScene } from './scene.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const FACES = 'http://faces.test'
 const NESTED = 'button button, button [role="button"], [role="button"] button, [role="button"] [role="button"]'

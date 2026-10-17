@@ -5,10 +5,7 @@ import { userEvent } from '@testing-library/user-event'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import type { Element, ProjectDoc } from '../src/editor/types.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { openAllSections } from './sections.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The panel folds (#478); this file is about the controls in it, so every section stands open.
 beforeEach(openAllSections)

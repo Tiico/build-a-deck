@@ -12,9 +12,7 @@ import { OnlinePage } from '../src/online/OnlinePage.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
 import { admit, asTable, createNamedSession, createSession, deafServer, roomOf, startServer, type Running } from './fixture.js'
 import type { Route } from '../src/status/title.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
+import { holdWorker } from '../../../test-support/own-time.js'
 
 let run: Running
 beforeEach(async () => {
@@ -312,7 +310,12 @@ describe('the table screen once its plan is spent', () => {
 // all, and that includes the good news: a reader who was never told the line went does not need
 // telling it came back.
 describe.each(LIVE)('$path when the line comes straight back', (live) => {
-  const QUICK: StatusTiming = { ...FAST, dropAfterMs: 2_000, retryPlanMs: [30, 30, 30, 30, 30, 30] }
+  // The grace is two seconds, and so is the patience a wait is given before it is called slow —
+  // the same pair `DEFAULT_TIMING` keeps at four and four. Left at FAST's 80 ms, the second asked
+  // the line to come back inside 80 ms of wall clock, which is not what this is about and is what
+  // a worker held for a moment cannot do: the seated screens said «slow» about a break that healed
+  // in time (#848).
+  const QUICK: StatusTiming = { ...FAST, slowAfterMs: 2_000, dropAfterMs: 2_000, retryPlanMs: [30, 30, 30, 30, 30, 30] }
 
   it('says nothing at all about a break that was over before anyone could read about it', async () => {
     const id = await createSession(run)
@@ -323,6 +326,9 @@ describe.each(LIVE)('$path when the line comes straight back', (live) => {
     const watch = setInterval(() => said.push(noticeState()), 10)
     try {
       await run.restart()
+      // And the worker is held a moment while the line comes back, the way a loaded machine holds
+      // it (#848): the break is no longer, only the wall clock that measures it.
+      holdWorker(300)
       // The picture is whole again: the client has been round the loop and is serving a snapshot.
       await waitFor(() => expect(document.querySelector('[data-page]')).toBeTruthy())
       await new Promise((r) => setTimeout(r, 300))

@@ -8,16 +8,13 @@
 // WAI-ARIA practice for a non-modal panel is the whole of it: Escape closes it and hands the focus
 // back to the button that opened it, and a click back in the work closes it too. A panel that only
 // answers the button that opened it is a panel a designer has to go looking for a way out of.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { ProjectClient } from '../src/editor/ProjectClient.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {

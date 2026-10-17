@@ -6,10 +6,7 @@ import { TemplateCanvas, type TemplateCanvasProps } from '../src/editor/Template
 import { projectDoc } from './project-doc.js'
 import { drag, laidOut, target } from './drag.js'
 import { layerPick } from './layers.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { openAllSections } from './sections.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The panel folds (#478); this file is about the controls in it, so every section stands open.
 beforeEach(openAllSections)

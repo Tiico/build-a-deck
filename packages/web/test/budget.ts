@@ -26,5 +26,13 @@
 // this number is, because that is all the patience a wait has. Everything else fails here, twenty
 // seconds in, which is a third of the sixty a suite is given to open a browser and far inside the
 // time a person will sit in front of a run. `browser-suite-budget.test.ts` holds the other end of
-// that pair; `jsdom-suite-budget.test.ts` is what carries this one to every suite it is for.
+// that pair.
+//
+// And the twenty seconds are the worker's own, not the wall clock's (#848). `setup-editor` spends
+// 0.2 s of its own and still fell on them, on a box that had stopped running its worker for most of
+// the twenty: no number in wall clock is larger than every stall. So `test/setup.ts` holds every
+// test in the package to this many milliseconds of the time the worker actually ran, and vitest's
+// own timeout is a ceiling far above it, for what truly hangs (`test-support/own-time.ts`). A test
+// that names a timeout of its own keeps it, in wall clock, as it asked; the browser suites do.
+// `jsdom-suite-budget.test.ts` checks that every suite that stands the app up is on it.
 export const JSDOM_TEST_BUDGET = 20_000

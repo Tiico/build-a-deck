@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
 import type { ZoneAction } from '@byd/protocol'
@@ -8,9 +8,6 @@ import { besidePile, CARD_MM } from '../src/table/drop.js'
 import { projectDoc } from './project-doc.js'
 import { edgeDoc } from './landing-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Konturen bredvid högen på uppställningens filt (L30, #316): den syns medan väljaren «Bredvid
 // högen» hovras eller har fokus, och står kvar i bärnsten så länge högen är vald när korten

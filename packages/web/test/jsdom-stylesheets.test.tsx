@@ -4,11 +4,8 @@
 // removing the element round it, so every wall of cards left its sheets behind, and every
 // `getComputedStyle` after that walked all of them — which is what made one editor test lock its
 // worker for 37 s and starve its neighbours of the CPU they needed to keep a deadline.
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
 

@@ -1,13 +1,10 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { renderRules, type Names } from '@byd/template'
 import type { RuleDoc } from '@byd/server'
 import type { ZoneView } from '@byd/protocol'
 import { RuleShelf } from '../src/rules/RuleDrawer.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The living number in the book (#226, decided 2026-09-20): form B, the badge. `Draghögen ⟨18⟩`
 // stands outside the clause rather than inside it, and its shape says how much the book knows —

@@ -5,9 +5,6 @@ import { userEvent } from '@testing-library/user-event'
 import { TemplateCanvas, type TemplateCanvasProps } from '../src/editor/TemplateCanvas.js'
 import { Language, type Lang } from '../src/i18n/index.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Which card the template is drawn on (#478, beslut 2026-09-27, variant B): Mall never said, and
 // changing it was a round trip through Kortvägg — three presses. A row under the card now names

@@ -5,9 +5,6 @@ import { userEvent } from '@testing-library/user-event'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import type { Element, ProjectDoc } from '../src/editor/types.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // A layer drawn on some cards only (#478, beslut 2026-09-27, variant A: the condition as a folder).
 // An `if-*` layer gave an empty panel under an empty «Layout» head, no frame on the card, no word

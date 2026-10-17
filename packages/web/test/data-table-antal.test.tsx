@@ -7,9 +7,6 @@ import { importCardsCsv } from '../src/editor/csv.js'
 import { copiesOf } from '../src/editor/fields.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // `antal` is how many copies of a card the deck holds (L4, #479): a whole number from nought. It
 // took 0 on a backspace, 0 on an `e`, −2 pasted and −5 from the bulk row, and the card was then
