@@ -604,8 +604,10 @@
 }
 .byd-table-plate > h1 { margin: 0; font-size: 13px; font-weight: 400; opacity: 0.7; }
 /* The room's address (#675, beslut C): read from across the table, so larger than the game's name
-   and at full ink. */
+   and at full ink, with the code in the face it has on the television (#937). Chrome on a Mac knows
+   no `ui-monospace` and draws `monospace` in Courier, so Menlo is named between them. */
 .byd-table-plate > p { margin: 0; font-size: 20px; }
+.byd-table-plate b { font-family: ui-monospace, Menlo, monospace; }
 /* An enlarged felt runs under the plate (#720), and the words would then lie on the wood: while the
    lens is in, they stand on the felt's own plate, as the corner's buttons do. */
 [data-page='table']:has(.byd-table-frame[data-lens]:not([data-lens='100'])) .byd-table-plate {
@@ -659,7 +661,7 @@
 [data-tv] .byd-tv-join > span { color: #7d8597; font-size: 14px; flex: 1 0 100%; }
 [data-tv] .byd-qr { border-radius: 6px; background: #fff; }
 [data-tv] .byd-tv-join strong {
-  font-family: ui-monospace, monospace; font-size: 26px; letter-spacing: 6px;
+  font-family: ui-monospace, Menlo, monospace; font-size: 26px; letter-spacing: 6px;
   background: #1a1e29; padding: 4px 14px; border-radius: 8px;
 }
 /* The code is the address (#675, beslut C): the host on a line of its own, and the code under it
@@ -790,7 +792,7 @@
 [data-tv] ol li[hidden] { display: none; }
 /* The row's number is the chrome's quiet grey, as the zone names are: quieter than the names beside
    it and still text that reads, 5.18:1 on the chrome where #4c5468 was 2.53 (#560 P-14). */
-[data-tv] ol:where(:not(.byd-rules-panel *)) li b { flex: 0 0 30px; font-family: ui-monospace, monospace; font-weight: 400; color: #7d8597; }
+[data-tv] ol:where(:not(.byd-rules-panel *)) li b { flex: 0 0 30px; font-family: ui-monospace, Menlo, monospace; font-weight: 400; color: #7d8597; }
 [data-tv] ol:where(:not(.byd-rules-panel *)) li span { color: var(--seat, #9aa3b8); }
 /* The seats, stacked down the column rather than laid along the bottom of the screen. A seat is
    still a card of its own with the seat's colour down its left edge, so what a reader learned to
@@ -1241,7 +1243,7 @@
 .byd-shortcut-panel kbd {
   display: inline-block; min-width: 18px; padding: 2px 6px; border-radius: 5px; white-space: nowrap;
   border: 1px solid var(--byd-felt-chalk-off); border-bottom-width: 2px;
-  background: var(--byd-felt-edge); color: var(--byd-felt-chalk); font: 600 11px/1.3 ui-monospace, monospace; text-align: center;
+  background: var(--byd-felt-edge); color: var(--byd-felt-chalk); font: 600 11px/1.3 ui-monospace, Menlo, monospace; text-align: center;
 }
 
 /* A card read on the felt (K26, #509): lifted up beside itself, in the room the window has. The

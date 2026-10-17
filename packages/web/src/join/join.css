@@ -92,7 +92,13 @@
      above and the south one over «Ditt namn» (#483). The margin is what they reach out by, so the
      row the felt stands in makes room for all of it. */
   margin-block: calc(var(--byd-seat-hang-y) + 10px);
-  position: relative; place-self: center; width: var(--byd-felt-w);
+  /* The felt hangs from the head of its row and is centred only across it (#937). The row takes
+     whatever height the phone has to spare, and a felt centred down it stood in the middle of a
+     band of nothing — 83 px of it under the head at 390 × 844 — so the page read as a head, a
+     gap, and then the table it was naming. Up against the head it reads top down, and the spare
+     height goes between the table and the form, which stays at the foot where the thumb is and
+     where #42 left «Sätt dig» whatever the felt's size. */
+  position: relative; place-self: start center; width: var(--byd-felt-w);
   height: max(150px, calc(var(--byd-seat-spread-y) + 3 * var(--byd-seat-h) - 2 * var(--byd-seat-hang-y) + 2 * var(--byd-seat-corner)));
   border-radius: 16px;
   background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26);
