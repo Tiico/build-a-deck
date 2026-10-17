@@ -1471,6 +1471,8 @@ Följdkrav:
 Varningen måste länka direkt till raden i tabellen.
 Textstorleken varierar mellan kort, vilket är estetiskt ojämnt jämfört med hur förlag gör.
 
+Byggt 2026-10-17 (L69, #808): en text som inte ryms ens i minsta graden ramas in vid rutan i guiden, i Mall och på väggen, och Fysisk kontroll ger en varning per fält som leder till kortets rad i Tabell.
+
 ---
 
 ## F. Tryck
@@ -6572,3 +6574,32 @@ Följdkrav:
 `rules-lists.test.tsx` håller genvägen, valet av slag och vad fältet och hjälpen säger.
 `rules-list-written.spec.ts` skriver en punktlista med genvägen och en numrerad lista med valet i den byggda editorn, startar ett bord och läser dem som två listor på telefonen.
 Prototypen och dess bilder låg på grenen `proto/707-regellistor` och finns i issuet.
+
+### L69. En text som inte ryms ens krympt sägs vid rutan och i Fysisk kontroll (prototypat och beslutat 2026-10-17, #808)
+
+E6 krymper en text till minsta graden och klippte den sedan tyst: guiden och Mall visade en halv sista rad, väggen bara en bärnstensbricka «1», och Fysisk kontroll stod på (0) och «Inga anmärkningar» för samma kort.
+Fyra former prototypades i det byggda appen: kanten och brickan (A), en toning i nederkant (B), en rad under kortet (C) och InDesigns port i hörnet (D).
+
+**A, Kanten och brickan, i guiden, i Mall och på väggen.**
+Rutan ramas in med en streckad bärnstensram över en mörk ring, 4 px utanför rutan så att ramen aldrig rör en bokstav.
+Under ramen hänger en mörk bricka: «▲ Ryms inte · 4 rader till», och under en ruta smalare än 160 px på skärmen den korta formen «▲ +4 rader», vilket är vad väggens små kort får.
+Det är #802:s form, den streckade ramen och ordet i en mörk bricka, i varningens bärnsten, och de två delar stilmall (`mark.css`) i stället för att kopiera den.
+Det mörka bandet bär ramen mot ljust papper och det bärnstensfärgade mot Mörk; ensam ger bärnsten 1,5:1 mot Krönikas papper.
+Kortets tillgängliga namn bär hela meningen: «Förhandsvisning av kort 1: Skogsvandring. «Regeltext» ryms inte ens i 6 pt: 4 rader syns inte på kortet.»
+På väggen ligger ramens hörn under «×2», och brickan skärs ut ur ramen med en ring i väggens egen botten i stället för att korsas av den.
+
+**Markeringen ligger utanpå kortet och aldrig i det** (E2).
+Kompilatorn tillfrågas inte; ramen ritas i kortets egna millimetrar från mallens ruta, och det enda som mäts är vad `fitInDocument` redan mäter.
+På väggen står den i kortets ruta utanför kortets papper, som är skuret efter hörnen och annars skulle klippa en ram nära kanten.
+
+**Fysisk kontroll räknar det.**
+`fitInDocument` säger nu också hur många rader rutan skär bort, och `validateCard` tar emot vad renderaren mätte (`fitted`) och ger en varning, `text-overflow`, per fält som inte ryms ens i minsta graden.
+Varningen är kortets och inte mallens, så anmärkningen räknar upp korten och leder var för sig till kortets rad i Tabell, som E6 kräver.
+Väggens bricka, markeringen och listan är samma mätning, så de kan inte säga olika saker.
+
+Följdkrav:
+Om en text ryms är en fråga om en utlagd sida, så kontrollen säger ingenting om ett kort ingen har mätt.
+I editorn mäts det kortväggen ritar, alltså den sida väggen visar; ordern på servern mäter inte ännu, och eftersom anmärkningen är en varning stoppar den ingen order.
+Den förkastade B täckte bokstäver och bars mot ljust papper bara av linjen, C pekade inte ut rutan och flyttade layouten, och D krävde hover för att säga något.
+Prototypen: [`docs/ux-audits/2026-10-17-texten-ryms-inte/prototyper/01-texten-ryms-inte.html`](docs/ux-audits/2026-10-17-texten-ryms-inte/prototyper/01-texten-ryms-inte.html) (`?v=a`), med mätskripten i `matning/`.
+`text-overset.spec.ts` mäter ramen och brickan i det byggda appen i guiden vid 1280 och 390, i Mall och på väggen, och att anmärkningen leder till raden; `overset-contrast.test.ts` mäter banden mot varje startkort.

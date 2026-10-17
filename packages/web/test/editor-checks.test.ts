@@ -51,3 +51,22 @@ describe('the physical checks over a whole deck (E5)', () => {
     expect(groupIssues([])).toEqual([])
   })
 })
+
+// Text that does not fit even at the smallest size (#808). Whether it fits is the renderer's to say
+// (E2): the wall hands over what each card's fitting measured, and the list says the same as the
+// badge on the card — a remark per field, on the cards it is true of, with the lines it loses.
+describe('a text that does not fit even shrunk, in the physical checks (E6, #808)', () => {
+  const body: Element = { kind: 'text', id: 'body', x: 5, y: 53, w: 53, h: 30, bind: { field: 'Regeltext' }, font: { family: 'system-ui', sizePt: 8.5 }, color: '#333333' }
+  const cut = (hidden: number, sizePt = 6) => [{ element: 'body', sizePt, minPt: 6, overflow: true, empty: false, hidden }]
+
+  it('is a warning on the measured card, and only there', () => {
+    const doc = deck()
+    doc.template.faces['front']!.base = [bled, body]
+    expect(deckIssues(doc)).toEqual([])
+    const found = deckIssues(doc, { front: { knight: cut(4) } })
+    expect(found).toEqual([{ element: 'body', code: 'text-overflow', severity: 'warning', values: { field: 'Regeltext', sizePt: 6, hidden: 4, fit: 'shrink' }, cardRef: 'knight', face: 'front' }])
+    const [group] = groupIssues(found)
+    expect(group?.cards).toEqual(['knight'])
+    expect(issueDetail(group!, swedish)).toBe('Texten ryms inte i sin ruta ens i minsta graden, och det som inte ryms syns inte på kortet. Korta texten, eller gör rutan större i Mall.')
+  })
+})
