@@ -143,6 +143,32 @@ test.describe('the code is the address (#675)', () => {
     expect(said[1]).toBe(said[3])
   })
 
+  // Beställarens beslut 2026-10-07 (#938): a table that has ended is said as a code that never was.
+  // Before, its code answered 410 with the table's id, which told whoever was guessing codes that
+  // this one had been real.
+  test('the code of a table that has ended is said as a code that never was, on the screen and on the wire', async ({ table, open, request, host }) => {
+    const hosting = await host(table)
+    await hosting.send([{ v: 'session.end' } as never])
+    const said: string[] = []
+    const wire: { status: number; body: string }[] = []
+    for (const code of ['ZZZZZZ', table.code]) {
+      const { page } = await open(PHONE, `/${code}?lang=sv`)
+      const field = page.getByLabel('Rumskod')
+      await expect(field).toHaveValue(code)
+      await expect(field).toHaveAttribute('aria-invalid', 'true')
+      await expect(page.locator(`#${await field.getAttribute('aria-describedby')}`)).toHaveText(SAYS)
+      said.push((await page.locator('main').innerText()).replace(code, ''))
+      for (const answer of [await request.get(`/rooms/${code}`), await request.post(`/rooms/${code}/join`, { data: { name: 'Ada', seat: table.seats[0] ?? 'A' } }), await request.post(`/rooms/${code}/join`, { data: { name: 'Tittare' } })]) {
+        wire.push({ status: answer.status(), body: await answer.text() })
+      }
+    }
+    expect(said[1]).toBe(said[0])
+    // The same status and the same bytes for every question the door answers, and nothing in them
+    // that names the table.
+    expect(wire.slice(3)).toEqual(wire.slice(0, 3))
+    for (const answer of wire) expect(answer.body).not.toContain(table.session)
+  })
+
   test('a laptop is shown a card with the game’s name, and playing on this screen is the suggestion', async ({ request, open }) => {
     const table = await namedTable(request, "Sal's Saloon")
     const { page } = await open(LAPTOP, `/${table.code}?lang=sv`)

@@ -52,9 +52,41 @@ describe('room codes', () => {
     now = new Date(now.getTime() + 3 * 3600_000 + 1)
     expect((await fetch(`${run.http}/rooms/${code}`)).status).toBe(404)
   })
+
+  // Whether a code once existed is nobody's business (#675), and a table that has ended is no
+  // exception (beställarens beslut 2026-10-07, #938): before, its code answered 410 with the
+  // table's id. Every question the door answers is asked of all four, and compared byte for byte.
+  it('answers a code that never was, one that went out, one rotated away and an ended table’s the same way', async () => {
+    const lapsed = await createRoom(run.http, 'lapsed')
+    now = new Date(now.getTime() + 3 * 3600_000 + 1)
+    const rotated = await createRoom(run.http, 'rotated')
+    expect((await post(run.http, `/sessions/${rotated.id}/code`, {}, { authorization: `Bearer ${rotated.hostKey}` })).status).toBe(200)
+    const ended = await createRoom(run.http, 'ended')
+    const tv = await run.connectTable(ended.id, ended.hostKey)
+    expect(await tv.send(null, { v: 'session.end' })).toMatchObject({ t: 'ack' })
+    await tv.close()
+
+    const answers = async (code: string) => {
+      const said: { status: number; body: string }[] = []
+      for (const res of [
+        await fetch(`${run.http}/rooms/${code}`),
+        await post(run.http, `/rooms/${code}/join`, { name: 'Ada', seat: 'A' }),
+        await post(run.http, `/rooms/${code}/join`, { name: 'Tittare' }),
+        await post(run.http, `/rooms/${code}/join`, { seat: 'A' }),
+      ]) said.push({ status: res.status, body: await res.text() })
+      return said
+    }
+    const never = await answers('ZZZZZZ')
+    expect(never.map((a) => a.status)).toEqual([404, 404, 404, 404])
+    for (const room of [lapsed, rotated, ended]) {
+      const said = await answers(room.code)
+      expect(said).toEqual(never)
+      for (const a of said) expect(a.body).not.toContain(room.id)
+    }
+  })
 })
 
-const post = (http: string, path: string, body: unknown, headers: Record<string, string> = {}) =>
+const post =(http: string, path: string, body: unknown, headers: Record<string, string> = {}) =>
   fetch(`${http}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) })
 
 describe('guest tokens', () => {
@@ -189,9 +221,10 @@ describe('the seat list a lobby is told (K12, #39)', () => {
     await Promise.all([tv.close(), lobby.close()])
   })
 
-  // That the table is over is no secret — the code answers 410 for it (#485) — and the editor's
-  // header follows its own table through a lobby (#705): told nothing of it, the band stood on
-  // after the table had ended, with kicks for seats nobody could sit in.
+  // That the table is over is no secret to a lobby, which already holds the table's id — the code
+  // says nothing of it (#938), and an ended table's code no longer hands the id out — and the
+  // editor's header follows its own table through a lobby (#705): told nothing of it, the band
+  // stood on after the table had ended, with kicks for seats nobody could sit in.
   it('is told when the table ends', async () => {
     const { id, hostKey } = await createRoom(run.http)
     const lobby = await WireClient.connect(run.base, id, null, { role: 'lobby' })
