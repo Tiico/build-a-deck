@@ -75,7 +75,7 @@ describe('the table screen’s own help (L32, #305)', () => {
   })
 })
 
-// A table that has ended takes nobody in: the code on its screen led to «Bordet är slut» (#717).
+// A table that has ended takes nobody in: the code on its screen opens nothing any more (#717, #938).
 describe('the table screen after the end', () => {
   it('says the table has ended where the invitation stood, and offers no code or square', () => {
     const { view, log } = buildScene()

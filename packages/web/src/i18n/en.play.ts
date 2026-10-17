@@ -398,7 +398,6 @@ export const enPlay = {
   'join.code.go': 'Continue',
   'join.code.empty': 'Type the room code first.',
   'join.code.unknown': 'That code does not exist or has run out — ask the host for the new one.',
-  'join.ended': 'This table has ended. Ask the host to start a new one.',
   'join.seat.taken': 'That seat was just taken by someone else. Choose another.',
   'join.left': 'Your seat is open and your hand is back in the deck. The others play on.',
   'join.into': 'You are on your way into',

@@ -484,7 +484,6 @@ export const svPlay = {
   'join.code.go': 'Fortsätt',
   'join.code.empty': 'Skriv rumskoden först.',
   'join.code.unknown': 'Koden finns inte eller har gått ut — fråga värden efter den nya.',
-  'join.ended': 'Det här bordet är avslutat. Be värden starta ett nytt.',
   'join.seat.taken': 'Platsen togs precis av någon annan. Välj en annan.',
   // Kvitteringen för den som just lämnat: hon kommer tillbaka hit, och får veta vad som hände
   // med platsen och handen hon lämnade (#31).

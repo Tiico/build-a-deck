@@ -184,7 +184,9 @@ Byggt 2026-10-06 (#675, beställarens beslut C): koden är också rummets adress
 Sidan på adressen frågar aldrig efter koden: varje kod, känd, okänd eller utgången, får samma bytes, och lagret tillfrågas inte.
 Den enda vägen att pröva en kod är därmed fortfarande `GET /rooms/:kod`, som appen frågar precis som `/join?code=` alltid har gjort, så adressen är ingen andra dörr förbi rate limiting ovan, och proxyns gräns gäller hela värden och därmed `/<KOD>` också.
 En okänd, en utgången och en roterad kod får samma 404 med samma kropp, och telefonen säger dem likadant: inget avslöjar om en kod en gång funnits.
-Ett avslutat bord svarar fortfarande 410 (C9, #485), eftersom koden då leder till ett bord som finns men är slut.
+Ett avslutat bords kod gör det också (#938, beställarens beslut 2026-10-07): förut svarade den 410 med bordets id, vilket sa den som provade koder att just den hade varit verklig.
+Dörren är stängd som förut (C9, #485) — `POST /rooms/:kod/join` lämnar ingen token — men den säger det med samma 404 och samma kropp som för en kod som aldrig funnits, och koden prövas före kroppen, så att inte heller en trasig kropp skiljer dem åt.
+Den som redan sitter vid bordet får veta att det är slut genom sin egen anslutning, och kontots väg tillbaka (`POST /me/played/:id/return`) svarar fortfarande 410, eftersom den bara når den som satt där.
 `GET /rooms/:kod` säger också spelets namn när bordet startades ur ett spel — det `GET /sessions/:id` redan sa till den som har id:t svaret lämnar ut — och aldrig projektet.
 Generatorn drar om en kod som stavar ett av appens egna vägord (`ROUTE_WORDS` i `packages/protocol`): `ASSETS` och `GUESTS` är de enda sex tecknen ur alfabetet som redan är en adress.
 

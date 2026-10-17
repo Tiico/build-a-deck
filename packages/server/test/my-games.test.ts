@@ -125,9 +125,9 @@ describe('"Mina spel" over HTTP (G1)', () => {
     await phone.waitFor(() => phone.view?.ended === true)
     const session = (await (await send('GET', `/sessions/${table.id}`)).json()) as { ended: boolean }
     expect(session.ended).toBe(true)
-    // The code no longer seats anyone.
-    expect((await send('GET', `/rooms/${table.code}`)).status).toBe(410)
-    expect((await send('POST', `/rooms/${table.code}/join`, { name: 'Bo', seat: 'B' })).status).toBe(410)
+    // The code no longer seats anyone, and is answered as a code that never was (#938).
+    expect((await send('GET', `/rooms/${table.code}`)).status).toBe(404)
+    expect((await send('POST', `/rooms/${table.code}/join`, { name: 'Bo', seat: 'B' })).status).toBe(404)
     // The owner's own table screen is told the game is gone — not that it is someone else's.
     const screen = new WebSocket(`${run.base}/sessions/${table.id}?owner=1`, { headers: { cookie, origin: 'http://test.local' } })
     expect(await firstMessage(screen)).toEqual({ t: 'refused', reason: 'the game was deleted' })
