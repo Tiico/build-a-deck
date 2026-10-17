@@ -23,6 +23,9 @@ import {
   type RulePlanSection,
   type RuleRun,
   renderLine,
+  itemsOfLines,
+  runsOf,
+  type WrittenRun,
 } from '@byd/template'
 import type { ProjectClient } from './ProjectClient.js'
 import { useT, type T } from '../i18n/index.js'
@@ -144,6 +147,24 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
   }, [mode])
   const patch = (id: string, next: Partial<RuleBlock>, gesture?: string) =>
     rules && client.setRules({ ...rules, blocks: rules.blocks.map((b) => (b.id === id ? ({ ...b, ...next } as RuleBlock) : b)) }, gesture)
+  // A block written as something else (#707): a paragraph made a list, or cut into the paragraphs
+  // and lists its lines were written as. The first of them keeps the block's id, so the block that
+  // was open is the block the focus goes back to; the rest are handed ids of their own.
+  const recast = (id: string, runs: readonly WrittenRun[]) => {
+    if (!rules) return
+    const at = rules.blocks.findIndex((b) => b.id === id)
+    const was = rules.blocks[at]
+    if (!was) return
+    const taken: string[] = []
+    const made = runs.map((run, i): RuleBlock => {
+      const own = i === 0 ? id : freeId(rules, taken)
+      taken.push(own)
+      if (run.kind === 'list') return { kind: 'list', id: own, ordered: run.ordered, items: run.items }
+      // A template section keeps its question for as long as it stays a paragraph (#131).
+      return { kind: 'text', id: own, text: run.text, ...(i === 0 && was.kind === 'text' && was.ask ? { ask: was.ask } : {}) }
+    })
+    client.setRules({ ...rules, blocks: [...rules.blocks.slice(0, at), ...made, ...rules.blocks.slice(at + 1)] })
+  }
   // Ett tomt block i en skarv, öppnat där det landar. Skarven räknas i block och inte i knappar:
   // en bok med n block har n + 1 skarvar, och den före block ett är en av dem (#216).
   const addAt = (index: number) => {
@@ -311,6 +332,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
         <Help topic={t('rules.help.topic')}>
           <p>{t('rules.help.reach')}</p>
           <p>{t('rules.help.names')}</p>
+          <p>{t('rules.help.lists')}</p>
         </Help>
         {/* Which file the book came out of, and when (#131): text in the document, so it travels
             with the project rather than with the browser the file was picked in. */}
@@ -511,6 +533,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
                         names={names}
                         assetBase={assetBase}
                         onPatch={(next, gesture) => patch(b.id, next, gesture)}
+                        onRecast={(runs) => recast(b.id, runs)}
                         onClose={(refocus) => close(b.id, refocus)}
                         onRemove={() => remove(b.id)}
                       />
@@ -1012,6 +1035,7 @@ function Editing({
   names,
   assetBase,
   onPatch,
+  onRecast,
   onClose,
   onRemove,
 }: {
@@ -1020,6 +1044,8 @@ function Editing({
   names: Names
   assetBase?: string | undefined
   onPatch(next: Partial<RuleBlock>, gesture?: string): void
+  // The block written as other blocks: a paragraph as a list, or as the runs its lines make.
+  onRecast(runs: readonly WrittenRun[]): void
   // `refocus` when a key closed the block and the focus has nowhere of its own to go.
   onClose(refocus: boolean): void
   onRemove(): void
@@ -1125,8 +1151,32 @@ function Editing({
   // after it in the book (#481, fynd 10).
   const leave = (refocus: boolean) => {
     if (block.kind === 'list' && block.items.some((item) => item.trim() === '')) onPatch({ items: block.items.filter((item) => item.trim() !== '') })
+    // A paragraph whose lines open with «- » or «1. » is closed as the list they say it is (#707):
+    // the marks the import reads are read here too, so a list can be written without a file.
+    if (block.kind === 'text') {
+      const runs = runsOf(block.text)
+      if (runs.length !== 1 || runs[0]?.kind !== 'text') onRecast(runs.length > 0 ? runs : [{ kind: 'text', text: '' }])
+    }
     onClose(refocus)
   }
+  // The block made the kind the chooser names (#707). A paragraph made a list keeps its lines as
+  // its points, and a list made a paragraph keeps its points as lines, so nothing written is lost
+  // by trying the other kind. A block just added says «Ny text.» to be seen at all; that is the
+  // tool's word and not the designer's, so a list made of it starts with one empty point.
+  const recastAs = (kind: BlockKind) => {
+    if (kindOf(block) === kind) return
+    if (kind === 'text') return block.kind === 'list' && onRecast([{ kind: 'text', text: block.items.join('\n') }])
+    const ordered = kind === 'numbers'
+    if (block.kind === 'list') return onPatch({ ordered })
+    if (block.kind !== 'text') return
+    const items = block.text === t('rules.newText') ? [] : itemsOfLines(block.text)
+    onRecast([{ kind: 'list', ordered, items: items.length > 0 ? items : [''] }])
+  }
+  // How the paragraph's lines will be read once the block is closed, when that is not how they
+  // stand in the field (#707): lines marked as points become a list, and a line break alone is a
+  // space, as it has always been — but no longer without a word.
+  const noteId = useId()
+  const notes = block.kind === 'text' ? notesOn(block.text) : []
   return (
     // The block closes when the focus leaves the block and not when it leaves a field (#481):
     // tabbing from the heading to its chooser, from the picture's words to its caption, or from
@@ -1156,6 +1206,19 @@ function Editing({
         leave(true)
       }}
     >
+      {/* The open block chooses its kind (#707, beslut 2026-10-06: C med A:s genväg): Stycke ·
+          Punktlista · Numrerad lista, on the block being written and on nothing else, so the book
+          gains no buttons in its margin. `.byd-choice` with `aria-pressed`, as the book's own
+          switch of modes: one of a set is what the button language already has a word for (L13). */}
+      {(block.kind === 'text' || block.kind === 'list') && (
+        <div className="byd-rules-kinds" role="group" aria-label={t('rules.kind', { block: called.self })}>
+          {BLOCK_KINDS.map((kind) => (
+            <button key={kind} type="button" className="byd-choice" aria-pressed={kindOf(block) === kind} onClick={() => recastAs(kind)}>
+              {t(BLOCK_KIND_WORD[kind])}
+            </button>
+          ))}
+        </div>
+      )}
       {/* A section's question is the field's placeholder and never its value (#131), so it is
           gone at the first character rather than being text to select and type over. Under it
           stands the tool's own notice, on a line of its own and always (#215, the approved form
@@ -1181,8 +1244,16 @@ function Editing({
               openRefs('text', e.target)
             }}
             {...refField('text', (text) => onPatch({ text }))}
+            {...(notes.length > 0 ? { 'aria-describedby': notes.map((note) => `${noteId}-${note}`).join(' ') } : {})}
           />
           {refList('text', (text) => onPatch({ text }))}
+          {/* What the field says about how its lines will be read (#707, A's «fältet säger det»),
+              and only while it is so: a paragraph on one line has nothing to be told. */}
+          {notes.map((note) => (
+            <p key={note} id={`${noteId}-${note}`} className="byd-rules-note">
+              {t(note === 'lists' ? 'rules.field.lists' : 'rules.field.wrap')}
+            </p>
+          ))}
         </div>
       )}
       {/* The heading and its chooser stand on one row; reaching for the chooser is staying in the
@@ -1509,6 +1580,21 @@ function templateRules(name: string, t: T): RuleDoc {
       { kind: 'text', id: 'b11', text: '', ask: t('rules.ask.end') },
     ],
   }
+}
+
+// The kinds an open paragraph or list can be made (#707), in the order the chooser offers them.
+type BlockKind = 'text' | 'bullets' | 'numbers'
+const BLOCK_KINDS: readonly BlockKind[] = ['text', 'bullets', 'numbers']
+const BLOCK_KIND_WORD = { text: 'rules.kind.text', bullets: 'rules.kind.bullets', numbers: 'rules.kind.numbers' } as const satisfies Record<BlockKind, Key>
+const kindOf = (block: RuleBlock): BlockKind | null => (block.kind === 'text' ? 'text' : block.kind === 'list' ? (block.ordered ? 'numbers' : 'bullets') : null)
+
+// What an open paragraph's field says about its lines (#707). A paragraph is cut where a line is
+// empty, as `parseInline` cuts it, and a line break left inside one of them is read as a space.
+type FieldNote = 'lists' | 'wrap'
+function notesOn(text: string): FieldNote[] {
+  const runs = runsOf(text)
+  const wraps = runs.some((run) => run.kind === 'text' && run.text.split(/\n[ \t]*\n/).some((paragraph) => paragraph.trim().includes('\n')))
+  return [...(runs.some((run) => run.kind === 'list') ? ['lists' as const] : []), ...(wraps ? ['wrap' as const] : [])]
 }
 
 // The written field a key or a focus in an open block belongs to, if it was one.
