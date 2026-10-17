@@ -65,7 +65,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
   const [sessionId, setSessionId] = useState<string | null>(null)
   // The game the code leads into (#675), when the table was started from one.
   const [game, setGame] = useState<string | null>(null)
-  const [lookup, setLookup] = useState<'gone' | 'ended' | 'offline' | null>(null)
+  const [lookup, setLookup] = useState<'gone' | 'offline' | null>(null)
   const [attempt, setAttempt] = useState(0)
   useEffect(() => {
     if (!code) return
@@ -82,10 +82,10 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
           setGame(found.name ?? null)
           setSessionId(found.session)
         }
-        // A code the server has heard of and will not honour is a room that is gone; anything
-        // else it answers, or does not answer, is the service.
-        // A table that has ended is locked (C9, #485): its code still names it, but it is over.
-        else setLookup(r.status === 410 ? 'ended' : r.status === 404 ? 'gone' : 'offline')
+        // A code the server will not honour is a room that is gone — never issued, lapsed, rotated
+        // away, or its table ended (#938), which the server answers alike; anything else it
+        // answers, or does not answer, is the service.
+        else setLookup(r.status === 404 ? 'gone' : 'offline')
       })
       .catch(() => {
         if (!alive) return
@@ -137,7 +137,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
   const saysId = 'byd-join-name-says'
   // The room is the tab's name here (#12): a phone with three tabs open has to be able to tell
   // which room each of them is waiting to get into.
-  usePageTitle({ state: !code ? null : lookup === 'gone' || lookup === 'ended' ? 'missing' : lookup ?? live.state, room: code?.toUpperCase() ?? null })
+  usePageTitle({ state: !code ? null : lookup === 'gone' ? 'missing' : lookup ?? live.state, room: code?.toUpperCase() ?? null })
 
   const free = view?.seats.filter((s) => s.name === null) ?? []
   const spread = along(view?.seats ?? [])
@@ -153,15 +153,12 @@ export function JoinPage({ onSit = (url) => location.assign(url), onOpen = (url)
   const lost = pick !== null && !free.some((s) => s.id === pick)
 
   // No code at all is an address without the one thing it needs, so it asks for it (#675). A code
-  // that names nothing — never issued, or lapsed, or rotated away — is asked for again, with the
-  // code left in the field to be put right and one sentence for all three: whether a code once
-  // existed is nobody's business (beslut 2026-10-06).
-  // A table that is over has no seat to choose again: the picker at the same code is this very
-  // page, so it is not offered as a way out (#555).
-  const { rescan: _again, ...away } = links
+  // that names nothing — never issued, or lapsed, or rotated away, or its table ended — is asked
+  // for again, with the code left in the field to be put right and one sentence for all four:
+  // whether a code once existed is nobody's business (beslut 2026-10-06, and 2026-10-07 for the
+  // ended table, #938).
   if (!code) return <CodeForm server={server} onOpen={onOpen} />
   if (lookup === 'gone') return <CodeForm server={server} onOpen={onOpen} typed={code.toUpperCase()} unknown />
-  if (lookup === 'ended') return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), heading: t('status.ended.table.heading'), text: t('join.ended') }} surface="page" links={away} />
   if (lookup === 'offline') return <StatusNotice notice={noticeFor('offline', 'phone', t)} surface="page" links={links} onRetry={retry} />
   if (!view || !sessionId) return <RouteStatus status={live} over="sheet" links={links} onRetry={retry} />
 

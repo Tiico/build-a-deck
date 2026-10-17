@@ -80,7 +80,6 @@ export const enStatus: Record<keyof typeof svStatus, string> = {
   'status.missing.table.text': 'The link points at a table that does not exist. Start a new table from My games.',
   'status.unlinked.table.heading': 'No link to a table',
   'status.unlinked.table.text': 'The address does not point at any table. Start a table from My games.',
-  'status.ended.table.heading': 'The table is over',
   'status.deleted.table.heading': 'The game was deleted',
   'status.deleted.table.text': 'The table ended when the game was deleted. Start a new table from My games.',
   'status.missing.phone.heading': 'The table is not there',
