@@ -45,9 +45,10 @@
      reaches 26 px back instead of 18, which eats 8 px in each corner, and the daylight became an
      overlap of exactly that — `A×H 20×8`, `B×D 20×8`, `C×F 20×8`, `E×G 20×8` on an eight-seat
      table. The felt is written from the pill now, so the pill may grow again and the corners
-     cannot fall in behind its back. */
-  --byd-seat-pitch-x: 132px;
-  --byd-seat-pitch-y: calc(var(--byd-seat-pitch-x) - (var(--byd-seat-w) - var(--byd-seat-h)));
+     cannot fall in behind its back.
+
+     132 px is the step on a felt with room for it. The steps themselves are declared on the
+     felt, further down, because a felt too narrow for them shortens them (#979). */
   --byd-seat-gap: 14px;
   /* How far a pill hangs off the edge it belongs to. The offsets below are written from these
      and nothing else, and so is the room a pill on that edge has to grow in (#52) — the two may
@@ -55,13 +56,12 @@
      reckoned for is a pill that reaches across the felt again. */
   --byd-seat-hang-x: 30px;
   --byd-seat-hang-y: 26px;
-  /* "Nothing bounds the pill on this axis", said as a length so the two bounds below can always
-     be compared. No name reaches it; a pill this wide would be off the phone long before. */
-  --byd-seat-unbounded: 9999px;
   /* The felt's own dark. A hex in a rule until the button language (#44) had to be measured
      against it; a ground without a name is a ground no contrast test can ask about. */
   --byd-join-bg: #14161c;
   min-height: 100vh; box-sizing: border-box; padding: 40px 20px 28px;
+  /* The width the felt is fitted to (#979) is the page's own, inside its margin. */
+  container-type: inline-size;
   background: var(--byd-join-bg); color: #eee; font-family: system-ui, sans-serif;
   display: grid; grid-template-rows: auto 1fr auto; gap: 20px;
 }
@@ -73,7 +73,23 @@
 .byd-join-table {
   /* The felt's own width is a number the pills have to know as well as the felt does (#52), so it
      is kept where both can read it rather than written twice. */
-  --byd-felt-w: 220px;
+  --byd-felt-w: min(220px,100cqi - 2*var(--byd-seat-hang-x));
+  /* That `min()` is the most a felt can be and still keep its east and west seats inside the
+     page's margin (#979). They hang off the felt by `--byd-seat-hang-x` on either side, so the
+     felt may be the page's width (`cqi`, on `.byd-join`) less the two of those. At 320 px that is 220 px, which is the small felt to the
+     pixel and 40 px short of the wide one: a table whose edges are shared drew its west seat at
+     x = 0, against the glass, and its east seat flush with the right edge. A felt fitted to the
+     page is narrower only where the page is; on 390 px it is the felt it always was.
+
+     A narrower felt has to shorten the step along it, or the pair on a shared north or south
+     edge reaches past its corners. Two seats of a pair stand a step apart and each is capped at a
+     step less the gap, so the pair spans twice the step less the gap, and that may be no more
+     than the felt: the step is half of the felt plus the gap, or 132 px if that is shorter. On the 260 px felt that is 137 px against 132, so the ideal stands; on the 220 px
+     one it is 117. The step down a side follows from it as it always did, and the felt's height
+     from that, so the corners keep their daylight and the air down a side stays the air across an
+     end. */
+  --byd-seat-pitch-x: min(132px,(var(--byd-felt-w) + var(--byd-seat-gap))/2);
+  --byd-seat-pitch-y: calc(var(--byd-seat-pitch-x) - (var(--byd-seat-w) - var(--byd-seat-h)));
   /* How much of the felt's height goes on spreading a shared edge: nothing, while every edge
      carries one seat. The felt below is written from this and from the pill, which is what makes
      the small felt and the big one the same piece of arithmetic asked twice.
@@ -118,7 +134,7 @@
    200 px behind a 44 px pill and comes out 220 px behind the 52 px one. The phone pays nothing
    either way: the felt stands in a grid row of its own with room to spare, so the page is the
    same height, scrolls no more sideways, and leaves "Sätt dig" where it was. */
-.byd-join-table[data-shares] { --byd-felt-w: 260px; --byd-seat-spread-y: var(--byd-seat-pitch-y); }
+.byd-join-table[data-shares] { --byd-felt-w: min(260px,100cqi - 2*var(--byd-seat-hang-x)); --byd-seat-spread-y: var(--byd-seat-pitch-y); }
 /* The picker is met with a thumb and nothing else, so a seat is held to at least the 44 px every
    control in the product is held to (UX-KONTROLLER: träffytor). The pill grows around its word
    rather than the word growing: the label is a seat's name, not a button's size.
@@ -191,10 +207,13 @@
    `overflow` does the clipping — at both ends again, and in silence again, which is the very
    fault the paragraph above is written against. `Bartholomew Longbottom` came back as a different
    name with nothing on it to say so. Held to the pill's own width, the span is too narrow for its
-   text once more and the ellipsis fires where it should. */
-.byd-join-table button { max-width: min(var(--seat-room-along, var(--byd-seat-unbounded)), var(--seat-room-across, var(--byd-seat-unbounded))); overflow: hidden; }
+   text once more and the ellipsis fires where it should.
+
+   Since #750 every pill takes the cap across, below, so that is the width a pill has, and a pill
+   with a neighbour takes the smaller of it and the cap along. */
+.byd-join-table button { max-width: var(--seat-room-across); overflow: hidden; }
 .byd-join-table button > span { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-.byd-join-table button[data-shares] { --seat-room-along: calc(var(--byd-seat-pitch-x) - var(--byd-seat-gap)); }
+.byd-join-table button[data-shares] { max-width: min(var(--seat-room-across),var(--byd-seat-pitch-x) - var(--byd-seat-gap)); }
 /* North and south are not bounded across, and #42 left them unbounded along when alone — but
    empty felt beside a pill is not endless felt. A 59-letter name grew the north pill to 398 px on
    a 390 px phone, off the screen at both ends, while east and west beside it were cut at 133
