@@ -34,16 +34,21 @@ describe('JoinPage', () => {
   })
 
   // A code for a table that has ended (#485, fynd 3; C9): the picker used to look normal, hand out
-  // a token and land the newcomer in a finished game. It says the table is over, and offers no seat.
-  it('says the table is over for a code whose table has ended, and offers no seat', async () => {
+  // a token and land the newcomer in a finished game. It offers no seat — and it says what it says
+  // of a code that never was (beställarens beslut 2026-10-07, #938), since saying the table is over
+  // told whoever typed the code that it had been real.
+  it('asks again for a code whose table has ended, as for one that never was, and offers no seat', async () => {
     const id = await createSession(run)
     const host = TableClient.connect(await asTable(run, id))
     await host.ready()
     await host.send({ v: 'session.end' })
-    history.replaceState(null, '', `/join?code=${roomOf(id).code}&server=${encodeURIComponent(run.url)}`)
+    const code = roomOf(id).code
+    history.replaceState(null, '', `/join?code=${code}&server=${encodeURIComponent(run.url)}`)
     render(<JoinPage />)
-    expect(await screen.findByRole('heading', { name: 'Bordet är slut' })).toBeTruthy()
-    expect(screen.getByText('Det här bordet är avslutat. Be värden starta ett nytt.')).toBeTruthy()
+    const field = (await screen.findByLabelText('Rumskod')) as HTMLInputElement
+    expect(field.value).toBe(code)
+    expect(document.getElementById(field.getAttribute('aria-describedby') ?? '')?.textContent).toBe('Koden finns inte eller har gått ut — fråga värden efter den nya.')
+    expect(screen.queryByText(/avslutat|slut/)).toBeNull()
     expect(document.querySelector('[data-seat]')).toBeNull()
     host.close()
   })

@@ -142,22 +142,25 @@ describe('a door that will not answer', () => {
   })
 })
 
-// A table that has ended is locked (C9), and its door is shut with it (#485, fynd 3): the room code
-// still names it, but the picker is told it is over and the door hands out no token, so nobody new
-// lands in a finished game with a survey about a game they never played.
+// A table that has ended is locked (C9), and its door is shut with it (#485, fynd 3): the door hands
+// out no token, so nobody new lands in a finished game with a survey about a game they never played.
+// And the code names nothing any more (beställarens beslut 2026-10-07, #938): it is answered as a
+// code that never was, so the answer does not tell that it once was real.
 describe('the door of a table that has ended', () => {
-  it('says the table is over and admits nobody, to a seat or to watch', async () => {
+  it('knows nothing of the code and admits nobody, to a seat or to watch', async () => {
     const { id, code, hostKey } = await createRoom(run.http)
     const table = keep(await run.connectTable(id, hostKey))
     expect(await table.send(null, { v: 'session.end' })).toMatchObject({ t: 'ack' })
 
     const looked = await fetch(`${run.http}/rooms/${code}`)
-    expect(looked.status).toBe(410)
-    expect(await looked.json()).toEqual({ error: 'session ended', session: id })
-    expect((await post(`/rooms/${code}/join`, { name: 'Ada', seat: 'A' })).status).toBe(410)
+    expect(looked.status).toBe(404)
+    expect(await looked.json()).toEqual({ error: 'unknown or expired code' })
+    expect((await post(`/rooms/${code}/join`, { name: 'Ada', seat: 'A' })).status).toBe(404)
     const watching = await post(`/rooms/${code}/join`, { name: 'Tittare' })
-    expect(watching.status).toBe(410)
-    expect(JSON.stringify(await watching.json())).not.toContain('token')
+    expect(watching.status).toBe(404)
+    const said = JSON.stringify(await watching.json())
+    expect(said).not.toContain('token')
+    expect(said).not.toContain(id)
   })
 })
 

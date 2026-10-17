@@ -126,8 +126,9 @@ export class TableActor {
 
   // A tokenless lobby exists only to choose a seat. Keep the snapshot envelope so the regular
   // client can follow seat patches, but strip the table, cards, rewind state and activity. That
-  // the table is over stays (#705): it is no secret — the code says 410 for it — and the editor's
-  // header follows its own table through a lobby.
+  // the table is over stays (#705): it is no secret to whoever already holds the table's id — an
+  // ended table's code hands the id out to nobody (#938) — and the editor's header follows its own
+  // table through a lobby.
   private viewFor(sub: Subscriber): Snapshot {
     const snapshot = project(this.state, this.registry, sub.seat, this.cards, this.deps.history, sub.observer !== undefined)
     if (!sub.lobby) return snapshot
