@@ -1377,27 +1377,6 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           )}
         </p>
       )}
-      {dropping !== null && (
-        <Question
-          className="byd-data-bulk"
-          label={dropLabel(doc, dropping, t)}
-          confirm={t('table.remove.yes')}
-          cancel={t('editor.cancel')}
-          onConfirm={() => {
-            onRemoveField(dropping)
-            forgetWidth(dropping)
-            setDropping(null)
-            setRefocus('addField')
-          }}
-          onCancel={() => {
-            const field = dropping
-            setDropping(null)
-            setRefocus({ field })
-          }}
-        >
-          {dropLabel(doc, dropping, t)}
-        </Question>
-      )}
       {/* A wide table on a narrow screen has one honest answer: the table scrolls inside its own
           box, the page never scrolls sideways, and the column that removes a card is pinned to
           the right edge so it cannot be scrolled away — it is the thing that would be lost
@@ -1848,8 +1827,30 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
         </p>
       {/* One row's × asks the same kind of question the marking does, and in the same place
           (#739, L58): it stood in a band over the head and moved the table 70 px under the hand
-          that had just pressed it. In the foot it takes the toolbar's place while it stands. */}
-      {removing !== null ? (
+          that had just pressed it. In the foot it takes the toolbar's place while it stands. The
+          column door's × asks there too (#858): its question moved the table and the door hanging
+          from the head with it. */}
+      {dropping !== null ? (
+        <Question
+          className="byd-data-bulk"
+          label={dropLabel(doc, dropping, t)}
+          confirm={t('table.remove.yes')}
+          cancel={t('editor.cancel')}
+          onConfirm={() => {
+            onRemoveField(dropping)
+            forgetWidth(dropping)
+            setDropping(null)
+            setRefocus('addField')
+          }}
+          onCancel={() => {
+            const field = dropping
+            setDropping(null)
+            setRefocus({ field })
+          }}
+        >
+          {dropLabel(doc, dropping, t)}
+        </Question>
+      ) : removing !== null ? (
         <Question
           className="byd-data-bulk"
           label={t('table.remove.card', { cardRef: removing })}
