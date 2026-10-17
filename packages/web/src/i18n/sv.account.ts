@@ -150,6 +150,9 @@ export const svAccount = {
   'wizard.blank.body': 'Bygg hellre allt själv?',
   'wizard.blank.help': 'Utan guidad start: «Skapa ett tomt spel i editorn» skapar spelet med namnet och platserna ovanför, utan kort, fält eller mall.',
   'wizard.blank.create': 'Skapa ett tomt spel i editorn',
+  // Frågan dörren ställer när guiden håller kort eller fält som designern gjort (#732, L9).
+  'wizard.blank.ask': 'Ett tomt spel får bara namnet och platserna. Korten och fälten du har gjort här följer inte med.',
+  'wizard.blank.ask.confirm': 'Ja, skapa ett tomt spel',
 
   // Fälten: vad varje kort har, och om det syns på kortet. Med ord nybörjaren redan har: ramen
   // presenteras först under Utseende, längre ner (#731).
