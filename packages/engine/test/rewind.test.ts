@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decide, replay } from '../src/index.js'
+import { decide, project, replay } from '../src/index.js'
 import { Harness, inZone, registry, zoneView } from './fixture.js'
 
 describe('undo.self (B): a seat takes back its own last act', () => {
@@ -148,7 +148,7 @@ describe('talking about a rewind is not playing', () => {
 })
 
 describe('what a view learns (C): undo per seat, and the table as it was behind a proposal', () => {
-  it('tells a seat what undo means right now, and never the table', () => {
+  it('tells a seat what undo means right now', () => {
     const h = new Harness()
     expect(h.view('A').undo).toBeNull()
     h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
@@ -156,7 +156,34 @@ describe('what a view learns (C): undo per seat, and the table as it was behind 
     h.do('B', { v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
     expect(h.view('A').undo).toEqual({ toSeq: 0, contested: true })
     expect(h.view('B').undo).toEqual({ toSeq: 1, contested: false })
+  })
+
+  // The table's own screen takes back the table's own moves (#682, K13): the group that plays on
+  // the felt has no phone to undo from. It is the same undo.self, for seat null, and the view says
+  // what it means as it does for a seat — and an observer, seatless too, is never offered it.
+  it('tells the table what undoing its own last move means, and never an observer', () => {
+    const h = new Harness()
     expect(h.view(null).undo).toBeNull()
+    h.do(null, { v: 'draw', from: 'draw', to: 'discard', count: 1 })
+    expect(h.view(null).undo).toEqual({ toSeq: 0, contested: false })
+    expect(project(h.state, registry, null, undefined, h.deps.history, true).undo).toBeNull()
+    h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    expect(h.view(null).undo).toEqual({ toSeq: 0, contested: true })
+    expect(h.try(null, { v: 'undo.self' })).toMatchObject({ ok: false, reason: expect.stringMatching(/propose a rewind/) })
+  })
+
+  // What the table writes without anybody playing — the host's «Uppdatera», a reset — is not a move
+  // the felt made, so the felt never offers to take it back; and since it changed the table after
+  // the felt's last move, that move is no longer the felt's alone to take back.
+  it('counts only the table\'s physical moves as its own, and anything else since contests them', () => {
+    const h = new Harness()
+    h.do(null, { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    h.do(null, { v: 'setup.reset' })
+    expect(h.view(null).undo).toBeNull()
+    h.do(null, { v: 'shuffle', pile: 'draw' })
+    expect(h.view(null).undo).toEqual({ toSeq: 2, contested: false })
+    h.do(null, { v: 'setup.reset' })
+    expect(h.view(null).undo).toEqual({ toSeq: 2, contested: true })
   })
 
   it('shows every view the table at the proposal\'s target, projected for that view', () => {

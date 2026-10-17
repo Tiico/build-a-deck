@@ -123,6 +123,20 @@ export const svPlay = {
   'start.again.action': '«{action}» på {pile}',
   'start.again.and': ' och ',
   'start.again.yes': 'Ja, starta om',
+  // Bordsläget utan telefoner (#682): hörnets rad om det som senast hände, och ⋯-menyn bredvid
+  // «Starta om». Avsluta frågar med telefonens egna ord (`end.sheet.*`), så frågan är densamma var
+  // den än ställs.
+  'table.last': 'Senast:',
+  'table.last.now': 'nyss',
+  'table.last.seconds': '{n} s',
+  'table.last.minutes': '{n} min',
+  'table.last.hours': '{n} h',
+  'table.more': 'Mer för bordet',
+  'table.undo': 'Ångra bordets senaste drag',
+  'table.undo.none': 'Bordet har inte gjort något drag än.',
+  'table.undo.phone': 'Senaste draget gjordes på en telefon — ångra det där.',
+  'table.end': 'Avsluta bordet…',
+  'table.end.hint': 'Vi frågar en gång till.',
   'kbd.hint.action.asks': 'kräver ett tal; skriv det i listan vid högen',
   'kbd.hint.action.own': 'spelets egen åtgärd',
   'ring.action.list': 'Vad {zone} kan',

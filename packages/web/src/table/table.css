@@ -612,6 +612,70 @@
   padding: 4px 8px; margin: -4px -8px; border-radius: 8px; background: var(--byd-felt-plate); opacity: 0.9;
 }
 
+/* Bordsläget utan telefoner (#682, beställarens beslut 2026-10-17: raden E och ångra/avsluta C).
+   Formen och måtten är prototypens, mätta i den byggda appen vid 1024, 1280 och 1920:
+   `docs/ux-audits/2026-10-17-bordslaget-text-och-kontroller/prototyper/matning/page.js`. */
+
+/* Ett avvisat drag sägs i en platta vid kortet (D5), som viker undan för allt en spelare läser
+   (`besideDrop`) och tonar bort efter fyra sekunder. Den mörka fyllningen når bara 2:1 mot den
+   gröna filten; det är kanten i filtens bärnsten som bär 3:1, som K24:s band. */
+.byd-felt-refusal {
+  position: fixed; z-index: 40; margin: 0; box-sizing: border-box; width: max-content;
+  padding: 8px 16px; border-radius: 14px; pointer-events: none;
+  background: var(--byd-felt-plate); color: var(--byd-felt-chalk);
+  border: 1px solid var(--byd-felt-accent); border-left: 6px solid var(--byd-felt-accent);
+  font: 400 16px/1.25 var(--byd-felt-font, system-ui, sans-serif);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  transition: opacity 600ms ease;
+}
+.byd-felt-refusal[data-gone] { opacity: 0; }
+/* Bordets egna skärmar läses från andra sidan bordet: rummets golv (K26, #925). */
+.byd-table .byd-felt-refusal { font-size: 24px; }
+
+/* Det som senast hände står kvar i hörnet, spegelbilden av «Starta om» och «?». */
+.byd-table-last {
+  position: fixed; left: 16px; bottom: 16px; z-index: 3; margin: 0; box-sizing: border-box;
+  padding: 8px 16px; border-radius: 14px;
+  background: var(--byd-felt-plate); color: var(--byd-felt-chalk); border: 1px solid #d9cfbb;
+  font: 400 24px/1.25 var(--byd-felt-font, system-ui, sans-serif);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+.byd-table-last > b { color: #a9a294; }
+.byd-table-last > span { color: #a9a294; white-space: nowrap; }
+
+/* «⋯» mellan «Starta om» och «?», och menyn som växer ur den: högerkanten i knappens, så både
+   «Starta om» bredvid och linsens «+» ovanför «?» står fria. */
+/* Åtta px mer luft mot «?» än hörnets mellanrum: linsens ram står ovanför «?» och är bredare än
+   skivan, och menyn som växer ur «⋯» ska gå fri från den, som i prototypen. */
+.byd-table-more { position: relative; margin-right: 8px; }
+.byd-table-more-open {
+  width: 44px; height: 44px; padding: 0; border-radius: 50%; cursor: pointer;
+  border: 1px solid var(--byd-felt-chalk-off); background: var(--byd-felt-plate);
+  color: var(--byd-felt-chalk); font: 700 20px/1 var(--byd-felt-font, system-ui, sans-serif);
+}
+.byd-table-more-open:hover, .byd-table-more-open:focus-visible, .byd-table-more-open[aria-expanded='true'] { border-color: var(--byd-felt-accent); color: var(--byd-felt-accent); }
+.byd-table-more-menu {
+  position: absolute; right: 0; bottom: calc(100% + 8px);
+  display: grid; gap: 4px; padding: 8px; min-width: 300px; max-width: 420px; box-sizing: border-box;
+  border-radius: 12px; background: var(--byd-felt-plate); color: var(--byd-felt-chalk);
+  border: 1px solid var(--byd-felt-chalk-off); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.55);
+}
+.byd-table-more-menu > button {
+  display: grid; gap: 2px; justify-items: start; text-align: left;
+  min-height: 44px; padding: 8px 12px; border: 0; border-radius: 8px; cursor: pointer;
+  background: transparent; color: var(--byd-felt-chalk);
+  font: 700 18px/1.25 var(--byd-felt-font, system-ui, sans-serif);
+}
+.byd-table-more-menu small { font-weight: 400; font-size: 15px; color: #c9c0ad; }
+.byd-table-more-menu > button:hover, .byd-table-more-menu > button:focus-visible { background: var(--byd-felt-plate-off); }
+.byd-table-more-menu > button:focus-visible { outline: 2px solid var(--byd-felt-accent); outline-offset: -2px; }
+.byd-table-more-menu > button[aria-disabled='true'] { color: var(--byd-felt-chalk-off); cursor: not-allowed; }
+
+/* «Avsluta bordet?» står över filtens mitt, som «Starta om spelet?» (#452). Den bor i hörnet, så den
+   ställs mot ramen: i bordsläget bär ramen ett perspektiv och är därför det `fixed` mäts mot. */
+.byd-table-end-ask { position: fixed; }
+.byd-table-end-ask strong { display: block; margin-bottom: 8px; font-size: 16px; }
+
 /* Hold to inspect: private, large, flat. */
 .byd-inspect {
   position: fixed; inset: 0; display: grid; place-items: center;

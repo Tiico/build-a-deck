@@ -150,7 +150,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const shown = withoutHand(previewOf(view), seat)
   const playable = !view.rewind && !view.ended
   const up = spread && hand.length > 0
-  const onAct = (intents: Intent[]) => void client.send(...intents)
+  // The answer goes back to the felt, which says a refusal beside the drop (#682).
+  const onAct = (intents: Intent[]) => client.send(...intents)
   // A card out of the fan lands where it is dropped, centred on the pointer, in what the felt
   // shows there (K2, K11, #65). Let go anywhere but over the table's picture — back over the hand,
   // over the top bar, in the dark around the table — it was not played at all, and goes back into
@@ -166,7 +167,9 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
     if (!playable) return
     const dest = landing(clientX, clientY)
     if (!dest) return
-    void client.send(...playIntents(view, [card], dest.zone, { x: dest.x, y: dest.y }))
+    // A card the table refuses is said beside where it was let go, as a drop on the felt is (#682).
+    const sent = client.send(...playIntents(view, [card], dest.zone, { x: dest.x, y: dest.y }))
+    table.current?.answer(sent, clientX, clientY)
   }
   // While it is carried the felt says where it will land (beslut C, prototyp 23): the zone or hand
   // under it is marked, the ghost is the card it will become, and off the table the hand says the
