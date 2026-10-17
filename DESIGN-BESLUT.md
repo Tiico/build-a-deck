@@ -2682,6 +2682,14 @@ Det är en etikettkrock och inte en zonkrock, och var etiketterna ska ta vägen 
 Grinden är ett test och inte ett tal: `packages/server/test/recipe-geometry.test.ts` mäter varje zonpar vid varje platsantal från två till `MAX_PLAYERS`, räknar paren så att en tom lista inte kan gå igenom, och håller dessutom fast att handen är 500 mm överallt och att ett fyraplatsbord ligger på exakt de millimetrar det låg på förut.
 Den gamla täckningen slutade vid fyra platser, och det är därför felet gick att skeppa.
 
+Reviderat 2026-10-17 (#766, beställarens beslut A efter prototyp): **en solfjäder av baksidor vrids högst ±22°, hur många kort handen än har.**
+
+Speltestet 2026-10-02 hade 25 kort på A:s hand vid åtta platser på TV:n: tolv baksidor vreds ±49,5° och hängde 38 px ut över filtens kant.
+Handen står kvar där #84 ställde den, mot kanten — en rak remsa hänger också ut, 15 px — men solfjädern växer inte längre med antalet: förbi taket sluter sig baksidorna i stället (`BACK_TURN_MAX`), och överhänget blir 24 px.
+En hand med få kort ser ut som förut, och en läsbar solfjäder (en sittande spelares egna kort) rörs inte.
+`hand-fan-cap.test.ts` håller taket och `tv-big-hand.spec.ts` mäter överhänget på TV:n (38 px utan taket).
+Prototypen: `docs/ux-audits/2026-10-17-solfjadern/prototyper/766/`.
+
 ### K19. Ett namn på ett ställe: var en zons namn ligger (prototypat och byggt 2026-09-13, #43, #71)
 
 Regeln, i en mening:
