@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type PointerEvent } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type MouseEvent as ReactMouseEvent, type PointerEvent } from 'react'
 import { blockNames, type BlockName } from './rulesNames.js'
 import { arrangementOf, namesOfProject } from '@byd/server/doc'
 import type { ProjectDoc, RuleBlock, RuleDoc } from '@byd/server'
@@ -45,6 +45,7 @@ import { SetupOverview } from '../rules/SetupOverview.js'
 import '../rules/rules.css'
 import { readTo, readingIn, sectionOf, type Reading } from '../rules/reading.js'
 import { PickList, pickKey, pickOptionId, triggerBehind, writeTrigger } from './picking.js'
+import { caretInSource, readOffsetAt } from './caret.js'
 
 // The rulebook (B7), from the prototype: the page itself is the editor. A block opens where it
 // stands and closes when it is left, so what is being written is always what the reader will
@@ -212,6 +213,14 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
     setEditing(head)
   }
   const open = (id: string) => rules && setEditing(id)
+  // Where a click on a paragraph landed, in the paragraph as it was read, so the field it opens
+  // puts its caret there and not at its start (#972). A key opens the field as before.
+  const clicked = useRef<{ id: string; read: string; at: number } | null>(null)
+  const openAt = (id: string, e: ReactMouseEvent<HTMLElement>) => {
+    const at = readOffsetAt(e.currentTarget, e.clientX, e.clientY)
+    clicked.current = at === null ? null : { id, read: e.currentTarget.textContent ?? '', at }
+    open(id)
+  }
   // Where the focus goes once an open block has closed on a key rather than on the focus leaving
   // it (#481): back to the block it was writing, or — when the block is gone — to the one now
   // standing in its place. Left alone it fell to <body> with the field it had been in.
@@ -536,6 +545,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
                         onRecast={(runs) => recast(b.id, runs)}
                         onClose={(refocus) => close(b.id, refocus)}
                         onRemove={() => remove(b.id)}
+                        caret={clicked.current?.id === b.id && source.kind === 'text' ? caretInSource(clicked.current.read, clicked.current.at, source.text) : undefined}
                       />
                     ) : writing && b.kind === 'setup' ? (
                       // The setup carries controls of its own since #270 — the fold and the seat
@@ -561,7 +571,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
                       <div
                         role="button"
                         tabIndex={0}
-                        onClick={() => open(b.id)}
+                        onClick={(e) => openAt(b.id, e)}
                         onKeyDown={(e) => {
                           // A `role="button"` promises both keys, and Space promises not to scroll the
                           // page out from under the paragraph it just opened (L12).
@@ -1038,6 +1048,7 @@ function Editing({
   onRecast,
   onClose,
   onRemove,
+  caret,
 }: {
   block: RuleBlock
   called: BlockName
@@ -1049,11 +1060,21 @@ function Editing({
   // `refocus` when a key closed the block and the focus has nowhere of its own to go.
   onClose(refocus: boolean): void
   onRemove(): void
+  // Where the field's caret goes when it opens, if a click said (#972).
+  caret?: number | undefined
 }) {
   const t = useT()
   // Prose is written a letter at a time and the whole book is rewritten for each of them, so a
   // sentence is one step back and the paragraph before it is another (L14).
   const typing = useGesture('rule-field')
+  // Once, as the paragraph opens: the caret where the click landed, not at the start (#972).
+  // Through the field's box, since the field's own ref is the reference lookup's.
+  const paragraph = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (caret === undefined) return
+    paragraph.current?.querySelector('textarea')?.setSelectionRange(caret, caret)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- as the field opens, and never again while it is written in
+  }, [])
   // And inside a field a step back is a word, then the editor's (#481, L14): the field is
   // controlled, so the browser's own took one character at a time.
   const steps = useWordSteps()
@@ -1231,7 +1252,7 @@ function Editing({
           it, so a quieter weight for the tool's line would mean a layer of our own drawn over the
           field and kept in step with its value — which is exactly the kind of thing that drifts. */}
       {block.kind === 'text' && (
-        <div className="byd-rules-field">
+        <div className="byd-rules-field" ref={paragraph}>
           <textarea
             autoFocus
             rows={4}
