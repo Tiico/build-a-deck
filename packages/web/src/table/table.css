@@ -569,30 +569,7 @@
 .byd-table-start > small { font-size: 0.72em; font-weight: 600; font-variant-numeric: tabular-nums; }
 .byd-table-start:disabled > small { color: #ffd98a; }
 
-/* Frågan före ett omtryck (#452). Den står utanför filten och inte på den: en vriden filt får
-   inte vrida en mening. Formen är produktens enda fråga — `Question` — på bordets egen yta, med
-   samma röda svar som editorns; den tar fokus, öppnar på svaret som ingenting kostar, och
-   svarar Escape. Måtten är spacing-stegen, inte egna tal. */
-.byd-table-start-ask {
-  position: absolute; z-index: 11; left: 50%; top: 50%;
-  /* Ovanför filtens mitt, med underkanten 12 px över den. Brickan ligger alltid *under* mitten
-     (`START_MM.below`), så frågan kan aldrig täcka knappen den handlar om — vilken skala filten
-     än ritas i. Den låg först 56 px under mitten och gjorde precis det, sett i den byggda
-     produkten: «Ja, starta om» stod ovanpå «Starta spelet». */
-  transform: translate(-50%, calc(-100% - 12px));
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;
-  max-width: min(420px, 90%); padding: 12px 16px; border-radius: 12px;
-  background: #3d2632; color: #ffe4ea; border: 1px solid #7a3243;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.55);
-  font: 400 14px/1.45 system-ui, sans-serif;
-}
-.byd-table-start-ask p { margin: 0; flex: 1 0 100%; text-align: center; }
-.byd-table-start-ask button {
-  min-height: 44px; padding: 0 16px; border-radius: 10px; cursor: pointer;
-  border: 1px solid #7a3243; background: transparent; color: #ffe4ea; font: inherit; font-weight: 700;
-}
-.byd-table-start-ask button[data-kind='danger'] { background: #7a3243; }
-.byd-table-start-ask button:hover { border-color: #ffe4ea; }
+/* Frågan före ett omtryck (#452) ritas först efter ett tryck och reser i `felt-after.css` (#682, L40). */
 
 .byd-seat-name[data-edge='E'] { transform: translateX(calc(50% - var(--card-half))) translateY(-50%) rotate(-90deg); }
 .byd-seat-name[data-edge='W'] { transform: translateX(calc(var(--card-half) - 50%)) translateY(-50%) rotate(90deg); }
@@ -613,6 +590,19 @@
 [data-page='table']:has(.byd-table-frame[data-lens]:not([data-lens='100'])) .byd-table-plate {
   padding: 4px 8px; margin: -4px -8px; border-radius: 8px; background: var(--byd-felt-plate); opacity: 0.9;
 }
+
+/* «⋯» mellan «Starta om» och «?» (#682, beställarens beslut 2026-10-17: C). Den ritas på första
+   bildrutan och står därför här; menyn den öppnar, plattan vid ett avvisat drag och hörnets rad
+   ritas först efter att något hänt, och reser i `felt-after.css`. Åtta px mer luft mot «?» än
+   hörnets mellanrum: linsens ram står ovanför «?» och är bredare än skivan, och menyn som växer
+   ur «⋯» ska gå fri från den, som i prototypen. */
+.byd-table-more { position: relative; margin-right: 8px; }
+.byd-table-more-open {
+  width: 44px; height: 44px; padding: 0; border-radius: 50%; cursor: pointer;
+  border: 1px solid var(--byd-felt-chalk-off); background: var(--byd-felt-plate);
+  color: var(--byd-felt-chalk); font: 700 20px/1 var(--byd-felt-font, system-ui, sans-serif);
+}
+.byd-table-more-open:hover, .byd-table-more-open:focus-visible, .byd-table-more-open[aria-expanded='true'] { border-color: var(--byd-felt-accent); color: var(--byd-felt-accent); }
 
 /* Hold to inspect: private, large, flat. */
 .byd-inspect {
@@ -1312,9 +1302,6 @@
 [data-tv][data-room] .byd-shortcut-panel dl { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 12px 24px; }
 [data-tv][data-room] .byd-shortcut-panel dt { gap: 8px; }
 [data-tv][data-room] .byd-shortcut-panel kbd { padding: 2px 8px; font-size: 24px; }
-/* The question before a restart in the size of the tile it is about (#684). */
-[data-tv][data-room] .byd-table-start-ask { max-width: min(720px, 90%); gap: 12px; padding: 16px 24px; font-size: 24px; }
-[data-tv][data-room] .byd-table-start-ask button { min-height: 56px; padding: 0 20px; }
 /* The felt's own words: a zone nobody owns keeps its name, now in the room's size, and the piles
    say their names and counts as large. A seat's zones are named on its plate instead. */
 [data-tv][data-room] .byd-table-frame[data-mode='tv'] .byd-zone > span { font-size: 24px; letter-spacing: 0; text-transform: none; color: #9aa3b8; }

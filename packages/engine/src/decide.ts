@@ -1,4 +1,4 @@
-import { SCHEMA_VERSION, type Applied, type ComponentId, type ComponentRef, type Envelope, type Intent, type Outcome, type UndoMeaning, type ZoneId } from '@byd/protocol'
+import { PHYSICAL_VERBS, SCHEMA_VERSION, type Applied, type ComponentId, type ComponentRef, type Envelope, type Intent, type Outcome, type UndoMeaning, type ZoneId } from '@byd/protocol'
 import { apply } from './apply.js'
 import { handsReturnedBy } from './hands.js'
 import type { IdSource, Rng } from './rng.js'
@@ -229,13 +229,19 @@ export function effectiveLines(log: readonly Applied[]): Applied[] {
 
 // Where undo.self would take the table: before the seat's last batch still in effect — and
 // whether someone else has acted since, which makes it a matter for a rewind proposal.
+//
+// The table (seat null) takes back only its own moves (#682, K13): the felt's own screen plays as
+// the table, but the host's «Uppdatera» and a reset are written by nobody in particular too, and
+// those are not moves the felt made. They are never what the felt undoes, and one written since
+// the felt's last move means that move is no longer the felt's alone to take back.
 export function undoTarget(log: readonly Applied[], seat: string | null): UndoMeaning {
   const lines = effectiveLines(log)
-  const last = lines.findLast((l) => l.by === seat)
+  const own = (l: Applied) => l.by === seat && (seat !== null || PHYSICAL_VERBS.includes(l.intent.v))
+  const last = lines.findLast(own)
   if (!last) return null
   const batch = lines.filter((l) => l.batch === last.batch)
   const first = must(batch[0], 'a batch has a first line')
-  return { toSeq: first.seq - 1, contested: lines.some((l) => l.seq > last.seq && l.by !== seat) }
+  return { toSeq: first.seq - 1, contested: lines.some((l) => l.seq > last.seq && !own(l)) }
 }
 
 function decideOutcome(state: TableState, registry: TypeRegistry, it: Intent, deps: DecideDeps, env: Envelope): Outcome | undefined {

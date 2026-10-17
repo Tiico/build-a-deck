@@ -17,6 +17,10 @@ import { ShortcutHelp } from './ShortcutHelp.js'
 import { CounterEntry } from './CounterEntry.js'
 import { useSay } from '../status/StatusLive.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
+import { refusalText } from '../status/notice.js'
+import type { SendResult } from '../client.js'
+import { besideDrop, type Box } from './besideDrop.js'
+import { loadAfterSheet } from './after.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ActionSheet } from './ActionSheet.js'
 import { compileStart, startsAt } from './actions.js'
@@ -82,7 +86,9 @@ export type { TableMode } from './hand.js'
 // `onTable` says whether a point on the screen lies on the table's own picture — the felt and the
 // wooden frame it lies in — as opposed to the dark around it and whatever stands beside it (#484).
 // `cardPx` is a card on the felt as it is drawn now, in pixels across (#484 fynd 4).
-export type TableHandle = { toTable(clientX: number, clientY: number): Point | null; onTable(clientX: number, clientY: number): boolean; cardPx(): number }
+// `answer` reads what the table said to an act sent from outside the felt — a card played out of the
+// hand beside it (#682) — and says a refusal beside where it was let go, as the felt says its own.
+export type TableHandle = { toTable(clientX: number, clientY: number): Point | null; onTable(clientX: number, clientY: number): boolean; cardPx(): number; answer(sent: Promise<SendResult>, clientX: number, clientY: number): void }
 // The keyboard's layer over the felt (#1, #2, variant C). It draws nothing: it puts a role, a
 // name, one tab stop and a focus ring on the nodes this renderer already draws, which is what
 // keeps K9 — one renderer, one way to draw a card. A table that is only shown passes none of
@@ -117,7 +123,9 @@ export type TableRendererProps = {
   scale?: number
   rotate?: Rotation | undefined
   faces?: string | undefined
-  onAct?: ((intents: Intent[]) => void) | undefined
+  // What the felt sends. A route that hands back the table's answer has a refused act said beside
+  // where it was asked for (#682); one that answers nothing is simply not told.
+  onAct?: ((intents: Intent[]) => void) | ((intents: Intent[]) => Promise<SendResult>) | undefined
   peers?: readonly Peer[] | undefined
   pulses?: readonly Pulse[] | undefined
   recent?: readonly Recent[] | undefined
@@ -217,6 +225,9 @@ export type TableRendererProps = {
   // seen — dealing cards without faces is what it waits against, as the editor's link does (L5).
   // A queue that stands still (#88) opens it again as «Starta ändå». Null when nothing is pending.
   startWait?: { done: number; total: number; stalled: boolean } | null | undefined
+  // What the screen adds to the corner, between «Starta om» and «?»: the felt's own screen puts its
+  // «⋯» there (#682). The corner lays them out on one row, so none of them is placed on its own.
+  more?: ReactNode | undefined
 }
 
 // The short side a card on the felt is brought to by the lens's first step in (K9).
@@ -229,6 +240,13 @@ const HOLD_MS = 350
 // browser has already decided it is a double press before it fires `dblclick`; this only rules
 // out a stale memory of something clicked a while ago.
 const DOUBLE_MS = 700
+// How long the plate beside a refused drop stands, and how long it takes to fade (#682, D5: it
+// gives way after four seconds).
+export const TOLD_MS = 4000
+const TOLD_FADE_MS = 600
+// What the plate gives way to: everything on the felt a player reads, and the screen's own chrome
+// laid over it. A zone's bare ground is not in it — text may lie over an empty area, never a card.
+const TOLD_AVOIDS = '.byd-card, .byd-pile-top, .byd-pile-caption, .byd-pile-name, .byd-seat-name, [data-seat-plate], .byd-hand-count, .byd-token, .byd-zone > span, .byd-felt-corner > *, .byd-camera-controls, .byd-table-plate > *, .byd-table-last, .byd-table-start'
 const POINT_MS = 450
 const DRAG_MM = 4
 // How far the pointer must move off the point a drag let go at before resting on a card reads it.
@@ -305,7 +323,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn, startWait = null }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], shuffles = [], said = [], onPresence, camera, remember, onInspect, onPick, onShow, watch = false, size: fixedSize, glideMs = GLIDE_MS, margin = 0, overlay, back, seatNames = false, me = null, foldHand = null, keyboard, aimed = null, lens = false, forTheRoom = false, lit, cornerIn, startWait = null, more }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -375,6 +393,41 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const letGo = useRef<{ x: number; y: number } | null>(null)
   const [drag, setDrag] = useState<Live | null>(null)
   const [settling, setSettling] = useState<Settled | null>(null)
+  // What the felt says beside a drop that did not happen (#682, beslut: raden E). The sentence is
+  // the one the live region says, in the region D5 gives a refusal; the plate is for whoever stands
+  // at the felt and hears nothing, so it is hidden from the reader who already heard it. It stands
+  // TOLD_MS, fades, and is gone.
+  // The plate's own sheet is not in the blocking one (L40): it is asked for as soon as the felt can be
+  // played, which is long before anything can be refused.
+  const playing = onAct !== undefined
+  useEffect(() => {
+    if (playing) void loadAfterSheet()
+  }, [playing])
+  const [answer, setAnswer] = useState<{ text: string; at: Point | null; n: number; gone: boolean } | null>(null)
+  const answerN = useRef(0)
+  const dropAt = useRef<Point | null>(null)
+  const tell = (text: string, at: Point | null, live: 'polite' | 'assertive' = 'assertive') => {
+    say?.(live, text)
+    answerN.current += 1
+    setAnswer({ text, at, n: answerN.current, gone: false })
+  }
+  useEffect(() => {
+    if (!answer) return
+    const timer = setTimeout(() => (answer.gone ? setAnswer(null) : setAnswer({ ...answer, gone: true })), answer.gone ? TOLD_FADE_MS : TOLD_MS)
+    return () => clearTimeout(timer)
+  }, [answer])
+  // Sends, and reads the table's answer: a refusal is said where the act was asked for, and what
+  // was held in place for the patch that will now never come is given back at once (#682).
+  const heard = (sent: Promise<SendResult>, at: Point | null, refused?: () => void) =>
+    void sent.then((result) => {
+      if (result.ok) return
+      refused?.()
+      tell(refusalText(result.reason, t), at)
+    })
+  const send = (intents: Intent[], at: Point | null, refused?: () => void) => {
+    const sent = onAct?.(intents)
+    if (sent instanceof Promise) heard(sent, at, refused)
+  }
   const [ring, setRing] = useState<Ring | null>(null)
   // "Sätt värde…" (#67): the chip whose value is being said outright, on this screen's own keys.
   const [entry, setEntry] = useState<VisibleComponentState | null>(null)
@@ -589,7 +642,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     if (!settling) return
     const timer = setTimeout(() => {
       setSettling(null)
-      say?.('polite', t('drop.unanswered'))
+      tell(t('drop.unanswered'), dropAt.current, 'polite')
     }, DEFAULT_TIMING.slowAfterMs)
     return () => clearTimeout(timer)
   // eslint-disable-next-line react-hooks/exhaustive-deps -- the wait starts over only with another drop; what is said is said as it stands
@@ -704,7 +757,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     const u = tiltedToTable({ frame: { w: fr.width, h: fr.height }, wood: { left: w.offsetLeft, top: w.offsetTop, w: w.offsetWidth, h: w.offsetHeight } }, cx - fr.left, cy - fr.top)
     return Math.abs(u.x) <= w.offsetWidth / 2 && Math.abs(u.y) <= w.offsetHeight / 2
   }
-  useImperativeHandle(ref, () => ({ toTable: (cx, cy) => mapper()?.(cx, cy) ?? null, onTable, cardPx: () => px(CARD_MM.w) }))
+  useImperativeHandle(ref, () => ({ toTable: (cx, cy) => mapper()?.(cx, cy) ?? null, onTable, cardPx: () => px(CARD_MM.w), answer: (sent, cx, cy) => heard(sent, { x: cx, y: cy }) }))
 
   const down = (e: RPointerEvent, target: DragTarget) => {
     if (!onAct) return
@@ -717,7 +770,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     if (modifierHeld(e)) {
       e.preventDefault()
       const turn = flipUnder(view, target)
-      if (turn) onAct(turn)
+      if (turn) send(turn, { x: e.clientX, y: e.clientY })
       return
     }
     const map = mapper()
@@ -793,10 +846,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       // and it is said why, or the felt would seem not to have heard the drop.
       const empty = nobodysHand(view, d, mode)
       const seat = empty === null ? undefined : view.zones.find((z) => z.id === empty)?.owner
-      if (seat !== undefined) say?.('polite', t('drop.nobody', { seat: view.seats.find((s) => s.id === seat)?.name ?? seat }))
+      if (seat !== undefined) tell(t('drop.nobody', { seat: view.seats.find((s) => s.id === seat)?.name ?? seat }), asked)
       return
     }
-    onAct(intents)
+    dropAt.current = asked
+    send(intents, asked, () => setSettling((held) => (held?.ids === d.ids ? null : held)))
     // The card stays where it was put until the table has moved it. Between here and the patch the
     // view still says where the card came from, and drawing it there is the flinch (#29).
     // A whole pile waits for the same patch, and is held by where its zone was rather than by ids.
@@ -1166,7 +1220,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     const turn = was && onAct && Date.now() - was.at < DOUBLE_MS ? flipUnder(view, was.target) : null
     if (!turn) return false
     setRing(null)
-    onAct?.(turn)
+    send(turn, ring ? { x: ring.x, y: ring.y } : null)
     return true
   }
 
@@ -1232,7 +1286,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       keyboard.onActivate(key)
     }
   }
-  const ringVerbs = ring && onAct ? ringItems(view, ring, setRing, onAct, look, setEntry, moveOn(ring.target), t) : []
+  const ringVerbs = ring && onAct ? ringItems(view, ring, setRing, (intents) => send(intents, { x: ring.x, y: ring.y }), look, setEntry, moveOn(ring.target), t) : []
   // What is lifted now, read off the table as it is now: a card turned since is drawn turned, and
   // one that has left what this screen sees is not drawn at all.
   const liftOf = (l: Lift | null): Lift | null => {
@@ -1266,6 +1320,31 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     return { x: x - r.left, y: y - r.top }
   }
   const ringAt = ring ? fixedAt(ring.x, ring.y) : null
+  // Where the plate beside a refused drop stands (#682): measured at three widths, and put where it
+  // covers nothing — `besideDrop` decides, in the window's coordinates, before the first paint.
+  const toldEl = useRef<HTMLParagraphElement | null>(null)
+  const [toldAt, setToldAt] = useState<{ n: number; left: number; top: number; maxWidth: number } | null>(null)
+  useLayoutEffect(() => {
+    const el = toldEl.current
+    const ground = wood.current ?? frame.current
+    if (!answer || answer.gone || !el || !ground) return
+    const room = ground.getBoundingClientRect()
+    const full = Math.min(420, Math.max(220, room.width * 0.4))
+    const shapes = [full, Math.round(full * 0.76), Math.round(full * 0.62)].map((maxWidth) => {
+      el.style.maxWidth = `${maxWidth}px`
+      const r = el.getBoundingClientRect()
+      return { maxWidth, w: r.width, h: r.height }
+    })
+    const avoid: Box[] = [...document.querySelectorAll(TOLD_AVOIDS)]
+      .filter((o) => o !== el && !o.contains(el) && getComputedStyle(o).visibility !== 'hidden')
+      .map((o) => o.getBoundingClientRect())
+      .filter((r) => r.width >= 1 && r.height >= 1)
+    const at = answer.at ?? { x: room.left + room.width / 2, y: room.top + room.height / 2 }
+    const placed = besideDrop({ left: at.x - 1, right: at.x + 1, top: at.y - 1, bottom: at.y + 1 }, shapes, room, avoid)
+    const p = fixedAt(placed.x, placed.y)
+    setToldAt({ n: answer.n, left: p.x, top: p.y, maxWidth: placed.maxWidth })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- placed once per plate; it does not chase the felt while it stands
+  }, [answer?.n])
   const ringOn = ring?.target
   const ringChip = ringOn?.kind === 'counter' ? view.components.find((c) => c.id === ringOn.id) : undefined
   // The game's own actions for the pile the ring is about (K14, extended). They hang under the
@@ -1677,7 +1756,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           actions={ringActions}
           x={ringAt.x}
           y={ringAt.y + RING_REACH + RING_AIR * 2}
-          onAct={onAct}
+          onAct={(intents) => send(intents, { x: ring.x, y: ring.y })}
           onClose={shut(ring)}
         />
       )}
@@ -1742,10 +1821,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
             {t('start.again.tile')}
           </button>
         )}
+        {more}
         {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t, undefined, drivable)} named={forTheRoom} />}
         </>,
       )}
-      {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => onAct([{ v: 'setCounter', component: entry.id, value }])} onClose={() => setEntry(null)} />}
+      {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => send([{ v: 'setCounter', component: entry.id, value }], null)} onClose={() => setEntry(null)} />}
       {reading && (
         <Lifted
           c={reading.c}
@@ -1759,6 +1839,20 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           // A screen that watches has nothing to ask, so a press on what it reads puts it down.
           onAsk={() => (onAct ? ask(reading.target, (reading.at.left + reading.at.right) / 2, (reading.at.top + reading.at.bottom) / 2) : putDown())}
         />
+      )}
+      {answer && (
+        // Hidden from a reader who has already been told in the live region (D5): it is the same
+        // sentence, for the eyes.
+        <p
+          ref={toldEl}
+          className="byd-felt-refusal"
+          data-felt-refusal=""
+          data-gone={answer.gone ? '' : undefined}
+          aria-hidden="true"
+          style={toldAt?.n === answer.n ? { left: toldAt.left, top: toldAt.top, maxWidth: toldAt.maxWidth } : { left: 0, top: 0, visibility: 'hidden' }}
+        >
+          {answer.text}
+        </p>
       )}
       {held && (
         <div className="byd-inspect" onClick={() => setHeld(null)}>
