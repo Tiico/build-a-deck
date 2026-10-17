@@ -5,7 +5,10 @@
 // the page by the renderer, so it must not reference anything outside itself.
 
 // `empty`: the box holds no words, so its size is no text anyone reads (#523).
-export type FitReport = { element: string; sizePt: number; overflow: boolean; empty: boolean }
+// `minPt`: the floor the box was allowed to shrink to. `hidden`: how many lines of a text that
+// does not fit the box cuts off, a line the box cuts through included — what the card does not
+// show of it (#808). Nought for a text that fits.
+export type FitReport = { element: string; sizePt: number; minPt: number; overflow: boolean; empty: boolean; hidden: number }
 
 export function fitInDocument(root: ParentNode): FitReport[] {
   const out: FitReport[] = []
@@ -23,7 +26,31 @@ export function fitInDocument(root: ParentNode): FitReport[] {
         el.style.fontSize = `${size}pt`
       }
     }
-    out.push({ element: el.dataset['element'] ?? '', sizePt: size, overflow: overflows(), empty: (el.textContent ?? '').trim() === '' })
+    const overflow = overflows()
+    // The lines are the text's own line boxes, read off its text nodes one at a time: a range over
+    // the whole box would also hand back the box of every paragraph in it, which is as tall as all
+    // its lines and would be counted as one cut line. A clipped line is still laid out, so the
+    // lines the box cuts off are among them; a line is one however many runs it is made of.
+    let hidden = 0
+    const doc = el.ownerDocument
+    if (overflow && typeof doc.createRange === 'function') {
+      const bottom = el.getBoundingClientRect().bottom
+      const tops: { top: number; bottom: number }[] = []
+      // 4 is `NodeFilter.SHOW_TEXT`, written out because this runs serialised in another page.
+      const walk = doc.createTreeWalker(el, 4)
+      const range = doc.createRange()
+      for (let node = walk.nextNode(); node; node = walk.nextNode()) {
+        range.selectNodeContents(node)
+        for (const r of typeof range.getClientRects === 'function' ? range.getClientRects() : []) {
+          if (r.width < 0.5 || r.height < 0.5) continue
+          const line = tops.find((l) => Math.abs(l.top - r.top) < r.height / 2)
+          if (line) line.bottom = Math.max(line.bottom, r.bottom)
+          else tops.push({ top: r.top, bottom: r.bottom })
+        }
+      }
+      hidden = tops.filter((l) => l.bottom > bottom + 0.5).length
+    }
+    out.push({ element: el.dataset['element'] ?? '', sizePt: size, minPt: min, overflow, empty: (el.textContent ?? '').trim() === '', hidden })
   }
   return out
 }

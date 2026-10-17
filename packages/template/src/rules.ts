@@ -226,6 +226,72 @@ export function renderRules(doc: RuleDoc, names: Names, arrangement: SetupArrang
   return { title: doc.title, blocks, warnings, text: lines.join('\n') }
 }
 
+// What a paragraph written in the editor becomes when its block is closed (#707, beslut 2026-10-06:
+// C med A:s genväg). A line that opens with «- » is a point of a bulleted list and a line that opens
+// with «1. » one of a numbered list — the marks the import reads, less `*`, which a line of a
+// paragraph may open with as emphasis. Consecutive points of one kind are one list, exactly as in
+// the import; anything else is the paragraph it was, cut where a list stands in it.
+//
+// It is read here and not in the renderer: a paragraph does not quietly turn into a list when it is
+// drawn (the card body's `parseBody` holds the other half of that), it is made one when it is
+// written, so what the book holds is what the reader is handed.
+export type WrittenRun = { kind: 'text'; text: string } | { kind: 'list'; ordered: boolean; items: string[] }
+const POINT = /^[ \t]*(-|\d+[.)])[ \t]+(.*)$/
+// A line as a point, or null. A hyphen with nothing after it is a point being written and is left
+// out when the list closes; a number with nothing after it is the designer's number — a year, a
+// score — and stays the line it is.
+function pointOf(line: string): { ordered: boolean; text: string } | null {
+  const point = POINT.exec(line)
+  if (!point) return null
+  const ordered = point[1] !== '-'
+  const text = (point[2] ?? '').trim()
+  return ordered && text.length === 0 ? null : { ordered, text }
+}
+export function runsOf(text: string): WrittenRun[] {
+  const runs: WrittenRun[] = []
+  let prose: string[] = []
+  // Typed by assertion: the closures below reset it, which narrowing at the declaration cannot see.
+  let list = null as { ordered: boolean; items: string[] } | null
+  const closeProse = () => {
+    const written = prose.join('\n').replace(/^\s*\n/, '').trimEnd()
+    if (written.trim().length > 0) runs.push({ kind: 'text', text: written })
+    prose = []
+  }
+  const closeList = () => {
+    // A point nobody wrote is a bullet with nothing after it in the book (#481, fynd 10).
+    if (list && list.items.some((item) => item.length > 0)) runs.push({ kind: 'list', ordered: list.ordered, items: list.items.filter((item) => item.length > 0) })
+    list = null
+  }
+  let marked = false
+  for (const line of text.replace(/\r\n?/g, '\n').split('\n')) {
+    const point = pointOf(line)
+    if (!point) {
+      closeList()
+      prose.push(line)
+      continue
+    }
+    marked = true
+    closeProse()
+    if (list?.ordered !== point.ordered) closeList()
+    list ??= { ordered: point.ordered, items: [] }
+    list.items.push(point.text)
+  }
+  if (!marked) return [{ kind: 'text', text }]
+  closeList()
+  closeProse()
+  return runs
+}
+
+// A paragraph made a list with the open block's chooser (#707): every written line is a point,
+// with the mark it was written with left out, since the list draws its own.
+export function itemsOfLines(text: string): string[] {
+  return text
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) => pointOf(line)?.text ?? line.trim())
+    .filter((line) => line.length > 0)
+}
+
 // One line of the book, read on its own (#131). A rewritten paragraph is drawn sentence by
 // sentence in the import's proposal, and a sentence has to keep everything the whole paragraph
 // would have kept: emphasis is emphasis, and a reference still stands for the name the thing has.

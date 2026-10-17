@@ -123,13 +123,17 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // Where the keyboard goes once a press has taken away what it was standing on (#477): the
   // comparison a version was compared from, or the element that was chosen on a card on the wall.
   // Moved after the render that draws it, because it is not there until then.
-  const [focusNext, setFocusNext] = useState<{ compare: true } | { layer: string } | null>(null)
+  // Or a card's row in Tabell, which a remark on the wall leads to (#808).
+  const [focusNext, setFocusNext] = useState<{ compare: true } | { layer: string } | { row: string } | null>(null)
   useEffect(() => {
     if (!focusNext) return
     setFocusNext(null)
+    const rowOf = (cardRef: string) => document.querySelector<HTMLElement>(`tr[data-card-ref="${CSS.escape(cardRef)}"]`)
     const target =
       'compare' in focusNext
         ? document.querySelector<HTMLElement>('.byd-data-compare button')
+        : 'row' in focusNext
+        ? (rowOf(focusNext.row)?.querySelector<HTMLElement>('[tabindex="0"], input, button') ?? document.getElementById(panelId('table')))
         : (document.querySelector<HTMLElement>(`[data-layer="${CSS.escape(focusNext.layer)}"] .byd-layer-pick`) ?? document.getElementById(panelId('template')))
     target?.focus()
   }, [focusNext])
@@ -473,6 +477,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
             }
           : {})}
         onOpenTemplate={() => setStage('canvas')}
+        // A text that does not fit is the card's own words, mended in its row (#808, E6).
+        onOpenRow={(cardRef) => {
+          setRow(cardRef)
+          setStage('table')
+          setFocusNext({ row: cardRef })
+        }}
         // A font nothing pins is mended where the game's typefaces are (L57, #737).
         onOpenFonts={() => {
           revealThemeSection('fonts')

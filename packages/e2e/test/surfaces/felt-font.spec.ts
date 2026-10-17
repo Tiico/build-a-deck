@@ -224,9 +224,13 @@ test.describe('the editor is not weighed against the felt’s face (#186)', () =
       const later = css.filter((p) => !blockingSheets(index).includes(p))
       expect(css.length - later.length).toBe(1)
       const books = later.filter((p) => /\.byd-rules-setup-toggle(?![a-z0-9-])/.test(read(p)) && !/\.byd-editor-spacer(?![a-z0-9-])/.test(read(p)))
-      expect(later.length - books.length).toBe(1)
+      // And the mark a card is told about with (#802, #808), which the guided start draws too and
+      // fetches only once a text does not fit — so it travels in a sheet of its own, shared by both.
+      const marks = later.filter((p) => /\.byd-overset-frame(?![a-z0-9-])/.test(read(p)) && !/\.byd-editor-spacer(?![a-z0-9-])/.test(read(p)))
+      expect(later.length - books.length - marks.length).toBe(1)
       expect(books.length).toBeLessThanOrEqual(1)
-      const second = read(later.find((p) => !books.includes(p))!)
+      expect(marks.length).toBeLessThanOrEqual(1)
+      const second = read(later.find((p) => !books.includes(p) && !marks.includes(p))!)
       expect(editorsOwnClasses().filter((name) => new RegExp(`\\.${name}(?![a-z0-9-])`).test(second)).length).toBeGreaterThan(20)
     }
   })
