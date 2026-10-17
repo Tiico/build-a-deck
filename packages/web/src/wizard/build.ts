@@ -62,6 +62,9 @@ export function buildProject(state: WizardState, t: T = swedish, files: ThemeFil
     name: state.name.trim(),
     template: { faces: { front: frame.front(state.fields, t), back: frame.back(t) } },
     rows,
+    // The table shows the columns in the order the fields were listed (#732, L4, L44), and not the
+    // order the frame happens to draw them in, face by face — the picture first and the cost last.
+    columns: state.fields.map(columnOf),
     icons: {},
     setup: tableOf(state, t),
   }

@@ -1,4 +1,4 @@
-import { loginUrl } from '../account/api.js'
+import { loginUrl } from '../account/session.js'
 import type { StatusLinks } from './StatusNotice.js'
 
 // Where a way out leads from a live route. `server` is carried along because a development

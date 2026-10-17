@@ -9,13 +9,16 @@ import { reporting } from '../../test-support/report.js'
 import { detectLang } from './src/i18n/detect.js'
 import { fillShell, shellMarkup, shellNoscript, shellTimes, shellWords, SHELL_ROOM_PATH, SHELL_STYLE, SHELL_VOICES } from './src/shell.js'
 
-// Each route's script is fetched when its address is opened (#760), and this keeps that from
-// costing a round trip. Left to itself the entry would have to arrive and run before it could ask
-// for the route's chunk; instead the built `index.html` carries a few lines that read the address
-// and ask for that route's chunks at once, beside the entry. The routes are read off
-// `fetchPage` in `App.tsx` — the one place that says which module draws which address — so a new
-// route needs no edit here. `phone-bundle.spec.ts` holds the entry back on the wire and checks
-// that the hand's chunk is asked for all the same.
+// Each route's script and words are fetched when its address is opened (#760), and this keeps
+// that from costing a round trip. Left to itself the entry would have to arrive and run before it
+// could ask for the route's chunks; instead the built `index.html` carries a few lines that read
+// the address and the reader's language and ask at once, beside the entry, for that route's chunks
+// and for the parts of the catalogue it speaks in that language. The routes and their parts are
+// read off `fetchPage` in `App.tsx` — the one place that says which module and which words draw
+// which address (`scripts/route-table.ts`) — so a new route needs no edit here, and the language is
+// the one the shell has already chosen with the app's own `detectLang`. `phone-bundle.spec.ts`
+// holds the entry back on the wire and checks that the hand's chunk and words are asked for all the
+// same.
 function routePreload(): Plugin {
   return {
     name: 'byd-route-preload',
@@ -28,11 +31,10 @@ function routePreload(): Plugin {
         const chunks = Object.values(bundle).filter((c): c is Rollup.OutputChunk => c.type === 'chunk')
         const entry = chunks.find((c) => c.isEntry)
         const onEntry = new Set([entry?.fileName, ...(entry?.imports ?? [])])
-        const routes: Record<string, string[]> = {}
-        for (const { kind, path, spec } of routesOf(app)) {
-          const facade = fileURLToPath(new URL(`./src/${spec.replace(/^\.\//, '').replace(/\.js$/, '.tsx')}`, import.meta.url))
-          const chunk = chunks.find((c) => c.facadeModuleId === facade)
-          if (!chunk) throw new Error(`route ${path} imports ${spec}, and the build has no chunk for it`)
+        // A chunk and what it imports, less what the entry already brings.
+        const closure = (facade: string, what: string): string[] => {
+          const chunk = chunks.find((c) => c.facadeModuleId === fileURLToPath(new URL(facade, import.meta.url)))
+          if (!chunk) throw new Error(`${what} is ${facade}, and the build has no chunk for it`)
           const files = new Set<string>()
           const walk = (name: string) => {
             if (files.has(name) || onEntry.has(name)) return
@@ -40,21 +42,37 @@ function routePreload(): Plugin {
             for (const next of chunks.find((c) => c.fileName === name)?.imports ?? []) walk(next)
           }
           walk(chunk.fileName)
-          // A route that answers for everything under a prefix is written with a trailing `*`, and a
-          // room's own address (#675) as `?`: one path step of the code's length and alphabet.
-          routes[kind === 'prefix' ? `${path}*` : kind === 'code' ? '?' : path] = [...files].map((f) => `/${f}`)
+          return [...files].map((f) => `/${f}`)
         }
-        if (Object.keys(routes).length === 0) throw new Error('read no routes out of App.tsx; the route preload would silently do nothing')
+        // A route that answers for everything under a prefix is written with a trailing `*`, and a
+        // room's own address (#675) as `?`: one path step of the code's length and alphabet.
+        const routes: Record<string, { js: string[]; words: string[] }> = {}
+        for (const { kind, path, spec, parts } of routesOf(app)) {
+          const js = spec ? closure(`./src/${spec.replace(/^\.\//, '').replace(/\.js$/, '.tsx')}`, `route ${path}`) : []
+          routes[kind === 'prefix' ? `${path}*` : kind === 'code' ? '?' : path] = { js, words: parts }
+        }
+        if (Object.keys(routes).length < 8) throw new Error('read too few routes out of App.tsx; the route preload would quietly do nothing')
+        // Each part of the catalogue in each language, as the chunks that carry it.
+        const words: Record<string, Record<string, string[]>> = {}
+        for (const lang of ['sv', 'en']) {
+          const mine: Record<string, string[]> = {}
+          for (const part of new Set(['status', ...Object.values(routes).flatMap((r) => r.words)])) mine[part] = closure(`./src/i18n/${lang}.${part}.ts`, `the ${lang} ${part} words`)
+          words[lang] = mine
+        }
         // A room's address is asked of the same rule the router asks it of — the code's alphabet and
         // length, and none of the app's own words — written out here as data for the few lines.
         const code = { re: `^/[${CODE_ALPHABET}]{${CODE_LENGTH}}$`, not: ROUTE_WORDS }
-        const script = `(function(r,p,c){var q=new RegExp(c.re,'i').test(p)&&c.not.indexOf(p.slice(1).toLowerCase())<0;for(var k in r)if(k==='?'?q:k.slice(-1)==='*'?p.indexOf(k.slice(0,-1))===0:p===k)r[k].forEach(function(h){var l=document.createElement('link');l.rel='modulepreload';l.crossOrigin='';l.href=h;document.head.appendChild(l)})})(${JSON.stringify(routes)},location.pathname,${JSON.stringify(code)})`
-        // Before the entry, in the head. A classic script waits for every sheet above it, and the
-        // entry's sheet is the largest thing the page fetches; it stands after #root now (`shell`
-        // below), so nothing above this line is a sheet to wait for.
-        const at = html.indexOf('<script type="module"')
-        if (at < 0) throw new Error('the built index.html has no entry script to put the route preload before')
-        return `${html.slice(0, at)}<script>${script}</script>\n    ${html.slice(at)}`
+        // The language is the one the shell has already put on the document (`shell` below), which
+        // `detectLang` chose: one choice, made once, so the words asked for here and the words the
+        // shell says are always in the same language.
+        const script = `(function(r,w,p,c,lang){var q=new RegExp(c.re,'i').test(p)&&c.not.indexOf(p.slice(1).toLowerCase())<0,hit=null;for(var k in r)if(k==='?'?q:k.slice(-1)==='*'?p.indexOf(k.slice(0,-1))===0:p===k){hit=r[k];break}var files=hit?hit.js.slice():[];['status'].concat(hit?hit.words:[]).forEach(function(x){files=files.concat(w[lang][x])});files.forEach(function(h){var l=document.createElement('link');l.rel='modulepreload';l.crossOrigin='';l.href=h;document.head.appendChild(l)})})(${JSON.stringify(routes)},${JSON.stringify(words)},location.pathname,${JSON.stringify(code)},document.documentElement.lang==='en'?'en':'sv')`
+        // Right after the shell's language, in the head, and before the entry starts. A classic script
+        // waits for every sheet above it, and the entry's sheet is the largest thing the page fetches;
+        // it stands after #root now (`shell` below), so nothing above this line is a sheet to wait for.
+        const lang = html.match(/<script id="byd-shell-lang">[\s\S]*?<\/script>/)
+        if (!lang || lang.index === undefined) throw new Error('the built index.html has no shell language for the route preload to stand after')
+        const at = lang.index + lang[0].length
+        return `${html.slice(0, at)}\n    <script id="byd-route-preload">${script}</script>${html.slice(at)}`
       },
     },
   }
@@ -115,7 +133,8 @@ function shell(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), routePreload(), shell()],
+  // The shell first: the route preload stands after the language the shell puts on the document.
+  plugins: [react(), shell(), routePreload()],
   // PORT lets a preview pick a free port when 5173 is taken; the default stays 5173.
   server: { port: Number(process.env['PORT'] ?? 5173), strictPort: true },
   // A licence is not a comment to be tidied away. The felt's face is baked into the stylesheet as

@@ -3,6 +3,7 @@ import type { Element } from '@byd/template'
 import { parseCsv } from '../src/editor/csv.js'
 import { buildBlankProject, buildProject, type WizardState } from '../src/wizard/build.js'
 import { translate } from '../src/i18n/index.js'
+import { columnsOf } from '@byd/server/doc'
 
 describe('parseCsv', () => {
   it('reads a header line and rows, with commas or tabs, quoted fields, and CRLF', () => {
@@ -92,6 +93,24 @@ describe('buildProject', () => {
     expect(named.rows[0]?.fields).toEqual({ title: 'Drake', Pris: 5, Text: 'Flygande.', Styrka: 7, antal: 1 })
     const cost = all(named.template.faces['front']!.base).find((e) => e.id === 'cost')
     expect(cost && 'bind' in cost ? cost.bind : null).toEqual({ field: 'Pris' })
+  })
+
+  // The table in the editor reads its columns off the frame, face by face, unless the game says
+  // an order of its own (#46) — so a guided start listed Titel, Kostnad, Text, Illustration and
+  // the table showed the picture first and the cost last (#732). The order the fields were listed
+  // in is the order the game is made with (L4, L44).
+  it('makes the game with its columns in the order the fields were listed', () => {
+    const listed: WizardState = {
+      ...state,
+      fields: [
+        { key: 'title', label: 'Titel', kind: 'text' },
+        { key: 'cost', label: 'Kostnad', kind: 'number' },
+        { key: 'body', label: 'Regeltext', kind: 'text' },
+        { key: 'art', label: 'Illustration', kind: 'image' },
+      ],
+      rows: [{ title: 'Drake', cost: '5', body: 'Flygande.', art: '' }],
+    }
+    expect(columnsOf(buildProject(listed))).toEqual(['title', 'Kostnad', 'Regeltext', 'Illustration', 'antal'])
   })
 
   it('leaves out frame elements for fields the game does not have', () => {

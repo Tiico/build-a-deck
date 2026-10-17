@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
-import { requestLink } from './api.js'
+import { requestLink } from './session.js'
 import { markPitchSeen, pitchSeen } from './pitch.js'
 import { Help } from '../editor/HelpDrawer.js'
 import { LanguagePicker, useT, type Key } from '../i18n/index.js'
