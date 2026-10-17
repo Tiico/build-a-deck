@@ -47,6 +47,8 @@ export function Survey({ who, version, onSubmit, saveUrl, remember, rulebook, sa
           <strong>{t('survey.thanks', { who })}</strong>
           <span>{t('survey.tied', { version: versionWord(version, t) })}</span>
           {saved ? <span>{t('survey.saved')}</span> : saveUrl && <a className="byd-survey-save" href={saveUrl}>{t('survey.save')}</a>}
+          {/* What a guest leaves behind, said where she saves it (#757). */}
+          {!saved && saveUrl && <p className="byd-guest-kept">{t('guest.kept')}</p>}
         </div>
         <div />
       </div>

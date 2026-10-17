@@ -151,6 +151,11 @@ Utan den frågan var lådan stum om sin egen version, och en deploy gick bara at
 Varje svar bär den, 503:orna med: vilken version som är trasig är det första man frågar tillbaka.
 Utanför lådan är variabeln osatt, och då säger `/health` ingenting om någon release i stället för att hitta på en.
 
+Byggt 2026-10-06 (#757):
+`BYD_CONTACT` är vart en betatestare vänder sig — en e-postadress eller en webbadress — och sätts på lådan, aldrig i koden.
+`/health` bär den som `contact` bredvid `release`, inloggningskortet och Mina spel säger den sist som «Kontakt» (en adress med `http(s)://` länkas som den är, allt annat som `mailto:`), och inloggningsmejlets fot säger den.
+Är variabeln osatt utelämnas «Kontakt» överallt, och utan `BYD_TAG` utelämnas versionen; utan någon av dem står ingen rad alls.
+
 ## 9. Missbruk: Cloudflare rate limiting, korta koder, värdkontroll
 
 Cloudflares rate limiting stoppar brute force mot join-endpointen innan det når huset.

@@ -74,8 +74,11 @@ const authBypass = process.env['AUTH_BYPASS'] === 'true'
 // What deploy.sh rolled to (DRIFT §7). Unset outside the box, and then /health says nothing
 // about a release rather than inventing one.
 const release = process.env['BYD_TAG']
+// Where a beta tester turns (#757): set on the box, said in the footers and the login mail, and
+// left out wherever it is unset.
+const contact = process.env['BYD_CONTACT']
 const mailer = mailerFromEnv(process.env)
-const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}) })
+const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}), ...(contact ? { contact } : {}) })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {
