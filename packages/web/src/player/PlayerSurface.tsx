@@ -18,6 +18,7 @@ import { Help } from '../editor/HelpDrawer.js'
 import { playIntents } from './play.js'
 import { Refusal, useRefusal } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
+import { HandSpread } from '../online/HandSpread.js'
 
 // What a player is given on a screen that cannot carry the board: the seat's own hand as K10's
 // strip, the counters, the private zones, and the table itself as names and counts rather than as
@@ -225,6 +226,18 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
       marks.clear()
     }
   }
+  // The whole hand, a press away while the strip holds more than it shows (#767, beslut A + B):
+  // the grid /online has (K17), in the strip's own order, and a card chosen there is the chosen
+  // card, brought into the strip's view.
+  const [overflows, setOverflows] = useState(false)
+  const [spread, setSpread] = useState(false)
+  const showAll = useRef<HTMLButtonElement>(null)
+  const pickFromAll = (card: VisibleComponentState) => {
+    setSpread(false)
+    setChosenId(card.id)
+    marks.clear()
+    requestAnimationFrame(() => document.querySelector(`[data-hand-card="${CSS.escape(card.id)}"]`)?.scrollIntoView({ inline: 'center', block: 'nearest' }))
+  }
   const toggle = (card: VisibleComponentState) => {
     if (marks.selected.size === 1 && marks.selected.has(card.id)) setChosenId('')
     marks.toggle(card)
@@ -256,12 +269,19 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
       </div>
       <main className="byd-phone-main" {...behind}>
-        <h1>{t('player.hand.title')}</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h1>{t('player.hand.title')}</h1>
+          {overflows && (
+            <button type="button" ref={showAll} className="byd-foot-more" style={{ marginLeft: 'auto' }} aria-expanded={spread ? 'true' : 'false'} onClick={() => setSpread(true)}>
+              {t('player.hand.all', { n: hand.length })}
+            </button>
+          )}
+        </div>
         <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} zones="piles" history={false} />
         {/* What the table just said to this seat, in the page's flow under the piles (#715, beslut
             2026-10-04): fixed at the top it hid a counter's name and value while it stood. */}
         {toast && <p className="byd-phone-said" role="status">{toast}</p>}
-        <HandStrip view={view} selected={new Set(chosenCards.map(c => c.id))} faces={faces} onTap={card => hold(card, 'hand')} onHold={toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} />
+        <HandStrip view={view} selected={new Set(chosenCards.map(c => c.id))} faces={faces} onTap={card => hold(card, 'hand')} onHold={toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} onReorder={reorder} onOverflow={setOverflows} />
         {hand.length > 0 && <p className="byd-hint">{marks.selected.size > 0 ? t(marks.selected.size === 1 ? 'player.hint.selected.one' : 'player.hint.selected.other', { n: marks.selected.size }) : t('player.hint')}</p>}
         <HandActions refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} view={view} cards={chosenCards} pending={quickPending} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} order={chosenCards.length === 1 && chosenCards[0] ? orderOf(chosenCards[0]) : undefined} />
         {quickSource === 'hand' && <Refusal handle={quick} />}
@@ -281,6 +301,18 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
             hidden information exists to keep out. It reads and never acts — the draw stays in the
             row above, where a thumb already knows to find it. */}
         <details className="byd-phone-table" data-phone-table aria-labelledby={`${folds}-table`}><summary id={`${folds}-table`}>{t('player.table.title')}</summary>{away && <p className="byd-phone-table-where">{t('online.table.where')}</p>}<TableSummary view={view} activity={activity} zones="areas" history={false} faces={faces} onRead={(_, card) => hold(card, { zone: card.zone })} /></details>
+        {spread && (
+          <HandSpread
+            cards={[...hand].reverse()}
+            columns={4}
+            faces={faces}
+            onOpen={pickFromAll}
+            onClose={() => {
+              setSpread(false)
+              showAll.current?.focus()
+            }}
+          />
+        )}
         <details className="byd-phone-history" aria-labelledby={`${folds}-latest`}><summary id={`${folds}-latest`}>{t('play.latest')}</summary><RecentActivity view={view} activity={activity} /></details>
       </main>
       {/* The rules this table plays by (B7), on a bar of their own at the foot by the hand (#483,
