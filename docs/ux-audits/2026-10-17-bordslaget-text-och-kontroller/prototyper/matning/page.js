@@ -19,13 +19,14 @@
   #p682 { position: fixed; inset: 0; z-index: 40; pointer-events: none; font-family: "Roboto Condensed", system-ui, sans-serif; }
   #p682 > * { pointer-events: auto; }
   #p682 .rad { position: fixed; display: flex; align-items: center; gap: 12px; box-sizing: border-box;
-    padding: 8px 16px; border-radius: 14px; background: #171a23; color: #f3e9d6; border: 1px solid #9b968e;
+    padding: 8px 16px; border-radius: 14px; background: #171a23; color: #f3e9d6; border: 1px solid #d9cfbb;
     font: 400 24px/1.25 "Roboto Condensed", system-ui, sans-serif; box-shadow: 0 6px 18px rgba(0,0,0,.45);
     transition: opacity ${FADE_MS}ms ease, border-color .2s; }
   #p682 .rad[data-refusal] { border-color: #f0b64a; border-left: 6px solid #f0b64a; }
-  #p682 .rad .senast { color: #9b968e; font-weight: 700; flex: none; }
-  #p682 .rad .alder { color: #9b968e; flex: none; white-space: nowrap; }
-  #p682 .rad .text { min-width: 0; }
+  #p682 .rad .ord { min-width: 0; }
+  #p682 .rad .senast { color: #a9a294; font-weight: 700; margin-right: 0.3em; }
+  #p682 .rad .alder { color: #a9a294; white-space: nowrap; }
+  #p682 .rad[data-band] { padding: 4px 14px; }
   #p682 .rad[data-gone] { opacity: 0; }
   #p682 .rad[data-dim] .text { color: #d9d0bd; }
   #p682 .knapp { flex: none; min-height: 44px; padding: 0 16px; border: 1px solid #9b968e; border-radius: 999px; background: #171a23; color: #f3e9d6; font: 700 20px/1 "Roboto Condensed", system-ui, sans-serif; cursor: pointer; }
@@ -34,7 +35,7 @@
   #p682 .horn .knapp { font-size: 14px; }
   #p682 .rund { width: 44px; padding: 0; font-size: 20px; }
   #p682 .hanvisa { position: fixed; color: #c9c0ad; font: 400 16px/1.3 "Roboto Condensed", system-ui, sans-serif; text-align: right; }
-  #p682 .meny { position: fixed; display: grid; gap: 4px; padding: 8px; min-width: 300px; max-width: 420px; border-radius: 12px; background: #171a23; border: 1px solid #9b968e; box-shadow: 0 20px 40px rgba(0,0,0,.55); }
+  #p682 .meny { position: fixed; color: #f3e9d6; display: grid; gap: 4px; padding: 8px; min-width: 300px; max-width: 420px; border-radius: 12px; background: #171a23; border: 1px solid #9b968e; box-shadow: 0 20px 40px rgba(0,0,0,.55); }
   #p682 .meny button { display: grid; gap: 2px; text-align: left; min-height: 44px; padding: 8px 12px; border: 0; border-radius: 8px; background: transparent; color: #f3e9d6; font: 700 18px/1.25 "Roboto Condensed", system-ui, sans-serif; cursor: pointer; }
   #p682 .meny button small { font-weight: 400; font-size: 15px; color: #c9c0ad; }
   #p682 .meny button:hover, #p682 .meny button:focus-visible { background: #2d2f35; outline: none; }
@@ -134,15 +135,18 @@
     el.className = 'rad'
     el.setAttribute('aria-hidden', 'true') // live-regionen har redan sagt det (D5)
     if (refusal) el.dataset.refusal = ''
-    if (opts.senast && !refusal) el.insertAdjacentHTML('beforeend', `<span class="senast">Senast:</span>`)
+    const ord = document.createElement('span')
+    ord.className = 'ord'
+    if (opts.senast && !refusal) ord.insertAdjacentHTML('beforeend', `<span class="senast">Senast:</span>`)
     const t = document.createElement('span')
     t.className = 'text'
     t.textContent = text
-    el.append(t)
+    ord.append(t)
     if (opts.senast && !refusal) {
       const s = Math.round((Date.now() - wall) / 1000)
-      el.insertAdjacentHTML('beforeend', `<span class="alder">· ${s < 10 ? 'nyss' : s < 60 ? `för ${s} s sedan` : `för ${Math.floor(s / 60)} min sedan`}</span>`)
+      ord.insertAdjacentHTML('beforeend', ` <span class="alder">· ${s < 10 ? 'nyss' : s < 60 ? `${s} s` : `${Math.floor(s / 60)} min`}</span>`)
     }
+    el.append(ord)
     if (P.k === 'b' && own && !refusal && opts.undo !== false) {
       const b = document.createElement('button')
       b.className = 'knapp'
@@ -167,18 +171,19 @@
     const lastEvent = lines.findLast((l) => !l.refusal)
     const fresh = (l, ms) => l && performance.now() - l.at < ms
     const add = (el) => (layer.append(el), el)
-    if (P.v === 'a' && last && fresh(last, HOLD_A + FADE_MS)) {
+    if ((P.v === 'a' || (P.v === 'e' && last?.refusal)) && last && fresh(last, HOLD_A + FADE_MS)) {
       const el = add(plate(last))
       el.style.maxWidth = `${Math.min(420, W.width * 0.4)}px`
       placeBeside(el, last.anchor, W)
       fadeLater(el, last, HOLD_A)
     }
-    if (P.v === 'b' || P.v === 'd') {
-      const shown = P.v === 'b' ? (last?.refusal && fresh(last, REFUSED_MS) ? last : lastEvent) : last
-      if (shown && (P.v === 'b' || fresh(shown, HOLD_D + FADE_MS))) {
+    if (P.v === 'b' || P.v === 'd' || P.v === 'e') {
+      // e: avvisningen står vid kortet (a), och hörnets rad säger bara det som hände.
+      const shown = P.v === 'b' ? (last?.refusal && fresh(last, REFUSED_MS) ? last : lastEvent) : P.v === 'e' ? lastEvent : last
+      if (shown && (P.v !== 'd' || fresh(shown, HOLD_D + FADE_MS))) {
         const seatA = [...document.querySelectorAll('.byd-seat-name')].map(rectOf).sort((p, q) => q.top - p.top)[0]
         const room = (seatA ? seatA.left : innerWidth / 2) - 2 * AIR
-        const el = add(plate(shown, { senast: P.v === 'b' }))
+        const el = add(plate(shown, { senast: P.v !== 'd' }))
         el.style.maxWidth = `${room}px`
         el.style.left = `${AIR}px`
         el.style.bottom = `${AIR}px`
@@ -198,6 +203,7 @@
         const plateEl = document.querySelector('.byd-table-plate')
         const left = Math.max(innerWidth / 2 + 40, plateEl ? rectOf(plateEl.lastElementChild ?? plateEl).right + 24 : 0)
         const el = add(plate(shown, { senast: true }))
+        el.dataset.band = ''
         el.style.right = `${AIR}px`
         el.style.maxWidth = `${innerWidth - AIR - left}px`
         el.style.top = '0px'
@@ -207,7 +213,7 @@
         if (shown === last && last.refusal) timers.push(setTimeout(render, REFUSED_MS - (performance.now() - last.at)))
       }
     }
-    if (P.v === 'b' || P.v === 'c') timers.push(setTimeout(render, 1000)) // åldern räknar
+    if (P.v === 'b' || P.v === 'c' || P.v === 'e') timers.push(setTimeout(render, 1000)) // åldern räknar
     controls(W, last)
   }
   function fadeLater(el, line, hold) {
@@ -267,6 +273,7 @@
     horn.style.right = `${AIR}px`
     horn.style.bottom = `${AIR}px`
     if (P.k === 'nu') return
+    let more = null
     // Bordets egna två knappar, ritade om i samma hörn (de riktiga döljs men ligger kvar under).
     const clone = (el, cls) => {
       if (!el) return null
@@ -300,7 +307,7 @@
       horn.append(...[end, clone(restart, ''), clone(help, 'rund')].filter(Boolean))
     }
     if (P.k === 'c') {
-      const more = document.createElement('button')
+      more = document.createElement('button')
       more.type = 'button'
       more.className = 'knapp rund'
       more.textContent = '⋯'
@@ -329,9 +336,11 @@
       end.onclick = () => P.openSheet('fraga')
       m.append(undo, end)
       layer.append(m)
-      const hr = horn.getBoundingClientRect()
-      m.style.right = `${AIR}px`
-      m.style.bottom = `${innerHeight - hr.top + 8}px`
+      // Över ⋯, med högerkanten i knappens: så växer menyn ur sin knapp och lämnar både «Starta om»
+      // bredvid och linsens «+» ovanför «?» fria.
+      const mr = more.getBoundingClientRect()
+      m.style.right = `${innerWidth - mr.right}px`
+      m.style.bottom = `${innerHeight - mr.top + 8}px`
     }
     if (P.open === 'fraga' && (P.k === 'b' || P.k === 'c')) {
       const q = document.createElement('div')
@@ -367,7 +376,7 @@
       const self = rows.filter((x) => x !== el && !el.contains(x) && !x.contains(el) && x.dataset.gone === undefined && overlap(r, rectOf(x)) > 0).map((x) => x.className)
       const W = wood()
       const cs = getComputedStyle(el)
-      const textEl = el.querySelector('.text') ?? el
+      const textEl = el.querySelector('.ord') ?? el
       out.push({
         kind: el.className,
         side: el.dataset.side ?? null,
@@ -380,6 +389,7 @@
         hits,
         self,
         inside: r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight,
+        bandOverflow: el.dataset.band !== undefined ? Math.max(0, Math.round(r.bottom - W.top)) : null,
         onFelt: r.left >= W.left && r.right <= W.right && r.top >= W.top && r.bottom <= W.bottom,
       })
     }

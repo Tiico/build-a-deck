@@ -32,7 +32,7 @@
   section.fraga > h2 { grid-column: 1 / -1; margin: 0; color: #fff; font-size: 16px; }
   .bilder { display: grid; gap: 12px; min-width: 0; }
   .bilder.tre { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  @media (max-width: 1400px) { .bilder.tre { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 1900px) { .bilder.tre { grid-template-columns: minmax(0, 1fr); } }
   .bild { min-width: 0; margin: 0; }
   .bild img { display: block; width: 100%; height: auto; border: 1px solid #2f333d; border-radius: 6px; }
   .bild figcaption { color: var(--quiet-2); font-size: 12px; margin: 6px 0 0; line-height: 1.45; }
@@ -131,7 +131,7 @@
       const rb = b.items.find((i) => /rad/.test(i.kind))
       const ta = a.timings.at(-1)?.ms
       const tb = b.timings.at(-1)?.ms
-      const hits = [...(ra?.hits ?? []), ...(rb?.hits ?? [])]
+      const hits = [...(ra?.hits ?? []), ...(rb?.hits ?? []), ...(a.items.concat(b.items).some((i) => i.bandOverflow > 0) ? ['träets kant'] : []), ...(a.items.concat(b.items).some((i) => i.self?.length) ? ['den andra raden'] : [])]
       const kant = Math.min(ra?.ground?.min ?? 99, rb?.ground?.min ?? 99)
       const bad = (x, g) => (x === undefined || x === null ? ' class="lag"' : x > g ? ' class="lag"' : '')
       return `<tr class="${v === st.v && w === st.w ? 'vald' : ''}"><td>${V[v].kort} · ${w}</td><td${v === 'nu' ? ' class="lag"' : ''}>${v === 'nu' ? 'aldrig' : `<span${bad(ta, 300)}>${ms(ta)}</span> / <span${bad(tb, 300)}>${ms(tb)}</span>`}</td><td>${ra ? `${ra.lines} / ${rb?.lines ?? '–'}` : '–'}</td><td${hits.length ? ' class="lag"' : ''}>${v === 'nu' ? '–' : hits.length ? [...new Set(hits)].join(', ') : '0'}</td><td${kant < 3 ? ' class="lag"' : ''}>${kant === 99 ? '–' : kant.toFixed(1)}</td></tr>`
@@ -148,7 +148,7 @@
     t2.innerHTML = '<tr><th>Variant · skärm</th><th>Scen</th><th>Täcker</th><th>Krockar med raden</th></tr>' + MATT.filter((r) => r.q === 2 && r.k === st.k).map((m) => {
       const hits = [...new Set(m.items.flatMap((i) => i.hits))]
       const self = [...new Set(m.items.flatMap((i) => i.self))]
-      return `<tr class="${String(m.w) === st.w ? 'vald' : ''}"><td>${K[m.k].kort} · ${m.w}</td><td>${m.scene}</td><td${hits.length ? ' class="lag"' : ''}>${hits.length ? hits.join(', ') : '0'}</td><td${self.length ? ' class="lag"' : ''}>${self.length ? self.join(', ') : '0'}</td></tr>`
+      return `<tr class="${String(m.w) === st.w ? 'vald' : ''}"><td>${K[m.k].kort} · ${m.w}</td><td>${m.scene}</td><td${hits.length && m.scene !== 'fraga' ? ' class="lag"' : ''}>${hits.length ? hits.join(', ') + (m.scene === 'fraga' ? ' — frågan står över filtens mitt, som «Starta om spelet?» gör (#452)' : '') : '0'}</td><td${self.length ? ' class="lag"' : ''}>${self.length ? self.join(', ') : '0'}</td></tr>`
     }).join('')
     document.getElementById('main-gor').innerHTML = MAIN_GOR
   }

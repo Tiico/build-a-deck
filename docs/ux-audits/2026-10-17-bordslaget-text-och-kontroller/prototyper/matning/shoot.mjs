@@ -20,9 +20,9 @@ const SIZES = { 1024: 768, 1280: 800, 1920: 1080 }
 const WIDTHS = (process.argv[4] ?? '1024,1280,1920').split(',').map(Number)
 const PAGE = readFileSync(join(HERE, 'page.js'), 'utf8')
 const OUT = join(HERE, '..', 'img')
-const V1 = (process.argv[5] ?? 'nu,a,b,c,d').split(',')
+const V1 = (process.argv[5] ?? 'nu,a,b,c,d,e').split(',')
 const K2 = ['nu', 'a', 'b', 'c']
-const BASE_V = process.env.P682_V ?? 'b'
+const BASE_V = process.env.P682_V ?? 'e'
 mkdirSync(OUT, { recursive: true })
 
 const H = { 'content-type': 'application/json', cookie: L.cookie }
@@ -135,7 +135,7 @@ async function shoot(page, file, meta) {
     it.text = +contrast(rgb(it.color), plate).toFixed(2)
   }
   results.push({ file, ...meta, ...m })
-  console.log(file, JSON.stringify(m.items.map((i) => [i.kind, i.side, i.rect, i.font, i.lines, i.hits, i.self, i.ground, i.text])), JSON.stringify(m.timings))
+  console.log(file, JSON.stringify(m.items.map((i) => [i.kind, i.side, i.rect, i.font, i.lines, i.hits, i.self, i.ground, i.text, i.bandOverflow])), JSON.stringify(m.timings))
 }
 
 if (WHICH !== 'fråga2')

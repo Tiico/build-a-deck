@@ -14,21 +14,27 @@ window.V = {
   b: {
     namn: 'B · Raden i hörnet',
     kort: 'B',
-    rek: true,
-    om: `<p>En rad nere till vänster, spegelbild av «Starta om» och «?» nere till höger, på samma platta i 24 px. Den säger alltid det senaste som hände — «Senast: Bordet blandade Kortlek · för 11 s sedan», som /online:s rad (#484) — och står kvar tills något nytt händer. Ett avvisat drag tar raden i bärnsten i 6 s och lämnar den sedan till det senaste som hände. Raden bryter före platsen A:s namnbricka.</p>
-<ul><li class="plus">Går att läsa efteråt, och står på samma ställe varje gång.</li><li class="plus">Ligger på träet och mörkret utanför filten: täcker inget kort vid något mått.</li><li class="minus">Inte vid kontrollen som D5 säger: ögat måste gå från kortet till hörnet.</li><li class="minus">Vid 1024 bryter den långa meningen till två rader.</li></ul>`,
+    om: `<p>En rad nere till vänster, spegelbild av «Starta om» och «?» nere till höger, på samma platta i 24 px. Den säger alltid det senaste som hände — «Senast: Bordet blandade Kortlek · 11 s», som /online:s rad (#484) — och står kvar tills något nytt händer. Ett avvisat drag tar raden i bärnsten i 6 s och lämnar den sedan till det senaste som hände. Raden bryter före platsen A:s namnbricka.</p>
+<ul><li class="plus">Går att läsa efteråt, och står på samma ställe varje gång.</li><li class="plus">Ligger på träet och mörkret utanför filten: täcker inget kort vid något mått.</li><li class="minus">Inte vid kontrollen som D5 säger: ögat måste gå från kortet till hörnet.</li><li class="minus">Vid 1024 bryter den långa meningen till två rader, och raden blir då 78 px hög.</li></ul>`,
   },
   c: {
     namn: 'C · Toppens band',
     kort: 'C',
     om: `<p>Raden står i bandet ovanför träet, till höger om plattan med spelets namn och adress (#675) — samma beteende som B (senaste kvar, avvisat i bärnsten 6 s), men uppe, högerställt, där filten inte är. Allt bordet säger om sig självt står då på en rad överst.</p>
-<ul><li class="plus">Filten och hörnen är orörda; namn, adress och det senaste läses på en rad.</li><li class="minus">Bandet är bara 44–50 px högt: en mening som bryter till två rader går ned över träet och platsen B:s antal.</li><li class="minus">Längst bort från spelaren vid A, och upp-och-ned för den som sitter vid B.</li></ul>`,
+<ul><li class="plus">Filten och hörnen är orörda; namn, adress och det senaste läses på en rad.</li><li class="minus">Bandet är 50–72 px högt: vid 1024 bryter «Senast: … · 11 s» till två rader och raden går ned över träets kant.</li><li class="minus">Längst bort från spelaren vid A, och upp-och-ned för den som sitter vid B.</li></ul>`,
   },
   d: {
     namn: 'D · Två håll',
     kort: 'D',
     om: `<p>Bordsläget är skärmen som ligger ned med folk runt om (C5, #418: namnen är namnkort). Raden skrivs därför två gånger: nere till vänster för den som sitter vid A och uppe till höger, vänd ett halvt varv, för den som sitter mittemot. Står 5 s och tonar bort, som A.</p>
 <ul><li class="plus">Den enda varianten som läses från båda långsidorna.</li><li class="minus">Två rader att se för en mening, och den upp-och-nedvända är brus för den som sitter vid A.</li><li class="minus">Tonar bort som A: inget att läsa efteråt.</li></ul>`,
+  },
+  e: {
+    namn: 'E · Vid kortet och i hörnet',
+    kort: 'E',
+    rek: true,
+    om: `<p>A och B delar på jobbet efter vad meningen är. Ett avvisat drag sägs vid kortet, som D5 säger — en platta i bärnsten där handen släppte, som tonar bort efter 4 s. Det som hände sägs i hörnets rad, «Senast: … · 11 s», som står kvar tills något nytt händer. Avvisningen tar alltså aldrig hörnets rad: den som tittade bort ser fortfarande vad som senast hände på bordet.</p>
+<ul><li class="plus">Avvisningen står där blicken är, och det som hände går att läsa efteråt.</li><li class="plus">Hörnets rad täcker inget vid något mått; plattan vid kortet viker undan och bryter hellre än täcker.</li><li class="minus">Två ställen att lära sig, och avvisningen går inte att läsa efteråt — men den gäller bara den som just försökte.</li></ul>`,
   },
 }
 window.K = {
@@ -57,7 +63,7 @@ window.K = {
 <ul><li class="plus">Diskret: en rund knapp till, och inget som kan avsluta ett bord på ett tryck.</li><li class="plus">Säger vad ångra tar tillbaka innan det görs, och varför det inte går när det inte går.</li><li class="minus">Två tryck till ångra, mot ett i B.</li></ul>`,
   },
 }
-window.REK = { v: 'b', k: 'c' }
+window.REK = { v: 'e', k: 'c' }
 window.MAIN_GOR = `<h3>Vad main redan gör (origin/main 2026-10-17)</h3>
 <ul>
 <li><b>Vägen in (#675, beslut C) är byggd:</b> plattan uppe till vänster säger spelets namn, versionen som ord (#703) och adressen <code>värd/KOD</code>. Ingen QR i bordsläget, som beslutet sa. Det är plattan bilderna visar.</li>
