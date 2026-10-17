@@ -16,6 +16,11 @@ export type StatusLinks = Partial<Record<ActionKind, string>>
 // What the transport is doing while nobody presses anything: which attempt is coming and when.
 export type Countdown = { seconds: number; attempt: number; attempts: number | null }
 
+// Which of the room's two shared screens the message stands on, if either (#925, K26): the TV is read
+// from a sofa three metres away and table mode from the other side of the table, so the page form
+// is drawn there in the room's sizes and not the desk's. Every other route leaves it out.
+export type RoomScreen = 'tv' | 'table'
+
 export type StatusNoticeProps = {
   notice: Notice
   surface: Surface
@@ -27,9 +32,10 @@ export type StatusNoticeProps = {
   // The clock the data behind this message was last true at, so that "old" is a fact and not a
   // feeling (#7).
   asOf?: string | null
+  room?: RoomScreen
 }
 
-export function StatusNotice({ notice, surface, links = {}, onRetry, onSwitch, countdown = null, asOf = null }: StatusNoticeProps) {
+export function StatusNotice({ notice, surface, links = {}, onRetry, onSwitch, countdown = null, asOf = null, room }: StatusNoticeProps) {
   const t = useT()
   // A message that replaces the view takes the focus with it. Without that a keyboard reader is
   // left standing in a document that no longer holds what she was reading.
@@ -64,7 +70,7 @@ export function StatusNotice({ notice, surface, links = {}, onRetry, onSwitch, c
   const Heading = surface === 'page' ? 'h1' : 'h2'
   const actions = notice.actions.filter((a) => a.kind === 'retry' || (a.kind === 'switch' ? onSwitch !== undefined : links[a.kind] !== undefined))
   return (
-    <section className="byd-status" data-status-notice={notice.state} data-surface={surface} data-tone={notice.tone}>
+    <section className="byd-status" data-status-notice={notice.state} data-surface={surface} data-tone={notice.tone} {...(room ? { 'data-room-screen': room } : {})}>
       <span className="byd-status-mark">{notice.mark}</span>
       <Heading ref={headingRef} tabIndex={-1}>
         {waiting && <span className="byd-status-spin" aria-hidden="true" />}

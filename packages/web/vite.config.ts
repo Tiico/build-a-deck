@@ -7,7 +7,7 @@ import { CODE_ALPHABET, CODE_LENGTH, ROUTE_WORDS } from '../protocol/src/rooms.j
 import { routesOf } from './scripts/route-table.js'
 import { reporting } from '../../test-support/report.js'
 import { detectLang } from './src/i18n/detect.js'
-import { fillShell, shellMarkup, shellNoscript, shellTimes, shellWords, SHELL_STYLE, SHELL_VOICES } from './src/shell.js'
+import { fillShell, shellMarkup, shellNoscript, shellTimes, shellWords, SHELL_ROOM_PATH, SHELL_STYLE, SHELL_VOICES } from './src/shell.js'
 
 // Each route's script is fetched when its address is opened (#760), and this keeps that from
 // costing a round trip. Left to itself the entry would have to arrive and run before it could ask
@@ -99,7 +99,7 @@ function shell(): Plugin {
         const root = '<div id="root"></div>'
         if (!html.includes(root) || !html.includes('</head>')) throw new Error(`index.html has no empty ${root} or no </head> for the shell to stand in`)
         const lang = await minify(`document.documentElement.lang=(${detectLang.toString()})();document.documentElement.classList.add('js')`)
-        const fill = await minify(`(${fillShell.toString()})(document,${JSON.stringify(shellWords())},${JSON.stringify(SHELL_VOICES)},${JSON.stringify(shellTimes())})`)
+        const fill = await minify(`(${fillShell.toString()})(document,${JSON.stringify(shellWords())},${JSON.stringify(SHELL_VOICES)},${JSON.stringify(shellTimes())},${JSON.stringify(SHELL_ROOM_PATH)})`)
         html = html.replace('</head>', () => `  <style id="byd-shell-style">${SHELL_STYLE}</style>\n    <script id="byd-shell-lang">${lang}</script>\n  </head>`)
         html = html.replace(root, () => `<div id="root">${shellMarkup(shellNoscript())}<script id="byd-shell-fill">${fill}</script></div>`)
         // Only the build links a stylesheet; the development server injects its CSS from script.
