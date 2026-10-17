@@ -153,5 +153,7 @@ input.byd-code-field { font: 700 22px/1 ui-monospace, Menlo, monospace; letter-s
 
 /* Where a beta tester turns, and the version she quotes back (#757, prototyp A): a quiet line last
    in the login card and last on Mina spel, in the muted ink that already reads on this ground. */
-.byd-about { margin: 24px 0 0; text-align: center; font-size: 12px; line-height: 1.5; color: #9aa3b8; }
-.byd-about a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+/* The muted ink and line are `.byd-muted`'s; this says only what is the line's own. Every byte of
+   it is in the sheet the first frame blocks on, which has no room to spare (felt-font.spec.ts). */
+.byd-about { margin-top: 24px; text-align: center; font-size: 12px; }
+.byd-about a { color: inherit; }
