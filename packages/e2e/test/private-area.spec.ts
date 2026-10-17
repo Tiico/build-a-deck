@@ -45,9 +45,11 @@ test.describe('the area in front of a seat, on the opening table', () => {
 
     // The wire says the same. Ada is told which cards are hers — non-vacuity, so the searches
     // below are known to be able to find these identities at all — and so is everybody else.
-    expect(cardsIn(ada.wire.received(), 'mine:A'), 'Ada is told which cards lie in her own area').toHaveLength(3)
-    expect(cardsIn(tv.wire.received(), 'mine:A'), 'the television is told the same three').toHaveLength(3)
-    expect(cardsIn(bo.wire.received(), 'mine:A'), 'Bo is told the same three').toHaveLength(3)
+    // Each screen's frames arrive on their own clock: the television drew all three, but under load
+    // Bo's phone had not yet been told — so the wire is waited for, not read in the same breath.
+    await expect.poll(() => cardsIn(ada.wire.received(), 'mine:A'), { message: 'Ada is told which cards lie in her own area' }).toHaveLength(3)
+    await expect.poll(() => cardsIn(tv.wire.received(), 'mine:A'), { message: 'the television is told the same three' }).toHaveLength(3)
+    await expect.poll(() => cardsIn(bo.wire.received(), 'mine:A'), { message: 'Bo is told the same three' }).toHaveLength(3)
     // Not only the identities: the titles ride along, which is what makes the area readable from
     // across the room at all (B6 — the face a seat may fetch and the word it may hear are one
     // question and follow the zone together).
