@@ -24,10 +24,10 @@ test('ends the tables of a deleted game on every screen, and its code seats nobo
   // The phone at the table is told it has ended, without anyone touching it, and so is the TV.
   await expect(ada.page.locator('.byd-survey')).toBeVisible()
   await expect(owner.page.locator('[data-ended]')).toBeVisible()
-  // The code no longer opens the seat picker.
-  expect((await request.get(`/rooms/${table.code}`)).status()).toBe(410)
+  // The code no longer opens the seat picker, and is said as a code that never was (#938).
+  expect((await request.get(`/rooms/${table.code}`)).status()).toBe(404)
   const newcomer = await open(PHONE, `/join?code=${table.code}`)
-  await expect(newcomer.page.getByRole('heading', { name: 'The table is over' })).toBeVisible()
+  await expect(newcomer.page.getByLabel('Room code')).toHaveValue(table.code)
   await expect(newcomer.page.getByRole('button', { name: /^Ada/ })).toHaveCount(0)
   // And the owner's screen, opened again, says the game is gone — not that it is someone else's.
   await owner.page.goto(tv)

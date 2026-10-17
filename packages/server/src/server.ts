@@ -11,7 +11,7 @@ import { CARD_STANDARD_63x88, validateSetup, type SetupDef, type TypeRegistry } 
 import { renderRules, Template, validateCard, type Issue } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
 import { contentHash, type ObjectStore, type RenderKind, type RenderRequest, type RenderStore } from '@byd/render/queue'
-import type { Subscriber, TableHost } from './actor.js'
+import type { Subscriber, TableActor, TableHost } from './actor.js'
 import type { Deck, LogStore, SessionRecord } from './store.js'
 import { ProjectDoc, deckFromProject, liftDoc, type ProjectCredit, type ProjectRecord, type ProjectStore, type RuleDoc } from './projects.js'
 import { setupFromProject } from './setup.js'
@@ -72,6 +72,23 @@ function admission(opts: ServerOptions): { code: string; hostKey: string; record
   const code = newCode()
   const hostKey = newSecret()
   return { code, hostKey, record: { code, codeExpiresAt: codeExpiry(clock(opts)), hostKeyHash: hash(hostKey) } }
+}
+
+// What the door says about every code that opens nothing (#675): one status and one body, so that
+// nothing in the answer tells whether a code once existed.
+const UNKNOWN_CODE = { error: 'unknown or expired code' }
+
+// The table a room code opens (DRIFT §9), or nothing. A code that never was, one that has gone out
+// or been rotated away, and one whose table has ended all open nothing, and are told apart nowhere
+// (beställarens beslut 2026-10-07, #938): an ended table is locked (C9) and its door hands out no
+// token (#485), and saying 410 for it said that the code had been real.
+async function openRoom(opts: ServerOptions, typed: string): Promise<{ id: string; actor: TableActor } | null> {
+  const code = normaliseCode(decodeURIComponent(typed))
+  const found = code ? await opts.store.sessionByCode(code) : null
+  if (!found || Date.parse(found.codeExpiresAt) <= clock(opts).getTime()) return null
+  const actor = await opts.host.get(found.id)
+  if (!actor || actor.ended) return null
+  return { id: found.id, actor }
 }
 
 const DeckBody = z.object({
@@ -290,12 +307,8 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
     // A code resolves to a session while it lives (DRIFT §9): what the join page asks first.
     const room = /^\/rooms\/([^/]+)$/.exec(url.pathname)
     if (req.method === 'GET' && room) {
-      const code = normaliseCode(decodeURIComponent(room[1] ?? ''))
-      const found = code ? await opts.store.sessionByCode(code) : null
-      if (!found || Date.parse(found.codeExpiresAt) <= clock(opts).getTime()) return json(res, 404, { error: 'unknown or expired code' })
-      // A table that has ended is locked (C9), and the picker is told so rather than shown a table
-      // it can no longer sit down at (#485).
-      if ((await opts.host.get(found.id))?.ended) return json(res, 410, { error: 'session ended', session: found.id })
+      const found = await openRoom(opts, room[1] ?? '')
+      if (!found) return json(res, 404, UNKNOWN_CODE)
       // The game's name, which the join card is headed with (#675). It is what `GET /sessions/:id`
       // already says to whoever holds the id this answer hands out, so it tells nobody anything
       // new — and the project it came from stays out of it.
@@ -306,14 +319,11 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
     // A code and a name buy a token (DRIFT §9): for a free seat, or for watching (C8).
     const join = /^\/rooms\/([^/]+)\/join$/.exec(url.pathname)
     if (req.method === 'POST' && join) {
-      const code = normaliseCode(decodeURIComponent(join[1] ?? ''))
-      const found = code ? await opts.store.sessionByCode(code) : null
-      if (!found || Date.parse(found.codeExpiresAt) <= clock(opts).getTime()) return json(res, 404, { error: 'unknown or expired code' })
+      // The code before the body: a code that opens nothing gets the same answer whatever was sent.
+      const found = await openRoom(opts, join[1] ?? '')
+      if (!found) return json(res, 404, UNKNOWN_CODE)
+      const { actor } = found
       const body = JoinBody.parse(JSON.parse(await readBody(req)))
-      const actor = await opts.host.get(found.id)
-      if (!actor) return json(res, 404, { error: 'unknown session' })
-      // And its door hands out nothing (#485): a token would land a newcomer in a finished game.
-      if (actor.ended) return json(res, 410, { error: 'session ended', session: found.id })
       if (body.seat !== undefined) {
         const seat = actor.seats().find((s) => s.id === body.seat)
         if (!seat) return json(res, 404, { error: `unknown seat ${body.seat}` })

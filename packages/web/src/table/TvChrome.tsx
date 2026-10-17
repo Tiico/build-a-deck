@@ -158,7 +158,7 @@ export function TvChrome({ view, activity, roomCode, joinUrl, host, title, versi
           {/* The rulebook, beside the game's own name rather than over the felt (#30). */}
           {rules}
         </div>
-        {/* An ended table takes nobody in, so its code led to «Bordet är slut» (#717): the row says
+        {/* An ended table takes nobody in, so its code opens nothing (#717, #938): the row says
             it has ended instead, and the help about joining goes with the code it was about. */}
         {(roomCode || joinUrl) && view.ended && (
           <div className="byd-tv-join" data-join-ended>
