@@ -849,7 +849,10 @@
         }
       ],
       "rewind": null,
-      "undo": null,
+      "undo": {
+        "toSeq": 7,
+        "contested": false
+      },
       "ended": false,
       "played": true,
       "version": "v1"

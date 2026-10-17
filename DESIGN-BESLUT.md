@@ -1270,6 +1270,19 @@ De två avvisade varianterna stod i prototypen: A lade allt på golvet 24 och l�
 Prototypen och mätningen står i `docs/ux-audits/2026-10-08-statussidan-tv/prototyper/`.
 Grind: `packages/e2e/test/surfaces/room-status-page.spec.ts`, som läser varje ords beräknade storlek och blockets rektangel i lägena laddar, dröjer, ansluter, nätfel, saknas och stängt på TV:n vid 1280 × 720 och 1920 × 1080 och i bordsläget vid 1280 × 800.
 
+Tillägg 2026-10-17 (#682, beställarens beslut efter prototyp, raden E av sex): **på filten står ett avvisat drag vid släppet.**
+På filten finns ingen knapp att hänga svaret på: kontrollen som avvisades är platsen där handen släppte.
+Där sägs avvisningen nu, i en mörk platta med kant i filtens bärnsten, i 24 px på bordets egna skärmar och 16 px på /online, och plattan tonar bort efter fyra sekunder.
+Den viker undan för allt en spelare läser — kort, högarnas toppar och namn, platsernas namn och antal, brickor, zonernas namn och hörnets knappar — och bryter hellre till två rader än täcker något (`besideDrop`).
+Den mörka fyllningen når bara 2:1 mot den gröna filten, så kanten i filtens bärnsten bär 3:1, som K24:s band: uppmätt 3,1–3,5:1 mot marken och texten 14,4:1, synlig 13–15 ms efter släppet i prototypen.
+Meningen är densamma som live-regionen säger, och plattan är dold för den som redan hört den.
+Avvisningen sägs assertive, som modellen ovan säger; den sades förut polite.
+Ett drag som servern avvisar sägs på samma sätt: filten kastade svaret från `client.send`, på bordet och på /online som delar renderaren, så kortet hoppade tillbaka efter fyra sekunder och bordet sa sedan att det inte hade svarat, vilket inte heller var sant.
+Nu läses svaret, översätts med `refusalText` och sägs vid släppet, och kortet ges tillbaka direkt; ett kort spelat ur handen på /online sägs vid sin punkt.
+Ett drag bordet inte svarat på inom `slowAfterMs` sägs i samma platta, polite som förut.
+Prototypen: `docs/ux-audits/2026-10-17-bordslaget-text-och-kontroller/prototyper/01-bordslaget.html?v=e&k=c`.
+Grindar: `packages/web/test/table-renderer.test.tsx`, `packages/web/test/beside-drop.test.ts` och `packages/e2e/test/table-without-phones.spec.ts`, som mäter att plattan syns inom 300 ms och inte ligger över något en spelare läser.
+
 ---
 
 ## E. Editorn
@@ -2315,6 +2328,23 @@ När ett förslag står stängs distansvyns «Visa alla», som annars täckte ju
 Bortvalda varianter: B, en knapp som byter namn men inte frågar, och C, där Ångra bara ångrar egna drag och tillbakaspolningen flyttar till ⋯-menyn.
 Prototypen: `docs/ux-audits/2026-10-05-sparka-och-angra/prototyper/02-angra.html`.
 
+Tillägg 2026-10-17 (#682, beställarens beslut C efter prototyp, ångra/avsluta-varianten C av fyra): **bordets egen skärm ångrar bordets egna drag.**
+En grupp som spelar direkt på filten utan telefoner (K14) kunde varken ta tillbaka ett feldrag eller avsluta när den var klar utan att någon bytte till editorn, och ett bord som ingen avslutar står kvar öppet (C9).
+Bordslägets hörn bär nu en rund «⋯» mellan «Starta om» och «?», och den öppnar en meny med två rader: «Ångra bordets senaste drag», med draget utskrivet under, och «Avsluta bordet…».
+Bordet ångrar bara sina egna drag, plats null, och aldrig en telefons; har en telefon spelat sedan dess är raden nedtonad och säger «Senaste draget gjordes på en telefon — ångra det där.»
+Bordet föreslår aldrig en tillbakaspolning, så det som står ovan om förslag och telefonernas beslut står kvar.
+Det är samma `undo.self` som telefonen skickar, från bordets anslutning, och inget nytt verb.
+Projektionen säger vad det betyder för plats null som för en plats (`undo`), så menyn räknar inget ur loggen; en observatör är också platslös men får aldrig något `undo`.
+Bordets egna drag är de fysiska verb det har skrivit.
+«Uppdatera» och en återställd uppställning skrivs också utan plats men är inga drag filten gjort: de ångras aldrig härifrån, och en sådan rad efter bordets senaste drag gör det draget kontesterat (`undoTarget`).
+«Avsluta bordet…» frågar först, med telefonens egna ord («Avsluta bordet?», «Avsluta för alla», «Inte än»), och frågan öppnar på «Inte än».
+Den står över filtens mitt, som «Starta om spelet?» (#452).
+Vid 1024 ligger den öppna menyn över Räknare A:s bricka; «Starta om», «?» och linsens «+» med sin ram står fria.
+Under ett förslag och på ett avslutat bord finns ingen «⋯», och TV:n har ingen alls: den har ingen fjärr.
+Bortvalda varianter: A, en mening om att ångra och avsluta görs på en telefon eller i editorn, och B, «Ångra» i hörnets rad och «Avsluta…» som egen knapp, där raden bröt till två rader vid 1024.
+Prototypen: `docs/ux-audits/2026-10-17-bordslaget-text-och-kontroller/prototyper/01-bordslaget.html?v=e&k=c`.
+Grindar: `packages/engine/test/rewind.test.ts`, `packages/web/test/table-page.test.tsx` och `packages/e2e/test/table-without-phones.spec.ts`.
+
 ### K14. Bordet spelas direkt: dra, släpp, klicka för en ring med verb (prototypat 2026-09-06, utvidgad 2026-09-12)
 
 K1 och K2 gav reglerna; det här är hur handen gör dem.
@@ -2381,6 +2411,14 @@ De utelämnas nu; en skiva som bara inte går just nu — «Blanda» på en hög
 Hjälpen («?») listade snabbkommandona men inte filtens egen regel; nu börjar den med tre rader: en dragning flyttar, ett klick läser och ett klick till frågar, och Tabb, pilarna och Enter når samma saker (K16).
 Esc-raden sa «Stäng hjulet»; ringen har ett namn, och det är ringen.
 Kontrastgrinden i `button-language.test.tsx` mätte den otillgängliga skivan på ett uppvänt korts «Avslöja»; den mäter nu den tomma kasthögens ring, lagd över samma kort.
+
+Tillägg 2026-10-17 (#682, beställarens beslut: raden E och ångra/avsluta C): **den som handlar för gruppen får se vad som hände och kan ta tillbaka det.**
+Bordsläget hade ingen statusrad och inget flöde, så ett kort som studsade tillbaka gjorde det utan ett ord, och det som hände gick inte att läsa efteråt.
+Ett avvisat drag sägs nu i en platta vid släppet (D5), och det som senast hände står kvar i hörnet nere till vänster, spegelbilden av «Starta om» och «?»: «Senast: Bordet blandade Kortlek · 11 s».
+Raden säger samma mening som live-regionen, ur `describeActivity`, och åldern räknas från när skärmen hörde raden; en avvisning tar aldrig hörnets rad.
+Den står på träet och mörkret, så bred som fram till den plats vars namn står vid nederkanten, och täcker ingenting vid 1024, 1280 eller 1920; kanten mot marken är minst 7,4:1 och texten 14,4:1, i rummets golv på 24 px.
+Bordets «⋯» med ångra och avsluta står i K13.
+Grind: `packages/e2e/test/table-without-phones.spec.ts`.
 
 ### K15. Högens topp som adress: `stack` och `flip` tar `{ top: hög }` (2026-09-06)
 
@@ -5514,6 +5552,12 @@ Regeln kan inte heller se att en *delyta* inuti en förstabildskomponent inte ri
 Att behålla 83,5 kB och bara ändra vad ett överskridande *betyder* lämnar linjen definierad av förra raden.
 Att dela ut designerytorna (guide, konto, hjälpring — 14 073 B rått men bara 2 750 B gzip) kostar en riktig Suspense-yta för `/` och `/login` och ger 2,7 kB luft åt nästa yta; sju åttondelar av de −96 ms experimentet gav var dessutom JavaScript och inte CSS.
 Att budgetera brotli i stället för råa byte avvisas som *ersättning* — det säger ingenting om vems CSS det är — men frågan om det som faktiskt reser lever vidare i #372, tillsammans med att ingenting i repot konfigurerar komprimering och att arket okomprimerat kostar +2 692 ms.
+
+Tillägg 2026-10-17 (#682): taket band, och svaret blev frågan och inte en höjning.
+Bordslägets platta vid ett avvisat drag, hörnets rad och ⋯-menyn låg 2,3 kB över larmet i `table.css`.
+Ingen av dem ritas på första bilden, och inte heller «Starta om spelet?», som låg där sedan #452: de reser nu i `table/felt-after.css`, som `after.ts` hämtar med `import()` när en spelbar filt monteras.
+Hörnets rad väntar på arket innan den ritas; plattan och frågorna kan inte visas förrän någon har släppt eller tryckt, och då är arket framme.
+Bara «⋯» själv, som står i hörnet från första bilden, ligger kvar i det blockerande arket.
 
 ### L41. Textens placering är en niopunktsplatta, och avstånden ligger bakom «Finjustering» (prototypat 2026-09-18, beslutat 2026-09-21, #219)
 
