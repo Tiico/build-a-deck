@@ -460,6 +460,21 @@ describe('rewind on the wire (B)', () => {
     expect(table.frames.some((f) => f.includes('"restore"') || f.includes('"table":'))).toBe(false)
   })
 
+  // The felt's own screen plays as the table (K14) and takes back its own moves (#682): its view
+  // says what undo means for it, as a seat's does, and an observer's never does.
+  it('the table undoes its own move, and its view says when it can', async () => {
+    const id = await createSession(run.http)
+    const table = await connect(id, null)
+    expect((await table.synced(0)).undo).toBeNull()
+    expect((await table.send(null, { v: 'draw', from: 'draw', to: 'discard', count: 2 })).t).toBe('ack')
+    expect((await table.synced(1)).undo).toEqual({ toSeq: 0, contested: false })
+    expect((await table.send(null, { v: 'undo.self' })).t).toBe('ack')
+    const after = await table.synced(2)
+    expect(after.zones.find((z) => z.id === 'discard')).toMatchObject({ order: [] })
+    expect(after.zones.find((z) => z.id === 'draw')).toMatchObject({ count: 10 })
+    expect(after.undo).toBeNull()
+  })
+
   it('a proposal shows on every view until the other seat confirms, and the actor survives a reload', async () => {
     const id = await createSession(run.http)
     const a = await connect(id, 'A')

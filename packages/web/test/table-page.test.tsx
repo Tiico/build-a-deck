@@ -425,3 +425,93 @@ describe('a card a phone shows for everyone (#508)', () => {
     ada.close()
   })
 })
+
+// Bordsläget utan telefoner (#682, beställarens beslut 2026-10-17: raden E och ångra/avsluta C).
+// A group that plays straight on the felt could neither read what had just happened, nor take
+// back a wrong move, nor end the table when it was done.
+describe('the felt’s own screen says what happened, and can undo and end (#682)', () => {
+  const openTable = async (id: string) => {
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=table&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await waitFor(() => expect(document.querySelector('[data-table]')).toBeTruthy())
+  }
+
+  it('keeps the last thing that happened in the corner, with how long ago', async () => {
+    const id = await createSession(run)
+    await openTable(id)
+    const other = TableClient.connect(await asTable(run, id))
+    await other.ready()
+    await other.send({ v: 'draw', from: 'draw', to: 'discard', count: 2 })
+    await waitFor(() => expect(document.querySelector('[data-table-last]')?.textContent).toBe('Senast: Bordet drog 2 kort från Draghög till Kasthög · nyss'))
+    other.close()
+  })
+
+  it('takes back the table’s own last move from the ⋯ menu, saying which move it is', async () => {
+    const id = await createSession(run)
+    await openTable(id)
+    const other = TableClient.connect(await asTable(run, id))
+    await other.ready()
+    await other.send({ v: 'draw', from: 'draw', to: 'discard', count: 2 })
+    await waitFor(() => expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('8'))
+
+    const more = screen.getByRole('button', { name: 'Mer för bordet' })
+    expect(more.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(more)
+    expect(more.getAttribute('aria-expanded')).toBe('true')
+    const menu = screen.getByRole('menu')
+    const undo = within(menu).getByRole('menuitem', { name: /Ångra bordets senaste drag/ })
+    expect(undo.textContent).toBe('Ångra bordets senaste dragBordet drog 2 kort från Draghög till Kasthög')
+    await waitFor(() => expect(document.activeElement).toBe(undo))
+    fireEvent.click(undo)
+    await waitFor(() => expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('10'))
+    expect(screen.queryByRole('menu')).toBeNull()
+    other.close()
+  })
+
+  it('does not offer to undo what a phone did since, and says where that is done', async () => {
+    const id = await createSession(run)
+    await openTable(id)
+    const other = TableClient.connect(await asTable(run, id))
+    const ada = TableClient.connect(await asSeat(run, id, 'A'))
+    await Promise.all([other.ready(), ada.ready()])
+    await other.send({ v: 'draw', from: 'draw', to: 'discard', count: 1 })
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await waitFor(() => expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('8'))
+    fireEvent.click(screen.getByRole('button', { name: 'Mer för bordet' }))
+    const undo = within(screen.getByRole('menu')).getByRole('menuitem', { name: /Ångra bordets senaste drag/ })
+    expect(undo.getAttribute('aria-disabled')).toBe('true')
+    expect(undo.textContent).toBe('Ångra bordets senaste dragSenaste draget gjordes på en telefon — ångra det där.')
+    fireEvent.click(undo)
+    expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('8')
+    other.close()
+    ada.close()
+  })
+
+  it('ends the table only after asking, and the question opens on «Inte än»', async () => {
+    const id = await createSession(run)
+    await openTable(id)
+    fireEvent.click(screen.getByRole('button', { name: 'Mer för bordet' }))
+    // Nothing done yet at this table: nothing to take back, and it says so.
+    expect(within(screen.getByRole('menu')).getByRole('menuitem', { name: /Ångra bordets senaste drag/ }).textContent).toBe('Ångra bordets senaste dragBordet har inte gjort något drag än.')
+    fireEvent.click(within(screen.getByRole('menu')).getByRole('menuitem', { name: /Avsluta bordet…/ }))
+    const ask = screen.getByRole('alertdialog', { name: 'Avsluta bordet?' })
+    await waitFor(() => expect(document.activeElement).toBe(within(ask).getByRole('button', { name: 'Inte än' })))
+    fireEvent.click(within(ask).getByRole('button', { name: 'Inte än' }))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Mer för bordet' })))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mer för bordet' }))
+    fireEvent.click(within(screen.getByRole('menu')).getByRole('menuitem', { name: /Avsluta bordet…/ }))
+    fireEvent.click(within(screen.getByRole('alertdialog', { name: 'Avsluta bordet?' })).getByRole('button', { name: 'Avsluta för alla' }))
+    await waitFor(() => expect(document.querySelector('[data-ended]')).toBeTruthy())
+  })
+
+  it('has neither the corner line nor the menu on the room’s television', async () => {
+    const id = await createSession(run)
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await screen.findByText(roomOf(id).code)
+    expect(screen.queryByRole('button', { name: 'Mer för bordet' })).toBeNull()
+    expect(document.querySelector('[data-table-last]')).toBeNull()
+  })
+})

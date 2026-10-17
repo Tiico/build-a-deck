@@ -12,6 +12,8 @@ import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { useFeltKeyboard } from './useFeltKeyboard.js'
 import { useActivityLive } from './useActivityLive.js'
 import { RewindFrame } from './RewindFrame.js'
+import { LastLine } from './LastLine.js'
+import { TableMenu } from './TableMenu.js'
 import { KEEP_TRYING_MS, DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
@@ -159,7 +161,8 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   // on. It has no buttons — the phones decide, and an ended table has nobody left to decide.
   const proposal = standingRewind(view)
   // The table screen plays as the table itself (seat null): whoever stands at it acts for the group.
-  const onAct = client ? (intents: Intent[]) => void client.send(...intents) : undefined
+  // The answer goes back to the felt, which says a refusal beside the drop (#682).
+  const onAct = client ? (intents: Intent[]) => client.send(...intents) : undefined
   const rendered = (
     <TableRenderer
       view={previewOf(view)}
@@ -180,6 +183,9 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       forTheRoom={mode === 'tv'}
       cornerIn={mode === 'tv' ? corner : undefined}
       startWait={rendering}
+      // The felt's own screen can take back its own move and end the table (#682, C); the room's
+      // television has no buttons (K13), and a proposed rewind or an ended table has nothing to offer.
+      more={mode === 'table' && client && !proposal && !view.ended ? <TableMenu view={view} activity={activity} version={versionWord(view.version, t)} send={(...intents) => client.send(...intents)} /> : undefined}
       {...(sessionId ? { remember: `table:${sessionId}` } : {})}
       onInspect={mode === 'tv' ? setInspecting : undefined}
       onShow={mode === 'tv' ? shown.show : undefined}
@@ -238,6 +244,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
           )}
         </div>
       )}
+      {mode === 'table' && !view.ended && <LastLine activity={activity} view={view} />}
       {mode === 'tv' ? (
         // On a TV the rulebook goes into the header, where the way in already is: the two wanted
         // the same corner, and only the header can lay both out (#30).
