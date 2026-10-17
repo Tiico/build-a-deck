@@ -14,6 +14,8 @@ export type HandSpreadProps = {
   // Enter, Space or a click on a card: the same address panel every other surface opens (#2).
   onOpen(card: VisibleComponentState): void
   onClose(): void
+  // How many cards a row holds, when the grid is an overview rather than a reading (the phone, #767).
+  columns?: number | undefined
 }
 
 // The hand read all at once (#24, prototype C's Uppslaget, kept as the fan's second mode). The
@@ -34,7 +36,7 @@ export type HandSpreadProps = {
 // they are and stay reachable; a surface that covers the only Ångra on the page has made it
 // unreachable and not merely hidden. When the hand is larger than the screen the grid scrolls in
 // its own box and the page never does, which is L10's rule for the data table applied here.
-export function HandSpread({ cards, faces, onOpen, onClose }: HandSpreadProps) {
+export function HandSpread({ cards, faces, onOpen, onClose, columns }: HandSpreadProps) {
   const t = useT()
   const n = cards.length
   const roving = useRoving({ ids: cards.map((c) => c.id), selected: null, orientation: 'both' })
@@ -52,17 +54,19 @@ export function HandSpread({ cards, faces, onOpen, onClose }: HandSpreadProps) {
   return (
     <div
       className="byd-hand-spread"
-      style={spreadStyle(n)}
+      // On the phone the whole hand is an overview, four across, rather than cards at reading size
+      // (#767, beslut A): the width is the sheet's, less its padding and three gaps.
+      style={columns ? { ...spreadStyle(n), '--fan-card': `calc((100vw - 40px - ${columns - 1} * 10px) / ${columns})` } : spreadStyle(n)}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="byd-hand-sheet" role="dialog" aria-label={`Hela handen, ${n} kort`}>
+      <div className="byd-hand-sheet" role="dialog" aria-label={t('online.spread.label', { n })}>
         <div className="byd-hand-sheet-head">
-          <strong>Hela handen</strong>
-          <span>{n} kort</span>
+          <strong>{t('online.spread.title')}</strong>
+          <span>{t('online.spread.count', { n })}</span>
           <button type="button" onClick={onClose}>
-            Stäng
+            {t('online.spread.close')}
           </button>
         </div>
         <div className="byd-hand-grid">
