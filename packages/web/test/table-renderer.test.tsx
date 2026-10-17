@@ -1186,7 +1186,38 @@ describe('the gap between the drop and the patch (K1)', () => {
     fireEvent.pointerUp(placed(), at)
     expect(onAct.mock.calls).toEqual([])
     expect({ left: placed().style.left, top: placed().style.top }).toEqual({ left: '100px', top: '50px' })
-    expect(document.querySelector('[data-status-live="polite"]')!.textContent).toBe('Ingen sitter vid B än, så kortet går tillbaka.')
+    // Said as D5 says a refusal: assertive, since what she asked for did not happen (#682) — and
+    // written beside the drop too, for whoever stands at the felt and hears nothing.
+    expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toBe('Ingen sitter vid B än, så kortet går tillbaka.')
+    expect(document.querySelector('[data-felt-refusal]')?.textContent).toBe('Ingen sitter vid B än, så kortet går tillbaka.')
+  })
+
+  // A drop the server refuses was thrown away with `void client.send` (#682): the card hopped back
+  // four seconds later and the table then said it had not answered, which was not true either. The
+  // answer is read, said in the reader's words at the drop, and the card is given back at once.
+  it('says a drop the server refused beside the drop, in the reader\'s words, and gives the card back at once', async () => {
+    vi.useFakeTimers()
+    const { view, faceUp } = buildScene()
+    render(
+      <StatusLive>
+        <TableRenderer view={view(null)} mode="tv" scale={1} onAct={() => Promise.resolve({ ok: false as const, reason: 'zone hand:A is not an area' })} />
+      </StatusLive>,
+    )
+    const placed = () => document.querySelector(`[data-component="${faceUp}"]`) as HTMLElement
+    fireEvent.pointerDown(placed(), client(100, 50))
+    fireEvent.pointerMove(placed(), client(300, 150))
+    fireEvent.pointerUp(placed(), client(300, 150))
+    await act(async () => undefined)
+    expect(document.querySelector('[data-felt-refusal]')?.textContent).toBe('Det går inte att lägga korten där.')
+    expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toBe('Det går inte att lägga korten där.')
+    expect({ left: placed().style.left, top: placed().style.top }).toEqual({ left: '100px', top: '50px' })
+    // It gives way after four seconds (D5, #682): faded, and then gone, and nothing more is said.
+    act(() => vi.advanceTimersByTime(4000))
+    expect(document.querySelector('[data-felt-refusal]')?.hasAttribute('data-gone')).toBe(true)
+    act(() => vi.advanceTimersByTime(1000))
+    expect(document.querySelector('[data-felt-refusal]')).toBeNull()
+    expect(document.querySelector('[data-status-live="polite"]')!.textContent).toBe('')
+    vi.useRealTimers()
   })
 
   // Drawing the top card off a pile is the same gap, and the one place it was never closed: the

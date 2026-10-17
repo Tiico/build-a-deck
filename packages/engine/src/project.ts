@@ -61,7 +61,8 @@ export function project(state: TableState, registry: TypeRegistry, seat: SeatId 
     const preview: TablePreview = projectTable(history.stateAt(rewind.toSeq), registry, seat, deck, observer)
     rewind = { ...rewind, preview }
   }
-  const undo = seat !== null && history ? undoTarget(history.lines(), seat) : null
+  // An observer is seatless too, but she watches: the table's undo is the table's screen's (#682).
+  const undo = history && !observer ? undoTarget(history.lines(), seat) : null
   return { seq: state.seq, seat, floor: state.setup.floor, seats, zones, components, rewind, undo, ended: state.ended, played: state.played, version: state.version }
 }
 
