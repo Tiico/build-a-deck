@@ -181,11 +181,33 @@ const CreateSession = z.object({
   deck: DeckBody.optional(),
 })
 
+// How long an idle keep-alive connection is kept open from this end (#986, DRIFT §2).
+//
+// The proxy in front — the box's traefik, or cloudflared on a box without one — pools its idle
+// connection to this server for 90 s by default and sends the next request on it. Node's own
+// default hangs up after 5 s, and a request the proxy sends in that same moment goes out on a
+// socket that is just closing: a 502 for nothing. Longer than the proxy, it is always the proxy
+// that lets go first, and it never sends on a connection it has already given up. Thirty seconds
+// of margin, so that a proxy tuned a little longer than its default does not bring the race back.
+const KEEP_ALIVE_MS = 120_000
+// Just above the idle timer, the way Node asks for it: a request whose first byte arrives at the
+// last moment of an idle connection is not cut off waiting for the rest of its headers. Still
+// inside the whole request's limit (Node's 300 s), which Node refuses to have the other way round.
+const HEADERS_TIMEOUT_MS = KEEP_ALIVE_MS + 1_000
+
 // HTTP for the few things that are not a table (health, creating a session), and one
 // WebSocket per connection at `/sessions/:id?seat=A` — omit `seat` for a table view.
 export function createServer(given: ServerOptions): Server {
   const opts: ServerOptions = { ...given, limiter: given.limiter ?? new LoginLimiter() }
-  const http = createHttpServer((req, res) => void route(opts, req, res))
+  const http = createHttpServer({ keepAliveTimeout: KEEP_ALIVE_MS, headersTimeout: HEADERS_TIMEOUT_MS }, (req, res) => {
+    // A closing server lets go of a connection as soon as it goes quiet. Node hangs up the idle
+    // ones when `close` is called, but one still answering then becomes idle a moment later and
+    // would sit out the whole keep-alive timer above, with `close` waiting on it.
+    res.once('finish', () => {
+      if (!http.listening) setImmediate(() => http.closeIdleConnections())
+    })
+    void route(opts, req, res)
+  })
   const wss = new WebSocketServer({ noServer: true })
 
   http.on('upgrade', (req, socket, head) => {

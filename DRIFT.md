@@ -41,6 +41,23 @@ Kedjan framför appen får aldrig vara husets SSO: produkten har egna konton, oc
 Den kedja som väljs ska däremot bära rate limiting, som är vad §9 ber om, och proxyn måste lita på Cloudflares vidarebefordrade huvuden för att räkna på rätt avsändare.
 Den dagen lådan byts mot en tom är tunneln kvar i stacken och kostar ett `COMPOSE_FILE` att byta till.
 
+### Inaktiva anslutningar: proxyn stänger först (#986)
+
+Appen håller en inaktiv keep-alive-anslutning öppen i 120 s (`KEEP_ALIVE_MS` i `packages/server/src/server.ts`) och väntar på en förfrågans huvuden i 121 s (`HEADERS_TIMEOUT_MS`).
+Proxyn närmast appen håller sin inaktiva anslutning till den i 90 s: traefiks `serversTransport.forwardingTimeouts.idleConnTimeout` och cloudflareds `originRequest.keepAliveTimeout` har båda det standardvärdet, och varken stacken eller överlägget sätter något annat.
+Nodes eget standardvärde är 5 s.
+Med det stängde appen anslutningen medan proxyn fortfarande hade den i sin pool, och en förfrågan som skickades i samma ögonblick gick ut på en stängd socket och kom tillbaka som 502 (samma race som i testfixturerna, #848).
+När appen väntar längre än proxyn är det alltid proxyn som släpper först, och den skickar aldrig på en anslutning den redan gett upp.
+De 30 sekunderna över 90 är marginal för en proxy som ställts in lite längre än standard.
+Huvudtiden ligger strax över, så att en förfrågan som börjar i sista stund på en inaktiv anslutning inte klipps medan huvudena kommer, och under Nodes `requestTimeout` på 300 s.
+Cloudflare längst ut talar med proxyn och inte med appen, så dess tider berör inte det här ledet.
+
+Följdkrav:
+Den som höjer proxyns tid för inaktiva anslutningar uppströms höjer `KEEP_ALIVE_MS` över den i samma ändring.
+WebSockets påverkas inte: en uppgraderad anslutning lämnar HTTP-serverns timers, vilket prövades med timers under en sekund och en WebSocket som stod tyst i fyra.
+Dräneringen (§3) väntar inte längre för det: `close` lägger på de inaktiva anslutningarna direkt, och en som fortfarande svarar läggs på så fort svaret är ute.
+`packages/server/test/proxy-connection.test.ts` håller tiderna, en anslutning som står tyst förbi Nodes fem sekunder, och nedstängningen.
+
 ## 3. Aktörsmodellen utan Durable Objects
 
 En Node-process håller alla aktiva bord och projekt som in-memory-aktörer med en seriell kö per aktör.
