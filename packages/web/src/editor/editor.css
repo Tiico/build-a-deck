@@ -1158,6 +1158,14 @@
 .byd-wall-check-detail { padding: 0 12px 8px; display: grid; gap: 6px; }
 .byd-wall-check-detail p { margin: 0; color: #cfd5e3; font-size: 12px; line-height: 1.5; }
 .byd-wall-check-detail span { color: var(--byd-editor-quiet); font: 11px ui-monospace, Menlo, monospace; }
+/* A text that does not fit, card by card, each a way to its row in Tabell (#808, E6). Inside a
+   remark and not a remark of its own, so none of the remark's own edge and ground. */
+.byd-wall-checks .byd-wall-check-rows { margin: 0; gap: 4px; }
+.byd-wall-checks .byd-wall-check-rows li { border: 0; border-radius: 0; overflow: visible; background: none; }
+.byd-wall-check-rows button { width: 100%; padding: 8px 12px; font-size: 12px; line-height: 1.5; text-align: left; white-space: normal; }
+/* The frame round a text that does not fit passes under the copies badge in the card's corner
+   (#808), and the badge is cut out of it by a ring in the wall's own ground rather than crossed. */
+.byd-wall-card:has(> .byd-overset) > .byd-wall-copies { box-shadow: 0 0 0 2px var(--byd-editor-stage-bg); }
 
 /* The width a card is drawn at is the density the crown steps through; the wall fills the row with
    as many of them as fit. The padding is only what the selection outline needs to show. */
@@ -1260,40 +1268,33 @@
    never the card's, and a press on it is a press on the element. The card is drawn through a zoom,
    so every measure here is divided by it, and the tag is drawn at the screen's own size: the word
    is as legible at 50 % as at 400 %, and on a layer too thin for two lines it is one, in its short
-   form, cut with an ellipsis rather than spilling over its neighbours. */
-.byd-placeholder {
-  position: absolute;
+   form, cut with an ellipsis rather than spilling over its neighbours.
+   The frame and the tag are the shared mark (`mark.css`, #808): what is here is the placeholder's
+   own — the layer it covers, its hatching, its greys, and a tag of two lines in its middle. */
+.byd-mark.byd-placeholder {
+  --byd-mark-edge: var(--byd-editor-placeholder-edge);
+  --byd-mark-ring: var(--byd-editor-placeholder-ring);
   inset: 0;
-  box-sizing: border-box;
-  border: calc(1.5px / var(--byd-canvas-scale, 1)) dashed var(--byd-editor-placeholder-edge);
-  box-shadow: 0 0 0 calc(1px / var(--byd-canvas-scale, 1)) var(--byd-editor-placeholder-ring);
   background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--byd-editor-placeholder-edge) 10%, transparent) 0 calc(6px / var(--byd-canvas-scale, 1)), transparent calc(6px / var(--byd-canvas-scale, 1)) calc(12px / var(--byd-canvas-scale, 1)));
-  pointer-events: none;
 }
 /* Centred on the layer, as wide as its words and never wider than the layer less a gap of
    `--byd-s1` on either side. The width is the tag's own and not the layer's, because the layer is
    zoomed and the tag is not: the room it has is the layer's width at the screen's size. */
-.byd-placeholder-tag {
-  position: absolute;
+.byd-mark-tag.byd-placeholder-tag {
   left: 50%;
   top: 50%;
-  display: flex;
   align-items: flex-start;
-  gap: 6px;
-  box-sizing: border-box;
-  width: max-content;
   max-width: calc(100% * var(--byd-canvas-scale, 1) - 2 * var(--byd-s1));
   padding: var(--byd-s1) var(--byd-s2);
   border-radius: 10px;
   background: var(--byd-editor-chrome-bg);
   color: var(--byd-editor-placeholder-ink);
-  font: 600 11px/1.25 system-ui, sans-serif;
+  line-height: 1.25;
+  white-space: normal;
   text-align: left;
   transform: translate(-50%, -50%) scale(calc(1 / var(--byd-canvas-scale, 1)));
-  /* The title is the whole sentence, and a title is read off the pointer. */
-  pointer-events: auto;
 }
-.byd-placeholder-tag > i { flex: none; font-style: normal; color: var(--byd-editor-stage-ink); }
+.byd-mark-tag.byd-placeholder-tag > i { color: var(--byd-editor-stage-ink); }
 .byd-placeholder[data-thin] > .byd-placeholder-tag { align-items: center; padding: 0 var(--byd-s2); border-radius: 999px; line-height: 18px; white-space: nowrap; }
 .byd-placeholder[data-thin] > .byd-placeholder-tag > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* The one way on from a condition's panel, in the panel's own button shape. */
@@ -3650,6 +3651,14 @@ img[data-arriving] { opacity: 0; }
    Kvar är blockets egen kontroll, längst ut åt det håll läsningen slutar — där raden redan lade
    den, så ingen hand behöver leta upp den på ett nytt ställe. */
 .byd-rules-foot { display: flex; }
+/* Det öppna blockets slag: Stycke · Punktlista · Numrerad lista (#707, beslut 2026-10-06: C med
+   A:s genväg). Ett val bland tre och därför `.byd-choice`, som bokens växel (#227), först i blocket
+   där prototypen ritade det. Bara stycket och listan har raden, och bara medan de skrivs i.
+   Typsnittet är verktygets och inte bokens: `.byd-choice` ärver, och blocket står i Georgia. */
+.byd-rules-kinds { display: flex; flex-wrap: wrap; gap: var(--byd-s1); font: 13px system-ui, sans-serif; }
+/* Vad fältet säger om hur dess rader läses (#707, A:s «fältet säger det»): en rad under fältet i
+   editorns tysta färg och aldrig en ruta, och bara medan det som står läses annorlunda än det står. */
+.byd-rules-note { margin: var(--byd-s1) 0 0; color: var(--byd-editor-quiet); font: 12px/1.5 system-ui, sans-serif; }
 /* Fältet och listan som `[[` öppnar under det (#215). Rutan hänger på omslaget och inte på
    blocket, för ett listblock är flera fält och listan hör under det markören står i. Bredden är
    inte symbollistans 230 px: där är namnen bibliotekets egna och korta, här är de designerns, och

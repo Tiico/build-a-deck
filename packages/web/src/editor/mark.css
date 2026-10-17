@@ -1,0 +1,54 @@
+/* A mark the tool draws over a card and never in it (#802, #808): a dashed frame on a box and a word
+   in a dark tag. The canvas says with it what an empty layer lacks (#802), and every surface that
+   shows a card says with it which text does not fit (#808) — one form, so the card is told about
+   in one way wherever it stands. Neither is the card's: the compiler is not asked (E2).
+
+   A mark is drawn in the card's own coordinates, which a surface draws at a zoom, so every measure
+   of the frame is divided by `--byd-canvas-scale` and the tag is scaled back to the screen's own
+   size: the line and the word are as wide at 50 % as at 400 %. The colours are the mark's own
+   rather than the editor's, because the guided start draws it too and has none of the editor's. */
+.byd-mark {
+  position: absolute;
+  box-sizing: border-box;
+  border: calc(1.5px / var(--byd-canvas-scale, 1)) dashed var(--byd-mark-edge, #5b6274);
+  box-shadow: 0 0 0 calc(1px / var(--byd-canvas-scale, 1)) var(--byd-mark-ring, rgba(255, 255, 255, 0.55));
+  pointer-events: none;
+}
+.byd-mark-tag {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  width: max-content;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #23262e;
+  color: #e6ecfa;
+  font: 600 11px/18px system-ui, sans-serif;
+  white-space: nowrap;
+  /* The title is the whole sentence, and a title is read off the pointer. */
+  pointer-events: auto;
+}
+.byd-mark-tag > i { flex: none; font-style: normal; }
+
+/* A text that does not fit even shrunk (#808, beställarens beslut A, «Kanten och brickan»): the
+   frame in the warning's amber over a dark ring, inside and out, 4 px outside the box so it never
+   touches a letter; and the tag hanging 5 px under it, edged in the same amber. The dark band carries
+   the frame on light paper (14:1 on Krönika's) and the amber band on a dark card (7.5:1 on Mörk's);
+   amber alone gives 1.5:1 on light paper. Measured in `overset-contrast.test.ts`. */
+.byd-overset { position: absolute; inset: 0; pointer-events: none; }
+.byd-overset-frame {
+  --byd-mark-edge: #f0b64a;
+  --byd-mark-dark: #1b1d23;
+  border-width: calc(2px / var(--byd-canvas-scale, 1));
+  border-radius: calc(2px / var(--byd-canvas-scale, 1));
+  box-shadow: 0 0 0 calc(1px / var(--byd-canvas-scale, 1)) var(--byd-mark-dark), inset 0 0 0 calc(1px / var(--byd-canvas-scale, 1)) var(--byd-mark-dark);
+}
+.byd-overset-tag {
+  border: 1px solid #f0b64a;
+  line-height: 16px;
+  transform: translateX(-50%) scale(calc(1 / var(--byd-canvas-scale, 1)));
+  transform-origin: top center;
+}
+.byd-overset-tag > i { color: #f0b64a; font-size: 9px; }
