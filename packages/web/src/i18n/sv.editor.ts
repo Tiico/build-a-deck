@@ -88,10 +88,6 @@ export const svEditor = {
   'editor.loggingIn': 'Loggar in…',
   'editor.loading': 'Laddar spelet…',
   'editor.conflict': 'Någon annan har sparat sedan du laddade. Ladda om och gör om ändringen.',
-  // Ett ord för en sparad version överallt där människor läser (#703): «Version 3», «version 3» och «v3» där det är trångt.
-  'version.word': 'version {n}',
-  'version.name': 'Version {n}',
-  'version.short': 'v{n}',
   'editor.rev': 'v{n}',
   // Dörren säger «Dela» (#727), och ordet står först i namnet, som det står på knappen.
   'editor.here.name': 'Dela · vilka som har spelet, {n} inne',
@@ -109,7 +105,6 @@ export const svEditor = {
   'editor.unsaved': 'Osparat',
   'editor.save': 'Spara',
   'editor.saving': 'Sparar…',
-  'editor.cancel': 'Avbryt',
   'editor.newTable': 'Nytt bord',
   // Den fyllda knappen gör två jobb (L5), och den heter det jobb den står i begrepp att göra
   // (#417): utan bord startar den ett, med ett bord uppdaterar den det. Ordet är hemmets
@@ -200,8 +195,6 @@ export const svEditor = {
   'crown.box.count': '{name} ({n})',
   // Hjälpmönstret (L32, #303): frågetecknet är namngivet efter vad det handlar om, och lådan
   // det öppnar har ett kryss. Ämnet skrivs där frågetecknet står, i sin flik.
-  'help.about': 'Hjälp om {topic}',
-  'help.close': 'Stäng hjälpen',
   'wall.eyes': 'Ögon',
   'wall.eye.normal': 'Som du ser det',
   'wall.eye.deuteranopia': 'Deuteranopi',
@@ -579,7 +572,6 @@ export const svEditor = {
   // Vad som går, och inte bara vad som gick (#144). Meningen var sann bara så länge elementet inte
   // gick att flytta från tangentbordet: den namngav ordningen och omdöpningen och teg om själva
   // flytten, vilket var precis den som saknades.
-  'canvas.hint.base': 'Dra för att ändra ordningen.',
   'canvas.help.topic': 'lagerlistan',
   'canvas.help.order': 'Håll Alt och tryck pil upp eller ner för att flytta lagret utan att dra.',
   'canvas.help.rename': 'F2 byter namn på lagret.',
@@ -1142,7 +1134,6 @@ export const svEditor = {
   'rules.block.alt': 'Alt-text för {block}',
   'rules.alt.placeholder': 'Vad visar bilden?',
   'rules.alt.missing': 'Utan alt-text: dold för skärmläsare',
-  'rules.caption.placeholder': 'Bildtext…',
   'rules.level.1': 'Rubrik',
   'rules.level.2': 'Underrubrik',
   'rules.addItem': '＋ Punkt',
