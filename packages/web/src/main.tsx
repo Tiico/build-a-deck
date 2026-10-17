@@ -20,4 +20,8 @@ if (!root) throw new Error('index.html has no #root')
 if (document.getElementById('byd-shell')) continueShellClock()
 // The surface's own script first, then the app's first frame (#760): what replaces the shell is the
 // page that was asked for, never a fallback that gives way to it a moment later.
-void loadPage().then((Page) => createRoot(root).render(<App Page={Page} />))
+// A page that could not say even that it failed leaves the shell standing (`loadPage`).
+void loadPage().then(
+  (Page) => createRoot(root).render(<App Page={Page} />),
+  () => undefined,
+)
