@@ -142,6 +142,8 @@ export class ProjectClient {
   private outbox: string[] = []
   // A save asked for over the socket, waiting for the actor to say what became of it.
   private saving: ((result: SaveResult) => void) | null = null
+  // The last save asked for and not yet over, so the next one can wait its turn behind it (#988).
+  private inFlight: Promise<SaveResult> | null = null
   // The document as it was when that save was asked for. The actor makes its version out of the
   // edits it has when the save reaches it, so an edit written while the save travels is not in
   // the version that comes back (#380): what became saved is this document and not the one on
@@ -309,8 +311,14 @@ export class ProjectClient {
         return
       case 'saved':
         this.rev = message.rev
-        this.saved = this.asked ?? stamp(this.doc)
-        this.finishSave({ ok: true, rev: message.rev })
+        // A version is the answer to the save that made it and to no other (#988). Taken from
+        // whichever «saved» came next, an import named somebody else's version, and the book it
+        // replaced lost the name that was its way back (B4). Someone else's version says what is
+        // saved only when no save of this editor's is in the air; one that is will say it itself.
+        if (message.from === this.me) {
+          this.saved = this.asked ?? stamp(this.doc)
+          this.finishSave({ ok: true, rev: message.rev })
+        } else if (!this.saving) this.saved = stamp(this.doc)
         this.notify()
         return
       case 'refused':
@@ -1209,7 +1217,23 @@ export class ProjectClient {
 
   // Saving makes a version (B4). With a socket the actor makes it, so everyone with the project
   // open is told which version it became; without one the document is written the old way.
-  async save(): Promise<SaveResult> {
+  //
+  // One save at a time (#988). A save asked while another is in the air leaves when that one has
+  // been answered: an import pressed twice, or pressed and then saved by hand, is two saves, and
+  // each is owed the version it made. Two in the air at once had one answer between them over the
+  // line, and over HTTP the same rev twice, which the second one heard as a conflict.
+  save(): Promise<SaveResult> {
+    const ahead = this.inFlight
+    const go = () => this.saveNow()
+    const turn = ahead ? ahead.then(go, go) : go()
+    this.inFlight = turn
+    const over = () => {
+      if (this.inFlight === turn) this.inFlight = null
+    }
+    turn.then(over, over)
+    return turn
+  }
+  private async saveNow(): Promise<SaveResult> {
     // Read before the save leaves, for both ways of saving: it is the document the version will
     // be made of, whatever is edited while the answer is on its way (#380).
     const asked = stamp(this.doc)

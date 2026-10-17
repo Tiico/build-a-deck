@@ -735,7 +735,7 @@ async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: Web
           return
         }
         if (msg.t === 'save') {
-          const saved = await actor.save()
+          const saved = await actor.save(editor.id)
           if (!saved.ok) send({ v: 'refused', why: saved.reason })
           return
         }

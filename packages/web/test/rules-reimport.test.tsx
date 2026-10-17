@@ -11,6 +11,7 @@ import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { setEditSocketImplementation, type EditSocketCtor } from '../src/editor/ProjectClient.js'
 import { EditSocket } from './setup.js'
+import { SavedHeldBack } from './saved-held-back.js'
 
 let run: Running
 beforeEach(async () => {
@@ -337,5 +338,31 @@ describe('dropping a file over a written book (#293)', () => {
       const named = (await run.projects.versions(run.projectId)).flatMap((v) => (v.label ? [v.label] : []))
       expect(named).toEqual(['Importerad: regler-v4.md', 'Importerad: skrivet.md'])
     })
+  })
+})
+
+// Two imports, the second pressed before the first was answered (#988). It is the order CI found
+// by accident: the version is made, the book she wrote is in the store, and the word that says so
+// is still on the line when «Gör boken» is pressed again. Each import lays the version named for its
+// own file, on the version that holds that file's book — or the history has lost the book she
+// wrote by hand, which is the one thing an import over a book promised to keep (B4).
+describe('a second import pressed before the first is answered (#988)', () => {
+  it('keeps both named versions, each on the version that holds its own book', async () => {
+    const line = new SavedHeldBack()
+    setEditSocketImplementation(line.Line)
+    await aWrittenBook()
+    // The first version is made and its answer is here, held: only the word is late.
+    await waitFor(() => expect(line.waiting).toBe(1))
+    expect((await run.projects.load(run.projectId))?.rules?.source?.file).toBe('skrivet.md')
+    const report = await reportOverTheBook()
+    fireEvent.click(within(report).getByRole('button', { name: 'Gör boken' }))
+    line.release()
+    await waitFor(async () => {
+      const named = (await run.projects.versions(run.projectId)).flatMap((v) => (v.label ? [v.label] : []))
+      expect(named).toEqual(['Importerad: regler-v4.md', 'Importerad: skrivet.md'])
+    })
+    const versions = await run.projects.versions(run.projectId)
+    const fileOf = async (label: string) => (await run.projects.at(run.projectId, versions.find((v) => v.label === label)?.rev ?? -1))?.rules?.source?.file
+    expect({ first: await fileOf('Importerad: skrivet.md'), second: await fileOf('Importerad: regler-v4.md') }).toEqual({ first: 'skrivet.md', second: 'regler-v4.md' })
   })
 })
