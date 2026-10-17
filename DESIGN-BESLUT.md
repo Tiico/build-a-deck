@@ -1823,6 +1823,16 @@ Med tangentbordet flyttar Alt och en pil kortet ett steg, som Alt och en pil fly
 *Reviderat 2026-09-28 (#507, beslut A):* ett tryck håller upp kortet i K26:s läsbredd och väljer det i samma handling; «Läs valt kort» är borta och läsvyn går igenom handen med ‹ › och svep (C4).
 Remsan är liten i vila och följer skärmen, `clamp(112px, 34vw, 200px)`.
 
+Reviderat 2026-10-17 (#767, beställarens beslut A + B efter prototyp): **en hand som är större än remsan har en överblick och säger var man står i den.**
+
+Speltestet 2026-10-02 hade 25 kort på telefonen: remsan var 3 615 px i en ruta på 358 px, tre kort syntes åt gången och inget sade var i handen tummen var.
+Så länge remsan håller fler kort än den visar står «Visa alla · 25» bredvid «Dina kort», och den öppnar hela handen i det rutnät `/online` har (K17), fyra i bredd och i remsans ordning; ett kort som väljs där är det valda kortet och förs in i remsans synfält.
+Under remsan står vilka kort som syns av hur många, «23–25 av 25», med en tunn list som visar var i handen de ligger.
+En hand som ryms i remsan har ingetdera.
+Knappen och listen ritas utan egna regler i arket, som första ritningen blockerar på och som inte har några byte över (`felt-font.spec.ts`).
+`phone-big-hand.spec.ts` håller överblicken, valet och markören med 25 kort, och att en hand på två kort inte får dem.
+Prototypen: `docs/ux-audits/2026-10-17-handen/prototyper/767/`.
+
 ### K5. Inga objekt utanför spelets setup
 
 Ingen inbyggd låda med generiska tärningar, kuber eller lappar.
@@ -2683,6 +2693,14 @@ Det är en etikettkrock och inte en zonkrock, och var etiketterna ska ta vägen 
 
 Grinden är ett test och inte ett tal: `packages/server/test/recipe-geometry.test.ts` mäter varje zonpar vid varje platsantal från två till `MAX_PLAYERS`, räknar paren så att en tom lista inte kan gå igenom, och håller dessutom fast att handen är 500 mm överallt och att ett fyraplatsbord ligger på exakt de millimetrar det låg på förut.
 Den gamla täckningen slutade vid fyra platser, och det är därför felet gick att skeppa.
+
+Reviderat 2026-10-17 (#766, beställarens beslut A efter prototyp): **en solfjäder av baksidor vrids högst ±22°, hur många kort handen än har.**
+
+Speltestet 2026-10-02 hade 25 kort på A:s hand vid åtta platser på TV:n: tolv baksidor vreds ±49,5° och hängde 38 px ut över filtens kant.
+Handen står kvar där #84 ställde den, mot kanten — en rak remsa hänger också ut, 15 px — men solfjädern växer inte längre med antalet: förbi taket sluter sig baksidorna i stället (`BACK_TURN_MAX`), och överhänget blir 24 px.
+En hand med få kort ser ut som förut, och en läsbar solfjäder (en sittande spelares egna kort) rörs inte.
+`hand-fan-cap.test.ts` håller taket och `tv-big-hand.spec.ts` mäter överhänget på TV:n (38 px utan taket).
+Prototypen: `docs/ux-audits/2026-10-17-solfjadern/prototyper/766/`.
 
 ### K19. Ett namn på ett ställe: var en zons namn ligger (prototypat och byggt 2026-09-13, #43, #71)
 

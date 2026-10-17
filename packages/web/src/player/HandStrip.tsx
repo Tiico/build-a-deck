@@ -23,6 +23,8 @@ export type HandStripProps = {
   // thumb that rested until the card lifted and then went sideways, or by Alt and an arrow.
   // `position` is where it should stand in the strip as it is drawn, first card first.
   onReorder?: ((card: VisibleComponentState, position: number) => void) | undefined
+  // Whether the strip holds more than it shows (#767): the page offers the whole hand then.
+  onOverflow?: ((overflows: boolean) => void) | undefined
 }
 
 // The seat's own hand as a horizontal strip of big, readable cards (K4).
@@ -32,7 +34,7 @@ export type HandStripProps = {
 // is marked, and it is one tab stop with the arrows inside — the editor's roving tabindex, not a
 // second one written here. Space marks and unmarks, Enter opens the address panel. The gestures
 // K4 retains drag to play and hold to mark; the chosen phone A uses tap to select.
-export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces, onReorder }: HandStripProps) {
+export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces, onReorder, onOverflow }: HandStripProps) {
   const t = useT()
   // The hand read from the bottom up (#415, decision B of 2026-09-22). A drawn card lands on
   // top of the zone, which is index 0 of the projection's order, so reading the order
@@ -157,7 +159,43 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
     return () => el.removeEventListener('touchmove', hold)
   }, [])
 
+  // Where in the hand the strip stands, while it holds more than it shows (#767, beslut A + B):
+  // with 25 cards the strip was ten screens wide and said nothing of where the thumb was. Read off
+  // the cards the strip shows whole, when it scrolls and when it or the hand changes size.
+  const [where, setWhere] = useState<{ from: number; to: number } | null>(null)
+  const told = useRef<boolean | null>(null)
+  useEffect(() => {
+    const el = strip.current
+    if (!el) return
+    const read = () => {
+      const box = el.getBoundingClientRect()
+      const cards = [...el.querySelectorAll<HTMLElement>('[data-hand-card]')]
+      const seen = cards.flatMap((c, i) => {
+        const r = c.getBoundingClientRect()
+        return r.left >= box.left - 1 && r.right <= box.right + 1 ? [i] : []
+      })
+      const over = el.scrollWidth > el.clientWidth + 1 && seen.length > 0
+      const first = seen[0]
+      const last = seen.at(-1)
+      setWhere(over && first !== undefined && last !== undefined ? { from: first + 1, to: last + 1 } : null)
+      if (told.current !== over) {
+        told.current = over
+        onOverflow?.(over)
+      }
+    }
+    read()
+    el.addEventListener('scroll', read, { passive: true })
+    const sized = typeof ResizeObserver === 'function' ? new ResizeObserver(read) : null
+    sized?.observe(el)
+    return () => {
+      el.removeEventListener('scroll', read)
+      sized?.disconnect()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- read again when the hand changes; the callback is the page's
+  }, [hand.length])
+
   return (
+    <>
     <div className="byd-strip" data-hand ref={strip}>
       {hand.map((c) => {
         const item = roving.itemProps(c.id)
@@ -230,6 +268,17 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
       {/* And with no card in any pile it does not ask for one (#751). */}
       {hand.length === 0 && <p className="byd-strip-empty">{nothingToDraw(view) ? t('player.hand.empty.none') : emptyHand(view, t)}</p>}
     </div>
+    {/* The bar is drawn here rather than in the sheet: every byte of player.css is in the sheet
+        the first frame blocks on, which has none to spare (felt-font.spec.ts). */}
+    {where && (
+      <p className="byd-muted" data-strip-where style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+        <span>{t('player.hand.where', { from: where.from, to: where.to, n: hand.length })}</span>
+        <i aria-hidden="true" style={{ flex: 1, height: 4, borderRadius: 2, background: '#2a2f3c', position: 'relative' }}>
+          <b style={{ position: 'absolute', top: 0, bottom: 0, left: `${((where.from - 1) / hand.length) * 100}%`, width: `${((where.to - where.from + 1) / hand.length) * 100}%`, borderRadius: 2, background: '#7dd3a0' }} />
+        </i>
+      </p>
+    )}
+    </>
   )
 }
 

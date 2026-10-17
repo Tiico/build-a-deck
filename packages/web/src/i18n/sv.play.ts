@@ -350,6 +350,15 @@ export const svPlay = {
   'online.table.where': 'Hela bordet står på TV:n, eller på en skärm som rymmer det.',
   // Tom hand (UX-16): samma form som raden ovanför, så telefonens två tomlägen läses som ett par.
   'player.hand.title': 'Dina kort',
+  // Handens överblick på telefonen (#767): «Visa alla» och var i remsan man står.
+  'player.hand.all': 'Visa alla · {n}',
+  'player.hand.where': '{from}–{to} av {n}',
+  'online.spread.title': 'Hela handen',
+  'online.spread.label.one': 'Hela handen, {n} kort',
+  'online.spread.label.other': 'Hela handen, {n} kort',
+  'online.spread.count.one': '{n} kort',
+  'online.spread.count.other': '{n} kort',
+  'online.spread.close': 'Stäng',
   'player.hand.actions': 'Spela valda kort',
   'player.hand.read': 'Läs valt kort',
   'player.hand.chosen': 'Valt: {name}',
