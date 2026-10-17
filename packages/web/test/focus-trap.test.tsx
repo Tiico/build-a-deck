@@ -4,7 +4,7 @@
 // A library dialog is modal — the table behind it is not the thing being asked about — so the
 // focus moves in when it opens, cycles inside while it is open, and goes back to the control that
 // opened it when it closes, whichever way it closes.
-import { useRef, useState } from 'react'
+import { lazy, Suspense, useRef, useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
@@ -106,5 +106,42 @@ describe('the focus held inside a modal window (#296)', () => {
     expect(document.activeElement).toBe(named('Första'))
     fireEvent.keyDown(named('Första'), { key: 'Escape' })
     expect(document.activeElement).toBe(named('Öppna'))
+  })
+
+  // A window that arrives on its own — a lazy chunk, as every dialog in «Mina spel» and under the
+  // editor's ⋯ does — is committed outside any event, and React may hand the page back between
+  // drawing it and running its passive effects (#954). A quick hand, or a slow machine, then met a
+  // window on the screen that neither held the focus nor heard Escape. The trap is set in the
+  // commit that draws the window, so there is no such moment.
+  it('holds the keys from the commit that draws it, also when the window arrives on its own (#954)', async () => {
+    const onEscape = vi.fn()
+    const Late = lazy(async () => ({ default: Window }))
+    function Opener() {
+      const [open, setOpen] = useState(false)
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Öppna
+          </button>
+          <Suspense fallback={null}>{open && <Late onEscape={onEscape} />}</Suspense>
+        </>
+      )
+    }
+    // Over its frame budget on every commit, React yields before the passive effects: what a busy
+    // machine does now and then, made to happen every time.
+    const realNow = performance.now.bind(performance)
+    let drift = 0
+    performance.now = () => realNow() + (drift += 10)
+    try {
+      render(<Opener />)
+      named('Öppna').focus()
+      fireEvent.click(named('Öppna'))
+      const dialog = await screen.findByRole('dialog', { name: 'Fönstret' })
+      expect(document.activeElement).toBe(named('Första'))
+      fireEvent.keyDown(dialog, { key: 'Escape' })
+      expect(onEscape).toHaveBeenCalledTimes(1)
+    } finally {
+      performance.now = realNow
+    }
   })
 })

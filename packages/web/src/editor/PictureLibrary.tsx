@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from 'react'
 import { assetAccept } from '@byd/protocol'
-import { assetUrl } from './assets.js'
+import { AssetImage } from './AssetImage.js'
 import { useFocusTrap } from './focusTrap.js'
 import { useT } from '../i18n/index.js'
 import { saidOr } from '../i18n/said.js'
@@ -120,7 +120,7 @@ export function PictureLibraryDialog({ target, count, replacing, pictures, asset
                   {shown.map((p) => (
                     <li key={p.hash} {...(p.cards.length === 0 && !p.template ? { 'data-unused': 'true' } : {})}>
                       <button type="button" className="byd-library-tile byd-choice" data-asset={p.hash} aria-pressed={picked === p.hash} aria-label={nameOf(p)} onClick={() => setPicked(p.hash)}>
-                        <img loading="lazy" src={assetUrl(assetBase, p.hash)} alt="" />
+                        <AssetImage loading="lazy" base={assetBase} hash={p.hash} alt="" />
                         <span>{nameOf(p)}</span>
                         <small>{p.cards.length === 0 ? t(p.template ? 'media.byTemplate' : 'media.unused') : t(p.cards.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: p.cards.length })}</small>
                       </button>
@@ -137,7 +137,7 @@ export function PictureLibraryDialog({ target, count, replacing, pictures, asset
               <em>{refused}</em>
             ) : chosen ? (
               <>
-                <img src={assetUrl(assetBase, chosen.hash)} alt="" />
+                <AssetImage base={assetBase} hash={chosen.hash} alt="" />
                 <span>{t('library.chosen', { name: nameOf(chosen) })}</span>
                 {replacing > 0 && <em>{t(count === 1 ? 'library.replacing.one' : 'library.replacing.other', { n: replacing })}</em>}
               </>

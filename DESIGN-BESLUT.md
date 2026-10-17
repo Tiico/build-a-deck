@@ -1540,7 +1540,15 @@ Passkeys och OAuth återstår.
 
 Claimat (prototypat och byggt 2026-09-07):
 Gästens admission, den token telefonen spelade under (DRIFT §9), är det som claimas: `POST /guests/claim` med kontots kaka knyter den till kontot, en gång, och 409 om ett annat konto redan har den.
-Telefonen erbjuder "Spara till ditt konto" i enkäten när sessionen är slut; länken går via inloggningskortet till `/claim`, som sedan landar på startsidan med ett besked.
+Telefonen erbjuder "Spara till ditt konto" i enkäten när sessionen är slut; länken går via inloggningskortet till `/claim`, som sedan landar på startsidan med ett besked — **ändrat 2026-10-06, se nedan**.
+
+Vägen efter sparandet (beställarens beslut 2026-10-06, #690):
+"Spara till ditt konto" erbjuds först när enkätens svar är skickade, under tacket.
+Länken bär telefonens egen adress som `next=`, och efter claimen kommer gästen tillbaka dit, till tacket som nu säger «Sparat till ditt konto.»; en länk utan `next` landar på startsidan som förut.
+Claim-sidan och dess vidareskickningar ersätter historiken i stället för att lägga till i den, så Bakåt landar på sidan före claimen och gör aldrig om den.
+"Tillbaka till bordet" tar gästen till sin egen plats och hand, på den skärm platsväljaren hade föreslagit: `POST /me/played/:session/return` ger kontots levande admission en ny token i den gamlas ställe, med samma plats, namn och historik.
+Den gamla token slutar gälla, som en bärartoken ska när den flyttar till en annan skärm.
+Finns ingen plats kvar att gå tillbaka till — den är lämnad eller sparkad — går länken till platsväljaren.
 Tre varianter prövades för startsidan; valet blev två rutnät: egna spel först som förut, sedan "Bord du spelat vid" med platsens färg, spelet, namnet man spelade under, enkät och flaggor, och "Tillbaka till bordet" medan det pågår och koden lever. En ren gäst utan egna spel ser "Nytt spel" som inbjudan ovanför sina bord.
 
 Startsidan färdig 2026-09-08:

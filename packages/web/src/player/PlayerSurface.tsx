@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { HeldCard } from './HeldCard.js'
@@ -172,6 +172,17 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
     // An emptied hand has no stop left, and the deck's tile is the one it wants next (#761).
     if (stranded) (document.querySelector<HTMLElement>('.byd-strip[data-hand] [data-hand-card][tabindex="0"]') ?? document.querySelector<HTMLElement>('[data-zone-draw]'))?.focus()
   }, [hand])
+  // Cards she has just played in front of herself, and the area they are going to (C4). The fold
+  // opens in the commit that draws them there (#958): the table's answer is a frame of its own
+  // after the patch, and opening on the answer drew the card into a closed fold first — or never
+  // opened it, when the line went between the two frames.
+  const reveal = useRef<{ ids: string[]; zone: string } | null>(null)
+  useLayoutEffect(() => {
+    const going = reveal.current
+    if (!going || !view.components.some(c => c.zone === going.zone && going.ids.includes(c.id))) return
+    reveal.current = null
+    if (personal.current) personal.current.open = true
+  }, [view])
   const playDirect = async (cards: VisibleComponentState[], zone: string, at: 'top' | 'bottom') => {
     const first = cards[0]
     if (quickBusy.current || !first) return
@@ -180,9 +191,15 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
     setQuickPending(true)
     setQuickTarget(zone)
     setQuickSource(first.zone === `hand:${seat}` ? 'hand' : first.id)
+    if (view.zones.some(z => z.id === zone && z.kind === 'area' && z.owner === seat)) reveal.current = { ids: cards.map(c => c.id), zone }
     try {
       const intents = zone === `hand:${seat}` ? cards.map(c => ({ v: 'move' as const, component: c.id, to: zone })) : playIntents(view, cards, zone, undefined, at)
       const result = await quick.watch(client.send(...intents))
+      // A play the table refused brings nothing in front of her. A line lost on the way may still
+      // have carried it, and the view after the resync says so, so that one stays armed. A play
+      // that went through is left for the effect: the client holds the patch before React has
+      // drawn it.
+      if (!result.ok && result.reason !== 'connection lost') reveal.current = null
       if (result.ok) {
         if (zone !== `hand:${seat}` && cards.some(c => c.zone === `hand:${seat}`)) regain.current = cards.map(c => c.id)
         if (cards.some(c => c.zone === `hand:${seat}`) || zone === `hand:${seat}`) {
@@ -190,7 +207,6 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
           setChosenId(null)
         }
         if (zone === `hand:${seat}`) setChosenId(first.id)
-        if (view.zones.some(z => z.id === zone && z.kind === 'area' && z.owner === seat) && personal.current) personal.current.open = true
       }
     } finally {
       quickBusy.current = false

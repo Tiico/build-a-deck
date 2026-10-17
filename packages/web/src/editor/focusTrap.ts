@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react'
+import { useLayoutEffect, useRef, type RefObject } from 'react'
 
 // The keyboard held inside a modal window for as long as it stands (#296).
 //
@@ -46,7 +46,11 @@ export function useFocusTrap(box: RefObject<HTMLElement | null>, options: FocusT
   // below are bound on mount, and a callback that changed identity must not unbind them.
   const latest = useRef(options)
   latest.current = options
-  useEffect(() => {
+  // Set in the commit that draws the window, not after it (#954). A passive effect runs when React
+  // gets round to it, and a window that arrives on its own — a lazy chunk, not a click — is drawn
+  // outside any event, so React may hand the page back in between: the window stands on the screen
+  // without the focus and deaf to Escape. A layout effect leaves no such moment.
+  useLayoutEffect(() => {
     const el = box.current
     if (!el) return
     const before = document.activeElement instanceof HTMLElement ? document.activeElement : null

@@ -181,7 +181,8 @@ describe('the icon as a tool on the canvas (#33)', () => {
     // And it is inside the element the tool just placed, so this is what the tool did.
     const icon = await waitFor(() => {
       const found = document.querySelector('#canvas [data-element="icon-1"] img.byd-icon') as HTMLImageElement | null
-      if (!found) throw new Error('no icon on the card yet')
+      // Drawn as nothing yet while its bytes are on their way (#959), and from the service once.
+      if (!found || found.getAttribute('src')?.startsWith('data:')) throw new Error('no icon on the card yet')
       return found
     })
     expect(document.querySelectorAll('#canvas img.byd-icon')).toHaveLength(1)

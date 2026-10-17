@@ -6,7 +6,7 @@ import { StatusLive } from '../src/status/StatusLive.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { projectDoc } from './project-doc.js'
-import { admit, createSession, registerRoom, startServer, type Running } from './fixture.js'
+import { admit, createSession, registerRoom, roomOf, startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 import { watchFontNet, type FontNet } from './font-net.js'
 
@@ -198,6 +198,31 @@ describe('the tables the account sat at (G1)', () => {
     // Said once (#475): the address no longer carries it, so a reload does not say it again.
     expect(new URLSearchParams(location.search).get('claimed')).toBeNull()
     expect(new URLSearchParams(location.search).get('server')).toBe(run.http)
+  })
+
+  // «Tillbaka till bordet» takes her to her own seat and hand (#690, beslut 2026-10-06): before, it
+  // was the picker, where her seat stood taken under her own name and the name field was empty.
+  it('takes the guest back to her own seat and hand, not to the picker', async () => {
+    await run.stop()
+    run = await startServer({ auth: true, authBypass: true })
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com' }) })
+    const id = await createSession(run)
+    const token = await admit(run, id, 'A', 'Ada')
+    expect((await fetch(`${run.http}/guests/claim`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) })).status).toBe(200)
+
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    const gone: string[] = []
+    render(<HomePage onNavigate={(u) => gone.push(u)} />)
+    const back = await screen.findByRole('link', { name: 'Tillbaka till bordet' })
+    expect(back.closest(`[data-played="${id}"]`)).not.toBeNull()
+    fireEvent.click(back)
+    await waitFor(() => expect(gone).toHaveLength(1))
+    const to = new URL(gone[0]!, 'http://app.invalid')
+    expect(to.pathname).toBe('/play')
+    expect(Object.fromEntries(to.searchParams)).toMatchObject({ session: id, seat: 'A', name: 'Ada', code: roomOf(id).code, server: run.http.replace(/^http/, 'ws') })
+    // A token of its own: the server keeps only a hash, so the seat is handed a new one.
+    expect(to.searchParams.get('token')).toBeTruthy()
+    expect(to.searchParams.get('token')).not.toBe(token)
   })
 
   // A game taken away takes its tables with it (#676): the row says so, and offers no way back.

@@ -99,10 +99,17 @@ test.describe('the header remembers the table (#477)', () => {
     await expect(primary).toHaveAccessibleName('Update the table')
     await expect(page.locator('[data-room-code]')).toHaveText(/\S+/)
     await expect(page.locator('.byd-editor-table-link')).toContainText('The table runs version 1')
-    // The stack renders no textures, so the update waits on them for as long as the test lasts;
-    // what matters is which errand the press went on, and that no second table was born.
+    // What matters is which errand the press went on, and that no second table was born. How long
+    // the update then takes is the renderer's business, and not this test's to time (#949): the
+    // card faces are shared by every table of the same deck, so when a journey with a render
+    // worker (an export, a print) has run beside this one they are already there, the update is
+    // over before anything can read «Updating the table…», and the button stands at rest again.
+    // So the press is read where it goes — the remembered table's `prepare` — and not in a state
+    // that lasts only as long as the queue happens to.
+    const [running] = await tables()
+    const updated = page.waitForRequest((r) => r.method() === 'POST' && new URL(r.url()).pathname === `/sessions/${encodeURIComponent(running!.id)}/prepare`, { timeout: 10_000 })
     await primary.click()
-    await expect(primary).toHaveAccessibleName('Updating the table…')
+    await updated
     expect(await tables(), 'the press updated the table the header remembered').toHaveLength(1)
   })
 })

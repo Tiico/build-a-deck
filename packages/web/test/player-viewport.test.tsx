@@ -180,10 +180,19 @@ function surfaces(view: Snapshot) {
     ),
     survey: (
       <div className="byd-player">
-        {/* With the way to an account in its foot (G1): the one link a thumb has to land on. */}
         <Survey who="Ada" version="v1" onSubmit={async () => undefined} saveUrl="http://claim.invalid/claim?token=t" />
       </div>
     ),
+    // The thanks, with the way to an account under them (G1): offered once the answers are sent
+    // (#690), and the one link a thumb has to land on.
+    thanks: (() => {
+      sessionStorage.setItem('byd.survey.sent.viewport:A', '1')
+      return (
+        <div className="byd-player">
+          <Survey who="Ada" version="v1" onSubmit={async () => undefined} saveUrl="http://claim.invalid/claim?token=t" remember="viewport:A" />
+        </div>
+      )
+    })(),
     // Enter on a hand card: the verbs and the named places (#1, variant C).
     address: (() => {
       const card = view.components.find((c) => c.zone === 'hand:A')!

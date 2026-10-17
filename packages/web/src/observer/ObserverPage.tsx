@@ -211,7 +211,7 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
         />
       )}
       </div>
-      {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} who={name} version={version ?? '…'} rulebook={rulebook} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat: null, observer: true, answers })} />}
+      {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} saved={params.get('saved') === '1'} who={name} version={version ?? '…'} rulebook={rulebook} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat: null, observer: true, answers })} />}
       <RouteStatus status={live.state === 'missing' ? { ...live, notice: asObserver(guestNotice('missing', t), t) } : live} over="card" links={links} onRetry={conn.retry} />
     </>
   )

@@ -1,5 +1,7 @@
-import { useMemo } from 'react'
+import { useContext, useMemo } from 'react'
 import { SYMBOL_CSS, renderInline, type Symbols } from '@byd/template'
+import { arrivingIn, holdIcons } from './assets.js'
+import { Arriving } from './AssetImage.js'
 
 // A sample of a symbol as the card will draw it (L34, #302).
 //
@@ -21,7 +23,13 @@ export type SymbolSampleProps = {
 }
 
 export function SymbolSample({ written, symbols, paper }: SymbolSampleProps) {
-  const inner = useMemo(() => ({ __html: renderInline(written, symbols) }), [written, symbols])
+  const whole = useMemo(() => renderInline(written, symbols), [written, symbols])
+  // A symbol whose bytes are still on their way is drawn as nothing yet, as a card draws it (#959).
+  const held = arrivingIn(whole, useContext(Arriving))
+  const inner = useMemo(
+    () => ({ __html: held === '' ? whole : renderInline(written, { ...symbols, icons: holdIcons(symbols.icons, new Set(held.split(' '))) }) }),
+    [whole, held, written, symbols],
+  )
   return <span className="byd-symbol-sample" data-paper={paper} style={{ background: paper }} aria-hidden="true" dangerouslySetInnerHTML={inner} />
 }
 

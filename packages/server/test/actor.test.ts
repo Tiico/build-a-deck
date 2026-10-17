@@ -112,6 +112,7 @@ function bind(store: MemoryLogStore): LogStore {
     revokeGuests: (id, seat, at) => store.revokeGuests(id, seat, at),
     claimGuest: (h, a) => store.claimGuest(h, a),
     guestsOf: (a) => store.guestsOf(a),
+    returnGuest: (id, a, h, now) => store.returnGuest(id, a, h, now),
   }
 }
 

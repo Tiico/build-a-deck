@@ -34,6 +34,29 @@ describe('ClaimPage', () => {
     await waitFor(() => expect(gone.at(-1)).toBe(`/?claimed=${id}&server=${encodeURIComponent(run.http)}`))
   })
 
+  // The claim goes back where the guest came from (#690, beslut 2026-10-06): the phone's thanks,
+  // which then say it is saved — rather than a start page with no way back to the table.
+  it('goes back to the page the link came from once the claim is made, saying it is saved', async () => {
+    const id = await createSession(run)
+    const token = await admit(run, id, 'A', 'Ada')
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com' }) })
+    const play = `/play?session=${id}&seat=A&name=Ada&token=${token}`
+    history.replaceState(null, '', `/claim?${new URLSearchParams({ token, next: play, server: run.http }).toString()}`)
+    const gone: string[] = []
+    render(<ClaimPage onNavigate={(u) => gone.push(u)} />)
+    await waitFor(() => expect(gone.at(-1)).toBe(`${play}&saved=1`))
+  })
+
+  it('never goes back to another site', async () => {
+    const id = await createSession(run)
+    const token = await admit(run, id, 'A', 'Ada')
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com' }) })
+    history.replaceState(null, '', `/claim?${new URLSearchParams({ token, next: '//evil.invalid/x', server: run.http }).toString()}`)
+    const gone: string[] = []
+    render(<ClaimPage onNavigate={(u) => gone.push(u)} />)
+    await waitFor(() => expect(gone.at(-1)).toBe(`/?claimed=${id}&server=${encodeURIComponent(run.http)}`))
+  })
+
   // Every state the page can stand in is one of the status family's (D5, #475): the waits, the
   // missing link and the refusals were bare lines on a white page, and the errors had nothing to
   // press and left the focus on <body>.

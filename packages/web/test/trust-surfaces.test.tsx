@@ -17,6 +17,7 @@ const health = (body: unknown, ok = true) =>
 afterEach(() => {
   vi.unstubAllGlobals()
   localStorage.clear()
+  sessionStorage.clear()
 })
 
 const card = () => render(<LoginCard http="http://server.local" next="/" onNavigate={() => undefined} />)
@@ -57,8 +58,18 @@ describe('the foot of the login card (#757)', () => {
 })
 
 describe('what a guest leaves behind, said where she saves (#757)', () => {
+  // Saving is offered once the answers are sent (#690), so the sentence stands there, and goes with
+  // the offer once the answers are saved.
+  const KEPT = 'Vi sparar ditt namn, platsens drag och dina enkätsvar — knutna till bordet, inte till dig.'
   it('says what is kept, tied to the table and not to her, beside «Spara till ditt konto»', () => {
-    render(<Survey who="Ada" version="rev-1" saveUrl="/save" onSubmit={async () => undefined} />)
-    expect(screen.getAllByText('Vi sparar ditt namn, platsens drag och dina enkätsvar — knutna till bordet, inte till dig.').length).toBeGreaterThan(0)
+    sessionStorage.setItem('byd.survey.sent.t1', '1')
+    render(<Survey who="Ada" version="rev-1" saveUrl="/save" remember="t1" onSubmit={async () => undefined} />)
+    expect(screen.getByRole('link', { name: 'Spara till ditt konto' })).toBeTruthy()
+    expect(screen.getByText(KEPT)).toBeTruthy()
+  })
+
+  it('says nothing more once the answers are saved', () => {
+    render(<Survey who="Ada" version="rev-1" saveUrl="/save" saved onSubmit={async () => undefined} />)
+    expect(screen.queryByText(KEPT)).toBeNull()
   })
 })
