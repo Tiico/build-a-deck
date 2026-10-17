@@ -94,13 +94,12 @@ export const svStatus = {
   'status.missing.text': 'Länken pekar på något som inte finns längre. Kontrollera adressen, eller gå till dina spel.',
   'status.missing.text.start': 'Länken pekar på något som inte finns längre. Kontrollera adressen, eller gå till startsidan.',
   // «Finns inte» är inte «avslutat» (#753): ett bord servern aldrig hört talas om har inte tagit
-  // slut, och en adress utan bord i sig pekar inte på något alls. «Bordet är slut» är reserverat
-  // för ett bord som faktiskt avslutats (`session.end`).
+  // slut, och en adress utan bord i sig pekar inte på något alls. Att ett bord avslutats sägs bara
+  // till den som redan sitter vid det; en rumskod till ett avslutat bord sägs som en okänd (#938).
   'status.missing.table.heading': 'Vi hittar inte bordet',
   'status.missing.table.text': 'Länken pekar på ett bord som inte finns. Starta ett nytt bord från Mina spel.',
   'status.unlinked.table.heading': 'Ingen länk till ett bord',
   'status.unlinked.table.text': 'Adressen pekar inte på något bord. Starta ett bord från Mina spel.',
-  'status.ended.table.heading': 'Bordet är slut',
   'status.deleted.table.heading': 'Spelet är borttaget',
   'status.deleted.table.text': 'Bordet avslutades när spelet togs bort. Starta ett nytt bord från Mina spel.',
   'status.missing.phone.heading': 'Bordet finns inte',

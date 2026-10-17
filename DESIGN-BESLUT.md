@@ -1200,6 +1200,7 @@ En okänd sökväg är en egen route som säger att sidan inte finns; förut fö
 
 Tillägg 2026-10-06 (#675, beslut C): telefonens 404 på `/join` och på rummets adress `/KOD` är inte längre en sida för sig utan formuläret för koden, med koden kvar i fältet och markören i det.
 Meningen är en och densamma för en kod som aldrig funnits och en som gått ut eller roterats, «Koden finns inte eller har gått ut — fråga värden efter den nya.», så att inget avslöjar om en kod en gång funnits.
+Sedan 2026-10-07 (#938) gäller samma mening för ett avslutat bords kod.
 Resten av modellen gäller: fliken säger «Bordet finns inte», och meningen sägs assertivt i appens egen region och inte en andra gång i en egen `alert`; den står vid fältet och fältet pekar på den.
 `/join` utan kod är samma formulär utan besked.
 Sex tecken som kan vara en kod läses som en; en sökväg som inte kan det är fortfarande sidan som inte finns.
@@ -1219,6 +1220,8 @@ Fristen som gör det där till mer än en avsikt byggdes 2026-09-15: den ligger 
 Editorns öppning fick tidsgränsen 2026-10-05 (#876): en server som tog emot anropet och aldrig svarade lämnade «Öppnar spelet…» stående för alltid; nu blir den `laddar länge` efter `slowAfterMs` och `nät-/serverfel` efter `connectTimeoutMs`, i editorns befintliga ord.
 Fem frågor från prototypen är fortfarande obesvarade och står kvar i avsnitt I.
 Orden ska stämma med adressen (#753): «saknas» skiljs från «avslutat», så ett bord servern aldrig hört talas om säger «Vi hittar inte bordet» och «Bordet är slut» står bara för ett bord som avslutats med `session.end`.
+Reviderat 2026-10-07 (#938): rumskoden till ett avslutat bord säger ingenting om bordet, utan sägs som en kod som aldrig funnits; att bordet är slut får bara den veta som redan sitter vid det eller tittar på det, i bordets egna ord («Bordet är avslutat»).
+«Bordet är slut» stod bara på `/join` och är därmed borta.
 En adress utan något i sig — `/editor` utan projekt, `/table` utan bord — säger att länken inte pekar på något, i stället för att gissa på ett felskrivet tecken.
 En tittarlänk öppnad på telefonens sida är varken saknad eller stängd: den säger «Du tittar bara» och leder till observatören med samma länk.
 Reviderat 2026-10-05 (#722): **en skärm som ingen rör ger inte upp.**
@@ -2262,6 +2265,15 @@ Vägorden står som `ROUTE_WORDS` i `packages/protocol` bredvid kodens alfabet, 
 Generatorn drar om en kod som stavar ett vägord, i vilken bokstavsstorlek ordet än står.
 Routern läser `/KOD` sist, efter alla appens egna vägar, och bygget ber om väljarens bit bredvid ingången även där, så att adressen TV:n säger inte kostar en rundresa till (#760).
 En okänd, en utgången och en roterad kod sägs likadant, «Koden finns inte eller har gått ut — fråga värden efter den nya.», med koden kvar i fältet; servern svarar samma 404 med samma kropp för alla tre (DRIFT §9).
+Tillägg 2026-10-07 (#938, beställarens beslut): ett avslutat bords kod sägs likadant som de tre, på telefonen och på tråden; «Bordet är slut» på `/join` är borta, och dörren lämnar fortfarande ingen token (C9, #485).
+
+Tillägg 2026-10-17 (#937): koden ritas i ett riktigt fastbreddstypsnitt, och filten hänger under huvudet.
+Stacken `ui-monospace, monospace` blev Courier i Chrome på Mac, som inte känner `ui-monospace` och ritar `monospace` i Courier; Menlo står nu mellan dem överallt där stacken fanns, och bordslägets skylt ritar koden i samma stack som TV:n.
+`room-code-face.spec.ts` frågar Chromium vilket typsnitt som faktiskt ritades (`CSS.getPlatformFontsForNode`) och håller att det inte är Courier eller Times och att det har fast bredd, utan att låsa en familj, eftersom den är Menlo på Mac och DejaVu Sans Mono eller Liberation Mono på CI:s Linux.
+Filtens rad i väljaren tar den höjd telefonen har över, och en filt centrerad i den stod mitt i ett tomt band: 83 px under huvudet vid 390 × 844 med fyra platser.
+Filten hänger nu från radens topp och centreras bara i sidled, så sidan läses uppifrån — vem du ansluter till och bordet direkt under — och höjden över hamnar mellan bordet och formuläret.
+Formuläret står kvar vid foten, där tummen är och där #42 lämnade «Sätt dig» oavsett filtens storlek; att packa hela sidan uppåt hade flyttat knappen med antalet platser.
+`picker-band.spec.ts` mäter luften mellan huvudets sista rad och det första filten ritar, pillret eller träkanten, i det byggda appen vid 390 × 844 och 320 × 568 med fyra och sex platser: 30 px överallt.
 
 ### K13. Ångra och tillbakaspolning: förhandsvisning på bordet, beslut på telefonerna (prototypat 2026-09-06)
 
