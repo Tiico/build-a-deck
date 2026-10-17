@@ -167,6 +167,10 @@ export async function start(opts: { appOrigin?: string; authBypass?: boolean; ob
   const mail = new MemoryMailer()
   const authBypass = opts.authBypass ? { authBypass: true } : {}
   const server = createServer({ host, store, registry, renders, projects, assets: opts.assets ?? new MemoryAssetStore(opts.objects), surveys: new MemorySurveyStore(), auth: opts.auth ?? new MemoryAuthStore(), mailer: mail, publicOrigin: 'http://test.local', ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(opts.objects ? { objects: opts.objects } : {}), ...(opts.now ? { now: opts.now } : {}), ...(opts.release ? { release: opts.release } : {}), ...(opts.contact ? { contact: opts.contact } : {}), ...authBypass })
+  // Never hang up an idle connection from this end (#848): the `fetch` in this same process pools
+  // it for its next request, and a worker held past Node's five seconds wakes with both due in one
+  // turn. The client decides when a connection is done; `stop` closes this end.
+  server.keepAliveTimeout = 0
   const port = await listenInBand(server)
   const run: Running = {
     server,

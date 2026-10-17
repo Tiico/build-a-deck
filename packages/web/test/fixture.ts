@@ -280,7 +280,16 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean }
   const auth = opts.auth ? new MemoryAuthStore() : undefined
   let http = ''
   const assets = new MemoryAssetStore()
-  const make = () => createServer({ host: new TableHost(registry, store, undefined, renders), store, registry, renders, projects, assets, surveys, ...(auth ? { auth, mailer: mail, publicOrigin: http, authBypass: opts.authBypass } : {}) })
+  const make = () => {
+    const made = createServer({ host: new TableHost(registry, store, undefined, renders), store, registry, renders, projects, assets, surveys, ...(auth ? { auth, mailer: mail, publicOrigin: http, authBypass: opts.authBypass } : {}) })
+    // Never hang up an idle connection from this end (#848). Node does after five seconds, and the
+    // client in this same process sends its next request on the connection it pooled: on a box
+    // where a worker is descheduled for longer than that, the two meet on one socket and the
+    // request comes back «fetch failed». With no timeout here the client alone decides when a
+    // connection is done, and `stop` below closes this end when the test is over.
+    made.keepAliveTimeout = 0
+    return made
+  }
   let server: Server = make()
   const port = await claim(server)
   http = `http://127.0.0.1:${port}`
