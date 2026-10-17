@@ -791,3 +791,77 @@ describe('the way back to the height in the column door (#739)', () => {
     }
   }, 60_000)
 })
+
+// The column door's own question (#858): «Ta bort fältet body» asked in the same band over the
+// head that the row's × used to (#739), so the table — and the door hanging from its head — moved
+// down under the hand that had just pressed the ×. It asks in the foot, as the row's × and the
+// marking do (L58), and the door, which stands over the rows, must leave the question in sight.
+describe('the rows stand still when the column door asks (#858)', () => {
+  async function door(asking: boolean): Promise<Table> {
+    const user = userEvent.setup()
+    const { container, unmount } = render(<Table />)
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
+    if (asking) await user.click(screen.getByRole('button', { name: 'Ta bort fältet body' }))
+    const html = container.innerHTML
+    unmount()
+    return { html, deck: deckValues(projectDoc(), sv) }
+  }
+
+  it('keeps the first row and the door where they were, and asks in the foot, one row tall and in sight', async () => {
+    const shut = await door(false)
+    const open = await door(true)
+    const [quiet, asking, foot] = await Promise.all([measure(shut), measure(open), measureFoot(open)])
+    expect(asking.scroll.y).toBe(quiet.scroll.y)
+    expect(asking.firstRow.y).toBe(quiet.firstRow.y)
+    expect(asking.door).not.toBeNull()
+    expect(asking.door!.y).toBe(quiet.door!.y)
+    expect(foot.toolbar).not.toBeNull()
+    expect(foot.height).toBeLessThanOrEqual(foot.tap + 2 * foot.air)
+    // The question is what the page shows where it stands: neither the door nor anything else lies
+    // over its buttons.
+    const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
+    try {
+      const { html, deck } = open
+      await page.setContent(shellOf(html, ''), { waitUntil: 'load' })
+      const covered = await page.evaluate(({ deck, fit }) => {
+        new Function('box', 'deck', `(${fit})(box, deck)`)(document.querySelector('.byd-data-scroll'), deck)
+        const ask = document.querySelector('.byd-crown-foot [role="alertdialog"]')
+        if (!ask) return ['no question in the foot']
+        return [...ask.querySelectorAll('button')]
+          .filter((b) => {
+            const r = b.getBoundingClientRect()
+            return !b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2))
+          })
+          .map((b) => b.textContent)
+      }, { deck, fit: FIT })
+      expect(covered).toEqual([])
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})
+
+// The door's note on the tool's own columns (#858) was 10 px in a door whose small text is 11.
+describe("the column door's note on the tool's own columns (#858)", () => {
+  it("is written at least as large as the door's other small text", async () => {
+    const user = userEvent.setup()
+    const { container, unmount } = render(<Table />)
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
+    const html = container.innerHTML
+    unmount()
+    const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
+    try {
+      await page.setContent(shellOf(html, ''), { waitUntil: 'load' })
+      const read = await page.evaluate(() => ({
+        notes: document.querySelectorAll('.byd-columns-system').length,
+        size: parseFloat(getComputedStyle(document.querySelector('.byd-columns-system')!).fontSize),
+        small: parseFloat(getComputedStyle(document.querySelector('.byd-columns .byd-prose-switch > button')!).fontSize),
+      }))
+      expect(read.notes).toBeGreaterThan(0)
+      expect(read.small).toBeGreaterThan(0)
+      expect(read.size).toBeGreaterThanOrEqual(read.small)
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})

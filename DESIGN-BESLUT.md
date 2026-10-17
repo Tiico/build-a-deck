@@ -6344,6 +6344,8 @@ Ingenting ovanför raderna flyttar sig; det som växer växer under tabellen.
 Frågan före en borttagning tar verktygsradens plats i foten, som förut tog hela bandet, så inget kan tryckas av misstag bakom den.
 *Tillagt 2026-10-04 (#739):* radens × frågar på samma plats.
 Dess fråga stod kvar i bandet över huvudet, 62 px, och flyttade huvudet 70 px under handen som just tryckt; nu tar den fotens rad medan den står, och `data-table-layout.test.tsx` mäter att första raden står kvar.
+*Tillagt 2026-10-17 (#858):* kolumndörrens × frågar också där.
+Dess fråga stod i samma band och flyttade tabellen 70 px, och dörren som hänger ur huvudet lika långt; nu står båda kvar medan den står, och testet mäter också att dörren inte ligger över frågans knappar.
 
 **Kolumnen och värdet står bakom «Sätt fält ▾».**
 Foten är en rad, och en väljare och ett fält hade gjort den till två.
