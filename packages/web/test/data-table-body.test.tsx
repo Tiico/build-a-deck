@@ -12,8 +12,6 @@ import { symbolName, type GameSymbol } from '../src/editor/symbols.js'
 import { projectDoc } from './project-doc.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
-
 const withBody = (body: string) => {
   const doc = projectDoc()
   doc.rows[0]!.fields['body'] = body

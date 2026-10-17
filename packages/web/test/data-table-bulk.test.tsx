@@ -6,7 +6,6 @@ import { userEvent } from '@testing-library/user-event'
 import type { ProjectDoc } from '@byd/server'
 import { DataTable, type DataTableProps } from '../src/editor/DataTable.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 
 // The way a value is chosen since #617: through the column's own door in the head, left standing.
 async function tick(user: ReturnType<typeof userEvent.setup>, field: string, value: string) {
@@ -14,8 +13,6 @@ async function tick(user: ReturnType<typeof userEvent.setup>, field: string, val
   if (handle.getAttribute('aria-expanded') !== 'true') await user.click(handle)
   await user.click(within(screen.getByRole('group', { name: `Filtrera på ${field}` })).getByRole('checkbox', { name: value }))
 }
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The same deck the filter tests use: eight cards over three types, so a selection can be made
 // under a filter and still say something about the deck as a whole.
@@ -229,7 +226,7 @@ describe('DataTable bulk delete from the keyboard (#17)', () => {
     expect(shownIds()).toEqual(['drake', 'alv', 'nat', 'troll', 'stock', 'orm', 'grav'])
     // Nothing under the cursor was taken away: the focus lands on the header's own checkbox.
     expect(document.activeElement).toBe(screen.getByLabelText('Markera alla synliga'))
-  }, 30_000)
+  })
 
   it('keeps the cards when the question is answered without being read (#8)', async () => {
     const user = userEvent.setup()

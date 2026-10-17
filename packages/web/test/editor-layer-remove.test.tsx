@@ -6,7 +6,7 @@
 // character. So it is asked here the way the other two are asked, in the whole editor and not in
 // the canvas alone: the key is heard on the document, so the press comes from wherever the
 // keyboard happened to be standing.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
@@ -15,9 +15,6 @@ import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { laidOut, target } from './drag.js'
 import { layerIds, layerPick } from './layers.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {

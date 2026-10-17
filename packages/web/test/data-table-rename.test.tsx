@@ -4,16 +4,13 @@
 // kolumnhuvudet — den dörr #46 redan flyttade × till — så rubriken rörs inte alls och huvudet
 // kostar inte ett enda tabbstopp till.
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { act, render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { applyEdit, type EditIntent } from '@byd/server/doc'
 import { DataTable } from '../src/editor/DataTable.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Tabellen gör sitt eget arbete: varje namnbyte den ber om läggs på med samma rena funktion som
 // aktören lägger på det med, och svaret går rakt tillbaka in i dokumentet tabellen ritas ur.

@@ -1,12 +1,9 @@
 // @vitest-environment jsdom
 // The felt's one tab stop with arrows that follow the screen (K16, #572): `spatial` asks where each
 // item is drawn and goes to the nearest one the arrow points at, never the other way.
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { fireEvent, render } from '@testing-library/react'
 import { useRoving } from '../src/editor/roving.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Drawn as a reader sees them, in screen pixels, and in a list order that is not the screen's.
 const DRAWN: Record<string, { x: number; y: number }> = { a: { x: 400, y: 300 }, b: { x: 100, y: 300 }, c: { x: 250, y: 100 }, d: { x: 700, y: 310 } }

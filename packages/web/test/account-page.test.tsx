@@ -7,10 +7,7 @@ import { EditorPage } from '../src/editor/EditorPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { projectDoc } from './project-doc.js'
 import { admit, createSession, registerRoom, roomOf, startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { watchFontNet, type FontNet } from './font-net.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Accounts (G1, prototype A): the home page is the login card until the link in the mail has
 // been followed; then it is "Mina spel". The cookie jar in test/setup.ts plays the browser.

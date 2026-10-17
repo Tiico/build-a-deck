@@ -4,10 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { MAX_PLAYERS } from '@byd/server/doc'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { watchFontNet, type FontNet } from './font-net.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // A picture the designer picks, as a picture actually is: the server reads the bytes and not the
 // name, so a file called drake.png that is not one never becomes an asset (#204).

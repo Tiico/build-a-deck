@@ -7,7 +7,6 @@ import { projectDoc } from './project-doc.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 // This file stands servers up now, so it is in the class the measured budget is for.
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // A fixture that carries traces of the test before it does not go red — it goes confusing.
 // The suite passes one file at a time and fails in a full run, or the other way round, and

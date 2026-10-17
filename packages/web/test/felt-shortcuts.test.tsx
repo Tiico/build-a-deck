@@ -9,9 +9,6 @@ import { useFeltKeyboard } from '../src/table/useFeltKeyboard.js'
 import { besidePile } from '../src/table/drop.js'
 import { shortcutIntents } from '../src/table/keyboard.js'
 import { buildScene } from './scene.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The felt as it is really mounted: the ring’s pointer track and the keyboard track on the same
 // table, as on `/table` and `/online`. The commands belong in the existing track, so they are

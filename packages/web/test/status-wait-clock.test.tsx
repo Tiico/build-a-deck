@@ -5,9 +5,6 @@ import { useLiveStatus } from '../src/status/useLiveStatus.js'
 import { continueShellClock } from '../src/status/waitClock.js'
 import { useProjectClient } from '../src/editor/useProjectClient.js'
 import type { TableConnection } from '../src/table/useTableClient.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The app's first wait goes on from the shell's (#749). The shell in `index.html` says «laddar
 // länge» four seconds after the navigation started; an app that started its own clock when it

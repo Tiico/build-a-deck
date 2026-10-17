@@ -1,16 +1,13 @@
 // Att välja ett färdigt tema (L57, #632), genom klienten och mot en riktig server: familjerna
 // hämtas ur katalogen och blir projektets egna filer (#420), och hela bytet är en redigering — en
 // version och ett steg tillbaka (B4).
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ProjectClient } from '../src/editor/ProjectClient.js'
 import { THEMES } from '../src/editor/themes.js'
 import { deckIssues } from '../src/editor/checks.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { watchFontNet, type FontNet } from './font-net.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 let net: FontNet

@@ -7,9 +7,6 @@ import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { Said } from '../src/i18n/said.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The fonts the game carries (B3): the shelf that stood in Mall's panel while no layer was chosen
 // (#478) and stands in Speltema since L57 (#630). The same shelf in either place, so it is proven

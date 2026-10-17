@@ -12,9 +12,6 @@ import { EditorPage } from '../src/editor/EditorPage.js'
 import { TableClient, setWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
 import { projectDoc } from './project-doc.js'
 import { asSeat, asTable, registerRoom, roomOf, startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Every table this list connects to, as it connects: the address carries the session, so what a
 // row costs the server is readable from the outside rather than from inside the component.

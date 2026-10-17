@@ -3,9 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { JoinPage } from '../src/join/JoinPage.js'
 import { createNamedSession, createSession, roomOf, startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The code is the address (#675, beslut C 2026-10-06). The television says `värd/KOD`, and the
 // phone that opens it is in the seat picker; `/join` without a code asks for one; a code that

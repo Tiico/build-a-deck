@@ -16,9 +16,6 @@ import { OnlinePage } from '../src/online/OnlinePage.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
 import { buildScene, registry, tableOf } from './scene.js'
 import { admit, asTable, createSession, roomOf, startServer, twoSeatSetup, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const tableCss = readFileSync(join(import.meta.dirname, '..', 'src/table/table.css'), 'utf8')
 

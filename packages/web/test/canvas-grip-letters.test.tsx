@@ -4,9 +4,6 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { Language } from '../src/i18n/index.js'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The letter on a measure's grip is a tool word and follows the reader (#933): «B» is Bredd's
 // initial and stood beside «Width (mm)» in English too.

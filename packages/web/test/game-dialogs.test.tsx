@@ -3,9 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { readExport } from '../src/account/api.js'
 import { ExportDialog, ImportDialog } from '../src/account/GameDialogs.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The export and import windows (G5, #529) and what the follow-up asked of them (#542): the zip is
 // saved under the name the server gives it, and what goes wrong is said in words — never an HTTP

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
 import { TablePage } from '../src/table/TablePage.js'
@@ -7,9 +7,6 @@ import { OnlinePage } from '../src/online/OnlinePage.js'
 import { DEFAULT_TIMING } from '../src/status/connection.js'
 import { projectDoc } from './project-doc.js'
 import { admit, registerRoom, startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Starten väntar på korten (#765, beslut B 2026-10-06). En värd som delar ut medan renderkön
 // fortfarande arbetar delar ut kort utan ansikte; TV:n säger därför i sin spalt hur långt korten

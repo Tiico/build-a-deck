@@ -1,13 +1,10 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import { TablePage } from '../src/table/TablePage.js'
 import { PlayerPage } from '../src/player/PlayerPage.js'
 import { OnlinePage } from '../src/online/OnlinePage.js'
 import { admit, createSession, recipeSetup, roomOf, startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Where a screen reader lands and what it can jump by (#560 P-20, WCAG 1.3.1 and 2.4.6): every
 // playing surface has its main content marked as such and a heading that names the page, and the

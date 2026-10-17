@@ -6,9 +6,6 @@ import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import { layerIds, layerNames, layerPick, layerRow, layerRows } from './layers.js'
 import type { ProjectDoc } from '../src/editor/types.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // A number is typed and the field is left, which is when it is written (#478).
 const typeIn = (el: HTMLElement, value: string) => {

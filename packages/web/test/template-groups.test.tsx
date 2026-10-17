@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import { userEvent, type UserEvent } from '@testing-library/user-event'
 import type { ProjectDoc } from '@byd/server'
@@ -8,9 +8,6 @@ import { projectDoc } from './project-doc.js'
 import { drag, laidOut, target } from './drag.js'
 import { startServer, type Running } from './fixture.js'
 import { layerRows } from './layers.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {

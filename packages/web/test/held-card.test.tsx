@@ -3,9 +3,6 @@ import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { HeldCard } from '../src/player/HeldCard.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const FRONT = 'a'.repeat(64)
 const FACES = 'http://faces.test'

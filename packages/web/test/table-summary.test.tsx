@@ -2,16 +2,13 @@
 // The table folded up small (C4), and since #79 the one place on the phone that can put a card
 // into the hand. The verb is the felt's own (K14) and it is offered on exactly the felt's terms:
 // any pile that has a card, and only to a reader who holds a seat.
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import type { Snapshot } from '@byd/protocol'
 import { TableSummary } from '../src/player/TableSummary.js'
 import { overviewOf } from '../src/player/PlaySheet.js'
 import { seatSetup } from './fixture.js'
 import { tableOf } from './scene.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const noop = (): undefined => undefined
 const drawable = () => screen.queryAllByRole('button').map((b) => b.getAttribute('data-zone-draw'))

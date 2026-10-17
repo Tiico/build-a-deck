@@ -6,9 +6,6 @@ import { deckIssues, fixesFor } from '../src/editor/checks.js'
 import { projectDoc } from './project-doc.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import type { Element } from '@byd/template'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The wall offers the remedy, and the remedy mends the deck (#233).
 //

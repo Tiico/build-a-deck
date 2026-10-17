@@ -1,12 +1,9 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { LoginPage } from '../src/account/LoginPage.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { projectDoc } from './project-doc.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // `/login` for somebody who is already signed in (#475): the card asked for an address the page
 // already had, and a link that led here with somewhere to go next went nowhere.

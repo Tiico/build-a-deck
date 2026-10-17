@@ -8,9 +8,6 @@ import { DEFAULT_EDITOR_TIMING, EditorPage, type EditorTiming } from '../src/edi
 import { requestLink } from '../src/account/api.js'
 import { projectDoc } from './project-doc.js'
 import { deafServer, goingDeafProxy, startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {

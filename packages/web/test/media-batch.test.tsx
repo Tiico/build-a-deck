@@ -14,7 +14,7 @@
 // varje enda skickade de tretton bytena i strängen «[object Blob]» och såg en 201 komma tillbaka
 // (se `test/setup.ts`). Så det som frågas är vad *tjänsten* håller: adressen är hashen av bytena
 // som lämnade webbläsaren, och bytena läses tillbaka av tråden.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createHash } from 'node:crypto'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
@@ -23,9 +23,6 @@ import { Language } from '../src/i18n/index.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const SKOG = '1'.repeat(64)
 // Hela PNG-signaturer, eftersom grinden läser filen och aldrig dess namn (#204).

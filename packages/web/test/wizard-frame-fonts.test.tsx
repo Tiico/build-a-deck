@@ -17,10 +17,7 @@ import { FRAMES } from '../src/wizard/frames.js'
 import { deckIssues } from '../src/editor/checks.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { startServer, type Running } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { watchFontNet, type FontNet } from './font-net.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 let net: FontNet

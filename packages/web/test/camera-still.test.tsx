@@ -1,12 +1,9 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { act, cleanup, render } from '@testing-library/react'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { STILL } from '../src/table/shuffle.js'
 import { buildScene } from './scene.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The TV's camera follows the play by gliding for 700 ms (C5), and the whole felt pans and zooms
 // when somebody else plays. A reader who has asked for less motion is not asked to watch it: the

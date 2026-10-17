@@ -3,7 +3,7 @@
 // editor, a layer is locked from its own row, and the card is then dragged the way a pointer
 // drags it. A lock that is only a property in a document protects nothing; what is tested here is
 // that the card refuses to move and says why.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
@@ -11,9 +11,6 @@ import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { dragVia, laidOut, target } from './drag.js'
 import { layerNames, layerShown } from './layers.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {

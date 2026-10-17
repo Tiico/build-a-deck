@@ -1,13 +1,10 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import type { Intent, Snapshot, ZoneAction } from '@byd/protocol'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { buildScene, tableOf } from './scene.js'
 import { twoSeatSetup } from './fixture.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const ACTIONS: ZoneAction[] = [
   { id: 'a1', label: 'Vänd upp ett per spelare', steps: [{ v: 'split', count: { of: 'seats' }, to: { at: 'zone', zone: 'discard' }, face: 'front' }] },

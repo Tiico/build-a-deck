@@ -1,12 +1,10 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within, fireEvent } from '@testing-library/react'
-import { JSDOM_TEST_BUDGET } from './budget.js'
 import { revealThemeSection, ThemePanel } from '../src/editor/ThemePanel.js'
 import { projectDoc } from './project-doc.js'
 import { groundOf } from '../src/editor/palette.js'
 
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 import type { ProjectClient } from '../src/editor/ProjectClient.js'
 
 // The game's own colours (E4). A card writes the meaning and never the colour, so this is the one

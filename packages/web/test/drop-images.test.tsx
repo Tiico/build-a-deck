@@ -17,9 +17,6 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { DataTable } from '../src/editor/DataTable.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { projectDoc } from './project-doc.js'
-import { JSDOM_TEST_BUDGET } from './budget.js'
-
-vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const HASH = 'c'.repeat(64)
 const LANDED = 'd'.repeat(64)
