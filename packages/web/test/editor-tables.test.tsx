@@ -402,12 +402,13 @@ describe('ending a table from the editor (#19, C9)', () => {
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     await user.click(screen.getByRole('button', { name: 'Starta bord' }))
-    // The renders the start queues are finished until the link stands, not once: a start that had
-    // not reached the server yet left nothing to finish, and the link never came (a flake under load).
-    await waitFor(async () => {
-      await run.completeRenders()
-      expect(screen.getByRole('link', { name: /öppna bordet/i })).toBeTruthy()
-    })
+    // One condition at a time, as `startFromEditor` below waits (#848): the table stands and its
+    // cards are rendering — which is the start having reached the server, since it queues the
+    // renders before it answers — and only then are they finished, and only then is the link
+    // waited for. Finishing them before the start had arrived left nothing to finish (#705).
+    await screen.findByText(/renderar kort/i)
+    await run.completeRenders()
+    await screen.findByRole('link', { name: /öppna bordet/i })
 
     let answer = 500
     const real = globalThis.fetch
