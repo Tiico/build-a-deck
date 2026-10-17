@@ -1,6 +1,6 @@
 import { useCallback, useContext, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
-import { compile, fitInDocument, type FaceTemplate, type Motif, type Row, type Warning } from '@byd/template'
+import { compile, fitInDocument, type FaceTemplate, type FitReport, type Motif, type Row, type Warning } from '@byd/template'
 import { arrivingIn, holdIcons, resolveAssetFace, resolveAssetRow } from './assets.js'
 import { holdFonts } from './fonts.js'
 import { Arriving } from './AssetImage.js'
@@ -21,6 +21,10 @@ export type CardPreviewProps = {
   // any words: what the card really carries, which the eyes read to say how it reads on a screen
   // (#512). An empty box is no text at all.
   onFitted?(sizes: { element: string; sizePt: number }[]): void
+  // Everything the fitting measured, a text that does not fit and how many of its lines the box
+  // cuts off included (#808): what a surface marks the box with, and what the physical check reads
+  // to say the same thing in its list. Measured here because only the one renderer can say it (E2).
+  onMeasured?(fitted: FitReport[]): void
   // Drawn over the card, in the card's own coordinates: the editor's handles and guides (#18).
   // It shows no card content — the compiler above is still the only thing that renders a card.
   overlay?: ReactNode
@@ -37,7 +41,7 @@ export type CardPreviewProps = {
 
 // One card through the real compiler and the real DOM fitting — the same code the renderer runs,
 // so what the editor shows is what the table and the print get (E2).
-export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedElement, onSelectElement, onWarnings, onFitted, overlay, assetBase, motifs, palette }: CardPreviewProps) {
+export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedElement, onSelectElement, onWarnings, onFitted, onMeasured, overlay, assetBase, motifs, palette }: CardPreviewProps) {
   // The face's own pictures resolved once per face (#320), for the same reason the icons are
   // resolved once per document: a fresh face every render is a fresh compile every render.
   const drawnFace = useMemo(() => (assetBase ? resolveAssetFace(face, assetBase) : face), [face, assetBase])
@@ -87,8 +91,8 @@ export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedEl
   // and a fresh function in the effect's dependencies refitted every card on every render of the
   // wall, a layout per text per half point at every band scrolled past. Being told is not a reason
   // to measure again; a card whose markup has not changed has nothing new to say.
-  const tell = useRef({ onWarnings, onFitted })
-  tell.current = { onWarnings, onFitted }
+  const tell = useRef({ onWarnings, onFitted, onMeasured })
+  tell.current = { onWarnings, onFitted, onMeasured }
   // The DOM measures for real; the compiler's text warnings are an estimate for headless use.
   // What the editor reports is what the browser saw: overflow after fitting, plus the
   // compiler's non-text warnings (icons and the like).
@@ -109,6 +113,7 @@ export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedEl
         .map((r) => ({ element: r.element, code: 'text-too-small', detail: `the text does not fit even at ${r.sizePt}pt` }))
       tell.current.onWarnings?.([...out.warnings.filter((w) => w.code !== 'text-too-small' && w.code !== 'text-overflow'), ...fromDom])
       tell.current.onFitted?.(report.filter((r) => !r.empty).map((r) => ({ element: r.element, sizePt: r.sizePt })))
+      tell.current.onMeasured?.(report)
     }
     fit()
     // jsdom has no font set, and lays nothing out to measure again.
@@ -118,7 +123,9 @@ export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedEl
   }, [out.html, out.css, out.warnings])
   const highlight = selectedElement ? `#${id} [data-element="${selectedElement}"]{outline:0.6mm solid var(--byd-editor-primary-mark);outline-offset:0.3mm}` : ''
   return (
-    <div id={id} className="byd-preview" style={{ zoom: scale }}>
+    // Positioned in its own right and not by a stylesheet, so whatever is drawn over the card in
+    // `overlay` stands on the card on every surface, the guided start's included (#808).
+    <div id={id} className="byd-preview" style={{ zoom: scale, position: 'relative' }}>
       <style>{out.css}</style>
       <style>{highlight}</style>
       <div
