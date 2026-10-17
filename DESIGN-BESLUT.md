@@ -5550,6 +5550,15 @@ Ingen av dem ritas på första bilden, och inte heller «Starta om spelet?», so
 Hörnets rad väntar på arket innan den ritas; plattan och frågorna kan inte visas förrän någon har släppt eller tryckt, och då är arket framme.
 Bara «⋯» själv, som står i hörnet från första bilden, ligger kvar i det blockerande arket.
 
+**Tillägg 2026-10-17 (#984, beslutat av beställaren): designerns sidor bär sina ark själva.**
+Taket band igen, 2 byte under larmet, och svaret är det regeln ovan säger: vad i arket första bilden inte ritar.
+Sedan #760 hämtas varje rutts skript när dess adress öppnas, och varje rutts ark låg i det blockerande arket — också gästbokens, kontots och guidens, så att varje telefon väntade på guiden innan den ritade sin hand.
+Det blockerande arket är nu bordets och telefonens: bara rutter som ber om `play`-orden (`/table`, `/play`, `/join`, `/observe`, `/online`) får sina ark i `first-frame-sheets.ts`.
+`/`, `/login`, `/claim`, `/invites/…` och `/new` bär sina i sin egen chunk, som editorn gör sedan #186: `wizard.css`, `account.css`, `stepper.css`, `account/game-menu.css` och `editor/theme-tile.css`, ~22 kB.
+Det tredje bortvalet ovan avvisade samma flytt för att den kostade en riktig Suspense-yta för `/` och `/login`.
+Den ytan finns sedan #760, och Vite låter inte rutten lösas förrän chunkens ark har landat, så sidan ritas aldrig oklädd — `felt-font.spec.ts` håller arken tillbaka 1,5 s och läser sidans element i samma stund det kommer in i dokumentet.
+Mätt i bygget efter #682: det blockerande arket är 211 358 byte mot larmets 233 840, och larmet står kvar på 120 kB med 22 482 byte marginal.
+
 ### L41. Textens placering är en niopunktsplatta, och avstånden ligger bakom «Finjustering» (prototypat 2026-09-18, beslutat 2026-09-21, #219)
 
 Mallsidans egenskapskolumn kunde inte centrera en text i sitt block.
